@@ -115,6 +115,12 @@ const KO = {
   long: '이 문단은 원문보다 훨씬 길게 번역되어 상자 안에 다 들어가지 않습니다. '.repeat(12),
   scanHead: '스캔한 제목',
   scanBody: '스캔한 문단의 번역입니다',
+  // drawn by the Korean-source and table tests; listed here so the test face covers them
+  sourceLine1: '이 문단은 영어로 번역될',
+  sourceLine2: '한국어 원문을 담고 있습니다.',
+  cellName: '이름',
+  cellPrice: '가격',
+  cellWide: '넓게 합친 칸',
 }
 
 /** the installed Korean face when there is one, else the injected test face */
@@ -166,8 +172,8 @@ async function buildSource(): Promise<Uint8Array> {
 function buildKoreanSource(pdfium: PdfiumModule, font: Buffer): Uint8Array {
   return buildCjkLines(pdfium, font, [
     { text: KO.heading, x: 72, y: 720, size: 20 },
-    { text: '이 문단은 영어로 번역될', x: 72, y: 680, size: 12 },
-    { text: '한국어 원문을 담고 있습니다.', x: 72, y: 665, size: 12 },
+    { text: KO.sourceLine1, x: 72, y: 680, size: 12 },
+    { text: KO.sourceLine2, x: 72, y: 665, size: 12 },
   ])
 }
 
@@ -565,9 +571,9 @@ describe('tables, page joins and rotated pages', () => {
     expect(table?.kind).toBe('table')
     if (table?.kind !== 'table') return
     const want: Record<string, string> = {
-      Name: '이름',
-      Price: '가격',
-      'wide merged cell': '넓게 합친 칸',
+      Name: KO.cellName,
+      Price: KO.cellPrice,
+      'wide merged cell': KO.cellWide,
     }
     const tr = new Map<string, InlineRun[]>()
     for (const c of table.table.cells) {
