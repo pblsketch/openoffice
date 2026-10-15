@@ -65,7 +65,7 @@
 - cargo는 `.cargo/config.toml`을 `--manifest-path`가 아니라 현재 폴더에서 찾는다. `apps/sheets`에서 도는 `native:build`가 `--config`로 따로 넘기는 이유다. 이 설정이 MSVC CRT를 정적으로 묶는다. 빠지면 VC++ 재배포 패키지가 없는 PC에서 실행 파일이 뜨지 않아 모든 열기가 실패한다.
 - 산출물 위치가 둘이다. `native:build`와 `cargo build --release`는 `target/release/xlsx-sidecar.exe`를 만든다(개발 실행, 테스트, CLI가 찾는 곳). 설치 파일 빌더는 x64에서 `target/x86_64-pc-windows-gnu/release/xlsx-sidecar.exe`를 찾고, 없으면 `beforePack`에서 `win extraResources source missing`으로 멈춘다. MSVC 도구로 빌드하는 PC에서는 실행 파일을 그 폴더로 복사해 둔다. 이 복사를 해 주는 스크립트는 없으므로, 다시 빌드하고 복사를 빠뜨리면 예전 실행 파일이 설치 파일에 들어간다.
 - 의존성을 더하면 `Cargo.lock`도 함께 커밋하고, 라이선스가 `deny.toml`의 허용 목록에 있어야 한다(CI가 `cargo deny`로 확인한다).
-- 배포하고 검증하는 플랫폼은 Windows뿐이다. 빌더 설정의 macOS·Linux 경로는 원본의 것이 남아 있을 뿐 이 프로젝트에서 검증하지 않았다.
+- 배포하고 검증하는 플랫폼은 Windows뿐이다. Apple Silicon dmg는 `npm run native:build:darwin-arm64`(`cargo build --release --target aarch64-apple-darwin`)의 `target/aarch64-apple-darwin/release/xlsx-sidecar`를 넣는다. 그 빌드는 macOS 러너에서만 되고, 이 저장소에서 Mac으로 열어 본 검증은 없다. Linux 패키징 경로는 원본의 것이 남아 있다.
 
 ## 테스트
 

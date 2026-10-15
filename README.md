@@ -25,6 +25,7 @@ Google Gemini)를 연결해 쓸 수 있습니다.
 - [이미지 생성, 사진 보기, 검색](#이미지-생성-사진-보기-검색)
 - [터미널 명령어, MCP, 에이전트 스킬](#터미널-명령어-mcp-에이전트-스킬)
 - [내려받기와 설치](#내려받기와-설치)
+- [macOS (Apple Silicon, 내부용)](#macos-apple-silicon-내부용)
 - [업데이트](#업데이트)
 - [직접 빌드하기](#직접-빌드하기)
 - [알려진 한계](#알려진-한계)
@@ -59,7 +60,9 @@ Google Gemini)를 연결해 쓸 수 있습니다.
   파일을 읽고 만들고 고칠 수 있습니다.
 - **화면 언어 21개.** 한국어와 영어는 직접 썼고, 나머지 19개는 기계 번역입니다.
 
-배포하고 동작을 확인한 운영체제는 **Windows뿐**입니다.
+배포하고 동작을 확인한 운영체제는 **Windows**입니다. Apple Silicon용 서명 없는
+디스크 이미지는 [macOS (Apple Silicon, 내부용)](#macos-apple-silicon-내부용)에서
+받습니다.
 
 ## 구독 연결하기
 
@@ -208,6 +211,33 @@ MCP 도구 호출은 화면을 보는 사람이 아니라 프로그램이 보내
 실행**을 눌러야 설치가 시작됩니다(문구는 Windows 버전에 따라 조금 다릅니다).
 설치 파일은 반드시 이 저장소의 릴리스 페이지에서만 받으세요.
 
+## macOS (Apple Silicon, 내부용)
+
+서명·공증하지 않은 Apple Silicon(arm64) 디스크 이미지는 GitHub Actions에서
+만듭니다. Windows 릴리스와 달리 회사 안에서 받아 쓰는 빌드이고, 코드 서명이
+없습니다.
+
+1. 이 저장소의 **Actions** 탭에서 **macOS arm64** 워크플로를 고릅니다.
+2. **Run workflow**로 실행합니다.
+3. 실행이 끝나면 그 실행의 **Artifacts**에서 `IeumOffice-mac-arm64`를 받습니다.
+   안의 파일은 `IeumOffice-<버전>-arm64.dmg`입니다.
+
+디스크 이미지를 열고 `IeumOffice`를 응용 프로그램 폴더로 옮깁니다. 서명이
+없으므로 macOS가 처음 실행을 막습니다. 앱을 더블클릭하지 말고 응용 프로그램
+폴더의 **IeumOffice**를 **우클릭 → 열기**한 뒤 확인을 누릅니다. 또는 터미널에서
+격리 속성을 지웁니다.
+
+```bash
+xattr -cr /Applications/IeumOffice.app
+```
+
+Finder로 켜도 Claude Code와 Codex를 찾습니다. 앱이 로그인 셸의 PATH와
+`/opt/homebrew/bin`, `/usr/local/bin`, `~/.local/bin`, `~/.npm-global/bin`을
+함께 봅니다. 창·독·메뉴에 보이는 앱 이름은 IeumOffice입니다.
+
+이 디스크 이미지는 자동 업데이트로 받아지지 않습니다. macOS에서 앱을 끝까지
+써 보는 확인은 이 워크플로로 이미지를 만든 뒤에 해야 합니다.
+
 ## 업데이트
 
 설치된 앱은 켠 직후에 한 번, 그 뒤로는 4시간마다 이 저장소의 GitHub 릴리스를
@@ -239,7 +269,18 @@ npm run native:build -w @genoffice/sheets
 npm run dist:win -- -- --publish never
 ```
 
-설치 파일은 `apps/shell/release`에 생깁니다. 변경할 때 통과해야 하는 검사를
+Apple Silicon 디스크 이미지를 이 Mac에서 직접 만들려면(Xcode 명령줄 도구와
+`aarch64-apple-darwin` Rust 타깃이 필요합니다):
+
+```bash
+rustup target add aarch64-apple-darwin
+npm run dist:mac -- -- --publish never
+```
+
+이미지는 `apps/shell/release`의 `IeumOffice-<버전>-arm64.dmg`입니다. 서명은
+하지 않습니다. Intel용 패키지는 만들지 않습니다.
+
+Windows 설치 파일은 `apps/shell/release`에 생깁니다. 변경할 때 통과해야 하는 검사를
 비롯한 자세한 내용은 [CONTRIBUTING.md](CONTRIBUTING.md)(영어)에, 새 버전을
 내는 절차는 [docs/releasing.ko.md](docs/releasing.ko.md)에 있습니다.
 
@@ -249,9 +290,9 @@ npm run dist:win -- -- --publish never
 
 ## 알려진 한계
 
-- **Windows만 지원합니다.** GenOffice에서 물려받은 macOS·Linux용 코드는
-  저장소에 남아 있지만, 이 프로젝트는 그것을 빌드하지도, 배포하지도, 시험하지도
-  않습니다.
+- **동작을 확인한 배포는 Windows입니다.** Apple Silicon용 서명 없는 디스크
+  이미지는 위의 macOS 절에서 Actions로 만듭니다. 공증하지 않으며, 자동
+  업데이트로 설치되지 않습니다. Linux 패키지는 아직 만들지 않습니다.
 - **설치 파일에 서명이 없습니다.** 위에서 설명한 대로입니다.
 - **구독은 API 키보다 답이 조금 늦게 시작됩니다.** 요청마다 그 회사의
   프로그램을 먼저 띄우기 때문에 첫 글자가 나오기까지 몇 초가 걸립니다(개발에 쓴
