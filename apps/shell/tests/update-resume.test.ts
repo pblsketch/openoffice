@@ -165,10 +165,23 @@ describe('resumable installer download', () => {
     // a body stream that errors halfway through
     // a real socket hang-up errors the stream after the prefix was delivered
     // (a synchronous error would void the queued chunk — Node web streams)
+    // The hang-up waits until the prefix is on disk: an error voids every chunk not yet
+    // read, so a fixed 5 ms let a loaded runner lose the prefix before the loop took it.
+    const hangUpOnceWritten = async (controller: ReadableStreamDefaultController<Uint8Array>) => {
+      for (let i = 0; i < 400; i++) {
+        const size = await stat(partOf()).then(
+          (s) => s.size,
+          () => 0,
+        )
+        if (size >= 4) break
+        await new Promise((resolve) => setTimeout(resolve, 5))
+      }
+      controller.error(new Error('socket hang up'))
+    }
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
         controller.enqueue(new Uint8Array(FULL.subarray(0, 4)))
-        setTimeout(() => controller.error(new Error('socket hang up')), 5)
+        void hangUpOnceWritten(controller)
       },
     })
     globalThis.fetch = vi.fn(
