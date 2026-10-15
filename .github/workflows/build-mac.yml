@@ -6,11 +6,6 @@ name: macOS arm64
 
 on:
   workflow_dispatch:
-  # Temporary, so this branch's unsigned image is built on macos-14 before
-  # upstreaming. Remove the push trigger once that artifact has uploaded.
-  push:
-    branches:
-      - cursor/macos-arm64-dmg-5810
 
 permissions:
   contents: read
