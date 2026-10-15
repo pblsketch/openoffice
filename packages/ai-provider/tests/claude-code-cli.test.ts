@@ -109,7 +109,11 @@ class FakeClaude extends EventEmitter {
   }
 
   send(...events: unknown[]): void {
-    for (const event of events) this.stdout.write(`${JSON.stringify(event)}\n`)
+    for (const event of events) {
+      // the bridge can tree-kill the child while reading an earlier event; a killed process writes nothing more
+      if (this.exited) return
+      this.stdout.write(`${JSON.stringify(event)}\n`)
+    }
   }
 
   exit(code: number | null = 0): void {
