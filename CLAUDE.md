@@ -26,6 +26,8 @@ openoffice/
 │   ├── releasing.ko.md            ← 새 버전 내는 절차(저장소 주인용)
 │   ├── headless-pdf-export.md     ← 창 없이 PDF로 내보내는 진입점
 │   ├── slides-op-journal.md       ← 슬라이드 편집 기록 형식
+│   ├── plans/
+│   │   └── pdf-tools.md           ← PDF 도구 모음 계획(초안)
 │   └── tracking/
 │       ├── status.md              ← 된 것과 남은 것
 │       ├── findings.md            ← 풀리지 않은 문제
