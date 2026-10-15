@@ -1,6 +1,6 @@
 # 운영
 
-배포하고 확인하는 운영체제는 Windows뿐이다. macOS·Linux용 설정과 코드는 저장소에 남아 있지만 빌드하지도 확인하지도 않는다.
+배포하고 확인하는 운영체제는 Windows뿐이다. Apple Silicon용 서명 없는 dmg는 `.github/workflows/build-mac.yml`(macos-14, `workflow_dispatch`)이 만들고 공증하지 않는다. Linux 패키징은 확인하지 않는다.
 
 ## 처음 한 번
 

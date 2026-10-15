@@ -86,6 +86,7 @@ import { registerIntegrationsIpc } from './integrations-ipc'
 import { registerResultStoreIpc } from './result-store-ipc'
 import { handleDroppedFiles } from './dropped-files'
 import { collectLaunchPaths } from './launch-paths'
+import { installMacGuiPath } from './gui-path'
 
 import {
   buildDocsMenu,
@@ -386,6 +387,10 @@ import { isUpdateChannel, type UpdateChannel } from '../shared/update-api'
  * Renderers load from each module's build output (apps/docs/out,
  * apps/sheets/out), so build those before running the shell.
  */
+
+// Finder starts the app with a minimal PATH. Resolve the login shell's PATH
+// (and the usual CLI directories) before any subscription program is located.
+installMacGuiPath()
 
 // ANY unpacked run (`npm run shell`, `npm run dev`, `npx electron .`) must not
 // share the installed app's userData or single-instance lock — otherwise a dev

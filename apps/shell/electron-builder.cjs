@@ -39,6 +39,21 @@ const MAINTAINER = 'pblsketch <pblsketch@users.noreply.github.com>'
 // switch.
 const includeMacX64 = process.env.GENOFFICE_MAC_X64 === '1'
 
+// Unsigned by default: this product does not ship a signed installer.
+// CSC_IDENTITY_AUTO_DISCOVERY=false forces that even when a certificate is
+// present (the internal arm64 workflow). A Developer ID build is opt-in via
+// CSC_LINK or CSC_NAME with discovery left on.
+const macUnsigned =
+  process.env.CSC_IDENTITY_AUTO_DISCOVERY === 'false' ||
+  (!process.env.CSC_LINK && !process.env.CSC_NAME)
+
+// Arm64-only packages read the explicit Apple target. The universal (opt-in)
+// package reads the lipo merge in target/release.
+const MAC_ARM64_SIDECAR =
+  '../sheets/native/xlsx-engine/target/aarch64-apple-darwin/release/xlsx-sidecar'
+const MAC_UNIVERSAL_SIDECAR = '../sheets/native/xlsx-engine/target/release/xlsx-sidecar'
+const macSidecar = includeMacX64 ? MAC_UNIVERSAL_SIDECAR : MAC_ARM64_SIDECAR
+
 // GENOFFICE_WIN_ARM64=1 — package the Windows ARM64 installer instead of x64.
 // CI runs it as a second electron-builder pass (own BUILD_DIR) after the
 // unchanged x64 pass, so the two never share an output dir or a sidecar path:
@@ -163,8 +178,26 @@ function assertUniversalVisionOcr() {
 // `native:build` dev path) would silently ship an arm64 sidecar inside the
 // Intel dmg, where every workbook open fails. Runs from beforePack, dual-arch
 // mac packs only.
+function assertDarwinArm64Sidecar() {
+  const sidecar = join(__dirname, MAC_ARM64_SIDECAR)
+  if (!existsSync(sidecar)) {
+    throw new Error(
+      'mac extraResources source missing: ' +
+        `${MAC_ARM64_SIDECAR} (run "npm run native:build:darwin-arm64 -w @genoffice/sheets" first)`,
+    )
+  }
+  if (process.platform !== 'darwin') return
+  const archs = execFileSync('lipo', ['-archs', sidecar], { encoding: 'utf8' }).trim().split(/\s+/)
+  if (!archs.includes('arm64')) {
+    throw new Error(
+      `xlsx-sidecar is [${archs.join(', ')}] but the arm64 package needs an arm64 slice — ` +
+        'run "npm run native:build:darwin-arm64 -w @genoffice/sheets" before packaging mac',
+    )
+  }
+}
+
 function assertUniversalSidecar() {
-  const sidecar = join(__dirname, '../sheets/native/xlsx-engine/target/release/xlsx-sidecar')
+  const sidecar = join(__dirname, MAC_UNIVERSAL_SIDECAR)
   if (!existsSync(sidecar)) {
     throw new Error(
       `mac extraResources source missing: ${sidecar} (run "npm run native:build:universal -w @genoffice/sheets" first)`,
@@ -576,27 +609,39 @@ const config = {
   // Windows with the unscoped names (and with the two types it must not claim).
   npmRebuild: false,
   mac: {
-    // Two separate arch packages (NOT universal): arm64 keeps the exact
-    // artifact names and update-feed entries it always had, x64 (opt-in via
-    // GENOFFICE_MAC_X64=1, see includeMacX64 above) adds Intel support with
-    // electron-builder's default arch-less names (GenOffice-<v>.dmg /
-    // GenOffice-<v>-mac.zip). Both zips land in one latest-mac.yml and
-    // electron-updater picks by process.arch. Dual-arch packs ship the same
-    // lipo fat xlsx-sidecar (see assertUniversalSidecar above).
+    // Two separate arch packages (NOT a universal binary): the default
+    // pipeline is arm64-only and names the disk image
+    // IeumOffice-<version>-arm64.dmg. x64 (opt-in via GENOFFICE_MAC_X64=1,
+    // see includeMacX64 above) adds an Intel package beside it. Both zips
+    // land in one latest-mac.yml and electron-updater picks by process.arch.
+    // Dual-arch packs ship the same lipo fat xlsx-sidecar (see
+    // assertUniversalSidecar above). The arm64-only pack ships the
+    // aarch64-apple-darwin sidecar.
     target: [
       { target: 'dmg', arch: includeMacX64 ? ['arm64', 'x64'] : ['arm64'] },
       { target: 'zip', arch: includeMacX64 ? ['arm64', 'x64'] : ['arm64'] },
     ],
+    artifactName: '${productName}-${version}-${arch}.${ext}',
     category: 'public.app-category.productivity',
+    // Finder, the Dock and the menu bar read these. They stay the product
+    // name (IeumOffice), not the workspace package name.
+    executableName: PRODUCT_NAME,
+    extendInfo: {
+      CFBundleDisplayName: PRODUCT_NAME,
+      CFBundleName: PRODUCT_NAME,
+    },
+    // identity null skips Developer ID signing (adhoc is not used). The
+    // internal workflow also sets CSC_IDENTITY_AUTO_DISCOVERY=false.
+    ...(macUnsigned ? { identity: null } : {}),
     fileAssociations: FILE_ASSOCIATIONS,
-    hardenedRuntime: true,
+    hardenedRuntime: !macUnsigned,
     gatekeeperAssess: false,
     entitlements: 'build/entitlements.mac.plist',
     entitlementsInherit: 'build/entitlements.mac.plist',
-    notarize: true,
+    notarize: !macUnsigned,
     extraResources: [
       {
-        from: '../sheets/native/xlsx-engine/target/release/xlsx-sidecar',
+        from: macSidecar,
         to: 'native/xlsx-sidecar',
       },
     ],
@@ -732,9 +777,13 @@ const config = {
     assertModuleTreesPresent()
     assertPdfStructureProcessBuilt()
     ensureCliBundleCarriesAppVersion()
-    if (context.electronPlatformName === 'darwin' && includeMacX64) {
-      assertUniversalSidecar()
-      assertUniversalVisionOcr()
+    if (context.electronPlatformName === 'darwin') {
+      if (includeMacX64) {
+        assertUniversalSidecar()
+        assertUniversalVisionOcr()
+      } else {
+        assertDarwinArm64Sidecar()
+      }
     }
     if (context.electronPlatformName === 'win32' && !existsSync(join(__dirname, WIN_SIDECAR))) {
       throw new Error(
@@ -743,9 +792,8 @@ const config = {
     }
   },
   dmg: {
-    sign: true,
+    sign: !macUnsigned,
   },
-  afterAllArtifactBuild: 'build/notarize-dmg.js',
 }
 
 // Windows in-package code signing. Security features that judge every PE
@@ -798,5 +846,9 @@ config.publish = [
 // CI's "-c.extraMetadata.version=..." CLI override deep-merges with this block,
 // so the version and the packaged name survive together.
 config.extraMetadata = { name: PACKAGED_APP_NAME }
+
+// Notarize the dmg only for an opt-in Developer ID build. Unsigned internal
+// builds leave the hook unset so a missing Apple credential cannot fail them.
+if (!macUnsigned) config.afterAllArtifactBuild = 'build/notarize-dmg.js'
 
 module.exports = config

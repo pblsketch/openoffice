@@ -128,6 +128,55 @@ describe('the name in the shell UI', () => {
 })
 
 describe('coexistence with the upstream app on one machine', () => {
+  it('names the mac app IeumOffice and ships an unsigned arm64 dmg by default', () => {
+    expect(config.mac.identity).toBeNull()
+    expect(config.mac.notarize).toBe(false)
+    expect(config.mac.hardenedRuntime).toBe(false)
+    expect(config.mac.gatekeeperAssess).toBe(false)
+    expect(config.mac.executableName).toBe(PRODUCT_NAME)
+    expect(config.mac.extendInfo).toEqual({
+      CFBundleDisplayName: PRODUCT_NAME,
+      CFBundleName: PRODUCT_NAME,
+    })
+    expect(config.mac.artifactName).toBe('${productName}-${version}-${arch}.${ext}')
+    expect(config.mac.target).toEqual([
+      { target: 'dmg', arch: ['arm64'] },
+      { target: 'zip', arch: ['arm64'] },
+    ])
+    expect(config.mac.extraResources).toEqual([
+      {
+        from: '../sheets/native/xlsx-engine/target/aarch64-apple-darwin/release/xlsx-sidecar',
+        to: 'native/xlsx-sidecar',
+      },
+    ])
+    expect(config.dmg.sign).toBe(false)
+    expect(config.afterAllArtifactBuild).toBeUndefined()
+    expect(config.productName).toBe(PRODUCT_NAME)
+    expect(config.productName).not.toBe(UPSTREAM_PRODUCT_NAME)
+
+    const signed = loadBuilderConfig({ CSC_LINK: 'cert.p12' })
+    expect(signed.mac.identity).toBeUndefined()
+    expect(signed.mac.notarize).toBe(true)
+    expect(signed.mac.hardenedRuntime).toBe(true)
+    expect(signed.dmg.sign).toBe(true)
+    expect(signed.afterAllArtifactBuild).toBe('build/notarize-dmg.js')
+
+    const forcedUnsigned = loadBuilderConfig({
+      CSC_LINK: 'cert.p12',
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false',
+    })
+    expect(forcedUnsigned.mac.identity).toBeNull()
+    expect(forcedUnsigned.mac.notarize).toBe(false)
+    expect(forcedUnsigned.dmg.sign).toBe(false)
+    expect(forcedUnsigned.afterAllArtifactBuild).toBeUndefined()
+
+    const universal = loadBuilderConfig({ GENOFFICE_MAC_X64: '1' })
+    expect(universal.mac.extraResources[0].from).toBe(
+      '../sheets/native/xlsx-engine/target/release/xlsx-sidecar',
+    )
+    expect(universal.mac.target[0].arch).toEqual(['arm64', 'x64'])
+  })
+
   it('installs under its own product id and install name', () => {
     expect(config.appId).toBe('io.github.pblsketch.ieumoffice')
     expect(config.appId).not.toBe(UPSTREAM.appId)

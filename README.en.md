@@ -25,6 +25,7 @@ IeumOffice is a modified version of the open-source project
 - [Images, pictures and search](#images-pictures-and-search)
 - [Terminal command, MCP and agent skill](#terminal-command-mcp-and-agent-skill)
 - [Download and install](#download-and-install)
+- [macOS (Apple Silicon, internal)](#macos-apple-silicon-internal)
 - [Updates](#updates)
 - [Building from source](#building-from-source)
 - [Known limitations](#known-limitations)
@@ -62,7 +63,8 @@ IeumOffice is a modified version of the open-source project
 - **21 interface languages.** Korean and English were written by hand; the
   other 19 are machine translations.
 
-Released and verified on **Windows only**.
+Released and verified on **Windows**. An unsigned Apple Silicon disk image is
+available from [macOS (Apple Silicon, internal)](#macos-apple-silicon-internal).
 
 ## Connecting your subscription
 
@@ -216,6 +218,35 @@ choose **More info → Run anyway** (the wording differs between Windows
 versions). Download the installer only from the Releases page of this
 repository.
 
+## macOS (Apple Silicon, internal)
+
+An unsigned, un-notarized Apple Silicon (arm64) disk image is built by GitHub
+Actions. It is for internal use, not the Windows release, and it is not
+code-signed.
+
+1. Open the **Actions** tab of this repository and choose the **macOS arm64**
+   workflow.
+2. Run it with **Run workflow**.
+3. When the run finishes, download the **IeumOffice-mac-arm64** artifact. The
+   file inside is `IeumOffice-<version>-arm64.dmg`.
+
+Open the disk image and copy `IeumOffice` to the Applications folder. macOS
+blocks the first launch because the app is unsigned. Do not double-click it.
+In Applications, **right-click IeumOffice and choose Open**, then confirm. Or
+clear the quarantine attribute in Terminal:
+
+```bash
+xattr -cr /Applications/IeumOffice.app
+```
+
+Launched from Finder, the app still finds Claude Code and Codex. It reads the
+login shell's PATH and also looks in `/opt/homebrew/bin`, `/usr/local/bin`,
+`~/.local/bin` and `~/.npm-global/bin`. The name in the window, the Dock and
+the menu bar is IeumOffice.
+
+This disk image is not installed by the in-app updater. Using the app on macOS
+still has to be checked after this workflow produces the image.
+
 ## Updates
 
 The installed app looks at this repository's GitHub Releases shortly after it
@@ -247,7 +278,18 @@ npm run native:build -w @genoffice/sheets
 npm run dist:win -- -- --publish never
 ```
 
-The installer appears in `apps/shell/release`. The details, including the
+To make the Apple Silicon disk image on a Mac (Xcode command-line tools and
+the `aarch64-apple-darwin` Rust target):
+
+```bash
+rustup target add aarch64-apple-darwin
+npm run dist:mac -- -- --publish never
+```
+
+The image is `apps/shell/release/IeumOffice-<version>-arm64.dmg`. It is not
+signed. An Intel package is not produced.
+
+The Windows installer appears in `apps/shell/release`. The details, including the
 checks a change must pass, are in [CONTRIBUTING.md](CONTRIBUTING.md); the
 release procedure is in [docs/releasing.ko.md](docs/releasing.ko.md) (Korean).
 
@@ -257,8 +299,9 @@ project easy to take.
 
 ## Known limitations
 
-- **Windows only.** The macOS and Linux code inherited from GenOffice is still
-  in the repository, but this project does not build, release or test it.
+- **The verified release is Windows.** An unsigned Apple Silicon disk image
+  is built from Actions, as described above. It is not notarized and it is
+  not installed by the in-app updater. Linux packages are not built.
 - **Unsigned installer**, as described above.
 - **A subscription answers a little later than an API key.** Each request
   starts the vendor's program first, so the first words take a few seconds to
