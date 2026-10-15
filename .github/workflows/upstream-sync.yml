@@ -1,0 +1,43 @@
+name: Upstream sync
+
+# Merges pblsketch/openoffice main onto this fork and opens a pull request.
+# Not part of the PR test gate. Fork-only: do not send this workflow upstream.
+#
+# GITHUB_TOKEN pull requests do not trigger other workflows (GitHub does this
+# on purpose, so a token cannot loop). After a clean push this workflow
+# dispatches ci.yml on upstream-sync. That dispatch needs actions: write.
+# contents and pull-requests write are what push the branch and open the PR.
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository != 'pblsketch/openoffice'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout fork main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Merge upstream and open or update the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          UPSTREAM_URL: https://github.com/pblsketch/openoffice.git
+        run: node .github/scripts/upstream-sync.mjs
