@@ -21,6 +21,8 @@ export default defineConfig({
           'pdf-password': resolve(__dirname, 'src/preload/pdf-password.ts'),
           // dedicated preload for the generate window (see src/main/generate/generate-window.ts)
           generate: resolve(__dirname, 'src/preload/generate.ts'),
+          // dedicated preload for the PDF tools window (see src/main/pdf-tools/pdf-tools-window.ts)
+          'pdf-tools': resolve(__dirname, 'src/preload/pdf-tools.ts'),
         },
       },
     },
@@ -37,6 +39,8 @@ export default defineConfig({
           'pdf-password': resolve(__dirname, 'src/renderer/pdf-password.html'),
           // generate window (see src/main/generate/generate-window.ts)
           generate: resolve(__dirname, 'src/renderer/generate.html'),
+          // PDF tools window (see src/main/pdf-tools/pdf-tools-window.ts)
+          'pdf-tools': resolve(__dirname, 'src/renderer/pdf-tools.html'),
         },
       },
     },

@@ -41,6 +41,8 @@ import type { TabsApi, TabSummary } from '../shared/tabs-api'
 import { TABS_CHANNELS } from '../shared/tabs-api'
 import type { GenerateHomeApi } from '../shared/generate-api'
 import { GENERATE_HOME_CHANNELS } from '../shared/generate-home-channels'
+import type { PdfToolsHomeApi } from '../shared/pdf-tools-api'
+import { PDF_TOOLS_HOME_CHANNELS } from '../shared/pdf-tools-home-channels'
 import type { SubscriptionApi } from '../shared/subscription-api'
 import {
   SHELL_SUBSCRIPTION_CHANNELS,
@@ -735,6 +737,14 @@ const generateHomeApi: GenerateHomeApi = {
   },
 }
 contextBridge.exposeInMainWorld('aiOfficeGenerate', generateHomeApi)
+
+// Home's entry into the PDF tools window
+const pdfToolsHomeApi: PdfToolsHomeApi = {
+  async open() {
+    await ipcRenderer.invoke(PDF_TOOLS_HOME_CHANNELS.open)
+  },
+}
+contextBridge.exposeInMainWorld('aiOfficePdfToolsHome', pdfToolsHomeApi)
 
 // open documents dragged from the OS anywhere over Home or the tab strip
 installDropOpenBridge()

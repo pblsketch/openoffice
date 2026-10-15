@@ -339,6 +339,7 @@ import {
 import { runHeadlessExport, type HeadlessExporters } from './headless-export'
 import { TabManager } from './tab-manager'
 import { configureGenerateWindow } from './generate/generate-window'
+import { configurePdfToolsWindow } from './pdf-tools/pdf-tools-window'
 import {
   configureDocumentLinks,
   documentLinkFileMenuItems,
@@ -6376,6 +6377,21 @@ app.whenReady().then(async () => {
     openBlankTab: () => openBlankSheetsTabForMcp(),
     authorizeSave: authorizeMcpSheetWrite,
     abandonBlankTab: (wcId) => abandonBlankSheetsTabForMcp(wcId),
+  })
+  // The PDF tools window (decision 0030): Home's "PDF tools" card opens it; what it
+  // writes, or a PDF picked for an editor-only tool, opens in a tab here.
+  configurePdfToolsWindow({
+    parentWindow: () => shellWindow,
+    lang: () => currentLang(),
+    theme: () => currentTheme(),
+    openResult: (path) => {
+      revealShellWindow()
+      return openGeneratedDocument(path)
+    },
+    openForEditing: (path) => {
+      revealShellWindow()
+      return openDocumentPath(path)
+    },
   })
   // The generate window ("make a new document from these files"): Home's entry
   // points open it; "make" opens a new untitled tab with the request queued

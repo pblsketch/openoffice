@@ -48,6 +48,7 @@ import { onFilesChanged } from './file-events'
 import { FirstConnectionDialog } from './FirstConnectionNotice'
 import type { SubscriptionConnection } from './subscription-client'
 import { subscriptionSummary } from './subscription-status'
+import './pdf-tools/globals'
 
 declare global {
   interface Window {
@@ -1836,6 +1837,16 @@ export function Home({
               <span className="quick-title">{t('openLocal')}</span>
             </span>
             <span className="quick-sub">{OPEN_LOCAL_EXTENSIONS}</span>
+          </span>
+        </button>
+        {/* decision 0030: PDF tasks without AI, in their own window */}
+        <button className="quick-card" onClick={() => void window.aiOfficePdfToolsHome.open()}>
+          <FileBadge ext="pdf" size={30} />
+          <span className="quick-text">
+            <span className="quick-title-row">
+              <span className="quick-title">{t('pdfToolsCard')}</span>
+            </span>
+            <span className="quick-sub">{t('pdfToolsCardSub')}</span>
           </span>
         </button>
       </div>

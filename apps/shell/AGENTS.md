@@ -9,6 +9,7 @@
 - 홈 화면과 설정(`src/renderer/src/`): `Home.tsx`, `Onboarding.tsx`, `SettingsModal.tsx`, AI 설정 `SettingsAiSection.tsx`·`settings-ai.ts`, 통합 탭 `IntegrationsPane.tsx`, 별표 파일에 묻는 `KbAskPanel.tsx`, 앱 안 도움말(`i18n/help/`).
 - 파일 색인과 지식 기반(`src/main/file-index/`, `knowledge-base.ts`), 최근 파일, 폴더 트리. 홈의 질문을 별표 그룹 하나로 좁히는 일(`knowledge-base.ts`의 `KbRunScopes`, `kb:open-scope`·`kb:close-scope`).
 - 문서로 새 문서 만들기(`src/main/generate/`): 만들기 창(`generate-window.ts`, 화면은 `src/renderer/generate.html`과 `src/renderer/src/generate/`), 창 하나의 상태와 동작(`session.ts`), 요청 검사(`request.ts`), 자료의 상태와 글 길이(`materials.ts`), 자료가 열린 탭과 그 저장(`open-materials.ts`), AI 없이 바꾸기(`convert.ts`, `converted-tab.ts`), 조정 가능한 값(`limits.ts`). 홈의 입구는 `generate:open-with-paths`·`generate:open-with-group`이다.
+- PDF 도구 창(`src/main/pdf-tools/`, 결정 0030): 창과 대화 상자·저장(`pdf-tools-window.ts`), Electron 없이 도는 처리(`tools.ts`), 화면은 `src/renderer/pdf-tools.html`과 `src/renderer/src/pdf-tools/`, 문구는 `i18n/pdf-tools/`(도구 이름은 PDF 편집기 리본의 문구를 복사). 홈의 입구는 "PDF 도구" 카드와 `pdf-tools:open`이다.
 - 출처 기록(`document-links.ts`, 껍데기 쪽 배선 `document-links-shell.ts`)과 모든 에디터의 파일 메뉴에 붙는 "이 문서로 다른 문서 만들기"·"자료 보기"·"이 문서로 만든 문서"(`document-links-menu.ts`).
 - 열린 탭 가운데 저장하지 않은 문서의 목록을 에디터 뒷단에 알려 주는 일(`index.ts`에서 `setOpenFilesSource`).
 - 자동 업데이트(`updater.ts`, `update-window.ts`, `update-resume.ts`)와 패키징 설정 `electron-builder.cjs`.
@@ -53,6 +54,7 @@
 - 모든 창은 `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`다. `shell.openExternal`은 `safeExternalUrl`을 거친 값만 받는다.
 - 구조 작업은 셸 메인 프로세스에서 돌리지 않는다. 큰 문서에서 창이 멈추지 않도록 작업마다 별도 프로세스를 띄우고, 답했을 때, 실패했을 때, 화면이 취소했을 때, 그 탭(webContents)이 사라졌을 때, 앱이 끝날 때 프로세스를 끝낸다. 한 창이 동시에 돌리는 작업은 4개(`MAX_JOBS_PER_OWNER`)까지다. 기존 워드·PPT·엑셀 변환(`pdf2docx-local.ts` 등)은 예전처럼 메인에서 돈다. 이 경로는 바꾸지 않는다.
 - 구조 작업과 보관소 채널은 화면이 보낸 경로를 믿지 않는다. 읽는 파일은 그 창에 허가된 파일(`pdfPathGranted`)이어야 하고, 쓰는 곳은 셸의 저장 창이 고른 대상(`structurePickTarget`, 작업 하나에 한 번)뿐이며 원본 파일은 쓸 수 없다. 보관소 읽기·쓰기는 셸이 그 창의 파일에서 계산한 문서 해시로만 받는다. 단독 실행처럼 채널이 없으면 화면은 `not-available`을 받는다.
+- **PDF 도구 창은 경로를 화면에 넘기지 않는다.** 입력은 메인의 열기 대화 상자로만 고르고 화면에는 불투명한 id만 준다. 결과는 메인의 저장 대화 상자가 고른 곳에만 쓰며, 원본 파일이나 저장하지 않은 변경이 있는 채 열린 파일에는 쓰지 않는다. AI와 네트워크를 쓰지 않고, 처리는 편집기의 페이지 함수(`apps/pdf/src/main/save-pdf.ts`)만 부른다. 결과 열기는 `openGeneratedDocument`(같은 경로의 PDF 탭은 다시 읽음), 편집기로 넘기는 카드는 `openDocumentPath`(열린 탭은 앞으로만)를 쓴다.
 - 보관소의 "모두 지우기"는 설정 화면에서 확인을 받은 뒤에만 부른다. 도는 작업이 있는지는 보지 않는다(그 작업은 이후 항목을 다시 쓴다).
 
 ## 이 모듈의 방식
