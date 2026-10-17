@@ -14,6 +14,7 @@ import {
   useAiSendGate,
   DriveAttachButton,
   type DriveAttachPicked,
+  DocAttachButton,
 } from '@genoffice/ui'
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import {
@@ -2655,6 +2656,7 @@ export function AiPanel({
                 <img src={attachIcon} alt="" aria-hidden />
               </button>
               <DriveAttachButton lang={lang} onPicked={attachFromDrive} />
+              <DocAttachButton lang={lang} onPicked={attachFromDrive} />
               {busy ? (
                 <button
                   className="ai-send-btn ai-stop-btn"

@@ -8,7 +8,7 @@ Word 문서(.docx)와 ODT(.odt) 에디터다. 그리고 배포되는 앱 전체�
 - 메인 프로세스(`src/main/docs-main.ts`): 창과 뷰 생성, 열기·저장·내보내기·인쇄, 암호화된 docx(`docx-encryption.ts`), 큰 문서의 지연 미디어(`lazy-media.ts`), 디스크의 외부 변경 감지(`external-change.ts`), 최근 파일과 별표(`starred-files.ts`).
 - 공용 AI 핸들러 `registerAiIpc`: `ai:get-settings`, `ai:set-settings`, `ai:stream`, `ai:stream-cancel`, `ai:chat`, `ai:web-search`, `ai:image-search`, `ai:fetch-image`, `ai:tool-capabilities`, `ai:codex-models`, `ai:custom-models` 등과 구독 IPC 채널. 그 규칙은 Electron 없이 테스트되는 `src/main/ai-run.ts`에 있다.
 - 무료 연결 채널(`FREE_AI_IPC_CHANNELS`: `ai:free-connect`, `ai:free-connect-cancel`, `ai:free-disconnect`, `ai:free-quota`, `ai:free-open-key-page`)은 `src/main/free-ai-ipc.ts`의 `registerFreeAiIpc`가 `registerAiIpc` 안에서 등록한다. OpenRouter 브라우저 연결로 받은 키는 여기서 바로 설정 파일에 쓰고 화면에는 넘기지 않는다. 브라우저가 돌아온 뒤 보이는 페이지의 문구는 `src/main/free-ai-strings.ts`(21개 언어)다.
-- 문서 에디터의 AI 패널과 skill(`src/renderer/ai/`): `AiPanel.tsx`, `docs-skill.ts`, 도구(`tools.ts`, `*-ops.ts`), 편집 대기 카드(`edit-queue.ts`), 전송(`transport.ts`).
+- 문서 에디터의 AI 패널과 skill(`src/renderer/ai/`): `AiPanel.tsx`, `docs-skill.ts`, 도구(`tools.ts`, `*-ops.ts`), 편집 대기 카드(`edit-queue.ts`), 전송(`transport.ts`). AI 창 첨부 칸에는 로컬 파일(끌어다 놓기·`aiAttachTitle`)과 "Google 드라이브에서 첨부"(`DriveAttachButton`), "이음오피스 문서에서 첨부"(`DocAttachButton`, 결정 0035)가 함께 있다. 열린 문서 고르기는 `window.aiOfficeDocs`가 있을 때만 나오고, 고른 파일은 드라이브 첨부와 같은 길(`docs:files-*`)로 첨부 칸에 들어간다.
 - 다른 에디터가 쓰는 문서 생성 흐름 `createAiDocument`(시트와 PDF의 AI가 새 docx·pdf·md를 만들 때 이 함수로 들어온다)와 프로젝트 IPC(`registerProjectIpc`).
 
 ## 맡지 않는 것 (경계)
@@ -30,6 +30,7 @@ Word 문서(.docx)와 ODT(.odt) 에디터다. 그리고 배포되는 앱 전체�
 - 저장은 좁은 패치다. 원본 파일이 기준이고, 고친 블록만 OOXML 조각으로 바꿔 원래 `document.xml`에 끼워 넣으며, 손대지 않은 블록과 다른 zip 항목은 바이트 그대로 남는다. 열기·저장 경로를 바꾸면 손대지 않은 내용이 그대로 살아남는지 왕복 테스트로 증명한다.
 - UI 크롬 색은 토큰만 쓴다(`var(--surface)` 등). 렌더러 CSS에 새 `#hex`·`rgb()`를 넣으면 `npm run check:theme-colors`가 실패한다. 강조색(`--accent` 계열)은 이 앱의 `styles.css`에서 정의한다.
 - 모델에게 주는 system prompt에서 제품을 가리키는 이름은 `brandText(…, 'en')`을 거친다(`ai/protocol.ts`, `ai/doc-writer.ts`). HTTP 사용자 에이전트는 `PRODUCT_NAME`으로 만든다.
+- **AI 첨부가 받는 형식 목록의 기준은 이 에디터의 첨부 목록이다.** 여섯 에디터가 함께 쓰는 목록(`ATTACHABLE_EXTS` 등)은 `packages/file-parse`의 `attachable.ts` 한 곳에 있고, 이 에디터가 받던 글자·코드 확장자가 그 기준이 된다. 다른 에디터는 이 목록을 넓히기만 하고 줄이지 않는다. 그림 확장자처럼 렌더러가 봐야 하는 값은 Node 결합(`file-parse`)을 렌더러로 못 가져오므로 이 앱의 `src/shared/ipc.ts`(`ATTACHMENT_IMAGE_EXTS`)에 그대로 두되 값은 공용 목록과 같게 맞춘다. 목록은 무엇을 첨부할 수 있는지만 정하고, 실제로 읽히는지는 첨부할 때 `parseFileToText`가 정한다.
 
 ## 이 모듈의 방식
 

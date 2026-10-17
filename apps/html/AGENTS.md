@@ -27,7 +27,7 @@ HTML 에디터다. HTML 원문이 기준이고, 옆에서 실시간 미리 보�
 - 이 모듈이 갖는 AI 채널은 `html:ai-generate-image` 하나다. 호출할 때 `{ path: 'screen', statuses: sharedSubscriptionStatuses() }`를 넘기고 로컬 경로는 문서 폴더와 붙여 넣기 임시 폴더로 제한한다. 이 에디터는 가용성 보고를 미리 묻지 않는다. 경로가 없으면 도구가 `unavailable` 오류로 답한다.
 - 구독 API의 채널 이름과 판독 함수는 `@genoffice/ai-provider/browser`의 것을 쓰고 사본을 만들지 않는다. 보내기 판단은 `useAiSendGate`만 쓴다. 다른 제공자로 저절로 넘어가는 코드를 넣지 않는다.
 - ODT로 내보내기(`'odt'` 요청, `html:export-odt`)는 Word 내보내기와 같은 함수(`renderHtmlDocx`)가 만든 docx를 `@genoffice/odt-engine`의 `docxToOdt`로 바꾼 것이다. 그래서 가린 범위도 Word 내보내기와 똑같이 다뤄진다(쪽이 그리는 글자가 그대로 들어가고 가림 표시는 파일에 옮겨지지 않는다). 순서: 저장 창(`.odt`, 명령줄 내보내기면 받은 경로) → docx → ODT → `report`가 비어 있지 않으면 "바뀌는 것·빠지는 것" 확인 창(문구는 `odt-export.ts`의 21개 언어 사전, 명령줄 내보내기는 묻지 않음) → 같은 경로의 문서 탭 닫기(`docxExportPrepareHook`) → 쓰기 → 문서 탭으로 열기. 취소하면 아무것도 쓰지 않는다. `odt-export.ts`는 마크다운 편집기의 같은 이름 파일과 내용이 같다. 한쪽을 고치면 다른 쪽도 고친다.
-- AI 첨부 확장자에 `odt`가 있다. 글자 뽑기는 `@genoffice/file-parse`가 한다.
+- AI 첨부 확장자에 `odt`가 있다. 글자 뽑기는 `@genoffice/file-parse`가 한다. 받는 형식 목록은 그 패키지의 `attachable.ts` 한 곳에 있고, 첨부 칸에는 로컬 파일과 함께 "이음오피스 문서에서 첨부"(`DocAttachButton`, 결정 0035)가 있다. 고른 파일은 드라이브 첨부와 같은 길로 첨부 칸에 들어간다.
 - 모델에게 주는 프롬프트에서 제품을 가리키는 이름은 `brandText`를 거친다(`tests/ai-prompts-brand.test.ts`가 확인한다). 크롬 색은 토큰만 쓴다. 미리 보기 안의 쪽은 문서 내용이라 토큰의 영향을 받지 않는다.
 
 ## 이 모듈의 방식

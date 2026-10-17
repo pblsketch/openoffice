@@ -85,7 +85,15 @@ import { createDefaultAppService, execFileRunner } from './default-app'
 import { registerIntegrationsIpc } from './integrations-ipc'
 import { registerResultStoreIpc } from './result-store-ipc'
 import { registerDriveIpc, type DriveService } from './drive/drive-ipc'
-import { parseFileToText } from '@genoffice/file-parse'
+import {
+  ATTACHABLE_EXTS,
+  ATTACHABLE_IMAGE_EXTS,
+  ATTACHABLE_IMAGE_MAX_BYTES,
+  ATTACHABLE_MAX_BYTES,
+  parseFileToText,
+} from '@genoffice/file-parse'
+import { createDocList } from './doc-picker/doc-list'
+import { createDocPicker } from './doc-picker/doc-picker-window'
 import { handleDroppedFiles } from './dropped-files'
 import { collectLaunchPaths } from './launch-paths'
 
@@ -6592,6 +6600,37 @@ app.whenReady().then(async () => {
         (open) => resolve(open).toLowerCase() === resolve(path).toLowerCase(),
       ),
     parse: (path) => parseFileToText(path),
+    theme: () => currentTheme(),
+  })
+  // The "Attach documents" window: an editor's AI panel asks the shell for the
+  // documents it already knows, and the shell hands back the paths it ticked.
+  // One window at a time, over the window that asked.
+  createDocPicker({
+    list: createDocList({
+      openDocuments: async () => {
+        const tabs = tabManager ? await tabManager.openDocuments() : []
+        const detached = await detachedOpenDocuments()
+        return [...tabs, ...detached].map((doc) => ({
+          id: doc.id,
+          ...(doc.filePath ? { path: doc.filePath } : {}),
+          title: doc.title,
+          dirty: doc.dirty,
+        }))
+      },
+      recent: async () =>
+        readRecentFiles().map((path) => ({ path, title: basename(path), missing: false })),
+      stat: async (path) => {
+        const entry = statPathEntries([path], new Set<string>())[0]
+        return entry && !entry.missing ? { sizeBytes: entry.sizeBytes } : null
+      },
+      attachable: {
+        ATTACHABLE_EXTS,
+        ATTACHABLE_IMAGE_EXTS,
+        ATTACHABLE_MAX_BYTES,
+        ATTACHABLE_IMAGE_MAX_BYTES,
+      },
+    }),
+    lang: () => currentLang(),
     theme: () => currentTheme(),
   })
   // Which open documents have unsaved changes, for the attachment readers of the

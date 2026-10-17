@@ -8,6 +8,7 @@
 - AI 패널 공용 부품: 작성기 `AiComposer`, 모델 선택 `AiModelPicker`(`src/ai-model-picker-options.ts`의 `aiProviderPickerGroups`·`withAiProviderSelection`), 대기열 `useChatRunQueue`(`src/chat-run-queue.ts`), 패널 표시 설정(`src/ai-panel-prefs.ts`).
 - 구독 연결 화면 부품과 그 규칙: `AiSubscriptionCard`·`AiConnectPrompt`, `AiBlockedNotice`, `AiSubscriptionUsageLine`, `AiFirstConnectionNotice`·`AiCodexNotice`·`AiMeteredWarning`·`AiInputTruncatedNotice`, `AiMark`. 무엇을 보여 줄지는 순수 함수(`src/ai-subscription.ts`)가 정하고 컴포넌트는 배치만 한다.
 - AI 창의 "Google 드라이브에서 첨부" 버튼 `DriveAttachButton`과 그 문구(`src/strings-drive-attach.ts`, 결정 0033). 편집기 preload의 `window.aiOfficeDriveAi`가 있고 드라이브가 연결돼 있을 때만 그린다. 고르기 창과 내려받기는 껍데기 앱의 일이고, 이 부품은 돌아온 경로와 알림 글을 편집기에 넘길 뿐이다.
+- AI 창의 "이음오피스 문서에서 첨부" 버튼 `DocAttachButton`과 그 문구(`src/strings-doc-attach.ts`, 결정 0035). 편집기 preload의 `window.aiOfficeDocs`가 있을 때만(껍데기 앱 안에서 돌 때만) 그린다. 열린 문서·최근 문서의 고르기 창은 껍데기 앱의 일이고, 이 부품은 고른 파일 경로와 알림 글(`docPickedOf`로 거른 `{ paths, notes }`)을 편집기에 넘길 뿐이다. 고르는 동안에는 잠긴다.
 - 보내기 규칙: `aiSendGate`와 관련 순수 함수(`src/ai-send-gate.ts`), 그것을 패널에 배선한 훅 `useAiSendGate`(`src/use-ai-send-gate.ts`).
 - 구독 연결 관련 문자열 21개 언어(`src/strings-ai-subscription/<lang>.ts`, 집계 파일 `src/strings-ai-subscription.ts`)와 실행 오류 문장 `aiRunErrorText`.
 - AI와 무관한 공용 부품: `Dropdown`, 색 선택기, 찾기 패널, 리본 접기, 이미지 대화 상자·뷰어, `Markdown`, 아이콘, 글꼴 목록, WordArt 프리셋.

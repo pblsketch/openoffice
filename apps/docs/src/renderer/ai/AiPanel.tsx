@@ -19,6 +19,7 @@ import {
   useChatRunQueue,
   DriveAttachButton,
   type DriveAttachPicked,
+  DocAttachButton,
 } from '@genoffice/ui'
 import { useEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/core'
@@ -1935,6 +1936,7 @@ export function AiPanel({
                 <img src={attachIcon} alt="" aria-hidden />
               </button>
               <DriveAttachButton lang={lang} onPicked={attachFromDrive} />
+              <DocAttachButton lang={lang} onPicked={attachFromDrive} />
               <button
                 className={`ai-track-btn${trackOn ? ' on' : ''}`}
                 onClick={toggleTrackChanges}

@@ -13,6 +13,7 @@ import {
   useAiSendGate,
   DriveAttachButton,
   type DriveAttachPicked,
+  DocAttachButton,
 } from '@genoffice/ui'
 import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactElement, ReactNode } from 'react'
@@ -1859,6 +1860,7 @@ export function AiPanel({
                 <img src={attachIcon} alt="" aria-hidden />
               </button>
               <DriveAttachButton lang={lang} onPicked={attachFromDrive} />
+              <DocAttachButton lang={lang} onPicked={attachFromDrive} />
             </>
           }
         />

@@ -11,6 +11,9 @@
 - **설치본(`release/win-unpacked`)을 띄우면 아무 창 없이 바로 끝난다.** 설치된 이음오피스가 켜져 있으면, 설치본은 같은 데이터 폴더와 단일 실행 잠금을 쓰므로 바로 끝나고 실행 인자를 켜져 있는 앱에 넘긴다. 설치본은 `GENOFFICE_USER_DATA`를 일부러 듣지 않는다. → 사용자의 앱을 끄지 말고 `--user-data-dir=<임시 폴더>`를 붙여 띄운다(Playwright `electron.launch`의 `args`에도 같다).
 - **WebAssembly 파일을 찾는 코드가 개발 실행에서만 맞다.** 묶어 빌드한 코드 옆에는 `node_modules`가 없다. 단위 테스트는 `node_modules`에서 돌아 이 차이를 보지 못한다. → 새 WebAssembly 의존성은 `extraResources`로 `resources/wasm`에 넣고, 빌드한 앱(가능하면 설치본)에서 한 번 돌려 본다.
 - **설치 파일 만들기가 GitHub에 올리려다 실패한다.** 빌드 설정에 릴리스 올리기 대상이 항상 들어 있다. → `npm run dist:win -- -- --publish never`. `--`를 두 번 써야 인자가 끝까지 전달된다.
+- **새로 띄우는 창이 빈 채로 뜬다.** 껍데기 앱의 별도 창(드라이브 고르기, 문서 고르기)은 `apps/shell/electron.vite.config.ts`의 preload 목록과 renderer 입력 목록 양쪽에 넣어야 한다. 한쪽만 넣으면 화면이 비어 나오고 오류도 잘 보이지 않는다. → 개발 모드에서도 다시 빌드한 뒤 확인한다.
+- **preload에서 `@genoffice/electron-utils` 루트를 가져오면 실행 직후 죽는다.** 루트 진입점은 Electron에 묶여 있다. 문서 고르기 다리(`doc-attach-bridge`)와 채널(`doc-attach-channels`)처럼 preload가 쓰는 모듈은 `package.json`의 `exports`에 하위 경로로 내보낸 것으로만 가져온다.
+- **화면(renderer)에서 `@genoffice/file-parse`를 값으로 가져올 수 없다.** Node에 묶여 있다. 첨부할 수 있는 형식 목록을 화면에도 보여야 하면, 그림 확장자 목록처럼 각 앱의 몫으로 둔다. 값은 편집기마다 같게 맞춘다(결정 0035).
 
 ## 테스트
 

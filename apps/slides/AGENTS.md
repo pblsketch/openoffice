@@ -6,7 +6,7 @@ PowerPoint 프레젠테이션(.pptx) 에디터다. 파일을 바이트 그대로
 
 - 렌더러(`src/renderer/`): 캔버스(`SlideCanvas.tsx`, `NodeBody.tsx`, `konva-adapter.ts`), 편집 동작(`*-actions.ts`), 발표 화면, 내보내기 렌더링(`export-*.ts`), 리본과 패널(`components/`).
 - 메인 프로세스(`src/main/`): 세션과 실행 취소 이력(`session-state.ts`), 문서 변경의 단일 통로와 IPC(`slides-main.ts`), 글꼴 탐색과 사용자 글꼴 설치(`fonts.ts`, `font-store.ts`), PDF 내보내기와 인쇄, 발표자 화면(`presenter-show.ts`), 생성된 쪽 임시 파일 정리(`generated-page-temp.ts`).
-- 슬라이드의 AI: 패널과 skill(`src/renderer/ai/AiPanel.tsx`, `slides-skill.ts`), 편집 대기 카드, 레이아웃 스크립트 해석기(`layout-script-interpreter.ts`), 슬라이드 품질 검사(`slide-qc.ts`), 가림 처리(`redact.ts`, `redact-guard.ts`), 모델 프롬프트(`ai/prompts/*.md`).
+- 슬라이드의 AI: 패널과 skill(`src/renderer/ai/AiPanel.tsx`, `slides-skill.ts`), 편집 대기 카드, 레이아웃 스크립트 해석기(`layout-script-interpreter.ts`), 슬라이드 품질 검사(`slide-qc.ts`), 가림 처리(`redact.ts`, `redact-guard.ts`), 모델 프롬프트(`ai/prompts/*.md`). 첨부 칸에는 로컬 파일, "Google 드라이브에서 첨부", "이음오피스 문서에서 첨부"(`DocAttachButton`, 결정 0035)가 있고, 열린 문서 고르기는 `window.aiOfficeDocs`가 있을 때만 나온다. 받는 형식 목록은 `packages/file-parse`의 `attachable.ts` 한 곳을 따르고(`slides:files-*`), 첨부는 드라이브 첨부와 같은 길로 첨부 칸에 든다.
 - AI IPC(`src/main/ai-ipc.ts`): 단독 실행용 공용 핸들러 `registerAiIpc`, 슬라이드에만 있는 핸들러 `registerSlidesOnlyAiIpc`, 그 규칙(`ai-stream.ts`).
 
 ## 맡지 않는 것 (경계)

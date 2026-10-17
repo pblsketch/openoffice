@@ -53,6 +53,8 @@
 - 보내기 전의 판단은 `packages/ui`의 `aiSendGate`·`useAiSendGate`를 쓴다. 편집기마다 따로 만들지 않는다.
 - 화면에 보이는 AI 실행 오류 글은 `packages/ui`의 `aiRunErrorText`로 만든다. 뒷단에 21개 언어 글을 새로 두지 않는다.
 - 앱의 `dependencies`에 적은 작업 공간 패키지는 그 앱의 `externalizeDepsPlugin` `exclude` 목록에도 넣는다. 빠지면 설치본이 실행 직후 죽는다.
+- 첨부할 수 있는 형식 목록은 `packages/file-parse`의 `attachable.ts` 한 곳에 둔다(`ATTACHABLE_EXTS`·`ATTACHABLE_IMAGE_EXTS`·`ATTACHABLE_MAX_BYTES`·`ATTACHABLE_IMAGE_MAX_BYTES`). 편집기마다 자기 목록을 만들지 않는다. 화면(renderer)은 Node에 묶인 `file-parse`를 값으로 읽을 수 없어서 그림 확장자만 각 앱의 몫으로 둘 수 있지만, 그 값은 모든 앱에서 같아야 한다.
+- preload나 화면이 가져다 쓰는 `packages/electron-utils` 모듈이 Electron에 묶여 있으면(루트 진입점), `package.json`의 `exports`에 하위 경로로 내보내 그쪽으로만 가져온다. 루트 진입점을 preload·renderer 번들로 끌어들이지 않는다.
 
 ## 구독 연동에서 어기면 안 되는 것
 

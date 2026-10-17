@@ -9,6 +9,8 @@
     ".": "./src/index.ts",
     "./atomic-write": "./src/atomic-write.ts",
     "./drop-open": "./src/drop-open.ts",
+    "./doc-attach-bridge": "./src/doc-attach-bridge.ts",
+    "./doc-attach-channels": "./src/doc-attach-channels.ts",
     "./drive-ai-bridge": "./src/drive-ai-bridge.ts",
     "./drive-ai-channels": "./src/drive-ai-channels.ts",
     "./generated-images": "./src/generated-images.ts",

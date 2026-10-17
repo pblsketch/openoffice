@@ -1,4 +1,11 @@
 export { parseFileToText, type ParsedFile, type ParsedFileKind } from './parse'
+export {
+  ATTACHABLE_EXTS,
+  ATTACHABLE_IMAGE_EXTS,
+  ATTACHABLE_MAX_BYTES,
+  ATTACHABLE_IMAGE_MAX_BYTES,
+  isAttachableExt,
+} from './attachable'
 export { docToText } from './doc'
 export { docxToText } from './docx'
 export { hwpToText } from './hwp'

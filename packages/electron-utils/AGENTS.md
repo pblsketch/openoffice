@@ -11,6 +11,7 @@ shell과 에디터들의 메인 프로세스(일부는 preload)가 함께 쓰는
 - 스트림 정리: 렌더러가 사라지면 요청을 끊는 `abortOnDestroyed`(`src/abort-on-destroyed.ts`).
 - 저장하지 않은 파일 확인(`src/unsaved-files.ts`): 파일을 다른 파일로 읽기 전에 "어떤 탭에 열려 있고 저장하지 않은 변경이 있는가"를 묻는 `assertFileSaved`·`withoutUnsavedFiles`·`fileHasUnsavedChanges`. 열린 문서의 목록은 shell이 `setOpenFilesSource`로 건다.
 - 생성 넘겨주기(`src/generate-handoff.ts`): 만들기 창의 요청을 새 탭의 webContents 앞으로 맡겨 두고(`queueGenerateHandoff`), 그 탭의 에디터가 한 번 가져가며(`takeGenerateHandoff`), 실행 시작(`reportGenerateRunStarted`)과 AI 없이 바꾼 사실(`recordGenerateConverted`)을 메모리에 남긴다. shell의 출처 기록이 이 사건들을 읽는다.
+- 문서 첨부 다리(`src/doc-attach-bridge.ts`, `src/doc-attach-channels.ts`, 하위 경로 `/doc-attach-bridge`·`/doc-attach-channels`, 결정 0035): 편집기 preload가 `window.aiOfficeDocs`(`DOC_ATTACH_BRIDGE_KEY`)로 내주는 다리다. `available()`(껍데기 앱이 문서 고르기를 내주는지)과 `pick()`(문서 고르기 창을 열어 고른 파일 경로를 받음)을 준다. `drive-ai-bridge`처럼 껍데기 앱이 없으면 `available`이 거짓, `pick`이 `{ ok: false, reason: 'unavailable' }`로 닫힌 쪽 실패를 한다. 채널은 `doc:attach-available`, `doc:pick-attachments`.
 
 ## 맡지 않는 것 (경계)
 

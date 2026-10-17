@@ -21,6 +21,7 @@ import {
   useChatRunQueue,
   DriveAttachButton,
   type DriveAttachPicked,
+  DocAttachButton,
 } from '@genoffice/ui'
 import { useEffect, useRef, useState } from 'react'
 import type {
@@ -1199,6 +1200,7 @@ export function AiPanel({
                 <img src={attachIcon} alt="" aria-hidden />
               </button>
               <DriveAttachButton lang={lang} onPicked={attachFromDrive} />
+              <DocAttachButton lang={lang} onPicked={attachFromDrive} />
             </>
           }
           onPasteFiles={(files) => void onPasteFiles(files)}

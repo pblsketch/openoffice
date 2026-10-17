@@ -49,7 +49,13 @@ import {
   shutdownSubscriptionChildren,
 } from '@genoffice/ai-provider/subscription'
 import { generateImageTool, documentMediaRoots, withMediaCallSignal } from '@genoffice/ai-search'
-import { parseFileToText } from '@genoffice/file-parse'
+import {
+  parseFileToText,
+  ATTACHABLE_EXTS,
+  ATTACHABLE_IMAGE_EXTS,
+  ATTACHABLE_MAX_BYTES,
+  ATTACHABLE_IMAGE_MAX_BYTES,
+} from '@genoffice/file-parse'
 import { convertHtmlToDocx } from '../../../../packages/html2docx/src'
 import { atomicWriteFile } from './atomic-write'
 import { ElectronBrowserDriver } from '../../../../packages/html2docx/src/drivers/electron'
@@ -83,7 +89,7 @@ import {
   registerPrivilegedSchemes,
   registerPreviewProtocol,
 } from './preview-protocol'
-import { ATTACHMENT_IMAGE_EXTS, HTML_CHANNELS } from '../shared/ipc'
+import { HTML_CHANNELS } from '../shared/ipc'
 import type {
   AttachmentAddResult,
   AttachmentImageResult,
@@ -654,53 +660,6 @@ const tm = (key: DlgKey, vars?: Record<string, string | number>) => tDlg(getUiLa
 
 // ---- chat attachments: local files parsed for the agent (same contract as the docs panel) ----
 
-const ATTACHMENT_MAX_BYTES = 50 * 1024 * 1024
-const TEXT_EXTS = new Set([
-  'txt',
-  'md',
-  'markdown',
-  'csv',
-  'tsv',
-  'json',
-  'yaml',
-  'yml',
-  'xml',
-  'html',
-  'htm',
-  'log',
-  'js',
-  'ts',
-  'tsx',
-  'jsx',
-  'py',
-  'java',
-  'c',
-  'h',
-  'cpp',
-  'go',
-  'rs',
-  'rb',
-  'sh',
-  'sql',
-  'css',
-])
-/** office/pdf formats get text extracted via @genoffice/file-parse; images skip extraction and go multimodal */
-const ATTACHMENT_EXTS = new Set([
-  ...TEXT_EXTS,
-  'doc',
-  'docx',
-  'odt',
-  'pdf',
-  'pptx',
-  'ppt',
-  'xlsx',
-  'xlsm',
-  'xls',
-  'xmind',
-  'hwp',
-  'hwpx',
-  ...ATTACHMENT_IMAGE_EXTS,
-])
 const ATTACHMENT_IMAGE_MIME: Record<string, string> = {
   png: 'image/png',
   jpg: 'image/jpeg',
@@ -708,7 +667,6 @@ const ATTACHMENT_IMAGE_MIME: Record<string, string> = {
   gif: 'image/gif',
   webp: 'image/webp',
 }
-const ATTACHMENT_IMAGE_MAX_BYTES = 5 * 1024 * 1024
 
 /** extracted text cache keyed by path; invalidated by mtime+size */
 const attachmentTextCache = new Map<string, { stamp: string; text: string }>()
@@ -716,16 +674,16 @@ const attachmentTextCache = new Map<string, { stamp: string; text: string }>()
 function statAttachment(filePath: string): { meta?: AttachmentMeta; error?: string } {
   const name = basename(filePath)
   const ext = name.split('.').pop()?.toLowerCase() ?? ''
-  if (!ATTACHMENT_EXTS.has(ext)) return { error: `${name}: ${tm('errUnsupportedExt', { ext })}` }
+  if (!ATTACHABLE_EXTS.has(ext)) return { error: `${name}: ${tm('errUnsupportedExt', { ext })}` }
   try {
     const stat = statSync(filePath)
     if (!stat.isFile()) return { error: `${name}: ${tm('errNotFile')}` }
-    if (stat.size > ATTACHMENT_MAX_BYTES) {
+    if (stat.size > ATTACHABLE_MAX_BYTES) {
       return {
-        error: `${name}: ${tm('errTooLarge', { mb: Math.round(ATTACHMENT_MAX_BYTES / 1024 / 1024) })}`,
+        error: `${name}: ${tm('errTooLarge', { mb: Math.round(ATTACHABLE_MAX_BYTES / 1024 / 1024) })}`,
       }
     }
-    if (ATTACHMENT_IMAGE_EXTS.has(ext) && stat.size > ATTACHMENT_IMAGE_MAX_BYTES) {
+    if (ATTACHABLE_IMAGE_EXTS.has(ext) && stat.size > ATTACHABLE_IMAGE_MAX_BYTES) {
       return { error: `${name}: ${tm('errImageTooLarge')}` }
     }
     return { meta: { path: filePath, name, ext, sizeBytes: stat.size } }
@@ -770,7 +728,7 @@ function prunePastedImages(dir: string): void {
 /** clipboard-pasted image bytes → temp file (shared with the docs panel), null for non-images or empty data */
 function savePastedImage(data: unknown, ext: unknown): string | null {
   const cleanExt = typeof ext === 'string' ? ext.toLowerCase() : ''
-  if (!ATTACHMENT_IMAGE_EXTS.has(cleanExt)) return null
+  if (!ATTACHABLE_IMAGE_EXTS.has(cleanExt)) return null
   const bytes =
     data instanceof ArrayBuffer
       ? Buffer.from(data)
@@ -795,7 +753,7 @@ async function extractAttachmentText(filePath: string): Promise<string> {
   const stamp = `${stat.mtimeMs}:${stat.size}`
   const cached = attachmentTextCache.get(filePath)
   if (cached && cached.stamp === stamp) return cached.text
-  if (stat.size > ATTACHMENT_MAX_BYTES) throw new Error(tm('errFileTooLarge'))
+  if (stat.size > ATTACHABLE_MAX_BYTES) throw new Error(tm('errFileTooLarge'))
   const parsed = await parseFileToText(filePath)
   if (!parsed.ok || parsed.kind !== 'text' || parsed.text == null) {
     throw new Error(parsed.error ?? tm('errParseFailed'))
@@ -1523,7 +1481,7 @@ function registerHtmlIpc(): void {
     const picked = await showOpenDialogWithMemory(dialog, win, {
       title: tm('dlgAddAttachment'),
       filters: [
-        { name: tm('filterSupported'), extensions: [...ATTACHMENT_EXTS] },
+        { name: tm('filterSupported'), extensions: [...ATTACHABLE_EXTS] },
         { name: tm('filterAll'), extensions: ['*'] },
       ],
       properties: ['openFile', 'multiSelections'],
@@ -1556,8 +1514,8 @@ function registerHtmlIpc(): void {
     ): Promise<AttachmentReadResult> => {
       const name = basename(filePath)
       const ext = name.split('.').pop()?.toLowerCase() ?? ''
-      if (!ATTACHMENT_EXTS.has(ext)) return { ok: false, error: tm('errUnsupportedExt', { ext }) }
-      if (ATTACHMENT_IMAGE_EXTS.has(ext)) return { ok: false, error: tm('errImageNoText') }
+      if (!ATTACHABLE_EXTS.has(ext)) return { ok: false, error: tm('errUnsupportedExt', { ext }) }
+      if (ATTACHABLE_IMAGE_EXTS.has(ext)) return { ok: false, error: tm('errImageNoText') }
       try {
         const text = await extractAttachmentText(filePath)
         const start = Math.max(0, Math.floor(offset) || 0)
@@ -1582,7 +1540,7 @@ function registerHtmlIpc(): void {
     if (!mime) return { ok: false, error: `${name}: ${tm('errNotImage')}` }
     try {
       const stat = statSync(filePath)
-      if (stat.size > ATTACHMENT_IMAGE_MAX_BYTES) {
+      if (stat.size > ATTACHABLE_IMAGE_MAX_BYTES) {
         return { ok: false, error: `${name}: ${tm('errImageTooLarge')}` }
       }
       return { ok: true, base64: readFileSync(filePath).toString('base64'), mime }

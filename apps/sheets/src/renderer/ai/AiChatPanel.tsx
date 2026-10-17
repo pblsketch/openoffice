@@ -5,6 +5,7 @@ import {
   type AiModelPickerBridge,
   DriveAttachButton,
   type DriveAttachPicked,
+  DocAttachButton,
 } from '@genoffice/ui'
 import React, { useEffect, useRef, useState } from 'react'
 import {
@@ -1012,6 +1013,7 @@ export function AiChatPanel({
                 <img src={attachIcon} alt="" aria-hidden />
               </button>
               {onDrivePicked && <DriveAttachButton lang={lang} onPicked={onDrivePicked} />}
+              {onDrivePicked && <DocAttachButton lang={lang} onPicked={onDrivePicked} />}
             </>
           }
           textareaRef={inputRef}

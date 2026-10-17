@@ -159,9 +159,11 @@ describe('HTML ODT export wiring', () => {
     expect(odtHandler).toContain('.odt`')
   })
 
-  it('accepts odt attachments', async () => {
+  it('takes its attachment formats from the one shared list', async () => {
     const main = await source('../src/main/html-main.ts')
-    const list = main.slice(main.indexOf('const ATTACHMENT_EXTS'))
-    expect(list.slice(0, list.indexOf('])'))).toContain("'odt'")
+    const { ATTACHABLE_EXTS } = await import('@genoffice/file-parse')
+    expect(main).toContain('ATTACHABLE_EXTS')
+    expect(main).toMatch(/from '@genoffice\/file-parse'/)
+    expect(ATTACHABLE_EXTS.has('odt')).toBe(true)
   })
 })

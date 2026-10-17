@@ -15,6 +15,14 @@ vi.mock('electron', () => ({
 
 vi.mock('@genoffice/file-parse', () => ({
   parseFileToText: vi.fn(async () => ({ ok: false, error: 'mocked' })),
+  ATTACHABLE_EXTS: new Set(['txt', 'md', 'png', 'jpg', 'jpeg', 'gif', 'webp']),
+  ATTACHABLE_IMAGE_EXTS: new Set(['png', 'jpg', 'jpeg', 'gif', 'webp']),
+  ATTACHABLE_MAX_BYTES: 50 * 1024 * 1024,
+  ATTACHABLE_IMAGE_MAX_BYTES: 5 * 1024 * 1024,
+  isAttachableExt: (ext: string) =>
+    ['txt', 'md', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(
+      ext.replace(/^\./, '').toLowerCase(),
+    ),
 }))
 vi.mock('@genoffice/cli/agent-skills', () => ({}))
 vi.mock('@genoffice/cli/install', () => ({}))

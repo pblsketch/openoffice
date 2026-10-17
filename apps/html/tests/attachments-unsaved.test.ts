@@ -49,6 +49,15 @@ const parseFileToText = vi.fn(async (_path: string) => ({
 }))
 vi.mock('@genoffice/file-parse', () => ({
   parseFileToText: (path: string) => parseFileToText(path),
+  ATTACHABLE_EXTS: new Set([
+    'txt', 'md', 'markdown', 'csv', 'tsv', 'json', 'yaml', 'yml', 'xml', 'html', 'htm',
+    'log', 'js', 'ts', 'tsx', 'jsx', 'py', 'java', 'c', 'h', 'cpp', 'go', 'rs', 'rb',
+    'sh', 'sql', 'css', 'doc', 'docx', 'odt', 'pdf', 'pptx', 'ppt', 'xlsx', 'xlsm',
+    'xls', 'xmind', 'hwp', 'hwpx', 'png', 'jpg', 'jpeg', 'gif', 'webp',
+  ]),
+  ATTACHABLE_IMAGE_EXTS: new Set(['png', 'jpg', 'jpeg', 'gif', 'webp']),
+  ATTACHABLE_MAX_BYTES: 50 * 1024 * 1024,
+  ATTACHABLE_IMAGE_MAX_BYTES: 5 * 1024 * 1024,
 }))
 vi.mock('@genoffice/ai-provider/subscription', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@genoffice/ai-provider/subscription')>()),

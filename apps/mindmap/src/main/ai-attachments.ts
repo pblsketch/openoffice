@@ -23,9 +23,15 @@ import { basename, join } from 'node:path'
 import { BrowserWindow, app, dialog, ipcMain } from 'electron'
 import type { WebContents } from 'electron'
 import { assertFileSaved, showOpenDialogWithMemory } from '@genoffice/electron-utils'
-import { parseFileToText } from '@genoffice/file-parse'
+import {
+  parseFileToText,
+  ATTACHABLE_EXTS,
+  ATTACHABLE_IMAGE_EXTS,
+  ATTACHABLE_MAX_BYTES,
+  ATTACHABLE_IMAGE_MAX_BYTES,
+} from '@genoffice/file-parse'
 import { createI18n, getUiLang } from '@genoffice/i18n'
-import { ATTACHMENT_IMAGE_EXTS, MINDMAP_CHANNELS } from '../shared/ipc'
+import { MINDMAP_CHANNELS } from '../shared/ipc'
 import type {
   AttachmentAddResult,
   AttachmentImageResult,
@@ -354,57 +360,14 @@ const tm = (key: AttachKey, vars?: Record<string, string | number>): string =>
   tAttach(getUiLang(), key, vars)
 
 /** The largest file read as an attachment. */
-export const ATTACHMENT_MAX_BYTES = 50 * 1024 * 1024
+export const ATTACHMENT_MAX_BYTES = ATTACHABLE_MAX_BYTES
 /** The largest picture sent to the model with a message. */
-export const ATTACHMENT_IMAGE_MAX_BYTES = 5 * 1024 * 1024
+export const ATTACHMENT_IMAGE_MAX_BYTES = ATTACHABLE_IMAGE_MAX_BYTES
 /** The most characters one read hands back; the panel asks for less. */
 export const ATTACHMENT_READ_MAX_CHARS = 48_000
 
-const TEXT_EXTS = [
-  'txt',
-  'md',
-  'markdown',
-  'csv',
-  'tsv',
-  'json',
-  'yaml',
-  'yml',
-  'xml',
-  'html',
-  'htm',
-  'log',
-  'js',
-  'ts',
-  'tsx',
-  'jsx',
-  'py',
-  'java',
-  'c',
-  'h',
-  'cpp',
-  'go',
-  'rs',
-  'rb',
-  'sh',
-  'sql',
-  'css',
-]
-
 /** What an attachment may be: text, office and PDF files read as text, mind maps as their outline, and pictures. */
-export const ATTACHMENT_EXTS: ReadonlySet<string> = new Set([
-  ...TEXT_EXTS,
-  'doc',
-  'docx',
-  'odt',
-  'pdf',
-  'pptx',
-  'ppt',
-  'xlsx',
-  'xlsm',
-  'xls',
-  'xmind',
-  ...ATTACHMENT_IMAGE_EXTS,
-])
+export const ATTACHMENT_EXTS: ReadonlySet<string> = ATTACHABLE_EXTS
 
 const ATTACHMENT_IMAGE_MIME: Readonly<Record<string, string>> = {
   png: 'image/png',
@@ -421,16 +384,16 @@ function extOf(name: string): string {
 function statAttachment(filePath: string): { meta?: AttachmentMeta; error?: string } {
   const name = basename(filePath)
   const ext = extOf(name)
-  if (!ATTACHMENT_EXTS.has(ext)) return { error: `${name}: ${tm('errUnsupportedExt', { ext })}` }
+  if (!ATTACHABLE_EXTS.has(ext)) return { error: `${name}: ${tm('errUnsupportedExt', { ext })}` }
   try {
     const stat = statSync(filePath)
     if (!stat.isFile()) return { error: `${name}: ${tm('errNotFile')}` }
-    if (stat.size > ATTACHMENT_MAX_BYTES) {
+    if (stat.size > ATTACHABLE_MAX_BYTES) {
       return {
-        error: `${name}: ${tm('errTooLarge', { mb: Math.round(ATTACHMENT_MAX_BYTES / 1024 / 1024) })}`,
+        error: `${name}: ${tm('errTooLarge', { mb: Math.round(ATTACHABLE_MAX_BYTES / 1024 / 1024) })}`,
       }
     }
-    if (ATTACHMENT_IMAGE_EXTS.has(ext) && stat.size > ATTACHMENT_IMAGE_MAX_BYTES) {
+    if (ATTACHABLE_IMAGE_EXTS.has(ext) && stat.size > ATTACHABLE_IMAGE_MAX_BYTES) {
       return { error: `${name}: ${tm('errImageTooLarge')}` }
     }
     return { meta: { path: filePath, name, ext, sizeBytes: stat.size } }
@@ -477,7 +440,7 @@ function prunePastedImages(dir: string): void {
 /** A picture pasted from the clipboard (no file of its own) goes to a temporary file, then the usual way. */
 function savePastedImage(data: unknown, ext: unknown): string | 'too-large' | null {
   const cleanExt = typeof ext === 'string' ? ext.toLowerCase() : ''
-  if (!ATTACHMENT_IMAGE_EXTS.has(cleanExt)) return null
+  if (!ATTACHABLE_IMAGE_EXTS.has(cleanExt)) return null
   const bytes =
     data instanceof ArrayBuffer
       ? Buffer.from(data)
@@ -486,7 +449,7 @@ function savePastedImage(data: unknown, ext: unknown): string | 'too-large' | nu
         : null
   if (!bytes || bytes.byteLength === 0) return null
   // the renderer decides what lands on disk here: the picture limit applies before anything is written
-  if (bytes.byteLength > ATTACHMENT_IMAGE_MAX_BYTES) return 'too-large'
+  if (bytes.byteLength > ATTACHABLE_IMAGE_MAX_BYTES) return 'too-large'
   const dir = join(app.getPath('temp'), 'genoffice-pasted')
   mkdirSync(dir, { recursive: true })
   prunePastedImages(dir)
@@ -507,7 +470,7 @@ async function attachmentText(filePath: string): Promise<string> {
   const stamp = `${stat.mtimeMs}:${stat.size}`
   const cached = textCache.get(filePath)
   if (cached && cached.stamp === stamp) return cached.text
-  if (stat.size > ATTACHMENT_MAX_BYTES) throw new Error(tm('errFileTooLarge'))
+  if (stat.size > ATTACHABLE_MAX_BYTES) throw new Error(tm('errFileTooLarge'))
   const parsed = await parseFileToText(filePath)
   if (!parsed.ok || parsed.kind !== 'text' || parsed.text == null) {
     throw new Error(parsed.error ?? tm('errParseFailed'))
@@ -531,8 +494,8 @@ export async function readAttachmentPage(
   }
   const name = basename(filePath)
   const ext = extOf(name)
-  if (!ATTACHMENT_EXTS.has(ext)) return { ok: false, error: tm('errUnsupportedExt', { ext }) }
-  if (ATTACHMENT_IMAGE_EXTS.has(ext)) return { ok: false, error: tm('errImageNoText') }
+  if (!ATTACHABLE_EXTS.has(ext)) return { ok: false, error: tm('errUnsupportedExt', { ext }) }
+  if (ATTACHABLE_IMAGE_EXTS.has(ext)) return { ok: false, error: tm('errImageNoText') }
   try {
     const text = await attachmentText(filePath)
     const start = Math.max(0, Math.floor(Number(offset)) || 0)
@@ -557,7 +520,7 @@ export function readAttachmentImage(filePath: unknown): AttachmentImageResult {
   if (!path || !mime) return { ok: false, error: `${name}: ${tm('errNotImage')}` }
   try {
     const stat = statSync(path)
-    if (stat.size > ATTACHMENT_IMAGE_MAX_BYTES) {
+    if (stat.size > ATTACHABLE_IMAGE_MAX_BYTES) {
       return { ok: false, error: `${name}: ${tm('errImageTooLarge')}` }
     }
     return { ok: true, base64: readFileSync(path).toString('base64'), mime }
@@ -588,7 +551,7 @@ export function registerMindmapAiIpc(options: MindmapAiIpcOptions): void {
     const picked = await showOpenDialogWithMemory(dialog, win, {
       title: tm('dlgAddAttachment'),
       filters: [
-        { name: tm('filterSupported'), extensions: [...ATTACHMENT_EXTS] },
+        { name: tm('filterSupported'), extensions: [...ATTACHABLE_EXTS] },
         { name: tm('filterAll'), extensions: ['*'] },
       ],
       properties: ['openFile', 'multiSelections'],

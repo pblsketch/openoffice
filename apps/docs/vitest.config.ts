@@ -14,6 +14,9 @@ export default defineConfig({
       '@genoffice/odt-engine': local('../../packages/odt-engine/src/index.ts'),
       '@genoffice/font-metrics': local('../../packages/font-metrics/src/index.ts'),
       // subpath before the bare name: string aliases are prefix replacements
+      '@genoffice/electron-utils/doc-attach-channels': local(
+        '../../packages/electron-utils/src/doc-attach-channels.ts',
+      ),
       '@genoffice/electron-utils/headless-export': local(
         '../../packages/electron-utils/src/headless-export.ts',
       ),
