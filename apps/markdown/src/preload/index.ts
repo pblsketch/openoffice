@@ -106,6 +106,7 @@ const api: MarkdownApi = {
   rememberWikiFragment: (path, fragment) =>
     ipcRenderer.invoke(MARKDOWN_CHANNELS.rememberWikiFragment, path, fragment),
   takeWikiFragment: (path) => ipcRenderer.invoke(MARKDOWN_CHANNELS.takeWikiFragment, path),
+  listWikiNotes: () => ipcRenderer.invoke(MARKDOWN_CHANNELS.listWikiNotes),
   wikiBacklinks: (path: string) => ipcRenderer.invoke(MARKDOWN_CHANNELS.wikiBacklinks, path),
   wikiTags: () => ipcRenderer.invoke(MARKDOWN_CHANNELS.wikiTags),
   wikiGraph: () => ipcRenderer.invoke(MARKDOWN_CHANNELS.wikiGraph),
