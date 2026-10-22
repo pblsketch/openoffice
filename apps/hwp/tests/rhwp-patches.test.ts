@@ -346,10 +346,38 @@ describe('rhwp Hangul-key patches', () => {
     ].join('\n')
     const patched = applyPatch('studio-hancom-commands', source)
     expect(patched).toContain("import { getLocale } from '@/i18n/core.ts';")
-    expect(patched).toContain(`import { hancomCommands } from '${HANCOM_KEYS_MODULE}';`)
-    expect(patched.indexOf('registry.registerAll(hancomCommands(getLocale()));')).toBeGreaterThan(
+    expect(patched).toContain(
+      `import { hancomCommands, installHancomMenuItems } from '${HANCOM_KEYS_MODULE}';`,
+    )
+    // the studio parts the new commands build on are handed over; the module imports none
+    expect(patched).toContain("import { InsertTextCommand } from '@/engine/command';")
+    expect(patched).toContain("import { ModalDialog } from '@/ui/dialog';")
+    expect(patched).toContain("import { FindDialog, navigateToSearchHit } from '@/ui/find-dialog';")
+    expect(patched).toContain(
+      '  InsertTextCommand, ModalDialog, FindDialog, navigateToSearchHit,\n}));',
+    )
+    expect(patched.indexOf('registry.registerAll(hancomCommands(getLocale(), {')).toBeGreaterThan(
       patched.indexOf('registry.registerAll(toolCommands);'),
     )
+    expect(patched).toContain('installHancomMenuItems(document, getLocale());')
+  })
+
+  it('give the bridge the page number calls of engine patch 0013', () => {
+    const source = [
+      '  applyStyle(sec: number, para: number, styleId: number): { ok: boolean } {',
+      '    return { ok: true };',
+      '  }',
+      '',
+    ].join('\n')
+    const patched = applyPatch('studio-hancom-page-number', source)
+    expect(patched).toContain(
+      '  setPageNumberPos(sec: number, format: number, position: number, dash: boolean): string {',
+    )
+    expect(patched).toContain(
+      'return (this.doc as any).setPageNumberPos(sec, format, position, dash);',
+    )
+    expect(patched).toContain('return (this.doc as any).getPageNumberPos(sec);')
+    expect(patched.indexOf('setPageNumberPos(sec')).toBeLessThan(patched.indexOf('  applyStyle('))
   })
 
   it('hand the sequences to the module, the second key first and the IME path too', () => {
@@ -367,6 +395,11 @@ describe('rhwp Hangul-key patches', () => {
       '  }',
       '}',
       'export function handleCtrlKey(this: any, e: KeyboardEvent): void {',
+      "  if (e.key === '/' && !e.shiftKey && !e.altKey) {",
+      '    this.commandPalette?.open();',
+      '    return;',
+      '  }',
+      '  const cmdId = matchShortcut(e, defaultShortcuts);',
       "  if ((e.key === 'k' || e.key === 'K' || e.key === 'ㅏ') && !e.shiftKey && !e.altKey) {",
       '    this._pendingChordK = true;',
       '  }',
@@ -375,7 +408,7 @@ describe('rhwp Hangul-key patches', () => {
     ].join('\n')
     const patched = applyPatch('studio-hancom-chords', source)
     expect(patched).toContain(
-      `import { hancomChordKey, hancomChordStart } from '${HANCOM_KEYS_MODULE}';`,
+      `import { hancomChordKey, hancomChordStart, hancomContextKey, hancomCtrlKey } from '${HANCOM_KEYS_MODULE}';`,
     )
     // the second key is looked at before anything else the handler does
     expect(patched).toContain(
@@ -384,7 +417,13 @@ describe('rhwp Hangul-key patches', () => {
     // the studio no longer starts its own Ctrl+M on the IME path
     expect(patched).not.toContain('this._pendingChordM = true;')
     expect(patched).toContain(
-      '  if (e.isComposing || e.keyCode === 229) {\n    if (hancomChordStart(this, e)) return;',
+      '  if (e.isComposing || e.keyCode === 229) {\n    if (hancomCtrlKey(this, e)) return;',
+    )
+    // the keys that depend on the caret come ahead of the studio's shortcut table
+    const context = patched.indexOf('  if (hancomContextKey(this, e)) return;')
+    expect(context).toBeGreaterThan(patched.indexOf('this.commandPalette?.open();'))
+    expect(context).toBeLessThan(
+      patched.indexOf('const cmdId = matchShortcut(e, defaultShortcuts);'),
     )
     // and the module comes ahead of the studio's Ctrl+K
     expect(
@@ -403,6 +442,7 @@ describe('rhwp Hangul-key patches', () => {
       'studio-hancom-labels',
       'studio-hancom-commands',
       'studio-hancom-chords',
+      'studio-hancom-page-number',
     ] as const) {
       expect(STUDIO_PATCHES).toContain(name)
     }

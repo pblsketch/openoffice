@@ -1108,6 +1108,10 @@ export class HwpDocument {
      */
     getPageLayerTreeWithProfile(page_num: number, profile: string, omit_image_bytes?: boolean | null, omit_font_bytes?: boolean | null): string;
     /**
+     * 구역의 쪽 번호 위치 (`{"ok":true,"pageNumber":{format,position,dash}|null}`)
+     */
+    getPageNumberPos(section_idx: number): string;
+    /**
      * 위치에 해당하는 글로벌 쪽 번호 반환
      */
     getPageOfPosition(section_idx: number, para_idx: number): string;
@@ -2285,6 +2289,11 @@ export class HwpDocument {
      */
     setPageHideEx(options_json: string): string;
     /**
+     * 구역의 쪽 번호 위치 지정 (쪽 > 쪽 번호 매기기). 구역에 이미 있으면 그 설정을 바꾼다.
+     * format: 번호 모양 0~7 (표 134, HWPX에서도 쓸 수 있는 것), position: 표시 위치 0~10 (표 150)
+     */
+    setPageNumberPos(section_idx: number, format: number, position: number, dash: boolean): string;
+    /**
      * 문단의 paraShapeId를 직접 설정한다.
      */
     setParaShapeId(sec_idx: number, para_idx: number, para_shape_id: number): string;
@@ -2765,6 +2774,7 @@ export interface InitOutput {
     readonly hwpdocument_getPageInfo: (a: number, b: number) => [number, number, number, number];
     readonly hwpdocument_getPageLayerTree: (a: number, b: number) => [number, number, number, number];
     readonly hwpdocument_getPageLayerTreeWithProfile: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
+    readonly hwpdocument_getPageNumberPos: (a: number, b: number) => [number, number, number, number];
     readonly hwpdocument_getPageOfPosition: (a: number, b: number, c: number) => [number, number, number, number];
     readonly hwpdocument_getPageOverlayImages: (a: number, b: number) => [number, number, number, number];
     readonly hwpdocument_getPageRenderTree: (a: number, b: number) => [number, number, number, number];
@@ -2983,6 +2993,7 @@ export interface InitOutput {
     readonly hwpdocument_setPageDef: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly hwpdocument_setPageHide: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number, number, number];
     readonly hwpdocument_setPageHideEx: (a: number, b: number, c: number) => [number, number, number, number];
+    readonly hwpdocument_setPageNumberPos: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
     readonly hwpdocument_setParaShapeId: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly hwpdocument_setPictureProperties: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly hwpdocument_setSectionDef: (a: number, b: number, c: number, d: number) => [number, number, number, number];

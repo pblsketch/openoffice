@@ -40,8 +40,13 @@
  *   the commands rhwp lacks live in studio-plugin/hancom-keys.mjs; these patches
  *   only hook it in. The studio's shortcut table is adapted in place, its command
  *   registry shows the new keys next to the menu items, the new commands are
- *   registered, and its key handler hands the Ctrl+N/K/Q/M/G sequences to the
- *   module, on the IME path too.
+ *   registered (with the studio parts they build on) and put into the menus, and
+ *   its key handler hands the Ctrl+N/K/Q/M/G sequences and the keys that depend on
+ *   the caret (the easy table formulas) to the module, on the IME path too.
+ *
+ * studio-hancom-page-number
+ *   The bridge gains the two engine calls of vendor/rhwp-core patch 0013, setting and
+ *   reading a section's page number (Hangul's 쪽 번호 매기기).
  */
 
 import { HANCOM_KEYS_MODULE, studioCommandIds } from '../studio-plugin/hancom-keys.mjs'
@@ -229,15 +234,41 @@ const PATCHES = {
         replace:
           "import { initI18n, t } from '@/i18n/index.ts';\n" +
           "import { getLocale } from '@/i18n/core.ts';\n" +
-          `import { hancomCommands } from '${HANCOM_KEYS_MODULE}';`,
+          "import { InsertTextCommand } from '@/engine/command';\n" +
+          "import { ModalDialog } from '@/ui/dialog';\n" +
+          "import { FindDialog, navigateToSearchHit } from '@/ui/find-dialog';\n" +
+          `import { hancomCommands, installHancomMenuItems } from '${HANCOM_KEYS_MODULE}';`,
       },
+      // the new commands, with the studio parts they build on, and their menu items
       {
         find: 'registry.registerAll(toolCommands);',
         replace:
           'registry.registerAll(toolCommands);\n' +
-          'registry.registerAll(hancomCommands(getLocale()));',
+          'registry.registerAll(hancomCommands(getLocale(), {\n' +
+          '  InsertTextCommand, ModalDialog, FindDialog, navigateToSearchHit,\n' +
+          '}));\n' +
+          'installHancomMenuItems(document, getLocale());',
       },
     ],
+  },
+  'studio-hancom-page-number': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
+    // the engine calls of vendor/rhwp-core patch 0013, ahead of a neighbour the bridge has once
+    find: '  applyStyle(sec: number, para: number, styleId: number): { ok: boolean } {',
+    replace: [
+      '  /** The section page number (Hangul: 쪽 번호 매기기); replaces the one the section has. */',
+      '  setPageNumberPos(sec: number, format: number, position: number, dash: boolean): string {',
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return (this.doc as any).setPageNumberPos(sec, format, position, dash);',
+      '  }',
+      '',
+      '  getPageNumberPos(sec: number): string {',
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return (this.doc as any).getPageNumberPos(sec);',
+      '  }',
+      '',
+      '  applyStyle(sec: number, para: number, styleId: number): { ok: boolean } {',
+    ].join('\n'),
   },
   'studio-hancom-chords': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler-keyboard\.ts$/,
@@ -246,7 +277,7 @@ const PATCHES = {
         find: "import { matchShortcut, defaultShortcuts } from '@/command/shortcut-map';",
         replace:
           "import { matchShortcut, defaultShortcuts } from '@/command/shortcut-map';\n" +
-          `import { hancomChordKey, hancomChordStart } from '${HANCOM_KEYS_MODULE}';`,
+          `import { hancomChordKey, hancomChordStart, hancomContextKey, hancomCtrlKey } from '${HANCOM_KEYS_MODULE}';`,
       },
       // the second key, first of all (the studio's own Ctrl+K/M/G flags are never set again)
       {
@@ -254,7 +285,8 @@ const PATCHES = {
         replace:
           '  this._cellBlockLetterImeGuard?.reset();\n  if (hancomChordKey(this, e)) return;',
       },
-      // the first key while the IME composes, where the studio took Ctrl+M alone
+      // the first key, or a key that depends on the caret, while the IME composes, where the
+      // studio took Ctrl+M alone
       {
         find: [
           "    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === 'KeyM') {",
@@ -263,7 +295,17 @@ const PATCHES = {
           '      return;',
           '    }',
         ].join('\n'),
-        replace: '    if (hancomChordStart(this, e)) return;',
+        replace: '    if (hancomCtrlKey(this, e)) return;',
+      },
+      // a key that depends on the caret, ahead of the studio's shortcut table
+      {
+        find: ['    this.commandPalette?.open();', '    return;', '  }'].join('\n'),
+        replace: [
+          '    this.commandPalette?.open();',
+          '    return;',
+          '  }',
+          '  if (hancomContextKey(this, e)) return;',
+        ].join('\n'),
       },
       // the first key otherwise, ahead of the studio's Ctrl+K/M/G
       {
@@ -289,6 +331,7 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-hancom-labels',
   'studio-hancom-commands',
   'studio-hancom-chords',
+  'studio-hancom-page-number',
 ])
 
 /** Whether a patch is written against this file. */
@@ -382,6 +425,7 @@ export const hancomHooks = [
       'private _cellBlockLetterImeGuard = new CellBlockLetterImeGuard()',
       'private deleteSelection(',
       'applyStyle(styleId: number): void',
+      'executeOperation(desc: OperationDescriptor): void',
       'isFormMode(): boolean',
       "eventBus.on('format-char'",
     ],
@@ -391,7 +435,35 @@ export const hancomHooks = [
     needles: ['dispatch(commandId: string', 'isEnabled(commandId: string): boolean'],
   },
   { file: 'src/command/contextual-shortcut.ts', needles: ['arm('] },
-  { file: 'src/core/wasm-bridge.ts', needles: ['getStyleList(): Array<{ id: number'] },
+  {
+    file: 'src/core/wasm-bridge.ts',
+    needles: [
+      'getStyleList(): Array<{ id: number',
+      'evaluateTableFormula(sec: number, parentPara: number, controlIdx: number,',
+      'getCellParagraphCount(sec: number, parentPara: number, controlIdx: number, cellIdx: number)',
+      'getCellParagraphLength(sec: number, parentPara: number, controlIdx: number, cellIdx: number, cellParaIdx: number)',
+      'getCellInfo(sec: number, parentPara: number, controlIdx: number, cellIdx: number): CellInfo',
+      'searchText(query: string, fromSec: number, fromPara: number, fromChar: number, forward: boolean',
+    ],
+  },
+  // the studio parts the studio-hancom-commands patch hands to the new commands
+  {
+    file: 'src/ui/dialog.ts',
+    needles: [
+      'export abstract class ModalDialog',
+      'protected abstract createBody(): HTMLElement;',
+      'protected abstract onConfirm(): void | boolean;',
+    ],
+  },
+  {
+    file: 'src/ui/find-dialog.ts',
+    needles: [
+      "static lastQuery = '';",
+      'static lastCaseSensitive = false;',
+      'export function navigateToSearchHit(',
+    ],
+  },
+  { file: 'src/engine/command.ts', needles: ['export class InsertTextCommand'] },
   {
     // the entries adaptToHancom takes out (REMOVED_SHORTCUTS), as the studio writes them
     file: 'src/command/shortcut-map.ts',

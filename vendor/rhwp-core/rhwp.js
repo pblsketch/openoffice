@@ -5065,6 +5065,29 @@ export class HwpDocument {
         }
     }
     /**
+     * 구역의 쪽 번호 위치 (`{"ok":true,"pageNumber":{format,position,dash}|null}`)
+     * @param {number} section_idx
+     * @returns {string}
+     */
+    getPageNumberPos(section_idx) {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const ret = wasm.hwpdocument_getPageNumberPos(this.__wbg_ptr, section_idx);
+            var ptr1 = ret[0];
+            var len1 = ret[1];
+            if (ret[3]) {
+                ptr1 = 0; len1 = 0;
+                throw takeFromExternrefTable0(ret[2]);
+            }
+            deferred2_0 = ptr1;
+            deferred2_1 = len1;
+            return getStringFromWasm0(ptr1, len1);
+        } finally {
+            wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+        }
+    }
+    /**
      * 위치에 해당하는 글로벌 쪽 번호 반환
      * @param {number} section_idx
      * @param {number} para_idx
@@ -10465,6 +10488,33 @@ export class HwpDocument {
             return getStringFromWasm0(ptr2, len2);
         } finally {
             wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+        }
+    }
+    /**
+     * 구역의 쪽 번호 위치 지정 (쪽 > 쪽 번호 매기기). 구역에 이미 있으면 그 설정을 바꾼다.
+     * format: 번호 모양 0~7 (표 134, HWPX에서도 쓸 수 있는 것), position: 표시 위치 0~10 (표 150)
+     * @param {number} section_idx
+     * @param {number} format
+     * @param {number} position
+     * @param {boolean} dash
+     * @returns {string}
+     */
+    setPageNumberPos(section_idx, format, position, dash) {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const ret = wasm.hwpdocument_setPageNumberPos(this.__wbg_ptr, section_idx, format, position, dash);
+            var ptr1 = ret[0];
+            var len1 = ret[1];
+            if (ret[3]) {
+                ptr1 = 0; len1 = 0;
+                throw takeFromExternrefTable0(ret[2]);
+            }
+            deferred2_0 = ptr1;
+            deferred2_1 = len1;
+            return getStringFromWasm0(ptr1, len1);
+        } finally {
+            wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
         }
     }
     /**

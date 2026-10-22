@@ -459,7 +459,17 @@ describe('against the studio source the build fetched', () => {
     expect(match({ key: 'T', code: 'KeyT', ctrlKey: true, shiftKey: true })).toBe(
       'format:align-distribute',
     )
-    expect(match({ key: 'C', code: 'KeyC', altKey: true, shiftKey: true })).toBeNull()
+    // Alt+Shift+C is Hangul's 보통 모양 now, no longer rhwp's stand-in for centering
+    expect(match({ key: 'C', code: 'KeyC', altKey: true, shiftKey: true })).toBe(
+      'ieum:normal-shape',
+    )
+    expect(match({ key: 'H', code: 'KeyH', altKey: true, shiftKey: true })).toBeNull()
+    expect(match({ key: 'P', code: 'KeyP', altKey: true, shiftKey: true })).toBe(
+      'format:superscript',
+    )
+    expect(match({ key: 'S', code: 'KeyS', altKey: true, shiftKey: true })).toBe('format:subscript')
+    expect(match({ key: 'B', code: 'KeyB', altKey: true, shiftKey: true })).toBe('format:bold')
+    expect(match({ key: 'Insert', code: 'Insert', altKey: true })).toBe('table:insert-row-col')
     expect(match({ key: 'f10', code: 'F10', ctrlKey: true })).toBe('insert:symbols')
     // rhwp's Alt+F10 stays: Hangul gives it nothing to do in the body
     expect(match({ key: 'f10', code: 'F10', altKey: true })).toBe('insert:symbols')
