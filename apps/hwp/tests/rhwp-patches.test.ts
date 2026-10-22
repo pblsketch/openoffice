@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
+import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { RENDERER_SCHEME } from '../../../packages/electron-utils/src/renderer-scheme'
 import {
@@ -241,15 +242,76 @@ describe('rhwp nested-table patches', () => {
   })
 })
 
+describe('rhwp font memo patches', () => {
+  // the studio's text around the patches, as the pinned release has it
+  const bridge = [
+    'let canvasFontSubstitutionInstalled = false;',
+    '',
+    'function installCanvasFontSubstitution(): void {',
+    '  Object.defineProperty(proto, "font", {',
+    '    set(value: string) {',
+    '      descriptor.set!.call(this, scopedHostCanvasFont(String(value)) ?? substituteCssFontFamily(String(value)));',
+    '    },',
+    '  });',
+    '}',
+    '',
+  ].join('\n')
+  const patched = applyPatch('studio-font-memo-use', applyPatch('studio-font-memo-state', bridge))
+
+  /** The memo the patch adds, run against a substitution that counts its calls. */
+  function memoWith(substitute: (font: string) => string): (font: string) => string {
+    const start = patched.indexOf('let canvasFontMemo')
+    const block = patched.slice(start, patched.indexOf('\n}\n', start) + 2)
+    const js = ts.transpileModule(block, {
+      compilerOptions: { target: ts.ScriptTarget.ES2022 },
+    }).outputText
+    return new Function('substituteCssFontFamily', `${js}\nreturn memoSubstituteCssFontFamily`)(
+      substitute,
+    )
+  }
+
+  it('send the font setter through the memo, after the host fonts as before', () => {
+    expect(patched).toContain(
+      'scopedHostCanvasFont(String(value)) ?? memoSubstituteCssFontFamily(String(value))',
+    )
+    expect(patched).not.toContain('?? substituteCssFontFamily(String(value))')
+    expect(patched.startsWith('let canvasFontSubstitutionInstalled = false;\n')).toBe(true)
+  })
+
+  it('substitute a font string once in a synchronous stretch, and again after it', async () => {
+    const calls: string[] = []
+    const memo = memoWith((font) => {
+      calls.push(font)
+      return `${font} chain`
+    })
+    expect(memo('10px "A"')).toBe('10px "A" chain')
+    expect(memo('10px "A"')).toBe('10px "A" chain')
+    expect(memo('bold 10px "B"')).toBe('bold 10px "B" chain')
+    expect(calls).toEqual(['10px "A"', 'bold 10px "B"'])
+    // a microtask checkpoint: fonts found or a document opened since then are seen
+    await Promise.resolve()
+    expect(memo('10px "A"')).toBe('10px "A" chain')
+    expect(calls).toEqual(['10px "A"', 'bold 10px "B"', '10px "A"'])
+  })
+
+  it('are in the studio build', () => {
+    expect(STUDIO_PATCHES).toContain('studio-font-memo-state')
+    expect(STUDIO_PATCHES).toContain('studio-font-memo-use')
+  })
+})
+
 describe('the studio source the build fetched', () => {
-  const manifest = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'))
+  // build-studio.mjs fetches the tag the engine was built from
+  const core = JSON.parse(
+    readFileSync(join(dirname(require.resolve('@rhwp/core')), 'package.json'), 'utf8'),
+  )
   const studio = join(
     __dirname,
     '..',
     'node_modules',
     '.cache',
     'rhwp-studio',
-    `v${manifest.devDependencies['@rhwp/core']}`,
+    core.rhwp.tag,
     'rhwp-studio',
   )
   const files = [

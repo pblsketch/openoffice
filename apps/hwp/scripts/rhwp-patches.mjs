@@ -33,6 +33,16 @@
  *   which the AI's table deletion uses too). The bridge gains one method that
  *   deletes the table a selection or a caret points at, in the body or in a
  *   cell, and the three paths call it: the inner table goes, the outer stays.
+ *
+ * studio-font-memo-state, studio-font-memo-use
+ *   The studio replaces the Canvas2D `font` setter so that every font string
+ *   the engine sets passes its font substitution, which builds the family
+ *   chain anew each time. Drawing a page sets the same few strings thousands
+ *   of times, and that rebuilding was most of the cost of a keystroke. The
+ *   setter keeps each string's answer until the next microtask checkpoint:
+ *   one synchronous draw reuses it, and what the answer depends on (the fonts
+ *   found on the PC, the open document's substitutions) changes only when an
+ *   asynchronous step ends, so every later draw asks again.
  */
 
 /** Must equal RENDERER_SCHEME in packages/electron-utils/src/renderer-scheme.ts. */
@@ -183,6 +193,35 @@ const PATCHES = {
       "          operationType: 'deleteTable',",
     ].join('\n'),
   },
+  'studio-font-memo-state': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
+    find: 'let canvasFontSubstitutionInstalled = false;',
+    replace: [
+      'let canvasFontSubstitutionInstalled = false;',
+      '',
+      '// one answer per font string until the next microtask checkpoint: a page draw sets the',
+      '// same strings thousands of times, and what the answer depends on changes between tasks',
+      'let canvasFontMemo: Map<string, string> | null = null;',
+      'function memoSubstituteCssFontFamily(cssFont: string): string {',
+      '  if (!canvasFontMemo) {',
+      '    canvasFontMemo = new Map();',
+      '    queueMicrotask(() => { canvasFontMemo = null; });',
+      '  }',
+      '  let out = canvasFontMemo.get(cssFont);',
+      '  if (out === undefined) {',
+      '    out = substituteCssFontFamily(cssFont);',
+      '    canvasFontMemo.set(cssFont, out);',
+      '  }',
+      '  return out;',
+      '}',
+    ].join('\n'),
+  },
+  'studio-font-memo-use': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
+    find: 'descriptor.set!.call(this, scopedHostCanvasFont(String(value)) ?? substituteCssFontFamily(String(value)));',
+    replace:
+      'descriptor.set!.call(this, scopedHostCanvasFont(String(value)) ?? memoSubstituteCssFontFamily(String(value)));',
+  },
 }
 
 /** The patches the studio build applies, in order; the SDK's own is applied by the renderer builds. */
@@ -194,6 +233,8 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-nested-table-delete',
   'studio-nested-table-cut',
   'studio-nested-table-command',
+  'studio-font-memo-state',
+  'studio-font-memo-use',
 ])
 
 /** Whether a patch is written against this file. */

@@ -53,6 +53,11 @@ const REVEAL_COMMAND = 'ext:ieum-reveal'
  * command as its detail: the app hears it and saves or prints the way Ctrl+S and Ctrl+P do.
  */
 export const FILE_COMMAND_EVENT = 'ieum:file-command'
+/**
+ * The event this plugin fires on the editor's window when the document's unsaved state
+ * changes, with the new state (true: unsaved changes) as its detail.
+ */
+export const DIRTY_EVENT = 'ieum:dirty-changed'
 /** The File menu items, top to bottom: the command the app runs, and the shortcut shown. */
 const FILE_MENU = [
   { command: 'save', id: 'ext:ieum-save', shortcut: 'Ctrl+S' },
@@ -1877,6 +1882,12 @@ export const agentPlugin = {
   },
 
   activate(host) {
+    // the unsaved state as the editor sets it, in the same task as the edit: the app's close
+    // prompt reads its copy of this, and a key typed just before closing must be in it
+    host.events.on('document-dirty-changed', (change) => {
+      globalThis.dispatchEvent?.(new CustomEvent(DIRTY_EVENT, { detail: change?.dirty === true }))
+    })
+
     // counts the changes this plugin did not make (the user typing, the editor's own undo):
     // the panel takes back a run only while this has not moved since the run ended, because
     // the editor's history is one stack and anything on top of the run would be undone first

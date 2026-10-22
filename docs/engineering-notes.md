@@ -99,6 +99,8 @@
 - **`wasm-opt`가 "액세스가 거부되었습니다"로 멈춘다.** wasm-pack이 받아 둔 wasm-opt 파일이 깨졌거나 잠긴 것으로 보인다. → `%LOCALAPPDATA%\.wasm-pack\.wasm-opt-*`를 지우고 다시 돌린다.
 - **패치가 적용되지 않는다.** Windows의 `core.autocrlf=true`로 받은 사본은 줄 끝이 CRLF라 패치와 맞지 않고 `cargo fmt` 검사도 깨진다. → 빌드 스크립트는 `-c core.autocrlf=false`로 받는다. 손으로 rhwp 사본을 만들 때도 같게 한다. Git Bash에서 sparse 패턴(`!/samples/`)을 넘길 때는 `MSYS_NO_PATHCONV=1`이 필요하다.
 - **WASM에 빌드한 PC의 사용자 폴더가 들어간다.** 크레이트의 panic 위치 문자열에 cargo 레지스트리 경로가 남는다. → 스크립트가 `--remap-path-prefix`로 `/cargo`, `/rhwp`로 바꾸고, 빌드 뒤 사용자 폴더 이름이 남았는지 검사한다.
+- **한글 편집기에서 글자를 칠 때 무겁다(결정 0054).** 키 하나에 편집기는 보이는 쪽을 다시 그리고(`refreshPages`), 문서 전체에서 캔버스 측정 요청을 모은다(`prepareCanvasMetrics` → 엔진 `collectCanvasMetricRequests`). 앱 쪽의 저장 상태 확인(`commands.context()`)과 AI 창의 선택 조회는 한 번에 0.05ms 아래라 원인이 아니다. → 비용은 CDP `Profiler`로 본다. `Performance.getMetrics`의 `ScriptDuration`은 마이크로태스크 안에서 도는 WASM 시간을 빼고 세서 실제보다 훨씬 작다. 한 문단에 계속 치면 문단이 길어져 키마다 비용이 커지므로, 경우끼리 견줄 때는 회차마다 새 문단에서 친다. 한글 조합은 CDP의 `Input.imeSetComposition`·`Input.insertText`로 흉내 낼 수 있고, 조합 갱신마다 영어 한 글자와 같은 일을 한다.
+- **한글 탭에 한 글자를 치고 바로 닫았더니 저장 확인 없이 닫혔다(결정 0054 이전).** 메인은 닫을 때 렌더러가 알려 둔 저장 상태 사본만 보는데, 렌더러는 키를 친 50ms 뒤에야 편집기에 물어 알렸다. 빈 문서에서는 6번 모두 재현되고, 큰 문서는 편집기가 느려 우연히 피했다. → 저장 상태는 플러그인이 편집과 같은 작업에서 쏘는 알림(`DIRTY_EVENT`)으로 받는다. 확인은 빌드한 앱에서 문서를 새로 열 때마다 한 글자 치고 바로 닫아 본다(이미 고친 문서는 늘 확인 창이 떠서 시험이 되지 않는다).
 - **작업 사본에서 엔진이 npm 0.8.7로 풀린다.** 사본의 `node_modules/@rhwp/core`가 본 검사본의 npm 패키지를 가리키는 연결이면 시험과 빌드가 패치 전 엔진을 쓴다. → 사본의 `node_modules/@rhwp`를 실제 폴더로 두고 `core`만 사본의 `vendor/rhwp-core`로 연결한다. 사본을 지우기 전에는 이 연결부터 끊는다.
 
 ## 에이전트 모드

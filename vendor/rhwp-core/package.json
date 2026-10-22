@@ -1,6 +1,6 @@
 {
   "name": "@rhwp/core",
-  "version": "0.8.7-ieum.3",
+  "version": "0.8.7-ieum.4",
   "description": "rhwp v0.8.7 HWP/HWPX engine (WebAssembly) rebuilt with the layout patches in ./patches",
   "private": true,
   "type": "module",
@@ -27,9 +27,10 @@
       "0006-footnote-height-for-unpaginated-ladder.patch",
       "0007-merge-title-host-anchor-line.patch",
       "0008-title-host-line-occupies-flow.patch",
-      "0009-cellzone-fill-spans-merged-end-cell.patch"
+      "0009-cellzone-fill-spans-merged-end-cell.patch",
+      "0012-canvas-metric-requests-without-advances.patch"
     ],
     "wasmPack": "0.15.0",
-    "wasmSha256": "d1f0bb0b58a4826b82561dbd7d67ea6afc9301cd7c72151578f386f26dea46c5"
+    "wasmSha256": "d05668abbe90b1b806a895280978e704ab65c7796367f74bc701e431e3aabb72"
   }
 }

@@ -363,6 +363,9 @@ export type AgentFileCommand = 'save' | 'saveAs' | 'pdf' | 'print'
 /** The event those items fire on the editor's window; `detail` is the AgentFileCommand. */
 export declare const FILE_COMMAND_EVENT: 'ieum:file-command'
 
+/** The event the plugin fires on the editor's window when the unsaved state changes; `detail` is the new state. */
+export declare const DIRTY_EVENT: 'ieum:dirty-changed'
+
 export type AgentNoteKind = 'footnote' | 'endnote'
 
 /** One footnote or endnote of the body, as listNotes lists it. */

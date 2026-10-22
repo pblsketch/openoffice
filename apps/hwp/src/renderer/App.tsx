@@ -12,7 +12,7 @@ import {
 } from '@genoffice/ui'
 import { HwpAiDock } from './ai/AiDock'
 import { createAgentBridge } from './ai/agent-bridge'
-import { FILE_COMMAND_EVENT } from '../../studio-plugin/agent-plugin.mjs'
+import { DIRTY_EVENT, FILE_COMMAND_EVENT } from '../../studio-plugin/agent-plugin.mjs'
 import blankHwpUrl from './assets/blank.hwp?url'
 import { useI18n, type StringKey } from './i18n/locale'
 import { openDocumentsDroppedOn } from './editor-drop'
@@ -40,8 +40,11 @@ interface Notice {
   sticky?: true
 }
 
-/** How often the editor is asked whether the document has unsaved changes. */
-const DIRTY_POLL_MS = 400
+/**
+ * How often the editor is asked whether the document has unsaved changes, besides being
+ * told of each change: for one the plugin missed (it loads after the document opens).
+ */
+const DIRTY_POLL_MS = 2000
 /** How often a document that has not arrived yet is looked for. */
 const ARRIVAL_POLL_MS = 1000
 /** How long a confirmation stays up; errors stay until dismissed. */
@@ -191,48 +194,52 @@ export default function App() {
     return () => clearInterval(timer)
   }, [phase])
 
-  // mirror the editor's unsaved state to the main process, which owns the close prompt
+  // mirror the editor's unsaved state to the main process, which owns the close prompt: the
+  // app's plugin passes each change on in the same task as the edit, so an edit followed at
+  // once by closing the tab cannot slip through; a slow poll covers what it did not see
   useEffect(() => {
     if (phase !== 'ready') return
     const editor = editorRef.current
     if (!editor) return
     let reported = false
     let asking = false
+    /** counts the changes the plugin passed on; a poll answer older than one is dropped */
+    let changes = 0
+    const report = (dirty: boolean) => {
+      if (dirty === reported) return
+      reported = dirty
+      window.hwpApi.setDirty(dirty)
+    }
     const check = async () => {
       if (asking || savingRef.current) return
       asking = true
+      const seen = changes
       try {
         const dirty = (await editor.commands.context()).isDirty === true
-        if (dirty !== reported) {
-          reported = dirty
-          window.hwpApi.setDirty(dirty)
-        }
+        if (seen === changes) report(dirty)
       } catch {
         // the editor is going away; the next tick or the unmount settles it
       } finally {
         asking = false
       }
     }
-    const timer = setInterval(() => void check(), DIRTY_POLL_MS)
-    // an edit followed at once by closing the tab must not slip between two ticks
     const frame = editor.element.contentWindow
-    const soon = () => setTimeout(() => void check(), 50)
-    const events = [
-      'keydown',
-      'keyup',
-      'input',
-      'compositionend',
-      'pointerup',
-      'paste',
-      'cut',
-      'drop',
-    ] as const
-    for (const name of events) frame?.addEventListener(name, soon, true)
+    const onChange = (event: Event) => {
+      changes += 1
+      report((event as CustomEvent<unknown>).detail === true)
+    }
+    frame?.addEventListener(DIRTY_EVENT, onChange)
+    // an edit before the plugin is up has no event: ask once it is
+    void agentBridge
+      .foreignChanges()
+      .catch(() => {})
+      .then(() => check())
+    const timer = setInterval(() => void check(), DIRTY_POLL_MS)
     return () => {
       clearInterval(timer)
-      for (const name of events) frame?.removeEventListener(name, soon, true)
+      frame?.removeEventListener(DIRTY_EVENT, onChange)
     }
-  }, [phase])
+  }, [phase, agentBridge])
 
   const save = useCallback(
     async (mode: SaveMode): Promise<boolean> => {
