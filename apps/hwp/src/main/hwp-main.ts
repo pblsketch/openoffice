@@ -50,6 +50,12 @@ interface RuntimePaths {
   rendererFile?: string
   /** open a file this editor made (an exported PDF) in the app; false when it cannot */
   openGeneratedPath?: (path: string) => boolean
+  /** ask the shell for a file to open; the editor swallows Ctrl+O before the menu sees it */
+  openFileDialog?: () => void
+  /** go back to the home tab; the editor takes Ctrl+Shift+H for its document history */
+  goHome?: () => void
+  /** a new Hangul document in a tab (Hangul's Alt+N) */
+  newDocument?: () => void
 }
 
 let runtime: RuntimePaths = { preloadPath: '' }
@@ -562,14 +568,35 @@ function registerHwpIpc(): void {
 }
 
 /**
- * The editor runs in an iframe that swallows Ctrl+S and Ctrl+P before the page or the
- * application menu can see them, so the shortcuts are taken here, ahead of both.
+ * The editor runs in an iframe that swallows Ctrl+O, Ctrl+Shift+H, Ctrl+S and Ctrl+P
+ * before the page or the application menu can see them, so the shortcuts are taken
+ * here, ahead of both. Those the shell owns are skipped when the shell passed no
+ * action for them, which leaves the menu accelerator to do its work.
  */
-function installSaveShortcut(wc: WebContents): void {
+function installFileShortcuts(wc: WebContents): void {
   wc.on('before-input-event', (event, input) => {
-    if (input.type !== 'keyDown' || input.isAutoRepeat || input.alt) return
+    if (input.type !== 'keyDown' || input.isAutoRepeat) return
+    if (input.alt) {
+      if (hancomFileKey(wc, input)) event.preventDefault()
+      return
+    }
     const mod = process.platform === 'darwin' ? input.meta : input.control
     if (!mod) return
+    if (input.code === 'KeyO' && !input.shift) {
+      if (!runtime.openFileDialog) return
+      event.preventDefault()
+      runtime.openFileDialog()
+      return
+    }
+    if (input.code === 'KeyH' && input.shift) {
+      if (!runtime.goHome) return
+      event.preventDefault()
+      // in a table cell it is Hangul's horizontal sum; the editor says whether it took it
+      void editorTakes(wc, 'ctrl-shift-h').then((taken) => {
+        if (!taken) runtime.goHome?.()
+      })
+      return
+    }
     if (input.code === 'KeyP' && !input.shift) {
       event.preventDefault()
       requestHwpPrint(wc, 'print')
@@ -577,8 +604,69 @@ function installSaveShortcut(wc: WebContents): void {
     }
     if (input.code !== 'KeyS') return
     event.preventDefault()
-    void requestHwpSave(wc, input.shift ? 'saveAs' : 'save')
+    if (!input.shift) {
+      void requestHwpSave(wc, 'save')
+      return
+    }
+    // in a block of cells it is Hangul's block sum, elsewhere "save as" as in the other editors
+    void editorTakes(wc, 'ctrl-shift-s').then((taken) => {
+      if (!taken) void requestHwpSave(wc, 'saveAs')
+    })
   })
+}
+
+/**
+ * Hangul's file keys, Alt+N/O/S/V/P: new, open, save, save as, print (decision 0053). Not on a
+ * Mac, where Option with a letter types a character. True when the key was one of them.
+ */
+export function hancomFileKey(
+  wc: WebContents,
+  input: Pick<Electron.Input, 'code' | 'shift' | 'control' | 'meta'>,
+): boolean {
+  if (process.platform === 'darwin' || input.shift || input.control || input.meta) return false
+  switch (input.code) {
+    case 'KeyN':
+      if (!runtime.newDocument) return false
+      runtime.newDocument()
+      return true
+    case 'KeyO':
+      if (!runtime.openFileDialog) return false
+      runtime.openFileDialog()
+      return true
+    case 'KeyS':
+      void requestHwpSave(wc, 'save')
+      return true
+    case 'KeyV':
+      void requestHwpSave(wc, 'saveAs')
+      return true
+    case 'KeyP':
+      requestHwpPrint(wc, 'print')
+      return true
+    default:
+      return false
+  }
+}
+
+/**
+ * Asks the editor frame whether a key the main process took is one of Hangul's table keys there
+ * (studio-plugin/hancom-keys.mjs, MAIN_PROCESS_KEYS), and lets it run the table command if so.
+ * False when the frame cannot say: the key then does what it does in the app.
+ */
+async function editorTakes(
+  wc: WebContents,
+  key: 'ctrl-shift-s' | 'ctrl-shift-h',
+): Promise<boolean> {
+  if (wc.isDestroyed()) return false
+  const frame = wc.mainFrame?.framesInSubtree.find((f) => /\/studio\//.test(f.url))
+  if (!frame) return false
+  try {
+    const taken = await frame.executeJavaScript(
+      `typeof window.__ieumHancomKey === 'function' && window.__ieumHancomKey(${JSON.stringify(key)}) === true`,
+    )
+    return taken === true
+  } catch {
+    return false
+  }
 }
 
 function grantAndTrack(
@@ -599,7 +687,7 @@ function grantAndTrack(
       savePathByWc.set(wcId, openPath)
     }
   }
-  installSaveShortcut(wc)
+  installFileShortcuts(wc)
   // the embedded editor vetoes unload while it holds unsaved edits; closing is decided by
   // requestHwpClose, which has already asked the user by the time the page unloads
   wc.on('will-prevent-unload', (event) => event.preventDefault())

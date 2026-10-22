@@ -237,7 +237,7 @@ const PATCHES = {
           "import { InsertTextCommand } from '@/engine/command';\n" +
           "import { ModalDialog } from '@/ui/dialog';\n" +
           "import { FindDialog, navigateToSearchHit } from '@/ui/find-dialog';\n" +
-          `import { hancomCommands, installHancomMenuItems } from '${HANCOM_KEYS_MODULE}';`,
+          `import { hancomCommands, installHancomMainKeys, installHancomMenuItems } from '${HANCOM_KEYS_MODULE}';`,
       },
       // the new commands, with the studio parts they build on, and their menu items
       {
@@ -247,7 +247,9 @@ const PATCHES = {
           'registry.registerAll(hancomCommands(getLocale(), {\n' +
           '  InsertTextCommand, ModalDialog, FindDialog, navigateToSearchHit,\n' +
           '}));\n' +
-          'installHancomMenuItems(document, getLocale());',
+          'installHancomMenuItems(document, getLocale());\n' +
+          '// the keys the main process takes first and hands back for the table (decision 0053)\n' +
+          'installHancomMainKeys(window, () => inputHandler, dispatcher);',
       },
     ],
   },
@@ -464,6 +466,14 @@ export const hancomHooks = [
     ],
   },
   { file: 'src/engine/command.ts', needles: ['export class InsertTextCommand'] },
+  // what installHancomMainKeys is handed where the commands are registered
+  {
+    file: 'src/main.ts',
+    needles: [
+      'let inputHandler: InputHandler | null = null;',
+      'const dispatcher = new CommandDispatcher(',
+    ],
+  },
   {
     // the entries adaptToHancom takes out (REMOVED_SHORTCUTS), as the studio writes them
     file: 'src/command/shortcut-map.ts',

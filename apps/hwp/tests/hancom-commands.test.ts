@@ -15,8 +15,10 @@ import {
   hancomCommands,
   hancomContextKey,
   hancomCtrlKey,
+  installHancomMainKeys,
   installHancomMenuItems,
   runEasyFormula,
+  withHancomLabel,
 } from '../studio-plugin/hancom-keys.mjs'
 
 const key = (init: Partial<KeyboardEvent>) => ({
@@ -350,5 +352,70 @@ describe('the menu items of the new commands', () => {
   it('name only commands there are', () => {
     const ids = new Set(hancomCommands('en').map((c) => c.id))
     for (const [id] of MENU_ITEMS) expect(ids).toContain(id)
+  })
+})
+
+describe('keys the main process takes first and hands back (Ctrl+Shift+S, Ctrl+Shift+H)', () => {
+  const studio = (enabled: string[], cellBlock: boolean) => {
+    const win: { __ieumHancomKey?: (name: string) => boolean } = {}
+    const dispatcher = {
+      isEnabled: vi.fn((id: string) => enabled.includes(id)),
+      dispatch: vi.fn(() => true),
+    }
+    const ih = { cursor: { isInCellSelectionMode: () => cellBlock } }
+    installHancomMainKeys(win, () => ih, dispatcher)
+    return { win, dispatcher }
+  }
+
+  it('runs the block sum for Ctrl+Shift+S in a block of cells', () => {
+    const { win, dispatcher } = studio(['table:block-sum'], true)
+    expect(win.__ieumHancomKey!('ctrl-shift-s')).toBe(true)
+    expect(dispatcher.dispatch).toHaveBeenCalledWith('table:block-sum')
+  })
+
+  it('leaves Ctrl+Shift+S to "save as" outside a block of cells', () => {
+    const { win, dispatcher } = studio(['table:block-sum'], false)
+    expect(win.__ieumHancomKey!('ctrl-shift-s')).toBe(false)
+    expect(dispatcher.dispatch).not.toHaveBeenCalled()
+  })
+
+  it('runs the horizontal sum for Ctrl+Shift+H in a table cell, and leaves it to "home" elsewhere', () => {
+    const inCell = studio([EASY_FORMULAS.h.id], false)
+    expect(inCell.win.__ieumHancomKey!('ctrl-shift-h')).toBe(true)
+    expect(inCell.dispatcher.dispatch).toHaveBeenCalledWith('ieum:easy-sum-left')
+    const outside = studio([], false)
+    expect(outside.win.__ieumHancomKey!('ctrl-shift-h')).toBe(false)
+  })
+
+  it('says no to a key it does not know and to an editor that throws', () => {
+    const { win } = studio([], false)
+    expect(win.__ieumHancomKey!('ctrl-shift-x')).toBe(false)
+    const broken: { __ieumHancomKey?: (name: string) => boolean } = {}
+    installHancomMainKeys(
+      broken,
+      () => {
+        throw new Error('no editor')
+      },
+      { isEnabled: () => true, dispatch: () => true },
+    )
+    expect(broken.__ieumHancomKey!('ctrl-shift-s')).toBe(false)
+  })
+})
+
+describe("rhwp's Alt+V,T outside a Mac", () => {
+  it('loses its label where Alt+V is "save as"', () => {
+    const def = { id: 'view:border-transparent', shortcutLabel: 'Alt+V,T' }
+    expect(withHancomLabel(def, false).shortcutLabel).toBeUndefined()
+    expect(withHancomLabel(def, true)).toBe(def)
+  })
+
+  it('has the label the page wrote into its menu cleared', () => {
+    const { document } = new JSDOM(
+      '<div class="md-item" data-cmd="view:border-transparent"><span class="md-shortcut">Alt+V,T</span></div>',
+    ).window
+    installHancomMenuItems(document, 'ko', true)
+    expect(document.querySelector('.md-shortcut')!.textContent).toBe('Alt+V,T')
+    installHancomMenuItems(document, 'ko', false)
+    expect(document.querySelector('.md-shortcut')!.textContent).toBe('')
   })
 })

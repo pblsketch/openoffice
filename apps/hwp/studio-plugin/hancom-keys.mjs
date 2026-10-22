@@ -183,10 +183,49 @@ export const LABELS = {
   'insert:field': 'Ctrl+K,E',
 }
 
+/**
+ * Labels for keys the app takes before the editor outside a Mac: Alt+V is Hangul's "save as"
+ * there (the main process takes it), so rhwp's Alt+V,T for transparent lines no longer starts.
+ */
+export const LABELS_GONE_OFF_MAC = ['view:border-transparent']
+
+const onMac = () => /Mac/.test(globalThis.navigator?.platform ?? '')
+
 /** The command definition with Hangul's key next to it, when its key changed. */
-export function withHancomLabel(def) {
+export function withHancomLabel(def, mac = onMac()) {
+  if (!mac && LABELS_GONE_OFF_MAC.includes(def.id) && def.shortcutLabel) {
+    return { ...def, shortcutLabel: undefined }
+  }
   const label = LABELS[def.id]
   return label && def.shortcutLabel !== label ? { ...def, shortcutLabel: label } : def
+}
+
+/**
+ * The keys the main process takes before the editor and hands back when the caret says they are
+ * Hangul's table keys (decision 0053): Ctrl+Shift+S in a cell block is the block sum (elsewhere
+ * "save as"), Ctrl+Shift+H in a table cell is the horizontal sum (elsewhere "home"). The main
+ * process calls `window.__ieumHancomKey(name)` in the editor frame; true means it was done here.
+ */
+export const MAIN_PROCESS_KEYS = {
+  'ctrl-shift-s': (ih, dispatcher) =>
+    !!ih?.cursor?.isInCellSelectionMode?.() && dispatcher.isEnabled('table:block-sum')
+      ? dispatcher.dispatch('table:block-sum')
+      : false,
+  'ctrl-shift-h': (ih, dispatcher) =>
+    dispatcher.isEnabled(EASY_FORMULAS.h.id) ? dispatcher.dispatch(EASY_FORMULAS.h.id) : false,
+}
+
+/** Opens the window function the main process asks; see MAIN_PROCESS_KEYS. */
+export function installHancomMainKeys(win, getInputHandler, dispatcher) {
+  win.__ieumHancomKey = (name) => {
+    const take = MAIN_PROCESS_KEYS[name]
+    if (!take) return false
+    try {
+      return take(getInputHandler(), dispatcher) === true
+    } catch {
+      return false
+    }
+  }
 }
 
 const MODIFIER_KEYS = new Set([
@@ -755,8 +794,15 @@ export const MENU_ITEMS = [
  * builds its menu bar from the page, so the items work like its own; their keys come from the
  * commands' labels like every other item's.
  */
-export function installHancomMenuItems(doc, locale) {
+export function installHancomMenuItems(doc, locale, mac = onMac()) {
   const ko = locale === 'ko'
+  // the page writes some keys into its menu itself; clear the ones that no longer start
+  if (!mac) {
+    for (const id of LABELS_GONE_OFF_MAC) {
+      const shortcut = doc.querySelector(`.md-item[data-cmd="${id}"] .md-shortcut`)
+      if (shortcut) shortcut.textContent = ''
+    }
+  }
   for (const [id, after, nameKo, nameEn] of MENU_ITEMS) {
     const anchor = doc.querySelector(`.md-item[data-cmd="${after}"]`)
     if (!anchor || doc.querySelector(`.md-item[data-cmd="${id}"]`)) continue

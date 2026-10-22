@@ -347,7 +347,7 @@ describe('rhwp Hangul-key patches', () => {
     const patched = applyPatch('studio-hancom-commands', source)
     expect(patched).toContain("import { getLocale } from '@/i18n/core.ts';")
     expect(patched).toContain(
-      `import { hancomCommands, installHancomMenuItems } from '${HANCOM_KEYS_MODULE}';`,
+      `import { hancomCommands, installHancomMainKeys, installHancomMenuItems } from '${HANCOM_KEYS_MODULE}';`,
     )
     // the studio parts the new commands build on are handed over; the module imports none
     expect(patched).toContain("import { InsertTextCommand } from '@/engine/command';")
@@ -360,6 +360,8 @@ describe('rhwp Hangul-key patches', () => {
       patched.indexOf('registry.registerAll(toolCommands);'),
     )
     expect(patched).toContain('installHancomMenuItems(document, getLocale());')
+    // the main process asks the editor about Ctrl+Shift+S and Ctrl+Shift+H through it
+    expect(patched).toContain('installHancomMainKeys(window, () => inputHandler, dispatcher);')
   })
 
   it('give the bridge the page number calls of engine patch 0013', () => {
