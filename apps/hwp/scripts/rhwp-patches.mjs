@@ -239,6 +239,7 @@ export const pluginHooks = [
       'private cursor: CursorState',
       'updateCaret(',
       'private virtualScroll: VirtualScroll',
+      'private emitCursorFormatState(): void',
     ],
   },
   {
@@ -247,6 +248,18 @@ export const pluginHooks = [
       'getInputHandler: () => InputHandler | null',
       'getViewportManager: () => ViewportManager | null',
       'execute: (services: CommandServices, params?: Record<string, unknown>) => void',
+    ],
+  },
+  // the toolbar's style list the plugin refills after styles change: options valued by
+  // style number, shown by number at the caret, applied by number when picked; the caret's
+  // state is sent again after a refill
+  {
+    file: 'src/ui/toolbar.ts',
+    needles: [
+      "querySelector('#style-name')",
+      'opt.value = String(style.id)',
+      'this.styleName.value = String(info.id)',
+      'const styleId = parseInt(this.styleName.value)',
     ],
   },
   // where the marks of the plugin's changes go: the pages' places and the zoom
