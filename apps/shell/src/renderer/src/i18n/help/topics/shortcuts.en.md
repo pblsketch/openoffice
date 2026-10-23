@@ -22,6 +22,12 @@ Every editor has its own key bindings, and only a few of them work everywhere. T
 - **`⌘O`, `⌘S` and `⌘P` are implemented separately behind each editor**, and they do not quite behave alike. Word's `⌘P` first lays out a print preview so one printed sheet equals one on-screen page; PDF's opens the PDF print dialog; Sheets and Slides have their own again.
 - **The rest is per-application.** When the Word tab is active, `⌘B` is Word's Bold. When Slides is active, `⌘B` is Slides' Bold, and the menu it belongs to is not the one you are used to. Where a binding only fires with something selected, or in a particular pane, the Action column says so.
 
+## Presentation mode
+
+- **Start**: F5 in Word, PDF, Mindmap, HTML and Markdown. In a spreadsheet use Ctrl+F5 (from A1) or Shift+F5 (from the current cell).
+- **Other entry points**: in Word, Ctrl+F5 and Shift+F5 open the reading view without fullscreen; in PDF they start from the current page; in HTML they present inside the tab.
+- **End**: Esc or F5. F11 is the window's own fullscreen and does not change the document view.
+
 ## Conventions
 
 - The macOS column uses the familiar symbols: `⌘` Command, `⌥` Option, `⇧` Shift, `⌃` Control.

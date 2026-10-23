@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   templateDocumentOf,
+  presentationKeyOf,
   useAutoSavePref,
   useSplitPaneFocusPing,
   type TemplateDocument,
@@ -79,6 +80,8 @@ export default function App() {
   const [fieldRequest, setFieldRequest] = useState<TopicFieldRequest | null>(null)
   const [toast, setToast] = useState<StringKey | null>(null)
   const [themeOpen, setThemeOpen] = useState(false)
+  /** F5: the map alone, shell chrome covered by HTML fullscreen */
+  const [presenting, setPresenting] = useState(false)
   /** bumped when a controller reports a change of selection, history, zoom or layout */
   const [, setMapTick] = useState(0)
   const [autoSave, setAutoSave] = useAutoSavePref('mindmapapp.autoSave', window.mindmapApi)
@@ -454,6 +457,54 @@ export default function App() {
     [activeController],
   )
 
+  // ---- presentation (F5): the map alone, no ribbon or sheet tabs ----
+
+  const fitPresented = useCallback(() => {
+    // the fullscreen bounds arrive after the event, so fit once the view has resized
+    window.setTimeout(() => activeController()?.zoomFit(), 80)
+  }, [activeController])
+
+  const exitPresent = useCallback(() => {
+    setPresenting(false)
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+  }, [])
+
+  const enterPresent = useCallback(() => {
+    // a title still being typed belongs to the map before the chrome goes away
+    flushAll()
+    setPresenting(true)
+    const root = document.documentElement
+    if (!document.fullscreenElement && root.requestFullscreen)
+      void root.requestFullscreen().then(fitPresented, fitPresented)
+    else fitPresented()
+  }, [flushAll, fitPresented])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (status !== 'ready') return
+      const action = presentationKeyOf(event, presenting)
+      if (!action) return
+      // F5 and Ctrl/Cmd/Shift+F5 both start the map's show; it has one view.
+      event.preventDefault()
+      if (action === 'exit') {
+        // the map's own Esc (cancel a pick, close the edit box) waits until the show is over
+        event.stopPropagation()
+        exitPresent()
+      } else enterPresent()
+    }
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
+  }, [status, presenting, enterPresent, exitPresent])
+
+  useEffect(() => {
+    const onFullScreenChange = (): void => {
+      if (document.fullscreenElement) fitPresented()
+      else setPresenting(false)
+    }
+    document.addEventListener('fullscreenchange', onFullScreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullScreenChange)
+  }, [fitPresented])
+
   useEffect(() => {
     const api = window.mindmapApi
     const offSave = api.onSaveRequest((mode) => {
@@ -642,7 +693,7 @@ export default function App() {
   const picking = controller?.pickingRelationship ?? false
 
   return (
-    <div className="app">
+    <div className={`app${presenting ? ' mm-presenting' : ''}`}>
       <Toolbar
         disabled={!controller}
         dirty={dirty}

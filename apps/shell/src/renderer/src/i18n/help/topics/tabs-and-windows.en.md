@@ -6,7 +6,7 @@ Every open file shares one window; the tab strip at the top switches between the
 
 ## Basics
 
-- **Switch**: click a tab, or scroll the wheel over the strip to cycle.
+- **Switch**: click a tab, press **Ctrl+Tab** (next) / **Ctrl+Shift+Tab** (previous), or scroll the wheel over the strip.
 - **Close**: the × on the tab, or ⌘W/ctrl+W. Unsaved changes ask first.
 - **New**: the + at the right end of the strip.
 - **Activation is immediate**: pressing a tab switches as soon as it is pressed, without waiting for the click to finish.

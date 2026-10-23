@@ -6,7 +6,7 @@ Wszystkie otwarte pliki zajmują jedno okno; pasek kart u góry przełącza się
 
 ## Podstawy
 
-- **Przełącz**: kliknij kartę albo przewiń kółkiem myszy nad paskiem, aby przejść do kolejnej.
+- **Przełączanie**: kliknij kartę, naciśnij **Ctrl+Tab** (następna) / **Ctrl+Shift+Tab** (poprzednia) albo przewiń kółkiem myszy nad paskiem.
 - **Zamknij**: × na karcie albo ⌘W/ctrl+W. Przy niezapisanych zmianach najpierw zostanie zapytanie.
 - **Nowa**: + na prawym końcu paska.
 - **Aktywacja jest natychmiastowa**: naciśnięcie karty przełącza od razu, bez czekania, aż kliknięcie się zakończy.

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createEditor } from '@rhwp/editor'
-import type { RhwpEditor } from '@rhwp/editor'
+import type { ChromeVisibility, RhwpEditor } from '@rhwp/editor'
 import type { Params } from '@genoffice/i18n'
 import {
   aiPanelInitiallyOpen,
   rememberAiPanelOpen,
+  presentationKeyOf,
   skillTemplateText,
   templateDocumentOf,
   useSplitPaneFocusPing,
@@ -87,6 +88,10 @@ export default function App() {
   /** the format the document was opened in: what it is exported as when it is read */
   const formatRef = useRef<HwpFormat>('hwp')
   const [phase, setPhase] = useState<Phase>('booting')
+  /** F5: the document alone in fullscreen, with the editor's own chrome hidden */
+  const [presenting, setPresenting] = useState(false)
+  const presentingRef = useRef(false)
+  const prePresentChromeRef = useRef<ChromeVisibility | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
   const [aiOpen, setAiOpen] = useState(() => aiPanelInitiallyOpen(AI_OPEN_KEY))
   /** the file the document is in: the AI conversation is kept with it */
@@ -394,6 +399,82 @@ export default function App() {
     [],
   )
 
+  // F5: the document alone in fullscreen; the editor's menu/toolbar/status bar hide
+  // with its own chrome API and come back exactly as they were when the show ends.
+  useEffect(() => {
+    const enter = async (): Promise<void> => {
+      const editor = editorRef.current
+      if (!editor || phase !== 'ready' || presentingRef.current) return
+      presentingRef.current = true
+      try {
+        prePresentChromeRef.current = await editor.chrome.get()
+      } catch {
+        prePresentChromeRef.current = null
+      }
+      if (!presentingRef.current) return
+      void editor.chrome.set({ menu: false, toolbar: false, statusbar: false }).catch(() => {})
+      setPresenting(true)
+      const root = document.documentElement
+      if (!document.fullscreenElement && root.requestFullscreen)
+        void root.requestFullscreen().catch(() => {})
+    }
+    const exit = (): void => {
+      if (!presentingRef.current) return
+      presentingRef.current = false
+      setPresenting(false)
+      const editor = editorRef.current
+      if (editor && prePresentChromeRef.current) {
+        void editor.chrome.set(prePresentChromeRef.current).catch(() => {})
+      }
+      prePresentChromeRef.current = null
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+    }
+    const onKey = (event: KeyboardEvent): void => {
+      const action = presentationKeyOf(event, presentingRef.current)
+      if (!action) return
+      event.preventDefault()
+      if (action === 'exit') {
+        event.stopPropagation()
+        exit()
+      } else void enter()
+    }
+    // The document lives inside rhwp's own frame, so keys pressed there never
+    // reach this window: listen on both. A cross-origin frame simply gets none.
+    window.addEventListener('keydown', onKey, true)
+    let frameWindow: Window | null = null
+    try {
+      frameWindow = editorRef.current?.element.contentWindow ?? null
+      frameWindow?.addEventListener('keydown', onKey, true)
+    } catch {
+      frameWindow = null
+    }
+    return () => {
+      window.removeEventListener('keydown', onKey, true)
+      try {
+        frameWindow?.removeEventListener('keydown', onKey, true)
+      } catch {
+        /* the frame went away with its document */
+      }
+    }
+  }, [phase])
+
+  // OS-level Esc leaves fullscreen without a keydown: end the show with it.
+  useEffect(() => {
+    if (!presenting) return
+    const onFullScreenChange = (): void => {
+      if (document.fullscreenElement) return
+      presentingRef.current = false
+      setPresenting(false)
+      const editor = editorRef.current
+      if (editor && prePresentChromeRef.current) {
+        void editor.chrome.set(prePresentChromeRef.current).catch(() => {})
+      }
+      prePresentChromeRef.current = null
+    }
+    document.addEventListener('fullscreenchange', onFullScreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullScreenChange)
+  }, [presenting])
+
   useEffect(() => {
     if (notice?.tone !== 'info' || notice.sticky) return
     const timer = setTimeout(() => setNotice(null), INFO_NOTICE_MS)
@@ -425,7 +506,7 @@ export default function App() {
   )
 
   return (
-    <div className="hwp-app" data-phase={phase}>
+    <div className={`hwp-app${presenting ? ' hwp-presenting' : ''}`} data-phase={phase}>
       <div className="app-main">
         {/* the assistant works on an open document, so it appears with one */}
         {phase === 'ready' && (

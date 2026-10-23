@@ -35,6 +35,7 @@ Word 문서(.docx)와 ODT(.odt) 에디터다. 그리고 배포되는 앱 전체�
 ## 이 모듈의 방식
 
 - 메인 코드는 shell 번들에 들어간다. shell이 `../../../docs/src/main/docs-main`을 상대 경로로 import하므로 `src/main`을 고친 뒤에는 shell을 다시 빌드해야 변경이 실행된다. 단독 실행(`src/main/index.ts` → `startDocsStandalone`)은 개발용이다.
+- **발표 모드는 읽기 모드를 전체화면으로 쓴다.** F5는 읽기 모드 + HTML 전체화면(셸 탭 줄까지 덮인다) + 쪽 맞춤, Ctrl+F5는 전체화면 없이 읽기 모드만, F5·Esc는 끝낸다. 키 판정은 `@genoffice/ui`의 `presentationKeyOf` 하나이고, 발표 중에는 `.presentation-mode`가 상태 표시줄을 숨긴다. 전체화면이 OS에서 풀려도(`fullscreenchange`) 읽기 모드까지 끝낸다.
 - 채널 이름으로 소유를 구분한다. `ai:*`는 앱 전체가 공유하고 여기서 한 번 등록된다. 다른 에디터와 겹칠 수 있는 것은 `docs:` 접두사를 붙인다(`docs:analyze-media`, `docs:ai-generate-image`). 슬라이드가 같은 프로세스에서 자기 `ai:generate-image`·`ai:analyze-media`를 등록하기 때문이다.
 - 스트림 중에는 제공자 쪽에서 움직임이 있을 때 `ping` 조각을 보낸다(5초에 한 번을 넘지 않는다). 렌더러의 침묵 감시가 "느린 턴"과 "죽은 턴"을 구별하는 근거다. 렌더러가 사라지면 `abortOnDestroyed`가 요청을 끊는다.
 - `ai:stream`의 조각은 `createChunkCoalescer`(`src/main/stream-coalesce.ts`)를 거친다. `delta`·`reasoning`은 32ms 동안 모아 한 조각으로 보내고, 다른 종류의 조각은 모은 것을 먼저 보낸 뒤 보낸다. 토큰마다 IPC 메시지와 대화 다시 그리기가 생기지 않게 하기 위해서다. 이 처리기에서 조각을 보내는 새 경로는 `send`가 아니라 같은 묶음(`out.push`)을 거쳐야 순서가 지켜진다.

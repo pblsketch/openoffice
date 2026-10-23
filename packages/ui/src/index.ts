@@ -298,6 +298,7 @@ export {
 export { CROP_EDGE_LABELS } from './strings-crop-edges'
 export { ImageViewer, type ImageViewerLabels } from './image-viewer'
 export { trapTab, useModalKeys } from './modal-keys'
+export { presentationKeyOf, type PresentationKey, type PresentationKeyInput } from './presentation-keys'
 export {
   removeBackground,
   sampleBackgroundColors,

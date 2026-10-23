@@ -48,6 +48,27 @@ body,
   min-height: 0;
 }
 
+/* ---- presentation (F5): the map alone; Esc or F5 returns ---- */
+
+.app.mm-presenting .ribbon,
+.app.mm-presenting .mm-foot,
+.app.mm-presenting .mm-notices,
+.app.mm-presenting .mm-theme-panel,
+.app.mm-presenting .mm-note-panel,
+.app.mm-presenting .ai-dock {
+  display: none;
+}
+
+.app.mm-presenting .mm-stage {
+  padding: 0;
+  gap: 0;
+}
+
+.app.mm-presenting .mm-card {
+  border: 0;
+  border-radius: 0;
+}
+
 .center-note {
   display: flex;
   align-items: center;

@@ -11,6 +11,7 @@ import {
   aiPanelInitiallyOpen,
   effectiveAiPanelOpen,
   onAiRailClick,
+  presentationKeyOf,
   rememberAiPanelOpen,
   useAutoSavePref,
   skillTemplateText,
@@ -156,6 +157,9 @@ export default function App() {
   // a .txt/.json has no block document behind it: it is edited as source so
   // that saving cannot reinterpret it as markdown
   const [textMode, setTextMode] = useState<TextMode>('markdown')
+  /** F5: the document alone in fullscreen (presentation) */
+  const [presenting, setPresenting] = useState(false)
+  const preSourceViewRef = useRef(false)
   const sourceRef = useRef<PlainTextEditorHandle | null>(null)
   const sourceTextRef = useRef('')
   const sourceFormatRef = useRef<SourceTextFormat>({ bom: false, eol: '\n', trailingNewline: true })
@@ -562,6 +566,58 @@ export default function App() {
     if (sourceViewOpenRef.current) closeSource()
     else openSource()
   }, [closeSource, openSource])
+
+  const restoreAfterPresent = useCallback(() => {
+    setPresenting(false)
+    if (preSourceViewRef.current) {
+      preSourceViewRef.current = false
+      openSource()
+    }
+  }, [openSource])
+
+  // F5: the document alone in fullscreen; the source pane, if open, steps aside
+  // and comes back when the show ends.
+  useEffect(() => {
+    const enter = (): void => {
+      if (status !== 'ready' || sourceMode) return
+      preSourceViewRef.current = sourceViewOpen
+      if (sourceViewOpen) closeSource()
+      setPresenting(true)
+      const root = document.documentElement
+      if (!document.fullscreenElement && root.requestFullscreen)
+        void root.requestFullscreen().catch(() => {})
+    }
+    const exit = (): void => {
+      restoreAfterPresent()
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+    }
+    const onKey = (event: KeyboardEvent): void => {
+      const action = presentationKeyOf(event, presenting)
+      if (!action) return
+      event.preventDefault()
+      if (action === 'exit') {
+        event.stopPropagation()
+        exit()
+      } else enter()
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [presenting, status, sourceMode, sourceViewOpen, closeSource, restoreAfterPresent])
+
+  // OS-level Esc leaves fullscreen without a keydown: end the show with it.
+  useEffect(() => {
+    if (!presenting) return
+    const onFullScreenChange = (): void => {
+      if (!document.fullscreenElement) restoreAfterPresent()
+    }
+    document.addEventListener('fullscreenchange', onFullScreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullScreenChange)
+  }, [presenting, restoreAfterPresent])
+
+  // The show is a reading view: no caret, no typing until it ends.
+  useEffect(() => {
+    editor?.setEditable(!presenting)
+  }, [editor, presenting])
 
   // A keystroke is re-parsed into the editor rather than saved, so save,
   // autosave, the AI tools and the outline keep reading one document. The
@@ -1243,7 +1299,7 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <div className={`app${presenting ? ' md-presenting' : ''}`}>
       <Ribbon
         editor={editor}
         disabled={status !== 'ready'}

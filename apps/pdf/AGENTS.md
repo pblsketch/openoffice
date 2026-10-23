@@ -63,6 +63,7 @@ PDF 보기·주석·편집 에디터다. 화면은 PDF.js로 그리고, 저장�
 
 ## 이 모듈의 방식
 
+- **발표 모드는 뷰어만 남긴다.** F5는 첫 쪽부터, Ctrl+F5는 지금 쪽부터 HTML 전체화면으로 열고 한 쪽 맞춤(`fitModeRef = 'page'`)으로 그린다. F5·Esc로 끝나며, 나가면 발표 전의 맞춤 모드로 돌아간다. `.pdf-presenting`이 리본·상태 표시줄·축소판·AI 창·검색 줄을 숨긴다. 키 판정은 `@genoffice/ui`의 `presentationKeyOf` 하나다.
 - 메인 코드는 shell 번들에 들어간다(`../../../pdf/src/main/pdf-main`을 상대 경로로 import한다). `src/main`을 고친 뒤에는 shell을 다시 빌드한다.
 - AI 편집은 연산 목록으로 한다. 연산의 한 줄 설명은 `src/shared/op-docs.ts`가 유일한 원천이고 테스트가 등록된 연산과 정확히 일치하는지 확인한다. 연산을 추가하면 이 표에 넣는다. 좌표는 PDF 사용자 공간의 포인트(y가 위쪽)이고 쪽 번호는 원본의 0부터 시작하는 번호다.
 - 패널은 다른 에디터와 같은 부품으로 조립한다. 연결이 없으면 `AiConnectPrompt`, 구독 첫 사용이면 `AiFirstConnectionNotice`(Codex 진단 기록 문장 `codexKeepsHistory`와 페이지 그림·문서 전체 글 문장 `sendsWholeDocument`를 켠 채로), 문장은 `aiRunErrorText`다. 대기열의 메시지는 `admitQueued`를 지나고, 연결이 없으면 대기열을 멈춘다.

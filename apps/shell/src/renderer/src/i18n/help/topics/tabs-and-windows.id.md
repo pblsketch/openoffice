@@ -6,7 +6,7 @@ Semua file yang terbuka berbagi satu jendela; bilah tab di atas berpindah di ant
 
 ## Dasar-dasar
 
-- **Berpindah**: klik sebuah tab, atau gulir roda mouse di atas bilah untuk memutar satu per satu.
+- **Berpindah**: klik tab, tekan **Ctrl+Tab** (berikutnya) / **Ctrl+Shift+Tab** (sebelumnya), atau gulir roda mouse di atas bilah.
 - **Menutup**: tanda × pada tab, atau ⌘W/ctrl+W. Perubahan yang belum disimpan akan ditanyakan lebih dulu.
 - **Baru**: tanda + di ujung kanan bilah.
 - **Aktif seketika**: menekan sebuah tab langsung berpindah begitu ditekan, tanpa menunggu klik selesai.

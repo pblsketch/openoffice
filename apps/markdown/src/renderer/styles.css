@@ -173,6 +173,17 @@ button {
   flex-direction: column;
 }
 
+/* F5 presentation: the document alone; the source pane is closed by App, not CSS. */
+.app.md-presenting .ribbon,
+.app.md-presenting .ai-dock,
+.app.md-presenting .md-outline,
+.app.md-presenting .md-backlinks,
+.app.md-presenting .status-bar,
+.app.md-presenting .find-panel,
+.app.md-presenting .source-pane {
+  display: none !important;
+}
+
 .center-note {
   flex: 1;
   display: flex;

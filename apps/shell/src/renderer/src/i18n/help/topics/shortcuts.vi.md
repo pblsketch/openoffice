@@ -22,6 +22,12 @@ Mỗi trình soạn thảo có tổ hợp phím riêng, và chỉ vài tổ hợ
 - **`⌘O`, `⌘S` và `⌘P` được hiện thực riêng biệt sau mỗi trình soạn thảo**, và chúng không hành xử giống hệt nhau. `⌘P` của Word trước tiên dàn trang xem trước khi in, để một trang in ra đúng bằng một trang trên màn hình; của PDF thì mở hộp thoại in PDF; Sheets và Slides lại có bản riêng.
 - **Phần còn lại thuộc về từng ứng dụng.** Khi thẻ Word đang hoạt động, `⌘B` là Đậm của Word. Khi Slides đang hoạt động, `⌘B` là Đậm của Slides, và menu chứa nó không phải menu bạn quen. Ở những chỗ tổ hợp phím chỉ chạy khi có vùng được chọn, hoặc trong một khung bên cạnh cụ thể, cột Hành động sẽ nói rõ.
 
+## Chế độ trình bày
+
+- **Bắt đầu**: F5 trong Word, PDF, Mindmap, HTML và Markdown. Trong bảng tính, Ctrl+F5 (từ A1) hoặc Shift+F5 (từ ô hiện tại).
+- **Lối vào khác**: trong Word, Ctrl+F5 và Shift+F5 mở chế độ đọc không toàn màn hình; trong PDF bắt đầu từ trang hiện tại; trong HTML trình bày trong thẻ.
+- **Kết thúc**: Esc hoặc F5. F11 là toàn màn hình của cửa sổ và không đổi chế độ xem tài liệu.
+
 ## Quy ước
 
 - Cột macOS dùng các ký hiệu quen thuộc: `⌘` Command, `⌥` Option, `⇧` Shift, `⌃` Control.

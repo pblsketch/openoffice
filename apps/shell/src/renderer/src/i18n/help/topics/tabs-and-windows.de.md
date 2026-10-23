@@ -6,7 +6,7 @@ Alle geöffneten Dateien teilen sich ein Fenster; die Tab-Leiste oben wechselt w
 
 ## Grundlagen
 
-- **Wechseln**: Klicken Sie auf einen Tab oder scrollen Sie mit dem Mausrad über die Leiste, um der Reihe nach durchzugehen.
+- **Wechseln**: Klicken Sie auf einen Tab, drücken Sie **Strg+Tab** (weiter) / **Strg+Umschalt+Tab** (zurück), oder scrollen Sie mit dem Mausrad über die Leiste.
 - **Schließen**: das × am Tab oder ⌘W/ctrl+W. Bei ungespeicherten Änderungen wird nachgefragt.
 - **Neu**: das + am rechten Ende der Leiste.
 - **Die Aktivierung erfolgt sofort**: Ein Tabwechsel passiert beim Drücken, ohne auf das Ende des Klicks zu warten.

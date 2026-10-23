@@ -248,6 +248,7 @@ import {
   effectiveAiPanelOpen,
   onAiRailClick,
   rememberAiPanelOpen,
+  presentationKeyOf,
   useDismissablePopover,
   useRibbonCollapse,
   useAiSidebarEnabled,
@@ -530,6 +531,8 @@ export default function App() {
   const [pageUserUnits, setPageUserUnits] = useState<number[]>([])
   const [baseRots, setBaseRots] = useState<number[]>([])
   const [scale, setScale] = useState(1)
+  /** F5: the viewer alone in fullscreen (presentation) */
+  const [presenting, setPresenting] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState('1')
   const [sidebar, setSidebar] = useState<'thumbs' | 'outline' | 'notes' | null>(() =>
@@ -1179,6 +1182,12 @@ export default function App() {
   const coalesceKeyRef = useRef<string | null>(null)
   const passwordRef = useRef<string | undefined>(undefined)
   const fitModeRef = useRef<FitMode>('width')
+  /** fit mode before F5, restored when the show ends */
+  const prePresentFitRef = useRef<FitMode>(null)
+  /** manual zoom before F5 (fit mode null), restored when the show ends */
+  const prePresentScaleRef = useRef(1)
+  /** cancels a pending page-fit when the show ends before its timer runs */
+  const presentSeqRef = useRef(0)
   /** Reading position saved when this file was last viewed; applied once after open */
   const pendingViewRestoreRef = useRef<PdfViewState | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -2031,6 +2040,69 @@ export default function App() {
     const target = Math.min(Math.max(1, n), pageCount)
     el.scrollTop = rowTop(rowOfVis(target - 1)) - PAGE_GAP / 2
   }
+
+  // ---- presentation (F5 / Ctrl+F5): the viewer alone in fullscreen ----
+
+  const fitPageForPresentation = useCallback(() => {
+    // the fullscreen viewport arrives after the event; fit the page once it has
+    const seq = ++presentSeqRef.current
+    window.setTimeout(() => {
+      if (presentSeqRef.current !== seq) return
+      fitModeRef.current = 'page'
+      recomputeFit()
+    }, 80)
+  }, [recomputeFit])
+
+  const exitPresent = useCallback(() => {
+    presentSeqRef.current++
+    setPresenting(false)
+    fitModeRef.current = prePresentFitRef.current
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+    if (fitModeRef.current === null) setScale(prePresentScaleRef.current)
+    else window.setTimeout(() => recomputeFit(), 80)
+  }, [recomputeFit])
+
+  const enterPresent = useCallback(
+    (fromCurrent: boolean) => {
+      prePresentFitRef.current = fitModeRef.current
+      prePresentScaleRef.current = scale
+      setPresenting(true)
+      // F5 starts at the first page; Ctrl+F5 keeps the reader's page
+      if (!fromCurrent && scrollRef.current) scrollRef.current.scrollTop = 0
+      const root = document.documentElement
+      if (!document.fullscreenElement && root.requestFullscreen)
+        void root.requestFullscreen().then(fitPageForPresentation, fitPageForPresentation)
+      else fitPageForPresentation()
+    },
+    [fitPageForPresentation, scale],
+  )
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (status !== 'ready') return
+      const action = presentationKeyOf(event, presenting)
+      if (!action) return
+      event.preventDefault()
+      if (action === 'exit') {
+        event.stopPropagation()
+        exitPresent()
+        return
+      }
+      enterPresent(action === 'present-windowed')
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [status, presenting, enterPresent, exitPresent])
+
+  useEffect(() => {
+    if (!presenting) return
+    const onFullScreenChange = (): void => {
+      if (document.fullscreenElement) fitPageForPresentation()
+      else exitPresent()
+    }
+    document.addEventListener('fullscreenchange', onFullScreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullScreenChange)
+  }, [presenting, fitPageForPresentation, exitPresent])
 
   // genoffice CLI (`open --page`, `selection`): the shell evaluates this hook
   useEffect(() => {
@@ -8023,7 +8095,11 @@ export default function App() {
   )
 
   return (
-    <div className="app" inert={redactionCopyInFlight} aria-busy={redactionCopyInFlight}>
+    <div
+      className={`app${presenting ? ' pdf-presenting' : ''}`}
+      inert={redactionCopyInFlight}
+      aria-busy={redactionCopyInFlight}
+    >
       <div className={`ribbon ${collapse.rootClass}`} ref={collapse.rootRef}>
         <div className="ribbon-tabs" onDoubleClick={collapse.onTabsDoubleClick}>
           <button

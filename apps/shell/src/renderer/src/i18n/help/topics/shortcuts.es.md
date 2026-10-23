@@ -22,6 +22,12 @@ Cada editor tiene sus propias combinaciones de teclas, y solo unas cuantas funci
 - **`⌘O`, `⌘S` y `⌘P` están implementados por separado detrás de cada editor**, y no se comportan del todo igual. El `⌘P` de Word monta primero una vista previa de impresión, de modo que una hoja impresa equivalga exactamente a una página en pantalla; el de PDF abre el cuadro de diálogo de impresión de PDF; Sheets y Slides tienen los suyos otra vez.
 - **El resto es por aplicación.** Cuando la pestaña de Word está activa, `⌘B` es la Negrita de Word. Cuando está la de Slides, `⌘B` es la Negrita de Slides, y el menú al que pertenece no es el de siempre. Cuando una combinación solo se dispara con algo seleccionado, o en un panel concreto, la columna Acción lo indica.
 
+## Modo presentación
+
+- **Iniciar**: F5 en Word, PDF, Mindmap, HTML y Markdown. En una hoja de cálculo, Ctrl+F5 (desde A1) o Mayús+F5 (desde la celda activa).
+- **Otras entradas**: en Word, Ctrl+F5 y Mayús+F5 abren la vista de lectura sin pantalla completa; en PDF empiezan en la página actual; en HTML presentan dentro de la pestaña.
+- **Salir**: Esc o F5. F11 es la pantalla completa de la ventana y no cambia la vista del documento.
+
 ## Convenciones
 
 - La columna de macOS usa los símbolos habituales: `⌘` Command, `⌥` Option, `⇧` Shift, `⌃` Control.

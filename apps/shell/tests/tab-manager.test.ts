@@ -525,6 +525,32 @@ describe('spare sheets view', () => {
   })
 })
 
+describe('cycling tabs with the keyboard', () => {
+  it('steps forward and back through the strip and wraps at both ends', () => {
+    const docsId = manager.openDocsTab()
+    const sheetsId = manager.openSheetsTab()
+    const activeId = (): string | undefined => manager.list().find((t) => t.active)?.id
+
+    expect(activeId()).toBe(sheetsId)
+    manager.cycleTab(1)
+    expect(activeId()).toBe('home')
+    manager.cycleTab(1)
+    expect(activeId()).toBe(docsId)
+    manager.cycleTab(-1)
+    expect(activeId()).toBe('home')
+    manager.cycleTab(-1)
+    expect(activeId()).toBe(sheetsId)
+  })
+
+  it('does nothing when Home is the only tab', () => {
+    onChanged.mockClear()
+    manager.cycleTab(1)
+    manager.cycleTab(-1)
+    expect(onChanged).not.toHaveBeenCalled()
+    expect(manager.list()).toHaveLength(1)
+  })
+})
+
 describe('activation', () => {
   it('shows only the activated tab view and lays it out below the tab strip', () => {
     const docsId = manager.openDocsTab()

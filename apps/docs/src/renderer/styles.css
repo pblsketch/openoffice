@@ -11060,6 +11060,11 @@ body.docs-crop-active
   padding-top: 44px;
 }
 
+/* F5 presentation: Read Mode plus the whole screen; the reading view keeps it clean */
+.presentation-mode .status-bar {
+  display: none !important;
+}
+
 .read-exit {
   position: fixed;
   top: 52px;

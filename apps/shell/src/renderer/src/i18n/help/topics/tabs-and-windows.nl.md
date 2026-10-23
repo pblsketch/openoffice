@@ -6,7 +6,7 @@ Alle geopende bestanden delen één venster; de tabbladenbalk bovenaan wisselt t
 
 ## De basis
 
-- **Wisselen**: klik op een tabblad of scroll met het muiswiel over de balk om ze af te wisselen.
+- **Wisselen**: klik op een tabblad, druk op **Ctrl+Tab** (volgende) / **Ctrl+Shift+Tab** (vorige), of scroll met het muiswiel over de balk.
 - **Sluiten**: de × op het tabblad, of ⌘W/ctrl+W. Bij onopgeslagen wijzigingen wordt eerst gevraagd.
 - **Nieuw**: de + aan het rechtereinde van de balk.
 - **Activering is direct**: een tabblad indrukken wisselt meteen om, zonder te wachten tot de klik klaar is.

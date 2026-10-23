@@ -32,6 +32,7 @@ HTML 에디터다. HTML 원문이 기준이고, 옆에서 실시간 미리 보�
 
 ## 이 모듈의 방식
 
+- **발표는 기존 Present 화면을 키로 연다.** F5는 전체화면 발표(`startPresent('fullscreen')`), Ctrl/Shift+F5는 탭 안 발표(`startPresent('tab')`), Esc·F5는 끝낸다. 키 판정은 `@genoffice/ui`의 `presentationKeyOf` 하나이고, 전체화면은 기존 `setPresentFullScreen`(macOS simpleFullScreen 포함)과 `enter-html-full-screen`이 맡는다.
 - 메인 코드는 shell 번들에 들어간다(`../../../html/src/main/html-main`을 상대 경로로 import한다). `src/main`을 고친 뒤에는 shell을 다시 빌드한다. 단독 실행 진입은 `will-quit`에서 `shutdownSubscriptionChildren`을 부른다.
 - 쪽 전체 생성은 도구 호출이 아니라 `streamText`로 한다. 답의 본문이 곧 HTML이고, 글자가 오는 대로 미리 보기가 채워진다. 쪽 크기의 내용을 도구 인자로 받으면 JSON이 끝날 때까지 서버가 붙잡고 있어 중간 게이트웨이의 유휴 제한에 걸리고 빈 스트림으로 도착한다. `</html>` 전에 끊긴 답은 잘린 것으로 표시한다.
 - 생성 전에 사용자와 합의한 개요(`Brief`)는 문서 머리의 meta 태그에 JSON으로 고정된다. 이후 편집과 다시 열기가 그것을 기준으로 삼는다. 빈 문서에서 고른 의도(디자인된 쪽 / 내용 쓰기)는 첫 생성에만 영향을 준다.

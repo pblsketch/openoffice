@@ -35,6 +35,7 @@ Excel 통합 문서(.xlsx, .csv 등) 에디터다. 화면은 Univer 격자 위�
 
 ## 이 모듈의 방식
 
+- **발표 모드는 격자만 남긴다.** Ctrl+F5는 전체화면으로 열고 A1부터 보여 주며, Shift+F5는 지금 셀을 유지한 채 연다. Esc·F5로 끝난다. 엑셀의 plain F5는 기존 Go To이므로 가져오지 않는다. `.app-shell.sheet-presenting`이 이 앱의 리본(`.excel-header`), AI 창(`.copilot`), 상태 표시줄을 숨긴다. Univer의 이름 상자·수식 입력줄·시트 탭은 격자의 일부라 그대로 둔다. 키 판정은 `@genoffice/ui`의 `presentationKeyOf` 하나다.
 - 메인 코드는 shell 번들에 들어간다(`../../../sheets/src/main/sheets-main`을 상대 경로로 import한다). `src/main`을 고친 뒤에는 shell을 다시 빌드한다.
 - 사이드카 위치는 주입받는다. 배포 앱은 `resources/native/`, 개발 실행은 `native/xlsx-engine/target/release/`의 실행 파일을 쓰고 `XLSX_SIDECAR_PATH`로 바꿀 수 있다. 사이드카가 죽으면 `workbook:sidecar-crashed`로 알리고 같은 경로를 정상 열기 경로로 다시 연다.
 - 큰 저장은 조각으로 나눠 보낸다. 편집이 `SAVE_EDITS_INLINE_MAX`(1만 건)를 넘으면 JSON 문자열 조각으로 올린 뒤 저장 요청에 전송 id만 싣는다. 살아 있는 객체 그래프를 context bridge로 넘기면 속성 하나씩 건너가 매우 느리기 때문이다. 상한 상수는 zod 스키마와 preload의 수동 검증이 함께 쓴다(preload는 zod를 쓰지 않는다).

@@ -405,6 +405,7 @@ import { tabMenuTemplate, type TabMenuActions, isProgramFile } from './tab-menu'
 import { runTabDocumentAction, type TabDocumentAction } from './tab-document-actions'
 import { duplicateDocumentFile } from './tab-duplicate'
 import { closeTabsInOrder, createRecentlyClosedTracker } from './tab-lifecycle'
+import { handleTabShortcut } from './tab-shortcuts'
 import { readSplitMemory, writeSplitMemory, type SplitMemory } from './split-memory'
 import { SPLIT_EVEN_RATIO, decideSplitDrop, paneRects, splitDropZone } from './split-layout'
 import { configureGenerateWindow } from './generate/generate-window'
@@ -4293,6 +4294,34 @@ function installUiScale(): void {
     currentUiScale = scale
     tabManager?.layout()
     refreshTitleBarOverlay()
+  })
+}
+
+/**
+ * Ctrl+Tab / Ctrl+Shift+Tab switch tabs; Ctrl+W (⌘W on macOS) closes the active
+ * one. `web-contents-created` covers the shell's own strip and every tab's
+ * WebContentsView, and the tab check keeps detached windows and the auxiliary
+ * windows out of it — those have no tab strip of their own.
+ *
+ * The editors' menus already register the close chord. Handling it here as
+ * well, with preventDefault, keeps one press from closing two tabs; Home falls
+ * through to its File > Close, which still closes the window.
+ */
+function installTabShortcuts(): void {
+  app.on('web-contents-created', (_event, contents) => {
+    contents.on('before-input-event', (event, input) => {
+      const manager = tabManager
+      if (!manager) return
+      const handled = handleTabShortcut(input, contents.id, {
+        isShellContents: (id) =>
+          !!shellWindow && !shellWindow.isDestroyed() && shellWindow.webContents.id === id,
+        hasTab: (id) => !!manager.tabIdForWebContents(id),
+        activeKind: () => manager.list().find((tab) => tab.active)?.kind,
+        cycle: (direction) => manager.cycleTab(direction),
+        closeActive: () => manager.closeActiveTab(),
+      })
+      if (handled) event.preventDefault()
+    })
   })
 }
 
@@ -8349,6 +8378,7 @@ app.whenReady().then(async () => {
     console.error('[mcp] failed to start on boot:', error)
   })
   installUiScale()
+  installTabShortcuts()
   createShellWindow()
   // deferred to ready: labels need currentLang(), which reads app.getLocale()
   installBackToHomeItems()

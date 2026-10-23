@@ -22,6 +22,12 @@ Ogni editor ha le proprie combinazioni di tasti, e solo poche funzionano ovunque
 - **`⌘O`, `⌘S` e `⌘P` sono implementati separatamente dietro ogni editor**, e non si comportano del tutto allo stesso modo. Il `⌘P` di Word impagina prima un’anteprima di stampa, così che un foglio stampato corrisponda esattamente a una pagina a schermo; quello di PDF apre la finestra di stampa PDF; Sheets e Slides hanno di nuovo le proprie.
 - **Il resto vale per singola applicazione.** Quando la scheda di Word è attiva, `⌘B` è il Grassetto di Word. Quando è attiva Slides, `⌘B` è il Grassetto di Slides, e il menu a cui appartiene non è quello a cui sei abituato. Dove una combinazione si attiva solo con qualcosa selezionato, o in un pannello preciso, la colonna Azione lo dice.
 
+## Modalità presentazione
+
+- **Avvio**: F5 in Word, PDF, Mindmap, HTML e Markdown. In un foglio di calcolo, Ctrl+F5 (da A1) o Shift+F5 (dalla cella attiva).
+- **Altre vie**: in Word, Ctrl+F5 e Shift+F5 aprono la vista di lettura senza schermo intero; in PDF partono dalla pagina corrente; in HTML presentano nella scheda.
+- **Uscita**: Esc o F5. F11 è lo schermo intero della finestra e non cambia la vista del documento.
+
 ## Convenzioni
 
 - La colonna macOS usa i simboli familiari: `⌘` Command, `⌥` Option, `⇧` Shift, `⌃` Control.

@@ -22,6 +22,12 @@ Chaque éditeur a ses propres combinaisons de touches, et seules quelques-unes f
 - **`⌘O`, `⌘S` et `⌘P` sont implémentés séparément derrière chaque éditeur**, et ils ne se comportent pas tout à fait de la même façon. Le `⌘P` de Word met d’abord en page un aperçu d’impression, afin qu’une feuille imprimée corresponde exactement à une page à l’écran ; celui de PDF ouvre la boîte de dialogue d’impression PDF ; Sheets et Slides ont de nouveau les leurs.
 - **Le reste est propre à chaque application.** Lorsque l’onglet Word est actif, `⌘B` correspond au Gras de Word. Lorsque Slides est actif, `⌘B` correspond au Gras de Slides, et le menu auquel il appartient n’est pas celui auquel vous êtes habitué. Lorsqu’une combinaison ne se déclenche qu’avec une sélection, ou dans un volet particulier, la colonne Action l’indique.
 
+## Mode Présentation
+
+- **Démarrer** : F5 dans Word, PDF, Mindmap, HTML et Markdown. Dans un tableur, Ctrl+F5 (depuis A1) ou Maj+F5 (depuis la cellule active).
+- **Autres entrées** : dans Word, Ctrl+F5 et Maj+F5 ouvrent la vue Lecture sans plein écran ; dans PDF, elles démarrent à la page active ; dans HTML, elles présentent dans l’onglet.
+- **Quitter** : Échap ou F5. F11 est le plein écran de la fenêtre et ne change pas la vue du document.
+
 ## Conventions
 
 - La colonne macOS utilise les symboles habituels : `⌘` Commande, `⌥` Option, `⇧` Maj, `⌃` Contrôle.

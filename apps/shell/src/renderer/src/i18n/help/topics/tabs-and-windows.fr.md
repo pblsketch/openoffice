@@ -6,7 +6,7 @@ Tous les fichiers ouverts partagent une seule fenêtre ; la barre d’onglets en
 
 ## Principes
 
-- **Basculer** : cliquez sur un onglet, ou faites défiler la molette au-dessus de la barre pour les parcourir.
+- **Basculer** : cliquez sur un onglet, appuyez sur **Ctrl+Tab** (suivant) / **Ctrl+Maj+Tab** (précédent), ou faites défiler la molette au-dessus de la barre.
 - **Fermer** : la × de l’onglet, ou ⌘W/ctrl+W. Les modifications non enregistrées déclenchent une demande de confirmation.
 - **Nouveau** : le + à l’extrémité droite de la barre.
 - **L’activation est immédiate** : appuyer sur un onglet bascule tout de suite, sans attendre la fin du clic.

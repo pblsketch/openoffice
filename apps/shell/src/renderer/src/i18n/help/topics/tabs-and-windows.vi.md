@@ -6,7 +6,7 @@ Mọi tập tin đang mở dùng chung một cửa sổ; dải thẻ ở trên c
 
 ## Những điều cơ bản
 
-- **Chuyển thẻ**: nhấp vào một thẻ, hoặc lăn bánh xe chuột trên dải thẻ để lần lượt qua các thẻ.
+- **Chuyển thẻ**: nhấp vào một thẻ, nhấn **Ctrl+Tab** (tiếp theo) / **Ctrl+Shift+Tab** (trước đó), hoặc lăn bánh xe chuột trên dải thẻ.
 - **Đóng**: dấu × trên thẻ, hoặc ⌘W/ctrl+W. Có thay đổi chưa lưu sẽ hỏi trước.
 - **Mới**: dấu + ở cuối bên phải của dải thẻ.
 - **Kích hoạt tức thì**: nhấn một thẻ là chuyển ngay, không phải đợi thao tác nhấp hoàn tất.

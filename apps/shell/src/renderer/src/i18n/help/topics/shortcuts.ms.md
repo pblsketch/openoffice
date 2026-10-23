@@ -22,6 +22,12 @@ Setiap editor mempunyai pengikatan kekunci sendiri, dan hanya sebahagian kecil d
 - **`⌘O`, `⌘S` dan `⌘P` dilaksanakan secara berasingan di sebalik setiap editor**, dan mereka tidak berperlakuan sama. `⌘P` milik Word menyusun pratonton cetakan dahulu supaya satu helaian bercetak sama dengan satu halaman pada skrin; milik PDF membuka dialog cetakan PDF; Sheets dan Slides mempunyai milik masing-masing pula.
 - **Selebarnya mengikut aplikasi.** Apabila tab Word aktif, `⌘B` ialah Tebal milik Word. Apabila Slides aktif, `⌘B` ialah Tebal milik Slides, dan menu tempatnya tinggal bukan menu yang anda biasa gunakan. Di mana sesuatu pengikatan hanya dicetuskan apabila ada sesuatu yang dipilih, atau di panel tertentu, lajur Tindakan akan menyatakannya.
 
+## Mod persembahan
+
+- **Mula**: F5 dalam Word, PDF, Mindmap, HTML dan Markdown. Dalam hamparan, Ctrl+F5 (dari A1) atau Shift+F5 (dari sel aktif).
+- **Pintu lain**: dalam Word, Ctrl+F5 dan Shift+F5 membuka paparan bacaan tanpa skrin penuh; dalam PDF bermula dari halaman aktif; dalam HTML membentang di dalam tab.
+- **Tamat**: Esc atau F5. F11 ialah skrin penuh tetingkap dan tidak mengubah paparan dokumen.
+
 ## Konvensyen
 
 - Lajur macOS menggunakan simbol yang biasa: `⌘` Command, `⌥` Option, `⇧` Shift, `⌃` Control.

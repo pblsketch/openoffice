@@ -22,6 +22,12 @@ Jeder Editor hat eigene Tastenbelegungen, und nur wenige davon funktionieren üb
 - **`⌘O`, `⌘S` und `⌘P` sind hinter jedem Editor getrennt implementiert**, und sie verhalten sich nicht ganz gleich. Words `⌘P` erzeugt zuerst eine Druckvorschau, damit ein bedrucktes Blatt genau einer Bildschirmseite entspricht; das von PDF öffnet den PDF-Druckdialog; Sheets und Slides haben wiederum eigene.
 - **Der Rest gilt pro Anwendung.** Ist der Word-Tab aktiv, ist `⌘B` Words Fett. Ist Slides aktiv, ist `⌘B` Slides’ Fett, und das Menü, zu dem es gehört, ist nicht das gewohnte. Wo eine Belegung nur mit einer Auswahl oder in einem bestimmten Bereich auslöst, steht das in der Spalte Aktion.
 
+## Präsentationsmodus
+
+- **Start**: F5 in Word, PDF, Mindmap, HTML und Markdown. In einer Tabelle Ctrl+F5 (ab A1) oder Shift+F5 (ab der aktuellen Zelle).
+- **Weitere Einstiege**: In Word öffnen Ctrl+F5 und Shift+F5 die Leseansicht ohne Vollbild, in PDF starten sie ab der aktuellen Seite, in HTML präsentieren sie im Tab.
+- **Beenden**: Esc oder F5. F11 ist der Vollbildmodus des Fensters und ändert die Dokumentansicht nicht.
+
 ## Konventionen
 
 - Die macOS-Spalte verwendet die gewohnten Symbole: `⌘` Command, `⌥` Option, `⇧` Shift, `⌃` Control.

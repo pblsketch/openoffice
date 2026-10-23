@@ -664,3 +664,36 @@ describe('the menu', () => {
     expect((fake.outlines[0] as { text: string }).text).toContain('Center')
   })
 })
+
+describe('presentation mode', () => {
+  it('F5 hides the editor chrome and Esc brings it back', async () => {
+    await openWith(plainSheet())
+    const app = (): Element => container.querySelector('.app')!
+    expect(app().classList.contains('mm-presenting')).toBe(false)
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F5', bubbles: true }))
+    })
+    await settle()
+    expect(app().classList.contains('mm-presenting')).toBe(true)
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+    await settle()
+    expect(app().classList.contains('mm-presenting')).toBe(false)
+  })
+
+  it('F5 while presenting returns to the editor', async () => {
+    await openWith(plainSheet())
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F5', bubbles: true }))
+    })
+    await settle()
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F5', bubbles: true }))
+    })
+    await settle()
+    expect(container.querySelector('.app')!.classList.contains('mm-presenting')).toBe(false)
+  })
+})

@@ -352,6 +352,14 @@ textarea:disabled {
   background: var(--surface);
 }
 
+/* F5 presentation: the grid alone; the Univer header/footer stay because they
+   are the workbook's own chrome, not this shell's. */
+.app-shell.sheet-presenting .excel-header,
+.app-shell.sheet-presenting .copilot,
+.app-shell.sheet-presenting .status-bar {
+  display: none !important;
+}
+
 /* Go To arrow injected beside Univer's formula-bar Name Box (the
    defined-name selector) — see the ensure() effect in ExcelShell. */
 .goto-in-bar {

@@ -47,6 +47,7 @@
 
 ## 이 모듈의 방식
 
+- **발표 모드의 키는 한 곳에서 판정한다.** `src/presentation-keys.ts`의 `presentationKeyOf`가 F5(처음부터), Ctrl/Cmd+F5(지금 위치), Esc/F5(끝)를 가른다. F11은 Electron의 전체화면 역할이므로 여기서 다루지 않는다. 에디터는 이 결과를 자기 화면(워드는 읽기 모드, PDF는 뷰어, 마인드맵은 지도)에 맞게 쓴다.
 - 규칙은 순수 함수, 컴포넌트는 배치다. 연결 상태 여섯 가지에 카드가 무엇을 보이는지는 `aiSubscriptionCardView`, 연결 안내의 구성은 `aiConnectPromptView`, 어떤 오류가 "막힌 실행" 알림을 받는지는 `AI_BLOCKED_RUN_KINDS`·`isAiBlockedRunKind`가 정한다. 동작을 바꿀 때는 이 함수와 그 테스트를 먼저 바꾼다.
 - 패널 배선은 `useAiSendGate` 하나로 한다. 보내기 경로는 `admit(request)`를 묻고(거짓이면 보내지 않고 작성기 글을 남긴다), 대기열은 `admitQueued`를, 첫 연결 안내의 확인 버튼은 `acknowledgeNotice`를, 막힌 실행의 버튼은 `continueWith(provider, rerun)`을 부른다. 붙잡힌 요청은 `start`로 되돌아오고 패널의 보내기 경로를 다시 지나며 `admit`을 한 번 더 묻는다.
 - 붙잡힌 요청의 운명은 `aiHeldRequestStep`이 정한다. 상태 확인 때문에 붙잡힌 요청은 답이 "연결 안 됨"이면 버려진다. 알림 때문에 붙잡힌 요청은 확인 버튼만이 시작시키고, 다른 이유로 알림이 사라지면(제공자 변경, 연결 끊김) 버려진다.

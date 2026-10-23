@@ -22,6 +22,12 @@ Každý editor má vlastní přiřazení kláves a funguje všude jen několik z
 - **`⌘O`, `⌘S` a `⌘P` jsou v každém editoru implementované samostatně** a nechovají se úplně stejně. `⌘P` ve Wordu nejdřív sestaví náhled tisku, aby jeden vytištěný list odpovídal jedné stránce na obrazovce; v PDF otevře tiskové dialogové okno PDF; Sheets a Slides mají zase vlastní.
 - **Zbytek je per aplikace.** Když je aktivní panel Wordu, `⌘B` je tučné písmo Wordu. Když je aktivní Slides, `⌘B` je tučné písmo Slides a menu, do kterého patří, není to, na které jste zvyklí. Tam, kde přiřazení funguje jen s výběrem nebo v konkrétním podokně, uvádí to sloupec Akce.
 
+## Režim prezentace
+
+- **Spuštění**: F5 ve Word, PDF, Mindmap, HTML a Markdown. V tabulce Ctrl+F5 (od A1) nebo Shift+F5 (od aktivní buňky).
+- **Další vstupy**: ve Word otevřou Ctrl+F5 a Shift+F5 režim čtení bez celé obrazovky; v PDF začnou na aktuální stránce; v HTML prezentují na kartě.
+- **Ukončení**: Esc nebo F5. F11 je celá obrazovka okna a nemění zobrazení dokumentu.
+
 ## Konvence
 
 - Sloupec macOS používá známé symboly: `⌘` Command, `⌥` Option, `⇧` Shift, `⌃` Control.

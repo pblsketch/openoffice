@@ -22,6 +22,12 @@ Każdy edytor ma własne przypisania klawiszy i tylko kilka z nich działa wszę
 - **`⌘O`, `⌘S` i `⌘P` są zaimplementowane osobno w każdym edytorze** i nie gedragen się dokładnie tak samo. `⌘P` w Wordzie najpierw tworzy podgląd wydruku, tak aby jedna wydrukowana strona odpowiadała jednej stronie na ekranie; w PDF otwiera okno drukowania PDF; Sheets i Slides znów mają własne.
 - **Reszta jest zależna od aplikacji.** Gdy aktywna jest karta Word, `⌘B` to pogrubienie Worda. Gdy aktywny jest Slides, `⌘B` to pogrubienie Slides, a menu, do którego należy, nie jest tym, do którego jesteś przyzwyczajony. Tam, gdzie przypisanie działa tylko z zaznaczeniem lub w określonym panelu, kolumna Czynność to zaznacza.
 
+## Tryb prezentacji
+
+- **Start**: F5 w Word, PDF, Mindmap, HTML i Markdown. W arkuszu Ctrl+F5 (od A1) lub Shift+F5 (od aktywnej komórki).
+- **Inne wejścia**: w Word Ctrl+F5 i Shift+F5 otwierają widok czytania bez pełnego ekranu; w PDF zaczynają od bieżącej strony; w HTML prezentują w karcie.
+- **Zakończenie**: Esc lub F5. F11 to pełny ekran okna i nie zmienia widoku dokumentu.
+
 ## Konwencje
 
 - Kolumna macOS używa znanych symboli: `⌘` Command, `⌥` Option, `⇧` Shift, `⌃` Control.

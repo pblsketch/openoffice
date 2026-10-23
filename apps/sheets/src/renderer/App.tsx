@@ -87,6 +87,7 @@ import {
   type SkillChipRef,
   type SkillUse,
   docMentionActions,
+  presentationKeyOf,
   type AiComposerDocs,
 } from '@genoffice/ui'
 
@@ -766,6 +767,8 @@ export function App({
   const [emptyCsvNotice, setEmptyCsvNotice] = useState(false)
   /// Zoom of the active sheet in percent, echoed by the status-bar slider.
   const [zoomPercent, setZoomPercent] = useState(100)
+  /** F5: the grid alone in fullscreen (presentation) */
+  const [presenting, setPresenting] = useState(false)
   const [statusBarFuncs, setStatusBarFuncs] = useState<readonly StatusBarFunc[]>(() =>
     readStatusBarFuncs(localStorage),
   )
@@ -797,6 +800,48 @@ export function App({
   /// The user clicked × on the scope chip: this run targets the sheet at large.
   /// Re-arms on the next selection change, so a fresh drag means a fresh scope.
   const [aiScopeDismissed, setAiScopeDismissed] = useState(false)
+
+  // F5: the grid alone in fullscreen; F5 starts at A1, Ctrl/Shift+F5 keeps the cell.
+  useEffect(() => {
+    const enter = (fromCurrent: boolean): void => {
+      const sheet = univerRef.current?.univerAPI.getActiveWorkbook()?.getActiveSheet()
+      if (!sheet) return
+      if (!fromCurrent) sheet.scrollToCell(0, 0)
+      setPresenting(true)
+      const root = document.documentElement
+      if (!document.fullscreenElement && root.requestFullscreen)
+        void root.requestFullscreen().catch(() => {})
+    }
+    const exit = (): void => {
+      setPresenting(false)
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+    }
+    const onKey = (event: KeyboardEvent): void => {
+      const action = presentationKeyOf(event, presenting)
+      if (!action) return
+      // Excel's own plain F5 is Go To; the sheet keeps it. Ctrl+F5 starts at A1,
+      // Shift+F5 keeps the reader's cell.
+      if (action === 'present') return
+      event.preventDefault()
+      if (action === 'exit') {
+        // the grid's own Esc (leave edit mode, clear a pick) waits until the show is over
+        event.stopPropagation()
+        exit()
+      } else enter(event.shiftKey)
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [presenting])
+
+  // OS-level Esc leaves fullscreen without a keydown: end the show with it.
+  useEffect(() => {
+    if (!presenting) return
+    const onFullScreenChange = (): void => {
+      if (!document.fullscreenElement) setPresenting(false)
+    }
+    document.addEventListener('fullscreenchange', onFullScreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullScreenChange)
+  }, [presenting])
   /// Selection scope of the run in flight. undefined = no run owns a scope
   /// (report the live selection); null = the user dropped it. The ref is what
   /// the skill's getActiveSheetInfo reads mid-run; the state is what the chip
@@ -5369,6 +5414,7 @@ export function App({
         canUndo={univerHist.canUndo || (!lazyWorkbookRef.current && adapterRef.current.canUndo)}
         canRedo={univerHist.canRedo}
         onCommand={handleRibbonCommand}
+        presenting={presenting}
         onIsCellEditing={isCellEditing}
         zoomPercent={zoomPercent}
         statusBarFuncs={statusBarFuncs}

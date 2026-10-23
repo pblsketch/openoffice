@@ -6,7 +6,7 @@ Todos los archivos abiertos comparten una sola ventana; la barra de pestañas de
 
 ## Fundamentos
 
-- **Cambiar**: haga clic en una pestaña o gire la rueda sobre la barra para recorrerlas.
+- **Cambiar**: haga clic en una pestaña, pulse **Ctrl+Tab** (siguiente) / **Ctrl+Mayús+Tab** (anterior), o gire la rueda sobre la barra.
 - **Cerrar**: la × de la pestaña, o ⌘W/ctrl+W. Si hay cambios sin guardar, pregunta primero.
 - **Nuevo**: el + al extremo derecho de la barra.
 - **La activación es inmediata**: al pulsar una pestaña ya se cambia, sin esperar a que termine el clic.

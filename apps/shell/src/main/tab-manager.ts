@@ -739,6 +739,19 @@ export class TabManager {
     return id
   }
 
+  /**
+   * Ctrl+Tab / Ctrl+Shift+Tab: step through the strip in order and wrap at the
+   * ends. Home is a tab like any other here, so cycling from the last document
+   * lands on Home and continues into the first document.
+   */
+  cycleTab(direction: 1 | -1): void {
+    if (this.tabs.length < 2) return
+    const current = this.tabs.findIndex((t) => t.id === this.activeId)
+    if (current < 0) return
+    const next = (current + direction + this.tabs.length) % this.tabs.length
+    this.activateTab(this.tabs[next].id)
+  }
+
   activateTab(id: string): void {
     const target = this.tabs.find((t) => t.id === id)
     if (!target) return

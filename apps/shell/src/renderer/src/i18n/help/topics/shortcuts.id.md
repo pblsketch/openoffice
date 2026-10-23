@@ -22,6 +22,12 @@ Setiap editor punya pengikatan tombol sendiri, dan hanya sebagian yang berlaku d
 - **`⌘O`, `⌘S`, dan `⌘P` diimplementasikan terpisah di balik tiap editor**, dan perilakunya tidak sepenuhnya sama. `⌘P` milik Word menyusun pratinjau cetak lebih dulu sehingga satu lembar cetak sama dengan satu halaman di layar; milik PDF membuka dialog cetak PDF; Sheets dan Slides punya versinya sendiri lagi.
 - **Selebihnya bersifat per-aplikasi.** Saat tab Word aktif, `⌘B` adalah Tebal milik Word. Saat Slides aktif, `⌘B` adalah Tebal milik Slides, dan menu tempatnya tinggal bukan menu yang biasa Anda pakai. Wherever sebuah pengikatan hanya aktif dengan ada sesuatu yang terpilih, atau di panel tertentu, kolom Tindakan mengatakannya.
 
+## Mode presentasi
+
+- **Mulai**: F5 di Word, PDF, Mindmap, HTML, dan Markdown. Di spreadsheet, Ctrl+F5 (dari A1) atau Shift+F5 (dari sel aktif).
+- **Pintu lain**: di Word, Ctrl+F5 dan Shift+F5 membuka tampilan baca tanpa layar penuh; di PDF mulai dari halaman aktif; di HTML presentasi di dalam tab.
+- **Selesai**: Esc atau F5. F11 adalah layar penuh jendela dan tidak mengubah tampilan dokumen.
+
 ## Konvensi
 
 - Kolom macOS memakai simbol yang familier: `⌘` Command, `⌥` Option, `⇧` Shift, `⌃` Control.

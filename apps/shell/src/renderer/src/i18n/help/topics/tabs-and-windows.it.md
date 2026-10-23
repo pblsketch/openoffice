@@ -6,7 +6,7 @@ Tutti i file aperti condividono una sola finestra; la barra delle schede in alto
 
 ## Nozioni di base
 
-- **Cambia scheda**: fai clic su una scheda, oppure scorri la rotellina del mouse sulla barra per scorrere in ciclo.
+- **Cambia scheda**: fai clic su una scheda, premi **Ctrl+Tab** (successiva) / **Ctrl+Shift+Tab** (precedente), oppure scorri la rotellina del mouse sulla barra.
 - **Chiudi**: la × sulla scheda, oppure ⌘W/ctrl+W. Se ci sono modifiche non salvate ti viene prima chiesto.
 - **Nuova**: il + all'estremità destra della barra.
 - **L'attivazione è immediata**: premendo una scheda il cambio avviene subito, senza attendere che il clic finisca.

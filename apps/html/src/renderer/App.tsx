@@ -18,6 +18,7 @@ import {
   aiPanelInitiallyOpen,
   effectiveAiPanelOpen,
   onAiRailClick,
+  presentationKeyOf,
   rememberAiPanelOpen,
   skillTemplateText,
   templateDocumentOf,
@@ -1319,15 +1320,6 @@ export default function App() {
     },
     [flushPending, selectSid],
   )
-  useEffect(() => {
-    if (canvasMode !== 'present') return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setCanvasMode('edit')
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [canvasMode, setCanvasMode])
-
   const startPresent = useCallback(
     (kind: PresentKind) => {
       if (kind === 'newTab') {
@@ -1345,6 +1337,19 @@ export default function App() {
     },
     [path, setCanvasMode, flushPending, pushPreview],
   )
+
+  // F5: fullscreen presentation; Ctrl/Shift+F5: present inside this view; Esc ends either.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      const action = presentationKeyOf(e, canvasMode === 'present')
+      if (!action) return
+      e.preventDefault()
+      if (action === 'exit') setCanvasMode('edit')
+      else startPresent(action === 'present' ? 'fullscreen' : 'tab')
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [canvasMode, setCanvasMode, startPresent])
 
   // a link navigation inside the presented frame keeps focus in a document without our
   // inspector; hand it back to the app so Esc still ends the presentation

@@ -190,6 +190,18 @@ button {
   height: 100%;
 }
 
+/* ---- presentation (F5): the pages alone; Esc or F5 returns ---- */
+
+.app.pdf-presenting > :not(.app-main),
+.app.pdf-presenting .app-content > :not(.pdf-body),
+.app.pdf-presenting .ai-dock,
+.app.pdf-presenting .pdf-thumbs,
+.app.pdf-presenting .pdf-side-resizer,
+.app.pdf-presenting .status-bar,
+.app.pdf-presenting .pdf-search-bar {
+  display: none !important;
+}
+
 .pdf-placeholder {
   flex: 1;
   display: flex;

@@ -22,6 +22,12 @@ Elke editor heeft een eigen toetsenindeling en slechts een paar werken overal. D
 - **`⌘O`, `⌘S` en `⌘P` zijn per editor apart geïmplementeerd** en gedragen zich niet helemaal gelijk. De `⌘P` van Word maakt eerst een afdrukvoorbeeld zodat één afgedrukt vel één schermpagina is; die van PDF opent het afdrukdialoogvenster van PDF; Sheets en Slides hebben weer hun eigen.
 - **De rest is per toepassing.** Bij een actief Word-tabblad is `⌘B` de vette tekst van Word. Bij een actief Slides is `⌘B` de vette tekst van Slides, en hoort het bij een menu dat je niet gewend bent. Waar een binding alleen werkt met een selectie of in een bepaald paneel, staat dat in de kolom Actie.
 
+## Presentatiemodus
+
+- **Starten**: F5 in Word, PDF, Mindmap, HTML en Markdown. In een werkblad Ctrl+F5 (vanaf A1) of Shift+F5 (vanaf de actieve cel).
+- **Andere ingangen**: in Word openen Ctrl+F5 en Shift+F5 de leesweergave zonder volledig scherm; in PDF starten ze vanaf de huidige pagina; in HTML presenteren ze in het tabblad.
+- **Stoppen**: Esc of F5. F11 is volledig scherm van het venster en verandert de documentweergave niet.
+
 ## Conventies
 
 - De macOS-kolom gebruikt de vertrouwde symbolen: `⌘` Command, `⌥` Option, `⇧` Shift, `⌃` Control.

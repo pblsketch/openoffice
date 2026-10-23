@@ -239,6 +239,8 @@ function ToolSymbol({ symbol }: { readonly symbol: string }): React.JSX.Element 
 
 interface ExcelShellProps {
   readonly openingWorkbook: boolean
+  /** F5 presentation: the grid alone, custom chrome hidden */
+  readonly presenting: boolean
   readonly prompt: string
   readonly preview: ChangePlan | null
   readonly selectionFormat: SelectionFormat | null
@@ -474,6 +476,7 @@ const PIVOT_MODEL_ERRORS: Record<PivotModelError, StringKey> = {
 
 export function ExcelShell({
   prompt,
+  presenting,
   preview,
   selectionFormat,
   formatPainterActive,
@@ -871,7 +874,7 @@ export function ExcelShell({
 
   return (
     <main
-      className={`app-shell ${aiDock.open ? '' : 'copilot-collapsed'}`}
+      className={`app-shell ${aiDock.open ? '' : 'copilot-collapsed'}${presenting ? ' sheet-presenting' : ''}`}
       inert={openingWorkbook}
       aria-busy={openingWorkbook}
     >

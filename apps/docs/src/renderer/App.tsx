@@ -22,6 +22,7 @@ import {
   aiPanelInitiallyOpen,
   rememberAiPanelOpen,
   createZoomWheelClassifier,
+  presentationKeyOf,
   useAutoSavePref,
   useAiSidebarEnabled,
   useSplitPaneFocusPing,
@@ -956,6 +957,10 @@ export function App() {
   const closeNav = useCallback(() => setShowNav(false), [])
   const [viewMode, setViewMode] = useState<ViewMode>('print')
   const [readMode, setReadMode] = useState(false)
+  /** F5: Read Mode in fullscreen, with the status bar hidden (presentation) */
+  const [presenting, setPresenting] = useState(false)
+  /** cancels a pending page-fit when the show ends before its timer runs */
+  const presentSeqRef = useRef(0)
   const [showGrid, setShowGrid] = useState(false)
   const [splitView, setSplitView] = useState(false)
   const [showPagePreview, setShowPagePreview] = useState(false)
@@ -3106,6 +3111,78 @@ export function App() {
       setZoom(prev.zoom)
     }
   }, [readMode])
+
+  // F5: Read Mode in fullscreen; Ctrl+F5: the same reading view in this window.
+  // The fit runs after the chrome collapses, or it would measure the ribbon's width.
+  useEffect(() => {
+    const fitPage = (): void => {
+      const seq = ++presentSeqRef.current
+      window.setTimeout(() => {
+        if (presentSeqRef.current === seq) zoomFit('page')
+      }, 80)
+    }
+    const leave = (): void => {
+      presentSeqRef.current++
+      setPresenting(false)
+      setReadMode(false)
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+    }
+    const onKey = (event: KeyboardEvent): void => {
+      if (!editor) return
+      const action = presentationKeyOf(event, presenting)
+      if (!action) return
+      event.preventDefault()
+      if (action === 'exit') {
+        leave()
+        return
+      }
+      if (action === 'present-windowed') {
+        if (readMode) {
+          presentSeqRef.current++
+          setReadMode(false)
+        } else {
+          setReadMode(true)
+          fitPage()
+        }
+        return
+      }
+      setReadMode(true)
+      setPresenting(true)
+      const root = document.documentElement
+      if (!document.fullscreenElement && root.requestFullscreen)
+        void root.requestFullscreen().then(fitPage, fitPage)
+      else fitPage()
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [editor, presenting, readMode, zoomFit])
+
+  // Leaving Read Mode by its own button or Esc also ends the fullscreen show.
+  useEffect(() => {
+    if (readMode || !presenting) return
+    presentSeqRef.current++
+    setPresenting(false)
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+  }, [readMode, presenting])
+
+  // OS-level Esc leaves fullscreen without a keydown: end the show with it.
+  useEffect(() => {
+    if (!presenting) return
+    const onFullScreenChange = (): void => {
+      if (document.fullscreenElement) {
+        const seq = ++presentSeqRef.current
+        window.setTimeout(() => {
+          if (presentSeqRef.current === seq) zoomFit('page')
+        }, 80)
+      } else {
+        presentSeqRef.current++
+        setPresenting(false)
+        setReadMode(false)
+      }
+    }
+    document.addEventListener('fullscreenchange', onFullScreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullScreenChange)
+  }, [presenting, zoomFit])
 
   // note paragraph metrics per pStyle + direct spacing (notes without either use Normal/docDefaults)
   const noteStyleOf = useMemo(() => {
@@ -7276,7 +7353,7 @@ export function App() {
 
   return (
     <div
-      className={`app ${readMode ? 'read-mode' : ''}${revisionDisplay !== 'all' ? ` rev-display-${revisionDisplay}` : ''}${revisionDisplay === 'all' && viewMode === 'print' ? ' rev-balloon' : ''}`}
+      className={`app ${readMode ? 'read-mode' : ''}${presenting ? ' presentation-mode' : ''}${revisionDisplay !== 'all' ? ` rev-display-${revisionDisplay}` : ''}${revisionDisplay === 'all' && viewMode === 'print' ? ' rev-balloon' : ''}`}
     >
       <ToastHost />
       <FormatChangeHost />

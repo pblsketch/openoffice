@@ -6,7 +6,7 @@ Všechny otevřené soubory sdílejí jedno okno; pruh karet nahoře se mezi nim
 
 ## Základy
 
-- **Přepnout**: klikněte na kartu nebo otáčejte kolečkem nad páskem a projděte karty.
+- **Přepínání**: klikněte na kartu, stiskněte **Ctrl+Tab** (další) / **Ctrl+Shift+Tab** (předchozí), nebo otáčejte kolečkem myši nad pruhem.
 - **Zavřít**: × na kartě nebo ⌘W/ctrl+W. U neuložených změn se nejdřív zeptá.
 - **Nová**: + na pravém konci pruhu.
 - **Aktivace je okamžitá**: stisknutí karty přepne hned, bez čekání na dokončení kliknutí.

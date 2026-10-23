@@ -6,7 +6,7 @@ Semua fail yang dibuka berkongsi satu tingkap. Baris tab di atas bertukar antara
 
 ## Asas
 
-- **Bertukar**: klik satu tab, atau skrol roda tetikus pada baris tab untuk berpusing.
+- **Bertukar**: klik tab, tekan **Ctrl+Tab** (seterusnya) / **Ctrl+Shift+Tab** (sebelumnya), atau skrol roda tetikus pada baris tab.
 - **Tutup**: tanda × pada tab, atau ⌘W/ctrl+W. Jika ada perubahan yang belum disimpan, anda akan ditanya dahulu.
 - **Baharu**: tanda + pada hujung kanan baris tab.
 - **Pengaktifan serta-merta**: menekan tab bertukar dengan segera, tanpa menunggu klik selesai.
