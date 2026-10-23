@@ -592,6 +592,8 @@ configureHwpRuntime({
   rendererUrl: process.env.HWP_RENDERER_URL,
   rendererFile: join(HWP_OUT, 'renderer', 'index.html'),
   openGeneratedPath: (path) => openGeneratedDocument(path),
+  openFileDialog: () => void openFileViaDialog(),
+  goHome: () => tabManager?.openHomeTab(),
 })
 // privileged-scheme registration is only legal before app ready
 registerPrivilegedSchemes()

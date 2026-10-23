@@ -50,6 +50,10 @@ interface RuntimePaths {
   rendererFile?: string
   /** open a file this editor made (an exported PDF) in the app; false when it cannot */
   openGeneratedPath?: (path: string) => boolean
+  /** ask the shell for a file to open; the editor swallows Ctrl+O before the menu sees it */
+  openFileDialog?: () => void
+  /** go back to the home tab; the editor takes Ctrl+Shift+H for its document history */
+  goHome?: () => void
 }
 
 let runtime: RuntimePaths = { preloadPath: '' }
@@ -562,14 +566,28 @@ function registerHwpIpc(): void {
 }
 
 /**
- * The editor runs in an iframe that swallows Ctrl+S and Ctrl+P before the page or the
- * application menu can see them, so the shortcuts are taken here, ahead of both.
+ * The editor runs in an iframe that swallows Ctrl+O, Ctrl+Shift+H, Ctrl+S and Ctrl+P
+ * before the page or the application menu can see them, so the shortcuts are taken
+ * here, ahead of both. Those the shell owns are skipped when the shell passed no
+ * action for them, which leaves the menu accelerator to do its work.
  */
-function installSaveShortcut(wc: WebContents): void {
+function installFileShortcuts(wc: WebContents): void {
   wc.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown' || input.isAutoRepeat || input.alt) return
     const mod = process.platform === 'darwin' ? input.meta : input.control
     if (!mod) return
+    if (input.code === 'KeyO' && !input.shift) {
+      if (!runtime.openFileDialog) return
+      event.preventDefault()
+      runtime.openFileDialog()
+      return
+    }
+    if (input.code === 'KeyH' && input.shift) {
+      if (!runtime.goHome) return
+      event.preventDefault()
+      runtime.goHome()
+      return
+    }
     if (input.code === 'KeyP' && !input.shift) {
       event.preventDefault()
       requestHwpPrint(wc, 'print')
@@ -599,7 +617,7 @@ function grantAndTrack(
       savePathByWc.set(wcId, openPath)
     }
   }
-  installSaveShortcut(wc)
+  installFileShortcuts(wc)
   // the embedded editor vetoes unload while it holds unsaved edits; closing is decided by
   // requestHwpClose, which has already asked the user by the time the page unloads
   wc.on('will-prevent-unload', (event) => event.preventDefault())
