@@ -25,6 +25,8 @@ export default tseslint.config(
       'packages/html2docx/src/browser/**',
       // rhwp-studio build output (apps/hwp/scripts/build-studio.mjs), git-ignored
       'apps/hwp/public/**',
+      // the drawing library's fonts (apps/excalidraw/scripts/excalidraw-fonts.mjs), git-ignored
+      'apps/excalidraw/public/**',
     ],
   },
   js.configs.recommended,

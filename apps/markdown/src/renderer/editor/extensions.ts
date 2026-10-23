@@ -22,6 +22,8 @@ import {
   withTableRendering,
 } from './markdownEscape'
 import { SlashCommand } from './slashCommand'
+import { InternalLinks } from './internalLinks'
+import type { InternalLinksOptions } from './internalLinks'
 import {
   CodeSpan,
   renderFencedCode,
@@ -41,6 +43,8 @@ import { t } from '../i18n/locale'
 export interface BuildExtensionsOptions {
   slashController: SlashController
   slashItems: () => SlashItem[]
+  /** link following, embedded pictures and `[[` completion; absent = links are inert */
+  internalLinks?: InternalLinksOptions
 }
 
 export function buildExtensions(options: BuildExtensionsOptions): AnyExtension[] {
@@ -124,6 +128,8 @@ export function buildExtensions(options: BuildExtensionsOptions): AnyExtension[]
     LocalImage,
     // links open externally via main-process guard
     ImageAwareLink.configure({ openOnClick: false }),
+    // Ctrl+click follows links and wiki links; wiki links stay text, only decorated
+    InternalLinks.configure(options.internalLinks ?? { host: null, suggest: null }),
     BlockDragHandle,
     BlockKeymap,
     AiHighlight,

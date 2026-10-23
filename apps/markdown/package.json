@@ -26,6 +26,7 @@
     "@genoffice/ai-search": "*",
     "@genoffice/docx-engine": "*",
     "@genoffice/electron-utils": "*",
+    "@genoffice/excalidraw-engine": "*",
     "@genoffice/odt-engine": "*",
     "@genoffice/i18n": "*",
     "@genoffice/project-store": "*",

@@ -30,6 +30,17 @@ Tres ejemplos rápidos:
 - **Tabla**: haga clic en **Insertar tabla** ▸ arrastre el número de filas y columnas ▸ escriba en las celdas; la vista previa lo renderiza de inmediato.
 - **Lista de tareas**: seleccione unas líneas ▸ haga clic en **Lista de tareas** ▸ cada línea pasa a ser `- [ ]` y se representa como casillas de verificación en la vista previa.
 
+## Enlaces entre notas
+
+Los enlaces de una nota se siguen con **Ctrl+clic** (**⌘+clic** en Mac). Un clic normal sigue sirviendo para editar el texto.
+
+- **Encabezados**: `[texto](#encabezado)` y `[[#Encabezado]]` saltan a ese encabezado en la misma nota.
+- **Otros archivos**: `[texto](other.md)` o `[texto](../folder/report.pdf)` abre el archivo en su propia pestaña, partiendo de la carpeta de la nota. Un enlace a un encabezado de otra nota Markdown abre esa nota en el encabezado.
+- **Enlaces wiki**: `[[Nota]]`, `[[Nota#Encabezado]]` y `[[Nota|texto visible]]` se buscan en cualquier parte de la bóveda de la nota: la primera carpeta por encima de la nota que contiene `.obsidian`, o si no la propia carpeta de la nota. Si dos archivos se llaman igual, gana el más cercano a la nota.
+- **Autocompletado**: escriba `[[` y elija una nota de la bóveda en la lista; se escribe como `[[Nombre]]`.
+- **Imágenes**: `![[imagen.png]]` muestra la imagen bajo su texto y `![[imagen.png|300]]` fija el ancho. Solo se muestran imágenes de la bóveda de hasta 20 MB.
+- **Lo que no cambia**: los enlaces wiki siguen siendo texto plano en el archivo, así que guardar nunca los reescribe. Los enlaces web se abren en el navegador. Las rutas de red (`\\server\share`), los enlaces en la vista de código y la IA no abren nada.
+
 ## Exportar
 
 Menú Archivo, todo local y todo pregunta dónde poner el resultado:

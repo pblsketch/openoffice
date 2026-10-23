@@ -30,6 +30,17 @@ Trzy szybkie przykłady:
 - **Tabela**: kliknij **Wstaw tabelę** ▸ przeciągnij, aby wybrać liczbę wierszy i kolumn ▸ wpisz zawartość komórek; podgląd renderuje ją natychmiast.
 - **Lista zadań**: zaznacz kilka wierszy ▸ kliknij **Lista zadań** ▸ każdy wiersz staje się `- [ ]`, w podglądzie pokazywany jako pola wyboru.
 
+## Linki między notatkami
+
+Linki w notatce otwiera się przez **Ctrl+kliknięcie** (**⌘+kliknięcie** na Macu). Zwykłe kliknięcie nadal służy do edycji tekstu.
+
+- **Nagłówki**: `[tekst](#naglowek)` i `[[#Nagłówek]]` przenoszą do tego nagłówka w tej samej notatce.
+- **Inne pliki**: `[tekst](other.md)` lub `[tekst](../folder/report.pdf)` otwiera plik we własnej karcie, licząc od folderu notatki. Link do nagłówka w innej notatce Markdown otwiera tę notatkę przy tym nagłówku.
+- **Linki wiki**: `[[Notatka]]`, `[[Notatka#Nagłówek]]` i `[[Notatka|widoczny tekst]]` są szukane w całym sejfie notatki — pierwszym folderze powyżej notatki, który zawiera `.obsidian`, a jeśli go nie ma, w folderze samej notatki. Gdy dwa pliki mają tę samą nazwę, wygrywa ten bliższy notatce.
+- **Podpowiedzi**: wpisz `[[` i wybierz notatkę z sejfu z listy; zostanie zapisana jako `[[Nazwa]]`.
+- **Obrazy**: `![[obraz.png]]` pokazuje obraz pod tekstem, a `![[obraz.png|300]]` ustala szerokość. Wyświetlane są tylko obrazy z sejfu do 20 MB.
+- **Co się nie zmienia**: linki wiki pozostają w pliku zwykłym tekstem, więc zapis nigdy ich nie przepisuje. Linki internetowe otwierają się w przeglądarce. Ścieżki sieciowe (`\\server\share`), linki w widoku źródła i AI niczego nie otwierają.
+
 ## Eksportowanie
 
 Menu Plik — wszystko lokalne i wszystko pyta, gdzie umieścić wynik:

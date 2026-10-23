@@ -2,7 +2,7 @@
 
 ## 한 프로그램으로 배포되는 여러 조각
 
-설치되는 것은 Electron 프로그램 하나다. 그 안에 껍데기 앱 하나와 편집기들(워드, 엑셀, 파워포인트, PDF, 마크다운, HTML, 마인드맵, 한글)이 들어 있고, 편집기들은 화면과 무관한 공용 패키지(문서 엔진, AI 연결부)를 가져다 쓴다.
+설치되는 것은 Electron 프로그램 하나다. 그 안에 껍데기 앱 하나와 편집기들(워드, 엑셀, 파워포인트, PDF, 마크다운, HTML, 마인드맵, 한글, 그림)이 들어 있고, 편집기들은 화면과 무관한 공용 패키지(문서 엔진, AI 연결부)를 가져다 쓴다.
 
 ```
 apps/shell      껍데기 앱. 창, 탭, 홈 화면, 설정, 첫 실행 안내, 자동 업데이트, 파일 색인과 지식 자료 검색,
@@ -17,6 +17,8 @@ apps/pdf        PDF 편집기
 apps/markdown   마크다운·텍스트 편집기
 apps/html       HTML 편집기
 apps/mindmap    마인드맵(.xmind) 편집기. 지도를 그리는 일은 mind-elixir, 파일은 packages/xmind-engine이 맡는다
+apps/excalidraw 그림 편집기. Obsidian의 그림 노트(.excalidraw.md, 앞머리로 알아보는 .md)와 .excalidraw를 연다.
+                그리는 일은 Excalidraw 라이브러리, 파일은 packages/excalidraw-engine이 맡는다(결정 0060)
 apps/hwp        한글(.hwp·.hwpx) 편집기. 편집 화면은 오픈소스 rhwp의 웹 편집기를 앱 안에 넣어 띄운다. AI는
                 그 편집기 안에 넣은 자체 플러그인을 거쳐 글자와 서식을 바꾸고, 문단과 표를 넣고, 표의 칸과 누름틀을 채운다
 packages/ai-provider   제공자 목록, 제공자 선택 규칙, 구독 프로그램 실행부, 키 방식 제공자 연결
@@ -30,6 +32,7 @@ packages/electron-utils 편집기 뒷단 공용 도구(메뉴, 저장소 주소,
 packages/odt-engine    ODT 열기(다리 docx로 바꾸기), 고친 부분만 원본 ODT에 되돌려 쓰기, docx → 새 ODT
 packages/pdf-structure PDF의 문서 나무(다시 흐르는 글), Markdown·EPUB 쓰기, 그림 원본 꺼내기, AI 페이지 읽기,
                        번역, 번역 PDF 써 넣기, 문서 작업 엔진, 결과 보관소. pdf2docx의 IR을 읽기만 한다
+packages/excalidraw-engine 그림 파일 엔진(Obsidian 노트에서는 글 목록과 Drawing 블록만 다시 쓴다). 화면과 Node 양쪽에서 돈다
 packages/xmind-engine  마인드맵 파일 엔진(열기, 원본 보존, 맞추기, 저장, 개요 글, 테마 표). 이 프로젝트가 만든 것이고,
                        화면과 Node 양쪽에서 돈다
 packages/docx-engine, pptx-engine, pptx-ops, pptx-render, xlsx-gateway,

@@ -30,6 +30,17 @@ Tiga contoh singkat:
 - **Tabel**: klik **Sisipkan tabel** ▸ seret untuk memilih jumlah baris/kolom ▸ ketik di dalam sel; pratinjau langsung merendernya.
 - **Daftar tugas**: pilih beberapa baris ▸ klik **Daftar tugas** ▸ setiap baris menjadi `- [ ]`, dan di pratinjau tampil sebagai kotak centang.
 
+## Tautan antarcatatan
+
+Tautan di catatan diikuti dengan **Ctrl+klik** (**⌘+klik** di Mac). Klik biasa tetap untuk menyunting teks.
+
+- **Judul**: `[teks](#judul)` dan `[[#Judul]]` melompat ke judul itu di catatan yang sama.
+- **Berkas lain**: `[teks](other.md)` atau `[teks](../folder/report.pdf)` membuka berkas di tab tersendiri, dihitung dari folder catatan. Tautan ke judul di catatan Markdown lain membuka catatan itu tepat di judulnya.
+- **Tautan wiki**: `[[Catatan]]`, `[[Catatan#Judul]]`, dan `[[Catatan|teks tampil]]` dicari di mana saja dalam brankas catatan — folder terdekat di atas catatan yang berisi `.obsidian`, atau folder catatan itu sendiri jika tidak ada. Jika dua berkas bernama sama, yang lebih dekat ke catatan yang dipakai.
+- **Pelengkapan**: ketik `[[` lalu pilih catatan dari brankas di daftar; hasilnya ditulis sebagai `[[Nama]]`.
+- **Gambar**: `![[gambar.png]]` menampilkan gambar di bawah teksnya, dan `![[gambar.png|300]]` mengatur lebarnya. Hanya gambar di dalam brankas hingga 20 MB yang ditampilkan.
+- **Yang tidak berubah**: tautan wiki tetap teks biasa di berkas, jadi menyimpan tidak pernah menulis ulang tautan itu. Tautan web dibuka di peramban. Jalur jaringan (`\\server\share`), tautan di tampilan sumber, dan AI tidak membuka apa pun.
+
 ## Ekspor
 
 Menu File, semuanya lokal dan semuanya menanyakan tempat untuk menaruh hasilnya:

@@ -20,6 +20,19 @@ describe('appForPath', () => {
     expect(appForPath('/x/A.XMIND')).toBe('mindmap')
   })
 
+  it('routes drawings to the drawing app, an Obsidian drawing note before the markdown app', () => {
+    expect(appForPath('/vault/Board.excalidraw.md')).toBe('excalidraw')
+    expect(appForPath('/vault/BOARD.EXCALIDRAW.MD')).toBe('excalidraw')
+    expect(appForPath('/x/board.excalidraw')).toBe('excalidraw')
+    // only the name: a plain note stays with the markdown app here (the router reads its front matter)
+    expect(appForPath('/vault/excalidraw.md')).toBe('markdown')
+  })
+
+  it('keeps a drawing in its app when renamed, not into a plain note', () => {
+    expect(renameStaysInApp('/vault/a.excalidraw.md', 'b.excalidraw.md')).toBe(true)
+    expect(renameStaysInApp('/vault/a.excalidraw.md', 'b.md')).toBe(false)
+  })
+
   it('routes both Hangul formats to the hwp app', () => {
     expect(appForPath('/x/a.hwp')).toBe('hwp')
     expect(appForPath('/x/a.hwpx')).toBe('hwp')

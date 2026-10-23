@@ -10,16 +10,30 @@ const PDF_RE = /\.pdf$/i
 const HTML_RE = /\.html?$/i
 const MINDMAP_RE = /\.xmind$/i
 const HWP_RE = /\.hwpx?$/i
+// Obsidian names a drawing note `<name>.excalidraw.md`; checked before the plain .md route
+const EXCALIDRAW_RE = /\.excalidraw(?:\.md)?$/i
 
 const TEXT_RE = /\.(md|markdown|txt|json)$/i
 
-export { DOCX_RE, ODT_RE, XLSX_RE, PPTX_RE, PDF_RE, HTML_RE, MINDMAP_RE, HWP_RE, TEXT_RE }
+export {
+  DOCX_RE,
+  ODT_RE,
+  XLSX_RE,
+  PPTX_RE,
+  PDF_RE,
+  HTML_RE,
+  MINDMAP_RE,
+  HWP_RE,
+  EXCALIDRAW_RE,
+  TEXT_RE,
+}
 
 export function appForPath(path: string): DocumentTabKind | undefined {
   if (DOCX_RE.test(path) || ODT_RE.test(path)) return 'docs'
   if (XLSX_RE.test(path)) return 'sheets'
   if (PPTX_RE.test(path)) return 'slides'
   if (PDF_RE.test(path)) return 'pdf'
+  if (EXCALIDRAW_RE.test(path)) return 'excalidraw'
   if (TEXT_RE.test(path)) return 'markdown'
   if (HTML_RE.test(path)) return 'html'
   if (MINDMAP_RE.test(path)) return 'mindmap'

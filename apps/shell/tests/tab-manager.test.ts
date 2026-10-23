@@ -198,6 +198,16 @@ vi.mock('../../hwp/src/main/hwp-main', () => ({
   requestHwpClose: (...args: unknown[]) => requestHwpClose(...(args as [])),
 }))
 
+const createExcalidrawView = vi.fn(() => makeFakeView())
+const excalidrawIsDirty = vi.fn(() => false)
+const requestExcalidrawClose = vi.fn(() => Promise.resolve(true))
+
+vi.mock('../../excalidraw/src/main/excalidraw-main', () => ({
+  createExcalidrawView: (...args: unknown[]) => createExcalidrawView(...(args as [])),
+  excalidrawIsDirty: (...args: unknown[]) => excalidrawIsDirty(...(args as [])),
+  requestExcalidrawClose: (...args: unknown[]) => requestExcalidrawClose(...(args as [])),
+}))
+
 import { helpTopicParam, helpViewUrl, TabManager } from '../src/main/tab-manager'
 import type { TabKind } from '../src/shared/tabs-api'
 
@@ -912,6 +922,15 @@ describe('file path bookkeeping', () => {
       open: () => {
         manager.openHwpTab('/tmp/one.hwpx')
         return lastCreatedView(createHwpView)
+      },
+    },
+    {
+      kind: 'excalidraw',
+      file: '/tmp/one.excalidraw',
+      renamed: '/tmp/two.excalidraw',
+      open: () => {
+        manager.openExcalidrawTab('/tmp/one.excalidraw')
+        return lastCreatedView(createExcalidrawView)
       },
     },
   ]

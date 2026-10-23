@@ -30,6 +30,17 @@ Trois exemples rapides :
 - **Tableau** : cliquez sur **Insérer un tableau** ▸ faites glisser le nombre de lignes et de colonnes ▸ saisissez dans les cellules ; l’aperçu le rend immédiatement.
 - **Liste de tâches** : sélectionnez quelques lignes ▸ cliquez sur **Liste de tâches** ▸ chaque ligne devient `- [ ]`, rendue comme des cases à cocher dans l’aperçu.
 
+## Liens entre notes
+
+Les liens d'une note se suivent avec **Ctrl+clic** (**⌘+clic** sur Mac). Un clic simple sert toujours à modifier le texte.
+
+- **Titres** : `[texte](#titre)` et `[[#Titre]]` mènent à ce titre dans la même note.
+- **Autres fichiers** : `[texte](other.md)` ou `[texte](../folder/report.pdf)` ouvre le fichier dans son propre onglet, à partir du dossier de la note. Un lien vers un titre d'une autre note Markdown ouvre cette note à ce titre.
+- **Liens wiki** : `[[Note]]`, `[[Note#Titre]]` et `[[Note|texte affiché]]` sont cherchés partout dans le coffre de la note — le premier dossier au-dessus de la note qui contient `.obsidian`, sinon le dossier de la note. Si deux fichiers portent le même nom, le plus proche de la note l'emporte.
+- **Complétion** : tapez `[[` puis choisissez une note du coffre dans la liste ; elle s'écrit `[[Nom]]`.
+- **Images** : `![[image.png]]` affiche l'image sous son texte et `![[image.png|300]]` fixe la largeur. Seules les images du coffre de 20 Mo au plus sont affichées.
+- **Ce qui ne change pas** : les liens wiki restent du texte simple dans le fichier, donc un enregistrement ne les réécrit jamais. Les liens web s'ouvrent dans votre navigateur. Les chemins réseau (`\\server\share`), les liens en vue source et l'IA n'ouvrent rien.
+
 ## Exportation
 
 Menu Fichier, tout est local et tout demande où mettre le résultat :

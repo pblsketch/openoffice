@@ -77,6 +77,7 @@ const FORMATS = {
   md: { color: '#4A5568', picto: 'hash' }, // slate
   html: { color: '#8257B6', picto: 'tag' }, // violet
   mindmap: { color: '#B04E83', picto: 'nodes' }, // berry
+  excalidraw: { color: '#6E8030', picto: 'sketch' }, // olive
   txt: { color: '#858D9B', picto: 'lines' }, // gray
   json: { color: '#977A2E', picto: 'braces' }, // ochre
 }
@@ -317,6 +318,32 @@ function pictogram(kind, b, fg, bg, sw, small) {
           .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="${num(childRadius)}" fill="${fg}"/>`)
           .join('')
       )
+    }
+    case 'sketch': {
+      // a drawing: a loose hand-drawn box and circle over a freehand stroke.
+      // At 16 px only a bold stroke across the whole box survives; the mid
+      // size (its heavier stroke tells it apart) drops the box
+      if (small) {
+        return stroke(
+          `M${X(0.02)} ${Y(0.78)}C${X(0.2)} ${Y(0.04)} ${X(0.4)} ${Y(1.04)} ${X(0.56)} ${Y(0.52)}` +
+            `S${X(0.84)} ${Y(0.02)} ${X(0.98)} ${Y(0.3)}`,
+          sw * 1.2,
+        )
+      }
+      const mid = sw >= 16
+      const scribble =
+        `M${X(0.04)} ${Y(0.86)}C${X(0.22)} ${Y(0.66)} ${X(0.36)} ${Y(1.0)} ${X(0.54)} ${Y(0.82)}` +
+        `S${X(0.82)} ${Y(0.6)} ${X(0.96)} ${Y(0.74)}`
+      const circle = mid
+        ? `<circle cx="${X(0.5)}" cy="${Y(0.3)}" r="${num(b.w * 0.22)}" stroke="${fg}" stroke-width="${num(sw * 0.85)}"/>`
+        : `<circle cx="${X(0.76)}" cy="${Y(0.27)}" r="${num(b.w * 0.18)}" stroke="${fg}" stroke-width="${num(sw * 0.8)}"/>`
+      const box = mid
+        ? ''
+        : stroke(
+            `M${X(0.06)} ${Y(0.1)}L${X(0.46)} ${Y(0.04)}L${X(0.5)} ${Y(0.44)}L${X(0.1)} ${Y(0.5)}Z`,
+            sw * 0.8,
+          )
+      return box + circle + stroke(scribble)
     }
     case 'picture':
       // a picture: a hill and a sun cut out of a filled frame

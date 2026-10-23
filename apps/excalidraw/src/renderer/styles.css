@@ -1,0 +1,83 @@
+/* Frame of the drawing editor. The canvas and the drawing's colours are the
+   library's and the file's; only the editor's own pieces use the tokens. */
+
+:root {
+  --accent: #6965db;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--gs-font-sans);
+}
+
+.xd-root {
+  position: relative;
+  height: 100%;
+}
+
+.xd-status {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.xd-status strong {
+  color: var(--text);
+  font-size: 16px;
+}
+
+.xd-autosave {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 0 10px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.xd-autosave input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.xd-dirty {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.xd-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 72px;
+  z-index: 10;
+  max-width: min(560px, calc(100% - 32px));
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-menu);
+  font-size: 13px;
+  transform: translateX(-50%);
+}

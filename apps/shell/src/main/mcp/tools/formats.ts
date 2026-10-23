@@ -22,7 +22,7 @@
 export type SessionFamily = 'docx' | 'pptx' | 'xlsx'
 
 /** every family the app can edit, including ones MCP does not drive yet */
-export type EditorFamily = SessionFamily | 'md' | 'html' | 'pdf' | 'xmind' | 'hwp'
+export type EditorFamily = SessionFamily | 'md' | 'html' | 'pdf' | 'xmind' | 'hwp' | 'excalidraw'
 
 export interface McpFormats {
   /** format the headless `create_*` tool writes, when exposed */
@@ -131,6 +131,17 @@ export const FORMAT_FAMILIES: readonly FormatFamily[] = [
     // read-only: read_hwp extracts the text of a .hwp or .hwpx file; editing is
     // done in the editor, by its own AI panel
     mcp: { read: 'hwp' },
+  },
+  {
+    family: 'excalidraw',
+    label: 'drawing',
+    // Obsidian's drawing notes (`.excalidraw.md`, or any .md marked as a
+    // drawing) open here too; their last extension is .md
+    editorOpen: ['excalidraw'],
+    // a drawing is saved back in the format it was opened in: a new one as a note
+    editorSave: ['md', 'excalidraw'],
+    editorExport: [],
+    // no `mcp` block: an open drawing is only listed and closed through open_documents
   },
 ]
 

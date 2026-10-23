@@ -1,6 +1,6 @@
 # 이음오피스 (IeumOffice)
 
-워드·엑셀·파워포인트·PDF·마크다운·HTML·한글(HWP) 문서와 마인드맵(XMind 파일 `.xmind`)을 한 창에서 열고 고치는 데스크톱 오피스 프로그램이다. AI가 문서를 직접 고친다. 누구나 무료로 쓰도록 배포하며, 특정 직업군용이 아니다.
+워드·엑셀·파워포인트·PDF·마크다운·HTML·한글(HWP) 문서와 마인드맵(XMind 파일 `.xmind`), Excalidraw 그림(Obsidian 그림 노트 `.excalidraw.md`, `.excalidraw`)을 한 창에서 열고 고치는 데스크톱 오피스 프로그램이다. AI가 문서를 직접 고친다. 누구나 무료로 쓰도록 배포하며, 특정 직업군용이 아니다.
 
 AI는 쓰는 사람이 이미 내고 있는 **Claude 또는 Codex 구독**으로 돌아간다. 앱은 PC에 설치된 그 회사의 프로그램을 실행해 답 한 차례를 받아 오고, 문서를 고치는 일은 앱이 한다. 요금이 나가는 쪽으로는 사용자가 직접 고르지 않는 한 가지 않는다.
 
@@ -48,7 +48,8 @@ openoffice/
 │   ├── markdown/AGENTS.md         ← 마크다운·텍스트 편집기
 │   ├── html/AGENTS.md             ← HTML 편집기
 │   ├── mindmap/AGENTS.md          ← 마인드맵 편집기(`.xmind`)
-│   └── hwp/AGENTS.md              ← 한글(HWP·HWPX) 편집기, 편집 화면은 rhwp
+│   ├── hwp/AGENTS.md              ← 한글(HWP·HWPX) 편집기, 편집 화면은 rhwp
+│   └── excalidraw/AGENTS.md       ← 그림 편집기(Obsidian 그림 노트·`.excalidraw`), 그림판은 Excalidraw
 ├── packages/
 │   ├── ai-provider/AGENTS.md      ← 제공자 목록·선택 규칙, 구독 프로그램 실행부
 │   ├── ai-search/AGENTS.md        ← 검색·이미지 생성·미디어 분석 도구, 자동 호출 제한
@@ -67,6 +68,7 @@ openoffice/
 │   ├── pdf-structure/AGENTS.md    ← PDF 문서 나무, Markdown·EPUB 변환, AI 페이지 읽기·번역, 결과 보관소
 │   ├── html2docx/AGENTS.md        ← HTML → 워드 변환
 │   ├── xmind-engine/AGENTS.md     ← 마인드맵 파일 엔진(열기, 원본 보존, 맞추기, 개요 글, 테마 표)
+│   ├── excalidraw-engine/AGENTS.md ← 그림 파일 엔진(Obsidian 노트·`.excalidraw` 열기, 바뀐 곳만 다시 쓰기)
 │   ├── file-parse/AGENTS.md       ← 첨부·검색용 파일 읽기, 다른 파일로 읽을 때의 가리기
 │   ├── zip-gate/AGENTS.md         ← 압축 파일 안전 검사
 │   ├── google-drive/AGENTS.md     ← Google 드라이브 로그인과 파일 주고받기

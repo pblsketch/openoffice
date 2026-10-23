@@ -39,7 +39,7 @@ import {
 } from './markdown/docText'
 import { buildSourceMap, spliceMarkdown, type SourceMap } from './markdown/sourceSplice'
 import { applySourceText } from './markdown/sourceView'
-import { isSourceMode, textModeForPath, type TextMode } from '../shared/text-mode'
+import { isSourceMode, textModeForContent, type TextMode } from '../shared/text-mode'
 import { renameAction } from '../shared/rename-mode'
 import { readSourceText, writeSourceText, type SourceTextFormat } from '../shared/source-text'
 import { PlainTextEditor, type PlainTextEditorHandle } from './source/PlainTextEditor'
@@ -55,6 +55,10 @@ import { RedactMenu } from './components/RedactMenu'
 import { OutlinePane } from './components/OutlinePane'
 import { SourcePane } from './components/SourcePane'
 import { SlashMenu, type SlashMenuHandle } from './components/SlashMenu'
+import { NoteLinkMenu, type NoteLinkMenuHandle } from './components/NoteLinkMenu'
+import { resetInternalLinks, scrollToHeading } from './editor/internalLinks'
+import type { NoteSuggestController, NoteSuggestState } from './editor/internalLinks'
+import { createInternalLinksHost } from './internal-link-host'
 import { ToastHost } from './components/toast'
 import { showToast } from './components/toast-bus'
 import { TableMenu } from './components/TableMenu'
@@ -151,6 +155,9 @@ export default function App() {
   // a .txt/.json has no block document behind it: it is edited as source so
   // that saving cannot reinterpret it as markdown
   const [textMode, setTextMode] = useState<TextMode>('markdown')
+  // read by callbacks that outlive a render (a note append arriving later)
+  const textModeRef = useRef<TextMode>('markdown')
+  textModeRef.current = textMode
   const sourceRef = useRef<PlainTextEditorHandle | null>(null)
   const sourceTextRef = useRef('')
   const sourceFormatRef = useRef<SourceTextFormat>({ bom: false, eol: '\n', trailingNewline: true })
@@ -166,6 +173,7 @@ export default function App() {
     params?: Record<string, string | number>
   } | null>(null)
   const [slashState, setSlashState] = useState<SlashMenuState | null>(null)
+  const [noteSuggestState, setNoteSuggestState] = useState<NoteSuggestState | null>(null)
   const [fmOpen, setFmOpen] = useState(false)
   const [fmText, setFmText] = useState('')
   // Persisted so a closed AI panel stays closed on next launch (docs/slides parity)
@@ -229,6 +237,7 @@ export default function App() {
   }
   const filePathRef = useRef<string | null>(null)
   const slashMenuRef = useRef<SlashMenuHandle>(null)
+  const noteLinkMenuRef = useRef<NoteLinkMenuHandle>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const zoomOut = useCallback(
@@ -265,10 +274,27 @@ export default function App() {
       onKeyDown: (event) => slashMenuRef.current?.handleKey(event) ?? false,
       onClose: () => setSlashState(null),
     }
+    const noteSuggest: NoteSuggestController = {
+      onOpen: setNoteSuggestState,
+      onUpdate: setNoteSuggestState,
+      onKeyDown: (event) => noteLinkMenuRef.current?.handleKey(event) ?? false,
+      onClose: () => setNoteSuggestState(null),
+    }
     return buildExtensions({
       slashController: controller,
       slashItems: () =>
         buildSlashItems({ insertImage: filePathRef.current ? insertImage : undefined }),
+      internalLinks: {
+        host: createInternalLinksHost(window.markdownApi),
+        // an untitled note has no vault to complete from
+        suggest: {
+          controller: noteSuggest,
+          items: (query) =>
+            filePathRef.current
+              ? (window.markdownApi.suggestNotes?.(query) ?? Promise.resolve([]))
+              : Promise.resolve([]),
+        },
+      },
     })
   }, [insertImage])
 
@@ -305,6 +331,35 @@ export default function App() {
     setImageBaseDir(filePath ? dirOf(filePath) : null)
   }, [filePath])
 
+  // embedded pictures resolve against the note's vault: a new path resolves them again
+  useEffect(() => {
+    if (editor && !editor.isDestroyed) resetInternalLinks(editor)
+  }, [editor, filePath])
+
+  // a link followed from another note may ask this one to show a heading
+  useEffect(() => {
+    if (status !== 'ready' || !filePath) return
+    const take = () => {
+      void window.markdownApi.takeLinkHeading?.().then((heading) => {
+        if (!heading) return
+        // a tab the link just opened is laid out a frame or two after it loads
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            const current = editorRef.current
+            if (!current || current.isDestroyed) return
+            if (!scrollToHeading(current, heading)) {
+              showToast(t('linkHeadingNotFound', { heading }), 'error')
+            }
+          }),
+        )
+      })
+    }
+    take()
+    return window.markdownApi.onLinkHeadingReady?.(take)
+    // t is left out on purpose: its reference changes on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, filePath])
+
   /**
    * Read `path` and put it on the surface its extension calls for. Shared by
    * the initial load and by a rename that crossed surfaces, so a file cannot
@@ -312,7 +367,8 @@ export default function App() {
    */
   const loadFromPath = useCallback(
     (path: string, raw: string) => {
-      const mode = textModeForPath(path)
+      const mode = textModeForContent(path, raw)
+      textModeRef.current = mode
       setTextMode(mode)
       if (sourceApplyTimerRef.current) clearTimeout(sourceApplyTimerRef.current)
       sourceApplyTimerRef.current = null
@@ -544,7 +600,7 @@ export default function App() {
   // as a changed, unsaved edit (the file is not written here)
   const takeNoteAppends = useCallback(async () => {
     const path = filePathRef.current
-    if (statusRef.current !== 'ready' || !path || isSourceMode(textModeForPath(path))) return
+    if (statusRef.current !== 'ready' || !path || isSourceMode(textModeRef.current)) return
     const texts = (await window.markdownApi.takeNoteAppend?.()) ?? []
     const current = editorRef.current
     const text = joinNoteAppends(texts)
@@ -1356,6 +1412,13 @@ export default function App() {
       </div>
       {!sourceMode && (
         <SlashMenu ref={slashMenuRef} state={slashState} onDismiss={() => setSlashState(null)} />
+      )}
+      {!sourceMode && (
+        <NoteLinkMenu
+          ref={noteLinkMenuRef}
+          state={noteSuggestState}
+          onDismiss={() => setNoteSuggestState(null)}
+        />
       )}
       <RedactMenu editor={editor} enabled={redactEnabled} />
       <ToastHost />

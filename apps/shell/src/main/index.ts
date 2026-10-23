@@ -286,6 +286,14 @@ import {
   setMindmapProvisionalTitleHook,
 } from '../../../mindmap/src/main/mindmap-main'
 import { mindmapReadOutline } from '../../../mindmap/src/main/mcp-queries'
+import {
+  configureExcalidrawRuntime,
+  excalidrawFileRenamed,
+  requestExcalidrawSave,
+  sendExcalidrawMenuCommand,
+  setExcalidrawFileSavedHook,
+} from '../../../excalidraw/src/main/excalidraw-main'
+import { isDrawingNoteFile } from './drawing-note'
 import type {
   AutoSaveDefault,
   FolderListing,
@@ -344,6 +352,7 @@ import {
   ODT_RE,
   MINDMAP_RE,
   HWP_RE,
+  EXCALIDRAW_RE,
   PDF_RE,
   PPTX_RE,
   TEXT_RE,
@@ -514,6 +523,9 @@ const HTML_OUT = app.isPackaged
 const MINDMAP_OUT = app.isPackaged
   ? join(process.resourcesPath, 'modules', 'mindmap')
   : join(APPS_ROOT, 'mindmap', 'out')
+const EXCALIDRAW_OUT = app.isPackaged
+  ? join(process.resourcesPath, 'modules', 'excalidraw')
+  : join(APPS_ROOT, 'excalidraw', 'out')
 const HWP_OUT = app.isPackaged
   ? join(process.resourcesPath, 'modules', 'hwp')
   : join(APPS_ROOT, 'hwp', 'out')
@@ -575,6 +587,7 @@ configureMarkdownRuntime({
   rendererUrl: process.env.MARKDOWN_RENDERER_URL,
   rendererFile: join(MARKDOWN_OUT, 'renderer', 'index.html'),
   openGeneratedPath: (path) => openGeneratedDocument(path),
+  openLinkedPath: (path) => openDocumentPath(path),
 })
 configureHtmlRuntime({
   preloadPath: join(HTML_OUT, 'preload', 'index.js'),
@@ -586,6 +599,11 @@ configureMindmapRuntime({
   preloadPath: join(MINDMAP_OUT, 'preload', 'index.js'),
   rendererUrl: process.env.MINDMAP_RENDERER_URL,
   rendererFile: join(MINDMAP_OUT, 'renderer', 'index.html'),
+})
+configureExcalidrawRuntime({
+  preloadPath: join(EXCALIDRAW_OUT, 'preload', 'index.js'),
+  rendererUrl: process.env.EXCALIDRAW_RENDERER_URL,
+  rendererFile: join(EXCALIDRAW_OUT, 'renderer', 'index.html'),
 })
 configureHwpRuntime({
   preloadPath: join(HWP_OUT, 'preload', 'index.js'),
@@ -751,12 +769,14 @@ const tMain = createI18n({
     untitledHtml: '未命名 HTML',
     untitledMindmap: '未命名思维导图',
     untitledHwp: '未命名 HWP',
+    untitledDrawing: '未命名绘图',
     untitledPdf: '未命名 PDF',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: '思维导图',
     menuNewHwp: 'AI HWP',
+    menuNewDrawing: 'Excalidraw 绘图',
     menuNewPdf: 'AI PDF',
     menuExportPdf: '导出为 PDF…',
     menuExportImages: '导出为图片…',
@@ -786,6 +806,7 @@ const tMain = createI18n({
     filterHtml: 'HTML 文档',
     filterMindmap: '思维导图 (XMind 文件)',
     filterHwp: 'HWP 文档 (HWP, HWPX)',
+    filterDrawing: 'Excalidraw 绘图 (Excalidraw, Obsidian)',
     filterPdf: 'PDF 文档',
     errBadArgs: '参数无效',
     errBadName: '文件名不合法',
@@ -870,12 +891,14 @@ const tMain = createI18n({
     untitledHtml: 'Untitled HTML',
     untitledMindmap: 'Untitled Mind Map',
     untitledHwp: 'Untitled HWP',
+    untitledDrawing: 'Untitled Drawing',
     untitledPdf: 'Untitled PDF',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mind Map',
     menuNewHwp: 'AI HWP',
+    menuNewDrawing: 'Excalidraw Drawing',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Export as PDF…',
     menuExportImages: 'Export as Images…',
@@ -905,6 +928,7 @@ const tMain = createI18n({
     filterHtml: 'HTML Documents',
     filterMindmap: 'Mind Maps (XMind files)',
     filterHwp: 'HWP Documents (HWP, HWPX)',
+    filterDrawing: 'Excalidraw Drawings (Excalidraw, Obsidian)',
     filterPdf: 'PDF Documents',
     errBadArgs: 'Invalid arguments',
     errBadName: 'Invalid file name',
@@ -997,12 +1021,14 @@ const tMain = createI18n({
     untitledHtml: 'HTML chưa có tiêu đề',
     untitledMindmap: 'Sơ đồ tư duy chưa có tiêu đề',
     untitledHwp: 'HWP chưa có tiêu đề',
+    untitledDrawing: 'Bản vẽ chưa có tiêu đề',
     untitledPdf: 'PDF chưa có tiêu đề',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Sơ đồ tư duy',
     menuNewHwp: 'AI HWP',
+    menuNewDrawing: 'Bản vẽ Excalidraw',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Xuất dưới dạng PDF…',
     menuExportImages: 'Xuất dưới dạng hình ảnh…',
@@ -1032,6 +1058,7 @@ const tMain = createI18n({
     filterHtml: 'Tài liệu HTML',
     filterMindmap: 'Sơ đồ tư duy (tệp XMind)',
     filterHwp: 'Tài liệu HWP (HWP, HWPX)',
+    filterDrawing: 'Bản vẽ Excalidraw (Excalidraw, Obsidian)',
     filterPdf: 'Tài liệu PDF',
     errBadArgs: 'Đối số không hợp lệ',
     errBadName: 'Tên tệp không hợp lệ',
@@ -1125,12 +1152,14 @@ const tMain = createI18n({
     untitledHtml: '無題の HTML',
     untitledMindmap: '無題のマインドマップ',
     untitledHwp: '無題の HWP',
+    untitledDrawing: '無題の描画',
     untitledPdf: '無題の PDF',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'マインドマップ',
     menuNewHwp: 'AI HWP',
+    menuNewDrawing: 'Excalidraw 描画',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'PDF として書き出す…',
     menuExportImages: '画像としてエクスポート…',
@@ -1160,6 +1189,7 @@ const tMain = createI18n({
     filterHtml: 'HTML ドキュメント',
     filterMindmap: 'マインドマップ (XMind ファイル)',
     filterHwp: 'HWP ドキュメント (HWP, HWPX)',
+    filterDrawing: 'Excalidraw 描画 (Excalidraw, Obsidian)',
     filterPdf: 'PDF ドキュメント',
     errBadArgs: '引数が無効です',
     errBadName: 'ファイル名が無効です',
@@ -1254,12 +1284,14 @@ const tMain = createI18n({
     untitledHtml: '제목 없는 HTML',
     untitledMindmap: '제목 없는 마인드맵',
     untitledHwp: '제목 없는 한글 문서',
+    untitledDrawing: '제목 없는 그림',
     untitledPdf: '제목 없는 PDF',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: '마인드맵',
     menuNewHwp: 'AI 한글',
+    menuNewDrawing: 'Excalidraw 그림',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'PDF로 내보내기…',
     menuExportImages: '이미지로 내보내기…',
@@ -1289,6 +1321,7 @@ const tMain = createI18n({
     filterHtml: 'HTML 문서',
     filterMindmap: '마인드맵 (XMind 파일)',
     filterHwp: '한글 문서 (HWP, HWPX)',
+    filterDrawing: 'Excalidraw 그림 (Excalidraw, Obsidian)',
     filterPdf: 'PDF 문서',
     errBadArgs: '잘못된 인수입니다',
     errBadName: '파일 이름이 잘못되었습니다',
@@ -1381,12 +1414,14 @@ const tMain = createI18n({
     untitledHtml: 'HTML sans titre',
     untitledMindmap: 'Carte mentale sans titre',
     untitledHwp: 'HWP sans titre',
+    untitledDrawing: 'Dessin sans titre',
     untitledPdf: 'PDF sans titre',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Carte mentale',
     menuNewHwp: 'AI HWP',
+    menuNewDrawing: 'Dessin Excalidraw',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Exporter en PDF…',
     menuExportImages: 'Exporter en images…',
@@ -1416,6 +1451,7 @@ const tMain = createI18n({
     filterHtml: 'Documents HTML',
     filterMindmap: 'Cartes mentales (fichiers XMind)',
     filterHwp: 'Documents HWP (HWP, HWPX)',
+    filterDrawing: 'Dessins Excalidraw (Excalidraw, Obsidian)',
     filterPdf: 'Documents PDF',
     errBadArgs: 'Arguments non valides',
     errBadName: 'Nom de fichier non valide',
@@ -1511,12 +1547,14 @@ const tMain = createI18n({
     untitledHtml: 'Unbenanntes HTML',
     untitledMindmap: 'Unbenannte Mindmap',
     untitledHwp: 'Unbenanntes HWP',
+    untitledDrawing: 'Unbenannte Zeichnung',
     untitledPdf: 'Unbenanntes PDF',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mindmap',
     menuNewHwp: 'AI HWP',
+    menuNewDrawing: 'Excalidraw-Zeichnung',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Als PDF exportieren…',
     menuExportImages: 'Als Bilder exportieren…',
@@ -1546,6 +1584,7 @@ const tMain = createI18n({
     filterHtml: 'HTML-Dokumente',
     filterMindmap: 'Mindmaps (XMind-Dateien)',
     filterHwp: 'HWP-Dokumente (HWP, HWPX)',
+    filterDrawing: 'Excalidraw-Zeichnungen (Excalidraw, Obsidian)',
     filterPdf: 'PDF-Dokumente',
     errBadArgs: 'Ungültige Argumente',
     errBadName: 'Ungültiger Dateiname',
@@ -1641,12 +1680,14 @@ const tMain = createI18n({
     untitledHtml: 'HTML sin título',
     untitledMindmap: 'Mapa mental sin título',
     untitledHwp: 'HWP sin título',
+    untitledDrawing: 'Dibujo sin título',
     untitledPdf: 'PDF sin título',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mapa mental',
     menuNewHwp: 'AI HWP',
+    menuNewDrawing: 'Dibujo de Excalidraw',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Exportar como PDF…',
     menuExportImages: 'Exportar como imágenes…',
@@ -1676,6 +1717,7 @@ const tMain = createI18n({
     filterHtml: 'Documentos HTML',
     filterMindmap: 'Mapas mentales (archivos XMind)',
     filterHwp: 'Documentos HWP (HWP, HWPX)',
+    filterDrawing: 'Dibujos de Excalidraw (Excalidraw, Obsidian)',
     filterPdf: 'Documentos PDF',
     errBadArgs: 'Argumentos no válidos',
     errBadName: 'Nombre de archivo no válido',
@@ -1770,12 +1812,14 @@ const tMain = createI18n({
     untitledHtml: 'HTML ไม่มีชื่อ',
     untitledMindmap: 'แผนที่ความคิดไม่มีชื่อ',
     untitledHwp: 'HWP ไม่มีชื่อ',
+    untitledDrawing: 'ภาพวาดไม่มีชื่อ',
     untitledPdf: 'PDF ไม่มีชื่อ',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'แผนที่ความคิด',
     menuNewHwp: 'AI HWP',
+    menuNewDrawing: 'ภาพวาด Excalidraw',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'ส่งออกเป็น PDF…',
     menuExportImages: 'ส่งออกเป็นรูปภาพ…',
@@ -1805,6 +1849,7 @@ const tMain = createI18n({
     filterHtml: 'เอกสาร HTML',
     filterMindmap: 'แผนที่ความคิด (ไฟล์ XMind)',
     filterHwp: 'เอกสาร HWP (HWP, HWPX)',
+    filterDrawing: 'ภาพวาด Excalidraw (Excalidraw, Obsidian)',
     filterPdf: 'เอกสาร PDF',
     errBadArgs: 'อาร์กิวเมนต์ไม่ถูกต้อง',
     errBadName: 'ชื่อไฟล์ไม่ถูกต้อง',
@@ -1895,12 +1940,14 @@ const tMain = createI18n({
     untitledHtml: 'HTML tanpa judul',
     untitledMindmap: 'Peta pikiran tanpa judul',
     untitledHwp: 'HWP tanpa judul',
+    untitledDrawing: 'Gambar tanpa judul',
     untitledPdf: 'PDF tanpa judul',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Peta pikiran',
     menuNewHwp: 'AI HWP',
+    menuNewDrawing: 'Gambar Excalidraw',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Ekspor sebagai PDF…',
     menuExportImages: 'Ekspor sebagai gambar…',
@@ -1930,6 +1977,7 @@ const tMain = createI18n({
     filterHtml: 'Dokumen HTML',
     filterMindmap: 'Peta pikiran (file XMind)',
     filterHwp: 'Dokumen HWP (HWP, HWPX)',
+    filterDrawing: 'Gambar Excalidraw (Excalidraw, Obsidian)',
     filterPdf: 'Dokumen PDF',
     errBadArgs: 'Argumen tidak valid',
     errBadName: 'Nama file tidak valid',
@@ -2024,12 +2072,14 @@ const tMain = createI18n({
     untitledHtml: 'HTML без названия',
     untitledMindmap: 'Интеллект-карта без названия',
     untitledHwp: 'HWP без названия',
+    untitledDrawing: 'Рисунок без названия',
     untitledPdf: 'PDF без названия',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Интеллект-карта',
     menuNewHwp: 'AI HWP',
+    menuNewDrawing: 'Рисунок Excalidraw',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Экспортировать в PDF…',
     menuExportImages: 'Экспорт в изображения…',
@@ -2059,6 +2109,7 @@ const tMain = createI18n({
     filterHtml: 'Документы HTML',
     filterMindmap: 'Интеллект-карты (файлы XMind)',
     filterHwp: 'Документы HWP (HWP, HWPX)',
+    filterDrawing: 'Рисунки Excalidraw (Excalidraw, Obsidian)',
     filterPdf: 'Документы PDF',
     errBadArgs: 'Недопустимые аргументы',
     errBadName: 'Недопустимое имя файла',
@@ -2152,12 +2203,14 @@ const tMain = createI18n({
     untitledHtml: 'HTML بدون عنوان',
     untitledMindmap: 'خريطة ذهنية بدون عنوان',
     untitledHwp: 'HWP بدون عنوان',
+    untitledDrawing: 'رسم بدون عنوان',
     untitledPdf: 'PDF بدون عنوان',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'خريطة ذهنية',
     menuNewHwp: 'AI HWP',
+    menuNewDrawing: 'رسم Excalidraw',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'تصدير بتنسيق PDF…',
     menuExportImages: 'تصدير كصور…',
@@ -2187,6 +2240,7 @@ const tMain = createI18n({
     filterHtml: 'مستندات HTML',
     filterMindmap: 'خرائط ذهنية (ملفات XMind)',
     filterHwp: 'مستندات HWP (HWP, HWPX)',
+    filterDrawing: 'رسومات Excalidraw (Excalidraw، Obsidian)',
     filterPdf: 'مستندات PDF',
     errBadArgs: 'وسيطات غير صالحة',
     errBadName: 'اسم ملف غير صالح',
@@ -2277,12 +2331,14 @@ const tMain = createI18n({
     untitledHtml: 'HTML sem título',
     untitledMindmap: 'Mapa mental sem título',
     untitledHwp: 'HWP sem título',
+    untitledDrawing: 'Desenho sem título',
     untitledPdf: 'PDF sem título',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mapa mental',
     menuNewHwp: 'AI HWP',
+    menuNewDrawing: 'Desenho do Excalidraw',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Exportar como PDF…',
     menuExportImages: 'Exportar como imagens…',
@@ -2312,6 +2368,7 @@ const tMain = createI18n({
     filterHtml: 'Documentos HTML',
     filterMindmap: 'Mapas mentais (arquivos XMind)',
     filterHwp: 'Documentos HWP (HWP, HWPX)',
+    filterDrawing: 'Desenhos do Excalidraw (Excalidraw, Obsidian)',
     filterPdf: 'Documentos PDF',
     errBadArgs: 'Argumentos inválidos',
     errBadName: 'Nome de arquivo inválido',
@@ -2406,12 +2463,14 @@ const tMain = createI18n({
     untitledHtml: 'HTML senza titolo',
     untitledMindmap: 'Mappa mentale senza titolo',
     untitledHwp: 'HWP senza titolo',
+    untitledDrawing: 'Disegno senza titolo',
     untitledPdf: 'PDF senza titolo',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mappa mentale',
     menuNewHwp: 'AI HWP',
+    menuNewDrawing: 'Disegno Excalidraw',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Esporta come PDF…',
     menuExportImages: 'Esporta come immagini…',
@@ -2441,6 +2500,7 @@ const tMain = createI18n({
     filterHtml: 'Documenti HTML',
     filterMindmap: 'Mappe mentali (file XMind)',
     filterHwp: 'Documenti HWP (HWP, HWPX)',
+    filterDrawing: 'Disegni Excalidraw (Excalidraw, Obsidian)',
     filterPdf: 'Documenti PDF',
     errBadArgs: 'Argomenti non validi',
     errBadName: 'Nome file non valido',
@@ -2535,12 +2595,14 @@ const tMain = createI18n({
     untitledHtml: 'HTML bez tytułu',
     untitledMindmap: 'Mapa myśli bez tytułu',
     untitledHwp: 'HWP bez tytułu',
+    untitledDrawing: 'Rysunek bez tytułu',
     untitledPdf: 'PDF bez tytułu',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mapa myśli',
     menuNewHwp: 'AI HWP',
+    menuNewDrawing: 'Rysunek Excalidraw',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Eksportuj jako PDF…',
     menuExportImages: 'Eksportuj jako obrazy…',
@@ -2570,6 +2632,7 @@ const tMain = createI18n({
     filterHtml: 'Dokumenty HTML',
     filterMindmap: 'Mapy myśli (pliki XMind)',
     filterHwp: 'Dokumenty HWP (HWP, HWPX)',
+    filterDrawing: 'Rysunki Excalidraw (Excalidraw, Obsidian)',
     filterPdf: 'Dokumenty PDF',
     errBadArgs: 'Nieprawidłowe argumenty',
     errBadName: 'Nieprawidłowa nazwa pliku',
@@ -2663,12 +2726,14 @@ const tMain = createI18n({
     untitledHtml: 'HTML bez názvu',
     untitledMindmap: 'Myšlenková mapa bez názvu',
     untitledHwp: 'HWP bez názvu',
+    untitledDrawing: 'Kresba bez názvu',
     untitledPdf: 'PDF bez názvu',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Myšlenková mapa',
     menuNewHwp: 'AI HWP',
+    menuNewDrawing: 'Kresba Excalidraw',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Exportovat jako PDF…',
     menuExportImages: 'Exportovat jako obrázky…',
@@ -2698,6 +2763,7 @@ const tMain = createI18n({
     filterHtml: 'Dokumenty HTML',
     filterMindmap: 'Myšlenkové mapy (soubory XMind)',
     filterHwp: 'Dokumenty HWP (HWP, HWPX)',
+    filterDrawing: 'Kresby Excalidraw (Excalidraw, Obsidian)',
     filterPdf: 'Dokumenty PDF',
     errBadArgs: 'Neplatné argumenty',
     errBadName: 'Neplatný název souboru',
@@ -2790,12 +2856,14 @@ const tMain = createI18n({
     untitledHtml: 'Naamloos HTML',
     untitledMindmap: 'Naamloze mindmap',
     untitledHwp: 'Naamloos HWP',
+    untitledDrawing: 'Naamloze tekening',
     untitledPdf: 'Naamloze PDF',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mindmap',
     menuNewHwp: 'AI HWP',
+    menuNewDrawing: 'Excalidraw-tekening',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Exporteren als PDF…',
     menuExportImages: 'Exporteren als afbeeldingen…',
@@ -2825,6 +2893,7 @@ const tMain = createI18n({
     filterHtml: 'HTML-documenten',
     filterMindmap: 'Mindmaps (XMind-bestanden)',
     filterHwp: 'HWP-documenten (HWP, HWPX)',
+    filterDrawing: 'Excalidraw-tekeningen (Excalidraw, Obsidian)',
     filterPdf: 'PDF-documenten',
     errBadArgs: 'Ongeldige argumenten',
     errBadName: 'Ongeldige bestandsnaam',
@@ -2920,12 +2989,14 @@ const tMain = createI18n({
     untitledHtml: 'HTML tanpa tajuk',
     untitledMindmap: 'Peta minda tanpa tajuk',
     untitledHwp: 'HWP tanpa tajuk',
+    untitledDrawing: 'Lukisan tanpa tajuk',
     untitledPdf: 'PDF tanpa tajuk',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Peta minda',
     menuNewHwp: 'AI HWP',
+    menuNewDrawing: 'Lukisan Excalidraw',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Eksport sebagai PDF…',
     menuExportImages: 'Eksport sebagai imej…',
@@ -2955,6 +3026,7 @@ const tMain = createI18n({
     filterHtml: 'Dokumen HTML',
     filterMindmap: 'Peta minda (fail XMind)',
     filterHwp: 'Dokumen HWP (HWP, HWPX)',
+    filterDrawing: 'Lukisan Excalidraw (Excalidraw, Obsidian)',
     filterPdf: 'Dokumen PDF',
     errBadArgs: 'Argumen tidak sah',
     errBadName: 'Nama fail tidak sah',
@@ -3047,12 +3119,14 @@ const tMain = createI18n({
     untitledHtml: 'HTML ללא שם',
     untitledMindmap: 'מפת חשיבה ללא שם',
     untitledHwp: 'HWP ללא שם',
+    untitledDrawing: 'ציור ללא שם',
     untitledPdf: 'PDF ללא שם',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'מפת חשיבה',
     menuNewHwp: 'AI HWP',
+    menuNewDrawing: 'ציור Excalidraw',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'ייצוא כ-PDF…',
     menuExportImages: 'ייצוא כתמונות…',
@@ -3082,6 +3156,7 @@ const tMain = createI18n({
     filterHtml: 'מסמכי HTML',
     filterMindmap: 'מפות חשיבה (קובצי XMind)',
     filterHwp: 'מסמכי HWP (HWP, HWPX)',
+    filterDrawing: 'ציורי Excalidraw (Excalidraw, Obsidian)',
     filterPdf: 'מסמכי PDF',
     errBadArgs: 'ארגומנטים לא חוקיים',
     errBadName: 'שם קובץ לא חוקי',
@@ -3173,12 +3248,14 @@ const tMain = createI18n({
     untitledHtml: 'अनाम HTML',
     untitledMindmap: 'अनाम माइंड मैप',
     untitledHwp: 'अनाम HWP',
+    untitledDrawing: 'अनाम ड्रॉइंग',
     untitledPdf: 'अनाम PDF',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'माइंड मैप',
     menuNewHwp: 'AI HWP',
+    menuNewDrawing: 'Excalidraw ड्रॉइंग',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'PDF के रूप में निर्यात…',
     menuExportImages: 'छवियों के रूप में निर्यात…',
@@ -3208,6 +3285,7 @@ const tMain = createI18n({
     filterHtml: 'HTML दस्तावेज़',
     filterMindmap: 'माइंड मैप (XMind फ़ाइलें)',
     filterHwp: 'HWP दस्तावेज़ (HWP, HWPX)',
+    filterDrawing: 'Excalidraw ड्रॉइंग (Excalidraw, Obsidian)',
     filterPdf: 'PDF दस्तावेज़',
     errBadArgs: 'अमान्य आर्ग्युमेंट',
     errBadName: 'अमान्य फ़ाइल नाम',
@@ -3301,12 +3379,14 @@ const tMain = createI18n({
     untitledHtml: '未命名 HTML',
     untitledMindmap: '未命名心智圖',
     untitledHwp: '未命名 HWP',
+    untitledDrawing: '未命名繪圖',
     untitledPdf: '未命名 PDF',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: '心智圖',
     menuNewHwp: 'AI HWP',
+    menuNewDrawing: 'Excalidraw 繪圖',
     menuNewPdf: 'AI PDF',
     menuExportPdf: '匯出為 PDF…',
     menuExportImages: '匯出為圖片…',
@@ -3336,6 +3416,7 @@ const tMain = createI18n({
     filterHtml: 'HTML 文件',
     filterMindmap: '心智圖 (XMind 檔案)',
     filterHwp: 'HWP 文件 (HWP, HWPX)',
+    filterDrawing: 'Excalidraw 繪圖 (Excalidraw, Obsidian)',
     filterPdf: 'PDF 文件',
     errBadArgs: '參數無效',
     errBadName: '檔案名稱不合法',
@@ -3520,6 +3601,7 @@ function afterFileMoved(oldPath: string, newPath: string): void {
     else if (t.kind === 'html') htmlFileRenamed(t.webContents, oldPath, newPath)
     else if (t.kind === 'mindmap') mindmapFileRenamed(t.webContents, oldPath, newPath)
     else if (t.kind === 'hwp') hwpFileRenamed(t.webContents, oldPath, newPath)
+    else if (t.kind === 'excalidraw') excalidrawFileRenamed(t.webContents, oldPath, newPath)
     else if (t.kind === 'pdf') pdfFileRenamed(t.webContents, oldPath, newPath)
   }
 }
@@ -3737,6 +3819,9 @@ function applyMenuFor(kind: TabKind): void {
     case 'hwp':
       buildHwpMenu()
       break
+    case 'excalidraw':
+      buildExcalidrawMenu()
+      break
     default:
       buildHomeMenu()
   }
@@ -3814,7 +3899,9 @@ function createShellWindow(): void {
                   ? tm('untitledMindmap')
                   : kind === 'hwp'
                     ? tm('untitledHwp')
-                    : tm('untitledSheet'),
+                    : kind === 'excalidraw'
+                      ? tm('untitledDrawing')
+                      : tm('untitledSheet'),
     // every split change: remember it, re-role the pane views, tell the strip
     (state) => handleSplitChanged(win, manager, state),
   )
@@ -3983,6 +4070,13 @@ function createShellWindow(): void {
   })
   // the mind map's toolbar button "make another document from this one"
   setMindmapMakeFromDocumentHook((wc) => makeFromDocument(wc))
+  // drawing untitled first save / Save As lands on a new path
+  setExcalidrawFileSavedHook((wc, path) => {
+    manager.setTabFileFor(wc.id, path)
+    detachedSetFileFor(wc.id, path)
+    recordRecentFile(path)
+    applyPendingDir(wc.id, path)
+  })
   // hwp Save As lands on a new path
   setHwpFileSavedHook((wc, path) => {
     manager.setTabFileFor(wc.id, path)
@@ -4088,6 +4182,7 @@ const OPEN_DIALOG_EXTENSIONS = [
   'xmind',
   'hwp',
   'hwpx',
+  'excalidraw',
 ]
 
 function notifyUnsupportedFile(filePath: string): void {
@@ -4196,6 +4291,14 @@ function routeDocumentPath(filePath: string): boolean {
     const existing = tabManager.findPdfTabByPath(filePath)
     if (existing) tabManager.activateTab(existing)
     else tabManager.openPdfTab(filePath)
+    return true
+  }
+  // a drawing by its name, or a note marked as a drawing in its front matter
+  if (EXCALIDRAW_RE.test(filePath) || (/\.md$/i.test(filePath) && isDrawingNoteFile(filePath))) {
+    recordRecentFile(filePath)
+    const existing = tabManager.findExcalidrawTabByPath(filePath)
+    if (existing) tabManager.activateTab(existing)
+    else tabManager.openExcalidrawTab(filePath)
     return true
   }
   if (TEXT_RE.test(filePath)) {
@@ -4425,6 +4528,14 @@ function newHtmlTab(): void {
 function newMindmapTab(): void {
   try {
     bindPendingDir('mindmap', tabManager?.openMindmapTab())
+  } catch (err) {
+    surfaceNewTabError(err)
+  }
+}
+
+function newExcalidrawTab(): void {
+  try {
+    bindPendingDir('excalidraw', tabManager?.openExcalidrawTab())
   } catch (err) {
     surfaceNewTabError(err)
   }
@@ -4691,6 +4802,7 @@ function registerHomeIpc(): void {
         { name: tm('filterHtml'), extensions: ['html', 'htm'] },
         { name: tm('filterMindmap'), extensions: ['xmind'] },
         { name: tm('filterHwp'), extensions: ['hwp', 'hwpx'] },
+        { name: tm('filterDrawing'), extensions: ['excalidraw', 'md'] },
       ],
       properties: ['openFile', 'multiSelections'],
     })
@@ -4725,6 +4837,11 @@ function registerHomeIpc(): void {
   ipcMain.handle(HOME_CHANNELS.newMindmap, (_event, opts?: NewFileOpts) => {
     rememberPendingDir('mindmap', opts)
     newMindmapTab()
+  })
+
+  ipcMain.handle(HOME_CHANNELS.newDrawing, (_event, opts?: NewFileOpts) => {
+    rememberPendingDir('excalidraw', opts)
+    newExcalidrawTab()
   })
 
   ipcMain.handle(HOME_CHANNELS.newHwp, (_event, opts?: NewFileOpts) => {
@@ -5279,6 +5396,8 @@ const TAB_MENU_ICON: Record<TabKind, keyof MenuIconSet> = {
   html: 'html',
   mindmap: 'mindmap',
   hwp: 'hwp',
+  // no picture of its own in the menu yet: the generic document one
+  excalidraw: 'md',
   help: 'home',
 }
 
@@ -5695,6 +5814,9 @@ function activeHtmlTarget() {
 function activeMindmapTarget() {
   return activeEditorTarget('mindmap', () => tabManager?.activeMindmapTab())
 }
+function activeExcalidrawTarget() {
+  return activeEditorTarget('excalidraw', () => tabManager?.activeExcalidrawTab())
+}
 
 /** the document a kind's File menu acts on, for the provenance entries (spec 8.2, 9) */
 function linkedDocumentFor(kind: TabKind): LinkedDocument | undefined {
@@ -5963,6 +6085,10 @@ function registerTabsIpc(): void {
         click: () => newHwpTab(),
       },
       {
+        label: tm('menuNewDrawing'),
+        click: () => newExcalidrawTab(),
+      },
+      {
         label: tm('menuNewPdf'),
         icon: menuIcons().pdf,
         click: () => void newPdfTab(),
@@ -6013,6 +6139,7 @@ function buildHomeMenu(): void {
         { label: tm('menuNewHtml'), click: () => newHtmlTab() },
         { label: tm('menuNewMindmap'), click: () => newMindmapTab() },
         { label: tm('menuNewHwp'), click: () => newHwpTab() },
+        { label: tm('menuNewDrawing'), click: () => newExcalidrawTab() },
         { label: tm('menuNewPdf'), click: () => void newPdfTab() },
         { type: 'separator' },
         {
@@ -6526,6 +6653,106 @@ function buildMindmapMenu(): void {
           click: () => {
             const tab = activeMindmapTarget()
             if (tab) sendMindmapMenuCommand(tab.webContents, 'redo')
+          },
+        },
+        { type: 'separator' },
+        { role: 'cut', label: labels.cut },
+        { role: 'copy', label: labels.copy },
+        { role: 'paste', label: labels.paste },
+        { role: 'delete', label: labels.delete },
+        { type: 'separator' },
+        { role: 'selectAll', label: labels.selectAll },
+      ],
+    },
+    windowMenuTemplate(process.platform, appMenuLabels(currentLang())),
+    {
+      role: 'help',
+      label: tm('menuHelp'),
+      submenu: [
+        { label: tm('thirdPartyNotices'), click: () => void openThirdPartyNotices() },
+        { type: 'separator' },
+        checkUpdatesMenuItem(appMenuLabels(currentLang())),
+        aboutMenuItem(appMenuLabels(currentLang())),
+      ],
+    },
+  ]
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
+
+// ---- drawing menu (excalidraw-main has no menu of its own; the shell owns drawing tabs) ----
+
+function buildExcalidrawMenu(): void {
+  const isMac = process.platform === 'darwin'
+  const labels = appMenuLabels(currentLang())
+  const template: MenuItemConstructorOptions[] = [
+    ...(isMac ? [{ role: 'appMenu' as const }] : []),
+    {
+      label: tm('menuFile'),
+      submenu: [
+        {
+          label: tm('menuSectionNew'),
+          accelerator: 'CmdOrCtrl+N',
+          click: () => newExcalidrawTab(),
+        },
+        {
+          label: tm('menuOpen'),
+          accelerator: 'CmdOrCtrl+O',
+          click: () => void openFileViaDialog(),
+        },
+        { type: 'separator' },
+        {
+          label: tm('backToHome'),
+          accelerator: 'Shift+CmdOrCtrl+H',
+          click: () => tabManager?.openHomeTab(),
+        },
+        { type: 'separator' },
+        {
+          label: tm('menuSave'),
+          accelerator: 'CmdOrCtrl+S',
+          click: () => {
+            const tab = activeExcalidrawTarget()
+            if (tab) void requestExcalidrawSave(tab.webContents, 'save')
+          },
+        },
+        {
+          label: tm('menuSaveAs'),
+          accelerator: 'CmdOrCtrl+Shift+S',
+          click: () => {
+            const tab = activeExcalidrawTarget()
+            if (tab) void requestExcalidrawSave(tab.webContents, 'saveAs')
+          },
+        },
+        { type: 'separator' },
+        {
+          label: tm('menuClose'),
+          accelerator: 'CmdOrCtrl+W',
+          click: () => closeFocusedEditor(),
+        },
+      ],
+    },
+    {
+      label: labels.edit,
+      submenu: [
+        // Undo and redo go to the canvas: its history is not the page's own, so
+        // the undo / redo roles would not reach it. The canvas already takes the
+        // keys itself; the shortcut is shown but not registered, or one press
+        // would undo twice.
+        {
+          label: labels.undo,
+          accelerator: 'CmdOrCtrl+Z',
+          registerAccelerator: false,
+          click: () => {
+            const tab = activeExcalidrawTarget()
+            if (tab) sendExcalidrawMenuCommand(tab.webContents, 'undo')
+          },
+        },
+        {
+          label: labels.redo,
+          accelerator: isMac ? 'Shift+Cmd+Z' : 'Ctrl+Y',
+          registerAccelerator: false,
+          click: () => {
+            const tab = activeExcalidrawTarget()
+            if (tab) sendExcalidrawMenuCommand(tab.webContents, 'redo')
           },
         },
         { type: 'separator' },
@@ -7299,6 +7526,7 @@ app.whenReady().then(async () => {
     markdown: join(MARKDOWN_OUT, 'renderer'),
     html: join(HTML_OUT, 'renderer'),
     mindmap: join(MINDMAP_OUT, 'renderer'),
+    excalidraw: join(EXCALIDRAW_OUT, 'renderer'),
     hwp: join(HWP_OUT, 'renderer'),
     // the manual shares the shell's own renderer bundle (help mode)
     help: join(__dirname, '../renderer'),

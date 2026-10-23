@@ -32,6 +32,11 @@ import { queueMindmapSeedFor } from '../../../mindmap/src/main/seed-main'
 import { queueSlidesSeedFor } from '../../../slides/src/main/seed-queue'
 import { createHwpView, hwpIsDirty, requestHwpClose } from '../../../hwp/src/main/hwp-main'
 import {
+  createExcalidrawView,
+  excalidrawIsDirty,
+  requestExcalidrawClose,
+} from '../../../excalidraw/src/main/excalidraw-main'
+import {
   createMindmapView,
   mindmapIsDirty,
   requestMindmapClose,
@@ -381,6 +386,8 @@ export class TabManager {
         return docsQueryDirty(wc)
       case 'mindmap':
         return mindmapIsDirty(wc.id)
+      case 'excalidraw':
+        return excalidrawIsDirty(wc.id)
       default:
         return false
     }
@@ -556,6 +563,25 @@ export class TabManager {
       kind: 'mindmap',
       view,
       title: openPath ? basename(openPath) : this.untitled('mindmap', 'Mind Map'),
+      filePath: openPath,
+    })
+    this.activateTab(id)
+    return id
+  }
+
+  /** Opens a drawing (an Obsidian note or a .excalidraw file), or with no path a new drawing note */
+  openExcalidrawTab(openPath?: string): string {
+    const view = createExcalidrawView(openPath)
+    const id = `t${this.nextId++}`
+    this.shellWindow.contentView.addChildView(view)
+    view.setVisible(false)
+    this.trackHtmlFullScreen(view)
+    this.trackPaneFocus(view)
+    this.tabs.push({
+      id,
+      kind: 'excalidraw',
+      view,
+      title: openPath ? basename(openPath) : this.untitled('excalidraw', 'Drawing'),
       filePath: openPath,
     })
     this.activateTab(id)
@@ -1034,6 +1060,8 @@ export class TabManager {
         return this.openMindmapTab(path)
       case 'hwp':
         return this.openHwpTab(path)
+      case 'excalidraw':
+        return this.openExcalidrawTab(path)
       default:
         return null
     }
@@ -1184,6 +1212,13 @@ export class TabManager {
       .map((t) => ({ id: t.id, webContents: t.view!.webContents }))
   }
 
+  /** drawing tabs whose renderer reports unsaved edits (shell-close guard) */
+  dirtyExcalidrawTabs(): Array<{ id: string; webContents: WebContents }> {
+    return this.tabs
+      .filter((t) => t.kind === 'excalidraw' && t.view && excalidrawIsDirty(t.view.webContents.id))
+      .map((t) => ({ id: t.id, webContents: t.view!.webContents }))
+  }
+
   /** hwp tabs whose renderer reports unsaved edits (shell-close guard) */
   dirtyHwpTabs(): Array<{ id: string; webContents: WebContents }> {
     return this.tabs
@@ -1245,6 +1280,9 @@ export class TabManager {
                   : null)
     if (!closeGuard && tab.kind === 'mindmap' && tab.view) {
       if (mindmapIsDirty(tab.view.webContents.id)) closeGuard = requestMindmapClose
+    }
+    if (!closeGuard && tab.kind === 'excalidraw' && tab.view) {
+      if (excalidrawIsDirty(tab.view.webContents.id)) closeGuard = requestExcalidrawClose
     }
     // docs dirty state lives in the renderer and needs an async query; skip the guard when clean (avoids a flash activation)
     if (!closeGuard && tab.kind === 'docs' && tab.view) {
@@ -1475,6 +1513,18 @@ export class TabManager {
   activeMindmapTab(): { id: string; webContents: WebContents; filePath?: string } | undefined {
     const tab = this.tabs.find((t) => t.id === this.activeId)
     return tab?.kind === 'mindmap' && tab.view
+      ? { id: tab.id, webContents: tab.view.webContents, filePath: tab.filePath }
+      : undefined
+  }
+
+  findExcalidrawTabByPath(path?: string): string | undefined {
+    return this.findTabOfKindByPath('excalidraw', path)
+  }
+
+  /** the active tab's drawing view, if the active tab is a drawing (drawing menu target) */
+  activeExcalidrawTab(): { id: string; webContents: WebContents; filePath?: string } | undefined {
+    const tab = this.tabs.find((t) => t.id === this.activeId)
+    return tab?.kind === 'excalidraw' && tab.view
       ? { id: tab.id, webContents: tab.view.webContents, filePath: tab.filePath }
       : undefined
   }

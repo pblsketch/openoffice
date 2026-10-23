@@ -17,7 +17,7 @@ export const DROP_OPEN_CHANNEL = 'app:open-dropped-files'
 /** Extensions routed by apps/shell routeDocumentPath — keep in sync there and
  *  with OPEN_DIALOG_EXTENSIONS / OPEN_LOCAL_EXTENSIONS on the home screen. */
 export const OPENABLE_DOC_RE =
-  /\.(docx|odt|xlsx|xlsm|xls|csv|tsv|pptx|pdf|md|markdown|html|htm|xmind|hwp|hwpx)$/i
+  /\.(docx|odt|xlsx|xlsm|xls|csv|tsv|pptx|pdf|md|markdown|html|htm|xmind|hwp|hwpx|excalidraw)$/i
 
 /** Recognized-but-unsupported formats: kept in the sent payload so the shell
  *  can show its "not supported" dialog instead of dropping them silently.
@@ -101,6 +101,34 @@ export function partitionDropPayload(raw: unknown): {
 /** Symbol.for keeps repeated installs idempotent when several bundled copies of
  *  this module end up in one process (mirrors navigation-guard). */
 const INSTALLED = Symbol.for('genoffice.drop-open-installed')
+const DOCUMENTS_FIRST_INSTALLED = Symbol.for('genoffice.drop-open-documents-first-installed')
+
+/**
+ * For a page whose canvas takes every file drop itself (the drawing editor
+ * would load a dropped drawing over the open one): documents dropped anywhere
+ * on it open as tabs, caught before the page sees the drop. Drops without a
+ * document (pictures) are left to the page.
+ */
+export function installDocumentDropFirst(): void {
+  const holder = globalThis as Record<symbol, boolean | undefined>
+  if (typeof window === 'undefined' || holder[DOCUMENTS_FIRST_INSTALLED]) return
+  holder[DOCUMENTS_FIRST_INSTALLED] = true
+  window.addEventListener(
+    'drop',
+    (ev: DragEvent) => {
+      const paths = droppableFilePaths(ev, (file) => webUtils.getPathForFile(file))
+      if (!paths) return
+      const payload = paths.filter(
+        (p) => OPENABLE_DOC_RE.test(p) || KNOWN_UNSUPPORTED_DOC_RE.test(p),
+      )
+      if (payload.length === 0) return
+      ev.preventDefault()
+      ev.stopPropagation()
+      ipcRenderer.send(DROP_OPEN_CHANNEL, payload.slice(0, MAX_DROPPED_FILES))
+    },
+    true,
+  )
+}
 
 /**
  * Preload-side hook: makes `drop` fire for document drags anywhere in the

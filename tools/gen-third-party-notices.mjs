@@ -61,6 +61,7 @@ const HEADER = `${PRODUCT_NAME} — Third-Party Software Notices`
  */
 const SRC_GLOBS = [
   'apps/docs/src',
+  'apps/excalidraw/src',
   'apps/html/src',
   'apps/mindmap/src',
   'apps/hwp/src',
@@ -104,6 +105,10 @@ function extraResourceSeeds() {
 
 /** license text is not published to npm; supply the notice by hand */
 const NOTE = {
+  '@excalidraw/excalidraw':
+    'Copyright (c) 2020 Excalidraw. Licensed under the MIT License.\nhttps://github.com/excalidraw/excalidraw\nBundled fonts: Virgil, Excalifont, Xiaolai, Nunito, Lilita One, Liberation Sans, Cascadia Code and Assistant under the SIL Open Font License 1.1; Comic Shanns under the MIT License.',
+  '@radix-ui/react-tabs':
+    'Copyright (c) 2022 WorkOS. Licensed under the MIT License.\nhttps://github.com/radix-ui/primitives',
   '@fluentui/react-icons':
     'Copyright (c) Microsoft Corporation. Licensed under the MIT License.\nhttps://github.com/microsoft/fluentui-system-icons',
   '@neslinesli93/qpdf-wasm':

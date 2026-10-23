@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Fonts come from this app's own folder; web embeds and every other
+         address outside the app are never loaded. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob: ws://localhost:*; worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IeumOffice Drawing</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- a classic script runs before the modules: the drawing library registers
+         fonts while it is evaluated and must find their folder already set -->
+    <script src="./asset-path.js"></script>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

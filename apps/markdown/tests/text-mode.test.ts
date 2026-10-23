@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isSourceMode, textModeForPath } from '../src/shared/text-mode'
+import { isSourceMode, textModeForContent, textModeForPath } from '../src/shared/text-mode'
 import { readSourceText, writeSourceText } from '../src/shared/source-text'
 
 describe('textModeForPath', () => {
@@ -112,5 +112,29 @@ describe('source text round-trip', () => {
     // the file is LF, so CRLF pasted into it comes back out as LF
     const { format } = readSourceText('a\nb\n')
     expect(writeSourceText('x\r\ny', format)).toBe('x\ny\n')
+  })
+})
+
+describe('textModeForContent', () => {
+  const drawingNote = [
+    '---',
+    '',
+    'excalidraw-plugin: parsed',
+    'tags: [excalidraw]',
+    '',
+    '---',
+    '# Excalidraw Data',
+    '',
+  ].join('\n')
+
+  it('edits an Obsidian drawing note as source, so its data block stays byte for byte', () => {
+    expect(textModeForContent('/vault/Board.md', drawingNote)).toBe('plain')
+    expect(isSourceMode(textModeForContent('/vault/Board.excalidraw.md', drawingNote))).toBe(true)
+  })
+
+  it('leaves ordinary notes and other files as their path says', () => {
+    expect(textModeForContent('/a/note.md', '---\ntitle: x\n---\n# Hello\n')).toBe('markdown')
+    expect(textModeForContent('/a/data.json', drawingNote)).toBe('json')
+    expect(textModeForContent(null, '')).toBe('markdown')
   })
 })

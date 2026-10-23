@@ -10,6 +10,7 @@ import iconMd from './assets/file-md.svg'
 import iconHtml from './assets/file-html.svg'
 import iconMindmap from './assets/file-mindmap.svg'
 import iconHwp from './assets/file-hwp.svg'
+import iconExcalidraw from './assets/file-excalidraw.svg'
 import type {
   FolderEntry,
   FolderListing,
@@ -95,13 +96,14 @@ const FILE_ICONS: Record<string, string> = {
   xmind: iconMindmap,
   hwp: iconHwp,
   hwpx: iconHwp,
+  excalidraw: iconExcalidraw,
 }
 
 /* Formats the open-local card advertises. Too long for the card at any window
    width, so it ellipsizes and a hover ScreenTip carries the full list. Keep in
    sync with the main-process open-dialog filter (OPEN_DIALOG_EXTENSIONS). */
 const OPEN_LOCAL_EXTENSIONS =
-  '.docx / .odt / .xlsx / .xlsm / .xls / .csv / .tsv / .pptx / .pdf / .md / .html / .xmind / .hwp / .hwpx'
+  '.docx / .odt / .xlsx / .xlsm / .xls / .csv / .tsv / .pptx / .pdf / .md / .html / .xmind / .hwp / .hwpx / .excalidraw'
 
 /** drag payload of home file/folder rows (JSON array of absolute paths) */
 const DRAG_PATHS_MIME = 'application/x-genoffice-paths'
@@ -120,8 +122,11 @@ function fixedViewportWidth(): number {
   return document.documentElement.clientWidth
 }
 
-function FileBadge({ ext, size }: { ext: string; size: number }) {
-  const icon = FILE_ICONS[ext]
+/** an Obsidian drawing note is a `.md` file named `*.excalidraw.md`; it gets the drawing icon */
+const DRAWING_NOTE_RE = /\.excalidraw\.md$/i
+
+function FileBadge({ ext, size, name }: { ext: string; size: number; name?: string }) {
+  const icon = FILE_ICONS[name && DRAWING_NOTE_RE.test(name) ? 'excalidraw' : ext]
   if (icon) {
     return <img src={icon} width={size} height={size} alt="" aria-hidden="true" />
   }
@@ -1098,6 +1103,9 @@ export function Home({
   const [fileSort, setFileSort] = useState<'recent' | 'oldest'>('recent')
   const [fileSortMenuOpen, setFileSortMenuOpen] = useState(false)
   const fileSortRef = useRef<HTMLDivElement>(null)
+  // the same choice from the button beside the search box, which also leads to the Jev setting
+  const [searchSortMenuOpen, setSearchSortMenuOpen] = useState(false)
+  const searchSortRef = useRef<HTMLDivElement>(null)
   const [rowMenu, setRowMenu] = useState<string | null>(null)
   // actions cell (… button + menu) of the row whose menu is open — the dismissal guard root
   const rowMenuWrapRef = useRef<HTMLSpanElement>(null)
@@ -1351,6 +1359,9 @@ export function Home({
   useDismissablePopover(fileSortMenuOpen, () => setFileSortMenuOpen(false), {
     inside: () => [fileSortRef.current],
   })
+  useDismissablePopover(searchSortMenuOpen, () => setSearchSortMenuOpen(false), {
+    inside: () => [searchSortRef.current],
+  })
 
   const loadMore = () => {
     if (loadingMore || !hasMore) return
@@ -1458,25 +1469,28 @@ export function Home({
       </button>
       {fileSortMenuOpen && (
         <div className="cloud-sort-menu" role="menu">
-          {(['recent', 'oldest'] as const).map((key) => (
-            <button
-              key={key}
-              className={fileSort === key ? 'active' : ''}
-              role="menuitemradio"
-              aria-checked={fileSort === key}
-              onClick={() => {
-                setFileSort(key)
-                setFileSortMenuOpen(false)
-              }}
-            >
-              <SortCheck visible={fileSort === key} />
-              {t(key === 'recent' ? 'cloudSortRecent' : 'cloudSortOldest')}
-            </button>
-          ))}
+          {renderSortOptions(() => setFileSortMenuOpen(false))}
         </div>
       )}
     </div>
   )
+
+  const renderSortOptions = (close: () => void) =>
+    (['recent', 'oldest'] as const).map((key) => (
+      <button
+        key={key}
+        className={fileSort === key ? 'active' : ''}
+        role="menuitemradio"
+        aria-checked={fileSort === key}
+        onClick={() => {
+          setFileSort(key)
+          close()
+        }}
+      >
+        <SortCheck visible={fileSort === key} />
+        {t(key === 'recent' ? 'cloudSortRecent' : 'cloudSortOldest')}
+      </button>
+    ))
 
   // ── Plain view (no folder selected): filtering runs in the main process; entries is the visible list ──
   const selectedPaths = entries.filter((e) => selected.has(e.path)).map((e) => e.path)
@@ -1861,6 +1875,14 @@ export function Home({
       sub: '.pdf',
       action: () => window.aiOffice.newPdf(newFileOpts),
     },
+    // last of the new-file cards: the drawing editor has no AI panel yet
+    {
+      ext: 'excalidraw',
+      title: t('newDrawing'),
+      sub: '.excalidraw.md',
+      noAi: true,
+      action: () => window.aiOffice.newDrawing(newFileOpts),
+    },
   ]
 
   function renderQuickCards() {
@@ -1872,7 +1894,7 @@ export function Home({
             <span className="quick-text">
               <span className="quick-title-row">
                 <span className="quick-title">{item.title}</span>
-                <span className="ai-chip">AI</span>
+                {!item.noAi && <span className="ai-chip">AI</span>}
               </span>
               <span className="quick-sub">{item.sub}</span>
             </span>
@@ -2273,7 +2295,7 @@ export function Home({
             />
           </span>
           <span className="recent-icon">
-            <FileBadge ext={entry.ext} size={24} />
+            <FileBadge ext={entry.ext} name={entry.name} size={24} />
           </span>
           {isRenaming ? (
             <input
@@ -2633,28 +2655,49 @@ export function Home({
     searchInputRef.current?.focus()
   }
 
-  const renderSearchSettingsButton = () => (
-    <button
-      className="file-search-settings"
-      title={t('searchJevSettings')}
-      aria-label={t('searchJevSettings')}
-      onClick={() => setSettingsRequest({ section: 'aiMedia', block: 'rerank' })}
-    >
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
+  // the icon reads as "sort", so it opens the sort choices; the Jev setting it once led to sits below them
+  const renderSearchSortButton = () => (
+    <div className="file-search-sort" ref={searchSortRef}>
+      <button
+        className="file-search-settings"
+        title={t('fileSortMenu')}
+        aria-label={t('fileSortMenu')}
+        aria-haspopup="menu"
+        aria-expanded={searchSortMenuOpen}
+        onClick={() => setSearchSortMenuOpen((o) => !o)}
       >
-        <path d="M12 20V4M12 4l-4 4M12 4l4 4" />
-        <path d="M3 12h6M3 16h5M3 20h4" />
-      </svg>
-    </button>
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 20V4M12 4l-4 4M12 4l4 4" />
+          <path d="M3 12h6M3 16h5M3 20h4" />
+        </svg>
+      </button>
+      {searchSortMenuOpen && (
+        <div className="cloud-sort-menu" role="menu">
+          {renderSortOptions(() => setSearchSortMenuOpen(false))}
+          <div className="cloud-sort-sep" role="separator" />
+          <button
+            role="menuitem"
+            onClick={() => {
+              setSearchSortMenuOpen(false)
+              setSettingsRequest({ section: 'aiMedia', block: 'rerank' })
+            }}
+          >
+            <SortCheck visible={false} />
+            {t('searchJevSettings')}
+          </button>
+        </div>
+      )}
+    </div>
   )
 
   const renderSearchBox = () => (
@@ -2718,7 +2761,7 @@ export function Home({
       }}
     >
       <span className="recent-icon">
-        <FileBadge ext={hit.ext} size={24} />
+        <FileBadge ext={hit.ext} name={hit.path} size={24} />
       </span>
       <div className="search-main">
         <div className="search-head">
@@ -2977,7 +3020,7 @@ export function Home({
             )}
             <div className="file-search-group">
               {renderSearchBox()}
-              {renderSearchSettingsButton()}
+              {renderSearchSortButton()}
             </div>
             {searchActive ? (
               renderSearchHeading()
@@ -3148,7 +3191,7 @@ export function Home({
             )}
             <div className="file-search-group">
               {renderSearchBox()}
-              {renderSearchSettingsButton()}
+              {renderSearchSortButton()}
             </div>
             {searchActive ? (
               renderSearchHeading()

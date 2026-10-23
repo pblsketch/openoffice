@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { LAUNCHABLE_EXTS } from '../src/main/launch-paths'
 
 /**
- * .hwp/.hwpx/.xmind are offered in Explorer's "Open with" and never made the
+ * .hwp/.hwpx/.xmind/.excalidraw are offered in Explorer's "Open with" and never made the
  * default (build/installer.nsh), so a PC that opens them with Hancom Office or
  * another tool keeps it. Each Open-With ProgId carries the per-type document
  * icon, which is what the user sees once they pick this app. The installer
@@ -73,9 +73,18 @@ const OPEN_WITH = [
     register: 'GenOfficeRegisterOpenWithMindmap',
     unregister: 'GenOfficeUnregisterOpenWithMindmap',
   },
+  {
+    ext: 'excalidraw',
+    progId: 'IeumOffice.Drawing',
+    define: 'GENOFFICE_DRAWING_PROGID',
+    name: 'Drawing',
+    icon: 'excalidraw.ico',
+    register: 'GenOfficeRegisterOpenWithDrawing',
+    unregister: 'GenOfficeUnregisterOpenWithDrawing',
+  },
 ] as const
 
-describe('the .hwp / .hwpx / .xmind "Open with" registration', () => {
+describe('the .hwp / .hwpx / .xmind / .excalidraw "Open with" registration', () => {
   it('covers only launchable extensions', () => {
     for (const { ext } of OPEN_WITH) expect(LAUNCHABLE_EXTS).toContain(ext)
   })

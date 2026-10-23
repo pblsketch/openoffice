@@ -24,6 +24,10 @@ import { markdownIsDirty, requestMarkdownClose } from '../../../markdown/src/mai
 import { hwpIsDirty, requestHwpClose } from '../../../hwp/src/main/hwp-main'
 import { htmlIsDirty, requestHtmlClose } from '../../../html/src/main/html-main'
 import { mindmapIsDirty, requestMindmapClose } from '../../../mindmap/src/main/mindmap-main'
+import {
+  excalidrawIsDirty,
+  requestExcalidrawClose,
+} from '../../../excalidraw/src/main/excalidraw-main'
 import { canonicalPath } from './tab-manager'
 import { releaseClosedRenderer } from './renderer-disposal'
 import type { DetachedTab } from './tab-manager'
@@ -117,6 +121,7 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   html: { width: 1200, height: 850 },
   mindmap: { width: 1200, height: 850 },
   hwp: { width: 1280, height: 900 },
+  excalidraw: { width: 1280, height: 860 },
 }
 
 /** where the pointer sits inside a freshly torn-off window's title bar */
@@ -247,6 +252,8 @@ async function detachedIsDirty(rec: DetachedRecord): Promise<boolean> {
       return mindmapIsDirty(wc.id)
     case 'hwp':
       return hwpIsDirty(wc.id)
+    case 'excalidraw':
+      return excalidrawIsDirty(wc.id)
     default:
       return false
   }
@@ -275,6 +282,8 @@ async function confirmDetachedClose(rec: DetachedRecord): Promise<boolean> {
       return requestMindmapClose(wc, win)
     case 'hwp':
       return requestHwpClose(wc, win)
+    case 'excalidraw':
+      return requestExcalidrawClose(wc, win)
     default:
       return true
   }

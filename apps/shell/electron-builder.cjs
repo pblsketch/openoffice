@@ -206,6 +206,7 @@ function assertModuleTreesPresent() {
     '../html/out',
     '../mindmap/out',
     '../hwp/out',
+    '../excalidraw/out',
     '../../packages/cli/dist/genoffice.cjs',
     '../../packages/cli/dist/node_modules/jsdom',
   ]) {
@@ -334,14 +335,15 @@ function ensureThirdPartyNotices() {
 // office types that is the point, for plain text and JSON it would hijack the
 // system editor, so Windows leaves those two out (mac/Linux only offer them
 // in Open With).
-// A mind map file keeps the program the user already opens it with, and HWP
-// and HWPX must not be taken from Hancom Office on a PC that has it, so
-// Windows takes none of the three as the extension's default. They are still
-// offered in Explorer's "Open with": build/installer.nsh writes a product-own
-// ProgId with the per-type document icon for each, so choosing this app for
-// them shows the Hangul or mind-map icon instead of the bare app icon (the
-// .ico files ship via win.extraResources below).
-const WIN_OPEN_WITH_ONLY_EXTS = new Set(['txt', 'json', 'xmind', 'hwp', 'hwpx'])
+// A mind map file and an Excalidraw drawing keep the program the user already
+// opens them with, and HWP and HWPX must not be taken from Hancom Office on a
+// PC that has it, so Windows takes none of the four as the extension's
+// default. They are still offered in Explorer's "Open with":
+// build/installer.nsh writes a product-own ProgId with the per-type document
+// icon for each, so choosing this app for them shows the Hangul, mind-map or
+// drawing icon instead of the bare app icon (the .ico files ship via
+// win.extraResources below).
+const WIN_OPEN_WITH_ONLY_EXTS = new Set(['txt', 'json', 'xmind', 'hwp', 'hwpx', 'excalidraw'])
 // NSIS registers each association under a ProgId taken from its `name`
 // (HKCU\Software\Classes\<name>). The upstream app registers the bare names
 // below ("Word Document"), so sharing them would let either install overwrite
@@ -480,6 +482,18 @@ const FILE_ASSOCIATIONS = [
     icon: 'hwp',
     mimeType: 'application/hwp+zip',
   },
+  {
+    // Open With only, like .xmind: the drawing app's own files keep their
+    // program. An Obsidian drawing note is a .md file and comes through the
+    // Markdown association; the shell routes it to the drawing editor.
+    ext: 'excalidraw',
+    name: 'Drawing',
+    description: 'Drawing',
+    role: 'Editor',
+    rank: 'Alternate',
+    icon: 'excalidraw',
+    mimeType: 'application/vnd.excalidraw+json',
+  },
 ]
 
 const config = {
@@ -547,6 +561,10 @@ const config = {
     {
       from: '../hwp/out',
       to: 'modules/hwp',
+    },
+    {
+      from: '../excalidraw/out',
+      to: 'modules/excalidraw',
     },
     // PDF text editing engines: the bundled main resolves these under
     // Resources/wasm when node_modules is absent (apps/pdf/src/main/wasm-path.ts)
@@ -693,7 +711,7 @@ const config = {
         to: 'shell-new',
         filter: ['*.docx', '*.xlsx', '*.pptx'],
       },
-      // The Open-With ProgIds build/installer.nsh writes for .hwp/.hwpx/.xmind
+      // The Open-With ProgIds build/installer.nsh writes for .hwp/.hwpx/.xmind/.excalidraw
       // point their DefaultIcon at these; without the explicit entries the
       // icons are absent (electron-builder places an icon only for the types
       // in win.fileAssociations, and these three stay off that list).
@@ -704,6 +722,10 @@ const config = {
       {
         from: 'build/mindmap.ico',
         to: 'mindmap.ico',
+      },
+      {
+        from: 'build/excalidraw.ico',
+        to: 'excalidraw.ico',
       },
     ],
   },

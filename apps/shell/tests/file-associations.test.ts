@@ -21,7 +21,13 @@ const config = configModule.exports
 // one); mac and Linux carry the full list.
 const fileAssociations: Array<{ ext: string; mimeType?: string }> = config.linux.fileAssociations
 /** launchable extensions build/installer.nsh offers in "Open with" itself */
-const INSTALLER_OPEN_WITH_EXTS: ReadonlySet<string> = new Set(['odt', 'hwp', 'hwpx', 'xmind'])
+const INSTALLER_OPEN_WITH_EXTS: ReadonlySet<string> = new Set([
+  'odt',
+  'hwp',
+  'hwpx',
+  'xmind',
+  'excalidraw',
+])
 const installerScript = readFileSync(resolve(import.meta.dirname, '../build/installer.nsh'), 'utf8')
 
 describe('packaged file associations', () => {
@@ -32,7 +38,7 @@ describe('packaged file associations', () => {
   // gap this closes.
   it('advertises every extension the app launches', () => {
     for (const ext of LAUNCHABLE_EXTS) {
-      // .odt/.hwp/.hwpx/.xmind are offered by the NSIS script alone
+      // .odt/.hwp/.hwpx/.xmind/.excalidraw are offered by the NSIS script alone
       // (tests/odt-open-with.test.ts, tests/open-with-icons.test.ts): an
       // association would make the app their default opener on Windows
       if (INSTALLER_OPEN_WITH_EXTS.has(ext)) continue
@@ -86,11 +92,28 @@ describe('packaged file associations', () => {
     expect(`${offered!.name} ${offered!.description ?? ''}`).not.toMatch(/xmind/i)
   })
 
+  // An Excalidraw drawing keeps the program the user already opens it with,
+  // like a mind map; the label is the product's own word for the type.
+  it('keeps .excalidraw off the Windows list, and Open With only everywhere else', () => {
+    const winExts = config.win.fileAssociations.map((entry: { ext: string }) => entry.ext)
+    expect(winExts).not.toContain('excalidraw')
+    expect(LAUNCHABLE_EXTS).toContain('excalidraw')
+
+    const offered = fileAssociations.find((entry) => entry.ext === 'excalidraw') as
+      | { ext: string; name: string; description?: string; rank?: string; mimeType?: string }
+      | undefined
+    expect(offered, 'mac / Linux do not offer the app for .excalidraw').toBeTruthy()
+    expect(offered!.rank).toBe('Alternate')
+    expect(offered!.mimeType).toBe('application/vnd.excalidraw+json')
+    expect(`${offered!.name} ${offered!.description ?? ''}`).not.toMatch(/excalidraw/i)
+  })
+
   it('ships the module tree of every editor the bundle routes to', () => {
     const modules = (config.extraResources as Array<{ from: string; to: string }>)
       .map((entry) => entry.to)
       .filter((to) => to.startsWith('modules/'))
     expect(modules).toContain('modules/html')
     expect(modules).toContain('modules/mindmap')
+    expect(modules).toContain('modules/excalidraw')
   })
 })

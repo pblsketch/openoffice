@@ -28,6 +28,7 @@ const FAMILY_BY_KIND: Record<Exclude<TabKind, 'home' | 'help'>, EditorFamily> = 
   pdf: 'pdf',
   mindmap: 'xmind',
   hwp: 'hwp',
+  excalidraw: 'excalidraw',
 }
 
 /** families whose live content can be read back over MCP */

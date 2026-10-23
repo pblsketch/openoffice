@@ -1627,6 +1627,7 @@ body.vib .home {
   right: 0;
   top: calc(100% + 6px);
   min-width: 150px;
+  white-space: nowrap;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -1660,6 +1661,12 @@ body.vib .home {
 
 .cloud-sort-menu button.active {
   font-weight: 600;
+}
+
+.cloud-sort-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
 }
 
 /* WPS-style sortable column header: label + direction arrow, click opens
@@ -1831,6 +1838,12 @@ body.vib .home {
 }
 .file-search-clear:hover {
   color: var(--text);
+}
+
+/* holds the sort popover opened from the button beside the search box */
+.file-search-sort {
+  position: relative;
+  flex-shrink: 0;
 }
 
 .file-search-settings {

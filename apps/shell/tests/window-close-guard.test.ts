@@ -18,6 +18,7 @@ const requestMarkdownClose = vi.fn(() => Promise.resolve(true))
 const requestHtmlClose = vi.fn(() => Promise.resolve(true))
 const requestMindmapClose = vi.fn(() => Promise.resolve(true))
 const requestHwpClose = vi.fn(() => Promise.resolve(true))
+const requestExcalidrawClose = vi.fn(() => Promise.resolve(true))
 
 vi.mock('../../docs/src/main/docs-main', () => ({
   docsQueryDirty: (...args: unknown[]) => docsQueryDirty(...(args as [])),
@@ -51,6 +52,10 @@ vi.mock('../../mindmap/src/main/mindmap-main', () => ({
 
 vi.mock('../../hwp/src/main/hwp-main', () => ({
   requestHwpClose: (...args: unknown[]) => requestHwpClose(...(args as [])),
+}))
+
+vi.mock('../../excalidraw/src/main/excalidraw-main', () => ({
+  requestExcalidrawClose: (...args: unknown[]) => requestExcalidrawClose(...(args as [])),
 }))
 
 interface TabStub {
@@ -97,7 +102,8 @@ class FakeWindow {
   }
 }
 
-type DirtyKinds = 'sheets' | 'pdf' | 'markdown' | 'html' | 'mindmap' | 'hwp' | 'slides' | 'docs'
+type DirtyKinds =
+  'sheets' | 'pdf' | 'markdown' | 'html' | 'mindmap' | 'hwp' | 'excalidraw' | 'slides' | 'docs'
 
 function fakeManager(dirty: Partial<Record<DirtyKinds, TabStub[]>> = {}) {
   return {
@@ -110,6 +116,7 @@ function fakeManager(dirty: Partial<Record<DirtyKinds, TabStub[]>> = {}) {
     dirtyHtmlTabs: () => dirty.html ?? [],
     dirtyMindmapTabs: () => dirty.mindmap ?? [],
     dirtyHwpTabs: () => dirty.hwp ?? [],
+    dirtyExcalidrawTabs: () => dirty.excalidraw ?? [],
     dirtySlidesTabs: () => dirty.slides ?? [],
     docsTabs: () => dirty.docs ?? [],
   }
@@ -134,6 +141,7 @@ beforeEach(async () => {
     requestHtmlClose,
     requestMindmapClose,
     requestHwpClose,
+    requestExcalidrawClose,
   ]) {
     ask.mockImplementation(() => Promise.resolve(true))
   }
@@ -194,6 +202,7 @@ describe('dirty close', () => {
       html: [{ id: 'h', webContents: { id: 3 } }],
       mindmap: [{ id: 'x', webContents: { id: 5 } }],
       hwp: [{ id: 'w', webContents: { id: 5 } }],
+      excalidraw: [{ id: 'd', webContents: { id: 6 } }],
       slides: [{ id: 's', webContents: { id: 4 } }],
     })
     install(win as never, manager as never)
@@ -205,6 +214,7 @@ describe('dirty close', () => {
       requestHtmlClose,
       requestMindmapClose,
       requestHwpClose,
+      requestExcalidrawClose,
       requestSlidesClose,
     ]) {
       expect(ask).toHaveBeenCalledWith(expect.anything(), win)

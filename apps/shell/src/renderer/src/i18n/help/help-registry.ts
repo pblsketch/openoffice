@@ -211,6 +211,10 @@ export const HELP_TOPICS: HelpTopicMeta[] = [
       '预览',
       'preview',
       'gfm',
+      '链接',
+      'link',
+      'wiki',
+      'obsidian',
     ],
   },
   {
@@ -218,6 +222,12 @@ export const HELP_TOPICS: HelpTopicMeta[] = [
     group: 'apps',
     order: 6,
     keywords: ['网页', 'html', '预览', 'preview', '检查器', 'inspector'],
+  },
+  {
+    id: 'drawing',
+    group: 'apps',
+    order: 7,
+    keywords: ['绘图', 'drawing', '그림', 'excalidraw', 'obsidian', 'sketch', 'whiteboard'],
   },
   {
     id: 'ai-panel',

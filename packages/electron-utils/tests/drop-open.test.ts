@@ -159,6 +159,12 @@ describe('partitionDropPayload', () => {
     expect(result.unsupportedExts).toEqual([])
   })
 
+  it('routes dropped .excalidraw drawings as openable', () => {
+    const result = partitionDropPayload(['/art/board.excalidraw', '/art/Note.excalidraw.md'])
+    expect(result.supported).toEqual(['/art/board.excalidraw', '/art/Note.excalidraw.md'])
+    expect(result.unsupportedExts).toEqual([])
+  })
+
   it('collects known-unsupported extensions uniquely, first-seen order', () => {
     const result = partitionDropPayload(['old.doc', 'x.pages', 'y.rtf', 'z.doc'])
     expect(result.supported).toEqual([])

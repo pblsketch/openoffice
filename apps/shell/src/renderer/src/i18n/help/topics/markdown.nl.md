@@ -30,6 +30,17 @@ Drie snelle voorbeelden:
 - **Tabel**: klik op **Tabel invoegen** ▸ sleep het aantal rijen en kolommen ▸ typ in de cellen; het voorbeeld geeft het meteen weer.
 - **Takenlijst**: selecteer een paar regels ▸ klik op **Takenlijst** ▸ elke regel wordt `- [ ]`, in het voorbeeld weergegeven als selectievakjes.
 
+## Koppelingen tussen notities
+
+Koppelingen in een notitie volgt u met **Ctrl+klik** (**⌘+klik** op een Mac). Een gewone klik bewerkt nog steeds de tekst.
+
+- **Koppen**: `[tekst](#kop)` en `[[#Kop]]` springen naar die kop in dezelfde notitie.
+- **Andere bestanden**: `[tekst](other.md)` of `[tekst](../folder/report.pdf)` opent het bestand in een eigen tabblad, gerekend vanaf de map van de notitie. Een koppeling naar een kop in een andere Markdown-notitie opent die notitie bij de kop.
+- **Wikikoppelingen**: `[[Notitie]]`, `[[Notitie#Kop]]` en `[[Notitie|getoonde tekst]]` worden overal in de kluis van de notitie gezocht: de eerste map boven de notitie met `.obsidian`, anders de map van de notitie zelf. Hebben twee bestanden dezelfde naam, dan wint het bestand dat het dichtst bij de notitie staat.
+- **Aanvullen**: typ `[[` en kies een notitie uit de kluis in de lijst; die wordt geschreven als `[[Naam]]`.
+- **Afbeeldingen**: `![[afbeelding.png]]` toont de afbeelding onder de tekst en `![[afbeelding.png|300]]` stelt de breedte in. Alleen afbeeldingen in de kluis tot 20 MB worden getoond.
+- **Wat niet verandert**: wikikoppelingen blijven gewone tekst in het bestand, dus opslaan herschrijft ze nooit. Webkoppelingen openen in uw browser. Netwerkpaden (`\\server\share`), koppelingen in de bronweergave en de AI openen niets.
+
 ## Exporteren
 
 Menu Bestand, alles lokaal en alles vraagt waar het resultaat heen moet:

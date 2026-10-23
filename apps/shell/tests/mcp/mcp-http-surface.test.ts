@@ -271,6 +271,7 @@ describe('MCP surface over Streamable HTTP (/mcp)', () => {
         'pdf',
         'xmind',
         'hwp',
+        'excalidraw',
       ])
       // the mind map entry: editor formats only, nothing generated or read headlessly
       expect(infoJson.families.find((f) => f.family === 'xmind')).toEqual({

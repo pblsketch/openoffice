@@ -239,6 +239,9 @@ const homeApi: HomeApi = {
   async newMindmap(opts) {
     await ipcRenderer.invoke(HOME_CHANNELS.newMindmap, opts)
   },
+  async newDrawing(opts) {
+    await ipcRenderer.invoke(HOME_CHANNELS.newDrawing, opts)
+  },
   async newHwp(opts) {
     await ipcRenderer.invoke(HOME_CHANNELS.newHwp, opts)
   },

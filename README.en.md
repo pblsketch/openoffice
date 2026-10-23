@@ -73,10 +73,19 @@ The author's own account, in Korean, is at
 - **PDF**: edit text on the page and convert a PDF to Word, Excel or
   PowerPoint on your PC.
 - **Slides from a request**: the deck is generated on your PC.
+- **Links between Markdown notes**: `Ctrl`+click (`⌘`+click on a Mac) a link
+  to go to a heading in the document, another note or another file. Obsidian
+  wiki links (`[[note]]`) work too; typing `[[` lists the notes in the same
+  vault to pick from, and `![[picture]]` shows the picture. Wiki links are
+  saved as plain text, so the note opens the same way in Obsidian.
 - **Mind maps**: opens and saves XMind files (`.xmind`) in place. Elements the
   editor does not show are kept when you save, and a map you did not change is
   saved byte for byte as it was. Several sheets, themes, export to a picture,
   PDF or Markdown outline, and printing.
+- **Drawings (Excalidraw)**: opens and saves drawing notes made with the
+  Obsidian Excalidraw plugin (`.excalidraw.md`) and `.excalidraw` files in
+  place. What you wrote in the note stays as it is, and pictures the note points
+  at in its vault are shown.
 - **New documents from your documents**: start "Make a new document" from a
   starred group on the home screen, from files you picked, or from an
   editor's File menu, and the material is turned into a PowerPoint deck, an

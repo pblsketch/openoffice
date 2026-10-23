@@ -11,6 +11,7 @@ import {
   net,
   protocol,
   shell,
+  webContents,
 } from 'electron'
 import type { WebContents } from 'electron'
 import {
@@ -59,6 +60,7 @@ import { createMarkdownConversionSession, writeMarkdownConversion } from './conv
 import { confirmOdtReport, exportOdt, odtFilterName } from './odt-export'
 import { registerMarkdownSeedIpc } from './seed-main'
 import { registerMarkdownNoteAppendIpc } from './note-append'
+import { forgetLinkState, isEmbedGranted, registerMarkdownLinkIpc } from './link-ipc'
 import { MARKDOWN_CHANNELS, MAX_PASTED_IMAGE_BYTES } from '../shared/ipc'
 import type { ImageHostConfig } from '../shared/ipc'
 import { isImageHostUsable, normalizeImageHostConfig, uploadImageToHost } from './image-host'
@@ -375,6 +377,8 @@ interface RuntimePaths {
   rendererFile?: string
   /** Shell router used to open exported PDFs in a new GenOffice tab. */
   openGeneratedPath?: (path: string) => boolean
+  /** Shell router for a followed link: focuses the file's tab or opens one; false = not opened */
+  openLinkedPath?: (path: string) => boolean
 }
 
 let runtime: RuntimePaths = { preloadPath: '' }
@@ -777,7 +781,8 @@ function registerImageProtocol(): void {
         break
       }
     }
-    if (!inDocDir) return new Response(null, { status: 403 })
+    // or a picture an `![[…]]` embed resolved inside the note's vault
+    if (!inDocDir && !isEmbedGranted(target)) return new Response(null, { status: 403 })
     return net.fetch(pathToFileURL(target).toString())
   })
 }
@@ -795,6 +800,18 @@ function registerMarkdownIpc(): void {
   ipcMain.handle(MARKDOWN_CHANNELS.consumePending, (e) => openPathByWc.get(e.sender.id) ?? null)
   registerMarkdownSeedIpc({ opensFile: (wcId) => openPathByWc.has(wcId) })
   registerMarkdownNoteAppendIpc({ documentPath: (wcId) => savePathByWc.get(wcId) ?? null })
+
+  // ---- internal links (wiki links, relative links, embedded pictures) ----
+  registerMarkdownLinkIpc({
+    documentPath: (wcId) => savePathByWc.get(wcId) ?? null,
+    *views() {
+      for (const [wcId, path] of savePathByWc) {
+        const contents = webContents.fromId(wcId)
+        if (contents) yield [contents, path]
+      }
+    },
+    openPath: (path) => runtime.openLinkedPath?.(path) ?? false,
+  })
 
   // ---- headless export mode (--headless-export) ----
 
@@ -1300,6 +1317,7 @@ function grantAndTrack(wc: WebContents, openPath?: string | null): void {
     openPathByWc.delete(wcId)
     allowedByWc.delete(wcId)
     savePathByWc.delete(wcId)
+    forgetLinkState(wcId)
     dirtyByWc.delete(wcId)
     docDiskStates.delete(wcId)
     closeSaveWaiters.get(wcId)?.(false)

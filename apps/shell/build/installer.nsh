@@ -48,12 +48,13 @@
   DeleteRegKey SHELL_CONTEXT "Software\Classes\${GENOFFICE_ODT_PROGID}"
 !macroend
 
-; .hwp, .hwpx and .xmind are offered in Explorer's "Open with" and never made
-; the default, for the same reason as .odt above: a win.fileAssociations entry
-; would also write the extension's default value and take it over (from Hancom
-; Office for the Hangul formats, from whatever opens the mind map today). Each
+; .hwp, .hwpx, .xmind and .excalidraw are offered in Explorer's "Open with" and
+; never made the default, for the same reason as .odt above: a win.fileAssociations
+; entry would also write the extension's default value and take it over (from
+; Hancom Office for the Hangul formats, from whatever opens the mind map or the
+; drawing today). Each
 ; gets a product-own ProgId whose DefaultIcon is the per-type document icon
-; (resources\hwp.ico / resources\mindmap.ico, placed by the win.extraResources
+; (resources\hwp.ico / mindmap.ico / excalidraw.ico, placed by the win.extraResources
 ; entries in electron-builder.cjs), so choosing this app in "Open with" shows
 ; the Hangul or mind-map icon instead of the bare app icon. The ProgIds match
 ; the name-to-ProgId rule electron-builder.cjs uses for its Windows list
@@ -61,6 +62,7 @@
 !define GENOFFICE_HWP_PROGID "IeumOffice.HWPDocument"
 !define GENOFFICE_HWPX_PROGID "IeumOffice.HWPXDocument"
 !define GENOFFICE_MINDMAP_PROGID "IeumOffice.MindMap"
+!define GENOFFICE_DRAWING_PROGID "IeumOffice.Drawing"
 
 !macro GenOfficeRegisterOpenWithHwp
   WriteRegStr SHELL_CONTEXT "Software\Classes\${GENOFFICE_HWP_PROGID}" "" "HWP Document"
@@ -98,6 +100,18 @@
   DeleteRegKey SHELL_CONTEXT "Software\Classes\${GENOFFICE_MINDMAP_PROGID}"
 !macroend
 
+!macro GenOfficeRegisterOpenWithDrawing
+  WriteRegStr SHELL_CONTEXT "Software\Classes\${GENOFFICE_DRAWING_PROGID}" "" "Drawing"
+  WriteRegStr SHELL_CONTEXT "Software\Classes\${GENOFFICE_DRAWING_PROGID}\DefaultIcon" "" "$INSTDIR\resources\excalidraw.ico"
+  WriteRegStr SHELL_CONTEXT "Software\Classes\${GENOFFICE_DRAWING_PROGID}\shell\open\command" "" '"$appExe" "%1"'
+  WriteRegNone SHELL_CONTEXT "Software\Classes\.excalidraw\OpenWithProgids" "${GENOFFICE_DRAWING_PROGID}"
+!macroend
+
+!macro GenOfficeUnregisterOpenWithDrawing
+  DeleteRegValue SHELL_CONTEXT "Software\Classes\.excalidraw\OpenWithProgids" "${GENOFFICE_DRAWING_PROGID}"
+  DeleteRegKey SHELL_CONTEXT "Software\Classes\${GENOFFICE_DRAWING_PROGID}"
+!macroend
+
 ; Windows' "Default apps" page picks an app by its registered capabilities and
 ; records the ProgId the app declared for the type. Without this entry Windows
 ; only knows the bare IeumOffice.exe application and records
@@ -105,7 +119,7 @@
 ; shows the logo instead of hwp.ico, while a .hwpx chosen from our Open-With
 ; ProgId shows the document icon. Registering capabilities does not change any
 ; default by itself; it makes the user's choice land on the per-type ProgId
-; (whose DefaultIcon is the document icon). The .hwp/.hwpx/.xmind/.odt ProgIds
+; (whose DefaultIcon is the document icon). The .hwp/.hwpx/.xmind/.excalidraw/.odt ProgIds
 ; are the product-own Open-With ones defined above; the rest are the ProgIds
 ; electron-builder writes for the Windows file associations.
 !define GENOFFICE_CAPABILITIES_KEY "Software\IeumOffice\Capabilities"
@@ -129,6 +143,7 @@
   WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".hwp" "${GENOFFICE_HWP_PROGID}"
   WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".hwpx" "${GENOFFICE_HWPX_PROGID}"
   WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".xmind" "${GENOFFICE_MINDMAP_PROGID}"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".excalidraw" "${GENOFFICE_DRAWING_PROGID}"
   WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".odt" "${GENOFFICE_ODT_PROGID}"
 !macroend
 
@@ -150,6 +165,7 @@
   !insertmacro GenOfficeRegisterOpenWithHwp
   !insertmacro GenOfficeRegisterOpenWithHwpx
   !insertmacro GenOfficeRegisterOpenWithMindmap
+  !insertmacro GenOfficeRegisterOpenWithDrawing
   !insertmacro GenOfficeRegisterApplicationCapabilities
   !insertmacro UPDATEFILEASSOC
 !macroend
@@ -165,6 +181,7 @@
   !insertmacro GenOfficeUnregisterOpenWithHwp
   !insertmacro GenOfficeUnregisterOpenWithHwpx
   !insertmacro GenOfficeUnregisterOpenWithMindmap
+  !insertmacro GenOfficeUnregisterOpenWithDrawing
   !insertmacro GenOfficeUnregisterApplicationCapabilities
   Pop $0
   !insertmacro UPDATEFILEASSOC

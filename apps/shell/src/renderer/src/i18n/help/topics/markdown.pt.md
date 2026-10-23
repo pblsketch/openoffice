@@ -30,6 +30,17 @@ Três exemplos rápidos:
 - **Tabela**: clique **Inserir tabela** ▸ arraste para escolher o número de linhas e colunas ▸ escreva nas células; a pré-visualização renderiza-a de imediato.
 - **Lista de tarefas**: selecione algumas linhas ▸ clique **Lista de tarefas** ▸ cada linha passa a `- [ ]` e aparece na pré-visualização como uma caixa de verificação.
 
+## Links entre notas
+
+Os links de uma nota são seguidos com **Ctrl+clique** (**⌘+clique** no Mac). Um clique simples continua editando o texto.
+
+- **Títulos**: `[texto](#titulo)` e `[[#Título]]` vão para esse título na mesma nota.
+- **Outros arquivos**: `[texto](other.md)` ou `[texto](../folder/report.pdf)` abre o arquivo em sua própria aba, a partir da pasta da nota. Um link para um título de outra nota Markdown abre essa nota no título.
+- **Links wiki**: `[[Nota]]`, `[[Nota#Título]]` e `[[Nota|texto exibido]]` são procurados em qualquer lugar do cofre da nota — a primeira pasta acima da nota que contém `.obsidian`, ou então a própria pasta da nota. Quando dois arquivos têm o mesmo nome, vence o mais próximo da nota.
+- **Preenchimento**: digite `[[` e escolha uma nota do cofre na lista; ela é escrita como `[[Nome]]`.
+- **Imagens**: `![[imagem.png]]` mostra a imagem abaixo do texto e `![[imagem.png|300]]` define a largura. Só aparecem imagens dentro do cofre com até 20 MB.
+- **O que não muda**: links wiki continuam como texto simples no arquivo, então salvar nunca os reescreve. Links da web abrem no navegador. Caminhos de rede (`\\server\share`), links no modo código-fonte e a IA não abrem nada.
+
 ## Exportação
 
 Menu Arquivo, tudo local e tudo pergunta onde colocar o resultado:

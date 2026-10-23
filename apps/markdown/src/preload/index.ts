@@ -18,6 +18,7 @@ import type {
   SaveMode,
   UiTheme,
 } from '../shared/ipc'
+import type { NoteSuggestion } from '../shared/internal-links'
 import type { SubscriptionApi } from '../shared/subscription-api'
 import {
   SUBSCRIPTION_INSTALL_HELP_CHANNEL,
@@ -89,6 +90,24 @@ const api: MarkdownApi = {
     return () => ipcRenderer.removeListener(MARKDOWN_CHANNELS.noteAppendReady, listener)
   },
   openSourcePath: (path: string) => ipcRenderer.invoke('home:open-path', path),
+  openLink: (target) => ipcRenderer.invoke(MARKDOWN_CHANNELS.openLink, target),
+  suggestNotes: (query) =>
+    (ipcRenderer.invoke(MARKDOWN_CHANNELS.suggestNotes, query) as Promise<NoteSuggestion[]>).catch(
+      () => [],
+    ),
+  resolveEmbed: (target) =>
+    (ipcRenderer.invoke(MARKDOWN_CHANNELS.resolveEmbed, target) as Promise<string | null>).catch(
+      () => null,
+    ),
+  takeLinkHeading: () =>
+    (ipcRenderer.invoke(MARKDOWN_CHANNELS.linkHeadingTake) as Promise<string | null>).catch(
+      () => null,
+    ),
+  onLinkHeadingReady: (handler) => {
+    const listener = () => handler()
+    ipcRenderer.on(MARKDOWN_CHANNELS.linkHeadingReady, listener)
+    return () => ipcRenderer.removeListener(MARKDOWN_CHANNELS.linkHeadingReady, listener)
+  },
   consumeHeadlessExport: () => ipcRenderer.invoke(MARKDOWN_CHANNELS.consumeHeadlessExport),
   headlessExportDone: (result: { ok: boolean; error?: string }) =>
     ipcRenderer.send(MARKDOWN_CHANNELS.headlessExportDone, result),

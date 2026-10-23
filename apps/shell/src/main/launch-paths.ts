@@ -22,6 +22,7 @@ export const LAUNCHABLE_EXTS = [
   'xmind',
   'hwp',
   'hwpx',
+  'excalidraw',
 ] as const
 
 const SUPPORTED_LAUNCH_RE = new RegExp(`\\.(${LAUNCHABLE_EXTS.join('|')})$`, 'i')
