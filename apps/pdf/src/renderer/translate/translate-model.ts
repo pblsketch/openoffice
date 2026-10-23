@@ -189,6 +189,7 @@ const REASON_KEYS: Record<string, StringKey> = {
   'shared-text-object': 'trReasonSharedText',
   'text-in-form': 'trReasonTextInForm',
   'no-position': 'trReasonNoPosition',
+  'vertical-text': 'trPageVertical',
 }
 
 /** why a block stayed in the source language, in words */

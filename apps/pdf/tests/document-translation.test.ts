@@ -512,9 +512,7 @@ describe('translation window: choices', () => {
     expect((q(m.el, 'input[name="pdf-translate-pages"]') as HTMLInputElement).checked).toBe(true)
     expect(checked(m.el, 'format-pdf')).toBe(true)
     expect(checked(m.el, 'format-md')).toBe(false)
-    // bilingual is for Markdown / EPUB only
-    expect(disabled(m.el, '[data-field="bilingual"]')).toBe(true)
-    await click(m.el, '[data-field="format-md"]')
+    // bilingual applies to every format, the PDF included (decision 0057)
     expect(disabled(m.el, '[data-field="bilingual"]')).toBe(false)
     expect(q(m.el, '[data-units]')?.dataset.units).toBe('3')
     expect(bridge.api.aiStream).not.toHaveBeenCalled()
@@ -659,6 +657,20 @@ describe('translation window: confirmation', () => {
     await until(() => q(m.el, '.pdf-translate-report') !== null, 'the report')
     expect(channels.writeBacks).toHaveLength(1)
     expect(bridge.api.aiStream).not.toHaveBeenCalled()
+  })
+
+  it('bilingual on the PDF asks for a bilingual PDF', async () => {
+    const channels = fakeChannels({
+      stored: { lang: 'de', provider: 'claude-code', model: '', blocks: 3 },
+    })
+    const m = await mount({ channels })
+    await openWindow(m, { lang: 'de', pages: null })
+    await click(m.el, '[data-field="bilingual"]')
+    await click(m.el, '[data-action="next"]')
+    await until(() => q(m.el, '[data-nothing]') !== null, 'the confirmation')
+    await click(m.el, '[data-action="export"]')
+    await until(() => q(m.el, '.pdf-translate-report') !== null, 'the report')
+    expect(channels.writeBacks[0]).toMatchObject({ payload: { lang: 'de', bilingual: true } })
   })
 })
 

@@ -30,7 +30,9 @@ export interface TextDraft {
   /** column the block sits in (layout of multi-column pages) */
   column?: PageColumn
   segments: Segment[]
-  role: 'paragraph' | 'heading' | 'listItem' | 'caption'
+  role: 'paragraph' | 'heading' | 'listItem' | 'caption' | 'label'
+  /** a label's drawing (its ImageDraft's figureKey) */
+  figureKey?: string
   headingLevel?: number
   levelSource?: HeadingLevelSource
   /** printed-TOC line kept in the body (non-TOC page): its page label */
@@ -42,6 +44,8 @@ export interface ImageDraft {
   pageIndex: number
   source: BlockSource
   ir: IrImageBlock
+  /** a picture of a drawing the labels with this key belong to */
+  figureKey?: string
   caption?: { draft: TextDraft; position: 'above' | 'below' }
 }
 

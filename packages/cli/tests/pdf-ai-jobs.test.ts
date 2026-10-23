@@ -343,6 +343,26 @@ describe('pdf translate', () => {
     expect(fakes.stream).not.toHaveBeenCalled()
   })
 
+  it('writes a bilingual PDF with --bilingual: each sheet twice as wide', async () => {
+    const { dir, env } = dataFolder(SUBSCRIPTION)
+    const pdf = samplePdf(dir)
+    const r = await run(
+      ['pdf', 'translate', pdf, '--to', 'fr', '--format', 'pdf', '--bilingual', '--yes', '--json'],
+      { env },
+    )
+    expect(r.code).toBe(0)
+    const out = join(dir, 'book.fr.pdf')
+    expect(r.json().detail.outputs).toEqual([out])
+    const { PDFDocument } = await import('pdf-lib')
+    const [source, sheets] = await Promise.all([
+      PDFDocument.load(readFileSync(pdf)),
+      PDFDocument.load(readFileSync(out)),
+    ])
+    expect(sheets.getPageCount()).toBe(source.getPageCount())
+    const page = source.getPage(0).getSize()
+    expect(sheets.getPage(0).getSize()).toEqual({ width: page.width * 2, height: page.height })
+  })
+
   it('translates and writes <name>.<lang>.<ext> beside the source, then needs --force', async () => {
     const { dir, env } = dataFolder(SUBSCRIPTION)
     const pdf = samplePdf(dir)
@@ -601,7 +621,7 @@ describe('pdf translate', () => {
     expect(fakes.stream).not.toHaveBeenCalled()
   })
 
-  it('validates the language, the formats and --bilingual before anything else', async () => {
+  it('validates the language and the formats before anything else', async () => {
     const { dir, env } = dataFolder(SUBSCRIPTION)
     const pdf = samplePdf(dir)
     const lang = await run(['pdf', 'translate', pdf, '--to', 'xx', '--json'], { env })
@@ -614,10 +634,6 @@ describe('pdf translate', () => {
       },
     )
     expect(format.json().error).toBe('invalid_argument')
-    const bilingual = await run(['pdf', 'translate', pdf, '--to', 'fr', '--bilingual', '--json'], {
-      env,
-    })
-    expect(bilingual.json().error).toBe('invalid_argument')
     expect(fakes.detect).not.toHaveBeenCalled()
   })
 })

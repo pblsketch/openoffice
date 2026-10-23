@@ -294,7 +294,7 @@ export const DocumentTranslation = forwardRef<DocumentTranslationHandle, Documen
               jobId,
               ...common,
               outPath: path,
-              payload: { lang: run.lang },
+              payload: { lang: run.lang, ...(run.bilingual ? { bilingual: true } : {}) },
             })
             if (!out.ok) {
               failed(structureFailureText(out, p.t))

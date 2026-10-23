@@ -12,7 +12,7 @@ export const cs = {
   trFormatMd: 'Přeložený Markdown',
   trFormatEpub: 'Přeložený EPUB',
   trBilingual:
-    'Dvojjazyčně: za každým odstavcem originálu následuje jeho překlad (jen Markdown a EPUB)',
+    'Dvojjazyčně: v Markdownu a EPUB následuje za každým odstavcem originálu jeho překlad, v PDF stojí každá přeložená stránka vedle originální',
   trPdfEncrypted:
     'Dokument je zašifrovaný, proto do něj nelze zapsat přeložené PDF. Markdown a EPUB fungují dál.',
   trPdfScript:
@@ -60,7 +60,8 @@ export const cs = {
   trReportPending: 'Dosud nepřeložené bloky, ponechané ve zdrojovém jazyce: {count}.',
   trReportNone: 'Všechny bloky byly přeloženy.',
   trReportUntranslated: 'Bloky ponechané ve zdrojovém jazyce',
-  trReportOverflowed: 'Bloky přesahující svůj rámeček: {count} (stránky {pages})',
+  trReportOverflowed:
+    'Bloky ponechané v původním jazyce kvůli nedostatku místa: {count} (stránky {pages})',
   trReportOriginalPages: 'Stránky ponechané beze změny',
   trReportFiles: 'Uložené soubory',
   trReasonLine: '{reason}: stránky {pages} (bloky: {count})',

@@ -12,7 +12,8 @@ export const id = {
   trFormatPdf: 'PDF terjemahan',
   trFormatMd: 'Markdown terjemahan',
   trFormatEpub: 'EPUB terjemahan',
-  trBilingual: 'Dwibahasa: setiap paragraf asli diikuti terjemahannya (hanya Markdown dan EPUB)',
+  trBilingual:
+    'Dwibahasa: di Markdown dan EPUB setiap paragraf asli diikuti terjemahannya; di PDF setiap halaman terjemahan diletakkan di samping halaman aslinya',
   trPdfEncrypted:
     'Dokumen ini terenkripsi, jadi PDF terjemahan tidak bisa ditulis ke dalamnya. Markdown dan EPUB tetap bisa.',
   trPdfScript:
@@ -60,7 +61,8 @@ export const id = {
   trReportPending: '{count} blok belum diterjemahkan dan tetap dalam bahasa asli.',
   trReportNone: 'Semua blok sudah diterjemahkan.',
   trReportUntranslated: 'Blok yang tetap dalam bahasa asli',
-  trReportOverflowed: 'Blok yang melewati kotaknya: {count} (halaman {pages})',
+  trReportOverflowed:
+    'Blok yang dibiarkan dalam bahasa asli karena tidak cukup ruang: {count} (halaman {pages})',
   trReportOriginalPages: 'Halaman yang dibiarkan seperti semula',
   trReportFiles: 'Berkas yang disimpan',
   trReasonLine: '{reason}: halaman {pages} ({count} blok)',

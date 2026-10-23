@@ -7,7 +7,8 @@
 import type { IrDocument } from '../../../pdf2docx/src/pipeline'
 import type { IrPage, Line, TextBlock as IrTextBlock } from '../../../pdf2docx/src/ir'
 import { bindCaptions } from './captions'
-import { lineFontSize, unionBox, type Draft, type TextDraft } from './draft'
+import { lineFontSize, unionBox, type Draft, type ImageDraft, type TextDraft } from './draft'
+import type { FigurePlan } from './figures'
 import { assignHeadingLevels, type TocTarget } from './headings'
 import { lineText, linesToRuns, type RunContext } from './inline'
 import type { RawBookmark } from './pdfium-doc'
@@ -40,6 +41,8 @@ export interface BuildTreeInput {
   bookmarks: RawBookmark[]
   info: DocumentInfo
   sourcePageCount: number
+  /** analyzed page index → its drawings (figures.ts); absent = none found */
+  figures?: FigurePlan[][]
 }
 
 /** a page whose text blocks are at least this share of TOC entries… */
@@ -80,14 +83,71 @@ function segmentsOf(block: IrTextBlock, pageIndex: number): TextDraft['segments'
   ]
 }
 
-function pageDrafts(page: IrPage, pageIndex: number, toc: boolean): Draft[] {
+/** a drawing's labels as drafts (they reach the tree as paragraphs marked with the figure) */
+function labelDrafts(
+  plan: FigurePlan,
+  pageIndex: number,
+  source: BlockSource,
+  key: string,
+): TextDraft[] {
+  return plan.labels.map((lines) => {
+    const box = unionBox(lines.map((l) => l.box))
+    return {
+      kind: 'text' as const,
+      pageIndex,
+      source,
+      ir: {
+        kind: 'text' as const,
+        lines,
+        box,
+        align: 'center' as const,
+        firstLineIndentPt: 0,
+        dir: 'ltr' as const,
+      },
+      segments: [{ pageIndex, lines, box }],
+      role: 'label' as const,
+      figureKey: key,
+    }
+  })
+}
+
+function pageDrafts(
+  page: IrPage,
+  pageIndex: number,
+  toc: boolean,
+  figures: readonly FigurePlan[] = [],
+): Draft[] {
   const source: BlockSource = page.ocrRecovered ? 'ocr' : 'pdf'
   if ((page.scanned || page.degraded) && !page.ocrRecovered) {
     return page.render ? [{ kind: 'pageImage', pageIndex, source, page }] : []
   }
   if (toc) return []
   const drafts: Draft[] = []
+  const placed = new Set<FigurePlan>()
   for (const block of page.blocks) {
+    const figure = figures.find((f) => f.blocks.has(block))
+    if (figure) {
+      // the drawing takes the place of the first block it takes in
+      if (placed.has(figure)) continue
+      placed.add(figure)
+      const key = `${pageIndex}:${figures.indexOf(figure)}`
+      const picture: ImageDraft = {
+        kind: 'image',
+        pageIndex,
+        source,
+        figureKey: key,
+        ir: {
+          kind: 'image',
+          box: figure.box,
+          data: figure.png,
+          mime: 'image/png',
+          pixelWidth: figure.pixelWidth,
+          pixelHeight: figure.pixelHeight,
+        },
+      }
+      drafts.push(picture, ...labelDrafts(figure, pageIndex, source, key))
+      continue
+    }
     if (block.kind === 'text') {
       if (block.lines.length === 0) continue
       const draft: TextDraft = {
@@ -154,7 +214,9 @@ export function buildDocumentTree(input: BuildTreeInput): DocumentTree {
   })
 
   // ── drafts, captions, headings, joins ──
-  const pages = irPages.map((page, i) => bindCaptions(pageDrafts(page, i, tocPages[i]!)))
+  const pages = irPages.map((page, i) =>
+    bindCaptions(pageDrafts(page, i, tocPages[i]!, input.figures?.[i])),
+  )
   const textDrafts = pages.flat().filter((d): d is TextDraft => d.kind === 'text')
   assignHeadingLevels(textDrafts, {
     bookmarks: input.bookmarks,
@@ -169,6 +231,8 @@ export function buildDocumentTree(input: BuildTreeInput): DocumentTree {
   const counters = new Map<number, number>()
   const failedPages = new Set<number>()
   const refPages = new Map<string, number[]>()
+  /** a drawing's figureKey → its picture's block id */
+  const figureIds = new Map<string, string>()
 
   const base = (pageIndex: number, source: BlockSource, regions?: BlockRegion[]): BlockBase => {
     const page = pageNumberOf(pageIndex)
@@ -223,8 +287,8 @@ export function buildDocumentTree(input: BuildTreeInput): DocumentTree {
 
   const cellParagraphs = (pageIndex: number) => (cellBlocks: IrTextBlock[]) =>
     cellBlocks
-      .map((b) => linesToRuns(b.lines, runContext(pageIndex)))
-      .filter((runs) => runs.length > 0)
+      .map((b) => ({ runs: linesToRuns(b.lines, runContext(pageIndex)), box: b.box }))
+      .filter((p) => p.runs.length > 0)
 
   pages.forEach((drafts, pageIndex) => {
     if (tocPages[pageIndex]) return
@@ -254,6 +318,7 @@ export function buildDocumentTree(input: BuildTreeInput): DocumentTree {
       } else if (d.kind === 'image') {
         const b = d.ir
         const head = base(pageIndex, d.source, [{ page: pageNumberOf(pageIndex), box: b.box }])
+        if (d.figureKey) figureIds.set(d.figureKey, head.id)
         const cap = caption(d.caption)
         blocks.push({
           ...head,
@@ -272,7 +337,7 @@ export function buildDocumentTree(input: BuildTreeInput): DocumentTree {
         blocks.push({
           ...head,
           kind: 'table',
-          table: tableFromIr(d.ir, cellParagraphs(pageIndex)),
+          table: tableFromIr(d.ir, cellParagraphs(pageIndex), pageNumberOf(pageIndex)),
           ...(cap ? { caption: cap } : {}),
         })
       } else {
@@ -297,7 +362,8 @@ export function buildDocumentTree(input: BuildTreeInput): DocumentTree {
             runs,
           })
         } else {
-          blocks.push({ ...head, kind: 'paragraph', runs })
+          const figure = d.role === 'label' && d.figureKey ? figureIds.get(d.figureKey) : undefined
+          blocks.push({ ...head, kind: 'paragraph', runs, ...(figure ? { figure } : {}) })
         }
       }
     }

@@ -60,6 +60,12 @@ export interface WritebackOptions {
   fontLocator?: WritebackFontLocator
   /** default MIN_FONT_SCALE */
   minFontScale?: number
+  /**
+   * a bilingual PDF (decision 0057): each source page with its translated
+   * page beside it on one sheet. Links, annotations and bookmarks are not
+   * carried over.
+   */
+  bilingual?: boolean
   signal?: AbortSignal
   /** called after each written page: pages done, pages total, the page (1-based) */
   onProgress?: (done: number, total: number, page: number) => void
@@ -104,6 +110,8 @@ export type WritebackSkipReason =
   | 'text-in-form'
   /** an AI-read block whose place on the scan could not be found */
   | 'no-position'
+  /** its source text is vertical or turned: the writer draws upright lines only */
+  | 'vertical-text'
 
 export interface WritebackSkippedBlock {
   /** translation unit key (block id, or `${tableId}#row.col.k` for a table cell) */
@@ -114,10 +122,11 @@ export interface WritebackSkippedBlock {
   reason: WritebackSkipReason
 }
 
+/** a block that kept its source text: no room for the translation even at the floor size */
 export interface WritebackOverflow {
   unitKey: string
   blockId: string
-  /** page where the block's text runs past its box */
+  /** page where the block starts */
   page: number
 }
 
@@ -128,7 +137,10 @@ export interface WritebackReport {
   total: number
   /** units whose translation was written into the PDF */
   translated: number
-  /** written units that did not fit their box even at the smallest size */
+  /**
+   * units that kept their source text because the translation found no room
+   * even at the smallest size, grown into free space (decision 0057)
+   */
   overflowed: WritebackOverflow[]
   /** pages kept exactly as they were */
   originalPages: OriginalPage[]

@@ -5,7 +5,8 @@
  * - Choices: the target language (one of the 21 UI languages; the default is
  *   the UI language, or English when the document is in it), the pages, the
  *   output formats (translated PDF, Markdown, EPUB; several at once) and the
- *   bilingual option (Markdown and EPUB only), or "store only" (no file: the
+ *   bilingual option (Markdown and EPUB: each translation after its paragraph;
+ *   PDF: each translated page beside its source page), or "store only" (no file: the
  *   translation stays in the result store). The translated PDF cannot be
  *   chosen, with the reason shown, for an encrypted document or a target the
  *   PDF writer cannot lay out (ar, he, hi). A choice with nothing to
@@ -230,7 +231,7 @@ export function TranslateDialog(props: TranslateDialogProps): ReactElement {
   const lang0 = target ?? 'en'
   const block = pdfFormatBlock(encrypted, lang0)
   const formats = writableFormats(chosen, block)
-  const bilingualAllowed = formats.some((f) => f !== 'pdf')
+  const bilingualAllowed = formats.length > 0
 
   const range = somePages ? parsePageRange(rangeText, pageCount) : null
   const rangeError =

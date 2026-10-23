@@ -111,6 +111,8 @@ class MarkdownWriter {
           this.heading(block)
           break
         case 'paragraph':
+          // a drawing's label: the picture shows it
+          if (block.figure) break
           this.push(escapeLines(this.inline(block.runs, 'block')))
           break
         case 'listItem':

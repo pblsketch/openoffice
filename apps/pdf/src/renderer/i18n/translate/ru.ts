@@ -12,7 +12,7 @@ export const ru = {
   trFormatMd: 'Переведённый Markdown',
   trFormatEpub: 'Переведённый EPUB',
   trBilingual:
-    'Двуязычный: после каждого абзаца оригинала идёт его перевод (только Markdown и EPUB)',
+    'Двуязычный: в Markdown и EPUB после каждого абзаца оригинала идёт его перевод, а в PDF каждая переведённая страница стоит рядом со страницей оригинала',
   trPdfEncrypted:
     'Документ зашифрован, поэтому записать в него перевод в формате PDF нельзя. Markdown и EPUB доступны.',
   trPdfScript:
@@ -60,7 +60,8 @@ export const ru = {
   trReportPending: 'Блоков, ещё не переведённых и оставшихся на исходном языке: {count}.',
   trReportNone: 'Все блоки переведены.',
   trReportUntranslated: 'Блоки, оставленные на исходном языке',
-  trReportOverflowed: 'Блоки, не поместившиеся в свою рамку: {count} (страницы {pages})',
+  trReportOverflowed:
+    'Блоки, оставленные на исходном языке из-за нехватки места: {count} (страницы {pages})',
   trReportOriginalPages: 'Страницы, оставленные без изменений',
   trReportFiles: 'Сохранённые файлы',
   trReasonLine: '{reason}: страницы {pages} (блоков: {count})',

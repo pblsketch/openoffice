@@ -95,7 +95,8 @@ export const pdfCommand: CommandDef = {
     },
     {
       name: 'bilingual',
-      description: 'translate: md/epub with each translation after its paragraph',
+      description:
+        'translate: md/epub with each translation after its paragraph, pdf with each translated page beside its source page',
     },
     {
       name: 'partial',

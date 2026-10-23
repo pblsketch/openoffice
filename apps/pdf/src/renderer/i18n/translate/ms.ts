@@ -11,7 +11,8 @@ export const ms = {
   trFormatPdf: 'PDF terjemahan',
   trFormatMd: 'Markdown terjemahan',
   trFormatEpub: 'EPUB terjemahan',
-  trBilingual: 'Dwibahasa: setiap perenggan asal diikuti terjemahannya (Markdown dan EPUB sahaja)',
+  trBilingual:
+    'Dwibahasa: dalam Markdown dan EPUB setiap perenggan asal diikuti terjemahannya; dalam PDF setiap halaman terjemahan diletakkan di sebelah halaman asalnya',
   trPdfEncrypted:
     'Dokumen ini disulitkan, jadi PDF terjemahan tidak boleh ditulis ke dalamnya. Markdown dan EPUB masih boleh digunakan.',
   trPdfScript:
@@ -59,7 +60,8 @@ export const ms = {
   trReportPending: '{count} blok belum diterjemah dan kekal dalam bahasa asal.',
   trReportNone: 'Semua blok telah diterjemah.',
   trReportUntranslated: 'Blok yang kekal dalam bahasa asal',
-  trReportOverflowed: 'Blok yang melimpah keluar kotaknya: {count} (halaman {pages})',
+  trReportOverflowed:
+    'Blok yang dibiarkan dalam bahasa asal kerana ruang tidak cukup: {count} (halaman {pages})',
   trReportOriginalPages: 'Halaman yang dibiarkan seperti asal',
   trReportFiles: 'Fail yang disimpan',
   trReasonLine: '{reason}: halaman {pages} ({count} blok)',

@@ -13,10 +13,11 @@
 import { PdfLoadError, withPdfDocument } from '../../../pdf2docx/src/extract'
 import { encodeRgbaPng } from '../../../pdf2docx/src/extract/png'
 import { translationUnits } from '../translate/result'
-import { textUnits, type TextUnit } from '../tree/derive'
+import { cellKey, textUnits, type TextUnit } from '../tree/derive'
 import { PageRangeError } from '../tree/extract'
 import type { BlockRegion, DocumentTree, InlineRun, PageInfo, Rect } from '../tree/types'
 import {
+  adoptHyphens,
   assignObjects,
   expand,
   contains,
@@ -27,18 +28,23 @@ import {
   mostlyInside,
   normText,
   placeCells,
+  placeCellsByArea,
+  readShapeBounds,
   readTextObjects,
   readingOrder,
   recognizeLines,
   similarity,
   union,
+  type CellPlacement,
   type CellText,
+  type FormChar,
   type OcrLineBox,
   type Owner,
   type TextObjectInfo,
 } from './analyze'
 import { FaceMetrics, checkedFont, createSubsetter, defaultWritebackFontLocator } from './font'
-import { fitText } from './layout'
+import { writeBilingualPdf } from './bilingual'
+import { placeBlocks, type PageSpace, type PlanBlock } from './place'
 import {
   FPDF_FILLMODE_ALTERNATE,
   FPDF_FONT_TRUETYPE,
@@ -86,6 +92,9 @@ const CJK = /[\u3040-\u30FF\u3400-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF]/u
 
 // ── units ──
 
+/** what a unit is, for sizing it alike with its kind (decision 0057) */
+type Role = 'heading' | 'caption' | 'footnote' | 'text' | 'cell' | 'label'
+
 interface UnitRec {
   unit: TextUnit
   /** the block owning its source objects (the table for a cell) */
@@ -94,6 +103,7 @@ interface UnitRec {
   regions: BlockRegion[] | undefined
   /** heading or caption: may be centered */
   titleLike: boolean
+  role: Role
   marker: string | undefined
   original: string
   /** null: not translated */
@@ -129,6 +139,9 @@ interface TreeIndex {
   owners: OwnerBlock[]
   regionsOf: Map<string, BlockRegion[] | undefined>
   titleLike: Set<string>
+  roles: Map<string, Role>
+  /** a drawing's label → the drawing's place (its picture block's region) */
+  figureOf: Map<string, BlockRegion>
   markers: Map<string, string>
   cells: Map<string, CellText[]>
 }
@@ -137,6 +150,12 @@ function indexTree(tree: DocumentTree): TreeIndex {
   const owners: OwnerBlock[] = []
   const regionsOf = new Map<string, BlockRegion[] | undefined>()
   const titleLike = new Set<string>()
+  const roles = new Map<string, Role>()
+  const figureOf = new Map<string, BlockRegion>()
+  const pictures = new Map<string, BlockRegion>()
+  for (const b of tree.blocks) {
+    if (b.kind === 'image' && b.regions?.[0]) pictures.set(b.id, b.regions[0])
+  }
   const markers = new Map<string, string>()
   const add = (id: string, regions: BlockRegion[] | undefined) => {
     regionsOf.set(id, regions)
@@ -145,24 +164,58 @@ function indexTree(tree: DocumentTree): TreeIndex {
   for (const b of tree.blocks) {
     if (b.kind === 'heading' || b.kind === 'paragraph' || b.kind === 'listItem') {
       add(b.id, b.regions)
-      if (b.kind === 'heading') titleLike.add(b.id)
+      if (b.kind === 'heading') {
+        titleLike.add(b.id)
+        roles.set(b.id, 'heading')
+      }
+      const figure = b.kind === 'paragraph' && b.figure ? pictures.get(b.figure) : undefined
+      if (figure) {
+        roles.set(b.id, 'label')
+        figureOf.set(b.id, figure)
+      }
       if (b.kind === 'listItem' && b.marker) markers.set(b.id, b.marker)
     }
     if (b.kind === 'table') add(b.id, b.regions)
     if ((b.kind === 'image' || b.kind === 'table') && b.caption) {
       add(b.caption.id, b.caption.regions)
       titleLike.add(b.caption.id)
+      roles.set(b.caption.id, 'caption')
     }
   }
-  for (const f of tree.footnotes) for (const p of f.blocks) add(p.id, p.regions)
+  // a table paragraph's area: its cell, split between paragraphs halfway across the gaps
+  const areas = new Map<string, Rect>()
+  for (const b of tree.blocks) {
+    if (b.kind !== 'table') continue
+    for (const c of b.table.cells) {
+      const boxes = c.paragraphBoxes
+      if (!c.region || !boxes || boxes.length !== c.paragraphs.length) continue
+      const cell = c.region.box
+      const cut = (k: number) => (boxes[k - 1]!.y0 + boxes[k]!.y1) / 2
+      boxes.forEach((_, k) => {
+        areas.set(cellKey(b.id, c.row, c.col, k), {
+          x0: cell.x0,
+          x1: cell.x1,
+          y1: k === 0 ? cell.y1 : cut(k),
+          y0: k === boxes.length - 1 ? cell.y0 : cut(k + 1),
+        })
+      })
+    }
+  }
+  for (const f of tree.footnotes) {
+    for (const p of f.blocks) {
+      add(p.id, p.regions)
+      roles.set(p.id, 'footnote')
+    }
+  }
   const cells = new Map<string, CellText[]>()
   for (const u of textUnits(tree)) {
     if (!u.key.includes('#')) continue
     const list = cells.get(u.blockId) ?? []
-    list.push({ key: u.key, text: plainText(u.runs) })
+    const area = areas.get(u.key)
+    list.push({ key: u.key, text: plainText(u.runs), ...(area ? { area } : {}) })
     cells.set(u.blockId, list)
   }
-  return { owners, regionsOf, titleLike, markers, cells }
+  return { owners, regionsOf, titleLike, roles, figureOf, markers, cells }
 }
 
 /** original unit key → translated runs */
@@ -192,6 +245,8 @@ interface Part {
   sizes: number[]
   /** display y of each source line, top first */
   lines: number[]
+  /** a table paragraph's whole area, for text needing more room than `box` */
+  area?: Rect
   color: Rgb
   scan: boolean
 }
@@ -200,6 +255,8 @@ type PartResult = Part | WritebackSkipReason
 
 interface PageReading {
   kept?: { reason: OriginalPageReason; detail?: string }
+  /** what is drawn where, for growing blocks and keeping their ink clear */
+  space?: PageSpace
   /** unit key → its parts on this page, in region order */
   parts: Map<string, PartResult[]>
 }
@@ -211,6 +268,14 @@ interface ReadContext {
   recs: UnitRec[]
   pageInfo: Map<number, PageInfo>
 }
+
+/** `r` narrowed to `to` on every side (the block's own text, when stray objects widened it) */
+const clip = (r: Rect, to: Rect): Rect => ({
+  x0: Math.max(r.x0, to.x0),
+  y0: Math.max(r.y0, to.y0),
+  x1: Math.min(r.x1, to.x1),
+  y1: Math.min(r.y1, to.y1),
+})
 
 const ownerKey = (id: string, region: number) => `${id}\u0001${region}`
 
@@ -230,6 +295,7 @@ function textPart(
   box: Rect,
   objects: readonly TextObjectInfo[],
   bitmap: () => PageBitmap | null,
+  area?: Rect,
 ): Part {
   const ordered = readingOrder(objects)
   const size = medianOf(objects.map((o) => o.size))
@@ -247,6 +313,7 @@ function textPart(
     ),
     color: objects.find((o) => !o.invisible)?.color ?? [0, 0, 0],
     scan: false,
+    ...(area ? { area } : {}),
   }
   if (scan) {
     // a searchable scan: the visible text is in the page image below
@@ -282,11 +349,11 @@ function readTextPage(
     })
   }
   const owned = assignObjects(objects, owners)
+  const adopted = adoptHyphens(objects, owners, owned)
   let cached: PageBitmap | null | undefined
   const bitmap = () => (cached ??= renderPageBitmap(m, page, frame, SAMPLE_RENDER_SCALE))
   const parts = new Map<string, PartResult[]>()
-  const touched: TextObjectInfo[] = []
-  const tables = new Map<string, Map<string, { objects: TextObjectInfo[]; box: Rect }>>()
+  const tables = new Map<string, Map<string, CellPlacement | 'shared'>>()
 
   for (const rec of onPage) {
     const results: PartResult[] = []
@@ -294,35 +361,92 @@ function readTextPage(
     if (!rec.regions?.length) results.push('no-position')
     rec.regions?.forEach((region, i) => {
       if (region.page !== pageNo) return
-      const objs = owned.get(ownerKey(rec.ownerId, i)) ?? []
+      const owns = owned.get(ownerKey(rec.ownerId, i)) ?? []
+      // turned text keeps its block, not its page. A turned object inside an
+      // upright block (an arXiv margin stamp the analysis read into the first
+      // column) stays as drawn, and the block keeps to its upright text.
+      const upright = rec.isCell ? owns : owns.filter((o) => !o.vertical)
+      if (owns.length > 0 && upright.length === 0) {
+        results.push('vertical-text')
+        return
+      }
+      const objs = upright
+      // the analysis may widen a box with chars it read in from elsewhere: keep to the block's own ink
+      const box =
+        upright.length > 0
+          ? clip(region.box, expand(union(upright.map((o) => o.bounds)), 1))
+          : region.box
       if (rec.isCell) {
         const key = ownerKey(rec.ownerId, i)
         let placed = tables.get(key)
         if (!placed) {
-          placed = placeCells(objs, index.cells.get(rec.ownerId) ?? [], region.box)
+          const cells = index.cells.get(rec.ownerId) ?? []
+          // cells the analysis measured are found by place, AI tables by their text
+          placed = cells.every((c): c is CellText & { area: Rect } => c.area !== undefined)
+            ? placeCellsByArea(objs, cells as (CellText & { area: Rect })[])
+            : placeCells(objs, cells, region.box)
           tables.set(key, placed)
         }
-        touched.push(...objs)
         const cell = placed.get(rec.unit.key)
-        if (!cell) {
-          results.push('text-not-found')
-          return
-        }
-        results.push(textPart(pageNo, cell.box, cell.objects, bitmap))
+        if (cell === 'shared') results.push('shared-text-object')
+        else if (!cell) results.push('text-not-found')
+        else if (cell.objects.some((o) => o.vertical)) results.push('vertical-text')
+        else results.push(textPart(pageNo, cell.box, cell.objects, bitmap, cell.area))
         return
       }
-      touched.push(...objs)
-      if (objs.length === 0) results.push('text-not-found')
-      else if (formChars.some((c) => contains(expand(region.box, 1), c)))
-        results.push('text-in-form')
-      else if (!objs.every((o) => mostlyInside(o.bounds, expand(region.box, 2))))
+      const inForm = formChars.filter((c) => contains(expand(box, 1), c.at))
+      // a drawing's label inside an embedded graphic: painted over, then written
+      if (objs.length === 0 && inForm.length > 0 && rec.role === 'label') {
+        const part = coverPart(pageNo, box, inForm, bitmap)
+        results.push(part ?? 'text-in-form')
+      } else if (objs.length === 0) results.push('text-not-found')
+      else if (inForm.length > 0) results.push('text-in-form')
+      else if (!objs.every((o) => adopted.has(o) || mostlyInside(o.bounds, expand(box, 2))))
         results.push('shared-text-object')
-      else results.push(textPart(pageNo, region.box, objs, bitmap))
+      else results.push(textPart(pageNo, box, objs, bitmap))
     })
     parts.set(rec.unit.key, results)
   }
-  if (touched.some((o) => o.vertical)) return { kept: { reason: 'vertical-text' }, parts }
-  return { parts }
+  const text = objects.map((o) => o.bounds)
+  const space: PageSpace = {
+    text,
+    shapes: readShapeBounds(m, page, frame),
+    content:
+      text.length > 0 ? union(text) : { x0: 0, y0: 0, x1: frame.widthPt, y1: frame.heightPt },
+  }
+  return { parts, space }
+}
+
+/**
+ * A label drawn inside a form XObject, which the writeback cannot edit: its
+ * box is painted with the background around it and the translation drawn
+ * over it, as on a scanned page.
+ */
+function coverPart(
+  pageNo: number,
+  box: Rect,
+  chars: readonly FormChar[],
+  bitmap: () => PageBitmap | null,
+): Part | null {
+  const b = bitmap()
+  if (!b) return null
+  const size = medianOf(chars.map((c) => c.size))
+  const rect = expand(box, Math.max(0.5, (box.y1 - box.y0) * 0.1))
+  const paint = { rect, color: sampleBackground(b, rect) }
+  return {
+    page: pageNo,
+    box,
+    remove: [],
+    sourceText: '',
+    paints: [paint],
+    sizes: chars.map((c) => c.size),
+    lines: distinctLines(
+      chars.map((c) => c.at[1]),
+      size,
+    ),
+    color: readableInk(sampleInk(b, box), paint.color),
+    scan: true,
+  }
 }
 
 function scanPart(
@@ -391,7 +515,8 @@ function readScannedPage(
         : ['no-position'],
     )
   }
-  return { parts }
+  // the scan's ink is in the page image: blocks keep to their own lines
+  return { parts, space: { text: [], shapes: [], content: { x0: 0, y0: 0, x1: 0, y1: 0 } } }
 }
 
 function readPages(ctx: ReadContext, pdf: Uint8Array, pages: number[]): Map<number, PageReading> {
@@ -553,6 +678,7 @@ export async function writeTranslatedPdf(
       isCell,
       regions: index.regionsOf.get(ownerId),
       titleLike: index.titleLike.has(unit.key),
+      role: isCell ? 'cell' : (index.roles.get(unit.key) ?? 'text'),
       marker: index.markers.get(unit.key),
       original,
       translation,
@@ -661,7 +787,7 @@ export async function writeTranslatedPdf(
   })
   const metrics = faces.map((f) => new FaceMetrics(f))
 
-  // layout
+  // placement: every block at once, so sizes match and ink stays clear
   const minScale = o.minFontScale ?? MIN_FONT_SCALE
   const ops = new Map<number, PageOps>()
   const opsOf = (page: number): PageOps => {
@@ -670,8 +796,7 @@ export async function writeTranslatedPdf(
     return p
   }
   const pageWidth = (page: number) => pageInfo.get(page)?.widthPt ?? 612
-  const overflowed: WritebackOverflow[] = []
-  let translated = 0
+  const plans: { w: Writable; face: number; plan: PlanBlock }[] = []
   for (const w of writable) {
     const face = faceOf.get(w)
     if (face === undefined || !embedded[face]) {
@@ -679,46 +804,76 @@ export async function writeTranslatedPdf(
       continue
     }
     const size = medianOf(w.parts.flatMap((p) => p.sizes)) || 10
-    const layout = fitText(
-      w.text,
-      w.parts.map((p) => p.box),
-      metrics[face]!,
-      {
+    const figure = index.figureOf.get(w.rec.unit.key)
+    // cells size alike per table, labels per drawing, the rest per role and source size
+    const group = w.rec.isCell
+      ? `cell:${w.rec.ownerId}`
+      : figure
+        ? `label:${figure.page}:${figure.box.x0},${figure.box.y1}`
+        : `${w.rec.role}:${Math.round(size * 2) / 2}`
+    plans.push({
+      w,
+      face,
+      plan: {
+        key: w.rec.unit.key,
+        text: w.text,
+        boxes: w.parts.map((p) => p.box),
+        pages: w.parts.map((p) => p.page),
         size,
-        minSize: size * minScale,
         lineHeight: lineHeightOf(w.parts, size),
-        align: alignOf(w.rec, w.parts, pageWidth),
+        align: figure ? 'center' : alignOf(w.rec, w.parts, pageWidth),
+        font: metrics[face]!,
+        group,
+        expandable: w.parts.length === 1 && !w.parts[0]!.scan && !w.rec.isCell,
+        ...(figure && figure.page === w.parts[0]!.page ? { container: figure.box } : {}),
+        ...(w.parts.length === 1 && w.parts[0]!.area ? { alternatives: [[w.parts[0]!.area]] } : {}),
       },
-    )
+    })
+  }
+  const spaces = new Map<number, PageSpace>()
+  for (const [page, r] of readings) if (r.space) spaces.set(page, r.space)
+  const placed = placeBlocks(
+    plans.map((p) => p.plan),
+    spaces,
+    minScale,
+  )
+  const overflowed: WritebackOverflow[] = []
+  let translated = 0
+  for (const { w, face, plan } of plans) {
+    const at = placed.get(plan.key)
+    if (!at) {
+      // no room even at the floor size: the source text stays (decision 0057)
+      overflowed.push({
+        unitKey: w.rec.unit.key,
+        blockId: w.rec.unit.blockId,
+        page: w.rec.unit.page,
+      })
+      continue
+    }
     for (const p of w.parts) {
       const po = opsOf(p.page)
       for (const i of p.remove) po.remove.add(i)
       po.paints.push(...p.paints)
     }
-    for (const line of layout.lines) {
+    for (const line of at.layout.lines) {
       if (!line.text) continue
       const part = w.parts[line.box]!
       opsOf(part.page).lines.push({
         text: line.text,
         x: line.x,
         y: line.y,
-        size: layout.size,
+        size: at.layout.size,
         color: part.color,
         bold: w.rec.bold,
         face,
       })
     }
-    if (layout.overflowed) {
-      overflowed.push({
-        unitKey: w.rec.unit.key,
-        blockId: w.rec.unit.blockId,
-        page: w.parts[layout.overflowBox]!.page,
-      })
-    }
     translated++
   }
 
-  const out = writePages(m, pdf, pages, ops, embedded, o)
+  const written = writePages(m, pdf, pages, ops, embedded, o)
+  checkAbort(o.signal)
+  const out = o.bilingual ? writeBilingualPdf(m, pdf, written) : written
   untranslated.sort((a, b) => a.page - b.page)
   return {
     pdf: out,

@@ -170,6 +170,12 @@ describe('translated PDF from the stored translation', () => {
     expect(translatedPdfPayloadOf({ lang: 'xx' })).toBeNull()
     expect(translatedPdfPayloadOf(null)).toBeNull()
     expect(translatedPdfPayloadOf({ lang: 'zh-TW' })).toEqual({ lang: 'zh-TW' })
+    // a bilingual PDF is asked for with bilingual: true; nothing else passes
+    expect(translatedPdfPayloadOf({ lang: 'de', bilingual: true, x: 1 })).toEqual({
+      lang: 'de',
+      bilingual: true,
+    })
+    expect(translatedPdfPayloadOf({ lang: 'de', bilingual: false })).toEqual({ lang: 'de' })
     const err = await runStructureJob(
       {
         op: 'writeBack',
