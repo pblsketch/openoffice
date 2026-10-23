@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -6,9 +6,12 @@ import { RENDERER_SCHEME } from '../../../packages/electron-utils/src/renderer-s
 import {
   AGENT_PLUGIN_MODULE,
   APP_SCHEME,
+  HANCOM_KEYS_MODULE,
   PASSWORD_FLAG,
   STUDIO_PATCHES,
   applyPatch,
+  hancomHooks,
+  missingHancomCommands,
   missingPluginHooks,
   patchTargets,
   pluginHooks,
@@ -97,8 +100,12 @@ describe('a patch whose text is gone', () => {
 })
 
 describe('what the plugin reaches into the studio for', () => {
-  const complete = (file: string) =>
-    pluginHooks.find((hook) => hook.file === file)?.needles.join('\n') ?? null
+  const complete = (file: string) => {
+    const needles = [...pluginHooks, ...hancomHooks]
+      .filter((hook) => hook.file === file)
+      .flatMap((hook) => hook.needles)
+    return needles.length > 0 ? needles.join('\n') : null
+  }
 
   it('is all there in a source that has every name', () => {
     expect(missingPluginHooks(complete)).toEqual([])
@@ -242,14 +249,17 @@ describe('rhwp nested-table patches', () => {
 })
 
 describe('the studio source the build fetched', () => {
-  const manifest = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'))
+  // build-studio.mjs keeps it under the tag the engine names (vendor/rhwp-core, decision 0050)
+  const core = JSON.parse(
+    readFileSync(join(__dirname, '..', '..', '..', 'vendor', 'rhwp-core', 'package.json'), 'utf8'),
+  )
   const studio = join(
     __dirname,
     '..',
     'node_modules',
     '.cache',
     'rhwp-studio',
-    `v${manifest.devDependencies['@rhwp/core']}`,
+    core.rhwp.tag,
     'rhwp-studio',
   )
   const files = [
@@ -257,7 +267,10 @@ describe('the studio source the build fetched', () => {
     'src/embed/protocol.ts',
     'src/core/wasm-bridge.ts',
     'src/engine/input-handler.ts',
+    'src/engine/input-handler-keyboard.ts',
     'src/command/commands/table.ts',
+    'src/command/shortcut-map.ts',
+    'src/command/registry.ts',
   ].map((file) => join(studio, file))
 
   // only where a build has fetched it; a fresh checkout has nothing to look at
@@ -266,6 +279,132 @@ describe('the studio source the build fetched', () => {
       const targets = files.filter((file) => patchTargets(name, file))
       expect(targets, name).toHaveLength(1)
       expect(() => applyPatch(name, readFileSync(targets[0], 'utf8')), name).not.toThrow()
+    }
+  })
+
+  it.skipIf(!existsSync(studio))('has what the plugin and the Hangul keys reach into', () => {
+    const read = (file: string) => {
+      try {
+        return readFileSync(join(studio, file), 'utf8')
+      } catch {
+        return null
+      }
+    }
+    expect(missingPluginHooks(read)).toEqual([])
+    const commands = join(studio, 'src', 'command', 'commands')
+    const sources = readdirSync(commands)
+      .filter((file) => file.endsWith('.ts'))
+      .map((file) => readFileSync(join(commands, file), 'utf8'))
+      .join('\n')
+    expect(missingHancomCommands(sources)).toEqual([])
+  })
+})
+
+describe('rhwp Hangul-key patches', () => {
+  it('adapt the shortcut table after its last entry, importing the module', () => {
+    const source = [
+      'export const defaultShortcuts: [ShortcutDef, string][] = [',
+      "  [{ key: 'z', ctrl: true }, 'edit:undo'],",
+      "  [{ key: 'p', ctrl: true, shift: true }, 'table:block-product'],",
+      '];',
+      '',
+      'export function matchShortcut() {}',
+      '',
+    ].join('\n')
+    const patched = applyPatch('studio-hancom-shortcuts', source)
+    expect(patched).toContain(`import { adaptToHancom } from '${HANCOM_KEYS_MODULE}';`)
+    expect(patched.indexOf('adaptToHancom(defaultShortcuts);')).toBeGreaterThan(
+      patched.indexOf('];'),
+    )
+    expect(patched).toContain("  [{ key: 'z', ctrl: true }, 'edit:undo'],")
+    expect(patched).toContain('export function matchShortcut() {}')
+  })
+
+  it('give the menus the new labels through the command registry', () => {
+    const source = [
+      "import type { CommandDef } from './types';",
+      '',
+      'export class CommandRegistry {',
+      '  register(def: CommandDef): void {',
+      '    this.commands.set(def.id, def);',
+      '  }',
+      '}',
+      '',
+    ].join('\n')
+    const patched = applyPatch('studio-hancom-labels', source)
+    expect(patched).toContain(`import { withHancomLabel } from '${HANCOM_KEYS_MODULE}';`)
+    expect(patched).toContain('    this.commands.set(def.id, withHancomLabel(def));')
+    expect(patched).not.toContain('this.commands.set(def.id, def);')
+  })
+
+  it("register the new commands after the studio's own, in its locale", () => {
+    const source = [
+      "import { initI18n, t } from '@/i18n/index.ts';",
+      'registry.registerAll(pageCommands);',
+      'registry.registerAll(toolCommands);',
+      '',
+    ].join('\n')
+    const patched = applyPatch('studio-hancom-commands', source)
+    expect(patched).toContain("import { getLocale } from '@/i18n/core.ts';")
+    expect(patched).toContain(`import { hancomCommands } from '${HANCOM_KEYS_MODULE}';`)
+    expect(patched.indexOf('registry.registerAll(hancomCommands(getLocale()));')).toBeGreaterThan(
+      patched.indexOf('registry.registerAll(toolCommands);'),
+    )
+  })
+
+  it('hand the sequences to the module, the second key first and the IME path too', () => {
+    const source = [
+      "import { matchShortcut, defaultShortcuts } from '@/command/shortcut-map';",
+      'export function onKeyDown(this: any, e: KeyboardEvent): void {',
+      '  this._cellBlockLetterImeGuard?.reset();',
+      '  if (this._pendingChordK) {}',
+      '  if (e.isComposing || e.keyCode === 229) {',
+      "    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === 'KeyM') {",
+      '      e.preventDefault();',
+      '      this._pendingChordM = true;',
+      '      return;',
+      '    }',
+      '  }',
+      '}',
+      'export function handleCtrlKey(this: any, e: KeyboardEvent): void {',
+      "  if ((e.key === 'k' || e.key === 'K' || e.key === 'ㅏ') && !e.shiftKey && !e.altKey) {",
+      '    this._pendingChordK = true;',
+      '  }',
+      '}',
+      '',
+    ].join('\n')
+    const patched = applyPatch('studio-hancom-chords', source)
+    expect(patched).toContain(
+      `import { hancomChordKey, hancomChordStart } from '${HANCOM_KEYS_MODULE}';`,
+    )
+    // the second key is looked at before anything else the handler does
+    expect(patched).toContain(
+      '  this._cellBlockLetterImeGuard?.reset();\n  if (hancomChordKey(this, e)) return;\n  if (this._pendingChordK)',
+    )
+    // the studio no longer starts its own Ctrl+M on the IME path
+    expect(patched).not.toContain('this._pendingChordM = true;')
+    expect(patched).toContain(
+      '  if (e.isComposing || e.keyCode === 229) {\n    if (hancomChordStart(this, e)) return;',
+    )
+    // and the module comes ahead of the studio's Ctrl+K
+    expect(
+      patched.indexOf('  if (hancomChordStart(this, e)) return;\n  if ((e.key'),
+    ).toBeGreaterThan(patched.indexOf('handleCtrlKey'))
+  })
+
+  it('fail when one edit of several is gone', () => {
+    const source = "import type { CommandDef } from './types';\n"
+    expect(() => applyPatch('studio-hancom-labels', source)).toThrow(/studio-hancom-labels/)
+  })
+
+  it('are all in the studio build', () => {
+    for (const name of [
+      'studio-hancom-shortcuts',
+      'studio-hancom-labels',
+      'studio-hancom-commands',
+      'studio-hancom-chords',
+    ] as const) {
+      expect(STUDIO_PATCHES).toContain(name)
     }
   })
 })
