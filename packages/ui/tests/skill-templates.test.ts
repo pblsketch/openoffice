@@ -263,7 +263,8 @@ describe('a template skill the model used on its own (spec 5.7)', () => {
     expect(bridge.openTemplate).toHaveBeenCalledWith({
       skillId: 'app:letter',
       text: 'write the letter for the trip',
-      chips: [{ id: 'app:letter', source: 'app', title: 'Letter' }],
+      // the chip shows the skill by its name
+      chips: [{ id: 'app:letter', source: 'app', title: 'letter' }],
     })
     expect(text()).toContain('새 탭에서 양식으로 작업합니다')
   })
@@ -437,7 +438,7 @@ describe('the template preview tab (spec 5.6 steps 2-4, 9.11)', () => {
     fileName: 'letter.docx',
     originalRedacted: false,
     proposal: { ...PROPOSAL, key: 'call-1' },
-    draft: { title: 'Family letter', invoke: 'manual' },
+    draft: { title: 'Family letter', name: 'family-letter', invoke: 'manual' },
   }
   const handoff = (preview: HandedPreview) =>
     vi
@@ -467,9 +468,9 @@ describe('the template preview tab (spec 5.6 steps 2-4, 9.11)', () => {
     expect(button('이 탭을 양식으로 저장')).toBeDefined()
     expect(button('원래 문서 그대로 저장')).toBeDefined()
     expect(button('취소')).toBeDefined()
-    // the pending card's fields came along
-    const title = host.querySelector<HTMLInputElement>('input[type="text"]')!
-    expect(title.value).toBe('Family letter')
+    // the pending card's fields came along (the name is the first field)
+    const name = host.querySelector<HTMLInputElement>('input[type="text"]')!
+    expect(name.value).toBe('family-letter')
   })
 
   it('shows the card at once when the send gate did not start the run', async () => {
@@ -516,13 +517,15 @@ describe('the template preview tab (spec 5.6 steps 2-4, 9.11)', () => {
     expect(cards.saveFromCard).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'Family letter',
+        name: 'family-letter',
         invoke: 'manual',
         template: { bytes: new Uint8Array([7]), fileName: 'letter.docx' },
       }),
     )
+    // the preview tab is told the saved skill's name
     expect(bridge.finishPreview).toHaveBeenCalledWith('p1', 'saved', {
       skillId: 'app:letter',
-      title: 'Family letter',
+      title: 'family-letter',
     })
   })
 

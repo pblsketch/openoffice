@@ -195,25 +195,25 @@ describe('ask panel skill tools', () => {
     expect(request.tools.map((t) => t.name)).toEqual(
       expect.arrayContaining(['use_skill', 'read_skill_file', 'propose_skill']),
     )
-    expect(request.system).toContain('app:lease-check | Lease checklist')
+    // the prompt lists a skill by its name, as the lists show it
+    expect(request.system).toContain('app:lease-check | lease-check')
     expect(request.system).not.toContain('user:manual-one')
     expect(request.system).not.toContain('builtin:find-skills')
   })
 
-  it('a used skill shows "<title> skill used"', async () => {
+  it('a used skill shows "<name> skill used"', async () => {
     script = [toolTurn('use_skill', { id: 'app:lease-check' }), textTurn('Done.')]
     await mount()
     await ask('Check this lease')
     await act(async () => settle(5))
     expect(bridge.aiRead).toHaveBeenCalledWith('app:lease-check')
-    expect(host.textContent).toContain('Used the Lease checklist skill')
+    expect(host.textContent).toContain('Used the lease-check skill')
     expect(JSON.stringify(requests[1]!.messages)).toContain('CHECK PETS FIRST')
   })
 
   it('a proposal shows the card, writes nothing, and saves only on Save', async () => {
     script = [
       toolTurn('propose_skill', {
-        title: 'Lease review',
         name: 'lease-review',
         description: 'Reviews a lease the way we do.',
         body: '1. Pets\n2. Deposit',
@@ -231,13 +231,14 @@ describe('ask panel skill tools', () => {
       save.click()
       await settle()
     })
+    // the model gave no title: the card saves the name with an empty title
     expect(bridge.saveFromCard).toHaveBeenCalledWith({
-      title: 'Lease review',
+      title: '',
       name: 'lease-review',
       description: 'Reviews a lease the way we do.',
       body: '1. Pets\n2. Deposit',
       invoke: 'auto',
     })
-    expect(host.textContent).toContain('Saved · Lease review')
+    expect(host.textContent).toContain('Saved · lease-review')
   })
 })

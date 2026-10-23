@@ -334,7 +334,9 @@ describe('createUserSkillsSkill', () => {
     expect(result.mutated).toBeFalsy()
     expect(result.output).toMatch(/card/i)
     expect(result.output).toMatch(/not saved|nothing is saved/i)
-    expect(proposedTitleOf(result.output)).toBe('Minutes')
+    // the result and the tool row name the proposal by its name
+    expect(proposedTitleOf(result.output)).toBe('minutes')
+    expect(result.summary).toBe('Skill proposal: minutes')
     expect(proposedTitleOf('other')).toBe('')
     expect(proposals).toEqual([
       {
@@ -390,8 +392,40 @@ describe('createUserSkillsSkill', () => {
     expect(proposals.map((p) => p.wantsTemplate)).toEqual([false, false])
   })
 
+  it('propose_skill asks for a name, not a title', () => {
+    const { deps } = makeDeps()
+    const tool = createUserSkillsSkill(deps).tools.find((t) => t.name === PROPOSE_SKILL_TOOL)!
+    const schema = tool.inputSchema as { properties: Record<string, unknown>; required: string[] }
+    expect(schema.properties).not.toHaveProperty('title')
+    expect(schema.properties).toHaveProperty('name')
+    expect(schema.required).toEqual(['name', 'description', 'body'])
+  })
+
+  it('propose_skill takes a name without a title', async () => {
+    const { deps, proposals } = makeDeps()
+    const result = await createUserSkillsSkill(deps).executeTool(
+      call(PROPOSE_SKILL_TOOL, { name: ' minutes ', description: 'd', body: 'b' }),
+    )
+    expect(result.isError).toBeFalsy()
+    expect(proposedTitleOf(result.output)).toBe('minutes')
+    expect(result.summary).toBe('Skill proposal: minutes')
+    expect(proposals).toEqual([expect.objectContaining({ title: '', name: 'minutes' })])
+  })
+
+  it('propose_skill still takes a title without a name (older prompts)', async () => {
+    const { deps, proposals } = makeDeps()
+    const result = await createUserSkillsSkill(deps).executeTool(
+      call(PROPOSE_SKILL_TOOL, { title: 'Minutes', description: 'd', body: 'b' }),
+    )
+    expect(result.isError).toBeFalsy()
+    expect(proposedTitleOf(result.output)).toBe('Minutes')
+    expect(result.summary).toBe('Skill proposal: Minutes')
+    expect(proposals).toEqual([expect.objectContaining({ title: 'Minutes', name: '' })])
+  })
+
   it.each([
-    [{ title: '', description: 'd', body: 'b' }, /title/i],
+    [{ description: 'd', body: 'b' }, /name must not be empty/],
+    [{ title: ' ', name: '  ', description: 'd', body: 'b' }, /name must not be empty/],
     [{ title: 't', description: 'd', body: '  ' }, /body/i],
     [{ title: 't', description: 'd', body: 'b', targetId: 'app:nope' }, /no skill/i],
     [{ title: 't', description: 'd', body: 'b', targetId: 'builtin:find-skills' }, /agent/i],

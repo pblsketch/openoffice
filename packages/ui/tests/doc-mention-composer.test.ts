@@ -660,25 +660,25 @@ describe('AiComposer: the skill list and the document list', () => {
   }
 
   it('opens only one: the trigger nearer the caret wins', async () => {
-    okList([...ITEMS, doc('메모 /회의.txt')])
+    okList([...ITEMS, doc('메모 /min.txt')])
     mount({ skills: skillsBridge() })
     await flush()
-    // both lists have a match here; the skill trigger is nearer
-    type('@메모 /회')
+    // both lists have a match here (the skill by its name); the skill trigger is nearer
+    type('@메모 /mi')
     await flush()
     expect(host.querySelector('.ai-skill-picker')).not.toBeNull()
     expect(picker()).toBeNull()
-    type('/회의 @계')
+    type('/min @계')
     await flush()
     expect(host.querySelector('.ai-skill-picker')).toBeNull()
     expect(picker()).not.toBeNull()
   })
 
   it('Enter goes to the skill list while it is the open one', async () => {
-    okList([...ITEMS, doc('메모 /회의.txt')])
+    okList([...ITEMS, doc('메모 /min.txt')])
     const h = mount({ skills: skillsBridge() })
     await flush()
-    type('@메모 /회')
+    type('@메모 /mi')
     await flush()
     key('Enter')
     await flush()

@@ -150,12 +150,14 @@ describe('ask panel skills', () => {
     })
     await type('/')
     const rows = [...host.querySelectorAll('.ai-skill-picker-row')].map((r) => r.textContent)
-    expect(rows.some((r) => r?.includes('Lease checklist'))).toBe(true)
-    expect(rows.some((r) => r?.includes('Find skills'))).toBe(false)
+    // rows show the skill name, not its title
+    expect(rows.some((r) => r?.includes('lease-check'))).toBe(true)
+    expect(rows.some((r) => r?.includes('Lease checklist'))).toBe(false)
+    expect(rows.some((r) => r?.includes('find-skills'))).toBe(false)
 
     await press('Enter')
     expect(host.querySelector('.ai-skill-chips .ai-skill-chip-title')?.textContent).toBe(
-      'Lease checklist',
+      'lease-check',
     )
     await type('Pets allowed?')
     await press('Enter')
@@ -167,7 +169,7 @@ describe('ask panel skills', () => {
     const question = host.querySelector('.kb-ask-user')!
     expect(question.textContent).toContain('Pets allowed?')
     expect(question.textContent).not.toContain('CHECK PETS FIRST')
-    expect(question.querySelector('.ai-skill-chip-title')?.textContent).toBe('Lease checklist')
+    expect(question.querySelector('.ai-skill-chip-title')?.textContent).toBe('lease-check')
     // the chip left the composer with the question
     expect(host.querySelector('.ai-skill-chips')).toBeNull()
   })

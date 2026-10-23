@@ -1,6 +1,6 @@
 import type { Lang } from '@genoffice/i18n'
 import { RESERVED_USER_SKILL_NAMES } from '@genoffice/agent-core'
-import { builtinSkillDesc, builtinSkillTitle, isBuiltinSkillName } from './strings-builtin-skills'
+import { builtinSkillDesc, isBuiltinSkillName } from './strings-builtin-skills'
 import { skillPickerText } from './strings-skill-picker'
 
 /**
@@ -168,11 +168,23 @@ export function skillSourceLabel(
   }
 }
 
+/** The name the app gives a skill whose title has no Latin letters or digits (`skill-<6 random>`) */
+const MADE_UP_NAME = /^skill-[a-z0-9]{6}(?:-\d+)?$/
+
+/**
+ * What a list shows for a skill: its name, as coding agents show it. A skill
+ * that only has a made-up name shows the title it was made with instead.
+ */
+export function skillDisplayName(skill: { name: string; title?: string | undefined }): string {
+  const title = skill.title?.trim()
+  return title && MADE_UP_NAME.test(skill.name) ? title : skill.name
+}
+
 /**
  * The rows of the list from the bridge's answer: enabled skills only (skills
  * used only when called are listed too), never hidden or unreadable ones;
- * the regular panels leave out agent-only skills. Builtins use their titles
- * and descriptions in the UI language.
+ * the regular panels leave out agent-only skills. Rows show the skill's name;
+ * builtins use their descriptions in the UI language.
  */
 export function pickerSkillsOf(
   raw: unknown,
@@ -197,7 +209,7 @@ export function pickerSkillsOf(
       source,
       plugin,
       name,
-      title: builtin ? builtinSkillTitle(lang, name) : str(view.title) || name,
+      title: skillDisplayName({ name, title: builtin ? '' : str(view.title) }),
       description: builtin ? builtinSkillDesc(lang, name) : str(view.description),
       sourceLabel: skillSourceLabel(lang, { source, plugin, github: view.github }),
       hasScripts: view.hasScripts === true,

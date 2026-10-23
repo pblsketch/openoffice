@@ -59,7 +59,7 @@ export interface SkillProposalCardProps {
 
 /**
  * The skill card (spec 5.6): the model's proposal in editable fields, the
- * name under "Advanced" with its rule check, "on its own / only when
+ * name first (lists show it) with its rule check, "on its own / only when
  * called", the template box when the document can be a template, and
  * Save (Replace for an own skill) and Cancel. Nothing is written before Save;
  * Save hands the fields to the shell, which writes the skill.
@@ -83,7 +83,6 @@ export function SkillProposalCard({
     ...initialDraft,
   }))
   const [nameState, setNameState] = useState<SkillCardNameState>('checking')
-  const [advanced, setAdvanced] = useState(false)
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState<SkillCardStringKey | null>(null)
   const liveRef = useRef(true)
@@ -94,7 +93,7 @@ export function SkillProposalCard({
     }
   }, [])
 
-  // a new skill without a name gets one made from its title
+  // a proposal without a name (an older prompt's title only) gets one made from the title
   useEffect(() => {
     if (draft.name || !bridge) return
     void bridge
@@ -137,11 +136,7 @@ export function SkillProposalCard({
   const verdict = skillCardNameVerdict(mode, proposal, draft.name, nameState)
   const blockKey = bridge ? skillCardSaveBlock(draft, verdict.blocked) : 'noBridge'
   const blocked = blockKey ? t(blockKey) : null
-  // a name problem opens "Advanced", where the name is
   const nameProblem = verdict.blocked && verdict.blocked !== 'nameChecking'
-  useEffect(() => {
-    if (nameProblem) setAdvanced(true)
-  }, [nameProblem])
 
   const save = async (template?: SkillCardTemplate): Promise<boolean> => {
     if (!bridge || busy || blockKey) return false
@@ -156,7 +151,6 @@ export function SkillProposalCard({
         return true
       }
       setFailure(skillCardSaveFailureKey(result.reason, result.problem))
-      if (result.reason === 'bad-name' || result.reason === 'name-taken') setAdvanced(true)
       return false
     } finally {
       if (liveRef.current) setBusy(false)
@@ -194,13 +188,17 @@ export function SkillProposalCard({
       {mode === 'copy' && <p className="ai-skill-card-note">{t('copyNotice')}</p>}
 
       <label className="ai-skill-card-field">
-        <span>{t('fieldTitle')}</span>
+        <span>{t('fieldName')}</span>
         <input
           type="text"
-          value={draft.title}
+          value={draft.name}
           disabled={busy}
-          onChange={(e) => set({ title: e.target.value })}
+          spellCheck={false}
+          dir="ltr"
+          aria-invalid={nameProblem ? true : undefined}
+          onChange={(e) => set({ name: e.target.value })}
         />
+        <span className="ai-skill-card-hint">{t('nameHint')}</span>
       </label>
       <label className="ai-skill-card-field">
         <span>{t('fieldDescription')}</span>
@@ -249,27 +247,6 @@ export function SkillProposalCard({
           {t('templateCheck')}
         </label>
       )}
-
-      <details
-        className="ai-skill-card-advanced"
-        open={advanced}
-        onToggle={(e) => setAdvanced((e.currentTarget as HTMLDetailsElement).open)}
-      >
-        <summary>{t('advanced')}</summary>
-        <label className="ai-skill-card-field">
-          <span>{t('fieldName')}</span>
-          <input
-            type="text"
-            value={draft.name}
-            disabled={busy}
-            spellCheck={false}
-            dir="ltr"
-            aria-invalid={nameProblem ? true : undefined}
-            onChange={(e) => set({ name: e.target.value })}
-          />
-        </label>
-        <p className="ai-skill-card-hint">{t('nameHint')}</p>
-      </details>
 
       {verdict.notice && <p className="ai-skill-card-note">{t(verdict.notice)}</p>}
       {(failure || (blocked && blockKey !== 'nameChecking')) && (

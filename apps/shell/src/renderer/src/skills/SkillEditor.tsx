@@ -21,9 +21,10 @@ const TITLE_KEY: Record<SkillEditorMode, SkillsStringKey> = {
 }
 
 /**
- * Read-only view, edit of an own skill, or a new skill (spec 5.1). Title,
- * description and body are edited here; the name sits under Advanced and is
- * checked as it is typed; the other files are listed and changed in the folder.
+ * Read-only view, edit of an own skill, or a new skill (spec 5.1). The name
+ * (what lists show, checked as it is typed), description and body are edited
+ * here; the other files are listed and changed in the folder. A title the
+ * skill already has is kept by the main process.
  */
 export function SkillEditor({
   api,
@@ -46,16 +47,11 @@ export function SkillEditor({
     skillsText(lang, key, params)
   const readOnly = mode === 'view'
   const [loading, setLoading] = useState(mode !== 'new')
-  const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [body, setBody] = useState('')
   const [name, setName] = useState('')
   const [originalName, setOriginalName] = useState('')
-  /** the person typed a name of their own (a new skill's name is otherwise made from the title) */
-  const [nameTouched, setNameTouched] = useState(false)
-  const [suggested, setSuggested] = useState('')
   const [files, setFiles] = useState<Array<{ rel: string; size: number }>>([])
-  const [advanced, setAdvanced] = useState(false)
   const [nameProblem, setNameProblem] = useState<string | null>(null)
   const [checkingName, setCheckingName] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -73,7 +69,6 @@ export function SkillEditor({
         return
       }
       const { skill } = answer
-      setTitle(skill.title)
       setDescription(skill.description)
       setBody(skill.body)
       setName(skill.name)
@@ -85,26 +80,7 @@ export function SkillEditor({
     }
   }, [api, mode, viewId])
 
-  // a new skill: the name the title would get, shown until the person types one
-  useEffect(() => {
-    if (mode !== 'new' || nameTouched) return
-    let live = true
-    const handle = setTimeout(() => {
-      if (!title.trim()) {
-        setSuggested('')
-        return
-      }
-      void api.suggestName(title).then((next) => {
-        if (live) setSuggested(next)
-      })
-    }, NAME_CHECK_DELAY_MS)
-    return () => {
-      live = false
-      clearTimeout(handle)
-    }
-  }, [api, mode, title, nameTouched])
-
-  const nameChanged = mode === 'edit' ? name !== originalName : nameTouched && name.trim() !== ''
+  const nameChanged = mode === 'edit' ? name !== originalName : name.trim() !== ''
 
   useEffect(() => {
     if (readOnly || !nameChanged) {
@@ -133,13 +109,13 @@ export function SkillEditor({
     !saving &&
     !checkingName &&
     !nameProblem &&
-    title.trim() !== '' &&
+    name.trim() !== '' &&
     description.trim() !== '' &&
     body.trim() !== ''
 
   const save = async () => {
     if (!canSave) return
-    const input: UserSkillSaveInput = { title, description, body }
+    const input: UserSkillSaveInput = { title: '', description, body }
     if (mode === 'edit' && viewId) input.id = viewId
     if (nameChanged) input.name = name.trim()
     setSaving(true)
@@ -154,7 +130,7 @@ export function SkillEditor({
   }
 
   const label = s(TITLE_KEY[mode])
-  const heading = view ? skillDisplayTitle(view, lang) : ''
+  const heading = view ? skillDisplayTitle(view) : ''
 
   return (
     <SkillDialog
@@ -188,15 +164,24 @@ export function SkillEditor({
         <p className="set-field-desc">{s('loading')}</p>
       ) : (
         <>
-          <label className="skl-field">
-            <span className="skl-field-label">{s('fieldTitle')}</span>
-            <input
-              className="skl-input"
-              value={title}
-              readOnly={readOnly}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </label>
+          {!readOnly && (
+            <label className="skl-field">
+              <span className="skl-field-label">{s('fieldName')}</span>
+              <input
+                className="skl-input"
+                data-field="name"
+                value={name}
+                placeholder={mode === 'new' ? 'meeting-minutes' : undefined}
+                spellCheck={false}
+                dir="ltr"
+                aria-invalid={nameProblem ? true : undefined}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <span className={`set-field-desc${nameProblem ? ' skl-error' : ''}`}>
+                {nameProblem ? s(nameProblemKey(nameProblem)) : s('nameHint')}
+              </span>
+            </label>
+          )}
           <label className="skl-field">
             <span className="skl-field-label">{s('fieldDescription')}</span>
             <textarea
@@ -220,60 +205,11 @@ export function SkillEditor({
             />
           </label>
 
-          {readOnly ? (
+          {readOnly && heading !== name && (
             <div className="skl-field">
               <span className="skl-field-label">{s('fieldName')}</span>
               <code className="skl-name">{name}</code>
             </div>
-          ) : (
-            <>
-              <button
-                type="button"
-                className="set-adv-toggle"
-                aria-expanded={advanced}
-                onClick={() => setAdvanced((was) => !was)}
-              >
-                <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-                  <path
-                    d="M3.5 2 6.5 5l-3 3"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                {s('advanced')}
-              </button>
-              {advanced && (
-                <label className="skl-field">
-                  <span className="skl-field-label">{s('fieldName')}</span>
-                  <input
-                    className="skl-input"
-                    data-field="name"
-                    value={name}
-                    placeholder={mode === 'new' ? suggested : undefined}
-                    spellCheck={false}
-                    aria-invalid={nameProblem ? true : undefined}
-                    onChange={(e) => {
-                      setName(e.target.value)
-                      setNameTouched(true)
-                    }}
-                  />
-                  {nameProblem ? (
-                    <span className="set-field-desc skl-error">
-                      {s(nameProblemKey(nameProblem))}
-                    </span>
-                  ) : (
-                    <span className="set-field-desc">
-                      {mode === 'new' && !nameChanged && suggested
-                        ? s('nameAuto', { name: suggested })
-                        : s('nameHint')}
-                    </span>
-                  )}
-                </label>
-              )}
-            </>
           )}
 
           {mode !== 'new' && (

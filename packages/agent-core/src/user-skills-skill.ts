@@ -29,10 +29,10 @@ export const USER_SKILL_TOOL_NAMES: ReadonlySet<string> = new Set([
   PROPOSE_SKILL_TOOL,
 ])
 
-/** First words of a proposal's tool result, then its title as JSON (stored chats read it back) */
+/** First words of a proposal's tool result, then its name as JSON (stored chats read it back) */
 const PROPOSAL_SHOWN_PREFIX = 'Skill card shown: '
 
-/** The title a stored `propose_skill` result names, or '' */
+/** The name (a title in older chats) a stored `propose_skill` result names, or '' */
 export function proposedTitleOf(output: string | undefined): string {
   if (!output?.startsWith(PROPOSAL_SHOWN_PREFIX)) return ''
   const line = output.slice(PROPOSAL_SHOWN_PREFIX.length).split('\n', 1)[0]!
@@ -312,11 +312,12 @@ function tools(): AgentToolDef[] {
       inputSchema: {
         type: 'object',
         properties: {
-          title: { type: 'string', description: 'short title shown to the person' },
           name: {
             type: 'string',
             description:
-              'English name: lowercase letters, digits and hyphens, 1-64 characters, e.g. meeting-minutes',
+              'the name the person sees in the skill list and types after / to call it: English ' +
+              'words saying what the skill does, lowercase letters, digits and hyphens, 1-64 ' +
+              'characters, e.g. meeting-minutes',
           },
           description: {
             type: 'string',
@@ -332,7 +333,7 @@ function tools(): AgentToolDef[] {
             description: 'id of the existing skill to change; leave out for a new skill',
           },
         },
-        required: ['title', 'description', 'body'],
+        required: ['name', 'description', 'body'],
       },
     },
   ]
@@ -475,9 +476,12 @@ export function createUserSkillsSkill(deps: UserSkillsDeps): AgentSkill {
   }
 
   const proposeSkill = (call: AgentToolCall): ToolExecution => {
+    const name = str(call.input.name).trim()
+    // older prompts gave a title instead; the card makes a name from it
     const title = str(call.input.title).trim()
+    const label = name || title
     const body = str(call.input.body)
-    if (!title) return fail('title must not be empty', PROPOSE_SKILL_TOOL)
+    if (!label) return fail('name must not be empty', PROPOSE_SKILL_TOOL)
     if (!body.trim()) return fail('body must not be empty', PROPOSE_SKILL_TOOL)
     const targetId = str(call.input.targetId).trim()
     let target: SkillProposal['target']
@@ -501,7 +505,7 @@ export function createUserSkillsSkill(deps: UserSkillsDeps): AgentSkill {
     deps.onProposal({
       key: call.id,
       title,
-      name: str(call.input.name).trim(),
+      name,
       description: str(call.input.description).trim(),
       body,
       wantsTemplate: call.input.wantsTemplate === true,
@@ -509,11 +513,11 @@ export function createUserSkillsSkill(deps: UserSkillsDeps): AgentSkill {
     })
     return {
       output:
-        `${PROPOSAL_SHOWN_PREFIX}${JSON.stringify(title)}\n` +
+        `${PROPOSAL_SHOWN_PREFIX}${JSON.stringify(label)}\n` +
         'The skill card is shown to the person in the chat. Nothing is saved until they press ' +
         'Save on it, so it is not saved yet. Tell them briefly what the card holds and that they ' +
         'can change it before saving.',
-      summary: labels.proposed(title),
+      summary: labels.proposed(label),
     }
   }
 

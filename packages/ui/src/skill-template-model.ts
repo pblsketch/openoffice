@@ -1,6 +1,6 @@
 import type { SkillProposal } from '@genoffice/agent-core'
 import type { SkillCardDraft } from './skill-card-model'
-import type { SkillChipRef, SkillChipView } from './skill-picker-model'
+import { skillDisplayName, type SkillChipRef, type SkillChipView } from './skill-picker-model'
 
 /**
  * The template flow of the person's skills (spec 5.6, 5.7) as plain rules: the
@@ -108,9 +108,10 @@ export function chipRefOf(chip: SkillChipRef): SkillChipRef {
 }
 
 /** The chip of a skill the model used on its own (its identifier starts with the source) */
-export function chipRefForSkill(skill: { id: string; title: string }): SkillChipRef {
+export function chipRefForSkill(skill: { id: string; name: string; title: string }): SkillChipRef {
   const source = skill.id.slice(0, Math.max(0, skill.id.indexOf(':'))) || 'app'
-  return { id: skill.id, source, title: skill.title }
+  const title = skillDisplayName(source === 'builtin' ? { name: skill.name } : skill)
+  return { id: skill.id, source, title }
 }
 
 export type TemplateOpenResult = { ok: true; tabId: string } | { ok: false; reason: string }

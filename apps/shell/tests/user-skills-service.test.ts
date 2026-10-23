@@ -244,8 +244,8 @@ describe('saving skills', () => {
     expect(await service.saveFromCard({ ...card, name: 'ieumoffice' })).toMatchObject({
       problem: 'reserved',
     })
-    expect(await service.saveFromCard({ ...card, title: ' ' })).toMatchObject({
-      reason: 'empty-title',
+    expect(await service.saveFromCard({ ...card, description: ' ' })).toMatchObject({
+      reason: 'empty-description',
     })
     expect(await service.saveFromCard({ ...card, body: '' })).toMatchObject({
       reason: 'empty-body',
@@ -355,6 +355,56 @@ describe('saving skills', () => {
     expect(
       await service.save({ id: 'user:claude-one', title: 'T', description: 'D', body: 'B' }),
     ).toEqual({ ok: false, reason: 'not-owned' })
+  })
+
+  it('saves a new skill without a title and writes no title into it', async () => {
+    expect(await service.saveFromCard({ ...card, title: ' ' })).toEqual({
+      ok: true,
+      id: 'app:home-letter',
+    })
+    const parsed = parseSkillMd(readFileSync(join(appDir(), 'home-letter', 'SKILL.md'), 'utf8'))!
+    expect(parsed.name).toBe('home-letter')
+    expect(parsed.metadata).not.toHaveProperty('ieum-title')
+    expect(await byId('app:home-letter')).toMatchObject({ title: 'home-letter' })
+  })
+
+  it('keeps the title an own skill already has when an edit gives none', async () => {
+    expect(
+      await service.save({ id: 'app:mine', title: '', description: 'D', body: 'New body\n' }),
+    ).toEqual({ ok: true, id: 'app:mine' })
+    const parsed = parseSkillMd(readFileSync(join(appDir(), 'mine', 'SKILL.md'), 'utf8'))!
+    expect(parsed.metadata['ieum-title']).toBe('Mine')
+    expect(parsed.body).toBe('New body\n')
+    expect(await byId('app:mine')).toMatchObject({ title: 'Mine' })
+  })
+
+  it('keeps the title through a rename that gives none', async () => {
+    expect(
+      await service.save({
+        id: 'app:mine',
+        title: '',
+        name: 'mine-2',
+        description: 'D',
+        body: 'B',
+      }),
+    ).toEqual({ ok: true, id: 'app:mine-2' })
+    expect(await byId('app:mine-2')).toMatchObject({ title: 'Mine' })
+  })
+
+  it('a new title given on an edit replaces the old one', async () => {
+    await service.save({ id: 'app:mine', title: 'Ours', description: 'D', body: 'B' })
+    expect(await byId('app:mine')).toMatchObject({ title: 'Ours' })
+  })
+
+  it('makes up a name for a new skill with neither a name nor a title', async () => {
+    const saved = await service.save({ title: '', description: 'D', body: 'B' })
+    expect(saved.ok).toBe(true)
+    const id = (saved as { id: string }).id
+    expect(id).toMatch(/^app:skill-[a-z0-9]{6}$/)
+    const name = id.slice('app:'.length)
+    const parsed = parseSkillMd(readFileSync(join(appDir(), name, 'SKILL.md'), 'utf8'))!
+    expect(parsed.name).toBe(name)
+    expect(parsed.metadata).not.toHaveProperty('ieum-title')
   })
 
   it('names a new skill from its title when no name is given', async () => {
