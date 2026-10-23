@@ -371,6 +371,8 @@ describe('AI highlights: start window', () => {
     expect(q(m.el, '[data-saved-file]')?.textContent).toContain(strings.en.hlSavedFile)
     await toConfirm(m)
     expect(q(m.el, '[data-provider]')?.dataset.provider).toBe('claude-code')
+    expect(q(m.el, '[data-model-picker] .ai-model-picker-label')?.textContent).toBe('Model')
+    expect(q(m.el, '[data-model-picker] .ai-model-chip')).not.toBeNull()
     expect(bridge.api.aiStream).not.toHaveBeenCalled()
     expect(m.channels.writes).toEqual([])
 
@@ -397,6 +399,9 @@ describe('AI highlights: start window', () => {
     expect(jobs.every((j) => j.kind === 'highlight' && j.runId === DEFAULT_RUN_ID)).toBe(true)
     expect(q(m.el, '[data-job-kind="highlight"]')?.textContent).toContain(
       'AI highlights done — 1 suggestions',
+    )
+    expect(q(m.el, '[data-job-kind="highlight"] .pdf-job-strip-detail')?.textContent).toBe(
+      'AI used: Claude',
     )
     expect(q(m.el, '[data-job-kind="highlight"]')?.textContent).toContain('1 dropped')
   })

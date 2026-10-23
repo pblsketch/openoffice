@@ -243,6 +243,7 @@ export const AiHighlights = forwardRef<AiHighlightsHandle, AiHighlightsProps>(
         kind: 'highlight',
         runId: run.runId,
         provider: route.provider,
+        ...(request.aiLabel ? { aiLabel: request.aiLabel } : {}),
         launch: ({ signal, registry, onProgress }) =>
           startHighlightJob({
             docHash: hash,
@@ -342,14 +343,18 @@ function stripText(
   tally: RunCounts | undefined,
   notFound: number | null,
 ): { title: string; details: string[] } {
+  const ai = view.aiLabel ? [t('arConfirmProvider', { provider: view.aiLabel })] : []
   if (view.state === 'running') {
     return {
       title: t('hlRunning', { done: view.done, total: view.total }),
-      details: view.currentPage !== null ? [t('trRunningPage', { page: view.currentPage })] : [],
+      details: [
+        ...ai,
+        ...(view.currentPage !== null ? [t('trRunningPage', { page: view.currentPage })] : []),
+      ],
     }
   }
   if (view.state === 'failed') {
-    return { title: t('hlStartFailed', { reason: view.error ?? '' }), details: [] }
+    return { title: t('hlStartFailed', { reason: view.error ?? '' }), details: ai }
   }
   const report = tally
     ? [
@@ -367,10 +372,13 @@ function stripText(
     const failed = summary?.failedUnits.length ?? 0
     return {
       title: t('hlDone', { count: tally?.suggestions ?? 0 }),
-      details: failed > 0 ? [...report, t('hlFailedBatches', { count: failed })] : report,
+      details:
+        failed > 0
+          ? [...ai, ...report, t('hlFailedBatches', { count: failed })]
+          : [...ai, ...report],
     }
   }
-  const details = [t('trStoppedProgress', { done: view.done, total: view.total }), ...report]
+  const details = [...ai, t('trStoppedProgress', { done: view.done, total: view.total }), ...report]
   const reason = summary.stopReason
   const title =
     reason === 'cancelled' || reason === 'interrupted'

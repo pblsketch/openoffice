@@ -616,7 +616,8 @@ describe('translation window: confirmation', () => {
         meteredAccepted: false,
         loginMethod: 'subscription',
         models: [
-          { id: '', label: 'Sonnet 5.5', resolved: 'claude-sonnet-5-5' },
+          { id: '', label: 'Default', resolved: 'claude-sonnet-5-5' },
+          { id: 'claude-sonnet-5-5', label: 'Sonnet 5.5', resolved: 'claude-sonnet-5-5' },
           { id: 'claude-haiku-4-5', label: 'Haiku 4.5' },
         ],
       },
@@ -631,6 +632,7 @@ describe('translation window: confirmation', () => {
     })
     await openToConfirm(m)
     await until(() => q(m.el, '[data-model-picker] .ai-model-chip') !== null, 'the model chip')
+    expect(q(m.el, '[data-model-picker] .ai-model-picker-label')?.textContent).toBe('Model')
     expect(q(m.el, '[data-model-picker] .ai-model-chip')?.textContent).toContain('Sonnet 5.5')
 
     await click(m.el, '[data-model-picker] .ai-model-chip')

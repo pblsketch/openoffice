@@ -435,6 +435,7 @@ describe('AI page reading: picker and confirmation', () => {
       t('arVisionModel', { model: 'deepseek-v4-pro' }),
     )
     await until(() => q(m.el, '[data-model-picker] .ai-model-chip') !== null, 'the model chip')
+    expect(q(m.el, '[data-model-picker] .ai-model-picker-label')?.textContent).toBe('Model')
     await click(m.el, '[data-model-picker] .ai-model-chip')
     await until(() => q(m.el, '[role="option"]') !== null, 'the model list')
     const flash = [...m.el.querySelectorAll('[role="option"]')].find((option) =>

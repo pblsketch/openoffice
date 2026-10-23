@@ -60,10 +60,11 @@ function PickerMark({ group }: { readonly group: Pick<AiProviderPickerGroup, 'ki
 }
 
 /**
- * Composer footer chip showing the active provider + model; the popover lists
- * every usable provider's models for a one-click switch (saved globally, the
- * same ai-settings.json the settings page edits) and ends with a row that
- * opens that page for keys and new vendors.
+ * Model chip showing the active provider + model; the popover lists every
+ * usable provider's models for a one-click switch (saved globally, the same
+ * ai-settings.json the settings page edits) and ends with a row that opens
+ * that page for keys and new vendors. Used in the composer footer and, with
+ * `showLabel`, in the document-job confirmation dialogs.
  *
  * The list follows the subscription contract: an automatic entry, the
  * connected subscriptions, then the key providers that are filled in. Without
@@ -73,11 +74,14 @@ export function AiModelPicker({
   bridge,
   lang,
   subscriptionStatuses,
+  showLabel = false,
 }: {
   readonly bridge: AiModelPickerBridge
   readonly lang: Lang
   /** status of the subscription CLIs */
   readonly subscriptionStatuses?: AiSubscriptionStatuses | undefined
+  /** a visible "Model" label before the chip (a confirmation dialog has no composer footer) */
+  readonly showLabel?: boolean | undefined
 }): React.JSX.Element | null {
   const strings = AI_MODEL_PICKER_STRINGS[lang] ?? AI_MODEL_PICKER_STRINGS.en
   const [settings, setSettings] = useState<AiSettings | null>(null)
@@ -201,6 +205,11 @@ export function AiModelPicker({
         }
       }}
     >
+      {showLabel && (
+        <span className="ai-model-picker-label" aria-hidden="true">
+          {strings.title}
+        </span>
+      )}
       <button
         ref={chipRef}
         type="button"

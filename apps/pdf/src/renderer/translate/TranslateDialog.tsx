@@ -718,6 +718,7 @@ function TranslateConfirm({
                 bridge={SETTINGS_BRIDGE}
                 lang={lang}
                 subscriptionStatuses={connection.statuses}
+                showLabel
               />
             </li>
             <li>{t('trConfirmSends')}</li>

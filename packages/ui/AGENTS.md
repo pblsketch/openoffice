@@ -50,7 +50,7 @@
 - 규칙은 순수 함수, 컴포넌트는 배치다. 연결 상태 여섯 가지에 카드가 무엇을 보이는지는 `aiSubscriptionCardView`, 연결 안내의 구성은 `aiConnectPromptView`, 어떤 오류가 "막힌 실행" 알림을 받는지는 `AI_BLOCKED_RUN_KINDS`·`isAiBlockedRunKind`가 정한다. 동작을 바꿀 때는 이 함수와 그 테스트를 먼저 바꾼다.
 - 패널 배선은 `useAiSendGate` 하나로 한다. 보내기 경로는 `admit(request)`를 묻고(거짓이면 보내지 않고 작성기 글을 남긴다), 대기열은 `admitQueued`를, 첫 연결 안내의 확인 버튼은 `acknowledgeNotice`를, 막힌 실행의 버튼은 `continueWith(provider, rerun)`을 부른다. 붙잡힌 요청은 `start`로 되돌아오고 패널의 보내기 경로를 다시 지나며 `admit`을 한 번 더 묻는다.
 - 붙잡힌 요청의 운명은 `aiHeldRequestStep`이 정한다. 상태 확인 때문에 붙잡힌 요청은 답이 "연결 안 됨"이면 버려진다. 알림 때문에 붙잡힌 요청은 확인 버튼만이 시작시키고, 다른 이유로 알림이 사라지면(제공자 변경, 연결 끊김) 버려진다.
-- `AiModelPicker`는 `subscriptionStatuses`를 받는다. 넘기지 않으면 어떤 구독도 연결된 것으로 치지 않는다. 선택 변경은 `withAiProviderSelection`으로 쓴다.
+- `AiModelPicker`는 `subscriptionStatuses`를 받는다. 넘기지 않으면 어떤 구독도 연결된 것으로 치지 않는다. 선택 변경은 `withAiProviderSelection`으로 쓴다. `showLabel`을 주면 칩 앞에 "모델" 라벨을 보인다(문서 작업 확인 창처럼 작성기 바깥에 놓일 때). 팝오버는 `aiModelPopoverStyle`이 칩 위·아래의 남은 공간을 보고 연다.
 - 아무것도 연결되지 않은 "AI 연결" 안내(`aiConnectPromptView`의 `free`)는 카드 두 개 대신 `AiConnectGuide`를 그린다. 도우미는 어느 AI가 있는지 묻고(`aiConnectGuideView`), 고른 구독 길에 단계(`aiConnectStepsView`)와 그 카드 하나를 보인다. 무료 길의 버튼은 호스트가 준 `onOpenSettings`를 부른다(설정 → AI가 열린다). 첫 실행 안내처럼 무료 카드를 그 자리에 그릴 호스트는 `freeContent`와 `freeConnected`를 준다. 이 패키지는 무료 연결을 직접 실행하지 않는다. 고른 길은 컴포넌트 상태일 뿐 저장하지 않는다.
 - 카드의 업데이트 버튼과 로그인 취소 링크는 호스트가 `onUpdate`·`onCancelLogin`을 줬을 때만 나온다. 업데이트는 터미널 창을 여는 일이라 `terminalWindows`(Windows)일 때만이다. 브라우저 로그인이 `AI_SIGNING_IN_STALLED_MS`를 넘으면 카드가 스스로 로그인 창 링크를 버튼으로 올린다. 링크로 그릴 동작은 `aiSubscriptionCardView`의 `links`가 정한다.
 - "도움 요청용 정보 복사"(`aiConnectInfoText`)에는 상태의 종류·오류 종류·버전 모양의 값·로그인 중인지·종량 허용 여부와 `navigator`의 플랫폼·사용자 에이전트만 들어간다. 계정, 경로, 오류 원문은 넣지 않는다. 새 값을 넣을 때도 이 원칙을 지킨다.

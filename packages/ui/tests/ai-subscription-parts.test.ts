@@ -12,7 +12,7 @@ import {
   type AiSubscriptionStatuses,
 } from '@genoffice/ai-provider'
 import { AiBlockedNotice } from '../src/AiBlockedNotice'
-import { AiModelPicker, type AiModelPickerBridge } from '../src/AiModelPicker'
+import { AiModelPicker, aiModelPopoverStyle, type AiModelPickerBridge } from '../src/AiModelPicker'
 import { AiConnectPrompt, AiSubscriptionCard } from '../src/AiSubscriptionCard'
 import {
   AiCodexNotice,
@@ -199,6 +199,22 @@ describe('AiSubscriptionCard', () => {
         }[lang],
       )
     }
+  })
+
+  it("error: a Codex too old shows the file it ran, without Claude's WSL hint", () => {
+    const path =
+      'C:\\Users\\me\\AppData\\Local\\Microsoft\\WinGet\\Packages\\OpenAI.Codex_x\\codex.exe'
+    render(
+      status('codex', 'error', {
+        version: '0.1.0',
+        error: 'needs-update: too old',
+        programPath: path,
+      }),
+    )
+    expect(host.querySelector('.ai-sub-path-value')!.textContent).toBe(path)
+    expect(
+      [...host.querySelectorAll('.ai-sub-path-label')].map((label) => label.textContent),
+    ).toEqual([en.cardErrNeedsUpdatePath])
   })
 
   it('error: one sentence per kind, naming the provider, never the raw detail', () => {
@@ -967,19 +983,48 @@ describe('notices', () => {
   })
 })
 
+describe('aiModelPopoverStyle', () => {
+  const viewport = { width: 1024, height: 768 }
+
+  it('opens below a chip near the top of a confirmation dialog', () => {
+    const style = aiModelPopoverStyle({ left: 300, top: 120, bottom: 144 }, viewport)
+    expect(style).toMatchObject({ left: 300, top: 150, maxHeight: 420 })
+    expect(style.bottom).toBeUndefined()
+  })
+
+  it('opens above a chip at the bottom of the composer', () => {
+    const style = aiModelPopoverStyle({ left: 300, top: 700, bottom: 724 }, viewport)
+    expect(style).toMatchObject({ left: 300, bottom: 74, maxHeight: 420 })
+    expect(style.top).toBeUndefined()
+  })
+
+  it('keeps the list inside the window and shortens it on a low viewport', () => {
+    const clamped = aiModelPopoverStyle({ left: 900, top: 120, bottom: 144 }, viewport)
+    expect(clamped.left).toBe(756)
+    const low = aiModelPopoverStyle({ left: 10, top: 10, bottom: 34 }, { width: 1024, height: 200 })
+    expect(low).toMatchObject({ top: 40, maxHeight: 158 })
+  })
+})
+
 describe('AiModelPicker under the subscription contract', () => {
   const ready: AiSubscriptionStatuses = {
     'claude-code': status('claude-code', 'ready'),
     codex: status('codex', 'ready'),
   }
-  async function mount(settings: AiSettings, subscriptionStatuses?: AiSubscriptionStatuses) {
+  async function mount(
+    settings: AiSettings,
+    subscriptionStatuses?: AiSubscriptionStatuses,
+    showLabel = false,
+  ) {
     const setSettings = vi.fn<(next: AiSettings) => Promise<void>>(async () => {})
     const bridge: AiModelPickerBridge = {
       getSettings: async () => settings,
       setSettings,
     }
     await act(async () => {
-      root.render(createElement(AiModelPicker, { bridge, lang: 'en', subscriptionStatuses }))
+      root.render(
+        createElement(AiModelPicker, { bridge, lang: 'en', subscriptionStatuses, showLabel }),
+      )
     })
     return setSettings
   }
@@ -989,6 +1034,12 @@ describe('AiModelPicker under the subscription contract', () => {
       [...el.querySelectorAll(':scope > span')].map((span) => span.textContent).filter(Boolean),
     )
   const open = () => click('.ai-model-chip')
+
+  it('shows a visible model label when a confirmation dialog asks for one', async () => {
+    await mount(defaultAiSettings(), ready, true)
+    expect(host.querySelector('.ai-model-picker-label')?.textContent).toBe('Model')
+    expect(host.querySelector('.ai-model-chip')?.getAttribute('aria-label')).toContain('Model:')
+  })
 
   it('shows what the automatic selection resolves to and lists subscriptions first', async () => {
     const settings = defaultAiSettings()
