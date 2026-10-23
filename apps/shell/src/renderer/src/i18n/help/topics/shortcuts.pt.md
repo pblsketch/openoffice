@@ -588,3 +588,154 @@ Cada uma destas precisa de um elemento já selecionado; sem seleção, a tecla n
 | Colocar o intervalo selecionado a itálico   | ⌘I    | Ctrl+I          |
 
 Confirmar mantém o que escreveu e devolve o elemento ao estado selecionado.
+
+## HWP/HWPX
+
+Estas teclas funcionam quando o separador HWP/HWPX está à frente e o documento tem o foco. As duas colunas mostram como as premir no macOS e no Windows / Linux.
+
+### Ficheiro
+
+| Ação           | macOS | Windows / Linux      |
+| -------------- | ----- | -------------------- |
+| Novo documento |       | Alt+N                |
+| Abrir…         | ⌘O    | Ctrl+O / Alt+O       |
+| Guardar        | ⌘S    | Ctrl+S / Alt+S       |
+| Guardar como…  | ⇧⌘S   | Ctrl+Shift+S / Alt+V |
+| Imprimir       | ⌘P    | Ctrl+P / Alt+P       |
+
+### Edição
+
+| Ação                   | macOS       | Windows / Linux              |
+| ---------------------- | ----------- | ---------------------------- |
+| Anular                 | ⌃Z          | Ctrl+Z                       |
+| Refazer                | ⌃⇧Z         | Ctrl+Shift+Z                 |
+| Eliminar a linha       | ⌃Y          | Ctrl+Y                       |
+| Cortar                 | ⌃X          | Ctrl+X                       |
+| Copiar                 | ⌃C          | Ctrl+C                       |
+| Colar                  | ⌃V          | Ctrl+V                       |
+| Eliminar               | ⌃E          | Ctrl+E                       |
+| Selecionar tudo        | ⌃A          | Ctrl+A                       |
+| Copiar formatação      | ⌥C          | Alt+C                        |
+| Localizar              | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
+| Localizar e substituir | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
+| Localizar seguinte     | ⌃L          | Ctrl+L                       |
+| Localizar para trás    | ⌃Q, L       | Ctrl+Q, L                    |
+| Ir para                | ⌥G          | Alt+G                        |
+| Comparar documentos    | ⌥⇧V         | Alt+Shift+V                  |
+
+### Caráter
+
+| Ação                                   | macOS    | Windows / Linux      |
+| -------------------------------------- | -------- | -------------------- |
+| Negrito                                | ⌃B / ⌥⇧B | Ctrl+B / Alt+Shift+B |
+| Itálico                                | ⌃I / ⌥⇧I | Ctrl+I / Alt+Shift+I |
+| Sublinhado                             | ⌃U / ⌥⇧U | Ctrl+U / Alt+Shift+U |
+| Formato normal                         | ⌥⇧C      | Alt+Shift+C          |
+| Sobrescrito                            | ⌥⇧P      | Alt+Shift+P          |
+| Subscrito                              | ⌥⇧S      | Alt+Shift+S          |
+| Formato de caráter…                    | ⌥L       | Alt+L                |
+| Aumentar o tamanho da letra            | ⌥⇧E / ⌃] | Alt+Shift+E / Ctrl+] |
+| Reduzir o tamanho da letra             | ⌥⇧R / ⌃[ | Alt+Shift+R / Ctrl+[ |
+| Aumentar a largura dos carateres       | ⌥⇧K      | Alt+Shift+K          |
+| Reduzir a largura dos carateres        | ⌥⇧J      | Alt+Shift+J          |
+| Aumentar o espaçamento entre carateres | ⌥⇧W      | Alt+Shift+W          |
+| Reduzir o espaçamento entre carateres  | ⌥⇧N      | Alt+Shift+N          |
+| Texto preto                            | ⌃M, K    | Ctrl+M, K            |
+| Texto vermelho                         | ⌃M, R    | Ctrl+M, R            |
+| Texto azul                             | ⌃M, B    | Ctrl+M, B            |
+| Texto ameixa                           | ⌃M, D    | Ctrl+M, D            |
+| Texto verde                            | ⌃M, G    | Ctrl+M, G            |
+| Texto amarelo                          | ⌃M, Y    | Ctrl+M, Y            |
+| Texto turquesa                         | ⌃M, C    | Ctrl+M, C            |
+| Texto branco                           | ⌃M, W    | Ctrl+M, W            |
+
+### Parágrafo
+
+| Ação                                 | macOS   | Windows / Linux |
+| ------------------------------------ | ------- | --------------- |
+| Alinhar à esquerda                   | ⌃⇧L     | Ctrl+Shift+L    |
+| Centrar                              | ⌃⇧C     | Ctrl+Shift+C    |
+| Alinhar à direita                    | ⌃⇧R     | Ctrl+Shift+R    |
+| Justificar                           | ⌃⇧M     | Ctrl+Shift+M    |
+| Distribuir                           | ⌃⇧T     | Ctrl+Shift+T    |
+| Aumentar o espaçamento entre linhas  | ⌥⇧Z     | Alt+Shift+Z     |
+| Reduzir o espaçamento entre linhas   | ⌥⇧A     | Alt+Shift+A     |
+| Formato de parágrafo…                | ⌥T      | Alt+T           |
+| Estilo…                              | F6      | F6              |
+| Aplicar do primeiro ao décimo estilo | ⌃1 … ⌃0 | Ctrl+1 … Ctrl+0 |
+| Formato da numeração de parágrafos   | ⌃K, N   | Ctrl+K, N       |
+
+### Inserir
+
+| Ação                                  | macOS       | Windows / Linux    |
+| ------------------------------------- | ----------- | ------------------ |
+| Inserir tabela                        | ⌃N, T       | Ctrl+N, T          |
+| Nota de rodapé                        | ⌃N, N       | Ctrl+N, N          |
+| Nota de fim                           | ⌃N, E       | Ctrl+N, E          |
+| Cabeçalho                             | ⌃N, H       | Ctrl+N, H          |
+| Número de página                      | ⌃N, P       | Ctrl+N, P          |
+| Inserir imagem                        | ⌃N, I       | Ctrl+N, I          |
+| Caixa de texto                        | ⌃N, B       | Ctrl+N, B          |
+| Equação                               | ⌃N, M       | Ctrl+N, M          |
+| Inserir legenda                       | ⌃N, C       | Ctrl+N, C          |
+| Hiperligação                          | ⌃K, H       | Ctrl+K, H          |
+| Marcador                              | ⌃K, B       | Ctrl+K, B          |
+| Inserir campo                         | ⌃K, E       | Ctrl+K, E          |
+| Texto de data/hora                    | ⌃K, D       | Ctrl+K, D          |
+| Editar objeto, campo ou tabela/célula | ⌃N, K       | Ctrl+N, K          |
+| Símbolos                              | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+
+### Tabela
+
+| Ação                   | macOS        | Windows / Linux        |
+| ---------------------- | ------------ | ---------------------- |
+| Adicionar linha/coluna | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Eliminar linha/coluna  | ⌥⌫           | Alt+Delete             |
+| Dividir célula         | F5 → S       | F5 → S                 |
+| Unir células           | F5 → M       | F5 → M                 |
+| Soma do bloco          | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Média do bloco         | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Produto do bloco       | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Dividir tabela         | ⌃N, A        | Ctrl+N, A              |
+| Unir tabelas           | ⌃N, Z        | Ctrl+N, Z              |
+| Fórmula de cálculo     | ⌃N, F        | Ctrl+N, F              |
+
+### Cálculos de tabela
+
+Só funcionam quando o cursor está numa célula vazia de uma tabela. Há teclas separadas para calcular com as células à esquerda e com as células acima.
+
+| Ação               | macOS | Windows / Linux |
+| ------------------ | ----- | --------------- |
+| Soma à esquerda    | ⇧⌘H   | Ctrl+Shift+H    |
+| Soma acima         | ⌃⇧V   | Ctrl+Shift+V    |
+| Média à esquerda   | ⌃⇧J   | Ctrl+Shift+J    |
+| Média acima        | ⌃⇧B   | Ctrl+Shift+B    |
+| Produto à esquerda | ⌃⇧K   | Ctrl+Shift+K    |
+| Produto acima      | ⌃⇧N   | Ctrl+Shift+N    |
+
+### Página
+
+| Ação                            | macOS | Windows / Linux  |
+| ------------------------------- | ----- | ---------------- |
+| Configurar página               | F7    | F7               |
+| Quebra de página                | ⌃⏎    | Ctrl+Enter       |
+| Quebra de coluna                | ⌃⇧⏎   | Ctrl+Shift+Enter |
+| Quebra de definições de colunas | ⌃⌥⏎   | Ctrl+Alt+Enter   |
+| Definições de secção            | ⌃N, G | Ctrl+N, G        |
+| Ocultar página                  | ⌃N, S | Ctrl+N, S        |
+
+### Ver
+
+| Ação                                            | macOS | Windows / Linux |
+| ----------------------------------------------- | ----- | --------------- |
+| Ampliar                                         | ⌃=    | Ctrl+=          |
+| Reduzir                                         | ⌃-    | Ctrl+-          |
+| Ajustar à página                                | ⌃G, P | Ctrl+G, P       |
+| Ajustar à largura                               | ⌃G, W | Ctrl+G, W       |
+| Zoom para 100 %                                 | ⌃G, Q | Ctrl+G, Q       |
+| Reduzir ou expandir a caixa de ferramentas      | ⌃F1   | Ctrl+F1         |
+| Mostrar ou ocultar as marcas de parágrafo       | ⌃G, T | Ctrl+G, T       |
+| Mostrar ou ocultar as marcas de controlo        | ⌃G, C | Ctrl+G, C       |
+| Ir para o separador Início (fora de uma tabela) | ⇧⌘H   | Ctrl+Shift+H    |
+
+Uma tecla escrita como `Ctrl+N,T` significa premir Ctrl+N, largar e depois premir T. `F5 → S` significa selecionar um bloco de células com F5 e depois premir S. `Ctrl+1 … Ctrl+0` correspondem ao primeiro ao décimo estilo do documento; `Ctrl+Alt+1 … Ctrl+Alt+0` aplicam os mesmos estilos. Com um bloco de células selecionado, `Ctrl+Shift+S` (no macOS `⇧⌘S`) é a soma do bloco; fora dele, essa tecla guarda como.
