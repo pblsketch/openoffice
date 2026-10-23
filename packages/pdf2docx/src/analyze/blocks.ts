@@ -29,6 +29,15 @@ const ITEM_MAX_WIDTH_RATIO = 0.85
  * edge (list indents are shallow; centered/right stacks sit much deeper) */
 const ITEM_MAX_INDENT_EMS = 4
 /**
+ * …and the miss must be decisive: one line whose leftover outruns the next
+ * word's need by this many ems marks the list outright. Paragraph composers
+ * (ragged-right InDesign text) end prose lines short mid-sentence by up to
+ * ~2 ems now and then, so smaller misses only count when they recur on at
+ * least this share of the group's boundaries.
+ */
+const ITEM_STRONG_MISS_EMS = 3
+const ITEM_MIN_MISS_SHARE = 1 / 3
+/**
  * …but never joined across more than this many line heights. The median-gap
  * rule alone breaks down when consumed table/form regions leave sparse
  * UNIFORMLY-spaced leftover lines (median gap ≈ every gap): one "paragraph"
@@ -92,6 +101,8 @@ function isParagraphBreak(
   // the indent/short-line rules below would shred a stanza into fragments
   // whose inter-block spacing no longer matches the line pitch
   if (cur.hardBreakBefore) return false
+  // a word split across the boundary never ends its paragraph (P21 B)
+  if (prev.endsWithHyphen) return false
 
   // 2. first-line indent: prev sits on the body's left edge, cur is indented
   //    AND runs (nearly) full width — centered stacks fail that guard
@@ -109,12 +120,23 @@ function isParagraphBreak(
   //    finished its paragraph (both left-anchored → not centered text). The
   //    continuation must extend clearly past the short line's end — that
   //    guards against ragged-right jitter and against bodyRight being pushed
-  //    out by an unrelated wide line (e.g. a large-type title)
+  //    out by an unrelated wide line (e.g. a large-type title). A Latin
+  //    paragraph never opens lowercase: paragraph composers (ragged-right
+  //    InDesign text) end lines short mid-sentence, but never by a decisive
+  //    miss (the P8 C measure). A bold heading over a lowercase line
+  //    ("Contact Information" / an e-mail address) still ends
+  const leftover = body.bodyRight - prev.box.x1
+  const allBold = (l: Line): boolean => l.spans.every((s) => s.bold)
+  const composerWrap =
+    startsLowerLatin(cur) &&
+    allBold(prev) === allBold(cur) &&
+    leftover < firstWordWidthPt(cur) + ITEM_STRONG_MISS_EMS * fontSize
   if (
     approxEq(prev.box.x0, body.bodyLeft, tol) &&
     approxEq(cur.box.x0, body.bodyLeft, tol) &&
-    body.bodyRight - prev.box.x1 > SHORT_LINE_EMS * fontSize &&
-    cur.box.x1 - prev.box.x1 > fontSize
+    leftover > SHORT_LINE_EMS * fontSize &&
+    cur.box.x1 - prev.box.x1 > fontSize &&
+    !composerWrap
   ) {
     return true
   }
@@ -128,8 +150,9 @@ function isParagraphBreak(
  * drawn bullets never reach the text layer, so nothing else distinguishes
  * them). The tell is a line that stops short of the GROUP's own right extent
  * even though the next line's first word still had room there — a greedy
- * wrap never leaves that gap, on any of its lines. One such pair marks the
- * whole group as a list and every line becomes its own paragraph.
+ * wrap never leaves that gap, on any of its lines. One decisive such pair, or
+ * small ones on a third of the boundaries, marks the whole group as a list
+ * and every line becomes its own paragraph.
  *
  * Deliberately conservative: full-width prose shows no such pair (its next
  * word never fits the leftover), centered/right stacks do not share a left
@@ -144,10 +167,21 @@ function splitRunOnItems(group: Line[], wrap: { left: number; right: number }): 
   if (left - wrap.left >= ITEM_MAX_INDENT_EMS * fontSize) return [group]
   if (!group.every((l) => approxEq(l.box.x0, left, tol))) return [group]
   const groupRight = maxOf(group.map((l) => l.box.x1))
-  const isItemEnd = (l: Line, next: Line): boolean =>
-    l.box.x1 - l.box.x0 < ITEM_MAX_WIDTH_RATIO * (wrap.right - wrap.left) &&
-    groupRight - l.box.x1 >= firstWordWidthPt(next) + HARD_BREAK_WORD_SLACK_EMS * fontSize
-  const evidence = group.some((l, i) => i < group.length - 1 && isItemEnd(l, group[i + 1]!))
+  // how far past the next line's first word the leftover reaches (null: no room)
+  const missOf = (l: Line, next: Line): number | null => {
+    if (l.endsWithHyphen) return null
+    if (l.box.x1 - l.box.x0 >= ITEM_MAX_WIDTH_RATIO * (wrap.right - wrap.left)) return null
+    const miss =
+      groupRight - l.box.x1 - firstWordWidthPt(next) - HARD_BREAK_WORD_SLACK_EMS * fontSize
+    return miss >= 0 ? miss : null
+  }
+  const misses = group
+    .slice(0, -1)
+    .map((l, i) => missOf(l, group[i + 1]!))
+    .filter((m): m is number => m !== null)
+  const evidence =
+    misses.some((m) => m >= ITEM_STRONG_MISS_EMS * fontSize) ||
+    (misses.length > 0 && misses.length >= ITEM_MIN_MISS_SHARE * (group.length - 1))
   if (!evidence) return [group]
   // each line becomes its own paragraph — a leading break flag (e.g. from the
   // verse pass, which overlaps marker-less lists by design) is meaningless
@@ -374,11 +408,16 @@ const LATIN_THEN_HYPHEN = /\p{Script=Latin}[-‐]$/u
 const SOFT_HYPHEN_END = /­$/
 const LOWER_LATIN = /^\p{Ll}$/u
 
+/** the line opens on a lowercase Latin letter: a continuation, not a start */
+function startsLowerLatin(line: Line): boolean {
+  const first = [...lineText(line).trimStart()][0]
+  return first !== undefined && LOWER_LATIN.test(first) && /\p{Script=Latin}/u.test(first)
+}
+
 function isTextHyphenation(prev: Line, next: Line): boolean {
   const prevText = lineText(prev).trimEnd()
   if (!LATIN_THEN_HYPHEN.test(prevText)) return false
-  const first = [...lineText(next).trimStart()][0]
-  return first !== undefined && LOWER_LATIN.test(first) && /\p{Script=Latin}/u.test(first)
+  return startsLowerLatin(next)
 }
 
 function markTextHyphenation(lines: readonly Line[], wrapRight: number): Line[] {

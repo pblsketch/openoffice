@@ -196,6 +196,10 @@ const isBadUnicode = (code: number): boolean =>
 const isControlCode = (code: number): boolean =>
   (code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) || (code >= 0x7f && code <= 0x9f)
 
+/** PDFium voices a line-end hyphen as control code 0x02 flagged IsHyphen:
+ * the hyphen-wrap signal the line layer reads (P21 B), not broken text */
+const isHyphenMarker = (c: PdfChar): boolean => c.isHyphen && c.code === 0x02
+
 interface FontInfo {
   family: string
   italic: boolean
@@ -2161,7 +2165,8 @@ function assessQuality(
   const textChars = chars.filter((c) => !c.isGenerated && !isWhitespaceCode(c.code))
   const badUnicodeRatio =
     textChars.length >= BAD_UNICODE_MIN_CHARS
-      ? textChars.filter((c) => isBadUnicode(c.code)).length / textChars.length
+      ? textChars.filter((c) => isBadUnicode(c.code) && !isHyphenMarker(c)).length /
+        textChars.length
       : 0
 
   if (textChars.length <= SCANNED_MAX_CHARS) {
@@ -3041,8 +3046,11 @@ export function extractPage(
       : undefined
     // control-code chars on an otherwise-healthy page (one mojibake heading
     // on a valid CJK page) leave the stream AFTER the quality verdict — they
-    // render as tofu in Word and shift every following span
-    if (!needsRender) chars = chars.filter((c) => c.isGenerated || !isControlCode(c.code))
+    // render as tofu in Word and shift every following span. The hyphen
+    // marker stays: without it a wrapped "clas-|sification" joins with a space
+    if (!needsRender) {
+      chars = chars.filter((c) => c.isGenerated || isHyphenMarker(c) || !isControlCode(c.code))
+    }
 
     // cell-data mode never emits bitmaps, so producing bgRender would only
     // mute the content-lost guard below (a fully rotated page with a

@@ -21,7 +21,7 @@ PDF를 편집 가능한 문서로 되살린다. PDFium으로 글자·이미지·
 - 형제 패키지는 패키지 이름이 아니라 상대 경로(`../../../docx-engine/src/index` 등)로 import한다. `node_modules`가 다른 체크아웃으로 이어진 작업 트리에서는 패키지 이름이 엉뚱한 사본을 실행한다. 이 import를 패키지 이름으로 "정리"하지 않는다.
 - Electron을 import하지 않는다.
 - PDF를 열지 못하면(암호 등) `PdfLoadError`를 코드와 함께 던진다. 조용히 빈 결과를 돌려주지 않는다.
-- 엔진 동작은 원본(GenOffice)의 수정이 병합될 때만 바뀐다. 파일 이동, 재포맷, 이름 변경을 하지 않는다.
+- 엔진 동작은 원본(GenOffice)의 수정을 받아올 때 바뀐다. 예외는 사람이 정해 아래 "원본과 다른 점"에 적은 수정뿐이다(결정 0058). 파일 이동, 재포맷, 이름 변경을 하지 않는다.
 
 ## 이 모듈의 방식
 
@@ -33,12 +33,22 @@ PDF를 편집 가능한 문서로 되살린다. PDFium으로 글자·이미지·
 - 한 경로에 점이 10만 개 넘게 올 수 있다. 좌표 배열을 `Math.min(...points)`처럼 펼치지 않는다. 엔진의 인자 수 한도를 넘어 던진다.
 - `ocr-helper/`는 TypeScript 빌드 밖이다. `win-ocr.cs`는 `build-win.mjs`가 Windows에 기본으로 있는 .NET Framework 컴파일러로 `win-ocr.exe`로 만들고, Windows Kits 메타데이터가 있어야 한다. 설치본을 만들 때 `apps/shell/electron-builder.cjs`가 이 빌드를 부른다. macOS용과 규약이 같다. PNG를 stdin으로 받고 JSON 줄을 stdout으로 낸다.
 
+## 원본과 다른 점 (결정 0058)
+
+원본의 개선을 받아온 뒤 아래 시험이 모두 통과해야 한다. 충돌을 풀 때 이 동작이 사라지지 않게 한다.
+
+- **돌아간 글자 묶음.** 바른 쪽에서 3자 이상 이어진 돌아간 글자(여백의 arXiv 도장 등)는 본문 글자 흐름에서 빠져, 그 방향으로 읽은 문단 하나로 쪽 끝에 붙는다. 괘선 표 안의 돌아간 머리글과 2자 이하 조각은 그대로다. `analyze/turned.ts`, `analyze/index.ts`. 시험 `tests/turned.test.ts`.
+- **줄 끝 하이픈 표시.** PDFium은 줄 끝 하이픈을 제어 문자 0x02(IsHyphen)로 준다. 추출 단계의 제어 문자 필터와 깨진 글자 비율이 이 글자를 빼지 않는다(`extract/index.ts`). 대문자 앞의 하이픈("non-|English")은 원래 하이픈으로 되돌린다(`analyze/lines.ts`). 하이픈으로 끝난 줄은 문단이나 표지 없는 목록 항목의 끝이 아니다(`analyze/blocks.ts`). 시험 `tests/hyphen-marker.test.ts`.
+- **조판기가 짧게 끝낸 줄.** 표지 없는 목록 판정(P8 C)은 다음 단어보다 3em 넘게 남은 줄 하나, 또는 경계의 1/3 이상에서 되풀이되는 작은 차이가 있어야 목록으로 본다. 짧은 줄 규칙은 같은 굵기의 라틴 소문자로 시작하는 다음 줄을 같은 문단으로 읽는다(남은 자리가 결정적이면 끝). `analyze/blocks.ts`. 시험 `tests/blocks.test.ts`의 "keeps ragged-right prose whole…", "still splits a list whose entries miss by a little…", "short-line paragraph ends".
+- **쪽의 단 틈을 가로지르는 나란한 표.** 산문 줄이 가로지르지 않는 x 틈을 단 틈으로 보고, 그 틈을 가로지르되 행 대부분이 한쪽에만 내용이 있는 테두리 없는 표는 틈 양쪽에서 따로 다시 찾는다. 전체 폭 표는 그대로다. `analyze/stream.ts`의 `splitSideBySide`. 시험 `tests/stream.test.ts`의 "side-by-side tables across a page gutter".
+
 ## 테스트
 
 - `npm run test -w @genoffice/pdf2docx`, 또는 패키지 폴더에서 `npx vitest run`. 타임아웃은 20초다. PDFium wasm은 `tests/helpers/wasm.ts`가 `node_modules`에서 읽어 초기화한다.
 - 입력 PDF는 저장소에 없고 `tests/helpers/fixtures.ts`가 그때그때 만든다. `tests/golden/`에는 아직 견본이 없고 안내문만 있다. `npm run fixtures`는 필요 없다.
 - 한중일 문자와 오른쪽에서 왼쪽으로 쓰는 문자의 통합 테스트는 `fixtures.ts`에 적힌 글꼴 파일이 있을 때만 돈다. Windows에서 찾는 경로는 `C:\Windows\Fonts\arialuni.ttf` 하나다. 이 파일이 없는 PC에서는 그 묶음이 건너뛰어지므로, 해당 스크립트의 분석을 바꿨다면 통과 표시만으로 검증됐다고 보지 않는다.
 - 테스트가 쓰는 `pdf-lib`는 이 패키지의 `package.json`에 없고 `apps/pdf`의 의존성으로 설치된 것을 쓴다.
+- 손으로 만든 글자(`tests/helpers/chars.ts`)로 하는 시험은 추출 단계를 거치지 않는다. 추출 단계의 필터에 걸리는 동작(PDFium의 하이픈 표시 등)은 `pdf-lib`로 만든 PDF에서 시작하는 시험으로 지킨다. 줄 끝이 "글자-" 다음 줄이 글자로 시작하면 합성 PDF에서도 PDFium이 하이픈 표시를 준다.
 - 분석 규칙을 바꾸면 그 규칙만 겨냥한 합성 페이지 사례와, 인접 규칙이 그대로인지 보는 사례를 함께 넣는다. 강등 기준을 바꾸면 강등되는 쪽과 유지되는 쪽을 둘 다 넣는다.
 - `ocr-helper/smoke-win.mjs`는 vitest 밖의 별도 점검이다. 보조 프로그램을 빌드하고 견본 PNG로 규약을 확인한다.
 - Windows에서 원본 코드 그대로도 실패하는 테스트는 없다.

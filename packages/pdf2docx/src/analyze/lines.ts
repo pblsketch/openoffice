@@ -80,6 +80,32 @@ function finalizeLine(open: OpenLine): RawLine | null {
   }
 }
 
+/** a continuation that starts with a capital letter */
+const UPPER_START = /^\p{Lu}/u
+
+/**
+ * PDFium marks every letter-hyphen-letter wrap with 0x02. Before a capital
+ * the hyphen is the author's ("non-|English"), not hyphenation: it comes
+ * back as a visible hyphen and the line stops claiming a soft wrap.
+ */
+function restoreAuthoredHyphens(lines: RawLine[]): RawLine[] {
+  return lines.map((line, i) => {
+    if (!line.endsWithHyphen) return line
+    let at = -1
+    for (let j = line.chars.length - 1; j >= 0; j--) {
+      if (line.chars[j]!.code === HYPHEN_MARKER) at = j
+      if (at >= 0 || isVisible(line.chars[j]!)) break
+    }
+    const next = lines[i + 1]?.chars.find(isVisible)
+    if (at < 0 || !next || !UPPER_START.test(next.text)) return line
+    const hyphen: PdfChar = { ...line.chars[at]!, code: 0x2d, text: '-' }
+    const chars = [...line.chars]
+    chars[at] = hyphen
+    const box = rectArea(hyphen.box) > 0 ? rectUnion(line.box, hyphen.box) : line.box
+    return { ...line, chars, box, endsWithHyphen: false }
+  })
+}
+
 /** the char's baseline continues the open line's (tolerance-based) */
 function onBaseline(open: OpenLine, c: PdfChar): boolean {
   const anchor = open.lastVisible
@@ -154,5 +180,5 @@ export function groupIntoLines(chars: readonly PdfChar[]): RawLine[] {
     }
   }
   flush()
-  return lines
+  return restoreAuthoredHyphens(lines)
 }
