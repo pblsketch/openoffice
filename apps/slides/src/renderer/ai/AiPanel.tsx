@@ -2826,6 +2826,7 @@ export function AiPanel({
                 bridge={MODEL_BRIDGE}
                 lang={lang}
                 subscriptionStatuses={connection.statuses}
+                onRefreshSubscriptions={connection.refresh}
               />
               {sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
               <button

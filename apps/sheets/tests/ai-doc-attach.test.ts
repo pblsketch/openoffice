@@ -46,6 +46,7 @@ function subscriptionOf(stored: AiSettings, known: AiSubscriptionStatuses): AiPa
       onAcceptMetered: vi.fn(),
       onOpenInstallHelp: vi.fn(),
     },
+    refresh: vi.fn(),
     usage: [],
     inputTruncated: false,
     onDismissTruncated: vi.fn(),

@@ -1344,6 +1344,7 @@ export function AiPanel({
                 bridge={MODEL_BRIDGE}
                 lang={lang}
                 subscriptionStatuses={statuses ?? {}}
+                onRefreshSubscriptions={subscription.refresh}
               />
               <AiSubscriptionUsageLine usage={subscriptionUsage} lang={lang} />
               <button

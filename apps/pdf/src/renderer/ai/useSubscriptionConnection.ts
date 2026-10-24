@@ -30,6 +30,8 @@ export interface SubscriptionConnection {
   /** "use anyway" on a metered login */
   readonly acceptMetered: (provider: AiSubscriptionProviderId) => void
   readonly openInstallHelp: (provider: AiSubscriptionProviderId) => void
+  /** look again without a card asking for it (both providers when none is named) */
+  readonly refresh: (providers?: AiSubscriptionProviderId[]) => void
 }
 
 /** the answer of an API call, or null when there is no API, no handler, or the call failed */
@@ -162,6 +164,12 @@ export function useSubscriptionConnection(): SubscriptionConnection {
     },
     [apply],
   )
+  const refresh = useCallback(
+    (providers?: AiSubscriptionProviderId[]) => {
+      void check(providers)
+    },
+    [check],
+  )
 
   return {
     statuses,
@@ -173,5 +181,6 @@ export function useSubscriptionConnection(): SubscriptionConnection {
     recheck,
     acceptMetered,
     openInstallHelp,
+    refresh,
   }
 }

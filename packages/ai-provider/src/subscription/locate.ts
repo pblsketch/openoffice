@@ -56,6 +56,8 @@ export interface SubscriptionLocateOptions {
   nodeRuntime?: SubscriptionNodeRuntime | undefined
   /** override of the Codex desktop bin tree, for tests and portable distributions */
   managedInstallRoot?: string | undefined
+  /** macOS application folders checked for the ChatGPT/Codex app's own CLI */
+  applicationDirs?: string[] | undefined
   /** extra POSIX bin directories searched after PATH; the usual ones when absent */
   commonDirs?: string[] | undefined
 }
@@ -93,6 +95,7 @@ interface Context {
   platform: NodeJS.Platform
   arch: string
   nodeRuntime: SubscriptionNodeRuntime | undefined
+  applicationDirs: string[] | undefined
   commonDirs: string[] | undefined
 }
 
@@ -212,6 +215,60 @@ async function newestManagedCodex(root: string, platform: NodeJS.Platform): Prom
   const pool = complete.length > 0 ? complete : found
   pool.sort((a, b) => b.modified - a.modified || b.path.localeCompare(a.path))
   return pool[0]?.path ?? null
+}
+
+// ── macOS: the CLI bundled with the ChatGPT/Codex desktop app ──
+
+/**
+ * The ChatGPT desktop app keeps its own Codex build, which can be newer than
+ * the `codex` on PATH (OpenAI says features may reach one surface before the
+ * other). The app's documented compatibility bundle path is
+ * `/Applications/Codex.app/Contents/Resources/codex`; a ChatGPT.app copies the
+ * same layout. Only an app copy newer than the PATH one is taken, so updating
+ * the CLI yourself still wins.
+ */
+const MAC_CODEX_BUNDLES = ['Codex.app', 'ChatGPT.app'] as const
+
+async function newestMacBundledCodex(context: Context): Promise<string | null> {
+  const home = homeOf(context.env, 'darwin')
+  const roots = context.applicationDirs ?? ['/Applications', join(home, 'Applications')]
+  const found: Array<{ path: string; modified: number }> = []
+  for (const root of roots) {
+    for (const bundle of MAC_CODEX_BUNDLES) {
+      const path = join(root, bundle, 'Contents', 'Resources', 'codex')
+      try {
+        const info = await stat(path)
+        if (!info.isFile()) continue
+        await access(path, constants.X_OK)
+        found.push({ path, modified: info.mtimeMs })
+      } catch {
+        // no such app, or no bundled CLI: the next place is asked
+      }
+    }
+  }
+  // stable sort: an equal time keeps the earlier bundle (Codex.app before ChatGPT.app)
+  found.sort((a, b) => b.modified - a.modified)
+  return found[0]?.path ?? null
+}
+
+/**
+ * Whether `candidate` was written more recently than `current`. Used to pick
+ * the newer of the desktop app's Codex and the one on PATH: either can be the
+ * stale copy. An unreadable time loses.
+ */
+async function isNewerFile(candidate: string, current: string | undefined): Promise<boolean> {
+  if (!current) return true
+  const [candidateTime, currentTime] = await Promise.all([
+    stat(candidate).then(
+      (info) => info.mtimeMs,
+      () => Number.NEGATIVE_INFINITY,
+    ),
+    stat(current).then(
+      (info) => info.mtimeMs,
+      () => Number.NEGATIVE_INFINITY,
+    ),
+  ])
+  return candidateTime >= currentTime
 }
 
 // ── Codex: the native binary behind the npm package's JS launcher ──
@@ -490,7 +547,8 @@ async function searchByName(
 
 /**
  * The CLI of `provider` as a directly spawnable program, or null when none is
- * installed. Order: the configured path, the Codex desktop app's copy, PATH,
+ * installed. Order: the configured path, the Codex desktop app's copy (its bin
+ * tree on Windows; on macOS the newer of its bundle and the PATH copy), PATH,
  * then the install locations PATH may not list yet (`%APPDATA%\npm`, the
  * vendor installers' own directories).
  *
@@ -511,6 +569,7 @@ export async function locateSubscriptionProgram(
     platform,
     arch: options.arch ?? process.arch,
     nodeRuntime: options.nodeRuntime,
+    applicationDirs: options.applicationDirs,
     commonDirs: options.commonDirs,
   }
   const { name } = context.layout
@@ -546,6 +605,12 @@ export async function locateSubscriptionProgram(
     if (managed) return native(context, managed, 'managed')
   }
   const found = await searchByName(context, name, 'path')
+  if (provider === 'codex' && platform === 'darwin') {
+    const bundled = await newestMacBundledCodex(context)
+    if (bundled && (await isNewerFile(bundled, found?.entry))) {
+      return native(context, bundled, 'managed')
+    }
+  }
   if (found) return found
   if (provider === 'codex' && platform === 'win32') {
     const localAppData = env.LOCALAPPDATA ?? env.LocalAppData

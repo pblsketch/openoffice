@@ -58,6 +58,7 @@ function subscriptionOf(
       onAcceptMetered: vi.fn(),
       onOpenInstallHelp: vi.fn(),
     },
+    refresh: vi.fn(),
     usage: [],
     inputTruncated: false,
     onDismissTruncated: vi.fn(),

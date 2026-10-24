@@ -718,6 +718,7 @@ function TranslateConfirm({
                 bridge={SETTINGS_BRIDGE}
                 lang={lang}
                 subscriptionStatuses={connection.statuses}
+                onRefreshSubscriptions={connection.refresh}
               />
             </li>
             <li>{t('trConfirmSends')}</li>

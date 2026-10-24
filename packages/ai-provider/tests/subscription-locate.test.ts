@@ -2,7 +2,7 @@
  * Finding the program to start. Layouts are built in temp dirs: nothing here
  * runs or looks for the CLIs installed on the machine.
  */
-import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, rm, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { delimiter, join, sep } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -381,6 +381,88 @@ describe('locateSubscriptionProgram elsewhere', () => {
       commonDirs: [],
     })
     expect(program).toBeNull()
+  })
+})
+
+describe('locateSubscriptionProgram on macOS', () => {
+  /** the CLI inside a desktop app bundle, at the path OpenAI documents */
+  async function bundleCli(apps: string, app: string, at?: Date): Promise<string> {
+    const path = await touch(
+      join(apps, app, 'Contents', 'Resources', 'codex'),
+      '#!/bin/sh\nexit 0\n',
+    )
+    await chmod(path, 0o755)
+    if (at) await utimes(path, at, at)
+    return path
+  }
+
+  it('uses the CLI bundled with the desktop app when it is the newer copy', async () => {
+    const apps = join(root, 'Applications')
+    const bundled = await bundleCli(apps, 'Codex.app', new Date('2026-10-20T00:00:00Z'))
+    const onPath = await touch(join(root, 'bin', 'codex'), '#!/bin/sh\n')
+    await chmod(onPath, 0o755)
+    await utimes(onPath, new Date('2026-10-01T00:00:00Z'), new Date('2026-10-01T00:00:00Z'))
+    const program = await locateSubscriptionProgram('codex', {
+      env: { HOME: root, PATH: join(root, 'bin') },
+      platform: 'darwin',
+      applicationDirs: [apps],
+      commonDirs: [],
+    })
+    expect(program).toMatchObject({ command: bundled, prefixArgs: [], source: 'managed' })
+  })
+
+  it('keeps the PATH CLI when the user updated it after the desktop app', async () => {
+    const apps = join(root, 'Applications')
+    await bundleCli(apps, 'Codex.app', new Date('2026-10-01T00:00:00Z'))
+    const onPath = await touch(join(root, 'bin', 'codex'), '#!/bin/sh\n')
+    await chmod(onPath, 0o755)
+    await utimes(onPath, new Date('2026-10-20T00:00:00Z'), new Date('2026-10-20T00:00:00Z'))
+    const program = await locateSubscriptionProgram('codex', {
+      env: { HOME: root, PATH: join(root, 'bin') },
+      platform: 'darwin',
+      applicationDirs: [apps],
+      commonDirs: [],
+    })
+    expect(program).toMatchObject({ command: onPath, source: 'path' })
+  })
+
+  it('takes the newest desktop app when both bundles are present', async () => {
+    const apps = join(root, 'Applications')
+    await bundleCli(apps, 'Codex.app', new Date('2026-10-01T00:00:00Z'))
+    const fresh = await bundleCli(apps, 'ChatGPT.app', new Date('2026-10-20T00:00:00Z'))
+    const program = await locateSubscriptionProgram('codex', {
+      env: { HOME: root, PATH: '' },
+      platform: 'darwin',
+      applicationDirs: [apps],
+      commonDirs: [],
+    })
+    expect(program).toMatchObject({ command: fresh, source: 'managed' })
+  })
+
+  it('falls back to PATH when no desktop app carries a CLI', async () => {
+    const onPath = await touch(join(root, 'bin', 'codex'), '#!/bin/sh\n')
+    await chmod(onPath, 0o755)
+    const program = await locateSubscriptionProgram('codex', {
+      env: { HOME: root, PATH: join(root, 'bin') },
+      platform: 'darwin',
+      applicationDirs: [join(root, 'Applications')],
+      commonDirs: [],
+    })
+    expect(program).toMatchObject({ command: onPath, source: 'path' })
+  })
+
+  it('does not give Claude Code the Codex desktop bundle', async () => {
+    const apps = join(root, 'Applications')
+    await bundleCli(apps, 'Codex.app')
+    const onPath = await touch(join(root, 'bin', 'claude'), '#!/bin/sh\n')
+    await chmod(onPath, 0o755)
+    const program = await locateSubscriptionProgram('claude-code', {
+      env: { HOME: root, PATH: join(root, 'bin') },
+      platform: 'darwin',
+      applicationDirs: [apps],
+      commonDirs: [],
+    })
+    expect(program).toMatchObject({ command: onPath, source: 'path' })
   })
 })
 

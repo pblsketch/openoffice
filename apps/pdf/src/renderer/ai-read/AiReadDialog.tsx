@@ -493,6 +493,7 @@ function AiReadConfirm({
                 bridge={SETTINGS_BRIDGE}
                 lang={lang}
                 subscriptionStatuses={connection.statuses}
+                onRefreshSubscriptions={connection.refresh}
               />
             </li>
             <li>{t('arConfirmSends')}</li>

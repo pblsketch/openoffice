@@ -31,6 +31,8 @@ export interface SubscriptionConnection {
   readonly recheck: (provider: AiSubscriptionProviderId) => void
   readonly acceptMetered: (provider: AiSubscriptionProviderId) => void
   readonly openInstallHelp: (provider: AiSubscriptionProviderId) => void
+  /** look again without a card asking for it (both providers when none is named) */
+  readonly refresh: (providers?: AiSubscriptionProviderId[]) => void
 }
 
 /** a preload from an older build exposes no subscription API */
@@ -164,6 +166,12 @@ export function useSubscriptionConnection(): SubscriptionConnection {
   const openInstallHelp = useCallback((provider: AiSubscriptionProviderId) => {
     void attemptSubscription((api) => api.openInstallHelp(provider))
   }, [])
+  const refresh = useCallback(
+    (providers?: AiSubscriptionProviderId[]) => {
+      void check(providers)
+    },
+    [check],
+  )
 
   return {
     statuses,
@@ -175,5 +183,6 @@ export function useSubscriptionConnection(): SubscriptionConnection {
     recheck,
     acceptMetered,
     openInstallHelp,
+    refresh,
   }
 }

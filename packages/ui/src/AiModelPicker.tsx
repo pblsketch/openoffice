@@ -28,6 +28,13 @@ export interface AiModelPickerBridge {
 }
 
 /**
+ * How often opening the picker asks the subscription connection to check its
+ * CLIs again. A model released while the app stays open should appear without
+ * a restart; checking more often than this only starts the CLIs again.
+ */
+export const AI_MODEL_PICKER_REFRESH_MS = 2 * 60_000
+
+/**
  * Where the model popover goes for a chip at `rect`: above it in the composer
  * (the bottom of the panel), below it in a confirmation dialog near the top.
  * `maxHeight` keeps the list inside the side it opens to.
@@ -73,11 +80,18 @@ export function AiModelPicker({
   bridge,
   lang,
   subscriptionStatuses,
+  onRefreshSubscriptions,
 }: {
   readonly bridge: AiModelPickerBridge
   readonly lang: Lang
   /** status of the subscription CLIs */
   readonly subscriptionStatuses?: AiSubscriptionStatuses | undefined
+  /**
+   * Ask for a fresh subscription check, so a model released while the app has
+   * been open appears in the list. Called when the popover opens, at most once
+   * per `AI_MODEL_PICKER_REFRESH_MS`.
+   */
+  readonly onRefreshSubscriptions?: (() => void) | undefined
 }): React.JSX.Element | null {
   const strings = AI_MODEL_PICKER_STRINGS[lang] ?? AI_MODEL_PICKER_STRINGS.en
   const [settings, setSettings] = useState<AiSettings | null>(null)
@@ -85,6 +99,7 @@ export function AiModelPicker({
   const [popStyle, setPopStyle] = useState<React.CSSProperties>({})
   const chipRef = useRef<HTMLButtonElement | null>(null)
   const popRef = useRef<HTMLDivElement | null>(null)
+  const refreshedAt = useRef(0)
 
   // tests render panels without a preload bridge: a throwing getter must not take the panel down
   const refresh = useCallback(() => {
@@ -131,6 +146,14 @@ export function AiModelPicker({
         setPopStyle(
           aiModelPopoverStyle(rect, { width: window.innerWidth, height: window.innerHeight }),
         )
+      // the list may be from an earlier check: a model released since then shows after this one
+      if (
+        onRefreshSubscriptions &&
+        Date.now() - refreshedAt.current >= AI_MODEL_PICKER_REFRESH_MS
+      ) {
+        refreshedAt.current = Date.now()
+        onRefreshSubscriptions()
+      }
     }
     setOpen((v) => !v)
   }

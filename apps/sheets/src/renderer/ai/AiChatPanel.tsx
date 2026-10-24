@@ -286,6 +286,8 @@ export interface AiPanelSubscription {
   readonly busy: boolean
   /** the connect cards' buttons */
   readonly actions: AiSubscriptionCardActions
+  /** look again without a card asking for it (both providers when none is named) */
+  readonly refresh: (providers?: AiSubscriptionProviderId[]) => void
   /** rate-limit windows the subscription provider reported on its latest turn */
   readonly usage: readonly AiSubscriptionUsage[]
   /** the input of the current run was cut to fit a limit */
@@ -1072,6 +1074,7 @@ export function AiChatPanel({
                 bridge={MODEL_BRIDGE}
                 lang={lang}
                 subscriptionStatuses={subscription.statuses}
+                onRefreshSubscriptions={subscription.refresh}
               />
               {sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
               <AiSubscriptionUsageLine usage={subscription.usage} lang={lang} />
