@@ -74,11 +74,11 @@ const confirmButton = (label: string) =>
     (b) => b.textContent === label,
   )!
 
-describe('Settings → General: saved PDF AI results', () => {
+describe('Settings → General: saved AI results', () => {
   it('shows the store size in readable units', async () => {
     const store = { size: vi.fn(async () => 1.5 * 1024 * 1024), deleteAll: vi.fn() }
     await openGeneral(store)
-    expect(row()?.textContent).toContain('Saved PDF AI results')
+    expect(row()?.textContent).toContain('Saved AI results')
     expect(row()?.textContent).toContain('In use: 1.5 MB')
     expect(rowButton().textContent).toBe('Delete all')
     expect(rowButton().disabled).toBe(false)

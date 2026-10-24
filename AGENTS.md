@@ -29,6 +29,7 @@ openoffice/
 │   ├── plans/
 │   │   ├── ai-web-reading.md      ← AI 웹 읽기 계획(초안)
 │   │   ├── connect-guide.md       ← AI 연결 도우미 계획(진행 중)
+│   │   ├── epub-editor.md         ← EPUB 편집기 계획(구현됨, 사람 확인 남음)
 │   │   ├── pdf-reading-assist.md  ← PDF 읽기 도우미 계획
 │   │   ├── pdf-tools.md           ← PDF 도구 모음 계획(초안)
 │   │   └── update-details.md      ← 업데이트 상세 내역 표시 계획(확정)
@@ -48,7 +49,8 @@ openoffice/
 │   ├── markdown/AGENTS.md         ← 마크다운·텍스트 편집기
 │   ├── html/AGENTS.md             ← HTML 편집기
 │   ├── mindmap/AGENTS.md          ← 마인드맵 편집기(`.xmind`)
-│   └── hwp/AGENTS.md              ← 한글(HWP·HWPX) 편집기, 편집 화면은 rhwp
+│   ├── hwp/AGENTS.md              ← 한글(HWP·HWPX) 편집기, 편집 화면은 rhwp
+│   └── epub/AGENTS.md             ← 전자책(EPUB) 편집기: 읽기, 책 화면에서 고치기, 책 번역
 ├── packages/
 │   ├── ai-provider/AGENTS.md      ← 제공자 목록·선택 규칙, 구독 프로그램 실행부
 │   ├── ai-search/AGENTS.md        ← 검색·이미지 생성·미디어 분석 도구, 자동 호출 제한
@@ -67,6 +69,7 @@ openoffice/
 │   ├── pdf-structure/AGENTS.md    ← PDF 문서 나무, Markdown·EPUB 변환, AI 페이지 읽기·번역, 결과 보관소
 │   ├── html2docx/AGENTS.md        ← HTML → 워드 변환
 │   ├── xmind-engine/AGENTS.md     ← 마인드맵 파일 엔진(열기, 원본 보존, 맞추기, 개요 글, 테마 표)
+│   ├── epub-engine/AGENTS.md      ← EPUB 엔진(열기, 블록 지도, 범위 바꾸기 저장, 책 번역과 결과 책)
 │   ├── file-parse/AGENTS.md       ← 첨부·검색용 파일 읽기, 다른 파일로 읽을 때의 가리기
 │   ├── zip-gate/AGENTS.md         ← 압축 파일 안전 검사
 │   ├── google-drive/AGENTS.md     ← Google 드라이브 로그인과 파일 주고받기

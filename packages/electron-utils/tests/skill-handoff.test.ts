@@ -64,9 +64,9 @@ class FakeContents extends EventEmitter {
 afterEach(() => resetGenerateHandoffsForTest())
 
 describe('the editors a hand-off reaches', () => {
-  it('lists all eight editors', () => {
+  it('lists all nine editors', () => {
     expect([...HANDOFF_EDITORS].sort()).toEqual(
-      ['docs', 'html', 'hwp', 'markdown', 'mindmap', 'pdf', 'sheets', 'slides'].sort(),
+      ['docs', 'epub', 'html', 'hwp', 'markdown', 'mindmap', 'pdf', 'sheets', 'slides'].sort(),
     )
     for (const editor of HANDOFF_EDITORS) expect(isHandoffEditor(editor)).toBe(true)
     expect(isHandoffEditor('home')).toBe(false)
@@ -93,6 +93,8 @@ describe('the editors a hand-off reaches', () => {
       ['공문.hwp', 'hwp'],
       ['공문.hwpx', 'hwp'],
       ['C:\\skills\\x\\assets\\공문.hwpx', 'hwp'],
+      // a template opens as a new untitled document, and a book has none
+      ['novel.epub', undefined],
       ['settings.json', undefined],
       ['noext', undefined],
       ['.docx', undefined],

@@ -28,6 +28,7 @@ const FAMILY_BY_KIND: Record<Exclude<TabKind, 'home' | 'help'>, EditorFamily> = 
   pdf: 'pdf',
   mindmap: 'xmind',
   hwp: 'hwp',
+  epub: 'epub',
 }
 
 /** families whose live content can be read back over MCP */
@@ -39,6 +40,7 @@ const READABLE_KINDS: ReadonlySet<TabKind> = new Set<TabKind>([
   'html',
   'mindmap',
   'hwp',
+  'epub',
 ])
 
 export interface OpenDocumentsControl {
@@ -197,7 +199,9 @@ export function createOpenDocumentTools(deps: OpenDocumentsDeps): McpToolDefinit
         'PDF tabs are listed but cannot be read or closed here: the pdf app is a viewer, so an ' +
         'open PDF has no readable or savable state through this tool. HWP tabs can be read ' +
         '(paragraphs as lines, tables as " | " rows) but not edited or saved here: "close" on ' +
-        'an HWP tab with unsaved changes fails unless unsaved:"discard" is passed.',
+        'an HWP tab with unsaved changes fails unless unsaved:"discard" is passed. ' +
+        'A book (kind "epub") reads as its text in reading order, headings as "#" lines; ' +
+        'there is no tool that edits one.',
       inputSchema: {
         action: z.enum(['list', 'read', 'close']).describe('what to do'),
         target: z

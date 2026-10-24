@@ -6,7 +6,7 @@
 
 /** every editor that can take a hand-off; each opens it in a new untitled tab */
 export type HandoffEditor =
-  'docs' | 'sheets' | 'slides' | 'pdf' | 'markdown' | 'html' | 'mindmap' | 'hwp'
+  'docs' | 'sheets' | 'slides' | 'pdf' | 'markdown' | 'html' | 'mindmap' | 'hwp' | 'epub'
 
 export const HANDOFF_EDITORS: readonly HandoffEditor[] = Object.freeze([
   'docs',
@@ -17,6 +17,7 @@ export const HANDOFF_EDITORS: readonly HandoffEditor[] = Object.freeze([
   'html',
   'mindmap',
   'hwp',
+  'epub',
 ])
 
 export function isHandoffEditor(value: unknown): value is HandoffEditor {

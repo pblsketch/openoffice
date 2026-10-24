@@ -6,7 +6,7 @@
 
 - 모든 바깥 이름은 `ieumoffice`다. 명령어, MCP 등록 이름, 에이전트 스킬 이름과 폴더, 홈 폴더 아래 `.ieumoffice`.
 - 원본이 쓰는 이름(`genoffice` 명령어, `~/.genoffice`, `genoffice` 연동 항목과 스킬 폴더)은 읽지도 쓰지도 않는다. 두 프로그램은 한 PC에 함께 있을 수 있다.
-- 문서 명령은 PC 안에서 끝난다. 밖으로 무언가를 보내는 명령은 `search`, `image`, `media`, `read-url`, `pdf ai-read`, `pdf translate` 여섯뿐이다. 뒤의 둘은 `--yes`가 있을 때만 보낸다.
+- 문서 명령은 PC 안에서 끝난다. 밖으로 무언가를 보내는 명령은 `search`, `image`, `media`, `read-url`, `pdf ai-read`, `pdf translate`, `epub translate` 일곱뿐이다. 뒤의 셋은 `--yes`가 있을 때만 보낸다.
 
 ## 터미널 명령어 `ieumoffice`
 
@@ -102,6 +102,43 @@
 - 번역할 글이 없는 범위(스캔 문서 등)는 종료 코드 1, `unsupported`이고 `pdf ai-read`를 먼저 권한다.
 - 결과 파일을 쓰지 못하면 작업 기록은 `stopped`, `last_error: "output-write-failed"`가 된다. 보관된 번역은 남는다.
 
+## EPUB 명령
+
+`epub translate`는 EPUB 책을 번역한다. 위 "AI를 부르는 PDF 명령"의 규칙(예상만 답하기, 요금 경로, 자동 호출 스위치, 한 문서에 작업 하나, 앞에서 돌기와 stderr 진행, Ctrl+C의 `interrupted`, `--partial`, 다시 실행하면 이어 가기, `--restart`, `output-write-failed`)을 그대로 따르고, 다른 점만 아래에 적는다. `epub status`는 PC 안에서 끝난다.
+
+| 명령                                                                                                                                                                    | 동작                                                                                                                           |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `epub translate <file.epub> --to <언어 코드> [--chapters <목록>] [--kind translated,bilingual] [--out <경로>] [--partial] [--restart] [--yes] [--allow-paid] [--force]` | 고른 장의 고칠 수 있는 블록과 책 제목·목차 항목 글을 묶음으로 보내 번역하고 번역본·대역본을 쓴다. 언어 코드는 화면 언어 21개다 |
+| `epub status <file.epub>`                                                                                                                                               | 보관소에 있는 그 책의 번역별 진행. 아무것도 보내지 않는다                                                                      |
+
+- 두 명령 모두 디스크에 저장된 책을 읽는다. 앱의 편집 잠금은 앱 안에서 시작한 번역에만 걸린다. 원본 파일은 바뀌지 않는다.
+- `<목록>`은 `1-5,8` 꼴이고 spine 순서로 1부터 센다. 기본은 모든 장이다. 책 밖의 장은 종료 코드 1, `out_of_range`, `detail.valid_range`.
+- `--kind`의 기본은 `translated`(번역본)다. `bilingual`(대역본)은 원문 블록마다 바로 뒤에 번역문을 둔다. 다른 값은 종료 코드 1, `invalid_argument`.
+- **결과 파일 위치**: `--out`이 없으면 원본 옆에 `〈원본 이름〉.〈언어 코드〉.epub`(번역본)과 `〈원본 이름〉.〈언어 코드〉.bilingual.epub`(대역본)로 쓴다. 종류가 하나면 `--out`이 그 파일이고, 둘이면 `--out`은 기준 경로라서 번역본은 `.epub`, 대역본은 `.bilingual.epub`가 붙는다(`--out`이 `.epub`로 끝나면 그것을 떼고 붙인다). 이미 있으면 `--force`가 필요하다. 원본과 같은 경로는 종료 코드 1, `invalid_argument`.
+- **예상만 답하기**: `detail.estimate`는 `{ calls, chapters, provider, route, metered }`이고 `chapters`는 고른 장의 수다. `detail.done_blocks`·`detail.total_blocks`, 필요하면 `detail.provider_change`가 PDF와 같이 오고, `detail.chapters: { index, title, read_only }[]`가 더해진다. 책의 모든 장이 spine 순서로 나오고, `index`는 `--chapters`에 쓰는 번호, `title`은 목차 제목(없으면 `null`), `read_only`는 깨졌거나 고정 배치라서 번역하지 않는 장이다.
+- **번역하지 않는 책**: 종료 코드 1, `unsupported`, `detail.reason`이 이유다.
+  - `drm`: DRM이 걸린 책
+  - `fixed-layout`: 고정 배치 책
+  - `not-epub`: EPUB이 아닌 파일(확장자가 `.epub`이 아닌 것 포함)
+  - `damaged`, `too-large`: 손상되었거나 압축을 풀면 너무 큰 파일(zip 관문)
+  - `no-text`: 고른 장에 번역할 글이 없음
+- `job.kind`는 `translate`다. 같은 책에 작업이 돌고 있으면 PDF와 같이 `document-job-running`으로 거절하고, `suggestion`은 `epub status`를 가리킨다.
+- 보관소는 PDF와 같은 `pdf-store`이고, 문서 열쇠는 책 파일 바이트의 SHA-256이다. 책을 다시 저장하면 다른 문서가 된다.
+
+**성공 `detail`**
+
+| 명령             | 성공 `detail`                                                                                                                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `epub translate` | `{ lang, provider, model, translated_blocks, untranslated_blocks: { chapter, reason }[], original_chapters: { chapter, reason }[], outputs: string[] }` |
+| `epub status`    | `{ translations: { lang, provider, model, done_blocks, total_blocks, complete, job }[] }`                                                               |
+
+- `chapter`는 `--chapters`와 같은 1부터의 장 번호다.
+- `translated_blocks`는 번역문이 들어간 장 블록의 수다. 책 제목과 목차 항목은 세지 않는다.
+- `untranslated_blocks`는 고른 장에서 원문으로 남은 블록이다. `reason`은 `not-translated`(멈춘 작업에서 아직 번역하지 않은 블록), `placeholder-mismatch`, `empty-translation` 또는 작업이 포기한 이유다.
+- `original_chapters`는 원문 그대로 결과 책에 들어간 장이다. `reason`은 `not-chosen`(고르지 않음), `broken`(깨짐), `fixed-layout`이다.
+- `--partial`로 멈춘 경우 `pdf translate`처럼 `status: "partial"`이고, `detail.stopped: { errorCode, resetsAt? }`와 `done_blocks`·`total_blocks`가 더해진다.
+- `epub status`의 `done_blocks`·`total_blocks`와 `job` 모양은 `pdf status`와 같다. 진행에는 책 제목과 목차 항목 단위도 든다.
+
 ## 웹 페이지 읽기 (`read-url`)
 
 `ieumoffice read-url <url> [--offset <n>]`은 http(s) 주소 하나를 그 사이트에서 받아 읽을 수 있는 글로 돌려준다. HTML은 글자로 바꾸고, GitHub `blob` 주소는 raw 주소로 바꿔 읽는다. 주소는 `fetchWithSsrfGuard`를 지나며 사설·루프백 주소와 그런 곳으로 가는 리다이렉트는 거절한다. 한 번에 50,000자를 주고, 이어 읽기는 `--offset`(기본 0)으로 한다. 제공자·구독·자동 호출 장부를 쓰지 않는다. 비공개 GitHub 파일은 설정의 읽기 토큰을 쓰며, 그 토큰은 `api.github.com` 요청에만 실린다.
@@ -172,8 +209,8 @@
 
 - 표준 입출력으로 같은 명령들을 도구로 내놓는다. `--http <포트>`를 주면 Streamable HTTP로 내놓는다(`--host`, `--token`).
 - 등록 예: `claude mcp add --transport stdio ieumoffice -- ieumoffice mcp`. `ieumoffice mcp install <에이전트|all>`이 각 에이전트의 설정 파일에 `ieumoffice` 항목만 쓴다. 같은 이름의 항목이 다른 프로그램을 가리키면 `occupied`로 알리고 `--force` 없이는 건드리지 않는다.
-- 도구는 명령 동사마다 하나다(`docs_read`, `docs_apply`, `sheet_apply`, `slides_render`, `convert`, `read_url`, `pdf_read`, `pdf_images`, `pdf_ai_read`, `pdf_translate`, `pdf_status` 등). 매개변수는 명령의 옵션 목록에서 그대로 나온다(`allow-paid`는 `allow_paid`, `no-cover`는 `no_cover`). 두 표면이 어긋나지 않는다.
-- `pdf_ai_read`·`pdf_translate`는 `yes`가 없으면 명령처럼 예상만 답한다. `yes`가 있으면 작업을 MCP 서버 프로세스 안에서 띄우고 바로 답한다(`detail.started: true`, `detail.estimate`). 진행, 멈춘 이유, `resetsAt`, 결과 파일 경로는 `pdf_status`의 `job`으로 본다. 이어하기는 같은 도구를 다시 부르면 된다.
+- 도구는 명령 동사마다 하나다(`docs_read`, `docs_apply`, `sheet_apply`, `slides_render`, `convert`, `read_url`, `pdf_read`, `pdf_images`, `pdf_ai_read`, `pdf_translate`, `pdf_status`, `epub_translate`, `epub_status` 등). 매개변수는 명령의 옵션 목록에서 그대로 나온다(`allow-paid`는 `allow_paid`, `no-cover`는 `no_cover`). 두 표면이 어긋나지 않는다.
+- `pdf_ai_read`·`pdf_translate`·`epub_translate`는 `yes`가 없으면 명령처럼 예상만 답한다. `yes`가 있으면 작업을 MCP 서버 프로세스 안에서 띄우고 바로 답한다(`detail.started: true`, `detail.estimate`). 진행, 멈춘 이유, `resetsAt`, 결과 파일 경로는 `pdf_status`(EPUB은 `epub_status`)의 `job`으로 본다. 이어하기는 같은 도구를 다시 부르면 된다.
 - 그 결과 파일은 작업이 끝날 때 쓴다. `partial: true`로 부른 작업은 멈출 때 끝난 부분만 반영해 쓴다. 위치 규칙은 명령어와 같고, 경로는 `job.outputs`로 알려 준다.
 - 서버가 끝나면 그 작업도 멈춘다(`last_error: "interrupted"`). 보관된 결과는 남는다.
 - 결과는 `--json`이 내는 것과 같은 객체다. 실패는 `isError`와 같은 `error` 이유로 온다.
@@ -193,6 +230,8 @@
 - 에이전트 모드(결정 0032)의 세션 MCP 서버는 이것과 별개다. 앱이 띄운 프로그램만 쓰고, 세션마다 운영체제가 고른 포트와 새 토큰(`Authorization: Bearer`)을 요구하며, 도구는 `open_documents`(`list`·`read`만), `read_document`, `insert_content`, `replace_blocks`, `apply_ops`, `read_sheet`, `apply_sheet_ops`, `read_deck`, `apply_slide_ops`, `read_hwp`, `read_pdf`다. 읽기는 가린 자리를 `{{이름}}`으로 내보내고, `read_hwp`·`read_pdf`는 프로젝트 폴더 안만 읽는다. 결정 0048·0049로 `propose_skill`(에이전트 창에 스킬 카드를 띄움)과 `propose_skill_install`(깃허브 설치 미리보기를 띄움)이 더해져 13개다. 둘 다 파일을 쓰지 않는다. 바깥 호출자에게 약속하는 출력이 아니다. 위 서버의 출력은 바뀌지 않는다.
 - `open_documents`의 목록에 마인드맵 탭이 `kind: "mindmap"`, `type: "mind map"`으로 나온다(떼어 낸 창도 같다). `read`의 `content`는 지금 지도의 개요 글 문자열이고 저장하지 않은 편집이 들어 있다. 마크다운·HTML 탭의 읽기와 같은 모양이다. `close`의 저장은 편집기의 저장과 같은 길을 지나고, 한 번도 저장하지 않은 지도는 기본 저장 폴더에 겹치지 않는 이름의 `.xmind`로 저장된다. `ok`로 열리지 않은 지도는 어떤 경우에도 쓰지 않는다. 지도를 만들거나 고치는 도구는 없다.
 - `get_app_info`의 `families`에 `{ family: "xmind", label: "mind map", editor: { open: ["xmind"], save: ["xmind"], export: ["png", "pdf", "md"] } }`가 있다. `mcp` 항목은 없다.
+- `open_documents`의 목록에 EPUB 탭이 `kind: "epub"`, `type: "e-book"`으로 나온다(떼어 낸 창도 같다). `read`의 `content`는 spine 순서로 이은 책 글이고(제목은 `#`), 저장하지 않은 편집이 들어 있다. `close`의 저장은 편집기의 저장과 같은 규칙을 지나고, 바꾼 것이 없으면 파일을 쓰지 않는다. 책을 만들거나 고치는 도구는 없다.
+- `get_app_info`의 `families`에 `{ family: "epub", label: "e-book", editor: { open: ["epub"], save: ["epub"], export: [] } }`가 있다.
 
 ## 에이전트 스킬
 

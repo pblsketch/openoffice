@@ -10,10 +10,11 @@ const PDF_RE = /\.pdf$/i
 const HTML_RE = /\.html?$/i
 const MINDMAP_RE = /\.xmind$/i
 const HWP_RE = /\.hwpx?$/i
+const EPUB_RE = /\.epub$/i
 
 const TEXT_RE = /\.(md|markdown|txt|json)$/i
 
-export { DOCX_RE, ODT_RE, XLSX_RE, PPTX_RE, PDF_RE, HTML_RE, MINDMAP_RE, HWP_RE, TEXT_RE }
+export { DOCX_RE, ODT_RE, XLSX_RE, PPTX_RE, PDF_RE, HTML_RE, MINDMAP_RE, HWP_RE, EPUB_RE, TEXT_RE }
 
 export function appForPath(path: string): DocumentTabKind | undefined {
   if (DOCX_RE.test(path) || ODT_RE.test(path)) return 'docs'
@@ -24,6 +25,7 @@ export function appForPath(path: string): DocumentTabKind | undefined {
   if (HTML_RE.test(path)) return 'html'
   if (MINDMAP_RE.test(path)) return 'mindmap'
   if (HWP_RE.test(path)) return 'hwp'
+  if (EPUB_RE.test(path)) return 'epub'
   return undefined
 }
 

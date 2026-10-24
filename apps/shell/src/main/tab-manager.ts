@@ -36,6 +36,7 @@ import {
   mindmapIsDirty,
   requestMindmapClose,
 } from '../../../mindmap/src/main/mindmap-main'
+import { createEpubView, epubIsDirty, requestEpubClose } from '../../../epub/src/main/epub-main'
 import {
   createPdfView,
   clearPdfDirty,
@@ -381,6 +382,8 @@ export class TabManager {
         return docsQueryDirty(wc)
       case 'mindmap':
         return mindmapIsDirty(wc.id)
+      case 'epub':
+        return epubIsDirty(wc.id)
       default:
         return false
     }
@@ -562,6 +565,25 @@ export class TabManager {
     return id
   }
 
+  /** Opens a book; a book always has its file (there is no new, untitled one) */
+  openEpubTab(openPath: string): string {
+    const view = createEpubView(openPath)
+    const id = `t${this.nextId++}`
+    this.shellWindow.contentView.addChildView(view)
+    view.setVisible(false)
+    this.trackHtmlFullScreen(view)
+    this.trackPaneFocus(view)
+    this.tabs.push({
+      id,
+      kind: 'epub',
+      view,
+      title: basename(openPath),
+      filePath: openPath,
+    })
+    this.activateTab(id)
+    return id
+  }
+
   /**
    * The generate window's "make": a new untitled tab of the target kind, with
    * the request queued for that tab's webContents to take once. The view is
@@ -627,10 +649,11 @@ export class TabManager {
    * editor, in a new tab: the copy's bytes go to the editor in the same tick
    * as the view is made, the tab shows `title`, and the first save asks where.
    * Sheets is opened by the shell itself (its backing workbook needs the new
-   * file folder); null for it here and when the tab could not be made.
+   * file folder); null for it here and when the tab could not be made. A book
+   * has no untitled document, so an EPUB copy is not opened either.
    */
   openTemplateCopy(copy: {
-    editor: 'docs' | 'sheets' | 'slides' | 'pdf' | 'markdown' | 'html' | 'mindmap' | 'hwp'
+    editor: 'docs' | 'sheets' | 'slides' | 'pdf' | 'markdown' | 'html' | 'mindmap' | 'hwp' | 'epub'
     path: string
     bytes: Uint8Array
     fileName: string
@@ -1034,6 +1057,8 @@ export class TabManager {
         return this.openMindmapTab(path)
       case 'hwp':
         return this.openHwpTab(path)
+      case 'epub':
+        return path ? this.openEpubTab(path) : null
       default:
         return null
     }
@@ -1191,6 +1216,13 @@ export class TabManager {
       .map((t) => ({ id: t.id, webContents: t.view!.webContents }))
   }
 
+  /** book tabs with unsaved edits, in the main process or still in the renderer (shell-close guard) */
+  dirtyEpubTabs(): Array<{ id: string; webContents: WebContents }> {
+    return this.tabs
+      .filter((t) => t.kind === 'epub' && t.view && epubIsDirty(t.view.webContents.id))
+      .map((t) => ({ id: t.id, webContents: t.view!.webContents }))
+  }
+
   /** slides tabs whose main-process session has unsaved edits (shell-close guard) */
   dirtySlidesTabs(): Array<{ id: string; webContents: WebContents }> {
     return this.tabs
@@ -1245,6 +1277,9 @@ export class TabManager {
                   : null)
     if (!closeGuard && tab.kind === 'mindmap' && tab.view) {
       if (mindmapIsDirty(tab.view.webContents.id)) closeGuard = requestMindmapClose
+    }
+    if (!closeGuard && tab.kind === 'epub' && tab.view) {
+      if (epubIsDirty(tab.view.webContents.id)) closeGuard = requestEpubClose
     }
     // docs dirty state lives in the renderer and needs an async query; skip the guard when clean (avoids a flash activation)
     if (!closeGuard && tab.kind === 'docs' && tab.view) {
@@ -1475,6 +1510,18 @@ export class TabManager {
   activeMindmapTab(): { id: string; webContents: WebContents; filePath?: string } | undefined {
     const tab = this.tabs.find((t) => t.id === this.activeId)
     return tab?.kind === 'mindmap' && tab.view
+      ? { id: tab.id, webContents: tab.view.webContents, filePath: tab.filePath }
+      : undefined
+  }
+
+  findEpubTabByPath(path?: string): string | undefined {
+    return this.findTabOfKindByPath('epub', path)
+  }
+
+  /** the active tab's book view, if the active tab is a book (book menu target) */
+  activeEpubTab(): { id: string; webContents: WebContents; filePath?: string } | undefined {
+    const tab = this.tabs.find((t) => t.id === this.activeId)
+    return tab?.kind === 'epub' && tab.view
       ? { id: tab.id, webContents: tab.view.webContents, filePath: tab.filePath }
       : undefined
   }

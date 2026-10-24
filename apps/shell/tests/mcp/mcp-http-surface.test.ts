@@ -271,7 +271,14 @@ describe('MCP surface over Streamable HTTP (/mcp)', () => {
         'pdf',
         'xmind',
         'hwp',
+        'epub',
       ])
+      // the book entry (spec: get_app_info lists it with its editor formats only)
+      expect(infoJson.families.find((f) => f.family === 'epub')).toEqual({
+        family: 'epub',
+        label: 'e-book',
+        editor: { open: ['epub'], save: ['epub'], export: [] },
+      })
       // the mind map entry: editor formats only, nothing generated or read headlessly
       expect(infoJson.families.find((f) => f.family === 'xmind')).toEqual({
         family: 'xmind',

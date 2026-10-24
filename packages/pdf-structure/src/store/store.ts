@@ -171,6 +171,12 @@ export interface MigrateInput {
   newDocHash: string
   /** page fingerprints of the saved document, any order */
   pageFingerprints: readonly string[]
+  /**
+   * When given, only the translation blocks with one of these keys move (the
+   * other results still go by page fingerprint alone). Left out: every
+   * translation block of a surviving page moves.
+   */
+  keepBlockKeys?: readonly TranslationBlockKey[]
 }
 
 export interface MigrateResult {
@@ -1066,7 +1072,8 @@ export class ResultStore {
   /**
    * After an in-app save changed the file hash, copy the AI-read pages and
    * translation blocks whose page fingerprint the saved document still has.
-   * Matching is by fingerprint, so reordered pages carry over too. An entry
+   * Matching is by fingerprint, so reordered pages carry over too; with
+   * `keepBlockKeys`, a translation block must also be listed there. An entry
    * already in the new document is replaced only by a newer one, so this can
    * run again when a job that started before the save finishes. Old entries
    * stay; job records are not copied.
@@ -1077,6 +1084,7 @@ export class ResultStore {
     seg(newDocHash, 'document hash')
     if (!isValidSeg(oldDocHash) || oldDocHash === newDocHash) return result
     const pages = new Set(input.pageFingerprints.filter(isValidSeg))
+    const keep = input.keepBlockKeys ? new Set(input.keepBlockKeys.map(blockKeyString)) : null
 
     for (const [fp, entry] of await this.readAiReadPages(oldDocHash)) {
       if (!pages.has(fp)) continue
@@ -1097,6 +1105,7 @@ export class ResultStore {
         }
       }
       for (const block of await this.readBlocks(oldDocHash, lang, pages)) {
+        if (keep && !keep.has(blockKeyString(block.key))) continue
         const current = asBlock(
           await readJson(this.translationBlockPath(newDocHash, lang, block.key)),
           block.key,

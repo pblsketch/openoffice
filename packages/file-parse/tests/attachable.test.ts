@@ -8,8 +8,9 @@ import {
 } from '../src'
 
 // The attachable set exactly as docs-main held it before the list moved here:
-// plain-text extensions, the office/PDF formats, and the image set. Frozen on
-// purpose — this is the baseline every editor now shares and must not change.
+// plain-text extensions, the office/PDF formats, and the image set, plus the
+// formats added since by decision (`epub`, spec §10 of the EPUB editor plan).
+// Frozen on purpose — the list only widens, and every editor shares it.
 const DOCS_MAIN_EXTS = [
   'txt',
   'md',
@@ -50,6 +51,7 @@ const DOCS_MAIN_EXTS = [
   'xmind',
   'hwp',
   'hwpx',
+  'epub',
   'png',
   'jpg',
   'jpeg',
@@ -60,7 +62,7 @@ const DOCS_MAIN_EXTS = [
 const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp']
 
 describe('the one shared attachable-format list', () => {
-  it('is exactly the set docs-main accepted before the move', () => {
+  it('is exactly the set docs-main accepted before the move, plus the decided additions', () => {
     expect([...ATTACHABLE_EXTS].sort()).toEqual([...DOCS_MAIN_EXTS].sort())
     expect(ATTACHABLE_EXTS.size).toBe(DOCS_MAIN_EXTS.length)
   })
@@ -76,6 +78,7 @@ describe('the one shared attachable-format list', () => {
     expect(isAttachableExt('xmind')).toBe(true)
     expect(isAttachableExt('hwp')).toBe(true)
     expect(isAttachableExt('hwpx')).toBe(true)
+    expect(isAttachableExt('epub')).toBe(true)
     expect(isAttachableExt('exe')).toBe(false)
   })
 })

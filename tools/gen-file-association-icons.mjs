@@ -11,8 +11,8 @@
  *       field) and that build/installer.nsh points the Open-With ProgIds at
  *   apps/shell/src/main/assets/menu-<type>.png / menu-<type>@2x.png
  *       the native window-menu icons (16 px and its retina copy)
- *   apps/<app>/src/renderer/assets/file-<kind>.png (and the mind map's
- *   src/renderer/ai/assets copy)
+ *   apps/<app>/src/renderer/assets/file-<kind>.png (and the mind map's and
+ *   the EPUB editor's src/renderer/ai/assets copies)
  *       the AI panel's attachment-card icons, one identical set per editor
  *
  * The icons form one family, a notebook page kept to one idea: a white page
@@ -77,6 +77,7 @@ const FORMATS = {
   md: { color: '#4A5568', picto: 'hash' }, // slate
   html: { color: '#8257B6', picto: 'tag' }, // violet
   mindmap: { color: '#B04E83', picto: 'nodes' }, // berry
+  epub: { color: '#8E5B3E', picto: 'book' }, // leather brown
   txt: { color: '#858D9B', picto: 'lines' }, // gray
   json: { color: '#977A2E', picto: 'braces' }, // ochre
 }
@@ -105,7 +106,7 @@ const SHADOW_COLOR = '#0F172A'
 const SVG_DIR = 'apps/shell/src/renderer/src/assets'
 const BUILD_DIR = 'apps/shell/build'
 const MENU_DIR = 'apps/shell/src/main/assets'
-const MENU_TYPES = ['docx', 'xlsx', 'pptx', 'pdf', 'md', 'html', 'mindmap', 'hwp']
+const MENU_TYPES = ['docx', 'xlsx', 'pptx', 'pdf', 'md', 'html', 'mindmap', 'hwp', 'epub']
 
 /** attachment-card file name -> icon key (FORMATS or GENERIC) */
 const ATTACHMENT_ICONS = {
@@ -129,6 +130,9 @@ const ATTACHMENT_DIRS = {
     (name) => name !== 'file-video.png' && name !== 'file-voice.png',
   ),
   'apps/mindmap/src/renderer/ai/assets': Object.keys(ATTACHMENT_ICONS).filter(
+    (name) => name !== 'file-video.png' && name !== 'file-voice.png',
+  ),
+  'apps/epub/src/renderer/ai/assets': Object.keys(ATTACHMENT_ICONS).filter(
     (name) => name !== 'file-video.png' && name !== 'file-voice.png',
   ),
 }
@@ -317,6 +321,26 @@ function pictogram(kind, b, fg, bg, sw, small) {
           .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="${num(childRadius)}" fill="${fg}"/>`)
           .join('')
       )
+    }
+    case 'book': {
+      // an open book: two pages bowed from the spine, with lines of text
+      // cut out of them; at 16 px the pages alone
+      const page = (side) => {
+        const px = (u) => (side < 0 ? X(u) : X(1 - u))
+        return (
+          `<path d="M${px(0.02)} ${Y(0.2)}Q${px(0.25)} ${Y(0.06)} ${px(0.46)} ${Y(0.16)}` +
+          `V${Y(0.94)}Q${px(0.25)} ${Y(0.84)} ${px(0.02)} ${Y(0.96)}Z" fill="${fg}"/>`
+        )
+      }
+      const text = small
+        ? ''
+        : [0.42, 0.62]
+            .map(
+              (y) =>
+                `M${X(0.12)} ${Y(y)}L${X(0.36)} ${Y(y - 0.04)}M${X(0.64)} ${Y(y - 0.04)}L${X(0.88)} ${Y(y)}`,
+            )
+            .join('')
+      return page(-1) + page(1) + (text ? stroke(text, sw * 0.6, bg) : '')
     }
     case 'picture':
       // a picture: a hill and a sun cut out of a filled frame

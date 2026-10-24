@@ -1,0 +1,22 @@
+/** Editing: undo and redo, bold and italic, find and replace, auto save, the edit notices. */
+export const zh = {
+  editUndo: '撤销',
+  editRedo: '重做',
+  editBold: '加粗',
+  editItalic: '倾斜',
+  editReplace: '替换',
+  editReplaceWith: '替换为',
+  editReplaceOne: '替换',
+  editReplaceAll: '全部替换',
+  editReplaceDone: '已替换 {count} 处',
+  editReplaceSkipped: '已跳过只读章节中的 {count} 处',
+  editReplaceFailed: '有 {count} 处未能替换',
+  editReplaceNone: '没有可替换的内容',
+  editReplaceNotHere: '此处无法替换',
+  editAutoSave: '自动保存',
+  editAutoSaveTip: '每 30 秒以及窗口失去焦点时自动保存',
+  editUnsaved: '有未保存的修改',
+  editLocked: '翻译期间无法编辑',
+  editRefused: '无法应用此修改',
+  editHistoryFailed: '撤销记录与书籍不一致，已清除',
+}

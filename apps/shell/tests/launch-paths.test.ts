@@ -73,6 +73,16 @@ describe('collectLaunchPaths', () => {
     expect(collectLaunchPaths(['GenOffice.exe', '/plan.xmind'], undefined, () => false)).toEqual([])
   })
 
+  it('accepts a book from argv and from the second-instance payload', () => {
+    expect(
+      collectLaunchPaths(['GenOffice.exe', 'C:\\books\\novel.epub'], undefined, () => true),
+    ).toEqual(['C:\\books\\novel.epub'])
+    expect(
+      collectLaunchPaths(['GenOffice.exe'], { launchPaths: ['/books/NOVEL.EPUB'] }, () => true),
+    ).toEqual(['/books/NOVEL.EPUB'])
+    expect(collectLaunchPaths(['GenOffice.exe', '/novel.epub'], undefined, () => false)).toEqual([])
+  })
+
   it('still drops a path nothing opens', () => {
     // a file that exists but is not a document the shell can route
     expect(collectLaunchPaths(['GenOffice.app', '/photo.png'], undefined, () => true)).toEqual([])

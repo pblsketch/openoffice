@@ -69,6 +69,9 @@ ieumoffice pdf ai-read scan.pdf --pages 1-3 --yes [--allow-paid] --json   # send
 ieumoffice pdf translate book.pdf --to ko --format pdf,md --yes --json   # book.ko.pdf + book.ko.md beside the source; progress on stderr
 ieumoffice pdf translate book.pdf --to de --format md,epub --bilingual --out out/book --partial --restart --yes --force   # each paragraph followed by its translation; --partial writes what is done when the job stops, --restart starts over (keeping paragraphs edited in the app)
 ieumoffice pdf status book.pdf --json                          # what the result store holds: pages read by AI, translations, each with its job
+ieumoffice epub translate novel.epub --to ko --json            # estimate only: detail.estimate { calls, chapters, provider, route, metered } and detail.chapters[] { index, title, read_only }; nothing is sent
+ieumoffice epub translate novel.epub --to ko --chapters 1-5,8 --kind translated,bilingual --out out/novel --partial --restart --yes --allow-paid --force   # out/novel.epub + out/novel.bilingual.epub (default: novel.ko.epub, novel.ko.bilingual.epub beside the source); progress on stderr
+ieumoffice epub status novel.epub --json                       # translations the result store holds for the book, each with its job
 ieumoffice hwp read notice.hwp [--offset 20000] [--full] --json           # text of a Hangul (HWP / HWPX) document, tables as "a | b" rows (first 20000 characters by default); read-only, no app process
 ieumoffice guide docs                                                   # op signatures + restricted-HTML rules (`guide <domain> --json` = the catalog with each op's schema and a fingerprint)
 ieumoffice selection report.docx --json   # what the user has selected in the editor showing the file
@@ -256,10 +259,10 @@ those settings; it has no login of its own and stores no credentials.
 `read-url` reads only the GitHub token from the same file. `HTTPS_PROXY` /
 `HTTP_PROXY` / `ALL_PROXY` are honoured. Search results, image bytes and
 analysis text come back in the JSON `detail`; `image` also writes the file.
-These commands, and the PDF document jobs below (`pdf ai-read`,
-`pdf translate`), are the only ones that send data off the machine: `read-url`
-sends the address it is given to that site, the rest send to the configured
-provider.
+These commands, and the document jobs below (`pdf ai-read`, `pdf translate`,
+`epub translate`), are the only ones that send data off the machine:
+`read-url` sends the address it is given to that site, the rest send to the
+configured provider.
 
 A command, like an MCP tool call, is an **automatic call**: nobody is looking
 at a screen when it runs. That decides which route it may take.
@@ -341,6 +344,41 @@ folder), so a second run skips what is done and the PDF editor sees it too.
 - The MCP tools `pdf_ai_read` and `pdf_translate` start the job inside the MCP
   server and answer at once with `detail.started: true`; `pdf_status` follows
   it. When the server ends, its jobs stop as `interrupted`.
+
+### EPUB translation
+
+`epub translate` sends the text of an EPUB book to the same provider, chosen
+the same way, and follows every rule of `pdf translate` above: the estimate
+without `--yes`, `--allow-paid` for a route billed per request, one job per
+book, the foreground run with progress on stderr, `--partial`, continuing
+from the store (the same `pdf-store`), `--restart` and the
+`output-write-failed` record. It reads the book as it is saved on disk; the
+source file is never changed.
+
+- What is sent: the editable blocks of the chosen chapters (`--chapters 1-5,8`,
+  spine order from 1, default every chapter), with ruby readings left out, plus
+  the book's title and its table of contents labels. Chapters outside the book
+  answer exit 1, `out_of_range`, `detail.valid_range`.
+- The estimate adds `detail.chapters[] { index, title, read_only }`: every
+  chapter with its contents title; a broken chapter is read-only and stays in
+  the source language.
+- `--kind translated,bilingual` (default `translated`): a translated book, and
+  a bilingual one with each translated block after its original. Beside the
+  source they are `<name>.<lang>.epub` and `<name>.<lang>.bilingual.epub`; with
+  one kind `--out` is the file, with both it is the base path that takes
+  `.epub` and `.bilingual.epub`. An existing file needs `--force`. Any other
+  `--kind` is exit 1, `invalid_argument`.
+- A book that cannot be translated is exit 1, `unsupported`, with
+  `detail.reason`: `drm`, `fixed-layout`, `not-epub`, `damaged`, `too-large`
+  (the zip gate) or `no-text` (nothing to translate in the chosen chapters).
+- Success `detail`: `{ lang, provider, model, translated_blocks,
+untranslated_blocks[] { chapter, reason }, original_chapters[] { chapter,
+reason }, outputs[] }`; a stopped run with `--partial` adds `status:
+"partial"`, `detail.stopped` and `done_blocks` / `total_blocks`.
+- `epub status` answers `{ translations[] { lang, provider, model,
+done_blocks, total_blocks, complete, job } }` with the job shape of
+  `pdf status`. The MCP tools `epub_translate` and `epub_status` behave like
+  `pdf_translate` and `pdf_status`.
 
 ### `capabilities`
 

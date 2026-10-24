@@ -126,6 +126,11 @@ vi.mock('../../mindmap/src/main/mindmap-main', () => ({
   requestMindmapClose: vi.fn(() => Promise.resolve(true)),
 }))
 
+vi.mock('../../epub/src/main/epub-main', () => ({
+  epubIsDirty: vi.fn(() => false),
+  requestEpubClose: vi.fn(() => Promise.resolve(true)),
+}))
+
 vi.mock('../src/main/tab-manager', () => ({
   canonicalPath: (p: string) => p.toLowerCase(),
 }))
@@ -301,6 +306,50 @@ describe('a detached mind map', () => {
     await flush()
     expect(win.destroyed).toBe(true)
     vi.mocked(mindmapIsDirty).mockReturnValue(false)
+  })
+})
+
+describe('a detached book', () => {
+  it('is reported to MCP agents as kind epub, with its own dirty state', async () => {
+    const { epubIsDirty } = await import('../../epub/src/main/epub-main')
+    vi.mocked(epubIsDirty).mockImplementation((id) => id === 51)
+    detached.createDetachedEditorWindow({
+      view: fakeView(51) as never,
+      kind: 'epub',
+      title: 'novel.epub',
+      filePath: 'C:/books/novel.epub',
+      applyMenuFor: () => {},
+    })
+    const docs = await detached.detachedOpenDocuments()
+    expect(docs.map((d) => [d.id, d.kind, d.filePath, d.dirty])).toEqual([
+      ['detached:51', 'epub', 'C:/books/novel.epub', true],
+    ])
+    vi.mocked(epubIsDirty).mockReturnValue(false)
+  })
+
+  it('asks before closing when dirty and keeps the window on cancel', async () => {
+    const { epubIsDirty, requestEpubClose } = await import('../../epub/src/main/epub-main')
+    vi.mocked(epubIsDirty).mockReturnValue(true)
+    vi.mocked(requestEpubClose).mockResolvedValueOnce(false)
+    const view = fakeView(52)
+    detached.createDetachedEditorWindow({
+      view: view as never,
+      kind: 'epub',
+      title: 'novel.epub',
+      filePath: 'C:/books/novel.epub',
+      applyMenuFor: () => {},
+    })
+    const win = instances[0]!
+    win.emit('close', { preventDefault: vi.fn() })
+    await flush()
+    expect(requestEpubClose).toHaveBeenCalledWith(view.webContents, win)
+    expect(win.destroyed).toBe(false)
+
+    vi.mocked(requestEpubClose).mockResolvedValueOnce(true)
+    win.emit('close', { preventDefault: vi.fn() })
+    await flush()
+    expect(win.destroyed).toBe(true)
+    vi.mocked(epubIsDirty).mockReturnValue(false)
   })
 })
 

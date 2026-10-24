@@ -131,6 +131,19 @@ describe('listFolder', () => {
     ).toEqual(['PLAN2.XMIND', 'plan.xmind'])
     expect(isSupportedTreeFile('plan.xmind')).toBe(true)
   })
+
+  it('lists books', () => {
+    touch('novel.epub')
+    touch('NOVEL2.EPUB')
+    touch('photo.png')
+
+    expect(
+      listFolder(root, new Set())
+        .files.map((f) => f.name)
+        .sort(),
+    ).toEqual(['NOVEL2.EPUB', 'novel.epub'])
+    expect(isSupportedTreeFile('novel.epub')).toBe(true)
+  })
 })
 
 describe('isInsideRoot', () => {

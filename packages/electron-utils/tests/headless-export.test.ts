@@ -101,6 +101,8 @@ describe('headlessModuleFor', () => {
     expect(headlessModuleFor('/x/a.doc')).toBeNull()
     // a mind map has no headless exporter: the entry reports it as an input it cannot export
     expect(headlessModuleFor('/x/plan.xmind')).toBeNull()
+    // nor has a book
+    expect(headlessModuleFor('/x/novel.epub')).toBeNull()
     expect(headlessModuleFor('/x/noext')).toBeNull()
   })
 })

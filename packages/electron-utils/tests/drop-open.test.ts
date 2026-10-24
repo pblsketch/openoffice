@@ -153,6 +153,12 @@ describe('partitionDropPayload', () => {
     expect(KNOWN_UNSUPPORTED_DOC_RE.test('a.odt')).toBe(false)
   })
 
+  it('routes dropped .epub files as openable', () => {
+    const result = partitionDropPayload(['/books/novel.epub', '/books/NOVEL2.EPUB'])
+    expect(result.supported).toEqual(['/books/novel.epub', '/books/NOVEL2.EPUB'])
+    expect(result.unsupportedExts).toEqual([])
+  })
+
   it('routes dropped .xmind files as openable', () => {
     const result = partitionDropPayload(['/maps/plan.xmind', '/maps/PLAN2.XMIND'])
     expect(result.supported).toEqual(['/maps/plan.xmind', '/maps/PLAN2.XMIND'])

@@ -27,6 +27,8 @@ describe('matchesExtFamily', () => {
     // a mind map has one extension, so its filter key is the extension itself
     expect(matchesExtFamily('xmind', 'xmind')).toBe(true)
     expect(matchesExtFamily('md', 'xmind')).toBe(false)
+    expect(matchesExtFamily('epub', 'epub')).toBe(true)
+    expect(matchesExtFamily('pdf', 'epub')).toBe(false)
     expect(matchesExtFamily('xlsx', 'docx')).toBe(false)
     expect(matchesExtFamily('png', 'xlsx')).toBe(false)
     expect(matchesExtFamily('png', 'md')).toBe(false)

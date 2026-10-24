@@ -278,6 +278,47 @@ describe('migration on in-app save', () => {
     expect((await store.readTranslation(DOC_A, 'en'))?.blocks.size).toBe(3)
   })
 
+  it('with a block key filter, moves only the listed translation blocks', async () => {
+    const store = new ResultStore(root)
+    const keys = await seedOld(store)
+    const result = await store.migrateDocument({
+      oldDocHash: DOC_A,
+      newDocHash: DOC_B,
+      pageFingerprints: [fp(1), fp(2), fp(3)],
+      // only page 2's key is listed: page 1's and 3's blocks stay behind
+      keepBlockKeys: [keys[1]!, { pageFingerprint: fp(9), textHash: fp(9), occurrence: 0 }],
+    })
+    expect(result).toEqual({ aiReadPages: 3, translationBlocks: 1, languages: ['en'] })
+    const en = await store.readTranslation(DOC_B, 'en')
+    expect(en?.provider).toBe('codex')
+    expect([...(en?.blocks.keys() ?? [])]).toEqual([blockKeyString(keys[1]!)])
+    expect(en?.blocks.get(blockKeyString(keys[1]!))?.text).toBe('t2')
+
+    // an empty filter moves no block, and still the provider record and the AI-read pages
+    const none = await store.migrateDocument({
+      oldDocHash: DOC_A,
+      newDocHash: sha256Hex('doc-c'),
+      pageFingerprints: [fp(1), fp(2), fp(3)],
+      keepBlockKeys: [],
+    })
+    expect(none).toEqual({ aiReadPages: 3, translationBlocks: 0, languages: ['en'] })
+    expect((await store.readTranslation(sha256Hex('doc-c'), 'en'))?.blocks.size).toBe(0)
+  })
+
+  it('without a filter, a listed-key field left undefined moves what no filter moves', async () => {
+    const store = new ResultStore(root)
+    await seedOld(store)
+    const input = { oldDocHash: DOC_A, pageFingerprints: [fp(1), fp(2), fp(3)] }
+    const plain = await store.migrateDocument({ ...input, newDocHash: DOC_B })
+    const undef = await store.migrateDocument({
+      ...input,
+      newDocHash: sha256Hex('doc-c'),
+      keepBlockKeys: undefined,
+    })
+    expect(plain).toEqual({ aiReadPages: 3, translationBlocks: 3, languages: ['en'] })
+    expect(undef).toEqual(plain)
+  })
+
   it('a result finished after the save is carried over by a second migration', async () => {
     let clock = 1_000
     const store = new ResultStore(root, { now: () => clock })

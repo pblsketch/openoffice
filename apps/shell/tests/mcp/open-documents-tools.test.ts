@@ -105,6 +105,7 @@ const DOCUMENTS: OpenDocumentTab[] = [
     filePath: 'C:/maps/plan.xmind',
     dirty: true,
   }),
+  doc({ id: 't9', kind: 'epub', title: 'novel.epub', filePath: 'C:/books/novel.epub' }),
 ]
 
 function controlOf(overrides: Partial<OpenDocumentsControl> = {}): OpenDocumentsControl {
@@ -216,6 +217,15 @@ describe('open_documents tool', () => {
       t5: 'HTML page',
       t6: 'PDF document',
       t8: 'mind map',
+      t9: 'e-book',
+    })
+    // a book tab keeps its own kind and format
+    expect(documents.find((d) => d.id === 't9')).toMatchObject({
+      kind: 'epub',
+      format: 'epub',
+      path: 'C:/books/novel.epub',
+      saved: true,
+      dirty: false,
     })
     // a mind map tab keeps its own kind
     expect(documents.find((d) => d.id === 't8')).toMatchObject({
@@ -312,6 +322,18 @@ describe('open_documents tool', () => {
     })
     expect(result.isError).toBe(true)
     expect(textOf(result.content)).toContain('viewer')
+  })
+
+  it('reads an open book, its unsaved edits included', async () => {
+    const read = vi.fn(async (tab: OpenDocumentTab) => `# Chapter 1 of ${tab.title}`)
+    await startService(controlOf({ read }))
+    const result = await client!.callTool({
+      name: 'open_documents',
+      arguments: { action: 'read', target: 'C:/books/novel.epub' },
+    })
+    expect(result.isError).toBeFalsy()
+    expect(textOf(result.content)).toContain('# Chapter 1 of novel.epub')
+    expect(read).toHaveBeenCalledWith(expect.objectContaining({ id: 't9', kind: 'epub' }))
   })
 
   it('lists an open HWP document and reads its live content', async () => {

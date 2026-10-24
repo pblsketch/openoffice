@@ -23,12 +23,15 @@
       "@genoffice/cli/control-protocol": ["../../packages/cli/src/control-protocol.ts"]
     }
   },
+  // The ambient declarations come first: two of them declare 'bidi-js', and the
+  // one read last wins the merged default export. The pdf2docx one (the full
+  // API) must stay last, also when a source file pulls it in by reference.
   "include": [
+    "../slides/src/main/env.d.ts",
+    "../../packages/html2docx/src/raw.d.ts",
+    "../../packages/pdf2docx/src/bidi-js.d.ts",
     "electron.vite.config.ts",
     "src/**/*.ts",
-    "src/**/*.tsx",
-    "../slides/src/main/env.d.ts",
-    "../../packages/pdf2docx/src/bidi-js.d.ts",
-    "../../packages/html2docx/src/raw.d.ts"
+    "src/**/*.tsx"
   ]
 }

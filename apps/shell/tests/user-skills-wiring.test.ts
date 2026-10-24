@@ -7,7 +7,7 @@ import {
 } from '@genoffice/electron-utils/user-skills-channels'
 
 /**
- * How the skills bridge reaches every window: one name in the eight editors'
+ * How the skills bridge reaches every window: one name in the nine editors'
  * preloads and the shell's, the agent window's own part with the same channel
  * names (it may not share a bundled module with the shell preload), the
  * gateway registered once in main, and the agent warning's first acceptance
@@ -45,7 +45,7 @@ beforeEach(() => {
 })
 
 describe('the skills bridge in every window', () => {
-  it.each(['docs', 'sheets', 'slides', 'pdf', 'markdown', 'html', 'mindmap', 'hwp'])(
+  it.each(['docs', 'sheets', 'slides', 'pdf', 'markdown', 'html', 'mindmap', 'hwp', 'epub'])(
     'is exposed by the %s editor preload under the shared name',
     (editor) => {
       const preload = src(`../../${editor}/src/preload/index.ts`)

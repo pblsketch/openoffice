@@ -22,6 +22,10 @@ describe('openPlan', () => {
       kind: 'download',
       extension: '.hwpx',
     })
+    expect(openPlan({ name: 'novel.epub', mimeType: 'application/epub+zip' })).toEqual({
+      kind: 'download',
+      extension: '.epub',
+    })
   })
 
   it('opens nothing else', () => {

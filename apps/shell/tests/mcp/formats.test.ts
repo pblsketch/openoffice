@@ -38,8 +38,8 @@ describe('format registry', () => {
     expect(sheet.mcp?.save).not.toContain('tsv')
   })
 
-  it('keeps the editor-only families (md/html/xmind) without an mcp block', () => {
-    for (const family of ['md', 'html', 'xmind'] as const) {
+  it('keeps the editor-only families (md/html/xmind/epub) without an mcp block', () => {
+    for (const family of ['md', 'html', 'xmind', 'epub'] as const) {
       expect(formatFamily(family).mcp).toBeUndefined()
     }
     // the three edit-in-place families carry full mcp blocks; pdf and hwp are read-only
@@ -86,6 +86,16 @@ describe('format registry', () => {
     expect(map.editorExport).toEqual(['png', 'pdf', 'md'])
     // no session, generator or file reader: maps are reached through open_documents
     expect(map.mcp).toBeUndefined()
+  })
+
+  it('registers the e-book family: epub opens and saves as epub', () => {
+    const book = formatFamily('epub')
+    expect(book.label).toBe('e-book')
+    expect(book.editorOpen).toEqual(['epub'])
+    expect(book.editorSave).toEqual(['epub'])
+    expect(book.editorExport).toEqual([])
+    // no session, generator or file reader: books are reached through open_documents
+    expect(book.mcp).toBeUndefined()
   })
 
   it('reports labels for guided errors', () => {
@@ -135,6 +145,7 @@ describe('capabilityReport', () => {
       'pdf',
       'xmind',
       'hwp',
+      'epub',
     ])
     const docx = report.find((r) => r.family === 'docx')!
     expect(docx.editor.open).toEqual(['docx', 'odt'])
@@ -149,6 +160,11 @@ describe('capabilityReport', () => {
       family: 'xmind',
       label: 'mind map',
       editor: { open: ['xmind'], save: ['xmind'], export: ['png', 'pdf', 'md'] },
+    })
+    expect(report.find((r) => r.family === 'epub')).toEqual({
+      family: 'epub',
+      label: 'e-book',
+      editor: { open: ['epub'], save: ['epub'], export: [] },
     })
   })
 })

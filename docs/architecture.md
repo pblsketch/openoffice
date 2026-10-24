@@ -2,7 +2,7 @@
 
 ## 한 프로그램으로 배포되는 여러 조각
 
-설치되는 것은 Electron 프로그램 하나다. 그 안에 껍데기 앱 하나와 편집기들(워드, 엑셀, 파워포인트, PDF, 마크다운, HTML, 마인드맵, 한글)이 들어 있고, 편집기들은 화면과 무관한 공용 패키지(문서 엔진, AI 연결부)를 가져다 쓴다.
+설치되는 것은 Electron 프로그램 하나다. 그 안에 껍데기 앱 하나와 편집기들(워드, 엑셀, 파워포인트, PDF, 마크다운, HTML, 마인드맵, 한글, 전자책)이 들어 있고, 편집기들은 화면과 무관한 공용 패키지(문서 엔진, AI 연결부)를 가져다 쓴다.
 
 ```
 apps/shell      껍데기 앱. 창, 탭, 홈 화면, 설정, 첫 실행 안내, 자동 업데이트, 파일 색인과 지식 자료 검색,
@@ -19,6 +19,8 @@ apps/html       HTML 편집기
 apps/mindmap    마인드맵(.xmind) 편집기. 지도를 그리는 일은 mind-elixir, 파일은 packages/xmind-engine이 맡는다
 apps/hwp        한글(.hwp·.hwpx) 편집기. 편집 화면은 오픈소스 rhwp의 웹 편집기를 앱 안에 넣어 띄운다. AI는
                 그 편집기 안에 넣은 자체 플러그인을 거쳐 글자와 서식을 바꾸고, 문단과 표를 넣고, 표의 칸과 누름틀을 채운다
+apps/epub       전자책(.epub) 편집기. 책은 뒷단에 보기마다 한 벌, 장은 스크립트 없는 틀에 그리고, 저장은
+                packages/epub-engine의 범위 바꾸기로 한다. 책 번역은 pdf-structure의 작업 엔진과 보관소를 쓴다
 packages/ai-provider   제공자 목록, 제공자 선택 규칙, 구독 프로그램 실행부, 키 방식 제공자 연결
 packages/ai-search     검색·이미지 생성·미디어 분석 도구, 자동 호출 경로의 구독 요청 차례
 packages/agent-core    AI 실행 반복(모델 → 도구 → 모델), 화면↔뒷단 전송 통로, 가리기
@@ -32,14 +34,16 @@ packages/pdf-structure PDF의 문서 나무(다시 흐르는 글), Markdown·EPU
                        번역, 번역 PDF 써 넣기, 문서 작업 엔진, 결과 보관소. pdf2docx의 IR을 읽기만 한다
 packages/xmind-engine  마인드맵 파일 엔진(열기, 원본 보존, 맞추기, 저장, 개요 글, 테마 표). 이 프로젝트가 만든 것이고,
                        화면과 Node 양쪽에서 돈다
+packages/epub-engine   EPUB 엔진(열기와 거절, 블록 지도, 블록 글 표기, 범위 바꾸기 편집·저장, 글 뽑기, 책 번역의
+                       단위·열쇠·지시문과 번역본·대역본). 이 프로젝트가 만든 것이고, 화면과 Node 양쪽에서 돈다
 packages/docx-engine, pptx-engine, pptx-ops, pptx-render, xlsx-gateway,
          pdf2docx, html2docx, file-parse, zip-gate, font-metrics, pipelines, project-store
                        문서 엔진과 그 주변. 원본(GenOffice)에서 온 그대로 두는 영역. `file-parse`에는 이 프로젝트가
-                       `.xmind` 읽기, 다른 파일로 읽을 때의 가리기, 첨부할 수 있는 형식 목록(`attachable.ts`)을 새 파일로 더했다
+                       `.xmind`·`.epub` 읽기, 다른 파일로 읽을 때의 가리기, 첨부할 수 있는 형식 목록(`attachable.ts`)을 새 파일로 더했다
 apps/sheets/native/xlsx-engine   엑셀 계산·입출력을 맡는 별도 프로그램(Rust). 표준 입출력으로 대화한다
 ```
 
-- 의존 방향은 한쪽이다. `apps/*` → `packages/*`. 패키지끼리는 `ai-provider` → `agent-core`·`i18n`(그래서 `agent-core`는 `ai-provider`를 가져올 수 없다), `ai-search` → `ai-provider`·`electron-utils`, `ui` → `ai-provider`·`agent-core`·`i18n`·`pptx-render`, `odt-engine` → `docx-engine`·`zip-gate`, `cli` → 엔진 패키지·`pdf-structure`·`ai-search`·`ai-provider`·`i18n`, `electron-utils` → `i18n`, `file-parse` → `agent-core`(가리기 이름표)·`xmind-engine`·`docx-engine`, `xmind-engine` → `zip-gate`·`i18n`. `pdf-structure`는 `pdf2docx`·`i18n`·`ai-provider`(그림 입력 판정)·`agent-core`(형)·`font-metrics`의 소스를 상대 경로로 가져오고, `apps/pdf`·`apps/shell`·`cli`도 `pdf-structure`를 상대 경로로 가져온다. `pdf-structure`는 다른 작업 공간 패키지를 이름으로 가져오지 않고 Electron에 기대지 않는다. `i18n`과 `agent-core`는 다른 작업 공간 패키지에 기대지 않는다.
+- 의존 방향은 한쪽이다. `apps/*` → `packages/*`. 패키지끼리는 `ai-provider` → `agent-core`·`i18n`(그래서 `agent-core`는 `ai-provider`를 가져올 수 없다), `ai-search` → `ai-provider`·`electron-utils`, `ui` → `ai-provider`·`agent-core`·`i18n`·`pptx-render`, `odt-engine` → `docx-engine`·`zip-gate`, `cli` → 엔진 패키지·`pdf-structure`·`ai-search`·`ai-provider`·`i18n`, `electron-utils` → `i18n`, `file-parse` → `agent-core`(가리기 이름표)·`xmind-engine`·`epub-engine`·`docx-engine`, `xmind-engine` → `zip-gate`·`i18n`, `epub-engine` → `zip-gate`·`pdf-structure`(이름으로. 번역 작업 엔진, 보관소 열쇠의 형, 묶기·답 읽기 도우미). `pdf-structure`는 `pdf2docx`·`i18n`·`ai-provider`(그림 입력 판정)·`agent-core`(형)·`font-metrics`의 소스를 상대 경로로 가져오고, `apps/pdf`·`apps/shell`·`cli`도 `pdf-structure`를 상대 경로로 가져온다. `pdf-structure`는 다른 작업 공간 패키지를 이름으로 가져오지 않고 Electron에 기대지 않는다. `i18n`과 `agent-core`는 다른 작업 공간 패키지에 기대지 않는다.
 - `ai-provider`는 진입점이 나뉘어 있다. 화면(renderer)과 preload가 **값**으로 가져오는 것은 `@genoffice/ai-provider/browser`뿐이다. 대표 진입점에서는 형(`import type`)만 가져온다. 프로그램을 실행하는 코드(`/subscription`, `/claude-code-cli`, `/codex-app-server`)는 뒷단에서만 가져온다.
 - 편집기들의 뒷단 코드는 따로 실행되지 않는다. 껍데기 앱을 빌드할 때 함께 묶여, 껍데기 앱의 한 프로세스 안에서 돈다. 그래서 창구 이름(IPC 채널)은 프로세스 전체에서 하나뿐이어야 한다.
 - 편집기 화면은 껍데기 창 위에 얹히는 별도 화면(WebContentsView)이다. 홈 탭만 껍데기 앱 자신의 화면이다.
@@ -53,6 +57,25 @@ ODT 전용 화면은 없다. 워드 편집기가 ODT를 "다리 docx"로 바꿔 
 3. 다른 형식으로: docx → ODT는 `docxToOdt`가 새 ODT를 만든다. ODT에 담을 수 없는 차트·수식·도형·글상자는 그림이 된다(화면이 있으면 편집 화면을 찍은 그림, 없으면 문서 안의 대체 그림이나 이름표). ODT → docx는 다리 docx를 쓴다. 어느 쪽이든 바뀌거나 빠지는 것은 화면에서는 확인 창, 명령어에서는 `warnings[]`로 알린다.
 
 같은 엔진을 명령어(`docs read`·`apply`·`convert`), AI 첨부와 파일 색인(`file-parse`의 `odtToText`), 마크다운·HTML 편집기의 "ODT로 내보내기"가 함께 쓴다.
+
+## EPUB 책이 지나는 길
+
+결정 0066. 책은 셸 뒷단에 있고, 화면은 장 하나씩과 그 자원만 받는다.
+
+```
+EPUB 편집기 화면 ── epub:read-chapter·apply-edits·save 등 ──→ 셸 메인(apps/epub의 book-session, 보기마다 책 한 벌) ── epub-engine
+                ── epub-asset://<보기 토큰>/<항목 경로>  ──→ 같은 책의 zip 항목(그림·스타일·글꼴, 감춘 글꼴은 풀어서)
+                ── epub:store-*                          ──→ 셸 메인(ResultStore, <userData>/pdf-store)
+                ── ai:stream                             ──→ 공용 AI 창구 → 제공자(구독 프로그램 등)
+```
+
+1. 열기: 뒷단이 파일 바이트를 엔진의 `openEpub`으로 연다(zip 관문, 컨테이너, DRM, OPF 순). 이렇게 열린 파일만 저장 대상이 된다.
+2. 읽기: 화면이 장 글과 블록 범위를 받아 그리는 사본(스크립트를 지우고 CSP와 `epub-asset:` 기준 주소를 붙인 HTML)을 만들고, `allow-scripts` 없는 틀에 그린다.
+3. 고치기: 화면이 고친 블록을 블록 글 표기로 읽어 보내고, 뒷단이 그 장 원본 글의 범위 바꾸기로 합친다. 번역 잠금·읽기 전용 거절도 뒷단이 한다.
+4. 저장: 엔진의 `saveEpub`이 바뀐 범위만 다른 zip을 만든다. 바뀐 것이 없으면 쓰지 않는다. 뒷단이 원자적으로 쓰고, 문서 해시가 바뀌면 보관된 번역과 작업 기록을 옮긴다.
+5. 책 번역: 작업은 PDF처럼 편집기 화면 안에서 `pdf-structure`의 작업 엔진으로 돈다. 단위는 뒷단이 저장된 책에서 만들고, 모델 호출은 `ai:stream`(도구 없음), 결과는 `epub:store-write`로 보관소에 쓴다. 결과 책은 끝난 뒤 뒷단이 엔진의 `buildTranslatedEpub`으로 쓴다.
+
+같은 엔진을 첨부와 파일 색인(`file-parse`의 `epubToText`), 터미널 명령어(`epub translate`·`epub status`)가 함께 쓴다.
 
 ## AI 요청 한 번의 흐름 (화면 경로)
 
@@ -145,13 +168,14 @@ ODT 전용 화면은 없다. 워드 편집기가 ODT를 "다리 docx"로 바꿔 
 MCP 클라이언트(`ieumoffice mcp`) ─┴→ packages/cli → 문서 엔진(파일 읽기·만들기·변환, PC 안에서 끝남)
                                          ├→ packages/pdf-structure (PDF 변환·그림·보관소, PC 안에서 끝남)
                                          ├→ packages/ai-search (search / image / media / read-url, 밖으로 나감)
-                                         └→ packages/ai-provider (pdf ai-read / translate, `--yes`일 때만 밖으로 나감)
+                                         ├→ packages/epub-engine (epub translate의 단위·결과 책, PC 안에서 끝남)
+                                         └→ packages/ai-provider (pdf ai-read / translate, epub translate, `--yes`일 때만 밖으로 나감)
 ```
 
-- 이 경로는 창을 띄우지 않는다. 앱의 설정 파일과 종량 허용 기록을 읽기만 한다. PDF 명령은 앱과 같은 보관소(데이터 폴더의 `pdf-store`)를 읽고 쓴다.
+- 이 경로는 창을 띄우지 않는다. 앱의 설정 파일과 종량 허용 기록을 읽기만 한다. PDF·EPUB 번역 명령은 앱과 같은 보관소(데이터 폴더의 `pdf-store`)를 읽고 쓴다.
 - `ai-search`의 도구는 호출 맥락을 받는다. 화면 경로는 `{ path: 'screen', statuses }`, 이 경로는 `{ path: 'headless', statuses, dataDir }`. 구독을 쓸지, 요청을 차례에 세울지가 이 값으로 갈린다.
 - 차례는 데이터 폴더의 잠금 파일로 지킨다. 구독 요청 하나가 잠금을 쥐고 도는 동안 다른 프로세스의 요청은 기다린다. 횟수 한도는 없고, 장부 파일에는 최근 한 시간의 요청 시각이 정보로만 남는다.
-- PDF의 AI 페이지 읽기와 번역은 이 경로에서 `pdf-structure`의 작업 엔진을 명령 프로세스 안에서 돌린다. 모델 호출은 한 번마다 `ai-provider`의 `streamForProvider`로 가고, 구독이면 같은 잠금으로 차례를 기다린다(`runHeadlessSubscriptionCall`). 터미널 명령은 작업이 끝날 때까지 앞에서 돌고, MCP 도구는 작업을 MCP 서버 프로세스 안에 띄우고 바로 답한다. 서버가 끝나면 작업은 `interrupted`로 멈춘다.
+- PDF의 AI 페이지 읽기와 번역, EPUB 책 번역은 이 경로에서 `pdf-structure`의 작업 엔진을 명령 프로세스 안에서 돌린다. 모델 호출은 한 번마다 `ai-provider`의 `streamForProvider`로 가고, 구독이면 같은 잠금으로 차례를 기다린다(`runHeadlessSubscriptionCall`). 터미널 명령은 작업이 끝날 때까지 앞에서 돌고, MCP 도구는 작업을 MCP 서버 프로세스 안에 띄우고 바로 답한다. 서버가 끝나면 작업은 `interrupted`로 멈춘다.
 
 ## PDF 구조 작업과 문서 작업 (화면 경로)
 

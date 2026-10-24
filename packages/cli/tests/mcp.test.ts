@@ -280,8 +280,9 @@ describe('mcp server', () => {
     }
     const bytes = JSON.stringify(list).length
     // 90 KiB before the four PDF document tools (pdf_images, pdf_ai_read, pdf_translate, pdf_status)
-    // and hwp_read (about 1 KiB) joined the catalog
-    expect(bytes).toBeLessThanOrEqual(97 * 1024)
+    // and hwp_read (about 1 KiB) joined the catalog; 97 KiB before epub_translate and epub_status
+    // (about 2 KiB)
+    expect(bytes).toBeLessThanOrEqual(99 * 1024)
     expect(bytes).toBeGreaterThan(60 * 1024)
   })
 
@@ -360,8 +361,9 @@ describe('mcp server', () => {
       >
       expect(props.ops!.anyOf!.map((v) => v.type)).toEqual(['array', 'object'])
       expect(props.ops!.items).toBeUndefined()
-      // 42 KiB before hwp_read (about 1 KiB) joined the catalog
-      expect(JSON.stringify(tools).length).toBeLessThan(43 * 1024)
+      // 42 KiB before hwp_read (about 1 KiB) joined the catalog; 43 KiB before epub_translate and
+      // epub_status (about 2 KiB)
+      expect(JSON.stringify(tools).length).toBeLessThan(45 * 1024)
     } finally {
       await client2.close()
       disposeContext(ctx2)

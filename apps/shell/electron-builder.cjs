@@ -206,6 +206,7 @@ function assertModuleTreesPresent() {
     '../html/out',
     '../mindmap/out',
     '../hwp/out',
+    '../epub/out',
     '../../packages/cli/dist/genoffice.cjs',
     '../../packages/cli/dist/node_modules/jsdom',
   ]) {
@@ -334,14 +335,14 @@ function ensureThirdPartyNotices() {
 // office types that is the point, for plain text and JSON it would hijack the
 // system editor, so Windows leaves those two out (mac/Linux only offer them
 // in Open With).
-// A mind map file keeps the program the user already opens it with, and HWP
-// and HWPX must not be taken from Hancom Office on a PC that has it, so
-// Windows takes none of the three as the extension's default. They are still
-// offered in Explorer's "Open with": build/installer.nsh writes a product-own
-// ProgId with the per-type document icon for each, so choosing this app for
-// them shows the Hangul or mind-map icon instead of the bare app icon (the
-// .ico files ship via win.extraResources below).
-const WIN_OPEN_WITH_ONLY_EXTS = new Set(['txt', 'json', 'xmind', 'hwp', 'hwpx'])
+// A mind map file and a book keep the program the user already opens them
+// with, and HWP and HWPX must not be taken from Hancom Office on a PC that has
+// it, so Windows takes none of the four as the extension's default. They are
+// still offered in Explorer's "Open with": build/installer.nsh writes a
+// product-own ProgId with the per-type document icon for each, so choosing
+// this app for them shows the Hangul, mind-map or book icon instead of the
+// bare app icon (the .ico files ship via win.extraResources below).
+const WIN_OPEN_WITH_ONLY_EXTS = new Set(['txt', 'json', 'xmind', 'hwp', 'hwpx', 'epub'])
 // NSIS registers each association under a ProgId taken from its `name`
 // (HKCU\Software\Classes\<name>). The upstream app registers the bare names
 // below ("Word Document"), so sharing them would let either install overwrite
@@ -480,6 +481,18 @@ const FILE_ASSOCIATIONS = [
     icon: 'hwp',
     mimeType: 'application/hwp+zip',
   },
+  {
+    // Open With only, like .xmind: Windows leaves it out (WIN_OPEN_WITH_ONLY_EXTS)
+    // and macOS ranks the app as an alternate, so the reader the user already
+    // has stays the default.
+    ext: 'epub',
+    name: 'EPUB Book',
+    description: 'EPUB Book',
+    role: 'Editor',
+    rank: 'Alternate',
+    icon: 'epub',
+    mimeType: 'application/epub+zip',
+  },
 ]
 
 const config = {
@@ -547,6 +560,10 @@ const config = {
     {
       from: '../hwp/out',
       to: 'modules/hwp',
+    },
+    {
+      from: '../epub/out',
+      to: 'modules/epub',
     },
     // PDF text editing engines: the bundled main resolves these under
     // Resources/wasm when node_modules is absent (apps/pdf/src/main/wasm-path.ts)
@@ -693,10 +710,10 @@ const config = {
         to: 'shell-new',
         filter: ['*.docx', '*.xlsx', '*.pptx'],
       },
-      // The Open-With ProgIds build/installer.nsh writes for .hwp/.hwpx/.xmind
+      // The Open-With ProgIds build/installer.nsh writes for .hwp/.hwpx/.xmind/.epub
       // point their DefaultIcon at these; without the explicit entries the
       // icons are absent (electron-builder places an icon only for the types
-      // in win.fileAssociations, and these three stay off that list).
+      // in win.fileAssociations, and these four stay off that list).
       {
         from: 'build/hwp.ico',
         to: 'hwp.ico',
@@ -704,6 +721,10 @@ const config = {
       {
         from: 'build/mindmap.ico',
         to: 'mindmap.ico',
+      },
+      {
+        from: 'build/epub.ico',
+        to: 'epub.ico',
       },
     ],
   },

@@ -97,6 +97,13 @@ vi.mock('../../hwp/src/main/hwp-main', () => ({
   requestHwpClose: vi.fn(),
 }))
 
+const createEpubView = vi.fn((..._args: unknown[]) => makeFakeView())
+vi.mock('../../epub/src/main/epub-main', () => ({
+  createEpubView: (...args: unknown[]) => createEpubView(...args),
+  epubIsDirty: vi.fn(() => false),
+  requestEpubClose: vi.fn(),
+}))
+
 const queueHtmlSeedFor = vi.fn()
 vi.mock('../../html/src/main/seed-main', () => ({
   queueHtmlSeedFor: (...args: unknown[]) => queueHtmlSeedFor(...args),
@@ -208,6 +215,11 @@ describe('a template copy opens as a new untitled document', () => {
 
   it('leaves sheets to the shell', () => {
     expect(manager.openTemplateCopy(copy('sheets', 'grades.xlsx'))).toBeNull()
+  })
+
+  it('opens no book: a book has no new, untitled document', () => {
+    expect(manager.openTemplateCopy(copy('epub', 'novel.epub'))).toBeNull()
+    expect(createEpubView).not.toHaveBeenCalled()
   })
 
   it('decodes text copies without a leading byte order mark', () => {

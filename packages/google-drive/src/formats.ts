@@ -1,6 +1,6 @@
 /**
  * Which Drive files the app can open, and how. Office, PDF, Markdown, HTML,
- * mind map and Hangul files download as they are; Google's own documents have
+ * mind map, Hangul and EPUB files download as they are; Google's own documents have
  * no file to download and are exported to the matching Office format.
  */
 
@@ -38,6 +38,7 @@ export const OPENABLE_EXTENSIONS: readonly string[] = [
   '.xmind',
   '.hwp',
   '.hwpx',
+  '.epub',
 ]
 
 /** The upload type for an extension the app saves; octet-stream lets Drive keep its own guess */

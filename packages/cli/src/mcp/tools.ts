@@ -348,6 +348,35 @@ export const TOOLS: ToolSpec[] = [
     positionals: [{ key: 'file', description: 'path of the .pdf' }],
   },
   {
+    name: 'epub_translate',
+    command: 'epub',
+    verb: 'translate',
+    openWorld: true,
+    description:
+      'Translate an EPUB book with the AI provider configured in GenOffice (the text leaves the machine). Without yes: only detail.estimate and detail.chapters, nothing sent; ask the user, then call with yes=true (and allow_paid when estimate.metered). With yes the job runs in this server (detail.started: true); epub_status follows it.',
+    positionals: [{ key: 'file', description: 'path of the .epub' }],
+    options: [
+      { key: 'to', required: true },
+      'chapters',
+      'kind',
+      'out',
+      'partial',
+      'restart',
+      'yes',
+      'allow-paid',
+      'force',
+    ],
+  },
+  {
+    name: 'epub_status',
+    command: 'epub',
+    verb: 'status',
+    readOnly: true,
+    description:
+      'Translations GenOffice keeps for an EPUB, each with its job as in pdf_status. Runs locally.',
+    positionals: [{ key: 'file', description: 'path of the .epub' }],
+  },
+  {
     name: 'hwp_read',
     command: 'hwp',
     verb: 'read',

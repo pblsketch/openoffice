@@ -198,6 +198,16 @@ vi.mock('../../hwp/src/main/hwp-main', () => ({
   requestHwpClose: (...args: unknown[]) => requestHwpClose(...(args as [])),
 }))
 
+const createEpubView = vi.fn(() => makeFakeView())
+const epubIsDirty = vi.fn(() => false)
+const requestEpubClose = vi.fn(() => Promise.resolve(true))
+
+vi.mock('../../epub/src/main/epub-main', () => ({
+  createEpubView: (...args: unknown[]) => createEpubView(...(args as [])),
+  epubIsDirty: (...args: unknown[]) => epubIsDirty(...(args as [])),
+  requestEpubClose: (...args: unknown[]) => requestEpubClose(...(args as [])),
+}))
+
 import { helpTopicParam, helpViewUrl, TabManager } from '../src/main/tab-manager'
 import type { TabKind } from '../src/shared/tabs-api'
 
@@ -247,6 +257,8 @@ beforeEach(() => {
   slidesIsDirty.mockImplementation(() => false)
   mindmapIsDirty.mockImplementation(() => false)
   requestMindmapClose.mockImplementation(() => Promise.resolve(true))
+  epubIsDirty.mockImplementation(() => false)
+  requestEpubClose.mockImplementation(() => Promise.resolve(true))
   shellWindow = makeShellWindow()
   onChanged = vi.fn()
   applyMenuFor = vi.fn()
@@ -377,6 +389,22 @@ describe('opening tabs', () => {
     const untitled = manager.list().find((t) => t.id === untitledId)
     expect(untitled).toMatchObject({ kind: 'mindmap', title: 'Mind Map' })
     expect(untitled?.filePath).toBeUndefined()
+  })
+
+  it('opens a book tab for its file, titled by the file name', () => {
+    const id = manager.openEpubTab('/tmp/novel.epub')
+    expect(createEpubView).toHaveBeenLastCalledWith('/tmp/novel.epub')
+    expect(manager.list().find((t) => t.id === id)).toMatchObject({
+      kind: 'epub',
+      title: 'novel.epub',
+      filePath: '/tmp/novel.epub',
+      active: true,
+    })
+    expect(applyMenuFor).toHaveBeenLastCalledWith('epub')
+    expect(manager.findEpubTabByPath('/tmp/novel.epub')).toBe(id)
+    expect(manager.activeEpubTab()).toMatchObject({ id, filePath: '/tmp/novel.epub' })
+    manager.openSlidesTab()
+    expect(manager.activeEpubTab()).toBeUndefined()
   })
 
   it('titles an untitled mind map with the name the shell supplies for that kind', () => {
@@ -914,6 +942,15 @@ describe('file path bookkeeping', () => {
         return lastCreatedView(createHwpView)
       },
     },
+    {
+      kind: 'epub',
+      file: '/tmp/one.epub',
+      renamed: '/tmp/two.epub',
+      open: () => {
+        manager.openEpubTab('/tmp/one.epub')
+        return lastCreatedView(createEpubView)
+      },
+    },
   ]
 
   it.each(RENAMABLE)('a rename reports the $kind view', (c) => {
@@ -1093,6 +1130,32 @@ describe('dirty-tab queries (shell close guard)', () => {
     ])
   })
 
+  it('lists dirty book tabs and reports them to MCP agents as kind epub', async () => {
+    manager.openEpubTab('/tmp/clean.epub')
+    const dirtyId = manager.openEpubTab('/tmp/dirty.epub')
+    const dirtyView = lastCreatedView(createEpubView)
+    expect(manager.dirtyEpubTabs()).toEqual([])
+    epubIsDirty.mockImplementation(
+      ((id: number) => id === dirtyView.webContents.id) as () => boolean,
+    )
+    expect(manager.dirtyEpubTabs()).toEqual([{ id: dirtyId, webContents: dirtyView.webContents }])
+    const documents = await manager.openDocuments()
+    expect(documents.map((d) => [d.kind, d.filePath, d.dirty])).toEqual([
+      ['epub', '/tmp/clean.epub', false],
+      ['epub', '/tmp/dirty.epub', true],
+    ])
+  })
+
+  it('asks before closing a dirty book tab', async () => {
+    const id = manager.openEpubTab('/tmp/novel.epub')
+    const view = lastCreatedView(createEpubView)
+    epubIsDirty.mockImplementation(() => true)
+    requestEpubClose.mockImplementation(() => Promise.resolve(false))
+    await manager.closeTab(id)
+    expect(requestEpubClose).toHaveBeenCalledWith(view.webContents, expect.anything())
+    expect(manager.list().some((t) => t.id === id)).toBe(true)
+  })
+
   it('lists every live docs tab for the async dirtiness sweep', () => {
     manager.openDocsTab()
     manager.openSheetsTab()
@@ -1123,8 +1186,9 @@ describe('detach / attach (Open in New Window, tear-off, dock)', () => {
     const markdown = manager.openMarkdownTab()
     const html = manager.openHtmlTab()
     const mindmap = manager.openMindmapTab()
+    const epub = manager.openEpubTab('/tmp/novel.epub')
     const present = manager.openHtmlPresentTab({ id: 999 } as never, 'Preview')
-    for (const id of [docs, sheets, slides, pdf, markdown, html, mindmap])
+    for (const id of [docs, sheets, slides, pdf, markdown, html, mindmap, epub])
       expect(manager.canDetachTab(id)).toBe(true)
     expect(manager.canDetachTab('home')).toBe(false)
     expect(manager.canDetachTab(present)).toBe(false)

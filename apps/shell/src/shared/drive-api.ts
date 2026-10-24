@@ -60,7 +60,7 @@ export type DriveErrorKind =
 export interface DriveEntry {
   id: string
   name: string
-  /** folder, document, spreadsheet, presentation, pdf, markdown, html, mindmap, hwp, other */
+  /** folder, document, spreadsheet, presentation, pdf, markdown, html, mindmap, hwp, epub, other */
   type: DriveEntryType
   /** ISO time */
   modifiedTime: string
@@ -83,6 +83,7 @@ export type DriveEntryType =
   | 'html'
   | 'mindmap'
   | 'hwp'
+  | 'epub'
   | 'other'
 
 export type DriveListResult =

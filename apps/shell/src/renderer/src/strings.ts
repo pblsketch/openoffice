@@ -78,6 +78,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: '思维导图',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: '按类型筛选',
     // List / bulk actions
     fileCount: '{n} 个文件',
@@ -174,7 +175,7 @@ export const strings = {
     saveLocation: '默认保存位置',
     setAutoSave: '所有文档自动保存',
     setAutoSaveDesc: '在每个编辑器中默认开启自动保存，仍可在单个窗口中关闭。',
-    setResultStore: '已保存的 PDF AI 结果',
+    setResultStore: '已保存的 AI 结果',
     setResultStoreDesc: 'AI 读取的页面和译文会保存在本机，直到你删除。已占用：{size}',
     setResultStoreDeleteAll: '全部删除',
     setResultStoreConfirm: '要删除所有已保存的 AI 读取结果和译文吗？重新生成需要再次使用 AI。',
@@ -259,7 +260,7 @@ export const strings = {
       '使用该服务商的对话会用你自己填写的 key，并由该服务商向你收费。只有在“使用的 AI”中亲自选择它时才会使用。',
     setAiHeadless: '允许自动调用使用订阅',
     setAiHeadlessDesc:
-      '允许由终端命令或其他程序（MCP）发起的生图、图片解析、PDF 翻译和 AI 页面识读使用你的 Claude 或 Codex 订阅。关闭时，这类请求只使用 key 方式的服务商。',
+      '允许由终端命令或其他程序（MCP）发起的生图、图片解析、PDF 翻译、AI 页面识读和书籍（EPUB）翻译使用你的 Claude 或 Codex 订阅。关闭时，这类请求只使用 key 方式的服务商。',
     setAiHeadlessWarning:
       '没有每小时次数上限，程序可以发送任意多的请求，请求中可能包含整份文档的文字和页面图片。两家公司都不建议让程序自动使用订阅，你的账号可能会受到限制。',
     setAiHeadlessConfirm: '仍然开启',
@@ -560,6 +561,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Mind Map',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Filter by type',
     fileCount: '{n} files',
     fileCountOne: '{n} file',
@@ -655,7 +657,7 @@ export const strings = {
     setAutoSave: 'Auto-save all documents',
     setAutoSaveDesc:
       'Turn on AutoSave by default in every editor. You can still switch it off for a single window.',
-    setResultStore: 'Saved PDF AI results',
+    setResultStore: 'Saved AI results',
     setResultStoreDesc:
       'Pages read by AI and translations stay on this PC until you delete them. In use: {size}',
     setResultStoreDeleteAll: 'Delete all',
@@ -746,7 +748,7 @@ export const strings = {
       'Chats on this provider use your own key, and that provider charges you for them. It is used only while you choose it yourself under "AI to use".',
     setAiHeadless: 'Let automatic requests use a subscription',
     setAiHeadlessDesc:
-      'Allows image generation, image analysis, PDF translation and AI page reading requested by a terminal command or another program (MCP) to run on your Claude or Codex subscription. When off, those requests use key providers only.',
+      'Allows image generation, image analysis, PDF translation, AI page reading and book (EPUB) translation requested by a terminal command or another program (MCP) to run on your Claude or Codex subscription. When off, those requests use key providers only.',
     setAiHeadlessWarning:
       'There is no hourly limit, so a program can send as many requests as it likes, and they may carry the whole text of a document and images of its pages. Neither company recommends letting a program use your subscription automatically, and your account may be restricted.',
     setAiHeadlessConfirm: 'Turn on anyway',
@@ -1062,6 +1064,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Sơ đồ tư duy',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Lọc theo loại',
     fileCount: '{n} tệp',
     fileCountOne: '{n} tệp',
@@ -1157,7 +1160,7 @@ export const strings = {
     setAutoSave: 'Tự động lưu tất cả tài liệu',
     setAutoSaveDesc:
       'Bật Tự động lưu theo mặc định trong mọi trình soạn thảo. Bạn vẫn có thể tắt tính năng này cho từng cửa sổ riêng lẻ.',
-    setResultStore: 'Kết quả AI của PDF đã lưu',
+    setResultStore: 'Kết quả AI đã lưu',
     setResultStoreDesc:
       'Các trang do AI đọc và bản dịch được lưu trên máy tính này cho đến khi bạn xóa. Đang dùng: {size}',
     setResultStoreDeleteAll: 'Xóa tất cả',
@@ -1247,7 +1250,7 @@ export const strings = {
       'Các cuộc trò chuyện qua nhà cung cấp này dùng khóa của riêng bạn và nhà cung cấp đó sẽ tính phí. Nhà cung cấp này chỉ được dùng khi bạn tự chọn trong mục "AI sử dụng".',
     setAiHeadless: 'Cho phép yêu cầu tự động dùng gói đăng ký',
     setAiHeadlessDesc:
-      'Cho phép việc tạo hình ảnh, phân tích hình ảnh, dịch PDF và đọc trang bằng AI do lệnh terminal hoặc chương trình khác (MCP) yêu cầu chạy bằng gói đăng ký Claude hoặc Codex của bạn. Khi tắt, các yêu cầu đó chỉ dùng nhà cung cấp theo khóa.',
+      'Cho phép việc tạo hình ảnh, phân tích hình ảnh, dịch PDF, đọc trang bằng AI và dịch sách (EPUB) do lệnh terminal hoặc chương trình khác (MCP) yêu cầu chạy bằng gói đăng ký Claude hoặc Codex của bạn. Khi tắt, các yêu cầu đó chỉ dùng nhà cung cấp theo khóa.',
     setAiHeadlessWarning:
       'Không có giới hạn theo giờ, nên chương trình có thể gửi bao nhiêu yêu cầu tùy ý, và các yêu cầu đó có thể chứa toàn bộ văn bản của tài liệu cùng hình ảnh các trang. Cả hai công ty đều không khuyến nghị để chương trình tự động dùng gói đăng ký, và tài khoản của bạn có thể bị hạn chế.',
     setAiHeadlessConfirm: 'Vẫn bật',
@@ -1569,6 +1572,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'マインドマップ',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: '種類で絞り込み',
     // List / bulk actions
     fileCount: '{n} 個のファイル',
@@ -1668,7 +1672,7 @@ export const strings = {
     setAutoSave: 'すべてのドキュメントを自動保存',
     setAutoSaveDesc:
       'すべてのエディターで自動保存をデフォルトでオンにします。個々のウィンドウでオフにすることもできます。',
-    setResultStore: '保存済みの PDF AI 結果',
+    setResultStore: '保存済みの AI 結果',
     setResultStoreDesc:
       'AI で読み取ったページと翻訳は、削除するまでこの PC に保存されます。使用量：{size}',
     setResultStoreDeleteAll: 'すべて削除',
@@ -1760,7 +1764,7 @@ export const strings = {
       'このプロバイダーでの会話には自分で入力したキーが使われ、料金はそのプロバイダーから請求されます。「使用する AI」で自分で選んでいる間だけ使われます。',
     setAiHeadless: '自動呼び出しでサブスクリプションを使う',
     setAiHeadlessDesc:
-      'ターミナルのコマンドや他のプログラム（MCP）から要求された画像生成、画像解析、PDF 翻訳、AI によるページ読み取りを、Claude または Codex のサブスクリプションで処理できるようにします。オフの場合、こうした要求にはキー方式のプロバイダーだけが使われます。',
+      'ターミナルのコマンドや他のプログラム（MCP）から要求された画像生成、画像解析、PDF 翻訳、AI によるページ読み取り、書籍（EPUB）の翻訳を、Claude または Codex のサブスクリプションで処理できるようにします。オフの場合、こうした要求にはキー方式のプロバイダーだけが使われます。',
     setAiHeadlessWarning:
       '1 時間あたりの上限はないため、プログラムはいくらでも要求を送ることができ、その要求には文書全体のテキストやページの画像が含まれることがあります。プログラムがサブスクリプションを自動的に使うことは両社とも推奨しておらず、アカウントが制限される可能性があります。',
     setAiHeadlessConfirm: 'それでもオンにする',
@@ -2088,6 +2092,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: '마인드맵',
     filterHwp: '한글',
+    filterEpub: 'EPUB',
     filterAria: '유형별 필터',
     // List / bulk actions
     fileCount: '파일 {n}개',
@@ -2184,7 +2189,7 @@ export const strings = {
     saveLocation: '저장 위치',
     setAutoSave: '모든 문서 자동 저장',
     setAutoSaveDesc: '모든 편집기에서 자동 저장을 기본으로 켭니다. 개별 창에서는 끌 수 있습니다.',
-    setResultStore: 'PDF AI 결과 보관소',
+    setResultStore: 'AI 결과 보관소',
     setResultStoreDesc:
       'AI로 읽은 페이지와 번역본은 지울 때까지 이 PC에 보관됩니다. 사용 중: {size}',
     setResultStoreDeleteAll: '모두 지우기',
@@ -2274,7 +2279,7 @@ export const strings = {
       '이 제공업체로 하는 대화는 직접 넣은 키를 쓰고, 요금은 그 회사에서 청구됩니다. "사용할 AI"에서 직접 고른 동안에만 쓰입니다.',
     setAiHeadless: '자동 호출에 구독 사용',
     setAiHeadlessDesc:
-      '터미널 명령이나 다른 프로그램(MCP)이 요청한 이미지 생성·이미지 분석·PDF 번역·AI 페이지 읽기를 Claude 또는 Codex 구독으로 처리하도록 허용합니다. 꺼져 있으면 그런 요청은 키 방식 제공업체만 씁니다.',
+      '터미널 명령이나 다른 프로그램(MCP)이 요청한 이미지 생성·이미지 분석·PDF 번역·AI 페이지 읽기·책(EPUB) 번역을 Claude 또는 Codex 구독으로 처리하도록 허용합니다. 꺼져 있으면 그런 요청은 키 방식 제공업체만 씁니다.',
     setAiHeadlessWarning:
       '시간당 한도가 없어 프로그램이 요청을 얼마든지 보낼 수 있고, 그 요청에 문서 전체의 글과 페이지 그림이 담길 수 있습니다. 프로그램이 자동으로 구독을 쓰는 것은 두 회사가 권장하지 않으며, 계정에 제한이 걸릴 수 있습니다.',
     setAiHeadlessConfirm: '그래도 켜기',
@@ -2593,6 +2598,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Carte mentale',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Filtrer par type',
     // List / bulk actions
     fileCount: '{n} fichiers',
@@ -2693,7 +2699,7 @@ export const strings = {
     setAutoSave: 'Enregistrer automatiquement tous les documents',
     setAutoSaveDesc:
       "Active l'enregistrement automatique par défaut dans chaque éditeur. Vous pouvez toujours le désactiver pour une fenêtre.",
-    setResultStore: 'Résultats IA des PDF enregistrés',
+    setResultStore: 'Résultats IA enregistrés',
     setResultStoreDesc:
       "Les pages lues par l'IA et les traductions restent sur ce PC jusqu'à ce que vous les supprimiez. Espace utilisé : {size}",
     setResultStoreDeleteAll: 'Tout supprimer',
@@ -2785,7 +2791,7 @@ export const strings = {
       'Les conversations avec ce fournisseur utilisent votre propre clé, et c’est lui qui vous les facture. Il n’est utilisé que si vous le choisissez vous-même sous « IA à utiliser ».',
     setAiHeadless: 'Autoriser les requêtes automatiques à utiliser un abonnement',
     setAiHeadlessDesc:
-      'Permet à la génération et à l’analyse d’images, à la traduction de PDF et à la lecture de pages par l’IA demandées par une commande du terminal ou par un autre programme (MCP) de passer par votre abonnement Claude ou Codex. Lorsque l’option est désactivée, ces requêtes n’utilisent que les fournisseurs à clé.',
+      'Permet à la génération et à l’analyse d’images, à la traduction de PDF, à la lecture de pages par l’IA et à la traduction de livres (EPUB) demandées par une commande du terminal ou par un autre programme (MCP) de passer par votre abonnement Claude ou Codex. Lorsque l’option est désactivée, ces requêtes n’utilisent que les fournisseurs à clé.',
     setAiHeadlessWarning:
       'Il n’y a pas de limite horaire : un programme peut envoyer autant de requêtes qu’il le souhaite, et elles peuvent contenir tout le texte d’un document et des images de ses pages. Aucune des deux entreprises ne recommande de laisser un programme utiliser automatiquement votre abonnement, et votre compte pourrait être restreint.',
     setAiHeadlessConfirm: 'Activer quand même',
@@ -3117,6 +3123,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Mindmap',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Nach Typ filtern',
     // List / bulk actions
     fileCount: '{n} Dateien',
@@ -3220,7 +3227,7 @@ export const strings = {
     setAutoSave: 'Alle Dokumente automatisch speichern',
     setAutoSaveDesc:
       'Aktiviert AutoSave standardmäßig in jedem Editor. Für ein einzelnes Fenster kann es weiterhin ausgeschaltet werden.',
-    setResultStore: 'Gespeicherte KI-Ergebnisse für PDFs',
+    setResultStore: 'Gespeicherte KI-Ergebnisse',
     setResultStoreDesc:
       'Von der KI gelesene Seiten und Übersetzungen bleiben auf diesem PC, bis Sie sie löschen. Belegt: {size}',
     setResultStoreDeleteAll: 'Alle löschen',
@@ -3313,7 +3320,7 @@ export const strings = {
       'Chats über diesen Anbieter verwenden Ihren eigenen Schlüssel und werden von diesem Anbieter berechnet. Er wird nur verwendet, solange Sie ihn unter „Verwendete KI“ selbst auswählen.',
     setAiHeadless: 'Automatische Anfragen dürfen ein Abonnement nutzen',
     setAiHeadlessDesc:
-      'Erlaubt, dass Bildgenerierung, Bildanalyse, PDF-Übersetzung und das Lesen von Seiten per KI, die ein Terminalbefehl oder ein anderes Programm (MCP) anfordert, über Ihr Claude- oder Codex-Abonnement laufen. Ist die Option aus, nutzen solche Anfragen nur Anbieter mit Schlüssel.',
+      'Erlaubt, dass Bildgenerierung, Bildanalyse, PDF-Übersetzung, das Lesen von Seiten per KI und die Übersetzung von Büchern (EPUB), die ein Terminalbefehl oder ein anderes Programm (MCP) anfordert, über Ihr Claude- oder Codex-Abonnement laufen. Ist die Option aus, nutzen solche Anfragen nur Anbieter mit Schlüssel.',
     setAiHeadlessWarning:
       'Es gibt kein stündliches Limit: Ein Programm kann beliebig viele Anfragen senden, und diese können den gesamten Text eines Dokuments und Bilder seiner Seiten enthalten. Keines der beiden Unternehmen empfiehlt, ein Programm das Abonnement automatisch nutzen zu lassen, und Ihr Konto kann eingeschränkt werden.',
     setAiHeadlessConfirm: 'Trotzdem einschalten',
@@ -3648,6 +3655,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Mapa mental',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Filtrar por tipo',
     // List / bulk actions
     fileCount: '{n} archivos',
@@ -3749,7 +3757,7 @@ export const strings = {
     setAutoSave: 'Guardar automáticamente todos los documentos',
     setAutoSaveDesc:
       'Activa el autoguardado de forma predeterminada en todos los editores. Aún puedes desactivarlo en una ventana concreta.',
-    setResultStore: 'Resultados de IA de PDF guardados',
+    setResultStore: 'Resultados de IA guardados',
     setResultStoreDesc:
       'Las páginas leídas por la IA y las traducciones se guardan en este PC hasta que las elimines. En uso: {size}',
     setResultStoreDeleteAll: 'Eliminar todo',
@@ -3842,7 +3850,7 @@ export const strings = {
       'Los chats con este proveedor usan tu propia clave y es ese proveedor quien te los cobra. Solo se usa mientras lo elijas tú mismo en «IA que se usa».',
     setAiHeadless: 'Permitir que las solicitudes automáticas usen una suscripción',
     setAiHeadlessDesc:
-      'Permite que la generación y el análisis de imágenes, la traducción de PDF y la lectura de páginas con IA que pide un comando del terminal u otro programa (MCP) se ejecuten con tu suscripción de Claude o Codex. Si está desactivado, esas solicitudes solo usan proveedores con clave.',
+      'Permite que la generación y el análisis de imágenes, la traducción de PDF, la lectura de páginas con IA y la traducción de libros (EPUB) que pide un comando del terminal u otro programa (MCP) se ejecuten con tu suscripción de Claude o Codex. Si está desactivado, esas solicitudes solo usan proveedores con clave.',
     setAiHeadlessWarning:
       'No hay límite por hora: un programa puede enviar tantas solicitudes como quiera, y estas pueden incluir todo el texto de un documento e imágenes de sus páginas. Ninguna de las dos empresas recomienda que un programa use tu suscripción automáticamente, y tu cuenta podría quedar restringida.',
     setAiHeadlessConfirm: 'Activar de todos modos',
@@ -4167,6 +4175,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'แผนที่ความคิด',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'กรองตามชนิด',
     // List / bulk actions
     fileCount: '{n} ไฟล์',
@@ -4263,7 +4272,7 @@ export const strings = {
     saveLocation: 'ตำแหน่งบันทึก',
     setAutoSave: 'บันทึกอัตโนมัติทุกเอกสาร',
     setAutoSaveDesc: 'เปิดบันทึกอัตโนมัติเป็นค่าเริ่มต้นในทุกตัวแก้ไข คุณยังปิดได้ในแต่ละหน้าต่าง',
-    setResultStore: 'ผลลัพธ์ AI ของ PDF ที่บันทึกไว้',
+    setResultStore: 'ผลลัพธ์ AI ที่บันทึกไว้',
     setResultStoreDesc:
       'หน้าที่ AI อ่านและคำแปลจะเก็บไว้ในพีซีเครื่องนี้จนกว่าคุณจะลบ ใช้พื้นที่: {size}',
     setResultStoreDeleteAll: 'ลบทั้งหมด',
@@ -4353,7 +4362,7 @@ export const strings = {
       'แชตที่ใช้ผู้ให้บริการรายนี้จะใช้คีย์ของคุณเอง และผู้ให้บริการรายนั้นจะเรียกเก็บค่าบริการจากคุณ โดยจะถูกใช้เฉพาะเมื่อคุณเลือกเองในหัวข้อ "AI ที่ใช้" เท่านั้น',
     setAiHeadless: 'อนุญาตให้คำขออัตโนมัติใช้การสมัครสมาชิก',
     setAiHeadlessDesc:
-      'อนุญาตให้การสร้างภาพ การวิเคราะห์ภาพ การแปล PDF และการอ่านหน้าด้วย AI ที่ร้องขอจากคำสั่งในเทอร์มินัลหรือโปรแกรมอื่น (MCP) ทำงานด้วยการสมัครสมาชิก Claude หรือ Codex ของคุณ เมื่อปิดอยู่ คำขอเหล่านั้นจะใช้เฉพาะผู้ให้บริการแบบใช้คีย์',
+      'อนุญาตให้การสร้างภาพ การวิเคราะห์ภาพ การแปล PDF การอ่านหน้าด้วย AI และการแปลหนังสือ (EPUB) ที่ร้องขอจากคำสั่งในเทอร์มินัลหรือโปรแกรมอื่น (MCP) ทำงานด้วยการสมัครสมาชิก Claude หรือ Codex ของคุณ เมื่อปิดอยู่ คำขอเหล่านั้นจะใช้เฉพาะผู้ให้บริการแบบใช้คีย์',
     setAiHeadlessWarning:
       'ไม่มีขีดจำกัดรายชั่วโมง โปรแกรมจึงส่งคำขอได้มากเท่าที่ต้องการ และคำขอเหล่านั้นอาจมีข้อความทั้งหมดของเอกสารและภาพของแต่ละหน้า ทั้งสองบริษัทไม่แนะนำให้โปรแกรมใช้การสมัครสมาชิกของคุณโดยอัตโนมัติ และบัญชีของคุณอาจถูกจำกัดการใช้งาน',
     setAiHeadlessConfirm: 'เปิดต่อไป',
@@ -4671,6 +4680,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Peta pikiran',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Filter menurut jenis',
     // List / bulk actions
     fileCount: '{n} file',
@@ -4771,7 +4781,7 @@ export const strings = {
     setAutoSave: 'Simpan otomatis semua dokumen',
     setAutoSaveDesc:
       'Aktifkan Simpan Otomatis secara default di setiap editor. Anda masih dapat menonaktifkannya untuk satu jendela.',
-    setResultStore: 'Hasil AI PDF tersimpan',
+    setResultStore: 'Hasil AI tersimpan',
     setResultStoreDesc:
       'Halaman yang dibaca AI dan terjemahan disimpan di PC ini sampai Anda menghapusnya. Terpakai: {size}',
     setResultStoreDeleteAll: 'Hapus semua',
@@ -4862,7 +4872,7 @@ export const strings = {
       'Percakapan lewat penyedia ini memakai kunci Anda sendiri, dan penyedia itulah yang menagih Anda. Penyedia ini hanya dipakai selama Anda sendiri memilihnya di "AI yang digunakan".',
     setAiHeadless: 'Izinkan permintaan otomatis memakai langganan',
     setAiHeadlessDesc:
-      'Mengizinkan pembuatan gambar, analisis gambar, terjemahan PDF, dan pembacaan halaman dengan AI yang diminta oleh perintah terminal atau program lain (MCP) berjalan dengan langganan Claude atau Codex Anda. Jika dimatikan, permintaan tersebut hanya memakai penyedia berbasis kunci.',
+      'Mengizinkan pembuatan gambar, analisis gambar, terjemahan PDF, pembacaan halaman dengan AI, dan terjemahan buku (EPUB) yang diminta oleh perintah terminal atau program lain (MCP) berjalan dengan langganan Claude atau Codex Anda. Jika dimatikan, permintaan tersebut hanya memakai penyedia berbasis kunci.',
     setAiHeadlessWarning:
       'Tidak ada batas per jam, jadi program dapat mengirim permintaan sebanyak yang diinginkan, dan permintaan itu dapat memuat seluruh teks dokumen serta gambar halamannya. Kedua perusahaan tidak menyarankan program memakai langganan Anda secara otomatis, dan akun Anda bisa dibatasi.',
     setAiHeadlessConfirm: 'Tetap aktifkan',
@@ -5187,6 +5197,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Интеллект-карта',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Фильтр по типу',
     // List / bulk actions
     fileCount: 'Файлов: {n}',
@@ -5286,7 +5297,7 @@ export const strings = {
     setAutoSave: 'Автосохранение всех документов',
     setAutoSaveDesc:
       'Включает автосохранение по умолчанию во всех редакторах. Его по-прежнему можно выключить для отдельного окна.',
-    setResultStore: 'Сохранённые результаты ИИ для PDF',
+    setResultStore: 'Сохранённые результаты ИИ',
     setResultStoreDesc:
       'Страницы, прочитанные ИИ, и переводы хранятся на этом компьютере, пока вы их не удалите. Занято: {size}',
     setResultStoreDeleteAll: 'Удалить всё',
@@ -5377,7 +5388,7 @@ export const strings = {
       'Чаты через этого провайдера используют ваш собственный ключ, и оплату взимает этот провайдер. Он используется, только пока вы сами выбираете его в пункте «Используемый ИИ».',
     setAiHeadless: 'Разрешить автоматическим запросам использовать подписку',
     setAiHeadlessDesc:
-      'Разрешает выполнять генерацию и анализ изображений, перевод PDF и чтение страниц с помощью ИИ, запрошенные командой терминала или другой программой (MCP), по вашей подписке Claude или Codex. Если параметр выключен, такие запросы используют только провайдеров с ключом.',
+      'Разрешает выполнять генерацию и анализ изображений, перевод PDF, чтение страниц с помощью ИИ и перевод книг (EPUB), запрошенные командой терминала или другой программой (MCP), по вашей подписке Claude или Codex. Если параметр выключен, такие запросы используют только провайдеров с ключом.',
     setAiHeadlessWarning:
       'Почасового лимита нет: программа может отправлять сколько угодно запросов, и в них может попасть весь текст документа и изображения его страниц. Ни одна из двух компаний не рекомендует позволять программе автоматически использовать подписку, и ваш аккаунт может быть ограничен.',
     setAiHeadlessConfirm: 'Всё равно включить',
@@ -5705,6 +5716,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'خريطة ذهنية',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'تصفية حسب النوع',
     // List / bulk actions
     fileCount: '{n} ملفات',
@@ -5802,7 +5814,7 @@ export const strings = {
     setAutoSave: 'حفظ جميع المستندات تلقائيًا',
     setAutoSaveDesc:
       'تشغيل الحفظ التلقائي افتراضيًا في كل محرر. لا يزال بإمكانك إيقافه لنافذة واحدة.',
-    setResultStore: 'نتائج الذكاء الاصطناعي المحفوظة لملفات PDF',
+    setResultStore: 'نتائج الذكاء الاصطناعي المحفوظة',
     setResultStoreDesc:
       'تبقى الصفحات التي قرأها الذكاء الاصطناعي والترجمات على هذا الكمبيوتر حتى تحذفها. المساحة المستخدمة: {size}',
     setResultStoreDeleteAll: 'حذف الكل',
@@ -5892,7 +5904,7 @@ export const strings = {
       'تستخدم المحادثات عبر هذا المزوّد مفتاحك الخاص، وهذا المزوّد هو من يحتسب رسومها عليك. ولا يُستخدم إلا عندما تختاره بنفسك ضمن «الذكاء الاصطناعي المستخدم».',
     setAiHeadless: 'السماح للطلبات التلقائية باستخدام الاشتراك',
     setAiHeadlessDesc:
-      'يسمح بتنفيذ توليد الصور وتحليلها وترجمة ملفات PDF وقراءة الصفحات بالذكاء الاصطناعي التي يطلبها أمر في الطرفية أو برنامج آخر (MCP) عبر اشتراكك في Claude أو Codex. عند إيقاف هذا الخيار تستخدم تلك الطلبات المزوّدين الذين يعملون بمفتاح فقط.',
+      'يسمح بتنفيذ توليد الصور وتحليلها وترجمة ملفات PDF وقراءة الصفحات بالذكاء الاصطناعي وترجمة الكتب (EPUB) التي يطلبها أمر في الطرفية أو برنامج آخر (MCP) عبر اشتراكك في Claude أو Codex. عند إيقاف هذا الخيار تستخدم تلك الطلبات المزوّدين الذين يعملون بمفتاح فقط.',
     setAiHeadlessWarning:
       'لا يوجد حد بالساعة، لذا يمكن لبرنامج أن يرسل ما يشاء من الطلبات، وقد تتضمن هذه الطلبات النص الكامل للمستند وصور صفحاته. لا توصي أيٌّ من الشركتين بأن يستخدم برنامجٌ اشتراكك تلقائيًا، وقد تُفرض قيود على حسابك.',
     setAiHeadlessConfirm: 'تشغيل على أي حال',
@@ -6207,6 +6219,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Mapa mental',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Filtrar por tipo',
     fileCount: '{n} arquivos',
     fileCountOne: '{n} arquivo',
@@ -6304,7 +6317,7 @@ export const strings = {
     setAutoSave: 'Salvar automaticamente todos os documentos',
     setAutoSaveDesc:
       'Ativa o salvamento automático por padrão em todos os editores. Você ainda pode desativá-lo em uma janela específica.',
-    setResultStore: 'Resultados de IA de PDF salvos',
+    setResultStore: 'Resultados de IA salvos',
     setResultStoreDesc:
       'Páginas lidas pela IA e traduções ficam neste PC até você excluí-las. Em uso: {size}',
     setResultStoreDeleteAll: 'Excluir tudo',
@@ -6397,7 +6410,7 @@ export const strings = {
       'As conversas com este provedor usam a sua própria chave, e é ele quem cobra por elas. Ele só é usado enquanto você mesmo o escolhe em "IA em uso".',
     setAiHeadless: 'Permitir que solicitações automáticas usem uma assinatura',
     setAiHeadlessDesc:
-      'Permite que a geração e a análise de imagens, a tradução de PDF e a leitura de páginas por IA pedidas por um comando do terminal ou por outro programa (MCP) sejam feitas com a sua assinatura do Claude ou do Codex. Quando desativado, essas solicitações usam apenas provedores com chave.',
+      'Permite que a geração e a análise de imagens, a tradução de PDF, a leitura de páginas por IA e a tradução de livros (EPUB) pedidas por um comando do terminal ou por outro programa (MCP) sejam feitas com a sua assinatura do Claude ou do Codex. Quando desativado, essas solicitações usam apenas provedores com chave.',
     setAiHeadlessWarning:
       'Não há limite por hora: um programa pode enviar quantas solicitações quiser, e elas podem conter todo o texto de um documento e imagens das suas páginas. Nenhuma das duas empresas recomenda deixar um programa usar a sua assinatura automaticamente, e a sua conta pode sofrer restrições.',
     setAiHeadlessConfirm: 'Ativar mesmo assim',
@@ -6720,6 +6733,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Mappa mentale',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Filtra per tipo',
     fileCount: '{n} file',
     fileCountOne: '{n} file',
@@ -6817,7 +6831,7 @@ export const strings = {
     setAutoSave: 'Salva automaticamente tutti i documenti',
     setAutoSaveDesc:
       'Attiva il salvataggio automatico per impostazione predefinita in ogni editor. Puoi comunque disattivarlo per una singola finestra.',
-    setResultStore: 'Risultati IA dei PDF salvati',
+    setResultStore: 'Risultati IA salvati',
     setResultStoreDesc:
       "Le pagine lette dall'IA e le traduzioni restano su questo PC finché non le elimini. Spazio usato: {size}",
     setResultStoreDeleteAll: 'Elimina tutto',
@@ -6909,7 +6923,7 @@ export const strings = {
       'Le chat con questo provider usano la tua chiave ed è il provider ad addebitartele. Viene usato solo finché lo scegli tu in "IA da usare".',
     setAiHeadless: 'Consenti alle richieste automatiche di usare un abbonamento',
     setAiHeadlessDesc:
-      'Consente alla generazione e all’analisi di immagini, alla traduzione di PDF e alla lettura delle pagine con l’IA richieste da un comando del terminale o da un altro programma (MCP) di usare il tuo abbonamento Claude o Codex. Se disattivata, queste richieste usano solo i provider con chiave.',
+      'Consente alla generazione e all’analisi di immagini, alla traduzione di PDF, alla lettura delle pagine con l’IA e alla traduzione di libri (EPUB) richieste da un comando del terminale o da un altro programma (MCP) di usare il tuo abbonamento Claude o Codex. Se disattivata, queste richieste usano solo i provider con chiave.',
     setAiHeadlessWarning:
       'Non c’è un limite orario: un programma può inviare tutte le richieste che vuole, e queste possono contenere l’intero testo di un documento e le immagini delle sue pagine. Nessuna delle due aziende consiglia di lasciare che un programma usi automaticamente il tuo abbonamento, e il tuo account potrebbe subire limitazioni.',
     setAiHeadlessConfirm: 'Attiva comunque',
@@ -7230,6 +7244,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Mapa myśli',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Filtruj według typu',
     fileCount: 'Pliki: {n}',
     fileCountOne: '{n} plik',
@@ -7327,7 +7342,7 @@ export const strings = {
     setAutoSave: 'Automatycznie zapisuj wszystkie dokumenty',
     setAutoSaveDesc:
       'Włącza autozapis domyślnie w każdym edytorze. Nadal możesz go wyłączyć dla pojedynczego okna.',
-    setResultStore: 'Zapisane wyniki AI dla PDF',
+    setResultStore: 'Zapisane wyniki AI',
     setResultStoreDesc:
       'Strony odczytane przez AI i tłumaczenia pozostają na tym komputerze, dopóki ich nie usuniesz. Zajęte: {size}',
     setResultStoreDeleteAll: 'Usuń wszystko',
@@ -7418,7 +7433,7 @@ export const strings = {
       'Rozmowy przez tego dostawcę korzystają z twojego własnego klucza i to on pobiera za nie opłaty. Jest używany tylko wtedy, gdy samodzielnie wybierzesz go w polu „Używane AI”.',
     setAiHeadless: 'Zezwól żądaniom automatycznym na korzystanie z subskrypcji',
     setAiHeadlessDesc:
-      'Pozwala, aby generowanie i analiza obrazów, tłumaczenie PDF oraz odczyt stron przez AI zlecane przez polecenie terminala lub inny program (MCP) korzystały z twojej subskrypcji Claude lub Codex. Gdy opcja jest wyłączona, takie żądania korzystają wyłącznie z dostawców z kluczem.',
+      'Pozwala, aby generowanie i analiza obrazów, tłumaczenie PDF, odczyt stron przez AI oraz tłumaczenie książek (EPUB) zlecane przez polecenie terminala lub inny program (MCP) korzystały z twojej subskrypcji Claude lub Codex. Gdy opcja jest wyłączona, takie żądania korzystają wyłącznie z dostawców z kluczem.',
     setAiHeadlessWarning:
       'Nie ma limitu godzinowego: program może wysłać dowolnie wiele żądań, a mogą one zawierać cały tekst dokumentu i obrazy jego stron. Żadna z tych dwóch firm nie zaleca, aby program automatycznie korzystał z subskrypcji, a twoje konto może zostać ograniczone.',
     setAiHeadlessConfirm: 'Włącz mimo to',
@@ -7738,6 +7753,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Myšlenková mapa',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Filtrovat podle typu',
     fileCount: '{n} souborů',
     fileCountOne: '{n} soubor',
@@ -7885,7 +7901,7 @@ export const strings = {
       'Konverzace přes tohoto poskytovatele používají váš vlastní klíč a účtuje je tento poskytovatel. Používá se jen tehdy, když ho sami vyberete v položce „Používaná AI“.',
     setAiHeadless: 'Povolit automatickým požadavkům používat předplatné',
     setAiHeadlessDesc:
-      'Umožní, aby generování a analýza obrázků, překlad PDF a čtení stránek pomocí AI vyžádané příkazem v terminálu nebo jiným programem (MCP) běžely na vašem předplatném Claude nebo Codex. Když je volba vypnutá, tyto požadavky používají jen poskytovatele s klíčem.',
+      'Umožní, aby generování a analýza obrázků, překlad PDF, čtení stránek pomocí AI a překlad knih (EPUB) vyžádané příkazem v terminálu nebo jiným programem (MCP) běžely na vašem předplatném Claude nebo Codex. Když je volba vypnutá, tyto požadavky používají jen poskytovatele s klíčem.',
     setAiHeadlessWarning:
       'Neexistuje žádný hodinový limit: program může poslat libovolně mnoho požadavků a ty mohou obsahovat celý text dokumentu i obrázky jeho stránek. Ani jedna z obou společností nedoporučuje, aby program používal předplatné automaticky, a váš účet může být omezen.',
     setAiHeadlessConfirm: 'Přesto zapnout',
@@ -8120,7 +8136,7 @@ export const strings = {
     setAutoSave: 'Automaticky ukládat všechny dokumenty',
     setAutoSaveDesc:
       'Zapne automatické ukládání ve všech editorech jako výchozí. Pro jednotlivé okno ho lze stále vypnout.',
-    setResultStore: 'Uložené výsledky AI pro PDF',
+    setResultStore: 'Uložené výsledky AI',
     setResultStoreDesc:
       'Stránky přečtené AI a překlady zůstávají v tomto počítači, dokud je nesmažete. Využito: {size}',
     setResultStoreDeleteAll: 'Smazat vše',
@@ -8242,6 +8258,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Mindmap',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Filteren op type',
     fileCount: '{n} bestanden',
     fileCountOne: '{n} bestand',
@@ -8338,7 +8355,7 @@ export const strings = {
     setAutoSave: 'Alle documenten automatisch opslaan',
     setAutoSaveDesc:
       'Zet automatisch opslaan standaard aan in elke editor. Je kunt het nog steeds uitschakelen voor één venster.',
-    setResultStore: "Opgeslagen AI-resultaten van pdf's",
+    setResultStore: 'Opgeslagen AI-resultaten',
     setResultStoreDesc:
       "Door AI gelezen pagina's en vertalingen blijven op deze pc staan tot je ze verwijdert. In gebruik: {size}",
     setResultStoreDeleteAll: 'Alles verwijderen',
@@ -8430,7 +8447,7 @@ export const strings = {
       'Chats via deze provider gebruiken je eigen sleutel en worden door die provider in rekening gebracht. De provider wordt alleen gebruikt zolang je hem zelf kiest bij "AI die wordt gebruikt".',
     setAiHeadless: 'Automatische verzoeken een abonnement laten gebruiken',
     setAiHeadlessDesc:
-      'Staat toe dat het genereren en analyseren van afbeeldingen, het vertalen van pdf’s en het lezen van pagina’s met AI, aangevraagd door een terminalopdracht of een ander programma (MCP), via je Claude- of Codex-abonnement verloopt. Als dit uit staat, gebruiken zulke verzoeken alleen providers met een sleutel.',
+      'Staat toe dat het genereren en analyseren van afbeeldingen, het vertalen van pdf’s, het lezen van pagina’s met AI en het vertalen van boeken (EPUB), aangevraagd door een terminalopdracht of een ander programma (MCP), via je Claude- of Codex-abonnement verloopt. Als dit uit staat, gebruiken zulke verzoeken alleen providers met een sleutel.',
     setAiHeadlessWarning:
       'Er is geen limiet per uur: een programma kan zoveel verzoeken sturen als het wil, en die kunnen de volledige tekst van een document en afbeeldingen van de pagina’s bevatten. Geen van beide bedrijven raadt aan een programma je abonnement automatisch te laten gebruiken, en je account kan worden beperkt.',
     setAiHeadlessConfirm: 'Toch inschakelen',
@@ -8751,6 +8768,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Peta minda',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Tapis mengikut jenis',
     fileCount: '{n} fail',
     fileCountOne: '{n} fail',
@@ -8847,7 +8865,7 @@ export const strings = {
     setAutoSave: 'Simpan automatik semua dokumen',
     setAutoSaveDesc:
       'Hidupkan Simpan Automatik secara lalai dalam setiap editor. Anda masih boleh mematikannya untuk satu tetingkap.',
-    setResultStore: 'Hasil AI PDF yang disimpan',
+    setResultStore: 'Hasil AI yang disimpan',
     setResultStoreDesc:
       'Halaman yang dibaca AI dan terjemahan disimpan dalam PC ini sehingga anda memadamkannya. Digunakan: {size}',
     setResultStoreDeleteAll: 'Padam semua',
@@ -8939,7 +8957,7 @@ export const strings = {
       'Sembang melalui penyedia ini menggunakan kunci anda sendiri, dan penyedia itu yang mengenakan caj kepada anda. Penyedia ini hanya digunakan selagi anda sendiri memilihnya di bawah "AI yang digunakan".',
     setAiHeadless: 'Benarkan permintaan automatik menggunakan langganan',
     setAiHeadlessDesc:
-      'Membenarkan penjanaan imej, analisis imej, terjemahan PDF dan pembacaan halaman dengan AI yang diminta oleh arahan terminal atau program lain (MCP) dijalankan dengan langganan Claude atau Codex anda. Apabila dimatikan, permintaan tersebut hanya menggunakan penyedia berasaskan kunci.',
+      'Membenarkan penjanaan imej, analisis imej, terjemahan PDF, pembacaan halaman dengan AI dan terjemahan buku (EPUB) yang diminta oleh arahan terminal atau program lain (MCP) dijalankan dengan langganan Claude atau Codex anda. Apabila dimatikan, permintaan tersebut hanya menggunakan penyedia berasaskan kunci.',
     setAiHeadlessWarning:
       'Tiada had sejam, jadi program boleh menghantar seberapa banyak permintaan yang dikehendaki, dan permintaan itu mungkin mengandungi seluruh teks dokumen serta imej halamannya. Kedua-dua syarikat tidak mengesyorkan program menggunakan langganan anda secara automatik, dan akaun anda mungkin dihadkan.',
     setAiHeadlessConfirm: 'Hidupkan juga',
@@ -9260,6 +9278,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'מפת חשיבה',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'סינון לפי סוג',
     fileCount: '{n} קבצים',
     fileCountOne: 'קובץ אחד',
@@ -9353,7 +9372,7 @@ export const strings = {
     saveLocation: 'מיקום שמירה',
     setAutoSave: 'שמירה אוטומטית של כל המסמכים',
     setAutoSaveDesc: 'מפעיל שמירה אוטומטית כברירת מחדל בכל עורך. עדיין אפשר לכבות אותה בחלון בודד.',
-    setResultStore: 'תוצאות AI שמורות של PDF',
+    setResultStore: 'תוצאות AI שמורות',
     setResultStoreDesc: 'דפים שה-AI קרא ותרגומים נשמרים במחשב הזה עד שתמחק אותם. בשימוש: {size}',
     setResultStoreDeleteAll: 'מחק הכול',
     setResultStoreConfirm:
@@ -9442,7 +9461,7 @@ export const strings = {
       'שיחות דרך הספק הזה משתמשות במפתח שלכם, והספק הוא שמחייב אתכם עליהן. הוא נמצא בשימוש רק כל עוד בחרתם בו בעצמכם תחת "ה-AI שבשימוש".',
     setAiHeadless: 'לאפשר לבקשות אוטומטיות להשתמש במינוי',
     setAiHeadlessDesc:
-      'מאפשר ליצירת תמונות, לניתוח תמונות, לתרגום PDF ולקריאת עמודים בעזרת AI שמבקשים פקודת מסוף או תוכנה אחרת (MCP) לפעול דרך מינוי Claude או Codex שלכם. כשהאפשרות כבויה, בקשות כאלה משתמשות רק בספקים עם מפתח.',
+      'מאפשר ליצירת תמונות, לניתוח תמונות, לתרגום PDF, לקריאת עמודים בעזרת AI ולתרגום ספרים (EPUB) שמבקשים פקודת מסוף או תוכנה אחרת (MCP) לפעול דרך מינוי Claude או Codex שלכם. כשהאפשרות כבויה, בקשות כאלה משתמשות רק בספקים עם מפתח.',
     setAiHeadlessWarning:
       'אין מגבלה שעתית, ולכן תוכנה יכולה לשלוח כמה בקשות שתרצה, והן עשויות לכלול את כל הטקסט של מסמך ותמונות של עמודיו. אף אחת משתי החברות אינה ממליצה לאפשר לתוכנה להשתמש במינוי באופן אוטומטי, והחשבון שלכם עלול להיות מוגבל.',
     setAiHeadlessConfirm: 'להפעיל בכל זאת',
@@ -9746,6 +9765,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'माइंड मैप',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'प्रकार के अनुसार फ़िल्टर करें',
     fileCount: '{n} फ़ाइलें',
     fileCountOne: '{n} फ़ाइल',
@@ -9843,7 +9863,7 @@ export const strings = {
     setAutoSave: 'सभी दस्तावेज़ स्वतः सहेजें',
     setAutoSaveDesc:
       'हर संपादक में स्वतः सहेजना डिफ़ॉल्ट रूप से चालू करता है। आप इसे किसी एक विंडो के लिए अब भी बंद कर सकते हैं।',
-    setResultStore: 'सहेजे गए PDF AI परिणाम',
+    setResultStore: 'सहेजे गए AI परिणाम',
     setResultStoreDesc:
       'AI द्वारा पढ़े गए पेज और अनुवाद इस PC पर तब तक रहते हैं जब तक आप उन्हें हटा नहीं देते। उपयोग में: {size}',
     setResultStoreDeleteAll: 'सभी हटाएँ',
@@ -9934,7 +9954,7 @@ export const strings = {
       'इस प्रदाता के ज़रिए होने वाली चैट आपकी अपनी कुंजी का उपयोग करती हैं और उनका शुल्क वही प्रदाता लेता है। इसका उपयोग तभी होता है जब आप इसे "उपयोग किया जाने वाला AI" में स्वयं चुनते हैं।',
     setAiHeadless: 'स्वचालित अनुरोधों को सदस्यता का उपयोग करने दें',
     setAiHeadlessDesc:
-      'टर्मिनल कमांड या किसी अन्य प्रोग्राम (MCP) द्वारा माँगे गए इमेज जनरेशन, इमेज विश्लेषण, PDF अनुवाद और AI से पेज पढ़ने को आपकी Claude या Codex सदस्यता पर चलने देता है। बंद होने पर ऐसे अनुरोध केवल कुंजी वाले प्रदाताओं का उपयोग करते हैं।',
+      'टर्मिनल कमांड या किसी अन्य प्रोग्राम (MCP) द्वारा माँगे गए इमेज जनरेशन, इमेज विश्लेषण, PDF अनुवाद, AI से पेज पढ़ने और पुस्तक (EPUB) अनुवाद को आपकी Claude या Codex सदस्यता पर चलने देता है। बंद होने पर ऐसे अनुरोध केवल कुंजी वाले प्रदाताओं का उपयोग करते हैं।',
     setAiHeadlessWarning:
       'प्रति घंटे की कोई सीमा नहीं है, इसलिए कोई प्रोग्राम जितने चाहे उतने अनुरोध भेज सकता है, और उनमें दस्तावेज़ का पूरा टेक्स्ट और उसके पेजों की छवियाँ शामिल हो सकती हैं। दोनों में से कोई भी कंपनी यह सुझाव नहीं देती कि कोई प्रोग्राम आपकी सदस्यता का अपने-आप उपयोग करे, और आपके खाते पर प्रतिबंध लग सकता है।',
     setAiHeadlessConfirm: 'फिर भी चालू करें',
@@ -10246,6 +10266,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: '心智圖',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: '依類型篩選',
     fileCount: '{n} 個檔案',
     fileCountOne: '{n} 個檔案',
@@ -10339,7 +10360,7 @@ export const strings = {
     saveLocation: '預設儲存位置',
     setAutoSave: '所有文件自動儲存',
     setAutoSaveDesc: '在每個編輯器中預設開啟自動儲存，仍可在單一視窗中關閉。',
-    setResultStore: '已儲存的 PDF AI 結果',
+    setResultStore: '已儲存的 AI 結果',
     setResultStoreDesc: 'AI 讀取的頁面和譯文會保存在這台電腦上，直到你刪除。已使用：{size}',
     setResultStoreDeleteAll: '全部刪除',
     setResultStoreConfirm: '要刪除所有已儲存的 AI 讀取結果和譯文嗎？重新產生需要再次使用 AI。',
@@ -10423,7 +10444,7 @@ export const strings = {
       '使用該服務商的對話會用你自己填寫的 key，並由該服務商向你收費。只有在「使用的 AI」中親自選擇它時才會使用。',
     setAiHeadless: '允許自動呼叫使用訂閱',
     setAiHeadlessDesc:
-      '允許由終端機指令或其他程式（MCP）發起的生圖、圖片解析、PDF 翻譯和 AI 頁面讀取使用你的 Claude 或 Codex 訂閱。關閉時，這類請求只使用 key 方式的服務商。',
+      '允許由終端機指令或其他程式（MCP）發起的生圖、圖片解析、PDF 翻譯、AI 頁面讀取和書籍（EPUB）翻譯使用你的 Claude 或 Codex 訂閱。關閉時，這類請求只使用 key 方式的服務商。',
     setAiHeadlessWarning:
       '沒有每小時次數上限，程式可以傳送任意多的請求，請求中可能包含整份文件的文字和頁面圖片。兩家公司都不建議讓程式自動使用訂閱，你的帳號可能會受到限制。',
     setAiHeadlessConfirm: '仍要開啟',

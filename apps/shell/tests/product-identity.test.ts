@@ -215,6 +215,24 @@ describe('coexistence with the upstream app on one machine', () => {
     expect(nsh).toContain(`!define GENOFFICE_MINDMAP_PROGID "${progId}"`)
   })
 
+  it('names the book type within the ProgId rule, and keeps it off the Windows default path', () => {
+    const entry = config.mac.fileAssociations.find(
+      (candidate: { ext: string }) => candidate.ext === 'epub',
+    ) as { name: string } | undefined
+    expect(entry, '.epub is not offered on mac / Linux').toBeTruthy()
+    // the same derivation electron-builder.cjs applies to the Windows list;
+    // the NSIS Open-With ProgId (build/installer.nsh) spells the same value out
+    const progId = `${PRODUCT_NAME}.${entry!.name.replace(/[^A-Za-z0-9]/g, '')}`
+    expect(progId).toMatch(/^IeumOffice\.[A-Za-z][A-Za-z0-9]*$/)
+    expect(progId.length, progId).toBeLessThanOrEqual(39)
+    expect(UPSTREAM.progIds).not.toContain(progId)
+    const winExts = config.win.fileAssociations.map((candidate: { ext: string }) => candidate.ext)
+    expect(winExts).not.toContain('epub')
+    for (const type of OFFICE_TYPES) expect(type.ext).not.toBe('epub')
+    const nsh = readFileSync(join(SHELL, 'build/installer.nsh'), 'utf8')
+    expect(nsh).toContain(`!define GENOFFICE_EPUB_PROGID "${progId}"`)
+  })
+
   it('recognizes only its own ProgIds as "this app is the default"', () => {
     for (const type of OFFICE_TYPES) {
       const packaged = config.win.fileAssociations.find(

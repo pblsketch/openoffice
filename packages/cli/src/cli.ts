@@ -20,6 +20,7 @@ import { installCommand } from './commands/install'
 import { mcpCommand } from './commands/mcp'
 import { openCommand } from './commands/open'
 import { pdfCommand } from './commands/pdf'
+import { epubCommand } from './commands/epub'
 import { hwpCommand } from './commands/hwp'
 import { renderCommand } from './commands/render'
 import { sheetCommand } from './commands/sheet'
@@ -64,6 +65,7 @@ export function defaultRegistry(): CommandRegistry {
     .register(docsCommand)
     .register(mergeCommand)
     .register(pdfCommand)
+    .register(epubCommand)
     .register(hwpCommand)
     .register(renderCommand)
     .register(guideCommand)

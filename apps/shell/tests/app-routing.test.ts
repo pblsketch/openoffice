@@ -28,6 +28,13 @@ describe('appForPath', () => {
     expect(appForPath('/x/a.hwp.bak')).toBeUndefined()
   })
 
+  it('routes a book to the epub app', () => {
+    expect(appForPath('/x/novel.epub')).toBe('epub')
+    expect(appForPath('C:/x/NOVEL.EPUB')).toBe('epub')
+    expect(renameStaysInApp('/x/novel.epub', 'novel2.epub')).toBe(true)
+    expect(renameStaysInApp('/x/novel.epub', 'novel.zip')).toBe(false)
+  })
+
   it('opens OpenDocument text in the Word tab', () => {
     expect(appForPath('/x/a.odt')).toBe('docs')
     expect(appForPath('C:/x/REPORT.ODT')).toBe('docs')

@@ -1,6 +1,6 @@
 /**
- * The AI connection of the PDF document jobs (`pdf ai-read`, `pdf translate`)
- * on the automatic-call path. Both talk to the AI provider the chat runs on,
+ * The AI connection of the document jobs (`pdf ai-read`, `pdf translate`,
+ * `epub translate`) on the automatic-call path. Both talk to the AI provider the chat runs on,
  * chosen the way the chat chooses it (spec §7, §8): a subscription login only
  * while the automatic-call switch is on, a key provider or an accepted metered
  * login only because the user selected it. Nothing here picks a provider on
@@ -29,7 +29,7 @@ import {
 } from '@genoffice/ai-search'
 import { aiReadVisionCheck } from '../../pdf-structure/src'
 
-export type PdfAiJob = 'ai-read' | 'translate'
+export type PdfAiJob = 'ai-read' | 'translate' | 'epub-translate'
 
 /** One model call may take this long before it fails as a timeout (and is retried once by the job). */
 export const PDF_AI_CALL_TIMEOUT_MS = 300_000
@@ -61,6 +61,7 @@ export type PdfAiRoute =
 const FEATURE: Record<PdfAiJob, string> = {
   'ai-read': 'PDF AI page reading',
   translate: 'PDF translation',
+  'epub-translate': 'EPUB translation',
 }
 
 /**

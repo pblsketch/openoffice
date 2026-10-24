@@ -18,6 +18,7 @@ const requestMarkdownClose = vi.fn(() => Promise.resolve(true))
 const requestHtmlClose = vi.fn(() => Promise.resolve(true))
 const requestMindmapClose = vi.fn(() => Promise.resolve(true))
 const requestHwpClose = vi.fn(() => Promise.resolve(true))
+const requestEpubClose = vi.fn(() => Promise.resolve(true))
 
 vi.mock('../../docs/src/main/docs-main', () => ({
   docsQueryDirty: (...args: unknown[]) => docsQueryDirty(...(args as [])),
@@ -51,6 +52,10 @@ vi.mock('../../mindmap/src/main/mindmap-main', () => ({
 
 vi.mock('../../hwp/src/main/hwp-main', () => ({
   requestHwpClose: (...args: unknown[]) => requestHwpClose(...(args as [])),
+}))
+
+vi.mock('../../epub/src/main/epub-main', () => ({
+  requestEpubClose: (...args: unknown[]) => requestEpubClose(...(args as [])),
 }))
 
 interface TabStub {
@@ -97,7 +102,8 @@ class FakeWindow {
   }
 }
 
-type DirtyKinds = 'sheets' | 'pdf' | 'markdown' | 'html' | 'mindmap' | 'hwp' | 'slides' | 'docs'
+type DirtyKinds =
+  'sheets' | 'pdf' | 'markdown' | 'html' | 'mindmap' | 'hwp' | 'epub' | 'slides' | 'docs'
 
 function fakeManager(dirty: Partial<Record<DirtyKinds, TabStub[]>> = {}) {
   return {
@@ -110,6 +116,7 @@ function fakeManager(dirty: Partial<Record<DirtyKinds, TabStub[]>> = {}) {
     dirtyHtmlTabs: () => dirty.html ?? [],
     dirtyMindmapTabs: () => dirty.mindmap ?? [],
     dirtyHwpTabs: () => dirty.hwp ?? [],
+    dirtyEpubTabs: () => dirty.epub ?? [],
     dirtySlidesTabs: () => dirty.slides ?? [],
     docsTabs: () => dirty.docs ?? [],
   }
@@ -134,6 +141,7 @@ beforeEach(async () => {
     requestHtmlClose,
     requestMindmapClose,
     requestHwpClose,
+    requestEpubClose,
   ]) {
     ask.mockImplementation(() => Promise.resolve(true))
   }
@@ -194,6 +202,7 @@ describe('dirty close', () => {
       html: [{ id: 'h', webContents: { id: 3 } }],
       mindmap: [{ id: 'x', webContents: { id: 5 } }],
       hwp: [{ id: 'w', webContents: { id: 5 } }],
+      epub: [{ id: 'e', webContents: { id: 6 } }],
       slides: [{ id: 's', webContents: { id: 4 } }],
     })
     install(win as never, manager as never)
@@ -205,6 +214,7 @@ describe('dirty close', () => {
       requestHtmlClose,
       requestMindmapClose,
       requestHwpClose,
+      requestEpubClose,
       requestSlidesClose,
     ]) {
       expect(ask).toHaveBeenCalledWith(expect.anything(), win)
@@ -230,6 +240,26 @@ describe('a dirty mind map tab', () => {
     expect(win.requestClose()).toBe(true)
     await flush()
     expect(requestMindmapClose).toHaveBeenCalledTimes(2)
+    expect(win.destroyed).toBe(true)
+  })
+})
+
+describe('a dirty book tab', () => {
+  it('is activated and asked, and a cancel keeps the window open', async () => {
+    requestEpubClose.mockResolvedValueOnce(false)
+    const win = new FakeWindow()
+    const tab = { id: 'book-1', webContents: { id: 11 } }
+    const manager = fakeManager({ epub: [tab] })
+    install(win as never, manager as never)
+    expect(win.requestClose()).toBe(true)
+    await flush()
+    expect(manager.activateTab).toHaveBeenCalledWith('book-1')
+    expect(requestEpubClose).toHaveBeenCalledWith(tab.webContents, win)
+    expect(win.destroyed).toBe(false)
+
+    expect(win.requestClose()).toBe(true)
+    await flush()
+    expect(requestEpubClose).toHaveBeenCalledTimes(2)
     expect(win.destroyed).toBe(true)
   })
 })

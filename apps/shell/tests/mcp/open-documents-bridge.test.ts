@@ -189,6 +189,38 @@ describe('open_documents on a mind map tab', () => {
   })
 })
 
+describe('open_documents on a book tab', () => {
+  const bookDoc = (dirty: boolean): OpenDocumentTab =>
+    tab({ id: 't9', kind: 'epub', title: 'novel.epub', filePath: 'C:/books/novel.epub', dirty })
+
+  it('reads the book text and saves through the editor save', async () => {
+    const read = vi.fn(async () => '# Chapter 1\n\nIt was a dark night.\n')
+    const save = vi.fn(async () => undefined)
+    const { call } = await controlWith([bookDoc(true)], { epub: { read, save } })
+
+    expect((await call({ action: 'read', target: 't9' })).content).toBe(
+      '# Chapter 1\n\nIt was a dark night.\n',
+    )
+    const closed = await call({ action: 'close', target: 't9' })
+    expect(closed.savedTo).toBe('C:/books/novel.epub')
+    expect(save).toHaveBeenCalledWith(expect.anything(), 'C:/books/novel.epub')
+  })
+
+  it('a clean book closes without a save, and a discard never saves', async () => {
+    const save = vi.fn(async () => undefined)
+    const clean = await controlWith([bookDoc(false)], { epub: { read: async () => '', save } })
+    expect(await clean.call({ action: 'close', target: 't9' })).not.toHaveProperty('savedTo')
+    const dirty = await controlWith([bookDoc(true)], { epub: { read: async () => '', save } })
+    await dirty.call({ action: 'close', target: 't9', unsaved: 'discard' })
+    expect(save).not.toHaveBeenCalled()
+  })
+
+  it('names the missing editor instead of failing silently', async () => {
+    const { call } = await controlWith([bookDoc(true)])
+    await expect(call({ action: 'read', target: 't9' })).rejects.toThrow(/e-book editor/)
+  })
+})
+
 describe('open_documents close: PDF guard', () => {
   it('refuses to close a PDF tab, naming the reason', async () => {
     const doc = tab({ id: 't6', kind: 'pdf', title: 'six.pdf', filePath: 'C:/docs/six.pdf' })

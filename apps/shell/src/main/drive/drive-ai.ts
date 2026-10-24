@@ -80,6 +80,8 @@ export function entryType(file: { name: string; mimeType: string }): DriveEntryT
     case '.hwp':
     case '.hwpx':
       return 'hwp'
+    case '.epub':
+      return 'epub'
     default:
       return 'other'
   }

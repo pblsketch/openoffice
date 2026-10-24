@@ -43,6 +43,8 @@ import menuMindmapIcon1x from './assets/menu-mindmap.png?asset'
 import menuMindmapIcon2x from './assets/menu-mindmap@2x.png?asset'
 import menuHwpIcon1x from './assets/menu-hwp.png?asset'
 import menuHwpIcon2x from './assets/menu-hwp@2x.png?asset'
+import menuEpubIcon1x from './assets/menu-epub.png?asset'
+import menuEpubIcon2x from './assets/menu-epub@2x.png?asset'
 import menuHomeIcon1x from './assets/menu-home.png?asset'
 import menuHomeIcon2x from './assets/menu-home@2x.png?asset'
 import { createI18n, isLang, normalizeLang, setUiLang, type Lang } from '@genoffice/i18n'
@@ -286,6 +288,18 @@ import {
   setMindmapProvisionalTitleHook,
 } from '../../../mindmap/src/main/mindmap-main'
 import { mindmapReadOutline } from '../../../mindmap/src/main/mcp-queries'
+import {
+  EPUB_ASSET_SCHEME_PRIVILEGE,
+  configureEpubRuntime,
+  epubFileRenamed,
+  registerEpubAssetProtocol,
+  requestEpubSave,
+  sendEpubMenuCommand,
+  setEpubFileSavedHook,
+} from '../../../epub/src/main/epub-main'
+import { epubReadText, epubSaveToPath } from '../../../epub/src/main/mcp-queries'
+import type { EpubMenuCommand } from '../../../epub/src/shared/ipc'
+import { migrateJobRecords } from './pdf-structure/job-migration'
 import type {
   AutoSaveDefault,
   FolderListing,
@@ -344,6 +358,7 @@ import {
   ODT_RE,
   MINDMAP_RE,
   HWP_RE,
+  EPUB_RE,
   PDF_RE,
   PPTX_RE,
   TEXT_RE,
@@ -517,6 +532,9 @@ const MINDMAP_OUT = app.isPackaged
 const HWP_OUT = app.isPackaged
   ? join(process.resourcesPath, 'modules', 'hwp')
   : join(APPS_ROOT, 'hwp', 'out')
+const EPUB_OUT = app.isPackaged
+  ? join(process.resourcesPath, 'modules', 'epub')
+  : join(APPS_ROOT, 'epub', 'out')
 const SIDECAR_BIN = app.isPackaged
   ? join(process.resourcesPath, 'native', SIDECAR_EXE)
   : join(APPS_ROOT, 'sheets', 'native', 'xlsx-engine', 'target', 'release', SIDECAR_EXE)
@@ -593,8 +611,19 @@ configureHwpRuntime({
   rendererFile: join(HWP_OUT, 'renderer', 'index.html'),
   openGeneratedPath: (path) => openGeneratedDocument(path),
 })
-// privileged-scheme registration is only legal before app ready
-registerPrivilegedSchemes()
+configureEpubRuntime({
+  preloadPath: join(EPUB_OUT, 'preload', 'index.js'),
+  rendererUrl: process.env.EPUB_RENDERER_URL,
+  rendererFile: join(EPUB_OUT, 'renderer', 'index.html'),
+  userDataDir: () => app.getPath('userData'),
+  // the stored translation's job records follow the book's new bytes after a save
+  migrateJobRecords,
+  // a result book is never written over a file open in any tab or window
+  isPathOpenInTab: (path) => isPathOpenInAnyTab(path),
+})
+// privileged-scheme registration is only legal before app ready, and only once
+// per process: the html module's call carries the book's asset scheme along
+registerPrivilegedSchemes([EPUB_ASSET_SCHEME_PRIVILEGE])
 
 // ---- UI language ----
 // Persisted in userData/app-settings.json so the editor modules can read the
@@ -786,6 +815,10 @@ const tMain = createI18n({
     filterHtml: 'HTML 文档',
     filterMindmap: '思维导图 (XMind 文件)',
     filterHwp: 'HWP 文档 (HWP, HWPX)',
+    filterEpub: '电子书 (EPUB)',
+    menuFind: '查找…',
+    menuReplace: '替换…',
+    menuTranslateBook: '翻译图书…',
     filterPdf: 'PDF 文档',
     errBadArgs: '参数无效',
     errBadName: '文件名不合法',
@@ -905,6 +938,10 @@ const tMain = createI18n({
     filterHtml: 'HTML Documents',
     filterMindmap: 'Mind Maps (XMind files)',
     filterHwp: 'HWP Documents (HWP, HWPX)',
+    filterEpub: 'E-books (EPUB)',
+    menuFind: 'Find…',
+    menuReplace: 'Replace…',
+    menuTranslateBook: 'Translate Book…',
     filterPdf: 'PDF Documents',
     errBadArgs: 'Invalid arguments',
     errBadName: 'Invalid file name',
@@ -1032,6 +1069,10 @@ const tMain = createI18n({
     filterHtml: 'Tài liệu HTML',
     filterMindmap: 'Sơ đồ tư duy (tệp XMind)',
     filterHwp: 'Tài liệu HWP (HWP, HWPX)',
+    filterEpub: 'Sách điện tử (EPUB)',
+    menuFind: 'Tìm…',
+    menuReplace: 'Thay thế…',
+    menuTranslateBook: 'Dịch sách…',
     filterPdf: 'Tài liệu PDF',
     errBadArgs: 'Đối số không hợp lệ',
     errBadName: 'Tên tệp không hợp lệ',
@@ -1160,6 +1201,10 @@ const tMain = createI18n({
     filterHtml: 'HTML ドキュメント',
     filterMindmap: 'マインドマップ (XMind ファイル)',
     filterHwp: 'HWP ドキュメント (HWP, HWPX)',
+    filterEpub: '電子書籍 (EPUB)',
+    menuFind: '検索…',
+    menuReplace: '置換…',
+    menuTranslateBook: '本を翻訳…',
     filterPdf: 'PDF ドキュメント',
     errBadArgs: '引数が無効です',
     errBadName: 'ファイル名が無効です',
@@ -1289,6 +1334,10 @@ const tMain = createI18n({
     filterHtml: 'HTML 문서',
     filterMindmap: '마인드맵 (XMind 파일)',
     filterHwp: '한글 문서 (HWP, HWPX)',
+    filterEpub: '전자책 (EPUB)',
+    menuFind: '찾기…',
+    menuReplace: '바꾸기…',
+    menuTranslateBook: '책 번역…',
     filterPdf: 'PDF 문서',
     errBadArgs: '잘못된 인수입니다',
     errBadName: '파일 이름이 잘못되었습니다',
@@ -1416,6 +1465,10 @@ const tMain = createI18n({
     filterHtml: 'Documents HTML',
     filterMindmap: 'Cartes mentales (fichiers XMind)',
     filterHwp: 'Documents HWP (HWP, HWPX)',
+    filterEpub: 'Livres numériques (EPUB)',
+    menuFind: 'Rechercher…',
+    menuReplace: 'Remplacer…',
+    menuTranslateBook: 'Traduire le livre…',
     filterPdf: 'Documents PDF',
     errBadArgs: 'Arguments non valides',
     errBadName: 'Nom de fichier non valide',
@@ -1546,6 +1599,10 @@ const tMain = createI18n({
     filterHtml: 'HTML-Dokumente',
     filterMindmap: 'Mindmaps (XMind-Dateien)',
     filterHwp: 'HWP-Dokumente (HWP, HWPX)',
+    filterEpub: 'E-Books (EPUB)',
+    menuFind: 'Suchen…',
+    menuReplace: 'Ersetzen…',
+    menuTranslateBook: 'Buch übersetzen…',
     filterPdf: 'PDF-Dokumente',
     errBadArgs: 'Ungültige Argumente',
     errBadName: 'Ungültiger Dateiname',
@@ -1676,6 +1733,10 @@ const tMain = createI18n({
     filterHtml: 'Documentos HTML',
     filterMindmap: 'Mapas mentales (archivos XMind)',
     filterHwp: 'Documentos HWP (HWP, HWPX)',
+    filterEpub: 'Libros electrónicos (EPUB)',
+    menuFind: 'Buscar…',
+    menuReplace: 'Reemplazar…',
+    menuTranslateBook: 'Traducir libro…',
     filterPdf: 'Documentos PDF',
     errBadArgs: 'Argumentos no válidos',
     errBadName: 'Nombre de archivo no válido',
@@ -1805,6 +1866,10 @@ const tMain = createI18n({
     filterHtml: 'เอกสาร HTML',
     filterMindmap: 'แผนที่ความคิด (ไฟล์ XMind)',
     filterHwp: 'เอกสาร HWP (HWP, HWPX)',
+    filterEpub: 'หนังสืออิเล็กทรอนิกส์ (EPUB)',
+    menuFind: 'ค้นหา…',
+    menuReplace: 'แทนที่…',
+    menuTranslateBook: 'แปลหนังสือ…',
     filterPdf: 'เอกสาร PDF',
     errBadArgs: 'อาร์กิวเมนต์ไม่ถูกต้อง',
     errBadName: 'ชื่อไฟล์ไม่ถูกต้อง',
@@ -1930,6 +1995,10 @@ const tMain = createI18n({
     filterHtml: 'Dokumen HTML',
     filterMindmap: 'Peta pikiran (file XMind)',
     filterHwp: 'Dokumen HWP (HWP, HWPX)',
+    filterEpub: 'Buku elektronik (EPUB)',
+    menuFind: 'Cari…',
+    menuReplace: 'Ganti…',
+    menuTranslateBook: 'Terjemahkan buku…',
     filterPdf: 'Dokumen PDF',
     errBadArgs: 'Argumen tidak valid',
     errBadName: 'Nama file tidak valid',
@@ -2059,6 +2128,10 @@ const tMain = createI18n({
     filterHtml: 'Документы HTML',
     filterMindmap: 'Интеллект-карты (файлы XMind)',
     filterHwp: 'Документы HWP (HWP, HWPX)',
+    filterEpub: 'Электронные книги (EPUB)',
+    menuFind: 'Найти…',
+    menuReplace: 'Заменить…',
+    menuTranslateBook: 'Перевести книгу…',
     filterPdf: 'Документы PDF',
     errBadArgs: 'Недопустимые аргументы',
     errBadName: 'Недопустимое имя файла',
@@ -2187,6 +2260,10 @@ const tMain = createI18n({
     filterHtml: 'مستندات HTML',
     filterMindmap: 'خرائط ذهنية (ملفات XMind)',
     filterHwp: 'مستندات HWP (HWP, HWPX)',
+    filterEpub: 'كتب إلكترونية (EPUB)',
+    menuFind: 'بحث…',
+    menuReplace: 'استبدال…',
+    menuTranslateBook: 'ترجمة الكتاب…',
     filterPdf: 'مستندات PDF',
     errBadArgs: 'وسيطات غير صالحة',
     errBadName: 'اسم ملف غير صالح',
@@ -2312,6 +2389,10 @@ const tMain = createI18n({
     filterHtml: 'Documentos HTML',
     filterMindmap: 'Mapas mentais (arquivos XMind)',
     filterHwp: 'Documentos HWP (HWP, HWPX)',
+    filterEpub: 'Livros digitais (EPUB)',
+    menuFind: 'Localizar…',
+    menuReplace: 'Substituir…',
+    menuTranslateBook: 'Traduzir livro…',
     filterPdf: 'Documentos PDF',
     errBadArgs: 'Argumentos inválidos',
     errBadName: 'Nome de arquivo inválido',
@@ -2441,6 +2522,10 @@ const tMain = createI18n({
     filterHtml: 'Documenti HTML',
     filterMindmap: 'Mappe mentali (file XMind)',
     filterHwp: 'Documenti HWP (HWP, HWPX)',
+    filterEpub: 'Libri digitali (EPUB)',
+    menuFind: 'Trova…',
+    menuReplace: 'Sostituisci…',
+    menuTranslateBook: 'Traduci libro…',
     filterPdf: 'Documenti PDF',
     errBadArgs: 'Argomenti non validi',
     errBadName: 'Nome file non valido',
@@ -2570,6 +2655,10 @@ const tMain = createI18n({
     filterHtml: 'Dokumenty HTML',
     filterMindmap: 'Mapy myśli (pliki XMind)',
     filterHwp: 'Dokumenty HWP (HWP, HWPX)',
+    filterEpub: 'E-booki (EPUB)',
+    menuFind: 'Znajdź…',
+    menuReplace: 'Zamień…',
+    menuTranslateBook: 'Przetłumacz książkę…',
     filterPdf: 'Dokumenty PDF',
     errBadArgs: 'Nieprawidłowe argumenty',
     errBadName: 'Nieprawidłowa nazwa pliku',
@@ -2698,6 +2787,10 @@ const tMain = createI18n({
     filterHtml: 'Dokumenty HTML',
     filterMindmap: 'Myšlenkové mapy (soubory XMind)',
     filterHwp: 'Dokumenty HWP (HWP, HWPX)',
+    filterEpub: 'E-knihy (EPUB)',
+    menuFind: 'Najít…',
+    menuReplace: 'Nahradit…',
+    menuTranslateBook: 'Přeložit knihu…',
     filterPdf: 'Dokumenty PDF',
     errBadArgs: 'Neplatné argumenty',
     errBadName: 'Neplatný název souboru',
@@ -2825,6 +2918,10 @@ const tMain = createI18n({
     filterHtml: 'HTML-documenten',
     filterMindmap: 'Mindmaps (XMind-bestanden)',
     filterHwp: 'HWP-documenten (HWP, HWPX)',
+    filterEpub: 'E-boeken (EPUB)',
+    menuFind: 'Zoeken…',
+    menuReplace: 'Vervangen…',
+    menuTranslateBook: 'Boek vertalen…',
     filterPdf: 'PDF-documenten',
     errBadArgs: 'Ongeldige argumenten',
     errBadName: 'Ongeldige bestandsnaam',
@@ -2955,6 +3052,10 @@ const tMain = createI18n({
     filterHtml: 'Dokumen HTML',
     filterMindmap: 'Peta minda (fail XMind)',
     filterHwp: 'Dokumen HWP (HWP, HWPX)',
+    filterEpub: 'Buku elektronik (EPUB)',
+    menuFind: 'Cari…',
+    menuReplace: 'Ganti…',
+    menuTranslateBook: 'Terjemah buku…',
     filterPdf: 'Dokumen PDF',
     errBadArgs: 'Argumen tidak sah',
     errBadName: 'Nama fail tidak sah',
@@ -3082,6 +3183,10 @@ const tMain = createI18n({
     filterHtml: 'מסמכי HTML',
     filterMindmap: 'מפות חשיבה (קובצי XMind)',
     filterHwp: 'מסמכי HWP (HWP, HWPX)',
+    filterEpub: 'ספרים אלקטרוניים (EPUB)',
+    menuFind: 'חיפוש…',
+    menuReplace: 'החלפה…',
+    menuTranslateBook: 'תרגום הספר…',
     filterPdf: 'מסמכי PDF',
     errBadArgs: 'ארגומנטים לא חוקיים',
     errBadName: 'שם קובץ לא חוקי',
@@ -3208,6 +3313,10 @@ const tMain = createI18n({
     filterHtml: 'HTML दस्तावेज़',
     filterMindmap: 'माइंड मैप (XMind फ़ाइलें)',
     filterHwp: 'HWP दस्तावेज़ (HWP, HWPX)',
+    filterEpub: 'ई-बुक (EPUB)',
+    menuFind: 'खोजें…',
+    menuReplace: 'बदलें…',
+    menuTranslateBook: 'पुस्तक का अनुवाद करें…',
     filterPdf: 'PDF दस्तावेज़',
     errBadArgs: 'अमान्य आर्ग्युमेंट',
     errBadName: 'अमान्य फ़ाइल नाम',
@@ -3336,6 +3445,10 @@ const tMain = createI18n({
     filterHtml: 'HTML 文件',
     filterMindmap: '心智圖 (XMind 檔案)',
     filterHwp: 'HWP 文件 (HWP, HWPX)',
+    filterEpub: '電子書 (EPUB)',
+    menuFind: '尋找…',
+    menuReplace: '取代…',
+    menuTranslateBook: '翻譯書籍…',
     filterPdf: 'PDF 文件',
     errBadArgs: '參數無效',
     errBadName: '檔案名稱不合法',
@@ -3520,6 +3633,7 @@ function afterFileMoved(oldPath: string, newPath: string): void {
     else if (t.kind === 'html') htmlFileRenamed(t.webContents, oldPath, newPath)
     else if (t.kind === 'mindmap') mindmapFileRenamed(t.webContents, oldPath, newPath)
     else if (t.kind === 'hwp') hwpFileRenamed(t.webContents, oldPath, newPath)
+    else if (t.kind === 'epub') epubFileRenamed(t.webContents, oldPath, newPath)
     else if (t.kind === 'pdf') pdfFileRenamed(t.webContents, oldPath, newPath)
   }
 }
@@ -3736,6 +3850,9 @@ function applyMenuFor(kind: TabKind): void {
       break
     case 'hwp':
       buildHwpMenu()
+      break
+    case 'epub':
+      buildEpubMenu()
       break
     default:
       buildHomeMenu()
@@ -3990,6 +4107,12 @@ function createShellWindow(): void {
     recordRecentFile(path)
     applyPendingDir(wc.id, path)
   })
+  // a book's Save As lands on a new path
+  setEpubFileSavedHook((wc, path) => {
+    manager.setTabFileFor(wc.id, path)
+    detachedSetFileFor(wc.id, path)
+    recordRecentFile(path)
+  })
   setHtmlProvisionalTitleHook((wc, title) => {
     manager.setTabTitleFor(wc.id, title)
     detachedSetTitleFor(wc.id, title)
@@ -4088,6 +4211,7 @@ const OPEN_DIALOG_EXTENSIONS = [
   'xmind',
   'hwp',
   'hwpx',
+  'epub',
 ]
 
 function notifyUnsupportedFile(filePath: string): void {
@@ -4224,6 +4348,13 @@ function routeDocumentPath(filePath: string): boolean {
     const existing = tabManager.findHwpTabByPath(filePath)
     if (existing) tabManager.activateTab(existing)
     else tabManager.openHwpTab(filePath)
+    return true
+  }
+  if (EPUB_RE.test(filePath)) {
+    recordRecentFile(filePath)
+    const existing = tabManager.findEpubTabByPath(filePath)
+    if (existing) tabManager.activateTab(existing)
+    else tabManager.openEpubTab(filePath)
     return true
   }
   notifyUnsupportedFile(filePath)
@@ -4691,6 +4822,7 @@ function registerHomeIpc(): void {
         { name: tm('filterHtml'), extensions: ['html', 'htm'] },
         { name: tm('filterMindmap'), extensions: ['xmind'] },
         { name: tm('filterHwp'), extensions: ['hwp', 'hwpx'] },
+        { name: tm('filterEpub'), extensions: ['epub'] },
       ],
       properties: ['openFile', 'multiSelections'],
     })
@@ -5251,6 +5383,7 @@ interface MenuIconSet {
   html: NativeImage
   mindmap: NativeImage
   hwp: NativeImage
+  epub: NativeImage
   home: NativeImage
 }
 let menuIconCache: MenuIconSet | null = null
@@ -5264,6 +5397,7 @@ function menuIcons(): MenuIconSet {
     html: loadMenuIcon(menuHtmlIcon1x, menuHtmlIcon2x),
     mindmap: loadMenuIcon(menuMindmapIcon1x, menuMindmapIcon2x),
     hwp: loadMenuIcon(menuHwpIcon1x, menuHwpIcon2x),
+    epub: loadMenuIcon(menuEpubIcon1x, menuEpubIcon2x),
     home: loadMenuIcon(menuHomeIcon1x, menuHomeIcon2x),
   }
   return menuIconCache
@@ -5279,6 +5413,7 @@ const TAB_MENU_ICON: Record<TabKind, keyof MenuIconSet> = {
   html: 'html',
   mindmap: 'mindmap',
   hwp: 'hwp',
+  epub: 'epub',
   help: 'home',
 }
 
@@ -5740,6 +5875,17 @@ function linkMenuKind(): TabKind | undefined {
 }
 function activeHwpTarget() {
   return activeEditorTarget('hwp', () => tabManager?.activeHwpTab())
+}
+function activeEpubTarget() {
+  return activeEditorTarget('epub', () => tabManager?.activeEpubTab())
+}
+
+/** whether a tab or a detached window of any editor has this file open */
+function isPathOpenInAnyTab(path: string): boolean {
+  const wanted = canonicalPath(path)
+  if (wanted === undefined) return false
+  const open = [...(tabManager?.openFilePaths() ?? []), ...detachedFilePaths()]
+  return open.some((openPath) => canonicalPath(openPath) === wanted)
 }
 
 /**
@@ -6305,6 +6451,115 @@ function buildHwpMenu(): void {
       ],
     },
     editMenuTemplate(process.platform, appMenuLabels(currentLang())),
+    windowMenuTemplate(process.platform, appMenuLabels(currentLang())),
+    {
+      role: 'help',
+      label: tm('menuHelp'),
+      submenu: [
+        { label: tm('thirdPartyNotices'), click: () => void openThirdPartyNotices() },
+        { type: 'separator' },
+        checkUpdatesMenuItem(appMenuLabels(currentLang())),
+        aboutMenuItem(appMenuLabels(currentLang())),
+      ],
+    },
+  ]
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
+
+// ---- book menu (epub-main has no menu of its own; the shell owns book tabs) ----
+
+function buildEpubMenu(): void {
+  const isMac = process.platform === 'darwin'
+  const labels = appMenuLabels(currentLang())
+  /** a command for the book in the active tab or the focused detached window */
+  const toBook = (command: EpubMenuCommand) => () => {
+    const tab = activeEpubTarget()
+    if (tab) sendEpubMenuCommand(tab.webContents, command)
+  }
+  // Undo, redo, find, replace and zoom go to the book: its history and its view
+  // are the editor's own, so the page roles would not reach them. The editor
+  // takes these keys itself; the shortcut is shown but not registered, or one
+  // press would run twice.
+  const bookKey = (
+    label: string,
+    accelerator: string,
+    command: EpubMenuCommand,
+  ): MenuItemConstructorOptions => ({
+    label,
+    accelerator,
+    registerAccelerator: false,
+    click: toBook(command),
+  })
+  const template: MenuItemConstructorOptions[] = [
+    ...(isMac ? [{ role: 'appMenu' as const }] : []),
+    {
+      label: tm('menuFile'),
+      submenu: [
+        {
+          label: tm('menuOpen'),
+          accelerator: 'CmdOrCtrl+O',
+          click: () => void openFileViaDialog(),
+        },
+        { type: 'separator' },
+        {
+          label: tm('backToHome'),
+          accelerator: 'Shift+CmdOrCtrl+H',
+          click: () => tabManager?.openHomeTab(),
+        },
+        { type: 'separator' },
+        {
+          label: tm('menuSave'),
+          accelerator: 'CmdOrCtrl+S',
+          click: () => {
+            const tab = activeEpubTarget()
+            if (tab) void requestEpubSave(tab.webContents, 'save')
+          },
+        },
+        {
+          label: tm('menuSaveAs'),
+          accelerator: 'CmdOrCtrl+Shift+S',
+          click: () => {
+            const tab = activeEpubTarget()
+            if (tab) void requestEpubSave(tab.webContents, 'saveAs')
+          },
+        },
+        { type: 'separator' },
+        { label: tm('menuTranslateBook'), click: toBook('translate-book') },
+        { type: 'separator' },
+        {
+          label: tm('menuClose'),
+          accelerator: 'CmdOrCtrl+W',
+          click: () => closeFocusedEditor(),
+        },
+      ],
+    },
+    {
+      label: labels.edit,
+      submenu: [
+        bookKey(labels.undo, 'CmdOrCtrl+Z', 'undo'),
+        bookKey(labels.redo, isMac ? 'Shift+Cmd+Z' : 'Ctrl+Y', 'redo'),
+        { type: 'separator' },
+        { role: 'cut', label: labels.cut },
+        { role: 'copy', label: labels.copy },
+        { role: 'paste', label: labels.paste },
+        { role: 'delete', label: labels.delete },
+        { type: 'separator' },
+        { role: 'selectAll', label: labels.selectAll },
+        { type: 'separator' },
+        bookKey(tm('menuFind'), 'CmdOrCtrl+F', 'find'),
+        bookKey(tm('menuReplace'), isMac ? 'Alt+Cmd+F' : 'Ctrl+H', 'replace'),
+      ],
+    },
+    {
+      label: labels.view,
+      submenu: [
+        bookKey(labels.actualSize, 'CmdOrCtrl+0', 'zoom-reset'),
+        bookKey(labels.zoomIn, 'CmdOrCtrl+=', 'zoom-in'),
+        bookKey(labels.zoomOut, 'CmdOrCtrl+-', 'zoom-out'),
+        { type: 'separator' },
+        { role: 'togglefullscreen', label: labels.fullscreen },
+      ],
+    },
     windowMenuTemplate(process.platform, appMenuLabels(currentLang())),
     {
       role: 'help',
@@ -7300,9 +7555,12 @@ app.whenReady().then(async () => {
     html: join(HTML_OUT, 'renderer'),
     mindmap: join(MINDMAP_OUT, 'renderer'),
     hwp: join(HWP_OUT, 'renderer'),
+    epub: join(EPUB_OUT, 'renderer'),
     // the manual shares the shell's own renderer bundle (help mode)
     help: join(__dirname, '../renderer'),
   })
+  // the open books' pictures, styles and fonts (only entries of a book a tab has open)
+  registerEpubAssetProtocol()
   if (headlessArgv.kind !== 'none') {
     await runHeadlessExportEntry(headlessArgv)
     return
@@ -7607,6 +7865,10 @@ app.whenReady().then(async () => {
         save: mindmapSaveToPath,
       },
       hwp: { read: hwpReadText },
+      epub: {
+        read: epubReadText,
+        save: epubSaveToPath,
+      },
     }),
     // the headless create_*/read_* tools delegate to the bundled genoffice CLI
     // (the same engines, no second implementation); it runs on the app's own

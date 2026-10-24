@@ -75,8 +75,15 @@ function runningJobLabel(kind: JobKind, lang: string | undefined): string {
   }
 }
 
-/** One document job at a time per document, in this process and in any other (spec §9). */
-export async function assertNoRunningJob(store: ResultStore, docHash: string): Promise<void> {
+/**
+ * One document job at a time per document, in this process and in any other
+ * (spec §9). `statusCommand` is the command the refusal points at.
+ */
+export async function assertNoRunningJob(
+  store: ResultStore,
+  docHash: string,
+  statusCommand = 'pdf status',
+): Promise<void> {
   const here = documentJobs.running(docHash)
   const elsewhere = here ? null : (await store.listJobs(docHash)).find((j) => j.state === 'running')
   const running = here
@@ -104,7 +111,7 @@ export async function assertNoRunningJob(store: ResultStore, docHash: string): P
         ...(running.progress ? { progress: running.progress } : {}),
       },
     },
-    { suggestion: 'wait for it to end; `ieumoffice pdf status <file>` shows its progress' },
+    { suggestion: `wait for it to end; \`ieumoffice ${statusCommand} <file>\` shows its progress` },
   )
 }
 
