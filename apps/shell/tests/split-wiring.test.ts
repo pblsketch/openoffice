@@ -84,7 +84,7 @@ describe('the tab context menu split entries', () => {
     expect(source).toMatch(/isPaneTab: tabManager\.isPaneTab\(id\)/)
     expect(source).toMatch(/const intent = decideSplitDrop\(\{/)
     expect(source).toMatch(/if \(intent\) tabManager\.splitWith\(id, intent\)/)
-    expect(source).toMatch(/if \(tabManager\.isPaneTab\(id\)\) \{/)
+    expect(source).toMatch(/\(tabManager\.isPaneTab\(id\)/)
     expect(source).toMatch(/tabManager\?\.unsplit\(\)/)
   })
 

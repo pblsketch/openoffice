@@ -13,7 +13,13 @@ import {
 import type { AiFontSize, AiPanelPrefs, AiPanelSide } from '@genoffice/ui'
 import { PRODUCT_CONTACT_EMAIL, PRODUCT_REPO_SLUG } from '@genoffice/i18n'
 import type { Lang } from '@genoffice/i18n'
-import type { DecisionEndpoint, DefaultAppStatus, FileSearchSettings } from '../../shared/home-api'
+import type {
+  AuthorNameSetting,
+  DecisionEndpoint,
+  DefaultAppStatus,
+  FileSearchSettings,
+} from '../../shared/home-api'
+import { AUTHOR_NAME_MAX } from '../../shared/home-api'
 import type { UpdateUiState } from '../../shared/update-api'
 import {
   DEFAULT_MAX_OUTPUT_TOKENS,
@@ -1488,6 +1494,7 @@ export function SettingsModal({
   const [defaultAppBusy, setDefaultAppBusy] = useState(false)
   const [defaultAppFailed, setDefaultAppFailed] = useState(false)
   const [aiPrefs, setAiPrefs] = useState<AiPanelPrefs>(DEFAULT_AI_PANEL_PREFS)
+  const [authorName, setAuthorName] = useState<AuthorNameSetting>({ value: '', fallback: '' })
   const [channel, setChannel] = useState<'stable' | 'beta'>('stable')
   const [appVersion, setAppVersion] = useState('')
   const [updateState, setUpdateState] = useState<UpdateUiState | null>(null)
@@ -1513,6 +1520,9 @@ export function SettingsModal({
     })
     void window.aiOffice.getAiPanelPrefs?.().then((prefs) => {
       if (alive) setAiPrefs(prefs)
+    })
+    void window.aiOffice.getAuthorName?.().then((v) => {
+      if (alive) setAuthorName(v)
     })
     void window.aiOffice.getUpdateChannel?.().then((ch) => {
       if (alive) setChannel(ch)
@@ -1563,6 +1573,10 @@ export function SettingsModal({
   const updateAiPrefs = (patch: Partial<AiPanelPrefs>) => {
     setAiPrefs((prev) => ({ ...prev, ...patch }))
     void window.aiOffice.setAiPanelPrefs(patch).then(setAiPrefs)
+  }
+
+  const commitAuthorName = () => {
+    void window.aiOffice.setAuthorName?.(authorName.value).then(setAuthorName)
   }
 
   const changeSaveDir = () => {
@@ -1777,6 +1791,44 @@ export function SettingsModal({
                     aria-checked={aiPrefs.spellcheck}
                     aria-label={t('setAiSpellcheck')}
                     onClick={() => updateAiPrefs({ spellcheck: !aiPrefs.spellcheck })}
+                  />
+                </div>
+                <div className="set-field">
+                  <div className="set-field-text">
+                    <div className="set-field-stack">
+                      <div className="set-field-label">{t('setAiShowSidebar')}</div>
+                      <div className="set-field-desc">{t('setAiShowSidebarDesc')}</div>
+                    </div>
+                  </div>
+                  <button
+                    className="set-switch"
+                    role="switch"
+                    aria-checked={aiPrefs.showAiSidebar}
+                    aria-label={t('setAiShowSidebar')}
+                    onClick={() => updateAiPrefs({ showAiSidebar: !aiPrefs.showAiSidebar })}
+                  />
+                </div>
+                <div className="set-field">
+                  <div className="set-field-text">
+                    <div className="set-field-stack">
+                      <div className="set-field-label">{t('setAuthorName')}</div>
+                      <div className="set-field-desc">{t('setAuthorNameDesc')}</div>
+                    </div>
+                  </div>
+                  <input
+                    id="set-author-name"
+                    className="set-input"
+                    type="text"
+                    value={authorName.value}
+                    placeholder={authorName.fallback}
+                    maxLength={AUTHOR_NAME_MAX}
+                    spellCheck={false}
+                    autoComplete="off"
+                    onChange={(e) => setAuthorName((prev) => ({ ...prev, value: e.target.value }))}
+                    onBlur={commitAuthorName}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') e.currentTarget.blur()
+                    }}
                   />
                 </div>
                 <div className="set-field">

@@ -110,6 +110,20 @@ export function pmDocOptions(parsed: {
   }
 }
 
+/** the element this editor writes into a run's rPr to carry the label */
+const REDACT_RPR_RE = /<go:redact\b/
+const REDACT_LABEL_RE = /<go:redact\b[^>]*\bw:label="([^"]*)"/
+
+function redactLabelIn(rawRPr: string): string {
+  const found = REDACT_LABEL_RE.exec(rawRPr)
+  const label = found?.[1] ?? 'private'
+  return label
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+}
+
 export function blocksToPmDoc(
   blocks: Block[],
   sections?: SectionInfo[],
@@ -1103,6 +1117,7 @@ export function tableModelToPmNode(
               cellMar: cell.cellMarTwips ?? null,
               textDirection: cell.textDirection ?? null,
               noWrap: cell.noWrap ?? null,
+              hideMark: cell.hideMark ?? false,
               tcPrEdited: false,
               fill: cell.fill ?? null,
               color: cell.styleColor ?? null,
@@ -1526,9 +1541,12 @@ export function pmTableToModel(table: PmNode): TableModel {
 export function runsToInline(runs: Run[]): PmNode[] {
   const nodes: PmNode[] = []
   for (const run of runs) {
+    const marks = runMarks(run)
+    const atomMarks = marks.length > 0 ? { marks } : {}
     if (run.math) {
       nodes.push({
         type: 'docInlineMath',
+        ...atomMarks,
         attrs: {
           omml: run.math.omml,
           mathml: inlineMathML(run.math.omml),
@@ -1543,6 +1561,7 @@ export function runsToInline(runs: Run[]): PmNode[] {
     if (run.ruby) {
       nodes.push({
         type: 'docRuby',
+        ...atomMarks,
         attrs: { base: run.text, rt: run.ruby.rt, xml: run.ruby.xml },
       })
       continue
@@ -1550,15 +1569,16 @@ export function runsToInline(runs: Run[]): PmNode[] {
     if (run.noteRef) {
       nodes.push({
         type: 'docNoteRef',
+        ...atomMarks,
         attrs: {
           kind: run.noteRef.kind,
           id: run.noteRef.id,
           num: parseInt(run.text, 10) || 1,
+          rawRPr: run.rawRPr ?? null,
         },
       })
       continue
     }
-    const marks = runMarks(run)
     // \n = soft line break, \f = in-paragraph page break, \v = column break, \u001e = text wrapping break
     const breakMarks = marks.length > 0 ? { marks } : {}
     // eslint-disable-next-line no-control-regex
@@ -1579,6 +1599,7 @@ export function runsToInline(runs: Run[]): PmNode[] {
     if (run.image) {
       nodes.push({
         type: 'docInlineImage',
+        ...atomMarks,
         attrs: {
           dataUrl: run.image.dataUrl,
           widthPx: run.image.widthPx ?? null,
@@ -1609,7 +1630,7 @@ export function runsToInline(runs: Run[]): PmNode[] {
       })
     }
     if (run.xeTerm !== undefined) {
-      nodes.push({ type: 'docXeMark', attrs: { term: run.xeTerm } })
+      nodes.push({ type: 'docXeMark', ...atomMarks, attrs: { term: run.xeTerm } })
     }
   }
   markLeadRule(nodes)
@@ -1679,13 +1700,23 @@ function runMarks(run: Run): PmMark[] {
   if (run.ins) {
     marks.push({
       type: 'ins',
-      attrs: { author: run.ins.author, date: run.ins.date ?? null, id: run.ins.id ?? null },
+      attrs: {
+        author: run.ins.author,
+        date: run.ins.date ?? null,
+        dateUtc: run.ins.dateUtc ?? null,
+        id: run.ins.id ?? null,
+      },
     })
   }
   if (run.del) {
     marks.push({
       type: 'del',
-      attrs: { author: run.del.author, date: run.del.date ?? null, id: run.del.id ?? null },
+      attrs: {
+        author: run.del.author,
+        date: run.del.date ?? null,
+        dateUtc: run.del.dateUtc ?? null,
+        id: run.del.id ?? null,
+      },
     })
   }
   if (run.rPrChange) {
@@ -1694,6 +1725,7 @@ function runMarks(run: Run): PmMark[] {
       attrs: {
         author: run.rPrChange.author,
         date: run.rPrChange.date ?? null,
+        dateUtc: run.rPrChange.dateUtc ?? null,
         id: run.rPrChange.id ?? null,
         old: run.rPrChange.old ?? null,
       },
@@ -1734,6 +1766,19 @@ function runMarks(run: Run): PmMark[] {
       run.charScalePct && !/\s/.test(run.text) && !run.underline && !run.strike && !run.link
         ? charScaleXAttr(run.text, run.charScalePct, charScaleEm(run.text, run.charScalePct))
         : null
+    // A run whose rPr carries our element came back from a file this editor
+    // wrote. The parser has no schema for a custom element, so the label is
+    // lifted out of the raw rPr and the run is re-tagged: without it the
+    // border survives a reopen but the document quietly stops withholding
+    // anything, and a model can read the whole thing again.
+    if (typeof run.rawRPr === 'string' && REDACT_RPR_RE.test(run.rawRPr)) {
+      marks.push({
+        type: 'redaction',
+        // bdr and rawRPr are what the save path needs to write the mark back;
+        // docTextStyle already carries the border, this re-asserts it on ours
+        attrs: { label: redactLabelIn(run.rawRPr), rawRPr: run.rawRPr },
+      })
+    }
     marks.push({
       type: 'docTextStyle',
       attrs: {
@@ -3405,31 +3450,37 @@ export function inlineToRuns(content: PmNode[]): Run[] {
       continue
     }
     if (node.type === 'docNoteRef') {
+      const markerRawRPr = node.attrs?.rawRPr
       runs.push({
+        ...atomBase(node),
         text: String(node.attrs?.num ?? 1),
         noteRef: {
           kind: (node.attrs?.kind as 'footnote' | 'endnote') ?? 'footnote',
           id: String(node.attrs?.id ?? ''),
         },
+        ...(typeof markerRawRPr === 'string' && markerRawRPr ? { rawRPr: markerRawRPr } : {}),
       })
       continue
     }
     if (node.type === 'docXeMark') {
-      runs.push({ text: '', xeTerm: String(node.attrs?.term ?? '') })
+      runs.push({ ...atomBase(node), text: '', xeTerm: String(node.attrs?.term ?? '') })
       continue
     }
     if (node.type === 'docInlineMath') {
       const omml = String(node.attrs?.omml ?? '')
-      if (omml) runs.push({ text: String(node.attrs?.text ?? ''), math: { omml } })
+      if (omml)
+        runs.push({ ...atomBase(node), text: String(node.attrs?.text ?? ''), math: { omml } })
       continue
     }
     if (node.type === 'docRuby') {
       const base = String(node.attrs?.base ?? '')
       const xml = String(node.attrs?.xml ?? '')
       if (base) {
-        runs.push(
-          xml ? { text: base, ruby: { rt: String(node.attrs?.rt ?? ''), xml } } : { text: base },
-        )
+        runs.push({
+          ...atomBase(node),
+          text: base,
+          ...(xml ? { ruby: { rt: String(node.attrs?.rt ?? ''), xml } } : {}),
+        })
       }
       continue
     }
@@ -3439,6 +3490,7 @@ export function inlineToRuns(content: PmNode[]): Run[] {
       const rule = node.attrs?.rule as NonNullable<Run['image']>['rule'] | null | undefined
       if ((dataUrl || rule) && xml) {
         runs.push({
+          ...atomBase(node),
           text: '',
           ...(node.attrs?.rawRPr ? { rawRPr: String(node.attrs.rawRPr) } : {}),
           image: {
@@ -3479,10 +3531,25 @@ function symRuns(run: Run): Run[] {
   return [...run.text].map((ch) => ({ ...plain, text: ch, ...(ch === glyph ? { sym } : {}) }))
 }
 
+/** an atom's marks carry its revision / comment / character style; dropping them lost the w:ins wrapper */
+function atomBase(node: PmNode): Partial<Run> {
+  if (!node.marks?.length) return {}
+  const { text: _text, ...rest } = runFromMarks('', node.marks)
+  return rest
+}
+
 function runFromMarks(text: string, marks: PmMark[]): Run {
   const run: Run = { text }
   for (const mark of marks) {
-    if (mark.type === 'bold') run.bold = true
+    if (mark.type === 'redaction') {
+      // rawRPr is the whole story: it carries both the w:bdr Word draws and the
+      // custom element holding the label, and the save path writes it back
+      // byte for byte because the run model never manages a custom element.
+      // Setting run.bdr as well would only duplicate what rPr already has.
+      if (typeof mark.attrs?.rawRPr === 'string' && mark.attrs.rawRPr) {
+        run.rawRPr = mark.attrs.rawRPr
+      }
+    } else if (mark.type === 'bold') run.bold = true
     else if (mark.type === 'italic') run.italic = true
     else if (mark.type === 'underline') run.underline = true
     else if (mark.type === 'strike') run.strike = true
@@ -3528,6 +3595,7 @@ function runFromMarks(text: string, marks: PmMark[]): Run {
     } else if (mark.type === 'ins' || mark.type === 'del') {
       const info: NonNullable<Run['ins']> = { author: String(mark.attrs?.author ?? '') }
       if (mark.attrs?.date) info.date = String(mark.attrs.date)
+      if (mark.attrs?.dateUtc) info.dateUtc = String(mark.attrs.dateUtc)
       if (mark.attrs?.id) info.id = String(mark.attrs.id)
       if (mark.type === 'ins') run.ins = info
       else run.del = info
@@ -3581,6 +3649,7 @@ function runFromMarks(text: string, marks: PmMark[]): Run {
       run.rPrChange = {
         author: String(mark.attrs?.author ?? ''),
         ...(mark.attrs?.date ? { date: String(mark.attrs.date) } : {}),
+        ...(mark.attrs?.dateUtc ? { dateUtc: String(mark.attrs.dateUtc) } : {}),
         ...(mark.attrs?.id ? { id: String(mark.attrs.id) } : {}),
         ...(mark.attrs?.old ? { old: mark.attrs.old as NonNullable<Run['rPrChange']>['old'] } : {}),
       }
@@ -3671,9 +3740,11 @@ function revisionKey(run: Run): string | null {
   return JSON.stringify([
     run.ins?.author ?? null,
     run.ins?.date ?? null,
+    run.ins?.dateUtc ?? null,
     run.ins?.id ?? null,
     run.del?.author ?? null,
     run.del?.date ?? null,
+    run.del?.dateUtc ?? null,
     run.del?.id ?? null,
   ])
 }
@@ -3733,6 +3804,11 @@ function indentSame(a: ParaFormat | undefined, b: ParaFormat | undefined): boole
 
 function normalizedFormat(format: ParaFormat | undefined): unknown {
   if (!format) return null
+  const fields = normalizedFormatFields(format)
+  return JSON.stringify(fields) === EMPTY_FORMAT_SIGNATURE ? null : fields
+}
+
+function normalizedFormatFields(format: ParaFormat): unknown[] {
   return [
     format.align ?? null,
     format.lineSpacing ?? null,
@@ -3768,6 +3844,8 @@ function normalizedFormat(format: ParaFormat | undefined): unknown {
     format.emptyRunSizeHalfPoints ?? null,
   ]
 }
+
+const EMPTY_FORMAT_SIGNATURE = JSON.stringify(normalizedFormatFields({}))
 
 export function signatureOfBlock(block: Block): string {
   return JSON.stringify({

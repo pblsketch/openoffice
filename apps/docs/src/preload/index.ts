@@ -17,6 +17,9 @@ import type {
   AiStreamChunk,
   AiStreamRequest,
   DesktopApi,
+  PdfInternalLink,
+  MarkdownImage,
+  PrintJobOptions,
   MenuCommand,
   AutoSaveDefault,
   ContextMenuRequest,
@@ -59,6 +62,14 @@ const api: DesktopApi = {
     const listener = (_event: IpcRendererEvent, value: AutoSaveDefault) => handler(value)
     ipcRenderer.on('app:auto-save-default-changed', listener)
     return () => ipcRenderer.removeListener('app:auto-save-default-changed', listener)
+  },
+  getAuthorName: () => ipcRenderer.invoke('app:get-author-name'),
+  onAuthorNameChanged: (handler) => {
+    const listener = (_event: IpcRendererEvent, name: unknown) => {
+      if (typeof name === 'string') handler(name)
+    }
+    ipcRenderer.on('app:author-name-changed', listener)
+    return () => ipcRenderer.removeListener('app:author-name-changed', listener)
   },
   getAiPanelPrefs: () => ipcRenderer.invoke('app:get-ai-panel-prefs'),
   setAiPanelPrefs: (patch) => ipcRenderer.invoke('app:set-ai-panel-prefs', patch),
@@ -163,13 +174,15 @@ const api: DesktopApi = {
   pickImage: () => ipcRenderer.invoke('docs:pick-image'),
   fontMetrics: (family: string) => ipcRenderer.invoke('docs:font-metrics', family),
   fontFamilyInfo: (families) => ipcRenderer.invoke('app:font-family-info', families),
-  print: (scale?: number) => ipcRenderer.invoke('docs:print', scale),
+  print: (scale?: number, job?: PrintJobOptions) => ipcRenderer.invoke('docs:print', scale, job),
+  listPrinters: () => ipcRenderer.invoke('docs:printers'),
   exportPdf: (
     defaultName: string,
     pageWidthTwips: number,
     pageHeightTwips: number,
     outPath?: string,
     scale?: number,
+    links?: PdfInternalLink[],
   ) =>
     ipcRenderer.invoke(
       'docs:export-pdf',
@@ -178,13 +191,24 @@ const api: DesktopApi = {
       pageHeightTwips,
       outPath,
       scale,
+      links,
     ),
   exportHtml: (defaultName: string, html: string, outPath?: string) =>
     ipcRenderer.invoke('docs:export-html', defaultName, html, outPath),
+  exportMarkdown: (
+    defaultName: string,
+    markdown: string,
+    images: MarkdownImage[],
+    outPath?: string,
+  ) => ipcRenderer.invoke('docs:export-markdown', defaultName, markdown, images, outPath),
   printPdfBuffer: (pageWidthTwips: number, pageHeightTwips: number, scale?: number) =>
     ipcRenderer.invoke('docs:print-pdf-buffer', pageWidthTwips, pageHeightTwips, scale),
-  saveMergedPdf: (defaultName: string, base64Parts: string[], outPath?: string) =>
-    ipcRenderer.invoke('docs:save-merged-pdf', defaultName, base64Parts, outPath),
+  saveMergedPdf: (
+    defaultName: string,
+    base64Parts: string[],
+    outPath?: string,
+    links?: PdfInternalLink[],
+  ) => ipcRenderer.invoke('docs:save-merged-pdf', defaultName, base64Parts, outPath, links),
   pickExportImagesTarget: () => ipcRenderer.invoke('docs:pick-export-images-target'),
   takeExportPdf: (pdfPath: string) => ipcRenderer.invoke('docs:take-export-pdf', pdfPath),
   writeExportImage: (dir: string, fileName: string, pngBase64: string) =>

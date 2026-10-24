@@ -12,7 +12,6 @@ import {
 import { copyFile, mkdir, open, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { refreshCsvDigest } from './csv-digest'
 import { createServer } from 'node:http'
-import { userInfo } from 'node:os'
 import { basename, dirname, isAbsolute, join } from 'node:path'
 
 import {
@@ -42,6 +41,7 @@ import {
   abortOnDestroyed,
   appMenuLabels,
   buildPrintableHtml,
+  configuredAuthorName,
   configuredDefaultSaveDir,
   confirmOverwriteIfConflicted,
   contextMenuLabels,
@@ -2708,11 +2708,7 @@ export function registerSheetsIpc(): void {
 
   ipcMain.handle(IPC_CHANNELS.userDisplayName, (event): string => {
     sessionFor(event)
-    try {
-      return userInfo().username
-    } catch {
-      return ''
-    }
+    return configuredAuthorName(app)
   })
 
   // Registered here (not in registerSheetsAiIpc, skipped in shell mode):

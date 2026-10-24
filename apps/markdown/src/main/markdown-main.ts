@@ -56,11 +56,21 @@ import {
   writeImageIntoOwnedAssets,
 } from './asset-lifecycle'
 import { createMarkdownConversionSession, writeMarkdownConversion } from './conversion-lifecycle'
+import { normalizeMarkdownTheme, type MarkdownTheme } from '../shared/markdown-theme'
 import { confirmOdtReport, exportOdt, odtFilterName } from './odt-export'
 import { registerMarkdownSeedIpc } from './seed-main'
 import { registerMarkdownNoteAppendIpc } from './note-append'
 import { MARKDOWN_CHANNELS, MAX_PASTED_IMAGE_BYTES } from '../shared/ipc'
-import type { ImageHostConfig } from '../shared/ipc'
+import type {
+  ImageHostConfig,
+  WikiBacklink,
+  WikiGraph,
+  WikiLinkResolveRequest,
+  WikiLinkResolved,
+} from '../shared/ipc'
+import { nodeFs, resolveWikiLinks } from './wiki-resolve'
+import { nodeVaultFs, warmWikiIndex, wikiBacklinks, wikiGraph } from './wiki-index'
+import { rememberWikiFragment, takeWikiFragment } from './wiki-fragment'
 import { isImageHostUsable, normalizeImageHostConfig, uploadImageToHost } from './image-host'
 import {
   EXPORT_IMAGE_EXTS,
@@ -413,6 +423,7 @@ const saveWaiters = new Map<number, (ok: boolean) => void>()
 const readTextWaiters = new Map<number, (result: { text: string } | { error: string }) => void>()
 /** one read per tab at a time: concurrent callers share this promise */
 const readTextInFlight = new Map<number, Promise<string>>()
+const vaultFs = nodeFs()
 
 // ── Split-copy save guard (decision 0036): remember the disk state of every
 // read and write per view and path, so that while the same document is open in
@@ -792,7 +803,13 @@ function registerMarkdownIpc(): void {
 
   registerImageProtocol()
 
-  ipcMain.handle(MARKDOWN_CHANNELS.consumePending, (e) => openPathByWc.get(e.sender.id) ?? null)
+  ipcMain.handle(MARKDOWN_CHANNELS.consumePending, (e) => {
+    const pending = openPathByWc.get(e.sender.id) ?? null
+    // the vault root is known from here on: start the index so the backlinks
+    // panel and the graph usually find it already built
+    if (pending) warmWikiIndex(configuredDefaultSaveDir(app))
+    return pending
+  })
   registerMarkdownSeedIpc({ opensFile: (wcId) => openPathByWc.has(wcId) })
   registerMarkdownNoteAppendIpc({ documentPath: (wcId) => savePathByWc.get(wcId) ?? null })
 
@@ -824,6 +841,43 @@ function registerMarkdownIpc(): void {
     await rememberDiskState(e.sender.id, path)
     return text
   })
+
+  ipcMain.handle(
+    MARKDOWN_CHANNELS.resolveWikiLinks,
+    async (_e, request: WikiLinkResolveRequest): Promise<Record<string, WikiLinkResolved>> => {
+      const fromPath = typeof request?.fromPath === 'string' ? request.fromPath : ''
+      const targets = Array.isArray(request?.targets)
+        ? request.targets.filter((t): t is string => typeof t === 'string')
+        : []
+      const resolved = await resolveWikiLinks(
+        targets,
+        { fromPath, root: configuredDefaultSaveDir(app) },
+        vaultFs,
+      )
+      // a Map is structured-cloneable but arrives as an empty object; ship the
+      // shape the renderer asked for
+      return Object.fromEntries(resolved)
+    },
+  )
+
+  ipcMain.handle(MARKDOWN_CHANNELS.rememberWikiFragment, (_e, path: unknown, fragment: unknown) => {
+    if (typeof path !== 'string' || typeof fragment !== 'string') return
+    rememberWikiFragment(path, fragment)
+  })
+
+  ipcMain.handle(MARKDOWN_CHANNELS.takeWikiFragment, (_e, path: unknown): string =>
+    typeof path === 'string' ? takeWikiFragment(path) : '',
+  )
+
+  ipcMain.handle(MARKDOWN_CHANNELS.wikiBacklinks, (_e, path: unknown): Promise<WikiBacklink[]> =>
+    typeof path === 'string'
+      ? wikiBacklinks(configuredDefaultSaveDir(app), path, nodeVaultFs())
+      : Promise.resolve([]),
+  )
+
+  ipcMain.handle(MARKDOWN_CHANNELS.wikiGraph, (): Promise<WikiGraph> =>
+    wikiGraph(configuredDefaultSaveDir(app), nodeVaultFs()),
+  )
 
   ipcMain.handle(
     MARKDOWN_CHANNELS.save,
@@ -1015,6 +1069,32 @@ function registerMarkdownIpc(): void {
         file = {}
       }
       file.imageHost = normalized
+      await atomicWriteFile(imageHostConfigPath(), Buffer.from(JSON.stringify(file, null, 2)))
+      return normalized
+    },
+  )
+
+  // ---- document paper theme (rendered via data-markdown-theme) ----
+  ipcMain.handle(MARKDOWN_CHANNELS.getMarkdownTheme, async (): Promise<MarkdownTheme> => {
+    try {
+      const raw = JSON.parse(await readFile(imageHostConfigPath(), 'utf8'))
+      return normalizeMarkdownTheme(raw?.markdownTheme)
+    } catch {
+      return 'default'
+    }
+  })
+
+  ipcMain.handle(
+    MARKDOWN_CHANNELS.setMarkdownTheme,
+    async (_e, theme: unknown): Promise<MarkdownTheme> => {
+      const normalized = normalizeMarkdownTheme(theme)
+      let file: Record<string, unknown>
+      try {
+        file = JSON.parse(await readFile(imageHostConfigPath(), 'utf8'))
+      } catch {
+        file = {}
+      }
+      file.markdownTheme = normalized
       await atomicWriteFile(imageHostConfigPath(), Buffer.from(JSON.stringify(file, null, 2)))
       return normalized
     },

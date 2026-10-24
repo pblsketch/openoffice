@@ -1,3 +1,5 @@
+import { placeholderInstruction } from './redact'
+import { redactLabelsOf } from './redact-view'
 import type { Editor } from '@tiptap/core'
 import type { AgentSkill } from '@genoffice/agent-core'
 import {
@@ -70,7 +72,16 @@ export function createDocsSkill(
     id: 'docx',
     // live: the predicate is re-read before every model request
     get systemPrompt() {
-      return AGENT_SYSTEM_PROMPT + mediaOffNote() + (isOdtSession() ? ODT_SYSTEM_NOTE : '')
+      // only when the open document actually withholds something, so a
+      // document without spans pays nothing and the model is not told to
+      // look for markers that are not there
+      const editor = getEditor()
+      const labels = editor
+        ? redactLabelsOf(editor.getJSON() as unknown as Parameters<typeof redactLabelsOf>[0])
+        : []
+      const redact = labels.length > 0 ? `\n\n${placeholderInstruction(labels)}` : ''
+      const odt = isOdtSession() ? ODT_SYSTEM_NOTE : ''
+      return AGENT_SYSTEM_PROMPT + mediaOffNote() + redact + odt
     },
     get tools() {
       const hidden = mediaToolsOff()

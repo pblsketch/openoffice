@@ -50,6 +50,7 @@ import {
 } from '@genoffice/ai-search'
 import { PRODUCT_NAME } from '@genoffice/i18n'
 import { addPicture, editPictureSrcRect, replacePictureBytes } from '@genoffice/pptx-engine'
+import { rasterImageExt } from './media-mime'
 import { matchesElementRef } from '@genoffice/pptx-engine/identity'
 import { coverCropFractions } from '@genoffice/pipelines/slides'
 import type { AiRunFailure } from '../shared/ipc'
@@ -366,8 +367,11 @@ export function registerSlidesOnlyAiIpc(): void {
           const resp = await fetchRemoteImage(String(op.url))
           if (!resp || !resp.ok) return null
           buf = Buffer.from(await readBodyCapped(resp, MAX_REMOTE_IMAGE_BYTES))
-          const ct = resp.headers.get('content-type') ?? ''
-          ext = ct.includes('png') ? 'png' : ct.includes('gif') ? 'gif' : 'jpg'
+          // magic bytes decide: a header-informed extension would happily store
+          // an HTML error page (or an attacker "image") as a .jpg in the deck
+          const kind = rasterImageExt(buf)
+          if (!kind) return null
+          ext = kind
         }
         const baseWidthPx = session.opened.deck.size.cx / EMU_PER_PX_96
         const scale = op.fitWidthPx / baseWidthPx
@@ -439,8 +443,9 @@ export function registerSlidesOnlyAiIpc(): void {
           const resp = await fetchRemoteImage(String(op.url))
           if (!resp || !resp.ok) return null
           buf = Buffer.from(await readBodyCapped(resp, MAX_REMOTE_IMAGE_BYTES))
-          const ct = resp.headers.get('content-type') ?? ''
-          ext = ct.includes('png') ? 'png' : ct.includes('gif') ? 'gif' : 'jpg'
+          const kind = rasterImageExt(buf)
+          if (!kind) return null
+          ext = kind
         }
         pushHistory(session)
         const ok = replacePictureBytes(

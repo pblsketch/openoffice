@@ -17,6 +17,7 @@ import { USER_SKILLS_BRIDGE_KEY } from '@genoffice/electron-utils/user-skills-ch
 import type { UpdateUiState } from '../shared/update-api'
 import { normalizeAiPanelPrefs } from '@genoffice/ui/ai-panel-prefs'
 import type {
+  AuthorNameSetting,
   DefaultAppStatus,
   FolderListing,
   FolderRoot,
@@ -124,6 +125,14 @@ function normalizeDefaultAppStatus(result: unknown): DefaultAppStatus {
   }
 }
 
+function normalizeAuthorNameSetting(result: unknown): AuthorNameSetting {
+  const r = (result ?? {}) as Partial<AuthorNameSetting>
+  return {
+    value: typeof r.value === 'string' ? r.value : '',
+    fallback: typeof r.fallback === 'string' ? r.fallback : '',
+  }
+}
+
 const homeApi: HomeApi = {
   async recents(query) {
     return asRecentPage(await ipcRenderer.invoke(HOME_CHANNELS.recents, query))
@@ -199,6 +208,9 @@ const homeApi: HomeApi = {
   },
   async kbCloseScope(scope) {
     await ipcRenderer.invoke('kb:close-scope', scope)
+  },
+  async kbCreateDocument(request) {
+    return ipcRenderer.invoke('kb:create-document', request)
   },
   async aiGetSettings() {
     return ipcRenderer.invoke('ai:get-settings')
@@ -456,6 +468,12 @@ const homeApi: HomeApi = {
   },
   async openMcpLogFile() {
     await ipcRenderer.invoke(HOME_CHANNELS.openMcpLogFile)
+  },
+  async getAuthorName() {
+    return normalizeAuthorNameSetting(await ipcRenderer.invoke(HOME_CHANNELS.getAuthorName))
+  },
+  async setAuthorName(value) {
+    return normalizeAuthorNameSetting(await ipcRenderer.invoke(HOME_CHANNELS.setAuthorName, value))
   },
   async getAiPanelPrefs() {
     return normalizeAiPanelPrefs(await ipcRenderer.invoke(HOME_CHANNELS.getAiPanelPrefs))
@@ -799,6 +817,13 @@ const tabsApi: TabsApi = {
     const listener = () => handler()
     ipcRenderer.on('app:chrome-pressed', listener)
     return () => ipcRenderer.removeListener('app:chrome-pressed', listener)
+  },
+  onStartRename(handler) {
+    const listener = (_event: IpcRendererEvent, id: unknown) => {
+      if (typeof id === 'string') handler(id)
+    }
+    ipcRenderer.on(TABS_CHANNELS.startRename, listener)
+    return () => ipcRenderer.removeListener(TABS_CHANNELS.startRename, listener)
   },
 }
 

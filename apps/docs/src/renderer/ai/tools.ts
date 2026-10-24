@@ -1,6 +1,7 @@
 import type { Editor } from '@tiptap/core'
 import type { Mark, Node as ProseMirrorNode } from '@tiptap/pm/model'
 import type { ChartDisplay, CommentInfo, NewChart, NoteInfo } from '@genoffice/docx-engine'
+import type { ToolDisplay } from '@genoffice/agent-core'
 import type {
   AgentToolCall,
   AgentToolDef,
@@ -8,9 +9,11 @@ import type {
   ReadUrlResult,
 } from '../../shared/ipc'
 import { t } from '../i18n/locale'
+import { MIND_MAP_LIMITS, MIND_MAP_TOOL, parseMindMapTree } from './mind-map'
 import { executeOps, opNames } from './ops'
 import { odtGuardRefusalText, odtToolRefusal, startOdtToolCall } from './odt-tools'
 import { clipExcerpt, repliesOf, resolveCommentAnchor } from './comment-ops'
+import { redactTextBetween } from './redact-view'
 import {
   PAGE_SETUP_TOOL,
   SECTION_BREAK_TOOL,
@@ -661,6 +664,7 @@ export const AGENT_TOOLS: AgentToolDef[] = [
       required: ['title', 'content'],
     },
   },
+  MIND_MAP_TOOL,
 ]
 
 /**
@@ -722,6 +726,8 @@ export interface ToolExecution {
   mutated: boolean
   /** short human-readable label for the chat activity chip */
   summary: string
+  /** UI-only side channel (never enters the LLM context) */
+  display?: ToolDisplay
 }
 
 const fail = (summary: string, output: string): ToolExecution => ({
@@ -1444,6 +1450,26 @@ function executeSyncTool(
         summary: t('aiSumReadDocContext'),
       }
 
+    case 'generate_mindmap': {
+      const summary = t('aiSumMindMap')
+      const parsed = parseMindMapTree(call.input, editor.state.doc.childCount)
+      if (!parsed.ok) return fail(summary, parsed.error)
+      const focus = typeof call.input.focus === 'string' ? call.input.focus.trim() : ''
+      const trimmedNote = parsed.trimmed
+        ? ` (trimmed to the ${MIND_MAP_LIMITS.maxNodes}-node / depth-${MIND_MAP_LIMITS.maxDepth} limit)`
+        : ''
+      return {
+        output:
+          `Mind map rendered as an interactive card in the chat: ${parsed.nodeCount} nodes, depth ${parsed.depth}` +
+          `${focus ? `, focused on "${focus.slice(0, MIND_MAP_LIMITS.maxFocusChars)}"` : ''}${trimmedNote}. ` +
+          'The user can expand branches, click a node to ask about it, jump to the cited block, or export the map. ' +
+          'Do not repeat the map content; reply with one short sentence.',
+        mutated: false,
+        summary,
+        display: { kind: 'mindmap', tree: parsed.tree },
+      }
+    }
+
     case 'read_blocks': {
       const range = validRange(editor, call.input.startBlockIndex, call.input.endBlockIndex)
       if (!range) return fail(t('aiSumReadBlocks'), rangeError(editor))
@@ -1582,7 +1608,9 @@ function executeSyncTool(
         return schema.text(n.text ?? '', marks)
       })
       const blockIndex = $from.index(0)
-      const oldText = doc.textBetween(range.from, range.to, ' ', ' ')
+      // the echo quotes what was replaced back to the model, so a selection
+      // covering a withheld span would undo the withholding right here
+      const oldText = redactTextBetween(editor.getJSON(), range.from, range.to, ' ')
       replaceInlineRange(editor, range.from, range.to, nodes, track)
       const newText = nodes.map((n) => n.textContent).join('')
       return {

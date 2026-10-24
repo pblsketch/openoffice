@@ -715,6 +715,7 @@ export const ja = {
   appTabReview: '校閲',
   appRibbonCollapse: 'リボンを折りたたむ',
   appRibbonExpand: 'リボンを展開する',
+  appRibbonCompact: 'コンパクトリボン（アイコンのみ）',
   appTabView: '表示',
   appTabAi: 'AI',
   appTabChartDesign: 'グラフのデザイン',
@@ -1123,6 +1124,9 @@ export const ja = {
   appHeadings: '見出し',
   appHeadingsHidden: '見出しを非表示にしました。',
   appHeadingsShown: '見出しを表示しました。',
+  appRightToLeft: '右から左',
+  appRightToLeftOn: 'グリッドの方向: 右から左。',
+  appRightToLeftOff: 'グリッドの方向: 左から右。',
   appPrintHeadingsTitle: '行列番号を印刷',
   // Formulas tab
   appGroupFunctionLibrary: '関数ライブラリ',

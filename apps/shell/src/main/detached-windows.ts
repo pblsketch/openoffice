@@ -28,7 +28,13 @@ import { canonicalPath } from './tab-manager'
 import { releaseClosedRenderer } from './renderer-disposal'
 import type { DetachedTab } from './tab-manager'
 import type { OpenDocumentTab, TabKind } from '../shared/tabs-api'
-import { DOCK_DWELL_MS, dockBand, pointInRect } from '../shared/tab-drag-geometry'
+import {
+  DOCK_BAND_SLACK,
+  DOCK_DWELL_MS,
+  dockBand,
+  isSettledRect,
+  pointInRect,
+} from '../shared/tab-drag-geometry'
 
 /**
  * Detached editor windows: a tab's live WebContentsView reparented into its
@@ -406,11 +412,14 @@ function trackDockHover(rec: DetachedRecord): void {
   }, DOCK_DWELL_MS)
 }
 
-/** screen rect of the shell's dock band for a given shell window (null when hidden) */
-export function dockBandFor(shellWindow: BrowserWindow | null): Rectangle | null {
+/** screen rect of the shell's dock band for a given shell window (null when hidden).
+ *  `scale` is the live interface scale: the band has to cover the strip as it is
+ *  actually rendered, or a scaled-up strip outgrows the band and re-docking
+ *  misses. */
+export function dockBandFor(shellWindow: BrowserWindow | null, scale = 1): Rectangle | null {
   if (!shellWindow || shellWindow.isDestroyed() || !shellWindow.isVisible()) return null
   if (shellWindow.isMinimized()) return null
-  return dockBand(shellWindow.getContentBounds())
+  return dockBand(shellWindow.getContentBounds(), DOCK_BAND_SLACK, scale)
 }
 
 /** frame origin that puts the pointer (at) inside the new window's title bar,
@@ -492,11 +501,21 @@ export function createDetachedEditorWindow(options: {
   const layout = () => {
     if (win.isDestroyed()) return
     const bounds = win.getContentBounds()
+    // A minimized or mid-restore window can report a degenerate client rect;
+    // applying it would blank the document view (the white screen after a
+    // Windows taskbar restore). Keep the last good layout instead.
+    if (!isSettledRect(bounds)) return
     view.setBounds({ x: 0, y: 0, width: bounds.width, height: bounds.height })
   }
   // same Linux/X11 quirk as the shell window: `resize` fires before the WM
   // applies the new size, so a follow-up layout on the next tick is required
   win.on('resize', () => {
+    layout()
+    setImmediate(() => layout())
+  })
+  // a taskbar restore needs the same sync + next-tick reconciliation: on
+  // Windows the client bounds may not have settled when `restore` fires
+  win.on('restore', () => {
     layout()
     setImmediate(() => layout())
   })

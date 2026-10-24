@@ -60,7 +60,7 @@ import {
 } from '../../../slides/src/main/slides-main'
 import { rendererUrl, safeExternalUrl } from '@genoffice/electron-utils'
 import type { DocumentTabKind, OpenDocumentTab, TabKind, TabSummary } from '../shared/tabs-api'
-import { TAB_STRIP_HEIGHT } from '../shared/tab-drag-geometry'
+import { isSettledRect, tabStripHeight } from '../shared/tab-drag-geometry'
 import type {
   SplitDropIntent,
   SplitOrientation,
@@ -124,6 +124,7 @@ export class TabManager {
   private readonly bleedWcIds = new Set<number>()
   /** tabs mid unsaved-changes prompt, so a second close click doesn't stack dialogs */
   private readonly closingIds = new Set<string>()
+  private closedListener: ((tab: { kind: TabKind; filePath: string }) => void) | null = null
   /** views whose HTML-fullscreen listeners are installed: a view that leaves
    *  for a detached window and docks back must not get a second pair */
   private readonly fullScreenTracked = new WeakSet<WebContentsView>()
@@ -153,6 +154,11 @@ export class TabManager {
     private readonly applyMenuFor: (kind: TabKind) => void,
     /** localized placeholder title for a tab that has no file yet */
     private readonly untitledTitleFor?: (kind: TabKind) => string,
+    /**
+     * The live interface scale (genoffice#1913). A getter rather than a value so a change
+     * made from the View menu reaches the next layout without rebuilding this.
+     */
+    private readonly uiScale: () => number = () => 1,
     /** fired whenever the split appears, changes or goes away (roles + memory) */
     private readonly onSplitChanged?: (state: SplitViewState | null) => void,
   ) {
@@ -164,6 +170,15 @@ export class TabManager {
     shellWindow.on('resize', () => {
       this.layout()
       setImmediate(() => this.layout())
+    })
+    // Windows fires `restore` when a minimized window comes back from the taskbar,
+    // sometimes before the client bounds have settled — the same stale-geometry
+    // race as Linux/X11 maximize (issue #15). Reconcile synchronously (the bounds
+    // are usually already right) and once more on the next tick. Bounded: exactly
+    // two layout passes per restore, no polling, no recurring timers.
+    shellWindow.on('restore', () => {
+      this.reconcileAfterWindowRestore()
+      setImmediate(() => this.reconcileAfterWindowRestore())
     })
   }
 
@@ -183,7 +198,10 @@ export class TabManager {
       setActiveSheetsWebContents(active.view?.webContents ?? null)
       this.shellWindow.contentView.addChildView(view)
       view.setVisible(false)
-      view.setBounds(this.contentBounds())
+      // the window may be minimized or mid-restore when the spare spawns; a
+      // degenerate rect would leave the spare zero-sized until its next layout
+      const bounds = this.contentBounds()
+      if (isSettledRect(bounds)) view.setBounds(bounds)
       view.webContents.once('render-process-gone', () => {
         if (this.spareSheetsView !== view) return
         this.spareSheetsView = null
@@ -222,7 +240,11 @@ export class TabManager {
   /** the layout space normal tab views live in: the window below the strip */
   private contentBounds(): Rectangle {
     const { width, height } = this.shellWindow.getContentBounds()
-    return { x: 0, y: TAB_STRIP_HEIGHT, width, height: Math.max(0, height - TAB_STRIP_HEIGHT) }
+    // The strip is `zoom`ed by the interface scale, so its rendered height
+    // grows with it — positioning the view at the unscaled constant would
+    // paint the document underneath a taller tab strip.
+    const strip = tabStripHeight(this.uiScale())
+    return { x: 0, y: strip, width, height: Math.max(0, height - strip) }
   }
 
   /** the tab whose view covers the whole window right now (HTML fullscreen / slides show) */
@@ -294,6 +316,11 @@ export class TabManager {
   layout(): void {
     // Deferred resize layouts can land after the shell window was closed.
     if (this.shellWindow.isDestroyed()) return
+    const bounds = this.contentBounds()
+    // A minimized or mid-restore window can report a degenerate client rect;
+    // applying it would shrink the active view to nothing — the white screen
+    // after a Windows taskbar restore. Keep the last good layout instead.
+    if (!isSettledRect(bounds)) return
     // pane references can go stale while a close prompt is settling; drop them
     if (
       this.split &&
@@ -312,13 +339,24 @@ export class TabManager {
       for (const t of this.tabs) {
         t.view?.setVisible(t.id === split.aTabId || t.id === split.bTabId)
       }
-      const rects = paneRects(this.contentBounds(), split.orientation, split.ratio)
+      const rects = paneRects(bounds, split.orientation, split.ratio)
       this.tabById(split.aTabId)?.view?.setBounds(rects.a)
       this.tabById(split.bTabId)?.view?.setBounds(rects.b)
       return
     }
     for (const t of this.tabs) t.view?.setVisible(t.id === this.activeId)
-    this.tabById(this.activeId)?.view?.setBounds(this.contentBounds())
+    this.tabById(this.activeId)?.view?.setBounds(bounds)
+  }
+
+  /**
+   * Re-fit the active view after the native window returns from the taskbar.
+   * Deliberately narrower than activateTab: no visibility toggles, no focus,
+   * no menu, no onChanged — the active tab, its WebContentsView and every
+   * other document stay exactly as they were.
+   */
+  reconcileAfterWindowRestore(): void {
+    if (this.shellWindow.isDestroyed() || this.shellWindow.isMinimized()) return
+    this.layout()
   }
 
   /** files open in any tab, for the open-documents registry */
@@ -1294,6 +1332,8 @@ export class TabManager {
     if (idx < 0) return
     if (this.htmlFullScreenId === id) this.htmlFullScreenId = null
     const [removed] = this.tabs.splice(idx, 1)
+    if (removed.filePath && !removed.present)
+      this.closedListener?.({ kind: removed.kind, filePath: removed.filePath })
     const split = this.split
     const survivor = split ? splitSurvivor(split, id) : null
     if (survivor !== null) {
@@ -1333,6 +1373,11 @@ export class TabManager {
         removed.view.webContents.close()
       }
     }
+  }
+
+  /** told when a tab with a file is closed (not detached), so it can be reopened */
+  setClosedListener(listener: ((tab: { kind: TabKind; filePath: string }) => void) | null): void {
+    this.closedListener = listener
   }
 
   /** Remove a tab from the strip WITHOUT destroying its WebContentsView and

@@ -23,7 +23,6 @@ import { execFile } from 'node:child_process'
 import { readFile, writeFile, rm, stat, mkdir, open } from 'node:fs/promises'
 import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
-import { userInfo } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { cleanupExpiredGeneratedPages } from './generated-page-temp'
 import { exportSlidesPdf } from './pdf-export'
@@ -31,6 +30,7 @@ import { printSlidesHtml } from './print-window'
 import { shutdownSubscriptionChildren } from '@genoffice/ai-provider/subscription'
 import {
   appMenuLabels,
+  configuredAuthorName,
   configuredDefaultSaveDir,
   confirmOverwriteIfConflicted,
   contextMenuLabels,
@@ -506,13 +506,9 @@ export async function saveSessionDeckTo(session: Session, filePath: string): Pro
 
 const RECENT_PATH = () => join(app.getPath('userData'), 'slides-recent.json')
 
-/** Comment author name: system username, falling back to a generic "User" label. */
+/** Settings → General author name, falling back to the OS account */
 function commentAuthorName(): string {
-  try {
-    return userInfo().username || 'User'
-  } catch {
-    return 'User'
-  }
+  return configuredAuthorName(app)
 }
 
 async function readRecent(): Promise<string[]> {

@@ -27,6 +27,28 @@ export interface AiModelPickerBridge {
   readonly openModelSettings?: (() => Promise<void> | void) | undefined
 }
 
+/**
+ * Where the model popover goes for a chip at `rect`: above it in the composer
+ * (the bottom of the panel), below it in a confirmation dialog near the top.
+ * `maxHeight` keeps the list inside the side it opens to.
+ */
+export function aiModelPopoverStyle(
+  rect: { left: number; top: number; bottom: number },
+  viewport: { width: number; height: number },
+  width = 260,
+  maxHeight = 420,
+): React.CSSProperties {
+  const left = Math.max(8, Math.min(rect.left, viewport.width - width - 8))
+  const below = viewport.height - rect.bottom - 8
+  const above = rect.top - 8
+  const down = below >= 180 || below >= above
+  const space = Math.max(120, down ? below : above)
+  const height = Math.min(maxHeight, space)
+  return down
+    ? { left, top: rect.bottom + 6, maxHeight: height }
+    : { left, bottom: viewport.height - rect.top + 6, maxHeight: height }
+}
+
 /** Subscription connections are named in text and carry the neutral AI mark, never a vendor logo */
 function PickerMark({ group }: { readonly group: Pick<AiProviderPickerGroup, 'kind' | 'id'> }) {
   if (group.kind === 'key') return <ProviderLogo id={group.id} />
@@ -104,8 +126,11 @@ export function AiModelPicker({
   const toggle = () => {
     if (!open) {
       const rect = chipRef.current?.getBoundingClientRect()
-      // the composer sits at the panel bottom: open upwards, pinned to the chip
-      if (rect) setPopStyle({ left: rect.left, bottom: window.innerHeight - rect.top + 6 })
+      // the composer sits at the panel bottom, a dialog's chip near its top: fit the side with room
+      if (rect)
+        setPopStyle(
+          aiModelPopoverStyle(rect, { width: window.innerWidth, height: window.innerHeight }),
+        )
     }
     setOpen((v) => !v)
   }

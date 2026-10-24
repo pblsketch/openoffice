@@ -1484,6 +1484,8 @@ export const workbookPageSetupStateSchema = z
     zoomScale: z.number().int().min(10).max(400).optional(),
     showFormulas: z.boolean().optional(),
     showHeadings: z.boolean().optional(),
+    /// sheetView/@rightToLeft — the grid is mirrored (column A at the right).
+    rightToLeft: z.boolean().optional(),
     printArea: z.union([z.string().min(1).max(255), z.null()]).optional(),
     printTitles: z.union([z.string().regex(/^\d{1,7}:\d{1,7}$/), z.null()]).optional(),
     /// Frozen pane counts; both present together, 0/0 removes the pane.
@@ -2999,8 +3001,9 @@ export interface DesktopApi {
   consumeHeadlessExport(): Promise<string | null>
   /// Headless export mode: report the export outcome so the main process can quit.
   headlessExportDone(result: { ok: boolean; error?: string }): void
-  /// Display name for authored threaded comments (OS account name).
+  /// Author name for threaded comments (Settings → General, falling back to the OS account).
   getUserDisplayName(): Promise<string>
+  onUserDisplayNameChanged(handler: (name: string) => void): () => void
   getAiSettings(): Promise<AiSettings>
   setAiSettings(settings: AiSettings): Promise<void>
   /// ai-settings.json was rewritten by any renderer; re-read it

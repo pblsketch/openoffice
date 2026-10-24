@@ -9,6 +9,7 @@ freely redistributable with the app. Licenses: Carlito and Liberation are
 | ---------------- | ---------- | ---------------------------------- |
 | Carlito GO       | OFL 1.1    | Calibri (Word's default body font) |
 | Caladea          | Apache-2.0 | Cambria                            |
+| Cambria Math GO  | Apache-2.0 | Cambria Math (Caladea, adjusted)   |
 | Liberation Serif | OFL 1.1    | Times New Roman                    |
 | Liberation Sans  | OFL 1.1    | Arial                              |
 | Liberation Mono  | OFL 1.1    | Courier New                        |
@@ -29,23 +30,6 @@ canvas line breaking aligned with Word, and stays consistent with the offline
 pagination model (`tests/helpers/lo-fonts.ts` measures the same set of files).
 
 Registration lives in `fonts.css`; family-name mapping in `cssFontFamily()` of `line-metrics.ts`.
-
-## Template fonts (not in this folder)
-
-The design templates' fonts (Pretendard, Noto Serif KR, Gowun Batang, Playfair Display…,
-listed in `@genoffice/ui/template-fonts`) are real, unmodified faces that ship once in
-the installer (`resources/template-fonts`). They are never imported here as build
-assets: `../template-fonts.ts` registers each face at startup as a URL-backed
-`FontFace` under its real family name (the face list and URL helpers come from
-`@genoffice/ui/template-fonts`), the main process serves the listed files on the docs
-media scheme (`genoffice-docx-media://template-fonts/<file>`, through
-`@genoffice/electron-utils/template-font-response` in `src/main/lazy-media.ts`), and
-`@genoffice/font-metrics` reads the same folder for vertical metrics and the pickers'
-family info only
-(`configureExtraFontDirs`). Their
-line factors (`TEMPLATE_LINE_FACTORS`) come from each file's own hhea box, with Word's
-East Asian rule (x 1.3) for the Korean faces; `tests/template-fonts.test.ts` recomputes
-them from the files.
 
 "Aptos GO" / "Aptos Display GO" are not separate files: they are `size-adjust`ed
 views of the Carlito faces (Word probe 2026-09-03 against Word's bundled Aptos).
@@ -95,7 +79,12 @@ would shift line breaks ~8% vs Word), serif digits → 0.596em and space →
 0.333em (measured Batang values), sans Basic Latin (U+0020-007E, U+00A0) →
 measured Malgun Gothic advances (space 0.352em, digits 0.551em; Noto's 0.224em
 space alone drifted Korean sans line breaks ~3%/line —
-`tools/normalize-kr-sans-hmtx.py`, asserted by `tests/kr-font-metrics.test.ts`).
+`tools/normalize-kr-sans-hmtx.py`, asserted by `tests/kr-font-metrics.test.ts`);
+the CJK brackets U+3008-3011/3014-3015/300C-300F and U+203B are proportional
+in Malgun (0.49-0.60em) and take its advances too, as do Latin-1 Supplement
+(U+00A1-00FF; middle dot 0.219em vs Noto's 0.561em, the usual Korean list
+separator) and the General Punctuation glyphs Malgun carries (dashes, quotes,
+bullet, ellipsis).
 The printable Latin outlines are also horizontally transformed to the measured
 ink widths and side bearings of Batang/Malgun
 (`tools/normalize-kr-latin-metrics.py`,

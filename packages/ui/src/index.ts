@@ -196,6 +196,7 @@ export {
   aiPanelInitiallyOpen,
   rememberAiPanelOpen,
   useAiPanelPrefs,
+  useAiSidebarEnabled,
   aiPanelWidthAtPointer,
 } from './ai-panel-prefs-store'
 export {
@@ -321,7 +322,7 @@ export {
   notchStep,
   type ZoomWheelIntent,
 } from './wheel-zoom'
-export { AiModelPicker, type AiModelPickerBridge } from './AiModelPicker'
+export { AiModelPicker, aiModelPopoverStyle, type AiModelPickerBridge } from './AiModelPicker'
 export { withAiModelSelection, type AiModelPickerSelection } from './ai-model-picker-options'
 export {
   aiProviderPickerGroups,

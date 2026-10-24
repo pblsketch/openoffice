@@ -188,6 +188,20 @@ export function colorNodeHex(
     .join('')
 }
 
+const COLOR_NODE_NAMES = ['a:srgbClr', 'a:schemeClr', 'a:sysClr', 'a:prstClr']
+
+/** a:alpha of a solid fill's color as 0..1; undefined when opaque or absent */
+export function solidFillAlpha(solidFill: XNode | undefined): number | undefined {
+  if (!solidFill) return undefined
+  for (const name of COLOR_NODE_NAMES) {
+    const color = findChild(solidFill, name)
+    if (!color) continue
+    const raw = parseInt(attrsOf(findChild(color, 'a:alpha') ?? {})['val'] ?? '', 10)
+    return Number.isFinite(raw) && raw >= 0 && raw < 100000 ? raw / 100000 : undefined
+  }
+  return undefined
+}
+
 /** anchored-drawing placement of one top-level w:drawing fragment */
 export interface DrawingAnchorMeta {
   offsetXEmu?: number
@@ -217,9 +231,11 @@ export interface DrawingAnchorMeta {
   /** wp:extent (drawing size) */
   extentXEmu?: number
   extentYEmu?: number
-  /** wp:anchor distL/distR: text clearance beside a side-wrapped drawing */
+  /** wp:anchor distL/distR/distT/distB: text clearance around a side-wrapped drawing */
   distLEmu?: number
   distREmu?: number
+  distTEmu?: number
+  distBEmu?: number
   /** relativeHeight − Word's 251658240 base: paint order among overlapping anchors */
   z?: number
 }
@@ -279,7 +295,7 @@ export function drawingAnchorMeta(frag: string): DrawingAnchorMeta {
   }
   meta.offsetXEmu = posOf('H')
   meta.offsetYEmu = posOf('V')
-  for (const side of ['L', 'R'] as const) {
+  for (const side of ['L', 'R', 'T', 'B'] as const) {
     const v = parseInt(
       new RegExp(`\\bdist${side}\\s*=\\s*["'](\\d+)["']`).exec(anchorTag)?.[1] ?? '',
       10,

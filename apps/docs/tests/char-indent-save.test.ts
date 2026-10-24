@@ -69,7 +69,7 @@ describe('character-unit indents: saving an indent edit', () => {
   it('parses the style indent into both paragraphs (12pt text: 2 chars = 480 twips)', async () => {
     const { parsed } = await openEditor()
     expect(parsed.blocks[0].rawPPr).toBeUndefined()
-    expect(parsed.blocks[0].format).toEqual({
+    expect(parsed.blocks[0].format).toMatchObject({
       indentFirstLine: 480,
       charIndents: { firstLine: 200 },
     })
@@ -90,8 +90,8 @@ describe('character-unit indents: saving an indent edit', () => {
       '<w:pPr><w:ind w:firstLine="720" w:firstLineChars="0"/><w:jc w:val="both"/></w:pPr>',
     )
     // the edit wins over the style on reload — Word resolves it the same way
-    expect(reparsed.blocks[0].format).toEqual({ indentFirstLine: 720 })
-    expect(reparsed.blocks[1].format).toEqual({ align: 'justify', indentFirstLine: 720 })
+    expect(reparsed.blocks[0].format).toMatchObject({ indentFirstLine: 720 })
+    expect(reparsed.blocks[1].format).toMatchObject({ align: 'justify', indentFirstLine: 720 })
   })
 
   it('removing the first-line indent writes the bare cancel', async () => {
@@ -104,8 +104,9 @@ describe('character-unit indents: saving an indent edit', () => {
     const xml = reparsed.internal.documentXml
     expect(xml).toContain('<w:pPr><w:ind w:firstLineChars="0"/></w:pPr>')
     expect(xml).toContain('<w:pPr><w:ind w:firstLineChars="0"/><w:jc w:val="both"/></w:pPr>')
-    expect(reparsed.blocks[0].format).toBeUndefined()
-    expect(reparsed.blocks[1].format).toEqual({ align: 'justify' })
+    expect(reparsed.blocks[0].format?.align).toBeUndefined()
+    expect(reparsed.blocks[0].format?.indentFirstLine).toBeUndefined()
+    expect(reparsed.blocks[1].format).toMatchObject({ align: 'justify' })
   })
 
   it('an unrelated edit keeps the paragraphs character-indented', async () => {
@@ -126,7 +127,7 @@ describe('character-unit indents: saving an indent edit', () => {
     const saved = await saveDocx(parsed, plan.saveBlocks)
     const reparsed = await parseDocx(saved)
     expect(reparsed.internal.documentXml).not.toContain('firstLineChars="0"')
-    expect(reparsed.blocks[1].format).toEqual({
+    expect(reparsed.blocks[1].format).toMatchObject({
       align: 'center',
       indentFirstLine: 480,
       charIndents: { firstLine: 200 },

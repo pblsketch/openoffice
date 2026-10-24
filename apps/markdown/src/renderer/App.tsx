@@ -15,6 +15,7 @@ import {
   useAutoSavePref,
   skillTemplateText,
   templateDocumentOf,
+  useAiSidebarEnabled,
   useSplitPaneFocusPing,
   useSplitPaneRole,
   type TemplateDocument,
@@ -29,7 +30,7 @@ import type { Editor } from '@tiptap/core'
 import { TextSelection } from '@tiptap/pm/state'
 import { exportImages } from './export/imageExport'
 import type { StringKey } from './i18n/locale'
-import { useI18n } from './i18n/locale'
+import { t as translate, useI18n } from './i18n/locale'
 import {
   buildFrontmatterRaw,
   frontmatterInner,
@@ -48,13 +49,17 @@ import { tiptapFindTarget } from './editor/findTarget'
 import { collectOutline, type OutlineItem } from './editor/outline'
 import { buildSlashItems } from './editor/slashCommand'
 import type { SlashController, SlashMenuState } from './editor/slashCommand'
+import { wikiFragmentPosition } from './editor/wikilink'
 import { dirOf, setImageBaseDir, VIEW_IMAGE_EVENT } from './editor/localImage'
 import { Ribbon } from './components/Ribbon'
+import type { MarkdownTheme } from '../shared/markdown-theme'
 import { ImageHostDialog } from './components/ImageHostDialog'
 import { RedactMenu } from './components/RedactMenu'
 import { OutlinePane } from './components/OutlinePane'
 import { SourcePane } from './components/SourcePane'
 import { SlashMenu, type SlashMenuHandle } from './components/SlashMenu'
+import { BacklinksPane } from './components/BacklinksPane'
+import { GraphView } from './components/GraphView'
 import { ToastHost } from './components/toast'
 import { showToast } from './components/toast-bus'
 import { TableMenu } from './components/TableMenu'
@@ -173,6 +178,8 @@ export default function App() {
   // In a split, a secondary pane's panel is forced to the rail; the focus pane keeps its own state
   const { role: paneRole, requestFocus } = useSplitPaneRole()
   const aiPanelOpen = effectiveAiPanelOpen(aiOpen, paneRole)
+  // the sidebar switch is a soft hide; it closes the panel when it turns off
+  const aiSidebarEnabled = useAiSidebarEnabled(setAiOpen)
   const [aiPreset, setAiPreset] = useState<AiPreset | null>(null)
   const [editQueue, setEditQueue] = useState<EditQueueItem[]>([])
   const editQueueRef = useRef(editQueue)
@@ -185,6 +192,8 @@ export default function App() {
   const [outlineWidth, setOutlineWidth] = useState(
     () => Number(localStorage.getItem('mdapp.outlineWidth')) || undefined,
   )
+  const [backlinksOpen, setBacklinksOpen] = useState(false)
+  const [graphOpen, setGraphOpen] = useState(false)
   const [sourceViewOpen, setSourceViewOpen] = useState(false)
   const [sourceText, setSourceText] = useState('')
   const sourceViewOpenRef = useRef(false)
@@ -194,6 +203,21 @@ export default function App() {
   const [spellcheck, setSpellcheck] = useState(
     () => localStorage.getItem('mdapp.spellcheck') !== '0',
   )
+  // paper theme (markdown-themes.css scopes the palette on data-markdown-theme)
+  const [mdTheme, setMdTheme] = useState<MarkdownTheme>('default')
+  useEffect(() => {
+    window.markdownApi
+      .getMarkdownTheme?.()
+      .then(setMdTheme)
+      .catch(() => {})
+  }, [])
+  const pickMarkdownTheme = (theme: MarkdownTheme): void => {
+    setMdTheme(theme)
+    // the boot path sets this once; live picks re-scope it here
+    if (theme === 'default') document.documentElement.removeAttribute('data-markdown-theme')
+    else document.documentElement.setAttribute('data-markdown-theme', theme)
+    window.markdownApi.setMarkdownTheme(theme).catch(() => {})
+  }
   // off by default: it takes over the editor's right-click menu, and a reader
   // should opt into that rather than discover it
   const [redactEnabled, setRedactEnabled] = useState(
@@ -258,6 +282,28 @@ export default function App() {
     })()
   }, [])
 
+  /**
+   * Land on the heading a wiki link pointed at. The fragment waited in main
+   * for this path — the shell activates an open tab without waking anything —
+   * so it is taken here, once the note is actually on screen.
+   */
+  const jumpToWikiFragment = useCallback((path: string): void => {
+    const current = editorRef.current
+    if (!current) return
+    // The browser test harness stubs markdownApi without the Electron-only
+    // wiki channels; a missing API here means nothing to jump to, not a
+    // failed load.
+    if (typeof window.markdownApi.takeWikiFragment !== 'function') return
+    void window.markdownApi.takeWikiFragment(path).then((fragment) => {
+      if (!fragment || filePathRef.current !== path) return
+      const pos = wikiFragmentPosition(current.state.doc, fragment)
+      if (pos === null) return
+      const selection = TextSelection.near(current.state.doc.resolve(pos))
+      current.view.dispatch(current.state.tr.setSelection(selection).scrollIntoView())
+      current.view.focus()
+    })
+  }, [])
+
   const extensions = useMemo(() => {
     const controller: SlashController = {
       onOpen: setSlashState,
@@ -269,8 +315,20 @@ export default function App() {
       slashController: controller,
       slashItems: () =>
         buildSlashItems({ insertImage: filePathRef.current ? insertImage : undefined }),
+      wikiLink: {
+        getDocumentPath: () => filePathRef.current ?? '',
+        onOpen: (path, fragment) => {
+          void window.markdownApi.rememberWikiFragment(path, fragment)
+          void window.markdownApi.openSourcePath(path)
+          // a link into the note already on screen opens no tab; jump here
+          if (filePathRef.current === path) jumpToWikiFragment(path)
+        },
+        // the module-level `t`, not the hook's: this memo holds the closure for
+        // the life of the editor, and the hook's `t` is a new function each render
+        onUnresolved: (target) => showToast(translate('wikiLinkUnresolved', { target }), 'error'),
+      },
     })
-  }, [insertImage])
+  }, [insertImage, jumpToWikiFragment])
 
   const editor = useEditor({
     extensions,
@@ -366,6 +424,7 @@ export default function App() {
           const raw = await window.markdownApi.readFile(path)
           if (cancelled) return
           loadFromPath(path, raw)
+          jumpToWikiFragment(path)
         } else {
           envelopeRef.current = { ...EMPTY_ENVELOPE }
         }
@@ -395,7 +454,7 @@ export default function App() {
     return () => {
       cancelled = true
     }
-  }, [editor, roundTripEnabled, loadFromPath, markDirty])
+  }, [editor, roundTripEnabled, loadFromPath, markDirty, jumpToWikiFragment])
 
   const onFrontmatterChange = useCallback(
     (inner: string) => {
@@ -1195,6 +1254,8 @@ export default function App() {
         autoSave={autoSave}
         onToggleAutoSave={setAutoSave}
         imageEnabled={Boolean(filePath)}
+        mdTheme={mdTheme}
+        onMarkdownTheme={pickMarkdownTheme}
         onInsertImage={insertImage}
         onImageHost={() => setImageHostOpen(true)}
         frontmatterOpen={fmOpen}
@@ -1204,6 +1265,9 @@ export default function App() {
         outlineOpen={outlineOpen}
         onToggleOutline={() => setOutlineOpen((v) => !v)}
         hasOutline={outlineItems.length > 0}
+        backlinksOpen={backlinksOpen}
+        onToggleBacklinks={() => setBacklinksOpen((v) => !v)}
+        onOpenGraph={() => setGraphOpen(true)}
         spellcheck={spellcheck}
         onToggleSpellcheck={() => setSpellcheck((v) => !v)}
         sourceMode={sourceMode}
@@ -1222,8 +1286,12 @@ export default function App() {
       />
       {status === 'loading' && <div className="center-note">{t('loading')}</div>}
       <div className="app-main" style={status === 'ready' ? undefined : { display: 'none' }}>
-        <div className={`ai-dock${aiPanelOpen ? '' : ' collapsed'}`}>
-          {!aiPanelOpen && (
+        <div
+          className={`ai-dock${aiPanelOpen ? '' : ' collapsed'}${
+            !aiSidebarEnabled && !aiPanelOpen ? ' ai-dock-off' : ''
+          }`}
+        >
+          {!aiPanelOpen && aiSidebarEnabled && (
             <button
               className="ai-rail"
               data-tip={t('aiOpenAssistant')}
@@ -1257,6 +1325,12 @@ export default function App() {
             onJump={jumpToOutline}
             width={outlineWidth}
             onResize={setOutlineWidth}
+          />
+        )}
+        {backlinksOpen && !sourceMode && (
+          <BacklinksPane
+            path={filePath}
+            onOpen={(path) => void window.markdownApi.openSourcePath(path)}
           />
         )}
         <div className="app-content">
@@ -1359,6 +1433,16 @@ export default function App() {
       )}
       <RedactMenu editor={editor} enabled={redactEnabled} />
       <ToastHost />
+      {graphOpen && (
+        <GraphView
+          current={filePath}
+          onClose={() => setGraphOpen(false)}
+          onOpen={(path) => {
+            setGraphOpen(false)
+            void window.markdownApi.openSourcePath(path)
+          }}
+        />
+      )}
       {imageHostOpen && (
         <ImageHostDialog onClose={() => setImageHostOpen(false)} onSaved={() => {}} />
       )}

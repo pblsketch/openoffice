@@ -256,6 +256,7 @@ export const AiPageReading = forwardRef<AiPageReadingHandle, AiPageReadingProps>
         docHash: hash,
         kind: 'ai-read',
         provider: route.provider,
+        ...(request.aiLabel ? { aiLabel: request.aiLabel } : {}),
         launch: ({ signal, registry, onProgress }) =>
           startAiReadJob({
             docHash: hash,
@@ -415,20 +416,24 @@ function stripText(
   lang: Lang,
   t: TFunc,
 ): { title: string; details: string[] } {
+  const ai = view.aiLabel ? [t('arConfirmProvider', { provider: view.aiLabel })] : []
   if (view.state === 'running') {
     return {
       title: t('arRunning', { done: view.done, total: view.total }),
-      details: view.currentPage !== null ? [t('arRunningPage', { page: view.currentPage })] : [],
+      details: [
+        ...ai,
+        ...(view.currentPage !== null ? [t('arRunningPage', { page: view.currentPage })] : []),
+      ],
     }
   }
   if (view.state === 'failed') {
-    return { title: t('arStartFailed', { reason: view.error ?? '' }), details: [] }
+    return { title: t('arStartFailed', { reason: view.error ?? '' }), details: ai }
   }
   const summary = view.summary
   const pagesOf = (units: readonly unknown[]) =>
     pageList(units.flatMap((u) => (u as AiReadJobUnit).pages.map((p) => p.page)))
   const failed = summary ? pagesOf(summary.failedUnits.map((f) => f.unit)) : ''
-  const details = failed ? [t('arFailedPages', { pages: failed })] : []
+  const details = [...ai, ...(failed ? [t('arFailedPages', { pages: failed })] : [])]
   if (view.state === 'complete' || !summary) {
     const read = summary
       ? summary.doneUnits.reduce<number>((n, u) => n + (u as AiReadJobUnit).pages.length, 0)

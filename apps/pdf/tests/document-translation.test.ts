@@ -148,6 +148,7 @@ function fakeBridge(initial: { settings: AiSettings; statuses: SubscriptionStatu
   const starts: StreamStart[] = []
   const answered = new Set<string>()
   const listeners = new Set<(chunk: IpcStreamChunk) => void>()
+  const settingsListeners = new Set<() => void>()
   const subscription = {
     statuses: vi.fn(async () => state.statuses),
     recheck: vi.fn(async () => state.statuses),
@@ -161,8 +162,13 @@ function fakeBridge(initial: { settings: AiSettings; statuses: SubscriptionStatu
     getAiSettings: vi.fn(async () => state.settings),
     setAiSettings: vi.fn(async (next: AiSettings) => {
       state.settings = next
+      // the main process broadcasts ai:settings-changed to every renderer, this one included
+      for (const listener of [...settingsListeners]) listener()
     }),
-    onAiSettingsChanged: () => () => {},
+    onAiSettingsChanged: (handler: () => void) => {
+      settingsListeners.add(handler)
+      return () => settingsListeners.delete(handler)
+    },
     openAiModelSettings: vi.fn(async () => {}),
     subscription,
     aiStream: vi.fn(async (request: StreamStart) => {
@@ -601,6 +607,47 @@ describe('translation window: confirmation', () => {
     expect(bridge.api.aiStream).not.toHaveBeenCalled()
   })
 
+  it('shows the model the subscription resolves to and switches it on the confirmation', async () => {
+    const base = normalizeAiSettings({})
+    const statuses = {
+      'claude-code': {
+        provider: 'claude-code',
+        state: 'ready',
+        meteredAccepted: false,
+        loginMethod: 'subscription',
+        models: [
+          { id: '', label: 'Sonnet 5.5', resolved: 'claude-sonnet-5-5' },
+          { id: 'claude-haiku-4-5', label: 'Haiku 4.5' },
+        ],
+      },
+      codex: { provider: 'codex', state: 'signed-out', meteredAccepted: false },
+    } as SubscriptionStatusMap
+    const m = await mount({
+      settings: {
+        provider: 'auto',
+        providers: { ...base.providers, 'claude-code': { apiKey: '', model: '' } },
+      },
+      statuses,
+    })
+    await openToConfirm(m)
+    await until(() => q(m.el, '[data-model-picker] .ai-model-chip') !== null, 'the model chip')
+    expect(q(m.el, '[data-model-picker] .ai-model-chip')?.textContent).toContain('Sonnet 5.5')
+
+    await click(m.el, '[data-model-picker] .ai-model-chip')
+    await until(() => q(m.el, '[role="option"]') !== null, 'the model list')
+    const haiku = [...m.el.querySelectorAll('[role="option"]')].find((option) =>
+      option.textContent?.includes('Haiku 4.5'),
+    ) as HTMLElement | undefined
+    expect(haiku).toBeTruthy()
+    await act(async () => haiku!.click())
+    await settle()
+
+    const written = bridge.api.setAiSettings.mock.calls.at(-1)?.[0] as AiSettings
+    expect(written.providers['claude-code']?.model).toBe('claude-haiku-4-5')
+    expect(q(m.el, '[data-model-picker] .ai-model-chip')?.textContent).toContain('Haiku 4.5')
+    expect(bridge.api.aiStream).not.toHaveBeenCalled()
+  })
+
   it('warns when the stored translation was made with another provider or model', async () => {
     const channels = fakeChannels({
       stored: { lang: 'de', provider: 'codex', model: 'gpt-x', blocks: 1 },
@@ -677,6 +724,9 @@ describe('translation: the job', () => {
     expect(sent.settings.provider).toBe('claude-code')
     expect(sent.system).toContain('German (de)')
     expect(q(m.el, '[data-job-kind="translate"][data-job-state="running"]')).not.toBeNull()
+    expect(q(m.el, '.pdf-job-strip-detail')?.textContent).toBe(
+      t('arConfirmProvider', { provider: 'Claude' }),
+    )
     expect(q(m.el, '[role="dialog"]')).toBeNull()
 
     await act(async () => bridge.answerAll())

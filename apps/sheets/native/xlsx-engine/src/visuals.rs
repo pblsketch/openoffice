@@ -1,9 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::io::Read;
+use std::io::{BufReader, Read};
 use std::path::Path;
 
 use base64::Engine;
+use quick_xml::events::Event;
+use quick_xml::{Reader, Writer};
 use roxmltree::{Document, Node};
 use serde::Serialize;
 use zip::ZipArchive;
@@ -1032,7 +1034,7 @@ pub(crate) fn read_ole_objects(
     worksheet_path: &str,
     sheet_relationships: &HashMap<String, Relationship>,
 ) -> Result<Vec<OleObjectRecord>, SidecarError> {
-    let xml = read_xml(archive, worksheet_path)?;
+    let xml = read_worksheet_without_cells(archive, worksheet_path)?;
     if !xml.contains("oleObject") {
         return Ok(Vec::new());
     }
@@ -1448,10 +1450,122 @@ pub fn read_pivot_tables(
     Ok(infos)
 }
 
+/// One comment as the reader found it, before it becomes a `CommentInfo`.
+pub struct ReadComment {
+    pub reference: String,
+    pub author: String,
+    pub text: String,
+    pub thread: Option<ThreadInfo>,
+    /// Where the picture this note's shape is showing lives in the package.
+    pub image_media_path: Option<String>,
+}
+
+/// The picture each note is showing, by cell reference.
+///
+/// Excel draws a note's picture onto the note's own VML shape as a picture
+/// fill — `<v:fill type="frame">` carrying the relationship on `o:relid` —
+/// resolved through the VML part's own rels, the same place
+/// `read_header_footer_pictures` looks. A relationship on an `imagedata`
+/// child is the older spelling; WPS writes an empty `imagedata` on every
+/// note, and with no relationship behind it, it matches nothing. A picture
+/// that is in the package but belongs to no note shape is not a note
+/// picture, and a shape whose relationship no longer resolves is skipped
+/// rather than guessed at.
+fn note_picture_paths(
+    archive: &mut ZipArchive<File>,
+    worksheet_path: &str,
+) -> HashMap<String, String> {
+    let mut pictures = HashMap::new();
+    let Ok(relationships) = read_relationships(archive, worksheet_path) else {
+        return pictures;
+    };
+    let Some(vml) = relationships
+        .values()
+        .find(|relationship| relationship.relationship_type.ends_with("/vmlDrawing"))
+    else {
+        return pictures;
+    };
+    let Ok(vml_path) = resolve_part_target(worksheet_path, &vml.target) else {
+        return pictures;
+    };
+    let Ok(media_relationships) = read_relationships(archive, &vml_path) else {
+        return pictures;
+    };
+    let Some(xml) = read_optional_xml(archive, &vml_path).ok().flatten() else {
+        return pictures;
+    };
+    let Ok(document) = Document::parse(&xml) else {
+        return pictures;
+    };
+    for shape in document
+        .descendants()
+        .filter(|node| node.has_tag_name("shape"))
+    {
+        // Only a note shape names the cell it is anchored to.
+        let Some(client) = direct_child(shape, "ClientData") else {
+            continue;
+        };
+        if client.attribute("ObjectType") != Some("Note") {
+            continue;
+        }
+        let (Some(row), Some(column)) = (
+            direct_child(client, "Row").and_then(|node| node.text()),
+            direct_child(client, "Column").and_then(|node| node.text()),
+        ) else {
+            continue;
+        };
+        let (Ok(row), Ok(column)) = (row.trim().parse::<usize>(), column.trim().parse::<usize>())
+        else {
+            continue;
+        };
+        // The fill only carries a picture when it is a frame fill and names
+        // the relationship; the yellow note fill is a plain color2 element.
+        let painted = direct_child(shape, "fill").filter(|fill| {
+            fill.attributes()
+                .any(|attribute| attribute.name() == "type" && attribute.value() == "frame")
+                && fill
+                    .attributes()
+                    .any(|attribute| attribute.name() == "relid" || attribute.name() == "id")
+        });
+        let carrying = painted.or_else(|| direct_child(shape, "imagedata"));
+        // Excel writes o:relid; some producers use r:id instead.
+        let Some(relationship_id) = carrying.and_then(|node| {
+            node.attributes()
+                .find(|attribute| attribute.name() == "relid" || attribute.name() == "id")
+                .map(|attribute| attribute.value().to_owned())
+        }) else {
+            continue;
+        };
+        let Some(media) = media_relationships.get(relationship_id.as_str()) else {
+            continue;
+        };
+        let Ok(media_path) = resolve_part_target(&vml_path, &media.target) else {
+            continue;
+        };
+        if media_type_for_path(&media_path).is_none() {
+            continue;
+        }
+        pictures.insert(format!("{}{}", column_label(column), row + 1), media_path);
+    }
+    pictures
+}
+
+/// Column 0 as `A`, 26 as `AA`.
+fn column_label(mut index: usize) -> String {
+    let mut label = String::new();
+    loop {
+        label.insert(0, char::from(b'A' + (index % 26) as u8));
+        if index < 26 {
+            return label;
+        }
+        index = index / 26 - 1;
+    }
+}
+
 pub fn read_comments(
     archive: &mut ZipArchive<File>,
     worksheet_path: &str,
-) -> Result<Vec<(String, String, String, Option<ThreadInfo>)>, SidecarError> {
+) -> Result<Vec<ReadComment>, SidecarError> {
     let relationships = read_relationships(archive, worksheet_path)?;
     let Some(comments_relationship) = relationships
         .values()
@@ -1484,17 +1598,34 @@ pub fn read_comments(
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
+    let pictures = note_picture_paths(archive, worksheet_path);
     Ok(document
         .descendants()
         .filter(|node| node.has_tag_name("comment"))
         .filter_map(|comment| {
             let reference = comment.attribute("ref")?.to_owned();
+            let picture = pictures
+                .get(
+                    reference
+                        .split(':')
+                        .next()
+                        .unwrap_or(&reference)
+                        .replace('$', "")
+                        .as_str(),
+                )
+                .cloned();
             if let Some(thread) = threads.get(&reference) {
                 let body = std::iter::once(thread.text.as_str())
                     .chain(thread.replies.iter().map(|reply| reply.text.as_str()))
                     .collect::<Vec<_>>()
                     .join("\n\n");
-                return Some((reference, thread.author.clone(), body, Some(thread.clone())));
+                return Some(ReadComment {
+                    reference,
+                    author: thread.author.clone(),
+                    text: body,
+                    thread: Some(thread.clone()),
+                    image_media_path: picture,
+                });
             }
             let author = comment
                 .attribute("authorId")
@@ -1507,7 +1638,13 @@ pub fn read_comments(
                 .filter(|node| node.has_tag_name("t"))
                 .filter_map(|node| node.text())
                 .collect::<String>();
-            Some((reference, author, text, None))
+            Some(ReadComment {
+                reference,
+                author,
+                text,
+                thread: None,
+                image_media_path: picture,
+            })
         })
         .collect())
 }
@@ -1797,6 +1934,37 @@ pub(crate) fn resolve_part_target(source_path: &str, target: &str) -> Result<Str
     crate::archive::resolve_relationship_target(source_path, target)
 }
 
+/// The worksheet part with its `<sheetData>` subtree left out. Everything
+/// read_ole_objects looks at (`oleObjects`, `legacyDrawing`) sits outside the
+/// cell data, and the cell data is nearly the whole part: reading it into a
+/// String for every sheet on every open kept a copy of a 293 MB sheet resident
+/// in the sidecar (600 MB) for a check that usually finds nothing.
+fn read_worksheet_without_cells(
+    archive: &mut ZipArchive<File>,
+    path: &str,
+) -> Result<String, SidecarError> {
+    let entry = crate::zip_entry(archive, path)?;
+    let mut reader = Reader::from_reader(BufReader::new(entry));
+    let mut writer = Writer::new(Vec::new());
+    let mut buffer = Vec::new();
+    let mut skipped = Vec::new();
+    loop {
+        match reader.read_event_into(&mut buffer)? {
+            Event::Eof => break,
+            Event::Start(start) if start.local_name().as_ref() == b"sheetData" => {
+                let end = start.to_end().into_owned();
+                reader.read_to_end_into(end.name(), &mut skipped)?;
+                skipped.clear();
+            }
+            Event::Empty(empty) if empty.local_name().as_ref() == b"sheetData" => {}
+            event => writer.write_event(event)?,
+        }
+        buffer.clear();
+    }
+    String::from_utf8(writer.into_inner())
+        .map_err(|_| SidecarError::Workbook(format!("{path} is not valid UTF-8.")))
+}
+
 fn read_xml(archive: &mut ZipArchive<File>, path: &str) -> Result<String, SidecarError> {
     read_optional_xml(archive, path)?
         .ok_or_else(|| SidecarError::Workbook(format!("Workbook is missing {path}.")))
@@ -2016,5 +2184,53 @@ fn locale_short_date_format(locale: &str) -> &'static str {
         "de" | "pl" | "ru" => "d.m.yyyy",
         "nl" => "d-m-yyyy",
         _ => "d/m/yyyy",
+    }
+}
+
+#[cfg(test)]
+mod worksheet_without_cells_tests {
+    use super::read_worksheet_without_cells;
+    use crate::tests::open_fixture;
+    use std::fs::File;
+    use zip::ZipArchive;
+
+    const CELLS: &str = r#"<sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1"><v>2</v></c></row><row r="2"><c r="A2"><f>B1*2</f><v>4</v></c></row></sheetData>"#;
+
+    fn trimmed(xml: &str) -> String {
+        let (_dir, path) = open_fixture(&[("xl/worksheets/sheet1.xml", xml)]);
+        let mut archive = ZipArchive::new(File::open(&path).unwrap()).unwrap();
+        read_worksheet_without_cells(&mut archive, "xl/worksheets/sheet1.xml").unwrap()
+    }
+
+    #[test]
+    fn drops_the_cells_and_keeps_the_objects_around_them() {
+        let xml = format!(
+            r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetPr><tabColor rgb="FF00FF00"/></sheetPr><cols><col min="1" max="1" width="12"/></cols>{CELLS}<legacyDrawing r:id="rId2"/><oleObjects><oleObject progId="Word.Document" shapeId="1025" r:id="rId3"/></oleObjects></worksheet>"#
+        );
+        let out = trimmed(&xml);
+        assert!(!out.contains("<row"), "{out}");
+        assert!(!out.contains("<c "), "{out}");
+        assert!(!out.contains("sheetData"), "{out}");
+        assert!(out.contains(r#"<tabColor rgb="FF00FF00"/>"#), "{out}");
+        assert!(out.contains(r#"<legacyDrawing r:id="rId2"/>"#), "{out}");
+        assert!(
+            out.contains(r#"<oleObject progId="Word.Document" shapeId="1025" r:id="rId3"/>"#),
+            "{out}"
+        );
+        assert!(roxmltree::Document::parse(&out).is_ok(), "{out}");
+    }
+
+    #[test]
+    fn handles_a_prefixed_and_an_empty_sheet_data_element() {
+        let prefixed = format!(
+            r#"<x:worksheet xmlns:x="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><x:sheetData><x:row r="1"><x:c r="A1"><x:v>1</x:v></x:c></x:row></x:sheetData><x:pageMargins left="0.7"/></x:worksheet>"#
+        );
+        let out = trimmed(&prefixed);
+        assert!(!out.contains("<x:c "), "{out}");
+        assert!(out.contains(r#"<x:pageMargins left="0.7"/>"#), "{out}");
+        let empty = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/><drawing r:id="rId1" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/></worksheet>"#;
+        let out = trimmed(empty);
+        assert!(out.contains("<drawing"), "{out}");
+        assert!(!out.contains("sheetData"), "{out}");
     }
 }

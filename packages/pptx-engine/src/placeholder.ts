@@ -88,6 +88,10 @@ export interface LevelTextStyle {
   spaceAfter?: number
   spaceBeforePct?: number
   spaceAfterPct?: number
+  /** <a:lvlNpPr hangingPunct/latinLnBrk/eaLnBrk> line-break switches; absent = inherit */
+  hangingPunct?: boolean
+  latinLnBrk?: boolean
+  eaLnBrk?: boolean
 }
 
 /** Default styles for the 9 levels (index = level, 0-based). */
@@ -360,6 +364,11 @@ function parseLvlPPr(
     const v = parseInt(String(pPr['@_indent']), 10)
     if (!Number.isNaN(v)) out.indent = v
   }
+  for (const k of ['hangingPunct', 'latinLnBrk', 'eaLnBrk'] as const) {
+    const v = pPr[`@_${k}`]
+    if (v === '1' || v === 'true') out[k] = true
+    else if (v === '0' || v === 'false') out[k] = false
+  }
   Object.assign(out, parseDefRPrStyle(pPr['a:defRPr'], theme))
   return Object.keys(out).length ? out : undefined
 }
@@ -491,6 +500,14 @@ function findStyleInMap(
   return hit?.textStyle
 }
 
+/** The layer has the placeholder this one inherits from (same type and idx). Its bodyPr
+ *  decides even when it leaves an attribute unset — the chain then continues to the
+ *  master, not to a same-type sibling (a layout's anchor="b" body idx="1" must not reach
+ *  the slide's idx="2" content placeholder whose own layout entry has no anchor). */
+function hasExactEntry(map: PlaceholderMap, t: string, i: string): boolean {
+  return i !== '' && map.entries.some((e) => e.type === t && e.idx === i)
+}
+
 /** Find the bodyPr anchor in a layer's map by placeholder (type, idx). No idx-only
  *  step: master placeholders reuse idx values across types (a dt idx="2" must not
  *  anchor a body idx="2" to the bottom). */
@@ -504,6 +521,7 @@ function findAnchorInMap(
   const i = idx ?? ''
   const anchored = map.entries.filter((e) => e.anchor)
   let hit = anchored.find((e) => e.type === t && e.idx === i)
+  if (!hit && hasExactEntry(map, t, i)) return undefined
   if (!hit) hit = anchored.find((e) => e.type === t)
   if (!hit && TITLE_TYPES.has(t)) hit = anchored.find((e) => TITLE_TYPES.has(e.type))
   if (!hit && BODY_TYPES.has(t)) hit = anchored.find((e) => BODY_TYPES.has(e.type))
@@ -521,6 +539,7 @@ function findInsetsInMap(
   const i = idx ?? ''
   const carriers = map.entries.filter((e) => e.insets)
   let hit = carriers.find((e) => e.type === t && e.idx === i)
+  if (!hit && hasExactEntry(map, t, i)) return undefined
   if (!hit) hit = carriers.find((e) => e.type === t)
   if (!hit && TITLE_TYPES.has(t)) hit = carriers.find((e) => TITLE_TYPES.has(e.type))
   if (!hit && BODY_TYPES.has(t)) hit = carriers.find((e) => BODY_TYPES.has(e.type))
@@ -565,6 +584,7 @@ function findAnchorCtrInMap(
   const i = idx ?? ''
   const marked = map.entries.filter((e) => e.anchorCtr !== undefined)
   let hit = marked.find((e) => e.type === t && e.idx === i)
+  if (!hit && hasExactEntry(map, t, i)) return undefined
   if (!hit) hit = marked.find((e) => e.type === t)
   if (!hit && TITLE_TYPES.has(t)) hit = marked.find((e) => TITLE_TYPES.has(e.type))
   if (!hit && BODY_TYPES.has(t)) hit = marked.find((e) => BODY_TYPES.has(e.type))
@@ -666,6 +686,9 @@ export function mergeTextStyleChain(
     if (out.bullet == null && lvl.bullet != null) out.bullet = lvl.bullet
     if (out.marL == null && lvl.marL != null) out.marL = lvl.marL
     if (out.indent == null && lvl.indent != null) out.indent = lvl.indent
+    if (out.hangingPunct == null && lvl.hangingPunct != null) out.hangingPunct = lvl.hangingPunct
+    if (out.latinLnBrk == null && lvl.latinLnBrk != null) out.latinLnBrk = lvl.latinLnBrk
+    if (out.eaLnBrk == null && lvl.eaLnBrk != null) out.eaLnBrk = lvl.eaLnBrk
     // Line/paragraph spacing inherit as attribute pairs (pct and pts are two value forms of the same lnSpc/spcBef/spcAft node)
     if (
       out.lineHeight == null &&
