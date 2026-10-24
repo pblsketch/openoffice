@@ -302,8 +302,11 @@ import {
   savePassageMarks,
   loadSidebarOpen,
   saveSidebarOpen,
+  loadDefaultFit,
+  saveDefaultFit,
+  openingFitMode,
 } from './view-config'
-import type { PageSize, FitMode } from './view-config'
+import type { PageSize, FitMode, DefaultFitMode } from './view-config'
 import { useVisibleSet, PdfPage, MarkupOverlay } from './PdfPage'
 import { PdfThumb, ThumbPendingOverlay } from './PdfThumb'
 import type { ThumbMenu } from './PdfThumb'
@@ -526,6 +529,11 @@ export default function App() {
   const [pageUserUnits, setPageUserUnits] = useState<number[]>([])
   const [baseRots, setBaseRots] = useState<number[]>([])
   const [scale, setScale] = useState(1)
+  /** Fit mode for a PDF with no saved reading position (View tab); fit width keeps the old behaviour */
+  const [defaultFit, setDefaultFit] = useState<DefaultFitMode>(loadDefaultFit)
+  const defaultFitRef = useRef(defaultFit)
+  defaultFitRef.current = defaultFit
+  useEffect(() => saveDefaultFit(defaultFit), [defaultFit])
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState('1')
   const [sidebar, setSidebar] = useState<'thumbs' | 'outline' | 'notes' | null>(() =>
@@ -1170,7 +1178,7 @@ export default function App() {
   const [cropAllPages, setCropAllPages] = useState(false)
   const coalesceKeyRef = useRef<string | null>(null)
   const passwordRef = useRef<string | undefined>(undefined)
-  const fitModeRef = useRef<FitMode>('width')
+  const fitModeRef = useRef<FitMode>(defaultFit)
   /** Reading position saved when this file was last viewed; applied once after open */
   const pendingViewRestoreRef = useRef<PdfViewState | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -1673,13 +1681,15 @@ export default function App() {
         await loadDoc(path, null)
         // Silently restore the last reading position (WPS-style). A saved custom
         // zoom (fitMode null) must be applied before 'ready', or the initial
-        // fit-width recompute would take over; fit modes are recomputed anyway.
+        // fit recompute would take over; fit modes are recomputed anyway.
         const savedView = loadViewState(path)
+        fitModeRef.current = openingFitMode(savedView, defaultFitRef.current)
         if (savedView) {
           pendingViewRestoreRef.current = savedView
-          fitModeRef.current = savedView.fitMode
           if (savedView.fitMode === null)
             setScale(Math.min(MAX_SCALE, Math.max(MIN_SCALE, savedView.scale)))
+        } else {
+          pendingViewRestoreRef.current = null
         }
         setStatus('ready')
       } catch (err) {
@@ -7725,7 +7735,7 @@ export default function App() {
     </div>
   )
 
-  const pageZoomGroup = (
+  const pageZoomGroup = (showDefaultFit = false) => (
     <div className="ribbon-group">
       <div className="ribbon-group-items">
         <div className="rb-col">
@@ -7783,6 +7793,22 @@ export default function App() {
           </span>
           {t('fitPage')}
         </button>
+        {showDefaultFit && (
+          <div className="rb-col rb-open-view">
+            <span className="rb-open-view-label">{t('defaultFit')}</span>
+            <select
+              className="rb-select"
+              aria-label={t('defaultFit')}
+              data-tip={t('defaultFit')}
+              data-tip-detail={t('defaultFitTip')}
+              value={defaultFit}
+              onChange={(e) => setDefaultFit(e.target.value === 'page' ? 'page' : 'width')}
+            >
+              <option value="width">{t('fitWidth')}</option>
+              <option value="page">{t('fitPage')}</option>
+            </select>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -8272,7 +8298,7 @@ export default function App() {
                 </div>
               </div>
               <div className="ribbon-sep" />
-              {pageZoomGroup}
+              {pageZoomGroup()}
               <div className="ribbon-sep" />
               <div className="ribbon-group">
                 <div className="ribbon-group-items">
@@ -9008,7 +9034,7 @@ export default function App() {
             <>
               {viewNavGroup}
               <div className="ribbon-sep" />
-              {pageZoomGroup}
+              {pageZoomGroup(true)}
             </>
           )}
         </div>

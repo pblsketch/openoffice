@@ -142,6 +142,33 @@ export const savePassageMarks = (on: boolean, storage: FlagStorage = localStorag
   }
 }
 
+// ── View for a PDF that has no saved reading position: fit width (the old behaviour) or fit page ──
+export const DEFAULT_FIT_KEY = 'genoffice-pdf-default-fit'
+
+export type DefaultFitMode = Exclude<FitMode, null>
+
+export const loadDefaultFit = (storage: FlagStorage = localStorage): DefaultFitMode => {
+  try {
+    return storage.getItem(DEFAULT_FIT_KEY) === 'page' ? 'page' : 'width'
+  } catch {
+    return 'width'
+  }
+}
+
+export const saveDefaultFit = (mode: DefaultFitMode, storage: FlagStorage = localStorage): void => {
+  try {
+    storage.setItem(DEFAULT_FIT_KEY, mode)
+  } catch {
+    // storage unavailable: the choice still holds for this session
+  }
+}
+
+/** A file's own saved view wins; a file with no saved position uses the default. */
+export const openingFitMode = (
+  saved: { fitMode: FitMode } | null,
+  fallback: DefaultFitMode,
+): FitMode => (saved ? saved.fitMode : fallback)
+
 // ── Sidebar open or closed: a closed sidebar stays closed in the next PDF; open starts on the thumbnails ──
 export const SIDEBAR_OPEN_KEY = 'genoffice-pdf-sidebar-open'
 
