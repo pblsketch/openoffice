@@ -123,4 +123,5 @@ export const en = {
     'Still stuck? Copy the connection details and send them to whoever is helping you. They contain no account and no file paths.',
   actionCopyInfo: 'Copy details for help',
   copyInfoDone: 'Copied',
+  actionConnectHelp: 'See each step on screen (page in Korean)',
 } satisfies Record<keyof typeof zh, string>

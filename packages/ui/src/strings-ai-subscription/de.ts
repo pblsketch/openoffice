@@ -133,4 +133,5 @@ export const de = {
     'Klappt es immer noch nicht? Kopieren Sie die Verbindungsdaten und senden Sie sie an die Person, die Ihnen hilft. Sie enthalten weder Konto noch Dateipfade.',
   actionCopyInfo: 'Infos für Hilfe kopieren',
   copyInfoDone: 'Kopiert',
+  actionConnectHelp: 'Jeden Schritt am Bildschirm ansehen (Seite auf Koreanisch)',
 } satisfies Record<keyof typeof zh, string>

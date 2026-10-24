@@ -132,4 +132,5 @@ export const fr = {
     'Toujours bloqué ? Copiez les informations de connexion et envoyez-les à la personne qui vous aide. Elles ne contiennent ni compte ni chemin de fichier.',
   actionCopyInfo: 'Copier les infos pour obtenir de l’aide',
   copyInfoDone: 'Copié',
+  actionConnectHelp: 'Voir chaque étape à l’écran (page en coréen)',
 } satisfies Record<keyof typeof zh, string>

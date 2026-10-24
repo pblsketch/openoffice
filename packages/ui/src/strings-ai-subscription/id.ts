@@ -124,4 +124,5 @@ export const id = {
     'Masih belum berhasil? Salin info koneksi dan kirim ke orang yang membantu Anda. Info ini tidak berisi akun maupun jalur file.',
   actionCopyInfo: 'Salin info untuk bantuan',
   copyInfoDone: 'Disalin',
+  actionConnectHelp: 'Lihat setiap langkah di layar (halaman berbahasa Korea)',
 } satisfies Record<keyof typeof zh, string>

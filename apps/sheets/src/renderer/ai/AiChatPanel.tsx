@@ -41,6 +41,7 @@ import type {
   AiSubscriptionProviderId,
   AiSubscriptionStatuses,
   AiSubscriptionUsage,
+  SubscriptionConnectHelpPath,
 } from '@genoffice/ai-provider/browser'
 import type { AiBlockedRun } from './subscription-state'
 import type { ChangePlan } from '@genoffice/xlsx-gateway/domain/workbook.types'
@@ -286,6 +287,8 @@ export interface AiPanelSubscription {
   readonly busy: boolean
   /** the connect cards' buttons */
   readonly actions: AiSubscriptionCardActions
+  /** open the website's step-by-step connect help at the guide's path */
+  readonly openConnectHelp?: ((path: SubscriptionConnectHelpPath | null) => void) | undefined
   /** rate-limit windows the subscription provider reported on its latest turn */
   readonly usage: readonly AiSubscriptionUsage[]
   /** the input of the current run was cut to fit a limit */
@@ -913,6 +916,7 @@ export function AiChatPanel({
             disabled={subscription.busy}
             attention={subscription.connectAttention}
             onOpenSettings={() => void window.desktopApi.openAiModelSettings().catch(() => {})}
+            onOpenConnectHelp={subscription.openConnectHelp}
             {...subscription.actions}
           />
         )}

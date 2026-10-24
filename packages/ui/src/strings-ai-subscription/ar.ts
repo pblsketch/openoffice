@@ -120,4 +120,5 @@ export const ar = {
     'ألا يزال لا يعمل؟ انسخ معلومات الاتصال وأرسلها إلى من يساعدك. لا تتضمن حسابًا ولا مسارات ملفات.',
   actionCopyInfo: 'نسخ المعلومات لطلب المساعدة',
   copyInfoDone: 'تم النسخ',
+  actionConnectHelp: 'شاهد كل خطوة على الشاشة (صفحة باللغة الكورية)',
 } satisfies Record<keyof typeof zh, string>

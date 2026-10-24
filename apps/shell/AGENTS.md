@@ -30,7 +30,7 @@
 ## 맡지 않는 것 (경계)
 
 - 문서 편집과 형식별 저장·내보내기는 이 모듈의 범위가 아니다. 각 에디터(`apps/docs`, `apps/sheets`, `apps/slides`, `apps/pdf`, `apps/markdown`, `apps/html`, `apps/mindmap`, `apps/hwp`)가 한다. shell은 그 메인 모듈의 내보낸 함수(`createDocsView`, `configureSheetsRuntime` 등)를 부른다.
-- AI 요청의 실행은 범위가 아니다. `ai:*` 채널과 구독 IPC 채널은 `apps/docs/src/main/docs-main.ts`의 `registerAiIpc`가 등록한다. shell은 그것을 한 번 호출할 뿐이고, AI와 관련해 직접 응답하는 채널은 `home:open-subscription-install-help`(벤더의 설치 안내 페이지 열기)와 `ai:open-model-settings`(홈 탭의 설정 화면 열기)뿐이다.
+- AI 요청의 실행은 범위가 아니다. `ai:*` 채널과 구독 IPC 채널은 `apps/docs/src/main/docs-main.ts`의 `registerAiIpc`가 등록한다. shell은 그것을 한 번 호출할 뿐이고, AI와 관련해 직접 응답하는 채널은 `home:open-subscription-install-help`(벤더의 설치 안내 페이지 열기), `home:open-connect-help`(소개 사이트의 AI 연결 도움말 열기. 주소는 고정이고 화면은 길 이름만 넘긴다), `ai:open-model-settings`(홈 탭의 설정 화면 열기)뿐이다.
 - 제공자 선택 규칙, 구독 프로그램 실행은 `packages/ai-provider`, 연결 카드와 알림 컴포넌트는 `packages/ui`의 범위다.
 - 새 문서의 글을 쓰는 것은 만들 문서 쪽 에디터(PPT, HTML, 마인드맵)의 AI다. 이 모듈은 생성 코드를 갖지 않고, 요청을 새 탭 앞으로 맡겨 둘 뿐이다. 맡겨 두는 곳은 `packages/electron-utils`의 `generate-handoff.ts`이고(`src/main/generate/handoff.ts`는 그것을 다시 내보낸다), 가져가는 창구(`<에디터>:handoff-take`)는 각 에디터가 등록한다.
 - 파일을 글로 읽는 일과 가리기 적용은 `packages/file-parse`, 지도 파일의 해석과 개요 글은 `packages/xmind-engine`의 범위다.

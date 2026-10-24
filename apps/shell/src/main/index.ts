@@ -325,6 +325,7 @@ import {
   initSubscriptionChildTracking,
   sharedSubscriptionStatuses,
   shutdownSubscriptionChildren,
+  subscriptionConnectHelpUrl,
   trackedSubscriptionChildCount,
 } from '@genoffice/ai-provider/subscription'
 import { showErrorDialog } from './error-dialog'
@@ -5222,6 +5223,15 @@ function registerHomeIpc(): void {
   ipcMain.handle(SHELL_SUBSCRIPTION_CHANNELS.openInstallHelp, (_event, provider: unknown) => {
     if (!isSubscriptionProviderId(provider)) return
     const url = safeExternalUrl(SUBSCRIPTION_INSTALL_URLS[provider])
+    if (!url) return
+    shell.openExternal(url).catch(() => {
+      // no browser handler available; nothing actionable for the user here
+    })
+  })
+
+  // the website's connect help: a fixed address, the renderer only names the path
+  ipcMain.handle(SHELL_SUBSCRIPTION_CHANNELS.openConnectHelp, (_event, path: unknown) => {
+    const url = safeExternalUrl(subscriptionConnectHelpUrl(path))
     if (!url) return
     shell.openExternal(url).catch(() => {
       // no browser handler available; nothing actionable for the user here

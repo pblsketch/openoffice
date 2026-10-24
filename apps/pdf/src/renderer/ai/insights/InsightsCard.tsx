@@ -588,6 +588,7 @@ export function InsightsCard(props: InsightsCardProps): ReactElement {
               onRecheck={connection.recheck}
               onAcceptMetered={connection.acceptMetered}
               onOpenInstallHelp={connection.openInstallHelp}
+              onOpenConnectHelp={connection.openConnectHelp}
             />
           )}
           {sendGate.noticeDue && (phase.kind === 'waiting' || phase.kind === 'confirm') && (

@@ -117,4 +117,5 @@ export const he = {
     'עדיין לא עובד? העתיקו את פרטי החיבור ושלחו אותם למי שעוזר לכם. אין בהם חשבון ולא נתיבי קבצים.',
   actionCopyInfo: 'העתקת פרטים לקבלת עזרה',
   copyInfoDone: 'הועתק',
+  actionConnectHelp: 'צפו בכל שלב על המסך (דף בקוריאנית)',
 } satisfies Record<keyof typeof zh, string>

@@ -126,4 +126,5 @@ export const vi = {
     'Vẫn chưa được? Hãy sao chép thông tin kết nối và gửi cho người đang giúp bạn. Thông tin này không chứa tài khoản hay đường dẫn tệp.',
   actionCopyInfo: 'Sao chép thông tin để nhờ hỗ trợ',
   copyInfoDone: 'Đã sao chép',
+  actionConnectHelp: 'Xem từng bước trên màn hình (trang tiếng Hàn)',
 } satisfies Record<keyof typeof zh, string>

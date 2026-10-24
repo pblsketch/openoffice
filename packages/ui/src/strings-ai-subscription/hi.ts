@@ -125,4 +125,5 @@ export const hi = {
     'फिर भी नहीं हो रहा? कनेक्शन की जानकारी कॉपी करके मदद करने वाले व्यक्ति को भेजें। इसमें खाता और फ़ाइल पथ शामिल नहीं होते।',
   actionCopyInfo: 'मदद के लिए जानकारी कॉपी करें',
   copyInfoDone: 'कॉपी हो गया',
+  actionConnectHelp: 'हर चरण स्क्रीन पर देखें (कोरियाई भाषा का पेज)',
 } satisfies Record<keyof typeof zh, string>

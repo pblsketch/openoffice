@@ -130,4 +130,5 @@ export const nl = {
     'Lukt het nog steeds niet? Kopieer de verbindingsgegevens en stuur ze naar degene die je helpt. Er staan geen account en geen bestandspaden in.',
   actionCopyInfo: 'Gegevens kopiëren voor hulp',
   copyInfoDone: 'Gekopieerd',
+  actionConnectHelp: 'Bekijk elke stap op het scherm (pagina in het Koreaans)',
 } satisfies Record<keyof typeof zh, string>

@@ -7,6 +7,7 @@
  * from `@genoffice/ai-provider/browser` instead.
  */
 export * from './subscription/contract'
+export * from './connect-help'
 export * from './subscription/env'
 export * from './subscription/locate'
 export * from './subscription/process'

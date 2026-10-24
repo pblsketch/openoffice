@@ -131,4 +131,5 @@ export const it = {
     'Ancora niente? Copia i dati di connessione e inviali a chi ti sta aiutando. Non contengono account né percorsi di file.',
   actionCopyInfo: 'Copia i dati per l’assistenza',
   copyInfoDone: 'Copiato',
+  actionConnectHelp: 'Guarda ogni passaggio sullo schermo (pagina in coreano)',
 } satisfies Record<keyof typeof zh, string>

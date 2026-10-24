@@ -15,8 +15,10 @@ import type {
   AiProviderId,
   AiRunErrorKind,
   AiSubscriptionProviderId,
+  SubscriptionConnectHelpPath,
   SubscriptionStatusMap,
 } from '@genoffice/ai-provider/browser'
+import { subscriptionConnectHelpUrl } from '@genoffice/ai-provider/browser'
 import type { IpcStreamError } from '@genoffice/agent-core'
 import {
   AI_SUBSCRIPTION_INSTALL_HELP_URLS,
@@ -80,6 +82,8 @@ export interface SubscriptionConnection {
   /** read the last known statuses again (cheap: no program is started) */
   readonly refresh: () => void
   readonly actions: AiSubscriptionCardActions
+  /** open the website's step-by-step connect help at the guide's path */
+  readonly openConnectHelp: (path: SubscriptionConnectHelpPath | null) => void
 }
 
 /**
@@ -147,6 +151,9 @@ export function useSubscriptionConnection(): SubscriptionConnection {
     // routed to the system browser by the main process's window-open handler
     window.open(AI_SUBSCRIPTION_INSTALL_HELP_URLS[provider], '_blank', 'noreferrer')
   }, [])
+  const openConnectHelp = useCallback((path: SubscriptionConnectHelpPath | null) => {
+    window.open(subscriptionConnectHelpUrl(path), '_blank', 'noreferrer')
+  }, [])
 
   const launch = useCallback(
     (kind: 'install' | 'login' | 'update', provider: AiSubscriptionProviderId) => {
@@ -182,5 +189,5 @@ export function useSubscriptionConnection(): SubscriptionConnection {
     [apply, check, during, launch, openHelp],
   )
 
-  return { statuses, busy, refresh, actions }
+  return { statuses, busy, refresh, actions, openConnectHelp }
 }

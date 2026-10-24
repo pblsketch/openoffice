@@ -130,4 +130,5 @@ export const es = {
     '¿Sigue sin funcionar? Copia los datos de conexión y envíalos a quien te esté ayudando. No incluyen ninguna cuenta ni rutas de archivos.',
   actionCopyInfo: 'Copiar datos para pedir ayuda',
   copyInfoDone: 'Copiado',
+  actionConnectHelp: 'Ver cada paso en pantalla (página en coreano)',
 } satisfies Record<keyof typeof zh, string>

@@ -118,4 +118,5 @@ export const ko = {
     '그래도 안 되나요? 연결 정보를 복사해서 도와줄 사람에게 보내세요. 계정과 파일 경로는 들어가지 않습니다.',
   actionCopyInfo: '도움 요청용 정보 복사',
   copyInfoDone: '복사했습니다',
+  actionConnectHelp: '연결하는 방법 화면으로 보기',
 } satisfies Record<keyof typeof zh, string>

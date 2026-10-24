@@ -477,7 +477,10 @@ describe('AiConnectPrompt', () => {
   const render = (
     settings: AiSettings,
     statuses: AiSubscriptionStatuses,
-    extra: { onOpenSettings?: () => void } = {},
+    extra: {
+      onOpenSettings?: () => void
+      onOpenConnectHelp?: (path: 'claude-code' | 'codex' | 'free' | null) => void
+    } = {},
   ) => {
     const actions = cardActions()
     act(() =>
@@ -607,6 +610,26 @@ describe('AiConnectPrompt', () => {
     expect(text).not.toContain('me@example.com')
     expect(text).not.toContain('Users')
     expect(host.querySelector('[data-action="copy-info"]')!.textContent).toBe(en.copyInfoDone)
+  })
+
+  it('links to the step-by-step help at the path the guide shows, while nothing is connected', () => {
+    const onOpenConnectHelp = vi.fn()
+    const statuses: AiSubscriptionStatuses = {
+      'claude-code': status('claude-code', 'not-installed'),
+      codex: status('codex', 'signed-out'),
+    }
+    render(defaultAiSettings(), statuses, { onOpenConnectHelp })
+    expect(host.querySelector('[data-action="connect-help"]')!.textContent).toBe(
+      en.actionConnectHelp,
+    )
+    click('[data-action="connect-help"]')
+    expect(onOpenConnectHelp).toHaveBeenLastCalledWith(null)
+    click('[data-path="codex"]')
+    click('[data-action="connect-help"]')
+    expect(onOpenConnectHelp).toHaveBeenLastCalledWith('codex')
+    // a host that cannot open it gets no link
+    render(defaultAiSettings(), statuses)
+    expect(host.querySelector('[data-action="connect-help"]')).toBeNull()
   })
 
   it('offers no free way in for a selected provider that cannot run, or without a settings page', () => {

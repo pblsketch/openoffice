@@ -5,6 +5,7 @@
 
 import type {
   AiSubscriptionProviderId,
+  SubscriptionConnectHelpPath,
   SubscriptionLaunchResult,
   SubscriptionMeteredResult,
   SubscriptionStatusMap,
@@ -42,7 +43,12 @@ export interface HtmlSubscriptionApi {
   onChanged(handler: (statuses: SubscriptionStatusMap) => void): () => void
   /** shell only: open the vendor's install instructions in the default browser (rejects in standalone) */
   openInstallHelp(provider: AiSubscriptionProviderId): Promise<void>
+  /** open the website's step-by-step connect help at the guide's path (shell only) */
+  openConnectHelp(path: SubscriptionConnectHelpPath | null): Promise<void>
 }
 
 /** shell-registered: (AiSubscriptionProviderId) → void, opens the vendor's install page */
 export const SUBSCRIPTION_INSTALL_HELP_CHANNEL = 'home:open-subscription-install-help'
+
+/** shell-registered: (SubscriptionConnectHelpPath | null) → void, opens the website's connect help */
+export const SUBSCRIPTION_CONNECT_HELP_CHANNEL = 'home:open-connect-help'

@@ -2690,6 +2690,7 @@ export function AiPanel({
               disabled={connection.busy}
               attention={sendGate.connectAttention}
               onOpenSettings={() => void window.slidesApi.openAiModelSettings().catch(() => {})}
+              onOpenConnectHelp={connection.openConnectHelp}
               {...connection.actions}
             />
           )}

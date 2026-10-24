@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
   AiSubscriptionProviderId,
   AiSubscriptionState,
+  SubscriptionConnectHelpPath,
   SubscriptionStatusMap,
 } from '@genoffice/ai-provider/browser'
 import type { SubscriptionApi } from '../../shared/subscription-api'
@@ -30,6 +31,8 @@ export interface SubscriptionConnection {
   /** "use anyway" on a metered login */
   readonly acceptMetered: (provider: AiSubscriptionProviderId) => void
   readonly openInstallHelp: (provider: AiSubscriptionProviderId) => void
+  /** open the website's step-by-step connect help at the guide's path */
+  readonly openConnectHelp: (path: SubscriptionConnectHelpPath | null) => void
 }
 
 /** the answer of an API call, or null when there is no API, no handler, or the call failed */
@@ -76,6 +79,10 @@ export function useSubscriptionConnection(): SubscriptionConnection {
 
   const openInstallHelp = useCallback((provider: AiSubscriptionProviderId) => {
     void attemptSubscription((api) => api.openInstallHelp(provider))
+  }, [])
+
+  const openConnectHelp = useCallback((path: SubscriptionConnectHelpPath | null) => {
+    void attemptSubscription((api) => api.openConnectHelp(path))
   }, [])
 
   useEffect(() => {
@@ -173,5 +180,6 @@ export function useSubscriptionConnection(): SubscriptionConnection {
     recheck,
     acceptMetered,
     openInstallHelp,
+    openConnectHelp,
   }
 }

@@ -5293,6 +5293,7 @@ export function App({
           admitQueued: sendGate.admitQueued,
           busy: subscription.busy,
           actions: subscription.actions,
+          openConnectHelp: subscription.openConnectHelp,
           usage: subscriptionUsage,
           inputTruncated,
           onDismissTruncated: () => setInputTruncated(false),

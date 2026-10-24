@@ -17,6 +17,7 @@ import {
   type AiSubscriptionCardAction,
 } from './ai-subscription'
 import { AiConnectGuide } from './AiConnectGuide'
+import type { AiConnectPath } from './connect-guide'
 import { AiMark } from './AiMark'
 import { aiSubscriptionText, type AiSubscriptionStringKey } from './strings-ai-subscription'
 import './ai-subscription.css'
@@ -245,6 +246,7 @@ export function AiConnectPrompt({
   disabled,
   attention,
   onOpenSettings,
+  onOpenConnectHelp,
   ...actions
 }: AiSubscriptionCardActions & {
   readonly choice: AiProviderChoice
@@ -258,6 +260,8 @@ export function AiConnectPrompt({
   readonly attention?: number | undefined
   /** open Settings › AI; offered when the selected key provider is not filled in, or nothing is connected (the free connections are there) */
   readonly onOpenSettings?: (() => void) | undefined
+  /** open the website's step-by-step connect help (see `AiConnectGuide`) */
+  readonly onOpenConnectHelp?: ((path: AiConnectPath | null) => void) | undefined
 }): React.JSX.Element | null {
   const view = aiConnectPromptView(choice)
   const shown = view !== null
@@ -291,6 +295,7 @@ export function AiConnectPrompt({
           lang={lang}
           disabled={disabled}
           onChooseFree={onOpenSettings}
+          onOpenConnectHelp={onOpenConnectHelp}
           {...actions}
         />
       )}

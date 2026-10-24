@@ -15,6 +15,7 @@ import { AI_CHANNELS, HTML_CHANNELS } from '../shared/ipc'
 import { HTML_HANDOFF_CHANNELS } from '../shared/ipc'
 import type { AutoSaveDefault, ExportFormat, HtmlApi, SaveMode, UiTheme } from '../shared/ipc'
 import {
+  SUBSCRIPTION_CONNECT_HELP_CHANNEL,
   SUBSCRIPTION_INSTALL_HELP_CHANNEL,
   subscriptionLaunchResultOf,
   subscriptionMeteredResultOf,
@@ -63,6 +64,9 @@ const subscription: HtmlSubscriptionApi = {
   },
   openInstallHelp: async (provider) => {
     await ipcRenderer.invoke(SUBSCRIPTION_INSTALL_HELP_CHANNEL, provider)
+  },
+  openConnectHelp: async (path) => {
+    await ipcRenderer.invoke(SUBSCRIPTION_CONNECT_HELP_CHANNEL, path)
   },
 }
 

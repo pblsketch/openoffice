@@ -128,4 +128,5 @@ export const ja = {
     'それでもうまくいきませんか？接続情報をコピーして、手伝ってくれる人に送ってください。アカウントとファイルのパスは含まれません。',
   actionCopyInfo: 'サポート用の情報をコピー',
   copyInfoDone: 'コピーしました',
+  actionConnectHelp: '手順を画面で見る（韓国語のページ）',
 } satisfies Record<keyof typeof zh, string>

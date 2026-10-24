@@ -22,6 +22,7 @@ import { AI_CHANNELS, HWP_CHANNELS } from '../shared/ipc'
 import type { HwpApi, PrintMode, SaveMode, UiTheme } from '../shared/ipc'
 import type { SubscriptionApi } from '../shared/subscription-api'
 import {
+  SUBSCRIPTION_CONNECT_HELP_CHANNEL,
   SUBSCRIPTION_INSTALL_HELP_CHANNEL,
   subscriptionLaunchResultOf,
   subscriptionStatusMapOf,
@@ -77,6 +78,9 @@ const aiSubscription: SubscriptionApi = {
   },
   async openInstallHelp(provider) {
     await ipcRenderer.invoke(SUBSCRIPTION_INSTALL_HELP_CHANNEL, provider)
+  },
+  async openConnectHelp(path) {
+    await ipcRenderer.invoke(SUBSCRIPTION_CONNECT_HELP_CHANNEL, path)
   },
 }
 

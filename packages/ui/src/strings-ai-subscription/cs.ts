@@ -124,4 +124,5 @@ export const cs = {
     'Pořád to nejde? Zkopírujte informace o připojení a pošlete je tomu, kdo vám pomáhá. Neobsahují účet ani cesty k souborům.',
   actionCopyInfo: 'Kopírovat informace pro pomoc',
   copyInfoDone: 'Zkopírováno',
+  actionConnectHelp: 'Zobrazit každý krok na obrazovce (stránka v korejštině)',
 } satisfies Record<keyof typeof zh, string>

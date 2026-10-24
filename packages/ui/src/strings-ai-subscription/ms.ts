@@ -129,4 +129,5 @@ export const ms = {
     'Masih tidak berjaya? Salin maklumat sambungan dan hantar kepada orang yang membantu anda. Maklumat ini tidak mengandungi akaun atau laluan fail.',
   actionCopyInfo: 'Salin maklumat untuk bantuan',
   copyInfoDone: 'Disalin',
+  actionConnectHelp: 'Lihat setiap langkah pada skrin (halaman dalam bahasa Korea)',
 } satisfies Record<keyof typeof zh, string>
