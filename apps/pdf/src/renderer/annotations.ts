@@ -10,6 +10,18 @@ export const MARKUP_COLORS: Record<MarkupType, [number, number, number]> = {
   strikeout: [0.86, 0.22, 0.18],
 }
 
+/** Quick colors on the annotation context menu. Document data, not chrome tokens. */
+export const MARKUP_PALETTE: readonly { hex: string; color: [number, number, number] }[] = [
+  { hex: '#FFDE59', color: [1, 0.87, 0.35] },
+  { hex: '#7CB342', color: [0.486, 0.702, 0.259] },
+  { hex: '#00ACC1', color: [0, 0.675, 0.757] },
+  { hex: '#2B66FF', color: [0.169, 0.4, 1] },
+  { hex: '#7E57C2', color: [0.494, 0.341, 0.761] },
+  { hex: '#D81B60', color: [0.847, 0.106, 0.376] },
+  { hex: '#FB8C00', color: [0.984, 0.549, 0] },
+  { hex: '#DB382E', color: [0.86, 0.22, 0.18] },
+]
+
 /** Page geometry: unrotated PDF page size + total display rotation (base /Rotate + unsaved delta) */
 export interface PageGeom {
   pw: number

@@ -4,7 +4,7 @@ PDF 보기·주석·편집 에디터다. 화면은 PDF.js로 그리고, 저장�
 
 ## 맡은 범위
 
-- 렌더러(`src/renderer/`): 쪽 렌더링과 글자 계층, 축소판, 주석·서식·그리기 덧그림, 메모 여백, 리본.
+- 렌더러(`src/renderer/`): 쪽 렌더링과 글자 계층, 축소판, 주석·서식·그리기 덧그림, 메모 여백, 리본. 이미 있는 형광펜·밑줄·취소선은 우클릭 메뉴에서 지우거나 색을 바꾼다(저장된 주석은 같은 자리에 새 표시를 더하고 옛 표시를 지우는 방식).
 - 메인 프로세스(`src/main/pdf-main.ts`와 주변): 저장(`save-pdf.ts`), 글자 편집(`text-edit.ts`, 글꼴 찾기·부분 집합 `font-*.ts`), 영구 가림(`redaction.ts`), 이미지 편집·내보내기, 셸의 PDF 도구 창이 부르는 처리(그림 여러 장으로 PDF 만들기 `images-to-pdf.ts`, 양면 인쇄 맞추기 `print-prep.ts`, 배경 겹치기 `overlay.ts`, 주석 한꺼번에 지우기 `annot-strip.ts`, 빈 페이지 후보 찾기 `blank-pages.ts`(셸의 구조 작업 프로세스에서 돈다), 용량 줄이기 `compress.ts`(그림 처리는 셸이 넘긴 크로미움 코드), 암호 걸기·풀기 `qpdf.ts`(qpdf WebAssembly, 경로는 `locateFile`로 준다), 파일 복구 `repair.ts`(PDFium으로 다시 쓰고, 못 읽으면 pdf-lib로 온전한 페이지만 옮긴다)), OCR(`ocr.ts`), 전자 서명(`pdf-sign.ts`, `pdf-signatures.ts`, `signature-store.ts`), 빈 PDF 생성(`blank-pdf.ts`).
 - IPC 계약 `src/shared/ipc.ts`(`PDF_CHANNELS`)와 편집 연산 설명(`src/shared/op-docs.ts`).
 - 페이지 탭의 "PDF 도구" 메뉴(결정 0030): 저장하지 않은 편집을 먼저 저장한 뒤 `pdf:open-in-pdf-tools`로 그 뷰의 파일과 도구 이름(`PDF_TOOLS_HANDOFF`)을 넘긴다. 메인은 그 뷰에 허가된 파일만 받아 셸이 주입한 `openPdfTools`를 부른다. 단독 실행에는 이 주입이 없어 메뉴가 아무것도 열지 못한다고 알린다.

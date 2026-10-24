@@ -41,6 +41,8 @@ export interface SavedMarkupAnnot {
   type: MarkupType
   quads: number[][]
   rect: [number, number, number, number]
+  /** /C as 0-1 RGB when the file carries a readable color */
+  color?: [number, number, number]
 }
 
 /** Pending deletion of a saved markup or note annotation */

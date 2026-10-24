@@ -34,6 +34,10 @@ export async function loadSavedAnnots(
       const quads: number[][] = []
       for (let q = 0; q + 8 <= a.quadPoints.length; q += 8)
         quads.push([...a.quadPoints.slice(q, q + 8)])
+      const color =
+        a.color && a.color.length >= 3
+          ? ([a.color[0]! / 255, a.color[1]! / 255, a.color[2]! / 255] as [number, number, number])
+          : undefined
       return [
         {
           pageIndex: origIdx,
@@ -46,6 +50,7 @@ export async function loadSavedAnnots(
             number,
             number,
           ],
+          ...(color ? { color } : {}),
         },
       ]
     })

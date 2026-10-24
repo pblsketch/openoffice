@@ -6580,7 +6580,16 @@ async function savePdfAs(): Promise<void> {
     if (pdfIsDirty(tab.webContents.id)) {
       // Renderer applies its pending edits onto the source bytes; the pdf main
       // process writes the result to the picked path only
-      if (!(await requestPdfSaveAs(tab.webContents, target))) return
+      if (!(await requestPdfSaveAs(tab.webContents, target))) {
+        // The renderer's toast carries the detailed reason; this makes a failed
+        // copy visible even when the PDF tab is not the focused pane.
+        console.error('[shell] pdf save as failed: renderer did not complete the save')
+        await dialog.showMessageBox(host, {
+          type: 'error',
+          message: tm('errPdfSaveAsFailed'),
+        })
+        return
+      }
     } else {
       // No pending edits → a byte-identical copy
       await atomicCopyFile(tab.filePath, target)

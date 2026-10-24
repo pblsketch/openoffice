@@ -34,6 +34,7 @@ import {
 import type { CropRect, FileOpCanceled, FileOpResult, PdfAppDeps, RotateDelta } from './ai/tools'
 import {
   MARKUP_COLORS,
+  MARKUP_PALETTE,
   geomDispSize,
   pdfRectToCss,
   pdfToView,
@@ -469,6 +470,19 @@ const RIBBON_TABS = [
   { id: 'view', labelKey: 'ribbonTabView' },
 ] as const
 type RibbonTab = (typeof RIBBON_TABS)[number]['id'] | 'fillForm' | 'formDesign'
+
+/** Right-click menu of one markup annotation (pending or already in the file). */
+type MarkupMenu =
+  | {
+      kind: 'pending'
+      id: string
+      pageIndex: number
+      type: MarkupType
+      color: [number, number, number]
+      x: number
+      y: number
+    }
+  | { kind: 'saved'; annot: SavedMarkupAnnot; x: number; y: number }
 
 export default function App() {
   const { lang, t } = useI18n()
@@ -1120,6 +1134,8 @@ export default function App() {
     if (!aiCollapsed) startAiAnnotCountScan()
   }, [aiCollapsed, startAiAnnotCountScan])
   const [selected, setSelected] = useState<AnnotSelection | null>(null)
+  /** Markup context menu opened by a right click on a pending or saved annotation */
+  const [markupMenu, setMarkupMenu] = useState<MarkupMenu | null>(null)
   /** Transparency presets fold-out inside the image selection popup */
   const [opacityMenu, setOpacityMenu] = useState(false)
   useEffect(() => setOpacityMenu(false), [selected])
@@ -1625,6 +1641,7 @@ export default function App() {
       }
       setFileSize(data.byteLength)
       setSelected(null)
+      setMarkupMenu(null)
       setPageSel(EMPTY_PAGE_SELECTION)
       setDeleteToast(false)
       setUndoStack([])
@@ -2239,11 +2256,16 @@ export default function App() {
   const ordinaryDirty = dirtyBesidesFormFields || formFields.length > 0
   const savableDirty = dirtyBesidesFormFields || savableFormFields.length > 0
   const dirty = redactions.length > 0 || ordinaryDirty
+  // An open text/comment editor is already part of what Save and Save As write
+  // (saveInPlace/saveAsTo commit the draft first), but it is not in `ordinaryDirty`.
+  // The shell uses this flag to decide whether Save As must ask the renderer at all;
+  // without it a copy made mid-edit silently misses the typed text.
+  const hasOpenDraft = textDraft !== null || noteEditDraft !== null
 
   // Mirror dirty state to the main process (close-tab/close-window guard)
   useEffect(() => {
-    window.pdfApi.setDirty(dirty)
-  }, [dirty])
+    window.pdfApi.setDirty(dirty || hasOpenDraft)
+  }, [dirty, hasOpenDraft])
 
   // Existing images are listed while edit-image mode is on; `doc` in the deps refreshes
   // the list after a post-save reload (object rects may have changed on disk)
@@ -2475,6 +2497,7 @@ export default function App() {
     setMetadata(s.metadata)
     // The selected annotation may no longer exist in the restored snapshot
     setSelected(null)
+    setMarkupMenu(null)
   }
 
   const undo = () => {
@@ -3139,6 +3162,53 @@ export default function App() {
       const a = saved[i]!
       if (pendingDeleted.has(a.objNum) || !hitQuads(a.quads)) continue
       return select({ kind: 'savedMarkup', annot: a, ...at })
+    }
+  }
+
+  /** Right-click on a markup opens its own menu (delete + recolor) instead of the
+   *  browser's. Hit-testing mirrors handlePageClick: pending markups first, then
+   *  annotations already saved in the file. */
+  const handlePageContextMenu = (origIdx: number, e: ReactMouseEvent<HTMLDivElement>) => {
+    if (readOnly) return
+    if (!(e.target as Element).closest?.('.pdf-page-content')) return
+    const box = e.currentTarget.getBoundingClientRect()
+    const g = pageGeom(origIdx)
+    const [px, py] = viewToPdf(g, (e.clientX - box.left) / scale, (e.clientY - box.top) / scale)
+    const hitQuads = (quads: number[][]) =>
+      quads.some((q) => {
+        const r = quadToRect(q)
+        return px >= r[0] && px <= r[2] && py >= r[1] && py <= r[3]
+      })
+    const at = { x: e.clientX, y: e.clientY }
+    const onPage = markups.filter((m) => m.pageIndex === origIdx)
+    for (let i = onPage.length - 1; i >= 0; i--) {
+      const m = onPage[i]!
+      if (!hitQuads(m.quads)) continue
+      e.preventDefault()
+      e.stopPropagation()
+      setSelPopup(null)
+      setSelected(null)
+      setMarkupMenu({
+        kind: 'pending',
+        id: m.id,
+        pageIndex: m.pageIndex,
+        type: m.type,
+        color: m.color,
+        ...at,
+      })
+      return
+    }
+    const pendingDeleted = new Set(annotDeletes.map((d) => d.annot.objNum))
+    const saved = savedMarkups.get(origIdx) ?? []
+    for (let i = saved.length - 1; i >= 0; i--) {
+      const a = saved[i]!
+      if (pendingDeleted.has(a.objNum) || !hitQuads(a.quads)) continue
+      e.preventDefault()
+      e.stopPropagation()
+      setSelPopup(null)
+      setSelected(null)
+      setMarkupMenu({ kind: 'saved', annot: a, ...at })
+      return
     }
   }
 
@@ -4555,6 +4625,14 @@ export default function App() {
     )
   }
 
+  /** Transient "deleted · undo" toast so the removal is visible and reversible in place */
+  const showDeletedToast = (insertedText = false) => {
+    if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current)
+    setDeletedInsertedText(insertedText)
+    setDeleteToast(true)
+    toastTimerRef.current = window.setTimeout(() => setDeleteToast(false), 5000)
+  }
+
   const deleteSelected = () => {
     const sel = selected
     if (!sel) return
@@ -4585,11 +4663,60 @@ export default function App() {
                     : { op: 'setStamps', cfg: null }
     applyEditOps([op])
     setSelected(null)
-    // Transient "deleted · undo" toast so the removal is visible and reversible in place
-    if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current)
-    setDeletedInsertedText(sel.kind === 'textInsert')
-    setDeleteToast(true)
-    toastTimerRef.current = window.setTimeout(() => setDeleteToast(false), 5000)
+    showDeletedToast(sel.kind === 'textInsert')
+  }
+
+  /** Recolor one markup from its context menu. A pending markup changes in place;
+   *  a saved annotation is replaced by a pending markup with the same quads, so the
+   *  save path keeps its existing add/delete rules and the old color disappears from
+   *  the live preview immediately. */
+  const recolorMarkupFromMenu = (menu: MarkupMenu, color: [number, number, number]) => {
+    setMarkupMenu(null)
+    setSelected(null)
+    if (menu.kind === 'pending') {
+      applyEditOps([{ op: 'recolorMarkup', id: menu.id, color }])
+      return
+    }
+    // The replacement markup is a new annotation, so carry the old /Subj (an
+    // accepted AI highlight's category) over when the file still has it.
+    const apply = (subject?: string) =>
+      applyEditOps([
+        { op: 'deleteSavedAnnot', annot: menu.annot },
+        {
+          op: 'addMarkup',
+          markup: {
+            pageIndex: menu.annot.pageIndex,
+            type: menu.annot.type,
+            color,
+            quads: menu.annot.quads,
+            ...(subject ? { subject } : {}),
+          },
+        },
+      ])
+    const readSubjects = window.pdfApi.annotSubjects
+    if (!filePath || typeof readSubjects !== 'function') {
+      apply()
+      return
+    }
+    void readSubjects(filePath)
+      .then((list) => {
+        const match = list.find(
+          (item) => item.pageIndex === menu.annot.pageIndex && item.objNum === menu.annot.objNum,
+        )
+        apply(match?.subj)
+      })
+      .catch(() => apply())
+  }
+
+  const deleteMarkupFromMenu = (menu: MarkupMenu) => {
+    applyEditOps(
+      menu.kind === 'pending'
+        ? [{ op: 'removeMarkup', id: menu.id }]
+        : [{ op: 'deleteSavedAnnot', annot: menu.annot }],
+    )
+    setMarkupMenu(null)
+    setSelected(null)
+    showDeletedToast()
   }
 
   /** Show a transient toast; the save-failure badge alone hides the actual reason */
@@ -6426,10 +6553,7 @@ export default function App() {
     ])
     if (activeNote && item.key === activeNote.rootKey) setActiveNote(null)
     // "deleted · undo" toast — a mistaken trash tap stays reversible before autosave
-    if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current)
-    setDeletedInsertedText(false)
-    setDeleteToast(true)
-    toastTimerRef.current = window.setTimeout(() => setDeleteToast(false), 5000)
+    showDeletedToast()
   }
 
   /** Extract/insert work on the file on disk — flush unsaved changes first; undefined = the save failed */
@@ -7181,6 +7305,7 @@ export default function App() {
 
   /** Guard roots (popover panel + its trigger) for the dismissal hooks below */
   const thumbMenuRef = useRef<HTMLDivElement | null>(null)
+  const markupMenuRef = useRef<HTMLDivElement | null>(null)
   const drawColorWrapRef = useRef<HTMLDivElement | null>(null)
   const draftColorWrapRef = useRef<HTMLSpanElement | null>(null)
   const highlightWrapRef = useRef<HTMLDivElement | null>(null)
@@ -7197,6 +7322,19 @@ export default function App() {
   useDismissablePopover(formMenu != null, () => setFormMenu(null), {
     inside: () => [formMenuRef.current],
   })
+  useDismissablePopover(markupMenu != null, () => setMarkupMenu(null), {
+    inside: () => [markupMenuRef.current],
+  })
+  // Keep the markup menu inside the window when opened near the bottom/right edge
+  useLayoutEffect(() => {
+    const el = markupMenuRef.current
+    if (!markupMenu || !el) return
+    const r = el.getBoundingClientRect()
+    const left = Math.max(0, Math.min(markupMenu.x, window.innerWidth - r.width - 4))
+    const top = Math.max(0, Math.min(markupMenu.y, window.innerHeight - r.height - 4))
+    if (left !== markupMenu.x || top !== markupMenu.y)
+      setMarkupMenu({ ...markupMenu, x: left, y: top })
+  }, [markupMenu])
   // The field menu is tall; keep it inside the window when opened near the bottom/right edge
   useLayoutEffect(() => {
     const el = formMenuRef.current
@@ -7367,6 +7505,7 @@ export default function App() {
         else if (noteDraft) setNoteDraft(null)
         else if (activeNote) setActiveNote(null)
         else if (drawTool) setDrawTool(null)
+        else if (markupMenu) setMarkupMenu(null)
         else if (formMenu) setFormMenu(null)
         else if (formDesignTool) setFormDesignTool(null)
         else if (selectedFormFieldIds.length > 0) setSelectedFormFieldIds([])
@@ -9590,6 +9729,7 @@ export default function App() {
                             } else if (editTextMode && !readOnly) startTextEdit(origIdx, e)
                             else handlePageClick(origIdx, e)
                           }}
+                          onContextMenu={(e) => handlePageContextMenu(origIdx, e)}
                           onMouseMove={(e) => {
                             if (pendingTextInsert && !readOnly) {
                               const pageBox = e.currentTarget.getBoundingClientRect()
@@ -10969,7 +11109,7 @@ export default function App() {
                 onClose={() => setAskPop(null)}
               />
             )}
-            {selected && (
+            {selected && !markupMenu && (
               <div
                 ref={delPopupRef}
                 className="pdf-del-popup"
@@ -11153,6 +11293,54 @@ export default function App() {
                 )}
               </div>
             )}
+            {markupMenu &&
+              (() => {
+                const type = markupMenu.kind === 'pending' ? markupMenu.type : markupMenu.annot.type
+                const current =
+                  markupMenu.kind === 'pending'
+                    ? markupMenu.color
+                    : (markupMenu.annot.color ?? MARKUP_COLORS[type])
+                return (
+                  <div
+                    ref={markupMenuRef}
+                    className="thumb-menu file-menu pdf-markup-menu"
+                    style={{ left: markupMenu.x, top: markupMenu.y }}
+                  >
+                    <div className="pdf-markup-menu-title">
+                      <span
+                        className="pdf-markup-menu-current"
+                        style={{
+                          background: `rgb(${current.map((v) => Math.round(v * 255)).join(',')})`,
+                        }}
+                        aria-hidden="true"
+                      />
+                      {t(type)}
+                    </div>
+                    <div className="pdf-markup-menu-label">{t('drawColor')}</div>
+                    <div className="pdf-markup-colors" role="group" aria-label={t('drawColor')}>
+                      {MARKUP_PALETTE.map(({ hex, color }) => {
+                        const selected = color.every((v, i) => Math.abs(v - current[i]!) < 0.01)
+                        return (
+                          <button
+                            key={hex}
+                            type="button"
+                            className={selected ? 'is-current' : undefined}
+                            style={{ background: hex }}
+                            data-tip={hex}
+                            aria-label={`${t('drawColor')} ${hex}`}
+                            aria-pressed={selected}
+                            onClick={() => recolorMarkupFromMenu(markupMenu, color)}
+                          />
+                        )
+                      })}
+                    </div>
+                    <div className="thumb-menu-sep" />
+                    <button type="button" onClick={() => deleteMarkupFromMenu(markupMenu)}>
+                      {t('deleteAnnotation')}
+                    </button>
+                  </div>
+                )
+              })()}
             {thumbMenu && (
               <div
                 ref={thumbMenuRef}

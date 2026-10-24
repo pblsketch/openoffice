@@ -118,6 +118,23 @@ describe('annotate', () => {
     expect(b.state.markups.map((m) => m.pageIndex)).toEqual([1])
   })
 
+  it('recolors a pending markup in place', () => {
+    const a = run(empty(), [{ op: 'addMarkup', markup: markup() }])
+    const id = a.state.markups[0]!.id
+    const b = run(a.state, [{ op: 'recolorMarkup', id, color: [0.1, 0.2, 0.3] }])
+    expect(b.state.markups).toHaveLength(1)
+    expect(b.state.markups[0]!.id).toBe(id)
+    expect(b.state.markups[0]!.color).toEqual([0.1, 0.2, 0.3])
+  })
+
+  it('rejects a markup color outside the 0-1 range', () => {
+    const a = run(empty(), [{ op: 'addMarkup', markup: markup() }])
+    const b = run(a.state, [
+      { op: 'recolorMarkup', id: a.state.markups[0]!.id, color: [1.1, 0.2, 0.3] },
+    ])
+    expect(b.plan.failures[0]!.error).toContain('between 0 and 1')
+  })
+
   it('deleting a saved note voids its pending content edit', () => {
     const a = run(empty(), [{ op: 'editSavedNote', annot: savedNote(7), contents: 'new' }])
     expect(a.state.noteEdits).toHaveLength(1)
