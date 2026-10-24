@@ -45,7 +45,6 @@ function renderRibbon(sourceMode: boolean, sourceViewOpen = false) {
         onToggleFrontmatter: vi.fn(),
         outlineOpen: false,
         onToggleOutline: vi.fn(),
-        hasOutline: false,
         spellcheck: true,
         onToggleSpellcheck: vi.fn(),
         aiOpen: false,

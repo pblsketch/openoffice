@@ -30,6 +30,7 @@ import { MapController, type MapHost, type TopicRequest } from './map/controller
 import { Toolbar } from './components/Toolbar'
 import { SheetTabs } from './components/SheetTabs'
 import { ThemePanel } from './components/ThemePanel'
+import { NotePanel, type NotePanelHandle } from './components/NotePanel'
 import { MindmapAiDock, useMindmapAi } from './ai/AiDock'
 import { useMapHandoff } from './ai/use-handoff'
 import {
@@ -79,6 +80,9 @@ export default function App() {
   const [fieldRequest, setFieldRequest] = useState<TopicFieldRequest | null>(null)
   const [toast, setToast] = useState<StringKey | null>(null)
   const [themeOpen, setThemeOpen] = useState(false)
+  const [noteOpen, setNoteOpen] = useState(
+    () => localStorage.getItem('mindmapapp.showNotes') === '1',
+  )
   /** bumped when a controller reports a change of selection, history, zoom or layout */
   const [, setMapTick] = useState(0)
   const [autoSave, setAutoSave] = useAutoSavePref('mindmapapp.autoSave', window.mindmapApi)
@@ -87,6 +91,9 @@ export default function App() {
   const statusRef = useRef<LoadStatus>('loading')
   const controllers = useRef(new Map<string, MapController>())
   const hosts = useRef(new Map<string, HTMLDivElement>())
+  const noteRef = useRef<NotePanelHandle | null>(null)
+  // the map keeps the host object it was made with; this reaches the newest handler
+  const openTopicFieldRef = useRef<(field: TopicRequest, topicId: string) => void>(() => {})
   const confirmAnswer = useRef<((ok: boolean) => void) | null>(null)
   const savingRef = useRef(false)
   const langRef = useRef(lang)
@@ -155,10 +162,10 @@ export default function App() {
           })
           .catch(() => say('linkNotOpened'))
       },
-      onRequest: openField,
+      onRequest: (field, topicId) => openTopicFieldRef.current(field, topicId),
       onStateChange: () => setMapTick((tick) => tick + 1),
     }),
-    [ask, openField, say],
+    [ask, say],
   )
 
   // ---- opening ----
@@ -293,6 +300,8 @@ export default function App() {
 
   /** Brings the tree in line with every sheet on screen, so nothing shown is missing from what is saved or read. */
   const flushAll = useCallback(() => {
+    // a note still being typed belongs to the map before it is saved or read
+    noteRef.current?.commit()
     controllers.current.forEach((each) => {
       // a title still being typed is part of the map: it goes in before anything is saved or read
       each.commitEdit()
@@ -302,11 +311,23 @@ export default function App() {
 
   // the AI panel works on the map through the same session and controllers (T12)
   const ai = useMindmapAi({ session, controllers, activeKey, setActiveKey, path, flush: flushAll })
+
+  /** The note panel shares the map's end side with the theme and AI panels: one at a time. */
+  const closeNote = useCallback(() => {
+    noteRef.current?.commit()
+    setNoteOpen(false)
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem('mindmapapp.showNotes', noteOpen ? '1' : '0')
+  }, [noteOpen])
+
   // a request the shell handed over to this new map: taken once, run through the panel (T16)
   const handoff = useMapHandoff({
     ready: status === 'ready',
     untitled: path === null,
     openPanel: () => {
+      closeNote()
       setThemeOpen(false)
       ai.setOpen(true)
     },
@@ -550,6 +571,7 @@ export default function App() {
   // ---- sheets ----
 
   const selectSheet = (key: string): void => {
+    noteRef.current?.commit()
     activeController()?.flush()
     setActiveKey(key)
   }
@@ -598,9 +620,22 @@ export default function App() {
 
   // ---- labels, notes, links ----
 
+  /** Labels and links are modal; a note belongs in the side panel, where it stays while the map is used. */
+  const openTopicField = (field: TopicRequest, topicId: string): void => {
+    if (field === 'note') {
+      setThemeOpen(false)
+      ai.setOpen(false)
+      if (noteOpen) noteRef.current?.focus()
+      else setNoteOpen(true)
+      return
+    }
+    openField(field, topicId)
+  }
+  openTopicFieldRef.current = openTopicField
+
   const requestField = (field: TopicRequest): void => {
     const id = controller?.selectedTopicIds().at(-1)
-    if (id) openField(field, id)
+    if (id) openTopicField(field, id)
     else say('selectTopicFirst')
   }
 
@@ -639,6 +674,8 @@ export default function App() {
   }
 
   const hasTopic = (controller?.selectedTopicIds().length ?? 0) > 0
+  const selectedId = controller?.selectedTopicIds().at(-1)
+  const selectedTopic = selectedId ? (controller?.topic(selectedId) ?? null) : null
   const picking = controller?.pickingRelationship ?? false
 
   return (
@@ -656,6 +693,7 @@ export default function App() {
         pickingRelationship={picking}
         themeOpen={themeOpen}
         aiOpen={ai.open}
+        noteOpen={noteOpen}
         onSave={() => void doSave('save')}
         onSaveAs={() => void doSave('saveAs')}
         onUndo={() => runCommand('undo')}
@@ -675,6 +713,7 @@ export default function App() {
         onLink={() => requestField('link')}
         onLayout={(layout: ViewLayout) => controller?.setLayout(layout)}
         onToggleTheme={() => {
+          closeNote()
           ai.setOpen(false)
           setThemeOpen((open) => !open)
         }}
@@ -684,6 +723,7 @@ export default function App() {
         onZoomOut={() => runCommand('zoom-out')}
         onZoomFit={() => runCommand('zoom-fit')}
         onToggleAi={() => {
+          closeNote()
           setThemeOpen(false)
           ai.setOpen(!ai.open)
         }}
@@ -742,6 +782,15 @@ export default function App() {
             onClose={() => setThemeOpen(false)}
           />
         )}
+        {noteOpen && (
+          <NotePanel
+            ref={noteRef}
+            sheetKey={activeKey ?? ''}
+            topic={selectedTopic}
+            onCommit={(topicId, note) => controller?.setNote(topicId, note)}
+            onClose={closeNote}
+          />
+        )}
         <MindmapAiDock
           ai={ai}
           filePath={path}
@@ -749,6 +798,7 @@ export default function App() {
           onRunStart={handoff.onRunStart}
           templateDocument={templateDocument}
           onSkillHandoff={() => {
+            closeNote()
             setThemeOpen(false)
             ai.setOpen(true)
           }}

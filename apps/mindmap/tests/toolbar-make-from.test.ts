@@ -43,6 +43,7 @@ function props(onMakeFromDocument: () => void, disabled = false): ToolbarProps {
     layoutExact: true,
     pickingRelationship: false,
     themeOpen: false,
+    noteOpen: false,
     aiOpen: false,
     onSave: none,
     onSaveAs: none,

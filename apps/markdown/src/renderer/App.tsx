@@ -181,7 +181,9 @@ export default function App() {
   const [autoSave, setAutoSave] = useAutoSavePref('mdapp.autoSave', window.markdownApi)
   const [showFind, setShowFind] = useState(false)
   const [findFocus, setFindFocus] = useState<FindFocusRequest>({ field: 'find', nonce: 0 })
-  const [outlineOpen, setOutlineOpen] = useState(false)
+  const [outlineOpen, setOutlineOpen] = useState(
+    () => localStorage.getItem('mdapp.showOutline') === '1',
+  )
   const [outlineWidth, setOutlineWidth] = useState(
     () => Number(localStorage.getItem('mdapp.outlineWidth')) || undefined,
   )
@@ -297,6 +299,9 @@ export default function App() {
   useEffect(() => {
     if (outlineWidth) localStorage.setItem('mdapp.outlineWidth', String(outlineWidth))
   }, [outlineWidth])
+  useEffect(() => {
+    localStorage.setItem('mdapp.showOutline', outlineOpen ? '1' : '0')
+  }, [outlineOpen])
   const tiptapTarget = useMemo(() => (editor ? tiptapFindTarget(editor) : null), [editor])
   // source mode searches the buffer the user is actually looking at
   const findTarget = sourceMode ? (sourceRef.current?.findTarget() ?? null) : tiptapTarget
@@ -346,6 +351,9 @@ export default function App() {
         originalSourceRef.current = roundTripEnabled
           ? captureMarkdownSource(raw, envelope, editor.state.doc)
           : undefined
+        // a document opened onto an existing outline must fill it before the
+        // first edit, or the pane's toggle looks disabled on a file full of headings
+        setOutlineItems(collectOutline(editor))
       }
       setFilePath(path)
       const inner = frontmatterInner(envelope.frontmatter)
@@ -968,6 +976,10 @@ export default function App() {
         // Obsidian's edit/preview toggle: the source view
         event.preventDefault()
         toggleSource()
+      } else if (key === 'o' && event.shiftKey) {
+        // VS Code's document-symbol shortcut: the heading outline
+        event.preventDefault()
+        if (!sourceMode) setOutlineOpen((open) => !open)
       } else if (key === '=' || key === '+') {
         event.preventDefault()
         zoomIn()
@@ -987,7 +999,7 @@ export default function App() {
       offRenamed()
       window.removeEventListener('keydown', onKeyDown, true)
     }
-  }, [doSave, printDoc, zoomIn, zoomOut, openFind, toggleSource, loadFromPath, t])
+  }, [doSave, printDoc, zoomIn, zoomOut, openFind, toggleSource, loadFromPath, sourceMode, t])
 
   // Chromium reports trackpad pinch as ctrl+wheel. Also support Cmd/Ctrl+scroll
   // while the pointer is over the document canvas.
@@ -1203,7 +1215,6 @@ export default function App() {
         onToggleSource={toggleSource}
         outlineOpen={outlineOpen}
         onToggleOutline={() => setOutlineOpen((v) => !v)}
-        hasOutline={outlineItems.length > 0}
         spellcheck={spellcheck}
         onToggleSpellcheck={() => setSpellcheck((v) => !v)}
         sourceMode={sourceMode}

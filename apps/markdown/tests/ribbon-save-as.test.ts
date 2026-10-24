@@ -43,7 +43,6 @@ function renderRibbon(disabled = false) {
     onToggleFrontmatter: vi.fn(),
     outlineOpen: false,
     onToggleOutline: vi.fn(),
-    hasOutline: false,
   }
   act(() => root.render(createElement(Ribbon, props)))
   cleanups.push(() => {

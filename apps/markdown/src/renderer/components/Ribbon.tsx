@@ -55,7 +55,6 @@ interface Props {
   onToggleSource: () => void
   outlineOpen: boolean
   onToggleOutline: () => void
-  hasOutline: boolean
   spellcheck: boolean
   onToggleSpellcheck: () => void
   aiOpen: boolean
@@ -193,7 +192,6 @@ export function Ribbon({
   onToggleSource,
   outlineOpen,
   onToggleOutline,
-  hasOutline,
   spellcheck,
   onToggleSpellcheck,
   aiOpen,
@@ -578,7 +576,7 @@ export function Ribbon({
               <IconBtn
                 title={t('outline')}
                 active={outlineOpen}
-                disabled={disabled || (!hasOutline && !outlineOpen)}
+                disabled={disabled}
                 onClick={onToggleOutline}
               >
                 <IconOutlineView size={ICON} />

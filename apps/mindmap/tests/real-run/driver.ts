@@ -408,11 +408,9 @@ async function editingRun(): Promise<void> {
     await page.locator('[data-dialog="topic-label"] .mm-field').fill('중요, <i>기울임</i>')
     await page.locator('[data-action="field-ok"]').click()
     await page.locator('[data-action="note"]').click()
-    await page
-      .locator('[data-dialog="topic-note"] .mm-field')
-      .fill('메모 첫 줄\n<script>alert(1)</script>')
-    await shot(page, '05-note-dialog')
-    await page.locator('[data-action="field-ok"]').click()
+    await page.locator('[data-note-panel] textarea').fill('메모 첫 줄\n<script>alert(1)</script>')
+    await shot(page, '05-note-panel')
+    // leaving the field (the next toolbar button) puts the note into the map
     await page.locator('[data-action="link"]').click()
     // an address nothing will open: kept and shown as text, said so beforehand, never opened
     await page.locator('[data-dialog="topic-link"] .mm-field').fill('javascript:alert(1)')

@@ -12,7 +12,7 @@
     - `decorate.ts`: 라이브러리가 만든 토픽에 이 편집기가 더하는 것. 큰 가지 색, 표식, 그림, 토픽 자체 스타일. 라이브러리가 선을 재기 직전(`before`)과 직후(`after`)에 돈다(`controller.ts`가 `linkDiv`를 감싼다). `after`는 모든 선을 실제 상자 크기로 다시 그린다.
     - `style-values.ts`: 파일의 스타일 값이 화면 스타일이 되기 전에 지나는 거름망. `markers.ts`: 표식 그림. `images.ts`: 어떤 그림을 보여 주는지, 그림 바이트의 종류, 객체 URL.
   - `export/`: 내보내기(PNG, PDF, 마크다운 개요), 인쇄, 저장 때 넣는 미리보기 그림. 아래 "내보내기와 인쇄"를 본다.
-  - `components/`: 도구 줄, 시트 탭, 대화 상자와 안내, 테마 패널(`ThemePanel.tsx`), 내보내기 단추(`ExportMenu.tsx`), 직접 그린 그림(`icons.tsx`).
+  - `components/`: 도구 줄, 시트 탭, 대화 상자와 안내, 테마 패널(`ThemePanel.tsx`), 선택한 토픽의 메모를 지도 옆에서 고치는 메모 패널(`NotePanel.tsx`), 내보내기 단추(`ExportMenu.tsx`), 직접 그린 그림(`icons.tsx`).
   - `i18n/`: 21개 언어 문구(`app/<언어>.ts`)와 mind-elixir 메뉴 문구(`map-strings.ts`).
   - `ai/`: AI 창(`AiPanel.tsx`), 창을 지도 오른쪽에 붙이는 자리와 AI가 지도를 보는 창구(`AiDock.tsx`의 `useMindmapAi`·`MindmapAiDock`), 도구가 지도에 하는 일(`map-tools.ts`), 지도 skill과 지시문(`mindmap-skill.ts`), 첨부·검색 skill, 전송과 연결 상태. 문구는 `i18n/ai/<언어>.ts`.
 - 메인 프로세스(`src/main/mindmap-main.ts`): 파일 읽기·쓰기, 뷰마다 허용된 경로, 닫기 전 저장 확인, 이름 바뀜 따라가기, 링크 열기, 단독 실행. 내보내기·인쇄 창구는 `src/main/export-main.ts`.
@@ -61,6 +61,7 @@
 - 표식 그림은 식별자로 찾는다(우선순위 1–9, 진행 9단계, 깃발·별 11색). 모르는 식별자는 공통 표시 하나다. 각 그림 밑에 바탕색 테두리(`mm-marker-halo`)가 있어 같은 색으로 채운 토픽 위에서도 보인다.
 - 잘라내어 같은 시트에 붙이면 옮기기다. 잘라낼 때 원본 토픽의 사본을 쥐어 두었다가, 클립보드에 그 토픽들이 그대로 있을 때 붙이면 원본 토픽을 통째로 되넣는다(`session.reinsertTopics`. 식별자, 모르는 키, 보이지 않는 가지, 함께 지워졌던 연결선까지). 두 번째 붙이기, 다른 시트나 다른 문서에 붙이기, 복사해 붙이기는 보이는 값으로 새 토픽을 만든다. 다른 것을 복사하거나 잘라내면 쥐어 둔 사본을 버린다.
 - 제목을 치고 있는 입력 상자는 포커스를 잃을 때에야 지도에 들어간다. 그래서 저장하거나 지도를 읽어 주기 전에는 열려 있는 입력 상자를 먼저 넣는다(`commitEdit`. `App.tsx`의 `flushAll`). 조합 중인 글자는 브라우저가 포커스를 옮기며 확정하므로 남는다. 30초 자동 저장은 치는 도중의 입력 상자를 닫지 않고 그 차례를 건너뛴다. 입력 상자 안에서는 Ctrl+방향키를 막지 않는다.
+- **메모는 팝업이 아니라 지도 옆의 패널에서 고친다.** 도구 줄·토픽의 메모 꼬리표·오른쪽 클릭 메뉴가 모두 `NotePanel`을 연다. 패널은 마지막으로 고른 토픽의 메모를 보여 주고, 입력 중인 초안은 포커스를 잃을 때·선택이나 시트가 바뀔 때·패널을 닫을 때·저장할 때 한 번에 지도에 넣는다(`setNote` 한 번 = 되돌리기 한 단계). 그래서 저장은 아직 입력 중인 글을 빠뜨리지 않고, 한 글자마다 되돌리기 단계가 생기지 않는다. 열림 여부는 `mindmapapp.showNotes`에 기억하고, 테마·AI 패널과 같은 쪽에서 하나만 연다.
 - 메인 코드는 shell 번들에 들어간다. `src/main`을 고친 뒤에는 shell을 다시 빌드한다.
 - 문자열은 `src/renderer/i18n/app/`의 언어별 조각이고 `zh.ts`가 키 집합을 정한다. 21개 언어 모두에 넣는다.
 
@@ -99,7 +100,7 @@
 
 - 실행: `npm run test -w @genoffice/mindmap`, `npm run typecheck -w @genoffice/mindmap`. Windows에서 전부 통과한다.
 - 환경은 jsdom이다. 실제 mind-elixir를 그대로 돌린다. jsdom에 없는 것(`innerText`, `matchMedia`, 포인터 잡기)과 형식 배열의 종류 차이는 `tests/setup.ts`가 메운다.
-- 바꾸면 반드시 테스트하는 것: 열기만 한 지도가 "바뀜 없음"으로 맞춰지는지(`tests/convert.test.ts`), 지운 뒤 되돌리면 원본 나무가 글자 그대로 돌아오고 저장이 원본 바이트인지(`tests/session.test.ts`, `tests/controller.test.ts`), HTML처럼 생긴 글이 요소를 만들지 않는지, 열리지 않을 주소가 글자로 보이고 파일 값이 그대로인지, 잘라내어 붙인 토픽이 원본 그대로 도착하는지, 여기서 열린 적 없는 파일에 어떤 저장 길로도 쓰지 않는지와 링크 거절(`tests/main.test.ts`), 삭제 확인이 뜨는 조건과 치던 제목이 저장에 들어가는지(`tests/app.test.ts`).
+- 바꾸면 반드시 테스트하는 것: 열기만 한 지도가 "바뀜 없음"으로 맞춰지는지(`tests/convert.test.ts`), 지운 뒤 되돌리면 원본 나무가 글자 그대로 돌아오고 저장이 원본 바이트인지(`tests/session.test.ts`, `tests/controller.test.ts`), HTML처럼 생긴 글이 요소를 만들지 않는지, 열리지 않을 주소가 글자로 보이고 파일 값이 그대로인지, 잘라내어 붙인 토픽이 원본 그대로 도착하는지, 여기서 열린 적 없는 파일에 어떤 저장 길로도 쓰지 않는지와 링크 거절(`tests/main.test.ts`), 삭제 확인이 뜨는 조건과 치던 제목이 저장에 들어가는지(`tests/app.test.ts`), 메모 패널의 초안이 포커스를 잃거나 선택이 바뀌거나 저장할 때 지도에 한 번에 들어가는지(`tests/app.test.ts`).
 - 바꾸면 반드시 테스트하는 것(모양): 스타일 값 거름망의 표(`tests/style-values.test.ts`), 바깥 그림이 출처 있는 요소를 만들지 않는 것과 표식·그림 규칙(`tests/markers-images.test.ts`, `tests/decorate.test.ts`), 96개 테마를 고르면 파일에 적히고 다시 열면 같은 모양인 것, 앱이 밝든 어둡든 지도 색이 같은 것, 세 단계 아래의 글자 크기를 한 단계씩 줄이고 더 깊으면 마지막 크기를 쓰는 것(`tests/look.test.ts`, `tests/decorate.test.ts`), 지도 CSS·그리는 코드가 화면 틀 토큰을 쓰지 않는 것(`tests/look.test.ts`), 테마 패널(`tests/app.test.ts`).
 - 바꾸면 반드시 테스트하는 것(AI): 도구마다(`tests/ai-tools.test.ts`: 편집 하나씩의 검사, 50개 상한, 보이지 않는 요소가 딸린 토픽의 지우기 거절, 새 시트·빈 새 지도 채우기·덮어쓰지 않기, 묶음 하나가 되돌리기 한 단계, 차례 되돌리기가 더한 시트를 지우는 것, 꺾쇠가 든 글), 창(`tests/ai-panel.test.ts`: 대본으로 쓴 모델의 답으로 지도가 바뀌고 Ctrl+Z로 물러나는 것, 밖에서 시작한 실행이 막히면 글과 첨부가 남는 것), 첨부(`tests/ai-attachments.test.ts`). 제공자가 구독으로 정해지는 테스트는 전송 창구(`aiStream`)를 가짜로 바꾼다. 실제 `claude`·`codex`에 닿는 테스트를 두지 않는다.
 - 바꾸면 반드시 테스트하는 것(내보내기): 적대적인 글·스타일·바깥 그림을 가진 지도의 페이지와 SVG에 글에서 온 요소, 바깥 주소, 거르지 않은 스타일이 없는 것, 앱이 밝든 어둡든 결과가 같은 것(`tests/export.test.ts`), 마크다운 개요가 `sheetsToOutline`과 글자 그대로 같은 것과 미리보기 그림을 못 만들 때 예전 그림이 남는 것(`tests/app-export.test.ts`), 파일 이름과 확장자(`tests/export-main.test.ts`).

@@ -38,6 +38,7 @@ Markdown 에디터다. 일반 `.md` 파일 위에서 TipTap 블록 편집기를 
 - 패널은 다른 에디터와 같은 부품으로 조립한다(`AiConnectPrompt`, `AiFirstConnectionNotice`, `AiBlockedNotice`, `aiRunErrorText`). 막힌 실행의 원인은 전송이 기록한 마지막 실패가 그 메시지의 실패일 때만 쓴다.
 - `odt-export.ts`는 HTML 편집기의 같은 이름 파일과 내용이 같다. 한쪽을 고치면 다른 쪽도 고친다.
 - 문자열은 `src/renderer/i18n/strings.ts` 한 파일에 21개 언어가 있고 `zh`가 키 집합을 정한다. 구독 연결 문장과 AI 진입 이름은 `@genoffice/ui`의 것을 쓴다.
+- 제목 개요 창(`OutlinePane.tsx`)은 열림 여부를 `mdapp.showOutline`에 기억한다. 제목이 없는 문서에서도 열 수 있고(빈 상태 안내), Ctrl+Shift+O로 여닫는다. 파일을 열 때 `collectOutline`으로 한 번 채워 두어 첫 편집 전에도 제목 목록이 보인다.
 
 ## 테스트
 
