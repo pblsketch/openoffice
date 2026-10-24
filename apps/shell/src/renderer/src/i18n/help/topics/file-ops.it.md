@@ -48,4 +48,4 @@ File ▸ Stampa… in ogni editor (⌘P/ctrl+P) apre la finestra di stampa di si
 
 ## Dove finiscono i file senza titolo
 
-Il percorso che scegli al primo salvataggio è la loro casa; prima di allora il documento esiste solo in memoria. Il salvataggio automatico subentra solo dopo quel primo salvataggio.
+Il percorso che scegli al primo salvataggio è la loro casa. Fino ad allora il documento non ha un file proprio: il contenuto non salvato esiste solo come copia di recupero nella cartella dati dell'applicazione, così può tornare se l'app si spegne all'improvviso (vedi [Schede e gestione delle finestre](help://tabs-and-windows)). Il salvataggio automatico subentra solo dopo quel primo salvataggio.

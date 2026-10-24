@@ -85,7 +85,7 @@ Maak je een vaardigheid in het AI-paneel van een editor, dan kan het huidige doc
 - Een vaardigheid met een sjabloon toont **Met sjabloon** in de lijst.
 - Roep hem aan als chip en verstuur: een kopie van het sjabloon opent als nieuw naamloos document en de AI in dat tabblad gaat verder met je verzoek. In het oorspronkelijke paneel blijven "Er wordt in een nieuw tabblad met de sjabloon gewerkt" en **Naar het tabblad** staan.
 - Kiest de AI zelf een vaardigheid met sjabloon, dan opent er niet meteen een tabblad. Het gesprek toont in plaats daarvan de knop **Nieuw document openen met deze sjabloon**.
-- Waar het nieuwe document komt, kies je meestal de eerste keer dat je het opslaat. De Markdown- en HTML-editor en het maken van een complete presentatie slaan zoals altijd op in de standaardmap. Het sjabloonbestand zelf blijft zoals het was.
+- Waar het nieuwe document komt, kies je meestal de eerste keer dat je het opslaat. De Markdown- en HTML-editor slaan zoals altijd op in de standaardmap. Het sjabloonbestand zelf blijft zoals het was.
 
 ## Vaardigheden met scripts
 

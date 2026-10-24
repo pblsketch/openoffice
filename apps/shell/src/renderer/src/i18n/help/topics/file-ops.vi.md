@@ -48,4 +48,4 @@ File ▸ In trong từng trình soạn thảo (⌘P/ctrl+P) mở hộp thoại i
 
 ## Tập tin chưa có tiêu đề nằm ở đâu
 
-Vị trí bạn chọn ở lần lưu đầu tiên chính là "nhà" của nó; trước đó tài liệu chỉ tồn tại trong bộ nhớ. Tự động lưu chỉ tiếp quản sau lần lưu đầu tiên ấy.
+Vị trí bạn chọn ở lần lưu đầu tiên chính là "nhà" của nó. Trước đó tài liệu chưa có tệp riêng: nội dung chưa lưu chỉ được giữ dưới dạng bản sao khôi phục trong thư mục dữ liệu của ứng dụng, nên vẫn lấy lại được nếu ứng dụng tắt đột ngột (xem [Quản lý thẻ và cửa sổ](help://tabs-and-windows)). Tự động lưu chỉ tiếp quản sau lần lưu đầu tiên ấy.

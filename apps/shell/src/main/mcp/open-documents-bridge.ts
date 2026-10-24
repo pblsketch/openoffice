@@ -17,10 +17,26 @@ import type { EditorFamily } from './tools/formats'
 export interface OpenDocumentsBridgeDeps {
   /** the tab-manager's open-document list, dirtiness already resolved */
   list: () => Promise<OpenDocumentTab[]>
-  /** the tab's webContents, for the families that must be asked in the renderer */
-  webContentsFor: (tabId: string) => WebContents | undefined
+  /**
+   * The tab's webContents, for the families that must be asked in the
+   * renderer. A restored tab that is not loaded yet is loaded (and its
+   * document waited for) first; a document waiting on the user's recovery
+   * answer rejects with a message the agent can relay.
+   */
+  webContentsFor: (tabId: string) => MaybePromise<WebContents | undefined>
   /** remove one tab with no save prompt; false when it is already gone */
   closeTab: (tabId: string) => boolean
+  /**
+   * A restored tab whose editor never loaded: it has no edits to settle, and
+   * a discard close must neither load it nor touch its recovery copy.
+   */
+  isUnloaded?: (tabId: string) => boolean
+  /**
+   * The editor's own "Don't Save" for its recovery copy on a discard close
+   * (docs, mind map, hwp); called before the tab is removed. Markdown, html
+   * and slides drop theirs through their own discard hooks below.
+   */
+  recoveryDiscard?: (tab: OpenDocumentTab, contents: WebContents) => void
   /** folder an untitled dirty document is saved into before closing */
   defaultSaveDir: () => string
   docs?: DocsControl
@@ -60,8 +76,13 @@ export interface OpenDocumentsBridgeDeps {
   }
 }
 
-function requireContents(tab: OpenDocumentTab, deps: OpenDocumentsBridgeDeps): WebContents {
-  const contents = deps.webContentsFor(tab.id)
+type MaybePromise<T> = T | Promise<T>
+
+async function requireContents(
+  tab: OpenDocumentTab,
+  deps: Pick<OpenDocumentsBridgeDeps, 'webContentsFor'>,
+): Promise<WebContents> {
+  const contents = await deps.webContentsFor(tab.id)
   if (!contents || contents.isDestroyed()) {
     throw new Error(`"${tab.title}" is no longer open`)
   }
@@ -71,7 +92,8 @@ function requireContents(tab: OpenDocumentTab, deps: OpenDocumentsBridgeDeps): W
 /** deps for the content tools' "target an open document" lookup */
 export interface OpenTargetDeps {
   list: () => Promise<OpenDocumentTab[]>
-  webContentsFor: (tabId: string) => WebContents | undefined
+  /** as OpenDocumentsBridgeDeps.webContentsFor: loads a restored tab first */
+  webContentsFor: (tabId: string) => MaybePromise<WebContents | undefined>
   /**
    * Make a tab the visible one. Called before a mutating command runs, so the
    * user sees the document the agent is about to change rather than discovering
@@ -102,7 +124,7 @@ export function createOpenTargetResolver(
   return async (target, family, options) => {
     const documents = await deps.list()
     const doc = resolveOpenDocumentOfFamily(documents, target, family)
-    const contents = deps.webContentsFor(doc.id)
+    const contents = await deps.webContentsFor(doc.id)
     if (!contents || contents.isDestroyed()) {
       throw new Error(`"${doc.title}" is no longer open`)
     }
@@ -126,35 +148,35 @@ export function createOpenDocumentsControl(deps: OpenDocumentsBridgeDeps): OpenD
     switch (tab.kind) {
       case 'docs': {
         if (!deps.docs) throw new Error('the Word editor is unavailable in this build')
-        const wcId = requireContents(tab, deps).id
+        const wcId = (await requireContents(tab, deps)).id
         await deps.docs.runCommand(wcId, 'save_document', { path: filePath, overwrite: true })
         return
       }
       case 'sheets': {
         if (!deps.sheets) throw new Error('the spreadsheet editor is unavailable in this build')
-        const wcId = requireContents(tab, deps).id
+        const wcId = (await requireContents(tab, deps)).id
         await deps.sheets.runCommand(wcId, 'save_sheet', { path: filePath, overwrite: true })
         return
       }
       case 'slides': {
         if (!deps.slides) throw new Error('the presentation editor is unavailable in this build')
-        const wcId = requireContents(tab, deps).id
+        const wcId = (await requireContents(tab, deps)).id
         await deps.slides.saveDeck(wcId, filePath, true)
         return
       }
       case 'markdown': {
         if (!deps.markdown) throw new Error('the Markdown editor is unavailable in this build')
-        await deps.markdown.save(requireContents(tab, deps), filePath)
+        await deps.markdown.save(await requireContents(tab, deps), filePath)
         return
       }
       case 'html': {
         if (!deps.html) throw new Error('the HTML editor is unavailable in this build')
-        await deps.html.save(requireContents(tab, deps), filePath)
+        await deps.html.save(await requireContents(tab, deps), filePath)
         return
       }
       case 'mindmap': {
         if (!deps.mindmap) throw new Error('the mind map editor is unavailable in this build')
-        await deps.mindmap.save(requireContents(tab, deps), filePath)
+        await deps.mindmap.save(await requireContents(tab, deps), filePath)
         return
       }
       case 'pdf':
@@ -173,47 +195,59 @@ export function createOpenDocumentsControl(deps: OpenDocumentsBridgeDeps): OpenD
     switch (tab.kind) {
       case 'docs': {
         if (!deps.docs) throw new Error('the Word editor is unavailable in this build')
-        return deps.docs.runCommand(requireContents(tab, deps).id, 'read_document', {})
+        return deps.docs.runCommand((await requireContents(tab, deps)).id, 'read_document', {})
       }
       case 'sheets': {
         if (!deps.sheets) throw new Error('the spreadsheet editor is unavailable in this build')
-        return deps.sheets.runCommand(requireContents(tab, deps).id, 'read_sheet', {})
+        return deps.sheets.runCommand((await requireContents(tab, deps)).id, 'read_sheet', {})
       }
       case 'slides': {
         if (!deps.slides) throw new Error('the presentation editor is unavailable in this build')
-        return deps.slides.readDeck(requireContents(tab, deps).id)
+        return deps.slides.readDeck((await requireContents(tab, deps)).id)
       }
       case 'markdown':
         if (!deps.markdown) throw new Error('the Markdown editor is unavailable in this build')
-        return deps.markdown.read(requireContents(tab, deps))
+        return deps.markdown.read(await requireContents(tab, deps))
       case 'html':
         if (!deps.html) throw new Error('the HTML editor is unavailable in this build')
-        return deps.html.read(requireContents(tab, deps))
+        return deps.html.read(await requireContents(tab, deps))
       case 'mindmap':
         if (!deps.mindmap) throw new Error('the mind map editor is unavailable in this build')
-        return deps.mindmap.read(requireContents(tab, deps))
+        return deps.mindmap.read(await requireContents(tab, deps))
       case 'hwp':
         if (!deps.hwp) throw new Error('the HWP editor is unavailable in this build')
-        return deps.hwp.read(requireContents(tab, deps))
+        return deps.hwp.read(await requireContents(tab, deps))
       default:
         throw new Error(`cannot read a ${tab.kind} tab`)
     }
   }
 
-  /** release staged assets a discard leaves behind (markdown and html own files) */
-  const discardStagedAssets = async (tab: OpenDocumentTab): Promise<void> => {
-    if (tab.kind === 'markdown' && deps.markdown && tab.filePath) {
-      await deps.markdown.discard(requireContents(tab, deps)).catch((error) => {
-        console.warn('[mcp] markdown discard cleanup incomplete:', error)
-      })
-    } else if (tab.kind === 'html' && deps.html && tab.filePath) {
-      await deps.html.discard(requireContents(tab, deps)).catch((error) => {
-        console.warn('[mcp] html discard cleanup incomplete:', error)
-      })
+  /**
+   * What a discard leaves behind: markdown and html release staged assets and
+   * drop their recovery copy (an untitled document's too), slides drops its
+   * copies, and docs / sheets / mind map / hwp drop theirs through `recoveryDiscard`.
+   */
+  const discardLeftovers = async (tab: OpenDocumentTab): Promise<void> => {
+    if (tab.kind === 'markdown' && deps.markdown) {
+      const markdown = deps.markdown
+      await requireContents(tab, deps)
+        .then((contents) => markdown.discard(contents))
+        .catch((error: unknown) => {
+          console.warn('[mcp] markdown discard cleanup incomplete:', error)
+        })
+    } else if (tab.kind === 'html' && deps.html) {
+      const html = deps.html
+      await requireContents(tab, deps)
+        .then((contents) => html.discard(contents))
+        .catch((error: unknown) => {
+          console.warn('[mcp] html discard cleanup incomplete:', error)
+        })
     } else if (tab.kind === 'slides' && deps.slidesDiscard) {
       // slides keeps its own crash-recovery copies; dropping the edits must drop
       // them too, or the next open offers them back
-      deps.slidesDiscard(requireContents(tab, deps))
+      deps.slidesDiscard(await requireContents(tab, deps))
+    } else if (deps.recoveryDiscard) {
+      deps.recoveryDiscard(tab, await requireContents(tab, deps))
     }
   }
 
@@ -236,8 +270,9 @@ export function createOpenDocumentsControl(deps: OpenDocumentsBridgeDeps): OpenD
       if (unsaved === 'save' && live.dirty) {
         savedPath = closeSavePath(live, deps.defaultSaveDir)
         await saveTo(live, savedPath)
-      } else if (unsaved === 'discard') {
-        await discardStagedAssets(live)
+      } else if (unsaved === 'discard' && !deps.isUnloaded?.(live.id)) {
+        // a restored tab that never loaded has no edits: its copy stays as it is
+        await discardLeftovers(live)
       }
       if (!deps.closeTab(live.id)) {
         throw new Error(

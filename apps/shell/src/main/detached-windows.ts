@@ -1,6 +1,7 @@
 import { basename } from 'node:path'
 import { BrowserWindow, screen } from 'electron'
 import type { Rectangle, WebContents, WebContentsView } from 'electron'
+import { resumeDiscardedCopies } from '@genoffice/electron-utils'
 
 import {
   docsQueryDirty,
@@ -19,7 +20,7 @@ import {
   setActiveSlidesWebContents,
   slidesIsDirty,
 } from '../../../slides/src/main/slides-main'
-import { pdfIsDirty, requestPdfClose } from '../../../pdf/src/main/pdf-main'
+import { pdfCloseCancelled, pdfIsDirty, requestPdfClose } from '../../../pdf/src/main/pdf-main'
 import { markdownIsDirty, requestMarkdownClose } from '../../../markdown/src/main/markdown-main'
 import { hwpIsDirty, requestHwpClose } from '../../../hwp/src/main/hwp-main'
 import { htmlIsDirty, requestHtmlClose } from '../../../html/src/main/html-main'
@@ -27,6 +28,7 @@ import { mindmapIsDirty, requestMindmapClose } from '../../../mindmap/src/main/m
 import { canonicalPath } from './tab-manager'
 import { releaseClosedRenderer } from './renderer-disposal'
 import type { DetachedTab } from './tab-manager'
+import type { SessionDetachedTab } from './session-record'
 import type { OpenDocumentTab, TabKind } from '../shared/tabs-api'
 import { DOCK_DWELL_MS, dockBand, pointInRect } from '../shared/tab-drag-geometry'
 
@@ -334,6 +336,21 @@ export function detachedRenameFile(
   return undefined
 }
 
+/** the detached documents for the session record: no dirty query, so synchronous */
+export function detachedSessionTabs(): SessionDetachedTab[] {
+  const out: SessionDetachedTab[] = []
+  for (const [wcId, rec] of detached) {
+    if (rec.window.isDestroyed() || rec.kind === 'home' || rec.kind === 'help') continue
+    out.push({
+      id: ID_PREFIX + wcId,
+      kind: rec.kind,
+      title: rec.window.getTitle(),
+      ...(rec.filePath ? { filePath: rec.filePath } : {}),
+    })
+  }
+  return out
+}
+
 /** every detached window's open file (agent/MCP open-documents publishing) */
 export function detachedFilePaths(): string[] {
   const paths: string[] = []
@@ -556,10 +573,17 @@ export function createDetachedEditorWindow(options: {
         // a denied close vetoes any quit that was in flight: the sheets close
         // guard must prompt again on later closes instead of silently proceeding
         if (await confirmDetachedClose(rec)) tearDown()
-        else resetSheetsShuttingDown()
+        else {
+          resetSheetsShuttingDown()
+          // a "Don't Save" answered before the denial no longer holds: the
+          // window stays open with its edits, so its copies resume
+          resumeDiscardedCopies()
+          if (rec.kind === 'pdf') pdfCloseCancelled(rec.view.webContents)
+        }
       } catch (err) {
         console.error('[shell] detached window close prompt failed:', err)
         resetSheetsShuttingDown()
+        resumeDiscardedCopies()
       } finally {
         promptInFlight = false
       }

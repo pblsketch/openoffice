@@ -10,6 +10,17 @@ import { requestMindmapClose } from '../../../mindmap/src/main/mindmap-main'
 import { requestHwpClose } from '../../../hwp/src/main/hwp-main'
 import type { TabManager } from './tab-manager'
 
+/** what the shell window's close guard reports back */
+export interface ShellCloseGuardOptions {
+  /**
+   * The close was cancelled (a prompt answered Cancel, or failed), so any
+   * quit in flight is vetoed. The guard has already put the app-ending
+   * latches back down (resetSheetsShuttingDown resets the shared recovery
+   * latch too); the shell resets its own quit state here.
+   */
+  onVetoed?: () => void
+}
+
 /**
  * Unsaved-changes guard for the shell window: closing the whole window walks
  * every dirty sheets/pdf/slides/docs tab through the same
@@ -21,12 +32,28 @@ import type { TabManager } from './tab-manager'
  * Installed separately from index.ts (same helpers as the detached-window
  * guard) so the handler itself stays unit-testable: it takes the window and
  * the tab manager as arguments and therefore needs no Electron to run.
+ *
+ * Restored tabs that never loaded (crash recovery) have no view, so every
+ * dirty* query and docsTabs() leave them out: closing never prompts for them.
  */
-export function installShellCloseGuard(win: BrowserWindow, manager: TabManager): void {
+export function installShellCloseGuard(
+  win: BrowserWindow,
+  manager: TabManager,
+  options: ShellCloseGuardOptions = {},
+): void {
   let closeConfirmed = false
   // a second close event while the save prompts are still open (double ⌘Q, an
   // OS retry) must not re-enter the whole prompt chain
   let closePromptInFlight = false
+
+  const vetoQuit = (): void => {
+    resetSheetsShuttingDown()
+    try {
+      options.onVetoed?.()
+    } catch (err) {
+      console.error('[shell] quit veto hook failed:', err)
+    }
+  }
 
   win.on('close', (event) => {
     if (closeConfirmed) return
@@ -103,8 +130,9 @@ export function installShellCloseGuard(win: BrowserWindow, manager: TabManager):
           return false
         })()
         // a denied close vetoes any quit that was in flight: the sheets close
-        // guard must prompt again on later closes instead of silently proceeding
-        if (denied) resetSheetsShuttingDown()
+        // guard must prompt again on later closes instead of silently proceeding,
+        // and recovery copies may be deleted again by saves and clean closes
+        if (denied) vetoQuit()
         else {
           closeConfirmed = true
           if (!win.isDestroyed()) win.close()
@@ -113,7 +141,7 @@ export function installShellCloseGuard(win: BrowserWindow, manager: TabManager):
         // a throw aborts the close like a denial: the window stays open, so the
         // quit that may have latched sheets as shutting down is vetoed too
         console.error('[shell] window close prompt failed:', err)
-        resetSheetsShuttingDown()
+        vetoQuit()
       } finally {
         manager.endExclusivePrompt()
         closePromptInFlight = false

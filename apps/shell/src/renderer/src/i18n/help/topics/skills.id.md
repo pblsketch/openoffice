@@ -85,7 +85,7 @@ Saat Anda membuat skill di panel AI sebuah editor, dokumen yang sedang terbuka b
 - Skill yang memiliki templat ditandai **Ada templat** di daftar.
 - Panggil skill itu sebagai chip lalu kirim, dan salinan templatnya terbuka sebagai dokumen baru tanpa judul; AI di tab itu melanjutkan permintaan Anda. Panel semula menampilkan "Bekerja dengan templat di tab baru" dan **Buka tab**.
 - Saat AI sendiri yang memilih skill bertemplat, tab tidak langsung terbuka. Sebagai gantinya, percakapan menampilkan tombol **Buka dokumen baru dari templat ini**.
-- Biasanya Anda menentukan lokasi dokumen baru itu saat pertama kali menyimpannya. Editor Markdown dan HTML, serta pembuatan seluruh dek slide sekaligus, menyimpan ke folder bawaan seperti biasa. File templatnya sendiri tetap seperti semula.
+- Biasanya Anda menentukan lokasi dokumen baru itu saat pertama kali menyimpannya. Editor Markdown dan HTML menyimpan ke folder bawaan seperti biasa. File templatnya sendiri tetap seperti semula.
 
 ## Skill yang memiliki skrip
 

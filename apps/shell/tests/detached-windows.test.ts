@@ -220,6 +220,28 @@ describe('detachedOpenDocuments', () => {
   })
 })
 
+describe('detachedSessionTabs', () => {
+  it('lists live windows synchronously with kind, title and file only', () => {
+    detached.createDetachedEditorWindow({
+      view: fakeView(41) as never,
+      kind: 'hwp',
+      title: 'report.hwp',
+      filePath: 'C:/docs/report.hwp',
+      applyMenuFor: () => {},
+    })
+    detached.createDetachedEditorWindow({
+      view: fakeView(42) as never,
+      kind: 'markdown',
+      title: 'Notes',
+      applyMenuFor: () => {},
+    })
+    instances[1]!.destroyed = true
+    expect(detached.detachedSessionTabs()).toEqual([
+      { id: 'detached:41', kind: 'hwp', title: 'report.hwp', filePath: 'C:/docs/report.hwp' },
+    ])
+  })
+})
+
 describe('a detached mind map', () => {
   it('is reported to MCP agents as kind mindmap, with its own dirty state', async () => {
     const { mindmapIsDirty } = await import('../../mindmap/src/main/mindmap-main')

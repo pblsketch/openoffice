@@ -27,7 +27,8 @@ const isRetryableRename = (error: unknown) => RETRYABLE_RENAME_CODES.has(errorCo
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 const sleepSync = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
 
-const tempPathBeside = (filePath: string) =>
+/** a fresh `.<name>.<12 hex>.tmp` path in the target's folder */
+export const tempPathBeside = (filePath: string) =>
   join(dirname(filePath), `.${basename(filePath)}.${randomBytes(6).toString('hex')}.tmp`)
 
 async function syncFileBestEffort(path: string): Promise<void> {
@@ -122,6 +123,30 @@ export async function atomicCopyFile(source: string, filePath: string): Promise<
   // Keep the completed temp until the fallback lands, as atomicWriteFile does.
   await copyFile(source, filePath)
   await unlink(tmp).catch(() => {})
+}
+
+/**
+ * Put a finished temp file (one a caller streamed to `tempPathBeside(filePath)`)
+ * in place of `filePath`, with atomicWriteFile's flush, rename retry and
+ * in-place fallback. The temp file is gone afterwards, whether this resolves
+ * or rejects — except when the in-place fallback itself fails, where it is
+ * kept like atomicWriteFile keeps its own.
+ */
+export async function atomicMoveFile(tempPath: string, filePath: string): Promise<void> {
+  try {
+    await syncFileBestEffort(tempPath)
+  } catch (error) {
+    await unlink(tempPath).catch(() => {})
+    throw error
+  }
+  try {
+    await renameWithRetry(tempPath, filePath)
+    return
+  } catch {
+    // fall through to the in-place write
+  }
+  await copyFile(tempPath, filePath)
+  await unlink(tempPath).catch(() => {})
 }
 
 /**

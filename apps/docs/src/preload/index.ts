@@ -117,8 +117,26 @@ const api: DesktopApi = {
   },
   saveDocx: (path: string, data: ArrayBuffer, auto?: boolean) =>
     ipcRenderer.invoke('docs:save', path, data, auto === true),
-  writeRecoveryCopy: (path: string, data: ArrayBuffer) =>
-    ipcRenderer.invoke('docs:write-recovery', path, data),
+  writeRecoveryCopy: (
+    path: string | null,
+    data: ArrayBuffer,
+    meta?: { title: string; format: 'docx' | 'odt' },
+  ) => ipcRenderer.invoke('docs:write-recovery', path, data, meta),
+  onWriteRecoveryNow: (handler) => {
+    const listener = (_event: IpcRendererEvent, token: unknown) =>
+      handler(() => ipcRenderer.send('docs:write-recovery-now-done', token))
+    ipcRenderer.on('docs:write-recovery-now', listener)
+    return () => {
+      ipcRenderer.removeListener('docs:write-recovery-now', listener)
+    }
+  },
+  onRecoveryCopyDropped: (handler) => {
+    const listener = () => handler()
+    ipcRenderer.on('docs:recovery-copy-dropped', listener)
+    return () => {
+      ipcRenderer.removeListener('docs:recovery-copy-dropped', listener)
+    }
+  },
   onTeardown: (handler) => {
     const listener = () => handler()
     ipcRenderer.on('docs:teardown', listener)

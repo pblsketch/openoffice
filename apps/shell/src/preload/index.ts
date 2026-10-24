@@ -31,6 +31,12 @@ import type {
   FileSearchSettings,
 } from '../shared/home-api'
 import { HOME_CHANNELS } from '../shared/home-api'
+import { RECOVERY_LIST_CHANNELS } from '../shared/recovery-list-api'
+import type {
+  RecoveryListApi,
+  RecoveryListItem,
+  RecoveryListResult,
+} from '../shared/recovery-list-api'
 import { INTEGRATIONS_CHANNELS } from '../shared/integrations-api'
 import type {
   IntegrationsApi,
@@ -872,6 +878,16 @@ const quickLookHomeApi: QuickLookHomeApi = {
   },
 }
 contextBridge.exposeInMainWorld('aiOfficeQuickLookHome', quickLookHomeApi)
+
+// Home's launch recovery list (crash recovery spec 6): the rows the main
+// process asks about at launch, and the user's choices back
+const recoveryListApi: RecoveryListApi = {
+  getLaunchRecoveryList: () =>
+    ipcRenderer.invoke(RECOVERY_LIST_CHANNELS.get) as Promise<RecoveryListItem[] | null>,
+  submitLaunchRecovery: (result: RecoveryListResult) =>
+    ipcRenderer.invoke(RECOVERY_LIST_CHANNELS.submit, result) as Promise<void>,
+}
+contextBridge.exposeInMainWorld('aiOfficeRecovery', recoveryListApi)
 
 // open documents dragged from the OS anywhere over Home or the tab strip
 installDropOpenBridge()

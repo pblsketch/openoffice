@@ -47,8 +47,11 @@ import type { CrashedDocument } from '../src/main/crash-watch'
 import type { CrashMemory } from '../src/main/crash-log'
 
 const docs = new Map<number, CrashedDocument>()
+/** untitled documents with a recovery copy, by webContents id */
+const untitledCopies = new Map<number, { untitledId: string }>()
 const closeDocument = vi.fn(() => true)
 const reopen = vi.fn()
+const reopenUntitled = vi.fn()
 let memoryNow: CrashMemory = {}
 
 startCrashWatch({
@@ -59,6 +62,8 @@ startCrashWatch({
   parentWindow: () => null,
   closeDocument,
   reopen,
+  untitledCopyOf: (wc) => untitledCopies.get(wc.id) ?? null,
+  reopenUntitled,
   t: (key, params) => (params ? `${key}:${JSON.stringify(params)}` : key),
 })
 
@@ -80,6 +85,7 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
 beforeEach(() => {
   rmSync(logFile, { force: true })
   docs.clear()
+  untitledCopies.clear()
   memoryNow = {}
   vi.clearAllMocks()
 })
@@ -122,6 +128,35 @@ describe('crash watch', () => {
     fakeApp.emit('render-process-gone', {}, wc, { reason: 'crashed', exitCode: 2 })
     await flush()
     expect(closeDocument).toHaveBeenCalledWith(wc)
+    expect(reopen).not.toHaveBeenCalled()
+  })
+
+  it('reopens an untitled document from its recovery copy, read while the renderer was gone', async () => {
+    const wc = fakeWc(8)
+    docs.set(8, { kind: 'hwp', title: 'Draft' })
+    untitledCopies.set(8, { untitledId: 'u-1' })
+    fakeApp.emit('render-process-gone', {}, wc, { reason: 'crashed', exitCode: 2 })
+    // the identity is taken at once: the tab may be gone by the time the user answers
+    untitledCopies.clear()
+    await flush()
+    expect(showMessageBox).toHaveBeenCalledWith(
+      expect.objectContaining({ buttons: ['crashReopen', 'crashLater'] }),
+    )
+    expect(closeDocument).toHaveBeenCalledWith(wc)
+    expect(reopenUntitled).toHaveBeenCalledWith(
+      { kind: 'hwp', title: 'Draft' },
+      { untitledId: 'u-1' },
+    )
+    expect(reopen).not.toHaveBeenCalled()
+  })
+
+  it('reopens a working-file untitled document (a PDF template copy) from its copy, not the file', async () => {
+    const wc = fakeWc(9)
+    docs.set(9, { kind: 'pdf', title: 'Form', filePath: 'C:\\Temp\\form.pdf' })
+    untitledCopies.set(9, { untitledId: 'u-2' })
+    fakeApp.emit('render-process-gone', {}, wc, { reason: 'crashed', exitCode: 2 })
+    await flush()
+    expect(reopenUntitled).toHaveBeenCalledTimes(1)
     expect(reopen).not.toHaveBeenCalled()
   })
 

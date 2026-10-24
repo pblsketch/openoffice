@@ -85,7 +85,7 @@ Cuando crea una habilidad en el panel de IA de un editor, el documento actual pu
 - Una habilidad con plantilla muestra **Incluye plantilla** en la lista.
 - Llámela como ficha y envíe: se abre una copia de la plantilla como documento nuevo sin título, y la IA de esa pestaña continúa con su solicitud. El panel original conserva «Se trabaja con la plantilla en una pestaña nueva» e **Ir a la pestaña**.
 - Cuando la IA elige por su cuenta una habilidad con plantilla, no se abre ninguna pestaña de inmediato. En su lugar, el chat muestra un botón **Abrir un documento nuevo con esta plantilla**.
-- Normalmente usted elige dónde va el documento nuevo la primera vez que lo guarda. Los editores de Markdown y HTML, y la generación de una presentación completa, guardan en la carpeta predeterminada como siempre. El archivo de plantilla en sí se queda como estaba.
+- Normalmente usted elige dónde va el documento nuevo la primera vez que lo guarda. Los editores de Markdown y HTML guardan en la carpeta predeterminada como siempre. El archivo de plantilla en sí se queda como estaba.
 
 ## Habilidades con scripts
 

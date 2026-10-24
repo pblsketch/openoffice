@@ -39,8 +39,10 @@ import {
   showSaveDialogWithMemory,
   type HeadlessExportFormat,
   type HeadlessExportTarget,
+  type RecoveryIdentity,
   type SaveDiskState,
   installRendererProtocol,
+  registerRecoveryEditor,
   rendererUrl,
   MAX_REMOTE_IMAGE_BYTES,
   readBodyCapped,
@@ -89,6 +91,7 @@ import { confirmOdtReport, exportOdt, odtFilterName } from './odt-export'
 import { inlineImagesForSingleFile, singleFileExportBaseName } from './single-file-html'
 import { registerHtmlHandoffIpc } from './generate-handoff-ipc'
 import { registerHtmlSeedIpc } from './seed-main'
+import { createTextRecovery } from './recovery'
 import {
   assetBaseHref,
   previewUrlFor,
@@ -842,6 +845,60 @@ function forgetDiskState(wcId: number, path: string): void {
   if (states.size === 0) docDiskStates.delete(wcId)
 }
 
+// ── Crash-recovery copies (spec "work is not lost"): the renderer pushes the
+// text a save would write; the copy lives in <userData>/html-autosave.
+const recovery = createTextRecovery({
+  kind: 'html',
+  untitledExt: '.html',
+  userDataDir: () => app.getPath('userData'),
+  dialog,
+  parentOf: (contents) => BrowserWindow.fromWebContents(contents),
+  lang: () => getUiLang(),
+  savePath: (wcId) => savePathByWc.get(wcId),
+  openPath: (wcId) => openPathByWc.get(wcId),
+  isDirty: (wcId) => dirtyByWc.has(wcId),
+  adoptFile: (contents, filePath) => {
+    openPathByWc.set(contents.id, filePath)
+    savePathByWc.set(contents.id, filePath)
+    const allowed = allowedByWc.get(contents.id) ?? new Set<string>()
+    allowed.add(filePath)
+    allowedByWc.set(contents.id, allowed)
+  },
+  restoredFile: (wcId, filePath) => {
+    // the save guard compares with the file as it was when the tab opened
+    void rememberDiskState(wcId, filePath)
+  },
+  untitledFallbackTitle: () => tm('untitledFile'),
+  flushChannel: HTML_CHANNELS.recoveryFlushRequest,
+})
+
+/**
+ * The HTML editor's crash-recovery contract. Registered when this module loads,
+ * not with the first view: the shell restores untitled tabs and asks for copies at
+ * OS shutdown before any view of this editor may exist.
+ */
+export const htmlRecoveryEditor = recovery.contract
+registerRecoveryEditor(recovery.contract)
+
+/**
+ * The shell's tab title for an untitled document, used as its recovery copy's
+ * title in the launch list (falls back to the provisional name, then "Untitled").
+ */
+export function setHtmlRecoveryTitleSource(
+  source: ((contents: WebContents) => string | undefined) | null,
+): void {
+  recovery.setTitleSource(source)
+}
+
+/**
+ * The recovery copy identity of a view's document: its path, or the untitled
+ * copy id (session record, reopening a crashed untitled tab). Null when the
+ * view is not an HTML document view.
+ */
+export function htmlRecoveryIdentity(webContentsId: number): RecoveryIdentity | null {
+  return recovery.identityOf(webContentsId)
+}
+
 /** True when this save must stop instead of writing: the sibling copy changed
  *  the disk since this view's last read or write, and either the automatic
  *  save defers or the user chose to keep the disk copy. */
@@ -1064,6 +1121,7 @@ export function htmlFileRenamed(contents: WebContents, oldPath: string, newPath:
   void renameOwnedAssetDocument(oldPath, newPath).catch((error) => {
     console.warn('[html] asset manifest rename sync failed:', error)
   })
+  if (savePathByWc.get(wcId) === newPath) recovery.renamed(wcId, oldPath)
   if (!contents.isDestroyed()) contents.send(HTML_CHANNELS.fileRenamed, newPath)
 }
 
@@ -1092,6 +1150,7 @@ export async function requestHtmlClose(
       : await dialog.showMessageBox(options)
   if (response === 2) return false
   if (response === 1) {
+    recovery.dontSave(contents.id)
     const documentPath = savePathByWc.get(contents.id)
     if (documentPath) {
       const discarded = await discardPendingOwnedAssets(documentPath)
@@ -1120,6 +1179,8 @@ export async function requestHtmlClose(
  * runs when the user picks "Don't Save".
  */
 export async function htmlDiscardPendingAssets(contents: WebContents): Promise<void> {
+  // closing without saving: the recovery copy goes as with "Don't Save"
+  recovery.dontSave(contents.id)
   const documentPath = savePathByWc.get(contents.id)
   if (!documentPath) return
   const discarded = await discardPendingOwnedAssets(documentPath)
@@ -1208,6 +1269,9 @@ export function htmlSaveToPath(contents: WebContents, filePath: string): Promise
   const wcId = contents.id
   const previousPath = savePathByWc.get(wcId)
   const previousOpenPath = openPathByWc.get(wcId)
+  // the copy belongs to the document as it was (an untitled one included),
+  // not to the path the save is pointed at
+  const recoveryBefore = recovery.identityOf(wcId)
   savePathByWc.set(wcId, filePath)
   const allowed = allowedByWc.get(wcId) ?? new Set<string>()
   allowed.add(filePath)
@@ -1218,6 +1282,8 @@ export function htmlSaveToPath(contents: WebContents, filePath: string): Promise
       else savePathByWc.set(wcId, previousPath)
       if (previousOpenPath === undefined) openPathByWc.delete(wcId)
       else openPathByWc.set(wcId, previousOpenPath)
+      // a copy written under the target while the save ran must not outlive it
+      recovery.saveToPathFailed(wcId, filePath)
     }
     const timer = setTimeout(() => {
       saveWaiters.delete(wcId)
@@ -1226,8 +1292,10 @@ export function htmlSaveToPath(contents: WebContents, filePath: string): Promise
     }, 120_000)
     saveWaiters.set(wcId, (ok) => {
       clearTimeout(timer)
-      if (ok) resolve()
-      else {
+      if (ok) {
+        recovery.saved(wcId, recoveryBefore)
+        resolve()
+      } else {
         restore()
         reject(new Error('could not save the document'))
       }
@@ -1269,7 +1337,11 @@ async function resolveSaveTarget(
     BrowserWindow.fromWebContents(e.sender) ?? BrowserWindow.getFocusedWindow() ?? undefined
   const defaultPath = current
     ? join(dirname(current), basename(current))
-    : join(configuredDefaultSaveDir(app), `${fileNameBase(defaultName) || tm('untitledFile')}.html`)
+    : (recovery.saveAsDefaultPath(e.sender.id) ??
+      join(
+        configuredDefaultSaveDir(app),
+        `${fileNameBase(defaultName) || tm('untitledFile')}.html`,
+      ))
   const picked = await showSaveDialogWithMemory(dialog, win, {
     title: tm('dlgSaveTitle'),
     defaultPath,
@@ -1442,6 +1514,12 @@ function registerHtmlIpc(): void {
     return text
   })
 
+  ipcMain.handle(HTML_CHANNELS.recoveryOpen, (e) => recovery.resolveOpen(e.sender))
+
+  ipcMain.handle(HTML_CHANNELS.recoveryWrite, (e, text: unknown) =>
+    recovery.writeCopy(e.sender, typeof text === 'string' ? text : null),
+  )
+
   ipcMain.handle(
     HTML_CHANNELS.save,
     async (e, request: SaveHtmlRequest): Promise<SaveHtmlResult> => {
@@ -1465,6 +1543,7 @@ function registerHtmlIpc(): void {
       // Request input is untrusted: only an explicit automatic-save flag counts
       const auto = (request as { auto?: unknown } | null)?.auto === true
       const pathAtRequest = savePathByWc.get(e.sender.id)
+      const recoveryAtRequest = recovery.identityOf(e.sender.id)
       // A copy pair saving onto the document's own path settles the conflict
       // before anything is prepared or written
       if (
@@ -1514,6 +1593,8 @@ function registerHtmlIpc(): void {
         allowed.add(target)
         allowedByWc.set(e.sender.id, allowed)
         dirtyByWc.delete(e.sender.id)
+        // the document is saved: its recovery copy goes ('saved' passes even while quitting)
+        recovery.saved(e.sender.id, recoveryAtRequest)
         // Refresh the record for the written bytes; the view no longer edits a moved-away path
         await rememberDiskState(e.sender.id, target)
         if (currentPath && currentPath !== target) forgetDiskState(e.sender.id, currentPath)
@@ -1919,6 +2000,7 @@ function registerHtmlIpc(): void {
   ipcMain.on(HTML_CHANNELS.provisionalTitle, (e, title: unknown) => {
     if (typeof title !== 'string' || savePathByWc.has(e.sender.id)) return
     const clean = title.replace(/\s+/g, ' ').trim().slice(0, 80)
+    if (clean) recovery.setTitle(e.sender.id, clean)
     if (clean) provisionalTitleHook?.(e.sender, clean)
   })
 
@@ -1965,8 +2047,11 @@ function grantAndTrack(wc: WebContents, openPath?: string | null): void {
     allowedByWc.set(wcId, new Set([openPath]))
   }
   installExternalLinkOpener(wc)
+  recovery.track(wc)
   wc.once('destroyed', () => {
     closePresentViewsOf(wcId)
+    // before the dirty flag goes: a clean close drops the copy, an unsaved or crashed one keeps it
+    recovery.forget(wcId)
     openPathByWc.delete(wcId)
     allowedByWc.delete(wcId)
     savePathByWc.delete(wcId)

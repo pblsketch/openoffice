@@ -22,6 +22,20 @@ export const HWP_CHANNELS = {
   closeSaveResult: 'hwp:close-save-result',
   readBytesRequest: 'hwp:read-bytes-request',
   readBytesResult: 'hwp:read-bytes-result',
+  /** invoke → RecoveryBeginResult: a recovery copy is about to be exported */
+  recoveryBegin: 'hwp:recovery-begin',
+  /** invoke(bytes, format) → TabSpot[]: the copy's tabs without a width */
+  recoveryNewTabs: 'hwp:recovery-new-tabs',
+  /** invoke(bytes, format, tabs) → RecoveryWriteOutcome */
+  recoveryWrite: 'hwp:recovery-write',
+  /** invoke(passwordProtected) → RecoveryOpenedResult, once the document is in the editor */
+  recoveryOpened: 'hwp:recovery-opened',
+  /** main → renderer (token): write a copy now if there are unsaved changes (OS shutdown) */
+  recoveryFlush: 'hwp:recovery-flush',
+  /** renderer → main (token): the flush is done */
+  recoveryFlushed: 'hwp:recovery-flushed',
+  /** main → renderer: the copy was removed while the tab stays open; write a fresh one */
+  recoveryReset: 'hwp:recovery-reset',
   filesPick: 'hwp:files-pick',
   filesAdd: 'hwp:files-add',
   filesAddPastedImage: 'hwp:files-add-pasted-image',
@@ -141,6 +155,22 @@ export type MeasuredTab = TabSpot & TabMeasure
 /** The live document as bytes in its own format, or why there are none. */
 export type ReadBytesResult = { ok: true; bytes: Uint8Array } | { ok: false; error: string }
 
+/**
+ * A recovery copy may be written now, exported in `format` (the format a save would
+ * write); `ok: false` when this document gets no copy at the moment.
+ */
+export type RecoveryBeginResult = { ok: true; format: HwpFormat } | { ok: false }
+
+/** `superseded`: a save or a discard came in between; `refused`: no copy for this document */
+export type RecoveryWriteOutcome = 'written' | 'superseded' | 'refused'
+
+export interface RecoveryOpenedResult {
+  /** the editor holds a recovery copy's content: the document has unsaved changes */
+  restored: boolean
+  /** the one-time notice for a document that gets no copy (password), already localized */
+  notice: string | null
+}
+
 // ---- chat attachments (local files fed to the agent via tools) ----
 
 /** image attachments skip text extraction: read as base64 on send and passed to the model with the user message */
@@ -230,6 +260,23 @@ export interface HwpApi {
   /** the main process wants the document as it is now, unsaved edits included */
   onReadBytesRequest(handler: () => void): () => void
   sendReadBytesResult(result: ReadBytesResult): void
+  /** crash recovery (see renderer/recovery-flow.ts): take the copy's turn before exporting */
+  recoveryBegin(): Promise<RecoveryBeginResult>
+  /** the tabs of a copy's exported bytes that have no width yet */
+  recoveryNewTabs(bytes: Uint8Array, format: HwpFormat): Promise<TabSpot[]>
+  /** store the exported bytes as the recovery copy, with the save-time corrections */
+  recoveryWrite(
+    bytes: Uint8Array,
+    format: HwpFormat,
+    tabs: MeasuredTab[],
+  ): Promise<RecoveryWriteOutcome>
+  /** the document is in the editor: whether it is a restored copy, and a notice to show */
+  recoveryOpened(passwordProtected: boolean): Promise<RecoveryOpenedResult>
+  /** the main process wants a copy now (the OS is ending the session) */
+  onRecoveryFlush(handler: (token: number) => void): () => void
+  sendRecoveryFlushed(token: number): void
+  /** the copy was removed while the tab stays open: the next turn writes a fresh one */
+  onRecoveryReset(handler: () => void): () => void
   /** file picker for chat attachments (multi-select) */
   pickAttachments(): Promise<AttachmentAddResult | null>
   /** validate dropped paths and return attachment metadata */

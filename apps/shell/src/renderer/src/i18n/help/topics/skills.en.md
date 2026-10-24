@@ -85,7 +85,7 @@ When you make a skill in an editor's AI panel, the current document can go along
 - A skill with a template shows **Has a template** in the list.
 - Call it as a chip and send, and a copy of the template opens as a new untitled document; the AI in that tab carries on with your request. The original panel keeps "Working with the template in a new tab" and **Go to the tab**.
 - When the AI picks a template skill by itself, no tab opens at once. The chat shows an **Open a new document from this template** button instead.
-- You usually choose where the new document goes the first time you save it. The Markdown and HTML editors, and whole-deck slide generation, save to the default folder as they always do. The template file itself stays as it was.
+- You usually choose where the new document goes the first time you save it. The Markdown and HTML editors save to the default folder as they always do. The template file itself stays as it was.
 
 ## Skills with scripts
 

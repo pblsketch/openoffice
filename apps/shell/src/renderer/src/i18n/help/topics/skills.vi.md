@@ -85,7 +85,7 @@ Khi bạn tạo kỹ năng trong bảng AI của một trình soạn thảo, tà
 - Kỹ năng có mẫu sẽ hiện **Có mẫu** trong danh sách.
 - Gọi nó thành thẻ nhỏ rồi gửi, một bản sao của mẫu sẽ mở ra như một tài liệu mới chưa có tên; AI trong thẻ đó tiếp tục thực hiện yêu cầu của bạn. Bảng ban đầu giữ dòng "Đang làm việc với mẫu trong một thẻ mới" và nút **Đến thẻ**.
 - Khi AI tự chọn một kỹ năng có mẫu, sẽ không có thẻ nào mở ra ngay. Thay vào đó, cuộc trò chuyện hiện nút **Mở tài liệu mới từ mẫu này**.
-- Thường thì bạn chọn nơi lưu tài liệu mới vào lần lưu đầu tiên. Riêng trình soạn thảo Markdown và HTML, cùng việc tạo cả bộ trình chiếu, vẫn lưu vào thư mục mặc định như trước nay. Bản thân tệp mẫu vẫn giữ nguyên.
+- Thường thì bạn chọn nơi lưu tài liệu mới vào lần lưu đầu tiên. Riêng trình soạn thảo Markdown và HTML vẫn lưu vào thư mục mặc định như trước nay. Bản thân tệp mẫu vẫn giữ nguyên.
 
 ## Kỹ năng có tập lệnh
 

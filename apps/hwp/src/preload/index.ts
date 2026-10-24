@@ -114,6 +114,24 @@ const api: HwpApi = {
     return () => ipcRenderer.removeListener(HWP_CHANNELS.readBytesRequest, listener)
   },
   sendReadBytesResult: (result) => ipcRenderer.send(HWP_CHANNELS.readBytesResult, result),
+  recoveryBegin: () => ipcRenderer.invoke(HWP_CHANNELS.recoveryBegin),
+  recoveryNewTabs: (bytes, format) =>
+    ipcRenderer.invoke(HWP_CHANNELS.recoveryNewTabs, bytes, format),
+  recoveryWrite: (bytes, format, tabs) =>
+    ipcRenderer.invoke(HWP_CHANNELS.recoveryWrite, bytes, format, tabs),
+  recoveryOpened: (passwordProtected) =>
+    ipcRenderer.invoke(HWP_CHANNELS.recoveryOpened, passwordProtected),
+  onRecoveryFlush: (handler) => {
+    const listener = (_e: Electron.IpcRendererEvent, token: number) => handler(token)
+    ipcRenderer.on(HWP_CHANNELS.recoveryFlush, listener)
+    return () => ipcRenderer.removeListener(HWP_CHANNELS.recoveryFlush, listener)
+  },
+  sendRecoveryFlushed: (token) => ipcRenderer.send(HWP_CHANNELS.recoveryFlushed, token),
+  onRecoveryReset: (handler) => {
+    const listener = () => handler()
+    ipcRenderer.on(HWP_CHANNELS.recoveryReset, listener)
+    return () => ipcRenderer.removeListener(HWP_CHANNELS.recoveryReset, listener)
+  },
   pickAttachments: () => ipcRenderer.invoke(HWP_CHANNELS.filesPick),
   addAttachmentPaths: (paths) => ipcRenderer.invoke(HWP_CHANNELS.filesAdd, paths),
   addPastedImage: (data, ext) => ipcRenderer.invoke(HWP_CHANNELS.filesAddPastedImage, data, ext),

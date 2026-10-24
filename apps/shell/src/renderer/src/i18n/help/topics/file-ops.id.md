@@ -48,4 +48,4 @@ Arquivo ▸ Cetak… di tiap editor (⌘P/ctrl+P) membuka kotak dialog cetak sis
 
 ## Di mana berkas tanpa nama tinggal
 
-Lokasi yang Anda pilih saat penyimpanan pertama menjadi rumah berkas itu; sebelumnya dokumen hanya ada di memori. Simpan Otomatis baru mengambil alih setelah penyimpanan pertama itu.
+Lokasi yang Anda pilih saat penyimpanan pertama menjadi rumah berkas itu. Sebelumnya dokumen belum punya berkas sendiri: kontennya yang belum disimpan hanya ada sebagai salinan pemulihan di folder data aplikasi, sehingga bisa kembali jika aplikasi mati mendadak (lihat [Tab dan pengelolaan jendela](help://tabs-and-windows)). Simpan Otomatis baru mengambil alih setelah penyimpanan pertama itu.

@@ -51,6 +51,8 @@ export async function openSlidesSeed(
     ...(entry.options.askPathOnFirstSave
       ? { askPathOnFirstSave: true, firstSaveName: entry.options.suggestedName }
       : {}),
+    ...(entry.options.recoveryId ? { recoveryId: entry.options.recoveryId } : {}),
+    ...(entry.options.password === undefined ? {} : { password: entry.options.password }),
   }
   // never saved: the deck holds what the disk does not
   markMetaDirty(session)

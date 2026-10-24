@@ -1,6 +1,6 @@
 # IeumOffice Privacy
 
-Last updated: October 21, 2026
+Last updated: October 23, 2026
 
 IeumOffice opens, edits and saves documents on your own PC. The project runs
 no server of its own: nothing is sent to IeumOffice or to its maintainers, and
@@ -264,9 +264,37 @@ Nothing in this list is uploaded by the app.
   the highlight preview and the overview section are shown, and the width and
   text size of the translation column), kept by the editor. They hold no
   document content.
-- **The search index** of the folders you added to the home screen, autosave
-  copies, recent-file lists and local diagnostic logs, also in the data
-  folder.
+- **Recovery copies of documents you have not saved**, so that unsaved work
+  survives a crash, a power cut or the PC shutting down. While a document has
+  unsaved changes, every editor (Word, Excel, PowerPoint, PDF, Markdown,
+  HTML, mind map and HWP) keeps one latest copy of it in a folder of the data
+  folder named after the editor (`docs-autosave`, `sheets-autosave`,
+  `slides-autosave`, `pdf-autosave`, `markdown-autosave`, `html-autosave`,
+  `mindmap-autosave`, `hwp-autosave`). A copy holds what saving the document
+  at that moment would have written, so it is your document content, kept as
+  a plain file. Next to it is a small note with the document's file path, its
+  tab title and when the copy was made. Documents you have never saved get
+  their copies there as well; the app does not create files in your own
+  folders for them. Your original file is not changed until you save. A copy
+  is deleted when you save the document, close it with **Don't Save**, choose
+  **Discard** when the app offers it back, or close the document with no
+  unsaved changes, and any copy left untouched for 30 days is deleted when
+  the app starts. Password-protected Word and PowerPoint documents get a copy
+  locked with the same password; password-protected Excel, HWP and PDF files
+  get no copy at all, so no unlocked content of them is kept. The PDF editor
+  works on a file, so when it brings back a PDF that was never saved it also
+  places the restored copy as a working file in the operating system's
+  temporary folder (`genoffice-pdf-recovery`). That file is your document
+  content as well, kept as a plain file; it is removed when the tab closes or
+  the document is saved, and leftovers older than a day are removed when the
+  app starts.
+- **The session record** (`session-record.json` in the data folder): the
+  kind, file path and title of each open document tab, their order, which tab
+  was in front, the split view, and whether the app was closed normally, so
+  that the tabs can come back after the app or the PC shuts off unexpectedly.
+  It holds no document content and is never sent anywhere.
+- **The search index** of the folders you added to the home screen,
+  recent-file lists and local diagnostic logs, also in the data folder.
 - **Records of which documents were made from which files**
   (`document-links.json` in the data folder), written when a document made
   with "Make a new document" is first saved, and only if its tab actually

@@ -14,6 +14,11 @@ export interface OpenFileResult {
    * file name; the document has no file and its first save asks where.
    */
   untitledCopy?: boolean
+  /**
+   * A restored copy whose file went missing opens untitled: its first Save As
+   * suggests this path (the original's folder and name).
+   */
+  saveAsDefaultPath?: string
 }
 
 /** Password-protected (ECMA-376 encrypted) docx: the renderer prompts for the
@@ -401,8 +406,21 @@ export interface DesktopApi {
      *  lazily served pictures: the renderer reparses from it and leaves lazy mode */
     dataUrl?: string
   }>
-  /** crash-recovery copy of a dirty document, stored under userData */
-  writeRecoveryCopy(path: string, data: ArrayBuffer): Promise<{ ok: boolean }>
+  /**
+   * Crash-recovery copy of a dirty document, stored under userData. `path`
+   * null: a never-saved document (its copy stays in app data under the tab's
+   * untitled slot; `meta` names it and gives its format). `failed`: a disk
+   * error, back off before the next try.
+   */
+  writeRecoveryCopy(
+    path: string | null,
+    data: ArrayBuffer,
+    meta?: { title: string; format: 'docx' | 'odt' },
+  ): Promise<{ ok: boolean; failed?: boolean }>
+  /** the OS is ending the session: write the recovery copy now, then call `done` */
+  onWriteRecoveryNow?(handler: (done: () => void) => void): () => void
+  /** the main process dropped this tab's recovery copy ("Don't Save", a discarding close) */
+  onRecoveryCopyDropped?(handler: () => void): () => void
   /** tab closed but webContents kept alive (shell freeze workaround) — stop background timers */
   onTeardown(handler: () => void): () => void
   /** one trusted space keystroke into this webContents — the only thing that

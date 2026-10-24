@@ -2847,18 +2847,6 @@ export interface AutoSaveDefault {
   updatedAt: number
 }
 
-/** Autosave-recovery prompt raised by main during workbook open (strings pre-localized). */
-export interface RecoveryPromptPayload {
-  title: string
-  body: string
-  restoreLabel: string
-  discardLabel: string
-  /** base name of the workbook being opened */
-  fileName: string
-  /** mtime of the recovery copy (epoch ms) — when the unsaved work was last autosaved */
-  savedAtMs: number
-}
-
 /** MCP visible-grid bridge message (shell → renderer, correlated by requestId). */
 export interface McpCommandMessage {
   requestId: string
@@ -2977,11 +2965,12 @@ export interface DesktopApi {
   /// Main asks the renderer to save before closing; reply via reportCloseSaveResult.
   onCloseSaveRequest(callback: () => void): () => void
   reportCloseSaveResult(ok: boolean): void
-  /// Main found a newer autosaved recovery copy while opening a workbook; the
-  /// renderer shows the styled restore prompt and replies via replyRecoveryPrompt.
-  /// Strings arrive pre-localized from the main process.
-  onRecoveryPrompt(callback: (prompt: RecoveryPromptPayload) => void): () => void
-  replyRecoveryPrompt(restore: boolean): void
+  /// The workbook just opened in this tab keeps no recovery copy (password
+  /// protected): main sends the localized notice once per tab.
+  onRecoveryNotice(callback: (text: string) => void): () => void
+  /// The OS is ending the session: write the recovery copy now. The preload
+  /// answers main once the returned promise settles.
+  onRecoveryWriteNow(callback: () => Promise<void>): () => void
   /// Returns true once when this tab was opened via "New Spreadsheet" from the
   /// shell home.
   consumeNewBlankWorkbook(): Promise<boolean>

@@ -400,6 +400,7 @@ import {
   save as saveImpl,
   templateDocBytes,
   writeRecoveryCopy as writeRecoveryCopyImpl,
+  forgetRecoveryCopy,
   type FileActionContext,
   type PendingPdfExport,
 } from './file-actions'
@@ -427,6 +428,8 @@ const FOLLOW_UP_PASS_DELAY_MS = 100
 const WORD_COUNT_THROTTLE_MS = 400
 /** consecutive follow-up passes a pass may schedule for itself */
 const MAX_FOLLOW_UP_PASSES = 6
+/** 30s recovery ticks skipped after a failed copy write (as the slides editor does) */
+const RECOVERY_BACKOFF_TICKS = 10
 import { runHeadlessDocumentExport } from './headless-export'
 import { installMcpBridge } from './mcp-bridge'
 import { odtOffProps, refuseInOdt, useOdtSession } from './odt-gate'
@@ -1888,15 +1891,41 @@ export function App() {
     window.desktop.reportViewMenuState?.({ aiSidebar: showAi, darkCanvas: darkPage, odt: odtDoc })
   }, [showAi, darkPage, odtDoc])
 
-  // Crash-recovery copy: while the document is dirty, push a serialized
-  // copy to the main process every 30s; a normal save (or discarding on close) removes
-  // it, and reopening the file offers Restore/Discard when a newer copy exists.
+  // Crash-recovery copy: while the document is dirty, push a serialized copy
+  // to the main process about every 30s (a never-saved document's too, into
+  // app data); a save, "Don't Save" or a clean close removes it, and opening
+  // the file asks first with the document's name. A failed write skips the
+  // next ticks instead of stopping copies for good. When the OS ends the
+  // session the main process asks for a copy right away.
   useEffect(() => {
     if (tornDown) return
+    let skip = 0
+    let running = false
     const timer = window.setInterval(() => {
+      if (running) return
+      if (skip > 0) {
+        skip--
+        return
+      }
+      running = true
       void writeRecoveryCopyImpl(fileCtxRef.current)
+        .then((outcome) => {
+          if (outcome === 'failed') skip = RECOVERY_BACKOFF_TICKS
+        })
+        .finally(() => {
+          running = false
+        })
     }, 30_000)
-    return () => window.clearInterval(timer)
+    const offNow = window.desktop.onWriteRecoveryNow?.((done) => {
+      void writeRecoveryCopyImpl(fileCtxRef.current, { force: true }).finally(done)
+    })
+    // a dropped copy whose close did not go through: the next tick copies again
+    const offDropped = window.desktop.onRecoveryCopyDropped?.(forgetRecoveryCopy)
+    return () => {
+      window.clearInterval(timer)
+      offNow?.()
+      offDropped?.()
+    }
   }, [tornDown])
 
   // MCP bridge: let an external agent drive this visible editor. Commands arrive
@@ -5240,9 +5269,10 @@ export function App() {
     const offSave = window.desktop.onCloseSaveRequest?.(() => {
       // Closing must not report success while edits are still unpersisted, so a
       // save that raced with typing is retried until the file catches up.
-      // save(false) never prompts — a pathless first save lands silently in the
-      // default folder — so retrying is always safe; reporting "persisted" just
-      // because the snapshot had no path yet would close over mid-save edits.
+      // A pathless document's first save asks where: cancelling resolves false and
+      // keeps the tab open; once picked, later passes have the path and never ask
+      // again. Reporting "persisted" just because the snapshot had no path yet
+      // would close over mid-save edits.
       void saveUntilPersisted({
         save: () => save(false),
         wasIncomplete: () => saveIncompleteRef.current,
@@ -5275,21 +5305,6 @@ export function App() {
       window.removeEventListener('blur', tick)
     }
   }, [tornDown, autoSave, doc, editor, save])
-
-  // After an AI run finishes on a never-saved document, silently save it once: the
-  // first save derives the file name from the first heading (see deriveAutoFileName
-  // in file-actions), which also renames the shell tab — mirrors slides, where AI
-  // generation names and persists the draft deck.
-  useEffect(() => {
-    const handler = () => {
-      const cur = fileCtxRef.current
-      if (!cur.doc || cur.doc.filePath || !anyDirtyRef.current) return
-      if (editor?.view.composing) return
-      void save(false, true)
-    }
-    window.addEventListener('ai-docs-run-done', handler)
-    return () => window.removeEventListener('ai-docs-run-done', handler)
-  }, [editor, save])
 
   useEffect(() => {
     // editing shortcuts only fire when focus is in an editor surface (main

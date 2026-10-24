@@ -74,6 +74,13 @@ const api: HtmlApi = {
   headlessExportDone: (result: { ok: boolean; error?: string }) =>
     ipcRenderer.send(HTML_CHANNELS.headlessExportDone, result),
   readFile: (path) => ipcRenderer.invoke(HTML_CHANNELS.readFile, path),
+  recoveryOpen: () => ipcRenderer.invoke(HTML_CHANNELS.recoveryOpen),
+  writeRecoveryCopy: (text) => ipcRenderer.invoke(HTML_CHANNELS.recoveryWrite, text),
+  onRecoveryFlushRequest: (handler) => {
+    const listener = () => handler()
+    ipcRenderer.on(HTML_CHANNELS.recoveryFlushRequest, listener)
+    return () => ipcRenderer.removeListener(HTML_CHANNELS.recoveryFlushRequest, listener)
+  },
   updatePreview: (text) => ipcRenderer.send(HTML_CHANNELS.previewUpdate, text),
   getPreviewInfo: () => ipcRenderer.invoke(HTML_CHANNELS.previewInfo),
   setPresentFullScreen: (on) => ipcRenderer.invoke(HTML_CHANNELS.presentFullScreen, on),

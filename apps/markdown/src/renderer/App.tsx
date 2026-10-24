@@ -42,6 +42,7 @@ import { applySourceText } from './markdown/sourceView'
 import { isSourceMode, textModeForPath, type TextMode } from '../shared/text-mode'
 import { renameAction } from '../shared/rename-mode'
 import { readSourceText, writeSourceText, type SourceTextFormat } from '../shared/source-text'
+import { startRecoveryCopies } from './recovery-copy'
 import { PlainTextEditor, type PlainTextEditorHandle } from './source/PlainTextEditor'
 import { buildExtensions } from './editor/extensions'
 import { tiptapFindTarget } from './editor/findTarget'
@@ -309,10 +310,13 @@ export default function App() {
    * Read `path` and put it on the surface its extension calls for. Shared by
    * the initial load and by a rename that crossed surfaces, so a file cannot
    * end up on one surface because of the path it happened to be renamed to.
+   * A null path is an untitled document (a restored recovery copy);
+   * `modePath` then names the file the copy was of, so a .txt or .json copy
+   * whose original is missing keeps its own surface (and is saved as such).
    */
   const loadFromPath = useCallback(
-    (path: string, raw: string) => {
-      const mode = textModeForPath(path)
+    (path: string | null, raw: string, modePath: string | null = path) => {
+      const mode = textModeForPath(modePath)
       setTextMode(mode)
       if (sourceApplyTimerRef.current) clearTimeout(sourceApplyTimerRef.current)
       sourceApplyTimerRef.current = null
@@ -331,7 +335,7 @@ export default function App() {
       }
       const envelope = parseDocText(raw)
       envelopeRef.current = envelope
-      setImageBaseDir(dirOf(path))
+      setImageBaseDir(path ? dirOf(path) : null)
       // the initial load must not be undoable — Cmd+Z right after opening
       // would otherwise blank the document (and Cmd+S overwrite the file)
       const body = stripLegacyFencedDivs(envelope.body)
@@ -362,15 +366,21 @@ export default function App() {
       try {
         const path = await window.markdownApi.consumePending()
         if (cancelled) return
+        // a crash-recovery copy to open instead: asked (per-file prompt) before
+        // any content loads; the original path stays the save target
+        const recovered = (await window.markdownApi.recoveryOpen?.()) ?? null
+        if (cancelled) return
         if (path) {
-          const raw = await window.markdownApi.readFile(path)
+          const raw = recovered ? recovered.text : await window.markdownApi.readFile(path)
           if (cancelled) return
           loadFromPath(path, raw)
+        } else if (recovered) {
+          loadFromPath(null, recovered.text, recovered.originalPath)
         } else {
           envelopeRef.current = { ...EMPTY_ENVELOPE }
         }
         // a new tab that starts with given text (a conversion's result, T17), taken once: unsaved
-        const seed = path ? null : ((await window.markdownApi.takeSeed?.()) ?? null)
+        const seed = path || recovered ? null : ((await window.markdownApi.takeSeed?.()) ?? null)
         if (cancelled) return
         if (seed !== null) {
           editor
@@ -383,7 +393,8 @@ export default function App() {
         }
         statusRef.current = 'ready'
         setStatus('ready')
-        if (seed !== null) markDirty()
+        // a restored copy is unsaved work: the file on disk is untouched
+        if (seed !== null || recovered) markDirty()
       } catch (err) {
         console.error('[markdown] load failed:', err)
         if (!cancelled) {
@@ -1023,6 +1034,27 @@ export default function App() {
       window.removeEventListener('blur', tick)
     }
   }, [autoSave, filePath, doSave])
+
+  // crash-recovery copies: independent of AutoSave, the text a save would write
+  // now goes to the app data folder while there are unsaved changes
+  const sourceModeRef = useRef(sourceMode)
+  sourceModeRef.current = sourceMode
+  useEffect(() => {
+    const api = window.markdownApi
+    const write = api.writeRecoveryCopy?.bind(api)
+    if (!write) return
+    return startRecoveryCopies({
+      read: () => {
+        if (statusRef.current !== 'ready' || !dirtyRef.current || savingRef.current) return null
+        if (sourceModeRef.current) {
+          return writeSourceText(sourceTextRef.current, sourceFormatRef.current)
+        }
+        return currentFileText()
+      },
+      write,
+      onFlushRequest: api.onRecoveryFlushRequest?.bind(api),
+    })
+  }, [currentFileText])
 
   // ---- selection-scoped AI edit queue (anchors live in the editor as decorations) ----
   const getQueueItem = useCallback(

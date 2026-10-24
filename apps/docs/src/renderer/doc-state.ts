@@ -56,6 +56,11 @@ export interface DocState {
    * where, and no automatic save writes it before that.
    */
   askPathOnFirstSave?: boolean
+  /**
+   * A restored recovery copy whose file went missing: its first Save As
+   * suggests the original's folder and name.
+   */
+  saveAsDefaultPath?: string
 }
 
 /** an ODT document: saves go through `saveOdt` against `doc.odt` */

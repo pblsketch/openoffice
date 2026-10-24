@@ -18,7 +18,6 @@ import type {
   AttachmentReadResult,
   DesktopApi,
   McpCommandMessage,
-  RecoveryPromptPayload,
   ScreenCaptureResult,
   ScreenSourcesResult,
   AutoSaveDefault,
@@ -549,26 +548,21 @@ const desktopApi: DesktopApi = {
   reportCloseSaveResult(ok) {
     ipcRenderer.send(IPC_CHANNELS.closeSaveResult, ok === true)
   },
-  onRecoveryPrompt(callback) {
-    const listener = (_event: unknown, payload: unknown): void => {
-      if (
-        isRecord(payload) &&
-        typeof payload.title === 'string' &&
-        typeof payload.body === 'string' &&
-        typeof payload.restoreLabel === 'string' &&
-        typeof payload.discardLabel === 'string' &&
-        typeof payload.fileName === 'string' &&
-        typeof payload.savedAtMs === 'number' &&
-        Number.isFinite(payload.savedAtMs)
-      ) {
-        callback(payload as unknown as RecoveryPromptPayload)
-      }
+  onRecoveryNotice(callback) {
+    const listener = (_event: unknown, text: unknown): void => {
+      if (typeof text === 'string' && text.length > 0) callback(text)
     }
-    ipcRenderer.on(IPC_CHANNELS.recoveryPrompt, listener)
-    return () => ipcRenderer.removeListener(IPC_CHANNELS.recoveryPrompt, listener)
+    ipcRenderer.on(IPC_CHANNELS.recoveryNotice, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.recoveryNotice, listener)
   },
-  replyRecoveryPrompt(restore) {
-    ipcRenderer.send(IPC_CHANNELS.recoveryPromptReply, restore === true)
+  onRecoveryWriteNow(callback) {
+    const listener = (_event: unknown, nonce: unknown): void => {
+      if (typeof nonce !== 'string') return
+      const done = (): void => ipcRenderer.send(IPC_CHANNELS.recoveryWriteNowDone, nonce)
+      void callback().then(done, done)
+    }
+    ipcRenderer.on(IPC_CHANNELS.recoveryWriteNow, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.recoveryWriteNow, listener)
   },
   async getUserDisplayName() {
     const result: unknown = await ipcRenderer.invoke(IPC_CHANNELS.userDisplayName)

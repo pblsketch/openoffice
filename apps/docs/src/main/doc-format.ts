@@ -103,3 +103,39 @@ export async function prepareSaveBytes(
   const bytes = deps.password ? deps.encrypt(plain, deps.password) : plain
   return { bytes, plain, hashes, encrypted: !!deps.password }
 }
+
+export interface RecoveryBytesDeps {
+  /** docx only: inline lazily served pictures, as a save does */
+  materialize: SaveBytesDeps['materialize']
+  /**
+   * docx only: protect the plain copy for the file's current state on disk
+   * (its open password), or null to skip this copy
+   */
+  protect: (plain: Buffer) => Buffer | null
+}
+
+/**
+ * The bytes of a crash-recovery copy: what a save would write now, so the
+ * copy stands on its own when the opened file is gone. A docx gets its lazily
+ * served pictures back first (the caller holds the copy's write ticket by
+ * then, so a save landing meanwhile still wins), then is protected against
+ * the disk state as it is after that wait. Pictures that cannot be inlined
+ * (their source went away) leave the copy as the renderer built it: the text
+ * is kept, the pictures still point at the file. An ODT is copied as built;
+ * bytes of the other format are refused (null skips the copy).
+ */
+export async function prepareRecoveryBytes(
+  format: DocFormat,
+  data: Buffer,
+  deps: RecoveryBytesDeps,
+): Promise<Buffer | null> {
+  if (format === 'odt') return isOdtPackage(data) ? data : null
+  if (isOdtPackage(data)) return null
+  let plain = data
+  try {
+    plain = (await deps.materialize(data)).bytes
+  } catch {
+    /* keep the copy as built */
+  }
+  return deps.protect(plain)
+}

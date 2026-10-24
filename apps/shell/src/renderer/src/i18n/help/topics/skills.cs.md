@@ -85,7 +85,7 @@ Když vytváříte dovednost v panelu AI editoru, může s ní jako šablona jí
 - Dovednost se šablonou má v seznamu označení **Obsahuje šablonu**.
 - Vyvolejte ji jako štítek a odešlete: kopie šablony se otevře jako nový dokument bez názvu a AI na té kartě pokračuje ve vaší žádosti. V původním panelu zůstane „Práce se šablonou pokračuje na nové kartě“ a **Přejít na kartu**.
 - Když AI vybere dovednost se šablonou samo, karta se hned neotevře. Rozhovor místo toho ukáže tlačítko **Otevřít nový dokument z této šablony**.
-- Kam se nový dokument uloží, obvykle zvolíte při prvním uložení. Editory Markdown a HTML a generování celé prezentace ale ukládají do výchozí složky jako vždy. Samotný soubor šablony zůstává beze změny.
+- Kam se nový dokument uloží, obvykle zvolíte při prvním uložení. Editory Markdown a HTML ale ukládají do výchozí složky jako vždy. Samotný soubor šablony zůstává beze změny.
 
 ## Dovednosti se skripty
 

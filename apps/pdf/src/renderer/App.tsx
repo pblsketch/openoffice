@@ -257,6 +257,7 @@ import {
 } from '@genoffice/ui'
 import { useI18n } from './i18n/locale'
 import { useAutosave } from './useAutosave'
+import { useRecoveryCopies } from './recovery/useRecoveryCopies'
 import type {
   AnnotDeleteInput,
   DrawingInput,
@@ -1015,6 +1016,8 @@ export default function App() {
   const [formCatalog, setFormCatalog] = useState<FormCatalog | null>(null)
   const [formHasXfa, setFormHasXfa] = useState(false)
   const [documentEncrypted, setDocumentEncrypted] = useState(false)
+  /** opened from a crash-recovery copy and not saved since: unsaved with no pending edit */
+  const [restoredUnsaved, setRestoredUnsaved] = useState(false)
   const [activeFormWidgetId, setActiveFormWidgetId] = useState<string | null>(null)
   const formControlRefs = useRef<Map<string, HTMLElement>>(new Map())
   const [formEdits, setFormEdits] = useState<Map<string, FormValueInput>>(new Map())
@@ -1671,6 +1674,9 @@ export default function App() {
         // A newly opened file starts outside the autosave gate
         savedOnceRef.current = false
         await loadDoc(path, null)
+        // a restored recovery copy opens with unsaved changes (the file is untouched until Save)
+        const recovered = await window.pdfApi.recoveryState?.(path).catch(() => null)
+        setRestoredUnsaved(recovered?.unsaved === true)
         // Silently restore the last reading position (WPS-style). A saved custom
         // zoom (fitMode null) must be applied before 'ready', or the initial
         // fit-width recompute would take over; fit modes are recomputed anyway.
@@ -2235,7 +2241,8 @@ export default function App() {
     rotations.size > 0 ||
     deleted.size > 0 ||
     order !== null ||
-    metadata !== null
+    metadata !== null ||
+    restoredUnsaved
   const ordinaryDirty = dirtyBesidesFormFields || formFields.length > 0
   const savableDirty = dirtyBesidesFormFields || savableFormFields.length > 0
   const dirty = redactions.length > 0 || ordinaryDirty
@@ -4599,6 +4606,21 @@ export default function App() {
     noticeTimerRef.current = window.setTimeout(() => setNotice(null), ms)
   }
   const showNotice = (msg: string) => showNoticeFor(msg, 8000)
+  const showNoticeRef = useRef(showNotice)
+  showNoticeRef.current = showNotice
+
+  // A password or encrypted PDF gets no recovery copy (its content would sit unprotected in
+  // the app data folder): the main process answers the notice once per tab
+  useEffect(() => {
+    if (status !== 'ready') return
+    const unprotectable = passwordRef.current !== undefined || documentEncrypted
+    void window.pdfApi
+      .reportUnprotectable?.(unprotectable)
+      .then((notice) => {
+        if (notice) showNoticeRef.current(notice)
+      })
+      .catch(() => {})
+  }, [status, documentEncrypted])
 
   // the note of each PDF (reading-assist 4.9): no path crosses, the main process knows both
   const noteActions = useNoteActions({
@@ -4787,6 +4809,9 @@ export default function App() {
         else setSaveState('idle')
         return false
       }
+      // the file now holds what the recovery copy held; the main process deleted the copy
+      setRestoredUnsaved(false)
+      recoveryCopies.invalidate()
       // what this save wrote is in the file now: the reload below drops those annotations
       // from the editing document, and their "in the file" confirmations must not read
       // that as "removed before any save" (reading 3.5)
@@ -5019,6 +5044,7 @@ export default function App() {
     if (redactions.length === 0 || redactionRequestInFlightRef.current) return
     const otherPending =
       saveInFlightRef.current !== null ||
+      restoredUnsaved ||
       textDraft !== null ||
       noteDraft !== null ||
       markups.length > 0 ||
@@ -5075,6 +5101,41 @@ export default function App() {
       !saveAsFlowRef.current &&
       !redactionRequestInFlightRef.current,
     () => void save(true),
+  )
+
+  // Crash-recovery copies (spec 1): what a save would write, kept in the app data folder
+  // (never the file), about every 30s once input pauses; a password or encrypted PDF has none
+  const recoveryCopies = useRecoveryCopies({
+    wanted: () => ordinaryDirty && filePath !== '' && status === 'ready' && !readOnly,
+    busy: () =>
+      saveInFlightRef.current !== null ||
+      saveAsFlowRef.current ||
+      redactionRequestInFlightRef.current,
+    request: () => (filePath ? { path: filePath, ...editsPayload() } : null),
+  })
+  useEffect(
+    () => recoveryCopies.bump(),
+    [
+      recoveryCopies,
+      filePath,
+      restoredUnsaved,
+      markups,
+      annotDeletes,
+      noteEdits,
+      drawings,
+      textEdits,
+      textInserts,
+      imageEdits,
+      stampCfg,
+      formEdits,
+      formFields,
+      blankPages,
+      formWidgetEdits,
+      rotations,
+      deleted,
+      order,
+      metadata,
+    ],
   )
 
   // Done in the field popover persists the field; runs after the render that folded in

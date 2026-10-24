@@ -1,0 +1,206 @@
+/* Launch recovery list (RecoveryList.tsx): above the home screen and its tab
+   bar, below the first-connection notice (1100) */
+.recovery-list-overlay {
+  z-index: 1050;
+}
+
+.recovery-list {
+  display: flex;
+  flex-direction: column;
+  width: min(640px, 92vw);
+  max-width: none;
+  max-height: 86vh;
+}
+
+.recovery-list-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.recovery-list-head h3 {
+  flex: 1;
+  min-width: 0;
+}
+
+.recovery-list-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: -4px -6px 0 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-6);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.recovery-list-close:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.recovery-list-close:focus-visible {
+  outline: 2px solid var(--color-border-brand);
+  outline-offset: 1px;
+}
+
+.recovery-list .recovery-list-intro {
+  color: var(--text-secondary);
+}
+
+.recovery-list-rows {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 14px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-8);
+}
+
+.recovery-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.recovery-row + .recovery-row {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.recovery-row-icon {
+  flex: none;
+  margin-top: 2px;
+}
+
+.recovery-row-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.recovery-row-name {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recovery-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.recovery-row-folder {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recovery-marker {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: var(--radius-6);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.recovery-marker-changed {
+  border: 1px solid var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--text-secondary);
+}
+
+.recovery-marker-changed strong {
+  color: var(--danger);
+}
+
+.recovery-marker-missing {
+  border: 1px solid var(--border);
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+}
+
+.recovery-marker-missing strong {
+  color: var(--text);
+}
+
+.recovery-choice {
+  display: inline-flex;
+  flex: none;
+  padding: 2px;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-6);
+  background: var(--surface);
+}
+
+.recovery-choice-option {
+  position: relative;
+  padding: 4px 12px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* the native radio stays for keyboard and screen readers, out of sight */
+.recovery-choice-option input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.recovery-choice-option:hover {
+  background: var(--bg-hover);
+}
+
+.recovery-choice-option.is-selected {
+  background: var(--active-bg);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.recovery-choice-discard.is-selected {
+  color: var(--danger);
+}
+
+.recovery-choice-option:has(input:focus-visible) {
+  outline: 2px solid var(--color-border-brand);
+  outline-offset: 1px;
+}
+
+.recovery-list .recovery-list-hint {
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.recovery-list-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.recovery-list-spacer {
+  flex: 1;
+}

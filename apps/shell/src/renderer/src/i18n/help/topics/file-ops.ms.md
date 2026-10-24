@@ -48,4 +48,4 @@ Fail ▸ Cetak dalam setiap editor, atau ⌘P dan ctrl+P, akan membuka tetingkap
 
 ## Di mana fail tanpa tajuk berada
 
-Lokasi yang anda pilih semasa simpanan pertama menjadi rumah fail tersebut. Sebelum itu, dokumen itu hanya wujud dalam memori. Autosimpan mengambil alih hanya selepas simpanan pertama itu.
+Lokasi yang anda pilih semasa simpanan pertama menjadi rumah fail tersebut. Sebelum itu, dokumen belum mempunyai fail sendiri: kandungannya yang belum disimpan hanya wujud sebagai salinan pemulihan dalam folder data aplikasi, jadi ia boleh kembali jika aplikasi tertutup secara tiba-tiba (lihat [Tab dan pengurusan tingkap](help://tabs-and-windows)). Autosimpan mengambil alih hanya selepas simpanan pertama itu.

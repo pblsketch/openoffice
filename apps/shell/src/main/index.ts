@@ -20,6 +20,7 @@ import {
   ipcMain,
   nativeImage,
   nativeTheme,
+  powerMonitor,
   session,
   shell,
   webContents,
@@ -73,6 +74,11 @@ import {
   setUpdateCheckInvoker,
   installRendererProtocol,
   safeExternalUrl,
+  markAppShuttingDown,
+  recoveryEditors,
+  resetAppShuttingDown,
+  resumeDiscardedCopies,
+  type RecoveryUntitledIdentity,
 } from '@genoffice/electron-utils'
 import { SPLIT_PANE_CHANNELS } from '@genoffice/electron-utils/split-pane-bridge'
 import {
@@ -180,7 +186,6 @@ import {
   resolveSheetsSessionPath,
   markSheetsUnsavedNew,
   markSheetsUntitledPath,
-  pendingUnsavedNewRecoveries,
   unmarkSheetsUnsavedNew,
   sheetsSuggestedPathTaken,
   authorizeMcpSheetWrite,
@@ -219,6 +224,7 @@ import {
   flushPdfSave,
   markPdfUntitledPath,
   pdfFileRenamed,
+  pdfCloseCancelled,
   pdfIsDirty,
   requestPdfSaveAs,
   sendPdfPrintRequest,
@@ -309,7 +315,7 @@ import {
   sameAiPanelPrefs,
   type AiPanelPrefs,
 } from '@genoffice/ui/ai-panel-prefs'
-import type { TabKind } from '../shared/tabs-api'
+import type { DocumentTabKind, TabKind } from '../shared/tabs-api'
 import { TABS_CHANNELS } from '../shared/tabs-api'
 import { SPLIT_TABS_CHANNELS } from '../shared/split-view-api'
 import type {
@@ -422,12 +428,37 @@ import {
 } from './document-links-shell'
 import { installShellCloseGuard } from './window-close-guard'
 import {
+  markSessionCleanExit,
+  markSessionClosedToTray,
+  markSessionOsEnd,
+  noteSessionChanged,
+  sessionRecorder,
+} from './session-record'
+import {
+  createLaunchListGate,
+  createOsSessionEnd,
+  liveSessionSource,
+  liveTabContents,
+} from './launch-recovery'
+import {
+  crashedUntitledCopy,
+  discardEditorRecovery,
+  installRecoveryTitleSources,
+  pushHwpRecoveryTitles,
+  reopenUntitledCopy,
+  runLaunchRecovery,
+  tabUntitledCopy,
+  type RestoredTabOpenerDeps,
+} from './recovery-shell'
+import { RECOVERY_LIST_CHANNELS } from '../shared/recovery-list-api'
+import {
   activateDetached,
   closeDetachedWithoutPrompt,
   createDetachedEditorWindow,
   detachedFilePaths,
   detachedOpenDocuments,
   detachedRenameFile,
+  detachedSessionTabs,
   detachedSetFileFor,
   detachedWebContentsFor,
   detachedSetTitleFor,
@@ -614,7 +645,98 @@ const publishOpenDocumentsIfOwner = (paths: readonly string[]) => {
 function publishAllOpenDocuments(): void {
   publishOpenDocumentsIfOwner([...(tabManager?.openFilePaths() ?? []), ...detachedFilePaths()])
 }
-setDetachedChangedListener(publishAllOpenDocuments)
+setDetachedChangedListener(() => {
+  publishAllOpenDocuments()
+  noteLiveSession()
+})
+
+// ---- crash recovery (launch list, session record, OS shutdown) ----
+
+/** the launch recovery list: Home asks for it, the launch flow fills it in */
+const launchListGate = createLaunchListGate()
+/** files that arrived (second instance, Finder) while the launch list was unanswered */
+let deferredLaunchPaths: string[] = []
+/** before-quit ran and no close prompt has vetoed it since */
+let appQuitting = false
+
+/** what restored tabs need to load: nothing may load until the launch list is answered */
+const restoredTabDeps: RestoredTabOpenerDeps = {
+  blocked: () => launchListGate.blocking(),
+  afterSheetsOpen: () => {
+    if (hasActiveQueuedWorkbook()) startQueuedWorkbookNudge()
+  },
+}
+
+/** the open document tabs, for the session record (a no-op until the launch started it) */
+function noteLiveSession(): void {
+  if (!sessionRecorder()) return
+  noteSessionChanged(
+    liveSessionSource({
+      strip: tabManager?.sessionTabs() ?? null,
+      detached: detachedSessionTabs(),
+      untitledOf: (tab) =>
+        tabUntitledCopy(
+          tab,
+          tab.kind,
+          tabManager?.webContentsForTab(tab.id) ?? detachedWebContentsFor(tab.id),
+        ),
+    }),
+  )
+}
+
+/**
+ * The live webContents of an open document for MCP / AI callers: a restored
+ * tab is loaded (and its editor page waited for) first; one waiting on the
+ * user's recovery answer fails with a message the agent can relay.
+ */
+function liveDocumentContents(tabId: string): Promise<WebContents | undefined> {
+  return liveTabContents(tabId, {
+    ensureLoaded: (id) =>
+      tabManager ? tabManager.ensureTabLoaded(id) : Promise.resolve({ status: 'missing' as const }),
+    detached: (id) => detachedWebContentsFor(id),
+    titleOf: (id) => tabManager?.list().find((tab) => tab.id === id)?.title,
+  })
+}
+
+/**
+ * The OS is ending the session (Windows session end, macOS / Linux shutdown):
+ * no save prompt, every editor writes its copies now, nothing deletes them,
+ * and the next run treats this exit as abnormal (spec 4).
+ */
+const endForOsSession = createOsSessionEnd({
+  markShuttingDown: () => {
+    appQuitting = true
+    markSheetsShuttingDown()
+    markAppShuttingDown()
+  },
+  markSessionOsEnd,
+  editors: () => recoveryEditors(),
+  finish: () => {
+    stopSheetsSidecar()
+    stopMcpSync()
+    releaseAppResources()
+    // app.exit skips the close prompts and every window clean-up
+    app.exit(0)
+  },
+})
+
+/** untitled documents' copies are listed under the tab title the user sees */
+installRecoveryTitleSources(
+  (contents) =>
+    tabManager?.describeWebContents(contents.id)?.title ?? detachedDocumentFor(contents.id)?.title,
+)
+
+ipcMain.handle(RECOVERY_LIST_CHANNELS.get, (event) => {
+  // the shell window's Home only (the manual shares the preload)
+  if (!shellWindow || event.sender !== shellWindow.webContents) return null
+  return launchListGate.get()
+})
+ipcMain.handle(RECOVERY_LIST_CHANNELS.submit, async (event, result: unknown) => {
+  if (!shellWindow || event.sender !== shellWindow.webContents) {
+    throw new Error('the launch recovery list belongs to the main window')
+  }
+  await launchListGate.submit(result)
+})
 
 /** ai-settings.json as every reader gets it (the docs main owns the file; agent sessions only read it) */
 function readStoredAiSettings(): AiSettings {
@@ -3795,6 +3917,8 @@ function createShellWindow(): void {
       win.webContents.send(TABS_CHANNELS.changed, manager.list())
       publishOpenDocumentsIfOwner([...manager.openFilePaths(), ...detachedFilePaths()])
       refreshDocumentLinkMenu()
+      pushHwpRecoveryTitles(manager)
+      noteLiveSession()
     },
     applyMenuFor,
     // no extension: these tabs have no file on disk yet; the title becomes the
@@ -4035,7 +4159,22 @@ function createShellWindow(): void {
   // Closing the whole window walks every dirty sheets/pdf/slides/docs tab through
   // the same save/don't-save/cancel prompt; any cancel aborts the close. An
   // all-clean close is left untouched, so ⌘Q keeps quitting the app.
-  installShellCloseGuard(win, manager)
+  installShellCloseGuard(win, manager, {
+    // the quit is off: saves and clean closes may delete recovery copies again
+    onVetoed: () => {
+      appQuitting = false
+      resetAppShuttingDown()
+      // tabs that answered "Don't Save" before another tab cancelled stay open
+      // with their edits, so their recovery copies resume now (the PDF editor
+      // also keeps a flag of its own)
+      resumeDiscardedCopies()
+      for (const tab of manager.dirtyPdfTabs()) pdfCloseCancelled(tab.webContents)
+    },
+  })
+
+  // Windows ends the session (shutdown, restart, sign-out): copies, no prompts
+  win.on('query-session-end', () => void endForOsSession())
+  win.on('session-end', () => void endForOsSession())
 
   win.on('closed', () => {
     if (shellWindow === win) shellWindow = null
@@ -4043,6 +4182,12 @@ function createShellWindow(): void {
       tabManager = null
       setDockHost(null)
       publishAllOpenDocuments()
+      // the window closed into the tray: a later power loss must not bring
+      // back the tabs the user just closed (spec 4)
+      if (!appQuitting && shouldKeepQuickLookInTray()) markSessionClosedToTray()
+      // macOS keeps running with no window: no tab is open any more (elsewhere
+      // the quit follows, and its record keeps the strip for undecided copies)
+      else if (!appQuitting && process.platform === 'darwin') noteLiveSession()
     }
     // the split bookkeeping follows this manager; a rebuilt window restarts
     // tab ids, so a stale shape must not leak into the next one
@@ -5538,6 +5683,8 @@ function handleSplitChanged(
   const ratioOnly =
     state !== null && lastSplitState !== null && splitShape(state) === splitShape(lastSplitState)
   lastSplitState = state
+  // the session record keeps the split (crash recovery spec 5.2)
+  noteLiveSession()
   if (!ratioOnly) notifySplitRoles(manager)
   if (!win.isDestroyed()) win.webContents.send(SPLIT_TABS_CHANNELS.changed, state)
   if (splitMemoryTimer) {
@@ -7085,13 +7232,16 @@ app.on('open-file', (event, filePath) => {
     return
   }
   revealShellWindow()
-  openLaunchPaths([filePath])
+  // the launch list is still up: open it once the restored tabs are settled
+  if (launchListGate.blocking()) deferredLaunchPaths.push(filePath)
+  else openLaunchPaths([filePath])
 })
 
 app.on('second-instance', (_event, argv, _cwd, additionalData) => {
   const paths = collectLaunchPaths(argv, additionalData)
   revealShellWindow()
-  openLaunchPaths(paths)
+  if (launchListGate.blocking()) deferredLaunchPaths.push(...paths)
+  else openLaunchPaths(paths)
 })
 
 installNavigationGuard(app)
@@ -7583,10 +7733,13 @@ app.whenReady().then(async () => {
         const tabs = tabManager ? await tabManager.openDocuments() : []
         return [...tabs, ...(await detachedOpenDocuments())]
       },
-      webContentsFor: (tabId) =>
-        tabManager?.webContentsForTab(tabId) ?? detachedWebContentsFor(tabId),
+      webContentsFor: (tabId) => liveDocumentContents(tabId),
       closeTab: (tabId) =>
         closeDetachedWithoutPrompt(tabId) || (tabManager?.closeTabWithoutPrompt(tabId) ?? false),
+      // a restored tab that never loaded closes as it is: its copy stays (spec 5.3)
+      isUnloaded: (tabId) => tabManager?.isTabUnloaded(tabId) ?? false,
+      // closing without saving drops the copy, as "Don't Save" does (spec 2)
+      recoveryDiscard: (tab, contents) => discardEditorRecovery(tab.kind, contents),
       defaultSaveDir: () => defaultSaveDir(),
       docs: mcpDocsControl,
       sheets: mcpSheetsControl,
@@ -7624,8 +7777,7 @@ app.whenReady().then(async () => {
         const tabs = tabManager ? await tabManager.openDocuments() : []
         return [...tabs, ...(await detachedOpenDocuments())]
       },
-      webContentsFor: (tabId) =>
-        tabManager?.webContentsForTab(tabId) ?? detachedWebContentsFor(tabId),
+      webContentsFor: (tabId) => liveDocumentContents(tabId),
       // an agent editing a background tab would otherwise work where nobody can
       // see it: switch to that tab and bring its window forward first
       activate: (tabId) => {
@@ -7712,6 +7864,25 @@ app.whenReady().then(async () => {
       return detachedId ? closeDetachedWithoutPrompt(detachedId) : false
     },
     reopen: (filePath) => void openDocumentPath(filePath),
+    // an untitled document comes back from its recovery copy (spec 8); its
+    // identity is read while the editor still knows the crashed view
+    untitledCopyOf: (wc) => {
+      const doc = tabManager?.describeWebContents(wc.id) ?? detachedDocumentFor(wc.id)
+      if (!doc) return null
+      const id = tabManager?.tabIdForWebContents(wc.id) ?? detachedDocumentFor(wc.id)?.id
+      return crashedUntitledCopy({ ...doc, ...(id ? { id } : {}) }, wc)
+    },
+    reopenUntitled: (doc, copy) => {
+      if (doc.kind === 'home' || doc.kind === 'help') return
+      revealShellWindow()
+      reopenUntitledCopy(
+        ensureTabManager(),
+        doc.kind as DocumentTabKind,
+        doc.title,
+        copy as RecoveryUntitledIdentity,
+        restoredTabDeps,
+      )
+    },
     t: (key, params) => tm(key, params),
   })
   // a PC that runs short of memory during an AI request leaves a line too
@@ -7732,13 +7903,35 @@ app.whenReady().then(async () => {
     })
   }
 
-  // No file argument: reopen the remembered split when its documents are
-  // still on disk, else the home screen. A launch with a file opens just it
-  // (the memory is left for the next plain launch).
-  if (pendingLaunchPaths.length > 0) openLaunchPaths(pendingLaunchPaths)
-  else restoreSplitMemoryOrHome()
+  // Crash recovery (spec 5): after an abnormal exit the previous tabs come
+  // back unloaded and the launch list asks about unsaved copies; otherwise,
+  // as before, no file argument reopens the remembered split when its
+  // documents are still on disk, else the home screen, and a launch with a
+  // file opens just it (the memory is left for the next plain launch).
+  const launchPaths = pendingLaunchPaths
   pendingLaunchPaths = []
-  for (const recoverAs of pendingUnsavedNewRecoveries()) void newSheetTab(recoverAs)
+  runLaunchRecovery({
+    userDataDir: app.getPath('userData'),
+    gate: launchListGate,
+    manager: () => ensureTabManager(),
+    launchPaths,
+    openLaunchPaths,
+    restoreSplitMemoryOrHome,
+    afterSheetsOpen: restoredTabDeps.afterSheetsOpen,
+    sessionChanged: noteLiveSession,
+    settled: () => {
+      const paths = deferredLaunchPaths
+      deferredLaunchPaths = []
+      if (paths.length > 0) openLaunchPaths(paths)
+    },
+  })
+  // macOS and Linux announce a shutdown here (Windows through the window session-end)
+  // (the typings omit the event; preventDefault asks the OS to wait for the copies)
+  const onShutdown = (event?: { preventDefault?: () => void }): void => {
+    event?.preventDefault?.()
+    void endForOsSession()
+  }
+  powerMonitor.on('shutdown', onShutdown)
 
   startControlServer(
     app.getPath('userData'),
@@ -7771,7 +7964,10 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
-  // No close prompt may fall through to "Save" during shutdown
+  // No close prompt may fall through to "Save" during shutdown, and from here
+  // on no editor clean-up may delete a recovery copy (a vetoed close resets both)
+  appQuitting = true
+  markAppShuttingDown()
   markSheetsShuttingDown()
   stopSheetsSidecar()
   // release the MCP port synchronously (macOS keeps the process alive after
@@ -7781,6 +7977,14 @@ app.on('before-quit', () => {
 
 // after every window has closed, so the shell window's own 'closed' republish cannot revive the file
 app.on('will-quit', () => {
+  // the quit path completed: the next launch is a normal one (a no-op in a
+  // second instance or a headless export, which never started a record)
+  markSessionCleanExit()
+  releaseAppResources()
+})
+
+/** what every way out of a normal run releases (will-quit, and an OS session end) */
+function releaseAppResources(): void {
   fileIndexer?.stop()
   fileIndexStore?.close()
   for (const watcher of folderWatchers.values()) watcher.close()
@@ -7791,7 +7995,7 @@ app.on('will-quit', () => {
   driveService?.stop()
   stopQuickLookRuntime()
   shutdownSubscriptionChildren()
-})
+}
 
 // app.exit() and process.exit() skip before-quit / will-quit (the headless
 // export ends that way, and so does an exit on a fatal error); 'exit' is the

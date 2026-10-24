@@ -22,6 +22,7 @@ import type { StringKey } from './i18n/locale'
 import { linkFromInput, linkInputKind } from './document/link-input'
 import { newMap, type OpenFailure, type OpenNotices, openMapBytes } from './document/open'
 import { openCopiedMap, seededMap } from './document/open'
+import { useRecoveryCopies } from './document/recovery-copies'
 import type { DocumentSession, SheetTab } from './document/session'
 import { deleteSheetAfterConfirm } from './document/sheet-actions'
 import { thumbnailForSave } from './document/thumbnail'
@@ -170,10 +171,18 @@ export default function App() {
         const pending = await window.mindmapApi.consumePending()
         let opened: DocumentSession
         let found: OpenNotices = { preserved: 0, unknownTheme: false }
+        let openedPath = pending
         if (pending) {
           const file = await window.mindmapApi.openFile(pending)
           const started = performance.now()
-          const result = file.status === 'ok' ? await openMapBytes(file.bytes) : file
+          // a restored recovery copy opens with unsaved changes; without its file it is untitled
+          const result =
+            file.status !== 'ok'
+              ? file
+              : file.restored
+                ? await openCopiedMap({ bytes: file.bytes })
+                : await openMapBytes(file.bytes)
+          if (file.status === 'ok' && file.restored === 'untitled') openedPath = null
           // how long the engine took over the file, for measuring large maps
           performance.measure('mindmap:open', { start: started, end: performance.now() })
           if (cancelled) return
@@ -210,7 +219,7 @@ export default function App() {
         }
         sessionRef.current = opened
         setSession(opened)
-        setPath(pending)
+        setPath(openedPath)
         setTabs(opened.tabs())
         setActiveKey(opened.tabs()[0]?.key ?? null)
         setNotices(found)
@@ -300,6 +309,20 @@ export default function App() {
     })
   }, [])
 
+  // crash-recovery copies while the map has unsaved changes (spec "work is not lost")
+  const recovery = useRecoveryCopies({
+    ready: status === 'ready',
+    session,
+    sheets: () => [...controllers.current.values()],
+    flush: (commit) =>
+      controllers.current.forEach((each) => {
+        // only a copy the OS session end asks for takes a title still being typed
+        if (commit) each.commitEdit()
+        each.flush()
+      }),
+    saving: () => savingRef.current,
+  })
+
   // the AI panel works on the map through the same session and controllers (T12)
   const ai = useMindmapAi({ session, controllers, activeKey, setActiveKey, path, flush: flushAll })
   // a request the shell handed over to this new map: taken once, run through the panel (T16)
@@ -344,6 +367,8 @@ export default function App() {
       // a menu save during an autosave queues behind it instead of being dropped
       while (savingRef.current) await new Promise((resolve) => setTimeout(resolve, 50))
       savingRef.current = true
+      // a recovery copy being made now may hold what this save writes: it is dropped
+      recovery.noteSave()
       setSaveState('saving')
       try {
         flushAll()
@@ -378,7 +403,7 @@ export default function App() {
         savingRef.current = false
       }
     },
-    [flushAll],
+    [flushAll, recovery],
   )
 
   // autosave: every 30s and on window blur; untitled maps wait for an explicit first save

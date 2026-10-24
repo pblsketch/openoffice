@@ -48,4 +48,4 @@ Plik ▸ Drukuj… w każdym edytorze (⌘P/ctrl+P) otwiera systemowe okno druko
 
 ## Gdzie trafiają pliki bez tytułu
 
-Lokalizacja wybrana przy pierwszym zapisaniu jest ich domem; do tego czasu dokument istnieje wyłącznie w pamięci. Autozapis przejmuje nad nim kontrolę dopiero po tym pierwszym zapisaniu.
+Lokalizacja wybrana przy pierwszym zapisaniu jest ich domem. Do tego czasu dokument nie ma własnego pliku: jego niezapisana zawartość istnieje tylko jako kopia odzyskiwania w folderze danych aplikacji, dzięki czemu można ją odzyskać, gdy aplikacja nagle się wyłączy (zobacz [Karty i zarządzanie oknami](help://tabs-and-windows)). Autozapis przejmuje nad nim kontrolę dopiero po tym pierwszym zapisaniu.

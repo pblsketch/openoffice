@@ -85,7 +85,7 @@ Wenn Sie im KI-Bereich eines Editors einen Skill erstellen, kann das aktuelle Do
 - Ein Skill mit Vorlage zeigt in der Liste **Mit Vorlage**.
 - Rufen Sie ihn als Chip auf und senden Sie, öffnet sich eine Kopie der Vorlage als neues, unbenanntes Dokument; die KI in diesem Tab arbeitet Ihre Anfrage weiter ab. Im ursprünglichen Bereich bleiben „Die Vorlage wird in einem neuen Tab bearbeitet“ und **Zum Tab** stehen.
 - Wählt die KI einen Skill mit Vorlage von selbst, öffnet sich nicht sofort ein Tab. Stattdessen zeigt der Chat die Schaltfläche **Neues Dokument aus dieser Vorlage öffnen**.
-- Wo das neue Dokument abgelegt wird, bestimmen Sie meist beim ersten Speichern. Die Markdown- und HTML-Editoren sowie das Erstellen eines ganzen Foliensatzes speichern wie gewohnt im Standardordner. Die Vorlagendatei selbst bleibt, wie sie war.
+- Wo das neue Dokument abgelegt wird, bestimmen Sie meist beim ersten Speichern. Die Markdown- und HTML-Editoren speichern wie gewohnt im Standardordner. Die Vorlagendatei selbst bleibt, wie sie war.
 
 ## Skills mit Skripten
 

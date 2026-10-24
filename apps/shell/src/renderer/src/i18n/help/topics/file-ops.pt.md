@@ -48,4 +48,4 @@ Arquivo ▸ Imprimir… em cada editor (⌘P/ctrl+P) abre a caixa de diálogo de
 
 ## Onde vivem os ficheiros sem título
 
-A localização que escolher no primeiro salvamento é a casa dele; antes disso o documento só existe em memória. O Salvamento automático só assume a partir desse primeiro salvamento.
+A localização que escolher no primeiro salvamento é a casa dele. Até lá, o documento não tem ficheiro próprio: o conteúdo não salvo existe apenas como cópia de recuperação na pasta de dados da aplicação, por isso pode voltar se a aplicação se desligar de repente (veja [Guias e gestão de janelas](help://tabs-and-windows)). O Salvamento automático só assume a partir desse primeiro salvamento.

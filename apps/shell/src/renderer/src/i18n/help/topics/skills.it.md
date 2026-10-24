@@ -85,7 +85,7 @@ Quando crei un'abilità nel pannello IA di un editor, il documento attuale può 
 - Un'abilità con un modello mostra **Con modello** nell'elenco.
 - Richiamala come chip e invia: una copia del modello si apre come nuovo documento senza titolo e l'IA di quella scheda prosegue con la tua richiesta. Nel pannello di partenza restano «Si lavora con il modello in una nuova scheda» e **Vai alla scheda**.
 - Quando l'IA sceglie da sola un'abilità con modello, nessuna scheda si apre subito. La chat mostra invece il pulsante **Apri un nuovo documento da questo modello**.
-- Di solito scegli dove va il nuovo documento la prima volta che lo salvi. Gli editor Markdown e HTML, e la generazione di un'intera presentazione, salvano come sempre nella cartella predefinita. Il file modello resta com'era.
+- Di solito scegli dove va il nuovo documento la prima volta che lo salvi. Gli editor Markdown e HTML salvano come sempre nella cartella predefinita. Il file modello resta com'era.
 
 ## Abilità con script
 

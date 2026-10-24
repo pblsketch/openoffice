@@ -238,7 +238,6 @@ import type {
   AttachmentAddResult,
   AttachmentMeta,
   MenuAction,
-  RecoveryPromptPayload,
   WorkbookFile,
   WorkbookVisualObject,
 } from '../shared/desktop-api'
@@ -498,7 +497,6 @@ import { planStillMatches } from './lazy-plan'
 import { lastSurvivingScreenLine, netAxisDelta, screenToFile } from './view-transform'
 import { selectionFormatEquals, toSelectionFormat, type SelectionFormat } from './selection-format'
 import { ExcelShell, type SelectedShapeRibbon } from './ExcelShell'
-import { RecoveryDialog } from './RecoveryDialog'
 import { ToastHost } from './toast'
 import { showToast } from './toast-bus'
 import { AdvancedFilterDialog, type AdvancedFilterColumn } from './AdvancedFilterDialog'
@@ -691,7 +689,6 @@ export function App({
           needsSaveAsNotUnsavedNew: Boolean(state.file.needsSaveAs) && !state.file.unsavedNew,
           isCsv: state.file.csvPath !== undefined,
           kind: 'save',
-          restoredFromRecovery: false,
           automaticRecoveryDisabled: false,
         })
       )
@@ -707,15 +704,16 @@ export function App({
   }, [autoSave])
 
   // Crash-recovery copy: independent of the AutoSave pill — a dirty
-  // workbook gets a real .xlsx copy under userData every 30 s, so a force-quit or a
+  // workbook gets a real copy under userData every 30 s, so a force-quit or a
   // renderer crash no longer costs everything since the last manual save. A normal
-  // save removes the copy; reopening a file whose copy is newer offers Restore.
+  // save removes the copy; reopening a file that has one asks to restore it first.
+  // The OS ending the session asks for one right away (onRecoveryWriteNow).
   useEffect(() => {
-    const tick = () => {
+    const writeCopy = async (): Promise<void> => {
       const state = lazyWorkbookRef.current
-      // The in-cell editor's pending text is not in the journal yet, a
-      // converted import has no original file to recover into, and a restored
-      // recovery session is backed by the recovery copy itself.
+      // The in-cell editor's pending text is not in the journal yet. Which copy
+      // a session writes (if any) is the main process's call: a CSV or
+      // converted import writes an untitled one.
       if (
         !state ||
         !shouldRunSaveTick({
@@ -726,19 +724,23 @@ export function App({
           needsSaveAsNotUnsavedNew: Boolean(state.file.needsSaveAs) && !state.file.unsavedNew,
           isCsv: state.file.csvPath !== undefined,
           kind: 'recovery',
-          restoredFromRecovery: state.file.restoredFromRecovery === true,
           automaticRecoveryDisabled: state.file.automaticRecoveryDisabled === true,
         })
       )
         return
-      void handleSaveRef.current('recovery')
+      await handleSaveRef.current('recovery')
     }
-    const id = window.setInterval(tick, 30_000)
-    return () => window.clearInterval(id)
+    const id = window.setInterval(() => void writeCopy(), 30_000)
+    const stopWriteNow = window.desktopApi?.onRecoveryWriteNow?.(writeCopy)
+    return () => {
+      window.clearInterval(id)
+      stopWriteNow?.()
+    }
   }, [])
-  const [recoveryPrompt, setRecoveryPrompt] = useState<RecoveryPromptPayload | null>(null)
+  /// A password workbook keeps no recovery copy: main says so once per tab.
+  const [recoveryNotice, setRecoveryNotice] = useState<string | null>(null)
   useEffect(
-    () => window.desktopApi?.onRecoveryPrompt?.((prompt) => setRecoveryPrompt(prompt)) ?? undefined,
+    () => window.desktopApi?.onRecoveryNotice?.((text) => setRecoveryNotice(text)) ?? undefined,
     [],
   )
   /// Streaming-mode filter gate: the filter panel builds
@@ -5158,15 +5160,6 @@ export function App({
   return (
     <>
       <ToastHost />
-      {recoveryPrompt && (
-        <RecoveryDialog
-          prompt={recoveryPrompt}
-          onChoose={(restore) => {
-            setRecoveryPrompt(null)
-            window.desktopApi?.replyRecoveryPrompt?.(restore)
-          }}
-        />
-      )}
       {fullLoadPrompt && (
         <div className="dialog-backdrop">
           <div
@@ -5282,6 +5275,8 @@ export function App({
         emptyCsvNotice={emptyCsvNotice}
         onOpenWorkbook={() => void handleInspectWorkbook()}
         onDismissEmptyCsvNotice={() => setEmptyCsvNotice(false)}
+        recoveryNotice={recoveryNotice}
+        onDismissRecoveryNotice={() => setRecoveryNotice(null)}
         aiBusy={aiBusy}
         {...(sessionUsage !== undefined ? { sessionUsage } : {})}
         aiSubscription={{

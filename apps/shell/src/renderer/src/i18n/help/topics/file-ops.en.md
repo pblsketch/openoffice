@@ -48,4 +48,4 @@ File ▸ Print in each editor (⌘P/ctrl+P) opens the system print dialog; PDFs 
 
 ## Where untitled files live
 
-The location you pick at the first save is its home; before that the document exists only in memory. Autosave takes over only after that first save.
+The location you pick at the first save is its home. Until then the document has no file of its own: its unsaved content is kept only as a recovery copy in the app's data folder, so it can come back if the app shuts off suddenly (see [Tabs and windows](help://tabs-and-windows)). Autosave takes over only after that first save.

@@ -85,7 +85,7 @@ Apabila anda membuat kemahiran dalam panel AI sesebuah editor, dokumen semasa bo
 - Kemahiran yang mempunyai templat ditandakan **Ada templat** dalam senarai.
 - Panggil kemahiran itu sebagai cip dan hantar, lalu salinan templat dibuka sebagai dokumen baharu tanpa tajuk; AI dalam tab itu meneruskan permintaan anda. Panel asal memaparkan "Kerja dengan templat diteruskan dalam tab baharu" dan **Pergi ke tab**.
 - Apabila AI sendiri memilih kemahiran bertemplat, tiada tab dibuka serta-merta. Sebaliknya, perbualan memaparkan butang **Buka dokumen baharu daripada templat ini**.
-- Biasanya anda memilih lokasi dokumen baharu itu pada kali pertama anda menyimpannya. Editor Markdown dan HTML, serta penjanaan keseluruhan dek slaid, menyimpan ke folder lalai seperti biasa. Fail templat itu sendiri kekal seperti asal.
+- Biasanya anda memilih lokasi dokumen baharu itu pada kali pertama anda menyimpannya. Editor Markdown dan HTML menyimpan ke folder lalai seperti biasa. Fail templat itu sendiri kekal seperti asal.
 
 ## Kemahiran yang mempunyai skrip
 

@@ -6,7 +6,15 @@
  * missing from slides-main.ts fails here. Nothing reaches an AI provider: the
  * generated pages are built from a fixed spec.
  */
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+} from 'node:fs'
 import { writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -98,6 +106,12 @@ const setSelection = (selection: unknown): TemplateSelection | null =>
 const onDisk = (path: string): TemplateSelection | null =>
   new TemplateSelectionStore(join(root, 'userData')).get(path)
 
+/** every .pptx under a folder (the default save folder itself may exist, empty) */
+const decksUnder = (dir: string): string[] =>
+  existsSync(dir)
+    ? readdirSync(dir, { recursive: true, encoding: 'utf8' }).filter((f) => f.endsWith('.pptx'))
+    : []
+
 const AURORA = { kind: 'builtin', key: 'aurora', adjustments: ['mostly blue'] }
 
 async function blankSession(path: string): Promise<Session> {
@@ -154,13 +168,14 @@ afterAll(() => {
 })
 
 describe('the template memory follows the document', () => {
-  it('first save: what the window remembered is written under the new path', async () => {
+  it('first save: asks where, then what the window remembered is written under the new path', async () => {
     const session = await blankSession('')
     const stored = setSelection(AURORA)
     expect(stored?.key).toBe('aurora')
+    saveDialogPath = join(root, 'elsewhere', 'first-save.pptx')
     const r = await call<Promise<{ ok: boolean; path?: string }>>('slides:save')
     expect(r.ok).toBe(true)
-    expect(session.path).toBeTruthy()
+    expect(session.path).toBe(saveDialogPath)
     expect(existsSync(session.path)).toBe(true)
     expect(getSelection()).toEqual(stored)
     expect(onDisk(session.path)).toEqual(stored)
@@ -210,7 +225,7 @@ describe('the template memory follows the document', () => {
     expect(onDisk(from)).toEqual(stored)
   })
 
-  it('AI generation that replaces the deck: the draft has the selection, the original keeps it', async () => {
+  it('AI generation that replaces the deck: an unsaved deck keeps the selection, nothing is written', async () => {
     const from = join(root, 'elsewhere', 'my-own-file.pptx')
     const old = await blankSession(from)
     const stored = setSelection(AURORA)
@@ -224,21 +239,27 @@ describe('the template memory follows the document', () => {
       'Quarterly plan',
     )
     expect(r.error).toBeUndefined()
-    // the window now holds a draft copy, not the user's file
+    // the window now holds a new unsaved deck, not the user's file; no draft file was written
     const session = sessions.get(WC)!
     expect(session).not.toBe(old)
-    expect(session.path).toBe(r.path)
-    expect(session.path).not.toBe(from)
-    expect(existsSync(session.path)).toBe(true)
+    expect(session.path).toBe('')
+    expect(r.path).toBe('')
+    expect(session.firstSaveName).toBe('Quarterly plan.pptx')
+    expect(decksUnder(join(root, 'documents'))).toEqual([])
     expect(getSelection()).toEqual(stored)
-    expect(onDisk(session.path)).toEqual(stored)
     expect(onDisk(from)).toEqual(stored)
+    // its first save asks where and carries the selection along
+    saveDialogPath = join(root, 'elsewhere', 'quarterly.pptx')
+    expect((await call<Promise<{ ok: boolean }>>('slides:save')).ok).toBe(true)
+    expect(session.path).toBe(saveDialogPath)
+    expect(onDisk(saveDialogPath)).toEqual(stored)
   })
 
-  it('AI generation appended to the user’s own file: the tab moves to a draft and keeps the selection', async () => {
+  it('AI generation appended to the user’s own file: the tab stays on that file, unsaved, and keeps the selection', async () => {
     const from = join(root, 'elsewhere', 'append-into.pptx')
     const session = await blankSession(from)
     const stored = setSelection(AURORA)
+    const before = readFileSync(from)
     const r = await call<Promise<{ path?: string; error?: string }>>(
       'slides:land-generated-pages',
       [await generatedPage('Appended')],
@@ -248,13 +269,14 @@ describe('the template memory follows the document', () => {
       'Appended deck',
     )
     expect(r.error).toBeUndefined()
-    expect(session.path).not.toBe(from)
+    expect(session.path).toBe(from)
+    expect(readFileSync(from)).toEqual(before)
+    expect(session.metaDirty).toBe(true)
     expect(getSelection()).toEqual(stored)
-    expect(onDisk(session.path)).toEqual(stored)
     expect(onDisk(from)).toEqual(stored)
   })
 
-  it('AI generation in a document never saved: the selection reaches the draft', async () => {
+  it('AI generation in a document never saved: no file appears, the selection reaches its first save', async () => {
     await blankSession('')
     const stored = setSelection(AURORA)
     const r = await call<Promise<{ path?: string; error?: string }>>(
@@ -264,8 +286,11 @@ describe('the template memory follows the document', () => {
       'replace',
     )
     expect(r.error).toBeUndefined()
-    expect(r.path).toBeTruthy()
+    expect(r.path).toBe('')
+    expect(decksUnder(join(root, 'documents'))).toEqual([])
     expect(getSelection()).toEqual(stored)
-    expect(onDisk(r.path!)).toEqual(stored)
+    saveDialogPath = join(root, 'elsewhere', 'fresh.pptx')
+    expect((await call<Promise<{ ok: boolean }>>('slides:save')).ok).toBe(true)
+    expect(onDisk(saveDialogPath)).toEqual(stored)
   })
 })

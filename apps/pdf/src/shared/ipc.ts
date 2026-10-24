@@ -100,6 +100,15 @@ export const PDF_CHANNELS = {
   saveAsFlow: 'pdf:save-as-flow',
   printRequest: 'pdf:print-request',
   fileRenamed: 'pdf:file-renamed',
+  // crash recovery: copies of unsaved edits in the app data folder (never the file itself)
+  recoveryState: 'pdf:recovery-state',
+  recoveryWriteCopy: 'pdf:recovery-write-copy',
+  recoveryUnprotectable: 'pdf:recovery-unprotectable',
+  recoveryFlushRequest: 'pdf:recovery-flush-request',
+  recoveryFlushDone: 'pdf:recovery-flush-done',
+  // "Don't Save" answered (true) or the close cancelled (false); the renderer resumes on input
+  recoveryDropped: 'pdf:recovery-dropped',
+  recoveryResume: 'pdf:recovery-resume',
   getLanguage: 'app:get-language',
   languageChanged: 'app:language-changed',
   getTheme: 'app:get-theme',
@@ -860,6 +869,9 @@ export interface SavePdfRequest {
   auto?: boolean
 }
 
+/** Outcome of one recovery copy write ('failed' makes the renderer skip a few rounds) */
+export type PdfRecoveryCopyResult = 'written' | 'superseded' | 'skipped' | 'failed'
+
 /** A text edit that could not be matched to the document at save time and was skipped */
 export interface TextEditFailure {
   pageIndex: number
@@ -1575,6 +1587,19 @@ export interface PdfApi {
   onPrintRequest(handler: () => void): () => void
   /** The file was renamed or moved from the shell (home Folders / Files pane); the viewer follows the new path */
   onFileRenamed(handler: (newPath: string) => void): () => void
+  /** Whether the view shows `path` from a recovery copy not saved since (the tab starts with unsaved changes) */
+  recoveryState?(path: string): Promise<{ unsaved: boolean }>
+  /** Write the recovery copy: what a save of these edits would write, into the app data folder only */
+  writeRecoveryCopy?(request: SavePdfRequest): Promise<PdfRecoveryCopyResult>
+  /** Report a document that cannot get a safe copy; answers the one-time notice for this tab, or null */
+  reportUnprotectable?(unprotectable: boolean): Promise<string | null>
+  /** The OS is ending the session: write the copy now and answer with sendRecoveryFlushDone */
+  onRecoveryFlushRequest?(handler: () => void): () => void
+  sendRecoveryFlushDone?(): void
+  /** "Don't Save" was answered (true) or the shell reports the close was cancelled (false) */
+  onRecoveryDropped?(handler: (dropped: boolean) => void): () => void
+  /** The user edits again after "Don't Save": the close was cancelled, copies resume */
+  resumeRecoveryCopies?(): Promise<void>
   getLanguage(): Promise<Lang>
   onLanguageChanged(handler: (lang: Lang) => void): () => void
   getTheme(): Promise<UiTheme>

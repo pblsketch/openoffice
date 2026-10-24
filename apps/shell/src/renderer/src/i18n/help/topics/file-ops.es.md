@@ -48,4 +48,4 @@ Archivo ▸ Imprimir en cada editor (⌘P/ctrl+P) abre el cuadro de diálogo de 
 
 ## Dónde viven los archivos sin título
 
-La ubicación que elija en el primer guardado es su hogar; antes de eso el documento solo existe en la memoria. El autoguardado toma el relevo solo después de ese primer guardado.
+La ubicación que elija en el primer guardado es su hogar. Hasta entonces el documento no tiene archivo propio: su contenido sin guardar solo se conserva como copia de recuperación en la carpeta de datos de la aplicación, de modo que puede volver si la aplicación se apaga de repente (vea [Pestañas y gestión de ventanas](help://tabs-and-windows)). El autoguardado toma el relevo solo después de ese primer guardado.

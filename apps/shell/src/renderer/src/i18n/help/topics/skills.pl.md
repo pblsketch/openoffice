@@ -85,7 +85,7 @@ Gdy tworzysz umiejętność w panelu AI edytora, bieżący dokument może dołą
 - Umiejętność z szablonem ma na liście oznaczenie **Zawiera szablon**.
 - Wywołaj ją jako etykietę i wyślij, a kopia szablonu otworzy się jako nowy dokument bez tytułu; AI w tej karcie zajmie się twoją prośbą. W pierwotnym panelu zostaje „Praca z szablonem trwa w nowej karcie” i **Przejdź do karty**.
 - Gdy AI samo wybierze umiejętność z szablonem, karta nie otwiera się od razu. Zamiast tego rozmowa pokazuje przycisk **Otwórz nowy dokument z tego szablonu**.
-- Miejsce nowego dokumentu zwykle wybierasz przy pierwszym zapisie. Edytory Markdown i HTML oraz generowanie całej prezentacji zapisują jednak jak dotąd do folderu domyślnego. Sam plik szablonu pozostaje bez zmian.
+- Miejsce nowego dokumentu zwykle wybierasz przy pierwszym zapisie. Edytory Markdown i HTML zapisują jednak jak dotąd do folderu domyślnego. Sam plik szablonu pozostaje bez zmian.
 
 ## Umiejętności ze skryptami
 

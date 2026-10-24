@@ -85,7 +85,7 @@ Quando cria uma habilidade no painel de IA de um editor, o documento atual pode 
 - Uma habilidade com modelo mostra **Tem modelo** na lista.
 - Chame-a como chip e envie: uma cópia do modelo abre-se como um novo documento sem título, e a IA desse separador continua o seu pedido. O painel original mantém «O trabalho com o modelo continua numa nova aba» e **Ir para a aba**.
 - Quando a IA escolhe sozinha uma habilidade com modelo, nenhum separador se abre de imediato. Em vez disso, a conversa mostra um botão **Abrir um novo documento com este modelo**.
-- Normalmente escolhe onde fica o novo documento na primeira vez que o guarda. Os editores de Markdown e HTML, e a geração de uma apresentação inteira, guardam na pasta predefinida, como sempre. O ficheiro de modelo em si continua como estava.
+- Normalmente escolhe onde fica o novo documento na primeira vez que o guarda. Os editores de Markdown e HTML guardam na pasta predefinida, como sempre. O ficheiro de modelo em si continua como estava.
 
 ## Habilidades com scripts
 

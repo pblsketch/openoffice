@@ -48,4 +48,4 @@ Datei ▸ Drucken in jedem Editor (⌘P/ctrl+P) öffnet den Systemdialog; PDFs w
 
 ## Wo Dateien ohne Namen liegen
 
-Der Ort, den Sie beim ersten Speichern wählen, ist ihr Zuhause; davor existiert das Dokument nur im Speicher. AutoSpeichern übernimmt erst nach diesem ersten Speichern.
+Der Ort, den Sie beim ersten Speichern wählen, ist ihr Zuhause. Bis dahin hat das Dokument keine eigene Datei: Sein ungespeicherter Inhalt liegt nur als Wiederherstellungskopie im Datenordner der App und lässt sich so zurückholen, wenn die App plötzlich ausgeht (siehe [Tabs und Fensterverwaltung](help://tabs-and-windows)). AutoSpeichern übernimmt erst nach diesem ersten Speichern.

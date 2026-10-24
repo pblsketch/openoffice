@@ -92,6 +92,16 @@ export const MINDMAP_CHANNELS = {
   // ---- "make another document from this one" (T18) ----
   /** renderer → main: the toolbar button; the shell opens its make window with this map */
   makeFromDocument: 'mindmap:make-from-document',
+
+  // ---- crash-recovery copies (spec "work is not lost", stage 1) ----
+  /** invoke(`RecoveryCopyRequest`) → `RecoveryCopyResult`: keep a copy of the unsaved map in the app data folder */
+  recoveryCopy: 'mindmap:recovery-copy',
+  /** main → renderer: the OS is ending the session, write a copy now */
+  recoveryCopyNow: 'mindmap:recovery-copy-now',
+  /** renderer → main: the copy asked for by `recoveryCopyNow` is written, or there was none to write */
+  recoveryCopyNowDone: 'mindmap:recovery-copy-now-done',
+  /** main → renderer: the last copy was dropped ("Don't Save") and the tab stayed open; copy again */
+  recoveryReset: 'mindmap:recovery-reset',
 } as const
 
 /** Channels the shell registers for every editor. Called here, never registered (except the language getter, see the main module). */
@@ -139,9 +149,17 @@ export interface AutoSaveDefault {
  */
 export type MindmapOpenStatus = 'ok' | 'legacy-format' | 'encrypted' | 'unreadable' | 'rejected'
 
-/** The bytes travel only with `ok`: a file that does not open hands the renderer nothing to save. */
+/**
+ * The bytes travel only with `ok`: a file that does not open hands the renderer nothing to save.
+ *
+ * `restored`: the bytes are the map's crash-recovery copy, not the file. The
+ * map opens with unsaved changes. `file`: the file's path stays the save
+ * target. `untitled`: the file is gone or no longer opens, so the map has no
+ * path and its first save asks where (offering the file's old path).
+ */
 export type OpenFileResult =
-  { status: 'ok'; bytes: Uint8Array } | { status: Exclude<MindmapOpenStatus, 'ok'> }
+  | { status: 'ok'; bytes: Uint8Array; restored?: 'file' | 'untitled' }
+  | { status: Exclude<MindmapOpenStatus, 'ok'> }
 
 // ---- save ----
 
@@ -430,6 +448,28 @@ export interface MindmapMakeFromApi {
   makeFromDocument(): void
 }
 
+// ---- crash-recovery copies ----
+
+export interface RecoveryCopyRequest {
+  /** the whole `.xmind` file, as a save would write it now */
+  bytes: Uint8Array
+  /** a name for an untitled map's copy when the shell gives none (its central topic) */
+  name?: string
+}
+
+/** `skipped`: nothing to keep (no unsaved changes, or a map that did not open); `superseded`: a save or a "Don't Save" came first */
+export type RecoveryCopyResult = 'written' | 'superseded' | 'skipped'
+
+/** Crash-recovery copies of the open map: written by the renderer, kept by the main process. */
+export interface MindmapRecoveryApi {
+  writeRecoveryCopy(request: RecoveryCopyRequest): Promise<RecoveryCopyResult>
+  /** the OS is ending the session: write a copy now, then call `sendRecoveryCopyNowDone` */
+  onRecoveryCopyNow(handler: () => void): () => void
+  sendRecoveryCopyNowDone(): void
+  /** the last copy was dropped and the tab stayed open: the next tick copies the map again */
+  onRecoveryReset(handler: () => void): () => void
+}
+
 /** API exposed by preload to the renderer (window.mindmapApi) */
 export type MindmapApi = MindmapCoreApi &
   MindmapExportApi &
@@ -437,4 +477,5 @@ export type MindmapApi = MindmapCoreApi &
   MindmapQueryApi &
   MindmapHandoffApi &
   MindmapSeedApi &
-  MindmapMakeFromApi
+  MindmapMakeFromApi &
+  MindmapRecoveryApi

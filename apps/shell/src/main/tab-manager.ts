@@ -80,6 +80,7 @@ import { dropGenerateHandoff, queueGenerateHandoffFor } from './generate/handoff
 import type { ConvertedDocument } from './generate/convert'
 import { queueConvertedContent } from './generate/converted-tab'
 import { releaseClosedRenderer } from './renderer-disposal'
+import type { SessionStripState } from './session-record'
 
 /** a tab lifted out of the strip with its live view: what "Open in New Window",
  *  tear-off and dock hand back and forth between the shell and a detached window */
@@ -90,15 +91,97 @@ export interface DetachedTab {
   filePath?: string
 }
 
+/** what an unloaded tab's opener is told about the tab when it is finally loaded */
+export interface UnloadedTabOpenContext {
+  tabId: string
+  kind: DocumentTabKind
+  title: string
+  /** the tab's file at load time (a rename while unloaded moves it) */
+  filePath?: string
+}
+
+/** the editor view an opener made, and when its document is ready */
+export interface LoadedTabView {
+  view: WebContentsView
+  /**
+   * Settles once the editor has read its document. Without it the tab counts
+   * as ready when its page finished loading.
+   */
+  ready?: Promise<void>
+}
+
+/**
+ * How a restored tab makes its editor view on first activation (spec 5.3):
+ * a plain open, an open with a decided recovery copy, or an untitled copy.
+ * The manager adds the returned view to the window exactly like the open*Tab
+ * methods do; the opener only creates it (and queues whatever the editor must
+ * take from its webContents before returning).
+ */
+export interface UnloadedTabOpener {
+  /** called at most once per tab */
+  open(context: UnloadedTabOpenContext): LoadedTabView
+  /**
+   * True while opening the document has to ask the user the per-file recovery
+   * question first (an unsettled copy, spec 5.4). Callers that cannot wait for
+   * a person (MCP, `@` mentions) get `needs-user` instead of loading the tab.
+   */
+  needsUser?(context: UnloadedTabOpenContext): boolean | Promise<boolean>
+}
+
+/** one restored document tab that is not loaded yet */
+export interface UnloadedTabSpec {
+  kind: DocumentTabKind
+  /** defaults to the file's name */
+  title?: string
+  filePath?: string
+  opener: UnloadedTabOpener
+}
+
+/** a restored session: its tabs in strip order, then what to load up front */
+export interface RestoredSession {
+  tabs: UnloadedTabSpec[]
+  /** index into `tabs` of the tab to load and show; omitted = nothing loads */
+  active?: number
+  /** indices into `tabs` of the two panes to rebuild (both are loaded) */
+  split?: {
+    a: number
+    b: number
+    orientation: SplitOrientation
+    ratio: number
+    focus: 'a' | 'b'
+  }
+}
+
+/** ensureTabLoaded's answer */
+export type TabLoadResult =
+  | { status: 'ready'; webContents: WebContents }
+  /** the document waits on the user's recovery answer; nothing was loaded for the caller */
+  | { status: 'needs-user' }
+  /** no such document tab (closed, Home, or unknown id) */
+  | { status: 'missing' }
+
+/** a tab loaded through its opener, until its document reports ready */
+interface LazyLoadState {
+  ready: Promise<void>
+  settled: boolean
+  needsUser?: UnloadedTabOpener['needsUser']
+}
+
 interface TabRecord {
   id: string
   kind: TabKind
-  /** null for the Home tab — it's rendered by the shell window's own webContents */
+  /** null for the Home tab — it's rendered by the shell window's own webContents —
+   *  and for an unloaded tab until its opener runs */
   view: WebContentsView | null
   title: string
   filePath?: string
   /** chrome-free Present tab: no file, no editor menu or save/export targets */
   present?: boolean
+  /** set while the tab is unloaded (spec 5.3): it holds no view or process,
+   *  and this makes one on first activation */
+  opener?: UnloadedTabOpener
+  /** set once an unloaded tab was loaded: when its document is ready */
+  lazy?: LazyLoadState
 }
 
 const HOME_ID = 'home'
@@ -146,6 +229,8 @@ export class TabManager {
   private promptDepth = 0
   private promptSplitSnapshot: SplitViewState | null = null
   private promptActiveIdSnapshot: string | null = null
+  /** unloaded tabs whose opener is running (an opener that activates its own tab must not recurse) */
+  private readonly loadingIds = new Set<string>()
 
   constructor(
     private readonly shellWindow: BrowserWindow,
@@ -347,7 +432,11 @@ export class TabManager {
    * renderer. Hence the async signature.
    */
   async openDocuments(): Promise<OpenDocumentTab[]> {
-    const tabs = this.tabs.filter((tab) => tab.kind !== 'home' && !tab.present && tab.view)
+    // an unloaded tab is listed like any other (clean: it has no edits yet);
+    // a caller that targets it loads it through ensureTabLoaded
+    const tabs = this.tabs.filter(
+      (tab) => tab.kind !== 'home' && !tab.present && (tab.view || tab.opener),
+    )
     return Promise.all(
       tabs.map(async (tab) => ({
         id: tab.id,
@@ -701,9 +790,159 @@ export class TabManager {
     return id
   }
 
+  // ---- unloaded tabs (spec 5.3: restored tabs load when first activated) ----
+
+  /**
+   * Add a document tab to the end of the strip WITHOUT making its editor view:
+   * no WebContentsView, no renderer process. It shows its title and kind, is
+   * clean to every dirty query and close prompt, and is no menu or save target.
+   * The first activation by any route (click, keyboard, split pane, path
+   * lookup, ensureTabLoaded) runs `opener` once; the id and slot stay. Closing
+   * it before then just drops it — no editor clean-up runs, so no recovery
+   * copy is touched. Not activated; returns the new tab id.
+   */
+  addUnloadedTab(spec: UnloadedTabSpec): string {
+    const id = this.pushUnloadedTab(spec)
+    this.onChanged()
+    return id
+  }
+
+  private pushUnloadedTab(spec: UnloadedTabSpec): string {
+    const id = `t${this.nextId++}`
+    this.tabs.push({
+      id,
+      kind: spec.kind,
+      view: null,
+      title:
+        spec.title ??
+        (spec.filePath ? basename(spec.filePath) : this.untitled(spec.kind, PRODUCT_NAME)),
+      filePath: spec.filePath,
+      opener: spec.opener,
+    })
+    return id
+  }
+
+  /** whether the tab is still waiting for its first activation (no view yet) */
+  isTabUnloaded(id: string): boolean {
+    return this.tabById(id)?.opener !== undefined
+  }
+
+  /**
+   * Rebuild a restored session: every tab is added unloaded in order, then
+   * only the split pair (when given and valid) or else the active tab is
+   * loaded and shown. A split's front tab is its focused pane — `active`
+   * picks that pane when it is one of the pair and is otherwise ignored, since
+   * showing a third document would replace a pane. Nothing else loads; with
+   * neither given the strip fills and Home stays in front. Returns the new
+   * tab ids in the order of `session.tabs`.
+   */
+  hydrateSession(session: RestoredSession): string[] {
+    const ids = session.tabs.map((spec) => this.pushUnloadedTab(spec))
+    this.onChanged()
+    const at = (index: number | undefined): string | undefined =>
+      index !== undefined && Number.isInteger(index) && index >= 0 && index < ids.length
+        ? ids[index]
+        : undefined
+    const activeId = at(session.active)
+    const split = session.split
+    const aId = at(split?.a)
+    const bId = at(split?.b)
+    if (split && aId !== undefined && bId !== undefined && aId !== bId) {
+      const focus = activeId === aId ? 'a' : activeId === bId ? 'b' : split.focus
+      this.beginSplit(aId, bId, split.orientation, split.ratio, focus)
+      if (this.split) return ids
+    }
+    if (activeId !== undefined) this.activateTab(activeId)
+    return ids
+  }
+
+  /**
+   * For callers that need a live document (MCP tools, `@` mentions): load the
+   * tab if it is unloaded — without activating it — and resolve once the
+   * opener's `ready` settles, else once the editor page has loaded (not the
+   * document: the editor may still be reading it). A tab whose document must first ask
+   * the user the per-file recovery question resolves `needs-user` without
+   * loading (or, already loaded by a click, without waiting on the person).
+   * A normally opened tab is ready at once. Rejects when the opener fails or
+   * the view goes away before it is ready.
+   */
+  async ensureTabLoaded(id: string): Promise<TabLoadResult> {
+    const tab = this.tabById(id)
+    if (!tab || id === HOME_ID) return { status: 'missing' }
+    const opener = tab.opener
+    if (opener) {
+      if (opener.needsUser && (await opener.needsUser(this.openContext(tab)))) {
+        return { status: 'needs-user' }
+      }
+      // the answer may have taken a while: the tab can be gone or loaded by now
+      if (!this.tabs.includes(tab)) return { status: 'missing' }
+      if (!this.loadTab(tab)) throw new Error(`"${tab.title}" could not be opened`)
+    }
+    const lazy = tab.lazy
+    if (lazy && !lazy.settled) {
+      if (lazy.needsUser && (await lazy.needsUser(this.openContext(tab)))) {
+        return { status: 'needs-user' }
+      }
+      await lazy.ready
+    }
+    const contents = tab.view?.webContents
+    if (!contents || contents.isDestroyed()) return { status: 'missing' }
+    return { status: 'ready', webContents: contents }
+  }
+
+  private openContext(tab: TabRecord): UnloadedTabOpenContext {
+    return {
+      tabId: tab.id,
+      kind: tab.kind as DocumentTabKind,
+      title: tab.title,
+      ...(tab.filePath ? { filePath: tab.filePath } : {}),
+    }
+  }
+
+  /**
+   * Make an unloaded tab's editor view through its opener, once. True when
+   * the tab has its view afterwards (or never needed one, like Home); false
+   * when the opener failed, leaving the tab unloaded for the next try.
+   */
+  private loadTab(tab: TabRecord): boolean {
+    const opener = tab.opener
+    if (!opener || tab.view) return true
+    if (this.loadingIds.has(tab.id)) return false
+    this.loadingIds.add(tab.id)
+    let loaded: LoadedTabView
+    try {
+      loaded = opener.open(this.openContext(tab))
+    } catch (error) {
+      console.warn('[tabs] a restored tab could not be opened:', error)
+      return false
+    } finally {
+      this.loadingIds.delete(tab.id)
+    }
+    const { view } = loaded
+    this.shellWindow.contentView.addChildView(view)
+    view.setVisible(false)
+    this.trackHtmlFullScreen(view)
+    this.trackPaneFocus(view)
+    tab.view = view
+    tab.opener = undefined
+    const lazy: LazyLoadState = {
+      ready: loaded.ready ?? pageLoaded(view.webContents),
+      settled: false,
+      needsUser: opener.needsUser,
+    }
+    const settle = (): void => {
+      lazy.settled = true
+    }
+    lazy.ready.then(settle, settle)
+    tab.lazy = lazy
+    return true
+  }
+
   activateTab(id: string): void {
     const target = this.tabs.find((t) => t.id === id)
     if (!target) return
+    // an unloaded tab makes its editor first; a failed opener leaves the window as it was
+    if (!this.loadTab(target)) return
     const previous = this.activeId
     if (this.split) {
       const mode = activationMode(this.split, {
@@ -766,10 +1005,13 @@ export class TabManager {
   refreshActiveTargets(): void {
     const target = this.tabs.find((t) => t.id === this.activeId)
     if (!target) return
-    setActiveDocsResolver(target.kind === 'docs' ? () => target.view!.webContents : () => null)
+    setActiveDocsResolver(
+      target.kind === 'docs' && target.view ? () => target.view!.webContents : () => null,
+    )
     if (target.kind === 'sheets' && target.view) setActiveSheetsWebContents(target.view.webContents)
     if (target.kind === 'slides' && target.view) setActiveSlidesWebContents(target.view.webContents)
-    this.applyMenuFor(target.present ? 'home' : target.kind)
+    // an unloaded tab has no editor to take menu actions yet
+    this.applyMenuFor(target.present || target.opener ? 'home' : target.kind)
   }
 
   // ---- two-pane split (decision 0037) ----
@@ -781,6 +1023,26 @@ export class TabManager {
   /** the live split (copy) or null */
   splitState(): SplitViewState | null {
     return this.split ? { ...this.split } : null
+  }
+
+  /**
+   * The strip as the session record keeps it (crash recovery spec 5.2): the
+   * document tabs in strip order, loaded or not. Home, the manual and
+   * chrome-free Present tabs are never restored, so they are left out.
+   */
+  sessionTabs(): SessionStripState {
+    return {
+      tabs: this.tabs
+        .filter((t) => t.kind !== 'home' && t.kind !== 'help' && !t.present)
+        .map((t) => ({
+          id: t.id,
+          kind: t.kind as DocumentTabKind,
+          title: t.title,
+          ...(t.filePath ? { filePath: t.filePath } : {}),
+        })),
+      activeId: this.activeId,
+      split: this.splitState(),
+    }
   }
 
   /** which pane role the given view plays right now (null = not a pane view) */
@@ -852,13 +1114,19 @@ export class TabManager {
         id: t.id,
         kind: t.kind,
         present: t.present,
-        hasView: t.view !== null,
+        // an unloaded tab can be a pane: setSplit loads it
+        hasView: t.view !== null || t.opener !== undefined,
       })),
     })
   }
 
   /** install a split state and make one of its tabs active (clamps the ratio) */
   private setSplit(next: SplitViewState, activeTabId?: string): void {
+    // entering a pane is a first activation: an unloaded pane document loads now
+    for (const id of [next.aTabId, next.bTabId]) {
+      const tab = this.tabById(id)
+      if (tab?.opener && !this.loadTab(tab)) return
+    }
     const bounded =
       next.ratio > 0 && next.ratio < 1
         ? { ...next, ratio: clampSplitRatio(next.ratio, this.contentBounds(), next.orientation) }
@@ -883,7 +1151,14 @@ export class TabManager {
   splitWith(tabId: string, intent: SplitDropIntent | null): void {
     if (!intent) return
     const tab = this.tabById(tabId)
-    if (!tab || !tab.view || tab.present) return
+    if (!tab || (!tab.view && !tab.opener) || tab.present) return
+    // a dropped unloaded tab enters a pane: load it before it is placed
+    if (
+      (intent.kind === 'create' || intent.kind === 'replace' || intent.kind === 'reorient') &&
+      !this.loadTab(tab)
+    ) {
+      return
+    }
     switch (intent.kind) {
       case 'noop':
         return
@@ -945,7 +1220,8 @@ export class TabManager {
 
   /**
    * Rebuild a remembered split at launch (the wiring reads split-memory and
-   * opens both tabs first). Rejects tabs that cannot be panes.
+   * opens both tabs first; unloaded tabs are loaded here). Rejects tabs that
+   * cannot be panes.
    */
   beginSplit(
     aTabId: string,
@@ -957,7 +1233,8 @@ export class TabManager {
     if (aTabId === bTabId) return
     const a = this.tabById(aTabId)
     const b = this.tabById(bTabId)
-    if (!a?.view || !b?.view || a.present || b.present) return
+    if (!a || !b || (!a.view && !a.opener) || (!b.view && !b.opener)) return
+    if (a.present || b.present) return
     if (a.kind === 'home' || a.kind === 'help' || b.kind === 'home' || b.kind === 'help') return
     const safeRatio = Number.isFinite(ratio) ? Math.min(1, Math.max(0, ratio)) : SPLIT_EVEN_RATIO
     this.setSplit(
@@ -1343,7 +1620,9 @@ export class TabManager {
     if (id === HOME_ID) return null
     const idx = this.tabs.findIndex((t) => t.id === id)
     const tab = idx >= 0 ? this.tabs[idx] : undefined
-    if (!tab?.view || tab.present || this.closingIds.has(id)) return null
+    if (!tab || tab.present || this.closingIds.has(id)) return null
+    // an unloaded tab leaves with a live document: it loads first
+    if (!this.loadTab(tab) || !tab.view) return null
     this.tabs.splice(idx, 1)
     if (this.htmlFullScreenId === id) this.htmlFullScreenId = null
     const view = tab.view
@@ -1376,7 +1655,7 @@ export class TabManager {
    *  New Window): every document tab except a chrome-free Present tab. */
   canDetachTab(id: string): boolean {
     const tab = this.tabs.find((t) => t.id === id)
-    return !!tab?.view && !tab.present && !this.closingIds.has(id)
+    return !!tab && (!!tab.view || !!tab.opener) && !tab.present && !this.closingIds.has(id)
   }
 
   /**
@@ -1412,27 +1691,32 @@ export class TabManager {
     return id
   }
 
-  /** the editor tab showing this file, whichever module owns it (path compared after resolving links) */
+  /** the editor tab showing this file, whichever module owns it (path compared after resolving links);
+   *  an unloaded tab for the file is loaded so its webContents can be handed out */
   findTabByPath(
     path?: string,
   ): { id: string; kind: TabKind; webContents: WebContents } | undefined {
     const wanted = canonicalPath(path)
     const tab = this.tabs.find(
-      (t) => t.view && t.filePath && !t.present && canonicalPath(t.filePath) === wanted,
+      (t) =>
+        (t.view || t.opener) && t.filePath && !t.present && canonicalPath(t.filePath) === wanted,
     )
-    return tab?.view ? { id: tab.id, kind: tab.kind, webContents: tab.view.webContents } : undefined
+    if (!tab || !this.loadTab(tab)) return undefined
+    return tab.view ? { id: tab.id, kind: tab.kind, webContents: tab.view.webContents } : undefined
   }
 
   webContentsForTab(id: string): WebContents | undefined {
     return this.tabs.find((t) => t.id === id)?.view?.webContents
   }
 
+  /** the tab of this kind for the file — an unloaded one too, so the caller's
+   *  activateTab loads it instead of opening the file a second time */
   private findTabOfKindByPath(kind: TabKind, path?: string): string | undefined {
     const wanted = canonicalPath(path)
     return this.tabs.find(
       (t) =>
         t.kind === kind &&
-        t.view &&
+        (t.view || t.opener) &&
         t.filePath &&
         !t.present &&
         canonicalPath(t.filePath) === wanted,
@@ -1514,6 +1798,54 @@ export class TabManager {
       ? { id: tab.id, webContents: tab.view.webContents, filePath: tab.filePath }
       : undefined
   }
+}
+
+/** settles when the view's page finished loading; rejects if it goes away first */
+function pageLoaded(contents: WebContents): Promise<void> {
+  return new Promise((resolve, reject) => {
+    contents.once('did-finish-load', () => resolve())
+    contents.once('destroyed', () => reject(new Error('the document tab was closed')))
+  })
+}
+
+/**
+ * The editor view a plain open of `filePath` makes — the same factory call,
+ * with the same arguments, as the matching open*Tab method — without adding a
+ * tab. The building block of an UnloadedTabOpener for a document that has no
+ * recovery copy to settle. A sheets view gets its workbook queued; the caller
+ * still nudges it like any new sheets tab. Throws for a PDF without a file.
+ */
+export function createPlainEditorView(kind: DocumentTabKind, filePath?: string): WebContentsView {
+  switch (kind) {
+    case 'docs':
+      return createDocsView(filePath)
+    case 'sheets': {
+      const view = createSheetsView({
+        includeAiHandlers: false,
+        openingWorkbook: Boolean(filePath),
+      })
+      if (filePath) queueWorkbookForView(view.webContents, filePath)
+      return view
+    }
+    case 'slides':
+      return createSlidesView(filePath)
+    case 'pdf':
+      if (!filePath) throw new Error('a PDF tab needs its file')
+      return createPdfView(filePath)
+    case 'markdown':
+      return createMarkdownView(filePath)
+    case 'html':
+      return createHtmlView(filePath)
+    case 'mindmap':
+      return createMindmapView(filePath)
+    case 'hwp':
+      return createHwpView(filePath, { untitledCopy: false })
+  }
+}
+
+/** an opener that opens the tab's file as it is on disk (createPlainEditorView) */
+export const plainTabOpener: UnloadedTabOpener = {
+  open: ({ kind, filePath }) => ({ view: createPlainEditorView(kind, filePath) }),
 }
 
 export function canonicalPath(path: string | undefined): string | undefined {

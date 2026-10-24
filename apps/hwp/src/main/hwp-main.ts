@@ -24,12 +24,26 @@ import { registerHwpAttachmentIpc } from './attachments-ipc'
 import { atomicWriteFile } from './atomic-write'
 import { badJob, printJobToPdf, printJobToPrinter } from './print-document'
 import { tm } from './dialog-strings'
-import { fieldKindsOf, restoreFieldKinds } from './field-kinds'
+import { fieldKindsOf } from './field-kinds'
 import type { FieldKinds } from './field-kinds'
+import {
+  hwpRecoveryBeforeSave,
+  hwpRecoveryDontSave,
+  hwpRecoveryFileRenamed,
+  hwpRecoveryOnRead,
+  hwpRecoverySaveAsDefault,
+  hwpRecoverySaved,
+  installHwpRecovery,
+  noteHwpPathConsumed,
+  registerHwpRecoveryIpc,
+  trackHwpRecovery,
+} from './recovery'
+import type { HwpRecoveryHost } from './recovery'
+import { applySaveFixes } from './save-fixes'
 import { backupPathFor, bytesMatchFormat, needsBackup, withFormatExtension } from './save-plan'
-import { restoreSectionTails, sectionTailsOf } from './section-tails'
+import { sectionTailsOf } from './section-tails'
 import type { SectionTails } from './section-tails'
-import { newTabsOf, writeTabWidths } from './tab-widths'
+import { newTabsOf } from './tab-widths'
 import { hasTrackedChanges, withoutTrackedChanges } from './tracked-changes'
 import { HWP_CHANNELS, MAX_HWP_SAVE_BYTES, hwpFormatOfPath } from '../shared/ipc'
 import type {
@@ -56,6 +70,7 @@ let runtime: RuntimePaths = { preloadPath: '' }
 
 export function configureHwpRuntime(paths: RuntimePaths): void {
   runtime = paths
+  installHwpRecovery(recoveryHost)
 }
 
 /** Open path per view, queued at tab creation; the renderer consumes it after mount.
@@ -101,6 +116,30 @@ const trackingDroppedByWc = new Set<number>()
  */
 const diskStatesByWc = new Map<number, Map<string, SaveDiskState>>()
 
+/** What crash recovery (recovery.ts) reads and sets of the views' state. */
+const recoveryHost: HwpRecoveryHost = {
+  savePathOf: (wcId) => savePathByWc.get(wcId),
+  untitledCopyOf: (wcId) => untitledCopyByWc.get(wcId),
+  openPathOf: (wcId) => openPathByWc.get(wcId),
+  saveBaseOf: (wcId) => ({ tails: tailsByWc.get(wcId), kinds: fieldKindsByWc.get(wcId) }),
+  isDirty: (wcId) => dirtyByWc.has(wcId),
+  markDirty: (wcId) => {
+    dirtyByWc.add(wcId)
+  },
+  queueFile: (wcId, path) => {
+    openPathByWc.set(wcId, path)
+    allowedByWc.set(wcId, new Set([...(allowedByWc.get(wcId) ?? []), path]))
+    savePathByWc.set(wcId, path)
+    untitledCopyByWc.delete(wcId)
+  },
+  queueUntitledCopy: (wcId, path, copy) => {
+    openPathByWc.set(wcId, path)
+    allowedByWc.set(wcId, new Set([...(allowedByWc.get(wcId) ?? []), path]))
+    savePathByWc.delete(wcId)
+    untitledCopyByWc.set(wcId, copy)
+  },
+}
+
 /** Why a save stood down: the file moved on disk after this copy read or wrote it. */
 const EXTERNAL_MODIFIED = 'hwp: external-modified'
 
@@ -142,6 +181,8 @@ export function hwpFileRenamed(contents: WebContents, oldPath: string, newPath: 
     states.delete(oldPath)
     states.set(newPath, recorded)
   }
+  // the recovery copy follows the file
+  void hwpRecoveryFileRenamed(contents, oldPath, newPath)
 }
 
 /**
@@ -168,7 +209,11 @@ export async function requestHwpClose(
       ? await dialog.showMessageBox(parent, options)
       : await dialog.showMessageBox(options)
   if (response === 2) return false
-  if (response === 1) return true
+  if (response === 1) {
+    // the unsaved changes are given up: so is their recovery copy
+    hwpRecoveryDontSave(contents)
+    return true
+  }
   return new Promise<boolean>((resolve) => {
     const timer = setTimeout(() => {
       closeSaveWaiters.delete(contents.id)
@@ -300,18 +345,26 @@ function registerHwpIpc(): void {
   if (ipcRegistered) return
   ipcRegistered = true
   registerHwpAttachmentIpc()
+  installHwpRecovery(recoveryHost)
+  registerHwpRecoveryIpc()
 
-  ipcMain.handle(HWP_CHANNELS.consumePending, (e) => openPathByWc.get(e.sender.id) ?? null)
+  ipcMain.handle(HWP_CHANNELS.consumePending, (e) => {
+    noteHwpPathConsumed(e.sender.id)
+    return openPathByWc.get(e.sender.id) ?? null
+  })
   ipcMain.handle(HWP_CHANNELS.untitledCopy, (e) => untitledCopyByWc.get(e.sender.id) ?? null)
 
   ipcMain.handle(HWP_CHANNELS.readFile, async (e, path: unknown) => {
     if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) {
       throw new Error('hwp: path not granted to this view')
     }
+    // a recovery copy left for this file is settled before any content reaches the editor
+    const restored = await hwpRecoveryOnRead(e.sender, path)
     const info = await stat(path)
     if (info.size > MAX_HWP_SAVE_BYTES) throw new Error('hwp: file is too large to open')
     let bytes: Uint8Array = await readFile(path)
-    // the document the view holds from now on is this file: what is kept follows it
+    // the document the view holds from now on is this file: what is kept follows it (a
+    // restored copy included: its saves correct against the file at its path)
     const wcId = e.sender.id
     await rememberDiskState(wcId, path)
     trackedByWc.delete(wcId)
@@ -332,7 +385,7 @@ function registerHwpIpc(): void {
     const kinds = bytesMatchFormat(bytes, 'hwp') ? fieldKindsOf(bytes) : null
     if (kinds) fieldKindsByWc.set(e.sender.id, kinds)
     else fieldKindsByWc.delete(e.sender.id)
-    return bytes
+    return restored ?? bytes
   })
 
   ipcMain.handle(HWP_CHANNELS.trackingDropped, (e) => trackingDroppedByWc.has(e.sender.id))
@@ -406,7 +459,9 @@ function registerHwpIpc(): void {
           // default save folder, where the shell moves it into the folder it was made from
           defaultPath: current
             ? join(dirname(current), basename(current))
-            : join(configuredDefaultSaveDir(app), copy?.name ?? `${tm('untitledFile')}.hwp`),
+            : // a copy restored without its file is offered where that file was
+              (hwpRecoverySaveAsDefault(wcId) ??
+              join(configuredDefaultSaveDir(app), copy?.name ?? `${tm('untitledFile')}.hwp`)),
           // one type per format, so the user can pick the other one; the document's
           // own format comes first, so it is the dialog's default type
           filters: fallback === 'hwpx' ? [hwpx, hwp] : [hwp, hwpx],
@@ -478,24 +533,21 @@ function registerHwpIpc(): void {
           })
           if (verdict === 'cancel') return done({ ok: false, error: EXTERNAL_MODIFIED })
         }
-        let bytes = data
-        // the tabs first: their places were found in the engine's bytes, and putting the
-        // tails back leaves the body of each section as it is
-        if (Array.isArray(tabs) && tabs.length > 0) {
-          bytes = writeTabWidths(bytes, pending.format, tabs as MeasuredTab[]).bytes
+        // tabs, field kinds, section tails: the same corrections a recovery copy gets
+        const fixed = applySaveFixes(
+          data,
+          pending.format,
+          Array.isArray(tabs) ? (tabs as MeasuredTab[]) : undefined,
+          recoveryHost.saveBaseOf(wcId),
+        )
+        const bytes = fixed.bytes
+        const tailsLost = fixed.tailsSkipped !== undefined
+        if (tailsLost) {
+          console.warn(
+            `hwp: master pages or memos were not put back on save (${fixed.tailsSkipped})`,
+          )
         }
-        const kinds = pending.format === 'hwp' ? fieldKindsByWc.get(wcId) : undefined
-        if (kinds) bytes = restoreFieldKinds(bytes, kinds).bytes
-        let tailsLost = false
-        const tails = pending.format === 'hwp' ? tailsByWc.get(wcId) : undefined
-        if (tails) {
-          const result = restoreSectionTails(bytes, tails)
-          bytes = result.bytes
-          if (result.skipped) {
-            tailsLost = true
-            console.warn(`hwp: master pages or memos were not put back on save (${result.skipped})`)
-          }
-        }
+        const recoveryBefore = hwpRecoveryBeforeSave(wcId)
         const written = writtenByWc.get(wcId) ?? new Set<string>()
         let backupPath: string | undefined
         if (needsBackup(target, existsSync(target), written)) {
@@ -517,6 +569,7 @@ function registerHwpIpc(): void {
         allowed.add(target)
         allowedByWc.set(wcId, allowed)
         dirtyByWc.delete(wcId)
+        hwpRecoverySaved(wcId, recoveryBefore)
         if (isNewPath) fileSavedHook?.(e.sender, target)
         return done({
           ok: true,
@@ -587,6 +640,8 @@ function grantAndTrack(
   options: HwpViewOptions = {},
 ): void {
   const wcId = wc.id
+  // first: its close settles the recovery copy while the view's state is still here
+  trackHwpRecovery(wc)
   if (openPath && existsSync(openPath)) {
     openPathByWc.set(wcId, openPath)
     allowedByWc.set(wcId, new Set([openPath]))
@@ -682,3 +737,14 @@ export function startHwpStandalone(): void {
   })
   app.on('window-all-closed', () => app.quit())
 }
+
+/**
+ * Crash recovery, for the shell: a tool closed the document without saving (its copy
+ * goes, as with "Don't Save"); a tab's copy slot; the title a new document's copy is
+ * listed under.
+ */
+export {
+  hwpRecoveryDontSave as hwpDiscardRecoveryCopy,
+  hwpRecoveryIdentity,
+  setHwpRecoveryTitle,
+} from './recovery'

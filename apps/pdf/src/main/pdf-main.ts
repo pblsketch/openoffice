@@ -11,7 +11,7 @@ import {
 } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { copyFile, readFile, stat, writeFile } from 'node:fs/promises'
-import { userInfo } from 'node:os'
+import { tmpdir, userInfo } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { BrowserWindow, WebContentsView, app, dialog, ipcMain, shell, webContents } from 'electron'
 import type { WebContents } from 'electron'
@@ -20,6 +20,7 @@ import {
   configuredDefaultSaveDir,
   confirmOverwriteIfConflicted,
   contextMenuLabels,
+  createRecoveryStore,
   installContextMenu,
   installNavigationGuard,
   isPathOpenElsewhere,
@@ -31,8 +32,14 @@ import {
   installRendererProtocol,
   registerRendererScheme,
   rendererUrl,
+  registerRecoveryEditor,
 } from '@genoffice/electron-utils'
-import type { SaveDiskState } from '@genoffice/electron-utils'
+import type {
+  RecoveryEditorContract,
+  RecoveryIdentity,
+  RecoveryStore,
+  SaveDiskState,
+} from '@genoffice/electron-utils'
 import { brandText, createI18n, getUiLang } from '@genoffice/i18n'
 import { generateImageTool, documentMediaRoots, withMediaCallSignal } from '@genoffice/ai-search'
 import { sharedSubscriptionStatuses } from '@genoffice/ai-provider/subscription'
@@ -90,6 +97,9 @@ import {
   readStaticFormFills,
   replacePagesBytes,
   pdfBytesWithEdits,
+  pdfBytesWithEditsFrom,
+  pdfBytesWithEditsOf,
+  savePdfBytesToPath,
   savePdfToPath,
   setPageSizeBytes,
   splitPagesBytes,
@@ -118,7 +128,8 @@ import {
   parseNoteInsertRequest,
   parseNoteOpenRequest,
 } from './note-link'
-import type { PdfNoteResult } from '../shared/ipc'
+import type { PdfNoteResult, PdfRecoveryCopyResult } from '../shared/ipc'
+import { createPdfRecovery, pdfLooksEncrypted } from './pdf-recovery'
 import { ResultStore, documentHashOfFile } from '../../../../packages/pdf-structure/src/store'
 
 const tDlg = createI18n({
@@ -628,6 +639,7 @@ let runtime: RuntimePaths = { preloadPath: '' }
 
 export function configurePdfRuntime(paths: RuntimePaths): void {
   runtime = paths
+  registerPdfRecoveryEditor()
 }
 
 const MAX_CREATE_DOCUMENT_TITLE_CHARS = 200
@@ -926,6 +938,134 @@ export function markPdfUntitledCopy(path: string): void {
   untitledCopyPdfPaths.add(path)
 }
 
+// ── Crash recovery (spec 1-3, 5.4, 7): copies of unsaved edits in the app data folder ──
+
+let pdfRecoveryStore: RecoveryStore | null = null
+let pdfRecoveryStoreOverride: RecoveryStore | null | undefined
+
+/** Hand in the recovery store (tests); undefined goes back to the app data folder's */
+export function setPdfRecoveryStore(store: RecoveryStore | null | undefined): void {
+  pdfRecoveryStoreOverride = store
+}
+
+const recovery = createPdfRecovery({
+  store: () =>
+    pdfRecoveryStoreOverride !== undefined
+      ? pdfRecoveryStoreOverride
+      : (pdfRecoveryStore ??= createRecoveryStore({
+          userDataDir: () => app.getPath('userData'),
+        })),
+  dialog,
+  parentOf: (contents) => {
+    try {
+      return BrowserWindow.fromWebContents(contents as WebContents) ?? null
+    } catch {
+      return null
+    }
+  },
+  lang: () => getUiLang(),
+  isUntitledCopyPath: (path) => untitledCopyPdfPaths.has(path),
+  // a restored untitled copy's working file, like a template copy's: never a user folder
+  workDir: () => join(tmpdir(), 'genoffice-pdf-recovery'),
+})
+
+/**
+ * The untitled document copy this view writes, if it shows one (a restored
+ * untitled copy, a template copy): the shell's session record records the tab
+ * by it instead of its working file, and reopens it after a renderer crash.
+ */
+export function pdfRecoveryIdentity(webContentsId: number): RecoveryIdentity | null {
+  return recovery.untitledIdentity(webContentsId)
+}
+
+/** The view's own document: a restored recovery copy until it is saved, else the file */
+async function viewDocumentBytes(wcId: number, path: string): Promise<Uint8Array> {
+  return recovery.viewBytes(wcId, path) ?? new Uint8Array(await readFile(path))
+}
+
+/** OS session end: views asked to write their copy now, answered by the renderer */
+const copyFlushWaiters = new Map<number, () => void>()
+const COPY_FLUSH_TIMEOUT_MS = 8_000
+
+/** Write a copy for every PDF view with unsaved changes right now (no prompt); never throws */
+export async function writePdfCopiesNow(): Promise<void> {
+  const pending: Promise<void>[] = []
+  for (const wcId of dirtyByWc) {
+    if (recovery.isUnprotectable(wcId)) continue
+    let contents: WebContents | undefined
+    try {
+      contents = webContents.fromId(wcId)
+    } catch {
+      contents = undefined
+    }
+    if (!contents || contents.isDestroyed()) continue
+    const target = contents
+    pending.push(
+      new Promise<void>((resolve) => {
+        const done = () => {
+          clearTimeout(timer)
+          if (copyFlushWaiters.get(wcId) === done) copyFlushWaiters.delete(wcId)
+          resolve()
+        }
+        const timer = setTimeout(done, COPY_FLUSH_TIMEOUT_MS)
+        copyFlushWaiters.get(wcId)?.()
+        copyFlushWaiters.set(wcId, done)
+        try {
+          target.send(PDF_CHANNELS.recoveryFlushRequest)
+        } catch {
+          done()
+        }
+      }),
+    )
+  }
+  await Promise.all(pending)
+}
+
+/** Point a view at `filePath` and have it read again when it already asked for its file */
+function reopenView(contents: WebContents, filePath: string): void {
+  const wcId = contents.id
+  allowedByWc.get(wcId)?.add(filePath)
+  openPathByWc.set(wcId, filePath)
+  if (recovery.hasConsumed(wcId)) {
+    dirtyByWc.delete(wcId)
+    contents.reload()
+  }
+}
+
+/** What the PDF editor promises the shell about crash recovery */
+export const pdfRecoveryEditor: RecoveryEditorContract = {
+  kind: 'pdf',
+  writeCopiesNow: () => writePdfCopiesNow().catch(() => undefined),
+  openFileWithDecision: (contents, { filePath, decision }) => {
+    if (contents.isDestroyed() || !allowedByWc.has(contents.id) || !existsSync(filePath)) return
+    recovery.setDecision(contents.id, filePath, decision)
+    reopenView(contents, filePath)
+  },
+  openUntitledCopy: async (contents, request) => {
+    if (contents.isDestroyed() || !allowedByWc.has(contents.id)) return
+    const path = await recovery.openUntitled(contents.id, request).catch((err: unknown) => {
+      console.warn('[pdf] recovery copy could not be opened:', err)
+      return null
+    })
+    if (!path || contents.isDestroyed()) return
+    // the first explicit save asks where the document goes (like a template copy)
+    untitledCopyPdfPaths.add(path)
+    reopenView(contents, path)
+  },
+  isUnprotectable: (contents) => recovery.isUnprotectable(contents.id),
+}
+
+let pdfRecoveryEditorRegistered = false
+
+/** The shell finds the PDF editor's recovery contract by kind once the runtime is configured */
+function registerPdfRecoveryEditor(): void {
+  if (pdfRecoveryEditorRegistered) return
+  pdfRecoveryEditorRegistered = true
+  registerRecoveryEditor(pdfRecoveryEditor)
+  // restored untitled copies' working files a crash left behind (only that temp folder)
+  void recovery.sweepWorkFiles()
+}
+
 /**
  * The shell renamed or moved the file this view shows (home Folders / Files
  * pane): re-key every per-view record and tell the renderer, so the next save
@@ -940,6 +1080,7 @@ export function pdfFileRenamed(contents: WebContents, oldPath: string, newPath: 
   if (saveAsTargetByWc.get(wcId) === oldPath) saveAsTargetByWc.set(wcId, newPath)
   if (untitledPdfPaths.delete(oldPath)) untitledPdfPaths.add(newPath)
   if (unsavedBlankPdfPaths.delete(oldPath)) unsavedBlankPdfPaths.add(newPath)
+  void recovery.renamed(wcId, oldPath, newPath)
   const states = docDiskStates.get(wcId)
   const recorded = states?.get(oldPath)
   if (states && recorded) {
@@ -1102,8 +1243,24 @@ export async function requestPdfClose(
       ? await dialog.showMessageBox(parent, options)
       : await dialog.showMessageBox(options)
   if (response === 2) return false
-  if (response === 1) return true
+  if (response === 1) {
+    // "Don't Save" drops the unsaved edits, and with them their recovery copy: no new
+    // one is written while other tabs' prompts keep this view open
+    recovery.dontSave(contents.id, openPathByWc.get(contents.id))
+    if (!contents.isDestroyed()) contents.send(PDF_CHANNELS.recoveryDropped, true)
+    return true
+  }
   return await requestRendererSave(contents, true)
+}
+
+/**
+ * The close this view answered "Don't Save" for was cancelled (a later
+ * prompt of the same window close): its recovery copies resume at once.
+ * Without this call they resume when the user edits in the view again.
+ */
+export function pdfCloseCancelled(contents: WebContents): void {
+  if (!recovery.closeCancelled(contents.id) || contents.isDestroyed()) return
+  contents.send(PDF_CHANNELS.recoveryDropped, false)
 }
 
 function requestRendererSave(contents: WebContents, flushAll: boolean): Promise<boolean> {
@@ -1264,7 +1421,13 @@ function registerPdfIpc(): void {
   if (ipcRegistered) return
   ipcRegistered = true
 
-  ipcMain.handle(PDF_CHANNELS.consumePending, (e) => openPathByWc.get(e.sender.id) ?? null)
+  // the recovery question (a copy of unsaved edits) is answered before the renderer reads the file
+  ipcMain.handle(PDF_CHANNELS.consumePending, (e) => {
+    const path = openPathByWc.get(e.sender.id) ?? null
+    recovery.markConsumed(e.sender.id)
+    if (!path || recovery.resolvedNow(e.sender, path)) return path
+    return recovery.resolveOnOpen(e.sender, path).then(() => path)
+  })
 
   ipcMain.handle(PDF_CHANNELS.getUsername, () => {
     try {
@@ -1278,10 +1441,14 @@ function registerPdfIpc(): void {
     if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) {
       throw new Error('pdf: path not granted to this view')
     }
-    const buf = await readFile(path)
+    // a view restored from a recovery copy shows the copy until it is saved
+    const buf = recovery.viewBytes(e.sender.id, path) ?? (await readFile(path))
     // The reader's copy: this view's save guard compares against this state
     await rememberDiskState(e.sender.id, path)
-    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
+    // IPC copies what it sends: a buffer that is all document goes as is, not copied first
+    return buf.byteOffset === 0 && buf.byteLength === buf.buffer.byteLength
+      ? buf.buffer
+      : buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
   })
 
   ipcMain.handle(
@@ -1364,20 +1531,32 @@ function registerPdfIpc(): void {
       ) {
         return { ok: false, error: 'pdf: save other pending edits before applying redactions' }
       }
+      // a restored copy is not on disk yet: it is saved like any pending edit first
+      if (recovery.viewBytes(e.sender.id, path)) {
+        return { ok: false, error: 'pdf: save other pending edits before applying redactions' }
+      }
       request = { ...request, redactions: regions }
     }
+    // a view restored from a recovery copy saves from the copy's bytes, not the file
+    const restoredSource = recovery.viewBytes(e.sender.id, path)
     try {
-      const { skippedTextEdits, skippedTextInserts, skippedImageEdits } = await savePdfToPath(
-        path,
-        target,
-        request,
-      )
+      const { skippedTextEdits, skippedTextInserts, skippedImageEdits } = restoredSource
+        ? await savePdfBytesToPath(restoredSource, target, request)
+        : await savePdfToPath(path, target, request)
       // Refresh the record for the written bytes
       await rememberDiskState(e.sender.id, target)
       // a save in place changed the document's hash: its note link follows (spec 5.4)
       if (target === path && request.redactions === undefined) void noteLinks.afterSave(path)
       // the person saved this blank: it now has a saved path (its untitled name may stay)
       if (target === path) unsavedBlankPdfPaths.delete(path)
+      // saved in place: the recovery copy is done with (an untitled one is refreshed)
+      if (target === path && request.redactions === undefined) {
+        await recovery.savedInPlace(
+          e.sender.id,
+          path,
+          async () => new Uint8Array(await readFile(path)),
+        )
+      }
       if (request.redactions !== undefined) {
         // Commit document identity only after the atomic write succeeds. Revoke the
         // source grant so stale renderer requests cannot write back to the original.
@@ -1386,6 +1565,8 @@ function registerPdfIpc(): void {
         redactionPathByWc.set(e.sender.id, target)
         // The view's document moved to the redacted copy: the old path's record is dead
         forgetDiskState(e.sender.id, path)
+        // never carry the old copy over: restoring it would undo the redaction
+        recovery.movedToNewFile(e.sender.id, path, target)
         try {
           pdfRedactionSavedHook?.(e.sender, target)
         } catch (err) {
@@ -1438,7 +1619,10 @@ function registerPdfIpc(): void {
       const path = request?.path
       if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) return null
       try {
-        return await pdfBytesWithEdits(path, request)
+        const restored = recovery.viewBytes(e.sender.id, path)
+        return restored
+          ? await pdfBytesWithEditsFrom(restored, request)
+          : await pdfBytesWithEdits(path, request)
       } catch (err) {
         console.warn('[pdf] template copy failed:', err)
         return null
@@ -1470,7 +1654,10 @@ function registerPdfIpc(): void {
           : basename(path)
       const parent = BrowserWindow.fromWebContents(e.sender)
       const options = {
-        defaultPath: join(configuredDefaultSaveDir(app), name),
+        // a restored copy whose file went missing suggests where that file was
+        defaultPath:
+          recovery.saveAsDefaultPath(e.sender.id, path) ??
+          join(configuredDefaultSaveDir(app), name),
         filters: [{ name: 'PDF', extensions: ['pdf'] }],
       }
       const picked = parent
@@ -1482,6 +1669,7 @@ function registerPdfIpc(): void {
       untitledCopyPdfPaths.delete(path)
       allowedByWc.set(e.sender.id, new Set([target]))
       openPathByWc.set(e.sender.id, target)
+      recovery.adopted(e.sender.id, path, target)
       forgetDiskState(e.sender.id, path)
       await rememberDiskState(e.sender.id, target)
       try {
@@ -1537,6 +1725,7 @@ function registerPdfIpc(): void {
       if (openPathByWc.get(e.sender.id) === path) openPathByWc.set(e.sender.id, target)
       untitledPdfPaths.delete(path)
       if (unsavedBlankPdfPaths.delete(path)) unsavedBlankPdfPaths.add(target)
+      void recovery.renamed(e.sender.id, path, target)
       try {
         pdfRenamedHook?.(e.sender, path, target)
       } catch (err) {
@@ -1554,7 +1743,7 @@ function registerPdfIpc(): void {
     }
     // Lazy import like the text-edit paths: pdfium wasm only loads when the feature is used
     const { listPageImages } = await import('./image-edit')
-    return listPageImages(new Uint8Array(await readFile(path)))
+    return listPageImages(await viewDocumentBytes(e.sender.id, path))
   })
 
   // the note of each PDF (reading-assist 4.9): only the view's own document; the
@@ -1586,14 +1775,14 @@ function registerPdfIpc(): void {
       throw new Error('pdf: path not granted to this view')
     }
     const { readAnnotSubjects } = await import('./annot-subjects')
-    return readAnnotSubjects(new Uint8Array(await readFile(path)))
+    return readAnnotSubjects(await viewDocumentBytes(e.sender.id, path))
   })
 
   ipcMain.handle(PDF_CHANNELS.listStaticFormFills, async (e, path: unknown) => {
     if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) {
       throw new Error('pdf: path not granted to this view')
     }
-    return readStaticFormFills(new Uint8Array(await readFile(path)))
+    return readStaticFormFills(await viewDocumentBytes(e.sender.id, path))
   })
 
   ipcMain.handle(PDF_CHANNELS.ocrPage, async (_e, png: unknown) => {
@@ -1625,7 +1814,7 @@ function registerPdfIpc(): void {
       }
       const { renderImagePng } = await import('./image-edit')
       return renderImagePng(
-        new Uint8Array(await readFile(path)),
+        await viewDocumentBytes(e.sender.id, path),
         pageIndex,
         rect,
         typeof scale === 'number' && Number.isFinite(scale) ? scale : 1,
@@ -1650,7 +1839,7 @@ function registerPdfIpc(): void {
       throw new Error('pdf: path not granted to this view')
     }
     const { renderPagePreviewPng } = await import('./image-edit')
-    return renderPagePreviewPng(new Uint8Array(await readFile(path)), {
+    return renderPagePreviewPng(await viewDocumentBytes(e.sender.id, path), {
       pageIndex,
       excludeRects,
       excludeAnnots,
@@ -1674,7 +1863,7 @@ function registerPdfIpc(): void {
       }
       // Same lazy import as the save path: the pdfium wasm only loads when text editing is used
       const { validateTextEdits } = await import('./text-edit')
-      return validateTextEdits(new Uint8Array(await readFile(path)), edits)
+      return validateTextEdits(await viewDocumentBytes(e.sender.id, path), edits)
     },
   )
 
@@ -2031,7 +2220,7 @@ function registerPdfIpc(): void {
     async (e, path: unknown): Promise<PdfSignatureInfo[]> => {
       if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) return []
       try {
-        return await readPdfSignatures(new Uint8Array(await readFile(path)))
+        return await readPdfSignatures(await viewDocumentBytes(e.sender.id, path))
       } catch {
         return []
       }
@@ -2169,6 +2358,8 @@ function registerPdfIpc(): void {
         await writePdfAtomically(target, signed)
         allowedByWc.set(e.sender.id, new Set([target]))
         openPathByWc.set(e.sender.id, target)
+        // the signed file starts clean: no copy of the unsigned document follows it
+        recovery.movedToNewFile(e.sender.id, path, target)
         try {
           pdfRedactionSavedHook?.(e.sender, target)
         } catch (err) {
@@ -2212,6 +2403,46 @@ function registerPdfIpc(): void {
     }),
   )
 
+  ipcMain.handle(PDF_CHANNELS.recoveryState, (e, path: unknown): { unsaved: boolean } => ({
+    unsaved: pdfPathGranted(e.sender.id, path) && recovery.unsavedFromCopy(e.sender.id, path),
+  }))
+
+  // what a save of these edits would write, into the app data folder only; the file is never written
+  ipcMain.handle(
+    PDF_CHANNELS.recoveryWriteCopy,
+    async (e, request: SavePdfRequest): Promise<PdfRecoveryCopyResult> => {
+      const path = request?.path
+      if (!pdfPathGranted(e.sender.id, path) || request.targetPath !== undefined) return 'skipped'
+      const restored = recovery.viewBytes(e.sender.id, path)
+      return recovery.writeCopy(e.sender.id, path, async () => {
+        // read once; a password or encrypted PDF gets no copy whatever the renderer reported
+        const source = restored ?? (await readFile(path))
+        if (pdfLooksEncrypted(source)) return null
+        return restored
+          ? pdfBytesWithEditsFrom(restored, request)
+          : pdfBytesWithEditsOf(
+              new Uint8Array(source.buffer, source.byteOffset, source.byteLength),
+              request,
+            )
+      })
+    },
+  )
+
+  // the user edits again after "Don't Save": that close was cancelled
+  ipcMain.handle(PDF_CHANNELS.recoveryResume, (e) => {
+    recovery.closeCancelled(e.sender.id)
+  })
+
+  ipcMain.handle(PDF_CHANNELS.recoveryUnprotectable, (e, unprotectable: unknown) =>
+    recovery.reportUnprotectable(e.sender.id, unprotectable === true),
+  )
+
+  ipcMain.on(PDF_CHANNELS.recoveryFlushDone, (e) => {
+    const waiter = copyFlushWaiters.get(e.sender.id)
+    copyFlushWaiters.delete(e.sender.id)
+    waiter?.()
+  })
+
   ipcMain.on(PDF_CHANNELS.dirtyChanged, (e, dirty: unknown) => {
     if (dirty === true) dirtyByWc.add(e.sender.id)
     else dirtyByWc.delete(e.sender.id)
@@ -2248,7 +2479,13 @@ function grantAndTrack(wc: WebContents, openPath?: string | null): void {
     if (target) void shell.openExternal(target)
     return { action: 'deny' }
   })
+  // a crashed renderer keeps its recovery copy for the reopened tab
+  wc.on('render-process-gone', () => recovery.markCrashed(wcId))
   wc.once('destroyed', () => {
+    // before the dirty flag goes: a tab closed with no unsaved changes drops its copy
+    recovery.destroyed(wcId, dirtyByWc.has(wcId))
+    copyFlushWaiters.get(wcId)?.()
+    copyFlushWaiters.delete(wcId)
     openPathByWc.delete(wcId)
     redactionPathByWc.delete(wcId)
     redactionFlows.delete(wcId)

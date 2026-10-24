@@ -85,7 +85,7 @@ Quand vous créez une compétence dans le panneau IA d’un éditeur, le documen
 - Une compétence qui a un modèle affiche **Contient un modèle** dans la liste.
 - Appelez-la sous forme de pastille et envoyez : une copie du modèle s’ouvre comme nouveau document sans titre, et l’IA de cet onglet poursuit votre demande. Le panneau d’origine garde « Travail avec le modèle dans un nouvel onglet » et **Aller à l’onglet**.
 - Quand l’IA choisit d’elle-même une compétence avec modèle, aucun onglet ne s’ouvre tout de suite. La conversation affiche à la place un bouton **Ouvrir un nouveau document à partir de ce modèle**.
-- Vous choisissez généralement l’emplacement du nouveau document lors du premier enregistrement. Les éditeurs Markdown et HTML, ainsi que la génération d’une présentation entière, enregistrent comme toujours dans le dossier par défaut. Le fichier modèle lui-même reste inchangé.
+- Vous choisissez généralement l’emplacement du nouveau document lors du premier enregistrement. Les éditeurs Markdown et HTML enregistrent comme toujours dans le dossier par défaut. Le fichier modèle lui-même reste inchangé.
 
 ## Compétences avec scripts
 
