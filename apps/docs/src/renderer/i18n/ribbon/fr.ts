@@ -86,6 +86,7 @@ export const fr = {
   ribbonFontEastAsia: 'Police est-asiatique',
   ribbonFontLatin: 'Police latine',
   ribbonFontFamilyTip: 'Police',
+  ribbonFontDialogTip: 'Police — échelle et espacement des caractères dans l’onglet Avancé',
   ribbonFontsCommon: 'Polices courantes',
   ribbonFontsSystem: 'Polices système',
   ribbonFontsHangul: 'Polices coréennes',

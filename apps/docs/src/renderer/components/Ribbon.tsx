@@ -221,6 +221,7 @@ import {
   IconShading,
   IconChangeCase,
   IconFontColorA,
+  IconFontDialog,
   IconShrinkFont,
   IconSplitCells,
   IconSubscript,
@@ -268,6 +269,8 @@ interface RibbonProps {
   docDefaults?: DocDefaults
   /** Open the paragraph dialog (line-spacing rule / exact value entry lives there) */
   onParagraphDialog?: () => void
+  /** Open the Font dialog (its Advanced tab holds character scale / spacing) */
+  onFontDialog?: () => void
   /** Paste ▸ Set Default Paste…: the host's preferences dialog holds the default paste mode */
   onPasteDefaults?: () => void
   /** Word's table dialogs live in App so the right-click menu and the Table menu share them */
@@ -720,6 +723,7 @@ function RibbonInner({
   documentListPresets,
   recentListPresets,
   onParagraphDialog,
+  onFontDialog,
   onPasteDefaults,
   onTableDialog,
   tableGridlines,
@@ -3599,6 +3603,22 @@ function RibbonInner({
                       />
                     )}
                   </div>
+                  {/* Word's group dialog launcher: the Font dialog's Advanced tab
+                      holds character scale (장평) and spacing (자간) */}
+                  {onFontDialog && (
+                    <>
+                      <span className="rb-mini-sep" />
+                      <button
+                        className="rb-icon"
+                        data-testid="ribbon-font-dialog"
+                        data-tip={t('ribbonFontDialogTip')}
+                        aria-label={t('ribbonFontDialogTip')}
+                        onClick={onFontDialog}
+                      >
+                        <IconFontDialog />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

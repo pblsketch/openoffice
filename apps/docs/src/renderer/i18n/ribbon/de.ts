@@ -86,6 +86,7 @@ export const de = {
   ribbonFontEastAsia: 'Ostasiatische Schrift',
   ribbonFontLatin: 'Lateinische Schrift',
   ribbonFontFamilyTip: 'Schriftart',
+  ribbonFontDialogTip: 'Schriftart — Zeichenbreite und Laufweite auf der Registerkarte „Erweitert“',
   ribbonFontsCommon: 'Gängige Schriftarten',
   ribbonFontsSystem: 'Systemschriftarten',
   ribbonFontsHangul: 'Koreanische Schriftarten',

@@ -81,6 +81,7 @@ export const zhTW = {
   ribbonFontEastAsia: '東亞字型',
   ribbonFontLatin: '西文字型',
   ribbonFontFamilyTip: '字型',
+  ribbonFontDialogTip: '字型 — 字元縮放與間距在「進階」索引標籤',
   ribbonFontsCommon: '常用字型',
   ribbonFontsSystem: '系統字型',
   ribbonFontsHangul: '韓文字型',

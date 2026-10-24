@@ -86,6 +86,7 @@ export const pt = {
   ribbonFontEastAsia: 'Fonte do leste asiático',
   ribbonFontLatin: 'Fonte latina',
   ribbonFontFamilyTip: 'Fonte',
+  ribbonFontDialogTip: 'Fonte — escala e espaçamento de caracteres na aba Avançado',
   ribbonFontsCommon: 'Fontes comuns',
   ribbonFontsSystem: 'Fontes do sistema',
   ribbonFontsHangul: 'Fontes coreanas',

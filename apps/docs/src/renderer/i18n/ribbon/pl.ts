@@ -86,6 +86,7 @@ export const pl = {
   ribbonFontEastAsia: 'Czcionka wschodnioazjatycka',
   ribbonFontLatin: 'Czcionka łacińska',
   ribbonFontFamilyTip: 'Czcionka',
+  ribbonFontDialogTip: 'Czcionka — skala i odstępy znaków na karcie Zaawansowane',
   ribbonFontsCommon: 'Popularne czcionki',
   ribbonFontsSystem: 'Czcionki systemowe',
   ribbonFontsHangul: 'Czcionki koreańskie',

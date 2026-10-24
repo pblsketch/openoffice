@@ -86,6 +86,7 @@ export const hi = {
   ribbonFontEastAsia: 'पूर्वी एशियाई फ़ॉन्ट',
   ribbonFontLatin: 'लैटिन फ़ॉन्ट',
   ribbonFontFamilyTip: 'फ़ॉन्ट',
+  ribbonFontDialogTip: 'फ़ॉन्ट — वर्ण स्केल और अंतराल उन्नत टैब में',
   ribbonFontsCommon: 'सामान्य फ़ॉन्ट',
   ribbonFontsSystem: 'सिस्टम फ़ॉन्ट',
   ribbonFontsHangul: 'कोरियाई फ़ॉन्ट',

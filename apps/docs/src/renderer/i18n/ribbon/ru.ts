@@ -85,6 +85,7 @@ export const ru = {
   ribbonFontEastAsia: 'Восточноазиатский шрифт',
   ribbonFontLatin: 'Латинский шрифт',
   ribbonFontFamilyTip: 'Шрифт',
+  ribbonFontDialogTip: 'Шрифт — масштаб и интервал символов на вкладке «Дополнительно»',
   ribbonFontsCommon: 'Основные шрифты',
   ribbonFontsSystem: 'Системные шрифты',
   ribbonFontsHangul: 'Корейские шрифты',

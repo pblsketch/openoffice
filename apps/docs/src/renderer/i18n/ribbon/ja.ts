@@ -89,6 +89,7 @@ export const ja = {
   ribbonFontEastAsia: '東アジアのフォント',
   ribbonFontLatin: '英数字のフォント',
   ribbonFontFamilyTip: 'フォント',
+  ribbonFontDialogTip: 'フォント — 文字幅と字間は「詳細設定」タブ',
   ribbonFontsCommon: 'よく使うフォント',
   ribbonFontsSystem: 'システムフォント',
   ribbonFontsHangul: '韓国語フォント',

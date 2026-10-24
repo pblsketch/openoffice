@@ -84,6 +84,7 @@ export const th = {
   ribbonFontEastAsia: 'แบบอักษรเอเชียตะวันออก',
   ribbonFontLatin: 'แบบอักษรละติน',
   ribbonFontFamilyTip: 'ฟอนต์',
+  ribbonFontDialogTip: 'แบบอักษร — การย่อขยายและระยะห่างตัวอักษรอยู่ในแท็บขั้นสูง',
   ribbonFontsCommon: 'แบบอักษรที่ใช้บ่อย',
   ribbonFontsSystem: 'แบบอักษรของระบบ',
   ribbonFontsHangul: 'ฟอนต์ภาษาเกาหลี',

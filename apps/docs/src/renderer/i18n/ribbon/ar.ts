@@ -85,6 +85,7 @@ export const ar = {
   ribbonFontEastAsia: 'خط شرق آسيوي',
   ribbonFontLatin: 'خط لاتيني',
   ribbonFontFamilyTip: 'الخط',
+  ribbonFontDialogTip: 'الخط — مقياس الأحرف والتباعد في علامة التبويب «متقدم»',
   ribbonFontsCommon: 'الخطوط الشائعة',
   ribbonFontsSystem: 'خطوط النظام',
   ribbonFontsHangul: 'خطوط كورية',

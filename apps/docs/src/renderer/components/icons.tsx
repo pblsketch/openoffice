@@ -242,6 +242,16 @@ export function IconFontColorA(props: IconProps) {
   )
 }
 
+/** Word's group dialog launcher: text lines plus the outward corner arrow */
+export function IconFontDialog(props: IconProps) {
+  return (
+    <Svg {...props} paint={1.4}>
+      <path d="M 2.6 4.3 h 7.4 M 2.6 7.9 h 5.6 M 2.6 11.5 h 3.8" />
+      <path d="M 9.8 9.9 h 4.4 v 4.4 M 14.2 9.9 L 9.9 14.2" />
+    </Svg>
+  )
+}
+
 /* Fluent-style sub/superscript: lowercase-x strokes + a stroked digit 2 in the
    corner (replaces the old HTML x<sub>2</sub> text glyphs that rendered smaller
    and thinner than the neighbouring 15px B/I/U letterforms) */
