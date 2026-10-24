@@ -247,6 +247,20 @@ describe('aiSubscriptionCardView', () => {
     )
     expect(codex.detailKey).toBe('cardErrNeedsUpdate')
     expect(codex.detailParams).toBeUndefined()
+    // ... but the file it ran is still a fact about the error, without the
+    // Claude-only WSL/update-command hint
+    const codexPathed = aiSubscriptionCardView(
+      status('codex', 'error', {
+        version: '0.1.0',
+        error: 'needs-update: too old',
+        programPath:
+          'C:\\Users\\me\\AppData\\Local\\Microsoft\\WinGet\\Packages\\OpenAI.Codex_x\\codex.exe',
+      }),
+    )
+    expect(codexPathed.programPath).toBe(
+      'C:\\Users\\me\\AppData\\Local\\Microsoft\\WinGet\\Packages\\OpenAI.Codex_x\\codex.exe',
+    )
+    expect(codexPathed.pathNoteKeys).toBeUndefined()
   })
 
   it('error: a Claude below the floor names the file the check ran, with the WSL hint on Windows', () => {

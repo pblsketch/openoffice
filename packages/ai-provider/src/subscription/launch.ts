@@ -397,13 +397,15 @@ export const SUBSCRIPTION_CODEX_UPDATE_COMMANDS = {
  * hold another copy the name finds first), or the fixed command of the package
  * manager that installed it (`command`). Null when the app cannot tell how it
  * was installed (the Codex desktop app's copy, a path the user set to some
- * other place): the vendor's install page is the way then.
+ * other place, a winget link that cannot be resolved to its package): the
+ * vendor's install page is the way then.
  */
 export type SubscriptionUpdatePlan =
   { kind: 'program'; args: string[] } | { kind: 'command'; command: string }
 
 const NPM_CODEX = /[\\/]node_modules[\\/]@openai[\\/]codex/i
-const WINGET_DIR = /[\\/]microsoft[\\/]winget[\\/]/i
+/** the package folder winget makes for OpenAI.Codex, in the user or machine root */
+const WINGET_CODEX_PACKAGE = /[\\/]microsoft[\\/]winget[\\/]packages[\\/]openai\.codex_/i
 
 export function subscriptionUpdatePlan(
   program: SubscriptionProgram,
@@ -414,7 +416,9 @@ export function subscriptionUpdatePlan(
   if (paths.some((path) => NPM_CODEX.test(path))) {
     return { kind: 'command', command: SUBSCRIPTION_CODEX_UPDATE_COMMANDS.npm }
   }
-  if (program.source === 'winget' || paths.some((path) => WINGET_DIR.test(path))) {
+  // A Links entry alone does not say which package owns the alias; the locator
+  // resolves it to the package file before this runs
+  if (paths.some((path) => WINGET_CODEX_PACKAGE.test(path))) {
     return { kind: 'command', command: SUBSCRIPTION_CODEX_UPDATE_COMMANDS.winget }
   }
   return null

@@ -86,6 +86,20 @@ const LAYOUTS: Record<AiSubscriptionProviderId, ProviderLayout> = {
 const SHIM_READ_LIMIT = 64 * 1024
 const JS_EXTENSIONS = new Set(['.js', '.cjs', '.mjs'])
 
+/** winget's per-user and per-machine link directories: entries here are symlinks */
+const WINGET_LINKS = /[\\/]microsoft[\\/]winget[\\/]links[\\/]/i
+
+/**
+ * The file behind a winget Links entry. The entries are symlinks into the
+ * package that created them, and several packages can put a `codex.exe` there.
+ * Resolving the link here lets the update plan tell the OpenAI Codex package
+ * from another package's copy; a link that cannot be resolved stays as it is.
+ */
+async function wingetLinkTarget(file: string): Promise<string> {
+  if (!WINGET_LINKS.test(file)) return file
+  return realpath(file).catch(() => file)
+}
+
 interface Context {
   provider: AiSubscriptionProviderId
   layout: ProviderLayout
@@ -347,7 +361,7 @@ async function programBehindShim(
     // the shim's own Node runtime is not the CLI
     if (name === 'node.exe' || name === 'node') continue
     if (!(await fileExists(candidate))) continue
-    if (extension === '.exe') return native(context, candidate, source)
+    if (extension === '.exe') return native(context, await wingetLinkTarget(candidate), source)
     if (JS_EXTENSIONS.has(extension)) return jsEntryProgram(context, candidate, source, shimDir)
   }
   return null
@@ -361,7 +375,7 @@ async function programFromFile(
 ): Promise<SubscriptionProgram | null> {
   const extension = extname(file).toLowerCase()
   if (context.platform === 'win32') {
-    if (extension === '.exe') return native(context, file, source)
+    if (extension === '.exe') return native(context, await wingetLinkTarget(file), source)
     if (extension === '.cmd' || extension === '.bat') {
       return programBehindShim(context, file, source)
     }
@@ -429,15 +443,24 @@ async function commonUnixBinDirs(home: string): Promise<string[]> {
   return dirs
 }
 
-/** `winget install OpenAI.Codex` unpacks a portable exe here when it cannot link it into Links */
-async function wingetCodexPackage(localAppData: string): Promise<string | null> {
+/**
+ * `winget install OpenAI.Codex` unpacks the release archive here when it cannot
+ * link it into Links. The archive also holds helper programs whose names begin
+ * with `codex-` (`codex-code-mode-host.exe`, the sandbox helpers). Running one
+ * of those as the CLI answers an unknown subcommand, which the status check
+ * reads as "too old" and then cannot update away. So only the CLI is taken: the
+ * alias `codex.exe` winget writes, or the platform's `codex-<triple>.exe`.
+ */
+async function wingetCodexPackage(localAppData: string, arch: string): Promise<string | null> {
   const packages = join(localAppData, 'Microsoft', 'WinGet', 'Packages')
   const entries = await readdir(packages).catch(() => [] as string[])
+  const triple = codexTargetTriple('win32', arch)
+  const names = ['codex.exe', ...(triple ? [`codex-${triple}.exe`] : [])]
   for (const entry of entries.filter((name) => /^OpenAI\.Codex_/i.test(name)).sort()) {
-    const files = await readdir(join(packages, entry)).catch(() => [] as string[])
-    const executables = files.filter((name) => /^codex(-[\w.-]+)?\.exe$/i.test(name)).sort()
-    const best = executables.find((name) => name.toLowerCase() === 'codex.exe') ?? executables[0]
-    if (best && (await fileExists(join(packages, entry, best)))) return join(packages, entry, best)
+    for (const name of names) {
+      const candidate = join(packages, entry, name)
+      if (await fileExists(candidate)) return candidate
+    }
   }
   return null
 }
@@ -549,7 +572,7 @@ export async function locateSubscriptionProgram(
   if (found) return found
   if (provider === 'codex' && platform === 'win32') {
     const localAppData = env.LOCALAPPDATA ?? env.LocalAppData
-    const packaged = localAppData ? await wingetCodexPackage(localAppData) : null
+    const packaged = localAppData ? await wingetCodexPackage(localAppData, context.arch) : null
     if (packaged) return native(context, packaged, 'winget')
   }
   return null

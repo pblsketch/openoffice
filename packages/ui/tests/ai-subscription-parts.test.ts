@@ -201,6 +201,22 @@ describe('AiSubscriptionCard', () => {
     }
   })
 
+  it("error: a Codex too old shows the file it ran, without Claude's WSL hint", () => {
+    const path =
+      'C:\\Users\\me\\AppData\\Local\\Microsoft\\WinGet\\Packages\\OpenAI.Codex_x\\codex.exe'
+    render(
+      status('codex', 'error', {
+        version: '0.1.0',
+        error: 'needs-update: too old',
+        programPath: path,
+      }),
+    )
+    expect(host.querySelector('.ai-sub-path-value')!.textContent).toBe(path)
+    expect(
+      [...host.querySelectorAll('.ai-sub-path-label')].map((label) => label.textContent),
+    ).toEqual([en.cardErrNeedsUpdatePath])
+  })
+
   it('error: one sentence per kind, naming the provider, never the raw detail', () => {
     const cases = [
       {

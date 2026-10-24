@@ -2,7 +2,8 @@
  * Finding the program to start. Layouts are built in temp dirs: nothing here
  * runs or looks for the CLIs installed on the machine.
  */
-import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { symlinkSync } from 'node:fs'
+import { chmod, mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { delimiter, join, sep } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -199,6 +200,76 @@ describe('locateSubscriptionProgram on Windows', () => {
     )
     const program = await locateSubscriptionProgram('codex', { env, platform: 'win32' })
     expect(program).toMatchObject({ command: packaged, source: 'winget' })
+  })
+
+  it("takes the CLI out of a winget package, never one of Codex's helper programs", async () => {
+    const env = windowsEnv()
+    const folder = join(
+      env.LOCALAPPDATA!,
+      'Microsoft',
+      'WinGet',
+      'Packages',
+      'OpenAI.Codex_Microsoft.Winget.Source_8wekyb3d8bbwe',
+    )
+    // the archive also unpacks these next to the CLI
+    await touch(join(folder, 'codex-code-mode-host.exe'))
+    await touch(join(folder, 'codex-command-runner.exe'))
+    await touch(join(folder, 'codex-windows-sandbox-setup.exe'))
+    const cli = await touch(join(folder, 'codex-x86_64-pc-windows-msvc.exe'))
+    const program = await locateSubscriptionProgram('codex', {
+      env,
+      platform: 'win32',
+      arch: 'x64',
+    })
+    expect(program).toMatchObject({ command: cli, source: 'winget' })
+    // the alias winget writes beside it is the CLI too, and comes first
+    const alias = await touch(join(folder, 'codex.exe'))
+    expect(
+      (await locateSubscriptionProgram('codex', { env, platform: 'win32', arch: 'x64' }))?.command,
+    ).toBe(alias)
+  })
+
+  it('finds no Codex when a winget package holds only its helper programs', async () => {
+    const env = windowsEnv()
+    const folder = join(
+      env.LOCALAPPDATA!,
+      'Microsoft',
+      'WinGet',
+      'Packages',
+      'OpenAI.Codex_Microsoft.Winget.Source_8wekyb3d8bbwe',
+    )
+    await touch(join(folder, 'codex-code-mode-host.exe'))
+    await touch(join(folder, 'codex-command-runner.exe'))
+    expect(
+      await locateSubscriptionProgram('codex', { env, platform: 'win32', arch: 'x64' }),
+    ).toBeNull()
+  })
+
+  it('resolves a winget Links entry to the package file it points at', async () => {
+    const env = windowsEnv()
+    const folder = join(
+      env.LOCALAPPDATA!,
+      'Microsoft',
+      'WinGet',
+      'Packages',
+      'OpenAI.Codex_Microsoft.Winget.Source_8wekyb3d8bbwe',
+    )
+    const target = await touch(join(folder, 'codex-x86_64-pc-windows-msvc.exe'))
+    const links = join(env.LOCALAPPDATA!, 'Microsoft', 'WinGet', 'Links')
+    await mkdir(links, { recursive: true })
+    try {
+      // winget's own aliases are symlinks into the package folder
+      symlinkSync(target, join(links, 'codex.exe'), 'file')
+    } catch {
+      // a Windows account without the symlink privilege: nothing to resolve here
+      return
+    }
+    const program = await locateSubscriptionProgram('codex', {
+      env,
+      platform: 'win32',
+      arch: 'x64',
+    })
+    expect(program?.command).toBe(await realpath(target))
   })
 
   it('takes the newest complete Codex desktop install, as the existing lookup does', async () => {

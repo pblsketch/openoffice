@@ -101,6 +101,7 @@ describe('subscriptionUpdatePlan', () => {
       kind: 'command',
       command: 'winget upgrade --id OpenAI.Codex -e',
     })
+    // a Links entry alone does not name the package; the locator resolves it first
     expect(
       subscriptionUpdatePlan(
         program(
@@ -109,7 +110,17 @@ describe('subscriptionUpdatePlan', () => {
           'winget',
         ),
       ),
-    ).toEqual({ kind: 'command', command: SUBSCRIPTION_CODEX_UPDATE_COMMANDS.winget })
+    ).toBeNull()
+    // another package's codex.exe under WinGet is not OpenAI.Codex
+    expect(
+      subscriptionUpdatePlan(
+        program(
+          'codex',
+          'C:\\Users\\u\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Other.Codex_x\\codex.exe',
+          'winget',
+        ),
+      ),
+    ).toBeNull()
   })
 
   it('a Codex the app cannot tell the origin of gets no command', () => {
