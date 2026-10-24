@@ -219,7 +219,6 @@ import {
   flushPdfSave,
   markPdfUntitledPath,
   pdfFileRenamed,
-  pdfIsDirty,
   requestPdfSaveAs,
   sendPdfPrintRequest,
   setPdfRenamedHook,
@@ -6577,14 +6576,10 @@ async function savePdfAs(): Promise<void> {
     })
     const target = pdfSaveAsTarget(picked, tab.filePath)
     if (!target) return
-    if (pdfIsDirty(tab.webContents.id)) {
-      // Renderer applies its pending edits onto the source bytes; the pdf main
-      // process writes the result to the picked path only
-      if (!(await requestPdfSaveAs(tab.webContents, target))) return
-    } else {
-      // No pending edits → a byte-identical copy
-      await atomicCopyFile(tab.filePath, target)
-    }
+    // Always ask the renderer: it shows the annotation choices for the copy and,
+    // with no pending edits and annotations kept, asks the pdf main process for a
+    // byte-identical copy instead of rewriting the file here.
+    if (!(await requestPdfSaveAs(tab.webContents, target))) return
     openDocumentPath(target)
   } catch (err) {
     console.error('[shell] pdf save as failed:', err)

@@ -51,6 +51,18 @@ describe('printPdf', () => {
     expect(window.print).toHaveBeenCalledTimes(1)
   })
 
+  it('renders annotations unless the print dialog turns them off', async () => {
+    const { doc, render } = fakeDoc(1)
+
+    // pdf.js AnnotationMode: 1 = ENABLE, 0 = DISABLE
+    await printPdf(doc, undefined, { includeAnnotations: true })
+    expect(render.mock.calls[0]?.[0]).toMatchObject({ annotationMode: 1 })
+
+    render.mockClear()
+    await printPdf(doc, undefined, { includeAnnotations: false })
+    expect(render.mock.calls[0]?.[0]).toMatchObject({ annotationMode: 0 })
+  })
+
   it('removes the print root after the dialog closes', async () => {
     const { doc } = fakeDoc(2)
     await printPdf(doc)

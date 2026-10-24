@@ -1165,6 +1165,10 @@ export default function App() {
   const [printMode, setPrintMode] = useState<'all' | 'current' | 'custom'>('all')
   const [printInput, setPrintInput] = useState('')
   const [printInvalid, setPrintInvalid] = useState(false)
+  const [printAnnots, setPrintAnnots] = useState(true)
+  /** Save As flow: the shell picked the target, the reader still chooses what happens to annotations */
+  const [saveCopyDlg, setSaveCopyDlg] = useState<{ targetPath: string } | null>(null)
+  const [saveCopyMode, setSaveCopyMode] = useState<'keep' | 'flatten' | 'strip'>('keep')
   /** Page-crop dialog: rendered page bitmap + which page it shows */
   const [pageCropDlg, setPageCropDlg] = useState<{ png: string; origIdx: number } | null>(null)
   const [cropAllPages, setCropAllPages] = useState(false)
@@ -4905,7 +4909,10 @@ export default function App() {
    * Save As: apply pending edits onto the source bytes and write only to targetPath.
    * The original file stays untouched on disk and the edits stay pending in this tab.
    */
-  const saveAsTo = async (targetPath: string): Promise<boolean> => {
+  const saveAsTo = async (
+    targetPath: string,
+    annotations: 'keep' | 'flatten' | 'strip' = 'keep',
+  ): Promise<boolean> => {
     if (!filePath) return false
     // The copy must contain what the user sees, including an open floating-editor
     // draft and an open comment-edit box
@@ -4945,6 +4952,37 @@ export default function App() {
           })
       : []
     const applyingRedactions = redactionApplyConfirmedRef.current && redactions.length > 0
+    // What this copy still has to write. `ordinaryDirty` is the render's value:
+    // the draft commits above can be newer than the render that produced it.
+    const hasPendingEdits =
+      applyingRedactions ||
+      (flushed
+        ? lateNoteEdits.length > 0
+        : ordinaryDirty ||
+          draftEdits !== textEdits ||
+          noteFlush.drawings !== drawings ||
+          noteFlush.noteEdits !== noteEdits)
+    // A clean copy with annotations kept is the same bytes as its source. The
+    // main process copies it without a pdf-lib round-trip, exactly as the shell
+    // did before the reader was asked about annotations.
+    if (!hasPendingEdits && annotations === 'keep') {
+      setSaveState('saving')
+      const copied = await window.pdfApi.save({
+        path: filePath,
+        targetPath,
+        markups: [],
+        drawings: [],
+        formValues: [],
+        stamps: [],
+        copyOnly: true,
+      })
+      if (!copied.ok) {
+        opFailed(copied.error)
+        return false
+      }
+      setSaveState('idle')
+      return true
+    }
     const edits = applyingRedactions
       ? {
           markups: [],
@@ -4957,20 +4995,30 @@ export default function App() {
           staticFormFills,
           redactions: redactions.map(({ pageIndex, rect }) => ({ pageIndex, rect })),
         }
-      : flushed
-        ? {
-            markups: [],
-            drawings: [],
-            formValues: [],
-            stamps: [],
-            textEdits: [],
-            textInserts: [],
-            imageEdits: [],
-            ...(lateNoteEdits.length > 0 ? { noteEdits: lateNoteEdits } : {}),
-          }
-        : editsPayload(draftEdits, noteFlush, formFields)
+      : !hasPendingEdits
+        ? { markups: [], drawings: [], formValues: [], stamps: [] }
+        : flushed
+          ? {
+              markups: [],
+              drawings: [],
+              formValues: [],
+              stamps: [],
+              textEdits: [],
+              textInserts: [],
+              imageEdits: [],
+              ...(lateNoteEdits.length > 0 ? { noteEdits: lateNoteEdits } : {}),
+            }
+          : editsPayload(draftEdits, noteFlush, formFields)
+    // Redactions are their own irreversible copy flow; annotation handling is
+    // for ordinary Save As copies only.
+    const annotationChoice = applyingRedactions || annotations === 'keep' ? {} : { annotations }
     setSaveState('saving')
-    const result = await window.pdfApi.save({ path: filePath, targetPath, ...edits })
+    const result = await window.pdfApi.save({
+      path: filePath,
+      targetPath,
+      ...edits,
+      ...annotationChoice,
+    })
     if (!result.ok) {
       opFailed(result.error)
       return false
@@ -5013,6 +5061,26 @@ export default function App() {
     // still pending, so a saved-confirmation next to the unsaved badge would lie
     setSaveState('idle')
     return true
+  }
+
+  /** The Save As modal's Save button: the shell's save-as waiter is answered here. */
+  const confirmSaveCopy = () => {
+    const dlg = saveCopyDlg
+    if (!dlg) return
+    const mode = saveCopyMode
+    setSaveCopyDlg(null)
+    void saveAsTo(dlg.targetPath, mode)
+      .catch((err: unknown) => {
+        opFailed(err instanceof Error ? err.message : String(err))
+        return false
+      })
+      .then((ok) => window.pdfApi.sendSaveAsResult(ok))
+  }
+
+  /** The Save As modal's Cancel button: tell the shell the flow ended without a copy. */
+  const cancelSaveCopy = () => {
+    setSaveCopyDlg(null)
+    window.pdfApi.sendSaveAsResult(false)
   }
 
   const requestRedactionSaveAs = () => {
@@ -6694,7 +6762,7 @@ export default function App() {
   const printBusyRef = useRef(false)
   // `pages` are 1-based file pages; the flush compacts the file to the visible
   // order first, so visible page v prints as file page v.
-  const printDoc = async (pages?: number[]) => {
+  const printDoc = async (pages?: number[], includeAnnotations = printAnnots) => {
     if (printBusyRef.current) return
     printBusyRef.current = true
     try {
@@ -6704,7 +6772,7 @@ export default function App() {
           const data = await window.pdfApi.readFile(filePath)
           const pdoc = await getDocument({ data: new Uint8Array(data), ...DOC_OPTS }).promise
           try {
-            await printPdf(pdoc, pages)
+            await printPdf(pdoc, pages, { includeAnnotations })
           } finally {
             void pdoc.loadingTask.destroy()
           }
@@ -7264,15 +7332,23 @@ export default function App() {
     })
   })
 
-  // Shell menu Save As → write pending edits to the picked path only; the original file is never mutated
+  // Shell menu Save As → ask what the copy does with annotations, then write only
+  // to the picked path. The original file is never mutated.
   useEffect(() => {
     return window.pdfApi.onSaveAsRequest((targetPath) => {
-      void saveAsTo(targetPath)
-        .catch((err: unknown) => {
-          opFailed(err instanceof Error ? err.message : String(err))
-          return false
-        })
-        .then((ok) => window.pdfApi.sendSaveAsResult(ok))
+      // A permanent redaction copy has its own confirmation and must not wait
+      // behind a second dialog; it keeps annotations as they are.
+      if (redactionApplyConfirmedRef.current) {
+        void saveAsTo(targetPath, 'keep')
+          .catch((err: unknown) => {
+            opFailed(err instanceof Error ? err.message : String(err))
+            return false
+          })
+          .then((ok) => window.pdfApi.sendSaveAsResult(ok))
+        return
+      }
+      setSaveCopyMode('keep')
+      setSaveCopyDlg({ targetPath })
     })
   })
 
@@ -11598,12 +11674,63 @@ export default function App() {
                       }}
                     />
                   )}
+                  <label className="pdf-modal-row">
+                    <input
+                      type="checkbox"
+                      checked={printAnnots}
+                      onChange={(e) => setPrintAnnots(e.target.checked)}
+                    />
+                    <span>{t('printIncludeAnnots')}</span>
+                  </label>
                   <div className="pdf-modal-actions">
                     <button className="pdf-modal-btn" onClick={() => setPrintDlg(false)}>
                       {t('cancel')}
                     </button>
                     <button className="pdf-modal-btn primary" onClick={confirmPrint}>
                       {t('print')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {saveCopyDlg && (
+              <div className="pdf-modal-mask" onClick={cancelSaveCopy}>
+                <div className="pdf-modal" onClick={(e) => e.stopPropagation()}>
+                  <div className="pdf-modal-title">{t('saveCopyTitle')}</div>
+                  <div className="pdf-modal-hint">{t('saveCopyHint')}</div>
+                  <label className="pdf-modal-row">
+                    <input
+                      type="radio"
+                      name="save-copy-annotations"
+                      checked={saveCopyMode === 'keep'}
+                      onChange={() => setSaveCopyMode('keep')}
+                    />
+                    <span>{t('saveCopyKeep')}</span>
+                  </label>
+                  <label className="pdf-modal-row">
+                    <input
+                      type="radio"
+                      name="save-copy-annotations"
+                      checked={saveCopyMode === 'flatten'}
+                      onChange={() => setSaveCopyMode('flatten')}
+                    />
+                    <span>{t('saveCopyFlatten')}</span>
+                  </label>
+                  <label className="pdf-modal-row">
+                    <input
+                      type="radio"
+                      name="save-copy-annotations"
+                      checked={saveCopyMode === 'strip'}
+                      onChange={() => setSaveCopyMode('strip')}
+                    />
+                    <span>{t('saveCopyStrip')}</span>
+                  </label>
+                  <div className="pdf-modal-actions">
+                    <button className="pdf-modal-btn" onClick={cancelSaveCopy}>
+                      {t('cancel')}
+                    </button>
+                    <button className="pdf-modal-btn primary" onClick={confirmSaveCopy}>
+                      {t('save')}
                     </button>
                   </div>
                 </div>

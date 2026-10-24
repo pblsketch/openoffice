@@ -81,6 +81,7 @@ import type {
 } from '../shared/ipc'
 import { writePdfAtomically } from './atomic-write'
 import {
+  copyPdfToPath,
   cropPagesBytes,
   extractPagesBytes,
   insertBlankPageBytes,
@@ -1318,6 +1319,29 @@ function registerPdfIpc(): void {
     const target = typeof request.targetPath === 'string' ? request.targetPath : path
     if (target !== path && saveAsTargetByWc.get(e.sender.id) !== target) {
       return { ok: false, error: 'pdf: target path not granted to this view' }
+    }
+    const annotations = request.annotations ?? 'keep'
+    if (annotations !== 'keep' && annotations !== 'flatten' && annotations !== 'strip') {
+      return { ok: false, error: 'pdf: invalid annotation handling' }
+    }
+    // Changing what happens to annotations is a copy operation. An in-place save
+    // must keep them editable; otherwise a stale renderer request could silently
+    // bake or delete the document's own annotations.
+    if (annotations !== 'keep' && target === path) {
+      return { ok: false, error: 'pdf: annotation handling requires Save As' }
+    }
+    if (request.copyOnly === true) {
+      if (target === path) return { ok: false, error: 'pdf: copyOnly requires Save As' }
+      if (request.redactions !== undefined) {
+        return { ok: false, error: 'pdf: copyOnly cannot carry redactions' }
+      }
+      try {
+        await copyPdfToPath(path, target)
+        await rememberDiskState(e.sender.id, target)
+        return { ok: true }
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) }
+      }
     }
     // A copy pair saving onto the document's own path settles the conflict first.
     // Request input is untrusted: only an explicit automatic-save flag counts.

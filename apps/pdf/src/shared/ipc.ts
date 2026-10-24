@@ -820,6 +820,14 @@ export interface SavePdfRequest {
    * Must match the target granted to the view by the main process (save dialog pick).
    */
   targetPath?: string
+  /** Save As only: copy the source bytes unchanged. Used when the copy has no pending edits. */
+  copyOnly?: boolean
+  /**
+   * Save As only: what the copy does with annotations.
+   * `keep` (default) keeps them editable, `flatten` bakes them into page content,
+   * `strip` leaves comment annotations out (links and form fields stay).
+   */
+  annotations?: 'keep' | 'flatten' | 'strip'
   markups: MarkupInput[]
   /** Saved markup annotations to remove (applied before every other stage) */
   annotDeletes?: AnnotDeleteInput[]

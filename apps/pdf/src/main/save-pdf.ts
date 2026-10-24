@@ -1193,15 +1193,30 @@ async function verifyContentEdits(
   }
 }
 
+/** Save As with nothing to write: copy the source bytes exactly, without a rewrite. */
+export async function copyPdfToPath(sourcePath: string, targetPath: string): Promise<void> {
+  await writePdfAtomically(targetPath, new Uint8Array(await readFile(sourcePath)))
+}
+
 export async function savePdfToPath(
   sourcePath: string,
   targetPath: string,
   request: SavePdfRequest,
 ): Promise<SavePdfSkips> {
-  const { bytes, ...skips } = await applySaveRequest(
+  const { bytes: edited, ...skips } = await applySaveRequest(
     new Uint8Array(await readFile(sourcePath)),
     request,
   )
+  // The reader chooses this per Save As copy; the main process refuses it for an
+  // in-place save, so the original document can never lose its annotations here.
+  let bytes = edited
+  if (request.annotations === 'flatten') {
+    const { flattenAnnotsBytes } = await import('./annot-flatten')
+    bytes = await flattenAnnotsBytes(bytes)
+  } else if (request.annotations === 'strip') {
+    const { stripCommentAnnotsBytes } = await import('./annot-strip')
+    bytes = (await stripCommentAnnotsBytes(bytes)).bytes
+  }
   await verifyContentEdits(bytes, request, skips)
   await writePdfAtomically(targetPath, bytes)
   return skips
@@ -1216,7 +1231,12 @@ export async function pdfBytesWithEdits(
   sourcePath: string,
   request: SavePdfRequest,
 ): Promise<Uint8Array> {
-  const { redactions: _redactions, ...ordinary } = request
+  const {
+    redactions: _redactions,
+    annotations: _annotations,
+    copyOnly: _copyOnly,
+    ...ordinary
+  } = request
   const { bytes, ...skips } = await applySaveRequest(
     new Uint8Array(await readFile(sourcePath)),
     ordinary,
