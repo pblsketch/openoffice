@@ -30,6 +30,17 @@ Three quick examples:
 - **Table**: click **Insert table** ▸ drag the row/column count ▸ type into the cells; the preview renders it immediately.
 - **Task list**: select a few lines ▸ click **Task list** ▸ each line becomes `- [ ]`, rendered as checkboxes in the preview.
 
+## Links between notes
+
+Links in a note are followed with **Ctrl+click** (**⌘+click** on a Mac). A plain click still edits the text.
+
+- **Headings**: `[text](#heading)` and `[[#Heading]]` jump to that heading in the same note.
+- **Other files**: `[text](other.md)` or `[text](../folder/report.pdf)` opens the file in its own tab, relative to the note's folder. A link to a heading in another Markdown note opens that note at the heading.
+- **Wiki links**: `[[Note]]`, `[[Note#Heading]]` and `[[Note|shown text]]` are found anywhere in the note's vault — the nearest folder above the note that holds `.obsidian`, otherwise the note's own folder. When two files share a name, the one closer to the note wins.
+- **Completion**: type `[[` and pick a note of the vault from the list; it is written as `[[Name]]`.
+- **Pictures**: `![[picture.png]]` shows the picture under its text, and `![[picture.png|300]]` sets the width. Only pictures inside the vault, up to 20 MB, are shown.
+- **What does not change**: wiki links stay plain text in the file, so a save never rewrites them. Web links open in your browser. Network paths (`\\server\share`), links in source view and the AI never open anything.
+
 ## Exporting
 
 File menu, all local and all asking where to put the result:

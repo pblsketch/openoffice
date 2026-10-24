@@ -575,6 +575,7 @@ configureMarkdownRuntime({
   rendererUrl: process.env.MARKDOWN_RENDERER_URL,
   rendererFile: join(MARKDOWN_OUT, 'renderer', 'index.html'),
   openGeneratedPath: (path) => openGeneratedDocument(path),
+  openLinkedPath: (path) => openDocumentPath(path),
 })
 configureHtmlRuntime({
   preloadPath: join(HTML_OUT, 'preload', 'index.js'),

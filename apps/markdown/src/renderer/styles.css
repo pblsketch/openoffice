@@ -370,6 +370,33 @@ html[data-doc-theme='light'] .doc-page {
   color: var(--md-link);
 }
 
+/* wiki links are text with a decoration; Ctrl (⌘) held, links open on click */
+.doc-editor .wiki-link {
+  color: var(--md-link);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+.doc-editor .wiki-embed {
+  color: var(--text-muted);
+}
+
+.md-links-armed .doc-editor a,
+.md-links-armed .doc-editor .wiki-link {
+  cursor: pointer;
+  text-decoration-style: solid;
+}
+
+.doc-editor .wiki-embed-image {
+  display: block;
+  margin: 0.4em 0;
+}
+
+.doc-editor .wiki-embed-image img {
+  max-width: 100%;
+  height: auto;
+}
+
 .doc-editor img {
   max-width: 100%;
   height: auto;
@@ -784,6 +811,32 @@ html.genoffice-popover-open .ribbon-tabs {
   padding: 8px 10px;
   color: var(--text-muted);
   font-size: 13px;
+}
+
+.note-link-menu {
+  max-width: 420px;
+}
+
+.note-link-menu .slash-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.note-link-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-link-folder {
+  flex: 0 1 auto;
+  margin-inline-start: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 /* ---- block drag handle ---- */

@@ -30,6 +30,17 @@ Tři rychlé příklady:
 - **Tabulka**: klikněte na **Vložit tabulku** ▸ přetáhněte pro počet řádků a sloupců ▸ napište obsah buněk; náhled ji vykreslí ihned.
 - **Kontrolní seznam**: vyberte několik řádků ▸ klikněte na **Kontrolní seznam** ▸ každý řádek se změní na `- [ ]`, což se v náhledu zobrazí jako zaškrtávací pole.
 
+## Odkazy mezi poznámkami
+
+Odkazy v poznámce otevřete pomocí **Ctrl+kliknutí** (**⌘+kliknutí** na Macu). Obyčejné kliknutí dál slouží k úpravám textu.
+
+- **Nadpisy**: `[text](#nadpis)` a `[[#Nadpis]]` přejdou na tento nadpis ve stejné poznámce.
+- **Jiné soubory**: `[text](other.md)` nebo `[text](../folder/report.pdf)` otevře soubor na vlastní kartě, počítáno od složky poznámky. Odkaz na nadpis v jiné poznámce Markdown otevře tuto poznámku u nadpisu.
+- **Wiki odkazy**: `[[Poznámka]]`, `[[Poznámka#Nadpis]]` a `[[Poznámka|zobrazený text]]` se hledají kdekoli v trezoru poznámky – v první složce nad poznámkou, která obsahuje `.obsidian`, jinak ve složce samotné poznámky. Mají-li dva soubory stejný název, vyhrává ten bližší poznámce.
+- **Doplňování**: napište `[[` a vyberte ze seznamu poznámku z trezoru; zapíše se jako `[[Název]]`.
+- **Obrázky**: `![[obrazek.png]]` zobrazí obrázek pod textem a `![[obrazek.png|300]]` nastaví šířku. Zobrazují se jen obrázky v trezoru do 20 MB.
+- **Co se nemění**: wiki odkazy zůstávají v souboru prostým textem, takže je uložení nikdy nepřepíše. Webové odkazy se otevřou v prohlížeči. Síťové cesty (`\\server\share`), odkazy v zobrazení zdroje a AI nic neotevřou.
+
 ## Export
 
 Nabídka Soubor, všechno místní a všechno se ptá, kam výsledek uložit:

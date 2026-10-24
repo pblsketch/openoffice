@@ -73,6 +73,11 @@ The author's own account, in Korean, is at
 - **PDF**: edit text on the page and convert a PDF to Word, Excel or
   PowerPoint on your PC.
 - **Slides from a request**: the deck is generated on your PC.
+- **Links between Markdown notes**: `Ctrl`+click (`⌘`+click on a Mac) a link
+  to go to a heading in the document, another note or another file. Obsidian
+  wiki links (`[[note]]`) work too; typing `[[` lists the notes in the same
+  vault to pick from, and `![[picture]]` shows the picture. Wiki links are
+  saved as plain text, so the note opens the same way in Obsidian.
 - **Mind maps**: opens and saves XMind files (`.xmind`) in place. Elements the
   editor does not show are kept when you save, and a map you did not change is
   saved byte for byte as it was. Several sheets, themes, export to a picture,

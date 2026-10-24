@@ -211,6 +211,10 @@ export const HELP_TOPICS: HelpTopicMeta[] = [
       '预览',
       'preview',
       'gfm',
+      '链接',
+      'link',
+      'wiki',
+      'obsidian',
     ],
   },
   {

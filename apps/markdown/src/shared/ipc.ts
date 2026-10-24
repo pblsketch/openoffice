@@ -3,6 +3,7 @@ import type { Lang } from '@genoffice/i18n'
 import type { AiSettings, AiStreamChunk, AiStreamRequest } from '@genoffice/ai-provider'
 import type { AiToolCapabilities } from '@genoffice/ai-search'
 import type { ExportImageMime } from './export-image-mime'
+import type { LinkTarget, NoteSuggestion, OpenLinkResult } from './internal-links'
 import type { SubscriptionApi } from './subscription-api'
 
 export const MAX_PASTED_IMAGE_BYTES = 50 * 1024 * 1024
@@ -15,6 +16,16 @@ export const MARKDOWN_CHANNELS = {
   noteAppendTake: 'markdown:note-append-take',
   /** main → renderer: texts are waiting for this note tab */
   noteAppendReady: 'markdown:note-append-ready',
+  /** invoke → follow a path or wiki link from this note; the main process resolves it */
+  openLink: 'markdown:open-link',
+  /** invoke → `[[` completions from this note's vault */
+  suggestNotes: 'markdown:suggest-notes',
+  /** invoke → the picture an `![[…]]` embed shows, granted to md-asset://; null when none */
+  resolveEmbed: 'markdown:resolve-embed',
+  /** invoke → the heading a followed link asked this note to show, once */
+  linkHeadingTake: 'markdown:link-heading-take',
+  /** main → renderer: a followed link left a heading for this note */
+  linkHeadingReady: 'markdown:link-heading-ready',
   readFile: 'markdown:read-file',
   save: 'markdown:save',
   saveRequest: 'markdown:save-request',
@@ -255,6 +266,16 @@ export interface MarkdownApi {
   onNoteAppendReady?(handler: () => void): () => void
   /** open any shell-routed document path (an AI answer's filenav citation) */
   openSourcePath(path: string): Promise<void>
+  /** Follow a path or wiki link written in this note (Ctrl+click) */
+  openLink?(target: Extract<LinkTarget, { kind: 'path' | 'wiki' }>): Promise<OpenLinkResult>
+  /** `[[` completions: notes in this note's vault matching the query */
+  suggestNotes?(query: string): Promise<NoteSuggestion[]>
+  /** The absolute path of the picture an `![[…]]` embed shows; null when there is none */
+  resolveEmbed?(target: string): Promise<string | null>
+  /** The heading a followed link asked this note to show, taken once; null otherwise */
+  takeLinkHeading?(): Promise<string | null>
+  /** A followed link left a heading for this note; take it with takeLinkHeading */
+  onLinkHeadingReady?(handler: () => void): () => void
   /** Headless export mode: the PDF path this hidden renderer must export to, null in normal use */
   consumeHeadlessExport(): Promise<string | null>
   /** Headless export mode: report the export outcome so the main process can quit */

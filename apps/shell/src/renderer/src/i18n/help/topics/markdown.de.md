@@ -30,6 +30,17 @@ Drei schnelle Beispiele:
 - **Tabelle**: auf **Tabelle einfügen** klicken ▸ Zeilen- und Spaltenzahl ziehen ▸ Zellen ausfüllen; die Vorschau rendert sie sofort.
 - **Aufgabenliste**: ein paar Zeilen auswählen ▸ auf **Aufgabenliste** klicken ▸ jede Zeile wird zu `- [ ]` und in der Vorschau als Liste mit Kontrollkästchen dargestellt.
 
+## Links zwischen Notizen
+
+Links in einer Notiz folgen Sie mit **Strg+Klick** (**⌘+Klick** auf dem Mac). Ein einfacher Klick bearbeitet weiterhin den Text.
+
+- **Überschriften**: `[Text](#ueberschrift)` und `[[#Überschrift]]` springen zu dieser Überschrift in derselben Notiz.
+- **Andere Dateien**: `[Text](other.md)` oder `[Text](../folder/report.pdf)` öffnet die Datei in einem eigenen Tab, ausgehend vom Ordner der Notiz. Ein Link auf eine Überschrift in einer anderen Markdown-Notiz öffnet diese Notiz an der Überschrift.
+- **Wiki-Links**: `[[Notiz]]`, `[[Notiz#Überschrift]]` und `[[Notiz|angezeigter Text]]` werden überall im Tresor der Notiz gesucht – dem nächsten Ordner oberhalb der Notiz, der `.obsidian` enthält, sonst dem Ordner der Notiz. Tragen zwei Dateien denselben Namen, gewinnt die näher an der Notiz.
+- **Vervollständigung**: Tippen Sie `[[` und wählen Sie eine Notiz des Tresors aus der Liste; sie wird als `[[Name]]` eingefügt.
+- **Bilder**: `![[bild.png]]` zeigt das Bild unter seinem Text, `![[bild.png|300]]` legt die Breite fest. Angezeigt werden nur Bilder im Tresor bis 20 MB.
+- **Was sich nicht ändert**: Wiki-Links bleiben in der Datei einfacher Text, Speichern schreibt sie also nie um. Weblinks öffnen sich im Browser. Netzwerkpfade (`\\server\share`), Links in der Quellansicht und die KI öffnen nichts.
+
 ## Exportieren
 
 Menü Datei, alles lokal und alles fragt nach, wohin das Ergebnis soll:

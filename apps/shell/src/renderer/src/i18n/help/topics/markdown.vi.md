@@ -30,6 +30,17 @@ Ba ví dụ nhanh:
 - **Bảng**: nhấp **Chèn bảng** ▸ kéo để chọn số hàng và cột ▸ gõ vào các ô; bản xem trước kết xuất ngay lập tức.
 - **Danh sách công việc**: chọn vài dòng ▸ nhấp **Danh sách công việc** ▸ mỗi dòng thành `- [ ]`, hiển thị thành ô tích trong bản xem trước.
 
+## Liên kết giữa các ghi chú
+
+Liên kết trong ghi chú được mở bằng **Ctrl+nhấp** (**⌘+nhấp** trên Mac). Nhấp thường vẫn là sửa chữ.
+
+- **Tiêu đề**: `[chữ](#tiêu-đề)` và `[[#Tiêu đề]]` nhảy tới tiêu đề đó trong cùng ghi chú.
+- **Tệp khác**: `[chữ](other.md)` hoặc `[chữ](../folder/report.pdf)` mở tệp trong thẻ riêng, tính từ thư mục của ghi chú. Liên kết tới một tiêu đề trong ghi chú Markdown khác sẽ mở ghi chú đó ngay tại tiêu đề.
+- **Liên kết wiki**: `[[Ghi chú]]`, `[[Ghi chú#Tiêu đề]]` và `[[Ghi chú|chữ hiển thị]]` được tìm ở bất kỳ đâu trong kho của ghi chú — thư mục gần nhất phía trên ghi chú có chứa `.obsidian`, nếu không có thì là thư mục của chính ghi chú. Khi hai tệp trùng tên, tệp gần ghi chú hơn được chọn.
+- **Gợi ý**: gõ `[[` rồi chọn một ghi chú trong kho từ danh sách; nó được ghi thành `[[Tên]]`.
+- **Hình ảnh**: `![[hinh.png]]` hiện hình bên dưới chữ, còn `![[hinh.png|300]]` đặt chiều rộng. Chỉ hiện hình nằm trong kho và không quá 20 MB.
+- **Những gì không đổi**: liên kết wiki vẫn là chữ thường trong tệp, nên việc lưu không bao giờ viết lại chúng. Liên kết web mở trong trình duyệt. Đường dẫn mạng (`\\server\share`), liên kết trong chế độ xem nguồn và AI không mở gì cả.
+
 ## Xuất
 
 Trình đơn Tệp, tất cả đều cục bộ và đều hỏi lưu kết quả ở đâu:

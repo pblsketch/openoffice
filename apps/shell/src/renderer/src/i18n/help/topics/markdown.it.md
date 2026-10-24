@@ -30,6 +30,17 @@ Tre esempi rapidi:
 - **Tabella**: fai clic su **Inserisci tabella** ▸ trascina per scegliere il numero di righe e colonne ▸ digita nelle celle; l'anteprima la renderizza subito.
 - **Elenco di attività**: seleziona qualche riga ▸ fai clic su **Elenco di attività** ▸ ogni riga diventa `- [ ]`, resa come caselle di spunta nell'anteprima.
 
+## Collegamenti tra note
+
+I collegamenti di una nota si seguono con **Ctrl+clic** (**⌘+clic** su Mac). Un clic semplice continua a modificare il testo.
+
+- **Intestazioni**: `[testo](#intestazione)` e `[[#Intestazione]]` portano a quell'intestazione nella stessa nota.
+- **Altri file**: `[testo](other.md)` o `[testo](../folder/report.pdf)` apre il file in una scheda propria, partendo dalla cartella della nota. Un collegamento a un'intestazione di un'altra nota Markdown apre quella nota all'intestazione.
+- **Collegamenti wiki**: `[[Nota]]`, `[[Nota#Intestazione]]` e `[[Nota|testo mostrato]]` vengono cercati ovunque nella cassaforte della nota: la prima cartella sopra la nota che contiene `.obsidian`, altrimenti la cartella della nota. Se due file hanno lo stesso nome, vince quello più vicino alla nota.
+- **Completamento**: digita `[[` e scegli una nota della cassaforte dall'elenco; viene scritta come `[[Nome]]`.
+- **Immagini**: `![[immagine.png]]` mostra l'immagine sotto il testo e `![[immagine.png|300]]` ne imposta la larghezza. Vengono mostrate solo immagini nella cassaforte fino a 20 MB.
+- **Cosa non cambia**: i collegamenti wiki restano testo semplice nel file, quindi il salvataggio non li riscrive mai. I collegamenti web si aprono nel browser. I percorsi di rete (`\\server\share`), i collegamenti nella vista sorgente e l'IA non aprono nulla.
+
 ## Esportazione
 
 Menu File, tutto locale e tutto chiede dove mettere il risultato:

@@ -30,6 +30,17 @@ Tiga contoh pantas:
 - **Jadual**: klik **Sisip jadual**, seret untuk memilih bilangan baris dan lajur, kemudian taip ke dalam sel. Pratonton akan memaparkannya serta-merta.
 - **Senarai tugasan**: pilih beberapa baris, klik **Senarai tugasan**, dan setiap baris akan menjadi `- [ ]` yang dipaparkan sebagai kotak semak dalam pratonton.
 
+## Pautan antara nota
+
+Pautan dalam nota diikuti dengan **Ctrl+klik** (**⌘+klik** pada Mac). Klik biasa masih untuk menyunting teks.
+
+- **Tajuk**: `[teks](#tajuk)` dan `[[#Tajuk]]` melompat ke tajuk itu dalam nota yang sama.
+- **Fail lain**: `[teks](other.md)` atau `[teks](../folder/report.pdf)` membuka fail dalam tab sendiri, bermula dari folder nota. Pautan ke tajuk dalam nota Markdown lain membuka nota itu pada tajuk tersebut.
+- **Pautan wiki**: `[[Nota]]`, `[[Nota#Tajuk]]` dan `[[Nota|teks dipapar]]` dicari di mana-mana dalam peti besi nota — folder terdekat di atas nota yang mengandungi `.obsidian`, atau folder nota itu sendiri jika tiada. Jika dua fail sama nama, fail yang lebih dekat dengan nota dipilih.
+- **Pelengkapan**: taip `[[` dan pilih nota peti besi daripada senarai; ia ditulis sebagai `[[Nama]]`.
+- **Gambar**: `![[gambar.png]]` memaparkan gambar di bawah teksnya, dan `![[gambar.png|300]]` menetapkan lebarnya. Hanya gambar dalam peti besi sehingga 20 MB dipaparkan.
+- **Apa yang tidak berubah**: pautan wiki kekal sebagai teks biasa dalam fail, jadi simpanan tidak pernah menulis semula pautan itu. Pautan web dibuka dalam pelayar. Laluan rangkaian (`\\server\share`), pautan dalam paparan sumber dan AI tidak membuka apa-apa.
+
 ## Eksport
 
 Menu Fail, semuanya setempat dan semuanya akan bertanya di mana hasilnya perlu disimpan:
