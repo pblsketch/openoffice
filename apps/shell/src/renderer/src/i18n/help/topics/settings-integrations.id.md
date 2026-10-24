@@ -44,7 +44,7 @@ Pengaturan dapat mendaftarkan GenOffice sebagai aplikasi penangan .docx / .xlsx 
 ## Pemberitahuan pihak ketiga dan pembaruan
 
 - Bantuan ▸ Pemberitahuan Perangkat Lunak Pihak Ketiga: inventaris lengkap lisensi OSS yang disertakan dengan aplikasi.
-- Bantuan ▸ Periksa Pembaruan…: memicu pemeriksaan manual; versi yang lebih baru menawarkan dipasang.
+- Menu (☰) ▸ Periksa Pembaruan… (di Mac: Bantuan ▸ Periksa Pembaruan…): memicu pemeriksaan manual; versi yang lebih baru menawarkan dipasang.
 
 ## Integrasi MCP (untuk pengguna lanjutan / klien AI)
 

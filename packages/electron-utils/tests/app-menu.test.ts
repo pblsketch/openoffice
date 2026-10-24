@@ -25,8 +25,10 @@ import { setUiLang } from '@genoffice/i18n'
 import {
   aboutMenuItem,
   appMenuLabels,
+  appMenuPopupTemplate,
   checkUpdatesMenuItem,
   editMenuTemplate,
+  helpCheckUpdatesItems,
   helpMenuTemplate,
   setUpdateCheckInvoker,
   viewMenuTemplate,
@@ -196,10 +198,34 @@ describe('viewMenuTemplate', () => {
 })
 
 describe('checkUpdatesMenuItem / manual update check wiring', () => {
-  it('sits directly above About in the help menu', () => {
-    const items = submenuOf(helpMenuTemplate(en))
+  it('sits directly above About in the macOS help menu', () => {
+    const items = submenuOf(helpMenuTemplate(en, [], 'darwin'))
     expect(items.at(-2)!.label).toBe(en.checkUpdates)
     expect(items.at(-1)!.label).toBe(en.about)
+  })
+
+  it('is not in the Windows or Linux help menu, which the ☰ popup replaces', () => {
+    for (const platform of ['win32', 'linux'] as const) {
+      const labels = submenuOf(helpMenuTemplate(en, [], platform)).map((i) => i.label)
+      expect(labels).not.toContain(en.checkUpdates)
+      expect(labels.at(-1)).toBe(en.about)
+      expect(helpCheckUpdatesItems(en, platform)).toEqual([])
+    }
+    expect(helpCheckUpdatesItems(en, 'darwin').map((i) => i.label)).toEqual([en.checkUpdates])
+  })
+
+  it('ends the ☰ popup with the check on its own, after the window menus', () => {
+    const menus = [{ label: 'File', submenu: [] }, helpMenuTemplate(en, [], 'win32')]
+    const popup = appMenuPopupTemplate(menus, en)
+    expect(popup.slice(0, 2)).toEqual(menus)
+    expect(popup[2]).toEqual({ type: 'separator' })
+    expect(popup[3]!.label).toBe(en.checkUpdates)
+    expect(popup).toHaveLength(4)
+
+    const invoke = vi.fn()
+    setUpdateCheckInvoker(invoke)
+    ;(popup[3] as { click: () => void }).click()
+    expect(invoke).toHaveBeenCalledOnce()
   })
 
   it('invokes the shell-registered check on click, and no-ops unregistered', () => {

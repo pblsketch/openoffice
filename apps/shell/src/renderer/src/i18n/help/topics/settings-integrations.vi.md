@@ -44,7 +44,7 @@ Cài đặt có thể đăng ký GenOffice làm ứng dụng xử lý .docx / .x
 ## Thông báo bên thứ ba và cập nhật
 
 - Trợ giúp ▸ Thông báo của bên thứ ba: danh mục giấy phép nguồn mở đầy đủ đi kèm ứng dụng.
-- Trợ giúp ▸ Kiểm tra bản cập nhật: kích hoạt một lần kiểm tra thủ công; nếu có bản mới sẽ nhắc cài đặt.
+- Menu (☰) ▸ Kiểm tra bản cập nhật (trên Mac là Trợ giúp ▸ Kiểm tra bản cập nhật): kích hoạt một lần kiểm tra thủ công; nếu có bản mới sẽ nhắc cài đặt.
 
 ## Tích hợp MCP (dành cho người dùng nâng cao / ứng dụng AI)
 

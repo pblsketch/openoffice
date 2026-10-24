@@ -23,7 +23,7 @@ Comme l’installeur n’est pas signé, n’exécutez que celui que vous avez t
 ## Mises à jour
 
 - GenOffice cherche une version plus récente sur la même page GitHub Releases. Lorsqu’il y en a une, **Paramètres ▸ À propos** la propose : appuyez sur **Mettre à jour vers …**, attendez la fin du téléchargement, puis appuyez sur **Redémarrer et installer**.
-- **Aide ▸ Rechercher les mises à jour** lance la vérification quand vous le demandez.
+- **Menu (☰) ▸ Rechercher les mises à jour** lance la vérification quand vous le demandez. Sur un Mac, c’est **Aide ▸ Rechercher les mises à jour**.
 - Lorsque la vérification échoue — pas de réseau, ou rien de publié pour l’instant —, il ne se passe rien et l’application continue de fonctionner comme avant.
 - **Canal de mise à jour**, également sous Paramètres ▸ À propos, vaut Stable ou Bêta. Une modification prend effet immédiatement et déclenche une recherche de mise à jour ; elle ne rétrograde pas une installation Bêta vers Stable.
 - Les mises à jour ne sont pas signées non plus. Avant d’en installer une, l’application compare le fichier téléchargé à la somme de contrôle publiée avec cette version.

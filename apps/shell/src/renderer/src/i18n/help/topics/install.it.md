@@ -23,7 +23,7 @@ Poiché il programma di installazione non è firmato, esegui solo quello che hai
 ## Aggiornamenti
 
 - GenOffice cerca una versione più recente sulla stessa pagina Releases di GitHub. Quando ne viene pubblicata una, **Impostazioni ▸ Informazioni** la propone: premi **Aggiorna alla versione …**, attendi il download, poi premi **Riavvia e installa**.
-- **Aiuto ▸ Controlla aggiornamenti…** controlla ogni volta che lo chiedi.
+- **Menu (☰) ▸ Controlla aggiornamenti…** controlla ogni volta che lo chiedi. Su un Mac è **Aiuto ▸ Controlla aggiornamenti…**.
 - Quando il controllo non riesce — manca la rete, o non è ancora stato pubblicato nulla — non succede niente e l'app continua a funzionare come prima.
 - **Canale di aggiornamento**, sempre in Impostazioni ▸ Informazioni, è Stabile o Beta. Modificarlo ha effetto immediato e controlla la presenza di un aggiornamento; non riporta un'installazione Beta alla versione Stabile.
 - Nemmeno gli aggiornamenti hanno una firma digitale. Prima di installarne uno, l'app confronta il file scaricato con il checksum pubblicato insieme a quella versione.

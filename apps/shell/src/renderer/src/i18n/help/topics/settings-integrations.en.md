@@ -44,7 +44,7 @@ Settings can register GenOffice as the handler for .docx / .xlsx / .pptx / .pdf 
 ## Third-party notices and updates
 
 - Help ▸ Third-party notices: the full OSS license inventory shipped with the app.
-- Help ▸ Check for updates: triggers a manual check; a newer version prompts to install.
+- Menu (☰) ▸ Check for updates (Help ▸ Check for updates on a Mac): triggers a manual check; a newer version prompts to install.
 
 ## MCP integration (for advanced users / AI clients)
 

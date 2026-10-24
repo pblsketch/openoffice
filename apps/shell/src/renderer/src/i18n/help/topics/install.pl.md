@@ -23,7 +23,7 @@ Ponieważ instalator nie jest podpisany, uruchamiaj tylko taki, który został p
 ## Aktualizacje
 
 - GenOffice szuka nowszej wersji na tej samej stronie Releases w serwisie GitHub. Gdy taka zostanie opublikowana, zaproponuje ją okno **Ustawienia ▸ O aplikacji**: naciśnij **Zaktualizuj do …**, poczekaj na pobranie, a potem naciśnij **Uruchom ponownie i zainstaluj**.
-- **Pomoc ▸ Sprawdź aktualizacje…** sprawdza na żądanie.
+- **Menu (☰) ▸ Sprawdź aktualizacje…** sprawdza na żądanie. Na komputerze Mac jest to **Pomoc ▸ Sprawdź aktualizacje…**.
 - Gdy sprawdzenie się nie powiedzie — brak sieci albo nic jeszcze nie opublikowano — nic się nie dzieje, a aplikacja działa jak dotąd.
 - **Kanał aktualizacji**, również w Ustawienia ▸ O aplikacji, to Stabilny lub Beta. Zmiana działa natychmiast i sprawdza, czy jest aktualizacja; nie cofnie instalacji Beta do kanału Stabilnego.
 - Aktualizacje również nie mają podpisu cyfrowego. Przed instalacją aplikacja porównuje pobrany plik z sumą kontrolną opublikowaną razem z danym wydaniem.

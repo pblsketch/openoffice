@@ -44,7 +44,7 @@ Ustawienia mogą zarejestrować GenOffice jako obsługę plików .docx / .xlsx /
 ## Informacje o oprogramowaniu innych firm i aktualizacje
 
 - Pomoc ▸ Informacje o oprogramowaniu innych firm: pełny wykaz licencji open source dołączony do aplikacji.
-- Pomoc ▸ Sprawdź aktualizacje…: uruchamia ręczne sprawdzenie; nowsza wersja wyświetla monit o instalacji.
+- Menu (☰) ▸ Sprawdź aktualizacje… (na komputerze Mac Pomoc ▸ Sprawdź aktualizacje…): uruchamia ręczne sprawdzenie; nowsza wersja wyświetla monit o instalacji.
 
 ## Integracja MCP (dla zaawansowanych użytkowników i klientów AI)
 

@@ -44,7 +44,7 @@ Tetapan boleh mendaftar GenOffice sebagai aplikasi yang mengendalikan fail .docx
 ## Notis perisian pihak ketiga dan kemas kini
 
 - Bantuan ▸ Notis Perisian Pihak Kedua memaparkan senarai penuh lesen perisian sumber terbuka yang disertakan dengan aplikasi.
-- Bantuan ▸ Semak Kemas Kini memulakan pemeriksaan secara manual. Jika terdapat versi yang lebih baharu, aplikasi akan meminta anda memasangnya.
+- Menu (☰) ▸ Semak Kemas Kini (pada Mac, Bantuan ▸ Semak Kemas Kini) memulakan pemeriksaan secara manual. Jika terdapat versi yang lebih baharu, aplikasi akan meminta anda memasangnya.
 
 ## Integrasi MCP
 

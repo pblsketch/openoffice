@@ -629,7 +629,8 @@ export function applyUpdateChannel(channel: UpdateChannel): void {
   autoUpdater.checkForUpdates().catch((err) => log('check failed:', err?.message ?? err))
 }
 
-/** User-triggered check (Help > Check for Updates… / the About dialog button).
+/** User-triggered check (☰ > Check for Updates…, Help on macOS, or the About
+ * dialog button).
  * Unlike the silent launch/periodic checks, every outcome gets explicit
  * feedback: an available update opens the standard update window (even a
  * version dismissed with "later" this session — the user just asked for it),

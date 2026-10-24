@@ -23,7 +23,7 @@ Omdat het installatieprogramma niet is ondertekend, voer je alleen een exemplaar
 ## Updates
 
 - GenOffice zoekt op dezelfde Releases-pagina op GitHub naar een nieuwere versie. Zodra er een is gepubliceerd, biedt **Instellingen ▸ Over** die aan: druk op **Bijwerken naar …**, wacht tot de download klaar is en druk dan op **Herstarten en installeren**.
-- **Help ▸ Controleren op updates…** controleert wanneer jij dat wilt.
+- **Menu (☰) ▸ Controleren op updates…** controleert wanneer jij dat wilt. Op een Mac is het **Help ▸ Controleren op updates…**.
 - Mislukt de controle — geen netwerk, of er is nog niets gepubliceerd — dan gebeurt er niets en blijft de app werken zoals voorheen.
 - **Updatekanaal**, ook onder Instellingen ▸ Over, staat op Stabiel of Bèta. Wijzigen gaat meteen in en controleert op een update; een Bèta-installatie wordt niet teruggezet naar Stabiel.
 - Ook updates hebben geen digitale handtekening. Vóór het installeren vergelijkt de app het gedownloade bestand met de controlesom die bij die release is gepubliceerd.

@@ -308,7 +308,8 @@ The Windows app and the Linux `AppImage` look at this repository's GitHub
 Releases shortly after they start and every four hours after that, and offer
 the new version in an update window. If there is no release, no network or the
 check fails, nothing happens and the app keeps working. To check yourself, use
-**Help → Check for Updates…** in the app menu. Pre-release versions are offered
+**Menu (☰) → Check for Updates…** at the left of the tab bar
+(**Help → Check for Updates…** on a Mac). Pre-release versions are offered
 only when you choose the beta channel under **Settings → About**. The Mac build
 and the Linux `deb` and `rpm` installs only tell you about a new version.
 

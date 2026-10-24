@@ -23,7 +23,7 @@ Como el instalador no está firmado, ejecute solo uno que haya descargado de la 
 ## Actualizaciones
 
 - GenOffice busca una versión más reciente en la misma página de versiones de GitHub. Cuando se publica una, **Configuración ▸ Acerca de** la ofrece: pulse **Actualizar a …**, espere a que termine la descarga y pulse **Reiniciar e instalar**.
-- **Ayuda ▸ Buscar actualizaciones** hace la comprobación cuando usted lo pida.
+- **Menú (☰) ▸ Buscar actualizaciones** hace la comprobación cuando usted lo pida. En un Mac es **Ayuda ▸ Buscar actualizaciones**.
 - Cuando la comprobación falla —no hay red, o aún no se ha publicado nada—, no ocurre nada y la aplicación sigue funcionando como antes.
 - **Canal de actualización**, también en Configuración ▸ Acerca de, es Estable o Beta. Cambiarlo surte efecto de inmediato y busca una actualización; no bajará una instalación Beta a Estable.
 - Las actualizaciones tampoco están firmadas digitalmente. Antes de instalar una, la aplicación compara el archivo descargado con la suma de comprobación publicada con esa versión.

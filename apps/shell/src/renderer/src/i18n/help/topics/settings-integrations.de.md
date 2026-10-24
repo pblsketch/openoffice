@@ -44,7 +44,7 @@ Die Einstellungen können GenOffice als Programm für .docx / .xlsx / .pptx / .p
 ## Hinweise zu Drittanbietersoftware und Updates
 
 - Hilfe ▸ Hinweise zu Drittanbietersoftware: das vollständige Verzeichnis der mitgelieferten Open-Source-Lizenzen.
-- Hilfe ▸ Nach Updates suchen: löst eine manuelle Prüfung aus; bei einer neueren Version werden Sie zur Installation aufgefordert.
+- Menü (☰) ▸ Nach Updates suchen (auf dem Mac Hilfe ▸ Nach Updates suchen): löst eine manuelle Prüfung aus; bei einer neueren Version werden Sie zur Installation aufgefordert.
 
 ## MCP-Integration (für erfahrene Anwender / KI-Clients)
 
