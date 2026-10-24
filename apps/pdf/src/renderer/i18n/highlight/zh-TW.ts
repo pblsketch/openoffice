@@ -70,11 +70,13 @@ export const zhTW = {
   hlAccept: '接受',
   hlDismiss: '捨棄',
   hlAcceptAll: '全部接受（{count}）',
+  hlAcceptAllSave: '全部接受並儲存（{count}）',
   hlDismissAll: '捨棄所有建議',
   hlSuggestionCount: 'AI 標示建議 {count} 則',
   hlNotFoundTip: '在頁面文字中找不到這句話，無法接受',
   hlWaitingSave: '等待儲存',
   hlWaitingSaveTip: '儲存 PDF 後螢光標示會寫入檔案',
   hlAcceptedNotice: '已新增 {count} 個螢光標示。儲存 PDF 後會寫入檔案。',
+  hlAcceptedSaved: '已儲存 {count} 處螢光標記。',
   hlDismissFailed: '無法捨棄建議。',
 } satisfies Record<keyof typeof zh, string>

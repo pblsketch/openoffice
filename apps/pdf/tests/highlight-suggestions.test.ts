@@ -509,6 +509,7 @@ describe('the panel', () => {
     const onAccept = vi.fn()
     const onDismiss = vi.fn()
     const onAcceptLabel = vi.fn()
+    const onAcceptAllSave = vi.fn()
     const el = await render(
       createElement(AnnotPanel, {
         items,
@@ -525,6 +526,7 @@ describe('the panel', () => {
           t: tKo,
           readOnly: false,
           onAcceptLabel,
+          onAcceptAllSave,
           onDismissAll: vi.fn(),
         }),
         renderItemActions: (item) =>
@@ -558,6 +560,13 @@ describe('the panel', () => {
     expect(labelRows).toHaveLength(2)
     await act(async () => (labelRows[0] as HTMLButtonElement).click())
     expect(onAcceptLabel).toHaveBeenCalledWith('l1')
+    // One of the three suggestions has no place; the combined action counts only
+    // the two that can be accepted, and the one click accepts + saves.
+    const acceptSave = el.querySelector('[data-action="hl-accept-save"]') as HTMLButtonElement
+    expect(acceptSave.textContent).toContain('모두 받아들이고 저장 (2)')
+    expect(acceptSave.disabled).toBe(false)
+    await act(async () => acceptSave.click())
+    expect(onAcceptAllSave).toHaveBeenCalledTimes(1)
   })
 })
 

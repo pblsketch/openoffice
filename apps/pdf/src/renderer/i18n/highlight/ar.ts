@@ -73,11 +73,13 @@ export const ar = {
   hlAccept: 'قبول',
   hlDismiss: 'استبعاد',
   hlAcceptAll: 'قبول الكل ({count})',
+  hlAcceptAllSave: 'قبول الكل وحفظ ({count})',
   hlDismissAll: 'استبعاد كل الاقتراحات',
   hlSuggestionCount: 'اقتراحات التمييز بالذكاء الاصطناعي: {count}',
   hlNotFoundTip: 'لم يُعثر على هذه الجملة في نص الصفحة، لذا لا يمكن قبولها',
   hlWaitingSave: 'بانتظار الحفظ',
   hlWaitingSaveTip: 'احفظ ملف PDF ليدخل التمييز في الملف',
   hlAcceptedNotice: 'أُضيفت {count} تمييزات. احفظ ملف PDF لتدخل في الملف.',
+  hlAcceptedSaved: 'تم حفظ {count} من التمييزات.',
   hlDismissFailed: 'تعذّر استبعاد الاقتراحات.',
 } satisfies Record<keyof typeof zh, string>

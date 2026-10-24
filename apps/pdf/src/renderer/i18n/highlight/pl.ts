@@ -78,11 +78,13 @@ export const pl = {
   hlAccept: 'Akceptuj',
   hlDismiss: 'Odrzuć',
   hlAcceptAll: 'Akceptuj wszystkie ({count})',
+  hlAcceptAllSave: 'Zaakceptuj wszystko i zapisz ({count})',
   hlDismissAll: 'Odrzuć wszystkie propozycje',
   hlSuggestionCount: 'Propozycje wyróżnień AI: {count}',
   hlNotFoundTip: 'Tego zdania nie znaleziono w tekście strony, więc nie można go zaakceptować',
   hlWaitingSave: 'Czeka na zapis',
   hlWaitingSaveTip: 'Zapisz PDF, aby wyróżnienie trafiło do pliku',
   hlAcceptedNotice: 'Dodano wyróżnienia: {count}. Zapisz PDF, aby trafiły do pliku.',
+  hlAcceptedSaved: 'Zapisano wyróżnienia: {count}.',
   hlDismissFailed: 'Nie udało się odrzucić propozycji.',
 } satisfies Record<keyof typeof zh, string>

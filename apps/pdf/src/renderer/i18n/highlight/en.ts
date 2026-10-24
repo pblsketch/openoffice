@@ -76,11 +76,13 @@ export const en = {
   hlAccept: 'Accept',
   hlDismiss: 'Dismiss',
   hlAcceptAll: 'Accept all ({count})',
+  hlAcceptAllSave: 'Accept all and save ({count})',
   hlDismissAll: 'Dismiss all suggestions',
   hlSuggestionCount: '{count} AI highlight suggestions',
   hlNotFoundTip: 'This sentence was not found in the page text, so it cannot be accepted',
   hlWaitingSave: 'Waiting for save',
   hlWaitingSaveTip: 'Save the PDF to put the highlight in the file',
   hlAcceptedNotice: 'Added {count} highlights. Save the PDF to put them in the file.',
+  hlAcceptedSaved: 'Saved {count} highlights.',
   hlDismissFailed: 'The suggestions could not be dismissed.',
 } satisfies Record<keyof typeof zh, string>

@@ -77,6 +77,7 @@ export const fr = {
   hlAccept: 'Accepter',
   hlDismiss: 'Écarter',
   hlAcceptAll: 'Tout accepter ({count})',
+  hlAcceptAllSave: 'Tout accepter et enregistrer ({count})',
   hlDismissAll: 'Écarter toutes les propositions',
   hlSuggestionCount: '{count} propositions de surlignage IA',
   hlNotFoundTip:
@@ -85,5 +86,6 @@ export const fr = {
   hlWaitingSaveTip: 'Enregistrez le PDF pour placer le surlignage dans le fichier',
   hlAcceptedNotice:
     '{count} surlignages ajoutés. Enregistrez le PDF pour les placer dans le fichier.',
+  hlAcceptedSaved: '{count} surlignages enregistrés.',
   hlDismissFailed: 'Les propositions n’ont pas pu être écartées.',
 } satisfies Record<keyof typeof zh, string>

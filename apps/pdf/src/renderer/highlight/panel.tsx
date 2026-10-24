@@ -127,6 +127,7 @@ export function HighlightPanelBar({
   t,
   readOnly,
   onAcceptLabel,
+  onAcceptAllSave,
   onDismissAll,
 }: {
   pending: readonly SuggestionView[]
@@ -134,13 +135,28 @@ export function HighlightPanelBar({
   t: TFunc
   readOnly: boolean
   onAcceptLabel: (labelId: string) => void
+  /** accept every suggestion with a place, then save the PDF */
+  onAcceptAllSave: () => void
   onDismissAll: () => void
 }): ReactElement | null {
   if (!run || pending.length === 0) return null
+  const acceptable = pending.filter((v) => v.found).length
   return (
     <div className="pdf-hl-bar" role="group" aria-label={t('hlKindSuggestion')}>
       <div className="pdf-hl-bar-head">
         <span>{t('hlSuggestionCount', { count: pending.length })}</span>
+      </div>
+      <div className="pdf-hl-bar-actions">
+        <button
+          type="button"
+          className="pdf-modal-btn primary"
+          data-action="hl-accept-save"
+          disabled={readOnly || acceptable === 0}
+          title={readOnly ? t('hlReadOnly') : undefined}
+          onClick={onAcceptAllSave}
+        >
+          {t('hlAcceptAllSave', { count: acceptable })}
+        </button>
         <button
           type="button"
           className="pdf-modal-btn"

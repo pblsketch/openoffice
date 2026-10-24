@@ -1169,6 +1169,9 @@ export default function App() {
   /** Save As flow: the shell picked the target, the reader still chooses what happens to annotations */
   const [saveCopyDlg, setSaveCopyDlg] = useState<{ targetPath: string } | null>(null)
   const [saveCopyMode, setSaveCopyMode] = useState<'keep' | 'flatten' | 'strip'>('keep')
+  /** Bumped by "accept all and save": the effect waits for the render that has the new markups. */
+  const [acceptSaveRequest, setAcceptSaveRequest] = useState(0)
+  const acceptSaveCountRef = useRef(0)
   /** Page-crop dialog: rendered page bitmap + which page it shows */
   const [pageCropDlg, setPageCropDlg] = useState<{ png: string; origIdx: number } | null>(null)
   const [cropAllPages, setCropAllPages] = useState(false)
@@ -7217,8 +7220,8 @@ export default function App() {
     aiHighlights.suggestions.snapshot,
   )
   const highlightPending = highlightPreview ? aiHighlights.suggestions.pending() : []
-  const acceptSuggestions = (views: readonly SuggestionView[]) => {
-    if (readOnly) return
+  const acceptSuggestions = (views: readonly SuggestionView[], notice = true): number => {
+    if (readOnly) return 0
     const ops: Op[] = []
     const count = aiHighlights.suggestions.accept(views, (v) => {
       const markup = suggestionMarkup(v)
@@ -7227,20 +7230,47 @@ export default function App() {
       ops.push({ op: 'addMarkup', id, markup })
       return id
     })
-    if (ops.length === 0) return
+    if (ops.length === 0) return 0
     const plan = applyEditOps(ops)
     if (plan.failures.length > 0) {
       // nothing was added: the suggestions go back to pending
       aiHighlights.suggestions.prune(new Set(markups.map((m) => m.id)))
-      return
+      return 0
     }
-    showNotice(t('hlAcceptedNotice', { count }))
+    if (notice) showNotice(t('hlAcceptedNotice', { count }))
+    return count
   }
   const dismissSuggestions = (views: readonly SuggestionView[]) => {
     void aiHighlights.suggestions.dismiss(views).then((ok) => {
       if (!ok) showNotice(t('hlDismissFailed'))
     })
   }
+
+  // The save callback closes over this render's markups. "Accept all and save"
+  // changes that state first, then this effect runs after the render that has
+  // the new markups, so the ref points at the save that writes them.
+  const saveRef = useRef(save)
+  saveRef.current = save
+  const showNoticeRef = useRef(showNotice)
+  showNoticeRef.current = showNotice
+  const acceptAndSave = () => {
+    if (readOnly) return
+    const views = highlightPending.filter((v) => v.found)
+    if (views.length === 0) return
+    const count = acceptSuggestions(views, false)
+    if (count === 0) return
+    acceptSaveCountRef.current = count
+    setAcceptSaveRequest((n) => n + 1)
+  }
+  useEffect(() => {
+    if (acceptSaveRequest === 0) return
+    const count = acceptSaveCountRef.current
+    void saveRef.current(false).then((ok) => {
+      if (ok) showNoticeRef.current(t('hlAcceptedSaved', { count }))
+    })
+    // Only a new request starts a save; the refs carry the latest callbacks.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acceptSaveRequest])
 
   const curOrigIdx = visList[currentPage - 1] ?? -1
 
@@ -9342,6 +9372,7 @@ export default function App() {
                       onAcceptLabel={(labelId) =>
                         acceptSuggestions(highlightPending.filter((v) => v.label.id === labelId))
                       }
+                      onAcceptAllSave={acceptAndSave}
                       onDismissAll={() => dismissSuggestions(highlightPending)}
                     />
                   </>

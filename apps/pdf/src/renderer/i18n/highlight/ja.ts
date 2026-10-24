@@ -73,11 +73,13 @@ export const ja = {
   hlAccept: '受け入れる',
   hlDismiss: '破棄',
   hlAcceptAll: 'すべて受け入れる（{count}）',
+  hlAcceptAllSave: 'すべて受け入れて保存（{count}）',
   hlDismissAll: '提案をすべて破棄',
   hlSuggestionCount: 'AI ハイライトの提案 {count} 件',
   hlNotFoundTip: 'ページの文字からこの文が見つからないため受け入れられません',
   hlWaitingSave: '保存待ち',
   hlWaitingSaveTip: 'PDF を保存するとハイライトがファイルに入ります',
   hlAcceptedNotice: 'ハイライトを {count} 個追加しました。PDF を保存するとファイルに入ります。',
+  hlAcceptedSaved: 'ハイライトを {count} 件保存しました。',
   hlDismissFailed: '提案を破棄できませんでした。',
 } satisfies Record<keyof typeof zh, string>

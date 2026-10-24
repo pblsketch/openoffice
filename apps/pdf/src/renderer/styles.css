@@ -6192,6 +6192,12 @@ button.ai-overview-term-page:hover {
   white-space: nowrap;
 }
 
+.pdf-hl-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .pdf-hl-waiting {
   font-size: 11px;
   color: var(--accent);

@@ -74,11 +74,13 @@ export const vi = {
   hlAccept: 'Chấp nhận',
   hlDismiss: 'Bỏ',
   hlAcceptAll: 'Chấp nhận tất cả ({count})',
+  hlAcceptAllSave: 'Chấp nhận tất cả và lưu ({count})',
   hlDismissAll: 'Bỏ tất cả đề xuất',
   hlSuggestionCount: '{count} đề xuất tô sáng của AI',
   hlNotFoundTip: 'Không tìm thấy câu này trong văn bản của trang nên không thể chấp nhận',
   hlWaitingSave: 'Chờ lưu',
   hlWaitingSaveTip: 'Lưu PDF để đưa tô sáng vào tệp',
   hlAcceptedNotice: 'Đã thêm {count} tô sáng. Lưu PDF để đưa vào tệp.',
+  hlAcceptedSaved: 'Đã lưu {count} mục đánh dấu.',
   hlDismissFailed: 'Không thể bỏ đề xuất.',
 } satisfies Record<keyof typeof zh, string>
