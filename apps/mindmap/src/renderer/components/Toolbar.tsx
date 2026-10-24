@@ -51,6 +51,8 @@ export interface ToolbarProps {
   pickingRelationship: boolean
   /** the theme panel is open */
   themeOpen: boolean
+  /** the note panel is open */
+  noteOpen: boolean
   /** the AI panel is open */
   aiOpen: boolean
   onSave(): void
@@ -189,7 +191,13 @@ export function Toolbar(p: ToolbarProps) {
             >
               <IconSummary />
             </ToolButton>
-            <ToolButton action="note" label={t('tbNote')} disabled={topicOff} onClick={p.onNote}>
+            <ToolButton
+              action="note"
+              label={t('tbNote')}
+              active={p.noteOpen}
+              disabled={topicOff}
+              onClick={p.onNote}
+            >
               <IconNote />
             </ToolButton>
             <ToolButton action="label" label={t('tbLabel')} disabled={topicOff} onClick={p.onLabel}>

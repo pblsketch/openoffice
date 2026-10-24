@@ -86,6 +86,7 @@ export const zh = {
   ribbonFontEastAsia: '东亚字体',
   ribbonFontLatin: '西文字体',
   ribbonFontFamilyTip: '字体',
+  ribbonFontDialogTip: '字体 — 字符缩放和间距在“高级”选项卡',
   ribbonFontsCommon: '常用字体',
   ribbonFontsSystem: '系统字体',
   ribbonFontsHangul: '韩文字体',

@@ -16,10 +16,7 @@ import {
 } from '@genoffice/ai-provider/browser'
 import { aiConnectPromptChoice, aiSendGate } from '@genoffice/ui'
 import { DOC_ATTACH_BRIDGE_KEY } from '@genoffice/electron-utils/doc-attach-channels'
-import {
-  AiChatPanel,
-  type AiPanelSubscription,
-} from '../src/renderer/ai/AiChatPanel'
+import { AiChatPanel, type AiPanelSubscription } from '../src/renderer/ai/AiChatPanel'
 
 const settings = (): AiSettings =>
   normalizeAiSettings({ providers: {}, subscriptionNoticeSeen: true })
@@ -46,6 +43,7 @@ function subscriptionOf(stored: AiSettings, known: AiSubscriptionStatuses): AiPa
       onAcceptMetered: vi.fn(),
       onOpenInstallHelp: vi.fn(),
     },
+    refresh: vi.fn(),
     usage: [],
     inputTruncated: false,
     onDismissTruncated: vi.fn(),

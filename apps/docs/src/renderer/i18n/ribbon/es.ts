@@ -86,6 +86,7 @@ export const es = {
   ribbonFontEastAsia: 'Fuente de Asia oriental',
   ribbonFontLatin: 'Fuente latina',
   ribbonFontFamilyTip: 'Fuente',
+  ribbonFontDialogTip: 'Fuente — escala y espaciado de caracteres en la pestaña Avanzado',
   ribbonFontsCommon: 'Fuentes comunes',
   ribbonFontsSystem: 'Fuentes del sistema',
   ribbonFontsHangul: 'Fuentes coreanas',

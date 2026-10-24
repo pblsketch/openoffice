@@ -86,6 +86,7 @@ export const ms = {
   ribbonFontEastAsia: 'Fon Asia Timur',
   ribbonFontLatin: 'Fon Latin',
   ribbonFontFamilyTip: 'Fon',
+  ribbonFontDialogTip: 'Fon — skala dan jarak aksara pada tab Lanjutan',
   ribbonFontsCommon: 'Fon biasa',
   ribbonFontsSystem: 'Fon sistem',
   ribbonFontsHangul: 'Fon Korea',

@@ -88,15 +88,6 @@
   color: var(--text-primary);
 }
 
-.ai-skill-card .ai-skill-card-advanced summary {
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.ai-skill-card .ai-skill-card-advanced[open] summary {
-  margin-bottom: 6px;
-}
-
 .ai-skill-card .ai-skill-card-hint,
 .ai-skill-card .ai-skill-card-note {
   margin: 0;

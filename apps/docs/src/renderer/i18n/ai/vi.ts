@@ -67,6 +67,8 @@ export const vi = {
   aiEmptyTitle: 'Để AI giúp bạn viết và chỉnh sửa',
   aiEmptyBody1: 'Đưa ra yêu cầu hoặc chỉ cần đặt câu hỏi;',
   aiEmptyBody2: 'khi có văn bản được chọn, các lệnh viết lại sẽ áp dụng cho phần đã chọn.',
+  aiNoHidingNote:
+    'Trình soạn thảo này không thể ẩn một phần tài liệu khỏi AI: nội dung mà yêu cầu liên quan sẽ được gửi nguyên trạng.',
   aiStarterWeeklyReport: 'Viết báo cáo dự án hàng tuần cho tôi',
   aiStarterLaunchPost: 'Soạn thảo thông báo ra mắt sản phẩm',
   aiStarterEventOutline: 'Lập dàn ý kế hoạch sự kiện',
@@ -180,4 +182,17 @@ export const vi = {
   aiCmdImages: 'Đã cập nhật {count} hình ảnh',
   aiCmdToc: 'Đã chèn mục lục ({count} mục)',
   aiCmdSkipped: ' (đã bỏ qua {count} khối được bảo vệ)',
+  aiStarterMindMap: 'Tạo bản đồ tư duy cho tài liệu này',
+  aiMindMapBtn: 'Bản đồ tư duy AI',
+  aiMindMapPrompt:
+    'Tạo bản đồ tư duy cho tài liệu này, sắp xếp các chủ đề chính và khái niệm then chốt theo cấu trúc các phần',
+  aiSumMindMap: 'Tạo bản đồ tư duy',
+  aiMindMapTitle: 'Bản đồ tư duy',
+  aiMindMapNodes: '{count} nút',
+  aiMindMapAskPrompt: 'Hãy giới thiệu về "{label}" trong tài liệu này',
+  aiMindMapJump: 'Đến đoạn được trích dẫn',
+  aiMindMapExport: 'Xuất PNG',
+  aiMindMapReset: 'Đặt lại khung nhìn',
+  aiMindMapExpand: 'Mở rộng nhánh',
+  aiMindMapCollapse: 'Thu gọn nhánh',
 } satisfies Record<keyof typeof zh, string>

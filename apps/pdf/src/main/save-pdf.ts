@@ -1193,15 +1193,41 @@ async function verifyContentEdits(
   }
 }
 
+/** Save As with nothing to write: copy the source bytes exactly, without a rewrite. */
+export async function copyPdfToPath(sourcePath: string, targetPath: string): Promise<void> {
+  await writePdfAtomically(targetPath, new Uint8Array(await readFile(sourcePath)))
+}
+
+/**
+ * What a Save As copy does with annotations. The reader chooses this per copy;
+ * the main process refuses it for an in-place save, so the original document
+ * can never lose its annotations here.
+ */
+async function withAnnotationChoice(
+  bytes: Uint8Array,
+  annotations: SavePdfRequest['annotations'],
+): Promise<Uint8Array> {
+  if (annotations === 'flatten') {
+    const { flattenAnnotsBytes } = await import('./annot-flatten')
+    return flattenAnnotsBytes(bytes)
+  }
+  if (annotations === 'strip') {
+    const { stripCommentAnnotsBytes } = await import('./annot-strip')
+    return (await stripCommentAnnotsBytes(bytes)).bytes
+  }
+  return bytes
+}
+
 export async function savePdfToPath(
   sourcePath: string,
   targetPath: string,
   request: SavePdfRequest,
 ): Promise<SavePdfSkips> {
-  const { bytes, ...skips } = await applySaveRequest(
+  const { bytes: edited, ...skips } = await applySaveRequest(
     new Uint8Array(await readFile(sourcePath)),
     request,
   )
+  const bytes = await withAnnotationChoice(edited, request.annotations)
   await verifyContentEdits(bytes, request, skips)
   await writePdfAtomically(targetPath, bytes)
   return skips
@@ -1216,11 +1242,94 @@ export async function pdfBytesWithEdits(
   sourcePath: string,
   request: SavePdfRequest,
 ): Promise<Uint8Array> {
-  const { redactions: _redactions, ...ordinary } = request
-  const { bytes, ...skips } = await applySaveRequest(
-    new Uint8Array(await readFile(sourcePath)),
-    ordinary,
+  return pdfBytesWithEditsOf(new Uint8Array(await readFile(sourcePath)), request)
+}
+
+/**
+ * `pdfBytesWithEdits` over the file's bytes already read (a recovery copy
+ * checks them before the edits are applied): the same result, edits or not.
+ */
+export async function pdfBytesWithEditsOf(
+  fileBytes: Uint8Array,
+  request: SavePdfRequest,
+): Promise<Uint8Array> {
+  const {
+    redactions: _redactions,
+    annotations: _annotations,
+    copyOnly: _copyOnly,
+    ...ordinary
+  } = request
+  const { bytes, ...skips } = await applySaveRequest(fileBytes, ordinary)
+  await verifyContentEdits(bytes, ordinary, skips)
+  return bytes
+}
+
+/**
+ * Whether a save request changes anything. The renderer always sends the
+ * complete static-fill record set, which only image edits change, so that
+ * set alone does not count.
+ */
+export function saveRequestHasEdits(request: SavePdfRequest): boolean {
+  const some = (list: readonly unknown[] | undefined) => (list?.length ?? 0) > 0
+  return (
+    some(request.markups) ||
+    some(request.annotDeletes) ||
+    some(request.drawings) ||
+    some(request.noteEdits) ||
+    some(request.formValues) ||
+    some(request.stamps) ||
+    some(request.textEdits) ||
+    some(request.textInserts) ||
+    some(request.imageEdits) ||
+    some(request.redactions) ||
+    some(request.formWidgetEdits) ||
+    some(request.formFields) ||
+    some(request.blankPages) ||
+    some(request.rotations) ||
+    some(request.deletedPages) ||
+    some(request.pageOrder) ||
+    request.metadata !== undefined
   )
+}
+
+/**
+ * `savePdfToPath` over source bytes already in memory: a tab restored from a
+ * recovery copy shows the copy, and the file on disk is only where the save
+ * goes. A request without edits writes the source bytes unchanged, so saving
+ * a restored copy writes exactly the bytes the copy holds.
+ */
+export async function savePdfBytesToPath(
+  source: Uint8Array,
+  targetPath: string,
+  request: SavePdfRequest,
+): Promise<SavePdfSkips> {
+  if (!saveRequestHasEdits(request) && (request.annotations ?? 'keep') === 'keep') {
+    await writePdfAtomically(targetPath, source)
+    return { skippedTextEdits: [], skippedTextInserts: [], skippedImageEdits: [] }
+  }
+  const { bytes: edited, ...skips } = await applySaveRequest(source, request)
+  const bytes = await withAnnotationChoice(edited, request.annotations)
+  await verifyContentEdits(bytes, request, skips)
+  await writePdfAtomically(targetPath, bytes)
+  return skips
+}
+
+/**
+ * `pdfBytesWithEdits` over source bytes in memory (the recovery copy of a
+ * restored tab); a request without edits answers the source itself.
+ */
+export async function pdfBytesWithEditsFrom(
+  source: Uint8Array,
+  request: SavePdfRequest,
+): Promise<Uint8Array> {
+  const {
+    redactions: _redactions,
+    annotations: _annotations,
+    copyOnly: _copyOnly,
+    ...ordinary
+  } = request
+  if (!saveRequestHasEdits(ordinary)) return source
+  const { bytes, ...skips } = await applySaveRequest(source, ordinary)
   await verifyContentEdits(bytes, ordinary, skips)
   return bytes
 }

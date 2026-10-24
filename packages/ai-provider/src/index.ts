@@ -54,6 +54,18 @@ export {
   normalizeAiSettings,
 } from './legacy-settings'
 export {
+  SEALED_PREFIX,
+  isSealedSecret,
+  mapAiSecrets,
+  openAiSecrets,
+  openSecretValue,
+  sealAiSecrets,
+  sealSecretValue,
+  sealedAiSecretsIn,
+  setAiSecretCodec,
+} from './settings-secrets'
+export type { AiSecretCodec } from './settings-secrets'
+export {
   codexImageGenerationAvailable,
   configuredImageKeyProviders,
   imageProviderSelection,
@@ -61,6 +73,8 @@ export {
   setCodexImageGenerationAvailable,
 } from './image-backend'
 export type { AiImageBackend, AiImageBackendContext } from './image-backend'
+export { subscriptionConnectHelpUrl } from './connect-help'
+export type { SubscriptionConnectHelpPath } from './connect-help'
 export {
   SUBSCRIPTION_INSTALL_COMMANDS,
   SUBSCRIPTION_INSTALL_URLS,

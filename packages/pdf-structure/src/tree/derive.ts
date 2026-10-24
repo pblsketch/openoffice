@@ -29,7 +29,7 @@ export interface TextUnit {
 
 export type Translations = ReadonlyMap<string, InlineRun[]>
 
-const cellKey = (tableId: string, row: number, col: number, k: number): string =>
+export const cellKey = (tableId: string, row: number, col: number, k: number): string =>
   `${tableId}#${row}.${col}.${k}`
 
 /** every translatable unit in reading order (body, then footnotes) */

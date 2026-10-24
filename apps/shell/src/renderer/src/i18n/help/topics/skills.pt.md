@@ -4,7 +4,7 @@ Uma habilidade é um conjunto de instruções de trabalho para a IA. Registe uma
 
 ## Ativar e desativar habilidades
 
-**Configurações ▸ Habilidades** lista as habilidades deste PC, agrupadas pela origem. Use a caixa de pesquisa no topo para encontrar uma por título, nome ou descrição.
+**Configurações ▸ Habilidades** lista as habilidades deste PC, agrupadas pela origem. Cada habilidade aparece pelo nome, como nos agentes de programação. Use a caixa de pesquisa no topo para encontrar uma por nome ou descrição.
 
 | Origem                             | O que contém                                                | No início   |
 | ---------------------------------- | ----------------------------------------------------------- | ----------- |
@@ -34,7 +34,7 @@ Por baixo da pré-visualização aparece sempre: «Instale habilidades somente d
 
 - Se minhas habilidades já tiver uma com o mesmo nome, escolha **Substituir** ou **Pular** nessa linha.
 - Ao transferir do GitHub, o GenOffice liga-se apenas a `github.com`, `api.github.com` e `codeload.github.com`, e não envia nenhum dado de início de sessão. Se o pacote for grande demais ou não passar nas verificações de segurança, nada é instalado.
-- **Nova habilidade** abre um editor vazio onde escreve o título, a descrição e as instruções.
+- **Nova habilidade** abre um editor vazio onde escreve o nome, a descrição e as instruções.
 
 ## Verificar atualizações
 
@@ -46,7 +46,7 @@ Por baixo da pré-visualização aparece sempre: «Instale habilidades somente d
 ## Chamar uma habilidade no painel de IA
 
 1. Escreva `/` ou `$` no início da caixa de entrada da IA ou logo a seguir a um espaço. A lista de habilidades ativadas aparece.
-2. Continue a escrever para filtrar a lista. Por exemplo, `/ata` encontra Atas de reunião.
+2. Continue a escrever para filtrar a lista. Por exemplo, `/meet` encontra `meeting-minutes`. As palavras da descrição também servem, por isso `/ata` também a encontra.
 3. Escolha uma com as setas e prima Enter ou Tab. A habilidade passa a ser um chip por cima da caixa de entrada.
 4. Escreva o que quer e envie. O GenOffice acrescenta o conteúdo da habilidade ao pedido.
 
@@ -58,15 +58,15 @@ Por baixo da pré-visualização aparece sempre: «Instale habilidades somente d
 
 ## Habilidades que a IA usa por iniciativa própria
 
-- Para as habilidades ativadas e configuradas como A IA decide, os títulos e as descrições são passados à IA como uma lista. Quando uma corresponde ao pedido, a IA lê o conteúdo dela e usa-a.
-- Quando a IA usa uma habilidade, a conversa mostra «Habilidade 〈título〉 usada».
+- Para as habilidades ativadas e configuradas como A IA decide, os nomes e as descrições são passados à IA como uma lista. Quando uma corresponde ao pedido, a IA lê o conteúdo dela e usa-a.
+- Quando a IA usa uma habilidade, a conversa mostra «Habilidade 〈nome〉 usada».
 - A IA decide pela descrição se vai usar uma habilidade. Uma descrição que diga quando a habilidade deve ser usada ajuda a IA a escolher bem.
 
 ## Criar uma habilidade a pedido
 
 1. No painel de IA, diga algo como «Guarda o que acabámos de fazer como habilidade» ou «Cria uma habilidade que escreva relatórios no estilo da nossa equipa».
 2. A IA separa os passos e as regras que vale a pena repetir e mostra um cartão **Nova habilidade**. Os valores usados só desta vez, como nomes e datas, ficam fora das instruções.
-3. Reveja e edite o título, a descrição e as instruções no cartão. Abra **Avançado** para mudar o nome em inglês.
+3. Reveja e edite o nome, a descrição e as instruções no cartão. O nome é o que a lista de habilidades mostra e o que escreve depois de `/`: letras minúsculas inglesas, algarismos e hífenes.
 4. Clique em **Salvar**. A nova habilidade é adicionada a minhas habilidades, já ativada, e aparece logo na lista de `/`.
 
 - Nenhum ficheiro é gravado até clicar em **Salvar**. Se clicar em **Cancelar**, a conversa guarda-a apenas como «Proposta de habilidade não salva».
@@ -85,7 +85,7 @@ Quando cria uma habilidade no painel de IA de um editor, o documento atual pode 
 - Uma habilidade com modelo mostra **Tem modelo** na lista.
 - Chame-a como chip e envie: uma cópia do modelo abre-se como um novo documento sem título, e a IA desse separador continua o seu pedido. O painel original mantém «O trabalho com o modelo continua numa nova aba» e **Ir para a aba**.
 - Quando a IA escolhe sozinha uma habilidade com modelo, nenhum separador se abre de imediato. Em vez disso, a conversa mostra um botão **Abrir um novo documento com este modelo**.
-- Normalmente escolhe onde fica o novo documento na primeira vez que o guarda. Os editores de Markdown e HTML, e a geração de uma apresentação inteira, guardam na pasta predefinida, como sempre. O ficheiro de modelo em si continua como estava.
+- Normalmente escolhe onde fica o novo documento na primeira vez que o guarda. Os editores de Markdown e HTML guardam na pasta predefinida, como sempre. O ficheiro de modelo em si continua como estava.
 
 ## Habilidades com scripts
 
@@ -95,15 +95,15 @@ Quando cria uma habilidade no painel de IA de um editor, o documento atual pode 
 
 ## Habilidades integradas
 
-| Habilidade                                  | O que faz                                                                                        |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| **Atas de reunião**                         | Transforma notas de reunião numa ata que mostra as decisões e as tarefas                         |
-| **Avisos, boletins e perguntas frequentes** | Escreve avisos, boletins, relatórios de progresso, perguntas frequentes e outros textos internos |
-| **Tirar o tom de IA**                       | Encontra em textos em inglês as expressões que parecem escritas por IA e torna-as naturais       |
-| **Revisar o texto**                         | Revê um texto em inglês já escrito para o tornar mais claro e conciso                            |
-| **Encontrar habilidades**                   | Encontra na janela do agente as habilidades de que precisa e sugere instalá-las                  |
+| Habilidade        | O que faz                                                                                        |
+| ----------------- | ------------------------------------------------------------------------------------------------ |
+| `meeting-minutes` | Transforma notas de reunião numa ata que mostra as decisões e as tarefas                         |
+| `internal-comms`  | Escreve avisos, boletins, relatórios de progresso, perguntas frequentes e outros textos internos |
+| `humanizer`       | Encontra as expressões que parecem escritas por IA e torna-as naturais                           |
+| `copy-editing`    | Revê um texto em inglês já escrito para o tornar mais claro e conciso                            |
+| `find-skills`     | Encontra na janela do agente as habilidades de que precisa e sugere instalá-las                  |
 
-Tirar o tom de IA e Revisar o texto foram feitas para textos em inglês. Encontrar habilidades só funciona na janela do agente.
+`copy-editing` foi feita para textos de marketing em inglês. `find-skills` só funciona na janela do agente.
 
 ## Na janela do agente
 

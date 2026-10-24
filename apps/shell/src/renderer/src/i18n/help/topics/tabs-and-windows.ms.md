@@ -6,7 +6,7 @@ Semua fail yang dibuka berkongsi satu tingkap. Baris tab di atas bertukar antara
 
 ## Asas
 
-- **Bertukar**: klik satu tab, atau skrol roda tetikus pada baris tab untuk berpusing.
+- **Bertukar**: klik tab, tekan **Ctrl+Tab** (seterusnya) / **Ctrl+Shift+Tab** (sebelumnya), atau skrol roda tetikus pada baris tab.
 - **Tutup**: tanda × pada tab, atau ⌘W/ctrl+W. Jika ada perubahan yang belum disimpan, anda akan ditanya dahulu.
 - **Baharu**: tanda + pada hujung kanan baris tab.
 - **Pengaktifan serta-merta**: menekan tab bertukar dengan segera, tanpa menunggu klik selesai.
@@ -57,7 +57,23 @@ Tab Laman Utama, paling kiri, tidak boleh ditutup. Untuk kembali ke sana dari ma
 - Hanya satu tetingkap AI kelihatan. Anak tetingkap tempat anda bekerja memaparkan tetingkapnya; tetingkap anak tetingkap satu lagi melipat menjadi rel, dan mengklik sesuatu anak tetingkap membawa tetingkap AI-nya ke hadapan.
 - Semasa terlipat, perbualan anak tetingkap itu dan kerja AI yang sedang berjalan kekal hidup. Perbualan disimpan bagi setiap dokumen.
 - **Dua salinan dokumen yang sama**: selepas menyimpan dalam satu anak tetingkap, menyimpan dari anak tetingkap satu lagi akan bertanya dahulu "Dokumen ini berubah di tempat lain". Manakala simpan automatik menunggu dengan senyap.
-- **Menjalankan semula aplikasi tanpa fail** mengembalikan pasangan dokumen terpecah terakhir tepat seperti sebelumnya; menjalankannya dengan fail hanya membuka fail itu.
+- Selepas ditutup seperti biasa, **menjalankan semula aplikasi tanpa fail** mengembalikan pasangan dokumen terpecah terakhir tepat seperti sebelumnya; menjalankannya dengan fail hanya membuka fail itu. Selepas tertutup secara tiba-tiba, tab sebelumnya kembali seperti yang diterangkan di bawah.
 - Tab Utama, Bantuan dan Persembahan (pratonton) tidak boleh masuk ke anak tetingkap; semasa salah satunya dibuka, kedua-dua anak tetingkap tersembunyi seketika dan kembali apabila anda kembali ke tab dokumen.
 
 Tiga anak tetingkap atau lebih, pemecahan dalam tetingkap yang dipisahkan, dan penyegerakan langsung kedua-dua salinan ditangguhkan dahulu.
+
+## Apabila aplikasi atau PC tertutup secara tiba-tiba
+
+Selagi sesuatu dokumen mempunyai perubahan yang belum disimpan, GenOffice menyimpan salinan pemulihannya lebih kurang setiap 30 saat dalam folder data aplikasi itu sendiri. Semua editor berbuat demikian, termasuk untuk dokumen baharu yang belum pernah disimpan. Fail anda sendiri tidak berubah sehingga anda menyimpannya.
+
+- **Tab anda kembali**: jika aplikasi atau PC tertutup tanpa ditutup seperti biasa (bekalan elektrik terputus, ranap, aplikasi dipaksa tutup, PC dimatikan atau dimulakan semula untuk kemas kini), tab dokumen yang terbuka akan kembali apabila GenOffice dijalankan selepas itu, dalam susunan yang sama dan dengan paparan terpecah jika anda menggunakannya. Ini juga berlaku jika anda menjalankannya dengan membuka fail.
+- **Satu senarai di Laman Utama**: dokumen yang masih mempunyai kandungan belum disimpan disenaraikan bersama di skrin Laman Utama. Pilih **Pulihkan** atau **Buang** bagi setiap satu, atau gunakan **Pulihkan semua** atau **Buang semua**, kemudian tekan **Sahkan**. Jika program lain atau perkhidmatan penyegerakan mengubah fail itu kemudiannya, **Buang** dipilih dahulu supaya fail kekal seperti sekarang. Jika fail asal tidak lagi ditemui, memulihkannya membuka kandungan sebagai dokumen baharu tanpa tajuk.
+- **Tentukan kemudian**: menutup senarai tidak memadamkan apa-apa. Apabila anda membuka salah satu dokumen itu buat kali pertama, kotak yang memaparkan namanya akan bertanya lagi; menekan Esc atau menutup kotak bermakna memulihkannya. Jika kandungan yang dipulihkan tidak diperlukan, tutup dokumen dengan **Jangan Simpan**.
+- **Tab dimuatkan apabila dibuka**: tab yang dipulihkan memaparkan tajuknya dengan serta-merta, tetapi setiap dokumen hanya dimuatkan apabila anda mengklik tabnya buat kali pertama. Membuka semuanya serentak boleh menyebabkan PC yang kekurangan memori tertutup semula.
+- **Apabila PC dimatikan**: jika ada dokumen yang belum disimpan, GenOffice tidak bertanya sama ada hendak menyimpannya. Aplikasi menyimpan salinan, menutup diri dan menawarkannya semasa dijalankan seterusnya.
+- **Dokumen tanpa salinan**: fail Excel, HWP dan PDF yang dilindungi kata laluan tidak mendapat salinan pemulihan, jadi perubahannya yang belum disimpan tidak dapat dipulihkan; satu notis memberitahu hal ini sekali apabila dokumen sedemikian dibuka. Simpan dokumen ini dengan kerap. Dokumen Word dan PowerPoint yang dilindungi kata laluan mendapat salinan yang dikunci dengan kata laluan yang sama.
+- **Fail CSV, .xls lama dan .tsv**: editor hamparan menyimpan salinannya sebagai buku kerja tanpa tajuk. Apabila dipulihkan, ia dibuka sebagai buku kerja tanpa tajuk, dan simpanan pertamanya mencadangkan folder dan nama fail asal sebagai .xlsx.
+
+Salinan dipadamkan apabila anda menyimpan dokumen, menutupnya dengan **Jangan Simpan** atau memilih **Buang**, dan juga selepas 30 hari tanpa perubahan. Selepas ditutup seperti biasa, GenOffice bermula seperti dahulu tanpa mengembalikan tab.
+
+**Ini bukan Autosimpan.** Autosimpan menulis perubahan ke dalam fail itu sendiri, dan hanya selepas anda menyimpannya sekali. Salinan pemulihan tidak pernah menyentuh fail anda; ia hanya menyimpan apa yang belum anda simpan, sehingga anda menyimpan atau membuangnya.

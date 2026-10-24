@@ -615,11 +615,18 @@ export function detectStreamTables(
   // wrapped-label absorption runs in the base pass too since P27 (journal
   // tables interleave 1-unit label wraps between their value rows); the
   // findCandidates flush() pop keeps trailing absorbs from gluing prose
-  const base = detectPass(units, shapes, latticeBoxes, {
+  const baseOpts: PassOptions = {
     absorbNarrowRows: true,
     strongRunsOnly: true,
     relaxKeyValue: opts.relaxKeyValue,
-  })
+  }
+  const base = splitSideBySide(
+    units,
+    detectPass(units, shapes, latticeBoxes, baseOpts),
+    shapes,
+    latticeBoxes,
+    baseOpts,
+  )
   if (!opts.slideRegions) return base
 
   // slide second pass (P16 E): absolute side-by-side placement interleaves a
@@ -633,6 +640,103 @@ export function detectStreamTables(
   if (region.tables.length === 0) return base
   const tables = [...base.tables, ...region.tables].sort((a, b) => b.box.y1 - a.box.y1)
   return { tables, remainingUnits: region.remainingUnits }
+}
+
+// ── side-by-side tables across a page gutter ──
+// A two-column paper sets one table atop each column at the same height
+// (BERT p7: Table 2 left, Table 4 right). The whole-page row clustering
+// joins their header rows, solves the gutter as one more column valley and
+// mints one table out of both — the rest of each table's rows then drop out
+// of the run, interleaved with the other column's prose.
+
+/** a gutter needs at least this many prose lines on each side */
+const GUTTER_MIN_PROSE_LINES = 3
+/** …and is at least this wide (pt) */
+const PAGE_GUTTER_MIN_PT = 9
+/** a table straddling a gutter is one table only when this share of its rows
+ * has content on both sides (a full-width table's rows run across it) */
+const SIDE_BY_SIDE_MAX_SHARED_ROWS = 0.5
+
+/** x-gaps no prose line crosses, with prose on both sides (page column gutters) */
+function pageGutters(units: readonly LineUnit[]): Interval[] {
+  const prose = units.filter(
+    (u) => u.box.x1 - u.box.x0 >= PROSE_WIDTH_EMS * u.fontSize && u.wordCount >= SENTENCE_WORDS_MIN,
+  )
+  const spans = mergeIntervals(prose.map((u) => ({ lo: u.box.x0, hi: u.box.x1 })))
+  const gutters: Interval[] = []
+  for (let i = 1; i < spans.length; i++) {
+    const g = { lo: spans[i - 1]!.hi, hi: spans[i]!.lo }
+    if (g.hi - g.lo < PAGE_GUTTER_MIN_PT) continue
+    const left = prose.filter((u) => u.box.x1 <= g.lo).length
+    const right = prose.filter((u) => u.box.x0 >= g.hi).length
+    if (left >= GUTTER_MIN_PROSE_LINES && right >= GUTTER_MIN_PROSE_LINES) gutters.push(g)
+  }
+  return gutters
+}
+
+const crosses = (r: Rect, g: Interval): boolean => r.x0 < g.hi && r.x1 > g.lo
+const centerIn = (u: LineUnit, b: Rect): boolean => {
+  const cx = (u.box.x0 + u.box.x1) / 2
+  const cy = (u.box.y0 + u.box.y1) / 2
+  return cx >= b.x0 && cx <= b.x1 && cy >= b.y0 && cy <= b.y1
+}
+
+/** the table is two tables, one each side of the gutter */
+function isSideBySide(table: TableBlock, own: readonly LineUnit[], g: Interval): boolean {
+  if (table.box.x0 >= g.lo || table.box.x1 <= g.hi) return false
+  if (own.some((u) => crosses(u.box, g))) return false
+  const rows = clusterUnitRows(own)
+  const shared = rows.filter(
+    (r) => r.units.some((u) => u.box.x1 <= g.lo) && r.units.some((u) => u.box.x0 >= g.hi),
+  ).length
+  return rows.length > 0 && shared / rows.length < SIDE_BY_SIDE_MAX_SHARED_ROWS
+}
+
+/**
+ * Tables straddling a page gutter as two independent grids come apart: each
+ * side of the gutter is detected on its own (units crossing the gutter stay
+ * in the flow), the other tables stand.
+ */
+function splitSideBySide(
+  units: readonly LineUnit[],
+  res: DetectedStreamTables,
+  shapes: PageShapes,
+  latticeBoxes: readonly Rect[],
+  o: PassOptions,
+): DetectedStreamTables {
+  if (res.tables.length === 0) return res
+  const remaining = new Set(res.remainingUnits)
+  const ownOf = (t: TableBlock): LineUnit[] =>
+    units.filter((u) => !remaining.has(u) && centerIn(u, t.box))
+  for (const g of pageGutters(units)) {
+    const split = res.tables.filter((t) => isSideBySide(t, ownOf(t), g))
+    if (split.length === 0) continue
+    const kept = res.tables.filter((t) => !split.includes(t))
+    const claimed = [...latticeBoxes, ...kept.map((t) => t.box)]
+    const free = units.filter((u) => remaining.has(u) || split.some((t) => centerIn(u, t.box)))
+    const left = detectPass(
+      free.filter((u) => u.box.x1 <= g.lo),
+      shapes,
+      claimed,
+      o,
+    )
+    const right = detectPass(
+      free.filter((u) => u.box.x0 >= g.hi),
+      shapes,
+      claimed,
+      o,
+    )
+    const flow = new Set([
+      ...free.filter((u) => crosses(u.box, g)),
+      ...left.remainingUnits,
+      ...right.remainingUnits,
+    ])
+    return {
+      tables: [...kept, ...left.tables, ...right.tables].sort((a, b) => b.box.y1 - a.box.y1),
+      remainingUnits: units.filter((u) => flow.has(u)),
+    }
+  }
+  return res
 }
 
 export interface StreamOptions {

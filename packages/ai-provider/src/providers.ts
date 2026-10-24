@@ -1,3 +1,4 @@
+import { openAiSecrets } from './settings-secrets'
 import { resolveCustomEndpoints } from './custom-endpoints'
 import { defaultAiMediaSettings, resolveAiMediaSettings } from './media'
 import { defaultAiSearchSettings, resolveAiSearchSettings } from './search-settings'
@@ -580,7 +581,9 @@ function migrateRetiredModels(providers: AiSettings['providers']): AiSettings['p
  * settings file (already JSON-parsed); this function does no file I/O.
  */
 export function resolveAiSettings(stored: unknown, defaults: AiSettings): AiSettings {
-  const settings = (isRecord(stored) ? stored : {}) as Partial<AiSettings> & LegacyAiSettings
+  // sealed keys open here, so every reader of the file gets them plain (decision 0063)
+  const settings = (isRecord(stored) ? openAiSecrets(stored) : {}) as Partial<AiSettings> &
+    LegacyAiSettings
   const readUrl = readUrlSettingsOf(settings.readUrl ?? defaults.readUrl)
   const storedProviders = isRecord(settings.providers) ? settings.providers : undefined
   if (!storedProviders) {
@@ -617,6 +620,9 @@ export function resolveAiSettings(stored: unknown, defaults: AiSettings): AiSett
     ),
     subscriptionNoticeSeen:
       (settings.subscriptionNoticeSeen ?? defaults.subscriptionNoticeSeen) === true,
+    ...((settings.internetTools ?? defaults.internetTools) === false
+      ? { internetTools: false }
+      : {}),
     // clamped on read: a hand-edited settings file with an absurd cap must not be
     // forwarded to the endpoint verbatim
     ...(settings.maxOutputTokens !== undefined || defaults.maxOutputTokens !== undefined

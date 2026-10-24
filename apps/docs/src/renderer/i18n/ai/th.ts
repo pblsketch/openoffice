@@ -66,6 +66,8 @@ export const th = {
   aiEmptyTitle: 'ให้ AI ช่วยคุณเขียนและแก้ไข',
   aiEmptyBody1: 'สามารถสั่งงานหรือถามคำถามได้โดยตรง',
   aiEmptyBody2: 'เมื่อเลือกข้อความไว้ คำสั่งเขียนใหม่จะมีผลกับส่วนที่เลือก',
+  aiNoHidingNote:
+    'ตัวแก้ไขนี้ซ่อนบางส่วนของเอกสารจาก AI ไม่ได้ เนื้อหาที่คำขอครอบคลุมจะถูกส่งไปตามเดิม',
   aiStarterWeeklyReport: 'ช่วยเขียนรายงานประจำสัปดาห์ของโครงการ',
   aiStarterLaunchPost: 'เขียนประกาศเปิดตัวผลิตภัณฑ์',
   aiStarterEventOutline: 'ร่างโครงร่างแผนจัดกิจกรรม',
@@ -177,4 +179,17 @@ export const th = {
   aiCmdImages: 'อัปเดตรูปภาพ {count} รูปแล้ว',
   aiCmdToc: 'แทรกสารบัญแล้ว ({count} รายการ)',
   aiCmdSkipped: ' (ข้ามบล็อกที่ได้รับการป้องกัน {count} บล็อก)',
+  aiStarterMindMap: 'สร้างแผนที่ความคิดของเอกสารนี้',
+  aiMindMapBtn: 'แผนที่ความคิด AI',
+  aiMindMapPrompt:
+    'สร้างแผนที่ความคิดของเอกสารนี้ โดยจัดเรียงหัวข้อหลักและแนวคิดสำคัญตามโครงสร้างส่วนต่างๆ',
+  aiSumMindMap: 'สร้างแผนที่ความคิด',
+  aiMindMapTitle: 'แผนที่ความคิด',
+  aiMindMapNodes: '{count} โหนด',
+  aiMindMapAskPrompt: 'บอกฉันเกี่ยวกับ「{label}」ในเอกสารนี้',
+  aiMindMapJump: 'ไปยังย่อหน้าที่อ้างอิง',
+  aiMindMapExport: 'ส่งออก PNG',
+  aiMindMapReset: 'รีเซ็ตมุมมอง',
+  aiMindMapExpand: 'ขยายสาขา',
+  aiMindMapCollapse: 'ย่อสาขา',
 } satisfies Record<keyof typeof zh, string>

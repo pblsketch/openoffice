@@ -6,7 +6,7 @@ Todos los archivos abiertos comparten una sola ventana; la barra de pestañas de
 
 ## Fundamentos
 
-- **Cambiar**: haga clic en una pestaña o gire la rueda sobre la barra para recorrerlas.
+- **Cambiar**: haga clic en una pestaña, pulse **Ctrl+Tab** (siguiente) / **Ctrl+Mayús+Tab** (anterior), o gire la rueda sobre la barra.
 - **Cerrar**: la × de la pestaña, o ⌘W/ctrl+W. Si hay cambios sin guardar, pregunta primero.
 - **Nuevo**: el + al extremo derecho de la barra.
 - **La activación es inmediata**: al pulsar una pestaña ya se cambia, sin esperar a que termine el clic.
@@ -57,7 +57,23 @@ La pestaña Inicio de la izquierda no se puede cerrar; para volver desde cualqui
 - Solo se ve una ventana de IA. El panel en el que trabaja muestra la suya; la del otro panel se repliega en un riel, y al hacer clic en un panel su ventana de IA pasa al frente.
 - Mientras está replegada, la conversación de ese panel y el trabajo de IA en curso siguen vivos. Las conversaciones se guardan por documento.
 - **Dos copias del mismo documento**: después de guardar en un panel, guardar desde el otro pregunta primero «Este documento cambió en otro lugar». El guardado automático espera en silencio.
-- **Al reiniciar la aplicación sin archivo**, vuelve la última pareja de documentos divididos tal como estaba; al abrirla con un archivo, solo se abre ese archivo.
+- Tras un cierre normal, **al reiniciar la aplicación sin archivo** vuelve la última pareja de documentos divididos tal como estaba; al abrirla con un archivo, solo se abre ese archivo. Tras un apagado repentino, las pestañas anteriores vuelven como se describe más abajo.
 - Las pestañas Inicio, Ayuda y Presentación (vista previa) no pueden entrar en un panel; mientras una está abierta, los dos paneles se ocultan un momento y vuelven al regresar a una pestaña de documento.
 
 Tres o más paneles, la división dentro de una ventana separada y la sincronización en vivo de las dos copias quedan para más adelante.
+
+## Cuando la aplicación o el PC se apagan de repente
+
+Mientras un documento tiene cambios sin guardar, GenOffice guarda una copia de recuperación cada 30 segundos aproximadamente en la carpeta de datos de la propia aplicación. Lo hacen todos los editores, también con un documento nuevo que nunca se ha guardado. Su archivo no cambia hasta que guarde.
+
+- **Sus pestañas vuelven**: si la aplicación o el PC se apagaron sin cerrarse con normalidad (un corte de luz, un fallo, la aplicación cerrada a la fuerza, el PC apagado o reiniciado por una actualización), las pestañas de documentos que estaban abiertas vuelven la próxima vez que inicie GenOffice, en el mismo orden y con la vista dividida si la tenía. También ocurre si la inicia abriendo un archivo.
+- **Una sola lista en Inicio**: los documentos que aún tienen contenido sin guardar aparecen juntos en la pantalla de Inicio. Elija **Restaurar** o **Descartar** para cada uno, o use **Restaurar todo** o **Descartar todo**, y pulse **Aceptar**. Si otro programa o un servicio de sincronización cambió el archivo después, **Descartar** aparece seleccionado al principio para que el archivo se quede como está. Si ya no se encuentra el archivo original, al restaurarlo el contenido se abre como un documento nuevo sin título.
+- **Decidir más tarde**: cerrar la lista no borra nada. La primera vez que abra uno de esos documentos, un cuadro con su nombre volverá a preguntar; pulsar Esc o cerrar el cuadro lo restaura. Si no necesita el contenido restaurado, cierre el documento con **No guardar**.
+- **Las pestañas se cargan al abrirlas**: las pestañas restauradas muestran su título enseguida, pero cada documento se carga solo cuando hace clic en su pestaña por primera vez. Abrirlo todo a la vez podría hacer que un PC con poca memoria se apagara otra vez.
+- **Al apagar el PC**: si hay documentos sin guardar, GenOffice no pregunta si quiere guardarlos. Conserva las copias, se cierra y las ofrece en el siguiente inicio.
+- **Documentos sin copia**: los archivos de Excel, HWP y PDF protegidos con contraseña no tienen copia de recuperación, así que sus cambios sin guardar no se pueden restaurar; un aviso lo indica una vez al abrir un documento así. Guárdelos a menudo. Los documentos de Word y PowerPoint con contraseña tienen una copia bloqueada con la misma contraseña.
+- **Archivos CSV, .xls antiguos y .tsv**: el editor de hojas de cálculo guarda su copia como un libro sin título. Al restaurarla se abre como un libro sin título, y al guardarla por primera vez se propone la carpeta y el nombre del archivo original como .xlsx.
+
+Una copia se borra cuando guarda el documento, lo cierra con **No guardar** o elige **Descartar**, y también tras 30 días sin cambios. Después de un cierre normal, GenOffice se inicia como antes y no recupera pestañas.
+
+**Esto no es el autoguardado.** El autoguardado escribe los cambios en el propio archivo, y solo después de haberlo guardado una vez. Una copia de recuperación nunca toca su archivo; solo conserva lo que aún no ha guardado, hasta que lo guarde o lo descarte.

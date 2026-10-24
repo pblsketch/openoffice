@@ -19,7 +19,7 @@ export const zh = {
   cardErrFailed: '检查 {provider} 时出现问题。请重新检查。',
   actionInstall: '安装',
   actionLogin: '登录',
-  actionLoginWindow: '浏览器没有打开，或显示了代码？',
+  actionLoginWindow: '浏览器没有打开？',
   actionRecheck: '重新检查',
   actionAcceptMetered: '仍然使用',
   actionInstallHelp: '官方安装说明',
@@ -31,7 +31,7 @@ export const zh = {
   loginNote: '打开的登录页面由 {vendor} 提供。',
   signingInBrowserNote: '请在打开的浏览器中登录你的 {vendor} 账户并允许访问。完成后会自动连接。',
   signingInWindowNote:
-    '如果浏览器没有打开，请复制刚打开的窗口中显示的网址，在浏览器中打开。浏览器显示代码时，请复制它，在该窗口中粘贴一次，然后按 Enter。粘贴的代码可能不会显示在窗口中。',
+    '请按照刚打开的登录窗口顶部的说明操作。在浏览器中新打开的 {vendor} 登录页面登录后，窗口会自动关闭并完成连接。之前打开的登录页面已不再可用，请关闭它。',
   meteredWarning: '这不是订阅，而是按实际用量收费。',
   meteredMeaning:
     '当前登录使用的是 API 密钥或按量付费账户，或者无法确认登录方式。选择“仍然使用”后，AI 将通过此连接运行，每次请求都会向该账户计费。',
@@ -98,12 +98,25 @@ export const zh = {
   installReturnNote: '在那个窗口中安装完成后，请回到这里。应用会自动重新检查。',
   loginHowNote: '按下后会打开浏览器。用你的 {vendor} 账户登录并点击允许，就会自动完成连接。',
   signingInStalledNote:
-    '浏览器没有打开，或者显示了代码？请用下面的按钮打开登录窗口。把窗口中显示的网址粘贴到浏览器，或把浏览器中的代码粘贴到窗口里即可。',
+    '如果浏览器中没有打开登录页面，请用下面的按钮打开登录窗口。如果你还在浏览器中登录，请不要按，先在浏览器中完成。按下按钮会停止当前的登录并重新开始。',
   actionLoginWindowOpen: '打开登录窗口',
+  loginWindowTitle: '{provider} 登录',
+  loginWindowIntro: '这是 {provider} 程序的登录窗口。下面的英文内容是 {provider} 程序显示的说明。',
+  loginWindowStepBrowser:
+    '浏览器中打开 {vendor} 登录页面后，请登录并点击允许。完成后此窗口会自动关闭。',
+  loginWindowStepAddress:
+    '如果浏览器没有打开，请用鼠标拖选下面以 https:// 开头的网址，然后点击鼠标右键复制。把它粘贴到浏览器的地址栏即可打开登录页面。',
+  loginWindowStepCode:
+    '登录后如果浏览器显示代码，请复制完整的代码（有复制按钮就用它）。在此窗口内点击一次鼠标右键粘贴，然后按 Enter。粘贴的代码不显示是正常的。',
+  loginWindowStepInvalid:
+    '如果出现 "Invalid code"，说明代码没有复制完整。请不要关闭此窗口，重新复制代码并粘贴。',
+  loginWindowClosing:
+    '登录没有完成。看完上面的信息后，按 Enter 关闭此窗口。要重试，请再次点击登录按钮。',
   actionCancelLogin: '取消登录',
   actionUpdate: '更新',
   updateNote: '按下后会在新窗口中运行 {vendor} 的官方更新。在那个窗口中更新完成后，请回到这里。',
   guideInfoHint: '还是不行？复制连接信息，发给帮助你的人。其中不包含账户和文件路径。',
   actionCopyInfo: '复制求助信息',
   copyInfoDone: '已复制',
+  actionConnectHelp: '查看每一步的画面演示（韩语页面）',
 }

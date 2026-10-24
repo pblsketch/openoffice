@@ -87,6 +87,7 @@ export const it = {
   ribbonFontEastAsia: 'Carattere asiatico orientale',
   ribbonFontLatin: 'Carattere latino',
   ribbonFontFamilyTip: 'Tipo di carattere',
+  ribbonFontDialogTip: 'Carattere — scala e spaziatura dei caratteri nella scheda Avanzate',
   ribbonFontsCommon: 'Caratteri comuni',
   ribbonFontsSystem: 'Caratteri di sistema',
   ribbonFontsHangul: 'Caratteri coreani',

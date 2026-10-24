@@ -71,11 +71,13 @@ export const th = {
   hlAccept: 'ยอมรับ',
   hlDismiss: 'ทิ้ง',
   hlAcceptAll: 'ยอมรับทั้งหมด ({count})',
+  hlAcceptAllSave: 'ยอมรับทั้งหมดและบันทึก ({count})',
   hlDismissAll: 'ทิ้งข้อเสนอทั้งหมด',
   hlSuggestionCount: 'ข้อเสนอไฮไลต์ของ AI {count} รายการ',
   hlNotFoundTip: 'ไม่พบประโยคนี้ในข้อความของหน้า จึงยอมรับไม่ได้',
   hlWaitingSave: 'รอบันทึก',
   hlWaitingSaveTip: 'บันทึก PDF เพื่อใส่ไฮไลต์ลงในไฟล์',
   hlAcceptedNotice: 'เพิ่มไฮไลต์ {count} รายการแล้ว บันทึก PDF เพื่อใส่ลงในไฟล์',
+  hlAcceptedSaved: 'บันทึกไฮไลต์ {count} รายการแล้ว',
   hlDismissFailed: 'ทิ้งข้อเสนอไม่ได้',
 } satisfies Record<keyof typeof zh, string>

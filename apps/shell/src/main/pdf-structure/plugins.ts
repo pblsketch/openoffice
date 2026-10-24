@@ -73,10 +73,13 @@ export class NotAvailableError extends Error {
 }
 
 /** the payload a translated-PDF request carries: the target language */
-export function translatedPdfPayloadOf(payload: unknown): { lang: string } | null {
+export function translatedPdfPayloadOf(
+  payload: unknown,
+): { lang: string; bilingual?: true } | null {
   if (typeof payload !== 'object' || payload === null) return null
-  const lang = (payload as { lang?: unknown }).lang
-  return isTranslationLanguage(lang) ? { lang } : null
+  const { lang, bilingual } = payload as { lang?: unknown; bilingual?: unknown }
+  if (!isTranslationLanguage(lang)) return null
+  return bilingual === true ? { lang, bilingual } : { lang }
 }
 
 /**
@@ -92,7 +95,7 @@ export const translatedPdfWriter: TranslatedPdfWriter | null = async (input) => 
   if (!input.translations || !input.hbSubsetWasm) {
     throw new NotAvailableError('the translated PDF cannot be written here')
   }
-  const { lang } = payload
+  const { lang, bilingual } = payload
   const stored = await input.translations(input.docHash, lang)
   const translated = buildTranslatedTree(input.tree, lang, stored)
   const result = await writeTranslatedPdf(input.pdf, {
@@ -102,6 +105,8 @@ export const translatedPdfWriter: TranslatedPdfWriter | null = async (input) => 
     translated,
     ...(input.ocr ? { ocr: input.ocr } : {}),
     ...(input.fontLocator ? { fontLocator: input.fontLocator } : {}),
+    // each source page beside its translated page (decision 0057)
+    ...(bilingual ? { bilingual } : {}),
     onProgress: (done, total) => input.onProgress(done, total),
   })
   const report: PdfTranslatedPdfReport = {

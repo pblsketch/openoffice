@@ -11,7 +11,8 @@ export const es = {
   trFormatPdf: 'PDF traducido',
   trFormatMd: 'Markdown traducido',
   trFormatEpub: 'EPUB traducido',
-  trBilingual: 'Bilingüe: cada párrafo original seguido de su traducción (solo Markdown y EPUB)',
+  trBilingual:
+    'Bilingüe: en Markdown y EPUB cada párrafo original va seguido de su traducción; en el PDF cada página traducida va junto a su página original',
   trPdfEncrypted:
     'Este documento está cifrado, así que no se puede escribir un PDF traducido. Markdown y EPUB siguen disponibles.',
   trPdfScript:
@@ -59,7 +60,8 @@ export const es = {
   trReportPending: '{count} bloques aún no están traducidos y quedan en el idioma original.',
   trReportNone: 'Se tradujeron todos los bloques.',
   trReportUntranslated: 'Bloques que quedan en el idioma original',
-  trReportOverflowed: 'Bloques que se salen de su recuadro: {count} (páginas {pages})',
+  trReportOverflowed:
+    'Bloques que se dejaron en el idioma original por falta de espacio: {count} (páginas {pages})',
   trReportOriginalPages: 'Páginas que se dejaron como estaban',
   trReportFiles: 'Archivos guardados',
   trReasonLine: '{reason}: páginas {pages} ({count} bloques)',

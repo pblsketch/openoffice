@@ -18,6 +18,11 @@ export const strings = {
     askIntro: '基于你收藏的文件提问,回答会标注来源文件,点击即可打开。',
     askToolSearch: '搜索知识库',
     askToolRead: '读取文件',
+    askToolCreate: '生成文档',
+    askSaveMd: '保存为 Markdown',
+    askSaveDocx: '保存为 Word',
+    askSavedAs: '已保存:{name}',
+    askSaveFailed: '保存失败:{error}',
     askEmptyCorpus: '知识库还是空的:先收藏一些文件,再回来提问。',
     askPlaceholder: '问一个关于收藏文件的问题…',
     askHintIdle: 'Enter 发送',
@@ -182,6 +187,9 @@ export const strings = {
     setSearchRerank: 'Jev 搜索重排',
     setSearchRerankDesc:
       '把本机搜索的前 20 条命中片段发给 TypeSafe 的 Jev 模型，按相关性重新排序。默认关闭；开启后命中片段会离开本机。',
+    setAiInternetTools: '允许 AI 使用互联网工具',
+    setAiInternetToolsDesc:
+      '网页搜索、读取网页、按地址获取图片，以及生成和分析图片。关闭后，编辑器中的 AI 不再使用这些工具。开启时，对话中没出现过的地址会在获取前先询问你。AI 对话本身不受影响。',
     setSearchRerankEndpoint: 'Jev 端点',
     searchRerankedBy: '已由 Jev 按相关性重排',
     searchJevSettings: 'Jev 语义排序',
@@ -205,8 +213,13 @@ export const strings = {
     setDefaultAppOpenSettings: '打开系统设置',
     setDefaultAppFailed: '设置失败，请在系统设置中手动更改。',
     setAiSpellcheckDesc: '在 AI 对话输入框中输入时标出拼写错误的单词。',
+    setAiShowSidebar: '显示 AI 侧栏',
+    setAiShowSidebarDesc:
+      '关闭后，编辑器会隐藏 AI 侧栏和侧边按钮；功能区或菜单里的 AI 操作仍会打开面板，新文档也不会自动打开。',
     setAiOpenInNewDocs: '新文档中打开 AI 面板',
     setAiOpenInNewDocsDesc: '关闭后，新打开的文档默认收起 AI 面板；需要时点一下即可展开。',
+    setAuthorName: '用户名',
+    setAuthorNameDesc: '作为批注和修订的作者显示在 Docs、Sheets、Slides 中。留空则使用电脑账户名。',
     settings: '设置',
     setSecAccount: '账户',
     setSecGeneral: '通用',
@@ -501,6 +514,11 @@ export const strings = {
     askIntro: 'Ask about your starred files. Answers cite their sources — click one to open it.',
     askToolSearch: 'Searching the knowledge base',
     askToolRead: 'Reading a file',
+    askToolCreate: 'Creating a document',
+    askSaveMd: 'Save as Markdown',
+    askSaveDocx: 'Save as Word',
+    askSavedAs: 'Saved: {name}',
+    askSaveFailed: 'Could not save: {error}',
     askEmptyCorpus: 'The knowledge base is empty: star some files first, then ask.',
     askPlaceholder: 'Ask about your starred files…',
     askHintIdle: 'Enter to send',
@@ -665,6 +683,9 @@ export const strings = {
     setSearchRerank: 'Jev search reranking',
     setSearchRerankDesc:
       "Sends the top 20 local hits' excerpts to TypeSafe's Jev model and reorders them by relevance. Off by default; when on, excerpts leave this device.",
+    setAiInternetTools: 'Let AI use internet tools',
+    setAiInternetToolsDesc:
+      'Web search, reading web pages, fetching pictures by address, and making and analyzing images. Off: the editors’ AI works without them. On: an address that has not appeared in the conversation is asked about before it is fetched. The AI conversation itself is not affected.',
     setSearchRerankEndpoint: 'Jev endpoint',
     searchRerankedBy: 'Reordered by relevance with Jev',
     searchJevSettings: 'Jev semantic reranking',
@@ -688,9 +709,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'Open system settings',
     setDefaultAppFailed: 'Could not change it. Please set it in the system settings.',
     setAiSpellcheckDesc: 'Underline misspelled words while typing in the AI chat input.',
+    setAiShowSidebar: 'Show the AI sidebar',
+    setAiShowSidebarDesc:
+      'When off, the editors hide the AI sidebar and its side button; an AI action in the ribbon or a menu still opens the panel, and new documents never open it.',
     setAiOpenInNewDocs: 'Open the AI panel in new documents',
     setAiOpenInNewDocsDesc:
       'When off, newly opened documents start with the AI panel collapsed; it is one click away when needed.',
+    setAuthorName: 'User name',
+    setAuthorNameDesc:
+      'Shown as the author of comments and tracked changes in Docs, Sheets and Slides. Leave blank to use your computer account name.',
     settings: 'Settings',
     setSecAccount: 'Account',
     setSecGeneral: 'General',
@@ -1003,6 +1030,11 @@ export const strings = {
     askIntro: 'Hỏi về các tệp bạn đã đánh dấu. Câu trả lời dẫn nguồn — nhấp để mở.',
     askToolSearch: 'Đang tìm cơ sở tri thức',
     askToolRead: 'Đang đọc tệp',
+    askToolCreate: 'Đang tạo tài liệu',
+    askSaveMd: 'Lưu dưới dạng Markdown',
+    askSaveDocx: 'Lưu dưới dạng Word',
+    askSavedAs: 'Đã lưu: {name}',
+    askSaveFailed: 'Không thể lưu: {error}',
     askEmptyCorpus: 'Cơ sở tri thức trống: hãy đánh dấu tệp trước rồi hỏi.',
     askPlaceholder: 'Hỏi về các tệp đã đánh dấu…',
     askHintIdle: 'Enter để gửi',
@@ -1167,6 +1199,9 @@ export const strings = {
     setSearchRerank: 'Sắp xếp lại kết quả tìm kiếm Jev',
     setSearchRerankDesc:
       'Gửi đoạn trích của 20 kết quả hàng đầu cục bộ tới mô hình Jev của TypeSafe và sắp xếp lại theo mức độ liên quan. Tắt theo mặc định; khi bật, các đoạn trích sẽ được gửi ra ngoài thiết bị này.',
+    setAiInternetTools: 'Cho phép AI dùng công cụ internet',
+    setAiInternetToolsDesc:
+      'Tìm kiếm web, đọc trang web, lấy hình theo địa chỉ, tạo và phân tích hình ảnh. Khi tắt, AI trong trình soạn thảo làm việc mà không có chúng. Khi bật, địa chỉ chưa xuất hiện trong cuộc trò chuyện sẽ được hỏi trước khi tải. Bản thân cuộc trò chuyện với AI không bị ảnh hưởng.',
     setSearchRerankEndpoint: 'Điểm cuối Jev',
     searchRerankedBy: 'Được sắp xếp lại theo mức độ liên quan với Jev',
     searchJevSettings: 'Sắp xếp lại ngữ nghĩa Jev',
@@ -1190,9 +1225,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'Mở cài đặt hệ thống',
     setDefaultAppFailed: 'Không thể thay đổi. Vui lòng đặt trong cài đặt hệ thống.',
     setAiSpellcheckDesc: 'Gạch chân các từ sai chính tả khi nhập vào ô trò chuyện AI.',
+    setAiShowSidebar: 'Hiện thanh bên AI',
+    setAiShowSidebarDesc:
+      'Khi tắt, trình soạn thảo ẩn thanh bên AI và nút bên; thao tác AI trong dải công cụ hoặc trình đơn vẫn mở bảng AI, và tài liệu mới sẽ không mở nó.',
     setAiOpenInNewDocs: 'Mở bảng AI trong tài liệu mới',
     setAiOpenInNewDocsDesc:
       'Khi tắt, tài liệu mới mở sẽ thu gọn bảng AI; chỉ cần một lần bấm để mở lại khi cần.',
+    setAuthorName: 'Tên người dùng',
+    setAuthorNameDesc:
+      'Hiển thị là tác giả của nhận xét và thay đổi được theo dõi trong Docs, Sheets và Slides. Để trống để dùng tên tài khoản máy tính.',
     settings: 'Cài đặt',
     setSecAccount: 'Tài khoản',
     setSecGeneral: 'Chung',
@@ -1507,6 +1548,11 @@ export const strings = {
     askIntro: 'スター付きファイルについて質問できます。回答には出典が付き、クリックで開けます。',
     askToolSearch: 'ナレッジベースを検索中',
     askToolRead: 'ファイルを読み込み中',
+    askToolCreate: 'ドキュメントを作成中',
+    askSaveMd: 'Markdown として保存',
+    askSaveDocx: 'Word として保存',
+    askSavedAs: '保存済み: {name}',
+    askSaveFailed: '保存できませんでした: {error}',
     askEmptyCorpus: 'ナレッジベースは空です:先にファイルをスターしてから質問してください。',
     askPlaceholder: 'スター付きファイルについて質問…',
     askHintIdle: 'Enter で送信',
@@ -1678,6 +1724,9 @@ export const strings = {
     setSearchRerank: 'Jev 検索リランク',
     setSearchRerankDesc:
       'ローカル検索の上位 20 件の抜粋を TypeSafe の Jev モデルに送り、関連度で並べ替えます。既定ではオフ。オンにすると抜粋が端末外に送信されます。',
+    setAiInternetTools: 'AI にインターネットツールを使わせる',
+    setAiInternetToolsDesc:
+      'Web 検索、Web ページの読み取り、アドレスからの画像取得、画像の生成と分析です。オフにすると、エディターの AI はこれらを使いません。オンのときも、会話に出てこなかったアドレスは取得前に確認します。AI との会話そのものには影響しません。',
     setSearchRerankEndpoint: 'Jev エンドポイント',
     searchRerankedBy: 'Jev が関連度で並べ替えました',
     searchJevSettings: 'Jev セマンティック並べ替え',
@@ -1702,9 +1751,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'システム設定を開く',
     setDefaultAppFailed: '変更できませんでした。システム設定で設定してください。',
     setAiSpellcheckDesc: 'AI チャットの入力欄で入力中にスペルミスの単語に下線を表示します。',
+    setAiShowSidebar: 'AI サイドバーを表示',
+    setAiShowSidebarDesc:
+      'オフにすると、エディターは AI サイドバーとサイドボタンを非表示にします。リボンやメニューの AI 操作ならパネルを開けますが、新規ドキュメントでは自動的に開きません。',
     setAiOpenInNewDocs: '新しいドキュメントで AI パネルを開く',
     setAiOpenInNewDocsDesc:
       'オフにすると、新しく開いたドキュメントは AI パネルを折りたたんだ状態で始まります。必要なときはワンクリックで開けます。',
+    setAuthorName: 'ユーザー名',
+    setAuthorNameDesc:
+      'Docs、Sheets、Slides でコメントと変更履歴の作成者として表示されます。空欄の場合はパソコンのアカウント名を使います。',
     settings: '設定',
     setSecAccount: 'アカウント',
     setSecGeneral: '一般',
@@ -2026,6 +2081,11 @@ export const strings = {
     askIntro: '즐겨찾기한 파일에 대해 질문하세요. 답변에는 출처가 표시되며 클릭하면 열립니다.',
     askToolSearch: '지식 베이스 검색 중',
     askToolRead: '파일 읽는 중',
+    askToolCreate: '문서 생성 중',
+    askSaveMd: 'Markdown으로 저장',
+    askSaveDocx: 'Word로 저장',
+    askSavedAs: '저장됨: {name}',
+    askSaveFailed: '저장하지 못했습니다: {error}',
     askEmptyCorpus: '지식 베이스가 비어 있습니다. 먼저 파일을 즐겨찾기한 후 질문해 주세요.',
     askPlaceholder: '즐겨찾기한 파일에 대해 질문…',
     askHintIdle: 'Enter로 보내기',
@@ -2194,6 +2254,9 @@ export const strings = {
     setSearchRerank: 'Jev 검색 재정렬',
     setSearchRerankDesc:
       '로컬 검색 상위 20개 결과의 발췌문을 TypeSafe의 Jev 모델로 보내 관련도 순으로 재정렬합니다. 기본은 꺼짐이며, 켜면 발췌문이 기기 밖으로 전송됩니다.',
+    setAiInternetTools: 'AI가 인터넷 도구 쓰기',
+    setAiInternetToolsDesc:
+      '웹 검색, 웹 페이지 읽기, 주소로 그림 가져오기, 이미지 만들기와 분석입니다. 끄면 편집기의 AI가 이 도구 없이 일합니다. 켜 두어도 대화에 없던 주소는 가져오기 전에 묻습니다. AI 대화 자체는 그대로입니다.',
     setSearchRerankEndpoint: 'Jev 엔드포인트',
     searchRerankedBy: 'Jev가 관련도 순으로 재정렬함',
     searchJevSettings: 'Jev 시맨틱 재정렬',
@@ -2217,9 +2280,15 @@ export const strings = {
     setDefaultAppOpenSettings: '시스템 설정 열기',
     setDefaultAppFailed: '변경할 수 없습니다. 시스템 설정에서 직접 설정해 주세요.',
     setAiSpellcheckDesc: 'AI 채팅 입력란에 입력할 때 잘못된 단어에 밑줄을 표시합니다.',
+    setAiShowSidebar: 'AI 사이드바 표시',
+    setAiShowSidebarDesc:
+      '끄면 편집기가 AI 사이드바와 측면 버튼을 숨깁니다. 리본이나 메뉴의 AI 작업으로는 패널을 열 수 있지만, 새 문서에서는 자동으로 열리지 않습니다.',
     setAiOpenInNewDocs: '새 문서에서 AI 패널 열기',
     setAiOpenInNewDocsDesc:
       '끄면 새로 여는 문서는 AI 패널이 접힌 상태로 시작합니다. 필요할 때 한 번 클릭하면 열립니다.',
+    setAuthorName: '사용자 이름',
+    setAuthorNameDesc:
+      'Docs, Sheets, Slides에서 메모와 변경 내용 추적의 작성자로 표시됩니다. 비워 두면 컴퓨터 계정 이름을 사용합니다.',
     settings: '설정',
     setSecAccount: '계정',
     setSecGeneral: '일반',
@@ -2530,6 +2599,11 @@ export const strings = {
       'Posez des questions sur vos fichiers favoris. Les réponses citent leurs sources — cliquez pour ouvrir.',
     askToolSearch: 'Recherche dans la base',
     askToolRead: 'Lecture d’un fichier',
+    askToolCreate: 'Création d’un document',
+    askSaveMd: 'Enregistrer en Markdown',
+    askSaveDocx: 'Enregistrer en Word',
+    askSavedAs: 'Enregistré : {name}',
+    askSaveFailed: 'Enregistrement impossible : {error}',
     askEmptyCorpus: 'La base de connaissances est vide : ajoutez d’abord des fichiers favoris.',
     askPlaceholder: 'Posez une question sur vos fichiers…',
     askHintIdle: 'Entrée pour envoyer',
@@ -2703,6 +2777,9 @@ export const strings = {
     setSearchRerank: 'Reclassement Jev',
     setSearchRerankDesc:
       'Envoie les extraits des 20 premiers résultats locaux au modèle Jev de TypeSafe et les réordonne par pertinence. Désactivé par défaut ; une fois activé, les extraits quittent cet appareil.',
+    setAiInternetTools: 'Autoriser l’IA à utiliser les outils internet',
+    setAiInternetToolsDesc:
+      'Recherche web, lecture de pages web, récupération d’images par adresse, création et analyse d’images. Désactivé : l’IA des éditeurs s’en passe. Activé : une adresse jamais apparue dans la conversation vous est soumise avant d’être récupérée. La conversation avec l’IA elle-même n’est pas concernée.',
     setSearchRerankEndpoint: 'Point de terminaison Jev',
     searchRerankedBy: 'Réordonné par pertinence avec Jev',
     searchJevSettings: 'Reclassement sémantique Jev',
@@ -2726,9 +2803,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'Ouvrir les réglages système',
     setDefaultAppFailed: 'Modification impossible. Définissez-la dans les réglages système.',
     setAiSpellcheckDesc: 'Souligne les mots mal orthographiés pendant la saisie dans le chat IA.',
+    setAiShowSidebar: 'Afficher le panneau IA',
+    setAiShowSidebarDesc:
+      'Désactivé, les éditeurs masquent le panneau IA et son bouton latéral ; une action IA dans le ruban ou un menu l’ouvre toujours, et les nouveaux documents ne l’ouvrent jamais.',
     setAiOpenInNewDocs: 'Ouvrir le panneau IA dans les nouveaux documents',
     setAiOpenInNewDocsDesc:
       "Désactivé : les documents nouvellement ouverts démarrent avec le panneau IA replié ; un clic suffit pour l'afficher.",
+    setAuthorName: 'Nom d’utilisateur',
+    setAuthorNameDesc:
+      'Affiché comme auteur des commentaires et des modifications suivies dans Docs, Sheets et Slides. Laissez vide pour utiliser le nom de votre compte.',
     settings: 'Paramètres',
     setSecAccount: 'Compte',
     setSecGeneral: 'Général',
@@ -3054,6 +3137,11 @@ export const strings = {
       'Fragen Sie zu Ihren Favoriten. Antworten nennen ihre Quellen — Klick öffnet die Datei.',
     askToolSearch: 'Wissensbasis durchsuchen',
     askToolRead: 'Datei wird gelesen',
+    askToolCreate: 'Dokument wird erstellt',
+    askSaveMd: 'Als Markdown speichern',
+    askSaveDocx: 'Als Word speichern',
+    askSavedAs: 'Gespeichert: {name}',
+    askSaveFailed: 'Speichern fehlgeschlagen: {error}',
     askEmptyCorpus: 'Die Wissensbasis ist leer: markieren Sie zuerst Dateien, dann fragen Sie.',
     askPlaceholder: 'Fragen Sie zu Ihren Favoriten…',
     askHintIdle: 'Enter zum Senden',
@@ -3230,6 +3318,9 @@ export const strings = {
     setSearchRerank: 'Jev-Neusortierung',
     setSearchRerankDesc:
       'Sendet die Auszüge der 20 besten lokalen Treffer an das Jev-Modell von TypeSafe und sortiert sie nach Relevanz. Standardmäßig aus; wenn aktiv, verlassen Auszüge dieses Gerät.',
+    setAiInternetTools: 'KI darf Internet-Tools nutzen',
+    setAiInternetToolsDesc:
+      'Websuche, Webseiten lesen, Bilder über eine Adresse abrufen sowie Bilder erstellen und analysieren. Aus: Die KI der Editoren arbeitet ohne sie. An: Eine Adresse, die im Gespräch noch nicht vorkam, wird vor dem Abrufen bei Ihnen erfragt. Das KI-Gespräch selbst ist nicht betroffen.',
     setSearchRerankEndpoint: 'Jev-Endpunkt',
     searchRerankedBy: 'Mit Jev nach Relevanz sortiert',
     searchJevSettings: 'Semantische Neuordnung mit Jev',
@@ -3254,9 +3345,15 @@ export const strings = {
     setDefaultAppFailed: 'Änderung nicht möglich. Bitte in den Systemeinstellungen festlegen.',
     setAiSpellcheckDesc:
       'Unterstreicht falsch geschriebene Wörter beim Tippen im KI-Chat-Eingabefeld.',
+    setAiShowSidebar: 'KI-Seitenleiste anzeigen',
+    setAiShowSidebarDesc:
+      'Wenn aus, blenden die Editoren die KI-Seitenleiste und ihre Seitenschaltfläche aus; eine KI-Aktion im Menüband oder im Menü öffnet das Panel weiterhin, und neue Dokumente öffnen es nie.',
     setAiOpenInNewDocs: 'KI-Panel in neuen Dokumenten öffnen',
     setAiOpenInNewDocsDesc:
       'Wenn aus, starten neu geöffnete Dokumente mit eingeklapptem KI-Panel; ein Klick genügt, um es zu öffnen.',
+    setAuthorName: 'Benutzername',
+    setAuthorNameDesc:
+      'Wird in Docs, Sheets und Slides als Autor von Kommentaren und nachverfolgten Änderungen angezeigt. Leer lassen, um den Kontonamen des Computers zu verwenden.',
     settings: 'Einstellungen',
     setSecAccount: 'Konto',
     setSecGeneral: 'Allgemein',
@@ -3585,6 +3682,11 @@ export const strings = {
       'Pregunta sobre tus archivos favoritos. Las respuestas citan la fuente; haz clic para abrirla.',
     askToolSearch: 'Buscando en la base',
     askToolRead: 'Leyendo un archivo',
+    askToolCreate: 'Creando un documento',
+    askSaveMd: 'Guardar como Markdown',
+    askSaveDocx: 'Guardar como Word',
+    askSavedAs: 'Guardado: {name}',
+    askSaveFailed: 'No se pudo guardar: {error}',
     askEmptyCorpus: 'La base de conocimientos está vacía: marca archivos primero y luego pregunta.',
     askPlaceholder: 'Pregunta sobre tus archivos favoritos…',
     askHintIdle: 'Enter para enviar',
@@ -3759,6 +3861,9 @@ export const strings = {
     setSearchRerank: 'Reordenación con Jev',
     setSearchRerankDesc:
       'Envía los extractos de los 20 mejores resultados locales al modelo Jev de TypeSafe y los reordena por relevancia. Desactivado por defecto; al activarlo, los extractos salen de este dispositivo.',
+    setAiInternetTools: 'Permitir que la IA use herramientas de internet',
+    setAiInternetToolsDesc:
+      'Búsqueda web, lectura de páginas web, obtención de imágenes por dirección, y creación y análisis de imágenes. Desactivado: la IA de los editores trabaja sin ellas. Activado: una dirección que no ha aparecido en la conversación se le consulta antes de obtenerla. La conversación con la IA en sí no se ve afectada.',
     setSearchRerankEndpoint: 'Punto de conexión de Jev',
     searchRerankedBy: 'Reordenado por relevancia con Jev',
     searchJevSettings: 'Reordenación semántica con Jev',
@@ -3783,9 +3888,15 @@ export const strings = {
     setDefaultAppFailed: 'No se pudo cambiar. Configúralo en los ajustes del sistema.',
     setAiSpellcheckDesc:
       'Subraya las palabras mal escritas al escribir en el cuadro del chat de IA.',
+    setAiShowSidebar: 'Mostrar el panel de IA',
+    setAiShowSidebarDesc:
+      'Desactivado, los editores ocultan el panel de IA y su botón lateral; una acción de IA en la cinta o en un menú sigue abriendo el panel, y los documentos nuevos no lo abren.',
     setAiOpenInNewDocs: 'Abrir el panel de IA en documentos nuevos',
     setAiOpenInNewDocsDesc:
       'Si está desactivado, los documentos recién abiertos empiezan con el panel de IA plegado; se abre con un clic cuando lo necesites.',
+    setAuthorName: 'Nombre de usuario',
+    setAuthorNameDesc:
+      'Se muestra como autor de los comentarios y los cambios con seguimiento en Docs, Sheets y Slides. Déjalo vacío para usar el nombre de tu cuenta.',
     settings: 'Configuración',
     setSecAccount: 'Cuenta',
     setSecGeneral: 'General',
@@ -4105,6 +4216,11 @@ export const strings = {
     askIntro: 'ถามเกี่ยวกับไฟล์ที่ติดดาวของคุณ คำตอบจะอ้างอิงแหล่งที่มา — คลิกเพื่อเปิด',
     askToolSearch: 'กำลังค้นคลังความรู้',
     askToolRead: 'กำลังอ่านไฟล์',
+    askToolCreate: 'กำลังสร้างเอกสาร',
+    askSaveMd: 'บันทึกเป็น Markdown',
+    askSaveDocx: 'บันทึกเป็น Word',
+    askSavedAs: 'บันทึกแล้ว: {name}',
+    askSaveFailed: 'บันทึกไม่สำเร็จ: {error}',
     askEmptyCorpus: 'คลังความรู้ว่างเปล่า: ติดดาวไฟล์ก่อนแล้วค่อยถาม',
     askPlaceholder: 'ถามเกี่ยวกับไฟล์ที่ติดดาว…',
     askHintIdle: 'Enter เพื่อส่ง',
@@ -4273,6 +4389,9 @@ export const strings = {
     setSearchRerank: 'จัดอันดับใหม่ด้วย Jev',
     setSearchRerankDesc:
       'ส่งข้อความตัดตอนของผลลัพธ์ 20 อันดับแรกไปยังโมเดล Jev ของ TypeSafe เพื่อจัดอันดับใหม่ตามความเกี่ยวข้อง ปิดเป็นค่าเริ่มต้น เมื่อเปิด ข้อความตัดตอนจะถูกส่งออกจากอุปกรณ์นี้',
+    setAiInternetTools: 'ให้ AI ใช้เครื่องมืออินเทอร์เน็ต',
+    setAiInternetToolsDesc:
+      'การค้นหาเว็บ การอ่านหน้าเว็บ การดึงรูปภาพจากที่อยู่ รวมถึงการสร้างและวิเคราะห์ภาพ เมื่อปิด AI ในตัวแก้ไขจะทำงานโดยไม่ใช้เครื่องมือเหล่านี้ เมื่อเปิด ที่อยู่ที่ไม่เคยปรากฏในบทสนทนาจะถูกถามก่อนดึงข้อมูล บทสนทนากับ AI เองไม่ได้รับผลกระทบ',
     setSearchRerankEndpoint: 'ปลายทาง Jev',
     searchRerankedBy: 'จัดอันดับใหม่ตามความเกี่ยวข้องโดย Jev',
     searchJevSettings: 'จัดอันดับเชิงความหมายด้วย Jev',
@@ -4296,9 +4415,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'เปิดการตั้งค่าระบบ',
     setDefaultAppFailed: 'เปลี่ยนไม่สำเร็จ โปรดตั้งค่าในการตั้งค่าระบบ',
     setAiSpellcheckDesc: 'ขีดเส้นใต้คำที่สะกดผิดขณะพิมพ์ในช่องแชท AI',
+    setAiShowSidebar: 'แสดงแถบข้าง AI',
+    setAiShowSidebarDesc:
+      'เมื่อปิด ตัวแก้ไขจะซ่อนแถบข้าง AI และปุ่มด้านข้าง; คำสั่ง AI ในริบบิ้นหรือเมนูยังเปิดแผง AI ได้ และเอกสารใหม่จะไม่เปิดให้',
     setAiOpenInNewDocs: 'เปิดแผง AI ในเอกสารใหม่',
     setAiOpenInNewDocsDesc:
       'เมื่อปิด เอกสารที่เปิดใหม่จะเริ่มโดยพับแผง AI ไว้ คลิกครั้งเดียวเพื่อเปิดเมื่อต้องการ',
+    setAuthorName: 'ชื่อผู้ใช้',
+    setAuthorNameDesc:
+      'แสดงเป็นผู้เขียนความคิดเห็นและการติดตามการเปลี่ยนแปลงใน Docs, Sheets และ Slides เว้นว่างไว้เพื่อใช้ชื่อบัญชีคอมพิวเตอร์',
     settings: 'การตั้งค่า',
     setSecAccount: 'บัญชี',
     setSecGeneral: 'ทั่วไป',
@@ -4608,6 +4733,11 @@ export const strings = {
       'Bertanyalah tentang file berbintang anda. Jawaban menyebut sumbernya — klik untuk membuka.',
     askToolSearch: 'Mencari basis pengetahuan',
     askToolRead: 'Membaca file',
+    askToolCreate: 'Membuat dokumen',
+    askSaveMd: 'Simpan sebagai Markdown',
+    askSaveDocx: 'Simpan sebagai Word',
+    askSavedAs: 'Tersimpan: {name}',
+    askSaveFailed: 'Gagal menyimpan: {error}',
     askEmptyCorpus: 'Basis pengetahuan kosong: tandai beberapa file dahulu, lalu bertanya.',
     askPlaceholder: 'Tanya tentang file berbintang anda…',
     askHintIdle: 'Enter untuk mengirim',
@@ -4781,6 +4911,9 @@ export const strings = {
     setSearchRerank: 'Peringkat ulang Jev',
     setSearchRerankDesc:
       'Mengirim kutipan 20 hasil lokal teratas ke model Jev dari TypeSafe dan mengurutkannya ulang berdasarkan relevansi. Nonaktif secara bawaan; saat aktif, kutipan keluar dari perangkat ini.',
+    setAiInternetTools: 'Izinkan AI memakai alat internet',
+    setAiInternetToolsDesc:
+      'Pencarian web, membaca halaman web, mengambil gambar dari alamat, serta membuat dan menganalisis gambar. Mati: AI di editor bekerja tanpanya. Hidup: alamat yang belum muncul dalam percakapan ditanyakan dulu sebelum diambil. Percakapan AI itu sendiri tidak terpengaruh.',
     setSearchRerankEndpoint: 'Endpoint Jev',
     searchRerankedBy: 'Diurutkan ulang berdasarkan relevansi oleh Jev',
     searchJevSettings: 'Pengurutan semantik Jev',
@@ -4804,9 +4937,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'Buka pengaturan sistem',
     setDefaultAppFailed: 'Tidak dapat mengubahnya. Atur di pengaturan sistem.',
     setAiSpellcheckDesc: 'Garis bawahi kata yang salah eja saat mengetik di kotak obrolan AI.',
+    setAiShowSidebar: 'Tampilkan bilah sisi AI',
+    setAiShowSidebarDesc:
+      'Saat nonaktif, editor menyembunyikan bilah sisi AI dan tombol sisinya; tindakan AI di pita atau menu tetap membuka panel, dan dokumen baru tidak membukanya.',
     setAiOpenInNewDocs: 'Buka panel AI di dokumen baru',
     setAiOpenInNewDocsDesc:
       'Jika nonaktif, dokumen yang baru dibuka dimulai dengan panel AI terlipat; cukup satu klik saat dibutuhkan.',
+    setAuthorName: 'Nama pengguna',
+    setAuthorNameDesc:
+      'Ditampilkan sebagai penulis komentar dan perubahan terlacak di Docs, Sheets, dan Slides. Kosongkan untuk memakai nama akun komputer.',
     settings: 'Pengaturan',
     setSecAccount: 'Akun',
     setSecGeneral: 'Umum',
@@ -5125,6 +5264,11 @@ export const strings = {
       'Задавайте вопросы по избранным файлам. Ответы ссылаются на источники — нажмите, чтобы открыть.',
     askToolSearch: 'Поиск по базе',
     askToolRead: 'Чтение файла',
+    askToolCreate: 'Создание документа',
+    askSaveMd: 'Сохранить как Markdown',
+    askSaveDocx: 'Сохранить как Word',
+    askSavedAs: 'Сохранено: {name}',
+    askSaveFailed: 'Не удалось сохранить: {error}',
     askEmptyCorpus: 'База знаний пуста: сначала отметьте файлы, затем спрашивайте.',
     askPlaceholder: 'Спросите о своих файлах…',
     askHintIdle: 'Enter — отправить',
@@ -5296,6 +5440,9 @@ export const strings = {
     setSearchRerank: 'Переранжирование Jev',
     setSearchRerankDesc:
       'Отправляет фрагменты 20 лучших локальных результатов модели Jev от TypeSafe и переупорядочивает их по релевантности. По умолчанию выключено; при включении фрагменты покидают это устройство.',
+    setAiInternetTools: 'Разрешить ИИ инструменты интернета',
+    setAiInternetToolsDesc:
+      'Веб-поиск, чтение веб-страниц, загрузка изображений по адресу, создание и анализ изображений. Выключено: ИИ в редакторах работает без них. Включено: о адресе, которого ещё не было в разговоре, вас спросят перед загрузкой. Сам разговор с ИИ это не затрагивает.',
     setSearchRerankEndpoint: 'Конечная точка Jev',
     searchRerankedBy: 'Переупорядочено по релевантности с помощью Jev',
     searchJevSettings: 'Семантическая сортировка Jev',
@@ -5319,9 +5466,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'Открыть системные настройки',
     setDefaultAppFailed: 'Не удалось изменить. Задайте в системных настройках.',
     setAiSpellcheckDesc: 'Подчёркивать слова с ошибками при вводе в поле чата ИИ.',
+    setAiShowSidebar: 'Показывать панель ИИ',
+    setAiShowSidebarDesc:
+      'Когда выключено, редакторы скрывают панель ИИ и боковую кнопку; команда ИИ на ленте или в меню по-прежнему открывает панель, а новые документы не открывают её.',
     setAiOpenInNewDocs: 'Открывать панель ИИ в новых документах',
     setAiOpenInNewDocsDesc:
       'Если выключено, новые документы открываются со свёрнутой панелью ИИ; она доступна в один клик.',
+    setAuthorName: 'Имя пользователя',
+    setAuthorNameDesc:
+      'Отображается как автор примечаний и исправлений в Docs, Sheets и Slides. Оставьте пустым, чтобы использовать имя учётной записи компьютера.',
     settings: 'Настройки',
     setSecAccount: 'Аккаунт',
     setSecGeneral: 'Общие',
@@ -5643,6 +5796,11 @@ export const strings = {
     askIntro: 'اسأل عن ملفاتك المفضلة. تذكر الإجابات مصادرها — انقر لفتحها.',
     askToolSearch: 'جارٍ البحث في القاعدة',
     askToolRead: 'جارٍ قراءة ملف',
+    askToolCreate: 'جارٍ إنشاء مستند',
+    askSaveMd: 'حفظ بصيغة Markdown',
+    askSaveDocx: 'حفظ بصيغة Word',
+    askSavedAs: 'تم الحفظ: {name}',
+    askSaveFailed: 'تعذر الحفظ: {error}',
     askEmptyCorpus: 'قاعدة المعارف فارغة: ضع نجمة على بعض الملفات أولاً ثم اسأل.',
     askPlaceholder: 'اسأل عن ملفاتك المفضلة…',
     askHintIdle: 'Enter للإرسال',
@@ -5812,6 +5970,9 @@ export const strings = {
     setSearchRerank: 'إعادة ترتيب Jev',
     setSearchRerankDesc:
       'يرسل مقتطفات أفضل 20 نتيجة محلية إلى نموذج Jev من TypeSafe ويعيد ترتيبها حسب الصلة. معطّل افتراضيًا؛ عند التفعيل تخرج المقتطفات من هذا الجهاز.',
+    setAiInternetTools: 'السماح للذكاء الاصطناعي باستخدام أدوات الإنترنت',
+    setAiInternetToolsDesc:
+      'البحث على الويب، وقراءة صفحات الويب، وجلب الصور من عنوان، وإنشاء الصور وتحليلها. عند الإيقاف يعمل الذكاء الاصطناعي في المحررات من دونها. عند التشغيل يُسأل عن أي عنوان لم يظهر في المحادثة قبل جلبه. لا تتأثر محادثة الذكاء الاصطناعي نفسها.',
     setSearchRerankEndpoint: 'نقطة نهاية Jev',
     searchRerankedBy: 'أُعيد ترتيبها حسب الصلة بواسطة Jev',
     searchJevSettings: 'إعادة الترتيب الدلالي بواسطة Jev',
@@ -5836,9 +5997,15 @@ export const strings = {
     setDefaultAppFailed: 'تعذّر التغيير. يرجى تعيينه من إعدادات النظام.',
     setAiSpellcheckDesc:
       'وضع خط تحت الكلمات الخاطئة إملائيًا أثناء الكتابة في حقل محادثة الذكاء الاصطناعي.',
+    setAiShowSidebar: 'إظهار الشريط الجانبي للذكاء الاصطناعي',
+    setAiShowSidebarDesc:
+      'عند الإيقاف، تخفي المحررات الشريط الجانبي للذكاء الاصطناعي وزره الجانبي؛ ويظل إجراء الذكاء الاصطناعي في الشريط أو في القائمة يفتح اللوحة، ولا تفتح المستندات الجديدة اللوحة.',
     setAiOpenInNewDocs: 'فتح لوحة الذكاء الاصطناعي في المستندات الجديدة',
     setAiOpenInNewDocsDesc:
       'عند الإيقاف، تبدأ المستندات المفتوحة حديثًا بلوحة الذكاء الاصطناعي مطوية؛ تكفي نقرة واحدة لفتحها عند الحاجة.',
+    setAuthorName: 'اسم المستخدم',
+    setAuthorNameDesc:
+      'يظهر كمؤلف التعليقات والتغييرات المتعقبة في Docs وSheets وSlides. اتركه فارغًا لاستخدام اسم حساب الكمبيوتر.',
     settings: 'الإعدادات',
     setSecAccount: 'الحساب',
     setSecGeneral: 'عام',
@@ -6146,6 +6313,11 @@ export const strings = {
       'Pergunte sobre seus arquivos favoritos. As respostas citam as fontes — clique para abrir.',
     askToolSearch: 'Pesquisando na base',
     askToolRead: 'Lendo um arquivo',
+    askToolCreate: 'Criando um documento',
+    askSaveMd: 'Salvar como Markdown',
+    askSaveDocx: 'Salvar como Word',
+    askSavedAs: 'Salvo: {name}',
+    askSaveFailed: 'Não foi possível salvar: {error}',
     askEmptyCorpus:
       'A base de conhecimento está vazia: marque arquivos primeiro e depois pergunte.',
     askPlaceholder: 'Pergunte sobre seus arquivos favoritos…',
@@ -6314,6 +6486,9 @@ export const strings = {
     setSearchRerank: 'Reordenação com Jev',
     setSearchRerankDesc:
       'Envia os trechos dos 20 melhores resultados locais ao modelo Jev da TypeSafe e os reordena por relevância. Desativado por padrão; quando ativo, os trechos saem deste dispositivo.',
+    setAiInternetTools: 'Permitir que a IA use ferramentas da internet',
+    setAiInternetToolsDesc:
+      'Pesquisa na web, leitura de páginas, busca de imagens por endereço e criação e análise de imagens. Desligado: a IA dos editores trabalha sem elas. Ligado: um endereço que não apareceu na conversa é perguntado antes de ser buscado. A conversa com a IA em si não é afetada.',
     setSearchRerankEndpoint: 'Endpoint do Jev',
     searchRerankedBy: 'Reordenado por relevância com Jev',
     searchJevSettings: 'Reordenação semântica com Jev',
@@ -6338,9 +6513,15 @@ export const strings = {
     setDefaultAppFailed: 'Não foi possível alterar. Defina nas configurações do sistema.',
     setAiSpellcheckDesc:
       'Sublinha palavras com erros ortográficos ao digitar na caixa do chat de IA.',
+    setAiShowSidebar: 'Mostrar a barra lateral de IA',
+    setAiShowSidebarDesc:
+      'Desligada, os editores ocultam a barra lateral de IA e o botão lateral; uma ação de IA na faixa ou em um menu ainda abre o painel, e novos documentos não o abrem.',
     setAiOpenInNewDocs: 'Abrir o painel de IA em novos documentos',
     setAiOpenInNewDocsDesc:
       'Quando desativado, os documentos recém-abertos começam com o painel de IA recolhido; basta um clique quando precisar.',
+    setAuthorName: 'Nome de usuário',
+    setAuthorNameDesc:
+      'Exibido como autor dos comentários e das alterações controladas no Docs, Sheets e Slides. Deixe em branco para usar o nome da conta do computador.',
     settings: 'Configurações',
     setSecAccount: 'Conta',
     setSecGeneral: 'Geral',
@@ -6660,6 +6841,11 @@ export const strings = {
       'Chiedi informazioni sui tuoi file preferiti. Le risposte citano la fonte — clicca per aprire.',
     askToolSearch: 'Ricerca nella base',
     askToolRead: 'Lettura di un file',
+    askToolCreate: 'Creazione di un documento',
+    askSaveMd: 'Salva come Markdown',
+    askSaveDocx: 'Salva come Word',
+    askSavedAs: 'Salvato: {name}',
+    askSaveFailed: 'Salvataggio non riuscito: {error}',
     askEmptyCorpus: 'La base di conoscenza è vuota: contrassegna prima alcuni file, poi chiedi.',
     askPlaceholder: 'Chiedi qualcosa sui tuoi file preferiti…',
     askHintIdle: 'Invio per inviare',
@@ -6827,6 +7013,9 @@ export const strings = {
     setSearchRerank: 'Riordino con Jev',
     setSearchRerankDesc:
       'Invia gli estratti dei 20 migliori risultati locali al modello Jev di TypeSafe e li riordina per pertinenza. Disattivato per impostazione predefinita; se attivo, gli estratti lasciano questo dispositivo.',
+    setAiInternetTools: 'Consenti all’IA di usare gli strumenti internet',
+    setAiInternetToolsDesc:
+      'Ricerca web, lettura di pagine web, recupero di immagini da un indirizzo, creazione e analisi di immagini. Disattivato: l’IA degli editor lavora senza. Attivato: un indirizzo mai comparso nella conversazione ti viene chiesto prima di recuperarlo. La conversazione con l’IA in sé non cambia.',
     setSearchRerankEndpoint: 'Endpoint Jev',
     searchRerankedBy: 'Riordinato per pertinenza con Jev',
     searchJevSettings: 'Riordino semantico con Jev',
@@ -6850,9 +7039,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'Apri impostazioni di sistema',
     setDefaultAppFailed: 'Impossibile modificare. Impostala nelle impostazioni di sistema.',
     setAiSpellcheckDesc: 'Sottolinea le parole errate durante la digitazione nella chat IA.',
+    setAiShowSidebar: 'Mostra il pannello IA',
+    setAiShowSidebarDesc:
+      'Quando è spento, gli editor nascondono il pannello IA e il pulsante laterale; un’azione IA nella scheda o in un menu apre comunque il pannello, e i nuovi documenti non lo aprono.',
     setAiOpenInNewDocs: 'Apri il pannello IA nei nuovi documenti',
     setAiOpenInNewDocsDesc:
       'Se disattivato, i documenti appena aperti iniziano con il pannello IA ridotto; basta un clic quando serve.',
+    setAuthorName: 'Nome utente',
+    setAuthorNameDesc:
+      'Mostrato come autore di commenti e revisioni in Docs, Sheets e Slides. Lascia vuoto per usare il nome dell’account del computer.',
     settings: 'Impostazioni',
     setSecAccount: 'Account',
     setSecGeneral: 'Generale',
@@ -7171,6 +7366,11 @@ export const strings = {
     askIntro: 'Zadawaj pytania o swoje pliki. Odpowiedzi podają źródła — kliknij, aby otworzyć.',
     askToolSearch: 'Wyszukiwanie w bazie',
     askToolRead: 'Czytanie pliku',
+    askToolCreate: 'Tworzenie dokumentu',
+    askSaveMd: 'Zapisz jako Markdown',
+    askSaveDocx: 'Zapisz jako Word',
+    askSavedAs: 'Zapisano: {name}',
+    askSaveFailed: 'Nie udało się zapisać: {error}',
     askEmptyCorpus: 'Baza wiedzy jest pusta: najpierw oznacz pliki, potem pytaj.',
     askPlaceholder: 'Zapytaj o swoje pliki…',
     askHintIdle: 'Enter wysyła',
@@ -7337,6 +7537,9 @@ export const strings = {
     setSearchRerank: 'Ponowne sortowanie Jev',
     setSearchRerankDesc:
       'Wysyła fragmenty 20 najlepszych lokalnych wyników do modelu Jev firmy TypeSafe i sortuje je według trafności. Domyślnie wyłączone; po włączeniu fragmenty opuszczają to urządzenie.',
+    setAiInternetTools: 'Pozwól AI używać narzędzi internetowych',
+    setAiInternetToolsDesc:
+      'Wyszukiwanie w sieci, czytanie stron, pobieranie obrazów z adresu oraz tworzenie i analiza obrazów. Wyłączone: AI w edytorach działa bez nich. Włączone: o adres, który nie pojawił się w rozmowie, zostaniesz zapytany przed pobraniem. Sama rozmowa z AI się nie zmienia.',
     setSearchRerankEndpoint: 'Punkt końcowy Jev',
     searchRerankedBy: 'Posortowano według trafności przez Jev',
     searchJevSettings: 'Semantyczne sortowanie Jev',
@@ -7360,9 +7563,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'Otwórz ustawienia systemu',
     setDefaultAppFailed: 'Nie udało się zmienić. Ustaw w ustawieniach systemu.',
     setAiSpellcheckDesc: 'Podkreśla błędnie napisane słowa podczas pisania w polu czatu AI.',
+    setAiShowSidebar: 'Pokaż panel AI',
+    setAiShowSidebarDesc:
+      'Gdy wyłączone, edytory ukrywają panel AI i przycisk boczny; działanie AI na wstążce lub w menu nadal otwiera panel, a nowe dokumenty go nie otwierają.',
     setAiOpenInNewDocs: 'Otwieraj panel AI w nowych dokumentach',
     setAiOpenInNewDocsDesc:
       'Gdy wyłączone, nowo otwarte dokumenty zaczynają ze zwiniętym panelem AI; wystarczy jedno kliknięcie, gdy jest potrzebny.',
+    setAuthorName: 'Nazwa użytkownika',
+    setAuthorNameDesc:
+      'Wyświetlana jako autor komentarzy i śledzonych zmian w Docs, Sheets i Slides. Pozostaw puste, aby użyć nazwy konta komputera.',
     settings: 'Ustawienia',
     setSecAccount: 'Konto',
     setSecGeneral: 'Ogólne',
@@ -7679,6 +7888,11 @@ export const strings = {
     askIntro: 'Ptejte se na své oblíbené soubory. Odpovědi uvádějí zdroje — kliknutím otevřete.',
     askToolSearch: 'Prohledávání databáze',
     askToolRead: 'Čtení souboru',
+    askToolCreate: 'Vytváření dokumentu',
+    askSaveMd: 'Uložit jako Markdown',
+    askSaveDocx: 'Uložit jako Word',
+    askSavedAs: 'Uloženo: {name}',
+    askSaveFailed: 'Uložení se nezdařilo: {error}',
     askEmptyCorpus: 'Znalostní databáze je prázdná: nejprve označte soubory a pak se ptejte.',
     askPlaceholder: 'Zeptejte se na své soubory…',
     askHintIdle: 'Enter odesílá',
@@ -8130,6 +8344,9 @@ export const strings = {
     setSearchRerank: 'Přeřazení Jev',
     setSearchRerankDesc:
       'Odešle výňatky 20 nejlepších místních výsledků modelu Jev od TypeSafe a seřadí je podle relevance. Ve výchozím stavu vypnuto; po zapnutí výňatky opouštějí toto zařízení.',
+    setAiInternetTools: 'Povolit AI internetové nástroje',
+    setAiInternetToolsDesc:
+      'Vyhledávání na webu, čtení webových stránek, načítání obrázků z adresy a tvorba a analýza obrázků. Vypnuto: AI v editorech pracuje bez nich. Zapnuto: na adresu, která se v rozhovoru dosud neobjevila, se vás zeptá před načtením. Samotného rozhovoru s AI se to netýká.',
     setSearchRerankEndpoint: 'Koncový bod Jev',
     searchRerankedBy: 'Seřazeno podle relevance pomocí Jev',
     searchJevSettings: 'Sémantické řazení Jev',
@@ -8153,9 +8370,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'Otevřít nastavení systému',
     setDefaultAppFailed: 'Změna se nezdařila. Nastavte ji v nastavení systému.',
     setAiSpellcheckDesc: 'Podtrhávat překlepy při psaní do vstupního pole chatu AI.',
+    setAiShowSidebar: 'Zobrazit AI panel',
+    setAiShowSidebarDesc:
+      'Při vypnutí editory skryjí AI panel a boční tlačítko; akce AI na pásu karet nebo v nabídce panel stále otevře a nové dokumenty ho neotevřou.',
     setAiOpenInNewDocs: 'Otevírat panel AI v nových dokumentech',
     setAiOpenInNewDocsDesc:
       'Když je vypnuto, nově otevřené dokumenty začínají se sbaleným panelem AI; v případě potřeby stačí jedno kliknutí.',
+    setAuthorName: 'Uživatelské jméno',
+    setAuthorNameDesc:
+      'Zobrazuje se jako autor komentářů a sledovaných změn v Docs, Sheets a Slides. Ponechte prázdné pro použití názvu účtu počítače.',
     helpSearchPlaceholder: 'Hledat v příručce… (stiskněte /)',
     helpSearchLabel: 'Hledat v příručce',
     helpContentsLabel: 'Obsah příručky',
@@ -8182,6 +8405,11 @@ export const strings = {
     askIntro: 'Vraag naar je favoriete bestanden. Antwoorden noemen hun bron — klik om te openen.',
     askToolSearch: 'Kennisbank doorzoeken',
     askToolRead: 'Bestand lezen',
+    askToolCreate: 'Document wordt gemaakt',
+    askSaveMd: 'Opslaan als Markdown',
+    askSaveDocx: 'Opslaan als Word',
+    askSavedAs: 'Opgeslagen: {name}',
+    askSaveFailed: 'Opslaan mislukt: {error}',
     askEmptyCorpus: 'De kennisbank is leeg: markeer eerst bestanden en stel dan je vraag.',
     askPlaceholder: 'Vraag naar je favoriete bestanden…',
     askHintIdle: 'Enter om te verzenden',
@@ -8348,6 +8576,9 @@ export const strings = {
     setSearchRerank: 'Jev-herordening',
     setSearchRerankDesc:
       'Stuurt de fragmenten van de 20 beste lokale resultaten naar het Jev-model van TypeSafe en sorteert ze op relevantie. Standaard uit; indien aan verlaten fragmenten dit apparaat.',
+    setAiInternetTools: 'AI internettools laten gebruiken',
+    setAiInternetToolsDesc:
+      'Zoeken op het web, webpagina’s lezen, afbeeldingen ophalen via een adres en afbeeldingen maken en analyseren. Uit: de AI in de editors werkt zonder. Aan: een adres dat nog niet in het gesprek voorkwam, wordt eerst aan je voorgelegd. Het AI-gesprek zelf verandert niet.',
     setSearchRerankEndpoint: 'Jev-eindpunt',
     searchRerankedBy: 'Op relevantie geordend met Jev',
     searchJevSettings: 'Semantisch herordenen met Jev',
@@ -8372,9 +8603,15 @@ export const strings = {
     setDefaultAppFailed: 'Wijzigen is niet gelukt. Stel dit in via de systeeminstellingen.',
     setAiSpellcheckDesc:
       'Onderstreept verkeerd gespelde woorden tijdens het typen in het AI-chatveld.',
+    setAiShowSidebar: 'AI-zijbalk weergeven',
+    setAiShowSidebarDesc:
+      'Uitgeschakeld verbergen de editors de AI-zijbalk en de zijknop; een AI-actie in het lint of een menu opent het paneel wel, en nieuwe documenten openen het niet.',
     setAiOpenInNewDocs: 'AI-paneel openen in nieuwe documenten',
     setAiOpenInNewDocsDesc:
       'Indien uit, starten nieuw geopende documenten met een ingeklapt AI-paneel; één klik volstaat wanneer je het nodig hebt.',
+    setAuthorName: 'Gebruikersnaam',
+    setAuthorNameDesc:
+      'Wordt weergegeven als auteur van opmerkingen en bijgehouden wijzigingen in Docs, Sheets en Slides. Laat leeg om de accountnaam van je computer te gebruiken.',
     settings: 'Instellingen',
     setSecAccount: 'Account',
     setSecGeneral: 'Algemeen',
@@ -8691,6 +8928,11 @@ export const strings = {
     askIntro: 'Tanya tentang fail kegemaran anda. Jawapan memetik sumbernya — klik untuk membuka.',
     askToolSearch: 'Mencari pangkalan pengetahuan',
     askToolRead: 'Membaca fail',
+    askToolCreate: 'Mencipta dokumen',
+    askSaveMd: 'Simpan sebagai Markdown',
+    askSaveDocx: 'Simpan sebagai Word',
+    askSavedAs: 'Disimpan: {name}',
+    askSaveFailed: 'Gagal menyimpan: {error}',
     askEmptyCorpus: 'Pangkalan pengetahuan kosong: tanda beberapa fail dahulu, kemudian tanya.',
     askPlaceholder: 'Tanya tentang fail kegemaran anda…',
     askHintIdle: 'Enter untuk menghantar',
@@ -8857,6 +9099,9 @@ export const strings = {
     setSearchRerank: 'Susunan semula Jev',
     setSearchRerankDesc:
       'Menghantar petikan 20 hasil tempatan teratas ke model Jev TypeSafe dan menyusunnya semula mengikut kaitan. Dimatikan secara lalai; apabila dihidupkan, petikan keluar dari peranti ini.',
+    setAiInternetTools: 'Benarkan AI menggunakan alat internet',
+    setAiInternetToolsDesc:
+      'Carian web, membaca halaman web, mengambil gambar melalui alamat, serta mencipta dan menganalisis imej. Mati: AI dalam editor bekerja tanpanya. Hidup: alamat yang belum muncul dalam perbualan akan ditanya dahulu sebelum diambil. Perbualan AI itu sendiri tidak terjejas.',
     setSearchRerankEndpoint: 'Titik akhir Jev',
     searchRerankedBy: 'Disusun semula mengikut kaitan oleh Jev',
     searchJevSettings: 'Susunan semantik Jev',
@@ -8881,9 +9126,15 @@ export const strings = {
     setDefaultAppFailed: 'Tidak dapat mengubahnya. Tetapkan dalam tetapan sistem.',
     setAiSpellcheckDesc:
       'Gariskan perkataan yang salah ejaan semasa menaip dalam kotak sembang AI.',
+    setAiShowSidebar: 'Tunjuk bar sisi AI',
+    setAiShowSidebarDesc:
+      'Bila dimatikan, editor menyembunyikan bar sisi AI dan butang sisi; tindakan AI pada riben atau menu masih membuka panel, dan dokumen baru tidak membukanya.',
     setAiOpenInNewDocs: 'Buka panel AI dalam dokumen baharu',
     setAiOpenInNewDocsDesc:
       'Jika dimatikan, dokumen yang baru dibuka bermula dengan panel AI dilipat; cukup satu klik apabila diperlukan.',
+    setAuthorName: 'Nama pengguna',
+    setAuthorNameDesc:
+      'Dipaparkan sebagai pengarang komen dan perubahan dijejak dalam Docs, Sheets dan Slides. Biarkan kosong untuk menggunakan nama akaun komputer.',
     settings: 'Tetapan',
     setSecAccount: 'Akaun',
     setSecGeneral: 'Umum',
@@ -9201,6 +9452,11 @@ export const strings = {
     askIntro: 'שאל על הקבצים המסומנים שלך. תשובות מציינות את המקור — לחיצה פותחת אותו.',
     askToolSearch: 'מחפש בבסיס הידע',
     askToolRead: 'קורא קובץ',
+    askToolCreate: 'יוצר מסמך',
+    askSaveMd: 'שמירה כ-Markdown',
+    askSaveDocx: 'שמירה כ-Word',
+    askSavedAs: 'נשמר: {name}',
+    askSaveFailed: 'השמירה נכשלה: {error}',
     askEmptyCorpus: 'בסיס הידע ריק: סמן קבצים תחילה ואז שאל.',
     askPlaceholder: 'שאל על הקבצים המסומנים שלך…',
     askHintIdle: 'Enter לשליחה',
@@ -9362,6 +9618,9 @@ export const strings = {
     setSearchRerank: 'סידור מחדש עם Jev',
     setSearchRerankDesc:
       'שולח את הקטעים של 20 התוצאות המקומיות המובילות למודל Jev של TypeSafe ומסדר אותן מחדש לפי רלוונטיות. כבוי כברירת מחדל; כשמופעל, הקטעים יוצאים מהמכשיר הזה.',
+    setAiInternetTools: 'לאפשר ל-AI להשתמש בכלי אינטרנט',
+    setAiInternetToolsDesc:
+      'חיפוש באינטרנט, קריאת דפי אינטרנט, הבאת תמונות לפי כתובת, ויצירה וניתוח של תמונות. כבוי: ה-AI בעורכים עובד בלעדיהם. מופעל: על כתובת שלא הופיעה בשיחה תישאלו לפני שהיא תובא. השיחה עם ה-AI עצמה לא מושפעת.',
     setSearchRerankEndpoint: 'נקודת קצה של Jev',
     searchRerankedBy: 'סודר מחדש לפי רלוונטיות על ידי Jev',
     searchJevSettings: 'סידור סמנטי עם Jev',
@@ -9385,9 +9644,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'פתיחת הגדרות המערכת',
     setDefaultAppFailed: 'לא ניתן לשנות. יש להגדיר בהגדרות המערכת.',
     setAiSpellcheckDesc: 'סימון מילים עם שגיאות כתיב בעת הקלדה בתיבת הצ׳אט של ה-AI.',
+    setAiShowSidebar: 'הצג את סרגל ה-AI',
+    setAiShowSidebarDesc:
+      'כשכבוי, העורכים מסתירים את סרגל ה-AI ואת כפתור הצד; פעולת AI בסרגל הכלים או בתפריט עדיין פותחת את הלוח, ומסמכים חדשים אינם פותחים אותו.',
     setAiOpenInNewDocs: 'פתיחת לוח ה-AI במסמכים חדשים',
     setAiOpenInNewDocsDesc:
       'כאשר כבוי, מסמכים שנפתחו זה עתה מתחילים עם לוח ה-AI מקופל; לחיצה אחת מספיקה כשצריך.',
+    setAuthorName: 'שם משתמש',
+    setAuthorNameDesc:
+      'מוצג כמחבר ההערות והשינויים במעקב ב‑Docs, Sheets ו‑Slides. השאירו ריק כדי להשתמש בשם חשבון המחשב.',
     settings: 'הגדרות',
     setSecAccount: 'חשבון',
     setSecGeneral: 'כללי',
@@ -9687,6 +9952,11 @@ export const strings = {
       'अपनी स्टार की गई फ़ाइलों के बारे में पूछें। उत्तर स्रोत बताते हैं — खोलने के लिए क्लिक करें।',
     askToolSearch: 'नॉलेज बेस खोज रहा है',
     askToolRead: 'फ़ाइल पढ़ रहा है',
+    askToolCreate: 'दस्तावेज़ बनाया जा रहा है',
+    askSaveMd: 'Markdown के रूप में सहेजें',
+    askSaveDocx: 'Word के रूप में सहेजें',
+    askSavedAs: 'सहेजा गया: {name}',
+    askSaveFailed: 'सहेज नहीं सका: {error}',
     askEmptyCorpus: 'नॉलेज बेस खाली है: पहले फ़ाइलें स्टार करें, फिर पूछें।',
     askPlaceholder: 'अपनी फ़ाइलों के बारे में पूछें…',
     askHintIdle: 'भेजने के लिए Enter',
@@ -9853,6 +10123,9 @@ export const strings = {
     setSearchRerank: 'Jev खोज पुनर्क्रमण',
     setSearchRerankDesc:
       'स्थानीय खोज के शीर्ष 20 परिणामों के अंश TypeSafe के Jev मॉडल को भेजता है और उन्हें प्रासंगिकता के अनुसार पुनः क्रमित करता है। डिफ़ॉल्ट रूप से बंद; चालू होने पर अंश इस डिवाइस से बाहर जाते हैं।',
+    setAiInternetTools: 'AI को इंटरनेट टूल इस्तेमाल करने दें',
+    setAiInternetToolsDesc:
+      'वेब खोज, वेब पेज पढ़ना, पते से चित्र लाना, और चित्र बनाना व उनका विश्लेषण करना। बंद होने पर संपादकों का AI इनके बिना काम करता है। चालू होने पर, जो पता बातचीत में पहले नहीं आया, उसे लाने से पहले आपसे पूछा जाता है। AI बातचीत पर इसका असर नहीं पड़ता।',
     setSearchRerankEndpoint: 'Jev एंडपॉइंट',
     searchRerankedBy: 'Jev द्वारा प्रासंगिकता के अनुसार पुनः क्रमित',
     searchJevSettings: 'Jev सिमैंटिक पुनर्क्रमण',
@@ -9876,9 +10149,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'सिस्टम सेटिंग खोलें',
     setDefaultAppFailed: 'बदला नहीं जा सका। कृपया सिस्टम सेटिंग में सेट करें।',
     setAiSpellcheckDesc: 'AI चैट इनपुट में टाइप करते समय गलत वर्तनी वाले शब्दों को रेखांकित करें।',
+    setAiShowSidebar: 'AI साइडबार दिखाएँ',
+    setAiShowSidebarDesc:
+      'बंद होने पर संपादक AI साइडबार और उसका साइड बटन छिपा देते हैं; रिबन या मेन्यू में AI क्रिया से पैनल फिर भी खुलता है, और नए दस्तावेज़ इसे नहीं खोलते।',
     setAiOpenInNewDocs: 'नए दस्तावेज़ों में AI पैनल खोलें',
     setAiOpenInNewDocsDesc:
       'बंद होने पर, नए खोले गए दस्तावेज़ AI पैनल संक्षिप्त अवस्था में शुरू होते हैं; ज़रूरत पड़ने पर एक क्लिक में खुल जाता है।',
+    setAuthorName: 'उपयोगकर्ता नाम',
+    setAuthorNameDesc:
+      'Docs, Sheets और Slides में टिप्पणियों और ट्रैक किए गए परिवर्तनों के लेखक के रूप में दिखाया जाता है। कंप्यूटर खाता नाम उपयोग करने के लिए खाली छोड़ें।',
     settings: 'सेटिंग्स',
     setSecAccount: 'खाता',
     setSecGeneral: 'सामान्य',
@@ -10188,6 +10467,11 @@ export const strings = {
     askIntro: '根據你收藏的檔案提問,回答會標註來源檔案,點擊即可開啟。',
     askToolSearch: '搜尋知識庫',
     askToolRead: '讀取檔案',
+    askToolCreate: '生成文件',
+    askSaveMd: '儲存為 Markdown',
+    askSaveDocx: '儲存為 Word',
+    askSavedAs: '已儲存:{name}',
+    askSaveFailed: '儲存失敗:{error}',
     askEmptyCorpus: '知識庫還是空的:先收藏一些檔案,再回來提問。',
     askPlaceholder: '問一個關於收藏檔案的問題…',
     askHintIdle: 'Enter 傳送',
@@ -10347,6 +10631,9 @@ export const strings = {
     setSearchRerank: 'Jev 搜尋重排',
     setSearchRerankDesc:
       '將本機搜尋前 20 筆命中片段傳給 TypeSafe 的 Jev 模型，依相關性重新排序。預設關閉；開啟後命中片段會離開本機。',
+    setAiInternetTools: '允許 AI 使用網際網路工具',
+    setAiInternetToolsDesc:
+      '網頁搜尋、讀取網頁、依位址取得圖片，以及產生和分析圖片。關閉後，編輯器中的 AI 不再使用這些工具。開啟時，對話中沒出現過的位址會在取得前先詢問你。AI 對話本身不受影響。',
     setSearchRerankEndpoint: 'Jev 端點',
     searchRerankedBy: '已由 Jev 依相關性重排',
     searchJevSettings: 'Jev 語意排序',
@@ -10370,8 +10657,14 @@ export const strings = {
     setDefaultAppOpenSettings: '開啟系統設定',
     setDefaultAppFailed: '設定失敗，請在系統設定中手動更改。',
     setAiSpellcheckDesc: '在 AI 對話輸入框中輸入時標示拼錯的單字。',
+    setAiShowSidebar: '顯示 AI 側欄',
+    setAiShowSidebarDesc:
+      '關閉後，編輯器會隱藏 AI 側欄和側邊按鈕；功能區或選單中的 AI 操作仍可開啟面板，新文件也不會自動開啟。',
     setAiOpenInNewDocs: '在新文件中開啟 AI 面板',
     setAiOpenInNewDocsDesc: '關閉後，新開啟的文件預設收合 AI 面板；需要時點一下即可展開。',
+    setAuthorName: '使用者名稱',
+    setAuthorNameDesc:
+      '作為註解和追蹤修訂的作者顯示在 Docs、Sheets、Slides 中。留空則使用電腦帳戶名稱。',
     settings: '設定',
     setSecAccount: '帳戶',
     setSecGeneral: '一般',

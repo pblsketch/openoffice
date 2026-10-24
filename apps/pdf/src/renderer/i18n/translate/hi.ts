@@ -11,7 +11,8 @@ export const hi = {
   trFormatPdf: 'अनूदित PDF',
   trFormatMd: 'अनूदित Markdown',
   trFormatEpub: 'अनूदित EPUB',
-  trBilingual: 'द्विभाषी: हर मूल अनुच्छेद के बाद उसका अनुवाद (केवल Markdown और EPUB)',
+  trBilingual:
+    'द्विभाषी: Markdown और EPUB में हर मूल अनुच्छेद के बाद उसका अनुवाद आता है, और PDF में हर अनूदित पृष्ठ अपने मूल पृष्ठ के बगल में रहता है',
   trPdfEncrypted:
     'यह दस्तावेज़ एन्क्रिप्टेड है, इसलिए इसमें अनूदित PDF नहीं लिखा जा सकता। Markdown और EPUB अब भी काम करते हैं।',
   trPdfScript:
@@ -59,7 +60,7 @@ export const hi = {
   trReportPending: '{count} ब्लॉक का अनुवाद अभी नहीं हुआ है और वे मूल भाषा में रहेंगे।',
   trReportNone: 'सभी ब्लॉक का अनुवाद हो गया।',
   trReportUntranslated: 'मूल भाषा में रखे गए ब्लॉक',
-  trReportOverflowed: 'अपने बॉक्स से बाहर जाने वाले ब्लॉक: {count} (पृष्ठ {pages})',
+  trReportOverflowed: 'जगह कम होने से मूल भाषा में छोड़े गए ब्लॉक: {count} (पृष्ठ {pages})',
   trReportOriginalPages: 'जैसे थे वैसे ही रखे गए पृष्ठ',
   trReportFiles: 'सहेजी गई फ़ाइलें',
   trReasonLine: '{reason}: पृष्ठ {pages} ({count} ब्लॉक)',

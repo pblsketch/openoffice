@@ -22,6 +22,12 @@ Every editor has its own key bindings, and only a few of them work everywhere. T
 - **`⌘O`, `⌘S` and `⌘P` are implemented separately behind each editor**, and they do not quite behave alike. Word's `⌘P` first lays out a print preview so one printed sheet equals one on-screen page; PDF's opens the PDF print dialog; Sheets and Slides have their own again.
 - **The rest is per-application.** When the Word tab is active, `⌘B` is Word's Bold. When Slides is active, `⌘B` is Slides' Bold, and the menu it belongs to is not the one you are used to. Where a binding only fires with something selected, or in a particular pane, the Action column says so.
 
+## Presentation mode
+
+- **Start**: F5 in Word, PDF, Mindmap, HTML and Markdown. In a spreadsheet use Ctrl+F5 (from A1) or Shift+F5 (from the current cell).
+- **Other entry points**: in Word, Ctrl+F5 and Shift+F5 open the reading view without fullscreen; in PDF they start from the current page; in HTML they present inside the tab.
+- **End**: Esc or F5. F11 is the window's own fullscreen and does not change the document view.
+
 ## Conventions
 
 - The macOS column uses the familiar symbols: `⌘` Command, `⌥` Option, `⇧` Shift, `⌃` Control.
@@ -588,3 +594,154 @@ Each of these needs an element to be selected already; with nothing selected the
 | Italic the selected range         | ⌘I    | Ctrl+I          |
 
 Committing keeps what you typed and returns the element to the selected state.
+
+## HWP/HWPX
+
+These keys work while the HWP/HWPX tab is in front and the document has focus. The two columns show how to press each one on macOS and on Windows / Linux.
+
+### File
+
+| Action       | macOS | Windows / Linux      |
+| ------------ | ----- | -------------------- |
+| New document |       | Alt+N                |
+| Open…        | ⌘O    | Ctrl+O / Alt+O       |
+| Save         | ⌘S    | Ctrl+S / Alt+S       |
+| Save as…     | ⇧⌘S   | Ctrl+Shift+S / Alt+V |
+| Print        | ⌘P    | Ctrl+P / Alt+P       |
+
+### Edit
+
+| Action            | macOS       | Windows / Linux              |
+| ----------------- | ----------- | ---------------------------- |
+| Undo              | ⌃Z          | Ctrl+Z                       |
+| Redo              | ⌃⇧Z         | Ctrl+Shift+Z                 |
+| Delete the line   | ⌃Y          | Ctrl+Y                       |
+| Cut               | ⌃X          | Ctrl+X                       |
+| Copy              | ⌃C          | Ctrl+C                       |
+| Paste             | ⌃V          | Ctrl+V                       |
+| Delete            | ⌃E          | Ctrl+E                       |
+| Select all        | ⌃A          | Ctrl+A                       |
+| Copy formatting   | ⌥C          | Alt+C                        |
+| Find              | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
+| Find and replace  | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
+| Find again        | ⌃L          | Ctrl+L                       |
+| Find backward     | ⌃Q, L       | Ctrl+Q, L                    |
+| Go to             | ⌥G          | Alt+G                        |
+| Compare documents | ⌥⇧V         | Alt+Shift+V                  |
+
+### Character
+
+| Action                     | macOS    | Windows / Linux      |
+| -------------------------- | -------- | -------------------- |
+| Bold                       | ⌃B / ⌥⇧B | Ctrl+B / Alt+Shift+B |
+| Italic                     | ⌃I / ⌥⇧I | Ctrl+I / Alt+Shift+I |
+| Underline                  | ⌃U / ⌥⇧U | Ctrl+U / Alt+Shift+U |
+| Normal shape               | ⌥⇧C      | Alt+Shift+C          |
+| Superscript                | ⌥⇧P      | Alt+Shift+P          |
+| Subscript                  | ⌥⇧S      | Alt+Shift+S          |
+| Character shape…           | ⌥L       | Alt+L                |
+| Increase font size         | ⌥⇧E / ⌃] | Alt+Shift+E / Ctrl+] |
+| Decrease font size         | ⌥⇧R / ⌃[ | Alt+Shift+R / Ctrl+[ |
+| Increase character width   | ⌥⇧K      | Alt+Shift+K          |
+| Decrease character width   | ⌥⇧J      | Alt+Shift+J          |
+| Increase character spacing | ⌥⇧W      | Alt+Shift+W          |
+| Decrease character spacing | ⌥⇧N      | Alt+Shift+N          |
+| Black text                 | ⌃M, K    | Ctrl+M, K            |
+| Red text                   | ⌃M, R    | Ctrl+M, R            |
+| Blue text                  | ⌃M, B    | Ctrl+M, B            |
+| Plum text                  | ⌃M, D    | Ctrl+M, D            |
+| Green text                 | ⌃M, G    | Ctrl+M, G            |
+| Yellow text                | ⌃M, Y    | Ctrl+M, Y            |
+| Teal text                  | ⌃M, C    | Ctrl+M, C            |
+| White text                 | ⌃M, W    | Ctrl+M, W            |
+
+### Paragraph
+
+| Action                          | macOS   | Windows / Linux |
+| ------------------------------- | ------- | --------------- |
+| Align left                      | ⌃⇧L     | Ctrl+Shift+L    |
+| Align centre                    | ⌃⇧C     | Ctrl+Shift+C    |
+| Align right                     | ⌃⇧R     | Ctrl+Shift+R    |
+| Justify                         | ⌃⇧M     | Ctrl+Shift+M    |
+| Distribute                      | ⌃⇧T     | Ctrl+Shift+T    |
+| Increase line spacing           | ⌥⇧Z     | Alt+Shift+Z     |
+| Decrease line spacing           | ⌥⇧A     | Alt+Shift+A     |
+| Paragraph shape…                | ⌥T      | Alt+T           |
+| Style…                          | F6      | F6              |
+| Apply the first to tenth styles | ⌃1 … ⌃0 | Ctrl+1 … Ctrl+0 |
+| Paragraph number shape          | ⌃K, N   | Ctrl+K, N       |
+
+### Insert
+
+| Action                           | macOS       | Windows / Linux    |
+| -------------------------------- | ----------- | ------------------ |
+| Insert table                     | ⌃N, T       | Ctrl+N, T          |
+| Footnote                         | ⌃N, N       | Ctrl+N, N          |
+| Endnote                          | ⌃N, E       | Ctrl+N, E          |
+| Header                           | ⌃N, H       | Ctrl+N, H          |
+| Page number                      | ⌃N, P       | Ctrl+N, P          |
+| Insert picture                   | ⌃N, I       | Ctrl+N, I          |
+| Text box                         | ⌃N, B       | Ctrl+N, B          |
+| Equation                         | ⌃N, M       | Ctrl+N, M          |
+| Insert caption                   | ⌃N, C       | Ctrl+N, C          |
+| Hyperlink                        | ⌃K, H       | Ctrl+K, H          |
+| Bookmark                         | ⌃K, B       | Ctrl+K, B          |
+| Insert field                     | ⌃K, E       | Ctrl+K, E          |
+| Date/time string                 | ⌃K, D       | Ctrl+K, D          |
+| Edit object, field or table/cell | ⌃N, K       | Ctrl+N, K          |
+| Symbols                          | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+
+### Table
+
+| Action              | macOS        | Windows / Linux        |
+| ------------------- | ------------ | ---------------------- |
+| Add row/column      | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Delete row/column   | ⌥⌫           | Alt+Delete             |
+| Split cell          | F5 → S       | F5 → S                 |
+| Merge cells         | F5 → M       | F5 → M                 |
+| Block sum           | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Block average       | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Block product       | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Split table         | ⌃N, A        | Ctrl+N, A              |
+| Attach table        | ⌃N, Z        | Ctrl+N, Z              |
+| Calculation formula | ⌃N, F        | Ctrl+N, F              |
+
+### Table calculations
+
+These work only while the caret is in an empty table cell. Separate keys calculate from the cells to the left and from the cells above.
+
+| Action        | macOS | Windows / Linux |
+| ------------- | ----- | --------------- |
+| Sum left      | ⇧⌘H   | Ctrl+Shift+H    |
+| Sum above     | ⌃⇧V   | Ctrl+Shift+V    |
+| Average left  | ⌃⇧J   | Ctrl+Shift+J    |
+| Average above | ⌃⇧B   | Ctrl+Shift+B    |
+| Product left  | ⌃⇧K   | Ctrl+Shift+K    |
+| Product above | ⌃⇧N   | Ctrl+Shift+N    |
+
+### Page
+
+| Action                | macOS | Windows / Linux  |
+| --------------------- | ----- | ---------------- |
+| Page setup            | F7    | F7               |
+| Page break            | ⌃⏎    | Ctrl+Enter       |
+| Column break          | ⌃⇧⏎   | Ctrl+Shift+Enter |
+| Column settings break | ⌃⌥⏎   | Ctrl+Alt+Enter   |
+| Section settings      | ⌃N, G | Ctrl+N, G        |
+| Hide page             | ⌃N, S | Ctrl+N, S        |
+
+### View
+
+| Action                               | macOS | Windows / Linux |
+| ------------------------------------ | ----- | --------------- |
+| Zoom in                              | ⌃=    | Ctrl+=          |
+| Zoom out                             | ⌃-    | Ctrl+-          |
+| Fit to page                          | ⌃G, P | Ctrl+G, P       |
+| Fit to width                         | ⌃G, W | Ctrl+G, W       |
+| Zoom to 100%                         | ⌃G, Q | Ctrl+G, Q       |
+| Collapse or expand the tool box      | ⌃F1   | Ctrl+F1         |
+| Show or hide paragraph marks         | ⌃G, T | Ctrl+G, T       |
+| Show or hide control marks           | ⌃G, C | Ctrl+G, C       |
+| Go to the Home tab (outside a table) | ⇧⌘H   | Ctrl+Shift+H    |
+
+A key written `Ctrl+N,T` means press Ctrl+N, release it, then press T. `F5 → S` means select a cell block with F5 and then press S. `Ctrl+1 … Ctrl+0` stand for the document’s first through tenth styles; `Ctrl+Alt+1 … Ctrl+Alt+0` apply the same styles. While a block of cells is selected, `Ctrl+Shift+S` (on macOS `⇧⌘S`) is the block sum; elsewhere that key saves under a new name.

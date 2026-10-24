@@ -1,4 +1,9 @@
-export { parseFileToText, type ParsedFile, type ParsedFileKind } from './parse'
+export {
+  parseFileToText,
+  type ParsedFile,
+  type ParsedFileKind,
+  type ParseFileOptions,
+} from './parse'
 export {
   ATTACHABLE_EXTS,
   ATTACHABLE_IMAGE_EXTS,

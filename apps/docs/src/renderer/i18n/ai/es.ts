@@ -69,6 +69,8 @@ export const es = {
   aiEmptyTitle: 'Deja que la IA te ayude a escribir y editar',
   aiEmptyBody1: 'Da una instrucción o simplemente haz una pregunta;',
   aiEmptyBody2: 'con texto seleccionado, los comandos de reescritura se aplican a la selección.',
+  aiNoHidingNote:
+    'Este editor no permite ocultar partes del documento a la IA: lo que abarca la solicitud se envía tal cual.',
   aiStarterWeeklyReport: 'Escribe un informe semanal del proyecto',
   aiStarterLaunchPost: 'Redacta un anuncio de lanzamiento de producto',
   aiStarterEventOutline: 'Esboza un plan de evento',
@@ -184,4 +186,17 @@ export const es = {
   aiCmdImages: '{count} imagen(es) actualizada(s)',
   aiCmdToc: 'Tabla de contenido insertada ({count} entradas)',
   aiCmdSkipped: ' ({count} bloque(s) protegido(s) omitido(s))',
+  aiStarterMindMap: 'Generar un mapa mental de este documento',
+  aiMindMapBtn: 'Mapa mental IA',
+  aiMindMapPrompt:
+    'Genera un mapa mental de este documento y organiza los temas principales y conceptos clave según su estructura de secciones',
+  aiSumMindMap: 'Generar mapa mental',
+  aiMindMapTitle: 'Mapa mental',
+  aiMindMapNodes: '{count} nodos',
+  aiMindMapAskPrompt: 'Háblame de «{label}» en este documento',
+  aiMindMapJump: 'Ir al pasaje citado',
+  aiMindMapExport: 'Exportar PNG',
+  aiMindMapReset: 'Restablecer vista',
+  aiMindMapExpand: 'Expandir rama',
+  aiMindMapCollapse: 'Contraer rama',
 } satisfies Record<keyof typeof zh, string>

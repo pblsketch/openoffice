@@ -6,7 +6,7 @@ Semua file yang terbuka berbagi satu jendela; bilah tab di atas berpindah di ant
 
 ## Dasar-dasar
 
-- **Berpindah**: klik sebuah tab, atau gulir roda mouse di atas bilah untuk memutar satu per satu.
+- **Berpindah**: klik tab, tekan **Ctrl+Tab** (berikutnya) / **Ctrl+Shift+Tab** (sebelumnya), atau gulir roda mouse di atas bilah.
 - **Menutup**: tanda × pada tab, atau ⌘W/ctrl+W. Perubahan yang belum disimpan akan ditanyakan lebih dulu.
 - **Baru**: tanda + di ujung kanan bilah.
 - **Aktif seketika**: menekan sebuah tab langsung berpindah begitu ditekan, tanpa menunggu klik selesai.
@@ -57,7 +57,23 @@ Tab Beranda paling kiri tidak bisa ditutup; untuk kembali dari editor mana pun, 
 - Hanya satu jendela AI yang terlihat. Panel tempat Anda bekerja menampilkan jendela AI-nya; jendela panel lain melipat menjadi rel, dan mengklik sebuah panel memunculkan jendela AI panel itu.
 - Selagi terlipat, percakapan panel itu dan pekerjaan AI yang sedang berjalan tetap hidup. Percakapan disimpan per dokumen.
 - **Dua salinan dokumen yang sama**: setelah menyimpan di satu panel, menyimpan dari panel lain lebih dulu menanyakan "Dokumen ini berubah di tempat lain". Sementara simpan otomatis menunggu dengan tenang.
-- **Menjalankan ulang aplikasi tanpa file** mengembalikan pasangan dokumen terbagi terakhir persis seperti sebelumnya; menjalankannya dengan file hanya membuka file itu.
+- Setelah ditutup dengan normal, **menjalankan ulang aplikasi tanpa file** mengembalikan pasangan dokumen terbagi terakhir persis seperti sebelumnya; menjalankannya dengan file hanya membuka file itu. Setelah mati mendadak, tab sebelumnya kembali seperti dijelaskan di bawah.
 - Tab Beranda, Bantuan, dan Presentasi (pratinjau) tidak bisa masuk ke panel; selagi salah satunya terbuka, kedua panel bersembunyi sebentar dan kembali saat Anda kembali ke tab dokumen.
 
 Tiga panel atau lebih, pembagian di dalam jendela yang dilepas, dan sinkronisasi langsung kedua salinan ditunda nanti.
+
+## Saat aplikasi atau PC mati mendadak
+
+Selama sebuah dokumen punya perubahan yang belum disimpan, GenOffice menyimpan salinan pemulihannya kira-kira setiap 30 detik di folder data milik aplikasi. Semua editor melakukannya, juga untuk dokumen baru yang belum pernah disimpan. Berkas Anda sendiri tidak berubah sampai Anda menyimpannya.
+
+- **Tab Anda kembali**: jika aplikasi atau PC mati tanpa ditutup dengan normal (listrik padam, aplikasi macet, aplikasi ditutup paksa, PC dimatikan atau dimulai ulang untuk pembaruan), tab dokumen yang terbuka akan kembali saat GenOffice dijalankan berikutnya, dalam urutan yang sama dan dengan tampilan terbagi jika Anda memakainya. Ini juga terjadi jika Anda menjalankannya dengan membuka sebuah file.
+- **Satu daftar di Beranda**: dokumen yang masih punya konten belum disimpan ditampilkan bersama di layar Beranda. Pilih **Pulihkan** atau **Buang** untuk masing-masing, atau gunakan **Pulihkan semua** atau **Buang semua**, lalu tekan **Terapkan**. Jika program lain atau layanan sinkronisasi mengubah berkas itu sesudahnya, **Buang** dipilih lebih dulu agar berkas tetap seperti sekarang. Jika berkas aslinya tidak dapat ditemukan lagi, memulihkannya membuka konten sebagai dokumen baru tanpa nama.
+- **Putuskan nanti**: menutup daftar tidak menghapus apa pun. Saat Anda pertama kali membuka salah satu dokumen itu, kotak berisi namanya akan bertanya lagi; menekan Esc atau menutup kotak berarti memulihkan. Jika konten yang dipulihkan tidak diperlukan, tutup dokumen dengan **Jangan Simpan**.
+- **Tab dimuat saat dibuka**: tab yang dipulihkan langsung menampilkan judulnya, tetapi setiap dokumen baru dimuat saat Anda pertama kali mengeklik tabnya. Membuka semuanya sekaligus bisa membuat PC yang kekurangan memori mati lagi.
+- **Saat PC dimatikan**: jika ada dokumen yang belum disimpan, GenOffice tidak bertanya apakah akan menyimpan. Aplikasi menyimpan salinannya, menutup diri, dan menawarkannya saat dijalankan berikutnya.
+- **Dokumen tanpa salinan**: berkas Excel, HWP, dan PDF yang dilindungi kata sandi tidak mendapat salinan pemulihan, jadi perubahannya yang belum disimpan tidak dapat dipulihkan; sebuah pemberitahuan menyebutkan hal ini sekali saat dokumen seperti itu dibuka. Sering-seringlah menyimpan dokumen ini. Dokumen Word dan PowerPoint yang dilindungi kata sandi mendapat salinan yang dikunci dengan kata sandi yang sama.
+- **Berkas CSV, .xls lama, dan .tsv**: editor lembar kerja menyimpan salinannya sebagai buku kerja tanpa judul. Saat dipulihkan, salinan itu terbuka sebagai buku kerja tanpa judul, dan penyimpanan pertamanya menyarankan folder dan nama berkas asli sebagai .xlsx.
+
+Salinan dihapus saat Anda menyimpan dokumen, menutupnya dengan **Jangan Simpan**, atau memilih **Buang**, dan juga setelah 30 hari tanpa perubahan. Setelah ditutup dengan normal, GenOffice dimulai seperti biasa tanpa mengembalikan tab.
+
+**Ini bukan Simpan Otomatis.** Simpan Otomatis menulis perubahan ke berkas itu sendiri, dan hanya setelah Anda menyimpannya sekali. Salinan pemulihan tidak pernah menyentuh berkas Anda; salinan itu hanya menyimpan bagian yang belum Anda simpan, sampai Anda menyimpan atau membuangnya.

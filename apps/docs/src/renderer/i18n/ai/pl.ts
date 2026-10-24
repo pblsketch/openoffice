@@ -68,6 +68,8 @@ export const pl = {
   aiEmptyTitle: 'Pozwól AI pomóc Ci pisać i edytować',
   aiEmptyBody1: 'Wydaj polecenie lub po prostu zadaj pytanie;',
   aiEmptyBody2: 'przy zaznaczonym tekście polecenia przepisania dotyczą zaznaczenia.',
+  aiNoHidingNote:
+    'W tym edytorze nie można ukryć fragmentów dokumentu przed AI: to, czego dotyczy prośba, jest wysyłane bez zmian.',
   aiStarterWeeklyReport: 'Napisz tygodniowy raport z projektu',
   aiStarterLaunchPost: 'Napisz ogłoszenie o premierze produktu',
   aiStarterEventOutline: 'Przygotuj konspekt planu wydarzenia',
@@ -182,4 +184,17 @@ export const pl = {
   aiCmdImages: 'Zaktualizowano obrazów: {count}',
   aiCmdToc: 'Wstawiono spis treści (pozycji: {count})',
   aiCmdSkipped: ' (pominięto chronione bloki: {count})',
+  aiStarterMindMap: 'Wygeneruj mapę myśli tego dokumentu',
+  aiMindMapBtn: 'Mapa myśli AI',
+  aiMindMapPrompt:
+    'Wygeneruj mapę myśli tego dokumentu, porządkując główne tematy i kluczowe pojęcia według struktury sekcji',
+  aiSumMindMap: 'Generuj mapę myśli',
+  aiMindMapTitle: 'Mapa myśli',
+  aiMindMapNodes: '{count} węzłów',
+  aiMindMapAskPrompt: 'Opowiedz o „{label}” w tym dokumencie',
+  aiMindMapJump: 'Przejdź do cytowanego fragmentu',
+  aiMindMapExport: 'Eksportuj PNG',
+  aiMindMapReset: 'Resetuj widok',
+  aiMindMapExpand: 'Rozwiń gałąź',
+  aiMindMapCollapse: 'Zwiń gałąź',
 } satisfies Record<keyof typeof zh, string>

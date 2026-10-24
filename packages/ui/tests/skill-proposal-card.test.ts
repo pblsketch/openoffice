@@ -90,7 +90,11 @@ describe('SkillProposalCard', () => {
     renderCard(NEW, bridge)
     await settle()
     expect(host.textContent).toContain('New skill')
-    expect(inputs()[0]!.value).toBe('Minutes')
+    // the name is the first field, always shown (no title field, no Advanced section)
+    expect(inputs()).toHaveLength(1)
+    expect(inputs()[0]!.value).toBe('minutes')
+    expect(host.querySelector('details')).toBeNull()
+    expect(host.textContent).toContain('Shown in the skill list')
     expect(host.querySelectorAll('textarea')[1]!.value).toBe('1. Date\n2. Decisions')
     expect(bridge.saveFromCard).not.toHaveBeenCalled()
     expect(button('Save')!.disabled).toBe(false)
@@ -102,14 +106,15 @@ describe('SkillProposalCard', () => {
     const bridge = fakeBridge()
     const { onSaved } = renderCard(NEW, bridge)
     await settle()
-    act(() => setValue(inputs()[0]!, 'Team minutes'))
+    act(() => setValue(inputs()[0]!, 'team-minutes'))
+    await settle()
     const manual = host.querySelector<HTMLInputElement>('input[value="manual"]')!
     act(() => manual.click())
     await act(async () => button('Save')!.click())
     await settle()
     expect(bridge.saveFromCard).toHaveBeenCalledWith({
-      title: 'Team minutes',
-      name: 'minutes',
+      title: 'Minutes',
+      name: 'team-minutes',
       description: 'Writes minutes in our format.',
       body: '1. Date\n2. Decisions',
       invoke: 'manual',
@@ -120,7 +125,7 @@ describe('SkillProposalCard', () => {
     )
   })
 
-  it('blocks Save with the reason when the name breaks the rule, under Advanced', async () => {
+  it('blocks Save with the reason when the name breaks the rule', async () => {
     const bridge = fakeBridge()
     renderCard({ ...NEW, name: 'Bad Name' }, bridge)
     await settle()
@@ -128,17 +133,29 @@ describe('SkillProposalCard', () => {
     expect(host.textContent).toContain(
       'The name can use only lowercase English letters, digits and hyphens (-)',
     )
-    expect(host.querySelector('details')!.open).toBe(true)
-    act(() => setValue(inputs()[1]!, 'good-name'))
+    act(() => setValue(inputs()[0]!, 'good-name'))
     await settle()
     expect(button('Save')!.disabled).toBe(false)
   })
 
-  it('blocks Save on an empty title or body', async () => {
+  it('blocks Save on an empty body', async () => {
     renderCard({ ...NEW, body: '   ' }, fakeBridge())
     await settle()
     expect(button('Save')!.disabled).toBe(true)
     expect(host.textContent).toContain('Enter the instructions')
+  })
+
+  it('saves a proposal that has a name but no title', async () => {
+    const bridge = fakeBridge()
+    renderCard({ ...NEW, title: '' }, bridge)
+    await settle()
+    expect(bridge.suggestName).not.toHaveBeenCalled()
+    expect(button('Save')!.disabled).toBe(false)
+    await act(async () => button('Save')!.click())
+    await settle()
+    expect(bridge.saveFromCard).toHaveBeenCalledWith(
+      expect.objectContaining({ title: '', name: 'minutes' }),
+    )
   })
 
   it('suggests a name from the title when the model gave none', async () => {
@@ -146,7 +163,7 @@ describe('SkillProposalCard', () => {
     renderCard({ ...NEW, name: '' }, bridge)
     await settle()
     expect(bridge.suggestName).toHaveBeenCalledWith('Minutes')
-    expect(inputs()[1]!.value).toBe('minutes')
+    expect(inputs()[0]!.value).toBe('minutes')
   })
 
   it('changes my own skill with Replace', async () => {
@@ -302,7 +319,8 @@ describe('useSkillProposals', () => {
     await settle()
     expect(host.textContent).toContain('스킬 만들기')
     act(() => button('취소')!.click())
-    expect(host.textContent).toContain('저장하지 않은 스킬 제안 · Minutes')
+    // the closed card names the proposal by its name, not its title
+    expect(host.textContent).toContain('저장하지 않은 스킬 제안 · minutes')
     expect(bridge.saveFromCard).not.toHaveBeenCalled()
     expect(persisted).toEqual([])
   })
@@ -314,12 +332,21 @@ describe('useSkillProposals', () => {
     await settle()
     await act(async () => button('저장')!.click())
     await settle()
-    expect(host.textContent).toContain('저장했습니다 · Minutes')
+    expect(host.textContent).toContain('저장했습니다 · minutes')
     expect(persisted).toEqual([
-      { name: 'propose_skill', summary: 'Minutes', output: 'skill-card-saved:app:minutes' },
+      { name: 'propose_skill', summary: 'minutes', output: 'skill-card-saved:app:minutes' },
     ])
     act(() => button('설정에서 보기')!.click())
     expect(bridge.openSettings).toHaveBeenCalled()
+  })
+
+  it('names a card by the title when the proposal (an older prompt) gave no name', async () => {
+    const bridge = fakeBridge()
+    act(() => root.render(createElement(Panel, { bridge, keys: ['call-1'] })))
+    act(() => handles.add({ ...NEW, name: '' }))
+    await settle()
+    act(() => button('취소')!.click())
+    expect(host.textContent).toContain('저장하지 않은 스킬 제안 · Minutes')
   })
 
   it('reads a stored conversation back with closed cards and without saved records', () => {

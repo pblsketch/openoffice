@@ -690,6 +690,7 @@ export const ko = {
   appTabReview: '검토',
   appRibbonCollapse: '리본 축소',
   appRibbonExpand: '리본 확장',
+  appRibbonCompact: '간단 리본(아이콘만)',
   appTabView: '보기',
   appTabAi: 'AI',
   appTabChartDesign: '차트 디자인',
@@ -1098,6 +1099,9 @@ export const ko = {
   appHeadings: '머리글',
   appHeadingsHidden: '머리글을 숨겼습니다.',
   appHeadingsShown: '머리글을 표시했습니다.',
+  appRightToLeft: '오른쪽에서 왼쪽',
+  appRightToLeftOn: '눈금 방향: 오른쪽에서 왼쪽.',
+  appRightToLeftOff: '눈금 방향: 왼쪽에서 오른쪽.',
   appPrintHeadingsTitle: '행/열 머리글 인쇄',
   // Formulas tab
   appGroupFunctionLibrary: '함수 라이브러리',

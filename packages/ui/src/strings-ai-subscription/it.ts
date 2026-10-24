@@ -24,7 +24,7 @@ export const it = {
     'Si è verificato un problema durante la verifica di {provider}. Verifica di nuovo.',
   actionInstall: 'Installa',
   actionLogin: 'Accedi',
-  actionLoginWindow: 'Il browser non si è aperto o mostra un codice?',
+  actionLoginWindow: 'Il browser non si è aperto?',
   actionRecheck: 'Verifica di nuovo',
   actionAcceptMetered: 'Usa comunque',
   actionInstallHelp: 'Guida ufficiale all’installazione',
@@ -38,7 +38,7 @@ export const it = {
   signingInBrowserNote:
     'Accedi al tuo account {vendor} nel browser che si è aperto e consenti l’accesso. La connessione avviene da sola quando hai finito.',
   signingInWindowNote:
-    'Se il browser non si è aperto, copia l’indirizzo mostrato nella finestra appena aperta e aprilo nel browser. Quando il browser mostra un codice, copialo, incollalo una sola volta in quella finestra e premi Invio. Il codice incollato potrebbe non comparire nella finestra.',
+    'Segui le indicazioni in alto nella finestra di accesso appena aperta. Accedi nella pagina di {vendor} che si è aperta nel browser: la finestra si chiude da sola e la connessione si completa. Una pagina di accesso aperta prima non funziona più; chiudila.',
   meteredWarning: 'Non è un abbonamento: paghi in base a quanto usi.',
   meteredMeaning:
     'Questo accesso usa una chiave API o un account a consumo, oppure non è stato possibile confermarne il tipo. Con “Usa comunque” l’IA funziona su questa connessione e ogni richiesta viene addebitata a quell’account.',
@@ -121,8 +121,21 @@ export const it = {
   loginHowNote:
     'Premendo si apre un browser. Accedi con il tuo account {vendor} e premi Consenti: la connessione si completa da sola.',
   signingInStalledNote:
-    'Il browser non si è aperto o mostra un codice? Apri la finestra di accesso con il pulsante qui sotto. Incolla nel browser l’indirizzo mostrato nella finestra, oppure incolla nella finestra il codice del browser.',
+    'Se nel browser non si è aperta nessuna pagina di accesso, apri la finestra di accesso con il pulsante qui sotto. Se stai ancora effettuando l’accesso nel browser, completalo lì: il pulsante interrompe quell’accesso e ricomincia da capo.',
   actionLoginWindowOpen: 'Apri la finestra di accesso',
+  loginWindowTitle: 'Accesso a {provider}',
+  loginWindowIntro:
+    'Questa è la finestra di accesso del programma {provider}. Il testo in inglese qui sotto viene dal programma {provider}.',
+  loginWindowStepBrowser:
+    'Quando nel browser si apre la pagina di accesso di {vendor}, accedi e consenti l’accesso. Poi questa finestra si chiude da sola.',
+  loginWindowStepAddress:
+    'Se non si è aperto nessun browser, seleziona l’indirizzo qui sotto che inizia con https:// trascinandoci sopra il mouse, poi fai clic con il tasto destro per copiarlo. Incollalo nella barra degli indirizzi del browser per aprire la pagina di accesso.',
+  loginWindowStepCode:
+    'Se dopo l’accesso il browser mostra un codice, copia il codice intero (usa il suo pulsante di copia, se c’è). Fai clic una volta con il tasto destro dentro questa finestra per incollarlo, poi premi Invio. È normale che il codice incollato non compaia.',
+  loginWindowStepInvalid:
+    'Se compare "Invalid code", il codice non è stato copiato per intero. Lascia aperta questa finestra, copia di nuovo il codice e incollalo.',
+  loginWindowClosing:
+    'L’accesso non è stato completato. Dopo aver letto i messaggi qui sopra, premi Invio per chiudere questa finestra. Per riprovare, premi di nuovo il pulsante di accesso.',
   actionCancelLogin: 'Annulla l’accesso',
   actionUpdate: 'Aggiorna',
   updateNote:
@@ -131,4 +144,5 @@ export const it = {
     'Ancora niente? Copia i dati di connessione e inviali a chi ti sta aiutando. Non contengono account né percorsi di file.',
   actionCopyInfo: 'Copia i dati per l’assistenza',
   copyInfoDone: 'Copiato',
+  actionConnectHelp: 'Guarda ogni passaggio sullo schermo (pagina in coreano)',
 } satisfies Record<keyof typeof zh, string>

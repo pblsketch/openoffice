@@ -1,10 +1,10 @@
 /**
- * Line breaking and fitting of a translation into its block's boxes.
+ * Line breaking of a translation into its block's boxes.
  *
  * Text flows through the boxes in order (a paragraph joined across a page
- * boundary has one box per page). The size starts at the source size and
- * shrinks in small steps down to the floor; text that still does not fit is
- * laid out at the floor size running past the last box, and reported.
+ * boundary has one box per page). `layoutText` lays it out at one size and
+ * says whether it ran past the last box; the placement (place.ts) tries the
+ * sizes `scaleSteps` lists, from the source size down to the floor.
  */
 import type { Rect } from '../tree/types'
 
@@ -33,18 +33,14 @@ export interface Layout {
   overflowBox: number
 }
 
-export interface FitOptions {
-  /** source font size, points */
-  size: number
-  /** smallest allowed size, points */
-  minSize: number
+export interface LayoutOptions {
   /** baseline-to-baseline distance as a multiple of the size */
   lineHeight: number
   align: 'left' | 'center'
 }
 
 /** size reduction per fitting step, as a share of the source size */
-const SHRINK_STEP = 0.04
+export const SHRINK_STEP = 0.04
 /** a line may run this share of the size past the box's right edge */
 const WIDTH_SLACK_EM = 0.15
 /** the last line's descender may hang this share of the size below the box */
@@ -141,13 +137,15 @@ class TokenStream {
   }
 }
 
-function layoutAt(
+/** the text laid out at `size`; `overflowed` when it runs past the last box */
+export function layoutText(
   text: string,
   boxes: readonly Rect[],
   size: number,
   font: Measurer,
-  o: FitOptions,
+  o: LayoutOptions,
 ): Layout {
+  if (boxes.length === 0) throw new Error('no box to lay out into')
   const leading = size * o.lineHeight
   const lines: LaidLine[] = []
   const stream = new TokenStream(text)
@@ -176,20 +174,15 @@ function layoutAt(
   return { size, lines, overflowed, overflowBox: boxes.length - 1 }
 }
 
-/** the largest size (down to the floor) at which the text fits its boxes */
-export function fitText(
-  text: string,
-  boxes: readonly Rect[],
-  font: Measurer,
-  o: FitOptions,
-): Layout {
-  if (boxes.length === 0) throw new Error('no box to lay out into')
-  let size = o.size
-  for (;;) {
-    const layout = layoutAt(text, boxes, size, font, o)
-    if (!layout.overflowed) return layout
-    const next = size - o.size * SHRINK_STEP
-    if (size <= o.minSize + 1e-6) return layout
-    size = Math.max(o.minSize, next)
+/** scales of the source size to try, largest first, ending at the floor */
+export function scaleSteps(floor: number): number[] {
+  const out: number[] = []
+  for (let k = 0; ; k++) {
+    const s = 1 - k * SHRINK_STEP
+    if (s <= floor + 1e-6) {
+      out.push(floor)
+      return out
+    }
+    out.push(s)
   }
 }

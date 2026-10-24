@@ -251,7 +251,7 @@ describe('a file that opens', () => {
     expect(container.querySelectorAll('.mm-foot img, .mm-foot u')).toHaveLength(0)
   })
 
-  it('a note from the file is shown as text in its editor', async () => {
+  it('a note from the file is shown as text in its side panel', async () => {
     const hostile = '<img src=x onerror="window.pwned=1"> note'
     const sheet = plainSheet()
     const first = sheet.rootTopic.children!.attached![0]!
@@ -261,11 +261,83 @@ describe('a file that opens', () => {
       topicEl(first.id).querySelector<HTMLElement>('.mm-chip-note')!.click()
     })
     await settle()
-    const field = document.querySelector<HTMLTextAreaElement>(
-      '[data-dialog="topic-note"] textarea',
-    )!
+    const panel = container.querySelector<HTMLElement>('[data-note-panel]')!
+    const field = panel.querySelector<HTMLTextAreaElement>('textarea')!
     expect(field.value).toBe(hostile)
-    expect(document.querySelectorAll('.mm-modal img')).toHaveLength(0)
+    expect(panel.querySelectorAll('img')).toHaveLength(0)
+    expect(document.querySelector('.mm-modal')).toBeNull()
+  })
+
+  it('a note still being typed is saved with the map', async () => {
+    const { fake } = await openWith(plainSheet())
+    const firstId = 'cccccccc-cccc-4ccc-8ccc-ccccccccccc1'
+    await selectOnMap(firstId)
+    await click('[data-action="note"]')
+    const field = container.querySelector<HTMLTextAreaElement>('[data-note-panel] textarea')!
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
+    await act(async () => {
+      field.focus()
+      setter.call(field, 'A note\nwith two lines')
+      field.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    // no blur: the save itself has to take the draft into the map
+    await click('[data-action="save"]')
+    await savesReach(fake)
+    const saved = await openXmind(fake.saves[0]!.bytes)
+    if (saved.status !== 'ok') throw new Error('did not open')
+    expect(saved.document.sheets[0]!.rootTopic.children!.attached![0]!.notes?.plain?.content).toBe(
+      'A note\nwith two lines',
+    )
+  })
+
+  it('moving the selection leaves the note typed for the topic before it', async () => {
+    const { fake } = await openWith(plainSheet())
+    const firstId = 'cccccccc-cccc-4ccc-8ccc-ccccccccccc1'
+    const secondId = 'cccccccc-cccc-4ccc-8ccc-ccccccccccc2'
+    await selectOnMap(firstId)
+    await click('[data-action="note"]')
+    const field = container.querySelector<HTMLTextAreaElement>('[data-note-panel] textarea')!
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
+    await act(async () => {
+      setter.call(field, 'kept for One')
+      field.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    // the click selects the other topic; the draft has to reach the map first
+    await selectOnMap(secondId)
+    expect(container.querySelector<HTMLTextAreaElement>('[data-note-panel] textarea')!.value).toBe(
+      '',
+    )
+
+    await click('[data-action="save"]')
+    await savesReach(fake)
+    const saved = await openXmind(fake.saves[0]!.bytes)
+    if (saved.status !== 'ok') throw new Error('did not open')
+    expect(saved.document.sheets[0]!.rootTopic.children!.attached![0]!.notes?.plain?.content).toBe(
+      'kept for One',
+    )
+  })
+
+  it('closing the side panel keeps the note that was being typed', async () => {
+    const { fake } = await openWith(plainSheet())
+    const firstId = 'cccccccc-cccc-4ccc-8ccc-ccccccccccc1'
+    await selectOnMap(firstId)
+    await click('[data-action="note"]')
+    const field = container.querySelector<HTMLTextAreaElement>('[data-note-panel] textarea')!
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
+    await act(async () => {
+      setter.call(field, 'kept after closing')
+      field.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await click('[data-action="note-close"]')
+    expect(container.querySelector('[data-note-panel]')).toBeNull()
+
+    await click('[data-action="save"]')
+    await savesReach(fake)
+    const saved = await openXmind(fake.saves[0]!.bytes)
+    if (saved.status !== 'ok') throw new Error('did not open')
+    expect(saved.document.sheets[0]!.rootTopic.children!.attached![0]!.notes?.plain?.content).toBe(
+      'kept after closing',
+    )
   })
 
   it('opening changes nothing: the unsaved mark stays off and a save hands over the original bytes', async () => {
@@ -662,5 +734,38 @@ describe('the menu', () => {
     fake.emit.outlineRequest()
     expect(fake.outlines).toHaveLength(1)
     expect((fake.outlines[0] as { text: string }).text).toContain('Center')
+  })
+})
+
+describe('presentation mode', () => {
+  it('F5 hides the editor chrome and Esc brings it back', async () => {
+    await openWith(plainSheet())
+    const app = (): Element => container.querySelector('.app')!
+    expect(app().classList.contains('mm-presenting')).toBe(false)
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F5', bubbles: true }))
+    })
+    await settle()
+    expect(app().classList.contains('mm-presenting')).toBe(true)
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+    await settle()
+    expect(app().classList.contains('mm-presenting')).toBe(false)
+  })
+
+  it('F5 while presenting returns to the editor', async () => {
+    await openWith(plainSheet())
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F5', bubbles: true }))
+    })
+    await settle()
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F5', bubbles: true }))
+    })
+    await settle()
+    expect(container.querySelector('.app')!.classList.contains('mm-presenting')).toBe(false)
   })
 })

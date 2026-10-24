@@ -228,6 +228,9 @@ export function withholdingOpenDocuments(control: OpenDocumentsControl): OpenDoc
     close: async () => {
       throw new Error('Closing documents is not available in an agent session.')
     },
+    save: async () => {
+      throw new Error('Saving open documents is not available in an agent session.')
+    },
   }
 }
 

@@ -57,6 +57,35 @@ describe('mcp http hardening', () => {
     ).rejects.toThrow(/--host needs a non-empty value/)
   })
 
+  it('refuses to serve other machines without a token', async () => {
+    const { mcpCommand } = await import('../src/commands/mcp')
+    const { parseArgs } = await import('../src/args')
+    for (const host of ['0.0.0.0', '::', '192.168.0.10']) {
+      await expect(
+        mcpCommand.run(parseArgs(['--http', '0', '--host', host]), {
+          cwd: process.cwd(),
+          env: {},
+          log: () => {},
+          warn: () => {},
+        }),
+        host,
+      ).rejects.toThrow(/needs --token/)
+      await expect(
+        startHttp({ cwd: process.cwd(), env: {}, log: () => {}, port: 0, host }),
+        host,
+      ).rejects.toThrow(/needs --token/)
+    }
+  })
+
+  it('lets other machines in once a token is set, and loopback without one', async () => {
+    const { exposedWithoutToken } = await import('../src/mcp/http')
+    expect(exposedWithoutToken('0.0.0.0', 'secret')).toBe(false)
+    expect(exposedWithoutToken('0.0.0.0', undefined)).toBe(true)
+    for (const host of [undefined, '', '127.0.0.1', 'localhost', '::1', '[::1]']) {
+      expect(exposedWithoutToken(host, undefined), String(host)).toBe(false)
+    }
+  })
+
   it('treats a programmatically empty host as the loopback default', async () => {
     const { startHttp } = await import('../src/mcp/http')
     const handle = await startHttp({

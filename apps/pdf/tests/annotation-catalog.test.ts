@@ -1,6 +1,6 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { describe, expect, it, vi } from 'vitest'
-import { createSavedAnnotCountsLoader } from '../src/renderer/annotation-catalog'
+import { createSavedAnnotCountsLoader, loadSavedAnnots } from '../src/renderer/annotation-catalog'
 import type { SavedMarkupAnnot } from '../src/renderer/edit-state'
 import type { SavedNoteAnnot } from '../src/renderer/note-threads'
 
@@ -22,6 +22,28 @@ const note = (pageIndex: number, objNum: number, inReplyTo: number | null): Save
   contents: '',
   timeMs: null,
   inReplyTo,
+})
+
+describe('loadSavedAnnots', () => {
+  it('reads a saved markup color as 0-1 RGB for the context menu', async () => {
+    const page = {
+      getAnnotations: async () => [
+        {
+          id: '7R',
+          annotationType: 9,
+          rect: [0, 0, 10, 10],
+          quadPoints: new Float32Array([0, 10, 10, 10, 0, 0, 10, 0]),
+          color: [255, 128, 0],
+        },
+      ],
+    }
+    const fakeDoc = { getPage: async () => page } as unknown as PDFDocumentProxy
+
+    const loaded = await loadSavedAnnots(fakeDoc, 0)
+
+    expect(loaded.markups).toHaveLength(1)
+    expect(loaded.markups[0]!.color).toEqual([1, 128 / 255, 0])
+  })
 })
 
 describe('createSavedAnnotCountsLoader', () => {

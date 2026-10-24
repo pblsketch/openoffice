@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
+import { outboundBridge } from '@genoffice/electron-utils/outbound-bridge'
 import { userSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
 import { USER_SKILLS_BRIDGE_KEY } from '@genoffice/electron-utils/user-skills-channels'
 import { docAttachBridge } from '@genoffice/electron-utils/doc-attach-bridge'
@@ -22,6 +23,7 @@ import { AI_CHANNELS, HWP_CHANNELS } from '../shared/ipc'
 import type { HwpApi, PrintMode, SaveMode, UiTheme } from '../shared/ipc'
 import type { SubscriptionApi } from '../shared/subscription-api'
 import {
+  SUBSCRIPTION_CONNECT_HELP_CHANNEL,
   SUBSCRIPTION_INSTALL_HELP_CHANNEL,
   subscriptionLaunchResultOf,
   subscriptionStatusMapOf,
@@ -78,6 +80,9 @@ const aiSubscription: SubscriptionApi = {
   async openInstallHelp(provider) {
     await ipcRenderer.invoke(SUBSCRIPTION_INSTALL_HELP_CHANNEL, provider)
   },
+  async openConnectHelp(path) {
+    await ipcRenderer.invoke(SUBSCRIPTION_CONNECT_HELP_CHANNEL, path)
+  },
 }
 
 const api: HwpApi = {
@@ -114,6 +119,24 @@ const api: HwpApi = {
     return () => ipcRenderer.removeListener(HWP_CHANNELS.readBytesRequest, listener)
   },
   sendReadBytesResult: (result) => ipcRenderer.send(HWP_CHANNELS.readBytesResult, result),
+  recoveryBegin: () => ipcRenderer.invoke(HWP_CHANNELS.recoveryBegin),
+  recoveryNewTabs: (bytes, format) =>
+    ipcRenderer.invoke(HWP_CHANNELS.recoveryNewTabs, bytes, format),
+  recoveryWrite: (bytes, format, tabs) =>
+    ipcRenderer.invoke(HWP_CHANNELS.recoveryWrite, bytes, format, tabs),
+  recoveryOpened: (passwordProtected) =>
+    ipcRenderer.invoke(HWP_CHANNELS.recoveryOpened, passwordProtected),
+  onRecoveryFlush: (handler) => {
+    const listener = (_e: Electron.IpcRendererEvent, token: number) => handler(token)
+    ipcRenderer.on(HWP_CHANNELS.recoveryFlush, listener)
+    return () => ipcRenderer.removeListener(HWP_CHANNELS.recoveryFlush, listener)
+  },
+  sendRecoveryFlushed: (token) => ipcRenderer.send(HWP_CHANNELS.recoveryFlushed, token),
+  onRecoveryReset: (handler) => {
+    const listener = () => handler()
+    ipcRenderer.on(HWP_CHANNELS.recoveryReset, listener)
+    return () => ipcRenderer.removeListener(HWP_CHANNELS.recoveryReset, listener)
+  },
   pickAttachments: () => ipcRenderer.invoke(HWP_CHANNELS.filesPick),
   addAttachmentPaths: (paths) => ipcRenderer.invoke(HWP_CHANNELS.filesAdd, paths),
   addPastedImage: (data, ext) => ipcRenderer.invoke(HWP_CHANNELS.filesAddPastedImage, data, ext),
@@ -180,6 +203,7 @@ const api: HwpApi = {
 contextBridge.exposeInMainWorld('hwpApi', api)
 // Google Drive for this editor's AI: search and read only (decision 0033)
 contextBridge.exposeInMainWorld('aiOfficeDriveAi', driveAiBridge())
+contextBridge.exposeInMainWorld('aiOfficeOutbound', outboundBridge())
 // the person's skills: the AI panel's `/` list and skill reads, skill cards (shell main checks each)
 contextBridge.exposeInMainWorld(USER_SKILLS_BRIDGE_KEY, userSkillsBridge())
 // The shell's document picker, for this editor's AI attach button

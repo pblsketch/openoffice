@@ -35,13 +35,17 @@ import {
 import {
   asciiOnlyCjkFace,
   autospaceBoundaries,
+  autospaceMode,
   autospacePadBetween,
+  autospacePadClass,
+  type AutospaceMode,
   codePointLengthAt,
   cjkDeclaredLineFactor,
   cjkScriptRanges,
   emptyEaSlotHangulFactor,
   cssAutoLineMult,
   cssFontFamily,
+  cssCsFontFamily,
   cssRunFontFamily,
   hangulSpaceOffsets,
   hangulSpaceWideningOn,
@@ -60,6 +64,7 @@ import {
   SPACE_ONLY_RE,
   strutFontCss,
   textHasCjk,
+  textHasComplexScript,
   justifySymbolRanges,
   textHasHangul,
   textHasLatinInk,
@@ -214,6 +219,7 @@ import {
   TextStyleMark,
   UnderlineMark,
 } from './marks'
+import { DocRedaction } from './redaction'
 import {
   DropCapExtension,
   EaHintQuotesExtension,
@@ -296,8 +302,9 @@ const anchorAttrs = {
   /** render-only RTL inferred from run w:rtl / RTL script when w:bidi is absent
       (HTML-converted docs); align is the visual value as-is, never saved */
   bidiInferred: { default: false },
-  /** CJK-Latin/digit auto spacing (w:autoSpaceDE/DN); null = Word default on */
-  autoSpace: { default: null as boolean | null },
+  /** CJK-Latin/digit auto spacing (w:autoSpaceDE/DN); null = Word default on,
+   *  'latin' / 'digits' = only that kind of gap */
+  autoSpace: { default: null as boolean | 'latin' | 'digits' | null },
   /** w:wordWrap; false = hangul words may break between syllables (Word's allow-word-split option) */
   wordWrap: { default: null as boolean | null },
   /** w:overflowPunct; false = a line-end CJK stop never hangs into the margin */
@@ -435,6 +442,40 @@ function paraMixedFaceClass(
 }
 
 /**
+ * Mixed Latin + complex-script paragraph at one run size: every cs span
+ * (marks.ts data-cs) gives up its own line box (styles.css .doc-cs-mixed) and
+ * the strut, already at the tallest face's factor, sizes the line. Chromium
+ * centres each face in the inherited line-height, so an Arial Arabic span under
+ * a Calibri strut paced 1.31em where Word paces 1.22 (probe 2026-10-13). One
+ * run size only: with mixed sizes the strut shrinks to the smallest run.
+ */
+function paraCsMixedClass(node: {
+  textContent?: string
+  attrs?: Record<string, unknown>
+  descendants?: PmNode['descendants']
+}): string | undefined {
+  const text = node.textContent ?? ''
+  const rule = node.attrs?.lineRule
+  if (rule === 'exact' || rule === 'atLeast' || !node.descendants) return undefined
+  if (!textHasComplexScript(text) || !/[A-Za-z]/.test(text) || textHasCjk(text)) return undefined
+  let csRun = false
+  let oneSize = true
+  let size: number | null | undefined
+  node.descendants((child) => {
+    if (!oneSize) return false
+    if (!child.isText) return true
+    if (SPACE_ONLY_RE.test(child.text ?? '')) return false
+    const attrs = child.marks.find((m) => m.type.name === 'docTextStyle')?.attrs
+    const sz = (attrs?.sizeHalfPoints ?? null) as number | null
+    if (size === undefined) size = sz
+    else if (size !== sz) oneSize = false
+    if (attrs?.csFont && textHasComplexScript(child.text ?? '')) csRun = true
+    return false
+  })
+  return csRun && oneSize ? 'doc-cs-mixed' : undefined
+}
+
+/**
  * Latin paragraphs: runs declaring a font override the doc-level factor with that
  * face's metric (Word sizes lines by run fonts, not the docDefaults face — a
  * Cambria-themed doc whose runs all say Calibri lays out at 1.22, not 1.17);
@@ -477,8 +518,52 @@ function latinParaFactor(
  *  so a paragraph face with a taller ascent than the runs' inflates every line
  *  past the computed line-height. No run inherits the face, so only the strut
  *  (and list markers without their own font) changes. */
-function paraDeclaredFontFamily(node: { descendants?: PmNode['descendants'] }): string | null {
+/**
+ * Complex-script-only paragraph (Arabic/Hebrew text, no Latin letters): Word
+ * lays every line in the w:cs face, so the strut takes that face as well. A
+ * Latin strut (Calibri) under cs spans (Arial) unions two differently centred
+ * boxes and paces 1.25em where Word paces Arial's 1.15 (probe 2026-10-13).
+ * Null when a run lacks a cs face or the runs' cs chains differ.
+ */
+function paraComplexScriptFamily(node: {
+  textContent?: string
+  descendants?: PmNode['descendants']
+}): string | null {
+  const text = node.textContent ?? ''
+  if (!node.descendants || !textHasComplexScript(text) || /[A-Za-z]/.test(text)) return null
+  if (textHasCjk(text)) return null
+  let family: string | null = null
+  let bail = false
+  node.descendants((child) => {
+    if (bail) return false
+    if (!child.isText) return true
+    if (SPACE_ONLY_RE.test(child.text ?? '')) return false
+    const attrs = child.marks.find((m) => m.type.name === 'docTextStyle')?.attrs
+    const cs = attrs?.csFont ? String(attrs.csFont) : null
+    if (!cs) {
+      bail = true
+      return false
+    }
+    // same chain the run's span renders (marks.ts), so the strut face equals the run face
+    const chain = cssCsFontFamily(
+      cs,
+      attrs?.fontAscii ? String(attrs.fontAscii) : undefined,
+      attrs?.font ? String(attrs.font) : undefined,
+    )
+    if (family === null) family = chain
+    else if (family !== chain) bail = true
+    return false
+  })
+  return bail ? null : family
+}
+
+function paraDeclaredFontFamily(node: {
+  textContent?: string
+  descendants?: PmNode['descendants']
+}): string | null {
   if (!node.descendants) return null
+  const csFamily = paraComplexScriptFamily(node)
+  if (csFamily) return csFamily
   let first: string | null = null
   let inherited = false
   node.descendants((child) => {
@@ -726,7 +811,7 @@ export function clipboardParaAttrs(el: HTMLElement): Record<string, unknown> | n
   const attrs: Record<string, unknown> = {}
   for (const [key, type] of Object.entries(CLIPBOARD_PARA_ATTR_TYPES)) {
     const v = (parsed as Record<string, unknown>)[key]
-    if (typeof v !== type) continue
+    if (typeof v !== type && !(key === 'autoSpace' && (v === 'latin' || v === 'digits'))) continue
     if (type === 'number' && !Number.isFinite(v)) continue
     attrs[key] = v
   }
@@ -752,11 +837,27 @@ function paraContentSpec(node: PmNode): DOMOutputSpec | 0 {
   return rtlRun ? 0 : ['span', { class: 'doc-ltr-runs' }, 0]
 }
 
+/** every inline child is an in-flow picture (no wrap, no rule): the paragraph's
+ *  line is the picture extent (CSS .doc-p-pic) */
+function isPictureOnlyContent(node: {
+  childCount?: number
+  descendants?: PmNode['descendants']
+}): boolean {
+  if (!node.descendants) return false
+  let ok = true
+  node.descendants((child) => {
+    if (child.type.name !== 'docInlineImage' || child.attrs.wrap || child.attrs.rule) ok = false
+    return false
+  })
+  return ok
+}
+
 function blockAttrs(
   node: {
     attrs: Record<string, unknown>
     textContent?: string
     childCount?: number
+    firstChild?: PmNode | null
     descendants?: PmNode['descendants']
   },
   {
@@ -781,6 +882,16 @@ function blockAttrs(
   // textless paragraph: table-cell CSS shrinks these to the Latin line height
   // (an empty cell inheriting the CJK factor would out-grow the content cells)
   if (!node.textContent) classes.push('doc-p-empty')
+  // in-line pictures and nothing else: Word sizes the line to the picture
+  // extent, no strut or descent under it (probe 2026-10-13: a 19.5pt icon in a
+  // tcMar 40 cell makes a 23.52pt row; a text run beside it adds its descent)
+  const picOnly = !node.textContent && (node.childCount ?? 0) > 0 && isPictureOnlyContent(node)
+  if (picOnly) classes.push('doc-p-pic')
+  // a column break leading a paragraph with text has no line of its own: Word
+  // opens the next column with the first text line (CSS hides the break)
+  const lead = node.firstChild
+  if (lead?.type.name === 'hardBreak' && lead.attrs.colBreak && node.textContent)
+    classes.push('doc-lead-col-br')
   if (node.attrs.pageBreakBefore) {
     classes.push('page-break-before')
     attrs['data-page-break-label'] = t('editorPageBreak')
@@ -794,8 +905,11 @@ function blockAttrs(
     // table's dir="rtl" mirrors column order but must not reorder cell text
     styles.push('direction:ltr')
   }
-  // explicit autoSpaceDE/DN off also disables the browser's native 1/8em gap
-  if (node.attrs.autoSpace === false) styles.push('text-autospace:no-autospace')
+  // explicit autoSpaceDE/DN off also disables the browser's native 1/8em gap;
+  // with only one switch off the pads supply the remaining kind of gap alone
+  if (node.attrs.autoSpace != null && node.attrs.autoSpace !== true) {
+    styles.push('text-autospace:no-autospace')
+  }
   if (node.attrs.align) styles.push(textAlignDecl(String(node.attrs.align)))
   // the line-height factor follows paragraph content (approximating Word's max-of-inline-fonts
   // line height): CJK paragraphs get the CJK factor, pure-Western ones the document's
@@ -820,6 +934,8 @@ function blockAttrs(
     const cls = fam ? paraMixedFaceClass(node, factor) : eaStrutClass(node)
     if (fam) styles.push(`font-family:${fam}`, ...fontBoxCss(fam))
     if (cls) classes.push(cls)
+    const csMixed = paraCsMixedClass(node)
+    if (csMixed) classes.push(csMixed)
     // Word's line strut follows run sizes; without this the paragraph inherits the
     // body size (often larger than table-cell runs) and every line box inflates.
     // Mixed sizes shrink-only, a uniform run size sizes every line (strutFontCss)
@@ -1039,6 +1155,9 @@ export const DocNoteRef = Node.create({
       kind: { default: 'footnote' as 'footnote' | 'endnote' },
       id: { default: '' },
       num: { default: 1 },
+      // the marker run's own rPr bytes, so a styled reference survives a save
+      // that rebuilds its paragraph (same bargain as the inline image's attr)
+      rawRPr: { default: null as string | null, rendered: false },
     }
   },
   parseHTML() {
@@ -1992,11 +2111,45 @@ const lineFactorCache = new WeakMap<
 
 const autospaceRangesCache = new WeakMap<PmNode, Array<{ from: number; to: number }>>()
 
-const simsunGapCache = new WeakMap<PmNode, Array<{ from: number; to: number }>>()
+const simsunGapCache = new WeakMap<
+  PmNode,
+  { inherited: string | null; ranges: Array<{ from: number; to: number }> }
+>()
+
+/** EA face a run without its own font inherits: paragraph style chain, then
+ *  Normal, then docDefaults (an empty-theme-slot backfill is not a choice) */
+export function inheritedEaFamily(
+  styleId: unknown,
+  storage: ListNumberingStorage | undefined,
+): string | null {
+  if (!storage) return null
+  const ownEa = (d: StyleDisplay | undefined): string | null =>
+    d?.font && !d.eaSlotEmpty && (d.font !== d.fontAscii || isCjkFontName(d.font)) ? d.font : null
+  let id = typeof styleId === 'string' ? styleId : null
+  for (let hops = 0; id && hops < 32; hops++) {
+    const info = storage.styles?.get(id)
+    const fam = ownEa(info?.display)
+    if (fam) return fam
+    id = info?.basedOn ?? null
+  }
+  for (const info of storage.styles?.values() ?? []) {
+    if (info.isDefault && info.type === 'paragraph') {
+      const fam = ownEa(info.display)
+      if (fam) return fam
+      break
+    }
+  }
+  const dd = storage.docDefaults
+  return dd?.eastAsiaFont && !dd.eaSlotEmpty ? dd.eastAsiaFont : null
+}
 
 /** ranges (relative to the block's content start) of ・/〜 in SimSun-substituted runs */
-function simsunGapRanges(node: PmNode): Array<{ from: number; to: number }> {
-  let ranges = simsunGapCache.get(node)
+function simsunGapRanges(
+  node: PmNode,
+  inherited: string | null,
+): Array<{ from: number; to: number }> {
+  const cached = simsunGapCache.get(node)
+  let ranges = cached?.inherited === inherited ? cached.ranges : undefined
   if (ranges === undefined) {
     const found: Array<{ from: number; to: number }> = []
     let offset = 0
@@ -2004,10 +2157,11 @@ function simsunGapRanges(node: PmNode): Array<{ from: number; to: number }> {
       if (child.isText && child.text && SIMSUN_GAP_CHAR_RE.test(child.text)) {
         const mark = child.marks.find((m) => m.type.name === 'docTextStyle')
         // same slot rule as paraLineFactor: these glyphs come from the eastAsia face
+        const own = (mark?.attrs.font ?? mark?.attrs.fontAscii) as string | null | undefined
         const family =
           mark?.attrs.eaSlotEmpty === true || (mark && asciiOnlyCjkFace(mark.attrs))
             ? null
-            : ((mark?.attrs.font ?? mark?.attrs.fontAscii) as string | null | undefined)
+            : (own ?? inherited)
         if (family && simsunGapLineFactor(family) !== null) {
           for (let i = 0; i < child.text.length; i++) {
             if (SIMSUN_GAP_CHAR_RE.test(child.text[i])) {
@@ -2019,7 +2173,7 @@ function simsunGapRanges(node: PmNode): Array<{ from: number; to: number }> {
       offset += child.nodeSize
     })
     ranges = found
-    simsunGapCache.set(node, ranges)
+    simsunGapCache.set(node, { inherited, ranges })
   }
   return ranges
 }
@@ -2028,7 +2182,7 @@ function simsunGapRanges(node: PmNode): Array<{ from: number; to: number }> {
  * ranges (relative to the block's content start) of the character after each
  * CJK-Latin pad boundary; that character carries the pad margin (.doc-autospace-pad)
  */
-function autospaceRanges(node: PmNode): Array<{ from: number; to: number }> {
+function autospaceRanges(node: PmNode, mode: AutospaceMode): Array<{ from: number; to: number }> {
   let ranges = autospaceRangesCache.get(node)
   if (ranges === undefined) {
     const found: Array<{ from: number; to: number }> = []
@@ -2037,8 +2191,8 @@ function autospaceRanges(node: PmNode): Array<{ from: number; to: number }> {
     node.forEach((child) => {
       if (child.isText && child.text) {
         const text = child.text
-        const cuts = autospaceBoundaries(text)
-        if (autospacePadBetween(prevText, text)) cuts.unshift(0)
+        const cuts = autospaceBoundaries(text, mode)
+        if (autospacePadBetween(prevText, text, mode)) cuts.unshift(0)
         for (const i of cuts) {
           found.push({ from: offset + i, to: offset + i + codePointLengthAt(text, i) })
         }
@@ -2103,9 +2257,12 @@ function hostsAnchoredPicture(node: PmNode): boolean {
   return hosts
 }
 
-function lineFactorDecos(doc: PmNode): DecorationSet {
+/** paragraph styleId -> inherited EA face (see inheritedEaFamily) */
+type EaFamilyOf = (styleId: unknown) => string | null
+
+function lineFactorDecos(doc: PmNode, eaOf: EaFamilyOf): DecorationSet {
   const decos: Decoration[] = []
-  doc.descendants((node, pos) => pushLineFactorDecos(node, pos, decos))
+  doc.descendants((node, pos) => pushLineFactorDecos(node, pos, decos, eaOf))
   return DecorationSet.create(doc, decos)
 }
 
@@ -2116,10 +2273,14 @@ function lineFactorDecos(doc: PmNode): DecorationSet {
  * scan of every span for every top-level block, which made each edit or
  * streamed chunk cost (blocks × decorations) on long documents.
  */
-function updateLineFactorDecos(old: DecorationSet, tr: Transaction): DecorationSet {
+function updateLineFactorDecos(
+  old: DecorationSet,
+  tr: Transaction,
+  eaOf: EaFamilyOf,
+): DecorationSet {
   const { doc } = tr
   const touched = touchedTopLevelBlocks(tr)
-  if (!touched) return lineFactorDecos(doc)
+  if (!touched) return lineFactorDecos(doc, eaOf)
   // streamed tail chunks: mapping the whole set walked every decoration per chunk
   let set = appendsAtEnd(tr) ? old : old.map(tr.mapping, doc)
   const decos: Decoration[] = []
@@ -2130,8 +2291,8 @@ function updateLineFactorDecos(old: DecorationSet, tr: Transaction): DecorationS
     // find() also returns neighbours that merely touch the boundary
     const stale = set.find(offset, end).filter((d) => d.from >= offset && d.to <= end)
     if (stale.length) set = set.remove(stale)
-    if (pushLineFactorDecos(node, offset, decos)) {
-      node.descendants((child, pos) => pushLineFactorDecos(child, offset + 1 + pos, decos))
+    if (pushLineFactorDecos(node, offset, decos, eaOf)) {
+      node.descendants((child, pos) => pushLineFactorDecos(child, offset + 1 + pos, decos, eaOf))
     }
   }
   return decos.length ? set.add(doc, decos) : set
@@ -2151,7 +2312,12 @@ function leadingSizedBreaks(node: PmNode): number[] {
 }
 
 /** decorations of one node; returns whether to descend into its children */
-function pushLineFactorDecos(node: PmNode, pos: number, decos: Decoration[]): boolean {
+function pushLineFactorDecos(
+  node: PmNode,
+  pos: number,
+  decos: Decoration[],
+  eaOf: EaFamilyOf,
+): boolean {
   if (!LINE_FACTOR_BLOCKS.has(node.type.name)) return true
   // Word sizes a line holding only a w:br by the break run; a block wrapper
   // keeps the paragraph strut (and shared enclosing marks) off that line
@@ -2177,6 +2343,8 @@ function pushLineFactorDecos(node: PmNode, pos: number, decos: Decoration[]): bo
         style += `;font-family:${fam}`
         cls = paraMixedFaceClass(node, factor)
       } else cls = eaStrutClass(node)
+      const csMixed = paraCsMixedClass(node)
+      if (csMixed) cls = cls ? `${cls} ${csMixed}` : csMixed
       const strut = explicitStrutHalfPoints(node)
       if (strut) style += `;${strutFontCss(strut).join(';')}`
       cached = { style, ...(cls ? { cls } : {}), ...(perLine ? { runs: perLine.runs } : {}) }
@@ -2198,11 +2366,11 @@ function pushLineFactorDecos(node: PmNode, pos: number, decos: Decoration[]): bo
         )
       }
     }
-    if (node.attrs.autoSpace !== false) {
-      for (const r of autospaceRanges(node)) {
-        decos.push(
-          Decoration.inline(pos + 1 + r.from, pos + 1 + r.to, { class: 'doc-autospace-pad' }),
-        )
+    const padMode = autospaceMode(node.attrs.autoSpace)
+    if (padMode) {
+      const padClass = autospacePadClass(padMode)
+      for (const r of autospaceRanges(node, padMode)) {
+        decos.push(Decoration.inline(pos + 1 + r.from, pos + 1 + r.to, { class: padClass }))
       }
     }
     for (const r of hangulSpaceRanges(node)) {
@@ -2212,13 +2380,15 @@ function pushLineFactorDecos(node: PmNode, pos: number, decos: Decoration[]): bo
     // size (probe 2026-08-13); a taller inline strut reproduces the row lift.
     // exact lineRule pins the line, so no lift there.
     if (node.attrs.lineRule !== 'exact') {
-      const ranges = simsunGapRanges(node)
+      const ranges = simsunGapRanges(node, eaOf(node.attrs.styleId))
       if (ranges.length > 0) {
         const m =
           Number(node.attrs.lineSpacing) ||
           (node.attrs.lineRule === 'auto' && node.attrs.lineRawTwips
             ? Number(node.attrs.lineRawTwips) / 240
-            : 1)
+            : node.attrs.lineRule || node.attrs.lineRawTwips
+              ? 1
+              : 'inherited')
         const gapStyle = `line-height:${cssSimsunGapLineExpr(m)}`
         for (const r of ranges) {
           decos.push(Decoration.inline(pos + 1 + r.from, pos + 1 + r.to, { style: gapStyle }))
@@ -2262,18 +2432,30 @@ export const LineFactorExtension = Extension.create({
   addProseMirrorPlugins() {
     const key = new PluginKey<DecorationSet>('lineFactorLive')
     const editor = this.editor
+    // one lookup per style per pass: the style table only changes with the document
+    const eaOf: EaFamilyOf = (styleId) => {
+      const storage = editor?.storage?.listNumbering as ListNumberingStorage | undefined
+      if (!storage?.styles) return inheritedEaFamily(styleId, storage)
+      let memo = eaMemo.get(storage.styles)
+      if (!memo) eaMemo.set(storage.styles, (memo = new Map()))
+      const k = typeof styleId === 'string' ? styleId : ''
+      let fam = memo.get(k)
+      if (fam === undefined) memo.set(k, (fam = inheritedEaFamily(styleId, storage)))
+      return fam
+    }
+    const eaMemo = new WeakMap<object, Map<string, string | null>>()
     return [
       new Plugin<DecorationSet>({
         key,
         state: {
-          init: (_config, state) => lineFactorDecos(state.doc),
+          init: (_config, state) => lineFactorDecos(state.doc, eaOf),
           apply: (tr, old) => {
-            if (tr.getMeta(key)) return lineFactorDecos(tr.doc)
+            if (tr.getMeta(key)) return lineFactorDecos(tr.doc, eaOf)
             if (!tr.docChanged) return old
             // inserting pad widgets next to an active IME composition aborts it;
             // keep the old set mapped and refresh on compositionend
             if (editor?.view?.composing) return old.map(tr.mapping, tr.doc)
-            return updateLineFactorDecos(old, tr)
+            return updateLineFactorDecos(old, tr, eaOf)
           },
         },
         props: {
@@ -2859,6 +3041,8 @@ const tableCellAttrs = {
   noWrap: { default: null as boolean | null },
   /** textDirection / cellMar / noWrap were edited: save writes them from the attrs */
   tcPrEdited: { default: false },
+  /** w:hideMark (display-only; the bytes round-trip through rawTcPr) */
+  hideMark: { default: false },
   /** inner clip-box height (twips) when the row is hRule="exact" (computed in convert.ts) */
   clipHeightTwips: { default: null as number | null },
   /** display placeholder for the row's w:gridBefore/w:gridAfter columns (borderless, not saved as w:tc) */
@@ -3031,6 +3215,7 @@ function tableCellHtml(node: PmNode): Record<string, string> {
     const ink = fillInk(node.attrs.fill)
     if (ink) attrs['data-ink'] = ink
   }
+  if (node.attrs.hideMark) attrs['data-hide-mark'] = '1'
   const cellRev = node.attrs.cellRevision as { kind?: string; author?: string } | null
   if (cellRev?.kind) {
     attrs.class = `cell-rev-${cellRev.kind}`
@@ -6604,6 +6789,8 @@ export const TextboxParagraph = Node.create({
       if (textHasCjk(node.textContent)) fontStyles.push('--doc-lead-gap:0px')
       const fam = paraDeclaredFontFamily(node)
       if (fam) fontStyles.push(`font-family:${fam}`, ...fontBoxCss(fam))
+      const csMixed = paraCsMixedClass(node)
+      if (csMixed) attrs.class += ` ${csMixed}`
       const strut = explicitStrutHalfPoints(node)
       if (strut) fontStyles.push(...strutFontCss(strut))
     } else if (node.textContent) {
@@ -6800,6 +6987,7 @@ export const editorExtensions = [
   CtrlCheckboxMark,
   RprChangeMark,
   TextStyleMark,
+  DocRedaction,
   FormatOffClearExtension,
   CommentMark,
   InsMark,

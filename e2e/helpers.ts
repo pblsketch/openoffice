@@ -49,6 +49,12 @@ interface LaunchOptions {
   openFiles?: string[]
   /** extra environment variables for the launched app */
   env?: Record<string, string>
+  /**
+   * record a video of the window (default true where it works). Some Windows
+   * hosts wedge the page CDP session under the screencast the same way Linux
+   * does; `E2E_NO_VIDEO=1` turns recording off for a whole run.
+   */
+  recordVideo?: boolean
 }
 
 export interface LaunchedApp {
@@ -106,7 +112,9 @@ export async function launchShell(options: LaunchOptions): Promise<LaunchedApp> 
     // (page.url() stays empty, no lifecycle events, evaluate hangs) — record
     // only where it works
     recordVideo:
-      process.platform === 'linux'
+      process.platform === 'linux' ||
+      options.recordVideo === false ||
+      process.env.E2E_NO_VIDEO === '1'
         ? undefined
         : {
             dir: join(ARTIFACTS_DIR, options.videoDir),

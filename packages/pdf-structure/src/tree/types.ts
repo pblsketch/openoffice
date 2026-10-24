@@ -92,6 +92,12 @@ export interface HeadingBlock extends BlockBase {
 export interface ParagraphBlock extends BlockBase {
   kind: 'paragraph'
   runs: InlineRun[]
+  /**
+   * a label of a drawing (decision 0057): the id of the image block that
+   * pictures the drawing. Translated in place in a translated PDF; left out
+   * of reflowed outputs, where the picture shows it.
+   */
+  figure?: string
 }
 
 export interface ListItemBlock extends BlockBase {
@@ -126,6 +132,13 @@ export interface TableCell {
   header?: true
   /** cell paragraphs; translation unit = one cell */
   paragraphs: InlineRun[][]
+  /**
+   * where the cell sits, merged extent included (tables the PDF analysis
+   * found; AI-read tables have none)
+   */
+  region?: BlockRegion
+  /** the box of each paragraph, in `paragraphs` order (with `region`) */
+  paragraphBoxes?: Rect[]
 }
 
 export interface TreeTable {

@@ -23,7 +23,7 @@ Weil das Installationsprogramm nicht signiert ist, führen Sie nur eines aus, da
 ## Updates
 
 - GenOffice sucht auf derselben GitHub-Releases-Seite nach einer neueren Version. Sobald eine veröffentlicht ist, bietet **Einstellungen ▸ Über** sie an: Klicken Sie auf **Auf … aktualisieren**, warten Sie den Download ab und klicken Sie dann auf **Neustarten & installieren**.
-- **Hilfe ▸ Nach Updates suchen** prüft, wann immer Sie möchten.
+- **Menü (☰) ▸ Nach Updates suchen** prüft, wann immer Sie möchten. Auf dem Mac ist es **Hilfe ▸ Nach Updates suchen**.
 - Schlägt die Prüfung fehl — kein Netz oder noch nichts veröffentlicht —, passiert nichts, und die App arbeitet weiter wie zuvor.
 - **Update-Kanal**, ebenfalls unter Einstellungen ▸ Über, ist Stabil oder Beta. Eine Änderung wirkt sofort und prüft auf ein Update; eine Beta-Installation wird nicht auf Stabil zurückgestuft.
 - Auch Updates sind nicht codesigniert. Vor der Installation vergleicht die App die heruntergeladene Datei mit der Prüfsumme, die mit dieser Version veröffentlicht wurde.

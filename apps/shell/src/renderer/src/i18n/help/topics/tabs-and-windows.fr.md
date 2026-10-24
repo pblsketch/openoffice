@@ -6,7 +6,7 @@ Tous les fichiers ouverts partagent une seule fenêtre ; la barre d’onglets en
 
 ## Principes
 
-- **Basculer** : cliquez sur un onglet, ou faites défiler la molette au-dessus de la barre pour les parcourir.
+- **Basculer** : cliquez sur un onglet, appuyez sur **Ctrl+Tab** (suivant) / **Ctrl+Maj+Tab** (précédent), ou faites défiler la molette au-dessus de la barre.
 - **Fermer** : la × de l’onglet, ou ⌘W/ctrl+W. Les modifications non enregistrées déclenchent une demande de confirmation.
 - **Nouveau** : le + à l’extrémité droite de la barre.
 - **L’activation est immédiate** : appuyer sur un onglet bascule tout de suite, sans attendre la fin du clic.
@@ -57,7 +57,23 @@ L’onglet Accueil le plus à gauche ne peut pas être fermé ; pour revenir d�
 - Une seule fenêtre IA est visible. Le volet sur lequel vous travaillez montre la sienne ; celle de l’autre volet se replie en un rail, et un clic sur un volet ramène sa fenêtre IA au premier plan.
 - Pendant qu’elle est repliée, la conversation de ce volet et les travaux IA en cours restent vivants. Les conversations sont conservées par document.
 - **Deux copies du même document** : après un enregistrement dans un volet, enregistrer depuis l’autre demande d’abord « Ce document a été modifié ailleurs ». L’enregistrement automatique, lui, attend silencieusement.
-- **Relancer l’application sans fichier** ramène la dernière paire de documents scindés exactement comme elle était ; la lancer avec un fichier n’ouvre que ce fichier.
+- Après une fermeture normale, **relancer l’application sans fichier** ramène la dernière paire de documents scindés exactement comme elle était ; la lancer avec un fichier n’ouvre que ce fichier. Après un arrêt soudain, les onglets précédents reviennent comme décrit plus bas.
 - Les onglets Accueil, Aide et Présentation (aperçu) ne peuvent pas entrer dans un volet ; tant qu’un de ces onglets est ouvert, les deux volets se cachent un moment et reviennent dès que vous retournez à un onglet de document.
 
 Trois volets ou plus, la scission dans une fenêtre détachée et la synchronisation en direct des deux copies sont remises à plus tard.
+
+## Quand l’application ou le PC s’éteint brusquement
+
+Tant qu’un document a des modifications non enregistrées, GenOffice en garde une copie de récupération environ toutes les 30 secondes dans le dossier de données de l’application. Tous les éditeurs le font, y compris pour un nouveau document jamais enregistré. Votre fichier lui-même ne change pas tant que vous n’enregistrez pas.
+
+- **Vos onglets reviennent** : si l’application ou le PC s’est arrêté sans fermeture normale (coupure de courant, plantage, application fermée de force, arrêt du PC ou redémarrage pour une mise à jour), les onglets de documents ouverts reviennent au prochain lancement de GenOffice, dans le même ordre et avec l’écran partagé s’il y en avait un. C’est aussi le cas si vous le lancez en ouvrant un fichier.
+- **Une seule liste sur l’accueil** : les documents dont du contenu n’est pas enregistré sont listés ensemble sur l’écran d’accueil. Choisissez **Restaurer** ou **Abandonner** pour chacun, ou utilisez **Tout restaurer** ou **Tout abandonner**, puis appuyez sur **Valider**. Si un autre programme ou un service de synchronisation a modifié le fichier entre-temps, **Abandonner** est présélectionné pour que le fichier reste tel qu’il est. Si le fichier d’origine est introuvable, la restauration ouvre le contenu comme un nouveau document sans titre.
+- **Décider plus tard** : fermer la liste ne supprime rien. À la première ouverture de l’un de ces documents, une boîte portant son nom pose de nouveau la question ; appuyer sur Échap ou fermer la boîte le restaure. Si vous n’avez pas besoin du contenu restauré, fermez le document avec **Ne pas enregistrer**.
+- **Les onglets se chargent à l’ouverture** : les onglets restaurés affichent tout de suite leur titre, mais chaque document ne se charge qu’au premier clic sur son onglet. Tout ouvrir d’un coup pourrait faire s’éteindre à nouveau un PC à court de mémoire.
+- **À l’arrêt du PC** : si des documents ne sont pas enregistrés, GenOffice ne demande pas s’il faut les enregistrer. Il garde les copies, se ferme et les propose au lancement suivant.
+- **Documents sans copie** : les fichiers Excel, HWP et PDF protégés par mot de passe n’ont pas de copie de récupération, leurs modifications non enregistrées ne peuvent donc pas être restaurées ; un avis le signale une fois à l’ouverture d’un tel document. Enregistrez-les souvent. Les documents Word et PowerPoint protégés par mot de passe ont une copie verrouillée avec le même mot de passe.
+- **Fichiers CSV, anciens .xls et .tsv** : l’éditeur de tableur conserve leur copie comme classeur sans titre. Une fois restaurée, elle s’ouvre comme classeur sans titre, et le premier enregistrement propose le dossier et le nom du fichier d’origine en .xlsx.
+
+Une copie est supprimée quand vous enregistrez le document, le fermez avec **Ne pas enregistrer** ou choisissez **Abandonner**, ainsi qu’après 30 jours sans modification. Après une fermeture normale, GenOffice démarre comme avant, sans rouvrir d’onglets.
+
+**Ce n’est pas l’enregistrement automatique.** L’enregistrement automatique écrit vos modifications dans le fichier lui-même, et seulement après un premier enregistrement. Une copie de récupération ne touche jamais votre fichier ; elle garde seulement ce que vous n’avez pas encore enregistré, jusqu’à ce que vous enregistriez ou abandonniez.

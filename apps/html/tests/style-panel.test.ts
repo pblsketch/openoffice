@@ -2,7 +2,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import type { MutableRefObject } from 'react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { StylePanel } from '../src/renderer/components/StylePanel'
+import { StylePanel, type PanelDrafts } from '../src/renderer/components/StylePanel'
 import type { ComputedSnapshot } from '../src/renderer/preview/inspector-protocol'
 
 const computed: ComputedSnapshot = {
@@ -106,5 +106,45 @@ describe('StylePanel custom CSS drafts', () => {
     })
     root = null
     expect(onCustomCss).toHaveBeenCalledWith('box-shadow: 0 1px 2px red')
+  })
+})
+
+describe('StylePanel draft peeking (crash-recovery copies)', () => {
+  it('reports open drafts without committing them or clearing the fields', async () => {
+    const draftRef: MutableRefObject<(() => void) | null> = { current: null }
+    const peekRef: MutableRefObject<(() => PanelDrafts) | null> = { current: null }
+    const onCustomCss = vi.fn()
+    const onText = vi.fn()
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    await act(async () => {
+      root!.render(
+        createElement(StylePanel, {
+          ...panelProps(draftRef, onCustomCss),
+          textRun: 'Hello',
+          onText,
+          peekRef,
+        }),
+      )
+      await Promise.resolve()
+    })
+    expect(peekRef.current?.()).toEqual({})
+
+    const css = container.querySelector<HTMLInputElement>('input[placeholder^="letter-spacing:"]')!
+    await setCustomCss(css, 'letter-spacing: 2px')
+    const text = container.querySelector<HTMLTextAreaElement>('textarea')!
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set
+    setter?.call(text, 'Hello there')
+    await act(async () => {
+      text.dispatchEvent(new Event('input', { bubbles: true }))
+      await Promise.resolve()
+    })
+
+    expect(peekRef.current?.()).toEqual({ text: 'Hello there', css: 'letter-spacing: 2px' })
+    expect(onCustomCss).not.toHaveBeenCalled()
+    expect(onText).not.toHaveBeenCalled()
+    expect(css.value).toBe('letter-spacing: 2px')
+    expect(text.value).toBe('Hello there')
   })
 })

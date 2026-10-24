@@ -12,6 +12,7 @@ import type { PdfiumModule } from '../../../pdf2docx/src/extract/pdfium'
 import type { OcrEngine } from '../../../pdf2docx/src/ocr'
 import { extractIrDocument } from '../../../pdf2docx/src/pipeline'
 import { buildDocumentTree } from './build'
+import { planFigures, type FigurePlan } from './figures'
 import {
   pageFingerprint,
   readBookmarks,
@@ -21,6 +22,9 @@ import {
   type TreePdfium,
 } from './pdfium-doc'
 import type { DocumentInfo, DocumentTree } from './types'
+
+/** pixels per point of a drawing's picture, as for page-image fallbacks (pdf2docx) */
+const DEFAULT_RENDER_SCALE = 2
 
 export interface ExtractTreeOptions {
   /** initialized @embedpdf/pdfium module (the caller owns wasm setup) */
@@ -143,6 +147,8 @@ export async function extractDocumentTree(
     },
   })
 
+  // fingerprints, and the drawings the IR has no block for (decision 0057)
+  const figures: FigurePlan[][] = []
   const fingerprints = withPdfDocument(
     m,
     analyzed,
@@ -152,6 +158,14 @@ export async function extractDocumentTree(
       for (let i = 0; i < count; i++) {
         checkAbort(signal)
         out.push(pageFingerprint(m, doc, i))
+        const irPage = ir.irPages[i]
+        const page = irPage ? m._FPDF_LoadPage(doc, i) : 0
+        if (!page) continue
+        try {
+          figures[i] = planFigures(m, page, irPage!, opts.renderScale ?? DEFAULT_RENDER_SCALE)
+        } finally {
+          m._FPDF_ClosePage(page)
+        }
       }
       return out
     },
@@ -166,6 +180,7 @@ export async function extractDocumentTree(
     bookmarks: facts.bookmarks,
     info: facts.info,
     sourcePageCount: facts.pageCount,
+    figures,
   })
   return {
     tree,

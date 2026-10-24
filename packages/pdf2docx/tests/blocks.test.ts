@@ -77,7 +77,9 @@ describe('paragraph clustering', () => {
     const lines = [
       mkLine(LEFT, RIGHT, 700),
       mkLine(LEFT, RIGHT - 200, 688), // ends 200pt short of the right edge
-      mkLine(LEFT, RIGHT, 676),
+      // a new Latin paragraph opens on a capital (a lowercase opener reads
+      // as a composer wrap unless the miss is decisive)
+      mkLine(LEFT, RIGHT, 676, 10, 'Next paragraph'),
       mkLine(LEFT, RIGHT, 664),
     ]
     const blocks = groupIntoBlocks(lines)
@@ -336,6 +338,62 @@ describe('run-on list-item split (P8 C)', () => {
       mkLine(LEFT, RIGHT - 180, 676, 10, 'ends on a short final line.'),
     ]
     expect(groupIntoBlocks(lines)).toHaveLength(1)
+  })
+
+  it('keeps ragged-right prose whole when a paragraph composer leaves one small miss', () => {
+    // a census report column (InDesign): "Midwest … and the" ends ~4pt
+    // further short than "South" needed — composers do that now and then;
+    // one small miss among ten boundaries is not a list
+    const column: [number, string, boolean?][] = [
+      [357, 'percent, 3.8 percent, and 3.2'],
+      [373, 'percent, respectively), while real'],
+      [374, 'median household income in the'],
+      [360, 'South was not statistically dif', true],
+      [363, 'ferent from 2021 (Figure 1 and'],
+      [366, 'Table A-1). Median household'],
+      [380, 'incomes were highest in the West'],
+      [358, '($82,890) and the Northeast'],
+      [348, '($80,360), followed by the'],
+      [349, 'Midwest ($73,070) and the'],
+      [310, 'South ($68,230).'],
+    ]
+    const lines = column.map(([x1, text, hyphen], i) => ({
+      ...mkLine(228, x1, 348 - i * 13, 9, text),
+      endsWithHyphen: hyphen ?? false,
+    }))
+    expect(groupIntoBlocks(lines)).toHaveLength(1)
+  })
+
+  it('still splits a list whose entries miss by a little on many boundaries', () => {
+    const items = [
+      mkLine(LEFT, LEFT + 300, 700, 10, 'Collect the forms from every office'),
+      mkLine(LEFT, LEFT + 220, 688, 10, 'Remember everything you were told'),
+      mkLine(LEFT, LEFT + 225, 676, 10, 'Remember everything you were told'),
+      mkLine(LEFT, LEFT + 230, 664, 10, 'Remember everything you were told'),
+      mkLine(LEFT, LEFT + 222, 652, 10, 'Remember everything you were told'),
+    ]
+    expect(groupIntoBlocks(items)).toHaveLength(5)
+  })
+})
+
+describe('short-line paragraph ends', () => {
+  it('reads a lowercase continuation after a short line as the same paragraph', () => {
+    const lines = [
+      mkLine(LEFT, RIGHT, 700, 10, 'the opening line of the paragraph runs across'),
+      mkLine(LEFT, RIGHT - 60, 688, 10, 'cipal cities and households outside metro areas'),
+      mkLine(LEFT, RIGHT - 20, 676, 10, 'householders aged 25 and over, among the rest,'),
+      mkLine(LEFT, RIGHT - 200, 664, 10, 'ends the paragraph.'),
+    ]
+    expect(groupIntoBlocks(lines)).toHaveLength(1)
+  })
+
+  it('still ends a bold heading line above a lowercase line', () => {
+    const heading = mkLine(LEFT, LEFT + 100, 700, 10, 'Contact Information')
+    const bold: Line = { ...heading, spans: heading.spans.map((s) => ({ ...s, bold: true })) }
+    const email = mkLine(LEFT, LEFT + 120, 688, 10, 'cyberframework@nist.gov')
+    // a narrow body: the leftover alone is no decisive miss, only the weight step ends it
+    const blocks = groupIntoBlocks([bold, email], { bodyLeft: LEFT, bodyRight: LEFT + 200 })
+    expect(blocks).toHaveLength(2)
   })
 })
 

@@ -742,6 +742,14 @@ test.describe.serial('docs Word interaction smoke', () => {
   })
 
   test('13 save and reopen: styles, table, section break and list survive', async () => {
+    // a document never saved asks where to go on its first save (decision 0061);
+    // answer that dialog with a file in the test folder
+    await app.evaluate(
+      ({ dialog }, out) => {
+        dialog.showSaveDialog = async () => ({ canceled: false, filePath: out })
+      },
+      join(dir, 'Smoke.docx'),
+    )
     expect(await editor.evaluate(() => (window as unknown as AidocsWindow).__aidocs!.save!())).toBe(
       true,
     )

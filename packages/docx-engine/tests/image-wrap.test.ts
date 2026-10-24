@@ -189,6 +189,34 @@ describe('image text wrap (wp:anchor)', () => {
     expect(plain.imageMarkFont).toBeUndefined()
   })
 
+  it('the picture line font follows the drawing run and its style, not the paragraph mark', async () => {
+    const style =
+      '<w:style w:type="paragraph" w:styleId="NoSpacing"><w:name w:val="No Spacing"/>' +
+      '<w:rPr><w:rFonts w:ascii="Book Antiqua" w:hAnsi="Book Antiqua" w:eastAsia="Times New Roman"/><w:sz w:val="20"/></w:rPr></w:style>'
+    const xml = IMAGE_PARAGRAPH_XML.replace(
+      '<w:p><w:r>',
+      '<w:p><w:pPr><w:pStyle w:val="NoSpacing"/><w:spacing w:line="480" w:lineRule="auto"/>' +
+        '<w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="24"/></w:rPr></w:pPr>' +
+        '<w:r><w:rPr><w:noProof/></w:rPr>',
+    )
+    const styled = (
+      await parseDocx(await buildDocx({ bodyXml: xml, withImage: true, extraStylesXml: style }))
+    ).blocks[0]
+    expect(styled.imageMarkFont).toBe('Book Antiqua')
+    expect(styled.imageMarkFontEastAsia).toBe('Times New Roman')
+    expect(styled.imageMarkSizeHalfPoints).toBe(20)
+
+    const direct = xml.replace(
+      '<w:r><w:rPr><w:noProof/></w:rPr>',
+      '<w:r><w:rPr><w:rFonts w:ascii="Verdana" w:hAnsi="Verdana"/><w:sz w:val="36"/></w:rPr>',
+    )
+    const directBlock = (
+      await parseDocx(await buildDocx({ bodyXml: direct, withImage: true, extraStylesXml: style }))
+    ).blocks[0]
+    expect(directBlock.imageMarkFont).toBe('Verdana')
+    expect(directBlock.imageMarkSizeHalfPoints).toBe(36)
+  })
+
   it('converts inline -> square anchor with position and wrap elements', () => {
     const out = applyImageWrap(IMAGE_PARAGRAPH_XML, 'square-left')
     expect(out).toContain('<wp:anchor')
@@ -507,8 +535,28 @@ describe('picture paragraph layout metadata', () => {
     expect(doc.blocks[0].type).toBe('image')
     expect(doc.blocks[0].imageParagraphSpaceBefore).toBe(200)
     expect(doc.blocks[0].imageParagraphSpaceAfter).toBe(280)
+    // no direct spacing: the docDefaults after-spacing the fixture declares (160) travels
+    // inline, the same value the base CSS rule gave the picture wrapper
     const bare = await parseDocx(await buildDocx({ bodyXml: IMAGE_PARAGRAPH_XML, withImage: true }))
-    expect(bare.blocks[0].imageParagraphSpaceAfter).toBeUndefined()
+    expect(bare.blocks[0].imageParagraphSpaceAfter).toBe(bare.docDefaults?.spaceAfterTwips)
+    expect(bare.blocks[0].imageParagraphSpaceAfter).toBe(160)
+  })
+
+  it('resolves an inline picture paragraph spacing through its style chain', async () => {
+    const extraStylesXml =
+      '<w:style w:type="paragraph" w:styleId="FigBase"><w:name w:val="Fig Base"/>' +
+      '<w:pPr><w:spacing w:before="240" w:after="240"/></w:pPr></w:style>' +
+      '<w:style w:type="paragraph" w:styleId="Fig"><w:name w:val="Fig"/>' +
+      '<w:basedOn w:val="FigBase"/><w:pPr><w:spacing w:after="60"/></w:pPr></w:style>'
+    const xml = IMAGE_PARAGRAPH_XML.replace('<w:p>', '<w:p><w:pPr><w:pStyle w:val="Fig"/></w:pPr>')
+    const doc = await parseDocx(await buildDocx({ bodyXml: xml, withImage: true, extraStylesXml }))
+    expect(doc.blocks[0].imageParagraphSpaceBefore).toBe(240)
+    expect(doc.blocks[0].imageParagraphSpaceAfter).toBe(60)
+    const direct = xml.replace('</w:pPr>', '<w:spacing w:before="0"/></w:pPr>')
+    const d2 = await parseDocx(
+      await buildDocx({ bodyXml: direct, withImage: true, extraStylesXml }),
+    )
+    expect(d2.blocks[0].imageParagraphSpaceBefore).toBe(0)
   })
 
   it('keeps the inline picture effectExtent as extra line room', async () => {

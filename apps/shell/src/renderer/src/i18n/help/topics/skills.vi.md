@@ -4,7 +4,7 @@ Kỹ năng là một bộ hướng dẫn làm việc dành cho AI. Hãy viết r
 
 ## Bật và tắt kỹ năng
 
-**Cài đặt ▸ Kỹ năng** liệt kê các kỹ năng có trên máy tính này, được nhóm theo nguồn gốc. Dùng ô tìm kiếm ở trên cùng để tìm theo tiêu đề, tên hoặc mô tả.
+**Cài đặt ▸ Kỹ năng** liệt kê các kỹ năng có trên máy tính này, được nhóm theo nguồn gốc. Mỗi kỹ năng hiển thị bằng tên, giống cách các tác tử lập trình hiển thị. Dùng ô tìm kiếm ở trên cùng để tìm theo tên hoặc mô tả.
 
 | Nguồn                      | Nội dung                                                 | Ban đầu |
 | -------------------------- | -------------------------------------------------------- | ------- |
@@ -34,7 +34,7 @@ Bên dưới bản xem trước luôn có dòng: "Chỉ cài kỹ năng từ ngu
 
 - Nếu kỹ năng của tôi đã có một kỹ năng trùng tên, hãy chọn **Thay thế** hoặc **Bỏ qua** trên hàng đó.
 - Khi tải xuống từ GitHub, GenOffice chỉ kết nối tới `github.com`, `api.github.com` và `codeload.github.com`, và không gửi bất kỳ dữ liệu đăng nhập nào. Nếu tệp nén quá lớn hoặc không qua được các bước kiểm tra an toàn, sẽ không có gì được cài.
-- **Kỹ năng mới** mở một trình soạn thảo trống để bạn tự viết tiêu đề, mô tả và hướng dẫn.
+- **Kỹ năng mới** mở một trình soạn thảo trống để bạn tự viết tên, mô tả và hướng dẫn.
 
 ## Kiểm tra cập nhật
 
@@ -46,7 +46,7 @@ Bên dưới bản xem trước luôn có dòng: "Chỉ cài kỹ năng từ ngu
 ## Gọi kỹ năng trong bảng AI
 
 1. Gõ `/` hoặc `$` ở đầu ô nhập AI hoặc ngay sau một dấu cách. Danh sách các kỹ năng đang bật sẽ hiện ra.
-2. Gõ tiếp để thu hẹp danh sách. Ví dụ, `/biên` sẽ tìm ra Biên bản cuộc họp.
+2. Gõ tiếp để thu hẹp danh sách. Ví dụ, `/meet` sẽ tìm ra `meeting-minutes`. Từ trong phần mô tả cũng dùng được, nên `/biên` cũng tìm ra kỹ năng này.
 3. Chọn một kỹ năng bằng các phím mũi tên rồi nhấn Enter hoặc Tab. Kỹ năng đó trở thành một thẻ nhỏ phía trên ô nhập.
 4. Viết điều bạn muốn rồi gửi. GenOffice sẽ thêm nội dung của kỹ năng vào yêu cầu.
 
@@ -58,15 +58,15 @@ Bên dưới bản xem trước luôn có dòng: "Chỉ cài kỹ năng từ ngu
 
 ## Kỹ năng AI tự dùng
 
-- Với các kỹ năng đang bật và đặt là AI tự quyết định, tiêu đề và mô tả của chúng được đưa cho AI dưới dạng một danh sách. Khi có kỹ năng phù hợp với yêu cầu, AI lấy nội dung của kỹ năng đó và sử dụng.
-- Khi AI dùng một kỹ năng, cuộc trò chuyện sẽ hiện "Đã dùng kỹ năng 〈tiêu đề〉".
+- Với các kỹ năng đang bật và đặt là AI tự quyết định, tên và mô tả của chúng được đưa cho AI dưới dạng một danh sách. Khi có kỹ năng phù hợp với yêu cầu, AI lấy nội dung của kỹ năng đó và sử dụng.
+- Khi AI dùng một kỹ năng, cuộc trò chuyện sẽ hiện "Đã dùng kỹ năng 〈tên〉".
 - AI dựa vào mô tả để quyết định có dùng một kỹ năng hay không. Một mô tả nói rõ khi nào nên dùng kỹ năng sẽ giúp AI chọn đúng.
 
 ## Tạo kỹ năng bằng cách nhờ AI
 
 1. Trong bảng AI, hãy nói chẳng hạn như "Lưu việc chúng ta vừa làm thành một kỹ năng" hoặc "Tạo một kỹ năng viết báo cáo theo phong cách của đơn vị mình".
 2. AI chọn ra các bước và quy tắc đáng lặp lại rồi hiện một thẻ **Kỹ năng mới**. Những giá trị chỉ dùng cho lần này, như tên và ngày tháng, không được đưa vào hướng dẫn.
-3. Kiểm tra và sửa tiêu đề, mô tả và hướng dẫn trên thẻ. Mở **Nâng cao** để đổi tên tiếng Anh.
+3. Kiểm tra và sửa tên, mô tả và hướng dẫn trên thẻ. Tên là thứ danh sách kỹ năng hiển thị và là thứ bạn gõ sau `/`: chữ cái tiếng Anh viết thường, chữ số và dấu gạch nối.
 4. Nhấn **Lưu**. Kỹ năng mới được thêm vào kỹ năng của tôi ở trạng thái bật và xuất hiện ngay trong danh sách `/`.
 
 - Không có tệp nào được ghi cho đến khi bạn nhấn **Lưu**. Nếu bạn nhấn **Hủy**, cuộc trò chuyện chỉ giữ lại nó dưới dạng "Đề xuất kỹ năng chưa lưu".
@@ -85,7 +85,7 @@ Khi bạn tạo kỹ năng trong bảng AI của một trình soạn thảo, tà
 - Kỹ năng có mẫu sẽ hiện **Có mẫu** trong danh sách.
 - Gọi nó thành thẻ nhỏ rồi gửi, một bản sao của mẫu sẽ mở ra như một tài liệu mới chưa có tên; AI trong thẻ đó tiếp tục thực hiện yêu cầu của bạn. Bảng ban đầu giữ dòng "Đang làm việc với mẫu trong một thẻ mới" và nút **Đến thẻ**.
 - Khi AI tự chọn một kỹ năng có mẫu, sẽ không có thẻ nào mở ra ngay. Thay vào đó, cuộc trò chuyện hiện nút **Mở tài liệu mới từ mẫu này**.
-- Thường thì bạn chọn nơi lưu tài liệu mới vào lần lưu đầu tiên. Riêng trình soạn thảo Markdown và HTML, cùng việc tạo cả bộ trình chiếu, vẫn lưu vào thư mục mặc định như trước nay. Bản thân tệp mẫu vẫn giữ nguyên.
+- Thường thì bạn chọn nơi lưu tài liệu mới vào lần lưu đầu tiên. Riêng trình soạn thảo Markdown và HTML vẫn lưu vào thư mục mặc định như trước nay. Bản thân tệp mẫu vẫn giữ nguyên.
 
 ## Kỹ năng có tập lệnh
 
@@ -95,15 +95,15 @@ Khi bạn tạo kỹ năng trong bảng AI của một trình soạn thảo, tà
 
 ## Kỹ năng có sẵn
 
-| Kỹ năng                                      | Chức năng                                                                               |
-| -------------------------------------------- | --------------------------------------------------------------------------------------- |
-| **Biên bản cuộc họp**                        | Biến ghi chú cuộc họp thành biên bản nêu rõ các quyết định và việc cần làm              |
-| **Thông báo, bản tin và câu hỏi thường gặp** | Viết thông báo, bản tin, báo cáo tiến độ, câu hỏi thường gặp và các văn bản nội bộ khác |
-| **Bỏ giọng AI**                              | Tìm trong văn bản tiếng Anh những cách diễn đạt nghe như AI viết và sửa cho tự nhiên    |
-| **Trau chuốt câu chữ**                       | Rà lại văn bản tiếng Anh bạn đã viết để nó rõ ràng và gọn hơn                           |
-| **Tìm kỹ năng**                              | Tìm các kỹ năng bạn cần trong cửa sổ tác tử và đề xuất cài đặt                          |
+| Kỹ năng           | Chức năng                                                                               |
+| ----------------- | --------------------------------------------------------------------------------------- |
+| `meeting-minutes` | Biến ghi chú cuộc họp thành biên bản nêu rõ các quyết định và việc cần làm              |
+| `internal-comms`  | Viết thông báo, bản tin, báo cáo tiến độ, câu hỏi thường gặp và các văn bản nội bộ khác |
+| `humanizer`       | Tìm những cách diễn đạt nghe như AI viết và sửa cho tự nhiên                            |
+| `copy-editing`    | Rà lại văn bản tiếng Anh bạn đã viết để nó rõ ràng và gọn hơn                           |
+| `find-skills`     | Tìm các kỹ năng bạn cần trong cửa sổ tác tử và đề xuất cài đặt                          |
 
-Bỏ giọng AI và Trau chuốt câu chữ được làm cho văn bản tiếng Anh. Tìm kỹ năng chỉ hoạt động trong cửa sổ tác tử.
+`copy-editing` được làm cho văn bản tiếp thị tiếng Anh. `find-skills` chỉ hoạt động trong cửa sổ tác tử.
 
 ## Trong cửa sổ tác tử
 

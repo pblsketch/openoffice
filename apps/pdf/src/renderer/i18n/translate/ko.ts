@@ -11,7 +11,8 @@ export const ko = {
   trFormatPdf: '번역 PDF',
   trFormatMd: '번역 Markdown',
   trFormatEpub: '번역 EPUB',
-  trBilingual: '대역: 원문 문단 다음에 번역 문단을 둡니다(Markdown·EPUB만)',
+  trBilingual:
+    '대역: Markdown·EPUB은 원문 문단 다음에 번역 문단을 두고, PDF는 원문 쪽 옆에 번역한 쪽을 둡니다',
   trPdfEncrypted: '암호가 걸린 문서라 번역 PDF를 만들 수 없습니다. Markdown·EPUB은 됩니다.',
   trPdfScript:
     '{language}로는 번역 PDF를 만들 수 없습니다. PDF에 글을 쓰는 부품이 이 문자를 배치하지 못합니다. Markdown·EPUB은 됩니다.',
@@ -56,7 +57,7 @@ export const ko = {
   trReportPending: '아직 번역하지 않은 {count}개 블록은 원문으로 두었습니다.',
   trReportNone: '모든 블록을 번역했습니다.',
   trReportUntranslated: '원문으로 둔 블록',
-  trReportOverflowed: '상자를 넘친 블록: {count}개({pages}쪽)',
+  trReportOverflowed: '자리가 모자라 원문으로 둔 블록: {count}개({pages}쪽)',
   trReportOriginalPages: '원본 그대로 둔 페이지',
   trReportFiles: '저장한 파일',
   trReasonLine: '{reason}: {pages}쪽({count}개 블록)',

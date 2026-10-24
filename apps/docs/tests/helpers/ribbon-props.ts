@@ -13,6 +13,7 @@ export function ribbonProps(editor: Editor, formatState: RibbonFormatState) {
     onOpen: noop,
     onSave: noop,
     onSaveAs: noop,
+    onFontDialog: noop,
     showAi: false,
     onToggleAi: noop,
     section: null,

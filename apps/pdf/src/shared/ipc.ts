@@ -100,6 +100,15 @@ export const PDF_CHANNELS = {
   saveAsFlow: 'pdf:save-as-flow',
   printRequest: 'pdf:print-request',
   fileRenamed: 'pdf:file-renamed',
+  // crash recovery: copies of unsaved edits in the app data folder (never the file itself)
+  recoveryState: 'pdf:recovery-state',
+  recoveryWriteCopy: 'pdf:recovery-write-copy',
+  recoveryUnprotectable: 'pdf:recovery-unprotectable',
+  recoveryFlushRequest: 'pdf:recovery-flush-request',
+  recoveryFlushDone: 'pdf:recovery-flush-done',
+  // "Don't Save" answered (true) or the close cancelled (false); the renderer resumes on input
+  recoveryDropped: 'pdf:recovery-dropped',
+  recoveryResume: 'pdf:recovery-resume',
   getLanguage: 'app:get-language',
   languageChanged: 'app:language-changed',
   getTheme: 'app:get-theme',
@@ -820,6 +829,14 @@ export interface SavePdfRequest {
    * Must match the target granted to the view by the main process (save dialog pick).
    */
   targetPath?: string
+  /** Save As only: copy the source bytes unchanged. Used when the copy has no pending edits. */
+  copyOnly?: boolean
+  /**
+   * Save As only: what the copy does with annotations.
+   * `keep` (default) keeps them editable, `flatten` bakes them into page content,
+   * `strip` leaves comment annotations out (links and form fields stay).
+   */
+  annotations?: 'keep' | 'flatten' | 'strip'
   markups: MarkupInput[]
   /** Saved markup annotations to remove (applied before every other stage) */
   annotDeletes?: AnnotDeleteInput[]
@@ -859,6 +876,9 @@ export interface SavePdfRequest {
    */
   auto?: boolean
 }
+
+/** Outcome of one recovery copy write ('failed' makes the renderer skip a few rounds) */
+export type PdfRecoveryCopyResult = 'written' | 'superseded' | 'skipped' | 'failed'
 
 /** A text edit that could not be matched to the document at save time and was skipped */
 export interface TextEditFailure {
@@ -1568,13 +1588,27 @@ export interface PdfApi {
   sendCloseSaveResult(ok: boolean): void
   /** Shell menu Save As → renderer writes pending edits to targetPath only (original untouched) and replies via sendSaveAsResult */
   onSaveAsRequest(handler: (targetPath: string) => void): () => void
-  sendSaveAsResult(ok: boolean): void
+  /** true = written, false = failed, 'cancelled' = the person closed the annotation choice */
+  sendSaveAsResult(ok: boolean | 'cancelled'): void
   /** True while the shell's Save As flow (dialog included) is open — the renderer pauses autosave, since the dialog's window blur would otherwise trigger a save into the original */
   onSaveAsFlow(handler: (inFlight: boolean) => void): () => void
   /** Shell menu Print → renderer runs its print flow (save, rasterize, system dialog) */
   onPrintRequest(handler: () => void): () => void
   /** The file was renamed or moved from the shell (home Folders / Files pane); the viewer follows the new path */
   onFileRenamed(handler: (newPath: string) => void): () => void
+  /** Whether the view shows `path` from a recovery copy not saved since (the tab starts with unsaved changes) */
+  recoveryState?(path: string): Promise<{ unsaved: boolean }>
+  /** Write the recovery copy: what a save of these edits would write, into the app data folder only */
+  writeRecoveryCopy?(request: SavePdfRequest): Promise<PdfRecoveryCopyResult>
+  /** Report a document that cannot get a safe copy; answers the one-time notice for this tab, or null */
+  reportUnprotectable?(unprotectable: boolean): Promise<string | null>
+  /** The OS is ending the session: write the copy now and answer with sendRecoveryFlushDone */
+  onRecoveryFlushRequest?(handler: () => void): () => void
+  sendRecoveryFlushDone?(): void
+  /** "Don't Save" was answered (true) or the shell reports the close was cancelled (false) */
+  onRecoveryDropped?(handler: (dropped: boolean) => void): () => void
+  /** The user edits again after "Don't Save": the close was cancelled, copies resume */
+  resumeRecoveryCopies?(): Promise<void>
   getLanguage(): Promise<Lang>
   onLanguageChanged(handler: (lang: Lang) => void): () => void
   getTheme(): Promise<UiTheme>

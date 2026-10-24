@@ -29,6 +29,11 @@ export const OP_DOCS: Record<string, OpDoc> = {
       '{id} — a pending (unsaved) markup by its P… id from read_annotations; saved ones need delete_markup',
     group: 'annotate',
   },
+  recolorMarkup: {
+    sig: '{id,color:[r,g,b]} — recolor a pending markup in place',
+    group: 'annotate',
+    aiCallable: false,
+  },
   deleteSavedAnnot: {
     sig: '{annot:{pageIndex,objNum,type,rect,…}} — a markup or note already saved in the file; use delete_markup / delete_note',
     group: 'annotate',

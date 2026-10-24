@@ -63,6 +63,7 @@ import {
   LEADER_PAGE_MIN_SHARE,
 } from './toc'
 import { clusterUnitRows, splitIntoUnits, type LineUnit } from './units'
+import { splitTurnedRuns, turnedBlock } from './turned'
 import { detectRuleSeparatedZones } from './zones'
 
 export { analyzeChars, dedupeDoubleDrawnChars, normalizeRegionalFontArtifacts } from './chars'
@@ -665,8 +666,11 @@ export function analyzePage(extracted: ExtractedPage, opts: AnalyzeOptions = {})
     extracted.widthPt,
   )
 
+  // turned runs (margin stamps) leave the upright stream; they return as
+  // paragraphs at the end of the page
+  const turned = splitTurnedRuns(remainingChars)
   // P3 layout passes work on line units (visual lines split at column gaps)
-  const prepped = clusterCombiningMarks(normalizeArabicForms(remainingChars))
+  const prepped = clusterCombiningMarks(normalizeArabicForms(turned.upright))
   const rawLines = groupIntoLines(prepped)
   const units = splitIntoUnits(rawLines)
   // checkbox form rows (P6) — checked before the stream pass: their single
@@ -882,7 +886,7 @@ export function analyzePage(extracted: ExtractedPage, opts: AnalyzeOptions = {})
     // absolutely-positioned overlay layouts (decor text drawn last merged
     // whole-page paragraph blocks and produced huge negative gaps), so lines
     // sort top→down like the multi-column path does
-    const lines = analyzeChars(remainingChars).sort(
+    const lines = analyzeChars(turned.upright).sort(
       (a, b) => b.baseline - a.baseline || a.box.x0 - b.box.x0,
     )
     let body: ReturnType<typeof bodyContextOf> | undefined
@@ -994,6 +998,12 @@ export function analyzePage(extracted: ExtractedPage, opts: AnalyzeOptions = {})
 
   const warnings = [...styled.warnings, ...panelNotes, ...applySpacingChain(sections)]
   if (warnings.length > 0) base.warnings = warnings
+  const turnedBlocks = turned.runs.map(turnedBlock).filter((b): b is TextBlock => b !== null)
+  if (turnedBlocks.length > 0) {
+    const lastColumn = sections.at(-1)?.columns.at(-1)
+    if (lastColumn) lastColumn.blocks.push(...turnedBlocks)
+    else sections = singleSectionOf(turnedBlocks)
+  }
   base.sections = sections
   base.blocks = flattenSections(sections)
   // a run only carries across the page it ended on; a page without it in

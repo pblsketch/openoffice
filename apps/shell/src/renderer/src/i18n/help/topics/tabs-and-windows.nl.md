@@ -6,7 +6,7 @@ Alle geopende bestanden delen één venster; de tabbladenbalk bovenaan wisselt t
 
 ## De basis
 
-- **Wisselen**: klik op een tabblad of scroll met het muiswiel over de balk om ze af te wisselen.
+- **Wisselen**: klik op een tabblad, druk op **Ctrl+Tab** (volgende) / **Ctrl+Shift+Tab** (vorige), of scroll met het muiswiel over de balk.
 - **Sluiten**: de × op het tabblad, of ⌘W/ctrl+W. Bij onopgeslagen wijzigingen wordt eerst gevraagd.
 - **Nieuw**: de + aan het rechtereinde van de balk.
 - **Activering is direct**: een tabblad indrukken wisselt meteen om, zonder te wachten tot de klik klaar is.
@@ -57,7 +57,23 @@ Het meest linkse Start-tabblad kan niet worden gesloten; klik erop of gebruik Be
 - Er is maar één AI-venster te zien. Het deelvenster waarin je werkt toont het zijne; dat van het andere deelvenster klapt in tot een rail, en door op een deelvenster te klikken komt het bijbehorende AI-venster naar voren.
 - Terwijl het is ingeklapt, blijven het gesprek van dat deelvenster en lopend AI-werk leven. Gesprekken worden per document bewaard.
 - **Twee kopieën van hetzelfde document**: na opslaan in het ene deelvenster vraagt opslaan vanuit het andere eerst 'Dit document is elders gewijzigd'. Automatisch opslaan wacht stil.
-- **De app opnieuw starten zonder bestand** brengt het laatst gesplitste documentenpaar precies zo terug als het was; met een bestand erbij wordt alleen dat bestand geopend.
+- Na een gewone afsluiting brengt **de app opnieuw starten zonder bestand** het laatst gesplitste documentenpaar precies zo terug als het was; met een bestand erbij wordt alleen dat bestand geopend. Na een plotselinge uitval komen de vorige tabbladen terug zoals hieronder beschreven.
 - De tabbladen Start, Help en Presentatie (voorbeeld) kunnen niet in een deelvenster. Zolang een daarvan open is, verbergen de twee deelvensters zich even en komen ze terug zodra je weer op een documenttabblad bent.
 
 Drie of meer deelvensters, splitsen in een losgekoppeld venster en het live synchroniseren van de twee kopieën blijven voor later.
+
+## Als de app of de pc plotseling uitvalt
+
+Zolang een document niet-opgeslagen wijzigingen heeft, bewaart GenOffice ongeveer elke 30 seconden een herstelkopie ervan in de eigen gegevensmap van de app. Alle editors doen dit, ook voor een nieuw document dat nog nooit is opgeslagen. Je bestand zelf verandert pas als je opslaat.
+
+- **Je tabbladen komen terug**: als de app of de pc uitviel zonder normaal af te sluiten (stroomuitval, een crash, de app geforceerd gesloten, de pc uitgeschakeld of herstart voor een update), komen de geopende documenttabbladen terug zodra je GenOffice weer start, in dezelfde volgorde en met de gesplitste weergave als je die had. Dat gebeurt ook als je de app start door een bestand te openen.
+- **Eén lijst op de startpagina**: documenten met nog niet-opgeslagen inhoud staan samen op het startscherm. Kies voor elk **Herstellen** of **Verwerpen**, of gebruik **Alles herstellen** of **Alles verwerpen**, en druk dan op **Toepassen**. Heeft een ander programma of een synchronisatiedienst het bestand daarna gewijzigd, dan staat **Verwerpen** al geselecteerd zodat het bestand blijft zoals het nu is. Is het oorspronkelijke bestand niet meer te vinden, dan opent herstellen de inhoud als nieuw naamloos document.
+- **Later beslissen**: de lijst sluiten verwijdert niets. Als je een van die documenten voor het eerst opent, vraagt een venster met de naam ervan het opnieuw; op Esc drukken of het venster sluiten betekent herstellen. Heb je de herstelde inhoud niet nodig, sluit het document dan met **Niet opslaan**.
+- **Tabbladen laden bij openen**: herstelde tabbladen tonen meteen hun titel, maar elk document laadt pas als je voor het eerst op het tabblad klikt. Alles tegelijk openen kan een pc met te weinig geheugen opnieuw laten uitvallen.
+- **Als de pc wordt uitgeschakeld**: zijn er niet-opgeslagen documenten, dan vraagt GenOffice niet of ze moeten worden opgeslagen. De app bewaart de kopieën, sluit af en biedt ze aan bij de volgende start.
+- **Documenten zonder kopie**: met een wachtwoord beveiligde Excel-, HWP- en PDF-bestanden krijgen geen herstelkopie, dus hun niet-opgeslagen wijzigingen zijn niet te herstellen; een melding zegt dit één keer bij het openen van zo'n document. Sla die vaak op. Met een wachtwoord beveiligde Word- en PowerPoint-documenten krijgen een kopie die met hetzelfde wachtwoord is vergrendeld.
+- **CSV-, oudere .xls- en .tsv-bestanden**: de spreadsheeteditor bewaart hun kopie als naamloze werkmap. Na herstel opent die als naamloze werkmap, en bij de eerste keer opslaan worden de map en naam van het oorspronkelijke bestand als .xlsx voorgesteld.
+
+Een kopie wordt verwijderd als je het document opslaat, het sluit met **Niet opslaan** of **Verwerpen** kiest, en ook na 30 dagen zonder wijziging. Na een gewone afsluiting start GenOffice zoals voorheen en komen er geen tabbladen terug.
+
+**Dit is geen automatisch opslaan.** Automatisch opslaan schrijft je wijzigingen in het bestand zelf, en pas nadat je het één keer hebt opgeslagen. Een herstelkopie raakt je bestand nooit aan; ze bewaart alleen wat je nog niet hebt opgeslagen, tot je het opslaat of verwerpt.

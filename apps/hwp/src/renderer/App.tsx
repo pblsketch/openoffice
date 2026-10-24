@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createEditor } from '@rhwp/editor'
-import type { RhwpEditor } from '@rhwp/editor'
+import type { ChromeVisibility, RhwpEditor } from '@rhwp/editor'
 import type { Params } from '@genoffice/i18n'
 import {
   aiPanelInitiallyOpen,
   rememberAiPanelOpen,
+  presentationKeyOf,
   skillTemplateText,
   templateDocumentOf,
   useSplitPaneFocusPing,
@@ -12,11 +13,17 @@ import {
 } from '@genoffice/ui'
 import { HwpAiDock } from './ai/AiDock'
 import { createAgentBridge } from './ai/agent-bridge'
-import { FILE_COMMAND_EVENT } from '../../studio-plugin/agent-plugin.mjs'
+import { DIRTY_EVENT, FILE_COMMAND_EVENT } from '../../studio-plugin/agent-plugin.mjs'
 import blankHwpUrl from './assets/blank.hwp?url'
 import { useI18n, type StringKey } from './i18n/locale'
 import { openDocumentsDroppedOn } from './editor-drop'
 import { gatherPrintJob } from './print-flow'
+import {
+  RECOVERY_TICK_MS,
+  createRecoveryCopier,
+  withChangeNotes,
+  type RecoveryCopier,
+} from './recovery-flow'
 import { runSave, type SaveEditorPort } from './save-flow'
 import { PASSWORD_FLAG } from '../../scripts/rhwp-patches.mjs'
 import { STUDIO_SETTINGS_KEY, seededStudioSettings, studioUrl } from './studio-settings'
@@ -32,7 +39,9 @@ type Phase = 'booting' | 'loading' | 'ready' | 'failed'
 
 interface Notice {
   tone: 'info' | 'error'
-  key: StringKey
+  key?: StringKey
+  /** a message already localized elsewhere (the main process), shown instead of `key` */
+  text?: string
   params?: Params
   /** untranslated cause from the engine or the file system, shown under the message */
   detail?: string
@@ -40,8 +49,11 @@ interface Notice {
   sticky?: true
 }
 
-/** How often the editor is asked whether the document has unsaved changes. */
-const DIRTY_POLL_MS = 400
+/**
+ * How often the editor is asked whether the document has unsaved changes, besides being
+ * told of each change: for one the plugin missed (it loads after the document opens).
+ */
+const DIRTY_POLL_MS = 2000
 /** How often a document that has not arrived yet is looked for. */
 const ARRIVAL_POLL_MS = 1000
 /** How long a confirmation stays up; errors stay until dismissed. */
@@ -87,14 +99,29 @@ export default function App() {
   /** the format the document was opened in: what it is exported as when it is read */
   const formatRef = useRef<HwpFormat>('hwp')
   const [phase, setPhase] = useState<Phase>('booting')
+  /** F5: the document alone in fullscreen, with the editor's own chrome hidden */
+  const [presenting, setPresenting] = useState(false)
+  const presentingRef = useRef(false)
+  const prePresentChromeRef = useRef<ChromeVisibility | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
   const [aiOpen, setAiOpen] = useState(() => aiPanelInitiallyOpen(AI_OPEN_KEY))
   /** the file the document is in: the AI conversation is kept with it */
   const [filePath, setFilePath] = useState<string | null>(null)
   /** an untitled copy's name (a skill template's): the title it has until its first save */
   const copyNameRef = useRef<string | null>(null)
+  /** crash-recovery copies of the document (recovery-flow.ts), once it is in the editor */
+  const copierRef = useRef<RecoveryCopier | null>(null)
+  /** the editor holds a restored recovery copy that has not been saved since */
+  const restoredRef = useRef(false)
   /** the AI panel's way into the document: the app's plugin inside the editor */
-  const agentBridge = useMemo(() => createAgentBridge(() => editorRef.current), [])
+  const agentBridge = useMemo(
+    () =>
+      withChangeNotes(
+        createAgentBridge(() => editorRef.current),
+        () => copierRef.current?.noteChange(),
+      ),
+    [],
+  )
 
   // the shell's split panes: tell it whenever this pane gains focus
   useSplitPaneFocusPing()
@@ -191,48 +218,53 @@ export default function App() {
     return () => clearInterval(timer)
   }, [phase])
 
-  // mirror the editor's unsaved state to the main process, which owns the close prompt
+  // mirror the editor's unsaved state to the main process, which owns the close prompt: the
+  // app's plugin passes each change on in the same task as the edit, so an edit followed at
+  // once by closing the tab cannot slip through; a slow poll covers what it did not see
   useEffect(() => {
     if (phase !== 'ready') return
     const editor = editorRef.current
     if (!editor) return
     let reported = false
     let asking = false
+    /** counts the changes the plugin passed on; a poll answer older than one is dropped */
+    let changes = 0
+    const report = (dirty: boolean) => {
+      if (dirty === reported) return
+      reported = dirty
+      window.hwpApi.setDirty(dirty)
+    }
     const check = async () => {
       if (asking || savingRef.current) return
       asking = true
+      const seen = changes
       try {
-        const dirty = (await editor.commands.context()).isDirty === true
-        if (dirty !== reported) {
-          reported = dirty
-          window.hwpApi.setDirty(dirty)
-        }
+        // a restored recovery copy stays unsaved until it is saved, whatever the editor says
+        const dirty = (await editor.commands.context()).isDirty === true || restoredRef.current
+        if (seen === changes) report(dirty)
       } catch {
         // the editor is going away; the next tick or the unmount settles it
       } finally {
         asking = false
       }
     }
-    const timer = setInterval(() => void check(), DIRTY_POLL_MS)
-    // an edit followed at once by closing the tab must not slip between two ticks
     const frame = editor.element.contentWindow
-    const soon = () => setTimeout(() => void check(), 50)
-    const events = [
-      'keydown',
-      'keyup',
-      'input',
-      'compositionend',
-      'pointerup',
-      'paste',
-      'cut',
-      'drop',
-    ] as const
-    for (const name of events) frame?.addEventListener(name, soon, true)
+    const onChange = (event: Event) => {
+      changes += 1
+      report((event as CustomEvent<unknown>).detail === true || restoredRef.current)
+    }
+    frame?.addEventListener(DIRTY_EVENT, onChange)
+    // an edit before the plugin is up has no event: ask once it is
+    void agentBridge
+      .foreignChanges()
+      .catch(() => {})
+      .then(() => check())
+    const timer = setInterval(() => void check(), DIRTY_POLL_MS)
     return () => {
       clearInterval(timer)
-      for (const name of events) frame?.removeEventListener(name, soon, true)
+      frame?.removeEventListener(DIRTY_EVENT, onChange)
     }
-  }, [phase])
+  }, [phase, agentBridge])
 
   const save = useCallback(
     async (mode: SaveMode): Promise<boolean> => {
@@ -242,6 +274,8 @@ export default function App() {
       try {
         const outcome = await runSave(savePortOf(editor), window.hwpApi, mode)
         if (outcome.kind === 'saved') {
+          restoredRef.current = false
+          copierRef.current?.saved()
           setFilePath(outcome.path)
           const backup = outcome.backupPath ? { name: fileNameOf(outcome.backupPath) } : null
           if (outcome.tailsLost) {
@@ -302,6 +336,66 @@ export default function App() {
     return () => frame.removeEventListener(FILE_COMMAND_EVENT, onCommand)
   }, [phase, agentBridge, t])
 
+  // crash-recovery copies while the document has unsaved changes; typing never waits on one
+  useEffect(() => {
+    if (phase !== 'ready') return
+    const editor = editorRef.current
+    if (!editor) return
+    const port = savePortOf(editor)
+    const copier = createRecoveryCopier({
+      editor: {
+        ...port,
+        isDirty: async () => (await editor.commands.context()).isDirty === true,
+      },
+      api: window.hwpApi,
+      isBusy: () => savingRef.current,
+      restoredUnsaved: () => restoredRef.current,
+    })
+    copierRef.current = copier
+    let disposed = false
+    void (async () => {
+      const isProtected = await port.isPasswordProtected().catch(() => false)
+      const opened = await window.hwpApi.recoveryOpened(isProtected).catch(() => null)
+      if (disposed || !opened) return
+      if (opened.restored) restoredRef.current = true
+      // a document whose password a copy cannot keep: said once, when the tab opens
+      if (opened.notice) setNotice({ tone: 'info', text: opened.notice, sticky: true })
+    })()
+    const frame = editor.element.contentWindow
+    const inEditor = () => copier.noteInput()
+    const elsewhere = () => copier.noteInput(false)
+    const editorEvents = [
+      'keydown',
+      'input',
+      'compositionend',
+      'pointerdown',
+      'paste',
+      'cut',
+      'drop',
+    ]
+    const pageEvents = ['keydown', 'pointerdown', 'wheel']
+    for (const name of editorEvents) frame?.addEventListener(name, inEditor, true)
+    frame?.addEventListener('wheel', elsewhere, { capture: true, passive: true })
+    for (const name of pageEvents) {
+      window.addEventListener(name, elsewhere, { capture: true, passive: true })
+    }
+    const timer = setInterval(() => void copier.tick(), RECOVERY_TICK_MS)
+    const offFlush = window.hwpApi.onRecoveryFlush((token) => {
+      void copier.flush().finally(() => window.hwpApi.sendRecoveryFlushed(token))
+    })
+    const offReset = window.hwpApi.onRecoveryReset(() => copier.reset())
+    return () => {
+      disposed = true
+      clearInterval(timer)
+      offFlush()
+      offReset()
+      for (const name of editorEvents) frame?.removeEventListener(name, inEditor, true)
+      frame?.removeEventListener('wheel', elsewhere, { capture: true })
+      for (const name of pageEvents) window.removeEventListener(name, elsewhere, { capture: true })
+      if (copierRef.current === copier) copierRef.current = null
+    }
+  }, [phase])
+
   // saves asked for by the menu, the shortcut and the close prompt
   useEffect(() => {
     const canSave = () => phase === 'ready' && !savingRef.current
@@ -318,7 +412,7 @@ export default function App() {
           mode === 'saveAs' ||
           (await editorRef.current?.commands
             .context()
-            .then((context) => context.isDirty !== false)
+            .then((context) => context.isDirty !== false || restoredRef.current)
             .catch(() => true))
         if (dirty) await save(mode)
         else window.hwpApi.abortSave()
@@ -394,6 +488,82 @@ export default function App() {
     [],
   )
 
+  // F5: the document alone in fullscreen; the editor's menu/toolbar/status bar hide
+  // with its own chrome API and come back exactly as they were when the show ends.
+  useEffect(() => {
+    const enter = async (): Promise<void> => {
+      const editor = editorRef.current
+      if (!editor || phase !== 'ready' || presentingRef.current) return
+      presentingRef.current = true
+      try {
+        prePresentChromeRef.current = await editor.chrome.get()
+      } catch {
+        prePresentChromeRef.current = null
+      }
+      if (!presentingRef.current) return
+      void editor.chrome.set({ menu: false, toolbar: false, statusbar: false }).catch(() => {})
+      setPresenting(true)
+      const root = document.documentElement
+      if (!document.fullscreenElement && root.requestFullscreen)
+        void root.requestFullscreen().catch(() => {})
+    }
+    const exit = (): void => {
+      if (!presentingRef.current) return
+      presentingRef.current = false
+      setPresenting(false)
+      const editor = editorRef.current
+      if (editor && prePresentChromeRef.current) {
+        void editor.chrome.set(prePresentChromeRef.current).catch(() => {})
+      }
+      prePresentChromeRef.current = null
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+    }
+    const onKey = (event: KeyboardEvent): void => {
+      const action = presentationKeyOf(event, presentingRef.current)
+      if (!action) return
+      event.preventDefault()
+      if (action === 'exit') {
+        event.stopPropagation()
+        exit()
+      } else void enter()
+    }
+    // The document lives inside rhwp's own frame, so keys pressed there never
+    // reach this window: listen on both. A cross-origin frame simply gets none.
+    window.addEventListener('keydown', onKey, true)
+    let frameWindow: Window | null = null
+    try {
+      frameWindow = editorRef.current?.element.contentWindow ?? null
+      frameWindow?.addEventListener('keydown', onKey, true)
+    } catch {
+      frameWindow = null
+    }
+    return () => {
+      window.removeEventListener('keydown', onKey, true)
+      try {
+        frameWindow?.removeEventListener('keydown', onKey, true)
+      } catch {
+        /* the frame went away with its document */
+      }
+    }
+  }, [phase])
+
+  // OS-level Esc leaves fullscreen without a keydown: end the show with it.
+  useEffect(() => {
+    if (!presenting) return
+    const onFullScreenChange = (): void => {
+      if (document.fullscreenElement) return
+      presentingRef.current = false
+      setPresenting(false)
+      const editor = editorRef.current
+      if (editor && prePresentChromeRef.current) {
+        void editor.chrome.set(prePresentChromeRef.current).catch(() => {})
+      }
+      prePresentChromeRef.current = null
+    }
+    document.addEventListener('fullscreenchange', onFullScreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullScreenChange)
+  }, [presenting])
+
   useEffect(() => {
     if (notice?.tone !== 'info' || notice.sticky) return
     const timer = setTimeout(() => setNotice(null), INFO_NOTICE_MS)
@@ -425,7 +595,7 @@ export default function App() {
   )
 
   return (
-    <div className="hwp-app" data-phase={phase}>
+    <div className={`hwp-app${presenting ? ' hwp-presenting' : ''}`} data-phase={phase}>
       <div className="app-main">
         {/* the assistant works on an open document, so it appears with one */}
         {phase === 'ready' && (
@@ -446,7 +616,7 @@ export default function App() {
               role={notice.tone === 'error' ? 'alert' : 'status'}
             >
               <div className="hwp-notice-text">
-                <span>{t(notice.key, notice.params)}</span>
+                <span>{notice.text ?? (notice.key ? t(notice.key, notice.params) : '')}</span>
                 {notice.detail && <span className="hwp-notice-detail">{notice.detail}</span>}
               </div>
               <button

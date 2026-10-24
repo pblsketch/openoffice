@@ -34,6 +34,7 @@ import {
 import type { CropRect, FileOpCanceled, FileOpResult, PdfAppDeps, RotateDelta } from './ai/tools'
 import {
   MARKUP_COLORS,
+  MARKUP_PALETTE,
   geomDispSize,
   pdfRectToCss,
   pdfToView,
@@ -248,8 +249,10 @@ import {
   effectiveAiPanelOpen,
   onAiRailClick,
   rememberAiPanelOpen,
+  presentationKeyOf,
   useDismissablePopover,
   useRibbonCollapse,
+  useAiSidebarEnabled,
   useSplitPaneFocusPing,
   useSplitPaneRole,
   templateDocumentOf,
@@ -257,6 +260,7 @@ import {
 } from '@genoffice/ui'
 import { useI18n } from './i18n/locale'
 import { useAutosave } from './useAutosave'
+import { useRecoveryCopies } from './recovery/useRecoveryCopies'
 import type {
   AnnotDeleteInput,
   DrawingInput,
@@ -302,8 +306,11 @@ import {
   savePassageMarks,
   loadSidebarOpen,
   saveSidebarOpen,
+  loadDefaultFit,
+  saveDefaultFit,
+  openingFitMode,
 } from './view-config'
-import type { PageSize, FitMode } from './view-config'
+import type { PageSize, FitMode, DefaultFitMode } from './view-config'
 import { useVisibleSet, PdfPage, MarkupOverlay } from './PdfPage'
 import { PdfThumb, ThumbPendingOverlay } from './PdfThumb'
 import type { ThumbMenu } from './PdfThumb'
@@ -470,6 +477,19 @@ const RIBBON_TABS = [
 ] as const
 type RibbonTab = (typeof RIBBON_TABS)[number]['id'] | 'fillForm' | 'formDesign'
 
+/** Right-click menu of one markup annotation (pending or already in the file). */
+type MarkupMenu =
+  | {
+      kind: 'pending'
+      id: string
+      pageIndex: number
+      type: MarkupType
+      color: [number, number, number]
+      x: number
+      y: number
+    }
+  | { kind: 'saved'; annot: SavedMarkupAnnot; x: number; y: number }
+
 export default function App() {
   const { lang, t } = useI18n()
   // Fallback focus ping: the shell is told whenever this window gains focus
@@ -477,6 +497,9 @@ export default function App() {
   const collapse = useRibbonCollapse('genoffice-pdf-ribbon-collapsed', {
     collapse: t('ribbonCollapse'),
     expand: t('ribbonExpand'),
+    // ⌥⌘K / Ctrl+Alt+K: the icon-only middle density (docs parity, see #362)
+    compact: t('ribbonCompact'),
+    expandFull: t('ribbonExpand'),
   })
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null)
   const [filePath, setFilePath] = useState('')
@@ -526,6 +549,13 @@ export default function App() {
   const [pageUserUnits, setPageUserUnits] = useState<number[]>([])
   const [baseRots, setBaseRots] = useState<number[]>([])
   const [scale, setScale] = useState(1)
+  /** F5: the viewer alone in fullscreen (presentation) */
+  const [presenting, setPresenting] = useState(false)
+  /** Fit mode for a PDF with no saved reading position (View tab); fit width keeps the old behaviour */
+  const [defaultFit, setDefaultFit] = useState<DefaultFitMode>(loadDefaultFit)
+  const defaultFitRef = useRef(defaultFit)
+  defaultFitRef.current = defaultFit
+  useEffect(() => saveDefaultFit(defaultFit), [defaultFit])
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState('1')
   const [sidebar, setSidebar] = useState<'thumbs' | 'outline' | 'notes' | null>(() =>
@@ -578,6 +608,10 @@ export default function App() {
   // In a split, a secondary pane's panel is forced to the rail; the focus pane keeps its own state
   const { role: paneRole, requestFocus } = useSplitPaneRole()
   const aiPanelOpen = effectiveAiPanelOpen(!aiCollapsed, paneRole)
+  /** the panel setter in the "true = visible" sense the sidebar hook expects */
+  const setAiOpen = useCallback((open: boolean) => setAiCollapsed(!open), [])
+  // the sidebar switch is a soft hide; it closes the panel when it turns off
+  const aiSidebarEnabled = useAiSidebarEnabled(setAiOpen)
   useEffect(() => {
     rememberAiPanelOpen('genoffice-pdf-show-ai', !aiCollapsed)
   }, [aiCollapsed])
@@ -1015,6 +1049,8 @@ export default function App() {
   const [formCatalog, setFormCatalog] = useState<FormCatalog | null>(null)
   const [formHasXfa, setFormHasXfa] = useState(false)
   const [documentEncrypted, setDocumentEncrypted] = useState(false)
+  /** opened from a crash-recovery copy and not saved since: unsaved with no pending edit */
+  const [restoredUnsaved, setRestoredUnsaved] = useState(false)
   const [activeFormWidgetId, setActiveFormWidgetId] = useState<string | null>(null)
   const formControlRefs = useRef<Map<string, HTMLElement>>(new Map())
   const [formEdits, setFormEdits] = useState<Map<string, FormValueInput>>(new Map())
@@ -1120,6 +1156,8 @@ export default function App() {
     if (!aiCollapsed) startAiAnnotCountScan()
   }, [aiCollapsed, startAiAnnotCountScan])
   const [selected, setSelected] = useState<AnnotSelection | null>(null)
+  /** Markup context menu opened by a right click on a pending or saved annotation */
+  const [markupMenu, setMarkupMenu] = useState<MarkupMenu | null>(null)
   /** Transparency presets fold-out inside the image selection popup */
   const [opacityMenu, setOpacityMenu] = useState(false)
   useEffect(() => setOpacityMenu(false), [selected])
@@ -1165,12 +1203,25 @@ export default function App() {
   const [printMode, setPrintMode] = useState<'all' | 'current' | 'custom'>('all')
   const [printInput, setPrintInput] = useState('')
   const [printInvalid, setPrintInvalid] = useState(false)
+  const [printAnnots, setPrintAnnots] = useState(true)
+  /** Save As flow: the shell picked the target, the reader still chooses what happens to annotations */
+  const [saveCopyDlg, setSaveCopyDlg] = useState<{ targetPath: string } | null>(null)
+  const [saveCopyMode, setSaveCopyMode] = useState<'keep' | 'flatten' | 'strip'>('keep')
+  /** Bumped by "accept all and save": the effect waits for the render that has the new markups. */
+  const [acceptSaveRequest, setAcceptSaveRequest] = useState(0)
+  const acceptSaveCountRef = useRef(0)
   /** Page-crop dialog: rendered page bitmap + which page it shows */
   const [pageCropDlg, setPageCropDlg] = useState<{ png: string; origIdx: number } | null>(null)
   const [cropAllPages, setCropAllPages] = useState(false)
   const coalesceKeyRef = useRef<string | null>(null)
   const passwordRef = useRef<string | undefined>(undefined)
-  const fitModeRef = useRef<FitMode>('width')
+  /** fit mode before F5, restored when the show ends */
+  const prePresentFitRef = useRef<FitMode>(null)
+  /** manual zoom before F5 (fit mode null), restored when the show ends */
+  const prePresentScaleRef = useRef(1)
+  /** cancels a pending page-fit when the show ends before its timer runs */
+  const presentSeqRef = useRef(0)
+  const fitModeRef = useRef<FitMode>(defaultFit)
   /** Reading position saved when this file was last viewed; applied once after open */
   const pendingViewRestoreRef = useRef<PdfViewState | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -1625,6 +1676,7 @@ export default function App() {
       }
       setFileSize(data.byteLength)
       setSelected(null)
+      setMarkupMenu(null)
       setPageSel(EMPTY_PAGE_SELECTION)
       setDeleteToast(false)
       setUndoStack([])
@@ -1671,15 +1723,20 @@ export default function App() {
         // A newly opened file starts outside the autosave gate
         savedOnceRef.current = false
         await loadDoc(path, null)
+        // a restored recovery copy opens with unsaved changes (the file is untouched until Save)
+        const recovered = await window.pdfApi.recoveryState?.(path).catch(() => null)
+        setRestoredUnsaved(recovered?.unsaved === true)
         // Silently restore the last reading position (WPS-style). A saved custom
         // zoom (fitMode null) must be applied before 'ready', or the initial
-        // fit-width recompute would take over; fit modes are recomputed anyway.
+        // fit recompute would take over; fit modes are recomputed anyway.
         const savedView = loadViewState(path)
+        fitModeRef.current = openingFitMode(savedView, defaultFitRef.current)
         if (savedView) {
           pendingViewRestoreRef.current = savedView
-          fitModeRef.current = savedView.fitMode
           if (savedView.fitMode === null)
             setScale(Math.min(MAX_SCALE, Math.max(MIN_SCALE, savedView.scale)))
+        } else {
+          pendingViewRestoreRef.current = null
         }
         setStatus('ready')
       } catch (err) {
@@ -2024,6 +2081,69 @@ export default function App() {
     el.scrollTop = rowTop(rowOfVis(target - 1)) - PAGE_GAP / 2
   }
 
+  // ---- presentation (F5 / Ctrl+F5): the viewer alone in fullscreen ----
+
+  const fitPageForPresentation = useCallback(() => {
+    // the fullscreen viewport arrives after the event; fit the page once it has
+    const seq = ++presentSeqRef.current
+    window.setTimeout(() => {
+      if (presentSeqRef.current !== seq) return
+      fitModeRef.current = 'page'
+      recomputeFit()
+    }, 80)
+  }, [recomputeFit])
+
+  const exitPresent = useCallback(() => {
+    presentSeqRef.current++
+    setPresenting(false)
+    fitModeRef.current = prePresentFitRef.current
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+    if (fitModeRef.current === null) setScale(prePresentScaleRef.current)
+    else window.setTimeout(() => recomputeFit(), 80)
+  }, [recomputeFit])
+
+  const enterPresent = useCallback(
+    (fromCurrent: boolean) => {
+      prePresentFitRef.current = fitModeRef.current
+      prePresentScaleRef.current = scale
+      setPresenting(true)
+      // F5 starts at the first page; Ctrl+F5 keeps the reader's page
+      if (!fromCurrent && scrollRef.current) scrollRef.current.scrollTop = 0
+      const root = document.documentElement
+      if (!document.fullscreenElement && root.requestFullscreen)
+        void root.requestFullscreen().then(fitPageForPresentation, fitPageForPresentation)
+      else fitPageForPresentation()
+    },
+    [fitPageForPresentation, scale],
+  )
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (status !== 'ready') return
+      const action = presentationKeyOf(event, presenting)
+      if (!action) return
+      event.preventDefault()
+      if (action === 'exit') {
+        event.stopPropagation()
+        exitPresent()
+        return
+      }
+      enterPresent(action === 'present-windowed')
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [status, presenting, enterPresent, exitPresent])
+
+  useEffect(() => {
+    if (!presenting) return
+    const onFullScreenChange = (): void => {
+      if (document.fullscreenElement) fitPageForPresentation()
+      else exitPresent()
+    }
+    document.addEventListener('fullscreenchange', onFullScreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullScreenChange)
+  }, [presenting, fitPageForPresentation, exitPresent])
+
   // genoffice CLI (`open --page`, `selection`): the shell evaluates this hook
   useEffect(() => {
     ;(window as unknown as Record<string, unknown>).__genofficeControl = (req: ControlRequest) =>
@@ -2235,15 +2355,21 @@ export default function App() {
     rotations.size > 0 ||
     deleted.size > 0 ||
     order !== null ||
-    metadata !== null
+    metadata !== null ||
+    restoredUnsaved
   const ordinaryDirty = dirtyBesidesFormFields || formFields.length > 0
   const savableDirty = dirtyBesidesFormFields || savableFormFields.length > 0
   const dirty = redactions.length > 0 || ordinaryDirty
+  // An open text/comment editor is already part of what Save and Save As write
+  // (saveInPlace/saveAsTo commit the draft first), but it is not in `ordinaryDirty`.
+  // The shell uses this flag to decide whether Save As must ask the renderer at all;
+  // without it a copy made mid-edit silently misses the typed text.
+  const hasOpenDraft = textDraft !== null || noteEditDraft !== null
 
   // Mirror dirty state to the main process (close-tab/close-window guard)
   useEffect(() => {
-    window.pdfApi.setDirty(dirty)
-  }, [dirty])
+    window.pdfApi.setDirty(dirty || hasOpenDraft)
+  }, [dirty, hasOpenDraft])
 
   // Existing images are listed while edit-image mode is on; `doc` in the deps refreshes
   // the list after a post-save reload (object rects may have changed on disk)
@@ -2475,6 +2601,7 @@ export default function App() {
     setMetadata(s.metadata)
     // The selected annotation may no longer exist in the restored snapshot
     setSelected(null)
+    setMarkupMenu(null)
   }
 
   const undo = () => {
@@ -3139,6 +3266,53 @@ export default function App() {
       const a = saved[i]!
       if (pendingDeleted.has(a.objNum) || !hitQuads(a.quads)) continue
       return select({ kind: 'savedMarkup', annot: a, ...at })
+    }
+  }
+
+  /** Right-click on a markup opens its own menu (delete + recolor) instead of the
+   *  browser's. Hit-testing mirrors handlePageClick: pending markups first, then
+   *  annotations already saved in the file. */
+  const handlePageContextMenu = (origIdx: number, e: ReactMouseEvent<HTMLDivElement>) => {
+    if (readOnly) return
+    if (!(e.target as Element).closest?.('.pdf-page-content')) return
+    const box = e.currentTarget.getBoundingClientRect()
+    const g = pageGeom(origIdx)
+    const [px, py] = viewToPdf(g, (e.clientX - box.left) / scale, (e.clientY - box.top) / scale)
+    const hitQuads = (quads: number[][]) =>
+      quads.some((q) => {
+        const r = quadToRect(q)
+        return px >= r[0] && px <= r[2] && py >= r[1] && py <= r[3]
+      })
+    const at = { x: e.clientX, y: e.clientY }
+    const onPage = markups.filter((m) => m.pageIndex === origIdx)
+    for (let i = onPage.length - 1; i >= 0; i--) {
+      const m = onPage[i]!
+      if (!hitQuads(m.quads)) continue
+      e.preventDefault()
+      e.stopPropagation()
+      setSelPopup(null)
+      setSelected(null)
+      setMarkupMenu({
+        kind: 'pending',
+        id: m.id,
+        pageIndex: m.pageIndex,
+        type: m.type,
+        color: m.color,
+        ...at,
+      })
+      return
+    }
+    const pendingDeleted = new Set(annotDeletes.map((d) => d.annot.objNum))
+    const saved = savedMarkups.get(origIdx) ?? []
+    for (let i = saved.length - 1; i >= 0; i--) {
+      const a = saved[i]!
+      if (pendingDeleted.has(a.objNum) || !hitQuads(a.quads)) continue
+      e.preventDefault()
+      e.stopPropagation()
+      setSelPopup(null)
+      setSelected(null)
+      setMarkupMenu({ kind: 'saved', annot: a, ...at })
+      return
     }
   }
 
@@ -4555,6 +4729,14 @@ export default function App() {
     )
   }
 
+  /** Transient "deleted · undo" toast so the removal is visible and reversible in place */
+  const showDeletedToast = (insertedText = false) => {
+    if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current)
+    setDeletedInsertedText(insertedText)
+    setDeleteToast(true)
+    toastTimerRef.current = window.setTimeout(() => setDeleteToast(false), 5000)
+  }
+
   const deleteSelected = () => {
     const sel = selected
     if (!sel) return
@@ -4585,11 +4767,60 @@ export default function App() {
                     : { op: 'setStamps', cfg: null }
     applyEditOps([op])
     setSelected(null)
-    // Transient "deleted · undo" toast so the removal is visible and reversible in place
-    if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current)
-    setDeletedInsertedText(sel.kind === 'textInsert')
-    setDeleteToast(true)
-    toastTimerRef.current = window.setTimeout(() => setDeleteToast(false), 5000)
+    showDeletedToast(sel.kind === 'textInsert')
+  }
+
+  /** Recolor one markup from its context menu. A pending markup changes in place;
+   *  a saved annotation is replaced by a pending markup with the same quads, so the
+   *  save path keeps its existing add/delete rules and the old color disappears from
+   *  the live preview immediately. */
+  const recolorMarkupFromMenu = (menu: MarkupMenu, color: [number, number, number]) => {
+    setMarkupMenu(null)
+    setSelected(null)
+    if (menu.kind === 'pending') {
+      applyEditOps([{ op: 'recolorMarkup', id: menu.id, color }])
+      return
+    }
+    // The replacement markup is a new annotation, so carry the old /Subj (an
+    // accepted AI highlight's category) over when the file still has it.
+    const apply = (subject?: string) =>
+      applyEditOps([
+        { op: 'deleteSavedAnnot', annot: menu.annot },
+        {
+          op: 'addMarkup',
+          markup: {
+            pageIndex: menu.annot.pageIndex,
+            type: menu.annot.type,
+            color,
+            quads: menu.annot.quads,
+            ...(subject ? { subject } : {}),
+          },
+        },
+      ])
+    const readSubjects = window.pdfApi.annotSubjects
+    if (!filePath || typeof readSubjects !== 'function') {
+      apply()
+      return
+    }
+    void readSubjects(filePath)
+      .then((list) => {
+        const match = list.find(
+          (item) => item.pageIndex === menu.annot.pageIndex && item.objNum === menu.annot.objNum,
+        )
+        apply(match?.subj)
+      })
+      .catch(() => apply())
+  }
+
+  const deleteMarkupFromMenu = (menu: MarkupMenu) => {
+    applyEditOps(
+      menu.kind === 'pending'
+        ? [{ op: 'removeMarkup', id: menu.id }]
+        : [{ op: 'deleteSavedAnnot', annot: menu.annot }],
+    )
+    setMarkupMenu(null)
+    setSelected(null)
+    showDeletedToast()
   }
 
   /** Show a transient toast; the save-failure badge alone hides the actual reason */
@@ -4599,6 +4830,21 @@ export default function App() {
     noticeTimerRef.current = window.setTimeout(() => setNotice(null), ms)
   }
   const showNotice = (msg: string) => showNoticeFor(msg, 8000)
+  const showNoticeRef = useRef(showNotice)
+  showNoticeRef.current = showNotice
+
+  // A password or encrypted PDF gets no recovery copy (its content would sit unprotected in
+  // the app data folder): the main process answers the notice once per tab
+  useEffect(() => {
+    if (status !== 'ready') return
+    const unprotectable = passwordRef.current !== undefined || documentEncrypted
+    void window.pdfApi
+      .reportUnprotectable?.(unprotectable)
+      .then((notice) => {
+        if (notice) showNoticeRef.current(notice)
+      })
+      .catch(() => {})
+  }, [status, documentEncrypted])
 
   // the note of each PDF (reading-assist 4.9): no path crosses, the main process knows both
   const noteActions = useNoteActions({
@@ -4787,6 +5033,9 @@ export default function App() {
         else setSaveState('idle')
         return false
       }
+      // the file now holds what the recovery copy held; the main process deleted the copy
+      setRestoredUnsaved(false)
+      recoveryCopies.invalidate()
       // what this save wrote is in the file now: the reload below drops those annotations
       // from the editing document, and their "in the file" confirmations must not read
       // that as "removed before any save" (reading 3.5)
@@ -4905,7 +5154,10 @@ export default function App() {
    * Save As: apply pending edits onto the source bytes and write only to targetPath.
    * The original file stays untouched on disk and the edits stay pending in this tab.
    */
-  const saveAsTo = async (targetPath: string): Promise<boolean> => {
+  const saveAsTo = async (
+    targetPath: string,
+    annotations: 'keep' | 'flatten' | 'strip' = 'keep',
+  ): Promise<boolean> => {
     if (!filePath) return false
     // The copy must contain what the user sees, including an open floating-editor
     // draft and an open comment-edit box
@@ -4945,6 +5197,37 @@ export default function App() {
           })
       : []
     const applyingRedactions = redactionApplyConfirmedRef.current && redactions.length > 0
+    // What this copy still has to write. `ordinaryDirty` is the render's value:
+    // the draft commits above can be newer than the render that produced it.
+    const hasPendingEdits =
+      applyingRedactions ||
+      (flushed
+        ? lateNoteEdits.length > 0
+        : ordinaryDirty ||
+          draftEdits !== textEdits ||
+          noteFlush.drawings !== drawings ||
+          noteFlush.noteEdits !== noteEdits)
+    // A clean copy with annotations kept is the same bytes as its source. The
+    // main process copies it without a pdf-lib round-trip, exactly as the shell
+    // did before the reader was asked about annotations.
+    if (!hasPendingEdits && annotations === 'keep') {
+      setSaveState('saving')
+      const copied = await window.pdfApi.save({
+        path: filePath,
+        targetPath,
+        markups: [],
+        drawings: [],
+        formValues: [],
+        stamps: [],
+        copyOnly: true,
+      })
+      if (!copied.ok) {
+        opFailed(copied.error)
+        return false
+      }
+      setSaveState('idle')
+      return true
+    }
     const edits = applyingRedactions
       ? {
           markups: [],
@@ -4957,20 +5240,30 @@ export default function App() {
           staticFormFills,
           redactions: redactions.map(({ pageIndex, rect }) => ({ pageIndex, rect })),
         }
-      : flushed
-        ? {
-            markups: [],
-            drawings: [],
-            formValues: [],
-            stamps: [],
-            textEdits: [],
-            textInserts: [],
-            imageEdits: [],
-            ...(lateNoteEdits.length > 0 ? { noteEdits: lateNoteEdits } : {}),
-          }
-        : editsPayload(draftEdits, noteFlush, formFields)
+      : !hasPendingEdits
+        ? { markups: [], drawings: [], formValues: [], stamps: [] }
+        : flushed
+          ? {
+              markups: [],
+              drawings: [],
+              formValues: [],
+              stamps: [],
+              textEdits: [],
+              textInserts: [],
+              imageEdits: [],
+              ...(lateNoteEdits.length > 0 ? { noteEdits: lateNoteEdits } : {}),
+            }
+          : editsPayload(draftEdits, noteFlush, formFields)
+    // Redactions are their own irreversible copy flow; annotation handling is
+    // for ordinary Save As copies only.
+    const annotationChoice = applyingRedactions || annotations === 'keep' ? {} : { annotations }
     setSaveState('saving')
-    const result = await window.pdfApi.save({ path: filePath, targetPath, ...edits })
+    const result = await window.pdfApi.save({
+      path: filePath,
+      targetPath,
+      ...edits,
+      ...annotationChoice,
+    })
     if (!result.ok) {
       opFailed(result.error)
       return false
@@ -5015,10 +5308,31 @@ export default function App() {
     return true
   }
 
+  /** The Save As modal's Save button: the shell's save-as waiter is answered here. */
+  const confirmSaveCopy = () => {
+    const dlg = saveCopyDlg
+    if (!dlg) return
+    const mode = saveCopyMode
+    setSaveCopyDlg(null)
+    void saveAsTo(dlg.targetPath, mode)
+      .catch((err: unknown) => {
+        opFailed(err instanceof Error ? err.message : String(err))
+        return false
+      })
+      .then((ok) => window.pdfApi.sendSaveAsResult(ok))
+  }
+
+  /** The Save As modal's Cancel button: tell the shell the flow ended without a copy. */
+  const cancelSaveCopy = () => {
+    setSaveCopyDlg(null)
+    window.pdfApi.sendSaveAsResult('cancelled')
+  }
+
   const requestRedactionSaveAs = () => {
     if (redactions.length === 0 || redactionRequestInFlightRef.current) return
     const otherPending =
       saveInFlightRef.current !== null ||
+      restoredUnsaved ||
       textDraft !== null ||
       noteDraft !== null ||
       markups.length > 0 ||
@@ -5075,6 +5389,41 @@ export default function App() {
       !saveAsFlowRef.current &&
       !redactionRequestInFlightRef.current,
     () => void save(true),
+  )
+
+  // Crash-recovery copies (spec 1): what a save would write, kept in the app data folder
+  // (never the file), about every 30s once input pauses; a password or encrypted PDF has none
+  const recoveryCopies = useRecoveryCopies({
+    wanted: () => ordinaryDirty && filePath !== '' && status === 'ready' && !readOnly,
+    busy: () =>
+      saveInFlightRef.current !== null ||
+      saveAsFlowRef.current ||
+      redactionRequestInFlightRef.current,
+    request: () => (filePath ? { path: filePath, ...editsPayload() } : null),
+  })
+  useEffect(
+    () => recoveryCopies.bump(),
+    [
+      recoveryCopies,
+      filePath,
+      restoredUnsaved,
+      markups,
+      annotDeletes,
+      noteEdits,
+      drawings,
+      textEdits,
+      textInserts,
+      imageEdits,
+      stampCfg,
+      formEdits,
+      formFields,
+      blankPages,
+      formWidgetEdits,
+      rotations,
+      deleted,
+      order,
+      metadata,
+    ],
   )
 
   // Done in the field popover persists the field; runs after the render that folded in
@@ -6426,10 +6775,7 @@ export default function App() {
     ])
     if (activeNote && item.key === activeNote.rootKey) setActiveNote(null)
     // "deleted · undo" toast — a mistaken trash tap stays reversible before autosave
-    if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current)
-    setDeletedInsertedText(false)
-    setDeleteToast(true)
-    toastTimerRef.current = window.setTimeout(() => setDeleteToast(false), 5000)
+    showDeletedToast()
   }
 
   /** Extract/insert work on the file on disk — flush unsaved changes first; undefined = the save failed */
@@ -6694,7 +7040,7 @@ export default function App() {
   const printBusyRef = useRef(false)
   // `pages` are 1-based file pages; the flush compacts the file to the visible
   // order first, so visible page v prints as file page v.
-  const printDoc = async (pages?: number[]) => {
+  const printDoc = async (pages?: number[], includeAnnotations = printAnnots) => {
     if (printBusyRef.current) return
     printBusyRef.current = true
     try {
@@ -6704,7 +7050,7 @@ export default function App() {
           const data = await window.pdfApi.readFile(filePath)
           const pdoc = await getDocument({ data: new Uint8Array(data), ...DOC_OPTS }).promise
           try {
-            await printPdf(pdoc, pages)
+            await printPdf(pdoc, pages, { includeAnnotations })
           } finally {
             void pdoc.loadingTask.destroy()
           }
@@ -7149,8 +7495,8 @@ export default function App() {
     aiHighlights.suggestions.snapshot,
   )
   const highlightPending = highlightPreview ? aiHighlights.suggestions.pending() : []
-  const acceptSuggestions = (views: readonly SuggestionView[]) => {
-    if (readOnly) return
+  const acceptSuggestions = (views: readonly SuggestionView[], notice = true): number => {
+    if (readOnly) return 0
     const ops: Op[] = []
     const count = aiHighlights.suggestions.accept(views, (v) => {
       const markup = suggestionMarkup(v)
@@ -7159,20 +7505,45 @@ export default function App() {
       ops.push({ op: 'addMarkup', id, markup })
       return id
     })
-    if (ops.length === 0) return
+    if (ops.length === 0) return 0
     const plan = applyEditOps(ops)
     if (plan.failures.length > 0) {
       // nothing was added: the suggestions go back to pending
       aiHighlights.suggestions.prune(new Set(markups.map((m) => m.id)))
-      return
+      return 0
     }
-    showNotice(t('hlAcceptedNotice', { count }))
+    if (notice) showNotice(t('hlAcceptedNotice', { count }))
+    return count
   }
   const dismissSuggestions = (views: readonly SuggestionView[]) => {
     void aiHighlights.suggestions.dismiss(views).then((ok) => {
       if (!ok) showNotice(t('hlDismissFailed'))
     })
   }
+
+  // The save callback closes over this render's markups. "Accept all and save"
+  // changes that state first, then this effect runs after the render that has
+  // the new markups, so the ref points at the save that writes them.
+  const saveRef = useRef(save)
+  saveRef.current = save
+  const acceptAndSave = () => {
+    if (readOnly) return
+    const views = highlightPending.filter((v) => v.found)
+    if (views.length === 0) return
+    const count = acceptSuggestions(views, false)
+    if (count === 0) return
+    acceptSaveCountRef.current = count
+    setAcceptSaveRequest((n) => n + 1)
+  }
+  useEffect(() => {
+    if (acceptSaveRequest === 0) return
+    const count = acceptSaveCountRef.current
+    void saveRef.current(false).then((ok) => {
+      if (ok) showNoticeRef.current(t('hlAcceptedSaved', { count }))
+    })
+    // Only a new request starts a save; the refs carry the latest callbacks.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acceptSaveRequest])
 
   const curOrigIdx = visList[currentPage - 1] ?? -1
 
@@ -7181,6 +7552,7 @@ export default function App() {
 
   /** Guard roots (popover panel + its trigger) for the dismissal hooks below */
   const thumbMenuRef = useRef<HTMLDivElement | null>(null)
+  const markupMenuRef = useRef<HTMLDivElement | null>(null)
   const drawColorWrapRef = useRef<HTMLDivElement | null>(null)
   const draftColorWrapRef = useRef<HTMLSpanElement | null>(null)
   const highlightWrapRef = useRef<HTMLDivElement | null>(null)
@@ -7197,6 +7569,19 @@ export default function App() {
   useDismissablePopover(formMenu != null, () => setFormMenu(null), {
     inside: () => [formMenuRef.current],
   })
+  useDismissablePopover(markupMenu != null, () => setMarkupMenu(null), {
+    inside: () => [markupMenuRef.current],
+  })
+  // Keep the markup menu inside the window when opened near the bottom/right edge
+  useLayoutEffect(() => {
+    const el = markupMenuRef.current
+    if (!markupMenu || !el) return
+    const r = el.getBoundingClientRect()
+    const left = Math.max(0, Math.min(markupMenu.x, window.innerWidth - r.width - 4))
+    const top = Math.max(0, Math.min(markupMenu.y, window.innerHeight - r.height - 4))
+    if (left !== markupMenu.x || top !== markupMenu.y)
+      setMarkupMenu({ ...markupMenu, x: left, y: top })
+  }, [markupMenu])
   // The field menu is tall; keep it inside the window when opened near the bottom/right edge
   useLayoutEffect(() => {
     const el = formMenuRef.current
@@ -7264,15 +7649,23 @@ export default function App() {
     })
   })
 
-  // Shell menu Save As → write pending edits to the picked path only; the original file is never mutated
+  // Shell menu Save As → ask what the copy does with annotations, then write only
+  // to the picked path. The original file is never mutated.
   useEffect(() => {
     return window.pdfApi.onSaveAsRequest((targetPath) => {
-      void saveAsTo(targetPath)
-        .catch((err: unknown) => {
-          opFailed(err instanceof Error ? err.message : String(err))
-          return false
-        })
-        .then((ok) => window.pdfApi.sendSaveAsResult(ok))
+      // A permanent redaction copy has its own confirmation and must not wait
+      // behind a second dialog; it keeps annotations as they are.
+      if (redactionApplyConfirmedRef.current) {
+        void saveAsTo(targetPath, 'keep')
+          .catch((err: unknown) => {
+            opFailed(err instanceof Error ? err.message : String(err))
+            return false
+          })
+          .then((ok) => window.pdfApi.sendSaveAsResult(ok))
+        return
+      }
+      setSaveCopyMode('keep')
+      setSaveCopyDlg({ targetPath })
     })
   })
 
@@ -7367,6 +7760,7 @@ export default function App() {
         else if (noteDraft) setNoteDraft(null)
         else if (activeNote) setActiveNote(null)
         else if (drawTool) setDrawTool(null)
+        else if (markupMenu) setMarkupMenu(null)
         else if (formMenu) setFormMenu(null)
         else if (formDesignTool) setFormDesignTool(null)
         else if (selectedFormFieldIds.length > 0) setSelectedFormFieldIds([])
@@ -7679,7 +8073,7 @@ export default function App() {
                 <span className="rb-color-bar" style={{ background: cssRgb(highlightColor) }} />
               </span>
             </span>
-            {t('highlight')}
+            <span>{t('highlight')}</span>
           </button>
           <button
             className={`rb-highlight-caret${highlightColorOpen ? ' active' : ''}`}
@@ -7708,7 +8102,7 @@ export default function App() {
           <span className="rb-big-icon">
             <IconUnderline />
           </span>
-          {t('underline')}
+          <span>{t('underline')}</span>
         </button>
         <button
           className="rb-big"
@@ -7719,13 +8113,13 @@ export default function App() {
           <span className="rb-big-icon">
             <IconStrike />
           </span>
-          {t('strikeout')}
+          <span>{t('strikeout')}</span>
         </button>
       </div>
     </div>
   )
 
-  const pageZoomGroup = (
+  const pageZoomGroup = (showDefaultFit = false) => (
     <div className="ribbon-group">
       <div className="ribbon-group-items">
         <div className="rb-col">
@@ -7769,7 +8163,7 @@ export default function App() {
           <span className="rb-big-icon">
             <IconFitWidth />
           </span>
-          {t('fitWidth')}
+          <span>{t('fitWidth')}</span>
         </button>
         <button
           className="rb-big"
@@ -7781,8 +8175,24 @@ export default function App() {
           <span className="rb-big-icon">
             <IconFitPage />
           </span>
-          {t('fitPage')}
+          <span>{t('fitPage')}</span>
         </button>
+        {showDefaultFit && (
+          <div className="rb-col rb-open-view">
+            <span className="rb-open-view-label">{t('defaultFit')}</span>
+            <select
+              className="rb-select"
+              aria-label={t('defaultFit')}
+              data-tip={t('defaultFit')}
+              data-tip-detail={t('defaultFitTip')}
+              value={defaultFit}
+              onChange={(e) => setDefaultFit(e.target.value === 'page' ? 'page' : 'width')}
+            >
+              <option value="width">{t('fitWidth')}</option>
+              <option value="page">{t('fitPage')}</option>
+            </select>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -7796,7 +8206,7 @@ export default function App() {
       <span className="rb-big-icon">
         <IconSearch />
       </span>
-      {t('search')}
+      <span>{t('search')}</span>
     </button>
   )
 
@@ -7818,7 +8228,7 @@ export default function App() {
       <span className="rb-big-icon">
         <IconEditText />
       </span>
-      {t('editText')}
+      <span>{t('editText')}</span>
     </button>
   )
 
@@ -7849,7 +8259,7 @@ export default function App() {
       <span className="rb-big-icon">
         <IconFormText />
       </span>
-      {t('insertText')}
+      <span>{t('insertText')}</span>
     </button>
   )
 
@@ -7925,7 +8335,7 @@ export default function App() {
           <span className="rb-big-icon">
             <IconThumbs />
           </span>
-          {t('thumbs')}
+          <span>{t('thumbs')}</span>
         </button>
         <button
           className={`rb-big${sidebar === 'outline' ? ' active' : ''}`}
@@ -7935,7 +8345,7 @@ export default function App() {
           <span className="rb-big-icon">
             <IconOutline />
           </span>
-          {t('outline')}
+          <span>{t('outline')}</span>
         </button>
         <button
           className={`rb-big${sidebar === 'notes' ? ' active' : ''}`}
@@ -7946,7 +8356,7 @@ export default function App() {
           <span className="rb-big-icon">
             <IconNote />
           </span>
-          {t('apPanel')}
+          <span>{t('apPanel')}</span>
         </button>
         <NoteOpenRibbonButton actions={noteActions} t={t} />
         {searchBtn}
@@ -7960,7 +8370,7 @@ export default function App() {
           }}
         >
           <span className="rb-big-icon">{spread === 2 ? <IconSinglePage /> : <IconSpread />}</span>
-          {spread === 2 ? t('singlePage') : t('twoPage')}
+          <span>{spread === 2 ? t('singlePage') : t('twoPage')}</span>
         </button>
         <button
           className={`rb-big${bilingualOn ? ' active' : ''}`}
@@ -7975,7 +8385,7 @@ export default function App() {
           <span className="rb-big-icon">
             <IconAiTranslate />
           </span>
-          {t('blToggle')}
+          <span>{t('blToggle')}</span>
         </button>
         <button
           className={`rb-big${nightMode ? ' active' : ''}`}
@@ -7985,7 +8395,7 @@ export default function App() {
           <span className="rb-big-icon">
             <IconNight />
           </span>
-          {t('nightMode')}
+          <span>{t('nightMode')}</span>
         </button>
         <button
           className={`rb-big${passageMarks ? ' active' : ''}`}
@@ -7996,7 +8406,7 @@ export default function App() {
           <span className="rb-big-icon">
             <IconPassageMarks />
           </span>
-          {t('rdUnderlines')}
+          <span>{t('rdUnderlines')}</span>
         </button>
         <button
           className={`rb-big${highlightPreview ? ' active' : ''}`}
@@ -8008,14 +8418,18 @@ export default function App() {
           <span className="rb-big-icon">
             <IconHighlightPreview />
           </span>
-          {t('hlPreview')}
+          <span>{t('hlPreview')}</span>
         </button>
       </div>
     </div>
   )
 
   return (
-    <div className="app" inert={redactionCopyInFlight} aria-busy={redactionCopyInFlight}>
+    <div
+      className={`app${presenting ? ' pdf-presenting' : ''}`}
+      inert={redactionCopyInFlight}
+      aria-busy={redactionCopyInFlight}
+    >
       <div className={`ribbon ${collapse.rootClass}`} ref={collapse.rootRef}>
         <div className="ribbon-tabs" onDoubleClick={collapse.onTabsDoubleClick}>
           <button
@@ -8255,7 +8669,7 @@ export default function App() {
                         <IconConvertPdf />
                         <RbCaret />
                       </span>
-                      {t('convertPdf')}
+                      <span>{t('convertPdf')}</span>
                     </button>
                     {convertOpen && (
                       <div className="rb-drop rb-menu">
@@ -8272,7 +8686,7 @@ export default function App() {
                 </div>
               </div>
               <div className="ribbon-sep" />
-              {pageZoomGroup}
+              {pageZoomGroup()}
               <div className="ribbon-sep" />
               <div className="ribbon-group">
                 <div className="ribbon-group-items">
@@ -8286,7 +8700,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconPrint />
                     </span>
-                    {printing ? t('printPreparing') : t('print')}
+                    <span>{printing ? t('printPreparing') : t('print')}</span>
                   </button>
                   <ExportImagesMenu
                     t={t}
@@ -8310,7 +8724,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconProps />
                     </span>
-                    {t('props')}
+                    <span>{t('props')}</span>
                   </button>
                 </div>
               </div>
@@ -8370,7 +8784,7 @@ export default function App() {
                       <span className="rb-big-icon">
                         <DrawIcon />
                       </span>
-                      {t(key)}
+                      <span>{t(key)}</span>
                     </button>
                   ))}
                   <button
@@ -8387,7 +8801,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconRect />
                     </span>
-                    {t('redact')}
+                    <span>{t('redact')}</span>
                   </button>
                   {redactions.length > 0 && (
                     <>
@@ -8419,7 +8833,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconSign />
                     </span>
-                    {t('sign')}
+                    <span>{t('sign')}</span>
                   </button>
                   <button
                     className="rb-big"
@@ -8430,7 +8844,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconCertSign />
                     </span>
-                    {t('certSign')}
+                    <span>{t('certSign')}</span>
                   </button>
                   {digitalSignatures.length > 0 && (
                     <button
@@ -8441,7 +8855,7 @@ export default function App() {
                       <span className="rb-big-icon">
                         <IconSignatures />
                       </span>
-                      {t('sigPanel')}
+                      <span>{t('sigPanel')}</span>
                     </button>
                   )}
                   <div ref={drawColorWrapRef} className="rb-drop-wrap">
@@ -8461,7 +8875,7 @@ export default function App() {
                         </span>
                         <RbCaret />
                       </span>
-                      {t('drawColor')}
+                      <span>{t('drawColor')}</span>
                     </button>
                     {colorOpen && (
                       <ColorPickerPopover
@@ -8491,7 +8905,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconInsertImage />
                     </span>
-                    {t('insertImage')}
+                    <span>{t('insertImage')}</span>
                   </button>
                   <button
                     className={`rb-big${editImageMode ? ' active' : ''}`}
@@ -8510,7 +8924,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconEditImage />
                     </span>
-                    {t('editImage')}
+                    <span>{t('editImage')}</span>
                   </button>
                 </div>
               </div>
@@ -8526,7 +8940,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconWatermark />
                     </span>
-                    {t('watermark')}
+                    <span>{t('watermark')}</span>
                   </button>
                 </div>
               </div>
@@ -8563,7 +8977,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconFormText />
                     </span>
-                    {t('formAddText')}
+                    <span>{t('formAddText')}</span>
                   </button>
                   <button
                     className={`rb-big${pendingStaticFill === 'check' ? ' active' : ''}`}
@@ -8574,7 +8988,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconFormCheck />
                     </span>
-                    {t('formAddCheck')}
+                    <span>{t('formAddCheck')}</span>
                   </button>
                   <button
                     className={`rb-big${pendingStaticFill === 'cross' ? ' active' : ''}`}
@@ -8585,7 +8999,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconFormCross />
                     </span>
-                    {t('formAddCross')}
+                    <span>{t('formAddCross')}</span>
                   </button>
                 </div>
               </div>
@@ -8602,7 +9016,7 @@ export default function App() {
                         <span className="rb-big-icon">
                           <IconPreviousField />
                         </span>
-                        {t('formPreviousField')}
+                        <span>{t('formPreviousField')}</span>
                       </button>
                       <button
                         className="rb-big"
@@ -8612,7 +9026,7 @@ export default function App() {
                         <span className="rb-big-icon">
                           <IconNextField />
                         </span>
-                        {t('formNextField')}
+                        <span>{t('formNextField')}</span>
                       </button>
                       <span className="form-ribbon-progress">
                         {t('formFieldProgress', {
@@ -8643,7 +9057,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconSign />
                     </span>
-                    {t('sign')}
+                    <span>{t('sign')}</span>
                   </button>
                   <button
                     className={`rb-big${imagePick && !pendingStaticFill ? ' active' : ''}`}
@@ -8654,7 +9068,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconInsertImage />
                     </span>
-                    {t('insertImage')}
+                    <span>{t('insertImage')}</span>
                   </button>
                 </div>
               </div>
@@ -8665,7 +9079,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconCompleteForm />
                     </span>
-                    {t('formComplete')}
+                    <span>{t('formComplete')}</span>
                   </button>
                 </div>
               </div>
@@ -8706,7 +9120,7 @@ export default function App() {
                       <span className="rb-big-icon">
                         <FieldIcon />
                       </span>
-                      {t(labelKey)}
+                      <span>{t(labelKey)}</span>
                     </button>
                   ))}
                 </div>
@@ -8724,7 +9138,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconFieldKeep />
                     </span>
-                    {t('formDesignKeepTool')}
+                    <span>{t('formDesignKeepTool')}</span>
                   </button>
                   <button
                     className={`rb-big${formDesignPreview ? ' active' : ''}`}
@@ -8741,7 +9155,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconFieldPreview />
                     </span>
-                    {t('formDesignPreview')}
+                    <span>{t('formDesignPreview')}</span>
                   </button>
                   <button
                     className="rb-big"
@@ -8752,7 +9166,9 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconFieldDetect />
                     </span>
-                    {detectingFields ? t('formDesignDetecting') : t('formDesignDetect')}
+                    <span>
+                      {detectingFields ? t('formDesignDetecting') : t('formDesignDetect')}
+                    </span>
                   </button>
                   <div className="rb-drop-wrap" ref={arrangeWrapRef}>
                     <button
@@ -8765,7 +9181,7 @@ export default function App() {
                         <IconFieldArrange />
                         <RbCaret />
                       </span>
-                      {t('formDesignArrange')}
+                      <span>{t('formDesignArrange')}</span>
                     </button>
                     {arrangeOpen && (
                       <div className="rb-drop rb-menu">
@@ -8793,7 +9209,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconTrash />
                     </span>
-                    {t('formDesignDelete')}
+                    <span>{t('formDesignDelete')}</span>
                   </button>
                   <span className="form-ribbon-progress">
                     {formDesignPreview
@@ -8822,7 +9238,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconRotateL />
                     </span>
-                    {t('rotateLeft')}
+                    <span>{t('rotateLeft')}</span>
                   </button>
                   <button
                     className="rb-big"
@@ -8832,7 +9248,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconRotateR />
                     </span>
-                    {t('rotateRight')}
+                    <span>{t('rotateRight')}</span>
                   </button>
                   <button
                     className="rb-big"
@@ -8842,7 +9258,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconRotateAll />
                     </span>
-                    {t('rotateAllPages')}
+                    <span>{t('rotateAllPages')}</span>
                   </button>
                 </div>
               </div>
@@ -8857,9 +9273,11 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconDeletePage />
                     </span>
-                    {ribbonPages.length > 1
-                      ? t('pageSelDelete', { n: ribbonPages.length })
-                      : t('deletePage')}
+                    <span>
+                      {ribbonPages.length > 1
+                        ? t('pageSelDelete', { n: ribbonPages.length })
+                        : t('deletePage')}
+                    </span>
                   </button>
                   <button
                     className="rb-big"
@@ -8869,7 +9287,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconExtract />
                     </span>
-                    {t('extractPage')}
+                    <span>{t('extractPage')}</span>
                   </button>
                   <button
                     className="rb-big"
@@ -8879,7 +9297,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconInsertPdf />
                     </span>
-                    {t('insertPdf')}
+                    <span>{t('insertPdf')}</span>
                   </button>
                   <button
                     className="rb-big"
@@ -8889,7 +9307,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconInsertBlank />
                     </span>
-                    {t('insertBlankPage')}
+                    <span>{t('insertBlankPage')}</span>
                   </button>
                   <button
                     className="rb-big"
@@ -8899,7 +9317,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconReplacePages />
                     </span>
-                    {t('replacePages')}
+                    <span>{t('replacePages')}</span>
                   </button>
                 </div>
               </div>
@@ -8914,7 +9332,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconCropPages />
                     </span>
-                    {t('cropPages')}
+                    <span>{t('cropPages')}</span>
                   </button>
                   <button
                     className="rb-big"
@@ -8924,7 +9342,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconPageSize />
                     </span>
-                    {t('pageSize')}
+                    <span>{t('pageSize')}</span>
                   </button>
                 </div>
               </div>
@@ -8939,7 +9357,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconReverse />
                     </span>
-                    {t('reversePages')}
+                    <span>{t('reversePages')}</span>
                   </button>
                   <button
                     className="rb-big"
@@ -8949,13 +9367,13 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconSplitPdf />
                     </span>
-                    {t('splitPdf')}
+                    <span>{t('splitPdf')}</span>
                   </button>
                   <button className="rb-big" disabled={readOnly} onClick={() => void mergePdf()}>
                     <span className="rb-big-icon">
                       <IconMergePdf />
                     </span>
-                    {t('mergePdf')}
+                    <span>{t('mergePdf')}</span>
                   </button>
                   <button
                     className="rb-big"
@@ -8965,7 +9383,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconMergePages />
                     </span>
-                    {t('mergePages')}
+                    <span>{t('mergePages')}</span>
                   </button>
                   <button
                     className="rb-big"
@@ -8975,7 +9393,7 @@ export default function App() {
                     <span className="rb-big-icon">
                       <IconSplitPages />
                     </span>
-                    {t('splitPages')}
+                    <span>{t('splitPages')}</span>
                   </button>
                   <div className="rb-drop-wrap" ref={pdfToolsWrapRef}>
                     <button
@@ -8988,7 +9406,7 @@ export default function App() {
                         <IconPdfTools />
                         <RbCaret />
                       </span>
-                      {t('pdfToolsMenu')}
+                      <span>{t('pdfToolsMenu')}</span>
                     </button>
                     {pdfToolsOpen && (
                       <div className="rb-drop rb-menu">
@@ -9008,7 +9426,7 @@ export default function App() {
             <>
               {viewNavGroup}
               <div className="ribbon-sep" />
-              {pageZoomGroup}
+              {pageZoomGroup(true)}
             </>
           )}
         </div>
@@ -9027,8 +9445,12 @@ export default function App() {
       <div className="app-main">
         {/* dock wrapper animates the width between panel and rail (docs-style 180ms ease);
             the panel stays mounted while collapsed so the chat history survives */}
-        <div className={`ai-dock${aiPanelOpen ? '' : ' collapsed'}`}>
-          {!aiPanelOpen && (
+        <div
+          className={`ai-dock${aiPanelOpen ? '' : ' collapsed'}${
+            !aiSidebarEnabled && !aiPanelOpen ? ' ai-dock-off' : ''
+          }`}
+        >
+          {!aiPanelOpen && aiSidebarEnabled && (
             <button
               className="ai-rail"
               data-tip={t('aiOpenAssistant')}
@@ -9266,6 +9688,7 @@ export default function App() {
                       onAcceptLabel={(labelId) =>
                         acceptSuggestions(highlightPending.filter((v) => v.label.id === labelId))
                       }
+                      onAcceptAllSave={acceptAndSave}
                       onDismissAll={() => dismissSuggestions(highlightPending)}
                     />
                   </>
@@ -9590,6 +10013,7 @@ export default function App() {
                             } else if (editTextMode && !readOnly) startTextEdit(origIdx, e)
                             else handlePageClick(origIdx, e)
                           }}
+                          onContextMenu={(e) => handlePageContextMenu(origIdx, e)}
                           onMouseMove={(e) => {
                             if (pendingTextInsert && !readOnly) {
                               const pageBox = e.currentTarget.getBoundingClientRect()
@@ -10969,7 +11393,7 @@ export default function App() {
                 onClose={() => setAskPop(null)}
               />
             )}
-            {selected && (
+            {selected && !markupMenu && (
               <div
                 ref={delPopupRef}
                 className="pdf-del-popup"
@@ -11153,6 +11577,54 @@ export default function App() {
                 )}
               </div>
             )}
+            {markupMenu &&
+              (() => {
+                const type = markupMenu.kind === 'pending' ? markupMenu.type : markupMenu.annot.type
+                const current =
+                  markupMenu.kind === 'pending'
+                    ? markupMenu.color
+                    : (markupMenu.annot.color ?? MARKUP_COLORS[type])
+                return (
+                  <div
+                    ref={markupMenuRef}
+                    className="thumb-menu file-menu pdf-markup-menu"
+                    style={{ left: markupMenu.x, top: markupMenu.y }}
+                  >
+                    <div className="pdf-markup-menu-title">
+                      <span
+                        className="pdf-markup-menu-current"
+                        style={{
+                          background: `rgb(${current.map((v) => Math.round(v * 255)).join(',')})`,
+                        }}
+                        aria-hidden="true"
+                      />
+                      {t(type)}
+                    </div>
+                    <div className="pdf-markup-menu-label">{t('drawColor')}</div>
+                    <div className="pdf-markup-colors" role="group" aria-label={t('drawColor')}>
+                      {MARKUP_PALETTE.map(({ hex, color }) => {
+                        const selected = color.every((v, i) => Math.abs(v - current[i]!) < 0.01)
+                        return (
+                          <button
+                            key={hex}
+                            type="button"
+                            className={selected ? 'is-current' : undefined}
+                            style={{ background: hex }}
+                            data-tip={hex}
+                            aria-label={`${t('drawColor')} ${hex}`}
+                            aria-pressed={selected}
+                            onClick={() => recolorMarkupFromMenu(markupMenu, color)}
+                          />
+                        )
+                      })}
+                    </div>
+                    <div className="thumb-menu-sep" />
+                    <button type="button" onClick={() => deleteMarkupFromMenu(markupMenu)}>
+                      {t('deleteAnnotation')}
+                    </button>
+                  </div>
+                )
+              })()}
             {thumbMenu && (
               <div
                 ref={thumbMenuRef}
@@ -11598,12 +12070,63 @@ export default function App() {
                       }}
                     />
                   )}
+                  <label className="pdf-modal-row">
+                    <input
+                      type="checkbox"
+                      checked={printAnnots}
+                      onChange={(e) => setPrintAnnots(e.target.checked)}
+                    />
+                    <span>{t('printIncludeAnnots')}</span>
+                  </label>
                   <div className="pdf-modal-actions">
                     <button className="pdf-modal-btn" onClick={() => setPrintDlg(false)}>
                       {t('cancel')}
                     </button>
                     <button className="pdf-modal-btn primary" onClick={confirmPrint}>
                       {t('print')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {saveCopyDlg && (
+              <div className="pdf-modal-mask" onClick={cancelSaveCopy}>
+                <div className="pdf-modal" onClick={(e) => e.stopPropagation()}>
+                  <div className="pdf-modal-title">{t('saveCopyTitle')}</div>
+                  <div className="pdf-modal-hint">{t('saveCopyHint')}</div>
+                  <label className="pdf-modal-row">
+                    <input
+                      type="radio"
+                      name="save-copy-annotations"
+                      checked={saveCopyMode === 'keep'}
+                      onChange={() => setSaveCopyMode('keep')}
+                    />
+                    <span>{t('saveCopyKeep')}</span>
+                  </label>
+                  <label className="pdf-modal-row">
+                    <input
+                      type="radio"
+                      name="save-copy-annotations"
+                      checked={saveCopyMode === 'flatten'}
+                      onChange={() => setSaveCopyMode('flatten')}
+                    />
+                    <span>{t('saveCopyFlatten')}</span>
+                  </label>
+                  <label className="pdf-modal-row">
+                    <input
+                      type="radio"
+                      name="save-copy-annotations"
+                      checked={saveCopyMode === 'strip'}
+                      onChange={() => setSaveCopyMode('strip')}
+                    />
+                    <span>{t('saveCopyStrip')}</span>
+                  </label>
+                  <div className="pdf-modal-actions">
+                    <button className="pdf-modal-btn" onClick={cancelSaveCopy}>
+                      {t('cancel')}
+                    </button>
+                    <button className="pdf-modal-btn primary" onClick={confirmSaveCopy}>
+                      {t('save')}
                     </button>
                   </div>
                 </div>

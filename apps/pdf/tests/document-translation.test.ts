@@ -148,6 +148,7 @@ function fakeBridge(initial: { settings: AiSettings; statuses: SubscriptionStatu
   const starts: StreamStart[] = []
   const answered = new Set<string>()
   const listeners = new Set<(chunk: IpcStreamChunk) => void>()
+  const settingsListeners = new Set<() => void>()
   const subscription = {
     statuses: vi.fn(async () => state.statuses),
     recheck: vi.fn(async () => state.statuses),
@@ -161,8 +162,13 @@ function fakeBridge(initial: { settings: AiSettings; statuses: SubscriptionStatu
     getAiSettings: vi.fn(async () => state.settings),
     setAiSettings: vi.fn(async (next: AiSettings) => {
       state.settings = next
+      // the main process broadcasts ai:settings-changed to every renderer, this one included
+      for (const listener of [...settingsListeners]) listener()
     }),
-    onAiSettingsChanged: () => () => {},
+    onAiSettingsChanged: (handler: () => void) => {
+      settingsListeners.add(handler)
+      return () => settingsListeners.delete(handler)
+    },
     openAiModelSettings: vi.fn(async () => {}),
     subscription,
     aiStream: vi.fn(async (request: StreamStart) => {
@@ -512,9 +518,7 @@ describe('translation window: choices', () => {
     expect((q(m.el, 'input[name="pdf-translate-pages"]') as HTMLInputElement).checked).toBe(true)
     expect(checked(m.el, 'format-pdf')).toBe(true)
     expect(checked(m.el, 'format-md')).toBe(false)
-    // bilingual is for Markdown / EPUB only
-    expect(disabled(m.el, '[data-field="bilingual"]')).toBe(true)
-    await click(m.el, '[data-field="format-md"]')
+    // bilingual applies to every format, the PDF included (decision 0057)
     expect(disabled(m.el, '[data-field="bilingual"]')).toBe(false)
     expect(q(m.el, '[data-units]')?.dataset.units).toBe('3')
     expect(bridge.api.aiStream).not.toHaveBeenCalled()
@@ -601,6 +605,49 @@ describe('translation window: confirmation', () => {
     expect(bridge.api.aiStream).not.toHaveBeenCalled()
   })
 
+  it('shows the model the subscription resolves to and switches it on the confirmation', async () => {
+    const base = normalizeAiSettings({})
+    const statuses = {
+      'claude-code': {
+        provider: 'claude-code',
+        state: 'ready',
+        meteredAccepted: false,
+        loginMethod: 'subscription',
+        models: [
+          { id: '', label: 'Default', resolved: 'claude-sonnet-5-5' },
+          { id: 'claude-sonnet-5-5', label: 'Sonnet 5.5', resolved: 'claude-sonnet-5-5' },
+          { id: 'claude-haiku-4-5', label: 'Haiku 4.5' },
+        ],
+      },
+      codex: { provider: 'codex', state: 'signed-out', meteredAccepted: false },
+    } as SubscriptionStatusMap
+    const m = await mount({
+      settings: {
+        provider: 'auto',
+        providers: { ...base.providers, 'claude-code': { apiKey: '', model: '' } },
+      },
+      statuses,
+    })
+    await openToConfirm(m)
+    await until(() => q(m.el, '[data-model-picker] .ai-model-chip') !== null, 'the model chip')
+    expect(q(m.el, '[data-model-picker] .ai-model-picker-label')?.textContent).toBe('Model')
+    expect(q(m.el, '[data-model-picker] .ai-model-chip')?.textContent).toContain('Sonnet 5.5')
+
+    await click(m.el, '[data-model-picker] .ai-model-chip')
+    await until(() => q(m.el, '[role="option"]') !== null, 'the model list')
+    const haiku = [...m.el.querySelectorAll('[role="option"]')].find((option) =>
+      option.textContent?.includes('Haiku 4.5'),
+    ) as HTMLElement | undefined
+    expect(haiku).toBeTruthy()
+    await act(async () => haiku!.click())
+    await settle()
+
+    const written = bridge.api.setAiSettings.mock.calls.at(-1)?.[0] as AiSettings
+    expect(written.providers['claude-code']?.model).toBe('claude-haiku-4-5')
+    expect(q(m.el, '[data-model-picker] .ai-model-chip')?.textContent).toContain('Haiku 4.5')
+    expect(bridge.api.aiStream).not.toHaveBeenCalled()
+  })
+
   it('warns when the stored translation was made with another provider or model', async () => {
     const channels = fakeChannels({
       stored: { lang: 'de', provider: 'codex', model: 'gpt-x', blocks: 1 },
@@ -660,6 +707,20 @@ describe('translation window: confirmation', () => {
     expect(channels.writeBacks).toHaveLength(1)
     expect(bridge.api.aiStream).not.toHaveBeenCalled()
   })
+
+  it('bilingual on the PDF asks for a bilingual PDF', async () => {
+    const channels = fakeChannels({
+      stored: { lang: 'de', provider: 'claude-code', model: '', blocks: 3 },
+    })
+    const m = await mount({ channels })
+    await openWindow(m, { lang: 'de', pages: null })
+    await click(m.el, '[data-field="bilingual"]')
+    await click(m.el, '[data-action="next"]')
+    await until(() => q(m.el, '[data-nothing]') !== null, 'the confirmation')
+    await click(m.el, '[data-action="export"]')
+    await until(() => q(m.el, '.pdf-translate-report') !== null, 'the report')
+    expect(channels.writeBacks[0]).toMatchObject({ payload: { lang: 'de', bilingual: true } })
+  })
 })
 
 describe('translation: the job', () => {
@@ -677,6 +738,9 @@ describe('translation: the job', () => {
     expect(sent.settings.provider).toBe('claude-code')
     expect(sent.system).toContain('German (de)')
     expect(q(m.el, '[data-job-kind="translate"][data-job-state="running"]')).not.toBeNull()
+    expect(q(m.el, '.pdf-job-strip-detail')?.textContent).toBe(
+      t('arConfirmProvider', { provider: 'Claude' }),
+    )
     expect(q(m.el, '[role="dialog"]')).toBeNull()
 
     await act(async () => bridge.answerAll())

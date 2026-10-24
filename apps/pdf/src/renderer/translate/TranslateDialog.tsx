@@ -5,7 +5,8 @@
  * - Choices: the target language (one of the 21 UI languages; the default is
  *   the UI language, or English when the document is in it), the pages, the
  *   output formats (translated PDF, Markdown, EPUB; several at once) and the
- *   bilingual option (Markdown and EPUB only), or "store only" (no file: the
+ *   bilingual option (Markdown and EPUB: each translation after its paragraph;
+ *   PDF: each translated page beside its source page), or "store only" (no file: the
  *   translation stays in the result store). The translated PDF cannot be
  *   chosen, with the reason shown, for an encrypted document or a target the
  *   PDF writer cannot lay out (ar, he, hi). A choice with nothing to
@@ -31,6 +32,7 @@ import type { Lang } from '@genoffice/i18n'
 import {
   AiConnectPrompt,
   AiFirstConnectionNotice,
+  AiModelPicker,
   aiProviderDisplayName,
   useAiSendGate,
   type AiModelPickerBridge,
@@ -91,6 +93,8 @@ export interface TranslateStartRequest {
   keepEdited?: boolean
   /** the confirmed AI (absent for 'export') */
   route?: ReadyRoute
+  /** the provider and model as the confirmation showed them (for the progress strip) */
+  aiLabel?: string
 }
 
 /** what the caller answers to Start */
@@ -230,7 +234,7 @@ export function TranslateDialog(props: TranslateDialogProps): ReactElement {
   const lang0 = target ?? 'en'
   const block = pdfFormatBlock(encrypted, lang0)
   const formats = writableFormats(chosen, block)
-  const bilingualAllowed = formats.some((f) => f !== 'pdf')
+  const bilingualAllowed = formats.length > 0
 
   const range = somePages ? parsePageRange(rangeText, pageCount) : null
   const rangeError =
@@ -523,6 +527,7 @@ function TranslateConfirm({
     route: ReadyRoute
     mode: TranslateMode
     keepEdited: boolean
+    aiLabel: string
   } | null>(null)
   const latest = useRef({ settings, statuses: connection.statuses })
   latest.current = { settings, statuses: connection.statuses }
@@ -601,7 +606,12 @@ function TranslateConfirm({
       setMessage(t('arRouteChanged'))
       return
     }
-    await send({ mode: confirmed.mode, route: confirmed.route, keepEdited: confirmed.keepEdited })
+    await send({
+      mode: confirmed.mode,
+      route: confirmed.route,
+      keepEdited: confirmed.keepEdited,
+      aiLabel: confirmed.aiLabel,
+    })
     confirmedRef.current = null
   }
   const runRef = useRef(run)
@@ -611,6 +621,7 @@ function TranslateConfirm({
     mode: TranslateMode
     route?: ReadyRoute
     keepEdited?: boolean
+    aiLabel?: string
   }): Promise<void> => {
     setStarting(true)
     try {
@@ -624,6 +635,7 @@ function TranslateConfirm({
         mode: o.mode,
         ...(o.route ? { route: o.route } : {}),
         ...(o.keepEdited ? { keepEdited: true } : {}),
+        ...(o.aiLabel ? { aiLabel: o.aiLabel } : {}),
       })
       if (!answer.ok && !('cancelled' in answer)) {
         setMessage(
@@ -653,7 +665,12 @@ function TranslateConfirm({
     if (route.state !== 'ready' || !canStart) return
     setMessage(null)
     setAskRestart(false)
-    confirmedRef.current = { route, mode, keepEdited }
+    confirmedRef.current = {
+      route,
+      mode,
+      keepEdited,
+      aiLabel: routeLabel(route, connection.statuses),
+    }
     if (sendGate.admit(++pressRef.current)) void run()
   }
   /** write the files from what is stored; nothing is sent */
@@ -697,6 +714,15 @@ function TranslateConfirm({
             <li data-route="ready" data-provider={route.provider}>
               {t('arConfirmProvider', { provider: routeLabel(route) })}
             </li>
+            <li className="pdf-ai-read-ai" data-model-picker>
+              <AiModelPicker
+                bridge={SETTINGS_BRIDGE}
+                lang={lang}
+                subscriptionStatuses={connection.statuses}
+                showLabel
+                onRefreshSubscriptions={connection.refresh}
+              />
+            </li>
             <li>{t('trConfirmSends')}</li>
             {route.paid && (
               <li className="pdf-ai-read-paid" data-paid>
@@ -710,7 +736,7 @@ function TranslateConfirm({
         <p className="pdf-translate-warning" role="alert" data-provider-change>
           {t('trProviderChange', {
             stored: storedName(change.stored),
-            next: routeLabel(route as ReadyRoute),
+            next: routeLabel(route as ReadyRoute, connection.statuses),
           })}
         </p>
       )}
@@ -734,6 +760,7 @@ function TranslateConfirm({
           onRecheck={connection.recheck}
           onAcceptMetered={connection.acceptMetered}
           onOpenInstallHelp={connection.openInstallHelp}
+          onOpenConnectHelp={connection.openConnectHelp}
         />
       )}
       {!nothingToSend && sendGate.noticeDue && (

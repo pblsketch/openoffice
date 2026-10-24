@@ -373,6 +373,8 @@ export interface PictureRenderNode extends RenderNodeBase {
   softEdgePx?: number
   /** Audio/video (the image is the poster frame): the render layer overlays a play/speaker badge */
   media?: 'video' | 'audio'
+  /** A 3D model (the image is its latest rendering): am3d:rot, 60,000ths of a degree */
+  model3d?: { ax: number; ay: number; az: number }
   stroke?: RenderStroke
   shadow?: RenderShadow
   glow?: RenderGlow
@@ -452,6 +454,8 @@ export interface ChartLabel {
   fontFamily?: string
   /** Rotation angle (e.g. -90 for a value-axis title) */
   rotationDeg?: number
+  /** <a:rPr spc> letter spacing (px after each char) */
+  letterSpacingPx?: number
   /** Data-label box (c:dLbls/c:spPr): fill / outline color and the measured text width it wraps */
   fill?: string
   stroke?: string

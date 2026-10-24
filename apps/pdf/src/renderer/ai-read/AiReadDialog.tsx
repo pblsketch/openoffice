@@ -23,6 +23,7 @@ import type { Lang } from '@genoffice/i18n'
 import {
   AiConnectPrompt,
   AiFirstConnectionNotice,
+  AiModelPicker,
   aiProviderDisplayName,
   useAiSendGate,
   type AiModelPickerBridge,
@@ -59,6 +60,8 @@ export interface AiReadStartRequest {
   /** the confirmed pages with their fingerprints, page order */
   pages: AiReadPageRef[]
   route: ReadyRoute
+  /** the provider and model as the confirmation showed them (for the progress strip) */
+  aiLabel?: string
 }
 
 /** what the caller answers to Start */
@@ -364,7 +367,7 @@ function AiReadConfirm({
   const [starting, setStarting] = useState(false)
   const route = documentJobRoute(settings, connection.statuses)
   /** what the user saw when pressing Start; a held start runs only if it still holds */
-  const confirmedRef = useRef<ReadyRoute | null>(null)
+  const confirmedRef = useRef<{ route: ReadyRoute; aiLabel: string } | null>(null)
   const latest = useRef({ settings, statuses: connection.statuses })
   latest.current = { settings, statuses: connection.statuses }
 
@@ -415,7 +418,7 @@ function AiReadConfirm({
     const confirmed = confirmedRef.current
     if (!confirmed) return
     const now = documentJobRoute(latest.current.settings, latest.current.statuses)
-    if (!sameRoute(confirmed, now)) {
+    if (!sameRoute(confirmed.route, now)) {
       // the connection changed while the start was held: show the new state first
       confirmedRef.current = null
       setMessage(t('arRouteChanged'))
@@ -423,7 +426,12 @@ function AiReadConfirm({
     }
     setStarting(true)
     try {
-      const answer = await onStart({ docHash, pages, route: confirmed })
+      const answer = await onStart({
+        docHash,
+        pages,
+        route: confirmed.route,
+        aiLabel: confirmed.aiLabel,
+      })
       if (!answer.ok) {
         setMessage(
           'busy' in answer
@@ -458,7 +466,7 @@ function AiReadConfirm({
   const start = () => {
     if (route.state !== 'ready' || !canStart) return
     setMessage(null)
-    confirmedRef.current = route
+    confirmedRef.current = { route, aiLabel: routeLabel(route, connection.statuses) }
     if (sendGate.admit(++pressRef.current)) void run()
   }
 
@@ -479,6 +487,15 @@ function AiReadConfirm({
           <>
             <li data-route="ready" data-provider={route.provider}>
               {t('arConfirmProvider', { provider: routeLabel(route) })}
+            </li>
+            <li className="pdf-ai-read-ai" data-model-picker>
+              <AiModelPicker
+                bridge={SETTINGS_BRIDGE}
+                lang={lang}
+                subscriptionStatuses={connection.statuses}
+                showLabel
+                onRefreshSubscriptions={connection.refresh}
+              />
             </li>
             <li>{t('arConfirmSends')}</li>
             {route.paid && (
@@ -514,6 +531,7 @@ function AiReadConfirm({
           onRecheck={connection.recheck}
           onAcceptMetered={connection.acceptMetered}
           onOpenInstallHelp={connection.openInstallHelp}
+          onOpenConnectHelp={connection.openConnectHelp}
         />
       )}
       {sendGate.noticeDue && (

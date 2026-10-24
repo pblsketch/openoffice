@@ -33,7 +33,33 @@
  *   which the AI's table deletion uses too). The bridge gains one method that
  *   deletes the table a selection or a caret points at, in the body or in a
  *   cell, and the three paths call it: the inner table goes, the outer stays.
+ *
+ * studio-hancom-shortcuts, studio-hancom-labels, studio-hancom-commands,
+ * studio-hancom-chords
+ *   A Hangul tab takes Hancom Hangul's keys (decision 0060). The table of them and
+ *   the commands rhwp lacks live in studio-plugin/hancom-keys.mjs; these patches
+ *   only hook it in. The studio's shortcut table is adapted in place, its command
+ *   registry shows the new keys next to the menu items, the new commands are
+ *   registered (with the studio parts they build on) and put into the menus, and
+ *   its key handler hands the Ctrl+N/K/Q/M/G sequences and the keys that depend on
+ *   the caret (the easy table formulas) to the module, on the IME path too.
+ *
+ * studio-hancom-page-number
+ *   The bridge gains the two engine calls of vendor/rhwp-core patch 0014, setting and
+ *   reading a section's page number (Hangul's 쪽 번호 매기기).
+ *
+ * studio-font-memo-state, studio-font-memo-use
+ *   The studio replaces the Canvas2D `font` setter so that every font string
+ *   the engine sets passes its font substitution, which builds the family
+ *   chain anew each time. Drawing a page sets the same few strings thousands
+ *   of times, and that rebuilding was most of the cost of a keystroke. The
+ *   setter keeps each string's answer until the next microtask checkpoint:
+ *   one synchronous draw reuses it, and what the answer depends on (the fonts
+ *   found on the PC, the open document's substitutions) changes only when an
+ *   asynchronous step ends, so every later draw asks again.
  */
+
+import { HANCOM_KEYS_MODULE, studioCommandIds } from '../studio-plugin/hancom-keys.mjs'
 
 /** Must equal RENDERER_SCHEME in packages/electron-utils/src/renderer-scheme.ts. */
 export const APP_SCHEME = 'genoffice-app'
@@ -43,6 +69,9 @@ export const PASSWORD_FLAG = 'passwordProtected'
 
 /** Module specifier the studio-plugin-allow patch imports; build-studio.mjs aliases it. */
 export const AGENT_PLUGIN_MODULE = '@ieum/agent-plugin'
+
+/** Module specifier the studio-hancom-* patches import; build-studio.mjs aliases it. */
+export { HANCOM_KEYS_MODULE }
 
 const PATCHES = {
   'sdk-scheme': {
@@ -183,6 +212,151 @@ const PATCHES = {
       "          operationType: 'deleteTable',",
     ].join('\n'),
   },
+  'studio-hancom-shortcuts': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]command[\\/]shortcut-map\.ts$/,
+    // the table's last entry; an import may sit anywhere at the top level of a module
+    find: "  [{ key: 'p', ctrl: true, shift: true }, 'table:block-product'],\n];",
+    replace:
+      "  [{ key: 'p', ctrl: true, shift: true }, 'table:block-product'],\n];\n\n" +
+      `import { adaptToHancom } from '${HANCOM_KEYS_MODULE}';\n` +
+      'adaptToHancom(defaultShortcuts);',
+  },
+  'studio-hancom-labels': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]command[\\/]registry\.ts$/,
+    edits: [
+      {
+        find: "import type { CommandDef } from './types';",
+        replace:
+          "import type { CommandDef } from './types';\n" +
+          `import { withHancomLabel } from '${HANCOM_KEYS_MODULE}';`,
+      },
+      {
+        find: '    this.commands.set(def.id, def);',
+        replace: '    this.commands.set(def.id, withHancomLabel(def));',
+      },
+    ],
+  },
+  'studio-hancom-commands': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]main\.ts$/,
+    edits: [
+      {
+        find: "import { initI18n, t } from '@/i18n/index.ts';",
+        replace:
+          "import { initI18n, t } from '@/i18n/index.ts';\n" +
+          "import { getLocale } from '@/i18n/core.ts';\n" +
+          "import { InsertTextCommand } from '@/engine/command';\n" +
+          "import { ModalDialog } from '@/ui/dialog';\n" +
+          "import { FindDialog, navigateToSearchHit } from '@/ui/find-dialog';\n" +
+          `import { hancomCommands, installHancomMainKeys, installHancomMenuItems } from '${HANCOM_KEYS_MODULE}';`,
+      },
+      // the new commands, with the studio parts they build on, and their menu items
+      {
+        find: 'registry.registerAll(toolCommands);',
+        replace:
+          'registry.registerAll(toolCommands);\n' +
+          'registry.registerAll(hancomCommands(getLocale(), {\n' +
+          '  InsertTextCommand, ModalDialog, FindDialog, navigateToSearchHit,\n' +
+          '}));\n' +
+          'installHancomMenuItems(document, getLocale());\n' +
+          '// the keys the main process takes first and hands back for the table (decision 0060)\n' +
+          'installHancomMainKeys(window, () => inputHandler, dispatcher);',
+      },
+    ],
+  },
+  'studio-hancom-page-number': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
+    // the engine calls of vendor/rhwp-core patch 0014, ahead of a neighbour the bridge has once
+    find: '  applyStyle(sec: number, para: number, styleId: number): { ok: boolean } {',
+    replace: [
+      '  /** The section page number (Hangul: 쪽 번호 매기기); replaces the one the section has. */',
+      '  setPageNumberPos(sec: number, format: number, position: number, dash: boolean): string {',
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return (this.doc as any).setPageNumberPos(sec, format, position, dash);',
+      '  }',
+      '',
+      '  getPageNumberPos(sec: number): string {',
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return (this.doc as any).getPageNumberPos(sec);',
+      '  }',
+      '',
+      '  applyStyle(sec: number, para: number, styleId: number): { ok: boolean } {',
+    ].join('\n'),
+  },
+  'studio-hancom-chords': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler-keyboard\.ts$/,
+    edits: [
+      {
+        find: "import { matchShortcut, defaultShortcuts } from '@/command/shortcut-map';",
+        replace:
+          "import { matchShortcut, defaultShortcuts } from '@/command/shortcut-map';\n" +
+          `import { hancomChordKey, hancomChordStart, hancomContextKey, hancomCtrlKey } from '${HANCOM_KEYS_MODULE}';`,
+      },
+      // the second key, first of all (the studio's own Ctrl+K/M/G flags are never set again)
+      {
+        find: '  this._cellBlockLetterImeGuard?.reset();',
+        replace:
+          '  this._cellBlockLetterImeGuard?.reset();\n  if (hancomChordKey(this, e)) return;',
+      },
+      // the first key, or a key that depends on the caret, while the IME composes, where the
+      // studio took Ctrl+M alone
+      {
+        find: [
+          "    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === 'KeyM') {",
+          '      e.preventDefault();',
+          '      this._pendingChordM = true;',
+          '      return;',
+          '    }',
+        ].join('\n'),
+        replace: '    if (hancomCtrlKey(this, e)) return;',
+      },
+      // a key that depends on the caret, ahead of the studio's shortcut table
+      {
+        find: ['    this.commandPalette?.open();', '    return;', '  }'].join('\n'),
+        replace: [
+          '    this.commandPalette?.open();',
+          '    return;',
+          '  }',
+          '  if (hancomContextKey(this, e)) return;',
+        ].join('\n'),
+      },
+      // the first key otherwise, ahead of the studio's Ctrl+K/M/G
+      {
+        find: "  if ((e.key === 'k' || e.key === 'K' || e.key === 'ㅏ') && !e.shiftKey && !e.altKey) {",
+        replace:
+          '  if (hancomChordStart(this, e)) return;\n' +
+          "  if ((e.key === 'k' || e.key === 'K' || e.key === 'ㅏ') && !e.shiftKey && !e.altKey) {",
+      },
+    ],
+  },
+  'studio-font-memo-state': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
+    find: 'let canvasFontSubstitutionInstalled = false;',
+    replace: [
+      'let canvasFontSubstitutionInstalled = false;',
+      '',
+      '// one answer per font string until the next microtask checkpoint: a page draw sets the',
+      '// same strings thousands of times, and what the answer depends on changes between tasks',
+      'let canvasFontMemo: Map<string, string> | null = null;',
+      'function memoSubstituteCssFontFamily(cssFont: string): string {',
+      '  if (!canvasFontMemo) {',
+      '    canvasFontMemo = new Map();',
+      '    queueMicrotask(() => { canvasFontMemo = null; });',
+      '  }',
+      '  let out = canvasFontMemo.get(cssFont);',
+      '  if (out === undefined) {',
+      '    out = substituteCssFontFamily(cssFont);',
+      '    canvasFontMemo.set(cssFont, out);',
+      '  }',
+      '  return out;',
+      '}',
+    ].join('\n'),
+  },
+  'studio-font-memo-use': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
+    find: 'descriptor.set!.call(this, scopedHostCanvasFont(String(value)) ?? substituteCssFontFamily(String(value)));',
+    replace:
+      'descriptor.set!.call(this, scopedHostCanvasFont(String(value)) ?? memoSubstituteCssFontFamily(String(value)));',
+  },
 }
 
 /** The patches the studio build applies, in order; the SDK's own is applied by the renderer builds. */
@@ -194,6 +368,13 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-nested-table-delete',
   'studio-nested-table-cut',
   'studio-nested-table-command',
+  'studio-hancom-shortcuts',
+  'studio-hancom-labels',
+  'studio-hancom-commands',
+  'studio-hancom-chords',
+  'studio-hancom-page-number',
+  'studio-font-memo-state',
+  'studio-font-memo-use',
 ])
 
 /** Whether a patch is written against this file. */
@@ -239,6 +420,7 @@ export const pluginHooks = [
       'private cursor: CursorState',
       'updateCaret(',
       'private virtualScroll: VirtualScroll',
+      'private emitCursorFormatState(): void',
     ],
   },
   {
@@ -247,6 +429,18 @@ export const pluginHooks = [
       'getInputHandler: () => InputHandler | null',
       'getViewportManager: () => ViewportManager | null',
       'execute: (services: CommandServices, params?: Record<string, unknown>) => void',
+    ],
+  },
+  // the toolbar's style list the plugin refills after styles change: options valued by
+  // style number, shown by number at the caret, applied by number when picked; the caret's
+  // state is sent again after a refill
+  {
+    file: 'src/ui/toolbar.ts',
+    needles: [
+      "querySelector('#style-name')",
+      'opt.value = String(style.id)',
+      'this.styleName.value = String(info.id)',
+      'const styleId = parseInt(this.styleName.value)',
     ],
   },
   // where the marks of the plugin's changes go: the pages' places and the zoom
@@ -262,10 +456,110 @@ export const pluginHooks = [
   { file: 'src/automation/types.ts', needles: ['registerCommand(def: ExtCommandDef): void'] },
 ]
 
+/**
+ * What studio-plugin/hancom-keys.mjs uses of the studio, on the same terms as pluginHooks: the
+ * caret and the key handler its commands drive, and the shortcut entries it takes out.
+ */
+export const hancomHooks = [
+  {
+    file: 'src/engine/cursor.ts',
+    needles: [
+      'moveToLineStart(): void',
+      'moveToLineEnd(): void',
+      'moveHorizontal(delta: number): void',
+      'getSelection(): { anchor: DocumentPosition; focus: DocumentPosition } | null',
+      'isInHeaderFooter(): boolean',
+      'isInFootnote(): boolean',
+      'isInPictureObjectSelection(): boolean',
+      'isInTableObjectSelection(): boolean',
+    ],
+  },
+  {
+    file: 'src/engine/input-handler.ts',
+    needles: [
+      'private dispatcher: CommandDispatcher | null',
+      'private _cellBlockLetterImeGuard = new CellBlockLetterImeGuard()',
+      'private deleteSelection(',
+      'applyStyle(styleId: number): void',
+      'executeOperation(desc: OperationDescriptor): void',
+      'isFormMode(): boolean',
+      "eventBus.on('format-char'",
+    ],
+  },
+  {
+    file: 'src/command/dispatcher.ts',
+    needles: ['dispatch(commandId: string', 'isEnabled(commandId: string): boolean'],
+  },
+  { file: 'src/command/contextual-shortcut.ts', needles: ['arm('] },
+  {
+    file: 'src/core/wasm-bridge.ts',
+    needles: [
+      'getStyleList(): Array<{ id: number',
+      'evaluateTableFormula(sec: number, parentPara: number, controlIdx: number,',
+      'getCellParagraphCount(sec: number, parentPara: number, controlIdx: number, cellIdx: number)',
+      'getCellParagraphLength(sec: number, parentPara: number, controlIdx: number, cellIdx: number, cellParaIdx: number)',
+      'getCellInfo(sec: number, parentPara: number, controlIdx: number, cellIdx: number): CellInfo',
+      'searchText(query: string, fromSec: number, fromPara: number, fromChar: number, forward: boolean',
+    ],
+  },
+  // the studio parts the studio-hancom-commands patch hands to the new commands
+  {
+    file: 'src/ui/dialog.ts',
+    needles: [
+      'export abstract class ModalDialog',
+      'protected abstract createBody(): HTMLElement;',
+      'protected abstract onConfirm(): void | boolean;',
+    ],
+  },
+  {
+    file: 'src/ui/find-dialog.ts',
+    needles: [
+      "static lastQuery = '';",
+      'static lastCaseSensitive = false;',
+      'export function navigateToSearchHit(',
+    ],
+  },
+  { file: 'src/engine/command.ts', needles: ['export class InsertTextCommand'] },
+  // what installHancomMainKeys is handed where the commands are registered
+  {
+    file: 'src/main.ts',
+    needles: [
+      'let inputHandler: InputHandler | null = null;',
+      'const dispatcher = new CommandDispatcher(',
+    ],
+  },
+  {
+    // the entries adaptToHancom takes out (REMOVED_SHORTCUTS), as the studio writes them
+    file: 'src/command/shortcut-map.ts',
+    needles: [
+      "[{ key: 'y', ctrl: true }, 'edit:redo']",
+      "[{ key: 'h', alt: true, shift: true }, 'format:align-right']",
+      "[{ key: 'ㅗ', alt: true, shift: true }, 'format:align-right']",
+      "[{ key: 'c', alt: true, shift: true }, 'format:align-center']",
+      "[{ key: 'ㅊ', alt: true, shift: true }, 'format:align-center']",
+      "[{ key: 'd', alt: true, shift: true }, 'format:align-distribute']",
+      "[{ key: 'ㅇ', alt: true, shift: true }, 'format:align-distribute']",
+      "[{ key: '0', ctrl: true }, 'view:zoom-100']",
+    ],
+  },
+]
+
+/**
+ * The studio commands the Hangul keys run that the studio's command sources no longer name;
+ * `sources` is the text of every file in src/command/commands.
+ */
+export function missingHancomCommands(sources) {
+  // a numbered command may be made from a template, as `view:zoom-${pct}` is
+  const named = (id) =>
+    sources.includes(`'${id}'`) ||
+    (/-\d+$/.test(id) && sources.includes('`' + id.replace(/\d+$/, '${')))
+  return studioCommandIds().filter((id) => !named(id))
+}
+
 /** The hooks a studio source tree lacks; `read` gives the text of one of its files, or null. */
 export function missingPluginHooks(read) {
   const missing = []
-  for (const { file, needles } of pluginHooks) {
+  for (const { file, needles } of [...pluginHooks, ...hancomHooks]) {
     const text = read(file)
     for (const needle of needles) {
       if (text === null || !text.includes(needle)) missing.push(`${file}: ${needle}`)
@@ -279,16 +573,21 @@ export function applyPatch(name, code) {
   if (!patch) throw new Error(`rhwp patch: unknown patch "${name}"`)
   // a checkout on Windows may carry CRLF; the patches are written with LF
   const eol = code.includes('\r\n') ? '\r\n' : '\n'
-  const find = patch.find.replaceAll('\n', eol)
-  const first = code.indexOf(find)
-  if (first === -1 || code.indexOf(find, first + 1) !== -1) {
-    throw new Error(
-      `rhwp patch ${name}: expected exactly one occurrence of the text to replace; ` +
-        'the upstream source changed, review apps/hwp/scripts/rhwp-patches.mjs',
-    )
+  // a patch is one replacement, or (edits) several in the same file, each found exactly once
+  let next = code
+  for (const edit of patch.edits ?? [patch]) {
+    const find = edit.find.replaceAll('\n', eol)
+    const first = next.indexOf(find)
+    if (first === -1 || next.indexOf(find, first + 1) !== -1) {
+      throw new Error(
+        `rhwp patch ${name}: expected exactly one occurrence of the text to replace; ` +
+          'the upstream source changed, review apps/hwp/scripts/rhwp-patches.mjs',
+      )
+    }
+    const replace = edit.replace.replaceAll('\n', eol)
+    next = next.replace(find, () => replace)
   }
-  const replace = patch.replace.replaceAll('\n', eol)
-  return code.replace(find, () => replace)
+  return next
 }
 
 /**

@@ -4,7 +4,7 @@ Un'abilità è un insieme di istruzioni di lavoro per l'IA. Scrivi una volta sol
 
 ## Attivare e disattivare le abilità
 
-**Impostazioni ▸ Abilità** elenca le abilità presenti su questo PC, raggruppate in base alla provenienza. Con la casella di ricerca in alto puoi trovarne una per titolo, nome o descrizione.
+**Impostazioni ▸ Abilità** elenca le abilità presenti su questo PC, raggruppate in base alla provenienza. Ogni abilità è mostrata con il suo nome, come fanno gli agenti di programmazione. Con la casella di ricerca in alto puoi trovarne una per nome o descrizione.
 
 | Provenienza                    | Che cosa contiene                                             | All'inizio  |
 | ------------------------------ | ------------------------------------------------------------- | ----------- |
@@ -34,7 +34,7 @@ Sotto l'anteprima compare sempre: «Installa abilità solo da fonti affidabili. 
 
 - Se tra le mie abilità ce n'è già una con lo stesso nome, scegli **Sostituisci** o **Salta** su quella riga.
 - Quando scarica da GitHub, GenOffice si collega solo a `github.com`, `api.github.com` e `codeload.github.com` e non invia alcun dato di accesso. Se l'archivio è troppo grande o non supera i controlli di sicurezza, non viene installato nulla.
-- **Nuova abilità** apre un editor vuoto in cui scrivi tu titolo, descrizione e istruzioni.
+- **Nuova abilità** apre un editor vuoto in cui scrivi tu nome, descrizione e istruzioni.
 
 ## Cercare aggiornamenti
 
@@ -46,7 +46,7 @@ Sotto l'anteprima compare sempre: «Installa abilità solo da fonti affidabili. 
 ## Richiamare un'abilità nel pannello IA
 
 1. Digita `/` o `$` all'inizio della casella di input dell'IA o subito dopo uno spazio. Compare l'elenco delle abilità attive.
-2. Continua a scrivere per restringere l'elenco. Per esempio, `/verb` trova Verbali di riunione.
+2. Continua a scrivere per restringere l'elenco. Per esempio, `/meet` trova `meeting-minutes`. Funzionano anche le parole della descrizione, quindi va bene anche `/verb`.
 3. Scegline una con i tasti freccia e premi Invio o Tab. L'abilità diventa un chip sopra la casella di input.
 4. Scrivi che cosa vuoi e invia. GenOffice aggiunge alla richiesta il contenuto dell'abilità.
 
@@ -58,15 +58,15 @@ Sotto l'anteprima compare sempre: «Installa abilità solo da fonti affidabili. 
 
 ## Abilità che l'IA usa da sola
 
-- Delle abilità attive impostate su Decide l'IA, titoli e descrizioni vengono passati all'IA come elenco. Quando una si adatta alla richiesta, l'IA ne prende il contenuto e la usa.
-- Quando l'IA usa un'abilità, nella chat compare «Abilità 〈titolo〉 usata».
+- Delle abilità attive impostate su Decide l'IA, nomi e descrizioni vengono passati all'IA come elenco. Quando una si adatta alla richiesta, l'IA ne prende il contenuto e la usa.
+- Quando l'IA usa un'abilità, nella chat compare «Abilità 〈nome〉 usata».
 - L'IA decide in base alla descrizione se usare un'abilità. Una descrizione che dice in quali casi l'abilità va usata la aiuta a scegliere bene.
 
 ## Creare un'abilità chiedendola
 
 1. Nel pannello IA, scrivi per esempio «Salva come abilità quello che abbiamo appena fatto» oppure «Crea un'abilità che scriva i rapporti nello stile della nostra organizzazione».
 2. L'IA individua i passaggi e le regole che vale la pena ripetere e mostra una scheda **Nuova abilità**. I valori usati solo questa volta, come nomi e date, restano fuori dalle istruzioni.
-3. Controlla e correggi sulla scheda titolo, descrizione e istruzioni. Apri **Avanzate** per cambiare il nome in inglese.
+3. Controlla e correggi sulla scheda nome, descrizione e istruzioni. Il nome è quello che compare nell'elenco delle abilità e che scrivi dopo `/`: lettere inglesi minuscole, cifre e trattini.
 4. Fai clic su **Salva**. La nuova abilità viene aggiunta alle mie abilità, viene attivata e compare subito nell'elenco di `/`.
 
 - Nessun file viene scritto finché non fai clic su **Salva**. Se fai clic su **Annulla**, la chat la conserva solo come «Proposta di abilità non salvata».
@@ -85,7 +85,7 @@ Quando crei un'abilità nel pannello IA di un editor, il documento attuale può 
 - Un'abilità con un modello mostra **Con modello** nell'elenco.
 - Richiamala come chip e invia: una copia del modello si apre come nuovo documento senza titolo e l'IA di quella scheda prosegue con la tua richiesta. Nel pannello di partenza restano «Si lavora con il modello in una nuova scheda» e **Vai alla scheda**.
 - Quando l'IA sceglie da sola un'abilità con modello, nessuna scheda si apre subito. La chat mostra invece il pulsante **Apri un nuovo documento da questo modello**.
-- Di solito scegli dove va il nuovo documento la prima volta che lo salvi. Gli editor Markdown e HTML, e la generazione di un'intera presentazione, salvano come sempre nella cartella predefinita. Il file modello resta com'era.
+- Di solito scegli dove va il nuovo documento la prima volta che lo salvi. Gli editor Markdown e HTML salvano come sempre nella cartella predefinita. Il file modello resta com'era.
 
 ## Abilità con script
 
@@ -95,15 +95,15 @@ Quando crei un'abilità nel pannello IA di un editor, il documento attuale può 
 
 ## Abilità integrate
 
-| Abilità                      | Che cosa fa                                                                                    |
-| ---------------------------- | ---------------------------------------------------------------------------------------------- |
-| **Verbali di riunione**      | Trasforma gli appunti di una riunione in un verbale con le decisioni e le attività da svolgere |
-| **Avvisi, newsletter e FAQ** | Scrive avvisi, newsletter, aggiornamenti sull'avanzamento, FAQ e altri testi interni           |
-| **Togliere l’effetto IA**    | Trova nei testi in inglese le espressioni che sembrano scritte da un'IA e le rende naturali    |
-| **Rifinire il testo**        | Rilegge un testo in inglese già scritto e lo rende più chiaro e conciso                        |
-| **Trova abilità**            | Trova nella finestra dell'agente le abilità che ti servono e ne propone l'installazione        |
+| Abilità           | Che cosa fa                                                                                    |
+| ----------------- | ---------------------------------------------------------------------------------------------- |
+| `meeting-minutes` | Trasforma gli appunti di una riunione in un verbale con le decisioni e le attività da svolgere |
+| `internal-comms`  | Scrive avvisi, newsletter, aggiornamenti sull'avanzamento, FAQ e altri testi interni           |
+| `humanizer`       | Trova le espressioni che sembrano scritte da un'IA e le rende naturali                         |
+| `copy-editing`    | Rilegge un testo in inglese già scritto e lo rende più chiaro e conciso                        |
+| `find-skills`     | Trova nella finestra dell'agente le abilità che ti servono e ne propone l'installazione        |
 
-Togliere l’effetto IA e Rifinire il testo sono pensate per testi in inglese. Trova abilità funziona solo nella finestra dell'agente.
+`copy-editing` è pensata per testi di marketing in inglese. `find-skills` funziona solo nella finestra dell'agente.
 
 ## Nella finestra dell'agente
 

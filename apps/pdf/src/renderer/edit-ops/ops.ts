@@ -65,6 +65,16 @@ const rect = (v: unknown, field: string): Rect => {
 
 const id = (op: Op): string => str(op.id, 'id')
 
+const color = (v: unknown, field = 'color'): [number, number, number] => {
+  if (
+    !Array.isArray(v) ||
+    v.length !== 3 ||
+    v.some((n) => typeof n !== 'number' || !Number.isFinite(n) || n < 0 || n > 1)
+  )
+    throw new GuidedError(`"${field}" must be [r,g,b] with each value between 0 and 1`)
+  return v as [number, number, number]
+}
+
 // ── annotate ──────────────────────────────────────────────────────────
 
 register({
@@ -94,6 +104,21 @@ register({
   },
   apply(op, s) {
     return { markups: s.markups.filter((m) => m.id !== op.id) }
+  },
+})
+
+register({
+  name: 'recolorMarkup',
+  touches: ['markups'],
+  validate(op) {
+    id(op)
+    color(op.color)
+  },
+  apply(op, s) {
+    const next = color(op.color)
+    return {
+      markups: s.markups.map((m) => (m.id === op.id ? { ...m, color: next } : m)),
+    }
   },
 })
 

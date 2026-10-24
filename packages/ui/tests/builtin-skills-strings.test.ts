@@ -6,7 +6,6 @@ import {
   BUILTIN_SKILL_NAMES,
   BUILTIN_SKILL_STRINGS,
   builtinSkillDesc,
-  builtinSkillTitle,
   isBuiltinSkillName,
   type BuiltinSkillStringKey,
 } from '../src/strings-builtin-skills'
@@ -24,11 +23,8 @@ describe('BUILTIN_SKILL_STRINGS', () => {
     expect(Object.keys(BUILTIN_SKILL_STRINGS).sort()).toEqual([...LANGS].sort())
   })
 
-  it('has a title and a description key for every built-in skill', () => {
-    const expected = BUILTIN_SKILL_NAMES.flatMap((name) => [
-      `builtinSkillTitle.${name}`,
-      `builtinSkillDesc.${name}`,
-    ])
+  it('has only a description key (no title key) for every built-in skill', () => {
+    const expected = BUILTIN_SKILL_NAMES.map((name) => `builtinSkillDesc.${name}`)
     expect([...KEYS].sort()).toEqual(expected.sort())
   })
 
@@ -52,7 +48,7 @@ describe('BUILTIN_SKILL_STRINGS', () => {
     }
   })
 
-  it('names no vendor product in any title or description', () => {
+  it('names no vendor product in any description', () => {
     for (const lang of LANGS) {
       for (const key of KEYS) {
         expect(BUILTIN_SKILL_STRINGS[lang][key], `${lang}.${key}`).not.toMatch(
@@ -62,15 +58,23 @@ describe('BUILTIN_SKILL_STRINGS', () => {
     }
   })
 
-  it('resolves titles and descriptions through the accessors', () => {
-    expect(builtinSkillTitle('ko', 'meeting-minutes')).toBe('회의록 정리')
-    expect(builtinSkillTitle('ko', 'internal-comms')).toBe('공지·소식지·FAQ 쓰기')
-    expect(builtinSkillTitle('ko', 'humanizer')).toBe('AI 티 없애기(영어 글 기준)')
-    expect(builtinSkillTitle('ko', 'copy-editing')).toBe('문장 다듬기(영어 글 기준)')
-    expect(builtinSkillTitle('ko', 'find-skills')).toBe('스킬 찾기')
+  it('resolves descriptions through the accessor', () => {
+    expect(builtinSkillDesc('ko', 'humanizer')).toBe(
+      '글에서 AI가 쓴 티가 나는 표현을 찾아 내용은 그대로 두고 자연스럽게 고칩니다.',
+    )
     expect(builtinSkillDesc('en', 'find-skills')).toMatch(/agent window/)
     expect(isBuiltinSkillName('humanizer')).toBe(true)
     expect(isBuiltinSkillName('docx')).toBe(false)
+  })
+
+  it('does not limit humanizer to English text, while copy-editing still says English', () => {
+    expect(builtinSkillDesc('en', 'humanizer')).toBe(
+      'Finds phrasing that sounds AI-written and makes it natural without changing what it says.',
+    )
+    expect(builtinSkillDesc('en', 'humanizer')).not.toMatch(/english/i)
+    expect(builtinSkillDesc('ko', 'humanizer')).not.toMatch(/영어/)
+    expect(builtinSkillDesc('en', 'copy-editing')).toMatch(/English/)
+    expect(builtinSkillDesc('ko', 'copy-editing')).toMatch(/영어/)
   })
 
   it('lists the same skills as the shipped builtin-skills.json', () => {

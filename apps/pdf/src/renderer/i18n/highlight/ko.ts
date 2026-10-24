@@ -71,11 +71,13 @@ export const ko = {
   hlAccept: '받아들이기',
   hlDismiss: '버리기',
   hlAcceptAll: '모두 받아들이기 ({count})',
+  hlAcceptAllSave: '모두 받아들이고 저장 ({count})',
   hlDismissAll: '제안 모두 버리기',
   hlSuggestionCount: 'AI 표시 제안 {count}개',
   hlNotFoundTip: '페이지 글자에서 이 문장을 찾지 못해 받아들일 수 없습니다',
   hlWaitingSave: '저장 대기',
   hlWaitingSaveTip: 'PDF를 저장하면 형광펜이 파일에 들어갑니다',
   hlAcceptedNotice: '형광펜 {count}개를 더했습니다. PDF를 저장하면 파일에 들어갑니다.',
+  hlAcceptedSaved: '형광펜 {count}개를 저장했습니다.',
   hlDismissFailed: '제안을 버리지 못했습니다.',
 } satisfies Record<keyof typeof zh, string>

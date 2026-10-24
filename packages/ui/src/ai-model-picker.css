@@ -1,9 +1,17 @@
-/* Composer model chip + its upward popover (AiModelPicker). Chrome tokens only;
+/* Model chip + its popover (AiModelPicker). Chrome tokens only;
  * each app imports this next to its other @genoffice/ui sheets. */
 
 .ai-model-picker {
   display: inline-flex;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
+}
+
+.ai-model-picker-label {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
 }
 
 .ai-model-chip {

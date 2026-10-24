@@ -68,6 +68,8 @@ export const cs = {
   aiEmptyTitle: 'Nechte si od AI pomoci s psaním a úpravami',
   aiEmptyBody1: 'Zadejte pokyn nebo jen položte otázku;',
   aiEmptyBody2: 'při vybraném textu se příkazy k přepsání vztahují na výběr.',
+  aiNoHidingNote:
+    'V tomto editoru nelze skrýt části dokumentu před AI: obsah, kterého se požadavek týká, se odešle tak, jak je.',
   aiStarterWeeklyReport: 'Napište mi týdenní zprávu o projektu',
   aiStarterLaunchPost: 'Připravte oznámení o uvedení produktu',
   aiStarterEventOutline: 'Sestavte osnovu plánu akce',
@@ -181,4 +183,17 @@ export const cs = {
   aiCmdImages: 'Aktualizováno obrázků: {count}',
   aiCmdToc: 'Vložen obsah ({count} položek)',
   aiCmdSkipped: ' (přeskočeno {count} chráněných bloků)',
+  aiStarterMindMap: 'Vytvořit myšlenkovou mapu tohoto dokumentu',
+  aiMindMapBtn: 'Myšlenková mapa AI',
+  aiMindMapPrompt:
+    'Vytvoř myšlenkovou mapu tohoto dokumentu a uspořádej hlavní témata a klíčové pojmy podle struktury sekcí',
+  aiSumMindMap: 'Vytvořit myšlenkovou mapu',
+  aiMindMapTitle: 'Myšlenková mapa',
+  aiMindMapNodes: '{count} uzlů',
+  aiMindMapAskPrompt: 'Pověz mi o „{label}“ v tomto dokumentu',
+  aiMindMapJump: 'Přejít na citovanou pasáž',
+  aiMindMapExport: 'Exportovat PNG',
+  aiMindMapReset: 'Obnovit zobrazení',
+  aiMindMapExpand: 'Rozbalit větev',
+  aiMindMapCollapse: 'Sbalit větev',
 } satisfies Record<keyof typeof zh, string>

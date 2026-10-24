@@ -66,6 +66,8 @@ export const ar = {
   aiEmptyTitle: 'دع الذكاء الاصطناعي يساعدك في الكتابة والتحرير',
   aiEmptyBody1: 'يمكنك إعطاء تعليمات أو طرح سؤال مباشرة؛',
   aiEmptyBody2: 'عند تحديد نص، تُطبَّق أوامر إعادة الكتابة على التحديد.',
+  aiNoHidingNote:
+    'لا يمكن في هذا المحرر إخفاء أجزاء من المستند عن الذكاء الاصطناعي: يُرسَل ما يشمله الطلب كما هو.',
   aiStarterWeeklyReport: 'اكتب لي تقريرًا أسبوعيًا عن المشروع',
   aiStarterLaunchPost: 'اكتب إعلانًا عن إطلاق منتج',
   aiStarterEventOutline: 'أعدّ مخططًا لخطة فعالية',
@@ -177,4 +179,17 @@ export const ar = {
   aiCmdImages: 'تم تحديث {count} صورة',
   aiCmdToc: 'تم إدراج جدول محتويات ({count} إدخالًا)',
   aiCmdSkipped: ' (تم تخطي {count} كتلة محمية)',
+  aiStarterMindMap: 'إنشاء خريطة ذهنية لهذا المستند',
+  aiMindMapBtn: 'خريطة ذهنية بالذكاء الاصطناعي',
+  aiMindMapPrompt:
+    'أنشئ خريطة ذهنية لهذا المستند، ونظّم المواضيع الرئيسية والمفاهيم الأساسية وفق بنية أقسامه',
+  aiSumMindMap: 'إنشاء خريطة ذهنية',
+  aiMindMapTitle: 'خريطة ذهنية',
+  aiMindMapNodes: '{count} عقد',
+  aiMindMapAskPrompt: 'حدثني عن «{label}» في هذا المستند',
+  aiMindMapJump: 'الانتقال إلى المقطع المشار إليه',
+  aiMindMapExport: 'تصدير PNG',
+  aiMindMapReset: 'إعادة ضبط العرض',
+  aiMindMapExpand: 'توسيع الفرع',
+  aiMindMapCollapse: 'طي الفرع',
 } satisfies Record<keyof typeof zh, string>

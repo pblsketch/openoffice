@@ -221,6 +221,7 @@ import {
   IconShading,
   IconChangeCase,
   IconFontColorA,
+  IconFontDialog,
   IconShrinkFont,
   IconSplitCells,
   IconSubscript,
@@ -268,6 +269,8 @@ interface RibbonProps {
   docDefaults?: DocDefaults
   /** Open the paragraph dialog (line-spacing rule / exact value entry lives there) */
   onParagraphDialog?: () => void
+  /** Open the Font dialog (its Advanced tab holds character scale / spacing) */
+  onFontDialog?: () => void
   /** Paste ▸ Set Default Paste…: the host's preferences dialog holds the default paste mode */
   onPasteDefaults?: () => void
   /** Word's table dialogs live in App so the right-click menu and the Table menu share them */
@@ -720,6 +723,7 @@ function RibbonInner({
   documentListPresets,
   recentListPresets,
   onParagraphDialog,
+  onFontDialog,
   onPasteDefaults,
   onTableDialog,
   tableGridlines,
@@ -3157,6 +3161,31 @@ function RibbonInner({
                   </span>
                   <span>{t('aiTidyBtn')}</span>
                 </button>
+                <button
+                  className="rb-big ai-entry"
+                  disabled={docEmpty}
+                  data-tip={t('aiMindMapBtn')}
+                  onClick={() => onAiPreset(t('aiMindMapPrompt'))}
+                >
+                  <span className="rb-big-icon">
+                    <span className="ai-feature-icon" aria-hidden="true">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <rect x="2.5" y="9.5" width="6" height="5" rx="1.5" />
+                        <rect x="15.5" y="4" width="6" height="5" rx="1.5" />
+                        <rect x="15.5" y="15" width="6" height="5" rx="1.5" />
+                        <path d="M8.5 12h3.5M12 12V6.5h3.5M12 12v5.5h3.5" />
+                      </svg>
+                    </span>
+                  </span>
+                  <span>{t('aiMindMapBtn')}</span>
+                </button>
               </div>
               <div className="ribbon-group-label">{aiSubscriptionText(lang, 'aiAssistant')}</div>
             </div>
@@ -3599,6 +3628,22 @@ function RibbonInner({
                       />
                     )}
                   </div>
+                  {/* Word's group dialog launcher: the Font dialog's Advanced tab
+                      holds character scale (장평) and spacing (자간) */}
+                  {onFontDialog && (
+                    <>
+                      <span className="rb-mini-sep" />
+                      <button
+                        className="rb-icon"
+                        data-testid="ribbon-font-dialog"
+                        data-tip={t('ribbonFontDialogTip')}
+                        aria-label={t('ribbonFontDialogTip')}
+                        onClick={onFontDialog}
+                      >
+                        <IconFontDialog />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

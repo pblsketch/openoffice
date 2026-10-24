@@ -212,6 +212,8 @@ export function sanitizeAiSettings(input: unknown): AiSettings | null {
   if (typeof raw.subscriptionNoticeSeen === 'boolean') {
     settings.subscriptionNoticeSeen = raw.subscriptionNoticeSeen
   }
+  // only an explicit false is kept: anything else is the default, on
+  if (raw.internetTools === false) settings.internetTools = false
   // the read_url token is persisted in the settings file like the provider
   // keys; a blank or non-string token is left out (public pages only)
   const readUrl = readUrlSettingsOf(raw.readUrl)

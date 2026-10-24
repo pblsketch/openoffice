@@ -4,7 +4,8 @@
  * covered positions omitted).
  */
 import type { TableBlock as IrTableBlock } from '../../../pdf2docx/src/ir'
-import type { InlineRun, TableCell, TreeTable } from './types'
+import { unionBox } from './draft'
+import type { InlineRun, Rect, TableCell, TreeTable } from './types'
 
 /** one HTML-style cell as written in its row (covered positions omitted) */
 export interface SpanCellInput {
@@ -56,7 +57,11 @@ export function tableFromSpans(rows: SpanCellInput[][]): TreeTable {
  */
 export function tableFromIr(
   table: IrTableBlock,
-  cellParagraphs: (blocks: IrTableBlock['rows'][number][number]['blocks']) => InlineRun[][],
+  cellParagraphs: (
+    blocks: IrTableBlock['rows'][number][number]['blocks'],
+  ) => { runs: InlineRun[]; box: Rect }[],
+  /** 1-based original page: cells then carry their place */
+  page?: number,
 ): TreeTable {
   const cells: TableCell[] = []
   /** grid column → the cell currently open for vertical merging */
@@ -70,16 +75,22 @@ export function tableFromIr(
         const open = openByCol.get(c)
         if (open && open.colSpan === colSpan) {
           open.rowSpan++
+          if (open.region) open.region.box = unionBox([open.region.box, irCell.box])
           c += colSpan
           continue
         }
       }
+      const paragraphs = cellParagraphs(irCell.blocks)
       const cell: TableCell = {
         row: r,
         col: c,
         rowSpan: 1,
         colSpan,
-        paragraphs: cellParagraphs(irCell.blocks),
+        paragraphs: paragraphs.map((p) => p.runs),
+      }
+      if (page !== undefined) {
+        cell.region = { page, box: { ...irCell.box } }
+        cell.paragraphBoxes = paragraphs.map((p) => ({ ...p.box }))
       }
       cells.push(cell)
       if (irCell.vMerge === 'restart') openByCol.set(c, cell)

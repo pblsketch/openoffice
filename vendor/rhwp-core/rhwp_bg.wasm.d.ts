@@ -219,6 +219,7 @@ export const hwpdocument_getPageHide: (a: number, b: number, c: number) => [numb
 export const hwpdocument_getPageInfo: (a: number, b: number) => [number, number, number, number];
 export const hwpdocument_getPageLayerTree: (a: number, b: number) => [number, number, number, number];
 export const hwpdocument_getPageLayerTreeWithProfile: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
+export const hwpdocument_getPageNumberPos: (a: number, b: number) => [number, number, number, number];
 export const hwpdocument_getPageOfPosition: (a: number, b: number, c: number) => [number, number, number, number];
 export const hwpdocument_getPageOverlayImages: (a: number, b: number) => [number, number, number, number];
 export const hwpdocument_getPageRenderTree: (a: number, b: number) => [number, number, number, number];
@@ -437,6 +438,7 @@ export const hwpdocument_setPageBorderFill: (a: number, b: number, c: number, d:
 export const hwpdocument_setPageDef: (a: number, b: number, c: number, d: number) => [number, number, number, number];
 export const hwpdocument_setPageHide: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number, number, number];
 export const hwpdocument_setPageHideEx: (a: number, b: number, c: number) => [number, number, number, number];
+export const hwpdocument_setPageNumberPos: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
 export const hwpdocument_setParaShapeId: (a: number, b: number, c: number, d: number) => [number, number, number, number];
 export const hwpdocument_setPictureProperties: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
 export const hwpdocument_setSectionDef: (a: number, b: number, c: number, d: number) => [number, number, number, number];

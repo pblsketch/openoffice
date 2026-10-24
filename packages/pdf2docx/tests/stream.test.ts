@@ -615,3 +615,84 @@ describe('KV-grid alignment waiver (cell-data)', () => {
     expect(tables).toHaveLength(0)
   })
 })
+
+describe('side-by-side tables across a page gutter', () => {
+  // two-column body text: the left column ends near x 200, the right starts at 320
+  const LEFT_PROSE = [
+    'The quick brown fox jumps ov',
+    'lazy dog while a cat watches',
+    'from the windowsill and then',
+    'sunlight drifts over the roo',
+  ]
+  const RIGHT_PROSE = [
+    'Meanwhile across the road th',
+    'baker sets out fresh loaves,',
+    'steam rising from the crusts',
+    'as customers queue politely,',
+  ]
+  const prose = (): PdfChar[] =>
+    LEFT_PROSE.flatMap((t, i) => [
+      ...mkText(t, 72, { y: 640 - i * 14 }).chars,
+      ...mkText(RIGHT_PROSE[i]!, 320, { y: 640 - i * 14 }).chars,
+    ])
+  const cells = (rows: Array<[string, string, number]>, x0: number, x1: number): PdfChar[] =>
+    rows.flatMap(([a, b, y]) => [...mkText(a, x0, { y }).chars, ...mkText(b, x1, { y }).chars])
+
+  it('splits two tables set atop the two columns at the same height', () => {
+    // a two-column paper's Table 2 (left) and Table 4 (right): their header
+    // rows share a baseline, their body rows keep their own pitch
+    const left = cells(
+      [
+        ['System', 'Dev', 760],
+        ['Human', '82.3', 745],
+        ['Ensemble', '86.0', 730],
+        ['Single', '84.1', 715],
+      ],
+      80,
+      150,
+    )
+    const right = cells(
+      [
+        ['System', 'Test', 760],
+        ['GloVe', '52.7', 740],
+        ['ELMo', '59.2', 720],
+      ],
+      330,
+      400,
+    )
+    const rules = [
+      ...[772, 752, 708].map((y) => hStroke(75, 200, y)),
+      ...[772, 752, 713].map((y) => hStroke(325, 450, y)),
+    ]
+    const { tables } = detectStreamTables(unitsOf([...left, ...right, ...prose()]), shapesOf(rules))
+    expect(tables).toHaveLength(2)
+    const [a, b] = [...tables].sort((p, q) => p.box.x0 - q.box.x0)
+    expect(a!.box.x1).toBeLessThan(260)
+    expect(b!.box.x0).toBeGreaterThan(260)
+    expect(a!.rows.map((_, r) => cellText(a!, r, 0))).toEqual([
+      'System',
+      'Human',
+      'Ensemble',
+      'Single',
+    ])
+    expect(b!.rows.map((_, r) => cellText(b!, r, 0))).toEqual(['System', 'GloVe', 'ELMo'])
+  })
+
+  it('keeps a full-width table whose rows run across the gutter', () => {
+    const table = cells(
+      [
+        ['Region', 'Total', 760],
+        ['North', '12', 745],
+        ['South', '9', 730],
+        ['West', '21', 715],
+      ],
+      80,
+      340,
+    )
+    const rules = [772, 752, 708].map((y) => hStroke(75, 450, y))
+    const { tables } = detectStreamTables(unitsOf([...table, ...prose()]), shapesOf(rules))
+    expect(tables).toHaveLength(1)
+    expect(tables[0]!.rows).toHaveLength(4)
+    expect(cellText(tables[0]!, 3, 1)).toBe('21')
+  })
+})

@@ -294,7 +294,7 @@ export const DocumentTranslation = forwardRef<DocumentTranslationHandle, Documen
               jobId,
               ...common,
               outPath: path,
-              payload: { lang: run.lang },
+              payload: { lang: run.lang, ...(run.bilingual ? { bilingual: true } : {}) },
             })
             if (!out.ok) {
               failed(structureFailureText(out, p.t))
@@ -407,6 +407,7 @@ export const DocumentTranslation = forwardRef<DocumentTranslationHandle, Documen
         kind: 'translate',
         lang: target,
         provider: route.provider,
+        ...(request.aiLabel ? { aiLabel: request.aiLabel } : {}),
         launch: ({ signal, registry, onProgress }) =>
           startTranslationJob({
             docHash: hash,
@@ -570,20 +571,24 @@ function stripText(
   nameOf: (code: string) => string,
 ): { title: string; details: string[] } {
   const language = nameOf(view.lang ?? '')
+  const ai = view.aiLabel ? [t('arConfirmProvider', { provider: view.aiLabel })] : []
   if (view.state === 'running') {
     return {
       title: t('trRunning', { language, done: view.done, total: view.total }),
-      details: view.currentPage !== null ? [t('trRunningPage', { page: view.currentPage })] : [],
+      details: [
+        ...ai,
+        ...(view.currentPage !== null ? [t('trRunningPage', { page: view.currentPage })] : []),
+      ],
     }
   }
   if (view.state === 'failed') {
-    return { title: t('trStartFailed', { reason: view.error ?? '' }), details: [] }
+    return { title: t('trStartFailed', { reason: view.error ?? '' }), details: ai }
   }
   const summary = view.summary
   if (view.state === 'complete' || !summary) {
-    return { title: t('trDone', { language, count: view.done }), details: [] }
+    return { title: t('trDone', { language, count: view.done }), details: ai }
   }
-  const details = [t('trStoppedProgress', { done: view.done, total: view.total })]
+  const details = [...ai, t('trStoppedProgress', { done: view.done, total: view.total })]
   const lost = summary.lostUnits.reduce<number>((n, u) => n + (u as unknown[]).length, 0)
   if (lost > 0) details.push(t('trLostBlocks', { count: lost }))
   const reason = summary.stopReason

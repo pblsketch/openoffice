@@ -190,6 +190,18 @@ button {
   height: 100%;
 }
 
+/* ---- presentation (F5): the pages alone; Esc or F5 returns ---- */
+
+.app.pdf-presenting > :not(.app-main),
+.app.pdf-presenting .app-content > :not(.pdf-body),
+.app.pdf-presenting .ai-dock,
+.app.pdf-presenting .pdf-thumbs,
+.app.pdf-presenting .pdf-side-resizer,
+.app.pdf-presenting .status-bar,
+.app.pdf-presenting .pdf-search-bar {
+  display: none !important;
+}
+
 .pdf-placeholder {
   flex: 1;
   display: flex;
@@ -462,6 +474,45 @@ button {
   gap: 2px;
 }
 
+/* default view picker (View tab): the fit mode a PDF without a saved position starts in */
+.rb-open-view {
+  gap: 3px;
+  justify-content: center;
+  margin-left: 6px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border);
+}
+
+.rb-open-view-label {
+  font-size: 11px;
+  color: var(--text);
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+.rb-select {
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  padding: 0 4px;
+}
+
+/* the compact band keeps the control but drops its label (the select keeps its aria-label) */
+.ribbon-compact .rb-open-view-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .rb-small {
   display: flex;
   align-items: center;
@@ -479,6 +530,77 @@ button {
 
 .rb-small:hover:not(:disabled) {
   background: var(--hover);
+}
+
+/* ---- Compact ribbon (⌥⌘K / Ctrl+Alt+K), docs parity, see #362 ----
+ * The middle density: the band stays and every command stays reachable, it
+ * just drops to icon-only on a shorter band. The band keeps the HARD-fixed
+ * height contract (switching tabs, including the contextual fill/form tabs,
+ * never resizes the row) and the horizontal scroll.
+ */
+.ribbon-compact .ribbon-body {
+  /* same fixed-height contract as the full band, only shorter (docs measured
+     45px as the smallest band that holds every tab unclipped; pdf's tallest
+     compact content is the 26px zoom row, so it fits the same band) */
+  height: 45px;
+  padding-top: 5px;
+  padding-bottom: 1px;
+}
+
+.ribbon-compact .rb-big {
+  /* the label is taken out of flow entirely (below), so the button is just
+     the icon row plus its padding */
+  gap: 0;
+  padding: 2px 5px;
+}
+
+.ribbon-compact .rb-big-icon {
+  min-height: 22px;
+  flex: none;
+  /* the base padding is sized for the full band's taller icon plate */
+  padding: 1px 3px;
+  margin: 0 -2px;
+}
+
+/* Keep the label in the accessibility tree and in the DOM (Playwright's
+ * hasText and getByRole(name) both read it) but take it out of the visual
+ * flow. display: none here would strip the accessible name. */
+.ribbon-compact .rb-big > span:not(.rb-big-icon) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Groups centre on the shorter band. */
+.ribbon-compact .ribbon-group {
+  padding: 0 3px;
+}
+
+/* `.rb-col` stacks two rows (the page-number/zoom block) that cannot fit a
+ * short band — side by side, exactly the docs treatment of .rb-col. */
+.ribbon-compact .rb-col {
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+
+/* the highlight split caret is absolutely placed against the full band's
+ * 30px icon plate; recentre it on the shorter one, and keep the gutter its
+ * padding carved out of the right edge (the compact .rb-big padding above
+ * would otherwise reclaim it) */
+.ribbon-compact .rb-highlight-main {
+  padding-right: 16px;
+}
+
+.ribbon-compact .rb-highlight-caret {
+  top: 2px;
+  height: 22px;
 }
 
 .rb-icon {
@@ -600,6 +722,58 @@ button {
   height: 1px;
   margin: 4px 0;
   background: var(--border);
+}
+
+/* ── Markup context menu (right click on a highlight/underline/strikeout) ── */
+
+.pdf-markup-menu {
+  min-width: 208px;
+}
+
+.pdf-markup-menu-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pdf-markup-menu-current {
+  width: 11px;
+  height: 11px;
+  flex: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+}
+
+.pdf-markup-menu-label {
+  padding: 2px 12px 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.pdf-markup-colors {
+  display: grid;
+  grid-template-columns: repeat(8, 20px);
+  gap: 5px;
+  padding: 0 12px 6px;
+}
+
+.pdf-markup-colors button {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background-clip: padding-box;
+}
+
+.pdf-markup-colors button.is-current {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 /* ── Markup floating bar for selected text ── */
@@ -3614,6 +3788,11 @@ button {
   width: 34px;
 }
 
+/* "show the AI sidebar" off and panel closed: no rail, no sliver */
+.ai-dock.collapsed.ai-dock-off {
+  width: 0;
+}
+
 /* while dragging the resizer, follow the pointer without easing */
 .ai-dock:has(.ai-panel-resizing) {
   transition: none;
@@ -4862,6 +5041,14 @@ button {
   gap: 4px;
   font-size: 13px;
   color: var(--text);
+}
+
+/* the confirmation's model chip row: provider · model, switchable in place */
+.pdf-ai-read-ai {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .pdf-ai-read-paid {
@@ -6190,6 +6377,12 @@ button.ai-overview-term-page:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.pdf-hl-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .pdf-hl-waiting {

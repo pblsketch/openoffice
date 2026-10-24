@@ -8,8 +8,14 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const SRC = join(__dirname, '..', 'src')
-const PRELOAD_MODULES = ['user-skills-bridge.ts', 'user-skills-channels.ts', 'handoff-editors.ts']
-const NODE_FREE = new Set(['./user-skills-channels', './handoff-editors'])
+const PRELOAD_MODULES = [
+  'user-skills-bridge.ts',
+  'user-skills-channels.ts',
+  'handoff-editors.ts',
+  'outbound-bridge.ts',
+  'outbound-channels.ts',
+]
+const NODE_FREE = new Set(['./user-skills-channels', './handoff-editors', './outbound-channels'])
 
 function runtimeImports(file: string): string[] {
   const text = readFileSync(join(SRC, file), 'utf8')

@@ -4,6 +4,7 @@ import { docxToOdt } from '@genoffice/odt-engine'
 import {
   docFormatOfPath,
   isOdtPackage,
+  prepareRecoveryBytes,
   prepareSaveBytes,
   recoveryExtFor,
   withDocExtension,
@@ -84,5 +85,53 @@ describe('main open/save format rules', () => {
     expect(withDocExtension('/tmp/report', 'odt')).toBe('/tmp/report.odt')
     expect(withDocExtension('/tmp/report.docx', 'odt')).toBe('/tmp/report.docx')
     expect(withDocExtension('/tmp/report.ODT', 'docx')).toBe('/tmp/report.ODT')
+  })
+})
+
+describe('crash-recovery copy bytes', () => {
+  it('a docx copy gets its lazily served pictures back before it is protected, like a save', async () => {
+    const { docx } = await fixtures()
+    const full = Buffer.from('docx with every picture inlined')
+    const order: string[] = []
+    const materialize = vi.fn(async () => {
+      order.push('materialize')
+      return { bytes: full, hashes: new Set(['h']) }
+    })
+    const protect = vi.fn((plain: Buffer) => {
+      order.push('protect')
+      return plain
+    })
+    const out = await prepareRecoveryBytes('docx', docx, { materialize, protect })
+    expect(out).toBe(full)
+    expect(protect).toHaveBeenCalledWith(full)
+    expect(order).toEqual(['materialize', 'protect'])
+  })
+
+  it('protection may skip the tick (an encrypted file whose password is unknown)', async () => {
+    const { docx } = await fixtures()
+    const materialize = async (b: Buffer) => ({ bytes: b, hashes: new Set<string>() })
+    expect(await prepareRecoveryBytes('docx', docx, { materialize, protect: () => null })).toBe(
+      null,
+    )
+  })
+
+  it('pictures that cannot be inlined still leave a copy of the text', async () => {
+    const { docx } = await fixtures()
+    const materialize = vi.fn(async () => {
+      throw new Error('picture source gone')
+    })
+    const out = await prepareRecoveryBytes('docx', docx, { materialize, protect: (b) => b })
+    expect(out).toBe(docx)
+  })
+
+  it('an ODT copy is the ODT itself; bytes of the other format are refused', async () => {
+    const { docx, odt } = await fixtures()
+    const materialize = vi.fn(async (b: Buffer) => ({ bytes: b, hashes: new Set<string>() }))
+    const protect = vi.fn((b: Buffer) => b)
+    expect(await prepareRecoveryBytes('odt', odt, { materialize, protect })).toBe(odt)
+    expect(await prepareRecoveryBytes('odt', docx, { materialize, protect })).toBeNull()
+    expect(await prepareRecoveryBytes('docx', odt, { materialize, protect })).toBeNull()
+    expect(materialize).not.toHaveBeenCalled()
+    expect(protect).not.toHaveBeenCalled()
   })
 })

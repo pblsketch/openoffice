@@ -32,7 +32,8 @@ const FONT_STYLES: Array<{ key: string; nameKey: StringKey }> = [
 
 type SpacingMode = 'normal' | 'expanded' | 'condensed'
 type PositionMode = 'normal' | 'raised' | 'lowered'
-type Tab = 'font' | 'advanced'
+export type FontDialogTab = 'font' | 'advanced'
+type Tab = FontDialogTab
 
 /** Advanced-tab state derived from a run's docTextStyle attrs (Word's dialog fields) */
 export interface CharSpacingState {
@@ -172,7 +173,16 @@ export function fontTabAttrs(
   return out
 }
 
-export function FontDialog({ editor, onClose }: { editor: Editor; onClose: () => void }) {
+export function FontDialog({
+  editor,
+  onClose,
+  initialTab = 'font',
+}: {
+  editor: Editor
+  onClose: () => void
+  /** the tab to open on: the ribbon's launcher goes straight to 장평·자간 */
+  initialTab?: FontDialogTab
+}) {
   const { t, lang } = useI18n()
   const modalKeys = useModalKeys(onClose)
   const fontFamilies = fontFamiliesFor(lang)
@@ -202,7 +212,7 @@ export function FontDialog({ editor, onClose }: { editor: Editor; onClose: () =>
       ? 'italic'
       : 'regular'
 
-  const [tab, setTab] = useState<Tab>('font')
+  const [tab, setTab] = useState<Tab>(initialTab)
   const [fontEastAsia, setFontEastAsia] = useState((textAttrs.font as string | null) ?? '')
   const [fontLatin, setFontLatin] = useState((textAttrs.fontAscii as string | null) ?? '')
   const [size, setSize] = useState(

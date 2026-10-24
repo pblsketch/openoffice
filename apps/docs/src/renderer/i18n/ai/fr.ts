@@ -70,6 +70,8 @@ export const fr = {
   aiEmptyBody1: 'Donnez une instruction ou posez simplement une question ;',
   aiEmptyBody2:
     "avec du texte sélectionné, les commandes de réécriture s'appliquent à la sélection.",
+  aiNoHidingNote:
+    'Cet éditeur ne permet pas de masquer des parties du document à l’IA : ce que couvre la demande est envoyé tel quel.',
   aiStarterWeeklyReport: 'Rédiger un rapport hebdomadaire de projet',
   aiStarterLaunchPost: 'Rédiger une annonce de lancement de produit',
   aiStarterEventOutline: "Établir le plan d'un événement",
@@ -183,4 +185,17 @@ export const fr = {
   aiCmdImages: '{count} image(s) mise(s) à jour',
   aiCmdToc: 'Table des matières insérée ({count} entrées)',
   aiCmdSkipped: ' ({count} bloc(s) protégé(s) ignoré(s))',
+  aiStarterMindMap: 'Générer une carte mentale de ce document',
+  aiMindMapBtn: 'Carte mentale IA',
+  aiMindMapPrompt:
+    'Génère une carte mentale de ce document en organisant les thèmes principaux et les concepts clés selon sa structure de sections',
+  aiSumMindMap: 'Générer la carte mentale',
+  aiMindMapTitle: 'Carte mentale',
+  aiMindMapNodes: '{count} nœuds',
+  aiMindMapAskPrompt: 'Parle-moi de « {label} » dans ce document',
+  aiMindMapJump: 'Aller au passage cité',
+  aiMindMapExport: 'Exporter en PNG',
+  aiMindMapReset: 'Réinitialiser la vue',
+  aiMindMapExpand: 'Déplier la branche',
+  aiMindMapCollapse: 'Replier la branche',
 } satisfies Record<keyof typeof zh, string>

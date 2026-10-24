@@ -201,7 +201,9 @@ scratch directory, `src/mcp/files.ts`), and a tool that writes a file returns
 scratch directory, working directory and deck state; `open` and `selection`
 are not registered;
 with `GENOFFICE_ALLOWED_ROOTS` unset the tools are confined to the server's
-file store.
+file store. A `--host` other than this machine (`127.0.0.1`,
+`localhost`, `::1`) is refused unless `--token` or `GENOFFICE_MCP_TOKEN` sets a
+token.
 
 ## Putting ieumoffice on the PATH
 

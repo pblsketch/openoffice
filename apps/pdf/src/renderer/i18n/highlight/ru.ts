@@ -76,11 +76,13 @@ export const ru = {
   hlAccept: 'Принять',
   hlDismiss: 'Отклонить',
   hlAcceptAll: 'Принять все ({count})',
+  hlAcceptAllSave: 'Принять все и сохранить ({count})',
   hlDismissAll: 'Отклонить все предложения',
   hlSuggestionCount: 'Предложений выделения ИИ: {count}',
   hlNotFoundTip: 'Это предложение не найдено в тексте страницы, поэтому его нельзя принять',
   hlWaitingSave: 'Ждёт сохранения',
   hlWaitingSaveTip: 'Сохраните PDF, чтобы выделение попало в файл',
   hlAcceptedNotice: 'Добавлено выделений: {count}. Сохраните PDF, чтобы они попали в файл.',
+  hlAcceptedSaved: 'Сохранено выделений: {count}.',
   hlDismissFailed: 'Не удалось отклонить предложения.',
 } satisfies Record<keyof typeof zh, string>

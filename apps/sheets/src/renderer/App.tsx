@@ -60,6 +60,11 @@ import {
   structuralDeleteFormulaErrorSync,
   type PlanContext,
 } from './plan-operations'
+import {
+  registerCellFontAliases,
+  untilCellFontsLoaded,
+  workbookFontFamilies,
+} from './cell-font-fallback'
 import { isNumericIdentifierText } from './cell-warning'
 import { consumePendingUndoCarry, undoStackDepth } from './undo-carry'
 import { createSaveGate, shouldRunSaveTick } from './save-scheduler'
@@ -82,6 +87,7 @@ import {
   type SkillChipRef,
   type SkillUse,
   docMentionActions,
+  presentationKeyOf,
   type AiComposerDocs,
 } from '@genoffice/ui'
 
@@ -238,7 +244,6 @@ import type {
   AttachmentAddResult,
   AttachmentMeta,
   MenuAction,
-  RecoveryPromptPayload,
   WorkbookFile,
   WorkbookVisualObject,
 } from '../shared/desktop-api'
@@ -273,6 +278,7 @@ import {
   safeJsonInput,
   SET_FROZEN_MUTATION,
   SET_NUMFMT_MUTATION,
+  SET_RIGHT_TO_LEFT_MUTATION,
   TOGGLE_GRIDLINES_MUTATION,
   SET_ZOOM_OPERATION,
   SET_ZOOM_COMMAND,
@@ -358,6 +364,7 @@ import { installCachedValueFallbackInterceptor } from './formula-cached-fallback
 import { readLiveFunctionInfos } from './function-catalog'
 import { installSupportedFunctionProbe } from './function-registry-probe'
 import { installCellFilenameFunction } from './cell-function'
+import { installRightToLeftCommand, refreshSheetRender, sheetIsRightToLeft } from './sheet-rtl-view'
 import { installFormulaLexerFix } from './formula-lexer-fix'
 import { installErrorValueAlignment } from './error-value-align'
 import { installFormulaNewlineDisplay } from './formula-newline-display'
@@ -498,7 +505,6 @@ import { planStillMatches } from './lazy-plan'
 import { lastSurvivingScreenLine, netAxisDelta, screenToFile } from './view-transform'
 import { selectionFormatEquals, toSelectionFormat, type SelectionFormat } from './selection-format'
 import { ExcelShell, type SelectedShapeRibbon } from './ExcelShell'
-import { RecoveryDialog } from './RecoveryDialog'
 import { ToastHost } from './toast'
 import { showToast } from './toast-bus'
 import { AdvancedFilterDialog, type AdvancedFilterColumn } from './AdvancedFilterDialog'
@@ -691,7 +697,6 @@ export function App({
           needsSaveAsNotUnsavedNew: Boolean(state.file.needsSaveAs) && !state.file.unsavedNew,
           isCsv: state.file.csvPath !== undefined,
           kind: 'save',
-          restoredFromRecovery: false,
           automaticRecoveryDisabled: false,
         })
       )
@@ -707,15 +712,16 @@ export function App({
   }, [autoSave])
 
   // Crash-recovery copy: independent of the AutoSave pill — a dirty
-  // workbook gets a real .xlsx copy under userData every 30 s, so a force-quit or a
+  // workbook gets a real copy under userData every 30 s, so a force-quit or a
   // renderer crash no longer costs everything since the last manual save. A normal
-  // save removes the copy; reopening a file whose copy is newer offers Restore.
+  // save removes the copy; reopening a file that has one asks to restore it first.
+  // The OS ending the session asks for one right away (onRecoveryWriteNow).
   useEffect(() => {
-    const tick = () => {
+    const writeCopy = async (): Promise<void> => {
       const state = lazyWorkbookRef.current
-      // The in-cell editor's pending text is not in the journal yet, a
-      // converted import has no original file to recover into, and a restored
-      // recovery session is backed by the recovery copy itself.
+      // The in-cell editor's pending text is not in the journal yet. Which copy
+      // a session writes (if any) is the main process's call: a CSV or
+      // converted import writes an untitled one.
       if (
         !state ||
         !shouldRunSaveTick({
@@ -726,19 +732,23 @@ export function App({
           needsSaveAsNotUnsavedNew: Boolean(state.file.needsSaveAs) && !state.file.unsavedNew,
           isCsv: state.file.csvPath !== undefined,
           kind: 'recovery',
-          restoredFromRecovery: state.file.restoredFromRecovery === true,
           automaticRecoveryDisabled: state.file.automaticRecoveryDisabled === true,
         })
       )
         return
-      void handleSaveRef.current('recovery')
+      await handleSaveRef.current('recovery')
     }
-    const id = window.setInterval(tick, 30_000)
-    return () => window.clearInterval(id)
+    const id = window.setInterval(() => void writeCopy(), 30_000)
+    const stopWriteNow = window.desktopApi?.onRecoveryWriteNow?.(writeCopy)
+    return () => {
+      window.clearInterval(id)
+      stopWriteNow?.()
+    }
   }, [])
-  const [recoveryPrompt, setRecoveryPrompt] = useState<RecoveryPromptPayload | null>(null)
+  /// A password workbook keeps no recovery copy: main says so once per tab.
+  const [recoveryNotice, setRecoveryNotice] = useState<string | null>(null)
   useEffect(
-    () => window.desktopApi?.onRecoveryPrompt?.((prompt) => setRecoveryPrompt(prompt)) ?? undefined,
+    () => window.desktopApi?.onRecoveryNotice?.((text) => setRecoveryNotice(text)) ?? undefined,
     [],
   )
   /// Streaming-mode filter gate: the filter panel builds
@@ -759,6 +769,8 @@ export function App({
   const [emptyCsvNotice, setEmptyCsvNotice] = useState(false)
   /// Zoom of the active sheet in percent, echoed by the status-bar slider.
   const [zoomPercent, setZoomPercent] = useState(100)
+  /** F5: the grid alone in fullscreen (presentation) */
+  const [presenting, setPresenting] = useState(false)
   const [statusBarFuncs, setStatusBarFuncs] = useState<readonly StatusBarFunc[]>(() =>
     readStatusBarFuncs(localStorage),
   )
@@ -790,6 +802,48 @@ export function App({
   /// The user clicked × on the scope chip: this run targets the sheet at large.
   /// Re-arms on the next selection change, so a fresh drag means a fresh scope.
   const [aiScopeDismissed, setAiScopeDismissed] = useState(false)
+
+  // F5: the grid alone in fullscreen; F5 starts at A1, Ctrl/Shift+F5 keeps the cell.
+  useEffect(() => {
+    const enter = (fromCurrent: boolean): void => {
+      const sheet = univerRef.current?.univerAPI.getActiveWorkbook()?.getActiveSheet()
+      if (!sheet) return
+      if (!fromCurrent) sheet.scrollToCell(0, 0)
+      setPresenting(true)
+      const root = document.documentElement
+      if (!document.fullscreenElement && root.requestFullscreen)
+        void root.requestFullscreen().catch(() => {})
+    }
+    const exit = (): void => {
+      setPresenting(false)
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+    }
+    const onKey = (event: KeyboardEvent): void => {
+      const action = presentationKeyOf(event, presenting)
+      if (!action) return
+      // Excel's own plain F5 is Go To; the sheet keeps it. Ctrl+F5 starts at A1,
+      // Shift+F5 keeps the reader's cell.
+      if (action === 'present') return
+      event.preventDefault()
+      if (action === 'exit') {
+        // the grid's own Esc (leave edit mode, clear a pick) waits until the show is over
+        event.stopPropagation()
+        exit()
+      } else enter(event.shiftKey)
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [presenting])
+
+  // OS-level Esc leaves fullscreen without a keydown: end the show with it.
+  useEffect(() => {
+    if (!presenting) return
+    const onFullScreenChange = (): void => {
+      if (!document.fullscreenElement) setPresenting(false)
+    }
+    document.addEventListener('fullscreenchange', onFullScreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullScreenChange)
+  }, [presenting])
   /// Selection scope of the run in flight. undefined = no run owns a scope
   /// (report the live selection); null = the user dropped it. The ref is what
   /// the skill's getActiveSheetInfo reads mid-run; the state is what the chip
@@ -2034,6 +2088,9 @@ export function App({
     // sheetView rightToLeft="1": mirror the grid geometry (column A on the
     // right, headers on the right) while keeping logical indices.
     installRtlGridMirror()
+    // Univer defines the right-to-left command/mutation pair but never
+    // registers it; without this the View tab's toggle would silently no-op.
+    installRightToLeftCommand(runtime)
     installRichTextBidiFix()
     // Excel's "Center Across Selection": center anchor text over its run of
     // blank same-format neighbors instead of folding it inside one cell.
@@ -2222,6 +2279,9 @@ export function App({
       setPendingEdits(journalSize(state.editJournal))
     }
     void window.desktopApi.getUserDisplayName?.().then((name) => threadStore.setAuthor(name))
+    const offAuthorChanged = window.desktopApi.onUserDisplayNameChanged?.((name) =>
+      threadStore.setAuthor(name),
+    )
     // Univer's own UI (rule-management panels, dialogs) follows the app
     // language instead of hard-coded English.
     void applyUniverLocale(runtime, getLang())
@@ -2454,6 +2514,7 @@ export function App({
           event.id !== MOVE_ROWS_MUTATION &&
           event.id !== SET_FROZEN_MUTATION &&
           event.id !== TOGGLE_GRIDLINES_MUTATION &&
+          event.id !== SET_RIGHT_TO_LEFT_MUTATION &&
           event.id !== SET_ZOOM_OPERATION &&
           event.id !== SET_ZOOM_COMMAND
         ) {
@@ -2734,6 +2795,25 @@ export function App({
             })
             setPendingEdits(journalSize(state.editJournal))
           }
+          return
+        }
+        if (event.id === SET_RIGHT_TO_LEFT_MUTATION) {
+          // Journaling from the mutation (not the ribbon handler) keeps the
+          // save in step with Univer's own undo/redo of the direction flip;
+          // the rebuild also re-runs the mirrored viewport anchors, which
+          // undo/redo dispatches without the command's render side effects.
+          const rtl = event.params as { subUnitId?: string; rightToLeft?: number } | undefined
+          if (
+            rtl?.subUnitId &&
+            rtl.rightToLeft !== undefined &&
+            !isSheetRemoved(state.editJournal, rtl.subUnitId)
+          ) {
+            recordPageSetup(state.editJournal, rtl.subUnitId, {
+              rightToLeft: rtl.rightToLeft === 1,
+            })
+            setPendingEdits(journalSize(state.editJournal))
+          }
+          refreshSheetRender(runtime)
           return
         }
         if (event.id === SET_ZOOM_OPERATION || event.id === SET_ZOOM_COMMAND) {
@@ -3457,6 +3537,7 @@ export function App({
       unsubscribeCloseSave()
       offThemeChanged?.()
       offDocThemeChanged?.()
+      offAuthorChanged?.()
       undoRedoSub.unsubscribe()
       findRevealDispose()
       gridGrowthDispose()
@@ -4433,9 +4514,12 @@ export function App({
     if (!(await commitActiveEditor())) return false
     // the bundled faces this workbook names, before its first skeleton measures
     // (the Normal font's digit width sizes every column); bounded like boot fonts
-    await Promise.race([
-      loadTemplateFontsFor(workbookTemplateFontUses(opened)),
-      new Promise((resolve) => setTimeout(resolve, 3000)),
+    await Promise.all([
+      Promise.race([
+        loadTemplateFontsFor(workbookTemplateFontUses(opened)),
+        new Promise((resolve) => setTimeout(resolve, 3000)),
+      ]),
+      untilCellFontsLoaded(registerCellFontAliases(workbookFontFamilies(opened))),
     ])
     if (opts?.continueChat) chatContinuesRef.current = true
     const selected: WorkbookFile = {
@@ -5109,6 +5193,7 @@ export function App({
         (worksheet
           ? worksheet.getSheet().getConfig().rowHeader.hidden !== BooleanNumber.TRUE
           : true),
+      rightToLeft: journalState.rightToLeft ?? (worksheet ? sheetIsRightToLeft(worksheet) : false),
       pageBreakPreview: worksheet ? pageBreakPreviewSheets.has(worksheet.getSheetId()) : false,
     }
   })()
@@ -5158,15 +5243,6 @@ export function App({
   return (
     <>
       <ToastHost />
-      {recoveryPrompt && (
-        <RecoveryDialog
-          prompt={recoveryPrompt}
-          onChoose={(restore) => {
-            setRecoveryPrompt(null)
-            window.desktopApi?.replyRecoveryPrompt?.(restore)
-          }}
-        />
-      )}
       {fullLoadPrompt && (
         <div className="dialog-backdrop">
           <div
@@ -5282,6 +5358,8 @@ export function App({
         emptyCsvNotice={emptyCsvNotice}
         onOpenWorkbook={() => void handleInspectWorkbook()}
         onDismissEmptyCsvNotice={() => setEmptyCsvNotice(false)}
+        recoveryNotice={recoveryNotice}
+        onDismissRecoveryNotice={() => setRecoveryNotice(null)}
         aiBusy={aiBusy}
         {...(sessionUsage !== undefined ? { sessionUsage } : {})}
         aiSubscription={{
@@ -5293,6 +5371,8 @@ export function App({
           admitQueued: sendGate.admitQueued,
           busy: subscription.busy,
           actions: subscription.actions,
+          openConnectHelp: subscription.openConnectHelp,
+          refresh: subscription.refresh,
           usage: subscriptionUsage,
           inputTruncated,
           onDismissTruncated: () => setInputTruncated(false),
@@ -5331,6 +5411,7 @@ export function App({
         canUndo={univerHist.canUndo || (!lazyWorkbookRef.current && adapterRef.current.canUndo)}
         canRedo={univerHist.canRedo}
         onCommand={handleRibbonCommand}
+        presenting={presenting}
         onIsCellEditing={isCellEditing}
         zoomPercent={zoomPercent}
         statusBarFuncs={statusBarFuncs}

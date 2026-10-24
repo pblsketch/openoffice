@@ -173,6 +173,17 @@ describe('EditorContextMenu', () => {
 })
 
 describe('FontDialog', () => {
+  it('opens on the Advanced tab when the ribbon launcher asks for it', () => {
+    const editor = createEditor()
+    const { container, unmount } = render(
+      createElement(FontDialog, { editor, onClose: noop, initialTab: 'advanced' }),
+    )
+    const active = container.querySelector('.dlg-tabs button.active')
+    expect(active?.textContent).toBe('Advanced')
+    unmount()
+    editor.destroy()
+  })
+
   it('applies font marks to the selection on OK', () => {
     const editor = createEditor()
     select(editor, 1, 10)

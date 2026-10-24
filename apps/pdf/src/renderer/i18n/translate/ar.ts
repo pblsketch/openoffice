@@ -11,7 +11,8 @@ export const ar = {
   trFormatPdf: 'PDF مترجم',
   trFormatMd: 'Markdown مترجم',
   trFormatEpub: 'EPUB مترجم',
-  trBilingual: 'ثنائي اللغة: تأتي الترجمة بعد كل فقرة أصلية (Markdown وEPUB فقط)',
+  trBilingual:
+    'ثنائي اللغة: في Markdown وEPUB تأتي الترجمة بعد كل فقرة أصلية، وفي PDF توضع كل صفحة مترجمة بجانب صفحتها الأصلية',
   trPdfEncrypted:
     'هذا المستند مشفّر، لذلك لا يمكن كتابة ترجمة PDF فيه. ما زال Markdown وEPUB متاحين.',
   trPdfScript:
@@ -58,7 +59,7 @@ export const ar = {
   trReportPending: 'الكتل التي لم تُترجم بعد وبقيت بلغتها الأصلية: {count}.',
   trReportNone: 'تُرجمت كل الكتل.',
   trReportUntranslated: 'كتل بقيت بلغتها الأصلية',
-  trReportOverflowed: 'كتل تجاوزت إطارها: {count} (الصفحات {pages})',
+  trReportOverflowed: 'كتل بقيت بلغتها الأصلية لعدم وجود مساحة كافية: {count} (الصفحات {pages})',
   trReportOriginalPages: 'صفحات بقيت كما هي',
   trReportFiles: 'الملفات المحفوظة',
   trReasonLine: '{reason}: الصفحات {pages} (الكتل: {count})',

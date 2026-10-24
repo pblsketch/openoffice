@@ -18,6 +18,13 @@
  * - A link is opened only after `safeExternalUrl`, and only from here. The
  *   view cannot open a window or navigate away.
  *
+ * Crash-recovery copies (`recovery-main.ts`): the renderer hands over the
+ * bytes a save would write, about every 30 seconds while the map has unsaved
+ * changes; they are kept in the app data folder, never next to the file. A
+ * file with a copy left over asks before its content is loaded, and a
+ * restored map keeps the file as its save target. The editor registers its
+ * `RecoveryEditorContract` when this module loads.
+ *
  * The shell bundles this module and drives it through the exports below; a
  * standalone window (`startMindmapStandalone`) uses the same code.
  */
@@ -36,30 +43,53 @@ import {
   installRendererProtocol,
   isPathOpenElsewhere,
   recordDiskState,
+  registerRecoveryEditor,
   registerRendererScheme,
   shouldDeferAutoSave,
   showSaveDialogWithMemory,
 } from '@genoffice/electron-utils'
-import type { SaveDiskState } from '@genoffice/electron-utils'
+import type {
+  RecoveryIdentity,
+  RecoveryOpenFileRequest,
+  RecoveryOpenUntitledRequest,
+  SaveDiskState,
+} from '@genoffice/electron-utils'
 import { getUiLang, normalizeLang, setUiLang } from '@genoffice/i18n'
 import { openXmind } from '@genoffice/xmind-engine'
 import { registerMindmapAiIpc } from './ai-attachments'
 import { atomicWriteFile } from './atomic-write'
 import { registerMindmapExportIpc } from './export-main'
 import { registerMindmapHandoffIpc } from './handoff-main'
-import { registerMindmapSeedIpc } from './seed-main'
+import { queueMindmapSeedFor, registerMindmapSeedIpc } from './seed-main'
 import { tm } from './i18n-main'
+import {
+  resolveViewOpen,
+  setViewOpenDecision,
+  takeUntitledCopy,
+  viewCrashed,
+  viewDropped,
+  viewFileRenamed,
+  viewGone,
+  viewRecoveryIdentity,
+  viewRestoredUntitled,
+  viewSaveAsDefault,
+  viewSaved,
+  writeViewCopy,
+} from './recovery-main'
 import { APP_CHANNELS, MINDMAP_CHANNELS } from '../shared/ipc'
 import { openableLink } from '../shared/links'
 import type {
   ExportFormat,
   MindmapMenuCommand,
   OpenFileResult,
+  RecoveryCopyResult,
   SaveMindmapResult,
   SaveMode,
 } from '../shared/ipc'
 
 export { setMindmapProvisionalTitleHook } from './ai-attachments'
+/** How long a tab that stays open after "Don't Save" takes no copy. */
+export { DONT_SAVE_HOLD_MS as MINDMAP_DONT_SAVE_HOLD_MS } from './recovery-main'
 
 /** The one extension a map is saved with. */
 const MAP_EXTENSION = '.xmind'
@@ -100,6 +130,12 @@ const dirtyByWc = new Set<number>()
 const closeSaveWaiters = new Map<number, (ok: boolean) => void>()
 /** Resolvers for menu-triggered saves, resolved when the renderer's save invoke completes */
 const saveWaiters = new Map<number, (ok: boolean) => void>()
+/** Every live map view, for the copies the OS session end asks for */
+const contentsByWc = new Map<number, WebContents>()
+/** Copies asked for at the OS session end, resolved when the renderer reports it wrote one */
+const copyNowWaiters = new Map<number, () => void>()
+/** How long the OS session end waits for one view's copy */
+const COPY_NOW_TIMEOUT_MS = 5000
 
 // ── Split-copy save guard (decision 0036): remember the disk state of every
 // read and write per view and path, so that while the same map is open in two
@@ -157,6 +193,22 @@ export function setMindmapMakeFromDocumentHook(hook: ((wc: WebContents) => void)
   makeFromDocumentHook = hook
 }
 
+/** The tab title of an untitled map, recorded with its recovery copy: the shell knows it */
+let recoveryTitleHook: ((wc: WebContents) => string | null | undefined) | null = null
+
+export function setMindmapRecoveryTitleHook(
+  hook: ((wc: WebContents) => string | null | undefined) | null,
+): void {
+  recoveryTitleHook = hook
+}
+
+/** The copy of this view was dropped and its tab is still open: ask the renderer for a fresh one. */
+function copyAgain(contents: WebContents): () => void {
+  return () => {
+    if (!contents.isDestroyed()) contents.send(MINDMAP_CHANNELS.recoveryReset)
+  }
+}
+
 export function mindmapIsDirty(webContentsId: number): boolean {
   return dirtyByWc.has(webContentsId)
 }
@@ -178,6 +230,7 @@ export function mindmapFileRenamed(contents: WebContents, oldPath: string, newPa
     states.delete(oldPath)
     states.set(newPath, recorded)
   }
+  void viewFileRenamed(wcId, oldPath, newPath)
   if (!contents.isDestroyed()) contents.send(MINDMAP_CHANNELS.fileRenamed, newPath)
 }
 
@@ -208,7 +261,11 @@ export async function requestMindmapClose(
       ? await dialog.showMessageBox(parent, options)
       : await dialog.showMessageBox(options)
   if (response === 2) return false
-  if (response === 1) return true
+  if (response === 1) {
+    // "Don't Save": the unsaved work is dropped, its recovery copy with it
+    viewDropped(contents.id, copyAgain(contents))
+    return true
+  }
   return new Promise<boolean>((resolve) => {
     const timer = setTimeout(() => {
       closeSaveWaiters.delete(contents.id)
@@ -283,6 +340,102 @@ export function mindmapSaveToPath(contents: WebContents, filePath: string): Prom
   })
 }
 
+/**
+ * A tool closes the map without saving (the in-app MCP server, the AI): the
+ * unsaved work is dropped, and its recovery copy with it, as with "Don't Save".
+ */
+export function discardMindmapRecovery(contents: WebContents): void {
+  viewDropped(contents.id, copyAgain(contents))
+}
+
+/**
+ * The recovery copy this view writes (its file's, or its own untitled id's),
+ * for the shell's session record and for reopening an untitled map whose
+ * renderer crashed. Null for a view that is not a live map view.
+ */
+export function mindmapRecoveryIdentity(webContentsId: number): RecoveryIdentity | null {
+  if (!contentsByWc.has(webContentsId)) return null
+  return viewRecoveryIdentity(webContentsId, savePathByWc.get(webContentsId))
+}
+
+/**
+ * The OS is ending the session: every map view with unsaved changes writes a
+ * copy now, without any question. Resolves when each has answered or its
+ * time ran out; never throws.
+ */
+export async function writeMindmapCopiesNow(timeoutMs = COPY_NOW_TIMEOUT_MS): Promise<void> {
+  const waits: Promise<void>[] = []
+  for (const [wcId, contents] of contentsByWc) {
+    if (contents.isDestroyed() || !dirtyByWc.has(wcId) || !mayWrite(wcId)) continue
+    waits.push(
+      new Promise<void>((resolve) => {
+        const finish = (): void => {
+          clearTimeout(timer)
+          if (copyNowWaiters.get(wcId) === finish) copyNowWaiters.delete(wcId)
+          resolve()
+        }
+        const timer = setTimeout(finish, timeoutMs)
+        copyNowWaiters.get(wcId)?.()
+        copyNowWaiters.set(wcId, finish)
+        try {
+          contents.send(MINDMAP_CHANNELS.recoveryCopyNow)
+        } catch {
+          finish()
+        }
+      }),
+    )
+  }
+  await Promise.all(waits)
+}
+
+/**
+ * Open `filePath` in a map view the shell made, with the recovery question
+ * already answered (launch list): `restore` loads the copy, the file staying
+ * the save target; `original` loads the file without asking. Call it in the
+ * tick the view is made with `createMindmapView(filePath)`; a view made for
+ * another file (or none) is pointed at this one and loaded again.
+ */
+export function openMindmapFileWithDecision(
+  contents: WebContents,
+  request: RecoveryOpenFileRequest,
+): void {
+  registerMindmapIpc()
+  const wcId = contents.id
+  setViewOpenDecision(wcId, request.decision)
+  if (openPathByWc.get(wcId) === request.filePath) return
+  openPathByWc.set(wcId, request.filePath)
+  allowedByWc.set(wcId, new Set([request.filePath]))
+  unopenedByWc.set(wcId, 'pending')
+  savePathByWc.delete(wcId)
+  dirtyByWc.delete(wcId)
+  if (!contents.isDestroyed()) contents.reload()
+}
+
+/**
+ * Load a recovery copy into an untitled map view the shell made (call it in
+ * the tick the view is made with `createMindmapView()`): the map opens unsaved,
+ * its first save asks where (offering `saveAsDefaultPath` when given), and a
+ * successful save deletes the copy.
+ */
+export function openMindmapUntitledCopy(
+  contents: WebContents,
+  request: RecoveryOpenUntitledRequest,
+): void {
+  registerMindmapIpc()
+  const bytes = takeUntitledCopy(contents.id, request)
+  if (bytes) queueMindmapSeedFor(contents, { bytes })
+  else console.warn('[mindmap] the recovery copy could not be read')
+}
+
+registerRecoveryEditor({
+  kind: 'mindmap',
+  writeCopiesNow: () => writeMindmapCopiesNow(),
+  openFileWithDecision: openMindmapFileWithDecision,
+  openUntitledCopy: openMindmapUntitledCopy,
+  // a password-protected map never opens here, so there is never a map without a safe copy
+  isUnprotectable: () => false,
+})
+
 /** Menu commands that need no answer: undo, redo, zoom and the like. */
 export function sendMindmapMenuCommand(contents: WebContents, command: MindmapMenuCommand): void {
   if (!contents.isDestroyed()) contents.send(MINDMAP_CHANNELS.menuCommand, command)
@@ -318,12 +471,15 @@ async function resolveSaveTarget(
   if (mode === 'save' && current) return current
   const win =
     BrowserWindow.fromWebContents(e.sender) ?? BrowserWindow.getFocusedWindow() ?? undefined
+  // a restored map whose file is gone is offered that file's old place
+  const restoredPath = current ? undefined : viewSaveAsDefault(e.sender.id)
   const defaultPath = current
     ? join(dirname(current), basename(current))
-    : join(
+    : (restoredPath ??
+      join(
         configuredDefaultSaveDir(app),
         `${fileNameBase(defaultName) || tm('untitledFile')}${MAP_EXTENSION}`,
-      )
+      ))
   const picked = await showSaveDialogWithMemory(dialog, win, {
     title: tm('dlgSaveTitle'),
     defaultPath,
@@ -331,6 +487,19 @@ async function resolveSaveTarget(
   })
   if (picked.canceled || !picked.filePath) return 'canceled'
   return withMapExtension(picked.filePath)
+}
+
+/** The window a question about this view sits over. */
+function parentWindowOf(contents: WebContents): BrowserWindow | null {
+  return BrowserWindow.fromWebContents(contents) ?? BrowserWindow.getFocusedWindow() ?? null
+}
+
+/** The name an untitled map's recovery copy is listed under: the tab title, else what the renderer offers. */
+function untitledCopyTitle(contents: WebContents, offered: unknown): string {
+  const fromShell = recoveryTitleHook?.(contents)
+  if (typeof fromShell === 'string' && fromShell.trim()) return fromShell.trim()
+  const name = typeof offered === 'string' ? offered.replace(/\s+/g, ' ').trim().slice(0, 80) : ''
+  return name || tm('untitledFile')
 }
 
 /** Bytes as they arrive over IPC: a typed array, a buffer, or nothing usable. */
@@ -356,10 +525,35 @@ function registerMindmapIpc(): void {
     if (typeof path !== 'string' || !allowedByWc.get(wcId)?.has(path)) {
       throw new Error('mindmap: path not granted to this view')
     }
-    let bytes: Uint8Array
+    // A recovery copy left for this file is settled before any of the map is loaded.
+    const restored = await resolveViewOpen(wcId, path, parentWindowOf(e.sender))
+    let bytes: Uint8Array | null
     try {
       bytes = new Uint8Array(await readFile(path))
     } catch {
+      bytes = null
+    }
+    if (restored) {
+      const copy = await openXmind(restored)
+      if (copy.status === 'ok') {
+        // the restored map is written only by a save; the copy is the whole file
+        unopenedByWc.delete(wcId)
+        if (bytes && (await openXmind(bytes)).status === 'ok') {
+          // the file still opens: it stays the save target
+          savePathByWc.set(wcId, path)
+          await rememberDiskState(wcId, path)
+          return { status: 'ok', bytes: restored, restored: 'file' }
+        }
+        // The file is gone or no longer opens, so it is not written over: the
+        // map is untitled, its first save offers the old place, and its copies
+        // keep replacing the restored one.
+        savePathByWc.delete(wcId)
+        viewRestoredUntitled(wcId, path)
+        return { status: 'ok', bytes: restored, restored: 'untitled' }
+      }
+      console.warn(`[mindmap] the recovery copy does not open (${copy.status}); the file opens`)
+    }
+    if (!bytes) {
       refuseWrites(wcId)
       return { status: 'unreadable' }
     }
@@ -435,6 +629,8 @@ function registerMindmapIpc(): void {
       allowed.add(target)
       allowedByWc.set(wcId, allowed)
       dirtyByWc.delete(wcId)
+      // the map is on disk: its recovery copies have done their part
+      viewSaved(wcId)
       // Refresh the record for the written bytes; the view no longer edits a moved-away path
       await rememberDiskState(wcId, target)
       if (previousPath && previousPath !== target) forgetDiskState(wcId, previousPath)
@@ -480,6 +676,24 @@ function registerMindmapIpc(): void {
   // the toolbar's "make another document from this one": the shell opens its make window (T18)
   ipcMain.on(MINDMAP_CHANNELS.makeFromDocument, (e) => makeFromDocumentHook?.(e.sender))
 
+  // crash-recovery copies: bytes from the renderer, kept in the app data folder only
+  ipcMain.handle(
+    MINDMAP_CHANNELS.recoveryCopy,
+    async (e, request: unknown): Promise<RecoveryCopyResult> => {
+      const wcId = e.sender.id
+      // nothing unsaved (a save came first), or a view whose file did not open
+      if (!mayWrite(wcId) || !dirtyByWc.has(wcId)) return 'skipped'
+      const { bytes: raw, name } = (request ?? {}) as { bytes?: unknown; name?: unknown }
+      const bytes = bytesOf(raw)
+      if (!bytes) return 'skipped'
+      return writeViewCopy(wcId, savePathByWc.get(wcId), bytes, () =>
+        untitledCopyTitle(e.sender, name),
+      )
+    },
+  )
+
+  ipcMain.on(MINDMAP_CHANNELS.recoveryCopyNowDone, (e) => copyNowWaiters.get(e.sender.id)?.())
+
   // the AI panel's attachments and the provisional name of an untitled map (T12)
   registerMindmapAiIpc({ hasFile: (wcId) => savePathByWc.has(wcId) })
   registerMindmapExportIpc({ filePathOf: (wcId) => savePathByWc.get(wcId) })
@@ -500,6 +714,7 @@ function refuseWrites(wcId: number): void {
 
 function grantAndTrack(wc: WebContents, openPath?: string | null): void {
   const wcId = wc.id
+  contentsByWc.set(wcId, wc)
   if (openPath && existsSync(openPath)) {
     openPathByWc.set(wcId, openPath)
     allowedByWc.set(wcId, new Set([openPath]))
@@ -512,7 +727,12 @@ function grantAndTrack(wc: WebContents, openPath?: string | null): void {
   wc.on('will-navigate', (event, url) => {
     if (url !== wc.getURL()) event.preventDefault()
   })
+  // a crashed view's recovery copies outlive it: the shell reopens the map from them
+  wc.on('render-process-gone', () => viewCrashed(wcId))
   wc.once('destroyed', () => {
+    viewGone(wcId, dirtyByWc.has(wcId))
+    contentsByWc.delete(wcId)
+    copyNowWaiters.get(wcId)?.()
     openPathByWc.delete(wcId)
     allowedByWc.delete(wcId)
     savePathByWc.delete(wcId)

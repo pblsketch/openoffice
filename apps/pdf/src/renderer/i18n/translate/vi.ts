@@ -11,7 +11,8 @@ export const vi = {
   trFormatPdf: 'PDF đã dịch',
   trFormatMd: 'Markdown đã dịch',
   trFormatEpub: 'EPUB đã dịch',
-  trBilingual: 'Song ngữ: mỗi đoạn gốc đi kèm bản dịch ngay sau (chỉ Markdown và EPUB)',
+  trBilingual:
+    'Song ngữ: trong Markdown và EPUB, bản dịch đi ngay sau mỗi đoạn gốc; trong PDF, mỗi trang đã dịch nằm cạnh trang gốc',
   trPdfEncrypted:
     'Tài liệu này được mã hóa nên không thể ghi bản dịch PDF vào đó. Markdown và EPUB vẫn dùng được.',
   trPdfScript:
@@ -58,7 +59,7 @@ export const vi = {
   trReportPending: '{count} khối chưa được dịch và giữ nguyên ngôn ngữ gốc.',
   trReportNone: 'Đã dịch tất cả các khối.',
   trReportUntranslated: 'Các khối giữ nguyên ngôn ngữ gốc',
-  trReportOverflowed: 'Khối tràn ra ngoài khung: {count} (trang {pages})',
+  trReportOverflowed: 'Khối giữ nguyên ngôn ngữ gốc vì không đủ chỗ: {count} (trang {pages})',
   trReportOriginalPages: 'Các trang giữ nguyên như cũ',
   trReportFiles: 'Các tệp đã lưu',
   trReasonLine: '{reason}: trang {pages} ({count} khối)',

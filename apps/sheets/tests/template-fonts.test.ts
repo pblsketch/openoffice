@@ -44,7 +44,7 @@ import {
   registerTemplateFonts,
   workbookTemplateFontUses,
 } from '../src/renderer/template-fonts'
-import { registeredCellFontAliases } from '../src/renderer/cell-font-fallback'
+import { registerCellFontAliases } from '../src/renderer/cell-font-fallback'
 
 const FOLDER = resolve(import.meta.dirname, '../../../packages/ui/template-fonts')
 
@@ -92,10 +92,29 @@ describe('template font faces', () => {
     ])
   })
 
-  it('lets the bundled Playfair Display win over its stand-in alias', () => {
-    const aliased = registeredCellFontAliases().map((alias) => alias.family)
-    expect(aliased).not.toContain('Playfair Display')
-    expect(aliased).toContain('Merriweather')
+  it('lets the bundled Playfair Display win over its stand-in alias', async () => {
+    const sources: string[] = []
+    vi.stubGlobal(
+      'FontFace',
+      class {
+        constructor(_family: string, source: string) {
+          sources.push(source)
+        }
+        load() {
+          return Promise.reject(new Error('not installed'))
+        }
+      },
+    )
+    vi.stubGlobal('document', { fonts: { add() {} } })
+    try {
+      await registerCellFontAliases(['Playfair Display', 'Merriweather'])
+      // template-fonts.ts registers the real Playfair faces, so the alias path
+      // must not look up a stand-in whose local() chain could beat them
+      expect(sources.join()).not.toMatch(/Playfair/i)
+      expect(sources.join()).toContain('Merriweather')
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })
 

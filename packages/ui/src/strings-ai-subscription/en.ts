@@ -21,7 +21,7 @@ export const en = {
   cardErrFailed: 'Something went wrong while checking {provider}. Check again.',
   actionInstall: 'Install',
   actionLogin: 'Sign in',
-  actionLoginWindow: 'Browser did not open, or shows a code?',
+  actionLoginWindow: 'Browser did not open?',
   actionRecheck: 'Check again',
   actionAcceptMetered: 'Use anyway',
   actionInstallHelp: 'Official install guide',
@@ -34,7 +34,7 @@ export const en = {
   signingInBrowserNote:
     'Sign in to your {vendor} account in the browser that opened and allow access. It connects by itself when you are done.',
   signingInWindowNote:
-    'If the browser did not open, copy the address shown in the window that just opened and open it in your browser. When the browser shows a code, copy it, paste it once into that window, and press Enter. The pasted code may not appear in the window.',
+    'Follow the guide at the top of the sign-in window that just opened. Sign in on the {vendor} page that opened in your browser: the window then closes and you are connected. A sign-in page that was open before no longer works; close it.',
   meteredWarning: 'This is not a subscription: you are charged for what you use.',
   meteredMeaning:
     'This login is an API key or a pay-as-you-go account, or its type could not be confirmed. "Use anyway" lets AI run on this connection, and every request is billed to that account.',
@@ -113,8 +113,21 @@ export const en = {
   loginHowNote:
     'A browser opens when you press it. Sign in with your {vendor} account and press Allow; the connection finishes by itself.',
   signingInStalledNote:
-    "The browser did not open, or it shows a code? Open the sign-in window with the button below. Paste the address shown there into your browser, or paste the browser's code into the window.",
+    'If no sign-in page opened in your browser, open the sign-in window with the button below. If you are still signing in in the browser, finish there instead: the button stops that sign-in and starts over.',
   actionLoginWindowOpen: 'Open the sign-in window',
+  loginWindowTitle: '{provider} sign-in',
+  loginWindowIntro:
+    'This is the sign-in window of the {provider} program. The English text below comes from the {provider} program.',
+  loginWindowStepBrowser:
+    'When the {vendor} sign-in page opens in your browser, sign in and allow access. This window then closes by itself.',
+  loginWindowStepAddress:
+    "If no browser opened, drag over the address below that starts with https:// to select it, then right-click to copy it. Paste it into your browser's address bar to open the sign-in page.",
+  loginWindowStepCode:
+    'If the browser shows a code after you sign in, copy the whole code (use its copy button if there is one). Right-click once inside this window to paste it, then press Enter. It is normal that the pasted code does not appear.',
+  loginWindowStepInvalid:
+    'If you see "Invalid code", the code was not copied in full. Keep this window open, copy the code again, and paste it.',
+  loginWindowClosing:
+    'The sign-in did not finish. When you have read the messages above, press Enter to close this window. To try again, press the sign-in button again.',
   actionCancelLogin: 'Cancel sign-in',
   actionUpdate: 'Update',
   updateNote:
@@ -123,4 +136,5 @@ export const en = {
     'Still stuck? Copy the connection details and send them to whoever is helping you. They contain no account and no file paths.',
   actionCopyInfo: 'Copy details for help',
   copyInfoDone: 'Copied',
+  actionConnectHelp: 'See each step on screen (page in Korean)',
 } satisfies Record<keyof typeof zh, string>

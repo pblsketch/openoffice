@@ -323,10 +323,11 @@ export function createPdfStructureHandlers(deps: StructureHandlerDeps) {
     return v as unknown as TranslationInput
   }
 
-  /** a translated-PDF payload names the target language; nothing else is passed on */
-  function writeBackPayloadOf(v: unknown): { lang: string } | null {
+  /** a translated-PDF payload names the target language and whether it is bilingual; nothing else is passed on */
+  function writeBackPayloadOf(v: unknown): { lang: string; bilingual?: true } | null {
     if (!isRecord(v) || typeof v.lang !== 'string' || !LANGUAGE_TAG.test(v.lang)) return null
-    return { lang: v.lang }
+    if (v.bilingual !== undefined && typeof v.bilingual !== 'boolean') return null
+    return { lang: v.lang, ...(v.bilingual === true ? { bilingual: true as const } : {}) }
   }
 
   function epubOptionsOf(v: unknown): PdfStructureEpubOptions | null {

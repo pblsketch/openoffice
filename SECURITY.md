@@ -12,6 +12,20 @@ IeumOffice is a modified version of GenOffice (see
 problem is in code the two projects share (the document engines, for example),
 please consider reporting it to the upstream project as well.
 
+## Verifying a Download
+
+The Windows installer, like the Mac and Linux packages, is built by GitHub
+Actions from this repository. A Windows installer built that way carries a
+build provenance attestation, so you can check that it was made from this
+repository's source by its own workflow:
+
+```
+gh attestation verify IeumOffice-Setup-<version>.exe --repo pblsketch/openoffice
+```
+
+The installer is not code-signed, so Windows shows an "unknown publisher"
+warning the first time you run it.
+
 ## Trademark and Copyright Reports
 
 Send trademark or copyright infringement reports and licensing questions to
@@ -32,9 +46,15 @@ All application windows run with the full Electron renderer lockdown:
 - No API keys are hardcoded and the project runs no AI service of its own. By
   default AI requests run through the Claude Code or Codex program installed on
   the PC, under the login the user made there (see the next section).
-  User-supplied API keys are kept in the app's settings file
-  (`ai-settings.json` in the app's user-data folder) as plain JSON: they are
-  not encrypted and are protected only by the permissions of the user account.
+  User-supplied API keys and tokens are kept in the app's settings file
+  (`ai-settings.json` in the app's user-data folder). On Windows (DPAPI) and
+  on Linux with a desktop keyring (GNOME Keyring, KWallet) they are sealed with
+  the operating system's encryption through Electron safeStorage, which ties
+  them to the user account; the `ieumoffice` command asks the app, started
+  hidden, to open them. On macOS, and on Linux without a keyring, they are
+  still plain JSON, protected only by the permissions of the user account:
+  the Mac build is not Developer ID signed, and sealing there would ask for
+  Keychain access after every update.
 
 ## Subscription Programs (Claude Code, Codex)
 

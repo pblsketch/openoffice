@@ -126,6 +126,8 @@ export interface Pdfium {
   _FPDFBitmap_GetStride(bitmap: number): number
   // Annotation access (annot-delete.ts); EPDF_* are embedpdf extensions
   _FPDFPage_GetAnnotCount(page: number): number
+  /** Bake every annotation and form field on the page into its content stream. */
+  _FPDFPage_Flatten(page: number, flags: number): number
   _FPDFPage_GetAnnot(page: number, index: number): number
   _FPDFPage_CloseAnnot(annot: number): void
   _FPDFPage_RemoveAnnot(page: number, index: number): number

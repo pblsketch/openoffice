@@ -133,7 +133,7 @@ export function NoteOpenRibbonButton({ actions, t }: { actions: NoteActions; t: 
       <span className="rb-big-icon">
         <NoteIcon />
       </span>
-      {t('ntOpen')}
+      <span>{t('ntOpen')}</span>
     </button>
   )
 }

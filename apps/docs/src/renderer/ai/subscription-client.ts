@@ -11,8 +11,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
   AiSubscriptionProviderId,
   AiSubscriptionState,
+  SubscriptionConnectHelpPath,
   SubscriptionStatusMap,
 } from '@genoffice/ai-provider/browser'
+import { subscriptionConnectHelpUrl } from '@genoffice/ai-provider/browser'
 import { AI_SUBSCRIPTION_INSTALL_HELP_URLS } from '@genoffice/ui'
 import type { SubscriptionApi } from '../../shared/subscription-api'
 import { checkingSubscriptionStatuses } from '../../shared/subscription-api'
@@ -31,6 +33,8 @@ export interface SubscriptionConnection {
   /** "use anyway" on a metered login */
   readonly acceptMetered: (provider: AiSubscriptionProviderId) => void
   readonly openInstallHelp: (provider: AiSubscriptionProviderId) => void
+  /** open the website's step-by-step connect help at the guide's path */
+  readonly openConnectHelp: (path: SubscriptionConnectHelpPath | null) => void
   /** look again without a card asking for it (both providers when none is named) */
   readonly refresh: (providers?: AiSubscriptionProviderId[]) => void
 }
@@ -161,6 +165,10 @@ export function useSubscriptionConnection(): SubscriptionConnection {
     // a fixed vendor page; the main process opens it in the default browser
     window.open(AI_SUBSCRIPTION_INSTALL_HELP_URLS[provider])
   }, [])
+  const openConnectHelp = useCallback((path: SubscriptionConnectHelpPath | null) => {
+    // a fixed page of the product website, opened the same way
+    window.open(subscriptionConnectHelpUrl(path))
+  }, [])
   const refresh = useCallback(
     (providers?: AiSubscriptionProviderId[]) => {
       void check(providers)
@@ -178,6 +186,7 @@ export function useSubscriptionConnection(): SubscriptionConnection {
     recheck,
     acceptMetered,
     openInstallHelp,
+    openConnectHelp,
     refresh,
   }
 }

@@ -78,9 +78,11 @@ export const IPC_CHANNELS = {
   writeWorkbookRecovery: 'workbook:write-recovery',
   /** The workbook as edited, as bytes, for a skill's template (spec 5.6); nothing is written for the user */
   workbookTemplateBytes: 'workbook:template-bytes',
-  /** Main found a newer recovery copy while opening; renderer shows the styled prompt */
-  recoveryPrompt: 'workbook:recovery-prompt',
-  recoveryPromptReply: 'workbook:recovery-prompt-reply',
+  /** Main → renderer: this tab's workbook keeps no recovery copy (password); show the notice text once */
+  recoveryNotice: 'workbook:recovery-notice',
+  /** Main → renderer (the OS is ending the session): write the recovery copy now, then answer with the nonce */
+  recoveryWriteNow: 'workbook:recovery-write-now',
+  recoveryWriteNowDone: 'workbook:recovery-write-now-done',
   autoRenameWorkbook: 'workbook:auto-rename',
   workbookRenamed: 'workbook:renamed',
   pendingEditsChanged: 'workbook:pending-edits',

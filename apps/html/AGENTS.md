@@ -32,6 +32,7 @@ HTML 에디터다. HTML 원문이 기준이고, 옆에서 실시간 미리 보�
 
 ## 이 모듈의 방식
 
+- **발표는 기존 Present 화면을 키로 연다.** F5는 전체화면 발표(`startPresent('fullscreen')`), Ctrl/Shift+F5는 탭 안 발표(`startPresent('tab')`), Esc·F5는 끝낸다. 키 판정은 `@genoffice/ui`의 `presentationKeyOf` 하나이고, 전체화면은 기존 `setPresentFullScreen`(macOS simpleFullScreen 포함)과 `enter-html-full-screen`이 맡는다.
 - 메인 코드는 shell 번들에 들어간다(`../../../html/src/main/html-main`을 상대 경로로 import한다). `src/main`을 고친 뒤에는 shell을 다시 빌드한다. 단독 실행 진입은 `will-quit`에서 `shutdownSubscriptionChildren`을 부른다.
 - 쪽 전체 생성은 도구 호출이 아니라 `streamText`로 한다. 답의 본문이 곧 HTML이고, 글자가 오는 대로 미리 보기가 채워진다. 쪽 크기의 내용을 도구 인자로 받으면 JSON이 끝날 때까지 서버가 붙잡고 있어 중간 게이트웨이의 유휴 제한에 걸리고 빈 스트림으로 도착한다. `</html>` 전에 끊긴 답은 잘린 것으로 표시한다.
 - 생성 전에 사용자와 합의한 개요(`Brief`)는 문서 머리의 meta 태그에 JSON으로 고정된다. 이후 편집과 다시 열기가 그것을 기준으로 삼는다. 빈 문서에서 고른 의도(디자인된 쪽 / 내용 쓰기)는 첫 생성에만 영향을 준다.
@@ -43,6 +44,7 @@ HTML 에디터다. HTML 원문이 기준이고, 옆에서 실시간 미리 보�
 - 글자를 고치는 중의 키와 검사기가 명령으로 쓴 키는 창(window) 단계에서 멈춰 쪽 스크립트에 가지 않는다(`tests/inspector-keys.test.ts`). 슬라이드 쪽이 스페이스바로 장을 넘기던 문제 때문이다. 장으로 가려고 검사기가 대신 누르는 키는 검사기 자신의 단축키 처리를 건너뛴다.
 - AI의 쪽 점검(`check_pages`, 그리고 `@page`가 있는 쪽을 새로 쓴 직후의 도구 결과)은 추측이 아니라 측정이다. 보이는 미리 보기와 별개의 프레임(`preview/page-probe.ts`)에 같은 사본을 용지로 배치해 재고, 프레임의 답은 `readPageMeasure`로 한 칸씩 확인한 뒤 `formatPageReport`가 sid와 쪽 번호의 문장으로 바꾼다. 측정하지 못하면 도구가 오류로 답하고 쪽수를 지어내지 않는다.
 - 인쇄 대화 상자는 모달이다. `runGuardedPrint`가 대화 상자가 열려 있는 동안의 두 번째 인쇄 요청을 막는다.
+- 복구 사본: 저장하지 않은 변경이 있으면 화면이 약 30초마다 저장할 때 쓸 글자 그대로를 뒷단에 넘기고(`src/renderer/recovery-copy.ts`, 자동 저장 스위치와 무관), 뒷단이 공용 저장소로 `<userData>/html-autosave`에 둔다(`src/main/recovery.ts`). 원본 파일과 사용자 폴더에는 쓰지 않는다(제목 없는 문서 포함). 저장(자동 저장·다른 이름·MCP 포함)은 사본을 지우고, "저장 안 함"과 MCP의 저장 없이 닫기는 `dontSave`로, 깨끗하게 닫힌 탭은 자기가 쓴 사본만 지운다. 화면이 죽은 탭과 앱이 끝나는 중의 닫기는 지우지 않는다. 사본이 있는 파일을 열면 내용을 읽기 전에 `recoveryOpen`이 공용 물음(Esc는 되살리기)을 거치고, 되살린 글은 원래 경로를 저장 대상으로 둔 채 "바뀜" 상태로 열린다. 껍데기 앱은 `htmlRecoveryEditor`(약속), `htmlRecoveryIdentity`, `setHtmlRecoveryTitleSource`를 쓴다. `recovery.ts`와 `recovery-copy.ts`는 마크다운 편집기의 같은 이름 파일과 내용이 같다.
 - 문자열은 `src/renderer/i18n/`의 언어별 조각(`ai/`, `app/`)이고 `zh.ts`가 키 집합을 정한다. 21개 언어 모두에 넣는다. 구독 연결 문장과 AI 진입 이름은 `@genoffice/ui`의 것을 쓴다.
 
 ## 테스트

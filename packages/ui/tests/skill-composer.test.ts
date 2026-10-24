@@ -170,9 +170,12 @@ describe('AiComposer with skills', () => {
     expect(rows()).toHaveLength(3)
     expect(rows()[2]).toBe('스킬 관리…')
     expect(host.textContent).not.toContain('꺼진 스킬')
-    type('/가정')
+    // rows show the skill name, not its title
+    expect(rows()[0]).toContain('minutes')
+    expect(rows()[0]).not.toContain('회의록 정리')
+    type('/let')
     await flush()
-    expect(rows()).toEqual([expect.stringContaining('가정통신문'), '스킬 관리…'])
+    expect(rows()).toEqual([expect.stringContaining('letter'), '스킬 관리…'])
     expect(textarea().getAttribute('aria-expanded')).toBe('true')
   })
 
@@ -198,12 +201,12 @@ describe('AiComposer with skills', () => {
   it('Enter picks instead of sending: the /word leaves the input and a chip appears', async () => {
     const h = mount(fakeBridge(list))
     await flush()
-    type('요약해 줘 /회의')
+    type('요약해 줘 /min')
     key('Enter')
     await flush()
     expect(h.sent).toEqual([])
     expect(textarea().value).toBe('요약해 줘 ')
-    expect(chipTitles()).toEqual(['회의록 정리'])
+    expect(chipTitles()).toEqual(['minutes'])
   })
 
   it('↓ then Tab picks the next row; the same skill goes in only once', async () => {
@@ -281,7 +284,7 @@ describe('AiComposer with skills', () => {
     const bridge = fakeBridge(list)
     const h = mount(bridge)
     await flush()
-    type('/회의')
+    type('/min')
     key('Enter')
     await flush()
     expect(h.skills.chips).toHaveLength(1)

@@ -22,6 +22,12 @@
 - **`⌘O`、`⌘S`、`⌘P` はエディターごとに個別に実装されており、挙動もまったく同じではありません。** Word の `⌘P` はまず印刷プレビューを組版し、紙の 1 枚が画面上の 1 ページに一致するようにします。PDF の `⌘P` は PDF の印刷ダイアログを開き、Sheets と Slides はまたそれぞれ独自のものになります。
 - **残りはアプリケーションごとの扱いです。** Word タブがアクティブなとき `⌘B` は Word の太字です。Slides がアクティブなときは Slides の太字になり、そのキーに対応するメニューは、いつものものとは限りません。選択中や特定のペインでのみ作動する割り当ては、操作の列に記してあります。
 
+## プレゼンテーションモード
+
+- **開始**: Word・PDF・マインドマップ・HTML・Markdown では F5。表計算では Ctrl+F5（A1 から）または Shift+F5（現在のセルから）。
+- **その他の入口**: Word は Ctrl+F5・Shift+F5 で全画面なしの閲覧ビュー、PDF は現在のページから、HTML はタブ内で発表します。
+- **終了**: Esc または F5。F11 はウィンドウ自体の全画面で、文書の表示は変わりません。
+
 ## 表記の約束
 
 - macOS の列では見慣れた記号を使います: `⌘` Command、`⌥` Option、`⇧` Shift、`⌃` Control。
@@ -588,3 +594,154 @@ GenOffice HTML はライブプレビューの横にコードエディターを�
 | 選択範囲を斜体にする         | ⌘I    | Ctrl+I          |
 
 確定すると入力内容が保たれ、要素は選択状態に戻ります。
+
+## HWP/HWPX
+
+以下のキーは、HWP/HWPX タブが前面にあり、文書にフォーカスがあるときに働きます。2 列は macOS と Windows / Linux での押し方を並べたものです。
+
+### ファイル
+
+| 操作              | macOS | Windows / Linux      |
+| ----------------- | ----- | -------------------- |
+| 新規文書          |       | Alt+N                |
+| 開く…             | ⌘O    | Ctrl+O / Alt+O       |
+| 保存              | ⌘S    | Ctrl+S / Alt+S       |
+| 名前を付けて保存… | ⇧⌘S   | Ctrl+Shift+S / Alt+V |
+| 印刷              | ⌘P    | Ctrl+P / Alt+P       |
+
+### 編集
+
+| 操作         | macOS       | Windows / Linux              |
+| ------------ | ----------- | ---------------------------- |
+| 元に戻す     | ⌃Z          | Ctrl+Z                       |
+| やり直し     | ⌃⇧Z         | Ctrl+Shift+Z                 |
+| 行を削除     | ⌃Y          | Ctrl+Y                       |
+| 切り取り     | ⌃X          | Ctrl+X                       |
+| コピー       | ⌃C          | Ctrl+C                       |
+| 貼り付け     | ⌃V          | Ctrl+V                       |
+| 削除         | ⌃E          | Ctrl+E                       |
+| すべて選択   | ⌃A          | Ctrl+A                       |
+| 書式のコピー | ⌥C          | Alt+C                        |
+| 検索         | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
+| 検索と置換   | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
+| 次を検索     | ⌃L          | Ctrl+L                       |
+| 逆方向に検索 | ⌃Q, L       | Ctrl+Q, L                    |
+| 移動         | ⌥G          | Alt+G                        |
+| 文書の比較   | ⌥⇧V         | Alt+Shift+V                  |
+
+### 文字書式
+
+| 操作                   | macOS    | Windows / Linux      |
+| ---------------------- | -------- | -------------------- |
+| 太字                   | ⌃B / ⌥⇧B | Ctrl+B / Alt+Shift+B |
+| 斜体                   | ⌃I / ⌥⇧I | Ctrl+I / Alt+Shift+I |
+| 下線                   | ⌃U / ⌥⇧U | Ctrl+U / Alt+Shift+U |
+| 標準の文字書式         | ⌥⇧C      | Alt+Shift+C          |
+| 上付き文字             | ⌥⇧P      | Alt+Shift+P          |
+| 下付き文字             | ⌥⇧S      | Alt+Shift+S          |
+| 文字書式…              | ⌥L       | Alt+L                |
+| フォントサイズを大きく | ⌥⇧E / ⌃] | Alt+Shift+E / Ctrl+] |
+| フォントサイズを小さく | ⌥⇧R / ⌃[ | Alt+Shift+R / Ctrl+[ |
+| 文字幅を広げる         | ⌥⇧K      | Alt+Shift+K          |
+| 文字幅を狭める         | ⌥⇧J      | Alt+Shift+J          |
+| 文字間隔を広げる       | ⌥⇧W      | Alt+Shift+W          |
+| 文字間隔を狭める       | ⌥⇧N      | Alt+Shift+N          |
+| 黒い文字               | ⌃M, K    | Ctrl+M, K            |
+| 赤い文字               | ⌃M, R    | Ctrl+M, R            |
+| 青い文字               | ⌃M, B    | Ctrl+M, B            |
+| 紫の文字               | ⌃M, D    | Ctrl+M, D            |
+| 緑の文字               | ⌃M, G    | Ctrl+M, G            |
+| 黄色い文字             | ⌃M, Y    | Ctrl+M, Y            |
+| 青緑の文字             | ⌃M, C    | Ctrl+M, C            |
+| 白い文字               | ⌃M, W    | Ctrl+M, W            |
+
+### 段落書式
+
+| 操作                       | macOS   | Windows / Linux |
+| -------------------------- | ------- | --------------- |
+| 左揃え                     | ⌃⇧L     | Ctrl+Shift+L    |
+| 中央揃え                   | ⌃⇧C     | Ctrl+Shift+C    |
+| 右揃え                     | ⌃⇧R     | Ctrl+Shift+R    |
+| 両端揃え                   | ⌃⇧M     | Ctrl+Shift+M    |
+| 均等割り付け               | ⌃⇧T     | Ctrl+Shift+T    |
+| 行間を広げる               | ⌥⇧Z     | Alt+Shift+Z     |
+| 行間を狭める               | ⌥⇧A     | Alt+Shift+A     |
+| 段落書式…                  | ⌥T      | Alt+T           |
+| スタイル…                  | F6      | F6              |
+| 1～10 番目のスタイルを適用 | ⌃1 … ⌃0 | Ctrl+1 … Ctrl+0 |
+| 段落番号の書式             | ⌃K, N   | Ctrl+K, N       |
+
+### 挿入
+
+| 操作                                    | macOS       | Windows / Linux    |
+| --------------------------------------- | ----------- | ------------------ |
+| 表の挿入                                | ⌃N, T       | Ctrl+N, T          |
+| 脚注                                    | ⌃N, N       | Ctrl+N, N          |
+| 文末脚注                                | ⌃N, E       | Ctrl+N, E          |
+| ヘッダー                                | ⌃N, H       | Ctrl+N, H          |
+| ページ番号                              | ⌃N, P       | Ctrl+N, P          |
+| 画像の挿入                              | ⌃N, I       | Ctrl+N, I          |
+| テキストボックス                        | ⌃N, B       | Ctrl+N, B          |
+| 数式                                    | ⌃N, M       | Ctrl+N, M          |
+| キャプションの挿入                      | ⌃N, C       | Ctrl+N, C          |
+| ハイパーリンク                          | ⌃K, H       | Ctrl+K, H          |
+| ブックマーク                            | ⌃K, B       | Ctrl+K, B          |
+| フィールドの挿入                        | ⌃K, E       | Ctrl+K, E          |
+| 日付/時刻の文字列                       | ⌃K, D       | Ctrl+K, D          |
+| オブジェクト・フィールド・表/セルの編集 | ⌃N, K       | Ctrl+N, K          |
+| 記号                                    | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+
+### 表
+
+| 操作         | macOS        | Windows / Linux        |
+| ------------ | ------------ | ---------------------- |
+| 行/列の追加  | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| 行/列の削除  | ⌥⌫           | Alt+Delete             |
+| セルの分割   | F5 → S       | F5 → S                 |
+| セルの結合   | F5 → M       | F5 → M                 |
+| ブロック合計 | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| ブロック平均 | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| ブロック積   | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| 表の分割     | ⌃N, A        | Ctrl+N, A              |
+| 表の連結     | ⌃N, Z        | Ctrl+N, Z              |
+| 計算式       | ⌃N, F        | Ctrl+N, F              |
+
+### 表の計算
+
+カーソルが表の空のセルにあるときだけ働きます。左のセルから計算するキーと、上のセルから計算するキーがあります。
+
+| 操作     | macOS | Windows / Linux |
+| -------- | ----- | --------------- |
+| 左の合計 | ⇧⌘H   | Ctrl+Shift+H    |
+| 上の合計 | ⌃⇧V   | Ctrl+Shift+V    |
+| 左の平均 | ⌃⇧J   | Ctrl+Shift+J    |
+| 上の平均 | ⌃⇧B   | Ctrl+Shift+B    |
+| 左の積   | ⌃⇧K   | Ctrl+Shift+K    |
+| 上の積   | ⌃⇧N   | Ctrl+Shift+N    |
+
+### ページ
+
+| 操作             | macOS | Windows / Linux  |
+| ---------------- | ----- | ---------------- |
+| ページ設定       | F7    | F7               |
+| 改ページ         | ⌃⏎    | Ctrl+Enter       |
+| 段の改ページ     | ⌃⇧⏎   | Ctrl+Shift+Enter |
+| 段設定の改ページ | ⌃⌥⏎   | Ctrl+Alt+Enter   |
+| セクション設定   | ⌃N, G | Ctrl+N, G        |
+| ページを隠す     | ⌃N, S | Ctrl+N, S        |
+
+### 表示
+
+| 操作                            | macOS | Windows / Linux |
+| ------------------------------- | ----- | --------------- |
+| 拡大                            | ⌃=    | Ctrl+=          |
+| 縮小                            | ⌃-    | Ctrl+-          |
+| ページに合わせる                | ⌃G, P | Ctrl+G, P       |
+| 幅に合わせる                    | ⌃G, W | Ctrl+G, W       |
+| 100% に拡大                     | ⌃G, Q | Ctrl+G, Q       |
+| ツールボックスの折りたたみ/展開 | ⌃F1   | Ctrl+F1         |
+| 段落記号の表示/非表示           | ⌃G, T | Ctrl+G, T       |
+| 制御記号の表示/非表示           | ⌃G, C | Ctrl+G, C       |
+| ホームタブへ（表の外）          | ⇧⌘H   | Ctrl+Shift+H    |
+
+`Ctrl+N,T` のようにコンマでつないだキーは、前のキーを押して離し、次に後のキーを押すことを意味します。`F5 → S` は F5 でセルブロックを選んでから S を押すことを意味します。`Ctrl+1 … Ctrl+0` は文書の 1～10 番目のスタイルを指し、`Ctrl+Alt+1 … Ctrl+Alt+0` でも同じスタイルが適用されます。 セルブロックを選択しているとき、`Ctrl+Shift+S`（macOS では `⇧⌘S`）はブロック合計です。それ以外では、このキーは名前を付けて保存です。

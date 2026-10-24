@@ -86,6 +86,7 @@ export const id = {
   ribbonFontEastAsia: 'Font Asia Timur',
   ribbonFontLatin: 'Font Latin',
   ribbonFontFamilyTip: 'Font',
+  ribbonFontDialogTip: 'Font — skala dan spasi karakter ada di tab Lanjutan',
   ribbonFontsCommon: 'Font umum',
   ribbonFontsSystem: 'Font sistem',
   ribbonFontsHangul: 'Font Korea',

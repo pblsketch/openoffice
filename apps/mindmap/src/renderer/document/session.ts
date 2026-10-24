@@ -27,6 +27,7 @@ import {
   deleteSheet,
   isRecord,
   type NewSheetOptions,
+  openXmind,
   reconcileSheet,
   type ReconcileResult,
   recogniseSheetTheme,
@@ -86,11 +87,28 @@ export class DocumentSession {
   #entries: SheetEntry[]
   /** bytes were produced that hold changes the disk does not have yet */
   #unwritten = false
+  /**
+   * The bytes the document holds as its baseline (the file as opened, or as
+   * last produced), which a save rewrites. Null when not known: a document
+   * handed over already changed without its bytes.
+   */
+  #baseline: Promise<Uint8Array | null>
   readonly #listeners = new Set<() => void>()
 
-  constructor(document: XmindDocument) {
+  /**
+   * `baseline`: the bytes `document` was opened from. Left out, it is taken
+   * from the document when that has no changes yet (an unchanged save hands
+   * back the baseline and changes nothing).
+   */
+  constructor(document: XmindDocument, baseline?: Uint8Array) {
     this.#document = document
     this.#entries = document.sheets.map(() => newEntry())
+    // kept as passed, not copied: a map's bytes are held once
+    this.#baseline = baseline
+      ? Promise.resolve(baseline)
+      : document.changed
+        ? Promise.resolve(null)
+        : document.save()
   }
 
   /** The engine's document. Later work (themes, pictures) reads and edits the tree through it. */
@@ -357,7 +375,36 @@ export class DocumentSession {
     const changed = this.#document.changed
     const bytes = await this.#document.save({ thumbnail: options.thumbnail })
     if (changed) this.#unwritten = true
+    // a save makes its result the document's new baseline; the engine hands
+    // back a fresh array, so it is kept as it is rather than copied again
+    this.#baseline = Promise.resolve(bytes)
     return bytes
+  }
+
+  /**
+   * The bytes of a crash-recovery copy: what `produceBytes` would hand over
+   * now, made without touching the document. A save makes its result the new
+   * baseline, so saving the live document for a copy would change what a
+   * later save compares with (an edit undone would no longer save as the
+   * file's own bytes); the copy is made from a second document opened on the
+   * same baseline instead. Every entry but `content.json` is carried over
+   * from the baseline exactly as a save carries it, so the copy alone is the
+   * whole file. The preview picture is left as it is: the save after a
+   * restore draws a new one. The unsaved mark does not change.
+   */
+  async recoveryBytes(): Promise<Uint8Array> {
+    const baseline = await this.#baseline
+    // nothing to rewrite: a save hands back the baseline and changes nothing
+    if (!this.#document.changed) return baseline ?? this.#document.save()
+    if (!baseline) throw new Error('mindmap: the map has no baseline to make a copy from')
+    const shadow = await openXmind(baseline)
+    if (shadow.status !== 'ok')
+      throw new Error(`mindmap: the baseline does not open (${shadow.status})`)
+    // the live sheets only get read: the save serialises them before its first await
+    const sheets = shadow.document.sheets
+    sheets.splice(0, sheets.length, ...this.#document.sheets)
+    shadow.document.markChanged()
+    return shadow.document.save()
   }
 
   /** The bytes last produced reached the disk. */

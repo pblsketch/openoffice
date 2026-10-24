@@ -5,7 +5,7 @@
  * this only arranges it for the screen.
  */
 import type { Lang } from '@genoffice/i18n'
-import { builtinSkillDesc, builtinSkillTitle, isBuiltinSkillName } from '@genoffice/ui'
+import { builtinSkillDesc, isBuiltinSkillName, skillDisplayName } from '@genoffice/ui'
 import type { UserSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
 import type {
   UserSkillNameProblem,
@@ -38,12 +38,9 @@ export function groupLabelKey(group: SkillGroupId): SkillsStringKey {
 
 type Text = (key: SkillsStringKey, params?: Record<string, string | number>) => string
 
-/** The title a row shows: builtins in the screen language, others as written */
-export function skillDisplayTitle(view: UserSkillView, lang: Lang): string {
-  if (view.source === 'builtin' && isBuiltinSkillName(view.name)) {
-    return builtinSkillTitle(lang, view.name)
-  }
-  return view.title || view.name
+/** What a row is called: the skill's name (a made-up name shows the title it was made with) */
+export function skillDisplayTitle(view: UserSkillView): string {
+  return skillDisplayName(view.source === 'builtin' ? { name: view.name } : view)
 }
 
 export function skillDisplayDesc(view: UserSkillView, lang: Lang): string {
@@ -80,7 +77,7 @@ export function skillMatches(view: UserSkillView, query: string, lang: Lang): bo
   const needle = query.trim().toLowerCase()
   if (!needle) return true
   return [
-    skillDisplayTitle(view, lang),
+    skillDisplayTitle(view),
     view.title,
     view.name,
     skillDisplayDesc(view, lang),
@@ -108,7 +105,7 @@ export function groupSkills(
         if (id === 'plugin' && a.plugin !== b.plugin) {
           return (a.plugin ?? '').localeCompare(b.plugin ?? '')
         }
-        return skillDisplayTitle(a, lang).localeCompare(skillDisplayTitle(b, lang))
+        return skillDisplayTitle(a).localeCompare(skillDisplayTitle(b))
       })
     if (skills.length > 0) groups.push({ id, skills })
   }

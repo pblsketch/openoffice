@@ -71,12 +71,14 @@ import { labelPlaceholdersInDocx } from './odt-label-docx'
 import { confirmFormatChange } from './components/format-change-bus'
 import { PHASED_APPEND } from './editor/streaming-tail-guard'
 import { docTextLength, docWeight, openTierFor } from './large-document'
+import { documentToMarkdown } from './export-markdown'
 import { blocksHaveRevisions } from './editor/revision-view'
 import { docStyleCss } from './doc-style-css'
 import { setNoteNumFmts } from './note-format'
 import type { CompareEntry } from './editor/compare'
 import { blocksToPmDoc, pmDocOptions, pmDocToSavePlan, type PmNode } from './editor/convert'
 import { TABLE_TRAILING_SKIP, setLazyMediaHashes } from './editor/extensions'
+import { FORMAT_MARKS, serializeMarks } from './editor/caret-marks'
 import { TRACK_IGNORE } from './editor/revisions'
 import {
   cancelPhasedContent,
@@ -99,11 +101,18 @@ import { pruneUnreferencedNumbering } from './numbering-actions'
 import { applySectPrRewrites, type SectPrRewrite } from './sectpr-rewrite'
 import { createSaveSerializer } from './save-until-persisted'
 import { checkMissingFonts, collectDocFonts } from './font-check'
-import { hangulSpaceWideningFor, setDocFontTable, setHangulSpaceWidening } from './line-metrics'
+import {
+  hangulSpaceWideningFor,
+  loadBundledStandIns,
+  setDocFontTable,
+  setHangulSpaceWidening,
+} from './line-metrics'
 import { adoptEmbeddedFonts } from './embedded-fonts'
 import { defaultEastAsiaFontFor } from './font-list'
 import { hasPrintableHeaderFooter } from './pagination'
 import { clearPrintZoom, setPrintZoom } from './print-zoom'
+import { collectPdfInternalLinks } from './pdf-internal-links'
+import type { PdfInternalLink } from '../shared/ipc'
 import { showToast } from './components/toast-bus'
 import { buildStandaloneHtml } from './html-export'
 import { aiPanelInitiallyOpen } from '@genoffice/ui'
@@ -298,6 +307,51 @@ function resetEditorHistory(editor: Editor): void {
   editor.registerPlugin(history((plugin.spec as { config?: object }).config))
 }
 
+/**
+ * The formatting marks that would apply to text typed at the caret right now:
+ * the selection's storedMarks when set, else the marks before it. Tiptap's
+ * setMark() stores its result here on a collapsed cursor, which is how the
+ * ribbon's font and size keep applying to the next keystroke.
+ *
+ * Snapshot as a serializeMarks() string rather than live Mark instances: a
+ * save's setContent() swaps the document out from under them. FORMAT_MARKS
+ * keeps annotation marks (comments, links, revisions) out — restoring those
+ * would extend a comment or a revision onto text the user never marked.
+ *
+ * CaretMarksMemory (caret-marks.ts) already re-materializes marks on an EMPTY
+ * block, stamped into the block's attrs. It deliberately skips a block that has
+ * content, so a font picked mid-paragraph had no memory to fall back on.
+ */
+function caretMarksSnapshot(editor: Editor): string | null {
+  const { state } = editor
+  const { $from } = state.selection
+  return serializeMarks(state.storedMarks ?? $from.marks())
+}
+
+/**
+ * Put the caret's formatting back after the document was rewritten.
+ *
+ * Returns false when there was nothing to restore, or when the snapshot does
+ * not parse (a schema change between the snapshot and the restore) — the
+ * caret is then left exactly as setContent left it rather than half-formatted.
+ */
+export function restoreMarksAfterDocRewrite(editor: Editor, snapshot: string | null): boolean {
+  if (!snapshot) return false
+  let entries: Array<{ type: string; attrs: Record<string, unknown> }>
+  try {
+    entries = JSON.parse(snapshot) as typeof entries
+  } catch {
+    return false
+  }
+  const marks = entries.flatMap((entry) => {
+    const type = editor.schema.marks[entry.type]
+    return type && FORMAT_MARKS.has(entry.type) ? [type.create(entry.attrs)] : []
+  })
+  if (marks.length === 0) return false
+  editor.view.dispatch(editor.state.tr.setStoredMarks(marks))
+  return true
+}
+
 /** doc-level layout inputs living outside CSS: default tab grid + hyphenation lang */
 function applyDocLayoutSettings(editor: Editor, parsed: ParsedDocFull): void {
   setNoteNumFmts({ footnote: parsed.footnoteProps, endnote: parsed.endnoteProps })
@@ -446,6 +500,8 @@ export async function loadFile(
     const adopted = await adoptEmbeddedFonts(parsed.embeddedFonts)
     if (!adopted || generation !== openGeneration) return 'superseded'
     setDocFontTable(parsed.fontTable)
+    await loadBundledStandIns(collectDocFonts(parsed))
+    if (generation !== openGeneration) return 'superseded'
     ctx.editor.storage.listNumbering.styles = parsed.styles
     ctx.editor.storage.listNumbering.docDefaults = parsed.docDefaults
     ctx.editor.storage.listNumbering.defs = parsed.numbering
@@ -469,6 +525,9 @@ export async function loadFile(
       format,
       ...(odt ? { odt } : {}),
       ...(result.untitledCopy ? { askPathOnFirstSave: true } : {}),
+      ...(result.untitledCopy && result.saveAsDefaultPath
+        ? { saveAsDefaultPath: result.saveAsDefaultPath }
+        : {}),
     })
     ctx.onRevisionsLoaded(blocksHaveRevisions(parsed.blocks))
     // this tab's document was replaced: a password parked for the previous
@@ -606,6 +665,8 @@ export async function newFile(ctx: FileActionContext): Promise<boolean | undefin
     const adopted = await adoptEmbeddedFonts(parsed.embeddedFonts)
     if (!adopted || generation !== openGeneration) return
     setDocFontTable(parsed.fontTable)
+    await loadBundledStandIns(collectDocFonts(parsed))
+    if (generation !== openGeneration) return
     ctx.editor.storage.listNumbering.styles = parsed.styles
     ctx.editor.storage.listNumbering.docDefaults = parsed.docDefaults
     ctx.editor.storage.listNumbering.defs = parsed.numbering
@@ -864,40 +925,93 @@ export async function buildDocBytes(ctx: FileActionContext): Promise<Uint8Array 
   return bytes
 }
 
+/** bumps whenever a save lands: a copy serialized before it would be stale */
+let savesLanded = 0
+
+/** the last copy this renderer handed over, to skip an unchanged one */
+let lastRecoveryCopy: {
+  generation: number
+  saves: number
+  path: string | null
+  bytes: Uint8Array
+} | null = null
+
 /**
- * Crash-recovery copy: serialize the dirty document and hand the
- * bytes to the main process, which stores them under userData. Best-effort —
- * a failure only means this tick's copy is skipped.
- *
- * A dirty document that never got a path can't have a recovery copy (the main
- * process only accepts allowlisted paths), so it is silently persisted into the
- * default folder first (same save-new path as the first manual save); every
- * later tick then covers it like any opened file.
+ * The main process dropped this tab's copy ("Don't Save", a discarding close)
+ * while the document may stay open and dirty (the close did not go through):
+ * the next tick copies again even if nothing changed since the dropped copy.
  */
-export async function writeRecoveryCopy(ctx: FileActionContext): Promise<void> {
+export function forgetRecoveryCopy(): void {
+  lastRecoveryCopy = null
+}
+
+function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.byteLength !== b.byteLength) return false
+  for (let i = 0; i < a.byteLength; i++) if (a[i] !== b[i]) return false
+  return true
+}
+
+/** 'failed': the copy could not be written (the caller backs off for a while) */
+export type RecoveryCopyOutcome = 'written' | 'skipped' | 'failed'
+
+/**
+ * Crash-recovery copy: serialize the dirty document exactly as a save would
+ * write it now (the engine's narrow patch over the opened original; an ODT
+ * document's ODT) and hand the bytes to the main process, which keeps them in
+ * app data. A never-saved document's copy goes there too, under the tab's
+ * untitled slot: nothing is ever written to a user folder for it, and its
+ * first save still asks or lands like any first save.
+ *
+ * Skipped when nothing changed since the last copy, and dropped when a save
+ * or another document came in while it was being built (that copy would be
+ * stale). `force` writes even an unchanged copy (the OS is ending the session).
+ */
+export async function writeRecoveryCopy(
+  ctx: FileActionContext,
+  options: { force?: boolean } = {},
+): Promise<RecoveryCopyOutcome> {
   const { doc, editor } = ctx
-  if (!doc || !editor || ctx.saveInFlightRef.current || !isDocDirty(ctx)) return
+  if (!doc || !editor || ctx.saveInFlightRef.current || !isDocDirty(ctx)) return 'skipped'
   // an edit during a phased open marks the document dirty while the tail is
   // still streaming: a snapshot now would persist a truncated document. The
   // next tick covers it.
-  if (isPhasedContentPending()) return
-  if (!doc.filePath) {
-    if (isBlankDocument(editor)) return
-    if (editor.view.composing) return
-    const active = document.activeElement as HTMLElement | null
-    if (active?.closest('td[contenteditable], .doc-textbox')) return
-    await save(ctx, false, true)
-    return
-  }
+  if (isPhasedContentPending()) return 'skipped'
+  // an untouched blank new document holds nothing worth keeping
+  if (!doc.filePath && isBlankDocument(editor)) return 'skipped'
+  const generation = docGeneration
+  const saves = savesLanded
   try {
     const docx = await buildDocBytes(ctx)
-    if (!docx) return
+    if (!docx) return 'skipped'
     // an ODT tab's copy is the ODT a save would write now: restoring it opens
     // an ODT document again, and its save writes ODT
     const bytes = isOdtDoc(doc) ? await odtBytesFor(doc.odt, docx) : docx
-    await window.desktop.writeRecoveryCopy(doc.filePath, toArrayBuffer(bytes))
+    if (generation !== docGeneration || saves !== savesLanded || ctx.saveInFlightRef.current) {
+      return 'skipped'
+    }
+    const last = lastRecoveryCopy
+    if (
+      !options.force &&
+      last &&
+      last.generation === generation &&
+      last.saves === saves &&
+      last.path === doc.filePath &&
+      sameBytes(last.bytes, bytes)
+    ) {
+      return 'skipped'
+    }
+    const result = await window.desktop.writeRecoveryCopy(
+      doc.filePath,
+      toArrayBuffer(bytes),
+      doc.filePath ? undefined : { title: doc.fileName, format: isOdtDoc(doc) ? 'odt' : 'docx' },
+    )
+    if (result.ok) {
+      lastRecoveryCopy = { generation, saves, path: doc.filePath, bytes }
+      return 'written'
+    }
+    return result.failed ? 'failed' : 'skipped'
   } catch {
-    /* best-effort */
+    return 'failed'
   }
 }
 
@@ -905,9 +1019,9 @@ const runSerializedSave = createSaveSerializer()
 
 /**
  * Drop unsaved password intents left by a replaced document — queued behind any
- * in-flight save: writeRecoveryCopy silently save-new's a dirty pathless
- * draft, and that save must still consume the draft's desired password (the
- * draft stays protected on disk) before the swap-triggered clear lands.
+ * in-flight save: a first save of a pathless draft may still be landing, and
+ * that save must still consume the draft's desired password (the draft stays
+ * protected on disk) before the swap-triggered clear lands.
  */
 function discardStalePasswordIntents(): void {
   // Start the IPC now, before the replacement document can record a password.
@@ -1130,6 +1244,11 @@ async function saveOnce(
     const fontSettingsVersion = ctx.fontSettingsVersionRef?.current
     const docSnapshot = editor.state.doc
     const selectionPos = editor.state.selection.from
+    // The caret's marks — the ribbon's font/size live here as storedMarks and
+    // apply to whatever is typed next. The reparse below replaces the doc, so
+    // they have to travel with the selection or an autosave silently drops the
+    // font the user just picked (#2004).
+    const caretMarks = caretMarksSnapshot(editor)
     const docx = await buildDocBytes(ctx)
     if (!docx) return false
     const format: DocFormat = isOdtDoc(doc) ? 'odt' : 'docx'
@@ -1143,8 +1262,10 @@ async function saveOnce(
     // a pathless snapshot may belong to a document that an earlier queued pass
     // already landed on disk — overwrite that file instead of creating another
     let savedPath = doc.filePath ?? pathlessDocSavedPath
-    // an untitled copy's first save asks where; an automatic one waits for it
-    const askPath = !explicitTarget && !savedPath && doc.askPathOnFirstSave === true
+    // a never-saved document's first save asks where (decision 0061: nothing lands in
+    // the user's folders unasked); an automatic one waits for it. An MCP save names its
+    // target explicitly and never asks.
+    const askPath = !explicitTarget && !savedPath
     if (askPath && auto) return false
     let passwordIntentPending = false
     let fullBytes: Uint8Array | undefined
@@ -1177,14 +1298,15 @@ async function saveOnce(
       // A never-saved document still called "Untitled" gets a name derived from its first heading
       const autoName =
         !doc.filePath && doc.fileName === t('appUntitledDocx') ? deriveAutoFileName(editor) : null
-      // Save As keeps the dialog; a new document's first save lands silently in the default
-      // folder. The source path identifies the desired password state to snapshot.
+      // Save As and a new document's first save show the dialog. The source path
+      // identifies the desired password state to snapshot.
       let result: Awaited<ReturnType<typeof window.desktop.saveDocxAs>>
       if (saveAs || askPath) {
         // the dialog offers both formats; the picked extension is the format written
+        // a restored copy whose file went missing suggests that file's place
         const pick = await window.desktop.pickSaveAsPath(
           autoName ?? doc.fileName,
-          doc.filePath,
+          doc.filePath ?? doc.saveAsDefaultPath ?? null,
           format,
         )
         if (!pick) return false
@@ -1225,6 +1347,8 @@ async function saveOnce(
       passwordIntentPending = result.passwordIntentPending === true
       if (result.dataUrl) fullBytes = await fetchDocBytes(result.dataUrl)
     }
+    // the file now holds these bytes: a recovery copy built before them is stale
+    savesLanded++
     // parse before the identity check: a document opened during this await must not be rewritten.
     // An ODT document takes the docx it just saved as its reference, exactly
     // like a docx document; its save baseline stays the ODT it was opened from
@@ -1284,6 +1408,7 @@ async function saveOnce(
         .setTextSelection(Math.min(selectionPos, editor.state.doc.content.size))
       if (!auto) chain.scrollIntoView()
       chain.run()
+      restoreMarksAfterDocRewrite(editor, caretMarks)
     }
     ctx.setDocCss(docStyleCss(reparsed))
     ctx.setDoc((prev) =>
@@ -1412,6 +1537,7 @@ async function printGroupsMerged(
   groups: PrintGroup[],
   scale: number,
   outPath?: string,
+  links?: PdfInternalLink[],
 ): Promise<boolean> {
   const parts: string[] = []
   // every printToPDF flips the whole document between print and screen media;
@@ -1447,7 +1573,7 @@ async function printGroupsMerged(
     appRoot?.classList.remove('pv-exporting')
     pvPages.forEach((page) => page.classList.remove('pv-print-skip', 'pv-print-tail'))
   }
-  const result = await window.desktop.saveMergedPdf(fileName, parts, outPath)
+  const result = await window.desktop.saveMergedPdf(fileName, parts, outPath, links)
   const mixed = groups.some((g) => g.w !== groups[0].w || g.h !== groups[0].h)
   ctx.setStatus(
     result.ok
@@ -1497,6 +1623,8 @@ export async function exportPdf(ctx: FileActionContext, outPath?: string): Promi
     // with pdf-lib; each page keeps its section's paper size
     const pvPages = [...document.querySelectorAll('.pv-page')] as HTMLElement[]
     if (pvPages.length > 0) {
+      // measured before the print zoom: fractions of each page box
+      const links = collectPdfInternalLinks(pvPages, doc.parsed.blocks)
       const scale = setPrintZoom()
       const pxToTwips = (px: number) => Math.round((px / 96) * 1440)
       let groups: PrintGroup[] = []
@@ -1514,12 +1642,12 @@ export async function exportPdf(ctx: FileActionContext, outPath?: string): Promi
       const PRINT_CHUNK = 10
       if (pvPages.length > PRINT_CHUNK) groups = chunkPrintGroups(groups, PRINT_CHUNK)
       if (groups.length > 1) {
-        return await printGroupsMerged(ctx, doc.fileName, pvPages, groups, scale, outPath)
+        return await printGroupsMerged(ctx, doc.fileName, pvPages, groups, scale, outPath, links)
       }
       // preview open but uniform paper: single export at the preview size
       const g = groups[0]
       if (g) {
-        const result = await window.desktop.exportPdf(doc.fileName, g.w, g.h, outPath, scale)
+        const result = await window.desktop.exportPdf(doc.fileName, g.w, g.h, outPath, scale, links)
         if (result.ok) {
           ctx.setStatus(t('appExportedPdf', { path: result.path ?? '' }))
           return true
@@ -1540,6 +1668,7 @@ export async function exportPdf(ctx: FileActionContext, outPath?: string): Promi
             chunkPrintGroups([g], PRINT_CHUNK / 2),
             scale,
             retryPath,
+            links,
           )
         }
         ctx.setStatus(t('appExportPdfFailed', { error: result.error }))
@@ -1713,6 +1842,26 @@ export async function exportHtml(ctx: FileActionContext, outPath?: string): Prom
       : result.error
         ? t('appExportHtmlFailed', { error: result.error })
         : t('appExportHtmlCanceled'),
+  )
+  return result.ok
+}
+
+/** Resolves true only when a Markdown file was written to disk. */
+export async function exportMarkdown(ctx: FileActionContext, outPath?: string): Promise<boolean> {
+  const { doc, editor } = ctx
+  if (!doc || !editor) return false
+  await waitForFullContent()
+  ctx.setStatus(t('appExportingMarkdown'))
+  const { markdown, images } = documentToMarkdown(editor)
+  const result = await window.desktop.exportMarkdown(doc.fileName, markdown, images, outPath)
+  const dropped = result.imagesDropped ?? 0
+  ctx.setStatus(
+    result.ok
+      ? t('appExportedMarkdown', { path: result.path ?? '' }) +
+          (dropped > 0 ? ` ${t('appExportMarkdownImagesDropped', { count: dropped })}` : '')
+      : result.error
+        ? t('appExportMarkdownFailed', { error: result.error })
+        : t('appExportMarkdownCanceled'),
   )
   return result.ok
 }

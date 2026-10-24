@@ -1,5 +1,10 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 
+/** pdf.js `AnnotationMode` values, kept local so this module does not import the
+    browser build (which needs DOMMatrix) just for an enum. */
+const ANNOTATION_MODE_DISABLE = 0
+const ANNOTATION_MODE_ENABLE = 1
+
 /** Baseline raster density (previous behavior — quality never drops below this). */
 const BASE_DPI = 150
 /** Target raster density for sharper glyph edges on high-DPI printers. */
@@ -75,7 +80,19 @@ function waitForPrintDialog(timeoutMs: number): Promise<void> {
   })
 }
 
-export async function printPdf(doc: PDFDocumentProxy, pages?: number[]): Promise<void> {
+export interface PrintOptions {
+  /**
+   * Draw annotations (highlights, notes, form fields) into the printed page.
+   * True is also PDF.js's default; the print dialog lets the reader turn it off.
+   */
+  includeAnnotations?: boolean
+}
+
+export async function printPdf(
+  doc: PDFDocumentProxy,
+  pages?: number[],
+  options: PrintOptions = {},
+): Promise<void> {
   const root = document.createElement('div')
   root.className = 'pdf-print-root'
   const canvas = document.createElement('canvas')
@@ -140,7 +157,12 @@ export async function printPdf(doc: PDFDocumentProxy, pages?: number[]): Promise
       }
       canvas.width = w
       canvas.height = h
-      await page.render({ canvas, viewport }).promise
+      await page.render({
+        canvas,
+        viewport,
+        annotationMode:
+          options.includeAnnotations === false ? ANNOTATION_MODE_DISABLE : ANNOTATION_MODE_ENABLE,
+      }).promise
       const img = document.createElement('img')
       img.src = canvas.toDataURL('image/jpeg', 0.92)
       root.appendChild(img)

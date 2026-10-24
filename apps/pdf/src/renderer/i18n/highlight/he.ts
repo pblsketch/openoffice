@@ -72,11 +72,13 @@ export const he = {
   hlAccept: 'אישור',
   hlDismiss: 'דחייה',
   hlAcceptAll: 'אישור הכול ({count})',
+  hlAcceptAllSave: 'קבל הכל ושמור ({count})',
   hlDismissAll: 'דחיית כל ההצעות',
   hlSuggestionCount: 'הצעות הדגשה של בינה מלאכותית: {count}',
   hlNotFoundTip: 'המשפט לא נמצא בטקסט העמוד, ולכן אי אפשר לאשר אותו',
   hlWaitingSave: 'ממתין לשמירה',
   hlWaitingSaveTip: 'שמרו את ה־PDF כדי שההדגשה תיכנס לקובץ',
   hlAcceptedNotice: 'נוספו הדגשות: {count}. שמרו את ה־PDF כדי שייכנסו לקובץ.',
+  hlAcceptedSaved: 'נשמרו {count} הדגשות.',
   hlDismissFailed: 'לא ניתן היה לדחות את ההצעות.',
 } satisfies Record<keyof typeof zh, string>

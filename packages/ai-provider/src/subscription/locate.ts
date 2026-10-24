@@ -56,6 +56,8 @@ export interface SubscriptionLocateOptions {
   nodeRuntime?: SubscriptionNodeRuntime | undefined
   /** override of the Codex desktop bin tree, for tests and portable distributions */
   managedInstallRoot?: string | undefined
+  /** macOS application folders checked for the ChatGPT/Codex app's own CLI */
+  applicationDirs?: string[] | undefined
   /** extra POSIX bin directories searched after PATH; the usual ones when absent */
   commonDirs?: string[] | undefined
 }
@@ -86,6 +88,20 @@ const LAYOUTS: Record<AiSubscriptionProviderId, ProviderLayout> = {
 const SHIM_READ_LIMIT = 64 * 1024
 const JS_EXTENSIONS = new Set(['.js', '.cjs', '.mjs'])
 
+/** winget's per-user and per-machine link directories: entries here are symlinks */
+const WINGET_LINKS = /[\\/]microsoft[\\/]winget[\\/]links[\\/]/i
+
+/**
+ * The file behind a winget Links entry. The entries are symlinks into the
+ * package that created them, and several packages can put a `codex.exe` there.
+ * Resolving the link here lets the update plan tell the OpenAI Codex package
+ * from another package's copy; a link that cannot be resolved stays as it is.
+ */
+async function wingetLinkTarget(file: string): Promise<string> {
+  if (!WINGET_LINKS.test(file)) return file
+  return realpath(file).catch(() => file)
+}
+
 interface Context {
   provider: AiSubscriptionProviderId
   layout: ProviderLayout
@@ -93,6 +109,7 @@ interface Context {
   platform: NodeJS.Platform
   arch: string
   nodeRuntime: SubscriptionNodeRuntime | undefined
+  applicationDirs: string[] | undefined
   commonDirs: string[] | undefined
 }
 
@@ -212,6 +229,60 @@ async function newestManagedCodex(root: string, platform: NodeJS.Platform): Prom
   const pool = complete.length > 0 ? complete : found
   pool.sort((a, b) => b.modified - a.modified || b.path.localeCompare(a.path))
   return pool[0]?.path ?? null
+}
+
+// ── macOS: the CLI bundled with the ChatGPT/Codex desktop app ──
+
+/**
+ * The ChatGPT desktop app keeps its own Codex build, which can be newer than
+ * the `codex` on PATH (OpenAI says features may reach one surface before the
+ * other). The app's documented compatibility bundle path is
+ * `/Applications/Codex.app/Contents/Resources/codex`; a ChatGPT.app copies the
+ * same layout. Only an app copy newer than the PATH one is taken, so updating
+ * the CLI yourself still wins.
+ */
+const MAC_CODEX_BUNDLES = ['Codex.app', 'ChatGPT.app'] as const
+
+async function newestMacBundledCodex(context: Context): Promise<string | null> {
+  const home = homeOf(context.env, 'darwin')
+  const roots = context.applicationDirs ?? ['/Applications', join(home, 'Applications')]
+  const found: Array<{ path: string; modified: number }> = []
+  for (const root of roots) {
+    for (const bundle of MAC_CODEX_BUNDLES) {
+      const path = join(root, bundle, 'Contents', 'Resources', 'codex')
+      try {
+        const info = await stat(path)
+        if (!info.isFile()) continue
+        await access(path, constants.X_OK)
+        found.push({ path, modified: info.mtimeMs })
+      } catch {
+        // no such app, or no bundled CLI: the next place is asked
+      }
+    }
+  }
+  // stable sort: an equal time keeps the earlier bundle (Codex.app before ChatGPT.app)
+  found.sort((a, b) => b.modified - a.modified)
+  return found[0]?.path ?? null
+}
+
+/**
+ * Whether `candidate` was written more recently than `current`. Used to pick
+ * the newer of the desktop app's Codex and the one on PATH: either can be the
+ * stale copy. An unreadable time loses.
+ */
+async function isNewerFile(candidate: string, current: string | undefined): Promise<boolean> {
+  if (!current) return true
+  const [candidateTime, currentTime] = await Promise.all([
+    stat(candidate).then(
+      (info) => info.mtimeMs,
+      () => Number.NEGATIVE_INFINITY,
+    ),
+    stat(current).then(
+      (info) => info.mtimeMs,
+      () => Number.NEGATIVE_INFINITY,
+    ),
+  ])
+  return candidateTime >= currentTime
 }
 
 // ── Codex: the native binary behind the npm package's JS launcher ──
@@ -347,7 +418,7 @@ async function programBehindShim(
     // the shim's own Node runtime is not the CLI
     if (name === 'node.exe' || name === 'node') continue
     if (!(await fileExists(candidate))) continue
-    if (extension === '.exe') return native(context, candidate, source)
+    if (extension === '.exe') return native(context, await wingetLinkTarget(candidate), source)
     if (JS_EXTENSIONS.has(extension)) return jsEntryProgram(context, candidate, source, shimDir)
   }
   return null
@@ -361,7 +432,7 @@ async function programFromFile(
 ): Promise<SubscriptionProgram | null> {
   const extension = extname(file).toLowerCase()
   if (context.platform === 'win32') {
-    if (extension === '.exe') return native(context, file, source)
+    if (extension === '.exe') return native(context, await wingetLinkTarget(file), source)
     if (extension === '.cmd' || extension === '.bat') {
       return programBehindShim(context, file, source)
     }
@@ -429,15 +500,24 @@ async function commonUnixBinDirs(home: string): Promise<string[]> {
   return dirs
 }
 
-/** `winget install OpenAI.Codex` unpacks a portable exe here when it cannot link it into Links */
-async function wingetCodexPackage(localAppData: string): Promise<string | null> {
+/**
+ * `winget install OpenAI.Codex` unpacks the release archive here when it cannot
+ * link it into Links. The archive also holds helper programs whose names begin
+ * with `codex-` (`codex-code-mode-host.exe`, the sandbox helpers). Running one
+ * of those as the CLI answers an unknown subcommand, which the status check
+ * reads as "too old" and then cannot update away. So only the CLI is taken: the
+ * alias `codex.exe` winget writes, or the platform's `codex-<triple>.exe`.
+ */
+async function wingetCodexPackage(localAppData: string, arch: string): Promise<string | null> {
   const packages = join(localAppData, 'Microsoft', 'WinGet', 'Packages')
   const entries = await readdir(packages).catch(() => [] as string[])
+  const triple = codexTargetTriple('win32', arch)
+  const names = ['codex.exe', ...(triple ? [`codex-${triple}.exe`] : [])]
   for (const entry of entries.filter((name) => /^OpenAI\.Codex_/i.test(name)).sort()) {
-    const files = await readdir(join(packages, entry)).catch(() => [] as string[])
-    const executables = files.filter((name) => /^codex(-[\w.-]+)?\.exe$/i.test(name)).sort()
-    const best = executables.find((name) => name.toLowerCase() === 'codex.exe') ?? executables[0]
-    if (best && (await fileExists(join(packages, entry, best)))) return join(packages, entry, best)
+    for (const name of names) {
+      const candidate = join(packages, entry, name)
+      if (await fileExists(candidate)) return candidate
+    }
   }
   return null
 }
@@ -490,7 +570,8 @@ async function searchByName(
 
 /**
  * The CLI of `provider` as a directly spawnable program, or null when none is
- * installed. Order: the configured path, the Codex desktop app's copy, PATH,
+ * installed. Order: the configured path, the Codex desktop app's copy (its bin
+ * tree on Windows; on macOS the newer of its bundle and the PATH copy), PATH,
  * then the install locations PATH may not list yet (`%APPDATA%\npm`, the
  * vendor installers' own directories).
  *
@@ -511,6 +592,7 @@ export async function locateSubscriptionProgram(
     platform,
     arch: options.arch ?? process.arch,
     nodeRuntime: options.nodeRuntime,
+    applicationDirs: options.applicationDirs,
     commonDirs: options.commonDirs,
   }
   const { name } = context.layout
@@ -546,10 +628,16 @@ export async function locateSubscriptionProgram(
     if (managed) return native(context, managed, 'managed')
   }
   const found = await searchByName(context, name, 'path')
+  if (provider === 'codex' && platform === 'darwin') {
+    const bundled = await newestMacBundledCodex(context)
+    if (bundled && (await isNewerFile(bundled, found?.entry))) {
+      return native(context, bundled, 'managed')
+    }
+  }
   if (found) return found
   if (provider === 'codex' && platform === 'win32') {
     const localAppData = env.LOCALAPPDATA ?? env.LocalAppData
-    const packaged = localAppData ? await wingetCodexPackage(localAppData) : null
+    const packaged = localAppData ? await wingetCodexPackage(localAppData, context.arch) : null
     if (packaged) return native(context, packaged, 'winget')
   }
   return null

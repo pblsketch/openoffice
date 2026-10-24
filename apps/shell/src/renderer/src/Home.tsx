@@ -46,6 +46,7 @@ import type { SettingsTarget } from './SettingsModal'
 import { skillUpdateDue } from './IntegrationsPane'
 import { onFilesChanged } from './file-events'
 import { FirstConnectionDialog } from './FirstConnectionNotice'
+import { LaunchRecoveryList } from './RecoveryList'
 import type { SubscriptionConnection } from './subscription-client'
 import { subscriptionSummary } from './subscription-status'
 import './pdf-tools/globals'
@@ -3548,6 +3549,9 @@ export function Home({
       {noticeDue && (settingsVisited || askMode) && (
         <FirstConnectionDialog onAcknowledge={onNoticeAcknowledge} />
       )}
+      {/* documents with unsaved content left in recovery copies, asked about
+          once at launch; the main process keeps Home in front meanwhile */}
+      <LaunchRecoveryList />
       <DropToOpenOverlay />
     </div>
   )

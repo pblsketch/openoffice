@@ -128,6 +128,8 @@ class ChapterWriter {
         return
       }
       case 'paragraph':
+        // a drawing's label: the picture shows it
+        if (b.figure) return
         this.out.push(`<p${blockAttrs(b)}>${this.inline(b.runs)}</p>\n`)
         return
       case 'table':

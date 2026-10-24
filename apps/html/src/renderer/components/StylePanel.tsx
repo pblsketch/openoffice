@@ -20,10 +20,22 @@ interface Props {
   onCustomCss: (css: string) => void
   /** the host calls this before structural ops / selection changes so open drafts land on the right element */
   draftRef: MutableRefObject<(() => void) | null>
+  /** the host reads open drafts without committing them (crash-recovery copies) */
+  peekRef?: MutableRefObject<(() => PanelDrafts) | null>
   /** live previews not yet written to the source */
   pending: boolean
   onRevert: () => void
   onClose: () => void
+}
+
+/** what the panel's fields hold but have not written yet; absent fields have no draft */
+export interface PanelDrafts {
+  /** the selected element's text run */
+  text?: string
+  /** an image's alt text */
+  alt?: string
+  /** the custom CSS declarations */
+  css?: string
 }
 
 type NumberField = 'fontSize' | 'width' | 'height' | 'borderRadius' | 'padding'
@@ -91,7 +103,9 @@ function useDraft(base: string, write: (value: string) => void) {
     }
   }
   const commit = () => commitRef.current()
-  return { value, setValue, commit, commitRef }
+  /** the uncommitted value, or undefined when there is none */
+  const peek = (): string | undefined => (value !== committedRef.current ? value : undefined)
+  return { value, setValue, commit, commitRef, peek }
 }
 
 const FITS = ['fill', 'contain', 'cover', 'none'] as const
@@ -103,7 +117,12 @@ const FIT_LABEL: Record<(typeof FITS)[number], StringKey> = {
 }
 
 /** <img>: alt text (attribute) and object-fit; typography has nothing to say about a replaced element */
-function ImageSection(p: Props & { altCommitRef: MutableRefObject<() => void> }) {
+function ImageSection(
+  p: Props & {
+    altCommitRef: MutableRefObject<() => void>
+    altPeekRef: MutableRefObject<() => string | undefined>
+  },
+) {
   const { t } = useI18n()
   const image = p.computed.image
   const {
@@ -111,8 +130,10 @@ function ImageSection(p: Props & { altCommitRef: MutableRefObject<() => void> })
     setValue: setAlt,
     commit: commitAlt,
     commitRef,
+    peek: peekAlt,
   } = useDraft(image?.alt ?? '', (v) => p.onAttr('alt', v))
   p.altCommitRef.current = () => commitRef.current()
+  p.altPeekRef.current = peekAlt
   const fit = (FITS as readonly string[]).includes(p.computed.objectFit)
     ? p.computed.objectFit
     : 'fill'
@@ -179,14 +200,17 @@ export function StylePanel(p: Props) {
     setValue: setText,
     commit: commitText,
     commitRef: textCommitRef,
+    peek: peekText,
   } = useDraft(p.textRun ?? '', (v) => {
     if (p.textRun !== null) p.onText(v)
   })
   const altCommitRef = useRef<() => void>(() => {})
+  const altPeekRef = useRef<() => string | undefined>(() => undefined)
   const {
     value: css,
     setValue: setCss,
     commitRef: cssCommitRef,
+    peek: peekCss,
   } = useDraft('', (value) => {
     const trimmed = value.trim()
     if (trimmed) p.onCustomCss(trimmed)
@@ -201,6 +225,27 @@ export function StylePanel(p: Props) {
     commitCss()
   }
   p.draftRef.current = flushDrafts
+  const peekDrafts = (): PanelDrafts => {
+    const drafts: PanelDrafts = {}
+    const text = p.textRun !== null ? peekText() : undefined
+    if (text !== undefined) drafts.text = text
+    const alt = isImage ? altPeekRef.current() : undefined
+    if (alt !== undefined) drafts.alt = alt
+    const cssDraft = peekCss()?.trim()
+    if (cssDraft) drafts.css = cssDraft
+    return drafts
+  }
+  if (p.peekRef) p.peekRef.current = peekDrafts
+  const peekRef = p.peekRef
+  const ownPeekRef = useRef(peekDrafts)
+  ownPeekRef.current = peekDrafts
+  useEffect(
+    () => () => {
+      // a panel mounted for the next element may already have taken the slot
+      if (peekRef?.current === ownPeekRef.current) peekRef.current = null
+    },
+    [peekRef],
+  )
   const draftRef = p.draftRef
   useEffect(
     () => () => {
@@ -230,7 +275,7 @@ export function StylePanel(p: Props) {
       </div>
 
       {isImage ? (
-        <ImageSection {...p} altCommitRef={altCommitRef} />
+        <ImageSection {...p} altCommitRef={altCommitRef} altPeekRef={altPeekRef} />
       ) : (
         <>
           <div className="hx-panel-section">{t('typography')}</div>

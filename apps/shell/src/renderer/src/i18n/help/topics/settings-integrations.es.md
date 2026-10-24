@@ -44,7 +44,7 @@ La configuración puede registrar GenOffice como programa predeterminado para .d
 ## Avisos de software de terceros y actualizaciones
 
 - Ayuda ▸ Avisos de software de terceros: el inventario completo de licencias de código abierto que se distribuye con la aplicación.
-- Ayuda ▸ Buscar actualizaciones: lanza una comprobación manual; si hay una versión más reciente, ofrece instalarla.
+- Menú (☰) ▸ Buscar actualizaciones (en un Mac, Ayuda ▸ Buscar actualizaciones): lanza una comprobación manual; si hay una versión más reciente, ofrece instalarla.
 
 ## Integración MCP (para usuarios avanzados / clientes de IA)
 

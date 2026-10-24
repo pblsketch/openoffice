@@ -32,6 +32,8 @@ export interface DocumentJobView {
   runId?: string
   /** the provider id the job sends to */
   provider: string
+  /** the provider and model as the confirmation showed them (for the progress strip) */
+  aiLabel?: string
   state: 'running' | 'complete' | 'stopped' | 'failed'
   /** items (pages, blocks) done, including those done before this run */
   done: number
@@ -54,6 +56,8 @@ export interface StartDocumentJob<U> {
   /** the AI highlight run of a 'highlight' job */
   runId?: string
   provider: string
+  /** the provider and model as the confirmation showed them (for the progress strip) */
+  aiLabel?: string
   /** start the engine job with this signal, registry and progress sink */
   launch(options: {
     signal: AbortSignal
@@ -102,6 +106,7 @@ export class DocumentJobSession {
       ...(spec.lang !== undefined ? { lang: spec.lang } : {}),
       ...(spec.runId !== undefined ? { runId: spec.runId } : {}),
       provider: spec.provider,
+      ...(spec.aiLabel !== undefined ? { aiLabel: spec.aiLabel } : {}),
       state: 'running',
       done: 0,
       total: 0,

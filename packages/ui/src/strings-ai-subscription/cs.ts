@@ -22,7 +22,7 @@ export const cs = {
   cardErrFailed: 'Při kontrole {provider} došlo k potížím. Zkontrolujte to znovu.',
   actionInstall: 'Nainstalovat',
   actionLogin: 'Přihlásit se',
-  actionLoginWindow: 'Prohlížeč se neotevřel, nebo zobrazuje kód?',
+  actionLoginWindow: 'Prohlížeč se neotevřel?',
   actionRecheck: 'Zkontrolovat znovu',
   actionAcceptMetered: 'Přesto použít',
   actionInstallHelp: 'Oficiální návod k instalaci',
@@ -35,7 +35,7 @@ export const cs = {
   signingInBrowserNote:
     'V otevřeném prohlížeči se přihlaste ke svému účtu {vendor} a povolte přístup. Po dokončení se připojení vytvoří samo.',
   signingInWindowNote:
-    'Pokud se prohlížeč neotevřel, zkopírujte adresu zobrazenou v právě otevřeném okně a otevřete ji v prohlížeči. Když prohlížeč zobrazí kód, zkopírujte ho, vložte ho jednou do toho okna a stiskněte Enter. Vložený kód se v okně nemusí zobrazit.',
+    'Postupujte podle návodu v horní části právě otevřeného přihlašovacího okna. Přihlaste se na nově otevřené přihlašovací stránce {vendor} v prohlížeči: okno se pak samo zavře a připojení se vytvoří. Přihlašovací stránka otevřená dříve už nefunguje; zavřete ji.',
   meteredWarning: 'Toto není předplatné: platíte podle skutečné spotřeby.',
   meteredMeaning:
     'Toto přihlášení používá klíč API nebo účet s platbou podle spotřeby, případně se jeho typ nepodařilo zjistit. Volbou „Přesto použít“ poběží AI přes toto připojení a každý požadavek se naúčtuje tomuto účtu.',
@@ -114,8 +114,21 @@ export const cs = {
   loginHowNote:
     'Po kliknutí se otevře prohlížeč. Přihlaste se účtem {vendor} a klikněte na Povolit; připojení se dokončí samo.',
   signingInStalledNote:
-    'Prohlížeč se neotevřel, nebo zobrazuje kód? Otevřete přihlašovací okno tlačítkem níže. Vložte adresu zobrazenou v okně do prohlížeče, nebo vložte kód z prohlížeče do okna.',
+    'Pokud se v prohlížeči neotevřela přihlašovací stránka, otevřete přihlašovací okno tlačítkem níže. Pokud se v prohlížeči ještě přihlašujete, dokončete přihlášení tam a tlačítko nepoužívejte: zastaví rozpracované přihlášení a začne znovu od začátku.',
   actionLoginWindowOpen: 'Otevřít přihlašovací okno',
+  loginWindowTitle: 'Přihlášení k {provider}',
+  loginWindowIntro:
+    'Toto je přihlašovací okno programu {provider}. Anglický text níže vypisuje program {provider}.',
+  loginWindowStepBrowser:
+    'Až se v prohlížeči otevře přihlašovací stránka {vendor}, přihlaste se a povolte přístup. Toto okno se pak samo zavře.',
+  loginWindowStepAddress:
+    'Pokud se prohlížeč neotevřel, označte myší adresu níže, která začíná na https://, a zkopírujte ji kliknutím pravým tlačítkem myši. Vložte ji do adresního řádku prohlížeče a otevře se přihlašovací stránka.',
+  loginWindowStepCode:
+    'Pokud prohlížeč po přihlášení zobrazí kód, zkopírujte celý kód (pokud je u něj tlačítko pro kopírování, použijte ho). Vložte ho do tohoto okna jedním kliknutím pravým tlačítkem myši a stiskněte Enter. Je normální, že se vložený kód nezobrazí.',
+  loginWindowStepInvalid:
+    'Pokud se zobrazí "Invalid code", kód se nezkopíroval celý. Okno nezavírejte, zkopírujte kód znovu a vložte ho.',
+  loginWindowClosing:
+    'Přihlášení nebylo dokončeno. Až si přečtete zprávy výše, stiskněte Enter a toto okno se zavře. Chcete-li to zkusit znovu, stiskněte znovu tlačítko pro přihlášení.',
   actionCancelLogin: 'Zrušit přihlášení',
   actionUpdate: 'Aktualizovat',
   updateNote:
@@ -124,4 +137,5 @@ export const cs = {
     'Pořád to nejde? Zkopírujte informace o připojení a pošlete je tomu, kdo vám pomáhá. Neobsahují účet ani cesty k souborům.',
   actionCopyInfo: 'Kopírovat informace pro pomoc',
   copyInfoDone: 'Zkopírováno',
+  actionConnectHelp: 'Zobrazit každý krok na obrazovce (stránka v korejštině)',
 } satisfies Record<keyof typeof zh, string>

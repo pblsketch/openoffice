@@ -48,4 +48,4 @@ Fichier ▸ Imprimer dans chaque éditeur (⌘P/ctrl+P) ouvre la boîte de dialo
 
 ## Où vivent les fichiers sans titre
 
-L’emplacement que vous choisissez à la première sauvegarde est son domicile ; avant cela, le document n’existe qu’en mémoire. L’enregistrement automatique ne prend le relais qu’après cette première sauvegarde.
+L’emplacement que vous choisissez à la première sauvegarde est son domicile. Avant cela, le document n’a pas de fichier à lui : son contenu non enregistré n’existe que sous forme de copie de récupération dans le dossier de données de l’application, ce qui permet de le retrouver si l’application s’arrête brusquement (voir [Onglets et gestion des fenêtres](help://tabs-and-windows)). L’enregistrement automatique ne prend le relais qu’après cette première sauvegarde.

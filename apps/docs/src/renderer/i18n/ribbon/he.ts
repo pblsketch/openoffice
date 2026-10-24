@@ -83,6 +83,7 @@ export const he = {
   ribbonFontEastAsia: 'גופן מזרח אסייתי',
   ribbonFontLatin: 'גופן לטיני',
   ribbonFontFamilyTip: 'גופן',
+  ribbonFontDialogTip: 'גופן — קנה מידה וריווח תווים בכרטיסייה מתקדם',
   ribbonFontsCommon: 'גופנים נפוצים',
   ribbonFontsSystem: 'גופני מערכת',
   ribbonFontsHangul: 'גופנים קוריאניים',

@@ -2,7 +2,8 @@
  * Finding the program to start. Layouts are built in temp dirs: nothing here
  * runs or looks for the CLIs installed on the machine.
  */
-import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { symlinkSync } from 'node:fs'
+import { chmod, mkdir, mkdtemp, realpath, rm, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { delimiter, join, sep } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -201,6 +202,76 @@ describe('locateSubscriptionProgram on Windows', () => {
     expect(program).toMatchObject({ command: packaged, source: 'winget' })
   })
 
+  it("takes the CLI out of a winget package, never one of Codex's helper programs", async () => {
+    const env = windowsEnv()
+    const folder = join(
+      env.LOCALAPPDATA!,
+      'Microsoft',
+      'WinGet',
+      'Packages',
+      'OpenAI.Codex_Microsoft.Winget.Source_8wekyb3d8bbwe',
+    )
+    // the archive also unpacks these next to the CLI
+    await touch(join(folder, 'codex-code-mode-host.exe'))
+    await touch(join(folder, 'codex-command-runner.exe'))
+    await touch(join(folder, 'codex-windows-sandbox-setup.exe'))
+    const cli = await touch(join(folder, 'codex-x86_64-pc-windows-msvc.exe'))
+    const program = await locateSubscriptionProgram('codex', {
+      env,
+      platform: 'win32',
+      arch: 'x64',
+    })
+    expect(program).toMatchObject({ command: cli, source: 'winget' })
+    // the alias winget writes beside it is the CLI too, and comes first
+    const alias = await touch(join(folder, 'codex.exe'))
+    expect(
+      (await locateSubscriptionProgram('codex', { env, platform: 'win32', arch: 'x64' }))?.command,
+    ).toBe(alias)
+  })
+
+  it('finds no Codex when a winget package holds only its helper programs', async () => {
+    const env = windowsEnv()
+    const folder = join(
+      env.LOCALAPPDATA!,
+      'Microsoft',
+      'WinGet',
+      'Packages',
+      'OpenAI.Codex_Microsoft.Winget.Source_8wekyb3d8bbwe',
+    )
+    await touch(join(folder, 'codex-code-mode-host.exe'))
+    await touch(join(folder, 'codex-command-runner.exe'))
+    expect(
+      await locateSubscriptionProgram('codex', { env, platform: 'win32', arch: 'x64' }),
+    ).toBeNull()
+  })
+
+  it('resolves a winget Links entry to the package file it points at', async () => {
+    const env = windowsEnv()
+    const folder = join(
+      env.LOCALAPPDATA!,
+      'Microsoft',
+      'WinGet',
+      'Packages',
+      'OpenAI.Codex_Microsoft.Winget.Source_8wekyb3d8bbwe',
+    )
+    const target = await touch(join(folder, 'codex-x86_64-pc-windows-msvc.exe'))
+    const links = join(env.LOCALAPPDATA!, 'Microsoft', 'WinGet', 'Links')
+    await mkdir(links, { recursive: true })
+    try {
+      // winget's own aliases are symlinks into the package folder
+      symlinkSync(target, join(links, 'codex.exe'), 'file')
+    } catch {
+      // a Windows account without the symlink privilege: nothing to resolve here
+      return
+    }
+    const program = await locateSubscriptionProgram('codex', {
+      env,
+      platform: 'win32',
+      arch: 'x64',
+    })
+    expect(program?.command).toBe(await realpath(target))
+  })
+
   it('takes the newest complete Codex desktop install, as the existing lookup does', async () => {
     const env = windowsEnv()
     const managed = join(env.LOCALAPPDATA!, 'OpenAI', 'Codex', 'bin')
@@ -381,6 +452,88 @@ describe('locateSubscriptionProgram elsewhere', () => {
       commonDirs: [],
     })
     expect(program).toBeNull()
+  })
+})
+
+describe('locateSubscriptionProgram on macOS', () => {
+  /** the CLI inside a desktop app bundle, at the path OpenAI documents */
+  async function bundleCli(apps: string, app: string, at?: Date): Promise<string> {
+    const path = await touch(
+      join(apps, app, 'Contents', 'Resources', 'codex'),
+      '#!/bin/sh\nexit 0\n',
+    )
+    await chmod(path, 0o755)
+    if (at) await utimes(path, at, at)
+    return path
+  }
+
+  it('uses the CLI bundled with the desktop app when it is the newer copy', async () => {
+    const apps = join(root, 'Applications')
+    const bundled = await bundleCli(apps, 'Codex.app', new Date('2026-10-20T00:00:00Z'))
+    const onPath = await touch(join(root, 'bin', 'codex'), '#!/bin/sh\n')
+    await chmod(onPath, 0o755)
+    await utimes(onPath, new Date('2026-10-01T00:00:00Z'), new Date('2026-10-01T00:00:00Z'))
+    const program = await locateSubscriptionProgram('codex', {
+      env: { HOME: root, PATH: join(root, 'bin') },
+      platform: 'darwin',
+      applicationDirs: [apps],
+      commonDirs: [],
+    })
+    expect(program).toMatchObject({ command: bundled, prefixArgs: [], source: 'managed' })
+  })
+
+  it('keeps the PATH CLI when the user updated it after the desktop app', async () => {
+    const apps = join(root, 'Applications')
+    await bundleCli(apps, 'Codex.app', new Date('2026-10-01T00:00:00Z'))
+    const onPath = await touch(join(root, 'bin', 'codex'), '#!/bin/sh\n')
+    await chmod(onPath, 0o755)
+    await utimes(onPath, new Date('2026-10-20T00:00:00Z'), new Date('2026-10-20T00:00:00Z'))
+    const program = await locateSubscriptionProgram('codex', {
+      env: { HOME: root, PATH: join(root, 'bin') },
+      platform: 'darwin',
+      applicationDirs: [apps],
+      commonDirs: [],
+    })
+    expect(program).toMatchObject({ command: onPath, source: 'path' })
+  })
+
+  it('takes the newest desktop app when both bundles are present', async () => {
+    const apps = join(root, 'Applications')
+    await bundleCli(apps, 'Codex.app', new Date('2026-10-01T00:00:00Z'))
+    const fresh = await bundleCli(apps, 'ChatGPT.app', new Date('2026-10-20T00:00:00Z'))
+    const program = await locateSubscriptionProgram('codex', {
+      env: { HOME: root, PATH: '' },
+      platform: 'darwin',
+      applicationDirs: [apps],
+      commonDirs: [],
+    })
+    expect(program).toMatchObject({ command: fresh, source: 'managed' })
+  })
+
+  it('falls back to PATH when no desktop app carries a CLI', async () => {
+    const onPath = await touch(join(root, 'bin', 'codex'), '#!/bin/sh\n')
+    await chmod(onPath, 0o755)
+    const program = await locateSubscriptionProgram('codex', {
+      env: { HOME: root, PATH: join(root, 'bin') },
+      platform: 'darwin',
+      applicationDirs: [join(root, 'Applications')],
+      commonDirs: [],
+    })
+    expect(program).toMatchObject({ command: onPath, source: 'path' })
+  })
+
+  it('does not give Claude Code the Codex desktop bundle', async () => {
+    const apps = join(root, 'Applications')
+    await bundleCli(apps, 'Codex.app')
+    const onPath = await touch(join(root, 'bin', 'claude'), '#!/bin/sh\n')
+    await chmod(onPath, 0o755)
+    const program = await locateSubscriptionProgram('claude-code', {
+      env: { HOME: root, PATH: join(root, 'bin') },
+      platform: 'darwin',
+      applicationDirs: [apps],
+      commonDirs: [],
+    })
+    expect(program).toMatchObject({ command: onPath, source: 'path' })
   })
 })
 

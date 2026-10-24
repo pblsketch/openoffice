@@ -23,6 +23,7 @@ import type { Lang } from '@genoffice/i18n'
 import {
   AiConnectPrompt,
   AiFirstConnectionNotice,
+  AiModelPicker,
   aiProviderDisplayName,
   useAiSendGate,
   type AiModelPickerBridge,
@@ -82,6 +83,8 @@ export interface HighlightStartRequest {
   /** runs of other labels the person chose to delete before starting */
   deleteRunIds: string[]
   route: ReadyRoute
+  /** the provider and model as the confirmation showed them (for the progress strip) */
+  aiLabel?: string
 }
 
 export type HighlightStartAnswer =
@@ -480,7 +483,9 @@ function HighlightConfirm({
   const [message, setMessage] = useState<string | null>(null)
   const [starting, setStarting] = useState(false)
   const route = documentJobRoute(settings, connection.statuses)
-  const confirmedRef = useRef<{ route: ReadyRoute; deleteOld: boolean } | null>(null)
+  const confirmedRef = useRef<{ route: ReadyRoute; deleteOld: boolean; aiLabel: string } | null>(
+    null,
+  )
   const latest = useRef({ settings, statuses: connection.statuses })
   latest.current = { settings, statuses: connection.statuses }
   const routeKey = route.state === 'ready' ? `${route.provider}\n${route.model}` : ''
@@ -554,7 +559,11 @@ function HighlightConfirm({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- per confirmation and route
   }, [routeKey])
 
-  const send = async (confirmed: { route: ReadyRoute; deleteOld: boolean }): Promise<void> => {
+  const send = async (confirmed: {
+    route: ReadyRoute
+    deleteOld: boolean
+    aiLabel: string
+  }): Promise<void> => {
     setStarting(true)
     try {
       const answer = await onStart({
@@ -566,6 +575,7 @@ function HighlightConfirm({
         pages,
         deleteRunIds: confirmed.deleteOld ? otherRuns.map((r) => r.runId) : [],
         route: confirmed.route,
+        aiLabel: confirmed.aiLabel,
       })
       if (!answer.ok) {
         setMessage(
@@ -616,7 +626,11 @@ function HighlightConfirm({
   const startJob = () => {
     if (route.state !== 'ready' || !canStart) return
     setMessage(null)
-    confirmedRef.current = { route, deleteOld }
+    confirmedRef.current = {
+      route,
+      deleteOld,
+      aiLabel: routeLabel(route, connection.statuses),
+    }
     if (sendGate.admit(++pressRef.current)) void run()
   }
 
@@ -650,6 +664,14 @@ function HighlightConfirm({
           <>
             <li data-route="ready" data-provider={route.provider}>
               {t('arConfirmProvider', { provider: routeLabel(route) })}
+            </li>
+            <li className="pdf-ai-read-ai" data-model-picker>
+              <AiModelPicker
+                bridge={SETTINGS_BRIDGE}
+                lang={lang}
+                subscriptionStatuses={connection.statuses}
+                showLabel
+              />
             </li>
             <li>{t('hlConfirmSends')}</li>
             {route.paid && (
@@ -708,6 +730,7 @@ function HighlightConfirm({
           onRecheck={connection.recheck}
           onAcceptMetered={connection.acceptMetered}
           onOpenInstallHelp={connection.openInstallHelp}
+          onOpenConnectHelp={connection.openConnectHelp}
         />
       )}
       {!nothingToSend && sendGate.noticeDue && (

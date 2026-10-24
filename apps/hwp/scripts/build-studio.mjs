@@ -14,14 +14,24 @@
  */
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'vite'
 import {
   AGENT_PLUGIN_MODULE,
+  HANCOM_KEYS_MODULE,
   STUDIO_PATCHES,
+  missingHancomCommands,
   missingPluginHooks,
   rhwpPatches,
 } from './rhwp-patches.mjs'
@@ -62,6 +72,7 @@ const SPARSE_PATTERNS = [
 const CACHE = join(APP, 'node_modules', '.cache', 'rhwp-studio', TAG)
 const OUT = join(APP, 'public', 'studio')
 const AGENT_PLUGIN = join(APP, 'studio-plugin', 'agent-plugin.mjs')
+const HANCOM_KEYS = join(APP, 'studio-plugin', 'hancom-keys.mjs')
 const STAMP = join(OUT, '.stamp')
 
 function git(args, cwd) {
@@ -76,8 +87,9 @@ function stampValue() {
   for (const file of ['build-studio.mjs', 'rhwp-patches.mjs']) {
     hash.update(readFileSync(join(SCRIPTS, file)))
   }
-  // the app's own plugin is compiled into the studio
+  // the app's own plugin and the Hangul keys are compiled into the studio
   hash.update(readFileSync(AGENT_PLUGIN))
+  hash.update(readFileSync(HANCOM_KEYS))
   // and so is the engine: a rebuilt WASM must reach the studio
   hash.update(readFileSync(join(CORE_DIR, 'rhwp_bg.wasm')))
   return hash.digest('hex')
@@ -123,8 +135,21 @@ function checkPluginHooks() {
   if (missing.length > 0) {
     throw new Error(
       `rhwp-studio ${TAG}: the editor no longer has what the app's plugin uses to show a change, ` +
-        `read the selection, select a word and mark its changes (see pluginHooks in rhwp-patches.mjs):\n  ` +
+        `read the selection, select a word and mark its changes, or what the Hangul keys use ` +
+        `(see pluginHooks and hancomHooks in rhwp-patches.mjs):\n  ` +
         missing.join('\n  '),
+    )
+  }
+  const commands = join(CACHE, 'rhwp-studio', 'src', 'command', 'commands')
+  const sources = readdirSync(commands)
+    .filter((file) => file.endsWith('.ts'))
+    .map((file) => readFileSync(join(commands, file), 'utf8'))
+    .join('\n')
+  const gone = missingHancomCommands(sources)
+  if (gone.length > 0) {
+    throw new Error(
+      `rhwp-studio ${TAG}: the editor no longer has the commands the Hangul keys run ` +
+        `(studio-plugin/hancom-keys.mjs): ${gone.join(', ')}`,
     )
   }
 }
@@ -155,6 +180,7 @@ async function buildStudio() {
           'studio-plugin.mjs',
         ),
         [AGENT_PLUGIN_MODULE]: AGENT_PLUGIN,
+        [HANCOM_KEYS_MODULE]: HANCOM_KEYS,
       },
     },
     // upstream registers a service worker for its website build; this build

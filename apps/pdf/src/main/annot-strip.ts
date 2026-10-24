@@ -51,6 +51,10 @@ export interface StripAnnotsOptions {
   pages: number[] | null
 }
 
+/** The kinds a reader means by “annotations” when saving a copy without them.
+    Links (navigation) and form widgets (fillable fields) are not comments and stay. */
+export const COMMENT_ANNOT_KINDS = ['comments', 'highlights', 'drawings', 'stamps'] as const
+
 const nameOf = (dict: PDFDict, key: string): string | undefined =>
   dict.lookupMaybe(PDFName.of(key), PDFName)?.decodeText()
 
@@ -158,4 +162,11 @@ export async function stripAnnotsBytes(
   for (const ref of doomed) context.delete(ref)
 
   return { bytes: await doc.save({ useObjectStreams: false }), removed }
+}
+
+/** Remove every comment annotation on every page, leaving links and form fields. */
+export async function stripCommentAnnotsBytes(
+  bytes: Uint8Array,
+): Promise<{ bytes: Uint8Array; removed: number }> {
+  return stripAnnotsBytes(bytes, { kinds: COMMENT_ANNOT_KINDS, pages: null })
 }

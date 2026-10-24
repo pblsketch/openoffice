@@ -22,6 +22,12 @@
 - **`⌘O`, `⌘S`, `⌘P`는 편집기마다 따로 구현되어** 동작도 완전히 같지 않습니다. Word의 `⌘P`는 먼저 인쇄 미리보기를 조판해 종이 한 장이 화면 한 쪽과 정확히 맞도록 합니다. PDF의 `⌘P`는 PDF 인쇄 대화 상자를 열고, Sheets와 Slides는 또 각자의 방식을 씁니다.
 - **나머지는 애플리케이션별로 다릅니다.** Word 탭이 활성 상태일 때 `⌘B`는 Word의 굵게입니다. Slides가 활성 상태일 때 `⌘B`는 Slides의 굵게이고, 그 키가 속한 메뉴도 익숙한 메뉴가 아닙니다. 선택 항목이 있어야 하거나 특정 창에서만 동작하는 조합은 동작 열에 적어 두었습니다.
 
+## 발표 모드
+
+- **시작**: 워드·PDF·마인드맵·HTML·마크다운에서 F5. 스프레드시트에서는 Ctrl+F5(A1부터) 또는 Shift+F5(지금 셀부터).
+- **다른 입구**: 워드는 Ctrl+F5·Shift+F5로 전체화면 없이 읽기 보기, PDF는 지금 쪽부터, HTML은 탭 안에서 발표합니다.
+- **끝내기**: Esc 또는 F5. F11은 창 자체의 전체화면이며 문서 보기를 바꾸지 않습니다.
+
 ## 표기 규칙
 
 - macOS 열은 익숙한 기호를 씁니다: `⌘` Command, `⌥` Option, `⇧` Shift, `⌃` Control.
@@ -588,3 +594,154 @@ GenOffice HTML은 실시간 미리보기 옆에 코드 편집기를 보여 줍�
 | 선택 범위를 기울임꼴로 | ⌘I    | Ctrl+I          |
 
 확정하면 입력한 내용은 그대로 남고 요소는 선택된 상태로 돌아갑니다.
+
+## 한글(HWP·HWPX)
+
+한글(HWP·HWPX) 탭이 앞에 있고 문서에 초점이 있을 때 아래 키가 동작합니다. 같은 동작을 macOS와 Windows / Linux에서 각각 어떻게 누르는지 나란히 두었습니다.
+
+### 파일
+
+| 동작                | macOS | Windows / Linux      |
+| ------------------- | ----- | -------------------- |
+| 새 문서             |       | Alt+N                |
+| 열기…               | ⌘O    | Ctrl+O / Alt+O       |
+| 저장                | ⌘S    | Ctrl+S / Alt+S       |
+| 다른 이름으로 저장… | ⇧⌘S   | Ctrl+Shift+S / Alt+V |
+| 인쇄                | ⌘P    | Ctrl+P / Alt+P       |
+
+### 편집
+
+| 동작         | macOS       | Windows / Linux              |
+| ------------ | ----------- | ---------------------------- |
+| 실행 취소    | ⌃Z          | Ctrl+Z                       |
+| 다시 실행    | ⌃⇧Z         | Ctrl+Shift+Z                 |
+| 한 줄 지우기 | ⌃Y          | Ctrl+Y                       |
+| 잘라내기     | ⌃X          | Ctrl+X                       |
+| 복사         | ⌃C          | Ctrl+C                       |
+| 붙여넣기     | ⌃V          | Ctrl+V                       |
+| 지우기       | ⌃E          | Ctrl+E                       |
+| 모두 선택    | ⌃A          | Ctrl+A                       |
+| 모양 복사    | ⌥C          | Alt+C                        |
+| 찾기         | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
+| 찾아 바꾸기  | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
+| 다시 찾기    | ⌃L          | Ctrl+L                       |
+| 거꾸로 찾기  | ⌃Q, L       | Ctrl+Q, L                    |
+| 찾아가기     | ⌥G          | Alt+G                        |
+| 문서 비교    | ⌥⇧V         | Alt+Shift+V                  |
+
+### 문자 서식
+
+| 동작             | macOS    | Windows / Linux      |
+| ---------------- | -------- | -------------------- |
+| 굵게             | ⌃B / ⌥⇧B | Ctrl+B / Alt+Shift+B |
+| 기울임꼴         | ⌃I / ⌥⇧I | Ctrl+I / Alt+Shift+I |
+| 밑줄             | ⌃U / ⌥⇧U | Ctrl+U / Alt+Shift+U |
+| 보통 모양        | ⌥⇧C      | Alt+Shift+C          |
+| 위 첨자          | ⌥⇧P      | Alt+Shift+P          |
+| 아래 첨자        | ⌥⇧S      | Alt+Shift+S          |
+| 글자 모양…       | ⌥L       | Alt+L                |
+| 글자 크기 키우기 | ⌥⇧E / ⌃] | Alt+Shift+E / Ctrl+] |
+| 글자 크기 줄이기 | ⌥⇧R / ⌃[ | Alt+Shift+R / Ctrl+[ |
+| 장평 늘리기      | ⌥⇧K      | Alt+Shift+K          |
+| 장평 줄이기      | ⌥⇧J      | Alt+Shift+J          |
+| 자간 늘리기      | ⌥⇧W      | Alt+Shift+W          |
+| 자간 줄이기      | ⌥⇧N      | Alt+Shift+N          |
+| 검정 글자색      | ⌃M, K    | Ctrl+M, K            |
+| 빨강 글자색      | ⌃M, R    | Ctrl+M, R            |
+| 파랑 글자색      | ⌃M, B    | Ctrl+M, B            |
+| 자주 글자색      | ⌃M, D    | Ctrl+M, D            |
+| 초록 글자색      | ⌃M, G    | Ctrl+M, G            |
+| 노랑 글자색      | ⌃M, Y    | Ctrl+M, Y            |
+| 청록 글자색      | ⌃M, C    | Ctrl+M, C            |
+| 흰색 글자색      | ⌃M, W    | Ctrl+M, W            |
+
+### 문단 서식
+
+| 동작                  | macOS   | Windows / Linux |
+| --------------------- | ------- | --------------- |
+| 왼쪽 맞춤             | ⌃⇧L     | Ctrl+Shift+L    |
+| 가운데 맞춤           | ⌃⇧C     | Ctrl+Shift+C    |
+| 오른쪽 맞춤           | ⌃⇧R     | Ctrl+Shift+R    |
+| 양쪽 맞춤             | ⌃⇧M     | Ctrl+Shift+M    |
+| 배분 맞춤             | ⌃⇧T     | Ctrl+Shift+T    |
+| 줄 간격 늘리기        | ⌥⇧Z     | Alt+Shift+Z     |
+| 줄 간격 줄이기        | ⌥⇧A     | Alt+Shift+A     |
+| 문단 모양…            | ⌥T      | Alt+T           |
+| 스타일…               | F6      | F6              |
+| 첫째~열째 스타일 적용 | ⌃1 … ⌃0 | Ctrl+1 … Ctrl+0 |
+| 문단 번호 모양        | ⌃K, N   | Ctrl+K, N       |
+
+### 삽입
+
+| 동작                         | macOS       | Windows / Linux    |
+| ---------------------------- | ----------- | ------------------ |
+| 표 만들기                    | ⌃N, T       | Ctrl+N, T          |
+| 각주                         | ⌃N, N       | Ctrl+N, N          |
+| 미주                         | ⌃N, E       | Ctrl+N, E          |
+| 머리말                       | ⌃N, H       | Ctrl+N, H          |
+| 쪽 번호 매기기               | ⌃N, P       | Ctrl+N, P          |
+| 그림 넣기                    | ⌃N, I       | Ctrl+N, I          |
+| 글상자                       | ⌃N, B       | Ctrl+N, B          |
+| 수식                         | ⌃N, M       | Ctrl+N, M          |
+| 캡션 넣기                    | ⌃N, C       | Ctrl+N, C          |
+| 하이퍼링크                   | ⌃K, H       | Ctrl+K, H          |
+| 책갈피                       | ⌃K, B       | Ctrl+K, B          |
+| 필드 입력                    | ⌃K, E       | Ctrl+K, E          |
+| 날짜/시간 문자열             | ⌃K, D       | Ctrl+K, D          |
+| 고치기(개체·필드·표/셀 속성) | ⌃N, K       | Ctrl+N, K          |
+| 문자표                       | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+
+### 표
+
+| 동작           | macOS        | Windows / Linux        |
+| -------------- | ------------ | ---------------------- |
+| 줄/칸 추가하기 | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| 줄/칸 지우기   | ⌥⌫           | Alt+Delete             |
+| 셀 나누기      | F5 → S       | F5 → S                 |
+| 셀 합치기      | F5 → M       | F5 → M                 |
+| 블록 합계      | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| 블록 평균      | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| 블록 곱        | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| 표 나누기      | ⌃N, A        | Ctrl+N, A              |
+| 표 붙이기      | ⌃N, Z        | Ctrl+N, Z              |
+| 계산식         | ⌃N, F        | Ctrl+N, F              |
+
+### 표 계산
+
+표의 빈 칸에 커서가 있을 때만 동작합니다. 왼쪽 칸들의 값으로 계산하는 키와 위쪽 칸들의 값으로 계산하는 키가 따로 있습니다.
+
+| 동작      | macOS | Windows / Linux |
+| --------- | ----- | --------------- |
+| 가로 합계 | ⇧⌘H   | Ctrl+Shift+H    |
+| 세로 합계 | ⌃⇧V   | Ctrl+Shift+V    |
+| 가로 평균 | ⌃⇧J   | Ctrl+Shift+J    |
+| 세로 평균 | ⌃⇧B   | Ctrl+Shift+B    |
+| 가로 곱   | ⌃⇧K   | Ctrl+Shift+K    |
+| 세로 곱   | ⌃⇧N   | Ctrl+Shift+N    |
+
+### 쪽
+
+| 동작           | macOS | Windows / Linux  |
+| -------------- | ----- | ---------------- |
+| 편집 용지      | F7    | F7               |
+| 쪽 나누기      | ⌃⏎    | Ctrl+Enter       |
+| 단 나누기      | ⌃⇧⏎   | Ctrl+Shift+Enter |
+| 단 설정 나누기 | ⌃⌥⏎   | Ctrl+Alt+Enter   |
+| 구역 설정      | ⌃N, G | Ctrl+N, G        |
+| 감추기         | ⌃N, S | Ctrl+N, S        |
+
+### 보기
+
+| 동작                  | macOS | Windows / Linux |
+| --------------------- | ----- | --------------- |
+| 확대                  | ⌃=    | Ctrl+=          |
+| 축소                  | ⌃-    | Ctrl+-          |
+| 쪽 맞춤               | ⌃G, P | Ctrl+G, P       |
+| 폭 맞춤               | ⌃G, W | Ctrl+G, W       |
+| 100%로 확대           | ⌃G, Q | Ctrl+G, Q       |
+| 도구 상자 접기/펴기   | ⌃F1   | Ctrl+F1         |
+| 문단 부호 표시/숨기기 | ⌃G, T | Ctrl+G, T       |
+| 조판 부호 표시/숨기기 | ⌃G, C | Ctrl+G, C       |
+| 홈 탭으로(표 밖)      | ⇧⌘H   | Ctrl+Shift+H    |
+
+`Ctrl+N,T`처럼 쉼표로 이어진 키는 앞의 키를 눌렀다 떼고 다음 키를 누르라는 뜻입니다. `F5 → S`는 F5로 셀 블록을 잡은 뒤 S를 누르라는 뜻이고, `Ctrl+1 … Ctrl+0`은 문서의 첫째부터 열째 스타일을 가리킵니다. `Ctrl+Alt+1 … Ctrl+Alt+0`도 같은 스타일을 적용합니다. 셀 블록을 잡았을 때 `Ctrl+Shift+S`(macOS에서는 `⇧⌘S`)는 블록 합계이고, 그 밖에서는 다른 이름으로 저장입니다.

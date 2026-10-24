@@ -68,6 +68,8 @@ export const ru = {
   aiEmptyTitle: 'Доверьте ИИ написание и редактирование',
   aiEmptyBody1: 'Дайте указание или просто задайте вопрос;',
   aiEmptyBody2: 'если текст выделен, команды переписывания применяются к выделению.',
+  aiNoHidingNote:
+    'В этом редакторе нельзя скрыть части документа от ИИ: то, что затрагивает запрос, отправляется как есть.',
   aiStarterWeeklyReport: 'Напиши еженедельный отчет по проекту',
   aiStarterLaunchPost: 'Напиши объявление о запуске продукта',
   aiStarterEventOutline: 'Составь план мероприятия',
@@ -181,4 +183,17 @@ export const ru = {
   aiCmdImages: 'Обновлено изображений: {count}',
   aiCmdToc: 'Вставлено оглавление (элементов: {count})',
   aiCmdSkipped: ' (пропущено защищенных блоков: {count})',
+  aiStarterMindMap: 'Создать ментальную карту документа',
+  aiMindMapBtn: 'ИИ-ментальная карта',
+  aiMindMapPrompt:
+    'Создай ментальную карту этого документа, организовав основные темы и ключевые понятия по структуре разделов',
+  aiSumMindMap: 'Создать ментальную карту',
+  aiMindMapTitle: 'Ментальная карта',
+  aiMindMapNodes: '{count} узлов',
+  aiMindMapAskPrompt: 'Расскажи про «{label}» в этом документе',
+  aiMindMapJump: 'Перейти к цитируемому фрагменту',
+  aiMindMapExport: 'Экспорт PNG',
+  aiMindMapReset: 'Сбросить вид',
+  aiMindMapExpand: 'Развернуть ветку',
+  aiMindMapCollapse: 'Свернуть ветку',
 } satisfies Record<keyof typeof zh, string>

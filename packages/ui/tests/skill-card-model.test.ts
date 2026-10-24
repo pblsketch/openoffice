@@ -69,11 +69,19 @@ describe('when Save is blocked', () => {
   const draft = initialSkillCardDraft(NEW)
 
   it.each([
-    [{ title: '  ' }, 'blockTitle'],
     [{ description: '' }, 'blockDescription'],
     [{ body: '\n' }, 'blockBody'],
   ])('blocks %j', (patch, key) => {
     expect(skillCardSaveBlock({ ...draft, ...patch }, null)).toBe(key)
+  })
+
+  it('allows Save with an empty title: lists show the name', () => {
+    expect(skillCardSaveBlock({ ...draft, title: '' }, null)).toBeNull()
+    expect(skillCardSaveBlock({ ...draft, title: '  ' }, null)).toBeNull()
+    expect(skillCardSaveInput({ ...draft, title: '' }, NEW)).toMatchObject({
+      title: '',
+      name: 'minutes',
+    })
   })
 
   it('blocks on the name rule, and while the name is being checked', () => {
@@ -165,6 +173,8 @@ describe('what Save hands to the shell', () => {
     expect(skillCardSaveFailureKey('name-taken')).toBe('nameTaken')
     expect(skillCardSaveFailureKey('trash-failed')).toBe('trashFailed')
     expect(skillCardSaveFailureKey('failed')).toBe('saveFailed')
+    // the shell no longer refuses an empty title; an old answer falls to the default
+    expect(skillCardSaveFailureKey('empty-title')).toBe('saveFailed')
   })
 })
 
@@ -215,6 +225,20 @@ describe('cards in a stored conversation', () => {
       },
     ])
     expect(read.proposals).toEqual([{ key: 'stored-0-0', title: 'Say "hi"', status: 'unsaved' }])
+  })
+
+  it('a proposal given only a name is read back by its name and matched to its saved record', () => {
+    const named = {
+      name: 'propose_skill',
+      summary: 'Skill proposal: minutes',
+      input: JSON.stringify({ name: 'minutes', description: 'd', body: 'b' }),
+      output: `Skill card shown: ${JSON.stringify('minutes')}\nThe skill card is shown`,
+    }
+    const read = readStoredSkillCards([
+      { role: 'assistant' as const, text: 'x', tools: [named] },
+      { role: 'assistant' as const, text: '', tools: [skillCardSavedRecord('minutes', 'app:m')] },
+    ])
+    expect(read.proposals).toEqual([{ key: 'stored-0-0', title: 'minutes', status: 'saved' }])
   })
 
   it('a record the store cut off still shows, as an untitled card', () => {

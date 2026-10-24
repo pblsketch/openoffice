@@ -48,4 +48,4 @@ Soubor ▸ Tisk… v každém editoru (⌘P/ctrl+P) otevře systémové okno tis
 
 ## Kam putují soubory bez názvu
 
-Umístění, které zvolíte při prvním uložení, je jejich domovem; do té doby existuje dokument pouze v paměti. Automatické ukládání se ujme až po tomto prvním uložení.
+Umístění, které zvolíte při prvním uložení, je jejich domovem. Do té doby nemá dokument vlastní soubor: jeho neuložený obsah existuje jen jako kopie pro obnovení v datové složce aplikace, takže se dá vrátit, i když se aplikace náhle vypne (viz [Karty a správa oken](help://tabs-and-windows)). Automatické ukládání se ujme až po tomto prvním uložení.

@@ -36,7 +36,8 @@ export const mcpCommand: CommandDef = {
     {
       name: 'host',
       value: 'addr',
-      description: 'address to bind with --http (default: 127.0.0.1; 0.0.0.0 for other machines)',
+      description:
+        'address to bind with --http (default: 127.0.0.1; 0.0.0.0 for other machines, which needs --token)',
     },
     {
       name: 'token',
@@ -150,14 +151,20 @@ async function serve(args: Parameters<CommandDef['run']>[0], ctx: CommandContext
       { reason: 'invalid_argument' },
     )
   }
-  const { serveHttp } = await import('../mcp/http')
+  const token = tokenFlag ?? (ctx.env.GENOFFICE_MCP_TOKEN?.trim() || undefined)
+  const { serveHttp, exposedWithoutToken, EXPOSED_WITHOUT_TOKEN } = await import('../mcp/http')
+  if (exposedWithoutToken(hostFlag, token)) {
+    throw new CliError(EXIT.usage, EXPOSED_WITHOUT_TOKEN, undefined, {
+      reason: 'invalid_argument',
+    })
+  }
   await serveHttp({
     cwd: ctx.cwd,
     env: ctx.env,
     log: ctx.log,
     port,
     host: hostFlag,
-    token: tokenFlag ?? (ctx.env.GENOFFICE_MCP_TOKEN?.trim() || undefined),
+    token,
     compactSchemas,
   })
   return { summary: 'mcp server stopped' }

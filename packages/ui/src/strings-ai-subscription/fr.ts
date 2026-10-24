@@ -24,7 +24,7 @@ export const fr = {
     'Un problème est survenu lors de la vérification de {provider}. Vérifiez à nouveau.',
   actionInstall: 'Installer',
   actionLogin: 'Se connecter',
-  actionLoginWindow: 'Le navigateur ne s’est pas ouvert ou affiche un code ?',
+  actionLoginWindow: 'Le navigateur ne s’est pas ouvert ?',
   actionRecheck: 'Vérifier à nouveau',
   actionAcceptMetered: 'Utiliser quand même',
   actionInstallHelp: 'Guide d’installation officiel',
@@ -38,7 +38,7 @@ export const fr = {
   signingInBrowserNote:
     'Connectez-vous à votre compte {vendor} dans le navigateur qui s’est ouvert, puis autorisez l’accès. La connexion se fait d’elle-même une fois terminé.',
   signingInWindowNote:
-    'Si le navigateur ne s’est pas ouvert, copiez l’adresse affichée dans la fenêtre qui vient de s’ouvrir et ouvrez-la dans votre navigateur. Quand le navigateur affiche un code, copiez-le, collez-le une seule fois dans cette fenêtre et appuyez sur Entrée. Le code collé peut ne pas s’afficher dans la fenêtre.',
+    'Suivez les instructions en haut de la fenêtre de connexion qui vient de s’ouvrir. Connectez-vous sur la page {vendor} qui s’est ouverte dans votre navigateur : la fenêtre se ferme alors d’elle-même et la connexion se fait. Une page de connexion ouverte auparavant ne fonctionne plus ; fermez-la.',
   meteredWarning: 'Ce n’est pas un abonnement : vous payez ce que vous consommez.',
   meteredMeaning:
     'Cette connexion utilise une clé API ou un compte facturé à l’usage, ou son type n’a pas pu être confirmé. « Utiliser quand même » permet à l’IA de fonctionner avec cette connexion, et chaque requête est facturée à ce compte.',
@@ -122,8 +122,21 @@ export const fr = {
   loginHowNote:
     'Un navigateur s’ouvre quand vous cliquez. Connectez-vous avec votre compte {vendor} et cliquez sur Autoriser : la connexion se fait d’elle-même.',
   signingInStalledNote:
-    'Le navigateur ne s’est pas ouvert ou affiche un code ? Ouvrez la fenêtre de connexion avec le bouton ci-dessous. Collez l’adresse qui y est affichée dans votre navigateur, ou collez le code du navigateur dans la fenêtre.',
+    'Si aucune page de connexion ne s’est ouverte dans votre navigateur, ouvrez la fenêtre de connexion avec le bouton ci-dessous. Si vous êtes encore en train de vous connecter dans le navigateur, terminez plutôt là-bas : le bouton interrompt cette connexion et tout recommence depuis le début.',
   actionLoginWindowOpen: 'Ouvrir la fenêtre de connexion',
+  loginWindowTitle: 'Connexion à {provider}',
+  loginWindowIntro:
+    'Ceci est la fenêtre de connexion du programme {provider}. Le texte en anglais ci-dessous provient du programme {provider}.',
+  loginWindowStepBrowser:
+    'Quand la page de connexion {vendor} s’ouvre dans votre navigateur, connectez-vous et autorisez l’accès. Cette fenêtre se ferme ensuite d’elle-même.',
+  loginWindowStepAddress:
+    'Si aucun navigateur ne s’est ouvert, sélectionnez l’adresse ci-dessous qui commence par https:// en faisant glisser la souris dessus, puis faites un clic droit pour la copier. Collez-la dans la barre d’adresse de votre navigateur pour ouvrir la page de connexion.',
+  loginWindowStepCode:
+    'Si le navigateur affiche un code après la connexion, copiez le code en entier (avec son bouton de copie s’il y en a un). Faites un clic droit une fois dans cette fenêtre pour le coller, puis appuyez sur Entrée. Il est normal que le code collé ne s’affiche pas.',
+  loginWindowStepInvalid:
+    'Si vous voyez "Invalid code", le code n’a pas été copié en entier. Laissez cette fenêtre ouverte, copiez de nouveau le code et collez-le.',
+  loginWindowClosing:
+    'La connexion n’a pas abouti. Après avoir lu les messages ci-dessus, appuyez sur Entrée pour fermer cette fenêtre. Pour réessayer, cliquez de nouveau sur le bouton de connexion.',
   actionCancelLogin: 'Annuler la connexion',
   actionUpdate: 'Mettre à jour',
   updateNote:
@@ -132,4 +145,5 @@ export const fr = {
     'Toujours bloqué ? Copiez les informations de connexion et envoyez-les à la personne qui vous aide. Elles ne contiennent ni compte ni chemin de fichier.',
   actionCopyInfo: 'Copier les infos pour obtenir de l’aide',
   copyInfoDone: 'Copié',
+  actionConnectHelp: 'Voir chaque étape à l’écran (page en coréen)',
 } satisfies Record<keyof typeof zh, string>

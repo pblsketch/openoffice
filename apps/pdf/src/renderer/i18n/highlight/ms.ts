@@ -78,11 +78,13 @@ export const ms = {
   hlAccept: 'Terima',
   hlDismiss: 'Buang',
   hlAcceptAll: 'Terima semua ({count})',
+  hlAcceptAllSave: 'Terima semua dan simpan ({count})',
   hlDismissAll: 'Buang semua cadangan',
   hlSuggestionCount: '{count} cadangan serlahan AI',
   hlNotFoundTip: 'Ayat ini tidak ditemui dalam teks halaman, jadi tidak boleh diterima',
   hlWaitingSave: 'Menunggu disimpan',
   hlWaitingSaveTip: 'Simpan PDF supaya serlahan masuk ke dalam fail',
   hlAcceptedNotice: '{count} serlahan ditambah. Simpan PDF supaya masuk ke dalam fail.',
+  hlAcceptedSaved: '{count} sorotan disimpan.',
   hlDismissFailed: 'Cadangan tidak dapat dibuang.',
 } satisfies Record<keyof typeof zh, string>

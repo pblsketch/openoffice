@@ -359,6 +359,23 @@ describe('a CLI too old to answer (spec 7)', () => {
     expect(subscriptionStatusErrorKind(codexOld)).toBe('needs-update')
   })
 
+  it('a program that gives no version is a plain failure, not a Codex too old', async () => {
+    // a Codex helper (codex-code-mode-host.exe) answers the same way as an old
+    // CLI but never names a version; an update would change nothing
+    const detection = await codex(
+      {
+        code: 2,
+        stdout: '',
+        stderr:
+          "error: unexpected argument 'login' found\n\nUsage: codex-code-mode-host.exe [OPTIONS]\n",
+      },
+      ok(''),
+    )
+    expect(detection.state).toBe('error')
+    expect(detection.version).toBeUndefined()
+    expect(subscriptionStatusErrorKind(detection)).toBe('failed')
+  })
+
   it('compares versions numerically', async () => {
     const newer = fakeCli({ version: ok('2.10.3 (Claude Code)'), status: ok(claudeStatus({})) })
     const detection = await detectSubscriptionLogin('claude-code', {

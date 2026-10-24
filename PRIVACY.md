@@ -1,6 +1,6 @@
 # IeumOffice Privacy
 
-Last updated: October 21, 2026
+Last updated: October 23, 2026
 
 IeumOffice opens, edits and saves documents on your own PC. The project runs
 no server of its own: nothing is sent to IeumOffice or to its maintainers, and
@@ -41,6 +41,7 @@ by that service's own terms and by your account settings there.
 | The AI is asked to look at a picture, a video or a sound file                                                                                                                                   | That file and the question about it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Pictures: the AI provider in use, or the key-based analysis provider you chose. Video and sound: only a key-based provider that can analyse video                                                                             |
 | The installed app checks for a new version                                                                                                                                                      | An ordinary request for the public release list; a new installer is downloaded when you accept an update                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | **GitHub** (the releases of `pblsketch/openoffice`)                                                                                                                                                                           |
 | You press **Send feedback** (Help menu or Settings → About)                                                                                                                                     | A dialog shows the app version, the operating system and the UI language; the app copies that block to your clipboard and opens the survey in your browser. What you type into the survey is sent by Google. The app itself sends nothing, and document contents, file paths and account details are never included                                                                                                                                                                                                                                                                                                                                                | **Google** (the survey form), in your browser under your own Google session                                                                                                                                                   |
+| You press **See each step on screen** under the AI connect guide (shown while no AI is connected)                                                                                               | Nothing from the app. Your browser opens the connect help page of the IeumOffice website; the app adds only which way to connect you had picked (Claude, Codex or free) as the page section. The page loads like any website visit; it has no analytics                                                                                                                                                                                                                                                                                                                                                                                                            | The IeumOffice website (`ieumoffice.com`, hosted by **Vercel**) and **Google Fonts** for its typeface, in your browser                                                                                                        |
 | You set up an image upload host in the Markdown editor                                                                                                                                          | The pictures you paste or drop into a Markdown document                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | The host you configured: S3-compatible storage, SM.MS, or a GitHub repository. Nothing is uploaded when no host is configured; pictures are kept next to the document                                                         |
 | You switched on reranking for the home screen's file search (off by default)                                                                                                                    | The search query and excerpts of the top 20 local matches                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | The reranking service you chose and entered a key for                                                                                                                                                                         |
 | You connect Google Drive under Settings → Integrations                                                                                                                                          | Your browser opens Google's sign-in page. After you allow access, the app sends Google the one-time code it got back, with the app's own client identifier, to receive a sign-in token; while connected, the app renews that token with Google                                                                                                                                                                                                                                                                                                                                                                                                                     | **Google** (`accounts.google.com`, `oauth2.googleapis.com`)                                                                                                                                                                   |
@@ -80,7 +81,7 @@ It does **not** reach:
   `.docx` file read as material (attachment, Ask, search index, "Make") is
   read as written. A Word document whose parts were hidden in the program
   this app is based on sends those parts to the AI provider when you use AI
-  on it here.
+  on it here. The Word editor's AI panel says it cannot hide anything.
 - **The terminal command, its MCP server and the app's own MCP server.**
   `ieumoffice` commands and MCP tools read PowerPoint, Markdown and HTML files
   as written, hidden parts included. What an agent does with that text is
@@ -162,6 +163,18 @@ app's own features:
   Settings → AI → Advanced. That switch has no hourly cap: an agent can use as
   much of your subscription as it asks for, including whole documents and
   page images.
+- It asks before the AI fetches a web address that has not appeared in the
+  conversation, and you can turn the AI's internet tools off altogether.
+  Text hidden in a document or a web page could otherwise steer the AI into
+  putting your content into an address it fetches. In an editor's AI window,
+  an address the AI wants to read or take a picture from is fetched without
+  asking only if it already stands, exactly, in your messages or in what a
+  tool returned (search results, a page or file it read). Any other address
+  is shown to you first, and nothing is fetched unless you press **Allow**.
+  Settings → AI Media & Search → **Let AI use internet tools** turns off web
+  and image search, image generation and analysis, and fetching by address
+  in the editors. Searches are not asked about: a search query goes only to
+  the search service.
 
 ## Google Drive
 
@@ -232,10 +245,14 @@ Nothing in this list is uploaded by the app.
   and that holds no change still to be uploaded is deleted when the app
   starts.
 - **Settings, including any API keys you entered**
-  (`ai-settings.json` in the same folder). The keys are stored as plain text,
-  not encrypted, so anyone who can read your user profile can read them. The
-  read-only GitHub token used to read private GitHub files is stored the same
-  way and is sent only to `api.github.com`.
+  (`ai-settings.json` in the same folder). On Windows the keys are encrypted
+  with your Windows account (DPAPI), and on Linux with your desktop keyring
+  (GNOME Keyring or KWallet), so a copy of the file on another PC or another
+  account does not show them; programs running under your own account can
+  still open them. On macOS, and on Linux without a keyring, they are stored
+  as plain text, so anyone who can read your user profile can read them. The read-only GitHub
+  token used to read private GitHub files is stored the same way and is sent
+  only to `api.github.com`.
 - **The record that you accepted a login billed by usage**, kept in the same
   folder. It is cleared when the kind of login changes or you sign out.
 - **The automatic-call ledger**: the times of subscription requests made by
@@ -264,9 +281,37 @@ Nothing in this list is uploaded by the app.
   the highlight preview and the overview section are shown, and the width and
   text size of the translation column), kept by the editor. They hold no
   document content.
-- **The search index** of the folders you added to the home screen, autosave
-  copies, recent-file lists and local diagnostic logs, also in the data
-  folder.
+- **Recovery copies of documents you have not saved**, so that unsaved work
+  survives a crash, a power cut or the PC shutting down. While a document has
+  unsaved changes, every editor (Word, Excel, PowerPoint, PDF, Markdown,
+  HTML, mind map and HWP) keeps one latest copy of it in a folder of the data
+  folder named after the editor (`docs-autosave`, `sheets-autosave`,
+  `slides-autosave`, `pdf-autosave`, `markdown-autosave`, `html-autosave`,
+  `mindmap-autosave`, `hwp-autosave`). A copy holds what saving the document
+  at that moment would have written, so it is your document content, kept as
+  a plain file. Next to it is a small note with the document's file path, its
+  tab title and when the copy was made. Documents you have never saved get
+  their copies there as well; the app does not create files in your own
+  folders for them. Your original file is not changed until you save. A copy
+  is deleted when you save the document, close it with **Don't Save**, choose
+  **Discard** when the app offers it back, or close the document with no
+  unsaved changes, and any copy left untouched for 30 days is deleted when
+  the app starts. Password-protected Word and PowerPoint documents get a copy
+  locked with the same password; password-protected Excel, HWP and PDF files
+  get no copy at all, so no unlocked content of them is kept. The PDF editor
+  works on a file, so when it brings back a PDF that was never saved it also
+  places the restored copy as a working file in the operating system's
+  temporary folder (`genoffice-pdf-recovery`). That file is your document
+  content as well, kept as a plain file; it is removed when the tab closes or
+  the document is saved, and leftovers older than a day are removed when the
+  app starts.
+- **The session record** (`session-record.json` in the data folder): the
+  kind, file path and title of each open document tab, their order, which tab
+  was in front, the split view, and whether the app was closed normally, so
+  that the tabs can come back after the app or the PC shuts off unexpectedly.
+  It holds no document content and is never sent anywhere.
+- **The search index** of the folders you added to the home screen,
+  recent-file lists and local diagnostic logs, also in the data folder.
 - **Records of which documents were made from which files**
   (`document-links.json` in the data folder), written when a document made
   with "Make a new document" is first saved, and only if its tab actually

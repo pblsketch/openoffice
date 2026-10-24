@@ -22,7 +22,7 @@ export const pl = {
   cardErrFailed: 'Podczas sprawdzania {provider} wystąpił problem. Sprawdź ponownie.',
   actionInstall: 'Zainstaluj',
   actionLogin: 'Zaloguj się',
-  actionLoginWindow: 'Przeglądarka się nie otworzyła albo pokazuje kod?',
+  actionLoginWindow: 'Przeglądarka się nie otworzyła?',
   actionRecheck: 'Sprawdź ponownie',
   actionAcceptMetered: 'Użyj mimo to',
   actionInstallHelp: 'Oficjalna instrukcja instalacji',
@@ -36,7 +36,7 @@ export const pl = {
   signingInBrowserNote:
     'Zaloguj się na swoje konto {vendor} w otwartej przeglądarce i zezwól na dostęp. Połączenie nastąpi samo, gdy skończysz.',
   signingInWindowNote:
-    'Jeśli przeglądarka się nie otworzyła, skopiuj adres widoczny w oknie, które właśnie się otworzyło, i otwórz go w przeglądarce. Gdy przeglądarka pokaże kod, skopiuj go, wklej raz w tym oknie i naciśnij Enter. Wklejony kod może nie być widoczny w oknie.',
+    'Postępuj zgodnie ze wskazówkami u góry okna logowania, które właśnie się otworzyło. Zaloguj się na nowo otwartej stronie logowania {vendor} w przeglądarce: okno zamknie się samo i połączenie zostanie nawiązane. Strona logowania otwarta wcześniej już nie działa; zamknij ją.',
   meteredWarning: 'To nie jest subskrypcja: płacisz za faktyczne zużycie.',
   meteredMeaning:
     'To logowanie korzysta z klucza API lub konta rozliczanego za zużycie albo nie udało się ustalić jego rodzaju. Po wybraniu „Użyj mimo to” AI będzie działać przez to połączenie, a każde żądanie obciąży to konto.',
@@ -119,8 +119,21 @@ export const pl = {
   loginHowNote:
     'Po kliknięciu otworzy się przeglądarka. Zaloguj się na konto {vendor} i kliknij Zezwól, a połączenie nastąpi samo.',
   signingInStalledNote:
-    'Przeglądarka się nie otworzyła albo pokazuje kod? Otwórz okno logowania przyciskiem poniżej. Wklej adres z tego okna do przeglądarki albo wklej kod z przeglądarki do okna.',
+    'Jeśli strona logowania nie otworzyła się w przeglądarce, otwórz okno logowania przyciskiem poniżej. Jeśli wciąż logujesz się w przeglądarce, nie naciskaj go, tylko dokończ logowanie tam: przycisk przerywa to logowanie i zaczyna od nowa.',
   actionLoginWindowOpen: 'Otwórz okno logowania',
+  loginWindowTitle: 'Logowanie do {provider}',
+  loginWindowIntro:
+    'To jest okno logowania programu {provider}. Tekst po angielsku poniżej wyświetla program {provider}.',
+  loginWindowStepBrowser:
+    'Gdy w przeglądarce otworzy się strona logowania {vendor}, zaloguj się i zezwól na dostęp. To okno zamknie się wtedy samo.',
+  loginWindowStepAddress:
+    'Jeśli przeglądarka się nie otworzyła, zaznacz myszą adres poniżej zaczynający się od https://, a potem kliknij prawym przyciskiem myszy, aby go skopiować. Wklej go w pasek adresu przeglądarki, aby otworzyć stronę logowania.',
+  loginWindowStepCode:
+    'Jeśli po zalogowaniu przeglądarka pokaże kod, skopiuj cały kod (jeśli jest przycisk kopiowania, użyj go). Kliknij raz prawym przyciskiem myszy w tym oknie, aby go wkleić, a potem naciśnij Enter. To normalne, że wklejony kod nie jest widoczny.',
+  loginWindowStepInvalid:
+    'Jeśli zobaczysz "Invalid code", kod nie został skopiowany w całości. Nie zamykaj tego okna, skopiuj kod ponownie i wklej go.',
+  loginWindowClosing:
+    'Logowanie nie zostało ukończone. Gdy przeczytasz powyższe komunikaty, naciśnij Enter, aby zamknąć to okno. Aby spróbować ponownie, jeszcze raz naciśnij przycisk logowania.',
   actionCancelLogin: 'Anuluj logowanie',
   actionUpdate: 'Zaktualizuj',
   updateNote:
@@ -129,4 +142,5 @@ export const pl = {
     'Nadal nie działa? Skopiuj informacje o połączeniu i wyślij je osobie, która Ci pomaga. Nie zawierają konta ani ścieżek plików.',
   actionCopyInfo: 'Kopiuj informacje dla pomocy',
   copyInfoDone: 'Skopiowano',
+  actionConnectHelp: 'Zobacz każdy krok na ekranie (strona po koreańsku)',
 } satisfies Record<keyof typeof zh, string>

@@ -273,6 +273,8 @@ export class DocumentInsights {
     prepared: PreparedInsights
     provider: string
     model: string
+    /** the provider and model as the confirmation showed them (for the progress strip) */
+    aiLabel?: string
     call: (request: AgentStreamRequest, signal: AbortSignal) => Promise<string>
     onEnd?: StartDocumentJob<SummaryUnit>['onEnd']
   }): StartDocumentJob<SummaryUnit> {
@@ -328,6 +330,7 @@ export class DocumentInsights {
       kind: 'summary',
       lang,
       provider,
+      ...(o.aiLabel ? { aiLabel: o.aiLabel } : {}),
       launch: ({
         signal,
         registry,

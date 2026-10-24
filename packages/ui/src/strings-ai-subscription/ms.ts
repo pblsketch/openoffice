@@ -23,7 +23,7 @@ export const ms = {
   cardErrFailed: 'Masalah berlaku semasa menyemak {provider}. Semak semula.',
   actionInstall: 'Pasang',
   actionLogin: 'Log masuk',
-  actionLoginWindow: 'Pelayar tidak dibuka, atau menunjukkan kod?',
+  actionLoginWindow: 'Pelayar tidak dibuka?',
   actionRecheck: 'Semak semula',
   actionAcceptMetered: 'Guna juga',
   actionInstallHelp: 'Panduan pemasangan rasmi',
@@ -36,7 +36,7 @@ export const ms = {
   signingInBrowserNote:
     'Log masuk ke akaun {vendor} anda dalam pelayar yang dibuka, kemudian benarkan akses. Sambungan akan dibuat sendiri apabila selesai.',
   signingInWindowNote:
-    'Jika pelayar tidak dibuka, salin alamat yang ditunjukkan dalam tetingkap yang baru dibuka dan bukanya dalam pelayar. Apabila pelayar menunjukkan kod, salin dan tampalkannya sekali ke tetingkap itu, kemudian tekan Enter. Kod yang ditampal mungkin tidak kelihatan dalam tetingkap.',
+    'Ikut panduan di bahagian atas tetingkap log masuk yang baru dibuka. Log masuk di halaman {vendor} yang dibuka dalam pelayar anda: tetingkap itu kemudian ditutup sendiri dan anda disambungkan. Halaman log masuk yang dibuka sebelum ini tidak berfungsi lagi; tutup halaman itu.',
   meteredWarning: 'Ini bukan langganan: anda dicaj mengikut penggunaan.',
   meteredMeaning:
     'Log masuk ini menggunakan kunci API atau akaun bayar ikut guna, atau jenisnya tidak dapat disahkan. Dengan "Guna juga", AI berjalan melalui sambungan ini dan setiap permintaan dicaj kepada akaun tersebut.',
@@ -119,8 +119,21 @@ export const ms = {
   loginHowNote:
     'Pelayar akan dibuka apabila anda menekannya. Log masuk dengan akaun {vendor} anda dan tekan Benarkan; sambungan akan selesai dengan sendiri.',
   signingInStalledNote:
-    'Pelayar tidak dibuka, atau menunjukkan kod? Buka tetingkap log masuk dengan butang di bawah. Tampalkan alamat yang ditunjukkan dalam tetingkap itu ke pelayar, atau tampalkan kod daripada pelayar ke tetingkap.',
+    'Jika tiada halaman log masuk dibuka dalam pelayar anda, buka tetingkap log masuk dengan butang di bawah. Jika anda masih sedang log masuk dalam pelayar, selesaikan di sana sahaja: butang ini menghentikan log masuk itu dan bermula semula dari awal.',
   actionLoginWindowOpen: 'Buka tetingkap log masuk',
+  loginWindowTitle: 'Log masuk {provider}',
+  loginWindowIntro:
+    'Ini tetingkap log masuk program {provider}. Teks bahasa Inggeris di bawah datang daripada program {provider}.',
+  loginWindowStepBrowser:
+    'Apabila halaman log masuk {vendor} dibuka dalam pelayar anda, log masuk dan benarkan akses. Tetingkap ini kemudian akan ditutup sendiri.',
+  loginWindowStepAddress:
+    'Jika pelayar tidak dibuka, seret tetikus pada alamat di bawah yang bermula dengan https:// untuk memilihnya, kemudian klik kanan untuk menyalinnya. Tampalkan alamat itu ke bar alamat pelayar untuk membuka halaman log masuk.',
+  loginWindowStepCode:
+    'Jika pelayar menunjukkan kod selepas anda log masuk, salin keseluruhan kod itu (gunakan butang salinnya jika ada). Klik kanan sekali di dalam tetingkap ini untuk menampalnya, kemudian tekan Enter. Kod yang ditampal memang tidak kelihatan; itu perkara biasa.',
+  loginWindowStepInvalid:
+    'Jika anda nampak "Invalid code", kod itu tidak disalin sepenuhnya. Biarkan tetingkap ini terbuka, salin kod itu sekali lagi dan tampalkannya.',
+  loginWindowClosing:
+    'Log masuk tidak selesai. Selepas anda membaca mesej di atas, tekan Enter untuk menutup tetingkap ini. Untuk mencuba lagi, tekan butang log masuk sekali lagi.',
   actionCancelLogin: 'Batalkan log masuk',
   actionUpdate: 'Kemas kini',
   updateNote:
@@ -129,4 +142,5 @@ export const ms = {
     'Masih tidak berjaya? Salin maklumat sambungan dan hantar kepada orang yang membantu anda. Maklumat ini tidak mengandungi akaun atau laluan fail.',
   actionCopyInfo: 'Salin maklumat untuk bantuan',
   copyInfoDone: 'Disalin',
+  actionConnectHelp: 'Lihat setiap langkah pada skrin (halaman dalam bahasa Korea)',
 } satisfies Record<keyof typeof zh, string>

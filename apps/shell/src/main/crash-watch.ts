@@ -22,6 +22,9 @@ export interface CrashedDocument {
   filePath?: string
 }
 
+/** an untitled document's recovery copy, as the shell identifies it (opaque here) */
+export type UntitledCrashCopy = object
+
 export interface CrashWatchOptions {
   /** editor family for the log line: 'docs', 'sheets', …, 'home', 'other' */
   editorOf: (wc: WebContents) => string
@@ -32,6 +35,17 @@ export interface CrashWatchOptions {
    *  held the unsaved state, is gone); true once it is closed */
   closeDocument: (wc: WebContents) => boolean
   reopen: (filePath: string) => void
+  /**
+   * The recovery copy of an untitled document in this renderer (null when it
+   * is not untitled or has no copy). Read the moment the renderer is gone,
+   * before the tab can close, so the editor still knows the document.
+   */
+  untitledCopyOf?: (wc: WebContents) => UntitledCrashCopy | null
+  /**
+   * Open the untitled document again from that copy in a new tab, without the
+   * per-file recovery question (crash recovery spec 8).
+   */
+  reopenUntitled?: (doc: CrashedDocument, copy: UntitledCrashCopy) => void
   t: (key: CrashStringKey, params?: Record<string, string | number>) => string
   /** false for unattended runs (headless export): record only, never prompt */
   prompt: boolean
@@ -169,7 +183,13 @@ export function startCrashWatch(options: CrashWatchOptions): void {
     }
     record({ kind: 'renderer', reason: details.reason, exitCode: details.exitCode, editor })
     if (!options.prompt || !shouldPromptForGoneRenderer(details.reason)) return
-    void promptForCrashedDocument(wc, options, prompting)
+    let untitledCopy: UntitledCrashCopy | null = null
+    try {
+      untitledCopy = options.untitledCopyOf?.(wc) ?? null
+    } catch {
+      /* no copy known: the tab is handled as before */
+    }
+    void promptForCrashedDocument(wc, options, prompting, untitledCopy)
   })
 }
 
@@ -177,19 +197,23 @@ async function promptForCrashedDocument(
   wc: WebContents,
   options: CrashWatchOptions,
   prompting: Set<number>,
+  untitledCopy: UntitledCrashCopy | null,
 ): Promise<void> {
   if (wc.isDestroyed() || prompting.has(wc.id)) return
   const doc = options.documentOf(wc)
   if (!doc) return
   prompting.add(wc.id)
   try {
-    // slides keeps the open deck in the main process, so a reload brings it all back
-    const action: 'reload' | 'reopen' | 'close' =
-      doc.kind === 'slides' ? 'reload' : doc.filePath ? 'reopen' : 'close'
+    // slides keeps the open deck in the main process, so a reload brings it all back;
+    // an untitled document comes back from its recovery copy (a working file it
+    // may point at, like a PDF template copy's, is not the user's document)
+    const copy = options.reopenUntitled ? untitledCopy : null
+    const action: 'reload' | 'reopen' | 'reopenUntitled' | 'close' =
+      doc.kind === 'slides' ? 'reload' : copy ? 'reopenUntitled' : doc.filePath ? 'reopen' : 'close'
     const actionLabel =
       action === 'reload'
         ? options.t('crashReload')
-        : action === 'reopen'
+        : action === 'reopen' || action === 'reopenUntitled'
           ? options.t('crashReopen')
           : options.t('crashClose')
     const dialogOptions = {
@@ -212,7 +236,9 @@ async function promptForCrashedDocument(
       return
     }
     const gone = options.closeDocument(wc)
-    if (gone && action === 'reopen' && doc.filePath) options.reopen(doc.filePath)
+    if (!gone) return
+    if (action === 'reopenUntitled' && copy) options.reopenUntitled?.(doc, copy)
+    else if (action === 'reopen' && doc.filePath) options.reopen(doc.filePath)
   } catch {
     /* a failed prompt leaves the tab as it is */
   } finally {

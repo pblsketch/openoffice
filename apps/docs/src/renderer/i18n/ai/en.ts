@@ -67,6 +67,8 @@ export const en = {
   aiEmptyTitle: 'Let AI help you write and edit',
   aiEmptyBody1: 'Give an instruction or just ask a question;',
   aiEmptyBody2: 'with text selected, rewrite commands apply to the selection.',
+  aiNoHidingNote:
+    'This editor cannot hide parts of a document from AI: what a request covers is sent as written.',
   aiStarterWeeklyReport: 'Write a weekly project report for me',
   aiStarterLaunchPost: 'Draft a product launch announcement',
   aiStarterEventOutline: 'Outline an event plan',
@@ -180,4 +182,17 @@ export const en = {
   aiCmdImages: 'Updated {count} image(s)',
   aiCmdToc: 'Inserted a table of contents ({count} entries)',
   aiCmdSkipped: ' ({count} protected block(s) skipped)',
+  aiStarterMindMap: 'Generate a mind map of this document',
+  aiMindMapBtn: 'AI Mind Map',
+  aiMindMapPrompt:
+    'Generate a mind map of this document, organizing the main topics and key concepts by its section structure',
+  aiSumMindMap: 'Generate mind map',
+  aiMindMapTitle: 'Mind map',
+  aiMindMapNodes: '{count} nodes',
+  aiMindMapAskPrompt: 'Tell me about "{label}" in this document',
+  aiMindMapJump: 'Jump to the cited block',
+  aiMindMapExport: 'Export PNG',
+  aiMindMapReset: 'Reset view',
+  aiMindMapExpand: 'Expand branch',
+  aiMindMapCollapse: 'Collapse branch',
 } satisfies Record<keyof typeof zh, string>

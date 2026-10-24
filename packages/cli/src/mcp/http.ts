@@ -48,9 +48,25 @@ const MAX_JSON_BYTES = 32 * 1024 * 1024
 const MAX_SESSIONS = 100
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]'])
 
+/** The address startHttp binds: '' would bypass the loopback default and bind every interface */
+export function bindHost(host: string | undefined): string {
+  return host?.trim() || '127.0.0.1'
+}
+
+/**
+ * Whether binding `host` without a token would hand the tools, which write
+ * files and can spend the user's subscription, to anyone on the network.
+ */
+export function exposedWithoutToken(host: string | undefined, token: string | undefined): boolean {
+  return !token && !LOOPBACK_HOSTS.has(bindHost(host))
+}
+
+export const EXPOSED_WITHOUT_TOKEN =
+  '--host other than this machine needs --token (or GENOFFICE_MCP_TOKEN): without it anyone on the network could use the tools'
+
 export async function startHttp(opts: HttpServeOptions): Promise<HttpHandle> {
-  // '' would bypass the loopback default and bind every interface
-  const host = opts.host?.trim() || '127.0.0.1'
+  const host = bindHost(opts.host)
+  if (exposedWithoutToken(host, opts.token)) throw new Error(EXPOSED_WITHOUT_TOKEN)
   const files = new FileStore(
     join(tmpdir(), `genoffice-mcp-http-${process.pid}-${randomBytes(4).toString('hex')}`),
   )
@@ -326,11 +342,6 @@ export async function startHttp(opts: HttpServeOptions): Promise<HttpHandle> {
       resolve()
     })
   })
-  if (!opts.token && !LOOPBACK_HOSTS.has(host)) {
-    log(
-      '[mcp] warning: reachable from other machines without --token; anyone on the network can use the tools',
-    )
-  }
   log(`[mcp] listening on ${handle.url}/mcp (uploads: PUT ${handle.url}/files/<name>)`)
   return handle
 }

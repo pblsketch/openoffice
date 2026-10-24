@@ -21,6 +21,9 @@ export const AGENT_CHANNELS = {
   /** the Codex choices remembered for a project folder (spec 7.2) */
   getProjectPrefs: 'agent-window:get-project-prefs',
   setProjectPrefs: 'agent-window:set-project-prefs',
+  /** a project folder's own skills and whether the person turned them on (decision 0064) */
+  getProjectSkills: 'agent-window:get-project-skills',
+  setProjectSkills: 'agent-window:set-project-skills',
   /** main → window: one session event */
   event: 'agent-window:event',
   /** main → window: `propose_skill` asks for a skill card (spec 6.3) */
@@ -103,6 +106,17 @@ export function agentProjectPrefsPatch(raw: unknown): Partial<AgentProjectPrefs>
   }
   if (typeof value.codexNetwork === 'boolean') patch.codexNetwork = value.codexNetwork
   return patch
+}
+
+/**
+ * A project folder's own skills (`.claude/skills`, `.agents/skills`) as the
+ * start screen lists them (decision 0064). They join a session only while
+ * `allowed`; `changed` says they were turned on before and have changed since.
+ */
+export interface AgentProjectSkillsView {
+  skills: Array<{ name: string; title: string; description: string }>
+  allowed: boolean
+  changed: boolean
 }
 
 /** How long an "allow" holds: this request, or (web only) the rest of the session */
@@ -246,6 +260,10 @@ export interface AgentWindowApi {
     folder: string,
     patch: Partial<AgentProjectPrefs>,
   ): Promise<AgentProjectPrefs | null>
+  /** a project folder's own skills; null when the folder cannot be read */
+  getProjectSkills(folder: string): Promise<AgentProjectSkillsView | null>
+  /** turn a project folder's skills on, as they are now, or off */
+  setProjectSkills(folder: string, on: boolean): Promise<AgentProjectSkillsView | null>
   stop(sessionId: string): Promise<void>
   /** open a file of the session's project folder in a tab */
   openFile(sessionId: string, path: string): Promise<boolean>

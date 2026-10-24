@@ -27,6 +27,35 @@ export interface AiModelPickerBridge {
   readonly openModelSettings?: (() => Promise<void> | void) | undefined
 }
 
+/**
+ * How often opening the picker asks the subscription connection to check its
+ * CLIs again. A model released while the app stays open should appear without
+ * a restart; checking more often than this only starts the CLIs again.
+ */
+export const AI_MODEL_PICKER_REFRESH_MS = 2 * 60_000
+
+/**
+ * Where the model popover goes for a chip at `rect`: above it in the composer
+ * (the bottom of the panel), below it in a confirmation dialog near the top.
+ * `maxHeight` keeps the list inside the side it opens to.
+ */
+export function aiModelPopoverStyle(
+  rect: { left: number; top: number; bottom: number },
+  viewport: { width: number; height: number },
+  width = 260,
+  maxHeight = 420,
+): React.CSSProperties {
+  const left = Math.max(8, Math.min(rect.left, viewport.width - width - 8))
+  const below = viewport.height - rect.bottom - 8
+  const above = rect.top - 8
+  const down = below >= 180 || below >= above
+  const space = Math.max(120, down ? below : above)
+  const height = Math.min(maxHeight, space)
+  return down
+    ? { left, top: rect.bottom + 6, maxHeight: height }
+    : { left, bottom: viewport.height - rect.top + 6, maxHeight: height }
+}
+
 /** Subscription connections are named in text and carry the neutral AI mark, never a vendor logo */
 function PickerMark({ group }: { readonly group: Pick<AiProviderPickerGroup, 'kind' | 'id'> }) {
   if (group.kind === 'key') return <ProviderLogo id={group.id} />
@@ -38,10 +67,11 @@ function PickerMark({ group }: { readonly group: Pick<AiProviderPickerGroup, 'ki
 }
 
 /**
- * Composer footer chip showing the active provider + model; the popover lists
- * every usable provider's models for a one-click switch (saved globally, the
- * same ai-settings.json the settings page edits) and ends with a row that
- * opens that page for keys and new vendors.
+ * Model chip showing the active provider + model; the popover lists every
+ * usable provider's models for a one-click switch (saved globally, the same
+ * ai-settings.json the settings page edits) and ends with a row that opens
+ * that page for keys and new vendors. Used in the composer footer and, with
+ * `showLabel`, in the document-job confirmation dialogs.
  *
  * The list follows the subscription contract: an automatic entry, the
  * connected subscriptions, then the key providers that are filled in. Without
@@ -51,11 +81,21 @@ export function AiModelPicker({
   bridge,
   lang,
   subscriptionStatuses,
+  showLabel = false,
+  onRefreshSubscriptions,
 }: {
   readonly bridge: AiModelPickerBridge
   readonly lang: Lang
   /** status of the subscription CLIs */
   readonly subscriptionStatuses?: AiSubscriptionStatuses | undefined
+  /** a visible "Model" label before the chip (a confirmation dialog has no composer footer) */
+  readonly showLabel?: boolean | undefined
+  /**
+   * Ask for a fresh subscription check, so a model released while the app has
+   * been open appears in the list. Called when the popover opens, at most once
+   * per `AI_MODEL_PICKER_REFRESH_MS`.
+   */
+  readonly onRefreshSubscriptions?: (() => void) | undefined
 }): React.JSX.Element | null {
   const strings = AI_MODEL_PICKER_STRINGS[lang] ?? AI_MODEL_PICKER_STRINGS.en
   const [settings, setSettings] = useState<AiSettings | null>(null)
@@ -63,6 +103,7 @@ export function AiModelPicker({
   const [popStyle, setPopStyle] = useState<React.CSSProperties>({})
   const chipRef = useRef<HTMLButtonElement | null>(null)
   const popRef = useRef<HTMLDivElement | null>(null)
+  const refreshedAt = useRef(0)
 
   // tests render panels without a preload bridge: a throwing getter must not take the panel down
   const refresh = useCallback(() => {
@@ -104,8 +145,19 @@ export function AiModelPicker({
   const toggle = () => {
     if (!open) {
       const rect = chipRef.current?.getBoundingClientRect()
-      // the composer sits at the panel bottom: open upwards, pinned to the chip
-      if (rect) setPopStyle({ left: rect.left, bottom: window.innerHeight - rect.top + 6 })
+      // the composer sits at the panel bottom, a dialog's chip near its top: fit the side with room
+      if (rect)
+        setPopStyle(
+          aiModelPopoverStyle(rect, { width: window.innerWidth, height: window.innerHeight }),
+        )
+      // the list may be from an earlier check: a model released since then shows after this one
+      if (
+        onRefreshSubscriptions &&
+        Date.now() - refreshedAt.current >= AI_MODEL_PICKER_REFRESH_MS
+      ) {
+        refreshedAt.current = Date.now()
+        onRefreshSubscriptions()
+      }
     }
     setOpen((v) => !v)
   }
@@ -176,6 +228,11 @@ export function AiModelPicker({
         }
       }}
     >
+      {showLabel && (
+        <span className="ai-model-picker-label" aria-hidden="true">
+          {strings.title}
+        </span>
+      )}
       <button
         ref={chipRef}
         type="button"

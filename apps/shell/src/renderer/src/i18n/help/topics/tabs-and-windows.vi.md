@@ -6,7 +6,7 @@ Mọi tập tin đang mở dùng chung một cửa sổ; dải thẻ ở trên c
 
 ## Những điều cơ bản
 
-- **Chuyển thẻ**: nhấp vào một thẻ, hoặc lăn bánh xe chuột trên dải thẻ để lần lượt qua các thẻ.
+- **Chuyển thẻ**: nhấp vào một thẻ, nhấn **Ctrl+Tab** (tiếp theo) / **Ctrl+Shift+Tab** (trước đó), hoặc lăn bánh xe chuột trên dải thẻ.
 - **Đóng**: dấu × trên thẻ, hoặc ⌘W/ctrl+W. Có thay đổi chưa lưu sẽ hỏi trước.
 - **Mới**: dấu + ở cuối bên phải của dải thẻ.
 - **Kích hoạt tức thì**: nhấn một thẻ là chuyển ngay, không phải đợi thao tác nhấp hoàn tất.
@@ -57,7 +57,23 @@ Thẻ Trang chủ ngoài cùng bên trái không thể đóng; muốn quay về 
 - Chỉ một cửa sổ AI hiện ra. Khung bạn đang làm việc hiển thị cửa sổ của nó; cửa sổ của khung kia thu vào thành thanh bên, và nhấn vào khung nào thì cửa sổ AI của khung đó hiện lên.
 - Trong lúc thu gọn, cuộc trò chuyện của khung đó và công việc AI đang chạy vẫn còn sống. Cuộc trò chuyện được lưu theo từng tài liệu.
 - **Hai bản sao của cùng một tài liệu**: sau khi lưu ở một khung, lưu từ khung kia sẽ hỏi trước "Tài liệu này đã thay đổi ở nơi khác". Còn tự động lưu thì lặng lẽ chờ.
-- **Mở lại ứng dụng không kèm tệp** sẽ đưa cặp tài liệu chia đôi lần trước trở lại đúng như cũ; mở kèm tệp thì chỉ mở tệp đó.
+- Sau khi đóng bình thường, **mở lại ứng dụng không kèm tệp** sẽ đưa cặp tài liệu chia đôi lần trước trở lại đúng như cũ; mở kèm tệp thì chỉ mở tệp đó. Sau khi tắt đột ngột, các thẻ trước đó sẽ quay lại như mô tả bên dưới.
 - Thẻ Trang chủ, Trợ giúp và Trình bày (xem trước) không vào được khung; trong lúc một thẻ như vậy đang mở, hai khung tạm ẩn đi và trở lại khi bạn quay về thẻ tài liệu.
 
 Ba khung trở lên, chia ngay trong cửa sổ đã tách ra, và đồng bộ trực tiếp hai bản sao để sau.
+
+## Khi ứng dụng hoặc máy tính tắt đột ngột
+
+Khi một tài liệu có thay đổi chưa lưu, GenOffice giữ một bản sao khôi phục của nó khoảng 30 giây một lần trong thư mục dữ liệu riêng của ứng dụng. Mọi trình soạn thảo đều làm vậy, kể cả với tài liệu mới chưa từng lưu. Tệp của bạn không thay đổi cho đến khi bạn lưu.
+
+- **Các thẻ quay lại**: nếu ứng dụng hoặc máy tính tắt mà không đóng bình thường (mất điện, sự cố, ứng dụng bị buộc đóng, máy tắt hoặc khởi động lại để cập nhật), lần sau mở GenOffice, các thẻ tài liệu đang mở sẽ quay lại theo đúng thứ tự, cùng với kiểu chia màn hình nếu bạn đang dùng. Điều này cũng xảy ra khi bạn mở ứng dụng bằng cách mở một tệp.
+- **Một danh sách trên Trang chủ**: các tài liệu còn nội dung chưa lưu được liệt kê cùng nhau trên Trang chủ. Chọn **Khôi phục** hoặc **Bỏ đi** cho từng tài liệu, hoặc dùng **Khôi phục tất cả** hay **Bỏ đi tất cả**, rồi nhấn **Xác nhận**. Nếu sau đó một chương trình khác hoặc dịch vụ đồng bộ đã sửa tệp, **Bỏ đi** được chọn sẵn để tệp giữ nguyên như hiện tại. Nếu không còn tìm thấy tệp gốc, khi khôi phục nội dung sẽ mở thành một tài liệu mới chưa có tên.
+- **Quyết định sau**: đóng danh sách không xóa gì cả. Lần đầu bạn mở một trong các tài liệu đó, một hộp thoại ghi tên tài liệu sẽ hỏi lại; nhấn Esc hoặc đóng hộp thoại nghĩa là khôi phục. Nếu không cần nội dung đã khôi phục, hãy đóng tài liệu bằng **Không lưu**.
+- **Thẻ được tải khi bạn mở**: các thẻ khôi phục hiện tiêu đề ngay, nhưng mỗi tài liệu chỉ được tải khi bạn bấm vào thẻ của nó lần đầu. Mở tất cả cùng lúc có thể khiến máy thiếu bộ nhớ lại tắt lần nữa.
+- **Khi tắt máy tính**: nếu còn tài liệu chưa lưu, GenOffice không hỏi có lưu hay không. Ứng dụng giữ các bản sao, đóng lại và đề nghị khôi phục ở lần mở sau.
+- **Tài liệu không có bản sao**: tệp Excel, HWP và PDF có mật khẩu không được tạo bản sao khôi phục, nên thay đổi chưa lưu của chúng không thể khôi phục; một thông báo cho biết điều này một lần khi mở tài liệu như vậy. Hãy lưu những tài liệu này thường xuyên. Tài liệu Word và PowerPoint có mật khẩu có một bản sao được khóa bằng cùng mật khẩu.
+- **Tệp CSV, .xls cũ và .tsv**: trình bảng tính giữ bản sao của chúng dưới dạng sổ làm việc chưa đặt tên. Khi khôi phục, nó mở ra dưới dạng sổ làm việc chưa đặt tên, và lần lưu đầu tiên sẽ gợi ý thư mục và tên của tệp gốc dưới dạng .xlsx.
+
+Bản sao bị xóa khi bạn lưu tài liệu, đóng nó bằng **Không lưu** hoặc chọn **Bỏ đi**, và cả khi không có thay đổi trong 30 ngày. Sau khi đóng bình thường, GenOffice khởi động như trước và không đưa thẻ nào trở lại.
+
+**Đây không phải là Tự động lưu.** Tự động lưu ghi thay đổi vào chính tệp, và chỉ sau khi bạn đã lưu một lần. Bản sao khôi phục không bao giờ chạm vào tệp của bạn; nó chỉ giữ phần bạn chưa lưu cho đến khi bạn lưu hoặc bỏ đi.

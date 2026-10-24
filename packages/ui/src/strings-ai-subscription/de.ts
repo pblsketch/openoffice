@@ -24,7 +24,7 @@ export const de = {
     'Bei der Prüfung von {provider} ist ein Problem aufgetreten. Prüfen Sie es erneut.',
   actionInstall: 'Installieren',
   actionLogin: 'Anmelden',
-  actionLoginWindow: 'Browser nicht geöffnet oder zeigt er einen Code?',
+  actionLoginWindow: 'Browser nicht geöffnet?',
   actionRecheck: 'Erneut prüfen',
   actionAcceptMetered: 'Trotzdem verwenden',
   actionInstallHelp: 'Offizielle Installationsanleitung',
@@ -38,7 +38,7 @@ export const de = {
   signingInBrowserNote:
     'Melden Sie sich im geöffneten Browser bei Ihrem {vendor}-Konto an und erlauben Sie den Zugriff. Danach wird die Verbindung von selbst hergestellt.',
   signingInWindowNote:
-    'Hat sich der Browser nicht geöffnet, kopieren Sie die Adresse aus dem soeben geöffneten Fenster und öffnen Sie sie im Browser. Zeigt der Browser einen Code, kopieren Sie ihn, fügen Sie ihn einmal in dieses Fenster ein und drücken Sie die Eingabetaste. Der eingefügte Code wird im Fenster möglicherweise nicht angezeigt.',
+    'Folgen Sie der Anleitung oben im soeben geöffneten Anmeldefenster. Melden Sie sich auf der Anmeldeseite von {vendor} an, die sich im Browser geöffnet hat: Danach schließt sich das Fenster von selbst, und die Verbindung ist hergestellt. Eine zuvor geöffnete Anmeldeseite funktioniert nicht mehr; schließen Sie sie.',
   meteredWarning: 'Das ist kein Abonnement: Abgerechnet wird nach Verbrauch.',
   meteredMeaning:
     'Diese Anmeldung nutzt einen API-Schlüssel oder ein Konto mit nutzungsbasierter Abrechnung, oder ihre Art ließ sich nicht feststellen. Mit „Trotzdem verwenden“ läuft die KI über diese Verbindung, und jede Anfrage wird diesem Konto berechnet.',
@@ -123,8 +123,21 @@ export const de = {
   loginHowNote:
     'Beim Klicken öffnet sich ein Browser. Melden Sie sich mit Ihrem {vendor}-Konto an und klicken Sie auf Zulassen; die Verbindung wird dann von selbst hergestellt.',
   signingInStalledNote:
-    'Hat sich der Browser nicht geöffnet, oder zeigt er einen Code? Öffnen Sie mit der Schaltfläche unten das Anmeldefenster. Fügen Sie die dort angezeigte Adresse in Ihren Browser ein, oder fügen Sie den Code aus dem Browser in das Fenster ein.',
+    'Hat sich im Browser keine Anmeldeseite geöffnet, öffnen Sie mit der Schaltfläche unten das Anmeldefenster. Sind Sie im Browser noch bei der Anmeldung, schließen Sie sie besser dort ab: Die Schaltfläche bricht diese Anmeldung ab und beginnt von vorn.',
   actionLoginWindowOpen: 'Anmeldefenster öffnen',
+  loginWindowTitle: 'Anmeldung bei {provider}',
+  loginWindowIntro:
+    'Dies ist das Anmeldefenster des Programms {provider}. Der englische Text darunter stammt vom Programm {provider}.',
+  loginWindowStepBrowser:
+    'Wenn sich die Anmeldeseite von {vendor} im Browser öffnet, melden Sie sich an und erlauben Sie den Zugriff. Dieses Fenster schließt sich dann von selbst.',
+  loginWindowStepAddress:
+    'Hat sich kein Browser geöffnet, markieren Sie die Adresse unten, die mit https:// beginnt, indem Sie mit der Maus darüberziehen, und kopieren Sie sie mit einem Rechtsklick. Fügen Sie sie in die Adressleiste Ihres Browsers ein, um die Anmeldeseite zu öffnen.',
+  loginWindowStepCode:
+    'Zeigt der Browser nach der Anmeldung einen Code, kopieren Sie den ganzen Code (mit seiner Kopieren-Schaltfläche, falls vorhanden). Klicken Sie einmal mit der rechten Maustaste in dieses Fenster, um ihn einzufügen, und drücken Sie dann die Eingabetaste. Dass der eingefügte Code nicht angezeigt wird, ist normal.',
+  loginWindowStepInvalid:
+    'Erscheint "Invalid code", wurde der Code nicht vollständig kopiert. Lassen Sie dieses Fenster offen, kopieren Sie den Code erneut und fügen Sie ihn ein.',
+  loginWindowClosing:
+    'Die Anmeldung wurde nicht abgeschlossen. Wenn Sie die Meldungen oben gelesen haben, drücken Sie die Eingabetaste, um dieses Fenster zu schließen. Um es erneut zu versuchen, klicken Sie noch einmal auf die Schaltfläche zum Anmelden.',
   actionCancelLogin: 'Anmeldung abbrechen',
   actionUpdate: 'Aktualisieren',
   updateNote:
@@ -133,4 +146,5 @@ export const de = {
     'Klappt es immer noch nicht? Kopieren Sie die Verbindungsdaten und senden Sie sie an die Person, die Ihnen hilft. Sie enthalten weder Konto noch Dateipfade.',
   actionCopyInfo: 'Infos für Hilfe kopieren',
   copyInfoDone: 'Kopiert',
+  actionConnectHelp: 'Jeden Schritt am Bildschirm ansehen (Seite auf Koreanisch)',
 } satisfies Record<keyof typeof zh, string>

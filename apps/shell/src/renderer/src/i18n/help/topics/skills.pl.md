@@ -4,7 +4,7 @@ Umiejętność to zestaw instrukcji roboczych dla AI. Zapisz raz to, co robisz w
 
 ## Włączanie i wyłączanie umiejętności
 
-**Ustawienia ▸ Umiejętności** pokazuje umiejętności na tym komputerze, pogrupowane według pochodzenia. Polem wyszukiwania u góry znajdziesz umiejętność po tytule, nazwie lub opisie.
+**Ustawienia ▸ Umiejętności** pokazuje umiejętności na tym komputerze, pogrupowane według pochodzenia. Każda umiejętność jest pokazana pod swoją nazwą, tak jak w agentach programistycznych. Polem wyszukiwania u góry znajdziesz umiejętność po nazwie lub opisie.
 
 | Pochodzenie                    | Co zawiera                                                              | Na początku |
 | ------------------------------ | ----------------------------------------------------------------------- | ----------- |
@@ -34,7 +34,7 @@ Pod podglądem zawsze widnieje: „Instaluj umiejętności tylko z zaufanych źr
 
 - Jeśli w moich umiejętnościach jest już jedna o tej samej nazwie, wybierz w tym wierszu **Zastąp** lub **Pomiń**.
 - Przy pobieraniu z GitHub GenOffice łączy się tylko z `github.com`, `api.github.com` i `codeload.github.com` i nie wysyła żadnych danych logowania. Jeśli archiwum jest za duże albo nie przejdzie kontroli bezpieczeństwa, nic nie zostanie zainstalowane.
-- **Nowa umiejętność** otwiera pusty edytor, w którym sam wpisujesz tytuł, opis i instrukcje.
+- **Nowa umiejętność** otwiera pusty edytor, w którym sam wpisujesz nazwę, opis i instrukcje.
 
 ## Sprawdzanie aktualizacji
 
@@ -46,7 +46,7 @@ Pod podglądem zawsze widnieje: „Instaluj umiejętności tylko z zaufanych źr
 ## Wywoływanie umiejętności w panelu AI
 
 1. Wpisz `/` lub `$` na początku pola wpisywania AI albo zaraz po spacji. Pojawi się lista włączonych umiejętności.
-2. Pisz dalej, aby zawęzić listę. Na przykład `/prot` znajduje Protokół ze spotkania.
+2. Pisz dalej, aby zawęzić listę. Na przykład `/meet` znajduje `meeting-minutes`. Działają też słowa z opisu, więc znajdzie ją także `/prot`.
 3. Wybierz umiejętność strzałkami i naciśnij Enter lub Tab. Umiejętność staje się etykietą nad polem wpisywania.
 4. Napisz, czego chcesz, i wyślij. GenOffice dołącza do prośby treść umiejętności.
 
@@ -58,15 +58,15 @@ Pod podglądem zawsze widnieje: „Instaluj umiejętności tylko z zaufanych źr
 
 ## Umiejętności, których AI używa samo
 
-- Tytuły i opisy włączonych umiejętności ustawionych na Decyduje AI trafiają do AI w postaci listy. Gdy któraś pasuje do prośby, AI pobiera jej treść i z niej korzysta.
-- Gdy AI użyje umiejętności, w rozmowie pojawia się „Użyto umiejętności 〈tytuł〉”.
+- Nazwy i opisy włączonych umiejętności ustawionych na Decyduje AI trafiają do AI w postaci listy. Gdy któraś pasuje do prośby, AI pobiera jej treść i z niej korzysta.
+- Gdy AI użyje umiejętności, w rozmowie pojawia się „Użyto umiejętności 〈nazwa〉”.
 - AI decyduje na podstawie opisu, czy użyć umiejętności. Opis, który mówi, kiedy umiejętność ma być używana, pomaga mu dobrze wybrać.
 
 ## Tworzenie umiejętności na prośbę
 
 1. W panelu AI napisz na przykład „Zapisz jako umiejętność to, co właśnie zrobiliśmy” albo „Utwórz umiejętność, która pisze raporty w naszym stylu”.
 2. AI wyłuskuje kroki i reguły warte powtarzania i pokazuje kartę **Nowa umiejętność**. Wartości użyte tylko ten jeden raz, takie jak imiona i daty, nie trafiają do instrukcji.
-3. Sprawdź i popraw na karcie tytuł, opis i instrukcje. Otwórz **Zaawansowane**, aby zmienić angielską nazwę.
+3. Sprawdź i popraw na karcie nazwę, opis i instrukcje. Nazwa jest widoczna na liście umiejętności i to ją wpisujesz po `/`: małe litery angielskie, cyfry i łączniki.
 4. Kliknij **Zapisz**. Nowa umiejętność trafia do moich umiejętności, zostaje włączona i od razu pojawia się na liście `/`.
 
 - Żaden plik nie zostanie zapisany, dopóki nie klikniesz **Zapisz**. Jeśli klikniesz **Anuluj**, rozmowa zachowa ją tylko jako „Niezapisana propozycja umiejętności”.
@@ -85,7 +85,7 @@ Gdy tworzysz umiejętność w panelu AI edytora, bieżący dokument może dołą
 - Umiejętność z szablonem ma na liście oznaczenie **Zawiera szablon**.
 - Wywołaj ją jako etykietę i wyślij, a kopia szablonu otworzy się jako nowy dokument bez tytułu; AI w tej karcie zajmie się twoją prośbą. W pierwotnym panelu zostaje „Praca z szablonem trwa w nowej karcie” i **Przejdź do karty**.
 - Gdy AI samo wybierze umiejętność z szablonem, karta nie otwiera się od razu. Zamiast tego rozmowa pokazuje przycisk **Otwórz nowy dokument z tego szablonu**.
-- Miejsce nowego dokumentu zwykle wybierasz przy pierwszym zapisie. Edytory Markdown i HTML oraz generowanie całej prezentacji zapisują jednak jak dotąd do folderu domyślnego. Sam plik szablonu pozostaje bez zmian.
+- Miejsce nowego dokumentu zwykle wybierasz przy pierwszym zapisie. Edytory Markdown i HTML zapisują jednak jak dotąd do folderu domyślnego. Sam plik szablonu pozostaje bez zmian.
 
 ## Umiejętności ze skryptami
 
@@ -95,15 +95,15 @@ Gdy tworzysz umiejętność w panelu AI edytora, bieżący dokument może dołą
 
 ## Wbudowane umiejętności
 
-| Umiejętność                     | Co robi                                                                                 |
-| ------------------------------- | --------------------------------------------------------------------------------------- |
-| **Protokół ze spotkania**       | Zamienia notatki ze spotkania w protokół z decyzjami i zadaniami do wykonania           |
-| **Ogłoszenia, biuletyny i FAQ** | Pisze ogłoszenia, biuletyny, raporty z postępów, FAQ i inne teksty wewnętrzne           |
-| **Usuń styl AI**                | Wyszukuje w tekście angielskim sformułowania brzmiące jak pisane przez AI i wygładza je |
-| **Redakcja tekstu**             | Przechodzi przez napisany przez ciebie tekst angielski, by był jaśniejszy i zwięźlejszy |
-| **Znajdź umiejętności**         | Znajduje w oknie agenta potrzebne umiejętności i proponuje ich instalację               |
+| Umiejętność       | Co robi                                                                                 |
+| ----------------- | --------------------------------------------------------------------------------------- |
+| `meeting-minutes` | Zamienia notatki ze spotkania w protokół z decyzjami i zadaniami do wykonania           |
+| `internal-comms`  | Pisze ogłoszenia, biuletyny, raporty z postępów, FAQ i inne teksty wewnętrzne           |
+| `humanizer`       | Wyszukuje sformułowania brzmiące jak pisane przez AI i wygładza je                      |
+| `copy-editing`    | Przechodzi przez napisany przez ciebie tekst angielski, by był jaśniejszy i zwięźlejszy |
+| `find-skills`     | Znajduje w oknie agenta potrzebne umiejętności i proponuje ich instalację               |
 
-Usuń styl AI i Redakcja tekstu są przeznaczone do tekstu angielskiego. Znajdź umiejętności działa tylko w oknie agenta.
+`copy-editing` jest przeznaczona do angielskich tekstów marketingowych. `find-skills` działa tylko w oknie agenta.
 
 ## W oknie agenta
 

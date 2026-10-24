@@ -21,7 +21,7 @@ export const id = {
   cardErrFailed: 'Terjadi masalah saat memeriksa {provider}. Periksa lagi.',
   actionInstall: 'Pasang',
   actionLogin: 'Masuk',
-  actionLoginWindow: 'Browser tidak terbuka, atau menampilkan kode?',
+  actionLoginWindow: 'Browser tidak terbuka?',
   actionRecheck: 'Periksa lagi',
   actionAcceptMetered: 'Tetap gunakan',
   actionInstallHelp: 'Panduan pemasangan resmi',
@@ -34,7 +34,7 @@ export const id = {
   signingInBrowserNote:
     'Masuk ke akun {vendor} Anda di browser yang terbuka, lalu izinkan akses. Koneksi akan tersambung sendiri setelah selesai.',
   signingInWindowNote:
-    'Jika browser tidak terbuka, salin alamat yang tampil di jendela yang baru terbuka lalu buka di browser. Saat browser menampilkan kode, salin, tempelkan sekali ke jendela itu, lalu tekan Enter. Kode yang ditempel mungkin tidak terlihat di jendela.',
+    'Ikuti panduan di bagian atas jendela masuk yang baru terbuka. Masuk di halaman {vendor} yang terbuka di browser Anda: jendela itu lalu tertutup sendiri dan koneksi tersambung. Halaman masuk yang sudah terbuka sebelumnya tidak berlaku lagi; tutup saja.',
   meteredWarning: 'Ini bukan langganan: Anda ditagih sesuai pemakaian.',
   meteredMeaning:
     'Login ini memakai kunci API atau akun bayar sesuai pemakaian, atau jenisnya tidak dapat dipastikan. Dengan "Tetap gunakan", AI berjalan melalui koneksi ini dan setiap permintaan ditagihkan ke akun tersebut.',
@@ -114,8 +114,21 @@ export const id = {
   loginHowNote:
     'Browser akan terbuka saat Anda menekannya. Masuk dengan akun {vendor} Anda dan tekan Izinkan; koneksi akan selesai dengan sendirinya.',
   signingInStalledNote:
-    'Browser tidak terbuka, atau menampilkan kode? Buka jendela masuk dengan tombol di bawah. Tempelkan alamat yang tampil di jendela itu ke browser, atau tempelkan kode dari browser ke jendela.',
+    'Jika halaman masuk tidak terbuka di browser Anda, buka jendela masuk dengan tombol di bawah. Jika Anda masih sedang masuk di browser, selesaikan saja di sana: tombol ini menghentikan proses masuk itu dan memulai lagi dari awal.',
   actionLoginWindowOpen: 'Buka jendela masuk',
+  loginWindowTitle: 'Masuk ke {provider}',
+  loginWindowIntro:
+    'Ini jendela masuk program {provider}. Teks berbahasa Inggris di bawah berasal dari program {provider}.',
+  loginWindowStepBrowser:
+    'Saat halaman masuk {vendor} terbuka di browser Anda, masuk lalu izinkan akses. Setelah itu jendela ini tertutup sendiri.',
+  loginWindowStepAddress:
+    'Jika browser tidak terbuka, seret mouse pada alamat di bawah yang diawali https:// untuk memilihnya, lalu klik kanan untuk menyalinnya. Tempelkan alamat itu ke bilah alamat browser untuk membuka halaman masuk.',
+  loginWindowStepCode:
+    'Jika browser menampilkan kode setelah Anda masuk, salin seluruh kodenya (gunakan tombol salin jika ada). Klik kanan sekali di dalam jendela ini untuk menempelkannya, lalu tekan Enter. Kode yang ditempel memang tidak terlihat; itu normal.',
+  loginWindowStepInvalid:
+    'Jika muncul "Invalid code", berarti kode tidak tersalin seluruhnya. Biarkan jendela ini tetap terbuka, salin kodenya lagi, lalu tempelkan.',
+  loginWindowClosing:
+    'Proses masuk belum selesai. Setelah membaca pesan di atas, tekan Enter untuk menutup jendela ini. Untuk mencoba lagi, tekan lagi tombol masuk.',
   actionCancelLogin: 'Batalkan masuk',
   actionUpdate: 'Perbarui',
   updateNote:
@@ -124,4 +137,5 @@ export const id = {
     'Masih belum berhasil? Salin info koneksi dan kirim ke orang yang membantu Anda. Info ini tidak berisi akun maupun jalur file.',
   actionCopyInfo: 'Salin info untuk bantuan',
   copyInfoDone: 'Disalin',
+  actionConnectHelp: 'Lihat setiap langkah di layar (halaman berbahasa Korea)',
 } satisfies Record<keyof typeof zh, string>

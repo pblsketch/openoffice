@@ -11,8 +11,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
   AiSubscriptionProviderId,
   AiSubscriptionState,
+  SubscriptionConnectHelpPath,
   SubscriptionStatusMap,
 } from '@genoffice/ai-provider/browser'
+import { subscriptionConnectHelpUrl } from '@genoffice/ai-provider/browser'
 import { AI_SUBSCRIPTION_INSTALL_HELP_URLS, type AiSubscriptionCardActions } from '@genoffice/ui'
 import { checkingSubscriptionStatuses, type SubscriptionApi } from '../../shared/subscription-api'
 
@@ -22,6 +24,10 @@ export interface SubscriptionConnection {
   readonly busy: boolean
   /** the connect cards' buttons */
   readonly actions: AiSubscriptionCardActions
+  /** open the website's step-by-step connect help at the guide's path */
+  readonly openConnectHelp: (path: SubscriptionConnectHelpPath | null) => void
+  /** look again without a card asking for it (both providers when none is named) */
+  readonly refresh: (providers?: AiSubscriptionProviderId[]) => void
 }
 
 /** the answer of an API call, or null when there is no API, no handler, or the call failed */
@@ -38,6 +44,12 @@ async function attempt<T>(call: (api: SubscriptionApi) => Promise<T>): Promise<T
 function openInstallHelp(provider: AiSubscriptionProviderId): void {
   void Promise.resolve()
     .then(() => window.desktopApi.openExternal(AI_SUBSCRIPTION_INSTALL_HELP_URLS[provider]))
+    .catch(() => {})
+}
+
+function openConnectHelp(path: SubscriptionConnectHelpPath | null): void {
+  void Promise.resolve()
+    .then(() => window.desktopApi.openExternal(subscriptionConnectHelpUrl(path)))
     .catch(() => {})
 }
 
@@ -148,6 +160,12 @@ export function useSubscriptionConnection(): SubscriptionConnection {
     },
     [apply],
   )
+  const refresh = useCallback(
+    (providers?: AiSubscriptionProviderId[]) => {
+      void check(providers)
+    },
+    [check],
+  )
 
   return {
     statuses,
@@ -161,5 +179,7 @@ export function useSubscriptionConnection(): SubscriptionConnection {
       onUpdate,
       onCancelLogin,
     },
+    openConnectHelp,
+    refresh,
   }
 }

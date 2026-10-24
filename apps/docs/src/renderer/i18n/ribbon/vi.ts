@@ -84,6 +84,7 @@ export const vi = {
   ribbonFontEastAsia: 'Phông chữ Đông Á',
   ribbonFontLatin: 'Phông chữ La-tinh',
   ribbonFontFamilyTip: 'Phông chữ',
+  ribbonFontDialogTip: 'Phông chữ — tỉ lệ và khoảng cách ký tự trong tab Nâng cao',
   ribbonFontsCommon: 'Phông chữ phổ biến',
   ribbonFontsSystem: 'Phông chữ hệ thống',
   ribbonFontsHangul: 'Phông chữ tiếng Hàn',

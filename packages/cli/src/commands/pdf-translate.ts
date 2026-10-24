@@ -138,12 +138,6 @@ export async function pdfTranslate(
   }
   const formats = parseFormats(flagString(args, 'format'))
   const bilingual = flagBool(args, 'bilingual')
-  if (bilingual && !formats.some((f) => f !== 'pdf')) {
-    throw new CliError(EXIT.usage, '--bilingual applies to md and epub only', undefined, {
-      reason: 'invalid_argument',
-      suggestion: 'add --format md or epub; a bilingual PDF is not made',
-    })
-  }
   if (formats.includes('pdf') && PDF_UNWRITABLE_LANGUAGES.has(lang)) {
     throw new CliError(
       EXIT.usage,
@@ -360,6 +354,7 @@ async function finish(o: FinishInput): Promise<CommandResult> {
           o.tree,
           translated,
           out,
+          o.bilingual,
           (done, total) => {
             if (!ctx.background) ctx.log(`write page ${done}/${total}`)
           },

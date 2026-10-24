@@ -4,7 +4,7 @@ Dovednost je sada pracovních pokynů pro AI. Jednou si zapište, co děláte st
 
 ## Zapínání a vypínání dovedností
 
-**Nastavení ▸ Dovednosti** ukazuje dovednosti na tomto počítači, seskupené podle původu. Pomocí vyhledávacího pole nahoře najdete dovednost podle nadpisu, názvu nebo popisu.
+**Nastavení ▸ Dovednosti** ukazuje dovednosti na tomto počítači, seskupené podle původu. Každá dovednost se zobrazuje pod svým jménem, stejně jako ji ukazují agenti pro programování. Pomocí vyhledávacího pole nahoře najdete dovednost podle jména nebo popisu.
 
 | Původ                        | Co obsahuje                                                            | Na začátku |
 | ---------------------------- | ---------------------------------------------------------------------- | ---------- |
@@ -34,7 +34,7 @@ Pod náhledem je vždy uvedeno: „Instalujte dovednosti jen ze zdrojů, kterým
 
 - Pokud už mezi mými dovednostmi je jedna se stejným názvem, zvolte na tom řádku **Nahradit** nebo **Přeskočit**.
 - Při stahování z GitHubu se GenOffice připojuje jen k `github.com`, `api.github.com` a `codeload.github.com` a neposílá žádné přihlašovací údaje. Pokud je archiv příliš velký nebo neprojde bezpečnostními kontrolami, nic se nenainstaluje.
-- **Nová dovednost** otevře prázdný editor, do kterého sami napíšete nadpis, popis a pokyny.
+- **Nová dovednost** otevře prázdný editor, do kterého sami napíšete jméno, popis a pokyny.
 
 ## Kontrola aktualizací
 
@@ -46,7 +46,7 @@ Pod náhledem je vždy uvedeno: „Instalujte dovednosti jen ze zdrojů, kterým
 ## Vyvolání dovednosti v panelu AI
 
 1. Napište `/` nebo `$` na začátek vstupního pole AI nebo hned za mezeru. Objeví se seznam zapnutých dovedností.
-2. Pište dál a seznam se zúží. Například `/záp` najde Zápis z porady.
+2. Pište dál a seznam se zúží. Například `/meet` najde `meeting-minutes`. Fungují i slova z popisu, takže stačí i `/záp`.
 3. Vyberte dovednost šipkami a stiskněte Enter nebo Tab. Dovednost se stane štítkem nad vstupním polem.
 4. Napište, co chcete, a odešlete. GenOffice k žádosti přidá obsah dovednosti.
 
@@ -58,15 +58,15 @@ Pod náhledem je vždy uvedeno: „Instalujte dovednosti jen ze zdrojů, kterým
 
 ## Dovednosti, které AI použije samo
 
-- Nadpisy a popisy zapnutých dovedností nastavených na Rozhoduje AI dostane AI jako seznam. Když některá odpovídá žádosti, AI si vezme její obsah a použije ji.
-- Když AI dovednost použije, v rozhovoru se zobrazí „Použita dovednost 〈nadpis〉“.
+- Jména a popisy zapnutých dovedností nastavených na Rozhoduje AI dostane AI jako seznam. Když některá odpovídá žádosti, AI si vezme její obsah a použije ji.
+- Když AI dovednost použije, v rozhovoru se zobrazí „Použita dovednost 〈jméno〉“.
 - AI se podle popisu rozhoduje, zda dovednost použít. Popis, který říká, kdy je dovednost určena k použití, mu pomůže dobře vybrat.
 
 ## Vytvoření dovednosti na požádání
 
 1. V panelu AI napište například „Ulož to, co jsme právě udělali, jako dovednost“ nebo „Vytvoř dovednost, která píše zprávy v našem firemním stylu“.
 2. AI vybere kroky a pravidla, která se vyplatí opakovat, a zobrazí kartu **Nová dovednost**. Hodnoty použité jen tentokrát, jako jména a data, do pokynů nepatří.
-3. Zkontrolujte a upravte na kartě nadpis, popis a pokyny. V části **Upřesnit** můžete změnit anglické jméno.
+3. Zkontrolujte a upravte na kartě jméno, popis a pokyny. Jméno se zobrazuje v seznamu dovedností a píšete ho za `/`: malá anglická písmena, číslice a spojovníky.
 4. Klikněte na **Uložit**. Nová dovednost se přidá do mých dovedností, zapne se a hned se objeví v seznamu `/`.
 
 - Dokud nekliknete na **Uložit**, žádný soubor se nezapíše. Pokud kliknete na **Zrušit**, rozhovor ji ponechá jen jako „Neuložený návrh dovednosti“.
@@ -85,7 +85,7 @@ Když vytváříte dovednost v panelu AI editoru, může s ní jako šablona jí
 - Dovednost se šablonou má v seznamu označení **Obsahuje šablonu**.
 - Vyvolejte ji jako štítek a odešlete: kopie šablony se otevře jako nový dokument bez názvu a AI na té kartě pokračuje ve vaší žádosti. V původním panelu zůstane „Práce se šablonou pokračuje na nové kartě“ a **Přejít na kartu**.
 - Když AI vybere dovednost se šablonou samo, karta se hned neotevře. Rozhovor místo toho ukáže tlačítko **Otevřít nový dokument z této šablony**.
-- Kam se nový dokument uloží, obvykle zvolíte při prvním uložení. Editory Markdown a HTML a generování celé prezentace ale ukládají do výchozí složky jako vždy. Samotný soubor šablony zůstává beze změny.
+- Kam se nový dokument uloží, obvykle zvolíte při prvním uložení. Editory Markdown a HTML ale ukládají do výchozí složky jako vždy. Samotný soubor šablony zůstává beze změny.
 
 ## Dovednosti se skripty
 
@@ -95,15 +95,15 @@ Když vytváříte dovednost v panelu AI editoru, může s ní jako šablona jí
 
 ## Vestavěné dovednosti
 
-| Dovednost                               | Co dělá                                                                           |
-| --------------------------------------- | --------------------------------------------------------------------------------- |
-| **Zápis z porady**                      | Udělá z poznámek z porady zápis s rozhodnutími a úkoly                            |
-| **Oznámení, zpravodaje a časté dotazy** | Píše oznámení, zpravodaje, zprávy o postupu, časté dotazy a další interní texty   |
-| **Odstranit dojem AI**                  | Najde v anglickém textu obraty, které působí jako psané AI, a upraví je přirozeně |
-| **Úprava textu**                        | Projde anglický text, který jste napsali, a udělá ho jasnějším a stručnějším      |
-| **Najít dovednosti**                    | Najde v okně agenta dovednosti, které potřebujete, a navrhne jejich instalaci     |
+| Dovednost         | Co dělá                                                                         |
+| ----------------- | ------------------------------------------------------------------------------- |
+| `meeting-minutes` | Udělá z poznámek z porady zápis s rozhodnutími a úkoly                          |
+| `internal-comms`  | Píše oznámení, zpravodaje, zprávy o postupu, časté dotazy a další interní texty |
+| `humanizer`       | Najde obraty, které působí jako psané AI, a upraví je přirozeně                 |
+| `copy-editing`    | Projde anglický text, který jste napsali, a udělá ho jasnějším a stručnějším    |
+| `find-skills`     | Najde v okně agenta dovednosti, které potřebujete, a navrhne jejich instalaci   |
 
-Odstranit dojem AI a Úprava textu jsou určeny pro anglický text. Najít dovednosti funguje jen v okně agenta.
+`copy-editing` je určena pro anglické marketingové texty. `find-skills` funguje jen v okně agenta.
 
 ## V okně agenta
 

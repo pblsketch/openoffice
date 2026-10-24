@@ -30,13 +30,11 @@ const REPO_OWNER = 'pblsketch'
 const REPO_NAME = 'openoffice'
 const MAINTAINER = 'pblsketch <pblsketch@users.noreply.github.com>'
 
-// GENOFFICE_MAC_X64=1 — opt into packaging the Intel (x64) dmg/zip alongside
-// arm64. Off by default: Intel packages must only ever ship signed with the
-// company certificate (planned dual-track pipeline), so the current release
-// pipeline stays arm64-only and never produces a personally-signed Intel
-// artifact. The downstream layout (feed archive name, GenOffice-intel.dmg
-// alias) keys off which dmgs exist, so flipping this flag is the single
-// switch.
+// GENOFFICE_MAC_X64=1 — package the Intel (x64) dmg/zip alongside arm64.
+// The release build on GitHub's Mac runner sets it (.github/workflows/
+// mac-build.yml, decision 0065); both are the same unsigned beta, signed ad
+// hoc. Off by default, so a local `dist:mac` stays one arm64 package that
+// needs no universal sidecar.
 const includeMacX64 = process.env.GENOFFICE_MAC_X64 === '1'
 
 // GENOFFICE_WIN_ARM64=1 — package the Windows ARM64 installer instead of x64.
@@ -649,12 +647,12 @@ const config = {
   npmRebuild: false,
   mac: {
     // Two separate arch packages (NOT universal): arm64 keeps the exact
-    // artifact names and update-feed entries it always had, x64 (opt-in via
-    // GENOFFICE_MAC_X64=1, see includeMacX64 above) adds Intel support with
-    // electron-builder's default arch-less names (GenOffice-<v>.dmg /
-    // GenOffice-<v>-mac.zip). Both zips land in one latest-mac.yml and
-    // electron-updater picks by process.arch. Dual-arch packs ship the same
-    // lipo fat xlsx-sidecar (see assertUniversalSidecar above).
+    // artifact names and update-feed entries it always had, x64 (via
+    // GENOFFICE_MAC_X64=1, see includeMacX64 above) adds the Intel package:
+    // IeumOffice-<v>-x64.dmg (config.dmg.artifactName below) and the
+    // arch-less IeumOffice-<v>-mac.zip. Both zips land in one latest-mac.yml,
+    // which a Mac install only reads for the version. Dual-arch packs ship the
+    // same lipo fat xlsx-sidecar (see assertUniversalSidecar above).
     target: [
       { target: 'dmg', arch: includeMacX64 ? ['arm64', 'x64'] : ['arm64'] },
       { target: 'zip', arch: includeMacX64 ? ['arm64', 'x64'] : ['arm64'] },
@@ -896,6 +894,10 @@ config.mac.identity = '-'
 config.mac.hardenedRuntime = false
 config.mac.notarize = false
 config.dmg.sign = false
+// Every dmg names its CPU (decision 0065). electron-builder leaves the arch
+// out of an x64 name, which would make the Intel dmg the one without a label;
+// the arm64 name stays the one the site and the README point at.
+config.dmg.artifactName = '${productName}-${version}-${arch}.${ext}'
 
 // Auto-update feed: the releases of the public repository. Always configured,
 // so every installer carries an app-update.yml and can update itself — the

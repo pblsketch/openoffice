@@ -78,11 +78,13 @@ export const es = {
   hlAccept: 'Aceptar',
   hlDismiss: 'Descartar',
   hlAcceptAll: 'Aceptar todas ({count})',
+  hlAcceptAllSave: 'Aceptar todo y guardar ({count})',
   hlDismissAll: 'Descartar todas las propuestas',
   hlSuggestionCount: '{count} propuestas de resaltado con IA',
   hlNotFoundTip: 'Esta frase no se encontró en el texto de la página, así que no se puede aceptar',
   hlWaitingSave: 'Pendiente de guardar',
   hlWaitingSaveTip: 'Guarda el PDF para que el resaltado quede en el archivo',
   hlAcceptedNotice: 'Se añadieron {count} resaltados. Guarda el PDF para que queden en el archivo.',
+  hlAcceptedSaved: 'Se guardaron {count} resaltados.',
   hlDismissFailed: 'No se pudieron descartar las propuestas.',
 } satisfies Record<keyof typeof zh, string>

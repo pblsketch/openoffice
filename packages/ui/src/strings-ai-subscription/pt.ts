@@ -22,7 +22,7 @@ export const pt = {
   cardErrFailed: 'Algo deu errado ao verificar {provider}. Verifique novamente.',
   actionInstall: 'Instalar',
   actionLogin: 'Entrar',
-  actionLoginWindow: 'O navegador não abriu ou mostra um código?',
+  actionLoginWindow: 'O navegador não abriu?',
   actionRecheck: 'Verificar novamente',
   actionAcceptMetered: 'Usar mesmo assim',
   actionInstallHelp: 'Guia oficial de instalação',
@@ -36,7 +36,7 @@ export const pt = {
   signingInBrowserNote:
     'Entre na sua conta da {vendor} no navegador que abriu e permita o acesso. A conexão é feita sozinha quando você terminar.',
   signingInWindowNote:
-    'Se o navegador não abriu, copie o endereço mostrado na janela que acabou de abrir e abra-o no navegador. Quando o navegador mostrar um código, copie-o, cole-o uma única vez nessa janela e pressione Enter. O código colado pode não aparecer na janela.',
+    'Siga as instruções no topo da janela de login que acabou de abrir. Entre na página de login da {vendor} que abriu no navegador: a janela fecha sozinha e a conexão é concluída. Uma página de login que já estava aberta antes não funciona mais; feche-a.',
   meteredWarning: 'Isto não é uma assinatura: você paga pelo que usar.',
   meteredMeaning:
     'Este login usa uma chave de API ou uma conta de pagamento por consumo, ou não foi possível confirmar o tipo. “Usar mesmo assim” permite que a IA funcione com esta conexão, e cada solicitação é cobrada dessa conta.',
@@ -119,8 +119,21 @@ export const pt = {
   loginHowNote:
     'Ao clicar, um navegador se abre. Entre com sua conta da {vendor} e clique em Permitir; a conexão é concluída sozinha.',
   signingInStalledNote:
-    'O navegador não abriu ou mostra um código? Abra a janela de login com o botão abaixo. Cole no navegador o endereço mostrado na janela, ou cole na janela o código do navegador.',
+    'Se nenhuma página de login abriu no navegador, abra a janela de login com o botão abaixo. Se você ainda está entrando pelo navegador, termine por lá: o botão interrompe esse login e recomeça do início.',
   actionLoginWindowOpen: 'Abrir a janela de login',
+  loginWindowTitle: 'Login em {provider}',
+  loginWindowIntro:
+    'Esta é a janela de login do programa {provider}. O texto em inglês abaixo vem do programa {provider}.',
+  loginWindowStepBrowser:
+    'Quando a página de login da {vendor} abrir no navegador, entre e permita o acesso. Depois, esta janela fecha sozinha.',
+  loginWindowStepAddress:
+    'Se nenhum navegador abriu, arraste o mouse sobre o endereço abaixo que começa com https:// para selecioná-lo e clique com o botão direito para copiá-lo. Cole-o na barra de endereços do navegador para abrir a página de login.',
+  loginWindowStepCode:
+    'Se o navegador mostrar um código depois que você entrar, copie o código inteiro (use o botão de copiar, se houver). Clique uma vez com o botão direito dentro desta janela para colá-lo e pressione Enter. É normal que o código colado não apareça.',
+  loginWindowStepInvalid:
+    'Se aparecer "Invalid code", o código não foi copiado por inteiro. Não feche esta janela, copie o código de novo e cole-o.',
+  loginWindowClosing:
+    'O login não foi concluído. Depois de ler as mensagens acima, pressione Enter para fechar esta janela. Para tentar de novo, clique outra vez no botão de login.',
   actionCancelLogin: 'Cancelar login',
   actionUpdate: 'Atualizar',
   updateNote:
@@ -129,4 +142,5 @@ export const pt = {
     'Ainda não funciona? Copie as informações da conexão e envie para quem está ajudando você. Elas não incluem conta nem caminhos de arquivos.',
   actionCopyInfo: 'Copiar informações para ajuda',
   copyInfoDone: 'Copiado',
+  actionConnectHelp: 'Ver cada passo na tela (página em coreano)',
 } satisfies Record<keyof typeof zh, string>

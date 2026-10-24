@@ -11,7 +11,8 @@ export const th = {
   trFormatPdf: 'PDF ฉบับแปล',
   trFormatMd: 'Markdown ฉบับแปล',
   trFormatEpub: 'EPUB ฉบับแปล',
-  trBilingual: 'สองภาษา: วางคำแปลต่อจากย่อหน้าต้นฉบับแต่ละย่อหน้า (เฉพาะ Markdown และ EPUB)',
+  trBilingual:
+    'สองภาษา: ใน Markdown และ EPUB จะวางคำแปลต่อจากย่อหน้าต้นฉบับแต่ละย่อหน้า ส่วนใน PDF จะวางหน้าที่แปลแล้วไว้ข้างหน้าต้นฉบับ',
   trPdfEncrypted: 'เอกสารนี้เข้ารหัสไว้ จึงเขียน PDF ฉบับแปลลงไปไม่ได้ Markdown และ EPUB ยังใช้ได้',
   trPdfScript:
     'สร้าง PDF ฉบับแปลเป็นภาษา{language}ไม่ได้ เพราะส่วนที่เขียน PDF จัดวางอักษรนี้ไม่ได้ Markdown และ EPUB ยังใช้ได้',
@@ -56,7 +57,7 @@ export const th = {
   trReportPending: '{count} บล็อกที่ยังไม่ได้แปลคงเป็นภาษาต้นฉบับไว้',
   trReportNone: 'แปลครบทุกบล็อกแล้ว',
   trReportUntranslated: 'บล็อกที่คงเป็นภาษาต้นฉบับ',
-  trReportOverflowed: 'บล็อกที่ล้นกรอบ: {count} บล็อก (หน้า {pages})',
+  trReportOverflowed: 'บล็อกที่คงเป็นภาษาต้นฉบับเพราะพื้นที่ไม่พอ: {count} บล็อก (หน้า {pages})',
   trReportOriginalPages: 'หน้าที่คงไว้ตามเดิม',
   trReportFiles: 'ไฟล์ที่บันทึก',
   trReasonLine: '{reason}: หน้า {pages} ({count} บล็อก)',

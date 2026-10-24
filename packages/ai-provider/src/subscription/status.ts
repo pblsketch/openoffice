@@ -462,6 +462,11 @@ async function inspect(
   if (!login) {
     const output = `${status.stderr}\n${status.stdout}`
     if (UNKNOWN_COMMAND.test(output)) {
+      // A helper program can answer an unknown subcommand without ever naming a
+      // version. That is not an old Codex, and updating it would change nothing.
+      if (provider === 'codex' && !version) {
+        return errorDetection(provider, 'failed', `${name} did not report its version`)
+      }
       return errorDetection(
         provider,
         'needs-update',

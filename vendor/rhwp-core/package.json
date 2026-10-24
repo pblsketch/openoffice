@@ -1,7 +1,7 @@
 {
   "name": "@rhwp/core",
-  "version": "0.8.7-ieum.4",
-  "description": "rhwp v0.8.7 HWP/HWPX engine (WebAssembly) rebuilt with the layout patches in ./patches",
+  "version": "0.8.7-ieum.6",
+  "description": "rhwp v0.8.7 HWP/HWPX engine (WebAssembly) rebuilt with the patches in ./patches",
   "private": true,
   "type": "module",
   "main": "rhwp.js",
@@ -29,9 +29,13 @@
       "0008-title-host-line-occupies-flow.patch",
       "0009-cellzone-fill-spans-merged-end-cell.patch",
       "0010-header-footer-frame-origin.patch",
-      "0011-inherit-master-page-from-previous-section.patch"
+      "0011-inherit-master-page-from-previous-section.patch",
+      "0012-delete-style-remaps-all-paragraphs.patch",
+      "0013-restyle-per-attribute-everywhere.patch",
+      "0014-page-number-pos-insert.patch",
+      "0015-canvas-metric-requests-without-advances.patch"
     ],
     "wasmPack": "0.15.0",
-    "wasmSha256": "9c948870df8f8a92decf259d56cd957763f1a24459e37449d25212b46fa923b5"
+    "wasmSha256": "80a895b04f0b9b39e1bbdcfd1d3984244c1be41ccf41e3e35710c011ea5a35e6"
   }
 }

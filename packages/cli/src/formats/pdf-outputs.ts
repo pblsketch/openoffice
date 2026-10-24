@@ -125,6 +125,8 @@ export async function writeTranslatedPdfFile(
   tree: DocumentTree,
   translated: DocumentTree,
   outPath: string,
+  /** each source page beside its translated page (decision 0057) */
+  bilingual: boolean,
   onProgress?: (done: number, total: number) => void,
 ): Promise<WritebackReport> {
   const engine = ocr()
@@ -135,6 +137,7 @@ export async function writeTranslatedPdfFile(
       tree,
       translated,
       ...(engine ? { ocr: engine } : {}),
+      ...(bilingual ? { bilingual } : {}),
       ...(onProgress ? { onProgress } : {}),
     })
     writeOutput(outPath, result.pdf)

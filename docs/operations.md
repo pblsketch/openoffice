@@ -1,6 +1,6 @@
 # 운영
 
-배포하는 운영체제는 Windows이고, Apple Silicon Mac용은 Apple 개발자 서명 없는 베타로 낸다(결정 0031). Mac판은 GitHub Actions의 Mac 빌드 기계에서 만들고, Mac 사용자들의 보고로 확인한다. Intel Mac·Linux용 설정과 코드는 저장소에 남아 있지만 빌드하지도 확인하지도 않는다.
+배포하는 운영체제는 Windows이고, Mac용(Apple Silicon·Intel)은 Apple 개발자 서명 없는 베타로 낸다(결정 0031, 0065). Mac판은 GitHub Actions의 Mac 빌드 기계에서 두 가지를 함께 만들고, Mac 사용자들의 보고로 확인한다.
 
 ## 처음 한 번
 
@@ -155,11 +155,11 @@ npm run growth:report    # 전일 대비 증감과 7일 추이 보기
 저장소 주인에게 Mac이 없으므로 GitHub Actions에서 만든다.
 
 1. GitHub 저장소의 Actions 탭 → **macOS build** → **Run workflow**. 가지는 릴리스 태그가 가리킬 커밋이 있는 가지를 고른다.
-2. 끝나면 실행 결과의 Artifacts에서 `ieumoffice-mac-arm64`를 내려받는다. 안에 `IeumOffice-<버전>-arm64.dmg`, `IeumOffice-<버전>-arm64-mac.zip`, `latest-mac.yml`(베타 버전 번호면 `beta-mac.yml`)이 있다.
+2. 끝나면 실행 결과의 Artifacts에서 `ieumoffice-mac`을 내려받는다. 안에 `IeumOffice-<버전>-arm64.dmg`, `IeumOffice-<버전>-x64.dmg`, `IeumOffice-<버전>-arm64-mac.zip`, `IeumOffice-<버전>-mac.zip`(Intel), `latest-mac.yml`(베타 버전 번호면 `beta-mac.yml`)이 있다.
 
-- 빌드는 ad hoc 서명이 되었는지, 엑셀 처리 프로그램과 글자 인식 도우미가 Apple Silicon용으로 들어갔는지 검사하고, 만든 앱을 창 없이 띄워 Markdown·CSV 파일을 PDF로 내보내 본다. 하나라도 실패하면 결과를 올리지 않는다.
+- 빌드는 `GENOFFICE_MAC_X64=1`로 두 앱을 묶는다. 두 앱이 한 자리를 나눠 쓰는 엑셀 처리 프로그램과 글자 인식 도우미는 두 CPU를 담은 파일(`native:build:universal`, lipo)이어야 한다. 빌드는 두 앱 모두 ad hoc 서명이 되었는지, 들어 있는 프로그램이 그 앱의 CPU를 담는지 검사하고, 두 앱을 창 없이 띄워(Intel판은 Rosetta로) Markdown·CSV 파일을 PDF로 내보내 본다. 하나라도 실패하면 결과를 올리지 않는다.
 - 비밀 값을 쓰지 않는다. **release_tag**를 적고 `main`에서 실행하면, 빌드가 통과한 뒤 그 태그의 이미 공개된 릴리스에 dmg, zip, `latest-mac.yml`을 붙인다(빌드한 버전과 태그가 같을 때만). 비워 두면 결과물만 남는다. 순서는 `docs/releasing.ko.md`의 "Mac 설치 파일"이다.
-- Mac에서 직접 만들 때: `npm ci`, `npm run build:all`, `npm run dist:mac -w @genoffice/shell -- --publish never`. 루트의 `npm run dist:mac`은 Intel용까지 묶는 원본의 경로라 쓰지 않는다.
+- Mac에서 직접 만들 때: `npm ci`, `npm run build:all`, `npm run dist:mac -w @genoffice/shell -- --publish never`(Apple Silicon만). Intel용까지 묶으려면 그 전에 `npm run native:build:universal -w @genoffice/sheets`를 하고 `GENOFFICE_MAC_X64=1`을 켠다. 루트의 `npm run dist:mac`은 원본의 경로라 쓰지 않는다.
 
 ## Linux 설치 파일 만들기
 
@@ -201,6 +201,7 @@ npm run typecheck
 - 엔진 밖의 파일까지 고치는 커밋은 엔진 쪽 변경만 받는다. 화면 문구 파일, 껍데기 앱의 뒷단, AI 연결부에서 충돌이 나면 이 프로젝트의 것을 남긴다.
 - 원본이 화면 문구 키를 늘렸으면 21개 언어 모두에 들어왔는지 형 검사로 확인한다.
 - 옮긴 뒤 위의 검사 전체와, 건드린 엔진 패키지의 테스트를 돌린다.
+- `packages/pdf2docx`에는 원본과 다른 동작이 있다(결정 0058). 그 패키지의 `AGENTS.md` "원본과 다른 점"에 적힌 시험이 옮긴 뒤에도 통과하는지 본다. 충돌이 나면 그 목록의 동작을 남긴다.
 
 ## 한글 엔진(rhwp) 다시 빌드하기
 

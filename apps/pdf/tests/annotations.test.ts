@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   MARKUP_COLORS,
+  MARKUP_PALETTE,
   geomDispSize,
   pdfRectToCss,
   pdfToView,
@@ -12,6 +13,24 @@ import {
 } from '../src/renderer/annotations'
 
 const geom = (rot: number, pw = 100, ph = 200): PageGeom => ({ pw, ph, rot })
+
+describe('MARKUP_PALETTE', () => {
+  it('keeps every quick color valid for the save path', () => {
+    for (const { hex, color } of MARKUP_PALETTE) {
+      expect(hex).toMatch(/^#[0-9a-f]{6}$/i)
+      expect(color).toHaveLength(3)
+      expect(color.every((v) => v >= 0 && v <= 1)).toBe(true)
+    }
+  })
+
+  it('includes each default markup color so the current swatch can be found', () => {
+    for (const color of Object.values(MARKUP_COLORS)) {
+      expect(
+        MARKUP_PALETTE.some((entry) => entry.color.every((v, i) => Math.abs(v - color[i]!) < 0.01)),
+      ).toBe(true)
+    }
+  })
+})
 
 describe('geomDispSize', () => {
   it('keeps width/height at 0 and 180 degrees', () => {

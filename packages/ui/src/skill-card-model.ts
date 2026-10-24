@@ -171,15 +171,14 @@ export function skillCardNameVerdict(
 }
 
 /**
- * Why Save is blocked, or null (spec 9.12): an empty title, description or
- * body, or a name the rule refuses. The description is required by the
- * shell's save as well.
+ * Why Save is blocked, or null (spec 9.12): an empty description or body, or
+ * a name the rule refuses. The description is required by the shell's save as
+ * well. The title is optional: lists show the name.
  */
 export function skillCardSaveBlock(
   draft: SkillCardDraft,
   nameBlock: SkillCardStringKey | null,
 ): SkillCardStringKey | null {
-  if (!draft.title.trim()) return 'blockTitle'
   if (!draft.description.trim()) return 'blockDescription'
   if (!draft.body.trim()) return 'blockBody'
   return nameBlock
@@ -210,8 +209,6 @@ export function skillCardSaveInput(
 /** The line for a refused save */
 export function skillCardSaveFailureKey(reason: string, problem?: string): SkillCardStringKey {
   switch (reason) {
-    case 'empty-title':
-      return 'blockTitle'
     case 'empty-description':
       return 'blockDescription'
     case 'empty-body':
@@ -298,8 +295,10 @@ function storedTitle(tool: StoredToolRecord): string {
   const named = proposedTitleOf(tool.output)
   if (named) return named
   try {
-    const input = JSON.parse(tool.input ?? '') as { title?: unknown }
-    if (typeof input.title === 'string' && input.title.trim()) return input.title.trim()
+    const input = JSON.parse(tool.input ?? '') as { name?: unknown; title?: unknown }
+    for (const value of [input.name, input.title]) {
+      if (typeof value === 'string' && value.trim()) return value.trim()
+    }
   } catch {
     // a cut-off record keeps the tool row's words
   }

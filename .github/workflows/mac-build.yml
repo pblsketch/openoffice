@@ -1,9 +1,10 @@
 name: macOS build
 
-# Builds the macOS installer (Apple Silicon) on a GitHub-hosted Mac
-# (docs/releasing.ko.md, "Mac 설치 파일"). The app is signed ad hoc and not
-# notarized (docs/tracking/decisions/0031-unsigned-mac-beta.md): no Apple
-# account, no certificate and no repository secret is involved.
+# Builds the macOS installers, Apple Silicon and Intel, on a GitHub-hosted Mac
+# (docs/releasing.ko.md, "Mac 설치 파일"). The apps are signed ad hoc and not
+# notarized (docs/tracking/decisions/0031-unsigned-mac-beta.md, 0065 for
+# Intel): no Apple account, no certificate and no repository secret is
+# involved.
 #
 # Run from the Actions tab on main. With a release tag (v0.12.0), the build
 # is also attached to that existing GitHub release, but only from main and
@@ -33,11 +34,14 @@ permissions:
 
 jobs:
   build:
-    # Apple Silicon runner: the xlsx sidecar and the OCR helper are built for
-    # the host, and the installer is arm64 only
+    # Apple Silicon runner. Both packages are built here: the xlsx sidecar and
+    # the OCR helper are lipo fat binaries (arm64 + x86_64) shared by the two,
+    # and the Intel app is smoke-tested under Rosetta
     runs-on: macos-15
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
+      # package the Intel dmg/zip beside the arm64 ones (decision 0065)
+      GENOFFICE_MAC_X64: '1'
       # never pick up a keychain identity: the config signs ad hoc
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       # electron-builder skips all signing on pull-request builds unless told
@@ -60,6 +64,7 @@ jobs:
         uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable branch, 2026-07
         with:
           toolchain: stable
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: Cache cargo (xlsx-sidecar)
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
@@ -83,39 +88,66 @@ jobs:
       - name: Build apps
         run: npm run build:all
 
+      # both packages ship one sidecar path, so it must hold both CPUs; the
+      # packaging hook refuses a host-only one (assertUniversalSidecar)
+      - name: Build the xlsx sidecar for both CPUs
+        run: npm run native:build:universal -w @genoffice/sheets
+
       - name: Package
         run: npm run dist:mac -w @genoffice/shell -- --publish never
 
-      - name: Check the signature and the bundled programs
+      - name: Check the signatures and the bundled programs
         run: |
           set -euo pipefail
-          app="apps/shell/release/mac-arm64/IeumOffice.app"
-          codesign --verify --deep --strict --verbose=2 "$app"
-          # read the whole report first: grep -q quitting early would break the pipe
-          signature="$(codesign -dv "$app" 2>&1)"
-          echo "$signature"
-          grep -q 'Signature=adhoc' <<<"$signature"
-          for bin in \
-            "$app/Contents/MacOS/IeumOffice" \
-            "$app/Contents/Resources/native/xlsx-sidecar" \
-            "$app/Contents/Resources/ocr/vision-ocr"; do
-            test -f "$bin" || { echo "missing: $bin"; exit 1; }
-            lipo -archs "$bin" | grep -qw arm64 || { echo "not arm64: $bin"; exit 1; }
+          # electron-builder puts the arm64 app in mac-arm64/ and the x64 one in mac/
+          for pair in mac-arm64:arm64 mac:x86_64; do
+            dir="${pair%%:*}"
+            cpu="${pair##*:}"
+            app="apps/shell/release/$dir/IeumOffice.app"
+            codesign --verify --deep --strict --verbose=2 "$app"
+            # read the whole report first: grep -q quitting early would break the pipe
+            signature="$(codesign -dv "$app" 2>&1)"
+            echo "$signature"
+            grep -q 'Signature=adhoc' <<<"$signature"
+            for bin in \
+              "$app/Contents/MacOS/IeumOffice" \
+              "$app/Contents/Resources/native/xlsx-sidecar" \
+              "$app/Contents/Resources/ocr/vision-ocr"; do
+              test -f "$bin" || { echo "missing: $bin"; exit 1; }
+              lipo -archs "$bin" | grep -qw "$cpu" || { echo "not $cpu: $bin"; exit 1; }
+            done
           done
+          # each dmg names its CPU (config.dmg.artifactName)
+          ls apps/shell/release/IeumOffice-*-arm64.dmg apps/shell/release/IeumOffice-*-x64.dmg
 
-      # The packaged app itself, run without a window: a Markdown and a CSV
-      # file (the latter through the xlsx sidecar) are exported to PDF
-      - name: Smoke test the packaged app
+      # the Intel app runs on this runner only through Rosetta, which an image
+      # may not carry yet
+      - name: Install Rosetta
         run: |
           set -euo pipefail
-          exe="apps/shell/release/mac-arm64/IeumOffice.app/Contents/MacOS/IeumOffice"
-          work="$RUNNER_TEMP/smoke"
-          mkdir -p "$work"
-          printf '# Smoke test\n\nHello from the macOS build.\n' > "$work/note.md"
-          printf 'name,count\napple,3\npear,5\n' > "$work/table.csv"
-          for input in note.md table.csv; do
-            "$exe" --headless-export "$work/$input" --to pdf --out "$work/$input.pdf" --json
-            test -s "$work/$input.pdf"
+          arch -x86_64 /usr/bin/true 2>/dev/null ||
+            sudo softwareupdate --install-rosetta --agree-to-license
+          arch -x86_64 /usr/bin/true
+
+      # The packaged apps themselves, run without a window: a Markdown and a
+      # CSV file (the latter through the xlsx sidecar) are exported to PDF
+      - name: Smoke test the packaged apps
+        run: |
+          set -euo pipefail
+          for pair in mac-arm64:arm64 mac:x86_64; do
+            dir="${pair%%:*}"
+            cpu="${pair##*:}"
+            exe="apps/shell/release/$dir/IeumOffice.app/Contents/MacOS/IeumOffice"
+            work="$RUNNER_TEMP/smoke-$cpu"
+            mkdir -p "$work"
+            printf '# Smoke test\n\nHello from the macOS build.\n' > "$work/note.md"
+            printf 'name,count\napple,3\npear,5\n' > "$work/table.csv"
+            for input in note.md table.csv; do
+              # arch picks the CPU: the x86_64 run goes through Rosetta, and its
+              # CSV export through the x86_64 half of the fat sidecar
+              arch "-$cpu" "$exe" --headless-export "$work/$input" --to pdf --out "$work/$input.pdf" --json
+              test -s "$work/$input.pdf"
+            done
           done
 
       - name: List the release files
@@ -124,7 +156,7 @@ jobs:
       - name: Upload the release files
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ieumoffice-mac-arm64
+          name: ieumoffice-mac
           path: |
             apps/shell/release/*.dmg
             apps/shell/release/*.zip
@@ -151,7 +183,7 @@ jobs:
       - name: Attach to the release
         run: |
           set -euo pipefail
-          gh run download "$GITHUB_RUN_ID" --name ieumoffice-mac-arm64 --dir mac
+          gh run download "$GITHUB_RUN_ID" --name ieumoffice-mac --dir mac
           [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "not a version tag: $TAG"; exit 1; }
           gh release view "$TAG" >/dev/null || { echo "no release $TAG: publish it first"; exit 1; }
           feed=$(ls mac/*-mac.yml)

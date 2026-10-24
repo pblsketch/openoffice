@@ -22,6 +22,12 @@ Jeder Editor hat eigene Tastenbelegungen, und nur wenige davon funktionieren üb
 - **`⌘O`, `⌘S` und `⌘P` sind hinter jedem Editor getrennt implementiert**, und sie verhalten sich nicht ganz gleich. Words `⌘P` erzeugt zuerst eine Druckvorschau, damit ein bedrucktes Blatt genau einer Bildschirmseite entspricht; das von PDF öffnet den PDF-Druckdialog; Sheets und Slides haben wiederum eigene.
 - **Der Rest gilt pro Anwendung.** Ist der Word-Tab aktiv, ist `⌘B` Words Fett. Ist Slides aktiv, ist `⌘B` Slides’ Fett, und das Menü, zu dem es gehört, ist nicht das gewohnte. Wo eine Belegung nur mit einer Auswahl oder in einem bestimmten Bereich auslöst, steht das in der Spalte Aktion.
 
+## Präsentationsmodus
+
+- **Start**: F5 in Word, PDF, Mindmap, HTML und Markdown. In einer Tabelle Ctrl+F5 (ab A1) oder Shift+F5 (ab der aktuellen Zelle).
+- **Weitere Einstiege**: In Word öffnen Ctrl+F5 und Shift+F5 die Leseansicht ohne Vollbild, in PDF starten sie ab der aktuellen Seite, in HTML präsentieren sie im Tab.
+- **Beenden**: Esc oder F5. F11 ist der Vollbildmodus des Fensters und ändert die Dokumentansicht nicht.
+
 ## Konventionen
 
 - Die macOS-Spalte verwendet die gewohnten Symbole: `⌘` Command, `⌥` Option, `⇧` Shift, `⌃` Control.
@@ -588,3 +594,154 @@ Jede dieser Tasten braucht ein bereits ausgewähltes Element; ohne Auswahl bewir
 | Ausgewählten Bereich kursiv setzen                     | ⌘I    | Ctrl+I          |
 
 Das Übernehmen behält, was Sie getippt haben, und setzt das Element auf den ausgewählten Zustand zurück.
+
+## HWP/HWPX
+
+Diese Tasten gelten, solange der Tab HWP/HWPX im Vordergrund ist und das Dokument den Fokus hat. Die beiden Spalten zeigen, wie sie unter macOS und unter Windows / Linux gedrückt werden.
+
+### Datei
+
+| Aktion           | macOS | Windows / Linux      |
+| ---------------- | ----- | -------------------- |
+| Neues Dokument   |       | Alt+N                |
+| Öffnen…          | ⌘O    | Ctrl+O / Alt+O       |
+| Speichern        | ⌘S    | Ctrl+S / Alt+S       |
+| Speichern unter… | ⇧⌘S   | Ctrl+Shift+S / Alt+V |
+| Drucken          | ⌘P    | Ctrl+P / Alt+P       |
+
+### Bearbeiten
+
+| Aktion                | macOS       | Windows / Linux              |
+| --------------------- | ----------- | ---------------------------- |
+| Rückgängig            | ⌃Z          | Ctrl+Z                       |
+| Wiederholen           | ⌃⇧Z         | Ctrl+Shift+Z                 |
+| Zeile löschen         | ⌃Y          | Ctrl+Y                       |
+| Ausschneiden          | ⌃X          | Ctrl+X                       |
+| Kopieren              | ⌃C          | Ctrl+C                       |
+| Einfügen              | ⌃V          | Ctrl+V                       |
+| Löschen               | ⌃E          | Ctrl+E                       |
+| Alles auswählen       | ⌃A          | Ctrl+A                       |
+| Formatierung kopieren | ⌥C          | Alt+C                        |
+| Suchen                | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
+| Suchen und ersetzen   | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
+| Weitersuchen          | ⌃L          | Ctrl+L                       |
+| Rückwärts suchen      | ⌃Q, L       | Ctrl+Q, L                    |
+| Gehe zu               | ⌥G          | Alt+G                        |
+| Dokumente vergleichen | ⌥⇧V         | Alt+Shift+V                  |
+
+### Zeichen
+
+| Aktion                    | macOS    | Windows / Linux      |
+| ------------------------- | -------- | -------------------- |
+| Fett                      | ⌃B / ⌥⇧B | Ctrl+B / Alt+Shift+B |
+| Kursiv                    | ⌃I / ⌥⇧I | Ctrl+I / Alt+Shift+I |
+| Unterstrichen             | ⌃U / ⌥⇧U | Ctrl+U / Alt+Shift+U |
+| Normale Formatierung      | ⌥⇧C      | Alt+Shift+C          |
+| Hochgestellt              | ⌥⇧P      | Alt+Shift+P          |
+| Tiefgestellt              | ⌥⇧S      | Alt+Shift+S          |
+| Zeichenformat…            | ⌥L       | Alt+L                |
+| Schriftgröße erhöhen      | ⌥⇧E / ⌃] | Alt+Shift+E / Ctrl+] |
+| Schriftgröße verringern   | ⌥⇧R / ⌃[ | Alt+Shift+R / Ctrl+[ |
+| Zeichenbreite erhöhen     | ⌥⇧K      | Alt+Shift+K          |
+| Zeichenbreite verringern  | ⌥⇧J      | Alt+Shift+J          |
+| Zeichenabstand erhöhen    | ⌥⇧W      | Alt+Shift+W          |
+| Zeichenabstand verringern | ⌥⇧N      | Alt+Shift+N          |
+| Schwarzer Text            | ⌃M, K    | Ctrl+M, K            |
+| Roter Text                | ⌃M, R    | Ctrl+M, R            |
+| Blauer Text               | ⌃M, B    | Ctrl+M, B            |
+| Pflaumenfarbener Text     | ⌃M, D    | Ctrl+M, D            |
+| Grüner Text               | ⌃M, G    | Ctrl+M, G            |
+| Gelber Text               | ⌃M, Y    | Ctrl+M, Y            |
+| Türkiser Text             | ⌃M, C    | Ctrl+M, C            |
+| Weißer Text               | ⌃M, W    | Ctrl+M, W            |
+
+### Absatz
+
+| Aktion                                  | macOS   | Windows / Linux |
+| --------------------------------------- | ------- | --------------- |
+| Linksbündig                             | ⌃⇧L     | Ctrl+Shift+L    |
+| Zentriert                               | ⌃⇧C     | Ctrl+Shift+C    |
+| Rechtsbündig                            | ⌃⇧R     | Ctrl+Shift+R    |
+| Blocksatz                               | ⌃⇧M     | Ctrl+Shift+M    |
+| Verteilt                                | ⌃⇧T     | Ctrl+Shift+T    |
+| Zeilenabstand erhöhen                   | ⌥⇧Z     | Alt+Shift+Z     |
+| Zeilenabstand verringern                | ⌥⇧A     | Alt+Shift+A     |
+| Absatzformat…                           | ⌥T      | Alt+T           |
+| Formatvorlage…                          | F6      | F6              |
+| Erste bis zehnte Formatvorlage anwenden | ⌃1 … ⌃0 | Ctrl+1 … Ctrl+0 |
+| Absatznummernformat                     | ⌃K, N   | Ctrl+K, N       |
+
+### Einfügen
+
+| Aktion                                     | macOS       | Windows / Linux    |
+| ------------------------------------------ | ----------- | ------------------ |
+| Tabelle einfügen                           | ⌃N, T       | Ctrl+N, T          |
+| Fußnote                                    | ⌃N, N       | Ctrl+N, N          |
+| Endnote                                    | ⌃N, E       | Ctrl+N, E          |
+| Kopfzeile                                  | ⌃N, H       | Ctrl+N, H          |
+| Seitenzahl                                 | ⌃N, P       | Ctrl+N, P          |
+| Bild einfügen                              | ⌃N, I       | Ctrl+N, I          |
+| Textfeld                                   | ⌃N, B       | Ctrl+N, B          |
+| Formel                                     | ⌃N, M       | Ctrl+N, M          |
+| Beschriftung einfügen                      | ⌃N, C       | Ctrl+N, C          |
+| Hyperlink                                  | ⌃K, H       | Ctrl+K, H          |
+| Lesezeichen                                | ⌃K, B       | Ctrl+K, B          |
+| Feld einfügen                              | ⌃K, E       | Ctrl+K, E          |
+| Datum/Uhrzeit als Text                     | ⌃K, D       | Ctrl+K, D          |
+| Objekt, Feld oder Tabelle/Zelle bearbeiten | ⌃N, K       | Ctrl+N, K          |
+| Sonderzeichen                              | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+
+### Tabelle
+
+| Aktion                  | macOS        | Windows / Linux        |
+| ----------------------- | ------------ | ---------------------- |
+| Zeile/Spalte hinzufügen | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Zeile/Spalte löschen    | ⌥⌫           | Alt+Delete             |
+| Zelle teilen            | F5 → S       | F5 → S                 |
+| Zellen verbinden        | F5 → M       | F5 → M                 |
+| Blocksumme              | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Blockmittelwert         | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Blockprodukt            | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Tabelle teilen          | ⌃N, A        | Ctrl+N, A              |
+| Tabelle verbinden       | ⌃N, Z        | Ctrl+N, Z              |
+| Berechnungsformel       | ⌃N, F        | Ctrl+N, F              |
+
+### Tabellenberechnung
+
+Sie gelten nur, wenn der Cursor in einer leeren Tabellenzelle steht. Getrennte Tasten rechnen mit den Zellen links bzw. den Zellen darüber.
+
+| Aktion           | macOS | Windows / Linux |
+| ---------------- | ----- | --------------- |
+| Summe links      | ⇧⌘H   | Ctrl+Shift+H    |
+| Summe oben       | ⌃⇧V   | Ctrl+Shift+V    |
+| Mittelwert links | ⌃⇧J   | Ctrl+Shift+J    |
+| Mittelwert oben  | ⌃⇧B   | Ctrl+Shift+B    |
+| Produkt links    | ⌃⇧K   | Ctrl+Shift+K    |
+| Produkt oben     | ⌃⇧N   | Ctrl+Shift+N    |
+
+### Seite
+
+| Aktion                     | macOS | Windows / Linux  |
+| -------------------------- | ----- | ---------------- |
+| Seite einrichten           | F7    | F7               |
+| Seitenumbruch              | ⌃⏎    | Ctrl+Enter       |
+| Spaltenumbruch             | ⌃⇧⏎   | Ctrl+Shift+Enter |
+| Spalteneinstellungsumbruch | ⌃⌥⏎   | Ctrl+Alt+Enter   |
+| Bereichseinstellungen      | ⌃N, G | Ctrl+N, G        |
+| Seite ausblenden           | ⌃N, S | Ctrl+N, S        |
+
+### Ansicht
+
+| Aktion                                    | macOS | Windows / Linux |
+| ----------------------------------------- | ----- | --------------- |
+| Vergrößern                                | ⌃=    | Ctrl+=          |
+| Verkleinern                               | ⌃-    | Ctrl+-          |
+| An Seite anpassen                         | ⌃G, P | Ctrl+G, P       |
+| An Breite anpassen                        | ⌃G, W | Ctrl+G, W       |
+| Auf 100 % zoomen                          | ⌃G, Q | Ctrl+G, Q       |
+| Werkzeugkasten ein- oder ausklappen       | ⌃F1   | Ctrl+F1         |
+| Absatzmarken ein- oder ausblenden         | ⌃G, T | Ctrl+G, T       |
+| Steuerzeichen ein- oder ausblenden        | ⌃G, C | Ctrl+G, C       |
+| Zum Tab „Start“ (außerhalb einer Tabelle) | ⇧⌘H   | Ctrl+Shift+H    |
+
+Eine Taste wie `Ctrl+N,T` bedeutet: Ctrl+N drücken, loslassen und dann T drücken. `F5 → S` heißt: mit F5 einen Zellblock auswählen und dann S drücken. `Ctrl+1 … Ctrl+0` stehen für die erste bis zehnte Formatvorlage des Dokuments; `Ctrl+Alt+1 … Ctrl+Alt+0` wenden dieselben Formatvorlagen an. Ist ein Zellblock ausgewählt, ist `Ctrl+Shift+S` (unter macOS `⇧⌘S`) die Blocksumme; sonst speichert diese Taste unter einem neuen Namen.

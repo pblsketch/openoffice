@@ -28,6 +28,7 @@ import {
   type AgentMode,
   type AgentPrefs,
   type AgentProjectPrefs,
+  type AgentProjectSkillsView,
   type AgentProvider,
   type AgentStartResponse,
   type AgentTemplateAsIs,
@@ -106,6 +107,13 @@ export interface AgentWindowDeps extends Omit<
   readProjectPrefs?: ((folder: string) => AgentProjectPrefs) | undefined
   writeProjectPrefs?:
     ((folder: string, patch: Partial<AgentProjectPrefs>) => AgentProjectPrefs) | undefined
+  /** a project folder's own skills and the person's choice for them (decision 0064) */
+  projectSkills?:
+    | {
+        view(folder: string): Promise<AgentProjectSkillsView>
+        set(folder: string, on: boolean): Promise<AgentProjectSkillsView>
+      }
+    | undefined
 }
 
 /** The app settings file, as the shell keeps it in the data folder */
@@ -401,6 +409,26 @@ function registerIpc(): void {
     if (typeof folder !== 'string' || !isAbsolute(folder)) return null
     try {
       return writeProjectPrefsOf(deps, folder, agentProjectPrefsPatch(patch))
+    } catch {
+      return null
+    }
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.getProjectSkills, async (event, folder: unknown) => {
+    if (ownerOf(event) === null || !deps?.projectSkills) return null
+    if (typeof folder !== 'string' || !isAbsolute(folder)) return null
+    try {
+      return await deps.projectSkills.view(folder)
+    } catch {
+      return null
+    }
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.setProjectSkills, async (event, folder: unknown, on: unknown) => {
+    if (ownerOf(event) === null || !deps?.projectSkills) return null
+    if (typeof folder !== 'string' || !isAbsolute(folder)) return null
+    try {
+      return await deps.projectSkills.set(folder, on === true)
     } catch {
       return null
     }

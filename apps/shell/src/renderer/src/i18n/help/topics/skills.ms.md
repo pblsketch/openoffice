@@ -4,7 +4,7 @@ Kemahiran ialah satu set arahan kerja untuk AI. Tulis sekali sahaja perkara yang
 
 ## Menghidupkan dan mematikan kemahiran
 
-**Tetapan ▸ Kemahiran** menyenaraikan kemahiran pada PC ini, dikumpulkan mengikut asalnya. Gunakan kotak carian di bahagian atas untuk mencari mengikut tajuk, nama atau keterangan.
+**Tetapan ▸ Kemahiran** menyenaraikan kemahiran pada PC ini, dikumpulkan mengikut asalnya. Setiap kemahiran dipaparkan dengan namanya, seperti dalam ejen pengekodan. Gunakan kotak carian di bahagian atas untuk mencari mengikut nama atau keterangan.
 
 | Sumber                      | Kandungannya                                                  | Pada mulanya |
 | --------------------------- | ------------------------------------------------------------- | ------------ |
@@ -34,7 +34,7 @@ Di bawah pratonton sentiasa tertulis: "Pasang kemahiran hanya daripada sumber ya
 
 - Jika kemahiran saya sudah ada kemahiran dengan nama yang sama, pilih **Gantikan** atau **Langkau** pada baris itu.
 - Semasa memuat turun dari GitHub, GenOffice hanya bersambung ke `github.com`, `api.github.com` dan `codeload.github.com`, dan tidak menghantar sebarang data log masuk. Jika arkib terlalu besar atau gagal dalam semakan keselamatan, tiada apa-apa yang dipasang.
-- **Kemahiran baharu** membuka editor kosong untuk anda menulis sendiri tajuk, keterangan dan arahannya.
+- **Kemahiran baharu** membuka editor kosong untuk anda menulis sendiri nama, keterangan dan arahannya.
 
 ## Menyemak kemas kini
 
@@ -46,7 +46,7 @@ Di bawah pratonton sentiasa tertulis: "Pasang kemahiran hanya daripada sumber ya
 ## Memanggil kemahiran dalam panel AI
 
 1. Taip `/` atau `$` di awal kotak input AI atau sejurus selepas ruang kosong. Senarai kemahiran yang hidup akan muncul.
-2. Teruskan menaip untuk mengecilkan senarai. Contohnya, `/minit` menemui Minit mesyuarat.
+2. Teruskan menaip untuk mengecilkan senarai. Contohnya, `/meet` menemui `meeting-minutes`. Perkataan dalam keterangan juga boleh digunakan, jadi `/minit` juga menemuinya.
 3. Pilih satu dengan kekunci anak panah dan tekan Enter atau Tab. Kemahiran itu menjadi cip di atas kotak input.
 4. Tulis apa yang anda mahu dan hantar. GenOffice menambah kandungan kemahiran itu pada permintaan.
 
@@ -58,15 +58,15 @@ Di bawah pratonton sentiasa tertulis: "Pasang kemahiran hanya daripada sumber ya
 
 ## Kemahiran yang digunakan AI sendiri
 
-- Bagi kemahiran yang hidup dan ditetapkan kepada AI tentukan, tajuk dan keterangannya diberikan kepada AI dalam bentuk senarai. Apabila salah satunya sesuai dengan permintaan, AI mengambil kandungannya dan menggunakannya.
-- Apabila AI menggunakan sesuatu kemahiran, perbualan memaparkan "Menggunakan kemahiran 〈tajuk〉".
+- Bagi kemahiran yang hidup dan ditetapkan kepada AI tentukan, nama dan keterangannya diberikan kepada AI dalam bentuk senarai. Apabila salah satunya sesuai dengan permintaan, AI mengambil kandungannya dan menggunakannya.
+- Apabila AI menggunakan sesuatu kemahiran, perbualan memaparkan "Menggunakan kemahiran 〈nama〉".
 - AI memutuskan berdasarkan keterangan sama ada hendak menggunakan sesuatu kemahiran. Keterangan yang menyatakan bila kemahiran itu patut digunakan membantu AI memilih dengan tepat.
 
 ## Membuat kemahiran dengan meminta
 
 1. Dalam panel AI, sebut sesuatu seperti "Simpan apa yang kita buat tadi sebagai kemahiran" atau "Buat kemahiran yang menulis laporan mengikut gaya organisasi kita".
 2. AI memilih langkah dan peraturan yang wajar diulang, lalu memaparkan kad **Kemahiran baharu**. Nilai yang digunakan sekali ini sahaja, seperti nama dan tarikh, tidak dimasukkan ke dalam arahan.
-3. Semak dan sunting tajuk, keterangan dan arahan pada kad. Buka **Lanjutan** untuk menukar nama bahasa Inggerisnya.
+3. Semak dan sunting nama, keterangan dan arahan pada kad. Nama ialah yang dipaparkan dalam senarai kemahiran dan yang anda taip selepas `/`: huruf kecil bahasa Inggeris, digit dan tanda sempang.
 4. Klik **Simpan**. Kemahiran baharu ditambah ke kemahiran saya dalam keadaan hidup, dan terus muncul dalam senarai `/`.
 
 - Tiada fail ditulis sehingga anda mengklik **Simpan**. Jika anda mengklik **Batal**, perbualan hanya menyimpannya sebagai "Cadangan kemahiran yang tidak disimpan".
@@ -85,7 +85,7 @@ Apabila anda membuat kemahiran dalam panel AI sesebuah editor, dokumen semasa bo
 - Kemahiran yang mempunyai templat ditandakan **Ada templat** dalam senarai.
 - Panggil kemahiran itu sebagai cip dan hantar, lalu salinan templat dibuka sebagai dokumen baharu tanpa tajuk; AI dalam tab itu meneruskan permintaan anda. Panel asal memaparkan "Kerja dengan templat diteruskan dalam tab baharu" dan **Pergi ke tab**.
 - Apabila AI sendiri memilih kemahiran bertemplat, tiada tab dibuka serta-merta. Sebaliknya, perbualan memaparkan butang **Buka dokumen baharu daripada templat ini**.
-- Biasanya anda memilih lokasi dokumen baharu itu pada kali pertama anda menyimpannya. Editor Markdown dan HTML, serta penjanaan keseluruhan dek slaid, menyimpan ke folder lalai seperti biasa. Fail templat itu sendiri kekal seperti asal.
+- Biasanya anda memilih lokasi dokumen baharu itu pada kali pertama anda menyimpannya. Editor Markdown dan HTML menyimpan ke folder lalai seperti biasa. Fail templat itu sendiri kekal seperti asal.
 
 ## Kemahiran yang mempunyai skrip
 
@@ -95,15 +95,15 @@ Apabila anda membuat kemahiran dalam panel AI sesebuah editor, dokumen semasa bo
 
 ## Kemahiran terbina dalam
 
-| Kemahiran                                | Fungsinya                                                                                                  |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| **Minit mesyuarat**                      | Menyusun nota mesyuarat menjadi minit yang menunjukkan keputusan dan tindakan susulan                      |
-| **Pengumuman, buletin dan soalan lazim** | Menulis pengumuman, buletin, laporan kemajuan, soalan lazim dan mesej dalaman lain                         |
-| **Buang kesan AI**                       | Mencari ungkapan dalam teks bahasa Inggeris yang berbunyi seperti ditulis AI dan menjadikannya semula jadi |
-| **Menyunting tulisan**                   | Menyemak teks bahasa Inggeris yang anda tulis supaya lebih jelas dan ringkas                               |
-| **Cari kemahiran**                       | Mencari kemahiran yang anda perlukan dalam tetingkap ejen dan mencadangkan pemasangannya                   |
+| Kemahiran         | Fungsinya                                                                                |
+| ----------------- | ---------------------------------------------------------------------------------------- |
+| `meeting-minutes` | Menyusun nota mesyuarat menjadi minit yang menunjukkan keputusan dan tindakan susulan    |
+| `internal-comms`  | Menulis pengumuman, buletin, laporan kemajuan, soalan lazim dan mesej dalaman lain       |
+| `humanizer`       | Mencari ungkapan yang berbunyi seperti ditulis AI dan menjadikannya semula jadi          |
+| `copy-editing`    | Menyemak teks bahasa Inggeris yang anda tulis supaya lebih jelas dan ringkas             |
+| `find-skills`     | Mencari kemahiran yang anda perlukan dalam tetingkap ejen dan mencadangkan pemasangannya |
 
-Buang kesan AI dan Menyunting tulisan dibuat untuk teks bahasa Inggeris. Cari kemahiran hanya berfungsi dalam tetingkap ejen.
+`copy-editing` dibuat untuk teks pemasaran bahasa Inggeris. `find-skills` hanya berfungsi dalam tetingkap ejen.
 
 ## Dalam tetingkap ejen
 

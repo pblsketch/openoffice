@@ -18,9 +18,11 @@ import {
   aiPanelInitiallyOpen,
   effectiveAiPanelOpen,
   onAiRailClick,
+  presentationKeyOf,
   rememberAiPanelOpen,
   skillTemplateText,
   templateDocumentOf,
+  useAiSidebarEnabled,
   useSplitPaneFocusPing,
   useSplitPaneRole,
   type TemplateDocument,
@@ -85,7 +87,7 @@ import { isDocEmpty } from './document/blank'
 import { documentSkeleton } from './document/skeleton'
 import { pageAtScroll, readPageSetup, sheetPeriod } from './document/page-setup'
 import { moveTarget } from './document/move-target'
-import { StylePanel } from './components/StylePanel'
+import { StylePanel, type PanelDrafts } from './components/StylePanel'
 import { floatPosition, parseDeclarations } from './document/float-position'
 import {
   buildParseMap,
@@ -97,9 +99,11 @@ import {
 import { compileOps, type HtmlOp, type OpError } from './document/ops'
 import { injectBrief, parseBrief, type Brief } from './document/brief'
 import { applyPatches } from './document/patch'
+import { withPendingEdits } from './document/pending-edits'
 import { adoptImageRewrites } from './document/image-rewrites'
 import { deriveAutoFileName, deriveNameFromPrompt, derivePageTitleName } from './document/auto-name'
 import { runGuardedPrint } from './print-guard'
+import { startRecoveryCopies } from './recovery-copy'
 import type { ExportFormat, SaveMode } from '../shared/ipc'
 
 type LoadStatus = 'loading' | 'ready' | 'error'
@@ -188,6 +192,8 @@ export default function App() {
   // In a split, a secondary pane's panel is forced to the rail; the focus pane keeps its own state
   const { role: paneRole, requestFocus } = useSplitPaneRole()
   const aiPanelOpen = effectiveAiPanelOpen(aiOpen, paneRole)
+  // the sidebar switch is a soft hide; it closes the panel when it turns off
+  const aiSidebarEnabled = useAiSidebarEnabled(setAiOpen)
   const [aiPreset, setAiPreset] = useState<AiPreset | null>(null)
   const [editQueue, setEditQueue] = useState<EditQueueItem[]>([])
   const [askMode, setAskMode] = useState<AskMode | null>(null)
@@ -344,9 +350,16 @@ export default function App() {
           window.htmlApi.consumePending(),
           window.htmlApi.getPreviewInfo(),
         ])
+        // a crash-recovery copy to open instead: asked (per-file prompt) before
+        // any content loads; the original path stays the save target
+        const recovered = (await window.htmlApi.recoveryOpen?.()) ?? null
         // a new untitled tab may start with given text (a skill template's copy), taken once
-        const seed = pending ? null : ((await window.htmlApi.takeSeed?.()) ?? null)
-        const raw = pending ? await window.htmlApi.readFile(pending) : (seed ?? '')
+        const seed = pending || recovered ? null : ((await window.htmlApi.takeSeed?.()) ?? null)
+        const raw = recovered
+          ? recovered.text
+          : pending
+            ? await window.htmlApi.readFile(pending)
+            : (seed ?? '')
         if (cancelled) return
         const doc = parseDocText(raw)
         envelopeRef.current = doc.envelope
@@ -362,8 +375,9 @@ export default function App() {
         setServedVersion(map0.version)
         setPath(pending)
         setText(doc.text)
-        // a seeded page is new and unsaved: nothing of it is on disk yet
-        setSavedText(seed !== null ? '' : doc.text)
+        // a seeded page is new and unsaved: nothing of it is on disk yet; a
+        // restored copy is unsaved work (the file on disk is untouched)
+        setSavedText(seed !== null || recovered ? '' : doc.text)
         setPreviewUrl(info.url)
         setStatus('ready')
       } catch (err) {
@@ -554,6 +568,10 @@ export default function App() {
 
   const flushStylesRef = useRef<(() => void) | null>(null)
   const flushDraftsRef = useRef<(() => void) | null>(null)
+  /** the panel's open drafts, read without committing them */
+  const peekDraftsRef = useRef<(() => PanelDrafts) | null>(null)
+  /** what a save would write now, pending edits included, nothing committed (set each render) */
+  const sourceWithPendingRef = useRef<() => string>(() => textRef.current)
   /** land live style pokes and open panel drafts in the source before anything reads, saves or edits it */
   const flushPending = useCallback(() => {
     flushDraftsRef.current?.()
@@ -1316,15 +1334,6 @@ export default function App() {
     },
     [flushPending, selectSid],
   )
-  useEffect(() => {
-    if (canvasMode !== 'present') return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setCanvasMode('edit')
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [canvasMode, setCanvasMode])
-
   const startPresent = useCallback(
     (kind: PresentKind) => {
       if (kind === 'newTab') {
@@ -1342,6 +1351,19 @@ export default function App() {
     },
     [path, setCanvasMode, flushPending, pushPreview],
   )
+
+  // F5: fullscreen presentation; Ctrl/Shift+F5: present inside this view; Esc ends either.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      const action = presentationKeyOf(e, canvasMode === 'present')
+      if (!action) return
+      e.preventDefault()
+      if (action === 'exit') setCanvasMode('edit')
+      else startPresent(action === 'present' ? 'fullscreen' : 'tab')
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [canvasMode, setCanvasMode, startPresent])
 
   // a link navigation inside the presented frame keeps focus in a document without our
   // inspector; hand it back to the app so Esc still ends the presentation
@@ -1384,6 +1406,30 @@ export default function App() {
   const setRunText = (text: string) => {
     if (!selectedEntry || selText.index < 0 || !getMap().bySid.has(selectedEntry.sid)) return
     runManual([{ op: 'set_text_node', sid: selectedEntry.sid, index: selText.index, text }])
+  }
+
+  // the batches flushPending would run (styles, then the panel's alt text and
+  // text run), applied to a scratch copy of the source for crash-recovery copies
+  sourceWithPendingRef.current = () => {
+    const drafts = peekDraftsRef.current?.() ?? {}
+    const map = getMap()
+    const styles = {
+      ...pendingStylesRef.current,
+      ...(drafts.css ? parseDeclarations(drafts.css) : {}),
+    }
+    const styleOps: HtmlOp[] = Object.keys(styles).length
+      ? selectionSids().map((sid) => ({ op: 'set_style', sid, styles }))
+      : []
+    const sid = selectedEntry && map.bySid.has(selectedEntry.sid) ? selectedEntry.sid : null
+    const altOps: HtmlOp[] =
+      sid !== null && drafts.alt !== undefined
+        ? [{ op: 'set_attr', sid, name: 'alt', value: drafts.alt }]
+        : []
+    const textOps: HtmlOp[] =
+      sid !== null && drafts.text !== undefined && selText.index >= 0
+        ? [{ op: 'set_text_node', sid, index: selText.index, text: drafts.text }]
+        : []
+    return withPendingEdits(textRef.current, map, [styleOps, altOps, textOps])
   }
 
   const doSave = useCallback(
@@ -1676,6 +1722,26 @@ export default function App() {
     }
   }, [autoSave, path, doSave, flushPending])
 
+  // crash-recovery copies: independent of AutoSave, the text a save would write
+  // now goes to the app data folder while there are unsaved changes
+  useEffect(() => {
+    const api = window.htmlApi
+    const write = api.writeRecoveryCopy?.bind(api)
+    if (!write) return
+    return startRecoveryCopies({
+      read: () => {
+        if (statusRef.current !== 'ready' || savingRef.current) return null
+        // live style pokes and open panel drafts are part of what a save writes;
+        // they are applied to the copy only, so the user's panel input is left alone
+        const text = sourceWithPendingRef.current()
+        if (text === savedTextRef.current) return null
+        return serializeDocText({ text, envelope: envelopeRef.current })
+      },
+      write,
+      onFlushRequest: api.onRecoveryFlushRequest?.bind(api),
+    })
+  }, [])
+
   const aiDeps: HtmlAiDeps = {
     access: {
       getText: () => textRef.current,
@@ -1865,8 +1931,12 @@ export default function App() {
       />
 
       <div className="app-main">
-        <div className={`ai-dock${aiPanelOpen ? '' : ' collapsed'}`}>
-          {!aiPanelOpen && (
+        <div
+          className={`ai-dock${aiPanelOpen ? '' : ' collapsed'}${
+            !aiSidebarEnabled && !aiPanelOpen ? ' ai-dock-off' : ''
+          }`}
+        >
+          {!aiPanelOpen && aiSidebarEnabled && (
             <button
               className="ai-rail"
               data-tip={t('aiOpenAssistant')}
@@ -2027,6 +2097,7 @@ export default function App() {
                       onText={setRunText}
                       onAttr={setAttr}
                       draftRef={flushDraftsRef}
+                      peekRef={peekDraftsRef}
                       onCustomCss={(css) => {
                         const decls = parseDeclarations(css)
                         if (Object.keys(decls).length) previewStyle(decls)

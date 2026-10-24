@@ -5,6 +5,7 @@ import {
   pickerSkillsOf,
   removeSkillTrigger,
   skillChipRefsOf,
+  skillDisplayName,
   skillPickerKeyAction,
   skillTriggerAt,
   withSkillChip,
@@ -135,13 +136,33 @@ describe('pickerSkillsOf (what the list shows)', () => {
     expect(pickerSkillsOf(raw, 'ko', 'panel').map((s) => s.id)).not.toContain('builtin:find-skills')
   })
 
-  it('uses the builtin title and description in the UI language', () => {
+  it('shows a builtin by its name, with its description in the UI language', () => {
     const [item] = pickerSkillsOf(
-      [view({ id: 'builtin:meeting-minutes', source: 'builtin', name: 'meeting-minutes' })],
+      [
+        view({
+          id: 'builtin:meeting-minutes',
+          source: 'builtin',
+          name: 'meeting-minutes',
+          title: 'Meeting minutes',
+        }),
+      ],
       'en',
     )
-    expect(item?.title).toBe('Meeting minutes')
+    expect(item?.title).toBe('meeting-minutes')
+    expect(item?.description).toMatch(/decisions and action items/)
     expect(item?.sourceLabel).toBe('Built-in')
+  })
+
+  it('shows a skill by its name, and by its title only when the name was made up', () => {
+    const items = pickerSkillsOf(
+      [
+        view({ id: 'app:on', name: 'on', title: '켜진 것' }),
+        view({ id: 'app:skill-a1b2c3', name: 'skill-a1b2c3', title: '가정통신문' }),
+        view({ id: 'app:skill-d4e5f6', name: 'skill-d4e5f6', title: '' }),
+      ],
+      'ko',
+    )
+    expect(items.map((i) => i.title)).toEqual(['on', '가정통신문', 'skill-d4e5f6'])
   })
 
   it('labels the sources in plain text', () => {
@@ -183,6 +204,31 @@ describe('pickerSkillsOf (what the list shows)', () => {
     expect(pickerSkillsOf([null, 3, { id: 'no-colon', name: 'x', source: 'app' }], 'ko')).toEqual(
       [],
     )
+  })
+})
+
+describe('skillDisplayName', () => {
+  it('shows the name', () => {
+    expect(skillDisplayName({ name: 'meeting-minutes', title: '회의록 정리' })).toBe(
+      'meeting-minutes',
+    )
+    expect(skillDisplayName({ name: 'humanizer' })).toBe('humanizer')
+  })
+
+  it('shows the title of a skill whose name the app made up', () => {
+    expect(skillDisplayName({ name: 'skill-a1b2c3', title: '가정통신문' })).toBe('가정통신문')
+    expect(skillDisplayName({ name: 'skill-a1b2c3-2', title: ' 가정통신문 ' })).toBe('가정통신문')
+  })
+
+  it('keeps a made-up name when there is no title', () => {
+    expect(skillDisplayName({ name: 'skill-a1b2c3' })).toBe('skill-a1b2c3')
+    expect(skillDisplayName({ name: 'skill-a1b2c3', title: '  ' })).toBe('skill-a1b2c3')
+  })
+
+  it('does not take a name that only looks similar as made up', () => {
+    expect(skillDisplayName({ name: 'skill-notes', title: '메모' })).toBe('skill-notes')
+    expect(skillDisplayName({ name: 'skill-a1b2c3d', title: '메모' })).toBe('skill-a1b2c3d')
+    expect(skillDisplayName({ name: 'my-skill-a1b2c3', title: '메모' })).toBe('my-skill-a1b2c3')
   })
 })
 

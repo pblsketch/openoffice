@@ -22,7 +22,7 @@ export const es = {
   cardErrFailed: 'Algo salió mal al comprobar {provider}. Comprueba de nuevo.',
   actionInstall: 'Instalar',
   actionLogin: 'Iniciar sesión',
-  actionLoginWindow: '¿No se abrió el navegador o muestra un código?',
+  actionLoginWindow: '¿No se abrió el navegador?',
   actionRecheck: 'Comprobar de nuevo',
   actionAcceptMetered: 'Usar de todos modos',
   actionInstallHelp: 'Guía oficial de instalación',
@@ -36,7 +36,7 @@ export const es = {
   signingInBrowserNote:
     'Inicia sesión con tu cuenta de {vendor} en el navegador que se abrió y permite el acceso. Se conecta solo cuando termines.',
   signingInWindowNote:
-    'Si el navegador no se abrió, copia la dirección que aparece en la ventana que se acaba de abrir y ábrela en el navegador. Cuando el navegador muestre un código, cópialo, pégalo una sola vez en esa ventana y pulsa Intro. Es posible que el código pegado no se vea en la ventana.',
+    'Sigue las instrucciones de la parte superior de la ventana de inicio de sesión que se acaba de abrir. Inicia sesión en la página de {vendor} que se abrió en el navegador: la ventana se cierra sola y se completa la conexión. Una página de inicio de sesión abierta antes ya no funciona; ciérrala.',
   meteredWarning: 'Esto no es una suscripción: se cobra según lo que uses.',
   meteredMeaning:
     'Este inicio de sesión usa una clave de API o una cuenta de pago por consumo, o no se pudo confirmar su tipo. «Usar de todos modos» permite que la IA funcione con esta conexión, y cada solicitud se factura a esa cuenta.',
@@ -120,8 +120,21 @@ export const es = {
   loginHowNote:
     'Al pulsarlo se abre un navegador. Inicia sesión con tu cuenta de {vendor} y pulsa Permitir; la conexión se completa sola.',
   signingInStalledNote:
-    '¿No se abrió el navegador o muestra un código? Abre la ventana de inicio de sesión con el botón de abajo. Pega en el navegador la dirección que aparece en ella, o pega en la ventana el código del navegador.',
+    'Si no se abrió ninguna página de inicio de sesión en el navegador, abre la ventana de inicio de sesión con el botón de abajo. Si todavía estás iniciando sesión en el navegador, mejor termina allí: el botón detiene ese inicio de sesión y empieza de nuevo.',
   actionLoginWindowOpen: 'Abrir la ventana de inicio de sesión',
+  loginWindowTitle: 'Inicio de sesión en {provider}',
+  loginWindowIntro:
+    'Esta es la ventana de inicio de sesión del programa {provider}. El texto en inglés que aparece debajo es del programa {provider}.',
+  loginWindowStepBrowser:
+    'Cuando se abra en el navegador la página de inicio de sesión de {vendor}, inicia sesión y permite el acceso. Después, esta ventana se cierra sola.',
+  loginWindowStepAddress:
+    'Si no se abrió ningún navegador, selecciona la dirección de abajo que empieza por https:// arrastrando el puntero sobre ella y haz clic con el botón derecho para copiarla. Pégala en la barra de direcciones del navegador para abrir la página de inicio de sesión.',
+  loginWindowStepCode:
+    'Si el navegador muestra un código después de iniciar sesión, copia el código completo (usa su botón de copiar si lo tiene). Haz clic con el botón derecho una vez dentro de esta ventana para pegarlo y pulsa Intro. Es normal que el código pegado no se vea.',
+  loginWindowStepInvalid:
+    'Si aparece "Invalid code", el código no se copió completo. No cierres esta ventana, vuelve a copiar el código y pégalo.',
+  loginWindowClosing:
+    'El inicio de sesión no terminó. Cuando hayas leído los mensajes de arriba, pulsa Intro para cerrar esta ventana. Para volver a intentarlo, pulsa otra vez el botón de iniciar sesión.',
   actionCancelLogin: 'Cancelar inicio de sesión',
   actionUpdate: 'Actualizar',
   updateNote:
@@ -130,4 +143,5 @@ export const es = {
     '¿Sigue sin funcionar? Copia los datos de conexión y envíalos a quien te esté ayudando. No incluyen ninguna cuenta ni rutas de archivos.',
   actionCopyInfo: 'Copiar datos para pedir ayuda',
   copyInfoDone: 'Copiado',
+  actionConnectHelp: 'Ver cada paso en pantalla (página en coreano)',
 } satisfies Record<keyof typeof zh, string>

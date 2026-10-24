@@ -41,6 +41,7 @@ import type {
   AiSubscriptionProviderId,
   AiSubscriptionStatuses,
   AiSubscriptionUsage,
+  SubscriptionConnectHelpPath,
 } from '@genoffice/ai-provider/browser'
 import type { AiBlockedRun } from './subscription-state'
 import type { ChangePlan } from '@genoffice/xlsx-gateway/domain/workbook.types'
@@ -286,6 +287,10 @@ export interface AiPanelSubscription {
   readonly busy: boolean
   /** the connect cards' buttons */
   readonly actions: AiSubscriptionCardActions
+  /** open the website's step-by-step connect help at the guide's path */
+  readonly openConnectHelp?: ((path: SubscriptionConnectHelpPath | null) => void) | undefined
+  /** look again without a card asking for it (both providers when none is named) */
+  readonly refresh: (providers?: AiSubscriptionProviderId[]) => void
   /** rate-limit windows the subscription provider reported on its latest turn */
   readonly usage: readonly AiSubscriptionUsage[]
   /** the input of the current run was cut to fit a limit */
@@ -304,6 +309,7 @@ const NO_STATUSES: AiSubscriptionStatuses = {}
 
 export function AiChatPanel({
   isOpen,
+  hideRail = false,
   hasContent,
   chat,
   historicChat = [],
@@ -338,6 +344,8 @@ export function AiChatPanel({
   onCollapse,
 }: {
   readonly isOpen: boolean
+  /** true suppresses even the collapsed rail (the "show the AI sidebar" setting is off) */
+  readonly hideRail?: boolean
   /** the workbook has cells with content — empty workbooks get "build me a sheet" copy instead */
   readonly hasContent: boolean
   readonly chat: readonly AiChatMessage[]
@@ -594,6 +602,8 @@ export function AiChatPanel({
   }
 
   if (!isOpen) {
+    // the sidebar setting is off: nothing to show until an explicit AI action opens the panel
+    if (hideRail) return <></>
     return (
       <aside className="copilot collapsed">
         <button
@@ -913,6 +923,7 @@ export function AiChatPanel({
             disabled={subscription.busy}
             attention={subscription.connectAttention}
             onOpenSettings={() => void window.desktopApi.openAiModelSettings().catch(() => {})}
+            onOpenConnectHelp={subscription.openConnectHelp}
             {...subscription.actions}
           />
         )}
@@ -1067,6 +1078,7 @@ export function AiChatPanel({
                 bridge={MODEL_BRIDGE}
                 lang={lang}
                 subscriptionStatuses={subscription.statuses}
+                onRefreshSubscriptions={subscription.refresh}
               />
               {sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
               <AiSubscriptionUsageLine usage={subscription.usage} lang={lang} />

@@ -21,7 +21,7 @@ export const ko = {
   cardErrFailed: '{provider} 연결을 확인하는 중에 문제가 생겼습니다. 다시 확인해 보세요.',
   actionInstall: '설치',
   actionLogin: '로그인',
-  actionLoginWindow: '브라우저가 안 열리거나 코드가 나오나요?',
+  actionLoginWindow: '브라우저가 열리지 않았나요?',
   actionRecheck: '다시 확인',
   actionAcceptMetered: '그래도 사용',
   actionInstallHelp: '공식 설치 안내',
@@ -34,7 +34,7 @@ export const ko = {
   signingInBrowserNote:
     '열린 브라우저에서 {vendor} 계정으로 로그인하고 허용을 누르세요. 끝나면 저절로 연결됩니다.',
   signingInWindowNote:
-    '브라우저가 안 열렸으면 방금 열린 창에 나온 주소를 복사해 브라우저에서 여세요. 브라우저에 코드가 나오면 복사해서 그 창에 한 번 붙여 넣고 Enter를 누르세요. 붙여 넣은 코드는 창에 보이지 않을 수 있습니다.',
+    '방금 열린 로그인 창 맨 위의 안내를 따라 주세요. 브라우저에 새로 열린 {vendor} 로그인 화면에서 로그인하면 창이 저절로 닫히고 연결됩니다. 먼저 열려 있던 로그인 화면은 더 이상 쓰이지 않으니 닫으세요.',
   meteredWarning: '구독이 아니라 쓴 만큼 요금이 나갑니다.',
   meteredMeaning:
     'API 키나 종량제 계정으로 로그인되어 있거나, 로그인 방식을 확인하지 못한 상태입니다. "그래도 사용"을 누르면 이 연결로 AI를 쓰게 되고, 요청할 때마다 그 계정에 요금이 청구됩니다.',
@@ -108,8 +108,21 @@ export const ko = {
   loginHowNote:
     '누르면 브라우저가 열립니다. {vendor} 계정으로 로그인하고 허용을 누르면 저절로 연결됩니다.',
   signingInStalledNote:
-    '브라우저가 열리지 않았거나 화면에 코드가 보이나요? 아래 버튼으로 로그인 창을 여세요. 창에 나온 주소를 브라우저에 붙여 넣거나, 브라우저에 나온 코드를 창에 붙여 넣으면 됩니다.',
+    '브라우저에 로그인 화면이 열리지 않았다면 아래 버튼으로 로그인 창을 여세요. 브라우저에서 로그인하는 중이라면 누르지 말고 마저 끝내세요. 버튼을 누르면 하던 로그인은 멈추고 처음부터 다시 시작합니다.',
   actionLoginWindowOpen: '로그인 창 열기',
+  loginWindowTitle: '{provider} 로그인',
+  loginWindowIntro:
+    '이 창은 {provider} 프로그램의 로그인 창입니다. 아래에 이어지는 영어 글은 {provider} 프로그램이 보여 주는 안내입니다.',
+  loginWindowStepBrowser:
+    '브라우저에 {vendor} 로그인 화면이 열리면 로그인하고 허용을 누르세요. 끝나면 이 창은 저절로 닫힙니다.',
+  loginWindowStepAddress:
+    '브라우저가 열리지 않으면 아래의 https://로 시작하는 주소를 마우스로 끌어 선택하고, 마우스 오른쪽 버튼을 눌러 복사하세요. 그 주소를 브라우저 주소창에 붙여 넣으면 로그인 화면이 열립니다.',
+  loginWindowStepCode:
+    '로그인한 뒤 브라우저에 코드가 나오면 코드 전체를 복사하세요(복사 버튼이 있으면 그것을 누르세요). 이 창 안에서 마우스 오른쪽 버튼을 한 번 눌러 붙여 넣고 Enter를 누르세요. 붙여 넣은 코드가 화면에 보이지 않는 것이 정상입니다.',
+  loginWindowStepInvalid:
+    '"Invalid code"가 나오면 코드가 덜 복사된 것입니다. 창을 닫지 말고 코드를 다시 복사해 붙여 넣으세요.',
+  loginWindowClosing:
+    '로그인이 끝나지 않았습니다. 위에 나온 내용을 확인했으면 Enter를 눌러 창을 닫으세요. 다시 하려면 로그인 버튼을 다시 누르세요.',
   actionCancelLogin: '로그인 취소',
   actionUpdate: '업데이트',
   updateNote:
@@ -118,4 +131,5 @@ export const ko = {
     '그래도 안 되나요? 연결 정보를 복사해서 도와줄 사람에게 보내세요. 계정과 파일 경로는 들어가지 않습니다.',
   actionCopyInfo: '도움 요청용 정보 복사',
   copyInfoDone: '복사했습니다',
+  actionConnectHelp: '연결하는 방법 화면으로 보기',
 } satisfies Record<keyof typeof zh, string>

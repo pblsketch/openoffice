@@ -71,6 +71,13 @@ body {
   height: 100%;
 }
 
+/* F5 presentation: the editor's own chrome is hidden through its chrome API;
+   here the AI dock and notices leave the stage to the document. */
+.hwp-app.hwp-presenting .ai-dock,
+.hwp-app.hwp-presenting .hwp-notice {
+  display: none !important;
+}
+
 /* body row: the AI dock and the editor */
 .app-main {
   display: flex;

@@ -36,6 +36,7 @@ import {
   AiFirstConnectionNotice,
   aiHeldRequestStep,
   aiHoldReason,
+  AiModelPicker,
   aiProviderDisplayName,
   useAiSendGate,
   type AiHeldReason,
@@ -164,6 +165,8 @@ export function InsightsCard(props: InsightsCardProps): ReactElement {
   const prepareAbort = useRef<AbortController | null>(null)
   /** the route the person confirmed for the summary job */
   const confirmedRef = useRef<ReturnType<typeof documentJobRoute> | null>(null)
+  /** the provider and model as the confirmation showed them (for the progress strip) */
+  const confirmedLabelRef = useRef<string | null>(null)
   const singleRef = useRef<SingleRun | null>(null)
 
   useEffect(() => {
@@ -259,6 +262,7 @@ export function InsightsCard(props: InsightsCardProps): ReactElement {
       setPhase({ ...current, message: p.t('airOverviewRouteChanged') })
       return
     }
+    const aiLabel = confirmedLabelRef.current ?? undefined
     const busy = await busyJob(prepared.docHash)
     if (busy) {
       setPhase({ ...current, message: p.t('airOverviewBusy', busy) })
@@ -278,6 +282,7 @@ export function InsightsCard(props: InsightsCardProps): ReactElement {
         prepared,
         provider: confirmed.provider,
         model: confirmed.model,
+        ...(aiLabel ? { aiLabel } : {}),
         call,
         onEnd: (view) => {
           const q = propsRef.current
@@ -291,6 +296,7 @@ export function InsightsCard(props: InsightsCardProps): ReactElement {
       setPhase({ ...current, message: p.t('airOverviewBusy', { ...outcome.running.progress }) })
       return
     }
+    confirmedLabelRef.current = null
     setPhase({ kind: 'job' })
   }
   const runJobRef = useRef(runJob)
@@ -412,6 +418,7 @@ export function InsightsCard(props: InsightsCardProps): ReactElement {
     if (current.kind !== 'confirm' || route.state !== 'ready' || sendGate.noticeDue) return
     setPhase({ kind: 'confirm', prepared: current.prepared })
     confirmedRef.current = route
+    confirmedLabelRef.current = routeLabel(route, connection.statuses)
     if (sendGate.admit({ kind: 'job', press: ++pressRef.current })) void runJob()
   }
 
@@ -420,6 +427,7 @@ export function InsightsCard(props: InsightsCardProps): ReactElement {
     // a Start the gate still holds (status check, notice) must not run later
     if (confirmedRef.current) sendGate.reset()
     confirmedRef.current = null
+    confirmedLabelRef.current = null
     setPhase({ kind: 'idle' })
   }
 
@@ -478,6 +486,14 @@ export function InsightsCard(props: InsightsCardProps): ReactElement {
             <>
               <li data-route="ready" data-provider={route.provider}>
                 {t('airOverviewConfirmProvider', { provider: routeLabel(route) })}
+              </li>
+              <li className="pdf-ai-read-ai" data-model-picker>
+                <AiModelPicker
+                  bridge={SETTINGS_BRIDGE}
+                  lang={lang}
+                  subscriptionStatuses={connection.statuses}
+                  showLabel
+                />
               </li>
               <li>{t('airOverviewConfirmSends')}</li>
               {route.paid && (
@@ -568,6 +584,9 @@ export function InsightsCard(props: InsightsCardProps): ReactElement {
               view={jobView}
               t={t}
               title={t('airOverviewRunning', { done: jobView.done, total: jobView.total })}
+              details={
+                jobView.aiLabel ? [t('arConfirmProvider', { provider: jobView.aiLabel })] : []
+              }
               onStop={() => session.stop(jobView.docHash)}
               onClose={() => session.dismiss(jobView.docHash)}
             />
@@ -588,6 +607,7 @@ export function InsightsCard(props: InsightsCardProps): ReactElement {
               onRecheck={connection.recheck}
               onAcceptMetered={connection.acceptMetered}
               onOpenInstallHelp={connection.openInstallHelp}
+              onOpenConnectHelp={connection.openConnectHelp}
             />
           )}
           {sendGate.noticeDue && (phase.kind === 'waiting' || phase.kind === 'confirm') && (

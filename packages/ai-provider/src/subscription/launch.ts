@@ -100,8 +100,50 @@ function loginWindowScript(windowStyle: 'Normal' | 'Hidden'): string {
   ].join('; ')
 }
 
-/** The login in a console window the user sees */
-const LOGIN_WINDOW_SCRIPT = loginWindowScript('Normal')
+/** Carry the visible window's own words to its script as data (`SubscriptionLoginWindowText`) */
+export const SUBSCRIPTION_LOGIN_TITLE_ENV = 'GENOFFICE_SUBSCRIPTION_LOGIN_TITLE'
+export const SUBSCRIPTION_LOGIN_GUIDE_ENV = 'GENOFFICE_SUBSCRIPTION_LOGIN_GUIDE'
+export const SUBSCRIPTION_LOGIN_CLOSING_ENV = 'GENOFFICE_SUBSCRIPTION_LOGIN_CLOSING'
+
+const LOGIN_WINDOW_ENVS = [
+  SUBSCRIPTION_LOGIN_EXE_ENV,
+  SUBSCRIPTION_LOGIN_ARGS_ENV,
+  SUBSCRIPTION_LOGIN_TITLE_ENV,
+  SUBSCRIPTION_LOGIN_GUIDE_ENV,
+  SUBSCRIPTION_LOGIN_CLOSING_ENV,
+]
+
+/**
+ * What runs in the console window the user sees. A second PowerShell owns that
+ * console: it names the window, prints the guide in the app's language, runs
+ * the CLI in the same console (so the CLI still reads what the user pastes)
+ * and, when the CLI ends without signing in, keeps the window open until Enter
+ * so what the CLI printed can still be read. A constant like the hidden one:
+ * every value arrives in an environment variable, and all of them are removed
+ * before the CLI starts.
+ *
+ * `Start-Process` passes its argument list on joined with spaces and the new
+ * PowerShell joins its arguments back into one command, so this text must not
+ * hold a double quote.
+ */
+const LOGIN_GUIDED_SCRIPT = [
+  `$exe = $env:${SUBSCRIPTION_LOGIN_EXE_ENV}`,
+  `$arguments = $env:${SUBSCRIPTION_LOGIN_ARGS_ENV} -split [char]10`,
+  `$title = $env:${SUBSCRIPTION_LOGIN_TITLE_ENV}`,
+  `$guide = $env:${SUBSCRIPTION_LOGIN_GUIDE_ENV}`,
+  `$closing = $env:${SUBSCRIPTION_LOGIN_CLOSING_ENV}`,
+  `Remove-Item ${LOGIN_WINDOW_ENVS.map((name) => `Env:${name}`).join(', ')} -ErrorAction SilentlyContinue`,
+  `if ($title) { $Host.UI.RawUI.WindowTitle = $title }`,
+  `if ($guide) { Write-Host -Object $guide; Write-Host }`,
+  `$login = Start-Process -FilePath $exe -ArgumentList $arguments -NoNewWindow -Wait -PassThru`,
+  `if ($login.ExitCode -ne 0 -and $closing) { Write-Host; Write-Host -Object $closing; [void][Console]::ReadLine() }`,
+].join('; ')
+
+/** The login in a console window the user sees, with the app's guide above what the CLI prints */
+const LOGIN_WINDOW_SCRIPT = [
+  `$guided = '${LOGIN_GUIDED_SCRIPT.replace(/'/g, "''")}'`,
+  `Start-Process -FilePath "$PSHOME\\powershell.exe" -ArgumentList '-NoProfile', '-NoLogo', '-Command', $guided -WindowStyle Normal -Wait`,
+].join('; ')
 
 /**
  * The login in a console of its own that is never shown: the CLI still has a
@@ -146,6 +188,16 @@ function startFailure(child: SubscriptionChildLike): Promise<string | null> {
   })
 }
 
+/** The visible login window's own words, in the app's language. Each one is optional. */
+export interface SubscriptionLoginWindowText {
+  /** the window's title */
+  title?: string | undefined
+  /** printed above what the CLI prints */
+  guide?: string | undefined
+  /** printed when the CLI ended without signing in; the window then waits for Enter */
+  closing?: string | undefined
+}
+
 export interface SubscriptionLoginOptions {
   /** the user's own path to the CLI (the Codex `cliPath` setting) */
   configuredPath?: string | undefined
@@ -157,6 +209,8 @@ export interface SubscriptionLoginOptions {
    * where a code the browser hands back can be pasted.
    */
   window?: 'hidden' | 'visible' | undefined
+  /** Windows, `visible` only: what the window says besides what the CLI prints */
+  windowText?: SubscriptionLoginWindowText | undefined
   /** called once the login has started, with a way to end it (its window and the CLI in it) */
   onStarted?: ((stop: () => void) => void) | undefined
   /** stand-in for tests: how `stop` ends the login's process tree (`killProcessTree` when absent) */
@@ -167,6 +221,15 @@ export interface SubscriptionLoginOptions {
   baseEnv?: NodeJS.ProcessEnv | undefined
   /** where the login is registered for shutdown; the shared registry when absent, null for none */
   registry?: SubscriptionChildRegistry | null | undefined
+}
+
+/** The window's words as the variables its script reads; an empty one is left out */
+function windowTextEnv(text: SubscriptionLoginWindowText | undefined): Record<string, string> {
+  const env: Record<string, string> = {}
+  if (text?.title) env[SUBSCRIPTION_LOGIN_TITLE_ENV] = text.title
+  if (text?.guide) env[SUBSCRIPTION_LOGIN_GUIDE_ENV] = text.guide
+  if (text?.closing) env[SUBSCRIPTION_LOGIN_CLOSING_ENV] = text.closing
+  return env
 }
 
 function startLogin(
@@ -197,6 +260,7 @@ function startLogin(
       [SUBSCRIPTION_LOGIN_ARGS_ENV]: [...program.prefixArgs, ...args]
         .map(quoteWindowsArgument)
         .join('\n'),
+      ...(options.window === 'hidden' ? {} : windowTextEnv(options.windowText)),
     },
   })
   const spawn = options.spawn ?? nodeSpawn
@@ -227,10 +291,12 @@ function startLogin(
  * Start the CLI's own login (`claude auth login`, `codex login`) with the
  * sanitised environment. On Windows it runs in a console of its own: hidden
  * (`window: 'hidden'`), where the user signs in in the browser the CLI opens,
- * or shown, where the vendor's flow prints its link and takes a pasted code;
- * elsewhere the flow runs in the browser the CLI opens. The app shows no login form and
- * never sees the credentials. A window the user closes without signing in
- * simply leaves the provider `signed-out`.
+ * or shown, where the vendor's flow prints its link and takes a pasted code
+ * below the app's guide (`windowText`); elsewhere the flow runs in the browser
+ * the CLI opens. The app shows no login form and never sees the code or the
+ * credentials: what the user pastes goes to the CLI, not through the app. A
+ * window the user closes without signing in simply leaves the provider
+ * `signed-out`.
  */
 export async function launchSubscriptionLogin(
   provider: AiSubscriptionProviderId,
@@ -397,13 +463,15 @@ export const SUBSCRIPTION_CODEX_UPDATE_COMMANDS = {
  * hold another copy the name finds first), or the fixed command of the package
  * manager that installed it (`command`). Null when the app cannot tell how it
  * was installed (the Codex desktop app's copy, a path the user set to some
- * other place): the vendor's install page is the way then.
+ * other place, a winget link that cannot be resolved to its package): the
+ * vendor's install page is the way then.
  */
 export type SubscriptionUpdatePlan =
   { kind: 'program'; args: string[] } | { kind: 'command'; command: string }
 
 const NPM_CODEX = /[\\/]node_modules[\\/]@openai[\\/]codex/i
-const WINGET_DIR = /[\\/]microsoft[\\/]winget[\\/]/i
+/** the package folder winget makes for OpenAI.Codex, in the user or machine root */
+const WINGET_CODEX_PACKAGE = /[\\/]microsoft[\\/]winget[\\/]packages[\\/]openai\.codex_/i
 
 export function subscriptionUpdatePlan(
   program: SubscriptionProgram,
@@ -414,7 +482,9 @@ export function subscriptionUpdatePlan(
   if (paths.some((path) => NPM_CODEX.test(path))) {
     return { kind: 'command', command: SUBSCRIPTION_CODEX_UPDATE_COMMANDS.npm }
   }
-  if (program.source === 'winget' || paths.some((path) => WINGET_DIR.test(path))) {
+  // A Links entry alone does not say which package owns the alias; the locator
+  // resolves it to the package file before this runs
+  if (paths.some((path) => WINGET_CODEX_PACKAGE.test(path))) {
     return { kind: 'command', command: SUBSCRIPTION_CODEX_UPDATE_COMMANDS.winget }
   }
   return null

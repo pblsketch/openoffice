@@ -76,6 +76,7 @@ export const it = {
   hlAccept: 'Accetta',
   hlDismiss: 'Scarta',
   hlAcceptAll: 'Accetta tutte ({count})',
+  hlAcceptAllSave: 'Accetta tutto e salva ({count})',
   hlDismissAll: 'Scarta tutte le proposte',
   hlSuggestionCount: '{count} proposte di evidenziazione IA',
   hlNotFoundTip:
@@ -83,5 +84,6 @@ export const it = {
   hlWaitingSave: 'In attesa di salvataggio',
   hlWaitingSaveTip: 'Salva il PDF per inserire l’evidenziazione nel file',
   hlAcceptedNotice: 'Aggiunte {count} evidenziazioni. Salva il PDF per inserirle nel file.',
+  hlAcceptedSaved: '{count} evidenziazioni salvate.',
   hlDismissFailed: 'Impossibile scartare le proposte.',
 } satisfies Record<keyof typeof zh, string>

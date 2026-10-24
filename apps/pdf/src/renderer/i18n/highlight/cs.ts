@@ -76,11 +76,13 @@ export const cs = {
   hlAccept: 'Přijmout',
   hlDismiss: 'Zahodit',
   hlAcceptAll: 'Přijmout vše ({count})',
+  hlAcceptAllSave: 'Přijmout vše a uložit ({count})',
   hlDismissAll: 'Zahodit všechny návrhy',
   hlSuggestionCount: 'Návrhy zvýraznění AI: {count}',
   hlNotFoundTip: 'Tato věta nebyla v textu stránky nalezena, takže ji nelze přijmout',
   hlWaitingSave: 'Čeká na uložení',
   hlWaitingSaveTip: 'Uložte PDF, aby se zvýraznění dostalo do souboru',
   hlAcceptedNotice: 'Přidáno zvýraznění: {count}. Uložte PDF, aby se dostala do souboru.',
+  hlAcceptedSaved: 'Uloženo zvýraznění: {count}.',
   hlDismissFailed: 'Návrhy se nepodařilo zahodit.',
 } satisfies Record<keyof typeof zh, string>

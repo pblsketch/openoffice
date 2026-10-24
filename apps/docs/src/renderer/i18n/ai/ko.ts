@@ -67,6 +67,8 @@ export const ko = {
   aiEmptyTitle: 'AI에게 작성과 편집을 맡겨 보세요',
   aiEmptyBody1: '지시를 내리거나 바로 질문할 수 있습니다.',
   aiEmptyBody2: '텍스트를 선택하면 고쳐 쓰기 지시는 선택 영역에 적용됩니다.',
+  aiNoHidingNote:
+    '이 편집기에서는 문서 일부를 AI에게서 가릴 수 없습니다. 요청이 다루는 내용은 그대로 보내집니다.',
   aiStarterWeeklyReport: '프로젝트 주간 보고서 작성해 줘',
   aiStarterLaunchPost: '제품 출시 공지문 작성해 줘',
   aiStarterEventOutline: '행사 기획 개요 만들어 줘',
@@ -177,4 +179,17 @@ export const ko = {
   aiCmdImages: '이미지 {count}장을 업데이트했습니다',
   aiCmdToc: '목차를 삽입했습니다({count}개 항목)',
   aiCmdSkipped: ' (보호된 블록 {count}개 건너뜀)',
+  aiStarterMindMap: '이 문서의 마인드맵 생성',
+  aiMindMapBtn: 'AI 마인드맵',
+  aiMindMapPrompt:
+    '이 문서의 마인드맵을 생성하고, 장 구조에 따라 주요 주제와 핵심 개념을 정리해 주세요',
+  aiSumMindMap: '마인드맵 생성',
+  aiMindMapTitle: '마인드맵',
+  aiMindMapNodes: '노드 {count}개',
+  aiMindMapAskPrompt: '이 문서에서 「{label}」에 대해 설명해 주세요',
+  aiMindMapJump: '해당 단락으로 이동',
+  aiMindMapExport: 'PNG 내보내기',
+  aiMindMapReset: '보기 초기화',
+  aiMindMapExpand: '가지 펼치기',
+  aiMindMapCollapse: '가지 접기',
 } satisfies Record<keyof typeof zh, string>

@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LANGS, PRODUCT_NAME, UPSTREAM_PRODUCT_NAME } from '@genoffice/i18n'
-import { aiSubscriptionText, builtinSkillTitle } from '@genoffice/ui'
+import { aiSubscriptionText, builtinSkillDesc } from '@genoffice/ui'
 import type { UserSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
 import type {
   UserSkillImportCandidateView,
@@ -375,13 +375,18 @@ describe('Settings → Skills screen', () => {
     expect(window.aiOffice.openHelp).toHaveBeenCalledWith('skills')
   })
 
-  it('shows groups in order with plain source labels and builtin titles in the UI language', async () => {
+  it('shows groups in order with plain source labels and every skill by its name', async () => {
     await renderPane(bridge([codex, plugin, claude, fromGitHub, mine, builtin]))
     const groups = [...host.querySelectorAll('[data-group]')].map((g) =>
       g.getAttribute('data-group'),
     )
     expect(groups).toEqual(['builtin', 'app', 'user', 'plugin', 'codex'])
-    expect(row(builtin.id).textContent).toContain(builtinSkillTitle('ko', 'meeting-minutes'))
+    // a builtin shows its name, with its description in the UI language
+    expect(row(builtin.id).textContent).toContain('meeting-minutes')
+    expect(row(builtin.id).textContent).toContain(builtinSkillDesc('ko', 'meeting-minutes'))
+    // an own skill shows its name, not the title it was made with
+    expect(row(mine.id).textContent).toContain('home-letter')
+    expect(row(mine.id).textContent).not.toContain('가정통신문')
     expect(row(plugin.id).textContent).toContain('Claude 플러그인 · helper-pack')
     expect(row(mine.id).textContent).toContain(ko('badgeTemplate'))
     expect(row(fromGitHub.id).textContent).toContain(ko('badgeScripts'))
@@ -431,7 +436,7 @@ describe('Settings → Skills screen', () => {
     await openMenu(mine.id)
     await click(buttonWithText(ko('actRemove'), document.querySelector('[role="menu"]')!))
     expect(api.remove).not.toHaveBeenCalled()
-    expect(host.textContent).toContain(ko('confirmRemove', { title: '가정통신문' }))
+    expect(host.textContent).toContain(ko('confirmRemove', { title: 'home-letter' }))
     await click(buttonWithText(ko('actRemove'), row(mine.id)))
     expect(api.remove).toHaveBeenCalledWith(mine.id)
   })
@@ -592,17 +597,24 @@ describe('Settings → Skills screen', () => {
     expect(host.textContent).toContain(ko('upToDate'))
   })
 
-  it('creates a new skill with an automatic name and the AI-panel hint', async () => {
+  it('creates a new skill: the name comes first and Save waits until one is typed', async () => {
     const api = bridge([])
     await renderPane(api)
     await click(buttonWithText(ko('create')))
     const dialog = document.querySelector('[role="dialog"]')!
     expect(dialog.textContent).toContain(ko('createHint'))
+    expect(dialog.textContent).toContain(ko('nameHint'))
+    expect(dialog.querySelector('details')).toBeNull()
     const save = buttonWithText(ko('save'), dialog)!
     expect(save.disabled).toBe(true)
     const fields = [
       ...dialog.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea'),
     ]
+    // no title field: the name, the description and the body
+    expect(fields).toHaveLength(3)
+    const name = fields[0] as HTMLInputElement
+    expect(name.getAttribute('data-field')).toBe('name')
+    expect(name.placeholder).toBe('meeting-minutes')
     const set = async (el: HTMLInputElement | HTMLTextAreaElement, value: string) => {
       await act(async () => {
         const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement : HTMLInputElement
@@ -610,14 +622,27 @@ describe('Settings → Skills screen', () => {
         el.dispatchEvent(new Event('input', { bubbles: true }))
       })
     }
-    await set(fields[0]!, '회의 정리')
     await set(fields[1]!, '회의를 정리한다')
     await set(fields[2]!, '본문')
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 400))
+    })
     await flush()
+    // description and body are there, but no name yet; none is made up either
+    expect(save.disabled).toBe(true)
+    expect(api.suggestName).not.toHaveBeenCalled()
+    expect(name.value).toBe('')
+    await set(name, 'meeting-notes')
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 400))
+    })
+    await flush()
+    expect(api.checkName).toHaveBeenCalledWith('meeting-notes', undefined)
     expect(save.disabled).toBe(false)
     await click(save)
     expect(api.save).toHaveBeenCalledWith({
-      title: '회의 정리',
+      title: '',
+      name: 'meeting-notes',
       description: '회의를 정리한다',
       body: '본문',
     })
@@ -638,15 +663,16 @@ describe('Settings → Skills screen', () => {
     expect(api.openFolder).toHaveBeenCalledWith(claude.id)
   })
 
-  it('checks a changed name under Advanced while editing an own skill', async () => {
+  it('checks a changed name while editing an own skill', async () => {
     const api = bridge([mine])
     api.checkName.mockResolvedValue({ ok: false, problem: 'characters' })
     await renderPane(api)
     await openMenu(mine.id)
     await click(buttonWithText(ko('actEdit'), document.querySelector('[role="menu"]')!))
     const dialog = document.querySelector('[role="dialog"]')!
-    await click(buttonWithText(ko('advanced'), dialog))
+    // the name is the first field, shown without opening anything
     const name = dialog.querySelector<HTMLInputElement>('input[data-field="name"]')!
+    expect(dialog.querySelector('input, textarea')).toBe(name)
     expect(name.value).toBe('home-letter')
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(
@@ -662,6 +688,31 @@ describe('Settings → Skills screen', () => {
     expect(api.checkName).toHaveBeenCalledWith('Home Letter', mine.id)
     expect(dialog.textContent).toContain(ko('nameCharacters'))
     expect(buttonWithText(ko('save'), dialog)!.disabled).toBe(true)
+  })
+
+  it('saves an edit of an own skill with an empty title and no name when the name is kept', async () => {
+    const api = bridge([mine])
+    await renderPane(api)
+    await openMenu(mine.id)
+    await click(buttonWithText(ko('actEdit'), document.querySelector('[role="menu"]')!))
+    const dialog = document.querySelector('[role="dialog"]')!
+    const body = dialog.querySelectorAll<HTMLTextAreaElement>('textarea')[1]!
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(
+        body,
+        '# 새 본문',
+      )
+      body.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await flush()
+    await click(buttonWithText(ko('save'), dialog))
+    // the main process keeps the title the skill already has
+    expect(api.save).toHaveBeenCalledWith({
+      title: '',
+      description: '학교 말투',
+      body: '# 새 본문',
+      id: mine.id,
+    })
   })
 
   it('reads the list again when the main process says it changed', async () => {

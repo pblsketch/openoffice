@@ -22,6 +22,12 @@ Mỗi trình soạn thảo có tổ hợp phím riêng, và chỉ vài tổ hợ
 - **`⌘O`, `⌘S` và `⌘P` được hiện thực riêng biệt sau mỗi trình soạn thảo**, và chúng không hành xử giống hệt nhau. `⌘P` của Word trước tiên dàn trang xem trước khi in, để một trang in ra đúng bằng một trang trên màn hình; của PDF thì mở hộp thoại in PDF; Sheets và Slides lại có bản riêng.
 - **Phần còn lại thuộc về từng ứng dụng.** Khi thẻ Word đang hoạt động, `⌘B` là Đậm của Word. Khi Slides đang hoạt động, `⌘B` là Đậm của Slides, và menu chứa nó không phải menu bạn quen. Ở những chỗ tổ hợp phím chỉ chạy khi có vùng được chọn, hoặc trong một khung bên cạnh cụ thể, cột Hành động sẽ nói rõ.
 
+## Chế độ trình bày
+
+- **Bắt đầu**: F5 trong Word, PDF, Mindmap, HTML và Markdown. Trong bảng tính, Ctrl+F5 (từ A1) hoặc Shift+F5 (từ ô hiện tại).
+- **Lối vào khác**: trong Word, Ctrl+F5 và Shift+F5 mở chế độ đọc không toàn màn hình; trong PDF bắt đầu từ trang hiện tại; trong HTML trình bày trong thẻ.
+- **Kết thúc**: Esc hoặc F5. F11 là toàn màn hình của cửa sổ và không đổi chế độ xem tài liệu.
+
 ## Quy ước
 
 - Cột macOS dùng các ký hiệu quen thuộc: `⌘` Command, `⌥` Option, `⇧` Shift, `⌃` Control.
@@ -588,3 +594,154 @@ Mỗi phím trong nhóm này cần một phần tử đã được chọn trư�
 | In nghiêng vùng đã chọn        | ⌘I    | Ctrl+I          |
 
 Việc chốt giữ lại những gì bạn đã gõ và đưa phần tử về lại trạng thái đã chọn.
+
+## HWP/HWPX
+
+Các phím này hoạt động khi thẻ HWP/HWPX ở phía trước và tài liệu có tiêu điểm. Hai cột cho biết cách nhấn trên macOS và Windows / Linux.
+
+### Tập tin
+
+| Hành động      | macOS | Windows / Linux      |
+| -------------- | ----- | -------------------- |
+| Tài liệu mới   |       | Alt+N                |
+| Mở…            | ⌘O    | Ctrl+O / Alt+O       |
+| Lưu            | ⌘S    | Ctrl+S / Alt+S       |
+| Lưu dưới dạng… | ⇧⌘S   | Ctrl+Shift+S / Alt+V |
+| In             | ⌘P    | Ctrl+P / Alt+P       |
+
+### Chỉnh sửa
+
+| Hành động          | macOS       | Windows / Linux              |
+| ------------------ | ----------- | ---------------------------- |
+| Hoàn tác           | ⌃Z          | Ctrl+Z                       |
+| Làm lại            | ⌃⇧Z         | Ctrl+Shift+Z                 |
+| Xóa dòng           | ⌃Y          | Ctrl+Y                       |
+| Cắt                | ⌃X          | Ctrl+X                       |
+| Sao chép           | ⌃C          | Ctrl+C                       |
+| Dán                | ⌃V          | Ctrl+V                       |
+| Xóa                | ⌃E          | Ctrl+E                       |
+| Chọn tất cả        | ⌃A          | Ctrl+A                       |
+| Sao chép định dạng | ⌥C          | Alt+C                        |
+| Tìm                | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
+| Tìm và thay thế    | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
+| Tìm tiếp           | ⌃L          | Ctrl+L                       |
+| Tìm ngược          | ⌃Q, L       | Ctrl+Q, L                    |
+| Đi tới             | ⌥G          | Alt+G                        |
+| So sánh tài liệu   | ⌥⇧V         | Alt+Shift+V                  |
+
+### Ký tự
+
+| Hành động              | macOS    | Windows / Linux      |
+| ---------------------- | -------- | -------------------- |
+| Đậm                    | ⌃B / ⌥⇧B | Ctrl+B / Alt+Shift+B |
+| Nghiêng                | ⌃I / ⌥⇧I | Ctrl+I / Alt+Shift+I |
+| Gạch chân              | ⌃U / ⌥⇧U | Ctrl+U / Alt+Shift+U |
+| Định dạng thường       | ⌥⇧C      | Alt+Shift+C          |
+| Chỉ số trên            | ⌥⇧P      | Alt+Shift+P          |
+| Chỉ số dưới            | ⌥⇧S      | Alt+Shift+S          |
+| Định dạng ký tự…       | ⌥L       | Alt+L                |
+| Tăng cỡ chữ            | ⌥⇧E / ⌃] | Alt+Shift+E / Ctrl+] |
+| Giảm cỡ chữ            | ⌥⇧R / ⌃[ | Alt+Shift+R / Ctrl+[ |
+| Tăng độ rộng ký tự     | ⌥⇧K      | Alt+Shift+K          |
+| Giảm độ rộng ký tự     | ⌥⇧J      | Alt+Shift+J          |
+| Tăng khoảng cách ký tự | ⌥⇧W      | Alt+Shift+W          |
+| Giảm khoảng cách ký tự | ⌥⇧N      | Alt+Shift+N          |
+| Chữ đen                | ⌃M, K    | Ctrl+M, K            |
+| Chữ đỏ                 | ⌃M, R    | Ctrl+M, R            |
+| Chữ xanh dương         | ⌃M, B    | Ctrl+M, B            |
+| Chữ mận                | ⌃M, D    | Ctrl+M, D            |
+| Chữ xanh lá            | ⌃M, G    | Ctrl+M, G            |
+| Chữ vàng               | ⌃M, Y    | Ctrl+M, Y            |
+| Chữ lam ngọc           | ⌃M, C    | Ctrl+M, C            |
+| Chữ trắng              | ⌃M, W    | Ctrl+M, W            |
+
+### Đoạn văn
+
+| Hành động                          | macOS   | Windows / Linux |
+| ---------------------------------- | ------- | --------------- |
+| Căn trái                           | ⌃⇧L     | Ctrl+Shift+L    |
+| Căn giữa                           | ⌃⇧C     | Ctrl+Shift+C    |
+| Căn phải                           | ⌃⇧R     | Ctrl+Shift+R    |
+| Căn đều                            | ⌃⇧M     | Ctrl+Shift+M    |
+| Phân bố                            | ⌃⇧T     | Ctrl+Shift+T    |
+| Tăng khoảng cách dòng              | ⌥⇧Z     | Alt+Shift+Z     |
+| Giảm khoảng cách dòng              | ⌥⇧A     | Alt+Shift+A     |
+| Định dạng đoạn văn…                | ⌥T      | Alt+T           |
+| Kiểu…                              | F6      | F6              |
+| Áp dụng kiểu thứ nhất đến thứ mười | ⌃1 … ⌃0 | Ctrl+1 … Ctrl+0 |
+| Định dạng đánh số đoạn văn         | ⌃K, N   | Ctrl+K, N       |
+
+### Chèn
+
+| Hành động                               | macOS       | Windows / Linux    |
+| --------------------------------------- | ----------- | ------------------ |
+| Chèn bảng                               | ⌃N, T       | Ctrl+N, T          |
+| Chú thích cuối trang                    | ⌃N, N       | Ctrl+N, N          |
+| Chú thích cuối văn bản                  | ⌃N, E       | Ctrl+N, E          |
+| Tiêu đề trang                           | ⌃N, H       | Ctrl+N, H          |
+| Số trang                                | ⌃N, P       | Ctrl+N, P          |
+| Chèn hình ảnh                           | ⌃N, I       | Ctrl+N, I          |
+| Hộp văn bản                             | ⌃N, B       | Ctrl+N, B          |
+| Phương trình                            | ⌃N, M       | Ctrl+N, M          |
+| Chèn chú thích                          | ⌃N, C       | Ctrl+N, C          |
+| Siêu liên kết                           | ⌃K, H       | Ctrl+K, H          |
+| Dấu trang                               | ⌃K, B       | Ctrl+K, B          |
+| Chèn trường                             | ⌃K, E       | Ctrl+K, E          |
+| Chuỗi ngày/giờ                          | ⌃K, D       | Ctrl+K, D          |
+| Chỉnh sửa đối tượng, trường hoặc bảng/ô | ⌃N, K       | Ctrl+N, K          |
+| Ký hiệu                                 | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+
+### Bảng
+
+| Hành động       | macOS        | Windows / Linux        |
+| --------------- | ------------ | ---------------------- |
+| Thêm hàng/cột   | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Xóa hàng/cột    | ⌥⌫           | Alt+Delete             |
+| Tách ô          | F5 → S       | F5 → S                 |
+| Hợp nhất ô      | F5 → M       | F5 → M                 |
+| Tổng khối       | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Trung bình khối | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Tích khối       | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Tách bảng       | ⌃N, A        | Ctrl+N, A              |
+| Nối bảng        | ⌃N, Z        | Ctrl+N, Z              |
+| Công thức tính  | ⌃N, F        | Ctrl+N, F              |
+
+### Tính toán bảng
+
+Chỉ hoạt động khi con trỏ ở trong một ô bảng trống. Có phím riêng để tính từ các ô bên trái và từ các ô bên trên.
+
+| Hành động           | macOS | Windows / Linux |
+| ------------------- | ----- | --------------- |
+| Tổng bên trái       | ⇧⌘H   | Ctrl+Shift+H    |
+| Tổng bên trên       | ⌃⇧V   | Ctrl+Shift+V    |
+| Trung bình bên trái | ⌃⇧J   | Ctrl+Shift+J    |
+| Trung bình bên trên | ⌃⇧B   | Ctrl+Shift+B    |
+| Tích bên trái       | ⌃⇧K   | Ctrl+Shift+K    |
+| Tích bên trên       | ⌃⇧N   | Ctrl+Shift+N    |
+
+### Trang
+
+| Hành động          | macOS | Windows / Linux  |
+| ------------------ | ----- | ---------------- |
+| Thiết lập trang    | F7    | F7               |
+| Ngắt trang         | ⌃⏎    | Ctrl+Enter       |
+| Ngắt cột           | ⌃⇧⏎   | Ctrl+Shift+Enter |
+| Ngắt thiết lập cột | ⌃⌥⏎   | Ctrl+Alt+Enter   |
+| Thiết lập phần     | ⌃N, G | Ctrl+N, G        |
+| Ẩn trang           | ⌃N, S | Ctrl+N, S        |
+
+### Xem
+
+| Hành động                         | macOS | Windows / Linux |
+| --------------------------------- | ----- | --------------- |
+| Phóng to                          | ⌃=    | Ctrl+=          |
+| Thu nhỏ                           | ⌃-    | Ctrl+-          |
+| Vừa trang                         | ⌃G, P | Ctrl+G, P       |
+| Vừa chiều rộng                    | ⌃G, W | Ctrl+G, W       |
+| Phóng về 100%                     | ⌃G, Q | Ctrl+G, Q       |
+| Thu gọn hoặc mở rộng hộp công cụ  | ⌃F1   | Ctrl+F1         |
+| Hiện hoặc ẩn dấu đoạn văn         | ⌃G, T | Ctrl+G, T       |
+| Hiện hoặc ẩn dấu điều khiển       | ⌃G, C | Ctrl+G, C       |
+| Đi tới thẻ Trang chủ (ngoài bảng) | ⇧⌘H   | Ctrl+Shift+H    |
+
+Phím ghi là `Ctrl+N,T` nghĩa là nhấn Ctrl+N, nhả ra rồi nhấn T. `F5 → S` nghĩa là chọn khối ô bằng F5 rồi nhấn S. `Ctrl+1 … Ctrl+0` là kiểu thứ nhất đến thứ mười của tài liệu; `Ctrl+Alt+1 … Ctrl+Alt+0` áp dụng cùng các kiểu đó. Khi chọn một khối ô, `Ctrl+Shift+S` (trên macOS `⇧⌘S`) là tổng khối; ngoài khối, phím này lưu thành tên mới.

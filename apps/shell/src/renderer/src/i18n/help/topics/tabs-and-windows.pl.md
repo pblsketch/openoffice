@@ -6,7 +6,7 @@ Wszystkie otwarte pliki zajmują jedno okno; pasek kart u góry przełącza się
 
 ## Podstawy
 
-- **Przełącz**: kliknij kartę albo przewiń kółkiem myszy nad paskiem, aby przejść do kolejnej.
+- **Przełączanie**: kliknij kartę, naciśnij **Ctrl+Tab** (następna) / **Ctrl+Shift+Tab** (poprzednia) albo przewiń kółkiem myszy nad paskiem.
 - **Zamknij**: × na karcie albo ⌘W/ctrl+W. Przy niezapisanych zmianach najpierw zostanie zapytanie.
 - **Nowa**: + na prawym końcu paska.
 - **Aktywacja jest natychmiastowa**: naciśnięcie karty przełącza od razu, bez czekania, aż kliknięcie się zakończy.
@@ -57,7 +57,23 @@ Karta strony głównej, najbardziej z lewej, nie można zamknąć; aby wrócić 
 - Widoczne jest tylko jedno okno AI. Okienko, w którym właśnie pracujesz, pokazuje swoje; okno drugiego zwija się do szyny, a kliknięcie okienka wysuwa jego okno AI na wierzch.
 - Gdy jest zwinięte, rozmowa tego okienka i trwająca praca AI pozostają żywe. Rozmowy są przechowywane osobno dla każdego dokumentu.
 - **Dwie kopie tego samego dokumentu**: po zapisaniu w jednym okienku zapis z drugiego najpierw pyta „Ten dokument zmienił się gdzie indziej”. Autozapis cicho czeka.
-- **Ponowne uruchomienie aplikacji bez pliku** przywraca ostatnią parę podzielonych dokumentów dokładnie tak, jak były; uruchomienie z plikiem otwiera tylko ten plik.
+- Po zwykłym zamknięciu **ponowne uruchomienie aplikacji bez pliku** przywraca ostatnią parę podzielonych dokumentów dokładnie tak, jak były; uruchomienie z plikiem otwiera tylko ten plik. Po nagłym wyłączeniu poprzednie karty wracają tak, jak opisano niżej.
 - Karty Strona główna, Pomoc i Prezentacja (podgląd) nie mogą trafić do okienka; gdy któraś jest otwarta, oba okienka chowają się na chwilę i wracają po powrocie na kartę dokumentu.
 
 Trzy lub więcej okienek, dzielenie wewnątrz odłączonego okna i synchronizacja kopii na żywo zostają na później.
+
+## Gdy aplikacja lub komputer nagle się wyłączy
+
+Dopóki dokument ma niezapisane zmiany, GenOffice mniej więcej co 30 sekund zachowuje jego kopię odzyskiwania we własnym folderze danych aplikacji. Robią to wszystkie edytory, także dla nowego dokumentu, którego nigdy nie zapisano. Sam plik nie zmienia się, dopóki go nie zapiszesz.
+
+- **Karty wracają**: jeśli aplikacja lub komputer wyłączyły się bez zwykłego zamknięcia (zanik zasilania, awaria, wymuszone zamknięcie aplikacji, wyłączenie komputera lub ponowne uruchomienie po aktualizacji), przy następnym uruchomieniu GenOffice otwarte karty dokumentów wrócą w tej samej kolejności, razem z podziałem ekranu, jeśli był. Dzieje się tak również wtedy, gdy uruchamiasz aplikację, otwierając plik.
+- **Jedna lista na stronie głównej**: dokumenty, w których została niezapisana zawartość, są wyświetlane razem na ekranie głównym. Dla każdego wybierz **Przywróć** lub **Odrzuć** albo użyj **Przywróć wszystkie** lub **Odrzuć wszystkie**, a następnie naciśnij **Zatwierdź**. Jeśli inny program lub usługa synchronizacji zmieniły później plik, na początku zaznaczone jest **Odrzuć**, aby plik pozostał taki, jaki jest teraz. Jeśli oryginalnego pliku nie da się już znaleźć, przywrócenie otwiera zawartość jako nowy dokument bez tytułu.
+- **Zdecyduj później**: zamknięcie listy niczego nie usuwa. Gdy po raz pierwszy otworzysz jeden z tych dokumentów, okno z jego nazwą zapyta ponownie; naciśnięcie Esc lub zamknięcie okna oznacza przywrócenie. Jeśli przywrócona zawartość nie jest potrzebna, zamknij dokument przyciskiem **Nie zapisuj**.
+- **Karty wczytują się po otwarciu**: przywrócone karty od razu pokazują tytuły, ale każdy dokument wczytuje się dopiero po pierwszym kliknięciu jego karty. Otwarcie wszystkiego naraz mogłoby ponownie wyłączyć komputer, któremu brakuje pamięci.
+- **Przy wyłączaniu komputera**: jeśli są niezapisane dokumenty, GenOffice nie pyta, czy je zapisać. Zachowuje kopie, zamyka się i proponuje je przy następnym uruchomieniu.
+- **Dokumenty bez kopii**: chronione hasłem pliki Excel, HWP i PDF nie dostają kopii odzyskiwania, więc ich niezapisanych zmian nie da się przywrócić; komunikat informuje o tym raz przy otwarciu takiego dokumentu. Zapisuj je często. Chronione hasłem dokumenty Word i PowerPoint mają kopię zabezpieczoną tym samym hasłem.
+- **Pliki CSV, starsze .xls i .tsv**: edytor arkuszy przechowuje ich kopię jako skoroszyt bez nazwy. Po przywróceniu otwiera się jako skoroszyt bez nazwy, a pierwsze zapisanie proponuje folder i nazwę oryginalnego pliku jako .xlsx.
+
+Kopia jest usuwana, gdy zapiszesz dokument, zamkniesz go przyciskiem **Nie zapisuj** lub wybierzesz **Odrzuć**, a także po 30 dniach bez zmian. Po zwykłym zamknięciu GenOffice uruchamia się jak dawniej i nie przywraca kart.
+
+**To nie jest Autozapis.** Autozapis zapisuje zmiany w samym pliku i działa dopiero po pierwszym zapisaniu. Kopia odzyskiwania nigdy nie dotyka pliku; przechowuje tylko to, czego jeszcze nie zapisano, dopóki tego nie zapiszesz lub nie odrzucisz.

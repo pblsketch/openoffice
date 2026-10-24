@@ -240,7 +240,7 @@ export function SkillsPane() {
   const hidden = views ? hiddenBuiltinCount(views) : 0
 
   const confirmText = (view: UserSkillView, kind: RowConfirm['kind']) => {
-    const title = skillDisplayTitle(view, lang)
+    const title = skillDisplayTitle(view)
     switch (kind) {
       case 'remove':
         return s('confirmRemove', { title })
@@ -395,7 +395,7 @@ export function SkillsPane() {
       {dialog?.kind === 'update' && (
         <SkillUpdateDialog
           api={api}
-          title={skillDisplayTitle(dialog.view, lang)}
+          title={skillDisplayTitle(dialog.view)}
           check={dialog.check}
           lang={lang}
           locale={dateLocale}
@@ -432,7 +432,7 @@ function SkillRow({
   onAction: (action: SkillMenuAction) => void
   confirm: RowConfirmProps | undefined
 }) {
-  const title = skillDisplayTitle(view, lang)
+  const title = skillDisplayTitle(view)
   const desc = skillDisplayDesc(view, lang)
   const unreadable = view.unreadable
   const actions = skillMenuActions(view)

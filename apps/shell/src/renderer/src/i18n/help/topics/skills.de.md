@@ -4,7 +4,7 @@ Ein Skill ist eine Arbeitsanleitung für die KI. Schreiben Sie einmal auf, was S
 
 ## Skills ein- und ausschalten
 
-**Einstellungen ▸ Skills** listet die Skills auf diesem PC auf, gruppiert nach ihrer Herkunft. Über das Suchfeld oben finden Sie einen Skill nach Titel, Name oder Beschreibung.
+**Einstellungen ▸ Skills** listet die Skills auf diesem PC auf, gruppiert nach ihrer Herkunft. Jeder Skill wird mit seinem Namen angezeigt, so wie Coding-Agenten es tun. Über das Suchfeld oben finden Sie einen Skill nach Name oder Beschreibung.
 
 | Herkunft                 | Inhalt                                                                   | Anfangs |
 | ------------------------ | ------------------------------------------------------------------------ | ------- |
@@ -34,7 +34,7 @@ Unter der Vorschau steht immer: „Installieren Sie Skills nur aus Quellen, dene
 
 - Gibt es unter meinen Skills schon einen mit demselben Namen, wählen Sie in dieser Zeile **Ersetzen** oder **Überspringen**.
 - Beim Herunterladen von GitHub verbindet sich GenOffice nur mit `github.com`, `api.github.com` und `codeload.github.com` und sendet keine Anmeldedaten. Ist das Archiv zu groß oder besteht es die Sicherheitsprüfungen nicht, wird nichts installiert.
-- **Neuer Skill** öffnet einen leeren Editor, in dem Sie Titel, Beschreibung und Anleitung selbst schreiben.
+- **Neuer Skill** öffnet einen leeren Editor, in dem Sie Name, Beschreibung und Anleitung selbst schreiben.
 
 ## Nach Updates suchen
 
@@ -46,7 +46,7 @@ Unter der Vorschau steht immer: „Installieren Sie Skills nur aus Quellen, dene
 ## Einen Skill im KI-Bereich aufrufen
 
 1. Tippen Sie `/` oder `$` am Anfang des KI-Eingabefelds oder direkt nach einem Leerzeichen. Die Liste der eingeschalteten Skills erscheint.
-2. Tippen Sie weiter, um die Liste einzugrenzen. Zum Beispiel findet `/bespr` das Besprechungsprotokoll.
+2. Tippen Sie weiter, um die Liste einzugrenzen. Zum Beispiel findet `/meet` den Skill `meeting-minutes`. Wörter aus der Beschreibung funktionieren auch, also findet ihn auch `/bespr`.
 3. Wählen Sie einen Skill mit den Pfeiltasten und drücken Sie Enter oder Tab. Der Skill wird zu einem Chip über dem Eingabefeld.
 4. Schreiben Sie, was Sie möchten, und senden Sie. GenOffice fügt den Inhalt des Skills der Anfrage hinzu.
 
@@ -58,15 +58,15 @@ Unter der Vorschau steht immer: „Installieren Sie Skills nur aus Quellen, dene
 
 ## Skills, die die KI von selbst nutzt
 
-- Für eingeschaltete Skills mit KI entscheidet erhält die KI Titel und Beschreibungen als Liste. Passt einer zur Anfrage, holt sich die KI dessen Inhalt und nutzt ihn.
-- Wenn die KI einen Skill nutzt, steht im Chat „Skill 〈Titel〉 verwendet“.
+- Für eingeschaltete Skills mit KI entscheidet erhält die KI Namen und Beschreibungen als Liste. Passt einer zur Anfrage, holt sich die KI dessen Inhalt und nutzt ihn.
+- Wenn die KI einen Skill nutzt, steht im Chat „Skill 〈Name〉 verwendet“.
 - Ob sie einen Skill nutzt, entscheidet die KI anhand der Beschreibung. Eine Beschreibung, die sagt, wofür der Skill gedacht ist, hilft ihr bei der Wahl.
 
 ## Einen Skill auf Zuruf erstellen
 
 1. Sagen Sie im KI-Bereich etwa „Speichere, was wir gerade gemacht haben, als Skill“ oder „Erstelle einen Skill, der Berichte in unserem Hausstil schreibt“.
 2. Die KI zieht die Schritte und Regeln heraus, die sich zu wiederholen lohnen, und zeigt eine Karte **Neuer Skill**. Werte, die nur dieses eine Mal gebraucht wurden, etwa Namen und Daten, bleiben aus der Anleitung heraus.
-3. Prüfen und bearbeiten Sie Titel, Beschreibung und Anleitung auf der Karte. Öffnen Sie **Erweitert**, um den englischen Namen zu ändern.
+3. Prüfen und bearbeiten Sie Name, Beschreibung und Anleitung auf der Karte. Der Name erscheint in der Skill-Liste, und Sie tippen ihn nach `/`: englische Kleinbuchstaben, Ziffern und Bindestriche.
 4. Klicken Sie auf **Speichern**. Der neue Skill wird zu meinen Skills hinzugefügt, eingeschaltet und erscheint sofort in der `/`-Liste.
 
 - Bis Sie auf **Speichern** klicken, wird keine Datei geschrieben. Klicken Sie auf **Abbrechen**, behält der Chat ihn nur als „Nicht gespeicherter Skill-Vorschlag“.
@@ -85,7 +85,7 @@ Wenn Sie im KI-Bereich eines Editors einen Skill erstellen, kann das aktuelle Do
 - Ein Skill mit Vorlage zeigt in der Liste **Mit Vorlage**.
 - Rufen Sie ihn als Chip auf und senden Sie, öffnet sich eine Kopie der Vorlage als neues, unbenanntes Dokument; die KI in diesem Tab arbeitet Ihre Anfrage weiter ab. Im ursprünglichen Bereich bleiben „Die Vorlage wird in einem neuen Tab bearbeitet“ und **Zum Tab** stehen.
 - Wählt die KI einen Skill mit Vorlage von selbst, öffnet sich nicht sofort ein Tab. Stattdessen zeigt der Chat die Schaltfläche **Neues Dokument aus dieser Vorlage öffnen**.
-- Wo das neue Dokument abgelegt wird, bestimmen Sie meist beim ersten Speichern. Die Markdown- und HTML-Editoren sowie das Erstellen eines ganzen Foliensatzes speichern wie gewohnt im Standardordner. Die Vorlagendatei selbst bleibt, wie sie war.
+- Wo das neue Dokument abgelegt wird, bestimmen Sie meist beim ersten Speichern. Die Markdown- und HTML-Editoren speichern wie gewohnt im Standardordner. Die Vorlagendatei selbst bleibt, wie sie war.
 
 ## Skills mit Skripten
 
@@ -95,15 +95,15 @@ Wenn Sie im KI-Bereich eines Editors einen Skill erstellen, kann das aktuelle Do
 
 ## Integrierte Skills
 
-| Skill                                 | Was er tut                                                                               |
-| ------------------------------------- | ---------------------------------------------------------------------------------------- |
-| **Besprechungsprotokoll**             | Macht aus Besprechungsnotizen ein Protokoll, das Beschlüsse und Aufgaben zeigt           |
-| **Mitteilungen, Newsletter und FAQs** | Schreibt Mitteilungen, Newsletter, Statusberichte, FAQs und andere interne Texte         |
-| **KI-Klang entfernen**                | Findet in englischen Texten Formulierungen, die nach KI klingen, und macht sie natürlich |
-| **Texte überarbeiten**                | Geht einen fertigen englischen Text durch und macht ihn klarer und knapper               |
-| **Skills finden**                     | Findet im Agentenfenster benötigte Skills und schlägt ihre Installation vor              |
+| Skill             | Was er tut                                                                       |
+| ----------------- | -------------------------------------------------------------------------------- |
+| `meeting-minutes` | Macht aus Besprechungsnotizen ein Protokoll, das Beschlüsse und Aufgaben zeigt   |
+| `internal-comms`  | Schreibt Mitteilungen, Newsletter, Statusberichte, FAQs und andere interne Texte |
+| `humanizer`       | Findet Formulierungen, die nach KI klingen, und macht sie natürlich              |
+| `copy-editing`    | Geht einen fertigen englischen Text durch und macht ihn klarer und knapper       |
+| `find-skills`     | Findet im Agentenfenster benötigte Skills und schlägt ihre Installation vor      |
 
-KI-Klang entfernen und Texte überarbeiten sind für englische Texte gedacht. Skills finden funktioniert nur im Agentenfenster.
+`copy-editing` ist für englische Marketingtexte gedacht. `find-skills` funktioniert nur im Agentenfenster.
 
 ## Im Agentenfenster
 

@@ -4,7 +4,7 @@ Une compétence est un ensemble d’instructions de travail pour l’IA. Notez u
 
 ## Activer et désactiver des compétences
 
-**Paramètres ▸ Compétences** liste les compétences présentes sur ce PC, regroupées selon leur provenance. Le champ de recherche en haut permet d’en trouver une par titre, nom ou description.
+**Paramètres ▸ Compétences** liste les compétences présentes sur ce PC, regroupées selon leur provenance. Chaque compétence apparaît sous son nom, comme dans les agents de programmation. Le champ de recherche en haut permet d’en trouver une par nom ou description.
 
 | Provenance                         | Contenu                                                                   | Au départ   |
 | ---------------------------------- | ------------------------------------------------------------------------- | ----------- |
@@ -34,7 +34,7 @@ Sous l’aperçu figure toujours ce message : « N’installez que des compéten
 
 - Si mes compétences en contient déjà une du même nom, choisissez **Remplacer** ou **Ignorer** sur cette ligne.
 - Pour télécharger depuis GitHub, GenOffice se connecte uniquement à `github.com`, `api.github.com` et `codeload.github.com`, et n’envoie aucune donnée de connexion. Si l’archive est trop volumineuse ou échoue aux contrôles de sécurité, rien n’est installé.
-- **Nouvelle compétence** ouvre un éditeur vide où vous rédigez vous-même le titre, la description et les instructions.
+- **Nouvelle compétence** ouvre un éditeur vide où vous rédigez vous-même le nom, la description et les instructions.
 
 ## Rechercher des mises à jour
 
@@ -46,7 +46,7 @@ Sous l’aperçu figure toujours ce message : « N’installez que des compéten
 ## Appeler une compétence dans le panneau IA
 
 1. Tapez `/` ou `$` au début de la zone de saisie de l’IA ou juste après une espace. La liste des compétences activées s’affiche.
-2. Continuez à taper pour affiner la liste. Par exemple, `/compte` trouve Comptes rendus de réunion.
+2. Continuez à taper pour affiner la liste. Par exemple, `/meet` trouve `meeting-minutes`. Les mots de la description marchent aussi : `/compte` la trouve également.
 3. Choisissez-en une avec les flèches et appuyez sur Entrée ou Tab. La compétence devient une pastille au-dessus de la zone de saisie.
 4. Écrivez ce que vous voulez et envoyez. GenOffice joint le contenu de la compétence à la demande.
 
@@ -58,15 +58,15 @@ Sous l’aperçu figure toujours ce message : « N’installez que des compéten
 
 ## Les compétences que l’IA utilise d’elle-même
 
-- Pour les compétences activées et réglées sur L’IA décide, les titres et les descriptions sont fournis à l’IA sous forme de liste. Quand l’une d’elles convient à la demande, l’IA en prend le contenu et l’utilise.
-- Quand l’IA utilise une compétence, la conversation affiche « Compétence 〈titre〉 utilisée ».
+- Pour les compétences activées et réglées sur L’IA décide, les noms et les descriptions sont fournis à l’IA sous forme de liste. Quand l’une d’elles convient à la demande, l’IA en prend le contenu et l’utilise.
+- Quand l’IA utilise une compétence, la conversation affiche « Compétence 〈nom〉 utilisée ».
 - L’IA décide d’après la description si elle utilise une compétence. Une description qui précise dans quels cas la compétence doit servir l’aide à bien choisir.
 
 ## Créer une compétence en le demandant
 
 1. Dans le panneau IA, dites par exemple « Enregistre ce qu’on vient de faire comme compétence » ou « Crée une compétence qui rédige les rapports dans notre style maison ».
 2. L’IA repère les étapes et les règles qui méritent d’être reprises et affiche une carte **Nouvelle compétence**. Les valeurs propres à cette fois-ci, comme les noms et les dates, restent hors des instructions.
-3. Vérifiez et modifiez le titre, la description et les instructions sur la carte. Ouvrez **Avancé** pour changer le nom anglais.
+3. Vérifiez et modifiez le nom, la description et les instructions sur la carte. Le nom est ce qu’affiche la liste des compétences et ce que vous tapez après `/` : lettres anglaises minuscules, chiffres et traits d’union.
 4. Cliquez sur **Enregistrer**. La nouvelle compétence est ajoutée à mes compétences, activée, et apparaît aussitôt dans la liste `/`.
 
 - Aucun fichier n’est écrit tant que vous n’avez pas cliqué sur **Enregistrer**. Si vous cliquez sur **Annuler**, la conversation la garde seulement comme « Proposition de compétence non enregistrée ».
@@ -85,7 +85,7 @@ Quand vous créez une compétence dans le panneau IA d’un éditeur, le documen
 - Une compétence qui a un modèle affiche **Contient un modèle** dans la liste.
 - Appelez-la sous forme de pastille et envoyez : une copie du modèle s’ouvre comme nouveau document sans titre, et l’IA de cet onglet poursuit votre demande. Le panneau d’origine garde « Travail avec le modèle dans un nouvel onglet » et **Aller à l’onglet**.
 - Quand l’IA choisit d’elle-même une compétence avec modèle, aucun onglet ne s’ouvre tout de suite. La conversation affiche à la place un bouton **Ouvrir un nouveau document à partir de ce modèle**.
-- Vous choisissez généralement l’emplacement du nouveau document lors du premier enregistrement. Les éditeurs Markdown et HTML, ainsi que la génération d’une présentation entière, enregistrent comme toujours dans le dossier par défaut. Le fichier modèle lui-même reste inchangé.
+- Vous choisissez généralement l’emplacement du nouveau document lors du premier enregistrement. Les éditeurs Markdown et HTML enregistrent comme toujours dans le dossier par défaut. Le fichier modèle lui-même reste inchangé.
 
 ## Compétences avec scripts
 
@@ -95,15 +95,15 @@ Quand vous créez une compétence dans le panneau IA d’un éditeur, le documen
 
 ## Compétences intégrées
 
-| Compétence                          | Ce qu’elle fait                                                                                  |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------ |
-| **Comptes rendus de réunion**       | Transforme les notes de réunion en compte rendu qui fait ressortir les décisions et les actions  |
-| **Annonces, lettres d’info et FAQ** | Rédige annonces, lettres d’information, points d’avancement, FAQ et autres messages internes     |
-| **Effacer l’effet IA**              | Repère dans un texte anglais les tournures qui sonnent écrites par une IA et les rend naturelles |
-| **Relecture du style**              | Relit un texte anglais déjà écrit pour le rendre plus clair et plus concis                       |
-| **Trouver des compétences**         | Trouve dans la fenêtre de l’agent les compétences utiles et propose de les installer             |
+| Compétence        | Ce qu’elle fait                                                                                 |
+| ----------------- | ----------------------------------------------------------------------------------------------- |
+| `meeting-minutes` | Transforme les notes de réunion en compte rendu qui fait ressortir les décisions et les actions |
+| `internal-comms`  | Rédige annonces, lettres d’information, points d’avancement, FAQ et autres messages internes    |
+| `humanizer`       | Repère les tournures qui sonnent écrites par une IA et les rend naturelles                      |
+| `copy-editing`    | Relit un texte anglais déjà écrit pour le rendre plus clair et plus concis                      |
+| `find-skills`     | Trouve dans la fenêtre de l’agent les compétences utiles et propose de les installer            |
 
-Effacer l’effet IA et Relecture du style sont conçues pour des textes en anglais. Trouver des compétences fonctionne uniquement dans la fenêtre de l’agent.
+`copy-editing` est conçue pour les textes marketing en anglais. `find-skills` fonctionne uniquement dans la fenêtre de l’agent.
 
 ## Dans la fenêtre de l’agent
 

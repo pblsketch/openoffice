@@ -4,7 +4,7 @@ Een vaardigheid is een set werkinstructies voor de AI. Leg iets wat je steeds op
 
 ## Vaardigheden aan- en uitzetten
 
-**Instellingen ▸ Vaardigheden** toont de vaardigheden op deze pc, gegroepeerd naar herkomst. Met het zoekvak bovenaan vind je er een op titel, naam of beschrijving.
+**Instellingen ▸ Vaardigheden** toont de vaardigheden op deze pc, gegroepeerd naar herkomst. Vaardigheden worden bij hun naam getoond, zoals codeeragents dat doen. Met het zoekvak bovenaan vind je er een op naam of beschrijving.
 
 | Herkomst                   | Wat erin staat                                                          | In het begin |
 | -------------------------- | ----------------------------------------------------------------------- | ------------ |
@@ -34,7 +34,7 @@ Onder het voorbeeld staat altijd: "Installeer alleen vaardigheden uit bronnen di
 
 - Staat er bij mijn vaardigheden al een met dezelfde naam, kies dan op die rij **Vervangen** of **Overslaan**.
 - Bij het downloaden van GitHub maakt GenOffice alleen verbinding met `github.com`, `api.github.com` en `codeload.github.com`, en stuurt het geen aanmeldgegevens mee. Is het archief te groot of komt het niet door de veiligheidscontroles, dan wordt er niets geïnstalleerd.
-- **Nieuwe vaardigheid** opent een lege editor waarin je zelf de titel, beschrijving en instructies schrijft.
+- **Nieuwe vaardigheid** opent een lege editor waarin je zelf de naam, beschrijving en instructies schrijft.
 
 ## Op updates controleren
 
@@ -46,7 +46,7 @@ Onder het voorbeeld staat altijd: "Installeer alleen vaardigheden uit bronnen di
 ## Een vaardigheid aanroepen in het AI-paneel
 
 1. Typ `/` of `$` aan het begin van het invoervak van de AI of direct na een spatie. De lijst met vaardigheden die aanstaan verschijnt.
-2. Typ verder om de lijst te verkleinen. Zo vindt `/notu` Notulen van vergaderingen.
+2. Typ verder om de lijst te verkleinen. Zo vindt `/meet` de vaardigheid `meeting-minutes`. Woorden uit de beschrijving werken ook, dus ook `/notu` vindt hem.
 3. Kies er een met de pijltjestoetsen en druk op Enter of Tab. De vaardigheid wordt een chip boven het invoervak.
 4. Schrijf wat je wilt en verstuur. GenOffice voegt de inhoud van de vaardigheid aan het verzoek toe.
 
@@ -58,15 +58,15 @@ Onder het voorbeeld staat altijd: "Installeer alleen vaardigheden uit bronnen di
 
 ## Vaardigheden die de AI zelf gebruikt
 
-- Van de vaardigheden die aanstaan en op AI beslist zijn ingesteld, krijgt de AI de titels en beschrijvingen als lijst. Past er een bij het verzoek, dan neemt de AI de inhoud ervan en gebruikt hem.
-- Gebruikt de AI een vaardigheid, dan staat in het gesprek "Vaardigheid 〈titel〉 gebruikt".
+- Van de vaardigheden die aanstaan en op AI beslist zijn ingesteld, krijgt de AI de namen en beschrijvingen als lijst. Past er een bij het verzoek, dan neemt de AI de inhoud ervan en gebruikt hem.
+- Gebruikt de AI een vaardigheid, dan staat in het gesprek "Vaardigheid 〈naam〉 gebruikt".
 - De AI beslist aan de hand van de beschrijving of hij een vaardigheid gebruikt. Een beschrijving die zegt wanneer de vaardigheid bedoeld is, helpt hem goed te kiezen.
 
 ## Een vaardigheid maken door erom te vragen
 
 1. Zeg in het AI-paneel bijvoorbeeld "Sla wat we net gedaan hebben op als vaardigheid" of "Maak een vaardigheid die verslagen in onze huisstijl schrijft".
 2. De AI haalt de stappen en regels eruit die het herhalen waard zijn en toont een kaart **Nieuwe vaardigheid**. Waarden die alleen deze keer gebruikt zijn, zoals namen en datums, blijven buiten de instructies.
-3. Controleer en bewerk de titel, beschrijving en instructies op de kaart. Open **Geavanceerd** om de Engelse naam te wijzigen.
+3. Controleer en bewerk de naam, beschrijving en instructies op de kaart. De naam is wat de lijst met vaardigheden toont en wat je na `/` typt: Engelse kleine letters, cijfers en koppeltekens.
 4. Klik op **Opslaan**. De nieuwe vaardigheid wordt aan mijn vaardigheden toegevoegd, gaat aan en staat meteen in de lijst van `/`.
 
 - Er wordt geen bestand geschreven tot je op **Opslaan** klikt. Klik je op **Annuleren**, dan bewaart het gesprek hem alleen als "Niet-opgeslagen voorstel voor een vaardigheid".
@@ -85,7 +85,7 @@ Maak je een vaardigheid in het AI-paneel van een editor, dan kan het huidige doc
 - Een vaardigheid met een sjabloon toont **Met sjabloon** in de lijst.
 - Roep hem aan als chip en verstuur: een kopie van het sjabloon opent als nieuw naamloos document en de AI in dat tabblad gaat verder met je verzoek. In het oorspronkelijke paneel blijven "Er wordt in een nieuw tabblad met de sjabloon gewerkt" en **Naar het tabblad** staan.
 - Kiest de AI zelf een vaardigheid met sjabloon, dan opent er niet meteen een tabblad. Het gesprek toont in plaats daarvan de knop **Nieuw document openen met deze sjabloon**.
-- Waar het nieuwe document komt, kies je meestal de eerste keer dat je het opslaat. De Markdown- en HTML-editor en het maken van een complete presentatie slaan zoals altijd op in de standaardmap. Het sjabloonbestand zelf blijft zoals het was.
+- Waar het nieuwe document komt, kies je meestal de eerste keer dat je het opslaat. De Markdown- en HTML-editor slaan zoals altijd op in de standaardmap. Het sjabloonbestand zelf blijft zoals het was.
 
 ## Vaardigheden met scripts
 
@@ -95,15 +95,15 @@ Maak je een vaardigheid in het AI-paneel van een editor, dan kan het huidige doc
 
 ## Ingebouwde vaardigheden
 
-| Vaardigheid                                            | Wat hij doet                                                                                               |
-| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| **Notulen van vergaderingen**                          | Maakt van vergaderaantekeningen notulen met de besluiten en actiepunten                                    |
-| **Mededelingen, nieuwsbrieven en veelgestelde vragen** | Schrijft mededelingen, nieuwsbrieven, voortgangsrapporten, veelgestelde vragen en andere interne berichten |
-| **AI-toon verwijderen**                                | Zoekt in Engelse tekst formuleringen die naar AI klinken en maakt ze natuurlijk                            |
-| **Tekst redigeren**                                    | Loopt een Engelse tekst die je hebt geschreven na en maakt hem duidelijker en bondiger                     |
-| **Vaardigheden zoeken**                                | Zoekt in het agentvenster de vaardigheden die je nodig hebt en stelt voor ze te installeren                |
+| Vaardigheid       | Wat hij doet                                                                                               |
+| ----------------- | ---------------------------------------------------------------------------------------------------------- |
+| `meeting-minutes` | Maakt van vergaderaantekeningen notulen met de besluiten en actiepunten                                    |
+| `internal-comms`  | Schrijft mededelingen, nieuwsbrieven, voortgangsrapporten, veelgestelde vragen en andere interne berichten |
+| `humanizer`       | Zoekt formuleringen die naar AI klinken en maakt ze natuurlijk                                             |
+| `copy-editing`    | Loopt een Engelse tekst die je hebt geschreven na en maakt hem duidelijker en bondiger                     |
+| `find-skills`     | Zoekt in het agentvenster de vaardigheden die je nodig hebt en stelt voor ze te installeren                |
 
-AI-toon verwijderen en Tekst redigeren zijn gemaakt voor Engelse tekst. Vaardigheden zoeken werkt alleen in het agentvenster.
+`copy-editing` is gemaakt voor Engelse marketingteksten. `find-skills` werkt alleen in het agentvenster.
 
 ## In het agentvenster
 

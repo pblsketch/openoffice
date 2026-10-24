@@ -58,6 +58,7 @@ export {
   skillChipOf,
   skillChipRef,
   skillChipRefsOf,
+  skillDisplayName,
   skillPickerKeyAction,
   skillSourceLabel,
   skillTriggerAt,
@@ -196,6 +197,7 @@ export {
   aiPanelInitiallyOpen,
   rememberAiPanelOpen,
   useAiPanelPrefs,
+  useAiSidebarEnabled,
   aiPanelWidthAtPointer,
 } from './ai-panel-prefs-store'
 export {
@@ -298,6 +300,11 @@ export { CROP_EDGE_LABELS } from './strings-crop-edges'
 export { ImageViewer, type ImageViewerLabels } from './image-viewer'
 export { trapTab, useModalKeys } from './modal-keys'
 export {
+  presentationKeyOf,
+  type PresentationKey,
+  type PresentationKeyInput,
+} from './presentation-keys'
+export {
   removeBackground,
   sampleBackgroundColors,
   type CutoutResult,
@@ -321,7 +328,7 @@ export {
   notchStep,
   type ZoomWheelIntent,
 } from './wheel-zoom'
-export { AiModelPicker, type AiModelPickerBridge } from './AiModelPicker'
+export { AiModelPicker, aiModelPopoverStyle, type AiModelPickerBridge } from './AiModelPicker'
 export { withAiModelSelection, type AiModelPickerSelection } from './ai-model-picker-options'
 export {
   aiProviderPickerGroups,
@@ -385,7 +392,6 @@ export {
   BUILTIN_SKILL_STRINGS,
   builtinSkillDesc,
   builtinSkillText,
-  builtinSkillTitle,
   isBuiltinSkillName,
   type BuiltinSkillName,
   type BuiltinSkillStringKey,

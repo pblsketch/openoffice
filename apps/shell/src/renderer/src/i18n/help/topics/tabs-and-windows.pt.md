@@ -6,7 +6,7 @@ Todos os ficheiros abertos partilham uma janela; a barra de guias no topo muda e
 
 ## Noções básicas
 
-- **Mudar**: clique numa guia, ou rode a roda do rato sobre a barra para percorrer as guias.
+- **Mudar**: clique numa guia, prima **Ctrl+Tab** (seguinte) / **Ctrl+Shift+Tab** (anterior), ou rode a roda do rato sobre a barra.
 - **Fechar**: o × na guia, ou ⌘W/ctrl+W. Se houver alterações por salvar, o GenOffice pergunta primeiro.
 - **Nova**: o + no extremo direito da barra.
 - **Ativação imediata**: premir uma guia muda para ela logo que é premida, sem esperar que o clique termine.
@@ -57,7 +57,23 @@ A guia Início mais à esquerda não pode ser fechada; para voltar de qualquer e
 - Só uma janela de IA fica visível. O painel em que está a trabalhar mostra a dele; a do outro painel recolhe-se numa barra, e clicar num painel traz a janela de IA desse painel para a frente.
 - Enquanto está recolhida, a conversa desse painel e o trabalho de IA em curso continuam vivos. As conversas são guardadas por documento.
 - **Duas cópias do mesmo documento**: depois de salvar num painel, salvar a partir do outro pergunta primeiro «Este documento mudou noutro sítio». Já o salvamento automático espera em silêncio.
-- **Reabrir a aplicação sem ficheiro** traz de volta o último par de documentos divididos exatamente como estava; abri-la com um ficheiro abre apenas esse ficheiro.
+- Depois de um fecho normal, **reabrir a aplicação sem ficheiro** traz de volta o último par de documentos divididos exatamente como estava; abri-la com um ficheiro abre apenas esse ficheiro. Depois de um encerramento repentino, os separadores anteriores voltam como descrito abaixo.
 - As guias Início, Ajuda e Apresentação (pré-visualização) não podem entrar num painel; enquanto uma delas está aberta, os dois painéis escondem-se por um momento e voltam quando regressa a uma guia de documento.
 
 Três ou mais painéis, a divisão dentro de uma janela destacada e a sincronização em tempo real das duas cópias ficam para mais tarde.
+
+## Quando a aplicação ou o PC se desliga de repente
+
+Enquanto um documento tem alterações não salvas, o GenOffice guarda uma cópia de recuperação dele mais ou menos a cada 30 segundos na pasta de dados da própria aplicação. Todos os editores fazem isto, também para um documento novo que nunca foi salvo. O seu ficheiro em si não muda até que o salve.
+
+- **Os seus separadores voltam**: se a aplicação ou o PC se desligou sem fechar normalmente (falha de energia, uma falha da aplicação, a aplicação fechada à força, o PC a desligar ou a reiniciar para uma atualização), os separadores de documentos que estavam abertos voltam na próxima vez que iniciar o GenOffice, pela mesma ordem e com a vista dividida, se a tinha. Também acontece se o iniciar ao abrir um ficheiro.
+- **Uma única lista no Início**: os documentos que ainda têm conteúdo não salvo aparecem juntos no ecrã Início. Escolha **Restaurar** ou **Descartar** para cada um, ou use **Restaurar tudo** ou **Descartar tudo**, e prima **Confirmar**. Se outro programa ou um serviço de sincronização alterou o ficheiro depois, **Descartar** vem selecionado para que o ficheiro fique como está agora. Se o ficheiro original já não for encontrado, restaurar abre o conteúdo como um documento novo sem título.
+- **Decidir depois**: fechar a lista não apaga nada. Quando abrir pela primeira vez um desses documentos, uma caixa com o nome dele volta a perguntar; premir Esc ou fechar a caixa restaura-o. Se não precisar do conteúdo restaurado, feche o documento com **Não Salvar**.
+- **Os separadores carregam ao abri-los**: os separadores restaurados mostram logo o título, mas cada documento só é carregado quando clica no seu separador pela primeira vez. Abrir tudo de uma vez poderia fazer um PC com pouca memória desligar-se outra vez.
+- **Ao desligar o PC**: se houver documentos não salvos, o GenOffice não pergunta se deve salvá-los. Guarda as cópias, fecha-se e oferece-as no próximo arranque.
+- **Documentos sem cópia**: os ficheiros Excel, HWP e PDF protegidos por palavra-passe não têm cópia de recuperação, por isso as suas alterações não salvas não podem ser restauradas; um aviso indica-o uma vez quando um documento destes é aberto. Salve-os com frequência. Os documentos Word e PowerPoint protegidos por palavra-passe têm uma cópia bloqueada com a mesma palavra-passe.
+- **Ficheiros CSV, .xls antigos e .tsv**: o editor de folhas de cálculo guarda a sua cópia como um livro sem título. Ao restaurá-la, abre como um livro sem título e, ao salvar pela primeira vez, sugere a pasta e o nome do ficheiro original em .xlsx.
+
+Uma cópia é apagada quando salva o documento, o fecha com **Não Salvar** ou escolhe **Descartar**, e também ao fim de 30 dias sem alterações. Depois de um fecho normal, o GenOffice arranca como antes e não traz separadores de volta.
+
+**Isto não é o Salvamento automático.** O Salvamento automático escreve as alterações no próprio ficheiro, e só depois de o ter salvo uma vez. Uma cópia de recuperação nunca toca no seu ficheiro; guarda apenas o que ainda não salvou, até salvar ou descartar.

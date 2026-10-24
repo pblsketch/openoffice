@@ -78,6 +78,7 @@ export const de = {
   hlAccept: 'Annehmen',
   hlDismiss: 'Verwerfen',
   hlAcceptAll: 'Alle annehmen ({count})',
+  hlAcceptAllSave: 'Alle übernehmen und speichern ({count})',
   hlDismissAll: 'Alle Vorschläge verwerfen',
   hlSuggestionCount: '{count} KI-Markierungsvorschläge',
   hlNotFoundTip: 'Dieser Satz wurde im Seitentext nicht gefunden und kann nicht angenommen werden',
@@ -85,5 +86,6 @@ export const de = {
   hlWaitingSaveTip: 'Speichern Sie das PDF, um die Markierung in die Datei zu übernehmen',
   hlAcceptedNotice:
     '{count} Markierungen hinzugefügt. Speichern Sie das PDF, um sie in die Datei zu übernehmen.',
+  hlAcceptedSaved: '{count} Markierungen gespeichert.',
   hlDismissFailed: 'Die Vorschläge konnten nicht verworfen werden.',
 } satisfies Record<keyof typeof zh, string>

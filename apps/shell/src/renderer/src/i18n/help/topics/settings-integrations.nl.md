@@ -44,7 +44,7 @@ Met de instellingen kun je GenOffice registreren als verwerker van .docx / .xlsx
 ## Mededelingen over software van derden en updates
 
 - Help ▸ Kennisgevingen over software van derden: het volledige overzicht van opensourcelicenties dat met de app is meegeleverd.
-- Help ▸ Controleren op updates…: start een handmatige controle; bij een nieuwere versie wordt je gevraagd die te installeren.
+- Menu (☰) ▸ Controleren op updates… (op een Mac Help ▸ Controleren op updates…): start een handmatige controle; bij een nieuwere versie wordt je gevraagd die te installeren.
 
 ## MCP-integratie (voor gevorderde gebruikers / AI-clients)
 

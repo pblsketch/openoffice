@@ -45,7 +45,6 @@ function renderRibbon(sourceMode: boolean, sourceViewOpen = false) {
         onToggleFrontmatter: vi.fn(),
         outlineOpen: false,
         onToggleOutline: vi.fn(),
-        hasOutline: false,
         spellcheck: true,
         onToggleSpellcheck: vi.fn(),
         aiOpen: false,
@@ -88,11 +87,14 @@ describe('Ribbon source mode', () => {
     // 14 block-formatting controls, plus this PR's withhold toggle, plus the
     // markdown-only source-view toggle (absent for a .txt/.json, which has no
     // use for it), plus the image-host button, which is not a formatting
-    // control and so renders in either mode.
-    expect(markdown.iconButtons).toBe(17)
-    // source mode keeps exactly one: the spellcheck toggle (the withhold
+    // control and so renders in either mode, plus the paper-theme picker and
+    // the backlinks and graph buttons, which are markdown-only views like the
+    // source-view toggle.
+    expect(markdown.iconButtons).toBe(20)
+    // source mode keeps exactly two: the spellcheck toggle (the withhold
     // toggle gates the block editor's marks, which source mode does not carry)
-    expect(source.iconButtons).toBe(1)
+    // and the paper-theme picker (the paper exists in source view too)
+    expect(source.iconButtons).toBe(2)
   })
 
   it('keeps the actions that still apply to source text', () => {
@@ -140,8 +142,9 @@ describe('Ribbon source mode', () => {
   it('shows the formatting controls again for a markdown file', () => {
     const { styleDropdown, iconButtons } = counts(renderRibbon(false))
     expect(styleDropdown).toBe(1)
-    // 17 here too: the source-view toggle is present here and absent above,
-    // the withhold toggle and the image-host button are present in both
-    expect(iconButtons).toBe(17)
+    // 20 here too: the source-view toggle is present here and absent above,
+    // the withhold toggle, the image-host button, the paper-theme picker and
+    // the backlinks and graph buttons are present in both
+    expect(iconButtons).toBe(20)
   })
 })

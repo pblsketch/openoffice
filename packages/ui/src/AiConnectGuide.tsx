@@ -18,6 +18,7 @@ import {
   aiConnectInfoText,
   aiConnectStepsView,
   type AiConnectChoice,
+  type AiConnectPath,
 } from './connect-guide'
 import { aiSubscriptionText } from './strings-ai-subscription'
 import './ai-subscription.css'
@@ -44,6 +45,7 @@ export function AiConnectGuide({
   freeConnected = false,
   codexNotice = false,
   renderAfterCard,
+  onOpenConnectHelp,
   ...actions
 }: AiSubscriptionCardActions & {
   readonly statuses: AiSubscriptionStatuses
@@ -59,6 +61,11 @@ export function AiConnectGuide({
   readonly codexNotice?: boolean | undefined
   /** anything the host shows under a provider's card (a launch that failed) */
   readonly renderAfterCard?: ((provider: AiSubscriptionProviderId) => React.ReactNode) | undefined
+  /**
+   * open the website's step-by-step connect help at the open path (null while
+   * the question is asked); a host without it gets no link
+   */
+  readonly onOpenConnectHelp?: ((path: AiConnectPath | null) => void) | undefined
 }): React.JSX.Element {
   const [chosen, setChosen] = useState<AiConnectChoice>(null)
   const view = aiConnectGuideView(statuses, chosen, freeConnected)
@@ -139,7 +146,13 @@ export function AiConnectGuide({
           {t('guideBack')}
         </button>
       )}
-      {!connected && <CopyInfo statuses={statuses} lang={lang} />}
+      {!connected && (
+        <CopyInfo
+          statuses={statuses}
+          lang={lang}
+          onOpenHelp={onOpenConnectHelp && (() => onOpenConnectHelp(view.open))}
+        />
+      )}
     </div>
   )
 }
@@ -194,13 +207,19 @@ function GuidePath({
   )
 }
 
-/** "Copy details for help": the statuses in a form a helper can read, nothing personal */
+/**
+ * Where to turn when connecting does not work: the website's pictures of each
+ * step, then "copy details for help" (the statuses in a form a helper can
+ * read, nothing personal)
+ */
 function CopyInfo({
   statuses,
   lang,
+  onOpenHelp,
 }: {
   readonly statuses: AiSubscriptionStatuses
   readonly lang: Lang
+  readonly onOpenHelp?: (() => void) | undefined
 }): React.JSX.Element {
   const [copied, setCopied] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -222,6 +241,16 @@ function CopyInfo({
   }
   return (
     <div className="ai-sub-guide-info">
+      {onOpenHelp && (
+        <button
+          type="button"
+          className="ai-sub-link ai-sub-guide-help"
+          data-action="connect-help"
+          onClick={onOpenHelp}
+        >
+          {aiSubscriptionText(lang, 'actionConnectHelp')}
+        </button>
+      )}
       <p className="ai-sub-note">{aiSubscriptionText(lang, 'guideInfoHint')}</p>
       <button
         type="button"

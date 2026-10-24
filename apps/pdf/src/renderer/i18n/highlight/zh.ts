@@ -69,11 +69,13 @@ export const zh = {
   hlAccept: '接受',
   hlDismiss: '舍弃',
   hlAcceptAll: '全部接受（{count}）',
+  hlAcceptAllSave: '全部接受并保存（{count}）',
   hlDismissAll: '舍弃所有建议',
   hlSuggestionCount: 'AI 标注建议 {count} 条',
   hlNotFoundTip: '在页面文字中找不到这句话，无法接受',
   hlWaitingSave: '等待保存',
   hlWaitingSaveTip: '保存 PDF 后高亮会写入文件',
   hlAcceptedNotice: '已添加 {count} 个高亮。保存 PDF 后会写入文件。',
+  hlAcceptedSaved: '已保存 {count} 个高亮。',
   hlDismissFailed: '无法舍弃建议。',
 }

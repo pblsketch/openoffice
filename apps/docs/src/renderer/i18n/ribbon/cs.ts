@@ -85,6 +85,7 @@ export const cs = {
   ribbonFontEastAsia: 'Východoasijské písmo',
   ribbonFontLatin: 'Latinské písmo',
   ribbonFontFamilyTip: 'Písmo',
+  ribbonFontDialogTip: 'Písmo — měřítko a mezery znaků na kartě Upřesnit',
   ribbonFontsCommon: 'Běžná písma',
   ribbonFontsSystem: 'Systémová písma',
   ribbonFontsHangul: 'Korejská písma',

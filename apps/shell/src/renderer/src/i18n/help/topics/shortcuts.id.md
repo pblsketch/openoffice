@@ -22,6 +22,12 @@ Setiap editor punya pengikatan tombol sendiri, dan hanya sebagian yang berlaku d
 - **`⌘O`, `⌘S`, dan `⌘P` diimplementasikan terpisah di balik tiap editor**, dan perilakunya tidak sepenuhnya sama. `⌘P` milik Word menyusun pratinjau cetak lebih dulu sehingga satu lembar cetak sama dengan satu halaman di layar; milik PDF membuka dialog cetak PDF; Sheets dan Slides punya versinya sendiri lagi.
 - **Selebihnya bersifat per-aplikasi.** Saat tab Word aktif, `⌘B` adalah Tebal milik Word. Saat Slides aktif, `⌘B` adalah Tebal milik Slides, dan menu tempatnya tinggal bukan menu yang biasa Anda pakai. Wherever sebuah pengikatan hanya aktif dengan ada sesuatu yang terpilih, atau di panel tertentu, kolom Tindakan mengatakannya.
 
+## Mode presentasi
+
+- **Mulai**: F5 di Word, PDF, Mindmap, HTML, dan Markdown. Di spreadsheet, Ctrl+F5 (dari A1) atau Shift+F5 (dari sel aktif).
+- **Pintu lain**: di Word, Ctrl+F5 dan Shift+F5 membuka tampilan baca tanpa layar penuh; di PDF mulai dari halaman aktif; di HTML presentasi di dalam tab.
+- **Selesai**: Esc atau F5. F11 adalah layar penuh jendela dan tidak mengubah tampilan dokumen.
+
 ## Konvensi
 
 - Kolom macOS memakai simbol yang familier: `⌘` Command, `⌥` Option, `⇧` Shift, `⌃` Control.
@@ -588,3 +594,154 @@ Masing-masing butuh sebuah elemen yang sudah terpilih sebelumnya; tanpa ada yang
 | Miringkan rentang terpilih               | ⌘I    | Ctrl+I          |
 
 Menekan kunci menyimpan apa yang Anda ketik dan mengembalikan elemennya ke keadaan terpilih.
+
+## HWP/HWPX
+
+Tombol ini berlaku saat tab HWP/HWPX berada di depan dan dokumen memiliki fokus. Kedua kolom menunjukkan cara menekannya di macOS dan Windows / Linux.
+
+### Berkas
+
+| Tindakan        | macOS | Windows / Linux      |
+| --------------- | ----- | -------------------- |
+| Dokumen baru    |       | Alt+N                |
+| Buka…           | ⌘O    | Ctrl+O / Alt+O       |
+| Simpan          | ⌘S    | Ctrl+S / Alt+S       |
+| Simpan Sebagai… | ⇧⌘S   | Ctrl+Shift+S / Alt+V |
+| Cetak           | ⌘P    | Ctrl+P / Alt+P       |
+
+### Sunting
+
+| Tindakan           | macOS       | Windows / Linux              |
+| ------------------ | ----------- | ---------------------------- |
+| Urungkan           | ⌃Z          | Ctrl+Z                       |
+| Ulangi             | ⌃⇧Z         | Ctrl+Shift+Z                 |
+| Hapus baris        | ⌃Y          | Ctrl+Y                       |
+| Potong             | ⌃X          | Ctrl+X                       |
+| Salin              | ⌃C          | Ctrl+C                       |
+| Tempel             | ⌃V          | Ctrl+V                       |
+| Hapus              | ⌃E          | Ctrl+E                       |
+| Pilih Semua        | ⌃A          | Ctrl+A                       |
+| Salin format       | ⌥C          | Alt+C                        |
+| Temukan            | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
+| Temukan dan ganti  | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
+| Temukan berikutnya | ⌃L          | Ctrl+L                       |
+| Temukan mundur     | ⌃Q, L       | Ctrl+Q, L                    |
+| Ke                 | ⌥G          | Alt+G                        |
+| Bandingkan dokumen | ⌥⇧V         | Alt+Shift+V                  |
+
+### Karakter
+
+| Tindakan                | macOS    | Windows / Linux      |
+| ----------------------- | -------- | -------------------- |
+| Tebal                   | ⌃B / ⌥⇧B | Ctrl+B / Alt+Shift+B |
+| Miring                  | ⌃I / ⌥⇧I | Ctrl+I / Alt+Shift+I |
+| Garis bawah             | ⌃U / ⌥⇧U | Ctrl+U / Alt+Shift+U |
+| Format normal           | ⌥⇧C      | Alt+Shift+C          |
+| Superskrip              | ⌥⇧P      | Alt+Shift+P          |
+| Subskrip                | ⌥⇧S      | Alt+Shift+S          |
+| Bentuk karakter…        | ⌥L       | Alt+L                |
+| Perbesar ukuran font    | ⌥⇧E / ⌃] | Alt+Shift+E / Ctrl+] |
+| Perkecil ukuran font    | ⌥⇧R / ⌃[ | Alt+Shift+R / Ctrl+[ |
+| Perbesar lebar karakter | ⌥⇧K      | Alt+Shift+K          |
+| Perkecil lebar karakter | ⌥⇧J      | Alt+Shift+J          |
+| Perbesar spasi karakter | ⌥⇧W      | Alt+Shift+W          |
+| Perkecil spasi karakter | ⌥⇧N      | Alt+Shift+N          |
+| Teks hitam              | ⌃M, K    | Ctrl+M, K            |
+| Teks merah              | ⌃M, R    | Ctrl+M, R            |
+| Teks biru               | ⌃M, B    | Ctrl+M, B            |
+| Teks plum               | ⌃M, D    | Ctrl+M, D            |
+| Teks hijau              | ⌃M, G    | Ctrl+M, G            |
+| Teks kuning             | ⌃M, Y    | Ctrl+M, Y            |
+| Teks pirus              | ⌃M, C    | Ctrl+M, C            |
+| Teks putih              | ⌃M, W    | Ctrl+M, W            |
+
+### Paragraf
+
+| Tindakan                               | macOS   | Windows / Linux |
+| -------------------------------------- | ------- | --------------- |
+| Rata kiri                              | ⌃⇧L     | Ctrl+Shift+L    |
+| Rata tengah                            | ⌃⇧C     | Ctrl+Shift+C    |
+| Rata kanan                             | ⌃⇧R     | Ctrl+Shift+R    |
+| Rata kanan-kiri                        | ⌃⇧M     | Ctrl+Shift+M    |
+| Sebar                                  | ⌃⇧T     | Ctrl+Shift+T    |
+| Perbesar spasi baris                   | ⌥⇧Z     | Alt+Shift+Z     |
+| Perkecil spasi baris                   | ⌥⇧A     | Alt+Shift+A     |
+| Bentuk paragraf…                       | ⌥T      | Alt+T           |
+| Gaya…                                  | F6      | F6              |
+| Terapkan gaya pertama hingga kesepuluh | ⌃1 … ⌃0 | Ctrl+1 … Ctrl+0 |
+| Bentuk penomoran paragraf              | ⌃K, N   | Ctrl+K, N       |
+
+### Sisipkan
+
+| Tindakan                             | macOS       | Windows / Linux    |
+| ------------------------------------ | ----------- | ------------------ |
+| Sisipkan tabel                       | ⌃N, T       | Ctrl+N, T          |
+| Catatan kaki                         | ⌃N, N       | Ctrl+N, N          |
+| Catatan akhir                        | ⌃N, E       | Ctrl+N, E          |
+| Header                               | ⌃N, H       | Ctrl+N, H          |
+| Nomor halaman                        | ⌃N, P       | Ctrl+N, P          |
+| Sisipkan gambar                      | ⌃N, I       | Ctrl+N, I          |
+| Kotak teks                           | ⌃N, B       | Ctrl+N, B          |
+| Persamaan                            | ⌃N, M       | Ctrl+N, M          |
+| Sisipkan keterangan                  | ⌃N, C       | Ctrl+N, C          |
+| Hipertautan                          | ⌃K, H       | Ctrl+K, H          |
+| Penanda                              | ⌃K, B       | Ctrl+K, B          |
+| Sisipkan field                       | ⌃K, E       | Ctrl+K, E          |
+| Teks tanggal/waktu                   | ⌃K, D       | Ctrl+K, D          |
+| Sunting objek, field, atau tabel/sel | ⌃N, K       | Ctrl+N, K          |
+| Simbol                               | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+
+### Tabel
+
+| Tindakan           | macOS        | Windows / Linux        |
+| ------------------ | ------------ | ---------------------- |
+| Tambah baris/kolom | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Hapus baris/kolom  | ⌥⌫           | Alt+Delete             |
+| Pisahkan sel       | F5 → S       | F5 → S                 |
+| Gabungkan sel      | F5 → M       | F5 → M                 |
+| Jumlah blok        | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Rata-rata blok     | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Produk blok        | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Pisahkan tabel     | ⌃N, A        | Ctrl+N, A              |
+| Gabungkan tabel    | ⌃N, Z        | Ctrl+N, Z              |
+| Rumus perhitungan  | ⌃N, F        | Ctrl+N, F              |
+
+### Perhitungan tabel
+
+Hanya berlaku saat kursor berada di sel tabel yang kosong. Ada tombol terpisah untuk menghitung dari sel di kiri dan dari sel di atas.
+
+| Tindakan       | macOS | Windows / Linux |
+| -------------- | ----- | --------------- |
+| Jumlah kiri    | ⇧⌘H   | Ctrl+Shift+H    |
+| Jumlah atas    | ⌃⇧V   | Ctrl+Shift+V    |
+| Rata-rata kiri | ⌃⇧J   | Ctrl+Shift+J    |
+| Rata-rata atas | ⌃⇧B   | Ctrl+Shift+B    |
+| Produk kiri    | ⌃⇧K   | Ctrl+Shift+K    |
+| Produk atas    | ⌃⇧N   | Ctrl+Shift+N    |
+
+### Halaman
+
+| Tindakan                 | macOS | Windows / Linux  |
+| ------------------------ | ----- | ---------------- |
+| Pengaturan halaman       | F7    | F7               |
+| Pemisah halaman          | ⌃⏎    | Ctrl+Enter       |
+| Pemisah kolom            | ⌃⇧⏎   | Ctrl+Shift+Enter |
+| Pemisah pengaturan kolom | ⌃⌥⏎   | Ctrl+Alt+Enter   |
+| Pengaturan bagian        | ⌃N, G | Ctrl+N, G        |
+| Sembunyikan halaman      | ⌃N, S | Ctrl+N, S        |
+
+### Tampilan
+
+| Tindakan                                  | macOS | Windows / Linux |
+| ----------------------------------------- | ----- | --------------- |
+| Perbesar                                  | ⌃=    | Ctrl+=          |
+| Perkecil                                  | ⌃-    | Ctrl+-          |
+| Sesuaikan ke halaman                      | ⌃G, P | Ctrl+G, P       |
+| Sesuaikan ke lebar                        | ⌃G, W | Ctrl+G, W       |
+| Perbesar ke 100%                          | ⌃G, Q | Ctrl+G, Q       |
+| Rangkai atau bentangkan kotak alat        | ⌃F1   | Ctrl+F1         |
+| Tampilkan atau sembunyikan tanda paragraf | ⌃G, T | Ctrl+G, T       |
+| Tampilkan atau sembunyikan tanda kontrol  | ⌃G, C | Ctrl+G, C       |
+| Ke tab Beranda (di luar tabel)            | ⇧⌘H   | Ctrl+Shift+H    |
+
+Tombol yang ditulis `Ctrl+N,T` berarti tekan Ctrl+N, lepaskan, lalu tekan T. `F5 → S` berarti pilih blok sel dengan F5 lalu tekan S. `Ctrl+1 … Ctrl+0` adalah gaya pertama hingga kesepuluh dokumen; `Ctrl+Alt+1 … Ctrl+Alt+0` menerapkan gaya yang sama. Saat blok sel dipilih, `Ctrl+Shift+S` (di macOS `⇧⌘S`) adalah jumlah blok; di luar itu tombol ini menyimpan sebagai.

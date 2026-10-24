@@ -604,8 +604,8 @@ export function setUpdateCheckInvoker(invoke: (() => void) | null): void {
   updateCheckInvoker = invoke
 }
 
-/** Help > Check for Updates…: user-triggered update check (sits right above
- * About, like Word). The shell-injected check owns all feedback: the update
+/** Check for Updates…: user-triggered update check (the ☰ popup on Windows and
+ * Linux, right above About in Help on macOS). The shell-injected check owns all feedback: the update
  * window when newer exists, "you're up to date (version x)" otherwise. */
 export function checkUpdatesMenuItem(labels: AppMenuLabels): MenuItemConstructorOptions {
   return {
@@ -639,11 +639,30 @@ export function aboutMenuItem(labels: AppMenuLabels): MenuItemConstructorOptions
   }
 }
 
-/** Help menu with Check for Updates… + About; extra app-specific items go
- * before the separator. */
+/** Check for Updates… inside Help on macOS only, where the menu bar is the
+ * app's menu. Windows and Linux open the menus from the tab bar's ☰ button,
+ * which shows the check as an item of its own (appMenuPopupTemplate). */
+export function helpCheckUpdatesItems(
+  labels: AppMenuLabels,
+  platform: NodeJS.Platform = process.platform,
+): MenuItemConstructorOptions[] {
+  return platform === 'darwin' ? [checkUpdatesMenuItem(labels)] : []
+}
+
+/** The tab bar's ☰ popup: the window's menus, then Check for Updates… on its own. */
+export function appMenuPopupTemplate(
+  menus: MenuItemConstructorOptions[],
+  labels: AppMenuLabels,
+): MenuItemConstructorOptions[] {
+  return [...menus, { type: 'separator' }, checkUpdatesMenuItem(labels)]
+}
+
+/** Help menu with Check for Updates… (macOS) + About; extra app-specific items
+ * go before the separator. */
 export function helpMenuTemplate(
   labels: AppMenuLabels,
   extraItems: MenuItemConstructorOptions[] = [],
+  platform: NodeJS.Platform = process.platform,
 ): MenuItemConstructorOptions {
   return {
     role: 'help',
@@ -651,7 +670,7 @@ export function helpMenuTemplate(
     submenu: [
       ...extraItems,
       ...(extraItems.length > 0 ? [{ type: 'separator' } as const] : []),
-      checkUpdatesMenuItem(labels),
+      ...helpCheckUpdatesItems(labels, platform),
       aboutMenuItem(labels),
     ],
   }

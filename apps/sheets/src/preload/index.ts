@@ -1,6 +1,7 @@
 import type { AiPanelPrefs } from '@genoffice/ui'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
+import { outboundBridge } from '@genoffice/electron-utils/outbound-bridge'
 import { userSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
 import { USER_SKILLS_BRIDGE_KEY } from '@genoffice/electron-utils/user-skills-channels'
 import { docAttachBridge } from '@genoffice/electron-utils/doc-attach-bridge'
@@ -18,7 +19,6 @@ import type {
   AttachmentReadResult,
   DesktopApi,
   McpCommandMessage,
-  RecoveryPromptPayload,
   ScreenCaptureResult,
   ScreenSourcesResult,
   AutoSaveDefault,
@@ -549,30 +549,32 @@ const desktopApi: DesktopApi = {
   reportCloseSaveResult(ok) {
     ipcRenderer.send(IPC_CHANNELS.closeSaveResult, ok === true)
   },
-  onRecoveryPrompt(callback) {
-    const listener = (_event: unknown, payload: unknown): void => {
-      if (
-        isRecord(payload) &&
-        typeof payload.title === 'string' &&
-        typeof payload.body === 'string' &&
-        typeof payload.restoreLabel === 'string' &&
-        typeof payload.discardLabel === 'string' &&
-        typeof payload.fileName === 'string' &&
-        typeof payload.savedAtMs === 'number' &&
-        Number.isFinite(payload.savedAtMs)
-      ) {
-        callback(payload as unknown as RecoveryPromptPayload)
-      }
+  onRecoveryNotice(callback) {
+    const listener = (_event: unknown, text: unknown): void => {
+      if (typeof text === 'string' && text.length > 0) callback(text)
     }
-    ipcRenderer.on(IPC_CHANNELS.recoveryPrompt, listener)
-    return () => ipcRenderer.removeListener(IPC_CHANNELS.recoveryPrompt, listener)
+    ipcRenderer.on(IPC_CHANNELS.recoveryNotice, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.recoveryNotice, listener)
   },
-  replyRecoveryPrompt(restore) {
-    ipcRenderer.send(IPC_CHANNELS.recoveryPromptReply, restore === true)
+  onRecoveryWriteNow(callback) {
+    const listener = (_event: unknown, nonce: unknown): void => {
+      if (typeof nonce !== 'string') return
+      const done = (): void => ipcRenderer.send(IPC_CHANNELS.recoveryWriteNowDone, nonce)
+      void callback().then(done, done)
+    }
+    ipcRenderer.on(IPC_CHANNELS.recoveryWriteNow, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.recoveryWriteNow, listener)
   },
   async getUserDisplayName() {
     const result: unknown = await ipcRenderer.invoke(IPC_CHANNELS.userDisplayName)
     return typeof result === 'string' ? result : ''
+  },
+  onUserDisplayNameChanged(handler) {
+    const listener = (_event: Electron.IpcRendererEvent, name: unknown) => {
+      if (typeof name === 'string') handler(name)
+    }
+    ipcRenderer.on('app:author-name-changed', listener)
+    return () => ipcRenderer.removeListener('app:author-name-changed', listener)
   },
   async getAiSettings() {
     const result: unknown = await ipcRenderer.invoke(IPC_CHANNELS.aiGetSettings)
@@ -822,6 +824,7 @@ function parseAttachmentAddResult(input: unknown): AttachmentAddResult {
 contextBridge.exposeInMainWorld('desktopApi', desktopApi)
 // Google Drive for this editor's AI: search and read only (decision 0033)
 contextBridge.exposeInMainWorld('aiOfficeDriveAi', driveAiBridge())
+contextBridge.exposeInMainWorld('aiOfficeOutbound', outboundBridge())
 // the person's skills: the AI panel's `/` list and skill reads, skill cards (shell main checks each)
 contextBridge.exposeInMainWorld(USER_SKILLS_BRIDGE_KEY, userSkillsBridge())
 // The shell's document picker, for this editor's AI attach button
@@ -2773,6 +2776,7 @@ function isPageSetupState(input: unknown): boolean {
     'showGridlines',
     'showFormulas',
     'showHeadings',
+    'rightToLeft',
     'fitToPage',
   ]) {
     if (input[key] !== undefined && typeof input[key] !== 'boolean') return false

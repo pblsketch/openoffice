@@ -1,6 +1,7 @@
 import type { AiPanelPrefs } from '@genoffice/ui'
 import { contextBridge, ipcRenderer } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
+import { outboundBridge } from '@genoffice/electron-utils/outbound-bridge'
 import { userSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
 import { USER_SKILLS_BRIDGE_KEY } from '@genoffice/electron-utils/user-skills-channels'
 import type { Lang } from '@genoffice/i18n'
@@ -12,6 +13,7 @@ import { AI_CHANNELS, PDF_CHANNELS } from '../shared/ipc'
 import type {
   PdfApi,
   PdfNoteResult,
+  PdfRecoveryCopyResult,
   PdfStoreApi,
   PdfStructureApi,
   PdfStructureFailure,
@@ -21,6 +23,7 @@ import type {
 import type { SubscriptionApi } from '../shared/subscription-api'
 import {
   AI_TOOL_CAPABILITIES_CHANNEL,
+  SUBSCRIPTION_CONNECT_HELP_CHANNEL,
   SUBSCRIPTION_INSTALL_HELP_CHANNEL,
   imageGenerationAvailableOf,
   subscriptionLaunchResultOf,
@@ -69,6 +72,9 @@ const subscription: SubscriptionApi = {
   },
   openInstallHelp: async (provider) => {
     await ipcRenderer.invoke(SUBSCRIPTION_INSTALL_HELP_CHANNEL, provider)
+  },
+  openConnectHelp: async (path) => {
+    await ipcRenderer.invoke(SUBSCRIPTION_CONNECT_HELP_CHANNEL, path)
   },
 }
 
@@ -254,6 +260,34 @@ const api: PdfApi = {
     ipcRenderer.on(PDF_CHANNELS.fileRenamed, listener)
     return () => ipcRenderer.removeListener(PDF_CHANNELS.fileRenamed, listener)
   },
+  // crash recovery; the standalone app may lack the store: a failed call is "nothing"
+  recoveryState: (path) =>
+    (ipcRenderer.invoke(PDF_CHANNELS.recoveryState, path) as Promise<{ unsaved: boolean }>).catch(
+      () => ({ unsaved: false }),
+    ),
+  writeRecoveryCopy: (request) =>
+    (
+      ipcRenderer.invoke(PDF_CHANNELS.recoveryWriteCopy, request) as Promise<PdfRecoveryCopyResult>
+    ).catch((): PdfRecoveryCopyResult => 'failed'),
+  reportUnprotectable: (unprotectable) =>
+    (
+      ipcRenderer.invoke(PDF_CHANNELS.recoveryUnprotectable, unprotectable) as Promise<
+        string | null
+      >
+    ).catch(() => null),
+  onRecoveryFlushRequest: (handler) => {
+    const listener = () => handler()
+    ipcRenderer.on(PDF_CHANNELS.recoveryFlushRequest, listener)
+    return () => ipcRenderer.removeListener(PDF_CHANNELS.recoveryFlushRequest, listener)
+  },
+  sendRecoveryFlushDone: () => ipcRenderer.send(PDF_CHANNELS.recoveryFlushDone),
+  onRecoveryDropped: (handler) => {
+    const listener = (_e: Electron.IpcRendererEvent, dropped: boolean) => handler(dropped === true)
+    ipcRenderer.on(PDF_CHANNELS.recoveryDropped, listener)
+    return () => ipcRenderer.removeListener(PDF_CHANNELS.recoveryDropped, listener)
+  },
+  resumeRecoveryCopies: () =>
+    (ipcRenderer.invoke(PDF_CHANNELS.recoveryResume) as Promise<void>).catch(() => undefined),
   getLanguage: () => ipcRenderer.invoke(PDF_CHANNELS.getLanguage),
   onLanguageChanged: (handler) => {
     const listener = (_e: Electron.IpcRendererEvent, lang: Lang) => handler(lang)
@@ -317,6 +351,7 @@ contextBridge.exposeInMainWorld('pdfApi', api)
 contextBridge.exposeInMainWorld('aiOfficeSplit', splitPaneBridge(ipcRenderer))
 // Google Drive for this editor's AI: search and read only (decision 0033)
 contextBridge.exposeInMainWorld('aiOfficeDriveAi', driveAiBridge())
+contextBridge.exposeInMainWorld('aiOfficeOutbound', outboundBridge())
 // the person's skills: the AI panel's `/` list and skill reads, skill cards (shell main checks each)
 contextBridge.exposeInMainWorld(USER_SKILLS_BRIDGE_KEY, userSkillsBridge())
 contextBridge.exposeInMainWorld('projectApi', projectApi)

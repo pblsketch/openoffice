@@ -75,6 +75,29 @@ describe('tables', () => {
     expect(textOf(at(0, 2)!.paragraphs.flat())).toBe('Price')
   })
 
+  it('keeps where each IR cell and its paragraphs sit', async () => {
+    const { tree } = await extractDocumentTree(await buildTablePdf(), {
+      pdfium: await loadPdfium(),
+    })
+    const table = tree.blocks.find((b) => b.kind === 'table')
+    if (table?.kind !== 'table') throw new Error('no table')
+    const at = (row: number, col: number) =>
+      table.table.cells.find((c) => c.row === row && c.col === col)!
+    const near = (r: { x0: number; y0: number; x1: number; y1: number }, want: number[]) =>
+      [r.x0, r.y0, r.x1, r.y1].forEach((v, i) => expect(v).toBeCloseTo(want[i]!, 0))
+    // the grid rules: columns 72 | 200 | 328 | 456, rows 700 | 660 | 620
+    expect(at(0, 0).region?.page).toBe(1)
+    near(at(0, 0).region!.box, [72, 660, 200, 700])
+    // a merged cell spans its whole extent
+    near(at(1, 1).region!.box, [200, 620, 456, 660])
+    for (const c of table.table.cells) {
+      expect(c.paragraphBoxes).toHaveLength(c.paragraphs.length)
+      const box = c.paragraphBoxes![0]!
+      expect(box.x0).toBeGreaterThanOrEqual(c.region!.box.x0)
+      expect(box.y1).toBeLessThanOrEqual(c.region!.box.y1)
+    }
+  })
+
   it('builds the same shape from HTML-style row/col spans', () => {
     const t = (s: string) => [[{ kind: 'text' as const, text: s }]]
     const table = tableFromSpans([
@@ -96,5 +119,7 @@ describe('tables', () => {
       [2, 1, 1, 2],
     ])
     expect(table.cells[0]!.header).toBe(true)
+    // AI tables have no measured place
+    expect(table.cells[0]!.region).toBeUndefined()
   })
 })

@@ -409,6 +409,8 @@ describe('document overview', () => {
     const calls = Number(q(el, '[data-calls]')!.getAttribute('data-calls'))
     expect(calls).toBeGreaterThan(2)
     expect(q(el, '[data-route="ready"]')?.getAttribute('data-provider')).toBe('claude-code')
+    expect(q(el, '[data-model-picker] .ai-model-picker-label')?.textContent).toBe('Model')
+    expect(q(el, '[data-model-picker] .ai-model-chip')).not.toBeNull()
     expect(el.textContent).toContain('The text of the whole document is sent.')
     expect(q(el, '[data-paid]')).toBeNull()
     await settle()
@@ -417,6 +419,9 @@ describe('document overview', () => {
     await until(() => bridge.starts.length > 0, 'the first batch')
     expect(bridge.starts).toHaveLength(1)
     expect(session.list()[0]?.kind).toBe('summary')
+    expect(q(el, '[data-job-kind="summary"] .pdf-job-strip-detail')?.textContent).toBe(
+      'AI used: Claude',
+    )
     // stop: never resumed, nothing stored
     await act(async () => session.stop(DOC))
     await until(() => !!q(el, '.ai-overview-error'), 'the stopped line')

@@ -1,0 +1,188 @@
+name: Windows build
+
+# Builds the Windows installer (x64 NSIS, latest.yml) on a GitHub-hosted
+# Windows runner from the public source, and records where it came from as a
+# build provenance attestation that anyone can check with
+# `gh attestation verify <file> --repo pblsketch/openoffice` (decision 0056).
+# The installer stays unsigned, as the hand build is: a signed release would
+# lock every later update to that signer (docs/releasing.ko.md, 4).
+# No repository secret is involved.
+#
+# Run from the Actions tab on main. With a release tag (v0.12.4), the build
+# is also attached to that existing GitHub release, but only from main and
+# only when the built version is the tag's; without one it stays an artifact.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing release to attach the Windows files to (e.g. v0.12.4); empty = artifact only'
+        required: false
+        default: ''
+  # a change to the Windows packaging is proved on a real Windows runner before it merges
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/windows-build.yml
+      - apps/shell/electron-builder.cjs
+      - apps/shell/build/**
+
+concurrency:
+  group: windows-build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2025
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      # the provenance attestation: an OIDC token and the right to store it
+      id-token: write
+      attestations: write
+    env:
+      # never pick up a certificate from the runner: the release is unsigned
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable branch, 2026-07
+        with:
+          toolchain: stable
+
+      - name: Cache cargo (xlsx-sidecar)
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          workspaces: apps/sheets/native/xlsx-engine
+
+      - name: Cache electron binaries
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: electron-win-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: electron-win-${{ runner.arch }}-
+
+      - name: Install dependencies
+        run: npm ci
+
+      # build:all builds the sheets module, which builds the xlsx sidecar for
+      # this host (target/release/xlsx-sidecar.exe)
+      - name: Build apps
+        run: npm run build:all
+
+      # the Windows config reads the sidecar from the x86_64-pc-windows-gnu
+      # folder (docs/releasing.ko.md, 4-(2)); the hand build copies it the same way
+      - name: Place the xlsx sidecar
+        run: |
+          set -euo pipefail
+          engine=apps/sheets/native/xlsx-engine/target
+          mkdir -p "$engine/x86_64-pc-windows-gnu/release"
+          cp "$engine/release/xlsx-sidecar.exe" "$engine/x86_64-pc-windows-gnu/release/"
+
+      - name: Package
+        run: npm run dist:win -w @genoffice/shell -- --publish never
+
+      - name: Check the installer, its feed and the bundled programs
+        run: |
+          set -euo pipefail
+          dir="apps/shell/release/win-unpacked"
+          for bin in \
+            "$dir/IeumOffice.exe" \
+            "$dir/resources/native/xlsx-sidecar.exe" \
+            "$dir/resources/ocr/win-ocr.exe" \
+            "$dir/resources/cli/genoffice.cjs" \
+            "$dir/resources/cli/ieumoffice.cmd"; do
+            test -f "$bin" || { echo "missing: $bin"; exit 1; }
+          done
+          version=$(node -p "require('./apps/shell/package.json').version")
+          installer="apps/shell/release/IeumOffice-Setup-$version.exe"
+          feed="apps/shell/release/latest.yml"
+          test -f "$installer" || { echo "missing: $installer"; exit 1; }
+          test -f "$feed" || { echo "missing: $feed"; exit 1; }
+          built=$(sed -n 's/^version: *//p' "$feed" | tr -d "'\"")
+          [ "$built" = "$version" ] || { echo "latest.yml says $built, package.json $version"; exit 1; }
+          grep -q "^path: IeumOffice-Setup-$version.exe$" "$feed" || { echo "latest.yml path does not name the installer"; exit 1; }
+          # an accidentally signed release would lock later updates to that signer
+          status=$(powershell -NoProfile -Command "(Get-AuthenticodeSignature '$installer').Status")
+          [ "$(echo "$status" | tr -d '\r')" = "NotSigned" ] || { echo "the installer is signed ($status)"; exit 1; }
+
+      # The packaged app itself, run without a window: a Markdown and a CSV file
+      # (the latter through the xlsx sidecar) are exported to PDF
+      - name: Smoke test the packaged app
+        run: |
+          set -euo pipefail
+          exe="apps/shell/release/win-unpacked/IeumOffice.exe"
+          work="$RUNNER_TEMP/smoke"
+          mkdir -p "$work"
+          printf '# Smoke test\n\nHello from the Windows build.\n' > "$work/note.md"
+          printf 'name,count\napple,3\npear,5\n' > "$work/table.csv"
+          for input in note.md table.csv; do
+            "$exe" --headless-export "$work/$input" --to pdf --out "$work/$input.pdf" --json
+            test -s "$work/$input.pdf"
+          done
+
+      - name: List the release files
+        run: ls -la apps/shell/release
+
+      # where the installer came from: this repository, this commit, this workflow
+      - name: Attest the build provenance
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            apps/shell/release/IeumOffice-Setup-*.exe
+            apps/shell/release/latest.yml
+
+      - name: Upload the release files
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ieumoffice-windows-x64
+          path: |
+            apps/shell/release/IeumOffice-Setup-*.exe
+            apps/shell/release/IeumOffice-Setup-*.exe.blockmap
+            apps/shell/release/latest.yml
+          if-no-files-found: error
+          retention-days: 14
+
+  attach:
+    # the one job that writes: it adds the build to a release the maintainer
+    # already published, and only for a run started by hand on main
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.release_tag != '' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: write
+    env:
+      TAG: ${{ inputs.release_tag }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Attach to the release
+        run: |
+          set -euo pipefail
+          gh run download "$GITHUB_RUN_ID" --name ieumoffice-windows-x64 --dir windows
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "not a version tag: $TAG"; exit 1; }
+          gh release view "$TAG" >/dev/null || { echo "no release $TAG: publish it first"; exit 1; }
+          built=$(sed -n 's/^version: *//p' windows/latest.yml | tr -d "'\"")
+          [ "v$built" = "$TAG" ] || { echo "built $built, but the release is $TAG"; exit 1; }
+          gh release upload "$TAG" windows/IeumOffice-Setup-*.exe windows/IeumOffice-Setup-*.exe.blockmap windows/latest.yml --clobber
+          gh release view "$TAG" --json assets --jq '.assets[].name'

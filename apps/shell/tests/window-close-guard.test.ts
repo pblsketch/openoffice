@@ -234,6 +234,33 @@ describe('a dirty mind map tab', () => {
   })
 })
 
+describe('quit veto (crash recovery: the app-ending latch comes back down)', () => {
+  it('a cancelled prompt resets the shutdown latches and tells the shell', async () => {
+    requestHwpClose.mockResolvedValueOnce(false)
+    const onVetoed = vi.fn()
+    const win = new FakeWindow()
+    const manager = fakeManager({ hwp: [{ id: 'h-1', webContents: { id: 4 } }] })
+    install(win as never, manager as never, { onVetoed })
+    expect(win.requestClose()).toBe(true)
+    await flush()
+    expect(resetSheetsShuttingDown).toHaveBeenCalledTimes(1)
+    expect(onVetoed).toHaveBeenCalledTimes(1)
+    expect(win.destroyed).toBe(false)
+  })
+
+  it('a confirmed close leaves the latches up', async () => {
+    const onVetoed = vi.fn()
+    const win = new FakeWindow()
+    const manager = fakeManager({ hwp: [{ id: 'h-1', webContents: { id: 4 } }] })
+    install(win as never, manager as never, { onVetoed })
+    win.requestClose()
+    await flush()
+    expect(win.destroyed).toBe(true)
+    expect(resetSheetsShuttingDown).not.toHaveBeenCalled()
+    expect(onVetoed).not.toHaveBeenCalled()
+  })
+})
+
 describe('in-flight debounce', () => {
   it('a second close while the prompt is open is cancelled and never re-prompts', async () => {
     let answer: (value: boolean) => void = () => {}

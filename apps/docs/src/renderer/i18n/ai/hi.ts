@@ -68,6 +68,8 @@ export const hi = {
   aiEmptyTitle: 'AI को लिखने और संपादित करने में आपकी मदद करने दें',
   aiEmptyBody1: 'निर्देश दें या सीधे प्रश्न पूछें;',
   aiEmptyBody2: 'टेक्स्ट चुने होने पर, पुनर्लेखन निर्देश चयन पर लागू होते हैं।',
+  aiNoHidingNote:
+    'इस संपादक में दस्तावेज़ के हिस्से AI से छिपाए नहीं जा सकते: अनुरोध में शामिल सामग्री जैसी है वैसी भेजी जाती है।',
   aiStarterWeeklyReport: 'मेरे लिए प्रोजेक्ट की साप्ताहिक रिपोर्ट लिखें',
   aiStarterLaunchPost: 'उत्पाद लॉन्च की घोषणा लिखें',
   aiStarterEventOutline: 'कार्यक्रम योजना की रूपरेखा बनाएँ',
@@ -179,4 +181,17 @@ export const hi = {
   aiCmdImages: '{count} चित्र अपडेट किए गए',
   aiCmdToc: 'विषय-सूची सम्मिलित की गई ({count} प्रविष्टियाँ)',
   aiCmdSkipped: ' ({count} सुरक्षित ब्लॉक छोड़े गए)',
+  aiStarterMindMap: 'इस दस्तावेज़ का माइंड मैप बनाएँ',
+  aiMindMapBtn: 'AI माइंड मैप',
+  aiMindMapPrompt:
+    'इस दस्तावेज़ का माइंड मैप बनाएँ और मुख्य विषयों तथा प्रमुख अवधारणाओं को अनुभाग संरचना के अनुसार व्यवस्थित करें',
+  aiSumMindMap: 'माइंड मैप बनाएँ',
+  aiMindMapTitle: 'माइंड मैप',
+  aiMindMapNodes: '{count} नोड',
+  aiMindMapAskPrompt: 'इस दस्तावेज़ में «{label}» के बारे में बताएँ',
+  aiMindMapJump: 'उद्धृत अनुच्छेद पर जाएँ',
+  aiMindMapExport: 'PNG निर्यात करें',
+  aiMindMapReset: 'दृश्य रीसेट करें',
+  aiMindMapExpand: 'शाखा खोलें',
+  aiMindMapCollapse: 'शाखा समेटें',
 } satisfies Record<keyof typeof zh, string>

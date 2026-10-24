@@ -37,16 +37,39 @@ export interface TextObjectInfo {
   vertical: boolean
 }
 
+/** a char drawn inside a form XObject: the writeback cannot remove it */
+export interface FormChar {
+  /** display-space origin */
+  at: [number, number]
+  /** points */
+  size: number
+}
+
 export interface PageTextObjects {
   objects: TextObjectInfo[]
-  /** display-space origins of chars drawn inside form XObjects */
-  formChars: [number, number][]
+  formChars: FormChar[]
 }
+
+/** PDFium's code for a line-end hyphen it recognized (pdf2docx lines.ts) */
+const HYPHEN_MARKER = 0x02
 
 /** tolerated turn of a "horizontal" char, radians */
 const MAX_UPRIGHT_ANGLE = 0.15
 
 const normalizeAngle = (a: number): number => a - 2 * Math.PI * Math.round(a / (2 * Math.PI))
+
+/**
+ * Vertical scale of a char's matrix: FPDFText_GetFontSize reports the
+ * nominal `Tf` size, and the text and graphics matrices scale it into page
+ * space (`1 Tf` under a 12× text matrix is 12pt; browsers print 16 × 0.75).
+ * pdf2docx measures sizes the same way.
+ */
+function charScale(m: WritebackPdfium, textPage: number, index: number, mx: number): number {
+  if (!m._FPDFText_GetMatrix(textPage, index, mx)) return 1
+  const base = mx >> 2
+  const s = Math.hypot(m.HEAPF32[base + 2]!, m.HEAPF32[base + 3]!)
+  return s > 0 ? s : 1
+}
 
 /** text objects of a page with their text, geometry and paint */
 export function readTextObjects(
@@ -68,21 +91,28 @@ export function readTextObjects(
     turned: number
   }
   const acc = new Map<number, Acc>()
-  const formChars: [number, number][] = []
+  const formChars: FormChar[] = []
   const textPage = m._FPDFText_LoadPage(page)
   if (textPage) {
     try {
       const n = m._FPDFText_CountChars(textPage)
-      withAlloc(m, 16, (p) => {
+      // two doubles (char origin), then six floats (char matrix)
+      withAlloc(m, 40, (p) => {
+        const mx = p + 16
         for (let i = 0; i < n; i++) {
           const obj = m._FPDFText_GetTextObject(textPage, i)
           if (!obj) continue
           const cp = m._FPDFText_GetUnicode(textPage, i)
+          // a recognized line-end hyphen is still ink on the page
+          const ink = cp > 0x20 || cp === HYPHEN_MARKER
           m._FPDFText_GetCharOrigin(textPage, i, p, p + 8)
           const origin = frame.toDisplay(m.HEAPF64[p >> 3]!, m.HEAPF64[(p >> 3) + 1]!)
           const index = indexOf.get(obj)
           if (index === undefined) {
-            if (cp > 0x20) formChars.push(origin)
+            if (ink) {
+              const size = m._FPDFText_GetFontSize(textPage, i) * charScale(m, textPage, i, mx)
+              formChars.push({ at: origin, size })
+            }
             continue
           }
           let a = acc.get(index)
@@ -90,9 +120,9 @@ export function readTextObjects(
             a = { handle: obj, chars: [], sizes: [], origins: [], turned: 0 }
             acc.set(index, a)
           }
-          a.chars.push(String.fromCodePoint(cp))
-          if (cp > 0x20) {
-            a.sizes.push(m._FPDFText_GetFontSize(textPage, i))
+          a.chars.push(cp === HYPHEN_MARKER ? '-' : String.fromCodePoint(cp))
+          if (ink) {
+            a.sizes.push(m._FPDFText_GetFontSize(textPage, i) * charScale(m, textPage, i, mx))
             a.origins.push(origin)
             const angle = normalizeAngle(m._FPDFText_GetCharAngle(textPage, i) + frame.angleDelta)
             if (Math.abs(angle) > MAX_UPRIGHT_ANGLE) a.turned++
@@ -126,6 +156,19 @@ export function readTextObjects(
   }
   objects.sort((a, b) => a.index - b.index)
   return { objects, formChars }
+}
+
+/** display-space bounds of the page's top-level objects other than text (paths, images, forms) */
+export function readShapeBounds(m: WritebackPdfium, page: number, frame: PageFrame): Rect[] {
+  const out: Rect[] = []
+  const count = m._FPDFPage_CountObjects(page)
+  for (let i = 0; i < count; i++) {
+    const obj = m._FPDFPage_GetObject(page, i)
+    if (!obj || m._FPDFPageObj_GetType(obj) === FPDF_PAGEOBJ_TEXT) continue
+    const b = objectBounds(m, obj)
+    if (b) out.push(frame.rectToDisplay(b))
+  }
+  return out
 }
 
 export function medianOf(values: readonly number[]): number {
@@ -228,6 +271,40 @@ export function assignObjects(
   return out
 }
 
+const HYPHEN_ONLY = /^[-\u00ad\u2010-\u2013]+$/u
+
+/**
+ * A line-end hyphen drawn as its own object sits just past its paragraph's
+ * box (the analysis leaves it out of the line). Give each such object to
+ * the block whose box ends within an em to its left on that line, and
+ * return the objects given, which lie outside their owner's box by design.
+ */
+export function adoptHyphens(
+  objects: readonly TextObjectInfo[],
+  owners: readonly Owner[],
+  owned: Map<string, TextObjectInfo[]>,
+): Set<TextObjectInfo> {
+  const taken = new Set([...owned.values()].flat())
+  const adopted = new Set<TextObjectInfo>()
+  for (const o of objects) {
+    if (taken.has(o) || !HYPHEN_ONLY.test(normText(o.text))) continue
+    const [, cy] = center(o.bounds)
+    let best: Owner | null = null
+    let bestGap = Infinity
+    for (const w of owners) {
+      if (cy < w.box.y0 - 1 || cy > w.box.y1 + 1) continue
+      const gap = o.bounds.x0 - w.box.x1
+      if (gap < -1 || gap > o.size || gap >= bestGap) continue
+      best = w
+      bestGap = gap
+    }
+    if (!best) continue
+    owned.set(best.id, [...(owned.get(best.id) ?? []), o])
+    adopted.add(o)
+  }
+  return adopted
+}
+
 /** objects in reading order: top to bottom, then left to right */
 export function readingOrder(objects: readonly TextObjectInfo[]): TextObjectInfo[] {
   return [...objects].sort((a, b) => {
@@ -240,11 +317,78 @@ export function readingOrder(objects: readonly TextObjectInfo[]): TextObjectInfo
 export interface CellText {
   key: string
   text: string
+  /**
+   * the paragraph's share of its cell (the whole cell for a one-paragraph
+   * cell), from the cell boxes the PDF analysis found; absent for AI tables
+   */
+  area?: Rect
 }
 
 export interface CellPlacement {
   objects: TextObjectInfo[]
   box: Rect
+  /** the paragraph's whole area, for text that needs more room than `box` */
+  area?: Rect
+}
+
+/** inset of the translation from the cell rules, points */
+const CELL_PAD_X = 2
+const CELL_PAD_Y = 1
+/** how far a text object may poke past its cell's rule into a neighbor, points */
+const CELL_REACH = 1.5
+
+const inset = (r: Rect): Rect => ({
+  x0: r.x0 + CELL_PAD_X,
+  y0: r.y0 + CELL_PAD_Y,
+  x1: Math.max(r.x0 + CELL_PAD_X, r.x1 - CELL_PAD_X),
+  y1: Math.max(r.y0 + CELL_PAD_Y, r.y1 - CELL_PAD_Y),
+})
+
+/**
+ * Split a table's objects among its cell paragraphs by place: an object
+ * belongs to the area holding most of it. An object reaching more than
+ * CELL_REACH into another area (a whole row drawn as one string) belongs
+ * to none, and the paragraphs it
+ * touches are not written ('shared'): removing it would take a neighbor's
+ * text. A paragraph starts at its source top (`box`); its whole `area` is
+ * the room it may take when that is not enough.
+ */
+export function placeCellsByArea(
+  objects: readonly TextObjectInfo[],
+  cells: readonly (CellText & { area: Rect })[],
+): Map<string, CellPlacement | 'shared'> {
+  const got = new Map<string, TextObjectInfo[]>()
+  const straddling: Rect[] = []
+  const overlap = (r: Rect, a: Rect) =>
+    Math.max(0, Math.min(r.x1, a.x1) - Math.max(r.x0, a.x0)) *
+    Math.max(0, Math.min(r.y1, a.y1) - Math.max(r.y0, a.y0))
+  for (const o of objects) {
+    if (!normText(o.text)) continue
+    const reached = cells.filter((c) => overlap(o.bounds, expand(c.area, -CELL_REACH)) > 0)
+    const home = cells.reduce<(typeof cells)[number] | null>(
+      (best, c) => (!best || overlap(o.bounds, c.area) > overlap(o.bounds, best.area) ? c : best),
+      null,
+    )
+    if (home && reached.every((c) => c.area === home.area)) {
+      got.set(home.key, [...(got.get(home.key) ?? []), o])
+    } else straddling.push(o.bounds)
+  }
+  const out = new Map<string, CellPlacement | 'shared'>()
+  for (const c of cells) {
+    const touched = straddling.some(
+      (r) => r.x0 < c.area.x1 && r.x1 > c.area.x0 && r.y0 < c.area.y1 && r.y1 > c.area.y0,
+    )
+    if (touched) {
+      out.set(c.key, 'shared')
+      continue
+    }
+    const objs = got.get(c.key)
+    if (!objs?.length) continue
+    const area = inset(c.area)
+    const top = Math.min(area.y1, union(objs.map((o) => o.bounds)).y1)
+    out.set(c.key, { objects: objs, box: { ...area, y1: Math.max(area.y0, top) }, area })
+  }
+  return out
 }
 
 /**

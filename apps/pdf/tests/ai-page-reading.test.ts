@@ -98,6 +98,7 @@ function fakeBridge(initial: { settings: AiSettings; statuses: SubscriptionStatu
   const answered = new Set<string>()
   const listeners = new Set<(chunk: IpcStreamChunk) => void>()
   const statusListeners = new Set<(s: SubscriptionStatusMap) => void>()
+  const settingsListeners = new Set<() => void>()
   const subscription = {
     statuses: vi.fn(async () => state.statuses),
     recheck: vi.fn(async () => state.statuses),
@@ -114,8 +115,13 @@ function fakeBridge(initial: { settings: AiSettings; statuses: SubscriptionStatu
     getAiSettings: vi.fn(async () => state.settings),
     setAiSettings: vi.fn(async (next: AiSettings) => {
       state.settings = next
+      // the main process broadcasts ai:settings-changed to every renderer, this one included
+      for (const listener of [...settingsListeners]) listener()
     }),
-    onAiSettingsChanged: () => () => {},
+    onAiSettingsChanged: (handler: () => void) => {
+      settingsListeners.add(handler)
+      return () => settingsListeners.delete(handler)
+    },
     openAiModelSettings: vi.fn(async () => {}),
     subscription,
     aiStream: vi.fn(async (request: StreamStart) => {
@@ -378,6 +384,9 @@ describe('AI page reading: picker and confirmation', () => {
     }
     expect(q(m.el, '[role="dialog"]')).toBeNull()
     expect(q(m.el, '[data-job-state="running"]')).not.toBeNull()
+    expect(q(m.el, '.pdf-job-strip-detail')?.textContent).toBe(
+      t('arConfirmProvider', { provider: 'Claude' }),
+    )
     await act(async () => bridge.answerAll())
     await until(() => bridge.starts.length === 3, 'the third page')
     await act(async () => bridge.answerAll())
@@ -407,6 +416,38 @@ describe('AI page reading: picker and confirmation', () => {
     )
     expect((q(m.el, '[data-action="start"]') as HTMLButtonElement).disabled).toBe(true)
     await click(m.el, '[data-action="start"]')
+    expect(bridge.api.aiStream).not.toHaveBeenCalled()
+  })
+
+  it('offers the model picker on the confirmation; picking a vision model clears the refusal', async () => {
+    const base = normalizeAiSettings({})
+    const m = await mount({
+      settings: {
+        provider: 'deepseek',
+        providers: {
+          ...base.providers,
+          deepseek: { apiKey: 'k', model: 'deepseek-v4-pro' },
+        },
+      },
+    })
+    await openToConfirm(m)
+    expect(q(m.el, '[data-error="vision"]')?.textContent).toBe(
+      t('arVisionModel', { model: 'deepseek-v4-pro' }),
+    )
+    await until(() => q(m.el, '[data-model-picker] .ai-model-chip') !== null, 'the model chip')
+    expect(q(m.el, '[data-model-picker] .ai-model-picker-label')?.textContent).toBe('Model')
+    await click(m.el, '[data-model-picker] .ai-model-chip')
+    await until(() => q(m.el, '[role="option"]') !== null, 'the model list')
+    const flash = [...m.el.querySelectorAll('[role="option"]')].find((option) =>
+      option.textContent?.includes('deep-seek-v4.1-flash'),
+    ) as HTMLElement | undefined
+    expect(flash).toBeTruthy()
+    await act(async () => flash!.click())
+    await settle()
+
+    expect(bridge.api.setAiSettings).toHaveBeenCalled()
+    expect(q(m.el, '[data-error="vision"]')).toBeNull()
+    expect((q(m.el, '[data-action="start"]') as HTMLButtonElement).disabled).toBe(false)
     expect(bridge.api.aiStream).not.toHaveBeenCalled()
   })
 

@@ -1,0 +1,18 @@
+export const zh = {
+  title: '有未保存内容的文档',
+  intro: '这些文档还留有未保存的内容。请为每个文档选择恢复或丢弃。丢弃的内容无法找回。',
+  restore: '恢复',
+  discard: '丢弃',
+  restoreAll: '全部恢复',
+  discardAll: '全部丢弃',
+  confirm: '确定',
+  later: '稍后决定',
+  laterHint: '关闭此列表不会删除任何内容，之后会再次询问。',
+  untitledFolder: '从未保存过的新文档',
+  lastCopy: '保留于 {time}',
+  changedAfter: '文件在此之后被修改过',
+  changedAfterNote: '可能是其他程序或云同步修改了它。为保留文件当前的内容，默认选择了“丢弃”。',
+  missing: '找不到原文件',
+  missingNote: '恢复后会作为未命名的新文档打开，保存时默认使用原来的位置。',
+  choiceLabel: '{name} 的处理方式',
+}

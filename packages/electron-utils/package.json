@@ -13,10 +13,13 @@
     "./doc-attach-channels": "./src/doc-attach-channels.ts",
     "./drive-ai-bridge": "./src/drive-ai-bridge.ts",
     "./drive-ai-channels": "./src/drive-ai-channels.ts",
+    "./outbound-bridge": "./src/outbound-bridge.ts",
+    "./outbound-channels": "./src/outbound-channels.ts",
     "./generated-images": "./src/generated-images.ts",
     "./font-store": "./src/font-store.ts",
     "./office-encryption": "./src/office-encryption.ts",
     "./headless-export": "./src/headless-export.ts",
+    "./print-job": "./src/print-job.ts",
     "./print-window": "./src/print-window.ts",
     "./remote-image": "./src/remote-image.ts",
     "./renderer-protocol": "./src/renderer-protocol.ts",
@@ -42,6 +45,7 @@
     "vitest": "^4.1.11"
   },
   "dependencies": {
-    "parse5": "^8.0.1"
+    "parse5": "^8.0.1",
+    "undici": "^6.29.0"
   }
 }

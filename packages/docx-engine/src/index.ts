@@ -1,3 +1,5 @@
+// one definition, in the package both carriers and both apps can reach
+export { REDACT_EL, REDACT_NS, REDACT_PREFIX } from '@genoffice/agent-core/redact-range'
 export * from './types'
 export {
   deobfuscateOdttf,
@@ -11,15 +13,54 @@ export { sdtCheckboxGlyphs, sdtCheckboxIsChecked } from './checkbox-control'
 export {
   parseDocx,
   reconcileGridColumns,
+  paraCsFormat,
   styleRunFormat,
   type ParseExtras,
   type ParseOptions,
 } from './parse'
+export {
+  compareOperands,
+  conditionHolds,
+  controlEffect,
+  ifBranch,
+  mergeBlockTree,
+  mergeDataFromRows,
+  mergeFieldName,
+  mergeFieldSwitches,
+  mergeFieldText,
+  mergeRecords,
+  placeholderText,
+  splitInstruction,
+  valueOf,
+  type ControlEffect,
+  type MergeCursorState,
+  type MergeData,
+  type MergeFieldSwitches,
+  type MergeRecord,
+} from './mail-merge'
 export { assertZipInflatesWithinLimits, assertZipWithinLimits, DOCX_ZIP_LIMITS } from './zip-load'
 export { LAZY_MEDIA_SCHEME, isLazyMediaPart, lazyMediaUrl, parseLazyMediaUrl } from './lazy-media'
 export { setAltChunkHtmlConverter, type AltChunkHtmlConverter } from './alt-chunk'
 export { tocLevelOf } from './parse-fields'
 export { mergeStyleBorders } from './parse-props'
+export {
+  APP_PROPERTIES_PATH,
+  APP_PROPERTY_KEYS,
+  CORE_PROPERTIES_PATH,
+  CORE_PROPERTY_KEYS,
+  applyPropertyChanges,
+  emptyDocumentProperties,
+  parseAppPropertiesXml,
+  parseCorePropertiesXml,
+  parseCustomPropertiesXml,
+  parsePropertyChanges,
+  patchAppPropertiesXml,
+  patchCorePropertiesXml,
+  patchCustomPropertiesXml,
+  readDocumentProperties,
+  type DocumentProperties,
+  type PropertyChanges,
+} from './doc-properties'
 export {
   saveDocx,
   findChartWorkbookPath,
@@ -51,6 +92,9 @@ export {
   mergePPrFormat,
   setPPrChange,
   stripPPrChange,
+  stripParaMarkRevision,
+  paraMarkColor,
+  stripParaMarkColor,
   patchFieldParagraphXml,
   patchImageParagraphXml,
   patchMathTokens,
@@ -71,6 +115,10 @@ export {
   type ImagePatch,
   type TextboxParaPatch,
   type TextboxParasPatchSet,
+  inlinePictureDrawingXml,
+  resizeInlinePictureXml,
+  NEW_PICTURE_TOKEN_PREFIX,
+  type InlinePictureXmlOptions,
   type TableGenOptions,
   type TocEntry,
 } from './generate'
@@ -184,3 +232,25 @@ export {
 } from './list-markers'
 
 export { previewFontSettings } from './font-settings'
+export {
+  applyTrackedChangesXml,
+  countTrackedChangesXml,
+  type RevisionXmlFilter,
+  type RevisionXmlMode,
+  type RevisionXmlResult,
+  type RevisionXmlType,
+} from './revision-xml'
+export {
+  resolveParagraphProps,
+  resolveCtxOf,
+  resolveParagraphPropsXml,
+  resolveRunProps,
+  shadowCompare,
+  type EffectivePPr,
+  type EffectiveRPr,
+  type PropSource,
+  type ResolveCompat,
+  type ResolveCtx,
+  type ResolveDiff,
+  type TableCond,
+} from './resolve-props'

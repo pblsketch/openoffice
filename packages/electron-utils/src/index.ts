@@ -18,8 +18,10 @@ export {
 export {
   aboutMenuItem,
   appMenuLabels,
+  appMenuPopupTemplate,
   checkUpdatesMenuItem,
   editMenuTemplate,
+  helpCheckUpdatesItems,
   helpMenuTemplate,
   setUpdateCheckInvoker,
   toggleDevToolsItem,
@@ -40,6 +42,15 @@ export {
   GITHUB_REPO_URL,
   githubReleaseTagUrl,
 } from './github-menu'
+export {
+  AUTHOR_NAME_KEY,
+  AUTHOR_NAME_MAX,
+  configuredAuthorName,
+  readAuthorNameSetting,
+  resolveAuthorName,
+  sanitizeAuthorName,
+  systemAuthorName,
+} from './author-name'
 export {
   saveAsSuggestion,
   showOpenDialogWithMemory,
@@ -66,6 +77,7 @@ export { safeExternalUrl, type SafeExternalUrlOptions } from './safe-external-ur
 export {
   fetchWithSsrfGuard,
   isBlockedAddress,
+  isFakeIpDnsArtifact,
   isSafeRemoteUrl,
   type FetchWithSsrfGuardOptions,
 } from './safe-remote-url'
@@ -136,6 +148,57 @@ export {
   templateFontsDir,
   type TemplateFontsHost,
 } from './template-fonts-dir'
+export {
+  RECOVERY_COPY_MAX_AGE_MS,
+  RECOVERY_EDITOR_KINDS,
+  createRecoveryStore,
+  isAppShuttingDown,
+  isUntitledIdentity,
+  markAppShuttingDown,
+  newUntitledRecoveryId,
+  recoveryFolderName,
+  recoveryRunId,
+  resetAppShuttingDown,
+  resumeDiscardedCopies,
+  type RecoveryCopyFilter,
+  type RecoveryCopyWriter,
+  type RecoveryCopyInfo,
+  type RecoveryCopyState,
+  type RecoveryDeleteReason,
+  type RecoveryEditorKind,
+  type RecoveryFileIdentity,
+  type RecoveryIdentity,
+  type RecoveryLaunchDecision,
+  type RecoveryOpenPlan,
+  type RecoveryStore,
+  type RecoveryStoreOptions,
+  type RecoveryUntitledIdentity,
+  type RecoveryWriteOptions,
+  type RecoveryWriteResult,
+  type RecoveryWriteTicket,
+} from './recovery-store'
+export {
+  promptRecoveryForFile,
+  resolveRecoveryOnOpen,
+  type RecoveryMessageBox,
+  type RecoveryOpenResult,
+  type RecoveryPromptOptions,
+  type ResolveRecoveryOnOpenOptions,
+} from './recovery-prompt'
+export {
+  RECOVERY_PROMPT_STRINGS,
+  recoveryPromptLabels,
+  unprotectableNoticeText,
+  type RecoveryPromptLabels,
+} from './recovery-labels'
+export {
+  recoveryEditor,
+  recoveryEditors,
+  registerRecoveryEditor,
+  type RecoveryEditorContract,
+  type RecoveryOpenFileRequest,
+  type RecoveryOpenUntitledRequest,
+} from './recovery-contract'
 export {
   confirmOverwriteIfConflicted,
   isModifiedSince,

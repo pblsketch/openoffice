@@ -22,6 +22,12 @@ Ogni editor ha le proprie combinazioni di tasti, e solo poche funzionano ovunque
 - **`⌘O`, `⌘S` e `⌘P` sono implementati separatamente dietro ogni editor**, e non si comportano del tutto allo stesso modo. Il `⌘P` di Word impagina prima un’anteprima di stampa, così che un foglio stampato corrisponda esattamente a una pagina a schermo; quello di PDF apre la finestra di stampa PDF; Sheets e Slides hanno di nuovo le proprie.
 - **Il resto vale per singola applicazione.** Quando la scheda di Word è attiva, `⌘B` è il Grassetto di Word. Quando è attiva Slides, `⌘B` è il Grassetto di Slides, e il menu a cui appartiene non è quello a cui sei abituato. Dove una combinazione si attiva solo con qualcosa selezionato, o in un pannello preciso, la colonna Azione lo dice.
 
+## Modalità presentazione
+
+- **Avvio**: F5 in Word, PDF, Mindmap, HTML e Markdown. In un foglio di calcolo, Ctrl+F5 (da A1) o Shift+F5 (dalla cella attiva).
+- **Altre vie**: in Word, Ctrl+F5 e Shift+F5 aprono la vista di lettura senza schermo intero; in PDF partono dalla pagina corrente; in HTML presentano nella scheda.
+- **Uscita**: Esc o F5. F11 è lo schermo intero della finestra e non cambia la vista del documento.
+
 ## Convenzioni
 
 - La colonna macOS usa i simboli familiari: `⌘` Command, `⌥` Option, `⇧` Shift, `⌃` Control.
@@ -588,3 +594,154 @@ Ciascuno di questi richiede che un elemento sia già selezionato; senza selezion
 | Rendi corsivo l’intervallo selezionato          | ⌘I    | Ctrl+I          |
 
 Confermare mantiene quello che hai digitato e riporta l’elemento allo stato selezionato.
+
+## HWP/HWPX
+
+Questi tasti funzionano quando la scheda HWP/HWPX è in primo piano e il documento ha il focus. Le due colonne mostrano come premerli su macOS e su Windows / Linux.
+
+### File
+
+| Azione          | macOS | Windows / Linux      |
+| --------------- | ----- | -------------------- |
+| Nuovo documento |       | Alt+N                |
+| Apri…           | ⌘O    | Ctrl+O / Alt+O       |
+| Salva           | ⌘S    | Ctrl+S / Alt+S       |
+| Salva come…     | ⇧⌘S   | Ctrl+Shift+S / Alt+V |
+| Stampa          | ⌘P    | Ctrl+P / Alt+P       |
+
+### Modifica
+
+| Azione              | macOS       | Windows / Linux              |
+| ------------------- | ----------- | ---------------------------- |
+| Annulla             | ⌃Z          | Ctrl+Z                       |
+| Ripeti              | ⌃⇧Z         | Ctrl+Shift+Z                 |
+| Elimina la riga     | ⌃Y          | Ctrl+Y                       |
+| Taglia              | ⌃X          | Ctrl+X                       |
+| Copia               | ⌃C          | Ctrl+C                       |
+| Incolla             | ⌃V          | Ctrl+V                       |
+| Elimina             | ⌃E          | Ctrl+E                       |
+| Seleziona tutto     | ⌃A          | Ctrl+A                       |
+| Copia formattazione | ⌥C          | Alt+C                        |
+| Trova               | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
+| Trova e sostituisci | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
+| Trova successivo    | ⌃L          | Ctrl+L                       |
+| Trova all’indietro  | ⌃Q, L       | Ctrl+Q, L                    |
+| Vai a               | ⌥G          | Alt+G                        |
+| Confronta documenti | ⌥⇧V         | Alt+Shift+V                  |
+
+### Carattere
+
+| Azione                       | macOS    | Windows / Linux      |
+| ---------------------------- | -------- | -------------------- |
+| Grassetto                    | ⌃B / ⌥⇧B | Ctrl+B / Alt+Shift+B |
+| Corsivo                      | ⌃I / ⌥⇧I | Ctrl+I / Alt+Shift+I |
+| Sottolineato                 | ⌃U / ⌥⇧U | Ctrl+U / Alt+Shift+U |
+| Formato normale              | ⌥⇧C      | Alt+Shift+C          |
+| Apice                        | ⌥⇧P      | Alt+Shift+P          |
+| Pedice                       | ⌥⇧S      | Alt+Shift+S          |
+| Formato carattere…           | ⌥L       | Alt+L                |
+| Aumenta dimensione carattere | ⌥⇧E / ⌃] | Alt+Shift+E / Ctrl+] |
+| Riduci dimensione carattere  | ⌥⇧R / ⌃[ | Alt+Shift+R / Ctrl+[ |
+| Aumenta larghezza caratteri  | ⌥⇧K      | Alt+Shift+K          |
+| Riduci larghezza caratteri   | ⌥⇧J      | Alt+Shift+J          |
+| Aumenta spaziatura caratteri | ⌥⇧W      | Alt+Shift+W          |
+| Riduci spaziatura caratteri  | ⌥⇧N      | Alt+Shift+N          |
+| Testo nero                   | ⌃M, K    | Ctrl+M, K            |
+| Testo rosso                  | ⌃M, R    | Ctrl+M, R            |
+| Testo blu                    | ⌃M, B    | Ctrl+M, B            |
+| Testo prugna                 | ⌃M, D    | Ctrl+M, D            |
+| Testo verde                  | ⌃M, G    | Ctrl+M, G            |
+| Testo giallo                 | ⌃M, Y    | Ctrl+M, Y            |
+| Testo turchese               | ⌃M, C    | Ctrl+M, C            |
+| Testo bianco                 | ⌃M, W    | Ctrl+M, W            |
+
+### Paragrafo
+
+| Azione                            | macOS   | Windows / Linux |
+| --------------------------------- | ------- | --------------- |
+| Allinea a sinistra                | ⌃⇧L     | Ctrl+Shift+L    |
+| Centra                            | ⌃⇧C     | Ctrl+Shift+C    |
+| Allinea a destra                  | ⌃⇧R     | Ctrl+Shift+R    |
+| Giustifica                        | ⌃⇧M     | Ctrl+Shift+M    |
+| Distribuisci                      | ⌃⇧T     | Ctrl+Shift+T    |
+| Aumenta interlinea                | ⌥⇧Z     | Alt+Shift+Z     |
+| Riduci interlinea                 | ⌥⇧A     | Alt+Shift+A     |
+| Formato paragrafo…                | ⌥T      | Alt+T           |
+| Stile…                            | F6      | F6              |
+| Applica dal primo al decimo stile | ⌃1 … ⌃0 | Ctrl+1 … Ctrl+0 |
+| Formato numerazione paragrafi     | ⌃K, N   | Ctrl+K, N       |
+
+### Inserisci
+
+| Azione                                  | macOS       | Windows / Linux    |
+| --------------------------------------- | ----------- | ------------------ |
+| Inserisci tabella                       | ⌃N, T       | Ctrl+N, T          |
+| Nota a piè di pagina                    | ⌃N, N       | Ctrl+N, N          |
+| Nota di chiusura                        | ⌃N, E       | Ctrl+N, E          |
+| Intestazione                            | ⌃N, H       | Ctrl+N, H          |
+| Numero di pagina                        | ⌃N, P       | Ctrl+N, P          |
+| Inserisci immagine                      | ⌃N, I       | Ctrl+N, I          |
+| Casella di testo                        | ⌃N, B       | Ctrl+N, B          |
+| Equazione                               | ⌃N, M       | Ctrl+N, M          |
+| Inserisci didascalia                    | ⌃N, C       | Ctrl+N, C          |
+| Collegamento ipertestuale               | ⌃K, H       | Ctrl+K, H          |
+| Segnalibro                              | ⌃K, B       | Ctrl+K, B          |
+| Inserisci campo                         | ⌃K, E       | Ctrl+K, E          |
+| Stringa data/ora                        | ⌃K, D       | Ctrl+K, D          |
+| Modifica oggetto, campo o tabella/cella | ⌃N, K       | Ctrl+N, K          |
+| Simboli                                 | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+
+### Tabella
+
+| Azione                | macOS        | Windows / Linux        |
+| --------------------- | ------------ | ---------------------- |
+| Aggiungi riga/colonna | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Elimina riga/colonna  | ⌥⌫           | Alt+Delete             |
+| Dividi cella          | F5 → S       | F5 → S                 |
+| Unisci celle          | F5 → M       | F5 → M                 |
+| Somma del blocco      | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Media del blocco      | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Prodotto del blocco   | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Dividi tabella        | ⌃N, A        | Ctrl+N, A              |
+| Unisci tabelle        | ⌃N, Z        | Ctrl+N, Z              |
+| Formula di calcolo    | ⌃N, F        | Ctrl+N, F              |
+
+### Calcoli di tabella
+
+Funzionano solo quando il cursore è in una cella vuota di una tabella. Ci sono tasti separati per calcolare dalle celle a sinistra e dalle celle sopra.
+
+| Azione              | macOS | Windows / Linux |
+| ------------------- | ----- | --------------- |
+| Somma a sinistra    | ⇧⌘H   | Ctrl+Shift+H    |
+| Somma sopra         | ⌃⇧V   | Ctrl+Shift+V    |
+| Media a sinistra    | ⌃⇧J   | Ctrl+Shift+J    |
+| Media sopra         | ⌃⇧B   | Ctrl+Shift+B    |
+| Prodotto a sinistra | ⌃⇧K   | Ctrl+Shift+K    |
+| Prodotto sopra      | ⌃⇧N   | Ctrl+Shift+N    |
+
+### Pagina
+
+| Azione                            | macOS | Windows / Linux  |
+| --------------------------------- | ----- | ---------------- |
+| Imposta pagina                    | F7    | F7               |
+| Interruzione di pagina            | ⌃⏎    | Ctrl+Enter       |
+| Interruzione di colonna           | ⌃⇧⏎   | Ctrl+Shift+Enter |
+| Interruzione impostazioni colonne | ⌃⌥⏎   | Ctrl+Alt+Enter   |
+| Impostazioni sezione              | ⌃N, G | Ctrl+N, G        |
+| Nascondi pagina                   | ⌃N, S | Ctrl+N, S        |
+
+### Visualizza
+
+| Azione                                        | macOS | Windows / Linux |
+| --------------------------------------------- | ----- | --------------- |
+| Ingrandisci                                   | ⌃=    | Ctrl+=          |
+| Riduci                                        | ⌃-    | Ctrl+-          |
+| Adatta alla pagina                            | ⌃G, P | Ctrl+G, P       |
+| Adatta alla larghezza                         | ⌃G, W | Ctrl+G, W       |
+| Zoom al 100 %                                 | ⌃G, Q | Ctrl+G, Q       |
+| Riduci o espandi la casella degli strumenti   | ⌃F1   | Ctrl+F1         |
+| Mostra o nascondi i contrassegni di paragrafo | ⌃G, T | Ctrl+G, T       |
+| Mostra o nascondi i contrassegni di controllo | ⌃G, C | Ctrl+G, C       |
+| Vai alla scheda Home (fuori da una tabella)   | ⇧⌘H   | Ctrl+Shift+H    |
+
+Un tasto scritto come `Ctrl+N,T` significa premere Ctrl+N, rilasciarlo e poi premere T. `F5 → S` significa selezionare un blocco di celle con F5 e poi premere S. `Ctrl+1 … Ctrl+0` indicano dal primo al decimo stile del documento; `Ctrl+Alt+1 … Ctrl+Alt+0` applicano gli stessi stili. Con un blocco di celle selezionato, `Ctrl+Shift+S` (su macOS `⇧⌘S`) è la somma del blocco; altrove quel tasto salva come.

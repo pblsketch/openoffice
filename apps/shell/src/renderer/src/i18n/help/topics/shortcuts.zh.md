@@ -22,6 +22,12 @@
 - **`⌘O`、`⌘S` 和 `⌘P` 在每个编辑器背后都是各自单独实现的**，行为也不完全一致。Word 的 `⌘P` 会先排版打印预览，让一张打印纸正好对应一个屏幕页面；PDF 的 `⌘P` 打开 PDF 打印对话框；Sheets 和 Slides 又各有各的一套。
 - **其余的按键都按应用区分。** Word 标签页处于激活状态时，`⌘B` 是 Word 的加粗；Slides 激活时，`⌘B` 是 Slides 的加粗，而它所属的菜单并不是你熟悉的那一个。只在有选中内容或某个特定窗格中才生效的绑定，「操作」列里会写明。
 
+## 演示模式
+
+- **开始**：在 Word、PDF、思维导图、HTML 和 Markdown 中按 F5。在电子表格中按 Ctrl+F5（从 A1 开始）或 Shift+F5（从当前单元格开始）。
+- **其他入口**：Word 中 Ctrl+F5、Shift+F5 进入无全屏的阅读视图；PDF 中从当前页开始；HTML 中在标签页内演示。
+- **结束**：Esc 或 F5。F11 是窗口自身的全屏，不改变文档视图。
+
 ## 约定
 
 - macOS 一列使用熟悉的符号：`⌘` Command、`⌥` Option、`⇧` Shift、`⌃` Control。
@@ -588,3 +594,154 @@ GenOffice HTML 在实时预览旁边显示代码编辑器。作用于页面元�
 | 将选中范围设为倾斜         | ⌘I    | Ctrl+I          |
 
 提交会保留你输入的内容，并把该元素恢复为选中状态。
+
+## HWP/HWPX
+
+以下按键在 HWP/HWPX 标签页位于前面且文档获得焦点时生效。两列分别列出在 macOS 和 Windows / Linux 上的按法。
+
+### 文件
+
+| 操作     | macOS | Windows / Linux      |
+| -------- | ----- | -------------------- |
+| 新建文档 |       | Alt+N                |
+| 打开…    | ⌘O    | Ctrl+O / Alt+O       |
+| 保存     | ⌘S    | Ctrl+S / Alt+S       |
+| 另存为…  | ⇧⌘S   | Ctrl+Shift+S / Alt+V |
+| 打印     | ⌘P    | Ctrl+P / Alt+P       |
+
+### 编辑
+
+| 操作       | macOS       | Windows / Linux              |
+| ---------- | ----------- | ---------------------------- |
+| 撤销       | ⌃Z          | Ctrl+Z                       |
+| 重做       | ⌃⇧Z         | Ctrl+Shift+Z                 |
+| 删除当前行 | ⌃Y          | Ctrl+Y                       |
+| 剪切       | ⌃X          | Ctrl+X                       |
+| 复制       | ⌃C          | Ctrl+C                       |
+| 粘贴       | ⌃V          | Ctrl+V                       |
+| 删除       | ⌃E          | Ctrl+E                       |
+| 全选       | ⌃A          | Ctrl+A                       |
+| 复制格式   | ⌥C          | Alt+C                        |
+| 查找       | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
+| 查找和替换 | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
+| 查找下一个 | ⌃L          | Ctrl+L                       |
+| 向上查找   | ⌃Q, L       | Ctrl+Q, L                    |
+| 定位       | ⌥G          | Alt+G                        |
+| 比较文档   | ⌥⇧V         | Alt+Shift+V                  |
+
+### 字符格式
+
+| 操作         | macOS    | Windows / Linux      |
+| ------------ | -------- | -------------------- |
+| 加粗         | ⌃B / ⌥⇧B | Ctrl+B / Alt+Shift+B |
+| 倾斜         | ⌃I / ⌥⇧I | Ctrl+I / Alt+Shift+I |
+| 下划线       | ⌃U / ⌥⇧U | Ctrl+U / Alt+Shift+U |
+| 常规形状     | ⌥⇧C      | Alt+Shift+C          |
+| 上标         | ⌥⇧P      | Alt+Shift+P          |
+| 下标         | ⌥⇧S      | Alt+Shift+S          |
+| 字符格式…    | ⌥L       | Alt+L                |
+| 增大字号     | ⌥⇧E / ⌃] | Alt+Shift+E / Ctrl+] |
+| 减小字号     | ⌥⇧R / ⌃[ | Alt+Shift+R / Ctrl+[ |
+| 增加字符宽度 | ⌥⇧K      | Alt+Shift+K          |
+| 减小字符宽度 | ⌥⇧J      | Alt+Shift+J          |
+| 增加字符间距 | ⌥⇧W      | Alt+Shift+W          |
+| 减小字符间距 | ⌥⇧N      | Alt+Shift+N          |
+| 黑色文字     | ⌃M, K    | Ctrl+M, K            |
+| 红色文字     | ⌃M, R    | Ctrl+M, R            |
+| 蓝色文字     | ⌃M, B    | Ctrl+M, B            |
+| 紫红色文字   | ⌃M, D    | Ctrl+M, D            |
+| 绿色文字     | ⌃M, G    | Ctrl+M, G            |
+| 黄色文字     | ⌃M, Y    | Ctrl+M, Y            |
+| 青绿色文字   | ⌃M, C    | Ctrl+M, C            |
+| 白色文字     | ⌃M, W    | Ctrl+M, W            |
+
+### 段落格式
+
+| 操作                 | macOS   | Windows / Linux |
+| -------------------- | ------- | --------------- |
+| 左对齐               | ⌃⇧L     | Ctrl+Shift+L    |
+| 居中对齐             | ⌃⇧C     | Ctrl+Shift+C    |
+| 右对齐               | ⌃⇧R     | Ctrl+Shift+R    |
+| 两端对齐             | ⌃⇧M     | Ctrl+Shift+M    |
+| 分散对齐             | ⌃⇧T     | Ctrl+Shift+T    |
+| 增加行距             | ⌥⇧Z     | Alt+Shift+Z     |
+| 减小行距             | ⌥⇧A     | Alt+Shift+A     |
+| 段落格式…            | ⌥T      | Alt+T           |
+| 样式…                | F6      | F6              |
+| 应用第一至第十个样式 | ⌃1 … ⌃0 | Ctrl+1 … Ctrl+0 |
+| 段落编号格式         | ⌃K, N   | Ctrl+K, N       |
+
+### 插入
+
+| 操作                      | macOS       | Windows / Linux    |
+| ------------------------- | ----------- | ------------------ |
+| 插入表格                  | ⌃N, T       | Ctrl+N, T          |
+| 脚注                      | ⌃N, N       | Ctrl+N, N          |
+| 尾注                      | ⌃N, E       | Ctrl+N, E          |
+| 页眉                      | ⌃N, H       | Ctrl+N, H          |
+| 页码                      | ⌃N, P       | Ctrl+N, P          |
+| 插入图片                  | ⌃N, I       | Ctrl+N, I          |
+| 文本框                    | ⌃N, B       | Ctrl+N, B          |
+| 公式                      | ⌃N, M       | Ctrl+N, M          |
+| 插入题注                  | ⌃N, C       | Ctrl+N, C          |
+| 超链接                    | ⌃K, H       | Ctrl+K, H          |
+| 书签                      | ⌃K, B       | Ctrl+K, B          |
+| 插入域                    | ⌃K, E       | Ctrl+K, E          |
+| 日期/时间字符串           | ⌃K, D       | Ctrl+K, D          |
+| 编辑对象、域或表格/单元格 | ⌃N, K       | Ctrl+N, K          |
+| 符号                      | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+
+### 表格
+
+| 操作       | macOS        | Windows / Linux        |
+| ---------- | ------------ | ---------------------- |
+| 添加行/列  | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| 删除行/列  | ⌥⌫           | Alt+Delete             |
+| 拆分单元格 | F5 → S       | F5 → S                 |
+| 合并单元格 | F5 → M       | F5 → M                 |
+| 块求和     | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| 块平均值   | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| 块乘积     | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| 拆分表格   | ⌃N, A        | Ctrl+N, A              |
+| 连接表格   | ⌃N, Z        | Ctrl+N, Z              |
+| 计算式     | ⌃N, F        | Ctrl+N, F              |
+
+### 表格计算
+
+仅在光标位于空白表格单元格中时生效。分别有按左侧单元格和按上方单元格计算的按键。
+
+| 操作       | macOS | Windows / Linux |
+| ---------- | ----- | --------------- |
+| 向左求和   | ⇧⌘H   | Ctrl+Shift+H    |
+| 向上求和   | ⌃⇧V   | Ctrl+Shift+V    |
+| 向左求平均 | ⌃⇧J   | Ctrl+Shift+J    |
+| 向上求平均 | ⌃⇧B   | Ctrl+Shift+B    |
+| 向左求积   | ⌃⇧K   | Ctrl+Shift+K    |
+| 向上求积   | ⌃⇧N   | Ctrl+Shift+N    |
+
+### 页面
+
+| 操作       | macOS | Windows / Linux  |
+| ---------- | ----- | ---------------- |
+| 页面设置   | F7    | F7               |
+| 分页符     | ⌃⏎    | Ctrl+Enter       |
+| 分栏符     | ⌃⇧⏎   | Ctrl+Shift+Enter |
+| 分栏设置符 | ⌃⌥⏎   | Ctrl+Alt+Enter   |
+| 节设置     | ⌃N, G | Ctrl+N, G        |
+| 隐藏页面   | ⌃N, S | Ctrl+N, S        |
+
+### 视图
+
+| 操作                     | macOS | Windows / Linux |
+| ------------------------ | ----- | --------------- |
+| 放大                     | ⌃=    | Ctrl+=          |
+| 缩小                     | ⌃-    | Ctrl+-          |
+| 适合页面                 | ⌃G, P | Ctrl+G, P       |
+| 适合页宽                 | ⌃G, W | Ctrl+G, W       |
+| 缩放到 100%              | ⌃G, Q | Ctrl+G, Q       |
+| 折叠或展开工具箱         | ⌃F1   | Ctrl+F1         |
+| 显示或隐藏段落标记       | ⌃G, T | Ctrl+G, T       |
+| 显示或隐藏排版标记       | ⌃G, C | Ctrl+G, C       |
+| 转到主页标签页（表格外） | ⇧⌘H   | Ctrl+Shift+H    |
+
+写成 `Ctrl+N,T` 的按键表示先按 Ctrl+N 再松开，然后按 T。`F5 → S` 表示先用 F5 选定单元格块，再按 S。`Ctrl+1 … Ctrl+0` 指文档的第一至第十个样式；`Ctrl+Alt+1 … Ctrl+Alt+0` 也会应用相同的样式。 选中单元格块时，`Ctrl+Shift+S`（macOS 上为 `⇧⌘S`）为块求和；其他情况下该键为另存为。

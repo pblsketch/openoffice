@@ -22,7 +22,7 @@ export const vi = {
   cardErrFailed: 'Đã xảy ra sự cố khi kiểm tra {provider}. Hãy kiểm tra lại.',
   actionInstall: 'Cài đặt',
   actionLogin: 'Đăng nhập',
-  actionLoginWindow: 'Trình duyệt không mở, hoặc hiện một mã?',
+  actionLoginWindow: 'Trình duyệt không mở?',
   actionRecheck: 'Kiểm tra lại',
   actionAcceptMetered: 'Vẫn sử dụng',
   actionInstallHelp: 'Hướng dẫn cài đặt chính thức',
@@ -35,7 +35,7 @@ export const vi = {
   signingInBrowserNote:
     'Đăng nhập vào tài khoản {vendor} của bạn trong trình duyệt vừa mở và cho phép truy cập. Khi xong, kết nối sẽ tự hoàn tất.',
   signingInWindowNote:
-    'Nếu trình duyệt không mở, hãy sao chép địa chỉ hiện trong cửa sổ vừa mở rồi mở nó trong trình duyệt. Khi trình duyệt hiện một mã, hãy sao chép, dán một lần vào cửa sổ đó rồi nhấn Enter. Mã đã dán có thể không hiện trong cửa sổ.',
+    'Hãy làm theo hướng dẫn ở đầu cửa sổ đăng nhập vừa mở. Đăng nhập trên trang {vendor} vừa mở trong trình duyệt: khi đó cửa sổ sẽ tự đóng và kết nối hoàn tất. Trang đăng nhập đã mở từ trước không còn dùng được nữa; hãy đóng trang đó.',
   meteredWarning: 'Đây không phải gói đăng ký: bạn bị tính phí theo mức sử dụng.',
   meteredMeaning:
     'Lần đăng nhập này dùng khóa API hoặc tài khoản trả phí theo mức sử dụng, hoặc không xác định được loại đăng nhập. Chọn "Vẫn sử dụng" để AI chạy qua kết nối này, và mỗi yêu cầu sẽ được tính vào tài khoản đó.',
@@ -116,8 +116,21 @@ export const vi = {
   loginHowNote:
     'Khi bạn nhấn, trình duyệt sẽ mở ra. Đăng nhập bằng tài khoản {vendor} của bạn rồi nhấn Cho phép, kết nối sẽ tự hoàn tất.',
   signingInStalledNote:
-    'Trình duyệt không mở, hoặc hiện một mã? Hãy mở cửa sổ đăng nhập bằng nút bên dưới. Dán địa chỉ hiện trong cửa sổ vào trình duyệt, hoặc dán mã hiện trong trình duyệt vào cửa sổ.',
+    'Nếu trình duyệt không mở trang đăng nhập nào, hãy mở cửa sổ đăng nhập bằng nút bên dưới. Nếu bạn vẫn đang đăng nhập trong trình duyệt, đừng nhấn nút mà hãy hoàn tất ở đó: nút này sẽ dừng lần đăng nhập đó và bắt đầu lại từ đầu.',
   actionLoginWindowOpen: 'Mở cửa sổ đăng nhập',
+  loginWindowTitle: 'Đăng nhập {provider}',
+  loginWindowIntro:
+    'Đây là cửa sổ đăng nhập của chương trình {provider}. Đoạn tiếng Anh bên dưới là hướng dẫn của chương trình {provider}.',
+  loginWindowStepBrowser:
+    'Khi trang đăng nhập {vendor} mở trong trình duyệt, hãy đăng nhập và cho phép truy cập. Sau đó cửa sổ này sẽ tự đóng.',
+  loginWindowStepAddress:
+    'Nếu trình duyệt không mở, hãy kéo chuột để chọn địa chỉ bắt đầu bằng https:// ở bên dưới, rồi nhấp chuột phải để sao chép. Dán địa chỉ đó vào thanh địa chỉ của trình duyệt để mở trang đăng nhập.',
+  loginWindowStepCode:
+    'Nếu sau khi đăng nhập trình duyệt hiện một mã, hãy sao chép toàn bộ mã (nếu có nút sao chép thì dùng nút đó). Nhấp chuột phải một lần bên trong cửa sổ này để dán, rồi nhấn Enter. Mã đã dán không hiện ra là bình thường.',
+  loginWindowStepInvalid:
+    'Nếu thấy "Invalid code", tức là mã chưa được sao chép đầy đủ. Đừng đóng cửa sổ này, hãy sao chép lại mã rồi dán.',
+  loginWindowClosing:
+    'Đăng nhập chưa hoàn tất. Đọc xong các thông báo ở trên, hãy nhấn Enter để đóng cửa sổ này. Để thử lại, hãy nhấn lại nút đăng nhập.',
   actionCancelLogin: 'Hủy đăng nhập',
   actionUpdate: 'Cập nhật',
   updateNote:
@@ -126,4 +139,5 @@ export const vi = {
     'Vẫn chưa được? Hãy sao chép thông tin kết nối và gửi cho người đang giúp bạn. Thông tin này không chứa tài khoản hay đường dẫn tệp.',
   actionCopyInfo: 'Sao chép thông tin để nhờ hỗ trợ',
   copyInfoDone: 'Đã sao chép',
+  actionConnectHelp: 'Xem từng bước trên màn hình (trang tiếng Hàn)',
 } satisfies Record<keyof typeof zh, string>

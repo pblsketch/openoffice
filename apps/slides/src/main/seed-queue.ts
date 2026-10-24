@@ -5,6 +5,7 @@
  * apart from the opening code so the shell can queue without loading the
  * editor's layout machinery.
  */
+import type { RecoveryIdentity } from '@genoffice/electron-utils'
 import type { HandoffWebContents } from '@genoffice/electron-utils/generate-handoff'
 
 export interface SlidesSeedOptions {
@@ -13,8 +14,12 @@ export interface SlidesSeedOptions {
    * landing in the drafts folder like a new blank deck.
    */
   askPathOnFirstSave?: boolean | undefined
-  /** the file name that first save suggests */
+  /** the file name that first save suggests (a full path picks the folder too) */
   suggestedName?: string | undefined
+  /** the crash-recovery copy the deck was restored from: later copies go to the same slot */
+  recoveryId?: RecoveryIdentity | undefined
+  /** the open password of a restored copy that was encrypted: every write re-encrypts with it */
+  password?: string | undefined
 }
 
 /** queued decks by webContents id: one per new tab at most */

@@ -21,7 +21,7 @@ export const zhTW = {
   cardErrFailed: '檢查 {provider} 時發生問題。請重新檢查。',
   actionInstall: '安裝',
   actionLogin: '登入',
-  actionLoginWindow: '瀏覽器沒有開啟，或顯示了代碼？',
+  actionLoginWindow: '瀏覽器沒有開啟？',
   actionRecheck: '重新檢查',
   actionAcceptMetered: '仍要使用',
   actionInstallHelp: '官方安裝說明',
@@ -33,7 +33,7 @@ export const zhTW = {
   loginNote: '開啟的登入頁面由 {vendor} 提供。',
   signingInBrowserNote: '請在開啟的瀏覽器中登入你的 {vendor} 帳戶並允許存取。完成後會自動連線。',
   signingInWindowNote:
-    '如果瀏覽器沒有開啟，請複製剛開啟的視窗中顯示的網址，在瀏覽器中開啟。瀏覽器顯示代碼時，請複製並在該視窗中貼上一次，然後按 Enter。貼上的代碼可能不會顯示在視窗中。',
+    '請依照剛開啟的登入視窗頂端的說明操作。在瀏覽器中新開啟的 {vendor} 登入頁面登入後，視窗會自動關閉並完成連線。先前開啟的登入頁面已無法使用，請將它關閉。',
   meteredWarning: '這不是訂閱，而是依實際用量收費。',
   meteredMeaning:
     '目前是以 API 金鑰或依用量付費的帳戶登入，或無法確認登入方式。選擇「仍要使用」後，AI 會透過這個連線執行，每次要求都會向該帳戶計費。',
@@ -100,12 +100,25 @@ export const zhTW = {
   installReturnNote: '在該視窗中安裝完成後，請回到這裡。應用程式會自動重新檢查。',
   loginHowNote: '按下後會開啟瀏覽器。用你的 {vendor} 帳戶登入並按下允許，就會自動完成連線。',
   signingInStalledNote:
-    '瀏覽器沒有開啟，或顯示了代碼？請用下方的按鈕開啟登入視窗。將視窗中顯示的網址貼到瀏覽器，或將瀏覽器中的代碼貼到視窗中即可。',
+    '如果瀏覽器中沒有開啟登入頁面，請用下方的按鈕開啟登入視窗。如果你還在瀏覽器中登入，請不要按，先在瀏覽器中完成。按下按鈕會停止目前的登入並重新開始。',
   actionLoginWindowOpen: '開啟登入視窗',
+  loginWindowTitle: '{provider} 登入',
+  loginWindowIntro: '這是 {provider} 程式的登入視窗。下方的英文內容是 {provider} 程式顯示的說明。',
+  loginWindowStepBrowser:
+    '瀏覽器開啟 {vendor} 登入頁面後，請登入並允許存取。完成後此視窗會自動關閉。',
+  loginWindowStepAddress:
+    '如果瀏覽器沒有開啟，請用滑鼠拖曳選取下方以 https:// 開頭的網址，再按滑鼠右鍵複製。將網址貼到瀏覽器的網址列，即可開啟登入頁面。',
+  loginWindowStepCode:
+    '登入後如果瀏覽器顯示代碼，請複製完整的代碼（有複製按鈕就用它）。在此視窗內按一下滑鼠右鍵貼上，然後按 Enter。貼上的代碼不會顯示在畫面上，這是正常的。',
+  loginWindowStepInvalid:
+    '如果出現 "Invalid code"，表示代碼沒有複製完整。請不要關閉此視窗，重新複製代碼並貼上。',
+  loginWindowClosing:
+    '登入沒有完成。看完上方的訊息後，請按 Enter 關閉此視窗。若要再試一次，請再按一次登入按鈕。',
   actionCancelLogin: '取消登入',
   actionUpdate: '更新',
   updateNote: '按下後會在新視窗中執行 {vendor} 的官方更新。在該視窗中更新完成後，請回到這裡。',
   guideInfoHint: '還是不行？複製連線資訊，傳給協助你的人。其中不包含帳戶和檔案路徑。',
   actionCopyInfo: '複製求助資訊',
   copyInfoDone: '已複製',
+  actionConnectHelp: '查看每一步的畫面示範（韓語頁面）',
 } satisfies Record<keyof typeof zh, string>

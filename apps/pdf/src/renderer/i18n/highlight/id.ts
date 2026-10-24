@@ -78,11 +78,13 @@ export const id = {
   hlAccept: 'Terima',
   hlDismiss: 'Buang',
   hlAcceptAll: 'Terima semua ({count})',
+  hlAcceptAllSave: 'Terima semua dan simpan ({count})',
   hlDismissAll: 'Buang semua saran',
   hlSuggestionCount: '{count} saran sorotan AI',
   hlNotFoundTip: 'Kalimat ini tidak ditemukan di teks halaman, jadi tidak dapat diterima',
   hlWaitingSave: 'Menunggu disimpan',
   hlWaitingSaveTip: 'Simpan PDF agar sorotan masuk ke file',
   hlAcceptedNotice: '{count} sorotan ditambahkan. Simpan PDF agar masuk ke file.',
+  hlAcceptedSaved: '{count} sorotan disimpan.',
   hlDismissFailed: 'Saran tidak dapat dibuang.',
 } satisfies Record<keyof typeof zh, string>

@@ -44,7 +44,7 @@ Les paramètres peuvent enregistrer GenOffice comme gestionnaire de .docx / .xls
 ## Mentions relatives aux logiciels tiers et mises à jour
 
 - Aide ▸ Mentions relatives aux logiciels tiers : l’inventaire complet des licences open source livré avec l’application.
-- Aide ▸ Vérifier les mises à jour : déclenche une vérification manuelle ; une version plus récente propose l’installation.
+- Menu (☰) ▸ Vérifier les mises à jour (sur un Mac, Aide ▸ Vérifier les mises à jour) : déclenche une vérification manuelle ; une version plus récente propose l’installation.
 
 ## Intégration MCP (pour les utilisateurs avancés / clients IA)
 

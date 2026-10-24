@@ -4,7 +4,7 @@ Skill adalah sekumpulan petunjuk kerja untuk AI. Tuliskan sekali saja hal yang A
 
 ## Mengaktifkan dan menonaktifkan skill
 
-**Pengaturan ▸ Skill** menampilkan skill yang ada di PC ini, dikelompokkan menurut asalnya. Pakai kotak pencarian di bagian atas untuk mencari menurut judul, nama, atau deskripsi.
+**Pengaturan ▸ Skill** menampilkan skill yang ada di PC ini, dikelompokkan menurut asalnya. Setiap skill ditampilkan dengan namanya, seperti di agen pemrograman. Pakai kotak pencarian di bagian atas untuk mencari menurut nama atau deskripsi.
 
 | Sumber                  | Isinya                                                       | Awalnya  |
 | ----------------------- | ------------------------------------------------------------ | -------- |
@@ -34,7 +34,7 @@ Di bawah pratinjau selalu tertulis: "Pasang skill hanya dari sumber yang Anda pe
 
 - Jika skill saya sudah memiliki skill dengan nama yang sama, pilih **Ganti** atau **Lewati** pada baris tersebut.
 - Saat mengunduh dari GitHub, GenOffice hanya terhubung ke `github.com`, `api.github.com`, dan `codeload.github.com`, dan tidak mengirim data login apa pun. Jika arsipnya terlalu besar atau tidak lolos pemeriksaan keamanan, tidak ada yang dipasang.
-- **Skill baru** membuka editor kosong tempat Anda menulis sendiri judul, deskripsi, dan petunjuknya.
+- **Skill baru** membuka editor kosong tempat Anda menulis sendiri nama, deskripsi, dan petunjuknya.
 
 ## Memeriksa pembaruan
 
@@ -46,7 +46,7 @@ Di bawah pratinjau selalu tertulis: "Pasang skill hanya dari sumber yang Anda pe
 ## Memanggil skill di panel AI
 
 1. Ketik `/` atau `$` di awal kotak input AI atau tepat setelah spasi. Daftar skill yang aktif akan muncul.
-2. Lanjutkan mengetik untuk mempersempit daftar. Misalnya, `/notu` menemukan Notulen rapat.
+2. Lanjutkan mengetik untuk mempersempit daftar. Misalnya, `/meet` menemukan `meeting-minutes`. Kata dalam deskripsi juga bisa dipakai, jadi `/notu` juga menemukannya.
 3. Pilih salah satu dengan tombol panah, lalu tekan Enter atau Tab. Skill itu menjadi chip di atas kotak input.
 4. Tulis apa yang Anda inginkan, lalu kirim. GenOffice menambahkan isi skill ke permintaan Anda.
 
@@ -58,15 +58,15 @@ Di bawah pratinjau selalu tertulis: "Pasang skill hanya dari sumber yang Anda pe
 
 ## Skill yang dipakai AI dengan sendirinya
 
-- Untuk skill yang aktif dan disetel ke AI yang menentukan, judul dan deskripsinya diberikan kepada AI dalam bentuk daftar. Jika salah satunya cocok dengan permintaan, AI mengambil isinya dan memakainya.
-- Saat AI memakai sebuah skill, percakapan menampilkan "Memakai skill 〈judul〉".
+- Untuk skill yang aktif dan disetel ke AI yang menentukan, nama dan deskripsinya diberikan kepada AI dalam bentuk daftar. Jika salah satunya cocok dengan permintaan, AI mengambil isinya dan memakainya.
+- Saat AI memakai sebuah skill, percakapan menampilkan "Memakai skill 〈nama〉".
 - AI memutuskan dari deskripsi apakah sebuah skill perlu dipakai. Deskripsi yang menyebutkan kapan skill itu dimaksudkan untuk dipakai membantu AI memilih dengan tepat.
 
 ## Membuat skill dengan meminta
 
 1. Di panel AI, ucapkan sesuatu seperti "Simpan yang barusan kita kerjakan sebagai skill" atau "Buat skill yang menulis laporan dengan gaya kantor kita".
 2. AI memilih langkah dan aturan yang layak diulang, lalu menampilkan kartu **Skill baru**. Nilai yang hanya dipakai sekali ini, seperti nama dan tanggal, tidak dimasukkan ke petunjuk.
-3. Periksa dan edit judul, deskripsi, dan petunjuk di kartu. Buka **Lanjutan** untuk mengubah nama bahasa Inggrisnya.
+3. Periksa dan edit nama, deskripsi, dan petunjuk di kartu. Nama adalah yang ditampilkan di daftar skill dan yang Anda ketik setelah `/`: huruf kecil bahasa Inggris, angka, dan tanda hubung.
 4. Klik **Simpan**. Skill baru ditambahkan ke skill saya dalam keadaan aktif, dan langsung muncul di daftar `/`.
 
 - Tidak ada file yang ditulis sebelum Anda mengeklik **Simpan**. Jika Anda mengeklik **Batal**, percakapan hanya menyimpannya sebagai "Usulan skill yang tidak disimpan".
@@ -85,7 +85,7 @@ Saat Anda membuat skill di panel AI sebuah editor, dokumen yang sedang terbuka b
 - Skill yang memiliki templat ditandai **Ada templat** di daftar.
 - Panggil skill itu sebagai chip lalu kirim, dan salinan templatnya terbuka sebagai dokumen baru tanpa judul; AI di tab itu melanjutkan permintaan Anda. Panel semula menampilkan "Bekerja dengan templat di tab baru" dan **Buka tab**.
 - Saat AI sendiri yang memilih skill bertemplat, tab tidak langsung terbuka. Sebagai gantinya, percakapan menampilkan tombol **Buka dokumen baru dari templat ini**.
-- Biasanya Anda menentukan lokasi dokumen baru itu saat pertama kali menyimpannya. Editor Markdown dan HTML, serta pembuatan seluruh dek slide sekaligus, menyimpan ke folder bawaan seperti biasa. File templatnya sendiri tetap seperti semula.
+- Biasanya Anda menentukan lokasi dokumen baru itu saat pertama kali menyimpannya. Editor Markdown dan HTML menyimpan ke folder bawaan seperti biasa. File templatnya sendiri tetap seperti semula.
 
 ## Skill yang memiliki skrip
 
@@ -95,15 +95,15 @@ Saat Anda membuat skill di panel AI sebuah editor, dokumen yang sedang terbuka b
 
 ## Skill bawaan
 
-| Skill                            | Fungsinya                                                                                 |
-| -------------------------------- | ----------------------------------------------------------------------------------------- |
-| **Notulen rapat**                | Mengubah catatan rapat menjadi notulen yang menampilkan keputusan dan tugas tindak lanjut |
-| **Pengumuman, buletin, dan FAQ** | Menulis pengumuman, buletin, laporan kemajuan, FAQ, dan pesan internal lainnya            |
-| **Hilangkan kesan AI**           | Mencari ungkapan dalam teks bahasa Inggris yang terdengar ditulis AI dan membuatnya wajar |
-| **Merapikan tulisan**            | Memeriksa ulang teks bahasa Inggris yang Anda tulis agar lebih jelas dan ringkas          |
-| **Cari skill**                   | Mencari skill yang Anda perlukan di jendela agen dan mengusulkan pemasangannya            |
+| Skill             | Fungsinya                                                                                 |
+| ----------------- | ----------------------------------------------------------------------------------------- |
+| `meeting-minutes` | Mengubah catatan rapat menjadi notulen yang menampilkan keputusan dan tugas tindak lanjut |
+| `internal-comms`  | Menulis pengumuman, buletin, laporan kemajuan, FAQ, dan pesan internal lainnya            |
+| `humanizer`       | Mencari ungkapan yang terdengar ditulis AI dan membuatnya wajar                           |
+| `copy-editing`    | Memeriksa ulang teks bahasa Inggris yang Anda tulis agar lebih jelas dan ringkas          |
+| `find-skills`     | Mencari skill yang Anda perlukan di jendela agen dan mengusulkan pemasangannya            |
 
-Hilangkan kesan AI dan Merapikan tulisan dibuat untuk teks bahasa Inggris. Cari skill hanya berfungsi di jendela agen.
+`copy-editing` dibuat untuk teks pemasaran berbahasa Inggris. `find-skills` hanya berfungsi di jendela agen.
 
 ## Di jendela agen
 

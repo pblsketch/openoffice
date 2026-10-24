@@ -25,6 +25,7 @@ import {
   type AgentMode,
   type AgentPrefs,
   type AgentProjectPrefs,
+  type AgentProjectSkillsView,
   type AgentProvider,
   type AgentSessionSkill,
   type AgentSkillProposalPayload,
@@ -32,6 +33,10 @@ import {
 import { agentText, type AgentStringKey } from '../i18n/strings-agent'
 import { agentWebText, type AgentWebStringKey } from '../i18n/strings-agent-web'
 import { agentSkillsText } from '../i18n/strings-agent-skills'
+import {
+  agentProjectSkillsText,
+  type AgentProjectSkillsStringKey,
+} from '../i18n/strings-agent-project-skills'
 import { AgentSkillCard, agentSkillsBridge } from './AgentSkillCard'
 import { AgentInstallProposal } from './AgentInstallProposal'
 import {
@@ -164,6 +169,8 @@ export function AgentWindow() {
   const [input, setInput] = useState('')
   /** the Codex choices of the chosen folder, as remembered for it */
   const [projectPrefs, setProjectPrefs] = useState<AgentProjectPrefs | null>(null)
+  /** the chosen folder's own skills and whether they are on (decision 0064) */
+  const [projectSkills, setProjectSkills] = useState<AgentProjectSkillsView | null>(null)
   const folderRef = useRef('')
   const sessionRef = useRef<string | null>(null)
   const logEnd = useRef<HTMLDivElement | null>(null)
@@ -271,10 +278,14 @@ export function AgentWindow() {
   useEffect(() => {
     folderRef.current = folder
     setProjectPrefs(null)
+    setProjectSkills(null)
     if (!folder) return
     let current = true
     void api.getProjectPrefs(folder).then((value) => {
       if (current) setProjectPrefs(value)
+    })
+    void api.getProjectSkills(folder).then((value) => {
+      if (current) setProjectSkills(value)
     })
     return () => {
       current = false
@@ -284,6 +295,8 @@ export function AgentWindow() {
   if (!init || !prefs) return <div className="agent" />
   const t = (key: AgentStringKey, params?: Params): string => agentText(lang, key, params)
   const tw = (key: AgentWebStringKey): string => agentWebText(lang, key)
+  const tp = (key: AgentProjectSkillsStringKey, params?: Params): string =>
+    agentProjectSkillsText(lang, key, params)
   document.documentElement.lang = htmlLang(lang)
   document.documentElement.dir = htmlDir(lang)
 
@@ -298,6 +311,14 @@ export function AgentWindow() {
     void api.setProjectPrefs(chosen, patch).then((saved) => {
       // a folder chosen meanwhile keeps its own choices
       if (saved && chosen === folderRef.current) setProjectPrefs(saved)
+    })
+  }
+  const chooseProjectSkills = (on: boolean): void => {
+    if (!folder || !projectSkills) return
+    const chosen = folder
+    setProjectSkills({ ...projectSkills, allowed: on, changed: false })
+    void api.setProjectSkills(chosen, on).then((saved) => {
+      if (saved && chosen === folderRef.current) setProjectSkills(saved)
     })
   }
   const connection = init.connections[prefs.provider]
@@ -650,6 +671,45 @@ export function AgentWindow() {
             </div>
           ) : null}
         </div>
+
+        {folder && projectSkills && projectSkills.skills.length > 0 ? (
+          <div className="agent-section" role="radiogroup" aria-label={tp('label')}>
+            <span className="agent-label">{tp('label')}</span>
+            <span className="agent-choice-note">
+              {tp('note', { count: projectSkills.skills.length })}
+            </span>
+            <ul className="agent-project-skills">
+              {projectSkills.skills.map((skill) => (
+                <li key={skill.name}>
+                  <strong>{skill.title || skill.name}</strong>
+                  {skill.description ? ` — ${skill.description}` : ''}
+                </li>
+              ))}
+            </ul>
+            {projectSkills.changed ? (
+              <div className="agent-notice" role="alert">
+                <p>{tp('changed')}</p>
+              </div>
+            ) : null}
+            {[false, true].map((on) => (
+              <div
+                key={String(on)}
+                className="agent-choice"
+                role="radio"
+                tabIndex={0}
+                aria-checked={projectSkills.allowed === on}
+                data-selected={projectSkills.allowed === on}
+                onClick={() => chooseProjectSkills(on)}
+                onKeyDown={(event) => event.key === ' ' && chooseProjectSkills(on)}
+              >
+                <div className="agent-choice-text">
+                  <span>{tp(on ? 'on' : 'off')}</span>
+                </div>
+              </div>
+            ))}
+            <span className="agent-choice-note">{tp('remember')}</span>
+          </div>
+        ) : null}
 
         <div className="agent-section" role="radiogroup" aria-label={t('providerLabel')}>
           <span className="agent-label">{t('providerLabel')}</span>

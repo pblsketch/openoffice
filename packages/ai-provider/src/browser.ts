@@ -48,6 +48,8 @@ export {
   setCodexImageGenerationAvailable,
 } from './image-backend'
 export type { AiImageBackend, AiImageBackendContext } from './image-backend'
+export { subscriptionConnectHelpUrl } from './connect-help'
+export type { SubscriptionConnectHelpPath } from './connect-help'
 export {
   SUBSCRIPTION_INSTALL_COMMANDS,
   SUBSCRIPTION_INSTALL_URLS,

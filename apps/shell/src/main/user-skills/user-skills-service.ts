@@ -412,9 +412,7 @@ export function createUserSkillsService(deps: UserSkillsServiceDeps) {
   }
 
   async function writeSkill(request: WriteRequest): Promise<UserSkillsResult<{ id: string }>> {
-    const title = request.title.trim()
     const description = request.description.trim()
-    if (!title) return fail('empty-title')
     if (!description) return fail('empty-description')
     if (!request.body.trim()) return fail('empty-body')
 
@@ -428,6 +426,9 @@ export function createUserSkillsService(deps: UserSkillsServiceDeps) {
 
     const target = request.targetId ? await find(request.targetId) : undefined
     if (request.targetId && !target) return fail('not-found')
+    // lists show the name; a title is optional, and a changed skill keeps the one it had
+    const keptTitle = target && target.title !== target.name ? target.title : undefined
+    const title = request.title.trim() || keptTitle
 
     // ---- an edit of an own skill: files rewritten in place, the folder renamed with the name
     if (target && target.source === 'app') {
@@ -475,7 +476,7 @@ export function createUserSkillsService(deps: UserSkillsServiceDeps) {
     // ---- a new skill, or another source's skill copied in with the new text
     let name = request.name?.trim() ?? ''
     if (!target && !name) {
-      name = suggestUserSkillName(title, { taken: (await takenNames()).keys() })
+      name = suggestUserSkillName(title ?? '', { taken: (await takenNames()).keys() })
     }
     if (target && !name) name = target.name
     const keepsName = target !== undefined && name === target.name

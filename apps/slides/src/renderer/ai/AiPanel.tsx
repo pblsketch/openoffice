@@ -2690,6 +2690,7 @@ export function AiPanel({
               disabled={connection.busy}
               attention={sendGate.connectAttention}
               onOpenSettings={() => void window.slidesApi.openAiModelSettings().catch(() => {})}
+              onOpenConnectHelp={connection.openConnectHelp}
               {...connection.actions}
             />
           )}
@@ -2826,6 +2827,7 @@ export function AiPanel({
                 bridge={MODEL_BRIDGE}
                 lang={lang}
                 subscriptionStatuses={connection.statuses}
+                onRefreshSubscriptions={connection.refresh}
               />
               {sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
               <button

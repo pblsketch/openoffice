@@ -1,5 +1,9 @@
 import type { AgentMessage, AgentToolCall, AgentToolDef, ToolExecution } from './types'
 import { composeSkills, type AgentSkill } from './skill'
+import { isOutboundCall } from './outbound'
+import { guardOutbound, windowOutboundBridge } from './outbound-guard'
+
+export { OUTBOUND_TOOLS, isOutboundCall } from './outbound'
 
 /**
  * The user's Google Drive as a searchable, readable body (decision 0033).
@@ -55,37 +59,6 @@ export interface DriveSkill extends AgentSkill {
 
 export const DRIVE_SEARCH_TOOL = 'drive_search'
 export const DRIVE_READ_TOOL = 'drive_read'
-
-/** Tools that send model-chosen text to, or fetch from, somewhere off the PC */
-export const OUTBOUND_TOOLS: ReadonlySet<string> = new Set([
-  'web_search',
-  'image_search',
-  'generate_image',
-  'transform_image',
-  'remove_image_background',
-  'analyze_media',
-  'insert_web_image',
-  'read_url',
-])
-
-/** Input fields an editor fetches when they hold a web address */
-const FETCHED_FIELDS = new Set(['url', 'src', 'imageUrl', 'image_url'])
-
-function fetchesAddress(value: unknown, depth = 0): boolean {
-  if (depth > 6 || value === null || typeof value !== 'object') return false
-  for (const [key, inner] of Object.entries(value as Record<string, unknown>)) {
-    if (FETCHED_FIELDS.has(key) && typeof inner === 'string' && /^\s*https?:/i.test(inner)) {
-      return true
-    }
-    if (typeof inner === 'object' && fetchesAddress(inner, depth + 1)) return true
-  }
-  return false
-}
-
-/** Whether a call would carry text or an address off the PC */
-export function isOutboundCall(call: AgentToolCall): boolean {
-  return OUTBOUND_TOOLS.has(call.name) || fetchesAddress(call.input)
-}
 
 export const DRIVE_OUTBOUND_BLOCKED =
   'Refused: this conversation contains content read from Google Drive, so tools that send text ' +
@@ -338,6 +311,8 @@ export function windowDriveBridge(): DriveBridgeLike | null {
  * composeSkills plus Google Drive: when this window's preload carries the
  * Drive calls, the Drive skill joins the editor's skills and the result is
  * guarded so outbound tools stop once Drive content is in the conversation.
+ * Outside that, the person's internet-tools switch and address confirmation
+ * apply (guardOutbound, decision 0062).
  * `messages` reads the loop's history (the loop is built after its skill).
  */
 export function composeWithDrive(
@@ -348,5 +323,9 @@ export function composeWithDrive(
 ): AgentSkill {
   const bridge = windowDriveBridge()
   const drive = bridge ? createBridgedDriveSkill(bridge, messages) : null
-  return guardDriveContent(composeSkills(id, intro, drive ? [...skills, drive] : skills), drive)
+  return guardOutbound(
+    guardDriveContent(composeSkills(id, intro, drive ? [...skills, drive] : skills), drive),
+    windowOutboundBridge(),
+    messages,
+  )
 }

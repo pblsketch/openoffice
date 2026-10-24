@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest'
  */
 const source = readFileSync(join(__dirname, '../src/main/index.ts'), 'utf8')
 const tabManagerSource = readFileSync(join(__dirname, '../src/main/tab-manager.ts'), 'utf8')
+const recoveryShellSource = readFileSync(join(__dirname, '../src/main/recovery-shell.ts'), 'utf8')
 
 /** One locale's slice of the inline table, from its `xx: {` header to the next. */
 function localeBlock(locale: string): string {
@@ -84,7 +85,7 @@ describe('the tab context menu split entries', () => {
     expect(source).toMatch(/isPaneTab: tabManager\.isPaneTab\(id\)/)
     expect(source).toMatch(/const intent = decideSplitDrop\(\{/)
     expect(source).toMatch(/if \(intent\) tabManager\.splitWith\(id, intent\)/)
-    expect(source).toMatch(/if \(tabManager\.isPaneTab\(id\)\) \{/)
+    expect(source).toMatch(/\(tabManager\.isPaneTab\(id\)/)
     expect(source).toMatch(/tabManager\?\.unsplit\(\)/)
   })
 
@@ -215,10 +216,15 @@ describe('the split memory wiring', () => {
   })
 
   it('restores at launch only when no file was given', () => {
+    // the launch goes through crash recovery (recovery-shell.ts), which runs
+    // today's launch when there is nothing to restore or ask
     expect(source).toMatch(
-      /if \(pendingLaunchPaths\.length > 0\) openLaunchPaths\(pendingLaunchPaths\)/,
+      /runLaunchRecovery\(\{[\s\S]*?launchPaths,\s*openLaunchPaths,\s*restoreSplitMemoryOrHome,/,
     )
-    expect(source).toMatch(/else restoreSplitMemoryOrHome\(\)/)
+    expect(recoveryShellSource).toMatch(
+      /if \(deps\.launchPaths\.length > 0\) deps\.openLaunchPaths\(deps\.launchPaths\)/,
+    )
+    expect(recoveryShellSource).toMatch(/else deps\.restoreSplitMemoryOrHome\(\)/)
   })
 
   it('opens the remembered documents and rebuilds the arrangement', () => {

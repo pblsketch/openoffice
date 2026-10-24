@@ -608,6 +608,7 @@ export const zh = {
   appTabReview: '审阅',
   appRibbonCollapse: '折叠功能区',
   appRibbonExpand: '展开功能区',
+  appRibbonCompact: '紧凑功能区（仅图标）',
   appTabView: '视图',
   appTabAi: 'AI',
   appTabChartDesign: '图表设计',
@@ -1015,6 +1016,9 @@ export const zh = {
   appHeadings: '标题',
   appHeadingsHidden: '行列标题已隐藏。',
   appHeadingsShown: '行列标题已显示。',
+  appRightToLeft: '从右到左',
+  appRightToLeftOn: '网格方向：从右到左。',
+  appRightToLeftOff: '网格方向：从左到右。',
   appPrintHeadingsTitle: '打印行号列标',
   // Formulas tab
   appGroupFunctionLibrary: '函数库',

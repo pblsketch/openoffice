@@ -144,5 +144,6 @@ export function normalizeAiSettings(
       resolved.headlessSubscriptionConsentVersion,
     ),
     subscriptionNoticeSeen: resolved.subscriptionNoticeSeen === true,
+    ...(resolved.internetTools === false ? { internetTools: false } : {}),
   }
 }

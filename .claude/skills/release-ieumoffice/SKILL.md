@@ -14,7 +14,7 @@ description: IeumOffice의 새 버전을 내는 작업(버전 올리기, Windows
 ## 사람의 승인 없이는 진행하지 않는다
 
 1. Anthropic 상업 약관 동의 확인(releasing.ko.md 1번). 확인 전에는 아무것도 만들지 않는다.
-2. 이번 버전 번호와 공개 방식 — 프리릴리스 예행인지 정식 공개인지.
+2. 이번 버전 번호와 공개 방식 — 프리릴리스 예행인지 정식 공개인지. Windows 설치 파일은 Actions의 **Windows build**로 만들어 출처 증명을 붙이는 것이 기본이다(결정 0056). 손 빌드로 바꾸려면 그 이유와 함께 묻는다.
 3. **GitHub에서 "Publish release"를 누르기 전.**
 4. **예행 릴리스의 프리릴리스 표시를 풀기 전** — 그 순간 모든 사용자에게 나간다.
 5. 게시할 릴리스 본문 최종본.
@@ -29,7 +29,7 @@ description: IeumOffice의 새 버전을 내는 작업(버전 올리기, Windows
 - **초안을 쓴 뒤 humanize-korean 스킬로 윤문한다.** AI 티와 번역투를 걷어낸다. 윤문 전 본문으로 게시하지 않는다.
 - 한 화면에 핵심이 보이게 쓴다. 창의 내용 상자는 200px에서 스크롤되고, 상한은 원문 256KB·표시 48,000자·12섹션이다.
 - 한국어로 쓴다.
-- `## 설치`에는 그 릴리스에 올리는 플랫폼을 모두 적는다. 지금은 Windows, Mac(베타), Linux(베타) 셋이다. 도름스 업데이트 소식이나 사이트처럼 본문을 옮겨 쓰는 곳도 같다.
+- `## 설치`에는 그 릴리스에 올리는 플랫폼을 모두 적는다. 지금은 Windows, Mac(베타, Apple Silicon·Intel 두 dmg), Linux(베타) 셋이다. 도름스 업데이트 소식이나 사이트처럼 본문을 옮겨 쓰는 곳도 같다.
 
 본문 골격:
 
@@ -51,7 +51,7 @@ description: IeumOffice의 새 버전을 내는 작업(버전 올리기, Windows
 ## 설치
 
 - Windows: …
-- Mac (베타): …
+- Mac (베타): … (Apple Silicon은 `-arm64.dmg`, Intel은 `-x64.dmg`)
 - Linux (베타): … (AppImage·deb·rpm, README의 "Linux (베타)")
 ```
 

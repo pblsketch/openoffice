@@ -23,7 +23,7 @@ export const nl = {
   cardErrFailed: 'Er ging iets mis bij het controleren van {provider}. Controleer het opnieuw.',
   actionInstall: 'Installeren',
   actionLogin: 'Aanmelden',
-  actionLoginWindow: 'Browser niet geopend, of toont hij een code?',
+  actionLoginWindow: 'Browser niet geopend?',
   actionRecheck: 'Opnieuw controleren',
   actionAcceptMetered: 'Toch gebruiken',
   actionInstallHelp: 'Officiële installatiehandleiding',
@@ -37,7 +37,7 @@ export const nl = {
   signingInBrowserNote:
     'Meld je in de geopende browser aan bij je {vendor}-account en sta toegang toe. De verbinding komt vanzelf tot stand als je klaar bent.',
   signingInWindowNote:
-    'Is de browser niet geopend, kopieer dan het adres uit het venster dat net is geopend en open het in je browser. Toont de browser een code, kopieer die, plak hem één keer in dat venster en druk op Enter. De geplakte code is mogelijk niet zichtbaar in het venster.',
+    'Volg de aanwijzingen bovenaan het aanmeldvenster dat net is geopend. Meld je aan op de pagina van {vendor} die in je browser is geopend: het venster sluit dan vanzelf en de verbinding komt tot stand. Een aanmeldpagina die al eerder open stond, werkt niet meer; sluit die.',
   meteredWarning: 'Dit is geen abonnement: je betaalt voor wat je gebruikt.',
   meteredMeaning:
     'Deze aanmelding gebruikt een API-sleutel of een account met betaling per verbruik, of het type kon niet worden vastgesteld. Met ‘Toch gebruiken’ draait AI via deze verbinding en wordt elk verzoek bij dat account in rekening gebracht.',
@@ -120,8 +120,21 @@ export const nl = {
   loginHowNote:
     'Als je erop klikt, opent er een browser. Meld je aan met je {vendor}-account en klik op Toestaan; de verbinding komt vanzelf tot stand.',
   signingInStalledNote:
-    'Browser niet geopend, of toont hij een code? Open het aanmeldvenster met de knop hieronder. Plak het adres uit dat venster in je browser, of plak de code uit de browser in het venster.',
+    'Is er in je browser geen aanmeldpagina geopend, open dan het aanmeldvenster met de knop hieronder. Ben je nog bezig met aanmelden in de browser, maak het dan daar af: de knop stopt die aanmelding en begint helemaal opnieuw.',
   actionLoginWindowOpen: 'Aanmeldvenster openen',
+  loginWindowTitle: 'Aanmelden bij {provider}',
+  loginWindowIntro:
+    'Dit is het aanmeldvenster van het programma {provider}. De Engelse tekst hieronder komt van het programma {provider}.',
+  loginWindowStepBrowser:
+    'Als de aanmeldpagina van {vendor} in je browser opent, meld je dan aan en sta toegang toe. Dit venster sluit daarna vanzelf.',
+  loginWindowStepAddress:
+    'Is er geen browser geopend, sleep dan met de muis over het adres hieronder dat met https:// begint om het te selecteren, en klik met de rechtermuisknop om het te kopiëren. Plak het in de adresbalk van je browser om de aanmeldpagina te openen.',
+  loginWindowStepCode:
+    'Toont de browser na het aanmelden een code, kopieer dan de hele code (gebruik de kopieerknop als die er is). Klik één keer met de rechtermuisknop in dit venster om hem te plakken en druk daarna op Enter. Het is normaal dat de geplakte code niet zichtbaar is.',
+  loginWindowStepInvalid:
+    'Zie je "Invalid code", dan is de code niet helemaal gekopieerd. Laat dit venster open, kopieer de code opnieuw en plak hem.',
+  loginWindowClosing:
+    'Het aanmelden is niet voltooid. Druk op Enter om dit venster te sluiten als je de berichten hierboven hebt gelezen. Wil je het opnieuw proberen, klik dan nog een keer op de aanmeldknop.',
   actionCancelLogin: 'Aanmelden annuleren',
   actionUpdate: 'Bijwerken',
   updateNote:
@@ -130,4 +143,5 @@ export const nl = {
     'Lukt het nog steeds niet? Kopieer de verbindingsgegevens en stuur ze naar degene die je helpt. Er staan geen account en geen bestandspaden in.',
   actionCopyInfo: 'Gegevens kopiëren voor hulp',
   copyInfoDone: 'Gekopieerd',
+  actionConnectHelp: 'Bekijk elke stap op het scherm (pagina in het Koreaans)',
 } satisfies Record<keyof typeof zh, string>

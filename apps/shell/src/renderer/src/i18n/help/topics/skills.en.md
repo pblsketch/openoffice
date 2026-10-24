@@ -4,7 +4,7 @@ A skill is a set of working instructions for the AI. Write down something you do
 
 ## Turning skills on and off
 
-**Settings ▸ Skills** lists the skills on this PC, grouped by where they come from. Use the search box at the top to find one by title, name or description.
+**Settings ▸ Skills** lists the skills on this PC, grouped by where they come from. Each skill is shown by its name, the way coding agents show it. Use the search box at the top to find one by name or description.
 
 | Source                   | What it holds                                     | At first |
 | ------------------------ | ------------------------------------------------- | -------- |
@@ -34,7 +34,7 @@ Below the preview it always says: "Install skills only from sources you trust. A
 
 - If my skills already have one with the same name, choose **Replace** or **Skip** on that row.
 - When it downloads from GitHub, GenOffice connects only to `github.com`, `api.github.com` and `codeload.github.com`, and sends no sign-in data. If the archive is too large or fails the safety checks, nothing is installed.
-- **New skill** opens an empty editor where you write the title, description and instructions yourself.
+- **New skill** opens an empty editor where you write the name, description and instructions yourself.
 
 ## Checking for updates
 
@@ -46,7 +46,7 @@ Below the preview it always says: "Install skills only from sources you trust. A
 ## Calling a skill in the AI panel
 
 1. Type `/` or `$` at the start of the AI input box or right after a space. The list of skills that are on appears.
-2. Keep typing to narrow the list. For example, `/meet` finds Meeting minutes.
+2. Keep typing to narrow the list. For example, `/meet` finds `meeting-minutes`. Words in the description work too.
 3. Pick one with the arrow keys and press Enter or Tab. The skill becomes a chip above the input box.
 4. Write what you want and send. GenOffice adds the skill's contents to the request.
 
@@ -58,15 +58,15 @@ Below the preview it always says: "Install skills only from sources you trust. A
 
 ## Skills the AI uses on its own
 
-- For skills that are on and set to AI decides, the titles and descriptions are given to the AI as a list. When one fits the request, the AI takes its contents and uses it.
-- When the AI uses a skill, the chat says "Used the 〈title〉 skill".
+- For skills that are on and set to AI decides, the names and descriptions are given to the AI as a list. When one fits the request, the AI takes its contents and uses it.
+- When the AI uses a skill, the chat says "Used the 〈name〉 skill".
 - The AI decides from the description whether to use a skill. A description that says when the skill is meant to be used helps it choose well.
 
 ## Making a skill by asking
 
 1. In the AI panel, say something like "Save what we just did as a skill" or "Make a skill that writes reports in our house style".
 2. The AI picks out the steps and rules worth repeating and shows a **New skill** card. Values used only this once, such as names and dates, stay out of the instructions.
-3. Check and edit the title, description and instructions on the card. Open **Advanced** to change the English name.
+3. Check and edit the name, description and instructions on the card. The name is what the skill list shows and what you type after `/`: lowercase English letters, digits and hyphens.
 4. Click **Save**. The new skill is added to my skills, turned on, and appears in the `/` list right away.
 
 - No file is written until you click **Save**. If you click **Cancel**, the chat keeps it only as an "Unsaved skill proposal".
@@ -85,7 +85,7 @@ When you make a skill in an editor's AI panel, the current document can go along
 - A skill with a template shows **Has a template** in the list.
 - Call it as a chip and send, and a copy of the template opens as a new untitled document; the AI in that tab carries on with your request. The original panel keeps "Working with the template in a new tab" and **Go to the tab**.
 - When the AI picks a template skill by itself, no tab opens at once. The chat shows an **Open a new document from this template** button instead.
-- You usually choose where the new document goes the first time you save it. The Markdown and HTML editors, and whole-deck slide generation, save to the default folder as they always do. The template file itself stays as it was.
+- You usually choose where the new document goes the first time you save it. The Markdown and HTML editors save to the default folder as they always do. The template file itself stays as it was.
 
 ## Skills with scripts
 
@@ -95,15 +95,15 @@ When you make a skill in an editor's AI panel, the current document can go along
 
 ## Built-in skills
 
-| Skill                                   | What it does                                                                          |
-| --------------------------------------- | ------------------------------------------------------------------------------------- |
-| **Meeting minutes**                     | Turns meeting notes into minutes that show the decisions and action items             |
-| **Announcements, newsletters and FAQs** | Writes announcements, newsletters, progress updates, FAQs and other internal messages |
-| **Remove the AI feel**                  | Finds phrasing in English text that sounds AI-written and makes it natural            |
-| **Copy editing**                        | Goes over English text you have written and makes it clearer and tighter              |
-| **Find skills**                         | Finds skills you need in the agent window and suggests installing them                |
+| Skill             | What it does                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| `meeting-minutes` | Turns meeting notes into minutes that show the decisions and action items             |
+| `internal-comms`  | Writes announcements, newsletters, progress updates, FAQs and other internal messages |
+| `humanizer`       | Finds phrasing that sounds AI-written and makes it natural                            |
+| `copy-editing`    | Goes over English text you have written and makes it clearer and tighter              |
+| `find-skills`     | Finds skills you need in the agent window and suggests installing them                |
 
-Remove the AI feel and Copy editing are made for English text. Find skills works only in the agent window.
+`copy-editing` is made for English marketing text. `find-skills` works only in the agent window.
 
 ## In the agent window
 

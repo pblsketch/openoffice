@@ -7,6 +7,7 @@ import {
   type AgentInstallProposalPayload,
   type AgentPrefs,
   type AgentProjectPrefs,
+  type AgentProjectSkillsView,
   type AgentSkillProposalPayload,
   type AgentStartResponse,
   type AgentTemplateAsIs,
@@ -65,6 +66,19 @@ const api: AgentWindowApi = {
       folder,
       patch,
     )) as AgentProjectPrefs | null
+  },
+  async getProjectSkills(folder) {
+    return (await ipcRenderer.invoke(
+      AGENT_CHANNELS.getProjectSkills,
+      folder,
+    )) as AgentProjectSkillsView | null
+  },
+  async setProjectSkills(folder, on) {
+    return (await ipcRenderer.invoke(
+      AGENT_CHANNELS.setProjectSkills,
+      folder,
+      on === true,
+    )) as AgentProjectSkillsView | null
   },
   async stop(sessionId) {
     await ipcRenderer.invoke(AGENT_CHANNELS.stop, sessionId)

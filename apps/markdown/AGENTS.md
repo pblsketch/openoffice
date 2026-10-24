@@ -32,12 +32,15 @@ Markdown 에디터다. 일반 `.md` 파일 위에서 TipTap 블록 편집기를 
 
 ## 이 모듈의 방식
 
+- **발표 모드는 문서만 남긴다.** F5는 HTML 전체화면으로 열고 리본·AI 창·개요/백링크 패널·상태 표시줄을 숨긴다. 원문 보기(`sourceViewOpen`)가 열려 있었으면 닫았다가 발표가 끝날 때 다시 연다. 발표 중에는 편집기를 읽기 전용으로 둔다(`editor.setEditable(false)`). Esc·F5로 끝나며, OS에서 전체화면이 풀려도 같은 복원을 한다. `.txt`·`.json`처럼 블록 편집기가 없는 파일은 발표하지 않는다. 키 판정은 `@genoffice/ui`의 `presentationKeyOf` 하나다.
 - 메인 코드는 shell 번들에 들어간다(`../../../markdown/src/main/markdown-main`을 상대 경로로 import한다). `src/main`을 고친 뒤에는 shell을 다시 빌드한다.
 - 경로는 뷰별로 허가된 것만 다룬다. 새 창을 만들 때 `grantAndTrack`으로 열 파일을 등록한다.
 - TipTap 패키지는 `electron.vite.config.ts`의 `dedupe`로 이 앱의 사본 하나에 고정한다. 문서 에디터가 다른 버전을 쓰고 npm이 일부를 저장소 루트로 올리기 때문에, 고정하지 않으면 번들에 코어가 둘 들어간다. TipTap 확장을 추가하면 이 목록에도 넣는다.
 - 패널은 다른 에디터와 같은 부품으로 조립한다(`AiConnectPrompt`, `AiFirstConnectionNotice`, `AiBlockedNotice`, `aiRunErrorText`). 막힌 실행의 원인은 전송이 기록한 마지막 실패가 그 메시지의 실패일 때만 쓴다.
 - `odt-export.ts`는 HTML 편집기의 같은 이름 파일과 내용이 같다. 한쪽을 고치면 다른 쪽도 고친다.
+- 복구 사본: 저장하지 않은 변경이 있으면 화면이 약 30초마다 저장할 때 쓸 글자 그대로를 뒷단에 넘기고(`src/renderer/recovery-copy.ts`, 자동 저장 스위치와 무관), 뒷단이 공용 저장소로 `<userData>/markdown-autosave`에 둔다(`src/main/recovery.ts`). 원본 파일과 사용자 폴더에는 쓰지 않는다(제목 없는 문서 포함). 저장(자동 저장·다른 이름·MCP 포함)은 사본을 지우고, "저장 안 함"과 MCP의 저장 없이 닫기는 `dontSave`로, 깨끗하게 닫힌 탭은 자기가 쓴 사본만 지운다. 화면이 죽은 탭과 앱이 끝나는 중의 닫기는 지우지 않는다. 사본이 있는 파일을 열면 내용을 읽기 전에 `recoveryOpen`이 공용 물음(Esc는 되살리기)을 거치고, 되살린 글은 원래 경로를 저장 대상으로 둔 채 "바뀜" 상태로 열린다. 껍데기 앱은 `markdownRecoveryEditor`(약속), `markdownRecoveryIdentity`, `setMarkdownRecoveryTitleSource`를 쓴다. `recovery.ts`와 `recovery-copy.ts`는 HTML 편집기의 같은 이름 파일과 내용이 같다.
 - 문자열은 `src/renderer/i18n/strings.ts` 한 파일에 21개 언어가 있고 `zh`가 키 집합을 정한다. 구독 연결 문장과 AI 진입 이름은 `@genoffice/ui`의 것을 쓴다.
+- 제목 개요 창(`OutlinePane.tsx`)은 열림 여부를 `mdapp.showOutline`에 기억한다. 제목이 없는 문서에서도 열 수 있고(빈 상태 안내), Ctrl+Shift+O로 여닫는다. 파일을 열 때 `collectOutline`으로 한 번 채워 두어 첫 편집 전에도 제목 목록이 보인다.
 
 ## 테스트
 

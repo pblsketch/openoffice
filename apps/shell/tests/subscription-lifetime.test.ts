@@ -36,7 +36,13 @@ describe('subscription CLI lifetime in the shell main process', () => {
   })
 
   it('ends the CLIs when the app quits', () => {
-    expect(blockAfter("app.on('will-quit', () => {")).toContain('shutdownSubscriptionChildren()')
+    // will-quit (and an OS session end) release everything through one function
+    expect(blockAfter("app.on('will-quit', () => {")).toContain('releaseAppResources()')
+    const start = source.indexOf('function releaseAppResources(): void {')
+    expect(start).toBeGreaterThanOrEqual(0)
+    expect(source.slice(start, source.indexOf('\n}\n', start))).toContain(
+      'shutdownSubscriptionChildren()',
+    )
   })
 
   it('ends them on the exits that skip the quit events', () => {

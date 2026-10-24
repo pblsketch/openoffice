@@ -87,6 +87,7 @@ export const nl = {
   ribbonFontEastAsia: 'Oost-Aziatisch lettertype',
   ribbonFontLatin: 'Latijns lettertype',
   ribbonFontFamilyTip: 'Lettertype',
+  ribbonFontDialogTip: 'Lettertype — tekenschaal en spatiëring op het tabblad Geavanceerd',
   ribbonFontsCommon: 'Veelgebruikte lettertypen',
   ribbonFontsSystem: 'Systeemlettertypen',
   ribbonFontsHangul: 'Koreaanse lettertypen',

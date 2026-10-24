@@ -77,6 +77,7 @@ export const nl = {
   hlAccept: 'Accepteren',
   hlDismiss: 'Negeren',
   hlAcceptAll: 'Alles accepteren ({count})',
+  hlAcceptAllSave: 'Alles accepteren en opslaan ({count})',
   hlDismissAll: 'Alle voorstellen negeren',
   hlSuggestionCount: '{count} AI-markeringsvoorstellen',
   hlNotFoundTip:
@@ -84,5 +85,6 @@ export const nl = {
   hlWaitingSave: 'Wacht op opslaan',
   hlWaitingSaveTip: 'Sla de PDF op om de markering in het bestand te zetten',
   hlAcceptedNotice: '{count} markeringen toegevoegd. Sla de PDF op om ze in het bestand te zetten.',
+  hlAcceptedSaved: '{count} markeringen opgeslagen.',
   hlDismissFailed: 'De voorstellen konden niet worden genegeerd.',
 } satisfies Record<keyof typeof zh, string>

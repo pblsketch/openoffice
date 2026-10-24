@@ -44,7 +44,7 @@ Nastavení může zaregistrovat GenOffice jako aplikaci pro soubory .docx / .xls
 ## Informace o softwaru třetích stran a aktualizace
 
 - Nápověda ▸ Informace o softwaru třetích stran: úplný přehled licencí open source dodávaných s aplikací.
-- Nápověda ▸ Zkontrolovat aktualizace…: spustí ruční kontrolu; novější verze vyzve k instalaci.
+- Nabídka (☰) ▸ Zkontrolovat aktualizace… (na počítači Mac Nápověda ▸ Zkontrolovat aktualizace…): spustí ruční kontrolu; novější verze vyzve k instalaci.
 
 ## Integrace MCP (pro pokročilé uživatele a klienty AI)
 

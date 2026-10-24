@@ -12,6 +12,10 @@ export default defineConfig({
       '@genoffice/docx-engine/lazy-media': local('../../packages/docx-engine/src/lazy-media.ts'),
       '@genoffice/docx-engine': local('../../packages/docx-engine/src/index.ts'),
       '@genoffice/odt-engine': local('../../packages/odt-engine/src/index.ts'),
+      '@genoffice/font-metrics/resolve': local('../../packages/font-metrics/src/resolve.ts'),
+      '@genoffice/font-metrics/word-faces.json': local(
+        '../../packages/font-metrics/word-faces.json',
+      ),
       '@genoffice/font-metrics': local('../../packages/font-metrics/src/index.ts'),
       // subpath before the bare name: string aliases are prefix replacements
       '@genoffice/electron-utils/doc-attach-channels': local(
@@ -19,6 +23,9 @@ export default defineConfig({
       ),
       '@genoffice/electron-utils/headless-export': local(
         '../../packages/electron-utils/src/headless-export.ts',
+      ),
+      '@genoffice/electron-utils/print-job': local(
+        '../../packages/electron-utils/src/print-job.ts',
       ),
       '@genoffice/electron-utils/atomic-write': local(
         '../../packages/electron-utils/src/atomic-write.ts',
@@ -49,6 +56,9 @@ export default defineConfig({
       '@genoffice/ai-provider': local('../../packages/ai-provider/src/index.ts'),
       '@genoffice/i18n': local('../../packages/i18n/src/index.ts'),
       '@genoffice/ui/template-fonts': local('../../packages/ui/src/template-fonts.ts'),
+      '@genoffice/ui/ai-subscription-login-window': local(
+        '../../packages/ui/src/ai-subscription-login-window.ts',
+      ),
       '@genoffice/ui': local('../../packages/ui/src/index.ts'),
     },
   },

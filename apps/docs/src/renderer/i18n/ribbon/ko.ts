@@ -88,6 +88,7 @@ export const ko = {
   ribbonFontEastAsia: '동아시아 글꼴',
   ribbonFontLatin: '영문 글꼴',
   ribbonFontFamilyTip: '글꼴',
+  ribbonFontDialogTip: '글꼴 — 장평·자간은 고급 탭',
   ribbonFontsCommon: '자주 쓰는 글꼴',
   ribbonFontsSystem: '시스템 글꼴',
   ribbonFontsHangul: '한글 글꼴',

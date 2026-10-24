@@ -75,11 +75,13 @@ export const hi = {
   hlAccept: 'स्वीकार करें',
   hlDismiss: 'छोड़ें',
   hlAcceptAll: 'सभी स्वीकार करें ({count})',
+  hlAcceptAllSave: 'सभी स्वीकारें और सहेजें ({count})',
   hlDismissAll: 'सभी सुझाव छोड़ें',
   hlSuggestionCount: '{count} AI हाइलाइट सुझाव',
   hlNotFoundTip: 'यह वाक्य पन्ने के पाठ में नहीं मिला, इसलिए इसे स्वीकार नहीं किया जा सकता',
   hlWaitingSave: 'सहेजने की प्रतीक्षा',
   hlWaitingSaveTip: 'हाइलाइट को फ़ाइल में डालने के लिए PDF सहेजें',
   hlAcceptedNotice: '{count} हाइलाइट जोड़े गए। उन्हें फ़ाइल में डालने के लिए PDF सहेजें।',
+  hlAcceptedSaved: '{count} हाइलाइट सहेजे गए।',
   hlDismissFailed: 'सुझाव छोड़े नहीं जा सके।',
 } satisfies Record<keyof typeof zh, string>

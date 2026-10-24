@@ -20,10 +20,9 @@ import {
 } from 'electron'
 import type { WebContents } from 'electron'
 import { execFile } from 'node:child_process'
-import { readFile, writeFile, rm, stat, mkdir, open } from 'node:fs/promises'
-import { createHash, randomUUID } from 'node:crypto'
+import { readFile, writeFile, mkdir, open } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
-import { userInfo } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { cleanupExpiredGeneratedPages } from './generated-page-temp'
 import { exportSlidesPdf } from './pdf-export'
@@ -31,9 +30,11 @@ import { printSlidesHtml } from './print-window'
 import { shutdownSubscriptionChildren } from '@genoffice/ai-provider/subscription'
 import {
   appMenuLabels,
+  configuredAuthorName,
   configuredDefaultSaveDir,
   confirmOverwriteIfConflicted,
   contextMenuLabels,
+  createRecoveryStore,
   fetchRemoteImage,
   installContextMenu,
   installNavigationGuard,
@@ -52,7 +53,15 @@ import {
   registerRendererScheme,
   rendererUrl,
   MAX_REMOTE_IMAGE_BYTES,
+  isUntitledIdentity,
+  newUntitledRecoveryId,
   readBodyCapped,
+  registerRecoveryEditor,
+  resolveRecoveryOnOpen,
+  type RecoveryDeleteReason,
+  type RecoveryIdentity,
+  type RecoveryOpenFileRequest,
+  type RecoveryOpenUntitledRequest,
 } from '@genoffice/electron-utils'
 import {
   resolveGroupChildId,
@@ -311,6 +320,7 @@ import { registerAttachmentIpc } from './attachments-ipc'
 import { registerGenerateHandoffIpc } from './generate-handoff-ipc'
 import { registerSlidesTemplateBytesIpc } from './template-bytes'
 import { openSlidesSeed } from './seed-deck'
+import { queueSlidesSeedFor } from './seed-queue'
 
 export {
   configureSlidesRuntime,
@@ -429,10 +439,7 @@ function trackSlidesWebContents(wc: WebContents): void {
     return { action: 'deny' }
   })
   wc.once('destroyed', () => {
-    // Untitled recovery draft: cleaned up on a clean close, kept when the session died dirty
-    const s = sessions.get(wc.id)
-    if (s && !sessionDirty(s)) dropUntitledRecovery(wc.id)
-    else untitledRecovery.delete(wc.id)
+    releaseSlidesRecovery(wc.id)
     sessions.delete(wc.id)
     pendingByWc.delete(wc.id)
     lastSlidePaste.delete(wc.id)
@@ -491,28 +498,26 @@ export async function saveSessionDeckTo(session: Session, filePath: string): Pro
   // yet (the dialog-driven paths always land in an existing folder)
   await mkdir(dirname(filePath), { recursive: true })
   const metaRevAtSave = session.metaRev ?? 0
+  const previousPath = session.path
   await writeDeckFile(session, filePath)
   followTemplateSelection(session, session.path, filePath)
   session.path = filePath
   session.diskState = (await recordDiskState(filePath)) ?? undefined
-  autosaveBackoff.delete(filePath)
-  // mirror slides:save-as: a saved deck is no longer an unsaved untitled draft
-  for (const id of attachedIds(session)) dropUntitledRecovery(id)
   await pushRecent(filePath)
   syncAttachedPaths(session, filePath)
   commitSaved(session.opened)
   if ((session.metaRev ?? 0) === metaRevAtSave) session.metaDirty = false
+  // mirror slides:save-as: the saved deck's recovery copies are gone — only
+  // now that the deck reads as saved, so a copy written during the steps
+  // above (it still looked unsaved) goes too
+  recoveryCopiesSaved(session, previousPath)
 }
 
 const RECENT_PATH = () => join(app.getPath('userData'), 'slides-recent.json')
 
-/** Comment author name: system username, falling back to a generic "User" label. */
+/** Settings → General author name, falling back to the OS account */
 function commentAuthorName(): string {
-  try {
-    return userInfo().username || 'User'
-  } catch {
-    return 'User'
-  }
+  return configuredAuthorName(app)
 }
 
 async function readRecent(): Promise<string[]> {
@@ -570,10 +575,15 @@ export function slidesFileRenamed(wc: WebContents, oldPath: string, newPath: str
   wc.send('slides:renamed', newPath)
 }
 
-// ── Autosave (crash recovery): dirty sessions write a recovery copy every 30s; a normal save cleans it up ──
-const autosaveDir = () => join(app.getPath('userData'), 'slides-autosave')
-const autosavePathFor = (filePath: string) =>
-  join(autosaveDir(), `${createHash('sha1').update(filePath).digest('hex').slice(0, 16)}.pptx`)
+// ── Crash recovery: dirty decks write a recovery copy through the shared store every 30s ──
+//
+// Copies live in <userData>/slides-autosave (sha1 of the path + .pptx, as
+// earlier versions named them; untitled decks under untitled/), never next to
+// the deck or in the Documents folder. They hold what a save would write at
+// that moment, re-encrypted for a password deck. Deleted on save ('saved'),
+// on Don't Save or an MCP close without saving ('dontSave'), and when a view
+// closes clean ('closedClean', which the store refuses while the app is ending).
+const recoveryStore = createRecoveryStore({ userDataDir: () => app.getPath('userData') })
 
 function sessionDirty(session: Session): boolean {
   return (
@@ -584,69 +594,203 @@ function sessionDirty(session: Session): boolean {
   )
 }
 
+/** a deck file's recovery identity */
+const fileRecoveryId = (filePath: string): RecoveryIdentity => ({ kind: 'slides', filePath })
+
+/** where a session's copy goes: its file's slot, else its own untitled slot (made on first use) */
+function recoveryIdentityOf(session: Session): RecoveryIdentity {
+  if (session.path) return fileRecoveryId(session.path)
+  return (session.recoveryId ??= {
+    kind: 'slides',
+    untitledId: newUntitledRecoveryId(),
+    ext: '.pptx',
+  })
+}
+
 /**
- * Ticks to skip after a failed recovery copy, per deck. Retrying every 30s just
- * repeats an expensive failure, but disabling the safety net for the rest of the
- * session was worse: on a heavy deck one slow serialization used to remove crash
- * recovery permanently and silently. Back off instead, and keep the
- * skip count so a deck that always fails only pays for it every ~5 minutes.
+ * The untitled deck copy this view writes, if any (the shell's session record,
+ * and reopening an untitled tab whose renderer crashed). Null for a deck with
+ * a file, and for an untitled deck that has no copy slot yet — asking never
+ * makes one.
+ */
+export function slidesRecoveryIdentity(webContentsId: number): RecoveryIdentity | null {
+  const session = sessions.get(webContentsId)
+  if (!session || session.path || !session.recoveryId) return null
+  return isUntitledIdentity(session.recoveryId) ? session.recoveryId : null
+}
+
+/** the launch list's name for an untitled deck: its suggested first-save name, else the untitled label */
+function untitledRecoveryTitle(session: Session): string {
+  const named = session.firstSaveName ? basename(session.firstSaveName).replace(/\.pptx$/i, '') : ''
+  return named || tm('untitledDeck')
+}
+
+/**
+ * What a copy was taken of: every committed edit journals an op or bumps the
+ * notes/comments counter, and undo/redo swap the history stacks' tops. Equal
+ * marks mean the copy on disk already holds the deck.
+ */
+type CopyMark = readonly unknown[]
+const contentMark = (session: Session): CopyMark => [
+  session.opSeq ?? 0,
+  session.metaRev ?? 0,
+  session.metaDirty ?? false,
+  session.undoStack.length,
+  session.undoStack.at(-1),
+  session.redoStack.length,
+  session.redoStack.at(-1),
+  session.opened.deck.slides.length,
+]
+const sameMark = (a: CopyMark, b: CopyMark) =>
+  a.length === b.length && a.every((v, i) => Object.is(v, b[i]))
+/** decks whose copy this process wrote (or restored from), with what that copy holds */
+const copyMarks = new WeakMap<Session, CopyMark>()
+
+/**
+ * Ticks to skip after a failed recovery copy, per copy slot. Retrying every
+ * 30s just repeats an expensive failure, but disabling the safety net for the
+ * rest of the session was worse: on a heavy deck one slow serialization used
+ * to remove crash recovery permanently and silently. Back off instead, and
+ * keep the skip count so a deck that always fails only pays for it every ~5
+ * minutes.
  */
 const autosaveBackoff = new Map<string, number>()
 const AUTOSAVE_BACKOFF_TICKS = 10
-let autosaveRunning = false
+
+/** the session still belongs to an open view */
+function sessionIsOpen(session: Session): boolean {
+  for (const open of sessions.values()) if (open === session) return true
+  return false
+}
+
+async function writeSessionCopy(session: Session, ignoreBackoff: boolean): Promise<void> {
+  const mark = contentMark(session)
+  // checked right before the ticket, with no await in between: a deck whose
+  // view went away since the pass began is not written, nor one whose changes
+  // were thrown away (Don't Save, an MCP close without saving). A pass
+  // snapshots the open decks and writes them one by one, so a deck discarded
+  // while an earlier one was still serializing would otherwise get a fresh
+  // copy after its delete. The store keeps such a deck blocked until the
+  // window close is cancelled (the tab stays open: copies resume at the next
+  // pass) or the deck is opened again; asking it first spares the serializing.
+  if (!sessionIsOpen(session)) return
+  const identity = recoveryIdentityOf(session)
+  if (recoveryStore.isDiscarded(identity)) return
+  const key = recoveryStore.copyPath(identity)
+  const skip = autosaveBackoff.get(key) ?? 0
+  if (skip > 0 && !ignoreBackoff) {
+    autosaveBackoff.set(key, skip - 1)
+    return
+  }
+  const last = copyMarks.get(session)
+  if (last && sameMark(last, mark) && recoveryStore.copyInfo(identity)) return
+  // the ticket comes before serializing: a save or Don't Save that lands
+  // meanwhile wins, and this copy is dropped instead of reviving the slot
+  const ticket = recoveryStore.beginWrite(identity)
+  const options = {
+    ticket,
+    ...('untitledId' in identity ? { title: untitledRecoveryTitle(session) } : {}),
+  }
+  try {
+    // a plain deck streams to a temp file in the copy folder, as a save does,
+    // instead of assembling the whole package in memory every 30s; a password
+    // deck has to be encrypted as one buffer (its plaintext never hits the disk)
+    const result =
+      session.password === undefined
+        ? await recoveryStore.writeCopyStreamed(
+            identity,
+            (tempPath) => writeDeckFile(session, tempPath),
+            options,
+          )
+        : await recoveryStore.writeCopy(
+            identity,
+            deckFileBytes(session, await savePptx(session.opened)),
+            options,
+          )
+    autosaveBackoff.delete(key)
+    if (result === 'written') copyMarks.set(session, mark)
+  } catch (error) {
+    autosaveBackoff.set(key, AUTOSAVE_BACKOFF_TICKS)
+    console.warn('[slides] recovery copy failed, retrying in ~5 min:', error)
+  }
+}
+
+async function writeDirtyCopies(ignoreBackoff: boolean): Promise<void> {
+  const seen = new Set<Session>() // aliased entries share the session; copy it once
+  for (const session of [...sessions.values()]) {
+    if (seen.has(session)) continue
+    seen.add(session)
+    if (session.masterEdit || !sessionDirty(session)) continue
+    await writeSessionCopy(session, ignoreBackoff)
+  }
+}
+
+let recoveryPass: Promise<void> | null = null
 
 /**
- * Recovery drafts for never-saved decks (wcId → visible path in <Documents>/GenOffice):
- * the sha1-keyed recovery copy needs session.path, so before the first save a freeze or
- * crash used to lose everything. Removed on save, explicit discard, or clean close.
+ * One recovery pass over every open deck (the 30-second tick). With
+ * `ignoreBackoff` (the OS is ending the session) decks in backoff are tried
+ * too. Passes never overlap: a call waits for the running one.
  */
-const untitledRecovery = new Map<number, string>()
-
-function dropUntitledRecovery(wcId: number): void {
-  const draft = untitledRecovery.get(wcId)
-  if (draft) void rm(draft, { force: true }).catch(() => {})
-  untitledRecovery.delete(wcId)
+export async function runSlidesRecoveryPass(ignoreBackoff = false): Promise<void> {
+  while (recoveryPass) await recoveryPass
+  const pass = writeDirtyCopies(ignoreBackoff)
+  recoveryPass = pass
+  try {
+    await pass
+  } finally {
+    if (recoveryPass === pass) recoveryPass = null
+  }
 }
 
 setInterval(() => {
-  if (autosaveRunning) return
-  autosaveRunning = true
-  void (async () => {
-    const seen = new Set<Session>() // aliased entries share the session; save it once
-    for (const [wcId, session] of sessions.entries()) {
-      if (seen.has(session)) continue
-      seen.add(session)
-      if (session.masterEdit || !sessionDirty(session)) continue
-      let target: string
-      if (session.path) {
-        target = autosavePathFor(session.path)
-      } else {
-        let draft = untitledRecovery.get(wcId)
-        if (!draft) {
-          draft = join(getDraftsDir(), newDraftFilename())
-          untitledRecovery.set(wcId, draft)
-        }
-        target = draft
-      }
-      const backoffKey = session.path ?? target
-      const skip = autosaveBackoff.get(backoffKey) ?? 0
-      if (skip > 0) {
-        autosaveBackoff.set(backoffKey, skip - 1)
-        continue
-      }
-      try {
-        await mkdir(dirname(target), { recursive: true })
-        await writeDeckFile(session, target)
-        autosaveBackoff.delete(backoffKey)
-      } catch (error) {
-        autosaveBackoff.set(backoffKey, AUTOSAVE_BACKOFF_TICKS)
-        console.warn('[slides] autosave failed, retrying in ~5 min:', error)
-      }
-    }
-  })().finally(() => {
-    autosaveRunning = false
-  })
+  if (!recoveryPass) void runSlidesRecoveryPass()
 }, 30_000)
+
+/** delete every copy the session's document has (its file slot and its untitled slot) */
+function deleteSessionCopies(session: Session, reason: RecoveryDeleteReason): void {
+  // 'dontSave' also blocks the deck's copies in the store (see writeSessionCopy)
+  let refused = false
+  if (session.path) {
+    const identity = fileRecoveryId(session.path)
+    refused = recoveryStore.deleteCopy(identity, reason) === 'refused'
+    autosaveBackoff.delete(recoveryStore.copyPath(identity))
+  }
+  if (session.recoveryId) {
+    refused = recoveryStore.deleteCopy(session.recoveryId, reason) === 'refused' || refused
+    autosaveBackoff.delete(recoveryStore.copyPath(session.recoveryId))
+  }
+  if (!refused) copyMarks.delete(session)
+}
+
+/**
+ * A save of the session succeeded (to `session.path`): the copies of what it
+ * was before (the old path after Save As, its untitled slot) and of the saved
+ * path are gone. A copy write still in flight is dropped by the store.
+ */
+function recoveryCopiesSaved(session: Session, previousPath: string): void {
+  if (previousPath && previousPath !== session.path) {
+    const previous = fileRecoveryId(previousPath)
+    recoveryStore.deleteCopy(previous, 'saved')
+    autosaveBackoff.delete(recoveryStore.copyPath(previous))
+  }
+  deleteSessionCopies(session, 'saved')
+  if (session.path) delete session.recoveryId
+}
+
+/**
+ * A view is going away. A deck no other view shows that closes clean drops
+ * the copy it wrote ('closedClean': refused while the app is ending, so a
+ * shutdown never removes the copy just written); a deck with unsaved changes
+ * keeps its copy for the next launch.
+ */
+export function releaseSlidesRecovery(webContentsId: number): void {
+  const session = sessions.get(webContentsId)
+  if (!session || sessionDirty(session)) return
+  for (const [id, other] of sessions) if (id !== webContentsId && other === session) return
+  if (!copyMarks.has(session) && !session.recoveryId) return
+  deleteSessionCopies(session, 'closedClean')
+}
 
 // ── Close guard (aligned with sheets/pdf): dirty sessions prompt Save/Don't Save/Cancel before closing a tab/window ──
 const closeSaveWaiters = new Map<number, (ok: boolean) => void>()
@@ -719,10 +863,10 @@ export async function requestSlidesClose(
       : await dialog.showMessageBox(options)
   if (response === 2) return false
   if (response === 1) {
-    // User explicitly discarded changes: also delete the recovery copy, so the next open does not show a pointless recovery prompt
+    // The user discarded the changes: the copy goes too ('dontSave' is carried
+    // out even while the app is ending), so the next open does not offer them
     const session = sessions.get(contents.id)
-    if (session?.path) void rm(autosavePathFor(session.path), { force: true }).catch(() => {})
-    dropUntitledRecovery(contents.id)
+    if (session) deleteSessionCopies(session, 'dontSave')
     return true
   }
   return requestRendererSave(contents)
@@ -732,59 +876,166 @@ export async function requestSlidesClose(
  * Drop a session's crash-recovery copies without saving — the dialog-free
  * counterpart of answering "Don't Save" in `requestSlidesClose`, for the MCP
  * `open_documents` discard path (which must not raise a prompt the user did not
- * start). Without this the autosave copy survives, and the next open offers to
- * restore edits the caller explicitly discarded.
+ * start). Without this the copy survives, and the next open offers to restore
+ * edits the caller explicitly discarded.
  */
 export function discardSlidesRecovery(contents: WebContents): void {
   const session = sessions.get(contents.id)
-  if (session?.path) void rm(autosavePathFor(session.path), { force: true }).catch(() => {})
-  dropUntitledRecovery(contents.id)
+  if (session) deleteSessionCopies(session, 'dontSave')
 }
 
-/** On open, if a recovery copy newer than the original exists, ask whether to restore (still points at the original path; only save persists it). */
-async function maybeRecoverBytes(
+/** the shell's answer for a restored tab's file, taken by that view's next open of the path */
+const openDecisionByWc = new Map<number, RecoveryOpenFileRequest>()
+/** untitled copies being read for a view; its pending open waits for them */
+const pendingUntitledCopyByWc = new Map<number, Promise<void>>()
+
+/**
+ * The bytes to open for `path`: the original, or its recovery copy. A copy
+ * whose question is open is asked about first (the shared per-file prompt:
+ * the deck's name, Esc restores, a line when the file is newer); "restore"
+ * chosen in the launch list, or the shell's decision for a restored tab,
+ * opens without asking. A restored deck keeps `path` as its save target and
+ * opens unsaved; only a save writes the original. A headless export never
+ * asks and opens the file.
+ */
+async function recoveredOpenBytes(
+  wcId: number,
   path: string,
   original: Uint8Array,
   password?: string,
 ): Promise<{ bytes: Uint8Array; recovered: boolean }> {
-  const asPath = autosavePathFor(path)
-  try {
-    const [asStat, origStat] = await Promise.all([stat(asPath), stat(path)])
-    if (asStat.mtimeMs <= origStat.mtimeMs) {
-      await rm(asPath, { force: true })
-      return { bytes: original, recovered: false }
+  const keep = { bytes: original, recovered: false }
+  if (isHeadlessMode()) return keep
+  const identity = fileRecoveryId(path)
+  const forced = openDecisionByWc.get(wcId)
+  const decided = forced !== undefined && resolve(forced.filePath) === resolve(path)
+  if (decided) openDecisionByWc.delete(wcId)
+  let copy: Buffer | null = null
+  if (decided) {
+    if (forced.decision === 'original') return keep
+    copy = await recoveryStore.readCopy(identity)
+    if (copy) recoveryStore.markCopyLoaded(identity)
+  } else {
+    const answer = await resolveRecoveryOnOpen({
+      store: recoveryStore,
+      identity,
+      dialog,
+      parent: dialogParent() ?? null,
+      lang: getUiLang(),
+    })
+    if (answer.action === 'restore') copy = answer.bytes
+  }
+  if (!copy) return keep
+  // an encrypted deck's copy is encrypted with the same password (a copy the
+  // current password cannot open is left alone, not opened)
+  if (isEncryptedOoxml(copy)) {
+    if (password === undefined) return copyNotOpened(identity, keep)
+    try {
+      return { bytes: new Uint8Array(await decryptOfficeFile(copy, password)), recovered: true }
+    } catch {
+      return copyNotOpened(identity, keep)
     }
-  } catch {
-    return { bytes: original, recovered: false }
   }
-  const parent = dialogParent()
-  const options = {
-    type: 'question' as const,
-    buttons: [tm('autosaveRestore'), tm('autosaveDiscard')],
-    defaultId: 0,
-    cancelId: 1,
-    message: tm('autosaveFoundTitle'),
-    detail: tm('autosaveFoundBody'),
-  }
-  const r = parent
-    ? await dialog.showMessageBox(parent, options)
-    : await dialog.showMessageBox(options)
-  if (r.response === 0) {
-    const bytes = await readFile(asPath)
-    // an encrypted deck's recovery copy is encrypted with the same password
-    // (a copy the current password cannot open is left alone, not opened)
-    if (password !== undefined && isEncryptedOoxml(bytes)) {
-      try {
-        return { bytes: new Uint8Array(await decryptOfficeFile(bytes, password)), recovered: true }
-      } catch {
-        return { bytes: original, recovered: false }
-      }
-    }
-    return { bytes: new Uint8Array(bytes), recovered: true }
-  }
-  await rm(asPath, { force: true })
-  return { bytes: original, recovered: false }
+  return { bytes: new Uint8Array(copy), recovered: true }
 }
+
+/**
+ * A copy chosen for restoring could not be opened and the deck opens from
+ * its file instead. Choosing it marked the copy loaded (undecided), yet no
+ * tab holds it: undecided it would make every later quit look abnormal. It
+ * waits for the next launch list or open as "later" instead.
+ */
+function copyNotOpened<T>(identity: RecoveryIdentity, result: T): T {
+  recoveryStore.setCopyState(identity, 'later')
+  return result
+}
+
+/**
+ * Read an untitled copy (or a file copy whose original is missing) and queue
+ * it as the view's new unsaved deck: its first save asks where (suggesting
+ * the original path when there was one), and later copies go to the same
+ * slot. An encrypted copy asks for its password and stays encrypted.
+ */
+async function queueUntitledCopy(
+  contents: WebContents,
+  request: RecoveryOpenUntitledRequest,
+): Promise<void> {
+  const bytes = await recoveryStore.readCopy(request.copy)
+  if (!bytes || contents.isDestroyed()) return
+  let deck = new Uint8Array(bytes)
+  let password: string | undefined
+  if (isEncryptedOoxml(bytes)) {
+    const prompt = passwordPromptFactory?.(hostWindowFor(contents), request.title)
+    try {
+      const unlocked = await unlockOfficeFile(
+        bytes,
+        prompt?.ask ??
+          (() =>
+            Promise.reject(new OfficeDecryptError('unsupported', 'no password prompt available'))),
+      )
+      if (!unlocked) return
+      deck = new Uint8Array(unlocked.bytes)
+      password = unlocked.password
+    } catch {
+      return
+    } finally {
+      prompt?.close()
+    }
+  }
+  if (contents.isDestroyed()) return
+  const title = request.title.replace(/\.pptx$/i, '')
+  // a file copy whose original is missing becomes this untitled deck's own:
+  // the shell sees an untitled slot for the tab, later copies go there, and
+  // the copy keeps the original path for the first Save As after a new crash
+  let recoveryId = request.copy
+  if (!isUntitledIdentity(recoveryId)) {
+    const adopted = recoveryStore.adoptUntitledCopy('slides', recoveryStore.copyPath(recoveryId), {
+      title: title || tm('untitledDeck'),
+      ext: '.pptx',
+      state: 'undecided',
+      originalPath: request.saveAsDefaultPath ?? recoveryId.filePath,
+    })
+    if (!adopted) return
+    recoveryId = adopted
+  }
+  queueSlidesSeedFor(contents, deck, {
+    askPathOnFirstSave: true,
+    suggestedName: request.saveAsDefaultPath ?? `${title || tm('untitledDeck')}.pptx`,
+    recoveryId,
+    password,
+  })
+}
+
+/**
+ * PowerPoint's side of the crash-recovery contract (see RecoveryEditorContract),
+ * registered when this module loads so the shell finds it before any slides
+ * view exists.
+ */
+registerRecoveryEditor({
+  kind: 'slides',
+  writeCopiesNow: () => runSlidesRecoveryPass(true).catch(() => {}),
+  openFileWithDecision(contents, request) {
+    if (contents.isDestroyed()) return
+    const id = contents.id
+    openDecisionByWc.set(id, request)
+    pendingByWc.set(id, request.filePath)
+    contents.once('destroyed', () => openDecisionByWc.delete(id))
+  },
+  openUntitledCopy(contents, request) {
+    if (contents.isDestroyed()) return
+    const id = contents.id
+    const pending = queueUntitledCopy(contents, request).catch((error: unknown) => {
+      console.warn('[slides] could not open a recovery copy:', error)
+    })
+    pendingUntitledCopyByWc.set(id, pending)
+    void pending.finally(() => {
+      if (pendingUntitledCopyByWc.get(id) === pending) pendingUntitledCopyByWc.delete(id)
+    })
+    return pending
+  },
+  // a password deck's copy keeps the password, so every deck can have one
+  isUnprotectable: () => false,
+})
 
 /** One password prompt for a file: `ask` is one attempt, `close` ends the prompt. */
 export interface SlidesPasswordPrompt {
@@ -926,6 +1177,8 @@ async function openAndBuild(
   const wanted = resolve(path)
   for (const [id, existing] of sessions) {
     if (id === wc.id || !existing.path || resolve(existing.path) !== wanted) continue
+    // the deck is already open: its live content wins over any recovery decision
+    openDecisionByWc.delete(wc.id)
     sessions.set(wc.id, existing)
     scheduleHistoryNotify(existing)
     await pushRecent(path)
@@ -943,13 +1196,21 @@ async function openAndBuild(
   const diskStatePromise = recordDiskState(path)
   // a 0-byte .pptx is an empty deck, not a corrupt one: open the blank template
   // under the file's own path so Save writes back to it
-  const { bytes, recovered } = await maybeRecoverBytes(
+  const { bytes, recovered } = await recoveredOpenBytes(
+    wc.id,
     path,
     raw.length === 0 ? await createBlankPptx() : new Uint8Array(raw),
     unlocked?.password,
   )
   await shapedMetricsReady() // Lay out only after complex-script shaped metrics are ready, avoiding an init race falling back to estimation
-  const opened = await openPptx(bytes)
+  let opened: OpenedPptx
+  try {
+    opened = await openPptx(bytes)
+  } catch (error) {
+    // an unreadable copy: the open fails as before, and the copy is no tab's
+    if (recovered) copyNotOpened(fileRecoveryId(path), undefined)
+    throw error
+  }
   adoptEmbeddedFonts(opened)
   const diskState = await diskStatePromise
   sessions.set(wc.id, {
@@ -962,12 +1223,23 @@ async function openAndBuild(
     ...(diskState === null ? {} : { diskState }),
     ...(unlocked === undefined ? {} : { password: unlocked.password }),
   })
-  scheduleHistoryNotify(sessions.get(wc.id)!)
+  const session = sessions.get(wc.id)!
+  scheduleHistoryNotify(session)
+  // the restored copy holds this deck as it is now: no new copy until it changes
+  if (recovered) copyMarks.set(session, contentMark(session))
   await pushRecent(path)
   slidesOpenedHook?.(wc, path)
   let slides = buildAllRenderSlides(opened, fitWidthPx)
   // If the first layout pass had complex-script misses (Arabic/Thai etc.), re-lay out once with renderer-measured widths
   if (await refineComplexWidths(wc)) slides = buildAllRenderSlides(opened, fitWidthPx)
+  if (recovered) {
+    // An open shows the deck as clean; the deck-changed message right after it
+    // makes the renderer ask the session, which answers "unsaved".
+    const size = { cx: opened.deck.size.cx, cy: opened.deck.size.cy }
+    setImmediate(() => {
+      if (!wc.isDestroyed()) wc.send('slides:deck-changed', { slides, size })
+    })
+  }
   return {
     path,
     slides,
@@ -976,18 +1248,9 @@ async function openAndBuild(
   }
 }
 
-/** Directory where AI-generated drafts are saved: the configurable default save folder (falls back to <Documents>/GenOffice) */
+/** Where a new deck's first-save dialog starts: the configurable default save folder (falls back to <Documents>/<product name>) */
 function getDraftsDir(): string {
   return configuredDefaultSaveDir(app)
-}
-
-/** Fallback draft filename: <untitled label>-YYYYMMDD-HHmmss.pptx */
-function newDraftFilename(): string {
-  const d = new Date()
-  const pad = (n: number, w = 2) => String(n).padStart(w, '0')
-  const date = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`
-  const time = `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
-  return `${tm('untitledDraft')}-${date}-${time}.pptx`
 }
 
 /** Sanitize an AI-provided topic/title into a safe filename base: strip illegal path chars, collapse whitespace, cap length; null if invalid. */
@@ -1005,57 +1268,18 @@ function sanitizeDraftBaseName(raw: string | undefined): string | null {
   return cleaned.length > 40 ? cleaned.slice(0, 40).trim() : cleaned
 }
 
-/** Pick a draft path from deckName: append -2/-3… if a same-named file exists; fall back to timestamp naming without a valid deckName. */
-function pickDraftPath(draftsDir: string, deckName?: string): string {
-  const base = sanitizeDraftBaseName(deckName)
-  if (base) {
-    let candidate = join(draftsDir, `${base}.pptx`)
-    for (let i = 2; existsSync(candidate) && i < 100; i++) {
-      candidate = join(draftsDir, `${base}-${i}.pptx`)
-    }
-    if (!existsSync(candidate)) return candidate
-  }
-  return join(draftsDir, newDraftFilename())
-}
-
 /**
- * Auto-save the draft to <Documents>/GenOffice/<name>.pptx after AI generation completes.
- * Append mode reuses the session's existing draft path (overwrite); replace mode generates a
- * new filename. On successful write, update session.path, pushRecent, slidesOpenedHook.
- * On write failure, degrade silently (console.warn) without blocking the in-memory session.
+ * An AI-generated deck is not written anywhere on its own (decision 0061: no
+ * file appears in the user's folders unless they save). An untitled deck stays
+ * unsaved, covered by its recovery copy; its generated name is what the first
+ * save offers, and that save asks where. A deck with a file stays on its file.
  */
-async function saveDraftAfterGenerate(
-  wc: WebContents,
-  session: Session,
-  bytes: Uint8Array,
-  mode: 'replace' | 'append',
-  deckName?: string,
-): Promise<void> {
-  try {
-    const draftsDir = getDraftsDir()
-    // Ensure the directory exists
-    if (!existsSync(draftsDir)) mkdirSync(draftsDir, { recursive: true })
-
-    // Append mode: overwrite if the session already has a draft path; otherwise create a new file too
-    let draftPath: string
-    if (mode === 'append' && session.path && session.path.startsWith(draftsDir)) {
-      draftPath = session.path
-    } else {
-      draftPath = pickDraftPath(draftsDir, deckName)
-    }
-
-    await writeFile(draftPath, deckFileBytes(session, bytes))
-    followTemplateSelection(session, session.path, draftPath)
-    session.path = draftPath
-    session.diskState = (await recordDiskState(draftPath)) ?? undefined
-    await pushRecent(draftPath)
-    slidesOpenedHook?.(wc, draftPath)
-  } catch (err) {
-    console.warn(
-      '[slides] Failed to persist AI-generated draft to disk; the in-memory session still works:',
-      err,
-    )
-  }
+function nameGeneratedDeck(session: Session, deckName?: string): void {
+  markMetaDirty(session)
+  if (session.path) return
+  const base = sanitizeDraftBaseName(deckName)
+  if (base && !session.firstSaveName) session.firstSaveName = `${base}.pptx`
+  session.askPathOnFirstSave = true
 }
 
 /** Theme body (minor) Latin font: fallback shown in the ribbon font box when the selection has no text element. */
@@ -1502,6 +1726,8 @@ export function registerSlidesIpc(): void {
     // renderer app just mounted: safe to reveal the vibrancy material behind
     // the (now painted) page without flashing raw desktop during load
     vibFlip.get(e.sender.id)?.('#00000000')
+    // a recovery copy the shell asked this view to open may still be loading
+    await pendingUntitledCopyByWc.get(e.sender.id)
     const queued = pendingByWc.get(e.sender.id) ?? pendingOpenPath
     if (queued && existsSync(queued)) {
       const dropQueued = () => {
@@ -1528,7 +1754,15 @@ export function registerSlidesIpc(): void {
     }
     // A new tab that starts with a given deck (a conversion's result, T17): taken once, unsaved
     const seeded = await openSlidesSeed(e.sender, fitWidthPx, deckDefaultFont)
-    if (seeded) return seeded
+    if (seeded) {
+      // a restored recovery copy: its content now lives in this tab
+      const restored = sessions.get(e.sender.id)
+      if (restored?.recoveryId) {
+        recoveryStore.markCopyLoaded(restored.recoveryId)
+        copyMarks.set(restored, contentMark(restored))
+      }
+      return seeded
+    }
     // No queued path but the main process already has a session (remount after an HMR full
     // reload/crash recovery) -> restore from the session; otherwise the document is lost leaving
     // only the start screen, and reopening the same file just activates this empty tab with no
@@ -2027,16 +2261,7 @@ export function registerSlidesIpc(): void {
             return { error: tm('errAppendFailed', { reason: lastErr ?? tm('errUnknown') }) }
           }
           existing.fitWidthPx = fitWidthPx
-          // Save the draft: persist the current complete deck
-          const bytes = await savePptx(opened)
-          await saveDraftAfterGenerate(e.sender, existing, bytes, 'append', deckName)
-          // Draft now matches memory: reopen from the output bytes to clear dirty (same as
-          // slides:save) — otherwise pure AI generation (per-page append merges mark
-          // structureDirty) would trigger the close confirmation even without edits
-          if (existing.path) {
-            existing.opened = await openPptx(bytes)
-            existing.metaDirty = false
-          }
+          nameGeneratedDeck(existing, deckName)
           return {
             path: existing.path,
             slides: buildAllRenderSlides(existing.opened, fitWidthPx),
@@ -2080,12 +2305,7 @@ export function registerSlidesIpc(): void {
             return { error: r.failures?.[0]?.error ?? tm('errReplaceFailed') }
           }
           existing.fitWidthPx = fitWidthPx
-          const bytes = await savePptx(opened)
-          await saveDraftAfterGenerate(e.sender, existing, bytes, 'append', deckName)
-          if (existing.path) {
-            existing.opened = await openPptx(bytes)
-            existing.metaDirty = false
-          }
+          nameGeneratedDeck(existing, deckName)
           return {
             path: existing.path,
             slides: buildAllRenderSlides(existing.opened, fitWidthPx),
@@ -2126,12 +2346,7 @@ export function registerSlidesIpc(): void {
             return { error: r.failures?.[0]?.error ?? tm('errInsertFailed') }
           }
           existing.fitWidthPx = fitWidthPx
-          const bytes = await savePptx(opened)
-          await saveDraftAfterGenerate(e.sender, existing, bytes, 'append', deckName)
-          if (existing.path) {
-            existing.opened = await openPptx(bytes)
-            existing.metaDirty = false
-          }
+          nameGeneratedDeck(existing, deckName)
           return {
             path: existing.path,
             slides: buildAllRenderSlides(existing.opened, fitWidthPx),
@@ -2154,11 +2369,12 @@ export function registerSlidesIpc(): void {
         const old = sessions.get(e.sender.id)
         carryHistoryForReplacement(old, replaceSession)
         inheritTemplateSelection(old, replaceSession)
+        // the same tab's document: an untitled deck keeps its recovery slot
+        if (old && !old.path && old.recoveryId) replaceSession.recoveryId = old.recoveryId
         sessions.set(e.sender.id, replaceSession)
         // Re-point windows that shared the old session, or they diverge onto a dead deck
         if (old) for (const id of attachedIds(old)) sessions.set(id, replaceSession)
-        // Save the draft: await completion so the real path is returned; on failure degrade silently (session.path stays '')
-        await saveDraftAfterGenerate(e.sender, replaceSession, bytes, 'replace', deckName)
+        nameGeneratedDeck(replaceSession, deckName)
         scheduleDeckBroadcast(replaceSession)
         return {
           path: replaceSession.path,
@@ -4494,9 +4710,11 @@ export function registerSlidesIpc(): void {
   ipcMain.handle('slides:save', async (e, auto?: unknown) => {
     const session = sessions.get(e.sender.id)
     if (!session) return { ok: false, error: 'no file open' }
-    // An untitled copy of a skill's template asks where its first save goes;
-    // the AutoSave pass leaves it alone until then (spec 5.7)
-    if (!session.path && session.askPathOnFirstSave) {
+    const previousPath = session.path
+    // An untitled deck asks where its first save goes (decision 0061: nothing
+    // lands in the user's folders unasked — template copies, AI-generated decks
+    // and new blank decks alike); the AutoSave pass leaves it alone until then
+    if (!session.path) {
       if (auto === true) return { ok: false, reason: 'external-modified' }
       const picked = await showSaveDialogWithMemory(
         dialog,
@@ -4511,15 +4729,6 @@ export function registerSlidesIpc(): void {
       if (picked.canceled || !picked.filePath) return { ok: false, reason: 'external-modified' }
       session.path = picked.filePath
       session.askPathOnFirstSave = false
-      followTemplateSelection(session, '', session.path)
-      await pushRecent(session.path)
-      slidesOpenedHook?.(e.sender, session.path)
-    }
-    // Untitled (new blank file): the first save lands silently in the drafts folder (Save As keeps its dialog)
-    if (!session.path) {
-      const draftsDir = getDraftsDir()
-      if (!existsSync(draftsDir)) mkdirSync(draftsDir, { recursive: true })
-      session.path = pickDraftPath(draftsDir, tm('untitledDeck'))
       followTemplateSelection(session, '', session.path)
       await pushRecent(session.path)
       slidesOpenedHook?.(e.sender, session.path)
@@ -4552,9 +4761,7 @@ export function registerSlidesIpc(): void {
       await writeDeckFile(session, session.path)
       // the saved bytes are the new baseline for the split-view guard
       session.diskState = (await recordDiskState(session.path)) ?? undefined
-      autosaveBackoff.delete(session.path)
-      void rm(autosavePathFor(session.path), { force: true }).catch(() => {})
-      dropUntitledRecovery(e.sender.id)
+      recoveryCopiesSaved(session, previousPath)
       // Bake the saved patches back into the in-memory model (clears dirty, syncs
       // anchor.originalXml with disk) — a full reopen would re-read and unzip the
       // whole package, doubling save latency on large decks. Element ids survive,
@@ -4583,16 +4790,18 @@ export function registerSlidesIpc(): void {
     if (r.canceled || !r.filePath) return { ok: false }
     try {
       const metaRevAtSave = session.metaRev ?? 0
+      const previousPath = session.path
       await writeDeckFile(session, r.filePath)
       followTemplateSelection(session, session.path, r.filePath)
       session.path = r.filePath
       session.diskState = (await recordDiskState(r.filePath)) ?? undefined
-      autosaveBackoff.delete(r.filePath)
-      dropUntitledRecovery(e.sender.id)
       await pushRecent(r.filePath)
       syncAttachedPaths(session, r.filePath)
       commitSaved(session.opened)
       if ((session.metaRev ?? 0) === metaRevAtSave) session.metaDirty = false
+      // after the deck reads as saved: a copy a pass wrote while the steps
+      // above awaited (the deck still looked unsaved) is removed too
+      recoveryCopiesSaved(session, previousPath)
       return {
         ok: true,
         path: r.filePath,

@@ -23,7 +23,7 @@ Oleh sebab pemasang ini tidak ditandatangani, jalankan hanya pemasang yang anda 
 ## Kemas kini
 
 - GenOffice mencari versi yang lebih baharu pada halaman GitHub Releases yang sama. Apabila versi baharu diterbitkan, **Tetapan ▸ Perihal** menawarkannya: tekan **Kemas kini ke …**, tunggu muat turun selesai, kemudian tekan **Mulakan semula dan pasang**.
-- **Bantuan ▸ Semak Kemas Kini** menyemak pada bila-bila masa anda mahu.
+- **Menu (☰) ▸ Semak Kemas Kini** menyemak pada bila-bila masa anda mahu. Pada Mac, ia ialah **Bantuan ▸ Semak Kemas Kini**.
 - Apabila semakan gagal — tiada rangkaian, atau belum ada apa-apa yang diterbitkan — tiada apa yang berlaku, dan aplikasi terus berfungsi seperti biasa.
 - **Saluran Kemas Kini**, juga di bawah Tetapan ▸ Perihal, ialah Stabil atau Beta. Menukarnya berkuat kuasa serta-merta dan akan menyemak kemas kini; ia tidak akan menurunkan pemasangan Beta kembali ke Stabil.
 - Kemas kini juga tidak ditandatangani dengan sijil kod. Sebelum memasangnya, aplikasi menyemak fail yang dimuat turun terhadap checksum yang diterbitkan bersama keluaran itu.

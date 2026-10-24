@@ -112,7 +112,9 @@ function syntheticFont(chars: string): Buffer {
 const KO = {
   heading: '연례 보고서',
   body: '빠른 갈색 여우가 강둑 근처에서 게으른 개를 뛰어넘습니다.',
-  long: '이 문단은 원문보다 훨씬 길게 번역되어 상자 안에 다 들어가지 않습니다. '.repeat(12),
+  // overflows even at the floor size in the synthetic face, whose Latin
+  // stand-in glyphs run about half as wide as a real Korean face's
+  long: '이 문단은 원문보다 훨씬 길게 번역되어 상자 안에 다 들어가지 않습니다. '.repeat(40),
   scanHead: '스캔한 제목',
   scanBody: '스캔한 문단의 번역입니다',
   // drawn by the Korean-source and table tests; listed here so the test face covers them
@@ -165,6 +167,32 @@ async function buildSource(): Promise<Uint8Array> {
     }),
   )
   page.node.set(PDFName.of('Annots'), doc.context.obj([link]))
+  return doc.save()
+}
+
+/**
+ * PARA at an effective 12pt, written as `tf Tf` under a `scale` text matrix
+ * inside a `ctm` graphics matrix (1 Tf × 12, browser print 16 × 0.75, …)
+ */
+async function buildScaledSource(tf: number, scale: number, ctm: number): Promise<Uint8Array> {
+  const { PDFDocument, PDFNumber, PDFOperator, PDFString, StandardFonts } = await import('pdf-lib')
+  const doc = await PDFDocument.create()
+  const page = doc.addPage([612, 792])
+  const font = await doc.embedFont(StandardFonts.Helvetica)
+  const key = page.node.newFontDictionary('F1', font.ref)
+  const num = (n: number) => PDFNumber.of(n)
+  const op = (name: string, ...args: unknown[]) => PDFOperator.of(name as never, args as never)
+  page.pushOperators(op('q'), op('cm', num(ctm), num(0), num(0), num(ctm), num(0), num(0)))
+  PARA.forEach((t, i) => {
+    page.pushOperators(
+      op('BT'),
+      op('Tf', key, num(tf)),
+      op('Tm', num(scale), num(0), num(0), num(scale), num(72 / ctm), num((680 - i * 15) / ctm)),
+      op('Tj', PDFString.of(t)),
+      op('ET'),
+    )
+  })
+  page.pushOperators(op('Q'))
   return doc.save()
 }
 
@@ -484,7 +512,7 @@ describe('writing a translation into the PDF', () => {
     expect(report.untranslated).toEqual([])
   })
 
-  it('shrinks a long translation, and reports it when even the floor size overflows', async () => {
+  it('shrinks a long translation, and keeps the source text when even the floor size has no room', async () => {
     const m = await loadPdfium()
     const pdf = await buildSource()
     const { tree } = await extractDocumentTree(pdf, { pdfium: m })
@@ -499,15 +527,103 @@ describe('writing a translation into the PDF', () => {
     expect(Math.min(...fitSizes)).toBeLessThan(12 - 0.01)
     expect(Math.min(...fitSizes)).toBeGreaterThanOrEqual(12 * MIN_FONT_SCALE - 0.01)
 
-    // far longer: floor size, still overflowing, reported with its page
+    // far longer: no room even at the floor size, so the source text stays (decision 0057)
     const long = translate(tree, 'ko', { 'quick brown fox': KO.long })
     const over = await run(pdf, tree, long, { fontLocator: koreanLocator })
-    expect(over.report.translated).toBe(1)
+    expect(over.report.translated).toBe(0)
     expect(over.report.overflowed).toEqual([expect.objectContaining({ page: 1 })])
     const res = census(m, over.pdf)
-    expect(squash(res.text)).toContain(squash(KO.long))
-    const written = res.sizes.filter((s) => s < 11.9)
-    expect(Math.min(...written)).toBeCloseTo(12 * MIN_FONT_SCALE, 1)
+    expect(squash(res.text)).not.toContain(squash(KO.long).slice(0, 20))
+    expect(flat(res.text)).toContain('quick brown fox')
+    expect(flat(res.text)).toContain('wooden fence')
+  })
+
+  it('sizes paragraphs of one kind alike', async () => {
+    const m = await loadPdfium()
+    const pdf = await buildPdf([
+      [
+        ...para(PARA, 72, 700, { size: 12, leading: 15 }),
+        ...para(KEEP, 72, 600, { size: 12, leading: 15 }),
+      ],
+    ])
+    const { tree } = await extractDocumentTree(pdf, { pdfium: m })
+    const translated = translate(tree, 'en', {
+      // longer than its source: shrinks
+      'quick brown fox': `${PARA.join(' ')} Then it runs across the meadow and the hill.`,
+      // as long as its source: would fit at the source size
+      'closing paragraph': KEEP.join(' '),
+    })
+    const { pdf: out, report } = await run(pdf, tree, translated, { fontLocator: latinLocator })
+    expect(report.translated).toBe(2)
+    expect(report.overflowed).toEqual([])
+    const sizes = [...new Set(census(m, out).sizes.map((s) => s.toFixed(2)))]
+    expect(sizes).toHaveLength(1)
+    expect(Number(sizes[0])).toBeLessThan(12 - 0.01)
+  })
+
+  it('grows a block into the free space below it', async () => {
+    const m = await loadPdfium()
+    const line = 'A single line caption sits alone here.'
+    const pdf = await buildPdf([
+      [...para([line], 72, 700, { size: 12 }), ...para(KEEP, 72, 300, { size: 12, leading: 15 })],
+    ])
+    const { tree } = await extractDocumentTree(pdf, { pdfium: m })
+    const translated = translate(tree, 'en', {
+      'single line caption': `${line} It now needs a second and a third line to say it all, at least.`,
+    })
+    const { pdf: out, report } = await run(pdf, tree, translated, { fontLocator: latinLocator })
+    expect(report.translated).toBe(1)
+    expect(report.overflowed).toEqual([])
+    const res = census(m, out)
+    expect(flat(res.text)).toContain('second and a third line')
+    // grown rather than shrunk to the floor
+    expect(Math.min(...res.sizes)).toBeGreaterThan(12 * 0.85)
+    // the paragraph below is untouched
+    expect(flat(res.text)).toContain('closing paragraph keeps its source')
+  })
+
+  it.each([
+    ['a plain 12 Tf', 12, 1, 1],
+    ['1 Tf under a 12× text matrix', 1, 12, 1],
+    ['16 Tf under a 0.75 text matrix (browser print)', 16, 0.75, 1],
+    ['6 Tf inside a 2× graphics matrix', 6, 1, 2],
+  ])('reads the source size through the matrices: %s', async (_, tf, scale, ctm) => {
+    const m = await loadPdfium()
+    const pdf = await buildScaledSource(tf, scale, ctm)
+    const { tree } = await extractDocumentTree(pdf, { pdfium: m })
+    const translated = translate(tree, 'en', { 'quick brown fox': 'A short translation.' })
+    const { pdf: out, report } = await run(pdf, tree, translated, { fontLocator: latinLocator })
+    expect(report.translated).toBe(1)
+    const res = census(m, out)
+    expect(flat(res.text)).toContain('A short translation.')
+    expect(res.text).not.toContain('quick brown')
+    // written at the size the reader sees, not the nominal Tf
+    for (const s of res.sizes) expect(s).toBeCloseTo(12, 1)
+  })
+
+  it('takes a line-end hyphen drawn as its own object away with its paragraph', async () => {
+    const { PDFDocument, StandardFonts } = await import('pdf-lib')
+    const doc = await PDFDocument.create()
+    const page = doc.addPage([612, 792])
+    const font = await doc.embedFont(StandardFonts.Helvetica)
+    const lines = [
+      'The share of the aggre',
+      'gate income held by the top',
+      'fifth fell in the year.',
+    ]
+    lines.forEach((t, i) => page.drawText(t, { x: 72, y: 700 - i * 14, size: 12, font }))
+    page.drawText('-', { x: 72 + font.widthOfTextAtSize(lines[0]!, 12), y: 700, size: 12, font })
+    const pdf = await doc.save()
+    const m = await loadPdfium()
+    const { tree } = await extractDocumentTree(pdf, { pdfium: m })
+    const translated = translate(tree, 'en', { 'share of the': 'A short translation.' })
+    const { pdf: out, report } = await run(pdf, tree, translated, { fontLocator: latinLocator })
+    expect(report.translated).toBe(1)
+    const res = census(m, out)
+    expect(flat(res.text)).toContain('A short translation.')
+    // PDFium reports a recognized line-end hyphen as code 2
+    expect(res.text).not.toContain('-')
+    expect(res.text).not.toContain(String.fromCharCode(2))
   })
 
   it('keeps a block in its source text when no installed font draws the translation', async () => {
@@ -593,6 +709,69 @@ describe('tables, page joins and rotated pages', () => {
     expect(res.paths).toBe(src.paths)
     expect(report.translated).toBe(3)
     expect(report.overflowed).toEqual([])
+  })
+
+  it('gives a cell translation the height of its cell before shrinking it', async () => {
+    const m = await loadPdfium()
+    const pdf = await buildTablePdf()
+    const { tree } = await extractDocumentTree(pdf, { pdfium: m })
+    const table = tree.blocks.find((b) => b.kind === 'table')
+    if (table?.kind !== 'table') throw new Error('no table')
+    const name = table.table.cells.find((c) => flat(runsText(c.paragraphs[0]!)) === 'Name')!
+    // two lines in the 128pt cell: room only from the cell top, not the source line
+    const long = 'A considerably longer label for the name'
+    const tr = new Map<string, InlineRun[]>([
+      [`${table.id}#${name.row}.${name.col}.0`, [{ kind: 'text', text: long }]],
+    ])
+    const { pdf: out, report } = await run(pdf, tree, deriveTranslatedTree(tree, 'en', tr), {
+      fontLocator: latinLocator,
+    })
+    expect(report.translated).toBe(1)
+    expect(report.overflowed).toEqual([])
+    const res = census(m, out)
+    expect(flat(res.text)).toContain('considerably longer')
+    expect(res.text).not.toContain('Name')
+    // the cell's own size: the whole cell had room
+    const written = res.sizes.slice(-[...long.replace(/\s/g, '')].length)
+    for (const s of written) expect(s).toBeCloseTo(11, 1)
+  })
+
+  it('keeps cells whose source text is one string across both of them', async () => {
+    const { PDFDocument, StandardFonts } = await import('pdf-lib')
+    const doc = await PDFDocument.create()
+    const page = doc.addPage([612, 792])
+    const font = await doc.embedFont(StandardFonts.Helvetica)
+    const line = (x1: number, y1: number, x2: number, y2: number) =>
+      page.drawLine({ start: { x: x1, y: y1 }, end: { x: x2, y: y2 }, thickness: 1 })
+    for (const y of [700, 660, 620]) line(72, y, 456, y)
+    for (const x of [72, 200, 328, 456]) line(x, 620, x, 700)
+    page.drawText('Name', { x: 80, y: 674, size: 11, font })
+    // one text object running over the rule at x = 328
+    page.drawText('Quantity and the unit price per item', { x: 208, y: 674, size: 11, font })
+    page.drawText('Total', { x: 80, y: 634, size: 11, font })
+    page.drawText('Sum', { x: 208, y: 634, size: 11, font })
+    page.drawText('Rest', { x: 336, y: 634, size: 11, font })
+    const pdf = await doc.save()
+    const m = await loadPdfium()
+    const { tree } = await extractDocumentTree(pdf, { pdfium: m })
+    const table = tree.blocks.find((b) => b.kind === 'table')
+    if (table?.kind !== 'table') throw new Error('no table')
+    const tr = new Map<string, InlineRun[]>()
+    for (const c of table.table.cells) {
+      const source = flat(runsText(c.paragraphs[0] ?? [])).trim()
+      if (source) tr.set(`${table.id}#${c.row}.${c.col}.0`, [{ kind: 'text', text: `[${source}]` }])
+    }
+    const { pdf: out, report } = await run(pdf, tree, deriveTranslatedTree(tree, 'en', tr), {
+      fontLocator: latinLocator,
+    })
+    const res = census(m, out)
+    // the straddling string stays whole; its cells are reported, not half-written
+    expect(flat(res.text)).toContain('Quantity and the unit price per item')
+    expect(flat(res.text)).not.toContain('[Quantity')
+    expect(report.untranslated.some((u) => u.reason === 'shared-text-object')).toBe(true)
+    // the other cells are written
+    for (const done of ['[Name]', '[Total]', '[Sum]', '[Rest]'])
+      expect(flat(res.text)).toContain(done)
   })
 
   it('flows a paragraph joined across a page break over both of its boxes', async () => {
@@ -689,6 +868,78 @@ describe('tables, page joins and rotated pages', () => {
   })
 })
 
+/** sheet size, and the x of the first char of `needle` on the first sheet */
+function sheetOf(m: PdfiumModule, pdf: Uint8Array, needles: string[]) {
+  return withPdfDocument(m, pdf, (d) => {
+    const pg = m._FPDF_LoadPage(d, 0)
+    const tp = m._FPDFText_LoadPage(pg)
+    const n = m._FPDFText_CountChars(tp)
+    let text = ''
+    for (let i = 0; i < n; i++) text += String.fromCodePoint(m._FPDFText_GetUnicode(tp, i))
+    const box = m._malloc(32)
+    const xOf = (needle: string): number => {
+      const at = text.indexOf(needle)
+      if (at < 0) return NaN
+      m._FPDFText_GetCharBox(tp, at, box, box + 8, box + 16, box + 24)
+      return m.HEAPF64[box >> 3]!
+    }
+    const xs = needles.map(xOf)
+    m._free(box)
+    m._FPDFText_ClosePage(tp)
+    const size = { width: m._FPDF_GetPageWidthF(pg), height: m._FPDF_GetPageHeightF(pg) }
+    m._FPDF_ClosePage(pg)
+    return { pages: m._FPDF_GetPageCount(d), size, xs }
+  })
+}
+
+describe('bilingual PDF', () => {
+  it('puts each source page beside its translated page', async () => {
+    const m = await loadPdfium()
+    const pdf = await buildSource()
+    const { tree } = await extractDocumentTree(pdf, { pdfium: m })
+    const translated = translate(tree, 'en', { 'quick brown fox': 'A short translation.' })
+    const { pdf: out, report } = await run(pdf, tree, translated, {
+      fontLocator: latinLocator,
+      bilingual: true,
+    })
+    expect(report.translated).toBe(1)
+    const sheet = sheetOf(m, out, ['quick brown fox', 'A short translation.'])
+    expect(sheet.pages).toBe(1)
+    expect(sheet.size).toEqual({ width: 1224, height: 792 })
+    // the source on the left half, the translation on the right
+    expect(sheet.xs[0]).toBeLessThan(612)
+    expect(sheet.xs[1]).toBeGreaterThan(612)
+  })
+
+  it('shows a turned page as a reader sees it', async () => {
+    const { PDFDocument, StandardFonts, degrees } = await import('pdf-lib')
+    const doc = await PDFDocument.create()
+    const page = doc.addPage([612, 792])
+    page.setRotation(degrees(90))
+    const font = await doc.embedFont(StandardFonts.Helvetica)
+    page.drawText('Rotated page heading text', {
+      x: 112,
+      y: 72,
+      size: 16,
+      font,
+      rotate: degrees(90),
+    })
+    const pdf = await doc.save()
+    const m = await loadPdfium()
+    const { tree } = await extractDocumentTree(pdf, { pdfium: m })
+    const translated = translate(tree, 'en', { 'Rotated page heading': 'Turned heading' })
+    const { pdf: out } = await run(pdf, tree, translated, {
+      fontLocator: latinLocator,
+      bilingual: true,
+    })
+    const sheet = sheetOf(m, out, ['Rotated page', 'Turned heading'])
+    // two landscape pages side by side
+    expect(sheet.size).toEqual({ width: 1584, height: 612 })
+    expect(sheet.xs[0]).toBeLessThan(792)
+    expect(sheet.xs[1]).toBeGreaterThan(792)
+  })
+})
+
 describe('pages the writer cannot edit', () => {
   async function turnedPdf(turned: string, x: number, y: number, size: number) {
     const { PDFDocument, StandardFonts, degrees } = await import('pdf-lib')
@@ -721,21 +972,23 @@ describe('pages the writer cannot edit', () => {
     expect(census(m, out).text).toContain('Upright heading of the page')
   })
 
-  it('keeps a page as it is when a translated block is made of turned text', async () => {
+  it('keeps a block of turned text as it is and writes the rest of the page', async () => {
     const m = await loadPdfium()
-    // a turned fragment the extraction keeps as blocks of its own
+    // a turned fragment the extraction keeps as blocks of its own (an arXiv margin stamp)
     const pdf = await turnedPdf('xy', 180, 600, 6)
     const { tree } = await extractDocumentTree(pdf, { pdfium: m })
     expect(tree.pages[0]!.status).toBe('text')
     const { pdf: out, report } = await run(pdf, tree, translateEvery(tree), {
       fontLocator: latinLocator,
     })
-    expect(report.originalPages).toEqual([{ page: 1, reason: 'vertical-text' }])
-    expect(report.translated).toBe(0)
-    expect(report.untranslated.every((u) => u.reason === 'page-kept')).toBe(true)
+    expect(report.originalPages).toEqual([])
+    expect(report.translated).toBeGreaterThanOrEqual(1)
+    expect(report.untranslated.length).toBeGreaterThanOrEqual(1)
+    expect(report.untranslated.every((u) => u.reason === 'vertical-text')).toBe(true)
     const res = census(m, out)
-    expect(res.text).toContain('Upright heading of the page')
-    expect(res.text).not.toContain('Translated')
+    expect(res.text).not.toContain('Upright heading of the page')
+    expect(res.text).toContain('Translated')
+    expect(res.text).toContain('xy')
   })
 })
 

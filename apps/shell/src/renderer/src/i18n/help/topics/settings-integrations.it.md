@@ -44,7 +44,7 @@ Le impostazioni possono registrare GenOffice come gestore dei file .docx / .xlsx
 ## Note sul software di terze parti e aggiornamenti
 
 - Aiuto ▸ Note sul software di terze parti: l'elenco completo delle licenze open source incluso nell'app.
-- Aiuto ▸ Controlla aggiornamenti…: avvia un controllo manuale; se c'è una versione più recente ti propone di installarla.
+- Menu (☰) ▸ Controlla aggiornamenti… (su un Mac, Aiuto ▸ Controlla aggiornamenti…): avvia un controllo manuale; se c'è una versione più recente ti propone di installarla.
 
 ## Integrazione MCP (per utenti avanzati / client IA)
 

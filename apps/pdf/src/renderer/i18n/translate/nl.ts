@@ -12,7 +12,7 @@ export const nl = {
   trFormatMd: 'Vertaalde Markdown',
   trFormatEpub: 'Vertaalde EPUB',
   trBilingual:
-    'Tweetalig: na elke alinea van het origineel volgt de vertaling (alleen Markdown en EPUB)',
+    'Tweetalig: in Markdown en EPUB volgt na elke alinea van het origineel de vertaling; in de pdf staat elke vertaalde pagina naast de originele pagina',
   trPdfEncrypted:
     'Dit document is versleuteld, dus er kan geen vertaalde PDF in worden geschreven. Markdown en EPUB werken wel.',
   trPdfScript:
@@ -60,7 +60,8 @@ export const nl = {
   trReportPending: '{count} blokken zijn nog niet vertaald en blijven in de brontaal.',
   trReportNone: 'Alle blokken zijn vertaald.',
   trReportUntranslated: 'Blokken die in de brontaal blijven',
-  trReportOverflowed: 'Blokken die buiten hun vak lopen: {count} (pagina’s {pages})',
+  trReportOverflowed:
+    'Blokken die wegens ruimtegebrek in de brontaal bleven: {count} (pagina’s {pages})',
   trReportOriginalPages: 'Pagina’s die ongewijzigd bleven',
   trReportFiles: 'Opgeslagen bestanden',
   trReasonLine: '{reason}: pagina’s {pages} ({count} blokken)',

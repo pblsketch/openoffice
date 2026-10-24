@@ -48,7 +48,7 @@ export function ExportImagesMenu({
           {icon}
           <RbCaret />
         </span>
-        {label}
+        <span>{label}</span>
       </button>
       {open && (
         <div className="rb-drop rb-menu" role="menu">

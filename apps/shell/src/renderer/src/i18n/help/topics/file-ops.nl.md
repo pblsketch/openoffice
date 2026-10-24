@@ -48,4 +48,4 @@ Bestand ▸ Afdrukken… in elke editor (⌘P/ctrl+P) opent het systeemvenster v
 
 ## Waar naamloze bestanden staan
 
-De locatie die je bij de eerste keer opslaan kiest is hun thuisbasis; daarvoor bestaat het document alleen in het geheugen. Automatisch opslaan neemt het pas over na die eerste keer opslaan.
+De locatie die je bij de eerste keer opslaan kiest is hun thuisbasis. Tot dan heeft het document geen eigen bestand: de niet-opgeslagen inhoud bestaat alleen als herstelkopie in de gegevensmap van de app, zodat die terug kan komen als de app plotseling uitvalt (zie [Tabbladen en vensterbeheer](help://tabs-and-windows)). Automatisch opslaan neemt het pas over na die eerste keer opslaan.

@@ -23,7 +23,7 @@ Because the installer is not signed, only run one you downloaded from the Releas
 ## Updates
 
 - GenOffice looks for a newer version on the same GitHub Releases page. When one is published, **Settings ▸ About** offers it: press **Update to …**, wait for the download, then press **Restart & install**.
-- **Help ▸ Check for updates** checks whenever you ask.
+- **Menu (☰) ▸ Check for updates** checks whenever you ask. On a Mac it is **Help ▸ Check for updates**.
 - When the check fails — no network, or nothing published yet — nothing happens, and the app keeps working as before.
 - **Update Channel**, also under Settings ▸ About, is Stable or Beta. Changing it takes effect at once and checks for an update; it will not downgrade a Beta install back to Stable.
 - Updates are not code-signed either. Before installing one, the app checks the downloaded file against the checksum published with that release.

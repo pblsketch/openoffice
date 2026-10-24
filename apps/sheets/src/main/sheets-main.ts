@@ -6,13 +6,11 @@ import {
   readFileSync,
   renameSync,
   statSync,
-  unlinkSync,
   writeFileSync,
 } from 'node:fs'
-import { copyFile, mkdir, open, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, open, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { refreshCsvDigest } from './csv-digest'
 import { createServer } from 'node:http'
-import { userInfo } from 'node:os'
 import { basename, dirname, isAbsolute, join } from 'node:path'
 
 import {
@@ -42,6 +40,7 @@ import {
   abortOnDestroyed,
   appMenuLabels,
   buildPrintableHtml,
+  configuredAuthorName,
   configuredDefaultSaveDir,
   confirmOverwriteIfConflicted,
   contextMenuLabels,
@@ -65,6 +64,22 @@ import {
   rendererUrl,
   writeJsonAtomic,
   assertFileSaved,
+  createRecoveryStore,
+  isAppShuttingDown,
+  isUntitledIdentity,
+  markAppShuttingDown,
+  newUntitledRecoveryId,
+  recoveryFolderName,
+  registerRecoveryEditor,
+  resetAppShuttingDown,
+  resolveRecoveryOnOpen,
+  resumeDiscardedCopies,
+  unprotectableNoticeText,
+  type RecoveryCopyInfo,
+  type RecoveryCopyState,
+  type RecoveryIdentity,
+  type RecoveryOpenFileRequest,
+  type RecoveryOpenUntitledRequest,
   type SaveDiskState,
 } from '@genoffice/electron-utils'
 import {
@@ -85,6 +100,7 @@ import {
   setUiLang,
 } from '@genoffice/i18n'
 import { ProjectStore } from '@genoffice/project-store'
+import { aiSubscriptionLoginWindowText } from '@genoffice/ui/ai-subscription-login-window'
 
 import {
   isAiOverloadedError,
@@ -95,6 +111,7 @@ import {
   streamForProvider,
   type AiSettings,
   type AiStreamChunk,
+  sealAiSecrets,
 } from '@genoffice/ai-provider'
 import { shutdownCodexAppServers } from '@genoffice/ai-provider/codex-app-server'
 import {
@@ -191,7 +208,14 @@ import { closeGuardDecision, ShutdownLatch } from './close-guard'
 import { SaveEditsTransferStore } from './save-edits-transfer'
 import { exportPdf, printWorkbook } from './pdf-export'
 import { installStandaloneTemplateFontProtocol } from './template-fonts'
-import { allowsAutomaticWorkbookRecovery } from './recovery-policy'
+import {
+  allowsAutomaticWorkbookRecovery,
+  convertedSessionRecovery,
+  migrateLegacyUnsavedNew,
+  saveAsDefaultFor,
+  sessionRecoveryIdentity,
+  untitledWorkbookExt,
+} from './recovery-policy'
 import {
   setSystemShortDate,
   shortDatePatternForSystemLocale,
@@ -242,11 +266,6 @@ const tMain = createI18n({
     errDiskChanged: '工作簿在打开后被磁盘上的改动覆盖——请改用另存为。',
     errSaveUnreadable:
       '保存结果无法重新打开，因此没有覆盖原文件。原文件保持不变，编辑内容仍在屏幕上。',
-    autosaveFoundTitle: '发现自动恢复版本',
-    autosaveFoundBody:
-      '上次会话有未保存的更改。要恢复自动保存的版本吗?恢复后,保存将直接覆盖原文件。',
-    autosaveRestore: '恢复',
-    autosaveDiscard: '放弃',
     menuFile: '文件',
     menuOpenWorkbook: '打开工作簿…',
     menuSave: '保存',
@@ -303,11 +322,6 @@ const tMain = createI18n({
     errDiskChanged: 'The workbook changed on disk after it was opened — use Save As instead.',
     errSaveUnreadable:
       'The saved result could not be opened again, so the original file was not overwritten. The original is unchanged and your edits are still on screen.',
-    autosaveFoundTitle: 'Recovered version found',
-    autosaveFoundBody:
-      'There are unsaved changes from your last session. Restore the autosaved version? Saving after a restore overwrites the original file.',
-    autosaveRestore: 'Restore',
-    autosaveDiscard: 'Discard',
     menuFile: 'File',
     menuOpenWorkbook: 'Open Workbook…',
     menuSave: 'Save',
@@ -367,11 +381,6 @@ const tMain = createI18n({
     errDiskChanged: 'Sổ làm việc đã thay đổi trên đĩa sau khi mở — hãy sử dụng Lưu dưới dạng.',
     errSaveUnreadable:
       'Không thể mở lại kết quả đã lưu nên tệp gốc không bị ghi đè. Tệp gốc vẫn nguyên vẹn và các chỉnh sửa vẫn còn trên màn hình.',
-    autosaveFoundTitle: 'Tìm thấy phiên bản khôi phục',
-    autosaveFoundBody:
-      'Có những thay đổi chưa được lưu từ phiên làm việc trước của bạn. Khôi phục phiên bản đã lưu tự động? Việc lưu sau khi khôi phục sẽ ghi đè lên tệp gốc.',
-    autosaveRestore: 'Khôi phục',
-    autosaveDiscard: 'Bỏ qua',
     menuFile: 'Tệp',
     menuOpenWorkbook: 'Mở sổ làm việc…',
     menuSave: 'Lưu',
@@ -433,11 +442,6 @@ const tMain = createI18n({
       'ブックを開いた後にディスク上で変更されています — 名前を付けて保存を使用してください。',
     errSaveUnreadable:
       '保存結果を開き直せなかったため、元のファイルは上書きしていません。元のファイルはそのままで、編集内容は画面に残っています。',
-    autosaveFoundTitle: '自動回復バージョンがあります',
-    autosaveFoundBody:
-      '前回のセッションに未保存の変更があります。自動保存版を復元しますか?復元後に保存すると、元のファイルは上書きされます。',
-    autosaveRestore: '復元',
-    autosaveDiscard: '破棄',
     menuFile: 'ファイル',
     menuOpenWorkbook: 'ブックを開く…',
     menuSave: '保存',
@@ -499,11 +503,6 @@ const tMain = createI18n({
       '통합 문서가 열린 후 디스크에서 변경되었습니다. 다른 이름으로 저장을 사용하세요.',
     errSaveUnreadable:
       '저장한 결과를 다시 열 수 없어 원래 파일을 덮어쓰지 않았습니다. 원래 파일은 그대로이고, 편집한 내용은 화면에 남아 있습니다.',
-    autosaveFoundTitle: '자동 복구 버전 발견',
-    autosaveFoundBody:
-      '마지막 세션에 저장되지 않은 변경 내용이 있습니다. 자동 저장 버전을 복원할까요? 복원 후 저장하면 원본 파일을 덮어씁니다.',
-    autosaveRestore: '복원',
-    autosaveDiscard: '취소',
     menuFile: '파일',
     menuOpenWorkbook: '통합 문서 열기…',
     menuSave: '저장',
@@ -565,11 +564,6 @@ const tMain = createI18n({
       'Le classeur a été modifié sur le disque après son ouverture — utilisez Enregistrer sous.',
     errSaveUnreadable:
       "Le résultat enregistré n'a pas pu être rouvert ; le fichier d'origine n'a donc pas été écrasé. Il est intact et vos modifications sont toujours à l'écran.",
-    autosaveFoundTitle: 'Version récupérée trouvée',
-    autosaveFoundBody:
-      "Des modifications non enregistrées existent. Restaurer la version auto-enregistrée ? Après restauration, l'enregistrement remplacera le fichier d'origine.",
-    autosaveRestore: 'Restaurer',
-    autosaveDiscard: 'Ignorer',
     menuFile: 'Fichier',
     menuOpenWorkbook: 'Ouvrir un classeur…',
     menuSave: 'Enregistrer',
@@ -632,11 +626,6 @@ const tMain = createI18n({
       'Die Arbeitsmappe wurde nach dem Öffnen auf dem Datenträger geändert — verwenden Sie stattdessen „Speichern unter“.',
     errSaveUnreadable:
       'Das gespeicherte Ergebnis ließ sich nicht wieder öffnen, daher wurde die Originaldatei nicht überschrieben. Sie ist unverändert, und Ihre Änderungen sind noch auf dem Bildschirm.',
-    autosaveFoundTitle: 'Wiederhergestellte Version gefunden',
-    autosaveFoundBody:
-      'Es gibt ungespeicherte Änderungen. Automatisch gespeicherte Version wiederherstellen? Nach der Wiederherstellung überschreibt Speichern die Originaldatei.',
-    autosaveRestore: 'Wiederherstellen',
-    autosaveDiscard: 'Verwerfen',
     menuFile: 'Datei',
     menuOpenWorkbook: 'Arbeitsmappe öffnen…',
     menuSave: 'Speichern',
@@ -698,11 +687,6 @@ const tMain = createI18n({
     errDiskChanged: 'El libro cambió en el disco después de abrirse; usa Guardar como en su lugar.',
     errSaveUnreadable:
       'No se pudo volver a abrir el resultado guardado, así que no se sobrescribió el archivo original. El original no cambió y tus ediciones siguen en pantalla.',
-    autosaveFoundTitle: 'Se encontró una versión recuperada',
-    autosaveFoundBody:
-      'Hay cambios sin guardar de la última sesión. ¿Restaurar la versión autoguardada? Tras restaurar, guardar sobrescribirá el archivo original.',
-    autosaveRestore: 'Restaurar',
-    autosaveDiscard: 'Descartar',
     menuFile: 'Archivo',
     menuOpenWorkbook: 'Abrir libro…',
     menuSave: 'Guardar',
@@ -763,11 +747,6 @@ const tMain = createI18n({
     errDiskChanged: 'เวิร์กบุ๊กถูกเปลี่ยนแปลงบนดิสก์หลังจากเปิด — โปรดใช้บันทึกเป็นแทน',
     errSaveUnreadable:
       'ไม่สามารถเปิดผลที่บันทึกได้อีกครั้ง จึงไม่ได้เขียนทับไฟล์ต้นฉบับ ไฟล์ต้นฉบับยังคงเดิมและการแก้ไขของคุณยังอยู่บนหน้าจอ',
-    autosaveFoundTitle: 'พบเวอร์ชันกู้คืนอัตโนมัติ',
-    autosaveFoundBody:
-      'มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึกจากครั้งก่อน ต้องการกู้คืนหรือไม่? หลังกู้คืน การบันทึกจะเขียนทับไฟล์ต้นฉบับ',
-    autosaveRestore: 'กู้คืน',
-    autosaveDiscard: 'ละทิ้ง',
     menuFile: 'ไฟล์',
     menuOpenWorkbook: 'เปิดเวิร์กบุ๊ก…',
     menuSave: 'บันทึก',
@@ -827,11 +806,6 @@ const tMain = createI18n({
     errDiskChanged: 'Buku kerja berubah di disk setelah dibuka — gunakan Simpan Sebagai.',
     errSaveUnreadable:
       'Hasil simpanan tidak dapat dibuka kembali, jadi file asli tidak ditimpa. File asli tidak berubah dan suntingan Anda masih ada di layar.',
-    autosaveFoundTitle: 'Versi pemulihan ditemukan',
-    autosaveFoundBody:
-      'Ada perubahan yang belum disimpan dari sesi terakhir. Pulihkan versi tersimpan otomatis? Setelah dipulihkan, menyimpan akan menimpa file asli.',
-    autosaveRestore: 'Pulihkan',
-    autosaveDiscard: 'Buang',
     menuFile: 'File',
     menuOpenWorkbook: 'Buka Buku Kerja…',
     menuSave: 'Simpan',
@@ -892,11 +866,6 @@ const tMain = createI18n({
     errDiskChanged: 'Книга была изменена на диске после открытия — используйте «Сохранить как».',
     errSaveUnreadable:
       'Сохранённый результат не удалось открыть снова, поэтому исходный файл не перезаписан. Он не изменился, а ваши правки остаются на экране.',
-    autosaveFoundTitle: 'Найдена восстановленная версия',
-    autosaveFoundBody:
-      'Есть несохранённые изменения из прошлого сеанса. Восстановить автосохранённую версию? После восстановления сохранение перезапишет исходный файл.',
-    autosaveRestore: 'Восстановить',
-    autosaveDiscard: 'Отклонить',
     menuFile: 'Файл',
     menuOpenWorkbook: 'Открыть книгу…',
     menuSave: 'Сохранить',
@@ -956,11 +925,6 @@ const tMain = createI18n({
     errDiskChanged: 'تم تغيير المصنف على القرص بعد فتحه — استخدم «حفظ باسم» بدلاً من ذلك.',
     errSaveUnreadable:
       'تعذّر فتح النتيجة المحفوظة مرة أخرى، لذا لم تتم الكتابة فوق الملف الأصلي. الملف الأصلي لم يتغير وتعديلاتك ما زالت على الشاشة.',
-    autosaveFoundTitle: 'تم العثور على نسخة مستردة',
-    autosaveFoundBody:
-      'توجد تغييرات غير محفوظة من الجلسة الأخيرة. هل تريد استعادة النسخة المحفوظة تلقائيًا؟ بعد الاستعادة، سيؤدي الحفظ إلى استبدال الملف الأصلي.',
-    autosaveRestore: 'استعادة',
-    autosaveDiscard: 'تجاهل',
     menuFile: 'ملف',
     menuOpenWorkbook: 'فتح مصنف…',
     menuSave: 'حفظ',
@@ -1019,11 +983,6 @@ const tMain = createI18n({
     errDiskChanged: 'A pasta de trabalho foi alterada no disco após ser aberta — use Salvar Como.',
     errSaveUnreadable:
       'Não foi possível reabrir o resultado salvo, então o arquivo original não foi substituído. O original está intacto e suas edições continuam na tela.',
-    autosaveFoundTitle: 'Versão recuperada encontrada',
-    autosaveFoundBody:
-      'Há alterações não salvas da sua última sessão. Restaurar a versão salva automaticamente? Após restaurar, salvar sobrescreverá o arquivo original.',
-    autosaveRestore: 'Restaurar',
-    autosaveDiscard: 'Descartar',
     menuFile: 'Arquivo',
     menuOpenWorkbook: 'Abrir Pasta de Trabalho…',
     menuSave: 'Salvar',
@@ -1085,11 +1044,6 @@ const tMain = createI18n({
       "La cartella di lavoro è stata modificata sul disco dopo l'apertura — usa Salva con nome.",
     errSaveUnreadable:
       "Non è stato possibile riaprire il risultato salvato, quindi il file originale non è stato sovrascritto. L'originale è invariato e le modifiche sono ancora sullo schermo.",
-    autosaveFoundTitle: 'Trovata versione recuperata',
-    autosaveFoundBody:
-      "Ci sono modifiche non salvate dall'ultima sessione. Ripristinare la versione salvata automaticamente? Dopo il ripristino, il salvataggio sovrascriverà il file originale.",
-    autosaveRestore: 'Ripristina',
-    autosaveDiscard: 'Ignora',
     menuFile: 'File',
     menuOpenWorkbook: 'Apri cartella di lavoro…',
     menuSave: 'Salva',
@@ -1150,11 +1104,6 @@ const tMain = createI18n({
     errDiskChanged: 'Skoroszyt został zmieniony na dysku po otwarciu — użyj polecenia Zapisz jako.',
     errSaveUnreadable:
       'Nie udało się ponownie otworzyć zapisanego wyniku, więc oryginalny plik nie został nadpisany. Oryginał jest bez zmian, a Twoje edycje nadal są na ekranie.',
-    autosaveFoundTitle: 'Znaleziono odzyskaną wersję',
-    autosaveFoundBody:
-      'Istnieją niezapisane zmiany z ostatniej sesji. Przywrócić wersję zapisaną automatycznie? Po przywróceniu zapisanie nadpisze oryginalny plik.',
-    autosaveRestore: 'Przywróć',
-    autosaveDiscard: 'Odrzuć',
     menuFile: 'Plik',
     menuOpenWorkbook: 'Otwórz skoroszyt…',
     menuSave: 'Zapisz',
@@ -1215,11 +1164,6 @@ const tMain = createI18n({
     errDiskChanged: 'Sešit byl po otevření změněn na disku — použijte místo toho Uložit jako.',
     errSaveUnreadable:
       'Uložený výsledek nešlo znovu otevřít, proto původní soubor nebyl přepsán. Původní soubor je beze změny a vaše úpravy jsou stále na obrazovce.',
-    autosaveFoundTitle: 'Nalezena obnovená verze',
-    autosaveFoundBody:
-      'Z poslední relace existují neuložené změny. Obnovit automaticky uloženou verzi? Uložení po obnovení přepíše původní soubor.',
-    autosaveRestore: 'Obnovit',
-    autosaveDiscard: 'Zahodit',
     menuFile: 'Soubor',
     menuOpenWorkbook: 'Otevřít sešit…',
     menuSave: 'Uložit',
@@ -1281,11 +1225,6 @@ const tMain = createI18n({
       'De werkmap is op de schijf gewijzigd nadat deze was geopend — gebruik Opslaan als.',
     errSaveUnreadable:
       'Het opgeslagen resultaat kon niet opnieuw worden geopend, dus het oorspronkelijke bestand is niet overschreven. Het origineel is ongewijzigd en je bewerkingen staan nog op het scherm.',
-    autosaveFoundTitle: 'Herstelde versie gevonden',
-    autosaveFoundBody:
-      'Er zijn niet-opgeslagen wijzigingen van uw laatste sessie. De automatisch opgeslagen versie herstellen? Na herstel overschrijft opslaan het originele bestand.',
-    autosaveRestore: 'Herstellen',
-    autosaveDiscard: 'Negeren',
     menuFile: 'Bestand',
     menuOpenWorkbook: 'Werkmap openen…',
     menuSave: 'Opslaan',
@@ -1345,11 +1284,6 @@ const tMain = createI18n({
     errDiskChanged: 'Buku kerja telah diubah pada cakera selepas dibuka — gunakan Simpan Sebagai.',
     errSaveUnreadable:
       'Hasil yang disimpan tidak dapat dibuka semula, jadi fail asal tidak ditulis ganti. Fail asal tidak berubah dan suntingan anda masih pada skrin.',
-    autosaveFoundTitle: 'Versi pulihan ditemui',
-    autosaveFoundBody:
-      'Terdapat perubahan yang belum disimpan daripada sesi terakhir anda. Pulihkan versi yang disimpan secara automatik? Selepas pemulihan, menyimpan akan menulis ganti fail asal.',
-    autosaveRestore: 'Pulihkan',
-    autosaveDiscard: 'Buang',
     menuFile: 'Fail',
     menuOpenWorkbook: 'Buka Buku Kerja…',
     menuSave: 'Simpan',
@@ -1410,11 +1344,6 @@ const tMain = createI18n({
     errDiskChanged: 'חוברת העבודה השתנתה בדיסק לאחר פתיחתה — השתמש בשמירה בשם.',
     errSaveUnreadable:
       'לא ניתן היה לפתוח שוב את התוצאה שנשמרה, ולכן הקובץ המקורי לא נדרס. הקובץ המקורי לא השתנה והעריכות שלך עדיין על המסך.',
-    autosaveFoundTitle: 'נמצאה גרסה משוחזרת',
-    autosaveFoundBody:
-      'קיימים שינויים שלא נשמרו מהפעלה הקודמת. לשחזר את הגרסה שנשמרה אוטומטית? לאחר השחזור, שמירה תדרוס את הקובץ המקורי.',
-    autosaveRestore: 'שחזר',
-    autosaveDiscard: 'התעלם',
     menuFile: 'קובץ',
     menuOpenWorkbook: 'פתיחת חוברת עבודה…',
     menuSave: 'שמירה',
@@ -1473,11 +1402,6 @@ const tMain = createI18n({
       'खोले जाने के बाद कार्यपुस्तिका डिस्क पर बदल गई — इसके बजाय इस रूप में सहेजें का उपयोग करें।',
     errSaveUnreadable:
       'सहेजा गया परिणाम फिर से नहीं खुल सका, इसलिए मूल फ़ाइल को अधिलेखित नहीं किया गया। मूल फ़ाइल अपरिवर्तित है और आपके संपादन अभी भी स्क्रीन पर हैं।',
-    autosaveFoundTitle: 'पुनर्प्राप्त संस्करण मिला',
-    autosaveFoundBody:
-      'आपके पिछले सत्र से सहेजे नहीं गए परिवर्तन हैं। स्वतः सहेजा गया संस्करण पुनर्स्थापित करें? पुनर्स्थापना के बाद, सहेजने पर मूल फ़ाइल अधिलेखित हो जाएगी।',
-    autosaveRestore: 'पुनर्स्थापित करें',
-    autosaveDiscard: 'छोड़ें',
     menuFile: 'फ़ाइल',
     menuOpenWorkbook: 'कार्यपुस्तिका खोलें…',
     menuSave: 'सहेजें',
@@ -1537,11 +1461,6 @@ const tMain = createI18n({
     errDiskChanged: '活頁簿在開啟後被磁碟上的變更覆蓋——請改用另存新檔。',
     errSaveUnreadable:
       '無法重新開啟儲存結果，因此沒有覆寫原始檔案。原始檔案保持不變，編輯內容仍在畫面上。',
-    autosaveFoundTitle: '發現自動復原版本',
-    autosaveFoundBody:
-      '上次工作階段有未儲存的變更。要復原自動儲存的版本嗎?復原後,儲存將直接覆寫原檔案。',
-    autosaveRestore: '復原',
-    autosaveDiscard: '放棄',
     menuFile: '檔案',
     menuOpenWorkbook: '開啟活頁簿…',
     menuSave: '儲存',
@@ -1622,6 +1541,17 @@ interface SessionInfo {
   /// password before it reaches the target. Held in memory only; the crash
   /// recovery copy is off so no plaintext lands under userData.
   readonly password?: string
+  /// The copy an untitled workbook writes (its own slot in the recovery store),
+  /// the untitled copy of a CSV or converted session, or the copy a tab
+  /// restored as untitled because its original was missing.
+  readonly recoveryIdentity?: RecoveryIdentity
+  /// The file a CSV or converted session (or the untitled workbook restored
+  /// from its copy) came from: its copy is titled with this file's name and
+  /// records the path, which the first Save As offers again after a restore.
+  readonly recoveryOriginalPath?: string
+  /// Opened from a recovery copy and not saved since: the work exists only in
+  /// the copy (the journal is empty), so the tab counts as unsaved.
+  readonly unsavedRestore?: boolean
   /// Split-view save guard (@genoffice/electron-utils/save-conflict): the disk
   /// snapshot this copy last read or wrote, with the document path it belongs
   /// to (a CSV session's snapshot is its .csv, not the converted temp copy).
@@ -1914,9 +1844,16 @@ function registerSheetsSession(webContents: WebContents, client: XlsxSidecarClie
     saveTransfers: new SaveEditsTransferStore(),
   })
   activeSheetsWebContents = webContents
+  // a dead renderer's copies are what the shell reopens the tab from
+  webContents.on('render-process-gone', () => {
+    tabRecoveryFor(webContents.id).crashed = true
+  })
   webContents.once('destroyed', () => {
     const entry = sheetsTabs.get(webContents.id)
     sheetsTabs.delete(webContents.id)
+    // before the sessions are cleared below: a clean close drops the copies it wrote
+    if (entry) settleTabRecoveryOnClose(webContents.id, entry)
+    else tabRecovery.delete(webContents.id)
     if (entry) {
       // Free pending chunked-save uploads with the tab (the sweep timer's
       // closure would otherwise keep them reachable until the idle expiry).
@@ -1962,15 +1899,14 @@ export function sheetsFileRenamed(wc: WebContents, oldPath: string, newPath: str
     let renamed = sessionAfterRename(session, oldPath, newPath)
     if (renamed === null) continue
     // An unsaved new workbook's tab renames its hidden backing file; the name
-    // the user typed is what the first Save As should offer, and the crash copy
-    // is keyed on that name.
+    // the user typed is what the first Save As should offer (and the title its
+    // next recovery copy carries — the copy itself keeps its untitled slot).
     if (session.unsavedNew && session.path === oldPath && session.suggestSaveAs !== undefined) {
       const suggested = join(dirname(session.suggestSaveAs), basename(newPath))
       if (
         suggested !== session.suggestSaveAs &&
         !existsSync(suggested) &&
-        !sheetsSuggestedPathTaken(suggested) &&
-        retargetUnsavedNewRecovery(session.suggestSaveAs, suggested)
+        !sheetsSuggestedPathTaken(suggested)
       )
         renamed = { ...renamed, suggestSaveAs: suggested }
     }
@@ -2002,19 +1938,29 @@ export function markSheetsUntitledPath(path: string): void {
  * saving discards the temp directory with it. Same shape as an .xls/.tsv
  * import: the file the session edits is not the user's file.
  */
-const unsavedNewWorkbooks = new Map<string, { suggestSaveAs: string; tempDir: string }>()
+interface UnsavedNewWorkbook {
+  suggestSaveAs: string
+  tempDir: string
+  /** the untitled document's recovery copy (its identity outlives session swaps) */
+  recovery: RecoveryIdentity
+  /** the backing file holds a recovery copy's content: the tab opens unsaved */
+  restored?: boolean
+  /** a CSV or converted workbook's copy: the file it came from (see SessionInfo) */
+  originalPath?: string
+}
+const unsavedNewWorkbooks = new Map<string, UnsavedNewWorkbook>()
 
 /**
  * shell: a would-be path already promised to another unsaved new workbook (open
- * tab, tab about to open, or a crash copy waiting to be re-offered). The file
- * itself does not exist yet, so uniqueness on disk is not enough.
+ * tab or tab about to open). The file itself does not exist yet, so uniqueness
+ * on disk is not enough.
  */
 export function sheetsSuggestedPathTaken(path: string): boolean {
   for (const pending of unsavedNewWorkbooks.values())
     if (pending.suggestSaveAs === path) return true
   for (const tab of sheetsTabs.values())
     for (const session of tab.sessions.values()) if (session.suggestSaveAs === path) return true
-  return readUnsavedNewIndex().includes(path)
+  return false
 }
 
 /** shell: mark a backing workbook it just created as not-yet-saved (see above) */
@@ -2023,7 +1969,15 @@ export function markSheetsUnsavedNew(
   suggestSaveAs: string,
   tempDir: string,
 ): void {
-  unsavedNewWorkbooks.set(openPath, { suggestSaveAs, tempDir })
+  unsavedNewWorkbooks.set(openPath, {
+    suggestSaveAs,
+    tempDir,
+    recovery: {
+      kind: 'sheets',
+      untitledId: newUntitledRecoveryId(),
+      ext: untitledWorkbookExt(suggestSaveAs),
+    },
+  })
 }
 
 /** shell: the backing workbook could not be written, release its name */
@@ -2100,148 +2054,497 @@ function userDataPath(...parts: string[]): string {
 
 // ── Crash recovery ──────────────────────────────────────────
 // A dirty renderer asks for a recovery copy every 30s; it is written through the
-// normal save pipeline (writeWorkbookTo) to a userData path, so it is a real .xlsx.
-// A successful save removes it; opening a file whose copy is newer offers Restore.
-const recoveryDir = () => userDataPath('sheets-autosave')
-const recoveryPathFor = (filePath: string) =>
-  join(recoveryDir(), `${createHash('sha1').update(filePath).digest('hex').slice(0, 16)}.xlsx`)
+// normal save pipeline (writeWorkbookTo) and handed to the shared recovery store,
+// so it is a real workbook under <userData>/sheets-autosave (the folder and the
+// sha1(path) naming earlier versions used). A successful save or "Don't Save"
+// removes it; opening a file that has one asks with the shared named prompt
+// first, unless the launch list already chose. A new workbook (a temp backing
+// file the user never saved) is untitled: its copy lives in the store's
+// untitled slot under the tab's title, never in a user folder. A password
+// workbook gets no copy at all — it would be plaintext (decision 0041).
+const recoveryStore = createRecoveryStore({ userDataDir: () => app.getPath('userData') })
+const recoveryDir = () => userDataPath(recoveryFolderName('sheets'))
+const fileRecoveryIdentity = (filePath: string): RecoveryIdentity => ({
+  kind: 'sheets',
+  filePath,
+})
 
-function clearWorkbookRecovery(filePath: string): void {
+/**
+ * Move the unsaved new workbooks an earlier version listed in
+ * `unsaved-new.json` into untitled "later" copies (see migrateLegacyUnsavedNew).
+ * Safe to call any number of times; a no-op once the old index is gone. The
+ * shell calls it before it lists copies for the launch list.
+ */
+export function migrateSheetsLegacyRecovery(): void {
   try {
-    unlinkSync(recoveryPathFor(filePath))
-  } catch {
-    /* nothing to clean */
-  }
-}
-
-// An unsaved new workbook has no file for pendingRecoveryFor to compare
-// against, so the would-be paths of its recovery copies are listed here and
-// the shell re-offers them at launch (and "New spreadsheet" reuses the name).
-const unsavedNewIndexPath = () => join(recoveryDir(), 'unsaved-new.json')
-
-function readUnsavedNewIndex(): string[] {
-  const list = readJson<unknown>(unsavedNewIndexPath(), [])
-  return Array.isArray(list) ? list.filter((p): p is string => typeof p === 'string') : []
-}
-
-function writeUnsavedNewIndex(list: string[]): void {
-  try {
-    mkdirSync(recoveryDir(), { recursive: true })
-    writeFileSync(unsavedNewIndexPath(), JSON.stringify(list))
+    migrateLegacyUnsavedNew(recoveryStore, recoveryDir())
   } catch (error) {
-    console.warn('[sheets] unsaved-new index write failed:', error)
+    console.warn('[sheets] legacy recovery migration failed:', error)
   }
 }
 
-function rememberUnsavedNewRecovery(suggestSaveAs: string): void {
-  const list = readUnsavedNewIndex()
-  if (!list.includes(suggestSaveAs)) writeUnsavedNewIndex([...list, suggestSaveAs])
-}
-
-function forgetUnsavedNewRecovery(suggestSaveAs: string): void {
-  clearWorkbookRecovery(suggestSaveAs)
-  const list = readUnsavedNewIndex()
-  if (list.includes(suggestSaveAs)) writeUnsavedNewIndex(list.filter((p) => p !== suggestSaveAs))
-}
-
-/** shell, at launch: would-be paths of new workbooks whose recovery copy survived a crash */
+/**
+ * Formerly the would-be paths of new workbooks to reopen at every launch.
+ * Untitled copies are now offered by the launch list instead, so this only
+ * migrates the old index and answers nothing to reopen.
+ * @deprecated list untitled copies with listSheetsUntitledCopies (or the shared store)
+ */
 export function pendingUnsavedNewRecoveries(): string[] {
-  const live = readUnsavedNewIndex().filter((p) => existsSync(recoveryPathFor(p)))
-  writeUnsavedNewIndex(live)
-  return live
+  migrateSheetsLegacyRecovery()
+  return []
 }
 
-/** the would-be name changed: the crash copy keyed on it follows (false = copy stays under the old key) */
-function retargetUnsavedNewRecovery(from: string, to: string): boolean {
-  if (!pendingUnsavedNewRecoveryFor(from)) return true
-  try {
-    renameSync(recoveryPathFor(from), recoveryPathFor(to))
-    rememberUnsavedNewRecovery(to)
-    forgetUnsavedNewRecovery(from)
-    return true
-  } catch (err) {
-    console.warn('[sheets] recovery copy rename failed:', err)
-    return false
-  }
-}
-
-function pendingUnsavedNewRecoveryFor(suggestSaveAs: string): string | null {
-  const copy = recoveryPathFor(suggestSaveAs)
-  return readUnsavedNewIndex().includes(suggestSaveAs) && existsSync(copy) ? copy : null
-}
-
-/// Restore/Discard choice for a pending recovery copy. Rendered as a styled
-/// in-app dialog by the renderer (the native message box looks dated,
-/// especially on Windows); strings ship pre-localized in the payload.
-/// 'dismissed' (renderer gone before answering) opens the original file and
-/// keeps the copy, so the offer repeats on the next open.
-type RecoveryChoice = 'restore' | 'discard' | 'dismissed'
-
-const recoveryPromptWaiters = new Map<number, (choice: RecoveryChoice) => void>()
-
-function promptRecoveryRestore(
-  contents: WebContents,
-  filePath: string,
-  recoveryPath: string,
-): Promise<RecoveryChoice> {
-  return new Promise((resolve) => {
-    let savedAtMs = Date.now()
-    try {
-      savedAtMs = statSync(recoveryPath).mtimeMs
-    } catch {
-      /* copy vanished: the prompt still works, just without a precise time */
-    }
-    const settle = (choice: RecoveryChoice): void => {
-      recoveryPromptWaiters.delete(contents.id)
-      contents.removeListener('destroyed', onDestroyed)
-      resolve(choice)
-    }
-    const onDestroyed = (): void => settle('dismissed')
-    recoveryPromptWaiters.set(contents.id, settle)
-    contents.once('destroyed', onDestroyed)
-    contents.send(IPC_CHANNELS.recoveryPrompt, {
-      title: tm('autosaveFoundTitle'),
-      body: tm('autosaveFoundBody'),
-      restoreLabel: tm('autosaveRestore'),
-      discardLabel: tm('autosaveDiscard'),
-      fileName: basename(filePath),
-      savedAtMs,
-    })
+/** shell: the untitled workbook copies the store holds (the legacy index migrated first) */
+export function listSheetsUntitledCopies(
+  states?: readonly RecoveryCopyState[],
+): RecoveryCopyInfo[] {
+  migrateSheetsLegacyRecovery()
+  return recoveryStore.listCopies({
+    kinds: ['sheets'],
+    untitled: true,
+    ...(states ? { states } : {}),
   })
 }
 
-/** Native message-box fallback for the rare open with no live renderer to draw the prompt. */
-async function promptRecoveryRestoreNative(
-  parent?: BrowserWindow | undefined,
-): Promise<RecoveryChoice> {
-  const options = {
-    type: 'question' as const,
-    buttons: [tm('autosaveRestore'), tm('autosaveDiscard')],
-    defaultId: 0,
-    cancelId: 1,
-    message: tm('autosaveFoundTitle'),
-    detail: tm('autosaveFoundBody'),
+/**
+ * The untitled workbook copy this tab writes, if its workbook is a new one
+ * (the shell's session record keeps the tab by it rather than by its temp
+ * backing file, and reopens it after a renderer crash). Null otherwise.
+ */
+export function sheetsRecoveryIdentity(webContentsId: number): RecoveryIdentity | null {
+  let identity: RecoveryIdentity | null = null
+  for (const session of sheetsTabs.get(webContentsId)?.sessions.values() ?? []) {
+    const candidate = sessionRecoveryIdentity(session)
+    if (candidate && isUntitledIdentity(candidate)) identity = candidate
   }
-  const answer = parent
-    ? await dialog.showMessageBox(parent, options)
-    : await dialog.showMessageBox(options)
-  return answer.response === 0 ? 'restore' : 'discard'
+  return identity
 }
 
-/** Recovery copy newer than the file itself, i.e. unsaved work from a lost session. */
-function pendingRecoveryFor(filePath: string): string | null {
-  const copy = recoveryPathFor(filePath)
-  try {
-    if (!existsSync(copy)) return null
-    if (statSync(copy).mtimeMs <= statSync(filePath).mtimeMs) {
-      unlinkSync(copy)
-      return null
+/** Per-tab recovery bookkeeping, keyed by webContents id. */
+interface TabRecoveryState {
+  /** copies this tab wrote, by copy path: a clean close removes only these */
+  readonly written: Map<string, RecoveryIdentity>
+  /** copies whose session closed while still unsaved: a clean close keeps them */
+  readonly keep: Set<string>
+  /**
+   * copies this tab must neither write nor delete, by copy path: another
+   * tab's (a second view of the same file), or one whose question could not
+   * be answered when the file opened (left for later)
+   */
+  readonly held: Set<string>
+  /**
+   * "Don't Save" was answered: late copy writes from this tab are dropped
+   * until the close is vetoed (resetSheetsShuttingDown)
+   */
+  discarded: boolean
+  /** the renderer died: its copies are what the shell reopens from */
+  crashed: boolean
+  /** the password notice was shown in this tab */
+  noticeShown: boolean
+}
+
+const tabRecovery = new Map<number, TabRecoveryState>()
+
+function tabRecoveryFor(contentsId: number): TabRecoveryState {
+  let state = tabRecovery.get(contentsId)
+  if (!state) {
+    state = {
+      written: new Map(),
+      keep: new Set(),
+      held: new Set(),
+      discarded: false,
+      crashed: false,
+      noticeShown: false,
     }
-    return copy
+    tabRecovery.set(contentsId, state)
+  }
+  return state
+}
+
+/**
+ * the copy title: a CSV or converted workbook shows the file it came from, an
+ * untitled workbook its tab title, a file its name
+ */
+function recoveryTitleFor(session: SessionInfo): string | undefined {
+  if (session.recoveryOriginalPath !== undefined) return basename(session.recoveryOriginalPath)
+  return session.unsavedNew && session.suggestSaveAs !== undefined
+    ? basename(session.suggestSaveAs)
+    : undefined
+}
+
+/**
+ * Work that exists only as a recovery copy, not in the renderer's journal: a
+ * restored copy before its first save, and a new workbook whose quiet
+ * AutoSave moved the edits into its backing file. Counted as unsaved, so the
+ * tab shows it and the close guard asks.
+ */
+function sessionHasUnsavedCopy(session: SessionInfo): boolean {
+  if (session.unsavedRestore) return true
+  if (!session.unsavedNew) return false
+  const identity = sessionRecoveryIdentity(session)
+  return identity !== null && recoveryStore.copyInfo(identity) !== null
+}
+
+function unsavedCopySessions(contentsId: number): number {
+  let count = 0
+  for (const session of sheetsTabs.get(contentsId)?.sessions.values() ?? [])
+    if (sessionHasUnsavedCopy(session)) count += 1
+  return count
+}
+
+/** Move a finished file into place, copying when it lives on another volume. */
+async function moveFileInto(source: string, target: string): Promise<void> {
+  try {
+    await rename(source, target)
   } catch {
+    await copyFile(source, target)
+  }
+}
+
+/**
+ * Write one session's copy through the store; false when it has none, this
+ * tab holds it, or it was superseded. The workbook is written to disk and
+ * handed over by path (writeCopyStreamed), never read into memory. It is
+ * produced in a temp folder of its own first: the archive writer leaves its
+ * scratch file beside its target, and that must not end up in the recovery
+ * folder if the app dies mid-write.
+ */
+async function writeSessionCopy(
+  contentsId: number,
+  session: SessionInfo,
+  produce: (target: string) => Promise<unknown>,
+  options: { ignoreSizeLimit?: boolean } = {},
+): Promise<boolean> {
+  const identity = sessionRecoveryIdentity(session)
+  if (identity === null) return false
+  if (session.automaticRecoveryDisabled && !options.ignoreSizeLimit) return false
+  const state = tabRecovery.get(contentsId)
+  if (state?.discarded || state?.held.has(recoveryStore.copyPath(identity))) return false
+  // taken before serializing: a save or "Don't Save" that lands meanwhile wins
+  const ticket = recoveryStore.beginWrite(identity)
+  const title = recoveryTitleFor(session)
+  const result = await recoveryStore.writeCopyStreamed(
+    identity,
+    async (storeTemp) => {
+      const directory = join(app.getPath('temp'), 'genoffice-imports', randomUUID())
+      try {
+        await mkdir(directory, { recursive: true })
+        const target = join(directory, `recovery${untitledWorkbookExt(session.path)}`)
+        await produce(target)
+        await moveFileInto(target, storeTemp)
+      } finally {
+        await cleanupImportTempDirectory(app.getPath('temp'), directory).catch(() => undefined)
+      }
+    },
+    {
+      ticket,
+      ...(title === undefined ? {} : { title }),
+      ...(session.recoveryOriginalPath === undefined
+        ? {}
+        : { originalPath: session.recoveryOriginalPath }),
+    },
+  )
+  if (result !== 'written') return false
+  tabRecoveryFor(contentsId).written.set(recoveryStore.copyPath(identity), identity)
+  return true
+}
+
+/** a successful save: the document's copies are no longer needed */
+function deleteCopiesAfterSave(contentsId: number, identities: (RecoveryIdentity | null)[]): void {
+  const state = tabRecovery.get(contentsId)
+  for (const identity of identities) {
+    if (identity === null) continue
+    // another tab's copy, or one still waiting for its question: not this save's
+    if (state?.held.has(recoveryStore.copyPath(identity))) continue
+    recoveryStore.deleteCopy(identity, 'saved')
+    state?.written.delete(recoveryStore.copyPath(identity))
+    state?.keep.delete(recoveryStore.copyPath(identity))
+  }
+}
+
+/** "Don't Save" in the close prompt: drop every copy of the tab, and any late write */
+function discardTabCopies(contentsId: number): void {
+  const state = tabRecoveryFor(contentsId)
+  state.discarded = true
+  const identities = new Map(state.written)
+  for (const session of sheetsTabs.get(contentsId)?.sessions.values() ?? []) {
+    const identity = sessionRecoveryIdentity(session)
+    if (identity !== null) identities.set(recoveryStore.copyPath(identity), identity)
+  }
+  for (const [key, identity] of identities) {
+    if (!state.held.has(key)) recoveryStore.deleteCopy(identity, 'dontSave')
+  }
+  state.written.clear()
+  state.keep.clear()
+}
+
+/**
+ * MCP / AI closes this tab without saving (the shell then closes it with no
+ * prompt): the same as answering "Don't Save" — the tab's copies go, and a
+ * late copy write from the closing renderer is dropped.
+ */
+export function discardSheetsRecovery(contents: WebContents): void {
+  if (contents.isDestroyed()) return
+  discardTabCopies(contents.id)
+}
+
+/**
+ * A close that was answered "Don't Save" was vetoed afterwards (another
+ * tab's prompt cancelled the window close or the quit): the tab stays open
+ * with its unsaved work, so its copies are written again.
+ */
+function resumeDiscardedTabCopies(): void {
+  for (const state of tabRecovery.values()) state.discarded = false
+}
+
+/** a workbook session closes: remember a copy that still holds unsaved work */
+function noteSessionClosed(contentsId: number, session: SessionInfo): void {
+  const identity = sessionRecoveryIdentity(session)
+  if (identity === null) return
+  const unsaved = sessionHasUnsavedCopy(session) || (pendingEditCounts.get(contentsId) ?? 0) > 0
+  if (unsaved) tabRecoveryFor(contentsId).keep.add(recoveryStore.copyPath(identity))
+}
+
+/**
+ * The tab is going away. A clean tab removes the copies it wrote, except those
+ * still holding unsaved work; a crashed renderer, a dirty tab and the app
+ * ending (the store refuses then) keep everything.
+ */
+function settleTabRecoveryOnClose(contentsId: number, entry: SheetsTabSession): void {
+  const state = tabRecovery.get(contentsId)
+  decidedOpens.delete(contentsId)
+  if (!state) return
+  if (!state.crashed && !state.discarded) {
+    for (const session of entry.sessions.values()) noteSessionClosed(contentsId, session)
+    if ((pendingEditCounts.get(contentsId) ?? 0) === 0) {
+      for (const [key, identity] of state.written) {
+        if (!state.keep.has(key)) recoveryStore.deleteCopy(identity, 'closedClean')
+      }
+    }
+  }
+  tabRecovery.delete(contentsId)
+}
+
+/** shown once per tab when a workbook without a possible copy opens in it */
+function showUnprotectableNotice(contents: WebContents): void {
+  if (contents.isDestroyed()) return
+  const state = tabRecoveryFor(contents.id)
+  if (state.noticeShown) return
+  state.noticeShown = true
+  contents.send(IPC_CHANNELS.recoveryNotice, unprotectableNoticeText(getUiLang()))
+}
+
+/**
+ * Opens the shell answered for a tab (launch list, restored tab): the file's
+ * recovery question is settled, so its next open of that path does not ask.
+ */
+const decidedOpens = new Map<number, RecoveryOpenFileRequest>()
+
+/** Load copy bytes into a temp file the session runs on (the original stays untouched). */
+async function stageRecoveredCopy(
+  bytes: Buffer,
+  name: string,
+): Promise<{ openPath: string; importTempDir: string }> {
+  const directory = join(app.getPath('temp'), 'genoffice-imports', randomUUID())
+  await mkdir(directory, { recursive: true })
+  const openPath = join(directory, name)
+  try {
+    await writeFile(openPath, bytes)
+  } catch (error) {
+    await cleanupImportTempDirectory(app.getPath('temp'), directory)
+    throw error
+  }
+  return { openPath, importTempDir: directory }
+}
+
+/**
+ * A file's recovery copy, settled before its content loads: the launch
+ * list's decision when there is one, else the named per-file prompt (Esc and
+ * closing restore). Restoring opens the copy's bytes from a temp file with the
+ * user's file as the save target (`restoreTarget`) and the tab unsaved;
+ * discarding deletes the copy. Null opens the file as saved.
+ */
+async function recoveredOpenFor(
+  path: string,
+  contents: WebContents | undefined,
+  parent: BrowserWindow | undefined,
+): Promise<PreparedWorkbookOpen | null> {
+  const identity = fileRecoveryIdentity(path)
+  const key = recoveryStore.copyPath(identity)
+  const decided = contents ? decidedOpens.get(contents.id) : undefined
+  const isDecided = decided !== undefined && contents !== undefined && decided.filePath === path
+  if (isDecided) decidedOpens.delete(contents.id)
+  const held = contents ? tabRecoveryFor(contents.id).held : undefined
+  held?.delete(key)
+  // a second view (split) of a file another tab keeps a copy for: that copy
+  // is the other tab's unsaved work, so nothing is asked and nothing in this
+  // tab writes or deletes it
+  if (contents !== undefined && copyOwnedByAnotherView(contents.id, identity)) {
+    held?.add(key)
+    return null
+  }
+  if (isDecided && decided.decision === 'original') return null
+  try {
+    let bytes: Buffer | null = null
+    if (isDecided) {
+      bytes = await recoveryStore.readCopy(identity)
+      if (bytes) recoveryStore.markCopyLoaded(identity)
+    } else {
+      const resolved = await resolveRecoveryOnOpen({
+        store: recoveryStore,
+        identity,
+        dialog,
+        parent: parent ?? null,
+        lang: getUiLang(),
+      })
+      if (resolved.action === 'restore') bytes = resolved.bytes
+    }
+    if (!bytes) return null
+    const staged = await stageRecoveredCopy(bytes, basename(path))
+    return { ...staged, restoreTarget: path, unsavedRestore: true }
+  } catch (error) {
+    // The copy could not be prepared: the file opens as saved and the copy
+    // waits for the next open or launch, untouched by this tab meanwhile.
+    console.warn('[sheets] recovery copy could not be opened:', error)
+    try {
+      recoveryStore.setCopyState(identity, 'later')
+    } catch (stateError) {
+      console.warn('[sheets] recovery copy state could not be kept:', stateError)
+    }
+    held?.add(key)
     return null
   }
 }
+
+/**
+ * Another live sheets tab keeps the document's copy: the copy exists, and
+ * that tab has the document open restored from it or has written it (not
+ * merely opened the file beside it).
+ */
+function copyOwnedByAnotherView(contentsId: number, identity: RecoveryIdentity): boolean {
+  if (recoveryStore.openPlan(identity).action === 'none') return false
+  const key = recoveryStore.copyPath(identity)
+  for (const [id, entry] of sheetsTabs) {
+    if (id === contentsId || entry.webContents.isDestroyed()) continue
+    const state = tabRecovery.get(id)
+    if (state?.held.has(key)) continue
+    for (const session of entry.sessions.values()) {
+      const own = sessionRecoveryIdentity(session)
+      if (own === null || recoveryStore.copyPath(own) !== key) continue
+      if (session.unsavedRestore || state?.written.has(key)) return true
+    }
+  }
+  return false
+}
+
+/**
+ * Editor contract: open `filePath` in a tab the shell created, its recovery
+ * question already answered (the open itself runs when the renderer pulls the
+ * queued path).
+ */
+export function openSheetsFileWithDecision(
+  contents: WebContents,
+  request: RecoveryOpenFileRequest,
+): void {
+  decidedOpens.set(contents.id, { filePath: request.filePath, decision: request.decision })
+  queueWorkbookForView(contents, request.filePath)
+  nudgeQueuedWorkbook(contents)
+}
+
+/**
+ * Editor contract: load a copy into a tab the shell created as an untitled
+ * workbook (an untitled copy, or a file copy whose original is missing). Like
+ * "New spreadsheet" it runs on a backing file in its own temp folder, the
+ * first save asks where, and it keeps writing the same copy until saved.
+ * The first save offers what the document offered before: for the copy of a
+ * CSV or converted workbook (the original path in `saveAsDefaultPath` or in
+ * the copy's metadata) the original's folder and name as .xlsx; for a missing
+ * original that path itself; else the default folder.
+ */
+export async function openSheetsUntitledCopy(
+  contents: WebContents,
+  request: RecoveryOpenUntitledRequest,
+): Promise<void> {
+  const bytes = await recoveryStore.readCopy(request.copy)
+  if (!bytes) throw new Error('Recovery copy not found.')
+  const copy = request.copy
+  const ext = isUntitledIdentity(copy) ? copy.ext : untitledWorkbookExt(copy.filePath)
+  // an untitled copy that names its original file came from a CSV or converted workbook
+  const originalPath = isUntitledIdentity(copy)
+    ? (request.saveAsDefaultPath ?? recoveryStore.copyInfo(copy)?.originalPath ?? undefined)
+    : undefined
+  const offered =
+    originalPath !== undefined ? saveAsDefaultFor(originalPath) : request.saveAsDefaultPath
+  const stem =
+    (offered === undefined
+      ? undefined
+      : sanitizeAutoRenameBase(basename(offered).replace(/\.[^.]+$/, ''))) ??
+    sanitizeAutoRenameBase(basename(request.title).replace(/\.xls[xm]$/i, '')) ??
+    'Workbook'
+  const name = `${stem}${ext}`
+  const suggestSaveAs = offered ?? join(configuredDefaultSaveDir(app), name)
+  const staged = await stageRecoveredCopy(bytes, name)
+  unsavedNewWorkbooks.set(staged.openPath, {
+    suggestSaveAs,
+    tempDir: staged.importTempDir,
+    recovery: request.copy,
+    restored: true,
+    ...(originalPath === undefined ? {} : { originalPath }),
+  })
+  queueWorkbookForView(contents, staged.openPath)
+  nudgeQueuedWorkbook(contents)
+}
+
+/** how long an OS shutdown waits for one tab's renderer to write its copy */
+const RECOVERY_WRITE_NOW_TIMEOUT_MS = 8_000
+const recoveryWriteNowWaiters = new Map<string, () => void>()
+
+/**
+ * Editor contract (the OS is ending the session): every live tab's renderer
+ * writes its copy now. Resolves once all answered or timed out; never throws.
+ */
+export async function writeSheetsCopiesNow(): Promise<void> {
+  const waits: Promise<void>[] = []
+  for (const entry of sheetsTabs.values()) {
+    const contents = entry.webContents
+    if (contents.isDestroyed() || tabRecovery.get(contents.id)?.crashed) continue
+    const nonce = randomUUID()
+    waits.push(
+      new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          recoveryWriteNowWaiters.delete(nonce)
+          resolve()
+        }, RECOVERY_WRITE_NOW_TIMEOUT_MS)
+        recoveryWriteNowWaiters.set(nonce, () => {
+          clearTimeout(timer)
+          recoveryWriteNowWaiters.delete(nonce)
+          resolve()
+        })
+        try {
+          contents.send(IPC_CHANNELS.recoveryWriteNow, nonce)
+        } catch {
+          recoveryWriteNowWaiters.get(nonce)?.()
+        }
+      }),
+    )
+  }
+  await Promise.all(waits)
+}
+
+/** a password workbook is open in this tab: it has no copy */
+function sheetsTabIsUnprotectable(contentsId: number): boolean {
+  for (const session of sheetsTabs.get(contentsId)?.sessions.values() ?? [])
+    if (session.password !== undefined) return true
+  return false
+}
+
+registerRecoveryEditor({
+  kind: 'sheets',
+  writeCopiesNow: () => writeSheetsCopiesNow().catch(() => undefined),
+  openFileWithDecision: openSheetsFileWithDecision,
+  openUntitledCopy: openSheetsUntitledCopy,
+  isUnprotectable: (contents) => sheetsTabIsUnprotectable(contents.id),
+})
 
 function readJson<T>(path: string, fallback: T): T {
   try {
@@ -2609,64 +2912,72 @@ const pendingEditCounts = new Map<number, number>()
 const closeSaveWaiters = new Map<number, (ok: boolean) => void>()
 const trackedEditSenders = new Set<number>()
 
+/**
+ * Unsaved changes of a tab: the renderer's journal, plus work that lives only
+ * in a recovery copy (a restored copy before its first save, a new workbook
+ * whose quiet AutoSave emptied the journal).
+ */
 export function sheetsPendingEditCount(webContentsId: number): number {
-  return pendingEditCounts.get(webContentsId) ?? 0
+  return (pendingEditCounts.get(webContentsId) ?? 0) + unsavedCopySessions(webContentsId)
+}
+
+/**
+ * The app is shutting down (quit menu, SIGTERM from a restart/installer/killall,
+ * SIGINT from a terminal, the OS ending the session). The close guard must not
+ * save then: nobody answered the prompt, and a dialog raised during shutdown
+ * resolves to its default button, which silently overwrote the user's original
+ * file. Unsaved work is covered by the 30s recovery copy instead — the next
+ * launch offers to restore it. The shared recovery latch goes up with this one,
+ * so no editor's close cleanup deletes a copy meanwhile.
+ */
+const shutdownLatch = new ShutdownLatch()
+
+const shuttingDown = (): boolean => shutdownLatch.active || isAppShuttingDown()
+
+export function markSheetsShuttingDown(): void {
+  shutdownLatch.mark()
+  markAppShuttingDown()
+}
+
+/**
+ * The quit was vetoed (a prevented window close that ended up not proceeding).
+ * The latches must go back down: from now on closes are interactive again and
+ * the save prompt must run — leaving them set would silently discard unsaved
+ * edits on every later close, and keep copies from being deleted on save.
+ */
+export function resetSheetsShuttingDown(): void {
+  shutdownLatch.reset()
+  resetAppShuttingDown()
+  resumeDiscardedTabCopies()
+  // every editor's "Don't Save" block in the shared store, not just this one's
+  resumeDiscardedCopies()
+}
+
+app.on('before-quit', markSheetsShuttingDown)
+for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+  process.on(signal, () => {
+    markSheetsShuttingDown()
+    app.quit()
+  })
 }
 
 /**
  * Close guard for a sheets renderer: true means proceed with the close.
  * Clean → true; dirty → Save/Don't Save/Cancel dialog. Save asks the renderer to run
  * its journal save and waits for the outcome — a failed or canceled save
- * keeps the window open (the renderer already surfaced the error).
+ * keeps the window open (the renderer already surfaced the error). "Don't
+ * Save" deletes the tab's recovery copies; a close while the app is ending
+ * asks nothing and leaves them.
  */
-/**
- * The app is shutting down (quit menu, SIGTERM from a restart/installer/killall,
- * SIGINT from a terminal). The close guard must not save then: nobody answered the
- * prompt, and a dialog raised during shutdown resolves to its default button, which
- * silently overwrote the user's original file. Unsaved work is covered
- * by the 30s recovery copy instead — the next launch offers to restore it.
- */
-const shutdownLatch = new ShutdownLatch()
-
-export function markSheetsShuttingDown(): void {
-  shutdownLatch.mark()
-}
-
-/**
- * The quit was vetoed (a prevented window close that ended up not proceeding).
- * The latch must go back down: from now on closes are interactive again and
- * the save prompt must run — leaving it set would silently discard unsaved
- * edits on every later close.
- */
-export function resetSheetsShuttingDown(): void {
-  shutdownLatch.reset()
-}
-
-app.on('before-quit', markSheetsShuttingDown)
-for (const signal of ['SIGTERM', 'SIGINT'] as const) {
-  process.on(signal, () => {
-    shutdownLatch.mark()
-    app.quit()
-  })
-}
-
 export async function requestSheetsClose(
   contents: WebContents,
   parent?: BrowserWindow | null,
 ): Promise<boolean> {
-  // A quiet AutoSave leaves an unsaved new workbook's journal empty, but its
-  // work still sits on no user-visible path: closing it is discarding it.
-  const autosavedNew = [...(sheetsTabs.get(contents.id)?.sessions.values() ?? [])].filter(
-    (s) =>
-      s.unsavedNew &&
-      s.suggestSaveAs !== undefined &&
-      pendingUnsavedNewRecoveryFor(s.suggestSaveAs),
-  ).length
-  const count = (pendingEditCounts.get(contents.id) ?? 0) + autosavedNew
+  const count = sheetsPendingEditCount(contents.id)
   const decision = closeGuardDecision({
     pendingEdits: count,
     destroyed: contents.isDestroyed(),
-    shuttingDown: shutdownLatch.active,
+    shuttingDown: shuttingDown(),
   })
   if (decision === 'proceed') return true
   const options = {
@@ -2684,9 +2995,12 @@ export async function requestSheetsClose(
       ? await dialog.showMessageBox(parent, options)
       : await dialog.showMessageBox(options)
   if (response === 2) return false
-  if (response === 1) return true
+  if (response === 1) {
+    discardTabCopies(contents.id)
+    return true
+  }
   // The window went away (or a quit started) while the prompt was up: don't save
-  if (shutdownLatch.active || contents.isDestroyed()) return true
+  if (shuttingDown() || contents.isDestroyed()) return true
   return await new Promise<boolean>((resolve) => {
     const timer = setTimeout(() => {
       closeSaveWaiters.delete(contents.id)
@@ -2708,11 +3022,7 @@ export function registerSheetsIpc(): void {
 
   ipcMain.handle(IPC_CHANNELS.userDisplayName, (event): string => {
     sessionFor(event)
-    try {
-      return userInfo().username
-    } catch {
-      return ''
-    }
+    return configuredAuthorName(app)
   })
 
   // Registered here (not in registerSheetsAiIpc, skipped in shell mode):
@@ -2747,8 +3057,10 @@ export function registerSheetsIpc(): void {
     }),
   )
 
-  ipcMain.on(IPC_CHANNELS.recoveryPromptReply, (event, restore: unknown) => {
-    recoveryPromptWaiters.get(event.sender.id)?.(restore === true ? 'restore' : 'discard')
+  // the renderer finished the copy an OS shutdown asked for (writeSheetsCopiesNow)
+  ipcMain.on(IPC_CHANNELS.recoveryWriteNowDone, (event, nonce: unknown) => {
+    if (!sheetsTabs.has(event.sender.id)) return
+    if (typeof nonce === 'string') recoveryWriteNowWaiters.get(nonce)?.()
   })
 
   ipcMain.on(IPC_CHANNELS.pendingEditsChanged, (event, count: unknown) => {
@@ -2845,6 +3157,8 @@ export function registerSheetsIpc(): void {
       event.sender,
       dialogParent(event),
     )
+    // a decision the shell passed for this tab served this open (or never applied)
+    decidedOpens.delete(event.sender.id)
     if (prepared === null) return null
     // The recovery prompt (or the file dialog / import conversion) can outlive
     // the tab: once the renderer is destroyed, its 'destroyed' handler has
@@ -2854,6 +3168,8 @@ export function registerSheetsIpc(): void {
       await discardPreparedOpen(prepared)
       return null
     }
+    // a CSV or converted workbook keeps its unsaved work in an untitled copy
+    const converted = convertedSessionRecovery(prepared, path)
     const result = await openWorkbookSession(entry.client, prepared.openPath, entry.sessions, {
       suggestSaveAs: prepared.suggestSaveAs,
       csvImport: prepared.csvImport,
@@ -2864,6 +3180,9 @@ export function registerSheetsIpc(): void {
       emptySource: prepared.emptySource,
       unsavedNew: prepared.unsavedNew,
       password: prepared.password,
+      recoveryIdentity: converted?.recoveryIdentity ?? prepared.recoveryIdentity,
+      recoveryOriginalPath: converted?.recoveryOriginalPath ?? prepared.recoveryOriginalPath,
+      unsavedRestore: prepared.unsavedRestore,
     })
     // The sidecar open itself can also outlive the tab after the pre-open
     // check. Close the newly registered session instead of stranding it in
@@ -2884,6 +3203,8 @@ export function registerSheetsIpc(): void {
     // an unsaved new workbook's tab already shows the untitled name; its temp
     // backing path must not become a recent file
     if (!prepared.unsavedNew) workbookOpenedHook?.(event.sender, path)
+    // a password workbook keeps no recovery copy: say so once in this tab
+    if (prepared.password !== undefined) showUnprotectableNotice(event.sender)
     return result
   }
 
@@ -3601,6 +3922,9 @@ export function registerSheetsIpc(): void {
               csvImport: true,
               csvSourcePath: session.csvSourcePath,
               importTempDir: session.importTempDir,
+              // the CSV stays open: later edits keep writing the same copy slot
+              recoveryIdentity: session.recoveryIdentity,
+              recoveryOriginalPath: session.recoveryOriginalPath,
               staged,
             }
           : quietUnsavedNew
@@ -3608,17 +3932,21 @@ export function registerSheetsIpc(): void {
                 suggestSaveAs: session.suggestSaveAs,
                 importTempDir: session.importTempDir,
                 unsavedNew: true,
+                recoveryIdentity: session.recoveryIdentity,
+                recoveryOriginalPath: session.recoveryOriginalPath,
+                unsavedRestore: session.unsavedRestore,
                 staged,
               }
             : { staged },
     )
     if (quietUnsavedNew && session.suggestSaveAs !== undefined) {
       // the temp path must not reach the title or recents; the recovery copy
-      // is what a crash restores from, so it tracks the saved bytes
+      // is what a crash restores from (and what keeps the tab unsaved), so it
+      // tracks the saved bytes even when the periodic copy is off for size
       try {
-        await mkdir(recoveryDir(), { recursive: true })
-        await copyFile(targetPath, recoveryPathFor(session.suggestSaveAs))
-        rememberUnsavedNewRecovery(session.suggestSaveAs)
+        await writeSessionCopy(event.sender.id, session, (target) => copyFile(targetPath, target), {
+          ignoreSizeLimit: true,
+        })
       } catch (error) {
         console.warn('[sheets] recovery copy of an unsaved new workbook failed:', error)
       }
@@ -3632,15 +3960,14 @@ export function registerSheetsIpc(): void {
       event.sender,
       (csvInPlace ? session.csvSourcePath : undefined) ?? targetPath,
     )
-    // The file on disk now carries these edits
-    clearWorkbookRecovery(targetPath)
-    if (session.suggestSaveAs !== undefined) {
-      if (session.unsavedNew) forgetUnsavedNewRecovery(session.suggestSaveAs)
-      else clearWorkbookRecovery(session.suggestSaveAs)
-    }
-    // Restored session saved (possibly Save As elsewhere): the unsaved work is
-    // persisted, so the original's recovery copy must not re-offer it.
-    if (session.restoreTarget !== undefined) clearWorkbookRecovery(session.restoreTarget)
+    // The file on disk now carries these edits: the saved document's copy goes,
+    // and so does the copy the session wrote under its own identity (an
+    // untitled workbook's, or a restored file's when Save As went elsewhere).
+    deleteCopiesAfterSave(event.sender.id, [
+      fileRecoveryIdentity(targetPath),
+      sessionRecoveryIdentity(session),
+      session.restoreTarget === undefined ? null : fileRecoveryIdentity(session.restoreTarget),
+    ])
     return { canceled: false, file, touchedEntries: mutation.touchedEntries }
   })
 
@@ -3681,30 +4008,16 @@ export function registerSheetsIpc(): void {
     const entry = sessionFor(event)
     const request = resolveTransferredEdits(entry, workbookSaveRequestSchema.parse(input))
     const session = entry.sessions.get(request.sessionId)
-    // A converted import has no original file to recover into (and a CSV
-    // session's original can't hold the workbook bytes); a restored recovery
-    // session is backed by the recovery copy itself — writing over the file
-    // the sidecar streams from would corrupt the open session.
-    if (
-      !session ||
-      (session.suggestSaveAs !== undefined && !session.unsavedNew) ||
-      session.csvSourcePath !== undefined ||
-      (session.restoreTarget !== undefined && !session.emptySource)
-    )
-      return { ok: false }
-    if (session.automaticRecoveryDisabled) return { ok: false }
-    // an unsaved new workbook recovers under the name its first save would get;
-    // an empty original's session runs on a temp blank and recovers into the file the user opened
-    const recoveryKey = session.unsavedNew
-      ? session.suggestSaveAs!
-      : session.emptySource
-        ? (session.restoreTarget ?? session.path)
-        : session.path
+    // Which copy (if any) is decided by sessionRecoveryIdentity: none for a
+    // password workbook; an untitled slot for a new workbook and for a CSV or
+    // converted session; the user's file for a restored copy or an empty
+    // original (both run on a temp file the session was snapshotted from).
+    if (!session) return { ok: false }
     try {
-      await mkdir(recoveryDir(), { recursive: true })
-      await writeWorkbookTo(entry.client, session, request, recoveryPathFor(recoveryKey))
-      if (session.unsavedNew) rememberUnsavedNewRecovery(recoveryKey)
-      return { ok: true }
+      const written = await writeSessionCopy(event.sender.id, session, (target) =>
+        writeWorkbookTo(entry.client, session, request, target),
+      )
+      return { ok: written }
     } catch (error) {
       console.warn('[sheets] recovery copy failed:', error)
       return { ok: false }
@@ -3741,8 +4054,10 @@ export function registerSheetsIpc(): void {
     const session = entry.sessions.get(validatedSessionId)
     if (!entry.sessions.delete(validatedSessionId)) return
     if (session === undefined) return
-    if (session.unsavedNew && session.suggestSaveAs !== undefined)
-      forgetUnsavedNewRecovery(session.suggestSaveAs)
+    // The copy is left alone here: this also runs while the app quits (the
+    // renderer unmounts) and when a tab swaps workbooks. A copy still holding
+    // unsaved work is remembered so the tab's clean close keeps it.
+    noteSessionClosed(event.sender.id, session)
     await cleanupSessionResources({
       tempRoot: app.getPath('temp'),
       snapshotPath: session.snapshotPath,
@@ -3777,9 +4092,6 @@ export function registerSheetsIpc(): void {
           suggested = join(suggestDir, `${base}-${i}.xlsx`)
         }
         if (suggested === session.suggestSaveAs || taken(suggested)) return { renamed: false }
-        // a failed move leaves the copy valid under the old name; a crash can still restore it
-        if (session.unsavedNew && !retargetUnsavedNewRecovery(session.suggestSaveAs, suggested))
-          return { renamed: false }
         entry.sessions.set(validatedSessionId, { ...session, suggestSaveAs: suggested })
         event.sender.send(IPC_CHANNELS.workbookRenamed, basename(suggested))
         return { renamed: true, name: basename(suggested) }
@@ -3932,6 +4244,7 @@ export function registerSheetsAiIpc(): void {
       for (const wc of webContents.getAllWebContents())
         if (!wc.isDestroyed()) wc.send(channel, payload)
     },
+    loginWindowText: (provider) => aiSubscriptionLoginWindowText(getUiLang(), provider),
   })
 
   ipcMain.handle(IPC_CHANNELS.aiGetSettings, (event): AiSettings => {
@@ -3942,7 +4255,7 @@ export function registerSheetsAiIpc(): void {
   ipcMain.handle(IPC_CHANNELS.aiSetSettings, async (event, input: unknown) => {
     sessionFor(event)
     const settings = aiSettingsInputSchema.parse(input)
-    writeJsonAtomic(SETTINGS_PATH(), settings)
+    writeJsonAtomic(SETTINGS_PATH(), sealAiSecrets(settings))
     broadcastAiSettingsChanged()
   })
 
@@ -4599,6 +4912,9 @@ async function openWorkbookSession(
     emptySource?: boolean | undefined
     unsavedNew?: boolean | undefined
     password?: string | undefined
+    recoveryIdentity?: RecoveryIdentity | undefined
+    recoveryOriginalPath?: string | undefined
+    unsavedRestore?: boolean | undefined
     /// A save's output already opened by the sidecar: it is this session's
     /// snapshot as it stands, so neither the copy nor the open is repeated.
     staged?: { snapshotPath: string; opened: SidecarOpenResult } | undefined
@@ -4614,6 +4930,9 @@ async function openWorkbookSession(
     emptySource,
     unsavedNew,
     password,
+    recoveryIdentity,
+    recoveryOriginalPath,
+    unsavedRestore,
     staged,
   } = options ?? {}
   // Snapshot first, then the sidecar opens the snapshot (not the live path):
@@ -4661,6 +4980,9 @@ async function openWorkbookSession(
       ...(emptySource ? { emptySource } : {}),
       ...(unsavedNew ? { unsavedNew } : {}),
       ...(password === undefined ? {} : { password }),
+      ...(recoveryIdentity === undefined ? {} : { recoveryIdentity }),
+      ...(recoveryOriginalPath === undefined ? {} : { recoveryOriginalPath }),
+      ...(unsavedRestore ? { unsavedRestore } : {}),
       ...(diskState === null ? {} : { diskState: { path: diskStatePath, state: diskState } }),
     })
     unsavedNewWorkbooks.delete(path)
@@ -4830,6 +5152,9 @@ interface PreparedWorkbookOpen {
   emptySource?: boolean
   unsavedNew?: boolean
   password?: string
+  recoveryIdentity?: RecoveryIdentity
+  recoveryOriginalPath?: string
+  unsavedRestore?: boolean
 }
 
 /// .xls and .tsv open as a converted copy in the temp dir; the session
@@ -4854,6 +5179,11 @@ async function prepareWorkbookForOpen(
       suggestSaveAs: unsavedNew.suggestSaveAs,
       importTempDir: unsavedNew.tempDir,
       unsavedNew: true,
+      recoveryIdentity: unsavedNew.recovery,
+      ...(unsavedNew.restored ? { unsavedRestore: true } : {}),
+      ...(unsavedNew.originalPath === undefined
+        ? {}
+        : { recoveryOriginalPath: unsavedNew.originalPath }),
     }
     // An untitled copy of a .csv/.tsv/.xls (a skill template's, spec 5.7) is
     // converted beside itself in its own temp folder: the session edits the
@@ -4882,25 +5212,9 @@ async function prepareWorkbookForOpen(
       unsavedNewWorkbooks.set(openPath, unsavedNew)
       return { openPath, ...base }
     }
-    // a crash left work under this would-be name: offer it like a file's
-    // recovery copy, opening the copy itself as the (still unsaved) workbook
-    const recovery = pendingUnsavedNewRecoveryFor(unsavedNew.suggestSaveAs)
-    if (recovery) {
-      const choice =
-        contents && !contents.isDestroyed()
-          ? await promptRecoveryRestore(contents, unsavedNew.suggestSaveAs, recovery)
-          : await promptRecoveryRestoreNative(parent)
-      // the copy is what the recovery writer keeps overwriting, so the session
-      // streams from the backing file, not from the copy
-      if (choice === 'restore') {
-        try {
-          await copyFile(recovery, path)
-        } catch (error) {
-          await discardPreparedOpen({ openPath: path, importTempDir: unsavedNew.tempDir })
-          throw error
-        }
-      } else if (choice === 'discard') forgetUnsavedNewRecovery(unsavedNew.suggestSaveAs)
-    }
+    // a copy reopened as untitled (openSheetsUntitledCopy): its content is the
+    // backing file already, and it is loaded now
+    if (unsavedNew.restored) recoveryStore.markCopyLoaded(unsavedNew.recovery)
     return { openPath: path, ...base }
   }
   const extension = path.slice(path.lastIndexOf('.') + 1).toLowerCase()
@@ -4908,20 +5222,15 @@ async function prepareWorkbookForOpen(
   const encrypted = await prepareEncryptedWorkbook(client, path, extension, parent)
   if (encrypted !== undefined) return encrypted
   if (extension !== 'csv' && extension !== 'tsv' && extension !== 'xls') {
-    // Unsaved work from a lost session: offer the recovery copy. Restoring
-    // opens it with restoreTarget pointing back at the original, so a plain
-    // Save writes straight back over the file the user opened — the restore
-    // prompt (which spells out the overwrite) was the confirmation.
-    // Merge sources are read-only picks: never surface (or worse, discard)
-    // another workbook's crash recovery from here.
-    const recovery = options?.skipRecoveryPrompt ? undefined : pendingRecoveryFor(path)
-    if (recovery) {
-      const choice =
-        contents && !contents.isDestroyed()
-          ? await promptRecoveryRestore(contents, path, recovery)
-          : await promptRecoveryRestoreNative(parent)
-      if (choice === 'restore') return { openPath: recovery, restoreTarget: path }
-      if (choice === 'discard') clearWorkbookRecovery(path)
+    // Unsaved work from a lost session is settled before the file's content
+    // loads (recoveredOpenFor). Restoring opens the copy with restoreTarget
+    // pointing back at the original, so a plain Save writes straight back
+    // over the file the user opened — choosing to restore was the
+    // confirmation. Merge sources are read-only picks: never surface (or
+    // worse, discard) another workbook's crash recovery from here.
+    if (!options?.skipRecoveryPrompt) {
+      const recovered = await recoveredOpenFor(path, contents, parent)
+      if (recovered !== null) return recovered
     }
     if (extension === 'xlsx' && (await stat(path)).size === 0) return openEmptyXlsx(path)
     return { openPath: path }

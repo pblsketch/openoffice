@@ -23,7 +23,7 @@ import {
   SkillProposalCard,
   type SkillCardTemplateContext,
 } from './SkillProposalCard'
-import { builtinSkillTitle, isBuiltinSkillName } from './strings-builtin-skills'
+import { skillDisplayName } from './skill-picker-model'
 import { skillCardText } from './strings-skill-card'
 import {
   OriginalTemplateActions,
@@ -71,14 +71,20 @@ export function panelUserSkills(options: PanelUserSkillsOptions): AgentSkill[] {
         proposed: (title) => skillCardText(options.lang(), 'skillProposed', { title }),
       },
       displayTitle: (skill) =>
-        skill.source === 'builtin' && isBuiltinSkillName(skill.name)
-          ? builtinSkillTitle(options.lang(), skill.name)
-          : skill.title,
+        skillDisplayName({
+          name: skill.name,
+          title: skill.source === 'builtin' ? '' : skill.title,
+        }),
     }),
   ]
 }
 
 // ---- the cards in a panel's chat ----------------------------------------------
+
+/** What a proposal is called in the chat: the name the model gave (a title in older chats) */
+function proposalLabel(proposal: SkillProposal): string {
+  return proposal.name || proposal.title
+}
 
 /** 'preview': the card continues in a template preview tab (spec 5.6) */
 type CardEntryStatus = SkillCardStatus | 'preview'
@@ -168,7 +174,7 @@ export function useSkillProposals(options: SkillProposalsOptions): SkillProposal
   const add = useCallback((proposal: SkillProposal) => {
     setCards((prev) => {
       const next = new Map(prev)
-      next.set(proposal.key, { proposal, title: proposal.title, status: 'open' })
+      next.set(proposal.key, { proposal, title: proposalLabel(proposal), status: 'open' })
       return next
     })
   }, [])
@@ -195,7 +201,7 @@ export function useSkillProposals(options: SkillProposalsOptions): SkillProposal
       const next = new Map(prev)
       next.set(key, {
         proposal: preview.proposal,
-        title: preview.draft?.title ?? preview.proposal.title,
+        title: preview.draft?.name || proposalLabel(preview.proposal),
         status: 'open',
         preview,
       })
@@ -224,7 +230,10 @@ export function useSkillProposals(options: SkillProposalsOptions): SkillProposal
           setCard(key, { status: 'saved', title: ended.title || card.title })
           if (ended.skillId) {
             optionsRef.current.persistSaved?.(
-              skillCardSavedRecord(card.proposal?.title ?? card.title, ended.skillId),
+              skillCardSavedRecord(
+                card.proposal ? proposalLabel(card.proposal) : card.title,
+                ended.skillId,
+              ),
             )
           }
         } else {
@@ -260,7 +269,7 @@ export function useSkillProposals(options: SkillProposalsOptions): SkillProposal
                   document={document}
                   bridge={templateBridge}
                   onPreviewOpened={(continuesIn) =>
-                    setCard(key, { status: 'preview', title: context.draft.title, continuesIn })
+                    setCard(key, { status: 'preview', title: context.draft.name, continuesIn })
                   }
                 />
               )
@@ -275,12 +284,12 @@ export function useSkillProposals(options: SkillProposalsOptions): SkillProposal
           renderTemplateActions={renderTemplateActions}
           initialDraft={preview ? { ...preview.draft, withTemplate: true } : undefined}
           onSaved={(id, draft) => {
-            setCard(key, { status: 'saved', title: draft.title })
-            // the stored record names the proposal as the model titled it
-            optionsRef.current.persistSaved?.(skillCardSavedRecord(proposal.title, id))
+            setCard(key, { status: 'saved', title: draft.name })
+            // the stored record names the proposal as the model named it
+            optionsRef.current.persistSaved?.(skillCardSavedRecord(proposalLabel(proposal), id))
             if (preview) {
               void templateBridge
-                ?.finishPreview(preview.previewId, 'saved', { skillId: id, title: draft.title })
+                ?.finishPreview(preview.previewId, 'saved', { skillId: id, title: draft.name })
                 .catch(() => undefined)
             }
           }}

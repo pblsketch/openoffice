@@ -173,6 +173,7 @@ export function BookInfoAiFill({
           onRecheck={connection.recheck}
           onAcceptMetered={connection.acceptMetered}
           onOpenInstallHelp={connection.openInstallHelp}
+          onOpenConnectHelp={connection.openConnectHelp}
         />
       )}
       {sendGate.noticeDue && (

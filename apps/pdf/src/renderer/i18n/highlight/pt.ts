@@ -78,11 +78,13 @@ export const pt = {
   hlAccept: 'Aceitar',
   hlDismiss: 'Descartar',
   hlAcceptAll: 'Aceitar todas ({count})',
+  hlAcceptAllSave: 'Aceitar tudo e salvar ({count})',
   hlDismissAll: 'Descartar todas as sugestões',
   hlSuggestionCount: '{count} sugestões de destaque com IA',
   hlNotFoundTip: 'Esta frase não foi encontrada no texto da página, por isso não pode ser aceita',
   hlWaitingSave: 'Aguardando salvar',
   hlWaitingSaveTip: 'Salve o PDF para colocar o destaque no arquivo',
   hlAcceptedNotice: '{count} destaques adicionados. Salve o PDF para colocá-los no arquivo.',
+  hlAcceptedSaved: '{count} realces salvos.',
   hlDismissFailed: 'Não foi possível descartar as sugestões.',
 } satisfies Record<keyof typeof zh, string>

@@ -25,7 +25,7 @@ import {
   type AiSettings,
   type AiSubscriptionStatuses,
 } from '@genoffice/ai-provider/browser'
-import { aiProviderDisplayName } from '@genoffice/ui'
+import { aiProviderDisplayName, aiSubscriptionModelName } from '@genoffice/ui'
 
 export type DocumentJobRoute =
   /** settings or statuses not known yet */
@@ -73,10 +73,17 @@ export function documentJobRoute(
   }
 }
 
-/** the provider's name as the confirmation shows it, with the model when one is set */
-export function routeLabel(route: Extract<DocumentJobRoute, { state: 'ready' }>): string {
+/** the provider's name as the confirmation shows it, with the model when one is known */
+export function routeLabel(
+  route: Extract<DocumentJobRoute, { state: 'ready' }>,
+  statuses?: AiSubscriptionStatuses | null,
+): string {
   const name = aiProviderDisplayName(route.provider)
-  return route.model ? `${name} · ${route.model}` : name
+  // a subscription's own default is a real model too; name it when the CLI listed its models
+  const model =
+    route.model ||
+    (statuses ? aiSubscriptionModelName(route.settings, statuses, route.provider) : undefined)
+  return model ? `${name} · ${model}` : name
 }
 
 /** two routes send to the same place on the same terms */
