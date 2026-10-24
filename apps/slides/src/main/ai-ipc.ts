@@ -48,10 +48,11 @@ import {
   type AiToolCallContext,
   type AiToolCapabilities,
 } from '@genoffice/ai-search'
-import { PRODUCT_NAME } from '@genoffice/i18n'
+import { getUiLang, PRODUCT_NAME } from '@genoffice/i18n'
 import { addPicture, editPictureSrcRect, replacePictureBytes } from '@genoffice/pptx-engine'
 import { matchesElementRef } from '@genoffice/pptx-engine/identity'
 import { coverCropFractions } from '@genoffice/pipelines/slides'
+import { aiSubscriptionLoginWindowText } from '@genoffice/ui/ai-subscription-login-window'
 import type { AiRunFailure } from '../shared/ipc'
 import { EMU_PER_PX_96 } from '@genoffice/pptx-render'
 import { runAiStream, storedAiSettings, withMeteredAccepted } from './ai-stream'
@@ -148,6 +149,7 @@ export function registerAiIpc(): void {
     },
     dataDir: app.getPath('userData'),
     broadcast: broadcastToWindows,
+    loginWindowText: (provider) => aiSubscriptionLoginWindowText(getUiLang(), provider),
   })
 
   ipcMain.handle('ai:set-settings', (_event, settings: AiSettings) => {

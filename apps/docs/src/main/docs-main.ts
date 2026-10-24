@@ -78,6 +78,7 @@ import {
 } from '@genoffice/font-metrics'
 import { createI18n, getUiLang, normalizeLang, PRODUCT_NAME, setUiLang } from '@genoffice/i18n'
 import { ProjectStore } from '@genoffice/project-store'
+import { aiSubscriptionLoginWindowText } from '@genoffice/ui/ai-subscription-login-window'
 import type {
   IpcMainInvokeEvent,
   MenuItemConstructorOptions,
@@ -3826,6 +3827,7 @@ export function registerAiIpc(): void {
       for (const wc of webContents.getAllWebContents())
         if (!wc.isDestroyed()) wc.send(channel, statuses)
     },
+    loginWindowText: (provider) => aiSubscriptionLoginWindowText(getUiLang(), provider),
   })
 
   ipcMain.handle('ai:get-settings', async (): Promise<AiSettings> => storedAiSettings())

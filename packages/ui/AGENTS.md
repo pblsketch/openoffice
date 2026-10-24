@@ -13,6 +13,7 @@
 - 사용자 스킬의 AI 창 부품(결정 0048): `/`·`$` 목록과 칩(`SkillPicker`, 규칙은 `skill-picker-model.ts`, 엑셀의 `$`는 입력칸 맨 앞만), 작성기 배선 `useComposerSkills`, 보낼 때 스킬 글을 요청에 넣기(`skill-send.ts`, 150,000자 상한), 스킬 카드 `SkillProposalCard`(`skill-card-model.ts`, `use-skill-proposals.tsx`의 `panelUserSkills`), 양식 동작 `SkillTemplateActions`(`use-skill-templates.tsx`, 비운 양식 만들기·그대로 저장·이 양식으로 새 문서 열기), 기본 스킬 제목과 문구 21개 언어(`strings-builtin-skills.ts`, `strings-skill-*.ts`). 스킬 파일을 읽고 쓰는 일은 껍데기 앱이 하고, 이 부품들은 다리를 부를 뿐이다.
 - 보내기 규칙: `aiSendGate`와 관련 순수 함수(`src/ai-send-gate.ts`), 그것을 패널에 배선한 훅 `useAiSendGate`(`src/use-ai-send-gate.ts`).
 - 구독 연결 관련 문자열 21개 언어(`src/strings-ai-subscription/<lang>.ts`, 집계 파일 `src/strings-ai-subscription.ts`)와 실행 오류 문장 `aiRunErrorText`.
+- 보이는 로그인 창의 글(결정 0059): `aiSubscriptionLoginWindowText`(`src/ai-subscription-login-window.ts`, 하위 경로 `@genoffice/ui/ai-subscription-login-window`). 편집기 뒷단이 창을 열 때 부르므로 React와 화면 코드를 가져오지 않는다. 창 제목, 번호 붙은 단계(Claude 넷, Codex 둘), 끝나지 않았을 때의 글을 만든다. 그 회사 프로그램의 창이므로 제품 이름을 넣지 않는다(다른 구독 문구와 같은 시험이 지킨다). 아랍어·히브리어·힌디어·태국어는 콘솔이 그리지 못해 창에만 영어를 쓴다.
 - AI와 무관한 공용 부품: `Dropdown`, 색 선택기, 찾기 패널, 리본 접기, 이미지 대화 상자·뷰어, `Markdown`, 아이콘, 글꼴 목록, WordArt 프리셋.
 - 디자인 템플릿 글꼴: 폴더 `template-fonts/`(글꼴 파일, 패밀리마다의 라이선스 글, `README.md`)와 그 목록 `src/template-fonts.ts`(`@genoffice/ui/template-fonts`). 폴더는 `src/` 밖에 있어 어느 편집기 빌드에도 복사되지 않는다.
 

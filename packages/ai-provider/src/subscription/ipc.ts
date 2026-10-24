@@ -19,6 +19,7 @@ import {
   launchSubscriptionLogin,
   launchSubscriptionLogout,
   onSubscriptionLoginChange,
+  type SubscriptionLoginWindowText,
 } from './launch'
 import type { SubscriptionLocator } from './locate'
 import { createMeteredAcceptanceFileStore } from './metered'
@@ -176,6 +177,24 @@ export interface SubscriptionIpcSetup {
   killTree?: ((child: SubscriptionChildLike) => void) | undefined
   /** stand-in for tests; `HIDDEN_LOGIN_TIMEOUT_MS` when absent */
   hiddenLoginTimeoutMs?: number | undefined
+  /**
+   * What the visible login window says besides what the CLI prints, in the
+   * app's language. The app's own fixed strings: nothing a window sent.
+   */
+  loginWindowText?:
+    ((provider: AiSubscriptionProviderId) => SubscriptionLoginWindowText) | undefined
+}
+
+/** The window's words, or none when they cannot be had: a guide is no reason for a login not to start */
+function windowTextOf(
+  setup: SubscriptionIpcSetup,
+  provider: AiSubscriptionProviderId,
+): SubscriptionLoginWindowText | undefined {
+  try {
+    return setup.loginWindowText?.(provider)
+  } catch {
+    return undefined
+  }
 }
 
 /**
@@ -231,6 +250,7 @@ export function createSubscriptionIpcDeps(setup: SubscriptionIpcSetup): Subscrip
     const result = await launchSubscriptionLogin(provider, {
       configuredPath: setup.getSettings().providers?.[provider]?.cliPath,
       window: mode === 'browser' ? 'hidden' : 'visible',
+      windowText: mode === 'window' ? windowTextOf(setup, provider) : undefined,
       onStarted: (stop) => {
         login.stop = stop
         // a sign-in nobody finishes does not wait unseen for ever

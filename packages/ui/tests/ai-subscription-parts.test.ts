@@ -312,7 +312,9 @@ describe('AiSubscriptionCard', () => {
   it('the window open for a code: says what to do there, nothing to press', () => {
     render(status('codex', 'signed-out', { signingIn: 'window' }))
     expect(statusText()).toBe(en.cardSigningIn)
-    expect(notes()).toEqual([en.signingInWindowNote])
+    expect(notes()).toEqual([
+      'Follow the guide at the top of the sign-in window that just opened. Sign in on the OpenAI page that opened in your browser: the window then closes and you are connected. A sign-in page that was open before no longer works; close it.',
+    ])
     expect(actionsShown()).toEqual([])
   })
 

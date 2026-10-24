@@ -85,6 +85,7 @@ import {
   setUiLang,
 } from '@genoffice/i18n'
 import { ProjectStore } from '@genoffice/project-store'
+import { aiSubscriptionLoginWindowText } from '@genoffice/ui/ai-subscription-login-window'
 
 import {
   isAiOverloadedError,
@@ -3932,6 +3933,7 @@ export function registerSheetsAiIpc(): void {
       for (const wc of webContents.getAllWebContents())
         if (!wc.isDestroyed()) wc.send(channel, payload)
     },
+    loginWindowText: (provider) => aiSubscriptionLoginWindowText(getUiLang(), provider),
   })
 
   ipcMain.handle(IPC_CHANNELS.aiGetSettings, (event): AiSettings => {
