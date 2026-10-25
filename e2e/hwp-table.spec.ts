@@ -1,5 +1,5 @@
 /**
- * HWP tables with Hancom Hangul's keys (docs/plans/hwp-table-parity.md, Phase 1A–1C).
+ * HWP tables with Hancom Hangul's keys (docs/plans/hwp-table-parity.md, Phase 1A–2B).
  *
  * Runs against the production build: the studio's own automation surface and the app's
  * `ieum-agent` plugin are used, never the DEV-only `window.__wasm`.
@@ -25,13 +25,28 @@ interface TableRead {
 
 interface Geometry {
   dims: { rowCount: number; colCount: number; cellCount: number }
-  cells: { row: number; col: number; width: number; height: number }[]
-  bboxes: { cellIdx: number; row: number; col: number; w: number; h: number }[]
+  cells: {
+    row: number
+    col: number
+    width: number
+    height: number
+    rowSpan?: number
+    colSpan?: number
+  }[]
+  bboxes: {
+    cellIdx: number
+    row: number
+    col: number
+    x: number
+    y: number
+    w: number
+    h: number
+  }[]
   block: boolean
   object: boolean
   phase: number
   range: { startRow: number; startCol: number; endRow: number; endCol: number } | null
-  cell: { row: number; col: number } | null
+  cell: { row: number; col: number; rowSpan?: number; colSpan?: number; cellIndex?: number } | null
   wrap: string
   texts: string[]
 }
@@ -115,6 +130,8 @@ async function installGeometryProbe(frame: Frame): Promise<void> {
             col: info.col,
             width: props.width,
             height: props.height,
+            rowSpan: info.rowSpan,
+            colSpan: info.colSpan,
           })
           const paragraphs = []
           const count = services.wasm.getCellParagraphCount(sec, ppi, ci, i)
@@ -137,7 +154,13 @@ async function installGeometryProbe(frame: Frame): Promise<void> {
               ? null
               : (() => {
                   const info = services.wasm.getCellInfo(sec, ppi, ci, pos.cellIndex)
-                  return { row: info.row, col: info.col }
+                  return {
+                    row: info.row,
+                    col: info.col,
+                    rowSpan: info.rowSpan,
+                    colSpan: info.colSpan,
+                    cellIndex: pos.cellIndex,
+                  }
                 })(),
           wrap: services.wasm.getTableProperties(sec, ppi, ci).textWrap,
           texts,
@@ -260,6 +283,32 @@ async function selectAllCells(hwp: Page, frame: Frame): Promise<void> {
   await hwp.mouse.move(end.x, end.y, { steps: 10 })
   await hwp.mouse.up()
   await hwp.waitForTimeout(300)
+}
+
+/** Put the caret in one table cell, using the boxes the geometry probe drew. */
+async function clickCell(hwp: Page, frame: Frame, row: number, col: number): Promise<void> {
+  const table = await geometry(frame)
+  const cell = table.bboxes.find((box) => box.row === row && box.col === col)
+  if (!cell) throw new Error(`no cell at ${row},${col}`)
+  const canvas = hwp.frameLocator(STUDIO_IFRAME).locator('#scroll-content canvas').first()
+  const box = (await canvas.boundingBox())!
+  await hwp.mouse.click(box.x + cell.x + cell.w / 2, box.y + cell.y + cell.h / 2)
+}
+
+/** Merge a rectangle through the AI plugin's own table call, without an AI request. */
+async function mergeCells(
+  frame: Frame,
+  from: { row: number; col: number },
+  to: { row: number; col: number },
+): Promise<unknown> {
+  return frame.evaluate(
+    async ([start, end]) => {
+      const studio = (window as unknown as { rhwpStudio: StudioLike }).rhwpStudio
+      await studio.plugins.load('ieum-agent')
+      return studio.plugins.invoke('ieum-agent', 'mergeCells', [1, start, end])
+    },
+    [from, to],
+  )
 }
 
 async function inTableObjectSelection(frame: Frame): Promise<boolean> {
@@ -644,7 +693,7 @@ test.describe('HWP table keys', () => {
       await focusInput(frame)
       await sendKey(app, 'Escape')
       await hwp.keyboard.press('Alt+ArrowUp')
-      await expect.poll(async () => (await geometry(frame)).cell).toEqual({ row: 1, col: 0 })
+      await expect.poll(async () => (await geometry(frame)).cell).toMatchObject({ row: 1, col: 0 })
 
       // Ctrl+Tab inserts a tab character in the cell
       await focusInput(frame)
@@ -713,6 +762,110 @@ test.describe('HWP table keys', () => {
       await screenshot(hwp, '06-ctrl-arrow-row-column')
     } finally {
       await closeAndSaveVideo(launched, 'hwp-table-1c-block-size')
+    }
+  })
+
+  test('Phase 2 single cell: Shift+arrow moves one boundary, keeps the table size', async () => {
+    const launched = await launchShell({
+      onboardingSeen: true,
+      videoDir: 'hwp-table-2a-cell-size',
+    })
+    const { app, page } = launched
+    try {
+      const hwp = await openHwp(app, page)
+      const frame = await studioFrame(hwp)
+      await focusEditor(hwp)
+
+      await insertTable(frame, 3, 3)
+      await expect.poll(async () => (await listTables(frame)).count).toBe(1)
+      await installGeometryProbe(frame)
+
+      // F5 selects the current cell; Shift+Right moves its right boundary only.
+      await hwp.keyboard.press('F5')
+      const before = await geometry(frame)
+      expect(before.block).toBe(true)
+      expect(before.range).toEqual({ startRow: 0, startCol: 0, endRow: 0, endCol: 0 })
+      const widthBefore = tableWidth(before)
+      await hwp.keyboard.press('Shift+ArrowRight')
+      await expect
+        .poll(async () => (await geometry(frame)).bboxes.find((box) => box.cellIdx === 0)!.w)
+        .toBeGreaterThan(before.bboxes.find((box) => box.cellIdx === 0)!.w + 2)
+      const first = await geometry(frame)
+      expect(first.bboxes.find((box) => box.cellIdx === 1)!.w).toBeLessThan(
+        before.bboxes.find((box) => box.cellIdx === 1)!.w - 2,
+      )
+      expect(Math.abs(tableWidth(first) - widthBefore)).toBeLessThan(2)
+
+      // a second press moves the same boundary again, not the newly split neighbor
+      const firstWidth = first.bboxes.find((box) => box.cellIdx === 0)!.w
+      await hwp.keyboard.press('Shift+ArrowRight')
+      await expect
+        .poll(async () => (await geometry(frame)).bboxes.find((box) => box.cellIdx === 0)!.w)
+        .toBeGreaterThan(firstWidth + 2)
+      expect(Math.abs(tableWidth(await geometry(frame)) - widthBefore)).toBeLessThan(2)
+
+      // one snapshot per press: undo returns the first step
+      await hwp.keyboard.press('Control+z')
+      await expect
+        .poll(async () => (await geometry(frame)).bboxes.find((box) => box.cellIdx === 0)!.w)
+        .toBeCloseTo(firstWidth, 0)
+
+      await screenshot(hwp, '07-single-cell-resize')
+    } finally {
+      await closeAndSaveVideo(launched, 'hwp-table-2a-cell-size')
+    }
+  })
+
+  test('Phase 2 merged cell: insert below the cell stays below the merge', async () => {
+    const launched = await launchShell({
+      onboardingSeen: true,
+      videoDir: 'hwp-table-2b-merged-row',
+    })
+    const { app, page } = launched
+    try {
+      const hwp = await openHwp(app, page)
+      const frame = await studioFrame(hwp)
+      await focusEditor(hwp)
+
+      await insertTable(frame, 6, 3)
+      await expect.poll(async () => (await listTables(frame)).count).toBe(1)
+      await installGeometryProbe(frame)
+      const merged = await mergeCells(frame, { row: 3, col: 1 }, { row: 6, col: 2 })
+      expect(merged).toMatchObject({ ok: true })
+      await hwp.waitForTimeout(300)
+      let state = await geometry(frame)
+      expect(state.dims).toMatchObject({ rowCount: 6, colCount: 3 })
+      expect(state.cells.find((cell) => cell.row === 2 && cell.col === 0)).toMatchObject({
+        rowSpan: 4,
+        colSpan: 2,
+      })
+
+      // the merged cell itself puts the new row after its last row, not through it
+      await clickCell(hwp, frame, 2, 0)
+      state = await geometry(frame)
+      expect(state.cell).toMatchObject({ row: 2, col: 0 })
+      await hwp.keyboard.press('Control+Enter')
+      await expect.poll(async () => (await geometry(frame)).dims.rowCount).toBe(7)
+      state = await geometry(frame)
+      expect(state.cells.find((cell) => cell.row === 2 && cell.col === 0)?.rowSpan).toBe(4)
+      expect(state.cells.some((cell) => cell.row === 6 && cell.col === 0)).toBe(true)
+
+      await hwp.keyboard.press('Control+z')
+      await expect.poll(async () => (await geometry(frame)).dims.rowCount).toBe(6)
+
+      // a plain cell inside the merge's rows grows the merge, as Hangul does
+      await clickCell(hwp, frame, 2, 2)
+      await hwp.keyboard.press('Control+Enter')
+      await expect.poll(async () => (await geometry(frame)).dims.rowCount).toBe(7)
+      state = await geometry(frame)
+      expect(state.cells.find((cell) => cell.row === 2 && cell.col === 0)?.rowSpan).toBe(5)
+
+      await hwp.keyboard.press('Control+z')
+      await expect.poll(async () => (await geometry(frame)).dims.rowCount).toBe(6)
+
+      await screenshot(hwp, '08-merged-row-below')
+    } finally {
+      await closeAndSaveVideo(launched, 'hwp-table-2b-merged-row')
     }
   })
 

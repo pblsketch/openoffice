@@ -60,6 +60,16 @@
  *   one apply, and a copied format that lasts until it is overwritten — and make
  *   the editor's "has copied format" answer come from that module.
  *
+ * studio-single-cell-resize
+ *   The bridge gains the one-cell resize call of vendor/rhwp-core patch 0016, which
+ *   moves one cell's right or bottom boundary and its next cell's opposite boundary
+ *   (Hangul's Shift+arrow). The engine keeps the resulting irregular grid as spans.
+ *
+ * studio-merged-row-below
+ *   "Insert row below" in a merged cell takes the cell's last row, so the new row lands
+ *   below the merge instead of growing it. A caret in a plain cell inside another merge
+ *   keeps that cell's row, because Hangul grows the merge there.
+ *
  * studio-font-memo-state, studio-font-memo-use
  *   The studio replaces the Canvas2D `font` setter so that every font string
  *   the engine sets passes its font substitution, which builds the family
@@ -408,6 +418,76 @@ const PATCHES = {
       },
     ],
   },
+  'studio-single-cell-resize': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
+    // the engine call of vendor/rhwp-core patch 0016, ahead of a neighbour the bridge has once
+    find: '  moveTableOffset(sec: number, parentPara: number, controlIdx: number, deltaH: number, deltaV: number): { ok: boolean; ppi: number; ci: number } {',
+    replace: [
+      '  /** One cell boundary (Hangul Shift+arrow): the target and its next cell move oppositely. */',
+      '  resizeTableCell(',
+      '    sec: number, parentPara: number, controlIdx: number,',
+      '    row: number, col: number, vertical: boolean, forward: boolean,',
+      '  ): { ok: boolean; moved?: boolean; reason?: string } {',
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return JSON.parse((this.doc as any).resizeTableCell(sec, parentPara, controlIdx, row, col, vertical, forward));',
+      '  }',
+      '',
+      '  moveTableOffset(sec: number, parentPara: number, controlIdx: number, deltaH: number, deltaV: number): { ok: boolean; ppi: number; ci: number } {',
+    ].join('\n'),
+  },
+  // Hangul puts a row below a merged cell after the merge's last row, not through its
+  // first row. The engine's insertTableRow extends a merge it crosses; using the last
+  // row makes the new row sit below it. A caret in a plain cell inside another merge
+  // still uses that cell's row, as Hangul does.
+  'studio-merged-row-below': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]command[\\/]commands[\\/]table\.ts$/,
+    edits: [
+      {
+        find: [
+          "          case 'row-below':",
+          '            wasm.insertTableRow(pos.sectionIndex, pos.parentParaIndex!, pos.controlIndex!, cellInfo.row, true);',
+        ].join('\n'),
+        replace: [
+          "          case 'row-below':",
+          '            wasm.insertTableRow(pos.sectionIndex, pos.parentParaIndex!, pos.controlIndex!, cellInfo.row + Math.max(1, cellInfo.rowSpan || 1) - 1, true);',
+        ].join('\n'),
+      },
+      {
+        find: [
+          "    id: 'table:insert-row-below',",
+          "    label: t('command.table.insertRowBelow.registryLabel'),",
+          '    canExecute: inTable,',
+          '    execute(services) {',
+          '      const ih = services.getInputHandler();',
+          '      if (!ih) return;',
+          '      const pos = ih.getCursorPosition();',
+          '      if (pos.parentParaIndex === undefined || pos.controlIndex === undefined || pos.cellIndex === undefined) return;',
+          '      const cellInfo = services.wasm.getCellInfo(pos.sectionIndex, pos.parentParaIndex, pos.controlIndex, pos.cellIndex);',
+          '      safeTableOp(() => ih.executeOperation({',
+          "        kind: 'snapshot',",
+          "        operationType: 'insertTableRow',",
+          '        operation: (wasm) => {',
+          '          wasm.insertTableRow(pos.sectionIndex, pos.parentParaIndex!, pos.controlIndex!, cellInfo.row, true);',
+        ].join('\n'),
+        replace: [
+          "    id: 'table:insert-row-below',",
+          "    label: t('command.table.insertRowBelow.registryLabel'),",
+          '    canExecute: inTable,',
+          '    execute(services) {',
+          '      const ih = services.getInputHandler();',
+          '      if (!ih) return;',
+          '      const pos = ih.getCursorPosition();',
+          '      if (pos.parentParaIndex === undefined || pos.controlIndex === undefined || pos.cellIndex === undefined) return;',
+          '      const cellInfo = services.wasm.getCellInfo(pos.sectionIndex, pos.parentParaIndex, pos.controlIndex, pos.cellIndex);',
+          '      safeTableOp(() => ih.executeOperation({',
+          "        kind: 'snapshot',",
+          "        operationType: 'insertTableRow',",
+          '        operation: (wasm) => {',
+          '          wasm.insertTableRow(pos.sectionIndex, pos.parentParaIndex!, pos.controlIndex!, cellInfo.row + Math.max(1, cellInfo.rowSpan || 1) - 1, true);',
+        ].join('\n'),
+      },
+    ],
+  },
   'studio-hancom-equal-cells': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]command[\\/]commands[\\/]table\.ts$/,
     edits: [
@@ -574,6 +654,8 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-format-copy-safety',
   'studio-format-copy',
   'studio-format-copy-state',
+  'studio-single-cell-resize',
+  'studio-merged-row-below',
   'studio-font-memo-state',
   'studio-font-memo-use',
 ])

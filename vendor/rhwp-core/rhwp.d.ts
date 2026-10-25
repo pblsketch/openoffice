@@ -2024,6 +2024,14 @@ export class HwpDocument {
      */
     resizeControlAt(para_in_list: number, control_index: number, d_width: number, d_height: number): string;
     /**
+     * 한 칸의 오른쪽/아래 경계를 옮긴다 (한컴의 Shift+화살표).
+     *
+     * `vertical`: true면 위/아래 경계, false면 왼쪽/오른쪽 경계.
+     * `forward`: true면 +283 HWPUNIT, false면 -283 HWPUNIT.
+     * 반환: JSON `{"ok":true,"moved":true}` 또는 `{"ok":false,...}`.
+     */
+    resizeTableCell(section_idx: number, parent_para_idx: number, control_idx: number, row: number, col: number, vertical: boolean, forward: boolean): string;
+    /**
      * 여러 셀의 width/height를 한 번에 조절한다 (배치).
      *
      * json: `[{"cellIdx":0,"widthDelta":150},{"cellIdx":2,"heightDelta":-100}]`
@@ -2941,6 +2949,7 @@ export interface InitOutput {
     readonly hwpdocument_replaceText: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number, number, number];
     readonly hwpdocument_replaceTextInCellDeferredPagination: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number, number];
     readonly hwpdocument_resizeControlAt: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
+    readonly hwpdocument_resizeTableCell: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number, number, number];
     readonly hwpdocument_resizeTableCells: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly hwpdocument_resizeTableCellsByPath: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number, number, number];
     readonly hwpdocument_restoreDeleteFragment: (a: number, b: number) => [number, number, number, number];

@@ -1,0 +1,171 @@
+diff --git a/src/document_core/commands/table_ops.rs b/src/document_core/commands/table_ops.rs
+index 7c31daa4c..0f53295b2 100644
+--- a/src/document_core/commands/table_ops.rs
++++ b/src/document_core/commands/table_ops.rs
+@@ -3740,8 +3740,9 @@ impl DocumentCore {
+     /// 격자 재유도는 좌표로 한다 — 행마다 폭을 누적해 **경계 집합의 합집합**을 새 격자 열로
+     /// 삼고, 각 칸의 `col`/`col_span` 을 제 구간이 덮는 경계 수로 다시 매긴다(세로는 대칭).
+     ///
+-    /// 안 다루는 것(전부 잰 적이 없어서다): 병합 칸이 이미 있는 표는 거부하고, 마지막
+-    /// 열·행(옮길 경계가 없다)과 이웃이 한 걸음(283)보다 얇은 자리는 무동작이다.
++    /// 앞선 호출이 만든 `col_span`/`row_span`은 그대로 두고 같은 줄의 다음 칸을 다시 찾아
++    /// 옮긴다. 마지막 열·행(옮길 경계가 없다)과 이웃이 한 걸음(283)보다 얇은 자리는
++    /// 무동작이다. 실제 병합 칸이 있는 표를 이 함수로 다룰지는 부르는 쪽이 정한다.
+     #[allow(clippy::too_many_arguments)]
+     pub fn resize_table_cell_native(
+         &mut self,
+@@ -3759,59 +3760,68 @@ impl DocumentCore {
+         const CELL_FLAG_JUST_RESIZED: u16 = 0x0100;
+ 
+         let table = self.get_table_mut(section_idx, parent_para_idx, control_idx)?;
+-        if table.cells.iter().any(|c| c.col_span > 1 || c.row_span > 1) {
+-            return Ok(r#"{"ok":false,"reason":"병합된 칸이 있는 표는 아직 안 쟀다"}"#.to_string());
+-        }
+-        let (primary, last) = if vertical {
+-            (row, table.row_count.saturating_sub(1))
++        let delta = if forward { STEP } else { -STEP };
++
++        // 캐럿 칸과 같은 줄에서 그 다음 칸을 찾는다. 앞선 Shift+화살표가 만든
++        // `col_span`/`row_span`이 있어도 다음 칸을 찾아 다시 옮길 수 있다.
++        let (target_idx, next_idx) = if vertical {
++            let mut line: Vec<usize> = table
++                .cells
++                .iter()
++                .enumerate()
++                .filter(|(_, cell)| cell.col == col)
++                .map(|(idx, _)| idx)
++                .collect();
++            line.sort_by_key(|&idx| table.cells[idx].row);
++            let Some(pos) = line.iter().position(|&idx| table.cells[idx].row == row) else {
++                return Ok(r#"{"ok":false,"reason":"칸을 찾지 못했다"}"#.to_string());
++            };
++            let Some(&next) = line.get(pos + 1) else {
++                return Ok(r#"{"ok":true,"moved":false}"#.to_string());
++            };
++            (line[pos], next)
++        } else {
++            let mut line: Vec<usize> = table
++                .cells
++                .iter()
++                .enumerate()
++                .filter(|(_, cell)| cell.row == row)
++                .map(|(idx, _)| idx)
++                .collect();
++            line.sort_by_key(|&idx| table.cells[idx].col);
++            let Some(pos) = line.iter().position(|&idx| table.cells[idx].col == col) else {
++                return Ok(r#"{"ok":false,"reason":"칸을 찾지 못했다"}"#.to_string());
++            };
++            let Some(&next) = line.get(pos + 1) else {
++                return Ok(r#"{"ok":true,"moved":false}"#.to_string());
++            };
++            (line[pos], next)
++        };
++
++        // 대상 칸과 다음 칸의 크기를 서로 반대로 바꾼다. 한 걸음보다 얇으면 무동작.
++        let target_size = if vertical {
++            table.cells[target_idx].height
++        } else {
++            table.cells[target_idx].width
++        };
++        let next_size = if vertical {
++            table.cells[next_idx].height
+         } else {
+-            (col, table.col_count.saturating_sub(1))
++            table.cells[next_idx].width
+         };
+-        if primary >= last {
++        if (target_size as i64 + delta) <= 0 || (next_size as i64 - delta) <= 0 {
+             return Ok(r#"{"ok":true,"moved":false}"#.to_string());
+         }
+-        let delta = if forward { STEP } else { -STEP };
+-
+-        // 캐럿 칸과 그 이웃의 크기를 바꾼다. 이웃이 한 걸음보다 얇으면 무동작.
+-        let mut hit = 0usize;
+-        for pass in 0..2 {
+-            for cell in table.cells.iter_mut() {
+-                let (a, b) = if vertical {
+-                    (cell.row, cell.col)
+-                } else {
+-                    (cell.col, cell.row)
+-                };
+-                let cross = if vertical { col } else { row };
+-                if b != cross {
+-                    continue;
+-                }
+-                let step = if a == primary {
+-                    delta
+-                } else if a == primary + 1 {
+-                    -delta
+-                } else {
+-                    continue;
+-                };
+-                let size = if vertical { cell.height } else { cell.width };
+-                if pass == 0 {
+-                    if (size as i64 + step) <= 0 {
+-                        return Ok(r#"{"ok":true,"moved":false}"#.to_string());
+-                    }
+-                    continue;
+-                }
+-                hit += 1;
+-                cell.set_list_header_flag_pub(CELL_FLAG_JUST_RESIZED, true);
+-                if vertical {
+-                    cell.height = (cell.height as i64 + step) as u32;
+-                } else {
+-                    cell.width = (cell.width as i64 + step) as u32;
+-                    cell.shift_text_area_width(step);
+-                }
++        for (idx, step) in [(target_idx, delta), (next_idx, -delta)] {
++            let cell = &mut table.cells[idx];
++            cell.set_list_header_flag_pub(CELL_FLAG_JUST_RESIZED, true);
++            if vertical {
++                cell.height = (cell.height as i64 + step) as u32;
++            } else {
++                cell.width = (cell.width as i64 + step) as u32;
++                cell.shift_text_area_width(step);
+             }
+         }
+-        if hit == 0 {
+-            return Ok(r#"{"ok":true,"moved":false}"#.to_string());
+-        }
+ 
+         // 격자 재유도 — 경계 집합의 합집합으로 열(행)을 다시 매긴다.
+         if vertical {
+diff --git a/src/wasm_api.rs b/src/wasm_api.rs
+index 2031085e3..efd3b4873 100644
+--- a/src/wasm_api.rs
++++ b/src/wasm_api.rs
+@@ -3507,6 +3507,34 @@ impl HwpDocument {
+         .map_err(|e| e.into())
+     }
+ 
++    /// 한 칸의 오른쪽/아래 경계를 옮긴다 (한컴의 Shift+화살표).
++    ///
++    /// `vertical`: true면 위/아래 경계, false면 왼쪽/오른쪽 경계.
++    /// `forward`: true면 +283 HWPUNIT, false면 -283 HWPUNIT.
++    /// 반환: JSON `{"ok":true,"moved":true}` 또는 `{"ok":false,...}`.
++    #[wasm_bindgen(js_name = resizeTableCell)]
++    pub fn resize_table_cell(
++        &mut self,
++        section_idx: u32,
++        parent_para_idx: u32,
++        control_idx: u32,
++        row: u32,
++        col: u32,
++        vertical: bool,
++        forward: bool,
++    ) -> Result<String, JsValue> {
++        self.resize_table_cell_native(
++            section_idx as usize,
++            parent_para_idx as usize,
++            control_idx as usize,
++            row_index_from_u32(row)?,
++            row_index_from_u32(col)?,
++            vertical,
++            forward,
++        )
++        .map_err(|e| e.into())
++    }
++
+     /// 표의 위치 오프셋(vertical_offset, horizontal_offset)을 이동한다.
+     ///
+     /// delta_h, delta_v: HWPUNIT 단위 이동량 (양수=오른쪽/아래, 음수=왼쪽/위)

@@ -750,6 +750,15 @@ const CELL_BLOCK_KEYS = {
 export function hancomCellBlockKey(ih, e) {
   const cursor = ih?.cursor
   if (!cursor?.isInCellSelectionMode?.()) return false
+  // Shift+arrow moves one cell's boundary and its next cell's opposite boundary,
+  // as Hangul does; the table keeps its size.
+  if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && ARROWS[e.key]) {
+    e.preventDefault()
+    if (ih.dispatcher?.isEnabled?.('ieum:table-cell-resize')) {
+      ih.dispatcher.dispatch('ieum:table-cell-resize', { direction: ARROWS[e.key] })
+    }
+    return true
+  }
   // Ctrl+arrow changes the selected rows/columns and lets the table grow or shrink
   // with them (Hangul's Ctrl+arrow). Alt+arrow keeps the table size instead.
   if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && ARROWS[e.key]) {
@@ -899,6 +908,51 @@ function copyCellBlock(ih, cut) {
 }
 
 /**
+ * Ctrl+Enter's row insert, with the current cell read live. A merged cell puts the new
+ * row after its last row, as Hangul does; the studio command's first read after a merge
+ * can still see the pre-merge span, so the key uses this path instead of dispatching it.
+ */
+function insertRowBelow(services) {
+  const ih = services?.getInputHandler?.()
+  const pos = ih?.getCursorPosition?.()
+  if (!ih || !pos || pos.cellIndex === undefined) return false
+  if ((pos.cellPath?.length ?? 0) > 1) return false
+  let info
+  try {
+    info = services.wasm.getCellInfo(
+      pos.sectionIndex,
+      pos.parentParaIndex,
+      pos.controlIndex,
+      pos.cellIndex,
+    )
+  } catch {
+    return false
+  }
+  const row = info.row + Math.max(1, info.rowSpan || 1) - 1
+  let result = null
+  try {
+    ih.executeOperation({
+      kind: 'snapshot',
+      operationType: 'insertTableRowBelow',
+      operation: (bridge) => {
+        result = bridge.insertTableRow(
+          pos.sectionIndex,
+          pos.parentParaIndex,
+          pos.controlIndex,
+          row,
+          true,
+        )
+        if (!result?.ok) return null
+        return ih.getCursorPosition()
+      },
+    })
+  } catch {
+    return false
+  }
+  return result?.ok === true
+}
+
+/**
  * Ctrl+Enter adds a row below and Ctrl+Backspace deletes the row the caret is in, as
  * Hangul does in a table cell. Both run the studio's table commands, one undo step each.
  * Outside a cell the keys keep their meanings (page break, delete the word before). A
@@ -918,8 +972,8 @@ function hancomTableRowKey(ih, e) {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
     if (nested) return true
-    if (ih.dispatcher?.isEnabled?.('table:insert-row-below')) {
-      ih.dispatcher.dispatch('table:insert-row-below')
+    if (ih.dispatcher?.isEnabled?.('ieum:table-insert-row-below')) {
+      ih.dispatcher.dispatch('ieum:table-insert-row-below')
     }
     return true
   }
@@ -1284,6 +1338,77 @@ export function resizeRowColumnBlock(services, direction) {
     return false
   }
   if (failed) return false
+  ih.updateCellSelection?.()
+  return true
+}
+
+/**
+ * Shift+arrow in a cell block: the current cell's right/bottom boundary moves and the
+ * next cell's opposite boundary moves back, as Hangul does. The engine keeps the
+ * resulting irregular grid as spans, so a later Shift+arrow can move the same cell
+ * again. One snapshot, so one undo step. Tables inside a cell are left to Phase 2.
+ */
+export function resizeSelectedCell(services, direction) {
+  const ih = services?.getInputHandler?.()
+  const cursor = ih?.cursor
+  const context = cursor?.getCellTableContext?.()
+  const range = cursor?.getSelectedCellRange?.()
+  if (!ih || !context || !range) return false
+  if (direction !== 'left' && direction !== 'right' && direction !== 'up' && direction !== 'down') {
+    return false
+  }
+  if ((context.cellPath?.length ?? 0) > 1) {
+    tellUser(
+      koreanUi
+        ? '표 안의 표는 아직 크기를 바꿀 수 없습니다.'
+        : 'A table inside a cell cannot be resized yet.',
+    )
+    return false
+  }
+  const wasm = services.wasm
+  let dims
+  const cells = []
+  try {
+    dims = wasm.getTableDimensions(context.sec, context.ppi, context.ci)
+    for (let i = 0; i < dims.cellCount; i += 1) {
+      cells.push({ ...wasm.getCellInfo(context.sec, context.ppi, context.ci, i), cellIdx: i })
+    }
+  } catch {
+    return false
+  }
+  const pos = ih.getCursorPosition?.()
+  const active =
+    cells.find((cell) => cell.cellIdx === pos?.cellIndex) ??
+    cells.find((cell) => cell.row === range.startRow && cell.col === range.startCol)
+  if (!active) return false
+  const vertical = direction === 'up' || direction === 'down'
+  const forward = direction === 'right' || direction === 'down'
+  let result = null
+  try {
+    ih.executeOperation({
+      kind: 'snapshot',
+      operationType: 'resizeTableCell',
+      operation: (bridge) => {
+        result = bridge.resizeTableCell(
+          context.sec,
+          context.ppi,
+          context.ci,
+          active.row,
+          active.col,
+          vertical,
+          forward,
+        )
+        if (!result?.ok || result.moved === false) return null
+        return ih.getCursorPosition()
+      },
+    })
+  } catch {
+    return false
+  }
+  if (!result?.ok || result.moved === false) {
+    if (result?.reason) tellUser(result.reason)
+    return false
+  }
   ih.updateCellSelection?.()
   return true
 }
@@ -1884,6 +2009,14 @@ export function hancomCommands(locale, studio = {}) {
       },
     },
     {
+      id: 'ieum:table-insert-row-below',
+      label: ko ? '아래에 줄 추가' : 'Insert Row Below',
+      canExecute: (ctx) => ctx.inTable && !ctx.isFormMode,
+      execute(services) {
+        insertRowBelow(services)
+      },
+    },
+    {
       id: 'ieum:table-resize',
       label: ko ? '표 크기 조절' : 'Resize Table',
       canExecute: (ctx) => ctx.inTableObjectSelection && !ctx.isFormMode,
@@ -1921,6 +2054,14 @@ export function hancomCommands(locale, studio = {}) {
       canExecute: (ctx) => ctx.inCellSelectionMode && !ctx.isFormMode,
       execute(services, params) {
         resizeRowColumnBlock(services, params?.direction)
+      },
+    },
+    {
+      id: 'ieum:table-cell-resize',
+      label: ko ? '셀 크기 조절' : 'Resize Cell',
+      canExecute: (ctx) => ctx.inCellSelectionMode && !ctx.isFormMode,
+      execute(services, params) {
+        resizeSelectedCell(services, params?.direction)
       },
     },
   )

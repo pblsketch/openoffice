@@ -9211,6 +9211,39 @@ export class HwpDocument {
         }
     }
     /**
+     * 한 칸의 오른쪽/아래 경계를 옮긴다 (한컴의 Shift+화살표).
+     *
+     * `vertical`: true면 위/아래 경계, false면 왼쪽/오른쪽 경계.
+     * `forward`: true면 +283 HWPUNIT, false면 -283 HWPUNIT.
+     * 반환: JSON `{"ok":true,"moved":true}` 또는 `{"ok":false,...}`.
+     * @param {number} section_idx
+     * @param {number} parent_para_idx
+     * @param {number} control_idx
+     * @param {number} row
+     * @param {number} col
+     * @param {boolean} vertical
+     * @param {boolean} forward
+     * @returns {string}
+     */
+    resizeTableCell(section_idx, parent_para_idx, control_idx, row, col, vertical, forward) {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const ret = wasm.hwpdocument_resizeTableCell(this.__wbg_ptr, section_idx, parent_para_idx, control_idx, row, col, vertical, forward);
+            var ptr1 = ret[0];
+            var len1 = ret[1];
+            if (ret[3]) {
+                ptr1 = 0; len1 = 0;
+                throw takeFromExternrefTable0(ret[2]);
+            }
+            deferred2_0 = ptr1;
+            deferred2_1 = len1;
+            return getStringFromWasm0(ptr1, len1);
+        } finally {
+            wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+        }
+    }
+    /**
      * 여러 셀의 width/height를 한 번에 조절한다 (배치).
      *
      * json: `[{"cellIdx":0,"widthDelta":150},{"cellIdx":2,"heightDelta":-100}]`

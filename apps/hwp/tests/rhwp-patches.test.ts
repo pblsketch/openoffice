@@ -466,6 +466,61 @@ describe('rhwp Hangul-key patches', () => {
     expect(patched.indexOf('setPageNumberPos(sec')).toBeLessThan(patched.indexOf('  applyStyle('))
   })
 
+  it('give the bridge the one-cell resize call of engine patch 0016', () => {
+    const source = [
+      '  moveTableOffset(sec: number, parentPara: number, controlIdx: number, deltaH: number, deltaV: number): { ok: boolean; ppi: number; ci: number } {',
+      '    return { ok: true, ppi: 0, ci: 0 };',
+      '  }',
+      '',
+    ].join('\n')
+    const patched = applyPatch('studio-single-cell-resize', source)
+    expect(patched).toContain('  resizeTableCell(')
+    expect(patched).toContain(
+      'return JSON.parse((this.doc as any).resizeTableCell(sec, parentPara, controlIdx, row, col, vertical, forward));',
+    )
+    expect(patched.indexOf('resizeTableCell(')).toBeLessThan(patched.indexOf('  moveTableOffset('))
+  })
+
+  it('puts a new row below a merged cell after the merge, in both insert paths', () => {
+    const source = [
+      'function applyTableInsertRowColumn() {',
+      '  switch (mode) {',
+      "          case 'row-below':",
+      '            wasm.insertTableRow(pos.sectionIndex, pos.parentParaIndex!, pos.controlIndex!, cellInfo.row, true);',
+      '      break;',
+      '  }',
+      '}',
+      'const commands = [',
+      '  {',
+      "    id: 'table:insert-row-below',",
+      "    label: t('command.table.insertRowBelow.registryLabel'),",
+      '    canExecute: inTable,',
+      '    execute(services) {',
+      '      const ih = services.getInputHandler();',
+      '      if (!ih) return;',
+      '      const pos = ih.getCursorPosition();',
+      '      if (pos.parentParaIndex === undefined || pos.controlIndex === undefined || pos.cellIndex === undefined) return;',
+      '      const cellInfo = services.wasm.getCellInfo(pos.sectionIndex, pos.parentParaIndex, pos.controlIndex, pos.cellIndex);',
+      '      safeTableOp(() => ih.executeOperation({',
+      "        kind: 'snapshot',",
+      "        operationType: 'insertTableRow',",
+      '        operation: (wasm) => {',
+      '          wasm.insertTableRow(pos.sectionIndex, pos.parentParaIndex!, pos.controlIndex!, cellInfo.row, true);',
+      '          return pos;',
+      '        },',
+      "      }), '줄 추가');",
+      '    },',
+      '  },',
+      '];',
+      '',
+    ].join('\n')
+    const patched = applyPatch('studio-merged-row-below', source)
+    expect(
+      patched.match(/cellInfo\.row \+ Math\.max\(1, cellInfo\.rowSpan \|\| 1\) - 1, true/g),
+    ).toHaveLength(2)
+    expect(patched).not.toContain('cellInfo.row, true')
+  })
+
   it('hand the equal-size stubs to the app’s own equalizer', () => {
     const source = [
       "import { t } from '../../i18n/index.ts';",
