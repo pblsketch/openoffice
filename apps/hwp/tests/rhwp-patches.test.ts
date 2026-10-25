@@ -483,11 +483,12 @@ describe('rhwp Hangul-key patches', () => {
 
   it('puts a new row below a merged cell after the merge, in both insert paths', () => {
     const source = [
+      "import { t } from '../../i18n/index.ts';",
       'function applyTableInsertRowColumn() {',
       '  switch (mode) {',
       "          case 'row-below':",
       '            wasm.insertTableRow(pos.sectionIndex, pos.parentParaIndex!, pos.controlIndex!, cellInfo.row, true);',
-      '      break;',
+      '            break;',
       '  }',
       '}',
       'const commands = [',
@@ -515,10 +516,13 @@ describe('rhwp Hangul-key patches', () => {
       '',
     ].join('\n')
     const patched = applyPatch('studio-merged-row-below', source)
-    expect(
-      patched.match(/cellInfo\.row \+ Math\.max\(1, cellInfo\.rowSpan \|\| 1\) - 1, true/g),
-    ).toHaveLength(2)
-    expect(patched).not.toContain('cellInfo.row, true')
+    expect(patched).toContain(`import { insertRowBelow } from '${HANCOM_KEYS_MODULE}';`)
+    expect(patched).toContain(
+      'const afterRow = cellInfo.row + Math.max(1, cellInfo.rowSpan || 1) - 1 + i;',
+    )
+    expect(patched).toContain('wasm.mergeTableCells(')
+    expect(patched).toContain('      insertRowBelow(services);')
+    expect(patched).not.toContain('safeTableOp(() => ih.executeOperation({')
   })
 
   it('hand the equal-size stubs to the app’s own equalizer', () => {

@@ -99,6 +99,8 @@ export const STYLE_KEYS = 10
  * message goes nowhere, as in a test.
  */
 let toastSink = null
+/** Per editor, tables whose irregular grid came from this session's Shift+arrow (sec:ppi:ci). */
+const locallyResizedTables = new WeakMap()
 
 /** The studio's locale, so a message from a key handler speaks the same language. */
 let koreanUi = false
@@ -912,7 +914,7 @@ function copyCellBlock(ih, cut) {
  * row after its last row, as Hangul does; the studio command's first read after a merge
  * can still see the pre-merge span, so the key uses this path instead of dispatching it.
  */
-function insertRowBelow(services) {
+export function insertRowBelow(services) {
   const ih = services?.getInputHandler?.()
   const pos = ih?.getCursorPosition?.()
   if (!ih || !pos || pos.cellIndex === undefined) return false
@@ -929,6 +931,7 @@ function insertRowBelow(services) {
     return false
   }
   const row = info.row + Math.max(1, info.rowSpan || 1) - 1
+  const lastMergedColumn = info.col + Math.max(1, info.colSpan || 1) - 1
   let result = null
   try {
     ih.executeOperation({
@@ -943,6 +946,22 @@ function insertRowBelow(services) {
           true,
         )
         if (!result?.ok) return null
+        // Hangul keeps the new row's matching columns as one cell under a wide merge.
+        if (lastMergedColumn > info.col) {
+          try {
+            bridge.mergeTableCells(
+              pos.sectionIndex,
+              pos.parentParaIndex,
+              pos.controlIndex,
+              row + 1,
+              info.col,
+              row + 1,
+              lastMergedColumn,
+            )
+          } catch {
+            // the row is still useful if the decorative merge cannot be made
+          }
+        }
         return ih.getCursorPosition()
       },
     })
@@ -1376,6 +1395,17 @@ export function resizeSelectedCell(services, direction) {
   } catch {
     return false
   }
+  const tableKey = `${context.sec}:${context.ppi}:${context.ci}`
+  const marks = locallyResizedTables.get(ih)
+  const hasSpans = cells.some((cell) => cell.rowSpan > 1 || cell.colSpan > 1)
+  if (hasSpans && !marks?.has(tableKey)) {
+    tellUser(
+      koreanUi
+        ? '병합된 칸이 있는 표는 Shift+화살표로 크기를 바꿀 수 없습니다.'
+        : 'Not changed: Shift+arrow cannot resize a table with merged cells.',
+    )
+    return false
+  }
   const pos = ih.getCursorPosition?.()
   const active =
     cells.find((cell) => cell.cellIdx === pos?.cellIndex) ??
@@ -1409,6 +1439,9 @@ export function resizeSelectedCell(services, direction) {
     if (result?.reason) tellUser(result.reason)
     return false
   }
+  const localMarks = locallyResizedTables.get(ih) ?? new Set()
+  localMarks.add(tableKey)
+  locallyResizedTables.set(ih, localMarks)
   ih.updateCellSelection?.()
   return true
 }

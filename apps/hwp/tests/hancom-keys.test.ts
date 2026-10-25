@@ -530,12 +530,14 @@ describe("Hangul's table row keys inside a cell", () => {
     const ih = inCell()
     ih.wasm.getCellInfo = vi.fn(() => ({ row: 2, col: 0, rowSpan: 4, colSpan: 2 }))
     ih.wasm.insertTableRow = vi.fn(() => ({ ok: true, rowCount: 7, colCount: 3 }))
+    ih.wasm.mergeTableCells = vi.fn(() => ({ ok: true }))
     ih.executeOperation = vi.fn((desc: { operation: (w: typeof ih.wasm) => unknown }) =>
       desc.operation(ih.wasm),
     )
     const command = hancomCommands('ko').find((c) => c.id === 'ieum:table-insert-row-below')!
     command.execute({ getInputHandler: () => ih, wasm: ih.wasm })
     expect(ih.wasm.insertTableRow).toHaveBeenCalledWith(0, 1, 0, 5, true)
+    expect(ih.wasm.mergeTableCells).toHaveBeenCalledWith(0, 1, 0, 6, 0, 6, 1)
   })
 
   it('deletes the row for Ctrl+Backspace, not the word before', () => {
@@ -1268,6 +1270,73 @@ describe('equal cell sizes (H/W)', () => {
     )
     expect(resizeSelectedCell(services, 'right')).toBe(false)
     expect(wasm.resizeTableCell).not.toHaveBeenCalled()
+  })
+
+  it('leaves a table with actual merged cells alone for Shift+arrow', () => {
+    const { services, wasm } = table(
+      [
+        [1500, 1500],
+        [1500, 1500],
+      ],
+      [
+        [1500, 1500],
+        [1500, 1500],
+      ],
+      { spans: true },
+    )
+    const showToast = vi.fn()
+    hancomCommands('ko', { showToast })
+    expect(resizeSelectedCell(services, 'right')).toBe(false)
+    expect(wasm.resizeTableCell).not.toHaveBeenCalled()
+    expect(showToast).toHaveBeenCalled()
+  })
+
+  it('continues a grid this editor made with Shift+arrow', () => {
+    const { services, wasm } = table(
+      [
+        [1500, 1500],
+        [1500, 1500],
+      ],
+      [
+        [1500, 1500],
+        [1500, 1500],
+      ],
+    )
+    expect(resizeSelectedCell(services, 'right')).toBe(true)
+    const original = wasm.getCellInfo
+    wasm.getCellInfo = vi.fn((...args: [number, number, number, number]) => {
+      const info = original(...args)
+      return args[3] === 0 ? { ...info, colSpan: 2 } : info
+    })
+    expect(resizeSelectedCell(services, 'right')).toBe(true)
+    expect(wasm.resizeTableCell).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not trust the mark in another editor', () => {
+    const first = table(
+      [
+        [1500, 1500],
+        [1500, 1500],
+      ],
+      [
+        [1500, 1500],
+        [1500, 1500],
+      ],
+    )
+    expect(resizeSelectedCell(first.services, 'right')).toBe(true)
+    const second = table(
+      [
+        [1500, 1500],
+        [1500, 1500],
+      ],
+      [
+        [1500, 1500],
+        [1500, 1500],
+      ],
+      { spans: true },
+    )
+    expect(resizeSelectedCell(second.services, 'right')).toBe(false)
+    expect(second.wasm.resizeTableCell).not.toHaveBeenCalled()
   })
 })
 

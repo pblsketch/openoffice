@@ -840,6 +840,20 @@ test.describe('HWP table keys', () => {
         colSpan: 2,
       })
 
+      // Hangul refuses Shift+arrow when the table has a real merged cell.
+      await clickCell(hwp, frame, 0, 0)
+      await hwp.keyboard.press('F5')
+      const mergedTableBefore = await geometry(frame)
+      expect(mergedTableBefore.block).toBe(true)
+      await hwp.keyboard.press('Shift+ArrowRight')
+      await hwp.waitForTimeout(400)
+      const mergedTableAfter = await geometry(frame)
+      expect(mergedTableAfter.dims).toEqual(mergedTableBefore.dims)
+      expect(mergedTableAfter.cells.find((cell) => cell.row === 0 && cell.col === 0)?.width).toBe(
+        mergedTableBefore.cells.find((cell) => cell.row === 0 && cell.col === 0)?.width,
+      )
+      await hwp.keyboard.press('Escape')
+
       // the merged cell itself puts the new row after its last row, not through it
       await clickCell(hwp, frame, 2, 0)
       state = await geometry(frame)
@@ -848,8 +862,25 @@ test.describe('HWP table keys', () => {
       await expect.poll(async () => (await geometry(frame)).dims.rowCount).toBe(7)
       state = await geometry(frame)
       expect(state.cells.find((cell) => cell.row === 2 && cell.col === 0)?.rowSpan).toBe(4)
-      expect(state.cells.some((cell) => cell.row === 6 && cell.col === 0)).toBe(true)
+      expect(state.cells.find((cell) => cell.row === 6 && cell.col === 0)).toMatchObject({
+        colSpan: 2,
+      })
+      expect(state.cells.some((cell) => cell.row === 6 && cell.col === 2)).toBe(true)
 
+      await hwp.keyboard.press('Control+z')
+      await expect.poll(async () => (await geometry(frame)).dims.rowCount).toBe(6)
+
+      // the menu command uses the same row and keeps the new row's left columns merged
+      await clickCell(hwp, frame, 2, 0)
+      await frame.evaluate(() => {
+        const studio = (window as unknown as { rhwpStudio: StudioLike }).rhwpStudio
+        studio.automation.execute('table:insert-row-below')
+      })
+      await expect.poll(async () => (await geometry(frame)).dims.rowCount).toBe(7)
+      state = await geometry(frame)
+      expect(state.cells.find((cell) => cell.row === 6 && cell.col === 0)).toMatchObject({
+        colSpan: 2,
+      })
       await hwp.keyboard.press('Control+z')
       await expect.poll(async () => (await geometry(frame)).dims.rowCount).toBe(6)
 
