@@ -750,6 +750,15 @@ const CELL_BLOCK_KEYS = {
 export function hancomCellBlockKey(ih, e) {
   const cursor = ih?.cursor
   if (!cursor?.isInCellSelectionMode?.()) return false
+  // Ctrl+arrow changes the selected rows/columns and lets the table grow or shrink
+  // with them (Hangul's Ctrl+arrow). Alt+arrow keeps the table size instead.
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && ARROWS[e.key]) {
+    e.preventDefault()
+    if (ih.dispatcher?.isEnabled?.('ieum:table-row-column-resize')) {
+      ih.dispatcher.dispatch('ieum:table-row-column-resize', { direction: ARROWS[e.key] })
+    }
+    return true
+  }
   // Alt+arrow resizes the selected rows/columns while the table keeps its size
   if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && ARROWS[e.key]) {
     e.preventDefault()
@@ -1180,6 +1189,88 @@ function resizeCellBlock(services, direction) {
     ih.executeOperation({
       kind: 'snapshot',
       operationType: 'resizeCellBlock',
+      operation: (bridge) => {
+        const done = bridge.resizeTableCells(context.sec, context.ppi, context.ci, updates)
+        if (!done?.ok) {
+          failed = true
+          return null
+        }
+        return ih.getCursorPosition()
+      },
+    })
+  } catch {
+    return false
+  }
+  if (failed) return false
+  ih.updateCellSelection?.()
+  return true
+}
+
+/**
+ * Ctrl+arrow in a cell block: the selected rows or columns change size and the table
+ * grows or shrinks with them, as Hangul does. One snapshot, so one undo step. The engine
+ * moves whole rows/columns for widthDelta/heightDelta, which is exactly what this key
+ * wants; keeping the table size fixed is the Alt+arrow path above.
+ */
+export function resizeRowColumnBlock(services, direction) {
+  const ih = services?.getInputHandler?.()
+  const cursor = ih?.cursor
+  const context = cursor?.getCellTableContext?.()
+  const range = cursor?.getSelectedCellRange?.()
+  if (!ih || !context || !range) return false
+  if (direction !== 'left' && direction !== 'right' && direction !== 'up' && direction !== 'down') {
+    return false
+  }
+  if ((context.cellPath?.length ?? 0) > 1) {
+    tellUser(
+      koreanUi
+        ? '표 안의 표는 아직 크기를 바꿀 수 없습니다.'
+        : 'A table inside a cell cannot be resized yet.',
+    )
+    return false
+  }
+  const wasm = services.wasm
+  let dims
+  const cells = []
+  try {
+    dims = wasm.getTableDimensions(context.sec, context.ppi, context.ci)
+    for (let i = 0; i < dims.cellCount; i += 1) {
+      const info = wasm.getCellInfo(context.sec, context.ppi, context.ci, i)
+      if (info.rowSpan > 1 || info.colSpan > 1) {
+        tellUser(
+          koreanUi
+            ? '병합된 칸이 있어 크기를 바꾸지 않았습니다.'
+            : 'Not changed: the table has merged cells.',
+        )
+        return false
+      }
+      cells.push({ ...info, cellIdx: i })
+    }
+  } catch {
+    return false
+  }
+  const horizontal = direction === 'left' || direction === 'right'
+  const first = horizontal ? range.startCol : range.startRow
+  const last = horizontal ? range.endCol : range.endRow
+  const delta = direction === 'right' || direction === 'down' ? 300 : -300
+  const updates = []
+  for (const cell of cells) {
+    const inside = horizontal
+      ? cell.col >= first && cell.col <= last
+      : cell.row >= first && cell.row <= last
+    if (!inside) continue
+    updates.push(
+      horizontal
+        ? { cellIdx: cell.cellIdx, widthDelta: delta }
+        : { cellIdx: cell.cellIdx, heightDelta: delta },
+    )
+  }
+  if (updates.length === 0) return false
+  let failed = false
+  try {
+    ih.executeOperation({
+      kind: 'snapshot',
+      operationType: 'resizeRowColumnBlock',
       operation: (bridge) => {
         const done = bridge.resizeTableCells(context.sec, context.ppi, context.ci, updates)
         if (!done?.ok) {
@@ -1822,6 +1913,14 @@ export function hancomCommands(locale, studio = {}) {
       canExecute: (ctx) => ctx.inCellSelectionMode && !ctx.isFormMode,
       execute(services, params) {
         resizeCellBlock(services, params?.direction)
+      },
+    },
+    {
+      id: 'ieum:table-row-column-resize',
+      label: ko ? '줄/칸 전체 크기 조절' : 'Resize Row/Column',
+      canExecute: (ctx) => ctx.inCellSelectionMode && !ctx.isFormMode,
+      execute(services, params) {
+        resizeRowColumnBlock(services, params?.direction)
       },
     },
   )

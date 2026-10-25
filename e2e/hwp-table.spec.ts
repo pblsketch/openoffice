@@ -1,5 +1,5 @@
 /**
- * HWP tables with Hancom Hangul's keys (docs/plans/hwp-table-parity.md, Phase 1A and 1B).
+ * HWP tables with Hancom Hangul's keys (docs/plans/hwp-table-parity.md, Phase 1A–1C).
  *
  * Runs against the production build: the studio's own automation surface and the app's
  * `ieum-agent` plugin are used, never the DEV-only `window.__wasm`.
@@ -187,6 +187,16 @@ async function geometry(frame: Frame): Promise<Geometry> {
   return frame.evaluate(
     () => (window as unknown as { __e2eTable: Geometry }).__e2eTable,
   ) as Promise<Geometry>
+}
+
+/** The whole table's width, read from the drawn boxes of its first row. */
+function tableWidth(state: Geometry): number {
+  return state.bboxes.filter((box) => box.row === 0).reduce((sum, box) => sum + box.w, 0)
+}
+
+/** The whole table's height, read from the drawn boxes of its first column. */
+function tableHeight(state: Geometry): number {
+  return state.bboxes.filter((box) => box.col === 0).reduce((sum, box) => sum + box.h, 0)
 }
 
 /** A real OS-style key on the HWP page, so the main process sees it (Playwright keys do not). */
@@ -647,6 +657,62 @@ test.describe('HWP table keys', () => {
       await screenshot(hwp, '05-cell-keys')
     } finally {
       await closeAndSaveVideo(launched, 'hwp-table-1b-cells')
+    }
+  })
+
+  test('Phase 1C cell block: Ctrl+arrow changes whole rows/columns and table size', async () => {
+    const launched = await launchShell({
+      onboardingSeen: true,
+      videoDir: 'hwp-table-1c-block-size',
+    })
+    const { app, page } = launched
+    try {
+      const hwp = await openHwp(app, page)
+      const frame = await studioFrame(hwp)
+      await focusEditor(hwp)
+
+      await insertTable(frame, 3, 3)
+      await expect.poll(async () => (await listTables(frame)).count).toBe(1)
+      await installGeometryProbe(frame)
+
+      // F7: the current column. Ctrl+Right widens the whole column, and the table with it.
+      await hwp.keyboard.press('F7')
+      const beforeWidth = await geometry(frame)
+      expect(beforeWidth.range).toEqual({ startRow: 0, startCol: 0, endRow: 2, endCol: 0 })
+      const widthBefore = tableWidth(beforeWidth)
+      await hwp.keyboard.press('Control+ArrowRight')
+      await expect
+        .poll(async () => tableWidth(await geometry(frame)))
+        .toBeGreaterThan(widthBefore + 2)
+      const afterWidth = await geometry(frame)
+      expect(afterWidth.bboxes.find((box) => box.row === 0 && box.col === 0)!.w).toBeGreaterThan(
+        beforeWidth.bboxes.find((box) => box.row === 0 && box.col === 0)!.w + 2,
+      )
+      // the other columns keep their own widths; the table, not the neighbor, takes the change
+      expect(afterWidth.bboxes.find((box) => box.row === 0 && box.col === 1)!.w).toBeCloseTo(
+        beforeWidth.bboxes.find((box) => box.row === 0 && box.col === 1)!.w,
+        1,
+      )
+
+      // F8: the current row. Ctrl+Down makes the row taller and the table taller.
+      await hwp.keyboard.press('F8')
+      const beforeHeight = await geometry(frame)
+      expect(beforeHeight.range).toMatchObject({ startRow: 0, endRow: 0, startCol: 0, endCol: 2 })
+      const heightBefore = tableHeight(beforeHeight)
+      await hwp.keyboard.press('Control+ArrowDown')
+      await expect
+        .poll(async () => tableHeight(await geometry(frame)))
+        .toBeGreaterThan(heightBefore + 2)
+
+      // one snapshot per key: undo puts the last row height back
+      await hwp.keyboard.press('Control+z')
+      await expect
+        .poll(async () => Math.round(tableHeight(await geometry(frame))))
+        .toBe(Math.round(heightBefore))
+
+      await screenshot(hwp, '06-ctrl-arrow-row-column')
+    } finally {
+      await closeAndSaveVideo(launched, 'hwp-table-1c-block-size')
     }
   })
 

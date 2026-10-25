@@ -20,6 +20,7 @@ import {
   hancomTableObjectKey,
   letterOf,
   MAIN_PROCESS_KEYS,
+  resizeRowColumnBlock,
   studioCommandIds,
   withHancomLabel,
 } from '../studio-plugin/hancom-keys.mjs'
@@ -372,13 +373,14 @@ describe('the new commands', () => {
     expect(studioCommandIds().some((id) => id.startsWith('ieum:'))).toBe(false)
   })
 
-  it('register the Phase 1B table commands', () => {
+  it('register the table commands the keys use', () => {
     const ids = new Set(hancomCommands('en').map((command) => command.id))
     for (const id of [
       'ieum:table-resize',
       'ieum:table-order',
       'ieum:table-wrap',
       'ieum:table-block-resize',
+      'ieum:table-row-column-resize',
     ]) {
       expect(ids, id).toContain(id)
     }
@@ -813,6 +815,15 @@ describe('Phase 1B cell block keys', () => {
       direction: 'right',
     })
   })
+
+  it('resizes whole rows/columns for Ctrl+arrow', () => {
+    const ih = inBlock(['ieum:table-row-column-resize'])
+    const e = key({ key: 'ArrowDown', code: 'ArrowDown', ctrlKey: true })
+    expect(hancomCellBlockKey(ih, e)).toBe(true)
+    expect(ih.dispatcher.dispatch).toHaveBeenCalledWith('ieum:table-row-column-resize', {
+      direction: 'down',
+    })
+  })
 })
 
 describe('Phase 1B table-object keys', () => {
@@ -1063,6 +1074,107 @@ describe('equal cell sizes (H/W)', () => {
     expect(equalizeTableCells(services, 'width')).toBe(false)
     expect(equalizeTableCells(services, 'height')).toBe(false)
     expect(ih.executeOperation).not.toHaveBeenCalled()
+  })
+
+  it('Ctrl+Right widens every cell of the selected column as one snapshot', () => {
+    const { services, wasm, ih } = table(
+      [
+        [1500, 1500],
+        [1500, 1500],
+        [1500, 1500],
+      ],
+      [
+        [1500, 1500],
+        [1500, 1500],
+        [1500, 1500],
+      ],
+      { range: { startRow: 0, startCol: 1, endRow: 2, endCol: 1 } },
+    )
+    expect(resizeRowColumnBlock(services, 'right')).toBe(true)
+    expect(ih.executeOperation).toHaveBeenCalledTimes(1)
+    expect(ih.executeOperation.mock.calls[0][0]).toMatchObject({
+      kind: 'snapshot',
+      operationType: 'resizeRowColumnBlock',
+    })
+    expect(wasm.resizeTableCells.mock.calls[0][3]).toEqual([
+      { cellIdx: 1, widthDelta: 300 },
+      { cellIdx: 3, widthDelta: 300 },
+      { cellIdx: 5, widthDelta: 300 },
+    ])
+    expect(ih.updateCellSelection).toHaveBeenCalled()
+  })
+
+  it('Ctrl+Down changes every cell of the selected row and the table height', () => {
+    const { services, wasm } = table(
+      [
+        [1500, 1500],
+        [1500, 1500],
+        [1500, 1500],
+      ],
+      [
+        [1500, 1500],
+        [1500, 1500],
+        [1500, 1500],
+      ],
+      { range: { startRow: 1, startCol: 0, endRow: 1, endCol: 1 } },
+    )
+    expect(resizeRowColumnBlock(services, 'down')).toBe(true)
+    expect(wasm.resizeTableCells.mock.calls[0][3]).toEqual([
+      { cellIdx: 2, heightDelta: 300 },
+      { cellIdx: 3, heightDelta: 300 },
+    ])
+  })
+
+  it('Ctrl+Left shrinks the selected column', () => {
+    const { services, wasm } = table(
+      [
+        [1500, 1500],
+        [1500, 1500],
+      ],
+      [
+        [1500, 1500],
+        [1500, 1500],
+      ],
+      { range: { startRow: 0, startCol: 0, endRow: 1, endCol: 0 } },
+    )
+    expect(resizeRowColumnBlock(services, 'left')).toBe(true)
+    expect(wasm.resizeTableCells.mock.calls[0][3]).toEqual([
+      { cellIdx: 0, widthDelta: -300 },
+      { cellIdx: 2, widthDelta: -300 },
+    ])
+  })
+
+  it('leaves merged cells and tables inside a cell alone', () => {
+    const merged = table(
+      [
+        [1500, 1500],
+        [1500, 1500],
+      ],
+      [
+        [1500, 1500],
+        [1500, 1500],
+      ],
+      { spans: true },
+    )
+    const showToast = vi.fn()
+    hancomCommands('ko', { showToast })
+    expect(resizeRowColumnBlock(merged.services, 'right')).toBe(false)
+    expect(merged.wasm.resizeTableCells).not.toHaveBeenCalled()
+    expect(showToast).toHaveBeenCalled()
+
+    const nested = table(
+      [
+        [1500, 1500],
+        [1500, 1500],
+      ],
+      [
+        [1500, 1500],
+        [1500, 1500],
+      ],
+      { nested: true },
+    )
+    expect(resizeRowColumnBlock(nested.services, 'right')).toBe(false)
+    expect(nested.wasm.resizeTableCells).not.toHaveBeenCalled()
   })
 })
 
