@@ -35,14 +35,17 @@
  *   cell, and the three paths call it: the inner table goes, the outer stays.
  *
  * studio-hancom-shortcuts, studio-hancom-labels, studio-hancom-commands,
- * studio-hancom-chords
+ * studio-hancom-equal-cells, studio-hancom-chords
  *   A Hangul tab takes Hancom Hangul's keys (decision 0060). The table of them and
  *   the commands rhwp lacks live in studio-plugin/hancom-keys.mjs; these patches
  *   only hook it in. The studio's shortcut table is adapted in place, its command
  *   registry shows the new keys next to the menu items, the new commands are
- *   registered (with the studio parts they build on) and put into the menus, and
- *   its key handler hands the Ctrl+N/K/Q/M/G sequences and the keys that depend on
- *   the caret (the easy table formulas) to the module, on the IME path too.
+ *   registered (with the studio parts they build on) and put into the menus, its
+ *   two stub "equal cell size" commands hand over to the app's own equalizer, and
+ *   its key handler hands the Ctrl+N/K/Q/M/G sequences, the keys that depend on
+ *   the caret (the easy table formulas, Ctrl+Enter/Ctrl+Backspace in a cell, H/W
+ *   in a cell block) and the table-object keys (P/T/L/C/Ctrl+E) to the module, on
+ *   the IME path too.
  *
  * studio-hancom-page-number
  *   The bridge gains the two engine calls of vendor/rhwp-core patch 0014, setting and
@@ -259,6 +262,8 @@ const PATCHES = {
           "import { InsertTextCommand } from '@/engine/command';\n" +
           "import { ModalDialog } from '@/ui/dialog';\n" +
           "import { FindDialog, navigateToSearchHit } from '@/ui/find-dialog';\n" +
+          "import { CellBorderBgDialog } from '@/ui/cell-border-bg-dialog';\n" +
+          "import { showToast } from '@/ui/toast';\n" +
           `import { hancomCommands, installHancomMainKeys, installHancomMenuItems } from '${HANCOM_KEYS_MODULE}';`,
       },
       // the new commands, with the studio parts they build on, and their menu items
@@ -268,6 +273,7 @@ const PATCHES = {
           'registry.registerAll(toolCommands);\n' +
           'registry.registerAll(hancomCommands(getLocale(), {\n' +
           '  InsertTextCommand, ModalDialog, FindDialog, navigateToSearchHit,\n' +
+          '  CellBorderBgDialog, showToast,\n' +
           '}));\n' +
           'installHancomMenuItems(document, getLocale());\n' +
           '// the keys the main process takes first and hands back for the table (decision 0060)\n' +
@@ -402,6 +408,67 @@ const PATCHES = {
       },
     ],
   },
+  'studio-hancom-equal-cells': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]command[\\/]commands[\\/]table\.ts$/,
+    edits: [
+      {
+        find: "import { t } from '../../i18n/index.ts';",
+        replace:
+          "import { t } from '../../i18n/index.ts';\n" +
+          "import { getLocale } from '@/i18n/core.ts';\n" +
+          `import { equalizeTableCells } from '${HANCOM_KEYS_MODULE}';`,
+      },
+      {
+        // the stub commands were disabled because a per-row/column boundary cannot be
+        // stored; equalizing the rows/columns of the selection can, through deltas
+        find: [
+          '// HWP/HWPX cannot persist independent per-row or per-column geometry. Keep',
+          '// commands that require that representation unavailable at command routing.',
+          'const localTableGeometryCanPersist = () => false;',
+          '',
+        ].join('\n'),
+        replace: '',
+      },
+      {
+        find: [
+          '  {',
+          "    id: 'table:cell-height-equal',",
+          "    label: t('command.table.cellHeightEqual.label'),",
+          "    shortcutLabel: 'H',",
+          '    canExecute: localTableGeometryCanPersist,',
+          '    execute() {},',
+          '  },',
+          '  {',
+          "    id: 'table:cell-width-equal',",
+          "    label: t('command.table.cellWidthEqual.label'),",
+          "    shortcutLabel: 'W',",
+          '    canExecute: localTableGeometryCanPersist,',
+          '    execute() {},',
+          '  },',
+        ].join('\n'),
+        replace: [
+          '  {',
+          "    id: 'table:cell-height-equal',",
+          "    label: t('command.table.cellHeightEqual.label'),",
+          "    shortcutLabel: 'H',",
+          '    canExecute: inTableOrCellSelection,',
+          '    execute(services) {',
+          "      equalizeTableCells(services, 'height', getLocale() === 'ko');",
+          '    },',
+          '  },',
+          '  {',
+          "    id: 'table:cell-width-equal',",
+          "    label: t('command.table.cellWidthEqual.label'),",
+          "    shortcutLabel: 'W',",
+          '    canExecute: inTableOrCellSelection,',
+          '    execute(services) {',
+          "      equalizeTableCells(services, 'width', getLocale() === 'ko');",
+          '    },',
+          '  },',
+        ].join('\n'),
+      },
+    ],
+  },
   'studio-hancom-chords': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler-keyboard\.ts$/,
     edits: [
@@ -409,13 +476,22 @@ const PATCHES = {
         find: "import { matchShortcut, defaultShortcuts } from '@/command/shortcut-map';",
         replace:
           "import { matchShortcut, defaultShortcuts } from '@/command/shortcut-map';\n" +
-          `import { hancomChordKey, hancomChordStart, hancomContextKey, hancomCtrlKey } from '${HANCOM_KEYS_MODULE}';`,
+          `import { hancomCellBlockKey, hancomChordKey, hancomChordStart, hancomContextKey, hancomCtrlKey, hancomTableObjectKey } from '${HANCOM_KEYS_MODULE}';`,
       },
       // the second key, first of all (the studio's own Ctrl+K/M/G flags are never set again)
       {
         find: '  this._cellBlockLetterImeGuard?.reset();',
         replace:
           '  this._cellBlockLetterImeGuard?.reset();\n  if (hancomChordKey(this, e)) return;',
+      },
+      // a table-object key, and H/W in a cell block, before the studio closes the selection
+      // on an unhandled letter and lets it into the document
+      {
+        find: '  if (this.connectorDrawingMode) {',
+        replace:
+          '  if (hancomTableObjectKey(this, e)) return;\n' +
+          '  if (hancomCellBlockKey(this, e)) return;\n' +
+          '  if (this.connectorDrawingMode) {',
       },
       // the first key, or a key that depends on the caret, while the IME composes, where the
       // studio took Ctrl+M alone
@@ -491,6 +567,7 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-hancom-shortcuts',
   'studio-hancom-labels',
   'studio-hancom-commands',
+  'studio-hancom-equal-cells',
   'studio-hancom-chords',
   'studio-hancom-page-number',
   'studio-format-copy-safety',
@@ -593,10 +670,12 @@ export const hancomHooks = [
       'getSelection(): { anchor: DocumentPosition; focus: DocumentPosition } | null',
       'isInHeaderFooter(): boolean',
       'isInFootnote(): boolean',
+      'isInTextBox(): boolean',
       'isInPictureObjectSelection(): boolean',
       'isInTableObjectSelection(): boolean',
       'getPosition(): DocumentPosition',
       'isInCellSelectionMode(): boolean',
+      'getCellTableContext()',
       'getSelectedCellRange(): { startRow: number; startCol: number; endRow: number; endCol: number } | null',
     ],
   },
@@ -605,9 +684,11 @@ export const hancomHooks = [
     needles: [
       'private dispatcher: CommandDispatcher | null',
       'private _cellBlockLetterImeGuard = new CellBlockLetterImeGuard()',
+      'private wasm: WasmBridge',
       'private deleteSelection(',
       'applyStyle(styleId: number): void',
       'executeOperation(desc: OperationDescriptor): void',
+      'updateCellSelection(',
       'isFormMode(): boolean',
       'hasCopiedFormat(): boolean { return this.formatCopyState !== null; }',
       'getCharProperties(): CharProperties',
@@ -630,6 +711,7 @@ export const hancomHooks = [
       'getCellParagraphCount(sec: number, parentPara: number, controlIdx: number, cellIdx: number)',
       'getCellParagraphLength(sec: number, parentPara: number, controlIdx: number, cellIdx: number, cellParaIdx: number)',
       'getCellInfo(sec: number, parentPara: number, controlIdx: number, cellIdx: number): CellInfo',
+      'getTableCellBboxes(sec: number,',
       'searchText(query: string, fromSec: number, fromPara: number, fromChar: number, forward: boolean',
       'getCharPropertiesAt(sec: number, para: number, charOffset: number)',
       'getCellCharPropertiesAtByPath(sec: number, parentPara: number, pathJson: string, charOffset: number)',
@@ -685,6 +767,11 @@ export const hancomHooks = [
       'export class ApplyCharFormatCommand',
       'export class ApplyParaFormatCommand',
     ],
+  },
+  // the table-object L/C keys open the studio's own border/background dialog on its tab
+  {
+    file: 'src/ui/cell-border-bg-dialog.ts',
+    needles: ['export class CellBorderBgDialog', 'private switchTab(idx: number)'],
   },
   // the studio parts the studio-format-copy patches hand to the app's module
   {

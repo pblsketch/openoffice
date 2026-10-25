@@ -93,6 +93,21 @@ export const TEXT_COLORS = {
 /** Number of styles Ctrl+1..0 reach: the document's first ten, in their order. */
 export const STYLE_KEYS = 10
 
+/**
+ * Where the table size commands say why they left a table alone. The studio hands its
+ * toast in when it registers the commands (studio-hancom-commands); without one the
+ * message goes nowhere, as in a test.
+ */
+let toastSink = null
+
+function tellUser(message) {
+  try {
+    toastSink?.({ message })
+  } catch {
+    // the editor is closing; nothing to tell
+  }
+}
+
 const digitOf = (n) => String(n % 10)
 
 /**
@@ -373,12 +388,303 @@ export const EASY_FORMULAS = {
 }
 
 /**
- * Keys whose meaning depends on where the caret is: the easy formulas take Ctrl+Shift+H/V/J/B/K/N
- * in a table cell only. Elsewhere the key goes on to the studio (Ctrl+Shift+H, document history;
- * Ctrl+Shift+V, the plain paste). Called ahead of the studio's shortcut table.
+ * Hancom's table-object keys (표를 선택한 상태에서): P opens the table/cell properties,
+ * T flips the table, L/C open the cell border/background dialogs, and Ctrl+E deletes the
+ * table. Called before the studio's object-selection branch, which would otherwise close
+ * the selection and type the letter into the document.
+ */
+const TABLE_OBJECT_KEYS = {
+  p: 'table:cell-props',
+  t: 'ieum:table-transpose',
+  l: 'ieum:table-border-each',
+  c: 'ieum:table-border-background',
+}
+
+export function hancomTableObjectKey(ih, e) {
+  const cursor = ih?.cursor
+  if (!cursor?.isInTableObjectSelection?.()) return false
+  if (e.altKey || e.shiftKey) return false
+  const letter = letterOf(e)
+  if (!letter) return false
+  const dispatcher = ih.dispatcher
+  if (!dispatcher) return false
+  const withCtrl = e.ctrlKey || e.metaKey
+  if (withCtrl) {
+    if (letter !== 'e') return false
+    // Hangul deletes the selected object with Ctrl+E; the table's Delete path does it
+    e.preventDefault()
+    if (dispatcher.isEnabled('table:delete') && dispatcher.dispatch('table:delete')) {
+      // the table is gone: leave the object selection so the next key is not read against it
+      ih.cursor.exitTableObjectSelection?.()
+      ih.eventBus?.emit?.('table-object-selection-changed', false)
+    }
+    return true
+  }
+  const id = TABLE_OBJECT_KEYS[letter]
+  if (!id) return false
+  // one of our keys: keep the letter out even when the command cannot run
+  e.preventDefault()
+  ih._cellBlockLetterImeGuard?.arm(e)
+  if (dispatcher.isEnabled(id)) dispatcher.dispatch(id)
+  return true
+}
+
+/** H/W in a cell block: the rows/columns of the selected cells become equally sized. */
+const CELL_BLOCK_KEYS = {
+  h: 'table:cell-height-equal',
+  w: 'table:cell-width-equal',
+}
+
+export function hancomCellBlockKey(ih, e) {
+  const cursor = ih?.cursor
+  if (!cursor?.isInCellSelectionMode?.()) return false
+  if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return false
+  const id = CELL_BLOCK_KEYS[letterOf(e)]
+  if (!id) return false
+  e.preventDefault()
+  ih._cellBlockLetterImeGuard?.arm(e)
+  if (ih.dispatcher?.isEnabled?.(id)) ih.dispatcher.dispatch(id)
+  return true
+}
+
+/**
+ * Ctrl+Enter adds a row below and Ctrl+Backspace deletes the row the caret is in, as
+ * Hangul does in a table cell. Both run the studio's table commands, one undo step each.
+ * Outside a cell the keys keep their meanings (page break, delete the word before). A
+ * table inside a cell is left to Phase 2: the keys are consumed there, so a page break
+ * cannot land in a cell.
+ */
+function hancomTableRowKey(ih, e) {
+  const cursor = ih?.cursor
+  if (!cursor?.isInCell?.() || cursor.isInTextBox?.()) return false
+  if (cursor.isInHeaderFooter?.() || cursor.isInFootnote?.()) return false
+  if (cursor.isInCellSelectionMode?.() || cursor.isInTableObjectSelection?.()) return false
+  if (ih.isFormMode?.()) return false
+  if (!(e.ctrlKey || e.metaKey) || e.altKey) return false
+  const pos = ih.getCursorPosition?.()
+  if (!pos) return false
+  const nested = (pos.cellPath?.length ?? 0) > 1
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    if (nested) return true
+    if (ih.dispatcher?.isEnabled?.('table:insert-row-below')) {
+      ih.dispatcher.dispatch('table:insert-row-below')
+    }
+    return true
+  }
+  if (e.key === 'Backspace' && e.ctrlKey && !e.metaKey) {
+    e.preventDefault()
+    if (nested) return true
+    // the last row stays: the engine refuses to empty a table, and this keeps it quiet
+    try {
+      const dims = ih.wasm?.getTableDimensions?.(
+        pos.sectionIndex,
+        pos.parentParaIndex,
+        pos.controlIndex,
+      )
+      if (dims?.rowCount <= 1) return true
+    } catch {
+      // let the command answer; it refuses the last row too
+    }
+    if (ih.dispatcher?.isEnabled?.('table:delete-row')) {
+      ih.dispatcher.dispatch('table:delete-row')
+    }
+    return true
+  }
+  return false
+}
+
+/**
+ * Hangul's H/W: the rows or columns covered by the cell block become equally sized.
+ * The engine moves whole rows/columns with widthDelta/heightDelta, so every cell of the
+ * affected rows/columns gets its delta in a single snapshot (one undo step). Tables with
+ * merged cells and tables inside a cell are left alone and the reason is shown.
+ */
+export function equalizeTableCells(services, axis, ko) {
+  const ih = services?.getInputHandler?.()
+  const cursor = ih?.cursor
+  if (!ih || !cursor) return false
+  const inBlock = cursor.isInCellSelectionMode?.() === true
+  const context = inBlock ? cursor.getCellTableContext?.() : null
+  const pos = ih.getCursorPosition?.()
+  const sec = context?.sec ?? pos?.sectionIndex
+  const ppi = context?.ppi ?? pos?.parentParaIndex
+  const ci = context?.ci ?? pos?.controlIndex
+  if (ppi === undefined || ci === undefined) return false
+  const nested = (context?.cellPath?.length ?? pos?.cellPath?.length ?? 0) > 1
+  if (nested) {
+    tellUser(
+      ko
+        ? '표 안의 표는 아직 크기를 같게 할 수 없습니다.'
+        : 'A table inside a cell cannot be sized equally yet.',
+    )
+    return false
+  }
+  // a text box is a one-cell table to the engine, but it is not a table to Hangul
+  if (pos?.isTextBox && (pos.cellPath?.length ?? 0) < 2) return false
+  const wasm = services.wasm
+  let dims
+  try {
+    dims = wasm.getTableDimensions(sec, ppi, ci)
+  } catch {
+    return false
+  }
+  const cells = []
+  try {
+    for (let i = 0; i < dims.cellCount; i += 1) {
+      const info = wasm.getCellInfo(sec, ppi, ci, i)
+      const props = wasm.getCellProperties(sec, ppi, ci, i)
+      if (info.rowSpan > 1 || info.colSpan > 1) {
+        tellUser(
+          ko
+            ? '병합된 칸이 있어 크기를 같게 하지 않았습니다.'
+            : 'Not changed: the table has merged cells.',
+        )
+        return false
+      }
+      cells.push({ cellIdx: i, row: info.row, col: info.col, ...props })
+    }
+  } catch {
+    return false
+  }
+  if (cells.length !== dims.rowCount * dims.colCount) return false
+  // how big the rows/columns really draw: a cell whose text wraps is taller than its
+  // stored minimum, and equalizing from the stored values alone would leave it taller
+  const rendered = new Map()
+  try {
+    for (const box of wasm.getTableCellBboxes(sec, ppi, ci)) {
+      if (!rendered.has(box.cellIdx)) rendered.set(box.cellIdx, box)
+    }
+  } catch {
+    // an engine without the query: the stored sizes still answer
+  }
+  const HWPUNIT_PER_PX = 7200 / 96
+  const range = inBlock ? cursor.getSelectedCellRange?.() : null
+  const firstRow = Math.max(0, Math.min(range?.startRow ?? 0, dims.rowCount - 1))
+  const lastRow = Math.max(0, Math.min(range?.endRow ?? dims.rowCount - 1, dims.rowCount - 1))
+  const firstCol = Math.max(0, Math.min(range?.startCol ?? 0, dims.colCount - 1))
+  const lastCol = Math.max(0, Math.min(range?.endCol ?? dims.colCount - 1, dims.colCount - 1))
+  // the engine spreads a partial row block over the whole table, so only the whole table
+  // answers with equal rows; say so instead of leaving a half-changed table
+  if (axis === 'height' && (firstRow !== 0 || lastRow !== dims.rowCount - 1)) {
+    tellUser(
+      ko
+        ? '표 전체를 골라야 줄 높이를 같게 할 수 있습니다.'
+        : 'Select the whole table to equalize row heights.',
+    )
+    return false
+  }
+  if (axis === 'width' && (firstCol !== 0 || lastCol !== dims.colCount - 1)) {
+    tellUser(
+      ko
+        ? '표 전체를 골라야 칸 너비를 같게 할 수 있습니다.'
+        : 'Select the whole table to equalize column widths.',
+    )
+    return false
+  }
+  // already equal? then nothing to write
+  if (axis === 'height') {
+    const rowHeights = new Map()
+    for (const cell of cells) {
+      if (cell.row < firstRow || cell.row > lastRow) continue
+      const box = rendered.get(cell.cellIdx)
+      const height = box ? box.h : cell.height / HWPUNIT_PER_PX
+      rowHeights.set(cell.row, Math.max(rowHeights.get(cell.row) ?? 0, height))
+    }
+    const values = [...rowHeights.values()]
+    if (values.length === 0 || Math.max(...values) - Math.min(...values) < 0.5) return false
+    const target = Math.round(Math.max(...values) * HWPUNIT_PER_PX)
+    if (target <= 0) return false
+    const updates = []
+    for (const cell of cells) {
+      if (cell.row < firstRow || cell.row > lastRow || cell.height === target) continue
+      updates.push({ cellIdx: cell.cellIdx, heightDelta: target - cell.height })
+    }
+    if (updates.length === 0) return false
+    try {
+      ih.executeOperation({
+        kind: 'snapshot',
+        operationType: 'equalizeRowHeights',
+        operation: (bridge) => {
+          if (!bridge.resizeTableCells(sec, ppi, ci, updates)?.ok) return null
+          // a table the editor made keeps one line height per row extra in its table
+          // height, and the engine gives that to the last row; take it off there
+          if (lastRow === dims.rowCount - 1) {
+            const boxes = bridge.getTableCellBboxes(sec, ppi, ci)
+            let drawn = 0
+            for (const box of boxes) {
+              if (box.row === lastRow) drawn = Math.max(drawn, box.h)
+            }
+            const excess = Math.round(drawn * HWPUNIT_PER_PX) - target
+            if (drawn > 0 && Math.abs(excess) >= HWPUNIT_PER_PX / 2) {
+              const fix = cells
+                .filter((cell) => cell.row === lastRow)
+                .map((cell) => ({ cellIdx: cell.cellIdx, heightDelta: -excess }))
+              if (!bridge.resizeTableCells(sec, ppi, ci, fix)?.ok) return null
+            }
+          }
+          return ih.getCursorPosition()
+        },
+      })
+    } catch {
+      return false
+    }
+    ih.updateCellSelection?.()
+    return true
+  }
+
+  // width: one column at a time, because the engine moves the next boundary as it resizes
+  const colWidths = new Map()
+  for (const cell of cells) {
+    if (cell.col < firstCol || cell.col > lastCol) continue
+    const box = rendered.get(cell.cellIdx)
+    const width = box ? box.w : cell.width / HWPUNIT_PER_PX
+    colWidths.set(cell.col, Math.max(colWidths.get(cell.col) ?? 0, width))
+  }
+  const values = [...colWidths.values()]
+  if (values.length === 0 || Math.max(...values) - Math.min(...values) < 0.5) return false
+  const target = Math.floor(
+    (values.reduce((sum, width) => sum + width, 0) / values.length) * HWPUNIT_PER_PX,
+  )
+  if (target <= 0) return false
+  try {
+    ih.executeOperation({
+      kind: 'snapshot',
+      operationType: 'equalizeColumnWidths',
+      operation: (bridge) => {
+        for (let col = firstCol; col <= lastCol; col += 1) {
+          let current = 0
+          for (let i = 0; i < dims.cellCount; i += 1) {
+            const info = bridge.getCellInfo(sec, ppi, ci, i)
+            if (info.col !== col) continue
+            current = Math.max(current, bridge.getCellProperties(sec, ppi, ci, i).width)
+          }
+          if (!current || current === target) continue
+          const ups = cells
+            .filter((cell) => cell.col === col)
+            .map((cell) => ({ cellIdx: cell.cellIdx, widthDelta: target - current }))
+          if (!bridge.resizeTableCells(sec, ppi, ci, ups)?.ok) return null
+        }
+        return ih.getCursorPosition()
+      },
+    })
+  } catch {
+    return false
+  }
+  ih.updateCellSelection?.()
+  return true
+}
+
+/**
+ * Keys whose meaning depends on where the caret is: Hangul's row add/delete in a table
+ * cell, and the easy formulas with Ctrl+Shift+H/V/J/B/K/N in a table cell only. Elsewhere
+ * the key goes on to the studio (Ctrl+Shift+H, document history; Ctrl+Shift+V, the plain
+ * paste). Called ahead of the studio's shortcut table.
  */
 export function hancomContextKey(ih, e) {
-  if (!(e.ctrlKey || e.metaKey) || !e.shiftKey || e.altKey) return false
+  if (!(e.ctrlKey || e.metaKey) || e.altKey) return false
+  if (!e.shiftKey && hancomTableRowKey(ih, e)) return true
+  if (!e.shiftKey) return false
   const letter = letterOf(e)
   const formula = letter ? EASY_FORMULAS[letter] : undefined
   const dispatcher = ih.dispatcher
@@ -600,6 +906,75 @@ export function currentPageNumber(services, section) {
   return { ...PAGE_NUMBER_DEFAULT }
 }
 
+/** The table a table-object selection points at, with its size; null otherwise. */
+function selectedTableOf(ih, wasm) {
+  const ref = ih?.getSelectedTableRef?.()
+  if (!ref) return null
+  try {
+    return { ref, dims: wasm.getTableDimensions(ref.sec, ref.ppi, ref.ci) }
+  } catch {
+    return null
+  }
+}
+
+/** Hangul's T in table-object selection: flips the table in place, one undo step. */
+function transposeSelectedTable(services, ko) {
+  const ih = services.getInputHandler()
+  const table = selectedTableOf(ih, services.wasm)
+  if (!ih || !table) return false
+  if ((table.ref.cellPath?.length ?? 0) > 1) {
+    tellUser(
+      ko ? '표 안의 표는 아직 뒤집을 수 없습니다.' : 'A table inside a cell cannot be flipped yet.',
+    )
+    return false
+  }
+  let flipped = false
+  try {
+    ih.executeOperation({
+      kind: 'snapshot',
+      operationType: 'transposeTable',
+      operation: (wasm) => {
+        const done = wasm.transposeTableCellsInPlace(table.ref.sec, table.ref.ppi, table.ref.ci)
+        if (!done?.ok) return null
+        flipped = true
+        return ih.getCursorPosition()
+      },
+    })
+  } catch {
+    return false
+  }
+  if (flipped) services.eventBus.emit('table-object-selection-changed', true)
+  return flipped
+}
+
+/** L/C in table-object selection: the border or background dialog for the whole table. */
+function openSelectedTableBorder(services, studio, tab, ko) {
+  const ih = services.getInputHandler()
+  const table = selectedTableOf(ih, services.wasm)
+  if (!ih || !table || !studio.CellBorderBgDialog) return false
+  if ((table.ref.cellPath?.length ?? 0) > 1) {
+    tellUser(
+      ko
+        ? '표 안의 표는 아직 테두리와 배경을 바꿀 수 없습니다.'
+        : 'A table inside a cell cannot be changed yet.',
+    )
+    return false
+  }
+  const { ref, dims } = table
+  const dialog = new studio.CellBorderBgDialog(
+    services.wasm,
+    services.eventBus,
+    { sec: ref.sec, ppi: ref.ppi, ci: ref.ci },
+    0,
+    'asOne',
+    { startRow: 0, startCol: 0, endRow: dims.rowCount - 1, endCol: dims.colCount - 1 },
+    services,
+  )
+  dialog.show()
+  if (tab === 'background') dialog.switchTab?.(1)
+  return true
+}
+
 /** The 쪽 번호 매기기 dialog, built on the studio's own dialog base (handed in, not imported). */
 function pageNumberDialog(ModalDialog, ko, start, onApply) {
   class PageNumberDialog extends ModalDialog {
@@ -681,6 +1056,7 @@ function pageNumberDialog(ModalDialog, ko, start, onApply) {
  */
 export function hancomCommands(locale, studio = {}) {
   const ko = locale === 'ko'
+  toastSink = studio.showToast ?? toastSink
   const commands = [
     {
       id: 'ieum:delete-line',
@@ -755,6 +1131,35 @@ export function hancomCommands(locale, studio = {}) {
         }).show()
       },
     },
+    {
+      id: 'ieum:table-transpose',
+      label: ko ? '표 뒤집기' : 'Flip Table',
+      shortcutLabel: 'T',
+      canExecute: (ctx) => ctx.inTableObjectSelection && !ctx.isFormMode,
+      execute(services) {
+        transposeSelectedTable(services, ko)
+      },
+    },
+    {
+      id: 'ieum:table-border-each',
+      opensDialog: true,
+      label: ko ? '셀 테두리' : 'Cell Border',
+      shortcutLabel: 'L',
+      canExecute: (ctx) => ctx.inTableObjectSelection && !ctx.isFormMode,
+      execute(services) {
+        openSelectedTableBorder(services, studio, 'border', ko)
+      },
+    },
+    {
+      id: 'ieum:table-border-background',
+      opensDialog: true,
+      label: ko ? '셀 배경' : 'Cell Background',
+      shortcutLabel: 'C',
+      canExecute: (ctx) => ctx.inTableObjectSelection && !ctx.isFormMode,
+      execute(services) {
+        openSelectedTableBorder(services, studio, 'background', ko)
+      },
+    },
   )
   for (const [letter, formula] of Object.entries(EASY_FORMULAS)) {
     commands.push({
@@ -787,6 +1192,7 @@ export const MENU_ITEMS = [
   ['ieum:page-number', 'page:new-page-num', '쪽 번호 매기기', 'Page Numbering'],
   ['ieum:find-backward', 'edit:find-again', '거꾸로 찾기', 'Find Backward'],
   ['ieum:insert-date', 'insert:symbols', '날짜/시간 문자열', 'Date String'],
+  ['ieum:table-transpose', 'table:transpose-copy', '표 뒤집기', 'Flip Table'],
 ]
 
 /**
