@@ -33,6 +33,7 @@ import {
   noteSidecarCrash,
 } from './univer-sync'
 import { installGridGrowth } from './grid-growth'
+import { installAltEnterWrap } from './alt-enter-wrap'
 import {
   pollUntilReady,
   runHeadlessRendererExport,
@@ -2191,6 +2192,11 @@ export function App({
     // Arrows on a multi-cell selection collapse to the active cell first,
     // then move one step (Excel), instead of stepping past the range edge.
     const arrowCollapseDisposable = installArrowCollapse(runtime)
+    // Alt+Enter starts a new line inside the cell and, like Excel, turns on
+    // Wrap Text so the new line is visible after the edit commits.
+    const altEnterWrapDisposable = installAltEnterWrap(runtime, {
+      getState: () => lazyWorkbookRef.current,
+    })
     const sheetProtectionDisposable = installSheetProtectionGuard(runtime, {
       getState: () => lazyWorkbookRef.current,
       notify: (message) => {
@@ -3564,6 +3570,7 @@ export function App({
       sheetRenameFixDisposable.dispose()
       selectionWrapGuardDisposable.dispose()
       arrowCollapseDisposable.dispose()
+      altEnterWrapDisposable.dispose()
       sheetProtectionDisposable.dispose()
       ctrlDragFillDisposable.dispose()
       contextSubmenuReopenDisposable.dispose()
