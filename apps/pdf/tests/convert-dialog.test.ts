@@ -262,6 +262,7 @@ describe('conversion dialog: EPUB book fields', () => {
     expect((q(el, '[data-field="title"]') as HTMLInputElement).value).toBe('The Field Guide')
     expect((q(el, '[data-field="author"]') as HTMLInputElement).value).toBe('A. Writer')
     expect((q(el, '[data-field="cover"]') as HTMLInputElement).checked).toBe(true)
+    expect((q(el, '[data-field="page-breaks"]') as HTMLInputElement).checked).toBe(false)
     expect((q(el, '[data-field="language"]') as HTMLInputElement).value).toBe('')
   })
 
@@ -279,6 +280,7 @@ describe('conversion dialog: EPUB book fields', () => {
     await type(q(el, '[data-field="author"]'), 'Kim')
     await type(q(el, '[data-field="language"]'), 'ko')
     await click(q(el, '[data-field="cover"]'))
+    await click(q(el, '[data-field="page-breaks"]'))
     await click(q(el, '[data-action="convert"]'))
     expect(fake.api.convert.mock.calls[0]![0]).toMatchObject({
       format: 'epub',
@@ -290,6 +292,7 @@ describe('conversion dialog: EPUB book fields', () => {
         language: 'ko',
         uiLanguage: 'en',
         pageImageAlt: en.cvPageImageAlt,
+        pageBreaks: true,
       },
     })
     expect(en.cvPageImageAlt).toContain('{page}')

@@ -83,6 +83,7 @@ export function ConvertDialog(props: ConvertDialogProps): ReactElement {
   const [rangeText, setRangeText] = useState('')
   const [outPath, setOutPath] = useState<string | null>(null)
   const [cover, setCover] = useState(true)
+  const [pageBreaks, setPageBreaks] = useState(false)
   const [title, setTitle] = useState(() => docInfo.title?.trim() || stemOf(fileName))
   const [author, setAuthor] = useState(() => docInfo.author?.trim() ?? '')
   const [language, setLanguage] = useState('')
@@ -173,6 +174,7 @@ export function ConvertDialog(props: ConvertDialogProps): ReactElement {
                 ...(language.trim() ? { language: language.trim() } : {}),
                 uiLanguage: lang,
                 pageImageAlt: t('cvPageImageAlt'),
+                pageBreaks,
               },
             }
           : {}),
@@ -386,6 +388,16 @@ export function ConvertDialog(props: ConvertDialogProps): ReactElement {
                     onChange={(e) => setCover(e.target.checked)}
                   />
                   {t('cvCover')}
+                </label>
+                <label className="pdf-modal-check">
+                  <input
+                    type="checkbox"
+                    data-field="page-breaks"
+                    checked={pageBreaks}
+                    disabled={busy}
+                    onChange={(e) => setPageBreaks(e.target.checked)}
+                  />
+                  {t('cvPageBreaks')}
                 </label>
                 <label className="pdf-field">
                   <span>{t('cvBookTitle')}</span>

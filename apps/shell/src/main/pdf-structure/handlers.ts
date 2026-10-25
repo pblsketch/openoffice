@@ -334,6 +334,7 @@ export function createPdfStructureHandlers(deps: StructureHandlerDeps) {
     if (!isRecord(v) || typeof v.title !== 'string' || v.title.length > MAX_TEXT) return null
     if (!optText(v.author) || !optText(v.pageImageAlt, 200)) return null
     if (v.cover !== undefined && typeof v.cover !== 'boolean') return null
+    if (v.pageBreaks !== undefined && typeof v.pageBreaks !== 'boolean') return null
     for (const tag of [v.language, v.uiLanguage]) {
       if (tag !== undefined && (typeof tag !== 'string' || !LANGUAGE_TAG.test(tag))) return null
     }
@@ -343,6 +344,7 @@ export function createPdfStructureHandlers(deps: StructureHandlerDeps) {
     if (v.language !== undefined) out.language = v.language as string
     if (v.uiLanguage !== undefined) out.uiLanguage = v.uiLanguage as string
     if (v.pageImageAlt !== undefined) out.pageImageAlt = v.pageImageAlt
+    if (v.pageBreaks !== undefined) out.pageBreaks = v.pageBreaks
     return out
   }
 

@@ -16,6 +16,7 @@ export const cs = {
   cvTargetNone: 'Zatím nevybráno',
   cvTargetChoose: 'Vybrat…',
   cvCover: 'Použít první stránku jako obálku',
+  cvPageBreaks: 'Začínat každou původní stránku na nové obrazovce',
   cvBookTitle: 'Název',
   cvBookAuthor: 'Autor',
   cvBookLanguage: 'Jazyk',

@@ -16,6 +16,7 @@ export const ms = {
   cvTargetNone: 'Belum dipilih',
   cvTargetChoose: 'Pilih…',
   cvCover: 'Gunakan halaman pertama sebagai kulit buku',
+  cvPageBreaks: 'Mulakan setiap halaman asal pada skrin baharu',
   cvBookTitle: 'Tajuk',
   cvBookAuthor: 'Pengarang',
   cvBookLanguage: 'Bahasa',

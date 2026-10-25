@@ -1158,6 +1158,8 @@ export interface PdfStructureEpubOptions {
   uiLanguage?: string
   /** alt text of a page kept as a picture; `{page}` is replaced by the page number */
   pageImageAlt?: string
+  /** start each original page on a new screen (one XHTML file per page) */
+  pageBreaks?: boolean
 }
 
 export interface PdfStructureConvertRequest extends PdfStructureSource, PdfStructureJobRef {

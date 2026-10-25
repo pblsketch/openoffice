@@ -132,7 +132,10 @@ npm run dist:win -- -- --publish never
 `npm run growth`를 실행하면 그날의 기록(릴리스 다운로드 수, 스타, 포크)을
 `docs/tracking/growth-history.json`에 더하고, 소개 문서의 배지가 읽는 요약을
 `docs/tracking/growth-latest.json`에 쓴다. GitHub Actions의 Growth 워크플로우가
-매일 00:17 UTC에 같은 일을 하고, 바뀐 것이 있으면 기록 커밋 하나를 `main`에 쌓는다.
+한 시간마다(매시 17분) 같은 일을 하고, 바뀐 것이 있으면 기록 커밋 하나를 `main`에
+쌓는다. `growth-history.json`은 하루에 한 줄을 유지한다. 같은 날 다시 기록하면 그날
+줄을 덮어쓰므로, 그날의 마지막 기록이 하루치로 남는다. 소개 문서의 배지를 실시간에
+가깝게 두려는 것이며, 소개 사이트는 같은 값을 GitHub API에서 직접 읽는다.
 
 ```bash
 npm run growth           # 그날 기록을 더한다(수동 실행)

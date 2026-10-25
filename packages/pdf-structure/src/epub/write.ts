@@ -9,13 +9,14 @@
  *   OEBPS/nav.xhtml          heading tree (toc) + original page numbers (page-list)
  *   OEBPS/style.css
  *   OEBPS/cover.xhtml        when the cover is on and an image was given
- *   OEBPS/chapter-NNN.xhtml  one per level-1 heading (see ./chapters.ts)
+ *   OEBPS/chapter-NNN.xhtml  one per level-1 heading (see ./chapters.ts), or
+ *                            one per original page with `pageBreaks`
  *   OEBPS/images/…           content-hash names; identical images stored once
  */
 import JSZip from 'jszip'
 import { Sha256, sha256Hex } from '../tree/hash'
 import type { DocumentTree, FootnoteDef, PageBreakBlock } from '../tree/types'
-import { splitChapters } from './chapters'
+import { splitChapters, splitPages } from './chapters'
 import { epubLanguages, type EpubLanguageOptions } from './language'
 import { renderChapter, type NavHeading } from './render'
 import { escapeAttr, escapeText, plainText, xhtmlDocument } from './xml'
@@ -35,6 +36,11 @@ export interface EpubWriteOptions extends EpubLanguageOptions {
   modified?: Date
   /** alt text of a page kept as a picture; defaults to `Page N` */
   pageImageAlt?: (page: number) => string
+  /**
+   * one XHTML file per original page, so every reading system starts each
+   * page on a new screen (default: chapters only, text flows across pages)
+   */
+  pageBreaks?: boolean
 }
 
 const OPF_PATH = 'OEBPS/content.opf'
@@ -153,7 +159,8 @@ export async function writeEpub(
       ? options.coverPng
       : undefined
 
-  const chapters = splitChapters(tree.blocks)
+  const headingChapters = splitChapters(tree.blocks)
+  const chapters = options.pageBreaks ? splitPages(headingChapters) : headingChapters
   const files = chapters.map((_, i) => chapterFile(i))
 
   // page markers: one id each, and the first marker of every original page

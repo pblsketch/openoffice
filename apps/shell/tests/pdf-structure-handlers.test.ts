@@ -224,6 +224,15 @@ describe('path permission', () => {
         epub: { title: 'T', language: 'not a tag' },
       }),
     ).toMatchObject({ error: 'invalid-request' })
+    expect(
+      await handlers.convert(c, {
+        jobId: 'j',
+        path: pdfPath,
+        format: 'epub',
+        outPath,
+        epub: { title: 'T', pageBreaks: 'yes' as unknown as boolean },
+      }),
+    ).toMatchObject({ error: 'invalid-request' })
     expect(jobs).toEqual([])
   })
 })

@@ -423,6 +423,7 @@ export async function runStructureJob(
         ...(coverPng ? { coverPng } : {}),
         ...(options.language !== undefined ? { language: options.language } : {}),
         ...(options.uiLanguage !== undefined ? { uiLanguage: options.uiLanguage } : {}),
+        ...(options.pageBreaks ? { pageBreaks: true } : {}),
         ...(alt !== undefined
           ? { pageImageAlt: (page: number) => alt.split('{page}').join(String(page)) }
           : {}),

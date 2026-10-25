@@ -16,6 +16,7 @@ export const es = {
   cvTargetNone: 'Aún sin elegir',
   cvTargetChoose: 'Elegir…',
   cvCover: 'Usar la primera página como portada',
+  cvPageBreaks: 'Empezar cada página original en una pantalla nueva',
   cvBookTitle: 'Título',
   cvBookAuthor: 'Autor',
   cvBookLanguage: 'Idioma',

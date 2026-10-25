@@ -8,6 +8,7 @@ import { ReactNodeViewRenderer } from '@tiptap/react'
 import { Placeholder } from '@tiptap/extensions'
 import { CodeBlockView } from './CodeBlockView'
 import { ImageAwareLink, LocalImage } from './localImage'
+import { MarkdownLinkOpen } from './linkOpen'
 import { BlockDragHandle } from './blockDragHandle'
 import { BlockKeymap } from './blockKeymap'
 import { AiHighlight } from './aiHighlight'
@@ -130,8 +131,10 @@ export function buildExtensions(options: BuildExtensionsOptions): AnyExtension[]
     // and in the file, and only the model-facing view replaces them
     Redaction,
     LocalImage,
-    // links open externally via main-process guard
+    // links open externally via the main-process window-open guard, on
+    // Cmd/Ctrl+click while editing and a plain click in the read-only show
     ImageAwareLink.configure({ openOnClick: false }),
+    MarkdownLinkOpen,
     WikiLink,
     WikiLinkResolve.configure(options.wikiLink ?? {}),
     BlockDragHandle,

@@ -15,6 +15,7 @@ export const zh = {
   cvTargetNone: '尚未选择',
   cvTargetChoose: '选择…',
   cvCover: '将第一页用作封面',
+  cvPageBreaks: '每个原始页面从新屏幕开始',
   cvBookTitle: '书名',
   cvBookAuthor: '作者',
   cvBookLanguage: '语言',

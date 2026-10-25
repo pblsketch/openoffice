@@ -16,6 +16,7 @@ export const nl = {
   cvTargetNone: 'Nog niet gekozen',
   cvTargetChoose: 'Kiezen…',
   cvCover: 'Eerste pagina als omslag gebruiken',
+  cvPageBreaks: 'Elke originele pagina op een nieuw scherm beginnen',
   cvBookTitle: 'Titel',
   cvBookAuthor: 'Auteur',
   cvBookLanguage: 'Taal',

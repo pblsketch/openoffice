@@ -16,6 +16,7 @@ export const ar = {
   cvTargetNone: 'لم يُختر بعد',
   cvTargetChoose: 'اختيار…',
   cvCover: 'استخدام الصفحة الأولى غلافًا',
+  cvPageBreaks: 'بدء كل صفحة أصلية على شاشة جديدة',
   cvBookTitle: 'العنوان',
   cvBookAuthor: 'المؤلف',
   cvBookLanguage: 'اللغة',

@@ -379,6 +379,7 @@ html[data-doc-theme='light'] .doc-page {
 
 .doc-editor a {
   color: var(--md-link);
+  cursor: pointer;
 }
 
 /* Obsidian-style [[wiki links]]. A resolved one reads as an ordinary link; an

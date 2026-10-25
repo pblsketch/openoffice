@@ -16,6 +16,7 @@ export const vi = {
   cvTargetNone: 'Chưa chọn',
   cvTargetChoose: 'Chọn…',
   cvCover: 'Dùng trang đầu tiên làm bìa',
+  cvPageBreaks: 'Bắt đầu mỗi trang gốc trên một màn hình mới',
   cvBookTitle: 'Tiêu đề',
   cvBookAuthor: 'Tác giả',
   cvBookLanguage: 'Ngôn ngữ',

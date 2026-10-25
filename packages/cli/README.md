@@ -62,7 +62,7 @@ ieumoffice merge invoice-template.docx --data values.json --out invoice.docx [--
 ieumoffice pdf read scan.pdf [--page 3 | --range 1-5] [--full] --json     # text layer page by page (pages 1-20 by default, 4000 characters each) with page sizes and metadata; headless pdfium, no app process
 ieumoffice pdf read book.pdf --structured --range 1-5 --json   # same shape, each page's text from the document tree: headings, lists, tables, captions, footnotes (detail.structured: true)
 ieumoffice convert book.pdf --to md [--pages 1-5,8]            # reflowed Markdown, pictures in assets/ beside it
-ieumoffice convert book.pdf --to epub --title "Field Notes" [--no-cover]   # EPUB 3; title and author from the PDF unless given
+ieumoffice convert book.pdf --to epub --title "Field Notes" [--no-cover] [--page-breaks]   # EPUB 3; title and author from the PDF unless given; --page-breaks starts each original page on a new screen
 ieumoffice pdf images book.pdf --out pictures/ [--pages 2-4] --json   # the pictures on the pages as <name>-p<page>-<n>.png (detail.images[]: page, file, width, height)
 ieumoffice pdf ai-read scan.pdf --pages 1-3 --json             # estimate only: detail.estimate { calls, pages, provider, route, metered }; nothing is sent
 ieumoffice pdf ai-read scan.pdf --pages 1-3 --yes [--allow-paid] --json   # send the page images, one request per page; --allow-paid when the route bills per request

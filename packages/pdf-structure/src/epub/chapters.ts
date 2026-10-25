@@ -38,6 +38,32 @@ export function splitLevel(blocks: readonly TreeBlock[]): 1 | 2 | undefined {
   return has2 ? 2 : undefined
 }
 
+/**
+ * One XHTML file per original page (the "start each page on a new screen"
+ * option). A page marker opens the next file; markers before any content of
+ * the chapter (the carry in splitChapters) stay with the chapter's first
+ * page, and consecutive markers (an empty page) merge into the next page.
+ */
+export function splitPages(chapters: readonly Chapter[]): Chapter[] {
+  const out: Chapter[] = []
+  for (const ch of chapters) {
+    let current: Chapter = {
+      ...(ch.heading ? { heading: ch.heading } : {}),
+      blocks: [],
+    }
+    for (const b of ch.blocks) {
+      if (b.kind === 'pageBreak' && current.blocks.some((x) => x.kind !== 'pageBreak')) {
+        out.push(current)
+        current = { blocks: [b] }
+      } else {
+        current.blocks.push(b)
+      }
+    }
+    out.push(current)
+  }
+  return out
+}
+
 export function splitChapters(blocks: readonly TreeBlock[]): Chapter[] {
   const level = splitLevel(blocks)
   const chapters: Chapter[] = []

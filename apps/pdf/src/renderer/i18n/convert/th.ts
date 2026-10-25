@@ -16,6 +16,7 @@ export const th = {
   cvTargetNone: 'ยังไม่ได้เลือก',
   cvTargetChoose: 'เลือก…',
   cvCover: 'ใช้หน้าแรกเป็นปก',
+  cvPageBreaks: 'เริ่มแต่ละหน้าต้นฉบับบนหน้าจอใหม่',
   cvBookTitle: 'ชื่อเรื่อง',
   cvBookAuthor: 'ผู้แต่ง',
   cvBookLanguage: 'ภาษา',

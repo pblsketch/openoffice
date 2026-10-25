@@ -4,6 +4,7 @@
  */
 import type { Line, Span } from '../../../pdf2docx/src/ir'
 import { isNoSpaceScript } from '../../../pdf2docx/src/script'
+import { continuesWithParticle } from './korean'
 import type { InlineRun, TextRun } from './types'
 
 /** trailing hyphen glyphs (ASCII, soft hyphen, U+2010) */
@@ -103,6 +104,15 @@ export function linesToRuns(
         if (last) last.text = last.text.replace(/\s+$/, '').replace(TRAILING_HYPHEN, '')
       } else if (seam && last && TRAILING_HYPHEN.test(last.text.trimEnd())) {
         last.text = last.text.trimEnd()
+      } else if (
+        last &&
+        prevTail &&
+        nextHead &&
+        !/\s$/.test(last.text) &&
+        continuesWithParticle(last.text, lineText(line))
+      ) {
+        // Korean particles are suffixes: a line that opens with one continues
+        // the word above ("별도" + "의" is 별도의), so no space belongs here
       } else if (
         last &&
         prevTail &&

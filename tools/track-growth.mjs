@@ -1,7 +1,11 @@
 /**
- * Collect today's growth snapshot from the GitHub API and append it to
- * docs/tracking/growth-history.json. Unauthenticated API access is enough at
- * this scale (60 requests/hour; this makes two).
+ * Collect the current growth snapshot from the GitHub API and write it to
+ * docs/tracking/growth-history.json (one entry per day; a same-date run replaces
+ * that day's entry) and to the summary the README badge reads.
+ *
+ * The workflow runs hourly so the badge follows the live numbers the site reads.
+ * Unauthenticated access would be 60 requests/hour per IP, too close for hourly
+ * runs on shared runner IPs, so the workflow passes its GITHUB_TOKEN.
  *
  * Usage: node tools/track-growth.mjs
  */
@@ -21,7 +25,20 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const HISTORY_PATH = join(ROOT, GROWTH_HISTORY_FILE)
 const LATEST_PATH = join(ROOT, GROWTH_LATEST_FILE)
 
-const api = (path) => fetch(`https://api.github.com${path}`).then((r) => r.json())
+const TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || ''
+
+const api = async (path) => {
+  const response = await fetch(`https://api.github.com${path}`, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      ...(TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {}),
+    },
+  })
+  if (!response.ok) {
+    throw new Error(`GitHub API ${path} failed: ${response.status} ${await response.text()}`)
+  }
+  return response.json()
+}
 
 function localDate() {
   // Name the snapshot by the local calendar day so the daily workflow and a

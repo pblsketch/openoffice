@@ -16,6 +16,7 @@ export const ja = {
   cvTargetNone: 'まだ選んでいません',
   cvTargetChoose: '選択…',
   cvCover: '最初のページを表紙にする',
+  cvPageBreaks: '元のページごとに新しい画面から始める',
   cvBookTitle: 'タイトル',
   cvBookAuthor: '著者',
   cvBookLanguage: '言語',

@@ -1,14 +1,18 @@
 name: Growth
 
-# Daily growth snapshot from public GitHub signals (release downloads, stars,
-# forks), appended to a tracked JSON history. No repository secrets and no
-# in-app telemetry; read-only access is enough. Runs on the default branch so
-# the commit lands where the daily branch-off starts from.
+# Growth snapshot from public GitHub signals (release downloads, stars, forks),
+# written to the summary the README badge reads and to a tracked JSON history.
+# No repository secrets and no in-app telemetry; the automatic GITHUB_TOKEN only
+# lifts the unauthenticated rate limit. Runs on the default branch so the commit
+# lands where the daily branch-off starts from.
+#
+# Hourly so the badge tracks the live numbers the site reads from the API; the
+# history keeps one entry per day because mergeSnapshot replaces the same date.
 
 on:
   schedule:
-    # 00:00 UTC daily; a minute offset avoids the top-of-hour cron crunch.
-    - cron: '17 0 * * *'
+    # Every hour; the offset avoids the top-of-hour cron crunch.
+    - cron: '17 * * * *'
   workflow_dispatch:
 
 concurrency:
@@ -38,6 +42,8 @@ jobs:
 
       - name: Record growth snapshot
         run: npm run growth
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Commit the updated history
         run: |
@@ -48,5 +54,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/tracking/growth-history.json docs/tracking/growth-latest.json
-          git commit -m "chore: record the $(date -u +%F) growth snapshot"
-          git push
+          git commit -m "chore: record the $(date -u +'%F %H:%M') growth snapshot"
+          # Hourly runs can race with a release or a manual push; rebase and retry.
+          for attempt in 1 2 3; do
+            if git pull --rebase --autostash origin main && git push; then
+              exit 0
+            fi
+            echo "Push failed (attempt $attempt); retrying after rebase."
+            sleep 5
+          done
+          echo "Could not push the growth snapshot." >&2
+          exit 1

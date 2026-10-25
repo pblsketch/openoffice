@@ -459,6 +459,68 @@ describe('navigation', () => {
   })
 })
 
+describe('page breaks', () => {
+  const pages = () =>
+    makeTree([
+      pageBreak(1),
+      para('one', 1),
+      pageBreak(2),
+      para('two', 2),
+      pageBreak(3),
+      para('three', 3),
+    ])
+
+  it('keeps the default: one file, pages flow together', async () => {
+    const book = await build(pages())
+    expect(book.chapters).toHaveLength(1)
+  })
+
+  it('writes one XHTML file per original page and points the page-list into it', async () => {
+    const book = await build(pages(), { pageBreaks: true })
+    expect(book.chapters).toHaveLength(3)
+    expect(book.chapters.map((c) => textOf(bodyOf(c.doc)).trim())).toEqual(['one', 'two', 'three'])
+    const pageList = all(book.nav, 'nav').find((n) => epubType(n).includes('page-list'))!
+    const links = all(pageList, 'a')
+    expect(links.map(textOf)).toEqual(['1', '2', '3'])
+    links.forEach((a, i) => {
+      const { path, el } = follow(book, book.navPath, a.attrs.href!)
+      expect(path).toBe(book.chapters[i]!.path)
+      expect(epubType(el!)).toContain('pagebreak')
+    })
+  })
+
+  it('splits a chapter at page boundaries and keeps its heading on the first page', async () => {
+    const book = await build(
+      makeTree([
+        pageBreak(1),
+        heading(1, 'Chapter', 1),
+        para('first', 1),
+        pageBreak(2),
+        para('second', 2),
+      ]),
+      { pageBreaks: true },
+    )
+    expect(book.chapters).toHaveLength(2)
+    expect(textOf(book.chapters[0]!.doc)).toContain('Chapter')
+    expect(textOf(book.chapters[0]!.doc)).toContain('first')
+    expect(textOf(book.chapters[1]!.doc)).toContain('second')
+    expect(textOf(book.chapters[1]!.doc)).not.toContain('Chapter')
+    const toc = all(book.nav, 'nav').find((n) => epubType(n).includes('toc'))!
+    const link = all(toc, 'a').find((a) => textOf(a) === 'Chapter')!
+    expect(follow(book, book.navPath, link.attrs.href!).path).toBe(book.chapters[0]!.path)
+  })
+
+  it('merges consecutive markers (an empty page) into the next page', async () => {
+    const book = await build(
+      makeTree([pageBreak(1), para('first', 1), pageBreak(2), pageBreak(3), para('third', 3)]),
+      { pageBreaks: true },
+    )
+    expect(book.chapters).toHaveLength(2)
+    expect(byId(book.chapters[1]!.doc, 'page-2')).toBeDefined()
+    expect(byId(book.chapters[1]!.doc, 'page-3')).toBeDefined()
+  })
+})
+
 describe('footnotes', () => {
   const notes: FootnoteDef[] = [
     {

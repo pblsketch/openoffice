@@ -16,6 +16,7 @@ export const pt = {
   cvTargetNone: 'Ainda não escolhido',
   cvTargetChoose: 'Escolher…',
   cvCover: 'Usar a primeira página como capa',
+  cvPageBreaks: 'Começar cada página original num novo ecrã',
   cvBookTitle: 'Título',
   cvBookAuthor: 'Autor',
   cvBookLanguage: 'Idioma',

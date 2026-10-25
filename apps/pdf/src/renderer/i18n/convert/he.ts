@@ -16,6 +16,7 @@ export const he = {
   cvTargetNone: 'עדיין לא נבחר',
   cvTargetChoose: 'בחירה…',
   cvCover: 'שימוש בעמוד הראשון כעטיפה',
+  cvPageBreaks: 'להתחיל כל עמוד מקורי במסך חדש',
   cvBookTitle: 'כותרת',
   cvBookAuthor: 'מחבר',
   cvBookLanguage: 'שפה',

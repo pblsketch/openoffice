@@ -16,6 +16,7 @@ export const ko = {
   cvTargetNone: '아직 고르지 않았습니다',
   cvTargetChoose: '고르기…',
   cvCover: '첫 페이지를 표지로 쓰기',
+  cvPageBreaks: '원본 쪽마다 새 화면에서 시작',
   cvBookTitle: '제목',
   cvBookAuthor: '저자',
   cvBookLanguage: '언어',

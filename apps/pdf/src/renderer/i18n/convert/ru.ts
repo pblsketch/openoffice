@@ -16,6 +16,7 @@ export const ru = {
   cvTargetNone: 'Ещё не выбрано',
   cvTargetChoose: 'Выбрать…',
   cvCover: 'Использовать первую страницу как обложку',
+  cvPageBreaks: 'Начинать каждую исходную страницу с нового экрана',
   cvBookTitle: 'Название',
   cvBookAuthor: 'Автор',
   cvBookLanguage: 'Язык',

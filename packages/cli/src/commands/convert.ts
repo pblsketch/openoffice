@@ -94,7 +94,7 @@ export const convertCommand: CommandDef = {
   name: 'convert',
   summary: 'Convert a document to another format using the GenOffice engines.',
   usage:
-    'convert <file> --to <format> [--out <path>] [--force] [--password <pw>] [--sheet <name>] [--pages <list>] [--title <text>] [--author <text>] [--no-cover]',
+    'convert <file> --to <format> [--out <path>] [--force] [--password <pw>] [--sheet <name>] [--pages <list>] [--title <text>] [--author <text>] [--no-cover] [--page-breaks]',
   options: [
     { name: 'to', value: 'format', description: 'target format: ' + describeRoutes() },
     { name: 'out', value: 'path', description: 'output file (default: same name, new extension)' },
@@ -121,6 +121,10 @@ export const convertCommand: CommandDef = {
       description: 'pdf→epub: author (default: from the PDF)',
     },
     { name: 'no-cover', description: 'pdf→epub: no cover page' },
+    {
+      name: 'page-breaks',
+      description: 'pdf→epub: start each original page on a new screen',
+    },
   ],
   async run(args, ctx) {
     const input = resolveInput(args.positionals[0], ctx)
@@ -261,6 +265,7 @@ const ROUTE_OPTIONS: [string, (from: string, to: string) => boolean, string][] =
   ['title', (from, to) => from === 'pdf' && to === 'epub', 'pdf→epub'],
   ['author', (from, to) => from === 'pdf' && to === 'epub', 'pdf→epub'],
   ['no-cover', (from, to) => from === 'pdf' && to === 'epub', 'pdf→epub'],
+  ['page-breaks', (from, to) => from === 'pdf' && to === 'epub', 'pdf→epub'],
 ]
 
 function assertRouteOptions(args: ParsedArgs, from: string, to: string): void {
@@ -382,8 +387,22 @@ async function pdfReflow(
   const title = flagString(args, 'title') || tree.info.title || basename(input, extname(input))
   const author = flagString(args, 'author') ?? tree.info.author
   const cover = !flagBool(args, 'no-cover')
-  await writeEpubFile(source, tree, output, { title, ...(author ? { author } : {}), cover })
-  return { detail: { ...common, title, ...(author ? { author } : {}), cover } }
+  const pageBreaks = flagBool(args, 'page-breaks')
+  await writeEpubFile(source, tree, output, {
+    title,
+    ...(author ? { author } : {}),
+    cover,
+    ...(pageBreaks ? { pageBreaks: true } : {}),
+  })
+  return {
+    detail: {
+      ...common,
+      title,
+      ...(author ? { author } : {}),
+      cover,
+      ...(pageBreaks ? { page_breaks: true } : {}),
+    },
+  }
 }
 
 function describeRoutes(): string {

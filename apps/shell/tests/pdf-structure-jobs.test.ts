@@ -252,6 +252,25 @@ describe('EPUB, images and placeholders', () => {
     expect(out.subarray(30, 38).toString('latin1')).toBe('mimetype')
     // the cover is on by default
     expect(out.includes(Buffer.from('cover'))).toBe(true)
+    // pages flow together: the two-page PDF is one chapter file
+    expect(out.includes(Buffer.from('chapter-002.xhtml'))).toBe(false)
+  })
+
+  it('writes one XHTML file per page when pageBreaks is on', async () => {
+    const outPath = join(dir, 'pages.epub')
+    await runStructureJob(
+      {
+        op: 'epub',
+        source: source(),
+        outPath,
+        epub: { title: 'Synthetic Book', cover: false, pageBreaks: true },
+      },
+      deps,
+      noProgress,
+    )
+    const out = readFileSync(outPath)
+    expect(out.includes(Buffer.from('chapter-001.xhtml'))).toBe(true)
+    expect(out.includes(Buffer.from('chapter-002.xhtml'))).toBe(true)
   })
 
   it('extracts embedded images without overwriting earlier files', async () => {

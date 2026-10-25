@@ -16,6 +16,7 @@ export const de = {
   cvTargetNone: 'Noch nicht gewählt',
   cvTargetChoose: 'Wählen…',
   cvCover: 'Erste Seite als Titelbild verwenden',
+  cvPageBreaks: 'Jede Originalseite auf einem neuen Bildschirm beginnen',
   cvBookTitle: 'Titel',
   cvBookAuthor: 'Autor',
   cvBookLanguage: 'Sprache',

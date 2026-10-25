@@ -198,6 +198,20 @@ describe('convert pdf to md and epub', () => {
     expect(opf2).not.toContain('cover-image')
   })
 
+  it('starts each original page on a new screen with --page-breaks', async () => {
+    const dir = tempDir()
+    const pdf = await illustratedPdf(join(dir, 'notes.pdf'))
+    const out = join(dir, 'pages.epub')
+    const r = await run(['convert', pdf, '--to', 'epub', '--out', out, '--page-breaks', '--json'], {
+      env: env(dir),
+    })
+    expect(r.code).toBe(0)
+    expect(r.json().detail.page_breaks).toBe(true)
+    const zip = await JSZip.loadAsync(readFileSync(out))
+    const chapters = Object.keys(zip.files).filter((n) => /chapter-\d+\.xhtml$/.test(n))
+    expect(chapters).toHaveLength(2)
+  })
+
   it('refuses the reflow options on other routes', async () => {
     const dir = tempDir()
     const pdf = writeMinimalPdf(join(dir, 'a.pdf'))
@@ -211,6 +225,11 @@ describe('convert pdf to md and epub', () => {
     })
     expect(t.code).toBe(1)
     expect(t.json().message).toContain('pdf→epub')
+    const b = await run(['convert', pdf, '--to', 'md', '--page-breaks', '--json'], {
+      env: env(dir),
+    })
+    expect(b.code).toBe(1)
+    expect(b.json().error).toBe('invalid_argument')
   })
 })
 

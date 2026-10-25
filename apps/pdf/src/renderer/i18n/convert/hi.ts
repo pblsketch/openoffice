@@ -16,6 +16,7 @@ export const hi = {
   cvTargetNone: 'अभी नहीं चुना गया',
   cvTargetChoose: 'चुनें…',
   cvCover: 'पहले पृष्ठ को आवरण के रूप में उपयोग करें',
+  cvPageBreaks: 'हर मूल पृष्ठ को नई स्क्रीन पर शुरू करें',
   cvBookTitle: 'शीर्षक',
   cvBookAuthor: 'लेखक',
   cvBookLanguage: 'भाषा',

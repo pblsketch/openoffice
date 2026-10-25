@@ -16,6 +16,7 @@ export const id = {
   cvTargetNone: 'Belum dipilih',
   cvTargetChoose: 'Pilih…',
   cvCover: 'Gunakan halaman pertama sebagai sampul',
+  cvPageBreaks: 'Mulai setiap halaman asli di layar baru',
   cvBookTitle: 'Judul',
   cvBookAuthor: 'Penulis',
   cvBookLanguage: 'Bahasa',
