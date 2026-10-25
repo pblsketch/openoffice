@@ -429,13 +429,15 @@ describe('rhwp Hangul-key patches', () => {
       `import { hancomCommands, installHancomMainKeys, installHancomMenuItems } from '${HANCOM_KEYS_MODULE}';`,
     )
     // the studio parts the new commands build on are handed over; the module imports none
-    expect(patched).toContain("import { InsertTextCommand } from '@/engine/command';")
+    expect(patched).toContain(
+      "import { InsertTextCommand, InsertTabCommand } from '@/engine/command';",
+    )
     expect(patched).toContain("import { ModalDialog } from '@/ui/dialog';")
     expect(patched).toContain("import { FindDialog, navigateToSearchHit } from '@/ui/find-dialog';")
     expect(patched).toContain("import { CellBorderBgDialog } from '@/ui/cell-border-bg-dialog';")
     expect(patched).toContain("import { showToast } from '@/ui/toast';")
     expect(patched).toContain(
-      '  InsertTextCommand, ModalDialog, FindDialog, navigateToSearchHit,\n' +
+      '  InsertTextCommand, InsertTabCommand, ModalDialog, FindDialog, navigateToSearchHit,\n' +
         '  CellBorderBgDialog, showToast,\n}));',
     )
     expect(patched.indexOf('registry.registerAll(hancomCommands(getLocale(), {')).toBeGreaterThan(
@@ -526,7 +528,7 @@ describe('rhwp Hangul-key patches', () => {
     ].join('\n')
     const patched = applyPatch('studio-hancom-chords', source)
     expect(patched).toContain(
-      `import { hancomCellBlockKey, hancomChordKey, hancomChordStart, hancomContextKey, hancomCtrlKey, hancomTableObjectKey } from '${HANCOM_KEYS_MODULE}';`,
+      `import { hancomCellBlockKey, hancomCellKey, hancomChordKey, hancomChordStart, hancomContextKey, hancomCtrlKey, hancomTableObjectKey } from '${HANCOM_KEYS_MODULE}';`,
     )
     // the second key is looked at before anything else the handler does
     expect(patched).toContain(
@@ -536,6 +538,7 @@ describe('rhwp Hangul-key patches', () => {
     expect(patched).toContain(
       '  if (hancomTableObjectKey(this, e)) return;\n' +
         '  if (hancomCellBlockKey(this, e)) return;\n' +
+        '  if (hancomCellKey(this, e)) return;\n' +
         '  if (this.connectorDrawingMode) {',
     )
     // the studio no longer starts its own Ctrl+M on the IME path

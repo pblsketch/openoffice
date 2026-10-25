@@ -1,5 +1,5 @@
 /**
- * HWP tables with Hancom Hangul's keys (docs/plans/hwp-table-parity.md, Phase 1A).
+ * HWP tables with Hancom Hangul's keys (docs/plans/hwp-table-parity.md, Phase 1A and 1B).
  *
  * Runs against the production build: the studio's own automation surface and the app's
  * `ieum-agent` plugin are used, never the DEV-only `window.__wasm`.
@@ -27,6 +27,13 @@ interface Geometry {
   dims: { rowCount: number; colCount: number; cellCount: number }
   cells: { row: number; col: number; width: number; height: number }[]
   bboxes: { cellIdx: number; row: number; col: number; w: number; h: number }[]
+  block: boolean
+  object: boolean
+  phase: number
+  range: { startRow: number; startCol: number; endRow: number; endCol: number } | null
+  cell: { row: number; col: number } | null
+  wrap: string
+  texts: string[]
 }
 
 const STUDIO_IFRAME = '.hwp-editor-host iframe'
@@ -99,6 +106,7 @@ async function installGeometryProbe(frame: Frame): Promise<void> {
         const ci = ref?.ci ?? pos.controlIndex
         const dims = services.wasm.getTableDimensions(sec, ppi, ci)
         const cells = []
+        const texts = []
         for (let i = 0; i < dims.cellCount; i += 1) {
           const info = services.wasm.getCellInfo(sec, ppi, ci, i)
           const props = services.wasm.getCellProperties(sec, ppi, ci, i)
@@ -108,11 +116,31 @@ async function installGeometryProbe(frame: Frame): Promise<void> {
             width: props.width,
             height: props.height,
           })
+          const paragraphs = []
+          const count = services.wasm.getCellParagraphCount(sec, ppi, ci, i)
+          for (let p = 0; p < count; p += 1) {
+            const length = services.wasm.getCellParagraphLength(sec, ppi, ci, i, p)
+            paragraphs.push(services.wasm.getTextInCell(sec, ppi, ci, i, p, 0, length))
+          }
+          texts.push(paragraphs.join('\n'))
         }
         ;(window as unknown as { __e2eTable?: unknown }).__e2eTable = {
           dims,
           cells,
           bboxes: services.wasm.getTableCellBboxes(sec, ppi, ci),
+          block: ih.cursor.isInCellSelectionMode?.() === true,
+          object: ih.cursor.isInTableObjectSelection?.() === true,
+          phase: ih.cursor.getCellSelectionPhase?.() ?? 0,
+          range: ih.cursor.getSelectedCellRange?.() ?? null,
+          cell:
+            pos.cellIndex === undefined
+              ? null
+              : (() => {
+                  const info = services.wasm.getCellInfo(sec, ppi, ci, pos.cellIndex)
+                  return { row: info.row, col: info.col }
+                })(),
+          wrap: services.wasm.getTableProperties(sec, ppi, ci).textWrap,
+          texts,
         }
       },
     })
@@ -159,6 +187,42 @@ async function geometry(frame: Frame): Promise<Geometry> {
   return frame.evaluate(
     () => (window as unknown as { __e2eTable: Geometry }).__e2eTable,
   ) as Promise<Geometry>
+}
+
+/** A real OS-style key on the HWP page, so the main process sees it (Playwright keys do not). */
+async function sendKey(
+  app: ElectronApplication,
+  keyCode: string,
+  modifiers: string[] = [],
+): Promise<void> {
+  await app.evaluate(
+    ({ webContents }, [key, mods]) => {
+      const wc = webContents.getAllWebContents().find((w) => w.getURL().includes('://hwp/'))
+      if (!wc) throw new Error('no hwp webContents')
+      wc.sendInputEvent({ type: 'keyDown', keyCode: key, modifiers: mods })
+      wc.sendInputEvent({ type: 'keyUp', keyCode: key, modifiers: mods })
+    },
+    [keyCode, modifiers],
+  )
+}
+
+async function clipboardText(app: ElectronApplication): Promise<string> {
+  return app.evaluate(({ clipboard }) => clipboard.readText())
+}
+
+async function inTable(frame: Frame): Promise<boolean> {
+  return frame.evaluate(() => {
+    const studio = (window as unknown as { rhwpStudio: StudioLike }).rhwpStudio
+    return studio.automation.getContext().inTable
+  })
+}
+
+/** Put keyboard focus back on the editor's hidden input without moving the caret. */
+async function focusInput(frame: Frame): Promise<void> {
+  await frame.evaluate(() => {
+    const input = document.querySelector('textarea') as HTMLTextAreaElement | null
+    input?.focus()
+  })
 }
 
 async function widenFirstColumn(frame: Frame): Promise<void> {
@@ -218,6 +282,7 @@ interface StudioLike {
   automation: {
     execute(id: string): unknown
     getContext(): {
+      inTable: boolean
       inTableObjectSelection: boolean
       inCellSelectionMode: boolean
       hasMultiCellSelection: boolean
@@ -254,6 +319,18 @@ interface StudioServices {
       ppi: number,
       ci: number,
     ): { cellIdx: number; row: number; col: number; w: number; h: number }[]
+    getCellParagraphCount(sec: number, ppi: number, ci: number, cell: number): number
+    getCellParagraphLength(sec: number, ppi: number, ci: number, cell: number, para: number): number
+    getTextInCell(
+      sec: number,
+      ppi: number,
+      ci: number,
+      cell: number,
+      para: number,
+      start: number,
+      end: number,
+    ): string
+    getTableProperties(sec: number, ppi: number, ci: number): { textWrap: string }
   }
   getInputHandler(): {
     getSelectedTableRef(): { sec: number; ppi: number; ci: number } | null
@@ -261,6 +338,18 @@ interface StudioServices {
       sectionIndex: number
       parentParaIndex?: number
       controlIndex?: number
+      cellIndex?: number
+    }
+    cursor: {
+      isInCellSelectionMode(): boolean
+      isInTableObjectSelection(): boolean
+      getCellSelectionPhase(): number
+      getSelectedCellRange(): {
+        startRow: number
+        startCol: number
+        endRow: number
+        endCol: number
+      } | null
     }
     executeOperation(desc: {
       kind: 'snapshot'
@@ -460,6 +549,206 @@ test.describe('HWP table keys', () => {
       await expect.poll(async () => (await listTables(frame)).count).toBe(0)
     } finally {
       await closeAndSaveVideo(launched, 'hwp-table-object')
+    }
+  })
+
+  test('Phase 1B cell keys: F7/F8, Alt+arrow, Ctrl+Tab, block copy and Shift+Esc', async () => {
+    const launched = await launchShell({
+      onboardingSeen: true,
+      videoDir: 'hwp-table-1b-cells',
+    })
+    const { app, page } = launched
+    try {
+      const hwp = await openHwp(app, page)
+      const frame = await studioFrame(hwp)
+      await focusEditor(hwp)
+
+      await insertTable(frame, 3, 3)
+      await expect.poll(async () => (await listTables(frame)).count).toBe(1)
+      await installGeometryProbe(frame)
+
+      // X1 in A1, X2 in A2, X3 in A3
+      await hwp.keyboard.type('X1')
+      for (let i = 0; i < 3; i += 1) await hwp.keyboard.press('Tab')
+      await hwp.keyboard.type('X2')
+      for (let i = 0; i < 3; i += 1) await hwp.keyboard.press('Tab')
+      await hwp.keyboard.type('X3')
+      expect((await geometry(frame)).texts.filter((text) => text !== '')).toEqual([
+        'X1',
+        'X2',
+        'X3',
+      ])
+
+      // F7: the column of the current cell
+      await hwp.keyboard.press('F7')
+      let state = await geometry(frame)
+      expect(state.block).toBe(true)
+      expect(state.range).toEqual({ startRow: 0, startCol: 0, endRow: 2, endCol: 0 })
+
+      // Alt+arrow in the block: the column grows, its neighbor shrinks, table keeps its size
+      const beforeResize = state
+      await hwp.keyboard.press('Alt+ArrowRight')
+      await expect
+        .poll(async () => (await geometry(frame)).bboxes[0].w)
+        .toBeGreaterThan(beforeResize.bboxes[0].w + 2)
+      const afterResize = await geometry(frame)
+      expect(afterResize.bboxes[1].w).toBeLessThan(beforeResize.bboxes[1].w - 2)
+      expect(Math.round(afterResize.bboxes[0].w + afterResize.bboxes[1].w)).toBe(
+        Math.round(beforeResize.bboxes[0].w + beforeResize.bboxes[1].w),
+      )
+
+      // F8: the whole row of the current cell
+      await hwp.keyboard.press('F8')
+      state = await geometry(frame)
+      expect(state.range?.startRow).toBe(state.range?.endRow)
+      expect(state.range).toMatchObject({ startCol: 0, endCol: 2 })
+      // back to the column block for the copy tests
+      await hwp.keyboard.press('F7')
+
+      // Ctrl+C copies the cells as tab-separated rows
+      await focusInput(frame)
+      await sendKey(app, 'C', ['control'])
+      await expect
+        .poll(async () => (await clipboardText(app)).replace(/\r\n/g, '\n'))
+        .toBe('X1\nX2\nX3')
+
+      // Ctrl+E empties the block, one undo step puts it back
+      await focusInput(frame)
+      await sendKey(app, 'E', ['control'])
+      await expect
+        .poll(async () => (await geometry(frame)).texts.every((text) => text === ''))
+        .toBe(true)
+      await hwp.keyboard.press('Control+z')
+      await expect.poll(async () => (await geometry(frame)).texts[0]).toBe('X1')
+
+      // Ctrl+X copies and empties, one undo step puts it back
+      await focusInput(frame)
+      await sendKey(app, 'X', ['control'])
+      await expect
+        .poll(async () => (await geometry(frame)).texts.every((text) => text === ''))
+        .toBe(true)
+      await hwp.keyboard.press('Control+z')
+      await expect.poll(async () => (await geometry(frame)).texts[6]).toBe('X3')
+
+      // Alt+arrow outside a block moves one cell
+      await focusInput(frame)
+      await sendKey(app, 'Escape')
+      await hwp.keyboard.press('Alt+ArrowUp')
+      await expect.poll(async () => (await geometry(frame)).cell).toEqual({ row: 1, col: 0 })
+
+      // Ctrl+Tab inserts a tab character in the cell
+      await focusInput(frame)
+      await sendKey(app, 'Tab', ['control'])
+      await expect.poll(async () => (await geometry(frame)).texts[3]).toContain('\t')
+
+      // Shift+Esc leaves the table
+      await hwp.keyboard.press('Shift+Escape')
+      await expect.poll(() => inTable(frame)).toBe(false)
+      await screenshot(hwp, '05-cell-keys')
+    } finally {
+      await closeAndSaveVideo(launched, 'hwp-table-1b-cells')
+    }
+  })
+
+  test('Phase 1B table object: F5 goes to the first cell', async () => {
+    const launched = await launchShell({
+      onboardingSeen: true,
+      videoDir: 'hwp-table-1b-object',
+    })
+    const { app, page } = launched
+    try {
+      const hwp = await openHwp(app, page)
+      const frame = await studioFrame(hwp)
+      await focusEditor(hwp)
+
+      await insertTable(frame, 3, 2)
+      await expect.poll(async () => (await listTables(frame)).count).toBe(1)
+      await installGeometryProbe(frame)
+      await hwp.keyboard.type('A1')
+      await hwp.keyboard.press('Tab')
+      await hwp.keyboard.type('B1')
+
+      // Esc in a cell selects the table object
+      await focusInput(frame)
+      await sendKey(app, 'Escape')
+      await expect.poll(() => inTableObjectSelection(frame)).toBe(true)
+
+      // F5 goes to the first cell, in a cell block
+      await hwp.keyboard.press('F5')
+      const state = await geometry(frame)
+      expect(state.block).toBe(true)
+      expect(state.object).toBe(false)
+      expect(state.range).toEqual({ startRow: 0, startCol: 0, endRow: 0, endCol: 0 })
+    } finally {
+      await closeAndSaveVideo(launched, 'hwp-table-1b-object')
+    }
+  })
+
+  test('Phase 1B table object size, wrap and Shift+F5', async () => {
+    const launched = await launchShell({
+      onboardingSeen: true,
+      videoDir: 'hwp-table-1b-object-size',
+    })
+    const { app, page } = launched
+    try {
+      const hwp = await openHwp(app, page)
+      const frame = await studioFrame(hwp)
+      await focusEditor(hwp)
+
+      await insertTable(frame, 3, 2)
+      await expect.poll(async () => (await listTables(frame)).count).toBe(1)
+      await installGeometryProbe(frame)
+      await hwp.keyboard.type('A1')
+      await hwp.keyboard.press('Tab')
+      await hwp.keyboard.type('B1')
+
+      // Esc in a cell selects the table object
+      await focusInput(frame)
+      await sendKey(app, 'Escape')
+      await expect.poll(() => inTableObjectSelection(frame)).toBe(true)
+
+      // Shift+arrow grows the table
+      const beforeGrow = await geometry(frame)
+      await hwp.keyboard.press('Shift+ArrowRight')
+      await expect
+        .poll(async () => (await geometry(frame)).bboxes[0].w)
+        .toBeGreaterThan(beforeGrow.bboxes[0].w + 2)
+      await expect.poll(() => inTableObjectSelection(frame)).toBe(true)
+
+      // Shift+Home/End set the table in front of / behind the text
+      await hwp.keyboard.press('Shift+Home')
+      await expect.poll(async () => (await geometry(frame)).wrap).toBe('InFrontOfText')
+      await hwp.keyboard.press('Shift+End')
+      await expect.poll(async () => (await geometry(frame)).wrap).toBe('BehindText')
+
+      // Shift+PageUp/Down are sent; a lone table has no other object to trade order with
+      await hwp.keyboard.press('Shift+PageUp')
+      await hwp.keyboard.press('Shift+PageDown')
+      expect((await listTables(frame)).count).toBe(1)
+
+      // Shift+F5 in a cell opens a block ready to grow
+      await focusInput(frame)
+      await sendKey(app, 'Escape')
+      await expect.poll(() => inTable(frame)).toBe(false)
+      const canvas = hwp.frameLocator(STUDIO_IFRAME).locator('#scroll-content canvas').first()
+      const box = (await canvas.boundingBox())!
+      for (let i = 0; i < 3; i += 1) {
+        await hwp.mouse.click(box.x + 160, box.y + 145)
+        await hwp.waitForTimeout(200)
+        if (!(await geometry(frame)).object) break
+        await focusInput(frame)
+        await sendKey(app, 'Escape')
+        await hwp.waitForTimeout(200)
+      }
+      await focusInput(frame)
+      await sendKey(app, 'F5', ['shift'])
+      await expect.poll(async () => (await geometry(frame)).block).toBe(true)
+      const state = await geometry(frame)
+      expect(state.phase).toBe(2)
+      expect(state.range?.startRow).toBe(state.range?.endRow)
+      await screenshot(hwp, '06-object-keys')
+    } finally {
+      await closeAndSaveVideo(launched, 'hwp-table-1b-object-size')
     }
   })
 })

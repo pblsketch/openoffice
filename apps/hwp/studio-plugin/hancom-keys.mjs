@@ -100,6 +100,12 @@ export const STYLE_KEYS = 10
  */
 let toastSink = null
 
+/** The studio's locale, so a message from a key handler speaks the same language. */
+let koreanUi = false
+
+/** The studio's tab command, for Ctrl+Tab in a cell (the main process takes that key first). */
+let insertTabCommand = null
+
 function tellUser(message) {
   try {
     toastSink?.({ message })
@@ -228,6 +234,51 @@ export const MAIN_PROCESS_KEYS = {
       : false,
   'ctrl-shift-h': (ih, dispatcher) =>
     dispatcher.isEnabled(EASY_FORMULAS.h.id) ? dispatcher.dispatch(EASY_FORMULAS.h.id) : false,
+  // Ctrl+Tab in a table cell is Hangul's tab character; the shell asks before switching tabs
+  'ctrl-tab': (ih) => {
+    const cursor = ih?.cursor
+    if (!cursor?.isInCell?.() || cursor.isInTextBox?.() || cursor.isInCellSelectionMode?.()) {
+      return false
+    }
+    if (ih.isFormMode?.() || !insertTabCommand) return false
+    ih.executeOperation({
+      kind: 'command',
+      command: new insertTabCommand(ih.getCursorPosition()),
+    })
+    return true
+  },
+  // Ctrl+E is taken by the main process before the page sees it. In a cell block it
+  // empties the cells, on a selected table it deletes the table, elsewhere it deletes
+  // the selection, as the studio's own command does.
+  'ctrl-e': (ih, dispatcher) => {
+    const cursor = ih?.cursor
+    if (cursor?.isInCellSelectionMode?.()) {
+      clearCellBlock(ih)
+      return true
+    }
+    if (cursor?.isInTableObjectSelection?.()) {
+      const done = dispatcher.isEnabled('table:delete')
+        ? dispatcher.dispatch('table:delete')
+        : false
+      if (done) {
+        cursor.exitTableObjectSelection?.()
+        ih.eventBus?.emit?.('table-object-selection-changed', false)
+      }
+      return done
+    }
+    // not ours: the main process sends the key on so the page keeps its own meaning
+    return false
+  },
+  'ctrl-c': (ih) => {
+    if (ih?.cursor?.isInCellSelectionMode?.() !== true) return false
+    copyCellBlock(ih, false)
+    return true
+  },
+  'ctrl-x': (ih) => {
+    if (ih?.cursor?.isInCellSelectionMode?.() !== true) return false
+    copyCellBlock(ih, true)
+    return true
+  },
 }
 
 /** Opens the window function the main process asks; see MAIN_PROCESS_KEYS. */
@@ -235,6 +286,15 @@ export function installHancomMainKeys(win, getInputHandler, dispatcher) {
   win.__ieumHancomKey = (name) => {
     const take = MAIN_PROCESS_KEYS[name]
     if (!take) return false
+    // clipboard keys and Ctrl+Tab belong to the page when focus is outside the editor
+    // (the AI panel, a dialog); only the focused editor frame may take them
+    if (
+      (name === 'ctrl-c' || name === 'ctrl-x' || name === 'ctrl-e' || name === 'ctrl-tab') &&
+      typeof win.document?.hasFocus === 'function' &&
+      !win.document.hasFocus()
+    ) {
+      return false
+    }
     try {
       return take(getInputHandler(), dispatcher) === true
     } catch {
@@ -400,14 +460,52 @@ const TABLE_OBJECT_KEYS = {
   c: 'ieum:table-border-background',
 }
 
+/** Arrow keys as the directions the table commands take. */
+const ARROWS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }
+
 export function hancomTableObjectKey(ih, e) {
   const cursor = ih?.cursor
   if (!cursor?.isInTableObjectSelection?.()) return false
-  if (e.altKey || e.shiftKey) return false
-  const letter = letterOf(e)
-  if (!letter) return false
   const dispatcher = ih.dispatcher
   if (!dispatcher) return false
+  // Hangul's first cell of the selected table: F5 opens a cell block there
+  if (e.key === 'F5' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault()
+    firstCellOfSelectedTable(ih)
+    return true
+  }
+  // Shift+arrow resizes the table, Shift+PageUp/Down changes its order, Shift+Home/End
+  // its text wrapping (Hancom's table-object shortcuts)
+  if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const direction = ARROWS[e.key]
+    if (direction) {
+      e.preventDefault()
+      if (dispatcher.isEnabled('ieum:table-resize')) {
+        dispatcher.dispatch('ieum:table-resize', { direction })
+      }
+      return true
+    }
+    const order = e.key === 'PageUp' ? 'front' : e.key === 'PageDown' ? 'back' : null
+    if (order) {
+      e.preventDefault()
+      if (dispatcher.isEnabled('ieum:table-order')) {
+        dispatcher.dispatch('ieum:table-order', { mode: order })
+      }
+      return true
+    }
+    const wrap = e.key === 'Home' ? 'front' : e.key === 'End' ? 'back' : null
+    if (wrap) {
+      e.preventDefault()
+      if (dispatcher.isEnabled('ieum:table-wrap')) {
+        dispatcher.dispatch('ieum:table-wrap', { mode: wrap })
+      }
+      return true
+    }
+    return false
+  }
+  if (e.altKey) return false
+  const letter = letterOf(e)
+  if (!letter) return false
   const withCtrl = e.ctrlKey || e.metaKey
   if (withCtrl) {
     if (letter !== 'e') return false
@@ -429,6 +527,220 @@ export function hancomTableObjectKey(ih, e) {
   return true
 }
 
+/**
+ * Hangul's F5 on a selected table: put the caret in the first cell and open a cell block
+ * there. Works for a table in a cell too, through the cursor's path-aware cell move.
+ */
+function firstCellOfSelectedTable(ih) {
+  const ref = ih?.getSelectedTableRef?.()
+  if (!ref) return false
+  const cursor = ih.cursor
+  cursor.exitTableObjectSelection?.()
+  try {
+    cursor.moveToCellByIndex?.(ref.sec, ref.ppi, ref.ci, ref.cellPath, 0, 'start')
+    if (!cursor.enterCellSelectionMode?.()) return false
+  } catch {
+    return false
+  }
+  ih.caret?.hide?.()
+  ih.updateCellSelection?.()
+  ih.eventBus?.emit?.('table-object-selection-changed', false)
+  return true
+}
+
+/** F7/F8: the whole column/row of the current cell (or of the block's focus cell). */
+function selectCellBand(ih, axis) {
+  const cursor = ih?.cursor
+  if (!cursor?.isInCell?.() || cursor.isInTextBox?.()) return false
+  if (!cursor.isInCellSelectionMode?.()) {
+    if (!cursor.enterCellSelectionMode?.()) return false
+  }
+  if (cursor.getCellSelectionPhase?.() === 1) cursor.advanceCellSelectionPhase?.()
+  const focus = cursor.getCellSelectionFocus?.()
+  const context = cursor.getCellTableContext?.()
+  if (!focus || !context) return false
+  // the caret stays in the cell the block started from; F7/F8 follow that cell
+  let origin = focus
+  const pos = ih.getCursorPosition?.()
+  if (pos?.cellIndex !== undefined && (pos.cellPath?.length ?? 0) <= 1) {
+    try {
+      const info = ih.wasm.getCellInfo(
+        pos.sectionIndex,
+        pos.parentParaIndex,
+        pos.controlIndex,
+        pos.cellIndex,
+      )
+      origin = { row: info.row, col: info.col }
+    } catch {
+      // a cell the flat engine call cannot name: the block focus is the best answer
+    }
+  }
+  if (axis === 'column') {
+    cursor.setCellSelectionAnchor?.(0, origin.col)
+    cursor.setCellSelectionFocus?.(context.rowCount - 1, origin.col)
+  } else {
+    cursor.setCellSelectionAnchor?.(origin.row, 0)
+    cursor.setCellSelectionFocus?.(origin.row, context.colCount - 1)
+  }
+  cursor.clearSelection?.()
+  ih.caret?.hide?.()
+  ih.updateCellSelection?.()
+  return true
+}
+
+/** Shift+F5: the current cell, with the block ready to grow by the arrow keys. */
+function expandCellSelection(ih) {
+  const cursor = ih?.cursor
+  if (!cursor?.isInCell?.() || cursor.isInTextBox?.()) return false
+  if (!cursor.isInCellSelectionMode?.()) {
+    if (!cursor.enterCellSelectionMode?.()) return false
+    cursor.advanceCellSelectionPhase?.()
+  } else if (cursor.getCellSelectionPhase?.() === 1) {
+    cursor.advanceCellSelectionPhase?.()
+  }
+  ih.caret?.hide?.()
+  ih.updateCellSelection?.()
+  return true
+}
+
+/**
+ * Alt+arrow in a cell: the cell one row/column over. Merged cells resolve to the cell
+ * that covers the target place. A table in a cell is left to Phase 2.
+ */
+function moveCellByArrow(ih, direction) {
+  const cursor = ih?.cursor
+  const pos = ih?.getCursorPosition?.()
+  if (!cursor || !pos) return false
+  if ((pos.cellPath?.length ?? 0) > 1) {
+    tellUser(
+      koreanUi
+        ? '표 안의 표는 아직 셀 단위로 옮길 수 없습니다.'
+        : 'A table inside a cell cannot be moved by cell yet.',
+    )
+    return true
+  }
+  const { parentParaIndex: ppi, controlIndex: ci, cellIndex } = pos
+  if (ppi === undefined || ci === undefined || cellIndex === undefined) return false
+  let dims
+  try {
+    dims = ih.wasm.getTableDimensions(pos.sectionIndex, ppi, ci)
+  } catch {
+    return false
+  }
+  let current = null
+  const info = []
+  for (let i = 0; i < dims.cellCount; i += 1) {
+    const cell = ih.wasm.getCellInfo(pos.sectionIndex, ppi, ci, i)
+    info.push({ ...cell, cellIdx: i })
+    if (i === cellIndex) current = cell
+  }
+  if (!current) return false
+  const row = Math.max(
+    0,
+    Math.min(
+      dims.rowCount - 1,
+      current.row + (direction === 'up' ? -1 : direction === 'down' ? 1 : 0),
+    ),
+  )
+  const col = Math.max(
+    0,
+    Math.min(
+      dims.colCount - 1,
+      current.col + (direction === 'left' ? -1 : direction === 'right' ? 1 : 0),
+    ),
+  )
+  if (row === current.row && col === current.col) return false
+  const target = info.find(
+    (cell) =>
+      row >= cell.row &&
+      row < cell.row + cell.rowSpan &&
+      col >= cell.col &&
+      col < cell.col + cell.colSpan,
+  )
+  if (!target || target.cellIdx === cellIndex) return false
+  try {
+    cursor.moveToCellByIndex?.(pos.sectionIndex, ppi, ci, pos.cellPath, target.cellIdx, 'start')
+    ih.updateCaret?.()
+  } catch {
+    return false
+  }
+  return true
+}
+
+/**
+ * Shift+Esc: leave the table. A table in a cell returns to the outer cell; a body table
+ * goes to the paragraph after it (or the end of its own paragraph when it is the last).
+ */
+function leaveTable(ih) {
+  const cursor = ih?.cursor
+  const pos = ih?.getCursorPosition?.()
+  if (!cursor || !pos) return false
+  if (cursor.isInCellSelectionMode?.()) {
+    cursor.exitCellSelectionMode?.()
+    ih.updateCaret?.()
+  }
+  const path = pos.cellPath ?? []
+  if (path.length > 1) {
+    const outer = path.slice(0, -1)
+    const last = outer[outer.length - 1]
+    cursor.clearSelection?.()
+    cursor.moveTo?.({
+      sectionIndex: pos.sectionIndex,
+      paragraphIndex: last.cellParaIndex,
+      charOffset: 0,
+      parentParaIndex: pos.parentParaIndex,
+      controlIndex: outer[0].controlIndex,
+      cellIndex: last.cellIndex,
+      cellParaIndex: last.cellParaIndex,
+      cellPath: outer,
+      ...(pos.isTextBox && outer.length === 1 ? { isTextBox: true } : {}),
+    })
+    ih.updateCaret?.()
+    return true
+  }
+  const ppi = pos.parentParaIndex
+  if (ppi === undefined) return false
+  try {
+    const count = ih.wasm.getParagraphCount(pos.sectionIndex)
+    const target = ppi + 1 < count ? ppi + 1 : ppi
+    const offset = target === ppi ? ih.wasm.getParagraphLength(pos.sectionIndex, ppi) : 0
+    cursor.clearSelection?.()
+    cursor.moveTo?.({ sectionIndex: pos.sectionIndex, paragraphIndex: target, charOffset: offset })
+    ih.updateCaret?.()
+  } catch {
+    return false
+  }
+  return true
+}
+
+/** F7/F8, Shift+F5, Alt+arrow and Shift+Esc while the caret is in a table cell. */
+export function hancomCellKey(ih, e) {
+  const cursor = ih?.cursor
+  if (!cursor?.isInCell?.() || cursor.isInTextBox?.()) return false
+  if (cursor.isInTableObjectSelection?.() || ih.isFormMode?.()) return false
+  if (e.key === 'F7' || e.key === 'F8') {
+    e.preventDefault()
+    selectCellBand(ih, e.key === 'F7' ? 'column' : 'row')
+    return true
+  }
+  if (e.key === 'F5' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault()
+    expandCellSelection(ih)
+    return true
+  }
+  if (e.key === 'Escape' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault()
+    leaveTable(ih)
+    return true
+  }
+  if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && ARROWS[e.key]) {
+    e.preventDefault()
+    moveCellByArrow(ih, ARROWS[e.key])
+    return true
+  }
+  return false
+}
+
 /** H/W in a cell block: the rows/columns of the selected cells become equally sized. */
 const CELL_BLOCK_KEYS = {
   h: 'table:cell-height-equal',
@@ -438,12 +750,142 @@ const CELL_BLOCK_KEYS = {
 export function hancomCellBlockKey(ih, e) {
   const cursor = ih?.cursor
   if (!cursor?.isInCellSelectionMode?.()) return false
+  // Alt+arrow resizes the selected rows/columns while the table keeps its size
+  if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && ARROWS[e.key]) {
+    e.preventDefault()
+    if (ih.dispatcher?.isEnabled?.('ieum:table-block-resize')) {
+      ih.dispatcher.dispatch('ieum:table-block-resize', { direction: ARROWS[e.key] })
+    }
+    return true
+  }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
+    const letter = letterOf(e)
+    if (letter === 'e' || letter === 'c' || letter === 'x') {
+      e.preventDefault()
+      if (letter === 'e') clearCellBlock(ih)
+      else copyCellBlock(ih, letter === 'x')
+      return true
+    }
+    return false
+  }
   if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return false
   const id = CELL_BLOCK_KEYS[letterOf(e)]
   if (!id) return false
   e.preventDefault()
   ih._cellBlockLetterImeGuard?.arm(e)
   if (ih.dispatcher?.isEnabled?.(id)) ih.dispatcher.dispatch(id)
+  return true
+}
+
+/** Delete the selected cells' contents, one undo step, keeping the block. */
+function clearCellBlock(ih) {
+  const done = ih.clearSelectedCellBlock?.()
+  if (done) ih.updateCellSelection?.()
+  return done === true
+}
+
+/** The selected cells as rows of tabs and lines, as Hancom puts them on the clipboard. */
+function cellBlockTsv(ih) {
+  const cursor = ih?.cursor
+  const context = cursor?.getCellTableContext?.()
+  const range = cursor?.getSelectedCellRange?.()
+  if (!context || !range) return null
+  if ((context.cellPath?.length ?? 0) > 1) {
+    tellUser(
+      koreanUi
+        ? '표 안의 표는 아직 복사할 수 없습니다.'
+        : 'A table inside a cell cannot be copied yet.',
+    )
+    return null
+  }
+  let dims
+  const cells = []
+  try {
+    dims = ih.wasm.getTableDimensions(context.sec, context.ppi, context.ci)
+    for (let i = 0; i < dims.cellCount; i += 1) {
+      const info = ih.wasm.getCellInfo(context.sec, context.ppi, context.ci, i)
+      if (info.rowSpan > 1 || info.colSpan > 1) {
+        tellUser(
+          koreanUi
+            ? '병합된 칸이 있어 복사하지 않았습니다.'
+            : 'Not copied: the table has merged cells.',
+        )
+        return null
+      }
+      cells.push({ ...info, cellIdx: i })
+    }
+  } catch {
+    return null
+  }
+  const rows = []
+  for (let row = range.startRow; row <= range.endRow; row += 1) {
+    const line = []
+    for (let col = range.startCol; col <= range.endCol; col += 1) {
+      const cell = cells.find((c) => c.row === row && c.col === col)
+      if (!cell) return null
+      const paragraphs = []
+      try {
+        const count = ih.wasm.getCellParagraphCount(
+          context.sec,
+          context.ppi,
+          context.ci,
+          cell.cellIdx,
+        )
+        for (let p = 0; p < count; p += 1) {
+          const length = ih.wasm.getCellParagraphLength(
+            context.sec,
+            context.ppi,
+            context.ci,
+            cell.cellIdx,
+            p,
+          )
+          paragraphs.push(
+            ih.wasm.getTextInCell(context.sec, context.ppi, context.ci, cell.cellIdx, p, 0, length),
+          )
+        }
+      } catch {
+        return null
+      }
+      line.push(paragraphs.join('\n'))
+    }
+    rows.push(line.join('\t'))
+  }
+  return rows.join('\n')
+}
+
+/** Copy without waiting: a key press is a user gesture, so the DOM copy runs. */
+function writeClipboardText(text) {
+  try {
+    const doc = globalThis.document
+    if (doc) {
+      const area = doc.createElement('textarea')
+      area.value = text
+      area.setAttribute('readonly', '')
+      area.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0'
+      doc.body.appendChild(area)
+      area.select()
+      const done = doc.execCommand('copy')
+      area.remove()
+      if (done) return true
+    }
+  } catch {
+    // fall through to the async clipboard
+  }
+  try {
+    void globalThis.navigator?.clipboard?.writeText?.(text)
+  } catch {
+    // the key is still consumed
+  }
+  return false
+}
+
+/** Ctrl+C / Ctrl+X in a cell block: the cells as tab-separated text; cut also empties them. */
+function copyCellBlock(ih, cut) {
+  const text = cellBlockTsv(ih)
+  if (text === null) return false
+  writeClipboardText(text)
+  // the async clipboard may still be writing; the text is on its way, so a cut empties now
+  if (cut) clearCellBlock(ih)
   return true
 }
 
@@ -671,6 +1113,86 @@ export function equalizeTableCells(services, axis, ko) {
   } catch {
     return false
   }
+  ih.updateCellSelection?.()
+  return true
+}
+
+/**
+ * Alt+arrow in a cell block: the selected rows/columns change size by one step and the
+ * row/column just outside them takes the opposite change, so the table keeps its size.
+ */
+function resizeCellBlock(services, direction) {
+  const ih = services?.getInputHandler?.()
+  const cursor = ih?.cursor
+  const context = cursor?.getCellTableContext?.()
+  const range = cursor?.getSelectedCellRange?.()
+  if (!ih || !context || !range) return false
+  if ((context.cellPath?.length ?? 0) > 1) {
+    tellUser(
+      koreanUi
+        ? '표 안의 표는 아직 크기를 바꿀 수 없습니다.'
+        : 'A table inside a cell cannot be resized yet.',
+    )
+    return false
+  }
+  const wasm = services.wasm
+  let dims
+  const cells = []
+  try {
+    dims = wasm.getTableDimensions(context.sec, context.ppi, context.ci)
+    for (let i = 0; i < dims.cellCount; i += 1) {
+      const info = wasm.getCellInfo(context.sec, context.ppi, context.ci, i)
+      if (info.rowSpan > 1 || info.colSpan > 1) {
+        tellUser(
+          koreanUi
+            ? '병합된 칸이 있어 크기를 바꾸지 않았습니다.'
+            : 'Not changed: the table has merged cells.',
+        )
+        return false
+      }
+      cells.push({ ...info, cellIdx: i })
+    }
+  } catch {
+    return false
+  }
+  const horizontal = direction === 'left' || direction === 'right'
+  const edge = horizontal ? range.endCol + 1 : range.endRow + 1
+  const count = horizontal ? dims.colCount : dims.rowCount
+  if (edge >= count) return false
+  const delta = direction === 'right' || direction === 'down' ? 300 : -300
+  const updates = []
+  for (const cell of cells) {
+    const selected = horizontal
+      ? cell.col >= range.startCol && cell.col <= range.endCol
+      : cell.row >= range.startRow && cell.row <= range.endRow
+    const neighbor = horizontal ? cell.col === edge : cell.row === edge
+    if (!selected && !neighbor) continue
+    const change = selected ? delta : -delta
+    updates.push(
+      horizontal
+        ? { cellIdx: cell.cellIdx, widthDelta: change }
+        : { cellIdx: cell.cellIdx, heightDelta: change },
+    )
+  }
+  if (updates.length === 0) return false
+  let failed = false
+  try {
+    ih.executeOperation({
+      kind: 'snapshot',
+      operationType: 'resizeCellBlock',
+      operation: (bridge) => {
+        const done = bridge.resizeTableCells(context.sec, context.ppi, context.ci, updates)
+        if (!done?.ok) {
+          failed = true
+          return null
+        }
+        return ih.getCursorPosition()
+      },
+    })
+  } catch {
+    return false
+  }
+  if (failed) return false
   ih.updateCellSelection?.()
   return true
 }
@@ -975,6 +1497,114 @@ function openSelectedTableBorder(services, studio, tab, ko) {
   return true
 }
 
+/** Shift+arrow on a selected table: every cell grows/shrinks by one step, one undo step. */
+function resizeSelectedTable(services, direction) {
+  const ih = services.getInputHandler()
+  const table = selectedTableOf(ih, services.wasm)
+  if (!ih || !table) return false
+  if ((table.ref.cellPath?.length ?? 0) > 1) {
+    tellUser(
+      koreanUi
+        ? '표 안의 표는 아직 크기를 바꿀 수 없습니다.'
+        : 'A table inside a cell cannot be resized yet.',
+    )
+    return false
+  }
+  try {
+    for (let i = 0; i < table.dims.cellCount; i += 1) {
+      const info = services.wasm.getCellInfo(table.ref.sec, table.ref.ppi, table.ref.ci, i)
+      if (info.rowSpan > 1 || info.colSpan > 1) {
+        tellUser(
+          koreanUi
+            ? '병합된 칸이 있어 크기를 바꾸지 않았습니다.'
+            : 'Not changed: the table has merged cells.',
+        )
+        return false
+      }
+    }
+  } catch {
+    return false
+  }
+  const horizontal = direction === 'left' || direction === 'right'
+  const delta = direction === 'right' || direction === 'down' ? 300 : -300
+  const updates = []
+  for (let i = 0; i < table.dims.cellCount; i += 1) {
+    updates.push(
+      horizontal ? { cellIdx: i, widthDelta: delta } : { cellIdx: i, heightDelta: delta },
+    )
+  }
+  let failed = false
+  try {
+    ih.executeOperation({
+      kind: 'snapshot',
+      operationType: 'resizeTableObject',
+      operation: (bridge) => {
+        const done = bridge.resizeTableCells(table.ref.sec, table.ref.ppi, table.ref.ci, updates)
+        if (!done?.ok) {
+          failed = true
+          return null
+        }
+        return ih.getCursorPosition()
+      },
+    })
+  } catch {
+    return false
+  }
+  if (failed) return false
+  services.eventBus.emit('table-object-selection-changed', true)
+  return true
+}
+
+/** Shift+PageUp/Down: the selected table goes to the front/back of the objects. */
+function orderSelectedTable(services, mode) {
+  const ih = services.getInputHandler()
+  const table = selectedTableOf(ih, services.wasm)
+  if (!ih || !table) return false
+  if ((table.ref.cellPath?.length ?? 0) > 1) return false
+  let moved = false
+  try {
+    ih.executeOperation({
+      kind: 'snapshot',
+      operationType: 'tableOrder',
+      operation: (bridge) => {
+        const done = bridge.changeShapeZOrder(table.ref.sec, table.ref.ppi, table.ref.ci, mode)
+        if (!done?.ok || !done.moves?.length) return null
+        moved = true
+        return ih.getCursorPosition()
+      },
+    })
+  } catch {
+    return false
+  }
+  if (moved) services.eventBus.emit('table-object-selection-changed', true)
+  return moved
+}
+
+/** Shift+Home/End: the table goes in front of or behind the text around it. */
+function wrapSelectedTable(services, mode) {
+  const ih = services.getInputHandler()
+  const table = selectedTableOf(ih, services.wasm)
+  if (!ih || !table) return false
+  if ((table.ref.cellPath?.length ?? 0) > 1) return false
+  const textWrap = mode === 'front' ? 'InFrontOfText' : 'BehindText'
+  try {
+    ih.executeOperation({
+      kind: 'snapshot',
+      operationType: 'tableWrap',
+      operation: (bridge) => {
+        const done = bridge.setTableProperties(table.ref.sec, table.ref.ppi, table.ref.ci, {
+          textWrap,
+        })
+        return done?.ok ? ih.getCursorPosition() : null
+      },
+    })
+  } catch {
+    return false
+  }
+  services.eventBus.emit('table-object-selection-changed', true)
+  return true
+}
+
 /** The 쪽 번호 매기기 dialog, built on the studio's own dialog base (handed in, not imported). */
 function pageNumberDialog(ModalDialog, ko, start, onApply) {
   class PageNumberDialog extends ModalDialog {
@@ -1056,7 +1686,9 @@ function pageNumberDialog(ModalDialog, ko, start, onApply) {
  */
 export function hancomCommands(locale, studio = {}) {
   const ko = locale === 'ko'
+  koreanUi = ko
   toastSink = studio.showToast ?? toastSink
+  insertTabCommand = studio.InsertTabCommand ?? insertTabCommand
   const commands = [
     {
       id: 'ieum:delete-line',
@@ -1158,6 +1790,38 @@ export function hancomCommands(locale, studio = {}) {
       canExecute: (ctx) => ctx.inTableObjectSelection && !ctx.isFormMode,
       execute(services) {
         openSelectedTableBorder(services, studio, 'background', ko)
+      },
+    },
+    {
+      id: 'ieum:table-resize',
+      label: ko ? '표 크기 조절' : 'Resize Table',
+      canExecute: (ctx) => ctx.inTableObjectSelection && !ctx.isFormMode,
+      execute(services, params) {
+        resizeSelectedTable(services, params?.direction)
+      },
+    },
+    {
+      id: 'ieum:table-order',
+      label: ko ? '표 순서' : 'Table Order',
+      canExecute: (ctx) => ctx.inTableObjectSelection && !ctx.isFormMode,
+      execute(services, params) {
+        orderSelectedTable(services, params?.mode === 'back' ? 'back' : 'front')
+      },
+    },
+    {
+      id: 'ieum:table-wrap',
+      label: ko ? '표 글자 배치' : 'Table Text Wrap',
+      canExecute: (ctx) => ctx.inTableObjectSelection && !ctx.isFormMode,
+      execute(services, params) {
+        wrapSelectedTable(services, params?.mode === 'back' ? 'back' : 'front')
+      },
+    },
+    {
+      id: 'ieum:table-block-resize',
+      label: ko ? '셀 블록 크기 조절' : 'Resize Cell Block',
+      canExecute: (ctx) => ctx.inCellSelectionMode && !ctx.isFormMode,
+      execute(services, params) {
+        resizeCellBlock(services, params?.direction)
       },
     },
   )

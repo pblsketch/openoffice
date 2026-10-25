@@ -259,7 +259,7 @@ const PATCHES = {
         replace:
           "import { initI18n, t } from '@/i18n/index.ts';\n" +
           "import { getLocale } from '@/i18n/core.ts';\n" +
-          "import { InsertTextCommand } from '@/engine/command';\n" +
+          "import { InsertTextCommand, InsertTabCommand } from '@/engine/command';\n" +
           "import { ModalDialog } from '@/ui/dialog';\n" +
           "import { FindDialog, navigateToSearchHit } from '@/ui/find-dialog';\n" +
           "import { CellBorderBgDialog } from '@/ui/cell-border-bg-dialog';\n" +
@@ -272,7 +272,7 @@ const PATCHES = {
         replace:
           'registry.registerAll(toolCommands);\n' +
           'registry.registerAll(hancomCommands(getLocale(), {\n' +
-          '  InsertTextCommand, ModalDialog, FindDialog, navigateToSearchHit,\n' +
+          '  InsertTextCommand, InsertTabCommand, ModalDialog, FindDialog, navigateToSearchHit,\n' +
           '  CellBorderBgDialog, showToast,\n' +
           '}));\n' +
           'installHancomMenuItems(document, getLocale());\n' +
@@ -476,7 +476,7 @@ const PATCHES = {
         find: "import { matchShortcut, defaultShortcuts } from '@/command/shortcut-map';",
         replace:
           "import { matchShortcut, defaultShortcuts } from '@/command/shortcut-map';\n" +
-          `import { hancomCellBlockKey, hancomChordKey, hancomChordStart, hancomContextKey, hancomCtrlKey, hancomTableObjectKey } from '${HANCOM_KEYS_MODULE}';`,
+          `import { hancomCellBlockKey, hancomCellKey, hancomChordKey, hancomChordStart, hancomContextKey, hancomCtrlKey, hancomTableObjectKey } from '${HANCOM_KEYS_MODULE}';`,
       },
       // the second key, first of all (the studio's own Ctrl+K/M/G flags are never set again)
       {
@@ -491,6 +491,7 @@ const PATCHES = {
         replace:
           '  if (hancomTableObjectKey(this, e)) return;\n' +
           '  if (hancomCellBlockKey(this, e)) return;\n' +
+          '  if (hancomCellKey(this, e)) return;\n' +
           '  if (this.connectorDrawingMode) {',
       },
       // the first key, or a key that depends on the caret, while the IME composes, where the
@@ -677,6 +678,16 @@ export const hancomHooks = [
       'isInCellSelectionMode(): boolean',
       'getCellTableContext()',
       'getSelectedCellRange(): { startRow: number; startCol: number; endRow: number; endCol: number } | null',
+      'enterCellSelectionMode(',
+      'advanceCellSelectionPhase(',
+      'getCellSelectionPhase(',
+      'getCellSelectionFocus(',
+      'setCellSelectionAnchor(',
+      'setCellSelectionFocus(',
+      'exitCellSelectionMode(',
+      'moveToCellByIndex(',
+      'moveTo(pos: DocumentPosition): void',
+      'clearSelection(): void',
     ],
   },
   {
@@ -685,10 +696,12 @@ export const hancomHooks = [
       'private dispatcher: CommandDispatcher | null',
       'private _cellBlockLetterImeGuard = new CellBlockLetterImeGuard()',
       'private wasm: WasmBridge',
+      'private caret: CaretRenderer',
       'private deleteSelection(',
       'applyStyle(styleId: number): void',
       'executeOperation(desc: OperationDescriptor): void',
       'updateCellSelection(',
+      'clearSelectedCellBlock(',
       'isFormMode(): boolean',
       'hasCopiedFormat(): boolean { return this.formatCopyState !== null; }',
       'getCharProperties(): CharProperties',
@@ -710,6 +723,11 @@ export const hancomHooks = [
       'evaluateTableFormula(sec: number, parentPara: number, controlIdx: number,',
       'getCellParagraphCount(sec: number, parentPara: number, controlIdx: number, cellIdx: number)',
       'getCellParagraphLength(sec: number, parentPara: number, controlIdx: number, cellIdx: number, cellParaIdx: number)',
+      'getTextInCell(sec: number, parentPara: number, controlIdx: number,',
+      'getParagraphCount(sec: number): number {',
+      'getParagraphLength(sec: number, para: number): number {',
+      'setTableProperties(sec: number, parentPara: number, controlIdx: number, props: Partial<TableProperties>)',
+      'changeShapeZOrder(',
       'getCellInfo(sec: number, parentPara: number, controlIdx: number, cellIdx: number): CellInfo',
       'getTableCellBboxes(sec: number,',
       'searchText(query: string, fromSec: number, fromPara: number, fromChar: number, forward: boolean',

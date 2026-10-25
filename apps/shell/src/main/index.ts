@@ -275,6 +275,7 @@ import {
 } from '../../../markdown/src/main/markdown-main'
 import {
   configureHwpRuntime,
+  editorTakes,
   hwpFileRenamed,
   hwpReadText,
   requestHwpPrint,
@@ -4581,6 +4582,23 @@ function installTabShortcuts(): void {
     contents.on('before-input-event', (event, input) => {
       const manager = tabManager
       if (!manager) return
+      // Ctrl+Tab in a Hangul table cell inserts a tab, as Hancom does; elsewhere the
+      // shell keeps it for cycling tabs. The editor answers from its own key map.
+      if (
+        input.type === 'keyDown' &&
+        input.key === 'Tab' &&
+        input.control &&
+        !input.alt &&
+        !input.shift &&
+        !input.meta &&
+        manager.describeWebContents(contents.id)?.kind === 'hwp'
+      ) {
+        event.preventDefault()
+        void editorTakes(contents, 'ctrl-tab').then((taken) => {
+          if (!taken) manager.cycleTab(1)
+        })
+        return
+      }
       const handled = handleTabShortcut(input, contents.id, {
         isShellContents: (id) =>
           !!shellWindow && !shellWindow.isDestroyed() && shellWindow.webContents.id === id,

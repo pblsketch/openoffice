@@ -627,7 +627,13 @@ function registerHwpIpc(): void {
  * action for them, which leaves the menu accelerator to do its work.
  */
 function installFileShortcuts(wc: WebContents): void {
+  // a clipboard/delete key the editor did not take is sent on to the page once
+  let resending = false
   wc.on('before-input-event', (event, input) => {
+    if (resending) {
+      resending = false
+      return
+    }
     if (input.type !== 'keyDown' || input.isAutoRepeat) return
     if (input.alt) {
       if (hancomFileKey(wc, input)) event.preventDefault()
@@ -635,6 +641,27 @@ function installFileShortcuts(wc: WebContents): void {
     }
     const mod = process.platform === 'darwin' ? input.meta : input.control
     if (!mod) return
+    if (
+      (input.code === 'KeyE' || input.code === 'KeyC' || input.code === 'KeyX') &&
+      !input.shift &&
+      !input.alt
+    ) {
+      // these never reach the page from the application menu; the editor says whether
+      // it took them (a cell block, a selected table), and otherwise the key goes on
+      event.preventDefault()
+      const key = input.code === 'KeyE' ? 'ctrl-e' : input.code === 'KeyC' ? 'ctrl-c' : 'ctrl-x'
+      void editorTakes(wc, key).then((taken) => {
+        if (taken) return
+        resending = true
+        const modifiers: Array<'control' | 'meta' | 'shift' | 'alt'> = []
+        if (input.control) modifiers.push('control')
+        if (input.meta) modifiers.push('meta')
+        if (input.shift) modifiers.push('shift')
+        wc.sendInputEvent({ type: 'keyDown', keyCode: input.key, modifiers })
+        wc.sendInputEvent({ type: 'keyUp', keyCode: input.key, modifiers })
+      })
+      return
+    }
     if (input.code === 'KeyO' && !input.shift) {
       if (!runtime.openFileDialog) return
       event.preventDefault()
@@ -705,9 +732,9 @@ export function hancomFileKey(
  * (studio-plugin/hancom-keys.mjs, MAIN_PROCESS_KEYS), and lets it run the table command if so.
  * False when the frame cannot say: the key then does what it does in the app.
  */
-async function editorTakes(
+export async function editorTakes(
   wc: WebContents,
-  key: 'ctrl-shift-s' | 'ctrl-shift-h',
+  key: 'ctrl-shift-s' | 'ctrl-shift-h' | 'ctrl-tab' | 'ctrl-e' | 'ctrl-c' | 'ctrl-x',
 ): Promise<boolean> {
   if (wc.isDestroyed()) return false
   const frame = wc.mainFrame?.framesInSubtree.find((f) => /\/studio\//.test(f.url))
