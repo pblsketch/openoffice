@@ -8,6 +8,7 @@ L'éditeur Markdown ouvre .md / .markdown — et .txt / .json, directement en vu
 - **Enregistrement** : fidèle octet pour octet — le BOM, les CRLF et la présence ou non d’un saut de ligne final sont préservés ; un enregistrement sans modification ne réécrit pas le fichier.
 - **Rechercher et remplacer** : ctrl+F cherche dans la source ; Remplacer tout réécrit.
 - **IA** : des boutons prédéfinis permettent à l’assistant de réécrire, de développer ou de traduire le document. Une sélection peut être masquée à l'IA (voir le chapitre du panneau IA).
+- **Ouvrir les liens** : en édition, Ctrl+clic sur un lien (⌘ sur Mac) l’ouvre dans le navigateur ; un simple clic place le curseur dans le texte du lien pour le modifier. En présentation (F5), un simple clic l’ouvre.
 
 ## La barre d’outils
 

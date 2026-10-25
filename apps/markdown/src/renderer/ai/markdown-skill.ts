@@ -73,6 +73,7 @@ const AGENT_SYSTEM_PROMPT = [
   '',
   '## Conversation',
   '- Answer questions about the document directly, without editing it.',
+  '- If the user asks how to open a link in the document: a plain click places the caret in the link text, Ctrl+click (⌘ on a Mac) opens http/https/mailto links in the browser, and in presentation mode (F5) a plain click opens them.',
   '- Keep replies short; the edits themselves are the deliverable. Summarize what you changed in one or two sentences.',
 ].join('\n')
 

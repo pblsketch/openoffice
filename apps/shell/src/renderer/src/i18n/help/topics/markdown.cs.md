@@ -8,6 +8,7 @@ Editor Markdown otevírá .md / .markdown — a .txt / .json, rovnou v zobrazen�
 - **Ukládání**: věrné bajt po bajtu — BOM, znaky CRLF i přítomnost prázdného řádku na konci se zachovávají; uložení bez změn soubor nepřepíše.
 - **Najít a nahradit**: ctrl+F hledá ve zdroji; Nahradit vše zapíše výsledek.
 - **AI**: předvolená tlačítka nechají asistenta dokument přepsat, rozšířit nebo přeložit. Výběr lze skrýt před AI (viz kapitola o AI panelu).
+- **Otevírání odkazů**: při úpravách otevře Ctrl+kliknutí na odkaz (⌘ na Macu) v prohlížeči; běžné kliknutí umístí kurzor do textu odkazu, aby se dal upravit. V režimu prezentace (F5) odkaz otevře běžné kliknutí.
 
 ## Pruh nástrojů
 

@@ -8,6 +8,7 @@ Der Markdown-Editor öffnet .md / .markdown — und .txt / .json, direkt in der 
 - **Speichern**: bytegetreu — BOM, CRLF und das Vorhandensein eines abschließenden Zeilenumbruchs bleiben erhalten; ein Speichern ohne Änderung schreibt die Datei nicht neu.
 - **Suchen und Ersetzen**: Strg+F durchsucht den Quelltext; „Alle ersetzen“ schreibt zurück.
 - **KI**: Voreinstellungs-Schaltflächen lassen den Assistenten das Dokument umformulieren, ausbauen oder übersetzen. Eine Auswahl lässt sich vor der KI verbergen (siehe Kapitel zum KI-Panel).
+- **Links öffnen**: Beim Bearbeiten öffnet Strg+Klick auf einen Link (⌘ auf dem Mac) ihn im Browser; ein einfacher Klick setzt den Cursor in den Linktext, damit er bearbeitet werden kann. In der Präsentation (F5) öffnet ein einfacher Klick den Link.
 
 ## Die Werkzeugleiste
 

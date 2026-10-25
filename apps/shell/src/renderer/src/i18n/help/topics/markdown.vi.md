@@ -8,6 +8,7 @@ Trình soạn Markdown mở .md / .markdown — và .txt / .json, thẳng vào c
 - **Lưu**: trung thành từng byte — BOM, CRLF và việc có dấu xuống dòng ở cuối hay không đều được giữ; lưu mà không sửa gì sẽ không ghi lại tệp.
 - **Tìm và thay thế**: ctrl+F tìm trong mã nguồn; Thay thế tất cả ghi lại vào tệp.
 - **AI**: các nút mẫu cho phép trợ lý viết lại, mở rộng hoặc dịch tài liệu. Vùng chọn có thể ẩn khỏi AI (xem chương bảng AI).
+- **Mở liên kết**: khi chỉnh sửa, Ctrl+nhấp vào liên kết (⌘ trên Mac) sẽ mở liên kết trong trình duyệt; nhấp thường đặt con trỏ vào văn bản liên kết để chỉnh sửa. Ở chế độ trình chiếu (F5), nhấp thường sẽ mở liên kết.
 
 ## Thanh công cụ
 

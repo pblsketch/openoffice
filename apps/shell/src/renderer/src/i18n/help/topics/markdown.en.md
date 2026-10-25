@@ -8,6 +8,7 @@ The Markdown editor opens .md / .markdown — and .txt / .json, straight into so
 - **Saving**: byte-faithful — BOM, CRLF and the presence of a trailing newline are preserved; an unmodified save does not rewrite the file.
 - **Find & replace**: ctrl+F searches the source; Replace All writes back.
 - **AI**: preset buttons let the assistant rewrite, extend or translate the document. A selection can be hidden from the AI (see the AI panel chapter).
+- **Opening links**: while editing, Ctrl+click a link (⌘ on a Mac) to open it in your browser; a plain click puts the cursor in the link text so you can edit it. In presentation mode (F5) a plain click opens the link.
 
 ## The toolbar
 

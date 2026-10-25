@@ -6,9 +6,12 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Editor } from '@tiptap/core'
+import { showToast } from '../src/renderer/components/toast-bus'
 import { buildExtensions } from '../src/renderer/editor/extensions'
 import { externalLinkTarget } from '../src/renderer/editor/linkOpen'
 import { parseDocText } from '../src/renderer/markdown/docText'
+
+vi.mock('../src/renderer/components/toast-bus', () => ({ showToast: vi.fn() }))
 
 const editors: Editor[] = []
 const openBrowser = vi.fn<(url?: string | URL, target?: string) => Window | null>(() => null)
@@ -17,6 +20,7 @@ afterEach(() => {
   editors.splice(0).forEach((e) => e.destroy())
   vi.restoreAllMocks()
   openBrowser.mockClear()
+  vi.mocked(showToast).mockClear()
 })
 
 function open(markdown: string): Editor {
@@ -90,6 +94,25 @@ describe('clicking a link', () => {
     expect(openBrowser).not.toHaveBeenCalled()
     // never let the anchor navigate the whole editor window
     expect(event.defaultPrevented).toBe(true)
+  })
+
+  it('teaches the modifier once when a plain click falls into a link', () => {
+    const editor = open('See [the page](https://example.com/page) here.')
+    clickLink(editor)
+    clickLink(editor)
+    expect(showToast).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not teach the modifier when the link actually opens', () => {
+    const editor = open('See [the page](https://example.com/page) here.')
+    clickLink(editor, { ctrlKey: true })
+    expect(showToast).not.toHaveBeenCalled()
+  })
+
+  it('does not teach the modifier for a relative note link', () => {
+    const editor = open('See [the other note](notes/other.md).')
+    clickLink(editor)
+    expect(showToast).not.toHaveBeenCalled()
   })
 
   it('a plain click opens while the show is running (read-only)', () => {

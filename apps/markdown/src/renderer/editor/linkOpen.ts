@@ -1,6 +1,8 @@
 import { Extension } from '@tiptap/core'
 import { Plugin } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
+import { showToast } from '../components/toast-bus'
+import { t } from '../i18n/locale'
 
 /** what this editor's main-process window-open guard hands to the OS */
 const OPENABLE_PROTOCOLS = new Set(['http:', 'https:', 'mailto:'])
@@ -44,6 +46,9 @@ export const MarkdownLinkOpen = Extension.create({
   },
 })
 
+/** one hint per editor: the click that needed it is the moment to teach it */
+const hintedViews = new WeakSet<EditorView>()
+
 function openLinkOnClick(view: EditorView, event: MouseEvent): boolean {
   if (event.button !== 0) return false
   const anchor = (event.target as Element | null)?.closest?.('a[href]')
@@ -51,8 +56,16 @@ function openLinkOnClick(view: EditorView, event: MouseEvent): boolean {
   // the anchor must never navigate the renderer itself: a page outside the
   // document belongs in the browser, and an edit-time click belongs to the caret
   event.preventDefault()
-  if (view.editable && !event.metaKey && !event.ctrlKey) return false
   const target = externalLinkTarget(anchor.getAttribute('href'))
+  if (view.editable && !event.metaKey && !event.ctrlKey) {
+    // A link looks clickable but a plain click only places the caret, so the
+    // first time a reader falls into that gap, say how to leave the document.
+    if (target && !hintedViews.has(view)) {
+      hintedViews.add(view)
+      showToast(t('linkOpenHint'))
+    }
+    return false
+  }
   if (!target) return false
   window.open(target, '_blank')
   return true

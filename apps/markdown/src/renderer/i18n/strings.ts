@@ -146,6 +146,7 @@ export const strings = {
     link: '链接',
     linkPlaceholder: '输入链接地址',
     linkApply: '应用',
+    linkOpenHint: '按 Ctrl 单击链接可打开（Mac 上为 ⌘）。直接单击会把光标放入链接文字。',
     bulletList: '无序列表',
     orderedList: '有序列表',
     taskList: '任务列表',
@@ -411,6 +412,8 @@ export const strings = {
     link: 'Link',
     linkPlaceholder: 'Enter URL',
     linkApply: 'Apply',
+    linkOpenHint:
+      'Ctrl+click a link to open it (⌘ on a Mac). A plain click puts the cursor in the link text.',
     bulletList: 'Bullet list',
     orderedList: 'Numbered list',
     taskList: 'Task list',
@@ -679,6 +682,8 @@ export const strings = {
     link: 'Liên kết',
     linkPlaceholder: 'Nhập URL',
     linkApply: 'Áp dụng',
+    linkOpenHint:
+      'Ctrl+nhấp vào liên kết để mở (⌘ trên Mac). Nhấp thường đặt con trỏ vào văn bản liên kết.',
     bulletList: 'Danh sách dấu đầu dòng',
     orderedList: 'Danh sách đánh số',
     taskList: 'Danh sách công việc',
@@ -946,6 +951,8 @@ export const strings = {
     link: 'リンク',
     linkPlaceholder: 'URL を入力',
     linkApply: '適用',
+    linkOpenHint:
+      'Ctrl+クリックでリンクを開きます（Mac は ⌘）。そのままクリックするとリンクの文字にカーソルが入ります。',
     bulletList: '箇条書き',
     orderedList: '番号付きリスト',
     taskList: 'タスクリスト',
@@ -1214,6 +1221,8 @@ export const strings = {
     link: '링크',
     linkPlaceholder: 'URL 입력',
     linkApply: '적용',
+    linkOpenHint:
+      'Ctrl을 누른 채 클릭하면 링크가 열립니다(Mac은 ⌘). 그냥 클릭하면 링크 글자를 고칠 수 있게 커서가 들어갑니다.',
     bulletList: '글머리 기호 목록',
     orderedList: '번호 매기기 목록',
     taskList: '작업 목록',
@@ -1485,6 +1494,8 @@ export const strings = {
     link: 'Lien',
     linkPlaceholder: "Saisir l'URL",
     linkApply: 'Appliquer',
+    linkOpenHint:
+      'Ctrl+clic sur un lien pour l’ouvrir (⌘ sur Mac). Un simple clic place le curseur dans le texte du lien.',
     bulletList: 'Liste à puces',
     orderedList: 'Liste numérotée',
     taskList: 'Liste de tâches',
@@ -1759,6 +1770,8 @@ export const strings = {
     link: 'Link',
     linkPlaceholder: 'URL eingeben',
     linkApply: 'Übernehmen',
+    linkOpenHint:
+      'Strg+Klick öffnet einen Link (⌘ auf dem Mac). Ein einfacher Klick setzt den Cursor in den Linktext.',
     bulletList: 'Aufzählung',
     orderedList: 'Nummerierte Liste',
     taskList: 'Aufgabenliste',
@@ -2030,6 +2043,8 @@ export const strings = {
     link: 'Enlace',
     linkPlaceholder: 'Introducir URL',
     linkApply: 'Aplicar',
+    linkOpenHint:
+      'Ctrl+clic en un enlace para abrirlo (⌘ en Mac). Un clic normal coloca el cursor en el texto del enlace.',
     bulletList: 'Lista con viñetas',
     orderedList: 'Lista numerada',
     taskList: 'Lista de tareas',
@@ -2298,6 +2313,8 @@ export const strings = {
     link: 'ลิงก์',
     linkPlaceholder: 'ป้อน URL',
     linkApply: 'นำไปใช้',
+    linkOpenHint:
+      'กด Ctrl แล้วคลิกเพื่อเปิดลิงก์ (⌘ บน Mac) การคลิกปกติจะวางเคอร์เซอร์ในข้อความลิงก์',
     bulletList: 'รายการสัญลักษณ์',
     orderedList: 'รายการลำดับเลข',
     taskList: 'รายการงาน',
@@ -2566,6 +2583,8 @@ export const strings = {
     link: 'Tautan',
     linkPlaceholder: 'Masukkan URL',
     linkApply: 'Terapkan',
+    linkOpenHint:
+      'Ctrl+klik tautan untuk membukanya (⌘ di Mac). Klik biasa menempatkan kursor di teks tautan.',
     bulletList: 'Daftar poin',
     orderedList: 'Daftar bernomor',
     taskList: 'Daftar tugas',
@@ -2835,6 +2854,8 @@ export const strings = {
     link: 'Ссылка',
     linkPlaceholder: 'Введите URL',
     linkApply: 'Применить',
+    linkOpenHint:
+      'Ctrl+щелчок по ссылке открывает её (⌘ на Mac). Обычный щелчок ставит курсор в текст ссылки.',
     bulletList: 'Маркированный список',
     orderedList: 'Нумерованный список',
     taskList: 'Список задач',
@@ -3100,6 +3121,7 @@ export const strings = {
     link: 'رابط',
     linkPlaceholder: 'أدخل عنوان URL',
     linkApply: 'تطبيق',
+    linkOpenHint: 'Ctrl+النقر على رابط لفتحه (⌘ على Mac). النقر العادي يضع المؤشر في نص الرابط.',
     bulletList: 'قائمة نقطية',
     orderedList: 'قائمة رقمية',
     taskList: 'قائمة مهام',
@@ -3370,6 +3392,8 @@ export const strings = {
     link: 'Link',
     linkPlaceholder: 'Digite a URL',
     linkApply: 'Aplicar',
+    linkOpenHint:
+      'Ctrl+clique em um link para abri-lo (⌘ no Mac). Um clique normal coloca o cursor no texto do link.',
     bulletList: 'Lista com marcadores',
     orderedList: 'Lista numerada',
     taskList: 'Lista de tarefas',
@@ -3641,6 +3665,8 @@ export const strings = {
     link: 'Collegamento',
     linkPlaceholder: 'Inserisci URL',
     linkApply: 'Applica',
+    linkOpenHint:
+      'Ctrl+clic su un link per aprirlo (⌘ su Mac). Un clic normale posiziona il cursore nel testo del link.',
     bulletList: 'Elenco puntato',
     orderedList: 'Elenco numerato',
     taskList: 'Elenco attività',
@@ -3911,6 +3937,8 @@ export const strings = {
     link: 'Łącze',
     linkPlaceholder: 'Wpisz adres URL',
     linkApply: 'Zastosuj',
+    linkOpenHint:
+      'Ctrl+kliknięcie linku otwiera go (⌘ na Macu). Zwykłe kliknięcie ustawia kursor w tekście linku.',
     bulletList: 'Lista punktowana',
     orderedList: 'Lista numerowana',
     taskList: 'Lista zadań',
@@ -4168,6 +4196,8 @@ export const strings = {
     link: 'Odkaz',
     linkPlaceholder: 'Zadejte URL',
     linkApply: 'Použít',
+    linkOpenHint:
+      'Ctrl+kliknutím na odkaz jej otevřete (⌘ na Macu). Běžné kliknutí umístí kurzor do textu odkazu.',
     bulletList: 'Seznam s odrážkami',
     orderedList: 'Číslovaný seznam',
     taskList: 'Seznam úkolů',
@@ -4449,6 +4479,8 @@ export const strings = {
     link: 'Link',
     linkPlaceholder: 'Voer URL in',
     linkApply: 'Toepassen',
+    linkOpenHint:
+      'Ctrl+klik op een link opent deze (⌘ op de Mac). Een gewone klik zet de cursor in de linktekst.',
     bulletList: 'Opsommingslijst',
     orderedList: 'Genummerde lijst',
     taskList: 'Takenlijst',
@@ -4717,6 +4749,8 @@ export const strings = {
     link: 'Pautan',
     linkPlaceholder: 'Masukkan URL',
     linkApply: 'Guna',
+    linkOpenHint:
+      'Ctrl+klik pautan untuk membukanya (⌘ pada Mac). Klik biasa meletakkan kursor dalam teks pautan.',
     bulletList: 'Senarai bulet',
     orderedList: 'Senarai bernombor',
     taskList: 'Senarai tugasan',
@@ -4981,6 +5015,8 @@ export const strings = {
     link: 'קישור',
     linkPlaceholder: 'הזינו כתובת URL',
     linkApply: 'החל',
+    linkOpenHint:
+      'Ctrl+לחיצה על קישור פותחת אותו (⌘ ב-Mac). לחיצה רגילה מציבה את הסמן בטקסט הקישור.',
     bulletList: 'רשימת תבליטים',
     orderedList: 'רשימה ממוספרת',
     taskList: 'רשימת משימות',
@@ -5248,6 +5284,8 @@ export const strings = {
     link: 'लिंक',
     linkPlaceholder: 'URL दर्ज करें',
     linkApply: 'लागू करें',
+    linkOpenHint:
+      'लिंक खोलने के लिए Ctrl+क्लिक करें (Mac पर ⌘)। सामान्य क्लिक लिंक के टेक्स्ट में कर्सर रखता है।',
     bulletList: 'बुलेट सूची',
     orderedList: 'क्रमांकित सूची',
     taskList: 'कार्य सूची',
@@ -5512,6 +5550,7 @@ export const strings = {
     link: '連結',
     linkPlaceholder: '輸入連結網址',
     linkApply: '套用',
+    linkOpenHint: '按住 Ctrl 單擊連結可開啟（Mac 上為 ⌘）。直接單擊會將游標放入連結文字。',
     bulletList: '項目符號清單',
     orderedList: '編號清單',
     taskList: '工作清單',
