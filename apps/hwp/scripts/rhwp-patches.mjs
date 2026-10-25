@@ -48,6 +48,15 @@
  *   The bridge gains the two engine calls of vendor/rhwp-core patch 0014, setting and
  *   reading a section's page number (Hangul's 쪽 번호 매기기).
  *
+ * studio-format-copy-safety, studio-format-copy, studio-format-copy-state
+ *   The studio's format copy takes the cell's field name and form-edit flag with
+ *   the cell's look; copying a plain cell over a named cell in a cell block
+ *   therefore removes the cell field. The safety patch drops those two keys.
+ *   The other two patches hand the two format commands to the app's own module
+ *   (studio-plugin/format-copy.mjs) — a Hancom-style dialog, one undo step for
+ *   one apply, and a copied format that lasts until it is overwritten — and make
+ *   the editor's "has copied format" answer come from that module.
+ *
  * studio-font-memo-state, studio-font-memo-use
  *   The studio replaces the Canvas2D `font` setter so that every font string
  *   the engine sets passes its font substitution, which builds the family
@@ -72,6 +81,9 @@ export const AGENT_PLUGIN_MODULE = '@ieum/agent-plugin'
 
 /** Module specifier the studio-hancom-* patches import; build-studio.mjs aliases it. */
 export { HANCOM_KEYS_MODULE }
+
+/** Module specifier the studio-format-copy patches import; build-studio.mjs aliases it. */
+export const FORMAT_COPY_MODULE = '@ieum/format-copy'
 
 const PATCHES = {
   'sdk-scheme': {
@@ -282,6 +294,114 @@ const PATCHES = {
       '  applyStyle(sec: number, para: number, styleId: number): { ok: boolean } {',
     ].join('\n'),
   },
+  'studio-format-copy-safety': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler\.ts$/,
+    // a cell's own look is not its form field: copying a plain cell over a named one in
+    // a cell block must not clear the named cell's field
+    find: ["  'cellProtect',", "  'fieldName',", "  'editableInForm',", "  'borderFillId',"].join(
+      '\n',
+    ),
+    replace: ["  'cellProtect',", "  'borderFillId',"].join('\n'),
+  },
+  'studio-format-copy': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]command[\\/]commands[\\/]edit\.ts$/,
+    edits: [
+      {
+        find: "import { canExecuteFormatPaste } from '../format-paste-availability';",
+        replace: [
+          "import { canExecuteFormatPaste } from '../format-paste-availability';",
+          "import { ApplyCharFormatCommand, ApplyParaFormatCommand } from '@/engine/command';",
+          "import { selectCellIndicesInRange, paraFormatTargetsForCellBlock, withCellPathTarget } from '@/engine/cell-block-format';",
+          "import { getLocale } from '@/i18n/core.ts';",
+          "import { ModalDialog } from '@/ui/dialog';",
+          "import { showToast } from '@/ui/toast';",
+          `import { ieumFormatCopy, ieumFormatPaste } from '${FORMAT_COPY_MODULE}';`,
+        ].join('\n'),
+      },
+      {
+        find: [
+          'let compareSessionStore: CompareSessionStore | null = null;',
+          '',
+          'export const editCommands: CommandDef[] = [',
+        ].join('\n'),
+        replace: [
+          'let compareSessionStore: CompareSessionStore | null = null;',
+          '',
+          '/** The studio parts the app format-copy module builds on. */',
+          'function formatCopyStudio() {',
+          '  return {',
+          '    ModalDialog,',
+          '    showToast,',
+          '    ApplyCharFormatCommand,',
+          '    ApplyParaFormatCommand,',
+          '    selectCellIndicesInRange,',
+          '    paraFormatTargetsForCellBlock,',
+          '    withCellPathTarget,',
+          '    locale: getLocale(),',
+          '  };',
+          '}',
+          '',
+          'export const editCommands: CommandDef[] = [',
+        ].join('\n'),
+      },
+      {
+        find: [
+          "    id: 'edit:format-copy',",
+          "    label: t('command.edit.formatCopy.label'),",
+          "    icon: 'icon-format-copy',",
+          "    shortcutLabel: 'Alt+C',",
+          '    canExecute: (ctx) => ctx.hasDocument,',
+        ].join('\n'),
+        replace: [
+          "    id: 'edit:format-copy',",
+          "    label: t('command.edit.formatCopy.label'),",
+          "    icon: 'icon-format-copy',",
+          "    shortcutLabel: 'Alt+C',",
+          '    canExecute: (ctx) => ctx.hasDocument && !ctx.isFormMode,',
+        ].join('\n'),
+      },
+      {
+        find: [
+          '    execute(services) {',
+          '      services.getInputHandler()?.performFormatCopy();',
+          '    },',
+        ].join('\n'),
+        replace: [
+          '    execute(services) {',
+          '      ieumFormatCopy(services, formatCopyStudio());',
+          '    },',
+        ].join('\n'),
+      },
+      {
+        find: [
+          '    execute(services) {',
+          '      services.getInputHandler()?.performFormatPaste();',
+          '    },',
+        ].join('\n'),
+        replace: [
+          '    execute(services) {',
+          '      ieumFormatPaste(services, formatCopyStudio());',
+          '    },',
+        ].join('\n'),
+      },
+    ],
+  },
+  'studio-format-copy-state': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler\.ts$/,
+    edits: [
+      {
+        find: "import { selectCellIndicesInRange, paraFormatTargetsForCellBlock, withCellPathTarget } from './cell-block-format';",
+        replace: [
+          "import { selectCellIndicesInRange, paraFormatTargetsForCellBlock, withCellPathTarget } from './cell-block-format';",
+          `import { ieumHasCopiedFormat } from '${FORMAT_COPY_MODULE}';`,
+        ].join('\n'),
+      },
+      {
+        find: '  hasCopiedFormat(): boolean { return this.formatCopyState !== null; }',
+        replace: '  hasCopiedFormat(): boolean { return ieumHasCopiedFormat(this); }',
+      },
+    ],
+  },
   'studio-hancom-chords': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler-keyboard\.ts$/,
     edits: [
@@ -373,6 +493,9 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-hancom-commands',
   'studio-hancom-chords',
   'studio-hancom-page-number',
+  'studio-format-copy-safety',
+  'studio-format-copy',
+  'studio-format-copy-state',
   'studio-font-memo-state',
   'studio-font-memo-use',
 ])
@@ -472,6 +595,9 @@ export const hancomHooks = [
       'isInFootnote(): boolean',
       'isInPictureObjectSelection(): boolean',
       'isInTableObjectSelection(): boolean',
+      'getPosition(): DocumentPosition',
+      'isInCellSelectionMode(): boolean',
+      'getSelectedCellRange(): { startRow: number; startCol: number; endRow: number; endCol: number } | null',
     ],
   },
   {
@@ -483,6 +609,11 @@ export const hancomHooks = [
       'applyStyle(styleId: number): void',
       'executeOperation(desc: OperationDescriptor): void',
       'isFormMode(): boolean',
+      'hasCopiedFormat(): boolean { return this.formatCopyState !== null; }',
+      'getCharProperties(): CharProperties',
+      'getParaProperties(): ParaProperties',
+      'getCursorPosition(): DocumentPosition',
+      'focus(): void',
       "eventBus.on('format-char'",
     ],
   },
@@ -500,6 +631,34 @@ export const hancomHooks = [
       'getCellParagraphLength(sec: number, parentPara: number, controlIdx: number, cellIdx: number, cellParaIdx: number)',
       'getCellInfo(sec: number, parentPara: number, controlIdx: number, cellIdx: number): CellInfo',
       'searchText(query: string, fromSec: number, fromPara: number, fromChar: number, forward: boolean',
+      'getCharPropertiesAt(sec: number, para: number, charOffset: number)',
+      'getCellCharPropertiesAtByPath(sec: number, parentPara: number, pathJson: string, charOffset: number)',
+      'getCellCharPropertiesAt(sec: number, parentPara: number, controlIdx: number, cellIdx: number, cellParaIdx: number, charOffset: number)',
+      'getParaPropertiesAt(sec: number, para: number)',
+      'getCellParaPropertiesAt(sec: number, parentPara: number, controlIdx: number, cellIdx: number, cellParaIdx: number)',
+      'applyCharFormat(sec: number, para: number, startOffset: number, endOffset: number, propsJson: string)',
+      'applyCharFormatInCellByPath(sec: number, parentPara: number, pathJson: string, startOffset: number, endOffset: number, propsJson: string)',
+      'applyParaFormat(sec: number, para: number, propsJson: string)',
+      'applyParaFormatInCell(sec: number, parentPara: number, controlIdx: number, cellIdx: number, cellParaIdx: number, propsJson: string)',
+      'setCharShapeId(sec: number, para: number, startOffset: number, endOffset: number, charShapeId: number)',
+      'setCharShapeIdInCellByPath(sec: number, parentPara: number, pathJson: string, startOffset: number, endOffset: number, charShapeId: number)',
+      'getCharShapeRuns(sec: number, para: number, start: number, end: number)',
+      'setCharShapeRuns(sec: number, para: number, start: number, end: number, runs: CharShapeRun[])',
+      'getCharShapeRunsInCellByPath(sec: number, para: number, path: string, start: number, end: number)',
+      'setCharShapeRunsInCellByPath(sec: number, para: number, path: string, start: number, end: number, runs: CharShapeRun[])',
+      'getCellOwnProperties(sec: number, parentPara: number, controlIdx: number, cellIdx: number): CellProperties',
+      'getCellPropertiesByPath(sec: number, parentPara: number, pathJson: string, cellIdx: number): CellProperties',
+      'setCellProperties(',
+      'getStyleAt(sec: number, para: number)',
+      'getCellStyleAt(sec: number, parentPara: number, controlIdx: number, cellIdx: number, cellParaIdx: number)',
+      'applyStyle(sec: number, para: number, styleId: number): { ok: boolean }',
+      'applyCellStyle(sec: number, parentPara: number, controlIdx: number, cellIdx: number, cellParaIdx: number, styleId: number)',
+      'findOrCreateFontIdForLang(lang: number, name: string): number',
+      'getCellParagraphCountByPath(sec: number, parentPara: number, pathJson: string)',
+      'getCellParagraphLengthByPath(sec: number, parentPara: number, pathJson: string)',
+      'getTableDimensionsByPath(sec: number, parentPara: number, pathJson: string)',
+      'getCellInfoByPath(sec: number, parentPara: number, pathJson: string)',
+      'runInBatch<T>(fn: () => T): T',
     ],
   },
   // the studio parts the studio-hancom-commands patch hands to the new commands
@@ -519,7 +678,33 @@ export const hancomHooks = [
       'export function navigateToSearchHit(',
     ],
   },
-  { file: 'src/engine/command.ts', needles: ['export class InsertTextCommand'] },
+  {
+    file: 'src/engine/command.ts',
+    needles: [
+      'export class InsertTextCommand',
+      'export class ApplyCharFormatCommand',
+      'export class ApplyParaFormatCommand',
+    ],
+  },
+  // the studio parts the studio-format-copy patches hand to the app's module
+  {
+    file: 'src/command/commands/edit.ts',
+    needles: [
+      "id: 'edit:format-copy'",
+      'services.getInputHandler()?.performFormatCopy();',
+      'services.getInputHandler()?.performFormatPaste();',
+    ],
+  },
+  {
+    file: 'src/engine/cell-block-format.ts',
+    needles: [
+      'export function selectCellIndicesInRange(',
+      'export function paraFormatTargetsForCellBlock(',
+      'export function withCellPathTarget(',
+    ],
+  },
+  { file: 'src/ui/toast.ts', needles: ['export function showToast(options: ToastOptions): void'] },
+  { file: 'src/i18n/core.ts', needles: ['export function getLocale(): Locale'] },
   // what installHancomMainKeys is handed where the commands are registered
   {
     file: 'src/main.ts',

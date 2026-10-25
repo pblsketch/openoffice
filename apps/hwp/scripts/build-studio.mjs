@@ -29,6 +29,7 @@ import { fileURLToPath } from 'node:url'
 import { build } from 'vite'
 import {
   AGENT_PLUGIN_MODULE,
+  FORMAT_COPY_MODULE,
   HANCOM_KEYS_MODULE,
   STUDIO_PATCHES,
   missingHancomCommands,
@@ -73,6 +74,7 @@ const CACHE = join(APP, 'node_modules', '.cache', 'rhwp-studio', TAG)
 const OUT = join(APP, 'public', 'studio')
 const AGENT_PLUGIN = join(APP, 'studio-plugin', 'agent-plugin.mjs')
 const HANCOM_KEYS = join(APP, 'studio-plugin', 'hancom-keys.mjs')
+const FORMAT_COPY = join(APP, 'studio-plugin', 'format-copy.mjs')
 const STAMP = join(OUT, '.stamp')
 
 function git(args, cwd) {
@@ -90,6 +92,7 @@ function stampValue() {
   // the app's own plugin and the Hangul keys are compiled into the studio
   hash.update(readFileSync(AGENT_PLUGIN))
   hash.update(readFileSync(HANCOM_KEYS))
+  hash.update(readFileSync(FORMAT_COPY))
   // and so is the engine: a rebuilt WASM must reach the studio
   hash.update(readFileSync(join(CORE_DIR, 'rhwp_bg.wasm')))
   return hash.digest('hex')
@@ -181,6 +184,7 @@ async function buildStudio() {
         ),
         [AGENT_PLUGIN_MODULE]: AGENT_PLUGIN,
         [HANCOM_KEYS_MODULE]: HANCOM_KEYS,
+        [FORMAT_COPY_MODULE]: FORMAT_COPY,
       },
     },
     // upstream registers a service worker for its website build; this build

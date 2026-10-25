@@ -126,6 +126,25 @@ describe('what the plugin reaches into the studio for', () => {
   })
 })
 
+describe('rhwp format-copy safety patch', () => {
+  const source = [
+    'const FORMAT_COPY_CELL_KEYS: Array<keyof CellProperties> = [',
+    "  'cellProtect',",
+    "  'fieldName',",
+    "  'editableInForm',",
+    "  'borderFillId',",
+    '];',
+  ].join('\n')
+
+  it('drops the form field name and editability from a copied cell look', () => {
+    const patched = applyPatch('studio-format-copy-safety', source)
+    expect(patched).not.toContain("'fieldName'")
+    expect(patched).not.toContain("'editableInForm'")
+    expect(patched).toContain("'cellProtect'")
+    expect(patched).toContain("'borderFillId'")
+  })
+})
+
 describe('rhwp nested-table patches', () => {
   // the studio's text around each patch, as the pinned release has it
   const bridge = [
@@ -327,6 +346,7 @@ describe('the studio source the build fetched', () => {
     'src/core/wasm-bridge.ts',
     'src/engine/input-handler.ts',
     'src/engine/input-handler-keyboard.ts',
+    'src/command/commands/edit.ts',
     'src/command/commands/table.ts',
     'src/command/shortcut-map.ts',
     'src/command/registry.ts',
