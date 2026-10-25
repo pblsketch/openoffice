@@ -11357,6 +11357,29 @@ export default function App() {
                     >
                       <span className="sel-swatch sel-swatch-st">S</span>
                     </button>
+                    <button
+                      type="button"
+                      className="pdf-sel-note"
+                      data-tip={labelWithKey(t, t('noteTitle'), 'note')}
+                      aria-label={labelWithKey(t, t('noteTitle'), 'note')}
+                      onClick={() => runSelectionBarAction('note')}
+                    >
+                      <svg viewBox="0 0 20 20" width="15" height="15" fill="none" aria-hidden>
+                        <path
+                          d="M3.5 4.5h13v8h-7l-3.6 2.9V12.5H3.5z"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M6.5 7.5h7M6.5 10h4.5"
+                          stroke="currentColor"
+                          strokeWidth="1.2"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      {t('drawNote')}
+                    </button>
                     <span className="pdf-sel-popup-sep" aria-hidden />
                   </>
                 )}

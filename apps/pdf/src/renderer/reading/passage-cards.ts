@@ -142,7 +142,7 @@ export function passageSelectionOf(
   return { origIdx, quads, excerpt, anchor }
 }
 
-/** where a note made from the selection bar (N) goes: the end of the selection */
+/** where a note made from the selection bar (N, or its note button) goes: the end of the selection */
 export function selectionEnd(
   quadsByPage: ReadonlyMap<number, number[][]>,
 ): { origIdx: number; at: [number, number] } | null {
