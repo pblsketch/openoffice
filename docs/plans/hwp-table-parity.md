@@ -99,6 +99,8 @@ E2E는 production 빌드에서 `window.rhwpStudio.automation`과 `window.rhwpStu
 - 표 칸 안에 표 만들기.
 - 표 안의 표에 행/열 넣기·지우기.
 - 표 안의 표 합치기/나누기.
+- 세로 병합 칸을 지나 줄을 넣을 때 병합을 나눠 위·아래를 다시 합치기(현재는 병합이 한 줄씩 길어진다).
+- 셀 블록 `Shift+화살표`로 선택한 칸만 크기 조절. 현재 `resizeTableCells`는 한 칸만 지정해도 그 칸이 속한 열/행 전체를 움직이므로, 칸별 폭·높이를 다루는 엔진 호출이 필요하다. `Ctrl+화살표`(줄/칸 전체, 표 크기 변경)는 지금 엔진 호출로도 될 수 있어 Phase 1C 후보로 둔다.
 - 필요하면 rhwp `@rhwp/core` WASM과 studio API를 함께 고친다. `vendor/rhwp-core` 패치 절차와 `tools/build-rhwp-core.mjs`를 따른다.
 - 이 작업은 저장 결과와 조판을 바꿀 수 있으므로 한컴 2024 저장 왕복 검증이 필수다.
 
