@@ -2,10 +2,13 @@
 
 ## 앱의 PDF 글 읽기가 커닝된 글자마다 줄을 바꿀 수 있다
 
-- **증상.** 2026-10-26 외부 PR #101이 터미널 명령어 `pdf read`에서 고친 문제다. Chromium으로 만든 PDF(워드 → PDF 내보내기 등)는 한글과 숫자를 앞 글자 끝보다 조금 왼쪽에서 시작하게 놓는데, pdfium은 그때마다 줄바꿈을 만들어 `테스트 문서`를 `테\n스\n트 문\n서`로 돌려준다.
-- **확인한 것.** 앱의 `apps/pdf/src/main/read-text.ts`(`readPdfText`)도 `FPDFText_GetText` 결과의 `\r\n`을 그대로 줄바꿈으로 바꾼다. 이 함수는 MCP 도구 `read_pdf`(`apps/shell/src/main/mcp/tools/pdf-tools.ts`)와 PDF 도구(`apps/shell/src/main/pdf-tools/tools.ts`)가 쓴다. 앱에서 같은 PDF로 재현해 보지는 않았다.
-- **영향.** AI가 그런 PDF를 읽으면 글자가 줄마다 흩어져 표의 숫자나 제목을 잘못 읽을 수 있다.
-- **다음 할 일.** 앱에서 같은 PDF로 재현해 보고, 재현되면 #101과 같은 판정(같은 기준선에서 왼쪽에서 오른쪽으로 이어지는 pdfium의 생성 줄바꿈은 지우고, 간격이 글자 크기의 두 배를 넘으면 빈칸으로 바꿈)을 앱 쪽에도 넣는다.
+- **증상.** 2026-10-26 외부 PR #101이 터미널 명령어 `pdf read`에서 고친 문제다. 신고는 Linux에서 Chromium으로 만든 PDF(워드 → PDF 내보내기)였다. 한글과 숫자가 앞 글자 끝보다 조금 왼쪽에서 시작하면 pdfium이 그때마다 줄바꿈을 만들어 `테스트 문서`를 `테\n스\n트 문\n서`로 돌려준다.
+- **확인한 것.** 앱의 `apps/pdf/src/main/read-text.ts`(`readPdfText`)도 `FPDFText_GetText` 결과의 `\r\n`을 그대로 줄바꿈으로 바꾼다. 이 함수는 MCP 도구 `read_pdf`(`apps/shell/src/main/mcp/tools/pdf-tools.ts`)와 PDF 도구(`apps/shell/src/main/pdf-tools/tools.ts`)가 쓴다. 2026-10-26 main(3941e147)에서 직접 넣어 보았다.
+  - #101 시험의 PDF(글자마다 앞 글자 안쪽에서 시작)는 앱에서도 `Wo\nr\nd\nNex\nt\nMe\nn\nu\nPr i c\ne`로 흩어진다. 줄을 만드는 방식은 고치기 전의 터미널 명령어와 같다.
+  - Windows의 Playwright Chromium으로 만든 한글 PDF(맑은 고딕·바탕·굴림, 글자 사이 -0.5px~-0.1em, 양쪽 맞춤, 표 포함)는 다섯 가지 모두 앱과 터미널 명령어 둘 다 `테스트 문서\n● 10월 매출 100\n항목 금액\nA 1`로 바르게 읽었다. 이 PC에서는 실제 문서로 재현하지 못했다.
+- **영향.** 글자를 겹쳐 놓는 PDF를 AI가 읽으면 글자가 줄마다 흩어져 표의 숫자나 제목을 잘못 읽을 수 있다. 배포 운영체제인 Windows의 한글 글꼴에서는 나오지 않았고, 신고된 조건은 Linux다.
+- **지금 하지 않는 이유.** 실제로 그렇게 나오는 PDF를 이 PC에서 만들지 못해, 고친 뒤 실제 문서로 확인할 수 없다.
+- **다음 할 일.** 사용자 신고나 Linux·Mac에서 만든 PDF로 재현되면 #101과 같은 판정(같은 기준선에서 왼쪽에서 오른쪽으로 이어지는 pdfium의 생성 줄바꿈은 지우고, 간격이 글자 크기의 두 배를 넘으면 빈칸으로 바꿈)을 앱 쪽에도 넣는다. 시험은 #101의 `writeRawPdf` PDF를 그대로 쓸 수 있다.
 
 ## 기존 엑셀 파일을 저장하면 엔진이 다시 읽지 못하는 결과가 나온 신고
 
