@@ -252,6 +252,12 @@ default (Parallel's free Search MCP, then DuckDuckGo).
   open/save paths (docx/xlsx/pptx), include a round-trip test proving
   untouched content survives byte-for-byte.
 
+## Recognition
+
+Contributors are listed in [CONTRIBUTORS.md](CONTRIBUTORS.md) and in release
+notes. We list GitHub handles only, not real names or email addresses; tell us
+if you would rather not be listed.
+
 ## Reporting bugs and requesting features
 
 Use the issue templates. For suspected security issues, do **not** open a

@@ -406,6 +406,12 @@ Parallel과 DuckDuckGo로, 업데이트 확인은 GitHub로 갑니다. 편집기
   [행동 강령](CODE_OF_CONDUCT.md)을 읽어 주세요.
 - 상표·저작권 문의와 권리 침해 신고: pblsketch@gmail.com
 
+### 기여자
+
+이 프로그램은 여러 분의 도움으로 만들어집니다. 전체 목록은 [CONTRIBUTORS.md](CONTRIBUTORS.md)에 있습니다.
+
+- [@Neosiki](https://github.com/Neosiki) — CLI·HWP·ODT 수정
+
 ## 라이선스와 출처
 
 이음오피스는 [Apache License 2.0](LICENSE)으로 배포합니다.

@@ -430,6 +430,13 @@ anywhere. The full list is in [PRIVACY.md](PRIVACY.md).
 - Trademark and copyright questions, infringement reports:
   pblsketch@gmail.com.
 
+### Contributors
+
+IeumOffice is built with help from many people. See
+[CONTRIBUTORS.md](CONTRIBUTORS.md) for the full list.
+
+- [@Neosiki](https://github.com/Neosiki) — CLI, HWP and ODT fixes
+
 ## License and acknowledgement
 
 IeumOffice is licensed under the [Apache License 2.0](LICENSE).
