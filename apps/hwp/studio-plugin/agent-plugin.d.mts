@@ -269,6 +269,8 @@ export interface AgentTableCell {
   text: string
   /** numbers (as in listFields) of the click-here fields that sit in the cell */
   fields?: number[]
+  /** the box its paragraph is bulleted with (a form's □ choice box), when it is unchecked */
+  box?: string
   /** a picture, a shape or a table sits in the cell or floats over it: not empty, whatever its text */
   object?: true
 }
@@ -304,6 +306,32 @@ export type AgentFillCellsResult =
        */
       reason: 'no_such_cell' | 'occupied' | 'has_fields' | 'holds_object'
       cells: { row: number; col: number; text?: string; fields?: number[] }[]
+      rows: number
+      cols: number
+    }
+  /** the change would have removed an object of the document, and was rolled back */
+  | { ok: false; reason: 'has_objects'; count: number }
+
+/** One cell whose choice box is to be ticked: 1-based place, and the words beside it when needed. */
+export interface AgentCheckBox {
+  row: number
+  col: number
+  /** the words beside the box, when the cell has more than one */
+  choice?: string
+}
+
+export type AgentCheckBoxesResult =
+  | { ok: true; table: number; count: number; place: AgentPlace }
+  | { ok: false; reason: 'no_such_table'; count: number }
+  | {
+      ok: false
+      /**
+       * no_such_cell: the places are outside the table. no_box: no tick box was found (it
+       * may be a picture or a form control, which this editor cannot tick).
+       * ambiguous_box: the cell has more than one box and choice named none of them.
+       */
+      reason: 'no_such_cell' | 'no_box' | 'ambiguous_box'
+      cells: { row: number; col: number; choices?: string[] }[]
       rows: number
       cols: number
     }
@@ -602,6 +630,7 @@ export interface AgentPluginSurface {
   listTables(): AgentTableList
   readTable(table: number, fromRow?: number | null): AgentReadTableResult
   fillCells(table: number, cells: AgentCellText[], overwrite: boolean): AgentFillCellsResult
+  checkBoxes(table: number, cells: AgentCheckBox[]): AgentCheckBoxesResult
   addTableLines(
     table: number,
     what: AgentTableLines,

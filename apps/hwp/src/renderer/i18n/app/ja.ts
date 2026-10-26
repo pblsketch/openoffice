@@ -117,6 +117,7 @@ export const ja = {
   aiToolTables: '表を確認 · {count} 個',
   aiToolReadTable: '表 {table} を読み取り',
   aiToolFillCells: '表 {table} · セル {count} 個に入力',
+  aiToolCheckBoxes: '表 {table} · チェックボックス {count} 個を選択',
   aiTableName: '表 {table}',
   aiTableRowsAdded: '{count} 行を追加',
   aiTableColsAdded: '{count} 列を追加',

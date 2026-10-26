@@ -118,6 +118,7 @@ export const ru = {
   aiToolTables: 'Таблицы проверены · {count}',
   aiToolReadTable: 'Таблица {table} прочитана',
   aiToolFillCells: 'Таблица {table} · заполнено ячеек: {count}',
+  aiToolCheckBoxes: 'Таблица {table} · отмечено флажков: {count}',
   aiTableName: 'Таблица {table}',
   aiTableRowsAdded: 'Добавлено строк: {count}',
   aiTableColsAdded: 'Добавлено столбцов: {count}',

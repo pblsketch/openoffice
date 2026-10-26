@@ -116,6 +116,7 @@ export const vi = {
   aiToolTables: 'Đã kiểm tra bảng · {count}',
   aiToolReadTable: 'Đã đọc bảng {table}',
   aiToolFillCells: 'Bảng {table} · đã điền {count} ô',
+  aiToolCheckBoxes: 'Bảng {table} · đã đánh dấu {count} ô',
   aiTableName: 'Bảng {table}',
   aiTableRowsAdded: 'Đã thêm {count} hàng',
   aiTableColsAdded: 'Đã thêm {count} cột',

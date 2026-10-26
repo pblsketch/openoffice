@@ -117,6 +117,7 @@ export const pl = {
   aiToolTables: 'Sprawdzono tabele · {count}',
   aiToolReadTable: 'Odczytano tabelę {table}',
   aiToolFillCells: 'Tabela {table} · wypełniono komórek: {count}',
+  aiToolCheckBoxes: 'Tabela {table} · zaznaczono pól: {count}',
   aiTableName: 'Tabela {table}',
   aiTableRowsAdded: 'Dodano wierszy: {count}',
   aiTableColsAdded: 'Dodano kolumn: {count}',

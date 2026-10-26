@@ -116,6 +116,7 @@ export const ko = {
   aiToolTables: '표 {count}개 확인',
   aiToolReadTable: '표 {table} 읽음',
   aiToolFillCells: '표 {table} · 칸 {count}개 채움',
+  aiToolCheckBoxes: '표 {table} · 선택 상자 {count}개 체크',
   aiTableName: '표 {table}',
   aiTableRowsAdded: '행 {count}개 추가',
   aiTableColsAdded: '열 {count}개 추가',

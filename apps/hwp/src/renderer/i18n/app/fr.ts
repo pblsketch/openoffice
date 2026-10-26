@@ -119,6 +119,7 @@ export const fr = {
   aiToolTables: 'Tableaux vérifiés · {count}',
   aiToolReadTable: 'Tableau {table} lu',
   aiToolFillCells: 'Tableau {table} · {count} cellule(s) remplie(s)',
+  aiToolCheckBoxes: 'Tableau {table} · {count} case(s) cochée(s)',
   aiTableName: 'Tableau {table}',
   aiTableRowsAdded: '{count} ligne(s) ajoutée(s)',
   aiTableColsAdded: '{count} colonne(s) ajoutée(s)',

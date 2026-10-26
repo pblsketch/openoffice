@@ -117,6 +117,7 @@ export const nl = {
   aiToolTables: 'Tabellen bekeken · {count}',
   aiToolReadTable: 'Tabel {table} gelezen',
   aiToolFillCells: 'Tabel {table} · {count} cel(len) ingevuld',
+  aiToolCheckBoxes: 'Tabel {table} · {count} vakje(s) aangevinkt',
   aiTableName: 'Tabel {table}',
   aiTableRowsAdded: '{count} rij(en) toegevoegd',
   aiTableColsAdded: '{count} kolom(men) toegevoegd',

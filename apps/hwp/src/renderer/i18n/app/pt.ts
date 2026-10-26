@@ -119,6 +119,7 @@ export const pt = {
   aiToolTables: 'Tabelas verificadas · {count}',
   aiToolReadTable: 'Tabela {table} lida',
   aiToolFillCells: 'Tabela {table} · {count} célula(s) preenchida(s)',
+  aiToolCheckBoxes: 'Tabela {table} · {count} caixa(s) marcada(s)',
   aiTableName: 'Tabela {table}',
   aiTableRowsAdded: '{count} linha(s) adicionada(s)',
   aiTableColsAdded: '{count} coluna(s) adicionada(s)',

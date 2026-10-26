@@ -112,6 +112,7 @@ export const zh = {
   aiToolTables: '已查看表格 · {count} 个',
   aiToolReadTable: '已读取表格 {table}',
   aiToolFillCells: '表格 {table} · 已填写 {count} 个单元格',
+  aiToolCheckBoxes: '表格 {table} · 已勾选 {count} 个选框',
   aiTableName: '表格 {table}',
   aiTableRowsAdded: '添加 {count} 行',
   aiTableColsAdded: '添加 {count} 列',

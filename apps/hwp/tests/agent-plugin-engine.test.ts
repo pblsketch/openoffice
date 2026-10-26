@@ -575,6 +575,38 @@ describe('form fields in the real engine', () => {
     ])
   })
 
+  it("writes the value black and upright, not in the guide's blue italics", () => {
+    const editor = openEditor({ fields: true })
+    const field = JSON.parse(editor.doc().getFieldList())[0] as {
+      fieldId: number
+      location: { paraIndex: number }
+      startCharIdx: number
+      endCharIdx: number
+    }
+    editor
+      .doc()
+      .applyCharFormat(
+        0,
+        field.location.paraIndex,
+        field.startCharIdx,
+        field.endCharIdx,
+        JSON.stringify({ textColor: '#0000ff', italic: true }),
+      )
+    expect(editor.plugin.fillField(1, '홍길동')).toMatchObject({ ok: true })
+    const after = (
+      JSON.parse(editor.doc().getFieldList()) as {
+        fieldId: number
+        location: { paraIndex: number }
+        startCharIdx: number
+      }[]
+    ).find((candidate) => candidate.fieldId === field.fieldId)
+    if (!after) throw new Error('expected the field')
+    expect(editor.chars(after.location.paraIndex, after.startCharIdx)).toMatchObject({
+      italic: false,
+      textColor: '#000000',
+    })
+  })
+
   it('adds a paragraph after a line that ends in a field without landing inside the field', () => {
     // split at its end, the engine would carry the field into the new paragraph and the
     // new text would become the field's value; the paragraph is added behind it instead

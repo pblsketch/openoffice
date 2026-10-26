@@ -117,6 +117,7 @@ export const hi = {
   aiToolTables: 'तालिकाएँ देखी गईं · {count}',
   aiToolReadTable: 'तालिका {table} पढ़ी गई',
   aiToolFillCells: 'तालिका {table} · {count} सेल भरे गए',
+  aiToolCheckBoxes: 'तालिका {table} · {count} बॉक्स चुने गए',
   aiTableName: 'तालिका {table}',
   aiTableRowsAdded: '{count} पंक्तियाँ जोड़ी गईं',
   aiTableColsAdded: '{count} स्तंभ जोड़े गए',

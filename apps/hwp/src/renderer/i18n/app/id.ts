@@ -117,6 +117,7 @@ export const id = {
   aiToolTables: 'Tabel diperiksa · {count}',
   aiToolReadTable: 'Tabel {table} dibaca',
   aiToolFillCells: 'Tabel {table} · {count} sel diisi',
+  aiToolCheckBoxes: 'Tabel {table} · {count} kotak dicentang',
   aiTableName: 'Tabel {table}',
   aiTableRowsAdded: '{count} baris ditambahkan',
   aiTableColsAdded: '{count} kolom ditambahkan',

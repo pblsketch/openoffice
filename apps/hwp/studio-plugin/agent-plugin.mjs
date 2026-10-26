@@ -43,6 +43,18 @@ const MAX_SPLIT = 10
 const MAX_FORMATTED_CELLS = 500
 /** Rows or columns one call adds to or removes from a table. */
 const MAX_TABLE_LINES = 50
+/** Cells one checkBoxes call ticks. */
+const MAX_CHECKED_CELLS = 400
+/**
+ * The boxes Korean forms print a choice with, and the mark a ticked one takes. A box is
+ * often the paragraph's bullet rather than text, so it cannot be replaced: the tick changes
+ * the bullet instead, which keeps the cell's layout.
+ */
+const BOX_CHARS = '□☐▢❑◻'
+const CHECKED_BOX = '☑'
+const CHECKED_BOX_CHARS = '☑☒'
+/** Characters of the words beside a box handed back when a cell has more than one. */
+const MAX_BOX_CHOICE_CHARS = 40
 /** What sits on the page as an object and can lie over a table cell without being in it. */
 const FLOATING_KINDS = new Set(['image', 'picture', 'shape', 'group', 'ole', 'textbox'])
 /** The command this plugin registers with the editor to move its caret to a place. */
@@ -909,6 +921,105 @@ function keepsOwnLook(doc, box, k) {
 }
 
 /**
+ * A colour that says nothing about the answer: black text, or white on a dark fill.
+ */
+const ANSWER_COLORS = new Set(['#000000', '#ffffff'])
+
+/**
+ * The formatting that makes text a filled answer: black and upright, the way Hangul shows
+ * the value of a filled click-here field. Null when the text already looks that way, or
+ * when its colour is white (white text sits on a dark fill and is meant to stay white).
+ * Font, size, bold, underline and strikethrough are kept: only a guide's colour and slant
+ * are dropped.
+ */
+function answerFormatOf(chars) {
+  const color = typeof chars.textColor === 'string' ? chars.textColor.toLowerCase() : ''
+  const recolour = color !== '' && !ANSWER_COLORS.has(color)
+  const upright = chars.italic === true
+  if (!recolour && !upright) return null
+  return JSON.stringify({
+    ...(recolour ? { textColor: '#000000' } : {}),
+    ...(upright ? { italic: false } : {}),
+  })
+}
+
+/** Make the text [0, length) of paragraph k of a table cell look like an answer. */
+function plainAnswerInCell(doc, table, cell, k, length) {
+  if (!Number.isInteger(length) || length <= 0) return
+  const path = JSON.stringify(cellAt(table.path, cell, k))
+  let format
+  try {
+    format = answerFormatOf(
+      parse(doc.getCellCharPropertiesAtByPath(table.sec, table.para, path, 0)),
+    )
+  } catch {
+    return // the text cannot be read back: it stays as the engine wrote it
+  }
+  if (!format) return
+  expectOk(
+    doc.applyCharFormatInCellByPath(table.sec, table.para, path, 0, length, format),
+    'write the answer',
+  )
+}
+
+/**
+ * Make the value of each of these fields look like an answer. A field's guide text is
+ * often blue italics, and the engine writes the value with the look of the text it
+ * replaces; Hangul shows a filled field's value black and upright.
+ */
+function plainAnswerFields(doc, ids) {
+  if (!ids || ids.size === 0) return
+  for (const field of parse(doc.getFieldList())) {
+    if (!ids.has(field.fieldId)) continue
+    const start = field.startCharIdx
+    const end = field.endCharIdx
+    if (!Number.isInteger(start) || !Number.isInteger(end) || end <= start) continue
+    const at = field.location ?? {}
+    const path = Array.isArray(at.path) ? at.path : null
+    try {
+      if (path) {
+        // a field in a table cell (a text box has another address and is left alone)
+        if (!path.every((entry) => entry.type === 'cell')) continue
+        const cellPath = path.map((entry) => ({
+          controlIndex: entry.controlIndex,
+          cellIndex: entry.cellIndex,
+          cellParaIndex: entry.paraIndex,
+        }))
+        const json = JSON.stringify(cellPath)
+        const format = answerFormatOf(
+          parse(doc.getCellCharPropertiesAtByPath(at.sectionIndex, at.paraIndex, json, start)),
+        )
+        if (format) {
+          expectOk(
+            doc.applyCharFormatInCellByPath(
+              at.sectionIndex,
+              at.paraIndex,
+              json,
+              start,
+              end,
+              format,
+            ),
+            'write the answer',
+          )
+        }
+      } else {
+        const format = answerFormatOf(
+          parse(doc.getCharPropertiesAt(at.sectionIndex, at.paraIndex, start)),
+        )
+        if (format) {
+          expectOk(
+            doc.applyCharFormat(at.sectionIndex, at.paraIndex, start, end, format),
+            'write the answer',
+          )
+        }
+      }
+    } catch {
+      // a field the engine cannot read back keeps the look it was written with
+    }
+  }
+}
+
+/**
  * A checked format as the engine takes it, in a change: a font is looked up in the
  * document's font lists, one per language, and added to them where it is missing.
  */
@@ -1413,6 +1524,120 @@ function gridOf(doc, table) {
 const cellBox = (doc, table, cell) =>
   containerOf(doc, { sec: table.sec, para: table.para, cellPath: cellAt(table.path, cell, 0) })
 
+/** Whether a character is a form's tick box, ticked or not. */
+const isBoxChar = (char) => BOX_CHARS.includes(char) || CHECKED_BOX_CHARS.includes(char)
+
+/** The bullet characters of the document by bullet id (1-based), as getBulletList gives them. */
+function bulletChars(doc) {
+  const byId = new Map()
+  for (const bullet of parse(doc.getBulletList())) {
+    if (Number.isInteger(bullet.id) && typeof bullet.char === 'string') {
+      byId.set(bullet.id, bullet.char)
+    }
+  }
+  return byId
+}
+
+/**
+ * The tick boxes a cell carries as paragraph bullets. A bullet lives in the paragraph
+ * shape, not in the cell's text, so it cannot be replaced or deleted: a form's □ choices
+ * are often these. A table inside another table's cell cannot be asked for a paragraph
+ * shape, so those come back empty.
+ */
+function boxBulletsOf(doc, table, cell, bullets) {
+  if (table.path.length > 1) return []
+  const control = table.path[0].controlIndex
+  const count = doc.getCellParagraphCountByPath(
+    table.sec,
+    table.para,
+    JSON.stringify(cellAt(table.path, cell, 0)),
+  )
+  const boxes = []
+  for (let k = 0; k < count; k++) {
+    let props
+    try {
+      props = parse(doc.getCellParaPropertiesAt(table.sec, table.para, control, cell, k))
+    } catch {
+      continue
+    }
+    if (props.headType !== 'Bullet') continue
+    const char = bullets.get(props.numberingId) ?? ''
+    if (!isBoxChar(char)) continue
+    boxes.push({ k, char, checked: CHECKED_BOX_CHARS.includes(char) })
+  }
+  return boxes
+}
+
+/**
+ * The tick boxes typed into the text of a cell's paragraphs: the words right after a box
+ * (or before it, when nothing follows) are the choice it belongs to. Offsets count
+ * characters the way the engine does.
+ */
+function literalBoxesOf(texts) {
+  const boxes = []
+  for (let k = 0; k < texts.length; k++) {
+    const chars = [...texts[k]]
+    for (let i = 0; i < chars.length; i++) {
+      if (!isBoxChar(chars[i])) continue
+      let end = i + 1
+      while (end < chars.length && !isBoxChar(chars[end])) end++
+      let label = chars
+        .slice(i + 1, end)
+        .join('')
+        .trim()
+      if (!label) {
+        let start = i - 1
+        while (start >= 0 && !isBoxChar(chars[start])) start--
+        label = chars
+          .slice(start + 1, i)
+          .join('')
+          .trim()
+      }
+      boxes.push({
+        kind: 'text',
+        k,
+        offset: i,
+        label: clip(label, MAX_BOX_CHOICE_CHARS),
+        checked: CHECKED_BOX_CHARS.includes(chars[i]),
+      })
+    }
+  }
+  return boxes
+}
+
+/** The tick boxes of a cell as candidates: its bullet boxes first, then the ones in its text. */
+function boxesOf(doc, table, cell, texts, bullets) {
+  const bullet = boxBulletsOf(doc, table, cell, bullets).map((entry) => ({
+    kind: 'bullet',
+    k: entry.k,
+    label: clip((texts[entry.k] ?? '').trim(), MAX_BOX_CHOICE_CHARS),
+    checked: entry.checked,
+  }))
+  return [...bullet, ...literalBoxesOf(texts)]
+}
+
+/**
+ * The box `choice` names among the boxes of one cell. Without a choice the only box is
+ * taken. Several, or a choice that names none, come back with the words of every box so
+ * the caller can ask again.
+ */
+function pickBox(boxes, choice) {
+  if (boxes.length === 0) return {}
+  const wanted = typeof choice === 'string' ? choice.trim() : ''
+  if (!wanted) {
+    return boxes.length === 1
+      ? { box: boxes[0] }
+      : { choices: boxes.map((box) => box.label).filter(Boolean) }
+  }
+  const exact = boxes.filter((box) => box.label === wanted)
+  if (exact.length === 1) return { box: exact[0] }
+  const partial = boxes.filter(
+    (box) => box.label !== '' && (box.label.includes(wanted) || wanted.includes(box.label)),
+  )
+  if (partial.length === 1) return { box: partial[0] }
+  return { choices: boxes.map((box) => box.label).filter(Boolean) }
+}
+
 function paragraphsOf(box) {
   const texts = []
   const count = box.count()
@@ -1583,6 +1808,25 @@ function checkCells(cells) {
       throw fail('BAD_ARGUMENT', `a cell takes plain text of at most ${MAX_CELL_LINES} lines`)
     }
     return { row, col, lines }
+  })
+}
+
+/** What checkBoxes was asked to tick: 1-based places, and the words beside a box when needed. */
+function checkBoxCells(cells) {
+  if (!Array.isArray(cells) || cells.length === 0 || cells.length > MAX_CHECKED_CELLS) {
+    throw fail('BAD_ARGUMENT', `cells must be a list of 1 to ${MAX_CHECKED_CELLS} entries`)
+  }
+  return cells.map((entry) => {
+    const { row, col, choice } = entry ?? {}
+    if (!Number.isInteger(row) || row < 1 || !Number.isInteger(col) || col < 1) {
+      throw fail('BAD_ARGUMENT', 'row and col count from 1 and are whole numbers')
+    }
+    if (choice != null) {
+      if (typeof choice !== 'string' || choice.trim() === '' || CONTROL_CHARS.test(choice)) {
+        throw fail('BAD_ARGUMENT', 'choice must be one line of the words beside the box')
+      }
+    }
+    return { row, col, choice: typeof choice === 'string' ? choice : null }
   })
 }
 
@@ -2828,9 +3072,13 @@ export const agentPlugin = {
           }
           const fields = fieldsByCell(doc)
           const covered = coveredCells(doc, table)
+          const bullets = table.path.length > 1 ? new Map() : bulletChars(doc)
           const key = tableKey(table.sec, table.para, table.path)
           const cells = grid.slice(0, end).map((place) => {
             const held = fields.get(`${key}:${place.cell}`)
+            const box = boxBulletsOf(doc, table, place.cell, bullets).find(
+              (entry) => !entry.checked,
+            )
             return {
               row: place.row + 1,
               col: place.col + 1,
@@ -2838,6 +3086,7 @@ export const agentPlugin = {
               ...(place.colSpan > 1 ? { colSpan: place.colSpan } : {}),
               text: clip(paragraphsOf(cellBox(doc, table, place.cell)).join('\n'), MAX_CELL_CHARS),
               ...(held ? { fields: held.map((field) => field.number) } : {}),
+              ...(box ? { box: box.char } : {}),
               ...(!held && (covered.has(place.cell) || cellHoldsObject(doc, table, place.cell))
                 ? { object: true }
                 : {}),
@@ -3372,7 +3621,12 @@ export const agentPlugin = {
                 if (k > 0 && k >= box.count()) box.split(k - 1, box.length(k - 1))
                 if (line) box.insert(k, line)
               })
+              target.lines.forEach((line, k) => {
+                // the look of a guide does not become the look of the answer
+                if (line) plainAnswerInCell(doc, table, target.cell, k, [...line].length)
+              })
             }
+            plainAnswerFields(doc, own)
             mustKeep(before, objectsOf(doc, own))
             const first = targets[0]
             return {
@@ -3383,6 +3637,115 @@ export const agentPlugin = {
                 0,
                 first.field ? 0 : first.lines[0].length,
               ),
+            }
+          }),
+        )
+      }),
+
+      /**
+       * Tick choice boxes of table `number`, all of them in one undo step or none. `cells`
+       * is a list of { row, col, choice } with 1-based places; a place inside a merged cell
+       * means that cell. A box is either the paragraph's bullet (a form's □, which is not in
+       * the cell's text and cannot be replaced) or a □ typed into the text. `choice` names
+       * the words beside the box when the cell has more than one.
+       */
+      checkBoxes: guarded((number, cells) => {
+        const wanted = checkBoxCells(cells)
+        const plan = (doc) => {
+          const { tables } = tablesOf(doc)
+          const table = Number.isInteger(number) ? tables[number - 1] : undefined
+          if (!table)
+            return { refusal: { ok: false, reason: 'no_such_table', count: tables.length } }
+          const grid = gridOf(doc, table)
+          const bullets = bulletChars(doc)
+          const targets = []
+          const missing = []
+          const unboxed = []
+          const ambiguous = []
+          const taken = new Set()
+          for (const want of wanted) {
+            const at = { row: want.row, col: want.col }
+            const place = grid.find(
+              (cell) =>
+                want.row - 1 >= cell.row &&
+                want.row - 1 < cell.row + cell.rowSpan &&
+                want.col - 1 >= cell.col &&
+                want.col - 1 < cell.col + cell.colSpan,
+            )
+            if (!place) {
+              missing.push(at)
+              continue
+            }
+            if (taken.has(place.cell)) {
+              throw fail('BAD_ARGUMENT', `two entries name the same cell (${want.row}.${want.col})`)
+            }
+            taken.add(place.cell)
+            const texts = paragraphsOf(cellBox(doc, table, place.cell))
+            const picked = pickBox(boxesOf(doc, table, place.cell, texts, bullets), want.choice)
+            if (picked.box) targets.push({ cell: place.cell, ...picked.box })
+            else if (picked.choices) ambiguous.push({ ...at, choices: picked.choices })
+            else unboxed.push(at)
+          }
+          const refuse = (reason, list) => ({
+            refusal: { ok: false, reason, cells: list, rows: table.rows, cols: table.cols },
+          })
+          if (missing.length > 0) return refuse('no_such_cell', missing)
+          if (ambiguous.length > 0) return refuse('ambiguous_box', ambiguous)
+          if (unboxed.length > 0) return refuse('no_box', unboxed)
+          return { table, targets }
+        }
+        const refusal = host.read((doc) => plan(doc).refusal ?? null)
+        if (refusal) return refusal
+        return keepingObjects((mustKeep) =>
+          change('check-boxes', (doc) => {
+            const { table, targets } = plan(doc)
+            if (!targets) throw fail('CHANGED', 'the document changed mid-call')
+            const before = objectsOf(doc)
+            let checkedId = null
+            for (const target of targets) {
+              if (target.checked) continue
+              if (target.kind === 'bullet') {
+                if (checkedId === null) checkedId = doc.ensureDefaultBullet(CHECKED_BOX)
+                if (!Number.isInteger(checkedId) || checkedId < 1) {
+                  throw fail('ENGINE', 'the tick box could not be made')
+                }
+                expectOk(
+                  doc.applyParaFormatInCell(
+                    table.sec,
+                    table.para,
+                    table.path[0].controlIndex,
+                    target.cell,
+                    target.k,
+                    JSON.stringify({ headType: 'Bullet', numberingId: checkedId }),
+                  ),
+                  'tick the box',
+                )
+              } else {
+                const path = JSON.stringify(cellAt(table.path, target.cell, target.k))
+                expectOk(
+                  doc.deleteTextInCellByPath(table.sec, table.para, path, target.offset, 1),
+                  'tick the box',
+                )
+                expectOk(
+                  doc.insertTextInCellByPath(
+                    table.sec,
+                    table.para,
+                    path,
+                    target.offset,
+                    CHECKED_BOX,
+                  ),
+                  'tick the box',
+                )
+              }
+            }
+            mustKeep(before, objectsOf(doc))
+            const first = targets[0]
+            const marked = cellBox(doc, table, first.cell)
+            return {
+              ok: true,
+              table: number,
+              count: targets.length,
+              place: marked.place(first.k, Math.min(1, marked.length(first.k))),
             }
           }),
         )
@@ -3980,6 +4343,7 @@ export const agentPlugin = {
           const field = parse(doc.getFieldList())[number - 1]
           if (!field) throw fail('CHANGED', 'the document changed mid-call')
           expectOk(doc.setFieldValue(field.fieldId, value), 'fill the field')
+          plainAnswerFields(doc, new Set([field.fieldId]))
           const place = fieldPlace(field)
           return { ok: true, name: field.name ?? '', ...(place ? { place } : {}) }
         })

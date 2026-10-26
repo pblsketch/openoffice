@@ -29,6 +29,7 @@ const METHODS = [
   'listTables',
   'readTable',
   'fillCells',
+  'checkBoxes',
   'addTableLines',
   'removeTableLines',
   'deleteTable',

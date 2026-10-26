@@ -118,6 +118,7 @@ export const cs = {
   aiToolTables: 'Tabulky zkontrolovány · {count}',
   aiToolReadTable: 'Tabulka {table} přečtena',
   aiToolFillCells: 'Tabulka {table} · vyplněno buněk: {count}',
+  aiToolCheckBoxes: 'Tabulka {table} · zaškrtnuto polí: {count}',
   aiTableName: 'Tabulka {table}',
   aiTableRowsAdded: 'Přidáno řádků: {count}',
   aiTableColsAdded: 'Přidáno sloupců: {count}',

@@ -116,6 +116,7 @@ export const en = {
   aiToolTables: 'Checked tables · {count}',
   aiToolReadTable: 'Read table {table}',
   aiToolFillCells: 'Table {table} · filled {count} cell(s)',
+  aiToolCheckBoxes: 'Table {table} · ticked {count} box(es)',
   aiTableName: 'Table {table}',
   aiTableRowsAdded: '{count} row(s) added',
   aiTableColsAdded: '{count} column(s) added',

@@ -120,6 +120,7 @@ export const de = {
   aiToolTables: 'Tabellen geprüft · {count}',
   aiToolReadTable: 'Tabelle {table} gelesen',
   aiToolFillCells: 'Tabelle {table} · {count} Zelle(n) ausgefüllt',
+  aiToolCheckBoxes: 'Tabelle {table} · {count} Kästchen angekreuzt',
   aiTableName: 'Tabelle {table}',
   aiTableRowsAdded: '{count} Zeile(n) hinzugefügt',
   aiTableColsAdded: '{count} Spalte(n) hinzugefügt',

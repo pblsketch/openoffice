@@ -305,6 +305,73 @@ describe('filling cells', () => {
     expect(props.bold).toBe(true)
   })
 
+  it('writes an answer black and upright, keeping the font and bold of the cell', () => {
+    const { plugin, doc } = openForm((d) => {
+      // a guide left blue and italic, the way a form template prints its examples
+      d.insertTextInCellByPath(0, 1, cellPath(1), 0, 'x')
+      d.applyCharFormatInCellByPath(
+        0,
+        1,
+        cellPath(1),
+        0,
+        1,
+        JSON.stringify({ textColor: '#0000ff', italic: true, bold: true }),
+      )
+      d.deleteTextInCellByPath(0, 1, cellPath(1), 0, 1)
+    })
+    plugin.fillCells(1, [{ row: 1, col: 2, text: '홍길동' }], false)
+    const props = JSON.parse(doc().getCellCharPropertiesAtByPath(0, 1, cellPath(1), 1)) as {
+      bold: boolean
+      italic: boolean
+      textColor: string
+    }
+    expect(props).toMatchObject({ italic: false, textColor: '#000000', bold: true })
+  })
+
+  it('keeps the black upright answer after saving and reopening', () => {
+    const { plugin, doc } = openForm((d) => {
+      d.insertTextInCellByPath(0, 1, cellPath(1), 0, 'x')
+      d.applyCharFormatInCellByPath(
+        0,
+        1,
+        cellPath(1),
+        0,
+        1,
+        JSON.stringify({ textColor: '#0000ff', italic: true }),
+      )
+      d.deleteTextInCellByPath(0, 1, cellPath(1), 0, 1)
+    })
+    plugin.fillCells(1, [{ row: 1, col: 2, text: '홍길동' }], false)
+    for (const saved of [doc().exportHwp(), doc().exportHwpx()]) {
+      const again = new HwpDocument(saved)
+      const props = JSON.parse(again.getCellCharPropertiesAtByPath(0, 1, cellPath(1), 1)) as {
+        italic: boolean
+        textColor: string
+      }
+      expect(props).toMatchObject({ italic: false, textColor: '#000000' })
+    }
+  })
+
+  it('leaves white text white, since it sits on a dark fill', () => {
+    const { plugin, doc } = openForm((d) => {
+      d.insertTextInCellByPath(0, 1, cellPath(1), 0, 'x')
+      d.applyCharFormatInCellByPath(
+        0,
+        1,
+        cellPath(1),
+        0,
+        1,
+        JSON.stringify({ textColor: '#ffffff' }),
+      )
+      d.deleteTextInCellByPath(0, 1, cellPath(1), 0, 1)
+    })
+    plugin.fillCells(1, [{ row: 1, col: 2, text: '홍길동' }], false)
+    const props = JSON.parse(doc().getCellCharPropertiesAtByPath(0, 1, cellPath(1), 1)) as {
+      textColor: string
+    }
+    expect(props.textColor).toBe('#ffffff')
+  })
+
   it('leaves a cell that holds text alone, and with it every other cell of the call', () => {
     const { plugin, steps, cells } = openForm()
     const result = plugin.fillCells(
@@ -396,6 +463,136 @@ describe('filling cells', () => {
   })
 })
 
+describe('ticking choice boxes', () => {
+  it("ticks a box that is the cell's bullet, in place, and says the cell has one", () => {
+    const { plugin, doc, steps } = openForm((d) => {
+      const id = d.ensureDefaultBullet('□')
+      for (const [cell, text] of [
+        [1, '창업기업'],
+        [3, '예비창업자'],
+      ] as const) {
+        d.applyParaFormatInCell(
+          0,
+          1,
+          0,
+          cell,
+          0,
+          JSON.stringify({ headType: 'Bullet', numberingId: id }),
+        )
+        d.insertTextInCellByPath(0, 1, cellPath(cell), 0, text)
+      }
+    })
+    const read = plugin.readTable(1)
+    if (!read.ok) throw new Error('expected a table')
+    expect(read.cells.find((cell) => cell.row === 1 && cell.col === 2)).toMatchObject({
+      text: '창업기업',
+      box: '□',
+    })
+    expect(plugin.checkBoxes(1, [{ row: 1, col: 2 }])).toMatchObject({ ok: true, count: 1 })
+    expect(steps()).toBe(1)
+    const props = JSON.parse(doc().getCellParaPropertiesAt(0, 1, 0, 1, 0)) as {
+      headType: string
+      numberingId: number
+    }
+    const bullet = (JSON.parse(doc().getBulletList()) as { id: number; char: string }[]).find(
+      (entry) => entry.id === props.numberingId,
+    )
+    expect(bullet?.char).toBe('☑')
+    // the words beside the box are untouched: no second mark was added
+    const after = plugin.readTable(1)
+    if (!after.ok) throw new Error('expected a table')
+    expect(after.cells.find((cell) => cell.row === 1 && cell.col === 2)?.text).toBe('창업기업')
+  })
+
+  it('ticks the box typed in the text before its choice', () => {
+    const { plugin } = openForm((d) => {
+      d.insertTextInCellByPath(0, 1, cellPath(1), 0, '□ 창업기업')
+      d.insertTextInCellByPath(0, 1, cellPath(3), 0, '□ 예비창업자')
+    })
+    expect(plugin.checkBoxes(1, [{ row: 1, col: 2, choice: '창업기업' }])).toMatchObject({
+      ok: true,
+      count: 1,
+    })
+    const read = plugin.readTable(1)
+    if (!read.ok) throw new Error('expected a table')
+    expect(read.cells.find((cell) => cell.row === 1 && cell.col === 2)?.text).toBe('☑ 창업기업')
+    expect(read.cells.find((cell) => cell.row === 1 && cell.col === 4)?.text).toBe('□ 예비창업자')
+  })
+
+  it('asks for the words when a cell has several boxes, and changes nothing', () => {
+    const { plugin, steps } = openForm((d) => {
+      d.insertTextInCellByPath(0, 1, cellPath(1), 0, '□ 남  □ 여')
+    })
+    expect(plugin.checkBoxes(1, [{ row: 1, col: 2 }])).toMatchObject({
+      ok: false,
+      reason: 'ambiguous_box',
+      cells: [{ row: 1, col: 2, choices: ['남', '여'] }],
+    })
+    expect(steps()).toBe(0)
+    expect(plugin.checkBoxes(1, [{ row: 1, col: 2, choice: '여' }])).toMatchObject({ ok: true })
+    const read = plugin.readTable(1)
+    if (!read.ok) throw new Error('expected a table')
+    expect(read.cells.find((cell) => cell.row === 1 && cell.col === 2)?.text).toBe('□ 남  ☑ 여')
+  })
+
+  it('changes nothing when any named cell has no box', () => {
+    const { plugin, steps } = openForm((d) => {
+      d.insertTextInCellByPath(0, 1, cellPath(1), 0, '□ 창업기업')
+    })
+    expect(
+      plugin.checkBoxes(1, [
+        { row: 1, col: 2 },
+        { row: 3, col: 3 },
+      ]),
+    ).toMatchObject({
+      ok: false,
+      reason: 'no_box',
+      cells: [{ row: 3, col: 3 }],
+    })
+    expect(steps()).toBe(0)
+  })
+
+  it('is taken back by one undo', () => {
+    const { plugin } = openForm((d) => {
+      d.insertTextInCellByPath(0, 1, cellPath(1), 0, '□ 창업기업')
+    })
+    const foreign = plugin.foreignChanges()
+    plugin.checkBoxes(1, [{ row: 1, col: 2 }])
+    expect(plugin.undo(1, foreign)).toMatchObject({ ok: true })
+    const read = plugin.readTable(1)
+    if (!read.ok) throw new Error('expected a table')
+    expect(read.cells.find((cell) => cell.row === 1 && cell.col === 2)?.text).toBe('□ 창업기업')
+  })
+
+  it('keeps the tick in a bullet after saving and reopening', () => {
+    const { plugin, doc } = openForm((d) => {
+      const id = d.ensureDefaultBullet('□')
+      d.applyParaFormatInCell(
+        0,
+        1,
+        0,
+        1,
+        0,
+        JSON.stringify({ headType: 'Bullet', numberingId: id }),
+      )
+      d.insertTextInCellByPath(0, 1, cellPath(1), 0, '창업기업')
+    })
+    plugin.checkBoxes(1, [{ row: 1, col: 2 }])
+    for (const saved of [doc().exportHwp(), doc().exportHwpx()]) {
+      const again = new HwpDocument(saved)
+      const props = JSON.parse(again.getCellParaPropertiesAt(0, 1, 0, 1, 0)) as {
+        headType: string
+        numberingId: number
+      }
+      const bullet = (JSON.parse(again.getBulletList()) as { id: number; char: string }[]).find(
+        (entry) => entry.id === props.numberingId,
+      )
+      expect(props.headType).toBe('Bullet')
+      expect(bullet?.char).toBe('☑')
+    }
+  })
+})
+
 describe('cells that hold a form field', () => {
   const withField = () =>
     openForm((doc) => {
@@ -437,6 +634,26 @@ describe('cells that hold a form field', () => {
       ok: true,
     })
     expect(plugin.listFields()[0]!.value).toBe('김철수')
+  })
+
+  it("shows a filled field value black and upright, not in the guide's blue italics", () => {
+    const { plugin, doc } = openForm((d) => {
+      d.insertClickHereFieldByPath(0, 1, cellPath(1), 0, GUIDE, '', '', true)
+      d.applyCharFormatInCellByPath(
+        0,
+        1,
+        cellPath(1),
+        0,
+        GUIDE.length,
+        JSON.stringify({ textColor: '#0000ff', italic: true }),
+      )
+    })
+    plugin.fillCells(1, [{ row: 1, col: 2, text: '홍길동' }], false)
+    const props = JSON.parse(doc().getCellCharPropertiesAtByPath(0, 1, cellPath(1), 1)) as {
+      italic: boolean
+      textColor: string
+    }
+    expect(props).toMatchObject({ italic: false, textColor: '#000000' })
   })
 })
 

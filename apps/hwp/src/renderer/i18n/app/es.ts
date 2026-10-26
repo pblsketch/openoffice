@@ -120,6 +120,7 @@ export const es = {
   aiToolTables: 'Tablas revisadas · {count}',
   aiToolReadTable: 'Tabla {table} leída',
   aiToolFillCells: 'Tabla {table} · {count} celda(s) rellenada(s)',
+  aiToolCheckBoxes: 'Tabla {table} · {count} casilla(s) marcada(s)',
   aiTableName: 'Tabla {table}',
   aiTableRowsAdded: '{count} fila(s) añadida(s)',
   aiTableColsAdded: '{count} columna(s) añadida(s)',

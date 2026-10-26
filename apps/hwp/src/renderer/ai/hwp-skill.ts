@@ -2,6 +2,7 @@ import type { AgentSkill, AgentToolCall, AgentToolDef, ToolExecution } from '@ge
 import { brandText, type Params } from '@genoffice/i18n'
 import type {
   AgentCellText,
+  AgentCheckBox,
   AgentMatch,
   AgentNoSuchStyle,
   AgentParagraphFormat,
@@ -96,7 +97,7 @@ const SYSTEM_PROMPT = [
   '- Replace a piece of text with another (replace_text, replace_all). The new text takes the formatting of the text it replaces.',
   '- Add new paragraphs next to an existing one, in the body or inside a table cell, or at the end of the document (insert_paragraphs). Remove a paragraph (delete_paragraph).',
   '- Add a table of plain-text cells, with a header row when the first row names the columns (insert_table).',
-  '- Work on the tables that are already there: list them (list_tables), read one cell by cell (read_table), write text into its cells, many at once (fill_cells), add or remove rows and columns (add_to_table, remove_from_table), and remove a whole table (delete_table).',
+  '- Work on the tables that are already there: list them (list_tables), read one cell by cell (read_table), write text into its cells, many at once (fill_cells), tick the choice boxes of a form (check_boxes), add or remove rows and columns (add_to_table, remove_from_table), and remove a whole table (delete_table).',
   '- Change formatting: bold, italic, underline, strikethrough, font, font size, text colour, highlight and the character style of a piece of text (format_text); alignment, line spacing, first-line indent, margins, space above and below and the paragraph style of a paragraph, and the character formatting of a whole paragraph (format_paragraph); the background colour of table cells (format_cells).',
   '- Work with the styles of the document: see what one looks like (read_style), add a paragraph or character style (create_style), and change a style: its name, the style that follows it and its look (edit_style).',
   '- Merge table cells into one (merge_cells; their text goes into it, one cell after another) or split a cell into several, or a merged cell back (split_cell). Read the table first: rows and columns count as read_table shows them.',
@@ -106,6 +107,7 @@ const SYSTEM_PROMPT = [
   '',
   '## What they cannot do',
   '- You cannot change numbering, borders or the page layout, and you cannot add or change pictures. A note cannot be put inside a table cell.',
+  "- A tick box that is a picture or a form control cannot be ticked: only a □ that is the paragraph's bullet or typed into the text can.",
   '- A table inside a cell of another table can be read, filled and removed, but its cells cannot be coloured, merged or split, it cannot get or lose rows and columns, and the alignment, spacing and paragraph style of its paragraphs cannot be changed. Its text can still be formatted, character styles included.',
   '- You cannot remove a style. The user can do that in the style dialog of the editor (F6).',
   '- One piece of text is always one line: a line break inside a text argument is refused. Several paragraphs are several strings in one insert_paragraphs call.',
@@ -119,8 +121,12 @@ const SYSTEM_PROMPT = [
   '## Filling in forms',
   '- A Korean form is mostly tables: a cell that names an item (성명, 소속, 연락처) and an empty cell beside or below it for the answer. The text of the document shows the names but not the empty cells, so read the table with read_table before filling it.',
   '- Tables are numbered in reading order; a table inside a cell of another table has its own number. Cells are named row.col, counted from 1. A merged cell is listed once, with the places it spans.',
-  '- Fill every cell you have an answer for in one fill_cells call per table. The text takes the formatting the cell already has, so do not format it afterwards.',
-  '- fill_cells only writes into empty cells. A cell that holds text is left alone, and so is the whole call, unless you pass overwrite: do that only when the user asked to change what is there. Never write into the cells that name the items.',
+  "- Fill every cell you have an answer for in one fill_cells call per table. The text keeps the cell's font, size and bold, but is written black and upright: a guide's blue italics do not carry over. Do not format the answer afterwards.",
+  '- fill_cells only writes into empty cells. A cell that holds text is left alone, and so is the whole call, unless you pass overwrite. Do that when the user asked to fill the form (the text may be an example answer) or to change what is there. Never write into the cells that name the items.',
+  '- A form template often leaves example answers in the cells (blue italics, "(예시)", zeros, a sample address). They are not empty. When the user asks you to fill the form, pass overwrite for those cells and write only the answer: the example is not part of it.',
+  "- Fill form cells with fill_cells, not replace_text: a replacement keeps the guide's look, while fill_cells writes the answer plainly.",
+  '- A choice is marked with a box (□) beside each option. The box may belong to the paragraph, not the text: read_table says [tick box □] for such a cell, and that box cannot be replaced or deleted. Tick one with check_boxes, naming the cell; when the cell has more than one box, pass choice with the words beside the box. Never type ☑ or add a box of your own: the box is changed in place, so the cell keeps its width.',
+  '- Tick only the choices the user gave you. Leave the other boxes empty, and never tick both sides of one choice.',
   '- An empty cell cannot be reached with replace_text or insert_paragraphs, which need text to find: use fill_cells.',
   '- A cell marked as holding a picture or another object is not empty even without text (a logo, a seal, a photo): never fill it.',
   '- Leave a cell empty when you do not know its answer, and tell the user which ones are left.',
@@ -590,7 +596,7 @@ const TOOLS: AgentToolDef[] = [
   {
     name: 'fill_cells',
     description:
-      'Write text into cells of one table, all of them at once (one step for the user to undo). The text takes the formatting the cell already has; a line break starts a new paragraph inside the cell. Only empty cells are written unless overwrite is true: if any named cell holds text, nothing is changed and those cells are listed.',
+      "Write text into cells of one table, all of them at once (one step for the user to undo). The text keeps the cell's font, size and bold, but is written black and upright: blue italic guide text does not carry over. A line break starts a new paragraph inside the cell. Only empty cells are written unless overwrite is true: if any named cell holds text, nothing is changed and those cells are listed. Example answers left in a template are text: pass overwrite to replace them with the real answer.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -611,6 +617,34 @@ const TOOLS: AgentToolDef[] = [
         overwrite: {
           type: 'boolean',
           description: 'replace the text of cells that already hold some (default false)',
+        },
+      },
+      required: ['table', 'cells'],
+    },
+  },
+  {
+    name: 'check_boxes',
+    description:
+      "Tick the choice boxes (□) of cells in one table, all at once (one step to undo). The box may be the paragraph's bullet, which read_table shows as [tick box □]: it is changed in place, so no ☑ is added beside it and the cell keeps its width. Name the cell; when it holds more than one box, pass choice with the words beside the box. Only the choices the user picked.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        table: { type: 'integer', minimum: 1, description: 'the table number from list_tables' },
+        cells: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              row: { type: 'integer', minimum: 1 },
+              col: { type: 'integer', minimum: 1 },
+              choice: {
+                type: 'string',
+                description: 'the words beside the box, when the cell has more than one',
+              },
+            },
+            required: ['row', 'col'],
+          },
+          description: 'the cells to tick, each by its row and column as read_table lists them',
         },
       },
       required: ['table', 'cells'],
@@ -668,7 +702,7 @@ const TOOLS: AgentToolDef[] = [
   {
     name: 'fill_field',
     description:
-      'Set the value of one form field, picked by its number from list_fields. The value is one line of text.',
+      'Set the value of one form field, picked by its number from list_fields. The value is one line of text, written black and upright as Hangul shows a filled field.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -798,10 +832,11 @@ function cellLine(cell: AgentTableCell): string {
       ? ` (merged up to ${cell.row + rowSpan - 1}.${cell.col + colSpan - 1})`
       : ''
   const field = cell.fields ? ` [form field ${cell.fields.map((n) => `#${n}`).join(', ')}]` : ''
+  const box = cell.box ? ` [tick box ${cell.box}]` : ''
   const object = cell.object ? ' [holds a picture or another object: not empty]' : ''
   const text =
     cell.text === '' ? (cell.object ? '(no text)' : '(empty)') : cell.text.replace(/\r?\n/g, ' ⏎ ')
-  return `${cell.row}.${cell.col}${spans}${field}${object}: ${text}`
+  return `${cell.row}.${cell.col}${spans}${field}${box}${object}: ${text}`
 }
 
 /** The cells a fill_cells call names, or null when it names none that can be read. */
@@ -813,6 +848,20 @@ function cellArgs(call: AgentToolCall): AgentCellText[] | null {
     const { row, col, text } = (entry ?? {}) as Record<string, unknown>
     if (typeof row !== 'number' || typeof col !== 'number' || typeof text !== 'string') return null
     cells.push({ row, col, text })
+  }
+  return cells
+}
+
+/** The cells a check_boxes call names, or null when it names none that can be read. */
+function checkBoxArgs(call: AgentToolCall): AgentCheckBox[] | null {
+  const raw = call.input.cells
+  if (!Array.isArray(raw) || raw.length === 0) return null
+  const cells: AgentCheckBox[] = []
+  for (const entry of raw) {
+    const { row, col, choice } = (entry ?? {}) as Record<string, unknown>
+    if (typeof row !== 'number' || typeof col !== 'number') return null
+    if (choice !== undefined && choice !== null && typeof choice !== 'string') return null
+    cells.push(choice == null ? { row, col } : { row, col, choice })
   }
   return cells
 }
@@ -1872,6 +1921,60 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
           call,
           'Nothing was changed: these cells already hold text. Leave them out, or pass overwrite when the user asked to replace what is there.\n' +
             result.cells.map((cell) => `${cell.row}.${cell.col}: ${cell.text ?? ''}`).join('\n'),
+        )
+      }
+      case 'check_boxes': {
+        const table = call.input.table
+        const cells = checkBoxArgs(call)
+        if (typeof table !== 'number') return bad(call, 'table must be a number from list_tables')
+        if (!cells) {
+          return bad(
+            call,
+            'cells must be a non-empty list of { row, col, choice? } with whole numbers',
+          )
+        }
+        const result = await bridge.checkBoxes(table, cells)
+        if (result.ok) {
+          deps.onChange({
+            kind: 'cells',
+            from: label('aiTableName', { table }),
+            to: '☑',
+            count: result.count,
+            place: result.place,
+          })
+          return {
+            output: `Ticked ${result.count} choice box(es) of table ${table}.`,
+            mutated: true,
+            summary: label('aiToolCheckBoxes', { table, count: result.count }),
+          }
+        }
+        if (result.reason === 'no_such_table') return bad(call, noSuchTable(table, result.count))
+        if (result.reason === 'has_objects') {
+          return bad(
+            call,
+            'Nothing was changed: the change would have removed a picture, a table or a form field. Tell the user.',
+          )
+        }
+        const places = result.cells.map((cell) => `${cell.row}.${cell.col}`).join(', ')
+        if (result.reason === 'no_such_cell') {
+          return bad(
+            call,
+            `Nothing was changed: the table has ${result.rows} row(s) and ${result.cols} column(s), and these places are not in it: ${places}. Read the table again.`,
+          )
+        }
+        if (result.reason === 'ambiguous_box') {
+          const lines = result.cells.map(
+            (cell) => `${cell.row}.${cell.col}: ${(cell.choices ?? []).join(' / ')}`,
+          )
+          return bad(
+            call,
+            'Nothing was changed: these cells hold more than one box, or the choice matches none of them. Call again with choice set to the words beside the box:\n' +
+              lines.join('\n'),
+          )
+        }
+        return bad(
+          call,
+          `Nothing was changed: no tick box (□) was found in these cells: ${places}. It may be a picture or a form control, which this editor cannot tick: leave it for the user.`,
         )
       }
       case 'add_to_table': {

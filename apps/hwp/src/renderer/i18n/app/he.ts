@@ -114,6 +114,7 @@ export const he = {
   aiToolTables: 'הטבלאות נבדקו · {count}',
   aiToolReadTable: 'טבלה {table} נקראה',
   aiToolFillCells: 'טבלה {table} · מולאו {count} תאים',
+  aiToolCheckBoxes: 'טבלה {table} · סומנו {count} תיבות',
   aiTableName: 'טבלה {table}',
   aiTableRowsAdded: 'נוספו {count} שורות',
   aiTableColsAdded: 'נוספו {count} עמודות',

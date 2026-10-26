@@ -116,6 +116,7 @@ export const th = {
   aiToolTables: 'ตรวจสอบตารางแล้ว · {count} ตาราง',
   aiToolReadTable: 'อ่านตาราง {table} แล้ว',
   aiToolFillCells: 'ตาราง {table} · กรอก {count} เซลล์',
+  aiToolCheckBoxes: 'ตาราง {table} · เลือก {count} ช่อง',
   aiTableName: 'ตาราง {table}',
   aiTableRowsAdded: 'เพิ่ม {count} แถว',
   aiTableColsAdded: 'เพิ่ม {count} คอลัมน์',

@@ -115,6 +115,7 @@ export const ar = {
   aiToolTables: 'تم فحص الجداول · {count}',
   aiToolReadTable: 'تمت قراءة الجدول {table}',
   aiToolFillCells: 'الجدول {table} · تم ملء {count} خلية',
+  aiToolCheckBoxes: 'الجدول {table} · تم تحديد {count} مربع اختيار',
   aiTableName: 'الجدول {table}',
   aiTableRowsAdded: 'تمت إضافة {count} صف',
   aiTableColsAdded: 'تمت إضافة {count} عمود',

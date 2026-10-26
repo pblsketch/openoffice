@@ -117,6 +117,7 @@ export const ms = {
   aiToolTables: 'Jadual disemak · {count}',
   aiToolReadTable: 'Jadual {table} dibaca',
   aiToolFillCells: 'Jadual {table} · {count} sel diisi',
+  aiToolCheckBoxes: 'Jadual {table} · {count} kotak ditanda',
   aiTableName: 'Jadual {table}',
   aiTableRowsAdded: '{count} baris ditambah',
   aiTableColsAdded: '{count} lajur ditambah',
