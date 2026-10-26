@@ -27,6 +27,7 @@ Ponieważ instalator nie jest podpisany, uruchamiaj tylko taki, który został p
 - Gdy sprawdzenie się nie powiedzie — brak sieci albo nic jeszcze nie opublikowano — nic się nie dzieje, a aplikacja działa jak dotąd.
 - **Kanał aktualizacji**, również w Ustawienia ▸ O aplikacji, to Stabilny lub Beta. Zmiana działa natychmiast i sprawdza, czy jest aktualizacja; nie cofnie instalacji Beta do kanału Stabilnego.
 - Aktualizacje również nie mają podpisu cyfrowego. Przed instalacją aplikacja porównuje pobrany plik z sumą kontrolną opublikowaną razem z danym wydaniem.
+- Jeśli **Uruchom ponownie i zainstaluj** zamyka aplikację, ale nowa wersja się nie pojawia, przy następnym uruchomieniu aplikacja o tym poinformuje i ponownie zaproponuje aktualizację. Tym razem instalator otworzy się we własnym oknie, więc można śledzić jego postęp i odpowiedzieć na prośbę o uprawnienia administratora. Jeśli i to nie pomoże, okno aktualizacji wskaże stronę pobierania; instalacja z pobranego tam pliku zachowuje ustawienia i dokumenty. Przebieg aktualizacji jest zapisywany w `update-log.txt` w folderze danych aplikacji (wpisz `%APPDATA%\GenOffice` w pasku adresu Eksploratora plików, aby go otworzyć). Dołącz ten plik, zgłaszając problem.
 
 ## Kompilacja, którą uruchamiasz
 

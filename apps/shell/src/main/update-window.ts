@@ -81,7 +81,12 @@ function registerSettingsIpc(): void {
       const parent = parentWindow()
       if (parent) showUpdateWindow(parent, currentState, actions ?? dummyActions)
     }
-    if (currentState.phase === 'available' || currentState.phase === 'error') actions?.onDownload()
+    if (
+      currentState.phase === 'available' ||
+      currentState.phase === 'error' ||
+      currentState.phase === 'install-failed'
+    )
+      actions?.onDownload()
     return true
   })
 }

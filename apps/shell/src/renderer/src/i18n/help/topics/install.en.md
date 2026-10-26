@@ -27,6 +27,7 @@ Because the installer is not signed, only run one you downloaded from the Releas
 - When the check fails — no network, or nothing published yet — nothing happens, and the app keeps working as before.
 - **Update Channel**, also under Settings ▸ About, is Stable or Beta. Changing it takes effect at once and checks for an update; it will not downgrade a Beta install back to Stable.
 - Updates are not code-signed either. Before installing one, the app checks the downloaded file against the checksum published with that release.
+- If **Restart & install** closes the app but the new version does not appear, the next launch says so and offers the update again. This time the installer opens in its own window, so you can follow it and answer an administrator prompt. If that does not work either, the update window points to the download page; installing from the file you get there keeps your settings and documents. What the updater did is written to `update-log.txt` in the app's data folder (type `%APPDATA%\GenOffice` into the File Explorer address bar to open it). Attach that file when you report the problem.
 
 ## The build you are running
 

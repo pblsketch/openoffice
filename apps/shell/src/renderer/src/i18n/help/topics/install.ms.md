@@ -27,6 +27,7 @@ Oleh sebab pemasang ini tidak ditandatangani, jalankan hanya pemasang yang anda 
 - Apabila semakan gagal — tiada rangkaian, atau belum ada apa-apa yang diterbitkan — tiada apa yang berlaku, dan aplikasi terus berfungsi seperti biasa.
 - **Saluran Kemas Kini**, juga di bawah Tetapan ▸ Perihal, ialah Stabil atau Beta. Menukarnya berkuat kuasa serta-merta dan akan menyemak kemas kini; ia tidak akan menurunkan pemasangan Beta kembali ke Stabil.
 - Kemas kini juga tidak ditandatangani dengan sijil kod. Sebelum memasangnya, aplikasi menyemak fail yang dimuat turun terhadap checksum yang diterbitkan bersama keluaran itu.
+- Jika **Mulakan semula dan pasang** menutup aplikasi tetapi versi baharu tidak muncul, pelancaran seterusnya memberitahu perkara itu dan menawarkan kemas kini sekali lagi. Kali ini pemasang dibuka dalam tetingkapnya sendiri, jadi anda boleh mengikutinya dan menjawab permintaan pentadbir. Jika masih tidak berjaya, tetingkap kemas kini menunjukkan halaman muat turun; memasang dengan fail dari sana mengekalkan tetapan dan dokumen anda. Apa yang dilakukan oleh pengemas kini dicatat dalam `update-log.txt` di folder data aplikasi (taip `%APPDATA%\GenOffice` dalam bar alamat File Explorer untuk membukanya). Lampirkan fail itu apabila melaporkan masalah.
 
 ## Keluaran yang anda jalankan
 

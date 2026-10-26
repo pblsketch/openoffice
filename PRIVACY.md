@@ -1,6 +1,6 @@
 # IeumOffice Privacy
 
-Last updated: October 24, 2026
+Last updated: October 26, 2026
 
 IeumOffice opens, edits and saves documents on your own PC. The project runs
 no server of its own: nothing is sent to IeumOffice or to its maintainers, and
@@ -337,6 +337,16 @@ Nothing in this list is uploaded by the app.
   error messages, and it is kept under
   64 KB by dropping the oldest lines. The app never sends it anywhere; if you
   report a problem, you can attach it yourself. No crash dumps are written.
+- **The update record** (`update-log.txt` in the data folder): what the
+  installed app's updater did, one line each time — the checks, downloads and
+  the installer it started (silently or in the installer's own window). A line
+  holds the time, version numbers, the release download addresses and the
+  paths of the downloaded installer and of the app, which include your Windows
+  user name. It holds no document content. It is kept under 256 KB by dropping
+  its older half, and the app never sends it anywhere. Next to it,
+  `update-install-attempt.json` remembers the last installer start (the
+  version it was for, the version that started it, and how) so the next launch
+  can tell you when an update did not install.
 - **Your skills** (`~/.ieumoffice/skills`): the skills you added or made.
   A template you save with a skill is a copy of your document, kept in the
   skill's folder (`assets/`); it holds whatever that document held, so use

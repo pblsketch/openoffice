@@ -1,7 +1,20 @@
+import { dirname, join } from 'node:path'
 import { app, dialog, shell } from 'electron'
 import type { BrowserWindow } from 'electron'
 import { autoUpdater, CancellationToken } from 'electron-updater'
 import { installResumeDownload } from './update-resume'
+import {
+  clearInstallAttempt,
+  installDidNotApply,
+  installDirWritable,
+  installFailureLevel,
+  readInstallAttempt,
+  recordInstallAttempt,
+} from './update-attempt'
+import type { InstallFailureLevel } from './update-attempt'
+import { createUpdateLog, UPDATE_LOG_FILE } from './update-log'
+import type { UpdateLogger } from './update-log'
+import { requestUpdateRestart, updateRestartRequested } from './update-restart'
 import type { UpdateInfo } from 'electron-updater'
 import { createI18n, getUiLang, htmlLang } from '@genoffice/i18n'
 import { GITHUB_LATEST_RELEASE_URL, githubReleaseTagUrl } from '@genoffice/electron-utils'
@@ -66,6 +79,8 @@ const tUpd = createI18n({
     updNotesOnGitHub: '在 GitHub 查看完整说明',
     updNotesTruncated: '仅显示部分内容。',
     updManualMac: 'Mac 版无法自动更新。请从下载页面获取新版本并安装。',
+    updInstallFailed: '上次更新未能安装。这次将以窗口方式打开安装程序，以便查看安装进度。',
+    updVisibleInstall: '重启后将打开安装程序窗口。如果 Windows 请求管理员授权，请选择“是”。',
   },
   en: {
     updTitle: 'Software Update',
@@ -88,6 +103,10 @@ const tUpd = createI18n({
     updNotesTruncated: 'Only part of the notes is shown.',
     updManualMac:
       "The Mac version can't update itself. Download the new version from the download page and install it.",
+    updInstallFailed:
+      'The last update did not install. This time the installer opens in its own window so you can see its progress.',
+    updVisibleInstall:
+      'After the restart the installer opens in its own window. If Windows asks for administrator approval, choose Yes.',
   },
   vi: {
     updTitle: 'Cập nhật phần mềm',
@@ -110,6 +129,10 @@ const tUpd = createI18n({
     updNotesTruncated: 'Chỉ hiển thị một phần.',
     updManualMac:
       'Phiên bản Mac không thể tự cập nhật. Hãy tải phiên bản mới từ trang tải xuống và cài đặt.',
+    updInstallFailed:
+      'Bản cập nhật lần trước chưa được cài đặt. Lần này trình cài đặt sẽ mở trong cửa sổ riêng để bạn theo dõi tiến trình.',
+    updVisibleInstall:
+      'Sau khi khởi động lại, trình cài đặt sẽ mở trong cửa sổ riêng. Nếu Windows yêu cầu quyền quản trị viên, hãy chọn Có.',
   },
   ja: {
     updTitle: 'ソフトウェアアップデート',
@@ -132,6 +155,10 @@ const tUpd = createI18n({
     updNotesTruncated: '一部のみ表示しています。',
     updManualMac:
       'Mac 版は自動で更新できません。ダウンロードページから新しいバージョンを入手してインストールしてください。',
+    updInstallFailed:
+      '前回のアップデートはインストールされませんでした。今回はインストーラーをウィンドウで開き、進行状況を表示します。',
+    updVisibleInstall:
+      '再起動するとインストーラーのウィンドウが開きます。Windows が管理者の承認を求めたら「はい」を選んでください。',
   },
   ko: {
     updTitle: '소프트웨어 업데이트',
@@ -154,6 +181,10 @@ const tUpd = createI18n({
     updNotesTruncated: '일부만 표시했습니다.',
     updManualMac:
       'Mac용 설치본은 스스로 업데이트하지 못합니다. 다운로드 페이지에서 새 버전을 받아 설치해 주세요.',
+    updInstallFailed:
+      '지난번 업데이트가 설치되지 않았습니다. 이번에는 설치 프로그램을 창으로 띄워 진행 상황을 보여 드립니다.',
+    updVisibleInstall:
+      "다시 시작하면 설치 프로그램 창이 뜹니다. 관리자 승인을 묻는 창이 나오면 '예'를 눌러 주세요.",
   },
   fr: {
     updTitle: 'Mise à jour logicielle',
@@ -177,6 +208,10 @@ const tUpd = createI18n({
     updNotesTruncated: 'Seule une partie du contenu est affichée.',
     updManualMac:
       "La version Mac ne peut pas se mettre à jour d'elle-même. Téléchargez la nouvelle version depuis la page de téléchargement et installez-la.",
+    updInstallFailed:
+      "La dernière mise à jour ne s'est pas installée. Cette fois, le programme d'installation s'ouvre dans sa propre fenêtre pour que vous puissiez suivre sa progression.",
+    updVisibleInstall:
+      "Après le redémarrage, le programme d'installation s'ouvre dans sa propre fenêtre. Si Windows demande l'autorisation d'un administrateur, choisissez Oui.",
   },
   de: {
     updTitle: 'Softwareaktualisierung',
@@ -201,6 +236,10 @@ const tUpd = createI18n({
     updNotesTruncated: 'Es wird nur ein Teil angezeigt.',
     updManualMac:
       'Die Mac-Version kann sich nicht selbst aktualisieren. Laden Sie die neue Version von der Download-Seite herunter und installieren Sie sie.',
+    updInstallFailed:
+      'Das letzte Update wurde nicht installiert. Diesmal öffnet sich das Installationsprogramm in einem eigenen Fenster, damit Sie den Fortschritt sehen.',
+    updVisibleInstall:
+      'Nach dem Neustart öffnet sich das Installationsprogramm in einem eigenen Fenster. Wenn Windows nach Administratorrechten fragt, wählen Sie „Ja“.',
   },
   es: {
     updTitle: 'Actualización de software',
@@ -223,6 +262,10 @@ const tUpd = createI18n({
     updNotesTruncated: 'Solo se muestra una parte.',
     updManualMac:
       'La versión para Mac no puede actualizarse sola. Descarga la nueva versión desde la página de descargas e instálala.',
+    updInstallFailed:
+      'La última actualización no se instaló. Esta vez el instalador se abre en su propia ventana para que pueda ver su progreso.',
+    updVisibleInstall:
+      'Tras el reinicio, el instalador se abre en su propia ventana. Si Windows pide la aprobación de un administrador, elija Sí.',
   },
   th: {
     updTitle: 'อัปเดตซอฟต์แวร์',
@@ -244,6 +287,10 @@ const tUpd = createI18n({
     updNotesTruncated: 'แสดงเพียงบางส่วน',
     updManualMac:
       'เวอร์ชัน Mac ไม่สามารถอัปเดตตัวเองได้ โปรดดาวน์โหลดเวอร์ชันใหม่จากหน้าดาวน์โหลดแล้วติดตั้ง',
+    updInstallFailed:
+      'การอัปเดตครั้งก่อนไม่ได้ติดตั้ง ครั้งนี้ตัวติดตั้งจะเปิดในหน้าต่างของตัวเองเพื่อให้คุณเห็นความคืบหน้า',
+    updVisibleInstall:
+      'หลังรีสตาร์ท ตัวติดตั้งจะเปิดในหน้าต่างของตัวเอง หาก Windows ขอการอนุมัติจากผู้ดูแลระบบ ให้เลือก ใช่',
   },
   id: {
     updTitle: 'Pembaruan Perangkat Lunak',
@@ -266,6 +313,10 @@ const tUpd = createI18n({
     updNotesTruncated: 'Hanya sebagian yang ditampilkan.',
     updManualMac:
       'Versi Mac tidak dapat memperbarui dirinya sendiri. Unduh versi baru dari halaman unduhan lalu instal.',
+    updInstallFailed:
+      'Pembaruan terakhir tidak terpasang. Kali ini penginstal dibuka di jendelanya sendiri agar Anda dapat melihat kemajuannya.',
+    updVisibleInstall:
+      'Setelah dimulai ulang, penginstal terbuka di jendelanya sendiri. Jika Windows meminta persetujuan administrator, pilih Ya.',
   },
   ru: {
     updTitle: 'Обновление программы',
@@ -288,6 +339,10 @@ const tUpd = createI18n({
     updNotesTruncated: 'Показана только часть.',
     updManualMac:
       'Версия для Mac не обновляется автоматически. Скачайте новую версию со страницы загрузки и установите её.',
+    updInstallFailed:
+      'Последнее обновление не установилось. На этот раз установщик откроется в отдельном окне, чтобы вы видели ход установки.',
+    updVisibleInstall:
+      'После перезапуска установщик откроется в отдельном окне. Если Windows запросит разрешение администратора, выберите «Да».',
   },
   ar: {
     updTitle: 'تحديث البرنامج',
@@ -307,6 +362,10 @@ const tUpd = createI18n({
     updNotesOnGitHub: 'عرض الملاحظات الكاملة على GitHub',
     updNotesTruncated: 'يُعرض جزء فقط.',
     updManualMac: 'لا يمكن لإصدار Mac تحديث نفسه. نزّل الإصدار الجديد من صفحة التنزيل وثبّته.',
+    updInstallFailed:
+      'لم يتم تثبيت التحديث الأخير. هذه المرة سيفتح برنامج التثبيت في نافذته الخاصة لتتمكن من متابعة التقدم.',
+    updVisibleInstall:
+      'بعد إعادة التشغيل يفتح برنامج التثبيت في نافذته الخاصة. إذا طلب Windows موافقة المسؤول، فاختر نعم.',
   },
   pt: {
     updTitle: 'Atualização de Software',
@@ -329,6 +388,10 @@ const tUpd = createI18n({
     updNotesTruncated: 'Apenas parte do conteúdo é exibida.',
     updManualMac:
       'A versão para Mac não consegue se atualizar sozinha. Baixe a nova versão na página de download e instale-a.',
+    updInstallFailed:
+      'A última atualização não foi instalada. Desta vez o instalador abre em sua própria janela para você acompanhar o progresso.',
+    updVisibleInstall:
+      'Após reiniciar, o instalador abre em sua própria janela. Se o Windows pedir aprovação de administrador, escolha Sim.',
   },
   it: {
     updTitle: 'Aggiornamento software',
@@ -351,6 +414,10 @@ const tUpd = createI18n({
     updNotesTruncated: 'È mostrata solo una parte.',
     updManualMac:
       'La versione per Mac non può aggiornarsi da sola. Scarica la nuova versione dalla pagina di download e installala.',
+    updInstallFailed:
+      "L'ultimo aggiornamento non è stato installato. Questa volta il programma di installazione si apre in una finestra propria, così puoi seguirne l'avanzamento.",
+    updVisibleInstall:
+      "Dopo il riavvio il programma di installazione si apre in una finestra propria. Se Windows chiede l'approvazione di un amministratore, scegli Sì.",
   },
   pl: {
     updTitle: 'Aktualizacja oprogramowania',
@@ -373,6 +440,10 @@ const tUpd = createI18n({
     updNotesTruncated: 'Wyświetlana jest tylko część.',
     updManualMac:
       'Wersja na Maca nie może zaktualizować się sama. Pobierz nową wersję ze strony pobierania i zainstaluj ją.',
+    updInstallFailed:
+      'Ostatnia aktualizacja nie została zainstalowana. Tym razem instalator otworzy się we własnym oknie, aby można było śledzić postęp.',
+    updVisibleInstall:
+      'Po ponownym uruchomieniu instalator otworzy się we własnym oknie. Jeśli system Windows poprosi o zgodę administratora, wybierz Tak.',
   },
   cs: {
     updTitle: 'Aktualizace softwaru',
@@ -395,6 +466,10 @@ const tUpd = createI18n({
     updNotesTruncated: 'Zobrazuje se jen část.',
     updManualMac:
       'Verze pro Mac se nedokáže aktualizovat sama. Stáhněte novou verzi ze stránky pro stažení a nainstalujte ji.',
+    updInstallFailed:
+      'Poslední aktualizace se nenainstalovala. Tentokrát se instalátor otevře ve vlastním okně, abyste viděli průběh.',
+    updVisibleInstall:
+      'Po restartu se instalátor otevře ve vlastním okně. Pokud Windows požádá o souhlas správce, zvolte Ano.',
   },
   nl: {
     updTitle: 'Software-update',
@@ -418,6 +493,10 @@ const tUpd = createI18n({
     updNotesTruncated: 'Er wordt slechts een deel weergegeven.',
     updManualMac:
       'De Mac-versie kan zichzelf niet bijwerken. Download de nieuwe versie van de downloadpagina en installeer die.',
+    updInstallFailed:
+      'De laatste update is niet geïnstalleerd. Deze keer opent het installatieprogramma in een eigen venster, zodat u de voortgang ziet.',
+    updVisibleInstall:
+      'Na het herstarten opent het installatieprogramma in een eigen venster. Als Windows om toestemming van een beheerder vraagt, kiest u Ja.',
   },
   ms: {
     updTitle: 'Kemas Kini Perisian',
@@ -440,6 +519,10 @@ const tUpd = createI18n({
     updNotesTruncated: 'Hanya sebahagian dipaparkan.',
     updManualMac:
       'Versi Mac tidak dapat mengemas kini dirinya sendiri. Muat turun versi baharu dari halaman muat turun dan pasangnya.',
+    updInstallFailed:
+      'Kemas kini terakhir tidak dipasang. Kali ini pemasang dibuka dalam tetingkapnya sendiri supaya anda dapat melihat kemajuannya.',
+    updVisibleInstall:
+      'Selepas dimulakan semula, pemasang dibuka dalam tetingkapnya sendiri. Jika Windows meminta kelulusan pentadbir, pilih Ya.',
   },
   he: {
     updTitle: 'עדכון תוכנה',
@@ -459,6 +542,10 @@ const tUpd = createI18n({
     updNotesOnGitHub: 'הצג הערות מלאות ב-GitHub',
     updNotesTruncated: 'מוצג רק חלק.',
     updManualMac: 'גרסת ה-Mac לא יכולה להתעדכן בעצמה. הורד את הגרסה החדשה מדף ההורדות והתקן אותה.',
+    updInstallFailed:
+      'העדכון האחרון לא הותקן. הפעם תוכנית ההתקנה תיפתח בחלון משלה כדי שתוכלו לראות את ההתקדמות.',
+    updVisibleInstall:
+      'לאחר ההפעלה מחדש תוכנית ההתקנה תיפתח בחלון משלה. אם Windows מבקש אישור מנהל, בחרו "כן".',
   },
   hi: {
     updTitle: 'सॉफ़्टवेयर अपडेट',
@@ -481,6 +568,10 @@ const tUpd = createI18n({
     updNotesTruncated: 'केवल एक भाग दिखाया गया है।',
     updManualMac:
       'Mac संस्करण अपने आप अपडेट नहीं हो सकता। डाउनलोड पृष्ठ से नया संस्करण लेकर इंस्टॉल करें।',
+    updInstallFailed:
+      'पिछला अपडेट इंस्टॉल नहीं हुआ। इस बार इंस्टॉलर अपनी अलग विंडो में खुलेगा, ताकि आप उसकी प्रगति देख सकें।',
+    updVisibleInstall:
+      'पुनरारंभ के बाद इंस्टॉलर अपनी अलग विंडो में खुलेगा। अगर Windows व्यवस्थापक की अनुमति माँगे, तो हाँ चुनें।',
   },
   'zh-TW': {
     updTitle: '軟體更新',
@@ -500,6 +591,9 @@ const tUpd = createI18n({
     updNotesOnGitHub: '在 GitHub 查看完整說明',
     updNotesTruncated: '僅顯示部分內容。',
     updManualMac: 'Mac 版無法自動更新。請從下載頁面取得新版本並安裝。',
+    updInstallFailed: '上次更新未能安裝。這次將以視窗方式開啟安裝程式，方便查看安裝進度。',
+    updVisibleInstall:
+      '重新啟動後將開啟安裝程式視窗。如果 Windows 要求系統管理員授權，請選擇「是」。',
   },
 })
 
@@ -570,8 +664,12 @@ const CHANNEL_FEED: Record<UpdateChannel, string> = { stable: 'latest', beta: 'b
 // that (or in dev runs) must not touch electron-updater
 let updaterActive = false
 
+// the update record in the data folder, once the packaged updater is set up
+let updateLog: UpdateLogger | null = null
+
 function log(...args: unknown[]): void {
   console.log('[updater]', ...args)
+  updateLog?.info(args.map((arg) => (typeof arg === 'string' ? arg : String(arg))).join(' '))
 }
 
 function uiStrings(): UpdateUiStrings {
@@ -587,6 +685,8 @@ function uiStrings(): UpdateUiStrings {
     failed: tUpd(lang, 'updFailed'),
     retry: tUpd(lang, 'updRetry'),
     manualDesc: tUpd(lang, SELF_UPDATES ? 'updManual' : 'updManualMac'),
+    installFailedDesc: tUpd(lang, 'updInstallFailed'),
+    visibleInstallDesc: tUpd(lang, 'updVisibleInstall'),
     openDownload: tUpd(lang, 'updOpenDownload'),
     notesLabel: tUpd(lang, 'updNotesLabel'),
     notesOnGitHub: tUpd(lang, 'updNotesOnGitHub'),
@@ -597,6 +697,7 @@ function uiStrings(): UpdateUiStrings {
 function initialState(
   version: string,
   releaseNotes: UpdateReleaseNotes | null = null,
+  visibleInstall = false,
 ): UpdateUiState {
   return {
     phase: 'available',
@@ -606,6 +707,7 @@ function initialState(
     lang: htmlLang(getUiLang()),
     strings: uiStrings(),
     releaseNotes,
+    visibleInstall,
   }
 }
 
@@ -719,6 +821,11 @@ export function initAutoUpdater(
   if (process.platform !== 'win32' && process.platform !== 'darwin' && !isLinuxAppImage) return
 
   updaterActive = true
+  const dataDir = app.getPath('userData')
+  const record = createUpdateLog(join(dataDir, UPDATE_LOG_FILE))
+  updateLog = record
+  autoUpdater.logger = record
+  log('running', app.getVersion(), 'on the', initialChannel, 'channel')
   selectChannel(initialChannel)
   autoUpdater.autoDownload = false
   // The window shows what changed before the user starts the download
@@ -726,8 +833,11 @@ export function initAutoUpdater(
   // every release newer than this install from the feed request the GitHub
   // provider already makes — no extra network call.
   autoUpdater.fullChangelog = true
-  // if the user picked "later" after download, install on normal quit
-  autoUpdater.autoInstallOnAppQuit = SELF_UPDATES
+  // The installer is started here at will-quit (startInstaller below), never
+  // by electron-updater's own quit hook: the quit is certain by then, so the
+  // installer cannot close the app over a save prompt, and every start is
+  // recorded for the next launch to check.
+  autoUpdater.autoInstallOnAppQuit = false
   // full-package policy: never attempt blockmap differential downloads
   // (a release then needs only the installer and its latest.yml)
   autoUpdater.disableDifferentialDownload = true
@@ -752,11 +862,87 @@ export function initAutoUpdater(
   let downloadToken: CancellationToken | null = null
   let downloadGen = 0
 
-  const setPhase = (patch: { phase: UpdatePhase; percent?: number }): void => {
+  // A silent install that left the app at the old version gets its next try in
+  // the installer's own window; one that failed there too goes to the
+  // download page (update-attempt.ts). A record with nothing left to say goes.
+  const previousAttempt = readInstallAttempt(dataDir)
+  const failedInstall = installDidNotApply(previousAttempt, app.getVersion())
+    ? previousAttempt
+    : null
+  const installFailures: InstallFailureLevel = installFailureLevel(failedInstall)
+  if (failedInstall) {
+    log(
+      'the installer started for',
+      failedInstall.version,
+      failedInstall.visible ? 'in its own window' : 'silently',
+      'did not update',
+      app.getVersion(),
+    )
+  } else if (previousAttempt) {
+    log('the installer started for', previousAttempt.version, 'has run; now', app.getVersion())
+    clearInstallAttempt(dataDir)
+  }
+
+  // An "all users" install needs administrator rights, so its installer asks
+  // for them; started in its own window that prompt comes with the installer
+  // instead of out of nowhere after the app has gone. Checked once.
+  let installDirOk: boolean | null = null
+  const installNeedsWindow = (): boolean => {
+    if (installFailures > 0) return true
+    if (process.platform !== 'win32') return false
+    installDirOk ??= installDirWritable(
+      dirname(process.execPath),
+      `.ieumoffice-update-check-${process.pid}`,
+    )
+    return !installDirOk
+  }
+
+  const startInstaller = (version: string, restart: boolean): void => {
+    const visible = restart && installNeedsWindow()
+    recordInstallAttempt(dataDir, { version, fromVersion: app.getVersion(), visible })
+    log(
+      'starting the installer for',
+      version,
+      visible ? 'in its own window' : 'silently',
+      restart ? 'to reopen the app' : 'on quit',
+    )
+    // BaseUpdater.install: the same call electron-updater's quit hook makes;
+    // it spawns the installer detached and returns at once
+    const updater = autoUpdater as unknown as {
+      install?: (isSilent: boolean, isForceRunAfter: boolean) => boolean
+    }
+    if (typeof updater.install !== 'function' || !updater.install(!visible, restart)) {
+      log('the installer did not start')
+    }
+  }
+
+  // will-quit comes only once every window has closed and no save prompt was
+  // cancelled: the right moment to hand over to the installer
+  app.on('will-quit', () => {
+    if (!SELF_UPDATES || phase !== 'downloaded' || latestSeenVersion === null) return
+    const restart = updateRestartRequested()
+    // "later" after the download installs on quit, unless installing has
+    // already failed here: that retry waits for the user, in a window
+    if (!restart && installFailures > 0) return
+    startInstaller(latestSeenVersion, restart)
+  })
+
+  const setPhase = (patch: {
+    phase: UpdatePhase
+    percent?: number
+    visibleInstall?: boolean
+  }): void => {
     phase = patch.phase
     if (patch.percent !== undefined) percent = patch.percent
     pushUpdateState(patch)
   }
+
+  /** the window state for `version` at the current phase */
+  const windowState = (version: string): UpdateUiState => ({
+    ...initialState(version, latestSeenNotes, phase === 'downloaded' && installNeedsWindow()),
+    phase,
+    percent,
+  })
 
   const failDownload = (): void => {
     if (!downloadInFlight) return
@@ -772,7 +958,6 @@ export function initAutoUpdater(
   resetDownloadFlow = () => {
     if (latestSeenVersion === null) return
     log('channel switch: dropping', latestSeenVersion, 'in phase', phase)
-    autoUpdater.autoInstallOnAppQuit = false
     downloadToken?.cancel()
     downloadToken = null
     downloadGen += 1
@@ -804,9 +989,12 @@ export function initAutoUpdater(
     },
     onInstall: () => {
       closeUpdateWindow()
-      if (latestSeenVersion === null) return
-      // let the window fully close before tearing the app down
-      setImmediate(() => autoUpdater.quitAndInstall(true, true))
+      if (latestSeenVersion === null || phase !== 'downloaded') return
+      log('restart requested to install', latestSeenVersion)
+      requestUpdateRestart()
+      // let the window fully close before tearing the app down; the installer
+      // starts at will-quit, after every save prompt has been answered
+      setImmediate(() => app.quit())
     },
     onLater: () => {
       dismissedVersion = latestSeenVersion
@@ -836,18 +1024,18 @@ export function initAutoUpdater(
       // an explicit check still owes feedback: bring back the flow in progress
       // (a background recheck stays quiet)
       if (manualCheckInFlight && !isUpdateWindowOpen()) {
-        const version = latestSeenVersion ?? info.version
-        showUpdateWindow(
-          getWindow(),
-          { ...initialState(version, latestSeenNotes), phase, percent },
-          actions,
-        )
+        showUpdateWindow(getWindow(), windowState(latestSeenVersion ?? info.version), actions)
       }
       return
     }
     if (!sameVersionRecheck) {
       failedAttempts = 0
-      phase = SELF_UPDATES ? 'available' : 'manual'
+      phase =
+        !SELF_UPDATES || installFailures >= 2
+          ? 'manual'
+          : installFailures === 1
+            ? 'install-failed'
+            : 'available'
       percent = 0
       latestSeenNotes = normalizeReleaseNotes(info.releaseNotes)
     } else {
@@ -863,11 +1051,7 @@ export function initAutoUpdater(
     // in-progress download or a terminal 'manual' fallback back to the
     // "Update Now" offer
     if (sameVersionRecheck && isUpdateWindowOpen()) return
-    showUpdateWindow(
-      getWindow(),
-      { ...initialState(info.version, latestSeenNotes), phase, percent },
-      actions,
-    )
+    showUpdateWindow(getWindow(), windowState(info.version), actions)
   })
 
   autoUpdater.on('download-progress', (progress) => {
@@ -881,10 +1065,9 @@ export function initAutoUpdater(
       return
     }
     log('downloaded:', info.version)
-    autoUpdater.autoInstallOnAppQuit = true
     downloadInFlight = false
     failedAttempts = 0
-    setPhase({ phase: 'downloaded', percent: 100 })
+    setPhase({ phase: 'downloaded', percent: 100, visibleInstall: installNeedsWindow() })
   })
 
   const check = (): void => {

@@ -27,6 +27,7 @@ Comme l’installeur n’est pas signé, n’exécutez que celui que vous avez t
 - Lorsque la vérification échoue — pas de réseau, ou rien de publié pour l’instant —, il ne se passe rien et l’application continue de fonctionner comme avant.
 - **Canal de mise à jour**, également sous Paramètres ▸ À propos, vaut Stable ou Bêta. Une modification prend effet immédiatement et déclenche une recherche de mise à jour ; elle ne rétrograde pas une installation Bêta vers Stable.
 - Les mises à jour ne sont pas signées non plus. Avant d’en installer une, l’application compare le fichier téléchargé à la somme de contrôle publiée avec cette version.
+- Si **Redémarrer et installer** ferme l'application sans que la nouvelle version apparaisse, le lancement suivant le signale et propose de nouveau la mise à jour. Cette fois, le programme d'installation s'ouvre dans sa propre fenêtre : vous pouvez le suivre et répondre à une demande d'autorisation administrateur. Si cela ne suffit pas, la fenêtre de mise à jour renvoie vers la page de téléchargement ; installer avec le fichier obtenu là conserve vos paramètres et vos documents. Ce qu'a fait la mise à jour est consigné dans `update-log.txt`, dans le dossier de données de l'application (tapez `%APPDATA%\GenOffice` dans la barre d'adresse de l'Explorateur de fichiers pour l'ouvrir). Joignez ce fichier quand vous signalez le problème.
 
 ## Le build que vous exécutez
 

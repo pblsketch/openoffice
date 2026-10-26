@@ -27,6 +27,7 @@ Omdat het installatieprogramma niet is ondertekend, voer je alleen een exemplaar
 - Mislukt de controle — geen netwerk, of er is nog niets gepubliceerd — dan gebeurt er niets en blijft de app werken zoals voorheen.
 - **Updatekanaal**, ook onder Instellingen ▸ Over, staat op Stabiel of Bèta. Wijzigen gaat meteen in en controleert op een update; een Bèta-installatie wordt niet teruggezet naar Stabiel.
 - Ook updates hebben geen digitale handtekening. Vóór het installeren vergelijkt de app het gedownloade bestand met de controlesom die bij die release is gepubliceerd.
+- Als **Herstarten en installeren** de app sluit maar de nieuwe versie niet verschijnt, meldt de volgende start dat en biedt de update opnieuw aan. Deze keer opent het installatieprogramma in een eigen venster, zodat u het kunt volgen en een vraag om beheerderstoestemming kunt beantwoorden. Lukt ook dat niet, dan verwijst het updatevenster naar de downloadpagina; installeren met het bestand van daar behoudt uw instellingen en documenten. Wat de updater heeft gedaan, staat in `update-log.txt` in de gegevensmap van de app (typ `%APPDATA%\GenOffice` in de adresbalk van Verkenner om die te openen). Voeg dat bestand toe wanneer u het probleem meldt.
 
 ## De build die je draait
 

@@ -105,7 +105,10 @@ function render(state: UpdateUiState): void {
   // the notes take the generic line's place; failure and manual guidance
   // always stay (their text explains what to do)
   desc.style.display = hasNotes ? 'none' : ''
-  desc.classList.toggle('error', state.phase === 'error' || state.phase === 'manual')
+  desc.classList.toggle(
+    'error',
+    state.phase === 'error' || state.phase === 'manual' || state.phase === 'install-failed',
+  )
   // in the manual phase the main button already opens the same release page
   notesMore.style.display = state.phase === 'manual' ? 'none' : ''
 
@@ -127,10 +130,19 @@ function render(state: UpdateUiState): void {
       break
     }
     case 'downloaded':
-      desc.textContent = s.desc
+      // the installer will open its own window: say so before the restart
+      desc.textContent = state.visibleInstall ? s.visibleInstallDesc : s.desc
+      if (state.visibleInstall) desc.style.display = ''
       progress.style.display = 'none'
       action.style.display = ''
       action.textContent = s.install
+      break
+    case 'install-failed':
+      desc.textContent = s.installFailedDesc
+      desc.style.display = ''
+      progress.style.display = 'none'
+      action.style.display = ''
+      action.textContent = s.download
       break
     case 'error':
       desc.textContent = s.failed

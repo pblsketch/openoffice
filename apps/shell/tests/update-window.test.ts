@@ -152,6 +152,15 @@ describe('update window — settings-facing surface', () => {
     expect(sent.some((s) => s.channel === 'update:state-changed')).toBe(true)
   })
 
+  it('open-for-update starts the retry download after an install that did not apply', async () => {
+    const mod = await loadModule()
+    const act = actions()
+    mod.showUpdateWindow(parent, state('install-failed'), act)
+    mod.closeUpdateWindow()
+    expect(handlers.get('update:open-for-update')!()).toBe(true)
+    expect(act.onDownload).toHaveBeenCalledTimes(1)
+  })
+
   it('open-for-update never restarts an in-flight or finished download', async () => {
     const mod = await loadModule()
     for (const phase of ['downloading', 'downloaded'] as const) {

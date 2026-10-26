@@ -27,6 +27,7 @@ Karena installer tidak ditandatangani, jalankan hanya installer yang Anda unduh 
 - Ketika pemeriksaan gagal — tidak ada jaringan, atau belum ada yang diterbitkan — tidak terjadi apa-apa, dan aplikasi tetap berjalan seperti sebelumnya.
 - **Saluran Pembaruan**, juga di Pengaturan ▸ Tentang, berisi Stabil atau Beta. Mengubahnya langsung berlaku dan memeriksa pembaruan; ini tidak akan menurunkan instalasi Beta kembali ke Stabil.
 - Pembaruan juga tidak ditandatangani secara digital. Sebelum memasangnya, aplikasi mencocokkan berkas yang diunduh dengan checksum yang diterbitkan bersama rilis itu.
+- Jika **Mulai ulang & instal** menutup aplikasi tetapi versi baru tidak muncul, peluncuran berikutnya memberi tahu hal itu dan menawarkan pembaruan lagi. Kali ini penginstal terbuka di jendelanya sendiri, sehingga Anda dapat mengikutinya dan menjawab permintaan administrator. Jika masih tidak berhasil, jendela pembaruan mengarahkan ke halaman unduhan; memasang dengan berkas dari sana tetap mempertahankan pengaturan dan dokumen Anda. Apa yang dilakukan pembaru dicatat di `update-log.txt` dalam folder data aplikasi (ketik `%APPDATA%\GenOffice` di bilah alamat File Explorer untuk membukanya). Lampirkan berkas itu saat melaporkan masalah.
 
 ## Build yang sedang Anda jalankan
 

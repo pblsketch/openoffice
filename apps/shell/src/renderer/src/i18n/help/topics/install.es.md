@@ -27,6 +27,7 @@ Como el instalador no está firmado, ejecute solo uno que haya descargado de la 
 - Cuando la comprobación falla —no hay red, o aún no se ha publicado nada—, no ocurre nada y la aplicación sigue funcionando como antes.
 - **Canal de actualización**, también en Configuración ▸ Acerca de, es Estable o Beta. Cambiarlo surte efecto de inmediato y busca una actualización; no bajará una instalación Beta a Estable.
 - Las actualizaciones tampoco están firmadas digitalmente. Antes de instalar una, la aplicación compara el archivo descargado con la suma de comprobación publicada con esa versión.
+- Si **Reiniciar e instalar** cierra la aplicación pero la nueva versión no aparece, el siguiente inicio lo indica y vuelve a ofrecer la actualización. Esta vez el instalador se abre en su propia ventana, para que pueda seguirlo y responder a una solicitud de administrador. Si tampoco funciona, la ventana de actualización remite a la página de descargas; instalar con el archivo de allí conserva su configuración y sus documentos. Lo que hizo el actualizador queda escrito en `update-log.txt`, en la carpeta de datos de la aplicación (escriba `%APPDATA%\GenOffice` en la barra de direcciones del Explorador de archivos para abrirla). Adjunte ese archivo al informar del problema.
 
 ## La compilación que está ejecutando
 

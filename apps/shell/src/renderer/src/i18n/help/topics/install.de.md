@@ -27,6 +27,7 @@ Weil das Installationsprogramm nicht signiert ist, führen Sie nur eines aus, da
 - Schlägt die Prüfung fehl — kein Netz oder noch nichts veröffentlicht —, passiert nichts, und die App arbeitet weiter wie zuvor.
 - **Update-Kanal**, ebenfalls unter Einstellungen ▸ Über, ist Stabil oder Beta. Eine Änderung wirkt sofort und prüft auf ein Update; eine Beta-Installation wird nicht auf Stabil zurückgestuft.
 - Auch Updates sind nicht codesigniert. Vor der Installation vergleicht die App die heruntergeladene Datei mit der Prüfsumme, die mit dieser Version veröffentlicht wurde.
+- Wenn **Neustarten & installieren** die App schließt, die neue Version aber nicht erscheint, meldet der nächste Start das und bietet das Update erneut an. Diesmal öffnet sich das Installationsprogramm in einem eigenen Fenster, sodass Sie es verfolgen und eine Administratorabfrage beantworten können. Klappt auch das nicht, verweist das Update-Fenster auf die Download-Seite; eine Installation mit der Datei von dort behält Ihre Einstellungen und Dokumente. Was der Updater getan hat, steht in `update-log.txt` im Datenordner der App (geben Sie `%APPDATA%\GenOffice` in die Adressleiste des Datei-Explorers ein, um ihn zu öffnen). Hängen Sie diese Datei an, wenn Sie das Problem melden.
 
 ## Der Build, den Sie ausführen
 

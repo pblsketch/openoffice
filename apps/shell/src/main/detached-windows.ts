@@ -28,6 +28,7 @@ import { mindmapIsDirty, requestMindmapClose } from '../../../mindmap/src/main/m
 import { epubIsDirty, requestEpubClose } from '../../../epub/src/main/epub-main'
 import { canonicalPath } from './tab-manager'
 import { releaseClosedRenderer } from './renderer-disposal'
+import { cancelUpdateRestart } from './update-restart'
 import type { DetachedTab } from './tab-manager'
 import type { SessionDetachedTab } from './session-record'
 import type { OpenDocumentTab, TabKind } from '../shared/tabs-api'
@@ -600,6 +601,8 @@ export function createDetachedEditorWindow(options: {
         if (await confirmDetachedClose(rec)) tearDown()
         else {
           resetSheetsShuttingDown()
+          // so is a "Restart & Install" waiting on that quit
+          cancelUpdateRestart()
           // a "Don't Save" answered before the denial no longer holds: the
           // window stays open with its edits, so its copies resume
           resumeDiscardedCopies()
@@ -608,6 +611,7 @@ export function createDetachedEditorWindow(options: {
       } catch (err) {
         console.error('[shell] detached window close prompt failed:', err)
         resetSheetsShuttingDown()
+        cancelUpdateRestart()
         resumeDiscardedCopies()
       } finally {
         promptInFlight = false

@@ -27,6 +27,7 @@ Poiché il programma di installazione non è firmato, esegui solo quello che hai
 - Quando il controllo non riesce — manca la rete, o non è ancora stato pubblicato nulla — non succede niente e l'app continua a funzionare come prima.
 - **Canale di aggiornamento**, sempre in Impostazioni ▸ Informazioni, è Stabile o Beta. Modificarlo ha effetto immediato e controlla la presenza di un aggiornamento; non riporta un'installazione Beta alla versione Stabile.
 - Nemmeno gli aggiornamenti hanno una firma digitale. Prima di installarne uno, l'app confronta il file scaricato con il checksum pubblicato insieme a quella versione.
+- Se **Riavvia e installa** chiude l'app ma la nuova versione non compare, all'avvio successivo l'app lo segnala e propone di nuovo l'aggiornamento. Questa volta il programma di installazione si apre in una finestra propria, così puoi seguirlo e rispondere a una richiesta di autorizzazione dell'amministratore. Se non funziona neanche così, la finestra di aggiornamento indica la pagina di download; installare con il file scaricato da lì mantiene impostazioni e documenti. Ciò che ha fatto l'aggiornamento è scritto in `update-log.txt` nella cartella dati dell'app (digita `%APPDATA%\GenOffice` nella barra degli indirizzi di Esplora file per aprirla). Allega questo file quando segnali il problema.
 
 ## La build che stai eseguendo
 

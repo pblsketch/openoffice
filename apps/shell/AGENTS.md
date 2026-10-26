@@ -15,7 +15,7 @@
 - PDF 도구 창(`src/main/pdf-tools/`, 결정 0030): 창과 대화 상자·저장(`pdf-tools-window.ts`), Electron 없이 도는 처리(`tools.ts`), 화면은 `src/renderer/pdf-tools.html`과 `src/renderer/src/pdf-tools/`, 문구는 `i18n/pdf-tools/`(도구 이름은 PDF 편집기 리본의 문구를 복사). 홈의 입구는 "PDF 도구" 카드와 `pdf-tools:open`이다.
 - 출처 기록(`document-links.ts`, 껍데기 쪽 배선 `document-links-shell.ts`)과 모든 에디터의 파일 메뉴에 붙는 "이 문서로 다른 문서 만들기"·"자료 보기"·"이 문서로 만든 문서"(`document-links-menu.ts`).
 - 열린 탭 가운데 저장하지 않은 문서의 목록을 에디터 뒷단에 알려 주는 일(`index.ts`에서 `setOpenFilesSource`).
-- 자동 업데이트(`updater.ts`, `update-window.ts`, `update-resume.ts`, `update-notes.ts`)와 패키징 설정 `electron-builder.cjs`. 릴리스 본문을 안전한 텍스트 블록으로 바꿔 창에 보여 주는 설계는 `docs/plans/update-details.md`에 있다.
+- 자동 업데이트(`updater.ts`, `update-window.ts`, `update-resume.ts`, `update-notes.ts`, 설치 시도 기록과 쓰기 확인 `update-attempt.ts`, 업데이트 기록 `update-log.ts`, 다시 시작 요청 `update-restart.ts`)와 패키징 설정 `electron-builder.cjs`. 릴리스 본문을 안전한 텍스트 블록으로 바꿔 창에 보여 주는 설계는 `docs/plans/update-details.md`에, 설치가 되지 않았을 때 물러나는 순서는 결정 0071에 있다.
 - 외부에서 들어오는 입구: 앱 안 MCP 서버(`src/main/mcp/`), 명령줄용 제어 채널(`control-server.ts`), 열린 문서 목록 게시(`open-documents.ts`), 명령줄 PATH 연결과 실행기 위치 기록(`cli-link.ts`), 스킬·MCP 등록 IPC(`integrations-ipc.ts`).
 - 기본 앱 등록과 파일 연결(`default-app.ts`), 설치 프로그램이 하는 Windows 등록(`build/installer.nsh`: PATH, 탐색기 "새로 만들기" 서식, `.odt`의 "연결 프로그램" 후보).
 - PDF 구조 작업과 보관소 채널(`src/main/pdf-structure-ipc.ts`, 로직은 `src/main/pdf-structure/`): PDF 편집기의 `structure*`·`store*` 채널을 등록하고, 구조 작업마다 Electron `utilityProcess`를 하나 띄운다(`runner.ts`, 진입점 `pdf-structure-process.ts`). 앱 안 저장 뒤 끝나지 않은 작업 기록 옮기기(`job-migration.ts`, 다섯 작업 종류), 출력 형식별 끼움 자리(`plugins.ts`)도 여기 있다. PDF 읽기 도우미(결정 0043)의 보관소 읽기·쓰기(카드, 핵심 표시, 개요, 고친 번역, 페이지 지문 목록, 지우기 확인의 수)도 `pdf-structure/handlers.ts`가 받는다. 그 창에 열린 파일에서 셸이 계산한 해시만 받는 규칙은 같다.
@@ -55,6 +55,7 @@
 - 패키징되지 않은 실행은 설치본과 userData·단일 인스턴스 잠금을 공유하지 않는다. 공유하면 개발 실행이 조용히 종료되면서 인자를 설치된 앱으로 넘겨 버린다. 테스트 드라이버는 `GENOFFICE_USER_DATA`로 임시 폴더를 지정한다.
 - headless 진입은 모듈 최상위에서 처리한다. `parseHeadlessExportArgv`와 `setHeadlessMode(true)`가 에디터 모듈이 무엇이든 등록하기 전에 실행되어야 한다. 구독 상태 확인은 첫 `statuses` 요청 때 시작하므로 headless 실행은 벤더 프로그램을 띄우지 않는다. 이 순서를 깨는 "시작 시 미리 확인"을 넣지 않는다.
 - 업데이트는 이 제품의 공개 저장소의 GitHub Releases에서만 받는다. 저장소는 `electron-builder.cjs`의 `publish`에서 `app-update.yml`로 구워지고, 빌드 시 주입되는 값이나 토큰이 없다. 확인 실패(릴리스 없음, 네트워크 없음)는 조용히 넘긴다. 설치 프로그램은 서명하지 않는다.
+- **설치 프로그램은 `will-quit`에서만 띄운다.** "다시 시작 및 설치"는 `requestUpdateRestart` 뒤 `app.quit()`만 하고, 설치 프로그램은 모든 창이 닫힌 뒤 `updater.ts`의 `will-quit` 처리기가 띄운다. electron-updater의 `quitAndInstall`과 `autoInstallOnAppQuit`는 쓰지 않는다(설치 프로그램이 앱보다 먼저 떠서, 저장 질문 중인 앱을 끈다). 닫기가 취소되는 길(껍데기 창의 `onVetoed`, 떼어 낸 창의 거절)은 `cancelUpdateRestart`를 부른다. 띄울 때마다 `update-install-attempt.json`을 쓰고, 다음 실행이 그 기록을 보고 조용한 설치 → 창으로 띄운 설치 → 다운로드 페이지 순으로 물러난다(결정 0071). `tests/updater.test.ts`가 지킨다.
 - **업데이트 창의 릴리스 본문은 원격 글이다.** `update-notes.ts`가 HTML을 블록으로 바꾼 것만 그리고, 화면 조립은 `createElement`/`textContent`로만 한다(`innerHTML` 금지). 그림·스크립트·스타일·링크 주소는 버리고, 원문·결과·섹션에 상한을 둔다. 새 네트워크 요청을 만들지 않고(기존 피드 요청에 얹힌다) 본문을 저장하거나 보내지 않는다. `tests/update-notes.test.ts`가 지킨다.
 - 앱 안 MCP 서버와 제어 채널은 로컬 전용이다. MCP 서버는 루프백에만 바인드하고 Host 헤더를 검사한다(인증이 없으므로). 제어 채널은 userData의 소켓·명명된 파이프와 실행마다 새로 만든 토큰을 쓰고, 명령은 "이 위치를 보여 줘"와 "선택을 읽어 줘"뿐이다. 요청으로 파일을 쓰거나 코드를 실행하는 명령을 추가하지 않는다.
 - 스킬과 MCP 등록은 통합 탭에서 사용자가 누를 때만 쓴다. 시작 시 자동으로 에이전트 설정 파일을 고치지 않는다.

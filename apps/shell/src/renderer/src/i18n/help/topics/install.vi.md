@@ -27,6 +27,7 @@ Vì trình cài đặt chưa được ký, bạn chỉ nên chạy tệp đã t�
 - Khi việc kiểm tra thất bại — không có mạng, hoặc chưa có bản nào được công bố — thì không có gì xảy ra, và ứng dụng vẫn hoạt động như trước.
 - **Kênh cập nhật**, cũng nằm trong Cài đặt ▸ Giới thiệu, là Ổn định hoặc Beta. Đổi kênh sẽ có hiệu lực ngay và kiểm tra bản cập nhật; nó sẽ không hạ bản cài đặt Beta về lại Ổn định.
 - Các bản cập nhật cũng chưa được ký mã. Trước khi cài một bản, ứng dụng đối chiếu tệp đã tải về với mã kiểm tra (checksum) được công bố cùng bản phát hành đó.
+- Nếu bấm **Khởi động lại và cài đặt** mà ứng dụng đóng lại nhưng phiên bản mới không xuất hiện, lần mở tiếp theo ứng dụng sẽ báo điều đó và đề nghị cập nhật lại. Lần này trình cài đặt mở trong cửa sổ riêng, nên bạn theo dõi được và trả lời yêu cầu quyền quản trị viên. Nếu vẫn không được, cửa sổ cập nhật sẽ chỉ đến trang tải xuống; cài bằng tệp tải từ đó vẫn giữ nguyên cài đặt và tài liệu của bạn. Quá trình cập nhật được ghi vào `update-log.txt` trong thư mục dữ liệu của ứng dụng (gõ `%APPDATA%\GenOffice` vào thanh địa chỉ của File Explorer để mở). Hãy đính kèm tệp này khi báo lỗi.
 
 ## Bản dựng bạn đang chạy
 

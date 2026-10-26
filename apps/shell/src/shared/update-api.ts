@@ -17,8 +17,12 @@ export const UPDATE_CHANNELS = {
 
 /** 'manual' = automatic updating is not working for this version (repeated
  * failures, e.g. a signing-identity change the installed app refuses) — the
- * dialog guides the user to download the installer from the releases page */
-export type UpdatePhase = 'available' | 'downloading' | 'downloaded' | 'error' | 'manual'
+ * dialog guides the user to download the installer from the releases page.
+ * 'install-failed' = the previous restart started the installer but the app
+ * came back at the old version; the next try opens the installer in its own
+ * window */
+export type UpdatePhase =
+  'available' | 'downloading' | 'downloaded' | 'error' | 'manual' | 'install-failed'
 
 /** window copy is localized in the main process (owner of UI language) */
 export interface UpdateUiStrings {
@@ -32,6 +36,10 @@ export interface UpdateUiStrings {
   failed: string
   retry: string
   manualDesc: string
+  /** 'install-failed': the last installer start did not update the app */
+  installFailedDesc: string
+  /** 'downloaded' with visibleInstall: the installer will open in its own window */
+  visibleInstallDesc: string
   openDownload: string
   /** label above the release-notes box */
   notesLabel: string
@@ -78,6 +86,8 @@ export interface UpdateUiState {
   lang: string
   strings: UpdateUiStrings
   releaseNotes: UpdateReleaseNotes | null
+  /** the installer will open in its own window instead of running silently */
+  visibleInstall: boolean
 }
 
 /** Settings → About reads the update state and re-opens the dialog on demand */

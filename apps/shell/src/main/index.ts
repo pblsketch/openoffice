@@ -539,6 +539,7 @@ import {
   takeTornTab,
 } from './detached-windows'
 import { applyUpdateChannel, checkForUpdatesNow, initAutoUpdater } from './updater'
+import { cancelUpdateRestart } from './update-restart'
 import { isUpdateChannel, type UpdateChannel } from '../shared/update-api'
 
 /**
@@ -4935,6 +4936,8 @@ function createShellWindow(): void {
     onVetoed: () => {
       appQuitting = false
       resetAppShuttingDown()
+      // a "Restart & Install" that met a cancelled prompt is off as well
+      cancelUpdateRestart()
       // tabs that answered "Don't Save" before another tab cancelled stay open
       // with their edits, so their recovery copies resume now (the PDF editor
       // also keeps a flag of its own)

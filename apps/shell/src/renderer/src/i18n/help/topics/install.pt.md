@@ -27,6 +27,7 @@ Como o instalador não está assinado, execute apenas um que tenha transferido d
 - Quando a verificação falha — sem rede, ou ainda nada publicado —, não acontece nada e a aplicação continua a funcionar como antes.
 - **Canal de atualização**, também em Configurações ▸ Sobre, é Estável ou Beta. Alterá-lo tem efeito imediato e verifica se existe uma atualização; não reverte uma instalação Beta para Estável.
 - As atualizações também não têm assinatura digital. Antes de instalar uma, a aplicação compara o ficheiro transferido com a soma de verificação publicada com essa versão.
+- Se **Reiniciar e instalar** fechar a aplicação mas a nova versão não aparecer, o próximo arranque avisa disso e volta a oferecer a atualização. Desta vez o instalador abre na sua própria janela, para que o possa acompanhar e responder a um pedido de administrador. Se mesmo assim não funcionar, a janela de atualização aponta para a página de transferência; instalar com o ficheiro obtido aí mantém as suas definições e documentos. O que o atualizador fez fica registado em `update-log.txt`, na pasta de dados da aplicação (escreva `%APPDATA%\GenOffice` na barra de endereço do Explorador de Ficheiros para a abrir). Anexe esse ficheiro ao comunicar o problema.
 
 ## A versão que está a executar
 

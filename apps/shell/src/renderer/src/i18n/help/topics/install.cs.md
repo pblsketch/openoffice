@@ -27,6 +27,7 @@ Protože instalátor není podepsaný, spouštějte jen ten, který jste stáhli
 - Když kontrola selže — chybí síť, nebo ještě nic nebylo zveřejněno — nic se nestane a aplikace funguje dál jako dosud.
 - **Kanál aktualizací**, rovněž v Nastavení ▸ O aplikaci, je Stabilní nebo Beta. Změna se projeví ihned a vyvolá kontrolu aktualizace; instalaci z kanálu Beta nevrátí zpět na Stabilní.
 - Ani aktualizace nejsou digitálně podepsané. Před instalací aplikace porovná stažený soubor s kontrolním součtem zveřejněným u daného vydání.
+- Pokud **Restartovat a nainstalovat** aplikaci zavře, ale nová verze se neobjeví, při dalším spuštění to aplikace oznámí a nabídne aktualizaci znovu. Tentokrát se instalátor otevře ve vlastním okně, takže uvidíte jeho průběh a můžete odpovědět na žádost o oprávnění správce. Pokud ani to nepomůže, okno aktualizace odkáže na stránku pro stažení; instalace ze souboru staženého odtud zachová vaše nastavení i dokumenty. Co aktualizace udělala, se zapisuje do `update-log.txt` ve složce dat aplikace (zadejte `%APPDATA%\GenOffice` do adresního řádku Průzkumníka souborů a otevře se). Při hlášení problému tento soubor přiložte.
 
 ## Sestavení, které právě běží
 
