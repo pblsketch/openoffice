@@ -60,6 +60,7 @@ import { EMU_PER_PX_96 } from '@genoffice/pptx-render'
 import { runAiStream, storedAiSettings, withMeteredAccepted } from './ai-stream'
 import { tm } from './i18n-main'
 import { pushHistory, rebuildSlide, scheduleHistoryNotify, sessions } from './session-state'
+import { collabRefuse, collabReset } from './collab'
 import { registerTemplateSelectionIpc } from './template-selection-ipc'
 
 // ---- AI settings + streaming proxy (the main process does the networking to avoid renderer CORS; implementation shared via @genoffice/ai-provider) ----
@@ -356,6 +357,8 @@ export function registerSlidesOnlyAiIpc(): void {
     ) => {
       const session = sessions.get(e.sender.id)
       if (!session) return null
+      // these edit the deck outside the executor: a shared host re-bases afterwards
+      if (collabRefuse(session, e.sender, 'guest')) return null
       const slide = session.opened.deck.slides[op.slideIndex]
       if (!slide) return null
       try {
@@ -405,6 +408,7 @@ export function registerSlidesOnlyAiIpc(): void {
         const crop = coverCropFractions(natural.width, natural.height, op.wPx, op.hPx)
         if (crop) editPictureSrcRect(slide, el.id, crop)
         session.fitWidthPx = op.fitWidthPx
+        collabReset(session)
         const rebuilt = rebuildSlide(session, op.slideIndex)
         return rebuilt ? { slide: rebuilt, sourceId: el.id } : null
       } catch {
@@ -431,6 +435,7 @@ export function registerSlidesOnlyAiIpc(): void {
     ) => {
       const session = sessions.get(e.sender.id)
       if (!session) return null
+      if (collabRefuse(session, e.sender, 'guest')) return null
       const slide = session.opened.deck.slides[op.slideIndex]
       if (!slide) return null
       // The AI layer may address the picture by its durable id — translate to the
@@ -478,6 +483,7 @@ export function registerSlidesOnlyAiIpc(): void {
             if (crop) editPictureSrcRect(slide, targetId, crop)
           }
         }
+        collabReset(session)
         return rebuildSlide(session, op.slideIndex)
       } catch {
         return null

@@ -1,6 +1,8 @@
 /**
  * Preload of the EPUB editor: exposes `window.epubApi` (see ../shared/ipc).
  */
+import { collabBridge } from '@genoffice/electron-utils/collab-bridge'
+import { COLLAB_BRIDGE_KEY } from '@genoffice/electron-utils/collab-channels'
 import type { AiPanelPrefs } from '@genoffice/ui'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
@@ -19,6 +21,7 @@ import type {
   AutoSaveDefault,
   EpubAiApi,
   EpubApi,
+  EpubCollabApi,
   EpubCoreApi,
   EpubMenuCommand,
   EpubStoreApi,
@@ -170,7 +173,15 @@ const ai: EpubAiApi = {
     ipcRenderer.invoke(AI_CHANNELS.imageSearch, query, maxResults),
 }
 
-const api: EpubApi = { ...core, ...translate, ...ai }
+// ---- co-editing (decision 0073): the session itself runs over the shell's collab bridge ----
+
+const collab: EpubCollabApi = {
+  collabBase: () => ipcRenderer.invoke(EPUB_CHANNELS.collabBase),
+  setCollabGuest: (state) => ipcRenderer.invoke(EPUB_CHANNELS.collabGuest, state),
+  adoptChapters: (chapters) => ipcRenderer.invoke(EPUB_CHANNELS.collabAdopt, chapters),
+}
+
+const api: EpubApi = { ...core, ...translate, ...ai, ...collab }
 
 /** Chat persistence: the shared project:* handlers are registered once by the shell (docs-main registerProjectIpc) */
 const projectApi: Pick<ProjectApi, 'resolveChat' | 'appendChat' | 'loadChat' | 'rebindChat'> = {
@@ -190,6 +201,9 @@ contextBridge.exposeInMainWorld(DOC_ATTACH_BRIDGE_KEY, docAttachBridge())
 // The shell's split panes: this view's pane role, and its way to ask for focus
 contextBridge.exposeInMainWorld(SPLIT_PANE_BRIDGE_KEY, splitPaneBridge(ipcRenderer))
 contextBridge.exposeInMainWorld('projectApi', projectApi)
+
+// LAN co-editing (decision 0073): the shell relays this tab's session
+contextBridge.exposeInMainWorld(COLLAB_BRIDGE_KEY, collabBridge())
 
 // open documents dragged from the OS onto this tab as a new shell tab
 installDropOpenBridge()

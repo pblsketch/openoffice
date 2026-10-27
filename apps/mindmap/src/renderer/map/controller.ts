@@ -571,6 +571,21 @@ export class MapController {
     return true
   }
 
+  /**
+   * Someone else changed the sheet: both histories hold whole copies of it, so
+   * a step back would take their change back too. Both are dropped; the
+   * selection stays.
+   */
+  forgetHistory(): void {
+    this.#session.dropHistory(this.#key)
+    const selected = this.selectedTopicIds()
+    // the library's own reset also clears the selection
+    this.mind.clearHistory?.()
+    const again = selected.map((id) => this.#element(id)).filter((topic) => topic !== null)
+    if (again.length > 0) this.mind.selectNodes(again)
+    this.#host.onStateChange()
+  }
+
   // ---- view ----
 
   zoomIn(): void {
@@ -647,9 +662,14 @@ export class MapController {
     return true
   }
 
-  /** Draws the sheet again from the source tree. */
+  /** Draws the sheet again from the source tree, with the theme it now carries. */
   redraw(): void {
+    // a co-editor may have picked another theme for the sheet
+    const look = lookOfSheet(this.#session.sheet(this.#key))
+    if (look.id !== this.#look.id) this.#showLook(look)
     this.#draw(this.#session.view(this.#key))
+    // drawn while hidden, the lines collapsed: they are drawn again once the sheet is shown
+    if (this.mind.nodes.offsetWidth === 0) this.#relinkWhenShown = true
   }
 
   /**

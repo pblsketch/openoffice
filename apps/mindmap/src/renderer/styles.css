@@ -165,6 +165,15 @@ html.genoffice-popover-open .ribbon-tabs {
   cursor: default;
 }
 
+/* the co-editing entry sits at the end of the row, with its label */
+.qa-btn.qa-collab {
+  width: auto;
+  margin-inline-start: auto;
+  padding: 0 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .autosave-toggle {
   display: flex;
   align-items: center;
@@ -991,4 +1000,49 @@ textarea.mm-field {
   color: var(--text-secondary);
   font-size: 12.5px;
   line-height: 1.6;
+}
+
+/* Other people on a shared map (collab/presence.ts): a frame around the topics
+   each has selected, in that person's colour. Screen only: the layer sits
+   beside the drawing, so export, print and the preview picture never copy it. */
+.mm-collab-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.mm-collab-frame {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 8px;
+  outline: 2px solid var(--collab-c);
+  outline-offset: 3px;
+}
+
+.mm-collab-name {
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: -5px;
+  max-width: 200px;
+  overflow: hidden;
+  padding: 1px 6px;
+  border-radius: 4px 4px 4px 0;
+  background: var(--collab-c);
+  color: var(--collab-ink);
+  font-family: var(--font-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media print {
+  .mm-collab-layer {
+    display: none;
+  }
 }

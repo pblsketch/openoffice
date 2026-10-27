@@ -18,6 +18,7 @@
     "@genoffice/agent-core": "*",
     "@genoffice/ai-provider": "*",
     "@genoffice/ai-search": "*",
+    "@genoffice/collab": "*",
     "@genoffice/electron-utils": "*",
     "@genoffice/font-metrics": "*",
     "@genoffice/i18n": "*",
@@ -39,7 +40,8 @@
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vite-plugin-static-copy": "^3.0.0",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "yjs": "^13.6.33"
   },
   "author": "GenOffice"
 }

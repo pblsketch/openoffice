@@ -80,6 +80,8 @@ interface Props {
   /** withheld spans: right-click a selection to hide it from the model */
   redactEnabled: boolean
   onToggleRedact: (on: boolean) => void
+  /** the co-editing entry (shown only inside the app) */
+  collabSlot?: ReactNode
 }
 
 type BlockStyle = 'paragraph' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'quote' | 'codeBlock'
@@ -286,6 +288,7 @@ export function Ribbon({
   sourceHistory,
   redactEnabled,
   onToggleRedact,
+  collabSlot,
 }: Props) {
   const { t, lang } = useI18n()
   const collapse = useRibbonCollapse('mdapp.ribbonCollapsed', {
@@ -445,6 +448,7 @@ export function Ribbon({
             onChange={(e) => onToggleAutoSave(e.target.checked)}
           />
         </label>
+        {collabSlot}
         <RibbonExpandButton state={collapse} label={t('ribbonExpand')} />
       </div>
 

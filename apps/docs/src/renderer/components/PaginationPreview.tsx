@@ -77,6 +77,7 @@ import {
   wordArtSvgMarkup,
 } from '../editor/hf-dom'
 import { HeaderFooterArea } from './HeaderFooterArea'
+import { stripCollabMarks } from '@genoffice/collab'
 
 const twipsToPx = (twips: number) => (twips / 1440) * 96
 
@@ -511,10 +512,16 @@ export function shouldPruneClones(pages: number, blocks: number, elements: numbe
  * but the clone hides/drops them, so the grown spans would swallow real rows.
  */
 function cloneBlockHtml(el: HTMLElement): string {
-  if (!el.querySelector('tr.page-gap, tr.page-repeat-header, [data-base-rowspan]')) {
+  if (
+    !el.querySelector(
+      'tr.page-gap, tr.page-repeat-header, [data-base-rowspan], .collab-caret, .collab-selection',
+    )
+  ) {
     return el.outerHTML
   }
   const tmp = el.cloneNode(true) as HTMLElement
+  // other people's carets and selections are screen-only: never printed or exported
+  stripCollabMarks(tmp)
   for (const tr of Array.from(tmp.querySelectorAll('tr.page-gap, tr.page-repeat-header'))) {
     tr.remove()
   }

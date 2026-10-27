@@ -50,6 +50,14 @@ import { registerEpubAiIpc } from './ai-attachments'
 import { EPUB_ASSET_SCHEME_PRIVILEGE, serveEpubAsset } from './asset-protocol'
 import { atomicWriteFile } from './atomic-write'
 import { EpubBookSession } from './book-session'
+import {
+  adoptChapters,
+  collabBase,
+  forgetCollabView,
+  isCollabCopy,
+  isCollabGuest,
+  setCollabGuest,
+} from './collab'
 import { tm } from './i18n-main'
 import { createReadingState, readPositionOf } from './reading-state'
 import type { ReadingState } from './reading-state'
@@ -206,7 +214,8 @@ export function setEpubFileSavedHook(hook: (wc: WebContents, path: string) => vo
 
 /** Unsaved edits: in the book here, or still in the renderer. */
 export function epubIsDirty(webContentsId: number): boolean {
-  if (!mayWrite(webContentsId)) return false
+  if (!mayWrite(webContentsId) || isCollabGuest(webContentsId)) return false
+  if (isCollabCopy(webContentsId, savePathByWc.get(webContentsId))) return true
   return rendererDirtyByWc.has(webContentsId) || sessionByWc.get(webContentsId)?.isDirty() === true
 }
 
@@ -279,6 +288,11 @@ export async function requestEpubClose(
 /** Menu Save / Save As: ask the renderer to send what it holds and save; a clean plain save resolves true at once */
 export function requestEpubSave(contents: WebContents, mode: SaveMode): Promise<boolean> {
   if (contents.isDestroyed() || !mayWrite(contents.id)) return Promise.resolve(false)
+  // a guest's page says why it does not save
+  if (isCollabGuest(contents.id)) {
+    contents.send(EPUB_CHANNELS.saveRequest, mode)
+    return Promise.resolve(false)
+  }
   if (mode === 'save' && !epubIsDirty(contents.id) && savePathByWc.has(contents.id)) {
     return Promise.resolve(true)
   }
@@ -305,6 +319,9 @@ export function epubSaveToPath(contents: WebContents, filePath: string): Promise
   const wcId = contents.id
   if (!mayWrite(wcId)) {
     return Promise.reject(new Error('the file did not open, so there is no book to save'))
+  }
+  if (isCollabGuest(wcId)) {
+    return Promise.reject(new Error('the person sharing this book saves it'))
   }
   const previousPath = savePathByWc.get(wcId)
   const previousOpenPath = openPathByWc.get(wcId)
@@ -426,10 +443,16 @@ async function saveView(contents: WebContents, request: unknown): Promise<EpubSa
   if (!mayWrite(wcId) || !session) {
     return { ok: false, error: 'epub: the file did not open, nothing is written' }
   }
+  if (isCollabGuest(wcId)) {
+    return { ok: false, error: 'epub: the person sharing this book saves it' }
+  }
   const raw = (request ?? {}) as { mode?: unknown; auto?: unknown }
-  const mode: SaveMode = raw.mode === 'saveAs' ? 'saveAs' : 'save'
+  // the copy a co-editing session left has no file of its own: it goes where the person picks
+  const copy = isCollabCopy(wcId, savePathByWc.get(wcId))
+  const mode: SaveMode = raw.mode === 'saveAs' || copy ? 'saveAs' : 'save'
   // Request input is untrusted: only an explicit automatic-save flag counts
   const auto = raw.auto === true
+  if (copy && auto) return { ok: false, error: 'collab-copy' }
   const current = savePathByWc.get(wcId)
   if (mode === 'save' && current && (await conflictStopsSave(contents, current, auto))) {
     return { ok: false, error: 'external-modified' }
@@ -605,6 +628,8 @@ function registerEpubIpc(): void {
     }
     // Seen open, here: only now is the path a save target.
     unopenedByWc.delete(wcId)
+    // a reloaded page left its co-editing session: what it holds is a copy now
+    setCollabGuest(wcId, 'copy', undefined)
     savePathByWc.set(wcId, path)
     know(wcId, session.docHash)
     return {
@@ -705,6 +730,8 @@ function registerEpubIpc(): void {
     const session = sessionByWc.get(e.sender.id)
     const checked = readPositionOf(position)
     if (!path || !session || !checked) return
+    // a co-editing copy lives in a temp folder: nothing to come back to
+    if (isCollabGuest(e.sender.id) || isCollabCopy(e.sender.id, path)) return
     if (checked.spineIndex >= session.book.spine.items.length) return
     void reading()
       .setPosition(path, checked)
@@ -789,6 +816,24 @@ function registerEpubIpc(): void {
     handlers.write(e.sender.id, request),
   )
 
+  // ---- co-editing (decision 0073) ----
+
+  ipcMain.handle(EPUB_CHANNELS.collabBase, async (e): Promise<Uint8Array | null> => {
+    const session = sessionByWc.get(e.sender.id)
+    if (!session || !mayWrite(e.sender.id) || isCollabGuest(e.sender.id)) return null
+    return collabBase(session)
+  })
+
+  ipcMain.handle(EPUB_CHANNELS.collabGuest, (e, state: unknown): void => {
+    if (mayWrite(e.sender.id)) setCollabGuest(e.sender.id, state, savePathByWc.get(e.sender.id))
+  })
+
+  ipcMain.handle(EPUB_CHANNELS.collabAdopt, async (e, chapters: unknown): Promise<number> => {
+    const session = sessionByWc.get(e.sender.id)
+    if (!session || !isCollabGuest(e.sender.id)) return 0
+    return adoptChapters(session, chapters)
+  })
+
   // the AI panel's attachments
   registerEpubAiIpc()
 
@@ -824,6 +869,7 @@ function forgetView(wcId: number): void {
   saveWaiters.get(wcId)?.(false)
   saveWaiters.delete(wcId)
   saveChainByWc.delete(wcId)
+  forgetCollabView(wcId)
 }
 
 function grantAndTrack(wc: WebContents, openPath?: string | null): void {

@@ -46,6 +46,8 @@ export interface MindmapAiWiring {
   path: string | null
   /** brings the tree in line with every sheet on screen (`flushAll`) */
   flush(): void
+  /** taking an AI turn back is refused now (a shared map); the user has been told */
+  rollbackBlocked?(): boolean
 }
 
 export interface MindmapAi {
@@ -56,7 +58,7 @@ export interface MindmapAi {
 
 /** The AI's view of the editor, and whether its panel is open. */
 export function useMindmapAi(wiring: MindmapAiWiring): MindmapAi {
-  const { session, controllers, activeKey, setActiveKey, path, flush } = wiring
+  const { session, controllers, activeKey, setActiveKey, path, flush, rollbackBlocked } = wiring
   const [open, setOpen] = useState(() => aiPanelInitiallyOpen(OPEN_KEY))
   useEffect(() => rememberAiPanelOpen(OPEN_KEY, open), [open])
 
@@ -86,8 +88,9 @@ export function useMindmapAi(wiring: MindmapAiWiring): MindmapAi {
         title: translate('sheetDefaultName', { n }),
         rootTitle: translate('centralTopic'),
       }),
+      rollbackBlocked,
     }),
-    [session, controllers, activeKey, setActiveKey, path, flush],
+    [session, controllers, activeKey, setActiveKey, path, flush, rollbackBlocked],
   )
   return { host, open, setOpen }
 }

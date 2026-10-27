@@ -174,6 +174,9 @@ import { useEscOverlay, useEscOverlayOpen } from './esc-overlay'
 import { buildCtxItems } from './context-menu-items'
 import { isMac, nextSelection } from './platform-modifiers'
 import * as placeholderNav from './placeholder-nav'
+import { CollabButton, CollabDialog, CollabNotice } from '@genoffice/collab'
+import { useSlidesCollab } from './collab'
+import { CollabCanvasLayer, CollabThumbMarks } from './CollabLayer'
 
 /** Effects the canvas can play as a one-shot click preview; 'random' resolves to one of these */
 const PREVIEWABLE_TRANSITIONS: TransitionKind[] = [
@@ -1114,6 +1117,23 @@ export function App() {
     const { current, slide } = ctxRef.current
     applyHistoryResult(await window.slidesApi.redo(), current, slide?.partPath)
   }, [editing, applyHistoryResult])
+
+  // LAN co-editing (decision 0073): main holds the deck, this tab carries the session
+  const { collab, peers: collabPeers } = useSlidesCollab({
+    lang,
+    ready: hasDoc,
+    slides,
+    current,
+    selectedIds,
+    editing: !!editing || !!editingCell,
+    masterView: !!masterItems,
+    dirty,
+    setDirty,
+    setCurrent,
+    // a guest took the host's bytes again: element ids are new, the slide stays
+    applyReloaded: (all) =>
+      applyHistoryResult(all, ctxRef.current.current, ctxRef.current.slide?.partPath),
+  })
 
   // Global shortcuts (keyboard-actions.ts): the handler reads the latest state via ctxRef, so attach once
   useEffect(() => {
@@ -3337,6 +3357,8 @@ export function App() {
   return (
     <div className="app">
       <ToastHost />
+      <CollabDialog collab={collab} lang={lang} />
+      <CollabNotice collab={collab} lang={lang} />
       <Ribbon
         hasDoc={!!slide}
         deckEmpty={deckEmpty}
@@ -3350,6 +3372,15 @@ export function App() {
         onSave={() => void save()}
         onUndo={() => void undo()}
         onRedo={() => void redo()}
+        collabSlot={
+          <CollabButton
+            collab={collab}
+            lang={lang}
+            className="qa-btn qa-collab"
+            iconSize={16}
+            showLabel={false}
+          />
+        }
         onSaveAs={() => void saveAs()}
         onExportPdf={() => void exportPdf()}
         onPrint={() => setPrintDlgOpen(true)}
@@ -3854,6 +3885,7 @@ export function App() {
                                 <div className="thumb-placeholder" style={thumbBox(s, thumbW)} />
                               )}
                               <span className="thumb-num">{i + 1}</span>
+                              <CollabThumbMarks partPath={s.partPath} peers={collabPeers} />
                               {pasteFloater?.index === i && (
                                 <PasteOptionsFloater
                                   mode={pasteFloater.mode}
@@ -4376,6 +4408,7 @@ export function App() {
                                 onErase={(ids) => void eraseInk(ids)}
                               />
                             )}
+                            <CollabCanvasLayer slide={slide} peers={collabPeers} zoom={zoom} />
                           </div>
                         </div>
                       </div>

@@ -30,6 +30,7 @@ import {
 } from './editor/compare'
 import { pendingCommentPluginKey } from './editor/extensions'
 import { refuseInOdt } from './odt-gate'
+import { refuseInCollab } from './collab-gate'
 import type { InkAnnotation } from './editor/ink'
 import { renumber } from './ai/note-ops'
 import {
@@ -76,7 +77,7 @@ export interface ReviewContext {
 
 /** dialog submit: create a new note (+ caret marker) or update an existing one */
 export function submitNote(ctx: ReviewContext, text: string): void {
-  if (!ctx.notePrompt || !ctx.editor) return
+  if (!ctx.notePrompt || !ctx.editor || refuseInCollab('note')) return
   const { kind, id } = ctx.notePrompt
   const list = kind === 'footnote' ? ctx.footnotes : ctx.endnotes
   const setList = kind === 'footnote' ? ctx.setFootnotes : ctx.setEndnotes
@@ -105,6 +106,7 @@ export function submitNote(ctx: ReviewContext, text: string): void {
 
 /** delete a note, remove its in-text marker, renumber the remaining markers */
 export function deleteNote(ctx: ReviewContext, kind: 'footnote' | 'endnote', id: string): void {
+  if (refuseInCollab('note')) return
   const list = kind === 'footnote' ? ctx.footnotes : ctx.endnotes
   const next = list.filter((n) => n.id !== id)
   ;(kind === 'footnote' ? ctx.setFootnotes : ctx.setEndnotes)(next)
@@ -146,7 +148,7 @@ export function cancelNewComment(ctx: ReviewContext): void {
 /** New comment: open the pane with the composer; the mark is applied on submit */
 export function startNewComment(ctx: ReviewContext): void {
   const editor = ctx.editor
-  if (!editor || refuseInOdt('comment')) return
+  if (!editor || refuseInOdt('comment') || refuseInCollab('comment')) return
   if (editor.state.selection.empty) {
     // Word anchors on the word under a collapsed caret rather than refusing
     const word = wordRangeAtCaret(editor)
@@ -164,7 +166,7 @@ export function startNewComment(ctx: ReviewContext): void {
 
 export function submitNewComment(ctx: ReviewContext, text: string): void {
   if (!ctx.editor) return
-  if (refuseInOdt('comment')) {
+  if (refuseInOdt('comment') || refuseInCollab('comment')) {
     cancelNewComment(ctx)
     return
   }
@@ -191,7 +193,7 @@ export function addCommentAt(
   author: string,
   initials?: string,
 ): string | null {
-  if (!ctx.editor || refuseInOdt('comment')) return null
+  if (!ctx.editor || refuseInOdt('comment') || refuseInCollab('comment')) return null
   const id = nextCommentId(ctx.comments)
   if (!addCommentToRange(ctx.editor, range.from, range.to, id)) return null
   const now = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
@@ -212,7 +214,7 @@ export function replyToComment(
   text: string,
   author = authorName(),
 ): boolean {
-  if (!ctx.editor || refuseInOdt('comment')) return false
+  if (!ctx.editor || refuseInOdt('comment') || refuseInCollab('comment')) return false
   const id = nextCommentId(ctx.comments)
   if (!addReplyToCommentRange(ctx.editor, parentId, id)) {
     ctx.setStatus(t('appCommentAnchorGone'))
@@ -228,7 +230,7 @@ export function replyToComment(
 
 /** Word: comment text edits in place; the author, date and anchor stay */
 export function editComment(ctx: ReviewContext, id: string, text: string): void {
-  if (refuseInOdt('comment')) return
+  if (refuseInOdt('comment') || refuseInCollab('comment')) return
   ctx.setComments((prev) => prev.map((c) => (c.id === id ? { ...c, text } : c)))
   ctx.setCommentsDirty(true)
   ctx.dirtyRef.current = true
@@ -237,7 +239,7 @@ export function editComment(ctx: ReviewContext, id: string, text: string): void 
 
 /** Resolve/reopen: the whole thread (parent + replies) gets done set together */
 export function resolveComment(ctx: ReviewContext, id: string, done: boolean): void {
-  if (refuseInOdt('comment')) return
+  if (refuseInOdt('comment') || refuseInCollab('comment')) return
   ctx.setComments((prev) =>
     prev.map((c) => (c.id === id || c.parentId === id ? { ...c, done } : c)),
   )
@@ -247,7 +249,7 @@ export function resolveComment(ctx: ReviewContext, id: string, done: boolean): v
 }
 
 export function deleteComment(ctx: ReviewContext, id: string): void {
-  if (!ctx.editor) return
+  if (!ctx.editor || refuseInCollab('comment')) return
   // cascade: deleting a parent comment also deletes its replies (including their anchor marks)
   const victims = [id, ...ctx.comments.filter((c) => c.parentId === id).map((c) => c.id)]
   for (const v of victims) removeCommentFromDoc(ctx.editor, v)
@@ -274,7 +276,7 @@ export function deleteCommentAtCaret(ctx: ReviewContext): void {
 
 /** Delete All Comments in Document / Delete All Resolved Comments */
 export function deleteAllComments(ctx: ReviewContext, resolvedOnly: boolean): void {
-  if (!ctx.editor) return
+  if (!ctx.editor || refuseInCollab('comment')) return
   // replies never carry done themselves: a resolved thread goes with all of its replies
   const doneThreads = new Set(ctx.comments.filter((c) => c.done && !c.parentId).map((c) => c.id))
   const victims = ctx.comments
@@ -334,13 +336,14 @@ export function handleRevision(
 // ---- Draw: overlay annotations ----
 
 export function addInk(ctx: ReviewContext, annotation: InkAnnotation): void {
-  if (refuseInOdt('ink')) return
+  if (refuseInOdt('ink') || refuseInCollab('ink')) return
   ctx.setInkAnnotations((prev) => [...prev, annotation])
   ctx.setInksDirty(true)
   ctx.dirtyRef.current = true
 }
 
 export function removeInks(ctx: ReviewContext, ids: string[]): void {
+  if (refuseInCollab('ink')) return
   const gone = new Set(ids)
   ctx.setInkAnnotations((prev) => prev.filter((a) => !gone.has(a.id)))
   ctx.setInksDirty(true)
@@ -348,6 +351,7 @@ export function removeInks(ctx: ReviewContext, ids: string[]): void {
 }
 
 export function clearInks(ctx: ReviewContext): void {
+  if (refuseInCollab('ink')) return
   ctx.setInkAnnotations([])
   ctx.setInksDirty(true)
   ctx.dirtyRef.current = true
@@ -356,7 +360,7 @@ export function clearInks(ctx: ReviewContext): void {
 
 /** Compare: pick a second .docx and diff it against the open document */
 export async function compareWithFile(ctx: ReviewContext): Promise<void> {
-  if (!ctx.doc || refuseInOdt('compare')) return
+  if (!ctx.doc || refuseInOdt('compare') || refuseInCollab('compare')) return
   const other = await window.desktop.openDocx()
   if (!other) return
   // password-protected comparison target: not wired through the decrypt prompt (yet)

@@ -30,6 +30,7 @@
 - 프로젝트 폴더의 스킬(결정 0064): 지문과 폴더별 허용 기록(`src/main/agent/project-skills.ts`, `app-settings.json`의 `agentProjectSkills`), 시작 화면의 "이 폴더의 스킬" 칸(`AgentWindow.tsx`, 문구 `i18n/strings-agent-project-skills.ts`). 세션 묶음에 넣을지는 `index.ts`의 `buildSkills`가 시작 때 지문을 다시 만들어 정한다.
 - 키 봉인(결정 0063): `src/main/ai-secrets.ts`(safeStorage 코덱, 시작 때 평문 키 옮기기, `--reveal-ai-secrets`). 인터넷 도구 확인 창(결정 0062): `src/main/outbound-confirm.ts`.
 - 에이전트 창의 스킬과 웹(결정 0049): 세션에 실을 스킬과 양식 후보(`src/main/agent/agent-skills.ts`), 스킬 카드·설치 제안(`AgentSkillCard.tsx`, `AgentInstallProposal.tsx`), Codex 웹 검색·명령의 인터넷 접속의 시작 화면 선택과 Claude 웹 허락 표시(`renderer/src/agent/agent-web.ts`, 문구 `i18n/agent-web/`; 프로젝트 폴더별 기억은 `main/app-settings.ts`의 `agentProjectPrefs`를 `agent-window.ts`가 읽고 쓴다). 스킬을 바꾸는 IPC는 메인 창에서 온 요청만 받는데(`canManage`), 에이전트 창에는 깃허브 설치 미리보기에 필요한 `importGitHub`·`cancelImport`·`install` 셋만 더 열려 있다, 이전 사용자 한 번 안내(`i18n/agent-skills/`).
+- 같은 네트워크 공동 작업의 뒷단(결정 0073, `src/main/collab/`): 편집기 화면의 `collab:*` 창구(`collab-service.ts`), 호스트 TCP 서버와 PIN 오답 제한(`host-server.ts`, `pin.ts`), 손님 연결(`guest-link.ts`), PIN 키 교환과 프레임 암호화(`secure.ts`), 프레임 형식(`wire.ts`), 같은 네트워크 알림(`discovery.ts`, `lan.ts`), 손님 사본의 파일 이름(`file-name.ts`). 손님 탭은 양식 사본과 같은 길(`openTemplateCopyTab`)로 연다. 화면 쪽 부품은 `packages/collab`이다.
 
 ## 맡지 않는 것 (경계)
 
@@ -93,6 +94,7 @@
 
 - **에이전트 세션은 사람이 시작한 창에만 속한다.** 채널은 그 창의 webContents만 받고, 세션은 그 창이 닫히면 끝난다. 경고 확인과 폴더 검사와 연결 확인은 화면이 아니라 뒷단이 시작할 때마다 다시 한다. 창에는 오류 문장을 보내지 않고 종류만 보낸다(`agentEventView`).
 - **세션 MCP 서버의 도구는 `AGENT_MCP_TOOL_NAMES`뿐이다.** 탭 닫기, 자체 편집 세션, 창 없는 파일 만들기를 더하지 않는다. 읽기는 가린 자리를 `{{이름}}`으로 내보내고(`withholdingSlides`, `withholdingOpenDocuments`), 가린 내용이 있는 PPT는 고치지 않는다. 연동의 앱 안 MCP 서버는 출력이 바깥에 약속된 것이라 이 처리를 하지 않는다(결정 0016).
+- **공동 작업 뒷단은 공유 내용을 열어 보지 않는다.** 화면끼리의 메시지는 이름표로만 나르고, 손님에게 건네는 바이트는 호스트 화면이 낸 그대로다. TCP 서버는 공유가 하나라도 있는 동안만 연다. PIN은 보내지 않고 SPAKE2 키 교환으로만 확인하며, 키 교환 뒤의 모든 프레임은 ChaCha20-Poly1305로 봉인한다(`secure.ts`, 결정 0073). 키 교환을 마치기 전의 연결은 작은 핸드셰이크 프레임만 보낼 수 있다. Electron 내장 암호 모듈에는 ChaCha20-Poly1305가 없으니 `node:crypto`로 바꾸지 않는다. 손님 사본의 이름은 다른 PC에서 온 값이라 `collabFileName`으로 줄인다. 세션 중인 손님 탭은 닫기와 종료 확인에서 빠진다(`isLiveCollabGuest`). 새 닫기 경로를 만들면 이 판정을 함께 넣는다.
 
 ## 이 모듈의 방식
 
@@ -129,4 +131,5 @@
 - 바꾸면 반드시 테스트하는 것(만들기와 기록): 요청 검사(`tests/generate-request.test.ts`), 저장하지 않은 자료의 차단과 한 번만 맡겨 두기(`tests/generate-session*.test.ts`, `tests/generate-handoff.test.ts`), 자료의 크기·글 길이와 읽을 수 없는 자료의 이유(`tests/generate-materials.test.ts`), 바꾸기와 가린 자리의 이름표(`tests/generate-convert.test.ts`), 시작되지 않은 실행은 기록하지 않는 것·이름 바뀜 따라가기·망가진 파일(`tests/document-links.test.ts`), 다른 파일로 읽기의 가리기와 저장 안 한 파일(`tests/cross-file-redaction.test.ts`), 그룹 밖 파일 읽기의 거절(`tests/kb-ask-scope.test.ts`, `tests/kb-ask-group.test.ts`), `.xmind`가 Windows 기본 연결로 등록되지 않는 것(`tests/file-associations.test.ts`), 한글·마인드맵 "연결 프로그램" ProgId와 아이콘 배선(`tests/open-with-icons.test.ts`), Windows 기본 앱 등록이 확장자별 ProgId로 이어지는 것(`tests/open-with-icons.test.ts`), 앱 안 MCP의 지도(`tests/mcp/open-documents-mindmap.test.ts`).
 - Windows에서 변경과 무관하게 실패하는 테스트: `tests/headless-export.test.ts`(16건, `/docs/a.docx` 같은 POSIX 경로를 전제로 한다)와 `tests/default-app.test.ts`의 Linux 사례 한 건. `tests/update-resume.test.ts`와 `tests/third-party-notices.test.ts`는 부하가 큰 PC에서 가끔 실패하므로 단독으로 다시 돌려 확인한다.
 - E2E(`npm run test:e2e`, 저장소 루트의 `e2e/`)는 전체 빌드가 필요하다. 실행기(`e2e/helpers.ts`)는 `ai-settings.json`에 `{ providers: {}, subscriptionNoticeSeen: true }`를 미리 써서, Claude·Codex에 로그인된 PC에서 첫 연결 안내이 화면을 가리지 않게 한다(`providers`가 없으면 파일 전체가 기본값으로 읽힌다).
+- 공동 작업 뒷단(`tests/collab-lan.test.ts`)은 실제 소켓(루프백)으로 PIN 입장, 오답 잠금, 중계 경로, 나감과 끝남 알림, HELLO 없는 연결 끊기, 마지막 공유 뒤 닫힘, 그리고 중간에서 엿본 바이트에 PIN과 문서와 편집이 보이지 않는지를 본다. 키 교환과 봉인 자체는 `tests/collab-secure.test.ts`가 본다. 두 앱을 띄운 확인은 `e2e/collab-*.spec.ts`다.
 - 실제 릴리스에서의 업데이트 내려받기·설치, 설치 프로그램 자체는 자동 테스트로 확인하지 못한다. 실제 빌드로 확인한다.

@@ -16,6 +16,7 @@ import { PromptModal } from './PromptModal'
 import { collectHeadings } from '../editor/headings'
 import { t, useI18n, type StringKey } from '../i18n/locale'
 import { odtOffProps, useOdtSession } from '../odt-gate'
+import { refuseInCollab } from '../collab-gate'
 import {
   IconBook,
   IconCaption,
@@ -408,6 +409,7 @@ export function ReferencesTab({
   }
 
   const insertToc = () => {
+    if (refuseInCollab('toc')) return
     const entries = collectTocEntriesWithPages(editor, headingPages)
     if (entries.length === 0) {
       window.alert(t('ribbonTocNoHeadings'))
@@ -592,7 +594,9 @@ export function ReferencesTab({
             disabled={!hasDoc}
             data-tip={t('ribbonTocUpdateTip')}
             {...odtOffProps(odtOff)}
-            onClick={() => updateTocField(editor, blocks, headingPages)}
+            onClick={() => {
+              if (!refuseInCollab('toc')) updateTocField(editor, blocks, headingPages)
+            }}
           >
             <span className="rb-big-icon">
               <IconRefresh size={BIG} />

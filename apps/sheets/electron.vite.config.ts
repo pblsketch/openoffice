@@ -38,5 +38,7 @@ export default defineConfig({
   },
   renderer: {
     plugins: [react()],
+    // one Yjs for the co-editing session's state and presence (two copies break sync)
+    resolve: { dedupe: ['yjs'] },
   },
 })

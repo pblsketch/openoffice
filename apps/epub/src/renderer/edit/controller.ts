@@ -90,6 +90,15 @@ export interface EditState {
   editable: boolean
 }
 
+/** A chapter as someone else's edit left it in the book (co-editing). */
+export interface RemoteChapter {
+  spineIndex: number
+  path: string
+  source: string
+  version: number
+  blocks: EpubBlockInfo[]
+}
+
 /** Block edits on one chapter. */
 export interface EditGroup {
   spineIndex: number
@@ -195,7 +204,11 @@ export class EpubEditController {
   private locked = false
   private backendDirty = false
   private readonly pending = new Set<string>()
+  /** typed blocks whose edit is on its way: their drawing is ahead of the text known here */
+  private readonly sending = new Set<string>()
   private composingNow = false
+  /** blocks came or went in someone else's edit while an input method composed */
+  private redrawDeferred = false
   private timer: ReturnType<typeof setTimeout> | null = null
   private chain: Promise<unknown> = Promise.resolve()
   private undoStack: HistoryEntry[] = []
@@ -314,6 +327,10 @@ export class EpubEditController {
     on('compositionend', (e) => {
       this.composingNow = false
       this.onInput(e)
+      if (this.redrawDeferred) {
+        this.redrawDeferred = false
+        this.redrawRemote(true)
+      }
     })
     // a press on a link inside an editable block puts the caret there; Ctrl+press follows it
     const win = doc.defaultView
@@ -362,7 +379,9 @@ export class EpubEditController {
     const plain = blockPlainText(map, xml)
     let ok = !tree.cdata && pairRoles(tree.nodes, el, roles)
     // text typed while the last edit was on its way is checked when it is sent
-    if (ok && !this.pending.has(info.id)) ok = sameText(domPlainText(el, roles), plain)
+    if (ok && !this.pending.has(info.id) && !this.sending.has(info.id)) {
+      ok = sameText(domPlainText(el, roles), plain)
+    }
     return {
       info,
       el,
@@ -690,6 +709,7 @@ export class EpubEditController {
         nbspToSpace: !state.nbsp,
       })
       edits.push({ op: 'replace', blockId: id, text })
+      this.sending.add(id)
     }
     this.pending.clear()
     return { spineIndex: live.spineIndex, path: live.path, edits }
@@ -703,6 +723,7 @@ export class EpubEditController {
     const result = await this.host.api
       .applyEdits({ spineIndex: batch.spineIndex, edits: batch.edits })
       .catch((err): EpubEditResult => ({ ok: false, error: 'failed', message: String(err) }))
+    this.sending.clear()
     if (result.ok) {
       this.note(result)
       this.push(this.partsOf([result]))
@@ -1206,6 +1227,115 @@ export class EpubEditController {
       if (xml) count += blockMatches(xml, query).length
     }
     return count
+  }
+
+  // ---- co-editing (decision 0073) ----
+
+  /**
+   * Someone else's edit, already made in the book: the screen follows it
+   * without losing what is typed here, and the history forgets that chapter,
+   * since the texts its entries lead back to are gone. `dirty` is the book's
+   * state on the host; a guest's copy never counts as changed by it.
+   */
+  applyRemote(chapter: RemoteChapter, dirty?: boolean): void {
+    const keep = (entry: HistoryEntry) => entry.parts.every((part) => part.path !== chapter.path)
+    this.undoStack = this.undoStack.filter(keep)
+    this.redoStack = this.redoStack.filter(keep)
+    if (dirty !== undefined) this.backendDirty = dirty
+    const known = this.versions.get(chapter.path)
+    if (known === undefined || chapter.version > known) {
+      this.versions.set(chapter.path, chapter.version)
+      this.changes++
+      const live = this.live
+      if (live && live.path === chapter.path) {
+        const ids = (blocks: readonly EpubBlockInfo[]) => blocks.map((b) => b.id).join(' ')
+        const structural = ids(live.blocks) !== ids(chapter.blocks)
+        this.takeChapter(chapter)
+        // a redraw of the whole chapter would end the composition: it waits for its end
+        if (structural && this.composingNow) this.redrawDeferred = true
+        else this.redrawRemote(structural)
+      }
+    }
+    this.host.changed()
+  }
+
+  /**
+   * Draws what someone else changed. Blocks typed in here keep their drawing
+   * (their text goes out with the next send and wins), and the caret is put
+   * back only when the frame has the focus, so it never pulls the focus in.
+   */
+  private redrawRemote(structural: boolean): void {
+    const live = this.live
+    if (!live) return
+    const sel = live.doc.hasFocus() ? this.selectionIn() : null
+    const caret = sel ? { id: sel.state.info.id, start: sel.start, end: sel.end } : null
+    const redrawn = new Set<string>()
+    if (structural) {
+      const typed = new Map<string, HTMLElement>()
+      for (const id of [...this.pending, ...this.sending]) {
+        const el = live.states.get(id)?.el
+        if (el) typed.set(id, el)
+      }
+      this.renderBody()
+      for (const [id, el] of typed) findBlockElement(live.doc.body, id)?.replaceWith(el)
+      if (typed.size > 0) this.setupBlocks()
+      for (const id of live.states.keys()) redrawn.add(id)
+    } else {
+      this.setupBlocks()
+      for (const [id, state] of live.states) {
+        if (state.ok) continue
+        this.renderBlock(id)
+        redrawn.add(id)
+      }
+    }
+    const state = caret && redrawn.has(caret.id) ? live.states.get(caret.id) : undefined
+    if (caret && state?.ok) {
+      const length = domPlainText(state.el, state.roles).length
+      this.placeCaret(caret.id, Math.min(caret.start, length), Math.min(caret.end, length))
+    }
+  }
+
+  /**
+   * Co-editing starts or ends in this tab: the versions and history known
+   * here were another copy's of the book, and so were the block ids of text
+   * typed but not sent yet, which goes too.
+   */
+  forgetHistory(): void {
+    if (this.timer !== null) clearTimeout(this.timer)
+    this.timer = null
+    this.pending.clear()
+    this.sending.clear()
+    this.versions.clear()
+    this.undoStack = []
+    this.redoStack = []
+    this.host.changed()
+  }
+
+  /** The book counts as changed from now on (a guest's copy once its session ended). */
+  markChanged(): void {
+    this.backendDirty = true
+    this.changes++
+    this.host.changed()
+  }
+
+  /** Where the caret or selection is, when it lies inside one editable block (plain-text offsets). */
+  caret(): { id: string; start: number; end: number } | null {
+    const sel = this.selectionIn()
+    return sel ? { id: sel.state.info.id, start: sel.start, end: sel.end } : null
+  }
+
+  /** A range over a block's text on screen, by plain-text offsets (someone else's caret). */
+  rangeIn(id: string, start: number, end: number): Range | null {
+    const live = this.live
+    const state = live?.states.get(id)
+    if (!live || !state?.ok) return null
+    const length = domPlainText(state.el, state.roles).length
+    const from = pointAt(state.el, state.roles, Math.min(start, end, length))
+    const to = pointAt(state.el, state.roles, Math.min(Math.max(start, end), length))
+    const range = live.doc.createRange()
+    range.setStart(from.node, from.offset)
+    range.setEnd(to.node, to.offset)
+    return range
   }
 
   // ---- lock and saving ----

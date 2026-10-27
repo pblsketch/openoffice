@@ -96,6 +96,8 @@ export interface Session {
   historyNotifyScheduled?: boolean
   /** A deck-changed broadcast is already queued for this session (coalesces per task) */
   deckBroadcastScheduled?: boolean
+  /** The queued broadcast also goes to a lone window (another PC's edit landed in it) */
+  deckBroadcastForced?: boolean
   /** Monotonic sequence of the last journaled op entry (collab groundwork) */
   opSeq?: number
   /** Applied-op journal, capped ring — the attachment point for a future sync transport */
@@ -229,15 +231,19 @@ export function editorAttachedIds(session: Session): number[] {
  * post-processing). No-op for the ordinary single-window session; with a second
  * window on the same file this is what makes one side's edit appear on the
  * other. The originating window applies its handler's return value and simply
- * receives the same state again.
+ * receives the same state again. `force` sends it to a single window too: the
+ * change came from a co-editing peer, so no handler result carries it.
  */
-export function scheduleDeckBroadcast(session: Session): void {
+export function scheduleDeckBroadcast(session: Session, force = false): void {
+  if (force) session.deckBroadcastForced = true
   if (session.deckBroadcastScheduled) return
   session.deckBroadcastScheduled = true
   setImmediate(() => {
     session.deckBroadcastScheduled = false
+    const forced = session.deckBroadcastForced
+    session.deckBroadcastForced = false
     const ids = attachedIds(session)
-    if (ids.length < 2) return
+    if (ids.length < 2 && !forced) return
     const payload = {
       slides: buildAllRenderSlides(session.opened, session.fitWidthPx),
       size: { cx: session.opened.deck.size.cx, cy: session.opened.deck.size.cy },

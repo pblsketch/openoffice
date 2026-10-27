@@ -263,6 +263,8 @@ import {
 import { useI18n } from './i18n/locale'
 import { useAutosave } from './useAutosave'
 import { useRecoveryCopies } from './recovery/useRecoveryCopies'
+import { CollabButton, CollabDialog, CollabNotice } from '@genoffice/collab'
+import { CollabPageMarks, usePdfCollab } from './collab'
 import type {
   AnnotDeleteInput,
   DrawingInput,
@@ -524,6 +526,8 @@ export default function App() {
     'loading',
   )
   const [sizes, setSizes] = useState<PageSize[]>([])
+  /** the loaded file's page count before React renders it (co-editing reads it right after a reload) */
+  const realPagesRef = useRef(0)
   // Blank pages added this session live past the document's pages as virtual original
   // indices (see BlankPageInput); allSizes is the page table every index lookup uses
   const [blankPages, setBlankPages] = useState<LocalBlankPage[]>([])
@@ -1463,6 +1467,7 @@ export default function App() {
         setSavedStaticFormFills([])
       }
       setSizes(all)
+      realPagesRef.current = all.length
       setPageOrigins(origins)
       setPageUserUnits(userUnits)
       setBaseRots(rots)
@@ -2342,6 +2347,66 @@ export default function App() {
     return [...records.values()]
   }, [imageEdits, savedStaticFormFills])
 
+  // LAN co-editing (collab.tsx): the pending edits are shared, only the host saves
+  const pdfCollab = usePdfCollab({
+    lang,
+    ready: status === 'ready',
+    filePath,
+    fileName,
+    shareBlock: () =>
+      readOnly
+        ? 'encrypted'
+        : !filePath || redactions.length > 0 || saveInFlightRef.current !== null
+          ? 'unsupported'
+          : null,
+    buckets: {
+      markups: [markupsRef, setMarkups],
+      annotDeletes: [annotDeletesRef, setAnnotDeletes],
+      noteEdits: [noteEditsRef, setNoteEdits],
+      drawings: [drawingsRef, setDrawings],
+      textEdits: [textEditsRef, setTextEdits],
+      textInserts: [textInsertsRef, setTextInserts],
+      imageEdits: [imageEditsRef, setImageEdits],
+      stampCfg: [stampRef, setStampCfg],
+      formEdits: [formEditsRef, setFormEdits],
+      formFields: [formFieldsRef, setFormFields],
+      formWidgetEdits: [formWidgetEditsRef, setFormWidgetEdits],
+      blankPages: [blankPagesRef, setBlankPages],
+      rotations: [rotationsRef, setRotations],
+      deleted: [deletedRef, setDeleted],
+      order: [orderRef, setOrder],
+      metadata: [metadataRef, setMetadata],
+    },
+    snapshot: () => snapshot(),
+    realPages: () => realPagesRef.current,
+    page: visList[currentPage - 1] ?? -1,
+    selection: selPopup?.quads ?? null,
+    // a guest shows the file the host just saved, like the host's own post-save reload
+    reload: async (saved) => {
+      const scrollTop = scrollRef.current?.scrollTop ?? 0
+      const samePages = rotations.size === 0 && deleted.size === 0 && order === null
+      const shown = samePages
+        ? [...visibleRows].flatMap((rowIdx) => (rows[rowIdx] ?? []).map((origIdx) => origIdx + 1))
+        : []
+      await loadDoc(filePath, doc, saved, shown)
+      requestAnimationFrame(() => {
+        if (scrollRef.current) scrollRef.current.scrollTop = scrollTop
+      })
+    },
+    clearHistory: () => {
+      setUndoStack([])
+      setRedoStack([])
+    },
+    undone: () => {
+      setTextDraft(null)
+      setNoteEditDraft(null)
+      setSelected(null)
+      setMarkupMenu(null)
+    },
+    markChanged: () => setRestoredUnsaved(true),
+    notice: (text) => showNotice(text),
+  })
+
   const dirtyBesidesFormFields =
     markups.length > 0 ||
     annotDeletes.length > 0 ||
@@ -2361,7 +2426,8 @@ export default function App() {
     restoredUnsaved
   const ordinaryDirty = dirtyBesidesFormFields || formFields.length > 0
   const savableDirty = dirtyBesidesFormFields || savableFormFields.length > 0
-  const dirty = redactions.length > 0 || ordinaryDirty
+  // a guest's pending edits are the host's to save: its copy is never "changed" while shared
+  const dirty = !pdfCollab.guest && (redactions.length > 0 || ordinaryDirty)
   // An open text/comment editor is already part of what Save and Save As write
   // (saveInPlace/saveAsTo commit the draft first), but it is not in `ordinaryDirty`.
   // The shell uses this flag to decide whether Save As must ask the renderer at all;
@@ -2528,6 +2594,7 @@ export default function App() {
       metadataRef.current = reduce('metadata', metadataRef.current)
       setMetadata(metadataRef.current)
     }
+    pdfCollab.edited(opts?.coalesceKey)
     return plan
   }
   /** Latest entry for async callbacks (bakes, validated AI edits): the closure they
@@ -2607,6 +2674,8 @@ export default function App() {
   }
 
   const undo = () => {
+    // in a session only this person's own edits are taken back
+    if (pdfCollab.undo()) return
     const top = undoStack[undoStack.length - 1]
     if (!top) return
     // Taken before applySnapshot rewrites the refs; the updater may run after it
@@ -2618,6 +2687,7 @@ export default function App() {
   }
 
   const redo = () => {
+    if (pdfCollab.redo()) return
     const top = redoStack[redoStack.length - 1]
     if (!top) return
     const cur = snapshot()
@@ -4882,7 +4952,7 @@ export default function App() {
   /** Open a PDF tools window task on this file; pending edits are saved first (decision 0030) */
   const openInPdfTools = async (tool: PdfToolsHandoffTool) => {
     setPdfToolsOpen(false)
-    if (!filePath) return
+    if (!filePath || pdfCollab.refuse('session')) return
     const opened = await flushThen(() => window.pdfApi.openInPdfTools(filePath, tool))
     if (opened === false) showNotice(t('pdfToolsOpenFailed'))
   }
@@ -5052,6 +5122,7 @@ export default function App() {
       if (result.skippedImageEdits && result.skippedImageEdits.length > 0) {
         noticeSkippedImages(result.skippedImageEdits)
       }
+      await pdfCollab.announceSave(snapshot.pageMap)
       // Reload: changes are in the file now, canvas renders directly, saved pending ops are cleared
       try {
         const el = scrollRef.current
@@ -5069,6 +5140,7 @@ export default function App() {
       } catch {
         /* Save already succeeded; a reload failure doesn't block (takes effect on next open) */
       }
+      pdfCollab.saved(snapshot)
       // the saved bytes are a new document for the result store: carry the AI
       // readings, translations and unfinished job records over (spec §6)
       const migrated = (await aiReadRef.current?.afterSave().catch(() => null)) ?? null
@@ -5125,6 +5197,7 @@ export default function App() {
    * stay in the copy.
    */
   const save = async (autosave = false, flushAll = false): Promise<boolean> => {
+    if (pdfCollab.refuseSave(autosave)) return false
     const ok = await saveInPlace(autosave, flushAll)
     if (autosave || !ok || !untitledCopyRef.current || !filePath) return ok
     const target = await window.pdfApi
@@ -5332,6 +5405,7 @@ export default function App() {
 
   const requestRedactionSaveAs = () => {
     if (redactions.length === 0 || redactionRequestInFlightRef.current) return
+    if (pdfCollab.refuse('session')) return
     const otherPending =
       saveInFlightRef.current !== null ||
       restoredUnsaved ||
@@ -5392,14 +5466,18 @@ export default function App() {
       !readOnly &&
       !presenting &&
       !saveAsFlowRef.current &&
-      !redactionRequestInFlightRef.current,
+      !redactionRequestInFlightRef.current &&
+      // while sharing, every save sends the whole file and reloads every guest: save on demand
+      !pdfCollab.pausesAutosave,
     () => void save(true),
   )
 
   // Crash-recovery copies (spec 1): what a save would write, kept in the app data folder
   // (never the file), about every 30s once input pauses; a password or encrypted PDF has none
   const recoveryCopies = useRecoveryCopies({
-    wanted: () => ordinaryDirty && filePath !== '' && status === 'ready' && !readOnly,
+    // a guest's copy belongs to the host until the session ends
+    wanted: () =>
+      ordinaryDirty && filePath !== '' && status === 'ready' && !readOnly && !pdfCollab.guest,
     busy: () =>
       saveInFlightRef.current !== null ||
       saveAsFlowRef.current ||
@@ -6794,6 +6872,8 @@ export default function App() {
 
   /** Extract/insert work on the file on disk — flush unsaved changes first; undefined = the save failed */
   const flushThen = async <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
+    // a guest's copy on disk lacks the shared edits, and it cannot save them
+    if (pdfCollab.refuse('guest')) return undefined
     if (redactions.length > 0) {
       opFailed(t('redactStructureBlocked'))
       return undefined
@@ -6820,6 +6900,9 @@ export default function App() {
   const rewriteInPlace = async (
     run: () => Promise<{ ok: true } | { ok: true; canceled: true } | { ok: false; error: string }>,
   ): Promise<FileOpResult> => {
+    // rewriting the shared file in place would leave the guests on pages that no longer exist
+    const refused = pdfCollab.refuse('session')
+    if (refused) return { ok: false, error: refused }
     const result = await runFileOp(run)
     if (!result.ok || 'canceled' in result) return result
     // the stored AI results of the kept pages follow the rewritten file before it is read again
@@ -6892,6 +6975,7 @@ export default function App() {
   }
 
   const insertPdf = (afterOrigIdx: number) => {
+    if (pdfCollab.refuse('session')) return Promise.resolve(undefined)
     // the flush bakes the visible order into the file, so the anchor becomes its visible position
     const afterPageIndex = visListOf(orderRef.current).indexOf(afterOrigIdx)
     return flushThen(async () => {
@@ -7666,6 +7750,10 @@ export default function App() {
   // to the picked path. The original file is never mutated.
   useEffect(() => {
     return window.pdfApi.onSaveAsRequest((targetPath) => {
+      if (pdfCollab.refuseSave(false)) {
+        window.pdfApi.sendSaveAsResult('cancelled')
+        return
+      }
       // A permanent redaction copy has its own confirmation and must not wait
       // behind a second dialog; it keeps annotations as they are.
       if (redactionApplyConfirmedRef.current) {
@@ -8283,6 +8371,8 @@ export default function App() {
     formWidgets.find((widget) => widget.kind === 'signature' && !formWidgetSigned(widget)) ?? null
 
   const openCertSignDialog = () => {
+    // the signed copy becomes this tab's document, leaving the shared one
+    if (pdfCollab.refuse('session')) return
     if (dirty || saveInFlightRef.current !== null) {
       showNotice(t('certSaveFirst'))
       return
@@ -8458,7 +8548,7 @@ export default function App() {
             className="qa-btn"
             data-tip={`${t('undo')} (${platformShortcuts('⌘Z')})`}
             aria-label={`${t('undo')} (${platformShortcuts('⌘Z')})`}
-            disabled={undoStack.length === 0}
+            disabled={!pdfCollab.canUndo(undoStack.length > 0)}
             onClick={undo}
           >
             <IconUndo />
@@ -8467,7 +8557,7 @@ export default function App() {
             className="qa-btn"
             data-tip={`${t('redo')} (${platformShortcuts('⇧⌘Z')})`}
             aria-label={`${t('redo')} (${platformShortcuts('⇧⌘Z')})`}
-            disabled={redoStack.length === 0}
+            disabled={!pdfCollab.canRedo(redoStack.length > 0)}
             onClick={redo}
           >
             <IconRedo />
@@ -8540,6 +8630,12 @@ export default function App() {
               XFA
             </span>
           )}
+          <CollabButton
+            collab={pdfCollab.collab}
+            lang={lang}
+            className="qa-btn qa-collab"
+            iconSize={16}
+          />
         </div>
         <div className="ribbon-body" data-ribbon-body="">
           {ribbonTab === 'home' && (
@@ -8815,6 +8911,8 @@ export default function App() {
                     disabled={readOnly}
                     data-tip={t('redactHint')}
                     onClick={() => {
+                      // a redacted copy replaces this tab's document, leaving the shared one
+                      if (drawTool !== 'redact' && pdfCollab.refuse('session')) return
                       setEditTextMode(false)
                       setTextDraft(null)
                       setEditImageMode(false)
@@ -10972,6 +11070,11 @@ export default function App() {
                                 geom={geom}
                                 scale={scale}
                               />
+                              <CollabPageMarks
+                                marks={pdfCollab.marksOn(origIdx)}
+                                geom={geom}
+                                scale={scale}
+                              />
                               {(() => {
                                 const ocr = ocrPages.get(origIdx)
                                 return ocr ? (
@@ -12441,6 +12544,8 @@ export default function App() {
           </footer>
         </div>
       </div>
+      <CollabDialog collab={pdfCollab.collab} lang={lang} />
+      <CollabNotice collab={pdfCollab.collab} lang={lang} />
     </div>
   )
 }

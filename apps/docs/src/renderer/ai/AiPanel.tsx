@@ -125,6 +125,7 @@ import fileDocumentIcon from '../assets/file-document.png'
 import fileGeneralIcon from '../assets/file-general.png'
 import { IconNewChat, IconSidebarCollapse } from '../components/icons'
 import { odtOffProps, useOdtSession } from '../odt-gate'
+import { refuseInCollab } from '../collab-gate'
 
 interface ToolActivity {
   name: string
@@ -1290,6 +1291,8 @@ export function AiPanel({
   ) => {
     const loop = loopRef.current
     if (!instruction || !loop || loop.busy || pendingSendRef.current) return
+    // a guest's AI would edit beside what only the host may change
+    if (refuseInCollab('ai')) return
     // Nothing can run yet: the composer shows the connect prompt or the notice about what
     // leaves the PC instead of an error, and keeps its text. A request made in front of the
     // notice (or while the status check is still running) is held and starts once the way is
@@ -1562,6 +1565,8 @@ export function AiPanel({
   }
 
   const rollback = (entryIdx: number, snapshot: ProseMirrorNode) => {
+    // the rollback point replaces the whole document, other people's edits included
+    if (refuseInCollab('aiRollback')) return
     restoreRollbackSnapshot(editor, snapshot)
     // The document rewound to before this turn, so this and every later
     // rollback point now describe discarded futures

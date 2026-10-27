@@ -1,6 +1,6 @@
 # IeumOffice Privacy
 
-Last updated: October 26, 2026
+Last updated: October 27, 2026
 
 IeumOffice opens, edits and saves documents on your own PC. The project runs
 no server of its own: nothing is sent to IeumOffice or to its maintainers, and
@@ -59,6 +59,38 @@ public IP address, as any website you visit does.
 
 Parts of a document that you marked as hidden from AI, in the editors that
 offer that marking, are withheld from the request whichever provider is used.
+
+## Co-editing on your local network
+
+**Collaborate** lets people on the same local network (LAN) edit one document
+together. Nothing goes through a server: the PCs talk to each other directly,
+and only while a document is shared.
+
+- **While you share a document**, this PC listens on the local network (TCP
+  port 47631, or a free port when that one is taken). Anyone on the network
+  who enters the document's 6-digit PIN receives the document as a save would
+  write it at that moment, then every edit made by anyone in the session, the
+  name and color each person chose, and where each person's cursor or
+  selection is. A wrong PIN gets nothing; after repeated wrong tries an
+  address is shut out for a while and the PIN is replaced.
+- **Every 2 seconds while you share**, this PC announces on the local network
+  your name, the port, and each shared document's title and kind (never the
+  PIN or the content), so that others can find it without typing an address.
+- **When you join**, your name and color, your edits and your cursor go to
+  the person sharing and to everyone else in the session.
+- **Traffic is encrypted.** The PIN itself never travels: both PCs derive a
+  session key from it with a password-authenticated key exchange (SPAKE2),
+  and every message after that is encrypted with ChaCha20-Poly1305. Someone
+  watching your local network cannot read the document, the edits or the
+  PIN, and cannot test PINs against what they recorded. Only the
+  announcement above is sent in the clear. Password-protected documents
+  cannot be shared.
+- **On a guest's PC** the shared document is written to a temporary folder
+  (`genoffice-collab-…` in the system temp folder) so the editor can open it;
+  it is deleted when the tab closes. When the session ends, the guest keeps
+  what is on screen as an unsaved document of their own.
+- Your name and color are kept in `app-settings.json` in the app's data
+  folder.
 
 ## How far hiding reaches
 

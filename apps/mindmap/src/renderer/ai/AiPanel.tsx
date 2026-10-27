@@ -1065,7 +1065,7 @@ export function AiPanel({
 
   /** Takes back the turn at `index` and every later one, newest first. */
   const rollback = (index: number): void => {
-    if (busy || reverting) return
+    if (busy || reverting || hostRef.current.rollbackBlocked?.()) return
     const undone = turns.slice(index).reverse()
     setReverting(true)
     void (async () => {

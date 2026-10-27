@@ -1,0 +1,71 @@
+import type { zh } from './zh'
+
+export const en = {
+  button: 'Collaborate',
+  dialogTitle: 'Collaborate',
+  tabShare: 'Share this document',
+  tabJoin: 'Join',
+  nameLabel: 'My name',
+  nameHint: "Shown next to your cursor on everyone else's screen.",
+  colorLabel: 'My color',
+  colorChoice: 'Color {n}',
+  shareIntro:
+    'People on the same network (LAN) can view and edit this document with you once they enter the PIN. The file is saved on this PC only.',
+  shareStart: 'Start sharing',
+  shareStarting: 'Starting…',
+  shareStop: 'Stop sharing',
+  pinLabel: 'PIN',
+  pinNew: 'New PIN',
+  pinChanged:
+    'Too many wrong PINs were tried, so the PIN was replaced. People who already joined stay in.',
+  addressLabel: "This PC's address",
+  peopleLabel: 'People here',
+  nobodyYet: 'Nobody has joined yet.',
+  you: 'you',
+  hostBadge: 'sharing',
+  joinIntro:
+    'Enter the PIN the person sharing gave you. Pick a document found on this network, or type the address.',
+  searching: 'Looking for shared documents on this network…',
+  foundLabel: 'Found',
+  foundBy: 'shared by {name}',
+  addressInput: 'Address',
+  addressPlaceholder: 'e.g. 192.168.0.12',
+  pinInput: 'PIN (6 digits)',
+  join: 'Join',
+  joining: 'Connecting…',
+  close: 'Close',
+  leave: 'Leave',
+  errPin: 'That PIN is not right.',
+  errLocked: 'Too many wrong PINs. This PC cannot try again for 10 minutes.',
+  errFull: 'This session is full.',
+  errVersion:
+    'The other PC runs a different version of the app. Update both PCs to the same version.',
+  errUnreachable:
+    "Could not connect to that address. Check the address, the network, and the sharing PC's firewall.",
+  errTimeout: 'The sharing PC is not answering.',
+  errInvalid: 'Check the address and the PIN.',
+  errUnavailable: 'This document could not be opened on this PC.',
+  errShareNetwork:
+    'Sharing could not start on this PC. Check whether another program is blocking the network.',
+  errShareTooLarge: 'This document is too large to share.',
+  errShareBusy: 'This tab is already in a session.',
+  errShareSaveFirst: 'There are unsaved changes. Save first, then share.',
+  errShareEncrypted: 'A password-protected document cannot be shared.',
+  errShareUnsupported: 'This document cannot be shared right now.',
+  endedByHost:
+    'The person sharing ended the session. This document is now an unsaved copy on this PC.',
+  endedLost:
+    'The connection to the sharing PC was lost. This document is now an unsaved copy on this PC.',
+  endedLeft: 'You left the session. This document is now an unsaved copy on this PC.',
+  endedHostStopped: 'Sharing stopped.',
+  guestSaveBlocked: 'During a session, the person sharing saves the file.',
+  guestBlocked: 'This is not available during a session.',
+  hostBlocked: 'This is not available while others are in the session.',
+  viewOnly: 'In this format only the person sharing edits; people who join watch it live.',
+  lanNotice:
+    'What you exchange is encrypted, so only people who enter the PIN can read it. While you share, your name and the document title are visible on the network.',
+  firewallHint: 'If Windows Firewall asks the first time you share, allow it on private networks.',
+  statusHosting: 'Sharing · {count}',
+  statusGuest: "In {name}'s document",
+  dismiss: 'OK',
+} satisfies Record<keyof typeof zh, string>

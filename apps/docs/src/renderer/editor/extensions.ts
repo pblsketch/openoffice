@@ -6,6 +6,7 @@ import { OdtGuardExtension } from './odt-guard'
 import { odtLabelSrc } from '../odt-labels'
 import type { ChainedCommands, RawCommands } from '@tiptap/core'
 import { Gapcursor, UndoRedo } from '@tiptap/extensions'
+import { CollabHistory, isRemoteTransaction } from '@genoffice/collab/tiptap'
 import { DOMSerializer } from '@tiptap/pm/model'
 import type { DOMOutputSpec, Node as PmNode } from '@tiptap/pm/model'
 import {
@@ -7011,6 +7012,21 @@ export const AutoLinkOnDelimiter = Extension.create({
   },
 })
 
+/**
+ * Another person's edit in a shared document (decision 0073), or the first
+ * render of one: their editor already recorded it as a tracked change and
+ * added any trailing paragraph, so this one must not do it again.
+ */
+export const CollabRemoteEdits = Extension.create({
+  name: 'collabRemoteEdits',
+  dispatchTransaction({ transaction, next }) {
+    if (isRemoteTransaction(transaction)) {
+      transaction.setMeta(TRACK_IGNORE, true).setMeta(TABLE_TRAILING_SKIP, true)
+    }
+    next(transaction)
+  },
+})
+
 export const editorExtensions = [
   StreamingTailGuardExtension,
   OdtGuardExtension,
@@ -7050,6 +7066,9 @@ export const editorExtensions = [
   InsMark,
   DelMark,
   UndoRedo,
+  // undo/redo that only take back this person's edits while the document is shared
+  CollabHistory,
+  CollabRemoteEdits,
   SearchHighlightExtension,
   PendingCommentHighlightExtension,
   ResolvedCommentsExtension,

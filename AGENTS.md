@@ -57,6 +57,7 @@ openoffice/
 │   ├── ai-search/AGENTS.md        ← 검색·이미지 생성·미디어 분석 도구, 자동 호출 제한
 │   ├── agent-core/AGENTS.md       ← AI 실행 반복, 화면↔뒷단 전송, 가리기
 │   ├── ui/AGENTS.md               ← 편집기 공용 AI 화면 부품과 문구
+│   ├── collab/AGENTS.md           ← 같은 네트워크 공동 작업의 화면 쪽(세션, 편집기 연결부, 공유와 참여 창)
 │   ├── i18n/AGENTS.md             ← 화면 언어 목록, 제품 이름 정의
 │   ├── cli/AGENTS.md              ← 터미널 명령어 `ieumoffice`, MCP 도구
 │   ├── electron-utils/AGENTS.md   ← 뒷단 공용 도구

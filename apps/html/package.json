@@ -24,6 +24,7 @@
     "@genoffice/agent-core": "*",
     "@genoffice/ai-provider": "*",
     "@genoffice/ai-search": "*",
+    "@genoffice/collab": "*",
     "@genoffice/electron-utils": "*",
     "@genoffice/odt-engine": "*",
     "@genoffice/file-parse": "*",

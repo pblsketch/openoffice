@@ -434,6 +434,10 @@ interface ExcelShellProps {
   readonly onFillSeries: (options: FillSeriesOptions) => string | null
   /// Series dialog defaults (selection shape, workbook date system).
   readonly onGetFillSeriesContext: () => FillSeriesContext
+  /// LAN co-editing: the quick-access entry (shown only inside the app)
+  readonly collabSlot?: ReactNode
+  /// LAN co-editing: false when a session refuses the command (it says why)
+  readonly commandAllowed?: (command: string) => boolean
 }
 
 export interface PageLayoutEcho {
@@ -582,6 +586,8 @@ export function ExcelShell({
   onGoalSeek,
   onFillSeries,
   onGetFillSeriesContext,
+  collabSlot,
+  commandAllowed,
 }: ExcelShellProps): React.JSX.Element {
   const { t } = useI18n()
   const [activeTab, setActiveTab] = useState<RibbonTab>('Home')
@@ -710,6 +716,7 @@ export function ExcelShell({
   onIsCellEditingRef.current = onIsCellEditing
   openingWorkbookRef.current = openingWorkbook
   const dispatchCommand = (command: string): void => {
+    if (commandAllowed && !commandAllowed(command)) return
     if (command === 'format-cells') setShowFormatCells(true)
     else if (command === 'row-height-open') setAxisSizeTarget('row')
     else if (command === 'col-width-open') setAxisSizeTarget('col')
@@ -941,6 +948,7 @@ export function ExcelShell({
               onChange={(e) => onAutoSaveChange(e.target.checked)}
             />
           </label>
+          {collabSlot}
           <span className="qa-sep" aria-hidden="true" />
           {visibleTabs.map((tab) => (
             <button

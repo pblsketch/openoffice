@@ -1,3 +1,5 @@
+import { collabBridge } from '@genoffice/electron-utils/collab-bridge'
+import { COLLAB_BRIDGE_KEY } from '@genoffice/electron-utils/collab-channels'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
 import { outboundBridge } from '@genoffice/electron-utils/outbound-bridge'
@@ -176,6 +178,9 @@ const api: DesktopApi = {
   saveDocxAs: (path: string, data: ArrayBuffer, sourcePath?: string | null) =>
     ipcRenderer.invoke('docs:save-as', path, data, sourcePath ?? null),
   materializeDocx: (data: ArrayBuffer) => ipcRenderer.invoke('docs:materialize-docx', data),
+  collabGuest: (on: boolean) => ipcRenderer.invoke('docs:collab-guest', on === true),
+  collabServeMedia: (hashes: string[], data: ArrayBuffer) =>
+    ipcRenderer.invoke('docs:collab-media', hashes, data),
   captureRect: (rect: { x: number; y: number; width: number; height: number }) =>
     ipcRenderer.invoke('docs:capture-rect', rect),
   saveDocxNew: (defaultName: string, data: ArrayBuffer) =>
@@ -387,6 +392,9 @@ contextBridge.exposeInMainWorld('projectApi', projectApi)
 contextBridge.exposeInMainWorld('aiOfficeSubscription', subscriptionApi)
 // The shell's split panes: which pane this view is, and focus requests for it
 contextBridge.exposeInMainWorld('aiOfficeSplit', splitPaneBridge(ipcRenderer))
+
+// LAN co-editing (decision 0073): the shell relays this tab's session
+contextBridge.exposeInMainWorld(COLLAB_BRIDGE_KEY, collabBridge())
 
 // open documents dragged from the OS onto this tab as a new shell tab
 installDropOpenBridge()

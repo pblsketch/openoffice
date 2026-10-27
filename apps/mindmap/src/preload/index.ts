@@ -1,3 +1,5 @@
+import { collabBridge } from '@genoffice/electron-utils/collab-bridge'
+import { COLLAB_BRIDGE_KEY } from '@genoffice/electron-utils/collab-channels'
 import type { AiPanelPrefs } from '@genoffice/ui'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
@@ -226,6 +228,9 @@ contextBridge.exposeInMainWorld(DOC_ATTACH_BRIDGE_KEY, docAttachBridge())
 // The shell's split panes: this view's pane role, and its way to ask for focus
 contextBridge.exposeInMainWorld(SPLIT_PANE_BRIDGE_KEY, splitPaneBridge(ipcRenderer))
 contextBridge.exposeInMainWorld('projectApi', projectApi)
+
+// LAN co-editing (decision 0073): the shell relays this tab's session
+contextBridge.exposeInMainWorld(COLLAB_BRIDGE_KEY, collabBridge())
 
 // open documents dragged from the OS onto this tab as a new shell tab
 installDropOpenBridge()

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { PageFrame } from '../editor/pagination-gaps'
 import type { MultipageLayout } from '../multipage'
+import { stripCollabMarks } from '@genoffice/collab'
 
 /** one canvas element to re-paint on the page it intersects (unzoomed px, relative to the page wrap) */
 interface CanvasBlock {
@@ -80,6 +81,8 @@ function paintPage(root: HTMLElement, snap: CanvasSnapshot, frame: PageFrame): v
       n.removeAttribute('id')
       n.removeAttribute('tabindex')
     }
+    // a still picture of the page: a caret in it would never move again
+    stripCollabMarks(clone)
     slot.appendChild(clone)
     root.appendChild(slot)
   }

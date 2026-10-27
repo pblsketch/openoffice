@@ -1,0 +1,30 @@
+/* co-editing: the people reading another chapter, in the status line */
+
+.epub-collab-places {
+  display: inline-flex;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.epub-collab-place {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 0;
+  border-radius: 9px;
+  padding: 0 8px;
+  background: var(--collab-c);
+  color: var(--collab-ink);
+  font: inherit;
+  font-size: 11px;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+/* the quick access button grows to hold the faces of the people here */
+.qa-btn.qa-collab {
+  width: auto;
+  min-width: 30px;
+  padding: 0 4px;
+}

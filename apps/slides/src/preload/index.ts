@@ -1,3 +1,5 @@
+import { collabBridge } from '@genoffice/electron-utils/collab-bridge'
+import { COLLAB_BRIDGE_KEY } from '@genoffice/electron-utils/collab-channels'
 import type { AiPanelPrefs } from '@genoffice/ui'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
@@ -12,6 +14,12 @@ import type { RenderSlide } from '@genoffice/pptx-render'
 import type { ProjectApi } from '@genoffice/project-store'
 import { installDropOpenBridge } from '@genoffice/electron-utils/drop-open'
 import type { TemplateSelectionInput } from '../shared/template-selection'
+import {
+  SLIDES_COLLAB_CHANNELS,
+  type SlidesCollabApi,
+  type SlidesCollabCaptured,
+  type SlidesCollabNotice,
+} from '../shared/collab'
 import type {
   AddChartOp,
   AddElementOp,
@@ -575,6 +583,32 @@ contextBridge.exposeInMainWorld('projectApi', projectApi)
 
 // The shell's split panes: which pane this view is, and focus requests for it
 contextBridge.exposeInMainWorld('aiOfficeSplit', splitPaneBridge(ipcRenderer))
+
+// LAN co-editing (decision 0073): the shell relays this tab's session
+contextBridge.exposeInMainWorld(COLLAB_BRIDGE_KEY, collabBridge())
+
+// ...and the deck in the main process joins it through these
+const slidesCollab: SlidesCollabApi = {
+  info: () => ipcRenderer.invoke(SLIDES_COLLAB_CHANNELS.info),
+  describe: () => ipcRenderer.invoke(SLIDES_COLLAB_CHANNELS.describe),
+  begin: (role) => ipcRenderer.invoke(SLIDES_COLLAB_CHANNELS.begin, role),
+  end: () => ipcRenderer.invoke(SLIDES_COLLAB_CHANNELS.end),
+  peers: (count) => ipcRenderer.send(SLIDES_COLLAB_CHANNELS.peers, count),
+  snapshot: () => ipcRenderer.invoke(SLIDES_COLLAB_CHANNELS.snapshot),
+  apply: (op, known) => ipcRenderer.invoke(SLIDES_COLLAB_CHANNELS.apply, op, known),
+  reload: (bytes) => ipcRenderer.invoke(SLIDES_COLLAB_CHANNELS.reload, bytes),
+  onCaptured: (handler) => {
+    const listener = (_e: IpcRendererEvent, captured: SlidesCollabCaptured) => handler(captured)
+    ipcRenderer.on(SLIDES_COLLAB_CHANNELS.captured, listener)
+    return () => ipcRenderer.removeListener(SLIDES_COLLAB_CHANNELS.captured, listener)
+  },
+  onBlocked: (handler) => {
+    const listener = (_e: IpcRendererEvent, notice: SlidesCollabNotice) => handler(notice)
+    ipcRenderer.on(SLIDES_COLLAB_CHANNELS.blocked, listener)
+    return () => ipcRenderer.removeListener(SLIDES_COLLAB_CHANNELS.blocked, listener)
+  },
+}
+contextBridge.exposeInMainWorld('slidesCollab', slidesCollab)
 
 // open documents dragged from the OS onto this tab as a new shell tab
 installDropOpenBridge()

@@ -840,6 +840,9 @@ export const workbookFileSchema = z
     /// string-based patcher to rewrite safely every 30 seconds. Manual Save
     /// remains available; only the background crash-recovery copy is disabled.
     automaticRecoveryDisabled: z.boolean().optional(),
+    /// The user's file has an open password: the session runs on a decrypted
+    /// copy, which must not leave this PC (LAN co-editing refuses to share it).
+    encrypted: z.boolean().optional(),
     /// Theme palette as #RRGGBB in theme index order [lt1, dk1, lt2, dk2,
     /// accent1-6, hlink, folHlink]; absent without a readable theme.
     themeColors: z.array(z.string()).length(12).optional(),
@@ -2931,6 +2934,9 @@ export interface DesktopApi {
   /// Not the merge-source open: a recovered workbook is a normal session, and
   /// a csv/xls is imported as the workbook itself, not as a merge input.
   reopenWorkbook(path: string): Promise<WorkbookFile | null>
+  /// LAN co-editing guest: replace this untitled copy's session with the
+  /// host's bytes (a new session over the same backing file).
+  collabReplaceWorkbook?(sessionId: string, bytes: Uint8Array): Promise<WorkbookFile>
   /// The sidecar process died: every session id this renderer holds is gone.
   /// A positive crash signal — the main process raises it only for an actual
   /// process death, never for a session it closed or swapped on purpose.

@@ -8,6 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./atomic-write": "./src/atomic-write.ts",
+    "./collab-bridge": "./src/collab-bridge.ts",
+    "./collab-channels": "./src/collab-channels.ts",
     "./drop-open": "./src/drop-open.ts",
     "./doc-attach-bridge": "./src/doc-attach-bridge.ts",
     "./doc-attach-channels": "./src/doc-attach-channels.ts",

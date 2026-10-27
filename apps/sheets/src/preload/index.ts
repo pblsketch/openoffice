@@ -1,3 +1,5 @@
+import { collabBridge } from '@genoffice/electron-utils/collab-bridge'
+import { COLLAB_BRIDGE_KEY } from '@genoffice/electron-utils/collab-channels'
 import type { AiPanelPrefs } from '@genoffice/ui'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
@@ -197,6 +199,17 @@ const desktopApi: DesktopApi = {
     }
     const result: unknown = await ipcRenderer.invoke(IPC_CHANNELS.reopenWorkbook, path)
     return result === null ? null : parseWorkbookFile(result)
+  },
+  async collabReplaceWorkbook(sessionId, bytes) {
+    if (!isUuid(sessionId)) throw new Error('Invalid workbook session.')
+    if (!(bytes instanceof Uint8Array) || bytes.byteLength === 0) {
+      throw new Error('Invalid workbook bytes.')
+    }
+    const result: unknown = await ipcRenderer.invoke(IPC_CHANNELS.collabReplaceWorkbook, {
+      sessionId,
+      bytes,
+    })
+    return parseWorkbookFile(result)
   },
   onSidecarCrashed(callback) {
     const listener = (): void => {
@@ -847,6 +860,9 @@ if (process.env.GENOFFICE_DEBUG_HOOKS === '1') {
   contextBridge.exposeInMainWorld('__genofficeDebugHooks', true)
 }
 
+// LAN co-editing (decision 0073): the shell relays this tab's session
+contextBridge.exposeInMainWorld(COLLAB_BRIDGE_KEY, collabBridge())
+
 // open documents dragged from the OS onto this tab as a new shell tab
 installDropOpenBridge()
 
@@ -869,6 +885,7 @@ function parseWorkbookFile(input: unknown): WorkbookFile {
     csvPath,
     emptyCsv,
     restoredFromRecovery,
+    encrypted,
   } = input
   if (
     !isUuid(sessionId) ||
@@ -887,7 +904,8 @@ function parseWorkbookFile(input: unknown): WorkbookFile {
     (needsSaveAs !== undefined && typeof needsSaveAs !== 'boolean') ||
     (csvPath !== undefined && (typeof csvPath !== 'string' || csvPath.length === 0)) ||
     (emptyCsv !== undefined && typeof emptyCsv !== 'boolean') ||
-    (restoredFromRecovery !== undefined && typeof restoredFromRecovery !== 'boolean')
+    (restoredFromRecovery !== undefined && typeof restoredFromRecovery !== 'boolean') ||
+    (encrypted !== undefined && typeof encrypted !== 'boolean')
   ) {
     throw new Error('Invalid workbook response.')
   }
@@ -1194,6 +1212,7 @@ function parseWorkbookFile(input: unknown): WorkbookFile {
     ...(csvPath === undefined ? {} : { csvPath }),
     ...(emptyCsv === undefined ? {} : { emptyCsv }),
     ...(restoredFromRecovery === undefined ? {} : { restoredFromRecovery }),
+    ...(encrypted === true ? { encrypted } : {}),
     ...(themeColors === undefined ? {} : { themeColors: themeColors as string[] }),
     ...(parsedThemeFonts === undefined ? {} : { themeFonts: parsedThemeFonts }),
     ...(typeof input.normalFontName === 'string' && input.normalFontName !== ''

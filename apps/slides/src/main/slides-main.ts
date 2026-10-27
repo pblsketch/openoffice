@@ -323,6 +323,20 @@ import { registerGenerateHandoffIpc } from './generate-handoff-ipc'
 import { registerSlidesTemplateBytesIpc } from './template-bytes'
 import { openSlidesSeed } from './seed-deck'
 import { queueSlidesSeedFor } from './seed-queue'
+import {
+  asRemote,
+  collabCapture,
+  collabRefuse,
+  collabRefusesOps,
+  collabReset,
+  collabSaveRefused,
+  dropTransformPreview,
+  forgetHistory,
+  isCollabGuest,
+  noteBuiltinLayout,
+  registerSlidesCollabIpc,
+} from './collab'
+import { createdCheck, fromWireOp } from './collab-wire'
 
 export {
   configureSlidesRuntime,
@@ -496,6 +510,7 @@ function syncAttachedPaths(session: Session, path: string): void {
  * effects: session path, recents, attached-surface titles, dirty-flag reset.
  */
 export async function saveSessionDeckTo(session: Session, filePath: string): Promise<void> {
+  if (isCollabGuest(session)) throw new Error('a guest in a co-editing session does not save')
   // the caller supplies an arbitrary absolute path, so its parent may not exist
   // yet (the dialog-driven paths always land in an existing folder)
   await mkdir(dirname(filePath), { recursive: true })
@@ -588,6 +603,8 @@ export function slidesFileRenamed(wc: WebContents, oldPath: string, newPath: str
 const recoveryStore = createRecoveryStore({ userDataDir: () => app.getPath('userData') })
 
 function sessionDirty(session: Session): boolean {
+  // a co-editing guest's copy belongs to the host until the session ends
+  if (isCollabGuest(session)) return false
   return (
     !!session.metaDirty ||
     session.opened.deck.slides.some(
@@ -1313,9 +1330,11 @@ function journaledTxn(
   source: Exclude<OpLogEntry['source'], 'reset'>,
   req: TxnRequest,
 ): TxnResult {
+  const capture = collabCapture(session)
   const r = runTxn(session.opened, req)
   if (r.applied) {
     journalOps(session, source, r.records ?? [])
+    capture?.(r.records ?? [], source)
     scheduleDeckBroadcast(session)
   }
   return r
@@ -1341,6 +1360,8 @@ export function applySessionTxn(session: Session, req: ApplyTxnOp): ApplyTxnResu
   const isolation = req.isolation === 'per_op' ? ('per_op' as const) : ('atomic' as const)
   const compact = (fails?: Array<{ index: number; error: string }>) =>
     fails?.map((f) => ({ index: f.index, error: f.error }))
+  const refused = collabRefusesOps(session, ops)
+  if (refused) return { applied: false, failures: [{ index: 0, error: refused }] }
   if (req.dryRun) {
     const r = runTxn(session.opened, { ops, isolation, dryRun: true })
     return {
@@ -1367,44 +1388,7 @@ export function applySessionTxn(session: Session, req: ApplyTxnOp): ApplyTxnResu
   // close could discard the edit. Element-level ops set their own flags; this
   // covers the archive-only ones.
   markMetaDirty(session)
-  // Post-pass mirroring the dedicated shims (autofit/reparse are render concerns and live
-  // outside the executor): text ops get autofit resize + fontScale write-back, level changes
-  // materialize, and XML-patching ops reparse the page so the final render reflects them.
-  // Slides are re-found by the executor-stamped durable id: a numeric target.slide drifts
-  // when a later structural op (deleteSlide/moveSlide/duplicateSlide) shifts pages.
-  const slideIdxOf = (rec: OpRecord): number => {
-    if (rec.slideId)
-      return session.opened.deck.slides.findIndex((s) => slideDurableId(s) === rec.slideId)
-    return -1
-  }
-  const renderedByIdx = new Map<number, ReturnType<typeof rebuildSlide>>()
-  for (const rec of r.records ?? []) {
-    const o = rec.op
-    const idx = slideIdxOf(rec)
-    if (idx < 0) continue
-    if (o.op === 'setTableStyle' || o.op === 'setChart') {
-      rebuildSlideWithReparse(session, idx)
-      renderedByIdx.delete(idx)
-      continue
-    }
-    const id = o.target?.el
-    if (!id || o.group) continue
-    if (o.op !== 'setText' && o.op !== 'setFont' && o.op !== 'setParagraphFormat') continue
-    if (o.op === 'setText' && (rec.after as { levelDirty?: boolean } | undefined)?.levelDirty)
-      continue
-    if (
-      o.op === 'setParagraphFormat' &&
-      (o.format as { indentDelta?: number } | undefined)?.indentDelta
-    ) {
-      materializeSlide(session.opened, idx)
-      renderedByIdx.delete(idx)
-      continue
-    }
-    let rendered = renderedByIdx.has(idx) ? renderedByIdx.get(idx)! : rebuildSlide(session, idx)
-    rendered = applyAutofitResize(session, idx, id, rendered)
-    rendered = syncAutofitScale(session, idx, id, rendered)
-    renderedByIdx.set(idx, rendered)
-  }
+  settleTxn(session, r.records ?? [], 'batch')
   return {
     applied: true,
     records: (r.records ?? []).map((rec) => ({
@@ -1416,6 +1400,72 @@ export function applySessionTxn(session: Session, req: ApplyTxnOp): ApplyTxnResu
     })),
     ...(r.failures?.length ? { failures: compact(r.failures) } : {}),
     slides: buildAllRenderSlides(session.opened, session.fitWidthPx),
+  }
+}
+
+/**
+ * Post-pass mirroring the dedicated shims (autofit/reparse are render concerns and live
+ * outside the executor): text ops get autofit resize + fontScale write-back, level changes
+ * materialize, and XML-patching ops reparse the page so the final render reflects them.
+ * `source` picks the surface whose settling is mirrored: the AI batch path, or a
+ * co-editing peer replaying a transaction the way its own surface settled it.
+ * Slides are re-found by the executor-stamped durable id: a numeric target.slide drifts
+ * when a later structural op (deleteSlide/moveSlide/duplicateSlide) shifts pages.
+ */
+function settleTxn(
+  session: Session,
+  records: OpRecord[],
+  source: Exclude<OpLogEntry['source'], 'reset'>,
+): void {
+  if (source === 'generate') return
+  const script = source === 'script'
+  const shim = source === 'edit'
+  const slideIdxOf = (rec: OpRecord): number => {
+    if (rec.slideId)
+      return session.opened.deck.slides.findIndex((s) => slideDurableId(s) === rec.slideId)
+    return -1
+  }
+  const renderedByIdx = new Map<number, ReturnType<typeof rebuildSlide>>()
+  for (const rec of records) {
+    const o = rec.op
+    if (shim && o.op === 'applyTheme') {
+      // slides:apply-theme reparses so every resolved color/font refreshes
+      const after = rec.after as { patched?: number; remapped?: number } | undefined
+      if (after?.patched || after?.remapped) session.opened = reparseDeck(session.opened)
+      renderedByIdx.clear()
+      continue
+    }
+    const idx = slideIdxOf(rec)
+    if (idx < 0) continue
+    if (!script && (o.op === 'setTableStyle' || o.op === 'setChart')) {
+      rebuildSlideWithReparse(session, idx)
+      renderedByIdx.delete(idx)
+      continue
+    }
+    const id = o.target?.el
+    if (!id || o.group) continue
+    if (
+      o.op !== 'setText' &&
+      o.op !== 'setFont' &&
+      o.op !== 'setParagraphFormat' &&
+      !(shim && o.op === 'setTextBodyProps')
+    )
+      continue
+    if (o.op === 'setText' && (rec.after as { levelDirty?: boolean } | undefined)?.levelDirty)
+      continue
+    if (
+      !script &&
+      o.op === 'setParagraphFormat' &&
+      (o.format as { indentDelta?: number } | undefined)?.indentDelta
+    ) {
+      materializeSlide(session.opened, idx)
+      renderedByIdx.delete(idx)
+      continue
+    }
+    let rendered = renderedByIdx.has(idx) ? renderedByIdx.get(idx)! : rebuildSlide(session, idx)
+    rendered = applyAutofitResize(session, idx, id, rendered)
+    rendered = syncAutofitScale(session, idx, id, rendered)
+    renderedByIdx.set(idx, rendered)
   }
 }
 
@@ -1703,6 +1753,8 @@ export function registerSlidesIpc(): void {
   }
 
   ipcMain.handle('slides:open', async (e, fitWidthPx: number) => {
+    // a shared deck stays in its tab until the session ends
+    if (collabRefuse(sessions.get(e.sender.id), e.sender, 'session')) return null
     const parent = dialogParent()
     const options = {
       properties: ['openFile' as const],
@@ -1722,6 +1774,7 @@ export function registerSlidesIpc(): void {
 
   ipcMain.handle('slides:open-path', async (e, path: string, fitWidthPx: number) => {
     if (!path || !existsSync(path)) return null
+    if (collabRefuse(sessions.get(e.sender.id), e.sender, 'session')) return null
     const prepared = await preparePptxOpen(path)
     if (prepared === 'rejected') return null
     return openAndBuild(e.sender, path, fitWidthPx, prepared === 'plain' ? undefined : prepared)
@@ -2362,6 +2415,10 @@ export function registerSlidesIpc(): void {
         }
 
         // replace mode: assemble the whole batch into one multi-page pptx as the new deck base.
+        // A new deck cannot replace a shared one; the pages can still be added.
+        if (collabRefuse(sessions.get(e.sender.id), e.sender, 'session')) {
+          return { error: 'A shared deck cannot be replaced; add the pages to it instead.' }
+        }
         const { bytes } = await assembleDeck()
         const opened = await openPptx(bytes)
         const replaceSession: Session = {
@@ -2940,6 +2997,7 @@ export function registerSlidesIpc(): void {
     const session = sessions.get(e.sender.id)
     const rec = lastSlidePaste.get(e.sender.id)
     if (!session || !slideClipboard || !rec) return null
+    if (collabRefuse(session, e.sender, 'session')) return null
     if (session.undoStack.length !== rec.undoLen) return null
     const snap = session.undoStack.pop()
     if (!snap) return null
@@ -2985,13 +3043,12 @@ export function registerSlidesIpc(): void {
   // 'builtin:<key>' virtual paths get injected into the package on first use
   const resolveLayoutPath = (session: Session, layoutPath?: string): string | undefined => {
     if (!layoutPath?.startsWith(BUILTIN_LAYOUT_PREFIX)) return layoutPath
-    return (
-      ensureBuiltinLayout(
-        session.opened.archive,
-        session.opened.deck.size,
-        layoutPath.slice(BUILTIN_LAYOUT_PREFIX.length),
-      ) ?? undefined
-    )
+    const key = layoutPath.slice(BUILTIN_LAYOUT_PREFIX.length)
+    const path =
+      ensureBuiltinLayout(session.opened.archive, session.opened.deck.size, key) ?? undefined
+    // the injection is not an op: co-editing peers inject the same layout first
+    if (path) noteBuiltinLayout(session, path, key)
+    return path
   }
 
   ipcMain.handle('slides:add-slide-with-layout', (e, op: AddSlideWithLayoutOp) => {
@@ -3063,6 +3120,8 @@ export function registerSlidesIpc(): void {
   ipcMain.handle('slides:master-enter', (e, fitWidthPx: number): MasterEnterResult | null => {
     const session = sessions.get(e.sender.id)
     if (!session) return null
+    // master edits keep their own parsed copy of the part, which others' edits would leave stale
+    if (collabRefuse(session, e.sender, 'session')) return null
     session.fitWidthPx = fitWidthPx
     const items: MasterEnterResult['items'] = []
     for (const p of listMasterParts(session.opened.archive)) {
@@ -4526,6 +4585,8 @@ export function registerSlidesIpc(): void {
   const sectionShim = (e: Electron.IpcMainInvokeEvent, op: Record<string, unknown>) => {
     const session = sessions.get(e.sender.id)
     if (!session) return null
+    // section ids are random: a shared deck re-bases on the host's bytes after one
+    if (collabRefuse(session, e.sender, 'others')) return null
     const r = sessionTxn(session, { ops: [op as Parameters<typeof runTxn>[1]['ops'][0]] })
     if (!r) return null
     markMetaDirty(session)
@@ -4556,6 +4617,7 @@ export function registerSlidesIpc(): void {
   ipcMain.handle('slides:remove-section-slides', (e, op: RemoveSectionSlidesOp) => {
     const session = sessions.get(e.sender.id)
     if (!session) return null
+    if (collabRefuse(session, e.sender, 'others')) return null
     const total = session.opened.deck.slides.length
     const { lead, sections } = normalizeSections(getSections(session.opened), total)
     const indices = op.id == null ? lead : sections.find((s) => s.id === op.id)?.slideIndices
@@ -4712,7 +4774,9 @@ export function registerSlidesIpc(): void {
   ipcMain.handle('slides:ai-snapshot-restore', (e, id: number) => {
     const session = sessions.get(e.sender.id)
     if (!session || session.masterEdit || session.historyBatch) return null
+    if (collabRefuse(session, e.sender, 'others')) return null
     if (!restoreAiSnapshot(session, id)) return null
+    collabReset(session)
     scheduleDeckBroadcast(session)
     return buildAllRenderSlides(session.opened, session.fitWidthPx)
   })
@@ -4721,10 +4785,13 @@ export function registerSlidesIpc(): void {
     const session = sessions.get(e.sender.id)
     // Undo disabled in master view: the masterEdit.slide model cannot roll back with snapshots (v1 trade-off; undoable after exiting)
     if (!session || session.masterEdit) return null
+    // a snapshot cannot tell whose edit it undoes: only a host that is alone may jump
+    if (collabRefuse(session, e.sender, 'others')) return null
     settleStaleHistoryBatch(session)
     if (session.undoStack.length === 0) return null
     session.redoStack.push(takeSnapshot(session))
     restoreSnapshot(session, session.undoStack.pop()!)
+    collabReset(session)
     scheduleHistoryNotify(session)
     scheduleDeckBroadcast(session)
     return buildAllRenderSlides(session.opened, session.fitWidthPx)
@@ -4733,10 +4800,12 @@ export function registerSlidesIpc(): void {
   ipcMain.handle('slides:redo', (e) => {
     const session = sessions.get(e.sender.id)
     if (!session || session.masterEdit) return null
+    if (collabRefuse(session, e.sender, 'others')) return null
     settleStaleHistoryBatch(session)
     if (session.redoStack.length === 0) return null
     session.undoStack.push(takeSnapshot(session))
     restoreSnapshot(session, session.redoStack.pop()!)
+    collabReset(session)
     scheduleHistoryNotify(session)
     scheduleDeckBroadcast(session)
     return buildAllRenderSlides(session.opened, session.fitWidthPx)
@@ -4744,7 +4813,7 @@ export function registerSlidesIpc(): void {
 
   ipcMain.handle('slides:is-dirty', (e) => {
     const session = sessions.get(e.sender.id)
-    if (!session) return false
+    if (!session || isCollabGuest(session)) return false
     return (
       !!session.metaDirty ||
       session.opened.deck.slides.some(
@@ -4756,6 +4825,8 @@ export function registerSlidesIpc(): void {
   ipcMain.handle('slides:save', async (e, auto?: unknown) => {
     const session = sessions.get(e.sender.id)
     if (!session) return { ok: false, error: 'no file open' }
+    // nothing written and no failure shown: the host saves a shared deck
+    if (collabSaveRefused(session, e.sender)) return { ok: false, reason: 'external-modified' }
     const previousPath = session.path
     // An untitled deck asks where its first save goes (decision 0061: nothing
     // lands in the user's folders unasked — template copies, AI-generated decks
@@ -4827,6 +4898,7 @@ export function registerSlidesIpc(): void {
   ipcMain.handle('slides:save-as', async (e, defaultName: string) => {
     const session = sessions.get(e.sender.id)
     if (!session) return { ok: false, error: 'no file open' }
+    if (collabSaveRefused(session, e.sender)) return { ok: false }
     const parent = dialogParent()
     const options = {
       defaultPath: saveAsSuggestion(session.path, defaultName),
@@ -5044,6 +5116,41 @@ export function registerSlidesIpc(): void {
   // ── Presenter-view multi-screen show (registered inside registerSlidesIpc: shell
   // aggregate mode only calls this function) ──
   registerPresenterIpc()
+
+  // ── LAN co-editing (decision 0073): the tab's renderer carries the session ──
+  registerSlidesCollabIpc({
+    isDirty: sessionDirty,
+    untitledName: untitledRecoveryTitle,
+    applyRemote: (session, wire) => {
+      dropTransformPreview(session)
+      const ops = fromWireOp(wire, session.opened)
+      if (!ops?.length) return { ok: false }
+      const source = ['edit', 'batch', 'script', 'generate'].includes(wire.source)
+        ? wire.source
+        : 'edit'
+      // atomic: a peer's transaction lands whole or not at all
+      const r = asRemote(session, () => journaledTxn(session, source, { ops }))
+      if (!r.applied) return { ok: false }
+      const check = createdCheck(r.records ?? [], session.opened)
+      settleTxn(session, r.records ?? [], source)
+      if (!isCollabGuest(session)) markMetaDirty(session)
+      forgetHistory(session)
+      scheduleDeckBroadcast(session, true)
+      return { ok: true, check }
+    },
+    reload: async (session, bytes) => {
+      await shapedMetricsReady()
+      const opened = await openPptx(bytes)
+      adoptEmbeddedFonts(opened)
+      session.opened = opened
+      session.masterEdit = null
+      session.transformPreview = false
+      session.previewRedo = undefined
+      session.historyBatch = undefined
+      forgetHistory(session)
+      return buildAllRenderSlides(opened, session.fitWidthPx)
+    },
+  })
 
   registerSlidesOnlyAiIpc()
 }

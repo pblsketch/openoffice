@@ -26,6 +26,7 @@ import { hwpIsDirty, hwpMemoModalOpen, requestHwpClose } from '../../../hwp/src/
 import { htmlIsDirty, requestHtmlClose } from '../../../html/src/main/html-main'
 import { mindmapIsDirty, requestMindmapClose } from '../../../mindmap/src/main/mindmap-main'
 import { epubIsDirty, requestEpubClose } from '../../../epub/src/main/epub-main'
+import { isLiveCollabGuest } from './collab/collab-service'
 import { canonicalPath } from './tab-manager'
 import { releaseClosedRenderer } from './renderer-disposal'
 import { cancelUpdateRestart } from './update-restart'
@@ -245,6 +246,8 @@ export function closeDetachedWithoutPrompt(id: string): boolean {
 async function detachedIsDirty(rec: DetachedRecord): Promise<boolean> {
   const wc = rec.view.webContents
   if (wc.isDestroyed()) return false
+  // a guest's edits already live in the host's document
+  if (isLiveCollabGuest(wc.id)) return false
   switch (rec.kind) {
     case 'sheets':
       return sheetsPendingEditCount(wc.id) > 0

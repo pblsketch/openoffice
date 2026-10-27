@@ -30,6 +30,7 @@ const UNWRAP_CLASSES = new Set([
   'has-rpr-change',
   'doc-inactive-selection',
   'doc-comment-flash',
+  'collab-selection',
 ])
 
 const KEEP_WIDGET_CLASSES = ['page-float-host']

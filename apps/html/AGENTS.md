@@ -46,6 +46,7 @@ HTML 에디터다. HTML 원문이 기준이고, 옆에서 실시간 미리 보�
 - 인쇄 대화 상자는 모달이다. `runGuardedPrint`가 대화 상자가 열려 있는 동안의 두 번째 인쇄 요청을 막는다.
 - 복구 사본: 저장하지 않은 변경이 있으면 화면이 약 30초마다 저장할 때 쓸 글자 그대로를 뒷단에 넘기고(`src/renderer/recovery-copy.ts`, 자동 저장 스위치와 무관), 뒷단이 공용 저장소로 `<userData>/html-autosave`에 둔다(`src/main/recovery.ts`). 원본 파일과 사용자 폴더에는 쓰지 않는다(제목 없는 문서 포함). 저장(자동 저장·다른 이름·MCP 포함)은 사본을 지우고, "저장 안 함"과 MCP의 저장 없이 닫기는 `dontSave`로, 깨끗하게 닫힌 탭은 자기가 쓴 사본만 지운다. 화면이 죽은 탭과 앱이 끝나는 중의 닫기는 지우지 않는다. 사본이 있는 파일을 열면 내용을 읽기 전에 `recoveryOpen`이 공용 물음(Esc는 되살리기)을 거치고, 되살린 글은 원래 경로를 저장 대상으로 둔 채 "바뀜" 상태로 열린다. 껍데기 앱은 `htmlRecoveryEditor`(약속), `htmlRecoveryIdentity`, `setHtmlRecoveryTitleSource`를 쓴다. `recovery.ts`와 `recovery-copy.ts`는 마크다운 편집기의 같은 이름 파일과 내용이 같다.
 - 문자열은 `src/renderer/i18n/`의 언어별 조각(`ai/`, `app/`)이고 `zh.ts`가 키 집합을 정한다. 21개 언어 모두에 넣는다. 구독 연결 문장과 AI 진입 이름은 `@genoffice/ui`의 것을 쓴다.
+- **공동 작업(결정 0073)은 원문을 공유한다**(`src/renderer/collab.ts`, `SourceEditor`의 `bindCollab`). 모든 편집이 원문 치환이라 미리 보기, 검사기, AI의 편집도 같은 길로 퍼진다. 원격 변경은 CodeMirror 실행 취소 기록에 들어가지 않는다. 손님은 저장과 복구 사본을 하지 않는다.
 
 ## 테스트
 

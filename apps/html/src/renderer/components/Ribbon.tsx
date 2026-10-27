@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import {
   AiMark,
   RibbonCollapseButton,
@@ -87,6 +88,8 @@ interface Props {
   onAiPreset: (text: string) => void
   canvasMode: CanvasMode
   onPresent: (kind: PresentKind) => void
+  /** the co-editing entry (shown only inside the app) */
+  collabSlot?: ReactNode
 }
 
 export type CanvasMode = 'edit' | 'present'
@@ -271,6 +274,7 @@ export function Ribbon(p: Props) {
             onChange={(e) => p.onToggleAutoSave(e.target.checked)}
           />
         </label>
+        {p.collabSlot}
         <RibbonExpandButton state={collapse} label={t('ribbonExpand')} />
       </div>
 

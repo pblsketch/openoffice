@@ -78,6 +78,7 @@ PDF 보기·주석·편집 에디터다. 화면은 PDF.js로 그리고, 저장�
 - 문자열은 `src/renderer/i18n/strings.ts`(한 파일에 21개 언어, `zh`가 키 집합)와 `cert-sign-strings.ts`에 있다. 새 기능의 문자열은 언어별 조각으로 나뉘어 있다(`i18n/convert/`, `i18n/ai-read/`, `i18n/translate/`, 읽기 도우미의 `i18n/reading/`, `i18n/annot-panel/`, `i18n/ai-reading/`, `i18n/bilingual/`, `i18n/highlight/`, `i18n/notes/`, 각각 `zh`가 키 집합, 묶는 파일은 `strings-<기능>.ts`). 노트 저장 창의 문구는 메인의 `note-link.ts`에 있다. 구독 연결 문장과 AI 진입 이름은 `@genoffice/ui`의 것을 쓴다.
 - 문서 작업 엔진은 화면 프로세스에서 돈다. 페이지 그림은 화면이 자기 PDF.js 사본으로 그리고, 모델 호출은 AI 창과 같은 `ai:stream`으로 간다. 결과 쓰기는 `ipc-store.ts`를 거쳐 셸의 보관소로 간다. 셸은 그 창에 열린 파일에서 자기가 계산한 해시만 받아들인다.
 - `src/shared/ipc.ts`의 `structure*`·`store*` 채널 모양을 바꾸면 셸의 처리 코드(`apps/shell/src/main/pdf-structure/`)도 함께 고치고 셸을 다시 빌드한다.
+- **공동 작업(결정 0073)은 저장 전 편집 묶음을 공유한다**(`src/renderer/collab.tsx`, `collab-share.ts`, `src/main/collab.ts`). 묶음마다 Yjs 맵 하나에 두고, 값에는 그 값이 가리키는 파일 세대(epoch)를 붙인다. 호스트가 저장하면 새 세대를 알리고 저장한 파일을 손님에게 보낸다. 손님은 그 파일로 다시 열어 그 세대의 값만 보이고, 호스트는 이전 세대로 늦게 들어온 값을 저장의 페이지 대응표로 옮긴다. 저장할 때마다 모든 손님이 다시 열므로 공유 중에는 호스트의 자동 저장을 멈춘다. 실행 취소는 자기 편집만 되돌린다. 손님은 저장과 복구 사본을 하지 않고, 뒷단도 손님 탭의 저장을 거절한다. 파일을 그 자리에서 다시 쓰는 작업(다른 PDF 끼워 넣기 등), 서명, 가리기(redaction), PDF 도구로 넘기기는 세션 동안 막는다. 저장을 먼저 해야 하는 작업(페이지 뽑기 등)은 손님에게 막는다.
 
 ## 테스트
 

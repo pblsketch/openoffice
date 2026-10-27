@@ -1115,6 +1115,7 @@ export function Ribbon({
   onSave,
   onUndo,
   onRedo,
+  collabSlot,
   onSaveAs,
   onExportPdf,
   onPrint,
@@ -1874,6 +1875,7 @@ export function Ribbon({
             onChange={(e) => onAutoSaveChange(e.target.checked)}
           />
         </label>
+        {collabSlot}
         <span className="qa-sep" aria-hidden="true" />
         {TABS.filter((tb) => tb !== 'file').map((tb) => (
           <button

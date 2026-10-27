@@ -92,6 +92,17 @@
   --text-small: 14px;
   --text-caption: 12px;
 
+  /* co-editing: one color per person (caret, selection, name chip) */
+  --collab-0: #d93025;
+  --collab-1: #1a73e8;
+  --collab-2: #188038;
+  --collab-3: #e37400;
+  --collab-4: #9334e6;
+  --collab-5: #007b83;
+  --collab-6: #b80672;
+  --collab-7: #795548;
+  --collab-ink: #ffffff;
+
   color-scheme: light;
 }
 
@@ -149,6 +160,15 @@
   --color-border-default: #3a3a3a;
   --color-border-strong: #555;
   --color-border-brand: #4a9eff;
+  --collab-0: #f28b82;
+  --collab-1: #8ab4f8;
+  --collab-2: #81c995;
+  --collab-3: #fcad70;
+  --collab-4: #c58af9;
+  --collab-5: #78d9ec;
+  --collab-6: #ff8bcb;
+  --collab-7: #bcaaa4;
+  --collab-ink: #202124;
 
   color-scheme: dark;
 }
@@ -208,6 +228,15 @@
     --color-border-default: #3a3a3a;
     --color-border-strong: #555;
     --color-border-brand: #4a9eff;
+    --collab-0: #f28b82;
+    --collab-1: #8ab4f8;
+    --collab-2: #81c995;
+    --collab-3: #fcad70;
+    --collab-4: #c58af9;
+    --collab-5: #78d9ec;
+    --collab-6: #ff8bcb;
+    --collab-7: #bcaaa4;
+    --collab-ink: #202124;
 
     color-scheme: dark;
   }

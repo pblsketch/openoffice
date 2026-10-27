@@ -278,12 +278,13 @@ metadata:
 
 **앱 설정(`app-settings.json`)의 값.** 데이터 폴더에 있다.
 
-| 값                      | 종류                                                                                           | 기본                   |
-| ----------------------- | ---------------------------------------------------------------------------------------------- | ---------------------- |
-| `skills.states`         | 식별자 → `{ enabled?, invoke?: 'auto' \| 'manual' }`. 사람이 바꾼 것만 적는다                  | 없음(출처별 처음 상태) |
-| `skills.hiddenBuiltins` | 숨긴 기본 스킬 이름 목록                                                                       | 없음                   |
-| `agentSkillNoticeSeen`  | 참/거짓. 에이전트 창의 스킬 안내를 봤는지                                                      | 없음                   |
-| `agentProjectPrefs`     | 프로젝트 폴더 절대 경로 → `{ codexWebSearch: 'cached' \| 'live' \| 'disabled', codexNetwork }` | 없음(`cached`, 거짓)   |
+| 값                      | 종류                                                                                                                      | 기본                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| `skills.states`         | 식별자 → `{ enabled?, invoke?: 'auto' \| 'manual' }`. 사람이 바꾼 것만 적는다                                             | 없음(출처별 처음 상태)                  |
+| `skills.hiddenBuiltins` | 숨긴 기본 스킬 이름 목록                                                                                                  | 없음                                    |
+| `agentSkillNoticeSeen`  | 참/거짓. 에이전트 창의 스킬 안내를 봤는지                                                                                 | 없음                                    |
+| `collabProfile`         | `{ name, color }`. 공동 작업에서 커서 옆에 보이는 이름과 색 번호를 담습니다. 이름은 32자까지, 색 번호는 0부터 7까지입니다 | 운영체제 사용자 이름과 무작위로 고른 색 |
+| `agentProjectPrefs`     | 프로젝트 폴더 절대 경로 → `{ codexWebSearch: 'cached' \| 'live' \| 'disabled', codexNetwork }`                            | 없음(`cached`, 거짓)                    |
 
 - 식별자는 `〈출처〉:〈이름〉`, 플러그인은 `plugin:〈플러그인〉:〈이름〉`이다. 출처 값은 `builtin`(기본), `app`(`~/.ieumoffice/skills`, 깃허브 포함), `user`(`~/.claude/skills`), `plugin`(설치된 Claude 플러그인), `codex`(`~/.agents/skills`)다. 저장되는 값이라 바꾸지 않는다. 프로젝트 스킬(`project`)은 저장하지 않는다.
 - 알 수 없는 값은 무시하고 처음 상태로 읽는다. 처음 상태는 `builtin`·`app`이 켜짐·스스로 쓰기, `user`·`plugin`·`codex`가 꺼짐이다.
@@ -381,6 +382,24 @@ metadata:
 - `programPath`는 버전이 낮은 `error`(`needs-update`)일 때만 있다. 한 줄짜리 절대 경로(드라이브, `\\` 공유, `/`로 시작)가 아니면 빠진다.
 - `models`의 `id`는 프로그램이 받는 값이자 저장되는 선택값이다. 빈 `id`는 프로그램의 기본 모델을 뜻하고, 그것이 가리키는 모델이 `resolved`에 온다. 목록은 50개까지다.
 - 창구 이름은 `ai:subscription-statuses`, `-recheck`, `-login`, `-logout`, `-install`, `-metered`, `-codex-image`와 변경 알림 `ai:subscription-changed`다. `-logout`은 껍데기 앱의 화면에서만 부른다.
+
+## 같은 네트워크 공동 작업 (결정 0073)
+
+서로 다른 PC에서 실행 중인 이 앱끼리 지키는 약속입니다. 두 PC의 앱 버전이 달라도 프로토콜 번호가 같으면 들어올 수 있어야 합니다. 프로토콜을 바꿀 때는 `apps/shell/src/main/collab/wire.ts`의 `WIRE_PROTOCOL`을 올립니다. 프로토콜 번호가 다른 손님은 `version` 사유로 거절됩니다.
+
+- 포트: 연결에는 TCP 47631을 씁니다. 다른 프로그램이 이 포트를 쓰고 있으면 비어 있는 포트를 고르고, 그 번호를 공유 창에 보여 줍니다. 알림에는 UDP 47633을 씁니다.
+- 프레임: 4바이트 길이, 1바이트 종류, 내용이 차례로 이어집니다. 길이는 빅 엔디언 순서로 적습니다. 종류 값은 `hello` 1, `welcome` 2, `denied` 3, `base` 4, `relay` 5, `peer` 6, `end` 7, `challenge` 8, `confirm` 9, `sealed` 10입니다.
+- 키 교환: `hello`, `challenge`, `confirm`, `denied`만 암호화하지 않고 보내며, 어느 것에도 PIN은 들어가지 않습니다. 키 교환을 마치기 전에는 4KB가 넘는 프레임을 받지 않습니다. SPAKE2의 상수와 키 유도 규칙은 `apps/shell/src/main/collab/secure.ts`가 정하며, 바꾸면 프로토콜 번호를 올립니다.
+- `hello`: 손님이 호스트에게 보내는 JSON이며 `{ app: 'ieumoffice-collab', protocol, share }` 모양입니다. `share`는 손님의 SPAKE2 값 32바이트를 base64로 적은 것입니다.
+- `challenge`: 호스트가 공유 중인 문서마다 하나씩 답하는 JSON `{ offers: [{ share, proof }] }`입니다. 문서는 24개까지 담습니다. 손님은 PIN이 맞는 문서의 `proof`만 확인할 수 있습니다.
+- `confirm`: 손님이 보내는 JSON `{ offer, proof }`입니다. `offer`는 PIN이 맞은 문서의 순서이며, 맞는 문서가 없으면 -1입니다. 호스트는 -1이나 맞지 않는 `proof`를 틀린 PIN으로 셉니다.
+- `denied`: JSON이며 `reason` 값은 `pin`, `locked`, `full`, `version` 가운데 하나입니다.
+- `sealed`: 키 교환 뒤의 모든 프레임입니다. 내용은 안쪽 프레임의 1바이트 종류와 내용을 ChaCha20-Poly1305로 암호화한 것입니다. 키는 방향마다 따로 쓰며, nonce는 0부터 하나씩 늘어나는 카운터를 12바이트의 뒤쪽 8바이트에 빅 엔디언 순서로 적은 값입니다. 아래의 `welcome`, `base`, `relay`, `peer`, `end`는 언제나 `sealed` 안에서만 오갑니다.
+- `welcome`: JSON `{ protocol, peerId, kind, title, fileName, hostName, hostColor }`이며, 바로 뒤에 문서 바이트를 담은 `base`가 옵니다.
+- `relay`: 1바이트 이름표 길이, 이름표, 내용이 차례로 이어집니다. 손님이 보낼 때 이름표는 받을 사람을 가리킵니다. `host`이면 호스트에게, 다른 손님의 id이면 그 손님에게, 빈 값이면 모든 참여자에게 갑니다. 호스트가 보낼 때 이름표는 보낸 사람을 가리킵니다. 내용은 화면끼리 주고받는 메시지이며 뒷단은 읽지 않습니다. 내용의 첫 값이 0이면 y-protocols 동기화, 1이면 접속자 상태, 2이면 앱 메시지, 3이면 요청, 4이면 응답입니다.
+- `peer`: JSON `{ event: 'join' | 'leave', peerId }`입니다.
+- `end`: JSON `{ reason }`입니다.
+- 알림: UDP로 보내는 JSON `{ app, protocol, port, hostName, sessions: [{ kind, title }] }`입니다. 크기는 4KB까지이고 문서는 8개까지 담습니다. PIN은 담지 않습니다.
 
 ## 문서 호환
 

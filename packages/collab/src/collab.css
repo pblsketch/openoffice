@@ -1,0 +1,396 @@
+/* Co-editing chrome and remote carets. Colors come from tokens only; each
+   person's color is --collab-<n>, handed to an element as --collab-c. */
+
+.collab-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background: var(--color-bg-overlay);
+  outline: none;
+}
+
+.collab-dialog {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 440px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  margin-top: 72px;
+  padding: 16px;
+  overflow-y: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-16);
+  background: var(--surface);
+  box-shadow: var(--shadow-modal-strong);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.collab-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.collab-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.collab-close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-6);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.collab-close:hover {
+  background: var(--hover);
+}
+
+.collab-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: var(--radius-8);
+  background: var(--surface-subtle);
+}
+
+.collab-tabs button {
+  flex: 1;
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--radius-6);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.collab-tabs button.on {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-menu);
+}
+
+.collab-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.collab-pane p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.collab-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.collab-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.collab-field input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-6);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.collab-field input:focus {
+  border-color: var(--color-border-brand);
+  outline: none;
+}
+
+.collab-dim {
+  color: var(--text-dim);
+}
+
+.collab-small {
+  font-size: 12px;
+}
+
+.collab-swatches {
+  display: flex;
+  gap: 6px;
+}
+
+.collab-swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: var(--collab-c);
+  cursor: pointer;
+}
+
+.collab-swatch.on {
+  border-color: var(--text);
+}
+
+.collab-pin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.collab-pin {
+  font-size: 28px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+}
+
+.collab-addresses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.collab-addresses code {
+  padding: 2px 6px;
+  border-radius: var(--radius-6);
+  background: var(--surface-subtle);
+  user-select: all;
+}
+
+.collab-warn {
+  color: var(--text);
+}
+
+.collab-error {
+  color: var(--danger);
+}
+
+.collab-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.collab-dialog button:not(.collab-close, .collab-swatch, .collab-tabs button) {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-6);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.collab-dialog button.collab-primary {
+  border-color: transparent;
+  background: var(--color-btn-primary);
+  color: var(--color-btn-primary-text);
+}
+
+.collab-dialog button.collab-primary:hover:not(:disabled) {
+  background: var(--color-btn-primary-hover);
+}
+
+.collab-dialog button.collab-danger {
+  border-color: var(--danger-border);
+  color: var(--danger);
+}
+
+.collab-dialog button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.collab-found {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 160px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.collab-found button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  text-align: start;
+}
+
+.collab-found button.on {
+  border-color: var(--color-border-brand);
+  background: var(--active-bg);
+}
+
+.collab-found-title {
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collab-join-row {
+  display: grid;
+  grid-template-columns: 1fr 140px;
+  gap: 8px;
+}
+
+.collab-peers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.collab-peers li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.collab-peer-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collab-badge {
+  padding: 0 6px;
+  border-radius: var(--radius-30);
+  background: var(--surface-subtle);
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.collab-avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--collab-c);
+  color: var(--collab-ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.collab-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.collab-button-icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.collab-faces {
+  display: inline-flex;
+}
+
+.collab-faces .collab-avatar {
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.collab-faces .collab-avatar + .collab-avatar {
+  margin-inline-start: -6px;
+}
+
+.collab-notice {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 36px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  margin: 0 auto;
+  padding: 8px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-8);
+  background: var(--surface);
+  box-shadow: var(--shadow-menu);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.collab-notice button {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-6);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* ---- remote carets and selections inside a document ---- */
+
+.collab-caret {
+  position: relative;
+  margin-inline: -1px;
+  border-inline-start: 2px solid var(--collab-c);
+  pointer-events: none;
+  word-break: normal;
+}
+
+.collab-caret-label {
+  position: absolute;
+  inset-inline-start: -2px;
+  bottom: 100%;
+  padding: 1px 5px;
+  border-radius: 3px 3px 3px 0;
+  background: var(--collab-c);
+  color: var(--collab-ink);
+  font-family: var(--gs-font-sans);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.collab-selection {
+  background-color: color-mix(in srgb, var(--collab-c) 25%, transparent);
+}
+
+@media print {
+  .collab-caret,
+  .collab-notice {
+    display: none;
+  }
+
+  .collab-selection {
+    background-color: transparent;
+  }
+}

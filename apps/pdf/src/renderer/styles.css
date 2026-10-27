@@ -1881,6 +1881,54 @@ button {
   outline: 1.5px solid var(--pdf-search-hit-cur-outline);
 }
 
+/* ── Co-editing: where the others are (screen only, never in the file) ── */
+
+.qa-btn.qa-collab {
+  width: auto;
+  padding: 0 6px;
+  white-space: nowrap;
+}
+
+.pdf-collab-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.pdf-collab-sel {
+  position: absolute;
+  background: color-mix(in srgb, var(--collab-c) 25%, transparent);
+  border-radius: 2px;
+}
+
+.pdf-collab-tags {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.pdf-collab-tag {
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--collab-c);
+  color: var(--collab-ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  user-select: none;
+}
+
+@media print {
+  .pdf-collab-layer {
+    display: none;
+  }
+}
+
 /* ── Drawing annotation layer ── */
 
 .pdf-draw-layer {

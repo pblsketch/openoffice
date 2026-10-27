@@ -16,6 +16,9 @@ const TIPTAP_DEDUPE = [
   '@tiptap/markdown',
   '@tiptap/extension-highlight',
   '@tiptap/extension-code-block',
+  // one Yjs for the shared document and the editor binding (two copies break sync)
+  'yjs',
+  '@tiptap/y-tiptap',
 ]
 
 export default defineConfig({

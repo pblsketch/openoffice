@@ -428,6 +428,7 @@ import {
 } from './knowledge-base'
 import { runHeadlessExport, type HeadlessExporters } from './headless-export'
 import { TabManager, canonicalPath, type DetachedTab } from './tab-manager'
+import { COLLAB_PROFILE_KEY, registerCollabIpc } from './collab/collab-service'
 import { tabMenuTemplate, type TabMenuActions, isProgramFile } from './tab-menu'
 import { runTabDocumentAction, type TabDocumentAction } from './tab-document-actions'
 import { duplicateDocumentFile } from './tab-duplicate'
@@ -8422,6 +8423,23 @@ const templateTabs = createTemplateTabs({
   now: () => Date.now(),
 })
 registerTemplateTabsIpc(templateTabs)
+
+// LAN co-editing (decision 0073): a guest's copy of the shared document opens
+// the way a template copy does, as a new untitled tab of the same editor
+const collabService = registerCollabIpc({
+  readProfile: () => readAppSettings(APP_SETTINGS_PATH())[COLLAB_PROFILE_KEY],
+  writeProfile: (profile) => writeAppSetting(APP_SETTINGS_PATH(), COLLAB_PROFILE_KEY, profile),
+  openGuestTab: async (copy) => {
+    const manager = tabManager
+    if (!manager) return null
+    // EPUB has no untitled document: the guest's book is the temp copy itself
+    if (copy.editor === 'epub')
+      return manager.webContentsForTab(manager.openEpubTab(copy.path)) ?? null
+    const opened = await openTemplateCopyTab(copy)
+    return opened ? (manager.webContentsForTab(opened.tabId) ?? null) : null
+  },
+})
+app.on('will-quit', () => collabService.dispose())
 
 /** A template copy's new untitled tab: sheets here (its backing workbook), the others in the tab manager */
 async function openTemplateCopyTab(copy: TemplateCopy): Promise<OpenedCopyTab | null> {

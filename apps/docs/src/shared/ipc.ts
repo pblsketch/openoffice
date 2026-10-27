@@ -581,6 +581,10 @@ export interface DesktopApi {
   saveDocxTo(path: string, data: ArrayBuffer, overwrite: boolean): Promise<McpSaveResult>
   /** a docx with lazily served pictures, whole again (one-shot URL); null on failure */
   materializeDocx(data: ArrayBuffer): Promise<{ dataUrl: string } | null>
+  /** co-editing (decision 0073): this tab is, or stops being, a guest that never saves */
+  collabGuest?(on: boolean): Promise<void>
+  /** a guest's lazily served pictures, from the host's whole document; false when refused */
+  collabServeMedia?(hashes: string[], data: ArrayBuffer): Promise<boolean>
   /** PNG of a viewport rectangle (CSS px of this page) as it is on screen; null on failure */
   captureRect(rect: {
     x: number

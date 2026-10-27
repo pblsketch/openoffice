@@ -379,7 +379,9 @@ export async function handleSave(
   }
   const payload = {
     sessionId: state.file.sessionId,
-    mode: mode === 'recovery' || mode === 'template' ? ('save' as const) : mode,
+    // a template is written elsewhere like a Save As: an unchanged workbook is a valid one
+    mode:
+      mode === 'recovery' ? ('save' as const) : mode === 'template' ? ('save-as' as const) : mode,
     // MCP explicit-path save: main skips the Save-As dialog and enforces the
     // overwrite policy from these two fields
     ...(explicitTarget

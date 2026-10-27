@@ -476,6 +476,25 @@ export class EpubBookSession {
     return this.commitEdit(state, index, next, replacements, created)
   }
 
+  /**
+   * Co-editing: a chapter text the shared book holds becomes this copy's when
+   * a guest's session ends. It was made by edits on the host's book, so it is
+   * not held to the blocks-only rule of `replaceRanges`; it must still be
+   * well-formed, and chapters that cannot be edited stay as they are.
+   */
+  async adoptText(spineIndex: unknown, text: unknown): Promise<boolean> {
+    if (typeof text !== 'string') return false
+    const target = await this.editable(spineIndex)
+    if ('ok' in target) return false
+    const { state, index } = target
+    if (state.map.source === text) return true
+    const replacement = diffReplacement(state.map.source, text)
+    const next = remapChapter(state.map, text, [replacement])
+    if (next.broken) return false
+    this.commitEdit(state, index, next, [replacement], [])
+    return true
+  }
+
   /** Whether any chapter differs from the stored text. */
   isDirty(): boolean {
     for (const state of this.chapters.values()) {

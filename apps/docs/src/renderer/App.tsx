@@ -448,6 +448,9 @@ const RECOVERY_BACKOFF_TICKS = 10
 import { runHeadlessDocumentExport } from './headless-export'
 import { installMcpBridge } from './mcp-bridge'
 import { odtOffProps, refuseInOdt, useOdtSession } from './odt-gate'
+import { CollabButton, CollabDialog, CollabNotice } from '@genoffice/collab'
+import { useDocsCollab } from './collab'
+import { collabGuardActions, isCollabGuest, refuseInCollab, useCollabGate } from './collab-gate'
 import { cleanOdtPaste } from './editor/odt-guard'
 import {
   clampDocsZoom,
@@ -1211,6 +1214,8 @@ export function App() {
 
   const editorRef = useRef<Editor | null>(null)
   const zoteroControllerRef = useRef<ZoteroDocumentController | null>(null)
+  // co-editing: whether a change counts as this document's own (set once the session hook runs)
+  const collabDirtiesRef = useRef<(tr: Transaction) => boolean>(() => true)
   const editor = useEditor({
     extensions: editorExtensions,
     content: { type: 'doc', content: [{ type: 'docParagraph' }] },
@@ -1461,8 +1466,8 @@ export function App() {
     onSelectionUpdate: () => forceRender(),
     // typing in the main document takes ribbon routing back from any textbox
     onFocus: () => setActiveSubEditor(null),
-    onUpdate: () => {
-      dirtyRef.current = true
+    onUpdate: ({ transaction }) => {
+      if (collabDirtiesRef.current(transaction)) dirtyRef.current = true
       forceRender()
     },
   })
@@ -2188,6 +2193,15 @@ export function App() {
       setDocPwdPrompt({ path: info.path, name: info.name, value: '', errorKey: '', busy: false }),
   }
 
+  const { collab, dirtiesDocument } = useDocsCollab({
+    ctx: () => fileCtxRef.current,
+    ready: !!doc && !docLoading,
+    parsed: doc?.parsed ?? null,
+    refresh: forceRender,
+  })
+  collabDirtiesRef.current = dirtiesDocument
+  const collabGate = useCollabGate()
+
   const loadFile = useCallback(async (result: OpenDocxResult) => {
     const outcome = await loadFileImpl(fileCtxRef.current, result)
     // a failed open with no document yet (boot, or the open that superseded the
@@ -2269,7 +2283,8 @@ export function App() {
     () =>
       runGuardedCandidate(
         () => window.desktop.confirmDocumentReplace(),
-        () => window.desktop.openDocx(),
+        () =>
+          refuseInCollab('replaceDocument') ? Promise.resolve(null) : window.desktop.openDocx(),
         commitOpenedFile,
         replacesDocument,
       ),
@@ -2278,7 +2293,9 @@ export function App() {
 
   /** new document from the built-in blank template (AI can then generate into it) */
   const newFile = useCallback(
-    () => runGuardedDocumentAction(() => window.desktop.confirmDocumentReplace(), resetFile),
+    () =>
+      refuseInCollab('replaceDocument') ||
+      runGuardedDocumentAction(() => window.desktop.confirmDocumentReplace(), resetFile),
     [resetFile],
   )
 
@@ -2286,7 +2303,10 @@ export function App() {
     (path: string) =>
       runGuardedCandidate(
         () => window.desktop.confirmDocumentReplace(),
-        () => window.desktop.openDocxPath(path),
+        () =>
+          refuseInCollab('replaceDocument')
+            ? Promise.resolve(null)
+            : window.desktop.openDocxPath(path),
         commitOpenedFile,
         replacesDocument,
       ),
@@ -4221,7 +4241,7 @@ export function App() {
       // update. Gated on dirtyRef — our pagination approximates Word's, so a
       // pristine open keeps the file's numbers. History-exempt: a field result
       // change is not an edit to undo.
-      if (editor && dirtyRef.current && slices.length > 0) {
+      if (editor && dirtyRef.current && !isCollabGuest() && slices.length > 0) {
         const nums = secList ? pageNumbers(slices, secList) : slices.map((_, n) => n + 1)
         const byEl = new Map(blocks.filter((b) => b.el).map((b) => [b.el as HTMLElement, b.top]))
         const headings = collectHeadings(editor.state.doc, editor.storage.listNumbering?.styles)
@@ -5499,7 +5519,7 @@ export function App() {
   useEffect(() => {
     const offCheck = window.desktop.onCloseCheck?.(() => {
       window.desktop.reportCloseCheck({
-        dirty: !!doc && (anyDirtyRef.current || dirtyRef.current),
+        dirty: !!doc && !isCollabGuest() && (anyDirtyRef.current || dirtyRef.current),
         autoSave: autoSave && !!doc?.filePath,
         filePath: doc?.filePath ?? null,
       })
@@ -6173,7 +6193,7 @@ export function App() {
 
   /** double-click on a page-gap strip: edit that page's header/footer in place */
   const startGapHfEdit = (el: HTMLElement) => {
-    if (readMode || isProtected || hfEditorRef.current) return
+    if (readMode || isProtected || hfEditorRef.current || refuseInCollab('headerFooter')) return
     const kind = el.dataset.hfKind as 'header' | 'footer' | undefined
     if (!kind) return
     const si = Number(el.dataset.hfSection ?? 0)
@@ -6591,6 +6611,7 @@ export function App() {
   const upsertStyleDef = useCallback((up: StyleUpsert): string | null => {
     const ctx = fileCtxRef.current
     if (!ctx.doc) return 'no document is open'
+    if (refuseInCollab('style')) return 'styles cannot be changed during a co-editing session'
     const prev = aiStyleUpsertsRef.current[up.styleId]
     const next = {
       ...aiStyleUpsertsRef.current,
@@ -7009,6 +7030,8 @@ export function App() {
     onSplitView: setSplitView,
     onPagePreview: () => setShowPagePreview(true),
   })
+  // what only the host may change, refused while this tab is a guest (the ruler shares onSection)
+  const sessionRibbonActions = useMemo(() => collabGuardActions(ribbonActions), [ribbonActions])
 
   const closeCommentsPanel = useCallback(() => {
     setShowComments(false)
@@ -7451,6 +7474,8 @@ export function App() {
     >
       <ToastHost />
       <FormatChangeHost />
+      <CollabDialog collab={collab} lang={lang} />
+      <CollabNotice collab={collab} lang={lang} />
       {docCss && <style data-doc-css="">{docCss}</style>}
       {liveLineFactor != null && (
         <style data-doc-css="">{`.doc-page { --doc-line-factor:${liveLineFactor} }`}</style>
@@ -7485,6 +7510,14 @@ export function App() {
       <Ribbon
         actionsRef={ribbonActionsRef}
         quickActions={quickActions}
+        trailingActions={
+          <CollabButton
+            collab={collab}
+            lang={lang}
+            className="ribbon-tab qa-collab"
+            iconSize={16}
+          />
+        }
         mergeSource={mergeSource}
         editor={editor}
         formatState={formatState}
@@ -7550,7 +7583,7 @@ export function App() {
         readMode={readMode}
         showGrid={showGrid}
         splitView={splitView}
-        {...ribbonActions}
+        {...sessionRibbonActions}
       />
 
       <div className="app-main">
@@ -7701,7 +7734,7 @@ export function App() {
                           }}
                           onMarginsChange={({ left, right }) => {
                             const sec = sections[activeSection]?.settings ?? section
-                            ribbonActions.onSection({
+                            sessionRibbonActions.onSection({
                               ...sec,
                               marginLeft: rulerSwap ? right : left,
                               marginRight: rulerSwap ? left : right,
@@ -7736,7 +7769,7 @@ export function App() {
                             kind="header"
                             value={shownHeader ?? { text: '' }}
                             images={hfImagesOf('header')}
-                            readOnly={isProtected || readMode}
+                            readOnly={isProtected || readMode || collabGate?.role === 'guest'}
                             onCommit={(next) => {
                               const target = edgeHfTarget('header', headerAreaView)
                               commitHfAt(0, 'header', target.variant, next, target.owner)
@@ -7801,7 +7834,7 @@ export function App() {
                             kind="footer"
                             value={shownFooter ?? { text: '' }}
                             images={hfImagesOf('footer')}
-                            readOnly={isProtected || readMode}
+                            readOnly={isProtected || readMode || collabGate?.role === 'guest'}
                             onCommit={(next) => {
                               const target = edgeHfTarget('footer', footerAreaView)
                               commitHfAt(

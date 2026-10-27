@@ -226,6 +226,22 @@ export function pointLazyMediaAt(
   }
 }
 
+/**
+ * A co-editing guest's copy names its pictures by the host's file, which this
+ * PC has never seen: serve them from the host's whole document, held in
+ * memory for this tab. A hash this PC already serves from disk stays there.
+ */
+export function serveLazyMediaFrom(hashes: Iterable<string>, bytes: Buffer, wcId: number): void {
+  for (const hash of hashes) {
+    const source = sources.get(hash)
+    if (source && !source.bytes) {
+      source.owners.add(wcId)
+      continue
+    }
+    pointLazyMediaAt(new Set([hash]), '', wcId, bytes)
+  }
+}
+
 /** the picture behind a lazy URL, or null when it is not served (any more) */
 export async function readLazyMedia(url: string): Promise<{ body: Buffer; mime: string } | null> {
   const ref = parseLazyMediaUrl(url)

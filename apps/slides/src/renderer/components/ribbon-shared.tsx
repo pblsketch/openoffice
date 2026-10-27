@@ -298,6 +298,8 @@ export interface Props {
   onSave: () => void
   onUndo: () => void
   onRedo: () => void
+  /** the co-editing entry (shown only inside the app) */
+  collabSlot?: ReactNode
   onSaveAs: () => void
   /** Export as PDF (hidden slides skipped) */
   onExportPdf: () => void

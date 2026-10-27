@@ -124,6 +124,14 @@ export const EPUB_CHANNELS = {
   filesRead: 'epub:files-read',
   /** invoke(path) → `AttachmentImageResult` */
   filesReadImage: 'epub:files-read-image',
+
+  // ---- co-editing (decision 0073) ----
+  /** invoke → `Uint8Array | null`: what a save would write now, the copy people who join open */
+  collabBase: 'epub:collab-base',
+  /** invoke(`EpubCollabGuestState`): this tab joined someone's book, or that session ended */
+  collabGuest: 'epub:collab-guest',
+  /** invoke(`EpubAdoptChapter[]`) → number: a guest's copy takes the shared book's chapter texts (how many) */
+  collabAdopt: 'epub:collab-adopt',
 } as const
 
 /** Channels the shell registers for every editor. Called here, never registered (except the language getter, see the main module). */
@@ -659,5 +667,27 @@ export interface EpubAiApi {
   imageSearch(query: string, maxResults?: number): Promise<ImageSearchResult>
 }
 
+// ---- co-editing (decision 0073) ----
+
+/**
+ * A guest tab's book is the temp copy the shell opened for it:
+ * - `live`: the session runs; the person sharing saves, this view writes nothing
+ * - `copy`: the session ended; the copy is unsaved until saved somewhere of its own
+ */
+export type EpubCollabGuestState = 'live' | 'copy'
+
+/** A chapter text of the shared book, taken over by a guest's copy when its session ends. */
+export interface EpubAdoptChapter {
+  spineIndex: number
+  source: string
+}
+
+/** What co-editing needs of the main process; edits and reads use the core calls. */
+export interface EpubCollabApi {
+  collabBase(): Promise<Uint8Array | null>
+  setCollabGuest(state: EpubCollabGuestState): Promise<void>
+  adoptChapters(chapters: EpubAdoptChapter[]): Promise<number>
+}
+
 /** API exposed by preload to the renderer (window.epubApi) */
-export type EpubApi = EpubCoreApi & EpubTranslateApi & EpubAiApi
+export type EpubApi = EpubCoreApi & EpubTranslateApi & EpubAiApi & EpubCollabApi

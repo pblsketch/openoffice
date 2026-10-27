@@ -1138,7 +1138,7 @@ export function applyDefinedNames(
   )
   journalSuppression.active = true
   try {
-    for (const defined of ordered) {
+    for (const [index, defined] of ordered.entries()) {
       try {
         const localSheetId =
           defined.sheetIndex === undefined ? undefined : file.sheets[defined.sheetIndex]?.id
@@ -1155,6 +1155,8 @@ export function applyDefinedNames(
           wb
             .newDefinedNameBuilder()
             .load({
+              // the same id on every co-editing peer that opens these bytes
+              id: `file-name-${index}`,
               name: defined.name,
               formulaOrRefString: defined.formula,
               // Univer's workbook-scope sentinel; sheet scope carries the sheet id.
@@ -6929,10 +6931,13 @@ async function applyConditionalRules(
   }
   journalSuppression.active = true
   try {
-    for (const rule of prepared) {
+    for (const [index, rule] of prepared.entries()) {
       try {
         const built = buildConditionalRule(worksheet, state.file.dxfStyles, rule)
-        if (built) worksheet.addConditionalFormattingRule(built)
+        // the same id on every co-editing peer that opens these bytes
+        if (built) {
+          worksheet.addConditionalFormattingRule({ ...built, cfId: `file-cf-${sheetId}-${index}` })
+        }
       } catch {
         // An unsupported rule must not break the rest of the sheet.
       }

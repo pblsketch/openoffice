@@ -80,6 +80,9 @@ import type { ExportFormat, SaveMode } from '../shared/ipc'
 import { uiOp } from './editor/ops'
 import { hasRedactionIn } from './editor/Redaction'
 import { appendMarkdownAtEnd, joinNoteAppends } from './note-append'
+import { CollabButton, CollabDialog, CollabNotice, collabText } from '@genoffice/collab'
+import type { Transaction } from '@tiptap/pm/state'
+import { useMarkdownCollab } from './collab'
 
 type LoadStatus = 'loading' | 'ready' | 'error'
 type SaveState = 'idle' | 'saving' | 'saved' | 'failed'
@@ -338,6 +341,10 @@ export default function App() {
     })
   }, [insertImage, jumpToWikiFragment])
 
+  // co-editing: a guest never has unsaved changes of its own; set once the session hook runs
+  const collabGuestRef = useRef(false)
+  const collabDirtiesRef = useRef<(tr: Transaction) => boolean>(() => true)
+  const collabFrontmatterRef = useRef<(raw: string) => void>(() => {})
   // status-bar text statistics: Word's CJK counting rule (asian chars count
   // one by one, non-asian words by whitespace) shared with the docs status bar
   const [docStats, setDocStats] = useState<{ words: number; chars: number } | null>(null)
@@ -353,7 +360,7 @@ export default function App() {
     editorProps: { attributes: { class: 'doc-editor', spellcheck: String(spellcheck) } },
     // uiOnly transactions (toggle fold state) never reach the file — not dirty
     onUpdate: ({ editor: updated, transaction }) => {
-      if (!transaction.getMeta('uiOnly')) markDirty()
+      if (!transaction.getMeta('uiOnly') && collabDirtiesRef.current(transaction)) markDirty()
       setOutlineItems(collectOutline(updated))
       setDocStats(statsOf(updated.getText()))
       syncSourceFromEditorRef.current()
@@ -494,6 +501,7 @@ export default function App() {
     (inner: string) => {
       setFmText(inner)
       envelopeRef.current.frontmatter = buildFrontmatterRaw(inner)
+      collabFrontmatterRef.current(envelopeRef.current.frontmatter)
       markDirty()
     },
     [markDirty],
@@ -505,7 +513,7 @@ export default function App() {
    * serialization, no image extraction, no trailing-newline fixups.
    */
   const doSaveSource = useCallback(async (mode: SaveMode, auto = false): Promise<boolean> => {
-    if (statusRef.current !== 'ready' || savingRef.current) return false
+    if (statusRef.current !== 'ready' || savingRef.current || collabGuestRef.current) return false
     savingRef.current = true
     setSaveState('saving')
     const textAtSave = sourceTextRef.current
@@ -592,10 +600,38 @@ export default function App() {
     setSourceViewOpen(false)
   }, [flushSource])
 
+  const { collab, dirtiesDocument, frontmatterChanged } = useMarkdownCollab({
+    editor,
+    ready: status === 'ready',
+    fileName: () =>
+      filePathRef.current
+        ? filePathRef.current.replace(/^.*[/\\]/, '')
+        : `${(editorRef.current && deriveAutoFileName(editorRef.current)) || 'Untitled'}.md`,
+    fileText: currentFileText,
+    shareBlock: () => (sourceMode ? 'unsupported' : null),
+    getFrontmatter: () => envelopeRef.current.frontmatter,
+    setFrontmatter: (raw) => {
+      envelopeRef.current.frontmatter = raw
+      const inner = frontmatterInner(raw)
+      setFmText(inner)
+      if (inner) setFmOpen(true)
+    },
+    // re-parsing the source pane would replace everyone's document at once
+    beforeBind: () => {
+      if (sourceViewOpenRef.current) closeSource()
+    },
+    markDirty,
+    guestRef: collabGuestRef,
+  })
+  collabDirtiesRef.current = dirtiesDocument
+  collabFrontmatterRef.current = frontmatterChanged
+  const collabActive = collab.session !== null
+
   const toggleSource = useCallback(() => {
     if (sourceViewOpenRef.current) closeSource()
+    else if (collabActive) showToast(collabText(lang, 'guestBlocked'), 'error')
     else openSource()
-  }, [closeSource, openSource])
+  }, [closeSource, openSource, collabActive, lang])
 
   const restoreAfterPresent = useCallback(() => {
     setPresenting(false)
@@ -714,6 +750,11 @@ export default function App() {
   /** Serialize and write to disk; false when canceled/failed (caller keeps the tab open) */
   const doSave = useCallback(
     async (mode: SaveMode, suggestedName?: string, auto = false): Promise<boolean> => {
+      if (collabGuestRef.current) {
+        // the host's file is the document; a guest's copy is not saved while shared
+        if (!auto) showToast(collabText(lang, 'guestSaveBlocked'), 'error')
+        return false
+      }
       if (sourceMode) return doSaveSource(mode, auto)
       flushSource()
       const current = editorRef.current
@@ -809,7 +850,7 @@ export default function App() {
         savingRef.current = false
       }
     },
-    [flushSource, sourceMode, doSaveSource],
+    [flushSource, sourceMode, doSaveSource, lang],
   )
 
   /** `outPath` (headless export only) skips the save dialog; resolves true when a file was written. */
@@ -1185,6 +1226,8 @@ export default function App() {
     return startRecoveryCopies({
       read: () => {
         if (statusRef.current !== 'ready' || !dirtyRef.current || savingRef.current) return null
+        // a guest's copy belongs to the host until the session ends
+        if (collabGuestRef.current) return null
         if (sourceModeRef.current) {
           return writeSourceText(sourceTextRef.current, sourceFormatRef.current)
         }
@@ -1323,15 +1366,17 @@ export default function App() {
     [status, filePath, sourceMode, currentFileText, lang],
   )
   const statusText =
-    saveState === 'saving'
-      ? t('saving')
-      : saveState === 'failed'
-        ? t('saveFailed')
-        : dirty
-          ? t('unsaved')
-          : saveState === 'saved'
-            ? t('savedOk')
-            : ''
+    collab.role === 'guest'
+      ? ''
+      : saveState === 'saving'
+        ? t('saving')
+        : saveState === 'failed'
+          ? t('saveFailed')
+          : dirty
+            ? t('unsaved')
+            : saveState === 'saved'
+              ? t('savedOk')
+              : ''
 
   const findStrings: FindPanelStrings = {
     findPlaceholder: t('findPlaceholder'),
@@ -1394,6 +1439,9 @@ export default function App() {
           setRedactEnabled(on)
           localStorage.setItem('mdapp.redact', on ? '1' : '0')
         }}
+        collabSlot={
+          <CollabButton collab={collab} lang={lang} className="qa-btn qa-collab" iconSize={16} />
+        }
       />
       {status === 'loading' && <div className="center-note">{t('loading')}</div>}
       <div className="app-main" style={status === 'ready' ? undefined : { display: 'none' }}>
@@ -1552,6 +1600,8 @@ export default function App() {
       )}
       <RedactMenu editor={editor} enabled={redactEnabled} />
       <ToastHost />
+      <CollabDialog collab={collab} lang={lang} />
+      <CollabNotice collab={collab} lang={lang} />
       {graphOpen && (
         <GraphView
           current={filePath}

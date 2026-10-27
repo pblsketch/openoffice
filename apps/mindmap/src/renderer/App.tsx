@@ -17,6 +17,7 @@ import {
   type TemplateDocument,
 } from '@genoffice/ui'
 import type { ThemeId, ViewLayout } from '@genoffice/xmind-engine'
+import { CollabButton, CollabDialog, CollabNotice } from '@genoffice/collab'
 import { t as translate, useI18n } from './i18n/locale'
 import { mapStrings } from './i18n/map-strings'
 import type { StringKey } from './i18n/locale'
@@ -35,6 +36,7 @@ import { ThemePanel } from './components/ThemePanel'
 import { NotePanel, type NotePanelHandle } from './components/NotePanel'
 import { MindmapAiDock, useMindmapAi } from './ai/AiDock'
 import { useMapHandoff } from './ai/use-handoff'
+import { type MapCollab, useMapCollab } from './collab/use-map-collab'
 import {
   ConfirmDialog,
   type ConfirmRequest,
@@ -103,6 +105,9 @@ export default function App() {
   const langRef = useRef(lang)
   langRef.current = lang
   statusRef.current = status
+  // co-editing: set once the session hook below runs
+  const sharedRef = useRef<MapCollab | null>(null)
+  const flushAllRef = useRef<() => void>(() => {})
 
   // the shell's split panes: tell it whenever this pane gains focus
   useSplitPaneFocusPing()
@@ -167,7 +172,10 @@ export default function App() {
           .catch(() => say('linkNotOpened'))
       },
       onRequest: (field, topicId) => openTopicFieldRef.current(field, topicId),
-      onStateChange: () => setMapTick((tick) => tick + 1),
+      onStateChange: () => {
+        setMapTick((tick) => tick + 1)
+        sharedRef.current?.selectionMoved()
+      },
     }),
     [ask, say],
   )
@@ -255,10 +263,33 @@ export default function App() {
     return session.subscribe(sync)
   }, [session])
 
+  // co-editing on the LAN (decision 0073); a guest's copy is the host's map, never saved here
+  const shared = useMapCollab({
+    ready: status === 'ready',
+    session,
+    controllers,
+    activeKey,
+    setActiveKey,
+    flushAll: () => flushAllRef.current(),
+    path,
+    untitledName: () => {
+      const first = sessionRef.current?.tabs()[0]
+      const title = first ? sessionRef.current!.view(first.key).root.title.trim() : ''
+      return title || translate('untitled')
+    },
+    changed: () => setMapTick((tick) => tick + 1),
+    markChanged: () => {
+      sessionRef.current?.document.markChanged()
+      setDirty(true)
+    },
+  })
+  sharedRef.current = shared
+  const guest = shared.collab.role === 'guest'
+
   // mirror dirtiness to the main process (close prompt); a new map nobody touched never counts
   useEffect(() => {
-    if (status === 'ready') window.mindmapApi.setDirty(dirty)
-  }, [dirty, status])
+    if (status === 'ready') window.mindmapApi.setDirty(dirty && !guest)
+  }, [dirty, status, guest])
 
   useEffect(() => {
     if (dirty && saveState === 'saved') setSaveState('idle')
@@ -320,10 +351,11 @@ export default function App() {
       each.flush()
     })
   }, [])
+  flushAllRef.current = flushAll
 
   // crash-recovery copies while the map has unsaved changes (spec "work is not lost")
   const recovery = useRecoveryCopies({
-    ready: status === 'ready',
+    ready: status === 'ready' && !guest,
     session,
     sheets: () => [...controllers.current.values()],
     flush: (commit) =>
@@ -335,8 +367,23 @@ export default function App() {
     saving: () => savingRef.current,
   })
 
+  // taking an AI turn back would undo other people's work in a shared map
+  const rollbackBlocked = useCallback((): boolean => {
+    const refused = sharedRef.current?.blocked() ?? null
+    if (refused) sharedRef.current?.collab.flash(refused)
+    return refused !== null
+  }, [])
+
   // the AI panel works on the map through the same session and controllers (T12)
-  const ai = useMindmapAi({ session, controllers, activeKey, setActiveKey, path, flush: flushAll })
+  const ai = useMindmapAi({
+    session,
+    controllers,
+    activeKey,
+    setActiveKey,
+    path,
+    flush: flushAll,
+    rollbackBlocked,
+  })
 
   /** The note panel shares the map's end side with the theme and AI panels: one at a time. */
   const closeNote = useCallback(() => {
@@ -388,6 +435,11 @@ export default function App() {
     async (mode: SaveMode, auto = false): Promise<boolean> => {
       const current = sessionRef.current
       if (statusRef.current !== 'ready' || !current) return false
+      if (sharedRef.current?.isGuest()) {
+        // the host's file is the map; a guest's copy is not saved while shared
+        if (!auto) sharedRef.current.collab.flash('guestSaveBlocked')
+        return false
+      }
       // a menu save during an autosave queues behind it instead of being dropped
       while (savingRef.current) await new Promise((resolve) => setTimeout(resolve, 50))
       savingRef.current = true
@@ -567,7 +619,8 @@ export default function App() {
       void (async () => {
         while (savingRef.current) await new Promise((resolve) => setTimeout(resolve, 50))
         flushAll()
-        if (!sessionRef.current?.dirty) {
+        // a live guest has nothing of its own to save: the host keeps the map
+        if (!sessionRef.current?.dirty || sharedRef.current?.isGuest()) {
           api.sendCloseSaveResult(true)
           return
         }
@@ -758,8 +811,9 @@ export default function App() {
     <div className={`app${presenting ? ' mm-presenting' : ''}`}>
       <Toolbar
         disabled={!controller}
-        dirty={dirty}
-        statusText={statusText}
+        dirty={dirty && !guest}
+        // a guest's copy has no saving of its own to report
+        statusText={guest && toast === null ? '' : statusText}
         canUndo={controller?.canUndo ?? false}
         canRedo={controller?.canRedo ?? false}
         autoSave={autoSave}
@@ -805,6 +859,14 @@ export default function App() {
         }}
         onExport={exporter.exportAs}
         onMakeFromDocument={() => window.mindmapApi.makeFromDocument?.()}
+        collabSlot={
+          <CollabButton
+            collab={shared.collab}
+            lang={lang}
+            className="qa-btn qa-collab"
+            iconSize={16}
+          />
+        }
       />
 
       {(notices.preserved > 0 || notices.unknownTheme || picking) && (
@@ -913,6 +975,8 @@ export default function App() {
           onClose={() => setFieldRequest(null)}
         />
       )}
+      <CollabDialog collab={shared.collab} lang={lang} />
+      <CollabNotice collab={shared.collab} lang={lang} />
     </div>
   )
 }

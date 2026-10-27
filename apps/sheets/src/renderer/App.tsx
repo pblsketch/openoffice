@@ -462,6 +462,9 @@ import { handleExportCsv as handleExportCsvImpl, type CsvExportContext } from '.
 import { effectivePageBreaks, installPageBreakPreview } from './page-break-preview'
 import { mapProtectedRanges } from './protected-ranges'
 import { handleSave as handleSaveImpl, type SaveContext, type SaveOutcome } from './save-actions'
+import { CollabButton, CollabDialog, CollabNotice } from '@genoffice/collab'
+import { useSheetsCollab } from './collab/use-sheets-collab'
+import { AI_RUN, OPEN_WORKBOOK } from './collab/session-rules'
 import {
   applyChartEdit as applyChartEditImpl,
   applyShapeEdit as applyShapeEditImpl,
@@ -671,9 +674,11 @@ export function App({
     recomputeSheetContent()
   }, [workbookFile, recomputeSheetContent])
   // The close guard lives in the main process; keep it fed with the badge count.
+  // A co-editing guest counts differently (set once the session hook runs).
+  const collabPendingRef = useRef((count: number) => count)
   useEffect(() => {
     window.desktopApi?.notifyPendingEdits?.(
-      pendingEditsForClose(pendingEdits, editingCellRef.current),
+      collabPendingRef.current(pendingEditsForClose(pendingEdits, editingCellRef.current)),
     )
   }, [pendingEdits])
   const [autoSave, setAutoSave] = useAutoSavePref('ai-sheets-auto-save', window.desktopApi)
@@ -2392,7 +2397,9 @@ export function App({
     const syncCellEditorPending = (): void => {
       const state = lazyWorkbookRef.current
       window.desktopApi?.notifyPendingEdits?.(
-        pendingEditsForClose(state ? journalSize(state.editJournal) : 0, editingCellRef.current),
+        collabPendingRef.current(
+          pendingEditsForClose(state ? journalSize(state.editJournal) : 0, editingCellRef.current),
+        ),
       )
     }
     const editStartDisposable = runtime.univerAPI.addEvent(
@@ -3094,9 +3101,11 @@ export function App({
           // earlier with a model-facing message — this covers typing, and the
           // mutation id covers paste/autofill, which apply mutations directly.
           // Engine-derived mutations (result apply, reference rewrites) carry
-          // fromFormula and only restate formulas that already passed.
-          const options = event.options as { fromFormula?: boolean } | undefined
-          if (options?.fromFormula) return
+          // fromFormula and only restate formulas that already passed; a
+          // co-editor's edit passed this gate on that person's PC.
+          const options = event.options as
+            { fromFormula?: boolean; fromCollab?: boolean } | undefined
+          if (options?.fromFormula || options?.fromCollab) return
           const params = event.params as
             { subUnitId?: string; value?: unknown; cellValue?: unknown } | undefined
           const formulas = collectCellFormulaTexts(params?.value ?? params?.cellValue)
@@ -3660,6 +3669,7 @@ export function App({
   ): void {
     const instruction = (overrideInstruction ?? prompt).trim()
     if (!instruction || aiBusy) return
+    if (!sheetsCollab.allows(AI_RUN)) return
     // a retried message that carried skills sends the same skill text again
     const skillUse =
       retryIndex !== undefined &&
@@ -4930,6 +4940,8 @@ export function App({
     quiet = false,
     explicitTarget?: { path: string; overwrite: boolean },
   ): Promise<SaveOutcome> {
+    // a guest's copy is the host's document; the host pauses AutoSave while others are in
+    if (sheetsCollab.save(mode, quiet) !== 'run') return { ok: false }
     // Manual and AI saves take the same gate as the timers: a recovery copy
     // written beside a real save would outlive it as a phantom Restore prompt.
     const gate = saveGateRef.current
@@ -4945,7 +4957,7 @@ export function App({
       return
     }
     const state = lazyWorkbookRef.current
-    if (!state || journalSize(state.editJournal) === 0) {
+    if (!state || (journalSize(state.editJournal) === 0 && !sheetsCollab.copyUnsaved())) {
       window.desktopApi?.reportCloseSaveResult?.(true)
       return
     }
@@ -4971,7 +4983,7 @@ export function App({
   menuActionRef.current = (action) => {
     if (action !== 'open' && (openingWorkbook || workbookOpeningRef.current)) return
     if (action === 'open') {
-      void handleInspectWorkbook()
+      if (sheetsCollab.allows(OPEN_WORKBOOK)) void handleInspectWorkbook()
     } else if (action === 'print') {
       void openPrintPreviewHost(pageLayoutContext()).then(setPrintHost)
     } else if (action === 'export-pdf') {
@@ -4994,6 +5006,42 @@ export function App({
     }
   }
   handleSaveRef.current = handleSave
+
+  // LAN co-editing (decision 0073): the op stream, presence and session rules live in ./collab
+  const sheetsCollab = useSheetsCollab({
+    lang: getLang(),
+    workbookFile,
+    ready: workbookFile !== null && !openingWorkbook,
+    runtime: () => univerRef.current,
+    state: () => lazyWorkbookRef.current,
+    isCellEditing: () => editingCellRef.current,
+    saveGate: saveGateRef.current,
+    templateBytes: () =>
+      handleSaveImpl(saveContext(), 'template').then((outcome) => outcome.bytes ?? null),
+    commitEditor: commitActiveEditor,
+    open: (file) =>
+      new Promise<boolean>((resolve) => {
+        void openLazyWorkbook(file, {
+          continueChat: true,
+          onInitialRangeLoaded: () => resolve(true),
+        }).then((opened) => {
+          if (!opened) resolve(false)
+        })
+      }),
+    keepView: (view) => {
+      viewRestoreRef.current = view
+    },
+    setBusy: (busy) => {
+      setOpeningWorkbook(busy)
+      if (!busy) focusSheetGrid()
+    },
+    fullLoad: () =>
+      univerRef.current
+        ? startFullLoad(univerRef.current, lazyWorkbookRef, setMessage)
+        : Promise.resolve(),
+    toast: (text) => showToast(text, 'error'),
+  })
+  collabPendingRef.current = sheetsCollab.pendingForClose
 
   // MCP visible-grid session (planning/mcp-server.md phase 2): the shell pushes
   // read/apply/save commands; they run through the same executors the built-in
@@ -5276,6 +5324,8 @@ export function App({
   return (
     <>
       <ToastHost />
+      <CollabDialog collab={sheetsCollab.collab} lang={getLang()} />
+      <CollabNotice collab={sheetsCollab.collab} lang={getLang()} />
       {fullLoadPrompt && (
         <div className="dialog-backdrop">
           <div
@@ -5449,7 +5499,7 @@ export function App({
         zoomPercent={zoomPercent}
         statusBarFuncs={statusBarFuncs}
         onToggleStatusBarFunc={toggleStatusBarStat}
-        canSave={pendingEdits > 0 || workbookFile?.unsavedNew === true}
+        canSave={!sheetsCollab.liveGuest && (pendingEdits > 0 || workbookFile?.unsavedNew === true)}
         onSave={() => void handleSave('save')}
         canSaveAs={workbookFile !== null}
         onSaveAs={() => void handleSave('save-as')}
@@ -5507,6 +5557,16 @@ export function App({
         onCreateConsolidate={(config) => handleCreateConsolidateImpl(dataToolsContext(), config)}
         onGetConsolidateDefault={() => consolidateDefaultReferenceImpl(dataToolsContext())}
         onApplyHeaderFooter={(result) => handleApplyHeaderFooterImpl(pageLayoutContext(), result)}
+        collabSlot={
+          <CollabButton
+            collab={sheetsCollab.collab}
+            lang={getLang()}
+            className="qa-btn qa-collab"
+            iconSize={16}
+            showLabel={false}
+          />
+        }
+        commandAllowed={sheetsCollab.allows}
       />
       {openingWorkbook && (
         <div className="workbook-opening-screen" role="status" aria-live="polite">

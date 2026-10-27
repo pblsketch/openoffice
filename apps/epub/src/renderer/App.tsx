@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { EpubTocEntry } from '@genoffice/epub-engine'
 import type { Params } from '@genoffice/i18n'
 import { useAutoSavePref } from '@genoffice/ui'
+import { CollabButton, CollabDialog, CollabNotice } from '@genoffice/collab'
 import { epubAssetUrl } from '../shared/asset-url'
 import { EPUB_VIEW_PREFS_DEFAULT } from '../shared/ipc'
 import type {
@@ -32,6 +33,7 @@ import type {
 import { openableLink } from '../shared/links'
 import { EpubAiDock, useEpubAi } from './ai/AiDock'
 import type { StartBookTranslation } from './ai/book-tools'
+import { CollabPlaces, routedApi, useEpubCollab } from './collab'
 import { ChapterFrame, type FrameWheel } from './components/ChapterFrame'
 import { EditHomeTools, EditQuickTools, ReplaceRow } from './components/EditTools'
 import { Ribbon } from './components/Ribbon'
@@ -177,7 +179,9 @@ function chapterReadingText(chapter: OkChapter, assetBase: string): string {
 
 export default function App(): React.JSX.Element {
   const { lang, t } = useI18n()
-  const api = window.epubApi
+  // co-editing routes the editing calls to the book of the person sharing it
+  const [routed] = useState(() => routedApi(window.epubApi))
+  const api = routed.api
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' })
   const [prefs, setPrefs] = useState<EpubViewPrefs>(EPUB_VIEW_PREFS_DEFAULT)
   const [shown, setShown] = useState<ShownChapter | null>(null)
@@ -253,6 +257,20 @@ export default function App(): React.JSX.Element {
   }
   const editor = editRef.current
   const [editState, setEditState] = useState<EditState>(() => editor.state())
+
+  const {
+    collab,
+    guard: collabGuard,
+    places: collabPlaces,
+  } = useEpubCollab({
+    routed,
+    editor,
+    ready: phase.kind === 'open' && (shown !== null || chapterFailed !== null),
+    filePath: () => filePath,
+    frameDoc: frameDocRef,
+    shown: shownRef,
+    goTo: goToRef,
+  })
 
   const book = phase.kind === 'open' ? phase.book : null
   const translateRef = useRef<BookTranslationHandle>(null)
@@ -583,6 +601,7 @@ export default function App(): React.JSX.Element {
   const save = useCallback(
     async (mode: SaveMode, auto = false): Promise<boolean> => {
       if (phaseRef.current.kind !== 'open') return false
+      if (collabGuard.save(auto)) return false
       savingRef.current = true
       if (!auto) flash({ key: 'saving' })
       try {
@@ -612,7 +631,7 @@ export default function App(): React.JSX.Element {
         savingRef.current = false
       }
     },
-    [api, editor, flash],
+    [api, editor, flash, collabGuard],
   )
 
   useEffect(
@@ -673,6 +692,7 @@ export default function App(): React.JSX.Element {
 
   /** the ribbon's button and the menu: open the window, or say why not */
   const openTranslation = useCallback(() => {
+    if (collabGuard.translation()) return
     const answer = translateRef.current?.requestOpen({ lang: null, chapters: null })
     if (!answer) return
     if ('running' in answer) flash({ key: 'btBusy', params: answer.running })
@@ -680,7 +700,7 @@ export default function App(): React.JSX.Element {
       const open = phaseRef.current
       if (open.kind === 'open' && open.book.fixedLayout) flash({ key: 'btFixedLayout' })
     }
-  }, [flash])
+  }, [flash, collabGuard])
 
   const lockForTranslation = useCallback(
     (locked: boolean) => editor.setTranslationLock(locked),
@@ -800,8 +820,9 @@ export default function App(): React.JSX.Element {
       doc.defaultView?.addEventListener('blur', () => frameBlurRef.current?.())
       applyTarget(doc, pendingTargetRef.current)
       schedulePosition()
+      collabGuard.frame(doc)
     },
-    [applyTarget, schedulePosition, editor],
+    [applyTarget, schedulePosition, editor, collabGuard],
   )
 
   const onFrameLink = useCallback(
@@ -943,15 +964,24 @@ export default function App(): React.JSX.Element {
         tocOpen={side === 'toc'}
         closeMenusSignal={closeMenus}
         quickTools={
-          <EditQuickTools
-            canUndo={editState.canUndo && !editState.locked}
-            canRedo={editState.canRedo && !editState.locked}
-            autoSave={autoSave}
-            enabled={phase.readOnly === null}
-            onUndo={() => runCommand('undo')}
-            onRedo={() => runCommand('redo')}
-            onToggleAutoSave={setAutoSave}
-          />
+          <>
+            <EditQuickTools
+              canUndo={editState.canUndo && !editState.locked}
+              canRedo={editState.canRedo && !editState.locked}
+              autoSave={autoSave}
+              enabled={phase.readOnly === null}
+              onUndo={() => runCommand('undo')}
+              onRedo={() => runCommand('redo')}
+              onToggleAutoSave={setAutoSave}
+            />
+            <CollabButton
+              collab={collab}
+              lang={lang}
+              className="qa-btn qa-collab"
+              iconSize={16}
+              showLabel={false}
+            />
+          </>
         }
         homeEditTools={
           <EditHomeTools
@@ -1028,7 +1058,8 @@ export default function App(): React.JSX.Element {
             filePath={filePath}
             lang={lang}
             t={t}
-            api={api}
+            // translation needs the saved book and its edit lock: a guest has neither
+            api={collab.role === 'guest' ? null : api}
             isDirty={isDirtyForTranslation}
             save={saveForTranslation}
             lock={lockForTranslation}
@@ -1093,14 +1124,26 @@ export default function App(): React.JSX.Element {
           </span>
         )}
         {editState.locked && <span className="epub-status-locked">{t('editLocked')}</span>}
+        <CollabPlaces
+          places={collabPlaces}
+          chapterName={(i) => chapterNames.get(i) ?? t('chapterLabel', { n: i + 1 })}
+          onPick={(place) =>
+            void goTo(
+              place.spineIndex,
+              place.top ? { kind: 'block', id: place.top } : { kind: 'start' },
+            )
+          }
+        />
         <span className="epub-status-spacer" />
         {notice && <span className="epub-status-notice">{noticeText}</span>}
-        {editState.dirty && (
+        {editState.dirty && collab.role !== 'guest' && (
           <span className="epub-status-dirty" data-dirty="true">
             {t('editUnsaved')}
           </span>
         )}
       </footer>
+      <CollabDialog collab={collab} lang={lang} />
+      <CollabNotice collab={collab} lang={lang} />
     </div>
   )
 }

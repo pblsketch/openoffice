@@ -4,6 +4,7 @@ import type { McpCommandMessage, McpEditorCommand } from '../shared/ipc'
 import { executeTool, markDocSeen } from './ai/tools'
 import { findNumId, type NumIds } from './ai/protocol'
 import { save, type FileActionContext } from './file-actions'
+import { isCollabGuest } from './collab-gate'
 
 /**
  * MCP bridge (renderer half).
@@ -82,6 +83,10 @@ async function runCommand(
   const ctx = deps.getCtx()
   const editor = ctx.editor
   if (!editor || !ctx.doc) throw new Error('the document is not ready')
+  // a co-editing guest: the document belongs to the person sharing it until the session ends
+  if (isCollabGuest() && command !== 'read_document' && command !== 'save_document') {
+    throw new Error('this tab is a guest in a co-editing session: it cannot be edited from outside')
+  }
 
   switch (command) {
     case 'insert_content': {

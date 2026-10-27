@@ -21,6 +21,7 @@
     "@genoffice/agent-core": "*",
     "@genoffice/ai-provider": "*",
     "@genoffice/ai-search": "*",
+    "@genoffice/collab": "*",
     "@genoffice/file-parse": "*",
     "@genoffice/font-metrics": "*",
     "@genoffice/i18n": "*",

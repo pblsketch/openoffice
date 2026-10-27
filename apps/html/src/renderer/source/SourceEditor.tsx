@@ -14,6 +14,8 @@ import { addAiRanges, clearAiRanges } from './cm-highlight'
 import { cmFindTarget } from './find-target'
 import { useI18n } from '../i18n/locale'
 import type { FindTarget } from '@genoffice/ui'
+import type { CollabSession } from '@genoffice/collab'
+import { bindCodeMirror, collabCompartment } from '@genoffice/collab/codemirror'
 import type { Patch } from '../document/patch'
 
 /** a source range and the text it covers, as the reader sees it */
@@ -42,6 +44,8 @@ export interface SourceEditorHandle {
   focus(): void
   /** adapter for the find/replace panel; null until the editor is mounted */
   findTarget(): FindTarget | null
+  /** share the source with a co-editing session; returns the detach */
+  bindCollab(session: CollabSession): () => void
 }
 
 export interface CursorInfo {
@@ -93,6 +97,7 @@ export const SourceEditor = forwardRef<SourceEditorHandle, Props>(function Sourc
   const menuRef = useRef<HTMLDivElement>(null)
   const onRedactRef = useRef(onRedact)
   onRedactRef.current = onRedact
+  const collabRef = useRef(collabCompartment())
 
   useEffect(() => {
     const host = hostRef.current
@@ -101,11 +106,14 @@ export const SourceEditor = forwardRef<SourceEditorHandle, Props>(function Sourc
       parent: host,
       state: EditorState.create({
         doc: initialText,
-        extensions: buildExtensions((v) => {
-          const head = v.state.selection.main.head
-          const line = v.state.doc.lineAt(head)
-          onCursorRef.current({ line: line.number, col: head - line.from + 1, pos: head })
-        }),
+        extensions: [
+          buildExtensions((v) => {
+            const head = v.state.selection.main.head
+            const line = v.state.doc.lineAt(head)
+            onCursorRef.current({ line: line.number, col: head - line.from + 1, pos: head })
+          }),
+          collabRef.current.extension,
+        ],
       }),
       dispatchTransactions: (trs, v) => {
         v.update(trs)
@@ -252,6 +260,11 @@ export const SourceEditor = forwardRef<SourceEditorHandle, Props>(function Sourc
     canRedo: () => (viewRef.current ? redoDepth(viewRef.current.state) > 0 : false),
     focus: () => viewRef.current?.focus(),
     findTarget: () => findTargetRef.current,
+    bindCollab(session) {
+      const view = viewRef.current
+      if (!view) throw new Error('the source editor is not mounted')
+      return bindCodeMirror(view, collabRef.current.compartment, session)
+    },
   }))
 
   return (

@@ -37,6 +37,8 @@
     "@genoffice/ui": "*",
     "@genoffice/xlsx-gateway": "*",
     "@modelcontextprotocol/sdk": "^1.32.1",
+    "@noble/ciphers": "^2.4.0",
+    "@noble/curves": "2.2.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.0.4",

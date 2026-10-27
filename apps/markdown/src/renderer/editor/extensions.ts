@@ -42,6 +42,7 @@ import type { WikiLinkOptions } from './wikilink'
 import type { SlashController, SlashItem } from './slashCommand'
 import { FootnoteDefinition, FootnoteNav, FootnoteReference } from './footnote'
 import { t } from '../i18n/locale'
+import { CollabHistory } from '@genoffice/collab/tiptap'
 
 export interface BuildExtensionsOptions {
   slashController: SlashController
@@ -156,5 +157,7 @@ export function buildExtensions(options: BuildExtensionsOptions): AnyExtension[]
       controller: options.slashController,
       items: options.slashItems,
     }),
+    // undo/redo that only undo this person's edits while a document is shared
+    CollabHistory,
   ]
 }

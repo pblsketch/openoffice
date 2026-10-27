@@ -38,6 +38,8 @@ import { PASSWORD_FLAG } from '../../scripts/rhwp-patches.mjs'
 import { STUDIO_SETTINGS_KEY, seededStudioSettings, studioUrl } from './studio-settings'
 import { hwpFormatOfPath } from '../shared/ipc'
 import type { HwpFormat, SaveMode, UiTheme } from '../shared/ipc'
+import { CollabButton, CollabDialog, CollabNotice, collabText } from '@genoffice/collab'
+import { HwpCollabStatus, useHwpCollab } from './collab'
 
 /**
  * booting: the editor itself is starting. loading: the editor is up and working
@@ -158,12 +160,19 @@ export default function App() {
   const copierRef = useRef<RecoveryCopier | null>(null)
   /** the editor holds a restored recovery copy that has not been saved since */
   const restoredRef = useRef(false)
+  /** co-editing: this tab watches someone else's document, which it never saves */
+  const collabGuestRef = useRef(false)
+  /** co-editing: the host's document changed through the AI panel; set once the session hook runs */
+  const collabNoteRef = useRef<() => void>(() => {})
   /** the AI panel's way into the document: the app's plugin inside the editor */
   const agentBridge = useMemo(
     () =>
       withChangeNotes(
         createAgentBridge(() => editorRef.current),
-        () => copierRef.current?.noteChange(),
+        () => {
+          copierRef.current?.noteChange()
+          collabNoteRef.current()
+        },
       ),
     [],
   )
@@ -278,7 +287,9 @@ export default function App() {
     let asking = false
     /** counts the changes the plugin passed on; a poll answer older than one is dropped */
     let changes = 0
-    const report = (dirty: boolean) => {
+    const report = (state: boolean) => {
+      // a guest's copy is the host's document until the session ends
+      const dirty = state && !collabGuestRef.current
       if (dirty === reported) return
       reported = dirty
       window.hwpApi.setDirty(dirty)
@@ -348,7 +359,7 @@ export default function App() {
   const save = useCallback(
     async (mode: SaveMode, automatic = false): Promise<boolean> => {
       const editor = editorRef.current
-      if (!editor) return false
+      if (!editor || collabGuestRef.current) return false
       // a memo editor is open: its text is not in the document yet; an autosave waits quietly
       if (memoBlockedRef.current) {
         if (!automatic) showMemoBlocked()
@@ -471,7 +482,9 @@ export default function App() {
     const copier = createRecoveryCopier({
       editor: {
         ...port,
-        isDirty: async () => (await editor.commands.context()).isDirty === true,
+        // a guest's copy belongs to the host until the session ends
+        isDirty: async () =>
+          !collabGuestRef.current && (await editor.commands.context()).isDirty === true,
       },
       api: window.hwpApi,
       isBusy: () => savingRef.current,
@@ -543,6 +556,12 @@ export default function App() {
         window.hwpApi.abortSave()
         return
       }
+      if (collabGuestRef.current) {
+        // the person sharing saves the file; a guest's copy is not saved while it is shared
+        window.hwpApi.abortSave()
+        setNotice({ tone: 'info', text: collabText(lang, 'guestSaveBlocked') })
+        return
+      }
       void (async () => {
         // a plain Save with nothing to write does nothing; ask the editor now
         // rather than trust the polled flag, which may not have seen the last key
@@ -568,6 +587,11 @@ export default function App() {
         window.hwpApi.sendCloseSaveResult(false)
         return
       }
+      // nothing of a live guest's is unsaved: its edits are the host's
+      if (collabGuestRef.current) {
+        window.hwpApi.sendCloseSaveResult(true)
+        return
+      }
       void (async () => {
         // an autosave already running may be exactly what the close prompt is about
         const running = savingDoneRef.current
@@ -583,7 +607,7 @@ export default function App() {
       offSave()
       offClose()
     }
-  }, [phase, save, showMemoBlocked])
+  }, [phase, save, lang, showMemoBlocked])
 
   // PDF and print asked for by the menu and Ctrl+P: the pages are gathered here, and the
   // main process makes the PDF or opens the print dialog
@@ -778,10 +802,47 @@ export default function App() {
     [phase, filePath, lang],
   )
 
+  // LAN co-editing as watch mode: the person sharing edits, guests watch (collab.tsx)
+  const {
+    collab,
+    noteChange: noteCollabChange,
+    host: collabHost,
+  } = useHwpCollab({
+    editor: () => editorRef.current,
+    ready: phase === 'ready',
+    format: () => formatRef.current,
+    fileName: () =>
+      filePath
+        ? fileNameOf(filePath)
+        : (copyNameRef.current ?? `${skillTemplateText(lang, 'untitled')}.${formatRef.current}`),
+    isPasswordProtected: async () => {
+      const editor = editorRef.current
+      if (!editor) throw new Error('the editor is not ready')
+      return savePortOf(editor).isPasswordProtected()
+    },
+    foreignChanges: () => agentBridge.foreignChanges(),
+    busy: () => savingRef.current || printingRef.current || (copierRef.current?.busy() ?? false),
+    guestRef: collabGuestRef,
+    // unsaved the way a restored copy is, until it is saved
+    markUnsaved: () => {
+      restoredRef.current = true
+      copierRef.current?.noteChange()
+      window.hwpApi.setDirty(true)
+    },
+  })
+  collabNoteRef.current = noteCollabChange
+
   return (
     <div className={`hwp-app${presenting ? ' hwp-presenting' : ''}`} data-phase={phase}>
       {phase === 'ready' && (
         <div className="hwp-topbar">
+          <HwpCollabStatus collab={collab} host={collabHost} lang={lang} />
+          <CollabButton
+            collab={collab}
+            lang={lang}
+            className="hwp-topbar-btn hwp-collab"
+            iconSize={16}
+          />
           <label className={`autosave-toggle${autoSave ? ' on' : ''}`} data-tip={t('autoSaveTip')}>
             <span className="autosave-knob" />
             <span className="autosave-text">{t('autoSave')}</span>
@@ -794,8 +855,8 @@ export default function App() {
         </div>
       )}
       <div className="app-main">
-        {/* the assistant and the memo panel share this dock; both need an open document */}
-        {phase === 'ready' && (
+        {/* the assistant and the memo panel share this dock and need an open document; a guest only watches */}
+        {phase === 'ready' && collab.role !== 'guest' && (
           <HwpAiDock
             open={aiOpen}
             setOpen={setAiOpen}
@@ -834,6 +895,8 @@ export default function App() {
           )}
         </div>
       </div>
+      <CollabDialog collab={collab} lang={lang} />
+      <CollabNotice collab={collab} lang={lang} />
     </div>
   )
 }

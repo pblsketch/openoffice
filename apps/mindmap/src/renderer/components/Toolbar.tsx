@@ -9,6 +9,7 @@
  * marked below so it lands where it belongs. The theme button opens and closes
  * the theme panel beside the map.
  */
+import type { ReactNode } from 'react'
 import { AiMark, aiSubscriptionText, Dropdown, type DropdownOption } from '@genoffice/ui'
 import type { ViewLayout } from '@genoffice/xmind-engine'
 import { useI18n } from '../i18n/locale'
@@ -78,6 +79,8 @@ export interface ToolbarProps {
   onExport(format: ExportFormat): void
   /** "make another document from this one": the shell's make window with this map */
   onMakeFromDocument(): void
+  /** the co-editing entry (shown only inside the app) */
+  collabSlot?: ReactNode
 }
 
 export function Toolbar(p: ToolbarProps) {
@@ -146,6 +149,7 @@ export function Toolbar(p: ToolbarProps) {
         <span className="mm-save-status" data-dirty={p.dirty ? 'true' : 'false'} aria-live="polite">
           {p.statusText}
         </span>
+        {p.collabSlot}
       </div>
 
       <div className="ribbon-body mm-tools" role="toolbar" aria-label={t('appName')}>

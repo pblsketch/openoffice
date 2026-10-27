@@ -10,6 +10,11 @@ import { requestMindmapClose } from '../../../mindmap/src/main/mindmap-main'
 import { requestHwpClose } from '../../../hwp/src/main/hwp-main'
 import { requestEpubClose } from '../../../epub/src/main/epub-main'
 import type { TabManager } from './tab-manager'
+import { isLiveCollabGuest } from './collab/collab-service'
+
+/** tabs that are guests in a live co-editing session have nothing to save */
+const withoutLiveGuests = <T extends { webContents: { id: number } }>(tabs: T[]): T[] =>
+  tabs.filter((tab) => !isLiveCollabGuest(tab.webContents.id))
 
 /** what the shell window's close guard reports back */
 export interface ShellCloseGuardOptions {
@@ -58,16 +63,16 @@ export function installShellCloseGuard(
 
   win.on('close', (event) => {
     if (closeConfirmed) return
-    const dirtySheets = manager.dirtySheetsTabs()
-    const dirtyPdf = manager.dirtyPdfTabs()
-    const dirtyMarkdown = manager.dirtyMarkdownTabs()
-    const dirtyHtml = manager.dirtyHtmlTabs()
-    const dirtyMindmap = manager.dirtyMindmapTabs()
+    const dirtySheets = withoutLiveGuests(manager.dirtySheetsTabs())
+    const dirtyPdf = withoutLiveGuests(manager.dirtyPdfTabs())
+    const dirtyMarkdown = withoutLiveGuests(manager.dirtyMarkdownTabs())
+    const dirtyHtml = withoutLiveGuests(manager.dirtyHtmlTabs())
+    const dirtyMindmap = withoutLiveGuests(manager.dirtyMindmapTabs())
     // a clean document with an open memo editor must be asked too: its text is not saved
-    const dirtyHwp = manager.dirtyOrMemoHwpTabs()
-    const dirtyEpub = manager.dirtyEpubTabs()
-    const dirtySlides = manager.dirtySlidesTabs()
-    const docsTabs = manager.docsTabs()
+    const dirtyHwp = withoutLiveGuests(manager.dirtyOrMemoHwpTabs())
+    const dirtyEpub = withoutLiveGuests(manager.dirtyEpubTabs())
+    const dirtySlides = withoutLiveGuests(manager.dirtySlidesTabs())
+    const docsTabs = withoutLiveGuests(manager.docsTabs())
     // Nothing to protect, so let this close event through untouched. Cancelling
     // it and re-issuing win.close() would also cancel an in-flight app.quit();
     // on macOS, where window-all-closed does not quit, ⌘Q with a clean

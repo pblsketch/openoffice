@@ -62,6 +62,8 @@ export interface MapAiHost {
   isUntitled(): boolean
   /** the names a new sheet starts with, in the user's language; `position` counts from 1 */
   newSheetNames(position: number): { title: string; rootTitle: string }
+  /** true, after telling the user, when taking a turn back is refused (a shared map: it would undo others' work) */
+  rollbackBlocked?(): boolean
 }
 
 /** What a tool hands back: the text for the model, and whether the map changed. */

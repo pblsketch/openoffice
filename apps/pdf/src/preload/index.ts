@@ -1,3 +1,5 @@
+import { collabBridge } from '@genoffice/electron-utils/collab-bridge'
+import { COLLAB_BRIDGE_KEY } from '@genoffice/electron-utils/collab-channels'
 import type { AiPanelPrefs, AutoSaveDefault } from '@genoffice/ui'
 import { contextBridge, ipcRenderer } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
@@ -232,6 +234,11 @@ const api: PdfApi = {
       () => false,
     ),
   setDirty: (dirty) => ipcRenderer.send(PDF_CHANNELS.dirtyChanged, dirty),
+  setCollabGuest: (guest) => ipcRenderer.send(PDF_CHANNELS.collabGuest, guest),
+  replaceCollabCopy: (path, bytes) =>
+    (ipcRenderer.invoke(PDF_CHANNELS.collabReplaceCopy, path, bytes) as Promise<boolean>).catch(
+      () => false,
+    ),
   onCloseSaveRequest: (handler) => {
     const listener = (_e: unknown, opts?: { flushAll?: boolean }) =>
       handler({ flushAll: opts?.flushAll === true })
@@ -361,6 +368,9 @@ contextBridge.exposeInMainWorld('aiOfficeOutbound', outboundBridge())
 // the person's skills: the AI panel's `/` list and skill reads, skill cards (shell main checks each)
 contextBridge.exposeInMainWorld(USER_SKILLS_BRIDGE_KEY, userSkillsBridge())
 contextBridge.exposeInMainWorld('projectApi', projectApi)
+
+// LAN co-editing (decision 0073): the shell relays this tab's session
+contextBridge.exposeInMainWorld(COLLAB_BRIDGE_KEY, collabBridge())
 
 // open documents dragged from the OS onto this tab as a new shell tab
 installDropOpenBridge()

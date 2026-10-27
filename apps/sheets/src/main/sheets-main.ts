@@ -4047,6 +4047,64 @@ export function registerSheetsIpc(): void {
     }
   })
 
+  // LAN co-editing: a guest's copy falls out of step with the host and takes
+  // the host's bytes. Only an untitled copy in its own temp folder is
+  // replaced; the new session keeps that copy's identity (first save asks
+  // where, recovery slot unchanged), like a quiet save of a new workbook.
+  ipcMain.handle(IPC_CHANNELS.collabReplaceWorkbook, async (event, input: unknown) => {
+    const entry = sessionFor(event)
+    const request = z
+      .object({
+        sessionId: z.string().uuid(),
+        bytes: z.custom<Uint8Array>((value) => value instanceof Uint8Array && value.byteLength > 0),
+      })
+      .strict()
+      .parse(input)
+    const session = entry.sessions.get(request.sessionId)
+    if (!session) throw new Error('Unknown workbook session.')
+    if (
+      !session.unsavedNew ||
+      session.password !== undefined ||
+      session.importTempDir === undefined
+    ) {
+      throw new Error('Only an untitled shared copy can be replaced.')
+    }
+    const stagedPath = await reserveSnapshotPath()
+    let stagedOpen: SidecarOpenResult
+    try {
+      await writeFile(stagedPath, request.bytes)
+      stagedOpen = sidecarOpenResultSchema.parse(
+        await entry.client.open(stagedPath, getUiLang(), systemShortDate()),
+      )
+    } catch (error) {
+      await rm(stagedPath, { force: true }).catch(() => undefined)
+      throw error
+    }
+    try {
+      await atomicWriteFile(session.path, Buffer.from(request.bytes))
+    } catch (error) {
+      await entry.client.close(stagedOpen.sessionId).catch(() => undefined)
+      await rm(stagedPath, { force: true }).catch(() => undefined)
+      throw error
+    }
+    entry.sessions.delete(request.sessionId)
+    await cleanupSessionResources({
+      tempRoot: app.getPath('temp'),
+      snapshotPath: session.snapshotPath,
+      // the copy's folder holds the file just written
+      importTempDir: undefined,
+      closeSidecar: () => entry.client.close(request.sessionId),
+    })
+    return openWorkbookSession(entry.client, session.path, entry.sessions, {
+      suggestSaveAs: session.suggestSaveAs,
+      importTempDir: session.importTempDir,
+      unsavedNew: true,
+      recoveryIdentity: session.recoveryIdentity,
+      recoveryOriginalPath: session.recoveryOriginalPath,
+      staged: { snapshotPath: stagedPath, opened: stagedOpen },
+    })
+  })
+
   ipcMain.handle(IPC_CHANNELS.closeWorkbook, async (event, sessionId: unknown) => {
     const entry = sessionFor(event)
     const validatedSessionId = z.string().uuid().parse(sessionId)
@@ -5001,6 +5059,7 @@ async function openWorkbookSession(
       // an encrypted workbook's restoreTarget is the file itself, not a restore
       restoredFromRecovery: restoreTarget !== undefined && password === undefined,
       automaticRecoveryDisabled,
+      ...(password === undefined ? {} : { encrypted: true }),
     })
   } catch (error) {
     if (staged !== undefined) await client.close(staged.opened.sessionId).catch(() => undefined)

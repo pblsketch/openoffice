@@ -39,6 +39,12 @@ export default defineConfig({
       '@genoffice/electron-utils/template-font-response': local(
         '../../packages/electron-utils/src/template-font-response.ts',
       ),
+      '@genoffice/electron-utils/collab-channels': local(
+        '../../packages/electron-utils/src/collab-channels.ts',
+      ),
+      '@genoffice/electron-utils/collab-bridge': local(
+        '../../packages/electron-utils/src/collab-bridge.ts',
+      ),
       '@genoffice/electron-utils': local('../../packages/electron-utils/src/index.ts'),
       '@genoffice/ai-provider/browser': local('../../packages/ai-provider/src/browser.ts'),
       '@genoffice/ai-provider/codex-app-server': local(

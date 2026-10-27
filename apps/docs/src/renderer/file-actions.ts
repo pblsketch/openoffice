@@ -116,6 +116,8 @@ import type { PdfInternalLink } from '../shared/ipc'
 import { showToast } from './components/toast-bus'
 import { buildStandaloneHtml } from './html-export'
 import { aiPanelInitiallyOpen } from '@genoffice/ui'
+import { clearCollabHistory } from '@genoffice/collab/tiptap'
+import { isCollabGuest, notifyCollab, refuseInCollab } from './collab-gate'
 
 /** An export waiting for the pagination preview to mount; resolve settles the caller's exportPdf promise. */
 export type PendingPdfExport = { outPath?: string; resolve: (ok: boolean) => void }
@@ -299,6 +301,7 @@ export function hasUnanchoredComments(comments: CommentInfo[], blocks: Block[]):
 }
 
 function resetEditorHistory(editor: Editor): void {
+  if (clearCollabHistory(editor)) return
   const plugin = editor.state.plugins.find((p) =>
     String((p as unknown as { key: string }).key).startsWith('history$'),
   )
@@ -353,7 +356,7 @@ export function restoreMarksAfterDocRewrite(editor: Editor, snapshot: string | n
 }
 
 /** doc-level layout inputs living outside CSS: default tab grid + hyphenation lang */
-function applyDocLayoutSettings(editor: Editor, parsed: ParsedDocFull): void {
+export function applyDocLayoutSettings(editor: Editor, parsed: ParsedDocFull): void {
   setNoteNumFmts({ footnote: parsed.footnoteProps, endnote: parsed.endnoteProps })
   editor.storage.tabStops.defaultTabStopTwips = parsed.defaultTabStopTwips ?? null
   editor.storage.listNumbering.defaultTabTwips = parsed.defaultTabStopTwips ?? 720
@@ -457,6 +460,8 @@ export async function loadFile(
   result: OpenDocxResult,
 ): Promise<LoadFileOutcome> {
   if (!result || !ctx.editor) return 'canceled'
+  // another document would replace the one everyone in the session is editing
+  if (refuseInCollab('replaceDocument')) return 'canceled'
   if ('needsPassword' in result) {
     ctx.promptDocxPassword({ path: result.path, name: result.name })
     return 'password'
@@ -655,7 +660,7 @@ async function blankDocxBytes(): Promise<Uint8Array> {
 
 /** new document from the built-in blank template (AI can then generate into it) */
 export async function newFile(ctx: FileActionContext): Promise<boolean | undefined> {
-  if (!ctx.editor) return
+  if (!ctx.editor || refuseInCollab('replaceDocument')) return
   const generation = ++openGeneration
   try {
     const bytes = await blankDocxBytes()
@@ -980,6 +985,8 @@ export async function writeRecoveryCopy(
 ): Promise<RecoveryCopyOutcome> {
   const { doc, editor } = ctx
   if (!doc || !editor || ctx.saveInFlightRef.current || !isDocDirty(ctx)) return 'skipped'
+  // a co-editing guest's copy belongs to the host until the session ends
+  if (isCollabGuest()) return 'skipped'
   // an edit during a phased open marks the document dirty while the tail is
   // still streaming: a snapshot now would persist a truncated document. The
   // next tick covers it.
@@ -1071,6 +1078,11 @@ export function save(
   newDocName?: string,
   explicitTarget?: ExplicitSaveTarget,
 ): Promise<boolean> {
+  // a co-editing guest never saves: the host's file is the document
+  if (isCollabGuest()) {
+    if (!auto) notifyCollab('guestSaveBlocked')
+    return Promise.resolve(false)
+  }
   // A save arriving mid-flight waits for the current one instead of failing.
   // Reuse the finished pass only when it left nothing behind — judged by the
   // composite dirty check (header/section/theme edits do not set dirtyRef), plus
@@ -1187,6 +1199,8 @@ async function saveWithFormatChange(
   target: DocFormat,
   auto: boolean,
 ): Promise<boolean> {
+  // the tab reopens as the new file, replacing the shared document
+  if (refuseInCollab('replaceDocument')) return false
   ctx.setStatus(t('appSavingAsFormat', { format: target.toUpperCase() }))
   let data: Uint8Array
   let report: ConversionReport

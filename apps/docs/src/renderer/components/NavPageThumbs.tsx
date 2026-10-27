@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/core'
 import { TextSelection } from '@tiptap/pm/state'
 import { useI18n } from '../i18n/locale'
+import { stripCollabMarks } from '@genoffice/collab'
 
 /** page paper edges in unzoomed canvas px, measured from the live page gaps */
 export interface ThumbPage {
@@ -131,6 +132,7 @@ function Thumb({
       clone.style.margin = '0'
       clone.style.transform = 'none'
       clone.removeAttribute('contenteditable')
+      stripCollabMarks(clone)
       slot.appendChild(clone)
       root.appendChild(slot)
     }

@@ -42,6 +42,8 @@ export const HWP_CHANNELS = {
   recoveryFlushed: 'hwp:recovery-flushed',
   /** main → renderer: the copy was removed while the tab stays open; write a fresh one */
   recoveryReset: 'hwp:recovery-reset',
+  /** invoke(bytes, format) → bytes: an export with a save's corrections, to share (decision 0073) */
+  collabBase: 'hwp:collab-base',
   filesPick: 'hwp:files-pick',
   filesAdd: 'hwp:files-add',
   filesAddPastedImage: 'hwp:files-add-pasted-image',
@@ -335,6 +337,8 @@ export interface HwpApi {
   sendRecoveryFlushed(token: number): void
   /** the copy was removed while the tab stays open: the next turn writes a fresh one */
   onRecoveryReset(handler: () => void): () => void
+  /** exported bytes as a save would write them now (without new tab widths); nothing is written */
+  collabBase?(bytes: Uint8Array, format: HwpFormat): Promise<Uint8Array>
   /** file picker for chat attachments (multi-select) */
   pickAttachments(): Promise<AttachmentAddResult | null>
   /** validate dropped paths and return attachment metadata */

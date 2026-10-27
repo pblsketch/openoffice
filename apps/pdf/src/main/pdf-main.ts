@@ -87,6 +87,7 @@ import type {
   SignaturePosition,
 } from '../shared/ipc'
 import { writePdfAtomically } from './atomic-write'
+import { forgetPdfCollabGuest, isPdfCollabGuest, registerPdfCollabIpc } from './collab'
 import {
   copyPdfToPath,
   cropPagesBytes,
@@ -1282,7 +1283,9 @@ function requestRendererSave(contents: WebContents, flushAll: boolean): Promise<
  *  flushAll (export flows): the file must then hold everything on screen, so the form field
  *  whose card is open is written too; menu Save leaves it to Done */
 export function flushPdfSave(contents: WebContents, flushAll = false): Promise<boolean> {
-  if (contents.isDestroyed() || !dirtyByWc.has(contents.id)) return Promise.resolve(true)
+  if (contents.isDestroyed()) return Promise.resolve(true)
+  // a co-editing guest is never dirty, but its renderer tells the person why nothing is saved
+  if (!dirtyByWc.has(contents.id) && !isPdfCollabGuest(contents.id)) return Promise.resolve(true)
   return requestRendererSave(contents, flushAll)
 }
 
@@ -1441,6 +1444,16 @@ function registerPdfIpc(): void {
     return recovery.resolveOnOpen(e.sender, path).then(() => path)
   })
 
+  // co-editing: only the host saves; a guest's copy follows the host's saved file
+  registerPdfCollabIpc({
+    ownCopy: (wcId, path): path is string =>
+      pdfPathGranted(wcId, path) && untitledCopyPdfPaths.has(path),
+    replace: async (wcId, path, bytes) => {
+      await writePdfAtomically(path, bytes)
+      await rememberDiskState(wcId, path)
+    },
+  })
+
   ipcMain.handle(PDF_CHANNELS.getUsername, () => {
     try {
       return userInfo().username
@@ -1489,6 +1502,9 @@ function registerPdfIpc(): void {
   })
 
   ipcMain.handle(PDF_CHANNELS.save, async (e, request: SavePdfRequest): Promise<SavePdfResult> => {
+    if (isPdfCollabGuest(e.sender.id)) {
+      return { ok: false, error: 'pdf: a guest in a co-editing session does not save' }
+    }
     const path = request?.path
     if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) {
       return { ok: false, error: 'pdf: path not granted to this view' }
@@ -2529,6 +2545,7 @@ function grantAndTrack(wc: WebContents, openPath?: string | null): void {
     redactionFlows.delete(wcId)
     allowedByWc.delete(wcId)
     dirtyByWc.delete(wcId)
+    forgetPdfCollabGuest(wcId)
     docDiskStates.delete(wcId)
     certEntriesByWc.delete(wcId)
     saveAsTargetByWc.delete(wcId)
@@ -2542,6 +2559,7 @@ function grantAndTrack(wc: WebContents, openPath?: string | null): void {
   // close guard must not still think the tab is dirty.
   wc.on('did-start-loading', () => {
     dirtyByWc.delete(wcId)
+    forgetPdfCollabGuest(wcId)
   })
 }
 

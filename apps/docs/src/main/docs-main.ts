@@ -189,6 +189,7 @@ import {
   registerLazyMediaProtocol,
 } from './lazy-media'
 import { inlineLazyMediaInHtml } from './lazy-media-inline'
+import { isDocsCollabGuest, registerDocsCollabIpc } from './collab'
 import {
   commitDocPasswordSave,
   currentDocPasswordIntentRevision,
@@ -4476,6 +4477,7 @@ const saveAsPicks = new Map<number, string>()
 /** document/attachment/window IPC (everything except the AI proxy above) */
 export function registerDocsIpc(): void {
   registerZoteroIpc()
+  registerDocsCollabIpc()
   // the shell reaches Word tabs' crash recovery through this (restore, launch list, OS end)
   registerRecoveryEditor(docsRecoveryEditor)
   // the design templates' fonts: shipped once (resources/template-fonts), served to the
@@ -4721,6 +4723,10 @@ export function registerDocsIpc(): void {
     'docs:save',
     async (event, filePath: string, data: ArrayBuffer, auto?: boolean) => {
       try {
+        // a co-editing guest's copy is never written: the host saves (decision 0073)
+        if (isDocsCollabGuest(event.sender.id)) {
+          return { ok: false, error: 'a co-editing guest does not save' }
+        }
         // only paths this renderer opened or chose via save-as may be overwritten
         if (typeof filePath !== 'string' || !canDocWrite(event.sender.id, filePath)) {
           return { ok: false, error: 'save target is not an opened document' }
@@ -4802,6 +4808,7 @@ export function registerDocsIpc(): void {
     ): Promise<{ ok: boolean; failed?: boolean }> => {
       const wcId = event.sender.id
       if (tornDownWcIds.has(wcId) || !(data instanceof ArrayBuffer)) return { ok: false }
+      if (isDocsCollabGuest(wcId)) return { ok: false }
       const untitled = filePath === null
       if (!untitled && (typeof filePath !== 'string' || !canDocWrite(wcId, filePath))) {
         return { ok: false }
@@ -5005,7 +5012,9 @@ export function registerDocsIpc(): void {
     'docs:save-as',
     async (event, filePath: string, data: ArrayBuffer, sourcePath?: string | null) => {
       // an orphaned (closed-tab) renderer must not open dialogs or land new files
-      if (tornDownWcIds.has(event.sender.id)) return { ok: false }
+      if (tornDownWcIds.has(event.sender.id) || isDocsCollabGuest(event.sender.id)) {
+        return { ok: false }
+      }
       // only the path the user just picked in this renderer's Save As dialog
       if (typeof filePath !== 'string' || saveAsPicks.get(event.sender.id) !== filePath) {
         return { ok: false, error: 'save target was not picked' }
@@ -5087,7 +5096,9 @@ export function registerDocsIpc(): void {
     try {
       // a discarded draft in an orphaned renderer must not silently persist
       // itself to the default folder after the user chose Don't Save
-      if (tornDownWcIds.has(event.sender.id)) return { ok: false }
+      if (tornDownWcIds.has(event.sender.id) || isDocsCollabGuest(event.sender.id)) {
+        return { ok: false }
+      }
       const filePath = uniquePathIn(defaultSaveDir(), defaultName)
       const { bytes, plain, hashes, encrypted, passwordState } = await prepareDocSave(
         event.sender.id,
@@ -5140,7 +5151,9 @@ export function registerDocsIpc(): void {
     'docs:save-to',
     async (event, filePath: string, data: ArrayBuffer, overwrite: boolean) => {
       try {
-        if (tornDownWcIds.has(event.sender.id)) return { ok: false }
+        if (tornDownWcIds.has(event.sender.id) || isDocsCollabGuest(event.sender.id)) {
+          return { ok: false }
+        }
         if (typeof filePath !== 'string' || !isAbsolute(filePath)) {
           return { ok: false, error: 'path must be absolute' }
         }

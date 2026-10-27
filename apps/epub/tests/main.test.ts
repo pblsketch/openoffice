@@ -476,3 +476,69 @@ describe('links', () => {
     expect(openExternal).not.toHaveBeenCalled()
   })
 })
+
+describe('co-editing (decision 0073)', () => {
+  it('gives the people who join what a save would write, without saving', async () => {
+    const { path, contents } = await openBook()
+    const original = readFileSync(path)
+    await edit(contents, 'Shared edit.')
+    const base = await call<Promise<Uint8Array | null>>(EPUB_CHANNELS.collabBase, contents)
+    expect(await entryText(base!, 'OEBPS/text/one.xhtml')).toContain('<p>Shared edit.</p>')
+    expect(readFileSync(path).equals(original)).toBe(true)
+    expect(epubIsDirty(contents.id)).toBe(true)
+  })
+
+  it('a live guest writes nothing and has nothing unsaved; its page says why', async () => {
+    const { path, contents } = await openBook()
+    const original = readFileSync(path)
+    await call(EPUB_CHANNELS.collabGuest, contents, 'live')
+    contents.sent.length = 0
+    expect(await requestEpubSave(contents as never, 'save')).toBe(false)
+    expect(contents.sent).toEqual([[EPUB_CHANNELS.saveRequest, 'save']])
+    expect(await save(contents, { mode: 'save' })).toMatchObject({ ok: false })
+    await expect(epubSaveToPath(contents as never, join(dir, 'elsewhere.epub'))).rejects.toThrow(
+      'sharing',
+    )
+    expect(epubIsDirty(contents.id)).toBe(false)
+    expect(await requestEpubClose(contents as never)).toBe(true)
+    expect(await call(EPUB_CHANNELS.collabBase, contents)).toBeNull()
+    expect(readFileSync(path).equals(original)).toBe(true)
+    expect(showSaveDialog).not.toHaveBeenCalled()
+    // a reloaded page has left its session: the book is an unsaved copy from then on
+    await call<Promise<EpubOpenFileResult>>(EPUB_CHANNELS.openFile, contents, path)
+    expect(epubIsDirty(contents.id)).toBe(true)
+  })
+
+  it("an ended guest's copy takes the shared chapters and is saved only where the person picks", async () => {
+    const { path, contents } = await openBook({}, 'copy.epub')
+    const original = readFileSync(path)
+    const chapter = await call<Promise<EpubChapterResult>>(EPUB_CHANNELS.readChapter, contents, 0)
+    if (!chapter.ok) throw new Error('no chapter')
+    const shared = chapter.source.replace(
+      '<p>First paragraph.</p>',
+      '<p>From the host.</p>\n<p>And more.</p>',
+    )
+    const chapters = [{ spineIndex: 0, source: shared }]
+    // only a live guest takes chapters
+    expect(await call(EPUB_CHANNELS.collabAdopt, contents, chapters)).toBe(0)
+    await call(EPUB_CHANNELS.collabGuest, contents, 'live')
+    expect(await call(EPUB_CHANNELS.collabAdopt, contents, chapters)).toBe(1)
+    await call(EPUB_CHANNELS.collabGuest, contents, 'copy')
+    expect(epubIsDirty(contents.id)).toBe(true)
+    // an automatic save never writes it; a plain save asks where
+    expect(await save(contents, { mode: 'save', auto: true })).toMatchObject({ ok: false })
+    const target = join(dir, 'mine.epub')
+    showSaveDialog.mockResolvedValueOnce({ canceled: false, filePath: target })
+    expect(await save(contents, { mode: 'save' })).toMatchObject({
+      ok: true,
+      path: target,
+      written: true,
+    })
+    expect(showSaveDialog).toHaveBeenCalledTimes(1)
+    expect(await entryText(readFileSync(target), 'OEBPS/text/one.xhtml')).toContain(
+      '<p>And more.</p>',
+    )
+    expect(readFileSync(path).equals(original)).toBe(true)
+    expect(epubIsDirty(contents.id)).toBe(false)
+  })
+})

@@ -105,6 +105,8 @@ import { deriveAutoFileName, deriveNameFromPrompt, derivePageTitleName } from '.
 import { runGuardedPrint } from './print-guard'
 import { startRecoveryCopies } from './recovery-copy'
 import type { ExportFormat, SaveMode } from '../shared/ipc'
+import { CollabButton, CollabDialog, CollabNotice } from '@genoffice/collab'
+import { useHtmlCollab } from './collab'
 
 type LoadStatus = 'loading' | 'ready' | 'error'
 type SaveState = 'idle' | 'saving' | 'saved' | 'failed'
@@ -330,6 +332,24 @@ export default function App() {
   statusRef.current = status
   selectedSidRef.current = selectedSid
   const dirty = text !== savedText
+
+  // co-editing: a guest's copy is the host's page, never saved here while shared
+  const collabGuestRef = useRef(false)
+  const collab = useHtmlCollab({
+    ready: status === 'ready',
+    editor: () => editorRef.current,
+    fileName: () =>
+      pathRef.current
+        ? pathRef.current.replace(/^.*[/\\]/, '')
+        : `${deriveAutoFileName(textRef.current) || 'Untitled'}.html`,
+    fileText: () =>
+      statusRef.current === 'ready'
+        ? serializeDocText({ text: textRef.current, envelope: envelopeRef.current })
+        : null,
+    guestRef: collabGuestRef,
+  })
+  const collabFlashRef = useRef(collab.flash)
+  collabFlashRef.current = collab.flash
 
   const getMap = useCallback((): ParseMap => {
     const cached = mapRef.current
@@ -1435,6 +1455,10 @@ export default function App() {
   const doSave = useCallback(
     async (mode: SaveMode, suggestedName?: string, auto = false): Promise<boolean> => {
       if (statusRef.current !== 'ready') return false
+      if (collabGuestRef.current) {
+        if (!auto) collabFlashRef.current('guestSaveBlocked')
+        return false
+      }
       // uncommitted live style pokes belong to the document being saved
       flushPending()
       // a menu save or ⌘S during an autosave queues behind it instead of being dropped;
@@ -1731,6 +1755,8 @@ export default function App() {
     return startRecoveryCopies({
       read: () => {
         if (statusRef.current !== 'ready' || savingRef.current) return null
+        // a guest's copy belongs to the host until the session ends
+        if (collabGuestRef.current) return null
         // live style pokes and open panel drafts are part of what a save writes;
         // they are applied to the copy only, so the user's panel input is left alone
         const text = sourceWithPendingRef.current()
@@ -1897,7 +1923,10 @@ export default function App() {
     >
       <Ribbon
         disabled={status !== 'ready'}
-        dirty={dirty}
+        dirty={dirty && collab.role !== 'guest'}
+        collabSlot={
+          <CollabButton collab={collab} lang={lang} className="qa-btn qa-collab" iconSize={16} />
+        }
         onSave={() => void doSave('save')}
         onSaveAs={() => void doSave('saveAs')}
         onFind={() => openFind(false)}
@@ -2228,6 +2257,8 @@ export default function App() {
           onCancel={() => setPictureDialog(null)}
         />
       )}
+      <CollabDialog collab={collab} lang={lang} />
+      <CollabNotice collab={collab} lang={lang} />
     </div>
   )
 }

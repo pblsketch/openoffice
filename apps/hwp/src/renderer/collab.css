@@ -1,0 +1,68 @@
+/* LAN co-editing in the top bar: the share button, and a guest's line saying who
+   is sharing, on which page, and that the document is view only (collab.tsx). */
+.hwp-topbar-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--radius-6);
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.hwp-topbar-btn:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.hwp-topbar-btn.active {
+  color: var(--text);
+}
+
+.hwp-collab {
+  margin-inline-end: 10px;
+}
+
+.hwp-collab-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin-inline-end: auto;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.hwp-collab-host {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.hwp-collab-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--collab-c);
+}
+
+.hwp-collab-page {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.hwp-collab-viewonly {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -16,6 +16,7 @@ import {
 } from '@genoffice/docx-engine'
 import type { DocState, PendingNumbering } from './doc-state'
 import { t } from './i18n/locale'
+import { collabOff, refuseInCollab } from './collab-gate'
 
 /** The App state the numbering actions need; built fresh per call. */
 export interface NumberingContext {
@@ -77,7 +78,7 @@ export function createCustomListDef(
   ctx: NumberingContext,
   levels: CustomNumberingLevel[],
 ): string | null {
-  if (!ctx.doc || levels.length === 0) return null
+  if (!ctx.doc || levels.length === 0 || refuseInCollab('listDefinition')) return null
   const kind = levels[0].numFmt === 'bullet' ? ('bullet' as const) : ('ordered' as const)
   const numId = nextNumId(ctx)
   ctx.setPendingNumbering((p) => ({ ...p, newDefs: [...p.newDefs, { numId, kind, levels }] }))
@@ -261,7 +262,7 @@ export function setNumberingValue(
   ctx: NumberingContext,
   opts: { mode: 'restart' | 'continue'; value?: number },
 ): boolean {
-  if (!ctx.editor || !ctx.doc) return false
+  if (!ctx.editor || !ctx.doc || refuseInCollab('listDefinition')) return false
   const target = currentListTarget(ctx)
   if (!target) return false
   const { state, view } = ctx.editor
@@ -302,7 +303,8 @@ export function allocateListNumId(
   ctx: NumberingContext,
   kind: 'bullet' | 'ordered',
 ): string | null {
-  if (!ctx.doc) return null
+  // a guest leaves the numId empty: the host's editor fills it with a definition of its own
+  if (!ctx.doc || collabOff('listDefinition')) return null
   // the document already has a same-kind numbering definition (even if unused in the body): the new num points at its abstractNum
   const match = [...ctx.doc.parsed.numbering.values()].find(
     (d) => (d.levels[0]?.numFmt === 'bullet') === (kind === 'bullet'),
@@ -402,7 +404,7 @@ function previousListNumId(editor: Editor, curNumId: string): string | null {
 /** Context menu: restart numbering (new num + startOverride pointing at the same abstractNum;
  *  lists with no definition (numId=0 / CSS counters) get a new definition, naturally starting at 1) */
 export function restartNumbering(ctx: NumberingContext): void {
-  if (!ctx.editor || !ctx.doc) return
+  if (!ctx.editor || !ctx.doc || refuseInCollab('listDefinition')) return
   const attrs = ctx.editor.getAttributes('docListItem')
   const oldNumId = attrs?.numId as string | null
   if (oldNumId == null) return

@@ -83,6 +83,7 @@ import {
 } from './split-layout'
 import type { GenerateHandoff } from '../shared/generate-api'
 import { dropGenerateHandoff, queueGenerateHandoffFor } from './generate/handoff'
+import { dropCollabTab, isLiveCollabGuest } from './collab/collab-service'
 import type { ConvertedDocument } from './generate/convert'
 import { queueConvertedContent } from './generate/converted-tab'
 import { releaseClosedRenderer } from './renderer-disposal'
@@ -1608,6 +1609,11 @@ export class TabManager {
     if (id === HOME_ID) return
     const tab = this.tabs.find((t) => t.id === id)
     if (!tab || this.closingIds.has(id)) return
+    // a guest's edits already live in the host's document: nothing to save here
+    if (tab.view && isLiveCollabGuest(tab.view.webContents.id)) {
+      this.removeTab(id)
+      return
+    }
     let closeGuard =
       tab.view &&
       (tab.kind === 'sheets' && sheetsPendingEditCount(tab.view.webContents.id) > 0
@@ -1713,6 +1719,7 @@ export class TabManager {
     if (removed.view) {
       // a generate request the tab never took goes with the tab
       dropGenerateHandoff(removed.view.webContents.id)
+      dropCollabTab(removed.view.webContents.id)
       removed.view.setVisible(false)
       this.shellWindow.contentView.removeChildView(removed.view)
       if (removed.kind === 'docs') {

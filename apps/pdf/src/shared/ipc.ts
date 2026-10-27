@@ -112,6 +112,9 @@ export const PDF_CHANNELS = {
   // "Don't Save" answered (true) or the close cancelled (false); the renderer resumes on input
   recoveryDropped: 'pdf:recovery-dropped',
   recoveryResume: 'pdf:recovery-resume',
+  // LAN co-editing: a view says it is a guest; a guest's copy takes each file the host saved
+  collabGuest: 'pdf:collab-guest',
+  collabReplaceCopy: 'pdf:collab-replace-copy',
   getLanguage: 'app:get-language',
   languageChanged: 'app:language-changed',
   getTheme: 'app:get-theme',
@@ -1598,6 +1601,10 @@ export interface PdfApi {
   noteUnsaved(): Promise<boolean>
   /** Mirror unsaved-changes state to the main process; drives the save prompt before closing a tab/window */
   setDirty(dirty: boolean): void
+  /** Co-editing: this view is a guest in a live session (the main process refuses its saves) */
+  setCollabGuest?(guest: boolean): void
+  /** Co-editing guest: replace this view's untitled copy with the file the host saved */
+  replaceCollabCopy?(path: string, bytes: Uint8Array): Promise<boolean>
   /** Main process asks for a save (close prompt, menu Save, export flows) and waits for sendCloseSaveResult.
    *  flushAll: success must mean everything on screen is in the file, including the form field whose card is open */
   onCloseSaveRequest(handler: (opts: { flushAll: boolean }) => void): () => void

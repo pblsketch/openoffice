@@ -61,6 +61,18 @@ export interface SaveBytesOptions {
   thumbnail?: Uint8Array | null
 }
 
+/** What a listener is told changed: one sheet's tree, title or theme, a sheet added or deleted; null for anything else. */
+export type SheetChange = { kind: 'tree' | 'title' | 'theme' | 'added' | 'deleted'; key: string }
+
+/** What a co-editor's change brings back before it is reconciled (`applyShared`). */
+export interface SharedParts {
+  /** source topics taken out earlier, each to go under the shown topic it belongs to */
+  topics?: ReadonlyArray<{ parentId: string; topic: XmindTopic }>
+  /** relationship records taken out earlier, at their place in the list then; each comes back when both its ends are there */
+  relationships?: ReadonlyArray<{ record: Record<string, unknown>; at: number }>
+  reshapedRelationships?: readonly string[]
+}
+
 /**
  * Keys of a sheet that undo and redo leave as they are: they are changed
  * outside the map's history (the sheet tabs, the theme panel), so a step back
@@ -93,7 +105,7 @@ export class DocumentSession {
    * handed over already changed without its bytes.
    */
   #baseline: Promise<Uint8Array | null>
-  readonly #listeners = new Set<() => void>()
+  readonly #listeners = new Set<(change: SheetChange | null) => void>()
 
   /**
    * `baseline`: the bytes `document` was opened from. Left out, it is taken
@@ -167,7 +179,7 @@ export class DocumentSession {
     } else if (changed) {
       entry.stale = true
     }
-    if (changed) this.#notify()
+    if (changed) this.#notify({ kind: 'tree', key })
     return result
   }
 
@@ -206,7 +218,7 @@ export class DocumentSession {
     if (snapshot) {
       restoreSheet(this.#document, index, snapshot)
       entry.stale = false
-      this.#notify()
+      this.#notify({ kind: 'tree', key })
     }
     return this.view(key)
   }
@@ -289,7 +301,7 @@ export class DocumentSession {
         : entry.snapshots[entry.cursor]!
     putInPlace(live, next)
     this.#record(entry, before, structuredClone(live))
-    this.#notify()
+    this.#notify({ kind: 'tree', key })
     return this.view(key)
   }
 
@@ -298,14 +310,14 @@ export class DocumentSession {
   addSheet(options: NewSheetOptions): SheetTab {
     const index = addSheet(this.#document, options)
     this.#entries.push(newEntry())
-    this.#notify()
+    this.#notify({ kind: 'added', key: this.#entries[index]!.key })
     return this.tabs()[index]!
   }
 
   renameSheet(key: string, title: string): SheetEditResult {
     const index = this.indexOf(key)
     const result = renameSheet(this.#document, index, title)
-    if (result.ok) this.#notify()
+    if (result.ok) this.#notify({ kind: 'title', key })
     return result
   }
 
@@ -315,9 +327,125 @@ export class DocumentSession {
     const result = deleteSheet(this.#document, index)
     if (result.ok) {
       this.#entries.splice(index, 1)
-      this.#notify()
+      this.#notify({ kind: 'deleted', key })
     }
     return result
+  }
+
+  // ---- co-editing (collab/): what other people changed, outside the history ----
+
+  /** Forgets a sheet's history: after someone else changed the sheet, a step back would take their change back too. */
+  dropHistory(key: string): void {
+    const entry = this.#entries.find((candidate) => candidate.key === key)
+    if (!entry) return
+    entry.snapshots = []
+    entry.cursor = 0
+    entry.stale = false
+  }
+
+  /**
+   * A co-editor's change of a sheet. Parts taken out by an earlier change go
+   * back in first, whole, so what the editor never showed returns with them;
+   * then `state` is reconciled like the user's own. Not a step of the history.
+   * `accept` judges the result: when it says no, the sheet is put back as it
+   * was and null is returned.
+   */
+  applyShared(
+    key: string,
+    state: ViewSheet,
+    parts: SharedParts,
+    accept: (result: ReconcileResult) => boolean,
+  ): ReconcileResult | null {
+    const { entry, index } = this.#at(key)
+    const live = this.#document.sheets[index]!
+    const before = structuredClone(live)
+    const next = structuredClone(live)
+    const taken = this.topicIds()
+    let revived = false
+    for (const { parentId, topic } of parts.topics ?? []) {
+      const arriving = new Set<string>()
+      collectIds(topic, arriving)
+      if ([...arriving].some((id) => taken.has(id))) continue
+      // a parent the state makes new is not there yet: reconciling moves the topic under it
+      const parent = findShown(next.rootTopic, parentId) ?? next.rootTopic
+      const children = (parent.children ??= {})
+      children.attached = [...(children.attached ?? []), structuredClone(topic)]
+      arriving.forEach((id) => taken.add(id))
+      revived = true
+    }
+    const ends = new Set<string>()
+    collectIds(next.rootTopic, ends)
+    const lines = Array.isArray(next.relationships) ? [...next.relationships] : []
+    const present = new Set(lines.filter(isRecord).map((line) => line.id))
+    for (const { record, at } of [...(parts.relationships ?? [])].sort((a, b) => a.at - b.at)) {
+      const { id, end1Id, end2Id } = record
+      if (typeof id !== 'string' || present.has(id)) continue
+      if (typeof end1Id !== 'string' || typeof end2Id !== 'string') continue
+      if (!ends.has(end1Id) || !ends.has(end2Id)) continue
+      lines.splice(Math.min(at, lines.length), 0, structuredClone(record))
+      present.add(id)
+      revived = true
+    }
+    if (lines.length > 0) next.relationships = lines
+    if (revived && checkContentStructure([next]).ok) putInPlace(live, next)
+
+    const result = reconcileSheet(this.#document, index, state, {
+      reshapedRelationships: parts.reshapedRelationships,
+    })
+    if (!accept(result)) {
+      putInPlace(live, before)
+      return null
+    }
+    if (revived || (result.ok && result.changed)) {
+      entry.stale = true
+      this.#notify({ kind: 'tree', key })
+    }
+    return result
+  }
+
+  /**
+   * A sheet a co-editor added, as that person's copy made it: its ids were
+   * drawn there. Null when it cannot join this file (a broken tree, or an id
+   * the file already uses).
+   */
+  adoptSheet(sheet: XmindSheet): SheetTab | null {
+    if (!checkContentStructure([sheet]).ok) return null
+    if (this.#document.sheets.some((other) => other.id === sheet.id)) return null
+    const arriving = new Set<string>()
+    collectIds(sheet.rootTopic, arriving)
+    const taken = this.topicIds()
+    if ([...arriving].some((id) => taken.has(id))) return null
+    this.#document.sheets.push(structuredClone(sheet))
+    const entry = newEntry()
+    this.#entries.push(entry)
+    this.#notify({ kind: 'added', key: entry.key })
+    return this.tabs().at(-1)!
+  }
+
+  /**
+   * Puts the sheets of another copy of this map in place of these: a guest
+   * starting over from the host's map. A sheet with the same id keeps its key,
+   * so what draws it can draw it again. Every history is dropped.
+   */
+  replaceSheets(sheets: XmindSheet[]): void {
+    const check = checkContentStructure(sheets)
+    if (!check.ok) throw new Error(`mindmap: cannot take the sheets, ${check.problem}`)
+    const old = this.#document.sheets.map((sheet, at) => ({
+      id: sheet.id,
+      entry: this.#entries[at]!,
+    }))
+    this.#entries = sheets.map((sheet) => {
+      const match = old.findIndex(
+        (candidate) => typeof sheet.id === 'string' && candidate.id === sheet.id,
+      )
+      const entry = match >= 0 ? old.splice(match, 1)[0]!.entry : newEntry()
+      entry.snapshots = []
+      entry.cursor = 0
+      entry.stale = false
+      return entry
+    })
+    this.#document.sheets.splice(0, this.#document.sheets.length, ...sheets)
+    this.#notify()
   }
 
   // ---- what the editor does not show ----
@@ -346,7 +474,7 @@ export class DocumentSession {
    */
   applyTheme(key: string, id: ThemeId): void {
     applySheetTheme(this.#document, this.#at(key).index, id)
-    this.#notify()
+    this.#notify({ kind: 'theme', key })
   }
 
   /** Whether a sheet carries a theme this app did not write: it is drawn with the default look. */
@@ -419,7 +547,7 @@ export class DocumentSession {
   }
 
   /** Calls `listener` after every change of the tree and after a save was reported. Returns the way to stop. */
-  subscribe(listener: () => void): () => void {
+  subscribe(listener: (change: SheetChange | null) => void): () => void {
     this.#listeners.add(listener)
     return () => this.#listeners.delete(listener)
   }
@@ -443,8 +571,8 @@ export class DocumentSession {
     return { entry: this.#entries[index]!, index }
   }
 
-  #notify(): void {
-    for (const listener of [...this.#listeners]) listener()
+  #notify(change: SheetChange | null = null): void {
+    for (const listener of [...this.#listeners]) listener(change)
   }
 }
 

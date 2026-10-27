@@ -1,4 +1,5 @@
 import katexCss from 'katex/dist/katex.min.css?inline'
+import { stripCollabMarks } from '@genoffice/collab'
 
 /** Print-theme CSS: mirrors the editor typography so the PDF matches the canvas */
 const PRINT_CSS = `
@@ -70,6 +71,8 @@ export function buildPrintHtml(editorRoot: HTMLElement, title: string): string {
     '.md-codeblock-bar, .md-diagram-error, .ProseMirror-separator',
   ))
     bar.remove()
+  // other people's carets and selections belong to the screen, not the page
+  stripCollabMarks(clone)
   // a rendered diagram block prints as its picture; an unrendered one keeps its source
   for (const block of clone.querySelectorAll('[data-diagram="rendered"] pre')) block.remove()
 
