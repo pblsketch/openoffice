@@ -4,7 +4,7 @@
 
 xlsx 파일에 대한 쓰기 관문과 통합 문서 도메인 로직을 맡는다.
 
-- `src/gateway/`: 편집 내용을 zip 항목 단위의 변경 계획(`MutationPlan`)으로 바꾸는 OOXML 패치. 셀 값과 수식, 행·열 삽입·삭제와 그에 따른 참조 이동, 시트 추가·삭제·이름 변경, 스타일, 조건부 서식, 유효성 검사, 표, 피벗, 차트·도형·그림, 메모, 하이퍼링크, 보호, 페이지 설정, CSV 가져오기.
+- `src/gateway/`: 편집 내용을 zip 항목 단위의 변경 계획(`MutationPlan`)으로 바꾸는 OOXML 패치. 셀 값과 수식, 행·열 삽입·삭제와 그에 따른 참조 이동, 시트 추가·삭제·이름 변경, 스타일, 조건부 서식, 유효성 검사, 표, 피벗, 차트·도형·그림, 메모, 하이퍼링크, 보호, 페이지 설정, CSV 가져오기, HTML 표 가져오기.
 - `src/domain/`: AI와 명령줄 도구가 쓰는 통합 문서 명령 언어(`workbook-dsl`)와 그 실행 모델, 피벗 계산, 차트 추천, 수식 참조 이동.
 - `src/shared/`: 렌더러와 함께 쓰는 편집 스키마(zod)와 격자 한계.
 
@@ -40,6 +40,7 @@ Sheets 앱(메인과 렌더러)과 명령줄 도구(`packages/cli`)가 쓴다.
 - Excel 2007 이후에 생긴 함수는 파일 안에서 `_xlfn.`(일부 동적 배열 함수는 `_xlfn._xlws.`) 표지를 달고 저장된다. 사이드카가 읽을 때 떼어 내므로, 수식을 시트 XML로 쓸 때 다시 붙인다. 빠지면 Excel이 `#NAME?`로 고친다.
 - 행·열을 밀 때는 같은 묶음 안에서 그 시트에 걸린 도형 앵커, 표 범위, VML 앵커, 차트 참조, 다른 시트의 수식, 정의된 이름도 함께 민다.
 - CSV 가져오기는 값만 옮긴다. 숫자처럼 보이는 칸만 숫자가 되고 앞자리 0은 살며, 수식처럼 보이는 글자는 수식이 아니라 글자로 남는다. Excel은 CSV를 시스템의 옛 문자셋으로 쓰므로, UTF-8로 읽히지 않으면 후보 문자셋(gb18030, shift_jis, big5, euc-kr, windows-1252)을 점수로 고른다.
+- HTML 표 가져오기(`gateway/html-import.ts`)도 값만 옮긴다. 웹 시스템이 `.xls` 이름으로 내려 주는 HTML 표를 사이드카 앞에서 읽으며, `colspan`·`rowspan`은 병합으로, `<br>`은 줄바꿈으로 남기고 `<x:Name>`이 있으면 시트 이름으로 쓴다. 스크립트·스타일은 읽지 않고, 숫자로 확정되는 칸만 숫자가 된다. 파일 내용을 보고 HTML인지 판단하는 일과 읽기 크기 한도는 `apps/sheets`의 `legacy-import.ts`가 맡는다.
 - 진입점 묶음 파일이 없다. `exports`가 `./*`를 `./src/*.ts`로 풀어서 `@genoffice/xlsx-gateway/gateway/xlsx-gateway`처럼 파일 경로로 import한다. 렌더러가 `domain/`·`shared/`와 `gateway/`의 일부 파일을 골라 가져가므로, `node:*` import는 지금처럼 `gateway/xlsx-gateway.ts`와 `gateway/xlsx-package-io.ts`에만 둔다.
 - 이 패키지만 문서 주석을 `///`로 쓰고, 저장소 공통 설정을 상속하지 않는 자체 `tsconfig.json`(`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`)을 쓴다. 주변 방식을 따른다.
 - 명령 언어의 범위 연산은 2,000칸(`MAX_EXPANDED_CELL_OPS`)까지만 셀 단위로 펼치고, 그보다 크면 범위 연산 그대로 넘긴다. 범위 연산의 상한은 200,000칸이다.
@@ -48,6 +49,7 @@ Sheets 앱(메인과 렌더러)과 명령줄 도구(`packages/cli`)가 쓴다.
 
 - `npm run test -w @genoffice/xlsx-gateway`, 또는 패키지 폴더에서 `npx vitest run`. 타임아웃은 20초다. 테스트는 통합 문서를 코드로 만들어 쓰고, 사이드카 바이너리나 Rust 빌드가 필요 없다. `npm run fixtures`도 필요 없다.
 - 저장 경로를 건드리면 왕복으로 증명한다. 아무것도 바꾸지 않은 저장에서 손대지 않은 항목이 바이트 동일한지(`tests/csv-roundtrip.test.ts`에 그 형태가 있다), 편집한 저장에서 신고한 항목만 달라지는지를 본다.
+- HTML 표 가져오기는 `tests/html-import.test.ts`가 값·병합·줄바꿈·숫자·시트 이름·charset을 덮는다. 여러 시트를 쓰는 최소 통합 문서(`xlsxBufferFromSheets`)를 고치면 CSV 가져오기 시험도 함께 본다.
 - 패치 정규식을 바꾸면 생성기마다 다른 표기를 사례로 넣는다. 자기 닫힘 `<c/>`·`<row/>`, 속성 순서가 다른 요소, 접두사가 붙은 이름공간이 실제로 문제를 일으켰던 것들이다.
 - 사이드카를 실제로 거치는 검증은 `apps/sheets`의 테스트 몫이다.
 - Windows에서 원본 코드 그대로도 실패하는 테스트는 없다.

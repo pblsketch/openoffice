@@ -295,9 +295,13 @@ function columnLabel(column: number): string {
   return label
 }
 
-export function buildWorksheetXml(rows: readonly (readonly string[])[]): string {
+export function buildWorksheetXml(
+  rows: readonly (readonly string[])[],
+  merges: readonly string[] = [],
+): string {
   const lines: string[] = []
   let maxColumns = 1
+  let maxRows = Math.max(rows.length, 1)
   rows.forEach((row, rowIndex) => {
     const cells: string[] = []
     row.forEach((value, columnIndex) => {
@@ -312,12 +316,31 @@ export function buildWorksheetXml(rows: readonly (readonly string[])[]): string 
     })
     if (cells.length > 0) lines.push(`<row r="${rowIndex + 1}">${cells.join('')}</row>`)
   })
-  const dimension = `A1:${columnLabel(maxColumns - 1)}${Math.max(rows.length, 1)}`
+  // A merge can cover empty cells past the last value, and Excel expects the
+  // sheet dimension to reach its far corner.
+  for (const merge of merges) {
+    const end = merge.slice(merge.lastIndexOf(':') + 1)
+    const match = /^([A-Z]+)([1-9][0-9]*)$/.exec(end)
+    if (!match) continue
+    maxColumns = Math.max(maxColumns, columnIndexFromLabel(match[1]!) + 1)
+    maxRows = Math.max(maxRows, Number(match[2]))
+  }
+  const dimension = `A1:${columnLabel(maxColumns - 1)}${maxRows}`
+  const mergeXml =
+    merges.length > 0
+      ? `<mergeCells count="${merges.length}">${merges.map((ref) => `<mergeCell ref="${ref}"/>`).join('')}</mergeCells>`
+      : ''
   return (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
     '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-    `<dimension ref="${dimension}"/><sheetData>${lines.join('')}</sheetData></worksheet>`
+    `<dimension ref="${dimension}"/><sheetData>${lines.join('')}</sheetData>${mergeXml}</worksheet>`
   )
+}
+
+function columnIndexFromLabel(label: string): number {
+  let index = 0
+  for (const character of label) index = index * 26 + (character.charCodeAt(0) - 64)
+  return index - 1
 }
 
 export async function csvToXlsxBuffer(csvText: string, sheetName = 'Sheet1'): Promise<Buffer> {
@@ -392,12 +415,33 @@ export async function blankXlsxBuffer(sheetName = 'Sheet1'): Promise<Buffer> {
   return xlsxBufferFromRows([], sheetName)
 }
 
+export interface MinimalWorksheet {
+  readonly name: string
+  readonly rows: readonly (readonly string[])[]
+  /// A1 ranges to merge, e.g. "A1:B2".
+  readonly merges?: readonly string[]
+}
+
 async function xlsxBufferFromRows(
   rows: readonly (readonly string[])[],
   sheetName: string,
 ): Promise<Buffer> {
-  validateSheetName(sheetName)
+  return xlsxBufferFromSheets([{ name: sheetName, rows }])
+}
+
+/** A minimal workbook from plain cell text, shared by CSV and HTML imports. */
+export async function xlsxBufferFromSheets(
+  worksheets: readonly MinimalWorksheet[],
+): Promise<Buffer> {
+  if (worksheets.length === 0) throw new Error('A workbook needs at least one worksheet.')
+  for (const worksheet of worksheets) validateSheetName(worksheet.name)
   const zip = new JSZip()
+  const sheetOverrides = worksheets
+    .map(
+      (_, index) =>
+        `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`,
+    )
+    .join('')
   zip.file(
     '[Content_Types].xml',
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
@@ -405,7 +449,7 @@ async function xlsxBufferFromRows(
       '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
       '<Default Extension="xml" ContentType="application/xml"/>' +
       '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
-      '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+      sheetOverrides +
       '<Override PartName="/xl/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>' +
       '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
       '</Types>',
@@ -417,23 +461,40 @@ async function xlsxBufferFromRows(
       '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
       '</Relationships>',
   )
+  const sheetEntries = worksheets
+    .map(
+      (worksheet, index) =>
+        `<sheet name="${escapeXml(worksheet.name)}" sheetId="${index + 1}" r:id="rId${index + 1}"/>`,
+    )
+    .join('')
   zip.file(
     'xl/workbook.xml',
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
-      `<sheets><sheet name="${escapeXml(sheetName)}" sheetId="1" r:id="rId1"/></sheets></workbook>`,
+      `<sheets>${sheetEntries}</sheets></workbook>`,
   )
+  const sheetRelationships = worksheets
+    .map(
+      (_, index) =>
+        `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${index + 1}.xml"/>`,
+    )
+    .join('')
   zip.file(
     'xl/_rels/workbook.xml.rels',
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
-      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' +
-      '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>' +
-      '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+      sheetRelationships +
+      `<Relationship Id="rId${worksheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>` +
+      `<Relationship Id="rId${worksheets.length + 2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
       '</Relationships>',
   )
   zip.file('xl/theme/theme1.xml', DEFAULT_THEME_XML)
   zip.file('xl/styles.xml', MINIMAL_STYLESHEET_XML)
-  zip.file('xl/worksheets/sheet1.xml', buildWorksheetXml(rows))
+  worksheets.forEach((worksheet, index) => {
+    zip.file(
+      `xl/worksheets/sheet${index + 1}.xml`,
+      buildWorksheetXml(worksheet.rows, worksheet.merges ?? []),
+    )
+  })
   return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
 }

@@ -462,7 +462,12 @@ import {
 import { handleExportCsv as handleExportCsvImpl, type CsvExportContext } from './csv-export'
 import { effectivePageBreaks, installPageBreakPreview } from './page-break-preview'
 import { mapProtectedRanges } from './protected-ranges'
-import { handleSave as handleSaveImpl, type SaveContext, type SaveOutcome } from './save-actions'
+import {
+  handleSave as handleSaveImpl,
+  stripIpcErrorWrapper,
+  type SaveContext,
+  type SaveOutcome,
+} from './save-actions'
 import {
   applyChartEdit as applyChartEditImpl,
   applyShapeEdit as applyShapeEditImpl,
@@ -4926,7 +4931,7 @@ export function App({
       setEmptyCsvNotice(selected.emptyCsv === true)
       setMessage(selected.emptyCsv ? '' : t('appOpened', { name: selected.name }))
     } catch (error: unknown) {
-      setMessage(error instanceof Error ? error.message : t('appOpenFailed'))
+      setMessage(error instanceof Error ? stripIpcErrorWrapper(error.message) : t('appOpenFailed'))
       finishOpening()
     }
   }

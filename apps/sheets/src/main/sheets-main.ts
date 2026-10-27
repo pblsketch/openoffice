@@ -226,6 +226,7 @@ import {
   cleanupSessionResources,
 } from './temp-files'
 import { XlsxSidecarClient } from './xlsx-sidecar-client'
+import { convertLegacyWorkbook } from './legacy-import'
 import { sessionAfterRename } from './session-rename'
 
 /**
@@ -251,6 +252,7 @@ const tMain = createI18n({
     errUnreadable: '无法读取',
     errFileTooLarge: '文件超过大小上限',
     errParseFailed: '文件解析失败',
+    errHtmlNoTable: '此文件是网页而不是电子表格，未找到可导入的表格。',
     errImageNoText: '图片附件不提供文本,已作为图像随用户消息发送,直接看图即可',
     errNotImage: '不是支持的图片类型',
     errNoApiKey: '未配置 {provider} 的 API Key',
@@ -307,6 +309,7 @@ const tMain = createI18n({
     errUnreadable: 'cannot be read',
     errFileTooLarge: 'File exceeds the size limit',
     errParseFailed: 'Failed to parse file',
+    errHtmlNoTable: 'This file is a web page, not a spreadsheet; no table to import was found.',
     errImageNoText: 'Image attachments have no text; the image is sent along with the user message',
     errNotImage: 'not a supported image type',
     errNoApiKey: 'No API key configured for {provider}',
@@ -365,6 +368,7 @@ const tMain = createI18n({
     errUnreadable: 'không thể đọc được',
     errFileTooLarge: 'Tệp vượt quá giới hạn kích thước',
     errParseFailed: 'Không thể phân tích tệp',
+    errHtmlNoTable: 'Tệp này là trang web, không phải bảng tính; không tìm thấy bảng để nhập.',
     errImageNoText:
       'Tệp đính kèm hình ảnh không có văn bản; hình ảnh được gửi cùng với tin nhắn của người dùng',
     errNotImage: 'loại hình ảnh không được hỗ trợ',
@@ -425,6 +429,8 @@ const tMain = createI18n({
     errUnreadable: '読み取れません',
     errFileTooLarge: 'ファイルがサイズ上限を超えています',
     errParseFailed: 'ファイルの解析に失敗しました',
+    errHtmlNoTable:
+      'このファイルは表計算ではなくウェブページです。取り込める表が見つかりませんでした。',
     errImageNoText:
       '画像添付にはテキストがありません。画像はユーザー メッセージと一緒に送信されるため、そのまま画像をご確認ください',
     errNotImage: 'サポートされていない画像形式です',
@@ -486,6 +492,7 @@ const tMain = createI18n({
     errUnreadable: '읽을 수 없습니다',
     errFileTooLarge: '파일이 크기 제한을 초과했습니다',
     errParseFailed: '파일을 구문 분석하지 못했습니다',
+    errHtmlNoTable: '이 파일은 스프레드시트가 아니라 웹 페이지입니다. 가져올 표를 찾지 못했습니다.',
     errImageNoText:
       '이미지 첨부에는 텍스트가 없습니다. 이미지는 사용자 메시지와 함께 전송되므로 이미지를 직접 확인하세요',
     errNotImage: '지원되는 이미지 형식이 아닙니다',
@@ -547,6 +554,8 @@ const tMain = createI18n({
     errUnreadable: 'illisible',
     errFileTooLarge: 'Le fichier dépasse la taille limite',
     errParseFailed: "Échec de l'analyse du fichier",
+    errHtmlNoTable:
+      "Ce fichier est une page web, pas un tableur ; aucune table à importer n'a été trouvée.",
     errImageNoText:
       "Les images jointes n'ont pas de texte ; l'image est envoyée avec le message de l'utilisateur",
     errNotImage: "type d'image non pris en charge",
@@ -609,6 +618,8 @@ const tMain = createI18n({
     errUnreadable: 'kann nicht gelesen werden',
     errFileTooLarge: 'Datei überschreitet die Größenbeschränkung',
     errParseFailed: 'Datei konnte nicht analysiert werden',
+    errHtmlNoTable:
+      'Diese Datei ist eine Webseite und keine Tabellenkalkulation; es wurde keine importierbare Tabelle gefunden.',
     errImageNoText:
       'Bildanlagen enthalten keinen Text; das Bild wird zusammen mit der Benutzernachricht gesendet',
     errNotImage: 'kein unterstützter Bildtyp',
@@ -670,6 +681,8 @@ const tMain = createI18n({
     errUnreadable: 'no se puede leer',
     errFileTooLarge: 'El archivo supera el límite de tamaño',
     errParseFailed: 'No se pudo analizar el archivo',
+    errHtmlNoTable:
+      'Este archivo es una página web, no una hoja de cálculo; no se encontró ninguna tabla para importar.',
     errImageNoText:
       'Las imágenes adjuntas no tienen texto; la imagen se envía junto con el mensaje del usuario',
     errNotImage: 'no es un tipo de imagen compatible',
@@ -731,6 +744,7 @@ const tMain = createI18n({
     errUnreadable: 'อ่านไม่ได้',
     errFileTooLarge: 'ไฟล์มีขนาดเกินขีดจำกัด',
     errParseFailed: 'แยกวิเคราะห์ไฟล์ไม่สำเร็จ',
+    errHtmlNoTable: 'ไฟล์นี้เป็นหน้าเว็บ ไม่ใช่สเปรดชีต และไม่พบตารางที่จะนำเข้า',
     errImageNoText:
       'รูปภาพแนบไม่มีข้อความ รูปภาพจะถูกส่งไปพร้อมข้อความของผู้ใช้ ให้ดูที่รูปภาพโดยตรง',
     errNotImage: 'ไม่ใช่ชนิดรูปภาพที่รองรับ',
@@ -791,6 +805,8 @@ const tMain = createI18n({
     errUnreadable: 'tidak dapat dibaca',
     errFileTooLarge: 'File melebihi batas ukuran',
     errParseFailed: 'Gagal mengurai file',
+    errHtmlNoTable:
+      'Berkas ini adalah halaman web, bukan spreadsheet; tidak ada tabel yang bisa diimpor.',
     errImageNoText: 'Lampiran gambar tidak memiliki teks; gambar dikirim bersama pesan pengguna',
     errNotImage: 'bukan jenis gambar yang didukung',
     errNoApiKey: 'API Key untuk {provider} belum dikonfigurasi',
@@ -850,6 +866,8 @@ const tMain = createI18n({
     errUnreadable: 'не удаётся прочитать',
     errFileTooLarge: 'Файл превышает предельный размер',
     errParseFailed: 'Не удалось разобрать файл',
+    errHtmlNoTable:
+      'Этот файл — веб-страница, а не электронная таблица; таблиц для импорта не найдено.',
     errImageNoText:
       'Вложенные изображения не содержат текста; изображение отправляется вместе с сообщением пользователя',
     errNotImage: 'неподдерживаемый тип изображения',
@@ -910,6 +928,7 @@ const tMain = createI18n({
     errUnreadable: 'تعذّرت قراءته',
     errFileTooLarge: 'الملف يتجاوز حد الحجم',
     errParseFailed: 'فشل تحليل الملف',
+    errHtmlNoTable: 'هذا الملف صفحة ويب وليس جدول بيانات؛ لم يتم العثور على جدول لاستيراده.',
     errImageNoText: 'مرفقات الصور لا تحتوي على نص؛ تُرسل الصورة مع رسالة المستخدم',
     errNotImage: 'نوع صورة غير مدعوم',
     errNoApiKey: 'لم يتم تكوين مفتاح API لـ {provider}',
@@ -967,6 +986,8 @@ const tMain = createI18n({
     errUnreadable: 'não é possível ler',
     errFileTooLarge: 'O arquivo excede o limite de tamanho',
     errParseFailed: 'Falha ao analisar o arquivo',
+    errHtmlNoTable:
+      'Este arquivo é uma página da web, não uma planilha; nenhuma tabela para importar foi encontrada.',
     errImageNoText:
       'Anexos de imagem não têm texto; a imagem é enviada junto com a mensagem do usuário',
     errNotImage: 'não é um tipo de imagem suportado',
@@ -1027,6 +1048,8 @@ const tMain = createI18n({
     errUnreadable: 'impossibile leggere',
     errFileTooLarge: 'Il file supera il limite di dimensione',
     errParseFailed: 'Impossibile analizzare il file',
+    errHtmlNoTable:
+      'Questo file è una pagina web, non un foglio di calcolo; non è stata trovata alcuna tabella da importare.',
     errImageNoText:
       "Gli allegati immagine non hanno testo; l'immagine viene inviata insieme al messaggio dell'utente",
     errNotImage: 'tipo di immagine non supportato',
@@ -1088,6 +1111,8 @@ const tMain = createI18n({
     errUnreadable: 'nie można odczytać',
     errFileTooLarge: 'Plik przekracza limit rozmiaru',
     errParseFailed: 'Nie udało się przeanalizować pliku',
+    errHtmlNoTable:
+      'Ten plik to strona internetowa, a nie arkusz kalkulacyjny; nie znaleziono tabeli do zaimportowania.',
     errImageNoText:
       'Załączniki graficzne nie zawierają tekstu; obraz jest wysyłany razem z wiadomością użytkownika',
     errNotImage: 'nieobsługiwany typ obrazu',
@@ -1148,6 +1173,8 @@ const tMain = createI18n({
     errUnreadable: 'nelze přečíst',
     errFileTooLarge: 'Soubor překračuje limit velikosti',
     errParseFailed: 'Soubor se nepodařilo zpracovat',
+    errHtmlNoTable:
+      'Tento soubor je webová stránka, ne tabulka; nebyla nalezena žádná tabulka k importu.',
     errImageNoText:
       'Obrázkové přílohy neobsahují text; obrázek se odesílá spolu se zprávou uživatele',
     errNotImage: 'nepodporovaný typ obrázku',
@@ -1208,6 +1235,8 @@ const tMain = createI18n({
     errUnreadable: 'kan niet worden gelezen',
     errFileTooLarge: 'Bestand overschrijdt de maximale grootte',
     errParseFailed: 'Kan bestand niet parseren',
+    errHtmlNoTable:
+      'Dit bestand is een webpagina, geen spreadsheet; er is geen tabel gevonden om te importeren.',
     errImageNoText:
       'Afbeeldingsbijlagen bevatten geen tekst; de afbeelding wordt samen met het gebruikersbericht verzonden',
     errNotImage: 'geen ondersteund afbeeldingstype',
@@ -1269,6 +1298,7 @@ const tMain = createI18n({
     errUnreadable: 'tidak dapat dibaca',
     errFileTooLarge: 'Fail melebihi had saiz',
     errParseFailed: 'Gagal menghurai fail',
+    errHtmlNoTable: 'Fail ini ialah halaman web, bukan hamparan; tiada jadual untuk diimport.',
     errImageNoText: 'Lampiran imej tiada teks; imej dihantar bersama mesej pengguna',
     errNotImage: 'bukan jenis imej yang disokong',
     errNoApiKey: 'Kunci API untuk {provider} belum dikonfigurasikan',
@@ -1329,6 +1359,7 @@ const tMain = createI18n({
     errUnreadable: 'לא ניתן לקרוא',
     errFileTooLarge: 'הקובץ חורג ממגבלת הגודל',
     errParseFailed: 'ניתוח הקובץ נכשל',
+    errHtmlNoTable: 'קובץ זה הוא עמוד אינטרנט ולא גיליון אלקטרוני; לא נמצאה טבלה לייבוא.',
     errImageNoText: 'קבצים מצורפים מסוג תמונה אינם מכילים טקסט; התמונה נשלחת יחד עם הודעת המשתמש',
     errNotImage: 'סוג תמונה שאינו נתמך',
     errNoApiKey: 'לא הוגדר מפתח API עבור {provider}',
@@ -1386,6 +1417,8 @@ const tMain = createI18n({
     errUnreadable: 'पढ़ा नहीं जा सकता',
     errFileTooLarge: 'फ़ाइल आकार सीमा से अधिक है',
     errParseFailed: 'फ़ाइल पार्स करने में विफल',
+    errHtmlNoTable:
+      'यह फ़ाइल एक वेब पेज है, स्प्रेडशीट नहीं; आयात करने के लिए कोई तालिका नहीं मिली।',
     errImageNoText: 'छवि अनुलग्नक में टेक्स्ट नहीं होता; छवि उपयोगकर्ता संदेश के साथ भेजी जाती है',
     errNotImage: 'समर्थित छवि प्रकार नहीं है',
     errNoApiKey: '{provider} के लिए कोई API कुंजी कॉन्फ़िगर नहीं है',
@@ -1446,6 +1479,7 @@ const tMain = createI18n({
     errUnreadable: '無法讀取',
     errFileTooLarge: '檔案超過大小上限',
     errParseFailed: '檔案解析失敗',
+    errHtmlNoTable: '此檔案是網頁而非試算表，找不到可匯入的表格。',
     errImageNoText: '圖片附件不提供文字,已作為影像隨使用者訊息傳送,直接看圖即可',
     errNotImage: '不是支援的圖片類型',
     errNoApiKey: '未設定 {provider} 的 API Key',
@@ -5045,6 +5079,19 @@ function legacyCsvCharset(): string | undefined {
   return byLang[getUiLang()]
 }
 
+/// .xls open path: an HTML table export is read here, a real container goes to
+/// the sidecar. Excel sniffs content over the extension, which is why these
+/// mislabelled exports open there instead of being called broken files.
+async function convertLegacyImport(
+  client: XlsxSidecarClient,
+  path: string,
+  targetPath: string,
+): Promise<void> {
+  const conversion = await convertLegacyWorkbook(client, path, targetPath, legacyCsvCharset())
+  if (conversion === 'html-too-large') throw new Error(tm('errFileTooLarge'))
+  if (conversion === 'html-no-table') throw new Error(tm('errHtmlNoTable'))
+}
+
 /** a CFB container: an encrypted .xlsx/.xlsm, or any .xls */
 async function hasCfbHeader(path: string): Promise<boolean> {
   const handle = await open(path, 'r')
@@ -5195,7 +5242,7 @@ async function prepareWorkbookForOpen(
         `${basename(path).replace(/\.[^.]+$/, '')}-${randomUUID().slice(0, 8)}.xlsx`,
       )
       if (copyExtension === 'xls') {
-        await client.convertWorkbook({ path, targetPath: openPath })
+        await convertLegacyImport(client, path, openPath)
       } else {
         if ((await stat(path)).size > MAX_DELIMITED_IMPORT_BYTES) {
           throw new Error(tm('errFileTooLarge'))
@@ -5258,7 +5305,7 @@ async function prepareWorkbookForOpen(
       emptyCsv = converted.empty
       await writeFile(openPath, converted.buffer)
     } else {
-      await client.convertWorkbook({ path, targetPath: openPath })
+      await convertLegacyImport(client, path, openPath)
     }
   } catch (error) {
     await cleanupImportTempDirectory(app.getPath('temp'), directory)
