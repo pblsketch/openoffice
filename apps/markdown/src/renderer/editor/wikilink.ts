@@ -236,11 +236,12 @@ export const WikiLinkResolve = Extension.create<WikiLinkOptions>({
     let generation = 0
     /** what the last resolution asked for; a pause that asks the same thing again is not a new question */
     let asked = ''
-    // embed targets the browser refused to load. The resolver walks the whole
-    // vault, but the md-asset handler only serves files under an open
-    // document's own directory, so a picture in another folder resolves and
-    // then 403s. Remembering the refusal keeps the empty box from coming back
-    // on every repaint; the card is the honest rendering of that embed.
+    // embed targets the browser refused to load. The resolver walks the vault
+    // root and the md-asset handler serves under that same root, so a picture
+    // anywhere in the vault should load; a refusal remains possible (symlink
+    // escape, deleted file), and remembering it keeps the empty box from
+    // coming back on every repaint; the card is the honest rendering of that
+    // embed.
     const blockedPictures = new Set<string>()
 
     /** `repaint` re-answers an unchanged document: a refused picture has to be
@@ -295,11 +296,10 @@ export const WikiLinkResolve = Extension.create<WikiLinkOptions>({
         const found = answer?.found === true
         // a resolved picture swaps the literal for the image itself, so the
         // node also carries the class that hides its own text
-        // the resolver walks the whole vault, but the md-asset handler only
-        // serves files under an open document's own directory — a picture in
-        // another folder resolves here and then 403s, which would show an
-        // empty box. `blocked` holds the ones the browser refused, so the
-        // embed falls back to its card instead.
+        // the md-asset handler serves under the vault root the resolver walks;
+        // a picture that still fails (symlink escape, deleted file) 403s,
+        // which would show an empty box. `blocked` holds the ones the browser
+        // refused, so the embed falls back to its card instead.
         const picture = found && isImagePath(answer!.path) && !blocked.has(span.inner)
         embedDecorations.push(
           Decoration.node(span.from, span.to, {
