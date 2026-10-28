@@ -315,6 +315,9 @@ async function createXlsx(
     })
   }
   const tables = readTables(source, basename(source, extname(source)), { decimal })
+  for (const [index, table] of tables.entries()) {
+    validateTableRows(table.rows, `${source}: sheets[${index}].rows`)
+  }
   const [first, ...rest] = tables
   if (!first)
     throw new CliError(EXIT.usage, `${from}: no sheets`, undefined, { reason: 'invalid_argument' })
@@ -368,7 +371,14 @@ function readTables(
 ): TableInput[] {
   const sheetName = sheetNameFromStem(fallbackName)
   if (extname(source).toLowerCase() === '.csv') {
-    return [csvTable(readFileSync(source), sheetName, opts)]
+    const bytes = readFileSync(source)
+    try {
+      return [csvTable(bytes, sheetName, opts)]
+    } catch (err) {
+      throw new CliError(EXIT.usage, `${source}: ${errorMessage(err)}`, undefined, {
+        reason: 'invalid_argument',
+      })
+    }
   }
   let parsed: unknown
   try {
@@ -392,12 +402,48 @@ function readTables(
     )
   }
   return sheets.map((s, i) => {
-    const t = s as Partial<TableInput>
-    if (typeof t.name !== 'string' || !Array.isArray(t.rows)) {
-      throw new CliError(EXIT.usage, `${source}: sheets[${i}] needs "name" and "rows"`)
+    const t = s as Partial<TableInput> | null
+    if (
+      !t ||
+      typeof t !== 'object' ||
+      Array.isArray(t) ||
+      typeof t.name !== 'string' ||
+      !Array.isArray(t.rows)
+    ) {
+      throw new CliError(EXIT.usage, `${source}: sheets[${i}] needs "name" and "rows"`, undefined, {
+        reason: 'invalid_argument',
+      })
     }
     return { name: t.name, rows: t.rows }
   })
+}
+
+/** Validate every table before any workbook is written, including rows imported from CSV. */
+function validateTableRows(rows: unknown[], location: string): void {
+  const invalid = (message: string): never => {
+    throw new CliError(EXIT.usage, `${location}: ${message}`, undefined, {
+      reason: 'invalid_argument',
+    })
+  }
+  if (rows.length > 1_048_576) invalid('exceeds the worksheet limit of 1048576 rows')
+  for (const [rowIndex, row] of rows.entries()) {
+    if (!Array.isArray(row)) return invalid(`row ${rowIndex + 1} must be an array`)
+    if (row.length > 16_384) {
+      invalid(`row ${rowIndex + 1} exceeds the worksheet limit of 16384 columns (XFD)`)
+    }
+    for (const [columnIndex, value] of row.entries()) {
+      if (
+        value !== null &&
+        typeof value !== 'string' &&
+        typeof value !== 'boolean' &&
+        !(typeof value === 'number' && Number.isFinite(value))
+      ) {
+        invalid(
+          `cell ${columnLabel(columnIndex)}${rowIndex + 1} must be a string, finite number, boolean or null`,
+        )
+      }
+    }
+  }
 }
 
 async function createDocx(
