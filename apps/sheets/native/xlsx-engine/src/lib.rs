@@ -17,6 +17,7 @@ pub mod archive;
 pub mod convert;
 pub mod find;
 pub mod recalc;
+mod rels_normalize;
 mod richdata;
 mod shared_formulas;
 pub mod spreadsheetml;
