@@ -371,6 +371,8 @@ interface ExcelShellProps {
   readonly sheetTabActions: SheetTabActions | null
   /// Effective workbook structure lock (null = no file open).
   readonly onGetWorkbookProtection: () => boolean | null
+  /// Spelling preference echo (Review ▸ Proofing toggle; gates F7 / Spelling).
+  readonly spellcheckOn: boolean
   readonly formulaBarVisible: boolean
   /// Cross-highlight ("reading mode") of the active row/column, echoed by the View checkbox.
   readonly crossHighlightVisible: boolean
@@ -524,6 +526,7 @@ export function ExcelShell({
   onUnprotectSheet,
   sheetTabActions,
   onGetWorkbookProtection,
+  spellcheckOn,
   formulaBarVisible,
   crossHighlightVisible,
   onGetProtectedRanges,
@@ -989,6 +992,7 @@ export function ExcelShell({
           sheetHasContent={sheetHasContent}
           sheetProtected={onGetSheetProtection()?.protected ?? null}
           workbookProtected={onGetWorkbookProtection()}
+          spellcheckOn={spellcheckOn}
           formulaBarVisible={formulaBarVisible}
           crossHighlightVisible={crossHighlightVisible}
           pageLayout={pageLayout}
@@ -1966,6 +1970,7 @@ function Ribbon({
   sheetHasContent,
   sheetProtected,
   workbookProtected,
+  spellcheckOn,
   formulaBarVisible,
   crossHighlightVisible,
   pageLayout,
@@ -1988,6 +1993,8 @@ function Ribbon({
   readonly sheetHasContent: boolean
   readonly sheetProtected: boolean | null
   readonly workbookProtected: boolean | null
+  /// Spelling preference echo for the Review ▸ Proofing toggle.
+  readonly spellcheckOn: boolean
   /// View > Show echo for the formula bar toggle (app-level, not per sheet).
   readonly formulaBarVisible: boolean
   readonly crossHighlightVisible: boolean
@@ -3330,11 +3337,29 @@ function Ribbon({
         <RibbonGroup label={t('appGroupProofing')}>
           <RibbonButton
             large
+            label={t('appSpellTitle')}
+            detail={t('appSpellBtnDetail')}
+            symbol="✓"
+            onClick={() => onCommand('spell-check')}
+          />
+          <RibbonButton
+            large
             label={t('appWorkbookStatsLabel')}
             detail={t('appSheetsCellsFormulas')}
             symbol="🧮"
             onClick={() => onCommand('workbook-statistics')}
           />
+          <div className="row-stack">
+            <button
+              className="styles-row as-button"
+              aria-pressed={spellcheckOn}
+              data-tip={t('appSpellToggleTip')}
+              onClick={() => onCommand('spellcheck-toggle')}
+            >
+              <ToolSymbol symbol={spellcheckOn ? '✓' : '○'} />
+              {t('appSpellToggle')}
+            </button>
+          </div>
         </RibbonGroup>
         <RibbonGroup label={t('appGroupLanguage')}>
           <div className="ribbon-tool large" data-tip={t('appTranslateTitle')}>

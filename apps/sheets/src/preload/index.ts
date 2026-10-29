@@ -1,5 +1,5 @@
 import type { AiPanelPrefs } from '@genoffice/ui'
-import { contextBridge, ipcRenderer, webUtils } from 'electron'
+import { contextBridge, ipcRenderer, webFrame, webUtils } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
 import { outboundBridge } from '@genoffice/electron-utils/outbound-bridge'
 import { userSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
@@ -836,6 +836,18 @@ contextBridge.exposeInMainWorld('aiOfficeOutbound', outboundBridge())
 contextBridge.exposeInMainWorld(USER_SKILLS_BRIDGE_KEY, userSkillsBridge())
 // The shell's document picker, for this editor's AI attach button
 contextBridge.exposeInMainWorld(DOC_ATTACH_BRIDGE_KEY, docAttachBridge())
+
+// The frame's own spell engine (Chromium Hunspell / the OS dictionary): the
+// same checker docs' squiggles run on, batch-driven over sheet cell texts so
+// nothing leaves the machine for the F7 spelling dialog. webFrame consults
+// it only while the webContents' spellcheck is on — the Review ▸ Proofing
+// preference gates the dialog, and comment-box squiggles share the switch.
+contextBridge.exposeInMainWorld('nativeSpell', {
+  isWordMisspelled: (word: unknown): boolean =>
+    typeof word === 'string' ? webFrame.isWordMisspelled(word) : false,
+  getWordSuggestions: (word: unknown): string[] =>
+    typeof word === 'string' ? webFrame.getWordSuggestions(word) : [],
+})
 
 const projectApi: ProjectApi = {
   resolveChat: (args) => ipcRenderer.invoke('project:resolveChat', args),
