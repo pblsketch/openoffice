@@ -48,6 +48,8 @@ export const PDF_CHANNELS = {
   consumePending: 'pdf:consume-pending',
   readFile: 'pdf:read-file',
   save: 'pdf:save',
+  pickAttachmentFile: 'pdf:pick-attachment-file',
+  exportAttachment: 'pdf:export-attachment',
   requestRedactionCopy: 'pdf:request-redaction-copy',
   autoRename: 'pdf:auto-rename',
   isUntitled: 'pdf:is-untitled',
@@ -877,6 +879,19 @@ export interface BlankPageInput {
   height: number
 }
 
+/** An embedded file to add on the next save */
+export interface PdfAttachmentAdd {
+  name: string
+  bytesBase64: string
+  description?: string
+}
+
+/** Embedded-file edits for the next save: removals run first, then additions */
+export interface PdfAttachmentOps {
+  add?: PdfAttachmentAdd[]
+  remove?: string[]
+}
+
 export interface SavePdfRequest {
   path: string
   /**
@@ -936,6 +951,9 @@ export interface SavePdfRequest {
    * the writer cannot rebuild exactly make the save refuse the replacement
    * (the file's own /Outlines stay untouched). */
   outline?: OutlineEntryInput[]
+
+  /** Embedded-file edits, applied after every content stage */
+  attachments?: PdfAttachmentOps
 }
 
 /** One bookmark of a replacement outline; children nest one level deeper */
@@ -1552,6 +1570,22 @@ export interface PdfApi {
     path: string,
   ): Promise<
     { ok: true; name: string; pageCount: number; pages: string[] } | { ok: false; reason: string }
+  >
+  /** Ask for a file to embed (open dialog); the bytes come back base64-encoded */
+  pickAttachmentFile(): Promise<
+    | { ok: true; name: string; bytesBase64: string }
+    | { ok: false; cancelled: true }
+    | { ok: false; reason: string }
+  >
+  /** Save an embedded file's bytes to a user-chosen path (save dialog defaults to its name) */
+  exportAttachment(
+    path: string,
+    name: string,
+    bytesBase64: string,
+  ): Promise<
+    | { ok: true; targetPath: string }
+    | { ok: false; cancelled: true }
+    | { ok: false; reason: string }
   >
   /** Reduce file size: re-compress streams and downsample oversized Flate images.
       The picked save target (main-side dialog) receives the shrunk copy; the open

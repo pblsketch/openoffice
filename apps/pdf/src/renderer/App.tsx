@@ -141,6 +141,7 @@ import { LinkLayer } from './LinkLayer'
 import { OutlinePanel } from './OutlinePanel'
 import { ComparePanel } from './ComparePanel'
 import { compareDocuments, type CompareResult, type PageText } from './compare-text'
+import { AttachmentsPanel, type AttachmentRow } from './AttachmentsPanel'
 import type { OutlineNode } from './OutlinePanel'
 import {
   buildHeadingOutline,
@@ -583,7 +584,7 @@ export default function App() {
   useEffect(() => saveDefaultFit(defaultFit), [defaultFit])
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState('1')
-  const [sidebar, setSidebar] = useState<'thumbs' | 'outline' | 'notes' | 'compare' | null>(() =>
+  const [sidebar, setSidebar] = useState<'thumbs' | 'outline' | 'notes' | 'compare' | 'attachments' | null>(() =>
     loadSidebarOpen() ? 'thumbs' : null,
   )
   useEffect(() => saveSidebarOpen(sidebar !== null), [sidebar])
@@ -1121,6 +1122,13 @@ export default function App() {
   const [documentEncrypted, setDocumentEncrypted] = useState(false)
   /** opened from a crash-recovery copy and not saved since: unsaved with no pending edit */
   const [restoredUnsaved, setRestoredUnsaved] = useState(false)
+  /** embedded files as pdf.js reports them (filename → byte length) */
+  const [savedAttachments, setSavedAttachments] = useState<Map<string, number> | null>(null)
+  const [pendingAttachmentAdds, setPendingAttachmentAdds] = useState<
+    { name: string; bytesBase64: string }[]
+  >([])
+  const [pendingAttachmentRemoves, setPendingAttachmentRemoves] = useState<string[]>([])
+  const savedAttachmentBytesRef = useRef<Map<string, string>>(new Map())
   const [activeFormWidgetId, setActiveFormWidgetId] = useState<string | null>(null)
   const formControlRefs = useRef<Map<string, HTMLElement>>(new Map())
   const [formEdits, setFormEdits] = useState<Map<string, FormValueInput>>(new Map())
@@ -1465,6 +1473,9 @@ export default function App() {
       setFormHasXfa(hasXfaMarker(bytes))
       if (!saved) {
         setFormCatalog(null)
+        setSavedAttachments(null)
+        setPendingAttachmentAdds([])
+        setPendingAttachmentRemoves([])
         setSavedStaticFormFills([])
         setActiveFormWidgetId(null)
         formControlRefs.current.clear()
@@ -1530,6 +1541,30 @@ export default function App() {
         void loaded.loadingTask.destroy()
         throw err
       }
+      void loaded
+        .getAttachments()
+        .then(async (all) => {
+          const map = new Map<string, number>()
+          const bytes = new Map<string, string>()
+          for (const [name, file] of all ?? new Map()) {
+            // v6 ships metadata here and the bytes over getAttachmentContent(id)
+            const content = file.content ?? (await loaded.getAttachmentContent(name))
+            map.set(name, content?.byteLength ?? 0)
+            // String.fromCharCode spread chokes on huge files; chunks keep the stack flat
+            if (content) {
+              let text = ''
+              for (let i = 0; i < content.length; i += 0x8000) {
+                text += String.fromCharCode(...content.subarray(i, i + 0x8000))
+              }
+              bytes.set(name, window.btoa(text))
+            }
+          }
+          savedAttachmentBytesRef.current = bytes
+          setSavedAttachments(map)
+        })
+        .catch(() => setSavedAttachments(new Map()))
+      setPendingAttachmentAdds([])
+      setPendingAttachmentRemoves([])
       try {
         setFormCatalog(await buildFormCatalog(loaded))
       } catch {
@@ -2454,7 +2489,9 @@ export default function App() {
     order !== null ||
     metadata !== null ||
     restoredUnsaved ||
-    (pendingOutline?.edited ?? false)
+    (pendingOutline?.edited ?? false) ||
+    pendingAttachmentAdds.length > 0 ||
+    pendingAttachmentRemoves.length > 0
   // The pending OCR bake deliberately stays out of dirty: a scan the user only
   // opened to read must not show the modified marker, prompt on close or feed
   // the save-in-flight plumbing. The bake still rides the save request
@@ -4961,6 +4998,58 @@ export default function App() {
     }
   }
 
+  const attachmentRows = (): AttachmentRow[] => {
+    const rows: AttachmentRow[] = []
+    const saved = savedAttachments ?? new Map<string, number>()
+    for (const [name, bytes] of saved) {
+      if (pendingAttachmentRemoves.includes(name)) {
+        rows.push({ name, bytes, saved: true, removing: true })
+        continue
+      }
+      rows.push({ name, bytes, saved: true })
+    }
+    for (const add of pendingAttachmentAdds) {
+      if (!pendingAttachmentRemoves.includes(add.name)) {
+        rows.push({
+          name: add.name,
+          bytes: Math.floor((add.bytesBase64.length * 3) / 4),
+          saved: false,
+        })
+      }
+    }
+    return rows
+  }
+
+  const addAttachment = async () => {
+    const picked = await window.pdfApi.pickAttachmentFile()
+    if (!picked.ok) {
+      if (!('cancelled' in picked)) showNotice(picked.reason)
+      return
+    }
+    setPendingAttachmentAdds((prev) => [
+      ...prev,
+      { name: picked.name, bytesBase64: picked.bytesBase64 },
+    ])
+  }
+
+  const exportAttachment = async (row: AttachmentRow) => {
+    const base64 = savedAttachmentBytesRef.current.get(row.name)
+    if (!filePath || !base64) return
+    const outcome = await window.pdfApi.exportAttachment(filePath, row.name, base64)
+    if ('targetPath' in outcome) showNotice(t('attachmentsExported', { name: row.name }))
+    else if (!('cancelled' in outcome)) showNotice(outcome.reason)
+  }
+
+  const toggleAttachmentRemove = (row: AttachmentRow): void => {
+    if (!row.saved) {
+      setPendingAttachmentAdds((prev) => prev.filter((a) => a.name !== row.name))
+      return
+    }
+    setPendingAttachmentRemoves((prev) =>
+      prev.includes(row.name) ? prev.filter((n) => n !== row.name) : [...prev, row.name],
+    )
+  }
+
   /** Show a transient toast; the save-failure badge alone hides the actual reason */
   const showNoticeFor = (msg: string, ms: number) => {
     if (noticeTimerRef.current !== null) window.clearTimeout(noticeTimerRef.current)
@@ -5094,6 +5183,9 @@ export default function App() {
     ...(order ? { pageOrder: visList } : {}),
     ...(metadata ? { metadata } : {}),
     ...(pendingOutline?.edited && pendingOutline.tree ? { outline: pendingOutline.tree } : {}),
+    ...(pendingAttachmentAdds.length > 0 || pendingAttachmentRemoves.length > 0
+      ? { attachments: { add: pendingAttachmentAdds, remove: pendingAttachmentRemoves } }
+      : {}),
   })
 
   /** Resolved when the running save() lands; queued saves and Save As serialize behind it */
@@ -8789,6 +8881,28 @@ export default function App() {
           </span>
           <span>{t('compare')}</span>
         </button>
+        <button
+          className={`rb-big${sidebar === 'attachments' ? ' active' : ''}`}
+          disabled={status !== 'ready'}
+          onClick={() => setSidebar((v) => (v === 'attachments' ? null : 'attachments'))}
+        >
+          <span className="rb-big-icon">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M20 11.5 12.3 19.2 a4.6 4.6 0 0 1-6.5-6.5 L13.6 5 a3.1 3.1 0 0 1 4.4 4.4 L10.6 16.8 a1.6 1.6 0 0 1-2.2-2.2 L15 8" />
+            </svg>
+          </span>
+          <span>{t('attachments')}</span>
+        </button>
         {searchBtn}
         <button
           className={`rb-big${spread === 2 ? ' active' : ''}`}
@@ -10262,6 +10376,28 @@ export default function App() {
                     setCompareResult(null)
                   }}
                   onGoToPage={(pageNo) => scrollToPage(pageNo)}
+                />
+              </div>
+            )}
+            {sidebar === 'attachments' && (
+              <div className="pdf-thumbs" style={{ width: sidebarW }}>
+                <div className="pdf-outline-header">
+                  <span>{t('attachments')}</span>
+                  <button
+                    type="button"
+                    className="rb-icon"
+                    aria-label={t('aiCollapsePanel')}
+                    onClick={() => setSidebar(null)}
+                  >
+                    ×
+                  </button>
+                </div>
+                <AttachmentsPanel
+                  t={t}
+                  rows={attachmentRows()}
+                  onAdd={() => void addAttachment()}
+                  onExport={(row) => void exportAttachment(row)}
+                  onToggleRemove={toggleAttachmentRemove}
                 />
               </div>
             )}
