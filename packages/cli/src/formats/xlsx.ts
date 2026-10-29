@@ -497,7 +497,6 @@ export async function readSheet(path: string, opts: ReadOptions): Promise<SheetR
       }
     }
     const rangeLabel = `${columnLabel(bounds.startColumn)}${bounds.startRow + 1}:${columnLabel(bounds.endColumn)}${bounds.endRow + 1}`
-    const stats = opts.stats ? sheetStats(wb, meta, result, rows, formulas, rangeLabel) : undefined
     const rowsTotal = opts.range ? height : Math.max(meta.rowCount, height)
     const shownRows =
       opts.maxRows !== undefined && opts.maxRows < rows.length ? rows.slice(0, opts.maxRows) : rows
@@ -517,15 +516,17 @@ export async function readSheet(path: string, opts: ReadOptions): Promise<SheetR
     }
     const pick = <T>(byAddress: Record<string, T>): Record<string, T> =>
       Object.fromEntries(Object.entries(byAddress).filter(([k]) => inScope(k)))
+    const shownRange =
+      shownRows.length < rows.length
+        ? `${columnLabel(bounds.startColumn)}${bounds.startRow + 1}:${columnLabel(bounds.endColumn)}${lastRow + 1}`
+        : rangeLabel
+    const selectedRows = keptColumns
+      ? shownRows.map((r) => keptColumns.map((c) => r[c - bounds.startColumn] ?? null))
+      : shownRows
     const read: SheetRead = {
       sheet: meta.name,
-      range:
-        shownRows.length < rows.length
-          ? `${columnLabel(bounds.startColumn)}${bounds.startRow + 1}:${columnLabel(bounds.endColumn)}${lastRow + 1}`
-          : rangeLabel,
-      rows: keptColumns
-        ? shownRows.map((r) => keptColumns.map((c) => r[c - bounds.startColumn] ?? null))
-        : shownRows,
+      range: shownRange,
+      rows: selectedRows,
       formulas: pick(formulas),
       truncated: truncated || shownRows.length < rowsTotal,
       rowsShown: shownRows.length,
@@ -550,7 +551,8 @@ export async function readSheet(path: string, opts: ReadOptions): Promise<SheetR
       read.cells = cells
       read.matches = matches
     }
-    if (stats) read.stats = stats
+    if (opts.stats)
+      read.stats = sheetStats(wb, meta, result, selectedRows, pick(formulas), shownRange)
     if (opts.formats) {
       const formats: Record<string, CellFormat> = {}
       // xf 0 is the workbook default; a style only counts where it differs from it
