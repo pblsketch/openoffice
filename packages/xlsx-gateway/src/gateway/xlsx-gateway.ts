@@ -840,6 +840,8 @@ export async function planCellEditsToXlsx(
   tabColorStates: readonly SheetTabColorState[] = [],
   tableEdits: readonly SheetTableEdit[] = [],
   cellImageAdditions: readonly SheetCellImageAddition[] = [],
+  /// CLI-only opt-in: desktop saves must ignore values from sheets the user merely viewed.
+  options: { readonly refreshUntouchedSheets?: boolean } = {},
 ): Promise<MutationPlan> {
   // A pending pivot pins final coordinates for its source and output; shifts
   // on either sheet, and sheet renames (worksheetSource@sheet), would desync
@@ -954,6 +956,7 @@ export async function planCellEditsToXlsx(
     ...tabColorStates.map((state) => state.sheetName),
     ...pageSetupStates.map((state) => state.sheetName),
     ...protectedRangeStates.map((state) => state.sheetName),
+    ...(options.refreshUntouchedSheets ? formulaValues.map((sheet) => sheet.sheetName) : []),
   ])
   const worksheetXmls = new Map<string, string>()
   const worksheetPaths = new Map<string, string>()
@@ -1185,7 +1188,12 @@ export async function planCellEditsToXlsx(
         worksheetXml,
         groupFormulaValuesByCell(sheet.cells),
         (cellXml, rowNumber, column, value) =>
-          patchFormulaCachedValue(cellXml, toA1Address(rowNumber - 1, column), value),
+          patchFormulaCachedValue(
+            cellXml,
+            toA1Address(rowNumber - 1, column),
+            value,
+            options.refreshUntouchedSheets === true,
+          ),
         false,
       ),
     )
@@ -2373,6 +2381,7 @@ function patchFormulaCachedValue(
   worksheetXml: string,
   address: string,
   value: FormulaCachedValue,
+  refreshUntouchedSheets: boolean,
 ): string {
   // A self-closing <c/> has no formula to keep; it must match itself rather
   // than run on into the next cell.
@@ -2397,6 +2406,10 @@ function patchFormulaCachedValue(
   } else if (typeof value === 'object' && value !== null) {
     typeAttr = ' t="e"'
     valueXml = `<v>${escapeCellText(value.error)}</v>`
+  } else if (value === '' && refreshUntouchedSheets) {
+    // a formula that returns "" keeps its typed empty result, as Excel writes it
+    typeAttr = ' t="str"'
+    valueXml = '<v></v>'
   } else if (value !== null && value !== undefined && value !== '') {
     typeAttr = ' t="str"'
     valueXml = `<v>${escapeCellText(String(value))}</v>`

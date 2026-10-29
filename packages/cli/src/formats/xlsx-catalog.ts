@@ -130,6 +130,11 @@ const FOOTER = [
   'with their results; functions the engine lacks are left for Excel to compute on open (warning formulas_not_cached),',
   'and a formula the engine cannot parse is reported separately (warning formula_errors) so a bad reference is not',
   'mistaken for a missing function.',
+  'Value-changing writes (including tab order) also attempt scalar formula refreshes across sheets, in formula-only',
+  'batches of at most 20000 cells. Locale-dependent NUMBERSTRING/DOLLAR caches, array masters and spill followers',
+  'are preserved; ambiguous boolean/text results are preserved unless the file already types them as boolean.',
+  'The dependent_formulas_not_refreshed warning means some workbook formulas may remain stale. cached_values is',
+  'false whenever any relevant formula result could not be refreshed; Excel recalculates those results on open.',
 ]
 
 function opSchemas(): Map<string, JsonSchema> {
