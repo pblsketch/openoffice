@@ -8,6 +8,7 @@ publish = false
 [dependencies]
 base64 = "0.22.1"
 calamine = "0.37.0"
+cfb = "0.15"
 ironcalc = "0.9.1"
 quick-xml = { version = "0.38", features = ["encoding"] }
 roxmltree = "0.21.1"
