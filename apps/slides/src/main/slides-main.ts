@@ -25,6 +25,7 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { cleanupExpiredGeneratedPages } from './generated-page-temp'
+import { buildExportImagePaths } from './export-images'
 import { exportSlidesPdf } from './pdf-export'
 import { printSlidesHtml } from './print-window'
 import { shutdownSubscriptionChildren } from '@genoffice/ai-provider/subscription'
@@ -4981,13 +4982,10 @@ export function registerSlidesIpc(): void {
     'slides:export-images',
     async (_e, op: ExportImagesOp): Promise<ExportImagesResult> => {
       try {
-        // Zero-padding width follows the total page count (3 digits for ≥100 pages)
-        const pad = op.pngsBase64.length >= 100 ? 3 : 2
-        const paths: string[] = []
-        for (let i = 0; i < op.pngsBase64.length; i++) {
-          const p = join(op.dir, `${op.baseName}-${String(i + 1).padStart(pad, '0')}.png`)
-          await writeFile(p, Buffer.from(op.pngsBase64[i], 'base64'))
-          paths.push(p)
+        const ext = op.format === 'jpg' ? 'jpg' : 'png'
+        const paths = buildExportImagePaths(op.dir, op.baseName, op.pngsBase64.length, ext)
+        for (let i = 0; i < paths.length; i++) {
+          await writeFile(paths[i], Buffer.from(op.pngsBase64[i], 'base64'))
         }
         return { ok: true, paths }
       } catch (err) {
@@ -5462,6 +5460,7 @@ export function buildSlidesMenu(): Menu {
         // to export or print at all
         { label: tm('menuExportPdf'), click: () => send('export-pdf') },
         { label: tm('menuExportImages'), click: () => send('export-images') },
+        { label: tm('menuExportImagesJpg'), click: () => send('export-images-jpg') },
         { label: tm('menuPrint'), accelerator: 'CmdOrCtrl+P', click: () => send('print') },
         { type: 'separator' },
         // tab mode: the item closes the focused tab or window, never the app,
