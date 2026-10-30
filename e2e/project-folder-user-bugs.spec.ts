@@ -157,6 +157,8 @@ test.describe('project folder problems a first-time user hit', () => {
         { text: '첫 답' },
       ])
       await send(md, '첫 질문')
+      // the run is over and its reply recorded: the chat is in the project's list from now on
+      await expect(md.getByText('첫 답')).toBeVisible()
       const line = md.locator('.ai-project-event', { hasText: '회비는 2만 원' })
       await line.getByRole('button', { name: '지우기' }).click()
       await expect
@@ -166,11 +168,18 @@ test.describe('project folder problems a first-time user hit', () => {
       await expect(line).toContainText('기억 지움: 회비는 2만 원')
       await expect(line.getByRole('button', { name: '지우기' })).toHaveCount(0)
       const html = await openDoc(s, 'b.html', '://html/')
-      await html.locator('.ai-project-chat-menu button').first().click()
+      // the panel knows its project and has opened its own new chat (the chip is enabled once it has)
+      const chip = html.locator('.ai-project-chip')
+      await expect(chip).toContainText('P')
+      await expect(chip).toBeEnabled()
+      const chatButton = html.locator('.ai-project-chat-menu .ai-project-chat-button')
+      await chatButton.click()
       await html
         .locator('.ai-project-chat-menu .ai-project-list > *', { hasText: '첫 질문' })
         .first()
         .click()
+      // the pick took: the header names the chat (a failure here is the pick, not the messages)
+      await expect(chatButton).toContainText('첫 질문')
       await expect(html.getByText('첫 답')).toBeVisible()
       const other = html.locator('.ai-project-event', { hasText: '회비는 2만 원' })
       await shot(html, 'b03-removed-memory-line')
