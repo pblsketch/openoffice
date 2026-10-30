@@ -6875,8 +6875,8 @@ export default function App() {
     }
   }, [livePreviewRects, scale, pageGeom, rotDelta, filePath])
 
-  /** Export PNG: current page or all visible pages, 150dpi equivalent */
-  const exportImages = (allPages: boolean) =>
+  /** Export PNG or JPG: current page or all visible pages, 150dpi equivalent */
+  const exportImages = (allPages: boolean, format: 'png' | 'jpg' = 'png') =>
     flushThen(async () => {
       if (!doc || exporting) return
       setExporting(true)
@@ -6885,6 +6885,10 @@ export default function App() {
         const images: string[] = []
         const pageNumbers: number[] = []
         const canvas = document.createElement('canvas')
+        const encodePage = (cvs: HTMLCanvasElement) =>
+          format === 'jpg'
+            ? (cvs.toDataURL('image/jpeg', 0.92).split(',')[1] ?? '')
+            : (cvs.toDataURL('image/png').split(',')[1] ?? '')
         for (const origIdx of targets) {
           if (isBlankPage(origIdx)) {
             const d = dispSize(origIdx)
@@ -6895,7 +6899,7 @@ export default function App() {
               ctx2d.fillStyle = '#fff'
               ctx2d.fillRect(0, 0, canvas.width, canvas.height)
             }
-            images.push(canvas.toDataURL('image/png').split(',')[1] ?? '')
+            images.push(encodePage(canvas))
             pageNumbers.push(visList.indexOf(origIdx) + 1)
             continue
           }
@@ -6907,7 +6911,7 @@ export default function App() {
           canvas.width = Math.floor(viewport.width)
           canvas.height = Math.floor(viewport.height)
           await page.render({ canvas, viewport }).promise
-          images.push(canvas.toDataURL('image/png').split(',')[1] ?? '')
+          images.push(encodePage(canvas))
           pageNumbers.push(visList.indexOf(origIdx) + 1)
         }
         canvas.width = 0
@@ -6916,6 +6920,7 @@ export default function App() {
           images,
           pageNumbers,
           baseName: fileName.replace(/\.pdf$/i, ''),
+          format,
         })
         if (!result.ok) opFailed(result.error)
       } catch (err) {
@@ -9271,6 +9276,17 @@ export default function App() {
                     onCurrentPage={() => void exportImages(false)}
                     onEmbedded={exportPagePictures}
                   />
+                  <button
+                    className="rb-big"
+                    data-tip={t('exportImagesAllJpg')}
+                    disabled={exporting}
+                    onClick={() => void exportImages(true, 'jpg')}
+                  >
+                    <span className="rb-big-icon">
+                      <IconExportImg />
+                    </span>
+                    <span>{exporting ? t('exporting') : t('exportImagesJpg')}</span>
+                  </button>
                   <button
                     className="rb-big"
                     data-tip={t('propsTitle')}
