@@ -44,6 +44,7 @@ import { brandText, createI18n, getUiLang } from '@genoffice/i18n'
 import { generateImageTool, documentMediaRoots, withMediaCallSignal } from '@genoffice/ai-search'
 import { sharedSubscriptionStatuses } from '@genoffice/ai-provider/subscription'
 import { PDF_CHANNELS, PDF_TOOLS_HANDOFF, type PdfToolsHandoffTool } from '../shared/ipc'
+import { CertificateEncryptionError, WrongPasswordError, decryptDocument } from './pdf-crypt'
 import { buildExportImagePaths, hasValidExportPageNumbers } from './export-images'
 import type {
   ExportImagesRequest,
@@ -1476,6 +1477,30 @@ function registerPdfIpc(): void {
     return buf.byteOffset === 0 && buf.byteLength === buf.buffer.byteLength
       ? buf.buffer
       : buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
+  })
+
+  // pdf.js has already accepted `password` for these bytes on the render side;
+  // a failure here therefore means the standard handler refused it
+  ipcMain.handle(PDF_CHANNELS.decryptPdf, async (_e, bytes: unknown, password: unknown) => {
+    if (!(bytes instanceof Uint8Array) || typeof password !== 'string') {
+      return { ok: false as const, reason: 'pdf: malformed decrypt request' }
+    }
+    try {
+      const opened = await decryptDocument(bytes, password)
+      return {
+        ok: true as const,
+        bytes: opened.bytes,
+        permissions: opened.permissions,
+        neededPassword: opened.neededPassword,
+        unlockedAs: opened.unlockedAs,
+      }
+    } catch (err) {
+      if (err instanceof WrongPasswordError) return { ok: false as const, reason: 'wrong-password' }
+      if (err instanceof CertificateEncryptionError) {
+        return { ok: false as const, reason: 'certificate-encryption' }
+      }
+      return { ok: false as const, reason: err instanceof Error ? err.message : String(err) }
+    }
   })
 
   ipcMain.handle(
