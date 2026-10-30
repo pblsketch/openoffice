@@ -185,6 +185,37 @@ describe('the send gate', () => {
   })
 })
 
+describe('the subscription usage heads-up', () => {
+  // "83% used · resets at 5:10 PM" is long. Inside the composer footer it was
+  // squeezed between the token chip and the attach buttons and painted over
+  // them in a narrow panel, so it sits on its own row above the input card.
+  const PANELS: Record<string, string> = {
+    docs: 'apps/docs/src/renderer/ai/AiPanel.tsx',
+    sheets: 'apps/sheets/src/renderer/ai/AiChatPanel.tsx',
+    slides: 'apps/slides/src/renderer/ai/AiPanel.tsx',
+    pdf: 'apps/pdf/src/renderer/ai/AiPanel.tsx',
+    markdown: 'apps/markdown/src/renderer/ai/AiPanel.tsx',
+    html: 'apps/html/src/renderer/ai/AiPanel.tsx',
+    mindmap: 'apps/mindmap/src/renderer/ai/AiPanel.tsx',
+    hwp: 'apps/hwp/src/renderer/ai/AiPanel.tsx',
+    epub: 'apps/epub/src/renderer/ai/AiPanel.tsx',
+  }
+
+  it.each(Object.entries(PANELS))('%s: renders it above the input card', (_name, path) => {
+    const panel = source(path)
+    const usage = panel.indexOf('<AiSubscriptionUsageLine')
+    expect(usage, 'usage line').toBeGreaterThan(-1)
+    const card = Math.min(
+      ...['<AiComposer', '<div className="ai-input-box">']
+        .map((needle) => panel.indexOf(needle))
+        .filter((index) => index >= 0),
+    )
+    expect(Number.isFinite(card), 'composer card').toBe(true)
+    // anything inside AiComposer's footerStart comes after the composer opens
+    expect(usage, `${path}: usage line must precede the composer card`).toBeLessThan(card)
+  })
+})
+
 describe('reading subscription IPC answers', () => {
   const APPS = ['docs', 'sheets', 'slides', 'pdf', 'markdown', 'html', 'mindmap', 'hwp', 'shell']
 

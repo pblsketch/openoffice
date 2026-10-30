@@ -1331,6 +1331,9 @@ export function AiPanel({
           </div>
         )}
         {attachNotice && <div className="ai-attach-notice">{attachNotice}</div>}
+        {/* Above the input card, not inside its footer: the reset time is long and
+            would otherwise squeeze the attach/send buttons in a narrow panel. */}
+        <AiSubscriptionUsageLine usage={subscriptionUsage} lang={lang} />
         <AiComposer
           queueStrip={
             <AiQueueStrip
@@ -1401,7 +1404,6 @@ export function AiPanel({
                 subscriptionStatuses={statuses ?? {}}
                 onRefreshSubscriptions={subscription.refresh}
               />
-              <AiSubscriptionUsageLine usage={subscriptionUsage} lang={lang} />
               <button
                 type="button"
                 className="ai-attach-btn"
