@@ -268,4 +268,9 @@ export const pt = {
   appStatusSummaryZoomInserted: 'Slide de zoom de resumo inserido com {count} blocos',
   appSectionSummary: 'Seção de resumo',
   appSectionN: 'Seção {n}',
+  appStatusAnimPainterNone: 'O elemento selecionado não tem animações',
+  appStatusAnimPainterOnce:
+    'Clique no elemento ao qual aplicar as animações; clique duas vezes no botão para o modo contínuo',
+  appStatusAnimPainterContinuous: 'Modo contínuo do Pincel de Animação; pressione Esc para sair',
+  appStatusAnimPainted: 'Animações aplicadas',
 } satisfies Record<keyof typeof zh, string>

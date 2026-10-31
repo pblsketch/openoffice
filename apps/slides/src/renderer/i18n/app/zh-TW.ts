@@ -243,4 +243,8 @@ export const zhTW = {
   appStatusSummaryZoomInserted: '已插入摘要縮放頁（{count} 個縮圖）',
   appSectionSummary: '摘要節',
   appSectionN: '第 {n} 節',
+  appStatusAnimPainterNone: '所選元素沒有動畫',
+  appStatusAnimPainterOnce: '按一下要套用動畫的元素；按兩下按鈕進入連續模式',
+  appStatusAnimPainterContinuous: '連續複製動畫模式，按 Esc 離開',
+  appStatusAnimPainted: '已套用動畫',
 } satisfies Record<keyof typeof zh, string>

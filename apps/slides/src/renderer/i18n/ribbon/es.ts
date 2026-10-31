@@ -790,4 +790,23 @@ export const es = {
   ribbonZoomSectionItem: 'Diapositiva {n} Sección {k}: {name}',
   ribbonZoomSelectedSlides: '{n} diapositivas seleccionadas',
   ribbonZoomSelectedSections: '{n} secciones seleccionadas',
+  ribbonCaseSentence: 'Tipo oración.',
+  ribbonCaseLower: 'minúsculas',
+  ribbonCaseUpper: 'MAYÚSCULAS',
+  ribbonCaseTitle: 'Poner En Mayúsculas Cada Palabra',
+  ribbonCaseToggle: 'tIPO iNVERSO',
+  ribbonSameWidth: 'Mismo ancho',
+  ribbonSameHeight: 'Mismo alto',
+  ribbonSameSize: 'Mismo tamaño',
+  ribbonSameSizeTip: '{title}: igualar al primer elemento seleccionado',
+  ribbonSameSizeHint: '{title} (seleccione 2 o más elementos)',
+  ribbonSelectionPane: 'Panel de selección',
+  ribbonSelectionPaneTip:
+    'Mostrar u ocultar el panel de selección: todos los elementos de la diapositiva, de delante hacia atrás (Alt+F10)',
+  ribbonAnimPainter: 'Copiar animación',
+  ribbonAnimPainterTip:
+    'Copiar animación: copia las animaciones del elemento seleccionado en otro elemento (doble clic para seguir aplicándolas)',
+  ribbonAnimPainterTipOnce: 'Haga clic en el elemento al que desea aplicar las animaciones',
+  ribbonAnimPainterTipContinuous: 'Copiar animación en modo continuo (Esc para salir)',
+  ribbonEyedropper: 'Cuentagotas',
 } satisfies Record<keyof typeof zh, string>

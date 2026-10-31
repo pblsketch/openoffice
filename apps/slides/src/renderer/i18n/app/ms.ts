@@ -265,4 +265,9 @@ export const ms = {
   appStatusSummaryZoomInserted: 'Slaid Zum Ringkasan disisipkan dengan {count} jubin',
   appSectionSummary: 'Seksyen Ringkasan',
   appSectionN: 'Seksyen {n}',
+  appStatusAnimPainterNone: 'Elemen yang dipilih tiada animasi',
+  appStatusAnimPainterOnce:
+    'Klik elemen untuk menggunakan animasi tersebut; dwiklik butang untuk mod berterusan',
+  appStatusAnimPainterContinuous: 'Mod berterusan Penyalin Animasi; tekan Esc untuk keluar',
+  appStatusAnimPainted: 'Animasi digunakan',
 } satisfies Record<keyof typeof zh, string>

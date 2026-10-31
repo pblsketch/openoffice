@@ -267,4 +267,9 @@ export const es = {
   appStatusSummaryZoomInserted: 'Diapositiva de zoom de resumen insertada con {count} mosaicos',
   appSectionSummary: 'Sección de resumen',
   appSectionN: 'Sección {n}',
+  appStatusAnimPainterNone: 'El elemento seleccionado no tiene animaciones',
+  appStatusAnimPainterOnce:
+    'Haga clic en el elemento al que desea aplicar las animaciones; haga doble clic en el botón para el modo continuo',
+  appStatusAnimPainterContinuous: 'Modo continuo de Copiar animación; presione Esc para salir',
+  appStatusAnimPainted: 'Animaciones aplicadas',
 } satisfies Record<keyof typeof zh, string>

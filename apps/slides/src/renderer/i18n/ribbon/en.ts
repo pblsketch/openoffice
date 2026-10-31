@@ -765,4 +765,23 @@ export const en = {
   ribbonZoomSectionItem: 'Slide {n} Section {k}: {name}',
   ribbonZoomSelectedSlides: '{n} slides selected',
   ribbonZoomSelectedSections: '{n} sections selected',
+  ribbonCaseSentence: 'Sentence case.',
+  ribbonCaseLower: 'lowercase',
+  ribbonCaseUpper: 'UPPERCASE',
+  ribbonCaseTitle: 'Capitalize Each Word',
+  ribbonCaseToggle: 'tOGGLE cASE',
+  ribbonSameWidth: 'Same Width',
+  ribbonSameHeight: 'Same Height',
+  ribbonSameSize: 'Same Size',
+  ribbonSameSizeTip: '{title}: match the first selected element',
+  ribbonSameSizeHint: '{title} (select 2 or more elements)',
+  ribbonSelectionPane: 'Selection Pane',
+  ribbonSelectionPaneTip:
+    'Show/hide the Selection Pane: every element on the slide, front to back (Alt+F10)',
+  ribbonAnimPainter: 'Animation Painter',
+  ribbonAnimPainterTip:
+    "Animation Painter: copy the selected element's animations onto another element (double-click to keep applying)",
+  ribbonAnimPainterTipOnce: 'Click the element to apply the animations to',
+  ribbonAnimPainterTipContinuous: 'Continuous Animation Painter mode (press Esc to exit)',
+  ribbonEyedropper: 'Eyedropper',
 } satisfies Record<keyof typeof zh, string>

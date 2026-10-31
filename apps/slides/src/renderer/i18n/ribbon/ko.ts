@@ -782,4 +782,23 @@ export const ko = {
   ribbonZoomSectionItem: '슬라이드 {n} 구역 {k}: {name}',
   ribbonZoomSelectedSlides: '슬라이드 {n}개 선택됨',
   ribbonZoomSelectedSections: '구역 {n}개 선택됨',
+  ribbonCaseSentence: '문장의 첫 글자를 대문자로.',
+  ribbonCaseLower: '모두 소문자로',
+  ribbonCaseUpper: '모두 대문자로',
+  ribbonCaseTitle: '각 단어를 대문자로',
+  ribbonCaseToggle: '대/소문자 전환',
+  ribbonSameWidth: '같은 너비로',
+  ribbonSameHeight: '같은 높이로',
+  ribbonSameSize: '같은 크기로',
+  ribbonSameSizeTip: '{title}: 처음 선택한 요소에 맞춥니다',
+  ribbonSameSizeHint: '{title}(요소를 2개 이상 선택해야 함)',
+  ribbonSelectionPane: '선택 창',
+  ribbonSelectionPaneTip:
+    '선택 창 표시/숨기기: 슬라이드의 모든 요소를 앞에서부터 나열합니다(Alt+F10)',
+  ribbonAnimPainter: '애니메이션 복사',
+  ribbonAnimPainterTip:
+    '애니메이션 복사: 선택한 요소의 애니메이션을 다른 요소에 그대로 적용합니다(두 번 클릭하면 여러 요소에 계속 적용)',
+  ribbonAnimPainterTipOnce: '적용할 요소를 클릭하세요',
+  ribbonAnimPainterTipContinuous: '애니메이션 복사 연속 모드(Esc 키로 종료)',
+  ribbonEyedropper: '스포이트',
 } satisfies Record<keyof typeof zh, string>

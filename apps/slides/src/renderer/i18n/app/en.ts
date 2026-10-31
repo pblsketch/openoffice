@@ -256,4 +256,9 @@ export const en = {
   appStatusSummaryZoomInserted: 'Summary Zoom slide inserted with {count} tiles',
   appSectionSummary: 'Summary Section',
   appSectionN: 'Section {n}',
+  appStatusAnimPainterNone: 'The selected element has no animations',
+  appStatusAnimPainterOnce:
+    'Click the element to apply the animations to; double-click the button for continuous mode',
+  appStatusAnimPainterContinuous: 'Continuous Animation Painter mode; press Esc to exit',
+  appStatusAnimPainted: 'Animations applied',
 } satisfies Record<keyof typeof zh, string>

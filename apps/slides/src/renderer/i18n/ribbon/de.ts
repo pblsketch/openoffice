@@ -785,4 +785,24 @@ export const de = {
   ribbonZoomSectionItem: 'Folie {n} Abschnitt {k}: {name}',
   ribbonZoomSelectedSlides: '{n} Folien ausgewählt',
   ribbonZoomSelectedSections: '{n} Abschnitte ausgewählt',
+  ribbonCaseSentence: 'Satzanfang groß.',
+  ribbonCaseLower: 'kleinbuchstaben',
+  ribbonCaseUpper: 'GROSSBUCHSTABEN',
+  ribbonCaseTitle: 'Ersten Buchstaben Im Wort Großschreiben',
+  ribbonCaseToggle: 'gROSS-/kLEINSCHREIBUNG UMKEHREN',
+  ribbonSameWidth: 'Gleiche Breite',
+  ribbonSameHeight: 'Gleiche Höhe',
+  ribbonSameSize: 'Gleiche Größe',
+  ribbonSameSizeTip: '{title}: an das zuerst ausgewählte Element anpassen',
+  ribbonSameSizeHint: '{title} (mindestens 2 Elemente auswählen)',
+  ribbonSelectionPane: 'Auswahlbereich',
+  ribbonSelectionPaneTip:
+    'Auswahlbereich ein-/ausblenden: alle Elemente der Folie von vorne nach hinten (Alt+F10)',
+  ribbonAnimPainter: 'Animation übertragen',
+  ribbonAnimPainterTip:
+    'Animation übertragen: die Animationen des ausgewählten Elements auf ein anderes Element kopieren (Doppelklick zum wiederholten Anwenden)',
+  ribbonAnimPainterTipOnce:
+    'Klicken Sie auf das Element, auf das die Animationen angewendet werden sollen',
+  ribbonAnimPainterTipContinuous: 'Animation übertragen – Dauermodus (Esc zum Beenden)',
+  ribbonEyedropper: 'Pipette',
 } satisfies Record<keyof typeof zh, string>

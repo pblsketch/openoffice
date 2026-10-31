@@ -779,4 +779,23 @@ export const pt = {
   ribbonZoomSectionItem: 'Slide {n} Seção {k}: {name}',
   ribbonZoomSelectedSlides: '{n} slides selecionados',
   ribbonZoomSelectedSections: '{n} seções selecionadas',
+  ribbonCaseSentence: 'Primeira letra da frase em maiúscula.',
+  ribbonCaseLower: 'minúsculas',
+  ribbonCaseUpper: 'MAIÚSCULAS',
+  ribbonCaseTitle: 'Colocar Cada Palavra em Maiúscula',
+  ribbonCaseToggle: 'aLTERNAR mAIÚSC./mINÚSC.',
+  ribbonSameWidth: 'Mesma Largura',
+  ribbonSameHeight: 'Mesma Altura',
+  ribbonSameSize: 'Mesmo Tamanho',
+  ribbonSameSizeTip: '{title}: igualar ao primeiro elemento selecionado',
+  ribbonSameSizeHint: '{title} (selecione 2 ou mais elementos)',
+  ribbonSelectionPane: 'Painel de Seleção',
+  ribbonSelectionPaneTip:
+    'Mostrar/ocultar o Painel de Seleção: todos os elementos do slide, da frente para trás (Alt+F10)',
+  ribbonAnimPainter: 'Pincel de Animação',
+  ribbonAnimPainterTip:
+    'Pincel de Animação: copia as animações do elemento selecionado para outro elemento (clique duas vezes para continuar aplicando)',
+  ribbonAnimPainterTipOnce: 'Clique no elemento ao qual aplicar as animações',
+  ribbonAnimPainterTipContinuous: 'Pincel de Animação em modo contínuo (pressione Esc para sair)',
+  ribbonEyedropper: 'Conta-gotas',
 } satisfies Record<keyof typeof zh, string>

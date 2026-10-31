@@ -10,12 +10,12 @@ import { mergeSlideUpdate } from '../shared/slide-update'
 import { FIT_WIDTH } from './app-constants'
 import { renderSlidesToPngBase64 } from './export-render'
 import { renderSelectionToPngBase64 } from './selection-image'
-import {
-  extractBrushFormat,
-  computeBrushApply,
-  buildEditParagraphsWithFormat,
-} from './format-brush'
+import type { RenderSlide } from '@genoffice/pptx-render'
+import { extractBrushFormat, computeBrushApply, type BrushFormat } from './format-brush'
+import { batched } from './history-batch'
 import { t } from './i18n/locale'
+import { rememberRepeat } from './repeat-action'
+import { applySelectionRunFormat, selectionRunFormat } from './TextEditOverlay'
 
 export async function deleteSelected(ctx: ActionCtx): Promise<void> {
   if (ctx.selectedIds.length) {
@@ -219,6 +219,8 @@ export async function duplicateSelected(
   dyPx = 16,
 ): Promise<void> {
   if (!ids.length) return
+  // F4 repeats with the same offset (a drag copy then F4 steps out a row of copies)
+  rememberRepeat((c) => duplicateSelected(c, c.selectedIds, dxPx, dyPx))
   const r = await window.slidesApi.duplicateElements({
     slideIndex: ctx.current,
     sourceIds: ids,
@@ -234,12 +236,98 @@ export async function duplicateSelected(
 
 // ── Format painter operations ───────────────────────────────────────────────
 
+/**
+ * What the painter picks up: while editing with text selected, the character format of
+ * that text (PowerPoint copies the selection's format, not the box's); otherwise the
+ * format of the single selected element. null when nothing paintable is selected.
+ */
+function selectedFormat(ctx: ActionCtx): BrushFormat | null {
+  if (ctx.editing || ctx.editingCell) {
+    const run = selectionRunFormat()
+    if (run) {
+      return {
+        sourceType: 'text',
+        run: {
+          ...(run.fontFamily ? { fontFamily: run.fontFamily } : {}),
+          ...(run.fontSizePt ? { fontSize: run.fontSizePt } : {}),
+          bold: run.bold,
+          italic: run.italic,
+          underline: run.underline,
+          strike: run.strike,
+          ...(run.color ? { color: run.color } : {}),
+        },
+      }
+    }
+  }
+  if (ctx.selectedIds.length !== 1 || !ctx.slide) return null
+  const node = ctx.findNodeCtx(ctx.selectedIds[0]!)?.node
+  return node ? extractBrushFormat(node, ctx.slide.scale) : null
+}
+
+/**
+ * Paint fmt onto the given elements as one undo step. Group children go through their
+ * group; effects have no in-group path, so a group child keeps its own effects.
+ */
+async function paintElements(ctx: ActionCtx, fmt: BrushFormat, ids: string[]): Promise<void> {
+  const slideIndex = ctx.current
+  const api = window.slidesApi
+  let last: RenderSlide | null = null
+  const keep = (r: RenderSlide | null) => {
+    if (r) last = r
+  }
+  await batched(async () => {
+    for (const id of ids) {
+      const found = ctx.findNodeCtx(id)
+      if (!found) continue
+      const plan = computeBrushApply(fmt, found.node)
+      const g = found.groupId ? { groupId: found.groupId } : {}
+      if (plan.fill !== undefined) {
+        keep(await api.editFill({ slideIndex, sourceId: id, fill: plan.fill, ...g }))
+      }
+      if (plan.stroke !== undefined) {
+        keep(await api.editStroke({ slideIndex, sourceId: id, stroke: plan.stroke, ...g }))
+      }
+      if (plan.effects && !found.groupId) {
+        keep(await api.setEffects({ slideIndex, sourceId: id, effects: plan.effects }))
+      }
+      if (plan.runFormat) {
+        const r = plan.runFormat
+        keep(
+          await api.setElementFont({
+            slideIndex,
+            sourceIds: [id],
+            ...(r.fontFamily ? { fontFamily: r.fontFamily } : {}),
+            ...(r.fontSize ? { fontSizePt: r.fontSize } : {}),
+            bold: !!r.bold,
+            italic: !!r.italic,
+            underline: !!r.underline,
+            strike: !!r.strike,
+            ...(r.color ? { color: r.color.slice(0, 7) } : {}),
+            ...g,
+          }),
+        )
+      }
+      if (plan.align) {
+        keep(
+          await api.setElementParagraphFormat({
+            slideIndex,
+            sourceIds: [id],
+            align: plan.align,
+            ...g,
+          }),
+        )
+      }
+    }
+  })
+  if (last) {
+    ctx.applySlide(slideIndex, last)
+    ctx.setDirty(true)
+  }
+}
+
 /** ⌘⇧C: copy the selected single element's format to the clipboard (without entering paste mode) */
 export function copyFormat(ctx: ActionCtx): void {
-  if (ctx.selectedIds.length !== 1 || !ctx.slide) return
-  const node = ctx.slide.nodes.find((n) => n.sourceId === ctx.selectedIds[0])
-  if (!node) return
-  const fmt = extractBrushFormat(node)
+  const fmt = selectedFormat(ctx)
   if (fmt) {
     ctx.setBrushFormat(fmt)
     ctx.setStatus(t('appStatusFormatCopied'))
@@ -248,59 +336,16 @@ export function copyFormat(ctx: ActionCtx): void {
 
 /** ⌘⇧V: paste format onto selected elements (format must have been copied first) */
 export async function pasteFormat(ctx: ActionCtx): Promise<void> {
-  if (!ctx.brushFormat || ctx.selectedIds.length === 0 || !ctx.slide) return
-  for (const id of ctx.selectedIds) {
-    const node = ctx.slide.nodes.find((n) => n.sourceId === id)
-    if (!node) continue
-    const plan = computeBrushApply(ctx.brushFormat, node)
-    // Apply fill
-    if (plan.fillColor !== undefined) {
-      await window.slidesApi.editFill({
-        slideIndex: ctx.current,
-        sourceId: id,
-        fill: plan.fillColor,
-      })
-    }
-    // Apply stroke
-    if (plan.stroke !== undefined) {
-      await window.slidesApi.editStroke({
-        slideIndex: ctx.current,
-        sourceId: id,
-        stroke: plan.stroke,
-      })
-    }
-    // Apply text format (runs + alignment)
-    if ((plan.runFormat || plan.align) && (node.type === 'shape' || node.type === 'text')) {
-      const paras = buildEditParagraphsWithFormat(node, plan.runFormat, plan.align)
-      if (paras) {
-        const updated = await window.slidesApi.editText({
-          slideIndex: ctx.current,
-          sourceId: id,
-          paragraphs: paras,
-        })
-        if (updated) ctx.applySlide(ctx.current, updated)
-      }
-    } else if (plan.fillColor !== undefined || plan.stroke !== undefined) {
-      // fill/stroke were applied; re-render to get the latest page
-      const updated = await window.slidesApi.editFill({
-        slideIndex: ctx.current,
-        sourceId: id,
-        fill: plan.fillColor ?? 'none',
-      })
-      if (updated) ctx.applySlide(ctx.current, updated)
-    }
-  }
-  // Fetch the latest page again
-  // (each operation above already called applySlide; pull once more at the end to be sure it's fresh)
+  const fmt = ctx.brushFormat
+  if (!fmt || ctx.selectedIds.length === 0 || !ctx.slide) return
+  rememberRepeat((c) => paintElements(c, fmt, c.selectedIds))
+  await paintElements(ctx, fmt, ctx.selectedIds)
   ctx.setStatus(t('appStatusFormatPasted'))
 }
 
 /** Format painter button single click: copy current format + enter single-paste mode */
 export function onFormatBrushClick(ctx: ActionCtx): void {
-  if (ctx.selectedIds.length !== 1 || !ctx.slide) return
-  const node = ctx.slide.nodes.find((n) => n.sourceId === ctx.selectedIds[0])
-  if (!node) return
-  const fmt = extractBrushFormat(node)
+  const fmt = selectedFormat(ctx)
   if (!fmt) return
   ctx.setBrushFormat(fmt)
   ctx.setBrushMode('once')
@@ -309,50 +354,42 @@ export function onFormatBrushClick(ctx: ActionCtx): void {
 
 /** Format painter button double click: enter continuous mode */
 export function onFormatBrushDoubleClick(ctx: ActionCtx): void {
-  if (ctx.selectedIds.length !== 1 || !ctx.slide) return
-  const node = ctx.slide.nodes.find((n) => n.sourceId === ctx.selectedIds[0])
-  if (!node) return
-  const fmt = extractBrushFormat(node)
+  const fmt = selectedFormat(ctx)
   if (!fmt) return
   ctx.setBrushFormat(fmt)
   ctx.setBrushMode('continuous')
   ctx.setStatus(t('appStatusBrushContinuous'))
 }
 
+/**
+ * Painter armed while editing: a finished text selection takes the copied character
+ * format. Returns whether it painted.
+ */
+export function applyBrushToTextSelection(ctx: ActionCtx): boolean {
+  const run = ctx.brushFormat?.run
+  if (!run || !(ctx.editing || ctx.editingCell)) return false
+  const painted = applySelectionRunFormat({
+    ...(run.fontFamily ? { fontFamily: run.fontFamily } : {}),
+    ...(run.fontSize ? { fontSizePt: run.fontSize } : {}),
+    bold: !!run.bold,
+    italic: !!run.italic,
+    underline: !!run.underline,
+    strike: !!run.strike,
+    ...(run.color ? { color: run.color.slice(0, 7) } : {}),
+  })
+  if (painted && ctx.brushMode === 'once') {
+    ctx.setBrushMode(null)
+    ctx.setStatus(t('appStatusFormatApplied'))
+  }
+  return painted
+}
+
 /** Apply format when an element is clicked in format painter mode */
 export async function applyBrushToElement(ctx: ActionCtx, targetId: string): Promise<void> {
-  if (!ctx.brushFormat || !ctx.slide) return
-  const node = ctx.slide.nodes.find((n) => n.sourceId === targetId)
-  if (!node) return
-  const plan = computeBrushApply(ctx.brushFormat, node)
-
-  if (plan.fillColor !== undefined) {
-    const updated = await window.slidesApi.editFill({
-      slideIndex: ctx.current,
-      sourceId: targetId,
-      fill: plan.fillColor,
-    })
-    if (updated) ctx.applySlide(ctx.current, updated)
-  }
-  if (plan.stroke !== undefined) {
-    const updated = await window.slidesApi.editStroke({
-      slideIndex: ctx.current,
-      sourceId: targetId,
-      stroke: plan.stroke,
-    })
-    if (updated) ctx.applySlide(ctx.current, updated)
-  }
-  if ((plan.runFormat || plan.align) && (node.type === 'shape' || node.type === 'text')) {
-    const paras = buildEditParagraphsWithFormat(node, plan.runFormat, plan.align)
-    if (paras) {
-      const updated = await window.slidesApi.editText({
-        slideIndex: ctx.current,
-        sourceId: targetId,
-        paragraphs: paras,
-      })
-      if (updated) ctx.applySlide(ctx.current, updated)
-    }
-  }
+  const fmt = ctx.brushFormat
+  if (!fmt || !ctx.slide) return
+  rememberRepeat((c) => paintElements(c, fmt, c.selectedIds))
+  await paintElements(ctx, fmt, [targetId])
 
   if (ctx.brushMode === 'once') {
     ctx.setBrushMode(null)

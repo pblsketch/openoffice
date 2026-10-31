@@ -777,4 +777,23 @@ export const ru = {
   ribbonZoomSectionItem: 'Слайд {n} Раздел {k}: {name}',
   ribbonZoomSelectedSlides: 'Выбрано слайдов: {n}',
   ribbonZoomSelectedSections: 'Выбрано разделов: {n}',
+  ribbonCaseSentence: 'Как в предложениях.',
+  ribbonCaseLower: 'все строчные',
+  ribbonCaseUpper: 'ВСЕ ПРОПИСНЫЕ',
+  ribbonCaseTitle: 'Начинать С Прописных',
+  ribbonCaseToggle: 'иЗМЕНИТЬ рЕГИСТР',
+  ribbonSameWidth: 'Одинаковая ширина',
+  ribbonSameHeight: 'Одинаковая высота',
+  ribbonSameSize: 'Одинаковый размер',
+  ribbonSameSizeTip: '{title}: по первому выделенному элементу',
+  ribbonSameSizeHint: '{title} (выделите не менее 2 элементов)',
+  ribbonSelectionPane: 'Область выделения',
+  ribbonSelectionPaneTip:
+    'Показать/скрыть область выделения: все элементы слайда от переднего к заднему (Alt+F10)',
+  ribbonAnimPainter: 'Анимация по образцу',
+  ribbonAnimPainterTip:
+    'Анимация по образцу: перенести анимацию выделенного элемента на другой элемент (двойной щелчок — применять многократно)',
+  ribbonAnimPainterTipOnce: 'Щелкните элемент, к которому нужно применить анимацию',
+  ribbonAnimPainterTipContinuous: 'Анимация по образцу, непрерывный режим (Esc — выход)',
+  ribbonEyedropper: 'Пипетка',
 } satisfies Record<keyof typeof zh, string>

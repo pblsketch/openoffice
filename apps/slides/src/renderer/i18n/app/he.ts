@@ -249,4 +249,8 @@ export const he = {
   appStatusSummaryZoomInserted: 'הוזנה שקופית זום סיכום עם {count} אריחים',
   appSectionSummary: 'מקטע סיכום',
   appSectionN: 'מקטע {n}',
+  appStatusAnimPainterNone: 'לרכיב שנבחר אין הנפשות',
+  appStatusAnimPainterOnce: 'לחץ על הרכיב שעליו יש להחיל את ההנפשות; לחץ פעמיים על הלחצן למצב רציף',
+  appStatusAnimPainterContinuous: 'מצב רציף של מברשת ההנפשה; הקש Esc ליציאה',
+  appStatusAnimPainted: 'ההנפשות הוחלו',
 } satisfies Record<keyof typeof zh, string>

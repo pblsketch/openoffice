@@ -88,6 +88,14 @@ export interface EditPointsState {
   dragging?: boolean
 }
 
+export interface AnimPainterState {
+  /** Slide the animations were copied from (sourceIds are per slide) */
+  slideIndex: number
+  sourceId: string
+  items: AnimationItem[]
+  mode: 'once' | 'continuous'
+}
+
 export interface CutoutTargetState {
   sourceId: string
   dataUrl: string
@@ -190,6 +198,11 @@ export interface ActionCtx {
   // Animations / transition
   animations: AnimationItem[]
   setAnimations: Set<AnimationItem[]>
+  /** Animation painter: the copied animations of sourceId, armed for one or many targets */
+  animPainter: AnimPainterState | null
+  setAnimPainter: Set<AnimPainterState | null>
+  /** Show/hide the selection pane (Alt+F10) */
+  toggleSelectionPane: () => void
   selAnim: number
   setSelAnim: Set<number>
   setHoverAnim: Set<{ nonce: number; items: AnimationItem[] } | null>

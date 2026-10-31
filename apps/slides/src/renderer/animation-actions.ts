@@ -164,3 +164,82 @@ export function deleteAnimation(ctx: ActionCtx, idx: number): void {
     ctx.animations.filter((_, i) => i !== idx),
   )
 }
+
+/**
+ * The animations the painter lays onto target: source effects in order, with sourceId
+ * moved to the target. A by-paragraph effect (a run of items with the same effect and
+ * consecutive paragraph numbers) is spread over the target's own paragraphs — a target
+ * without text gets it once for the whole shape. Media commands only reach media targets.
+ * Pure function, exported for tests.
+ */
+export function paintedAnimations(
+  source: AnimationItem[],
+  targetId: string,
+  targetParas: number,
+  targetIsMedia: boolean,
+): AnimationItem[] {
+  const out: AnimationItem[] = []
+  const media = new Set<AnimEffectKind>(['mediaPlay', 'mediaPause', 'mediaStop'])
+  let i = 0
+  while (i < source.length) {
+    const first = source[i]!
+    if (first.paragraph == null) {
+      if (!media.has(first.effect) || targetIsMedia) out.push({ ...first, sourceId: targetId })
+      i++
+      continue
+    }
+    const group = [first]
+    while (
+      i + group.length < source.length &&
+      source[i + group.length]!.effect === first.effect &&
+      source[i + group.length]!.paragraph === first.paragraph + group.length
+    ) {
+      group.push(source[i + group.length]!)
+    }
+    i += group.length
+    if (targetParas <= 0) {
+      const { paragraph: _p, ...whole } = first
+      out.push({ ...whole, sourceId: targetId })
+      continue
+    }
+    for (let p = 0; p < targetParas; p++) {
+      const tpl = group[Math.min(p, group.length - 1)]!
+      out.push({ ...tpl, sourceId: targetId, paragraph: p })
+    }
+  }
+  return out
+}
+
+/** Animation painter button: copy the selected element's animations (once = one target, continuous = until Esc). */
+export function armAnimPainter(ctx: ActionCtx, mode: 'once' | 'continuous'): void {
+  if (ctx.selectedIds.length !== 1) return
+  const src = ctx.selectedIds[0]!
+  const items = ctx.animations.filter((a) => a.sourceId === src)
+  if (!items.length) {
+    ctx.setStatus(t('appStatusAnimPainterNone'))
+    return
+  }
+  ctx.setAnimPainter({ slideIndex: ctx.current, sourceId: src, items, mode })
+  ctx.setStatus(t(mode === 'once' ? 'appStatusAnimPainterOnce' : 'appStatusAnimPainterContinuous'))
+}
+
+/** Painter click on an element: replace its animations with the copied ones, appended to the end of the sequence (PowerPoint). */
+export async function paintAnimationsOnto(ctx: ActionCtx, targetId: string): Promise<void> {
+  const painter = ctx.animPainter
+  if (!painter) return
+  if (painter.slideIndex === ctx.current && targetId === painter.sourceId) return
+  const node = ctx.findNodeCtx(targetId)?.node
+  if (!node) return
+  const copies = paintedAnimations(
+    painter.items,
+    targetId,
+    paraCountOf(ctx, targetId),
+    node.type === 'picture' && !!node.media,
+  )
+  if (!copies.length) return
+  await commitAnimations(ctx, [...ctx.animations.filter((a) => a.sourceId !== targetId), ...copies])
+  if (painter.mode === 'once') {
+    ctx.setAnimPainter(null)
+    ctx.setStatus(t('appStatusAnimPainted'))
+  }
+}

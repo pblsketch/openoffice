@@ -223,6 +223,8 @@ export {
   type ColorPickerProps,
   type ColorPickerStrings,
   type ColorSwatch,
+  canPickScreenColor,
+  pickScreenColor,
 } from './color-picker'
 export { installScreenTips } from './screentip'
 export {

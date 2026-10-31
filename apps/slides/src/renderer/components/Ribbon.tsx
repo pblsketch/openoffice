@@ -20,6 +20,8 @@ import {
   THEME_COLORS,
   THEME_COLOR_SHADES,
   STANDARD_COLORS,
+  canPickScreenColor,
+  pickScreenColor,
 } from '@genoffice/ui'
 import { getRecentColors, pushRecentColor } from '../recent-colors'
 import { ICON_COLORS } from '../insert-presets'
@@ -55,6 +57,7 @@ import {
   IconSave,
   IconSetupShow,
   IconSparkle,
+  IconAnimPainter,
   IconUndo,
   IconFitWindow,
   IconZoom100,
@@ -964,6 +967,19 @@ function ShapeFillMenu({
             }}
           />
         </label>
+        {canPickScreenColor() && (
+          <button
+            type="button"
+            className="rbf-row"
+            onClick={() => {
+              void pickScreenColor().then((hex) => {
+                if (hex) pickHex(hex)
+              })
+            }}
+          >
+            {t('ribbonEyedropper')}
+          </button>
+        )}
         {onPickImage && (
           <button
             type="button"
@@ -1185,6 +1201,9 @@ export function Ribbon({
   onAnimTiming,
   animPaneOpen,
   onToggleAnimPane,
+  animPainterMode,
+  onAnimPainterClick,
+  onAnimPainterDoubleClick,
   animCount,
   onAnimPreview,
   onSlideShow,
@@ -1261,6 +1280,10 @@ export function Ribbon({
   onArrange,
   onFlip,
   canDistribute,
+  canMatchSize,
+  onChangeCase,
+  selectionPaneOpen,
+  onToggleSelectionPane,
 }: Props) {
   const { t } = useI18n()
   const contextTab = contextTabForElement(contextElementType ?? null)
@@ -1322,6 +1345,7 @@ export function Ribbon({
   const [collapseOpen, setCollapseOpen] = useState<string | null>(null)
   const [translateOpen, setTranslateOpen] = useState(false)
   const [arrangeOpen, setArrangeOpen] = useState(false)
+  const [caseOpen, setCaseOpen] = useState(false)
   const [slideShowOpen, setSlideShowOpen] = useState(false)
   const [slideShowFromStart, setSlideShowFromStart] = useState(false)
   // Insert tab dropdown galleries (at most one open at a time)
@@ -1364,6 +1388,7 @@ export function Ribbon({
     if (!keep.includes('layout')) setLayoutOpen(false)
     if (!keep.includes('translate')) setTranslateOpen(false)
     if (!keep.includes('arrange')) setArrangeOpen(false)
+    if (!keep.includes('case')) setCaseOpen(false)
     if (!keep.includes('insert')) setInsertDrop(null)
     if (!keep.includes('chart')) setChartDrop(null)
     if (!keep.includes('collapse')) setCollapseOpen(null)
@@ -1384,6 +1409,7 @@ export function Ribbon({
     layoutOpen ||
     chartDrop != null ||
     arrangeOpen ||
+    caseOpen ||
     slideShowOpen ||
     paraOpen ||
     pictureBorderOpen ||
@@ -1629,6 +1655,10 @@ export function Ribbon({
     aiOpen,
     brushMode,
     canDistribute,
+    canMatchSize,
+    onChangeCase,
+    selectionPaneOpen,
+    onToggleSelectionPane,
     canPaste,
     closePanels,
     curBulletChar,
@@ -1695,6 +1725,7 @@ export function Ribbon({
     slideCount,
     zoom,
     arrangeOpen,
+    caseOpen,
     collapseOpen,
     collapsedGroups,
     colorOpen,
@@ -1715,6 +1746,7 @@ export function Ribbon({
     onCustomTextColor,
     paraOpen,
     setArrangeOpen,
+    setCaseOpen,
     setCollapseOpen,
     setColorOpen,
     setFontOpen,
@@ -2405,6 +2437,29 @@ export function Ribbon({
                 </span>
                 <span>{t('ribbonAnimPane')}</span>
               </button>
+              {onAnimPainterClick && (
+                <button
+                  className={`rb-big ${animPainterMode ? 'active' : ''}`}
+                  disabled={!hasDoc || !hasSelection}
+                  data-tip={
+                    animPainterMode === 'continuous'
+                      ? t('ribbonAnimPainterTipContinuous')
+                      : animPainterMode === 'once'
+                        ? t('ribbonAnimPainterTipOnce')
+                        : t('ribbonAnimPainterTip')
+                  }
+                  onClick={onAnimPainterClick}
+                  onDoubleClick={(e) => {
+                    e.preventDefault()
+                    onAnimPainterDoubleClick?.()
+                  }}
+                >
+                  <span className="rb-big-icon">
+                    <IconAnimPainter size={BIG} />
+                  </span>
+                  <span>{t('ribbonAnimPainter')}</span>
+                </button>
+              )}
               <button
                 className={`rb-big ${animByParagraph ? 'active' : ''}`}
                 disabled={!hasDoc}

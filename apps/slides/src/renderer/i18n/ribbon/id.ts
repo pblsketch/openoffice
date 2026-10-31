@@ -777,4 +777,23 @@ export const id = {
   ribbonZoomSectionItem: 'Slide {n} Bagian {k}: {name}',
   ribbonZoomSelectedSlides: '{n} slide dipilih',
   ribbonZoomSelectedSections: '{n} bagian dipilih',
+  ribbonCaseSentence: 'Huruf besar di awal kalimat.',
+  ribbonCaseLower: 'huruf kecil',
+  ribbonCaseUpper: 'HURUF BESAR',
+  ribbonCaseTitle: 'Huruf Besar Setiap Kata',
+  ribbonCaseToggle: 'bALIK hURUF bESAR/kECIL',
+  ribbonSameWidth: 'Lebar Sama',
+  ribbonSameHeight: 'Tinggi Sama',
+  ribbonSameSize: 'Ukuran Sama',
+  ribbonSameSizeTip: '{title}: samakan dengan elemen yang pertama dipilih',
+  ribbonSameSizeHint: '{title} (pilih minimal 2 elemen)',
+  ribbonSelectionPane: 'Panel Pilihan',
+  ribbonSelectionPaneTip:
+    'Tampilkan/sembunyikan Panel Pilihan: semua elemen pada slide, dari depan ke belakang (Alt+F10)',
+  ribbonAnimPainter: 'Penyalin Animasi',
+  ribbonAnimPainterTip:
+    'Penyalin Animasi: salin animasi elemen yang dipilih ke elemen lain (klik dua kali untuk terus menerapkan)',
+  ribbonAnimPainterTipOnce: 'Klik elemen yang akan diberi animasi tersebut',
+  ribbonAnimPainterTipContinuous: 'Penyalin Animasi mode berkelanjutan (tekan Esc untuk keluar)',
+  ribbonEyedropper: 'Pipet',
 } satisfies Record<keyof typeof zh, string>

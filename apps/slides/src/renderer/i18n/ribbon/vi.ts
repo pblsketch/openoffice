@@ -775,4 +775,23 @@ export const vi = {
   ribbonZoomSectionItem: 'Trang chiếu {n} Phần {k}: {name}',
   ribbonZoomSelectedSlides: 'Đã chọn {n} trang chiếu',
   ribbonZoomSelectedSections: 'Đã chọn {n} phần',
+  ribbonCaseSentence: 'Viết hoa đầu câu.',
+  ribbonCaseLower: 'chữ thường',
+  ribbonCaseUpper: 'CHỮ HOA',
+  ribbonCaseTitle: 'Viết Hoa Mỗi Từ',
+  ribbonCaseToggle: 'đẢO cHỮ hOA/tHƯỜNG',
+  ribbonSameWidth: 'Cùng chiều rộng',
+  ribbonSameHeight: 'Cùng chiều cao',
+  ribbonSameSize: 'Cùng kích thước',
+  ribbonSameSizeTip: '{title}: khớp với phần tử được chọn đầu tiên',
+  ribbonSameSizeHint: '{title} (chọn từ 2 phần tử trở lên)',
+  ribbonSelectionPane: 'Ngăn chọn',
+  ribbonSelectionPaneTip:
+    'Hiện/ẩn Ngăn chọn: mọi phần tử trên trang chiếu, từ trước ra sau (Alt+F10)',
+  ribbonAnimPainter: 'Sao chép hoạt hình',
+  ribbonAnimPainterTip:
+    'Sao chép hoạt hình: chép hoạt hình của phần tử đã chọn sang phần tử khác (nhấp đúp để áp dụng liên tục)',
+  ribbonAnimPainterTipOnce: 'Nhấp vào phần tử cần áp dụng hoạt hình',
+  ribbonAnimPainterTipContinuous: 'Chế độ sao chép hoạt hình liên tục (nhấn Esc để thoát)',
+  ribbonEyedropper: 'Bút lấy màu',
 } satisfies Record<keyof typeof zh, string>

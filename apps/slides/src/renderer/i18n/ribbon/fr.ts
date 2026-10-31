@@ -793,4 +793,23 @@ export const fr = {
   ribbonZoomSectionItem: 'Diapositive {n} Section {k} : {name}',
   ribbonZoomSelectedSlides: '{n} diapositives sélectionnées',
   ribbonZoomSelectedSections: '{n} sections sélectionnées',
+  ribbonCaseSentence: 'Majuscule en début de phrase.',
+  ribbonCaseLower: 'minuscules',
+  ribbonCaseUpper: 'MAJUSCULES',
+  ribbonCaseTitle: '1re Lettre Des Mots En Majuscule',
+  ribbonCaseToggle: 'iNVERSER lA cASSE',
+  ribbonSameWidth: 'Même largeur',
+  ribbonSameHeight: 'Même hauteur',
+  ribbonSameSize: 'Même taille',
+  ribbonSameSizeTip: '{title} : ajuster au premier élément sélectionné',
+  ribbonSameSizeHint: '{title} (sélectionnez au moins 2 éléments)',
+  ribbonSelectionPane: 'Volet Sélection',
+  ribbonSelectionPaneTip:
+    "Afficher/masquer le volet Sélection : tous les éléments de la diapositive, du premier plan à l'arrière-plan (Alt+F10)",
+  ribbonAnimPainter: "Reproduire l'animation",
+  ribbonAnimPainterTip:
+    "Reproduire l'animation : copie les animations de l'élément sélectionné sur un autre élément (double-cliquez pour continuer à appliquer)",
+  ribbonAnimPainterTipOnce: "Cliquez sur l'élément auquel appliquer les animations",
+  ribbonAnimPainterTipContinuous: "Reproduire l'animation en mode continu (Échap pour quitter)",
+  ribbonEyedropper: 'Pipette',
 } satisfies Record<keyof typeof zh, string>

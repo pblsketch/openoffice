@@ -780,4 +780,23 @@ export const pl = {
   ribbonZoomSectionItem: 'Slajd {n} Sekcja {k}: {name}',
   ribbonZoomSelectedSlides: 'Wybrano slajdów: {n}',
   ribbonZoomSelectedSections: 'Wybrano sekcji: {n}',
+  ribbonCaseSentence: 'Jak w zdaniu.',
+  ribbonCaseLower: 'małe litery',
+  ribbonCaseUpper: 'WIELKIE LITERY',
+  ribbonCaseTitle: 'Każdy Wyraz Z Wielkiej Litery',
+  ribbonCaseToggle: 'zAMIANA wIELKOŚCI lITER',
+  ribbonSameWidth: 'Ta sama szerokość',
+  ribbonSameHeight: 'Ta sama wysokość',
+  ribbonSameSize: 'Ten sam rozmiar',
+  ribbonSameSizeTip: '{title}: dopasuj do pierwszego zaznaczonego elementu',
+  ribbonSameSizeHint: '{title} (zaznacz co najmniej 2 elementy)',
+  ribbonSelectionPane: 'Okienko zaznaczenia',
+  ribbonSelectionPaneTip:
+    'Pokaż/ukryj okienko zaznaczenia: wszystkie elementy slajdu od przodu do tyłu (Alt+F10)',
+  ribbonAnimPainter: 'Malarz animacji',
+  ribbonAnimPainterTip:
+    'Malarz animacji: skopiuj animacje zaznaczonego elementu na inny element (kliknij dwukrotnie, aby stosować dalej)',
+  ribbonAnimPainterTipOnce: 'Kliknij element, do którego chcesz zastosować animacje',
+  ribbonAnimPainterTipContinuous: 'Malarz animacji w trybie ciągłym (naciśnij Esc, aby wyjść)',
+  ribbonEyedropper: 'Kroplomierz',
 } satisfies Record<keyof typeof zh, string>

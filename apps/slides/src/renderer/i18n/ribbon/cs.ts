@@ -771,4 +771,23 @@ export const cs = {
   ribbonZoomSectionItem: 'Snímek {n} Oddíl {k}: {name}',
   ribbonZoomSelectedSlides: 'Vybráno snímků: {n}',
   ribbonZoomSelectedSections: 'Vybráno oddílů: {n}',
+  ribbonCaseSentence: 'Velké první písmeno věty.',
+  ribbonCaseLower: 'malá písmena',
+  ribbonCaseUpper: 'VELKÁ PÍSMENA',
+  ribbonCaseTitle: 'Velká První Písmena',
+  ribbonCaseToggle: 'pŘEPNOUT vELIKOST pÍSMEN',
+  ribbonSameWidth: 'Stejná šířka',
+  ribbonSameHeight: 'Stejná výška',
+  ribbonSameSize: 'Stejná velikost',
+  ribbonSameSizeTip: '{title}: podle prvního vybraného prvku',
+  ribbonSameSizeHint: '{title} (vyberte 2 nebo více prvků)',
+  ribbonSelectionPane: 'Podokno výběru',
+  ribbonSelectionPaneTip:
+    'Zobrazit/skrýt podokno výběru: všechny prvky na snímku zepředu dozadu (Alt+F10)',
+  ribbonAnimPainter: 'Kopírovat animaci',
+  ribbonAnimPainterTip:
+    'Kopírovat animaci: přenese animace vybraného prvku na jiný prvek (dvojklikem budete pokračovat v použití)',
+  ribbonAnimPainterTipOnce: 'Klikněte na prvek, na který chcete animace použít',
+  ribbonAnimPainterTipContinuous: 'Kopírovat animaci – souvislý režim (ukončíte klávesou Esc)',
+  ribbonEyedropper: 'Kapátko',
 } satisfies Record<keyof typeof zh, string>

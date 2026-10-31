@@ -784,4 +784,24 @@ export const nl = {
   ribbonZoomSectionItem: 'Dia {n} Sectie {k}: {name}',
   ribbonZoomSelectedSlides: "{n} dia's geselecteerd",
   ribbonZoomSelectedSections: '{n} secties geselecteerd',
+  ribbonCaseSentence: 'Zoals in een zin.',
+  ribbonCaseLower: 'kleine letters',
+  ribbonCaseUpper: 'HOOFDLETTERS',
+  ribbonCaseTitle: 'Elk Woord Met Hoofdletter',
+  ribbonCaseToggle: 'hOOFDLETTERS oMKEREN',
+  ribbonSameWidth: 'Zelfde breedte',
+  ribbonSameHeight: 'Zelfde hoogte',
+  ribbonSameSize: 'Zelfde grootte',
+  ribbonSameSizeTip: '{title}: gelijk aan het eerst geselecteerde element',
+  ribbonSameSizeHint: '{title} (selecteer 2 of meer elementen)',
+  ribbonSelectionPane: 'Selectievenster',
+  ribbonSelectionPaneTip:
+    'Selectievenster weergeven/verbergen: alle elementen op de dia, van voor naar achter (Alt+F10)',
+  ribbonAnimPainter: 'Animatie kopiëren/plakken',
+  ribbonAnimPainterTip:
+    'Animatie kopiëren/plakken: de animaties van het geselecteerde element op een ander element toepassen (dubbelklik om te blijven toepassen)',
+  ribbonAnimPainterTipOnce: 'Klik op het element waarop u de animaties wilt toepassen',
+  ribbonAnimPainterTipContinuous:
+    'Animatie kopiëren/plakken in doorlopende modus (druk op Esc om te stoppen)',
+  ribbonEyedropper: 'Pipet',
 } satisfies Record<keyof typeof zh, string>

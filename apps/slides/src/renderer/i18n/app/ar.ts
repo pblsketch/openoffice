@@ -254,4 +254,9 @@ export const ar = {
   appStatusSummaryZoomInserted: 'تم إدراج شريحة تكبير/تصغير الملخص مع {count} مربعات',
   appSectionSummary: 'مقطع الملخص',
   appSectionN: 'المقطع {n}',
+  appStatusAnimPainterNone: 'لا توجد حركات على العنصر المحدد',
+  appStatusAnimPainterOnce:
+    'انقر على العنصر المراد تطبيق الحركات عليه؛ انقر نقرًا مزدوجًا فوق الزر للوضع المستمر',
+  appStatusAnimPainterContinuous: 'وضع نسخ الحركة المستمر؛ اضغط على Esc للخروج',
+  appStatusAnimPainted: 'تم تطبيق الحركات',
 } satisfies Record<keyof typeof zh, string>

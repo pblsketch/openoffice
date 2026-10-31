@@ -8,7 +8,9 @@ import type { ReorderDirection } from '../shared/ipc'
 import type { ActionCtx, UngroupedSet } from './action-context'
 import { FIT_WIDTH } from './app-constants'
 import { inkNodesOf, rasterizeStroke, type InkStroke } from './ink'
+import { batched } from './history-batch'
 import { t } from './i18n/locale'
+import { rememberRepeat } from './repeat-action'
 
 const GROUPABLE = new Set(['text', 'shape', 'picture'])
 
@@ -103,15 +105,28 @@ export async function regroupSelected(ctx: ActionCtx): Promise<void> {
 }
 
 export type AlignOp =
-  'left' | 'center-h' | 'right' | 'top' | 'center-v' | 'bottom' | 'distribute-h' | 'distribute-v'
+  | 'left'
+  | 'center-h'
+  | 'right'
+  | 'top'
+  | 'center-v'
+  | 'bottom'
+  | 'distribute-h'
+  | 'distribute-v'
+  | 'same-w'
+  | 'same-h'
+  | 'same-size'
 
 /**
  * Align/distribute selected elements.
  * Coordinates are computed in the renderer (pure geometry) and updated in bulk via batchEditTransform.
  * - align: 6 alignments (relative to the bounding box; to the page for single selection)
  * - distribute: 'horizontal' | 'vertical' (≥3 elements)
+ * - same-w/same-h/same-size: match the first selected element's width/height (≥2 elements),
+ *   each element keeping its top-left corner
  */
 export async function alignSelected(ctx: ActionCtx, op: AlignOp): Promise<void> {
+  rememberRepeat((c) => alignSelected(c, op))
   const { slide, selectedIds, current } = ctx
   if (!slide || selectedIds.length === 0) return
   const nodes = selectedIds
@@ -138,6 +153,28 @@ export async function alignSelected(ctx: ActionCtx, op: AlignOp): Promise<void> 
   // Single selection aligns relative to the page
   const container =
     nodes.length === 1 ? { x: 0, y: 0, w: slide.widthPx, h: slide.heightPx } : bbox(rects)
+
+  if (op === 'same-w' || op === 'same-h' || op === 'same-size') {
+    if (nodes.length < 2) return
+    const ref = nodes[0]!.box
+    const updated = await window.slidesApi.batchEditTransform({
+      slideIndex: current,
+      fitWidthPx: FIT_WIDTH,
+      items: nodes.map((n) => ({
+        sourceId: n.sourceId,
+        xPx: n.box.x,
+        yPx: n.box.y,
+        wPx: op === 'same-h' ? n.box.w : ref.w,
+        hPx: op === 'same-w' ? n.box.h : ref.h,
+        rotationDeg: n.box.rotationDeg,
+      })),
+    })
+    if (updated) {
+      ctx.applySlide(current, updated)
+      ctx.setDirty(true)
+    }
+    return
+  }
 
   let newPositions: Array<{ x: number; y: number }>
 
@@ -212,6 +249,11 @@ export async function reorderSelected(
   sourceId: string,
   dir: ReorderDirection,
 ): Promise<void> {
+  rememberRepeat((c) =>
+    batched(async () => {
+      for (const id of c.selectedIds) await reorderSelected(c, id, dir)
+    }),
+  )
   const updated = await window.slidesApi.reorderElement({
     slideIndex: ctx.current,
     sourceId,
@@ -244,6 +286,7 @@ export async function commitInk(ctx: ActionCtx, stroke: InkStroke): Promise<void
  * them on the model.
  */
 export async function flipSelected(ctx: ActionCtx, axis: 'h' | 'v'): Promise<void> {
+  rememberRepeat((c) => flipSelected(c, axis))
   if (ctx.selectedIds.length === 0) return
   const groupId = ctx.groupIdOf(ctx.selectedIds[0]!)
   const updated = await window.slidesApi.flipElements({
@@ -267,6 +310,7 @@ export async function flipSelected(ctx: ActionCtx, axis: 'h' | 'v'): Promise<voi
  * Connectors are skipped — their geometry is endpoint-based (no Transformer either).
  */
 export async function rotateSelected(ctx: ActionCtx, deltaDeg: number): Promise<void> {
+  rememberRepeat((c) => rotateSelected(c, deltaDeg))
   const items: Array<{
     sourceId: string
     box: { x: number; y: number; w: number; h: number; rotationDeg: number }

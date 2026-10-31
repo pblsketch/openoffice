@@ -27,6 +27,7 @@ import {
   IconDirRtl,
   IconAlignRight,
   IconBullets,
+  IconChangeCase,
   IconClearFormat,
   IconCopy,
   IconCut,
@@ -47,6 +48,10 @@ import {
   IconObjDistributeH,
   IconObjDistributeV,
   IconObjFlipH,
+  IconSameHeight,
+  IconSameSize,
+  IconSameWidth,
+  IconSelectionPane,
   IconObjFlipV,
   IconPaste,
   IconPlayCurrent,
@@ -91,6 +96,7 @@ export function RibbonHomeTab({ rb }: { rb: RibbonTabCtx }) {
     aiOpen,
     brushMode,
     canDistribute,
+    canMatchSize,
     canPaste,
     curBulletChar,
     curAlign,
@@ -134,7 +140,12 @@ export function RibbonHomeTab({ rb }: { rb: RibbonTabCtx }) {
     onTextToggle,
     onToggleAi,
     onToggleFormat,
+    onChangeCase,
+    selectionPaneOpen,
+    onToggleSelectionPane,
     arrangeOpen,
+    caseOpen,
+    setCaseOpen,
     closePanels,
     collapseOpen,
     colorOpen,
@@ -351,6 +362,8 @@ export function RibbonHomeTab({ rb }: { rb: RibbonTabCtx }) {
                       ? t('ribbonBrushTipHasFormat')
                       : t('ribbonBrushTipDefault')
             }
+            // Keeps focus (and the text selection) in the editor: the painter can pick up selected text
+            onMouseDown={(e) => e.preventDefault()}
             onClick={onFormatBrushClick}
             onDoubleClick={(e) => {
               e.preventDefault()
@@ -747,6 +760,57 @@ export function RibbonHomeTab({ rb }: { rb: RibbonTabCtx }) {
             </div>
             {fmtBtn('fontSizeUp', <IconGrowFont size={18} />, t('ribbonGrowFont'))}
             {fmtBtn('fontSizeDown', <IconShrinkFont size={18} />, t('ribbonShrinkFont'))}
+            {onChangeCase && (
+              <div className="rb-drop-wrap">
+                <button
+                  className={`rb-icon ${caseOpen ? 'active' : ''}`}
+                  disabled={!editing && !hasSelection}
+                  data-tip={t('ribbonChangeCase')}
+                  aria-label={t('ribbonChangeCase')}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (!editing && !hasSelection) return
+                    if (editing) saveEditSelection()
+                    closeSiblingPanels(e, closePanels, 'case')
+                    setCaseOpen((v) => !v)
+                  }}
+                >
+                  <IconChangeCase size={18} />
+                  <span className="rb-font-caret">
+                    <RbCaret />
+                  </span>
+                </button>
+                {caseOpen && (
+                  <div
+                    className="rb-drop rb-menu"
+                    data-keep-edit=""
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    {(
+                      [
+                        ['sentence', t('ribbonCaseSentence')],
+                        ['lower', t('ribbonCaseLower')],
+                        ['upper', t('ribbonCaseUpper')],
+                        ['title', t('ribbonCaseTitle')],
+                        ['toggle', t('ribbonCaseToggle')],
+                      ] as const
+                    ).map(([mode, label]) => (
+                      <button
+                        key={mode}
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          setCaseOpen(false)
+                          onChangeCase(mode)
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             {fmtBtn(
               'removeFormat',
               <IconClearFormat size={18} />,
@@ -828,6 +892,7 @@ export function RibbonHomeTab({ rb }: { rb: RibbonTabCtx }) {
                       themeColors: t('ribbonThemeColorsSection'),
                       standardColors: t('ribbonStandardColors'),
                       moreColors: t('ribbonMoreColors'),
+                      eyedropper: t('ribbonEyedropper'),
                     }}
                     onPick={(hex) => {
                       if (!hex) return
@@ -1260,6 +1325,19 @@ export function RibbonHomeTab({ rb }: { rb: RibbonTabCtx }) {
           </span>
           <span>{t('ribbonFormatPane')}</span>
         </button>
+        {onToggleSelectionPane && (
+          <button
+            className={`rb-big ${selectionPaneOpen ? 'active' : ''}`}
+            disabled={!hasDoc}
+            onClick={onToggleSelectionPane}
+            data-tip={t('ribbonSelectionPaneTip')}
+          >
+            <span className="rb-big-icon">
+              <IconSelectionPane size={BIG} />
+            </span>
+            <span>{t('ribbonSelectionPane')}</span>
+          </button>
+        )}
       </Group>
       <div className="ribbon-sep" />
       <Group label={t('ribbonGroupArrange')}>
@@ -1328,6 +1406,31 @@ export function RibbonHomeTab({ rb }: { rb: RibbonTabCtx }) {
                   data-tip={canDistribute ? undefined : t('ribbonDistributeHint', { title: label })}
                   aria-label={
                     canDistribute ? undefined : t('ribbonDistributeHint', { title: label })
+                  }
+                  onClick={() => {
+                    setArrangeOpen(false)
+                    onArrange?.(kind)
+                  }}
+                >
+                  <span className="rb-menu-glyph">{icon}</span>
+                  {label}
+                </button>
+              ))}
+              <div className="rb-menu-div" />
+              {(
+                [
+                  ['same-w', <IconSameWidth key="i" size={20} />, t('ribbonSameWidth')],
+                  ['same-h', <IconSameHeight key="i" size={20} />, t('ribbonSameHeight')],
+                  ['same-size', <IconSameSize key="i" size={20} />, t('ribbonSameSize')],
+                ] as const
+              ).map(([kind, icon, label]) => (
+                <button
+                  key={kind}
+                  disabled={!canMatchSize}
+                  data-tip={
+                    canMatchSize
+                      ? t('ribbonSameSizeTip', { title: label })
+                      : t('ribbonSameSizeHint', { title: label })
                   }
                   onClick={() => {
                     setArrangeOpen(false)

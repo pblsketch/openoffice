@@ -312,20 +312,24 @@ Chiudere una scheda è l’unico punto in cui le due piattaforme si separano com
 
 ### Modifica
 
-| Azione                                               | macOS  | Windows / Linux |
-| ---------------------------------------------------- | ------ | --------------- |
-| Nuova diapositiva                                    | ⇧⌘N    | Ctrl+M          |
-| Trova (non mentre modifichi il testo in una forma)   | ⌘F     | Ctrl+F          |
-| Annota la selezione con l’IA (con forme selezionate) | ⌘K     | Ctrl+K          |
-| Ingrandisci                                          | ⌘=     | Ctrl+=          |
-| Riduci                                               | ⌘-     | Ctrl+-          |
-| Dimensione reale (100 %)                             | ⌘0     | Ctrl+0          |
-| Seleziona tutto                                      | ⌘A     | Ctrl+A          |
-| Scorri la selezione delle forme in avanti / indietro | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Azione                                                                                  | macOS  | Windows / Linux |
+| --------------------------------------------------------------------------------------- | ------ | --------------- |
+| Nuova diapositiva                                                                       | ⇧⌘N    | Ctrl+M          |
+| Trova (non mentre modifichi il testo in una forma)                                      | ⌘F     | Ctrl+F          |
+| Annota la selezione con l’IA (con forme selezionate)                                    | ⌘K     | Ctrl+K          |
+| Ingrandisci                                                                             | ⌘=     | Ctrl+=          |
+| Riduci                                                                                  | ⌘-     | Ctrl+-          |
+| Dimensione reale (100 %)                                                                | ⌘0     | Ctrl+0          |
+| Seleziona tutto                                                                         | ⌘A     | Ctrl+A          |
+| Scorri la selezione delle forme in avanti / indietro                                    | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Ripeti l’ultima azione (formattazione, riempimento, linea, allineamento, duplicazione…) | F4     | F4              |
+| Mostra/nascondi il riquadro Selezione                                                   | ⌥F10   | Alt+F10         |
 
 La nuova diapositiva è l’altra divisione tra piattaforme. Ogni piattaforma ha il proprio tasto e l’altro non fa nulla: `⇧⌘N` su macOS, Ctrl+M su Windows e Linux. `⌘M` non può svolgere il compito su macOS perché è il tasto di sistema per ridurre a icona.
 
 Seleziona tutto segue il focus: con il riquadro delle miniature, il riquadro della struttura o il selettore di diapositive focalizzato seleziona tutte le diapositive, e ovunque altro seleziona tutti gli elementi della diapositiva corrente. Tab scorre le forme sulla diapositiva, e solo quando è il riquadro della diapositiva ad avere il focus.
+
+F4 funziona anche dentro la casella di testo e applica l’ultima formattazione al testo selezionato.
 
 ### Formattazione del testo
 

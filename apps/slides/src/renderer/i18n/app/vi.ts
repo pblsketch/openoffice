@@ -258,4 +258,9 @@ export const vi = {
   appStatusSummaryZoomInserted: 'Đã chèn trang chiếu Thu phóng tóm tắt với {count} ô thu nhỏ',
   appSectionSummary: 'Phần tóm tắt',
   appSectionN: 'Phần {n}',
+  appStatusAnimPainterNone: 'Phần tử đã chọn không có hoạt hình',
+  appStatusAnimPainterOnce:
+    'Nhấp vào phần tử cần áp dụng hoạt hình; nhấp đúp vào nút để chuyển sang chế độ liên tục',
+  appStatusAnimPainterContinuous: 'Chế độ sao chép hoạt hình liên tục; nhấn Esc để thoát',
+  appStatusAnimPainted: 'Đã áp dụng hoạt hình',
 } satisfies Record<keyof typeof zh, string>

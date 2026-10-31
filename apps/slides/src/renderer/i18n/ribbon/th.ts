@@ -761,4 +761,23 @@ export const th = {
   ribbonZoomSectionItem: 'สไลด์ {n} ส่วน {k}: {name}',
   ribbonZoomSelectedSlides: 'เลือกแล้ว {n} สไลด์',
   ribbonZoomSelectedSections: 'เลือกแล้ว {n} ส่วน',
+  ribbonCaseSentence: 'ตัวพิมพ์ใหญ่ตามประโยค',
+  ribbonCaseLower: 'ตัวพิมพ์เล็ก',
+  ribbonCaseUpper: 'ตัวพิมพ์ใหญ่',
+  ribbonCaseTitle: 'ตัวพิมพ์ใหญ่ทุกคำ',
+  ribbonCaseToggle: 'สลับตัวพิมพ์',
+  ribbonSameWidth: 'ความกว้างเท่ากัน',
+  ribbonSameHeight: 'ความสูงเท่ากัน',
+  ribbonSameSize: 'ขนาดเท่ากัน',
+  ribbonSameSizeTip: '{title}: ให้ตรงกับองค์ประกอบที่เลือกเป็นอันดับแรก',
+  ribbonSameSizeHint: '{title} (ต้องเลือกองค์ประกอบอย่างน้อย 2 รายการ)',
+  ribbonSelectionPane: 'บานหน้าต่างการเลือก',
+  ribbonSelectionPaneTip:
+    'แสดง/ซ่อนบานหน้าต่างการเลือก: องค์ประกอบทั้งหมดบนสไลด์ จากหน้าไปหลัง (Alt+F10)',
+  ribbonAnimPainter: 'ตัวคัดวางภาพเคลื่อนไหว',
+  ribbonAnimPainterTip:
+    'ตัวคัดวางภาพเคลื่อนไหว: คัดลอกภาพเคลื่อนไหวขององค์ประกอบที่เลือกไปยังองค์ประกอบอื่น (ดับเบิลคลิกเพื่อนำไปใช้ต่อเนื่อง)',
+  ribbonAnimPainterTipOnce: 'คลิกองค์ประกอบที่จะนำภาพเคลื่อนไหวไปใช้',
+  ribbonAnimPainterTipContinuous: 'ตัวคัดวางภาพเคลื่อนไหวโหมดต่อเนื่อง (กด Esc เพื่อออก)',
+  ribbonEyedropper: 'หลอดดูดสี',
 } satisfies Record<keyof typeof zh, string>

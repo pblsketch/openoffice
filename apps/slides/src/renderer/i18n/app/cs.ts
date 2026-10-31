@@ -258,4 +258,9 @@ export const cs = {
   appStatusSummaryZoomInserted: 'Vložen souhrnný snímek Zoom s {count} dlaždicemi',
   appSectionSummary: 'Souhrnný oddíl',
   appSectionN: 'Oddíl {n}',
+  appStatusAnimPainterNone: 'Vybraný prvek nemá žádné animace',
+  appStatusAnimPainterOnce:
+    'Klikněte na prvek, na který chcete animace použít; dvojklikem na tlačítko zapnete nepřetržitý režim',
+  appStatusAnimPainterContinuous: 'Nepřetržitý režim Kopírovat animaci; ukončíte klávesou Esc',
+  appStatusAnimPainted: 'Animace použity',
 } satisfies Record<keyof typeof zh, string>

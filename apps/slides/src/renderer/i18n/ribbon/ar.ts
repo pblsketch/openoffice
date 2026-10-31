@@ -763,4 +763,23 @@ export const ar = {
   ribbonZoomSectionItem: 'الشريحة {n} المقطع {k}: {name}',
   ribbonZoomSelectedSlides: 'تم تحديد {n} شرائح',
   ribbonZoomSelectedSections: 'تم تحديد {n} مقاطع',
+  ribbonCaseSentence: 'حالة الجملة.',
+  ribbonCaseLower: 'أحرف صغيرة',
+  ribbonCaseUpper: 'أحرف كبيرة',
+  ribbonCaseTitle: 'كتابة الحرف الأول من كل كلمة بأحرف كبيرة',
+  ribbonCaseToggle: 'تبديل حالة الأحرف',
+  ribbonSameWidth: 'نفس العرض',
+  ribbonSameHeight: 'نفس الارتفاع',
+  ribbonSameSize: 'نفس الحجم',
+  ribbonSameSizeTip: '{title}: مطابقة العنصر المحدد أولاً',
+  ribbonSameSizeHint: '{title} (حدد عنصرين أو أكثر)',
+  ribbonSelectionPane: 'جزء التحديد',
+  ribbonSelectionPaneTip:
+    'إظهار/إخفاء جزء التحديد: كل العناصر على الشريحة من الأمام إلى الخلف (Alt+F10)',
+  ribbonAnimPainter: 'نسخ الحركة',
+  ribbonAnimPainterTip:
+    'نسخ الحركة: نسخ حركات العنصر المحدد إلى عنصر آخر (انقر نقرًا مزدوجًا لمواصلة التطبيق)',
+  ribbonAnimPainterTipOnce: 'انقر على العنصر المراد تطبيق الحركات عليه',
+  ribbonAnimPainterTipContinuous: 'نسخ الحركة في الوضع المستمر (اضغط Esc للخروج)',
+  ribbonEyedropper: 'أداة انتقاء اللون',
 } satisfies Record<keyof typeof zh, string>

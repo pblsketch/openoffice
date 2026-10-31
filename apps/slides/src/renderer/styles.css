@@ -5481,6 +5481,45 @@ body.vib .slide-list {
   cursor: default;
 }
 
+/* ── Selection pane (reuses the comments-pane skeleton) ───────────────── */
+
+.sel-pane .comments-list {
+  padding: 8px;
+}
+
+.sel-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sel-row:hover {
+  background: var(--hover);
+}
+
+.sel-row.selected {
+  background: var(--accent-soft);
+}
+
+.sel-row-kind {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.sel-row-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ── Canvas animation preview overlay (covers .stage-rel) ──────────────── */
 
 .anim-preview-overlay {

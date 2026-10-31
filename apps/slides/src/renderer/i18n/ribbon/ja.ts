@@ -791,4 +791,23 @@ export const ja = {
   ribbonZoomSectionItem: 'スライド {n} セクション {k}: {name}',
   ribbonZoomSelectedSlides: '{n} 枚のスライドを選択中',
   ribbonZoomSelectedSections: '{n} 個のセクションを選択中',
+  ribbonCaseSentence: '文の先頭文字を大文字にする。',
+  ribbonCaseLower: 'すべて小文字にする',
+  ribbonCaseUpper: 'すべて大文字にする',
+  ribbonCaseTitle: '各単語の先頭文字を大文字にする',
+  ribbonCaseToggle: '大文字と小文字を入れ替える',
+  ribbonSameWidth: '幅を揃える',
+  ribbonSameHeight: '高さを揃える',
+  ribbonSameSize: 'サイズを揃える',
+  ribbonSameSizeTip: '{title}: 最初に選択した要素に合わせる',
+  ribbonSameSizeHint: '{title}（2 つ以上の要素を選択）',
+  ribbonSelectionPane: '選択ウィンドウ',
+  ribbonSelectionPaneTip:
+    '選択ウィンドウの表示/非表示: スライド上のすべての要素を前面から順に一覧表示（Alt+F10）',
+  ribbonAnimPainter: 'アニメーションのコピー/貼り付け',
+  ribbonAnimPainterTip:
+    'アニメーションのコピー/貼り付け: 選択した要素のアニメーションを別の要素に適用（ダブルクリックで連続適用）',
+  ribbonAnimPainterTipOnce: 'アニメーションを適用する要素をクリック',
+  ribbonAnimPainterTipContinuous: 'アニメーションのコピー/貼り付け 連続モード（Esc で終了）',
+  ribbonEyedropper: 'スポイト',
 } satisfies Record<keyof typeof zh, string>

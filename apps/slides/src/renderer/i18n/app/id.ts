@@ -261,4 +261,9 @@ export const id = {
   appStatusSummaryZoomInserted: 'Slide Zoom Ringkasan disisipkan dengan {count} ubin',
   appSectionSummary: 'Bagian Ringkasan',
   appSectionN: 'Bagian {n}',
+  appStatusAnimPainterNone: 'Elemen yang dipilih tidak memiliki animasi',
+  appStatusAnimPainterOnce:
+    'Klik elemen yang akan diberi animasi tersebut; klik dua kali tombol untuk mode berkelanjutan',
+  appStatusAnimPainterContinuous: 'Mode Penyalin Animasi berkelanjutan; tekan Esc untuk keluar',
+  appStatusAnimPainted: 'Animasi diterapkan',
 } satisfies Record<keyof typeof zh, string>

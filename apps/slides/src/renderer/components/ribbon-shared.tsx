@@ -20,6 +20,7 @@ import type { WordArtPreset } from '@genoffice/ui'
 import type { ChartPresetDef, IconDef, SmartArtDef } from '../insert-presets'
 import type { ZoomMode } from '../zoom-actions'
 import type { SlideThemePreset } from '../themes'
+import type { CaseMode } from '../text-case'
 import type { ChartStyleInfo } from '@genoffice/pptx-render'
 import { BUILTIN_FONT_FAMILIES } from '@genoffice/ui'
 import type { ContextTabRequest } from './context-tabs'
@@ -214,6 +215,7 @@ export type RibbonPanelKey =
   | 'layout'
   | 'translate'
   | 'arrange'
+  | 'case'
   | 'insert'
   | 'chart'
   | 'collapse'
@@ -334,6 +336,11 @@ export interface Props {
   layoutSize: GetLayoutsResult['size'] | null
   formatOpen: boolean
   onToggleFormat: () => void
+  /** Selection pane (right side): every element of the slide, front to back */
+  selectionPaneOpen?: boolean
+  onToggleSelectionPane?: () => void
+  /** Change case of the selected text (editing) or of every run of the selected boxes */
+  onChangeCase?: (mode: CaseMode) => void
   hasSelection: boolean
   /** Whether the selection contains text-capable elements (text boxes/shapes/tables): font group availability outside editing (pictures/charts etc. grayed) */
   hasTextSelection: boolean
@@ -430,6 +437,11 @@ export interface Props {
   /** Animation pane (right side) toggle */
   animPaneOpen: boolean
   onToggleAnimPane: () => void
+  /** Animation painter: armed for one target ('once') or until Esc ('continuous') */
+  animPainterMode?: 'once' | 'continuous' | null
+  /** Animation painter button: click copies the selection's animations for one target, double click keeps painting */
+  onAnimPainterClick?: () => void
+  onAnimPainterDoubleClick?: () => void
   /** Current page's animation count (preview button availability) */
   animCount: number
   /** Preview the current page's animations on the edit canvas */
@@ -574,12 +586,17 @@ export interface Props {
       | 'center-v'
       | 'bottom'
       | 'distribute-h'
-      | 'distribute-v',
+      | 'distribute-v'
+      | 'same-w'
+      | 'same-h'
+      | 'same-size',
   ) => void
   /** Mirror the selection horizontally/vertically (a:xfrm flipH/flipV) */
   onFlip?: (axis: 'h' | 'v') => void
   /** Whether distribute operations are allowed (≥3 selected elements) */
   canDistribute?: boolean
+  /** Whether same width/height operations are allowed (≥2 selected elements) */
+  canMatchSize?: boolean
 }
 
 /** Ribbon locals + props handed to the extracted tab components; rebuilt every render. */
@@ -588,6 +605,10 @@ export interface RibbonTabCtx extends Pick<
   | 'aiOpen'
   | 'brushMode'
   | 'canDistribute'
+  | 'canMatchSize'
+  | 'onChangeCase'
+  | 'selectionPaneOpen'
+  | 'onToggleSelectionPane'
   | 'canPaste'
   | 'curBulletChar'
   | 'curAlign'
@@ -654,6 +675,7 @@ export interface RibbonTabCtx extends Pick<
   | 'zoom'
 > {
   arrangeOpen: boolean
+  caseOpen: boolean
   closePanels: (keep: RibbonPanelKey[]) => void
   collapseOpen: string | null
   collapsedGroups: string[]
@@ -682,6 +704,7 @@ export interface RibbonTabCtx extends Pick<
   onCustomTextColor: (value: string) => void
   paraOpen: boolean
   setArrangeOpen: Dispatch<SetStateAction<boolean>>
+  setCaseOpen: Dispatch<SetStateAction<boolean>>
   setCollapseOpen: Dispatch<SetStateAction<string | null>>
   setColorOpen: Dispatch<SetStateAction<boolean>>
   setFontOpen: Dispatch<SetStateAction<boolean>>

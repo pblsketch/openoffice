@@ -125,6 +125,10 @@ import { AiPanel } from './ai/AiPanel'
 import { useAiDock } from './ai/use-ai-dock'
 import { ChartDataDialog } from './components/ChartDataDialog'
 import type { BrushFormat } from './format-brush'
+import type { AnimPainterState } from './action-context'
+import { rememberRepeat } from './repeat-action'
+import { batched } from './history-batch'
+import { SelectionPane } from './components/SelectionPane'
 import { isTextUndoTarget, shouldRouteHistoryToDeck } from './undo-routing'
 import type {
   ActionCtx,
@@ -506,6 +510,7 @@ export function App() {
   // ── Animations tab: current page's animation list + pane/preview ─────────────
   const [animations, setAnimations] = useState<AnimationItem[]>([])
   const [showAnimPane, setShowAnimPane] = useState(false)
+  const [showSelPane, setShowSelPane] = useState(false)
   /** Animation pane selection (the timing controls bind to it first); -1 = none */
   const [selAnim, setSelAnim] = useState(-1)
   /** Canvas animation preview (plays when nonce>0; re-entering +1) */
@@ -652,6 +657,7 @@ export function App() {
    *  - 'continuous' = continuous mode (double-click the button to enter, Esc to exit)
    */
   const [brushMode, setBrushMode] = useState<'once' | 'continuous' | null>(null)
+  const [animPainter, setAnimPainter] = useState<AnimPainterState | null>(null)
 
   const slide = slides[current]
   // Rail multi-selection: stale entries (page deleted, anchor moved elsewhere) collapse to the anchor
@@ -1656,6 +1662,19 @@ export function App() {
     [],
   )
 
+  // Painter armed while editing text: the selection made with the mouse takes the format
+  const brushInText = !!brushMode && !!(editing || editingCell)
+  useEffect(() => {
+    if (!brushInText) return
+    const onUp = (e: MouseEvent) => {
+      if (!(e.target instanceof Element) || !e.target.closest('.slide-text-editor')) return
+      // after the browser has settled the selection for this release
+      window.setTimeout(() => clipboardActions.applyBrushToTextSelection(ctxRef.current), 0)
+    }
+    document.addEventListener('mouseup', onUp)
+    return () => document.removeEventListener('mouseup', onUp)
+  }, [brushInText])
+
   /**
    * Format-painter-aware select handler: while the painter is active, intercept clicks →
    * applyBrushToElement, without changing the selection (existing selection preserved).
@@ -1664,6 +1683,10 @@ export function App() {
     (id: string | null, additive = false) => {
       if (brushMode && id) {
         void applyBrushToElement(id)
+        return
+      }
+      if (animPainter && id) {
+        void animationActions.paintAnimationsOnto(ctxRef.current, id)
         return
       }
       // Clicking blank/an element outside the group during in-group editing = exit the group
@@ -1675,7 +1698,7 @@ export function App() {
       }
       setSelectedId(id, additive)
     },
-    [brushMode, applyBrushToElement, setSelectedId, enteredGroupId, enteredGroupNode],
+    [brushMode, animPainter, applyBrushToElement, setSelectedId, enteredGroupId, enteredGroupNode],
   )
 
   const handleEnterGroup = useCallback((groupId: string, childId: string | null) => {
@@ -1878,6 +1901,19 @@ export function App() {
         setShowFormat(false)
         setShowBgFormat(false)
         setShowComments(false)
+        setShowSelPane(false)
+      }
+      return !v
+    })
+  }, [])
+
+  const toggleSelectionPane = useCallback(() => {
+    setShowSelPane((v) => {
+      if (!v) {
+        setShowFormat(false)
+        setShowBgFormat(false)
+        setShowComments(false)
+        setShowAnimPane(false)
       }
       return !v
     })
@@ -1889,6 +1925,7 @@ export function App() {
     setShowFormat(false)
     setShowAnimPane(false)
     setShowComments(false)
+    setShowSelPane(false)
   }, [])
 
   /** Open the format pane (Home ribbon toggle / element context menu); never auto-opens on selection */
@@ -1897,6 +1934,7 @@ export function App() {
     setShowBgFormat(false)
     setShowAnimPane(false)
     setShowComments(false)
+    setShowSelPane(false)
     if (section === 'size') setFormatSizeNonce((n) => n + 1)
   }, [])
 
@@ -2109,6 +2147,7 @@ export function App() {
     setShowFormat(false)
     setShowBgFormat(false)
     setShowAnimPane(false)
+    setShowSelPane(false)
     if (focus) {
       setCommentsMode('page')
       setCommentsFocusNonce((n) => n + 1)
@@ -2496,11 +2535,11 @@ export function App() {
 
   const startEdit = useCallback(
     (sourceId: string, caret?: EditCaret) => {
-      if (brushMode) return // the click already applied the format brush
+      if (brushMode || animPainter) return // the click already applied the painter
       const isChild = enteredGroupNode?.children.some((c) => c.sourceId === sourceId)
       setEditing({ sourceId, caret, ...(isChild ? { groupId: enteredGroupNode!.sourceId } : {}) })
     },
-    [enteredGroupNode, brushMode],
+    [enteredGroupNode, brushMode, animPainter],
   )
 
   // Audio/video playback overlay: triggered by double-clicking a media element, closed on page switch/Escape
@@ -3179,6 +3218,9 @@ export function App() {
     viewMode,
     animations,
     setAnimations,
+    animPainter,
+    setAnimPainter,
+    toggleSelectionPane,
     selAnim,
     setSelAnim,
     setHoverAnim,
@@ -3389,6 +3431,7 @@ export function App() {
             if (!v) {
               setShowAnimPane(false)
               setShowBgFormat(false)
+              setShowSelPane(false)
             }
             return !v
           })
@@ -3451,6 +3494,14 @@ export function App() {
         onAnimTiming={patchAnimTiming}
         animPaneOpen={showAnimPane}
         onToggleAnimPane={toggleAnimPane}
+        animPainterMode={animPainter?.mode ?? null}
+        onAnimPainterClick={() => animationActions.armAnimPainter(ctxRef.current, 'once')}
+        onAnimPainterDoubleClick={() =>
+          animationActions.armAnimPainter(ctxRef.current, 'continuous')
+        }
+        selectionPaneOpen={showSelPane}
+        onToggleSelectionPane={toggleSelectionPane}
+        onChangeCase={(mode) => styleActions.onChangeCase(ctxRef.current, mode)}
         animCount={animations.length}
         onAnimPreview={() => setAnimPreview((n) => n + 1)}
         onSlideShow={startSlideShow}
@@ -3659,6 +3710,7 @@ export function App() {
         onArrange={(op) => void alignSelected(op)}
         onFlip={(axis) => void flipSelected(axis)}
         canDistribute={selectedIds.length >= 3}
+        canMatchSize={selectedIds.length >= 2}
       />
 
       <div className="app-main">
@@ -4010,7 +4062,7 @@ export function App() {
                       />
                     )}
                     <div
-                      className={`stage-wrap${stageFitsViewport ? ' stage-fits-viewport' : ''}${brushMode ? ' format-brush-mode' : ''}`}
+                      className={`stage-wrap${stageFitsViewport ? ' stage-fits-viewport' : ''}${brushMode || animPainter ? ' format-brush-mode' : ''}`}
                       ref={stageWrapRef}
                       onMouseDownCapture={() => {
                         // Focus leaves the rail so slide-level Delete/cut/copy stop applying
@@ -4467,7 +4519,21 @@ export function App() {
                         .setTextBodyProps({ slideIndex: current, sourceId: id, props })
                         .then((r) => r && applySlide(current, r))
                     }
-                    onEffects={(id, effects) => sendEffects(current, id, effects)}
+                    onEffects={(id, effects) => {
+                      rememberRepeat((c) =>
+                        batched(async () => {
+                          for (const sid of c.selectedIds) {
+                            const r = await window.slidesApi.setEffects({
+                              slideIndex: c.current,
+                              sourceId: sid,
+                              effects,
+                            })
+                            if (r) c.applySlide(c.current, r)
+                          }
+                        }),
+                      )
+                      sendEffects(current, id, effects)
+                    }}
                     onStroke={(id, stroke) => void onStroke(id, stroke)}
                     onCollapse={() => setShowFormat(false)}
                     onPictureCrop={startCrop}
@@ -4501,6 +4567,42 @@ export function App() {
                     onDelete={(c) => void deleteComment(c)}
                     onGoToSlide={goToCommentSlide}
                     onCollapse={() => setShowComments(false)}
+                  />
+                ) : showSelPane ? (
+                  <SelectionPane
+                    slideIndex={current}
+                    slide={slide}
+                    selectedIds={selectedIds}
+                    enteredGroupId={enteredGroupId}
+                    onSelect={(id, groupId, additive) => {
+                      if (groupId) {
+                        setEnteredGroupId(groupId)
+                        setSelectedIds((prev) =>
+                          additive && enteredGroupId === groupId
+                            ? nextSelection(prev, id, true)
+                            : [id],
+                        )
+                      } else {
+                        if (enteredGroupId) setEnteredGroupId(null)
+                        setSelectedIds((prev) =>
+                          nextSelection(enteredGroupId ? [] : prev, id, additive),
+                        )
+                      }
+                    }}
+                    onMove={(dir) =>
+                      void batched(async () => {
+                        // Forward moves the front-most first so neighbours never leapfrog
+                        const order = slide?.nodes.map((n) => n.sourceId) ?? []
+                        const ids = [...selectedIds].sort(
+                          (a, b) => order.indexOf(a) - order.indexOf(b),
+                        )
+                        if (dir === 'forward') ids.reverse()
+                        for (const id of ids) {
+                          await arrangeActions.reorderSelected(ctxRef.current, id, dir)
+                        }
+                      })
+                    }
+                    onCollapse={() => setShowSelPane(false)}
                   />
                 ) : null}
               </>

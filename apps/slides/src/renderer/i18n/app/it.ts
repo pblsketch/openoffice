@@ -270,4 +270,9 @@ export const it = {
   appStatusSummaryZoomInserted: 'Diapositiva zoom riepilogo inserita con {count} riquadri',
   appSectionSummary: 'Sezione riepilogo',
   appSectionN: 'Sezione {n}',
+  appStatusAnimPainterNone: "L'elemento selezionato non ha animazioni",
+  appStatusAnimPainterOnce:
+    "Fai clic sull'elemento a cui applicare le animazioni; fai doppio clic sul pulsante per la modalità continua",
+  appStatusAnimPainterContinuous: 'Modalità continua di Copia animazione; premi Esc per uscire',
+  appStatusAnimPainted: 'Animazioni applicate',
 } satisfies Record<keyof typeof zh, string>

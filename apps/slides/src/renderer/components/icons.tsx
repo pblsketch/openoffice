@@ -2172,3 +2172,67 @@ export function IconReplacePicture(props: IconProps) {
     </Svg>
   )
 }
+
+/** Animation painter: the format brush with a motion spark */
+export function IconAnimPainter(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="8.4" y="7.8" width="2.4" height="4.2" rx="1.2" />
+      <rect x="3.6" y="12" width="12" height="8.4" rx="1.2" />
+      <path d="M 3.6 15.3 H 15.6" />
+      <path d="M 18.6 3 v 3.6 M 16.8 4.8 h 3.6 M 20.4 9.6 v 2.4 M 19.2 10.8 h 2.4" />
+    </Svg>
+  )
+}
+
+/** Selection pane: stacked layer rows */
+export function IconSelectionPane(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="4.5" y="4.5" width="15" height="15" rx="1.5" />
+      <path d="M 7.5 8.5 h 9 M 7.5 12 h 9 M 7.5 15.5 h 6" />
+    </Svg>
+  )
+}
+
+/** Same width: two boxes over a double-headed width arrow */
+export function IconSameWidth(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="5" y="4" width="14" height="5" rx="0.8" />
+      <rect x="5" y="11" width="14" height="5" rx="0.8" />
+      <path d="M 5 20 h 14 M 7 18.5 L 5 20 L 7 21.5 M 17 18.5 L 19 20 L 17 21.5" />
+    </Svg>
+  )
+}
+
+/** Same height: two boxes beside a double-headed height arrow */
+export function IconSameHeight(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="4" y="5" width="5" height="14" rx="0.8" />
+      <rect x="11" y="5" width="5" height="14" rx="0.8" />
+      <path d="M 20 5 v 14 M 18.5 7 L 20 5 L 21.5 7 M 18.5 17 L 20 19 L 21.5 17" />
+    </Svg>
+  )
+}
+
+/** Same size: two equal boxes */
+export function IconSameSize(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3.5" y="7" width="7.5" height="10" rx="0.8" />
+      <rect x="13" y="7" width="7.5" height="10" rx="0.8" />
+    </Svg>
+  )
+}
+
+/** Change case: "Aa" */
+export function IconChangeCase(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M 3 18 L 7.5 6 L 12 18 M 4.7 13.5 h 5.6" />
+      <path d="M 20 12 v 6 M 20 14.2 a 2.7 2.7 0 1 0 0 1.6" />
+    </Svg>
+  )
+}

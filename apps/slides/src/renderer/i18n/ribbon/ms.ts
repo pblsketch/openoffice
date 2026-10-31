@@ -783,4 +783,23 @@ export const ms = {
   ribbonZoomSectionItem: 'Slaid {n} Seksyen {k}: {name}',
   ribbonZoomSelectedSlides: '{n} slaid dipilih',
   ribbonZoomSelectedSections: '{n} seksyen dipilih',
+  ribbonCaseSentence: 'Huruf besar ayat.',
+  ribbonCaseLower: 'huruf kecil',
+  ribbonCaseUpper: 'HURUF BESAR',
+  ribbonCaseTitle: 'Huruf Besar Setiap Perkataan',
+  ribbonCaseToggle: 'tOGOL hURUF bESAR/kECIL',
+  ribbonSameWidth: 'Lebar Sama',
+  ribbonSameHeight: 'Tinggi Sama',
+  ribbonSameSize: 'Saiz Sama',
+  ribbonSameSizeTip: '{title}: padankan dengan elemen pertama yang dipilih',
+  ribbonSameSizeHint: '{title} (pilih 2 elemen atau lebih)',
+  ribbonSelectionPane: 'Anak Tetingkap Pemilihan',
+  ribbonSelectionPaneTip:
+    'Tunjukkan/sembunyikan Anak Tetingkap Pemilihan: semua elemen pada slaid, dari depan ke belakang (Alt+F10)',
+  ribbonAnimPainter: 'Penyalin Animasi',
+  ribbonAnimPainterTip:
+    'Penyalin Animasi: salin animasi elemen yang dipilih kepada elemen lain (dwiklik untuk terus menggunakannya)',
+  ribbonAnimPainterTipOnce: 'Klik elemen untuk menggunakan animasi tersebut',
+  ribbonAnimPainterTipContinuous: 'Penyalin Animasi mod berterusan (tekan Esc untuk keluar)',
+  ribbonEyedropper: 'Penitis',
 } satisfies Record<keyof typeof zh, string>

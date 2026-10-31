@@ -251,4 +251,9 @@ export const th = {
   appStatusSummaryZoomInserted: 'แทรกสไลด์ซูมสรุปพร้อม {count} ช่อง',
   appSectionSummary: 'ส่วนสรุป',
   appSectionN: 'ส่วน {n}',
+  appStatusAnimPainterNone: 'องค์ประกอบที่เลือกไม่มีภาพเคลื่อนไหว',
+  appStatusAnimPainterOnce:
+    'คลิกองค์ประกอบที่จะนำภาพเคลื่อนไหวไปใช้ ดับเบิลคลิกที่ปุ่มเพื่อเข้าสู่โหมดต่อเนื่อง',
+  appStatusAnimPainterContinuous: 'โหมดตัวคัดวางภาพเคลื่อนไหวต่อเนื่อง กด Esc เพื่อออก',
+  appStatusAnimPainted: 'นำภาพเคลื่อนไหวไปใช้แล้ว',
 } satisfies Record<keyof typeof zh, string>
