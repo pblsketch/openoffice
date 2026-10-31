@@ -1,4 +1,4 @@
-// The bundled template fonts are shipped unmodified, so the family name a document
+// The bundled template fonts keep their distributor names, so the family name a document
 // stores is the one a machine with the real font installed resolves. This reads each
 // file's own name table and holds the data list to it.
 import { closeSync, openSync } from 'node:fs'

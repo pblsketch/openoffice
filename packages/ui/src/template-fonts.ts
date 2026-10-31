@@ -4,11 +4,13 @@
  * The files live in packages/ui/template-fonts/ (outside src/, so no editor build
  * imports them as an asset) and ship once in the installer as resources/template-fonts
  * (apps/shell/electron-builder.cjs); main-process code finds the folder through
- * templateFontsDir in @genoffice/electron-utils/template-fonts-dir. Every file is the
- * distributor's own, unmodified: no subsetting, no renaming, so the family a document
- * stores is the one a machine with the real font installed resolves. The folder holds
- * only these files, each family's license text and README.md, which records the
- * license evidence and the downloaded versions.
+ * templateFontsDir in @genoffice/electron-utils/template-fonts-dir. Every file keeps the
+ * distributor's name, family names and metrics: no subsetting, no renaming, so the family
+ * a document stores is the one a machine with the real font installed resolves. All but
+ * Noto Serif KR are the distributor's files byte for byte; its two CFF faces carry
+ * TrueType outlines instead (see `modified`). The folder holds only these files, each
+ * family's license text and README.md, which records the license evidence and the
+ * downloaded versions.
  *
  * Plain data and string helpers with no imports at all: renderer and main-process code
  * both read it (the main-process answer to a font URL is templateFontResponse in
@@ -50,6 +52,12 @@ export interface TemplateFontFamily {
   readonly version: string
   /** the day the files were downloaded (ISO date) */
   readonly downloaded: string
+  /**
+   * How the shipped files differ from the distributor's, when they do. Names, cmap,
+   * advances and layout tables never change; the license still applies as a Modified
+   * Version, so a family whose name is a Reserved Font Name is never modified.
+   */
+  readonly modified?: string
 }
 
 /** The readme beside the font files: font, license, distributor, version and date. */
@@ -58,8 +66,10 @@ export const TEMPLATE_FONTS_README = 'README.md'
 /**
  * Budget for the font files together (raw bytes). The installer compresses them, so its
  * growth is smaller still; the budget bounds what lands on disk. Tune it here.
+ * 55 MiB: the files total 51.1 MiB since Noto Serif KR moved to TrueType outlines (its
+ * two faces grew 15.6 MB -> 24.2 MB raw, yet compress smaller than the CFF originals).
  */
-export const TEMPLATE_FONTS_MAX_BYTES = 45 * 1024 * 1024
+export const TEMPLATE_FONTS_MAX_BYTES = 55 * 1024 * 1024
 
 const DOWNLOADED = '2026-10-14'
 const GOOGLE_FONTS = 'https://github.com/google/fonts'
@@ -104,6 +114,10 @@ export const TEMPLATE_FONTS: readonly TemplateFontFamily[] = [
       'https://github.com/notofonts/noto-cjk/tree/f8d157532fbfaeda587e826d4cd5b21a49186f7c/Serif/SubsetOTF/KR',
     version: '2.003',
     downloaded: DOWNLOADED,
+    // Chromium's PDF export cannot embed CFF faces (it draws them as Type3 paths); the
+    // Reserved Font Name is "Source", not the family name, so the outlines may change
+    modified:
+      'CFF outlines converted to TrueType (glyf) by tools/convert-cff-to-glyf.py; file names, names, cmap, advances and layout tables unchanged',
   },
   {
     family: 'Black Han Sans',

@@ -1,7 +1,7 @@
 /**
  * Rich header/footer editing: a nested TipTap editor (textbox sub-editor
  * schema + tab stops) hosts the part's text paragraphs, so ribbon formatting
- * routes into it like a shape's text. PAGE / NUMPAGES field sentinels become
+ * routes into it like a shape's text. PAGE / NUMPAGES / SECTIONPAGES field sentinels become
  * atom nodes showing the live number; layout-table rows and floating boxes
  * stay display-only and are spliced back around the edited paragraphs.
  */
@@ -10,6 +10,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import {
   PAGE_MARK,
+  SECTION_PAGES_MARK,
   TOTAL_PAGES_MARK,
   type HeaderFooter,
   type HfParagraph,
@@ -20,14 +21,22 @@ import { inlineToRuns, runsToInline, type PmNode } from './convert'
 import { TextboxParagraph, textboxSubExtensions } from './extensions'
 import { hfParasOf, hfPictureRuns } from './hf-text'
 
-export type HfFieldKind = 'PAGE' | 'NUMPAGES'
+export type HfFieldKind = 'PAGE' | 'NUMPAGES' | 'SECTIONPAGES'
 
 interface HfFieldNumbers {
   page: string
   total: string
+  /** page count of the edited page's section (SECTIONPAGES) */
+  section: string
 }
 
-/** PAGE / NUMPAGES field: one atom per sentinel; the number is drawn from a decoration attribute */
+const FIELD_MARKS: Record<HfFieldKind, string> = {
+  PAGE: PAGE_MARK,
+  NUMPAGES: TOTAL_PAGES_MARK,
+  SECTIONPAGES: SECTION_PAGES_MARK,
+}
+
+/** PAGE / NUMPAGES / SECTIONPAGES field: one atom per sentinel; the number is drawn from a decoration attribute */
 const HfFieldNode = Node.create({
   name: 'hfField',
   group: 'inline',
@@ -64,7 +73,7 @@ const HfFieldNumbersExtension = Extension.create({
       new Plugin<HfFieldNumbers>({
         key: hfFieldNumbersKey,
         state: {
-          init: () => ({ page: '1', total: '1' }),
+          init: () => ({ page: '1', total: '1', section: '1' }),
           apply: (tr, prev) =>
             (tr.getMeta(hfFieldNumbersKey) as HfFieldNumbers | undefined) ?? prev,
         },
@@ -74,7 +83,12 @@ const HfFieldNumbersExtension = Extension.create({
             const decos: Decoration[] = []
             state.doc.descendants((node, pos) => {
               if (node.type.name !== 'hfField') return
-              const num = node.attrs.kind === 'NUMPAGES' ? nums.total : nums.page
+              const num =
+                node.attrs.kind === 'NUMPAGES'
+                  ? nums.total
+                  : node.attrs.kind === 'SECTIONPAGES'
+                    ? nums.section
+                    : nums.page
               decos.push(Decoration.node(pos, pos + node.nodeSize, { 'data-hf-num': num }))
             })
             return DecorationSet.create(state.doc, decos)
@@ -147,10 +161,10 @@ function fieldSplit(nodes: PmNode[]): PmNode[] {
       continue
     }
     const marks = node.marks ? { marks: node.marks } : {}
-    for (const seg of node.text.split(new RegExp(`([${PAGE_MARK}${TOTAL_PAGES_MARK}])`))) {
-      if (seg === PAGE_MARK) out.push({ type: 'hfField', attrs: { kind: 'PAGE' }, ...marks })
-      else if (seg === TOTAL_PAGES_MARK)
-        out.push({ type: 'hfField', attrs: { kind: 'NUMPAGES' }, ...marks })
+    const re = new RegExp(`([${PAGE_MARK}${TOTAL_PAGES_MARK}${SECTION_PAGES_MARK}])`)
+    for (const seg of node.text.split(re)) {
+      const kind = (Object.keys(FIELD_MARKS) as HfFieldKind[]).find((k) => FIELD_MARKS[k] === seg)
+      if (kind) out.push({ type: 'hfField', attrs: { kind }, ...marks })
       else if (seg) out.push({ type: 'text', text: seg, ...marks })
     }
   }
@@ -162,7 +176,7 @@ function fieldJoin(nodes: PmNode[]): PmNode[] {
     node.type === 'hfField'
       ? {
           type: 'text',
-          text: node.attrs?.kind === 'NUMPAGES' ? TOTAL_PAGES_MARK : PAGE_MARK,
+          text: FIELD_MARKS[node.attrs?.kind as HfFieldKind] ?? PAGE_MARK,
           ...(node.marks ? { marks: node.marks } : {}),
         }
       : node,
@@ -284,6 +298,8 @@ export function mountHfEditor(
     value: HeaderFooter
     pageNo: string
     pageTotal: string
+    /** the edited page's section page count (SECTIONPAGES); defaults to pageTotal */
+    sectionPages?: string
     spellcheck: boolean
     onCommit: (next: HeaderFooter) => void
     onExit: () => void
@@ -306,7 +322,11 @@ export function mountHfEditor(
     onTransaction: ({ transaction }) => notifySubEditorState(transaction.docChanged),
   })
   editor.view.dispatch(
-    editor.state.tr.setMeta(hfFieldNumbersKey, { page: opts.pageNo, total: opts.pageTotal }),
+    editor.state.tr.setMeta(hfFieldNumbersKey, {
+      page: opts.pageNo,
+      total: opts.pageTotal,
+      section: opts.sectionPages ?? opts.pageTotal,
+    }),
   )
   // compared after schema normalization, so untouched null attrs never read as an edit
   const initialSig = JSON.stringify(editor.getJSON())

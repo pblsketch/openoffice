@@ -35,6 +35,7 @@ import {
   sectionColGeom,
   sectionFirstPages,
   sectionGeoms,
+  sectionPageCounts,
   outerTableRows,
   sectionVertical,
   verticalBlockShift,
@@ -1397,6 +1398,7 @@ export function PaginationPreview({
     [slices, secs],
   )
   const firsts = useMemo(() => sectionFirstPages(slices), [slices])
+  const sectionPages = useMemo(() => sectionPageCounts(slices), [slices])
 
   // line positions of endnote entries in virtual coordinates (matching appendEndnotesBlock's line boxes)
   const endnoteRows = useMemo(() => {
@@ -1690,6 +1692,7 @@ export function PaginationPreview({
                     onCommit={() => {}}
                     pageNo={pageNoText}
                     pageTotal={slices.length}
+                    sectionPages={sectionPages[i]}
                     boxGeom={hfStripGeom(s)}
                   />
                 )}
@@ -2034,6 +2037,7 @@ export function PaginationPreview({
                     onCommit={() => {}}
                     pageNo={pageNoText}
                     pageTotal={slices.length}
+                    sectionPages={sectionPages[i]}
                     boxGeom={hfStripGeom(s)}
                   />
                 )}
