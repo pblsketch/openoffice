@@ -1,7 +1,14 @@
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { basename, dirname, extname, isAbsolute, join, resolve } from 'node:path'
 import { flagBool, flagString } from '../args'
-import { assertAllowed, resolveInput, resolveOutput, stripBom, writeOutput } from '../fs'
+import {
+  assertAllowed,
+  readTextFile,
+  resolveInput,
+  resolveOutput,
+  stripBom,
+  writeOutput,
+} from '../fs'
 import { applyOps, blankDeck, inlineLocalFiles, parseOps, saveDeck } from '../formats/pptx'
 import {
   auditDeckBytes,
@@ -22,6 +29,7 @@ import {
 } from '../formats/xlsx'
 import { exportViaApp } from '../formats/app-export'
 import { blankDocument, closeDocument, fillFromHtml, saveDocument } from '../formats/docx'
+import { decodeHtmlBytes } from '../formats/html-text'
 import { markdownToDocx } from '../formats/markdown'
 import { runWorkbookDsl } from '../formats/xlsx-dsl'
 import { columnLabel } from '@genoffice/xlsx-gateway/domain/cell-address'
@@ -277,7 +285,7 @@ async function createPptxFromSpec(
       reason: 'invalid_argument',
     })
   const source = spec === '-' ? 'stdin' : resolveInput(spec, ctx)
-  const text = stripBom(spec === '-' ? readFileSync(0, 'utf-8') : readFileSync(source, 'utf-8'))
+  const text = stripBom(spec === '-' ? readFileSync(0, 'utf-8') : readTextFile(source))
   const built = await buildDeckFromSpec(
     text,
     source,
@@ -391,7 +399,7 @@ function readTables(
   }
   let parsed: unknown
   try {
-    parsed = JSON.parse(stripBom(readFileSync(source, 'utf-8')))
+    parsed = JSON.parse(stripBom(readTextFile(source)))
   } catch (err) {
     throw new CliError(
       EXIT.usage,
@@ -440,7 +448,7 @@ async function createDocx(
   if (ext === '.html' || ext === '.htm') {
     const doc = await blankDocument()
     try {
-      const blocks = fillFromHtml(doc, text)
+      const blocks = fillFromHtml(doc, decodeHtmlBytes(readFileSync(source)))
       return { bytes: await saveDocument(doc), detail: { source: 'html', blocks } }
     } finally {
       closeDocument(doc)

@@ -82,6 +82,7 @@ export const zh = {
   meAddParent: '添加父主题',
   meAddSibling: '添加同级主题',
   meRemoveNode: '删除主题',
+  meRemovePicture: '删除图片',
   meFocus: '专注模式',
   meCancelFocus: '退出专注模式',
   meMoveUp: '上移',
@@ -118,4 +119,9 @@ export const zh = {
   markerStar: '星标',
   markerOther: '标记',
   pictureNotShown: '未加载的图片',
+  pictureDropNoTopic: '请把图片放到主题上',
+  pictureDropUnsupported: '只能添加 PNG、JPG 和 GIF 图片',
+  pictureDropTooLarge: '无法添加超过 10 MB 的图片',
+  pictureDropFailed: '无法添加图片',
+  pictureDropFirstOnly: '一个主题只能放一张图片，因此只添加了第一张',
 }

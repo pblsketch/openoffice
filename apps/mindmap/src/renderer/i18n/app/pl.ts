@@ -87,6 +87,7 @@ export const pl = {
   meAddParent: 'Dodaj temat nadrzędny',
   meAddSibling: 'Dodaj temat równorzędny',
   meRemoveNode: 'Usuń temat',
+  meRemovePicture: 'Usuń obraz',
   meFocus: 'Tryb skupienia',
   meCancelFocus: 'Wyjdź z trybu skupienia',
   meMoveUp: 'Przenieś w górę',
@@ -124,4 +125,9 @@ export const pl = {
   markerStar: 'Gwiazdka',
   markerOther: 'Znacznik',
   pictureNotShown: 'Obraz nie został wczytany',
+  pictureDropNoTopic: 'Upuść obraz na temat',
+  pictureDropUnsupported: 'Można dodawać tylko obrazy PNG, JPG i GIF',
+  pictureDropTooLarge: 'Nie można dodać obrazów większych niż 10 MB',
+  pictureDropFailed: 'Nie udało się dodać obrazu',
+  pictureDropFirstOnly: 'Temat mieści tylko jeden obraz, więc dodano tylko pierwszy',
 } satisfies Record<keyof typeof zh, string>

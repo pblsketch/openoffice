@@ -22,7 +22,15 @@ import {
 } from '../formats/pptx'
 import { readSheet, workbookSummary, writeWorkbook } from '../formats/xlsx'
 import { runWorkbookDsl } from '../formats/xlsx-dsl'
-import { extension, readInput, resolveInput, resolveOutput, stripBom, writeOutput } from '../fs'
+import {
+  extension,
+  readInput,
+  readTextFile,
+  resolveInput,
+  resolveOutput,
+  stripBom,
+  writeOutput,
+} from '../fs'
 import { readOpsStream } from '../ops-input'
 import type { OpenedPptx } from '@genoffice/pptx-engine'
 import type { TableModel } from '@genoffice/docx-engine'
@@ -169,7 +177,7 @@ function readData(
       ? [readOpsStream(0, 'stdin'), 'stdin']
       : /^[[{]/.test(trimmed)
         ? [trimmed, '--data']
-        : [readFileSync(resolveInput(spec, ctx), 'utf-8'), spec]
+        : [readTextFile(resolveInput(spec, ctx)), spec]
   let parsed: unknown
   try {
     parsed = JSON.parse(stripBom(text))

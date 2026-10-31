@@ -88,6 +88,7 @@ export const nl = {
   meAddParent: 'Bovenliggend onderwerp toevoegen',
   meAddSibling: 'Onderwerp op hetzelfde niveau toevoegen',
   meRemoveNode: 'Onderwerp verwijderen',
+  meRemovePicture: 'Afbeelding verwijderen',
   meFocus: 'Focusmodus',
   meCancelFocus: 'Focusmodus verlaten',
   meMoveUp: 'Omhoog verplaatsen',
@@ -125,4 +126,9 @@ export const nl = {
   markerStar: 'Ster',
   markerOther: 'Markering',
   pictureNotShown: 'Afbeelding niet geladen',
+  pictureDropNoTopic: 'Zet de afbeelding neer op een onderwerp',
+  pictureDropUnsupported: 'Alleen PNG-, JPG- en GIF-afbeeldingen kunnen worden toegevoegd',
+  pictureDropTooLarge: 'Afbeeldingen groter dan 10 MB kunnen niet worden toegevoegd',
+  pictureDropFailed: 'Kan de afbeelding niet toevoegen',
+  pictureDropFirstOnly: 'Een onderwerp bevat één afbeelding, dus alleen de eerste is toegevoegd',
 } satisfies Record<keyof typeof zh, string>

@@ -1,6 +1,6 @@
-import { readFileSync, readSync, statSync } from 'node:fs'
+import { readSync, statSync } from 'node:fs'
 import { flagString, type ParsedArgs } from './args'
-import { resolveInput, stripBom, type PathContext } from './fs'
+import { readTextFile, resolveInput, stripBom, type PathContext } from './fs'
 import { MAX_TRANSFER_BYTES } from './mcp/files'
 import { CliError, EXIT } from './result'
 
@@ -55,5 +55,5 @@ export function readOpsInput(
   const path = resolveInput(spec, ctx)
   const size = statSync(path).size
   throwIfOpsOverBudget(size, path, cap)
-  return { text: stripBom(readFileSync(path, 'utf-8')), source: path }
+  return { text: stripBom(readTextFile(path)), source: path }
 }

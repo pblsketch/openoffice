@@ -87,6 +87,7 @@ export const pt = {
   meAddParent: 'Adicionar tópico pai',
   meAddSibling: 'Adicionar tópico irmão',
   meRemoveNode: 'Excluir tópico',
+  meRemovePicture: 'Remover imagem',
   meFocus: 'Modo de foco',
   meCancelFocus: 'Sair do modo de foco',
   meMoveUp: 'Mover para cima',
@@ -124,4 +125,9 @@ export const pt = {
   markerStar: 'Estrela',
   markerOther: 'Marcador',
   pictureNotShown: 'Imagem não carregada',
+  pictureDropNoTopic: 'Solte a imagem sobre um tópico',
+  pictureDropUnsupported: 'Só é possível adicionar imagens PNG, JPG e GIF',
+  pictureDropTooLarge: 'Não é possível adicionar imagens com mais de 10 MB',
+  pictureDropFailed: 'Não foi possível adicionar a imagem',
+  pictureDropFirstOnly: 'Um tópico tem só uma imagem, por isso apenas a primeira foi adicionada',
 } satisfies Record<keyof typeof zh, string>

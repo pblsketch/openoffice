@@ -85,6 +85,7 @@ export const th = {
   meAddParent: 'เพิ่มหัวข้อแม่',
   meAddSibling: 'เพิ่มหัวข้อระดับเดียวกัน',
   meRemoveNode: 'ลบหัวข้อ',
+  meRemovePicture: 'ลบรูปภาพ',
   meFocus: 'โหมดโฟกัส',
   meCancelFocus: 'ออกจากโหมดโฟกัส',
   meMoveUp: 'เลื่อนขึ้น',
@@ -122,4 +123,9 @@ export const th = {
   markerStar: 'ดาว',
   markerOther: 'เครื่องหมาย',
   pictureNotShown: 'รูปภาพที่ไม่ได้โหลด',
+  pictureDropNoTopic: 'วางรูปภาพบนหัวข้อ',
+  pictureDropUnsupported: 'เพิ่มได้เฉพาะรูปภาพ PNG, JPG และ GIF',
+  pictureDropTooLarge: 'ไม่สามารถเพิ่มรูปภาพที่ใหญ่กว่า 10 MB',
+  pictureDropFailed: 'ไม่สามารถเพิ่มรูปภาพได้',
+  pictureDropFirstOnly: 'หัวข้อหนึ่งมีรูปภาพได้เพียงรูปเดียว จึงเพิ่มเฉพาะรูปแรก',
 } satisfies Record<keyof typeof zh, string>

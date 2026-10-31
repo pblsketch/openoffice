@@ -92,3 +92,4 @@
 | [0089](0089-hwp-new-document-save-format.md)                  | 새 한글 문서의 첫 저장은 설정에서 고른 HWP·HWPX 형식을 먼저 제안하고, 연 문서는 그대로 둔다     | 2026-10-29 |
 | [0090](0090-epub-book-preview.md)                             | EPUB 미리보기는 단말기처럼 쪽을 넘기는 화면이고, 그 설정은 미리보기에만 쓴다                    | 2026-10-29 |
 | [0091](0091-read-large-documents-text-parts.md)               | 사진이 많아 큰 zip 문서는 글 파트만 읽고, 그 형식과 PDF에는 AI 읽기 크기 상한을 두지 않는다     | 2026-10-30 |
+| [0093](0093-mindmap-picture-drop-and-remove.md)               | 마인드맵 그림은 사람이 끌어 놓아 넣고, 사람이 고른 토픽에서만 지운다                            | 2026-10-31 |

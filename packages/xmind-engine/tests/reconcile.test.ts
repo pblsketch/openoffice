@@ -117,6 +117,47 @@ describe('reconcileSheet: a state that changes nothing', () => {
   })
 })
 
+describe('reconcileSheet: a picture the user removed', () => {
+  async function removing(change: (view: ViewSheet) => void, removedPictures: string[]) {
+    const document = await openSheets(sampleSheets())
+    const before = copyOf(document.sheets)
+    const entries = [...document.entryNames]
+    const view = document.viewSheets()[0]!
+    change(view)
+    const result = expectApplied(reconcileSheet(document, 0, view, { removedPictures }))
+    return { document, before, entries, result, sheet: document.sheets[0]! }
+  }
+
+  it('takes the picture off a topic named as removed, and nothing else', async () => {
+    const { document, before, entries, result, sheet } = await removing(
+      (view) => (inView(view, 'b').image = null),
+      ['b'],
+    )
+    expect(result).toMatchObject({ changed: true, inSync: true })
+    expect(inSource(sheet, 'b')!.image).toBeUndefined()
+    expect(differences(before[0], sheet)).toEqual(['$.rootTopic.children.attached[1].image'])
+    // no archive entry goes: another topic may show the same picture
+    expect(document.entryNames).toEqual(entries)
+    expect(document.changed).toBe(true)
+  })
+
+  it('keeps a picture the state still shows, even for a topic named as removed', async () => {
+    const { result, sheet } = await removing(() => {}, ['b'])
+    expect(result.changed).toBe(false)
+    expect(inSource(sheet, 'b')!.image).toEqual({
+      src: 'xap:resources/picture.png',
+      width: 120.5,
+      height: 80,
+    })
+  })
+
+  it('changes nothing for a named topic that has no picture', async () => {
+    const { document, result } = await removing(() => {}, ['a1'])
+    expect(result.changed).toBe(false)
+    expect(document.changed).toBe(false)
+  })
+})
+
 describe('reconcileSheet: a topic that is in both', () => {
   it('writes one edited title and nothing else, into content.json and no other entry', async () => {
     const original = await buildMapFile({

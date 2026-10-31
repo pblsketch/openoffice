@@ -111,10 +111,17 @@
  *   one synchronous draw reuses it, and what the answer depends on (the fonts
  *   found on the PC, the open document's substitutions) changes only when an
  *   asynchronous step ends, so every later draw asks again.
+ *
+ * studio-pc-fonts
+ *   The studio lists the PC's fonts only after the 찾기 button of its options dialog,
+ *   so its font lists held the base fonts and the document's own until then. At start-up
+ *   it now asks the PC for its font list and detects anew when that differs from the
+ *   kept one (studio-plugin/pc-fonts.mjs), then tells the font lists as the button does.
  */
 
 import { CLIPBOARD_HTML_MODULE } from '../studio-plugin/clipboard-html.mjs'
 import { HANCOM_KEYS_MODULE, studioCommandIds } from '../studio-plugin/hancom-keys.mjs'
+import { PC_FONTS_MODULE } from '../studio-plugin/pc-fonts.mjs'
 
 /** Must equal RENDERER_SCHEME in packages/electron-utils/src/renderer-scheme.ts. */
 export const APP_SCHEME = 'genoffice-app'
@@ -133,6 +140,9 @@ export const FORMAT_COPY_MODULE = '@ieum/format-copy'
 
 /** Module specifier the studio-clipboard-objects patch imports; build-studio.mjs aliases it. */
 export { CLIPBOARD_HTML_MODULE }
+
+/** Module specifier the studio-pc-fonts patch imports; build-studio.mjs aliases it. */
+export { PC_FONTS_MODULE }
 
 const PATCHES = {
   'sdk-scheme': {
@@ -983,6 +993,35 @@ const PATCHES = {
     replace:
       'descriptor.set!.call(this, scopedHostCanvasFont(String(value)) ?? memoSubstituteCssFontFamily(String(value)));',
   },
+  'studio-pc-fonts': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]main\.ts$/,
+    edits: [
+      {
+        find: ['  resolveLocalFont,', "} from '@/core/local-fonts';"].join('\n'),
+        replace: [
+          '  resolveLocalFont,',
+          '  getLocalFontRecords,',
+          "} from '@/core/local-fonts';",
+          `import { refreshPcFonts } from '${PC_FONTS_MODULE}';`,
+        ].join('\n'),
+      },
+      {
+        find: ['    setupEventListeners();', '    setupModalFocusRestore();'].join('\n'),
+        replace: [
+          '    setupEventListeners();',
+          '    void refreshPcFonts({',
+          '      queryLocalFonts: (globalThis as { queryLocalFonts?: () => Promise<{ family: string; fullName: string; postscriptName: string }[]> }).queryLocalFonts?.bind(globalThis),',
+          '      loadStored: loadStoredLocalFonts,',
+          '      records: () => getLocalFontRecords({ includeRegistered: true }),',
+          '      detect: () => detectLocalFonts({ force: true }),',
+          "      changed: () => eventBus.emit('local-fonts-changed', { source: 'pc-fonts' }),",
+          '      document,',
+          '    });',
+          '    setupModalFocusRestore();',
+        ].join('\n'),
+      },
+    ],
+  },
   // Paste onto a cell block fills the selected cells (hancom-keys.mjs); the key handler
   // keeps the block for Ctrl+V, and the paste event asks the module before the studio
   // pastes at the caret. Menu "paste" comes through the same event.
@@ -1045,6 +1084,7 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-font-memo-state',
   'studio-font-memo-use',
   'studio-cell-block-paste',
+  'studio-pc-fonts',
 ])
 
 /** Whether a patch is written against this file. */

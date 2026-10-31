@@ -118,6 +118,8 @@ import {
   keyColumn,
   keyRow,
   recalcReadRanges,
+  recalculableDefinedNames,
+  usedDefinedNames,
   type ClosureSheetInput,
 } from './formula-closure'
 import { isPlainArithmeticFormula } from './formula-cached-fallback'
@@ -1117,6 +1119,7 @@ export function applyDefinedNames(
   file: WorkbookFile,
   state: LazyWorkbookState,
 ): void {
+  setRecalculableNames(new Map())
   const workbook = runtime?.univerAPI.getActiveWorkbook()
   if (!workbook) return
   // Excel allows one definition per (name, scope) and resolves sheet-scope
@@ -1171,6 +1174,7 @@ export function applyDefinedNames(
   } finally {
     journalSuppression.active = false
   }
+  setRecalculableNames(recalculableDefinedNames(file.definedNames, state.uninstalledDefinedNames))
 }
 
 /// An author-less comment carries no marker, so the marker is recognised by
@@ -4348,6 +4352,35 @@ export function setSupportedFunctionProbe(probe: SupportedFunctionProbe | null):
   keepsCacheMemo.clear()
 }
 
+/// The open workbook's defined names the engine recalculates like Excel,
+/// lowercase name to body (see recalculableDefinedNames). A formula using
+/// any other name keeps the file's cached value.
+let recalculableNames: ReadonlyMap<string, string> = new Map()
+
+export function setRecalculableNames(names: ReadonlyMap<string, string>): void {
+  recalculableNames = names
+  // Verdicts memoised under the previous workbook's names are stale.
+  keepsCacheMemo.clear()
+}
+
+/// The formula followed by the bodies of the recalculable names it uses,
+/// directly or through other names. A name's body runs as part of the
+/// formula, so the keep-cache checks cover it too.
+function withNameBodies(formula: string): string[] {
+  const texts = [formula]
+  if (recalculableNames.size === 0) return texts
+  const seen = new Set<string>()
+  for (let index = 0; index < texts.length; index += 1) {
+    for (const name of usedDefinedNames(texts[index] ?? '')) {
+      const body = recalculableNames.get(name)
+      if (body === undefined || seen.has(name)) continue
+      seen.add(name)
+      texts.push(body)
+    }
+  }
+  return texts
+}
+
 /// True when the formula calls a function the engine lacks. Recalculating
 /// such a formula yields #NAME? — or, when the author wrapped the call in
 /// IFERROR/ISERROR/IFNA/IFS/CHOOSE, the fallback literal (0, "") in place of
@@ -4364,16 +4397,19 @@ export function formulaKeepsCache(formula: string, hasCachedValue = true): boole
     // IFERROR(__xludf.DUMMYFUNCTION("..."), <literal>); recalculating turns
     // the float-repr literal (46235.0) into a string that numfmt skips.
     // The cached <v> IS the computed value — keep it, like Excel does.
+    const texts = withNameBodies(formula)
     const always =
-      formula.includes('__xludf.') ||
-      usesLocaleDependentFunction(formula) ||
-      containsUnresolvedNames(formula)
+      texts.some((text) => text.includes('__xludf.') || usesLocaleDependentFunction(text)) ||
+      containsUnresolvedNames(formula, recalculableNames)
     const probe = supportedFunctionProbe
     const registryReady = probe === null || probe.ready()
     verdict = {
       always,
       unsupportedFunction:
-        !always && probe !== null && registryReady && callsUnsupportedFunction(formula, probe),
+        !always &&
+        probe !== null &&
+        registryReady &&
+        texts.some((text) => callsUnsupportedFunction(text, probe)),
     }
     // A verdict taken before the builtins landed would pin "supported" on
     // every function for the rest of the session.

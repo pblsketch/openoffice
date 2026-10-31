@@ -27,6 +27,7 @@
 - **`ok`로 열리지 않은 파일에서는 문서가 생기지 않는다.** `XmindDocument`는 패키지 밖으로 생성자를 내보내지 않는다. 문서는 `openXmind`와 새 파일 함수에서만 나온다. 저장할 바이트를 만들 수 있는 것은 문서뿐이다.
 - **맞추기는 결과만 본다.** 화면의 동작을 하나하나 번역하지 않는다. 짝은 토픽 식별자로 짓고, 편집기가 고치는 값 가운데 실제로 달라진 것만 적는다. 옮긴 토픽은 원본 덩어리째(모르는 키 포함) 옮긴다. 맞추기가 받은 상태는 화면 창에서 왔으므로 믿지 않고 `reconcile-state.ts`에서 검사·복사한 뒤에 쓴다.
 - **요약과 경계는 감싸던 토픽을 따라간다.** 맞추기 전에 순번을 "감싸는 토픽들"로 바꾸고, 맞춘 뒤 그 토픽들의 새 자리로 다시 적는다. 감싸던 첫 토픽이 다른 가지로 옮겨지면 기록도 그쪽으로 함께 간다. 감싸던 토픽이 모두 지워졌을 때만 기록을 지운다. 떨어진 토픽은 첫 토픽부터 이어진 부분까지로 줄인다.
+- **그림은 이름이 불린 토픽에서만 지운다.** 상태에 그림이 없어도 맞추기는 지우지 않는다. 호출자가 `removedPictures`에 그 토픽 id를 넣었을 때만 `image`를 지우고, 보관 항목은 남긴다(결정 0093).
 - **사용자가 고친 메모는 일반 글로만 다시 쓰고 서식 있는 쪽을 뺀다.** 남겨 두면 원래 프로그램이 예전 내용을 보여 준다. 고치지 않은 메모는 그대로다.
 - **테마는 사용자가 고를 때와 새 시트를 만들 때만 적는다.** 적는 곳은 `theme-sheet.ts` 하나다. 열기·알아보기·저장은 시트의 `theme`을 건드리지 않는다.
 - **이 앱만의 표식을 파일에 넣지 않는다.** 테마는 속성표 자체로 알아본다(`recogniseTheme`). 이 앱이 적은 표와 속성까지 같으면 그 테마이고, 다른 프로그램의 테마나 다른 프로그램이 다시 저장해 속성이 달라진 표는 알아보지 않는다.
@@ -51,5 +52,5 @@
 
 - 실행: `npm run test -w @genoffice/xmind-engine`, `npm run typecheck -w @genoffice/xmind-engine`. Windows에서 전부 통과한다.
 - 시험 파일은 `tests/helpers.ts`가 손으로 그때그때 만든다. 다른 프로그램이 만든 파일·나무·테마·그림은 저장소에 없다.
-- 바꾸면 반드시 테스트하는 것: 열기의 다섯 결과(`tests/open.test.ts`), 바뀐 것 없는 저장의 바이트 일치와 제목 하나만 고친 저장에서 `content.json`만 다른 것(`tests/save.test.ts`), 모르는 값이 옮긴 토픽과 함께 가는 것과 지운 토픽 아래만 사라지는 것(`tests/reconcile*.test.ts`), 요약·경계의 순번(`tests/reconcile-ranges.test.ts`, `tests/reconcile-follow.test.ts`), 보존만 하는 요소의 수(`tests/preserved.test.ts`), 개요 글 형식과 왕복(`tests/outline.test.ts`, `tests/outline-parse.test.ts`), 96개 테마를 적고 다시 알아보는 것과 지금 적는 표의 고정(`tests/theme-table.test.ts`), 그림 항목 더하기·되돌리기와 매니페스트·다시 열기, 상태가 가리키는 그림 쓰기와 없는 항목 무시(`tests/resource-image.test.ts`), 화면과 Node 양쪽에서 도는지(`tests/browser-safety.test.ts`).
+- 바꾸면 반드시 테스트하는 것: 열기의 다섯 결과(`tests/open.test.ts`), 바뀐 것 없는 저장의 바이트 일치와 제목 하나만 고친 저장에서 `content.json`만 다른 것(`tests/save.test.ts`), 모르는 값이 옮긴 토픽과 함께 가는 것과 지운 토픽 아래만 사라지는 것(`tests/reconcile*.test.ts`), 요약·경계의 순번(`tests/reconcile-ranges.test.ts`, `tests/reconcile-follow.test.ts`), 보존만 하는 요소의 수(`tests/preserved.test.ts`), 개요 글 형식과 왕복(`tests/outline.test.ts`, `tests/outline-parse.test.ts`), 96개 테마를 적고 다시 알아보는 것과 지금 적는 표의 고정(`tests/theme-table.test.ts`), 그림 항목 더하기·되돌리기와 매니페스트·다시 열기, 상태가 가리키는 그림 쓰기와 없는 항목 무시(`tests/resource-image.test.ts`), 이름이 불린 토픽에서만 그림 지우기(`tests/reconcile.test.ts`), 화면과 Node 양쪽에서 도는지(`tests/browser-safety.test.ts`).
 - 만든 파일이 원래 프로그램에서 열리는지는 자동 테스트로 확인하지 못한다. 실제 프로그램에 올려 확인한다.

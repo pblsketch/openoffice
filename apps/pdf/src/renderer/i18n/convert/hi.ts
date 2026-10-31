@@ -64,6 +64,8 @@ export const hi = {
   cvErrFailed: 'रूपांतरण नहीं हो सका।',
   cvPageImageAlt: 'पृष्ठ {page}',
   imgExportWholePages: 'पूरे पृष्ठ',
+  imgExportCurrentPage: 'केवल वर्तमान पृष्ठ',
+  imgExportCurrentPageTip: 'देखे जा रहे पृष्ठ को एक PNG फ़ाइल के रूप में निर्यात करें',
   imgExportEmbedded: 'केवल पृष्ठों के अंदर के चित्र',
   imgExportEmbeddedTip:
     'पृष्ठों में रखे चित्रों को उनके मूल रिज़ॉल्यूशन में PNG फ़ाइलों के रूप में सहेजें',

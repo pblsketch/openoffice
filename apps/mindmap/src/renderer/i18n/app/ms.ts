@@ -87,6 +87,7 @@ export const ms = {
   meAddParent: 'Tambah topik induk',
   meAddSibling: 'Tambah topik setara',
   meRemoveNode: 'Padam topik',
+  meRemovePicture: 'Buang gambar',
   meFocus: 'Mod fokus',
   meCancelFocus: 'Keluar daripada mod fokus',
   meMoveUp: 'Alih ke atas',
@@ -124,4 +125,9 @@ export const ms = {
   markerStar: 'Bintang',
   markerOther: 'Penanda',
   pictureNotShown: 'Gambar tidak dimuatkan',
+  pictureDropNoTopic: 'Lepaskan gambar di atas topik',
+  pictureDropUnsupported: 'Hanya gambar PNG, JPG dan GIF boleh ditambah',
+  pictureDropTooLarge: 'Gambar melebihi 10 MB tidak boleh ditambah',
+  pictureDropFailed: 'Tidak dapat menambah gambar',
+  pictureDropFirstOnly: 'Satu topik hanya memuatkan satu gambar, jadi hanya yang pertama ditambah',
 } satisfies Record<keyof typeof zh, string>

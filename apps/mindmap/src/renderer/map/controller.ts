@@ -78,6 +78,7 @@ export interface MapStrings {
   menuLabel: string
   menuNote: string
   menuLink: string
+  menuRemovePicture: string
   /** names of the markers and of a picture that is not shown, for assistive technology */
   decoration: DecorationStrings
 }
@@ -142,6 +143,8 @@ export class MapController {
   #structure: MapStructure = 'map'
   readonly #removedSummaries = new Set<string>()
   readonly #removedRelationships = new Set<string>()
+  /** topics whose picture the user took off since the last reconcile (the engine deletes only these) */
+  readonly #removedPictures = new Set<string>()
   readonly #libraryUndo: () => void
   readonly #libraryRedo: () => void
   readonly #libraryRemoveSummary: (id: string) => void
@@ -256,6 +259,7 @@ export class MapController {
     mind.bus.handlers.operation ??= []
     mind.bus.handlers.operation.unshift(this.#prepare)
     mind.bus.addListener('operation', this.#onOperation)
+    mind.bus.addListener('showContextMenu', this.#onContextMenu)
     mind.bus.addListener('expandNode', this.#onQuietChange)
     mind.bus.addListener('changeDirection', this.#onLayoutPicked)
     mind.bus.addListener('linkDiv', this.#scheduleQuietSync)
@@ -410,6 +414,21 @@ export class MapController {
     if (address === '') return this.#patchMeta(topicId, { link: null })
     if (!isShownLink(address)) return false
     return this.#patchMeta(topicId, { link: address })
+  }
+
+  /**
+   * Takes the picture off a topic, as one step. The engine deletes a picture
+   * only for a topic named this way, so a state that merely lacks one never
+   * does. The archive entry stays (another topic may show it). False when the
+   * topic has no picture.
+   */
+  removePicture(topicId: string): boolean {
+    const node = this.#node(topicId)
+    if (!node || !this.#meta(node).image) return false
+    this.#removedPictures.add(topicId)
+    if (this.#patchMeta(topicId, { image: null })) return true
+    this.#removedPictures.delete(topicId)
+    return false
   }
 
   /**
@@ -748,7 +767,28 @@ export class MapController {
       { name: this.#strings.menuLabel, onclick: ask('label') },
       { name: this.#strings.menuNote, onclick: ask('note') },
       { name: this.#strings.menuLink, onclick: ask('link') },
+      // the last entry: shown only on a topic with a picture (`#onContextMenu`)
+      {
+        name: this.#strings.menuRemovePicture,
+        onclick: () => {
+          this.#hideMenu()
+          const id = this.mind.currentNode?.nodeObj.id
+          if (id) this.removePicture(id)
+        },
+      },
     ]
+  }
+
+  /** The library opens its menu on a topic: "remove picture" is there only when the topic has one. */
+  #onContextMenu = (event: MouseEvent): void => {
+    const entry = this.mind.container.querySelector<HTMLElement>(
+      '.context-menu .menu-list > li:last-child',
+    )
+    const topic = event.target instanceof Element ? event.target.closest('me-tpc') : null
+    const node = (topic as Topic | null)?.nodeObj
+    const hasPicture = node ? this.#meta(node).image !== null : false
+    // the library hides an entry by this class (`li.disabled`)
+    entry?.classList.toggle('disabled', !hasPicture)
   }
 
   #hideMenu(): void {
@@ -1044,10 +1084,12 @@ export class MapController {
     const result = this.#session.apply(this.#key, state, {
       step: options.step,
       reshapedRelationships: options.reshaped,
+      removedPictures: [...this.#removedPictures],
     })
     this.#layoutPicked = false
     this.#removedSummaries.clear()
     this.#removedRelationships.clear()
+    this.#removedPictures.clear()
     this.#lastView = result.view
     if (!result.ok) {
       console.warn('[mindmap] the screen could not be applied to the map:', result.problem)
@@ -1066,6 +1108,7 @@ export class MapController {
     this.#layoutPicked = false
     this.#removedSummaries.clear()
     this.#removedRelationships.clear()
+    this.#removedPictures.clear()
     this.#lastView = view
     const data = this.mind.getDataString()
     const state = mindToState(JSON.parse(data), {

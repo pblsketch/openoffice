@@ -936,11 +936,17 @@ const INLINE_MARK_TAGS: Record<string, string> = {
   strike: 'strike',
 }
 
+/**
+ * HTML whitespace is only space, tab, newline, carriage return and form feed. JavaScript's `\s`
+ * also matches no-break and ideographic spaces, which are document text and must survive.
+ */
+const HTML_WHITESPACE = /[ \t\n\r\f]+/g
+
 function parseInline(element: Node, marks: PmMark[]): PmNode[] {
   const nodes: PmNode[] = []
   element.childNodes.forEach((child) => {
     if (child.nodeType === Node.TEXT_NODE) {
-      const text = (child.textContent ?? '').replace(/\s+/g, ' ')
+      const text = (child.textContent ?? '').replace(HTML_WHITESPACE, ' ')
       if (text)
         nodes.push({ type: 'text', text, ...(marks.length > 0 ? { marks: [...marks] } : {}) })
       return
@@ -1029,7 +1035,7 @@ function cellParas(cell: Element): string[] {
   const paras: string[] = []
   let current = ''
   const push = () => {
-    paras.push(current.replace(/\s+/g, ' ').trim())
+    paras.push(current.replace(HTML_WHITESPACE, ' ').replace(/^ | $/g, ''))
     current = ''
   }
   const walk = (node: Node) => {

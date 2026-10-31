@@ -13,7 +13,7 @@ import {
 import { checkWorkbook, SHEET_CHECKS } from '../formats/xlsx-check'
 import { runWorkbookDsl, SUPPORTED_DSL_OPS, type DslOutcome } from '../formats/xlsx-dsl'
 import { hasGatewayPayloads, type GatewayPayloads } from '../formats/xlsx-gateway-ops'
-import { readInput, resolveInput, resolveOutput, stripBom } from '../fs'
+import { readInput, readTextFile, resolveInput, resolveOutput, stripBom } from '../fs'
 import type { CommandContext, CommandDef } from '../registry'
 import { checkResult } from '../check'
 import { CliError, EXIT, type CommandResult, type Warning } from '../result'
@@ -222,7 +222,7 @@ async function apply(
 
 function readJsonList(spec: string, flag: string, ctx: CommandContext): unknown[] {
   const text = stripBom(
-    spec === '-' ? readFileSync(0, 'utf-8') : readFileSync(resolveInput(spec, ctx), 'utf-8'),
+    spec === '-' ? readFileSync(0, 'utf-8') : readTextFile(resolveInput(spec, ctx)),
   )
   let parsed: unknown
   try {
