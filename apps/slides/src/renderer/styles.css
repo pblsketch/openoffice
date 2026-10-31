@@ -1220,6 +1220,9 @@ button {
   background: var(--surface);
   border-right: 1px solid var(--border);
   overflow-y: auto;
+  /* keep the scrollbar lane even when nothing scrolls: App sizes the thumbnails
+     to the width left beside it, so a scrollbar never covers their right edge */
+  scrollbar-gutter: stable;
   padding: 10px;
 }
 
