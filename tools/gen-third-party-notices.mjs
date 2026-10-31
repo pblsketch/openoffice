@@ -697,15 +697,20 @@ const FONTS = [
 ]
 
 /**
- * The slide design templates' fonts (packages/ui/template-fonts, shipped
- * unmodified as resources/template-fonts): each family's own license file is
+ * The slide design templates' fonts (packages/ui/template-fonts, shipped as
+ * resources/template-fonts; unmodified except Noto Serif KR's TrueType
+ * outlines): each family's own license file is
  * reproduced, preceded by the copyright the font file states where the
  * license file omits it or names an older holder.
  */
 const TEMPLATE_FONTS_DIR = join(ROOT, 'packages/ui/template-fonts')
 const TEMPLATE_FONTS = [
   ['Pretendard 1.309', 'Pretendard-OFL.txt'],
-  ['Noto Serif KR 2.003', 'NotoSerifKR-OFL.txt', '© 2017-2024 Adobe (http://www.adobe.com/).'],
+  [
+    'Noto Serif KR 2.003',
+    'NotoSerifKR-OFL.txt',
+    '© 2017-2024 Adobe (http://www.adobe.com/), Reserved Font Name "Source".\nCFF outlines converted to TrueType (glyf); names and metrics unmodified.',
+  ],
   ['Black Han Sans 1.001', 'BlackHanSans-OFL.txt'],
   ['Do Hyeon 1.001', 'DoHyeon-OFL.txt'],
   ['Gowun Dodum 2.000', 'GowunDodum-OFL.txt'],

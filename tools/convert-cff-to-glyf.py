@@ -20,7 +20,8 @@ max error 1 font unit) and changes nothing else that layout reads:
 
 The container is kept: a woff2 input stays woff2 (glyf/loca untransformed, as
 the other bundled subsets ship, so tests/helpers/woff2-metrics.ts can read it)
-and a file keeps its name. Faces that already have glyf are skipped, so the
+and a file keeps its name, .otf included (the OpenType extension allows either
+outline format, and every consumer reads the sfnt, not the extension). Faces that already have glyf are skipped, so the
 pass is idempotent. Run it last, after the subset/metric tools
 (normalize-kr-sans-hmtx.py, normalize-kr-latin-metrics.py,
 scale-kr-sans-latin-ink.py, build-kr-che-latin-font.py), which edit CFF
@@ -44,9 +45,11 @@ from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.ttLib import TTFont, newTable
 from fontTools.ttLib.woff2 import WOFF2FlavorData
 
-# Faces the docs renderer loads whose upstream Reserved Font Name ("Source"
-# for Noto CJK) is not the family name they ship under.
+# Faces the editors load whose upstream Reserved Font Name ("Source" for Noto
+# CJK) is not the family name they ship under.
 DEFAULT_FONTS = [
+    "packages/ui/template-fonts/NotoSerifKR-Regular.otf",
+    "packages/ui/template-fonts/NotoSerifKR-Bold.otf",
     "apps/docs/src/renderer/fonts/GenOfficeSansKR-Regular-subset.woff2",
     "apps/docs/src/renderer/fonts/GenOfficeSerifKR-Regular-subset.woff2",
     "apps/docs/src/renderer/fonts/GenOfficeCheLatinKR.woff2",
