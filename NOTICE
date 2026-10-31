@@ -95,15 +95,16 @@ Slide design template fonts
 
 packages/ui/template-fonts holds the fonts the design templates use. It
 ships once in the installer as resources/template-fonts. Every file is the
-original distributor's, unmodified, and is licensed under the SIL Open Font
-License, Version 1.1. Each family's license text sits beside its files, and
+original distributor's, unmodified, except the two Noto Serif KR faces, whose
+CFF outlines are converted to TrueType (names and metrics unchanged); all are
+licensed under the SIL Open Font License, Version 1.1. Each family's license text sits beside its files, and
 packages/ui/template-fonts/README.md records the license evidence and the
 exact source of every file. All files were downloaded on 2026-10-14.
 
 - Pretendard 1.309 (release v1.3.9), SIL OFL 1.1 with Reserved Font Name
   "Pretendard", https://github.com/orioncactus/pretendard
-- Noto Serif KR 2.003, SIL OFL 1.1,
-  https://github.com/notofonts/noto-cjk
+- Noto Serif KR 2.003, SIL OFL 1.1 (Reserved Font Name "Source"), outlines
+  converted to TrueType, https://github.com/notofonts/noto-cjk
 - Black Han Sans 1.001, SIL OFL 1.1,
   https://github.com/google/fonts/tree/main/ofl/blackhansans
 - Do Hyeon 1.001, SIL OFL 1.1,

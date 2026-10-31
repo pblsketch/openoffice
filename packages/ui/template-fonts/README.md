@@ -1,12 +1,16 @@
 # Template fonts
 
 이 폴더의 글꼴은 슬라이드·문서·시트 디자인 템플릿이 함께 쓰는 글꼴입니다. 모두 원래 배포처의
-파일 그대로이고(잘라 내거나 이름을 바꾸지 않았습니다), SIL Open Font License 1.1로 배포됩니다.
+파일 이름과 글꼴 이름 그대로이고(잘라 내거나 이름을 바꾸지 않았습니다), SIL Open Font License 1.1로
+배포됩니다. 본명조(Noto Serif KR) 두 파일만 PDF로 내보낼 때 글꼴이 그대로 들어가도록 글자 윤곽을
+TrueType 방식으로 바꿨고, 나머지는 배포처의 파일과 똑같습니다.
 PC에 설치하려면 글꼴 파일을 두 번 눌러 설치하면 됩니다. 앱은 글꼴을 Windows에 설치하지 않습니다.
 
-The fonts the slide, document and sheet design templates share. Every file is the original
-distributor's own, unmodified (no subsetting, no renaming), so a document that uses one of these
-families opens the same way on a PC that has the real font installed. All of them are licensed
+The fonts the slide, document and sheet design templates share. Every file keeps the original
+distributor's file name, family names and metrics (no subsetting, no renaming), so a document that
+uses one of these families opens the same way on a PC that has the real font installed. All files
+but the two Noto Serif KR faces are the distributor's own, byte for byte; those two carry TrueType
+outlines in place of the distributor's CFF (see below). All of them are licensed
 under the SIL Open Font License 1.1; each family's license text sits beside its files. The app
 does not download fonts at run time and does not install them into Windows.
 
@@ -35,10 +39,10 @@ Version 1.1" and carries the full license text.
 
 ### Noto Serif KR (본명조)
 
-| File                      | Weight | Size      |
-| ------------------------- | ------ | --------- |
-| `NotoSerifKR-Regular.otf` | 400    | 7,669,020 |
-| `NotoSerifKR-Bold.otf`    | 700    | 7,910,236 |
+| File                      | Weight | Size       |
+| ------------------------- | ------ | ---------- |
+| `NotoSerifKR-Regular.otf` | 400    | 12,099,724 |
+| `NotoSerifKR-Bold.otf`    | 700    | 12,055,044 |
 
 - License: SIL OFL 1.1 — `NotoSerifKR-OFL.txt`
 - License evidence: https://github.com/notofonts/noto-cjk/blob/f8d157532fbfaeda587e826d4cd5b21a49186f7c/Serif/LICENSE
@@ -46,6 +50,12 @@ Version 1.1" and carries the full license text.
 - Source: https://github.com/notofonts/noto-cjk/tree/f8d157532fbfaeda587e826d4cd5b21a49186f7c/Serif/SubsetOTF/KR
 - Version: 2.003
 - Copyright: Adobe (Noto CJK), stated in the font files.
+- Modified: the distributor's CFF outlines (7,669,020 / 7,910,236 bytes) are converted to
+  TrueType (glyf) by `tools/convert-cff-to-glyf.py`, because Chromium's PDF export draws CFF
+  faces as Type3 paths instead of embedding them. File names, name table, cmap, advances, OS/2,
+  hhea/vhea and layout tables are unchanged (the script asserts it). The upstream Reserved Font
+  Name is "Source", which is not this family's name, so the OFL allows the Modified Version to
+  keep "Noto Serif KR".
 
 ### Black Han Sans (검은고딕)
 
@@ -153,4 +163,4 @@ Version 1.1" and carries the full license text.
 
 ## Total
 
-13 font files, 45,018,720 bytes (42.9 MiB).
+13 font files, 53,594,232 bytes (51.1 MiB).
