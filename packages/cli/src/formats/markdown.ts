@@ -80,6 +80,20 @@ async function loadLocalImage(src: string, images?: MarkdownImageSource) {
   } catch {
     // a literal % in the file name is not an escape; the raw spelling is tried
   }
+  if (!isFileUrl) {
+    // a ?query or #fragment is not part of the file name (a browser would not send it);
+    // tried last, so a file whose literal name holds one of them still wins
+    const bare = local.replace(/[?#].*$/s, '')
+    if (bare && bare !== local) {
+      candidates.push(bare)
+      try {
+        const decodedBare = decodeURIComponent(bare)
+        if (decodedBare !== bare) candidates.push(decodedBare)
+      } catch {
+        // not an escape sequence; the raw spelling is already listed
+      }
+    }
+  }
   const path = candidates
     .map((c) => (isAbsolute(c) ? c : resolve(dirname(images.file), c)))
     .find((c) => existsSync(c))
