@@ -14,13 +14,13 @@
 
 import { randomBytes } from 'node:crypto'
 import { statSync } from 'node:fs'
-import { basename, dirname } from 'node:path'
+import { basename, dirname, extname } from 'node:path'
 import {
   assertFileSaved,
   UNSAVED_CHANGES_MESSAGE,
   withoutUnsavedFiles,
 } from '@genoffice/electron-utils/unsaved-files'
-import { parseFileToText } from '@genoffice/file-parse'
+import { attachableMaxBytes, parseFileToText } from '@genoffice/file-parse'
 import type { ProjectId, ProjectReadResult } from '@genoffice/project-store'
 
 /** characters of parsed text one read_knowledge_file page returns (aligned
@@ -30,8 +30,15 @@ export const KB_READ_CHUNK_CHARS = 24_000
 
 /** byte cap per corpus file, aligned with the chat-attachment reader's
  *  ATTACHMENT_MAX_BYTES: a larger file is refused before parse rather than
- *  parsed and held in the text cache */
+ *  parsed and held in the text cache. Formats whose size is pictures (zip-based
+ *  documents, PDF) have no cap; see `kbReadMaxBytes`. */
 export const KB_READ_MAX_BYTES = 50 * 1024 * 1024
+
+/** the largest file with this path read for the AI (`attachableMaxBytes`, pictures aside) */
+export function kbReadMaxBytes(filePath: string): number {
+  const cap = attachableMaxBytes(extname(filePath))
+  return Number.isFinite(cap) ? Math.max(cap, KB_READ_MAX_BYTES) : cap
+}
 
 /** query cap, same as the home search box */
 const KB_QUERY_MAX_CHARS = 200
@@ -148,9 +155,10 @@ export async function readKnowledgeFileText(filePath: string): Promise<string> {
   const stamp = `${stat.mtimeMs}:${stat.size}`
   const cached = kbTextCache.get(filePath)
   if (cached && cached.stamp === stamp) return cached.text
-  if (stat.size > KB_READ_MAX_BYTES) {
+  const cap = kbReadMaxBytes(filePath)
+  if (stat.size > cap) {
     throw new Error(
-      `file too large to read (${Math.round(stat.size / 1024 / 1024)}MB, cap ${KB_READ_MAX_BYTES / 1024 / 1024}MB)`,
+      `file too large to read (${Math.round(stat.size / 1024 / 1024)}MB, cap ${cap / 1024 / 1024}MB)`,
     )
   }
   const parsed = await parseFileToText(filePath)
@@ -397,7 +405,7 @@ export async function readKnowledgeOrProjectPage(
     case 'unsaved':
       throw new Error(UNSAVED_CHANGES_MESSAGE)
     case 'too-large':
-      throw new Error(`file too large to read (cap ${KB_READ_MAX_BYTES / 1024 / 1024}MB)`)
+      throw new Error(`file too large to read (cap ${kbReadMaxBytes(path) / 1024 / 1024}MB)`)
     case 'unreadable':
       throw new Error('unreadable file')
     default:

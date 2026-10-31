@@ -6,7 +6,7 @@
 
 다른 파일로 읽힐 때의 가리기도 맡는다. 자기 편집기가 AI에게 가리는 자리를 여기서도 똑같이 `{{이름}}`으로 바꿔 내준다.
 
-첨부할 수 있는 형식 목록도 여기서 한 벌로 정의한다(`attachable.ts`, 결정 0035). `ATTACHABLE_EXTS`(글자로 읽는 형식과 그림을 합친 한 벌), `ATTACHABLE_IMAGE_EXTS`(그림 확장자), `ATTACHABLE_MAX_BYTES`(50MB)·`ATTACHABLE_IMAGE_MAX_BYTES`(5MB), 판정 함수 `isAttachableExt`를 내주고, 일곱 편집기(워드·엑셀·PPT·HTML·마인드맵·한글·EPUB)의 메인 프로세스가 이것을 가져다 쓴다. `.epub`도 이 목록에 있다.
+첨부할 수 있는 형식 목록도 여기서 한 벌로 정의한다(`attachable.ts`, 결정 0035). `ATTACHABLE_EXTS`(글자로 읽는 형식과 그림을 합친 한 벌), `ATTACHABLE_IMAGE_EXTS`(그림 확장자), `ATTACHABLE_MAX_BYTES`(50MB)·`ATTACHABLE_IMAGE_MAX_BYTES`(5MB), 형식별 상한 `attachableMaxBytes`(사진이 크기를 차지하는 zip 문서와 PDF는 상한 없음, 결정 0091), 판정 함수 `isAttachableExt`를 내주고, 일곱 편집기(워드·엑셀·PPT·HTML·마인드맵·한글·EPUB)의 메인 프로세스가 이것을 가져다 쓴다. `.epub`도 이 목록에 있다.
 
 | 형식     | 파일                    | 가리는 자리                                                                                                                                                                       |
 | -------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -19,7 +19,7 @@
 - 편집용 파싱이 아니다. 서식, 위치, 왕복 보존에 필요한 정보는 버린다. 문서를 열고 저장하는 일은 `packages/docx-engine`, `packages/odt-engine`, `packages/pptx-engine`, `packages/xlsx-gateway`와 Rust 사이드카가 한다.
 - ODT의 글자 풀기는 `packages/odt-engine`의 `odtToText`가 한다. 이 패키지는 그 결과를 그대로 쓰고, 출력 모양을 고치려면 엔진 쪽을 고친다.
 - 이미지를 모델에 넘기는 일은 호출자와 `packages/ai-provider`가 한다.
-- 첨부 개수와 크기 제한, 모델 입력 길이에 맞춘 자르기는 호출자가 한다. 이 패키지에는 파일 크기 상한이 없다.
+- 첨부 개수와 크기 제한, 모델 입력 길이에 맞춘 자르기는 호출자가 한다. 이 패키지에는 파일 크기 상한이 없다. 호출자가 쓰는 형식별 상한(`attachableMaxBytes`)만 여기 둔다.
 - 스캔한 PDF의 글자 인식은 하지 않는다. PDF를 문서로 되살리는 일은 `packages/pdf2docx`다.
 - 지도 파일의 해석과 개요 글은 `packages/xmind-engine`이 한다. 여기는 `openXmind`와 `sheetsToOutline`을 부를 뿐이다(`xmind.ts`).
 - EPUB 책의 해석(zip 관문, DRM 판정, 장 글 뽑기)은 `packages/epub-engine`이 한다. 여기는 번역을 싣지 않는 진입점 `@genoffice/epub-engine/core`에서 `openEpub`과 `extractChapterText`를 가져와 부를 뿐이다(`epub.ts`). 패키지 루트를 가져오면 이 패키지를 쓰는 모든 편집기가 `pdf2docx` 소스까지 형 검사하게 된다. 출력 모양을 고치려면 엔진 쪽을 고친다.
@@ -58,6 +58,7 @@
 - 텍스트 파일은 BOM을 보고 UTF-8과 UTF-16을 풀고, UTF-8로 읽히지 않으면 windows-1252로 읽는다. BOM이 UTF-32라고 알리는 파일만 거부한다.
 - 설치본에서만 깨지는 문제를 막는 우회가 두 군데 있고, 개발 실행에서는 드러나지 않으므로 지우지 않는다. pdfjs는 `DOMMatrix`가 없으면 import 단계에서 죽어서 순수 JS 대체 구현을 먼저 설치하고, 워커 모듈을 글자 그대로의 경로로 import해 번들에 넣는다. `ppt-to-text`는 의존성을 번들러가 따라가지 못하는 require 뒤에 숨기므로 `globalThis.CFB`와 `cptable`을 먼저 채운 뒤 지연 import한다.
 - 옛 PPT의 글자 디코딩은 코드페이지 1200(UTF-16LE)만 지원한다.
+- zip으로 된 문서가 `WHOLE_ZIP_READ_MAX_BYTES`(50MB)를 넘으면 `readZipTextParts`로 글이 든 파트(XML·관계·JSON·HTML·평문, 확장자 없는 파트)만 디스크에서 압축된 채 옮겨 작은 zip을 만들고, 나머지 파트는 이름만 남겨 내용을 비운다. 형식별 읽기와 zip 관문은 그 작은 zip에 그대로 돈다. 그 이하는 통째로 읽는다. 읽은 글은 통째로 읽을 때와 같아야 한다(`tests/large-documents.test.ts`). zip64는 거절한다(결정 0091).
 - 한글 문서는 문단을 한 줄로, 표를 행마다 칸을 `|`로 이어 적는다. 병합된 칸은 첫 자리에 적고 걸친 자리는 비우되, 줄 끝에 이어지는 빈 자리는 적지 않는다. 한 칸에 문단이 셋을 넘는 표(글을 배치하려고 쓴 표)는 행으로 적지 않고 칸의 문단을 줄로 푼다. 메모가 있으면 본문·표 뒤에 `### Comments` 블록을 붙인다. 첫 줄은 `- 작성자 (p.N): 첫 줄`이고 이어지는 줄은 두 칸 들여쓰며, 작성자가 없으면 `unknown`, 쪽을 모르면 `(p.N)`을 뺀다. 메모가 없으면 블록을 붙이지 않아 본문 출력이 그대로다.
 - 문단과 표를 따라가는 읽기가 닿지 못한 글자(글상자, 머리말, 표 안의 표 등)는 엔진의 평문 내보내기에서 찾아 제자리에 끼워 넣는다(`withMissingText`). 엔진 평문만 쓰지 않는 이유는 그쪽이 빈 누름틀에 안내 문구를 적고 표를 줄 구분 없이 풀기 때문이다.
 - 엔진 WASM(`rhwp_bg.wasm`, 약 12MB)은 한글 문서를 처음 읽을 때 한 번 올린다. 위치는 `GENOFFICE_RHWP_WASM`, `node_modules`의 `@rhwp/core`, 설치본의 `Resources/wasm` 순으로 찾는다. `@rhwp/core`는 패치해 빌드한 `vendor/rhwp-core`를 가리킨다(결정 0050). 연 문서는 반드시 `free()`한다(WASM 메모리는 저절로 풀리지 않는다).

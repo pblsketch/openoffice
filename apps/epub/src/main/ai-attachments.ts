@@ -18,7 +18,7 @@
  * subscription channels belong to the docs main and are never registered here.
  */
 import { mkdirSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
-import { basename, join } from 'node:path'
+import { basename, join, extname } from 'node:path'
 import { BrowserWindow, app, dialog, ipcMain } from 'electron'
 import { assertFileSaved, showOpenDialogWithMemory } from '@genoffice/electron-utils'
 import {
@@ -26,6 +26,7 @@ import {
   ATTACHABLE_EXTS,
   ATTACHABLE_IMAGE_EXTS,
   ATTACHABLE_MAX_BYTES,
+  attachableMaxBytes,
   ATTACHABLE_IMAGE_MAX_BYTES,
 } from '@genoffice/file-parse'
 import { createI18n, getUiLang } from '@genoffice/i18n'
@@ -386,7 +387,7 @@ function statAttachment(filePath: string): { meta?: AttachmentMeta; error?: stri
   try {
     const stat = statSync(filePath)
     if (!stat.isFile()) return { error: `${name}: ${tm('errNotFile')}` }
-    if (stat.size > ATTACHABLE_MAX_BYTES) {
+    if (!ATTACHABLE_IMAGE_EXTS.has(ext) && stat.size > attachableMaxBytes(ext)) {
       return {
         error: `${name}: ${tm('errTooLarge', { mb: Math.round(ATTACHABLE_MAX_BYTES / 1024 / 1024) })}`,
       }
@@ -468,7 +469,7 @@ async function attachmentText(filePath: string): Promise<string> {
   const stamp = `${stat.mtimeMs}:${stat.size}`
   const cached = textCache.get(filePath)
   if (cached && cached.stamp === stamp) return cached.text
-  if (stat.size > ATTACHABLE_MAX_BYTES) throw new Error(tm('errFileTooLarge'))
+  if (stat.size > attachableMaxBytes(extname(filePath))) throw new Error(tm('errFileTooLarge'))
   const parsed = await parseFileToText(filePath)
   if (!parsed.ok || parsed.kind !== 'text' || parsed.text == null) {
     throw new Error(parsed.error ?? tm('errParseFailed'))

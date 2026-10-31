@@ -15,7 +15,7 @@ import type {
 } from '@genoffice/project-store'
 import type { FileIndexStore } from '../file-index/store'
 import { isSupportedTreeFile } from '../folder-tree'
-import { KB_READ_MAX_BYTES, readKnowledgeFilePage, type KbRunScopes } from '../knowledge-base'
+import { kbReadMaxBytes, readKnowledgeFilePage, type KbRunScopes } from '../knowledge-base'
 import { resolveCloudOnly as detectCloudOnly } from './cloud-files'
 import { realPlainFileIn } from './folder-files'
 import { compileIgnore } from './ignore'
@@ -351,7 +351,7 @@ export class ProjectFolderTools {
     if (!isSupportedTreeFile(path)) return refused('unreadable')
     if (await fileHasUnsavedChanges(path)) return refused('unsaved')
     try {
-      if ((await stat(path)).size > KB_READ_MAX_BYTES) return refused('too-large')
+      if ((await stat(path)).size > kbReadMaxBytes(path)) return refused('too-large')
     } catch {
       return refused('not-found')
     }

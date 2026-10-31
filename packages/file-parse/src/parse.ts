@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises'
+import { open, readFile, stat } from 'node:fs/promises'
 import { extname } from 'node:path'
 import { OdtNotTextError, isOdtOpenError } from '@genoffice/odt-engine'
 import { docToText } from './doc'
@@ -11,6 +11,7 @@ import { pptToText } from './ppt'
 import { pptxToText } from './pptx'
 import { xlsxToText } from './xlsx'
 import { xmindToText } from './xmind'
+import { readZipTextParts } from './zip-text-parts'
 import { redactHtmlSource } from './html-redaction'
 import { redactMarkdownSource } from './markdown-redaction'
 
@@ -149,6 +150,57 @@ async function parseOdt(bytes: Buffer): Promise<ParsedFile> {
 export interface ParseFileOptions {
   /// Character budget for extractors that can stop early (xlsx and docx today).
   maxChars?: number
+  /// Size past which a zip-based document is read for its text parts only
+  /// (`WHOLE_ZIP_READ_MAX_BYTES` when absent; tests pass a small value).
+  wholeZipMaxBytes?: number
+}
+
+/**
+ * Up to this size a zip-based document is read whole, as it always was. A
+ * larger one (a slide deck full of photos) is read for its text parts only
+ * (`readZipTextParts`), so its size never decides whether it can be read.
+ */
+export const WHOLE_ZIP_READ_MAX_BYTES = 50 * 1024 * 1024
+
+/** extensions that are, or may be, a zip-based document */
+const ZIP_DOCUMENT_EXTS = new Set([
+  'docx',
+  'pptx',
+  'xlsx',
+  'xlsm',
+  'hwpx',
+  'odt',
+  'epub',
+  'xmind',
+  // a DOCX under a .doc name and an HWPX under a .hwp name are read by content
+  'doc',
+  'hwp',
+])
+
+async function startsWithZipMagic(filePath: string): Promise<boolean> {
+  const file = await open(filePath, 'r')
+  try {
+    const head = Buffer.alloc(2)
+    const { bytesRead } = await file.read(head, 0, 2, 0)
+    return bytesRead === 2 && head[0] === 0x50 && head[1] === 0x4b
+  } finally {
+    await file.close()
+  }
+}
+
+/** the file's bytes, or for a large zip-based document its text parts only */
+async function readDocumentBytes(
+  filePath: string,
+  ext: string,
+  opts: ParseFileOptions,
+): Promise<Buffer> {
+  if (ZIP_DOCUMENT_EXTS.has(ext)) {
+    const limit = opts.wholeZipMaxBytes ?? WHOLE_ZIP_READ_MAX_BYTES
+    if ((await stat(filePath)).size > limit && (await startsWithZipMagic(filePath))) {
+      return readZipTextParts(filePath)
+    }
+  }
+  return readFile(filePath)
 }
 
 /** parse an attachment into plain text (or flag it as image / unsupported) */
@@ -174,7 +226,7 @@ export async function parseFileToText(
       if (redact) return { ok: true, kind: 'text', text: redact(text) }
       return { ok: true, kind: 'text', text }
     }
-    const bytes = await readFile(filePath)
+    const bytes = await readDocumentBytes(filePath, ext, opts)
     const sniffed = sniffBinary(bytes)
     if (ext === 'pdf' && sniffed !== 'pdf') {
       return {

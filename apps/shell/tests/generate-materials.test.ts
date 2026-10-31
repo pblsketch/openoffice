@@ -73,7 +73,7 @@ describe('inspectMaterial', () => {
   })
 
   it('marks a file over the size cap as too large, without reading it', async () => {
-    const path = write('big.pdf', 'x')
+    const path = write('big.txt', 'x')
     let parsed = false
     const parse = async () => {
       parsed = true
@@ -91,6 +91,17 @@ describe('inspectMaterial', () => {
       parse,
     })
     expect(at.problem).toBeUndefined()
+  })
+
+  it('reads a document whose size is pictures at any size', async () => {
+    for (const name of ['deck.pptx', 'scan.pdf', 'report.docx']) {
+      const path = write(name, 'x')
+      const big = await inspectMaterial(path, {
+        stat: async () => ({ isFile: () => true, size: 10 * MAX_MATERIAL_BYTES }),
+        parse: async () => ({ ok: true, kind: 'text' as const, text: 'words' }),
+      })
+      expect(big.problem, name).toBeUndefined()
+    }
   })
 
   it('holds pictures to the receiving editors’ image cap', async () => {

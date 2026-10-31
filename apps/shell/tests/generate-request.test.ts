@@ -170,14 +170,14 @@ describe('prepareGenerateRequest', () => {
   })
 
   it('leaves out a file over the size cap', async () => {
-    const big = write('big.pdf')
+    const big = write('big.csv')
     const result = await prepareGenerateRequest(
       { mode: 'ai', kind: 'html', materials: [big, write('ok.txt')], text: '' },
       (path) =>
         inspectMaterial(path, {
           stat: async () => ({
             isFile: () => true,
-            size: path.endsWith('.pdf') ? 60 * 1024 * 1024 : 10,
+            size: path.endsWith('.csv') ? 60 * 1024 * 1024 : 10,
           }),
         }),
     )

@@ -108,6 +108,7 @@ vi.mock('@genoffice/file-parse', () => ({
   ATTACHABLE_EXTS: new Set<string>(),
   ATTACHABLE_IMAGE_EXTS: new Set<string>(),
   ATTACHABLE_MAX_BYTES: 25 * 1024 * 1024,
+  attachableMaxBytes: () => 25 * 1024 * 1024,
   ATTACHABLE_IMAGE_MAX_BYTES: 5 * 1024 * 1024,
 }))
 
