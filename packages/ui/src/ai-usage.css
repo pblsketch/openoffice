@@ -1,4 +1,4 @@
-/* Token-usage chip under assistant replies and beside the composer footer.
+/* Token-usage chip under assistant replies and above the composer card.
    Neutral by design: it reports what the provider billed, it must not look like
    an action button or an error. */
 
@@ -24,12 +24,16 @@
 
 /* Subscription usage heads-up (AiSubscriptionUsageLine): one item per window
    that crossed the threshold, a step stronger than the token chip because it
-   tells the user a limit is close. */
+   tells the user a limit is close.
+   It sits on its own row above the composer card, not inside the card's footer:
+   "83% used · resets at 5:10 PM" is long, and in a narrow panel it was squeezed
+   between the token chip and the attach buttons and painted over them. Full
+   panel width here, wrapping to another row when two windows cross. */
 .ai-subscription-usage {
-  display: inline-flex;
+  display: flex;
   flex-wrap: wrap;
   gap: 2px 10px;
-  min-width: 0;
+  margin: 0 2px 6px;
 }
 
 .ai-subscription-usage-item {

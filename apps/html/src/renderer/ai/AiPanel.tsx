@@ -2510,6 +2510,9 @@ export function AiPanel({
           <AiToolsUnsupportedNotice lang={lang} />
         )}
         {projectLines}
+        {/* Above the input card, not inside its footer: the reset time is long and
+            would otherwise squeeze the attach/send buttons in a narrow panel. */}
+        <AiSubscriptionUsageLine usage={subscriptionUsage} lang={lang} />
         <AiComposer
           queueStrip={
             <AiQueueStrip
@@ -2553,7 +2556,6 @@ export function AiPanel({
                 subscriptionStatuses={subscription.statuses}
                 onRefreshSubscriptions={subscription.refresh}
               />
-              <AiSubscriptionUsageLine usage={subscriptionUsage} lang={lang} />
               {sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
               <button
                 type="button"

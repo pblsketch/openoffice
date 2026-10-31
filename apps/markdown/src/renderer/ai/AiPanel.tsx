@@ -1552,6 +1552,9 @@ export function AiPanel({
           />
         )}
         {projectPanel.hint}
+        {/* Above the input card, not inside its footer: the reset time is long and
+            would otherwise squeeze the footer controls in a narrow panel. */}
+        <AiSubscriptionUsageLine usage={subscriptionUsage} lang={lang} />
         <AiComposer
           queueStrip={
             <AiQueueStrip
@@ -1621,7 +1624,6 @@ export function AiPanel({
                 onRefreshSubscriptions={subscription.refresh}
               />
               {sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
-              <AiSubscriptionUsageLine usage={subscriptionUsage} lang={lang} />
             </>
           }
           sendIconEnabled={<img src={sendEnterOn} alt="" aria-hidden />}

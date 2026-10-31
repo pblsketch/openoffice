@@ -1322,6 +1322,14 @@ export function AiPanel({
 
       <div className="ai-composer">
         {projectPanel.hint}
+        {/* Above the input card, not inside its footer: the reset time is long and
+            would otherwise squeeze the attach/send buttons in a narrow panel. */}
+        <AiSubscriptionUsageLine
+          usage={subscriptionUsage.filter(
+            (entry) => providerChoice?.connected && entry.provider === providerChoice.provider,
+          )}
+          lang={lang}
+        />
         <AiComposer
           queueStrip={
             <AiQueueStrip
@@ -1405,13 +1413,6 @@ export function AiPanel({
                 onRefreshSubscriptions={connection.refresh}
               />
               {sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
-              <AiSubscriptionUsageLine
-                usage={subscriptionUsage.filter(
-                  (entry) =>
-                    providerChoice?.connected && entry.provider === providerChoice.provider,
-                )}
-                lang={lang}
-              />
             </>
           }
           sendIconEnabled={<img src={sendEnterOn} alt="" aria-hidden />}

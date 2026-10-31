@@ -2120,6 +2120,9 @@ export function AiPanel({
           onSend={sendQueue}
           onFocus={(qid) => onQueueFocus?.(qid)}
         />
+        {/* Above the input card, not inside its footer: the reset time is long and
+            would otherwise squeeze the attach/send buttons in a narrow panel. */}
+        <AiSubscriptionUsageLine usage={subscriptionUsage} lang={lang} />
         <AiComposer
           queueStrip={
             <AiQueueStrip
@@ -2267,7 +2270,6 @@ export function AiPanel({
                 onRefreshSubscriptions={subscription.refresh}
               />
               {sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
-              <AiSubscriptionUsageLine usage={subscriptionUsage} lang={lang} />
               <button
                 className="ai-attach-btn"
                 onClick={pickAttachments}
