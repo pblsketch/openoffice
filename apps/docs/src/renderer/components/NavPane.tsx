@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -175,6 +176,19 @@ export function NavPane({
   const dragFromRef = useRef<number | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const treeRef = useRef<HTMLDivElement>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
+  // Page thumbnails fit the body's inner width, which leaves out the pane border
+  // and the scrollbar lane (reserved on the Pages tab), so their right edge stays in view
+  const [bodyW, setBodyW] = useState(0)
+  useLayoutEffect(() => {
+    const body = bodyRef.current
+    if (!body) return
+    const measure = () => setBodyW(body.clientWidth)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(body)
+    return () => ro.disconnect()
+  }, [])
   const indexRef = useRef(0)
   const matchesRef = useRef<FindMatch[]>([])
   const scanTokenRef = useRef<{ aborted: boolean } | null>(null)
@@ -549,7 +563,7 @@ export function NavPane({
           </button>
         ))}
       </div>
-      <div className="nav-body">
+      <div ref={bodyRef} className={`nav-body${tab === 'pages' ? ' nav-body-pages' : ''}`}>
         {tab === 'headings' && (
           <div
             className="nav-tree"
@@ -628,7 +642,7 @@ export function NavPane({
           <NavPageThumbs
             editor={editor}
             zoom={zoom}
-            width={width}
+            width={bodyW}
             layoutVersion={layoutVersion}
             currentPage={pageInfo.current}
             hitPositions={hitPositions}
