@@ -272,6 +272,13 @@ export {
   type FontFamilyInfoMap,
 } from './font-list'
 export {
+  createSystemFontSource,
+  useSystemFontSource,
+  type SystemFontEnv,
+  type SystemFontSource,
+  type SystemFonts,
+} from './system-fonts'
+export {
   WORDART_PRESETS,
   wordArtSolidColor,
   wordArtStrokePx,
