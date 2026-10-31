@@ -85,6 +85,7 @@ export const he = {
   meAddParent: 'הוספת נושא אב',
   meAddSibling: 'הוספת נושא באותה רמה',
   meRemoveNode: 'מחיקת נושא',
+  meRemovePicture: 'הסרת תמונה',
   meFocus: 'מצב מיקוד',
   meCancelFocus: 'יציאה ממצב מיקוד',
   meMoveUp: 'הזזה למעלה',
@@ -121,4 +122,9 @@ export const he = {
   markerStar: 'כוכב',
   markerOther: 'סמן',
   pictureNotShown: 'תמונה שלא נטענה',
+  pictureDropNoTopic: 'שחררו את התמונה על נושא',
+  pictureDropUnsupported: 'אפשר להוסיף רק תמונות PNG,‏ JPG ו-GIF',
+  pictureDropTooLarge: 'אי אפשר להוסיף תמונות גדולות מ-10 MB',
+  pictureDropFailed: 'לא ניתן היה להוסיף את התמונה',
+  pictureDropFirstOnly: 'נושא מכיל תמונה אחת בלבד, ולכן נוספה רק הראשונה',
 } satisfies Record<keyof typeof zh, string>

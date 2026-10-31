@@ -86,6 +86,7 @@ export const en = {
   meAddParent: 'Add parent topic',
   meAddSibling: 'Add sibling topic',
   meRemoveNode: 'Delete topic',
+  meRemovePicture: 'Remove picture',
   meFocus: 'Focus mode',
   meCancelFocus: 'Exit focus mode',
   meMoveUp: 'Move up',
@@ -123,4 +124,9 @@ export const en = {
   markerStar: 'Star',
   markerOther: 'Marker',
   pictureNotShown: 'Picture not loaded',
+  pictureDropNoTopic: 'Drop the picture on a topic',
+  pictureDropUnsupported: 'Only PNG, JPG and GIF pictures can be added',
+  pictureDropTooLarge: 'Pictures over 10 MB cannot be added',
+  pictureDropFailed: 'Could not add the picture',
+  pictureDropFirstOnly: 'A topic holds one picture, so only the first was added',
 } satisfies Record<keyof typeof zh, string>

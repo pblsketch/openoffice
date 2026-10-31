@@ -86,6 +86,7 @@ export const cs = {
   meAddParent: 'Přidat nadřazené téma',
   meAddSibling: 'Přidat téma na stejné úrovni',
   meRemoveNode: 'Odstranit téma',
+  meRemovePicture: 'Odebrat obrázek',
   meFocus: 'Režim soustředění',
   meCancelFocus: 'Ukončit režim soustředění',
   meMoveUp: 'Přesunout nahoru',
@@ -123,4 +124,9 @@ export const cs = {
   markerStar: 'Hvězda',
   markerOther: 'Značka',
   pictureNotShown: 'Obrázek nebyl načten',
+  pictureDropNoTopic: 'Pusťte obrázek na téma',
+  pictureDropUnsupported: 'Přidat lze jen obrázky PNG, JPG a GIF',
+  pictureDropTooLarge: 'Obrázky nad 10 MB nelze přidat',
+  pictureDropFailed: 'Obrázek se nepodařilo přidat',
+  pictureDropFirstOnly: 'Téma pojme jen jeden obrázek, proto byl přidán jen první',
 } satisfies Record<keyof typeof zh, string>

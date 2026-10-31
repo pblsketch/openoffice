@@ -769,3 +769,88 @@ describe('presentation mode', () => {
     expect(container.querySelector('.app')!.classList.contains('mm-presenting')).toBe(false)
   })
 })
+
+describe('a picture dropped from the desktop', () => {
+  const FIRST = 'cccccccc-cccc-4ccc-8ccc-ccccccccccc1'
+  const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 7, 7, 7])
+
+  /** A drag event the way the page sees an OS drag: files, and their types while it is over the page. */
+  async function drag(type: 'dragover' | 'dragleave' | 'drop', target: Element, files: File[]) {
+    const event = new Event(type, { bubbles: true, cancelable: true })
+    Object.defineProperty(event, 'dataTransfer', {
+      value: {
+        files,
+        types: ['Files'],
+        items: files.map((file) => ({ kind: 'file', type: file.type })),
+        dropEffect: 'none',
+      },
+    })
+    await act(async () => {
+      target.dispatchEvent(event)
+    })
+    await settle()
+    return event
+  }
+
+  const status = () => container.querySelector('.mm-save-status')!.textContent ?? ''
+
+  it('lands on the topic under the pointer and is saved inside the map file', async () => {
+    const { fake } = await openWith(plainSheet())
+    const photo = new File([PNG as BlobPart], 'photo.png', { type: 'image/png' })
+
+    await drag('dragover', topicEl(FIRST), [photo])
+    expect(topicEl(FIRST).classList.contains('mm-picture-drop-target')).toBe(true)
+    const dropped = await drag('drop', topicEl(FIRST), [photo])
+    // the drop is this zone's: the shell's drop-open bridge leaves a claimed drop alone
+    expect(dropped.defaultPrevented).toBe(true)
+    expect(container.querySelector('.mm-picture-drop-target')).toBeNull()
+    await until(() => fake.dirty.at(-1) === true, 'the map to change')
+
+    await click('[data-action="save"]')
+    await savesReach(fake)
+    const saved = await openXmind(fake.saves[0]!.bytes)
+    if (saved.status !== 'ok') throw new Error('did not open')
+    const image = saved.document.sheets[0]!.rootTopic.children!.attached![0]!.image as {
+      src: string
+    }
+    expect(image.src).toMatch(/^xap:resources\/[0-9a-f-]+\.png$/)
+    expect(await saved.document.readEntry(image.src.slice('xap:'.length))).toEqual(PNG)
+  })
+
+  it('goes to the selected topic when it misses every topic, and asks for one when none is selected', async () => {
+    const { fake } = await openWith(plainSheet())
+    const photo = new File([PNG as BlobPart], 'photo.png', { type: 'image/png' })
+    const map = container.querySelector('.map-container')!
+
+    await drag('drop', map, [photo])
+    expect(status()).toContain('Drop the picture on a topic')
+    expect(fake.dirty.at(-1) ?? false).toBe(false)
+
+    await selectOnMap(FIRST)
+    await drag('drop', map, [photo])
+    await until(() => fake.dirty.at(-1) === true, 'the map to change')
+  })
+
+  it('says which pictures the map cannot keep, and leaves the map as it was', async () => {
+    const { fake } = await openWith(plainSheet())
+    const webp = new File(
+      [Uint8Array.from([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50]) as BlobPart],
+      'shot.webp',
+      { type: 'image/webp' },
+    )
+    await drag('drop', topicEl(FIRST), [webp])
+    await until(() => status().includes('Only PNG, JPG and GIF'), 'the status line')
+    expect(fake.dirty.at(-1) ?? false).toBe(false)
+  })
+
+  it('leaves a document to the drop-open bridge, which opens it in a tab', async () => {
+    const { fake } = await openWith(plainSheet())
+    const map = new File([Uint8Array.from([0x50, 0x4b]) as BlobPart], 'plan.xmind')
+    const over = await drag('dragover', topicEl(FIRST), [map])
+    expect(over.defaultPrevented).toBe(false)
+    expect(topicEl(FIRST).classList.contains('mm-picture-drop-target')).toBe(false)
+    const dropped = await drag('drop', topicEl(FIRST), [map])
+    expect(dropped.defaultPrevented).toBe(false)
+    expect(fake.dirty.at(-1) ?? false).toBe(false)
+  })
+})

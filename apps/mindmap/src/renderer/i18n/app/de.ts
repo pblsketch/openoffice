@@ -88,6 +88,7 @@ export const de = {
   meAddParent: 'Übergeordnetes Thema hinzufügen',
   meAddSibling: 'Geschwisterthema hinzufügen',
   meRemoveNode: 'Thema löschen',
+  meRemovePicture: 'Bild entfernen',
   meFocus: 'Fokusmodus',
   meCancelFocus: 'Fokusmodus beenden',
   meMoveUp: 'Nach oben',
@@ -125,4 +126,9 @@ export const de = {
   markerStar: 'Stern',
   markerOther: 'Markierung',
   pictureNotShown: 'Bild nicht geladen',
+  pictureDropNoTopic: 'Bild auf einem Thema ablegen',
+  pictureDropUnsupported: 'Nur PNG-, JPG- und GIF-Bilder können hinzugefügt werden',
+  pictureDropTooLarge: 'Bilder über 10 MB können nicht hinzugefügt werden',
+  pictureDropFailed: 'Bild konnte nicht hinzugefügt werden',
+  pictureDropFirstOnly: 'Ein Thema enthält nur ein Bild, daher wurde nur das erste hinzugefügt',
 } satisfies Record<keyof typeof zh, string>
