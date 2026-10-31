@@ -1,6 +1,6 @@
 /**
- * The ribbon's "Export images" button: a menu with the two ways to export —
- * whole pages rendered as pictures (the existing export), or only the
+ * The ribbon's "Export images" button: a menu with the three ways to export —
+ * every page rendered as a picture, only the page being viewed, or only the
  * pictures placed in the pages.
  */
 import { useRef, useState } from 'react'
@@ -15,6 +15,7 @@ export function ExportImagesMenu({
   busy,
   label,
   onWholePages,
+  onCurrentPage,
   onEmbedded,
 }: {
   t: TFunc
@@ -24,6 +25,7 @@ export function ExportImagesMenu({
   /** the button text (changes while an export runs) */
   label: string
   onWholePages: () => void
+  onCurrentPage: () => void
   onEmbedded: () => void
 }): ReactElement {
   const [open, setOpen] = useState(false)
@@ -59,6 +61,14 @@ export function ExportImagesMenu({
             onClick={choose(onWholePages)}
           >
             {t('imgExportWholePages')}
+          </button>
+          <button
+            role="menuitem"
+            data-action="export-current-page"
+            data-tip={t('imgExportCurrentPageTip')}
+            onClick={choose(onCurrentPage)}
+          >
+            {t('imgExportCurrentPage')}
           </button>
           <button
             role="menuitem"

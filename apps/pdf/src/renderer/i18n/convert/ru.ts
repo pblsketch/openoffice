@@ -66,6 +66,8 @@ export const ru = {
   cvErrFailed: 'Не удалось выполнить преобразование.',
   cvPageImageAlt: 'Страница {page}',
   imgExportWholePages: 'Страницы целиком',
+  imgExportCurrentPage: 'Только текущая страница',
+  imgExportCurrentPageTip: 'Экспортировать просматриваемую страницу в один файл PNG',
   imgExportEmbedded: 'Только изображения на страницах',
   imgExportEmbeddedTip:
     'Сохранить изображения, размещённые на страницах, в файлы PNG в исходном разрешении',

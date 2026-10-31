@@ -61,6 +61,8 @@ export const th = {
   cvErrFailed: 'แปลงไม่สำเร็จ',
   cvPageImageAlt: 'หน้า {page}',
   imgExportWholePages: 'ทั้งหน้า',
+  imgExportCurrentPage: 'เฉพาะหน้าปัจจุบัน',
+  imgExportCurrentPageTip: 'ส่งออกหน้าที่กำลังดูเป็นไฟล์ PNG หนึ่งไฟล์',
   imgExportEmbedded: 'เฉพาะรูปภาพในหน้า',
   imgExportEmbeddedTip: 'บันทึกรูปภาพที่อยู่ในหน้าเป็นไฟล์ PNG ที่ความละเอียดเดิม',
   imgExportFolderTitle: 'โฟลเดอร์สำหรับส่งออกรูปภาพ',

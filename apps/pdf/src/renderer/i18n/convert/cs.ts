@@ -64,6 +64,8 @@ export const cs = {
   cvErrFailed: 'Převod se nezdařil.',
   cvPageImageAlt: 'Stránka {page}',
   imgExportWholePages: 'Celé stránky',
+  imgExportCurrentPage: 'Jen aktuální stránka',
+  imgExportCurrentPageTip: 'Exportovat zobrazenou stránku jako jeden soubor PNG',
   imgExportEmbedded: 'Jen obrázky ve stránkách',
   imgExportEmbeddedTip: 'Uložit obrázky vložené do stránek jako soubory PNG v původním rozlišení',
   imgExportFolderTitle: 'Složka pro export obrázků',

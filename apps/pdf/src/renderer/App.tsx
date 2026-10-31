@@ -9089,6 +9089,7 @@ export default function App() {
                         : t('exportImages')
                     }
                     onWholePages={() => void exportImages(true)}
+                    onCurrentPage={() => void exportImages(false)}
                     onEmbedded={exportPagePictures}
                   />
                   <button
