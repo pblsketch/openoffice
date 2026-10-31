@@ -1,5 +1,6 @@
 import {
   PAGE_MARK,
+  SECTION_PAGES_MARK,
   TOTAL_PAGES_MARK,
   type HeaderFooter,
   type HfCellParaProps,
@@ -1338,14 +1339,17 @@ export function makeGapHfEl(opts: {
   pageNo: number | string
   /** total page count shown for the NUMPAGES marker */
   pageTotal: number
+  /** page count of the page's section shown for the SECTIONPAGES marker (absent: pageTotal) */
+  sectionPages?: number
   /** page geometry: floating textboxes render at their anchor position (absent: stacked) */
   geom?: HfStripGeom
 }): HTMLElement {
-  const { kind, value, images, pageNo, pageTotal, geom } = opts
+  const { kind, value, images, pageNo, pageTotal, sectionPages, geom } = opts
   const legacyHash = hfUsesLegacyHash(value)
   const display = (text: string) => {
     const substituted = text
       .replaceAll(TOTAL_PAGES_MARK, String(pageTotal))
+      .replaceAll(SECTION_PAGES_MARK, String(sectionPages ?? pageTotal))
       .replaceAll(PAGE_MARK, String(pageNo))
     return legacyHash ? substituted.replace('#', String(pageNo)) : substituted
   }
