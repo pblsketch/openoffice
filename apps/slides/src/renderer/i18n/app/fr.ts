@@ -269,4 +269,13 @@ export const fr = {
   appStatusSummaryZoomInserted: 'Diapositive de zoom de synthèse insérée avec {count} vignettes',
   appSectionSummary: 'Section de synthèse',
   appSectionN: 'Section {n}',
+  appStatusAnimPainterNone: "L'élément sélectionné n'a aucune animation",
+  appStatusAnimPainterOnce:
+    "Cliquez sur l'élément auquel appliquer les animations ; double-cliquez sur le bouton pour le mode continu",
+  appStatusAnimPainterContinuous:
+    "Mode continu « Reproduire l'animation » ; appuyez sur Échap pour quitter",
+  appStatusAnimPainted: 'Animations appliquées',
+  appStatusMergeUnsupported:
+    'Impossible de fusionner ces formes (les traits, images, tableaux, graphiques et certaines formes sont exclus)',
+  appStatusMergeEmpty: 'Il ne reste rien après la fusion (les formes ne se chevauchent pas)',
 } satisfies Record<keyof typeof zh, string>

@@ -312,20 +312,24 @@ Zamykanie karty to jedyne miejsce, w którym obie platformy dzielą się całkow
 
 ### Edycja
 
-| Czynność                                                   | macOS  | Windows / Linux |
-| ---------------------------------------------------------- | ------ | --------------- |
-| Nowy slajd                                                 | ⇧⌘N    | Ctrl+M          |
-| Znajdź (nie podczas edycji tekstu w kształcie)             | ⌘F     | Ctrl+F          |
-| Opisz zaznaczenie za pomocą AI (z zaznaczonymi kształtami) | ⌘K     | Ctrl+K          |
-| Powiększ                                                   | ⌘=     | Ctrl+=          |
-| Pomniejsz                                                  | ⌘-     | Ctrl+-          |
-| Rozmiar rzeczywisty (100%)                                 | ⌘0     | Ctrl+0          |
-| Zaznacz wszystko                                           | ⌘A     | Ctrl+A          |
-| Przechodź po zaznaczeniu kształtów do przodu / do tyłu     | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Czynność                                                                          | macOS  | Windows / Linux |
+| --------------------------------------------------------------------------------- | ------ | --------------- |
+| Nowy slajd                                                                        | ⇧⌘N    | Ctrl+M          |
+| Znajdź (nie podczas edycji tekstu w kształcie)                                    | ⌘F     | Ctrl+F          |
+| Opisz zaznaczenie za pomocą AI (z zaznaczonymi kształtami)                        | ⌘K     | Ctrl+K          |
+| Powiększ                                                                          | ⌘=     | Ctrl+=          |
+| Pomniejsz                                                                         | ⌘-     | Ctrl+-          |
+| Rozmiar rzeczywisty (100%)                                                        | ⌘0     | Ctrl+0          |
+| Zaznacz wszystko                                                                  | ⌘A     | Ctrl+A          |
+| Przechodź po zaznaczeniu kształtów do przodu / do tyłu                            | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Powtórz ostatnią czynność (format, wypełnienie, linia, wyrównanie, duplikowanie…) | F4     | F4              |
+| Pokaż/ukryj okienko zaznaczenia                                                   | ⌥F10   | Alt+F10         |
 
 Nowy slajd to drugi podział platform. Każda platforma ma własny klawisz, a drugi nic nie robi: ⇧⌘N w macOS, Ctrl+M w Windows i Linux. ⌘M nie może tego zrobić w macOS, bo jest systemowym skrótem Minimalizuj.
 
 Zaznacz wszystko zależy od fokusu: przy fokusie na panel miniatur, panelu konspektu lub sortowaniu slajdów zaznacza wszystkie slajdy, a wszędzie indziej wszystkie elementy bieżącego slajdu. Tab przechodzi po kształtach slajdu i tylko wtedy, gdy fokus ma sama plansza slajdu.
+
+F4 działa też w polu tekstowym: stosuje ostatni format do zaznaczonego tekstu.
 
 ### Formatowanie tekstu
 

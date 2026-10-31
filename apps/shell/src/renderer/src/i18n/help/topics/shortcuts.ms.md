@@ -312,20 +312,24 @@ Menutup tab ialah satu-satunya tempat kedua platform berasingan sepenuhnya: ⌘W
 
 ### Penyuntingan
 
-| Tindakan                                          | macOS  | Windows / Linux |
-| ------------------------------------------------- | ------ | --------------- |
-| Slaid baharu                                      | ⇧⌘N    | Ctrl+M          |
-| Cari (bukan semasa menyunting teks dalam bentuk)  | ⌘F     | Ctrl+F          |
-| Anotasi pilihan dengan AI (dengan bentuk dipilih) | ⌘K     | Ctrl+K          |
-| Zum masuk                                         | ⌘=     | Ctrl+=          |
-| Zum keluar                                        | ⌘-     | Ctrl+-          |
-| Saiz sebenar (100%)                               | ⌘0     | Ctrl+0          |
-| Pilih semua                                       | ⌘A     | Ctrl+A          |
-| Berganti pilihan bentuk ke hadapan / ke belakang  | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Tindakan                                                              | macOS  | Windows / Linux |
+| --------------------------------------------------------------------- | ------ | --------------- |
+| Slaid baharu                                                          | ⇧⌘N    | Ctrl+M          |
+| Cari (bukan semasa menyunting teks dalam bentuk)                      | ⌘F     | Ctrl+F          |
+| Anotasi pilihan dengan AI (dengan bentuk dipilih)                     | ⌘K     | Ctrl+K          |
+| Zum masuk                                                             | ⌘=     | Ctrl+=          |
+| Zum keluar                                                            | ⌘-     | Ctrl+-          |
+| Saiz sebenar (100%)                                                   | ⌘0     | Ctrl+0          |
+| Pilih semua                                                           | ⌘A     | Ctrl+A          |
+| Berganti pilihan bentuk ke hadapan / ke belakang                      | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Ulang tindakan terakhir (format, isian, garisan, penjajaran, pendua…) | F4     | F4              |
+| Tunjukkan/sembunyikan Anak Tetingkap Pemilihan                        | ⌥F10   | Alt+F10         |
 
 Slaid baharu ialah pembahagian platform yang satu lagi. Setiap platform mempunyai kekunci sendiri dan yang satu lagi tidak melakukan apa-apa: ⇧⌘N pada macOS, Ctrl+M pada Windows dan Linux. `⌘M` tidak boleh undertake kerja itu pada macOS kerana itulah kekunci Perkecil sistem.
 
 Pilih semua mengikut fokus: dengan baris lakaran kenit, kerangka atau penyusun slaid yang difokuskan, ia memilih setiap slaid, dan di tempat lain ia memilih setiap elemen pada slaid semasa. Tab berputar melalui bentuk-bentuk pada slaid itu, dan hanya apabila kanvas slaid itu sendiri difokuskan.
+
+F4 juga berfungsi di dalam kotak teks, menggunakan format terakhir pada teks yang dipilih.
 
 ### Pemformatan teks
 

@@ -263,4 +263,12 @@ export const ru = {
   appStatusSummaryZoomInserted: 'Вставлен слайд сводного масштабирования с {count} плитками',
   appSectionSummary: 'Сводный раздел',
   appSectionN: 'Раздел {n}',
+  appStatusAnimPainterNone: 'У выделенного элемента нет анимации',
+  appStatusAnimPainterOnce:
+    'Щелкните элемент, к которому нужно применить анимацию; двойной щелчок по кнопке — непрерывный режим',
+  appStatusAnimPainterContinuous: 'Непрерывный режим «Анимация по образцу»; нажмите Esc для выхода',
+  appStatusAnimPainted: 'Анимация применена',
+  appStatusMergeUnsupported:
+    'Эти фигуры нельзя объединить (линии, рисунки, таблицы, диаграммы и некоторые фигуры не учитываются)',
+  appStatusMergeEmpty: 'После объединения ничего не осталось (фигуры не перекрываются)',
 } satisfies Record<keyof typeof zh, string>

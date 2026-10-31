@@ -6,6 +6,7 @@ import * as showActions from '../src/renderer/show-actions'
 import * as fileActions from '../src/renderer/file-actions'
 import * as styleActions from '../src/renderer/style-actions'
 import type { ActionCtx } from '../src/renderer/action-context'
+import { rememberRepeat } from '../src/renderer/repeat-action'
 
 vi.mock('../src/renderer/clipboard-actions', () => ({
   copySelected: vi.fn(),
@@ -1168,5 +1169,52 @@ describe('Enter / F2 on a selected text shape', () => {
     handleGlobalKeydown(field, key('Enter'))
     handleGlobalKeydown(field, key('F2'))
     expect(field.setEditing).not.toHaveBeenCalled()
+  })
+})
+
+describe('repeat and selection pane keys', () => {
+  const plain = (key: string, init: KeyboardEventInit = {}) =>
+    new KeyboardEvent('keydown', { key, cancelable: true, ...init })
+
+  it('F4 replays the remembered action on the canvas', () => {
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    const fn = vi.fn()
+    rememberRepeat(fn)
+    const ctx = makeCtx({ selectedIds: ['a'] })
+    const e = plain('F4')
+    handleGlobalKeydown(ctx, e)
+    expect(fn).toHaveBeenCalledWith(ctx)
+    expect(e.defaultPrevented).toBe(true)
+  })
+
+  it('F4 leaves plain text fields alone', () => {
+    const fn = vi.fn()
+    rememberRepeat(fn)
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    input.focus()
+    handleGlobalKeydown(makeCtx(), plain('F4'))
+    expect(fn).not.toHaveBeenCalled()
+    input.remove()
+  })
+
+  it('Alt+F10 toggles the selection pane', () => {
+    const toggleSelectionPane = vi.fn()
+    const e = plain('F10', { altKey: true })
+    handleGlobalKeydown(makeCtx({ toggleSelectionPane }), e)
+    expect(toggleSelectionPane).toHaveBeenCalledTimes(1)
+    expect(e.defaultPrevented).toBe(true)
+  })
+
+  it('Escape disarms the animation painter', () => {
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    const setAnimPainter = vi.fn()
+    const ctx = makeCtx({
+      animPainter: { slideIndex: 0, sourceId: 'a', items: [], mode: 'continuous' },
+      setAnimPainter,
+      setStatus: vi.fn(),
+    })
+    handleGlobalKeydown(ctx, plain('Escape'))
+    expect(setAnimPainter).toHaveBeenCalledWith(null)
   })
 })

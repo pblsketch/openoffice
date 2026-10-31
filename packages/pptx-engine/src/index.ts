@@ -3090,6 +3090,53 @@ export function markChartEditable(slide: Slide, elementId: string): boolean {
   return true
 }
 
+/**
+ * Rewrite one attribute of a top-level element's OWN <p:cNvPr> (the first one in its
+ * bytes: a group's nvGrpSpPr precedes its children). value undefined removes it.
+ * Returns false when the element or its cNvPr is missing; unchanged bytes stay as is.
+ */
+function patchOwnCNvPrAttr(
+  slide: Slide,
+  elementId: string,
+  name: string,
+  value: string | undefined,
+): boolean {
+  const el = slide.elements.find((e) => e.id === elementId)
+  const xml = el?.anchor?.originalXml
+  if (!el || !xml) return false
+  const m = /<p:cNvPr\b[^>]*?\/?>/.exec(xml)
+  if (!m) return false
+  const re = new RegExp(`\\s${name}="[^"]*"`)
+  const tag =
+    value === undefined
+      ? m[0].replace(re, '')
+      : re.test(m[0])
+        ? m[0].replace(re, ` ${name}="${escapeXmlAttr(value)}"`)
+        : m[0].replace(/(\s*\/?>)$/, ` ${name}="${escapeXmlAttr(value)}"$1`)
+  if (tag === m[0]) return true
+  el.anchor.originalXml = xml.slice(0, m.index) + tag + xml.slice(m.index + m[0].length)
+  slide.structureDirty = true
+  return true
+}
+
+/**
+ * Show or hide a top-level element (<p:cNvPr hidden="1">, PowerPoint's Selection Pane eye).
+ * Only the element's own cNvPr changes. A hidden element parses as a silent passthrough
+ * (never drawn), so the caller rematerializes the slide afterwards (materializeSlide) to
+ * bring the model in line — which also renews every element id on the slide.
+ */
+export function setElementHidden(slide: Slide, elementId: string, hidden: boolean): boolean {
+  return patchOwnCNvPrAttr(slide, elementId, 'hidden', hidden ? '1' : undefined)
+}
+
+/** Rename a top-level element (<p:cNvPr name>, the name the Selection Pane shows). */
+export function setElementName(slide: Slide, elementId: string, name: string): boolean {
+  if (!patchOwnCNvPrAttr(slide, elementId, 'name', name)) return false
+  const el = slide.elements.find((e) => e.id === elementId)!
+  el.name = name
+  return true
+}
+
 /** Escape RegExp special characters. */
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -3135,6 +3182,10 @@ export interface ElementFontPatch {
   underline?: boolean
   /** #RRGGBB (explicit color: clears theme-link/inheritance flags) */
   color?: string
+  /** Text highlight #RRGGBB; null removes it */
+  highlight?: string | null
+  /** Letter spacing in points (negative = tighter); null or 0 = normal spacing */
+  letterSpacingPt?: number | null
 }
 
 /** Per-run size rewrite (relative grow/shrink); undefined = the run inherits its size. */
@@ -3197,6 +3248,16 @@ function applyFontPatch(
         delete r.colorFollowsTheme
         delete r.colorInherited
         delete r.colorNodeXml
+      }
+      if (patch.highlight !== undefined) {
+        if (patch.highlight) r.highlight = patch.highlight
+        else delete r.highlight
+        r.highlightEdited = true
+      }
+      if (patch.letterSpacingPt !== undefined) {
+        if (patch.letterSpacingPt) r.letterSpacing = patch.letterSpacingPt
+        else delete r.letterSpacing
+        r.letterSpacingEdited = true
       }
     }
   }

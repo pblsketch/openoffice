@@ -258,4 +258,12 @@ export const cs = {
   appStatusSummaryZoomInserted: 'Vložen souhrnný snímek Zoom s {count} dlaždicemi',
   appSectionSummary: 'Souhrnný oddíl',
   appSectionN: 'Oddíl {n}',
+  appStatusAnimPainterNone: 'Vybraný prvek nemá žádné animace',
+  appStatusAnimPainterOnce:
+    'Klikněte na prvek, na který chcete animace použít; dvojklikem na tlačítko zapnete nepřetržitý režim',
+  appStatusAnimPainterContinuous: 'Nepřetržitý režim Kopírovat animaci; ukončíte klávesou Esc',
+  appStatusAnimPainted: 'Animace použity',
+  appStatusMergeUnsupported:
+    'Tyto obrazce nelze sloučit (čáry, obrázky, tabulky, grafy a některé obrazce jsou vynechány)',
+  appStatusMergeEmpty: 'Po sloučení nic nezůstalo (obrazce se nepřekrývají)',
 } satisfies Record<keyof typeof zh, string>

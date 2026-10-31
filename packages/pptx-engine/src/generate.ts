@@ -391,6 +391,12 @@ function patchRunProps(runXml: string, run: TextRun): string {
       run.fontSize != null && !run.fontSizeImplicit ? szAttr(run.fontSize) : undefined,
       /\ssz="[^"]*"/,
     )
+    // Letter spacing: only an edited value is written; normal spacing drops the attribute
+    if (run.letterSpacingEdited) {
+      tag = run.letterSpacing
+        ? setAttr(tag, 'spc', String(Math.round(run.letterSpacing * 100)), /\sspc="[^"]*"/)
+        : tag.replace(/\sspc="[^"]*"/, '')
+    }
     return tag
   }
 
@@ -416,6 +422,7 @@ function patchRunProps(runXml: string, run: TextRun): string {
       runXml = patchRunFont(runXml, run.fontFamily)
     }
     runXml = patchRunHlink(runXml, run)
+    if (run.highlightEdited) runXml = patchRunHighlight(runXml, run.highlight)
     // "Withheld from the model" is not one of the attributes patched above, so an
     // existing mark would be left alone here — which is right for an untouched
     // run. Apply or clear it when the model disagrees, otherwise clearing a mark
@@ -438,11 +445,35 @@ function patchRunProps(runXml: string, run: TextRun): string {
       run.fontFamily && !run.fontImplicit && !run.latinFont && !run.eaFont
         ? fontSlotsXml(escapeXmlAttr(run.fontFamily))
         : ''
-    const inner = color + font + hlinkXml(run) // schema order: fill before the font slots, hlinkClick after
+    const highlight = run.highlight
+      ? `<a:highlight><a:srgbClr val="${hex6(run.highlight)}"/></a:highlight>`
+      : ''
+    // schema order: fill, highlight, the font slots, hlinkClick
+    const inner = color + highlight + font + hlinkXml(run)
     const rpr = inner ? `<a:rPr${attrs}>${inner}</a:rPr>` : `<a:rPr${attrs}/>`
     runXml = runXml.replace(/(<a:r(?:\s[^>]*)?>)/, `$1${rpr}`)
   }
   return runXml
+}
+
+/** Write the run's own <a:highlight> (color) or remove it (undefined), in schema order. */
+function patchRunHighlight(runXml: string, color: string | undefined): string {
+  const rPr = ownRPr(runXml)
+  if (!rPr) return runXml
+  const node = color ? `<a:highlight><a:srgbClr val="${hex6(color)}"/></a:highlight>` : ''
+  if (rPr.selfClosing) {
+    if (!node) return runXml
+    return runXml.slice(0, rPr.start) + `<a:rPr${rPr.attrs}>${node}</a:rPr>` + runXml.slice(rPr.end)
+  }
+  const children = topLevelChildren(runXml, rPr.innerStart, rPr.innerEnd)
+  const existing = children.find((c) => c.name === 'a:highlight')
+  if (existing) return runXml.slice(0, existing.start) + node + runXml.slice(existing.end)
+  if (!node) return runXml
+  // CT_TextCharacterProperties: ln, the fill group and the effect list come before highlight
+  const before = (name: string) =>
+    name === 'a:ln' || FILL_TAGS.has(name) || name === 'a:effectLst' || name === 'a:effectDag'
+  const at = children.filter((c) => before(c.name)).pop()?.end ?? rPr.innerStart
+  return runXml.slice(0, at) + node + runXml.slice(at)
 }
 
 /** <a:hlinkClick> for the model's rId (empty when none). */

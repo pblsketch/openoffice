@@ -242,4 +242,10 @@ export const zh = {
   appStatusSummaryZoomInserted: '已插入摘要缩放页（{count} 个缩略图）',
   appSectionSummary: '摘要节',
   appSectionN: '第 {n} 节',
+  appStatusAnimPainterNone: '所选元素没有动画',
+  appStatusAnimPainterOnce: '单击要应用动画的元素；双击按钮可切换为连续模式',
+  appStatusAnimPainterContinuous: '动画刷连续模式，按 Esc 退出',
+  appStatusAnimPainted: '已应用动画',
+  appStatusMergeUnsupported: '无法合并这些形状（线条、图片、表格、图表和部分形状除外）',
+  appStatusMergeEmpty: '合并结果为空（形状没有重叠）',
 }

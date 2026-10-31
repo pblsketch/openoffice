@@ -197,6 +197,24 @@ export function applyEditParagraphs(oldParas: Paragraph[], edited: EditParagraph
         // value keeps the implicit marker so the rebuild writes no b/i attribute
         if (r.bold != null && r.bold !== (oldRun?.bold ?? false)) delete merged.boldImplicit
         if (r.italic != null && r.italic !== (oldRun?.italic ?? false)) delete merged.italicImplicit
+        // Highlight and letter spacing: the editor returns what it shows, so only a real
+        // change is marked for write-back (an untouched run keeps its bytes)
+        if (
+          r.highlight !== undefined &&
+          hex6(r.highlight ?? undefined) !== hex6(oldRun?.highlight)
+        ) {
+          if (r.highlight) merged.highlight = r.highlight
+          else delete merged.highlight
+          merged.highlightEdited = true
+        }
+        if (
+          r.letterSpacing !== undefined &&
+          Math.abs((r.letterSpacing ?? 0) - (oldRun?.letterSpacing ?? 0)) >= 0.05
+        ) {
+          if (r.letterSpacing) merged.letterSpacing = Math.round(r.letterSpacing * 100) / 100
+          else delete merged.letterSpacing
+          merged.letterSpacingEdited = true
+        }
         return merged
       }),
       align: p.align ?? oldPara?.align,

@@ -17,6 +17,10 @@ export interface EditRun {
   baseline?: number
   /** Text outline (for WordArt), width in EMU */
   outline?: { color: string; widthEmu: number }
+  /** Text highlight #RRGGBB; null = none (the editor DOM is authoritative); undefined = keep */
+  highlight?: string | null
+  /** Letter spacing in points; null or 0 = normal; undefined = keep */
+  letterSpacing?: number | null
   /** Dynamic field (slidenum / datetime1…); text is the cached value */
   field?: string
   /** Source model run index (index into the original paragraph's runs); the main process uses it to backtrack unedited format fields */

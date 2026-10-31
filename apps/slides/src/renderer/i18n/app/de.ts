@@ -272,4 +272,13 @@ export const de = {
   appStatusSummaryZoomInserted: 'Zusammenfassungszoom-Folie mit {count} Kacheln eingefügt',
   appSectionSummary: 'Zusammenfassungsabschnitt',
   appSectionN: 'Abschnitt {n}',
+  appStatusAnimPainterNone: 'Das ausgewählte Element hat keine Animationen',
+  appStatusAnimPainterOnce:
+    'Klicken Sie auf das Element, auf das die Animationen angewendet werden sollen; Doppelklick auf die Schaltfläche für den Dauermodus',
+  appStatusAnimPainterContinuous: 'Dauermodus „Animation übertragen“; zum Beenden Esc drücken',
+  appStatusAnimPainted: 'Animationen angewendet',
+  appStatusMergeUnsupported:
+    'Diese Formen können nicht zusammengeführt werden (Linien, Bilder, Tabellen, Diagramme und einige Formen sind ausgenommen)',
+  appStatusMergeEmpty:
+    'Nach dem Zusammenführen bleibt nichts übrig (die Formen überlappen sich nicht)',
 } satisfies Record<keyof typeof zh, string>

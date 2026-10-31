@@ -239,6 +239,9 @@ register({
 })
 
 // ── setFont ─────────────────────────────────────────────────────────────
+/** spc is ST_TextPoint (±400000 hundredths of a point) */
+const LETTER_SPACING_PT_MAX = 4000
+
 // Wholesale font/format change on one element (text/shape/table); the engine
 // decides acceptance so semantics can't drift from the legacy handler. Multi-
 // element selections are N ops in one per_op transaction (shim).
@@ -248,8 +251,23 @@ register({
     if (typeof op.font !== 'object' || op.font === null) {
       throw new GuidedError('op "setFont" needs "font": an ElementFontPatch object.')
     }
-    const font = op.font as { color?: unknown; fontSizePt?: unknown; fontSizeStep?: unknown }
+    const font = op.font as {
+      color?: unknown
+      fontSizePt?: unknown
+      fontSizeStep?: unknown
+      highlight?: unknown
+      letterSpacingPt?: unknown
+    }
     if (font.color !== undefined) requireHexColor(font.color, 'setFont', 'font.color')
+    if (font.highlight != null) requireHexColor(font.highlight, 'setFont', 'font.highlight')
+    if (font.letterSpacingPt != null) {
+      requireFinite(font.letterSpacingPt, 'setFont', 'font.letterSpacingPt')
+      if (Math.abs(font.letterSpacingPt) > LETTER_SPACING_PT_MAX) {
+        throw new GuidedError(
+          `op "setFont": "font.letterSpacingPt" must be -${LETTER_SPACING_PT_MAX}..${LETTER_SPACING_PT_MAX} (points).`,
+        )
+      }
+    }
     if (font.fontSizePt !== undefined) {
       requireFinite(font.fontSizePt, 'setFont', 'font.fontSizePt')
       if (font.fontSizePt < FONT_SIZE_PT_MIN || font.fontSizePt > FONT_SIZE_PT_MAX) {

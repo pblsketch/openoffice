@@ -256,4 +256,12 @@ export const en = {
   appStatusSummaryZoomInserted: 'Summary Zoom slide inserted with {count} tiles',
   appSectionSummary: 'Summary Section',
   appSectionN: 'Section {n}',
+  appStatusAnimPainterNone: 'The selected element has no animations',
+  appStatusAnimPainterOnce:
+    'Click the element to apply the animations to; double-click the button for continuous mode',
+  appStatusAnimPainterContinuous: 'Continuous Animation Painter mode; press Esc to exit',
+  appStatusAnimPainted: 'Animations applied',
+  appStatusMergeUnsupported:
+    "These shapes can't be merged (lines, pictures, tables, charts and some shapes are left out)",
+  appStatusMergeEmpty: "Nothing is left after merging (the shapes don't overlap)",
 } satisfies Record<keyof typeof zh, string>

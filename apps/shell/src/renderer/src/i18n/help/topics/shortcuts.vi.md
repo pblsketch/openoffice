@@ -312,20 +312,24 @@ GenOffice Slides là một trình soạn thảo trình chiếu kiểu PowerPoint
 
 ### Chỉnh sửa
 
-| Hành động                                             | macOS  | Windows / Linux |
-| ----------------------------------------------------- | ------ | --------------- |
-| Trang chiếu mới                                       | ⇧⌘N    | Ctrl+M          |
-| Tìm (không dùng khi đang soạn văn bản trong một hình) | ⌘F     | Ctrl+F          |
-| Chú thích vùng chọn bằng AI (khi đã chọn hình)        | ⌘K     | Ctrl+K          |
-| Phóng to                                              | ⌘=     | Ctrl+=          |
-| Thu nhỏ                                               | ⌘-     | Ctrl+-          |
-| Kích thước thật (100%)                                | ⌘0     | Ctrl+0          |
-| Chọn tất cả                                           | ⌘A     | Ctrl+A          |
-| Chuyển vùng chọn hình tới trước / sau                 | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Hành động                                                                 | macOS  | Windows / Linux |
+| ------------------------------------------------------------------------- | ------ | --------------- |
+| Trang chiếu mới                                                           | ⇧⌘N    | Ctrl+M          |
+| Tìm (không dùng khi đang soạn văn bản trong một hình)                     | ⌘F     | Ctrl+F          |
+| Chú thích vùng chọn bằng AI (khi đã chọn hình)                            | ⌘K     | Ctrl+K          |
+| Phóng to                                                                  | ⌘=     | Ctrl+=          |
+| Thu nhỏ                                                                   | ⌘-     | Ctrl+-          |
+| Kích thước thật (100%)                                                    | ⌘0     | Ctrl+0          |
+| Chọn tất cả                                                               | ⌘A     | Ctrl+A          |
+| Chuyển vùng chọn hình tới trước / sau                                     | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Lặp lại thao tác cuối (định dạng, tô màu, đường kẻ, căn chỉnh, nhân bản…) | F4     | F4              |
+| Hiện/ẩn Ngăn chọn                                                         | ⌥F10   | Alt+F10         |
 
 Trang chiếu mới là chỗ chia theo nền tảng còn lại. Mỗi nền tảng có phím riêng và phím của nền tảng kia không làm gì: ⇧⌘N trên macOS, Ctrl+M trên Windows và Linux. `⌘M` không thể đảm nhiệm việc đó trên macOS vì đó là phím Thu nhỏ của hệ thống.
 
 Chọn tất cả phụ thuộc vào tiêu điểm: khi khung hình thu nhỏ, khung dàn ý hay bộ sắp xếp có tiêu điểm, nó chọn mọi trang chiếu, còn ở bất kỳ nơi nào khác nó chọn mọi phần tử trên trang chiếu hiện tại. Tab luân phiên qua các hình trên trang chiếu, và chỉ khi chính vùng vẽ trang chiếu có tiêu điểm.
+
+F4 cũng hoạt động bên trong hộp văn bản, áp dụng định dạng cuối cùng cho văn bản đang chọn.
 
 ### Định dạng văn bản
 

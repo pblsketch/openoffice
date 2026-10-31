@@ -258,4 +258,12 @@ export const vi = {
   appStatusSummaryZoomInserted: 'Đã chèn trang chiếu Thu phóng tóm tắt với {count} ô thu nhỏ',
   appSectionSummary: 'Phần tóm tắt',
   appSectionN: 'Phần {n}',
+  appStatusAnimPainterNone: 'Phần tử đã chọn không có hoạt hình',
+  appStatusAnimPainterOnce:
+    'Nhấp vào phần tử cần áp dụng hoạt hình; nhấp đúp vào nút để chuyển sang chế độ liên tục',
+  appStatusAnimPainterContinuous: 'Chế độ sao chép hoạt hình liên tục; nhấn Esc để thoát',
+  appStatusAnimPainted: 'Đã áp dụng hoạt hình',
+  appStatusMergeUnsupported:
+    'Không thể phối hợp các hình dạng này (đường kẻ, hình ảnh, bảng, biểu đồ và một số hình dạng bị loại trừ)',
+  appStatusMergeEmpty: 'Không còn gì sau khi phối hợp (các hình dạng không chồng lên nhau)',
 } satisfies Record<keyof typeof zh, string>

@@ -265,4 +265,12 @@ export const hi = {
   appStatusSummaryZoomInserted: '{count} टाइलों के साथ सारांश ज़ूम स्लाइड डाली गई',
   appSectionSummary: 'सारांश अनुभाग',
   appSectionN: 'अनुभाग {n}',
+  appStatusAnimPainterNone: 'चयनित तत्व में कोई एनिमेशन नहीं है',
+  appStatusAnimPainterOnce:
+    'वह तत्व क्लिक करें जिस पर एनिमेशन लागू करने हैं; निरंतर मोड के लिए बटन पर डबल-क्लिक करें',
+  appStatusAnimPainterContinuous: 'निरंतर एनिमेशन पेंटर मोड; बाहर निकलने के लिए Esc दबाएँ',
+  appStatusAnimPainted: 'एनिमेशन लागू किए गए',
+  appStatusMergeUnsupported:
+    'इन आकृतियों को मर्ज नहीं किया जा सकता (रेखाएँ, चित्र, तालिकाएँ, चार्ट और कुछ आकृतियाँ शामिल नहीं होतीं)',
+  appStatusMergeEmpty: 'मर्ज करने के बाद कुछ नहीं बचा (आकृतियाँ ओवरलैप नहीं होतीं)',
 } satisfies Record<keyof typeof zh, string>

@@ -271,4 +271,13 @@ export const nl = {
   appStatusSummaryZoomInserted: 'Samenvattingszoomdia ingevoegd met {count} tegels',
   appSectionSummary: 'Samenvattingssectie',
   appSectionN: 'Sectie {n}',
+  appStatusAnimPainterNone: 'Het geselecteerde element heeft geen animaties',
+  appStatusAnimPainterOnce:
+    'Klik op het element waarop u de animaties wilt toepassen; dubbelklik op de knop voor de continue modus',
+  appStatusAnimPainterContinuous:
+    'Continue modus van Animatie kopiëren/plakken; druk op Esc om af te sluiten',
+  appStatusAnimPainted: 'Animaties toegepast',
+  appStatusMergeUnsupported:
+    'Deze vormen kunnen niet worden samengevoegd (lijnen, afbeeldingen, tabellen, grafieken en sommige vormen worden overgeslagen)',
+  appStatusMergeEmpty: 'Na het samenvoegen blijft er niets over (de vormen overlappen niet)',
 } satisfies Record<keyof typeof zh, string>

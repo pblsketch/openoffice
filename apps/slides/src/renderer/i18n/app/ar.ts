@@ -254,4 +254,12 @@ export const ar = {
   appStatusSummaryZoomInserted: 'تم إدراج شريحة تكبير/تصغير الملخص مع {count} مربعات',
   appSectionSummary: 'مقطع الملخص',
   appSectionN: 'المقطع {n}',
+  appStatusAnimPainterNone: 'لا توجد حركات على العنصر المحدد',
+  appStatusAnimPainterOnce:
+    'انقر على العنصر المراد تطبيق الحركات عليه؛ انقر نقرًا مزدوجًا فوق الزر للوضع المستمر',
+  appStatusAnimPainterContinuous: 'وضع نسخ الحركة المستمر؛ اضغط على Esc للخروج',
+  appStatusAnimPainted: 'تم تطبيق الحركات',
+  appStatusMergeUnsupported:
+    'لا يمكن دمج هذه الأشكال (تُستثنى الخطوط والصور والجداول والمخططات وبعض الأشكال)',
+  appStatusMergeEmpty: 'لم يتبقَّ شيء بعد الدمج (الأشكال لا تتداخل)',
 } satisfies Record<keyof typeof zh, string>

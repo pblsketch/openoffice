@@ -29,7 +29,7 @@ pptx 한 파일의 모델과 저장을 맡는다. `openPptx`가 zip 전체를 �
 - 기본 진입점은 Node 전용이다(`node:crypto`, `Buffer`). 렌더러가 가져가는 것은 하위 경로 `./custgeom`, `./table-grid`, `./identity`, `./named-action`, `./background-promote`뿐이다. 이 파일들과 그 import 사슬에 Node 의존을 들이면 브라우저 빌드가 깨진다.
 - `@genoffice/agent-core`에서는 `redact-range` 하위 경로만 import한다. 그 패키지의 기본 진입점은 Electron에 닿는다.
 - `src/vendor/`는 가져온 원본과 바이트가 같아야 한다.
-- 엔진 동작은 원본(GenOffice)의 수정이 병합될 때만 바뀐다. 파일 이동, 재포맷, 이름 변경을 하지 않는다.
+- 엔진 동작은 원본(GenOffice)의 수정이 병합될 때만 바뀐다. 파일 이동, 재포맷, 이름 변경을 하지 않는다. 예외는 아래 "원본과 다른 점"에 적은 것뿐이고, 더할 때는 사람이 정한다.
 
 ## 이 모듈의 방식
 
@@ -42,6 +42,13 @@ pptx 한 파일의 모델과 저장을 맡는다. `openPptx`가 zip 전체를 �
 - 요소 영속 id는 요소 자신의 `p:cNvPr` 안에서만 찾는다. `a16:creationId`가 있으면 `e_<GUID 앞 8자>`, 없으면 `e_<cNvPr id>`다. 그룹 조각에는 자식의 바이트가 들어 있어서 범위를 좁히지 않으면 그룹이 자식의 GUID를 물려받는다. GUID를 새긴 뒤에도 예전 `e_<cNvPr id>` 형태는 별칭으로 계속 통한다.
 - 레이아웃 관계를 잃은 손상된 슬라이드는 열기를 거부하지 않고 첫 마스터의 레이아웃으로 그린다. 가운데 제목 자리표시자가 있으면 제목 레이아웃, 아니면 첫 레이아웃이다.
 - 어두운 마스터는 색 이름을 바꿔 매핑한다(`clrMap`). 색을 풀기 전에 매핑부터 세운다.
+
+## 원본과 다른 점
+
+원본을 받아올 때 아래 시험이 통과하는지 본다. 충돌이 나면 이 동작을 남긴다.
+
+- **강조 색·문자 간격의 제자리 패치(결정 0094).** `TextRun.highlightEdited`·`letterSpacingEdited`가 선 런만 `patchRunProps`가 `<a:highlight>`(채움·효과 뒤, 글꼴 앞)와 `spc`를 쓰거나 지운다. 런이 없던 `a:rPr`에 강조 색을 넣는 길도 같다. `ElementFontPatch`에 `highlight`(`null`은 지움)·`letterSpacingPt`(0·`null`은 표준)가 있다. 시험: `tests/run-highlight-spacing-visibility.test.ts`.
+- **도형 숨기기·이름(결정 0094).** `setElementHidden`·`setElementName`이 원본 조각의 첫 `p:cNvPr` 여는 태그에서 `hidden`·`name` 속성 하나만 바꾸고 `structureDirty`를 세운다. 숨기기 뒤의 모델은 부르는 쪽이 `materializeSlide`로 다시 읽는다. 시험: 같은 파일.
 
 ## 테스트
 

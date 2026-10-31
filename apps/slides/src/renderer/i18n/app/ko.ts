@@ -253,4 +253,12 @@ export const ko = {
   appStatusSummaryZoomInserted: '타일 {count}개가 있는 요약 확대/축소 슬라이드 삽입됨',
   appSectionSummary: '요약 구역',
   appSectionN: '구역 {n}',
+  appStatusAnimPainterNone: '선택한 요소에 애니메이션이 없습니다',
+  appStatusAnimPainterOnce:
+    '애니메이션을 적용할 요소를 클릭하세요. 단추를 두 번 클릭하면 연속 모드로 전환됩니다',
+  appStatusAnimPainterContinuous: '연속 애니메이션 복사 모드입니다. Esc 키로 종료',
+  appStatusAnimPainted: '애니메이션을 적용했습니다',
+  appStatusMergeUnsupported:
+    '이 도형은 병합할 수 없습니다(선, 그림, 표, 차트와 일부 도형은 제외됩니다)',
+  appStatusMergeEmpty: '병합한 결과가 비어 있습니다(겹치는 부분이 없습니다)',
 } satisfies Record<keyof typeof zh, string>

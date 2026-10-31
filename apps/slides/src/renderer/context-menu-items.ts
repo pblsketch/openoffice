@@ -643,6 +643,22 @@ export function buildCtxItems(ctx: ActionCtx): Array<CtxItem | null> {
           } as CtxItem,
         ]
       : []),
+    ...(selectedIds.length >= 2
+      ? [
+          {
+            label: t('ribbonSameWidth'),
+            onClick: () => void arrangeActions.alignSelected(ctx, 'same-w'),
+          } as CtxItem,
+          {
+            label: t('ribbonSameHeight'),
+            onClick: () => void arrangeActions.alignSelected(ctx, 'same-h'),
+          } as CtxItem,
+          {
+            label: t('ribbonSameSize'),
+            onClick: () => void arrangeActions.alignSelected(ctx, 'same-size'),
+          } as CtxItem,
+        ]
+      : []),
     null,
     { label: t('ribbonNewComment'), onClick: () => ctx.newComment() },
     null,

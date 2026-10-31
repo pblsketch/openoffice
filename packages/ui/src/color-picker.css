@@ -127,6 +127,39 @@
   line-height: 1;
 }
 
+/* "Pick from screen" row: sits above "More Colors…", same row look */
+.gcp-palette.gcp-palette .gcp-eyedropper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% + 24px);
+  margin: 12px -12px 0;
+  padding: 9px 14px;
+  border: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  background: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gcp-palette.gcp-palette .gcp-eyedropper:hover {
+  background: var(--hover);
+}
+
+.gcp-palette.gcp-palette .gcp-eyedropper:last-child {
+  margin-bottom: -10px;
+  border-radius: 0 0 8px 8px;
+}
+
+.gcp-palette.gcp-palette .gcp-eyedropper + .gcp-more {
+  margin-top: 0;
+}
+
 /* Invisible but covering the whole row (not pointer-events: none): pointer
    events must land on the input itself so callers' moreInputProps hooks
    (onPointerDown arming / selection save) fire before the OS dialog opens. */
