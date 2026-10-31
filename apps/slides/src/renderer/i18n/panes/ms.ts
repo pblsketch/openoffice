@@ -309,4 +309,7 @@ export const ms = {
   paneSelKindLine: 'Garis',
   paneSelKindTextBox: 'Kotak Teks',
   paneSelKindShape: 'Bentuk',
+  paneSelHide: 'Sembunyi',
+  paneSelShow: 'Tunjukkan',
+  paneSelRenameTip: 'Dwiklik untuk menamakan semula',
 } satisfies Record<keyof typeof zh, string>

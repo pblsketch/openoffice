@@ -53,6 +53,8 @@ PowerPoint 프레젠테이션(.pptx) 에디터다. 파일을 바이트 그대로
 - 서식 복사(`format-brush.ts`, `clipboard-actions.ts`)는 기존 연산(`editFill`·`editStroke`·`setEffects`·`setElementFont`·`setElementParagraphFormat`)만 부르고, 여러 호출을 `history-batch.ts`의 `batched`로 실행 취소 한 번에 묶는다. 글을 다시 쓰는 `editText`로 서식을 칠하지 않는다(줄바꿈에 삼킨 공백과 링크를 잃는다). 편집 중 선택한 글자가 있으면 그 글자의 서식을 집고, 붓이 켜진 채 마우스로 고른 글자에 칠한다.
 - F4 반복은 `repeat-action.ts`에 등록한 동작만 다시 한다. 새 편집 동작이 반복할 만하면 실행할 때 `rememberRepeat`로 "지금 선택에 다시 적용하는" 함수를 남긴다. 여러 IPC를 부르는 반복은 `batched`로 묶는다.
 - 대/소문자 바꾸기(`text-case.ts`)는 상자의 글을 `srcPara`·`srcRun`과 글자만 담은 문단으로 돌려보내 run 서식을 그대로 둔다. 변환은 글자 수를 바꾸지 않는다(ß처럼 길이가 바뀌는 글자는 그대로 둔다). 화면의 글리프 글자는 `cap` 적용 뒤라 대문자로 보일 수 있다.
+- 선택 창(`components/SelectionPane.tsx`)은 `getShapeKeys`로 숨긴 요소까지 나열한다. 숨기기·보이기(`setElementHidden`)는 슬라이드를 다시 읽어 그 슬라이드의 요소 id가 모두 바뀌므로, 화면은 선택을 풀고 애니메이션 목록을 다시 읽는다(결정 0094).
+- 도형 병합(`merge-shapes.ts`)은 화면 좌표의 윤곽을 `polygon-clipping`으로 합치고, 저장은 `addElement`·`setShapeGeometry`·서식 연산·`deleteElements`를 `batched`로 묶어 부른다. 윤곽을 모르는 도형(화면이 사각형으로 근사하는 프리셋, 선·그림·표·차트)은 병합하지 않는다.
 - `vitest.config.ts`는 `@genoffice/pptx-*` 패키지를 이 저장소의 소스 경로로 고정한다. 하위 경로 별칭은 패키지 이름 별칭보다 앞에 둔다(문자열 별칭은 접두사 치환이다).
 
 ## 테스트

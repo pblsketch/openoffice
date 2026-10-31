@@ -304,4 +304,7 @@ export const zhTW = {
   paneSelKindLine: '線條',
   paneSelKindTextBox: '文字方塊',
   paneSelKindShape: '圖案',
+  paneSelHide: '隱藏',
+  paneSelShow: '顯示',
+  paneSelRenameTip: '按兩下可重新命名',
 } satisfies Record<keyof typeof zh, string>

@@ -247,4 +247,6 @@ export const zhTW = {
   appStatusAnimPainterOnce: '按一下要套用動畫的元素；按兩下按鈕進入連續模式',
   appStatusAnimPainterContinuous: '連續複製動畫模式，按 Esc 離開',
   appStatusAnimPainted: '已套用動畫',
+  appStatusMergeUnsupported: '無法合併這些圖案（線條、圖片、表格、圖表和部分圖案除外）',
+  appStatusMergeEmpty: '合併後沒有剩下任何內容（圖案沒有重疊）',
 } satisfies Record<keyof typeof zh, string>

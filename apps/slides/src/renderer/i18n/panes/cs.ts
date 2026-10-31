@@ -306,4 +306,7 @@ export const cs = {
   paneSelKindLine: 'Čára',
   paneSelKindTextBox: 'Textové pole',
   paneSelKindShape: 'Obrazec',
+  paneSelHide: 'Skrýt',
+  paneSelShow: 'Zobrazit',
+  paneSelRenameTip: 'Dvojklikem přejmenujete',
 } satisfies Record<keyof typeof zh, string>

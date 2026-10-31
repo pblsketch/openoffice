@@ -253,4 +253,7 @@ export const he = {
   appStatusAnimPainterOnce: 'לחץ על הרכיב שעליו יש להחיל את ההנפשות; לחץ פעמיים על הלחצן למצב רציף',
   appStatusAnimPainterContinuous: 'מצב רציף של מברשת ההנפשה; הקש Esc ליציאה',
   appStatusAnimPainted: 'ההנפשות הוחלו',
+  appStatusMergeUnsupported:
+    'לא ניתן למזג צורות אלה (קווים, תמונות, טבלאות, תרשימים וחלק מהצורות אינם נכללים)',
+  appStatusMergeEmpty: 'לא נשאר דבר לאחר המיזוג (הצורות אינן חופפות)',
 } satisfies Record<keyof typeof zh, string>

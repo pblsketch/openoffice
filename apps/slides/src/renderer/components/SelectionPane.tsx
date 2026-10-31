@@ -1,11 +1,13 @@
 /**
  * Selection pane (right side, PowerPoint Home ▸ Arrange ▸ Selection Pane / Alt+F10): every
- * element of the current slide listed front to back. Clicking a row selects the element
- * (Ctrl/Shift-click adds to the selection; a group member enters its group); the two
- * buttons move the selection one step forward or backward in the stacking order.
+ * element of the current slide listed front to back, hidden ones included. Clicking a row
+ * selects the element (Ctrl/Shift-click adds to the selection; a group member enters its
+ * group); the two buttons move the selection one step forward or backward in the stacking
+ * order. Top-level rows carry an eye (hide/show) and rename on double-click.
  * Names come from the file (cNvPr name); unnamed members of a group show their kind.
  */
 import React, { useEffect, useState } from 'react'
+import type { ShapeKey } from '../../shared/ipc'
 import type {
   GroupRenderNode,
   RenderNode,
@@ -13,7 +15,7 @@ import type {
   ShapeRenderNode,
 } from '@genoffice/pptx-render'
 import { useI18n, type StringKey } from '../i18n/locale'
-import { IconSidebarCollapse } from './icons'
+import { IconEye, IconEyeOff, IconSidebarCollapse } from './icons'
 
 interface Props {
   slideIndex: number
@@ -22,6 +24,10 @@ interface Props {
   enteredGroupId: string | null
   onSelect: (id: string, groupId: string | null, additive: boolean) => void
   onMove: (dir: 'forward' | 'backward') => void
+  /** Eye: hide/show a top-level element */
+  onSetHidden: (id: string, hidden: boolean) => void
+  /** Rename a top-level element */
+  onRename: (id: string, name: string) => void
   onCollapse: () => void
 }
 
@@ -63,49 +69,112 @@ export function SelectionPane({
   enteredGroupId,
   onSelect,
   onMove,
+  onSetHidden,
+  onRename,
   onCollapse,
 }: Props) {
   const { t } = useI18n()
-  const [names, setNames] = useState<Map<string, string>>(new Map())
+  const [keys, setKeys] = useState<ShapeKey[]>([])
+  const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null)
 
-  // Element names live in the deck; re-read them whenever the slide is re-rendered
+  // Element names and hidden flags live in the deck; re-read them whenever the slide re-renders
   useEffect(() => {
     let alive = true
-    void window.slidesApi.getShapeKeys(slideIndex).then((keys) => {
-      if (alive) setNames(new Map(keys.map((k) => [k.sourceId, k.name])))
+    void window.slidesApi.getShapeKeys(slideIndex).then((k) => {
+      if (alive) setKeys(k)
     })
     return () => {
       alive = false
     }
   }, [slideIndex, slide])
 
-  const nodes = (slide?.nodes ?? []).filter(listable)
+  const names = new Map(keys.map((k) => [k.sourceId, k.name]))
+  const nodeById = new Map((slide?.nodes ?? []).map((n) => [n.sourceId, n]))
   const selected = new Set(selectedIds)
   const canMove = selectedIds.length > 0 && !enteredGroupId
 
-  const row = (node: RenderNode, groupId: string | null, depth: number) => {
-    const kind = t(kindKey(node))
-    const name = names.get(node.sourceId) || textSnippet(node)
+  const commitRename = () => {
+    if (!renaming) return
+    const value = renaming.value.trim()
+    if (value && value !== names.get(renaming.id)) onRename(renaming.id, value)
+    setRenaming(null)
+  }
+
+  const row = (
+    id: string,
+    node: RenderNode | undefined,
+    groupId: string | null,
+    depth: number,
+    hidden = false,
+  ) => {
+    const kind = node ? t(kindKey(node)) : ''
+    const name = names.get(id) || (node ? textSnippet(node) : '')
+    const topLevel = groupId == null
+    const label = name || kind || t('paneSelKindShape')
     return (
       <div
-        key={`${groupId ?? ''}/${node.sourceId}`}
-        className={`sel-row${selected.has(node.sourceId) ? ' selected' : ''}`}
+        key={`${groupId ?? ''}/${id}`}
+        className={`sel-row${selected.has(id) ? ' selected' : ''}${hidden ? ' hidden' : ''}`}
         style={{ paddingLeft: 8 + depth * 16 }}
-        onClick={(e) => onSelect(node.sourceId, groupId, e.ctrlKey || e.metaKey || e.shiftKey)}
+        onClick={(e) => {
+          if (!hidden) onSelect(id, groupId, e.ctrlKey || e.metaKey || e.shiftKey)
+        }}
+        onDoubleClick={() => {
+          if (topLevel) setRenaming({ id, value: names.get(id) ?? '' })
+        }}
       >
-        {name && <span className="sel-row-kind">{kind}</span>}
-        <span className="sel-row-name">{name || kind}</span>
+        {renaming?.id === id ? (
+          <input
+            className="sel-row-input"
+            autoFocus
+            value={renaming.value}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => setRenaming({ id, value: e.target.value })}
+            onBlur={commitRename}
+            onKeyDown={(e) => {
+              e.stopPropagation()
+              if (e.key === 'Enter') commitRename()
+              else if (e.key === 'Escape') setRenaming(null)
+            }}
+          />
+        ) : (
+          <>
+            {name && kind && <span className="sel-row-kind">{kind}</span>}
+            <span className="sel-row-name" data-tip={topLevel ? t('paneSelRenameTip') : undefined}>
+              {label}
+            </span>
+          </>
+        )}
+        {topLevel && (
+          <button
+            className="sel-row-eye"
+            data-tip={hidden ? t('paneSelShow') : t('paneSelHide')}
+            aria-label={hidden ? t('paneSelShow') : t('paneSelHide')}
+            onClick={(e) => {
+              e.stopPropagation()
+              onSetHidden(id, !hidden)
+            }}
+          >
+            {hidden ? <IconEyeOff size={14} /> : <IconEye size={14} />}
+          </button>
+        )}
       </div>
     )
   }
 
   const rows: React.ReactNode[] = []
   // spTree order is back to front; the pane lists the front-most first (PowerPoint)
-  for (const node of [...nodes].reverse()) {
-    rows.push(row(node, null, 0))
+  for (const key of [...keys].reverse()) {
+    if (key.hidden) {
+      rows.push(row(key.sourceId, undefined, null, 0, true))
+      continue
+    }
+    const node = nodeById.get(key.sourceId)
+    if (!node || !listable(node)) continue
+    rows.push(row(key.sourceId, node, null, 0))
     if (node.type === 'group') {
       for (const child of [...(node as GroupRenderNode).children].reverse()) {
-        if (listable(child)) rows.push(row(child, node.sourceId, 1))
+        if (listable(child)) rows.push(row(child.sourceId, child, node.sourceId, 1))
       }
     }
   }

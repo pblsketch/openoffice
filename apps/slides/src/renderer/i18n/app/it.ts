@@ -275,4 +275,7 @@ export const it = {
     "Fai clic sull'elemento a cui applicare le animazioni; fai doppio clic sul pulsante per la modalità continua",
   appStatusAnimPainterContinuous: 'Modalità continua di Copia animazione; premi Esc per uscire',
   appStatusAnimPainted: 'Animazioni applicate',
+  appStatusMergeUnsupported:
+    'Impossibile unire queste forme (linee, immagini, tabelle, grafici e alcune forme sono escluse)',
+  appStatusMergeEmpty: "Dopo l'unione non resta nulla (le forme non si sovrappongono)",
 } satisfies Record<keyof typeof zh, string>

@@ -307,4 +307,7 @@ export const en = {
   paneSelKindLine: 'Line',
   paneSelKindTextBox: 'Text Box',
   paneSelKindShape: 'Shape',
+  paneSelHide: 'Hide',
+  paneSelShow: 'Show',
+  paneSelRenameTip: 'Double-click to rename',
 } satisfies Record<keyof typeof zh, string>

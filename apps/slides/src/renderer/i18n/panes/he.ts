@@ -304,4 +304,7 @@ export const he = {
   paneSelKindLine: 'קו',
   paneSelKindTextBox: 'תיבת טקסט',
   paneSelKindShape: 'צורה',
+  paneSelHide: 'הסתר',
+  paneSelShow: 'הצג',
+  paneSelRenameTip: 'לחץ פעמיים כדי לשנות שם',
 } satisfies Record<keyof typeof zh, string>

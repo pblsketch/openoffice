@@ -307,4 +307,7 @@ export const hi = {
   paneSelKindLine: 'रेखा',
   paneSelKindTextBox: 'टेक्स्ट बॉक्स',
   paneSelKindShape: 'आकृति',
+  paneSelHide: 'छिपाएँ',
+  paneSelShow: 'दिखाएँ',
+  paneSelRenameTip: 'नाम बदलने के लिए डबल-क्लिक करें',
 } satisfies Record<keyof typeof zh, string>

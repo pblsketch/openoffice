@@ -305,4 +305,7 @@ export const ar = {
   paneSelKindLine: 'خط',
   paneSelKindTextBox: 'مربع نص',
   paneSelKindShape: 'شكل',
+  paneSelHide: 'إخفاء',
+  paneSelShow: 'إظهار',
+  paneSelRenameTip: 'انقر نقرًا مزدوجًا لإعادة التسمية',
 } satisfies Record<keyof typeof zh, string>

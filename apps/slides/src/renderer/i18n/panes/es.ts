@@ -308,4 +308,7 @@ export const es = {
   paneSelKindLine: 'Línea',
   paneSelKindTextBox: 'Cuadro de texto',
   paneSelKindShape: 'Forma',
+  paneSelHide: 'Ocultar',
+  paneSelShow: 'Mostrar',
+  paneSelRenameTip: 'Haga doble clic para cambiar el nombre',
 } satisfies Record<keyof typeof zh, string>

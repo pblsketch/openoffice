@@ -18,6 +18,8 @@ import { FIT_WIDTH } from './app-constants'
 import {
   applySelectionCase,
   applySelectionFontFamily,
+  applySelectionHighlight,
+  applySelectionLetterSpacing,
   applySelectionParagraphFormat,
   resizeSelectionFont,
   restoreEditSelection,
@@ -199,6 +201,46 @@ const SELECTION_PATCH_KEYS = new Set([
   'spaceAfterPt',
   'rtl',
 ])
+
+/** Text highlight (#RRGGBB, null = none): the selection while editing, every run of the selected boxes otherwise */
+export function onHighlight(ctx: ActionCtx, hex: string | null): void {
+  rememberRepeat((c) => onHighlight(c, hex))
+  if (ctx.editing || ctx.editingCell) {
+    const active = document.activeElement
+    if (!(active instanceof HTMLElement && active.isContentEditable)) restoreEditSelection()
+    applySelectionHighlight(hex)
+    return
+  }
+  setFontOnSelection(ctx, { highlight: hex })
+}
+
+/** Character spacing in points (0 = normal), selection or whole boxes like onHighlight */
+export function onLetterSpacing(ctx: ActionCtx, pt: number): void {
+  rememberRepeat((c) => onLetterSpacing(c, pt))
+  if (ctx.editing || ctx.editingCell) {
+    const active = document.activeElement
+    if (!(active instanceof HTMLElement && active.isContentEditable)) restoreEditSelection()
+    applySelectionLetterSpacing(pt)
+    return
+  }
+  setFontOnSelection(ctx, { letterSpacingPt: pt })
+}
+
+function setFontOnSelection(
+  ctx: ActionCtx,
+  font: { highlight?: string | null; letterSpacingPt?: number },
+): void {
+  if (!ctx.selectedIds.length) return
+  const groupId = ctx.groupIdOf(ctx.selectedIds[0]!)
+  void window.slidesApi
+    .setElementFont({
+      slideIndex: ctx.current,
+      sourceIds: ctx.selectedIds,
+      ...font,
+      ...(groupId ? { groupId } : {}),
+    })
+    .then((r) => r && ctx.applySlide(ctx.current, r))
+}
 
 /**
  * Change Case: the selection while editing, every run of the selected text boxes otherwise.

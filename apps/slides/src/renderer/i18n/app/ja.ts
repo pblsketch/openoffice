@@ -262,4 +262,7 @@ export const ja = {
     'アニメーションを適用する要素をクリック。ボタンをダブルクリックすると連続モード',
   appStatusAnimPainterContinuous: 'アニメーションのコピー/貼り付けの連続モード中。Esc キーで終了',
   appStatusAnimPainted: 'アニメーションを適用しました',
+  appStatusMergeUnsupported:
+    'これらの図形は結合できません（線、図、表、グラフと一部の図形は対象外です）',
+  appStatusMergeEmpty: '結合した結果、何も残りませんでした（図形が重なっていません）',
 } satisfies Record<keyof typeof zh, string>

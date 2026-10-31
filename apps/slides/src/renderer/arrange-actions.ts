@@ -8,7 +8,9 @@ import type { ReorderDirection } from '../shared/ipc'
 import type { ActionCtx, UngroupedSet } from './action-context'
 import { FIT_WIDTH } from './app-constants'
 import { inkNodesOf, rasterizeStroke, type InkStroke } from './ink'
+import { extractBrushFormat } from './format-brush'
 import { batched } from './history-batch'
+import { mergeShapes, type MergeMode } from './merge-shapes'
 import { t } from './i18n/locale'
 import { rememberRepeat } from './repeat-action'
 
@@ -397,4 +399,76 @@ export async function clearInk(ctx: ActionCtx): Promise<void> {
     inkNodesOf(ctx.slide).map((e) => e.node.sourceId),
   )
   ctx.setStatus(t('appStatusInkCleared'))
+}
+
+/**
+ * Merge Shapes: replace the selected shapes with the merged outline(s) as custom-geometry
+ * shapes in the first selected shape's fill, line and effects (PowerPoint keeps the first
+ * shape's format). One undo step; the result becomes the selection.
+ */
+export async function mergeSelected(ctx: ActionCtx, mode: MergeMode): Promise<void> {
+  const { slide, current } = ctx
+  if (!slide) return
+  const nodes = ctx.selectedIds
+    .map((id) => slide.nodes.find((n) => n.sourceId === id))
+    .filter((n): n is RenderNode => !!n)
+  if (nodes.length < 2 || nodes.length !== ctx.selectedIds.length) return
+  const merged = mergeShapes(nodes, mode)
+  if (!merged) {
+    ctx.setStatus(t('appStatusMergeUnsupported'))
+    return
+  }
+  if (!merged.length) {
+    ctx.setStatus(t('appStatusMergeEmpty'))
+    return
+  }
+  rememberRepeat((c) => mergeSelected(c, mode))
+  const fmt = extractBrushFormat(nodes[0]!, slide.scale)
+  const api = window.slidesApi
+  const created: string[] = []
+  let last: RenderSlide | null = null
+  const keep = (r: RenderSlide | null) => {
+    if (r) last = r
+  }
+  await batched(async () => {
+    for (const m of merged) {
+      const added = await api.addElement({
+        slideIndex: current,
+        kind: 'rect',
+        xPx: m.box.x,
+        yPx: m.box.y,
+        wPx: m.box.w,
+        hPx: m.box.h,
+        fitWidthPx: FIT_WIDTH,
+      })
+      if (!added) continue
+      const id = added.sourceId
+      created.push(id)
+      keep(added.slide)
+      keep(
+        await api.setShapeGeometry({
+          slideIndex: current,
+          sourceId: id,
+          pathPx: m.path,
+          fitWidthPx: FIT_WIDTH,
+        }),
+      )
+      if (fmt?.fill !== undefined)
+        keep(await api.editFill({ slideIndex: current, sourceId: id, fill: fmt.fill }))
+      if (fmt?.stroke !== undefined)
+        keep(await api.editStroke({ slideIndex: current, sourceId: id, stroke: fmt.stroke }))
+      if (fmt?.effects)
+        keep(await api.setEffects({ slideIndex: current, sourceId: id, effects: fmt.effects }))
+    }
+    if (created.length) {
+      keep(
+        await api.deleteElements({ slideIndex: current, sourceIds: nodes.map((n) => n.sourceId) }),
+      )
+    }
+  })
+  if (last) {
+    ctx.applySlide(current, last)
+    ctx.setSelectedIds(created)
+    ctx.setDirty(true)
+  }
 }

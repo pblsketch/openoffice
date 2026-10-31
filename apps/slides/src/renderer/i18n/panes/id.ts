@@ -308,4 +308,7 @@ export const id = {
   paneSelKindLine: 'Garis',
   paneSelKindTextBox: 'Kotak Teks',
   paneSelKindShape: 'Bentuk',
+  paneSelHide: 'Sembunyikan',
+  paneSelShow: 'Tampilkan',
+  paneSelRenameTip: 'Klik dua kali untuk mengganti nama',
 } satisfies Record<keyof typeof zh, string>

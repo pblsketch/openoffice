@@ -28,6 +28,7 @@ import {
   IconAlignRight,
   IconBullets,
   IconChangeCase,
+  IconCharSpacing,
   IconClearFormat,
   IconCopy,
   IconCut,
@@ -52,6 +53,7 @@ import {
   IconSameSize,
   IconSameWidth,
   IconSelectionPane,
+  IconTextHighlight,
   IconObjFlipV,
   IconPaste,
   IconPlayCurrent,
@@ -141,11 +143,17 @@ export function RibbonHomeTab({ rb }: { rb: RibbonTabCtx }) {
     onToggleAi,
     onToggleFormat,
     onChangeCase,
+    onHighlight,
+    onLetterSpacing,
     selectionPaneOpen,
     onToggleSelectionPane,
     arrangeOpen,
     caseOpen,
     setCaseOpen,
+    highlightOpen,
+    setHighlightOpen,
+    spacingOpen,
+    setSpacingOpen,
     closePanels,
     collapseOpen,
     colorOpen,
@@ -183,6 +191,7 @@ export function RibbonHomeTab({ rb }: { rb: RibbonTabCtx }) {
     t,
   } = rb
   const [hangDraft, setHangDraft] = useState('')
+  const [lastHighlight, setLastHighlight] = useState('#FFFF00')
   // Typed-ahead font query: only what the user actually typed filters the menu
   // (opening via the caret or focusing shows the full list)
   const [fontFilter, setFontFilter] = useState('')
@@ -914,6 +923,105 @@ export function RibbonHomeTab({ rb }: { rb: RibbonTabCtx }) {
                 </div>
               )}
             </div>
+            {onHighlight && (
+              <div className="rb-drop-wrap">
+                <button
+                  className={`rb-icon ${highlightOpen ? 'active' : ''}`}
+                  disabled={!editing && !hasSelection}
+                  data-tip={t('ribbonTextHighlight')}
+                  aria-label={t('ribbonTextHighlight')}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (!editing && !hasSelection) return
+                    if (editing) saveEditSelection()
+                    closeSiblingPanels(e, closePanels, 'highlight')
+                    setHighlightOpen((v) => !v)
+                  }}
+                >
+                  <span className="rb-font-color">
+                    <IconTextHighlight size={14} />
+                    <span className="rb-color-underbar" style={{ background: lastHighlight }} />
+                  </span>
+                  <span className="rb-font-caret">
+                    <RbCaret />
+                  </span>
+                </button>
+                {highlightOpen && (
+                  <div
+                    className="rb-color-pop"
+                    data-keep-edit=""
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    <ColorPicker
+                      value={lastHighlight}
+                      strings={{
+                        auto: t('ribbonNoHighlight'),
+                        themeColors: t('ribbonThemeColorsSection'),
+                        standardColors: t('ribbonStandardColors'),
+                        eyedropper: t('ribbonEyedropper'),
+                      }}
+                      onPick={(hex) => {
+                        if (hex) setLastHighlight(hex)
+                        onHighlight(hex)
+                        setHighlightOpen(false)
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+            {onLetterSpacing && (
+              <div className="rb-drop-wrap">
+                <button
+                  className={`rb-icon ${spacingOpen ? 'active' : ''}`}
+                  disabled={!editing && !hasSelection}
+                  data-tip={t('ribbonCharSpacing')}
+                  aria-label={t('ribbonCharSpacing')}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (!editing && !hasSelection) return
+                    if (editing) saveEditSelection()
+                    closeSiblingPanels(e, closePanels, 'spacing')
+                    setSpacingOpen((v) => !v)
+                  }}
+                >
+                  <IconCharSpacing size={18} />
+                  <span className="rb-font-caret">
+                    <RbCaret />
+                  </span>
+                </button>
+                {spacingOpen && (
+                  <div
+                    className="rb-drop rb-menu"
+                    data-keep-edit=""
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    {(
+                      [
+                        [-3, t('ribbonSpacingVeryTight')],
+                        [-1.5, t('ribbonSpacingTight')],
+                        [0, t('ribbonSpacingNormal')],
+                        [3, t('ribbonSpacingLoose')],
+                        [6, t('ribbonSpacingVeryLoose')],
+                      ] as const
+                    ).map(([pt, label]) => (
+                      <button
+                        key={pt}
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          setSpacingOpen(false)
+                          onLetterSpacing(pt)
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </Group>

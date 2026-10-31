@@ -305,4 +305,7 @@ export const th = {
   paneSelKindLine: 'เส้น',
   paneSelKindTextBox: 'กล่องข้อความ',
   paneSelKindShape: 'รูปร่าง',
+  paneSelHide: 'ซ่อน',
+  paneSelShow: 'แสดง',
+  paneSelRenameTip: 'ดับเบิลคลิกเพื่อเปลี่ยนชื่อ',
 } satisfies Record<keyof typeof zh, string>

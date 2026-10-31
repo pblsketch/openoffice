@@ -36,6 +36,13 @@
 - `edit-text.ts`는 편집기가 돌려준 `srcPara`/`srcRun` 색인으로 원래 문단과 런을 찾아, 편집기가 표현하지 못하는 속성을 원래 런에서 이어받는다. 위치로 대응시키면 문단을 쪼개거나 지울 때 서식이 밀린다. `link`와 `redact`는 세 상태다. `undefined`는 원래 값 유지, `null`은 명시적 해제, 값은 설정이다.
 - 수식 op는 `@genoffice/docx-engine/math`의 LaTeX→OMML 변환을 쓴다. docx-engine에 대한 의존은 이 하위 경로 하나다.
 
+## 원본과 다른 점
+
+원본을 받아올 때 아래 시험이 통과하는지 본다. 충돌이 나면 이 동작을 남긴다.
+
+- **강조 색·문자 간격(결정 0094).** `EditRun`에 `highlight`(`null`은 없음)·`letterSpacing`(pt)이 있고, `applyEditParagraphs`는 값이 실제로 바뀐 런에만 `highlightEdited`·`letterSpacingEdited`를 세운다(문자 간격은 0.05pt 미만 차이를 같은 값으로 본다). `setFont`가 `font.highlight`·`font.letterSpacingPt`를 검증해 받는다. 시험: `tests/selection-pane-ops.test.ts`.
+- **`setElementHidden`·`renameElement`(결정 0094).** 최상위 요소의 `p:cNvPr`만 고친다. `setElementHidden`은 적용 끝에 슬라이드를 다시 읽어(`materializeSlide`) 그 슬라이드의 요소 id가 모두 바뀐다. 문서는 `prompts/ops/element.md`. 시험: 같은 파일.
+
 ## 테스트
 
 - `npm run test -w @genoffice/pptx-ops`, 또는 패키지 폴더에서 `npx vitest run`. 픽스처 파일은 없고, 테스트가 `createBlankPptx` 등으로 덱을 코드에서 만든다.

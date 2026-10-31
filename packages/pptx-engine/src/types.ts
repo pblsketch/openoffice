@@ -216,6 +216,9 @@ export interface TextRun {
   fontSizeImplicit?: boolean
   /** Letter spacing <a:rPr spc> (pt, may be negative; PowerPoint stores 1/100pt) */
   letterSpacing?: number
+  /** letterSpacing was set by an edit: the in-place run patch writes (or removes) spc;
+   * an untouched run keeps its bytes */
+  letterSpacingEdited?: boolean
   /** Kerning threshold <a:rPr kern> (pt): kern pairs apply only at fontSize ≥ this; 0 = never.
    *  Absent = PowerPoint's 12 pt default (probe-measured: 18 pt kerns, 10 pt does not). */
   kern?: number
@@ -255,6 +258,9 @@ export interface TextRun {
   color?: ResolvedColor
   /** Text highlight color <a:rPr><a:highlight> (drawn as a background behind the run) */
   highlight?: ResolvedColor
+  /** highlight was set by an edit: the in-place run patch writes (or removes) <a:highlight>;
+   * an untouched run keeps its bytes (a scheme-colored highlight stays linked) */
+  highlightEdited?: boolean
   /** color is display-only (from schemeClr/inheritance, not an explicit run srgbClr);
    * the patch path won't write srgbClr from it, avoiding baking in theme colors and breaking theme switches */
   colorFollowsTheme?: boolean

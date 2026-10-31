@@ -306,4 +306,7 @@ export const ru = {
   paneSelKindLine: 'Линия',
   paneSelKindTextBox: 'Надпись',
   paneSelKindShape: 'Фигура',
+  paneSelHide: 'Скрыть',
+  paneSelShow: 'Показать',
+  paneSelRenameTip: 'Дважды щелкните, чтобы переименовать',
 } satisfies Record<keyof typeof zh, string>

@@ -303,4 +303,7 @@ export const zh = {
   paneSelKindLine: '线条',
   paneSelKindTextBox: '文本框',
   paneSelKindShape: '形状',
+  paneSelHide: '隐藏',
+  paneSelShow: '显示',
+  paneSelRenameTip: '双击可重命名',
 }

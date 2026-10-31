@@ -306,4 +306,7 @@ export const ja = {
   paneSelKindLine: '線',
   paneSelKindTextBox: 'テキスト ボックス',
   paneSelKindShape: '図形',
+  paneSelHide: '非表示',
+  paneSelShow: '表示',
+  paneSelRenameTip: 'ダブルクリックで名前を変更',
 } satisfies Record<keyof typeof zh, string>

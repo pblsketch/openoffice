@@ -270,4 +270,7 @@ export const ms = {
     'Klik elemen untuk menggunakan animasi tersebut; dwiklik butang untuk mod berterusan',
   appStatusAnimPainterContinuous: 'Mod berterusan Penyalin Animasi; tekan Esc untuk keluar',
   appStatusAnimPainted: 'Animasi digunakan',
+  appStatusMergeUnsupported:
+    'Bentuk ini tidak boleh dicantumkan (garisan, gambar, jadual, carta dan sesetengah bentuk dikecualikan)',
+  appStatusMergeEmpty: 'Tiada apa-apa yang tinggal selepas dicantumkan (bentuk tidak bertindih)',
 } satisfies Record<keyof typeof zh, string>

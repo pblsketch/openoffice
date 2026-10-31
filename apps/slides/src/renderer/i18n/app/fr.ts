@@ -275,4 +275,7 @@ export const fr = {
   appStatusAnimPainterContinuous:
     "Mode continu « Reproduire l'animation » ; appuyez sur Échap pour quitter",
   appStatusAnimPainted: 'Animations appliquées',
+  appStatusMergeUnsupported:
+    'Impossible de fusionner ces formes (les traits, images, tableaux, graphiques et certaines formes sont exclus)',
+  appStatusMergeEmpty: 'Il ne reste rien après la fusion (les formes ne se chevauchent pas)',
 } satisfies Record<keyof typeof zh, string>

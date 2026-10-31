@@ -129,6 +129,7 @@ import type { AnimPainterState } from './action-context'
 import { rememberRepeat } from './repeat-action'
 import { batched } from './history-batch'
 import { SelectionPane } from './components/SelectionPane'
+import { mergeOutline } from './merge-shapes'
 import { isTextUndoTarget, shouldRouteHistoryToDeck } from './undo-routing'
 import type {
   ActionCtx,
@@ -3502,6 +3503,8 @@ export function App() {
         selectionPaneOpen={showSelPane}
         onToggleSelectionPane={toggleSelectionPane}
         onChangeCase={(mode) => styleActions.onChangeCase(ctxRef.current, mode)}
+        onHighlight={(hex) => styleActions.onHighlight(ctxRef.current, hex)}
+        onLetterSpacing={(pt) => styleActions.onLetterSpacing(ctxRef.current, pt)}
         animCount={animations.length}
         onAnimPreview={() => setAnimPreview((n) => n + 1)}
         onSlideShow={startSlideShow}
@@ -3711,6 +3714,14 @@ export function App() {
         onFlip={(axis) => void flipSelected(axis)}
         canDistribute={selectedIds.length >= 3}
         canMatchSize={selectedIds.length >= 2}
+        onMergeShapes={(mode) => void arrangeActions.mergeSelected(ctxRef.current, mode)}
+        canMergeShapes={
+          selectedIds.length >= 2 &&
+          selectedIds.every((id) => {
+            const n = slide?.nodes.find((x) => x.sourceId === id)
+            return !!n && mergeOutline(n) !== null
+          })
+        }
       />
 
       <div className="app-main">
@@ -4602,6 +4613,30 @@ export function App() {
                         }
                       })
                     }
+                    onSetHidden={(id, hidden) => {
+                      const slideIndex = current
+                      void window.slidesApi
+                        .setElementHidden({ slideIndex, sourceId: id, hidden })
+                        .then(async (r) => {
+                          if (!r) return
+                          // the slide was reparsed: every element id changed
+                          setEnteredGroupId(null)
+                          setSelectedIds([])
+                          applySlide(slideIndex, r)
+                          setDirty(true)
+                          setAnimations(await window.slidesApi.getAnimations(slideIndex))
+                        })
+                    }}
+                    onRename={(id, name) => {
+                      const slideIndex = current
+                      void window.slidesApi
+                        .setElementName({ slideIndex, sourceId: id, name })
+                        .then((r) => {
+                          if (!r) return
+                          applySlide(slideIndex, r)
+                          setDirty(true)
+                        })
+                    }}
                     onCollapse={() => setShowSelPane(false)}
                   />
                 ) : null}

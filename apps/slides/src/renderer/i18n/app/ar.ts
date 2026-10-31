@@ -259,4 +259,7 @@ export const ar = {
     'انقر على العنصر المراد تطبيق الحركات عليه؛ انقر نقرًا مزدوجًا فوق الزر للوضع المستمر',
   appStatusAnimPainterContinuous: 'وضع نسخ الحركة المستمر؛ اضغط على Esc للخروج',
   appStatusAnimPainted: 'تم تطبيق الحركات',
+  appStatusMergeUnsupported:
+    'لا يمكن دمج هذه الأشكال (تُستثنى الخطوط والصور والجداول والمخططات وبعض الأشكال)',
+  appStatusMergeEmpty: 'لم يتبقَّ شيء بعد الدمج (الأشكال لا تتداخل)',
 } satisfies Record<keyof typeof zh, string>

@@ -306,4 +306,7 @@ export const vi = {
   paneSelKindLine: 'Đường thẳng',
   paneSelKindTextBox: 'Hộp văn bản',
   paneSelKindShape: 'Hình dạng',
+  paneSelHide: 'Ẩn',
+  paneSelShow: 'Hiện',
+  paneSelRenameTip: 'Nhấp đúp để đổi tên',
 } satisfies Record<keyof typeof zh, string>

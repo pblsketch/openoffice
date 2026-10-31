@@ -5520,6 +5520,48 @@ body.vib .slide-list {
   white-space: nowrap;
 }
 
+.sel-row.hidden .sel-row-name,
+.sel-row.hidden .sel-row-kind {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.sel-row-input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 12.5px;
+  padding: 1px 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.sel-row-eye {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-self: center;
+  border: none;
+  background: none;
+  padding: 2px;
+  border-radius: 3px;
+  color: var(--text-dim);
+  cursor: pointer;
+  visibility: hidden;
+}
+
+.sel-row:hover .sel-row-eye,
+.sel-row.selected .sel-row-eye,
+.sel-row.hidden .sel-row-eye {
+  visibility: visible;
+}
+
+.sel-row-eye:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
 /* ── Canvas animation preview overlay (covers .stage-rel) ──────────────── */
 
 .anim-preview-overlay {

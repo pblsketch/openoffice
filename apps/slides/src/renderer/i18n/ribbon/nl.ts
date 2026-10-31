@@ -804,4 +804,19 @@ export const nl = {
   ribbonAnimPainterTipContinuous:
     'Animatie kopiëren/plakken in doorlopende modus (druk op Esc om te stoppen)',
   ribbonEyedropper: 'Pipet',
+  ribbonNoHighlight: 'Geen kleur',
+  ribbonSpacingVeryTight: 'Zeer smal',
+  ribbonSpacingTight: 'Smal',
+  ribbonSpacingNormal: 'Normaal',
+  ribbonSpacingLoose: 'Ruim',
+  ribbonSpacingVeryLoose: 'Zeer ruim',
+  ribbonMergeShapes: 'Vormen samenvoegen',
+  ribbonMergeShapesTip:
+    'De geselecteerde vormen samenvoegen tot één vorm of opsplitsen waar ze overlappen (gebruikt de opmaak van de eerst geselecteerde vorm)',
+  ribbonMergeShapesHint: 'Vormen samenvoegen (selecteer 2 of meer vormen)',
+  ribbonMergeUnion: 'Verenigen',
+  ribbonMergeCombine: 'Combineren',
+  ribbonMergeFragment: 'Fragmenteren',
+  ribbonMergeIntersect: 'Snijden',
+  ribbonMergeSubtract: 'Aftrekken',
 } satisfies Record<keyof typeof zh, string>

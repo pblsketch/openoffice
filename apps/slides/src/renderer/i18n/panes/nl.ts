@@ -310,4 +310,7 @@ export const nl = {
   paneSelKindLine: 'Lijn',
   paneSelKindTextBox: 'Tekstvak',
   paneSelKindShape: 'Vorm',
+  paneSelHide: 'Verbergen',
+  paneSelShow: 'Weergeven',
+  paneSelRenameTip: 'Dubbelklik om de naam te wijzigen',
 } satisfies Record<keyof typeof zh, string>

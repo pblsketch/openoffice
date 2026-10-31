@@ -311,4 +311,7 @@ export const fr = {
   paneSelKindLine: 'Ligne',
   paneSelKindTextBox: 'Zone de texte',
   paneSelKindShape: 'Forme',
+  paneSelHide: 'Masquer',
+  paneSelShow: 'Afficher',
+  paneSelRenameTip: 'Double-cliquez pour renommer',
 } satisfies Record<keyof typeof zh, string>

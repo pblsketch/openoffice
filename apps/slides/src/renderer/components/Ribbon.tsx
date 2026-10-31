@@ -58,6 +58,7 @@ import {
   IconSetupShow,
   IconSparkle,
   IconAnimPainter,
+  IconMergeShapes,
   IconUndo,
   IconFitWindow,
   IconZoom100,
@@ -1281,7 +1282,11 @@ export function Ribbon({
   onFlip,
   canDistribute,
   canMatchSize,
+  onMergeShapes,
+  canMergeShapes,
   onChangeCase,
+  onHighlight,
+  onLetterSpacing,
   selectionPaneOpen,
   onToggleSelectionPane,
 }: Props) {
@@ -1346,6 +1351,9 @@ export function Ribbon({
   const [translateOpen, setTranslateOpen] = useState(false)
   const [arrangeOpen, setArrangeOpen] = useState(false)
   const [caseOpen, setCaseOpen] = useState(false)
+  const [highlightOpen, setHighlightOpen] = useState(false)
+  const [spacingOpen, setSpacingOpen] = useState(false)
+  const [mergeOpen, setMergeOpen] = useState(false)
   const [slideShowOpen, setSlideShowOpen] = useState(false)
   const [slideShowFromStart, setSlideShowFromStart] = useState(false)
   // Insert tab dropdown galleries (at most one open at a time)
@@ -1389,6 +1397,9 @@ export function Ribbon({
     if (!keep.includes('translate')) setTranslateOpen(false)
     if (!keep.includes('arrange')) setArrangeOpen(false)
     if (!keep.includes('case')) setCaseOpen(false)
+    if (!keep.includes('highlight')) setHighlightOpen(false)
+    if (!keep.includes('spacing')) setSpacingOpen(false)
+    if (!keep.includes('merge')) setMergeOpen(false)
     if (!keep.includes('insert')) setInsertDrop(null)
     if (!keep.includes('chart')) setChartDrop(null)
     if (!keep.includes('collapse')) setCollapseOpen(null)
@@ -1410,6 +1421,9 @@ export function Ribbon({
     chartDrop != null ||
     arrangeOpen ||
     caseOpen ||
+    highlightOpen ||
+    spacingOpen ||
+    mergeOpen ||
     slideShowOpen ||
     paraOpen ||
     pictureBorderOpen ||
@@ -1657,6 +1671,8 @@ export function Ribbon({
     canDistribute,
     canMatchSize,
     onChangeCase,
+    onHighlight,
+    onLetterSpacing,
     selectionPaneOpen,
     onToggleSelectionPane,
     canPaste,
@@ -1726,6 +1742,8 @@ export function Ribbon({
     zoom,
     arrangeOpen,
     caseOpen,
+    highlightOpen,
+    spacingOpen,
     collapseOpen,
     collapsedGroups,
     colorOpen,
@@ -1747,6 +1765,8 @@ export function Ribbon({
     paraOpen,
     setArrangeOpen,
     setCaseOpen,
+    setHighlightOpen,
+    setSpacingOpen,
     setCollapseOpen,
     setColorOpen,
     setFontOpen,
@@ -3409,6 +3429,51 @@ export function Ribbon({
                   </div>
                 )}
               </div>
+              {onMergeShapes && (
+                <div className="rb-drop-wrap">
+                  <button
+                    className={`rb-big ${mergeOpen ? 'active' : ''}`}
+                    disabled={!canMergeShapes}
+                    data-tip={
+                      canMergeShapes ? t('ribbonMergeShapesTip') : t('ribbonMergeShapesHint')
+                    }
+                    onMouseDown={(e) => {
+                      e.stopPropagation()
+                      closeSiblingPanels(e, closePanels, 'merge')
+                    }}
+                    onClick={() => setMergeOpen((v) => !v)}
+                  >
+                    <span className="rb-big-icon">
+                      <IconMergeShapes size={BIG} />
+                      <RbCaret />
+                    </span>
+                    <span>{t('ribbonMergeShapes')}</span>
+                  </button>
+                  {mergeOpen && (
+                    <div className="rb-drop rb-menu" onMouseDown={(e) => e.stopPropagation()}>
+                      {(
+                        [
+                          ['union', t('ribbonMergeUnion')],
+                          ['combine', t('ribbonMergeCombine')],
+                          ['fragment', t('ribbonMergeFragment')],
+                          ['intersect', t('ribbonMergeIntersect')],
+                          ['subtract', t('ribbonMergeSubtract')],
+                        ] as const
+                      ).map(([mode, label]) => (
+                        <button
+                          key={mode}
+                          onClick={() => {
+                            setMergeOpen(false)
+                            onMergeShapes(mode)
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </Group>
             <div className="ribbon-sep" />
             <Group label={t('ribbonGroupShapeStyle')}>

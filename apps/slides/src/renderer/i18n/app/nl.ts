@@ -277,4 +277,7 @@ export const nl = {
   appStatusAnimPainterContinuous:
     'Continue modus van Animatie kopiëren/plakken; druk op Esc om af te sluiten',
   appStatusAnimPainted: 'Animaties toegepast',
+  appStatusMergeUnsupported:
+    'Deze vormen kunnen niet worden samengevoegd (lijnen, afbeeldingen, tabellen, grafieken en sommige vormen worden overgeslagen)',
+  appStatusMergeEmpty: 'Na het samenvoegen blijft er niets over (de vormen overlappen niet)',
 } satisfies Record<keyof typeof zh, string>

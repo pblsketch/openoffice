@@ -310,4 +310,7 @@ export const pt = {
   paneSelKindLine: 'Linha',
   paneSelKindTextBox: 'Caixa de Texto',
   paneSelKindShape: 'Forma',
+  paneSelHide: 'Ocultar',
+  paneSelShow: 'Mostrar',
+  paneSelRenameTip: 'Clique duas vezes para renomear',
 } satisfies Record<keyof typeof zh, string>

@@ -306,4 +306,7 @@ export const ko = {
   paneSelKindLine: '선',
   paneSelKindTextBox: '텍스트 상자',
   paneSelKindShape: '도형',
+  paneSelHide: '숨기기',
+  paneSelShow: '표시',
+  paneSelRenameTip: '두 번 클릭하면 이름을 바꿉니다',
 } satisfies Record<keyof typeof zh, string>

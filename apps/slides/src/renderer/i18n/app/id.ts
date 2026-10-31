@@ -266,4 +266,8 @@ export const id = {
     'Klik elemen yang akan diberi animasi tersebut; klik dua kali tombol untuk mode berkelanjutan',
   appStatusAnimPainterContinuous: 'Mode Penyalin Animasi berkelanjutan; tekan Esc untuk keluar',
   appStatusAnimPainted: 'Animasi diterapkan',
+  appStatusMergeUnsupported:
+    'Bentuk ini tidak dapat digabungkan (garis, gambar, tabel, bagan, dan beberapa bentuk dikecualikan)',
+  appStatusMergeEmpty:
+    'Tidak ada yang tersisa setelah digabungkan (bentuk tidak saling tumpang tindih)',
 } satisfies Record<keyof typeof zh, string>

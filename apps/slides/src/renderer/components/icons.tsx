@@ -2236,3 +2236,33 @@ export function IconChangeCase(props: IconProps) {
     </Svg>
   )
 }
+
+/** Selection pane eye: element shown */
+export function IconEye(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M 2.5 12 C 5 7 8.5 5 12 5 C 15.5 5 19 7 21.5 12 C 19 17 15.5 19 12 19 C 8.5 19 5 17 2.5 12 Z" />
+      <circle cx="12" cy="12" r="3" />
+    </Svg>
+  )
+}
+
+/** Selection pane eye: element hidden */
+export function IconEyeOff(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M 2.5 12 C 5 7 8.5 5 12 5 C 15.5 5 19 7 21.5 12 C 19 17 15.5 19 12 19 C 8.5 19 5 17 2.5 12 Z" />
+      <path d="M 4 20 L 20 4" />
+    </Svg>
+  )
+}
+
+/** Merge Shapes: two overlapping circles */
+export function IconMergeShapes(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="9" cy="12" r="5.5" />
+      <circle cx="15" cy="12" r="5.5" />
+    </Svg>
+  )
+}

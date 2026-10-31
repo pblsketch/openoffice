@@ -2,8 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ActionCtx } from '../src/renderer/action-context'
 import type { BrushFormat } from '../src/renderer/format-brush'
 import { pasteFormat } from '../src/renderer/clipboard-actions'
-import { alignSelected } from '../src/renderer/arrange-actions'
-import { onChangeCase, onElementTextColor } from '../src/renderer/style-actions'
+import { alignSelected, mergeSelected } from '../src/renderer/arrange-actions'
+import {
+  onChangeCase,
+  onElementTextColor,
+  onHighlight,
+  onLetterSpacing,
+} from '../src/renderer/style-actions'
 import { repeatLast, rememberRepeat } from '../src/renderer/repeat-action'
 
 vi.mock('../src/renderer/selection-image', () => ({ renderSelectionToPngBase64: vi.fn() }))
@@ -36,6 +41,12 @@ function setup(nodes: Record<string, unknown>[], selectedIds: string[]) {
     setElementParagraphFormat: ok('setElementParagraphFormat'),
     editText: ok('editText'),
     batchEditTransform: ok('batchEditTransform'),
+    setShapeGeometry: ok('setShapeGeometry'),
+    deleteElements: ok('deleteElements'),
+    addElement: vi.fn(async (_op: Record<string, unknown>) => {
+      calls.push('addElement')
+      return { slide, sourceId: `new${calls.filter((c) => c === 'addElement').length}` }
+    }),
   }
   vi.stubGlobal('window', { slidesApi: api })
   const byId = new Map(nodes.map((n) => [n.sourceId as string, n]))
@@ -170,5 +181,58 @@ describe('F4 repeat', () => {
     repeatLast({} as ActionCtx)
     expect(first).not.toHaveBeenCalled()
     expect(second).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('highlight and character spacing on selected boxes', () => {
+  it('sends highlight and spacing through setElementFont', () => {
+    const { api, ctx } = setup([], ['a', 'b'])
+    onHighlight(ctx, '#FFFF00')
+    expect(api.setElementFont).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sourceIds: ['a', 'b'], highlight: '#FFFF00' }),
+    )
+    onHighlight(ctx, null)
+    expect(api.setElementFont).toHaveBeenLastCalledWith(
+      expect.objectContaining({ highlight: null }),
+    )
+    onLetterSpacing(ctx, -1.5)
+    expect(api.setElementFont).toHaveBeenLastCalledWith(
+      expect.objectContaining({ letterSpacingPt: -1.5 }),
+    )
+  })
+})
+
+describe('merge shapes', () => {
+  const sq = (id: string, x: number, y: number) => ({
+    sourceId: id,
+    type: 'shape',
+    box: { ...box(x, y, 100, 100), flipH: false, flipV: false },
+    fill: { kind: 'solid', color: '#336699' },
+  })
+
+  it('adds the merged shape in the first shape format, then removes the originals, as one undo step', async () => {
+    const { api, ctx, calls } = setup([sq('a', 0, 0), sq('b', 50, 50)], ['a', 'b'])
+    ;(ctx as unknown as { setSelectedIds: unknown }).setSelectedIds = vi.fn()
+    await mergeSelected(ctx, 'union')
+    expect(calls[0]).toBe('begin')
+    expect(calls[calls.length - 1]).toBe('end')
+    expect(calls.indexOf('addElement')).toBeLessThan(calls.indexOf('deleteElements'))
+    expect(api.addElement).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'rect', xPx: 0, yPx: 0, wPx: 150, hPx: 150 }),
+    )
+    expect(api.setShapeGeometry).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceId: 'new1', pathPx: expect.objectContaining({ w: 150 }) }),
+    )
+    expect(api.editFill).toHaveBeenCalledWith(expect.objectContaining({ fill: '#336699' }))
+    expect(api.deleteElements).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceIds: ['a', 'b'] }),
+    )
+  })
+
+  it('leaves everything alone when nothing remains', async () => {
+    const { api, ctx } = setup([sq('a', 0, 0), sq('b', 500, 500)], ['a', 'b'])
+    await mergeSelected(ctx, 'intersect')
+    expect(api.addElement).not.toHaveBeenCalled()
+    expect(ctx.setStatus).toHaveBeenCalledWith('appStatusMergeEmpty')
   })
 })
