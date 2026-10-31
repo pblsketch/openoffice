@@ -694,18 +694,25 @@ Kekunci ini berfungsi apabila tab HWP/HWPX berada di hadapan dan dokumen mempuny
 
 ### Jadual
 
-| Tindakan           | macOS        | Windows / Linux        |
-| ------------------ | ------------ | ---------------------- |
-| Tambah baris/lajur | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| Padam baris/lajur  | ⌥⌫           | Alt+Delete             |
-| Pisahkan sel       | F5 → S       | F5 → S                 |
-| Gabungkan sel      | F5 → M       | F5 → M                 |
-| Jumlah blok        | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| Purata blok        | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| Hasil darab blok   | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| Pisahkan jadual    | ⌃N, A        | Ctrl+N, A              |
-| Gabungkan jadual   | ⌃N, Z        | Ctrl+N, Z              |
-| Formula pengiraan  | ⌃N, F        | Ctrl+N, F              |
+| Tindakan                             | macOS        | Windows / Linux        |
+| ------------------------------------ | ------------ | ---------------------- |
+| Tambah baris/lajur                   | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Padam baris/lajur                    | ⌥⌫           | Alt+Delete             |
+| Pisahkan sel                         | F5 → S       | F5 → S                 |
+| Gabungkan sel                        | F5 → M       | F5 → M                 |
+| Sifat jadual/sel                     | F5 → P       | F5 → P                 |
+| Sempadan / lorekan, setiap sel       | F5 → L / C   | F5 → L / C             |
+| Sempadan / lorekan, sel sebagai satu | F5 → B / F   | F5 → B / F             |
+| Samakan tinggi baris / lebar lajur   | F5 → H / W   | F5 → H / W             |
+| Isi automatik jadual                 | F5 → A       | F5 → A                 |
+| Kembali menyunting sel               | F5 → ⏎       | F5 → Enter             |
+| Inden tergantung pantas (dalam sel)  | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| Jumlah blok                          | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Purata blok                          | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Hasil darab blok                     | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Pisahkan jadual                      | ⌃N, A        | Ctrl+N, A              |
+| Gabungkan jadual                     | ⌃N, Z        | Ctrl+N, Z              |
+| Formula pengiraan                    | ⌃N, F        | Ctrl+N, F              |
 
 ### Pengiraan jadual
 

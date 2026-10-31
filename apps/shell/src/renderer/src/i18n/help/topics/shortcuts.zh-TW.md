@@ -694,18 +694,25 @@ GenOffice HTML 在即時預覽旁邊顯示程式碼編輯器。作用於頁面�
 
 ### 表格
 
-| 操作       | macOS        | Windows / Linux        |
-| ---------- | ------------ | ---------------------- |
-| 新增列/欄  | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| 刪除列/欄  | ⌥⌫           | Alt+Delete             |
-| 分割儲存格 | F5 → S       | F5 → S                 |
-| 合併儲存格 | F5 → M       | F5 → M                 |
-| 區塊加總   | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| 區塊平均值 | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| 區塊乘積   | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| 分割表格   | ⌃N, A        | Ctrl+N, A              |
-| 連接表格   | ⌃N, Z        | Ctrl+N, Z              |
-| 計算式     | ⌃N, F        | Ctrl+N, F              |
+| 操作                    | macOS        | Windows / Linux        |
+| ----------------------- | ------------ | ---------------------- |
+| 新增列/欄               | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| 刪除列/欄               | ⌥⌫           | Alt+Delete             |
+| 分割儲存格              | F5 → S       | F5 → S                 |
+| 合併儲存格              | F5 → M       | F5 → M                 |
+| 表格/儲存格內容         | F5 → P       | F5 → P                 |
+| 每個儲存格的框線 / 網底 | F5 → L / C   | F5 → L / C             |
+| 多個儲存格的框線 / 網底 | F5 → B / F   | F5 → B / F             |
+| 儲存格高度 / 寬度相同   | F5 → H / W   | F5 → H / W             |
+| 表格自動填滿            | F5 → A       | F5 → A                 |
+| 從儲存格區塊回到編輯    | F5 → ⏎       | F5 → Enter             |
+| 快速凸排(表格內)        | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| 區塊加總                | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| 區塊平均值              | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| 區塊乘積                | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| 分割表格                | ⌃N, A        | Ctrl+N, A              |
+| 連接表格                | ⌃N, Z        | Ctrl+N, Z              |
+| 計算式                  | ⌃N, F        | Ctrl+N, F              |
 
 ### 表格計算
 

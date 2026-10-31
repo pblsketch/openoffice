@@ -694,18 +694,25 @@ Deze toetsen werken zolang het tabblad HWP/HWPX vooraan staat en het document fo
 
 ### Tabel
 
-| Actie                 | macOS        | Windows / Linux        |
-| --------------------- | ------------ | ---------------------- |
-| Rij/kolom toevoegen   | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| Rij/kolom verwijderen | ⌥⌫           | Alt+Delete             |
-| Cel splitsen          | F5 → S       | F5 → S                 |
-| Cellen samenvoegen    | F5 → M       | F5 → M                 |
-| Bloksom               | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| Blokgemiddelde        | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| Blokproduct           | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| Tabel splitsen        | ⌃N, A        | Ctrl+N, A              |
-| Tabellen samenvoegen  | ⌃N, Z        | Ctrl+N, Z              |
-| Berekeningsformule    | ⌃N, F        | Ctrl+N, F              |
+| Actie                                    | macOS        | Windows / Linux        |
+| ---------------------------------------- | ------------ | ---------------------- |
+| Rij/kolom toevoegen                      | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Rij/kolom verwijderen                    | ⌥⌫           | Alt+Delete             |
+| Cel splitsen                             | F5 → S       | F5 → S                 |
+| Cellen samenvoegen                       | F5 → M       | F5 → M                 |
+| Tabel-/celeigenschappen                  | F5 → P       | F5 → P                 |
+| Randen / arcering, per cel               | F5 → L / C   | F5 → L / C             |
+| Randen / arcering, cellen als één        | F5 → B / F   | F5 → B / F             |
+| Gelijke rijhoogte / kolombreedte         | F5 → H / W   | F5 → H / W             |
+| Tabel automatisch vullen                 | F5 → A       | F5 → A                 |
+| Terug naar de cel bewerken               | F5 → ⏎       | F5 → Enter             |
+| Snel verkeerd-om inspringen (in een cel) | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| Bloksom                                  | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Blokgemiddelde                           | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Blokproduct                              | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Tabel splitsen                           | ⌃N, A        | Ctrl+N, A              |
+| Tabellen samenvoegen                     | ⌃N, Z        | Ctrl+N, Z              |
+| Berekeningsformule                       | ⌃N, F        | Ctrl+N, F              |
 
 ### Tabelberekeningen
 
