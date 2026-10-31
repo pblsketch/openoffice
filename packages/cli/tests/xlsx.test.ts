@@ -711,3 +711,34 @@ describe('package validity', () => {
     await expectSingleStylesPart(out)
   })
 })
+
+describe('sheet read range endpoint validation with the native engine', () => {
+  it.skipIf(!sidecar)(
+    'rejects a trailing colon instead of silently returning the first cell',
+    async () => {
+      const dir = tempDir()
+      const input = join(dir, 'endpoints.json')
+      writeFileSync(
+        input,
+        JSON.stringify([
+          [1, 2],
+          [3, 4],
+        ]),
+      )
+      const out = join(dir, 'endpoints.xlsx')
+      expect((await run(['create', '--type', 'xlsx', '--from', input, '--out', out])).code).toBe(0)
+      const before = readFileSync(out)
+      for (const range of ['A1:', '']) {
+        const result = await run(['sheet', 'read', out, '--range', range, '--json'])
+        expect(result.code).toBe(1)
+        expect(result.json().error).toBe('invalid_argument')
+        expect(readFileSync(out)).toEqual(before)
+      }
+      const valid = await run(['sheet', 'read', out, '--range', 'A1:B2', '--json'])
+      expect(valid.json().detail.rows).toEqual([
+        [1, 2],
+        [3, 4],
+      ])
+    },
+  )
+})

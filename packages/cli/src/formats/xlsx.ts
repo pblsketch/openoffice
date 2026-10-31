@@ -407,7 +407,7 @@ function parseCols(spec: string): number[] {
 
 function parseRangeChecked(range: string): Bounds {
   const parts = range.split(':')
-  if (parts.length > 2 || !parts[0])
+  if (parts.length > 2 || !parts[0] || (parts.length === 2 && !parts[1]))
     throw new CliError(EXIT.usage, `invalid range: ${range}`, undefined, {
       reason: 'invalid_argument',
     })
@@ -425,14 +425,15 @@ export async function readSheet(path: string, opts: ReadOptions): Promise<SheetR
   const cols = opts.cols ? parseCols(opts.cols) : undefined
   return withOpenWorkbook(path, async (client, wb) => {
     const meta = pickSheet(wb, opts.sheet)
-    const bounds = opts.range
-      ? parseRangeChecked(opts.range)
-      : {
-          startRow: 0,
-          startColumn: 0,
-          endRow: Math.max(0, Math.min(meta.rowCount, READ_ROW_CAP) - 1),
-          endColumn: Math.max(0, Math.min(meta.columnCount, READ_COL_CAP) - 1),
-        }
+    const bounds =
+      opts.range !== undefined
+        ? parseRangeChecked(opts.range)
+        : {
+            startRow: 0,
+            startColumn: 0,
+            endRow: Math.max(0, Math.min(meta.rowCount, READ_ROW_CAP) - 1),
+            endColumn: Math.max(0, Math.min(meta.columnCount, READ_COL_CAP) - 1),
+          }
     const truncated =
       !opts.range && (meta.rowCount > READ_ROW_CAP || meta.columnCount > READ_COL_CAP)
     const requestedHeight = bounds.endRow - bounds.startRow + 1
