@@ -86,6 +86,11 @@ jobs:
       # this host (target/release/xlsx-sidecar.exe)
       - name: Build apps
         run: npm run build:all
+        # the Google Drive client (decisions 0033, 0085) goes into the shell build;
+        # without it the build ships without Drive
+        env:
+          GENOFFICE_GOOGLE_CLIENT_ID: ${{ secrets.GENOFFICE_GOOGLE_CLIENT_ID }}
+          GENOFFICE_GOOGLE_CLIENT_SECRET: ${{ secrets.GENOFFICE_GOOGLE_CLIENT_SECRET }}
 
       # the Windows config reads the sidecar from the x86_64-pc-windows-gnu
       # folder (docs/releasing.ko.md, 4-(2)); the hand build copies it the same way
@@ -98,6 +103,23 @@ jobs:
 
       - name: Package
         run: npm run dist:win -w @genoffice/shell -- --publish never
+        env:
+          GENOFFICE_GOOGLE_CLIENT_ID: ${{ secrets.GENOFFICE_GOOGLE_CLIENT_ID }}
+          GENOFFICE_GOOGLE_CLIENT_SECRET: ${{ secrets.GENOFFICE_GOOGLE_CLIENT_SECRET }}
+
+      # a release build should carry the Drive client; say so when it does not
+      - name: The Google Drive client is in the build
+        env:
+          HAS_CLIENT: ${{ secrets.GENOFFICE_GOOGLE_CLIENT_ID != '' }}
+        run: |
+          if [ "$HAS_CLIENT" != "true" ]; then
+            echo "::warning::GENOFFICE_GOOGLE_CLIENT_ID is not set; this build ships without Google Drive"
+            exit 0
+          fi
+          grep -rqs "apps.googleusercontent.com" apps/shell/out/main || {
+            echo "::error::the Google Drive client did not reach the shell build"
+            exit 1
+          }
 
       - name: Check the installer, its feed and the bundled programs
         run: |

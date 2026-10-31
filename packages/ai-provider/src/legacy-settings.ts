@@ -21,6 +21,7 @@ import {
   readUrlSettingsOf,
   resolveAiSettings,
   sanitizeMeteredAccepted,
+  subscriptionNoticeVersionOf,
 } from './providers'
 import { AI_SEARCH_PROVIDERS } from './search-settings'
 import type {
@@ -144,6 +145,16 @@ export function normalizeAiSettings(
       resolved.headlessSubscriptionConsentVersion,
     ),
     subscriptionNoticeSeen: resolved.subscriptionNoticeSeen === true,
+    subscriptionNoticeVersion: subscriptionNoticeVersionOf(
+      resolved.subscriptionNoticeVersion,
+      resolved.subscriptionNoticeSeen,
+    ),
+    pdfSendNoticeSeen:
+      typeof resolved.pdfSendNoticeSeen === 'number' &&
+      Number.isInteger(resolved.pdfSendNoticeSeen) &&
+      resolved.pdfSendNoticeSeen > 0
+        ? resolved.pdfSendNoticeSeen
+        : 0,
     ...(resolved.internetTools === false ? { internetTools: false } : {}),
   }
 }

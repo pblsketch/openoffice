@@ -23,6 +23,7 @@ export const MARKDOWN_CHANNELS = {
   takeWikiFragment: 'markdown:take-wiki-fragment',
   /** notes whose links land on the given path (the backlinks panel) */
   wikiBacklinks: 'markdown:wiki-backlinks',
+  wikiTags: 'markdown:wiki-tags',
   /** the vault's link graph (nodes + resolved edges, the graph view) */
   wikiGraph: 'markdown:wiki-graph',
   /** invoke → the recovery copy's text to open instead of the file (or as the untitled document), else null */
@@ -54,6 +55,8 @@ export const MARKDOWN_CHANNELS = {
   exportDocx: 'markdown:export-docx',
   exportOdt: 'markdown:export-odt',
   exportPdf: 'markdown:export-pdf',
+  printPreview: 'markdown:print-preview',
+  printDocument: 'markdown:print-document',
   prepareImageExport: 'markdown:prepare-image-export',
   writeExportImage: 'markdown:write-export-image',
   finishImageExport: 'markdown:finish-image-export',
@@ -202,12 +205,20 @@ export interface SaveMarkdownRequest {
    * direct save omits this and asks.
    */
   auto?: boolean
+  /**
+   * Save As only, rendered documents only: the print HTML of what is on screen.
+   * A picked target ending in .pdf writes this HTML as a PDF (and opens it)
+   * instead of the Markdown text; the document keeps its path and unsaved edits.
+   */
+  pdfHtml?: string
 }
 
 export type SaveMarkdownResult =
   | {
       ok: true
       path: string
+      /** the target was written as a PDF copy of the document, not as its save */
+      exported?: 'pdf'
       /** Save As may relocate local images into the new document's assets directory. */
       imageRewrites?: Array<{ from: string; to: string }>
       /** Actual persisted source after Save As image rewrites. */
@@ -298,6 +309,26 @@ export interface ExportPdfRequest {
   outPath?: string
 }
 
+/** The print preview asks for the very PDF the PDF export writes. */
+export interface MarkdownPrintPreviewRequest {
+  html: string
+  /** paper and orientation chosen in the dialog; absent means A4 portrait */
+  options?: MarkdownPrintOptions
+}
+
+export type MarkdownPrintPreviewResult =
+  { ok: true; pdf: Uint8Array } | { ok: false; error: string }
+
+/** Print the same HTML the preview showed, optionally only a page range. */
+export interface MarkdownPrintDocumentRequest {
+  html: string
+  pages: MarkdownPageRange | null
+  options?: MarkdownPrintOptions
+}
+
+export type MarkdownPrintDocumentResult =
+  { ok: true; canceled?: boolean } | { ok: false; error: string }
+
 export type ImageExportPreparation =
   | { ok: true; id: string; pdfBase64: string }
   | { ok: true; canceled: true }
@@ -313,6 +344,7 @@ export interface ImageData {
 
 /** API exposed by preload to the renderer (window.markdownApi) */
 import type { MarkdownTheme } from './markdown-theme'
+import type { MarkdownPageRange, MarkdownPrintOptions } from './print-options'
 export interface MarkdownApi {
   /** Take the md path pending for this view (queued at tab creation); null = new untitled document */
   consumePending(): Promise<string | null>
@@ -348,6 +380,7 @@ export interface MarkdownApi {
    */
   /** Notes whose links resolve to `path` (the backlinks panel); '' answers []. */
   wikiBacklinks(path: string): Promise<WikiBacklink[]>
+  wikiTags(): Promise<{ tag: string; files: string[] }[]>
   /** The vault's link graph, notes as nodes and resolved links as edges. */
   wikiGraph(): Promise<WikiGraph>
   /** Headless export mode: the PDF path this hidden renderer must export to, null in normal use */
@@ -445,6 +478,10 @@ export interface MarkdownApi {
   /** save dialog (.odt) → docx → ODT → confirmation when something changes → write */
   exportOdt(request: ExportOdtRequest): Promise<ExportResult>
   exportPdf(request: ExportPdfRequest): Promise<ExportResult>
+  /** the PDF the print preview shows; the same options the PDF export uses */
+  renderPrintPreview(request: MarkdownPrintPreviewRequest): Promise<MarkdownPrintPreviewResult>
+  /** print through the system dialog, using the same HTML and options as the preview */
+  printDocument(request: MarkdownPrintDocumentRequest): Promise<MarkdownPrintDocumentResult>
   prepareImageExport(request: Omit<ExportPdfRequest, 'outPath'>): Promise<ImageExportPreparation>
   writeExportImage(
     id: string,

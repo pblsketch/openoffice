@@ -56,6 +56,9 @@ export type UiTheme = 'light' | 'dark' | 'system'
  */
 export type DocTheme = 'follow' | 'light' | 'dark'
 
+/** Format a brand-new Hangul document is first saved as (Settings › General). */
+export type HwpDefaultFormat = 'hwp' | 'hwpx'
+
 /** mirrors AUTHOR_NAME_MAX in @genoffice/electron-utils (the renderer cannot import it) */
 export const AUTHOR_NAME_MAX = 120
 
@@ -233,8 +236,10 @@ export interface HomeApi {
   /** one page of a corpus file's parsed text (path must be in kbList; with `scope`, in the run's group) */
   kbRead(path: string, offset: number, scope?: string): Promise<KbReadPage>
   /** open a run narrowed to one starred group; main mints the scope and keeps the narrowing.
-   *  Rejects when the group has no starred files (the run must not widen to all) */
-  kbOpenScope(group: string): Promise<string>
+   *  Rejects when the group has no starred files (the run must not widen to all).
+   *  With a project chosen in the home ask: `{ group, projectId }`, the project folder
+   *  plus the starred part (null: every starred file) */
+  kbOpenScope(group: string | { group?: string | null; projectId: string }): Promise<string>
   /** the narrowed run is over */
   kbCloseScope(scope: string): Promise<void>
   /** write the AI's markdown as a new .md / .docx in the save folder; resolves to its path */
@@ -371,6 +376,10 @@ export interface HomeApi {
   getDefaultSaveDir(): Promise<string>
   /** directory picker to change the default save folder; resolves to the new folder, or null when canceled or the pick was unusable */
   pickDefaultSaveDir(): Promise<string | null>
+  /** format offered by the first save of a new Hangul document (userData/app-settings.json) */
+  getHwpDefaultFormat(): Promise<HwpDefaultFormat>
+  /** persist the choice; an unknown value is stored as HWP */
+  setHwpDefaultFormat(format: HwpDefaultFormat): Promise<HwpDefaultFormat>
   /** who opens .docx/.xlsx/.pptx today (Settings → General "default app" row) */
   getDefaultAppStatus(): Promise<DefaultAppStatus>
   /** claim the Office types (mac/linux) or open the system Default Apps page (win); resolves to the refreshed status */
@@ -600,6 +609,8 @@ export const HOME_CHANNELS = {
   getDefaultAppStatus: 'home:get-default-app-status',
   setDefaultApp: 'home:set-default-app',
   pickDefaultSaveDir: 'home:pick-default-save-dir',
+  getHwpDefaultFormat: 'home:get-hwp-default-format',
+  setHwpDefaultFormat: 'home:set-hwp-default-format',
   openGitHubRepo: 'home:open-github-repo',
   openFeedbackSurvey: 'home:open-feedback-survey',
   openLicenseNotices: 'home:open-license-notices',

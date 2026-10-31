@@ -89,4 +89,6 @@ export const de = {
     'Das Programm ist zu alt für den Agentenmodus. Aktualisieren Sie es und versuchen Sie es erneut.',
   errNotInstalled: 'Das Programm ist nicht installiert.',
   errGeneric: 'Etwas ist schiefgelaufen. Versuchen Sie es erneut.',
+  documentsUnprotected:
+    'Nach dem Sitzungsstart geöffnete Dokumente ({n}) stehen nicht unter dem Schreibschutz des Programms. Beenden und starten Sie die Sitzung erneut, um sie zu schützen.',
 } satisfies Record<keyof typeof zh, string>

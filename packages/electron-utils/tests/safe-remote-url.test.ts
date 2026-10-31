@@ -174,6 +174,23 @@ describe('resolveSafeRemoteTarget', () => {
     const target = await resolveSafeRemoteTarget('https://www.alamy.com/x.png')
     expect(target?.addresses).toEqual([{ address: '198.18.1.66', family: 4 }])
   })
+
+  it('stops waiting for a slow resolver when the signal aborts', async () => {
+    vi.mocked(lookup).mockReturnValue(new Promise(() => {}) as never)
+    const controller = new AbortController()
+    const pending = resolveSafeRemoteTarget('https://slow.example/x.png', controller.signal)
+    controller.abort()
+    await expect(pending).resolves.toBeNull()
+  })
+
+  it('does not resolve when the signal is already aborted', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    await expect(
+      resolveSafeRemoteTarget('https://slow.example/x.png', controller.signal),
+    ).resolves.toBeNull()
+    expect(vi.mocked(lookup)).not.toHaveBeenCalled()
+  })
 })
 
 describe('pinnedLookup', () => {
@@ -313,6 +330,20 @@ describe('fetchWithSsrfGuard', () => {
       signal: controller.signal,
     })
     expect(out).toBeNull()
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('cuts a hostname lookup that outlives the request budget', async () => {
+    vi.mocked(lookup).mockReturnValue(new Promise(() => {}) as never)
+    const controller = new AbortController()
+    const fetchImpl = vi.fn()
+    const pending = fetchWithSsrfGuard('https://slow.example/x.png', {
+      fetchImpl,
+      signal: controller.signal,
+    })
+    controller.abort()
+    await expect(pending).resolves.toBeNull()
+    expect(vi.mocked(lookup)).toHaveBeenCalledTimes(1)
     expect(fetchImpl).not.toHaveBeenCalled()
   })
 

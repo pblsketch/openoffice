@@ -30,11 +30,24 @@ import {
   type DrawingAnchor,
   type ImageAdd,
   relsPathFor,
+  resolveChartPivotSource,
   resolveRelTarget,
   type ShapeAdd,
 } from './xlsx-drawing-add'
-import { applyTableAdditions, type TableArea, type TableStyleOptions } from './xlsx-table-add'
-import { applyTableEdits, type TableEdit } from './xlsx-table-edit'
+import {
+  applyTableAdditions,
+  areasOverlap,
+  areaToRef,
+  parseRef,
+  type TableArea,
+  type TableStyleOptions,
+} from './xlsx-table-add'
+import {
+  applyTableEdits,
+  sheetTableParts,
+  type LocatedTable,
+  type TableEdit,
+} from './xlsx-table-edit'
 import type { PivotFilterDef } from '../domain/pivot-filters'
 import {
   applyPivotAdditions,
@@ -43,7 +56,12 @@ import {
   type PivotValueSpec,
 } from './xlsx-pivot-add'
 import type { SheetFilterState } from './xlsx-filter'
-import { applyFilterState } from './xlsx-filter'
+import {
+  applyFilterState,
+  applyRowVisibilityState,
+  applyTableFilterState,
+  FilterEditError,
+} from './xlsx-filter'
 import { normalizeOoxmlPartPrefix } from './xlsx-namespace'
 import { escapeRegExp } from './xlsx-sheets'
 import type { SheetAllocation, SheetEditPlan, SheetElement } from './xlsx-sheets'
@@ -557,7 +575,66 @@ export async function readSheetRows(buffer: Buffer, sheetName?: string): Promise
   const sharedStrings = await readSharedStrings(zip)
   const name = sheetName ?? firstSheetName(workbookXml)
   const worksheetXml = await zip.readText(await resolveWorksheetPath(zip, name))
-  return worksheetRows(worksheetXml, sharedStrings)
+  const dateStyles = (await zip.has('xl/styles.xml'))
+    ? dateStyleIndexes(await zip.readText('xl/styles.xml'))
+    : new Set<number>()
+  const date1904 = /<workbookPr\b[^>]*\bdate1904="(?:1|true)"/.test(workbookXml)
+  return worksheetRows(worksheetXml, sharedStrings, { dateStyles, date1904 })
+}
+
+/** how a worksheet's numbers read as text */
+interface RowTextOptions {
+  /** cellXfs indexes whose number format is a date or a time */
+  dateStyles: ReadonlySet<number>
+  date1904: boolean
+}
+
+/** the built-in number formats that are dates or times (ECMA-376 18.8.30) */
+const BUILTIN_DATE_FORMATS = new Set([
+  14, 15, 16, 17, 18, 19, 20, 21, 22, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 45, 46, 47, 50, 51,
+  52, 53, 54, 55, 56, 57, 58,
+])
+
+/** a custom format code is a date when a date token survives the literals and the colour/condition brackets */
+export function isDateFormatCode(code: string): boolean {
+  const bare = code
+    .replace(/"[^"]*"/g, '')
+    .replace(/\[[^\]]*\]/g, '')
+    .replace(/\\./g, '')
+  if (/[#0?@]/.test(bare) && !/[ymdh]/i.test(bare)) return false
+  return /[ymdh]/i.test(bare) || /s/.test(bare)
+}
+
+/** the cellXfs indexes whose number format is a date or a time */
+export function dateStyleIndexes(stylesXml: string): Set<number> {
+  const custom = new Set<number>()
+  for (const m of stylesXml.matchAll(/<numFmt\b([^>]*)\/?>/g)) {
+    const id = Number(readXmlAttribute(m[1] ?? '', 'numFmtId'))
+    const code = decodeXmlText(readXmlAttribute(m[1] ?? '', 'formatCode') ?? '')
+    if (Number.isFinite(id) && isDateFormatCode(code)) custom.add(id)
+  }
+  const out = new Set<number>()
+  const cellXfs = /<cellXfs\b[^>]*>([\s\S]*?)<\/cellXfs>/.exec(stylesXml)?.[1] ?? ''
+  let index = 0
+  for (const m of cellXfs.matchAll(/<xf\b([^>]*)\/?>/g)) {
+    const id = Number(readXmlAttribute(m[1] ?? '', 'numFmtId'))
+    if (BUILTIN_DATE_FORMATS.has(id) || custom.has(id)) out.add(index)
+    index += 1
+  }
+  return out
+}
+
+/** an Excel serial as ISO text: the date, and the time when the serial carries one */
+export function serialDateText(serial: number, date1904: boolean): string {
+  const epoch = date1904 ? Date.UTC(1904, 0, 1) : Date.UTC(1899, 11, 30)
+  const ms = Math.round((serial + (!date1904 && serial < 60 ? 1 : 0)) * 86_400_000)
+  const date = new Date(epoch + ms)
+  if (Number.isNaN(date.getTime())) return String(serial)
+  const iso = date.toISOString()
+  const dayPart = iso.slice(0, 10)
+  const timePart = iso.slice(11, 19)
+  if (serial < 1) return timePart
+  return timePart === '00:00:00' ? dayPart : `${dayPart} ${timePart}`
 }
 
 /** the name of the first sheet in workbook.xml */
@@ -583,6 +660,8 @@ function cellText(
   body: string,
   type: string | undefined,
   sharedStrings: readonly string[],
+  asDate = false,
+  date1904 = false,
 ): string {
   if (type === 'inlineStr') {
     return [...body.matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g)]
@@ -594,13 +673,22 @@ function cellText(
   if (type === 's') return sharedStrings[Number(rawValue)] ?? ''
   if (type === 'str') return decodeCellText(rawValue)
   if (type === 'b') return rawValue === '1' ? 'TRUE' : 'FALSE'
-  // a number keeps the file's own spelling: a date column then reads as the
-  // serial the file holds, not as a locale-formatted date
-  return decodeCellText(rawValue)
+  // a number keeps the file's own spelling, except that a date-formatted
+  // cell reads as a date, not as the serial the file holds
+  const text = decodeCellText(rawValue)
+  if (asDate && (type === undefined || type === 'n')) {
+    const serial = Number(text)
+    if (Number.isFinite(serial)) return serialDateText(serial, date1904)
+  }
+  return text
 }
 
 /** the rows of a worksheet, in file order; a row that is not there is empty */
-function worksheetRows(worksheetXml: string, sharedStrings: readonly string[]): string[][] {
+function worksheetRows(
+  worksheetXml: string,
+  sharedStrings: readonly string[],
+  options: RowTextOptions = { dateStyles: new Set(), date1904: false },
+): string[][] {
   const rows: string[][] = []
   const rowPattern = /<row\b([^>]*)>([\s\S]*?)<\/row>/g
   let rowMatch: RegExpExecArray | null
@@ -615,7 +703,14 @@ function worksheetRows(worksheetXml: string, sharedStrings: readonly string[]): 
       const address = readXmlAttribute(attributes, 'r')
       const column = address ? columnIndexOf(address) : cells.length
       if (column < 0) continue
-      const value = cellText(cellMatch[2] ?? '', readXmlAttribute(attributes, 't'), sharedStrings)
+      const style = Number(readXmlAttribute(attributes, 's'))
+      const value = cellText(
+        cellMatch[2] ?? '',
+        readXmlAttribute(attributes, 't'),
+        sharedStrings,
+        options.dateStyles.has(style),
+        options.date1904,
+      )
       while (cells.length < column) cells.push('')
       cells[column] = value
     }
@@ -1305,13 +1400,9 @@ export async function planCellEditsToXlsx(
     worksheetXmls.set(state.sheetName, applyPageSetupState(worksheetXml, state))
   }
 
-  // Filter snapshots run after structural replay and cell edits, so their
-  // coordinates and row set match the sheet's final content.
-  for (const state of filterStates) {
-    const worksheetXml = worksheetXmls.get(state.sheetName)
-    if (worksheetXml === undefined) continue
-    worksheetXmls.set(state.sheetName, applyFilterState(worksheetXml, state))
-  }
+  // Filter snapshots used to run here, before the worksheet flush; they now
+  // run after the table edit/add phases (see applyRoutedFilterState below) so
+  // the routing sees the sheets' final table geometry.
 
   for (const [sheetName, worksheetXml] of worksheetXmls) {
     const worksheetPath = worksheetPaths.get(sheetName)
@@ -1352,7 +1443,12 @@ export async function planCellEditsToXlsx(
           additionPaths.get(addition.sheetName) ??
           (await resolveWorksheetPath(pkg, addition.sheetName)),
         anchor: addition.anchor,
-        chart: addition.chart,
+        // A pivot-bound chart resolves its pivotTable part into the
+        // chartSpace pivotSource name here, where the sheet name is known.
+        chart:
+          addition.chart === undefined
+            ? undefined
+            : await resolveChartPivotSource(pkg, addition.sheetName, addition.chart),
         shape: addition.shape,
         image: addition.image,
       })
@@ -1431,6 +1527,21 @@ export async function planCellEditsToXlsx(
       })
     }
     await applyTableAdditions(pkg, resolvedTables, touchedEntries)
+  }
+
+  // Filter snapshots run after structural replay, cell edits, and the table
+  // phases, so their coordinates and row set match the sheet's final content
+  // and the routing sees the final table geometry: a filter range inside an
+  // Excel table lands in the table part (Excel keeps table filters there,
+  // never on the worksheet); every other range keeps the worksheet element.
+  if (filterStates.length > 0) {
+    for (const state of filterStates) {
+      const worksheetPath =
+        additionPaths.get(state.sheetName) ??
+        worksheetPaths.get(state.sheetName) ??
+        (await resolveWorksheetPath(pkg, state.sheetName))
+      await applyRoutedFilterState(pkg, worksheetPath, state, touchedEntries)
+    }
   }
 
   // New sparklines also run on the flushed worksheet XML (extLst is the
@@ -2127,6 +2238,78 @@ function findSheetElement(workbookXml: string, sheetName: string): SheetElement 
 
 function isMissingPartError(error: unknown): boolean {
   return error instanceof Error && /was not found\.|Workbook is missing /.test(error.message)
+}
+
+/// One declarative filter snapshot onto its final home. Excel keeps a
+/// ListObject's filter in the table part; the worksheet only ever carries
+/// row visibility for it (a worksheet autoFilter overlapping a table is
+/// invalid OOXML). Routing is geometric: exactly one table can contain the
+/// range because tables never overlap. A range that straddles a table
+/// boundary cannot be represented in either place, so it fails closed. A
+/// contained range whose table part is gone (Convert to Range in this same
+/// save) falls back to the worksheet element — Excel's own conversion
+/// semantics.
+async function applyRoutedFilterState(
+  pkg: PackageEditor,
+  worksheetPath: string,
+  state: SheetFilterState,
+  touchedEntries: Set<string>,
+): Promise<void> {
+  const match = state.filter?.range ?? state.visibilityRange
+  let routed: { table: LocatedTable; area: TableArea } | undefined
+  for (const table of await sheetTableParts(pkg, worksheetPath)) {
+    const area = tablePartArea(table)
+    if (area === null) continue
+    const contains =
+      area.startRow <= match.startRow &&
+      match.endRow <= area.endRow &&
+      area.startColumn <= match.startColumn &&
+      match.endColumn <= area.endColumn
+    if (contains) {
+      routed = { table, area }
+      continue
+    }
+    if (areasOverlap(area, match)) {
+      throw new FilterEditError(
+        `The filter range overlaps Excel table ${areaToRef(area)} without sitting ` +
+          'inside it — filter within the table, or clear the table first.',
+      )
+    }
+  }
+  const worksheetXml = await pkg.readText(worksheetPath)
+  if (routed === undefined) {
+    pkg.write(worksheetPath, applyFilterState(worksheetXml, state))
+    touchedEntries.add(worksheetPath)
+    return
+  }
+  const { table, area } = routed
+  pkg.write(
+    table.path,
+    applyTableFilterState(table.xml, { area, ...tablePartCounts(table.xml) }, state.filter),
+  )
+  touchedEntries.add(table.path)
+  pkg.write(worksheetPath, applyRowVisibilityState(worksheetXml, state))
+  touchedEntries.add(worksheetPath)
+}
+
+function tablePartArea(table: LocatedTable): TableArea | null {
+  const ref = /<table\b[^>]*\bref="([^"]+)"/.exec(table.xml)?.[1]
+  if (ref === undefined) return null
+  try {
+    return parseRef(ref)
+  } catch {
+    return null
+  }
+}
+
+function tablePartCounts(tableXml: string): {
+  headerRowCount: number
+  totalsRowCount: number
+} {
+  return {
+    headerRowCount: Number(/<table\b[^>]*?\bheaderRowCount="(\d+)"/.exec(tableXml)?.[1] ?? '1'),
+    totalsRowCount: Number(/<table\b[^>]*?\btotalsRowCount="(\d+)"/.exec(tableXml)?.[1] ?? '0'),
+  }
 }
 
 async function resolveWorksheetPath(

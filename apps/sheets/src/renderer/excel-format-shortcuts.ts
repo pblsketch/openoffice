@@ -17,14 +17,28 @@ export function currencyStyle(symbol: string): string {
 
 export const RIBBON_CURRENCY_SYMBOL = '$'
 
+const DATE_SHORTCUT = 'd-mmm-yy'
+
+/// Excel applies the UI region's currency in the Ctrl+Shift+4 / Currency and
+/// Accounting buttons; Korean Excel uses ₩, not $.
+export function ribbonCurrencySymbol(lang: string): string {
+  return lang === 'ko' ? '₩' : RIBBON_CURRENCY_SYMBOL
+}
+
 export const NUMBER_FORMAT_SHORTCUTS: Readonly<Record<string, string>> = {
   Backquote: 'General',
   Digit1: '#,##0.00',
   Digit2: 'h:mm AM/PM',
-  Digit3: 'd-mmm-yy',
+  Digit3: DATE_SHORTCUT,
   Digit4: currencyStyle(RIBBON_CURRENCY_SYMBOL),
   Digit5: PERCENT_STYLE,
   Digit6: '0.00E+00',
+}
+
+/// Korean Excel's Ctrl+Shift+3 date format is the ISO-like 년-월-일 shape; the
+/// English shortcut keeps Excel's d-mmm-yy.
+export function ribbonDatePattern(lang: string): string {
+  return lang === 'ko' ? 'yyyy-mm-dd' : DATE_SHORTCUT
 }
 
 const BORDER_SHORTCUTS: Readonly<Record<string, string>> = {
@@ -49,12 +63,19 @@ export interface FormatShortcutKey {
 /// Ribbon command for a keydown, or null when it is not a format shortcut.
 /// The mac border chords need `isMac`: without the gate the Windows key
 /// combined with Alt would trigger borders on Windows and Linux too.
-export function formatShortcutCommand(event: FormatShortcutKey, isMac = false): string | null {
+export function formatShortcutCommand(
+  event: FormatShortcutKey,
+  isMac = false,
+  currencySymbol = RIBBON_CURRENCY_SYMBOL,
+  datePattern = DATE_SHORTCUT,
+): string | null {
   if (isMac && event.metaKey && event.altKey && !event.ctrlKey && !event.shiftKey) {
     const preset = MAC_BORDER_SHORTCUTS[event.code]
     return preset ? `border:${preset}` : null
   }
   if (!(event.metaKey || event.ctrlKey) || !event.shiftKey || event.altKey) return null
+  if (event.code === 'Digit3') return `format:${datePattern}`
+  if (event.code === 'Digit4') return `format:${currencyStyle(currencySymbol)}`
   const pattern = NUMBER_FORMAT_SHORTCUTS[event.code]
   if (pattern) return `format:${pattern}`
   const preset = BORDER_SHORTCUTS[event.code]

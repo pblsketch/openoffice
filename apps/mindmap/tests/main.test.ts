@@ -87,6 +87,7 @@ vi.mock('electron', () => ({
 
 import { createXmindDocument, openXmind } from '@genoffice/xmind-engine'
 import {
+  configureMindmapRuntime,
   createMindmapView,
   mindmapFilePath,
   mindmapIsDirty,
@@ -156,6 +157,7 @@ describe('channel names', () => {
       'consumePending',
       'openFile',
       'save',
+      'saveIntoProject',
       'openLink',
       'exportPng',
       'exportPdf',
@@ -395,6 +397,91 @@ describe('saving', () => {
     await save(contents, { bytes: await mapBytes('Round trip'), mode: 'saveAs' })
     const reopened = await openXmind(readFileSync(target))
     expect(reopened.status).toBe('ok')
+  })
+})
+
+describe('saving a new map into the project (spec 6)', () => {
+  const saveIntoProject = (contents: FakeContents, request: unknown) =>
+    call<Promise<SaveMindmapResult | { ok: false; skipped: true }>>(
+      MINDMAP_CHANNELS.saveIntoProject,
+      contents,
+      request,
+    )
+  const writer =
+    vi.fn<(id: number, fileName: string, bytes: Uint8Array) => Promise<string | null>>()
+
+  beforeEach(() => {
+    writer.mockReset()
+    writer.mockImplementation(async (_id, fileName, bytes) => {
+      const path = join(dir, fileName)
+      writeFileSync(path, bytes)
+      return path
+    })
+    configureMindmapRuntime({ preloadPath: '', writeNewDocument: writer })
+  })
+  afterEach(() => configureMindmapRuntime({ preloadPath: '' }))
+
+  it('hands a bare name and the bytes to the project writer; the map becomes that file', async () => {
+    const contents = view(null)
+    const bytes = await mapBytes()
+    const result = await saveIntoProject(contents, { bytes, defaultName: 'Trip: plan?' })
+    expect(result).toEqual({ ok: true, path: join(dir, 'Trip_ plan_.xmind') })
+    expect(writer).toHaveBeenCalledTimes(1)
+    const [id, fileName, written] = writer.mock.calls[0]!
+    expect(id).toBe(contents.id)
+    expect(fileName).toBe('Trip_ plan_.xmind')
+    expect(Buffer.from(written).equals(Buffer.from(bytes))).toBe(true)
+    expect(showSaveDialog).not.toHaveBeenCalled()
+    // later saves go to that file without a dialog
+    expect(mindmapFilePath(contents.id)).toBe(join(dir, 'Trip_ plan_.xmind'))
+    await save(contents, { bytes, mode: 'save' })
+    expect(showSaveDialog).not.toHaveBeenCalled()
+  })
+
+  it('an unnamed map gets the untitled name with .xmind', async () => {
+    const contents = view(null)
+    await saveIntoProject(contents, { bytes: await mapBytes() })
+    expect(writer.mock.calls[0]![1]).toMatch(/^[^\\/]+\.xmind$/)
+  })
+
+  it('without a project nothing is written and the map stays untitled', async () => {
+    writer.mockResolvedValue(null)
+    const contents = view(null)
+    expect(await saveIntoProject(contents, { bytes: await mapBytes() })).toEqual({
+      ok: false,
+      skipped: true,
+    })
+    expect(mindmapFilePath(contents.id)).toBeUndefined()
+    configureMindmapRuntime({ preloadPath: '' })
+    expect(await saveIntoProject(contents, { bytes: await mapBytes() })).toEqual({
+      ok: false,
+      skipped: true,
+    })
+  })
+
+  it('a refused write keeps the map untitled and gives the reason', async () => {
+    writer.mockRejectedValue(new Error('project folder write refused (exists): x'))
+    const contents = view(null)
+    const result = await saveIntoProject(contents, { bytes: await mapBytes() })
+    expect(result).toMatchObject({ ok: false })
+    expect((result as { error: string }).error).toContain('exists')
+    expect(mindmapFilePath(contents.id)).toBeUndefined()
+  })
+
+  it('a map with a file, a file that did not open and bytes that are no map are left alone', async () => {
+    const path = join(dir, 'map.xmind')
+    writeFileSync(path, await mapBytes())
+    const opened = view(path)
+    await open(opened, path)
+    expect(await saveIntoProject(opened, { bytes: await mapBytes() })).toEqual({
+      ok: false,
+      skipped: true,
+    })
+    const fresh = view(null)
+    expect(await saveIntoProject(fresh, { bytes: new Uint8Array([1, 2, 3]) })).toMatchObject({
+      ok: false,
+    })
+    expect(writer).not.toHaveBeenCalled()
   })
 })
 

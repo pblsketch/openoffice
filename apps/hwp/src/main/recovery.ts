@@ -35,6 +35,7 @@ import type {
   RecoveryWriteTicket,
 } from '@genoffice/electron-utils'
 import { getUiLang } from '@genoffice/i18n'
+import { readHwpDefaultFormat } from './default-format'
 import { tm } from './dialog-strings'
 import { applySaveFixes } from './save-fixes'
 import type { SaveBase } from './save-fixes'
@@ -132,7 +133,8 @@ export function hwpRecoveryIdentityOf(wcId: number): RecoveryIdentity | null {
   if (path) return { kind: 'hwp', filePath: path }
   let identity = untitledIdentityByWc.get(wcId)
   if (!identity) {
-    const format = host.untitledCopyOf(wcId)?.format ?? 'hwp'
+    // a new document's copy follows the format its first save would offer
+    const format = host.untitledCopyOf(wcId)?.format ?? readHwpDefaultFormat(app)
     identity = { kind: 'hwp', untitledId: newUntitledRecoveryId(), ext: `.${format}` }
     untitledIdentityByWc.set(wcId, identity)
   }

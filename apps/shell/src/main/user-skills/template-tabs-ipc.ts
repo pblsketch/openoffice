@@ -20,10 +20,11 @@ const invalid: UserSkillsFail = { ok: false, reason: 'invalid' }
 const failed: UserSkillsFail = { ok: false, reason: 'failed' }
 
 export function registerTemplateTabsIpc(tabs: TemplateTabs): void {
-  ipcMain.handle(C.openTemplate, async (_event, raw: unknown) => {
+  ipcMain.handle(C.openTemplate, async (event, raw: unknown) => {
     const input = templateOpenInputOf(raw)
     if (!input) return invalid
-    return tabs.openTemplate(input).catch(() => failed)
+    // the asking panel's window: the copy's tab follows its project (spec 6)
+    return tabs.openTemplate(input, event.sender.id).catch(() => failed)
   })
 
   ipcMain.handle(C.openPreview, async (event, raw: unknown) => {

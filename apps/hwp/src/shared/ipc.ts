@@ -1,5 +1,5 @@
 import type { AiSettings, AiStreamChunk, AiStreamRequest } from '@genoffice/ai-provider'
-import type { AiToolCapabilities } from '@genoffice/ai-search'
+import type { AiToolCapabilities, MediaToolErrorCode } from '@genoffice/ai-search'
 import type { Lang } from '@genoffice/i18n'
 import type { AiPanelPrefs, AutoSaveDefault } from '@genoffice/ui'
 import type { SubscriptionApi } from './subscription-api'
@@ -16,6 +16,7 @@ export const HWP_CHANNELS = {
   abortSave: 'hwp:abort-save',
   saveRequest: 'hwp:save-request',
   printRequest: 'hwp:print-request',
+  previewRequest: 'hwp:preview-request',
   fileCommand: 'hwp:file-command',
   printPages: 'hwp:print-pages',
   dirtyChanged: 'hwp:dirty-changed',
@@ -52,6 +53,8 @@ export const HWP_CHANNELS = {
   aiGenerateImage: 'hwp:ai-generate-image',
   /** invoke(url) �� `{base64, mime} | null`: a web image or a generated-store file */
   fetchImage: 'hwp:fetch-image',
+  /** invoke({ mediaUrls, requirements }) �� MediaAnalysisResult: let the model look at a picture */
+  analyzeMedia: 'hwp:analyze-media',
   // channels below are served once by the shell for every editor
   getLanguage: 'app:get-language',
   languageChanged: 'app:language-changed',
@@ -88,10 +91,16 @@ export type UiTheme = 'light' | 'dark' | 'system'
 export type SaveMode = 'save' | 'saveAs'
 
 /** What the editor's File menu asks for (see the plugin's FILE_COMMAND_EVENT). */
-export type FileCommand = SaveMode | PrintMode
+export type FileCommand = SaveMode | PrintMode | 'preview'
 
 /** Where the pages go: a PDF file, or the printer through the system print dialog. */
 export type PrintMode = 'pdf' | 'print'
+
+/**
+ * What File > Print / Print Preview asks the renderer to do. 'print' opens the
+ * preview when it is closed and prints from it when it is open; 'open' only opens.
+ */
+export type PreviewAction = 'print' | 'open'
 
 /** One page as the editor draws it for printing: SVG, and its size in CSS pixels. */
 export interface PrintPage {
@@ -259,6 +268,14 @@ export interface AttachmentImageResult {
   error?: string
 }
 
+/** What the configured picture reader says about one picture of the document. */
+export interface MediaAnalysisResult {
+  text?: string
+  error?: string
+  errorCode?: MediaToolErrorCode
+  resetsAt?: number
+}
+
 /** Image search results (the shared ai:image-search handler) */
 export interface ImageSearchResult {
   images: Array<{ title?: string; imageUrl: string; width?: number; height?: number }>
@@ -317,8 +334,10 @@ export interface HwpApi {
    * it answers Ctrl+S and Ctrl+P, with a save or print request back to this view
    */
   requestFileCommand(command: FileCommand): void
-  /** the File menu or Ctrl+P asks for a PDF or a print */
+  /** the File menu asks for a PDF (print now goes through the preview) */
   onPrintRequest(handler: (mode: PrintMode) => void): () => void
+  /** the File menu or Ctrl+P asks for the print preview */
+  onPreviewRequest(handler: (action: PreviewAction) => void): () => void
   /** make the PDF (asking where) or open the print dialog for these pages */
   printPages(job: PrintJob): Promise<PrintResult>
   onCloseSaveRequest(handler: () => void): () => void
@@ -361,6 +380,8 @@ export interface HwpApi {
   readAttachment(path: string, offset: number, maxChars: number): Promise<AttachmentReadResult>
   /** read an image attachment as base64 for multimodal input */
   readAttachmentImage(path: string): Promise<AttachmentImageResult>
+  /** let the model look at one picture of the document (a data URL) and answer about it */
+  analyzeMedia(op: { mediaUrls: string[]; requirements: string }): Promise<MediaAnalysisResult>
   /** the local path of a dropped or pasted file; empty for one that has none (a screenshot) */
   getPathForFile(file: File): string
   /**

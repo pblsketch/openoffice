@@ -87,4 +87,6 @@ export const es = {
     'El programa es demasiado antiguo para el modo agente. Actualízalo y vuelve a intentarlo.',
   errNotInstalled: 'El programa no está instalado.',
   errGeneric: 'Algo salió mal. Vuelve a intentarlo.',
+  documentsUnprotected:
+    'Los documentos abiertos después de iniciar la sesión ({n}) quedan fuera de la protección de escritura del programa. Detén e inicia la sesión de nuevo para protegerlos.',
 } satisfies Record<keyof typeof zh, string>

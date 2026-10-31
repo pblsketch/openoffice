@@ -964,13 +964,17 @@ export function isoDateSerial(value: string): { serial: number; format: string }
   const [y, mo, d, hh, mm, ss] = m
     .slice(1)
     .map((part) => (part === undefined ? undefined : Number(part)))
+  // Excel keeps dates before 1900-01-01 as text. Checking the year first also stops
+  // Date.UTC from reading years 0000-0099 as 1900-1999.
+  if (y! < 1900) return undefined
   const utc = Date.UTC(y!, mo! - 1, d!, hh ?? 0, mm ?? 0, ss ?? 0)
   const date = new Date(utc)
   if (date.getUTCFullYear() !== y || date.getUTCMonth() !== mo! - 1 || date.getUTCDate() !== d) {
     return undefined
   }
   if ((hh ?? 0) > 23 || (mm ?? 0) > 59 || (ss ?? 0) > 59) return undefined
-  // Excel reserves serial 60 for its fictional 1900-02-29. January/February start one day later.
+  // Excel reserves serial 60 for its fictional 1900-02-29, so real dates in January and
+  // February 1900 get a serial one day smaller than the plain day count from 1899-12-30.
   const serial = (utc - EXCEL_EPOCH_UTC) / 86_400_000 - (y === 1900 && mo! < 3 ? 1 : 0)
   const format =
     hh === undefined ? 'yyyy-mm-dd' : ss === undefined ? 'yyyy-mm-dd hh:mm' : 'yyyy-mm-dd hh:mm:ss'

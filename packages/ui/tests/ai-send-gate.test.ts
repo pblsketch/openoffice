@@ -8,6 +8,7 @@ import {
   type AiSubscriptionStatuses,
 } from '@genoffice/ai-provider'
 import {
+  AI_SUBSCRIPTION_NOTICE_VERSION,
   aiConnectPromptChoice,
   aiHeldRequestStep,
   aiHoldReason,
@@ -231,11 +232,28 @@ describe('aiConnectPromptChoice', () => {
   })
 })
 
+describe('notice versions', () => {
+  it('an old boolean-only acknowledgement reads as the previous version and shows the addition once', () => {
+    const old = settingsWith({ subscriptionNoticeSeen: true, subscriptionNoticeVersion: 1 })
+    expect(aiSendGate(old, statuses('ready', 'ready'))).toMatchObject({ kind: 'notice' })
+    const acked = withAiSubscriptionNoticeSeen(old)
+    expect(aiSendGate(acked, statuses('ready', 'ready'))).toMatchObject({ kind: 'run' })
+  })
+
+  it('a raw seen boolean without a version is current, as it was before versions existed', () => {
+    expect(aiSendGate(seen(), statuses('ready', 'ready'))).toMatchObject({ kind: 'run' })
+  })
+})
+
 describe('settings changes from the panel', () => {
   it('acknowledging the notice touches nothing else', () => {
     const before = settingsWith({ provider: 'codex' })
     const after = withAiSubscriptionNoticeSeen(before)
-    expect(after).toEqual({ ...before, subscriptionNoticeSeen: true })
+    expect(after).toEqual({
+      ...before,
+      subscriptionNoticeSeen: true,
+      subscriptionNoticeVersion: AI_SUBSCRIPTION_NOTICE_VERSION,
+    })
     expect(before.subscriptionNoticeSeen).not.toBe(true)
   })
 
@@ -264,7 +282,11 @@ describe('changeStoredAiSettings', () => {
       withAiSubscriptionNoticeSeen,
       stale,
     )
-    expect(setSettings).toHaveBeenCalledExactlyOnceWith({ ...stored, subscriptionNoticeSeen: true })
+    expect(setSettings).toHaveBeenCalledExactlyOnceWith({
+      ...stored,
+      subscriptionNoticeSeen: true,
+      subscriptionNoticeVersion: AI_SUBSCRIPTION_NOTICE_VERSION,
+    })
     expect(written?.provider).toBe('openai')
     expect(written?.providers.openai).toEqual({ apiKey: 'k', model: 'm' })
   })
@@ -300,7 +322,11 @@ describe('changeStoredAiSettings', () => {
         withAiSubscriptionNoticeSeen,
         known,
       )
-      expect(written).toEqual({ ...known, subscriptionNoticeSeen: true })
+      expect(written).toEqual({
+        ...known,
+        subscriptionNoticeSeen: true,
+        subscriptionNoticeVersion: AI_SUBSCRIPTION_NOTICE_VERSION,
+      })
       expect(setSettings).toHaveBeenCalledExactlyOnceWith(written)
     }
   })

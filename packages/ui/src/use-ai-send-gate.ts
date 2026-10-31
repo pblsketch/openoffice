@@ -35,6 +35,12 @@ export interface AiSendGateArgs<R, S extends AiSettings = AiSettings> {
   readonly onNotConnected?: (() => void) | undefined
   /** the panel wrote the settings: lets an app that keeps its own copy update it at once */
   readonly onSettingsSaved?: ((settings: S) => void) | undefined
+  /**
+   * Saved together with the first-connection acknowledgement. The PDF editor
+   * uses it for its own sentence, which may already be due when the general
+   * notice is shown there.
+   */
+  readonly acknowledgeNoticeExtra?: ((settings: S) => S) | undefined
 }
 
 export interface AiSendGateController<R, S extends AiSettings = AiSettings> {
@@ -176,7 +182,10 @@ export function useAiSendGate<R, S extends AiSettings = AiSettings>(
     const held = heldRef.current
     heldRef.current = null
     setRequestHeld(false)
-    void saveChange(withAiSubscriptionNoticeSeen).then((saved) => {
+    void saveChange((latest) => {
+      const seen = withAiSubscriptionNoticeSeen(latest)
+      return argsRef.current.acknowledgeNoticeExtra?.(seen) ?? seen
+    }).then((saved) => {
       if (saved && held) argsRef.current.start(held.request)
     })
   }

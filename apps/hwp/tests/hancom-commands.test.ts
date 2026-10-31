@@ -338,6 +338,7 @@ describe('the menu items of the new commands', () => {
         '<div class="md-item" data-cmd="edit:find-again"></div>',
         '<div class="md-item" data-cmd="insert:symbols"></div>',
         '<div class="md-item" data-cmd="table:transpose-copy"></div>',
+        '<div class="md-item" data-cmd="file:print"></div>',
       ].join(''),
     ).window
     installHancomMenuItems(document, 'ko')

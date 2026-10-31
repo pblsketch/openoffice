@@ -39,6 +39,32 @@ function gifDataUrl(width: number, height: number): string {
   return `data:image/gif;base64,${Buffer.from(bytes).toString('base64')}`
 }
 
+function jpegDataUrl(width: number, height: number, ...prefix: number[][]): string {
+  const [fillBeforeApp0 = [], fillBeforeSof = []] = prefix
+  const be16 = (v: number) => [(v >>> 8) & 255, v & 255]
+  const bytes = [
+    0xff,
+    0xd8,
+    ...fillBeforeApp0,
+    0xff,
+    0xe0,
+    0x00,
+    0x04,
+    0x00,
+    0x00,
+    ...fillBeforeSof,
+    0xff,
+    0xc0,
+    0x00,
+    0x08,
+    8,
+    ...be16(height),
+    ...be16(width),
+    3,
+  ]
+  return `data:image/jpeg;base64,${Buffer.from(bytes).toString('base64')}`
+}
+
 describe('image aspect cache', () => {
   beforeEach(() => {
     clearImageAspectCache()
@@ -50,6 +76,19 @@ describe('image aspect cache', () => {
     // unrecognised / non-base64 input falls back to 1
     expect(imageAspect('https://example.com/a.png')).toBe(1)
     expect(imageAspect('data:image/png;base64,AAAA')).toBe(1)
+  })
+
+  it('reads the JPEG aspect ratio across 0xFF fill bytes before markers', () => {
+    expect(imageAspect(jpegDataUrl(200, 100))).toBeCloseTo(2, 6)
+    expect(imageAspect(jpegDataUrl(300, 100, [0xff]))).toBeCloseTo(3, 6)
+    expect(imageAspect(jpegDataUrl(400, 100, [], [0xff]))).toBeCloseTo(4, 6)
+    expect(imageAspect(jpegDataUrl(500, 100, [0xff, 0xff, 0xff], [0xff, 0xff]))).toBeCloseTo(5, 6)
+  })
+
+  it('falls back to 1 for a JPEG truncated before its SOF', () => {
+    const url = jpegDataUrl(200, 100)
+    const bytes = Buffer.from(url.split(',')[1]!, 'base64').subarray(0, 12)
+    expect(imageAspect(`data:image/jpeg;base64,${bytes.toString('base64')}`)).toBe(1)
   })
 
   it('hits the cache for an identical data URL without growing the map', () => {

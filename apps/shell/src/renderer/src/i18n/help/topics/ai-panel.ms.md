@@ -36,6 +36,13 @@ Dalam panel AI editor Docs, Sheets, Slides, Hangul, HTML dan peta minda, anda bo
 - Jika dua dokumen mempunyai nama yang sama tetapi berada dalam folder berbeza, nama folder yang betul-betul di atasnya ditambah, seperti `@rancangan.docx(Semester 2)`, dan nama folder itu turut dihantar kepada AI.
 - Editor PDF dan Markdown belum mempunyai lampiran, jadi kedua-dua cara tidak tersedia di situ.
 
+## Projek
+
+- Klik nama projek di sebelah kiri, di bawah kotak input, untuk memilih projek (satu folder pada PC anda). AI kemudian menjawab dengan mengetahui fail, arahan dan ingatan folder itu, dan perbualan disimpan dalam folder tersebut supaya anda boleh meneruskannya dalam editor lain. Lihat [Projek](help://projects).
+- Apabila projek dipilih, tajuk perbualan semasa dipaparkan di bahagian atas panel. Klik tajuk itu untuk senarai perbualan projek ini dan **Perbualan baharu**.
+- Senarai `@` dalam kotak input memaparkan "Fail dalam projek ini" selepas dokumen yang dibuka.
+- Permintaan dengan projek dipilih turut menghantar arahan (bersama `AGENTS.md` dan `CLAUDE.md` di bahagian atas folder, yang boleh dimatikan di halaman projek), ingatan dan senarai nama fail projek itu, petikan pendek setiap fail yang ditemui AI semasa mencari dalam folder, serta teks mana-mana fail yang dibaca oleh AI, kepada AI yang anda gunakan.
+
 ## Berundur dan keselamatan
 
 - Panel dalam Docs menyimpan **senarai versi** dengan satu gambar keadaan bagi setiap pusingan. Anda boleh berundur ke mana-mana versi dalam senarai itu, dan berundur itu sendiri juga boleh dibatalkan. Gambar keadaan itu kekal walaupun dokumen ditutup dan dibuka semula.

@@ -2,6 +2,10 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
 import { outboundBridge } from '@genoffice/electron-utils/outbound-bridge'
 import { userSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
+import {
+  PROJECT_FOLDER_BRIDGE_KEY,
+  projectFolderBridge,
+} from '@genoffice/electron-utils/project-folder-bridge'
 import { USER_SKILLS_BRIDGE_KEY } from '@genoffice/electron-utils/user-skills-channels'
 import { docAttachBridge } from '@genoffice/electron-utils/doc-attach-bridge'
 import { DOC_ATTACH_BRIDGE_KEY } from '@genoffice/electron-utils/doc-attach-channels'
@@ -20,7 +24,7 @@ import {
   installDropOpenBridge,
 } from '@genoffice/electron-utils/drop-open'
 import { AI_CHANNELS, HWP_CHANNELS } from '../shared/ipc'
-import type { HwpApi, PrintMode, SaveMode, UiTheme } from '../shared/ipc'
+import type { HwpApi, PreviewAction, PrintMode, SaveMode, UiTheme } from '../shared/ipc'
 import type { SubscriptionApi } from '../shared/subscription-api'
 import {
   SUBSCRIPTION_CONNECT_HELP_CHANNEL,
@@ -110,6 +114,11 @@ const api: HwpApi = {
     ipcRenderer.on(HWP_CHANNELS.printRequest, listener)
     return () => ipcRenderer.removeListener(HWP_CHANNELS.printRequest, listener)
   },
+  onPreviewRequest: (handler) => {
+    const listener = (_e: Electron.IpcRendererEvent, action: PreviewAction) => handler(action)
+    ipcRenderer.on(HWP_CHANNELS.previewRequest, listener)
+    return () => ipcRenderer.removeListener(HWP_CHANNELS.previewRequest, listener)
+  },
   printPages: (job) => ipcRenderer.invoke(HWP_CHANNELS.printPages, job),
   onCloseSaveRequest: (handler) => {
     const listener = () => handler()
@@ -164,6 +173,7 @@ const api: HwpApi = {
   readAttachment: (path, offset, maxChars) =>
     ipcRenderer.invoke(HWP_CHANNELS.filesRead, path, offset, maxChars),
   readAttachmentImage: (path) => ipcRenderer.invoke(HWP_CHANNELS.filesReadImage, path),
+  analyzeMedia: (op) => ipcRenderer.invoke(HWP_CHANNELS.analyzeMedia, op),
   getPathForFile: (file) => webUtils.getPathForFile(file),
   // the drop bridge's rules, for drops it cannot hear: paths come from the dropped files
   // here, so the page can only pass on files the user dropped
@@ -252,6 +262,8 @@ const projectApi: Pick<ProjectApi, 'resolveChat' | 'appendChat' | 'loadChat' | '
 }
 
 contextBridge.exposeInMainWorld('projectApi', projectApi)
+// project folders (decision 0088): main identifies this window, the bridge forwards ids only
+contextBridge.exposeInMainWorld(PROJECT_FOLDER_BRIDGE_KEY, projectFolderBridge(ipcRenderer))
 
 // open documents dragged from the OS onto this tab as a new shell tab
 installDropOpenBridge()

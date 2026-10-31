@@ -690,6 +690,7 @@ Deze toetsen werken zolang het tabblad HWP/HWPX vooraan staat en het document fo
 | Datum-/tijdtekst                   | ⌃K, D       | Ctrl+K, D          |
 | Object, veld of tabel/cel bewerken | ⌃N, K       | Ctrl+N, K          |
 | Symbolen                           | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+| Omzetten naar hanja                | F9          | Hanja-toets / F9   |
 
 ### Tabel
 

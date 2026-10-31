@@ -37,6 +37,7 @@ import {
   safeExternalUrl,
   writeJsonAtomic,
 } from '@genoffice/electron-utils'
+import { aiRunRefusal } from '@genoffice/electron-utils/ai-run-guard'
 import {
   webSearchTool,
   imageSearchTool,
@@ -206,6 +207,16 @@ export function registerAiIpc(): void {
     const { requestId } = request
     const send = (chunk: AiStreamChunk) => {
       if (!event.sender.isDestroyed()) event.sender.send('ai:stream-chunk', chunk)
+    }
+    // a free provider is only ever the explicit selection, never what `auto` lands on
+    const refusal = aiRunRefusal({
+      senderId: event.sender.id,
+      provider: settings.provider,
+      model: settings.providers[settings.provider as keyof typeof settings.providers]?.model ?? '',
+    })
+    if (refusal) {
+      send({ requestId, type: 'error', error: refusal })
+      return
     }
     const controller = new AbortController()
     activeAiStreams.set(requestId, controller)

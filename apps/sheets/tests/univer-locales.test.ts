@@ -1,11 +1,18 @@
 import { LocaleType } from '@univerjs/core'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
+  applyNumfmtLocale,
+  applyUniverLocale,
   insertRowsBelowLocale,
   numberAsTextAlertLocale,
   univerLocaleFor,
 } from '../src/renderer/univer-locales'
+import { numfmtLocaleFor } from '../src/renderer/i18n/numfmt-locale'
+
+vi.mock('@univerjs/preset-sheets-core', () => ({
+  SheetsNumfmtCellContentController: class SheetsNumfmtCellContentController {},
+}))
 
 describe('univerLocaleFor', () => {
   it('maps every app language Univer has packs for', () => {
@@ -100,5 +107,43 @@ describe('insertRowsBelowLocale', () => {
     >
     const patched = insertRowsBelowLocale(core)
     expect(patched['sheets-ui']).toBe(core['sheets-ui'])
+  })
+})
+
+describe('numfmt locale', () => {
+  it('maps UI languages to numfmt tags, with English for Malay', () => {
+    expect(numfmtLocaleFor('ko')).toBe('ko-KR')
+    expect(numfmtLocaleFor('zh-TW')).toBe('zh-TW')
+    expect(numfmtLocaleFor('he')).toBe('he-IL')
+    expect(numfmtLocaleFor('ms')).toBe('en')
+    expect(numfmtLocaleFor('not-a-language')).toBe('en')
+  })
+
+  function fakeRuntime(setNumfmtLocal: (locale: string) => void) {
+    return {
+      univer: {
+        __getInjector: () => ({
+          get: () => ({ setNumfmtLocal }),
+        }),
+      },
+    } as never
+  }
+
+  it('passes the UI language to Univer’s number-format controller', () => {
+    const seen: string[] = []
+    applyNumfmtLocale(
+      fakeRuntime((locale) => seen.push(locale)),
+      'ko',
+    )
+    expect(seen).toEqual(['ko-KR'])
+  })
+
+  it('still localizes number formats where Univer has no UI pack', async () => {
+    const seen: string[] = []
+    await applyUniverLocale(
+      fakeRuntime((locale) => seen.push(locale)),
+      'nl',
+    )
+    expect(seen).toEqual(['nl-NL'])
   })
 })

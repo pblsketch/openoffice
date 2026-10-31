@@ -20,6 +20,15 @@ L’editor di e-book apre i libri EPUB (`.epub`) in una scheda. Puoi leggere il 
 - Un collegamento interno al libro porta al punto indicato. I link web ed e-mail si aprono nel browser predefinito; gli altri indirizzi non vengono aperti.
 - Gli script del libro non vengono mai eseguiti e nulla viene caricato da internet. Audio e video non vengono riprodotti.
 
+## Anteprima
+
+- Fai clic su **Anteprima** nella scheda **Home** o **Visualizza** per vedere il libro a pagine, come lo mostra un e-reader. L’anteprima si apre nel punto in cui stai leggendo.
+- Nella barra in alto scegli lo schermo (**E-reader**, **Telefono**, **Tablet** o **Adatta alla finestra**), l’orientamento orizzontale, la dimensione del testo e lo sfondo (bianco, seppia o scuro). Uno schermo largo in orizzontale mostra due pagine affiancate. Queste impostazioni cambiano solo l’anteprima, mai il libro.
+- Sfoglia le pagine con i tasti freccia, Pag su e Pag giù, la barra spaziatrice, la rotellina del mouse o i pulsanti ai due lati. Dopo l’ultima pagina di un capitolo si passa al capitolo successivo. Il sommario e i link nel libro portano l’anteprima in quel punto.
+- Nell’anteprima il testo non si può modificare. Quando l’IA modifica il libro o annulli una modifica, l’anteprima si aggiorna.
+- Fai clic su **Chiudi anteprima** o premi Esc per tornare a modificare nel punto che l’anteprima mostrava.
+- L’impaginazione cambia un po’ tra le app delle librerie e i dispositivi: considera l’anteprima un’approssimazione fedele.
+
 ## Modificare il testo
 
 - Fai clic in un paragrafo e scrivi. Si possono modificare paragrafi, titoli, voci di elenco, citazioni, celle di tabella e didascalie delle immagini. Le immagini e la struttura delle tabelle no.
@@ -63,6 +72,6 @@ L’editor di e-book apre i libri EPUB (`.epub`) in una scheda. Puoi leggere il 
 
 - Aggiungere, eliminare o riordinare capitoli; cambiare titolo, autore o copertina; inserire immagini o tabelle; trasformare un paragrafo in un titolo o in un elenco.
 - Modificare o tradurre libri a layout fisso, e aprire libri protetti dalla copia.
-- Sfogliare le pagine come in un libro stampato, e creare un nuovo libro vuoto.
+- Creare un nuovo libro vuoto.
 - Confrontare l’originale e la traduzione fianco a fianco nell’editor. Apri invece il libro bilingue, e correggi il libro tradotto come qualsiasi altro libro.
 - Nascondere all’IA parti di un libro.

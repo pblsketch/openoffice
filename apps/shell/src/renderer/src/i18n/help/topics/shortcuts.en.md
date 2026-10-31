@@ -690,6 +690,7 @@ These keys work while the HWP/HWPX tab is in front and the document has focus. T
 | Date/time string                 | ⌃K, D       | Ctrl+K, D          |
 | Edit object, field or table/cell | ⌃N, K       | Ctrl+N, K          |
 | Symbols                          | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+| Convert to Hanja                 | F9          | Hanja key / F9     |
 
 ### Table
 

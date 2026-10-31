@@ -86,11 +86,14 @@ export type {
 export {
   AI_PROVIDERS,
   DEFAULT_MAX_OUTPUT_TOKENS,
+  AI_SUBSCRIPTION_NOTICE_VERSION,
   HEADLESS_SUBSCRIPTION_CONSENT_VERSION,
+  LEGACY_NOTICE_VERSION_FOR_MIGRATION,
   MAX_MAX_OUTPUT_TOKENS,
   MIN_MAX_OUTPUT_TOKENS,
   clampMaxOutputTokens,
   headlessSubscriptionOn,
+  withMigratedSubscriptionNoticeVersion,
 } from './providers'
 export {
   activeCustomEndpoint,

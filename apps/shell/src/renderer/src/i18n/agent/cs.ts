@@ -84,4 +84,6 @@ export const cs = {
   errNeedsUpdate: 'Program je pro režim agenta příliš starý. Aktualizujte ho a zkuste to znovu.',
   errNotInstalled: 'Program není nainstalován.',
   errGeneric: 'Něco se pokazilo. Zkuste to znovu.',
+  documentsUnprotected:
+    'Dokumenty otevřené po spuštění relace ({n}) nejsou chráněny vlastní ochranou programu proti zápisu. Zastavte a znovu spusťte relaci, abyste je ochránili.',
 } satisfies Record<keyof typeof zh, string>

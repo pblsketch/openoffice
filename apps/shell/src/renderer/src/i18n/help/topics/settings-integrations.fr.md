@@ -21,6 +21,7 @@ Clair / Sombre / Suivre le système. Suivre le système suit l’apparence de l�
 - **Panneau IA** — Désactivé, Replié ou Dernier état.
 - **Enregistrer automatiquement tous les documents** active l'enregistrement automatique par défaut dans tous les éditeurs ; vous pouvez toujours le désactiver pour une fenêtre.
 - **Emplacement d'enregistrement** avec un bouton **Modifier** et **Application par défaut pour les documents Office** pour attribuer .docx / .xlsx / .pptx à GenOffice.
+- **Format d'enregistrement des nouveaux documents HWP** choisit si HWP ou HWPX est proposé en premier lors du premier enregistrement d'un nouveau document. Les documents ouverts conservent leur propre format.
 
 GenOffice ne collecte ni n’envoie de statistiques d’utilisation : il n’y a donc pas d’interrupteur pour cela.
 

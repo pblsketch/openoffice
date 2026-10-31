@@ -199,7 +199,8 @@ export function aiProviderPickerGroups(
       continue
     }
     if (!isKeyProviderConfigured(settings, meta.id)) continue
-    const models = keyProviderModels(meta.id, settings.providers[meta.id].model)
+    const config = settings.providers[meta.id]
+    const models = keyProviderModels(meta.id, config.model, config.models)
     groups.push({ kind: 'key', id: meta.id, label: meta.label, models, metered: false })
   }
   return groups

@@ -83,7 +83,16 @@ body {
 }
 
 .gen-head {
-  padding: 18px 22px 6px;
+  /* the window's title band: titleBarStyle 'hidden' on Windows/Linux draws the
+     caption buttons over this row, so it must be draggable and match the
+     overlay height (GENERATE_TITLE_BAR_HEIGHT in main/generate/title-bar.ts) */
+  height: 44px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 22px;
+  -webkit-app-region: drag;
+  user-select: none;
 }
 
 .gen-title {

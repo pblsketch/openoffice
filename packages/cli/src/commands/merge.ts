@@ -22,7 +22,15 @@ import {
 } from '../formats/pptx'
 import { readSheet, workbookSummary, writeWorkbook } from '../formats/xlsx'
 import { runWorkbookDsl } from '../formats/xlsx-dsl'
-import { extension, readInput, resolveInput, resolveOutput, writeOutput } from '../fs'
+import {
+  extension,
+  readInput,
+  readTextFile,
+  resolveInput,
+  resolveOutput,
+  stripBom,
+  writeOutput,
+} from '../fs'
 import { readOpsStream } from '../ops-input'
 import type { OpenedPptx } from '@genoffice/pptx-engine'
 import type { TableModel } from '@genoffice/docx-engine'
@@ -169,11 +177,10 @@ function readData(
       ? [readOpsStream(0, 'stdin'), 'stdin']
       : /^[[{]/.test(trimmed)
         ? [trimmed, '--data']
-        : [readFileSync(resolveInput(spec, ctx), 'utf-8'), spec]
+        : [readTextFile(resolveInput(spec, ctx)), spec]
   let parsed: unknown
   try {
-    // UTF-8 data files may start with a BOM; preserve U+FEFF inside values.
-    parsed = JSON.parse(text.replace(/^\uFEFF/, ''))
+    parsed = JSON.parse(stripBom(text))
   } catch (err) {
     throw new CliError(
       EXIT.usage,

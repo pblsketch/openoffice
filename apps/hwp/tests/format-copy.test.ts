@@ -203,10 +203,11 @@ class FakeCharCommand {
   constructor(
     readonly start: unknown,
     readonly end: unknown,
-    readonly props: string,
+    readonly props: Record<string, unknown>,
   ) {}
+  // as the studio's command does: an object in, JSON to the engine
   execute(wasm: Record<string, any>) {
-    wasm.applyCharFormat(this.start, this.end, this.props)
+    wasm.applyCharFormat(this.start, this.end, JSON.stringify(this.props))
     return this.start
   }
   undo(wasm: Record<string, any>) {
@@ -224,10 +225,10 @@ class FakeParaCommand {
   type = 'applyParaFormat'
   constructor(
     readonly targets: unknown,
-    readonly props: string,
+    readonly props: Record<string, unknown>,
   ) {}
   execute(wasm: Record<string, any>) {
-    wasm.applyParaFormat(this.targets, this.props)
+    wasm.applyParaFormat(this.targets, JSON.stringify(this.props))
     return null
   }
   undo(wasm: Record<string, any>) {
@@ -373,7 +374,7 @@ describe('format copy state', () => {
       fontIds: [1, 2, 3, 4, 5, 6, 7],
       textColor: '#123456',
     })
-    const json = JSON.parse(t.resolveChars(wasm, chars))
+    const json = t.resolveChars(wasm, chars)
     expect(json.fontIds).toEqual([20, 21, 22, 23, 24, 25, 26])
     expect(json).not.toHaveProperty('fontFamilies')
     expect(json).not.toHaveProperty('charShapeId')
@@ -382,16 +383,14 @@ describe('format copy state', () => {
   })
 
   it('converts page pixels for paragraphs', () => {
-    const json = JSON.parse(
-      t.resolvePara({
-        marginLeft: 10,
-        marginRight: 5,
-        indent: 2,
-        spacingBefore: 3,
-        spacingAfter: 4,
-        tabStops: [{ position: 4000, type: 0, fill: 0 }],
-      }),
-    )
+    const json = t.resolvePara({
+      marginLeft: 10,
+      marginRight: 5,
+      indent: 2,
+      spacingBefore: 3,
+      spacingAfter: 4,
+      tabStops: [{ position: 4000, type: 0, fill: 0 }],
+    })
     expect(json).toMatchObject({
       marginLeft: 1500,
       marginRight: 750,
@@ -744,6 +743,11 @@ describe('format copy commands and state', () => {
     expect(result.ok).toBe(true)
     expect(wasm.calls.some((call) => call[0] === 'applyCharFormat')).toBe(true)
     expect(wasm.calls.some((call) => call[0] === 'applyParaFormat')).toBe(true)
+    // the engine gets the properties once serialized; a JSON string inside JSON changed nothing
+    for (const name of ['applyCharFormat', 'applyParaFormat']) {
+      const call = wasm.calls.find((c) => c[0] === name)!
+      expect(JSON.parse(call[call.length - 1] as string)).toBeTypeOf('object')
+    }
     expect(ih.ops).toHaveLength(1)
     // the copied look lasts until it is overwritten, as in Hangul
     expect(ieumHasCopiedFormat(ih)).toBe(true)

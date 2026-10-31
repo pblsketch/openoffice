@@ -23,6 +23,7 @@ import { getUiLang } from '@genoffice/i18n'
 import { registerHwpAttachmentIpc } from './attachments-ipc'
 import { registerHwpImageIpc } from './ai-image'
 import { atomicWriteFile } from './atomic-write'
+import { readHwpDefaultFormat } from './default-format'
 import { badJob, printJobToPdf, printJobToPrinter } from './print-document'
 import { tm } from './dialog-strings'
 import { fieldKindsOf } from './field-kinds'
@@ -55,6 +56,7 @@ import type {
   MeasuredTab,
   MemoPathStep,
   MemoSnapshot,
+  PreviewAction,
   PrintJob,
   PrintMode,
   PrintResult,
@@ -74,6 +76,11 @@ interface RuntimePaths {
   goHome?: () => void
   /** a new Hangul document in a tab (Hangul's Alt+N) */
   newDocument?: () => void
+  /**
+   * Project folders (spec 6): the folder an untitled document's save dialog
+   * opens in for this view, or null for the default save folder.
+   */
+  newDocumentDir?: (webContentsId: number) => Promise<string | null>
 }
 
 let runtime: RuntimePaths = { preloadPath: '' }
@@ -279,9 +286,18 @@ export async function requestHwpClose(
  * keystroke behind, and Ctrl+S right after typing must still save. The
  * renderer asks the editor itself and declines a save with nothing to write.
  */
-/** The File menu or Ctrl+P: the renderer gathers the pages and comes back with printPages. */
+/** The File menu's PDF export: the renderer gathers the pages and comes back with printPages. */
 export function requestHwpPrint(contents: WebContents, mode: PrintMode): void {
   if (!contents.isDestroyed()) contents.send(HWP_CHANNELS.printRequest, mode)
+}
+
+/**
+ * File > Print / Print Preview and Ctrl+P: the renderer opens the preview (and
+ * prints from it when it is already open). The preview draws the same pages the
+ * print job will send, so the system dialog only opens after the user has seen them.
+ */
+export function requestHwpPreview(contents: WebContents, action: PreviewAction): void {
+  if (!contents.isDestroyed()) contents.send(HWP_CHANNELS.previewRequest, action)
 }
 
 /** A hidden window for printing: no preload, no scripts, sandboxed. */
@@ -587,18 +603,28 @@ function registerHwpIpc(): void {
         const win =
           BrowserWindow.fromWebContents(e.sender) ?? BrowserWindow.getFocusedWindow() ?? undefined
         const copy = untitledCopyByWc.get(wcId)
-        const fallback: HwpFormat = currentFormat ?? copy?.format ?? 'hwp'
+        // a brand-new document takes the format chosen in Settings; one restored without
+        // its file keeps the format of the file it came from (the recovery suggestion)
+        const preferred = readHwpDefaultFormat(app)
+        // a new document whose panel has a project is offered in that folder (spec 6)
+        const newDir = current ? null : await runtime.newDocumentDir?.(wcId)
+        const offered = current
+          ? join(dirname(current), basename(current))
+          : // a copy restored without its file is offered where that file was
+            (hwpRecoverySaveAsDefault(wcId) ??
+            join(
+              newDir ?? configuredDefaultSaveDir(app),
+              copy?.name ?? `${tm('untitledFile')}.${preferred}`,
+            ))
+        const fallback: HwpFormat =
+          currentFormat ?? copy?.format ?? hwpFormatOfPath(offered) ?? preferred
         const hwp = { name: tm('filterHwp'), extensions: ['hwp'] }
         const hwpx = { name: tm('filterHwpx'), extensions: ['hwpx'] }
         const picked = await showSaveDialogWithMemory(dialog, win, {
           title: tm('dlgSaveTitle'),
           // a new document has no file yet: it is offered under the untitled name in the
           // default save folder, where the shell moves it into the folder it was made from
-          defaultPath: current
-            ? join(dirname(current), basename(current))
-            : // a copy restored without its file is offered where that file was
-              (hwpRecoverySaveAsDefault(wcId) ??
-              join(configuredDefaultSaveDir(app), copy?.name ?? `${tm('untitledFile')}.hwp`)),
+          defaultPath: offered,
           // one type per format, so the user can pick the other one; the document's
           // own format comes first, so it is the dialog's default type
           filters: fallback === 'hwpx' ? [hwpx, hwp] : [hwp, hwpx],
@@ -746,7 +772,9 @@ function registerHwpIpc(): void {
   // the editor's File menu: the same requests as Ctrl+S and Ctrl+P, so one path saves
   ipcMain.on(HWP_CHANNELS.fileCommand, (e, command: unknown) => {
     if (command === 'save' || command === 'saveAs') void requestHwpSave(e.sender, command)
-    else if (command === 'pdf' || command === 'print') requestHwpPrint(e.sender, command)
+    else if (command === 'pdf') requestHwpPrint(e.sender, 'pdf')
+    else if (command === 'preview') requestHwpPreview(e.sender, 'open')
+    else if (command === 'print') requestHwpPreview(e.sender, 'print')
   })
 
   ipcMain.on(HWP_CHANNELS.abortSave, (e) => {
@@ -833,7 +861,7 @@ function installFileShortcuts(wc: WebContents): void {
     }
     if (input.code === 'KeyP' && !input.shift) {
       event.preventDefault()
-      requestHwpPrint(wc, 'print')
+      requestHwpPreview(wc, 'print')
       return
     }
     if (input.code !== 'KeyS') return
@@ -874,7 +902,7 @@ export function hancomFileKey(
       void requestHwpSave(wc, 'saveAs')
       return true
     case 'KeyP':
-      requestHwpPrint(wc, 'print')
+      requestHwpPreview(wc, 'print')
       return true
     default:
       return false

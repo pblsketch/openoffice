@@ -23,7 +23,7 @@ Excel 통합 문서(.xlsx, .csv 등) 에디터다. 화면은 Univer 격자 위�
 
 - 모든 IPC 핸들러는 보낸 쪽을 확인한다. `sessionFor(event)`가 등록된 시트 탭이 아니면 예외를 던지고, 입력은 zod 스키마(`aiStreamRequestSchema` 등)로 파싱한 뒤에 쓴다. 새 핸들러도 이 두 가지를 먼저 한다.
 - 원본 파일이 기준이다. 저장은 편집 기록을 사이드카에 넘겨 좁게 패치하는 방식이고, 에디터가 건드리지 않은 것은 그대로 남아야 한다. 열기·저장 경로를 바꾸면 왕복 테스트로 증명한다. 문서 엔진의 동작(해석, 저장, 내보내기)을 AI나 UI 작업의 일부로 바꾸지 않는다.
-- 저장 결과는 사용자 파일보다 먼저 다음 세션의 스냅숏 자리(`reserveSnapshotPath`)에 쓰고, 사이드카가 그것을 연 뒤에야 대상에 옮긴다(`placeStagedSave`, 암호 문서는 다시 잠가 쓴다). 열지 못하면 대상은 그대로 두고 이전 세션도 살려 둔 채 `errSaveUnreadable`로 알린다. 대상에 먼저 쓰고 나중에 다시 열던 때는, 다시 열기가 실패하면 원본이 이미 바뀌었고 세션도 사라져 그 뒤 모든 저장이 `Unknown workbook session.`으로 끝났다(2026-10-21 신고). 저장 경로를 고칠 때 이 순서를 지킨다(`tests/save-verify-before-overwrite.test.ts`).
+- 저장 결과는 사용자 파일보다 먼저 다음 세션의 스냅숏 자리(`reserveSnapshotPath`)에 쓰고, 사이드카가 그것을 연 뒤에야 대상에 옮긴다(`placeStagedSave`, 암호 문서는 다시 잠가 쓴다). 열지 못하면 대상은 그대로 두고 이전 세션도 살려 둔 채 `errSaveUnreadable`로 알린다. 대상에 먼저 쓰고 나중에 다시 열던 때는, 다시 열기가 실패하면 원본이 이미 바뀌었고 세션도 사라져 그 뒤 모든 저장이 `Unknown workbook session.`으로 끝났다(2026-10-21 신고). 저장 경로를 고칠 때 이 순서를 지킨다(`tests/save-verify-before-overwrite.test.ts`). 다시 열기가 실패한 까닭은 버리지 않는다. `save-failure-log.ts`가 엔진이 거부함(`unreadable`)·답 모양이 다름(`reply-shape`)·시간 초과·엔진 종료로 나누고, 경로를 지운 짧은 까닭을 안내문 끝에 `[…]`로 붙이며 데이터 폴더의 `sheets-save-failures.jsonl`에 한 줄 남긴다(시각, 앱 버전, 원래 형식, 결과 크기, 까닭. 칸 값은 넣지 않는다. 64KB). 같은 신고가 다시 와도 까닭을 가릴 수 있게 하려는 것이다.
 - 문서 내용은 테마가 다시 칠하지 않는다. 어두운 시트는 Univer의 `darkMode`를 쓰는 화면 전용 변환이고, 셀 채우기·글자색·차트 색상표는 문서 데이터다. 저장·내보내기·인쇄 결과는 두 테마에서 같아야 한다. 리본 등 크롬 색은 토큰만 쓴다.
 - 요청은 다른 제공자로 넘어가지 않는다. 단독 실행의 `ai:stream`·`ai:chat`은 `resolveAiRunTarget`으로 대상을 정하고, 실행할 수 없으면 제공자를 부르지 않고 원인을 담아 거절한다. 이 규칙은 문서 에디터의 `ai-run.ts`와 같은 답을 내야 한다. 한쪽만 바꾸면 단독 실행과 배포 앱의 동작이 갈린다.
 - 종량 허용을 쓸 때는 정규화된 설정 전체를 쓴다(`withMeteredAccepted`). `providers` 표가 없는 설정 파일은 제공자 도입 이전 파일로 읽혀 기본값이 되고, 그러면 방금 쓴 동의가 사라진다.
@@ -47,6 +47,7 @@ Excel 통합 문서(.xlsx, .csv 등) 에디터다. 화면은 Univer 격자 위�
 - `dependencies`에 올린 `@genoffice/*` 패키지는 `electron.vite.config.ts`의 `externalizeDepsPlugin` `exclude`에도 있어야 한다. preload는 샌드박스에서 임의의 npm 패키지를 require할 수 없으므로 `@genoffice/ai-provider`(구독 채널 이름)와 `@genoffice/electron-utils`를 번들에 넣는다.
 - 디자인 템플릿 글꼴은 쓸 때만 불러온다. 시작할 때는 면마다 `genoffice-docx-media://template-fonts/<file>` 주소의 `FontFace`를 바이트를 읽지 않고 등록만 한다. shell 안에서는 워드 편집기의 메인이 이 주소에 답하고(`apps/docs/src/main/lazy-media.ts`, 응답은 `@genoffice/electron-utils/template-font-response`, 면 목록과 주소는 `@genoffice/ui/template-fonts`), 시트를 단독으로 띄우면 시트 메인이 직접 답한다(`src/main/template-fonts.ts`, 목록에 있는 파일 이름만). 통합 문서를 열면 그 문서가 쓰는 템플릿 패밀리를 먼저 불러(최대 3초) 첫 레이아웃이 실제 글꼴로 재게 하고, 면 하나가 다 불러지면 글자 측정 캐시를 버리고 시트를 다시 그린다. PDF 내보내기와 인쇄의 숨은 창은 페이지가 선언한 글꼴만 보므로 같은 파일을 `file://` `@font-face`로 적는다. 저장되는 .xlsx는 바뀌지 않는다.
 - 문자열은 `src/renderer/i18n/`의 언어별 조각(`ai/`, `app/`, `dialogs/`)이고 `zh.ts`가 키 집합을 정한다. 21개 언어 모두에 넣는다. 구독 연결 문장은 `@genoffice/ui`의 것을 쓴다.
+- **숫자 서식의 요일·월 이름과 구분 기호는 화면 언어를 따른다.** Univer의 셀 숫자 서식 컨트롤러(`SheetsNumfmtCellContentController`)는 `setNumfmtLocal`을 부르기 전까지 `en`으로 시작하고 `LocaleService`를 보지 않는다. `applyUniverLocale`이 화면 언어를 넘기므로, 이 호출을 빼면 한국어 화면에서도 `aaa`/`dddd`·`mmm`·오전/오후가 영어로 나온다(2026-10-29 신고). 서식 미리보기·클립보드·차트 범주 이름도 같은 태그(`numfmtLocaleFor`)를 넘긴다. 저장되는 .xlsx의 서식 코드는 바뀌지 않는다. 한국어 화면에서는 `2026년 10월 29일`·`2026년 10월 29일 (목)`·`10월 29일` 입력을 날짜로 바꾼다(`korean-date-input.ts`, 셀 서식이 텍스트면 그대로 둔다).
 
 ## 로컬 AI (결정 0067)
 

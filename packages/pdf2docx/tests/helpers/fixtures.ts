@@ -60,6 +60,61 @@ export function tinyJpeg(): Uint8Array {
   return Uint8Array.from(Buffer.from(RED_JPEG_B64, 'base64'))
 }
 
+/**
+ * The tiny JPEG with `fill` extra 0xFF bytes before every header marker
+ * (ITU T.81 B.1.1.2: any number of fill bytes may precede a marker).
+ */
+export function tinyJpegWithFill(fill: number): Uint8Array {
+  const src = tinyJpeg()
+  const out: number[] = [0xff, 0xd8]
+  let i = 2
+  while (i + 3 < src.length) {
+    const marker = src[i + 1]!
+    for (let k = 0; k < fill; k++) out.push(0xff)
+    if (marker === 0xda) {
+      for (let j = i; j < src.length; j++) out.push(src[j]!)
+      return Uint8Array.from(out)
+    }
+    const end = i + 2 + ((src[i + 2]! << 8) | src[i + 3]!)
+    for (let j = i; j < end; j++) out.push(src[j]!)
+    i = end
+  }
+  return Uint8Array.from(out)
+}
+
+/** plain opaque JPEG page whose stream carries 0xFF fill bytes before its markers */
+export async function buildFilledJpegPdf(fill = 3): Promise<Uint8Array> {
+  const {
+    PDFDocument,
+    concatTransformationMatrix,
+    drawObject,
+    popGraphicsState,
+    pushGraphicsState,
+  } = await import('pdf-lib')
+  const doc = await PDFDocument.create()
+  const page = doc.addPage([612, 792])
+  const ctx = doc.context
+  const imgRef = ctx.register(
+    ctx.stream(tinyJpegWithFill(fill), {
+      Type: 'XObject',
+      Subtype: 'Image',
+      Width: 8,
+      Height: 8,
+      ColorSpace: 'DeviceRGB',
+      BitsPerComponent: 8,
+      Filter: 'DCTDecode',
+    }),
+  )
+  const name = page.node.newXObject('Image', imgRef)
+  page.pushOperators(
+    pushGraphicsState(),
+    concatTransformationMatrix(140, 0, 0, 140, 236, 500),
+    drawObject(name),
+    popGraphicsState(),
+  )
+  return doc.save()
+}
+
 /** plain opaque JPEG page (embedJpg → single DCTDecode filter, no mask) */
 export async function buildJpegPdf(): Promise<Uint8Array> {
   const { PDFDocument } = await import('pdf-lib')

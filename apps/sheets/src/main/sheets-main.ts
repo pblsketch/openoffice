@@ -82,6 +82,7 @@ import {
   type RecoveryOpenUntitledRequest,
   type SaveDiskState,
 } from '@genoffice/electron-utils'
+import { aiRunRefusal } from '@genoffice/electron-utils/ai-run-guard'
 import {
   encryptOoxml,
   isCfbHeader,
@@ -117,6 +118,7 @@ import {
   sealAiSecrets,
 } from '@genoffice/ai-provider'
 import { shutdownCodexAppServers } from '@genoffice/ai-provider/codex-app-server'
+import { withStoredKeyModels } from '@genoffice/ai-provider/key-models'
 import {
   ensureSubscriptionIpc,
   sharedSubscriptionStatuses,
@@ -231,6 +233,13 @@ import {
 import { XlsxSidecarClient } from './xlsx-sidecar-client'
 import { convertLegacyWorkbook } from './legacy-import'
 import { sessionAfterRename } from './session-rename'
+import {
+  appendSaveFailure,
+  describeReopenFailure,
+  reopenFailureNote,
+  SAVE_FAILURE_LOG_FILE,
+  sessionSourceFormat,
+} from './save-failure-log'
 
 /**
  * Sheets main-process logic as an embeddable module: no top-level lifecycle.
@@ -1617,8 +1626,30 @@ interface SheetsRuntimeConfig {
   sidecarPath?: string | undefined
   /** Shell router used to open exported/AI-generated files in a new GenOffice tab. */
   openGeneratedPath?: (path: string) => boolean
-  /** Host-owned cross-app document creator (the shell routes docx/pdf/md into Docs). */
-  createDocument?: (request: SheetsAiHostDocumentRequest) => Promise<WorkbookCreateDocumentResult>
+  /**
+   * Host-owned cross-app document creator (the shell routes docx/pdf/md into Docs).
+   * `ownerWebContentsId` is the asking view: its panel's project decides where
+   * the document goes (spec 6).
+   */
+  createDocument?: (
+    request: SheetsAiHostDocumentRequest,
+    ownerWebContentsId?: number,
+  ) => Promise<WorkbookCreateDocumentResult>
+  /**
+   * Project folders (spec 6): the folder an untitled document's save dialog
+   * opens in for this view, or null for the default save folder.
+   */
+  newDocumentDir?: (webContentsId: number) => Promise<string | null>
+  /**
+   * Project folders (spec 6): write a new document the AI made in this view
+   * into the project its panel chose (a free name, never over a file);
+   * resolves to the path written, or null when the panel has no project.
+   */
+  writeNewDocument?: (
+    webContentsId: number,
+    fileName: string,
+    bytes: Uint8Array,
+  ) => Promise<string | null>
 }
 
 let runtime: SheetsRuntimeConfig = {
@@ -3682,31 +3713,35 @@ export function registerSheetsIpc(): void {
       const request = workbookCreateDocumentRequestSchema.parse(input)
       try {
         if (request.type === 'csv') {
-          const filePath = uniquePathIn(
-            configuredDefaultSaveDir(app),
-            `${sanitizeGeneratedFileBase(request.title)}.csv`,
-          )
+          const fileName = `${sanitizeGeneratedFileBase(request.title)}.csv`
           // UTF-8 BOM so Excel decodes the reopened file correctly (same as exportCsv)
-          await atomicWriteFile(
-            filePath,
-            Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(request.content, 'utf8')]),
-          )
+          const bytes = Buffer.concat([
+            Buffer.from([0xef, 0xbb, 0xbf]),
+            Buffer.from(request.content, 'utf8'),
+          ])
+          // with a project chosen in this view's panel, into that folder (spec 6)
+          const placed = await runtime.writeNewDocument?.(event.sender.id, fileName, bytes)
+          const filePath = placed ?? uniquePathIn(configuredDefaultSaveDir(app), fileName)
+          if (!placed) await atomicWriteFile(filePath, bytes)
           openGeneratedFile(filePath)
           return { ok: true, path: filePath }
         }
         if (request.type === 'xlsx') {
           const buffer = await sheetCsvToXlsxBuffer(request.content, request.sheetName ?? 'Sheet1')
-          const filePath = uniquePathIn(
-            configuredDefaultSaveDir(app),
-            `${sanitizeGeneratedFileBase(request.title)}.xlsx`,
-          )
-          await atomicWriteFile(filePath, buffer)
+          const fileName = `${sanitizeGeneratedFileBase(request.title)}.xlsx`
+          // the workbook is made in memory first; with a project, written into its folder
+          const placed = await runtime.writeNewDocument?.(event.sender.id, fileName, buffer)
+          const filePath = placed ?? uniquePathIn(configuredDefaultSaveDir(app), fileName)
+          if (!placed) await atomicWriteFile(filePath, buffer)
           openGeneratedFile(filePath)
           return { ok: true, path: filePath }
         }
         const create = runtime.createDocument
         if (!create) return { ok: false, error: 'Document creation is unavailable in this host.' }
-        return await create({ type: request.type, title: request.title, content: request.content })
+        return await create(
+          { type: request.type, title: request.title, content: request.content },
+          event.sender.id,
+        )
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) }
       }
@@ -3773,8 +3808,17 @@ export function registerSheetsIpc(): void {
         session.suggestSaveAs ?? session.restoreTarget ?? session.path,
       )
       const ext = macroEnabled ? 'xlsm' : 'xlsx'
+      // a new workbook whose panel has a project is offered in that folder (spec 6);
+      // a restored one keeps offering where its original was
+      const projectDir =
+        session.unsavedNew && session.suggestSaveAs !== undefined && !session.recoveryOriginalPath
+          ? await runtime.newDocumentDir?.(event.sender.id)
+          : null
       const selection = await saveFileDialog(event, {
         defaultPath:
+          (projectDir && session.suggestSaveAs !== undefined
+            ? join(projectDir, basename(session.suggestSaveAs))
+            : undefined) ??
           session.suggestSaveAs ??
           session.csvSourcePath?.replace(/\.[^.]+$/, '.xlsx') ??
           session.restoreTarget ??
@@ -3888,9 +3932,22 @@ export function registerSheetsIpc(): void {
         await client.open(stagedPath, getUiLang(), systemShortDate()),
       )
     } catch (error) {
+      const stagedBytes = await stat(stagedPath).then(
+        (info) => info.size,
+        () => null,
+      )
       await rm(stagedPath, { force: true }).catch(() => undefined)
       console.warn('[sheets] the saved workbook did not reopen; the target was left as is:', error)
-      throw new Error(tm('errSaveUnreadable'), { cause: error })
+      const failure = describeReopenFailure(error)
+      appendSaveFailure(join(app.getPath('userData'), SAVE_FAILURE_LOG_FILE), {
+        failure,
+        sourceFormat: sessionSourceFormat(session),
+        stagedBytes,
+        appVersion: app.getVersion(),
+      })
+      throw new Error(`${tm('errSaveUnreadable')} ${reopenFailureNote(failure)}`, {
+        cause: error,
+      })
     }
     try {
       if (plainSavePath !== undefined && session.password !== undefined) {
@@ -4304,7 +4361,12 @@ export function registerSheetsAiIpc(): void {
   ipcMain.handle(IPC_CHANNELS.aiSetSettings, async (event, input: unknown) => {
     sessionFor(event)
     const settings = aiSettingsInputSchema.parse(input)
-    writeJsonAtomic(SETTINGS_PATH(), sealAiSecrets(settings))
+    // the live model lists are the main process's (decision 0087): the file's copy is kept
+    const stored = aiSettingsFromStored(readJson<unknown>(SETTINGS_PATH(), {}))
+    writeJsonAtomic(
+      SETTINGS_PATH(),
+      sealAiSecrets(withStoredKeyModels(settings as AiSettings, stored)),
+    )
     broadcastAiSettingsChanged()
   })
 
@@ -4315,6 +4377,8 @@ export function registerSheetsAiIpc(): void {
     const target = resolveAiRunTarget(request.settings, sharedSubscriptionStatuses())
     if (!target.ok) return { ok: false, error: target.block.error }
     const { provider, config } = target
+    const refusal = aiRunRefusal({ senderId: event.sender.id, provider, model: config.model })
+    if (refusal) return { ok: false, error: refusal }
     try {
       const result = await chatForProvider(provider, config, request.system, request.user)
       // the one-shot path reports HTTP failures as ok:false with the raw body —
@@ -4345,6 +4409,11 @@ export function registerSheetsAiIpc(): void {
       return
     }
     const { provider, config } = target
+    const refusal = aiRunRefusal({ senderId: event.sender.id, provider, model: config.model })
+    if (refusal) {
+      send({ requestId, type: 'error', error: refusal })
+      return
+    }
     const controller = new AbortController()
     entry.aiStreams.set(requestId, controller)
     const unwatchSender = abortOnDestroyed(event.sender, controller)
@@ -4400,7 +4469,8 @@ export function registerSheetsAiIpc(): void {
 
   // Shared search tools (content + images): Serper with DuckDuckGo fallback
   // (same source as slides/docs)
-  ipcMain.handle('ai:web-search', async (_event, query: unknown, maxResults?: unknown) => {
+  ipcMain.handle('ai:web-search', async (event, query: unknown, maxResults?: unknown) => {
+    sessionFor(event)
     try {
       return await webSearchTool(
         SETTINGS_PATH(),
@@ -4411,7 +4481,8 @@ export function registerSheetsAiIpc(): void {
       return { results: [], method: 'error', error: String(err) }
     }
   })
-  ipcMain.handle('ai:image-search', async (_event, query: unknown, maxResults?: unknown) => {
+  ipcMain.handle('ai:image-search', async (event, query: unknown, maxResults?: unknown) => {
+    sessionFor(event)
     try {
       return await imageSearchTool(
         SETTINGS_PATH(),
@@ -4425,6 +4496,7 @@ export function registerSheetsAiIpc(): void {
   // Read one web page as text (the read_url tool), paged by character offset.
   // A long download ends with the tab or when the tab's AI run is stopped.
   ipcMain.handle('ai:read-url', async (event, url: unknown, offset?: unknown) => {
+    sessionFor(event)
     try {
       return await withMediaCallSignal(event.sender, (signal) =>
         readUrlTool(
@@ -4445,7 +4517,8 @@ export function registerSheetsAiIpc(): void {
   // match the local add_image limit.
   ipcMain.handle(
     'ai:fetch-image',
-    async (_event, url: unknown): Promise<{ base64: string; mime: string } | null> => {
+    async (event, url: unknown): Promise<{ base64: string; mime: string } | null> => {
+      sessionFor(event)
       try {
         const resp = await fetchRemoteImage(z.string().parse(url))
         if (!resp || !resp.ok || !resp.body) return null

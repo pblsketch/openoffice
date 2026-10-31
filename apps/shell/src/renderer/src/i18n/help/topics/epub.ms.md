@@ -20,6 +20,15 @@ Editor e-buku membuka buku EPUB (`.epub`) dalam satu tab. Anda boleh membaca buk
 - Pautan di dalam buku membawa anda ke tempat yang dipautkan. Pautan web dan e-mel dibuka dalam pelayar lalai anda; alamat lain tidak dibuka.
 - Skrip milik buku itu sendiri tidak pernah dijalankan dan tiada apa-apa dimuatkan dari internet. Bunyi dan video tidak dimainkan.
 
+## Pratonton
+
+- Klik **Pratonton** pada tab **Laman Utama** atau **Paparan** untuk melihat buku mengikut halaman, seperti yang dipaparkan oleh pembaca e-buku. Pratonton dibuka di tempat anda sedang membaca.
+- Pada bar di atas, pilih skrin (**Pembaca e-buku**, **Telefon**, **Tablet** atau **Muat tetingkap**), landskap, saiz teks dan warna latar (putih, sepia atau gelap). Skrin lebar yang diletakkan secara landskap memaparkan dua halaman bersebelahan. Tetapan ini hanya mengubah pratonton, tidak sekali-kali buku.
+- Selak halaman dengan kekunci anak panah, Page Up dan Page Down, bar ruang, roda tetikus atau butang di kedua-dua sisi. Menyelak melepasi halaman terakhir sesuatu bab akan membawa anda ke bab seterusnya. Kandungan dan pautan dalam buku membawa pratonton ke tempat itu.
+- Teks tidak boleh disunting dalam pratonton. Apabila AI mengubah buku atau anda membuat asal perubahan, pratonton turut berubah.
+- Klik **Tutup pratonton** atau tekan Esc untuk kembali menyunting di tempat yang dipaparkan oleh pratonton.
+- Pemisahan halaman berbeza sedikit pada setiap aplikasi kedai dan peranti, jadi anggap pratonton sebagai gambaran yang hampir tepat.
+
 ## Menyunting teks
 
 - Klik pada perenggan dan mula menaip. Perenggan, tajuk, item senarai, petikan, sel jadual dan kapsyen gambar boleh disunting. Gambar dan susun atur jadual tidak boleh.
@@ -63,6 +72,6 @@ Editor e-buku membuka buku EPUB (`.epub`) dalam satu tab. Anda boleh membaca buk
 
 - Menambah, memadam atau menyusun semula bab; menukar tajuk, pengarang atau kulit buku; menyisipkan gambar atau jadual; menukar perenggan menjadi tajuk atau senarai.
 - Menyunting atau menterjemah buku susun atur tetap, dan membuka buku yang dilindungi salinan.
-- Menyelak halaman seperti buku bercetak, dan mencipta buku baharu yang kosong.
+- Mencipta buku baharu yang kosong.
 - Membandingkan teks asal dan terjemahan bersebelahan di dalam editor. Sebaliknya, buka buku dwibahasa, dan betulkan buku terjemahan seperti buku lain.
 - Menyembunyikan bahagian buku daripada AI.

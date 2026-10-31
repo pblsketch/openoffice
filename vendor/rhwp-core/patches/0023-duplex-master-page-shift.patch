@@ -1,0 +1,345 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pblsketch <239486537+pblsketch@users.noreply.github.com>
+Date: Thu, 29 Oct 2026 00:00:00 +0900
+Subject: [PATCH 23/25] =?UTF-8?q?fix(rendering):=20=EB=A7=9E=EC=AA=BD=20?=
+ =?UTF-8?q?=EC=A7=9D=EC=88=98=20=EC=AA=BD=EC=9D=98=20=EC=96=91=EC=AA=BD=20?=
+ =?UTF-8?q?=EB=B0=94=ED=83=95=EC=AA=BD=EC=9D=84=20=EB=B3=B8=EB=AC=B8?=
+ =?UTF-8?q?=EC=9D=B4=20=EC=98=AE=EA=B2=A8=20=EA=B0=84=20=EB=A7=8C=ED=81=BC?=
+ =?UTF-8?q?=20=EC=98=AE=EA=B2=A8=20=EA=B7=B8=EB=A6=B0=EB=8B=A4?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+좌우 여백이 다른 맞쪽 제본(gutterType LEFT_RIGHT) 문서에서 본문은 짝수 쪽마다
+좌우 여백을 바꿔 그렸지만, 바탕쪽의 용지 기준 개체는 홀수 쪽 자리에 그대로
+남았다. 왼쪽 26mm·오른쪽 40mm 문서의 바탕쪽 용지 기준 표(가로 오프셋 7370)를
+한/글 2024 는 홀수 쪽 x=98px, 짝수 쪽 x=151px 에 그리는데 엔진은 두 쪽 모두
+98px 였다.
+
+한/글 2024(13.0.0.711)로 합성 문서 변형 11가지를 PDF 로 인쇄해 잰 규칙:
+
+- 양쪽(BOTH) 바탕쪽은 짝수 쪽에서 통째로 `짝수 쪽 본문 왼끝 - 홀수 쪽 본문
+  왼끝` 만큼 옮겨진다. 용지 기준 표·글상자·그림은 왼쪽·가운데·오른쪽 정렬과
+  상관없이 같은 거리를 옮기고(용지 폭 띠는 쪽 밖으로 나간다), 쪽·단·문단 기준
+  개체와 바탕쪽 글 문단도 같은 거리다. 거리는 음수도 된다(오른쪽 여백이 더 좁은
+  문서). 제본 여백이 있으면 본문 왼끝 차이를 따른다. 마지막 쪽 바탕쪽도 같다.
+- 짝수 쪽(EVEN) 바탕쪽은 옮기지 않는다. 한쪽 제본(LEFT_ONLY)과 위로 넘기기
+  (TOP_BOTTOM)도 옮기지 않는다. 본문 안의 용지 기준 개체도 옮기지 않는다.
+
+PageLayoutInfo 에 그 거리(duplex_master_shift_hu)를 두고, build_master_page 가
+양쪽 바탕쪽을 그릴 때 문단 직속 용지 기준 부동 개체의 가로 오프셋을 정렬 방향에
+맞춰 그만큼 옮긴 사본으로 배치한다. 쪽 기준 개체와 단·문단 기준 도형은 이미 짝수
+쪽 본문 영역을 기준으로 한다.
+
+HWP5 바탕쪽 종류도 한/글과 같게 읽는다. 바탕쪽 조합 8가지를 한/글이 HWP 로
+저장해 보니 구역 정의 속성 bit 29·30·31 이 양쪽·짝수 쪽·홀수 쪽 바탕쪽이고
+LIST_HEADER 는 양쪽 → 짝수 → 홀수 순서였다. 종전 파서는 비트를 보지 않고
+양쪽 → 홀수 → 짝수 순서로 읽어 짝수·홀수 바탕쪽(0xC0000000) 구역의 짝수 쪽
+바탕쪽을 양쪽 바탕쪽으로 알았다. 그대로 두면 위 규칙이 짝수 쪽 바탕쪽까지 옮겨,
+짝수 쪽 띠가 쪽 오른쪽 끝에 닿는 실제 문서(한/글이 다시 저장하면 EVEN)가
+2mm 안으로 들어온다. 양쪽·짝수(0x6)와 셋 모두(0xE)는 짝수·홀수 내용이 뒤바뀌어
+있었다.
+
+검증: rhwp samples 1205개와 실사용 문서 127개를 패치 전후로 SVG 를 내보내 비교한
+결과 바뀐 쪽 없음(비교 대상 합성 변형에서는 맞쪽 양쪽 바탕쪽의 짝수 쪽만 바뀜).
+HWP→HWP, HWPX→HWPX 저장은 전부 같고, HWP→HWPX 변환은 짝수·홀수 바탕쪽 문서
+41개에서 바탕쪽 53개의 type 이 BOTH→EVEN 으로만 바뀐다(한/글 저장과 같다).
+
+IeumOffice patch onto v0.8.7 (not proposed upstream yet).
+---
+ src/parser/body_text.rs       | 32 +++++++++------
+ src/parser/body_text/tests.rs | 36 +++++++++++++++--
+ src/renderer/layout.rs        | 74 +++++++++++++++++++++++++++++++++--
+ src/renderer/page_layout.rs   | 30 +++++++++++++-
+ src/renderer/page_number.rs   |  1 +
+ 5 files changed, 153 insertions(+), 20 deletions(-)
+
+diff --git a/src/parser/body_text.rs b/src/parser/body_text.rs
+index 973a0d80a..943224158 100644
+--- a/src/parser/body_text.rs
++++ b/src/parser/body_text.rs
+@@ -1233,7 +1233,7 @@ fn parse_master_pages_from_raw(raw_records: &[RawRecord], section_flags: u32) ->
+     ];
+ 
+     for (mp_idx, &start) in list_header_positions.iter().enumerate() {
+-        let apply_to = master_page_apply_to(section_flags, list_header_positions.len(), mp_idx)
++        let apply_to = master_page_apply_to(section_flags, mp_idx)
+             .or_else(|| apply_order.get(mp_idx).copied())
+             .unwrap_or(HeaderFooterApply::Both);
+ 
+@@ -1315,18 +1315,24 @@ fn parse_master_pages_from_raw(raw_records: &[RawRecord], section_flags: u32) ->
+     master_pages
+ }
+ 
+-fn master_page_apply_to(
+-    section_flags: u32,
+-    list_header_count: usize,
+-    master_page_index: usize,
+-) -> Option<HeaderFooterApply> {
+-    const MASTER_PAGE_FLAGS_MASK: u32 = 0xe000_0000;
+-    const HANCOM_SINGLE_ODD_MASTER_PAGE_FLAGS: u32 = 0x8000_0000;
+-
+-    (list_header_count == 1
+-        && master_page_index == 0
+-        && section_flags & MASTER_PAGE_FLAGS_MASK == HANCOM_SINGLE_ODD_MASTER_PAGE_FLAGS)
+-        .then_some(HeaderFooterApply::Odd)
++/// 구역 정의 속성의 바탕쪽 비트로 `master_page_index` 번째 LIST_HEADER 의 적용 범위를 정한다.
++///
++/// 한/글 2024 가 HWPX 의 바탕쪽 조합을 HWP 로 저장한 결과(조합 8가지 실측): bit 29
++/// (`0x2000_0000`)는 양쪽, bit 30(`0x4000_0000`)은 짝수 쪽, bit 31(`0x8000_0000`)은 홀수 쪽
++/// 바탕쪽이 있다는 뜻이고, LIST_HEADER 는 **양쪽 → 짝수 쪽 → 홀수 쪽** 순서로 저장된다.
++/// 예: 짝수·홀수 바탕쪽 둘은 `0xC000_0000` 에 짝수, 홀수 순서다(다시 HWPX 로 저장하면
++/// `EVEN`, `ODD`). 비트가 없거나 비트보다 LIST_HEADER 가 많은 자리(확장 바탕쪽)는
++/// `None` 으로 남겨 호출부의 순서 규칙을 따른다.
++fn master_page_apply_to(section_flags: u32, master_page_index: usize) -> Option<HeaderFooterApply> {
++    [
++        (0x2000_0000, HeaderFooterApply::Both),
++        (0x4000_0000, HeaderFooterApply::Even),
++        (0x8000_0000, HeaderFooterApply::Odd),
++    ]
++    .into_iter()
++    .filter(|&(bit, _)| section_flags & bit != 0)
++    .map(|(_, apply_to)| apply_to)
++    .nth(master_page_index)
+ }
+ 
+ /// 단 정의 파싱 ('cold' 컨트롤)
+diff --git a/src/parser/body_text/tests.rs b/src/parser/body_text/tests.rs
+index 8a219b29d..f4aff878e 100644
+--- a/src/parser/body_text/tests.rs
++++ b/src/parser/body_text/tests.rs
+@@ -36,11 +36,41 @@ fn make_para_text_data(text: &str) -> Vec<u8> {
+ #[test]
+ fn hancom_single_odd_master_flag_is_not_parsed_as_both() {
+     assert_eq!(
+-        master_page_apply_to(0x8008_0000, 1, 0),
++        master_page_apply_to(0x8008_0000, 0),
+         Some(HeaderFooterApply::Odd)
+     );
+-    assert_eq!(master_page_apply_to(0x2008_0000, 1, 0), None);
+-    assert_eq!(master_page_apply_to(0xc008_0000, 2, 0), None);
++    assert_eq!(
++        master_page_apply_to(0x2008_0000, 0),
++        Some(HeaderFooterApply::Both)
++    );
++}
++
++/// 한/글 2024 가 바탕쪽 조합을 HWP 로 저장한 비트와 LIST_HEADER 순서(양쪽 → 짝수 → 홀수).
++#[test]
++fn hancom_master_page_flags_follow_both_even_odd_order() {
++    use HeaderFooterApply::{Both, Even, Odd};
++    let cases: [(u32, &[HeaderFooterApply]); 7] = [
++        (0x2000_0000, &[Both]),
++        (0x4000_0000, &[Even]),
++        (0x8000_0000, &[Odd]),
++        (0x6000_0000, &[Both, Even]),
++        (0xa000_0000, &[Both, Odd]),
++        (0xc000_0000, &[Even, Odd]),
++        (0xe000_0000, &[Both, Even, Odd]),
++    ];
++    for (flags, expected) in cases {
++        for (index, apply_to) in expected.iter().enumerate() {
++            assert_eq!(
++                master_page_apply_to(flags, index),
++                Some(*apply_to),
++                "flags=0x{flags:08x} index={index}"
++            );
++        }
++        // 비트보다 많은 LIST_HEADER(확장 바탕쪽)는 호출부의 순서 규칙에 맡긴다.
++        assert_eq!(master_page_apply_to(flags, expected.len()), None);
++    }
++    // 바탕쪽 비트가 없는 구역도 호출부의 순서 규칙을 따른다.
++    assert_eq!(master_page_apply_to(0x0008_0000, 0), None);
+ }
+ 
+ #[test]
+diff --git a/src/renderer/layout.rs b/src/renderer/layout.rs
+index 0549c2c9f..aedca78c8 100644
+--- a/src/renderer/layout.rs
++++ b/src/renderer/layout.rs
+@@ -31,7 +31,7 @@ use super::{
+ use crate::model::bin_data::BinDataContent;
+ use crate::model::control::Control;
+ use crate::model::footnote::{FootnoteShape, NumberFormat};
+-use crate::model::header_footer::MasterPage;
++use crate::model::header_footer::{HeaderFooterApply, MasterPage};
+ use crate::model::page::{PageBorderBasis, PageBorderFill};
+ use crate::model::paragraph::Paragraph;
+ use crate::model::shape::{
+@@ -6031,10 +6031,27 @@ impl LayoutEngine {
+                 // 바탕쪽 그룹에 provenance layer 부여 (#2318): layer 없는 자식(텍스트 라인 등)이
+                 // 상속받아 replay plane 분류에서 BehindText 상한이 적용된다.
+                 mp_node.layer = Some(RenderLayerInfo::new(None, 0, 0).for_master_page());
++                // 맞쪽 제본 짝수 쪽의 양쪽 바탕쪽은 홀수 쪽 자리에서 본문이 옮겨 간 만큼
++                // 통째로 옮겨 그린다(`duplex_master_page_shift_hu`). 쪽 기준 개체와 단·문단
++                // 기준 도형은 이미 짝수 쪽 본문 영역을 기준으로 하므로, 용지 기준 개체만 그
++                // 거리만큼 옮긴 사본으로 배치한다. 짝수 쪽 전용 바탕쪽은 짝수 쪽 자리에 짜여
++                // 있어 옮기지 않는다. (단·문단 기준 표와 글 문단은 아직 본문이 아니라 용지
++                // 원점에서 재는 별개의 차이가 있어 여기서 다루지 않는다.)
++                let shifted_paragraphs = (mp.apply_to == HeaderFooterApply::Both
++                    && layout.duplex_master_shift_hu != 0)
++                    .then(|| {
++                        Self::shift_master_paper_controls(
++                            &mp.paragraphs,
++                            layout.duplex_master_shift_hu,
++                        )
++                    })
++                    .flatten();
++                let mp_paragraphs: &[Paragraph] =
++                    shifted_paragraphs.as_deref().unwrap_or(&mp.paragraphs);
+                 // 바탕쪽 문단 렌더링: 컨트롤(표/도형/그림)은 compute_object_position으로 배치,
+                 // 텍스트 문단은 layout_paragraph로 배치
+                 let mut mp_y_offset = paper_area.y;
+-                for (pi, para) in mp.paragraphs.iter().enumerate() {
++                for (pi, para) in mp_paragraphs.iter().enumerate() {
+                     let has_controls = !para.controls.is_empty();
+                     if has_controls {
+                         for (ci, ctrl) in para.controls.iter().enumerate() {
+@@ -6075,7 +6092,7 @@ impl LayoutEngine {
+                                     self.layout_shape(
+                                         tree.frame_mut(),
+                                         target_node,
+-                                        &mp.paragraphs,
++                                        mp_paragraphs,
+                                         pi,
+                                         ci,
+                                         section_index,
+@@ -6239,6 +6256,56 @@ impl LayoutEngine {
+         }
+     }
+ 
++    /// 바탕쪽 문단의 용지 기준 부동 개체(표·도형·그림·수식)를 가로로 `shift_hu` 만큼
++    /// 옮긴 사본. 옮길 개체가 없으면 `None`.
++    ///
++    /// 용지 기준 가로 위치는 왼쪽·가운데·안쪽 정렬이면 `용지 왼끝 + 오프셋`, 오른쪽·바깥쪽
++    /// 정렬이면 `용지 오른끝 - 너비 - 오프셋` 이라, 오프셋을 정렬 방향에 맞춰 더하거나
++    /// 빼면 용지 원점을 옮긴 것과 같다. 표·도형·그림 경로가 저마다 용지 원점을 0 으로
++    /// 두므로 원점 대신 오프셋을 옮긴다. 개체 안의 내용은 개체를 따라간다.
++    fn shift_master_paper_controls(
++        paragraphs: &[Paragraph],
++        shift_hu: i32,
++    ) -> Option<Vec<Paragraph>> {
++        let shifts = |common: &CommonObjAttr| {
++            !common.treat_as_char && common.horz_rel_to == HorzRelTo::Paper
++        };
++        let any = paragraphs.iter().any(|para| {
++            para.controls.iter().any(|ctrl| match ctrl {
++                Control::Table(t) => shifts(&t.common),
++                Control::Shape(s) => shifts(s.common()),
++                Control::Picture(p) => shifts(&p.common),
++                Control::Equation(e) => shifts(&e.common),
++                _ => false,
++            })
++        });
++        if !any {
++            return None;
++        }
++        let mut shifted = paragraphs.to_vec();
++        for para in &mut shifted {
++            for ctrl in &mut para.controls {
++                let common = match ctrl {
++                    Control::Table(t) => &mut t.common,
++                    Control::Shape(s) => s.common_mut(),
++                    Control::Picture(p) => &mut p.common,
++                    Control::Equation(e) => &mut e.common,
++                    _ => continue,
++                };
++                if !shifts(common) {
++                    continue;
++                }
++                let delta = match common.horz_align {
++                    HorzAlign::Left | HorzAlign::Center | HorzAlign::Inside => shift_hu,
++                    HorzAlign::Right | HorzAlign::Outside => -shift_hu,
++                };
++                common.horizontal_offset =
++                    signed_hwpunit(common.horizontal_offset).wrapping_add(delta) as u32;
++            }
++        }
++        Some(shifted)
++    }
++
+     #[allow(clippy::too_many_arguments)]
+     /// 머리말·꼬리말에 직접 놓인 부동 그림.
+     ///
+@@ -7463,6 +7530,7 @@ impl LayoutEngine {
+             separator_width: 0,
+             separator_color: 0,
+             pagination_tolerance_px: 0.0,
++            duplex_master_shift_hu: 0,
+         };
+         let col_content = ColumnContent {
+             column_index: 0,
+diff --git a/src/renderer/page_layout.rs b/src/renderer/page_layout.rs
+index baec98335..f3cf8b403 100644
+--- a/src/renderer/page_layout.rs
++++ b/src/renderer/page_layout.rs
+@@ -1,7 +1,7 @@
+ //! 페이지 레이아웃 계산 (PageDef → 렌더링 영역)
+ 
+ use super::{hwpunit_to_px, DEFAULT_DPI};
+-use crate::model::page::{ColumnDef, ColumnDirection, PageAreas, PageDef};
++use crate::model::page::{BindingMethod, ColumnDef, ColumnDirection, PageAreas, PageDef};
+ use crate::model::Rect;
+ 
+ /// 페이지 레이아웃 정보 (픽셀 단위로 변환된 영역)
+@@ -32,6 +32,32 @@ pub struct PageLayoutInfo {
+     pub separator_color: u32,
+     /// 페이지네이션 하단 허용치 (px). body_area 를 변경하지 않고 paginator 에게만 추가 공간 제공.
+     pub pagination_tolerance_px: f64,
++    /// 맞쪽 제본 짝수 쪽에서 양쪽(`Both`) 바탕쪽을 옮길 가로 거리 (HWPUNIT).
++    /// 홀수 쪽·한쪽 제본·위로 넘기기는 0이다. [`duplex_master_page_shift_hu`] 참고.
++    pub duplex_master_shift_hu: i32,
++}
++
++/// 맞쪽 제본(`BindingMethod::DuplexSided`) 짝수 쪽에서 양쪽(`Both`) 바탕쪽이 옮겨 가는
++/// 가로 거리 (HWPUNIT) — 짝수 쪽 본문 왼끝에서 홀수 쪽 본문 왼끝을 뺀 값.
++///
++/// 한/글 2024 는 양쪽 바탕쪽을 홀수 쪽 자리에 짜 두고, 짝수 쪽에서는 좌우 여백이
++/// 바뀌어 본문이 옮겨 간 만큼 바탕쪽 전체를 그대로 옮겨 그린다. 왼쪽 26mm·오른쪽
++/// 40mm 맞쪽 문서의 PDF 실측: 용지 기준 표·글상자·그림은 정렬(왼쪽·가운데·오른쪽)과
++/// 상관없이 짝수 쪽에서 14mm(52.9px) 오른쪽에 그려지고, 쪽·단·문단 기준 개체와
++/// 바탕쪽 글 문단도 같은 거리만큼 옮겨진다(용지 폭 띠는 쪽 오른쪽 밖으로 나간다).
++/// 제본 여백(10mm)이 있으면 거리도 본문 왼끝 차이(15.2px)다. 마지막 쪽 바탕쪽(확장)도
++/// 같다. 짝수 쪽 전용(`Even`) 바탕쪽, 한쪽 제본, 위로 넘기기에서는 옮기지 않는다.
++/// 본문 안의 용지 기준 개체도 옮기지 않는다.
++pub fn duplex_master_page_shift_hu(page_def: &PageDef, page_number: u32) -> i32 {
++    if page_def.binding != BindingMethod::DuplexSided
++        || page_number == 0
++        || !page_number.is_multiple_of(2)
++    {
++        return 0;
++    }
++    let even = PageAreas::from_page_def_for_page(page_def, page_number).body_area;
++    let odd = PageAreas::from_page_def_for_page(page_def, 1).body_area;
++    even.left - odd.left
+ }
+ 
+ /// 레이아웃 영역 (픽셀 단위)
+@@ -118,6 +144,7 @@ impl PageLayoutInfo {
+             separator_width: column_def.separator_width,
+             separator_color: column_def.separator_color,
+             pagination_tolerance_px,
++            duplex_master_shift_hu: duplex_master_page_shift_hu(page_def, page_number),
+         }
+     }
+ 
+@@ -132,6 +159,7 @@ impl PageLayoutInfo {
+     /// 기준 x 이동량만 각 영역에 적용한다.
+     pub fn apply_page_number_margins(&mut self, page_def: &PageDef, page_number: u32) {
+         self.apply_column_page_number(page_number);
++        self.duplex_master_shift_hu = duplex_master_page_shift_hu(page_def, page_number);
+         let target_areas = PageAreas::from_page_def_for_page(page_def, page_number);
+         let target_header = LayoutRect::from_hwpunit_rect(&target_areas.header_area, self.dpi);
+         let target_body = LayoutRect::from_hwpunit_rect(&target_areas.body_area, self.dpi);
+diff --git a/src/renderer/page_number.rs b/src/renderer/page_number.rs
+index 5c0165ab4..fc1474aef 100644
+--- a/src/renderer/page_number.rs
++++ b/src/renderer/page_number.rs
+@@ -284,6 +284,7 @@ mod tests {
+             separator_width: 0,
+             separator_color: 0,
+             pagination_tolerance_px: 0.0,
++            duplex_master_shift_hu: 0,
+         }
+     }
+ 

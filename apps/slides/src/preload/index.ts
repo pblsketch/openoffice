@@ -3,16 +3,20 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
 import { outboundBridge } from '@genoffice/electron-utils/outbound-bridge'
 import { userSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
+import {
+  PROJECT_FOLDER_BRIDGE_KEY,
+  projectFolderBridge,
+} from '@genoffice/electron-utils/project-folder-bridge'
 import { USER_SKILLS_BRIDGE_KEY } from '@genoffice/electron-utils/user-skills-channels'
 import { docAttachBridge } from '@genoffice/electron-utils/doc-attach-bridge'
 import { DOC_ATTACH_BRIDGE_KEY } from '@genoffice/electron-utils/doc-attach-channels'
 import { splitPaneBridge } from '@genoffice/electron-utils/split-pane-bridge'
 import type { IpcRendererEvent } from 'electron'
-import type { RenderSlide } from '@genoffice/pptx-render'
 import type { ProjectApi } from '@genoffice/project-store'
 import { installDropOpenBridge } from '@genoffice/electron-utils/drop-open'
 import type { TemplateSelectionInput } from '../shared/template-selection'
 import type {
+  DeckChange,
   AddChartOp,
   AddElementOp,
   AiRunFailure,
@@ -410,6 +414,7 @@ const api: SlidesApi = {
   printSlides: (op: PrintSlidesOp) => ipcRenderer.invoke('slides:print', op),
   save: (auto?: boolean) => ipcRenderer.invoke('slides:save', auto === true),
   saveAs: (defaultName: string) => ipcRenderer.invoke('slides:save-as', defaultName),
+  saveIntoProject: () => ipcRenderer.invoke('slides:save-into-project'),
   onCloseSaveRequest: (handler: () => void) => {
     const listener = () => handler()
     ipcRenderer.on('slides:close-save-request', listener)
@@ -421,13 +426,8 @@ const api: SlidesApi = {
     ipcRenderer.on('slides:history-changed', listener)
     return () => ipcRenderer.removeListener('slides:history-changed', listener)
   },
-  onDeckChanged: (
-    handler: (state: { slides: RenderSlide[]; size: { cx: number; cy: number } }) => void,
-  ) => {
-    const listener = (
-      _e: IpcRendererEvent,
-      state: { slides: RenderSlide[]; size: { cx: number; cy: number } },
-    ) => handler(state)
+  onDeckChanged: (handler: (state: DeckChange) => void) => {
+    const listener = (_e: IpcRendererEvent, state: DeckChange) => handler(state)
     ipcRenderer.on('slides:deck-changed', listener)
     return () => ipcRenderer.removeListener('slides:deck-changed', listener)
   },
@@ -575,6 +575,8 @@ const projectApi: ProjectApi = {
   rebindChat: (args) => ipcRenderer.invoke('project:rebindChat', args),
 }
 contextBridge.exposeInMainWorld('projectApi', projectApi)
+// project folders (decision 0088): main identifies this window, the bridge forwards ids only
+contextBridge.exposeInMainWorld(PROJECT_FOLDER_BRIDGE_KEY, projectFolderBridge(ipcRenderer))
 
 // The shell's split panes: which pane this view is, and focus requests for it
 contextBridge.exposeInMainWorld('aiOfficeSplit', splitPaneBridge(ipcRenderer))

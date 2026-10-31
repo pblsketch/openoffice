@@ -272,6 +272,13 @@ describe('aiProviderPickerGroups', () => {
     expect(key[0]!.metered).toBe(false)
   })
 
+  it('shows the models the vendor listed for the key after the catalog (decision 0087)', () => {
+    const settings = withAnthropicKey()
+    settings.providers.anthropic.models = ['claude-opus-6', anthropicModels[1]!]
+    const key = aiProviderPickerGroups(settings, ready).find((g) => g.id === 'anthropic')!
+    expect(key.models).toEqual([...anthropicModels, 'claude-opus-6'])
+  })
+
   it('never lists a provider config stored under an id this build does not know', () => {
     const settings = defaultAiSettings()
     const stored = settings.providers as Record<string, { apiKey: string; model: string }>

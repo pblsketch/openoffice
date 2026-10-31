@@ -15,8 +15,13 @@
 import { randomBytes } from 'node:crypto'
 import { statSync } from 'node:fs'
 import { basename, dirname } from 'node:path'
-import { assertFileSaved, withoutUnsavedFiles } from '@genoffice/electron-utils/unsaved-files'
+import {
+  assertFileSaved,
+  UNSAVED_CHANGES_MESSAGE,
+  withoutUnsavedFiles,
+} from '@genoffice/electron-utils/unsaved-files'
 import { parseFileToText } from '@genoffice/file-parse'
+import type { ProjectId, ProjectReadResult } from '@genoffice/project-store'
 
 /** characters of parsed text one read_knowledge_file page returns (aligned
  *  with the chat-attachment reader, files-skill.ts, so models meet one paging
@@ -204,8 +209,27 @@ export const KB_GROUP_EMPTY = 'knowledge-base group has no starred files'
 /** how many group scopes main holds at once; the oldest is dropped (and then refused) past this */
 const KB_SCOPES_MAX = 16
 
+/**
+ * The starred part of a scope: every starred file, one group's, or none (the
+ * project scope of an editor's AI panel, which reads its project folder only).
+ */
+export type KbStarredReach = 'all' | 'none' | { group: string }
+
+interface HeldScope {
+  owner: number
+  starred: KbStarredReach
+  /** a project folder the run may also read (spec 5.5); the project tools re-check it on every call */
+  projectId: ProjectId | null
+}
+
+/**
+ * The scopes of runs (decision 0020). A scope covers a starred group, a project
+ * folder (kind "project folder", decision 0088), or both: the home ask with a
+ * project chosen reads the project folder plus its starred scope (all or one
+ * group). What a scope covers never changes after it is opened.
+ */
 export class KbRunScopes {
-  private readonly scopes = new Map<string, { owner: number; group: string }>()
+  private readonly scopes = new Map<string, HeldScope>()
 
   constructor(
     private readonly newScope: () => string = () => randomBytes(24).toString('hex'),
@@ -214,17 +238,43 @@ export class KbRunScopes {
 
   /** a scope for one run of `owner` (a webContents id) over `group`; refuses a group with no starred files */
   open(owner: number, group: unknown, groupOf: ReadonlyMap<string, string>): string {
-    if (typeof group !== 'string' || !group || ![...groupOf.values()].includes(group)) {
-      throw new Error(KB_GROUP_EMPTY)
-    }
+    return this.hold({ owner, starred: { group: checkedGroup(group, groupOf) }, projectId: null })
+  }
+
+  /**
+   * A scope for one run of `owner` over a project folder plus a starred part:
+   * 'none' for an editor's panel, 'all' or a group for the home ask. The caller
+   * has checked that the project is listed and its folder exists.
+   */
+  openProject(
+    owner: number,
+    projectId: ProjectId,
+    starred: KbStarredReach = 'none',
+    groupOf: ReadonlyMap<string, string> = new Map(),
+  ): string {
+    const reach: KbStarredReach =
+      typeof starred === 'object' ? { group: checkedGroup(starred.group, groupOf) } : starred
+    return this.hold({ owner, starred: reach, projectId })
+  }
+
+  private hold(held: HeldScope): string {
     const scope = this.newScope()
-    this.scopes.set(scope, { owner, group })
+    this.scopes.set(scope, held)
     while (this.scopes.size > this.max) {
       const oldest = this.scopes.keys().next().value
       if (oldest === undefined) break
       this.scopes.delete(oldest)
     }
     return scope
+  }
+
+  /** the held scope a call names; undefined when it names none; throws for any other value */
+  private heldFor(owner: number, raw: unknown): HeldScope | undefined {
+    const scope = raw && typeof raw === 'object' ? (raw as { scope?: unknown }).scope : undefined
+    if (scope === undefined) return undefined
+    const held = typeof scope === 'string' ? this.scopes.get(scope) : undefined
+    if (!held || held.owner !== owner) throw new Error(KB_SCOPE_UNKNOWN)
+    return held
   }
 
   /** the run is over; only the window that opened a scope can close it */
@@ -237,8 +287,8 @@ export class KbRunScopes {
   /**
    * `paths` narrowed to what this call may touch. `raw` is the call's argument
    * object; only its `scope` field is read. No scope: every path (an unscoped
-   * ask). A held scope: the paths whose group is the scope's group right now.
-   * Anything else: refused.
+   * ask). A held scope: every path ('all'), none ('none'), or the paths whose
+   * group is the scope's group right now. Anything else: refused.
    */
   narrow(
     owner: number,
@@ -246,12 +296,112 @@ export class KbRunScopes {
     paths: readonly string[],
     groupOf: () => ReadonlyMap<string, string>,
   ): string[] {
-    const scope = raw && typeof raw === 'object' ? (raw as { scope?: unknown }).scope : undefined
-    if (scope === undefined) return [...paths]
-    const held = typeof scope === 'string' ? this.scopes.get(scope) : undefined
-    if (!held || held.owner !== owner) throw new Error(KB_SCOPE_UNKNOWN)
+    const held = this.heldFor(owner, raw)
+    if (held === undefined || held.starred === 'all') return [...paths]
+    if (held.starred === 'none') return []
+    const group = held.starred.group
     const groups = groupOf()
-    return paths.filter((path) => groups.get(path) === held.group)
+    return paths.filter((path) => groups.get(path) === group)
+  }
+
+  /**
+   * The project folder the call's scope also reads, or null (no scope, or a
+   * starred-only scope). A scope main does not hold is refused, as in `narrow`.
+   */
+  projectOf(owner: number, raw: unknown): ProjectId | null {
+    return this.heldFor(owner, raw)?.projectId ?? null
+  }
+}
+
+function checkedGroup(group: unknown, groupOf: ReadonlyMap<string, string>): string {
+  if (typeof group !== 'string' || !group || ![...groupOf.values()].includes(group)) {
+    throw new Error(KB_GROUP_EMPTY)
+  }
+  return group
+}
+
+/**
+ * What `kb:open-scope` was asked for: a group name alone (as before), or
+ * `{ group, projectId }` from the home ask with a project chosen, where a
+ * missing or null group means every starred file.
+ */
+export function parseKbOpenScope(raw: unknown): { group: unknown; projectId: ProjectId | null } {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { group: raw, projectId: null }
+  const req = raw as { group?: unknown; projectId?: unknown }
+  return {
+    group: req.group ?? null,
+    projectId: typeof req.projectId === 'string' && req.projectId ? req.projectId : null,
+  }
+}
+
+// ---- the home ask with a project chosen (spec 5.5) ----
+
+/** a knowledge read reached a cloud-only project file and the person declined the download */
+export const KB_DOWNLOAD_DECLINED =
+  'the person declined to download this file, which is not on this PC'
+
+/**
+ * searchSavedKnowledgeBase widened by a project folder the run also reads.
+ * `within` is the project's "visible to the AI" test on absolute paths. The
+ * narrowing happens in the index query (`search`'s filter), so starred and
+ * project files rank together and nothing else fills the pool. Project hits
+ * keep the protections of starred ones: only files indexed as they are on
+ * disk, none open with unsaved changes. Without a project this is the starred
+ * search unchanged.
+ */
+export async function searchSavedKnowledgeWithProject(
+  search: (
+    q: string,
+    limit: number,
+    within?: (path: string) => boolean,
+  ) => ReadonlyArray<{ path: string; name: string; ext: string; snippetText?: string }>,
+  query: string,
+  starredPaths: readonly string[],
+  limit: number,
+  within: ((path: string) => boolean) | null,
+  indexedAsOnDisk: (paths: readonly string[]) => readonly string[],
+): Promise<KbSearchHit[]> {
+  if (!within) return searchSavedKnowledgeBase((q, n) => search(q, n), query, starredPaths, limit)
+  const q = query.trim().slice(0, KB_QUERY_MAX_CHARS)
+  if (!q) return []
+  const starred = new Set(await withoutUnsavedFiles(starredPaths, (path) => path))
+  const pool = search(q, KB_SEARCH_POOL, (path) => starred.has(path) || within(path))
+  const fromProject = pool.map((hit) => hit.path).filter((path) => !starred.has(path))
+  const projectOk = new Set(await withoutUnsavedFiles(indexedAsOnDisk(fromProject), (path) => path))
+  const allowed = pool
+    .map((hit) => hit.path)
+    .filter((path) => starred.has(path) || projectOk.has(path))
+  return searchKnowledgeBase(() => pool, q, allowed, limit)
+}
+
+/**
+ * One page of a knowledge read in a run that may also hold a project. A
+ * starred file the scope allows reads as before (the person chose it); else
+ * the project read decides (visibility, unsaved, size, the cloud-only
+ * question); without a project the path is outside the base.
+ */
+export async function readKnowledgeOrProjectPage(
+  path: string,
+  offset: number,
+  starredAllowed: boolean,
+  readProject: ((path: string, offset: number) => Promise<ProjectReadResult>) | null,
+): Promise<KbReadPage> {
+  if (starredAllowed) return readKnowledgeFilePage(path, offset)
+  if (!readProject) throw new Error(KB_NOT_IN_BASE)
+  const result = await readProject(path, offset)
+  if (result.status === 'ok') {
+    return { text: result.text, totalChars: result.totalChars, offset: result.offset }
+  }
+  if (result.status === 'declined') throw new Error(KB_DOWNLOAD_DECLINED)
+  switch (result.reason) {
+    case 'unsaved':
+      throw new Error(UNSAVED_CHANGES_MESSAGE)
+    case 'too-large':
+      throw new Error(`file too large to read (cap ${KB_READ_MAX_BYTES / 1024 / 1024}MB)`)
+    case 'unreadable':
+      throw new Error('unreadable file')
+    default:
+      throw new Error(KB_NOT_IN_BASE)
   }
 }
 
@@ -289,13 +439,33 @@ export interface KbCreateDeps {
   /** markdown → .docx at `out` (the bundled CLI) */
   markdownToDocx: (markdown: string, out: string) => Promise<void>
   recordRecent: (path: string) => void
+  /**
+   * A project chosen at home (spec 6): the document is made first (Word through
+   * `docxBytes`, never inside the folder) and then written by `write`, which
+   * picks a free name in the project folder through its write guard. Absent:
+   * the default save folder as before.
+   */
+  project?: {
+    write: (fileName: string, bytes: Uint8Array) => Promise<string>
+    docxBytes: (markdown: string) => Promise<Uint8Array>
+  }
 }
 
 export async function createKnowledgeDocument(
   deps: KbCreateDeps,
   req: KbCreateRequest,
 ): Promise<{ path: string }> {
-  const path = deps.uniquePath(deps.dir(), `${deps.sanitizeBase(req.title)}.${req.format}`)
+  const fileName = `${deps.sanitizeBase(req.title)}.${req.format}`
+  if (deps.project) {
+    const bytes =
+      req.format === 'md'
+        ? Buffer.from(req.content, 'utf8')
+        : await deps.project.docxBytes(req.content)
+    const written = await deps.project.write(fileName, bytes)
+    deps.recordRecent(written)
+    return { path: written }
+  }
+  const path = deps.uniquePath(deps.dir(), fileName)
   if (req.format === 'md') await deps.writeText(path, req.content)
   else await deps.markdownToDocx(req.content, path)
   deps.recordRecent(path)

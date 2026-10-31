@@ -42,7 +42,7 @@ export const en = {
     'This login is an API key or a pay-as-you-go account, or its type could not be confirmed. "Use anyway" lets AI run on this connection, and every request is billed to that account.',
   connectTitle: 'Connect an AI to get started',
   connectBody:
-    'AI runs on the Claude or Codex subscription you already have. No API key is needed.',
+    'AI runs on the Claude or ChatGPT subscription you already have. No API key is needed.',
   connectProviderTitle: 'The {provider} connection cannot be used right now',
   connectKeyBody:
     'The {provider} setup is not finished. Complete it in Settings, or choose another AI.',
@@ -65,6 +65,8 @@ export const en = {
   errFreeLimit:
     "Today's free allowance is used up. Try again tomorrow, or choose another AI in Settings.",
   errFreeLimitReset: "Today's free allowance is used up. You can use it again at {time}.",
+  errFreeTierModel:
+    "This model has no free tier, so a free key cannot use it. Pick a model the free tier covers (such as a Flash model), or turn on billing in the provider's console.",
   continueWith: 'Continue with {provider}',
   continueMeteredNote:
     'The {provider} connection is not a subscription: continuing is charged by usage.',

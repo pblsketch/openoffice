@@ -81,4 +81,6 @@ export const he = {
   errNeedsUpdate: 'התוכנה ישנה מדי למצב סוכן. יש לעדכן אותה ולנסות שוב.',
   errNotInstalled: 'התוכנה לא מותקנת.',
   errGeneric: 'משהו השתבש. אפשר לנסות שוב.',
+  documentsUnprotected:
+    'מסמכים שנפתחו לאחר תחילת ההפעלה ({n}) אינם מוגנים על ידי הגנת הכתיבה של התוכנית. עצור והתחל את ההפעלה מחדש כדי להגן עליהם.',
 } satisfies Record<keyof typeof zh, string>

@@ -1,7 +1,11 @@
 import { readFile } from 'node:fs/promises'
 import { basename, extname } from 'node:path'
 import { mergeDataFromRows, type MergeRecord } from '@genoffice/docx-engine'
-import { decodeCsvBuffer, parseCsv } from '@genoffice/xlsx-gateway/gateway/csv-import'
+import {
+  decodeCsvBuffer,
+  parseCsv,
+  resolveImportDelimiter,
+} from '@genoffice/xlsx-gateway/gateway/csv-import'
 import { readSheetRows } from '@genoffice/xlsx-gateway/gateway/xlsx-gateway'
 
 /**
@@ -39,9 +43,10 @@ export const MERGE_DATA_SOURCE_EXTENSIONS = ['xlsx', 'csv'] as const
 export async function readMergeDataSource(path: string): Promise<MergeDataSource> {
   const extension = extname(path).toLowerCase()
   const bytes = await readFile(path)
+  const csvText = extension === '.csv' ? decodeCsvBuffer(bytes) : null
   const rows =
-    extension === '.csv'
-      ? parseCsv(decodeCsvBuffer(bytes))
+    csvText !== null
+      ? parseCsv(csvText, resolveImportDelimiter(csvText))
       : extension === '.xlsx'
         ? await readSheetRows(bytes)
         : null

@@ -61,6 +61,12 @@ export interface SkillTemplatesOptions {
   ready?: boolean | undefined
   /** a request was handed over: bring the panel into view */
   onTaken?: (() => void) | undefined
+  /**
+   * The handed-over request is about to go through `send` (spec 6): the panel
+   * may save the copy into its project once that run ends well. `preview` is
+   * true for a template preview's clearing request, which is never saved there.
+   */
+  onHandedRun?: ((info: { preview: boolean }) => void) | undefined
   /** put text into the composer (a handed-over request that did not start; '' clears it) */
   setComposer?: ((text: string) => void) | undefined
   /** tests inject one; the default is the window's `aiOfficeUserSkills` */
@@ -225,6 +231,7 @@ export function useSkillTemplates(options: SkillTemplatesOptions): SkillTemplate
         use = { text: built.text, chips: taken.chips.map(chipRefOf) }
       }
       lastRequestRef.current = taken.text
+      optionsRef.current.onHandedRun?.({ preview: taken.preview !== undefined })
       const started = optionsRef.current.send?.(taken.text, use)
       if (started === false) {
         // the gate held or refused it: the request waits in the composer

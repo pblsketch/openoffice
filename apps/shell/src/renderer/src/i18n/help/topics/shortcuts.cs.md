@@ -690,6 +690,7 @@ Tyto klávesy fungují, když je karta HWP/HWPX vpředu a dokument má fokus. Dv
 | Řetězec data a času                     | ⌃K, D       | Ctrl+K, D          |
 | Upravit objekt, pole nebo tabulku/buňku | ⌃N, K       | Ctrl+N, K          |
 | Symboly                                 | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+| Převést na hanču                        | F9          | Klávesa Hanja / F9 |
 
 ### Tabulka
 

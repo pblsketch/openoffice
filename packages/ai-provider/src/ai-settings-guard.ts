@@ -215,6 +215,20 @@ export function sanitizeAiSettings(input: unknown): AiSettings | null {
   if (typeof raw.subscriptionNoticeSeen === 'boolean') {
     settings.subscriptionNoticeSeen = raw.subscriptionNoticeSeen
   }
+  if (
+    typeof raw.subscriptionNoticeVersion === 'number' &&
+    Number.isInteger(raw.subscriptionNoticeVersion) &&
+    raw.subscriptionNoticeVersion >= 0
+  ) {
+    settings.subscriptionNoticeVersion = raw.subscriptionNoticeVersion
+  }
+  if (
+    typeof raw.pdfSendNoticeSeen === 'number' &&
+    Number.isInteger(raw.pdfSendNoticeSeen) &&
+    raw.pdfSendNoticeSeen > 0
+  ) {
+    settings.pdfSendNoticeSeen = raw.pdfSendNoticeSeen
+  }
   // only an explicit false is kept: anything else is the default, on
   if (raw.internetTools === false) settings.internetTools = false
   // the read_url token is persisted in the settings file like the provider

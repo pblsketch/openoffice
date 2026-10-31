@@ -1,6 +1,6 @@
 {
   "name": "@rhwp/core",
-  "version": "0.8.7-ieum.12",
+  "version": "0.8.7-ieum.15",
   "description": "rhwp v0.8.7 HWP/HWPX engine (WebAssembly) rebuilt with the patches in ./patches",
   "private": true,
   "type": "module",
@@ -38,9 +38,15 @@
       "0017-header-footer-picture-keeps-text.patch",
       "0018-memo-support.patch",
       "0019-textbox-storage-bit.patch",
-      "0020-topbottom-float-anchor-flow.patch"
+      "0020-topbottom-float-anchor-flow.patch",
+      "0021-table-look-and-cell-first-lead.patch",
+      "0022-selection-follows-drawn-lines.patch",
+      "0023-duplex-master-page-shift.patch",
+      "0024-picture-effect-opacity.patch",
+      "0025-page-number-pages.patch",
+      "0026-hwpx-drop-rows-covered-by-merged-cells.patch"
     ],
     "wasmPack": "0.15.0",
-    "wasmSha256": "a00d6e8d37cc622bf3666db79e2fdf31230798655a1caae0c7d72e82955b298c"
+    "wasmSha256": "044a322b23e60332b9c3ebc90aecd18e0c6405c7efc99d1950d22d5b9c07984e"
   }
 }

@@ -112,9 +112,30 @@ export function parseFormulaReferences(formula: string): FormulaReference[] {
 
 const EXTERNAL_WORKBOOK_PATTERN = /\[(?:\d+|[^[\]]*\.xl\w*)\]/i
 
+/// Identifiers in an unquoted formula segment that are neither references,
+/// function calls nor TRUE/FALSE: the defined names it uses.
+function namesInSegment(segment: string): string[] {
+  // Strip references (and their qualifiers) so ref letters don't register.
+  const stripped = segment.replace(FORMULA_REFERENCE_PATTERN, (_full, lead: string) => `${lead} `)
+  const names: string[] = []
+  for (const match of stripped.matchAll(/[\p{L}_][\p{L}\p{N}_.]*/gu)) {
+    const before = match.index === 0 ? '' : (stripped[match.index - 1] ?? '')
+    if (/[\p{L}\p{N}_.$'!]/u.test(before)) continue
+    const name = match[0]
+    if (name === 'TRUE' || name === 'FALSE') continue
+    const rest = stripped.slice(match.index + name.length)
+    if (!/^\s*\(/.test(rest)) names.push(name)
+  }
+  return names
+}
+
 /// True when the formula uses an identifier that is not a function call —
 /// a defined name or an external reference the closure cannot resolve.
-export function containsUnresolvedNames(formula: string): boolean {
+/// Names in `resolvedNames` (lowercase) count as resolved.
+export function containsUnresolvedNames(
+  formula: string,
+  resolvedNames?: { has(name: string): boolean },
+): boolean {
   const segments = formula.split('"')
   for (let index = 0; index < segments.length; index += 2) {
     // [n]Sheet!ref / '[n]Sheet name'!ref / 'C:\dir\[Book.xlsx]Sheet'!ref is
@@ -122,21 +143,95 @@ export function containsUnresolvedNames(formula: string): boolean {
     // as an ordinary sheet reference, but the closure can never resolve
     // another workbook.
     if (EXTERNAL_WORKBOOK_PATTERN.test(segments[index] ?? '')) return true
-    // Strip references (and their qualifiers) so ref letters don't register.
-    const stripped = (segments[index] ?? '').replace(
-      FORMULA_REFERENCE_PATTERN,
-      (_full, lead: string) => `${lead} `,
-    )
-    for (const match of stripped.matchAll(/[\p{L}_][\p{L}\p{N}_.]*/gu)) {
-      const before = match.index === 0 ? '' : (stripped[match.index - 1] ?? '')
-      if (/[\p{L}\p{N}_.$'!]/u.test(before)) continue
-      const name = match[0]
-      if (name === 'TRUE' || name === 'FALSE') continue
-      const rest = stripped.slice(match.index + name.length)
-      if (!/^\s*\(/.test(rest)) return true
+    for (const name of namesInSegment(segments[index] ?? '')) {
+      if (!resolvedNames?.has(name.toLowerCase())) return true
     }
   }
   return false
+}
+
+/// The defined names the formula uses, lowercased.
+export function usedDefinedNames(formula: string): string[] {
+  const segments = formula.split('"')
+  const names: string[] = []
+  for (let index = 0; index < segments.length; index += 2) {
+    for (const name of namesInSegment(segments[index] ?? '')) names.push(name.toLowerCase())
+  }
+  return names
+}
+
+export interface DefinedNameInput {
+  readonly name: string
+  readonly formula: string
+  /// Set for sheet-scoped names.
+  readonly sheetIndex?: number | undefined
+}
+
+/// True when a reference in the formula is relative in any part (B1, $B1,
+/// C:C). Excel resolves a name's relative reference against the cell that
+/// uses the name; the engine pins it to the definition instead.
+function hasRelativeReference(formula: string): boolean {
+  const segments = formula.split('"')
+  for (let index = 0; index < segments.length; index += 2) {
+    for (const match of (segments[index] ?? '').matchAll(FORMULA_REFERENCE_PATTERN)) {
+      const parts = (match[3] ?? '').split(':')
+      if (parts.some((part) => !/^(?:\$[A-Z]{1,3})?(?:\$[0-9]+)?$/.test(part))) return true
+    }
+  }
+  return false
+}
+
+/// INDIRECT's text may be an R1C1 address relative to the using cell
+/// (`"rc[-1]"`), which the engine evaluates to 0, in plain cells too. The form
+/// is only known at run time, so a name calling INDIRECT keeps the cache it
+/// kept before names were recalculated. ROW(), COLUMN() and SHEET() without
+/// an argument already resolve against the using cell.
+const INDIRECT_CALL = /(?:^|[^\p{L}\p{N}_.])INDIRECT\s*\(/iu
+
+function callsIndirect(formula: string): boolean {
+  const segments = formula.split('"')
+  for (let index = 0; index < segments.length; index += 2) {
+    if (INDIRECT_CALL.test(segments[index] ?? '')) return true
+  }
+  return false
+}
+
+/// Defined names whose formulas the engine recalculates the way Excel does,
+/// lowercased and mapped to their bodies: a single workbook-scoped
+/// definition the engine accepted, with absolute references only, no
+/// INDIRECT call, and no names outside this set. Names defined at
+/// more than one scope stay out (the engine keys names by text alone and
+/// ignores the sheet-scope precedence), as do names in a reference cycle.
+/// The functions a body calls are checked per using formula, where the
+/// engine's function registry is known (see formulaKeepsCache).
+export function recalculableDefinedNames(
+  definedNames: readonly DefinedNameInput[],
+  rejected: ReadonlySet<string>,
+): Map<string, string> {
+  const byName = new Map<string, DefinedNameInput[]>()
+  for (const defined of definedNames) {
+    const key = defined.name.toLowerCase()
+    byName.set(key, [...(byName.get(key) ?? []), defined])
+  }
+  const pending = new Map<string, string>()
+  for (const [key, list] of byName) {
+    const only = list.length === 1 ? list[0] : undefined
+    if (!only || only.sheetIndex !== undefined || rejected.has(only.name)) continue
+    if (hasRelativeReference(only.formula) || callsIndirect(only.formula)) continue
+    pending.set(key, only.formula)
+  }
+  // Accept names bottom-up: a name joins once every name its body uses has.
+  const accepted = new Map<string, string>()
+  for (let grew = true; grew;) {
+    grew = false
+    for (const [key, formula] of pending) {
+      if (containsUnresolvedNames(formula, accepted)) continue
+      accepted.set(key, formula)
+      pending.delete(key)
+      grew = true
+    }
+  }
+  return accepted
 }
 
 export function computeFormulaClosure(

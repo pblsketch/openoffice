@@ -34,6 +34,7 @@ import systemPrompt from './prompts/system.md?raw'
 import { placeholderInstruction } from './redact'
 import { textForModel, redactLabelsOf } from './redact-view'
 import { redactGuardFor } from './redact-guard'
+import { isGenerationStopKind } from './generation-stop'
 
 /**
  * Slides capability as an AgentSkill: deck outline context + three tools (read structure /
@@ -173,7 +174,14 @@ export interface DeckAccess {
     /** The style is a built-in design template, or a style saved from one: its devices override the ban rules they collide with */
     templateDevices?: boolean
     signal?: AbortSignal
-  }): Promise<{ ok: boolean; marker?: string; error?: string; imageFailures?: string[] }>
+  }): Promise<{
+    ok: boolean
+    marker?: string
+    error?: string
+    imageFailures?: string[]
+    /** the run cannot go on (rate limit, signed out, credits, …): stop generating */
+    stopKind?: string
+  }>
   /**
    * In-tool Style Skill generation:
    * a dedicated LLM call focused on producing a complete structured visual style guide
@@ -185,7 +193,7 @@ export interface DeckAccess {
     questionnaire?: string
     styleHint?: string
     signal?: AbortSignal
-  }): Promise<{ ok: boolean; styleSkill?: string; error?: string }>
+  }): Promise<{ ok: boolean; styleSkill?: string; error?: string; stopKind?: string }>
   /**
    * In-tool planning: given topic + page count, the LLM produces a structured outline.
    * Fixes "missing pages at the input side" at the root — the main agent doesn't hand-write dozens of pages of pages JSON (avoids the argument being truncated by max_tokens).
@@ -206,6 +214,7 @@ export interface DeckAccess {
     // only validated field-by-field at the point of use.
     outline?: { core_hook?: unknown; pages?: unknown }
     error?: string
+    stopKind?: string
   }>
   /**
    * Persist the current draft's Style Skill as a sidecar file (same directory and name as the draft, .styleskill.json).
@@ -253,6 +262,14 @@ export interface DeckAccess {
   fitWidthPx: number
   /** Base retry backoff in ms for single-page generation failures (default 2000; tests pass 0 to disable backoff) */
   retryBackoffMs?: number
+  /**
+   * A stop kind already hit in the current run. The panel clears it before
+   * every send; the skill then refuses a second generate_deck/regenerate_slide
+   * in the same run without sending another request.
+   */
+  generationStopped?(): string | undefined
+  /** Remember the stop kind for the rest of this run (see generationStopped) */
+  markGenerationStopped?(kind: string): void
   /**
    * Names of text attachments in the current conversation that were never read with
    * read_attachment. When non-empty, generate_deck refuses to run until they are read
@@ -1960,6 +1977,12 @@ async function executeTool(
     }
 
     case 'regenerate_slide': {
+      const stopped = access.generationStopped?.()
+      if (stopped)
+        return fail(
+          t('aiFailRegen'),
+          `Generation is already stopped in this turn (${stopped}). Do not call regenerate_slide again; tell the user the connection cannot continue right now and to try again after it recovers.`,
+        )
       const idx = Number(call.input.slideIndex)
       if (!slides[idx])
         return fail(t('aiFailRegen'), `slideIndex out of range (0-${slides.length - 1})`)
@@ -1984,6 +2007,7 @@ async function executeTool(
       let marker: string | null = null
       let genImageFails: string[] = []
       let lastErr = ''
+      let regenStopKind: string | undefined
       // The document's design template and its added requests when one is selected;
       // otherwise the last style this window generated with.
       const selected = await selectedTemplateOf(access)
@@ -2013,15 +2037,28 @@ async function executeTool(
             marker = res.marker
             if ('imageFailures' in res && Array.isArray(res.imageFailures))
               genImageFails = res.imageFailures
-          } else lastErr = res.error ?? t('aiErrUnknown')
+          } else {
+            lastErr = res.error ?? t('aiErrUnknown')
+            if (isGenerationStopKind(res.stopKind)) {
+              regenStopKind = res.stopKind
+              access.markGenerationStopped?.(res.stopKind)
+              break
+            }
+          }
         }
       }
       await runRegen(access.generatePageLocal)
-      if (!marker)
+      if (!marker) {
+        if (regenStopKind)
+          return fail(
+            t('aiFailRegen'),
+            `Page generation stopped: ${lastErr}. Do not call regenerate_slide again in this turn — the connection cannot continue right now, so a retry would only spend more quota. Tell the user and try again after it recovers. The page was not modified.`,
+          )
         return fail(
           t('aiFailRegen'),
           `Page generation failed (2 attempts): ${lastErr}. This is usually a temporary service error — do not keep calling regenerate_slide in a loop. Instead, make the requested changes in place with execute_slide_script / set_element_* (group children are editable too), or tell the user to retry in a few minutes. The page was not modified.`,
         )
+      }
       const r = await access.regenerateSlide(idx, marker)
       if (!r.ok)
         return fail(
@@ -2043,6 +2080,12 @@ async function executeTool(
     }
 
     case 'generate_deck': {
+      const stopped = access.generationStopped?.()
+      if (stopped)
+        return fail(
+          t('aiFailGenDeck'),
+          `Generation is already stopped in this turn (${stopped}). Do not call generate_deck again; tell the user the connection cannot continue right now and to try again after it recovers.`,
+        )
       // ── Self-driven pipeline:
       //   1) Plan: use pages if passed; with topic, the tool plans the outline via LLM (batched recursion over threshold) — fixes missing pages at the input side.
       //   2) Generate: batched concurrent page generation (one retry per page), **each batch lands immediately → frontend shows pages one by one**.
@@ -2079,6 +2122,10 @@ async function executeTool(
       const PLAN_BATCH = 12 // Per-batch planning cap (kept slightly conservative against truncation)
       const GEN_BATCH = 2 // Per-page generation concurrency (opus large output + proxy concurrent streams time out easily; lowered to 2, stability first)
       const BACKOFF_MS = access.retryBackoffMs ?? 2000 // Retry backoff base (rate limits/overload are mostly transient; immediate retries would hit them again)
+      // A run whose connection cannot go on (limit used up, signed out, …) ends
+      // the whole generation: no more pages, no retry round.
+      let stopKind: string | undefined
+      let stopMessage = ''
 
       let coreHook = String(call.input.core_hook ?? '').trim()
       const style = String(call.input.style ?? '').trim()
@@ -2177,6 +2224,16 @@ async function executeTool(
           ...(signal ? { signal } : {}),
         })
         if (sr.ok && sr.styleSkill) styleSkill = sr.styleSkill
+        if (isGenerationStopKind(sr.stopKind)) {
+          access.markGenerationStopped?.(sr.stopKind)
+          access.onProgress?.({
+            stage: 'style',
+            label: t('aiStageStyle'),
+            status: 'error',
+            summary: t('aiFailGenDeck'),
+          })
+          return fail(t('aiFailGenDeck'), `Generation stopped: ${sr.error ?? sr.stopKind}`)
+        }
         access.onProgress?.({
           stage: 'style',
           label: t('aiStageStyle'),
@@ -2233,6 +2290,19 @@ async function executeTool(
             !Array.isArray(r.outline.pages) ||
             r.outline.pages.length === 0
           ) {
+            if (isGenerationStopKind(r.stopKind)) {
+              access.markGenerationStopped?.(r.stopKind)
+              // finalize the planning progress before the tool reports the stop
+              access.onProgress?.({
+                stage: 'plan',
+                label: t('aiStagePlan'),
+                done: 0,
+                total: approx,
+                status: 'error',
+                summary: t('aiStagePlanFailed'),
+              })
+              return fail(t('aiFailGenDeck'), `Generation stopped: ${r.error ?? r.stopKind}`)
+            }
             if (pages.length === 0) {
               // On failure the progress must be finalized, otherwise the UI spins forever at "Planning outline…"
               access.onProgress?.({
@@ -2447,6 +2517,12 @@ async function executeTool(
             return { marker: res.marker, err: '' }
           }
           lastErr = res.error ?? t('aiErrUnknown')
+          if (isGenerationStopKind(res.stopKind)) {
+            stopKind = res.stopKind
+            stopMessage = lastErr
+            access.markGenerationStopped?.(res.stopKind)
+            return { marker: null, err: lastErr }
+          }
         }
         return { marker: null, err: lastErr }
       }
@@ -2545,7 +2621,7 @@ async function executeTool(
       }
 
       for (let start = 0; start < total; start += GEN_BATCH) {
-        if (cancelled()) break
+        if (cancelled() || stopKind) break
         const batchIdxs = []
         for (let k = start; k < Math.min(start + GEN_BATCH, total); k++) batchIdxs.push(k)
         const results = await Promise.all(
@@ -2575,12 +2651,13 @@ async function executeTool(
       //   Landing-failed pages re-land (cheap: the one-slide pptx already exists). Pages whose
       //   generation failed get one more attempt here (LLM calls are the user's own quota, and
       //   a JSON spec retry is cheap).
-      if (!cancelled()) {
+      if (!cancelled() && !stopKind) {
         const retryIdxs = [...new Set([...genFailed, ...landFailed])].sort((a, b) => a - b)
         for (const idx of retryIdxs) {
-          if (cancelled()) break
+          if (cancelled() || stopKind) break
           let marker = markerByIndex[idx]
           if (!marker) marker = await genOne(pages[idx]!, idx + 1)
+          if (stopKind) break
           if (!marker) {
             pageProgressItems[idx] = {
               ...pageProgressItems[idx]!,
@@ -2630,6 +2707,30 @@ async function executeTool(
               error: pageErrors[idx],
             }
           }
+        }
+      }
+
+      // Connection lost mid-deck (limit used up, signed out, …): stop here with
+      // whatever landed. The tool result says not to call generate_deck again in
+      // this turn, so the model does not spend the next request on the same wall.
+      if (stopKind) {
+        if (state) state.htmlGenerated = landedPages > 0 || state.htmlGenerated
+        access.onProgress?.({
+          stage: 'done',
+          total: landedPages,
+          summary: landedPages > 0 ? t('aiSumStoppedKept', { n: landedPages }) : t('aiErrStopped'),
+          outcome: landedPages > 0 ? 'cancelled' : 'failed',
+        })
+        const why = stopMessage || stopKind
+        const landedNote =
+          landedPages > 0
+            ? `${landedPages} of ${total} page(s) landed and remain on the canvas.`
+            : 'No page landed.'
+        return {
+          output: `Generation stopped early: ${why} ${landedNote} Do not call generate_deck again in this turn; tell the user the connection cannot continue right now and that the remaining pages can be generated after it recovers.`,
+          isError: true,
+          mutated: landedPages > 0,
+          summary: landedPages > 0 ? t('aiSumStoppedKept', { n: landedPages }) : t('aiFailGenDeck'),
         }
       }
 

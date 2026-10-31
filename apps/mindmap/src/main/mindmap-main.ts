@@ -85,6 +85,7 @@ import type {
   OpenFileResult,
   RecoveryCopyResult,
   SaveMindmapResult,
+  SaveIntoProjectResult,
   SaveMode,
 } from '../shared/ipc'
 
@@ -100,6 +101,21 @@ interface RuntimePaths {
   /** the renderer's dev server, when one runs */
   rendererUrl?: string
   rendererFile?: string
+  /**
+   * Project folders (spec 6): the folder an untitled document's save dialog
+   * opens in for this view, or null for the default save folder.
+   */
+  newDocumentDir?: (webContentsId: number) => Promise<string | null>
+  /**
+   * Project folders (spec 6): write a new map the AI made for this view into
+   * the project its panel chose (the shell picks the folder and a free name,
+   * never over a file); resolves to the path written, or null without a project.
+   */
+  writeNewDocument?: (
+    webContentsId: number,
+    fileName: string,
+    bytes: Uint8Array,
+  ) => Promise<string | null>
 }
 
 let runtime: RuntimePaths = { preloadPath: '' }
@@ -478,7 +494,8 @@ async function resolveSaveTarget(
     ? join(dirname(current), basename(current))
     : (restoredPath ??
       join(
-        configuredDefaultSaveDir(app),
+        // an untitled map whose panel has a project starts in that folder (spec 6)
+        (await runtime.newDocumentDir?.(e.sender.id)) ?? configuredDefaultSaveDir(app),
         `${fileNameBase(defaultName) || tm('untitledFile')}${MAP_EXTENSION}`,
       ))
   const picked = await showSaveDialogWithMemory(dialog, win, {
@@ -511,6 +528,33 @@ function bytesOf(value: unknown): Uint8Array | null {
     return new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
   }
   return null
+}
+
+/**
+ * The view's map now lives at `target` (just written): later saves go there,
+ * a reload loads it, its recovery copies are done, and the shell hears of a
+ * new path.
+ */
+async function adoptWrittenPath(
+  contents: WebContents,
+  target: string,
+  previousPath: string | undefined,
+): Promise<void> {
+  const wcId = contents.id
+  savePathByWc.set(wcId, target)
+  // keep the reload path in sync: a stale openPathByWc would make a
+  // reloaded renderer load the OLD file and then save it over the new one
+  openPathByWc.set(wcId, target)
+  const allowed = allowedByWc.get(wcId) ?? new Set<string>()
+  allowed.add(target)
+  allowedByWc.set(wcId, allowed)
+  dirtyByWc.delete(wcId)
+  // the map is on disk: its recovery copies have done their part
+  viewSaved(wcId)
+  // Refresh the record for the written bytes; the view no longer edits a moved-away path
+  await rememberDiskState(wcId, target)
+  if (previousPath && previousPath !== target) forgetDiskState(wcId, previousPath)
+  if (previousPath !== target) fileSavedHook?.(contents, target)
 }
 
 let ipcRegistered = false
@@ -620,27 +664,51 @@ function registerMindmapIpc(): void {
       )
       if (target === 'canceled') return done({ ok: true, canceled: true })
       const previousPath = savePathByWc.get(wcId)
-      const isNewPath = previousPath !== target
       await atomicWriteFile(target, Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength))
-      savePathByWc.set(wcId, target)
-      // keep the reload path in sync: a stale openPathByWc would make a
-      // reloaded renderer load the OLD file and then save it over the new one
-      openPathByWc.set(wcId, target)
-      const allowed = allowedByWc.get(wcId) ?? new Set<string>()
-      allowed.add(target)
-      allowedByWc.set(wcId, allowed)
-      dirtyByWc.delete(wcId)
-      // the map is on disk: its recovery copies have done their part
-      viewSaved(wcId)
-      // Refresh the record for the written bytes; the view no longer edits a moved-away path
-      await rememberDiskState(wcId, target)
-      if (previousPath && previousPath !== target) forgetDiskState(wcId, previousPath)
-      if (isNewPath) fileSavedHook?.(e.sender, target)
+      await adoptWrittenPath(e.sender, target, previousPath)
       return done({ ok: true, path: target })
     } catch (err) {
       return done({ ok: false, error: err instanceof Error ? err.message : String(err) })
     }
   })
+
+  // Project folders (spec 6): the run a create flow handed to this untitled map
+  // ended well. The bytes go to the shell's project writer, which picks the
+  // folder from the panel's project and a free name (never over a file); the
+  // renderer offers only the map's name. The map then becomes that file like a
+  // first save. Without a project (or a shell) nothing is written: `skipped`.
+  ipcMain.handle(
+    MINDMAP_CHANNELS.saveIntoProject,
+    async (e, request: unknown): Promise<SaveIntoProjectResult> => {
+      const wcId = e.sender.id
+      const write = runtime.writeNewDocument
+      if (!write || !mayWrite(wcId) || savePathByWc.has(wcId)) return { ok: false, skipped: true }
+      const { bytes: rawBytes, defaultName } = (request ?? {}) as {
+        bytes?: unknown
+        defaultName?: unknown
+      }
+      const bytes = bytesOf(rawBytes)
+      if (!bytes) return { ok: false, error: 'mindmap: bad save request' }
+      // the bytes come from a renderer: only a map that opens is written
+      const check = await openXmind(bytes)
+      if (check.status !== 'ok') {
+        return {
+          ok: false,
+          error: `mindmap: refusing to write a map that would not open (${check.status})`,
+        }
+      }
+      const base = fileNameBase(typeof defaultName === 'string' ? defaultName : undefined)
+      try {
+        const written = await write(wcId, `${base || tm('untitledFile')}${MAP_EXTENSION}`, bytes)
+        // no project chosen, or a save that asked where landed meanwhile
+        if (!written || savePathByWc.has(wcId)) return { ok: false, skipped: true }
+        await adoptWrittenPath(e.sender, written, undefined)
+        return { ok: true, path: written }
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) }
+      }
+    },
+  )
 
   ipcMain.handle(MINDMAP_CHANNELS.openLink, async (_e, url: unknown): Promise<boolean> => {
     const target = openableLink(url)

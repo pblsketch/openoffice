@@ -25,10 +25,17 @@ import {
   docMentionActions,
   type AiComposerDocs,
   panelUserSkills,
+  panelProjectSkill,
+  placeRemoteEntries,
+  useProjectPanel,
   SkillUsedNotes,
   useSkillProposals,
   useSkillTemplates,
+  createHandedRun,
   type TemplateDocument,
+  type ProjectChatEntry,
+  type ProjectChatOpened,
+  type ProjectMemoryLine,
   type SkillChipRef,
   type SkillUse,
 } from '@genoffice/ui'
@@ -82,6 +89,7 @@ import {
   useSubscriptionConnection,
   type BlockedRun,
 } from './subscription'
+import { isGenerationStopKind } from './generation-stop'
 import { renderSlidesToPngBase64 } from '../export-render'
 import {
   isQcEnabled,
@@ -120,6 +128,9 @@ import fileVoiceIcon from '../assets/file-voice.png'
 import fileDocumentIcon from '../assets/file-document.png'
 import fileGeneralIcon from '../assets/file-general.png'
 import { IconNewChat, IconSidebarCollapseLeft } from '../components/icons'
+
+/** Another editor's tool records on a reopened message, shown as one line */
+type OtherEditorTools = NonNullable<ProjectChatEntry['otherEditorTools']>
 
 interface ToolActivity {
   name: string
@@ -300,6 +311,46 @@ interface ChatEntry {
   skillProposals?: string[]
   /** tokens the provider billed for this reply, summed across its turns (absent when unreported) */
   usage?: AiTokenUsageView
+  /** project memory lines of a reopened project message (live ones come from its tools) */
+  memory?: ProjectMemoryLine[]
+  /** another editor's tools on a reopened project message: one summary line */
+  otherEditorTools?: OtherEditorTools
+}
+
+/** A stored message (project chat or this document's chat) as this panel shows it */
+function entryFromStored(
+  m: Pick<ProjectChatEntry, 'role' | 'text' | 'tools' | 'attachments' | 'scope' | 'skills'> & {
+    skillProposals?: string[]
+    memory?: ProjectMemoryLine[]
+    otherEditorTools?: OtherEditorTools
+  },
+): ChatEntry {
+  return {
+    role: m.role,
+    text: m.text,
+    tools: m.tools?.map((t) => ({
+      name: t.name,
+      summary: t.summary,
+      isError: t.isError,
+      output: t.output ? t.output.slice(0, TOOL_OUTPUT_MAX_CHARS) : undefined,
+    })),
+    // stored metadata only: no thumbnail read for history, the chips render name/size
+    attachments: m.attachments
+      ?.filter((a) => a.path)
+      .map((a) => ({
+        name: a.name,
+        path: a.path ?? '',
+        ext: a.ext ?? '',
+        sizeBytes: a.sizeBytes ?? 0,
+      })),
+    ...(m.scope ? { scope: m.scope } : {}),
+    ...(m.role === 'user' && skillChipRefsOf(m.skills).length > 0
+      ? { skills: skillChipRefsOf(m.skills) }
+      : {}),
+    ...(m.skillProposals ? { skillProposals: m.skillProposals } : {}),
+    ...(m.memory && m.memory.length > 0 ? { memory: m.memory } : {}),
+    ...(m.otherEditorTools ? { otherEditorTools: m.otherEditorTools } : {}),
+  }
 }
 
 /** Empty deck → generation starters; deck with content → polish starters */
@@ -349,6 +400,12 @@ interface AiPanelProps {
   onPathChange?: (path: string) => void
   /** Flush pending editor state (e.g. the speaker-notes draft) right before an AI run edits the deck, so a stale draft cannot overwrite what the run writes */
   onBeforeRun?: () => Promise<void> | void
+  /**
+   * The run a create flow handed to this tab (the create window's request, a
+   * template copy's request) ended well, its layout check included: the app
+   * saves an untitled deck into the panel's project (spec 6)
+   */
+  onHandedRunDone?: () => void
   /** Generation progress callback (for the canvas top progress bar) */
   onDeckProgress?: (event: DeckProgressEvent | null) => void
   /** Absolute path of the currently open file (for chat history persistence) */
@@ -448,6 +505,7 @@ export function AiPanel({
   onCollapse,
   onPathChange,
   onBeforeRun,
+  onHandedRunDone,
   onDeckProgress,
   currentFilePath,
   editQueue,
@@ -517,6 +575,10 @@ export function AiPanel({
     send: (text, use) => runWith(text, undefined, undefined, use),
     onTaken: () => {
       if (!open) onExpand?.()
+    },
+    // a template copy's request: the deck goes into the project once it ends well
+    onHandedRun: ({ preview }) => {
+      if (!preview) handedRunRef.current.arm()
     },
     setComposer: setInput,
   })
@@ -663,6 +725,10 @@ export function AiPanel({
   onBeforeRunRef.current = onBeforeRun
   const onPathChangeRef = useRef(onPathChange)
   onPathChangeRef.current = onPathChange
+  const onHandedRunDoneRef = useRef(onHandedRunDone)
+  onHandedRunDoneRef.current = onHandedRunDone
+  /** the run a create flow handed to this tab, until it ends (spec 6) */
+  const handedRunRef = useRef(createHandedRun())
   const onDeckProgressRef = useRef(onDeckProgress)
   onDeckProgressRef.current = onDeckProgress
   /** Subscription connections (Claude, Codex) and what they allow right now */
@@ -773,47 +839,63 @@ export function AiPanel({
   const [sessionUsage, setSessionUsage] = useState<AiTokenUsageView | undefined>(undefined)
 
   // ── Chat history persistence ──────────────────────────────────────────────
-  /** Resolve chatId and load history on first mount (AiPanel resets by key; no need to watch currentFilePath changes) */
-  useEffect(() => {
+  /**
+   * The project folder (spec 5): the chip under the input, the header's chat
+   * menu, the notices, and where the chat is recorded. Without a chosen
+   * project everything below runs exactly as before.
+   */
+  const projectPanel = useProjectPanel({
+    editor: 'slides',
+    lang,
+    busy,
+    loop: () => loopRef.current,
+    onOpen: (opened) => openProjectChat(opened),
+    onRemoteMessages: (entries, running) =>
+      setChat((prev) =>
+        placeRemoteEntries(
+          prev,
+          entries.map((entry) => entryFromStored(entry)),
+          running,
+        ),
+      ),
+    onNewChat: () => newChat(),
+    consolidation: async () => {
+      // the same gate as a send: nothing goes out until a provider can run
+      if (!sendGate.admitQueued(() => {})) return null
+      const { onSubscriptionUsage, onInputTruncated } = transportHooksRef.current
+      const transport = createElectronTransport(() => settingsRef.current, {
+        onSubscriptionUsage,
+        onInputTruncated,
+      })
+      return { transport, gate: sendGate.peek }
+    },
+  })
+  const projectPanelRef = useRef(projectPanel)
+  projectPanelRef.current = projectPanel
+  /** bumped whenever a project chat opens: a per-document load still in flight is dropped */
+  const documentChatEpochRef = useRef(0)
+
+  /** Resolve chatId and load history (on first mount, and when "no project" is chosen again) */
+  const loadDocumentChat = () => {
     const api = (window as Window & { projectApi?: typeof window.projectApi }).projectApi
     if (!api) return
-    const tempChatId = `unsaved-${Date.now()}`
-    void api
-      .resolveChat({ filePath: currentFilePath ?? null, tempChatId })
-      .then((ids) => {
-        chatRefIds.current = ids
-        return api.loadChat({ projectId: ids.projectId, chatId: ids.chatId, limit: 200 })
-      })
+    const epoch = documentChatEpochRef.current
+    const known = chatRefIds.current
+    const resolved = known
+      ? Promise.resolve(known)
+      : api
+          .resolveChat({ filePath: currentFilePath ?? null, tempChatId: `unsaved-${Date.now()}` })
+          .then((ids) => {
+            chatRefIds.current = ids
+            return ids
+          })
+    void resolved
+      .then((ids) => api.loadChat({ projectId: ids.projectId, chatId: ids.chatId, limit: 200 }))
       .then((stored) => {
-        if (stored.length === 0) return
+        if (stored.length === 0 || epoch !== documentChatEpochRef.current) return
         // skill cards come back closed; a saved card's record is not part of the conversation
         const msgs = skillCardsRef.current.restore(stored)
-        setHistoricChat(
-          msgs.map((m) => ({
-            role: m.role,
-            text: m.text,
-            tools: m.tools?.map((t) => ({
-              name: t.name,
-              summary: t.summary,
-              isError: t.isError,
-              output: t.output ? t.output.slice(0, TOOL_OUTPUT_MAX_CHARS) : undefined,
-            })),
-            // stored metadata only: no thumbnail read for history, the chips render name/size
-            attachments: m.attachments
-              ?.filter((a) => a.path)
-              .map((a) => ({
-                name: a.name,
-                path: a.path ?? '',
-                ext: a.ext ?? '',
-                sizeBytes: a.sizeBytes ?? 0,
-              })),
-            ...(m.scope ? { scope: m.scope } : {}),
-            ...(m.role === 'user' && skillChipRefsOf(m.skills).length > 0
-              ? { skills: skillChipRefsOf(m.skills) }
-              : {}),
-            ...(m.skillProposals ? { skillProposals: m.skillProposals } : {}),
-          })),
-        )
+        setHistoricChat(msgs.map((m) => entryFromStored(m)))
         // the next request re-reads the current text of the skills this conversation used
         skillsRef.current.restoreHistory(
           msgs.map((m) => (m.role === 'user' ? skillChipRefsOf(m.skills) : undefined)),
@@ -824,6 +906,10 @@ export function AiPanel({
       .catch(() => {
         /* History load failures are silent */
       })
+  }
+  /** AiPanel resets by key; no need to watch currentFilePath changes */
+  useEffect(() => {
+    loadDocumentChat()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -833,8 +919,14 @@ export function AiPanel({
     void templateSelectionState.refresh()
   }, [])
 
+  /** the path the deck had when the panel last looked: a new one is a save (as) */
+  const savedPathRef = useRef(currentFilePath)
   /** After an unsaved draft lands and gets a real path, bind the unsaved-* history to that file (recoverable by path on reopen) */
   useEffect(() => {
+    if (currentFilePath && currentFilePath !== savedPathRef.current) {
+      void projectPanelRef.current.chat.documentSaved()
+    }
+    savedPathRef.current = currentFilePath
     const ids = chatRefIds.current
     const api = (window as Window & { projectApi?: typeof window.projectApi }).projectApi
     if (!api || !ids || !currentFilePath || !ids.chatId.startsWith('unsaved-')) return
@@ -867,6 +959,25 @@ export function AiPanel({
     scope?: AiScopeQuoteData,
     skillChips?: SkillChipRef[],
   ) => {
+    const record = {
+      role,
+      text,
+      ...(tools && tools.length > 0 ? { tools } : {}),
+      ...(attachments && attachments.length > 0
+        ? {
+            attachments: attachments.map((a) => ({
+              name: a.name,
+              path: a.path,
+              ext: a.ext,
+              sizeBytes: a.sizeBytes,
+            })),
+          }
+        : {}),
+      ...(scope ? { scope } : {}),
+      ...(skillChips && skillChips.length > 0 ? { skills: skillChips } : {}),
+    }
+    // a chosen project (or this document's earlier chat) records it; otherwise the per-document store
+    if (projectPanelRef.current.chat.persist(record)) return
     const ids = chatRefIds.current
     const api = (window as Window & { projectApi?: typeof window.projectApi }).projectApi
     if (!ids || !api) return
@@ -874,21 +985,7 @@ export function AiPanel({
       .appendChat({
         projectId: ids.projectId,
         chatId: ids.chatId,
-        role,
-        text,
-        ...(tools && tools.length > 0 ? { tools } : {}),
-        ...(attachments && attachments.length > 0
-          ? {
-              attachments: attachments.map((a) => ({
-                name: a.name,
-                path: a.path,
-                ext: a.ext,
-                sizeBytes: a.sizeBytes,
-              })),
-            }
-          : {}),
-        ...(scope ? { scope } : {}),
-        ...(skillChips && skillChips.length > 0 ? { skills: skillChips } : {}),
+        ...record,
       })
       .catch(() => {
         /* Silent */
@@ -934,6 +1031,8 @@ export function AiPanel({
   const queueRunResolverRef = useRef<((ok: boolean) => void) | null>(null)
   /** Pages landed by this run's generation calls, pending the post-generation layout QC pass */
   const qcPagesRef = useRef<number[]>([])
+  /** A stop kind hit in this run (limit used up, signed out, …); cleared before each send */
+  const generationStoppedRef = useRef<string | null>(null)
   const qcAbortRef = useRef<AbortController | null>(null)
   const qcRunningRef = useRef(false)
   /** Latest runQcPass closure; the loop's onDone (built once) calls through this ref */
@@ -1026,6 +1125,8 @@ export function AiPanel({
       text?: string
       error?: string
       errKind?: 'timeout' | 'empty' | 'stopped'
+      /** the run cannot go on (rate limit, signed out, …): no retry, no model fallback */
+      stopKind?: string
     }
     // These calls skip the panel's transport, so they get its context check
     // here: the same window and dialog, asked once per run (the loop's signal),
@@ -1117,6 +1218,9 @@ export function AiPanel({
                   : undefined) ??
                 chunk.error ??
                 tGlobal('aiErrUnknown'),
+              ...(isGenerationStopKind(chunk.errorCode) && chunk.errorCode
+                ? { stopKind: chunk.errorCode }
+                : {}),
               // Empty gateway streams surface as errors now (ai-provider stream.ts
               // tags them with this suffix); keep classifying them as empty output
               // so retry ladders fail fast instead of burning billed attempts
@@ -1159,8 +1263,9 @@ export function AiPanel({
         maxTokens,
       )
       if (first.ok || !useGenModel || signal?.aborted) return first
-      // Only "request errors" fall back to the user's model for a retry; timeouts/empty output don't switch models (mostly network/output problems, switching won't help)
-      if (first.errKind) return first
+      // Only "request errors" fall back to the user's model for a retry; a
+      // stopped connection and timeouts/empty output don't switch models
+      if (first.stopKind || first.errKind) return first
       const cur = settingsRef.current
       if (cur.provider !== 'anthropic') return first // The gen-model override only applies with anthropic
       if (cur.providers.anthropic?.model === SLIDES_GEN_MODEL) return first
@@ -1318,6 +1423,7 @@ export function AiPanel({
           const r = await runLlmOnce(sys, msg, 120000, true, args.signal, 16384)
           if (!r.ok || !r.text) {
             lastErr = r.error ?? tGlobal('aiErrEmptyOutput')
+            if (r.stopKind) return { ok: false, error: lastErr, stopKind: r.stopKind }
             continue
           }
           try {
@@ -1360,7 +1466,11 @@ export function AiPanel({
         const r = await runLlmOnce(sys, userMsg, undefined, true, a.signal)
         return r.ok && r.text
           ? { ok: true, styleSkill: r.text.trim() }
-          : { ok: false, error: r.error ?? tGlobal('aiErrEmptyOutput') }
+          : {
+              ok: false,
+              error: r.error ?? tGlobal('aiErrEmptyOutput'),
+              ...(r.stopKind ? { stopKind: r.stopKind } : {}),
+            }
       },
       planDeckOutline: async (a) => {
         // style is already produced independently by generateStyleSkill; this function only outputs core_hook + per-page outlines (layout chosen per the Style Skill).
@@ -1410,6 +1520,7 @@ export function AiPanel({
           const r = await runLlmOnce(sys, userMsg, undefined, true, a.signal)
           if (!r.ok || !r.text) {
             lastErr = r.error ?? tGlobal('aiErrEmptyOutput')
+            if (r.stopKind) return { ok: false, error: lastErr, stopKind: r.stopKind }
             // Empty output/timeout doesn't burn another attempt; request-level errors may retry
             if (r.errKind === 'timeout' || r.errKind === 'empty' || r.errKind === 'stopped') break
             continue
@@ -1419,6 +1530,10 @@ export function AiPanel({
           lastErr = parsed.error
         }
         return { ok: false, error: lastErr }
+      },
+      generationStopped: () => generationStoppedRef.current ?? undefined,
+      markGenerationStopped: (kind) => {
+        generationStoppedRef.current = kind
       },
       fitWidthPx,
       onProgress: (event: DeckProgressEvent) => {
@@ -1580,6 +1695,8 @@ export function AiPanel({
             }))
           },
         }),
+        // the chosen project folder: its context in the system prompt, project_* tools (app-run)
+        ...panelProjectSkill({ run: projectPanel.chat.run, lang: () => langRef.current }),
       ]),
       events: {
         onText: (text) => {
@@ -1661,11 +1778,17 @@ export function AiPanel({
             }
             return next
           })
+          const handedDone = handedRunRef.current.settle(!cancelled)
           void finishHistoryBatch().finally(() => {
             setBusy(false)
             // Post-generation layout QC: only after a completed run that landed generated pages
             if (cancelled) qcPagesRef.current = []
-            else if (qcPagesRef.current.length > 0) void runQcPassRef.current()
+            const qc =
+              !cancelled && qcPagesRef.current.length > 0
+                ? runQcPassRef.current()
+                : Promise.resolve()
+            // a handed-over run that ended well: the deck goes into the project after its check
+            if (handedDone) void qc.finally(() => onHandedRunDoneRef.current?.())
             // After the batch closes, so the next queued page opens a fresh one
             const resolveQueueRun = queueRunResolverRef.current
             queueRunResolverRef.current = null
@@ -1676,12 +1799,16 @@ export function AiPanel({
           if (!cancelled && (finalText || runToolsRef.current.length > 0)) {
             persistMessage('assistant', finalText, runToolsRef.current)
           }
+          projectPanelRef.current.finishSend()
           // A stop with nothing streamed is just the user changing their mind; a stop
           // over half-written output is the case worth keeping (runaway repetition)
           if (cancelled && streamedTextRef.current) logRunFailure('stopped')
         },
         onError: (error) => {
           logRunFailure('error', error)
+          // a failed make writes nothing: the deck stays untitled
+          handedRunRef.current.settle(false)
+          projectPanelRef.current.finishSend()
           qcPagesRef.current = []
           // A run that stopped because its connection cannot go on (limit used up, signed
           // out, program gone) gets the blocked notice; nothing switches provider by itself
@@ -1764,7 +1891,11 @@ export function AiPanel({
       }
     },
     fill: (text) => setInput(text),
-    send: (text) => runWith(text),
+    send: (text) => {
+      // the create window's request: the deck goes into the project once it ends well
+      handedRunRef.current.arm()
+      runWith(text)
+    },
   })
 
   // `open` dep: re-expanding lands on messages streamed while collapsed
@@ -1968,6 +2099,7 @@ export function AiPanel({
       { role: 'assistant', text: '', streaming: true },
     ])
     runStartedAtRef.current = Date.now()
+    generationStoppedRef.current = null
     setBusy(true)
     // Persist the user message (store display text + attachment metadata; loop.restore rebuilds model context on file reopen)
     persistMessage('user', shown, undefined, sentAtts, scope, skillUse.chips)
@@ -1992,10 +2124,13 @@ export function AiPanel({
         runStartingRef.current = false
         await onBeforeRunRef.current?.()
         if (await window.slidesApi.beginHistoryBatch()) historyBatchActiveRef.current = true
+        // the chosen project's context for this request (after the send gate, right before the run)
+        await projectPanelRef.current.prepareSend()
         loop.run(modelInstruction, images)
       })
       .catch(() => {
         runStartingRef.current = false
+        projectPanelRef.current.finishSend()
         void finishHistoryBatch().finally(() => setBusy(false))
       })
   }
@@ -2027,17 +2162,21 @@ export function AiPanel({
         { role: 'assistant', text: '', streaming: true },
       ])
       runStartedAtRef.current = Date.now()
+      generationStoppedRef.current = null
       setBusy(true)
       queueRunResolverRef.current = resolve
       void Promise.resolve(onBeforeRunRef.current?.())
         .then(() => window.slidesApi.beginHistoryBatch())
-        .then((ok) => {
+        .then(async (ok) => {
           if (ok) historyBatchActiveRef.current = true
           runStartingRef.current = false
+          // the chosen project's context for this page's request, right before the run
+          await projectPanelRef.current.prepareSend()
           loop.run(instruction)
         })
         .catch(() => {
           runStartingRef.current = false
+          projectPanelRef.current.finishSend()
           queueRunResolverRef.current = null
           void finishHistoryBatch().finally(() => setBusy(false))
           resolve(false)
@@ -2257,7 +2396,32 @@ export function AiPanel({
   const continueWith = (provider: AiSubscriptionProviderId) =>
     sendGate.continueWith(provider, retry)
 
+  /** "New chat": a new project chat when a project is chosen, else the reset as before */
   const newChat = () => {
+    resetConversation()
+    inputRef.current?.focus()
+    void projectPanelRef.current.chat.newChat()
+  }
+
+  /** a project chat, this document's earlier chat, or (no project) the per-document chat */
+  const openProjectChat = (opened: ProjectChatOpened) => {
+    documentChatEpochRef.current++
+    resetConversation()
+    if (opened.kind === 'document') {
+      loadDocumentChat()
+      return
+    }
+    // skill cards come back closed; a saved card's record is not part of the conversation
+    const msgs = skillCardsRef.current.restore(opened.entries)
+    setHistoricChat(msgs.map((m) => entryFromStored(m)))
+    skillsRef.current.restoreHistory(
+      msgs.map((m) => (m.role === 'user' ? skillChipRefsOf(m.skills) : undefined)),
+    )
+    loopRef.current?.restore(msgs.map((m) => ({ role: m.role, text: m.text })))
+  }
+
+  /** the conversation on screen, in the loop and in the composer's helpers goes away */
+  const resetConversation = () => {
     sendGate.reset()
     msgQueue.clear()
     dismissClarify()
@@ -2281,7 +2445,6 @@ export function AiPanel({
     setAttachNotice(null)
     sentAttachmentsRef.current = []
     readAttachmentPathsRef.current.clear()
-    inputRef.current?.focus()
   }
 
   const copyMessage = (text: string, idx: number) => {
@@ -2429,6 +2592,7 @@ export function AiPanel({
             lang={lang}
             onMove={(side) => window.slidesApi.setAiPanelPrefs({ side })}
           />
+          {projectPanel.chatMenu}
           {(chat.length > 0 || historicChat.length > 0) && (
             <button
               className="ai-header-btn"
@@ -2471,6 +2635,7 @@ export function AiPanel({
                 )}
                 {entry.tools && entry.tools.length > 0 && <ToolChipList tools={entry.tools} />}
                 <SkillUsedNotes tools={entry.tools} />
+                {projectPanel.messageParts(entry)}
                 {entry.skillProposals?.map((key) => skillCards.render(key))}
                 {entry.text && (
                   <div dir="auto">
@@ -2515,7 +2680,8 @@ export function AiPanel({
             !entry.text &&
             !entry.streaming &&
             !entry.error &&
-            !entry.tools?.length
+            !entry.tools?.length &&
+            !entry.otherEditorTools
           ) {
             return null
           }
@@ -2557,6 +2723,7 @@ export function AiPanel({
               )}
               {entry.tools && entry.tools.length > 0 && <ToolChipList tools={entry.tools} />}
               <SkillUsedNotes tools={entry.tools} />
+              {projectPanel.messageParts(entry)}
               {entry.skillProposals?.map((key) => skillCards.render(key))}
               {entry.role === 'assistant' && entry.usage && (
                 <div className="ai-message-usage">
@@ -2735,11 +2902,13 @@ export function AiPanel({
           {localModelCapabilities(liveSettings).tools === false && (
             <AiToolsUnsupportedNotice lang={lang} />
           )}
+          {projectPanel.notices}
           <AiSubscriptionUsageLine usage={subscriptionUsage} lang={lang} />
           <TemplatePicker
             deckEmpty={deckEmpty ?? false}
             galleryShown={!!deckEmpty && chat.length === 0 && historicChat.length === 0}
           />
+          {projectPanel.hint}
           <div className="ai-input-box">
             <AiQueueStrip
               items={msgQueue.queued}
@@ -2893,6 +3062,8 @@ export function AiPanel({
               )}
             </div>
           </div>
+          {/* the row under the input box, as the shared composer's footerBelow renders it */}
+          {projectPanel.picker && <div className="ai-input-below">{projectPanel.picker}</div>}
         </div>
       )}
     </aside>

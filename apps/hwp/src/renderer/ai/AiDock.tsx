@@ -34,6 +34,8 @@ export interface HwpAiDockProps {
   filePath: string | null
   /** the document while it can go along as a skill's template (spec 5.7) */
   templateDocument?: TemplateDocument | null
+  /** a request handed over by the check panel: fills the input box, not sent */
+  prefill?: { text: string; nonce: number } | null
 }
 
 /** The panel at the right end, or its rail while collapsed; the panel stays mounted either way. */
@@ -43,6 +45,7 @@ export function HwpAiDock({
   bridge,
   filePath,
   templateDocument,
+  prefill,
 }: HwpAiDockProps): ReactElement {
   const { lang, t } = useI18n()
   const { role, requestFocus } = useSplitPaneRole()
@@ -65,6 +68,7 @@ export function HwpAiDock({
         filePath={filePath}
         onCollapse={() => setOpen(false)}
         templateDocument={templateDocument}
+        prefill={prefill ?? null}
         onSkillHandoff={() => setOpen(true)}
       />
     </div>

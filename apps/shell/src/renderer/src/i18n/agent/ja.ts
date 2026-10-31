@@ -87,4 +87,6 @@ export const ja = {
     'プログラムが古いため、エージェントモードを使えません。更新してから、もう一度お試しください。',
   errNotInstalled: 'プログラムがインストールされていません。',
   errGeneric: '問題が発生しました。もう一度お試しください。',
+  documentsUnprotected:
+    'セッション開始後に開いた {n} 件の文書は、プログラム自身の書き込み保護の対象外です。保護するにはセッションを停止して開始し直してください。',
 } satisfies Record<keyof typeof zh, string>

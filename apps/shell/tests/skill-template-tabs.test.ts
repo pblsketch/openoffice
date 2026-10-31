@@ -127,6 +127,19 @@ describe('opening a template skill in a new tab', () => {
     expect(templates.takeHandoff('hwp', 101)).toBeNull()
   })
 
+  it('tells the shell which panel the copy was opened for, so it follows that project', async () => {
+    const followed: Array<[number, number]> = []
+    const { templates } = setup({
+      copyOpenedFor: (contents, openerId) => void followed.push([contents.id, openerId]),
+    })
+    await templates.openTemplate({ skillId: 'app:letter', text: 'x', chips: [] }, 7)
+    expect(followed).toEqual([[101, 7]])
+    // no opener (another caller), or a copy that did not open: nothing to follow
+    await templates.openTemplate({ skillId: 'app:letter', text: 'x', chips: [] })
+    await templates.openTemplate({ skillId: 'app:gone', text: 'x', chips: [] }, 7)
+    expect(followed).toEqual([[101, 7]])
+  })
+
   it('opens nothing and says so when the template file is missing', async () => {
     const { templates, opened } = setup()
     expect(await templates.openTemplate({ skillId: 'app:gone', text: 'x', chips: [] })).toEqual({

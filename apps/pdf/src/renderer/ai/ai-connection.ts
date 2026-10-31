@@ -4,9 +4,25 @@
  * notice, and which usage reports are kept. What pressing send does is the send
  * gate every editor shares (`useAiSendGate` in @genoffice/ui).
  */
-import type { AiProviderId, AiSubscriptionUsage } from '@genoffice/ai-provider/browser'
+import type { AiProviderId, AiSettings, AiSubscriptionUsage } from '@genoffice/ai-provider/browser'
 import type { IpcStreamError } from '@genoffice/agent-core'
 import { isAiBlockedRunKind, type AiBlockedRunKind } from '@genoffice/ui'
+
+/** The current PDF sentence: version 1 is the first time it is read on its own */
+export const PDF_SEND_NOTICE_VERSION = 1
+
+/**
+ * Whether the PDF editor's extra sentence is still due. It is kept apart from
+ * the general first-connection notice: that one may have been acknowledged in
+ * another editor, where this sentence is not shown.
+ */
+export function pdfSendNoticeDue(
+  settings: Pick<AiSettings, 'pdfSendNoticeSeen'> | null | undefined,
+  connected: boolean,
+): boolean {
+  if (!connected) return false
+  return (settings?.pdfSendNoticeSeen ?? 0) < PDF_SEND_NOTICE_VERSION
+}
 
 /** Why a run stopped, when its connection cannot go on (shown as the blocked notice) */
 export interface AiBlockedRun {

@@ -20,6 +20,15 @@ Der E-Book-Editor öffnet EPUB-Bücher (`.epub`) in einem Tab. Sie lesen das Buc
 - Ein Link innerhalb des Buchs führt an die verlinkte Stelle. Web- und E-Mail-Links öffnen sich in Ihrem Standardbrowser; andere Adressen werden nicht geöffnet.
 - Die eigenen Skripte des Buchs laufen nie, und nichts wird aus dem Internet geladen. Ton und Video werden nicht abgespielt.
 
+## Vorschau
+
+- Klicken Sie auf dem Tab **Start** oder **Ansicht** auf **Vorschau**, um das Buch in Seiten zu sehen, so wie ein E-Reader es zeigt. Die Vorschau öffnet sich an der Stelle, an der Sie gerade lesen.
+- Wählen Sie in der Leiste oben den Bildschirm (**E-Reader**, **Smartphone**, **Tablet** oder **An Fenster anpassen**), das Querformat, die Textgröße und den Hintergrund (Weiß, Sepia oder Dunkel). Ein breiter Bildschirm im Querformat zeigt zwei Seiten nebeneinander. Diese Einstellungen gelten nur für die Vorschau, nie für das Buch.
+- Blättern Sie mit den Pfeiltasten, Bild auf und Bild ab, der Leertaste, dem Mausrad oder den Schaltflächen an beiden Seiten. Nach der letzten Seite eines Kapitels geht es mit dem nächsten Kapitel weiter. Das Inhaltsverzeichnis und Links im Buch führen die Vorschau an die jeweilige Stelle.
+- In der Vorschau lässt sich kein Text bearbeiten. Wenn die KI das Buch ändert oder Sie eine Änderung rückgängig machen, zieht die Vorschau nach.
+- Klicken Sie auf **Vorschau schließen** oder drücken Sie Esc, um an der Stelle, die die Vorschau zeigte, weiter zu bearbeiten.
+- Seitenumbrüche weichen je nach Shop-App und Gerät etwas ab. Nehmen Sie die Vorschau als gute Annäherung.
+
 ## Text bearbeiten
 
 - Klicken Sie in einen Absatz und tippen Sie. Absätze, Überschriften, Listenpunkte, Zitate, Tabellenzellen und Bildunterschriften lassen sich bearbeiten. Bilder und der Aufbau von Tabellen nicht.
@@ -63,6 +72,6 @@ Der E-Book-Editor öffnet EPUB-Bücher (`.epub`) in einem Tab. Sie lesen das Buc
 
 - Kapitel hinzufügen, löschen oder umsortieren; Titel, Autor oder Cover ändern; Bilder oder Tabellen einfügen; einen Absatz in eine Überschrift oder Liste umwandeln.
 - Bücher mit festem Layout bearbeiten oder übersetzen und kopiergeschützte Bücher öffnen.
-- Umblättern wie in einem gedruckten Buch und ein neues, leeres Buch anlegen.
+- Ein neues, leeres Buch anlegen.
 - Original und Übersetzung im Editor nebeneinander vergleichen. Öffnen Sie stattdessen das zweisprachige Buch, und korrigieren Sie das übersetzte Buch wie jedes andere.
 - Teile eines Buchs vor der KI verbergen.

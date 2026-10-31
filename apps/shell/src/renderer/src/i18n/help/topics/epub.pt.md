@@ -20,6 +20,15 @@ O editor de livros digitais abre livros EPUB (`.epub`) em uma aba. Você lê o l
 - Um link dentro do livro leva ao lugar indicado. Links da web e de e-mail abrem no seu navegador padrão; outros endereços não são abertos.
 - Os scripts do próprio livro nunca são executados e nada é carregado da internet. Áudio e vídeo não são reproduzidos.
 
+## Pré-visualização
+
+- Clique em **Pré-visualização** na aba **Página Inicial** ou **Exibir** para ver o livro em páginas, como um leitor de e-books o mostra. A pré-visualização abre no ponto em que você está lendo.
+- Na barra de cima, escolha a tela (**Leitor de e-books**, **Celular**, **Tablet** ou **Ajustar à janela**), a orientação horizontal, o tamanho do texto e o fundo (branco, sépia ou escuro). Uma tela larga na horizontal mostra duas páginas lado a lado. Essas configurações mudam só a pré-visualização, nunca o livro.
+- Vire as páginas com as setas, Page Up e Page Down, a barra de espaço, a roda do mouse ou os botões dos dois lados. Depois da última página de um capítulo, você passa para o próximo. O sumário e os links do livro levam a pré-visualização até aquele ponto.
+- Não é possível editar o texto na pré-visualização. Quando a IA muda o livro ou você desfaz uma alteração, a pré-visualização acompanha.
+- Clique em **Fechar pré-visualização** ou pressione Esc para voltar a editar no ponto que a pré-visualização mostrava.
+- As quebras de página variam um pouco entre os apps das lojas e os dispositivos, então veja a pré-visualização como uma aproximação.
+
 ## Editar o texto
 
 - Clique em um parágrafo e digite. Parágrafos, títulos, itens de lista, citações, células de tabela e legendas de imagens podem ser editados. Imagens e a estrutura das tabelas, não.
@@ -63,6 +72,6 @@ O editor de livros digitais abre livros EPUB (`.epub`) em uma aba. Você lê o l
 
 - Adicionar, excluir ou reordenar capítulos; mudar o título, o autor ou a capa; inserir imagens ou tabelas; transformar um parágrafo em título ou lista.
 - Editar ou traduzir livros de layout fixo e abrir livros com proteção contra cópia.
-- Virar páginas como em um livro impresso e criar um livro novo e vazio.
+- Criar um livro novo e vazio.
 - Comparar o original e a tradução lado a lado dentro do editor. Em vez disso, abra o livro bilíngue e corrija o livro traduzido como qualquer outro livro.
 - Ocultar da IA partes de um livro.

@@ -40,7 +40,7 @@ export const zhTW = {
   meteredMeaning:
     '目前是以 API 金鑰或依用量付費的帳戶登入，或無法確認登入方式。選擇「仍要使用」後，AI 會透過這個連線執行，每次要求都會向該帳戶計費。',
   connectTitle: '連結 AI 即可開始使用',
-  connectBody: 'AI 會以你現有的 Claude 或 Codex 訂閱執行，不需要 API 金鑰。',
+  connectBody: 'AI 會以你現有的 Claude 或 ChatGPT 訂閱執行，不需要 API 金鑰。',
   connectProviderTitle: '{provider} 連線目前無法使用',
   connectKeyBody: '{provider} 的設定尚未完成。請在設定中完成，或選擇其他 AI。',
   errNotConnected: '尚未連結任何 AI。請先連結 Claude 或 Codex 訂閱，或連結免費 AI。',
@@ -58,6 +58,8 @@ export const zhTW = {
   actionConnectFree: '連結免費 AI',
   errFreeLimit: '今日免費額度已用完。請明天再試，或在設定中選擇其他 AI。',
   errFreeLimitReset: '今日免費額度已用完。{time} 後可再次使用。',
+  errFreeTierModel:
+    '此模型沒有免費額度，免費金鑰無法使用。請在模型清單中選擇可免費使用的模型（例如 Flash），或在該服務的主控台中開啟付費。',
   continueWith: '改用 {provider} 繼續',
   continueMeteredNote: '{provider} 連線不是訂閱：繼續使用將依用量收費。',
   usageLine: '已用 {percent}% · {time} 重設',

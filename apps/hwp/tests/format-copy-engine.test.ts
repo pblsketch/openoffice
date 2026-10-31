@@ -177,7 +177,7 @@ describe('a copied character look', () => {
 
     const target = new HwpDocument(doc.exportHwp())
     const props = t.resolveChars(bridge(target), state.chars)
-    target.applyCharFormat(0, 1, 0, 11, props)
+    target.applyCharFormat(0, 1, 0, 11, JSON.stringify(props))
     for (const current of [target, saved(target)]) {
       const chars = JSON.parse(current.getCharPropertiesAt(0, 1, 0))
       expect(chars.fontFamilies).toEqual(FAMILIES)
@@ -224,7 +224,7 @@ describe('a copied paragraph look', () => {
     expect(state.para.tabStops).toHaveLength(2)
 
     const target = new HwpDocument(doc.exportHwp())
-    target.applyParaFormat(0, 1, t.resolvePara(state.para))
+    target.applyParaFormat(0, 1, JSON.stringify(t.resolvePara(state.para)))
     for (const current of [target, saved(target)]) {
       const para = JSON.parse(current.getParaPropertiesAt(0, 1))
       expect(para).toMatchObject({

@@ -31,6 +31,9 @@ export function drivePickedOf(raw: unknown, lang: Lang): DriveAttachPicked {
   if (r.ok !== true) {
     if (r.reason === 'not-connected') return { paths: [], notes: [s.disconnected] }
     if (r.reason === 'busy') return { paths: [], notes: [s.busy] }
+    if (r.reason === 'training') return { paths: [], notes: [s.training] }
+    if (r.reason === 'free-ai') return { paths: [], notes: [s.freeAi] }
+    if (r.reason === 'failed') return { paths: [], notes: [s.pickFailed] }
     return { paths: [], notes: [] }
   }
   const paths = Array.isArray(r.paths)
@@ -44,10 +47,10 @@ export function drivePickedOf(raw: unknown, lang: Lang): DriveAttachPicked {
 }
 
 /**
- * "Attach from Google Drive" beside an AI panel's attach button (decision
- * 0033). Shown only while Drive is connected; the shell opens its Drive
- * window, downloads what the person ticks, and the editor attaches the
- * paths as it does files from this PC.
+ * "Attach from Google Drive" beside an AI panel's attach button (decisions
+ * 0033, 0085). Shown only while Drive is connected; the shell opens Google's
+ * picker in the browser, downloads what the person chooses, and the editor
+ * attaches the paths as it does files from this PC.
  */
 export function DriveAttachButton({
   lang,

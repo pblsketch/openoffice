@@ -32,6 +32,7 @@ import { applyFormatPainterClick } from './format-painter'
 import { nextSheetName } from './op-executor'
 import { handleInsertNotePicture } from './note-picture-actions'
 import {
+  comboSeriesSetDefaults,
   transposeChartSeries,
   type ChartSeriesVisualState,
 } from '@genoffice/xlsx-gateway/domain/chart-visual'
@@ -88,6 +89,7 @@ import { requestCellsAction } from './insert-delete-cells'
 import { applyRightToLeftView, sheetIsRightToLeft } from './sheet-rtl-view'
 import type { CellsMode } from './insert-delete-cells'
 import { mergeWorkbooksIntoCurrent } from './merge-workbooks'
+import { openActiveDataValidationDropdown } from './data-validation-dropdown'
 import {
   handleOpenSlicerPicker,
   handleOpenTimelinePicker,
@@ -151,6 +153,9 @@ export interface RibbonCommandContext {
     readonly canLabel: boolean
     readonly seriesCount: number
     readonly categoryCount: number
+    /// Current chart type echo ('combo' for a bar+line combo) — drives the
+    /// combo tagging of Switch Row/Column.
+    readonly currentType: string | null
     /// Current series (pending edits applied) for Switch Row/Column.
     readonly series: readonly ChartSeriesVisualState[]
   } | null
@@ -351,8 +356,18 @@ export function handleRibbonCommand(ctx: RibbonCommandContext, command: string):
       const seriesSet = transposeChartSeries(ctx.selectedChart?.series ?? [], (n) =>
         t('appSeriesN', { n }),
       )
-      if (seriesSet) ctx.chartEditRef.current(editKey, { seriesSet })
-      else ctx.setMessage(t('appNoCategoriesToSwitch'))
+      if (!seriesSet) {
+        ctx.setMessage(t('appNoCategoriesToSwitch'))
+      } else {
+        // A transposed combo keeps Insert Chart's shape; an untagged set
+        // would collapse it into plain bars.
+        ctx.chartEditRef.current(editKey, {
+          seriesSet:
+            ctx.selectedChart?.currentType === 'combo'
+              ? comboSeriesSetDefaults(seriesSet)
+              : seriesSet,
+        })
+      }
     }
     return
   }
@@ -378,6 +393,14 @@ export function handleRibbonCommand(ctx: RibbonCommandContext, command: string):
     case 'find':
       void runtime.univerAPI.executeCommand('ui.operation.open-find-dialog')
       return
+    case 'dv-dropdown-open':
+      openActiveDataValidationDropdown(runtime)
+      return
+    case 'scroll-to-active': {
+      const active = runtime.univerAPI.getActiveWorkbook()?.getActiveCell()
+      if (worksheet && active) worksheet.scrollToCell(active.getRow(), active.getColumn())
+      return
+    }
     case 'copy':
     case 'cut':
     case 'paste':
@@ -636,9 +659,27 @@ export function handleRibbonCommand(ctx: RibbonCommandContext, command: string):
           : 'sheet.command.numfmt.subtract.decimal.command',
       )
       return
-    case 'filter-toggle':
-      void runtime.univerAPI.executeCommand('sheet.command.smart-toggle-filter')
+    case 'filter-toggle': {
+      // A declined command — nothing selected, a range the filter cannot take —
+      // says nothing on its own, and a filter that never appeared reads as a dead
+      // button. While the sheet is still loading, the gate in App.tsx already
+      // says why (a footer note, a "load it all" prompt, or the projection
+      // path's own progress), so this stays quiet rather than talking over it.
+      const lazy = ctx.lazyWorkbookRef.current
+      const stillLoading = lazy !== null && !lazy.flags.preloadComplete
+      void runtime.univerAPI.executeCommand('sheet.command.smart-toggle-filter').then((ok) => {
+        if (ok !== false || stillLoading) return
+        // A canceling guard also answers `false`: when the sheet's protection
+        // has already spoken — blocked outright, or unknown while still being
+        // indexed — this notice would overwrite it with the wrong advice.
+        const state = ctx.lazyWorkbookRef.current
+        const sheetId = worksheet?.getSheetId()
+        const protection = state && sheetId ? effectiveSheetProtection(state, sheetId) : null
+        if (!protection || (protection.protected && !protection.allow.autoFilter)) return
+        ctx.setMessage(t('appFilterToggleFailed'))
+      })
       return
+    }
     case 'autofit-row-height':
     case 'autofit-col-width': {
       if (!worksheet) return
@@ -1855,6 +1896,25 @@ export function handleRibbonCommand(ctx: RibbonCommandContext, command: string):
           const dayShift = ctx.lazyWorkbookRef.current?.file.date1904 === true ? 1462 : 0
           cell.setValue(Math.floor(serial) - dayShift)
           cell.setNumberFormat('yyyy/m/d')
+        }
+        return
+      }
+      case 'copy-above': {
+        // Excel's Ctrl+' / Ctrl+Shift+": the cell above's formula text verbatim
+        // (no reference shift) or its value only, into the ACTIVE cell.
+        if (!worksheet) return
+        const active = runtime.univerAPI.getActiveWorkbook()?.getActiveCell()
+        const row = active?.getRow() ?? range.getRow()
+        const column = active?.getColumn() ?? range.getColumn()
+        if (row <= 0) return
+        const above = worksheet.getRange(row - 1, column).getCellData()
+        const target = worksheet.getRange(row, column)
+        if (argument === 'formula') {
+          const formula = above?.f
+          if (typeof formula === 'string' && formula.length > 0) target.setValue({ f: formula })
+          else if (above?.v !== undefined && above.v !== null) target.setValue(above.v)
+        } else if (above?.v !== undefined && above.v !== null) {
+          target.setValue(above.v)
         }
         return
       }

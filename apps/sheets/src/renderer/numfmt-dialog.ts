@@ -1,6 +1,8 @@
 import { numfmt } from '@univerjs/core'
 
 import { getSystemShortDate } from '@genoffice/xlsx-gateway/shared/short-date'
+import { getLang } from './i18n/locale'
+import { numfmtLocaleFor } from './i18n/numfmt-locale'
 
 /// Model behind the Format Cells → Number tab: category + sub-options ⇄
 /// OOXML pattern. The ribbon's category dropdown (number-format.ts) derives
@@ -65,11 +67,39 @@ export const DATE_PATTERNS: readonly string[] = [
   'yyyy-mm-dd hh:mm',
 ]
 
+/// Korean Excel's Date list. The US/Chinese entries above are what Excel
+/// shows in those UI languages; a Korean UI should offer the same 〜년/〜월/〜일
+/// shapes (and weekday tokens) Excel Korea lists instead.
+export const KOREAN_DATE_PATTERNS: readonly string[] = [
+  'yyyy"년" mm"월" dd"일"',
+  'yyyy-mm-dd',
+  'yy-mm-dd',
+  'mm-dd',
+  'm"월" d"일"',
+  'yyyy"년" mm"월"',
+  'yyyy"년" m"월" d"일" aaaa',
+  'yyyy"년" mm"월" dd"일" aaaa',
+  'yyyy"년" mm"월" dd"일" (aaa)',
+  'yyyy-mm-dd hh:mm',
+]
+
 /// The Date list with the workbook's system short date first, so a pattern
 /// applied by the ribbon's Short Date category classifies as Date.
-export function datePatterns(): readonly string[] {
+export function datePatterns(lang: string = getLang()): readonly string[] {
+  const base = lang === 'ko' ? KOREAN_DATE_PATTERNS : DATE_PATTERNS
   const system = getSystemShortDate()
-  return DATE_PATTERNS.includes(system) ? DATE_PATTERNS : [system, ...DATE_PATTERNS]
+  return base.includes(system) ? base : [system, ...base]
+}
+
+/// Excel Korea's Long Date sample (일요일까지 붙는 〜년 〜월 〜일 format).
+export function longDatePattern(lang: string = getLang()): string {
+  return lang === 'ko' ? 'yyyy"년" m"월" d"일" aaaa' : 'dddd, mmmm dd, yyyy'
+}
+
+/// Currency symbol a new Currency/Accounting format starts with. Excel uses
+/// the UI region's currency; Korean documents should not default to dollars.
+export function defaultCurrencySymbol(lang: string = getLang()): string {
+  return lang === 'ko' ? '₩' : '$'
 }
 
 export const TIME_PATTERNS: readonly string[] = [
@@ -103,6 +133,10 @@ export const DEFAULT_NUMFMT_OPTIONS: NumfmtOptions = {
   timePattern: 'h:mm:ss',
   fractionPattern: '# ?/?',
   custom: '',
+}
+
+export function defaultNumfmtOptions(lang: string = getLang()): NumfmtOptions {
+  return { ...DEFAULT_NUMFMT_OPTIONS, symbol: defaultCurrencySymbol(lang) }
 }
 
 export function clampDecimals(value: number): number {
@@ -182,11 +216,11 @@ export function isAccountingPattern(pattern: string): boolean {
 
 /// Best-effort reverse of numfmtPattern: extract candidate options, rebuild,
 /// and only accept on an exact round-trip; anything else lands in Custom.
-export function numfmtOptionsOf(pattern: string): NumfmtOptions {
-  const defaults = DEFAULT_NUMFMT_OPTIONS
+export function numfmtOptionsOf(pattern: string, lang: string = getLang()): NumfmtOptions {
+  const defaults = defaultNumfmtOptions(lang)
   if (!pattern || pattern === 'General') return { ...defaults, category: 'general' }
   if (pattern === '@') return { ...defaults, category: 'text' }
-  if (datePatterns().includes(pattern))
+  if (datePatterns(lang).includes(pattern))
     return { ...defaults, category: 'date', datePattern: pattern }
   if (TIME_PATTERNS.includes(pattern))
     return { ...defaults, category: 'time', timePattern: pattern }
@@ -228,9 +262,16 @@ export function numfmtOptionsOf(pattern: string): NumfmtOptions {
   return { ...defaults, category: 'custom', custom: pattern }
 }
 
-export function numfmtPreview(pattern: string, value: number | string): string {
+export function numfmtPreview(
+  pattern: string,
+  value: number | string,
+  lang: string = getLang(),
+): string {
   try {
-    return numfmt.format(pattern || 'General', value, { throws: false })
+    return numfmt.format(pattern || 'General', value, {
+      throws: false,
+      locale: numfmtLocaleFor(lang),
+    })
   } catch {
     return typeof value === 'string' ? value : String(value)
   }

@@ -34,6 +34,7 @@ export {
 export {
   ADDRESS_DECLINED,
   INTERNET_TOOLS_OFF,
+  UNVOUCHED_RESULT_TOOLS,
   addressInConversation,
   fetchedAddresses,
   guardOutbound,

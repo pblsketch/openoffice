@@ -1,5 +1,11 @@
 import { getSystemShortDate } from '@genoffice/xlsx-gateway/shared/short-date'
-import { DEFAULT_NUMFMT_OPTIONS, numfmtPattern, type NumfmtOptions } from './numfmt-dialog'
+import {
+  defaultNumfmtOptions,
+  longDatePattern,
+  numfmtPattern,
+  type NumfmtOptions,
+} from './numfmt-dialog'
+import { getLang } from './i18n/locale'
 import { numberFormatLabel } from './selection-format'
 import type { StringKey } from './i18n/locale'
 
@@ -18,41 +24,43 @@ export const NUMBER_FORMAT_LABEL: Record<string, StringKey> = {
   Text: 'dlgFcNumText',
 }
 
-const pattern = (overrides: Partial<NumfmtOptions>): string =>
-  numfmtPattern({ ...DEFAULT_NUMFMT_OPTIONS, ...overrides })
+const pattern = (overrides: Partial<NumfmtOptions>, lang: string): string =>
+  numfmtPattern({ ...defaultNumfmtOptions(lang), ...overrides })
 
 /// Excel's Number-group category dropdown: label → representative pattern,
 /// built by the same builders as the Format Cells dialog (numfmt-dialog.ts).
-/// A function because Short Date follows the workbook's system pattern.
-export function numberFormatCategories(): ReadonlyArray<{
+/// A function because Short Date follows the workbook's system pattern and
+/// currency/long-date follow the UI language.
+export function numberFormatCategories(lang: string = getLang()): ReadonlyArray<{
   readonly label: string
   readonly pattern: string
 }> {
   return [
-    { label: 'General', pattern: pattern({ category: 'general' }) },
-    { label: 'Number', pattern: pattern({ category: 'number' }) },
-    { label: 'Currency', pattern: pattern({ category: 'currency' }) },
-    { label: 'Accounting', pattern: pattern({ category: 'accounting' }) },
+    { label: 'General', pattern: pattern({ category: 'general' }, lang) },
+    { label: 'Number', pattern: pattern({ category: 'number' }, lang) },
+    { label: 'Currency', pattern: pattern({ category: 'currency' }, lang) },
+    { label: 'Accounting', pattern: pattern({ category: 'accounting' }, lang) },
     {
       label: 'Short Date',
-      pattern: pattern({ category: 'date', datePattern: getSystemShortDate() }),
+      pattern: pattern({ category: 'date', datePattern: getSystemShortDate() }, lang),
     },
     {
       label: 'Long Date',
-      pattern: pattern({ category: 'date', datePattern: 'dddd, mmmm dd, yyyy' }),
+      pattern: pattern({ category: 'date', datePattern: longDatePattern(lang) }, lang),
     },
-    { label: 'Time', pattern: pattern({ category: 'time', timePattern: 'h:mm:ss AM/PM' }) },
-    { label: 'Percentage', pattern: pattern({ category: 'percentage' }) },
-    { label: 'Fraction', pattern: pattern({ category: 'fraction' }) },
-    { label: 'Scientific', pattern: pattern({ category: 'scientific' }) },
-    { label: 'Text', pattern: pattern({ category: 'text' }) },
+    { label: 'Time', pattern: pattern({ category: 'time', timePattern: 'h:mm:ss AM/PM' }, lang) },
+    { label: 'Percentage', pattern: pattern({ category: 'percentage' }, lang) },
+    { label: 'Fraction', pattern: pattern({ category: 'fraction' }, lang) },
+    { label: 'Scientific', pattern: pattern({ category: 'scientific' }, lang) },
+    { label: 'Text', pattern: pattern({ category: 'text' }, lang) },
   ]
 }
 
 /// The dropdown echo for the current selection. The generic 'Date' category
-/// splits into Short/Long by whether the pattern spells out day or month names.
+/// splits into Short/Long by whether the pattern spells out day or month names
+/// (Korean date tokens are aaaa/aaa rather than dddd/mmm).
 export function categoryOptionForPattern(pattern: string): string {
   const label = numberFormatLabel(pattern)
   if (label !== 'Date') return label
-  return /dddd|mmmm/i.test(pattern) ? 'Long Date' : 'Short Date'
+  return /dddd|mmmm|aaaa/i.test(pattern) ? 'Long Date' : 'Short Date'
 }

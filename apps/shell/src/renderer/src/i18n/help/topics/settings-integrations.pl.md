@@ -21,6 +21,7 @@ Jasny / Ciemny / Zgodnie z systemem. Opcja Zgodnie z systemem podąża za wyglą
 - **Panel AI** — Wyłączony, Zwinięty lub Ostatni stan.
 - **Automatycznie zapisuj wszystkie dokumenty** włącza AutoSave domyślnie w każdym edytorze; nadal można je wyłączyć dla jednego okna.
 - **Lokalizacja zapisu** z przyciskiem **Zmień** oraz **Domyślna aplikacja dla dokumentów Office**, aby przejąć .docx / .xlsx / .pptx dla GenOffice.
+- **Format zapisu nowych dokumentów HWP** decyduje, czy przy pierwszym zapisie nowego dokumentu zaproponować najpierw HWP, czy HWPX. Otwarte dokumenty zachowują swój format.
 
 GenOffice nie zbiera ani nie wysyła statystyk użytkowania, więc nie ma do tego przełącznika.
 

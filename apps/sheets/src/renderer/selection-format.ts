@@ -143,10 +143,10 @@ export function numberFormatLabel(pattern: string): string {
   if (isAccountingPattern(pattern)) return 'Accounting'
   // Accounting is currency plus the aligning fill/padding tokens (_( and *).
   const quoted = pattern.match(/"[^"]*"/g)?.join('') ?? ''
-  const currency = /[$¥€£]/.test(bare + quoted) || /\[\$[^\-\]]/.test(pattern)
-  if (currency && bare.includes('_(') && bare.includes('*')) return 'Accounting'
   // Currency symbols appear bare ($#,##0), quoted ("$"#,##0), or as a
   // [$<symbol>-<locale>] prefix — a plain [$-409] locale tag is not one.
+  const currency = /[$¥€£₩]/.test(bare + quoted) || /\[\$[^\-\]]/.test(pattern)
+  if (currency && bare.includes('_(') && bare.includes('*')) return 'Accounting'
   if (currency) return 'Currency'
   if (/E[+-]/i.test(bare)) return 'Scientific'
   if (/\?\/[?\d]/.test(bare)) return 'Fraction'

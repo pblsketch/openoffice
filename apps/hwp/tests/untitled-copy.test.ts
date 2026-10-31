@@ -80,7 +80,7 @@ vi.mock('@genoffice/file-parse', () => ({
   ATTACHABLE_IMAGE_MAX_BYTES: 5 * 1024 * 1024,
 }))
 
-import { createHwpView } from '../src/main/hwp-main'
+import { configureHwpRuntime, createHwpView } from '../src/main/hwp-main'
 import { HWP_CHANNELS } from '../src/shared/ipc'
 import type { BeginSaveResult, CommitSaveResult } from '../src/shared/ipc'
 
@@ -130,6 +130,29 @@ describe('an untitled copy in an HWP tab', () => {
     expect(options.filters[0]!.extensions[0]).toBe('hwpx')
     // the temp copy was not touched
     expect([...readFileSync(copyPath)]).toEqual([...HWPX])
+  })
+
+  it('offers the project folder when its panel has a project (spec 6), else as before', async () => {
+    const project = join(dir, 'Report')
+    configureHwpRuntime({ preloadPath: '', newDocumentDir: async () => project })
+    try {
+      const contents = createHwpView(copyPath, { untitledCopy: true })
+        .webContents as unknown as FakeContents
+      await call<Promise<Uint8Array>>(HWP_CHANNELS.readFile, contents, copyPath)
+      await call<Promise<BeginSaveResult>>(HWP_CHANNELS.beginSave, contents, 'save')
+      const options = showSaveDialog.mock.calls.at(-1)!.at(-1) as { defaultPath: string }
+      expect(options.defaultPath).toBe(join(project, 'Family letter.hwpx'))
+    } finally {
+      configureHwpRuntime({ preloadPath: '', newDocumentDir: async () => null })
+    }
+    const plain = createHwpView(copyPath, { untitledCopy: true })
+      .webContents as unknown as FakeContents
+    await call<Promise<Uint8Array>>(HWP_CHANNELS.readFile, plain, copyPath)
+    await call<Promise<BeginSaveResult>>(HWP_CHANNELS.beginSave, plain, 'save')
+    const options = showSaveDialog.mock.calls.at(-1)!.at(-1) as { defaultPath: string }
+    expect(options.defaultPath).toBe(
+      join(tmpdir(), 'hwp-test-documents', 'IeumOffice', 'Family letter.hwpx'),
+    )
   })
 
   it('becomes the chosen file after its first save', async () => {

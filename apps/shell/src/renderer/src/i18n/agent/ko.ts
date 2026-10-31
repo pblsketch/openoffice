@@ -84,4 +84,6 @@ export const ko = {
     '프로그램이 에이전트 모드를 쓰기에는 오래되었습니다. 업데이트한 뒤 다시 시도하세요.',
   errNotInstalled: '프로그램이 설치되어 있지 않습니다.',
   errGeneric: '문제가 생겼습니다. 다시 시도하세요.',
+  documentsUnprotected:
+    '세션을 시작한 뒤 연 문서 {n}개는 프로그램의 직접 쓰기 보호를 받지 않습니다. 보호하려면 세션을 멈추고 다시 시작하세요.',
 } satisfies Record<keyof typeof zh, string>

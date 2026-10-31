@@ -8,6 +8,8 @@
  */
 
 export interface DocAsker {
+  /** the asking webContents (the shell adds it; the panel's project is read from it) */
+  webContentsId?: number
   /** the asking tab's id (`detached:<wcId>` for a detached window) */
   tabId?: string
   /** the asking document's saved path */

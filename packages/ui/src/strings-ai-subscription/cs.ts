@@ -42,7 +42,7 @@ export const cs = {
   meteredMeaning:
     'Toto přihlášení používá klíč API nebo účet s platbou podle spotřeby, případně se jeho typ nepodařilo zjistit. Volbou „Přesto použít“ poběží AI přes toto připojení a každý požadavek se naúčtuje tomuto účtu.',
   connectTitle: 'Začněte připojením AI',
-  connectBody: 'AI běží na předplatném Claude nebo Codex, které už máte. Klíč API není potřeba.',
+  connectBody: 'AI běží na předplatném Claude nebo ChatGPT, které už máte. Klíč API není potřeba.',
   connectProviderTitle: 'Připojení {provider} teď nelze použít',
   connectKeyBody:
     'Nastavení poskytovatele {provider} není dokončeno. Dokončete ho v Nastavení, nebo zvolte jinou AI.',
@@ -66,6 +66,8 @@ export const cs = {
   errFreeLimit:
     'Dnešní bezplatný limit je vyčerpán. Zkuste to zítra, nebo v Nastavení zvolte jinou AI.',
   errFreeLimitReset: 'Dnešní bezplatný limit je vyčerpán. Znovu ho můžete použít v {time}.',
+  errFreeTierModel:
+    'Tento model nemá bezplatnou úroveň, takže ho bezplatný klíč nemůže používat. Vyberte model z bezplatné úrovně (třeba model Flash), nebo zapněte fakturaci v konzoli poskytovatele.',
   continueWith: 'Pokračovat s {provider}',
   continueMeteredNote:
     'Připojení {provider} není předplatné: pokračování se účtuje podle spotřeby.',

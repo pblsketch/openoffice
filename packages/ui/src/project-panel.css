@@ -1,0 +1,497 @@
+/* Project-folder parts of the AI panel (ProjectPicker, ProjectChatMenu,
+ * ProjectNotices) and the row under the input box (AiComposer `footerBelow`).
+ * Chrome tokens only. Sections are told apart by background, border and
+ * weight; no colored edge bars. Every rule is anchored on an .ai-project- or
+ * .ai-input-below root. */
+
+/* ---- the row under the input box ---- */
+
+.ai-input-below {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 2px 0;
+}
+
+/* ---- chips: the project chip and the chat title button ---- */
+
+.ai-project-picker,
+.ai-project-chat-menu {
+  display: inline-flex;
+  min-width: 0;
+}
+
+/* The chat title in a panel header gives way to the header's buttons: a long
+ * title ends in "…" and the buttons beside it never shrink or leave the
+ * panel. Anchored on the chat menu, so every header that holds it follows. */
+.ai-project-chat-menu {
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+
+:has(> .ai-project-chat-menu) {
+  min-width: 0;
+}
+
+:has(> .ai-project-chat-menu) > :not(.ai-project-chat-menu) {
+  flex-shrink: 0;
+}
+
+.ai-project-chip,
+.ai-project-chat-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  max-width: 240px;
+  min-width: 0;
+  padding: 0 7px 0 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-30);
+  background: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: var(--text-caption);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.ai-project-chip.is-none {
+  color: var(--text-tertiary);
+}
+
+.ai-project-chip:hover,
+.ai-project-chip.open,
+.ai-project-chat-button:hover,
+.ai-project-chat-button.open {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.ai-project-chip:focus-visible,
+.ai-project-chat-button:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.ai-project-chip:disabled,
+.ai-project-chat-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ai-project-chat-button {
+  max-width: min(240px, 100%);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ai-project-chip-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+}
+
+.ai-project-chip-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-project-chip-caret {
+  flex-shrink: 0;
+  display: inline-flex;
+  color: var(--text-dim);
+}
+
+/* ---- popover (project list and chat menu) ---- */
+
+.ai-project-pop {
+  position: fixed;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  max-width: calc(100vw - 16px);
+  padding: 4px;
+  box-sizing: border-box;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-8);
+  box-shadow: var(--shadow-menu);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.ai-project-search {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: 28px;
+  margin-bottom: 4px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-6);
+  background: var(--surface-subtle);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.ai-project-search:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.ai-project-search::placeholder {
+  color: var(--text-tertiary);
+}
+
+.ai-project-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.ai-project-group + .ai-project-group {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.ai-project-group-label {
+  padding: 5px 8px 3px;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ai-project-sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--border-subtle);
+}
+
+.ai-project-empty {
+  padding: 6px 8px;
+  color: var(--text-tertiary);
+}
+
+/* "+ New project" with nothing typed: asks for the name under the search field */
+.ai-project-hint {
+  flex-shrink: 0;
+  margin: -2px 0 4px;
+  padding: 0 8px;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+/* ---- rows ---- */
+
+.ai-project-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 30px;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  border-radius: var(--radius-6);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.ai-project-row.is-active {
+  background: var(--bg-hover-strong);
+}
+
+.ai-project-row-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  color: var(--text-secondary);
+}
+
+.ai-project-row-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ai-project-row-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.ai-project-row-project .ai-project-row-name,
+.ai-project-chat-row .ai-project-row-name {
+  font-weight: 500;
+}
+
+.ai-project-row.is-chosen .ai-project-row-name {
+  font-weight: 600;
+}
+
+.ai-project-row-path,
+.ai-project-row-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+.ai-project-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-project-row-check {
+  flex-shrink: 0;
+  display: inline-flex;
+  color: var(--text-secondary);
+}
+
+.ai-project-row-create .ai-project-row-name {
+  font-weight: 600;
+}
+
+.ai-project-row-create-elsewhere .ai-project-row-name {
+  color: var(--text-secondary);
+}
+
+.ai-project-row-none .ai-project-row-name,
+.ai-project-row-legacy .ai-project-row-name {
+  color: var(--text-secondary);
+}
+
+/* a folder that is gone: dimmed, still clickable to relocate */
+.ai-project-row.is-missing .ai-project-row-icon,
+.ai-project-row.is-missing .ai-project-row-name,
+.ai-project-row.is-missing .ai-project-row-path {
+  color: var(--text-tertiary);
+}
+
+.ai-project-badge {
+  flex-shrink: 0;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-30);
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+/* hover actions: shown on the hovered or highlighted row only */
+.ai-project-row-actions {
+  flex-shrink: 0;
+  display: none;
+  align-items: center;
+  gap: 2px;
+}
+
+.ai-project-row:hover .ai-project-row-actions,
+.ai-project-row.is-active .ai-project-row-actions {
+  display: inline-flex;
+}
+
+.ai-project-row:hover .ai-project-row-check,
+.ai-project-row.is-active .ai-project-row-check {
+  display: none;
+}
+
+.ai-project-row-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-6);
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ai-project-row-action:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.ai-project-row-action.ai-project-row-remove:hover {
+  color: var(--danger);
+}
+
+.ai-project-rename {
+  box-sizing: border-box;
+  width: 100%;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-6);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.ai-project-rename:focus {
+  outline: none;
+}
+
+/* "move this chat to the trash?" asked in the row before it goes */
+.ai-project-confirm-text {
+  min-width: 0;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.ai-project-confirm-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.ai-project-confirm-delete {
+  color: var(--danger);
+}
+
+.ai-project-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---- notice lines ---- */
+
+.ai-project-notices {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ai-project-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-8);
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ai-project-notice.warning {
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--text);
+}
+
+.ai-project-notice-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  color: var(--text-secondary);
+}
+
+.ai-project-notice-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ai-project-notice-close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-6);
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.ai-project-notice-close:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.ai-project-link {
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.ai-project-link:hover {
+  color: var(--text-primary);
+}
+
+.ai-project-link:focus-visible,
+.ai-project-notice-close:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---- event lines in the chat (memory, consolidation, tool summary) ---- */
+
+.ai-project-event {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  padding: 2px 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.ai-project-event-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-self: center;
+}
+
+.ai-project-event-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ai-project-event .ai-project-link {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.ai-project-event-note {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}

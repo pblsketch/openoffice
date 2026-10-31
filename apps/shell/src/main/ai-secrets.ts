@@ -44,11 +44,16 @@ const LINUX_KEYRINGS: ReadonlySet<string> = new Set([
   'kwallet6',
 ])
 
+/** Whether a real keyring holds the safeStorage key (Linux only) */
+export function linuxKeyringSeals(storage: SafeStorageLike): boolean {
+  return LINUX_KEYRINGS.has(storage.getSelectedStorageBackend?.() ?? '')
+}
+
 /** Whether this platform seals at all, apart from the key being ready */
 export function platformSeals(storage: SafeStorageLike, platform: NodeJS.Platform): boolean {
   if (!storage.isEncryptionAvailable()) return false
   if (platform === 'win32') return true
-  if (platform === 'linux') return LINUX_KEYRINGS.has(storage.getSelectedStorageBackend?.() ?? '')
+  if (platform === 'linux') return linuxKeyringSeals(storage)
   return false
 }
 

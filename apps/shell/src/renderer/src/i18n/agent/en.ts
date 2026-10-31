@@ -83,4 +83,6 @@ export const en = {
   errNeedsUpdate: 'The program is too old for agent mode. Update it and try again.',
   errNotInstalled: 'The program is not installed.',
   errGeneric: 'Something went wrong. Try again.',
+  documentsUnprotected:
+    'Documents opened after the session started ({n}) are outside the program’s own write protection. Stop and start the session again to protect them.',
 } satisfies Record<keyof typeof zh, string>

@@ -71,7 +71,7 @@ function notConnectedText(
   texts: AiRunTexts,
 ): string {
   const provider = choice.provider
-  if (!provider) return 'No AI is connected. Connect a Claude or Codex subscription first.'
+  if (!provider) return 'No AI is connected. Connect a Claude or ChatGPT subscription first.'
   if (choice.reason === 'not-configured') {
     return settings.providers[provider]?.model?.trim() ? texts.noApiKey(provider) : texts.noModel()
   }

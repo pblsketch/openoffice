@@ -20,6 +20,15 @@ The e-book editor opens EPUB books (`.epub`) in a tab. You read the book, correc
 - A link inside the book moves to that place. Web and email links open in your default browser; other addresses are not opened.
 - The book's own scripts never run and nothing is loaded from the internet. Sound and video do not play.
 
+## Preview
+
+- Click **Preview** on the **Home** or **View** tab to see the book in pages, the way an e-reader shows it. It opens where you are reading.
+- In the bar at the top, choose the screen (**E-reader**, **Phone**, **Tablet** or **Fit to window**), landscape, the text size and the paper (white, sepia or dark). A wide screen turned on its side shows two pages side by side. These settings change only the preview, never the book.
+- Turn pages with the arrow keys, Page Up and Page Down, the space bar, the mouse wheel or the buttons on either side. Turning past the last page of a chapter goes on to the next chapter. The contents and the links in the book move the preview to that place.
+- Text cannot be edited in the preview. When the AI changes the book or you undo a change, the preview follows.
+- Click **Close preview** or press Esc to go back to editing, at the place the preview was showing.
+- Page breaks differ a little between store apps and devices, so take the preview as a close approximation.
+
 ## Editing text
 
 - Click a paragraph and type. Paragraphs, headings, list items, quotes, table cells and picture captions can be edited. Pictures and the layout of tables cannot.
@@ -63,6 +72,6 @@ The e-book editor opens EPUB books (`.epub`) in a tab. You read the book, correc
 
 - Adding, deleting or reordering chapters; changing the title, author or cover; inserting pictures or tables; turning a paragraph into a heading or a list.
 - Editing or translating fixed-layout books, and opening copy-protected books.
-- Turning pages like a printed book, and creating a new, empty book.
+- Creating a new, empty book.
 - Comparing the original and the translation side by side inside the editor. Open the bilingual book instead, and correct the translated book like any other book.
 - Hiding parts of a book from the AI.

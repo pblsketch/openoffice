@@ -44,6 +44,7 @@ Menu Fichier, tout est local et tout demande où mettre le résultat :
 
 La barre d’outils porte un interrupteur **Source** (localisé avec l’application). Activez-le et l’éditeur cède la place au Markdown brut : exactement le texte qu’écrit un enregistrement, rien d’habillé, rien de normalisé sous vos pieds.
 
+- **Clavier** : Ctrl+E (⌘E sur Mac) bascule entre la vue source et le canevas d'édition rendu. Appuyez sur F5 pour lire en plein écran.
 - **L’édition est fidèle octet pour octet.** Un enregistrement depuis la vue source produit les mêmes octets qu’un enregistrement depuis l’éditeur — le BOM, les CRLF et la présence d’un saut de ligne final survivent tous.
 - **C’est le même document.** Basculez librement dans les deux sens ; la source est le texte de l’éditeur lui-même, pas une copie qu’il faudrait fusionner.
 - **La barre de mise en forme est indisponible** tant que la vue est ouverte, parce que la plupart de ces boutons insèrent des constructions d’éditeur qui n’ont de sens que du côté rendu. Elle revient quand vous fermez la vue.

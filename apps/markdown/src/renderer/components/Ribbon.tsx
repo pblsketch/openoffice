@@ -12,6 +12,7 @@ import {
   useRibbonCollapse,
 } from '@genoffice/ui'
 import { useI18n } from '../i18n/locale'
+import { SOURCE_VIEW_SHORTCUT } from '../source-view-key'
 import { MARKDOWN_THEME_IDS, type MarkdownTheme } from '../../shared/markdown-theme'
 import type { StringKey } from '../i18n/locale'
 import { uiOp, type BlockType, type ListKind, type StylableMark } from '../editor/ops'
@@ -31,6 +32,8 @@ import {
   IconEyeOff,
   IconSourceCode,
   IconBacklinks,
+  IconBlockLink,
+  IconTag,
   IconGraph,
   IconSpellcheck,
   IconTable,
@@ -60,8 +63,12 @@ interface Props {
   outlineOpen: boolean
   onToggleOutline: () => void
   backlinksOpen: boolean
+  tagsOpen: boolean
+  onToggleTags: () => void
   onToggleBacklinks: () => void
   onOpenGraph: () => void
+  /** put a `[[Note#^id]]` for the block at the caret on the clipboard */
+  onCopyBlockLink: () => void
   spellcheck: boolean
   onToggleSpellcheck: () => void
   mdTheme: MarkdownTheme
@@ -230,12 +237,15 @@ function IconBtn({
   title,
   active,
   disabled,
+  shortcut,
   onClick,
   children,
 }: {
   title: string
   active?: boolean
   disabled?: boolean
+  /** shown after the label in the ScreenTip; the accessible name stays `title` */
+  shortcut?: string
   onClick: () => void
   children: ReactNode
 }) {
@@ -243,7 +253,7 @@ function IconBtn({
     <button
       type="button"
       className={`rb-btn${active ? ' active' : ''}`}
-      data-tip={title}
+      data-tip={shortcut ? `${title} (${shortcut})` : title}
       aria-label={title}
       disabled={disabled}
       onMouseDown={(e) => e.preventDefault()}
@@ -273,8 +283,11 @@ export function Ribbon({
   outlineOpen,
   onToggleOutline,
   backlinksOpen,
+  tagsOpen,
+  onToggleTags,
   onToggleBacklinks,
   onOpenGraph,
+  onCopyBlockLink,
   spellcheck,
   onToggleSpellcheck,
   mdTheme,
@@ -571,6 +584,9 @@ export function Ribbon({
                   </span>
                 )}
               </span>
+              <IconBtn title={t('blockLink')} disabled={off} onClick={onCopyBlockLink}>
+                <IconBlockLink size={ICON} />
+              </IconBtn>
             </div>
           </div>
         )}
@@ -650,6 +666,7 @@ export function Ribbon({
             {!sourceMode && (
               <IconBtn
                 title={t('sourceView')}
+                shortcut={SOURCE_VIEW_SHORTCUT}
                 active={sourceViewOpen}
                 disabled={disabled}
                 onClick={onToggleSource}
@@ -690,6 +707,16 @@ export function Ribbon({
                 onClick={onToggleBacklinks}
               >
                 <IconBacklinks size={ICON} />
+              </IconBtn>
+            )}
+            {!sourceMode && (
+              <IconBtn
+                title={t('tags')}
+                active={tagsOpen}
+                disabled={disabled}
+                onClick={onToggleTags}
+              >
+                <IconTag size={ICON} />
               </IconBtn>
             )}
             {!sourceMode && (

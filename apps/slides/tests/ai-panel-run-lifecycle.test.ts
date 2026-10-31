@@ -598,7 +598,11 @@ describe('AiPanel subscription gate (slides)', () => {
     await flushEffects()
 
     expect(setAiSettings).toHaveBeenCalledTimes(1)
-    expect(setAiSettings.mock.calls[0]![0]).toEqual({ ...stored, subscriptionNoticeSeen: true })
+    expect(setAiSettings.mock.calls[0]![0]).toEqual({
+      ...stored,
+      subscriptionNoticeSeen: true,
+      subscriptionNoticeVersion: 2,
+    })
     expect(agentHarness.run).toHaveBeenCalledTimes(1)
   })
 })

@@ -3,6 +3,10 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
 import { outboundBridge } from '@genoffice/electron-utils/outbound-bridge'
 import { userSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
+import {
+  PROJECT_FOLDER_BRIDGE_KEY,
+  projectFolderBridge,
+} from '@genoffice/electron-utils/project-folder-bridge'
 import { USER_SKILLS_BRIDGE_KEY } from '@genoffice/electron-utils/user-skills-channels'
 import { docAttachBridge } from '@genoffice/electron-utils/doc-attach-bridge'
 import { DOC_ATTACH_BRIDGE_KEY } from '@genoffice/electron-utils/doc-attach-channels'
@@ -54,6 +58,7 @@ const core: MindmapCoreApi = {
   consumePending: () => ipcRenderer.invoke(MINDMAP_CHANNELS.consumePending),
   openFile: (path) => ipcRenderer.invoke(MINDMAP_CHANNELS.openFile, path),
   save: (request) => ipcRenderer.invoke(MINDMAP_CHANNELS.save, request),
+  saveIntoProject: (request) => ipcRenderer.invoke(MINDMAP_CHANNELS.saveIntoProject, request),
   setDirty: (dirty) => ipcRenderer.send(MINDMAP_CHANNELS.dirtyChanged, dirty),
   onSaveRequest: (handler) => listen<[SaveMode]>(MINDMAP_CHANNELS.saveRequest, handler),
   sendSaveRequestAck: (ok) => ipcRenderer.send(MINDMAP_CHANNELS.saveRequestAck, ok),
@@ -232,6 +237,8 @@ contextBridge.exposeInMainWorld(DOC_ATTACH_BRIDGE_KEY, docAttachBridge())
 // The shell's split panes: this view's pane role, and its way to ask for focus
 contextBridge.exposeInMainWorld(SPLIT_PANE_BRIDGE_KEY, splitPaneBridge(ipcRenderer))
 contextBridge.exposeInMainWorld('projectApi', projectApi)
+// project folders (decision 0088): main identifies this window, the bridge forwards ids only
+contextBridge.exposeInMainWorld(PROJECT_FOLDER_BRIDGE_KEY, projectFolderBridge(ipcRenderer))
 
 // open documents dragged from the OS onto this tab as a new shell tab
 installDropOpenBridge()

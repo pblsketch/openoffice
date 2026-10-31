@@ -31,6 +31,7 @@ import {
   AiUsageChip,
   addTokenUsage,
   aiSubscriptionText,
+  changeStoredAiSettings,
   useAiSendGate,
   useChatRunQueue,
   NO_SKILL_USE,
@@ -38,6 +39,9 @@ import {
   skillChipRefsOf,
   useComposerSkills,
   panelUserSkills,
+  panelProjectSkill,
+  placeRemoteEntries,
+  useProjectPanel,
   SkillUsedNotes,
   useSkillProposals,
   useSkillTemplates,
@@ -45,6 +49,9 @@ import {
   type AiScopeQuoteData,
   type AiTokenUsageView,
   type ChatRunQueue,
+  type ProjectChatEntry,
+  type ProjectChatOpened,
+  type ProjectMemoryLine,
   type SkillChipRef,
   type SkillUse,
 } from '@genoffice/ui'
@@ -55,11 +62,20 @@ import sendEnterOff from '../assets/send-enter-off.png'
 import sendStop from '../assets/send-stop.png'
 import { createPdfSkill } from './pdf-skill'
 import { createElectronTransport } from './transport'
-import { aiBlockedRunOf, mergeSubscriptionUsage, type AiBlockedRun } from './ai-connection'
+import {
+  aiBlockedRunOf,
+  mergeSubscriptionUsage,
+  pdfSendNoticeDue,
+  PDF_SEND_NOTICE_VERSION,
+  type AiBlockedRun,
+} from './ai-connection'
 import { useSubscriptionConnection } from './useSubscriptionConnection'
 import { PDF_NAV_SCHEME, parsePdfNavHref, type PdfNavTarget } from './pdf-nav'
 import type { FileOpConfirm, PdfAiDeps, PdfAppDeps } from './tools'
 import { withFollowUp, type FollowUpSelection } from '../reading/passage-cards'
+
+/** Another editor's tool records on a reopened message, shown as one line */
+type OtherEditorTools = NonNullable<ProjectChatEntry['otherEditorTools']>
 
 // Word-parity count (same as docs/markdown): Asian chars one by one + non-Asian words
 const ASIAN_RE =
@@ -115,6 +131,31 @@ interface ChatEntry {
   skillProposals?: string[]
   /** tokens the provider billed for this reply, summed across its turns (absent when unreported) */
   usage?: AiTokenUsageView
+  /** project memory lines of a reopened project message (live ones come from its tools) */
+  memory?: ProjectMemoryLine[]
+  /** another editor's tools on a reopened project message: one summary line */
+  otherEditorTools?: OtherEditorTools
+}
+
+/** A project chat message as this panel shows it */
+function entryFromProject(m: ProjectChatEntry & { skillProposals?: string[] }): ChatEntry {
+  return {
+    role: m.role,
+    text: m.text,
+    tools: m.tools?.map((tool) => ({
+      name: tool.name,
+      summary: tool.summary,
+      isError: tool.isError,
+      output: tool.output,
+    })),
+    ...(m.scope ? { scope: m.scope } : {}),
+    ...(m.role === 'user' && skillChipRefsOf(m.skills).length > 0
+      ? { skills: skillChipRefsOf(m.skills) }
+      : {}),
+    ...(m.skillProposals ? { skillProposals: m.skillProposals } : {}),
+    ...(m.memory.length > 0 ? { memory: m.memory } : {}),
+    ...(m.otherEditorTools ? { otherEditorTools: m.otherEditorTools } : {}),
+  }
 }
 
 /** the empty conversation's suggested questions (reading-assist spec 4.4); a click sends one */
@@ -228,6 +269,36 @@ export function AiPanel({
   const chatRef = useRef<HTMLDivElement>(null)
   const stickToBottomRef = useRef(true)
 
+  /**
+   * The project folder (spec 5): the chip under the input, the header's chat
+   * menu, the notices, and where the chat is recorded. Without a chosen
+   * project everything below runs exactly as before.
+   */
+  const projectPanel = useProjectPanel({
+    editor: 'pdf',
+    lang,
+    busy,
+    loop: () => loopRef.current,
+    onOpen: (opened) => openProjectChat(opened),
+    onRemoteMessages: (entries, running) =>
+      setChat((prev) =>
+        placeRemoteEntries(
+          prev,
+          entries.map((entry) => entryFromProject(entry)),
+          running,
+        ),
+      ),
+    onNewChat: () => startNewChat(),
+    consolidation: async () => {
+      // the same gate as a send: nothing goes out until a provider can run
+      if (!sendGate.admitQueued(() => {})) return null
+      settingsRef.current = await window.pdfApi.getAiSettings()
+      return { transport: transportRef.current!, gate: sendGate.peek }
+    },
+  })
+  const projectPanelRef = useRef(projectPanel)
+  projectPanelRef.current = projectPanel
+
   // ── Chat-history persistence (r142): same shared store Docs/Sheets use ──
   const chatIdsRef = useRef<{ projectId: string; chatId: string } | null>(null)
   /** current turn's streamed text; completed turns collect into runTextsRef */
@@ -281,9 +352,28 @@ export function AiPanel({
     scope?: AiScopeQuoteData,
     skillChips?: SkillChipRef[],
   ): void => {
+    if (!text && !tools?.length) return
+    // a chosen project (or this document's earlier chat) records it; otherwise the per-document store
+    const recorded = projectPanelRef.current.chat.persist({
+      role,
+      text,
+      ...(tools && tools.length > 0
+        ? {
+            tools: tools.map((tool) => ({
+              name: tool.name,
+              summary: tool.summary,
+              isError: tool.isError,
+              output: tool.output,
+            })),
+          }
+        : {}),
+      ...(scope ? { scope } : {}),
+      ...(skillChips && skillChips.length > 0 ? { skills: skillChips } : {}),
+    })
+    if (recorded) return
     const ids = chatIdsRef.current
     const store = chatStore()
-    if (!ids || !store || (!text && !tools?.length)) return
+    if (!ids || !store) return
     void store
       .appendChat({
         projectId: ids.projectId,
@@ -321,18 +411,25 @@ export function AiPanel({
       persistMessage('assistant', texts.join('\n\n'), tools)
     }
   }
-  useEffect(() => {
+  /** bumped whenever a project chat opens: a per-document load still in flight is dropped */
+  const documentChatEpochRef = useRef(0)
+  const loadDocumentChat = (): void => {
     const store = chatStore()
     if (!store) return
-    const tempChatId = `unsaved-${Date.now()}`
-    void store
-      .resolveChat({ filePath: filePath || null, tempChatId })
-      .then((ids) => {
-        chatIdsRef.current = ids
-        return store.loadChat({ projectId: ids.projectId, chatId: ids.chatId, limit: 200 })
-      })
+    const epoch = documentChatEpochRef.current
+    const known = chatIdsRef.current
+    const resolved = known
+      ? Promise.resolve(known)
+      : store
+          .resolveChat({ filePath: filePath || null, tempChatId: `unsaved-${Date.now()}` })
+          .then((ids) => {
+            chatIdsRef.current = ids
+            return ids
+          })
+    void resolved
+      .then((ids) => store.loadChat({ projectId: ids.projectId, chatId: ids.chatId, limit: 200 }))
       .then((stored) => {
-        if (stored.length === 0) return
+        if (stored.length === 0 || epoch !== documentChatEpochRef.current) return
         // skill cards come back closed; a saved card's record is not part of the conversation
         const msgs = skillCardsRef.current.restore(stored)
         setChat((prev) => [
@@ -363,10 +460,19 @@ export function AiPanel({
       .catch(() => {
         /* history load failures are silent */
       })
+  }
+  useEffect(() => {
+    loadDocumentChat()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only, like Docs
   }, [])
+  /** the path the document had when the panel last looked: a new one is a save (as) */
+  const savedPathRef = useRef(filePath)
   /** blank/generated PDFs get a path on first save: bind the unsaved-* history to it */
   useEffect(() => {
+    if (filePath && filePath !== savedPathRef.current) {
+      void projectPanelRef.current.chat.documentSaved()
+    }
+    savedPathRef.current = filePath
     const ids = chatIdsRef.current
     const store = chatStore()
     if (!store || !ids || !filePath || !ids.chatId.startsWith('unsaved-')) return
@@ -450,6 +556,10 @@ export function AiPanel({
     statuses: connection.statuses,
     store: MODEL_BRIDGE,
     start: (held) => send(held.text, held.scope, held.skillUse),
+    acknowledgeNoticeExtra: (latest) => ({
+      ...latest,
+      pdfSendNoticeSeen: PDF_SEND_NOTICE_VERSION,
+    }),
     onSettingsSaved: (next) => {
       aiSettingsRef.current = next
       setAiSettings(next)
@@ -463,6 +573,18 @@ export function AiPanel({
   const streamErrorRef = useRef<AiBlockedRun | null>(null)
   /** the provider a request would run on right now (null until the settings are read) */
   const providerChoice = aiSettings ? selectAiProvider(aiSettings, connection.statuses) : null
+  /** the PDF-only sentence: kept apart from the general notice, which another editor may have acknowledged */
+  const pdfNoticeDue = pdfSendNoticeDue(aiSettings, providerChoice?.connected === true)
+  const acknowledgePdfNotice = useCallback(() => {
+    void changeStoredAiSettings(MODEL_BRIDGE, (latest) => ({
+      ...latest,
+      pdfSendNoticeSeen: PDF_SEND_NOTICE_VERSION,
+    })).then((next) => {
+      if (!next) return
+      aiSettingsRef.current = next
+      setAiSettings(next)
+    })
+  }, [])
   const langRef = useRef(lang)
   langRef.current = lang
   const apiRef = useRef(api)
@@ -504,6 +626,20 @@ export function AiPanel({
       if (!last || last.role !== 'assistant') return prev
       next[next.length - 1] = { ...last, ...(typeof patch === 'function' ? patch(last) : patch) }
       return next
+    })
+  }
+
+  /** the transport the chat runs on; [Tidy up] on the project memory uses it too */
+  const transportRef = useRef<ReturnType<typeof createElectronTransport> | null>(null)
+  if (!transportRef.current) {
+    transportRef.current = createElectronTransport(() => settingsRef.current!, {
+      lang: () => langRef.current,
+      onStreamError: (error) => {
+        streamErrorRef.current = aiBlockedRunOf(error)
+      },
+      onSubscriptionUsage: (usage) =>
+        setSubscriptionUsage((prev) => mergeSubscriptionUsage(prev, usage)),
+      onInputTruncated: () => setInputTruncated(true),
     })
   }
 
@@ -579,15 +715,7 @@ export function AiPanel({
       fetchImage: (url) => apiRef.current.fetchImage(url),
     }
     loopRef.current = new AgentLoop({
-      transport: createElectronTransport(() => settingsRef.current!, {
-        lang: () => langRef.current,
-        onStreamError: (error) => {
-          streamErrorRef.current = aiBlockedRunOf(error)
-        },
-        onSubscriptionUsage: (usage) =>
-          setSubscriptionUsage((prev) => mergeSubscriptionUsage(prev, usage)),
-        onInputTruncated: () => setInputTruncated(true),
-      }),
+      transport: transportRef.current,
       // a local model that reported no tool support answers in text only
       toolsAllowed: () =>
         settingsRef.current ? localModelCapabilities(settingsRef.current).tools !== false : true,
@@ -606,6 +734,8 @@ export function AiPanel({
             }))
           },
         }),
+        // the chosen project folder: its context in the system prompt, project_* tools (app-run)
+        ...panelProjectSkill({ run: projectPanel.chat.run, lang: () => langRef.current }),
       ]),
       systemSuffix: () => aiLangDirective(langRef.current),
       events: {
@@ -665,6 +795,7 @@ export function AiPanel({
             segTextRef.current = final || segTextRef.current
             persistRun()
           }
+          projectPanelRef.current.finishSend()
           patchLast((last) => ({
             streaming: false,
             text: final || (last.tools?.length ? last.text : tGlobal('aiNoReply')),
@@ -709,6 +840,7 @@ export function AiPanel({
             }
             return next
           })
+          projectPanelRef.current.finishSend()
           setBusy(false)
         },
       },
@@ -773,9 +905,12 @@ export function AiPanel({
     void (async () => {
       try {
         settingsRef.current = await window.pdfApi.getAiSettings()
+        // the chosen project's context for this request (after the send gate, right before the run)
+        await projectPanelRef.current.prepareSend()
         // the skill text rides with this request only; the bubble and the record keep the chips
         await loop.run(instruction + skillUse.text)
       } catch (err) {
+        projectPanelRef.current.finishSend()
         patchLast({
           streaming: false,
           text: err instanceof Error ? err.message : String(err),
@@ -789,6 +924,42 @@ export function AiPanel({
   const stop = (): void => {
     msgQueue.hold()
     loopRef.current?.cancel()
+  }
+
+  /** the conversation on screen, in the loop and in the composer's helpers goes away */
+  const resetConversation = (): void => {
+    stop()
+    loopRef.current?.reset()
+    msgQueue.clear()
+    sendGate.reset()
+    setBusy(false)
+    setChat([])
+    skills.resetConversation()
+    skillCards.reset()
+    skillTemplates.reset()
+  }
+
+  /** "New chat": a new project chat when a project is chosen, else the reset as before */
+  const startNewChat = (): void => {
+    resetConversation()
+    void projectPanelRef.current.chat.newChat()
+  }
+
+  /** a project chat, this document's earlier chat, or (no project) the per-document chat */
+  const openProjectChat = (opened: ProjectChatOpened): void => {
+    documentChatEpochRef.current++
+    resetConversation()
+    if (opened.kind === 'document') {
+      loadDocumentChat()
+      return
+    }
+    // skill cards come back closed; a saved card's record is not part of the conversation
+    const msgs = skillCardsRef.current.restore(opened.entries)
+    setChat(msgs.map((m) => entryFromProject(m)))
+    loopRef.current?.restore(msgs.map((m) => ({ role: m.role, text: m.text })))
+    skillsRef.current.restoreHistory(
+      msgs.map((m) => (m.role === 'user' ? skillChipRefsOf(m.skills) : undefined)),
+    )
   }
 
   /** "Continue with <provider>" on a blocked run: select that provider and rerun the request */
@@ -951,20 +1122,11 @@ export function AiPanel({
             lang={lang}
             onMove={(side) => window.pdfApi.setAiPanelPrefs({ side })}
           />
+          {projectPanel.chatMenu}
           {chat.length > 0 && (
             <button
               className="ai-header-btn"
-              onClick={() => {
-                stop()
-                loopRef.current?.reset()
-                msgQueue.clear()
-                sendGate.reset()
-                setBusy(false)
-                setChat([])
-                skills.resetConversation()
-                skillCards.reset()
-                skillTemplates.reset()
-              }}
+              onClick={startNewChat}
               data-tip={t('aiNewChat')}
               aria-label={t('aiNewChat')}
             >
@@ -1049,7 +1211,7 @@ export function AiPanel({
             )
           }
           const hasTools = (entry.tools?.length ?? 0) > 0
-          if (!entry.text && !hasTools) return null
+          if (!entry.text && !hasTools && !entry.otherEditorTools) return null
           return (
             <div
               key={i}
@@ -1057,6 +1219,7 @@ export function AiPanel({
             >
               {hasTools && <ToolChipList tools={entry.tools!} />}
               <SkillUsedNotes tools={entry.tools} />
+              {projectPanel.messageParts(entry)}
               {entry.skillProposals?.map((key) => skillCards.render(key))}
               {entry.usage && (
                 <div className="ai-message-usage">
@@ -1138,17 +1301,27 @@ export function AiPanel({
             onAcknowledge={sendGate.acknowledgeNotice}
           />
         )}
+        {!sendGate.noticeDue && pdfNoticeDue && (
+          <AiFirstConnectionNotice
+            lang={lang}
+            codexKeepsHistory
+            sendsWholeDocument
+            onAcknowledge={acknowledgePdfNotice}
+          />
+        )}
         {inputTruncated && (
           <AiInputTruncatedNotice lang={lang} onDismiss={() => setInputTruncated(false)} />
         )}
         {aiSettings !== null && localModelCapabilities(aiSettings).tools === false && (
           <AiToolsUnsupportedNotice lang={lang} />
         )}
+        {projectPanel.notices}
         {/* In-progress state: a standalone three-dot row at the end of the stream, kept until done */}
         {busy && <AiTypingIndicator label={typingLabel} />}
       </div>
 
       <div className="ai-composer">
+        {projectPanel.hint}
         {/* Above the input card, not inside its footer: the reset time is long and
             would otherwise squeeze the attach/send buttons in a narrow panel. */}
         <AiSubscriptionUsageLine
@@ -1249,6 +1422,7 @@ export function AiPanel({
           onSend={sendTyped}
           onStop={stop}
           skills={skills.composer}
+          footerBelow={projectPanel.picker}
         />
       </div>
     </aside>

@@ -6,7 +6,9 @@ import {
   DATE_PATTERNS,
   datePatterns,
   DEFAULT_NUMFMT_OPTIONS,
+  defaultNumfmtOptions,
   FRACTION_PATTERNS,
+  longDatePattern,
   NEGATIVE_STYLES,
   numfmtOptionsOf,
   numfmtPattern,
@@ -156,6 +158,13 @@ describe('preview', () => {
     expect(numfmtPreview('#,##0.00_);(#,##0.00)', -1234.56)).toContain('(1,234.56)')
   })
 
+  it('renders weekday tokens in the UI language', () => {
+    // 2026-10-29 is a Thursday; Excel Korea prints 목 for aaa.
+    expect(numfmtPreview('yyyy"년 "m"월 "d"일("aaa)', 46324, 'ko')).toBe('2026년 10월 29일(목)')
+    expect(numfmtPreview('yyyy"년 "m"월 "d"일" aaaa', 46324, 'ko')).toBe('2026년 10월 29일 목요일')
+    expect(numfmtPreview('aaa', 46324, 'en')).toBe('Thu')
+  })
+
   it('sampleValue prefers the anchor number, then category stand-ins', () => {
     expect(sampleValue('number', 42, 100)).toBe(42)
     expect(sampleValue('date', null, 45000)).toBe(45000)
@@ -166,6 +175,40 @@ describe('preview', () => {
   it('todaySerial is a plausible 1900-system serial', () => {
     const serial = todaySerial(new Date(2026, 0, 1, 12, 0, 0))
     expect(serial).toBeCloseTo(46023.5, 3)
+  })
+})
+
+describe('Korean UI defaults', () => {
+  it('lists 〜년/〜월/〜일 date patterns instead of the US list', () => {
+    const previous = getSystemShortDate()
+    try {
+      setSystemShortDate('yyyy. m. d.')
+      const patterns = datePatterns('ko')
+      expect(patterns).toContain('yyyy"년" mm"월" dd"일"')
+      expect(patterns).toContain('yyyy"년" mm"월" dd"일" aaaa')
+      expect(patterns).toContain('yyyy"년" mm"월" dd"일" (aaa)')
+      expect(patterns).not.toContain('m/d/yyyy')
+      expect(datePatterns('en')).toContain('m/d/yyyy')
+      expect(longDatePattern('ko')).toBe('yyyy"년" m"월" d"일" aaaa')
+      expect(longDatePattern('en')).toBe('dddd, mmmm dd, yyyy')
+      expect(numfmtOptionsOf(longDatePattern('ko'), 'ko').category).toBe('date')
+    } finally {
+      setSystemShortDate(previous)
+    }
+  })
+
+  it('defaults Currency/Accounting to ₩', () => {
+    expect(defaultNumfmtOptions('ko').symbol).toBe('₩')
+    expect(defaultNumfmtOptions('en').symbol).toBe('$')
+    expect(numfmtPattern({ ...defaultNumfmtOptions('ko'), category: 'currency' })).toBe('₩#,##0.00')
+    expect(numfmtPattern({ ...defaultNumfmtOptions('ko'), category: 'accounting' })).toContain('₩')
+  })
+
+  it('parses a Korean pattern back into the Date category', () => {
+    expect(numfmtOptionsOf('yyyy"년" mm"월" dd"일" (aaa)', 'ko')).toMatchObject({
+      category: 'date',
+      datePattern: 'yyyy"년" mm"월" dd"일" (aaa)',
+    })
   })
 })
 

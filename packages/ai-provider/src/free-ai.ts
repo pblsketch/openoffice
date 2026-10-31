@@ -9,7 +9,7 @@
  * free tier serves. Nothing here selects a provider on its own; connecting is
  * a press of a button, and that press is the user's choice of the provider.
  */
-import { AI_PROVIDERS } from './providers'
+import { AI_PROVIDERS, listedModelsOf } from './providers'
 import type { AiProviderId, AiSettings } from './types'
 
 /** Key providers offered as a free connection, in the order the screens list them */
@@ -67,17 +67,28 @@ export function freeAiConnected(
   return provider === 'openrouter' ? isOpenRouterFreeModel(config.model) : true
 }
 
-/** The models a picker lists for a key provider, with the stored one kept in the list */
-export function keyProviderModels(provider: AiProviderId, stored: string): string[] {
+/**
+ * The models a picker lists for a key provider: the fixed catalog, then what
+ * the vendor listed for the key and the catalog lacks (newest first, decision
+ * 0087), with the stored one kept in the list.
+ */
+export function keyProviderModels(
+  provider: AiProviderId,
+  stored: string,
+  listed?: readonly string[],
+): string[] {
   const model = stored.trim()
   // an OpenRouter free connection lists the free models only: picking a paid
   // one there would fail on an account without credit, or charge one with it
-  const catalog =
-    provider === 'openrouter' && isOpenRouterFreeModel(model)
-      ? OPENROUTER_FREE_MODELS
-      : (AI_PROVIDERS.find((meta) => meta.id === provider)?.models ?? [])
-  if (!model || catalog.includes(model)) return [...catalog]
-  return [model, ...catalog]
+  const free = provider === 'openrouter' && isOpenRouterFreeModel(model)
+  const catalog = free
+    ? OPENROUTER_FREE_MODELS
+    : (AI_PROVIDERS.find((meta) => meta.id === provider)?.models ?? [])
+  const known = new Set(catalog)
+  const added = free ? [] : (listedModelsOf(listed) ?? []).filter((id) => !known.has(id))
+  const models = [...catalog, ...added]
+  if (!model || models.includes(model)) return models
+  return [model, ...models]
 }
 
 /** Settings once a free connection is made: its key and model stored, and it is the AI in use */
@@ -190,6 +201,10 @@ const OPENROUTER_DAILY = /free-models-per-day/i
 // Gemini: RESOURCE_EXHAUSTED naming a per-day quota of the free tier
 // ("GenerateRequestsPerDayPerProjectPerModel-FreeTier", "generate_content_free_tier_requests")
 const GEMINI_DAILY = /PerDay[\w-]*FreeTier|FreeTier[\w-]*PerDay/i
+// Gemini: the same free-tier quota, but with no allowance at all for this model
+// ("…generate_content_free_tier_requests, limit: 0, model: gemini-4-argon")
+const GEMINI_FREE_TIER = /FreeTier|free_tier/i
+const GEMINI_ZERO_QUOTA = /\blimit:\s*0\b|"quotaValue":\s*"0"/i
 // OpenRouter repeats its rate-limit headers in the error body's metadata
 const OPENROUTER_RESET = /X-RateLimit-Reset\\?"?\s*:\s*\\?"?(\d{10,13})/i
 
@@ -228,12 +243,23 @@ function errorTexts(err: unknown): string[] {
 }
 
 /**
+ * A run refused because the key is on a free tier that has no allowance for
+ * the chosen model at all: Gemini answers a Pro model on a free key with a
+ * free-tier quota of 0. The fix is another model or billing, never waiting.
+ */
+export function isFreeTierModelRefusal(err: unknown): boolean {
+  return errorTexts(err).some((text) => GEMINI_FREE_TIER.test(text) && GEMINI_ZERO_QUOTA.test(text))
+}
+
+/**
  * A run that failed because today's free allowance is used up, with the time
  * it resets when that can be known; null for any other failure. Read from the
  * error text, as the overload classification is: the protocols put the
  * provider's error body into the message.
  */
 export function freeLimitOf(err: unknown, now: number = Date.now()): { resetsAt?: number } | null {
+  // a model the free tier does not serve: waiting for the reset would not help
+  if (isFreeTierModelRefusal(err)) return null
   for (const text of errorTexts(err)) {
     if (OPENROUTER_DAILY.test(text)) {
       const reset = OPENROUTER_RESET.exec(text)?.[1]

@@ -21,6 +21,7 @@ Claro / Escuro / Seguir o Sistema. O modo Seguir o Sistema acompanha o aspeto do
 - **Painel de IA** — Desativado, Recolhido ou Último estado.
 - **Salvar automaticamente todos os documentos** ativa a gravação automática por predefinição em todos os editores; continua a poder desativá-la para uma janela.
 - **Local de salvamento** com o botão **Alterar** e **App padrão para documentos do Office** para reservar .docx / .xlsx / .pptx ao GenOffice.
+- **Formato de salvamento de novos documentos HWP** escolhe se HWP ou HWPX é oferecido primeiro no primeiro salvamento de um documento novo. Os documentos abertos mantêm o próprio formato.
 
 O GenOffice não recolhe nem envia estatísticas de utilização, por isso não há nenhum interruptor para isso.
 

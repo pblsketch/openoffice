@@ -247,7 +247,7 @@ describe('AI panel: not connected', () => {
 
   it('does not send the refused request once a subscription connects', async () => {
     const panel = await renderPanel({
-      settings: { subscriptionNoticeSeen: true },
+      settings: { subscriptionNoticeSeen: true, pdfSendNoticeSeen: 1 },
       statuses: statusesOf('signed-out', 'signed-out'),
     })
     await click(quickAction(panel))
@@ -277,7 +277,7 @@ describe('AI panel: not connected', () => {
 
   it('drops the prompt once a subscription connects, and then sends', async () => {
     const panel = await renderPanel({
-      settings: { subscriptionNoticeSeen: true },
+      settings: { subscriptionNoticeSeen: true, pdfSendNoticeSeen: 1 },
       statuses: statusesOf('signed-out', 'signed-out'),
     })
     await click(quickAction(panel))
@@ -323,7 +323,7 @@ describe('AI panel: not connected', () => {
 describe('AI panel: a send while the connection is still being checked', () => {
   it('holds the request and starts it by itself once a provider can run', async () => {
     const panel = await renderPanel({
-      settings: { subscriptionNoticeSeen: true },
+      settings: { subscriptionNoticeSeen: true, pdfSendNoticeSeen: 1 },
       statuses: statusesOf('checking', 'checking'),
     })
     // nobody is waiting on the check yet: no prompt flashes up
@@ -347,7 +347,7 @@ describe('AI panel: a send while the connection is still being checked', () => {
   it('falls to the connect prompt when the answer is "not connected", and sends nothing later', async () => {
     const scrolled = watchScrollIntoView()
     const panel = await renderPanel({
-      settings: { subscriptionNoticeSeen: true },
+      settings: { subscriptionNoticeSeen: true, pdfSendNoticeSeen: 1 },
       statuses: statusesOf('checking', 'checking'),
     })
     await click(quickAction(panel))
@@ -410,6 +410,7 @@ describe('AI panel: first-connection notice', () => {
     await act(async () =>
       bridge.api.setAiSettings({
         ...base,
+        pdfSendNoticeSeen: 1,
         provider: 'openai',
         providers: {
           ...base.providers,
@@ -448,7 +449,7 @@ describe('AI panel: first-connection notice', () => {
 
   it('does not show the notice again once it was acknowledged', async () => {
     const panel = await renderPanel({
-      settings: { subscriptionNoticeSeen: true },
+      settings: { subscriptionNoticeSeen: true, pdfSendNoticeSeen: 1 },
       statuses: statusesOf('ready', 'signed-out'),
     })
     await click(quickAction(panel))
@@ -461,7 +462,7 @@ describe('AI panel: first-connection notice', () => {
 describe('AI panel: blocked run', () => {
   async function blockedOnClaude(codex: AiSubscriptionState) {
     const panel = await renderPanel({
-      settings: { subscriptionNoticeSeen: true },
+      settings: { subscriptionNoticeSeen: true, pdfSendNoticeSeen: 1 },
       statuses: statusesOf('ready', codex),
     })
     await click(quickAction(panel))
@@ -526,7 +527,7 @@ describe('AI panel: blocked run', () => {
 
   it('pauses the message queue, so the next message does not run into the same wall', async () => {
     const panel = await renderPanel({
-      settings: { subscriptionNoticeSeen: true },
+      settings: { subscriptionNoticeSeen: true, pdfSendNoticeSeen: 1 },
       statuses: statusesOf('ready', 'ready'),
     })
     await click(quickAction(panel))
@@ -552,7 +553,7 @@ describe('AI panel: blocked run', () => {
 
   it('looks at the blocked provider again and offers to reconnect when it is gone', async () => {
     const panel = await renderPanel({
-      settings: { subscriptionNoticeSeen: true },
+      settings: { subscriptionNoticeSeen: true, pdfSendNoticeSeen: 1 },
       statuses: statusesOf('ready', 'not-installed'),
     })
     await click(quickAction(panel))
@@ -574,7 +575,7 @@ describe('AI panel: blocked run', () => {
 
   it('keeps the plain error line for a failure that is not about the connection', async () => {
     const panel = await renderPanel({
-      settings: { subscriptionNoticeSeen: true },
+      settings: { subscriptionNoticeSeen: true, pdfSendNoticeSeen: 1 },
       statuses: statusesOf('ready', 'ready'),
     })
     await click(quickAction(panel))
@@ -588,7 +589,7 @@ describe('AI panel: blocked run', () => {
 describe('AI panel: usage, truncation and image generation', () => {
   it('shows the usage line from the threshold up, for the provider in use only', async () => {
     const panel = await renderPanel({
-      settings: { subscriptionNoticeSeen: true },
+      settings: { subscriptionNoticeSeen: true, pdfSendNoticeSeen: 1 },
       statuses: statusesOf('ready', 'ready'),
     })
     await click(quickAction(panel))
@@ -620,7 +621,7 @@ describe('AI panel: usage, truncation and image generation', () => {
 
   it('tells the user when the input was cut, until dismissed or the next request', async () => {
     const panel = await renderPanel({
-      settings: { subscriptionNoticeSeen: true },
+      settings: { subscriptionNoticeSeen: true, pdfSendNoticeSeen: 1 },
       statuses: statusesOf('ready', 'ready'),
     })
     await click(quickAction(panel))
@@ -636,7 +637,7 @@ describe('AI panel: usage, truncation and image generation', () => {
 
   it('offers generate_image to the model only while the host reports it available', async () => {
     const panel = await renderPanel({
-      settings: { subscriptionNoticeSeen: true },
+      settings: { subscriptionNoticeSeen: true, pdfSendNoticeSeen: 1 },
       statuses: statusesOf('ready', 'ready'),
     })
     await click(quickAction(panel))

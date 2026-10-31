@@ -690,6 +690,7 @@ Estas teclas funcionam quando o separador HWP/HWPX está à frente e o documento
 | Texto de data/hora                    | ⌃K, D       | Ctrl+K, D          |
 | Editar objeto, campo ou tabela/célula | ⌃N, K       | Ctrl+N, K          |
 | Símbolos                              | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+| Converter para hanja                  | F9          | Tecla Hanja / F9   |
 
 ### Tabela
 

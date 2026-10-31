@@ -42,7 +42,7 @@ export const vi = {
   meteredMeaning:
     'Lần đăng nhập này dùng khóa API hoặc tài khoản trả phí theo mức sử dụng, hoặc không xác định được loại đăng nhập. Chọn "Vẫn sử dụng" để AI chạy qua kết nối này, và mỗi yêu cầu sẽ được tính vào tài khoản đó.',
   connectTitle: 'Kết nối AI để bắt đầu',
-  connectBody: 'AI chạy bằng gói đăng ký Claude hoặc Codex mà bạn đã có. Không cần khóa API.',
+  connectBody: 'AI chạy bằng gói đăng ký Claude hoặc ChatGPT mà bạn đã có. Không cần khóa API.',
   connectProviderTitle: 'Kết nối {provider} hiện chưa dùng được',
   connectKeyBody:
     'Thiết lập {provider} chưa hoàn tất. Hãy hoàn tất trong Cài đặt hoặc chọn AI khác.',
@@ -68,6 +68,8 @@ export const vi = {
   errFreeLimit:
     'Đã dùng hết lượt miễn phí hôm nay. Hãy thử lại vào ngày mai hoặc chọn AI khác trong Cài đặt.',
   errFreeLimitReset: 'Đã dùng hết lượt miễn phí hôm nay. Bạn có thể dùng lại lúc {time}.',
+  errFreeTierModel:
+    'Mô hình này không có gói miễn phí nên khóa miễn phí không dùng được. Hãy chọn mô hình có trong gói miễn phí (ví dụ mô hình Flash) hoặc bật thanh toán trong bảng điều khiển của nhà cung cấp.',
   continueWith: 'Tiếp tục với {provider}',
   continueMeteredNote:
     'Kết nối {provider} không phải gói đăng ký: tiếp tục sẽ bị tính phí theo mức sử dụng.',

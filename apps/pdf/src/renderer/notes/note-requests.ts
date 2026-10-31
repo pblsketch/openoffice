@@ -29,7 +29,7 @@ export function cardNoteRequest(
   }
 }
 
-const MARKUPS = new Set(['highlight', 'underline', 'strikeout'])
+const MARKUPS = new Set(['highlight', 'underline', 'squiggly', 'strikeout'])
 
 /** an annotation panel item; null for items that cannot go to the note (no page, drawings, suggestions) */
 export function annotNoteRequest(item: AnnotItem, title?: string): PdfNoteInsertRequest | null {

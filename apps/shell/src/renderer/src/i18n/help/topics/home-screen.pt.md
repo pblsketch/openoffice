@@ -8,6 +8,7 @@ O ecrã Início é a página inicial do GenOffice: uma barra de navegação à e
 - **Favoritos**: os arquivos que você marcou com uma estrela. Passe o cursor sobre a linha do arquivo e clique na estrela para adicioná-lo ou removê-lo. **Mover para grupo** no menu ⋯ organiza os favoritos em grupos nomeados; a visualização Favoritos filtra por eles.
 - **Guia do Usuário**: abre este manual.
 - **Ask AI**: o painel de base de conhecimento — pergunte e receba respostas citadas dos seus arquivos favoritados (veja abaixo).
+- **Projetos**: as pastas (projetos) com que a IA pode trabalhar. Crie um projeto ou use uma pasta existente, e abra um deles para gerenciar as instruções, a memória, os arquivos e as conversas. Veja [Projetos](help://projects).
 - **Pastas**: os diretórios que adiciona à barra lateral com **Adicionar pasta…**, ou que arrasta até lá a partir do gestor de ficheiros. Cada um torna-se uma raiz que pode abrir, onde criar subpastas, renomear e remover; a que ficar indisponível aparece como indisponível e pode ser retirada da lista. **Nova pasta** cria outra.
 - **A linha ao fundo**: mostra se há uma IA conectada — **Conectar IA**, ou o nome da assinatura conectada — e abre as Configurações.
 
@@ -60,5 +61,6 @@ O que faz cada cartão:
 - Favorite arquivos primeiro (qualquer tipo que o app leia); o cabeçalho do painel conta o conjunto, e uma base vazia pede que você favorite algo.
 - As respostas citam os arquivos de origem; clique numa citação para abrir o arquivo no editor dele.
 - Precisa de uma IA conectada; consulte [Conexão por assinatura](help://subscription). A conversa vive só na memória — fechar o app a encerra.
+- Escolha um projeto abaixo do campo de entrada e os arquivos da pasta também são pesquisados e lidos, e a conversa fica guardada nessa pasta para você continuar em outro editor. Sem projeto, a conversa vive só na memória, como acima.
 - A busca roda no índice local de arquivos, como a do Início; arquivos desaparecidos saem do conjunto em silêncio.
 - Grupos organizam só a lista de Favoritos — a base de conhecimento sempre abrange todos os arquivos favoritados.

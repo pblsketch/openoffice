@@ -74,6 +74,7 @@ import {
   type RecoveryEditorContract,
   type RecoveryIdentity,
 } from '@genoffice/electron-utils'
+import { aiRunRefusal } from '@genoffice/electron-utils/ai-run-guard'
 import {
   configureExtraFontDirs,
   configureMetricsCache,
@@ -81,7 +82,7 @@ import {
   familyVerticalMetrics,
 } from '@genoffice/font-metrics'
 import { createI18n, getUiLang, normalizeLang, PRODUCT_NAME, setUiLang } from '@genoffice/i18n'
-import { ProjectStore } from '@genoffice/project-store'
+import { ProjectStore, type LegacyDocumentChat } from '@genoffice/project-store'
 import {
   aiChatGptSignInPages,
   aiSubscriptionLoginWindowText,
@@ -131,9 +132,11 @@ import {
   type AiStreamRequest,
   type AiSubscriptionProviderId,
   sealAiSecrets,
+  withMigratedSubscriptionNoticeVersion,
 } from '@genoffice/ai-provider'
 import { listCodexModels, shutdownCodexAppServers } from '@genoffice/ai-provider/codex-app-server'
 import { listCustomModelsForIpc } from '@genoffice/ai-provider/custom-models'
+import { createKeyModelRefresher, withStoredKeyModels } from '@genoffice/ai-provider/key-models'
 import {
   ensureSubscriptionIpc,
   initSubscriptionChildTracking,
@@ -3932,6 +3935,9 @@ const TWIPS_PER_INCH = 1440
 
 const SETTINGS_PATH = () => userDataPath('ai-settings.json')
 
+/** how long after start the key providers are first asked for their models */
+const KEY_MODEL_FIRST_LIST_DELAY_MS = 5000
+
 const activeAiStreams = new Map<string, AbortController>()
 
 /** AI requests in flight across every editor (the shell's memory record reads it) */
@@ -3953,7 +3959,20 @@ function broadcastAiSettingsChanged(): void {
  */
 /** the settings file as every reader gets it: removed and unknown selections read as their defaults */
 function storedAiSettings(): AiSettings {
-  return normalizeAiSettings(readJson<unknown>(SETTINGS_PATH(), {}))
+  const raw = readJson<unknown>(SETTINGS_PATH(), {})
+  return normalizeAiSettings(migratedNoticeVersion(raw))
+}
+
+/**
+ * An ai-settings.json written before the notice carried a version acknowledged
+ * version 1. Record that, so the user sees the PDF sentence added in version 2
+ * once; a file that already has a version is left exactly as it is.
+ */
+function migratedNoticeVersion(raw: unknown): unknown {
+  const next = withMigratedSubscriptionNoticeVersion(raw)
+  if (!next) return raw
+  writeJsonAtomic(SETTINGS_PATH(), next)
+  return next
 }
 
 /** where the image and media tools may run: the screen path, with the live subscription statuses */
@@ -3964,6 +3983,42 @@ function screenToolContext(): AiToolCallContext {
 const AI_RUN_TEXTS: AiRunTexts = {
   noApiKey: (provider) => tm('errNoApiKey', { provider }),
   noModel: () => tm('errNoModel'),
+}
+
+/**
+ * Asks the key providers for their current models (decision 0087): once per run,
+ * then again for a provider whose key or base URL changed. The list lands in
+ * the settings file, so every picker shows it.
+ */
+const keyModelRefresher = createKeyModelRefresher({
+  read: storedAiSettings,
+  write: (update) => {
+    const latest = storedAiSettings()
+    const next = update(latest)
+    if (next === latest) return
+    writeJsonAtomic(SETTINGS_PATH(), sealAiSecrets(next))
+    broadcastAiSettingsChanged()
+  },
+})
+
+/**
+ * Persist settings a renderer sent: schema-checked, with the live model lists
+ * kept from the file (only the main process writes them), then a listing for
+ * a key that changed. False when the payload is not settings at all.
+ */
+function writeRendererAiSettings(settings: unknown): boolean {
+  // SECURITY.md: payloads are schema-checked in the main process. The settings
+  // file feeds cliPath into spawn() and baseUrl receives the provider's API key,
+  // so the renderer's copy is sanitized before it touches disk.
+  const sanitized = sanitizeAiSettings(settings)
+  if (!sanitized) return false
+  writeJsonAtomic(
+    SETTINGS_PATH(),
+    sealAiSecrets(withStoredKeyModels(sanitized, storedAiSettings())),
+  )
+  broadcastAiSettingsChanged()
+  keyModelRefresher.refreshChanged()
+  return true
 }
 
 let codexImageRegistered = false
@@ -4030,28 +4085,20 @@ export function registerAiIpc(): void {
   )
 
   ipcMain.handle('ai:set-settings', (_event, settings: AiSettings) => {
-    // SECURITY.md: payloads are schema-checked in the main process. The settings
-    // file feeds cliPath into spawn() and baseUrl receives the provider's API key,
-    // so the renderer's copy is sanitized before it touches disk.
-    const sanitized = sanitizeAiSettings(settings)
-    if (!sanitized) {
+    if (!writeRendererAiSettings(settings)) {
       console.warn('[ai] rejected invalid ai:set-settings payload')
-      return
     }
-    writeJsonAtomic(SETTINGS_PATH(), sealAiSecrets(sanitized))
-    broadcastAiSettingsChanged()
   })
 
   registerFreeAiIpc({
     readSettings: storedAiSettings,
-    writeSettings: (settings) => {
-      const sanitized = sanitizeAiSettings(settings)
-      if (!sanitized) return false
-      writeJsonAtomic(SETTINGS_PATH(), sealAiSecrets(sanitized))
-      broadcastAiSettingsChanged()
-      return true
-    },
+    writeSettings: writeRendererAiSettings,
     windowFor: hostWindowFor,
+  })
+
+  // the first listing waits for the windows: a key provider's list is not needed to show them
+  void app.whenReady().then(() => {
+    setTimeout(() => keyModelRefresher.refreshChanged(), KEY_MODEL_FIRST_LIST_DELAY_MS)
   })
 
   ipcMain.handle('ai:codex-models', async (_event, cliPath: unknown) => {
@@ -4101,6 +4148,11 @@ export function registerAiIpc(): void {
       return
     }
     const { settings, provider, config } = target
+    const refusal = aiRunRefusal({ senderId: event.sender.id, provider, model: config.model })
+    if (refusal) {
+      send({ requestId, type: 'error', error: refusal })
+      return
+    }
     const tools = request.tools ?? []
     const maxTokens = request.maxTokens ?? maxOutputTokensOf(settings)
     // A local server loads the model on its first request, so this endpoint's
@@ -4402,6 +4454,23 @@ export function projectFilePaths(): string[] {
   } catch {
     return []
   }
+}
+
+/**
+ * The per-document chat a saved document already has in the app-data
+ * project-store, or null. Read only: unlike `project:resolveChat` it registers
+ * no mapping and creates no chat. The project folder chat list offers it as
+ * "earlier chats of this document" (decision 0088).
+ */
+export function legacyDocumentChatFor(filePath: string): LegacyDocumentChat | null {
+  const store = getProjectStore()
+  const ids = new Set(['default', ...store.listProjects().map((project) => project.id)])
+  for (const projectId of ids) {
+    const chatId = store.chatIdForPath(filePath, projectId)
+    const meta = store.listChats(projectId).find((chat) => chat.chatId === chatId)
+    if (meta) return { ...meta, projectId }
+  }
+  return null
 }
 
 export function projectFileRenamed(oldPath: string, newPath: string): void {
@@ -5093,12 +5162,18 @@ export function registerDocsIpc(): void {
       const current: DocFormat = format === 'odt' ? 'odt' : 'docx'
       const word = { name: tm('filterWord'), extensions: ['docx'] }
       const odt = { name: tm('filterOdt'), extensions: ['odt'] }
+      const source = typeof sourcePath === 'string' ? sourcePath : null
+      // a never-saved document whose panel has a project is offered in that folder (spec 6)
+      const projectDir =
+        source || openDocByWc.has(event.sender.id)
+          ? null
+          : await shellHooks?.newDocumentDir?.(event.sender.id)
       const result = await saveDialog(event, {
         title: tm('dlgSaveAs'),
-        defaultPath: saveAsSuggestion(
-          typeof sourcePath === 'string' ? sourcePath : null,
-          defaultName,
-        ),
+        defaultPath:
+          projectDir && basename(defaultName) === defaultName
+            ? join(projectDir, defaultName)
+            : saveAsSuggestion(source, defaultName),
         // the document's own format comes first: it is the dialog's default
         filters: current === 'odt' ? [odt, word] : [word, odt],
       })
@@ -5235,10 +5310,69 @@ export function registerDocsIpc(): void {
     }
   })
 
+  // Project folders (spec 6): the first save of a new document a create flow
+  // made (the AI's new Word document, a skill template's copy once its run
+  // ended well), into the panel's project with no dialog. The shell picks the
+  // folder from the panel's project and a free name (never over a file); the
+  // renderer offers only a name, whose folder part is dropped. Without a
+  // project (or a shell) nothing is written: `skipped`. Mirrors docs:save-new's
+  // bookkeeping once written.
+  ipcMain.handle(
+    'docs:save-into-project',
+    async (event, defaultName: unknown, format: unknown, data: unknown) => {
+      const wcId = event.sender.id
+      const write = shellHooks?.writeNewDocument
+      // an orphaned renderer, or a document that has its file already
+      if (!write || tornDownWcIds.has(wcId) || openDocByWc.has(wcId)) {
+        return { ok: false, skipped: true }
+      }
+      if (typeof defaultName !== 'string' || !(data instanceof ArrayBuffer)) {
+        return { ok: false, error: 'bad save request' }
+      }
+      const extension = format === 'odt' ? '.odt' : '.docx'
+      const named = basename(defaultName.replace(/\\/g, '/')).replace(/\.(docx|odt)$/i, '')
+      const fileName = `${sanitizeAiDocFileBase(named)}${extension}`
+      try {
+        const { bytes, plain, hashes, encrypted, passwordState } = await prepareDocSave(
+          wcId,
+          fileName,
+          data,
+          null,
+        )
+        if (tornDownWcIds.has(wcId)) return { ok: false }
+        const filePath = await write(wcId, fileName, bytes)
+        if (!filePath) return { ok: false, skipped: true }
+        // the tab closed while the write was in flight: the file is freshly
+        // created, so rolling it back is safe (mirrors docs:save-new)
+        if (tornDownWcIds.has(wcId)) {
+          await unlink(filePath).catch(() => {})
+          return { ok: false }
+        }
+        allowDocWrite(wcId, filePath)
+        rememberOpenDoc(wcId, filePath)
+        await rememberDiskState(wcId, filePath, sha256Hex(bytes))
+        pointLazyMediaAt(hashes, filePath, wcId, encrypted ? plain : undefined)
+        const passwordIntentPending = commitSavePassword(wcId, passwordState, filePath)
+        // the first save of a never-saved document: its untitled copy is stale
+        docsRecovery.noteSaved(wcId, [filePath])
+        pushRecent(filePath)
+        const savedPath = notifyFileSaved(event.sender, filePath)
+        return {
+          ok: true,
+          path: savedPath,
+          passwordIntentPending,
+          ...reissuedDoc(encrypted, hashes, plain),
+        }
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) }
+      }
+    },
+  )
+
   ipcMain.handle(
     'docs:create-document',
-    (_event, request: CreateDocumentRequest): Promise<CreateDocumentResult> =>
-      createAiDocument(request),
+    (event, request: CreateDocumentRequest): Promise<CreateDocumentResult> =>
+      createAiDocument(request, event.sender.id),
   )
 
   // MCP-driven output: write the live document to an explicit absolute path with
@@ -5859,6 +5993,27 @@ interface DocsShellHooks {
   closeActiveTab(): void
   /** Shell router used to open exported PDFs in a new GenOffice tab. */
   openGeneratedPath?(path: string): boolean
+  /**
+   * Project folders (spec 6): the AI's new Word document opens in a blank tab
+   * that follows the project of `ownerWebContentsId`'s panel (its first save is
+   * offered in that project's folder). Without it, `openAiDocTab`.
+   */
+  openAiDocTabFor?(content: AiDocContent, ownerWebContentsId: number): void
+  /**
+   * Project folders (spec 6): the folder an untitled document's save dialog
+   * opens in for this view, or null for the default save folder.
+   */
+  newDocumentDir?(webContentsId: number): Promise<string | null>
+  /**
+   * Project folders (spec 6): write a new document the AI made for this view
+   * into the project its panel chose (a free name, never over a file);
+   * resolves to the path written, or null when the panel has no project.
+   */
+  writeNewDocument?(
+    webContentsId: number,
+    fileName: string,
+    bytes: Uint8Array,
+  ): Promise<string | null>
 }
 let shellHooks: DocsShellHooks | null = null
 export function setDocsShellHooks(hooks: DocsShellHooks | null): void {
@@ -5922,9 +6077,15 @@ export function sanitizeAiDocFileBase(title: string): string {
  * inserts the queued content on boot and saves itself (the full-fidelity
  * HTML → docx conversion lives in the docs renderer); pdf and md are written
  * directly here. Also called by other apps' mains via shell-wired hooks.
+ *
+ * `ownerWebContentsId` is the view whose AI asked. When its panel has a
+ * project (spec 6), pdf / md / html are made first and then written into that
+ * project's folder by the shell (a free name, never over a file), and the
+ * docx tab follows that project; otherwise everything is as described above.
  */
 export async function createAiDocument(
   request: CreateDocumentRequest,
+  ownerWebContentsId?: number,
 ): Promise<CreateDocumentResult> {
   const type = request?.type
   const title = sanitizeAiDocFileBase(request?.title)
@@ -5933,7 +6094,9 @@ export async function createAiDocument(
   try {
     if (type === 'docx') {
       const payload: AiDocContent = { title, html: content }
-      if (shellHooks?.openAiDocTab) shellHooks.openAiDocTab(payload)
+      if (ownerWebContentsId !== undefined && shellHooks?.openAiDocTabFor) {
+        shellHooks.openAiDocTabFor(payload, ownerWebContentsId)
+      } else if (shellHooks?.openAiDocTab) shellHooks.openAiDocTab(payload)
       else {
         const win = createDocsWindow(undefined)
         markDocsNewBlank(win.webContents.id)
@@ -5947,14 +6110,17 @@ export async function createAiDocument(
         () =>
           new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false } }),
       )
-      const filePath = uniquePathIn(defaultSaveDir(), `${title}.pdf`)
-      await writeFile(filePath, bytes)
+      const placed = await placeAiDocument(ownerWebContentsId, `${title}.pdf`, bytes)
+      const filePath = placed ?? uniquePathIn(defaultSaveDir(), `${title}.pdf`)
+      if (!placed) await writeFile(filePath, bytes)
       openGeneratedFile(filePath)
       return { ok: true, path: filePath }
     }
     if (type === 'md' || type === 'html') {
-      const filePath = uniquePathIn(defaultSaveDir(), `${title}.${type}`)
-      await writeFile(filePath, content, 'utf8')
+      const fileName = `${title}.${type}`
+      const placed = await placeAiDocument(ownerWebContentsId, fileName, Buffer.from(content))
+      const filePath = placed ?? uniquePathIn(defaultSaveDir(), fileName)
+      if (!placed) await writeFile(filePath, content, 'utf8')
       openGeneratedFile(filePath)
       return { ok: true, path: filePath }
     }
@@ -5962,6 +6128,17 @@ export async function createAiDocument(
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) }
   }
+}
+
+/** A made document into the asking view's project folder (spec 6); null without a project */
+async function placeAiDocument(
+  ownerWebContentsId: number | undefined,
+  fileName: string,
+  bytes: Uint8Array,
+): Promise<string | null> {
+  const write = shellHooks?.writeNewDocument
+  if (ownerWebContentsId === undefined || !write) return null
+  return write(ownerWebContentsId, fileName, bytes)
 }
 
 // ---- application menu ----

@@ -42,6 +42,7 @@ import {
 } from './markdown/docText'
 import { buildSourceMap, spliceMarkdown, type SourceMap } from './markdown/sourceSplice'
 import { applySourceText } from './markdown/sourceView'
+import { isSourceViewKey } from './source-view-key'
 import { isSourceMode, textModeForPath, type TextMode } from '../shared/text-mode'
 import { renameAction } from '../shared/rename-mode'
 import { readSourceText, writeSourceText, type SourceTextFormat } from '../shared/source-text'
@@ -62,6 +63,7 @@ import { OutlinePane } from './components/OutlinePane'
 import { SourcePane } from './components/SourcePane'
 import { SlashMenu, type SlashMenuHandle } from './components/SlashMenu'
 import { BacklinksPane } from './components/BacklinksPane'
+import { TagsPane } from './components/TagsPane'
 import { GraphView } from './components/GraphView'
 import { ToastHost } from './components/toast'
 import { showToast } from './components/toast-bus'
@@ -74,6 +76,7 @@ import { addQueueAnchor, clearQueueAnchors, removeQueueAnchors } from './editor/
 import { DOCX_MAX_IMAGE_PX, exportDocxBytes } from './export/docxExport'
 import { decodeImageDataUrl, toDocxImage } from './export/exportImage'
 import { buildPrintHtml } from './export/printHtml'
+import { PrintPreviewDialog } from './print/PrintPreviewDialog'
 import { diagramSvgToPng, renderDiagram } from './editor/diagrams'
 import type { DiagramLanguage } from './editor/diagrams'
 import type { ExportFormat, SaveMode } from '../shared/ipc'
@@ -150,6 +153,15 @@ export function deriveAutoFileName(editor: Editor): string {
   return ''
 }
 
+/** Name an export suggests: the document's name without .md, else a derived one */
+export function exportBaseName(path: string | null, editor: Editor): string {
+  return (
+    (path
+      ? path.replace(/^.*[/\\]/, '').replace(/\.(md|markdown)$/i, '')
+      : deriveAutoFileName(editor)) || 'Untitled'
+  )
+}
+
 export default function App() {
   const { lang, t } = useI18n()
   // Fallback focus ping: the shell is told whenever this window gains focus
@@ -201,6 +213,7 @@ export default function App() {
     () => Number(localStorage.getItem('mdapp.outlineWidth')) || undefined,
   )
   const [backlinksOpen, setBacklinksOpen] = useState(false)
+  const [tagsOpen, setTagsOpen] = useState(false)
   const [graphOpen, setGraphOpen] = useState(false)
   const [sourceViewOpen, setSourceViewOpen] = useState(false)
   const [sourceText, setSourceText] = useState('')
@@ -334,6 +347,11 @@ export default function App() {
         // the module-level `t`, not the hook's: this memo holds the closure for
         // the life of the editor, and the hook's `t` is a new function each render
         onUnresolved: (target) => showToast(translate('wikiLinkUnresolved', { target }), 'error'),
+      },
+      blockLink: {
+        getDocumentPath: () => filePathRef.current ?? '',
+        onCopied: (link) => showToast(translate('blockLinkCopied', { link })),
+        onNothing: () => showToast(translate('blockLinkNone'), 'error'),
       },
     })
   }, [insertImage, jumpToWikiFragment])
@@ -593,9 +611,12 @@ export default function App() {
   }, [flushSource])
 
   const toggleSource = useCallback(() => {
+    // A .txt/.json has no block document to swap with, and F5 hides the source
+    // pane for the show: the chord must not leave an invisible view behind.
+    if (sourceMode || presenting) return
     if (sourceViewOpenRef.current) closeSource()
     else openSource()
-  }, [closeSource, openSource])
+  }, [closeSource, openSource, presenting, sourceMode])
 
   const restoreAfterPresent = useCallback(() => {
     setPresenting(false)
@@ -734,14 +755,27 @@ export default function App() {
           sourceAtSave,
         )
         const imageSources = imageSourcesFromEditor(current)
+        // Save As can write the rendered document as a PDF instead; the HTML
+        // comes from what is on screen (pending edits included)
+        const pdfHtml =
+          mode === 'saveAs'
+            ? buildPrintHtml(current.view.dom, exportBaseName(filePathRef.current, current))
+            : undefined
         const result = await window.markdownApi.save({
           text,
           imageSources,
           mode,
           suggestedName,
           auto,
+          ...(pdfHtml !== undefined ? { pdfHtml } : {}),
         })
         if (result.ok && 'path' in result) {
+          // A PDF target is an export of this document: its path, unsaved edits
+          // and assets stay as they are (the main process opened the PDF)
+          if (result.exported === 'pdf') {
+            setSaveState('idle')
+            return true
+          }
           const unchanged =
             editorRef.current?.state.doc === docAtSave &&
             envelopeRef.current.frontmatter === fmAtSave
@@ -819,10 +853,7 @@ export default function App() {
       if (sourceMode) return false
       const current = editorRef.current
       if (!current || statusRef.current !== 'ready') return false
-      const suggestedName =
-        (filePathRef.current
-          ? filePathRef.current.replace(/^.*[/\\]/, '').replace(/\.(md|markdown)$/i, '')
-          : deriveAutoFileName(current)) || 'Untitled'
+      const suggestedName = exportBaseName(filePathRef.current, current)
       if (format === 'png') {
         if (exportingImagesRef.current) return false
         exportingImagesRef.current = true
@@ -929,10 +960,9 @@ export default function App() {
   }, [runExport])
 
   /**
-   * Print through the same self-contained HTML the PDF export uses, loaded into a
-   * hidden same-session iframe (md-asset:// images keep resolving) — printing the
-   * live page would drag the ribbon/panels along, and Electron has no built-in
-   * preview to crop them out.
+   * Print through the same self-contained HTML the PDF export uses. The preview
+   * shows the PDF that HTML makes and printing sends the same HTML and options,
+   * so the paper is what the dialog drew — not the ribbon/panels around it.
    */
   const sourceHistory = useMemo(
     () => ({
@@ -952,11 +982,10 @@ export default function App() {
     [sourceRev, sourceMode],
   )
 
-  const printingRef = useRef(false)
-  const printDoc = useCallback(async () => {
+  const [printPreviewHtml, setPrintPreviewHtml] = useState<string | null>(null)
+  const printDoc = useCallback(() => {
     const current = editorRef.current
-    if (!current || statusRef.current !== 'ready' || printingRef.current) return
-    printingRef.current = true
+    if (!current || statusRef.current !== 'ready' || printPreviewHtml !== null) return
     const title =
       (filePathRef.current
         ? filePathRef.current.replace(/^.*[/\\]/, '').replace(/\.(md|markdown|txt|json)$/i, '')
@@ -968,39 +997,8 @@ export default function App() {
       pre.textContent = sourceTextRef.current
       printRoot.appendChild(pre)
     }
-    const frame = document.createElement('iframe')
-    frame.style.position = 'fixed'
-    frame.style.right = '100%'
-    frame.style.bottom = '100%'
-    frame.style.width = '0'
-    frame.style.height = '0'
-    frame.style.border = '0'
-    try {
-      await new Promise<void>((resolve) => {
-        frame.onload = () => resolve()
-        frame.srcdoc = buildPrintHtml(printRoot, title)
-        document.body.appendChild(frame)
-      })
-      const fdoc = frame.contentDocument
-      const fwin = frame.contentWindow
-      if (!fdoc || !fwin) return
-      // the export path passes printToPDF margins instead; the dialog needs @page
-      const pageStyle = fdoc.createElement('style')
-      pageStyle.textContent = '@page { margin: 0.6in; }'
-      fdoc.head.appendChild(pageStyle)
-      await Promise.all([...fdoc.images].map((img) => img.decode().catch(() => {})))
-      // resolve on afterprint so the frame survives until the dialog closes (cancel included)
-      await new Promise<void>((resolve) => {
-        fwin.addEventListener('afterprint', () => resolve())
-        fwin.print()
-      })
-    } catch (err) {
-      console.error('[markdown] print failed:', err)
-    } finally {
-      frame.remove()
-      printingRef.current = false
-    }
-  }, [sourceMode])
+    setPrintPreviewHtml(buildPrintHtml(printRoot, title))
+  }, [printPreviewHtml, sourceMode])
 
   useEffect(() => {
     const offExport = window.markdownApi.onExportRequest((format) => void runExport(format))
@@ -1110,8 +1108,9 @@ export default function App() {
         // its ⌘H belongs to the system Hide role, so the menu keeps that key
         event.preventDefault()
         openFind(true)
-      } else if (key === 'e' && !event.shiftKey) {
-        // Obsidian's edit/preview toggle: the source view
+      } else if (isSourceViewKey(event)) {
+        // Obsidian's edit/preview toggle: the source view. Shift is excluded so
+        // Ctrl+Shift+E (and Ctrl+Shift+V, paste without formatting) stay free.
         event.preventDefault()
         toggleSource()
       } else if (key === 'o' && event.shiftKey) {
@@ -1377,8 +1376,11 @@ export default function App() {
         outlineOpen={outlineOpen}
         onToggleOutline={() => setOutlineOpen((v) => !v)}
         backlinksOpen={backlinksOpen}
+        tagsOpen={tagsOpen}
         onToggleBacklinks={() => setBacklinksOpen((v) => !v)}
+        onToggleTags={() => setTagsOpen((v) => !v)}
         onOpenGraph={() => setGraphOpen(true)}
+        onCopyBlockLink={() => editor?.commands.copyBlockLink()}
         spellcheck={spellcheck}
         onToggleSpellcheck={() => setSpellcheck((v) => !v)}
         sourceMode={sourceMode}
@@ -1443,6 +1445,9 @@ export default function App() {
             path={filePath}
             onOpen={(path) => void window.markdownApi.openSourcePath(path)}
           />
+        )}
+        {tagsOpen && !sourceMode && (
+          <TagsPane onOpen={(path) => void window.markdownApi.openSourcePath(path)} />
         )}
         <div className="app-content">
           {showFind && findTarget && (
@@ -1592,6 +1597,9 @@ export default function App() {
           onQueueUpdate={queueUpdate}
           onQueueRemove={queueRemove}
         />
+      )}
+      {printPreviewHtml !== null && (
+        <PrintPreviewDialog html={printPreviewHtml} onClose={() => setPrintPreviewHtml(null)} />
       )}
     </div>
   )

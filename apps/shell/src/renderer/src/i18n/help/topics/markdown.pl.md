@@ -44,6 +44,7 @@ Menu Plik — wszystko lokalne i wszystko pyta, gdzie umieścić wynik:
 
 Wstążka zawiera przełącznik **Źródło** (z lokalizacją razem z aplikacją). Włącz go, a edytor zostanie zastąpiony surowym Markdownem: dokładnie ten tekst, który zapisuje zapisywanie, nic nie jest ładniejsze, nic nie jest normalizowane w tle.
 
+- **Klawiatura**: Ctrl+E (⌘E na Macu) przełącza między widokiem źródła a renderowanym ekranem edycji. Naciśnij F5, aby czytać na pełnym ekranie.
 - **Edycja wierna bajtom.** Zapis z widoku źródła daje te same bajty co zapis z edytora — BOM, CRLF i obecność końcowego znaku nowej linii zostają zachowane.
 - **To ten sam dokument.** Przełączaj się swobodnie; źródło to własny tekst edytora, a nie kopia wymagająca scalenia.
 - **Pasek narzędzi formatowania je niedostępny** podczas jej otwarcia, bo większość tych przycisków wstawia konstrukcje edytora, które mają sens tylko po wyrenderowaniu. Wraca po zamknięciu widoku.

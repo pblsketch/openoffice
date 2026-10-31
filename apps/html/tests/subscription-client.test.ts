@@ -175,7 +175,9 @@ describe('useSubscriptionConnection', () => {
         onChanged: () => () => undefined,
       },
     })
-    act(() => connection.acceptMetered('codex'))
+    act(() => {
+      void connection.acceptMetered('codex')
+    })
     await settle()
     expect(setMeteredAccepted).toHaveBeenCalledWith('codex', true)
     expect(connection.statuses.codex.meteredAccepted).toBe(true)

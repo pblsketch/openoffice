@@ -86,6 +86,19 @@ describe('Markdown local image paths', () => {
     expect(await embeddedImages(output)).toHaveLength(1)
   })
 
+  it.each(['FILE:', 'File:'])('embeds an image referenced through a %s URL', async (scheme) => {
+    const dir = tempDir()
+    const image = join(dir, 'menu#1.png')
+    writeFileSync(image, PNG)
+    const markdown = join(dir, 'menu.md')
+    const output = join(dir, 'menu.docx')
+    writeFileSync(markdown, `![dish](${pathToFileURL(image).href.replace(/^file:/, scheme)})\n`)
+    expect((await run(['convert', markdown, '--to', 'docx', '--out', output])).code).toBe(0)
+    const images = await embeddedImages(output)
+    expect(images).toHaveLength(1)
+    expect(Buffer.from(images[0]!)).toEqual(PNG)
+  })
+
   it('prefers an existing literal percent-encoded name over its decoded spelling', async () => {
     const dir = tempDir()
     writeFileSync(join(dir, 'literal%23.png'), PNG)

@@ -8,6 +8,7 @@ Beranda adalah halaman awal GenOffice: bilah navigasi di sebelah kiri, daftar fi
 - **Berbintang**: file yang Anda beri bintang. Arahkan kursor ke baris file lalu klik bintang untuk menambah atau menghapusnya. **Pindahkan ke grup** di menu ⋯ menyortir berkas berbintang ke grup bernama; tampilan Berbintang menyaring menurutnya.
 - **Panduan Pengguna**: membuka panduan ini.
 - **Ask AI**: panel basis pengetahuan — ajukan pertanyaan dan dapatkan jawaban yang mengutip berkas berbintang Anda (lihat di bawah).
+- **Proyek**: folder (proyek) yang bisa dikerjakan AI. Buat proyek atau gunakan folder yang ada, lalu buka salah satunya untuk mengelola instruksi, memori, file, dan obrolannya. Lihat [Proyek](help://projects).
 - **Folder**: direktori yang Anda tambahkan ke bilah sisi dengan **Tambah folder…**, atau Anda seret ke sana dari aplikasi file. Masing-masing menjadi akar yang bisa Anda buka, buat subfolder di dalamnya, ganti namanya, dan hapus; akar yang jadi luring ditampilkan sebagai tidak tersedia dan bisa dilepas dari daftar. **Folder baru** membuat folder lagi.
 - **Baris di bagian bawah**: menunjukkan apakah AI sudah terhubung — **Hubungkan AI**, atau nama langganan yang terhubung — dan membuka Pengaturan.
 
@@ -60,5 +61,6 @@ Apa yang dilakukan tiap kartu:
 - Bintangi berkas dulu (jenis apa pun yang aplikasi baca); kepala panel menghitung korpus, dan basis kosong mengajak Anda membintangi sesuatu.
 - Jawaban mengutip berkas sumbernya; klik kutipan untuk membuka berkas di editornya.
 - Memerlukan AI yang terhubung; lihat [Koneksi langganan](help://subscription). Percakapan hanya hidup di memori — menutup aplikasi mengakhirinya.
+- Pilih proyek di bawah kotak masukan, maka file di folder itu ikut dicari dan dibaca, dan obrolannya disimpan di folder tersebut sehingga bisa dilanjutkan di editor lain. Tanpa proyek, obrolan hanya hidup di memori, seperti di atas.
 - Pencarian berjalan di indeks berkas lokal, seperti pencarian Beranda; berkas yang hilang diam-diam keluar dari korpus.
 - Grup hanya merapikan daftar Berbintang — basis pengetahuan selalu mencakup semua berkas berbintang.

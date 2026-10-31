@@ -20,6 +20,15 @@ Trình soạn thảo sách điện tử mở sách EPUB (`.epub`) trong một th
 - Liên kết bên trong sách sẽ chuyển tới vị trí được liên kết. Liên kết web và email mở trong trình duyệt mặc định của bạn; các loại địa chỉ khác không được mở.
 - Script riêng của sách không bao giờ chạy và không có gì được tải từ internet. Âm thanh và video không phát.
 
+## Xem trước
+
+- Bấm **Xem trước** trên thẻ **Trang đầu** hoặc **Xem** để xem sách theo từng trang, giống như máy đọc sách hiển thị. Bản xem trước mở ở chỗ bạn đang đọc.
+- Trên thanh phía trên, chọn màn hình (**Máy đọc sách**, **Điện thoại**, **Máy tính bảng** hoặc **Vừa cửa sổ**), chiều ngang, cỡ chữ và màu nền (trắng, nâu đỏ hoặc tối). Màn hình rộng xoay ngang sẽ hiện hai trang cạnh nhau. Các thiết lập này chỉ đổi bản xem trước, không bao giờ đổi sách.
+- Lật trang bằng các phím mũi tên, Page Up và Page Down, phím cách, con lăn chuột hoặc các nút ở hai bên. Lật qua trang cuối của một chương sẽ sang chương tiếp theo. Mục lục và các liên kết trong sách đưa bản xem trước tới chỗ đó.
+- Không thể sửa chữ trong bản xem trước. Khi AI sửa sách hoặc bạn hoàn tác một thay đổi, bản xem trước cũng thay đổi theo.
+- Bấm **Đóng xem trước** hoặc nhấn Esc để quay lại chỉnh sửa ở chỗ bản xem trước đang hiển thị.
+- Cách ngắt trang hơi khác nhau giữa ứng dụng của từng cửa hàng và từng thiết bị, nên hãy coi bản xem trước là hình dung gần đúng.
+
 ## Chỉnh sửa chữ
 
 - Bấm vào một đoạn văn rồi gõ. Có thể sửa đoạn văn, tiêu đề, mục danh sách, trích dẫn, ô bảng và chú thích hình. Không sửa được hình ảnh và bố cục của bảng.
@@ -63,6 +72,6 @@ Trình soạn thảo sách điện tử mở sách EPUB (`.epub`) trong một th
 
 - Thêm, xóa hoặc sắp xếp lại chương; đổi tên sách, tác giả hoặc ảnh bìa; chèn hình ảnh hoặc bảng; biến một đoạn văn thành tiêu đề hoặc danh sách.
 - Chỉnh sửa hoặc dịch sách bố cục cố định, và mở sách có bảo vệ bản quyền.
-- Lật trang như sách in, và tạo một cuốn sách mới trống.
+- Tạo một cuốn sách mới trống.
 - So sánh nguyên văn và bản dịch đặt cạnh nhau trong trình soạn thảo. Thay vào đó, hãy mở bản song ngữ, và sửa bản dịch như mọi cuốn sách khác.
 - Ẩn các phần của sách khỏi AI.

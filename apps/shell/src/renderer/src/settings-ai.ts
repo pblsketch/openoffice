@@ -129,6 +129,8 @@ export function withLiveSelectionFields(draft: AiSettings, latest: AiSettings | 
     headlessSubscriptionEnabled: latest.headlessSubscriptionEnabled,
     headlessSubscriptionConsentVersion: latest.headlessSubscriptionConsentVersion,
     subscriptionNoticeSeen: latest.subscriptionNoticeSeen,
+    subscriptionNoticeVersion: latest.subscriptionNoticeVersion,
+    pdfSendNoticeSeen: latest.pdfSendNoticeSeen,
     readUrl: latest.readUrl,
   }
 }

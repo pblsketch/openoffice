@@ -123,4 +123,50 @@ describe('DriveConnection', () => {
       account: { displayName: 'Kim', emailAddress: 'kim@example.com' },
     })
   })
+
+  it('picks files through the browser and keeps the earlier grant', async () => {
+    const urls: string[] = []
+    let issued = 0
+    const fetch: FetchLike = async (url) => {
+      urls.push(url)
+      if (url === GOOGLE_TOKEN_URL) {
+        issued += 1
+        return json({ access_token: `at${issued}`, refresh_token: `rt${issued}`, expires_in: 3600 })
+      }
+      return json({ user: { displayName: 'Kim', emailAddress: 'kim@example.com' } })
+    }
+    const kept = memoryVault()
+    const connection = new DriveConnection({ client, vault: kept.vault, fetch })
+    const pages = {
+      done: { lang: 'en', title: 'ok', body: '' },
+      failed: { lang: 'en', title: 'no', body: '' },
+    }
+    const openBrowser = (ids: string) => async (address: string) => {
+      const url = new URL(address)
+      expect(url.searchParams.get('trigger_onepick')).toBe('true')
+      const back = new URL(url.searchParams.get('redirect_uri')!)
+      back.searchParams.set('code', 'c')
+      back.searchParams.set('state', url.searchParams.get('state')!)
+      back.searchParams.set('picked_file_ids', ids)
+      setTimeout(() => void globalThis.fetch(back).catch(() => {}), 5)
+      return true
+    }
+    // picking with no connection yet connects
+    expect(await connection.pick({ pages, openBrowser: openBrowser('f1') }, false)).toEqual({
+      ok: true,
+      picked: ['f1'],
+    })
+    expect(kept.stored()).toBe('rt1')
+    expect(await connection.pick({ pages, openBrowser: openBrowser('f2,f3') }, true)).toEqual({
+      ok: true,
+      picked: ['f2', 'f3'],
+    })
+    expect(kept.stored()).toBe('rt2')
+    // revoking the older token could end the grant that covers f1
+    expect(urls).not.toContain(GOOGLE_REVOKE_URL)
+    expect(connection.state()).toMatchObject({
+      state: 'connected',
+      account: { emailAddress: 'kim@example.com' },
+    })
+  })
 })

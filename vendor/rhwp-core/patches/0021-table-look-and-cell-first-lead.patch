@@ -1,0 +1,454 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pblsketch <239486537+pblsketch@users.noreply.github.com>
+Date: Wed, 28 Oct 2026 00:00:00 +0900
+Subject: [PATCH] =?UTF-8?q?fix(table):=20=EC=B2=AB=20=EC=A4=84=EB=8F=84=20?=
+ =?UTF-8?q?=EB=8B=B4=EC=A7=80=20=EB=AA=BB=ED=95=98=EB=8A=94=20=EC=A0=80?=
+ =?UTF-8?q?=EC=9E=A5=20=EC=85=80=20=EB=86=92=EC=9D=B4=EB=8A=94=20=EC=B2=AB?=
+ =?UTF-8?q?=20=EB=AC=B8=EB=8B=A8=20=EC=9C=84=20=EC=97=AC=EB=B0=B1=EC=9D=84?=
+ =?UTF-8?q?=20=ED=92=88=EA=B2=8C=20=ED=95=98=EA=B3=A0,=20=ED=91=9C=20?=
+ =?UTF-8?q?=EC=86=8D=EC=84=B1=EC=9D=80=20=EB=84=98=EC=96=B4=EC=98=A8=20?=
+ =?UTF-8?q?=ED=85=8C=EB=91=90=EB=A6=AC=C2=B7=EB=B0=B0=EA=B2=BD=EB=A7=8C=20?=
+ =?UTF-8?q?=EB=B0=94=EA=BE=B8=EB=A9=B0,=20=ED=91=9C=EB=A7=8C=20=EB=93=A0?=
+ =?UTF-8?q?=20=EC=AA=BD=20=EC=B2=AB=20=EB=AC=B8=EB=8B=A8=EC=9D=98=20?=
+ =?UTF-8?q?=EC=95=9E=20=EA=B0=84=EA=B2=A9=EC=9D=80=20=EC=AA=BD=20=EC=9B=90?=
+ =?UTF-8?q?=EC=A0=90=EC=9D=B4=20=EC=95=84=EB=8B=88=EA=B3=A0,=20=EC=9E=91?=
+ =?UTF-8?q?=EA=B2=8C=20=EC=A0=81=ED=9E=8C=20=ED=91=9C=20=EB=92=A4=20?=
+ =?UTF-8?q?=ED=9D=90=EB=A6=84=EC=9D=80=20=EB=B0=94=EA=B9=A5=20=EC=83=81?=
+ =?UTF-8?q?=EC=9E=90=20=EB=81=9D=EC=97=90=EC=84=9C=20=EC=9E=87=EB=8A=94?=
+ =?UTF-8?q?=EB=8B=A4?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ src/document_core/commands/table_ops.rs |  67 +++++++++++++--
+ src/renderer/float_placement.rs         |  41 +++++++++
+ src/renderer/height_measurer.rs         |  21 ++++-
+ src/renderer/layout.rs                  | 105 ++++++++++++++++++++++++
+ src/renderer/layout/table_layout.rs     |  31 ++++++-
+ src/renderer/mod.rs                     |  47 +++++++++++
+ 6 files changed, 302 insertions(+), 10 deletions(-)
+
+diff --git a/src/document_core/commands/table_ops.rs b/src/document_core/commands/table_ops.rs
+index 0f53295b2..40d756268 100644
+--- a/src/document_core/commands/table_ops.rs
++++ b/src/document_core/commands/table_ops.rs
+@@ -3093,8 +3093,8 @@ impl DocumentCore {
+                 caption_changed = true;
+             }
+         }
+-        // BorderFill 변경 — 표 테두리/배경/대각선 변경 시 모든 셀에도 동일 적용
+-        // (HWP 렌더링은 cell.border_fill_id를 사용, table.border_fill_id는 페이지 분할용)
++        // BorderFill 변경 — 표 테두리/대각선은 모든 셀에도 적용하고, 배경은 아래 규칙으로
++        // 셀에 퍼진다(한글은 table.border_fill_id의 채움도 셀 뒤에 칠한다).
+         let has_border_fill_change = json.contains("\"borderLeft\"")
+             || json.contains("\"fillType\"")
+             || json.contains("\"diagonalLine\"")
+@@ -3104,11 +3104,66 @@ impl DocumentCore {
+             || json.contains("\"diagonalColor\"")
+             || json.contains("\"centerLine\"");
+         if has_border_fill_change {
+-            let new_bf_id = self.create_border_fill_from_json(json);
++            // 표와 각 셀은 자기 테두리/배경에서 시작해 넘어온 항목만 바꾼다. 하나의 새
++            // BorderFill(빈 기본값 + 넘어온 항목)을 모두에 주면 배경만 바꿔도 셀마다 다른
++            // 선과 셀 배경(머리 칸의 색 등)이 지워진다. 배경은 표와 같은 채움이던 셀만
++            // 따라간다: 한글은 표 자체의 채움을 셀 뒤에 칠하므로 그런 셀은 표 배경으로
++            // 보이고, 자기 색을 가진 셀은 표 배경을 바꿔도 그대로다.
++            let fill_keys = ["fillType", "fillColor", "patternColor", "patternType"];
++            let has_line_change = json.contains("\"borderLeft\"")
++                || json.contains("\"borderRight\"")
++                || json.contains("\"borderTop\"")
++                || json.contains("\"borderBottom\"")
++                || json.contains("\"diagonalLine\"")
++                || json.contains("\"diagonalSlash\"")
++                || json.contains("\"diagonalBackSlash\"")
++                || json.contains("\"diagonalWidth\"")
++                || json.contains("\"diagonalColor\"")
++                || json.contains("\"centerLine\"");
++            let fill_of = |doc: &Self, id: u16| {
++                id.checked_sub(1)
++                    .and_then(|i| doc.document.doc_info.border_fills.get(i as usize))
++                    .map(|bf| bf.fill.clone())
++                    .unwrap_or_default()
++            };
++            let (table_bf_id, cell_bf_ids): (u16, Vec<u16>) = {
++                let table = self.get_table_mut(section_idx, parent_para_idx, control_idx)?;
++                (
++                    table.border_fill_id,
++                    table.cells.iter().map(|cell| cell.border_fill_id).collect(),
++                )
++            };
++            let table_fill = fill_of(self, table_bf_id);
++            let based_on = |doc: &mut Self, base: u16, with_fill: bool| {
++                if !with_fill && !has_line_change {
++                    return base;
++                }
++                let json = match serde_json::from_str::<serde_json::Value>(json) {
++                    Ok(serde_json::Value::Object(mut obj)) => {
++                        obj.insert("borderFillId".to_string(), serde_json::Value::from(base));
++                        if !with_fill {
++                            for key in fill_keys {
++                                obj.remove(key);
++                            }
++                        }
++                        serde_json::Value::Object(obj).to_string()
++                    }
++                    _ => json.to_string(),
++                };
++                doc.create_border_fill_from_json(&json)
++            };
++            let new_table_bf_id = based_on(self, table_bf_id, true);
++            let new_cell_bf_ids: Vec<u16> = cell_bf_ids
++                .iter()
++                .map(|&id| {
++                    let shows_table_fill = fill_of(self, id) == table_fill;
++                    based_on(self, id, shows_table_fill)
++                })
++                .collect();
+             let table = self.get_table_mut(section_idx, parent_para_idx, control_idx)?;
+-            table.border_fill_id = new_bf_id;
+-            for cell in &mut table.cells {
+-                cell.border_fill_id = new_bf_id;
++            table.border_fill_id = new_table_bf_id;
++            for (cell, id) in table.cells.iter_mut().zip(new_cell_bf_ids) {
++                cell.border_fill_id = id;
+             }
+         }
+ 
+diff --git a/src/renderer/float_placement.rs b/src/renderer/float_placement.rs
+index 71bfd19d5..d5b99df1c 100644
+--- a/src/renderer/float_placement.rs
++++ b/src/renderer/float_placement.rs
+@@ -3195,6 +3195,47 @@ pub(crate) fn resolve_picture_exclusion(
+ }
+ 
+ /// A non-TAC `TopAndBottom` object positioned from its host paragraph.
++/// 문서 도구가 표를 작게 가정하고 적은 저장 상자: 실제(측정) 높이가 선언 높이를 크게
++/// 넘는다(신고 문서: 선언 13.6px, 실제 67.3px). 이런 표 뒤의 저장 줄 위치는 작은 표를
++/// 전제로 적힌 낡은 값이라 vpos 보정이 거절하고, 흐름은 아래 몫으로 이어야 한다.
++/// 측정 오차 정도의 차이(한글이 저장한 표)는 걸리지 않게 배수와 절대 차를 함께 요구한다.
++pub(crate) fn table_outgrew_stored_height(
++    table: &crate::model::table::Table,
++    host: &crate::model::paragraph::Paragraph,
++    next: Option<&crate::model::paragraph::Paragraph>,
++    measured_px: f64,
++    dpi: f64,
++) -> bool {
++    let declared = hwpunit_to_px(signed_hwpunit(table.common.height), dpi).max(0.0);
++    if !(measured_px > declared * 1.5 && measured_px > declared + 10.0) {
++        return false;
++    }
++    // 저장 사다리가 표를 담지 않았다는 증거: 같은 쪽에서 다음 문단의 저장 줄이
++    // 호스트 줄보다 아래지만, 그 거리가 그린 표 높이보다 짧다(신고 문서: 1552HU =
++    // 호스트 한 줄 + 다음 앞 간격). 한글이 저장한 사다리는 표 상자를 담는다.
++    let stored = |p: &crate::model::paragraph::Paragraph| {
++        p.line_segs
++            .first()
++            .filter(|seg| seg.tag & crate::model::paragraph::LineSeg::TAG_IMPLEMENTATION_PROPERTY == 0)
++            .map(|seg| seg.vertical_pos)
++    };
++    let (Some(host_vpos), Some(next_vpos)) = (stored(host), next.and_then(stored)) else {
++        return false;
++    };
++    next_vpos > host_vpos && hwpunit_to_px(next_vpos - host_vpos, dpi) + 0.5 < measured_px
++}
++
++/// 위 표가 든 빈 문단 뒤 문단의 첫 줄은 한글에서 표 바깥 상자의 아래끝에서 시작한다.
++/// 표가 그려진 아래끝에 더할 몫(px): 바깥 아래 여백 − 다음 문단 앞 간격(다음 문단이
++/// 자기 앞 간격을 다시 더한다). 음수일 수 있다.
++pub(crate) fn outgrown_table_flow_extras_px(
++    table: &crate::model::table::Table,
++    next_spacing_before: f64,
++    dpi: f64,
++) -> f64 {
++    hwpunit_to_px(i32::from(table.outer_margin_bottom), dpi) - next_spacing_before.max(0.0)
++}
++
+ pub(crate) fn is_para_topbottom_float(common: &CommonObjAttr) -> bool {
+     !common.treat_as_char
+         && matches!(common.text_wrap, TextWrap::TopAndBottom)
+diff --git a/src/renderer/height_measurer.rs b/src/renderer/height_measurer.rs
+index 741096c0a..015985051 100644
+--- a/src/renderer/height_measurer.rs
++++ b/src/renderer/height_measurer.rs
+@@ -2973,9 +2973,28 @@ impl HeightMeasurer {
+                             } else { 0.0 };
+                             let para_style = styles.para_styles.get(p.para_shape_id as usize);
+                             let is_last_para = pidx + 1 == cell_para_count;
++                            let declared_spacing_before =
++                                para_style.map(|s| s.spacing_before).unwrap_or(0.0);
+                             let spacing_before = crate::renderer::cell_paragraph_spacing_before(
+-                                p, pidx, para_style.map(|s| s.spacing_before).unwrap_or(0.0),
++                                p, pidx, declared_spacing_before,
+                             );
++                            // 저장 셀 첫 문단의 위 여백은 저장 셀 높이가 품는다고 보고 뺀다.
++                            // 그 선언이 첫 저장 줄조차 담지 못하면(도구가 만든 HWPX: cellSz 200HU에
++                            // 첫 줄 vpos=위 여백 700HU, 또는 vpos=0) 품은 것이 없다. 셀 배치는
++                            // 그 여백만큼 첫 줄을 내리므로(#6630, `cell_first_para_missing_lead`)
++                            // 높이에도 같은 값을 넣어야 마지막 줄이 아래 테두리를 넘지 않는다.
++                            // 한글 2024도 행을 그만큼 키운다.
++                            let spacing_before = if pidx == 0
++                                && spacing_before == 0.0
++                                && !crate::renderer::para_has_no_stored_line_segs(p)
++                                && crate::renderer::cell_declared_height_misses_first_line(
++                                    cell, self.dpi,
++                                )
++                            {
++                                declared_spacing_before
++                            } else {
++                                spacing_before
++                            };
+                             let spacing_after = if !is_last_para {
+                                 para_style.map(|s| s.spacing_after).unwrap_or(0.0)
+                             } else {
+diff --git a/src/renderer/layout.rs b/src/renderer/layout.rs
+index 0549c2c9f..09b3821c5 100644
+--- a/src/renderer/layout.rs
++++ b/src/renderer/layout.rs
+@@ -3312,6 +3312,38 @@ fn tac_in_front_decoration_fixed_line_spacing_deduction_hu(
+         .then_some(-seg.line_spacing)
+ }
+ 
++/// 문단의 첫 위아래·문단 기준(글자처럼 취급하지 않는) 표가 문단 위끝에서 차지하는
++/// 띠의 끝(HWPUNIT): 세로 오프셋 + 바깥 위 여백 + 높이 + 바깥 아래 여백. 그런 표가
++/// 없거나 글자처럼 취급하는 개체가 함께 있으면 `None`.
++fn first_para_topbottom_table_band_end_hu(para: &Paragraph) -> Option<i32> {
++    if para.controls.iter().any(|control| match control {
++        Control::Shape(shape) => shape.common().treat_as_char,
++        Control::Picture(picture) => picture.common.treat_as_char,
++        Control::Table(table) => table.common.treat_as_char,
++        _ => false,
++    }) {
++        return None;
++    }
++    para.controls.iter().find_map(|control| match control {
++        Control::Table(table)
++            if matches!(table.common.text_wrap, crate::model::shape::TextWrap::TopAndBottom)
++                && matches!(table.common.vert_rel_to, crate::model::shape::VertRelTo::Para) =>
++        {
++            let offset = crate::renderer::float_placement::signed_hwpunit(
++                table.common.vertical_offset,
++            )
++            .max(0);
++            Some(
++                offset
++                    + table.common.height as i32
++                    + table.outer_margin_top as i32
++                    + table.outer_margin_bottom as i32,
++            )
++        }
++        _ => None,
++    })
++}
++
+ /// 쪽 첫 저장 줄의 vpos가 문단 앞 간격을 포함하면 쪽 원점은 0이다.
+ /// 다음 문단의 저장 사다리도 앞 간격을 계상하는지 확인하여 측정과 배치가
+ /// 같은 원점을 소비한다. 명시적 쪽 나눔과 합성 줄은 이 증거로 사용하지 않는다.
+@@ -3346,6 +3378,22 @@ pub(crate) fn stored_first_margin_is_page_relative(
+         .get(next.para_shape_id as usize)
+         .map(|style| style.spacing_before)
+         .unwrap_or(0.0);
++    // 글줄 없이 위아래·문단 기준 표만 든 첫 문단: 표는 문단 위끝(앞 간격 전)에 앉고
++    // 다음 문단의 저장 줄은 그 표의 바깥 상자 끝에 있다. 한/글 2024가 다시 저장해도
++    // 첫 줄 vpos 는 앞 간격(400HU)이고 다음 줄은 0 + 285 + 7025 + 285 = 7595HU 다.
++    // 이 vpos 를 쪽 원점으로 빼면 뒤 문단 전부가 앞 간격만큼 위로 올라간다.
++    if let Some(band_end_hu) = first_para_topbottom_table_band_end_hu(first) {
++        let first_before_hu = px_to_hwpunit(first_before, dpi);
++        return first_before > 0.5
++            && !para_has_visible_text(first)
++            && !para_has_overlay_shape(next)
++            && first_seg.tag & crate::model::paragraph::LineSeg::TAG_IMPLEMENTATION_PROPERTY == 0
++            && next_seg.tag & crate::model::paragraph::LineSeg::TAG_IMPLEMENTATION_PROPERTY == 0
++            && (first_seg.vertical_pos - first_before_hu).abs() <= 40
++            && (next_seg.vertical_pos - (first_seg.vertical_pos - first_before_hu) - band_end_hu)
++                .abs()
++                <= 40;
++    }
+     // 글자처럼 취급되는 도형이 있는 첫 문단은 제목과 개체가 저장 원점을 함께
+     // 소유한다. 문단 앞 여백만으로 쪽 원점을 다시 정하면 후속 표가 그 여백만큼
+     // 위로 이동한다. 일반 텍스트 문단의 여백 사다리와 구분한다(#6797 7쪽).
+@@ -8094,6 +8142,19 @@ impl LayoutEngine {
+                                 .get(&(*para_index, *control_index))
+                                 .and_then(|placement| placement.stored_host_origin)
+                                 .map(|origin| source.saturating_sub(px_to_hwpunit(origin, self.dpi)))
++                        } else if (self.profile.get().hwpx_stored_layout()
++                            || self.profile.get().hwp5_stored_pagination_layout())
++                            && !self.profile.get().session_edited()
++                            && stored_first_margin_is_page_relative(
++                                paragraphs.get(*para_index)?,
++                                paragraphs.get(*para_index + 1),
++                                styles,
++                                self.dpi,
++                            )
++                        {
++                            // 표만 든 첫 문단의 vpos 는 앞 간격이다(위 판정). 표는 문단
++                            // 위끝에 앉으므로 쪽 원점은 0이다.
++                            Some(0)
+                         } else {
+                             // 호스트 글줄 없이 표만 새 단을 열면 저장 프레임의 기준을 유지한다.
+                             Some(source)
+@@ -14329,6 +14390,50 @@ impl LayoutEngine {
+                 } else {
+                     lanes.max_bottom()
+                 };
++                // 작게 적힌 저장 상자보다 크게 그려진 표(문서 도구의 HWPX): 뒤의 저장 줄
++                // 위치가 낡아 vpos 보정이 거절되므로, 다음 줄이 한글처럼 표 바깥 상자
++                // 아래끝에서 시작하도록 흐름을 맞춘다. 조판(`empty_float::prepare`)도
++                // 같은 몫을 예약한다.
++                let lane_flow_bottom = match para.controls.get(control_index) {
++                    Some(Control::Table(table))
++                        if is_current_empty_para_float
++                            && !table.common.treat_as_char
++                            && is_para_topbottom_float(&table.common)
++                            && (self.profile.get().hwpx_stored_layout()
++                                || self.profile.get().hwp5_stored_pagination_layout())
++                            && !self.profile.get().session_edited()
++                            && measured_tables
++                                .iter()
++                                .find(|m| {
++                                    m.para_index == para_index && m.control_index == control_index
++                                })
++                                .is_some_and(|measured| {
++                                    crate::renderer::float_placement::table_outgrew_stored_height(
++                                        table,
++                                        para,
++                                        paragraphs.get(para_index + 1),
++                                        measured.total_height,
++                                        self.dpi,
++                                    )
++                                }) =>
++                    {
++                        // `reserved_height` 는 그린 표의 아래끝까지다(앞 간격·바깥 위 여백 포함).
++                        let spacing_before = |p: Option<&Paragraph>| {
++                            p.and_then(|p| styles.para_styles.get(p.para_shape_id as usize))
++                                .map_or(0.0, |style| style.spacing_before)
++                        };
++                        lane_flow_bottom.max(
++                            lane_top
++                                + reserved_height
++                                + crate::renderer::float_placement::outgrown_table_flow_extras_px(
++                                    table,
++                                    spacing_before(paragraphs.get(para_index + 1)),
++                                    self.dpi,
++                                ),
++                        )
++                    }
++                    _ => lane_flow_bottom,
++                };
+                 y_offset = global_y_before.max(lane_flow_bottom);
+             }
+             if tac_seg_applied {
+diff --git a/src/renderer/layout/table_layout.rs b/src/renderer/layout/table_layout.rs
+index 3ac7a86fe..2ab75d47b 100644
+--- a/src/renderer/layout/table_layout.rs
++++ b/src/renderer/layout/table_layout.rs
+@@ -9099,7 +9099,28 @@ impl LayoutEngine {
+             } else {
+                 0.0
+             };
+-            let total_content_height = total_content_height + hwpx_reset_first_lead;
++            // 저장 높이가 첫 줄도 담지 못하는 셀(문서 도구의 HWPX)은 첫 문단의 위 여백
++            // 가운데 저장 첫 줄 위치가 담지 않은 몫을 내용 높이와 첫 줄 위치에 더한다.
++            // 측정(`height_measurer`)은 같은 셀의 행에 위 여백 전체를 넣는다.
++            let declared_miss_first_lead = if row_filter.is_none()
++                && !single_row_fragment
++                && !has_nested_table
++                && !trust_stored_cell_flow
++                && stored_empty_picture_frame.is_none()
++                && hwpx_reset_first_lead == 0.0
++            {
++                cell.paragraphs.first().map_or(0.0, |para| {
++                    let sb = styles
++                        .para_styles
++                        .get(para.para_shape_id as usize)
++                        .map_or(0.0, |style| style.spacing_before);
++                    crate::renderer::cell_first_para_missing_lead(cell, sb, self.dpi)
++                })
++            } else {
++                0.0
++            };
++            let total_content_height =
++                total_content_height + hwpx_reset_first_lead + declared_miss_first_lead;
+             let use_top_vpos_anchor = matches!(effective_valign, VerticalAlign::Top);
+             // [#6630] 세로 가운데/아래 셀: 첫 문단의 위 여백(저장 vpos 상한)이 내용 높이에 없어
+             // 정렬이 그만큼 위로 쏠린다 — 정렬 계산에만 넣는다. Top 셀은 text_y_start 가 저장
+@@ -9170,7 +9191,8 @@ impl LayoutEngine {
+                 })
+                 .unwrap_or(text_y_start)
+                 + upper_page_clip_line_reservation
+-                + hwpx_reset_first_lead;
++                + hwpx_reset_first_lead
++                + declared_miss_first_lead;
+             // 세로쓰기 셀
+             if cell.text_direction != 0 {
+                 let vert_inner_area = LayoutRect {
+@@ -9221,7 +9243,10 @@ impl LayoutEngine {
+                         inner_height,
+                         text_y_start,
+                         use_top_vpos_anchor,
+-                        upper_clip_line_reservation: upper_page_clip_line_reservation,
++                        // 위 정렬 셀의 저장 위치 앵커는 `text_y_start`를 보지 않으므로,
++                        // 저장 높이가 첫 줄도 못 담는 셀의 위 여백 몫도 여기로 넘긴다.
++                        upper_clip_line_reservation: upper_page_clip_line_reservation
++                            + declared_miss_first_lead,
+                         trust_stored_cell_flow,
+                         has_nested_table,
+                         section_index,
+diff --git a/src/renderer/mod.rs b/src/renderer/mod.rs
+index 18e8277cb..c3a802fb5 100644
+--- a/src/renderer/mod.rs
++++ b/src/renderer/mod.rs
+@@ -1596,6 +1596,53 @@ pub(crate) fn cell_first_para_stored_lead(
+     spacing_before_px.min(vpos)
+ }
+ 
++/// 셀의 저장 높이가 첫 저장 줄의 아래끝도 담지 못하는가 — 문서 도구가 만든 HWPX는 셀
++/// 높이를 안 여백 정도(0~417HU)로 적고 줄은 그 아래로 저장한다. 한글이 저장한 셀은
++/// 선언이 적어도 첫 줄은 담는다(쪽에 걸쳐 나뉜 행은 마지막 줄이 선언을 조금 넘기도
++/// 하므로 전체 줄로 보지 않는다). 이런 셀의 저장 줄 위치는 재서 적은 값이 아니어서,
++/// 한글 2024는 첫 문단의 위 여백을 저장 위치와 상관없이 첫 줄 앞에 둔다.
++pub(crate) fn cell_declared_height_misses_first_line(
++    cell: &crate::model::table::Cell,
++    dpi: f64,
++) -> bool {
++    if cell.row_span != 1 {
++        return false;
++    }
++    let declared = if cell.height < 0x8000_0000 {
++        hwpunit_to_px(cell.height as i32, dpi)
++    } else {
++        0.0
++    };
++    cell.paragraphs
++        .first()
++        .filter(|para| !para_has_no_stored_line_segs(para))
++        .and_then(|para| para.line_segs.first())
++        .filter(|seg| seg.vertical_pos >= 0 && seg.line_height > 0)
++        .is_some_and(|seg| {
++            hwpunit_to_px(seg.vertical_pos.saturating_add(seg.line_height), dpi) > declared + 0.5
++        })
++}
++
++/// 위 셀에서 첫 문단의 위 여백 가운데 저장 첫 줄 위치가 담지 않은 몫(px). 셀 배치는
++/// 저장 위치까지만 첫 줄을 내리므로(`cell_first_para_stored_lead`) 남은 몫을 내용
++/// 높이와 첫 줄 위치에 함께 더한다. 그 밖의 셀은 0.
++pub(crate) fn cell_first_para_missing_lead(
++    cell: &crate::model::table::Cell,
++    spacing_before_px: f64,
++    dpi: f64,
++) -> f64 {
++    if spacing_before_px <= 0.0 || !cell_declared_height_misses_first_line(cell, dpi) {
++        return 0.0;
++    }
++    let vpos = cell
++        .paragraphs
++        .first()
++        .and_then(|para| para.line_segs.first())
++        .map(|seg| hwpunit_to_px(seg.vertical_pos, dpi))
++        .unwrap_or(0.0);
++    (spacing_before_px - vpos.max(0.0)).max(0.0)
++}
++
+ /// Stored cell starts already express their lead in the saved frame. Reflow
+ /// starts have no such frame and own the paragraph's declared before-space.
+ /// Later paragraphs own that space in both paths.

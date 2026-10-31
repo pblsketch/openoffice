@@ -30,11 +30,11 @@ import {
 } from '../../shared/doc-picker-api'
 import { docPickerText } from '../../renderer/src/i18n/strings-doc-picker'
 import type { DocAsker } from './doc-asker'
-import { toMentionItems } from './doc-list'
+import { toMentionItems, type DocListOptions } from './doc-list'
 
 export interface DocPickerDeps {
   /** the listing built from the shell's open tabs and recent files, for one asker */
-  list: (asker: DocAsker) => Promise<DocListResult>
+  list: (asker: DocAsker, options?: DocListOptions) => Promise<DocListResult>
   /** which editor a request came from, by the sender's webContents id */
   askerFor: (webContentsId: number) => DocAsker
   lang: () => Lang
@@ -120,7 +120,10 @@ export function createDocPicker(deps: DocPickerDeps) {
   })
   ipcMain.handle(DOC_ATTACH_CHANNELS.list, async (event): Promise<DocMentionListResult> => {
     try {
-      const result = await deps.list(askerOf(event))
+      // the `@` list alone shows the files of the asking panel's project (spec 5.13)
+      const id = event.sender?.id
+      const asker = typeof id === 'number' ? { ...askerOf(event), webContentsId: id } : {}
+      const result = await deps.list(asker, { projectFiles: true })
       if (!result.ok) return { ok: false, reason: 'unavailable' }
       return { ok: true, items: toMentionItems(result.items) }
     } catch {

@@ -6,6 +6,8 @@ import {
   currencyStyle,
   formatShortcutCommand,
   PERCENT_STYLE,
+  ribbonCurrencySymbol,
+  ribbonDatePattern,
   type FormatShortcutKey,
 } from '../src/renderer/excel-format-shortcuts'
 import { numfmtOptionsOf, numfmtPreview } from '../src/renderer/numfmt-dialog'
@@ -62,6 +64,26 @@ describe('formatShortcutCommand', () => {
       formatShortcutCommand(key('Digit0', { metaKey: true, altKey: true, shiftKey: true })),
     ).toBeNull()
     expect(formatShortcutCommand(ctrlShift('Digit8'))).toBeNull()
+  })
+
+  it('applies the UI language currency on Ctrl+Shift+4', () => {
+    expect(formatShortcutCommand(ctrlShift('Digit4'), false, '₩')).toBe(
+      'format:₩#,##0.00_);(₩#,##0.00)',
+    )
+    expect(formatShortcutCommand(cmdShift('Digit4'), false, '₩')).toBe(
+      'format:₩#,##0.00_);(₩#,##0.00)',
+    )
+    expect(ribbonCurrencySymbol('ko')).toBe('₩')
+    expect(ribbonCurrencySymbol('en')).toBe('$')
+  })
+
+  it('applies the Korean 년-월-일 pattern on Ctrl+Shift+3', () => {
+    expect(formatShortcutCommand(ctrlShift('Digit3'), false, '$', ribbonDatePattern('ko'))).toBe(
+      'format:yyyy-mm-dd',
+    )
+    expect(formatShortcutCommand(ctrlShift('Digit3'), false, '$', ribbonDatePattern('en'))).toBe(
+      'format:d-mmm-yy',
+    )
   })
 })
 

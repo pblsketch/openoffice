@@ -17,7 +17,7 @@ import type {
   AiSubscriptionStatus,
   AiSubscriptionStatuses,
 } from '@genoffice/ai-provider/browser'
-import { aiConnectPromptView } from '@genoffice/ui'
+import { aiConnectPromptView, aiSubscriptionNoticeDue } from '@genoffice/ui'
 import type { AiConnectPromptView } from '@genoffice/ui'
 
 /**
@@ -65,10 +65,10 @@ export function subscriptionSummary(statuses: AiSubscriptionStatuses): Subscript
  * never "due": the acknowledgement could not be stored, so it would not stay away.
  */
 export function firstConnectionNoticeDue(
-  settings: Pick<AiSettings, 'subscriptionNoticeSeen'> | null,
+  settings: Pick<AiSettings, 'subscriptionNoticeSeen' | 'subscriptionNoticeVersion'> | null,
   statuses: AiSubscriptionStatuses,
 ): boolean {
-  if (!settings || settings.subscriptionNoticeSeen === true) return false
+  if (!settings || !aiSubscriptionNoticeDue(settings)) return false
   return usableSubscriptionProviders(statuses).length > 0
 }
 

@@ -690,6 +690,7 @@ Tombol ini berlaku saat tab HWP/HWPX berada di depan dan dokumen memiliki fokus.
 | Teks tanggal/waktu                   | ⌃K, D       | Ctrl+K, D          |
 | Sunting objek, field, atau tabel/sel | ⌃N, K       | Ctrl+N, K          |
 | Simbol                               | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+| Ubah ke Hanja                        | F9          | Tombol Hanja / F9  |
 
 ### Tabel
 

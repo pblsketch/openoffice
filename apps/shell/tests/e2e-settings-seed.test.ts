@@ -16,12 +16,21 @@ const spec = readFileSync(join(__dirname, '../../../e2e/settings-media-search.sp
 
 describe('e2e settings seed', () => {
   it('is read back as "notice seen" by the app', () => {
-    const seed = { providers: {}, subscriptionNoticeSeen: true }
+    const seed = { providers: {}, subscriptionNoticeSeen: true, subscriptionNoticeVersion: 2 }
     expect(normalizeAiSettings(seed).subscriptionNoticeSeen).toBe(true)
     // everything else stays at its default
     expect(normalizeAiSettings(seed)).toEqual({
       ...normalizeAiSettings({}),
       subscriptionNoticeSeen: true,
+      subscriptionNoticeVersion: 2,
+    })
+  })
+
+  it('an old boolean-only file reads as the current notice until the main process migrates it', () => {
+    const old = { providers: {}, subscriptionNoticeSeen: true }
+    expect(normalizeAiSettings(old)).toMatchObject({
+      subscriptionNoticeSeen: true,
+      subscriptionNoticeVersion: 2,
     })
   })
 
@@ -30,9 +39,7 @@ describe('e2e settings seed', () => {
   })
 
   it('is what the launcher writes to ai-settings.json, unless a spec opts out', () => {
-    expect(helpers).toContain(
-      'const AI_SETTINGS_NOTICE_SEEN = { providers: {}, subscriptionNoticeSeen: true }',
-    )
+    expect(helpers).toContain('subscriptionNoticeVersion: 2')
     expect(helpers).toContain("join(userDataDir, 'ai-settings.json')")
     expect(helpers).toContain('options.subscriptionNoticeSeen !== false')
     expect(helpers).toContain('JSON.stringify(AI_SETTINGS_NOTICE_SEEN)')

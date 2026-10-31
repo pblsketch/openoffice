@@ -47,6 +47,15 @@ test('Cmd/Ctrl+E toggles the source view', async ({ page }) => {
   await expect(page.locator('.doc-editor')).toBeVisible()
 })
 
+test('the source button names the shortcut without renaming itself', async ({ page }) => {
+  await openSource(page, false)
+  const button = page.locator(SOURCE_BUTTON)
+  await expect(button).toHaveAttribute('data-tip', /Source \((Ctrl\+E|⌘E)\)/)
+  // the accessible name stays the plain label: selectors and screen readers
+  // must not depend on the platform-specific chord
+  await expect(button).toHaveAttribute('aria-label', 'Source')
+})
+
 test('editor-shaped ribbon commands stand down while the source view is open', async ({ page }) => {
   await openSource(page, false)
   await page.locator(SOURCE_BUTTON).click()

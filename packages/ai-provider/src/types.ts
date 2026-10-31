@@ -31,6 +31,7 @@ export type AiProviderId =
   | 'opper'
   | 'cheaperinference'
   | 'atlascloud'
+  | 'runcrate'
   | 'opencode-zen'
   | 'opencode-go'
   | 'custom'
@@ -145,6 +146,12 @@ export interface AiProviderConfig {
   baseUrl?: string | undefined
   /** optional Codex CLI override; empty means auto-detect the current authenticated install */
   cliPath?: string | undefined
+  /**
+   * key providers: the chat models the vendor listed for this key, newest first
+   * where it dates them (decision 0087). Written by the main process only; the
+   * pickers show it after the fixed catalog.
+   */
+  models?: string[] | undefined
 }
 
 /** Where one value of a local model profile came from */
@@ -334,6 +341,19 @@ export interface AiSettings {
   headlessSubscriptionConsentVersion?: number | undefined
   /** the first-connection notice has been shown; absent = false */
   subscriptionNoticeSeen?: boolean | undefined
+  /**
+   * Which version of the first-connection notice was acknowledged. The notice
+   * is shown again when its wording gains something new (the PDF sentence is
+   * version 2); old files that only carry `subscriptionNoticeSeen` read as the
+   * previous version, so those users see the addition once.
+   */
+  subscriptionNoticeVersion?: number | undefined
+  /**
+   * Which version of the PDF editor's extra sentence was acknowledged. It is
+   * kept separately because the general notice may have been acknowledged in
+   * another editor, where that sentence is not shown.
+   */
+  pdfSendNoticeSeen?: number | undefined
   /**
    * "Let AI use internet tools" (decision 0062): only false turns the editors'
    * outbound tools off; absent = on. The terminal command and MCP do not read it.

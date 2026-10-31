@@ -5,7 +5,8 @@
  * progress with a Cancel button; a password-protected file asks for its
  * password and retries. Markdown opens in a Markdown tab when done (after the
  * warnings, like the Word conversion's notices); EPUB is only saved and offers
- * "Open folder".
+ * "Open folder". Save As › Markdown carries the target the shell's save dialog
+ * already picked: the dialog then converts to it at once, without the form.
  *
  * The job runs in the shell's structure process; this component only talks to
  * the `api` it is given (window.pdfApi in the app, a fake in tests).
@@ -56,6 +57,8 @@ export interface ConvertDialogProps {
   lang: Lang
   t: TFunc
   api: ConvertDialogApi
+  /** a Markdown target the shell's Save As dialog already picked: convert to it right away */
+  initialTarget?: string
   /** save pending edits so the job reads what is on screen; false = not saved (the editor said why) */
   prepare: () => Promise<boolean>
   /** text of a 1-based page as shown (for "Fill with AI") */
@@ -81,7 +84,7 @@ export function ConvertDialog(props: ConvertDialogProps): ReactElement {
   const [stage, setStage] = useState<Stage>({ kind: 'form' })
   const [somePages, setSomePages] = useState(false)
   const [rangeText, setRangeText] = useState('')
-  const [outPath, setOutPath] = useState<string | null>(null)
+  const [outPath, setOutPath] = useState<string | null>(props.initialTarget ?? null)
   const [cover, setCover] = useState(true)
   const [pageBreaks, setPageBreaks] = useState(false)
   const [title, setTitle] = useState(() => docInfo.title?.trim() || stemOf(fileName))
@@ -207,6 +210,32 @@ export function ConvertDialog(props: ConvertDialogProps): ReactElement {
     setStage({ kind: 'form' })
   }
 
+  /** Free a Markdown tab showing the target, then run (pending edits already saved) */
+  const runOn = async (target: string): Promise<void> => {
+    if (format === 'md' && !(await api.releaseTarget(output(target)))) {
+      if (aliveRef.current) {
+        setMessage(t('cvErrTargetOpen'))
+        setStage({ kind: 'form' })
+      }
+      return
+    }
+    if (!aliveRef.current) return
+    await runJob(target)
+  }
+
+  /** Save pending edits, free the target, then run (the Save As › Markdown path) */
+  const startingRef = useRef(false)
+  const startWith = async (target: string): Promise<void> => {
+    if (startingRef.current) return
+    startingRef.current = true
+    try {
+      if (!(await props.prepare()) || !aliveRef.current) return
+      await runOn(target)
+    } finally {
+      startingRef.current = false
+    }
+  }
+
   const start = async (): Promise<void> => {
     if (stage.kind !== 'form') return
     setShowErrors(true)
@@ -215,13 +244,19 @@ export function ConvertDialog(props: ConvertDialogProps): ReactElement {
     if (!(await props.prepare()) || !aliveRef.current) return
     const target = outPath ?? (await chooseTarget())
     if (!target || !aliveRef.current) return
-    if (format === 'md' && !(await api.releaseTarget(output(target)))) {
-      if (aliveRef.current) setMessage(t('cvErrTargetOpen'))
-      return
-    }
-    if (!aliveRef.current) return
-    await runJob(target)
+    await runOn(target)
   }
+
+  // Save As › Markdown carries its target: no page-range form, start at once
+  const autoStartedRef = useRef(false)
+  const autoStartRef = useRef(startWith)
+  autoStartRef.current = startWith
+  useEffect(() => {
+    const target = props.initialTarget
+    if (!target || autoStartedRef.current) return
+    autoStartedRef.current = true
+    void autoStartRef.current(target)
+  }, [props.initialTarget])
 
   const cancelRun = (): void => {
     if (stage.kind === 'running') void api.cancel(stage.jobId)

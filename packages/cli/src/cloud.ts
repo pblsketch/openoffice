@@ -233,6 +233,7 @@ const NEXT_STEP: Record<NonNullable<MediaToolFailure['errorCode']>, string> = {
     'retry once: an older version reported its limit of automatic subscription requests, which no longer exists',
   'rate-limit': "do not retry now: the usage limit of the user's subscription is reached",
   'free-limit': `do not retry now: today's free allowance of the free AI connection is used up (detail.resetsAt says when it frees again); the user can choose another AI under Settings > AI in ${PRODUCT_NAME}`,
+  'free-tier-model': `do not retry: the chosen model is not on the free tier of the user's key; the user can pick a model the free tier covers under Settings > AI > Advanced in ${PRODUCT_NAME}, or turn on billing with the provider`,
   'not-connected': `do not retry: ask the user to connect Claude Code or Codex under Settings > AI in ${PRODUCT_NAME}, or to select a provider key under Settings > AI > Advanced`,
   'not-installed': `do not retry: ask the user to install the CLI named in the message (Settings > AI in ${PRODUCT_NAME} shows how)`,
   'signed-out': `do not retry: ask the user to sign in again under Settings > AI in ${PRODUCT_NAME}`,

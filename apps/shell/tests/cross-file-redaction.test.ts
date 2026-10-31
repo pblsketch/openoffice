@@ -356,7 +356,8 @@ describe('shell wiring (src/main/index.ts needs a running Electron, so the text 
     const at = source.indexOf("ipcMain.handle('kb:search'")
     const end = source.indexOf("ipcMain.handle('kb:read'")
     const handler = source.slice(at, end)
-    expect(handler).toContain('searchSavedKnowledgeBase(')
+    // the starred search (and a project widening of it) that leaves unsaved files out
+    expect(handler).toContain('searchSavedKnowledgeWithProject(')
     expect(handler).not.toContain('searchKnowledgeBase(')
     // and only over the files the index holds as they are on disk
     expect(handler).toContain('store.pathsIndexedAsOnDisk(readStarredFiles())')

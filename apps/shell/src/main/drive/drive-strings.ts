@@ -20,10 +20,14 @@ const zh = {
   btnLocal: '只保存在这台电脑上',
   copySuffix: '副本',
   noticeOfficeCopy:
-    '“{name}”是 Google 文档，因此保持原样。你的更改已作为“{copyName}”保存到同一文件夹中。',
+    '“{name}”是 Google 文档，因此保持原样。你的更改已作为“{copyName}”保存到 Google 云端硬盘。',
   noticeCopy: '你的更改已作为“{copyName}”保存到 Google 云端硬盘。',
   noticeUploadFailed:
     '“{name}”未能上传到 Google 云端硬盘。更改已保存在这台电脑上，应用会再次尝试上传。',
+  pagePickedTitle: '已选择文件',
+  pagePickedBody: '可以关闭此标签页并返回 GenOffice。',
+  freeAiDocRefusal:
+    '此文档是 Google 云端硬盘文件的副本，而当前使用的 AI 是可能用收到的内容训练模型的免费连接。请选择其他 AI 来处理此文档。',
   ok: '确定',
 }
 
@@ -46,10 +50,14 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
     btnLocal: 'Keep on this PC only',
     copySuffix: 'copy',
     noticeOfficeCopy:
-      '“{name}” is a Google document, so it was left as it is. Your changes were saved as “{copyName}” in the same folder.',
+      '“{name}” is a Google document, so it was left as it is. Your changes were saved to Google Drive as “{copyName}”.',
     noticeCopy: 'Your changes were saved to Google Drive as “{copyName}”.',
     noticeUploadFailed:
       '“{name}” could not be uploaded to Google Drive. Your changes are saved on this PC, and the app will try again.',
+    pagePickedTitle: 'Files chosen',
+    pagePickedBody: 'You can close this tab and go back to GenOffice.',
+    freeAiDocRefusal:
+      'This document is a copy of a Google Drive file, and the AI in use is a free connection that may train on what it receives. Choose another AI to work on this document.',
     ok: 'OK',
   } satisfies Keys,
   ja: {
@@ -67,10 +75,14 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
     btnLocal: 'この PC にだけ保存',
     copySuffix: 'コピー',
     noticeOfficeCopy:
-      '「{name}」は Google ドキュメントなので、そのまま残しました。変更は同じフォルダに「{copyName}」として保存しました。',
+      '「{name}」は Google ドキュメントなので、そのまま残しました。変更は Google ドライブに「{copyName}」として保存しました。',
     noticeCopy: '変更を Google ドライブに「{copyName}」として保存しました。',
     noticeUploadFailed:
       '「{name}」を Google ドライブにアップロードできませんでした。変更はこの PC に保存されており、アプリが再度アップロードを試みます。',
+    pagePickedTitle: 'ファイルを選びました',
+    pagePickedBody: 'このタブを閉じて GenOffice に戻ってください。',
+    freeAiDocRefusal:
+      'この文書は Google ドライブのファイルのコピーで、使用中の AI は受け取った内容を学習に使う可能性がある無料接続です。この文書は別の AI を選んで任せてください。',
     ok: 'OK',
   } satisfies Keys,
   ko: {
@@ -88,10 +100,14 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
     btnLocal: '이 PC에만 저장',
     copySuffix: '사본',
     noticeOfficeCopy:
-      '“{name}”은(는) Google 문서라서 그대로 두었습니다. 고친 내용은 같은 폴더에 “{copyName}”(으)로 저장했습니다.',
+      '“{name}”은(는) Google 문서라서 그대로 두었습니다. 고친 내용은 Google 드라이브에 “{copyName}”(으)로 저장했습니다.',
     noticeCopy: '고친 내용을 Google 드라이브에 “{copyName}”(으)로 저장했습니다.',
     noticeUploadFailed:
       '“{name}”을(를) Google 드라이브에 올리지 못했습니다. 고친 내용은 이 PC에 저장돼 있고, 앱이 다시 올려 봅니다.',
+    pagePickedTitle: '파일을 골랐습니다',
+    pagePickedBody: '이 탭을 닫고 GenOffice로 돌아가세요.',
+    freeAiDocRefusal:
+      '이 문서는 Google 드라이브 파일의 사본이고, 지금 쓰는 AI는 받은 내용을 학습에 쓸 수 있는 무료 연결입니다. 이 문서는 다른 AI를 골라 맡기세요.',
     ok: '확인',
   } satisfies Keys,
   fr: {
@@ -109,10 +125,14 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
     btnLocal: 'Garder sur ce PC uniquement',
     copySuffix: 'copie',
     noticeOfficeCopy:
-      '« {name} » est un document Google, il a donc été laissé tel quel. Vos modifications ont été enregistrées sous « {copyName} » dans le même dossier.',
+      '« {name} » est un document Google, il a donc été laissé tel quel. Vos modifications ont été enregistrées dans Google Drive sous « {copyName} ».',
     noticeCopy: 'Vos modifications ont été enregistrées dans Google Drive sous « {copyName} ».',
     noticeUploadFailed:
       "« {name} » n'a pas pu être envoyé vers Google Drive. Vos modifications sont enregistrées sur ce PC et l'application réessaiera.",
+    pagePickedTitle: 'Fichiers choisis',
+    pagePickedBody: 'Vous pouvez fermer cet onglet et revenir à GenOffice.',
+    freeAiDocRefusal:
+      'Ce document est une copie d’un fichier Google Drive, et l’IA utilisée est une connexion gratuite qui peut s’entraîner sur ce qu’elle reçoit. Choisissez une autre IA pour ce document.',
     ok: 'OK',
   } satisfies Keys,
   de: {
@@ -131,10 +151,14 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
     btnLocal: 'Nur auf diesem PC behalten',
     copySuffix: 'Kopie',
     noticeOfficeCopy:
-      '„{name}“ ist ein Google-Dokument und wurde daher nicht verändert. Ihre Änderungen wurden im selben Ordner als „{copyName}“ gespeichert.',
+      '„{name}“ ist ein Google-Dokument und wurde daher nicht verändert. Ihre Änderungen wurden in Google Drive als „{copyName}“ gespeichert.',
     noticeCopy: 'Ihre Änderungen wurden in Google Drive als „{copyName}“ gespeichert.',
     noticeUploadFailed:
       '„{name}“ konnte nicht in Google Drive hochgeladen werden. Ihre Änderungen sind auf diesem PC gespeichert, und die App versucht es erneut.',
+    pagePickedTitle: 'Dateien ausgewählt',
+    pagePickedBody: 'Sie können diesen Tab schließen und zu GenOffice zurückkehren.',
+    freeAiDocRefusal:
+      'Dieses Dokument ist eine Kopie einer Google-Drive-Datei, und die verwendete KI ist eine kostenlose Verbindung, die mit dem Erhaltenen trainieren kann. Wählen Sie für dieses Dokument eine andere KI.',
     ok: 'OK',
   } satisfies Keys,
   es: {
@@ -152,10 +176,14 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
     btnLocal: 'Mantener solo en este PC',
     copySuffix: 'copia',
     noticeOfficeCopy:
-      '«{name}» es un documento de Google, así que se dejó como estaba. Tus cambios se guardaron como «{copyName}» en la misma carpeta.',
+      '«{name}» es un documento de Google, así que se dejó como estaba. Tus cambios se guardaron en Google Drive como «{copyName}».',
     noticeCopy: 'Tus cambios se guardaron en Google Drive como «{copyName}».',
     noticeUploadFailed:
       'No se pudo subir «{name}» a Google Drive. Tus cambios están guardados en este PC y la aplicación lo volverá a intentar.',
+    pagePickedTitle: 'Archivos elegidos',
+    pagePickedBody: 'Puedes cerrar esta pestaña y volver a GenOffice.',
+    freeAiDocRefusal:
+      'Este documento es una copia de un archivo de Google Drive, y la IA en uso es una conexión gratuita que puede entrenarse con lo que recibe. Elija otra IA para este documento.',
     ok: 'Aceptar',
   } satisfies Keys,
   th: {
@@ -173,10 +201,14 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
     btnLocal: 'เก็บไว้ในพีซีเครื่องนี้เท่านั้น',
     copySuffix: 'สำเนา',
     noticeOfficeCopy:
-      '“{name}” เป็นเอกสาร Google จึงไม่ได้แก้ไขต้นฉบับ การแก้ไขของคุณบันทึกเป็น “{copyName}” ในโฟลเดอร์เดียวกัน',
+      '“{name}” เป็นเอกสาร Google จึงไม่ได้แก้ไขต้นฉบับ การแก้ไขของคุณบันทึกลง Google ไดรฟ์เป็น “{copyName}” แล้ว',
     noticeCopy: 'บันทึกการแก้ไขของคุณลง Google ไดรฟ์เป็น “{copyName}” แล้ว',
     noticeUploadFailed:
       'อัปโหลด “{name}” ไปยัง Google ไดรฟ์ไม่สำเร็จ การแก้ไขบันทึกไว้ในพีซีเครื่องนี้แล้ว และแอปจะลองอีกครั้ง',
+    pagePickedTitle: 'เลือกไฟล์แล้ว',
+    pagePickedBody: 'ปิดแท็บนี้แล้วกลับไปที่ GenOffice ได้เลย',
+    freeAiDocRefusal:
+      'เอกสารนี้เป็นสำเนาของไฟล์ใน Google ไดรฟ์ และ AI ที่ใช้อยู่เป็นการเชื่อมต่อฟรีที่อาจนำสิ่งที่ได้รับไปฝึกโมเดล โปรดเลือก AI อื่นสำหรับเอกสารนี้',
     ok: 'ตกลง',
   } satisfies Keys,
   id: {
@@ -194,10 +226,14 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
     btnLocal: 'Simpan di PC ini saja',
     copySuffix: 'salinan',
     noticeOfficeCopy:
-      '“{name}” adalah dokumen Google, jadi dibiarkan apa adanya. Perubahan Anda disimpan sebagai “{copyName}” di folder yang sama.',
+      '“{name}” adalah dokumen Google, jadi dibiarkan apa adanya. Perubahan Anda disimpan ke Google Drive sebagai “{copyName}”.',
     noticeCopy: 'Perubahan Anda disimpan ke Google Drive sebagai “{copyName}”.',
     noticeUploadFailed:
       '“{name}” tidak dapat diunggah ke Google Drive. Perubahan Anda tersimpan di PC ini, dan aplikasi akan mencoba lagi.',
+    pagePickedTitle: 'File sudah dipilih',
+    pagePickedBody: 'Anda dapat menutup tab ini dan kembali ke GenOffice.',
+    freeAiDocRefusal:
+      'Dokumen ini adalah salinan file Google Drive, dan AI yang dipakai adalah koneksi gratis yang mungkin melatih model dengan isi yang diterimanya. Pilih AI lain untuk dokumen ini.',
     ok: 'OK',
   } satisfies Keys,
   ru: {
@@ -215,10 +251,14 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
     btnLocal: 'Оставить только на этом компьютере',
     copySuffix: 'копия',
     noticeOfficeCopy:
-      '«{name}» — документ Google, поэтому он остался без изменений. Ваши изменения сохранены как «{copyName}» в той же папке.',
+      '«{name}» — документ Google, поэтому он остался без изменений. Ваши изменения сохранены на Google Диск как «{copyName}».',
     noticeCopy: 'Ваши изменения сохранены на Google Диск как «{copyName}».',
     noticeUploadFailed:
       'Не удалось загрузить «{name}» на Google Диск. Изменения сохранены на этом компьютере, приложение попробует ещё раз.',
+    pagePickedTitle: 'Файлы выбраны',
+    pagePickedBody: 'Можно закрыть эту вкладку и вернуться в GenOffice.',
+    freeAiDocRefusal:
+      'Этот документ — копия файла с Google Диска, а используемый ИИ — бесплатное подключение, которое может обучаться на полученном. Выберите для этого документа другой ИИ.',
     ok: 'ОК',
   } satisfies Keys,
   ar: {
@@ -236,10 +276,14 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
     btnLocal: 'الاحتفاظ به على هذا الكمبيوتر فقط',
     copySuffix: 'نسخة',
     noticeOfficeCopy:
-      '“{name}” مستند Google، لذلك تُرك كما هو. حُفظت تغييراتك باسم “{copyName}” في المجلد نفسه.',
+      '“{name}” مستند Google، لذلك تُرك كما هو. حُفظت تغييراتك في Google Drive باسم “{copyName}”.',
     noticeCopy: 'حُفظت تغييراتك في Google Drive باسم “{copyName}”.',
     noticeUploadFailed:
       'تعذّر رفع “{name}” إلى Google Drive. تغييراتك محفوظة على هذا الكمبيوتر، وسيحاول التطبيق مرة أخرى.',
+    pagePickedTitle: 'تم اختيار الملفات',
+    pagePickedBody: 'يمكنك إغلاق علامة التبويب هذه والعودة إلى GenOffice.',
+    freeAiDocRefusal:
+      'هذا المستند نسخة من ملف في Google Drive، والذكاء الاصطناعي المستخدم اتصال مجاني قد يدرّب نماذجه على ما يتلقاه. اختر ذكاءً اصطناعيًا آخر للعمل على هذا المستند.',
     ok: 'موافق',
   } satisfies Keys,
   pt: {
@@ -257,10 +301,14 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
     btnLocal: 'Manter só neste PC',
     copySuffix: 'cópia',
     noticeOfficeCopy:
-      '“{name}” é um documento Google, por isso ficou como estava. Suas alterações foram salvas como “{copyName}” na mesma pasta.',
+      '“{name}” é um documento Google, por isso ficou como estava. Suas alterações foram salvas no Google Drive como “{copyName}”.',
     noticeCopy: 'Suas alterações foram salvas no Google Drive como “{copyName}”.',
     noticeUploadFailed:
       'Não foi possível enviar “{name}” para o Google Drive. Suas alterações estão salvas neste PC e o aplicativo tentará novamente.',
+    pagePickedTitle: 'Arquivos escolhidos',
+    pagePickedBody: 'Pode fechar esta aba e voltar ao GenOffice.',
+    freeAiDocRefusal:
+      'Este documento é uma cópia de um arquivo do Google Drive, e a IA em uso é uma conexão gratuita que pode treinar com o que recebe. Escolha outra IA para este documento.',
     ok: 'OK',
   } satisfies Keys,
   it: {
@@ -278,10 +326,14 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
     btnLocal: 'Tieni solo su questo PC',
     copySuffix: 'copia',
     noticeOfficeCopy:
-      '“{name}” è un documento Google, quindi è stato lasciato com’era. Le modifiche sono state salvate come “{copyName}” nella stessa cartella.',
+      '“{name}” è un documento Google, quindi è stato lasciato com’era. Le modifiche sono state salvate in Google Drive come “{copyName}”.',
     noticeCopy: 'Le modifiche sono state salvate in Google Drive come “{copyName}”.',
     noticeUploadFailed:
       'Impossibile caricare “{name}” su Google Drive. Le modifiche sono salvate su questo PC e l’app riproverà.',
+    pagePickedTitle: 'File scelti',
+    pagePickedBody: 'Puoi chiudere questa scheda e tornare a GenOffice.',
+    freeAiDocRefusal:
+      'Questo documento è una copia di un file di Google Drive e l’IA in uso è una connessione gratuita che può addestrarsi su ciò che riceve. Scegli un’altra IA per questo documento.',
     ok: 'OK',
   } satisfies Keys,
   pl: {
@@ -299,10 +351,14 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
     btnLocal: 'Zachowaj tylko na tym komputerze',
     copySuffix: 'kopia',
     noticeOfficeCopy:
-      '„{name}” to dokument Google, więc pozostał bez zmian. Twoje zmiany zapisano jako „{copyName}” w tym samym folderze.',
+      '„{name}” to dokument Google, więc pozostał bez zmian. Twoje zmiany zapisano na Dysku Google jako „{copyName}”.',
     noticeCopy: 'Twoje zmiany zapisano na Dysku Google jako „{copyName}”.',
     noticeUploadFailed:
       'Nie udało się wysłać pliku „{name}” na Dysk Google. Zmiany są zapisane na tym komputerze, a aplikacja spróbuje ponownie.',
+    pagePickedTitle: 'Wybrano pliki',
+    pagePickedBody: 'Możesz zamknąć tę kartę i wrócić do GenOffice.',
+    freeAiDocRefusal:
+      'Ten dokument jest kopią pliku z Dysku Google, a używana AI to bezpłatne połączenie, które może trenować na otrzymanych treściach. Wybierz inną AI do pracy z tym dokumentem.',
     ok: 'OK',
   } satisfies Keys,
   cs: {
@@ -320,10 +376,14 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
     btnLocal: 'Ponechat jen v tomto počítači',
     copySuffix: 'kopie',
     noticeOfficeCopy:
-      '„{name}“ je dokument Google, proto zůstal beze změny. Vaše změny se uložily jako „{copyName}“ do stejné složky.',
+      '„{name}“ je dokument Google, proto zůstal beze změny. Vaše změny se uložily na Disk Google jako „{copyName}“.',
     noticeCopy: 'Vaše změny se uložily na Disk Google jako „{copyName}“.',
     noticeUploadFailed:
       'Soubor „{name}“ se nepodařilo nahrát na Disk Google. Změny jsou uložené v tomto počítači a aplikace to zkusí znovu.',
+    pagePickedTitle: 'Soubory vybrány',
+    pagePickedBody: 'Tuto kartu můžete zavřít a vrátit se do GenOffice.',
+    freeAiDocRefusal:
+      'Tento dokument je kopií souboru z Disku Google a používaná AI je bezplatné připojení, které se může učit z obdrženého obsahu. Pro tento dokument zvolte jinou AI.',
     ok: 'OK',
   } satisfies Keys,
   nl: {
@@ -341,10 +401,14 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
     btnLocal: 'Alleen op deze pc houden',
     copySuffix: 'kopie',
     noticeOfficeCopy:
-      '“{name}” is een Google-document en is daarom ongewijzigd gelaten. Je wijzigingen zijn opgeslagen als “{copyName}” in dezelfde map.',
+      '“{name}” is een Google-document en is daarom ongewijzigd gelaten. Je wijzigingen zijn in Google Drive opgeslagen als “{copyName}”.',
     noticeCopy: 'Je wijzigingen zijn in Google Drive opgeslagen als “{copyName}”.',
     noticeUploadFailed:
       '“{name}” kon niet naar Google Drive worden geüpload. Je wijzigingen staan op deze pc en de app probeert het opnieuw.',
+    pagePickedTitle: 'Bestanden gekozen',
+    pagePickedBody: 'Je kunt dit tabblad sluiten en teruggaan naar GenOffice.',
+    freeAiDocRefusal:
+      'Dit document is een kopie van een Google Drive-bestand, en de gebruikte AI is een gratis verbinding die kan trainen op wat ze ontvangt. Kies een andere AI voor dit document.',
     ok: 'OK',
   } satisfies Keys,
   ms: {
@@ -362,10 +426,14 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
     btnLocal: 'Simpan pada PC ini sahaja',
     copySuffix: 'salinan',
     noticeOfficeCopy:
-      '“{name}” ialah dokumen Google, jadi ia dibiarkan seperti asal. Perubahan anda disimpan sebagai “{copyName}” dalam folder yang sama.',
+      '“{name}” ialah dokumen Google, jadi ia dibiarkan seperti asal. Perubahan anda disimpan ke Google Drive sebagai “{copyName}”.',
     noticeCopy: 'Perubahan anda disimpan ke Google Drive sebagai “{copyName}”.',
     noticeUploadFailed:
       '“{name}” tidak dapat dimuat naik ke Google Drive. Perubahan anda disimpan pada PC ini, dan aplikasi akan mencuba lagi.',
+    pagePickedTitle: 'Fail telah dipilih',
+    pagePickedBody: 'Anda boleh menutup tab ini dan kembali ke GenOffice.',
+    freeAiDocRefusal:
+      'Dokumen ini ialah salinan fail Google Drive, dan AI yang digunakan ialah sambungan percuma yang mungkin melatih model dengan kandungan yang diterimanya. Pilih AI lain untuk dokumen ini.',
     ok: 'OK',
   } satisfies Keys,
   he: {
@@ -383,10 +451,14 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
     btnLocal: 'לשמור רק במחשב הזה',
     copySuffix: 'עותק',
     noticeOfficeCopy:
-      '“{name}” הוא מסמך Google, ולכן נשאר כמו שהוא. השינויים שלך נשמרו בשם “{copyName}” באותה תיקייה.',
+      '“{name}” הוא מסמך Google, ולכן נשאר כמו שהוא. השינויים שלך נשמרו ב-Google Drive בשם “{copyName}”.',
     noticeCopy: 'השינויים שלך נשמרו ב-Google Drive בשם “{copyName}”.',
     noticeUploadFailed:
       'לא ניתן היה להעלות את “{name}” ל-Google Drive. השינויים שמורים במחשב הזה, והאפליקציה תנסה שוב.',
+    pagePickedTitle: 'הקבצים נבחרו',
+    pagePickedBody: 'אפשר לסגור את הכרטיסייה ולחזור ל-GenOffice.',
+    freeAiDocRefusal:
+      'מסמך זה הוא עותק של קובץ מ-Google Drive, וה-AI שבשימוש הוא חיבור חינמי שעשוי להתאמן על מה שהוא מקבל. בחרו AI אחר כדי לעבוד על מסמך זה.',
     ok: 'אישור',
   } satisfies Keys,
   hi: {
@@ -404,10 +476,14 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
     btnLocal: 'केवल इस पीसी पर रखें',
     copySuffix: 'प्रति',
     noticeOfficeCopy:
-      '“{name}” एक Google दस्तावेज़ है, इसलिए उसे वैसा ही छोड़ा गया। आपके बदलाव उसी फ़ोल्डर में “{copyName}” के रूप में सहेजे गए।',
+      '“{name}” एक Google दस्तावेज़ है, इसलिए उसे वैसा ही छोड़ा गया। आपके बदलाव Google Drive में “{copyName}” के रूप में सहेजे गए।',
     noticeCopy: 'आपके बदलाव Google Drive में “{copyName}” के रूप में सहेजे गए।',
     noticeUploadFailed:
       '“{name}” को Google Drive पर अपलोड नहीं किया जा सका। आपके बदलाव इस पीसी पर सहेजे गए हैं, और ऐप फिर से कोशिश करेगा।',
+    pagePickedTitle: 'फ़ाइलें चुन ली गईं',
+    pagePickedBody: 'आप यह टैब बंद करके GenOffice पर लौट सकते हैं।',
+    freeAiDocRefusal:
+      'यह दस्तावेज़ Google Drive की एक फ़ाइल की प्रति है, और इस्तेमाल हो रहा AI एक मुफ़्त कनेक्शन है जो मिली सामग्री पर प्रशिक्षण कर सकता है। इस दस्तावेज़ के लिए कोई दूसरा AI चुनें।',
     ok: 'ठीक है',
   } satisfies Keys,
   'zh-TW': {
@@ -425,10 +501,14 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
     btnLocal: '只儲存在這台電腦上',
     copySuffix: '副本',
     noticeOfficeCopy:
-      '「{name}」是 Google 文件，因此保持原樣。你的變更已以「{copyName}」儲存在同一個資料夾中。',
+      '「{name}」是 Google 文件，因此保持原樣。你的變更已以「{copyName}」儲存到 Google 雲端硬碟。',
     noticeCopy: '你的變更已以「{copyName}」儲存到 Google 雲端硬碟。',
     noticeUploadFailed:
       '「{name}」無法上傳到 Google 雲端硬碟。變更已儲存在這台電腦上，應用程式會再試一次。',
+    pagePickedTitle: '已選擇檔案',
+    pagePickedBody: '可以關閉此分頁並返回 GenOffice。',
+    freeAiDocRefusal:
+      '此文件是 Google 雲端硬碟檔案的副本，而目前使用的 AI 是可能用收到的內容訓練模型的免費連線。請選擇其他 AI 來處理此文件。',
     ok: '確定',
   } satisfies Keys,
   vi: {
@@ -446,10 +526,14 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
     btnLocal: 'Chỉ giữ trên máy tính này',
     copySuffix: 'bản sao',
     noticeOfficeCopy:
-      '“{name}” là tài liệu Google nên được giữ nguyên. Thay đổi của bạn đã được lưu thành “{copyName}” trong cùng thư mục.',
+      '“{name}” là tài liệu Google nên được giữ nguyên. Thay đổi của bạn đã được lưu vào Google Drive thành “{copyName}”.',
     noticeCopy: 'Thay đổi của bạn đã được lưu vào Google Drive thành “{copyName}”.',
     noticeUploadFailed:
       'Không thể tải “{name}” lên Google Drive. Thay đổi đã được lưu trên máy tính này và ứng dụng sẽ thử lại.',
+    pagePickedTitle: 'Đã chọn tệp',
+    pagePickedBody: 'Bạn có thể đóng thẻ này và quay lại GenOffice.',
+    freeAiDocRefusal:
+      'Tài liệu này là bản sao của một tệp Google Drive, còn AI đang dùng là kết nối miễn phí có thể dùng nội dung nhận được để huấn luyện. Hãy chọn AI khác để làm việc với tài liệu này.',
     ok: 'OK',
   } satisfies Keys,
 })

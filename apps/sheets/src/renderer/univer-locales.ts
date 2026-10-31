@@ -4,10 +4,13 @@
  * the matching Univer language packs — every preset ships all 19 — and
  * switches LocaleService, which re-renders the whole Univer React tree
  * (rule-management panels, dialogs, menus). Languages Univer has no pack for
- * (th/nl/ms/he/hi/cs) stay English.
+ * (th/nl/ms/he/hi/cs) stay English there; cell number formats follow the app
+ * language separately (applyNumfmtLocale below).
  */
 import { LocaleService, LocaleType, mergeLocales, type ILocales } from '@univerjs/core'
+import { SheetsNumfmtCellContentController } from '@univerjs/preset-sheets-core'
 
+import { numfmtLocaleFor } from './i18n/numfmt-locale'
 import type { UniverRuntime } from './univer-state'
 
 type LocalePack = Record<string, unknown>
@@ -272,10 +275,39 @@ export function univerLocaleFor(lang: string): LocaleType | null {
   return UNIVER_LOCALES[lang]?.type ?? null
 }
 
+/// A language switch can finish loading after a newer one started; only the
+/// latest load may call setLocale.
+const localeLoadGeneration = new WeakMap<UniverRuntime, number>()
+
+/**
+ * Number formats render through Univer's `numfmt` controller, whose locale
+ * starts at English and never falls back to LocaleService. Without this call a
+ * Korean `aaa`/`dddd` (or `mmm`, AM/PM) stays English while the rest of the UI
+ * is Korean. The controller is the DI token the preset's numfmt plugin
+ * registers.
+ */
+export function applyNumfmtLocale(runtime: UniverRuntime, lang: string): void {
+  const controller = runtime.univer.__getInjector().get(SheetsNumfmtCellContentController) as {
+    setNumfmtLocal(locale: string): void
+  }
+  controller.setNumfmtLocal(numfmtLocaleFor(lang))
+}
+
 export async function applyUniverLocale(runtime: UniverRuntime, lang: string): Promise<void> {
+  // Number formats have their own locale map and cover languages Univer has
+  // no UI pack for (th/nl/cs/he/hi), so set it before the pack lookup returns.
+  try {
+    applyNumfmtLocale(runtime, lang)
+  } catch (error) {
+    // Display-only: losing localized weekday names must not stop the UI packs.
+    console.warn('[sheets] number-format locale', error)
+  }
   const entry = UNIVER_LOCALES[lang]
   if (!entry) return
+  const generation = (localeLoadGeneration.get(runtime) ?? 0) + 1
+  localeLoadGeneration.set(runtime, generation)
   const packs = (await entry.load()).map((mod) => mod.default)
+  if (localeLoadGeneration.get(runtime) !== generation) return
   const merged = mergeLocales(...packs) as LocalePack
   Object.assign(merged, numberAsTextAlertLocale(merged))
   Object.assign(merged, insertRowsBelowLocale(merged))

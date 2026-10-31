@@ -8,6 +8,7 @@ Start is de beginpagina van GenOffice: een navigatiebalk links, bestandslijsten 
 - **Favorieten**: bestanden die je hebt gemarkeerd. Beweeg over een bestandsrij en klik op de ster om het toe te voegen of te verwijderen. **Naar groep verplaatsen** in het ⋯-menu sorteert bestanden met ster in genoemde groepen; de Sterren-weergave filtert erop.
 - **Gebruikershandleiding**: opent deze handleiding.
 - **Ask AI**: het kennisbank-paneel — stel vragen en krijg antwoorden met citaten uit uw bestanden met ster (zie beneden).
+- **Projecten**: de mappen (projecten) waarmee de AI kan werken. Maak een project of gebruik een bestaande map, en open er een om de instructies, het geheugen, de bestanden en de chats te beheren. Zie [Projecten](help://projects).
 - **Mappen**: de mappen die je met **Map toevoegen…** aan de zijbalk toevoegt, of er vanuit je bestandsverkenner naartoe sleep. Elke map wordt een hoofdmap die je kunt openen, er submappen in kunt aanmaken, hernoemen en verwijderen; een map die offline gaat wordt als niet beschikbaar getoond en kan van de lijst worden gehaald. **Nieuwe map** maakt er nog een.
 - **De regel onderaan**: toont of er AI is verbonden — **AI koppelen**, of de naam van het verbonden abonnement — en opent Instellingen.
 
@@ -60,5 +61,6 @@ Wat elke kaart doet:
 - Zet eerst een ster bij bestanden (elk type dat de app leest); de kop van het paneel telt het corpus, en een lege kennisbank vraagt u eerst een ster te zetten.
 - Antwoorden citeren de bronbestanden; klik op een citaat om het bestand in zijn editor te openen.
 - Heeft een verbonden AI nodig; zie [Abonnementsverbinding](help://subscription). Het gesprek leeft alleen in het geheugen — de app sluiten beëindigt het.
+- Kies een project onder het invoerveld en de bestanden in die map worden ook doorzocht en gelezen; de chat wordt dan in die map bewaard, zodat je in een andere editor verder kunt. Zonder project leeft de chat alleen in het geheugen, zoals hierboven.
 - Zoeken draait op de lokale bestandsindex, zoals bij Start; verdwenen bestanden vallen geruisloos uit het corpus.
 - Groepen organiseren alleen de Sterren-lijst — de kennisbank beslaat altijd alle bestanden met ster.

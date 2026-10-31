@@ -24,4 +24,11 @@ describe('drivePickedOf', () => {
     })
     expect(drivePickedOf(null, 'en')).toEqual({ paths: [], notes: [] })
   })
+
+  it('says when Drive files are held back from the AI', () => {
+    expect(drivePickedOf({ ok: false, reason: 'free-ai' }, 'en').notes[0]).toContain('free AI')
+    expect(drivePickedOf({ ok: false, reason: 'training' }, 'en').notes[0]).toContain(
+      'model training',
+    )
+  })
 })

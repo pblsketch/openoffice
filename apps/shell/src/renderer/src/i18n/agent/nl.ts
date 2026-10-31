@@ -88,4 +88,6 @@ export const nl = {
     'Het programma is te oud voor de agentmodus. Werk het bij en probeer het opnieuw.',
   errNotInstalled: 'Het programma is niet geïnstalleerd.',
   errGeneric: 'Er ging iets mis. Probeer het opnieuw.',
+  documentsUnprotected:
+    'Documenten die na de start van de sessie zijn geopend ({n}) vallen buiten de schrijfbeveiliging van het programma. Stop en start de sessie opnieuw om ze te beschermen.',
 } satisfies Record<keyof typeof zh, string>

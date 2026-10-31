@@ -8,6 +8,7 @@ Trang chủ là trang khởi đầu của GenOffice: thanh điều hướng bên
 - **Đã gắn sao**: các tập tin bạn đã gắn sao. Rê chuột lên một hàng tập tin rồi nhấp vào ngôi sao để thêm hoặc bỏ. **Chuyển vào nhóm** trong menu ⋯ xếp các tệp đánh sao vào nhóm có tên; xem Đánh sao lọc theo chúng.
 - **Hướng dẫn sử dụng**: mở sổ tay này.
 - **Ask AI**: bảng cơ sở tri thức — hỏi và nhận câu trả lời trích dẫn từ các tệp đánh sao của bạn (xem dưới).
+- **Dự án**: các thư mục (dự án) mà AI có thể làm việc cùng. Tạo dự án hoặc dùng thư mục có sẵn, rồi mở một dự án để quản lý chỉ dẫn, ghi nhớ, tệp và cuộc trò chuyện của nó. Xem [Dự án](help://projects).
 - **Thư mục**: các thư mục bạn thêm vào thanh bên bằng **Thêm thư mục…**, hoặc kéo vào đó từ trình quản lý tập tin. Mỗi thư mục trở thành một gốc mà bạn có thể mở, tạo thư mục con bên trong, đổi tên và gỡ bỏ; thư mục nào mất kết nối sẽ hiển thị là không khả dụng và có thể gỡ khỏi danh sách. **Thư mục mới** tạo thêm một thư mục nữa.
 - **Hàng dưới cùng**: cho biết AI đã được kết nối hay chưa — **Kết nối AI**, hoặc tên của gói đăng ký đã kết nối — và mở Cài đặt.
 
@@ -60,5 +61,6 @@ Từng thẻ dùng để làm gì:
 - Đánh sao tệp trước (loại nào ứng dụng đọc được đều được); đầu bảng đếm kho, và kho rỗng sẽ mời bạn đi đánh sao thứ gì đó.
 - Câu trả lời trích dẫn tệp nguồn; bấm vào trích dẫn để mở tệp trong trình soạn của nó.
 - Cần có một AI đã kết nối; xem [Kết nối gói đăng ký](help://subscription). Hội thoại chỉ sống trong bộ nhớ — đóng ứng dụng là hết.
+- Chọn một dự án dưới ô nhập thì các tệp trong thư mục đó cũng được tìm và đọc, và cuộc trò chuyện được lưu trong thư mục đó để bạn tiếp tục ở trình soạn thảo khác. Khi không chọn dự án, hội thoại chỉ sống trong bộ nhớ như nói ở trên.
 - Tìm kiếm chạy trên chỉ mục tệp cục bộ, như tìm kiếm của Trang chủ; tệp đã biến mất tự rời khỏi kho.
 - Nhóm chỉ để sắp danh sách Đánh sao — cơ sở tri thức luôn bao mọi tệp được đánh sao.

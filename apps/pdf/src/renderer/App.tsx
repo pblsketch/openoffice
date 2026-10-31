@@ -139,8 +139,15 @@ import {
 import type { PdfViewState, ZoomAnchor } from './view-state'
 import { LinkLayer } from './LinkLayer'
 import { OutlinePanel } from './OutlinePanel'
+import { ComparePanel } from './ComparePanel'
+import { compareDocuments, type CompareResult, type PageText } from './compare-text'
 import type { OutlineNode } from './OutlinePanel'
-import { buildHeadingOutline, remapOutlinePages } from './heading-outline'
+import {
+  buildHeadingOutline,
+  destTop,
+  remapOutlinePages,
+  remapOutlineTree,
+} from './heading-outline'
 import { printPdf } from './print'
 import { PasswordDialog } from './PasswordDialog'
 import { PropertiesDialog } from './PropertiesDialog'
@@ -205,6 +212,8 @@ import {
   togglePreview,
   useAiHighlights,
 } from './highlight/useAiHighlights'
+import { BatesDialog } from './BatesDialog'
+import { buildBatesInserts, type BatesConfig } from './bates'
 import { SignaturesDialog, overallSignatureStatus } from './SignaturesDialog'
 import { SignatureDialog, fileToCanvas } from './SignatureDialog'
 import type { SignatureData } from './SignatureDialog'
@@ -276,8 +285,10 @@ import type {
   MarkupType,
   MetadataInput,
   NoteEditInput,
+  OutlineEntryInput,
   PageImageRef,
   PdfConvertFormat,
+  PdfConvertDialogRequest,
   PdfConvertOutputRequest,
   PdfReflowFormat,
   PdfSignatureInfo,
@@ -349,6 +360,7 @@ import {
 } from './text-edit-preview'
 import { samplePaperColor } from './paper-sample'
 import type { LocalTextEdit, LocalTextInsert, TextDraft } from './text-edit-preview'
+import { buildOcrBakeInserts } from './ocr-bake'
 import { planEditOps, reduceBucket } from './edit-ops'
 import type { Bucket, Op, OpContext, PlanResult } from './edit-ops'
 import { rectsNear } from './edit-state'
@@ -367,6 +379,7 @@ import {
   IconThumbs,
   IconHighlight,
   IconUnderline,
+  IconSquiggly,
   IconStrike,
   IconEditText,
   IconInk,
@@ -374,9 +387,12 @@ import {
   IconEllipse,
   IconArrow,
   IconNote,
+  IconCaret,
+  IconPolygon,
   IconSign,
   IconCertSign,
   IconSignatures,
+  IconBates,
   IconPreviousField,
   IconNextField,
   IconCompleteForm,
@@ -454,6 +470,8 @@ const DRAW_TOOLS = [
   { tool: 'rect' as const, icon: IconRect, key: 'drawRect' as const },
   { tool: 'ellipse' as const, icon: IconEllipse, key: 'drawEllipse' as const },
   { tool: 'arrow' as const, icon: IconArrow, key: 'drawArrow' as const },
+  { tool: 'polygon' as const, icon: IconPolygon, key: 'drawPolygon' as const },
+  { tool: 'caret' as const, icon: IconCaret, key: 'drawCaret' as const },
   { tool: 'note' as const, icon: IconNote, key: 'drawNote' as const },
 ]
 
@@ -561,10 +579,14 @@ export default function App() {
   useEffect(() => saveDefaultFit(defaultFit), [defaultFit])
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState('1')
-  const [sidebar, setSidebar] = useState<'thumbs' | 'outline' | 'notes' | null>(() =>
+  const [sidebar, setSidebar] = useState<'thumbs' | 'outline' | 'notes' | 'compare' | null>(() =>
     loadSidebarOpen() ? 'thumbs' : null,
   )
   useEffect(() => saveSidebarOpen(sidebar !== null), [sidebar])
+  const [compareResult, setCompareResult] = useState<CompareResult | null>(null)
+  const [compareName, setCompareName] = useState<string | null>(null)
+  const [compareBusy, setCompareBusy] = useState(false)
+  const [compareSwapped, setCompareSwapped] = useState(false)
   const [sidebarW, setSidebarW] = useState(loadSidebarW)
   /** raster width for thumbnails — only updated when a drag ends (re-rastering every frame would jank) */
   const [thumbRasterW, setThumbRasterW] = useState(() => loadSidebarW() - SIDEBAR_CHROME)
@@ -630,6 +652,20 @@ export default function App() {
   const [nightMode, setNightMode] = useState(false)
   const [outline, setOutline] = useState<OutlineNode[] | null>(null)
   const [outlineGenerated, setOutlineGenerated] = useState(false)
+  /** Edited bookmark tree (user add/rename/delete over the file's own outline).
+   * Only embedded outlines are editable — a generated heading tree is derived.
+   * Entries carry explicit page targets (resolved at edit time through
+   * doc.getPageIndex); a named destination we cannot resolve marks the whole
+   * edit unresolvable and the panel offers no save path for it (fail closed:
+   * the file's own /Outlines stay untouched). */
+  const [pendingOutline, setPendingOutline] = useState<{
+    tree: OutlineEntryInput[] | null
+    unresolvable: boolean
+    /** the tree differs from the file's outline: what Save writes, and what makes the document dirty */
+    edited: boolean
+    /** the pane shows the add / rename / delete affordances */
+    editing: boolean
+  } | null>(null)
   const outlineDocRef = useRef<PDFDocumentProxy | null>(null)
   const [markups, setMarkups] = useState<LocalMarkup[]>([])
   const markupsRef = useRef(markups)
@@ -660,8 +696,8 @@ export default function App() {
   const [highlightColorOpen, setHighlightColorOpen] = useState(false)
   const [convertOpen, setConvertOpen] = useState(false)
   const [convertBusy, setConvertBusy] = useState(false)
-  /** the Markdown / EPUB conversion dialog that is open */
-  const [convertDialog, setConvertDialog] = useState<PdfReflowFormat | null>(null)
+  /** the Markdown / EPUB conversion dialog that is open; `outPath` = a Save As target */
+  const [convertDialog, setConvertDialog] = useState<PdfConvertDialogRequest | null>(null)
   /** AI page reading: this tab's document jobs, the window's handle, the ribbon menu */
   const jobSession = useMemo(() => new DocumentJobSession(), [])
   const aiReadApi = useMemo(() => {
@@ -1043,6 +1079,7 @@ export default function App() {
   /** Certificate (digital) signatures found in the file on disk, verified by the main process */
   const [digitalSignatures, setDigitalSignatures] = useState<PdfSignatureInfo[]>([])
   const [certSignDlg, setCertSignDlg] = useState(false)
+  const [batesDlg, setBatesDlg] = useState(false)
   const [signaturesDlg, setSignaturesDlg] = useState(false)
   /** Confirmed signature awaiting placement; when non-null the page enters click-to-place mode */
   const [pendingSign, setPendingSign] = useState<SignatureData | null>(null)
@@ -1307,6 +1344,22 @@ export default function App() {
   /** Latest geometry for async pipelines that must not rebind on rotation (OCR) */
   const pageGeomRef = useRef(pageGeom)
   pageGeomRef.current = pageGeom
+  /** the auto-OCR's words as white text inserts: baked into every save while the
+      recognition data is in the session (the post-save reload finds a text layer,
+      so the pass never re-runs and the bake never doubles). It must stay below
+      pageGeomRef: the memo runs during render, and reading the ref before its
+      declaration threw as soon as the first scanned page was recognized. */
+  const ocrBakeInserts = useMemo(() => {
+    const out: LocalTextInsert[] = []
+    for (const [origIdx, data] of ocrPages) {
+      const geom = pageGeomRef.current(origIdx)
+      if (!geom) continue
+      for (const input of buildOcrBakeInserts(origIdx, data.words, geom)) {
+        out.push({ id: `ocr-bake-${origIdx}-${out.length}`, input })
+      }
+    }
+    return out
+  }, [ocrPages])
   /** Current original page index, readable without rebinding the OCR pass on scroll */
   const currentOrigIdxRef = useRef(0)
   currentOrigIdxRef.current = visList[currentPage - 1] ?? 0
@@ -1638,6 +1691,17 @@ export default function App() {
         // it is in the file now, a new object means the user changed it during the save
         setStampCfg((prev) => (prev === saved.stampCfg ? null : prev))
         setMetadata((prev) => (prev === saved.metadata ? null : prev))
+        // The tree this save wrote is in the file now: an open editing session keeps it
+        // as its clean base, a committed one is done. The save may have deleted or
+        // reordered pages, so the tree's page indices are the ones from before it —
+        // re-point them at the pages the file has now.
+        setPendingOutline((prev) =>
+          prev && saved.outline !== null && prev.tree === saved.outline
+            ? prev.editing
+              ? { ...prev, edited: false, tree: remapOutlineTree(prev.tree ?? [], remap) }
+              : null
+            : prev,
+        )
         setFormEdits((prev) => {
           const next = new Map<string, FormValueInput>()
           for (const [k, v] of prev) if (saved.formEdits.get(k) !== v) next.set(k, v)
@@ -1691,6 +1755,7 @@ export default function App() {
       if (!saved) {
         setOutline(null)
         setOutlineGenerated(false)
+        setPendingOutline(null)
       }
       void loaded
         .getOutline()
@@ -2358,7 +2423,13 @@ export default function App() {
     deleted.size > 0 ||
     order !== null ||
     metadata !== null ||
-    restoredUnsaved
+    restoredUnsaved ||
+    (pendingOutline?.edited ?? false)
+  // The pending OCR bake deliberately stays out of dirty: a scan the user only
+  // opened to read must not show the modified marker, prompt on close or feed
+  // the save-in-flight plumbing. The bake still rides the save request
+  // (anythingToSave keeps it), so an explicit ⌘S writes it — a user action —
+  // and everything the reader does afterwards sees a text layer.
   const ordinaryDirty = dirtyBesidesFormFields || formFields.length > 0
   const savableDirty = dirtyBesidesFormFields || savableFormFields.length > 0
   const dirty = redactions.length > 0 || ordinaryDirty
@@ -3170,7 +3241,7 @@ export default function App() {
   const activeMarkupTypes = useMemo(() => {
     const active = new Set<MarkupType>()
     if (!selPopup) return active
-    for (const type of ['highlight', 'underline', 'strikeout'] as const) {
+    for (const type of ['highlight', 'underline', 'squiggly', 'strikeout'] as const) {
       if ([...selPopup.quads].every(([origIdx, quads]) => markupMatching(origIdx, type, quads)))
         active.add(type)
     }
@@ -4827,6 +4898,39 @@ export default function App() {
     showDeletedToast()
   }
 
+  const runCompare = async (): Promise<void> => {
+    if (!doc || compareBusy) return
+    // Both sides must come from the same extraction engine — pdf.js and pdfium
+    // break lines differently, and a cross-engine diff reports phantom changes
+    // on identical files. The open document therefore needs a file on disk.
+    if (!filePath) {
+      showNotice(t('compareNeedsSaved'))
+      return
+    }
+    setCompareBusy(true)
+    try {
+      const picked = await window.pdfApi.compareReadPdf()
+      if (!picked.ok) {
+        if (!('canceled' in picked)) showNotice(picked.reason)
+        return
+      }
+      const mine = await window.pdfApi.compareReadOpen(filePath)
+      if (!mine.ok) {
+        showNotice(mine.reason)
+        return
+      }
+      const mineSide: PageText[] = mine.pages.map((text, pageIndex) => ({ pageIndex, text }))
+      const theirs: PageText[] = picked.pages.map((text, pageIndex) => ({ pageIndex, text }))
+      const [oldSide, newSide] = compareSwapped ? [theirs, mineSide] : [mineSide, theirs]
+      setCompareName(picked.name)
+      setCompareResult(compareDocuments(oldSide, newSide))
+    } catch (err) {
+      showNotice(err instanceof Error ? err.message : String(err))
+    } finally {
+      setCompareBusy(false)
+    }
+  }
+
   /** Show a transient toast; the save-failure badge alone hides the actual reason */
   const showNoticeFor = (msg: string, ms: number) => {
     if (noticeTimerRef.current !== null) window.clearTimeout(noticeTimerRef.current)
@@ -4907,8 +5011,15 @@ export default function App() {
   }
 
   const noticeSkippedTextInserts = (skipped: TextInsertFailure[]) => {
-    const pages = [...new Set(skipped.map((s) => s.pageIndex + 1))].sort((a, b) => a - b).join(', ')
-    showNotice(`${t('textInsertSkipped', { pages })}${skipDetail(skipped)}`)
+    // The bake layer's inserts ride the tail of the same textInserts array; a
+    // glyph no face covers there is OCR noise on a page the reader never
+    // edited, and nagging about it on every save is worse than the silence.
+    // An insert the reader typed is still worth its toast.
+    const userCount = textInsertsRef.current.length
+    const mine = skipped.filter((s) => s.editIndex < userCount)
+    if (mine.length === 0) return
+    const pages = [...new Set(mine.map((s) => s.pageIndex + 1))].sort((a, b) => a - b).join(', ')
+    showNotice(`${t('textInsertSkipped', { pages })}${skipDetail(mine)}`)
   }
 
   /** Pending edits in SavePdfRequest form; shared by in-place Save and Save As.
@@ -4937,7 +5048,10 @@ export default function App() {
     })),
     drawings: (noteFlush?.drawings ?? drawings).map((d) => d.input),
     textEdits: edits.map((e) => e.input),
-    textInserts: textInserts.map((insert) => insert.input),
+    textInserts: [
+      ...textInserts.map((insert) => insert.input),
+      ...ocrBakeInserts.map((insert) => insert.input),
+    ],
     imageEdits: imageEdits.map((e) => e.input),
     staticFormFills,
     stamps: stampCfg ? renderStamps(stampCfg, visList) : [],
@@ -4949,6 +5063,7 @@ export default function App() {
     deletedPages: [...deleted],
     ...(order ? { pageOrder: visList } : {}),
     ...(metadata ? { metadata } : {}),
+    ...(pendingOutline?.edited && pendingOutline.tree ? { outline: pendingOutline.tree } : {}),
   })
 
   /** Resolved when the running save() lands; queued saves and Save As serialize behind it */
@@ -4997,7 +5112,8 @@ export default function App() {
       (flushAll ? ordinaryDirty : savableDirty) ||
       edits !== textEdits ||
       noteFlush.drawings !== drawings ||
-      noteFlush.noteEdits !== noteEdits
+      noteFlush.noteEdits !== noteEdits ||
+      ocrBakeInserts.length > 0
     if (!anythingToSave || !filePath) return Promise.resolve(!anythingToSave)
     // What this save writes — the post-save reload subtracts exactly this, keeping
     // any edits the user makes while the write is in flight
@@ -5017,6 +5133,7 @@ export default function App() {
       formWidgetEdits,
       rotations,
       metadata,
+      outline: pendingOutline?.edited ? pendingOutline.tree : null,
       pageMap: new Map(visList.map((origIdx, i) => [origIdx, i])),
     }
     inFlightNoteWritesRef.current = snapshot.noteEditWritten
@@ -5727,6 +5844,34 @@ export default function App() {
       return
     }
     prepareStaticFormFill('text', image)
+  }
+
+  const applyBates = (config: BatesConfig): void => {
+    const fontOf = (size: number) => `${size}px ${getComputedStyle(document.body).fontFamily}`
+    // Visible order, not the original file order: a reordered page takes the
+    // number of the position it now occupies, deleted pages get none, and
+    // inserted blank pages are numbered with everyone else. The page index is
+    // mapped back so the insert lands on the page the reader sees there.
+    const inserts = buildBatesInserts(
+      visList.map((origIdx) => {
+        const geom = pageGeom(origIdx)
+        return { width: geom.pw, height: geom.ph, rotate: geom.rot, x0: geom.x0, y0: geom.y0 }
+      }),
+      config,
+      (text, size) => measureTextWidth(text, fontOf(size)),
+    ).map((input) => ({ ...input, pageIndex: visList[input.pageIndex] ?? input.pageIndex }))
+    if (inserts.length === 0) {
+      setBatesDlg(false)
+      return
+    }
+    const plan = applyEditOps(inserts.map((input) => ({ op: 'addTextInsert' as const, input })))
+    setBatesDlg(false)
+    if (plan.failures.length > 0) {
+      // say what went wrong instead of "applied N pages" over an empty plan
+      showNotice(plan.failures[0]!.error)
+      return
+    }
+    showNotice(t('batesApplied', { count: inserts.length }))
   }
 
   const placeTextInsert = (origIdx: number, vx: number, vy: number) => {
@@ -7465,6 +7610,178 @@ export default function App() {
   }
 
   /** Internal destination of a Link annotation → jump to that page */
+  // ── Bookmark editing (embedded outlines only; fail-closed on named dests) ──
+
+  /** The original tree as the write model: every node gains pageIndex (0-based)
+      resolved through doc.getPageIndex; a named destination or url-only entry
+      cannot be rebuilt exactly, so it marks the whole edit unresolvable. */
+  const resolveOutlineForEdit = async (
+    nodes: OutlineNode[],
+  ): Promise<{
+    tree: {
+      title: string
+      pageIndex: number
+      top?: number | null
+      children?: { title: string; pageIndex: number; top?: number | null }[]
+    }[]
+    unresolvable: boolean
+  }> => {
+    let unresolvable = false
+    const walk = async (
+      list: OutlineNode[],
+    ): Promise<
+      {
+        title: string
+        pageIndex: number
+        top?: number | null
+        children?: { title: string; pageIndex: number; top?: number | null }[]
+      }[]
+    > => {
+      const out: {
+        title: string
+        pageIndex: number
+        top?: number | null
+        children?: { title: string; pageIndex: number; top?: number | null }[]
+      }[] = []
+      for (const node of list) {
+        let pageIndex: number | null = null
+        let top: number | null = null
+        if (Array.isArray(node.dest)) {
+          const ref = node.dest[0]
+          try {
+            pageIndex =
+              typeof ref === 'number'
+                ? ref
+                : await doc!.getPageIndex(ref as Parameters<PDFDocumentProxy['getPageIndex']>[0])
+            top = destTop(node.dest)
+          } catch {
+            pageIndex = null
+          }
+        } else if (typeof node.dest === 'string') {
+          try {
+            const arr = await doc!.getDestination(node.dest)
+            if (Array.isArray(arr)) {
+              const ref = arr[0]
+              pageIndex =
+                typeof ref === 'number'
+                  ? ref
+                  : await doc!.getPageIndex(ref as Parameters<PDFDocumentProxy['getPageIndex']>[0])
+              top = destTop(arr)
+            }
+          } catch {
+            pageIndex = null
+          }
+        }
+        if (node.url || pageIndex === null) unresolvable = true
+        out.push({
+          title: node.title,
+          ...(pageIndex !== null ? { pageIndex } : { pageIndex: 0 }),
+          ...(top !== null ? { top } : {}),
+          ...(node.items?.length ? { children: await walk(node.items) } : {}),
+        })
+      }
+      return out
+    }
+    if (!doc) return { tree: [], unresolvable: true }
+    const tree = await walk(nodes)
+    return { tree, unresolvable }
+  }
+
+  const startBookmarkEdit = (): void => {
+    // A committed (unsaved) tree reopens as is; the file's outline is only the
+    // starting point when nothing is pending
+    if (pendingOutline?.tree) {
+      setPendingOutline({ ...pendingOutline, editing: true })
+      return
+    }
+    if (!outline || outlineGenerated || !doc) return
+    void resolveOutlineForEdit(outline).then((resolved) =>
+      setPendingOutline({
+        ...resolved,
+        tree: resolved.unresolvable ? null : resolved.tree,
+        edited: false,
+        editing: true,
+      }),
+    )
+  }
+
+  /** ✓: leave edit mode and keep an edited tree for Save; an untouched one is simply dropped */
+  const finishBookmarkEdit = (): void => {
+    setPendingOutline((prev) => (prev?.edited && prev.tree ? { ...prev, editing: false } : null))
+  }
+
+  const addBookmarkForCurrentPage = (): void => {
+    const base = pendingOutline
+    if (!base || base.tree === null) return
+    const title = t('outlineNewTitle')
+    const entry = {
+      title,
+      pageIndex: visList[currentPage - 1] ?? 0,
+      top: null,
+      children: [],
+    }
+    setPendingOutline({ ...base, edited: true, tree: [...base.tree, { ...entry, children: [] }] })
+  }
+
+  type BookmarkNode = {
+    title: string
+    pageIndex: number
+    top?: number | null
+    children?: BookmarkNode[]
+  }
+
+  /** Mutate one node by index path ('0.1.0'); a null outcome deletes it */
+  const mutateBookmark = (
+    list: BookmarkNode[],
+    path: number[],
+    fn: (node: BookmarkNode) => BookmarkNode | null,
+  ): BookmarkNode[] => {
+    const [head, ...rest] = path
+    const next: BookmarkNode[] = []
+    list.forEach((node, index) => {
+      if (index !== head) {
+        next.push(node)
+        return
+      }
+      if (rest.length === 0) {
+        const outcome = fn(node)
+        if (outcome !== null) next.push(outcome)
+        return
+      }
+      next.push(
+        node.children?.length
+          ? { ...node, children: mutateBookmark(node.children, rest, fn) }
+          : node,
+      )
+    })
+    return next
+  }
+
+  const deleteBookmarkAt = (path: string): void => {
+    const base = pendingOutline
+    if (!base?.tree) return
+    setPendingOutline({
+      ...base,
+      edited: true,
+      tree: mutateBookmark(base.tree, path.split('.').map(Number), () => null),
+    })
+  }
+
+  const renameBookmarkAt = (path: string, title: string): void => {
+    const base = pendingOutline
+    if (!base?.tree) return
+    const trimmed = title.trim()
+    if (trimmed === '') return
+    setPendingOutline({
+      ...base,
+      edited: true,
+      tree: mutateBookmark(base.tree, path.split('.').map(Number), (entry) => ({
+        ...entry,
+        title: trimmed,
+      })),
+    })
+  }
+
   const goToDest = async (dest: unknown) => {
     if (!doc) return
     try {
@@ -7687,8 +8004,9 @@ export default function App() {
     return window.pdfApi.onPrintRequest(openPrintDlg)
   })
 
-  // Shell File menu › Markdown / EPUB → the same dialog as the converter dropdown
-  useEffect(() => window.pdfApi.onConvertDialogRequest((format) => setConvertDialog(format)), [])
+  // Shell File menu › Markdown / EPUB or Save As › Markdown → the same dialog
+  // (Save As carries the target it already picked)
+  useEffect(() => window.pdfApi.onConvertDialogRequest((request) => setConvertDialog(request)), [])
 
   // Shortcuts: ⌘S/⌘F/⌘P/⌘±/⌘0 + page navigation (only ⌘ combos kept while an input control is focused)
   useEffect(() => {
@@ -8016,7 +8334,7 @@ export default function App() {
   /** Converter dropdown › Markdown / EPUB → the conversion dialog */
   const openConvertDialog = (format: PdfReflowFormat): void => {
     setConvertOpen(false)
-    setConvertDialog(format)
+    setConvertDialog({ format })
   }
 
   /** Conversion jobs read the file on disk: save pending edits first */
@@ -8116,6 +8434,17 @@ export default function App() {
             <IconUnderline />
           </span>
           <span>{t('underline')}</span>
+        </button>
+        <button
+          className="rb-big"
+          disabled={readOnly}
+          data-tip={t('squiggly')}
+          onClick={() => applyMarkup('squiggly')}
+        >
+          <span className="rb-big-icon">
+            <IconSquiggly />
+          </span>
+          <span>{t('squiggly')}</span>
         </button>
         <button
           className="rb-big"
@@ -8372,6 +8701,29 @@ export default function App() {
           <span>{t('apPanel')}</span>
         </button>
         <NoteOpenRibbonButton actions={noteActions} t={t} />
+        <button
+          className={`rb-big${sidebar === 'compare' ? ' active' : ''}`}
+          disabled={status !== 'ready'}
+          onClick={() => setSidebar((v) => (v === 'compare' ? null : 'compare'))}
+        >
+          <span className="rb-big-icon">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="4" y="4" width="9" height="16" rx="1" />
+              <path d="M16 6.5 L20 6.5 M16 12 L20 12 M16 17.5 L20 17.5" />
+            </svg>
+          </span>
+          <span>{t('compare')}</span>
+        </button>
         {searchBtn}
         <button
           className={`rb-big${spread === 2 ? ' active' : ''}`}
@@ -8737,6 +9089,7 @@ export default function App() {
                         : t('exportImages')
                     }
                     onWholePages={() => void exportImages(true)}
+                    onCurrentPage={() => void exportImages(false)}
                     onEmbedded={exportPagePictures}
                   />
                   <button
@@ -9353,6 +9706,17 @@ export default function App() {
                   </button>
                   <button
                     className="rb-big"
+                    disabled={readOnly || sizes.length === 0}
+                    data-tip={t('batesHint')}
+                    onClick={() => setBatesDlg(true)}
+                  >
+                    <span className="rb-big-icon">
+                      <IconBates />
+                    </span>
+                    <span>{t('bates')}</span>
+                  </button>
+                  <button
+                    className="rb-big"
                     disabled={curOrigIdx < 0 || readOnly}
                     onClick={openReplaceDlg}
                   >
@@ -9657,6 +10021,22 @@ export default function App() {
               <div className="pdf-thumbs pdf-outline-pane" style={{ width: sidebarW }}>
                 <div className="pdf-outline-header">
                   <span>{t('outline')}</span>
+                  {!outlineGenerated && (
+                    <button
+                      type="button"
+                      className="rb-icon"
+                      aria-label={t('outlineEdit')}
+                      data-tip={t('outlineEdit')}
+                      disabled={status !== 'ready' || readOnly}
+                      onClick={() =>
+                        pendingOutline?.editing ? finishBookmarkEdit() : startBookmarkEdit()
+                      }
+                    >
+                      <span style={{ fontSize: 12, fontWeight: 600 }} aria-hidden="true">
+                        {pendingOutline?.editing ? '✓' : '✎'}
+                      </span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="rb-icon"
@@ -9685,6 +10065,17 @@ export default function App() {
                   label={t('outline')}
                   emptyLabel={t('searchNoResults')}
                   onGoToDest={(dest) => void goToDest(dest)}
+                  pending={pendingOutline?.tree ?? null}
+                  editing={pendingOutline?.editing ?? false}
+                  labels={{
+                    add: t('outlineAdd'),
+                    rename: t('outlineRename'),
+                    delete: t('outlineDelete'),
+                  }}
+                  onGoToPage={(pageIndex) => scrollToPage(visList.indexOf(pageIndex) + 1)}
+                  onAdd={addBookmarkForCurrentPage}
+                  onRename={renameBookmarkAt}
+                  onDelete={deleteBookmarkAt}
                 />
               </div>
             )}
@@ -9749,6 +10140,33 @@ export default function App() {
                   )
                 }
               />
+            )}
+            {sidebar === 'compare' && (
+              <div className="pdf-thumbs" style={{ width: sidebarW }}>
+                <div className="pdf-outline-header">
+                  <span>{t('compare')}</span>
+                  <button
+                    type="button"
+                    className="rb-icon"
+                    aria-label={t('aiCollapsePanel')}
+                    onClick={() => setSidebar(null)}
+                  >
+                    ×
+                  </button>
+                </div>
+                <ComparePanel
+                  t={t}
+                  result={compareResult}
+                  otherName={compareName}
+                  busy={compareBusy}
+                  onPick={() => void runCompare()}
+                  onSwap={() => {
+                    setCompareSwapped((v) => !v)
+                    setCompareResult(null)
+                  }}
+                  onGoToPage={(pageNo) => scrollToPage(pageNo)}
+                />
+              </div>
             )}
             {sidebar === 'thumbs' && (
               <div
@@ -11402,6 +11820,30 @@ export default function App() {
                     </button>
                     <button
                       type="button"
+                      className={activeMarkupTypes.has('squiggly') ? 'is-active' : undefined}
+                      data-tip={
+                        activeMarkupTypes.has('squiggly') ? t('removeMarkup') : t('squiggly')
+                      }
+                      aria-label={
+                        activeMarkupTypes.has('squiggly') ? t('removeMarkup') : t('squiggly')
+                      }
+                      onClick={() => applyMarkup('squiggly')}
+                    >
+                      {/* Swatch painted inline from the palette so it always matches the applied color */}
+                      <span className="sel-swatch">
+                        <svg width="14" height="10" viewBox="0 0 28 10" fill="none" aria-hidden>
+                          <polyline
+                            points="1,5 4.5,1.5 8,8.5 11.5,1.5 15,8.5 18.5,1.5 22,8.5 25.5,5"
+                            stroke={cssRgb(MARKUP_COLORS.squiggly)}
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
                       className={activeMarkupTypes.has('strikeout') ? 'is-active' : undefined}
                       data-tip={labelWithKey(
                         t,
@@ -11864,7 +12306,9 @@ export default function App() {
                         kind: 'link',
                         pageIndex: draft.pageIndex,
                         rect: draft.rect,
-                        ...target,
+                        ...('destPage' in target
+                          ? { destPage: (visList[target.destPage - 1] ?? target.destPage - 1) + 1 }
+                          : target),
                       },
                     },
                   ])
@@ -11911,8 +12355,9 @@ export default function App() {
             )}
             {convertDialog && (
               <ConvertDialog
-                key={convertDialog}
-                format={convertDialog}
+                key={`${convertDialog.format}:${convertDialog.outPath ?? ''}`}
+                format={convertDialog.format}
+                initialTarget={convertDialog.outPath}
                 filePath={filePath}
                 fileName={fileName}
                 pageCount={pageCount}
@@ -11932,6 +12377,14 @@ export default function App() {
                 prepare={flushForStructureJob}
                 pageText={visiblePageText}
                 onClose={() => setConvertDialog(null)}
+              />
+            )}
+            {batesDlg && (
+              <BatesDialog
+                t={t}
+                pageCount={sizes.length}
+                onApply={applyBates}
+                onClose={() => setBatesDlg(false)}
               />
             )}
             {certSignDlg && (

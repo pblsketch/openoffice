@@ -5,6 +5,26 @@ import { csvTable, isoDateSerial } from '../src/formats/xlsx'
 import { run, tempDir } from './helpers'
 import { cells, part } from './xlsx-helpers'
 
+/** ref → number format code of every styled cell, resolved through cellXfs and numFmts */
+async function formatCodes(path: string): Promise<Map<string, string>> {
+  const styles = await part(path, 'xl/styles.xml')
+  const codes = new Map(
+    [...styles.matchAll(/<numFmt [^>]*numFmtId="(\d+)"[^>]*formatCode="([^"]*)"/g)].map((m) => [
+      m[1]!,
+      m[2]!,
+    ]),
+  )
+  const cellXfs = /<cellXfs[^>]*>([\s\S]*?)<\/cellXfs>/.exec(styles)![1]!
+  const xfFormats = [...cellXfs.matchAll(/<xf [^>]*numFmtId="(\d+)"/g)].map((m) => m[1]!)
+  const sheet = await part(path, 'xl/worksheets/sheet1.xml')
+  const out = new Map<string, string>()
+  for (const m of sheet.matchAll(/<c r="([A-Z]+\d+)"[^>]*? s="(\d+)"/g)) {
+    const id = xfFormats[Number(m[2])]
+    out.set(m[1]!, codes.get(id!) ?? `builtin:${id}`)
+  }
+  return out
+}
+
 describe('CSV dates around the 1900 leap-day discontinuity', () => {
   it.each([
     ['1900-01-01', 1],
@@ -37,8 +57,28 @@ describe('CSV dates around the 1900 leap-day discontinuity', () => {
     expect(result.code).toBe(0)
     const actual = await cells(out, 'xl/worksheets/sheet1.xml')
     expect([...actual.values()].map((cell) => cell.value)).toEqual([1, 59.5, 61, 45292])
-    expect(await part(out, 'xl/styles.xml')).toContain('yyyy-mm-dd hh:mm:ss')
-    expect(await part(out, 'xl/styles.xml')).toContain('yyyy-mm-dd')
+    expect(Object.fromEntries(await formatCodes(out))).toEqual({
+      A1: 'yyyy-mm-dd',
+      B1: 'yyyy-mm-dd hh:mm:ss',
+      C1: 'yyyy-mm-dd',
+      D1: 'yyyy-mm-dd',
+    })
     expect(readFileSync(source, 'utf-8')).toBe(text)
   })
+  it.each(['1899-12-31', '1899-12-30', '1800-01-01', '0050-01-01', '0001-01-01 12:00'])(
+    'keeps %s as text because Excel has no dates before 1900-01-01',
+    async (text) => {
+      expect(isoDateSerial(text)).toBeUndefined()
+      const dir = tempDir()
+      const source = join(dir, 'early.csv')
+      writeFileSync(source, `${text},1900-01-01`)
+      const out = join(dir, 'early.xlsx')
+      const result = await run(['create', '--type', 'xlsx', '--from', source, '--out', out])
+      expect(result.code).toBe(0)
+      const actual = await cells(out, 'xl/worksheets/sheet1.xml')
+      expect(actual.get('A1')?.value).toBe(text)
+      expect(actual.get('B1')?.value).toBe(1)
+      expect([...(await formatCodes(out)).keys()]).toEqual(['B1'])
+    },
+  )
 })

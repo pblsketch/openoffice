@@ -517,6 +517,30 @@ describe('AiComposer with docs: picking', () => {
     expect(textarea().value).toBe('@옆 보고서.docx ')
   })
 
+  it('shows the project files between open and recent documents; picking one attaches it', async () => {
+    okList([
+      doc('계획서.docx', { group: 'open' }),
+      doc('회의록.hwpx', { group: 'project', path: 'D:\\과제\\회의록.hwpx', dir: 'D:\\과제' }),
+      doc('지난 보고서.docx', { group: 'recent' }),
+    ])
+    const h = mount()
+    type('@')
+    await flush()
+    const groups = [...host.querySelectorAll('.ai-doc-mention-group-label')].map(
+      (g) => g.textContent,
+    )
+    expect(groups).toEqual(['열린 문서', '이 프로젝트의 파일', '최근 문서'])
+    type('@회의')
+    await flush()
+    const row = [...host.querySelectorAll('.ai-doc-mention-picker [role="option"]')].find((r) =>
+      r.textContent?.includes('회의록.hwpx'),
+    ) as HTMLElement
+    act(() => row.click())
+    await flush()
+    expect(h.attach).toHaveBeenCalledWith(['D:\\과제\\회의록.hwpx'])
+    expect(textarea().value).toBe('@회의록.hwpx ')
+  })
+
   it('a refused attachment leaves the typed text alone', async () => {
     okList()
     const h = mount({ accept: () => [] })

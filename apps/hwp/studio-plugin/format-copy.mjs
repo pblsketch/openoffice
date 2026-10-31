@@ -359,7 +359,10 @@ function pickCell(source, sets) {
   return Object.keys(out).length > 0 ? out : null
 }
 
-/** Character properties as the engine's applyCharFormat takes them, with fonts by name. */
+/**
+ * Character properties, with fonts by name turned into this document's font ids. The studio's
+ * ApplyCharFormatCommand takes them as an object and serializes them for the engine itself.
+ */
 function resolveChars(wasm, chars) {
   const out = { ...chars }
   if (Array.isArray(out.fontFamilies)) {
@@ -383,10 +386,13 @@ function resolveChars(wasm, chars) {
   delete out.fontId
   delete out.charShapeId
   delete out.fontName
-  return JSON.stringify(out)
+  return out
 }
 
-/** Paragraph properties as applyParaFormat takes them, with page pixels in engine units. */
+/**
+ * Paragraph properties with page pixels in engine units, as an object for the studio's
+ * ApplyParaFormatCommand (it serializes them for the engine).
+ */
 function resolvePara(para) {
   const out = { ...para }
   for (const key of ['marginLeft', 'marginRight', 'indent']) {
@@ -402,7 +408,7 @@ function resolvePara(para) {
   delete out.paraShapeId
   delete out.defaultTabSpacing
   delete out.borderFillId
-  return JSON.stringify(out)
+  return out
 }
 
 /**

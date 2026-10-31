@@ -58,7 +58,11 @@ const seen = (patch: Partial<AiSettings> = {}) => fresh({ subscriptionNoticeSeen
  * then run), `sent` what actually went out, and the settings live in a store
  * the test can change behind the panel's back.
  */
-function panel(initial: { settings: AiSettings | null; statuses: AiSubscriptionStatuses | null }) {
+function panel(initial: {
+  settings: AiSettings | null
+  statuses: AiSubscriptionStatuses | null
+  acknowledgeNoticeExtra?: (settings: AiSettings) => AiSettings
+}) {
   const state = { ...initial }
   const store = { stored: initial.settings ?? fresh(), writes: [] as AiSettings[] }
   const sent: string[] = []
@@ -80,6 +84,7 @@ function panel(initial: { settings: AiSettings | null; statuses: AiSubscriptionS
       },
       start: send,
       onNotConnected: notConnected,
+      acknowledgeNoticeExtra: initial.acknowledgeNoticeExtra,
     })
     return null
   }
@@ -229,6 +234,21 @@ describe('rule 3: the first use of a subscription', () => {
     expect(p.sent).toEqual(['hello'])
   })
 
+  it('the PDF editor saves its own sentence in the same acknowledgement', async () => {
+    const p = panel({
+      settings: fresh(),
+      statuses: READY,
+      acknowledgeNoticeExtra: (latest) => ({ ...latest, pdfSendNoticeSeen: 1 }),
+    })
+    act(() => p.ctl.acknowledgeNotice())
+    await p.settle()
+    expect(p.store.writes[0]).toMatchObject({
+      subscriptionNoticeSeen: true,
+      subscriptionNoticeVersion: 2,
+      pdfSendNoticeSeen: 1,
+    })
+  })
+
   it('the notice going away without an acknowledgement sends nothing', () => {
     const settings = fresh()
     const p = panel({ settings, statuses: READY })
@@ -327,7 +347,9 @@ describe('rule 5: settings writes land on the latest stored settings', () => {
     p.store.stored = elsewhere
     act(() => p.ctl.acknowledgeNotice())
     await p.settle()
-    expect(p.store.writes).toEqual([{ ...elsewhere, subscriptionNoticeSeen: true }])
+    expect(p.store.writes).toEqual([
+      { ...elsewhere, subscriptionNoticeSeen: true, subscriptionNoticeVersion: 2 },
+    ])
     // and the panel goes on with what was written, not with its old copy
     expect(p.ctl.settings?.providers.openai).toEqual({ apiKey: 'k', model: 'm' })
   })
@@ -367,6 +389,7 @@ describe('rule 5: settings writes land on the latest stored settings', () => {
     expect(onSettingsSaved).toHaveBeenCalledExactlyOnceWith({
       ...stored,
       subscriptionNoticeSeen: true,
+      subscriptionNoticeVersion: 2,
     })
   })
 

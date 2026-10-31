@@ -21,6 +21,7 @@ Licht / Donker / Systeem volgen. Systeem volgen volgt het uiterlijk van het best
 - **AI-paneel** — Uit, Ingeklapt of Laatste status.
 - **Alle documenten automatisch opslaan** zet AutoSave standaard aan in elke editor; u kunt het voor één venster nog steeds uitschakelen.
 - **Opslaglocatie** met de knop **Wijzigen** en **Standaardapp voor Office-documenten** om .docx / .xlsx / .pptx aan GenOffice toe te kennen.
+- **Opslagformaat voor nieuwe HWP-documenten** kiest of bij de eerste opslag van een nieuw document eerst HWP of HWPX wordt aangeboden. Geopende documenten behouden hun eigen formaat.
 
 GenOffice verzamelt of verstuurt geen gebruiksstatistieken, dus er is ook geen schakelaar voor.
 

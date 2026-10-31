@@ -12,12 +12,18 @@ import type { PdfReflowFormat } from '../../../pdf/src/shared/ipc'
 import { pdfPathGranted } from '../../../pdf/src/main/pdf-main'
 import { createPdfConvertUiHandlers, type PdfConvertUiTabs } from './pdf-convert-ui-handlers'
 
-/** File menu › Markdown / EPUB: the pdf tab opens its conversion dialog */
+/** File menu › Markdown / EPUB, or Save As › Markdown (with the picked target):
+    the pdf tab opens its conversion dialog */
 export function requestPdfConvertDialog(
   contents: WebContents | undefined,
   format: PdfReflowFormat,
+  outPath?: string,
 ): void {
-  if (contents && !contents.isDestroyed()) contents.send(PDF_CHANNELS.convertDialogRequest, format)
+  if (!contents || contents.isDestroyed()) return
+  contents.send(PDF_CHANNELS.convertDialogRequest, {
+    format,
+    ...(outPath !== undefined ? { outPath } : {}),
+  })
 }
 
 let registered = false

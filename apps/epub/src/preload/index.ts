@@ -5,6 +5,10 @@ import type { AiPanelPrefs } from '@genoffice/ui'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
 import { userSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
+import {
+  PROJECT_FOLDER_BRIDGE_KEY,
+  projectFolderBridge,
+} from '@genoffice/electron-utils/project-folder-bridge'
 import { USER_SKILLS_BRIDGE_KEY } from '@genoffice/electron-utils/user-skills-channels'
 import { docAttachBridge } from '@genoffice/electron-utils/doc-attach-bridge'
 import { DOC_ATTACH_BRIDGE_KEY } from '@genoffice/electron-utils/doc-attach-channels'
@@ -51,6 +55,8 @@ const core: EpubCoreApi = {
   consumePending: () => ipcRenderer.invoke(EPUB_CHANNELS.consumePending),
   openFile: (path) => ipcRenderer.invoke(EPUB_CHANNELS.openFile, path),
   readChapter: (spineIndex) => ipcRenderer.invoke(EPUB_CHANNELS.readChapter, spineIndex),
+  onFlushRequest: (handler) => listen<[string]>(EPUB_CHANNELS.flushRequest, handler),
+  sendFlushResult: (requestId, ok) => ipcRenderer.send(EPUB_CHANNELS.flushResult, requestId, ok),
   applyEdits: (request) => ipcRenderer.invoke(EPUB_CHANNELS.applyEdits, request),
   replaceRanges: (request) => ipcRenderer.invoke(EPUB_CHANNELS.replaceRanges, request),
   setTranslationLock: (locked) => ipcRenderer.invoke(EPUB_CHANNELS.setTranslationLock, locked),
@@ -193,6 +199,8 @@ contextBridge.exposeInMainWorld(DOC_ATTACH_BRIDGE_KEY, docAttachBridge())
 // The shell's split panes: this view's pane role, and its way to ask for focus
 contextBridge.exposeInMainWorld(SPLIT_PANE_BRIDGE_KEY, splitPaneBridge(ipcRenderer))
 contextBridge.exposeInMainWorld('projectApi', projectApi)
+// project folders (decision 0088): main identifies this window, the bridge forwards ids only
+contextBridge.exposeInMainWorld(PROJECT_FOLDER_BRIDGE_KEY, projectFolderBridge(ipcRenderer))
 
 // open documents dragged from the OS onto this tab as a new shell tab
 installDropOpenBridge()

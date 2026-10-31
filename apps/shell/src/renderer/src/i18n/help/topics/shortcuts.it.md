@@ -690,6 +690,7 @@ Questi tasti funzionano quando la scheda HWP/HWPX è in primo piano e il documen
 | Stringa data/ora                        | ⌃K, D       | Ctrl+K, D          |
 | Modifica oggetto, campo o tabella/cella | ⌃N, K       | Ctrl+N, K          |
 | Simboli                                 | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+| Converti in hanja                       | F9          | Tasto Hanja / F9   |
 
 ### Tabella
 

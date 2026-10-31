@@ -44,6 +44,7 @@ Trình đơn Tệp, tất cả đều cục bộ và đều hỏi lưu kết qu�
 
 Trên dải ruy-bâng có công tắc **Mã nguồn** (được bản địa hóa cùng ứng dụng). Bật lên, trình soạn thảo được thay bằng Markdown thô: đúng văn bản mà một lần lưu sẽ ghi ra, không làm đẹp, không chuẩn hóa gì bên dưới bạn.
 
+- **Bàn phím**: Ctrl+E (⌘E trên Mac) chuyển đổi giữa chế độ xem mã nguồn và màn hình chỉnh sửa đã kết xuất. Nhấn F5 để đọc toàn màn hình.
 - **Soạn thảo trung thành từng byte.** Lưu từ chế độ mã nguồn tạo ra đúng những byte mà lưu từ trình soạn thảo tạo ra — BOM, CRLF và việc có dấu xuống dòng ở cuối đều được giữ nguyên.
 - **Đây vẫn là cùng một tài liệu.** Chuyển qua lại tùy ý; mã nguồn chính là văn bản của trình soạn thảo, không phải một bản sao phải điều hợp.
 - **Thanh định dạng không dùng được** khi chế độ xem này đang mở, vì phần lớn các nút đó chèn những cấu trúc riêng của trình soạn thảo mà chỉ có ý nghĩa ở phần đã kết xuất. Nó trở lại khi bạn đóng chế độ xem.

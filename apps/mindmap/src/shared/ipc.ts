@@ -23,6 +23,11 @@ export const MINDMAP_CHANNELS = {
   openFile: 'mindmap:open-file',
   /** invoke(`SaveMindmapRequest`) → `SaveMindmapResult` */
   save: 'mindmap:save',
+  /**
+   * invoke(`SaveIntoProjectRequest`) → `SaveIntoProjectResult`: a new map a
+   * create flow handed over, into its panel's project (spec 6)
+   */
+  saveIntoProject: 'mindmap:save-into-project',
   /** main → renderer(`SaveMode`): the menu's Save / Save As */
   saveRequest: 'mindmap:save-request',
   /** renderer → main(boolean): a save request that ended without a save call */
@@ -188,6 +193,22 @@ export interface SaveMindmapRequest {
 
 export type SaveMindmapResult =
   { ok: true; path: string } | { ok: true; canceled: true } | { ok: false; error: string }
+
+/**
+ * Project folders (spec 6): the run a create flow handed to an untitled map
+ * ended well. The main process picks the project folder and a free name; the
+ * renderer only offers the name the map's file is called by.
+ */
+export interface SaveIntoProjectRequest {
+  /** the whole `.xmind` file, as the engine produced it */
+  bytes: Uint8Array
+  /** file name (no extension) the map is offered under */
+  defaultName?: string
+}
+
+/** `skipped`: no project (or the map has a file already), nothing written */
+export type SaveIntoProjectResult =
+  { ok: true; path: string } | { ok: false; skipped: true } | { ok: false; error: string }
 
 // ---- menu ----
 
@@ -365,6 +386,8 @@ export interface MindmapCoreApi {
    * untitled maps and mode 'saveAs' go through a main-process save dialog first.
    */
   save(request: SaveMindmapRequest): Promise<SaveMindmapResult>
+  /** a new map a create flow handed over, into its panel's project (spec 6); absent in older preloads */
+  saveIntoProject?(request: SaveIntoProjectRequest): Promise<SaveIntoProjectResult>
   /** Mirror unsaved-changes state to the main process; drives the save prompt before closing */
   setDirty(dirty: boolean): void
   /** Shell menu Save / Save As → the renderer produces the bytes and calls save() */

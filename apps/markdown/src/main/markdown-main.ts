@@ -40,6 +40,7 @@ import { createI18n, getUiLang } from '@genoffice/i18n'
 import { sharedSubscriptionStatuses } from '@genoffice/ai-provider/subscription'
 import { generateImageTool, documentMediaRoots, withMediaCallSignal } from '@genoffice/ai-search'
 import { ImageExportSessions } from './image-export'
+import { printMarkdownDocument } from './print-document'
 import { printMarkdownPdf } from './print-pdf'
 import { atomicWriteFile } from './atomic-write'
 import {
@@ -71,7 +72,7 @@ import type {
   WikiLinkResolved,
 } from '../shared/ipc'
 import { nodeFs, resolveWikiLinks } from './wiki-resolve'
-import { nodeVaultFs, warmWikiIndex, wikiBacklinks, wikiGraph } from './wiki-index'
+import { nodeVaultFs, warmWikiIndex, wikiBacklinks, wikiGraph, wikiTags } from './wiki-index'
 import { rememberWikiFragment, takeWikiFragment } from './wiki-fragment'
 import { isImageHostUsable, normalizeImageHostConfig, uploadImageToHost } from './image-host'
 import {
@@ -87,10 +88,15 @@ import type {
   ImageExportPreparation,
   ExportResult,
   ImageData,
+  MarkdownPrintDocumentRequest,
+  MarkdownPrintDocumentResult,
+  MarkdownPrintPreviewRequest,
+  MarkdownPrintPreviewResult,
   SaveMarkdownRequest,
   SaveMarkdownResult,
   SaveMode,
 } from '../shared/ipc'
+import { MAX_PRINT_HTML_CHARS, normalizeMarkdownPrintOptions } from '../shared/print-options'
 
 const tDlg = createI18n({
   zh: {
@@ -387,6 +393,21 @@ interface RuntimePaths {
   rendererFile?: string
   /** Shell router used to open exported PDFs in a new GenOffice tab. */
   openGeneratedPath?: (path: string) => boolean
+  /**
+   * Project folders (spec 6): the folder an untitled document's save dialog
+   * opens in for this view, or null for the default save folder.
+   */
+  newDocumentDir?: (webContentsId: number) => Promise<string | null>
+  /**
+   * Project folders (spec 6): write a new document the AI made in this view
+   * into the project its panel chose (a free name, never over a file);
+   * resolves to the path written, or null when the panel has no project.
+   */
+  writeNewDocument?: (
+    webContentsId: number,
+    fileName: string,
+    bytes: Uint8Array,
+  ) => Promise<string | null>
 }
 
 let runtime: RuntimePaths = { preloadPath: '' }
@@ -771,19 +792,40 @@ async function writeTextAtomic(path: string, text: string): Promise<void> {
   await atomicWriteFile(path, Buffer.from(text, 'utf8'))
 }
 
+/** A suggested name as a file name stem: no path characters, at most 80 characters */
+function suggestedBase(suggestedName: string): string {
+  return suggestedName
+    .replace(/[/\\:*?"<>|]/g, '_')
+    .slice(0, 80)
+    .trim()
+}
+
+/**
+ * The AI's silent first save while this view's panel has a project (spec 6):
+ * the note goes into that project folder through its write guard. Null (nothing
+ * written) without a project; the default save folder then takes it as before.
+ */
+async function saveIntoProject(
+  wcId: number,
+  suggestedName: string,
+  text: string,
+): Promise<string | null> {
+  const base = suggestedBase(suggestedName)
+  if (!base || !runtime.writeNewDocument) return null
+  return runtime.writeNewDocument(wcId, `${base}.md`, Buffer.from(text, 'utf8'))
+}
+
 async function resolveSaveTarget(
   e: Electron.IpcMainInvokeEvent,
   mode: SaveMode,
   suggestedName?: string,
+  allowPdf = false,
 ): Promise<string | null | 'canceled'> {
   const current = savePathByWc.get(e.sender.id)
   if (mode === 'save' && current) return current
   // AI auto-naming: silent first save of an untitled document
   if (mode === 'save' && !current && suggestedName) {
-    const base = suggestedName
-      .replace(/[/\\:*?"<>|]/g, '_')
-      .slice(0, 80)
-      .trim()
+    const base = suggestedBase(suggestedName)
     if (base) {
       const dir = configuredDefaultSaveDir(app)
       let target = join(dir, `${base}.md`)
@@ -796,14 +838,27 @@ async function resolveSaveTarget(
   const defaultPath = current
     ? join(dirname(current), basename(current))
     : (recovery.saveAsDefaultPath(e.sender.id) ??
-      join(configuredDefaultSaveDir(app), `${tm('untitledFile')}.md`))
+      join(
+        // an untitled note whose panel has a project starts in that folder (spec 6)
+        (await runtime.newDocumentDir?.(e.sender.id)) ?? configuredDefaultSaveDir(app),
+        `${tm('untitledFile')}.md`,
+      ))
+  // With PDF offered, the suggestion carries no extension: the file type chosen
+  // in the dialog supplies .md or .pdf (a typed name keeps its own extension)
+  const suggestedPath = allowPdf ? defaultPath.replace(/\.(md|markdown)$/i, '') : defaultPath
+  const filters: Array<{ name: string; extensions: string[] }> = [
+    { name: tm('filterMarkdown'), extensions: ['md', 'markdown', 'txt', 'json'] },
+  ]
+  if (allowPdf) filters.push({ name: 'PDF', extensions: ['pdf'] })
   const picked = await showSaveDialogWithMemory(dialog, win, {
     title: tm('dlgSaveTitle'),
-    defaultPath,
-    filters: [{ name: tm('filterMarkdown'), extensions: ['md', 'markdown', 'txt', 'json'] }],
+    defaultPath: suggestedPath,
+    filters,
   })
   if (picked.canceled || !picked.filePath) return 'canceled'
-  return picked.filePath
+  // A dialog that does not add the chosen type's extension (some Linux desktops)
+  // leaves a bare name: the default type is Markdown
+  return extname(picked.filePath) ? picked.filePath : `${picked.filePath}.md`
 }
 
 const DISPLAY_IMAGE_EXTS = new Set(Object.keys(EXPORT_IMAGE_MIME_BY_EXT))
@@ -953,6 +1008,10 @@ function registerMarkdownIpc(): void {
     wikiGraph(configuredDefaultSaveDir(app), nodeVaultFs()),
   )
 
+  ipcMain.handle(MARKDOWN_CHANNELS.wikiTags, (): Promise<{ tag: string; files: string[] }[]> =>
+    wikiTags(configuredDefaultSaveDir(app), nodeVaultFs()),
+  )
+
   ipcMain.handle(
     MARKDOWN_CHANNELS.save,
     async (e, request: SaveMarkdownRequest): Promise<SaveMarkdownResult> => {
@@ -975,6 +1034,11 @@ function registerMarkdownIpc(): void {
       const mode: SaveMode = request.mode === 'saveAs' ? 'saveAs' : 'save'
       // Request input is untrusted: only an explicit automatic-save flag counts
       const auto = (request as { auto?: unknown } | null)?.auto === true
+      // Save As › PDF (rendered documents only): the print HTML of the screen
+      const pdfHtml =
+        mode === 'saveAs' && typeof request.pdfHtml === 'string' && request.pdfHtml
+          ? request.pdfHtml
+          : undefined
       const pathAtRequest = savePathByWc.get(e.sender.id)
       const recoveryAtRequest = recovery.identityOf(e.sender.id)
       // A copy pair saving onto the document's own path settles the conflict
@@ -992,9 +1056,28 @@ function registerMarkdownIpc(): void {
       try {
         const suggestedName =
           typeof request.suggestedName === 'string' ? request.suggestedName : undefined
-        const target = await resolveSaveTarget(e, mode, suggestedName)
+        // the AI's silent first save lands in the panel's project when it has one
+        const placed =
+          mode === 'save' && !pathAtRequest && suggestedName
+            ? await saveIntoProject(e.sender.id, suggestedName, request.text)
+            : null
+        const target =
+          placed ?? (await resolveSaveTarget(e, mode, suggestedName, pdfHtml !== undefined))
         if (target === 'canceled') return done({ ok: true, canceled: true })
         if (!target) return done({ ok: false, error: 'markdown: no save target' })
+        if (pdfHtml !== undefined && /\.pdf$/i.test(target)) {
+          // Save As › PDF: a rendered copy of what is on screen (the same PDF
+          // the export menu writes). The document keeps its path, unsaved edits
+          // and assets; nothing below is a save.
+          try {
+            const pdf = await printMarkdownPdf(pdfHtml)
+            await writeFile(target, pdf)
+            openExportedPdf(target)
+            return done({ ok: true, path: target, exported: 'pdf' })
+          } catch (err) {
+            return done({ ok: false, error: err instanceof Error ? err.message : String(err) })
+          }
+        }
         const currentPath = pathAtRequest
         const isNewPath = currentPath !== target
         const imageSources = [...(request.imageSources ?? [])]
@@ -1011,7 +1094,8 @@ function registerMarkdownIpc(): void {
         const textToWrite = prepared?.text ?? request.text
         const savedImageSources = prepared?.imageSources ?? imageSources
         try {
-          await writeTextAtomic(target, textToWrite)
+          // a note placed in the project was written by the project's write guard
+          if (!placed) await writeTextAtomic(target, textToWrite)
         } catch (error) {
           if (prepared) await rollbackPreparedSaveAsAssets(prepared).catch(() => {})
           throw error
@@ -1343,6 +1427,64 @@ function registerMarkdownIpc(): void {
         return { ok: true, path: picked.filePath }
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) }
+      }
+    },
+  )
+
+  ipcMain.handle(
+    MARKDOWN_CHANNELS.printPreview,
+    async (_e, request: MarkdownPrintPreviewRequest): Promise<MarkdownPrintPreviewResult> => {
+      if (
+        typeof request?.html !== 'string' ||
+        !request.html ||
+        request.html.length > MAX_PRINT_HTML_CHARS
+      ) {
+        return { ok: false, error: 'markdown: bad print preview request' }
+      }
+      try {
+        const pdf = await printMarkdownPdf(
+          request.html,
+          normalizeMarkdownPrintOptions(request.options),
+        )
+        return { ok: true, pdf: new Uint8Array(pdf) }
+      } catch (error) {
+        return { ok: false, error: error instanceof Error ? error.message : String(error) }
+      }
+    },
+  )
+
+  const printingDocuments = new Set<number>()
+  ipcMain.handle(
+    MARKDOWN_CHANNELS.printDocument,
+    async (e, request: MarkdownPrintDocumentRequest): Promise<MarkdownPrintDocumentResult> => {
+      if (
+        typeof request?.html !== 'string' ||
+        !request.html ||
+        request.html.length > MAX_PRINT_HTML_CHARS
+      ) {
+        return { ok: false, error: 'markdown: bad print request' }
+      }
+      const pages = request.pages
+      if (
+        pages !== null &&
+        (!Number.isInteger(pages?.from) ||
+          !Number.isInteger(pages?.to) ||
+          pages.from < 1 ||
+          pages.to < pages.from)
+      ) {
+        return { ok: false, error: 'markdown: bad print range' }
+      }
+      const wcId = e.sender.id
+      if (printingDocuments.has(wcId)) return { ok: false, error: 'markdown: already printing' }
+      printingDocuments.add(wcId)
+      try {
+        return await printMarkdownDocument(
+          request.html,
+          pages,
+          normalizeMarkdownPrintOptions(request.options),
+        )
+      } finally {
+        printingDocuments.delete(wcId)
       }
     },
   )

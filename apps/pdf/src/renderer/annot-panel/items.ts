@@ -31,7 +31,8 @@ import { textUnderQuads, type TextRun } from './text-under'
 export type Rgb = [number, number, number]
 type Rect = [number, number, number, number]
 
-export type CoreAnnotKind = 'highlight' | 'underline' | 'strikeout' | 'note' | 'other' | 'card'
+export type CoreAnnotKind =
+  'highlight' | 'underline' | 'squiggly' | 'strikeout' | 'note' | 'other' | 'card'
 /** a core kind, or one a later feature adds (e.g. 'suggestion') */
 export type AnnotKind = CoreAnnotKind | (string & {})
 
@@ -39,6 +40,7 @@ export type AnnotKind = CoreAnnotKind | (string & {})
 export const KIND_ORDER: readonly string[] = [
   'highlight',
   'underline',
+  'squiggly',
   'strikeout',
   'note',
   'other',
@@ -179,6 +181,8 @@ const SUBTYPE_KEYS = {
 const MARKUP_KIND_KEYS = {
   highlight: 'apKindHighlight',
   underline: 'apKindUnderline',
+  // the subtype label already names it in every locale
+  squiggly: 'apTypeSquiggly',
   strikeout: 'apKindStrikeout',
 } as const
 
@@ -187,6 +191,7 @@ export function kindFilterLabel(kind: string, t: TFunc, fallback: string): strin
   switch (kind) {
     case 'highlight':
     case 'underline':
+    case 'squiggly':
     case 'strikeout':
       return t(MARKUP_KIND_KEYS[kind])
     case 'note':

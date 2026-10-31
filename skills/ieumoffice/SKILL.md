@@ -2,7 +2,7 @@
 name: ieumoffice
 description: Create, convert, read and edit Office documents locally with IeumOffice's command line. Build a new presentation (pptx) from a brief through a checked outline, per-page spec and render pipeline, a new spreadsheet (xlsx) from CSV or JSON data with formulas, a new Word document (docx) from Markdown or HTML, a Hangul document (hwp / hwpx), or a PDF; convert between pdf, docx, odt, xlsx, pptx, md, html and csv, and a PDF to Markdown or EPUB; read the structure and text of an existing file (including the user's own docx / odt / xlsx / pptx / pdf / hwp as source material) and apply structured edits to it, Hangul documents included; read scanned PDF pages with AI and translate a whole PDF into a translated PDF, Markdown or EPUB, or an EPUB book into a translated or bilingual EPUB. Use whenever the user asks for a slide deck, presentation, spreadsheet, workbook, report, Word document or any real Office file, a format conversion, a rewrite of part of an existing document, or wants the result opened in the IeumOffice editor. Documents are processed locally; only search, image, media, read-url, pdf ai-read, pdf translate and epub translate send data off the machine (read-url sends the address it is given to that site; the rest send to the provider configured in IeumOffice).
 metadata:
-  version: 2.73.2
+  version: 2.73.3
   cli: '>=0.9.0'
 ---
 
@@ -62,7 +62,7 @@ Always add `--json` when a program reads the output: one JSON object on stdout, 
 - The op references are resources: `ieumoffice://guide/docs`, `…/sheets`, `…/slides`, `…/slides/design`, `…/slides/spec`, `…/slides/templates` and `…/slides/templates/<id>` (one per built-in template). The `guide` tool takes the template id as a third positional: `guide("slides", "templates", "<id>")`.
 - `ops`, `cells` and `data` carry the per-op schema of `guide <domain> --json` (one variant per op: `op`, fields, required); `mcp --compact-schemas` (or `GENOFFICE_MCP_COMPACT_SCHEMAS=1`) advertises plain arrays for clients with a small context budget.
 - `--http`: files travel with the calls (`PUT /files/<name>` uploads one and returns a URL, every path parameter also takes an http(s) URL, `out` omitted returns the file as a download URL).
-- The IeumOffice app runs its own MCP server on `127.0.0.1:3093` (Settings → Integrations) whose tools (`create_session`, `read_document`, `apply_ops`, `apply_slide_ops`, `apply_sheet_ops`, `read_pdf`, `open_documents`) edit the documents already open in the visible editor; `ieumoffice mcp` works on files on disk.
+- The IeumOffice app runs its own MCP server on `127.0.0.1:3093` (Settings → Integrations) whose tools (`create_session`, `read_document`, `apply_ops`, `insert_picture`, `apply_slide_ops`, `apply_sheet_ops`, `read_pdf`, `open_documents`) edit the documents already open in the visible editor; `ieumoffice mcp` works on files on disk.
 
 For Word templates, `detail.unresolved_placeholders[].reason` can also be `unsupported_location`: a placeholder in a header, footer, footnote or endnote that body replacement cannot fill. These parts stay intact. `location.part` identifies the part kind, with `location.relationship` for headers/footers or `location.note` for notes. Fill these placeholders in Word; strict mode refuses to write while any remain.
 

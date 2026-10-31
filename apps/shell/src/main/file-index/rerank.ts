@@ -95,9 +95,15 @@ export class SearchReranker {
   /** a second request for the same key while the first is out joins it instead of billing again */
   private readonly inflight = new Map<string, Promise<FileSearchRerank | null>>()
 
+  /**
+   * `sendable` narrows the candidates whose excerpts may leave the machine
+   * (project folders drop what their `ignore` lists, spec 5.9); the home
+   * results keep showing those files, they are only not judged.
+   */
   constructor(
     private readonly store: FileIndexStore,
     private readonly send?: JevTransport,
+    private readonly sendable?: (paths: readonly string[]) => Promise<readonly string[]>,
   ) {}
 
   async rerank(
@@ -112,7 +118,8 @@ export class SearchReranker {
     if (settings.endpoint === 'cloudflare' && !settings.cloudflareAccountId.trim()) return null
     // the index holds a file as it was last saved; one being edited may carry a
     // withholding mark that has not reached the disk, so its excerpt stays here
-    const saved = await withoutUnsavedFiles(paths, (path) => path)
+    const savedOnly = await withoutUnsavedFiles(paths, (path) => path)
+    const saved = this.sendable ? await this.sendable(savedOnly) : savedOnly
     const hits = this.store.excerptsFor(saved.slice(0, MAX_DOCS), q, EXCERPT_CHARS)
     if (hits.length < 2) return null
     const cacheKey = [

@@ -6,6 +6,10 @@
  * verifier) buys a refresh token. The app never sees the Google password and
  * draws no sign-in form of its own.
  *
+ * The same round trip can show Google's file picker (decision 0085): the
+ * consent page then lets the person choose Drive files, and the ids of the
+ * chosen files come back with the code. Those files are what the app may open.
+ *
  * Node-only: it binds a socket. Every network call goes through an injectable
  * fetch so tests never reach Google.
  */
@@ -19,8 +23,15 @@ export const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 export const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 export const GOOGLE_REVOKE_URL = 'https://oauth2.googleapis.com/revoke'
 
-/** The one scope the app asks for: every Drive file, to read and to save back in place */
-export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive'
+/**
+ * The one scope the app asks for (decision 0085): only the Drive files the
+ * person picked in Google's picker, or that the app made, to read and to save
+ * back in place. Google's picker for installed apps allows no other scope.
+ */
+export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file'
+
+/** The most picked file ids one round trip hands on */
+export const MAX_PICKED_FILES = 50
 
 /** how long the browser sign-in may take before the waiting server gives up */
 export const GOOGLE_SIGN_IN_TIMEOUT_MS = 10 * 60 * 1000
@@ -53,6 +64,15 @@ export interface GoogleTokens {
 export type GoogleSignInResult =
   { ok: true; tokens: GoogleTokens } | { ok: false; reason: GoogleSignInFailure }
 
+/** Google's file picker on the consent page; `multiple` lets the person choose more than one */
+export interface PickRequest {
+  multiple: boolean
+}
+
+/** A sign-in that showed the picker: the tokens and the ids of the chosen files */
+export type GooglePickResult =
+  { ok: true; tokens: GoogleTokens; picked: string[] } | { ok: false; reason: GoogleSignInFailure }
+
 /** The page the browser shows once it is back on this PC */
 export interface SignInPage {
   lang: string
@@ -71,6 +91,8 @@ export interface GoogleSignInOptions {
   timeoutMs?: number | undefined
   /** clock for token expiry; tests pin it */
   now?: (() => number) | undefined
+  /** show Google's file picker on the consent page */
+  pick?: PickRequest | undefined
 }
 
 function base64url(bytes: Buffer): string {
@@ -95,6 +117,7 @@ export function googleAuthUrl(
   port: number,
   challenge: string,
   state: string,
+  pick?: PickRequest,
 ): string {
   const params = new URLSearchParams({
     client_id: clientId,
@@ -108,6 +131,10 @@ export function googleAuthUrl(
     access_type: 'offline',
     prompt: 'consent',
   })
+  if (pick) {
+    params.set('trigger_onepick', 'true')
+    if (pick.multiple) params.set('allow_multiple', 'true')
+  }
   return `${GOOGLE_AUTH_URL}?${params.toString()}`
 }
 
@@ -150,7 +177,23 @@ async function listen(server: Server, host: string): Promise<number> {
 }
 
 type CodeOutcome =
-  { ok: true; code: string; port: number } | { ok: false; reason: GoogleSignInFailure }
+  | { ok: true; code: string; port: number; picked: string[] }
+  | { ok: false; reason: GoogleSignInFailure }
+
+/**
+ * The file ids in a `picked_file_ids` answer: comma-separated, each checked
+ * against Drive's id shape, duplicates dropped, at most MAX_PICKED_FILES.
+ */
+export function pickedFileIds(raw: string | null): string[] {
+  if (!raw) return []
+  const out: string[] = []
+  for (const id of raw.split(',')) {
+    const trimmed = id.trim()
+    if (/^[\w-]{1,200}$/.test(trimmed) && !out.includes(trimmed)) out.push(trimmed)
+    if (out.length >= MAX_PICKED_FILES) break
+  }
+  return out
+}
 
 /**
  * Wait for the browser to come back with a code. The redirect names
@@ -194,8 +237,16 @@ async function waitForCode(
       'Cache-Control': 'no-store',
     })
     res.end(signInPageHtml(ok ? options.pages.done : options.pages.failed))
-    if (code && granted) settle({ ok: true, code, port })
-    else settle({ ok: false, reason: code ? 'scope' : 'denied' })
+    if (code && granted) {
+      settle({
+        ok: true,
+        code,
+        port,
+        picked: pickedFileIds(url.searchParams.get('picked_file_ids')),
+      })
+    } else if (code) settle({ ok: false, reason: 'scope' })
+    // closing the picker comes back as a refusal; nothing was asked of Google then
+    else settle({ ok: false, reason: options.pick ? 'cancelled' : 'denied' })
   }
 
   try {
@@ -209,7 +260,9 @@ async function waitForCode(
     options.signal?.addEventListener('abort', onAbort, { once: true })
     if (options.signal?.aborted) onAbort()
     else if (
-      !(await options.openBrowser(googleAuthUrl(options.client.clientId, port, challenge, state)))
+      !(await options.openBrowser(
+        googleAuthUrl(options.client.clientId, port, challenge, state, options.pick),
+      ))
     ) {
       settle({ ok: false, reason: 'network' })
     }
@@ -354,14 +407,17 @@ export async function revokeGoogleToken(token: string, fetchImpl: FetchLike): Pr
   }
 }
 
-/** The whole browser sign-in: consent in the browser, then the code traded for tokens */
-export async function signInWithGoogle(options: GoogleSignInOptions): Promise<GoogleSignInResult> {
+/**
+ * The whole browser sign-in: consent in the browser (with Google's picker
+ * when `pick` is given), then the code traded for tokens
+ */
+export async function signInWithGoogle(options: GoogleSignInOptions): Promise<GooglePickResult> {
   if (!options.fetch) return { ok: false, reason: 'network' }
   const { verifier, challenge } = pkcePair()
   const state = base64url(randomBytes(16))
   const code = await waitForCode(options, challenge, state)
   if (!code.ok) return code
-  return exchangeGoogleCode(
+  const result = await exchangeGoogleCode(
     options.client,
     code.code,
     verifier,
@@ -370,4 +426,5 @@ export async function signInWithGoogle(options: GoogleSignInOptions): Promise<Go
     options.signal,
     options.now,
   )
+  return result.ok ? { ...result, picked: code.picked } : result
 }

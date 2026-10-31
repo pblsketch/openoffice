@@ -21,6 +21,7 @@ Claro / Oscuro / Seguir el sistema. «Seguir el sistema» sigue la apariencia de
 - **Panel de IA** — Desactivado, Contraído o Último estado.
 - **Guardar automáticamente todos los documentos** activa el guardado automático de forma predeterminada en todos los editores; todavía puedes desactivarlo para una ventana.
 - **Ubicación de guardado** con un botón **Cambiar** y **App predeterminada para documentos de Office** para reclamar .docx / .xlsx / .pptx para GenOffice.
+- **Formato de guardado de nuevos documentos HWP** decide si se ofrece primero HWP o HWPX al guardar por primera vez un documento nuevo. Los documentos abiertos conservan su propio formato.
 
 GenOffice no recopila ni envía estadísticas de uso, así que no hay ningún interruptor para ello.
 

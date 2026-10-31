@@ -6,6 +6,7 @@ import {
   freeAiConnected,
   freeAiQuotaOf,
   freeLimitOf,
+  isFreeTierModelRefusal,
   keyProviderModels,
   nextPacificMidnight,
   withFreeAiConnection,
@@ -74,6 +75,32 @@ describe('free connection settings', () => {
     ).toBe(false)
   })
 
+  it("adds the vendor's live list after the catalog, keeping the stored model listed", () => {
+    const models = keyProviderModels('gemini', 'gemini-3.8-flash', [
+      'gemini-4.1-flash',
+      'gemini-4-argon',
+      'gemini-3.8-flash',
+    ])
+    // the catalog first, in its order; then what only the live list has
+    expect(models.slice(0, 2)).toEqual(['gemini-3.8-flash', 'gemini-4-argon'])
+    expect(models.at(-1)).toBe('gemini-4.1-flash')
+    expect(models.filter((m) => m === 'gemini-4-argon')).toHaveLength(1)
+    // a typed id neither list has stays at the top
+    expect(keyProviderModels('gemini', 'gemini-5-preview', ['gemini-4.1-flash'])[0]).toBe(
+      'gemini-5-preview',
+    )
+    // a stored list that is not a list of ids is ignored
+    expect(keyProviderModels('gemini', '', 'junk' as never)).toEqual(
+      keyProviderModels('gemini', ''),
+    )
+  })
+
+  it('never adds paid models to an OpenRouter free connection', () => {
+    expect(
+      keyProviderModels('openrouter', OPENROUTER_FREE_MODELS[0]!, ['anthropic/claude-opus-6']),
+    ).toEqual([...OPENROUTER_FREE_MODELS])
+  })
+
   it('reads IPC answers defensively', () => {
     expect(freeAiConnectResultOf({ ok: true, provider: 'gemini', model: 'm' })).toEqual({
       ok: true,
@@ -119,6 +146,21 @@ describe('the daily free limit', () => {
     expect(freeLimitOf(new Error(GEMINI_MINUTE_BODY), now)).toBeNull()
     expect(freeLimitOf(new Error('Gemini HTTP 503: high demand'), now)).toBeNull()
     expect(aiStreamErrorFields(new Error(GEMINI_MINUTE_BODY))).toEqual({ errorCode: 'overloaded' })
+  })
+
+  it('tells a model the free tier does not serve from a used-up allowance', () => {
+    // Gemini's answer to a Pro model on a free key: the same quota, with no allowance at all
+    const body =
+      'Gemini HTTP 429: {"error":{"code":429,"message":"You exceeded your current quota. Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-4-argon","status":"RESOURCE_EXHAUSTED","details":[{"violations":[{"quotaMetric":"generativelanguage.googleapis.com/generate_content_free_tier_requests","quotaId":"GenerateRequestsPerDayPerProjectPerModel-FreeTier"}]}]}}'
+    expect(isFreeTierModelRefusal(new Error(body))).toBe(true)
+    // not "come back after midnight": waiting would not help
+    expect(freeLimitOf(new Error(body), now)).toBeNull()
+    expect(aiStreamErrorFields(new Error(body))).toEqual({ errorCode: 'free-tier-model' })
+    // a quota of 10 used up is the daily limit, not this
+    expect(isFreeTierModelRefusal(new Error(GEMINI_DAILY_BODY))).toBe(false)
+    expect(
+      isFreeTierModelRefusal(new Error(GEMINI_DAILY_BODY.replace('quota"', 'quota, limit: 10"'))),
+    ).toBe(false)
   })
 
   it('reports the used-up allowance as its own error kind', () => {

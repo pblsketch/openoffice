@@ -85,4 +85,6 @@ export const it = {
   errNeedsUpdate: 'Il programma è troppo vecchio per la modalità agente. Aggiornalo e riprova.',
   errNotInstalled: 'Il programma non è installato.',
   errGeneric: 'Si è verificato un problema. Riprova.',
+  documentsUnprotected:
+    'I documenti aperti dopo l’avvio della sessione ({n}) non sono coperti dalla protezione in scrittura del programma. Interrompi e riavvia la sessione per proteggerli.',
 } satisfies Record<keyof typeof zh, string>

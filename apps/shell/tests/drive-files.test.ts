@@ -256,6 +256,16 @@ describe('DriveFiles saving back', () => {
     expect(drive.uploads[1]).toEqual({ target: { existingId: 'new-1' }, text: 'edited 2' })
   })
 
+  it('makes the Office file in My Drive when the folder is not one the app may see', async () => {
+    drive.add({ id: 'g1', name: '회의록', mimeType: 'application/vnd.google-apps.document' })
+    const files = service()
+    await files.open('g1')
+    // drive.file reaches the picked file, not the folder it sits in
+    drive.failNext = 'not-found'
+    await save(files, opened[0]!, 'edited')
+    expect(drive.uploads[0]).toEqual({ target: { name: '회의록.docx' }, text: 'edited' })
+  })
+
   it('waits while disconnected and uploads when Drive comes back', async () => {
     drive.add({ id: 'f1', name: 'a.md', mimeType: 'text/markdown', text: 'v1' })
     let connected = true

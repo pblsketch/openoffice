@@ -390,7 +390,11 @@ export function AiSection({
             </button>
           </div>
           {noticeOpen && (
-            <AiFirstConnectionNotice lang={lang} codexKeepsHistory={CODEX_MAY_KEEP_HISTORY} />
+            <AiFirstConnectionNotice
+              lang={lang}
+              codexKeepsHistory={CODEX_MAY_KEEP_HISTORY}
+              sendsWholeDocument
+            />
           )}
         </>
       )}

@@ -6,6 +6,14 @@ import {
   type UserSkillSettings,
   type UserSkillStateSetting,
 } from '@genoffice/ai-provider'
+import {
+  isValidProjectId,
+  type OutsideDocumentChoice,
+  type ProjectHashedFile,
+  type ProjectId,
+  type ProjectsAppSettings,
+  type ProjectTrustRecord,
+} from '@genoffice/project-store'
 import { AGENT_CODEX_WEB_SEARCH, type AgentCodexWebSearch } from '../shared/agent-api'
 
 /**
@@ -220,4 +228,125 @@ export function writeAgentProjectPref(
   prefs[key] = next
   writeAppSetting(path, AGENT_PROJECT_PREFS_KEY, prefs)
   return { ...DEFAULT_AGENT_PROJECT_PREF, ...next }
+}
+
+// ---- project folders (decision 0088) ----
+
+/** `projects`: this PC's list of project folders, trust records and per-document choices */
+export const PROJECTS_SETTING_KEY = 'projects'
+
+/**
+ * The stored `projects` value. Besides the shared contract it remembers which
+ * projects already showed the one-time "this is a sync folder" notice.
+ */
+export interface StoredProjectsSettings extends ProjectsAppSettings {
+  /** Project ids whose sync-folder notice was shown (spec 5.8, once per project) */
+  syncNoticeShown: ProjectId[]
+}
+
+const PROJECT_HASHED_FILES: readonly ProjectHashedFile[] = [
+  'instructions',
+  'memory',
+  'agents',
+  'claude',
+]
+const SHA256_HEX = /^[0-9a-f]{64}$/
+
+function plainObject(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined
+}
+
+function isIsoTime(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && !Number.isNaN(Date.parse(value))
+}
+
+/** The `projects` value read back; unknown or malformed parts are dropped, never guessed */
+export function normalizeProjectsSettings(raw: unknown): StoredProjectsSettings {
+  const source = plainObject(raw) ?? {}
+  const out: StoredProjectsSettings = {
+    installId: isValidProjectId(source.installId) ? source.installId : '',
+    list: [],
+    trust: {},
+    outsideDocuments: {},
+    optedOutDocuments: {},
+    settings: {},
+    syncNoticeShown: [],
+  }
+  const seen = new Set<string>()
+  for (const item of Array.isArray(source.list) ? source.list : []) {
+    const entry = plainObject(item)
+    if (!entry || !isValidProjectId(entry.id) || seen.has(entry.id)) continue
+    if (typeof entry.path !== 'string' || !isAbsolute(entry.path)) continue
+    seen.add(entry.id)
+    out.list.push({
+      id: entry.id,
+      path: entry.path,
+      pinned: entry.pinned === true,
+      lastUsedAt: isIsoTime(entry.lastUsedAt) ? entry.lastUsedAt : new Date(0).toISOString(),
+    })
+  }
+  for (const [id, value] of Object.entries(plainObject(source.trust) ?? {})) {
+    const record = plainObject(value)
+    if (!isValidProjectId(id) || !record) continue
+    if (record.decision !== 'use' && record.decision !== 'without') continue
+    const hashes: ProjectTrustRecord['hashes'] = {}
+    const storedHashes = plainObject(record.hashes) ?? {}
+    for (const file of PROJECT_HASHED_FILES) {
+      const hash = storedHashes[file]
+      if (typeof hash === 'string' && SHA256_HEX.test(hash)) hashes[file] = hash
+    }
+    out.trust[id] = { decision: record.decision, hashes }
+  }
+  for (const [doc, value] of Object.entries(plainObject(source.outsideDocuments) ?? {})) {
+    const choice = plainObject(value)
+    if (!choice || !isAbsolute(doc)) continue
+    if (choice.projectId !== null && !isValidProjectId(choice.projectId)) continue
+    const kept: OutsideDocumentChoice = { projectId: choice.projectId }
+    if (choice.projectId !== null && isValidProjectId(choice.lastChatId)) {
+      kept.lastChatId = choice.lastChatId
+    }
+    out.outsideDocuments[doc] = kept
+  }
+  for (const [doc, value] of Object.entries(plainObject(source.optedOutDocuments) ?? {})) {
+    const record = plainObject(value)
+    if (!record || !isAbsolute(doc) || !isValidProjectId(record.projectId)) continue
+    out.optedOutDocuments[doc] = { projectId: record.projectId }
+  }
+  for (const [id, value] of Object.entries(plainObject(source.settings) ?? {})) {
+    const switches = plainObject(value)
+    if (!isValidProjectId(id) || !switches) continue
+    out.settings[id] = {
+      memoryEnabled: switches.memoryEnabled !== false,
+      readAgentsFiles: switches.readAgentsFiles !== false,
+    }
+  }
+  if (source.homeProjectId === null || isValidProjectId(source.homeProjectId)) {
+    out.homeProjectId = source.homeProjectId
+  }
+  const shown = Array.isArray(source.syncNoticeShown) ? source.syncNoticeShown : []
+  out.syncNoticeShown = [...new Set(shown.filter(isValidProjectId))]
+  return out
+}
+
+/** The `projects` value; a missing or unreadable file reads as an empty registry */
+export function readProjectsSettings(path: string): StoredProjectsSettings {
+  return normalizeProjectsSettings(readAppSettings(path)[PROJECTS_SETTING_KEY])
+}
+
+/** Write the whole `projects` value (other keys of the file are kept) */
+export function writeProjectsSettings(path: string, value: StoredProjectsSettings): void {
+  writeAppSetting(path, PROJECTS_SETTING_KEY, normalizeProjectsSettings(value))
+}
+
+/** Read, change and write the `projects` value in one go; returns what was written */
+export function updateProjectsSettings(
+  path: string,
+  change: (settings: StoredProjectsSettings) => void,
+): StoredProjectsSettings {
+  const settings = readProjectsSettings(path)
+  change(settings)
+  writeProjectsSettings(path, settings)
+  return normalizeProjectsSettings(settings)
 }

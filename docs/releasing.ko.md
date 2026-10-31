@@ -63,6 +63,8 @@ Windows SDK는 스캔 문서 글자 인식 도우미(`win-ocr.exe`)를 만들 �
 3. 빌드, 검사(묶인 프로그램, `latest.yml`의 버전과 파일 이름, **서명이 없는지**), 창 없는 내보내기 시험이 모두 통과하면 설치 파일, `.blockmap`, `latest.yml`이 그 릴리스에 저절로 붙습니다. 빌드한 버전과 태그가 다르면 붙이지 않고 멈춥니다.
 4. 릴리스 페이지에서 세 파일이 붙었는지 보고, 8번의 베타 예행으로 넘어갑니다.
 
+**Google 드라이브 클라이언트.** 세 빌드(Windows·macOS·Linux)는 저장소 secrets의 `GENOFFICE_GOOGLE_CLIENT_ID`와 `GENOFFICE_GOOGLE_CLIENT_SECRET`을 앱 빌드와 묶기 단계에 넘깁니다(결정 0033, 0085). 두 값이 없으면 빌드는 그대로 끝나지만 설치본에 드라이브 기능이 빠집니다. 값은 저장소 주인이 `gh secret set GENOFFICE_GOOGLE_CLIENT_ID --repo pblsketch/openoffice`처럼 직접 넣고, 커밋이나 로그에 남기지 않습니다.
+
 release_tag를 비워 두면 결과물(`ieumoffice-windows-x64`)만 남습니다. **처음 한 번은 이렇게 돌려** 내려받은 설치 파일이 손으로 만든 것과 똑같이 설치되고 동작하는지 확인합니다. _(확인 필요: 이 워크플로는 아직 Actions에서 돌려 보지 않았습니다. 첫 실행에서 확인한 뒤 이 표시를 지워 주세요.)_
 
 Actions를 쓸 수 없을 때는 아래처럼 이 PC에서 만듭니다. 이렇게 올린 파일에는 출처 증명이 없습니다.

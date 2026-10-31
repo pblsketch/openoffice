@@ -160,7 +160,16 @@ async function makeScratch(): Promise<Scratch> {
   // An empty providers table is what makes the file read as a current one.
   writeFileSync(
     join(userData, 'ai-settings.json'),
-    JSON.stringify({ providers: {}, subscriptionNoticeSeen: true }, null, 2),
+    JSON.stringify(
+      {
+        providers: {},
+        subscriptionNoticeSeen: true,
+        subscriptionNoticeVersion: 2,
+        pdfSendNoticeSeen: 1,
+      },
+      null,
+      2,
+    ),
   )
 
   return { home, userData, samples, dispose: () => rmSync(root, { recursive: true, force: true }) }

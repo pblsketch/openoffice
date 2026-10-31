@@ -22,6 +22,7 @@ import {
   type LeftoverChildRecord,
   type LeftoverRecord,
 } from './process'
+import { cleanupTrackedTempDirs, setSubscriptionTempRecordDir } from './temp-dirs'
 
 /** What the system says about a live process */
 export interface ProcessInfo {
@@ -207,9 +208,12 @@ export async function initSubscriptionChildTracking(
   dir: string,
   deps: LeftoverCleanupDeps = {},
 ): Promise<LeftoverCleanupResult> {
+  setSubscriptionTempRecordDir(dir)
   const result = await cleanupLeftoverSubscriptionChildren(dir, deps).catch(
     (): LeftoverCleanupResult => ({ killed: [], skipped: [] }),
   )
+  // the same forced exit may have left the bridges' temporary folders behind
+  await cleanupTrackedTempDirs(dir).catch(() => 0)
   sharedSubscriptionChildRegistry().recordIn(dir)
   return result
 }

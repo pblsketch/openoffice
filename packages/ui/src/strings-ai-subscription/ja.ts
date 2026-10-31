@@ -44,7 +44,7 @@ export const ja = {
     'API キーまたは従量課金のアカウントでログインしているか、ログイン方法を確認できませんでした。「それでも使用」を選ぶと AI がこの接続で動作し、リクエストのたびにそのアカウントへ課金されます。',
   connectTitle: 'AI を接続して始めましょう',
   connectBody:
-    'お持ちの Claude または Codex のサブスクリプションで AI を利用します。API キーは不要です。',
+    'お持ちの Claude または ChatGPT のサブスクリプションで AI を利用します。API キーは不要です。',
   connectProviderTitle: '{provider} の接続は現在使用できません',
   connectKeyBody:
     '{provider} の設定がまだ完了していません。設定で完了するか、別の AI を選んでください。',
@@ -69,6 +69,8 @@ export const ja = {
   errFreeLimit:
     '今日の無料利用分を使い切りました。明日もう一度お試しいただくか、設定で別の AI を選んでください。',
   errFreeLimitReset: '今日の無料利用分を使い切りました。{time} から再び利用できます。',
+  errFreeTierModel:
+    'このモデルには無料枠がないため、無料のキーでは使えません。無料枠で使えるモデル（Flash など）を選ぶか、提供元のコンソールで課金を有効にしてください。',
   continueWith: '{provider} で続行',
   continueMeteredNote:
     '{provider} の接続はサブスクリプションではありません。続行すると使った分だけ料金が発生します。',

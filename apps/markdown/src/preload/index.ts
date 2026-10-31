@@ -3,6 +3,10 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
 import { outboundBridge } from '@genoffice/electron-utils/outbound-bridge'
 import { userSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
+import {
+  PROJECT_FOLDER_BRIDGE_KEY,
+  projectFolderBridge,
+} from '@genoffice/electron-utils/project-folder-bridge'
 import { USER_SKILLS_BRIDGE_KEY } from '@genoffice/electron-utils/user-skills-channels'
 import type { Lang } from '@genoffice/i18n'
 import type { AiStreamChunk } from '@genoffice/ai-provider'
@@ -103,6 +107,7 @@ const api: MarkdownApi = {
     ipcRenderer.invoke(MARKDOWN_CHANNELS.rememberWikiFragment, path, fragment),
   takeWikiFragment: (path) => ipcRenderer.invoke(MARKDOWN_CHANNELS.takeWikiFragment, path),
   wikiBacklinks: (path: string) => ipcRenderer.invoke(MARKDOWN_CHANNELS.wikiBacklinks, path),
+  wikiTags: () => ipcRenderer.invoke(MARKDOWN_CHANNELS.wikiTags),
   wikiGraph: () => ipcRenderer.invoke(MARKDOWN_CHANNELS.wikiGraph),
   consumeHeadlessExport: () => ipcRenderer.invoke(MARKDOWN_CHANNELS.consumeHeadlessExport),
   headlessExportDone: (result: { ok: boolean; error?: string }) =>
@@ -173,6 +178,8 @@ const api: MarkdownApi = {
   exportDocx: (request) => ipcRenderer.invoke(MARKDOWN_CHANNELS.exportDocx, request),
   exportOdt: (request) => ipcRenderer.invoke(MARKDOWN_CHANNELS.exportOdt, request),
   exportPdf: (request) => ipcRenderer.invoke(MARKDOWN_CHANNELS.exportPdf, request),
+  renderPrintPreview: (request) => ipcRenderer.invoke(MARKDOWN_CHANNELS.printPreview, request),
+  printDocument: (request) => ipcRenderer.invoke(MARKDOWN_CHANNELS.printDocument, request),
   prepareImageExport: (request) =>
     ipcRenderer.invoke(MARKDOWN_CHANNELS.prepareImageExport, request),
   writeExportImage: (id, page, base64) =>
@@ -260,6 +267,8 @@ contextBridge.exposeInMainWorld('aiOfficeOutbound', outboundBridge())
 // the person's skills: the AI panel's `/` list and skill reads, skill cards (shell main checks each)
 contextBridge.exposeInMainWorld(USER_SKILLS_BRIDGE_KEY, userSkillsBridge())
 contextBridge.exposeInMainWorld('projectApi', projectApi)
+// project folders (decision 0088): main identifies this window, the bridge forwards ids only
+contextBridge.exposeInMainWorld(PROJECT_FOLDER_BRIDGE_KEY, projectFolderBridge(ipcRenderer))
 
 // open documents dragged from the OS onto this tab as a new shell tab
 installDropOpenBridge()

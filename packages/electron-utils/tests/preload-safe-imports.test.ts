@@ -14,8 +14,15 @@ const PRELOAD_MODULES = [
   'handoff-editors.ts',
   'outbound-bridge.ts',
   'outbound-channels.ts',
+  'project-folder-bridge.ts',
 ]
-const NODE_FREE = new Set(['./user-skills-channels', './handoff-editors', './outbound-channels'])
+const NODE_FREE = new Set([
+  './user-skills-channels',
+  './handoff-editors',
+  './outbound-channels',
+  // types and constants only (folder-api.ts imports nothing at runtime)
+  '@genoffice/project-store/folder-api',
+])
 
 function runtimeImports(file: string): string[] {
   const text = readFileSync(join(SRC, file), 'utf8')
@@ -26,12 +33,20 @@ function runtimeImports(file: string): string[] {
   return found
 }
 
-describe('preload-safe skills bridge', () => {
+describe('preload-safe bridges', () => {
   it('imports only electron and Node-free modules at runtime', () => {
     for (const file of PRELOAD_MODULES) {
       for (const spec of runtimeImports(file)) {
         expect(spec === 'electron' || NODE_FREE.has(spec), `${file} imports ${spec}`).toBe(true)
       }
+    }
+  })
+
+  it('keeps the project folder contract free of runtime imports', () => {
+    const contract = join(__dirname, '..', '..', 'project-store', 'src', 'folder-api.ts')
+    const text = readFileSync(contract, 'utf8')
+    for (const match of text.matchAll(/^import\s+(type\s+)?[^'"]*from\s+['"]([^'"]+)['"]/gm)) {
+      expect(match[1], `folder-api.ts imports ${match[2]} at runtime`).toBeTruthy()
     }
   })
 })

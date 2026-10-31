@@ -381,6 +381,27 @@ export function createPdfStructureHandlers(deps: StructureHandlerDeps) {
       return picked
     },
 
+    /**
+     * Grant a target the shell's own save dialog picked (Save As › Markdown).
+     * The same rules as a picked target: the source belongs to this view, the
+     * target is not a granted source, and only Markdown is offered this way.
+     * The renderer's request then writes to exactly this path (claimTarget).
+     */
+    grantTarget(
+      owner: number,
+      sourcePath: unknown,
+      outPath: unknown,
+      kind: PdfStructureTargetKind,
+    ): boolean {
+      if (kind !== 'md' || typeof outPath !== 'string' || !/\.md$/i.test(outPath)) return false
+      if (typeof sourcePath !== 'string' || !deps.isGranted(owner, sourcePath)) return false
+      if (pathKey(outPath) === pathKey(sourcePath) || deps.isGranted(owner, outPath)) return false
+      const map = targets.get(owner) ?? new Map<string, PdfStructureTargetKind>()
+      map.set(pathKey(outPath), kind)
+      targets.set(owner, map)
+      return true
+    },
+
     async tree(
       ctx: CallContext,
       req: PdfStructureTreeRequest,

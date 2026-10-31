@@ -6,7 +6,12 @@
  */
 import { describe, expect, it } from 'vitest'
 import { extractPage, withPdfDocument } from '../src/extract'
-import { buildJpegPdf, buildMaskedJpegPdf } from './helpers/fixtures'
+import {
+  buildFilledJpegPdf,
+  buildJpegPdf,
+  buildMaskedJpegPdf,
+  tinyJpegWithFill,
+} from './helpers/fixtures'
 import { decodePngRgba } from './helpers/png-decode'
 import { loadPdfium } from './helpers/wasm'
 
@@ -52,5 +57,16 @@ describe('image alpha extraction (P9 A)', () => {
     expect([img.data[0], img.data[1]]).toEqual([0xff, 0xd8])
     expect(img.pixelWidth).toBe(8)
     expect(img.pixelHeight).toBe(8)
+  })
+
+  it('a JPEG with 0xFF fill bytes before its markers is embedded raw, not re-encoded', async () => {
+    const m = await loadPdfium()
+    const pdf = await buildFilledJpegPdf(3)
+    const page = withPdfDocument(m, pdf, (doc) => extractPage(m, doc, 0))
+
+    expect(page.images).toHaveLength(1)
+    const img = page.images[0]!
+    expect(img.mime).toBe('image/jpeg')
+    expect(Buffer.from(img.data).equals(Buffer.from(tinyJpegWithFill(3)))).toBe(true)
   })
 })

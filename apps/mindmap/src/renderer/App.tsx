@@ -10,6 +10,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  projectPanelText,
   templateDocumentOf,
   presentationKeyOf,
   useAutoSavePref,
@@ -27,6 +28,7 @@ import { useRecoveryCopies } from './document/recovery-copies'
 import type { DocumentSession, SheetTab } from './document/session'
 import { deleteSheetAfterConfirm } from './document/sheet-actions'
 import { thumbnailForSave } from './document/thumbnail'
+import { saveMapIntoProject } from './document/save-into-project'
 import { useMapExport } from './export/use-map-export'
 import { MapController, type MapHost, type TopicRequest } from './map/controller'
 import { Toolbar } from './components/Toolbar'
@@ -81,6 +83,8 @@ export default function App() {
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null)
   const [fieldRequest, setFieldRequest] = useState<TopicFieldRequest | null>(null)
   const [toast, setToast] = useState<StringKey | null>(null)
+  /** why a new map could not be saved into its project folder (spec 6); shown until the next save */
+  const [projectSaveProblem, setProjectSaveProblem] = useState<string | null>(null)
   const [themeOpen, setThemeOpen] = useState(false)
   /** F5: the map alone, shell chrome covered by HTML fullscreen */
   const [presenting, setPresenting] = useState(false)
@@ -100,6 +104,8 @@ export default function App() {
   const openTopicFieldRef = useRef<(field: TopicRequest, topicId: string) => void>(() => {})
   const confirmAnswer = useRef<((ok: boolean) => void) | null>(null)
   const savingRef = useRef(false)
+  const pathRef = useRef(path)
+  pathRef.current = path
   const langRef = useRef(lang)
   langRef.current = lang
   statusRef.current = status
@@ -410,6 +416,7 @@ export default function App() {
           current.markWritten()
           setPath(result.path)
           setSaveState(current.dirty ? 'idle' : 'saved')
+          setProjectSaveProblem(null)
           return true
         }
         // a sibling copy holding the disk version is not a failure: an
@@ -429,6 +436,48 @@ export default function App() {
     },
     [flushAll, recovery],
   )
+
+  /**
+   * Project folders (spec 6): the run a create flow handed to this map ended
+   * well. An untitled map is saved into its panel's project without a dialog:
+   * main picks the folder and a free name, and with no project nothing is
+   * written. A refused write keeps the map untitled and says why.
+   */
+  const saveIntoProject = useCallback(async (): Promise<void> => {
+    const current = sessionRef.current
+    if (statusRef.current !== 'ready' || !current || pathRef.current) return
+    // queued behind a save in flight, like a menu save
+    while (savingRef.current) await new Promise((resolve) => setTimeout(resolve, 50))
+    if (pathRef.current || sessionRef.current !== current) return
+    savingRef.current = true
+    // a recovery copy being made now may hold what this save writes: it is dropped
+    recovery.noteSave()
+    try {
+      flushAll()
+      const bytes = await current.produceBytes({ thumbnail: await thumbnailForSave() })
+      const rootTitle = current.view(current.tabs()[0]!.key).root.title.trim()
+      const outcome = await saveMapIntoProject(
+        window.mindmapApi,
+        bytes,
+        rootTitle !== translate('centralTopic') ? rootTitle : undefined,
+      )
+      if (outcome.kind === 'saved') {
+        current.markWritten()
+        setPath(outcome.path)
+        setSaveState(current.dirty ? 'idle' : 'saved')
+        setProjectSaveProblem(null)
+      } else if (outcome.kind === 'failed') {
+        setProjectSaveProblem(
+          projectPanelText(langRef.current, 'newDocumentSaveFailed', { error: outcome.error }),
+        )
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err)
+      setProjectSaveProblem(projectPanelText(langRef.current, 'newDocumentSaveFailed', { error }))
+    } finally {
+      savingRef.current = false
+    }
+  }, [flushAll, recovery])
 
   // autosave: every 30s and on window blur; untitled maps wait for an explicit first save
   useEffect(() => {
@@ -729,15 +778,17 @@ export default function App() {
   const statusText =
     toast !== null
       ? t(toast)
-      : saveState === 'saving'
-        ? t('saving')
-        : saveState === 'failed'
-          ? t('saveFailedStatus')
-          : dirty
-            ? t('unsaved')
-            : saveState === 'saved'
-              ? t('savedOk')
-              : ''
+      : projectSaveProblem !== null
+        ? projectSaveProblem
+        : saveState === 'saving'
+          ? t('saving')
+          : saveState === 'failed'
+            ? t('saveFailedStatus')
+            : dirty
+              ? t('unsaved')
+              : saveState === 'saved'
+                ? t('savedOk')
+                : ''
 
   if (status === 'error') return <div className="center-note">{t('loadFailed')}</div>
   if (status === 'loading') return <div className="center-note">{t('loading')}</div>
@@ -878,6 +929,8 @@ export default function App() {
             setThemeOpen(false)
             ai.setOpen(true)
           }}
+          // a map a create flow handed over goes into the panel's project once made (spec 6)
+          onHandedRunDone={() => void saveIntoProject()}
         />
       </main>
 

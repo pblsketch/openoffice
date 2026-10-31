@@ -84,4 +84,6 @@ export const id = {
   errNeedsUpdate: 'Versi program terlalu lama untuk mode agen. Perbarui program, lalu coba lagi.',
   errNotInstalled: 'Program belum terpasang.',
   errGeneric: 'Terjadi masalah. Coba lagi.',
+  documentsUnprotected:
+    'Dokumen yang dibuka setelah sesi dimulai ({n}) tidak tercakup perlindungan tulis program itu sendiri. Hentikan dan mulai ulang sesi untuk melindunginya.',
 } satisfies Record<keyof typeof zh, string>

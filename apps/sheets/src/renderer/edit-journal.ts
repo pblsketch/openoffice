@@ -1,4 +1,4 @@
-import { CellValueType } from '@univerjs/core'
+import { BorderStyleTypes, CellValueType } from '@univerjs/core'
 
 import type {
   WorkbookCellEdit,
@@ -1183,6 +1183,12 @@ export function toSaveVisualAdds(journal: EditJournal): WorkbookVisualAdd[] {
                   ]),
                 ),
               }),
+          // Combo Select Data tags ride along; other families never reach a
+          // 'combo' chartType above.
+          ...(series.plot === 'barChart' || series.plot === 'lineChart'
+            ? { plot: series.plot }
+            : {}),
+          ...(series.secondaryAxis === undefined ? {} : { secondaryAxis: series.secondaryAxis }),
         })),
         ...(visual.chart.legend === undefined ? {} : { legend: visual.chart.legend }),
         // The read-only combined mode narrows to the closest writable one.
@@ -1210,6 +1216,10 @@ export function toSaveVisualAdds(journal: EditJournal): WorkbookVisualAdd[] {
         ...(visual.chart.holeSizePct === undefined
           ? {}
           : { holeSizePct: Math.round(visual.chart.holeSizePct) }),
+        // PivotChart marker rides along so the save writes c:pivotSource.
+        ...(visual.chart.pivotTablePath === undefined
+          ? {}
+          : { pivotTablePath: visual.chart.pivotTablePath }),
       },
     })
   }
@@ -1881,6 +1891,31 @@ export function recordSetNumfmt(
   return recorded
 }
 
+/// Ingests a `sheet.mutation.remove.numfmt` payload (`{ranges}`): undoing a
+/// format edit, or a culture-specific input that inserted a date format.
+export function recordRemoveNumfmt(
+  journal: EditJournal,
+  sheetId: string,
+  params: unknown,
+): JournalEntry[] {
+  if (typeof params !== 'object' || params === null) return []
+  const { ranges } = params as { ranges?: unknown }
+  if (!Array.isArray(ranges)) return []
+  const recorded: JournalEntry[] = []
+  for (const range of ranges) {
+    if (typeof range !== 'object' || range === null) continue
+    const { startRow, endRow, startColumn, endColumn } = range as Record<string, unknown>
+    if (![startRow, endRow, startColumn, endColumn].every(isBoundedIndex)) continue
+    for (let row = startRow as number; row <= (endRow as number); row += 1) {
+      for (let column = startColumn as number; column <= (endColumn as number); column += 1) {
+        const entry = mergeIntoJournal(journal, sheetId, row, column, { s: { n: null } })
+        if (entry) recorded.push(entry)
+      }
+    }
+  }
+  return recorded
+}
+
 /// Guards the numfmt range expansion: a malformed huge range must not spin.
 function isBoundedIndex(value: unknown): boolean {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value < 1_048_576
@@ -2174,6 +2209,14 @@ const UNIVER_VERTICAL: Record<number, WorkbookStyleEdit['verticalAlignment']> = 
 /// journal overlay replay, and the ribbon's No Fill.
 export const NO_FILL_STYLE: { readonly rgb: '' } = { rgb: '' }
 
+/// "No border" as a Univer bd value, the border twin of NO_FILL_STYLE: an
+/// empty bd is dropped by the set-range-values sanitizer, so one NONE edge
+/// keeps the key defined (blocks a <col style=> border at compose time) while
+/// the renderer skips NONE edges and the save path has no xlsx name for it.
+export const NO_BORDER_STYLE: {
+  readonly t: { readonly s: BorderStyleTypes.NONE; readonly cl: { readonly rgb: '#000000' } }
+} = { t: { s: BorderStyleTypes.NONE, cl: { rgb: '#000000' } } }
+
 /// Converts a Univer IStyleData delta (from a set-range-values mutation) to
 /// the renderer-neutral wire format. Unknown keys are ignored; `null` values
 /// mean "remove the attribute" and map to explicit `false`.
@@ -2240,10 +2283,18 @@ export function toNeutralStyle(s: Record<string, unknown>): WorkbookStyleEdit | 
       }
     }
   }
-  const pattern =
-    typeof s.n === 'object' && s.n !== null ? (s.n as Record<string, unknown>).pattern : undefined
-  if (typeof pattern === 'string' && pattern.length > 0 && pattern.length <= 255) {
-    style.numberFormat = pattern
+  if ('n' in s) {
+    // A removed format (numfmt undo, a paste of unformatted cells, which
+    // carries `n: null` in every pasted style) saves as General. The save wire
+    // takes only a pattern string, so null failed the whole save; General is
+    // numFmtId 0, the file's own "no number format".
+    if (s.n === null) style.numberFormat = 'General'
+    else if (typeof s.n === 'object') {
+      const pattern = (s.n as Record<string, unknown>).pattern
+      if (typeof pattern === 'string' && pattern.length > 0 && pattern.length <= 255) {
+        style.numberFormat = pattern
+      }
+    }
   }
   if ('bd' in s && typeof s.bd === 'object' && s.bd !== null) {
     const bd = s.bd as Record<string, unknown>

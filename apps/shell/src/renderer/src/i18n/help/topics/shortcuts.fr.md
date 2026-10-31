@@ -690,6 +690,7 @@ Ces touches s’appliquent lorsque l’onglet HWP/HWPX est au premier plan et qu
 | Chaîne date/heure                                     | ⌃K, D       | Ctrl+K, D          |
 | Modifier un objet, un champ ou un tableau/une cellule | ⌃N, K       | Ctrl+N, K          |
 | Symboles                                              | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+| Convertir en hanja                                    | F9          | Touche Hanja / F9  |
 
 ### Tableau
 

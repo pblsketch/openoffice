@@ -1,5 +1,6 @@
 import { readFile, unlink } from 'node:fs/promises'
 import type { TokenVault } from '@genoffice/google-drive'
+import { linuxKeyringSeals, type SafeStorageLike } from '../ai-secrets'
 import { atomicWriteFile } from '../atomic-write'
 
 /**
@@ -11,6 +12,18 @@ export interface SecretCipher {
   available(): boolean
   encrypt(text: string): Buffer
   decrypt(bytes: Buffer): string
+}
+
+/**
+ * Whether safeStorage really protects the Drive token here. Windows (DPAPI)
+ * and macOS (the keychain) do. On Linux without a keyring Chromium reports
+ * encryption as available but uses `basic_text`, a key built into the
+ * program, so the token would only look sealed: that counts as no encryption.
+ */
+export function driveTokenSeals(storage: SafeStorageLike, platform: NodeJS.Platform): boolean {
+  if (!storage.isEncryptionAvailable()) return false
+  if (platform === 'linux') return linuxKeyringSeals(storage)
+  return true
 }
 
 interface VaultFile {

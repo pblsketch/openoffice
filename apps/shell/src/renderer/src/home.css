@@ -346,9 +346,10 @@ body.vib .home {
 
 .quick-cards {
   display: grid;
-  /* cards wrap onto another line instead of squeezing their titles: 186px is
-     the widest card title with its AI chip across the UI languages */
-  grid-template-columns: repeat(auto-fit, minmax(186px, 1fr));
+  /* A fixed five-column desk grid: the ten cards sit on two even rows instead
+     of overflowing one line. A track can be narrower than a long title, so the
+     title wraps below instead of being clipped. */
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: stretch;
   gap: 10px;
 }
@@ -356,7 +357,6 @@ body.vib .home {
 .quick-card {
   position: relative;
   min-width: 0;
-  max-width: 280px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -399,17 +399,18 @@ body.vib .home {
   max-width: 100%;
   min-width: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 4px 6px;
 }
 
 .quick-title {
   min-width: 0;
-  overflow: hidden;
   font-size: 14px;
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 .quick-sub {
@@ -434,6 +435,7 @@ body.vib .home {
 }
 
 .ai-chip {
+  flex-shrink: 0;
   padding: 1px 6px;
   border-radius: 4px;
   background: var(--badge-bg);
@@ -446,10 +448,6 @@ body.vib .home {
 @media (max-width: 1100px) {
   .quick-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .quick-card {
-    max-width: none;
   }
 }
 
@@ -2020,7 +2018,7 @@ html[dir='rtl'] .quick-title-row {
   font-size: 14px;
   font-weight: 500;
 }
-.kb-ask-headbar span {
+.kb-ask-headbar > span {
   font-size: 12px;
   color: var(--text-tertiary);
 }
@@ -2284,6 +2282,31 @@ html[dir='rtl'] .quick-title-row {
 .kb-ask-tool-note svg {
   color: var(--text-tertiary);
   flex-shrink: 0;
+}
+.kb-ask-tool-note.is-done {
+  color: var(--text);
+}
+.kb-ask-tool-open {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  margin-left: 2px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.kb-ask-tool-open:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+.kb-ask-hero-project {
+  margin: 12px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
 }
 .kb-ask-actions {
   display: flex;

@@ -3,7 +3,7 @@ import type { zh } from './zh'
 export const es = {
   driveNav: 'Google Drive',
   driveDesc:
-    'Abre y edita tus archivos de Drive en GenOffice; al guardar vuelven a Drive. También puedes dejar que la IA busque y lea archivos de tu Drive.',
+    'Elige archivos en Google Drive y ábrelos y edítalos en GenOffice; al guardar vuelven a Drive. GenOffice solo puede abrir los archivos que eliges.',
   driveConnect: 'Conectar Google Drive',
   driveConnecting: 'Inicia sesión con tu cuenta de Google en el navegador y permite el acceso…',
   driveCancel: 'Cancelar',
@@ -18,7 +18,7 @@ export const es = {
     'Google terminó la conexión: se retiró el acceso o la sesión caducó. Vuelve a conectar.',
   driveAiAccess: 'Dejar que la IA busque y lea archivos en Drive',
   driveAiAccessDesc:
-    'Si está activado, la IA de los editores puede buscar en todo tu Drive y leer el texto de los archivos. Lo que lee va al proveedor de IA que usas. La IA no puede modificar, eliminar ni compartir archivos de Drive.',
+    'Si está activado, la IA de los editores puede buscar y leer los archivos de Drive que elegiste aquí. Lo que lee va al proveedor de IA que usas. La IA no puede modificar, eliminar ni compartir archivos de Drive.',
   drivePrivacy:
     'Las listas y el contenido de los archivos viajan solo entre este PC y Google. Nunca pasan por un servidor de los creadores de GenOffice.',
   driveFailDenied: 'No se conectó porque Google no lo permitió.',
@@ -27,23 +27,21 @@ export const es = {
   driveFailTimeout: 'El inicio de sesión no terminó en 10 minutos. Inténtalo de nuevo.',
   driveFailNetwork:
     'No se pudo contactar con Google. Revisa tu conexión a internet e inténtalo de nuevo.',
-  driveMyDrive: 'Mi unidad',
-  driveShared: 'Compartido conmigo',
-  driveRecent: 'Recientes',
-  driveSearchPlaceholder: 'Buscar en Drive',
+  driveRecent: 'Archivos elegidos',
+  driveSearchPlaceholder: 'Buscar en los archivos elegidos',
   driveSearchResults: 'Resultados de «{q}»',
   driveRefresh: 'Actualizar',
   driveNotConnectedTitle: 'Google Drive no está conectado',
   driveNotConnectedBody:
-    'Una vez conectado, puedes abrir y editar aquí tus archivos de Drive, y al guardar vuelven a Drive.',
+    'Una vez conectado, puedes elegir archivos de Drive, abrirlos y editarlos aquí, y al guardar vuelven a Drive.',
   driveOpenSettings: 'Conectar en Configuración',
-  driveEmpty: 'No hay archivos.',
+  driveEmpty: 'Aún no hay archivos. Haz clic en «Elegir de Google Drive» para seleccionar algunos.',
   driveLoading: 'Cargando…',
   driveLoadMore: 'Mostrar más',
   driveOpening: 'Abriendo…',
   driveGoogleBadge: 'Formato de Google',
   driveGoogleNote:
-    'Un documento de Google se abre como archivo de Office. Al guardar, el original queda igual y se guarda un archivo de Office en la misma carpeta.',
+    'Un documento de Google se abre como archivo de Office. Al guardar, el original queda igual y se guarda un archivo de Office junto a él o en Mi unidad.',
   driveReadOnly: 'Solo lectura',
   driveReadOnlyNote:
     'No puedes editar este archivo. Al guardar, se te preguntará si quieres guardar una copia en Drive.',
@@ -55,10 +53,14 @@ export const es = {
   driveErrRateLimit: 'Google está frenando las solicitudes por un momento. Inténtalo en breve.',
   driveErrNetwork: 'No se pudo contactar con Google Drive. Revisa tu conexión a internet.',
   driveErrDisk: 'No se pudo guardar el archivo en este PC.',
-  drivePickTitle: 'Adjuntar desde Drive',
-  drivePickAttach: 'Adjuntar',
-  drivePickSelected: '{n} seleccionados',
-  drivePickWorking: 'Obteniendo archivos de Drive…',
-  drivePickFolderNote: 'Marcar una carpeta adjunta hasta 20 archivos de ella.',
-  drivePickGoogleNote: 'Un documento de Google se adjunta como archivo de Office.',
+  drivePick: 'Elegir de Google Drive',
+  drivePicking: 'Elige los archivos en la ventana de Google que se abrió en tu navegador…',
+  drivePickNote:
+    'GenOffice solo puede abrir los archivos de Drive que elijas en la ventana de Google. Los archivos que elegiste una vez se quedan en esta lista.',
+  driveTrainingTitle: 'Antes de usar archivos de Drive con la IA',
+  driveTrainingBody:
+    'Google no permite que los archivos de Drive vayan a un servicio de IA que los use para entrenar sus modelos. Los planes personales de Claude, ChatGPT y Codex pueden usar tus chats para entrenamiento si no lo desactivas: en Claude, en Configuración → Privacidad; en ChatGPT, en Configuración → Controles de datos → «Mejorar el modelo para todos». Los proveedores con clave de API no entrenan con datos de la API de forma predeterminada. Las conexiones de IA gratuitas nunca reciben archivos de Drive.',
+  driveTrainingAck:
+    'El entrenamiento de modelos está desactivado en las cuentas de IA que uso con archivos de Drive',
+  driveFailTraining: 'Primero marca la opción sobre el entrenamiento de modelos de arriba.',
 } satisfies Record<keyof typeof zh, string>

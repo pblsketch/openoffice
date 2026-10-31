@@ -314,12 +314,17 @@ export interface ZoteroRendererResponse {
 /**
  * MCP bridge: an editor command pushed from the shell main process into a docs
  * tab so an external agent drives the *visible* editor instead of writing a file
- * behind it. `insert_content` / `replace_blocks` / `apply_ops` / `read_document`
- * reuse the built-in agent's tool executors; `save_document` writes the live
- * document to an explicit path.
+ * behind it. `insert_content` / `replace_blocks` / `apply_ops` / `insert_picture` /
+ * `read_document` reuse the built-in agent's tool executors; `save_document` writes
+ * the live document to an explicit path.
  */
 export type McpEditorCommand =
-  'insert_content' | 'replace_blocks' | 'apply_ops' | 'read_document' | 'save_document'
+  | 'insert_content'
+  | 'replace_blocks'
+  | 'apply_ops'
+  | 'insert_picture'
+  | 'read_document'
+  | 'save_document'
 
 export interface McpCommandMessage {
   requestId: string
@@ -573,6 +578,25 @@ export interface DesktopApi {
     ok: boolean
     path?: string
     error?: string
+    passwordIntentPending?: boolean
+    dataUrl?: string
+  }>
+  /**
+   * Project folders (spec 6): first save of a new document a create flow made,
+   * into its panel's project with no dialog. The main process picks the folder
+   * and a free name (never over a file); `skipped` when the panel has no
+   * project (nothing written), `error` when the project folder refused the
+   * write. Absent in older preloads.
+   */
+  saveDocxIntoProject?(
+    defaultName: string,
+    format: DocFormat,
+    data: ArrayBuffer,
+  ): Promise<{
+    ok: boolean
+    path?: string
+    error?: string
+    skipped?: boolean
     passwordIntentPending?: boolean
     dataUrl?: string
   }>

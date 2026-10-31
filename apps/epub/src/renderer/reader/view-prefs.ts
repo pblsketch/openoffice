@@ -26,6 +26,8 @@ export interface FrameColors {
   nightPaper: string
   nightInk: string
   nightLink: string
+  sepiaPaper: string
+  sepiaInk: string
   hitBg: string
   hitInk: string
 }
@@ -33,22 +35,35 @@ export interface FrameColors {
 /** The name of the search highlight inside the frame (CSS custom highlights). */
 export const FIND_HIGHLIGHT = 'epub-find'
 
-/** The view settings as the CSS of the frame's view style element. */
-export function viewPrefsCss(prefs: EpubViewPrefs, colors: FrameColors): string {
-  const rules: string[] = []
-  if (prefs.dark) {
-    rules.push(
+/** The paper the book is drawn on: the book's own colours on white, on sepia, or night colours. */
+export type ReadingTheme = 'light' | 'sepia' | 'dark'
+
+/** The colour rules of a reading theme. */
+export function themeCss(theme: ReadingTheme, colors: FrameColors): string[] {
+  if (theme === 'dark') {
+    return [
       ':root { color-scheme: dark; }',
       `html, body { background-color: ${colors.nightPaper} !important; color: ${colors.nightInk} !important; }`,
       'body * { color: inherit !important; background-color: transparent !important; }',
       `body a, body a * { color: ${colors.nightLink} !important; }`,
-    )
-  } else {
-    rules.push(
-      ':root { color-scheme: light; }',
-      `html { background-color: ${colors.paper}; color: ${colors.ink}; }`,
-    )
+    ]
   }
+  if (theme === 'sepia') {
+    return [
+      ':root { color-scheme: light; }',
+      `html { background-color: ${colors.sepiaPaper} !important; color: ${colors.sepiaInk}; }`,
+      'body { background-color: transparent !important; }',
+    ]
+  }
+  return [
+    ':root { color-scheme: light; }',
+    `html { background-color: ${colors.paper}; color: ${colors.ink}; }`,
+  ]
+}
+
+/** The view settings as the CSS of the frame's view style element. */
+export function viewPrefsCss(prefs: EpubViewPrefs, colors: FrameColors): string {
+  const rules = themeCss(prefs.dark ? 'dark' : 'light', colors)
   rules.push('html { padding: 1.5em 2em; box-sizing: border-box; }')
   if (Math.abs(prefs.fontScale - 1) > 1e-6) rules.push(`:root { zoom: ${prefs.fontScale}; }`)
   if (prefs.lineHeight !== null) {
@@ -58,4 +73,21 @@ export function viewPrefsCss(prefs: EpubViewPrefs, colors: FrameColors): string 
     `::highlight(${FIND_HIGHLIGHT}) { background-color: ${colors.hitBg}; color: ${colors.hitInk}; }`,
   )
   return rules.join('\n')
+}
+
+/** The frame's colours: the page's `--epub-*` properties and search tokens (styles.css), with system colours as a fallback. */
+export function frameColors(): FrameColors {
+  const style = getComputedStyle(document.documentElement)
+  const read = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback
+  return {
+    paper: read('--epub-paper', 'Canvas'),
+    ink: read('--epub-ink', 'CanvasText'),
+    nightPaper: read('--epub-night-paper', 'Canvas'),
+    nightInk: read('--epub-night-ink', 'CanvasText'),
+    nightLink: read('--epub-night-link', 'LinkText'),
+    sepiaPaper: read('--epub-sepia-paper', 'Canvas'),
+    sepiaInk: read('--epub-sepia-ink', 'CanvasText'),
+    hitBg: read('--search-hit-active-bg', 'Mark'),
+    hitInk: read('--search-hit-active-ink', 'MarkText'),
+  }
 }

@@ -201,7 +201,11 @@ describe('settings changes made from the panel', () => {
   it('remembers the acknowledged notice without touching anything else', () => {
     const before = settings({ subscriptionNoticeSeen: false, provider: 'codex' })
     const next = withAiSubscriptionNoticeSeen(before)
-    expect(next).toEqual({ ...before, subscriptionNoticeSeen: true })
+    expect(next).toEqual({
+      ...before,
+      subscriptionNoticeSeen: true,
+      subscriptionNoticeVersion: 2,
+    })
     expect(before.subscriptionNoticeSeen).toBe(false)
   })
 })

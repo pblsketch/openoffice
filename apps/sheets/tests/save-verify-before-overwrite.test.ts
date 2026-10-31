@@ -115,7 +115,9 @@ vi.mock('../src/main/xlsx-sidecar-client', () => ({
       closed.push(sessionId)
     }
     async open(path: string): Promise<unknown> {
-      if (openFails.value(path)) throw new Error('Workbook part is malformed.')
+      // the engine names the broken part, and its message may carry the path
+      if (openFails.value(path))
+        throw new Error(`Invalid XML in xl/styles.xml: expected </fonts> (${path})`)
       const result = mockOpenResult() as { sessionId: string }
       opened.push(result.sessionId)
       return result
@@ -234,6 +236,29 @@ describe('save opens its output back before replacing the file', () => {
     expect(readFileSync(path).toString()).toBe('original-bytes')
     // nothing of the failed save is left beside the user's file
     expect(readdirSync(dir)).toEqual(['book.xlsx'])
+  })
+
+  it('keeps the reason, without the path, in the message and the data folder', async () => {
+    const path = writeWorkbook()
+    const session = await openWorkbook(path)
+    openFails.value = isSavedOutput
+
+    const reason = '[unreadable: Invalid XML in xl/styles.xml: expected </fonts> (<path>)]'
+    await expect(saveWorkbook(session.sessionId)).rejects.toThrow(reason)
+    const lines = readFileSync(join(userDataDirRef.value, 'sheets-save-failures.jsonl'), 'utf8')
+      .trim()
+      .split('\n')
+    expect(lines).toHaveLength(1)
+    const entry = JSON.parse(lines[0]!) as Record<string, unknown>
+    expect(entry).toMatchObject({
+      app: '0',
+      source: 'xlsx',
+      kind: 'unreadable',
+      detail: 'Invalid XML in xl/styles.xml: expected </fonts> (<path>)',
+    })
+    expect(entry.bytes).toBe(savedFrom('original-bytes').length)
+    // the staged output sat in the temp folder; no form of it is kept, raw or JSON-escaped
+    expect(lines[0]).not.toContain(JSON.stringify(tmpdir()).slice(1, -1))
   })
 
   it('keeps the session alive, so the next Save still works', async () => {

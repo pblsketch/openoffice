@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   COPY_MATERIALIZE_MAX_CELLS,
+  directCopyField,
   installCopyMaterialize,
 } from '../src/renderer/copy-materialize'
+import { setModuleLang } from '../src/renderer/i18n/locale'
 import { ensureLazyRangeLoaded, readCopySourceDirect } from '../src/renderer/univer-sync'
 
 vi.mock('../src/renderer/univer-sync', () => ({
@@ -58,6 +60,23 @@ describe('copy materialize screen extent', () => {
   beforeEach(() => {
     mockEnsure.mockClear()
     mockDirect.mockReset()
+  })
+
+  it('copies a date cell with the UI language weekday', () => {
+    setModuleLang('ko')
+    try {
+      expect(
+        directCopyField({
+          v: 46324,
+          t: null,
+          s: { n: { pattern: 'yyyy"년 "m"월 "d"일("aaa)' } },
+          f: null,
+          fileFormula: null,
+        } as never),
+      ).toBe('2026년 10월 29일(목)')
+    } finally {
+      setModuleLang('zh')
+    }
   })
 
   it('clamps to the screen extent after row inserts, not the file extent', async () => {

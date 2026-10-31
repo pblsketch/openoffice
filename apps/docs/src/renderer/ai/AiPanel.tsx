@@ -26,12 +26,20 @@ import {
   skillChipRefsOf,
   useComposerSkills,
   panelUserSkills,
+  panelProjectSkill,
   SkillUsedNotes,
   useSkillProposals,
   useSkillTemplates,
+  createHandedRun,
   type TemplateDocument,
   type SkillChipRef,
   type SkillUse,
+  type ProjectChatEntry,
+  type ProjectChatOpened,
+  placeRemoteEntries,
+  useProjectPanel,
+  type ProjectPanel,
+  type ProjectMemoryLine,
 } from '@genoffice/ui'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/core'
@@ -182,6 +190,53 @@ interface ChatEntry {
   skillProposals?: string[]
   /** tokens the provider billed for this reply, summed across its turns (absent when unreported) */
   usage?: AiTokenUsageView
+  /** memory lines a reopened project chat gave this message */
+  memory?: ProjectMemoryLine[]
+  /** tools another editor ran for this message (a reopened project chat) */
+  otherEditorTools?: ProjectChatEntry['otherEditorTools']
+}
+
+/** A stored message (per-document or project chat) as the panel keeps it */
+interface StoredEntry {
+  role: 'user' | 'assistant'
+  text: string
+  tools?: readonly { name: string; summary: string; isError?: boolean; output?: string }[]
+  attachments?: readonly { name: string; path?: string; ext?: string; sizeBytes?: number }[]
+  scope?: AiScopeQuoteData
+  skills?: unknown
+  skillProposals?: string[]
+  memory?: ProjectMemoryLine[]
+  otherEditorTools?: ProjectChatEntry['otherEditorTools']
+}
+
+/** One message of a stored conversation, as the read-only transcript shows it */
+function storedEntryOf(m: StoredEntry): ChatEntry {
+  return {
+    role: m.role,
+    text: m.text,
+    tools: m.tools?.map((t) => ({
+      name: t.name,
+      summary: t.summary,
+      isError: t.isError,
+      output: t.output ? t.output.slice(0, TOOL_OUTPUT_MAX_CHARS) : undefined,
+    })),
+    // stored metadata only: no thumbnail read for history, the chips render name/size
+    attachments: m.attachments
+      ?.filter((a) => a.path)
+      .map((a) => ({
+        name: a.name,
+        path: a.path ?? '',
+        ext: a.ext ?? '',
+        sizeBytes: a.sizeBytes ?? 0,
+      })),
+    ...(m.scope ? { scope: m.scope } : {}),
+    ...(m.role === 'user' && skillChipRefsOf(m.skills).length > 0
+      ? { skills: skillChipRefsOf(m.skills) }
+      : {}),
+    ...(m.skillProposals ? { skillProposals: m.skillProposals } : {}),
+    ...(m.memory && m.memory.length > 0 ? { memory: m.memory } : {}),
+    ...(m.otherEditorTools ? { otherEditorTools: m.otherEditorTools } : {}),
+  }
 }
 
 /** longest selection excerpt echoed on a user bubble */
@@ -399,6 +454,11 @@ interface AiPanelProps {
   docExtras?: AiDocExtras
   /** footnote / endnote lists for insert_footnote, insert_endnote, delete_note, read_notes */
   notesAccess?: AiNotesAccess
+  /**
+   * The run a skill template's copy handed to this tab ended well: the app
+   * saves the untitled copy into the panel's project (spec 6)
+   */
+  onHandedRunDone?: () => void
 }
 
 const MODEL_BRIDGE: AiModelPickerBridge = {
@@ -432,8 +492,13 @@ export function AiPanel({
   docExtras,
   notesAccess,
   templateDocument,
+  onHandedRunDone,
 }: AiPanelProps) {
   const { t, lang } = useI18n()
+  /** the run a template copy handed to this tab, until it ends (spec 6) */
+  const handedRunRef = useRef(createHandedRun())
+  const onHandedRunDoneRef = useRef(onHandedRunDone)
+  onHandedRunDoneRef.current = onHandedRunDone
   // Panel chrome follows the UI language; message text follows its own content (dir=auto below)
   const isRtl = lang === 'ar' || lang === 'he'
   const [input, setInput] = useState('')
@@ -490,6 +555,10 @@ export function AiPanel({
     onTaken: () => {
       if (!open) onExpand?.()
     },
+    // a template copy's request: the copy goes into the project once it ends well
+    onHandedRun: ({ preview }) => {
+      if (!preview) handedRunRef.current.arm()
+    },
     setComposer: setInput,
   })
   const skillTemplatesRef = useRef(skillTemplates)
@@ -511,6 +580,9 @@ export function AiPanel({
       .catch(() => undefined)
   }
   const [chat, setChat] = useState<ChatEntry[]>([])
+  /** the live turn shown now, for callbacks that must decide before the next render */
+  const chatNowRef = useRef(chat)
+  chatNowRef.current = chat
   /** a streamed write stopped early: the draft stays in the document until the user keeps or discards it */
   const [activePartial, setActivePartial] = useState<{ blocks: number } | null>(null)
   const partialResolverRef = useRef<((keep: boolean) => void) | null>(null)
@@ -768,6 +840,37 @@ export function AiPanel({
   const [sessionUsage, setSessionUsage] = useState<AiTokenUsageView | undefined>(undefined)
 
   // ── Chat-history persistence ────────────────────────────────────────────
+  /** the project folder of this panel (set once its hook ran; read by callbacks) */
+  const projectRef = useRef<ProjectPanel | null>(null)
+
+  /** Show a stored conversation as the read-only transcript and hand it to the model. */
+  const showStoredChat = (stored: readonly StoredEntry[]) => {
+    // skill cards come back closed; a saved card's record is not part of the conversation
+    const msgs = skillCardsRef.current.restore(stored)
+    setHistoricChat(msgs.map(storedEntryOf))
+    // the next request re-reads the current text of the skills this conversation used
+    skillsRef.current.restoreHistory(
+      msgs.map((m) => (m.role === 'user' ? skillChipRefsOf(m.skills) : undefined)),
+    )
+    // restore model context: follow-ups after reopening a file continue the previous conversation (only when the loop is idle with no history)
+    loopRef.current?.restore(msgs.map((m) => ({ role: m.role, text: m.text })))
+  }
+
+  /** This document's own conversation; nothing while a project chat shows. */
+  const loadDocumentChat = (ids: { projectId: string; chatId: string }) => {
+    const api = (window as Window & { projectApi?: typeof window.projectApi }).projectApi
+    if (!api) return
+    void api
+      .loadChat({ projectId: ids.projectId, chatId: ids.chatId, limit: 200 })
+      .then((stored) => {
+        if (stored.length === 0 || projectRef.current?.chat.chat) return
+        showStoredChat(stored)
+      })
+      .catch(() => {
+        /* history load failures are silent */
+      })
+  }
+
   useEffect(() => {
     const api = (window as Window & { projectApi?: typeof window.projectApi }).projectApi
     if (!api) return
@@ -776,44 +879,7 @@ export function AiPanel({
       .resolveChat({ filePath: filePath ?? null, tempChatId })
       .then((ids) => {
         chatRefIds.current = ids
-        return api.loadChat({ projectId: ids.projectId, chatId: ids.chatId, limit: 200 })
-      })
-      .then((stored) => {
-        if (stored.length === 0) return
-        // skill cards come back closed; a saved card's record is not part of the conversation
-        const msgs = skillCardsRef.current.restore(stored)
-        setHistoricChat(
-          msgs.map((m) => ({
-            role: m.role,
-            text: m.text,
-            tools: m.tools?.map((t) => ({
-              name: t.name,
-              summary: t.summary,
-              isError: t.isError,
-              output: t.output ? t.output.slice(0, TOOL_OUTPUT_MAX_CHARS) : undefined,
-            })),
-            // stored metadata only: no thumbnail read for history, the chips render name/size
-            attachments: m.attachments
-              ?.filter((a) => a.path)
-              .map((a) => ({
-                name: a.name,
-                path: a.path ?? '',
-                ext: a.ext ?? '',
-                sizeBytes: a.sizeBytes ?? 0,
-              })),
-            ...(m.scope ? { scope: m.scope } : {}),
-            ...(m.role === 'user' && skillChipRefsOf(m.skills).length > 0
-              ? { skills: skillChipRefsOf(m.skills) }
-              : {}),
-            ...(m.skillProposals ? { skillProposals: m.skillProposals } : {}),
-          })),
-        )
-        // the next request re-reads the current text of the skills this conversation used
-        skillsRef.current.restoreHistory(
-          msgs.map((m) => (m.role === 'user' ? skillChipRefsOf(m.skills) : undefined)),
-        )
-        // restore model context: follow-ups after reopening a file continue the previous conversation (only when the loop is idle with no history)
-        loopRef.current?.restore(msgs.map((m) => ({ role: m.role, text: m.text })))
+        loadDocumentChat(ids)
       })
       .catch(() => {
         /* history load failures are silent */
@@ -822,7 +888,13 @@ export function AiPanel({
   }, [])
 
   /** After an unsaved document's first save yields a real path, bind the unsaved-* history to that file (recoverable by path on reopen) */
+  const savedPathRef = useRef(filePath)
   useEffect(() => {
+    // a first save or a save under another name: a project chat notes the document (spec 5.3.6)
+    if (filePath && filePath !== savedPathRef.current) {
+      void projectRef.current?.chat.documentSaved()
+    }
+    savedPathRef.current = filePath
     const ids = chatRefIds.current
     const api = (window as Window & { projectApi?: typeof window.projectApi }).projectApi
     if (!api || !ids || !filePath || !ids.chatId.startsWith('unsaved-')) return
@@ -850,32 +922,31 @@ export function AiPanel({
     scope?: AiScopeQuoteData,
     skillChips?: SkillChipRef[],
   ) => {
+    const record = {
+      role,
+      text,
+      ...(tools && tools.length > 0 ? { tools } : {}),
+      ...(attachments && attachments.length > 0
+        ? {
+            attachments: attachments.map((a) => ({
+              name: a.name,
+              path: a.path,
+              ext: a.ext,
+              sizeBytes: a.sizeBytes,
+            })),
+          }
+        : {}),
+      ...(scope ? { scope } : {}),
+      ...(skillChips && skillChips.length > 0 ? { skills: skillChips } : {}),
+    }
+    // a chosen project (or this document's earlier chat) records it; otherwise as before
+    if (projectRef.current?.chat.persist(record)) return
     const ids = chatRefIds.current
     const api = (window as Window & { projectApi?: typeof window.projectApi }).projectApi
     if (!ids || !api) return
-    void api
-      .appendChat({
-        projectId: ids.projectId,
-        chatId: ids.chatId,
-        role,
-        text,
-        ...(tools && tools.length > 0 ? { tools } : {}),
-        ...(attachments && attachments.length > 0
-          ? {
-              attachments: attachments.map((a) => ({
-                name: a.name,
-                path: a.path,
-                ext: a.ext,
-                sizeBytes: a.sizeBytes,
-              })),
-            }
-          : {}),
-        ...(scope ? { scope } : {}),
-        ...(skillChips && skillChips.length > 0 ? { skills: skillChips } : {}),
-      })
-      .catch(() => {
-        /* silent */
-      })
+    void api.appendChat({ projectId: ids.projectId, chatId: ids.chatId, ...record }).catch(() => {
+      /* silent */
+    })
   }
 
   const patchLastAssistant = (
@@ -890,6 +961,29 @@ export function AiPanel({
       return boundChatHistory(next)
     })
   }
+
+  /**
+   * The project folder (spec 5): the chip under the input, the chat menu, the
+   * notices. With no project chosen the panel keeps its per-document chat.
+   */
+  const project = useProjectPanel({
+    editor: 'docs',
+    lang,
+    busy,
+    loop: () => loopRef.current,
+    consolidation: () => {
+      const transport = transportRef.current
+      return transport ? { transport, gate: () => sendGateRef.current.peek() } : null
+    },
+    onOpen: (opened, initial) => openChat(opened, initial),
+    onRemoteMessages: (entries, running) => {
+      setChat((prev) =>
+        boundChatHistory(placeRemoteEntries(prev, entries.map(storedEntryOf), running)),
+      )
+    },
+    onNewChat: () => newChat(),
+  })
+  projectRef.current = project
 
   const transportRef = useRef<ReturnType<typeof createElectronTransport> | null>(null)
   if (!transportRef.current)
@@ -1040,6 +1134,8 @@ export function AiPanel({
             }))
           },
         }),
+        // the chosen project folder: its context and its four app-run tools (spec 5.4, 5.5)
+        ...panelProjectSkill({ run: project.chat.run, lang: () => langRef.current }),
       ]),
       captureSnapshot: () => captureRollbackSnapshot(editorRef.current),
       events: {
@@ -1129,6 +1225,9 @@ export function AiPanel({
           if (!cancelled && (finalText || runToolsRef.current.length > 0)) {
             persistMessage('assistant', finalText, runToolsRef.current)
           }
+          projectRef.current?.finishSend()
+          // a handed-over run that ended well: the copy goes into the project
+          if (handedRunRef.current.settle(!cancelled)) onHandedRunDoneRef.current?.()
         },
         onError: (error) => {
           const errorCause = runErrorCauseOf(streamErrorRef.current, error)
@@ -1158,6 +1257,9 @@ export function AiPanel({
           // the next queued message would only run into the same wall: it waits for a resume
           if (isBlockedRunCause(errorCause)) msgQueueRef.current.hold()
           setBusy(false)
+          projectRef.current?.finishSend()
+          // a failed make writes nothing: the copy stays untitled
+          handedRunRef.current.settle(false)
         },
       },
     })
@@ -1383,6 +1485,11 @@ export function AiPanel({
         await Promise.all([waitForFullContent(), refreshKbFiles()])
         // a newer send (after New chat) owns the panel now: leave its state alone
         if (pendingSendRef.current !== pending) return
+        if (!pending.aborted && currentDocGeneration() === generation) {
+          // the chosen project's context, read now and fixed for this request (spec 5.4)
+          await projectRef.current?.prepareSend()
+          if (pendingSendRef.current !== pending) return
+        }
         pendingSendRef.current = null
         // the wait ended because another document replaced this one, or the
         // user stopped / reset the chat meanwhile: nothing to run
@@ -1393,6 +1500,7 @@ export function AiPanel({
             ),
           )
           setBusy(false)
+          projectRef.current?.finishSend()
           return
         }
         // the skill text rides with this request only; the bubble and the record keep the chips
@@ -1464,7 +1572,8 @@ export function AiPanel({
     setInput('')
   }
 
-  const newChat = () => {
+  /** Today's "new chat": the screen, the loop and everything the conversation carried start over. */
+  const resetConversation = () => {
     msgQueue.clear()
     if (pendingSendRef.current) {
       pendingSendRef.current.aborted = true
@@ -1488,7 +1597,31 @@ export function AiPanel({
     setAttachments([])
     setAttachNotice(null)
     sentAttachmentsRef.current = []
+  }
+
+  /** "New chat": a new chat of the chosen project, or (no project) today's reset (spec 5.3.7) */
+  const newChat = () => {
+    resetConversation()
+    if (projectRef.current?.chat.projectId) void projectRef.current.chat.newChat()
     inputRef.current?.focus()
+  }
+
+  /** A project chat, this document's earlier chat, or (no project) the document's own chat opened. */
+  const openChat = (opened: ProjectChatOpened, initial = false) => {
+    // a send made while the panel started (a request handed to this tab) keeps its chat
+    if (
+      initial &&
+      (chatNowRef.current.length > 0 || loopRef.current?.busy || pendingSendRef.current)
+    ) {
+      return
+    }
+    resetConversation()
+    if (opened.kind === 'document') {
+      const ids = chatRefIds.current
+      if (ids) loadDocumentChat(ids)
+      return
+    }
+    showStoredChat(opened.entries)
   }
 
   const copyMessage = (text: string, idx: number) => {
@@ -1667,6 +1800,7 @@ export function AiPanel({
           <AiMark size={22} />
           {aiSubscriptionText(lang, 'aiAssistant')}
         </span>
+        {project.chatMenu}
         <div className="ai-panel-header-actions">
           <AiPanelSideButton
             lang={lang}
@@ -1714,6 +1848,7 @@ export function AiPanel({
                 )}
                 {entry.tools && entry.tools.length > 0 && <ToolChipList tools={entry.tools} />}
                 <SkillUsedNotes tools={entry.tools} />
+                {project.messageParts(entry)}
                 {entry.skillProposals?.map((key) => skillCards.render(key))}
                 {entry.text && (
                   <div dir="auto">
@@ -1818,6 +1953,7 @@ export function AiPanel({
                 />
               )}
               <SkillUsedNotes tools={entry.tools} />
+              {project.messageParts(entry)}
               {entry.skillProposals?.map((key) => skillCards.render(key))}
               {entry.error && !blockedCause && (
                 <div className="ai-msg-error">{t('aiErrorPrefix', { error: entry.error })}</div>
@@ -1949,6 +2085,8 @@ export function AiPanel({
         {localModelCapabilities(liveSettings).tools === false && (
           <AiToolsUnsupportedNotice lang={lang} />
         )}
+        {project.hint}
+        {project.notices}
         {attachNotice && <div className="ai-attach-notice">{attachNotice}</div>}
         {activePartial && (
           <div className="ai-queue ai-partial-card" role="group" aria-label={t('aiPartialTitle')}>
@@ -2122,6 +2260,7 @@ export function AiPanel({
           skills={skills.composer}
           docs={docMention}
           onPasteFiles={(files) => void onPasteFiles(files)}
+          footerBelow={project.picker}
           footerStart={
             <>
               <AiModelPicker

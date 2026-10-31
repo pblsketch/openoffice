@@ -79,11 +79,15 @@ export const AI_PROVIDERS: AiProviderMeta[] = [
   {
     id: 'gemini',
     label: 'Gemini',
-    // 3.x lineup per ai.google.dev/gemini-api/docs/models (2026-09-23). 3.8 Flash
-    // is the current stable Flash Google recommends; 3.1 Pro is still preview-only.
+    // per ai.google.dev/gemini-api/docs/models (2026-10-29). 4 Argon (GA
+    // 2026-10-13) is the flagship reasoning model and 3.1 Pro is still
+    // preview-only; neither has a free tier, so 3.8 Flash, the stable Flash
+    // Google recommends, stays the default. 3.7 Flash was deprecated on
+    // 2026-10-08 (see RETIRED_MODELS). Models released after this list come
+    // from the key's live list (key-models.ts).
     models: [
       'gemini-3.8-flash',
-      'gemini-3.7-flash',
+      'gemini-4-argon',
       'gemini-3.1-pro-preview',
       'gemini-3.6-flash',
       'gemini-3.5-flash-lite',
@@ -350,6 +354,27 @@ export const AI_PROVIDERS: AiProviderMeta[] = [
     keyPlaceholder: 'apikey-...',
   },
   {
+    id: 'runcrate',
+    label: 'Runcrate',
+    // Lab-namespaced ids exactly as GET api.runcrate.ai/v1/models lists them
+    // (2026-10-25, public endpoint, no key needed); the rest of the catalog
+    // works as-is when typed in. Chat, streaming and tool calls are
+    // live-verified; image support follows each id's catalog input_modalities,
+    // and the text-only ids (GLM-5.3, Qwen3.8 Flash, gpt-oss 120B) are covered
+    // by modelLacksVision().
+    models: [
+      'deepseek-ai/DeepSeek-V4.1-Flash',
+      'deepseek-ai/DeepSeek-V4.1-Flash-1017',
+      'zai-org/GLM-5.3',
+      'zai-org/GLM-5.3-Flash',
+      'moonshotai/Kimi-K2.6',
+      'Qwen/Qwen3.8-Flash',
+      'openai/gpt-oss-120b',
+    ],
+    defaultModel: 'deepseek-ai/DeepSeek-V4.1-Flash',
+    keyPlaceholder: 'rc_live_...',
+  },
+  {
     id: 'opencode-zen',
     label: 'OpenCode Zen',
     // Pay-as-you-go gateway (opencode.ai/docs/zen); ids exactly as GET
@@ -444,7 +469,48 @@ export function defaultAiSettings(
     headlessSubscriptionEnabled: false,
     headlessSubscriptionConsentVersion: 0,
     subscriptionNoticeSeen: false,
+    subscriptionNoticeVersion: 0,
+    pdfSendNoticeSeen: 0,
   }
+}
+
+/** The current wording of the first-connection notice: version 2 added the PDF sentence */
+export const AI_SUBSCRIPTION_NOTICE_VERSION = 2
+
+/** The notice version an older settings file without one had acknowledged */
+const LEGACY_SUBSCRIPTION_NOTICE_VERSION = 1
+
+/**
+ * A stored notice version, or the version an old boolean-only file implies.
+ * The app's settings reader migrates a truly old file to version 1 before it
+ * reaches this function, so a boolean-only value from a fresh default object
+ * means the current wording.
+ */
+export function subscriptionNoticeVersionOf(version: unknown, seen: unknown): number {
+  if (typeof version === 'number' && Number.isInteger(version) && version >= 0) {
+    return Math.min(version, AI_SUBSCRIPTION_NOTICE_VERSION)
+  }
+  return seen === true ? AI_SUBSCRIPTION_NOTICE_VERSION : 0
+}
+
+/** The version an old settings file is migrated to, so its user sees the added sentence once */
+export const LEGACY_NOTICE_VERSION_FOR_MIGRATION = LEGACY_SUBSCRIPTION_NOTICE_VERSION
+
+/**
+ * The settings object a file written before notice versions needs, or null
+ * when it already has one (or is not a settings object). The caller writes the
+ * returned object back; normalizing without this would treat the old boolean
+ * as the current wording and the user would never see the added sentence.
+ */
+export function withMigratedSubscriptionNoticeVersion(
+  raw: unknown,
+): Record<string, unknown> | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const value = raw as Record<string, unknown>
+  if (value.subscriptionNoticeSeen !== true) return null
+  const version = value.subscriptionNoticeVersion
+  if (typeof version === 'number' && Number.isInteger(version) && version >= 0) return null
+  return { ...value, subscriptionNoticeVersion: LEGACY_SUBSCRIPTION_NOTICE_VERSION }
 }
 
 /**
@@ -529,6 +595,39 @@ const RETIRED_MODELS: Partial<Record<AiProviderId, Record<string, string>>> = {
   },
   // 5-Turbo left the Z.ai price card late 2026-08; 5.3 Flash is the cheap tier now
   glm: { 'glm-5-turbo': 'glm-5.3-flash' },
+  // deprecated 2026-10-08; Google routes its requests to 3.8 Flash
+  gemini: { 'gemini-3.7-flash': 'gemini-3.8-flash' },
+}
+
+/**
+ * The id a provider's model goes by in this app: a retired id as its
+ * replacement, a vendor's wire id as the name the catalog lists it under,
+ * anything else as given.
+ */
+export function currentModelId(provider: AiProviderId, model: string): string {
+  return RETIRED_MODELS[provider]?.[model] ?? model
+}
+
+/** Ids at most this long are kept from a stored live list; the settings guard bounds a model id the same way */
+const MAX_LISTED_MODEL_LENGTH = 256
+/** entries kept from a stored live list (key-models.ts lists no more) */
+const MAX_LISTED_MODELS = 2000
+
+/**
+ * A stored live model list as the pickers may read it: strings only, trimmed,
+ * bounded, without duplicates; undefined when nothing is left. The file is
+ * hand-editable, so anything else in the field is dropped rather than shown.
+ */
+export function listedModelsOf(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  const seen = new Set<string>()
+  for (const entry of value) {
+    if (typeof entry !== 'string') continue
+    const id = entry.trim()
+    if (id && id.length <= MAX_LISTED_MODEL_LENGTH) seen.add(id)
+    if (seen.size >= MAX_LISTED_MODELS) break
+  }
+  return seen.size > 0 ? [...seen] : undefined
 }
 
 /**
@@ -581,12 +680,15 @@ function trimConfigs(providers: Record<string, unknown>): AiSettings['providers'
   const trimmed: Record<string, unknown> = {}
   for (const [id, config] of Object.entries(providers)) {
     if (!isRecord(config)) continue
+    const { models: rawModels, ...rest } = config
+    const models = listedModelsOf(rawModels)
     trimmed[id] = {
-      ...config,
+      ...rest,
       apiKey: str(config.apiKey),
       model: str(config.model),
       ...(config.baseUrl !== undefined ? { baseUrl: str(config.baseUrl) } : {}),
       ...(config.cliPath !== undefined ? { cliPath: str(config.cliPath) } : {}),
+      ...(models ? { models } : {}),
     }
   }
   return trimmed as AiSettings['providers']
@@ -648,6 +750,16 @@ export function resolveAiSettings(stored: unknown, defaults: AiSettings): AiSett
     ),
     subscriptionNoticeSeen:
       (settings.subscriptionNoticeSeen ?? defaults.subscriptionNoticeSeen) === true,
+    subscriptionNoticeVersion: subscriptionNoticeVersionOf(
+      settings.subscriptionNoticeVersion,
+      settings.subscriptionNoticeSeen ?? defaults.subscriptionNoticeSeen,
+    ),
+    pdfSendNoticeSeen:
+      typeof settings.pdfSendNoticeSeen === 'number' &&
+      Number.isInteger(settings.pdfSendNoticeSeen) &&
+      settings.pdfSendNoticeSeen > 0
+        ? settings.pdfSendNoticeSeen
+        : 0,
     ...((settings.internetTools ?? defaults.internetTools) === false
       ? { internetTools: false }
       : {}),

@@ -1,10 +1,20 @@
 /**
- * Google Drive in the shell's main process (decision 0033): one connection,
- * the local copies of opened Drive files, and the AI's read-only access. The
- * screens get state and file lists; tokens never leave this process.
+ * Google Drive in the shell's main process (decisions 0033, 0085): one
+ * connection, Google's picker for choosing files, the local copies of opened
+ * Drive files, and the AI's read-only access. The screens get state and file
+ * lists; tokens never leave this process.
  */
 import { join } from 'node:path'
-import { BrowserWindow, app, dialog, ipcMain, net, safeStorage, shell, webContents } from 'electron'
+import {
+  app,
+  dialog,
+  ipcMain,
+  net,
+  safeStorage,
+  shell,
+  webContents,
+  type BrowserWindow,
+} from 'electron'
 import type { Lang } from '@genoffice/i18n'
 import { safeExternalUrl } from '@genoffice/electron-utils'
 import {
@@ -16,24 +26,29 @@ import {
   type DriveFile,
   type FetchLike,
   type GoogleClient,
+  type GoogleSignInOptions,
 } from '@genoffice/google-drive'
 import { readAppSettings, writeAppSetting } from '../app-settings'
 import {
   DRIVE_AI_ACCESS_KEY,
   DRIVE_CHANNELS,
+  DRIVE_TRAINING_ACK_KEY,
+  type DriveAttachResult,
   type DriveConnectResult,
   type DriveEntry,
   type DriveListResult,
   type DriveListingRequest,
   type DriveOpenResult,
+  type DrivePickOpenResult,
   type DriveUiState,
 } from '../../shared/drive-api'
 import { DriveAi, entryType, type ParseToText } from './drive-ai'
+import { downloadPicks } from './drive-attach'
 import { DriveFiles, type SyncAnswer, type SyncNotice, type SyncQuestion } from './drive-files'
 import { copyFileName, driveText } from './drive-strings'
-import { createDriveVault } from './drive-vault'
-import { createDrivePicker } from './drive-picker-window'
-import type { DriveAttachResult, DrivePickerTheme } from '../../shared/drive-picker-api'
+import { createDriveVault, driveTokenSeals } from './drive-vault'
+import { isFreeAi } from './drive-consent'
+import { setAiRunGuard } from '@genoffice/electron-utils/ai-run-guard'
 
 declare const __GENOFFICE_GOOGLE_CLIENT_ID__: string
 declare const __GENOFFICE_GOOGLE_CLIENT_SECRET__: string
@@ -58,7 +73,10 @@ export interface DriveIpcDeps {
   openPath: (path: string) => boolean
   isOpen: (path: string) => boolean
   parse: ParseToText
-  theme: () => DrivePickerTheme
+  /** the AI the person chose is a free connection, which may train on what it gets (drive-consent.ts) */
+  freeAi: () => boolean
+  /** the file of the document tab a webContents shows, if any */
+  documentOf: (webContentsId: number) => string | null
 }
 
 export interface DriveService {
@@ -69,32 +87,53 @@ export interface DriveService {
 
 const SEARCH_LIMIT_MAX = 20
 
+type DriveConnectFailureReason = Extract<DriveConnectResult, { ok: false }>['reason']
+
+type PickOutcome =
+  | { ok: true; picked: string[] }
+  | { ok: false; reason: DriveConnectFailureReason | 'busy' | 'not-connected' }
+
 function aiAccess(settingsPath: string): boolean {
   return readAppSettings(settingsPath)[DRIVE_AI_ACCESS_KEY] !== false
 }
+
+function trainingAck(settingsPath: string): boolean {
+  return readAppSettings(settingsPath)[DRIVE_TRAINING_ACK_KEY] === true
+}
+
+/** What the AI's Drive tools answer while the AI in use is a free connection */
+const FREE_AI_REFUSAL =
+  'Drive files are not given to the AI in use: it is a free connection that may use what it receives to train models. Tell the person to choose another AI to work with Drive files.'
 
 export function registerDriveIpc(deps: DriveIpcDeps): DriveService {
   const fetch: FetchLike = (url, init) => net.fetch(url, init)
   const connection = new DriveConnection({
     client: buildGoogleClient(),
     vault: createDriveVault(join(deps.userData(), 'google-drive.json'), {
-      available: () => safeStorage.isEncryptionAvailable(),
+      available: () => driveTokenSeals(safeStorage, process.platform),
       encrypt: (text) => safeStorage.encryptString(text),
       decrypt: (bytes) => safeStorage.decryptString(bytes),
     }),
     fetch,
   })
   let connecting = false
+  let picking = false
   const t = (key: Parameters<typeof driveText>[1], params?: Record<string, string>) =>
     driveText(deps.lang(), key, params)
 
   const uiState = (): DriveUiState => {
     const state: DriveConnectionState = connection.state()
     const ai = aiAccess(deps.settingsPath())
+    const ack = trainingAck(deps.settingsPath())
     if (state.state === 'unavailable') return { state: 'unavailable' }
-    if (connecting) return { state: 'connecting', aiAccess: ai }
+    if (connecting) return { state: 'connecting', aiAccess: ai, trainingAck: ack }
     if (state.state === 'disconnected') {
-      return { state: 'disconnected', expired: state.expired === true, aiAccess: ai }
+      return {
+        state: 'disconnected',
+        expired: state.expired === true,
+        aiAccess: ai,
+        trainingAck: ack,
+      }
     }
     return {
       state: 'connected',
@@ -102,6 +141,8 @@ export function registerDriveIpc(deps: DriveIpcDeps): DriveService {
       email: state.account?.emailAddress ?? '',
       persisted: state.persisted,
       aiAccess: ai,
+      trainingAck: ack,
+      picking,
     }
   }
 
@@ -171,6 +212,14 @@ export function registerDriveIpc(deps: DriveIpcDeps): DriveService {
   })
   const ai = new DriveAi({ api: () => connection.api, parse: deps.parse })
 
+  // a document opened from Drive goes out with every AI request of its tab:
+  // a free connection, which may train on it, does not get it (decision 0085)
+  setAiRunGuard(({ senderId, provider, model }) => {
+    if (!isFreeAi(provider, model)) return null
+    const path = deps.documentOf(senderId)
+    return path && files.entryFor(path) ? t('freeAiDocRefusal') : null
+  })
+
   let wasConnected = false
   connection.onChange(() => {
     const now = connection.connected()
@@ -201,14 +250,7 @@ export function registerDriveIpc(deps: DriveIpcDeps): DriveService {
 
   const listingOf = (raw: unknown): DriveListingRequest | null => {
     const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
-    if (
-      r.kind === 'folder' &&
-      typeof r.folderId === 'string' &&
-      /^[\w-]{1,200}$/.test(r.folderId)
-    ) {
-      return { kind: 'folder', folderId: r.folderId }
-    }
-    if (r.kind === 'shared' || r.kind === 'recent') return { kind: r.kind }
+    if (r.kind === 'recent') return { kind: 'recent' }
     if (r.kind === 'search' && typeof r.text === 'string' && r.text.trim()) {
       return { kind: 'search', text: r.text.trim().slice(0, 200) }
     }
@@ -217,27 +259,38 @@ export function registerDriveIpc(deps: DriveIpcDeps): DriveService {
 
   ipcMain.handle(DRIVE_CHANNELS.state, (): DriveUiState => uiState())
 
+  /** Google's page in the system browser, and what the browser shows once it is back here */
+  const browserRound = (
+    done: 'pageDone' | 'pagePicked',
+  ): Pick<GoogleSignInOptions, 'openBrowser' | 'pages'> => {
+    const lang = deps.lang()
+    return {
+      openBrowser: async (url) => {
+        const target = safeExternalUrl(url)
+        if (!target || !target.startsWith('https://accounts.google.com/')) return false
+        try {
+          await shell.openExternal(target)
+          return true
+        } catch {
+          return false
+        }
+      },
+      pages: {
+        done:
+          done === 'pageDone'
+            ? { lang, title: t('pageDoneTitle'), body: t('pageDoneBody') }
+            : { lang, title: t('pagePickedTitle'), body: t('pagePickedBody') },
+        failed: { lang, title: t('pageFailedTitle'), body: t('pageFailedBody') },
+      },
+    }
+  }
+
   ipcMain.handle(DRIVE_CHANNELS.connect, async (): Promise<DriveConnectResult> => {
+    if (!trainingAck(deps.settingsPath())) return { ok: false, reason: 'training' }
     connecting = true
     broadcast()
     try {
-      const lang = deps.lang()
-      const result = await connection.connect({
-        openBrowser: async (url) => {
-          const target = safeExternalUrl(url)
-          if (!target || !target.startsWith('https://accounts.google.com/')) return false
-          try {
-            await shell.openExternal(target)
-            return true
-          } catch {
-            return false
-          }
-        },
-        pages: {
-          done: { lang, title: t('pageDoneTitle'), body: t('pageDoneBody') },
-          failed: { lang, title: t('pageFailedTitle'), body: t('pageFailedBody') },
-        },
-      })
+      const result = await connection.connect(browserRound('pageDone'))
       if (result.ok) return { ok: true }
       return { ok: false, reason: result.reason === 'unavailable' ? 'network' : result.reason }
     } finally {
@@ -248,6 +301,39 @@ export function registerDriveIpc(deps: DriveIpcDeps): DriveService {
 
   ipcMain.handle(DRIVE_CHANNELS.cancelConnect, () => connection.cancelConnect())
 
+  /**
+   * Google's picker in the browser (decision 0085), one at a time, on a
+   * connection made after the person confirmed DRIVE_TRAINING_ACK_KEY
+   */
+  const pickFiles = async (): Promise<PickOutcome> => {
+    if (!connection.connected()) return { ok: false, reason: 'not-connected' }
+    if (!trainingAck(deps.settingsPath())) return { ok: false, reason: 'training' }
+    if (picking || connecting) return { ok: false, reason: 'busy' }
+    picking = true
+    broadcast()
+    try {
+      const result = await connection.pick(browserRound('pagePicked'), true)
+      if (result.ok) return result
+      return { ok: false, reason: result.reason === 'unavailable' ? 'network' : result.reason }
+    } finally {
+      picking = false
+      broadcast()
+    }
+  }
+
+  ipcMain.handle(DRIVE_CHANNELS.pickOpen, async (): Promise<DrivePickOpenResult> => {
+    const result = await pickFiles()
+    if (!result.ok) return result
+    let opened = 0
+    let problem: Extract<DriveOpenResult, { ok: false }>['kind'] | undefined
+    for (const id of result.picked) {
+      const one = await files.open(id)
+      if (one.ok) opened += 1
+      else problem ??= one.kind
+    }
+    return problem ? { ok: true, opened, problem } : { ok: true, opened }
+  })
+
   ipcMain.handle(DRIVE_CHANNELS.disconnect, async () => {
     await connection.disconnect()
     broadcast()
@@ -255,6 +341,12 @@ export function registerDriveIpc(deps: DriveIpcDeps): DriveService {
 
   ipcMain.handle(DRIVE_CHANNELS.setAiAccess, (_event, on: unknown): DriveUiState => {
     writeAppSetting(deps.settingsPath(), DRIVE_AI_ACCESS_KEY, on === true)
+    broadcast()
+    return uiState()
+  })
+
+  ipcMain.handle(DRIVE_CHANNELS.setTrainingAck, (_event, on: unknown): DriveUiState => {
+    writeAppSetting(deps.settingsPath(), DRIVE_TRAINING_ACK_KEY, on === true)
     broadcast()
     return uiState()
   })
@@ -278,21 +370,28 @@ export function registerDriveIpc(deps: DriveIpcDeps): DriveService {
 
   // ---- attaching Drive files to an editor's AI panel (a person picks them) ----
 
-  const picker = createDrivePicker({
-    api: () => connection.api,
-    connected: () => connection.connected(),
-    lang: deps.lang,
-    theme: deps.theme,
-    list: listEntries,
-    attachDir: () => join(app.getPath('temp'), 'ieumoffice-drive-attach'),
-  })
-
   ipcMain.handle(DRIVE_CHANNELS.connected, (): boolean => connection.connected())
 
-  ipcMain.handle(DRIVE_CHANNELS.pickAttachments, (event): Promise<DriveAttachResult> => {
-    if (!connection.connected()) return Promise.resolve({ ok: false, reason: 'not-connected' })
-    const parent = BrowserWindow.fromWebContents(event.sender) ?? deps.window()
-    return picker.open(parent)
+  ipcMain.handle(DRIVE_CHANNELS.pickAttachments, async (): Promise<DriveAttachResult> => {
+    // asked before the picker opens, so nothing is fetched for an AI that may train on it
+    if (connection.connected() && deps.freeAi()) return { ok: false, reason: 'free-ai' }
+    const result = await pickFiles()
+    if (!result.ok) {
+      const { reason } = result
+      const kept =
+        reason === 'busy' ||
+        reason === 'not-connected' ||
+        reason === 'training' ||
+        reason === 'cancelled'
+      return { ok: false, reason: kept ? reason : 'failed' }
+    }
+    if (result.picked.length === 0) return { ok: false, reason: 'cancelled' }
+    const got = await downloadPicks(
+      connection.api,
+      result.picked,
+      join(app.getPath('temp'), 'ieumoffice-drive-attach'),
+    )
+    return { ok: true, ...got }
   })
 
   ipcMain.handle(DRIVE_CHANNELS.open, async (_event, fileId: unknown): Promise<DriveOpenResult> => {
@@ -304,12 +403,14 @@ export function registerDriveIpc(deps: DriveIpcDeps): DriveService {
 
   // ---- the editors' AI (screen requests only; the CLI and MCP have no Drive) ----
 
-  const aiEnabled = () => connection.connected() && aiAccess(deps.settingsPath())
+  const aiEnabled = () =>
+    connection.connected() && aiAccess(deps.settingsPath()) && trainingAck(deps.settingsPath())
 
   ipcMain.handle(DRIVE_CHANNELS.aiEnabled, (): boolean => aiEnabled())
 
   ipcMain.handle(DRIVE_CHANNELS.aiSearch, async (_event, raw: unknown) => {
     if (!aiEnabled()) return { ok: false, error: 'Google Drive is not available now.' }
+    if (deps.freeAi()) return { ok: false, error: FREE_AI_REFUSAL }
     const r = (raw && typeof raw === 'object' ? raw : {}) as { q?: unknown; limit?: unknown }
     const limit = Math.min(Math.max(1, Math.floor(Number(r.limit) || 10)), SEARCH_LIMIT_MAX)
     return ai.search(typeof r.q === 'string' ? r.q : '', limit)
@@ -317,6 +418,7 @@ export function registerDriveIpc(deps: DriveIpcDeps): DriveService {
 
   ipcMain.handle(DRIVE_CHANNELS.aiRead, async (_event, raw: unknown) => {
     if (!aiEnabled()) return { ok: false, error: 'Google Drive is not available now.' }
+    if (deps.freeAi()) return { ok: false, error: FREE_AI_REFUSAL }
     const r = (raw && typeof raw === 'object' ? raw : {}) as { id?: unknown; offset?: unknown }
     const id = typeof r.id === 'string' ? r.id : ''
     if (!/^[\w-]{1,200}$/.test(id)) return { ok: false, error: 'not a Drive file id' }
@@ -330,7 +432,7 @@ export function registerDriveIpc(deps: DriveIpcDeps): DriveService {
       return files.open(entry.sourceId).then((r) => r.ok || deps.openPath(path))
     },
     stop() {
-      picker.close()
+      setAiRunGuard(null)
       files.stop()
       connection.cancelConnect()
     },

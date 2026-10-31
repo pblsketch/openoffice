@@ -96,6 +96,28 @@ const normalizeHost = (hostname: string): string =>
     .replace(/\.+$/, '')
 
 /**
+ * Settles with the lookup, or with `null` as soon as `signal` aborts. Node's
+ * resolver has no per-query signal, so the wait — not the OS resolver request —
+ * is what the caller's deadline can cut; the request itself ends on its own.
+ */
+function lookupBeforeAbort<T>(
+  start: () => Promise<T>,
+  signal: AbortSignal | undefined,
+): Promise<T | null> {
+  if (!signal) return start()
+  if (signal.aborted) return Promise.resolve(null)
+  return new Promise((resolve) => {
+    const settle = (value: T | null) => {
+      signal.removeEventListener('abort', onAbort)
+      resolve(value)
+    }
+    const onAbort = () => settle(null)
+    signal.addEventListener('abort', onAbort, { once: true })
+    start().then(settle, () => settle(null))
+  })
+}
+
+/**
  * Resolves and validates `raw`: http(s) only, a public literal, or a hostname
  * whose every resolved address is public. Literal addresses are checked
  * directly — a URL naming an internal address outright is refused with no
@@ -104,11 +126,17 @@ const normalizeHost = (hostname: string): string =>
  * can produce for a hostname an attacker does not already control the
  * machine's DNS for.
  *
+ * `signal` also covers the DNS lookup: a caller with a whole-request deadline
+ * (read_url's 30 seconds) must not wait past it for a slow resolver.
+ *
  * Returns the validated addresses so the caller can bind the connection to
  * them (see `fetchWithSsrfGuard`); a plain boolean check loses exactly the
  * information that makes rebinding impossible.
  */
-export async function resolveSafeRemoteTarget(raw: unknown): Promise<SafeRemoteTarget | null> {
+export async function resolveSafeRemoteTarget(
+  raw: unknown,
+  signal?: AbortSignal,
+): Promise<SafeRemoteTarget | null> {
   if (typeof raw !== 'string') return null
   let url: URL
   try {
@@ -135,8 +163,9 @@ export async function resolveSafeRemoteTarget(raw: unknown): Promise<SafeRemoteT
   }
   if (host === 'localhost' || BLOCKED_HOST_SUFFIXES.some((s) => host.endsWith(s))) return null
   try {
-    const addrs = await lookup(host, { all: true })
+    const addrs = await lookupBeforeAbort(() => lookup(host, { all: true }), signal)
     if (
+      !addrs ||
       addrs.length === 0 ||
       !addrs.every((a) => !isBlockedAddress(a.address) || isFakeIpDnsArtifact(a.address))
     ) {
@@ -161,8 +190,8 @@ export async function resolveSafeRemoteTarget(raw: unknown): Promise<SafeRemoteT
  * `resolveSafeRemoteTarget` for the exact rules, including the fake-ip
  * allowance for resolved hostnames).
  */
-export async function isSafeRemoteUrl(raw: unknown): Promise<boolean> {
-  return (await resolveSafeRemoteTarget(raw)) !== null
+export async function isSafeRemoteUrl(raw: unknown, signal?: AbortSignal): Promise<boolean> {
+  return (await resolveSafeRemoteTarget(raw, signal)) !== null
 }
 
 type PinnedLookup = (
@@ -297,7 +326,7 @@ export async function fetchWithSsrfGuard(
   for (let hop = 0; hop <= hopBudget; hop++) {
     // Stop between hops too: an aborted chain must not start another request.
     if (signal?.aborted) return null
-    const target = await resolveSafeRemoteTarget(current)
+    const target = await resolveSafeRemoteTarget(current, signal)
     if (!target) return null
     if (signal?.aborted) return null
     // headers stays absent rather than explicitly undefined (exactOptionalPropertyTypes)

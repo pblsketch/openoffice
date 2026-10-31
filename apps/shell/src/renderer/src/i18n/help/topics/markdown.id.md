@@ -44,6 +44,7 @@ Menu File, semuanya lokal dan semuanya menanyakan tempat untuk menaruh hasilnya:
 
 Pita memuat sakelar **Sumber** (ikut dilokalkan bersama aplikasi). Nyalakan, dan editor diganti oleh Markdown mentah: persis teks yang ditulis sebuah penyimpanan, tidak ada yang dirapikan, tidak ada yang dinormalisasi di bawah Anda.
 
+- **Papan ketik**: Ctrl+E (⌘E di Mac) beralih antara tampilan sumber dan kanvas pengeditan yang dirender. Tekan F5 untuk membaca layar penuh.
 - **Penyuntingan setia byte demi byte.** Penyimpanan dari tampilan sumber menghasilkan byte yang sama dengan penyimpanan dari editor — BOM, CRLF, dan keberadaan baris baru di akhir file semuanya tetap utuh.
 - **Ini dokumen yang sama.** Berganti bolak-balik sesuka hati; sumber itu adalah teks milik editor itu sendiri, bukan salinan yang harus digabungkan.
 - **Bilah alat format tidak tersedia** selama tampilan ini terbuka, karena sebagian besar tombol itu menyisipkan konstruksi editor yang hanya bermakna di sisi hasil render. Bilah alat itu kembali begitu Anda menutup tampilan ini.

@@ -81,6 +81,15 @@ describe('provider model catalog', () => {
     }
   })
 
+  it('seeds Runcrate with lab-namespaced model ids', () => {
+    const runcrate = AI_PROVIDERS.find((provider) => provider.id === 'runcrate')!
+    expect(runcrate.models).toContain(runcrate.defaultModel)
+    expect(runcrate.needsBaseUrl).toBeUndefined()
+    for (const model of runcrate.models) {
+      expect(model).toMatch(/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/)
+    }
+  })
+
   it('seeds Cheaper Inference with bare model ids (no vendor prefix)', () => {
     const ci = AI_PROVIDERS.find((provider) => provider.id === 'cheaperinference')!
     expect(ci.models).toContain(ci.defaultModel)
@@ -183,6 +192,39 @@ describe('resolveAiSettings', () => {
       apiKey: 'sk-user',
       model: 'deep-seek-v4.1-flash',
     })
+  })
+
+  it('moves a stored Gemini 3.7 Flash to 3.8 Flash, where Google routes it', () => {
+    const resolved = resolveAiSettings(
+      { providers: { gemini: { apiKey: 'k', model: 'gemini-3.7-flash' } } as never },
+      defaultAiSettings(),
+    )
+    expect(resolved.providers.gemini.model).toBe('gemini-3.8-flash')
+  })
+
+  it('keeps a stored live model list, cleaned', () => {
+    const resolved = resolveAiSettings(
+      {
+        providers: {
+          gemini: {
+            apiKey: 'k',
+            model: 'gemini-3.8-flash',
+            models: [
+              ' gemini-4-argon ',
+              7,
+              '',
+              'gemini-4-argon',
+              'x'.repeat(300),
+              'gemini-4.1-flash',
+            ],
+          },
+          openai: { apiKey: 'k', model: 'gpt-5.6-terra', models: 'not a list' },
+        } as never,
+      },
+      defaultAiSettings(),
+    )
+    expect(resolved.providers.gemini.models).toEqual(['gemini-4-argon', 'gemini-4.1-flash'])
+    expect(resolved.providers.openai).not.toHaveProperty('models')
   })
 
   it('rewrites the retired V4 Flash id and the vendor wire id to the listed V4.1 Flash name', () => {

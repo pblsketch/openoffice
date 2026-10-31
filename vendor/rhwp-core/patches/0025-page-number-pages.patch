@@ -1,0 +1,389 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pblsketch <239486537+pblsketch@users.noreply.github.com>
+Date: Thu, 29 Oct 2026 00:00:00 +0900
+Subject: [PATCH 25/25] =?UTF-8?q?fix(renderer):=20=EC=AA=BD=20=EB=B2=88?=
+ =?UTF-8?q?=ED=98=B8=EB=A5=BC=20=EA=B7=B8=EB=A6=B4=20=EC=AA=BD=EC=9D=84=20?=
+ =?UTF-8?q?=EC=AA=BD=20=EB=B2=88=ED=98=B8=20=EC=9C=84=EC=B9=98=EC=99=80=20?=
+ =?UTF-8?q?=EA=B0=90=EC=B6=94=EA=B8=B0=EB=A1=9C=EB=A7=8C=20=EC=A0=95?=
+ =?UTF-8?q?=ED=95=9C=EB=8B=A4?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+쪽 번호 새로 시작(NewNumber)이 있는 구역에서 첫 발화 앞 쪽의 쪽 번호를 모두
+감추던 규칙(#634)을 없앤다. 225쪽 보고서는 쪽 번호 위치가 1쪽 첫 문단, 새 번호가
+9쪽에 있다. 한컴 한글 2024는 감추기가 없는 3·5쪽에 "- 3 -", "- 5 -"를 그리는데
+엔진은 1~8쪽 번호를 모두 감췄다.
+
+그 규칙이 맞아 보이던 견본(hwp3-sample16, nested_group_vectors 등)은 쪽 번호
+위치가 새 번호와 같은 문단에 있었다. 한글 2024로 생성 견본을 인쇄해 확인한 규칙을
+따른다.
+
+- 쪽 번호 위치는 구역 전체가 아니라 그 컨트롤이 놓인 쪽부터 걸린다. 앞 쪽에는 걸지
+  않는다. 한 구역에 형식이 다른 것이 여럿이면 쪽마다 맞는 것을 쓴다(hwp3-sample10
+  앞부분 "- i -").
+- 표 셀 안의 쪽 번호 위치도 바깥 표가 놓인 쪽부터 건다(156492236_규제샌드박스_min은
+  1쪽 표 셀에만 있다).
+- 구역의 첫 쪽 번호 위치 앞 쪽은 앞 구역의 쪽 번호 위치를 잇는다(chemical-labeling
+  5구역 66~85쪽). 종전에는 쪽 번호 위치가 하나도 없는 구역만 이었다.
+- 한 쪽에 감추기가 여럿이면 문서 순서로 마지막 것을 쓴다. 종전에는 처음 것만 써서
+  표 셀의 머리말 감추기가 뒤의 쪽 번호·전체 감추기를 가렸다(tac-img-02 1쪽,
+  chemical-labeling 1쪽, 사용자 워크북의 장 표지 쪽). 항목별로 합치면 안 된다 —
+  [전체, 머리말만] 순이면 한글은 꼬리말과 쪽 번호를 그린다.
+
+저장 결과는 바뀌지 않는다. rhwp samples 1205개와 사용자 문서 127개를 고치기 전후
+엔진으로 비교했다. 바뀐 쪽은 쪽 번호가 생기거나 빠지거나 형식이 바뀐 쪽과, 마지막
+감추기를 따라 꼬리말이 감춰진 쪽뿐이다. 쪽 수와 본문 배치는 그대로다.
+
+시험: tests/cases/page_number_before_new_number.rs (생성 견본 여섯, 기대값은 한글
+2024 인쇄 결과)
+
+IeumOffice patch onto v0.8.7 (not proposed upstream yet).
+---
+ src/document_core/queries/rendering.rs        |  13 +--
+ src/renderer/page_number.rs                   | 101 +++++++++++-------
+ src/renderer/pagination/engine.rs             |  15 ++-
+ src/renderer/typeset.rs                       |   2 +-
+ src/renderer/typeset/section.rs               |   2 +-
+ src/renderer/typeset/state/commands.rs        |   3 +-
+ src/renderer/typeset/state/finalize.rs        |  10 +-
+ .../typeset/table/continuation/job.rs         |   5 +-
+ 8 files changed, 84 insertions(+), 67 deletions(-)
+
+diff --git a/src/document_core/queries/rendering.rs b/src/document_core/queries/rendering.rs
+index 1663799d1..3a83fdeca 100644
+--- a/src/document_core/queries/rendering.rs
++++ b/src/document_core/queries/rendering.rs
+@@ -5430,13 +5430,14 @@ impl DocumentCore {
+                 }
+             }
+ 
+-            // 구역 간 page_number_pos 상속: 이 구역에 PageNumberPos가 없으면 이전 구역 값 사용
+-            let section_has_own_pnp = result.pages.iter().any(|p| p.page_number_pos.is_some());
+-            if !section_has_own_pnp {
+-                if let Some(ref prev_pnp) = carry_page_number_pos {
+-                    for page in &mut result.pages {
+-                        page.page_number_pos = Some(prev_pnp.clone());
++            // 구역 간 page_number_pos 상속: 이 구역의 첫 쪽 번호 위치가 놓인 쪽 앞 쪽들은
++            // 이전 구역 값을 쓴다(구역에 쪽 번호 위치가 없으면 모든 쪽).
++            if let Some(ref prev_pnp) = carry_page_number_pos {
++                for page in result.pages.iter_mut() {
++                    if page.page_number_pos.is_some() {
++                        break;
+                     }
++                    page.page_number_pos = Some(prev_pnp.clone());
+                 }
+             }
+ 
+diff --git a/src/renderer/page_number.rs b/src/renderer/page_number.rs
+index fc1474aef..ba1b31aa9 100644
+--- a/src/renderer/page_number.rs
++++ b/src/renderer/page_number.rs
+@@ -10,6 +10,13 @@
+ //! - Table                                        : 항상 인정
+ //! - PartialTable    { is_continuation == false } : 첫 분할
+ //! - Shape                                        : 항상 인정
++//!
++//! 쪽 번호를 그릴지는 번호 값과 따로 정한다 ([`PageControlEvents`]).
++//! - 쪽 번호 위치(PageNumberPos)는 그 컨트롤이 놓인 쪽부터 걸린다(표 셀 안의 것은 바깥 표가
++//!   처음 놓인 쪽). 구역의 첫 쪽 번호 위치 앞 쪽은 앞 구역의 것을 잇는다(문서 조회 쪽에서).
++//! - 감추기(PageHide)는 그 컨트롤이 놓인 한 쪽에만 걸리고, 한 쪽에 여럿이면 문서 순서로
++//!   마지막 것이 그 쪽의 감추기다(표 셀 안의 것은 바깥 표 컨트롤 자리).
++//! - NewNumber 는 번호 값만 바꾼다. 첫 발화 앞 쪽의 쪽 번호를 감추지 않는다.
+ 
+ use std::collections::HashSet;
+ 
+@@ -23,9 +30,6 @@ pub(crate) struct PageNumberAssigner<'a> {
+     /// production은 배치 후 확정된 쪽 이벤트를 사용한다.
+     targets_are_pages: bool,
+     page_ordinal: usize,
+-    /// NewNumber 컨트롤이 1건 이상 소비되었는지 여부.
+-    /// 한컴 호환: NewNumber가 존재하면 첫 발화 전 페이지에는 쪽번호 미표시.
+-    numbering_started: bool,
+     /// 직전 [`assign`](Self::assign) 호출에서 NewNumber 가 발화했는지 여부.
+     /// 구역 간 carry 를 재시작 지점 앞에서 멈추는 데 쓴다 (Issue #6206).
+     last_restarted: bool,
+@@ -40,7 +44,6 @@ impl<'a> PageNumberAssigner<'a> {
+             counter: initial,
+             targets_are_pages: false,
+             page_ordinal: 0,
+-            numbering_started: false,
+             last_restarted: false,
+         }
+     }
+@@ -70,7 +73,6 @@ impl<'a> PageNumberAssigner<'a> {
+             if applies {
+                 self.counter = nn_num as u32;
+                 self.consumed.insert(idx);
+-                self.numbering_started = true;
+                 self.last_restarted = true;
+             }
+         }
+@@ -92,12 +94,6 @@ impl<'a> PageNumberAssigner<'a> {
+         self.counter
+     }
+ 
+-    /// NewNumber가 존재하지만 아직 발화되지 않은 상태인지 판별한다.
+-    /// true이면 이 페이지에 쪽번호를 표시하지 않아야 한다 (한컴 호환).
+-    pub fn should_hide_page_number(&self) -> bool {
+-        !self.new_page_numbers.is_empty() && !self.numbering_started
+-    }
+-
+     fn para_first_appears(page: &PageContent, target_pi: usize) -> bool {
+         page.column_contents.iter().any(|col| {
+             col.items.iter().any(|item| match item {
+@@ -125,6 +121,8 @@ impl<'a> PageNumberAssigner<'a> {
+ pub(crate) struct PageControlEvents {
+     pub new_numbers: Vec<(usize, u16)>,
+     pub hides: Vec<(usize, crate::model::control::PageHide)>,
++    /// 본문 문단의 쪽 번호 위치. 문서 순서대로 쌓인다.
++    pub number_positions: Vec<(usize, crate::model::control::PageNumberPos)>,
+ }
+ 
+ impl PageControlEvents {
+@@ -150,22 +148,59 @@ impl PageControlEvents {
+             for (ci, control) in para.controls.iter().enumerate() {
+                 if matches!(
+                     control,
+-                    Control::PageHide(_) | Control::NewNumber(_) | Control::Table(_)
++                    Control::PageHide(_)
++                        | Control::NewNumber(_)
++                        | Control::Table(_)
++                        | Control::PageNumberPos(_)
+                 ) {
+                     let items = by_paragraph.get(&pi).map(Vec::as_slice).unwrap_or(&[]);
+-                    // 미배치 NewNumber도 남겨 첫 발화 전 번호 숨김 계약을 보존한다.
+-                    let page = control_page(para, ci, items).unwrap_or(usize::MAX);
+-                    events.collect_control(control, page);
++                    let page = control_page(para, ci, items);
++                    if let Control::PageNumberPos(pos) = control {
++                        // 배치되지 않은 문단의 쪽 번호 위치는 종전처럼 구역 첫 쪽부터 건다.
++                        events
++                            .number_positions
++                            .push((page.unwrap_or(0), pos.clone()));
++                        continue;
++                    }
++                    // 미배치 NewNumber는 어느 쪽에도 발화하지 않는다(usize::MAX).
++                    events.collect_control(control, page.unwrap_or(usize::MAX));
+                 }
+             }
+         }
+         events
+     }
+ 
++    /// `page` 쪽에 걸린 감추기. 한 쪽에 감추기가 여럿이면 문서 순서로 마지막 것을 쓴다.
++    ///
++    /// 한글 2024 인쇄 실측: [전체 감추기, 머리말 감추기] 순이면 꼬리말·쪽 번호를 그리고,
++    /// [머리말 감추기, 전체 감추기] 순이면 감춘다. 항목별로 합치지도, 처음 것만 쓰지도 않는다.
++    pub fn hide_for_page(&self, page: usize) -> Option<&crate::model::control::PageHide> {
++        self.hides
++            .iter()
++            .filter(|(target, _)| *target == page)
++            .map(|(_, hide)| hide)
++            .last()
++    }
++
++    /// `page` 쪽에 걸리는 쪽 번호 위치. 그 쪽이나 앞 쪽에 놓인 것 중 문서 순서로 마지막 것이다.
++    /// 앞 쪽에는 걸지 않는다 — 한글 2024는 3쪽에 둔 쪽 번호 위치로 1·2쪽 번호를 그리지 않는다.
++    pub fn number_position_for_page(
++        &self,
++        page: usize,
++    ) -> Option<&crate::model::control::PageNumberPos> {
++        self.number_positions
++            .iter()
++            .filter(|(target, _)| *target <= page)
++            .last()
++            .map(|(_, pos)| pos)
++    }
++
+     fn collect_control(&mut self, control: &crate::model::control::Control, page: usize) {
+         use crate::model::control::{AutoNumberType, Control};
+         match control {
+             Control::PageHide(hide) => self.hides.push((page, hide.clone())),
++            // 표 셀 안의 쪽 번호 위치도 바깥 표가 처음 놓인 쪽부터 건다.
++            Control::PageNumberPos(pos) => self.number_positions.push((page, pos.clone())),
+             Control::NewNumber(number) if number.number_type == AutoNumberType::Page => {
+                 self.new_numbers.push((page, number.number));
+             }
+@@ -441,35 +476,23 @@ mod tests {
+         assert_eq!(a.assign(&p2), 2);
+     }
+ 
++    /// NewNumber 는 번호 값만 바꾼다. 첫 발화 앞 쪽들도 1부터 차례로 번호를 받는다
++    /// (그 쪽들에 번호를 그릴지는 쪽 번호 위치와 감추기가 정한다).
+     #[test]
+-    fn should_hide_before_first_new_number() {
++    fn pages_before_first_new_number_keep_counting() {
+         let nns = vec![(5usize, 1u16)];
+         let mut a = PageNumberAssigner::new(&nns, 1);
+-        assert!(
+-            a.should_hide_page_number(),
+-            "NewNumber 존재 + 미발화 → 숨김"
+-        );
+ 
+         let p1 = mk_page(vec![PageItem::FullParagraph { para_index: 0 }]);
+-        a.assign(&p1);
+-        assert!(
+-            a.should_hide_page_number(),
+-            "아직 NewNumber 미트리거 → 숨김"
+-        );
+-
+-        let p2 = mk_page(vec![PageItem::FullParagraph { para_index: 5 }]);
+-        a.assign(&p2);
+-        assert!(!a.should_hide_page_number(), "NewNumber 발화 후 → 표시");
+-
+-        let p3 = mk_page(vec![PageItem::FullParagraph { para_index: 6 }]);
+-        a.assign(&p3);
+-        assert!(!a.should_hide_page_number(), "이후에도 계속 표시");
+-    }
+-
+-    #[test]
+-    fn should_not_hide_when_no_new_numbers() {
+-        let a = PageNumberAssigner::new(&[], 1);
+-        assert!(!a.should_hide_page_number(), "NewNumber 없으면 항상 표시");
++        let p2 = mk_page(vec![PageItem::FullParagraph { para_index: 3 }]);
++        let p3 = mk_page(vec![PageItem::FullParagraph { para_index: 5 }]);
++        let p4 = mk_page(vec![PageItem::FullParagraph { para_index: 6 }]);
++        assert_eq!(a.assign(&p1), 1);
++        assert!(!a.last_restarted());
++        assert_eq!(a.assign(&p2), 2);
++        assert_eq!(a.assign(&p3), 1, "NewNumber 발화 쪽");
++        assert!(a.last_restarted());
++        assert_eq!(a.assign(&p4), 2);
+     }
+ 
+     /// [#4369] 같은 문단에 NewNumber Page 컨트롤이 2개(12, 11 순)면 문서
+diff --git a/src/renderer/pagination/engine.rs b/src/renderer/pagination/engine.rs
+index 3063faff5..413856cc5 100644
+--- a/src/renderer/pagination/engine.rs
++++ b/src/renderer/pagination/engine.rs
+@@ -329,8 +329,7 @@ impl Paginator {
+             .with_legacy_hwp3_stored_geometry(legacy_hwp3_stored_geometry);
+ 
+         // 머리말/꼬리말/쪽 번호 위치/새 번호 지정 컨트롤 수집
+-        let (hf_entries, page_number_pos) =
+-            Self::collect_header_footer_controls(paragraphs, section_index);
++        let (hf_entries, _) = Self::collect_header_footer_controls(paragraphs, section_index);
+ 
+         let col_count = column_def.column_count.max(1);
+         let default_footnote_shape = crate::model::footnote::FootnoteShape::default();
+@@ -1153,7 +1152,7 @@ impl Paginator {
+             }
+         }
+         // 페이지 번호 + 머리말/꼬리말 할당
+-        Self::finalize_pages(&mut st.pages, &hf_entries, &page_number_pos, paragraphs);
++        Self::finalize_pages(&mut st.pages, &hf_entries, paragraphs);
+ 
+         PaginationResult {
+             pages: st.pages,
+@@ -2906,7 +2905,6 @@ impl Paginator {
+     fn finalize_pages(
+         pages: &mut [PageContent],
+         hf_entries: &[(usize, HeaderFooterRef, bool, HeaderFooterApply)],
+-        page_number_pos: &Option<crate::model::control::PageNumberPos>,
+         paragraphs: &[Paragraph],
+     ) {
+         // 쪽번호: PageNumberAssigner 가 NewNumber 1회 적용 + 단조 증가를 보장 (Issue #353)
+@@ -2967,11 +2965,10 @@ impl Paginator {
+             page.active_header = active_header;
+             page.active_footer = active_footer;
+ 
+-            if !assigner.should_hide_page_number() {
+-                page.page_number_pos = page_number_pos.clone();
+-            }
+-            // 한 컨트롤의 감추기는 소스 위치가 매핑된 한 쪽에만 적용한다.
+-            if let Some((_, hide)) = events.hides.iter().find(|(target, _)| *target == i) {
++            // 쪽 번호 위치와 감추기만 번호를 그릴지 정한다. 새 번호는 번호 값만 바꾼다.
++            page.page_number_pos = events.number_position_for_page(i).cloned();
++            // 한 컨트롤의 감추기는 소스 위치가 매핑된 한 쪽에만 적용한다. 한 쪽에 여럿이면 마지막 것.
++            if let Some(hide) = events.hide_for_page(i) {
+                 page.page_hide = Some(hide.clone());
+             }
+ 
+diff --git a/src/renderer/typeset.rs b/src/renderer/typeset.rs
+index d1156b6d0..e9b221a99 100755
+--- a/src/renderer/typeset.rs
++++ b/src/renderer/typeset.rs
+@@ -7335,7 +7335,7 @@ mod tests {
+ 
+         let mut paragraphs = vec![Paragraph::default(); 8];
+         paragraphs[7].controls = vec![Control::Table(Box::default()), Control::PageHide(hide)];
+-        state::finalize::finalize_pages(&mut pages, &[], &None, &paragraphs);
++        state::finalize::finalize_pages(&mut pages, &[], &paragraphs);
+ 
+         assert!(pages[0].page_hide.is_some());
+         assert!(pages[1].page_hide.is_none());
+diff --git a/src/renderer/typeset/section.rs b/src/renderer/typeset/section.rs
+index 633f624ca..012470cb6 100644
+--- a/src/renderer/typeset/section.rs
++++ b/src/renderer/typeset/section.rs
+@@ -452,7 +452,7 @@ impl TypesetEngine {
+         st.discard_terminal_blank_only_page(paragraphs);
+ 
+         // 페이지 번호 + 머리말/꼬리말 할당
+-        st.finalize_pages(&hf_entries, &page_number_pos, paragraphs);
++        st.finalize_pages(&hf_entries, paragraphs);
+ 
+         if let Some(started) = issue2424_ts_started {
+             let total = started.elapsed();
+diff --git a/src/renderer/typeset/state/commands.rs b/src/renderer/typeset/state/commands.rs
+index 3f22ac572..94295e198 100644
+--- a/src/renderer/typeset/state/commands.rs
++++ b/src/renderer/typeset/state/commands.rs
+@@ -15,10 +15,9 @@ impl TypesetState {
+     pub(in crate::renderer::typeset) fn finalize_pages(
+         &mut self,
+         entries: &[(usize, HeaderFooterRef, bool, HeaderFooterApply)],
+-        number: &Option<crate::model::control::PageNumberPos>,
+         paragraphs: &[Paragraph],
+     ) {
+-        super::finalize::finalize_pages(&mut self.data.pages, entries, number, paragraphs);
++        super::finalize::finalize_pages(&mut self.data.pages, entries, paragraphs);
+     }
+     pub(in crate::renderer::typeset) fn append_item(&mut self, item: PageItem) {
+         self.data.current_items.push(item);
+diff --git a/src/renderer/typeset/state/finalize.rs b/src/renderer/typeset/state/finalize.rs
+index f68f801e9..fe90f72dd 100644
+--- a/src/renderer/typeset/state/finalize.rs
++++ b/src/renderer/typeset/state/finalize.rs
+@@ -75,7 +75,6 @@ pub(super) fn discard_terminal_blank_only_page(
+ pub(in crate::renderer::typeset) fn finalize_pages(
+     pages: &mut [PageContent],
+     hf_entries: &[(usize, HeaderFooterRef, bool, HeaderFooterApply)],
+-    page_number_pos: &Option<crate::model::control::PageNumberPos>,
+     paragraphs: &[Paragraph],
+ ) {
+     // 쪽번호: PageNumberAssigner 가 NewNumber 1회 적용 + 단조 증가를 보장 (Issue #353)
+@@ -113,12 +112,11 @@ pub(in crate::renderer::typeset) fn finalize_pages(
+         let (current_header, current_footer) = active_hf.active(page_num);
+         page.active_header = current_header;
+         page.active_footer = current_footer;
+-        if !assigner.should_hide_page_number() {
+-            page.page_number_pos = page_number_pos.clone();
+-        }
++        // 쪽 번호 위치와 감추기만 번호를 그릴지 정한다. 새 번호는 번호 값만 바꾼다.
++        page.page_number_pos = events.number_position_for_page(i).cloned();
+ 
+-        // 한 컨트롤의 감추기는 소스 위치가 매핑된 한 쪽에만 적용한다.
+-        if let Some((_, hide)) = events.hides.iter().find(|(target, _)| *target == i) {
++        // 한 컨트롤의 감추기는 소스 위치가 매핑된 한 쪽에만 적용한다. 한 쪽에 여럿이면 마지막 것.
++        if let Some(hide) = events.hide_for_page(i) {
+             page.page_hide = Some(hide.clone());
+         }
+     }
+diff --git a/src/renderer/typeset/table/continuation/job.rs b/src/renderer/typeset/table/continuation/job.rs
+index 4d9ed9477..8239f1b8b 100644
+--- a/src/renderer/typeset/table/continuation/job.rs
++++ b/src/renderer/typeset/table/continuation/job.rs
+@@ -190,9 +190,8 @@ impl TypesetEngine {
+             state.flush_column_always();
+         }
+         state.ensure_page();
+-        let (hf_entries, page_number_pos) =
+-            Self::collect_header_footer_controls(paragraphs, section_index);
+-        state.finalize_pages(&hf_entries, &page_number_pos, paragraphs);
++        let (hf_entries, _) = Self::collect_header_footer_controls(paragraphs, section_index);
++        state.finalize_pages(&hf_entries, paragraphs);
+         Some(state.into_result())
+     }
+ 

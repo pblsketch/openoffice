@@ -45,6 +45,7 @@ import {
 } from '@genoffice/docx-engine'
 import { docxToOdt, isOdtOpenError, saveOdt, type ConversionReport } from '@genoffice/odt-engine'
 import type { Dispatch, SetStateAction } from 'react'
+import { projectPanelText } from '@genoffice/ui'
 import type { AiDocContent, OpenDocxResult } from '../shared/ipc'
 import { docFormatOfPath, type DocFormat } from '../shared/open-file'
 import {
@@ -1089,6 +1090,26 @@ export function save(
   )
 }
 
+/**
+ * Project folders (spec 6): a never-saved document a create flow made (the
+ * AI's new Word document, a skill template's copy once its run ended well) is
+ * saved into its panel's project without a dialog. The main process picks the
+ * folder and a free name; with no project nothing is written and the document
+ * stays untitled, as before. A refused write keeps it untitled and says why.
+ * Resolves true when the document now has its file in the project.
+ */
+export function saveIntoProject(ctx: FileActionContext, newDocName: string): Promise<boolean> {
+  const generation = docGeneration
+  return runSerializedSave(
+    async () => {
+      const settled = ctx.settleFontSettings ? await ctx.settleFontSettings() : ctx
+      if (docGeneration !== generation) return false
+      return saveOnce(settled, false, true, newDocName, undefined, true)
+    },
+    () => false,
+  )
+}
+
 /** an MCP-driven explicit output target: write to this absolute path, no dialog */
 export interface ExplicitSaveTarget {
   path: string
@@ -1152,6 +1173,8 @@ export async function applyAiDocContent(
     // the document is born with this content: undo must not reach back to empty
     resetEditorHistory(editor)
   }
+  // with a project chosen the new document goes into the project folder (spec 6)
+  if (await saveIntoProject(ctx, `${content.title}.docx`)) return
   await save(ctx, false, true, `${content.title}.docx`)
 }
 
@@ -1235,6 +1258,8 @@ async function saveOnce(
   auto: boolean,
   newDocName?: string,
   explicitTarget?: ExplicitSaveTarget,
+  /** a never-saved document into its panel's project (spec 6), no dialog */
+  intoProject = false,
 ): Promise<boolean> {
   const { doc, editor } = ctx
   if (!doc || !editor) return false
@@ -1270,10 +1295,12 @@ async function saveOnce(
     // a pathless snapshot may belong to a document that an earlier queued pass
     // already landed on disk — overwrite that file instead of creating another
     let savedPath = doc.filePath ?? pathlessDocSavedPath
+    // a document that has its file already is not a new one
+    if (intoProject && savedPath) return false
     // a never-saved document's first save asks where (decision 0061: nothing lands in
     // the user's folders unasked); an automatic one waits for it. An MCP save names its
     // target explicitly and never asks.
-    const askPath = !explicitTarget && !savedPath
+    const askPath = !explicitTarget && !intoProject && !savedPath
     if (askPath && auto) return false
     let passwordIntentPending = false
     let fullBytes: Uint8Array | undefined
@@ -1296,6 +1323,28 @@ async function saveOnce(
         ctx.setStatus(t('appSaveFailed', { error: result.error ?? '' }))
         showToast(t('appSaveFailed', { error: result.error ?? '' }), 'error')
         explicitTarget.onError?.(result.error ?? '')
+        return false
+      }
+      savedPath = result.path!
+      passwordIntentPending = result.passwordIntentPending === true
+      if (result.dataUrl) fullBytes = await fetchDocBytes(result.dataUrl)
+      if (!doc.filePath) pathlessDocSavedPath = savedPath
+    } else if (intoProject) {
+      const result = window.desktop.saveDocxIntoProject
+        ? await window.desktop.saveDocxIntoProject(
+            newDocName ?? doc.fileName,
+            format,
+            await fileBytes(),
+          )
+        : { ok: false, skipped: true }
+      if (!result.ok) {
+        // no project chosen (or no shell): nothing was written, nothing to say
+        if (result.skipped || !result.error) return false
+        const failed = projectPanelText(getLang(), 'newDocumentSaveFailed', {
+          error: result.error,
+        })
+        ctx.setStatus(failed)
+        showToast(failed, 'error')
         return false
       }
       savedPath = result.path!
@@ -1409,7 +1458,12 @@ async function saveOnce(
     rebaseOdtSession(reparsed)
     // Equal doc: skip the rewrite so undo history, caret and scroll survive.
     if (!unchanged) {
-      editor.commands.setContent(rebasedPm as never)
+      // Rebase saved anchors without recording the reload as a user edit.
+      editor
+        .chain()
+        .setMeta(TRACK_IGNORE, true)
+        .setContent(rebasedPm as never)
+        .run()
       resetEditorHistory(editor)
       const chain = editor
         .chain()

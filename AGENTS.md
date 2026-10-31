@@ -27,12 +27,14 @@ openoffice/
 │   ├── headless-pdf-export.md     ← 창 없이 PDF로 내보내는 진입점
 │   ├── slides-op-journal.md       ← 슬라이드 편집 기록 형식
 │   ├── plans/
+│   │   ├── ai-friendly-docs.md    ← 행정문서 점검(행안부 가이드라인) 계획(설계)
 │   │   ├── ai-web-reading.md      ← AI 웹 읽기 계획(초안)
 │   │   ├── connect-guide.md       ← AI 연결 도우미 계획(진행 중)
 │   │   ├── epub-editor.md         ← EPUB 편집기 계획(구현됨, 사람 확인 남음)
 │   │   ├── hwp-format-copy.md     ← 한글 모양 복사(서식 복사) 분석·설계(1단계 구현됨, 사람 확인 남음)
 │   │   ├── pdf-reading-assist.md  ← PDF 읽기 도우미 계획
 │   │   ├── pdf-tools.md           ← PDF 도구 모음 계획(초안)
+│   │   ├── project-folder.md      ← 프로젝트 폴더(AI 맥락을 폴더 단위로) 계획(확정)
 │   │   └── update-details.md      ← 업데이트 상세 내역 표시 계획(확정)
 │   └── tracking/
 │       ├── status.md              ← 된 것과 남은 것
@@ -71,6 +73,7 @@ openoffice/
 │   ├── html2docx/AGENTS.md        ← HTML → 워드 변환
 │   ├── xmind-engine/AGENTS.md     ← 마인드맵 파일 엔진(열기, 원본 보존, 맞추기, 개요 글, 테마 표)
 │   ├── epub-engine/AGENTS.md      ← EPUB 엔진(열기, 블록 지도, 범위 바꾸기 저장, 책 번역과 결과 책)
+│   ├── doc-rules/AGENTS.md        ← 행정문서 형식 규칙(자료)과 순수 판정 함수
 │   ├── file-parse/AGENTS.md       ← 첨부·검색용 파일 읽기, 다른 파일로 읽을 때의 가리기
 │   ├── zip-gate/AGENTS.md         ← 압축 파일 안전 검사
 │   ├── google-drive/AGENTS.md     ← Google 드라이브 로그인과 파일 주고받기

@@ -10,7 +10,8 @@ import type { ActionCtx } from './action-context'
 import { collectExportPdfLinks } from './export-links'
 import { renderSlidesToPdfPages } from './export-pages'
 import { renderSlidesToPngBase64 } from './export-render'
-import { t } from './i18n/locale'
+import { projectPanelText } from '@genoffice/ui'
+import { getLang, t } from './i18n/locale'
 import { showToast } from './components/toast-bus'
 
 /**
@@ -114,6 +115,36 @@ export async function save(getCtx: () => ActionCtx, auto = false): Promise<boole
       showToast(failed, 'error')
     }
     return r.ok
+  })
+}
+
+/**
+ * Project folders (spec 6): the run a create flow handed to this untitled deck
+ * ended well, so the deck is saved into its panel's project without a dialog.
+ * The main process picks the folder and a free name; with no project nothing
+ * happens. A refused write keeps the deck untitled and says why. Same queue as
+ * save(): it must not interleave with a save the person started.
+ */
+export async function saveIntoProject(getCtx: () => ActionCtx): Promise<boolean> {
+  return runSerialized(async () => {
+    const ctx = getCtx()
+    if (ctx.path || !window.slidesApi.saveIntoProject) return false
+    await flushActiveEdit(ctx)
+    await ctx.flushNotes()
+    const r = await window.slidesApi.saveIntoProject()
+    if (r.ok) {
+      if (r.slides) adoptSavedSlides(ctx, r.slides)
+      if (r.path) ctx.setPath(r.path)
+      ctx.setDirty(false)
+      ctx.setStatus(t('appStatusSaved'))
+      return true
+    }
+    if (r.error) {
+      const failed = projectPanelText(getLang(), 'newDocumentSaveFailed', { error: r.error })
+      ctx.setStatus(failed)
+      showToast(failed, 'error')
+    }
+    return false
   })
 }
 

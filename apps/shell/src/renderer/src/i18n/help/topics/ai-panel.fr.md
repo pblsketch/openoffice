@@ -36,6 +36,13 @@ Dans le panneau IA des éditeurs Docs, Sheets, Slides, Hangul, HTML et carte men
 - Quand deux documents portent le même nom dans des dossiers différents, le nom du dossier juste au-dessus est ajouté, comme dans `@plan.docx(2e trimestre)`, et ce nom de dossier est aussi transmis à l’IA.
 - Les éditeurs PDF et Markdown n’ont pas encore de pièces jointes : aucune des deux méthodes n’y est disponible.
 
+## Projets
+
+- Cliquez sur le nom du projet, à gauche sous la zone de saisie, pour choisir un projet (un dossier de votre PC). L’IA répond alors en connaissant les fichiers, les consignes et la mémoire de ce dossier, et la conversation est conservée dans le dossier : vous pouvez donc la poursuivre dans un autre éditeur. Voir [Projets](help://projects).
+- Quand un projet est choisi, le titre de la conversation en cours apparaît en haut du panneau. Cliquez dessus pour voir la liste des conversations de ce projet et **Nouvelle conversation**.
+- La liste `@` de la zone de saisie affiche « Fichiers de ce projet » après les documents ouverts.
+- Une requête faite avec un projet choisi envoie aussi à l’IA que vous utilisez les consignes (avec `AGENTS.md` et `CLAUDE.md` à la racine du dossier, que vous pouvez désactiver sur la page du projet), la mémoire et la liste des noms de fichiers de ce projet, un court extrait de chaque fichier que l’IA trouve en cherchant dans le dossier, ainsi que le texte de chaque fichier que l’IA lit.
+
 ## Retour arrière et sécurité
 
 - Le panneau de Docs conserve une **liste de versions**: un instantané par tour, revenez à n’importe lequel, et ce retour arrière est lui-même annulable par Ctrl+Z. Les instantanés survivent à la réouverture du document.

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { recalculableDefinedNames } from '../src/renderer/formula-closure'
 import { canonicalFunctionName, extractFunctionNames } from '../src/renderer/formula-functions'
 import { installSupportedFunctionProbe } from '../src/renderer/function-registry-probe'
 import {
@@ -7,6 +8,7 @@ import {
   formulaKeepsCache,
   hasUsableCachedValue,
   recalcResultKeepsCache,
+  setRecalculableNames,
   setSupportedFunctionProbe,
 } from '../src/renderer/univer-sync'
 import type { UniverRuntime } from '../src/renderer/univer-state'
@@ -30,6 +32,7 @@ const ENGINE_FUNCTIONS = new Set([
 
 afterEach(() => {
   setSupportedFunctionProbe(null)
+  setRecalculableNames(new Map())
 })
 
 describe('extractFunctionNames', () => {
@@ -141,6 +144,60 @@ describe('formulaKeepsCache with the engine registry probe', () => {
     expect(formulaKeepsCache('NUMBERSTRING(B2,1)')).toBe(true)
     expect(formulaKeepsCache('SUM(Revenue)')).toBe(true)
     expect(formulaKeepsCache('[1]Sheet1!A1*2')).toBe(true)
+  })
+})
+
+describe('formulaKeepsCache through defined names', () => {
+  const open = (definedNames: { name: string; formula: string }[]): void => {
+    setSupportedFunctionProbe({ ready: () => true, supports: (name) => ENGINE_FUNCTIONS.has(name) })
+    setRecalculableNames(recalculableDefinedNames(definedNames, new Set()))
+  }
+
+  it('keeps the cache when a name calls a function the engine lacks', () => {
+    open([
+      { name: '계산', formula: 'EVALUATE(Data!$A$1)' },
+      { name: '색', formula: 'GET.CELL(63,Data!$A$1)' },
+    ])
+    // Without the name body check IFERROR swallows #NAME? into 0.
+    expect(formulaKeepsCache('IFERROR(계산,0)')).toBe(true)
+    expect(formulaKeepsCache('색')).toBe(true)
+    // Like a cell formula, nothing cached means the engine gets it.
+    expect(formulaKeepsCache('IFERROR(계산,0)', false)).toBe(false)
+  })
+
+  it('keeps the cache for a name that calls INDIRECT, cached or not', () => {
+    open([{ name: '계산', formula: 'EVALUATE(INDIRECT("rc[-1]",FALSE))' }])
+    expect(formulaKeepsCache('IFERROR(계산,0)')).toBe(true)
+    expect(formulaKeepsCache('IFERROR(계산,0)', false)).toBe(true)
+  })
+
+  it('applies the locale and Google export checks to name bodies', () => {
+    open([
+      { name: '한글금액', formula: 'NUMBERSTRING(Data!$B$1,1)' },
+      { name: 'Google', formula: 'IFERROR(__xludf.DUMMYFUNCTION("X"),0)' },
+    ])
+    expect(formulaKeepsCache('한글금액', false)).toBe(true)
+    expect(formulaKeepsCache('Google+1', false)).toBe(true)
+  })
+
+  it('follows names through other names', () => {
+    open([
+      { name: '한글금액', formula: 'NUMBERSTRING(Data!$B$1,1)' },
+      { name: '금액표시', formula: '한글금액&"원"' },
+      { name: '계산', formula: 'EVALUATE(Data!$A$1)' },
+      { name: '두배', formula: '계산*2' },
+    ])
+    expect(formulaKeepsCache('금액표시', false)).toBe(true)
+    expect(formulaKeepsCache('IFERROR(두배,0)')).toBe(true)
+  })
+
+  it('recalculates names built only of supported functions', () => {
+    open([
+      { name: 'Rate', formula: 'Data!$B$1' },
+      { name: 'Total', formula: 'SUM(Data!$B$2:$B$9)*Rate' },
+    ])
+    expect(formulaKeepsCache('IFERROR(B2*Rate,0)')).toBe(false)
+    expect(formulaKeepsCache('Total')).toBe(false)
   })
 })
 

@@ -44,6 +44,7 @@ File menu, all local and all asking where to put the result:
 
 The ribbon carries a **Source** toggle (localized with the app). Turn it on and the editor is replaced by the raw Markdown: exactly the text a save writes, nothing prettified, nothing normalised underneath you.
 
+- **Keyboard**: Ctrl+E (⌘E on a Mac) switches between source view and the rendered editing canvas. Press F5 to read it full screen.
 - **Editing is byte-faithful.** A save from source view produces the same bytes a save from the editor does — BOM, CRLF and the presence of a trailing newline all survive.
 - **It is the same document.** Toggle back and forth freely; the source is the editor's own text, not a copy that has to be merged.
 - **The formatting toolbar is unavailable** while it is open, because most of those buttons insert editor constructs that only mean something in the rendered side. It comes back when you close the view.

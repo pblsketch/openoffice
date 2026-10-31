@@ -501,6 +501,12 @@ export function AgentWindow() {
             {t(runErrorKey(entry.errorKind))}
           </div>
         )
+      case 'documents-unprotected':
+        return (
+          <div key={index} className="agent-notice" role="alert">
+            {t('documentsUnprotected', { n: entry.count })}
+          </div>
+        )
       case 'ended':
         return (
           <div key={index} className="agent-system">

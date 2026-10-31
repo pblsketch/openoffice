@@ -20,6 +20,15 @@ L’éditeur de livres numériques ouvre les livres EPUB (`.epub`) dans un ongle
 - Un lien interne au livre mène à l’endroit visé. Les liens web et e-mail s’ouvrent dans votre navigateur par défaut ; les autres adresses ne sont pas ouvertes.
 - Les scripts du livre ne s’exécutent jamais et rien n’est chargé depuis Internet. Le son et la vidéo ne sont pas lus.
 
+## Aperçu
+
+- Cliquez sur **Aperçu** dans l’onglet **Accueil** ou **Affichage** pour voir le livre en pages, comme sur une liseuse. L’aperçu s’ouvre là où vous lisez.
+- Dans la barre du haut, choisissez l’écran (**Liseuse**, **Téléphone**, **Tablette** ou **Ajuster à la fenêtre**), le mode paysage, la taille du texte et le fond (blanc, sépia ou sombre). Un écran large tourné en paysage montre deux pages côte à côte. Ces réglages ne changent que l’aperçu, jamais le livre.
+- Tournez les pages avec les flèches, Page Up et Page Down, la barre d’espace, la molette de la souris ou les boutons de chaque côté. Après la dernière page d’un chapitre, vous passez au chapitre suivant. Le sommaire et les liens du livre mènent l’aperçu à l’endroit voulu.
+- Le texte ne se modifie pas dans l’aperçu. Quand l’IA modifie le livre ou que vous annulez une modification, l’aperçu suit.
+- Cliquez sur **Fermer l’aperçu** ou appuyez sur Échap pour revenir à l’édition, à l’endroit que montrait l’aperçu.
+- La mise en page varie un peu selon les applications des librairies et les appareils : prenez l’aperçu comme une image fidèle mais approchée.
+
 ## Modifier le texte
 
 - Cliquez dans un paragraphe et tapez. Les paragraphes, titres, éléments de liste, citations, cellules de tableau et légendes d’images sont modifiables. Les images et la structure des tableaux ne le sont pas.
@@ -63,6 +72,6 @@ L’éditeur de livres numériques ouvre les livres EPUB (`.epub`) dans un ongle
 
 - Ajouter, supprimer ou réordonner des chapitres ; modifier le titre, l’auteur ou la couverture ; insérer des images ou des tableaux ; transformer un paragraphe en titre ou en liste.
 - Modifier ou traduire les livres à mise en page fixe, et ouvrir les livres protégés contre la copie.
-- Tourner les pages comme dans un livre imprimé, et créer un nouveau livre vide.
+- Créer un nouveau livre vide.
 - Comparer l’original et la traduction côte à côte dans l’éditeur. Ouvrez plutôt le livre bilingue, et corrigez le livre traduit comme n’importe quel autre livre.
 - Masquer à l’IA certaines parties d’un livre.

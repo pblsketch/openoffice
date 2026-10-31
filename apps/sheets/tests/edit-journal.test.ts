@@ -1,5 +1,6 @@
 import { CellValueType } from '@univerjs/core'
 import { describe, expect, it } from 'vitest'
+import { workbookStyleEditSchema } from '@genoffice/xlsx-gateway/shared/edit-schemas'
 
 import {
   createEditJournal,
@@ -613,6 +614,14 @@ describe('style conversion', () => {
       ht: 3,
       tb: 3,
     })
+  })
+
+  it('saves a removed number format as General, which the save wire accepts', () => {
+    // A paste of unformatted cells carries `n: null` in every pasted style;
+    // null on the wire failed the whole save ("Invalid workbook cell edit.").
+    const pasted = toNeutralStyle({ ff: 'Arial', fs: 11, n: null })
+    expect(pasted).toEqual({ fontFamily: 'Arial', fontSize: 11, numberFormat: 'General' })
+    expect(workbookStyleEditSchema.safeParse(pasted).success).toBe(true)
   })
 
   it('returns undefined for an empty or unknown delta', () => {

@@ -608,6 +608,36 @@ export class AgentLoop<TSnapshot = unknown> {
     this.trimHistory()
   }
 
+  /**
+   * Add messages recorded elsewhere (another window with the same chat open)
+   * after the current history, without resetting it. Only while idle: a run
+   * in flight answers from the conversation it started with, and the caller
+   * appends after it ends. Like a restore, only the role and text go in, and
+   * only answered exchanges (a user message followed by a reply): an
+   * unanswered user message or a reply without its question is left out, so
+   * the model never sees two adjacent turns of one role. Returns how many
+   * messages were added (0 while running).
+   */
+  appendHistory(messages: readonly AgentMessage[]): number {
+    if (this.running) return 0
+    const added: AgentMessage[] = []
+    for (let i = 0; i < messages.length; i++) {
+      const m = messages[i]!
+      const next = messages[i + 1]
+      if (m.role !== 'user' || next?.role !== 'assistant') continue
+      if (m.text === TURN_LIMIT_NOTE) continue
+      added.push({ role: 'user', text: m.text })
+      added.push({ role: 'assistant', text: next.text || COMPLETED_VIA_TOOLS_TEXT })
+      i++
+    }
+    if (added.length === 0) return 0
+    // a leftover unanswered user message would pair with the appended question as one turn
+    while (this.history.at(-1)?.role === 'user') this.history.pop()
+    this.history.push(...added)
+    this.trimHistory()
+    return added.length
+  }
+
   /** images: inline attachments for this user turn (vision input; see AgentImage) */
   run(instruction: string, images?: AgentImage[]): void {
     if (this.running || !instruction) return

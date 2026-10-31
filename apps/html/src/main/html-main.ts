@@ -780,6 +780,21 @@ interface RuntimePaths {
   rendererFile?: string
   /** Shell router used to open exported PDFs in a new GenOffice tab. */
   openGeneratedPath?: (path: string) => boolean
+  /**
+   * Project folders (spec 6): the folder an untitled document's save dialog
+   * opens in for this view, or null for the default save folder.
+   */
+  newDocumentDir?: (webContentsId: number) => Promise<string | null>
+  /**
+   * Project folders (spec 6): write a new document the AI made in this view
+   * into the project its panel chose (a free name, never over a file);
+   * resolves to the path written, or null when the panel has no project.
+   */
+  writeNewDocument?: (
+    webContentsId: number,
+    fileName: string,
+    bytes: Uint8Array,
+  ) => Promise<string | null>
 }
 
 let runtime: RuntimePaths = { preloadPath: '' }
@@ -1314,6 +1329,21 @@ function fileNameBase(name: string | undefined): string {
     .trim()
 }
 
+/**
+ * The AI's silent first save while this view's panel has a project (spec 6):
+ * the page goes into that project folder through its write guard. Null (nothing
+ * written) without a project; the default save folder then takes it as before.
+ */
+async function saveIntoProject(
+  wcId: number,
+  suggestedName: string | undefined,
+  text: string,
+): Promise<string | null> {
+  const base = fileNameBase(suggestedName)
+  if (!base || !runtime.writeNewDocument) return null
+  return runtime.writeNewDocument(wcId, `${base}.html`, Buffer.from(text, 'utf8'))
+}
+
 async function resolveSaveTarget(
   e: Electron.IpcMainInvokeEvent,
   mode: SaveMode,
@@ -1338,7 +1368,8 @@ async function resolveSaveTarget(
     ? join(dirname(current), basename(current))
     : (recovery.saveAsDefaultPath(e.sender.id) ??
       join(
-        configuredDefaultSaveDir(app),
+        // an untitled page whose panel has a project starts in that folder (spec 6)
+        (await runtime.newDocumentDir?.(e.sender.id)) ?? configuredDefaultSaveDir(app),
         `${fileNameBase(defaultName) || tm('untitledFile')}.html`,
       ))
   const picked = await showSaveDialogWithMemory(dialog, win, {
@@ -1560,7 +1591,12 @@ function registerHtmlIpc(): void {
           typeof request.suggestedName === 'string' ? request.suggestedName : undefined
         const defaultName =
           typeof request.defaultName === 'string' ? request.defaultName : undefined
-        const target = await resolveSaveTarget(e, mode, suggestedName, defaultName)
+        // the AI's silent first save lands in the panel's project when it has one
+        const placed =
+          mode === 'save' && !pathAtRequest && suggestedName
+            ? await saveIntoProject(e.sender.id, suggestedName, request.text)
+            : null
+        const target = placed ?? (await resolveSaveTarget(e, mode, suggestedName, defaultName))
         if (target === 'canceled') return done({ ok: true, canceled: true })
         if (!target) return done({ ok: false, error: 'html: no save target' })
         const currentPath = pathAtRequest
@@ -1579,7 +1615,8 @@ function registerHtmlIpc(): void {
         const textToWrite = prepared?.text ?? request.text
         const savedImageSources = prepared?.imageSources ?? imageSources
         try {
-          await writeTextAtomic(target, textToWrite)
+          // a page placed in the project was written by the project's write guard
+          if (!placed) await writeTextAtomic(target, textToWrite)
         } catch (error) {
           if (prepared) await rollbackPreparedSaveAsAssets(prepared).catch(() => {})
           throw error

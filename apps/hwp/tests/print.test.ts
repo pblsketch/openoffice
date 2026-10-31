@@ -112,6 +112,60 @@ describe('the pages for print', () => {
   })
 })
 
+describe('the preview page', () => {
+  it('draws one page as print, with the count it belongs to', () => {
+    const { plugin } = open(3)
+    const page = plugin.previewPage(1)
+    expect(page).toMatchObject({ pageCount: 3, page: 1 })
+    expect(page.svg.startsWith('<svg')).toBe(true)
+    expect(sideMm(page.width)).toBe(210)
+    expect(sideMm(page.height)).toBe(297)
+  })
+
+  it('refuses a page outside the document', () => {
+    const { plugin } = open(2)
+    expect(() => plugin.previewPage(-1)).toThrow()
+    expect(() => plugin.previewPage(2)).toThrow()
+  })
+
+  it('lays the page out with the portable widths, then puts the screen’s back', () => {
+    const { plugin, doc } = open(1)
+    const calls: boolean[] = []
+    Object.assign(doc, {
+      canvasMetricsActive: () => true,
+      selectCanvasMetrics: (on: boolean) => {
+        calls.push(on)
+        return true
+      },
+    })
+    plugin.previewPage(0)
+    expect(calls).toEqual([false, true])
+  })
+})
+
+describe('the preview page target', () => {
+  it('finds the first paragraph that starts on the page', () => {
+    const { plugin } = open(3)
+    const target = plugin.pageTarget(1)
+    expect(target.ok).toBe(true)
+    if (!target.ok) return
+    expect(target.page).toBe(1)
+    expect(target.target).toMatchObject({
+      kind: 'body_paragraph',
+      section: 0,
+      paragraph: 1,
+      charOffset: 0,
+    })
+    expect(target.target.length).toBeGreaterThan(0)
+  })
+
+  it('refuses a page outside the document', () => {
+    const { plugin } = open(2)
+    expect(() => plugin.pageTarget(2)).toThrow()
+    expect(() => plugin.pageTarget(-1)).toThrow()
+  })
+})
+
 describe('sharing pictures', () => {
   it('replaces each picture by its place in the job, the same picture by the same place', () => {
     const images: string[] = []

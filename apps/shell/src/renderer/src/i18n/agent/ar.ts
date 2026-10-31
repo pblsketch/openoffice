@@ -82,4 +82,6 @@ export const ar = {
   errNeedsUpdate: 'البرنامج قديم جدًا لوضع الوكيل. حدّثه ثم حاول مرة أخرى.',
   errNotInstalled: 'البرنامج غير مثبّت.',
   errGeneric: 'حدث خطأ ما. حاول مرة أخرى.',
+  documentsUnprotected:
+    'المستندات التي فُتحت بعد بدء الجلسة ({n}) خارج حماية الكتابة الخاصة بالبرنامج. أوقف الجلسة وابدأها من جديد لحمايتها.',
 } satisfies Record<keyof typeof zh, string>

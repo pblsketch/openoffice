@@ -20,6 +20,15 @@ De e-boekeditor opent EPUB-boeken (`.epub`) in een tabblad. Je leest het boek, v
 - Een koppeling in het boek brengt je naar die plek. Web- en e-mailkoppelingen openen in je standaardbrowser; andere adressen worden niet geopend.
 - Scripts in het boek zelf worden nooit uitgevoerd en er wordt niets van internet geladen. Geluid en video worden niet afgespeeld.
 
+## Voorbeeld
+
+- Klik op het tabblad **Start** of **Beeld** op **Voorbeeld** om het boek in pagina’s te zien, zoals een e-reader het toont. Het voorbeeld opent op de plek waar je aan het lezen bent.
+- Kies in de balk bovenaan het scherm (**E-reader**, **Telefoon**, **Tablet** of **Aan venster aanpassen**), liggend, de tekstgrootte en de achtergrond (wit, sepia of donker). Een breed scherm dat liggend staat, toont twee pagina’s naast elkaar. Deze instellingen veranderen alleen het voorbeeld, nooit het boek.
+- Blader met de pijltoetsen, Page Up en Page Down, de spatiebalk, het muiswiel of de knoppen aan beide kanten. Na de laatste pagina van een hoofdstuk ga je verder met het volgende hoofdstuk. De inhoudsopgave en links in het boek brengen het voorbeeld naar die plek.
+- In het voorbeeld kun je geen tekst bewerken. Als de AI het boek wijzigt of je een wijziging ongedaan maakt, volgt het voorbeeld.
+- Klik op **Voorbeeld sluiten** of druk op Esc om verder te bewerken op de plek die het voorbeeld liet zien.
+- Paginagrenzen verschillen een beetje per winkel-app en apparaat, dus zie het voorbeeld als een goede benadering.
+
 ## Tekst bewerken
 
 - Klik in een alinea en typ. Alinea's, koppen, lijstitems, citaten, tabelcellen en bijschriften bij afbeeldingen zijn te bewerken. Afbeeldingen en de opmaak van tabellen niet.
@@ -63,6 +72,6 @@ De e-boekeditor opent EPUB-boeken (`.epub`) in een tabblad. Je leest het boek, v
 
 - Hoofdstukken toevoegen, verwijderen of de volgorde ervan wijzigen; de titel, auteur of omslag wijzigen; afbeeldingen of tabellen invoegen; een alinea omzetten in een kop of een lijst.
 - Boeken met vaste opmaak bewerken of vertalen, en boeken met kopieerbeveiliging openen.
-- Bladeren zoals in een gedrukt boek, en een nieuw, leeg boek maken.
+- Een nieuw, leeg boek maken.
 - Het origineel en de vertaling naast elkaar vergelijken in de editor. Open in plaats daarvan het tweetalige boek, en verbeter het vertaalde boek zoals elk ander boek.
 - Delen van een boek verbergen voor de AI.

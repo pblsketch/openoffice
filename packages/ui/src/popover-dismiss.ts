@@ -106,3 +106,17 @@ export function useDismissablePopover(
     )
   }, [open, guarded])
 }
+
+/**
+ * Scrolls `option` into view inside its scrolling list only. `scrollIntoView`
+ * and a plain `focus()` may also scroll the panel around a popover sideways,
+ * which shifts the whole panel; this never touches anything but the list.
+ */
+export function revealInList(option: HTMLElement | null | undefined, listSelector: string): void {
+  const list = option?.closest<HTMLElement>(listSelector)
+  if (!option || !list) return
+  const box = list.getBoundingClientRect()
+  const row = option.getBoundingClientRect()
+  if (row.top < box.top) list.scrollTop -= box.top - row.top
+  else if (row.bottom > box.bottom) list.scrollTop += row.bottom - box.bottom
+}

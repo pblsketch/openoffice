@@ -42,7 +42,7 @@ export const id = {
     'Login ini memakai kunci API atau akun bayar sesuai pemakaian, atau jenisnya tidak dapat dipastikan. Dengan "Tetap gunakan", AI berjalan melalui koneksi ini dan setiap permintaan ditagihkan ke akun tersebut.',
   connectTitle: 'Hubungkan AI untuk memulai',
   connectBody:
-    'AI berjalan dengan langganan Claude atau Codex yang sudah Anda miliki. Kunci API tidak diperlukan.',
+    'AI berjalan dengan langganan Claude atau ChatGPT yang sudah Anda miliki. Kunci API tidak diperlukan.',
   connectProviderTitle: 'Koneksi {provider} belum bisa dipakai saat ini',
   connectKeyBody:
     'Penyiapan {provider} belum selesai. Selesaikan di Pengaturan, atau pilih AI lain.',
@@ -66,6 +66,8 @@ export const id = {
   errFreeLimit:
     'Jatah gratis hari ini sudah habis. Coba lagi besok, atau pilih AI lain di Pengaturan.',
   errFreeLimitReset: 'Jatah gratis hari ini sudah habis. Anda bisa memakainya lagi pada {time}.',
+  errFreeTierModel:
+    'Model ini tidak punya tingkat gratis, jadi kunci gratis tidak bisa memakainya. Pilih model yang termasuk tingkat gratis (misalnya model Flash), atau aktifkan penagihan di konsol penyedia.',
   continueWith: 'Lanjutkan dengan {provider}',
   continueMeteredNote:
     'Koneksi {provider} bukan langganan: melanjutkan akan ditagih sesuai pemakaian.',

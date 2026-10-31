@@ -85,4 +85,6 @@ export const pl = {
   errNeedsUpdate: 'Program jest zbyt stary na tryb agenta. Zaktualizuj go i spróbuj ponownie.',
   errNotInstalled: 'Program nie jest zainstalowany.',
   errGeneric: 'Coś poszło nie tak. Spróbuj ponownie.',
+  documentsUnprotected:
+    'Dokumenty otwarte po rozpoczęciu sesji ({n}) nie są objęte ochroną zapisu programu. Zatrzymaj i uruchom sesję ponownie, aby je chronić.',
 } satisfies Record<keyof typeof zh, string>

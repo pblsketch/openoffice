@@ -690,6 +690,7 @@ Các phím này hoạt động khi thẻ HWP/HWPX ở phía trước và tài li
 | Chuỗi ngày/giờ                          | ⌃K, D       | Ctrl+K, D          |
 | Chỉnh sửa đối tượng, trường hoặc bảng/ô | ⌃N, K       | Ctrl+N, K          |
 | Ký hiệu                                 | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+| Chuyển sang Hanja                       | F9          | Phím Hanja / F9    |
 
 ### Bảng
 

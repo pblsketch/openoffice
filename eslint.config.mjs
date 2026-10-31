@@ -15,6 +15,8 @@ export default tseslint.config(
       '**/release/**',
       '**/target/**',
       '**/coverage/**',
+      // dryforge skill worktrees/scratch (docs/workbench), not part of this repo's sources
+      '**/.dryforge/**',
       'scripts/drivers/**',
       'apps/*/build/**',
       'packages/*/src/vendor/**',

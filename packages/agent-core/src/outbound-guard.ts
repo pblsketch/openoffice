@@ -56,15 +56,32 @@ export function fetchedAddresses(input: unknown): string[] {
 }
 
 /**
+ * Tools whose results vouch for no address (project folders, spec 5.5): the
+ * files of a project folder are the folder's own text, not something the
+ * person brought into the conversation, so an address that stands only in
+ * what these tools returned is still put to the person before it is fetched.
+ * Keep in sync with PROJECT_TOOL_NAMES in @genoffice/project-store (this
+ * package does not depend on it).
+ */
+export const UNVOUCHED_RESULT_TOOLS: ReadonlySet<string> = new Set([
+  'project_list_files',
+  'project_search',
+  'project_read',
+  'project_remember',
+])
+
+/**
  * Whether the address already stands in text the AI did not write: the
  * person's messages and tool results. The AI's own replies do not count, or
- * it could vouch for an address by writing it first.
+ * it could vouch for an address by writing it first; neither do the results
+ * of `UNVOUCHED_RESULT_TOOLS`.
  */
 export function addressInConversation(address: string, history: readonly AgentMessage[]): boolean {
   return history.some((m) =>
     m.role === 'user'
       ? m.text.includes(address)
-      : m.role === 'tool' && m.results.some((r) => r.output.includes(address)),
+      : m.role === 'tool' &&
+        m.results.some((r) => !UNVOUCHED_RESULT_TOOLS.has(r.name) && r.output.includes(address)),
   )
 }
 

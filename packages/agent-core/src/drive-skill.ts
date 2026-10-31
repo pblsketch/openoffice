@@ -67,11 +67,15 @@ export const DRIVE_OUTBOUND_BLOCKED =
   'and tell the user they can start a new chat to use it again.'
 
 const DRIVE_SYSTEM_PROMPT = `## Google Drive
-The user connected their Google Drive and lets you search and read it.
+The user connected their Google Drive and lets you search and read the Drive
+files they chose in this app. The app sees only those files, not the whole
+Drive.
 - Use drive_search when the request needs a file the user keeps in Drive
   (a report, minutes, a sheet) that is not already attached or open. It
-  matches file names and contents; retry with other words or the other
-  language when it finds nothing.
+  matches file names and contents among the chosen files; retry with other
+  words or the other language when it finds nothing. If the file is still
+  missing, tell the user to choose it under Google Drive on the home screen
+  (or attach it from Drive) and ask again.
 - Read a promising file with drive_read (by its id from a search, paged by
   offset) before answering from it. Never answer from file names alone.
 - Drive is read-only for you: you cannot change, delete, move or share Drive
@@ -98,8 +102,9 @@ export function createDriveSkill(deps: DriveSkillDeps): DriveSkill {
     {
       name: DRIVE_SEARCH_TOOL,
       description:
-        'Search the user’s Google Drive by file name and content. Returns matching files with ' +
-        'their id, type and last change. Read one with drive_read.',
+        'Search, by file name and content, the Google Drive files the user chose in this app ' +
+        '(not the rest of their Drive). Returns matching files with their id, type and last ' +
+        'change. Read one with drive_read.',
       inputSchema: {
         type: 'object',
         properties: {

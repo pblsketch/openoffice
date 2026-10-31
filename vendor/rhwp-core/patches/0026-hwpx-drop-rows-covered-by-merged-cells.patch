@@ -1,0 +1,325 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pblsketch <239486537+pblsketch@users.noreply.github.com>
+Date: Thu, 29 Oct 2026 00:00:00 +0900
+Subject: [PATCH 26/26] =?UTF-8?q?fix(hwpx):=20=ED=95=A9=EC=B9=9C=20=EC=B9=B8?=
+ =?UTF-8?q?=EB=A7=8C=20=EB=8D=AE=EB=8A=94=20=ED=96=89=EC=9D=84=20=EB=B9=88?=
+ =?UTF-8?q?=20<hp:tr>=EB=A1=9C=20=EC=93=B0=EC=A7=80=20=EC=95=8A=EB=8A=94?=
+ =?UTF-8?q?=EB=8B=A4?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+세로로 합친 칸이 덮을 뿐 시작하는 칸이 없는 행을 HWPX로 저장할 때 빼고,
+아래 행의 칸 주소·셀 영역 번호를 당기며 걸친 칸의 rowSpan을 줄인다.
+한컴 한글은 빈 <hp:tr>이 든 HWPX를 열지 않는다.
+---
+ src/serializer/hwpx/table.rs | 232 +++++++++++++++++++++++++++++++++--
+ 1 file changed, 220 insertions(+), 12 deletions(-)
+
+diff --git a/src/serializer/hwpx/table.rs b/src/serializer/hwpx/table.rs
+index 553fed725..046038c4c 100644
+--- a/src/serializer/hwpx/table.rs
++++ b/src/serializer/hwpx/table.rs
+@@ -65,7 +65,8 @@ pub fn write_table<W: Write>(
+     let lock = bool01(table.common.locked);
+     let page_break = table_page_break_str(table.page_break);
+     let repeat_header = bool01(table.repeat_header);
+-    let row_cnt = table.row_count.to_string();
++    let rows = HwpxRows::new(table);
++    let row_cnt = rows.count().to_string();
+     let col_cnt = table.col_count.to_string();
+     let cell_spacing = table.cell_spacing.to_string();
+     let border_fill_id_ref = table.border_fill_id.to_string();
+@@ -109,15 +110,19 @@ pub fn write_table<W: Write>(
+     write_in_margin(w, table)?;
+     // cellzoneList: inMargin 다음, tr 앞 (OWPML 자식 순서). 셀 영역 테두리/배경
+     // 오버레이를 정의한다. 파서가 table.zones 로 보존하므로 그대로 되살린다.
+-    write_cellzone_list(w, table)?;
++    write_cellzone_list(w, table, &rows)?;
+ 
+     // tr[]: 행 단위 반복. 각 행에 속한 셀 (cell.row == r) 을 col 오름차순으로 출력.
++    // 시작하는 셀이 없는 행은 내보내지 않는다(`HwpxRows`).
+     for row_idx in 0..table.row_count {
++        if !rows.is_kept(row_idx) {
++            continue;
++        }
+         start_tag(w, "hp:tr")?;
+         let mut row_cells: Vec<&Cell> = table.cells.iter().filter(|c| c.row == row_idx).collect();
+         row_cells.sort_by_key(|c| c.col);
+         for cell in row_cells {
+-            write_cell(w, cell, ctx)?;
++            write_cell(w, cell, &rows, ctx)?;
+         }
+         end_tag(w, "hp:tr")?;
+     }
+@@ -244,15 +249,19 @@ fn write_in_margin<W: Write>(w: &mut Writer<W>, t: &Table) -> Result<(), Seriali
+ /// 속성 순서는 OWPML 관찰 순서: startRowAddr, startColAddr, endRowAddr,
+ /// endColAddr, borderFillIDRef. borderFillIDRef 는 셀과 동일하게 raw 값(오프셋
+ /// 없음)으로 쓴다 (parser `parse_u16`, 헤더 borderFill id 와 1:1).
+-fn write_cellzone_list<W: Write>(w: &mut Writer<W>, t: &Table) -> Result<(), SerializeError> {
++fn write_cellzone_list<W: Write>(
++    w: &mut Writer<W>,
++    t: &Table,
++    rows: &HwpxRows,
++) -> Result<(), SerializeError> {
+     if t.zones.is_empty() {
+         return Ok(());
+     }
+     start_tag(w, "hp:cellzoneList")?;
+     for zone in &t.zones {
+-        let start_row = zone.start_row.to_string();
++        let start_row = rows.addr(zone.start_row).to_string();
+         let start_col = zone.start_col.to_string();
+-        let end_row = zone.end_row.to_string();
++        let end_row = rows.addr(zone.end_row).to_string();
+         let end_col = zone.end_col.to_string();
+         let border_fill = zone.border_fill_id.to_string();
+         empty_tag(
+@@ -273,6 +282,7 @@ fn write_cellzone_list<W: Write>(w: &mut Writer<W>, t: &Table) -> Result<(), Ser
+ fn write_cell<W: Write>(
+     w: &mut Writer<W>,
+     cell: &Cell,
++    rows: &HwpxRows,
+     ctx: &mut SerializeContext,
+ ) -> Result<(), SerializeError> {
+     let name = cell.field_name.as_deref().unwrap_or("");
+@@ -299,8 +309,8 @@ fn write_cell<W: Write>(
+ 
+     // 자식 순서: subList, cellAddr, cellSpan, cellSz, cellMargin
+     write_sub_list(w, cell, ctx)?;
+-    write_cell_addr(w, cell)?;
+-    write_cell_span(w, cell)?;
++    write_cell_addr(w, cell, rows)?;
++    write_cell_span(w, cell, rows)?;
+     write_cell_sz(w, cell)?;
+     write_cell_margin(w, cell)?;
+ 
+@@ -458,18 +468,106 @@ pub(super) fn write_caption<W: Write>(
+     Ok(())
+ }
+ 
+-fn write_cell_addr<W: Write>(w: &mut Writer<W>, cell: &Cell) -> Result<(), SerializeError> {
++fn write_cell_addr<W: Write>(
++    w: &mut Writer<W>,
++    cell: &Cell,
++    rows: &HwpxRows,
++) -> Result<(), SerializeError> {
+     let col = cell.col.to_string();
+-    let row = cell.row.to_string();
++    let row = rows.addr(cell.row).to_string();
+     empty_tag(w, "hp:cellAddr", &[("colAddr", &col), ("rowAddr", &row)])
+ }
+ 
+-fn write_cell_span<W: Write>(w: &mut Writer<W>, cell: &Cell) -> Result<(), SerializeError> {
++fn write_cell_span<W: Write>(
++    w: &mut Writer<W>,
++    cell: &Cell,
++    rows: &HwpxRows,
++) -> Result<(), SerializeError> {
+     let cs = cell.col_span.max(1).to_string();
+-    let rs = cell.row_span.max(1).to_string();
++    let rs = rows.span(cell.row, cell.row_span.max(1)).to_string();
+     empty_tag(w, "hp:cellSpan", &[("colSpan", &cs), ("rowSpan", &rs)])
+ }
+ 
++/// HWPX에 내보낼 행. 위 행에서 합친 칸이 덮을 뿐 시작하는 칸이 없는 행은 뺀다.
++///
++/// 칸을 세로로 합치면 모델에는 시작하는 칸이 없는 행이 남는다(.hwp는 행마다 칸 수를
++/// 적으므로 그 행의 칸 수 0으로 그대로 저장된다). HWPX에서 이 행은 빈 `<hp:tr>`이 되는데,
++/// 한컴 한글은 이런 파일을 "파일을 읽거나 저장하는데 오류가 있습니다"로 열지 않는다.
++/// 한컴이 저장한 HWPX에는 이런 행이 없다. 그래서 그 행을 빼고 행 번호(`rowAddr`,
++/// 셀 영역)를 당기며, 걸쳐 있던 칸의 `rowSpan`을 줄인다. 합친 칸의 높이(`cellSz`)에는
++/// 이미 뺀 행의 높이가 들어 있으므로 표 모양은 같다. 모든 행에 시작하는 칸이 있으면
++/// 번호는 그대로다.
++struct HwpxRows {
++    row_count: u16,
++    /// 원래 행 번호 → 그 행까지(포함) 남는 행 수. 비면 모든 행이 남는다.
++    kept_through: Vec<u16>,
++}
++
++impl HwpxRows {
++    fn new(table: &Table) -> Self {
++        let n = table.row_count as usize;
++        let mut starts = vec![false; n];
++        for cell in &table.cells {
++            if let Some(s) = starts.get_mut(cell.row as usize) {
++                *s = true;
++            }
++        }
++        if starts.iter().all(|&s| s) {
++            return Self {
++                row_count: table.row_count,
++                kept_through: Vec::new(),
++            };
++        }
++        let mut kept = 0u16;
++        let kept_through = starts
++            .iter()
++            .map(|&s| {
++                if s {
++                    kept += 1;
++                }
++                kept
++            })
++            .collect();
++        Self {
++            row_count: table.row_count,
++            kept_through,
++        }
++    }
++
++    fn is_kept(&self, row: u16) -> bool {
++        if self.kept_through.is_empty() {
++            return true;
++        }
++        let r = row as usize;
++        let before = if r == 0 { 0 } else { self.kept_through[r - 1] };
++        self.kept_through.get(r).is_some_and(|&k| k > before)
++    }
++
++    fn count(&self) -> u16 {
++        self.kept_through.last().copied().unwrap_or(self.row_count)
++    }
++
++    /// 원래 행 번호의 새 번호. 뺀 행이면 그 행을 덮는 위쪽 남은 행의 번호다.
++    fn addr(&self, row: u16) -> u16 {
++        if self.kept_through.is_empty() {
++            return row;
++        }
++        let last = self.kept_through.len() - 1;
++        let k = self.kept_through[(row as usize).min(last)];
++        k.saturating_sub(1)
++    }
++
++    /// `row`에서 시작해 `span`행에 걸친 칸이 남는 행 몇 개에 걸치는지.
++    fn span(&self, row: u16, span: u16) -> u16 {
++        if self.kept_through.is_empty() {
++            return span;
++        }
++        let last = row.saturating_add(span).saturating_sub(1);
++        let kept = self.addr(last).saturating_sub(self.addr(row)) + 1;
++        kept.max(1)
++    }
++}
++
+ fn write_cell_sz<W: Write>(w: &mut Writer<W>, cell: &Cell) -> Result<(), SerializeError> {
+     let w_s = cell.width.to_string();
+     let h_s = cell.height.to_string();
+@@ -1834,4 +1932,114 @@ mod tests {
+             xml
+         );
+     }
++
++    /// 세로로 합친 칸만 덮는 행(시작하는 칸이 없는 행)은 빈 `<hp:tr>`로 내보내지 않는다.
++    /// 한컴 한글은 빈 `<hp:tr>`이 든 HWPX를 열지 못한다. 1열 표의 아래 세 칸을 합친
++    /// 서면 질의서 답변 표에서 나왔다.
++    #[test]
++    fn rows_only_covered_by_merged_cells_are_dropped() {
++        let mut t = empty_table(4, 1);
++        t.merge_cells(1, 0, 3, 0).expect("병합");
++        assert_eq!(t.row_count, 4, "모델의 행 수는 그대로");
++        let xml = serialize(&t);
++        assert!(!xml.contains("<hp:tr></hp:tr>"), "빈 tr: {xml}");
++        assert!(xml.contains(r#"rowCnt="2""#), "rowCnt: {xml}");
++        assert_eq!(xml.matches("<hp:tr>").count(), 2);
++        assert!(
++            xml.contains(r#"<hp:cellAddr colAddr="0" rowAddr="1"/><hp:cellSpan colSpan="1" rowSpan="1"/><hp:cellSz width="1000" height="900"/>"#),
++            "합친 칸은 1행에서 한 행, 높이는 세 행 합: {xml}"
++        );
++    }
++
++    /// 빠진 행 아래의 칸과 셀 영역은 번호를 당긴다. 다른 열이 여전히 그 행을 쓰면 빼지 않는다.
++    #[test]
++    fn rows_below_dropped_rows_are_renumbered() {
++        use crate::model::table::TableZone;
++        // 2열 5행. 두 열 모두 1~2행을 합쳐 2행이 비고, 왼쪽 열만 3~4행을 합친다.
++        let mut t = empty_table(5, 2);
++        t.merge_cells(1, 0, 2, 1).expect("1~2행 병합");
++        t.merge_cells(3, 0, 4, 0).expect("왼쪽 3~4행 병합");
++        t.zones.push(TableZone {
++            start_row: 2,
++            start_col: 0,
++            end_row: 4,
++            end_col: 1,
++            border_fill_id: 5,
++        });
++        let xml = serialize(&t);
++        assert!(xml.contains(r#"rowCnt="4""#), "rowCnt: {xml}");
++        assert_eq!(xml.matches("<hp:tr>").count(), 4);
++        assert!(!xml.contains("<hp:tr></hp:tr>"), "빈 tr: {xml}");
++        assert!(
++            xml.contains(
++                r#"<hp:cellAddr colAddr="0" rowAddr="1"/><hp:cellSpan colSpan="2" rowSpan="1"/>"#
++            ),
++            "1~2행 병합 칸: {xml}"
++        );
++        assert!(
++            xml.contains(
++                r#"<hp:cellAddr colAddr="0" rowAddr="2"/><hp:cellSpan colSpan="1" rowSpan="2"/>"#
++            ),
++            "왼쪽 3~4행 병합 칸: {xml}"
++        );
++        assert!(
++            xml.contains(
++                r#"<hp:cellAddr colAddr="1" rowAddr="3"/><hp:cellSpan colSpan="1" rowSpan="1"/>"#
++            ),
++            "오른쪽 4행 칸: {xml}"
++        );
++        assert!(
++            xml.contains(r#"<hp:cellzone startRowAddr="1" startColAddr="0" endRowAddr="3" endColAddr="1" borderFillIDRef="5"/>"#),
++            "셀 영역: {xml}"
++        );
++    }
++
++    /// 빼고 쓴 HWPX를 다시 읽으면 칸 배치와 크기가 같다.
++    #[test]
++    fn dropped_rows_roundtrip_to_same_cells() {
++        use crate::model::control::Control;
++
++        let bytes0 = std::fs::read("samples/hwpx/basic-table-01.hwpx").expect("샘플 읽기");
++        let mut doc = crate::parser::hwpx::parse_hwpx(&bytes0).expect("샘플 파싱");
++        let mut merged = None;
++        'find: for section in &mut doc.sections {
++            for para in &mut section.paragraphs {
++                for control in &mut para.controls {
++                    if let Control::Table(table) = control {
++                        if table.row_count >= 3 {
++                            let last = table.col_count - 1;
++                            table.merge_cells(1, 0, 2, last).expect("병합");
++                            merged = Some(table.clone());
++                            break 'find;
++                        }
++                    }
++                }
++            }
++        }
++        let before = merged.expect("3행 이상 표");
++        let bytes = crate::serializer::hwpx::serialize_hwpx(&doc).expect("직렬화");
++        let doc2 = crate::parser::hwpx::parse_hwpx(&bytes).expect("재파싱");
++        let after = doc2
++            .sections
++            .iter()
++            .flat_map(|s| &s.paragraphs)
++            .flat_map(|p| &p.controls)
++            .find_map(|c| match c {
++                Control::Table(t) if t.common.width == before.common.width => Some(t),
++                _ => None,
++            })
++            .expect("다시 읽은 표");
++        assert_eq!(after.row_count, before.row_count - 1);
++        assert_eq!(after.cells.len(), before.cells.len());
++        let key = |t: &Table| {
++            let mut v: Vec<_> = t
++                .cells
++                .iter()
++                .map(|c| (c.col, c.col_span, c.width, c.height))
++                .collect();
++            v.sort();
++            v
++        };
++        assert_eq!(key(after), key(&before));
++    }
+ }
+-- 
+2.52.0.windows.1
+

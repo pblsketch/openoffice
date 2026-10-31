@@ -21,6 +21,7 @@ Terang / Gelap / Ikuti Sistem. Mode Ikuti Sistem mengikuti tampilan sistem opera
 - **Panel AI** — Nonaktif, Diciutkan, atau Status terakhir.
 - **Simpan otomatis semua dokumen** menyalakan AutoSave secara default di setiap editor; Anda tetap bisa mematikannya untuk satu jendela.
 - **Lokasi penyimpanan** dengan tombol **Ubah**, dan **Aplikasi default untuk dokumen Office** untuk mengambil alih .docx / .xlsx / .pptx bagi GenOffice.
+- **Format penyimpanan dokumen HWP baru** memilih apakah HWP atau HWPX yang ditawarkan lebih dulu saat menyimpan dokumen baru pertama kali. Dokumen yang dibuka tetap memakai formatnya sendiri.
 
 GenOffice tidak mengumpulkan atau mengirim statistik penggunaan, jadi tidak ada sakelar untuk itu.
 

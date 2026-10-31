@@ -406,8 +406,9 @@ export class DriveFiles {
     mime: string,
   ): Promise<DriveFile | null> {
     let made = await api.upload({ name, parentId: entry.parentId ?? undefined }, bytes, mime)
-    // no right to add to that folder (a shared folder): My Drive instead
-    if (!made.ok && made.kind === 'forbidden' && entry.parentId) {
+    // no right to add to that folder (a shared folder), or the folder is not one the app may
+    // see (drive.file covers picked files, not the folders they sit in): My Drive instead
+    if (!made.ok && (made.kind === 'forbidden' || made.kind === 'not-found') && entry.parentId) {
       made = await api.upload({ name }, bytes, mime)
     }
     if (!made.ok) {

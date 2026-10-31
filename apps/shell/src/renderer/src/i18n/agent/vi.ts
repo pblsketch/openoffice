@@ -85,4 +85,6 @@ export const vi = {
   errNeedsUpdate: 'Chương trình quá cũ để dùng chế độ tác tử. Hãy cập nhật rồi thử lại.',
   errNotInstalled: 'Chương trình chưa được cài đặt.',
   errGeneric: 'Đã xảy ra lỗi. Hãy thử lại.',
+  documentsUnprotected:
+    'Tài liệu mở sau khi phiên bắt đầu ({n}) không được bảo vệ bởi cơ chế chống ghi của chương trình. Dừng và bắt đầu lại phiên để bảo vệ chúng.',
 } satisfies Record<keyof typeof zh, string>

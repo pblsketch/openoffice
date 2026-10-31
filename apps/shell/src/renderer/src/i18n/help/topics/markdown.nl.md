@@ -44,6 +44,7 @@ Menu Bestand, alles lokaal en alles vraagt waar het resultaat heen moet:
 
 Het lint bevat een schakelaar **Bron** (vertalen mee met de app). Zet hem aan en de editor wordt vervangen door de ruwe Markdown: precies de tekst die een opslaactie wegschrijft, niets is opgeschoond, niets wordt eronder genormaliseerd.
 
+- **Toetsenbord**: Ctrl+E (⌘E op een Mac) wisselt tussen bronweergave en het gerenderde bewerkingsscherm. Druk op F5 om het volledig scherm te lezen.
 - **Bewerken is bytegetrouw.** Een opslaactie vanuit de bronweergave levert dezelfde bytes als een opslaactie vanuit de editor — BOM, CRLF en de aanwezigheid van een afsluitende newline blijven allemaal behouden.
 - **Het is hetzelfde document.** Schakel rustig heen en weer; de bron is de eigen tekst van de editor, geen kopie die je zou moeten samenvoegen.
 - **De opmaakwerkbalk is niet beschikbaar** zolang de weergave open is, omdat de meeste van die knoppen editorconstructies invoegen die alleen aan de weergegeven kant betekenis hebben. Hij komt terug zodra je de weergave sluit.

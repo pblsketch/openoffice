@@ -4,6 +4,7 @@ import {
   GOOGLE_TOKEN_URL,
   exchangeGoogleCode,
   googleAuthUrl,
+  pickedFileIds,
   refreshGoogleToken,
   signInPageHtml,
   signInWithGoogle,
@@ -66,6 +67,36 @@ describe('googleAuthUrl', () => {
     expect(url.searchParams.get('access_type')).toBe('offline')
     // the client secret never goes to the browser
     expect(url.toString()).not.toContain(client.clientSecret)
+    expect(url.searchParams.has('trigger_onepick')).toBe(false)
+  })
+
+  it('asks only for the files the person picks', () => {
+    expect(DRIVE_SCOPE).toBe('https://www.googleapis.com/auth/drive.file')
+  })
+
+  it("shows Google's picker when asked, with several files only when allowed", () => {
+    const one = new URL(googleAuthUrl(client.clientId, 1, 'c', 's', { multiple: false }))
+    expect(one.searchParams.get('trigger_onepick')).toBe('true')
+    expect(one.searchParams.has('allow_multiple')).toBe(false)
+    const many = new URL(googleAuthUrl(client.clientId, 1, 'c', 's', { multiple: true }))
+    expect(many.searchParams.get('allow_multiple')).toBe('true')
+    expect(many.searchParams.get('scope')).toBe(DRIVE_SCOPE)
+  })
+})
+
+describe('pickedFileIds', () => {
+  it('keeps well-formed ids once, in order', () => {
+    expect(pickedFileIds('a1,b_2, a1,c-3')).toEqual(['a1', 'b_2', 'c-3'])
+  })
+
+  it('drops anything that is not a Drive id', () => {
+    expect(pickedFileIds("x/../y,ok,'q',,")).toEqual(['ok'])
+    expect(pickedFileIds(null)).toEqual([])
+  })
+
+  it('hands on at most fifty', () => {
+    const ids = Array.from({ length: 80 }, (_, i) => `f${i}`)
+    expect(pickedFileIds(ids.join(','))).toHaveLength(50)
   })
 })
 
@@ -100,6 +131,7 @@ describe('signInWithGoogle', () => {
     expect(result).toEqual({
       ok: true,
       tokens: { refreshToken: 'rt', accessToken: 'at', expiresAt: 1_000 + 3540 * 1000 },
+      picked: [],
     })
     const body = new URLSearchParams(String(token.calls[0]!.body))
     expect(body.get('code')).toBe('the-code')
@@ -140,6 +172,36 @@ describe('signInWithGoogle', () => {
       base({ openBrowser: browser.openBrowser, fetch: vi.fn<FetchLike>() }),
     )
     expect(result).toEqual({ ok: false, reason: 'scope' })
+  })
+
+  it("hands on the files picked in Google's picker", async () => {
+    const browser = browserReturning((url) => ({
+      code: 'c',
+      state: url.searchParams.get('state')!,
+      scope: DRIVE_SCOPE,
+      picked_file_ids: 'file-a,file-b',
+    }))
+    const token = tokenFetch(json({ access_token: 'at', refresh_token: 'rt', expires_in: 3600 }))
+    const result = await signInWithGoogle(
+      base({ openBrowser: browser.openBrowser, fetch: token.fetch, pick: { multiple: true } }),
+    )
+    expect(result.ok && result.picked).toEqual(['file-a', 'file-b'])
+    expect(new URL(browser.opened[0]!).searchParams.get('trigger_onepick')).toBe('true')
+  })
+
+  it('reads a closed picker as cancelled, not refused', async () => {
+    const browser = browserReturning((url) => ({
+      error: 'access_denied',
+      state: url.searchParams.get('state')!,
+    }))
+    const result = await signInWithGoogle(
+      base({
+        openBrowser: browser.openBrowser,
+        fetch: vi.fn<FetchLike>(),
+        pick: { multiple: false },
+      }),
+    )
+    expect(result).toEqual({ ok: false, reason: 'cancelled' })
   })
 
   it('stops when cancelled', async () => {

@@ -690,6 +690,7 @@ Diese Tasten gelten, solange der Tab HWP/HWPX im Vordergrund ist und das Dokumen
 | Datum/Uhrzeit als Text                     | ⌃K, D       | Ctrl+K, D          |
 | Objekt, Feld oder Tabelle/Zelle bearbeiten | ⌃N, K       | Ctrl+N, K          |
 | Sonderzeichen                              | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+| In Hanja umwandeln                         | F9          | Hanja-Taste / F9   |
 
 ### Tabelle
 

@@ -29,10 +29,10 @@ describe('queryLiteral', () => {
 })
 
 describe('listingQuery', () => {
-  it('lists a folder without trash, folders first', () => {
-    expect(listingQuery({ kind: 'folder', folderId: 'root' })).toEqual({
-      q: "'root' in parents and trashed = false",
-      orderBy: 'folder,name_natural',
+  it('lists the files the app may open, most recently viewed first', () => {
+    expect(listingQuery({ kind: 'recent' })).toEqual({
+      q: "mimeType != 'application/vnd.google-apps.folder' and trashed = false",
+      orderBy: 'viewedByMeTime desc',
     })
   })
 
@@ -62,7 +62,7 @@ describe('DriveApi', () => {
         ],
       }),
     )
-    const result = await drive.list({ kind: 'folder', folderId: 'root' })
+    const result = await drive.list({ kind: 'recent' })
     expect(result).toEqual({
       ok: true,
       nextPageToken: 'p2',

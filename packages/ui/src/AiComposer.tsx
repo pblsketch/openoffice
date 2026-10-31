@@ -31,6 +31,7 @@ export function AiComposer({
   header,
   queueStrip,
   footerStart,
+  footerBelow,
   iconOnly = false,
   sendIconEnabled,
   sendIconDisabled,
@@ -61,6 +62,11 @@ export function AiComposer({
   readonly queueStrip?: React.ReactNode
   /** extra controls at the left of the footer (attach button, toggles, …) */
   readonly footerStart?: React.ReactNode
+  /**
+   * a row outside and below the input box (the project chip); rendered as
+   * `.ai-input-below` after `.ai-input-box`, nothing at all when absent
+   */
+  readonly footerBelow?: React.ReactNode
   /** compact variant: no hint text, icon-only enter/stop button */
   readonly iconOnly?: boolean | undefined
   /** custom art for the icon-only send button (e.g. brand-supplied PNGs); falls back to IconEnter */
@@ -105,7 +111,7 @@ export function AiComposer({
     ta.style.height = `${Math.min(ta.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`
   }, [value, ref])
 
-  return (
+  const box = (
     <div className="ai-input-box">
       {queueStrip}
       {header}
@@ -189,5 +195,13 @@ export function AiComposer({
         )}
       </div>
     </div>
+  )
+  // without a row below, the composer renders exactly the box, as before
+  if (footerBelow == null || footerBelow === false) return box
+  return (
+    <>
+      {box}
+      <div className="ai-input-below">{footerBelow}</div>
+    </>
   )
 }

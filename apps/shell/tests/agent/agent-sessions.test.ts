@@ -190,6 +190,7 @@ function manager(
   overrides: {
     statuses?: Record<string, AiSubscriptionStatus>
     settings?: Partial<AiSettings>
+    openDocuments?: () => string[]
   } = {},
 ) {
   const home = temp()
@@ -217,7 +218,7 @@ function manager(
     statuses: () =>
       overrides.statuses ?? { 'claude-code': ready('claude-code'), codex: ready('codex') },
     aiSettings: () => ({ ...normalizeAiSettings({ providers: {} }), ...overrides.settings }),
-    openDocuments: () => [join(project, 'open.docx')],
+    openDocuments: overrides.openDocuments ?? (() => [join(project, 'open.docx')]),
     userData: join(home, 'AppData', 'IeumOffice'),
     homeDir: home,
     language: () => 'ko',
@@ -373,6 +374,33 @@ describe('driving a session', () => {
     await m.send(1, result.sessionId, 'hi')
     expect(session.sent).toEqual(['hi'])
     expect(session.setOpenDocuments).toHaveBeenCalled()
+  })
+
+  it('warns once about documents opened after the session started', async () => {
+    let open = [join(temp(), 'at-start.docx')]
+    const atStart = open[0]!
+    const home = temp()
+    const project = join(home, 'Project')
+    mkdirSync(project, { recursive: true })
+    const later = join(project, 'opened-later.docx')
+    open = [atStart]
+    const { m, session, emitted } = manager({ openDocuments: () => open })
+    const result = await m.start(1, {
+      provider: 'claude-code',
+      projectRoot: join(home, 'Project'),
+      mode: 'ask-commands',
+    })
+    if (!result.ok) throw new Error('did not start')
+
+    open = [atStart, later]
+    await m.send(1, result.sessionId, 'one')
+    await m.send(1, result.sessionId, 'two')
+
+    const warnings = emitted.filter(([, , event]) => event.type === 'documents-unprotected')
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]![2]).toEqual({ type: 'documents-unprotected', paths: [later] })
+    // the app-level policy still learns about it for the permission requests
+    expect(session.setOpenDocuments).toHaveBeenLastCalledWith([atStart, later])
   })
 
   it('keeps the skills the session got, for its window only', async () => {

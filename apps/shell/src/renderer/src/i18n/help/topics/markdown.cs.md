@@ -44,6 +44,7 @@ Nabídka Soubor, všechno místní a všechno se ptá, kam výsledek uložit:
 
 Pásek obsahuje přepínač **Zdroj** (překládá se spolu s aplikací). Když jej zapnete, editor nahradí nezpracovaný Markdown: přesně ten text, který uložení zapisuje, nic není zkrášlené, nic není pod ním znormalizované.
 
+- **Klávesnice**: Ctrl+E (⌘E na Macu) přepíná mezi zobrazením zdroje a vykreslenou editační plochou. Stiskněte F5 pro čtení na celé obrazovce.
 - **Úpravy jsou věrné bajtům.** Uložení ze zobrazení zdroje vytvoří stejné bajty jako uložení z editoru — BOM, CRLF i přítomnost koncového znaku nového řádku zůstanou zachovány.
 - **Je to stejný dokument.** Klidně mezi nimi přepínejte; zdroj je vlastní text editoru, ne kopie, kterou by bylo nutno slučovat.
 - **Pruh nástrojů pro formátování není dostupný**, dokud je zobrazení otevřené, protože většina těchto tlačítek vkládá konstrukce editoru, které dávají smysl jen na vykreslené straně. Když zobrazení zavřete, vrátí se.

@@ -104,6 +104,8 @@ export interface MindmapAiDockProps {
   templateDocument?: TemplateDocument | null
   /** a request handed over by the template flow: show the panel */
   onSkillHandoff?: () => void
+  /** the run a create flow handed over ended well: save an untitled map into the project (spec 6) */
+  onHandedRunDone?: () => void
 }
 
 /**
@@ -119,6 +121,7 @@ export function MindmapAiDock({
   onRunStart,
   templateDocument,
   onSkillHandoff,
+  onHandedRunDone,
 }: MindmapAiDockProps): ReactElement {
   const { t } = useI18n()
   const { role, requestFocus } = useSplitPaneRole()
@@ -144,6 +147,7 @@ export function MindmapAiDock({
         onCollapse={() => ai.setOpen(false)}
         templateDocument={templateDocument}
         onSkillHandoff={onSkillHandoff}
+        onHandedRunDone={onHandedRunDone}
       />
     </div>
   )

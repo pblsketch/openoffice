@@ -19,6 +19,7 @@ import type {
 const MARKUP_SUBTYPES: Record<string, MarkupType> = {
   Highlight: 'highlight',
   Underline: 'underline',
+  Squiggly: 'squiggly',
   StrikeOut: 'strikeout',
 }
 
@@ -30,6 +31,7 @@ const NOT_LISTED = new Set([
   'Text',
   'Highlight',
   'Underline',
+  'Squiggly',
   'StrikeOut',
 ])
 

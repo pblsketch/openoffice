@@ -7,9 +7,12 @@ People who helped IeumOffice with code, docs, translations, or reproductions.
 
 - [@CauchyRiemannEquations](https://github.com/CauchyRiemannEquations) — HTML 편집기의 수식 넣기·고치기 · [PR 보기](https://github.com/pblsketch/openoffice/pulls?q=is%3Apr+author%3ACauchyRiemannEquations)
 - [@dossamlab](https://github.com/dossamlab) — 엑셀을 창 없이 PDF로 내보낼 때 수식 결과 기다리기 · [PR 보기](https://github.com/pblsketch/openoffice/pulls?q=is%3Apr+author%3Adossamlab)
+- [@hahadark](https://github.com/hahadark) — Windows 제어된 폴더 액세스에서 첫 실행이 멈추던 문제 · [PR 보기](https://github.com/pblsketch/openoffice/pulls?q=is%3Apr+author%3Ahahadark)
 - [@hunkim](https://github.com/hunkim) — Upstage Solar 키 제공자, macOS·한글 경로에서의 시험, 시험 속도, HTML → 워드 변환의 깨진 그림 처리 · [PR 보기](https://github.com/pblsketch/openoffice/pulls?q=is%3Apr+author%3Ahunkim)
 - [@Neosiki](https://github.com/Neosiki) — CLI·HWP·ODT 오류 수정과 실제 문서로 재현한 문제 제보 · [PR 보기](https://github.com/pblsketch/openoffice/pulls?q=is%3Apr+author%3ANeosiki)
-- [@thecodinglog](https://github.com/thecodinglog) — 엑셀 수식 입력줄 높이 고정과 크기 조절 · [PR 보기](https://github.com/pblsketch/openoffice/pulls?q=is%3Apr+author%3Athecodinglog)
+- [@thecodinglog](https://github.com/thecodinglog) — 엑셀 수식 입력줄 높이 고정과 크기 조절, 통계 메뉴·밝은 테마 선택 색·셀 메뉴의 AI 묻기 · [PR 보기](https://github.com/pblsketch/openoffice/pulls?q=is%3Apr+author%3Athecodinglog)
+- [@wlsgur11](https://github.com/wlsgur11) — 마크다운을 워드·PDF로 내보낼 때 표 정렬과 체크 표시 · [PR 보기](https://github.com/pblsketch/openoffice/pulls?q=is%3Apr+author%3Awlsgur11)
+- [@wonby1n](https://github.com/wonby1n) — EPUB 편집기에서 앱 안 MCP가 막 입력한 글까지 읽기 · [PR 보기](https://github.com/pblsketch/openoffice/pulls?q=is%3Apr+author%3Awonby1n)
 
 ## 안내 / Notes
 

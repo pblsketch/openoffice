@@ -1,6 +1,7 @@
 /**
  * The ribbon: File (save, save as), Home (the editing tools, then find) and
- * View (text size, line spacing, dark view, table of contents).
+ * View (the book preview, text size, line spacing, dark view, table of
+ * contents). The preview button is on Home as well, after find.
  *
  * The editing tools of Home are not part of reading; the editing screen puts
  * them in through `homeEditTools`, in front of find. Book translation puts its
@@ -15,6 +16,7 @@ import { FONT_SCALES, LINE_HEIGHTS } from '../reader/view-prefs'
 import {
   IconLineSpacing,
   IconMoon,
+  IconPreview,
   IconSave,
   IconSearch,
   IconTextLarger,
@@ -30,6 +32,8 @@ export interface RibbonProps {
   prefs: EpubViewPrefs
   searchOpen: boolean
   tocOpen: boolean
+  /** the book preview covers the chapter view */
+  previewOpen: boolean
   /** the editing tools of the Home tab (the editing screen's) */
   homeEditTools?: ReactNode
   /** the book translation button of the Home tab, after find */
@@ -46,9 +50,10 @@ export interface RibbonProps {
   onLineHeight(lineHeight: number | null): void
   onToggleDark(): void
   onToggleToc(): void
+  onTogglePreview(): void
 }
 
-function ToolButton(p: {
+export function ToolButton(p: {
   action: string
   label: string
   kbd?: string
@@ -109,6 +114,18 @@ export function Ribbon(p: RibbonProps) {
     label: `${Math.round(scale * 100)}%`,
   }))
   const off = !p.hasBook
+  const previewButton = (
+    <ToolButton
+      action="preview"
+      label={t('preview')}
+      active={p.previewOpen}
+      disabled={off}
+      onClick={p.onTogglePreview}
+    >
+      <IconPreview />
+      <span className="epub-tool-text">{t('preview')}</span>
+    </ToolButton>
+  )
 
   return (
     <header className="ribbon">
@@ -205,6 +222,7 @@ export function Ribbon(p: RibbonProps) {
                   <IconSearch />
                   <span className="epub-tool-text">{t('find')}</span>
                 </ToolButton>
+                {previewButton}
               </div>
             </div>
             {p.translateTools && (
@@ -216,6 +234,10 @@ export function Ribbon(p: RibbonProps) {
           </>
         ) : (
           <>
+            <div className="ribbon-group">
+              <div className="ribbon-group-items">{previewButton}</div>
+            </div>
+            <span className="rb-sep" />
             <div className="ribbon-group">
               <div className="ribbon-group-items">
                 <ToolButton

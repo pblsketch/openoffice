@@ -83,6 +83,11 @@ export interface TemplateTabsDeps {
   openCopy(copy: TemplateCopy): Promise<(OpenedCopyTab & { ownsCopy?: boolean }) | null>
   /** bring a tab to the front; false when it is gone */
   focusTab(tabId: string): boolean
+  /**
+   * A skill template's copy opened for the panel of `openerId` (spec 6): the
+   * shell lets the new tab follow that panel's project. Not called for a preview.
+   */
+  copyOpenedFor?(contents: CopyTabContents, openerId: number): void
   newId(): string
   now(): number
 }
@@ -160,6 +165,7 @@ export function createTemplateTabs(deps: TemplateTabsDeps) {
      */
     async openTemplate(
       input: UserSkillTemplateOpenInput,
+      openerId?: number,
     ): Promise<UserSkillsResult<{ tabId: string }>> {
       const template = await deps.templateFileOf(input.skillId)
       if (!template.ok) return template
@@ -182,7 +188,9 @@ export function createTemplateTabs(deps: TemplateTabsDeps) {
           createdAt: deps.now(),
         }),
       )
-      return opened.ok ? { ok: true, tabId: opened.tabId } : opened
+      if (!opened.ok) return opened
+      if (openerId !== undefined) deps.copyOpenedFor?.(opened.contents, openerId)
+      return { ok: true, tabId: opened.tabId }
     },
 
     /**

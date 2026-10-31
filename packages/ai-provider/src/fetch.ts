@@ -8,7 +8,7 @@
  * stack. Renderers never inject one (their fetch already is Chromium's).
  */
 import { PRODUCT_NAME } from '@genoffice/i18n'
-import { freeLimitOf } from './free-ai'
+import { freeLimitOf, isFreeTierModelRefusal } from './free-ai'
 
 type FetchLike = (url: string, init?: RequestInit) => Promise<Response>
 
@@ -105,7 +105,8 @@ async function isTransientRefusal(response: Response): Promise<boolean> {
   if (response.status === 503 || response.status === 529) return true
   if (response.status !== 429) return false
   try {
-    return !freeLimitOf(`HTTP 429: ${await response.clone().text()}`)
+    const text = `HTTP 429: ${await response.clone().text()}`
+    return !freeLimitOf(text) && !isFreeTierModelRefusal(text)
   } catch {
     return true
   }

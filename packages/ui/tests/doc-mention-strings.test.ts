@@ -6,12 +6,13 @@ const KEYS = Object.keys(DOC_MENTION_STRINGS.zh) as DocMentionStringKey[]
 const NON_LATIN: readonly Lang[] = ['zh', 'ja', 'ko', 'th', 'ru', 'ar', 'he', 'hi', 'zh-TW']
 
 describe('DOC_MENTION_STRINGS', () => {
-  it('has the seven keys', () => {
+  it('has the eight keys', () => {
     expect([...KEYS].sort()).toEqual(
       [
         'listLabel',
         'groupPane',
         'groupOpen',
+        'groupProject',
         'groupRecent',
         'reasonModified',
         'reasonUnsaved',
@@ -48,6 +49,7 @@ describe('DOC_MENTION_STRINGS', () => {
     const ko = DOC_MENTION_STRINGS.ko
     expect(ko.groupPane).toBe('옆 칸')
     expect(ko.groupOpen).toBe('열린 문서')
+    expect(ko.groupProject).toBe('이 프로젝트의 파일')
     expect(ko.groupRecent).toBe('최근 문서')
     expect(ko.reasonModified).toBe('저장하면 붙일 수 있어요')
     expect(ko.reasonUnsaved).toBe('저장 안 한 새 문서')

@@ -3,7 +3,7 @@ import katexCss from 'katex/dist/katex.min.css?inline'
 /** Print-theme CSS: mirrors the editor typography so the PDF matches the canvas */
 const PRINT_CSS = `
 @page {
-  margin: 2cm;
+  margin: 0;
   size: auto;
 }
 * { box-sizing: border-box; }

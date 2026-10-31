@@ -142,6 +142,13 @@ describe('sheets ai:read-url', () => {
     })
   })
 
+  it('refuses a sender that is not a registered sheets tab', async () => {
+    const stranger = new FakeContents()
+
+    await expect(call(stranger, 'https://example.com/')).rejects.toThrow('Untrusted IPC sender.')
+    expect(readUrlTool).not.toHaveBeenCalled()
+  })
+
   it('aborts the download when the user stops the AI run', async () => {
     let answer!: (result: unknown) => void
     readUrlTool.mockImplementationOnce(

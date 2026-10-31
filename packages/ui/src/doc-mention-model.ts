@@ -24,7 +24,7 @@ export function docMentionListCall(): (() => Promise<DocMentionListResult>) | nu
     : null
 }
 
-const GROUPS: readonly DocMentionGroup[] = ['pane', 'open', 'recent']
+const GROUPS: readonly DocMentionGroup[] = ['pane', 'open', 'project', 'recent']
 const STATES: readonly DocMentionState[] = ['ok', 'modified', 'unsaved']
 
 function isItem(value: unknown): value is DocMentionItem {
@@ -161,7 +161,7 @@ function fold(text: string): string {
 /**
  * The rows matching what was typed after `@`, by file name, case-folded:
  * names that start with it first, then names that contain it; within each,
- * pane → open → recent and the shell's order. Greyed rows (modified, unsaved)
+ * pane → open → project → recent and the shell's order. Greyed rows (modified, unsaved)
  * match like the others.
  */
 export function filterDocMentions(

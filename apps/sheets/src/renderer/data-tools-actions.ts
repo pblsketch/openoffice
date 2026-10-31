@@ -11,6 +11,7 @@ import {
   decodeCsvBuffer,
   isNumericCell,
   parseCsv,
+  resolveImportDelimiter,
 } from '@genoffice/xlsx-gateway/gateway/csv-import'
 import type { AdvancedFilterColumn, AdvancedFilterCriteria } from './AdvancedFilterDialog'
 import {
@@ -66,7 +67,7 @@ const CSV_CHARSET_BY_LANG: Record<string, string> = {
 }
 
 /// Data → From Text/CSV: reads a delimited file (encoding and delimiter
-/// sniffed by the shared CSV pipeline) into the active sheet at the selection.
+/// decided by the same pipeline as opening a .csv) into the active sheet at the selection.
 export function handleImportCsv(ctx: DataToolsContext): void {
   const input = document.createElement('input')
   input.type = 'file'
@@ -88,7 +89,8 @@ export function handleImportCsv(ctx: DataToolsContext): void {
   input.click()
 }
 
-function importCsvText(ctx: DataToolsContext, text: string): void {
+/// Exported for tests; the file picker above is its only caller.
+export function importCsvText(ctx: DataToolsContext, text: string): void {
   const runtime = ctx.univerRef.current
   const workbook = runtime?.univerAPI.getActiveWorkbook()
   const worksheet = workbook?.getActiveSheet()
@@ -97,7 +99,8 @@ function importCsvText(ctx: DataToolsContext, text: string): void {
     ctx.setMessage(t('appSelectCellFirst'))
     return
   }
-  const rows = parseCsv(text)
+  // Same delimiter decision as opening a .csv (sep= line, prose guard).
+  const rows = parseCsv(text, resolveImportDelimiter(text))
   const columns = rows.reduce((width, row) => Math.max(width, row.length), 0)
   if (rows.length === 0 || columns === 0) {
     ctx.setMessage(t('appCsvEmpty'))

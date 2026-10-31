@@ -27,6 +27,8 @@ export function driveAiOn(state: unknown): boolean {
   const s = (state && typeof state === 'object' ? state : {}) as {
     state?: unknown
     aiAccess?: unknown
+    trainingAck?: unknown
   }
-  return s.state === 'connected' && s.aiAccess === true
+  // the model-training confirmation gates the AI's Drive tools too (decision 0085)
+  return s.state === 'connected' && s.aiAccess === true && s.trainingAck === true
 }

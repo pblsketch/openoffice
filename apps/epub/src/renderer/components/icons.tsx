@@ -133,3 +133,21 @@ export const IconReplace = () => (
     <path d="M13 19.5h7M17.5 17l2.5 2.5-2.5 2.5" />
   </Icon>
 )
+
+/** The book preview: an e-reader with a page of lines. */
+export const IconPreview = () => (
+  <Icon>
+    <rect x="5" y="3" width="14" height="18" rx="2" />
+    <path d="M8.5 7.5h7M8.5 10.5h7M8.5 13.5h5" />
+    <path d="M10.5 17.5h3" />
+  </Icon>
+)
+
+/** Turns the preview screen on its side. */
+export const IconRotate = () => (
+  <Icon>
+    <rect x="3.5" y="9" width="11" height="11" rx="1.5" />
+    <path d="M12 3.5a7.5 7.5 0 0 1 8.5 7.5" />
+    <path d="M18 9.5l2.5 1.5 1.5-2.5" />
+  </Icon>
+)

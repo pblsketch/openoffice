@@ -7,7 +7,11 @@ import {
   type AiSubscriptionUsage,
 } from '@genoffice/ai-provider/browser'
 import { aiSendGate, withAiContinueProvider, withAiSubscriptionNoticeSeen } from '@genoffice/ui'
-import { aiBlockedRunOf, mergeSubscriptionUsage } from '../src/renderer/ai/ai-connection'
+import {
+  aiBlockedRunOf,
+  mergeSubscriptionUsage,
+  pdfSendNoticeDue,
+} from '../src/renderer/ai/ai-connection'
 
 const settingsOf = (over: Partial<AiSettings> = {}): AiSettings => ({
   ...normalizeAiSettings({}),
@@ -171,10 +175,22 @@ describe('"continue with" settings', () => {
 })
 
 describe('acknowledged-notice settings', () => {
-  it('marks the notice as seen without touching anything else', () => {
+  it('the PDF sentence is due once even when the general notice was seen elsewhere', () => {
+    expect(pdfSendNoticeDue(settingsOf({ subscriptionNoticeSeen: true }), true)).toBe(true)
+    expect(pdfSendNoticeDue(settingsOf({ pdfSendNoticeSeen: 1 }), true)).toBe(false)
+    // no subscription can run: nothing is about to be sent
+    expect(pdfSendNoticeDue(settingsOf(), false)).toBe(false)
+    expect(pdfSendNoticeDue(null, true)).toBe(true)
+  })
+
+  it('marks the general notice as seen without touching anything else', () => {
     const settings = settingsOf({ provider: 'codex' })
     const next = withAiSubscriptionNoticeSeen(settings)
-    expect(next).toEqual({ ...settings, subscriptionNoticeSeen: true })
+    expect(next).toEqual({
+      ...settings,
+      subscriptionNoticeSeen: true,
+      subscriptionNoticeVersion: 2,
+    })
     expect(settings.subscriptionNoticeSeen).toBeFalsy()
   })
 })

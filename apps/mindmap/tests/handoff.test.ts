@@ -25,6 +25,8 @@ import type {
   HandoffRunStarted,
   MindmapApi,
   MindmapHandoff,
+  SaveIntoProjectRequest,
+  SaveIntoProjectResult,
 } from '../src/shared/ipc'
 import { documentOf, plainSheet } from './helpers/fixtures'
 import { mapLoaded, until } from './helpers/wait'
@@ -54,6 +56,8 @@ interface FakeOptions {
   /** what the main process holds for this tab; taken by the first call only */
   handoff: MindmapHandoff | null
   reply?: Reply
+  /** the main side of the project save (spec 6); absent: an older preload without it */
+  saveIntoProject?: (request: SaveIntoProjectRequest) => Promise<SaveIntoProjectResult>
 }
 
 function fakeApi(options: FakeOptions) {
@@ -126,6 +130,7 @@ function fakeApi(options: FakeOptions) {
       return { accepted: paths.map(attachment), rejected: [] }
     },
     readAttachmentImage: async () => ({ ok: false }),
+    ...(options.saveIntoProject ? { saveIntoProject: options.saveIntoProject } : {}),
     subscription: {
       statuses: vi.fn(async () => statuses),
       recheck: vi.fn(async () => statuses),
@@ -437,5 +442,101 @@ describe('the hand-off hook', () => {
     expect(seen.at(-1)).toBeNull()
     expect(fake.takeHandoff).toHaveBeenCalledTimes(1)
     expect(opened).toBe(1)
+  })
+})
+
+describe('the map a create flow handed over goes into the project (spec 6)', () => {
+  const status = () => container.querySelector('.mm-save-status')?.textContent ?? ''
+  const isXmind = (bytes: Uint8Array) => bytes[0] === 0x50 && bytes[1] === 0x4b
+
+  it('with a project: saved once the handed-over run ended well, and the map adopts the file', async () => {
+    const saveIntoProject = vi.fn(async (): Promise<SaveIntoProjectResult> => ({
+      ok: true,
+      path: 'D:/Plan/Map (2).xmind',
+    }))
+    const fake = fakeApi({ pending: null, statuses: CONNECTED, handoff: HANDOFF, saveIntoProject })
+    await mountApp(fake)
+    expect(fake.requests).toHaveLength(1)
+    await until(() => saveIntoProject.mock.calls.length > 0, 'the project save')
+    expect(saveIntoProject).toHaveBeenCalledTimes(1)
+    // the renderer sends the map's bytes only; main picks the folder and the name
+    const request = (saveIntoProject.mock.calls[0] as unknown as [SaveIntoProjectRequest])[0]
+    expect(isXmind(request.bytes)).toBe(true)
+    expect(Object.keys(request).filter((key) => key !== 'defaultName')).toEqual(['bytes'])
+    await settle()
+    expect(status()).toBe('Saved')
+    // a later run is the person's own: no second save into the project
+    act(() => {
+      const box = composer()
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
+      setter.call(box, 'One more branch')
+      box.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await clickSend()
+    expect(fake.requests).toHaveLength(2)
+    expect(saveIntoProject).toHaveBeenCalledTimes(1)
+  })
+
+  it('without a project nothing is written and the map stays untitled, as before', async () => {
+    const saveIntoProject = vi.fn(async (): Promise<SaveIntoProjectResult> => ({
+      ok: false,
+      skipped: true,
+    }))
+    const fake = fakeApi({ pending: null, statuses: CONNECTED, handoff: HANDOFF, saveIntoProject })
+    await mountApp(fake)
+    await until(() => saveIntoProject.mock.calls.length > 0, 'the project save')
+    await settle()
+    expect(status()).not.toBe('Saved')
+    expect(status()).not.toContain('project folder')
+  })
+
+  it('a refused write keeps the map untitled and says why', async () => {
+    const saveIntoProject = vi.fn(async (): Promise<SaveIntoProjectResult> => ({
+      ok: false,
+      error: 'EACCES: denied',
+    }))
+    const fake = fakeApi({ pending: null, statuses: CONNECTED, handoff: HANDOFF, saveIntoProject })
+    await mountApp(fake)
+    await until(() => saveIntoProject.mock.calls.length > 0, 'the project save')
+    await settle()
+    expect(status()).toContain('Could not save it in the project folder')
+    expect(status()).toContain('EACCES: denied')
+  })
+
+  it('a failed run writes nothing', async () => {
+    const saveIntoProject = vi.fn(async (): Promise<SaveIntoProjectResult> => ({
+      ok: true,
+      path: 'D:/Plan/Map.xmind',
+    }))
+    const fake = fakeApi({
+      pending: null,
+      statuses: CONNECTED,
+      handoff: HANDOFF,
+      saveIntoProject,
+      reply: () => [{ type: 'error', error: 'the model failed' }],
+    })
+    await mountApp(fake)
+    expect(fake.requests).toHaveLength(1)
+    await settle()
+    expect(saveIntoProject).not.toHaveBeenCalled()
+  })
+
+  it('a map nobody handed a request to never asks', async () => {
+    const saveIntoProject = vi.fn(async (): Promise<SaveIntoProjectResult> => ({
+      ok: true,
+      path: 'D:/Plan/Map.xmind',
+    }))
+    const fake = fakeApi({ pending: null, statuses: CONNECTED, handoff: null, saveIntoProject })
+    await mountApp(fake)
+    act(() => {
+      const box = composer()
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
+      setter.call(box, 'Make a map')
+      box.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await clickSend()
+    expect(fake.requests).toHaveLength(1)
+    await settle()
+    expect(saveIntoProject).not.toHaveBeenCalled()
   })
 })

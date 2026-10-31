@@ -20,6 +20,15 @@ El editor de libros electrónicos abre libros EPUB (`.epub`) en una pestaña. Pu
 - Un enlace dentro del libro lleva al lugar al que apunta. Los enlaces web y de correo electrónico se abren en su navegador predeterminado; las demás direcciones no se abren.
 - Los scripts propios del libro nunca se ejecutan y no se carga nada de internet. El sonido y el vídeo no se reproducen.
 
+## Vista previa
+
+- Haga clic en **Vista previa** en la pestaña **Inicio** o **Vista** para ver el libro en páginas, como lo muestra un lector electrónico. Se abre en el punto donde está leyendo.
+- En la barra superior, elija la pantalla (**Lector electrónico**, **Teléfono**, **Tableta** o **Ajustar a la ventana**), la orientación horizontal, el tamaño del texto y el fondo (blanco, sepia u oscuro). Una pantalla ancha en horizontal muestra dos páginas una al lado de la otra. Estos ajustes solo cambian la vista previa, nunca el libro.
+- Pase las páginas con las flechas, Re Pág y Av Pág, la barra espaciadora, la rueda del ratón o los botones de cada lado. Al pasar de la última página de un capítulo, se va al siguiente. El índice y los enlaces del libro llevan la vista previa a ese lugar.
+- En la vista previa no se puede editar el texto. Cuando la IA cambia el libro o usted deshace un cambio, la vista previa se actualiza.
+- Haga clic en **Cerrar vista previa** o pulse Esc para volver a editar en el punto que mostraba la vista previa.
+- Los saltos de página varían un poco entre las apps de las tiendas y los dispositivos; tome la vista previa como una aproximación cercana.
+
 ## Editar el texto
 
 - Haga clic en un párrafo y escriba. Se pueden editar párrafos, títulos, elementos de lista, citas, celdas de tabla y pies de imagen. Las imágenes y la estructura de las tablas no.
@@ -63,6 +72,6 @@ El editor de libros electrónicos abre libros EPUB (`.epub`) en una pestaña. Pu
 
 - Añadir, eliminar o reordenar capítulos; cambiar el título, el autor o la portada; insertar imágenes o tablas; convertir un párrafo en título o en lista.
 - Editar o traducir libros de diseño fijo, y abrir libros con protección anticopia.
-- Pasar páginas como en un libro impreso, y crear un libro nuevo y vacío.
+- Crear un libro nuevo y vacío.
 - Comparar el original y la traducción en paralelo dentro del editor. En su lugar, abra el libro bilingüe y corrija el libro traducido como cualquier otro libro.
 - Ocultar partes de un libro a la IA.

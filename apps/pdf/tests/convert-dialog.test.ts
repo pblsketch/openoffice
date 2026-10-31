@@ -251,6 +251,42 @@ describe('conversion dialog: the form', () => {
   })
 })
 
+describe('conversion dialog: Save As › Markdown', () => {
+  it('converts to the picked target at once, without the form', async () => {
+    const fake = fakeApi(TARGET_MD)
+    fake.queue(okResult(TARGET_MD))
+    const { props } = await render({ api: fake.api, initialTarget: TARGET_MD })
+    expect(props.prepare).toHaveBeenCalledTimes(1)
+    expect(fake.api.pickTarget).not.toHaveBeenCalled()
+    expect(fake.api.releaseTarget).toHaveBeenCalledWith({ source: SOURCE, path: TARGET_MD })
+    expect(fake.api.convert.mock.calls[0]![0]).toMatchObject({
+      path: SOURCE,
+      format: 'md',
+      outPath: TARGET_MD,
+    })
+    expect(fake.api.openResult).toHaveBeenCalledWith({ source: SOURCE, path: TARGET_MD })
+    expect(props.onClose).toHaveBeenCalled()
+  })
+
+  it('shows the warnings instead of opening the Markdown', async () => {
+    const fake = fakeApi(TARGET_MD)
+    fake.queue(okResult(TARGET_MD, [{ kind: 'allPagesAsImages', message: 'all pages' }]))
+    const { el } = await render({ api: fake.api, initialTarget: TARGET_MD })
+    expect(fake.api.openResult).not.toHaveBeenCalled()
+    expect(el.textContent).toContain(en.cvWarnAllPagesAsImages)
+    expect(q(el, '[data-action="open-md"]')).not.toBeNull()
+  })
+
+  it('stays on the form when the target is still open in a tab', async () => {
+    const fake = fakeApi(TARGET_MD)
+    fake.api.releaseTarget.mockResolvedValueOnce(false)
+    const { el } = await render({ api: fake.api, initialTarget: TARGET_MD })
+    expect(fake.api.convert).not.toHaveBeenCalled()
+    expect(q(el, '[data-error="run"]')?.textContent).toBe(en.cvErrTargetOpen)
+    expect(q(el, '[data-action="convert"]')).not.toBeNull()
+  })
+})
+
 describe('conversion dialog: EPUB book fields', () => {
   it('prefills title and author from the document information', async () => {
     const fake = fakeApi(TARGET_EPUB)

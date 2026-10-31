@@ -25,7 +25,7 @@ export interface DocPickerInit {
 }
 
 /** pane: the document in the other split pane / open: an open tab / recent: the recent list */
-export type DocItemGroup = 'pane' | 'open' | 'recent'
+export type DocItemGroup = 'pane' | 'open' | 'project' | 'recent'
 /**
  * Only `ok` can be picked. missing: the saved file is gone / unsaved: never
  * saved / modified: a saved document with unsaved changes.

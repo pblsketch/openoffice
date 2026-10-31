@@ -44,7 +44,7 @@ export const pt = {
     'Este login usa uma chave de API ou uma conta de pagamento por consumo, ou não foi possível confirmar o tipo. “Usar mesmo assim” permite que a IA funcione com esta conexão, e cada solicitação é cobrada dessa conta.',
   connectTitle: 'Conecte uma IA para começar',
   connectBody:
-    'A IA funciona com a assinatura do Claude ou do Codex que você já tem. Nenhuma chave de API é necessária.',
+    'A IA funciona com a assinatura do Claude ou do ChatGPT que você já tem. Nenhuma chave de API é necessária.',
   connectProviderTitle: 'A conexão {provider} não pode ser usada agora',
   connectKeyBody:
     'A configuração de {provider} não foi concluída. Conclua-a nas Configurações ou escolha outra IA.',
@@ -70,6 +70,8 @@ export const pt = {
   errFreeLimit:
     'O uso gratuito de hoje acabou. Tente novamente amanhã ou escolha outra IA nas Configurações.',
   errFreeLimitReset: 'O uso gratuito de hoje acabou. Você poderá usá-lo novamente às {time}.',
+  errFreeTierModel:
+    'Este modelo não tem nível gratuito, então uma chave gratuita não pode usá-lo. Escolha um modelo incluído no nível gratuito (como um modelo Flash) ou ative o faturamento no console do provedor.',
   continueWith: 'Continuar com {provider}',
   continueMeteredNote:
     'A conexão {provider} não é uma assinatura: continuar é cobrado por consumo.',

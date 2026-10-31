@@ -88,7 +88,7 @@ describe('first-connection notice', () => {
     expect(dialog()).toBeNull()
   })
 
-  it('comes up the moment a subscription becomes usable, with all three statements', async () => {
+  it('comes up the moment a subscription becomes usable, with all four statements', async () => {
     await render(statuses('signed-out', 'signed-out'))
     expect(dialog()).toBeNull()
 
@@ -97,6 +97,7 @@ describe('first-connection notice', () => {
     expect(lines).toEqual([
       aiSubscriptionText('en', 'noticeSend'),
       aiSubscriptionText('en', 'noticeTraining'),
+      aiSubscriptionText('en', 'noticePdfWholeDocument'),
       aiSubscriptionText('en', 'noticeCodexHistory'),
     ])
     expect(dialog()!.getAttribute('role')).toBe('dialog')

@@ -1,6 +1,6 @@
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { StringDecoder } from 'node:string_decoder'
@@ -23,6 +23,7 @@ import {
 import { AiRunError } from './run-error'
 import { subscriptionModelsOf } from './subscription/contract'
 import { onSubscriptionLoginChange } from './subscription/launch'
+import { createTrackedTempDir, removeTrackedTempDir } from './subscription/temp-dirs'
 import { resolveSubscriptionProgram, type SubscriptionProgram } from './subscription/locate'
 import { setSubscriptionModelSource } from './subscription/models'
 import {
@@ -418,7 +419,7 @@ class CodexAppServerClient {
   /** Drop a session's temp dir and, when the process is still alive, its native
    * thread. `signal` is false during shutdown, where the child is already gone. */
   private disposeSession(session: NativeSession, signal: boolean): void {
-    void rm(session.tempDir, { recursive: true, force: true }).catch(() => undefined)
+    void removeTrackedTempDir(session.tempDir)
     if (signal && !this.closed) {
       void this.requestWire('thread/delete', { threadId: session.threadId }).catch(() => undefined)
     }
@@ -1189,12 +1190,12 @@ async function runCodexAppServer(
     let nextMessages = incrementalMessages(session, signature, messages)
     if (!session || nextMessages === null) {
       if (session) client.deleteSession(nativeSessionId)
-      const tempDir = await mkdtemp(join(tmpdir(), CODEX_TEMP_PREFIX))
+      const tempDir = await createTrackedTempDir(CODEX_TEMP_PREFIX)
       let threadId: string
       try {
         threadId = await startNativeThread(client, { ...config, model }, tempDir)
       } catch (error) {
-        await rm(tempDir, { recursive: true, force: true }).catch(() => undefined)
+        await removeTrackedTempDir(tempDir)
         throw error
       }
       session = { threadId, signature, messageFingerprints: [], tempDir }

@@ -36,6 +36,13 @@ Nel pannello IA degli editor Docs, Sheets, Slides, Hangul, HTML e mappe mentali 
 - Se due documenti hanno lo stesso nome ma stanno in cartelle diverse, viene aggiunto il nome della cartella immediatamente superiore, come in `@piano.docx(2° quadrimestre)`, e anche l'IA riceve quel nome di cartella.
 - Gli editor PDF e Markdown non hanno ancora gli allegati, quindi nessuno dei due modi è disponibile lì.
 
+## Progetti
+
+- Fai clic sul nome del progetto, a sinistra sotto il campo di input, per scegliere un progetto (una cartella del tuo PC). L'IA risponde allora conoscendo i file, le istruzioni e la memoria di quella cartella, e la chat viene conservata lì così puoi continuare in un altro editor. Vedi [Progetti](help://projects).
+- Con un progetto scelto, il titolo della chat attuale compare in cima al pannello. Fai clic per vedere l'elenco delle chat del progetto e **Nuova chat**.
+- L'elenco di `@` nel campo di input mostra «File di questo progetto» dopo i documenti aperti.
+- Una richiesta con un progetto scelto invia all'IA che stai usando anche le istruzioni (insieme ad `AGENTS.md` e `CLAUDE.md` in cima alla cartella, che puoi disattivare nella pagina del progetto), la memoria e l'elenco dei nomi dei file di quel progetto, un breve estratto di ogni file che l'IA trova cercando nella cartella, oltre al testo di ogni file che l'IA legge.
+
 ## Ripristino e sicurezza
 
 - Il pannello di Docs mantiene un **elenco delle versioni**: uno snapshot per turno, puoi tornare a qualunque versione e il ripristino stesso è annullabile con Ctrl+Z. Gli snapshot sopravvivono alla riapertura del documento.

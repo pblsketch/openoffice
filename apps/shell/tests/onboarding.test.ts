@@ -349,7 +349,7 @@ describe('welcome copy', () => {
       expect(body, name).toContain(name)
     }
     expect(body).toContain('Claude')
-    expect(body).toContain('Codex')
+    expect(body).toContain('ChatGPT')
     // the product is named by the title above, and no vendor of the suite is named at all
     expect(`${strings[lang].onbWelcomeSubtitle} ${body}`).not.toMatch(/genoffice/i)
   })

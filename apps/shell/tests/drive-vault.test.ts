@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { createDriveVault, type SecretCipher } from '../src/main/drive/drive-vault'
+import { createDriveVault, driveTokenSeals, type SecretCipher } from '../src/main/drive/drive-vault'
 
 /** reversible stand-in for the OS cipher; marks its output so plain text would show */
 const cipher = (available = true): SecretCipher => ({
@@ -40,5 +40,30 @@ describe('createDriveVault', () => {
     })
     await vault.save('x')
     expect(await vault.load()).toBeNull()
+  })
+})
+
+describe('driveTokenSeals', () => {
+  const storage = (available: boolean, backend?: string) => ({
+    isEncryptionAvailable: () => available,
+    encryptString: (plain: string) => Buffer.from(plain),
+    decryptString: (sealed: Buffer) => sealed.toString(),
+    getSelectedStorageBackend: () => backend ?? 'unknown',
+  })
+
+  it('trusts DPAPI and the keychain', () => {
+    expect(driveTokenSeals(storage(true), 'win32')).toBe(true)
+    expect(driveTokenSeals(storage(true), 'darwin')).toBe(true)
+  })
+
+  it('needs a real keyring on Linux, not the built-in basic_text key', () => {
+    expect(driveTokenSeals(storage(true, 'gnome_libsecret'), 'linux')).toBe(true)
+    expect(driveTokenSeals(storage(true, 'kwallet5'), 'linux')).toBe(true)
+    expect(driveTokenSeals(storage(true, 'basic_text'), 'linux')).toBe(false)
+  })
+
+  it('is false wherever encryption is unavailable', () => {
+    expect(driveTokenSeals(storage(false), 'win32')).toBe(false)
+    expect(driveTokenSeals(storage(false, 'gnome_libsecret'), 'linux')).toBe(false)
   })
 })

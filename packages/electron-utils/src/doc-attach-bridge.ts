@@ -7,8 +7,11 @@ import { DOC_ATTACH_CHANNELS } from './doc-attach-channels'
 export type DocAttachFail = 'cancelled' | 'busy' | 'unavailable'
 export type DocAttachResult = { ok: true; paths: string[] } | { ok: false; reason: DocAttachFail }
 
-/** where a listed document comes from: the other split pane, an open tab, or the recent list */
-export type DocMentionGroup = 'pane' | 'open' | 'recent'
+/**
+ * where a listed document comes from: the other split pane, an open tab, the
+ * files of the panel's project (spec 5.13), or the recent list
+ */
+export type DocMentionGroup = 'pane' | 'open' | 'project' | 'recent'
 /** ok: can be picked / modified: saved but has unsaved changes / unsaved: never saved */
 export type DocMentionState = 'ok' | 'modified' | 'unsaved'
 

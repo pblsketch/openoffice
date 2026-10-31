@@ -134,22 +134,16 @@ export function queryLiteral(value: string): string {
   return `'${value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
 }
 
-/** What a list shows: a folder's children, files shared with the account, recent files, or a search */
-export type DriveListing =
-  | { kind: 'folder'; folderId: string }
-  | { kind: 'shared' }
-  | { kind: 'recent' }
-  | { kind: 'search'; text: string }
+/**
+ * What a list shows: the files the app may open, most recently viewed first,
+ * or a search among them. With the `drive.file` scope Google answers only
+ * with files the person picked in its picker or the app made (decision 0085),
+ * so neither list reaches the rest of the Drive.
+ */
+export type DriveListing = { kind: 'recent' } | { kind: 'search'; text: string }
 
 export function listingQuery(listing: DriveListing): { q: string; orderBy: string } {
   switch (listing.kind) {
-    case 'folder':
-      return {
-        q: `${queryLiteral(listing.folderId)} in parents and trashed = false`,
-        orderBy: 'folder,name_natural',
-      }
-    case 'shared':
-      return { q: 'sharedWithMe = true and trashed = false', orderBy: 'folder,name_natural' }
     case 'recent':
       return {
         q: `mimeType != ${queryLiteral(FOLDER_MIME)} and trashed = false`,
@@ -223,7 +217,7 @@ export class DriveApi {
       pageSize: String(Math.min(Math.max(options.pageSize ?? 100, 1), 1000)),
       supportsAllDrives: 'true',
       includeItemsFromAllDrives: 'true',
-      corpora: listing.kind === 'folder' ? 'allDrives' : 'user',
+      corpora: 'user',
     })
     if (orderBy) params.set('orderBy', orderBy)
     if (options.pageToken) params.set('pageToken', options.pageToken)

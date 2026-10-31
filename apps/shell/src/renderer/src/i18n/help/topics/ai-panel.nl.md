@@ -36,6 +36,13 @@ In het AI-paneel van de editors Docs, Sheets, Slides, Hangul, HTML en mindmaps k
 - Hebben twee documenten dezelfde naam maar staan ze in verschillende mappen, dan wordt de naam van de map direct erboven toegevoegd, zoals in `@plan.docx(2e semester)`, en ook de AI krijgt die mapnaam door.
 - De editors voor PDF en Markdown hebben nog geen bijlagen, dus daar is geen van beide manieren beschikbaar.
 
+## Projecten
+
+- Klik op de projectnaam links onder het invoerveld om een project te kiezen (één map op uw pc). De AI antwoordt dan met kennis van de bestanden, instructies en het geheugen van die map, en de chat wordt in de map bewaard, zodat u in een andere editor verder kunt. Zie [Projecten](help://projects).
+- Met een gekozen project staat de titel van de huidige chat bovenaan het paneel. Klik erop voor de chatlijst van dit project en **Nieuwe chat**.
+- De `@`-lijst in het invoerveld toont na de geopende documenten 'Bestanden in dit project'.
+- Een verzoek met een gekozen project stuurt ook de instructies (met `AGENTS.md` en `CLAUDE.md` bovenin de map, die u op de projectpagina kunt uitzetten), het geheugen en de lijst met bestandsnamen van dat project, een kort fragment van elk bestand dat de AI vindt bij zoeken in de map, en de tekst van elk bestand dat de AI leest, naar de AI die u gebruikt.
+
 ## Terugdraaien en veiligheid
 
 - Het paneel in Docs houdt een **versielijst** bij: één momentopname per beurt, je kunt naar elke terug en die terugstap is zelf met Ctrl+Z ongedaan te maken. Momentopnamen blijven bestaan als je het document opnieuw opent.

@@ -790,7 +790,13 @@ export function jpegSofComponents(data: Uint8Array): number {
   while (i + 3 < data.length) {
     if (data[i] !== 0xff) return 0
     const marker = data[i + 1]!
-    if (marker === 0xd8 || (marker >= 0xd0 && marker <= 0xd7)) {
+    // Any number of 0xFF fill bytes may precede a marker (ITU T.81 B.1.1.2)
+    if (marker === 0xff) {
+      i += 1
+      continue
+    }
+    // Standalone markers (SOI, RSTn, TEM) carry no length field
+    if (marker === 0xd8 || (marker >= 0xd0 && marker <= 0xd7) || marker === 0x01) {
       i += 2
       continue
     }

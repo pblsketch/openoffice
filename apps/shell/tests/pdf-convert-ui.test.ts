@@ -113,6 +113,17 @@ describe('pdf conversion screen: wiring', () => {
     expect(wiring).toContain('pdfPathGranted(viewId, path)')
   })
 
+  it('offers Markdown in the pdf Save As dialog and hands the name to the conversion', () => {
+    const start = index.indexOf('async function savePdfAs(')
+    const end = index.indexOf('let exportingPdfDocx', start)
+    expect(start).toBeGreaterThan(0)
+    expect(end).toBeGreaterThan(start)
+    const flow = index.slice(start, end)
+    expect(flow).toContain("{ name: 'Markdown', extensions: ['md'] }")
+    expect(flow).toContain("grantPdfStructureTarget(tab.webContents, tab.filePath, target, 'md')")
+    expect(flow).toContain("requestPdfConvertDialog(tab.webContents, 'md', target)")
+  })
+
   it('adds Markdown and EPUB to the pdf File menu next to the existing conversions', () => {
     const items = [
       "label: tm('menuExportDocx')",

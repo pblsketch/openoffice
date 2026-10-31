@@ -173,6 +173,8 @@ export const strings = {
     themeSystem: '跟随系统',
     documentTheme: '文档页面主题',
     docThemeFollowApp: '跟随应用主题',
+    setHwpSaveFormat: '新建韩文文档的保存格式',
+    setHwpSaveFormatDesc: '新建韩文文档首次保存时优先提供此格式。已打开的文档仍按其原有格式保存。',
     saveLocation: '默认保存位置',
     setAutoSave: '所有文档自动保存',
     setAutoSaveDesc: '在每个编辑器中默认开启自动保存，仍可在单个窗口中关闭。',
@@ -368,6 +370,7 @@ export const strings = {
     setSecAiModel: 'AI 模型',
     setAiProvider: '模型服务商',
     setAiModelId: '模型',
+    setAiModelType: '输入其他模型…',
     setAiApiKey: 'API Key',
     setAiKeyHint: '密钥仅保存在本机。',
     setAiBaseUrl: 'Base URL',
@@ -446,7 +449,7 @@ export const strings = {
     onbTitle1: '欢迎使用 GenOffice',
     onbWelcomeSubtitle: '开源办公套件',
     onbWelcomeBody:
-      '打开并编辑 Word、Excel、PowerPoint、PDF、Markdown 和 HTML 文档。AI 通过你已有的 Claude 或 Codex 订阅运行，也可以通过免费 AI 连接运行。',
+      '打开并编辑 Word、Excel、PowerPoint、PDF、Markdown 和 HTML 文档。AI 通过你已有的 Claude 或 ChatGPT 订阅运行，也可以通过免费 AI 连接运行。',
     onbSkip: '跳过',
     onbNext: '下一步',
     onbStart: '开始使用',
@@ -731,6 +734,9 @@ export const strings = {
     themeSystem: 'Follow System',
     documentTheme: 'Document page theme',
     docThemeFollowApp: 'Follow app theme',
+    setHwpSaveFormat: 'Save format for new HWP documents',
+    setHwpSaveFormatDesc:
+      'When you first save a new HWP document, this format is offered first. Documents you open keep their own format.',
     saveLocation: 'Save Location',
     setAutoSave: 'Auto-save all documents',
     setAutoSaveDesc:
@@ -941,6 +947,7 @@ export const strings = {
     setSecAiModel: 'AI Model',
     setAiProvider: 'Provider',
     setAiModelId: 'Model',
+    setAiModelType: 'Enter another model…',
     setAiApiKey: 'API Key',
     setAiKeyHint: 'Stored only on this device.',
     setAiBaseUrl: 'Base URL',
@@ -1020,7 +1027,7 @@ export const strings = {
     onbTitle1: 'Welcome to GenOffice',
     onbWelcomeSubtitle: 'An open-source office suite',
     onbWelcomeBody:
-      'Open and edit Word, Excel, PowerPoint, PDF, Markdown and HTML documents. AI works through the Claude or Codex subscription you already have, or through a free AI connection.',
+      'Open and edit Word, Excel, PowerPoint, PDF, Markdown and HTML documents. AI works through the Claude or ChatGPT subscription you already have, or through a free AI connection.',
     onbSkip: 'Skip',
     onbNext: 'Next',
     onbStart: 'Get started',
@@ -1314,6 +1321,9 @@ export const strings = {
     themeSystem: 'Theo hệ thống',
     documentTheme: 'Chủ đề trang tài liệu',
     docThemeFollowApp: 'Theo chủ đề ứng dụng',
+    setHwpSaveFormat: 'Định dạng lưu cho tài liệu HWP mới',
+    setHwpSaveFormatDesc:
+      'Lần lưu đầu tiên của tài liệu HWP mới sẽ ưu tiên định dạng này. Tài liệu đã mở vẫn được lưu theo định dạng của nó.',
     saveLocation: 'Vị trí lưu',
     setAutoSave: 'Tự động lưu tất cả tài liệu',
     setAutoSaveDesc:
@@ -1525,6 +1535,7 @@ export const strings = {
     setSecAiModel: 'Mô hình AI',
     setAiProvider: 'Nhà cung cấp',
     setAiModelId: 'Mô hình',
+    setAiModelType: 'Nhập mô hình khác…',
     setAiApiKey: 'Khóa API',
     setAiKeyHint: 'Chỉ được lưu trữ trên thiết bị này.',
     setAiBaseUrl: 'URL cơ sở',
@@ -1604,7 +1615,7 @@ export const strings = {
     onbTitle1: 'Chào mừng đến với GenOffice',
     onbWelcomeSubtitle: 'Bộ ứng dụng văn phòng mã nguồn mở',
     onbWelcomeBody:
-      'Mở và chỉnh sửa tài liệu Word, Excel, PowerPoint, PDF, Markdown và HTML. AI hoạt động qua gói đăng ký Claude hoặc Codex mà bạn đã có, hoặc qua kết nối AI miễn phí.',
+      'Mở và chỉnh sửa tài liệu Word, Excel, PowerPoint, PDF, Markdown và HTML. AI hoạt động qua gói đăng ký Claude hoặc ChatGPT mà bạn đã có, hoặc qua kết nối AI miễn phí.',
     onbSkip: 'Bỏ qua',
     onbNext: 'Tiếp theo',
     onbStart: 'Bắt đầu',
@@ -1906,6 +1917,9 @@ export const strings = {
     themeSystem: 'システムに従う',
     documentTheme: 'ドキュメントページのテーマ',
     docThemeFollowApp: 'アプリのテーマに従う',
+    setHwpSaveFormat: '新規 HWP 文書の保存形式',
+    setHwpSaveFormatDesc:
+      '新規 HWP 文書を初めて保存するとき、この形式を優先して提案します。開いた文書は元の形式のまま保存されます。',
     saveLocation: '保存先',
     setAutoSave: 'すべてのドキュメントを自動保存',
     setAutoSaveDesc:
@@ -2119,6 +2133,7 @@ export const strings = {
     setSecAiModel: 'AIモデル',
     setAiProvider: 'プロバイダー',
     setAiModelId: 'モデル',
+    setAiModelType: '別のモデルを入力…',
     setAiApiKey: 'APIキー',
     setAiKeyHint: 'キーはこの端末にのみ保存されます。',
     setAiBaseUrl: 'Base URL',
@@ -2201,7 +2216,7 @@ export const strings = {
     onbTitle1: 'GenOffice へようこそ',
     onbWelcomeSubtitle: 'オープンソースのオフィススイート',
     onbWelcomeBody:
-      'Word、Excel、PowerPoint、PDF、Markdown、HTML の文書を開いて編集できます。AI は、すでにお持ちの Claude または Codex のサブスクリプション、または無料の AI 接続で動作します。',
+      'Word、Excel、PowerPoint、PDF、Markdown、HTML の文書を開いて編集できます。AI は、すでにお持ちの Claude または ChatGPT のサブスクリプション、または無料の AI 接続で動作します。',
     onbSkip: 'スキップ',
     onbNext: '次へ',
     onbStart: 'はじめる',
@@ -2504,6 +2519,9 @@ export const strings = {
     themeSystem: '시스템 설정 따르기',
     documentTheme: '문서 페이지 테마',
     docThemeFollowApp: '앱 테마 따르기',
+    setHwpSaveFormat: '새 한글 문서 저장 형식',
+    setHwpSaveFormatDesc:
+      '새 한글 문서를 처음 저장할 때 이 형식을 먼저 제안합니다. 이미 연 문서는 그 문서의 형식 그대로 저장합니다.',
     saveLocation: '저장 위치',
     setAutoSave: '모든 문서 자동 저장',
     setAutoSaveDesc: '모든 편집기에서 자동 저장을 기본으로 켭니다. 개별 창에서는 끌 수 있습니다.',
@@ -2710,6 +2728,7 @@ export const strings = {
     setSecAiModel: 'AI 모델',
     setAiProvider: '제공업체',
     setAiModelId: '모델',
+    setAiModelType: '다른 모델 직접 입력…',
     setAiApiKey: 'API 키',
     setAiKeyHint: '키는 이 기기에만 저장됩니다.',
     setAiBaseUrl: 'Base URL',
@@ -2789,7 +2808,7 @@ export const strings = {
     onbTitle1: 'GenOffice에 오신 것을 환영합니다',
     onbWelcomeSubtitle: '오픈소스 오피스 제품군',
     onbWelcomeBody:
-      'Word, Excel, PowerPoint, PDF, Markdown, HTML 문서를 열고 편집합니다. AI는 이미 쓰고 있는 Claude·Codex 구독이나 무료 AI 연결로 동작합니다.',
+      'Word, Excel, PowerPoint, PDF, Markdown, HTML 문서를 열고 편집합니다. AI는 이미 쓰고 있는 Claude·ChatGPT 구독이나 무료 AI 연결로 동작합니다.',
     onbSkip: '건너뛰기',
     onbNext: '다음',
     onbStart: '시작하기',
@@ -3091,6 +3110,9 @@ export const strings = {
     themeSystem: 'Suivre le système',
     documentTheme: 'Thème de la page de document',
     docThemeFollowApp: 'Suivre le thème de l’application',
+    setHwpSaveFormat: "Format d'enregistrement des nouveaux documents HWP",
+    setHwpSaveFormatDesc:
+      "Le premier enregistrement d'un nouveau document HWP propose ce format. Les documents ouverts conservent leur propre format.",
     saveLocation: "Emplacement d'enregistrement",
     setAutoSave: 'Enregistrer automatiquement tous les documents',
     setAutoSaveDesc:
@@ -3305,6 +3327,7 @@ export const strings = {
     setSecAiModel: 'Modèle IA',
     setAiProvider: 'Fournisseur',
     setAiModelId: 'Modèle',
+    setAiModelType: 'Saisir un autre modèle…',
     setAiApiKey: 'Clé API',
     setAiKeyHint: 'Stockée uniquement sur cet appareil.',
     setAiBaseUrl: 'Base URL',
@@ -3389,7 +3412,7 @@ export const strings = {
     onbTitle1: 'Bienvenue dans GenOffice',
     onbWelcomeSubtitle: 'Une suite bureautique open source',
     onbWelcomeBody:
-      'Ouvrez et modifiez des documents Word, Excel, PowerPoint, PDF, Markdown et HTML. L’IA fonctionne avec l’abonnement Claude ou Codex que vous avez déjà, ou avec une connexion à une IA gratuite.',
+      'Ouvrez et modifiez des documents Word, Excel, PowerPoint, PDF, Markdown et HTML. L’IA fonctionne avec l’abonnement Claude ou ChatGPT que vous avez déjà, ou avec une connexion à une IA gratuite.',
     onbSkip: 'Passer',
     onbNext: 'Suivant',
     onbStart: 'Commencer',
@@ -3699,6 +3722,9 @@ export const strings = {
     themeSystem: 'System folgen',
     documentTheme: 'Dokumentseitenthema',
     docThemeFollowApp: 'App-Thema übernehmen',
+    setHwpSaveFormat: 'Speicherformat für neue HWP-Dokumente',
+    setHwpSaveFormatDesc:
+      'Beim ersten Speichern eines neuen HWP-Dokuments wird dieses Format zuerst angeboten. Geöffnete Dokumente behalten ihr eigenes Format.',
     saveLocation: 'Speicherort',
     setAutoSave: 'Alle Dokumente automatisch speichern',
     setAutoSaveDesc:
@@ -3915,6 +3941,7 @@ export const strings = {
     setSecAiModel: 'KI-Modell',
     setAiProvider: 'Anbieter',
     setAiModelId: 'Modell',
+    setAiModelType: 'Anderes Modell eingeben…',
     setAiApiKey: 'API-Schlüssel',
     setAiKeyHint: 'Wird nur auf diesem Gerät gespeichert.',
     setAiBaseUrl: 'Base URL',
@@ -3997,7 +4024,7 @@ export const strings = {
     onbTitle1: 'Willkommen bei GenOffice',
     onbWelcomeSubtitle: 'Eine quelloffene Office-Suite',
     onbWelcomeBody:
-      'Öffnen und bearbeiten Sie Word-, Excel-, PowerPoint-, PDF-, Markdown- und HTML-Dokumente. Die KI läuft über das Claude- oder Codex-Abonnement, das Sie bereits haben, oder über eine kostenlose KI-Verbindung.',
+      'Öffnen und bearbeiten Sie Word-, Excel-, PowerPoint-, PDF-, Markdown- und HTML-Dokumente. Die KI läuft über das Claude- oder ChatGPT-Abonnement, das Sie bereits haben, oder über eine kostenlose KI-Verbindung.',
     onbSkip: 'Überspringen',
     onbNext: 'Weiter',
     onbStart: 'Loslegen',
@@ -4310,6 +4337,9 @@ export const strings = {
     themeSystem: 'Seguir el sistema',
     documentTheme: 'Tema de la página del documento',
     docThemeFollowApp: 'Seguir el tema de la aplicación',
+    setHwpSaveFormat: 'Formato de guardado de nuevos documentos HWP',
+    setHwpSaveFormatDesc:
+      'El primer guardado de un documento HWP nuevo propone este formato. Los documentos abiertos conservan su propio formato.',
     saveLocation: 'Ubicación de guardado',
     setAutoSave: 'Guardar automáticamente todos los documentos',
     setAutoSaveDesc:
@@ -4523,6 +4553,7 @@ export const strings = {
     setSecAiModel: 'Modelo de IA',
     setAiProvider: 'Proveedor',
     setAiModelId: 'Modelo',
+    setAiModelType: 'Escribir otro modelo…',
     setAiApiKey: 'Clave de API',
     setAiKeyHint: 'Se guarda solo en este dispositivo.',
     setAiBaseUrl: 'Base URL',
@@ -4605,7 +4636,7 @@ export const strings = {
     onbTitle1: 'Bienvenido a GenOffice',
     onbWelcomeSubtitle: 'Una suite ofimática de código abierto',
     onbWelcomeBody:
-      'Abre y edita documentos de Word, Excel, PowerPoint, PDF, Markdown y HTML. La IA funciona con la suscripción de Claude o Codex que ya tienes, o con una conexión a una IA gratuita.',
+      'Abre y edita documentos de Word, Excel, PowerPoint, PDF, Markdown y HTML. La IA funciona con la suscripción de Claude o ChatGPT que ya tienes, o con una conexión a una IA gratuita.',
     onbSkip: 'Omitir',
     onbNext: 'Siguiente',
     onbStart: 'Empezar',
@@ -4906,6 +4937,9 @@ export const strings = {
     themeSystem: 'ตามระบบ',
     documentTheme: 'ธีมหน้าเอกสาร',
     docThemeFollowApp: 'ตามธีมของแอป',
+    setHwpSaveFormat: 'รูปแบบการบันทึกสำหรับเอกสาร HWP ใหม่',
+    setHwpSaveFormatDesc:
+      'การบันทึกครั้งแรกของเอกสาร HWP ใหม่จะเสนอรูปแบบนี้ก่อน เอกสารที่เปิดอยู่จะบันทึกตามรูปแบบเดิมของเอกสาร',
     saveLocation: 'ตำแหน่งบันทึก',
     setAutoSave: 'บันทึกอัตโนมัติทุกเอกสาร',
     setAutoSaveDesc: 'เปิดบันทึกอัตโนมัติเป็นค่าเริ่มต้นในทุกตัวแก้ไข คุณยังปิดได้ในแต่ละหน้าต่าง',
@@ -5110,6 +5144,7 @@ export const strings = {
     setSecAiModel: 'โมเดล AI',
     setAiProvider: 'ผู้ให้บริการ',
     setAiModelId: 'โมเดล',
+    setAiModelType: 'พิมพ์ชื่อโมเดลอื่น…',
     setAiApiKey: 'คีย์ API',
     setAiKeyHint: 'จัดเก็บไว้ในเครื่องนี้เท่านั้น',
     setAiBaseUrl: 'Base URL',
@@ -5189,7 +5224,7 @@ export const strings = {
     onbTitle1: 'ยินดีต้อนรับสู่ GenOffice',
     onbWelcomeSubtitle: 'ชุดโปรแกรมออฟฟิศโอเพนซอร์ส',
     onbWelcomeBody:
-      'เปิดและแก้ไขเอกสาร Word, Excel, PowerPoint, PDF, Markdown และ HTML โดย AI ทำงานผ่านการสมัครสมาชิก Claude หรือ Codex ที่คุณมีอยู่แล้ว หรือผ่านการเชื่อมต่อ AI ฟรี',
+      'เปิดและแก้ไขเอกสาร Word, Excel, PowerPoint, PDF, Markdown และ HTML โดย AI ทำงานผ่านการสมัครสมาชิก Claude หรือ ChatGPT ที่คุณมีอยู่แล้ว หรือผ่านการเชื่อมต่อ AI ฟรี',
     onbSkip: 'ข้าม',
     onbNext: 'ถัดไป',
     onbStart: 'เริ่มใช้งาน',
@@ -5492,6 +5527,9 @@ export const strings = {
     themeSystem: 'Ikuti Sistem',
     documentTheme: 'Tema halaman dokumen',
     docThemeFollowApp: 'Ikuti tema aplikasi',
+    setHwpSaveFormat: 'Format penyimpanan dokumen HWP baru',
+    setHwpSaveFormatDesc:
+      'Penyimpanan pertama dokumen HWP baru menawarkan format ini. Dokumen yang dibuka tetap disimpan dalam formatnya sendiri.',
     saveLocation: 'Lokasi penyimpanan',
     setAutoSave: 'Simpan otomatis semua dokumen',
     setAutoSaveDesc:
@@ -5703,6 +5741,7 @@ export const strings = {
     setSecAiModel: 'Model AI',
     setAiProvider: 'Penyedia',
     setAiModelId: 'Model',
+    setAiModelType: 'Ketik model lain…',
     setAiApiKey: 'Kunci API',
     setAiKeyHint: 'Hanya disimpan di perangkat ini.',
     setAiBaseUrl: 'Base URL',
@@ -5783,7 +5822,7 @@ export const strings = {
     onbTitle1: 'Selamat datang di GenOffice',
     onbWelcomeSubtitle: 'Suite office open source',
     onbWelcomeBody:
-      'Buka dan edit dokumen Word, Excel, PowerPoint, PDF, Markdown, dan HTML. AI berjalan melalui langganan Claude atau Codex yang sudah Anda miliki, atau melalui koneksi AI gratis.',
+      'Buka dan edit dokumen Word, Excel, PowerPoint, PDF, Markdown, dan HTML. AI berjalan melalui langganan Claude atau ChatGPT yang sudah Anda miliki, atau melalui koneksi AI gratis.',
     onbSkip: 'Lewati',
     onbNext: 'Berikutnya',
     onbStart: 'Mulai',
@@ -6089,6 +6128,9 @@ export const strings = {
     themeSystem: 'Как в системе',
     documentTheme: 'Тема страницы документа',
     docThemeFollowApp: 'Как в теме приложения',
+    setHwpSaveFormat: 'Формат сохранения новых документов HWP',
+    setHwpSaveFormatDesc:
+      'При первом сохранении нового документа HWP этот формат предлагается первым. Открытые документы сохраняются в своём формате.',
     saveLocation: 'Папка сохранения',
     setAutoSave: 'Автосохранение всех документов',
     setAutoSaveDesc:
@@ -6300,6 +6342,7 @@ export const strings = {
     setSecAiModel: 'Модель ИИ',
     setAiProvider: 'Провайдер',
     setAiModelId: 'Модель',
+    setAiModelType: 'Ввести другую модель…',
     setAiApiKey: 'API-ключ',
     setAiKeyHint: 'Хранится только на этом устройстве.',
     setAiBaseUrl: 'Базовый URL',
@@ -6383,7 +6426,7 @@ export const strings = {
     onbTitle1: 'Добро пожаловать в GenOffice',
     onbWelcomeSubtitle: 'Офисный пакет с открытым исходным кодом',
     onbWelcomeBody:
-      'Открывайте и редактируйте документы Word, Excel, PowerPoint, PDF, Markdown и HTML. ИИ работает через уже имеющуюся у вас подписку Claude или Codex либо через бесплатное подключение к ИИ.',
+      'Открывайте и редактируйте документы Word, Excel, PowerPoint, PDF, Markdown и HTML. ИИ работает через уже имеющуюся у вас подписку Claude или ChatGPT либо через бесплатное подключение к ИИ.',
     onbSkip: 'Пропустить',
     onbNext: 'Далее',
     onbStart: 'Начать',
@@ -6686,6 +6729,9 @@ export const strings = {
     themeSystem: 'اتباع النظام',
     documentTheme: 'سمة صفحة المستند',
     docThemeFollowApp: 'اتباع سمة التطبيق',
+    setHwpSaveFormat: 'صيغة حفظ مستندات HWP الجديدة',
+    setHwpSaveFormatDesc:
+      'يعرض الحفظ الأول لمستند HWP جديد هذه الصيغة أولاً. تحتفظ المستندات المفتوحة بصيغتها الخاصة.',
     saveLocation: 'موقع الحفظ',
     setAutoSave: 'حفظ جميع المستندات تلقائيًا',
     setAutoSaveDesc:
@@ -6891,6 +6937,7 @@ export const strings = {
     setSecAiModel: 'نموذج الذكاء الاصطناعي',
     setAiProvider: 'المزوّد',
     setAiModelId: 'النموذج',
+    setAiModelType: 'إدخال نموذج آخر…',
     setAiApiKey: 'مفتاح API',
     setAiKeyHint: 'يُحفظ على هذا الجهاز فقط.',
     setAiBaseUrl: 'Base URL',
@@ -6970,7 +7017,7 @@ export const strings = {
     onbTitle1: 'مرحبًا بك في GenOffice',
     onbWelcomeSubtitle: 'حزمة مكتبية مفتوحة المصدر',
     onbWelcomeBody:
-      'افتح مستندات Word وExcel وPowerPoint وPDF وMarkdown وHTML وحرّرها. يعمل الذكاء الاصطناعي عبر اشتراك Claude أو Codex الذي لديك بالفعل، أو عبر اتصال مجاني بذكاء اصطناعي.',
+      'افتح مستندات Word وExcel وPowerPoint وPDF وMarkdown وHTML وحرّرها. يعمل الذكاء الاصطناعي عبر اشتراك Claude أو ChatGPT الذي لديك بالفعل، أو عبر اتصال مجاني بذكاء اصطناعي.',
     onbSkip: 'تخطي',
     onbNext: 'التالي',
     onbStart: 'ابدأ الآن',
@@ -7267,6 +7314,9 @@ export const strings = {
     themeSystem: 'Seguir o Sistema',
     documentTheme: 'Tema da página do documento',
     docThemeFollowApp: 'Seguir o tema do aplicativo',
+    setHwpSaveFormat: 'Formato de salvamento de novos documentos HWP',
+    setHwpSaveFormatDesc:
+      'O primeiro salvamento de um novo documento HWP oferece este formato. Os documentos abertos mantêm o próprio formato.',
     saveLocation: 'Local de salvamento',
     setAutoSave: 'Salvar automaticamente todos os documentos',
     setAutoSaveDesc:
@@ -7481,6 +7531,7 @@ export const strings = {
     setSecAiModel: 'Modelo de IA',
     setAiProvider: 'Provedor',
     setAiModelId: 'Modelo',
+    setAiModelType: 'Digitar outro modelo…',
     setAiApiKey: 'Chave de API',
     setAiKeyHint: 'Armazenada apenas neste dispositivo.',
     setAiBaseUrl: 'Base URL',
@@ -7561,7 +7612,7 @@ export const strings = {
     onbTitle1: 'Bem-vindo ao GenOffice',
     onbWelcomeSubtitle: 'Uma suíte de escritório de código aberto',
     onbWelcomeBody:
-      'Abra e edite documentos do Word, Excel, PowerPoint, PDF, Markdown e HTML. A IA funciona com a assinatura do Claude ou do Codex que você já tem, ou com uma conexão de IA gratuita.',
+      'Abra e edite documentos do Word, Excel, PowerPoint, PDF, Markdown e HTML. A IA funciona com a assinatura do Claude ou do ChatGPT que você já tem, ou com uma conexão de IA gratuita.',
     onbSkip: 'Pular',
     onbNext: 'Avançar',
     onbStart: 'Começar',
@@ -7860,6 +7911,9 @@ export const strings = {
     themeSystem: 'Segui il sistema',
     documentTheme: 'Tema della pagina del documento',
     docThemeFollowApp: 'Segui il tema dell’applicazione',
+    setHwpSaveFormat: 'Formato di salvataggio dei nuovi documenti HWP',
+    setHwpSaveFormatDesc:
+      'Il primo salvataggio di un nuovo documento HWP propone questo formato. I documenti aperti mantengono il proprio formato.',
     saveLocation: 'Posizione di salvataggio',
     setAutoSave: 'Salva automaticamente tutti i documenti',
     setAutoSaveDesc:
@@ -8073,6 +8127,7 @@ export const strings = {
     setSecAiModel: 'Modello IA',
     setAiProvider: 'Provider',
     setAiModelId: 'Modello',
+    setAiModelType: 'Inserisci un altro modello…',
     setAiApiKey: 'Chiave API',
     setAiKeyHint: 'Salvata solo su questo dispositivo.',
     setAiBaseUrl: 'Base URL',
@@ -8153,7 +8208,7 @@ export const strings = {
     onbTitle1: 'Benvenuto in GenOffice',
     onbWelcomeSubtitle: 'Una suite per ufficio open source',
     onbWelcomeBody:
-      'Apri e modifica documenti Word, Excel, PowerPoint, PDF, Markdown e HTML. L’IA funziona con l’abbonamento Claude o Codex che hai già, oppure con un collegamento a un’IA gratuita.',
+      'Apri e modifica documenti Word, Excel, PowerPoint, PDF, Markdown e HTML. L’IA funziona con l’abbonamento Claude o ChatGPT che hai già, oppure con un collegamento a un’IA gratuita.',
     onbSkip: 'Salta',
     onbNext: 'Avanti',
     onbStart: 'Inizia',
@@ -8453,6 +8508,9 @@ export const strings = {
     themeSystem: 'Zgodnie z systemem',
     documentTheme: 'Motyw strony dokumentu',
     docThemeFollowApp: 'Zgodnie z motywem aplikacji',
+    setHwpSaveFormat: 'Format zapisu nowych dokumentów HWP',
+    setHwpSaveFormatDesc:
+      'Przy pierwszym zapisie nowego dokumentu HWP ten format jest proponowany jako pierwszy. Otwarte dokumenty zachowują swój format.',
     saveLocation: 'Lokalizacja zapisu',
     setAutoSave: 'Automatycznie zapisuj wszystkie dokumenty',
     setAutoSaveDesc:
@@ -8663,6 +8721,7 @@ export const strings = {
     setSecAiModel: 'Model AI',
     setAiProvider: 'Dostawca',
     setAiModelId: 'Model',
+    setAiModelType: 'Wpisz inny model…',
     setAiApiKey: 'Klucz API',
     setAiKeyHint: 'Przechowywany tylko na tym urządzeniu.',
     setAiBaseUrl: 'Base URL',
@@ -8743,7 +8802,7 @@ export const strings = {
     onbTitle1: 'Witamy w GenOffice',
     onbWelcomeSubtitle: 'Otwartoźródłowy pakiet biurowy',
     onbWelcomeBody:
-      'Otwieraj i edytuj dokumenty Word, Excel, PowerPoint, PDF, Markdown i HTML. AI działa w ramach subskrypcji Claude lub Codex, którą już masz, albo przez darmowe połączenie z AI.',
+      'Otwieraj i edytuj dokumenty Word, Excel, PowerPoint, PDF, Markdown i HTML. AI działa w ramach subskrypcji Claude lub ChatGPT, którą już masz, albo przez darmowe połączenie z AI.',
     onbSkip: 'Pomiń',
     onbNext: 'Dalej',
     onbStart: 'Rozpocznij',
@@ -9040,6 +9099,9 @@ export const strings = {
     themeSystem: 'Podle systému',
     documentTheme: 'Motiv stránky dokumentu',
     docThemeFollowApp: 'Podle motivu aplikace',
+    setHwpSaveFormat: 'Formát ukládání nových dokumentů HWP',
+    setHwpSaveFormatDesc:
+      'Při prvním uložení nového dokumentu HWP se nabídne nejprve tento formát. Otevřené dokumenty se ukládají ve svém formátu.',
     saveLocation: 'Umístění pro ukládání',
     settings: 'Nastavení',
     setSecAccount: 'Účet',
@@ -9201,6 +9263,7 @@ export const strings = {
     setSecAiModel: 'Model AI',
     setAiProvider: 'Poskytovatel',
     setAiModelId: 'Model',
+    setAiModelType: 'Zadat jiný model…',
     setAiApiKey: 'Klíč API',
     setAiKeyHint: 'Ukládá se pouze na tomto zařízení.',
     setAiBaseUrl: 'Základní URL',
@@ -9281,7 +9344,7 @@ export const strings = {
     onbTitle1: 'Vítejte v GenOffice',
     onbWelcomeSubtitle: 'Kancelářský balík s otevřeným zdrojovým kódem',
     onbWelcomeBody:
-      'Otevírejte a upravujte dokumenty Word, Excel, PowerPoint, PDF, Markdown a HTML. AI funguje přes předplatné Claude nebo Codex, které už máte, nebo přes bezplatné připojení k AI.',
+      'Otevírejte a upravujte dokumenty Word, Excel, PowerPoint, PDF, Markdown a HTML. AI funguje přes předplatné Claude nebo ChatGPT, které už máte, nebo přes bezplatné připojení k AI.',
     onbSkip: 'Přeskočit',
     onbNext: 'Další',
     onbStart: 'Začít',
@@ -9625,6 +9688,9 @@ export const strings = {
     themeSystem: 'Systeem volgen',
     documentTheme: 'Documentpaginathema',
     docThemeFollowApp: 'App-thema volgen',
+    setHwpSaveFormat: 'Opslagformaat voor nieuwe HWP-documenten',
+    setHwpSaveFormatDesc:
+      'Bij de eerste opslag van een nieuw HWP-document wordt dit formaat als eerste aangeboden. Geopende documenten behouden hun eigen formaat.',
     saveLocation: 'Opslaglocatie',
     setAutoSave: 'Alle documenten automatisch opslaan',
     setAutoSaveDesc:
@@ -9837,6 +9903,7 @@ export const strings = {
     setSecAiModel: 'AI-model',
     setAiProvider: 'Provider',
     setAiModelId: 'Model',
+    setAiModelType: 'Ander model invoeren…',
     setAiApiKey: 'API-sleutel',
     setAiKeyHint: 'Alleen op dit apparaat opgeslagen.',
     setAiBaseUrl: 'Base URL',
@@ -9916,7 +9983,7 @@ export const strings = {
     onbTitle1: 'Welkom bij GenOffice',
     onbWelcomeSubtitle: 'Een opensource-officesuite',
     onbWelcomeBody:
-      'Open en bewerk Word-, Excel-, PowerPoint-, PDF-, Markdown- en HTML-documenten. AI werkt via het Claude- of Codex-abonnement dat je al hebt, of via een gratis AI-verbinding.',
+      'Open en bewerk Word-, Excel-, PowerPoint-, PDF-, Markdown- en HTML-documenten. AI werkt via het Claude- of ChatGPT-abonnement dat je al hebt, of via een gratis AI-verbinding.',
     onbSkip: 'Overslaan',
     onbNext: 'Volgende',
     onbStart: 'Aan de slag',
@@ -10215,6 +10282,9 @@ export const strings = {
     themeSystem: 'Ikut Sistem',
     documentTheme: 'Tema halaman dokumen',
     docThemeFollowApp: 'Ikut tema aplikasi',
+    setHwpSaveFormat: 'Format simpanan dokumen HWP baharu',
+    setHwpSaveFormatDesc:
+      'Simpanan pertama dokumen HWP baharu menawarkan format ini dahulu. Dokumen yang dibuka kekal dalam formatnya sendiri.',
     saveLocation: 'Lokasi simpanan',
     setAutoSave: 'Simpan automatik semua dokumen',
     setAutoSaveDesc:
@@ -10429,6 +10499,7 @@ export const strings = {
     setSecAiModel: 'Model AI',
     setAiProvider: 'Penyedia',
     setAiModelId: 'Model',
+    setAiModelType: 'Taip model lain…',
     setAiApiKey: 'Kunci API',
     setAiKeyHint: 'Disimpan pada peranti ini sahaja.',
     setAiBaseUrl: 'Base URL',
@@ -10509,7 +10580,7 @@ export const strings = {
     onbTitle1: 'Selamat datang ke GenOffice',
     onbWelcomeSubtitle: 'Suite pejabat sumber terbuka',
     onbWelcomeBody:
-      'Buka dan sunting dokumen Word, Excel, PowerPoint, PDF, Markdown dan HTML. AI berfungsi melalui langganan Claude atau Codex yang sudah anda miliki, atau melalui sambungan AI percuma.',
+      'Buka dan sunting dokumen Word, Excel, PowerPoint, PDF, Markdown dan HTML. AI berfungsi melalui langganan Claude atau ChatGPT yang sudah anda miliki, atau melalui sambungan AI percuma.',
     onbSkip: 'Langkau',
     onbNext: 'Seterusnya',
     onbStart: 'Mula',
@@ -10804,6 +10875,9 @@ export const strings = {
     themeSystem: 'עקוב אחר המערכת',
     documentTheme: 'ערכת נושא של דף המסמך',
     docThemeFollowApp: 'לפי ערכת הנושא של האפליקציה',
+    setHwpSaveFormat: 'תבנית שמירה למסמכי HWP חדשים',
+    setHwpSaveFormatDesc:
+      'בשמירה הראשונה של מסמך HWP חדש מוצעת תבנית זו תחילה. מסמכים שנפתחו נשמרים בתבנית שלהם.',
     saveLocation: 'מיקום שמירה',
     setAutoSave: 'שמירה אוטומטית של כל המסמכים',
     setAutoSaveDesc: 'מפעיל שמירה אוטומטית כברירת מחדל בכל עורך. עדיין אפשר לכבות אותה בחלון בודד.',
@@ -11005,6 +11079,7 @@ export const strings = {
     setSecAiModel: 'מודל AI',
     setAiProvider: 'ספק',
     setAiModelId: 'מודל',
+    setAiModelType: 'הזנת מודל אחר…',
     setAiApiKey: 'מפתח API',
     setAiKeyHint: 'נשמר רק במכשיר זה.',
     setAiBaseUrl: 'Base URL',
@@ -11082,7 +11157,7 @@ export const strings = {
     onbTitle1: 'ברוכים הבאים ל-GenOffice',
     onbWelcomeSubtitle: 'חבילת משרד בקוד פתוח',
     onbWelcomeBody:
-      'פתחו וערכו מסמכי Word, Excel, PowerPoint, PDF, Markdown ו-HTML. ה-AI פועל דרך מינוי Claude או Codex שכבר יש לכם, או דרך חיבור ל-AI בחינם.',
+      'פתחו וערכו מסמכי Word, Excel, PowerPoint, PDF, Markdown ו-HTML. ה-AI פועל דרך מינוי Claude או ChatGPT שכבר יש לכם, או דרך חיבור ל-AI בחינם.',
     onbSkip: 'דילוג',
     onbNext: 'הבא',
     onbStart: 'להתחיל',
@@ -11372,6 +11447,9 @@ export const strings = {
     themeSystem: 'सिस्टम का अनुसरण करें',
     documentTheme: 'दस्तावेज़ पृष्ठ थीम',
     docThemeFollowApp: 'ऐप थीम के अनुसार',
+    setHwpSaveFormat: 'नए HWP दस्तावेज़ों का सहेजने का प्रारूप',
+    setHwpSaveFormatDesc:
+      'नए HWP दस्तावेज़ को पहली बार सहेजते समय यह प्रारूप पहले सुझाया जाता है। खोले गए दस्तावेज़ अपने ही प्रारूप में सहेजे जाते हैं।',
     saveLocation: 'सहेजने का स्थान',
     setAutoSave: 'सभी दस्तावेज़ स्वतः सहेजें',
     setAutoSaveDesc:
@@ -11581,6 +11659,7 @@ export const strings = {
     setSecAiModel: 'AI मॉडल',
     setAiProvider: 'प्रदाता',
     setAiModelId: 'मॉडल',
+    setAiModelType: 'दूसरा मॉडल लिखें…',
     setAiApiKey: 'API कुंजी',
     setAiKeyHint: 'केवल इसी डिवाइस पर संग्रहीत।',
     setAiBaseUrl: 'Base URL',
@@ -11660,7 +11739,7 @@ export const strings = {
     onbTitle1: 'GenOffice में आपका स्वागत है',
     onbWelcomeSubtitle: 'ओपन-सोर्स ऑफ़िस सुइट',
     onbWelcomeBody:
-      'Word, Excel, PowerPoint, PDF, Markdown और HTML दस्तावेज़ खोलें और संपादित करें। AI आपकी मौजूदा Claude या Codex सदस्यता के ज़रिए, या मुफ़्त AI कनेक्शन के ज़रिए काम करता है।',
+      'Word, Excel, PowerPoint, PDF, Markdown और HTML दस्तावेज़ खोलें और संपादित करें। AI आपकी मौजूदा Claude या ChatGPT सदस्यता के ज़रिए, या मुफ़्त AI कनेक्शन के ज़रिए काम करता है।',
     onbSkip: 'छोड़ें',
     onbNext: 'आगे',
     onbStart: 'शुरू करें',
@@ -11950,6 +12029,8 @@ export const strings = {
     themeSystem: '跟隨系統',
     documentTheme: '文件頁面主題',
     docThemeFollowApp: '跟隨應用程式主題',
+    setHwpSaveFormat: '新增 HWP 文件的儲存格式',
+    setHwpSaveFormatDesc: '新增 HWP 文件首次儲存時優先提供此格式。已開啟的文件仍按其原有格式儲存。',
     saveLocation: '預設儲存位置',
     setAutoSave: '所有文件自動儲存',
     setAutoSaveDesc: '在每個編輯器中預設開啟自動儲存，仍可在單一視窗中關閉。',
@@ -12145,6 +12226,7 @@ export const strings = {
     setSecAiModel: 'AI 模型',
     setAiProvider: '模型服務商',
     setAiModelId: '模型',
+    setAiModelType: '輸入其他模型…',
     setAiApiKey: 'API Key',
     setAiKeyHint: '金鑰僅儲存在本機。',
     setAiBaseUrl: 'Base URL',
@@ -12221,7 +12303,7 @@ export const strings = {
     onbTitle1: '歡迎使用 GenOffice',
     onbWelcomeSubtitle: '開源辦公套件',
     onbWelcomeBody:
-      '開啟並編輯 Word、Excel、PowerPoint、PDF、Markdown 和 HTML 文件。AI 透過你已有的 Claude 或 Codex 訂閱運作，也可以透過免費 AI 連線運作。',
+      '開啟並編輯 Word、Excel、PowerPoint、PDF、Markdown 和 HTML 文件。AI 透過你已有的 Claude 或 ChatGPT 訂閱運作，也可以透過免費 AI 連線運作。',
     onbSkip: '略過',
     onbNext: '下一步',
     onbStart: '開始使用',

@@ -46,11 +46,47 @@ import {
   type SkillUse,
   docMentionActions,
   type AiComposerDocs,
+  consolidateProjectMemory,
+  memoryLinesOf,
+  panelProjectSkill,
+  ProjectChatMenu,
+  ProjectFolderHintLine,
+  ProjectMemoryConsolidatedLine,
+  ProjectMemoryEventLine,
+  memoryLineGone,
+  memoryRemoveOutcome,
+  type ProjectMemoryRemoveOutcome,
+  ProjectNoticeLine,
+  ProjectNoticeList,
+  ProjectPicker,
+  ProjectToolSummaryLine,
+  ProjectProblemLine,
+  placeRemoteEntries,
+  projectAddProblem,
+  projectPrepareProblem,
+  type ProjectProblem,
+  undoProjectMemoryConsolidation,
+  useProjectChat,
+  type ProjectChatEntry,
+  type ProjectChatOpened,
+  type ProjectMemoryLine,
+  type ProjectRunPrepared,
 } from '@genoffice/ui'
 import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactElement, ReactNode } from 'react'
 import { AgentLoop, composeWithDrive } from '@genoffice/agent-core'
 import type { AgentImage, IpcStreamError } from '@genoffice/agent-core'
+import type {
+  AddFolderResult,
+  ChatMessage,
+  CreateProjectResult,
+  ProjectEditor,
+  ProjectFolderApi,
+  ProjectId,
+  ProjectListItem,
+  ProjectNotice,
+  ProjectScreenSection,
+} from '@genoffice/project-store'
 import type {
   AiSettings,
   AiSubscriptionProviderId,
@@ -119,6 +155,29 @@ function aiApi(): Partial<EpubAiApi> {
   return (window.epubApi as Partial<EpubAiApi> | undefined) ?? {}
 }
 
+/** The project folder bridge (decision 0088), or null outside the shell or with an older preload */
+function folderApi(): ProjectFolderApi | null {
+  return window.projectFolderApi ?? null
+}
+
+/** The file name at the end of a folder-relative path */
+function baseName(path: string): string {
+  return path.split(/[\\/]/).pop() || path
+}
+
+/** Stored attachment records as chips (a record without a path is not shown) */
+function storedAttachments(list: ChatMessage['attachments']): AttachmentMeta[] | undefined {
+  const shown = list
+    ?.filter((a) => a.path)
+    .map((a) => ({
+      name: a.name,
+      path: a.path ?? '',
+      ext: a.ext ?? '',
+      sizeBytes: a.sizeBytes ?? 0,
+    }))
+  return shown && shown.length > 0 ? shown : undefined
+}
+
 const MODEL_BRIDGE: AiModelPickerBridge = {
   getSettings: () =>
     aiApi().getAiSettings?.() ?? Promise.reject(new Error('the AI settings cannot be read')),
@@ -181,6 +240,35 @@ interface ChatEntry {
   tools?: ToolActivity[]
   /** tokens the provider billed for this reply (absent when unreported) */
   usage?: AiTokenUsageView
+  /** a project chat's memory lines for this reply (absent: read from the live tool records) */
+  memory?: ProjectMemoryLine[]
+  /** a project chat's reply whose tools another editor ran: shown as one line */
+  otherEditorTools?: { editor: ProjectEditor; fileRef?: string; count: number }
+}
+
+/** A project chat's message as this panel shows it */
+function chatEntryOf(entry: ProjectChatEntry & { skillProposals?: string[] }): ChatEntry {
+  const skills = entry.role === 'user' ? skillChipRefsOf(entry.skills) : []
+  const attachments = storedAttachments(entry.attachments)
+  return {
+    role: entry.role,
+    text: entry.text,
+    ...(entry.tools && entry.tools.length > 0
+      ? {
+          tools: entry.tools.map((tool) => ({
+            name: tool.name,
+            summary: tool.summary,
+            isError: tool.isError,
+            output: tool.output ? tool.output.slice(0, TOOL_OUTPUT_MAX_CHARS) : undefined,
+          })),
+        }
+      : {}),
+    ...(attachments ? { attachments } : {}),
+    ...(skills.length > 0 ? { skills } : {}),
+    ...(entry.skillProposals ? { skillProposals: entry.skillProposals } : {}),
+    ...(entry.otherEditorTools ? { otherEditorTools: entry.otherEditorTools } : {}),
+    memory: entry.memory,
+  }
 }
 
 /** composer chips (removable) and the read-only echo on a sent message share one renderer */
@@ -335,6 +423,41 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
   })
   const skillCardsRef = useRef(skillCards)
   skillCardsRef.current = skillCards
+  /**
+   * Project folders (spec 5): the project chosen under the input, its chat and
+   * where messages are recorded. With no project chosen (or no bridge) the
+   * panel keeps its per-document chat exactly as before.
+   */
+  const projectChat = useProjectChat({
+    editor: 'epub',
+    loop: () => loopRef.current,
+    onOpen: (opened) => openProjectChat(opened),
+    onRemoteMessage: (entry) => showRemoteMessage(entry),
+  })
+  const projectChatRef = useRef(projectChat)
+  projectChatRef.current = projectChat
+  /** a project (or earlier document) chat is on screen: the per-document history stays away */
+  const projectShownRef = useRef(false)
+  /** the project lists of the picker */
+  const [projects, setProjects] = useState<ProjectListItem[]>([])
+  const [defaultParentFolder, setDefaultParentFolder] = useState<string | undefined>(undefined)
+  /** the notices the last send's project context brought (spec 5.4, 5.10) */
+  const [projectNotices, setProjectNotices] = useState<ProjectNotice[]>([])
+  /** "Memory tidied up (N → M) [Undo]" after the person ran [Tidy up] */
+  const [consolidated, setConsolidated] = useState<{
+    projectId: ProjectId
+    before: number
+    after: number
+    backupName: string
+  } | null>(null)
+  const consolidatingRef = useRef(false)
+  /** memory entries the person removed with [Remove] in this panel */
+  const [forgotten, setForgotten] = useState<ReadonlySet<string>>(() => new Set())
+  /** what the person asked for that did not happen, or a send that went without the project */
+  const [projectProblem, setProjectProblem] = useState<ProjectProblem | null>(null)
+  /** a reply runs (set at once by `send`, before the state renders) */
+  const busyRef = useRef(busy)
+  busyRef.current = busy
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
   const chatRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -538,6 +661,28 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
     atts?: AttachmentMeta[],
     skillChips?: SkillChipRef[],
   ) => {
+    // a project chat records the message in the project folder (spec 5.3)
+    if (
+      projectChatRef.current.persist({
+        role,
+        text,
+        ...(tools && tools.length > 0 ? { tools } : {}),
+        ...(atts && atts.length > 0 ? { attachments: atts } : {}),
+        ...(skillChips && skillChips.length > 0 ? { skills: skillChips } : {}),
+      })
+    )
+      return
+    persistDocumentMessage(role, text, tools, atts, skillChips)
+  }
+
+  /** the per-document chat store, as before project folders */
+  const persistDocumentMessage = (
+    role: 'user' | 'assistant',
+    text: string,
+    tools?: ToolActivity[],
+    atts?: AttachmentMeta[],
+    skillChips?: SkillChipRef[],
+  ) => {
     const ids = chatIdsRef.current
     if (!window.projectApi) return
     if (!ids) {
@@ -595,6 +740,8 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
             }))
           },
         }),
+        // the chosen project: its context and the app-run project tools (adds nothing without one)
+        ...panelProjectSkill({ run: projectChat.run, lang: () => langRef.current }),
       ]),
       systemSuffix: () => aiLangDirective(langRef.current),
       events: {
@@ -644,6 +791,7 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
             tools: last.tools?.filter((tl) => !tl.running),
           }))
           persistMessage('assistant', final, runToolsRef.current)
+          void projectChatRef.current.finishSend()
           setBusy(false)
         },
         onError: (error) => {
@@ -675,6 +823,7 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
             }
             return next
           })
+          void projectChatRef.current.finishSend()
           setBusy(false)
         },
       },
@@ -690,21 +839,30 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
   }, [])
 
   // ── the transcript: bound to the file, the earlier conversation restored ──
-  useEffect(() => {
+  /** the per-document chat: bound to the file once, then its stored messages shown */
+  const loadDocumentChat = (): void => {
     const api = window.projectApi
     if (!api) return
-    const tempChatId = `unsaved-${Date.now()}`
-    void api
-      .resolveChat({ filePath: filePathRef.current ?? null, tempChatId })
-      .then((ids) => {
-        chatIdsRef.current = ids
-        for (const msg of pendingPersistRef.current.splice(0)) {
-          persistMessage(msg.role, msg.text, msg.tools, msg.attachments, msg.skillChips)
-        }
-        return api.loadChat({ projectId: ids.projectId, chatId: ids.chatId, limit: 200 })
-      })
+    const known = chatIdsRef.current
+    const resolved = known
+      ? Promise.resolve(known)
+      : api
+          .resolveChat({
+            filePath: filePathRef.current ?? null,
+            tempChatId: `unsaved-${Date.now()}`,
+          })
+          .then((ids) => {
+            chatIdsRef.current = ids
+            for (const msg of pendingPersistRef.current.splice(0)) {
+              persistDocumentMessage(msg.role, msg.text, msg.tools, msg.attachments, msg.skillChips)
+            }
+            return ids
+          })
+    void resolved
+      .then((ids) => api.loadChat({ projectId: ids.projectId, chatId: ids.chatId, limit: 200 }))
       .then((stored) => {
-        if (stored.length === 0) return
+        // a project chat took the panel meanwhile: it keeps it
+        if (stored.length === 0 || projectShownRef.current) return
         // skill cards come back closed; a saved card's record is not part of the conversation
         const msgs = skillCardsRef.current.restore(stored)
         let applied = false
@@ -756,11 +914,19 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
       .catch(() => {
         /* a history that cannot be loaded is not shown */
       })
+  }
+  useEffect(() => {
+    loadDocumentChat()
+    // once, when the panel opens; a project chosen later swaps the chat itself
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   /** a history kept before the path was known moves to the real path */
   useEffect(() => {
+    const previous = filePathRef.current
     filePathRef.current = filePath
+    // saved under a new path (first save, save as): a project chat goes on and notes the document (spec 5.3.6)
+    if (filePath && filePath !== previous) void projectChatRef.current.documentSaved()
     const ids = chatIdsRef.current
     if (!window.projectApi || !ids || !filePath || !ids.chatId.startsWith('unsaved-')) return
     void window.projectApi
@@ -785,6 +951,9 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
     stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48
   }
 
+  /** a request made before this window's project was known: sent once it is */
+  const heldUntilReadyRef = useRef<(() => void) | null>(null)
+
   /** false when nothing was started (empty text, a run already active, or the gate held or refused it) */
   const send = (
     text: string,
@@ -795,6 +964,14 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
     const instruction = text.trim()
     const loop = loopRef.current
     if (!instruction || !loop || loop.busy) return false
+    // the window's project is not known yet (the panel just opened): the request waits for it,
+    // so it goes to the right chat with the right context (spec 5.2, 6)
+    if (projectChatRef.current.available && !projectChatRef.current.ready) {
+      heldUntilReadyRef.current = () => {
+        send(text, attachmentsOverride, skillUse)
+      }
+      return false
+    }
     // Nothing connected, or the first-connection notice not acknowledged: nothing is sent, the
     // composer keeps the text and the files, and the dock above it says what to do. A request
     // made during a status check or in front of the notice is held and starts by itself.
@@ -834,6 +1011,7 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
     skillsRef.current.consume(skillUse)
     lastSkillUseRef.current = skillUse
     setBusy(true)
+    busyRef.current = true
     persistMessage('user', instruction, undefined, sentAtts, skillUse.chips)
     // Stop or New chat during the reads before the run bump the sequence; a stale send never starts the loop
     const seq = ++sendSeqRef.current
@@ -844,9 +1022,17 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
         settingsRef.current = settings
         const images = sentAtts.length > 0 ? await collectImages(sentAtts) : []
         if (!mountedRef.current || seq !== sendSeqRef.current) return
+        // the chosen project's context is read now and holds for this request (spec 5.4)
+        const prepared = await projectChatRef.current.prepareSend()
+        if (!mountedRef.current || seq !== sendSeqRef.current) {
+          void projectChatRef.current.finishSend()
+          return
+        }
+        showPreparedNotices(prepared)
         // the skill text rides with this request only; the bubble and the record keep the chips
         await loop.run(instruction + skillUse.text, images.length > 0 ? images : undefined)
       } catch (err) {
+        void projectChatRef.current.finishSend()
         if (!mountedRef.current || seq !== sendSeqRef.current) return
         patchLast({
           streaming: false,
@@ -924,6 +1110,340 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
       else retry()
     })
   }
+
+  // ── project folders (spec 5) ──
+
+  useEffect(() => {
+    if (!projectChat.ready) return
+    const held = heldUntilReadyRef.current
+    heldUntilReadyRef.current = null
+    held?.()
+  }, [projectChat.ready])
+
+  /** the chat on screen goes: the composer's files, the queue, the loop and the cards start over */
+  const resetConversation = (): void => {
+    msgQueue.clear()
+    sendGate.reset()
+    stop()
+    loopRef.current?.reset()
+    setBusy(false)
+    busyRef.current = false
+    setChat([])
+    skills.resetConversation()
+    skillCards.reset()
+    attachmentsRef.current = []
+    setAttachments([])
+    setAttachNotice(null)
+    sentAttachmentsRef.current = []
+  }
+
+  /** "New chat": a new chat of the chosen project, or the fresh start it always was (spec 5.3.7) */
+  const newChat = (): void => {
+    resetConversation()
+    if (projectChatRef.current.projectId) void projectChatRef.current.newChat()
+  }
+
+  /** a chat was opened (or the person went back to the document's own): show it, hand it to the loop */
+  const openProjectChat = (opened: ProjectChatOpened): void => {
+    // a conversation on screen gives way; an empty panel keeps what its composer holds
+    if (busy || chat.length > 0) resetConversation()
+    else loopRef.current?.reset()
+    setProjectNotices([])
+    setProjectProblem(null)
+    setConsolidated(null)
+    if (opened.kind === 'document') {
+      projectShownRef.current = false
+      loadDocumentChat()
+      return
+    }
+    projectShownRef.current = true
+    // skill cards come back closed; a saved card's record is not part of the conversation
+    const entries = skillCardsRef.current.restore(opened.entries)
+    const shown = entries.map(chatEntryOf)
+    setChat(shown)
+    skillsRef.current.restoreHistory(
+      entries.map((e) => (e.role === 'user' ? skillChipRefsOf(e.skills) : undefined)),
+    )
+    // the model gets each message's role and text, as with any chat opened again
+    loopRef.current?.restore(entries.map((e) => ({ role: e.role, text: e.text })))
+    const seen = new Set<string>()
+    sentAttachmentsRef.current = shown
+      .flatMap((e) => e.attachments ?? [])
+      .filter((a) => !seen.has(a.path) && !!seen.add(a.path))
+  }
+
+  /** another window recorded a message in this chat: shown now, ahead of a reply in flight (spec 5.3.3) */
+  const showRemoteMessage = (entry: ProjectChatEntry): void => {
+    const shown = chatEntryOf(entry)
+    setChat((prev) => placeRemoteEntries(prev, [shown], busyRef.current))
+  }
+
+  /** what the request's project context brought: changed rules or memory, long memory, a cut (spec 5.4, 5.10) */
+  const showPreparedNotices = (prepared: ProjectRunPrepared): void => {
+    // "cannot be written" keeps its own line for as long as it lasts
+    setProjectNotices(
+      prepared.status === 'ok' ? prepared.notices.filter((n) => n.kind !== 'unwritable') : [],
+    )
+    // a request that went without the project's context says so
+    setProjectProblem(projectPrepareProblem(prepared))
+  }
+
+  const refreshProjects = async (): Promise<void> => {
+    const api = folderApi()
+    if (!api) return
+    try {
+      const list = await api.listProjects()
+      if (mountedRef.current) setProjects(list)
+    } catch {
+      /* the picker keeps the list it showed */
+    }
+  }
+  // the chip names the chosen project: the list is read when the panel opens and the choice moves
+  useEffect(() => {
+    if (projectChat.available) void refreshProjects()
+  }, [projectChat.available, projectChat.projectId])
+
+  const openPicker = (): void => {
+    void refreshProjects()
+    void folderApi()
+      ?.getDefaultParentFolder()
+      .then((folder) => {
+        if (mountedRef.current) setDefaultParentFolder(folder)
+      })
+      .catch(() => undefined)
+  }
+
+  /** a project that was added or created becomes this panel's project */
+  const takeAddedProject = async (
+    result: AddFolderResult | CreateProjectResult | undefined,
+  ): Promise<void> => {
+    if (!result) return
+    if (result.status !== 'added' && result.status !== 'created') {
+      // refused, not made: say why (spec 5.1); a closed dialog says nothing
+      if (mountedRef.current) setProjectProblem(projectAddProblem(result))
+      return
+    }
+    setProjectProblem(null)
+    await refreshProjects()
+    await projectChatRef.current.selectProject(result.project.id)
+    // the addition's one-time notices (a sync folder) show after the switch cleared the old ones
+    if (result.status === 'added' && result.notices.length > 0) setProjectNotices(result.notices)
+  }
+  const afterAdd = (pending: Promise<AddFolderResult | CreateProjectResult> | undefined): void => {
+    void pending?.then(takeAddedProject).catch(showActionFailed)
+  }
+  /** a bridge call the person made failed: say so instead of doing nothing */
+  const showActionFailed = (): void => {
+    if (mountedRef.current) setProjectProblem({ kind: 'action-failed' })
+  }
+
+  const removeProjectFromList = (projectId: ProjectId): void => {
+    void folderApi()
+      ?.removeFromList({ projectId })
+      .then(async () => {
+        await refreshProjects()
+        if (projectChatRef.current.projectId === projectId) {
+          await projectChatRef.current.selectProject(null)
+        }
+      })
+      .catch(showActionFailed)
+  }
+
+  /** "[View]": the home project screen at that section */
+  const viewProjectSection = (section: ProjectScreenSection): void => {
+    const projectId = projectChatRef.current.projectId
+    if (projectId)
+      void folderApi()
+        ?.openProjectScreen({ projectId, section })
+        .catch(() => undefined)
+  }
+
+  /** "[Tidy up]": one request, only when pressed, through the same gate as a send (spec 5.6) */
+  const consolidateMemory = async (): Promise<void> => {
+    const projectId = projectChatRef.current.projectId
+    if (!projectId || consolidatingRef.current || busyRef.current) return
+    consolidatingRef.current = true
+    try {
+      const settings = await aiApi().getAiSettings?.()
+      if (settings) settingsRef.current = settings
+      if (!settingsRef.current || !transportRef.current) return
+      const result = await consolidateProjectMemory({
+        projectId,
+        transport: transportRef.current,
+        gate: () => sendGateRef.current.peek(),
+      })
+      if (!mountedRef.current) return
+      if (result.status === 'ok') {
+        setProjectNotices((prev) => prev.filter((n) => n.kind !== 'memory-long'))
+        setConsolidated({
+          projectId,
+          before: result.before,
+          after: result.after,
+          backupName: result.backupName,
+        })
+      } else if (result.status === 'not-ready') {
+        // nothing went out: the connect prompt or the first-connection notice says why
+        sendGateRef.current.admitQueued(() => {})
+      } else if (result.status === 'unwritable') {
+        projectChatRef.current.markUnwritable()
+      } else if (result.status === 'failed') {
+        setProjectProblem({ kind: 'consolidate-failed' })
+      }
+    } catch {
+      // the memory stays as it was
+      if (mountedRef.current) setProjectProblem({ kind: 'consolidate-failed' })
+    } finally {
+      consolidatingRef.current = false
+    }
+  }
+
+  const undoConsolidation = (): void => {
+    const done = consolidated
+    const api = folderApi()
+    if (!done || !api) return
+    void undoProjectMemoryConsolidation(api, done.projectId, done.backupName)
+      .then((result) => {
+        if (result.status === 'ok' && mountedRef.current) setConsolidated(null)
+        else if (result.status === 'unwritable') projectChatRef.current.markUnwritable()
+      })
+      .catch(showActionFailed)
+  }
+
+  /** "[Remove]" on a memory line: the entry leaves `memory.md` */
+  const forgetMemory = (line: ProjectMemoryLine): Promise<ProjectMemoryRemoveOutcome> =>
+    projectChatRef.current
+      .forgetMemory(line)
+      .then((result) => {
+        const outcome = memoryRemoveOutcome(result)
+        // an entry no longer in the memory is as good as removed
+        if (outcome !== 'failed' && mountedRef.current) {
+          setForgotten((prev) => new Set(prev).add(line.text))
+        }
+        return outcome
+      })
+      .catch((): ProjectMemoryRemoveOutcome => 'failed')
+
+  /** the memory lines and the other editor's tool line under a project chat's reply */
+  const projectReplyLines = (entry: ChatEntry): ReactNode => {
+    const memory = entry.memory ?? memoryLinesOf(entry.tools)
+    const other = entry.otherEditorTools
+    if (!other && memory.length === 0) return null
+    return (
+      <>
+        {other && (
+          <ProjectToolSummaryLine
+            lang={lang}
+            editor={other.editor}
+            documentName={other.fileRef ? baseName(other.fileRef) : undefined}
+            count={other.count}
+          />
+        )}
+        {memory.map((line, k) => (
+          <ProjectMemoryEventLine
+            key={k}
+            lang={lang}
+            change={line.change}
+            gone={
+              projectChat.memoryEntries
+                ? memoryLineGone(line, projectChat.memoryEntries)
+                : forgotten.has(line.text)
+            }
+            onRemove={() => forgetMemory(line)}
+          />
+        ))}
+      </>
+    )
+  }
+
+  /** the project chip under the input (spec 5.1); absent without the project folder bridge */
+  const projectPicker = projectChat.available ? (
+    <ProjectPicker
+      lang={lang}
+      projects={projects}
+      selectedId={projectChat.projectId}
+      disabled={busy || !projectChat.ready}
+      defaultParentFolder={defaultParentFolder}
+      onOpen={openPicker}
+      onSelect={(projectId) => void projectChat.selectProject(projectId)}
+      onCreate={(name, { otherPlace }) =>
+        afterAdd(folderApi()?.createProject({ name, otherPlace }))
+      }
+      onAddFolder={() => afterAdd(folderApi()?.addFolder())}
+      onRelocate={(projectId) => afterAdd(folderApi()?.relocateProject({ projectId }))}
+      onSetPinned={(projectId, pinned) =>
+        void folderApi()
+          ?.setPinned({ projectId, pinned })
+          .then(refreshProjects)
+          .catch(() => undefined)
+      }
+      onOpenInFileManager={(projectId) =>
+        void folderApi()
+          ?.openInFileManager({ projectId })
+          .catch(() => undefined)
+      }
+      onRemoveFromList={removeProjectFromList}
+    />
+  ) : undefined
+
+  /** the project's lines above the input: the folder hint, "cannot be written", the context notices */
+  const projectLines = (
+    <>
+      {projectProblem && (
+        <ProjectProblemLine
+          lang={lang}
+          problem={projectProblem}
+          onDismiss={() => setProjectProblem(null)}
+        />
+      )}
+      {projectChat.hint && (
+        <ProjectFolderHintLine
+          lang={lang}
+          hint={projectChat.hint}
+          onUse={() => afterAdd(folderApi()?.adoptFolderHint())}
+        />
+      )}
+      {projectChat.projectId && projectChat.unwritable && (
+        <ProjectNoticeLine lang={lang} notice={{ kind: 'unwritable' }} />
+      )}
+      <ProjectNoticeList
+        lang={lang}
+        notices={projectNotices}
+        onView={viewProjectSection}
+        onConsolidate={busy ? undefined : () => void consolidateMemory()}
+        onDismiss={(index) => setProjectNotices((prev) => prev.filter((_, i) => i !== index))}
+      />
+      {consolidated && consolidated.projectId === projectChat.projectId && (
+        <ProjectMemoryConsolidatedLine
+          lang={lang}
+          before={consolidated.before}
+          after={consolidated.after}
+          onUndo={undoConsolidation}
+        />
+      )}
+    </>
+  )
+
+  /** the [chat ▾] menu of the panel header, while a project is chosen (spec 5.3) */
+  const activeChat = projectChat.chat
+  const projectChatMenu = projectChat.projectId ? (
+    <ProjectChatMenu
+      lang={lang}
+      chats={projectChat.chats}
+      currentChatId={activeChat?.kind === 'project' && !activeChat.isNew ? activeChat.chatId : null}
+      currentTitle={activeChat?.kind === 'project' ? activeChat.title || undefined : undefined}
+      legacy={projectChat.legacy}
+      legacyActive={activeChat?.kind === 'legacy'}
+      disabled={busy}
+      onOpen={() => void projectChat.refreshChats()}
+      onSelect={(chatId) => void projectChat.openChat(chatId)}
+      onNewChat={newChat}
+      onRename={(chatId, title) =>
+        void projectChat.renameChat(chatId, title).catch(showActionFailed)
+      }
+      onDelete={(chatId) => void projectChat.deleteChat(chatId).catch(showActionFailed)}
+      onSelectLegacy={() => void projectChat.openLegacy()}
+    />
+  ) : null
 
   // a file link in an answer opens that file in its own tab
   const fileNav = createFileNav((path) => {
@@ -1013,24 +1533,12 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
           {aiSubscriptionText(lang, 'aiAssistant')}
         </span>
         <div className="ai-panel-header-actions">
+          {projectChatMenu}
           {chat.length > 0 && (
             <button
               type="button"
               className="ai-header-btn"
-              onClick={() => {
-                msgQueue.clear()
-                sendGate.reset()
-                stop()
-                loopRef.current?.reset()
-                setBusy(false)
-                setChat([])
-                skills.resetConversation()
-                skillCards.reset()
-                attachmentsRef.current = []
-                setAttachments([])
-                setAttachNotice(null)
-                sentAttachmentsRef.current = []
-              }}
+              onClick={newChat}
               data-tip={t('aiNewChat')}
               aria-label={t('aiNewChat')}
             >
@@ -1102,7 +1610,8 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
             )
           }
           const hasTools = (entry.tools?.length ?? 0) > 0
-          if (!entry.text && !entry.streaming && !hasTools) return null
+          const projectLinesOfReply = projectReplyLines(entry)
+          if (!entry.text && !entry.streaming && !hasTools && !projectLinesOfReply) return null
           const isLast = i === chat.length - 1
           const nextEntry = chat[i + 1]
           const turnEnded = nextEntry ? nextEntry.role === 'user' : !busy
@@ -1136,6 +1645,7 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
                 )
               )}
               {hasTools && <ToolChipList tools={entry.tools!} />}
+              {projectLinesOfReply}
               <SkillUsedNotes tools={entry.tools} />
               {entry.skillProposals?.map((key) => skillCards.render(key))}
               {entry.usage && (
@@ -1221,6 +1731,7 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
         {aiSettings !== null && localModelCapabilities(aiSettings).tools === false && (
           <AiToolsUnsupportedNotice lang={lang} />
         )}
+        {projectLines}
         {/* Above the input card, not inside its footer: the reset time is long and
             would otherwise squeeze the attach/send buttons in a narrow panel. */}
         <AiSubscriptionUsageLine usage={subscriptionUsage} lang={lang} />
@@ -1257,6 +1768,7 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
           skills={skills.composer}
           docs={docMention}
           onPasteFiles={(files) => void onPasteFiles(files)}
+          footerBelow={projectPicker}
           footerStart={
             <>
               <AiModelPicker

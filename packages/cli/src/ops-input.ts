@@ -1,6 +1,6 @@
-import { readFileSync, readSync, statSync } from 'node:fs'
+import { readSync, statSync } from 'node:fs'
 import { flagString, type ParsedArgs } from './args'
-import { resolveInput, type PathContext } from './fs'
+import { readTextFile, resolveInput, stripBom, type PathContext } from './fs'
 import { MAX_TRANSFER_BYTES } from './mcp/files'
 import { CliError, EXIT } from './result'
 
@@ -51,9 +51,9 @@ export function readOpsInput(
     throw new CliError(EXIT.usage, 'missing --ops <file|->', undefined, {
       reason: 'missing_argument',
     })
-  if (spec === '-') return { text: readOpsStream(0, 'stdin', cap), source: 'stdin' }
+  if (spec === '-') return { text: stripBom(readOpsStream(0, 'stdin', cap)), source: 'stdin' }
   const path = resolveInput(spec, ctx)
   const size = statSync(path).size
   throwIfOpsOverBudget(size, path, cap)
-  return { text: readFileSync(path, 'utf-8'), source: path }
+  return { text: stripBom(readTextFile(path)), source: path }
 }

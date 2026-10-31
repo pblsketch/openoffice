@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AiFirstConnectionNotice, aiSubscriptionText, useModalKeys } from '@genoffice/ui'
+import {
+  AiFirstConnectionNotice,
+  aiSubscriptionText,
+  useModalKeys,
+  withAiSubscriptionNoticeSeen,
+} from '@genoffice/ui'
 import type { AiSettings, AiSubscriptionStatuses } from '@genoffice/ai-provider/browser'
 import { useI18n } from './locale'
 import { CODEX_MAY_KEEP_HISTORY, changeAiSettings, readAiSettings } from './settings-ai'
@@ -47,11 +52,13 @@ export function useFirstConnectionNotice(
 
   const acknowledge = useCallback(() => {
     setAcknowledged(true)
-    void changeAiSettings((current) => ({ ...current, subscriptionNoticeSeen: true })).then(
-      (next) => {
-        if (next) setSettings(next)
-      },
-    )
+    void changeAiSettings((current) => ({
+      ...withAiSubscriptionNoticeSeen(current),
+      // this notice now carries the PDF sentence too, so its own supplement is read
+      pdfSendNoticeSeen: 1,
+    })).then((next) => {
+      if (next) setSettings(next)
+    })
   }, [])
 
   return {
@@ -76,6 +83,7 @@ export function FirstConnectionDialog({ onAcknowledge }: { onAcknowledge: () => 
         <AiFirstConnectionNotice
           lang={lang}
           codexKeepsHistory={CODEX_MAY_KEEP_HISTORY}
+          sendsWholeDocument
           onAcknowledge={onAcknowledge}
         />
       </div>

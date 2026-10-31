@@ -106,6 +106,7 @@ import {
   splitPagesBytes,
   splitPdfBytes,
 } from './save-pdf'
+import { readPdfText } from './read-text'
 import {
   addSignature,
   isSignatureData,
@@ -626,14 +627,26 @@ interface RuntimePaths {
   rendererFile?: string
   /** Shell router used to open generated PDFs in a new GenOffice tab. */
   openGeneratedPath?: (path: string) => boolean
-  /** Host-owned cross-app document creator (the shell routes DOCX into Docs). */
-  createDocument?: (request: CreateDocumentRequest) => Promise<CreateDocumentResult>
+  /**
+   * Host-owned cross-app document creator (the shell routes DOCX into Docs).
+   * `ownerWebContentsId` is the asking view: its panel's project decides where
+   * the document goes (spec 6).
+   */
+  createDocument?: (
+    request: CreateDocumentRequest,
+    ownerWebContentsId?: number,
+  ) => Promise<CreateDocumentResult>
   /** The shell's PDF tools window, opened on a task with a file picked (decision 0030) */
   openPdfTools?: (path: string, tool: PdfToolsHandoffTool) => boolean
   /** The shell opens (or brings forward) a PDF's note in a Markdown tab (reading-assist 4.9) */
   openNote?: (path: string) => boolean | Promise<boolean>
   /** The shell puts text at the end of the note's open tab; the file is not written */
   insertIntoNote?: (path: string, text: string) => boolean | Promise<boolean>
+  /**
+   * Project folders (spec 6): the folder an untitled document's save dialog
+   * opens in for this view, or null for the default save folder.
+   */
+  newDocumentDir?: (webContentsId: number) => Promise<string | null>
 }
 
 let runtime: RuntimePaths = { preloadPath: '' }
@@ -1474,7 +1487,7 @@ function registerPdfIpc(): void {
       const create = runtime.createDocument
       if (!create) return { ok: false, error: 'pdf: document creation is unavailable in this host' }
       try {
-        return await create(parsed)
+        return await create(parsed, e.sender.id)
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) }
       }
@@ -1695,7 +1708,11 @@ function registerPdfIpc(): void {
         // a restored copy whose file went missing suggests where that file was
         defaultPath:
           recovery.saveAsDefaultPath(e.sender.id, path) ??
-          join(configuredDefaultSaveDir(app), name),
+          // an untitled copy whose panel has a project starts in that folder (spec 6)
+          join(
+            (await runtime.newDocumentDir?.(e.sender.id)) ?? configuredDefaultSaveDir(app),
+            name,
+          ),
         filters: [{ name: 'PDF', extensions: ['pdf'] }],
       }
       const picked = parent
@@ -1979,6 +1996,52 @@ function registerPdfIpc(): void {
       }
     },
   )
+
+  // Compare: pick a second document and extract its per-page text main-side —
+  // the bytes and the path stay here, the renderer gets text only
+  ipcMain.handle(PDF_CHANNELS.compareReadPdf, async (e) => {
+    if (!allowedByWc.has(e.sender.id)) {
+      return { ok: false as const, reason: 'pdf: sender is not a registered PDF view' }
+    }
+    const win = BrowserWindow.fromWebContents(e.sender) ?? BrowserWindow.getFocusedWindow()
+    const picked = await showOpenDialogWithMemory(dialog, win ?? undefined, {
+      filters: [{ name: tm('filterPdf'), extensions: ['pdf'] }],
+      properties: ['openFile'],
+    })
+    const file = picked.filePaths[0]
+    if (picked.canceled || !file) return { ok: false as const, canceled: true }
+    try {
+      const text = await readPdfText(new Uint8Array(await readFile(file)))
+      return {
+        ok: true as const,
+        name: basename(file),
+        pageCount: text.pageCount,
+        pages: text.pages.map((page) => page.text),
+      }
+    } catch (err) {
+      return { ok: false as const, reason: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  // Compare: the open document's own text through the same pdfium engine as the
+  // picked side — pdf.js and pdfium break lines differently, and a diff across
+  // engines reports added and removed lines on files that are identical.
+  ipcMain.handle(PDF_CHANNELS.compareReadOpen, async (e, path: unknown) => {
+    if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) {
+      return { ok: false as const, reason: 'pdf: path not granted to this view' }
+    }
+    try {
+      const text = await readPdfText(new Uint8Array(await readFile(path)))
+      return {
+        ok: true as const,
+        name: basename(path),
+        pageCount: text.pageCount,
+        pages: text.pages.map((page) => page.text),
+      }
+    } catch (err) {
+      return { ok: false as const, reason: err instanceof Error ? err.message : String(err) }
+    }
+  })
 
   ipcMain.handle(
     PDF_CHANNELS.insertBlankPage,

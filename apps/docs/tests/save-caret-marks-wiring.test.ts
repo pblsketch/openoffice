@@ -30,7 +30,7 @@ describe('saveOnce caret-mark wiring', () => {
   it('restores the marks after setContent, inside the rewrite branch only', () => {
     const src = fileActions()
     const rewrite = src.indexOf('if (!unchanged) {')
-    const setContent = src.indexOf('editor.commands.setContent(rebasedPm', rewrite)
+    const setContent = src.indexOf('.setContent(rebasedPm', rewrite)
     const restore = src.indexOf('restoreMarksAfterDocRewrite(editor, caretMarks)', rewrite)
     expect(rewrite).toBeGreaterThan(-1)
     expect(setContent).toBeGreaterThan(rewrite)

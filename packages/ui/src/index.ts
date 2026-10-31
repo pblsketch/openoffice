@@ -161,6 +161,7 @@ export {
   PreviewTemplateActions,
   SkillCardPreviewLine,
 } from './SkillTemplateActions'
+export { createHandedRun, type HandedRun } from './handed-run'
 export {
   useSkillTemplates,
   type SkillTemplateNote,
@@ -271,6 +272,13 @@ export {
   type FontFamilyInfoMap,
 } from './font-list'
 export {
+  createSystemFontSource,
+  useSystemFontSource,
+  type SystemFontEnv,
+  type SystemFontSource,
+  type SystemFonts,
+} from './system-fonts'
+export {
   WORDART_PRESETS,
   wordArtSolidColor,
   wordArtStrokePx,
@@ -372,10 +380,13 @@ export {
   type AiSubscriptionCardView,
 } from './ai-subscription'
 export {
+  AI_SUBSCRIPTION_NOTICE_VERSION,
   aiConnectPromptChoice,
   aiHeldRequestStep,
   aiHoldReason,
   aiSendGate,
+  aiSubscriptionNoticeDue,
+  aiSubscriptionNoticeVersion,
   changeStoredAiSettings,
   withAiContinueProvider,
   withAiSubscriptionNoticeSeen,
@@ -386,6 +397,13 @@ export {
   type AiSettingsStore,
 } from './ai-send-gate'
 export { useAiSendGate, type AiSendGateArgs, type AiSendGateController } from './use-ai-send-gate'
+export {
+  useSubscriptionConnection,
+  type SubscriptionApiLike,
+  type SubscriptionConnection,
+  type SubscriptionLaunchKind,
+  type UseSubscriptionConnectionOptions,
+} from './use-subscription-connection'
 export {
   AI_SUBSCRIPTION_STRINGS,
   aiSubscriptionText,
@@ -439,3 +457,108 @@ export {
 export { ProviderLogo } from './provider-logos'
 export { useRedactLabelField } from './use-redact-label'
 export type { RedactLabelField } from './use-redact-label'
+export { ProjectPicker, projectPickerOptionId, type ProjectPickerProps } from './ProjectPicker'
+export { ProjectChatMenu, projectChatOptionId, type ProjectChatMenuProps } from './ProjectChatMenu'
+export {
+  ProjectNoticeLine,
+  ProjectNoticeList,
+  ProjectFolderHintLine,
+  ProjectMemoryEventLine,
+  ProjectMemoryConsolidatedLine,
+  ProjectToolSummaryLine,
+  ProjectProblemLine,
+  MEMORY_ALREADY_GONE_MS,
+  memoryRemoveOutcome,
+  type ProjectMemoryRemoveOutcome,
+} from './ProjectNotices'
+export {
+  projectPickerItems,
+  projectPickerAction,
+  projectPickerInitialIndex,
+  projectMatchesQuery,
+  projectChipText,
+  projectChatRows,
+  projectChatMenuItems,
+  projectChatTitle,
+  projectEditorLabel,
+  projectRelativeTime,
+  projectFullTime,
+  projectNoticeView,
+  projectNoticeActionLabel,
+  projectMemoryEventText,
+  projectConsolidatedText,
+  projectToolSummaryText,
+  projectAddProblem,
+  projectPrepareProblem,
+  projectProblemText,
+  placeRemoteEntries,
+  type ProjectProblem,
+  type ProjectPickerItem,
+  type ProjectPickerAction,
+  type ProjectChatMenuItem,
+  type ProjectNoticeAction,
+  type ProjectNoticeView,
+} from './project-panel-model'
+export {
+  PROJECT_PANEL_STRINGS,
+  projectPanelText,
+  type ProjectPanelStringKey,
+} from './strings-project-panel'
+export {
+  PROJECT_TOOLS,
+  createProjectRun,
+  forgetMemoryLine,
+  memoryEntriesAfter,
+  memoryLineGone,
+  memoryLinesOf,
+  panelProjectSkill,
+  projectSystemPrompt,
+  windowProjectFolderBridge,
+} from './project-skill'
+export type {
+  CreateProjectRunOptions,
+  PanelProjectSkillOptions,
+  ProjectMemoryLine,
+  ProjectRun,
+  ProjectRunPrepared,
+  ProjectRunSnapshot,
+  ProjectSkillBridge,
+} from './project-skill'
+export {
+  createProjectChatController,
+  useProjectChat,
+  windowLegacyChatApi,
+} from './use-project-chat'
+export type {
+  LegacyChatApi,
+  ProjectActiveChat,
+  ProjectChat,
+  ProjectChatBridge,
+  ProjectChatController,
+  ProjectChatEntry,
+  ProjectChatLoop,
+  ProjectChatOpened,
+  ProjectChatOptions,
+  ProjectChatRecord,
+  ProjectChatState,
+} from './use-project-chat'
+export {
+  consolidateProjectMemory,
+  parseConsolidatedMemory,
+  undoProjectMemoryConsolidation,
+} from './project-memory-consolidate'
+export type {
+  ConsolidateProjectMemoryOptions,
+  ConsolidateProjectMemoryResult,
+  ProjectMemoryBridge,
+} from './project-memory-consolidate'
+export { PROJECT_CHAT_STRINGS, projectChatText } from './strings-project-chat'
+export { useProjectPanel } from './use-project-panel'
+export type {
+  ProjectConsolidationRoute,
+  ProjectMessageParts,
+  ProjectPanel,
+  ProjectPanelOptions,
+  ProjectToolRecord,
+} from './use-project-panel'
+export type { ProjectChatStringKey } from './strings-project-chat'

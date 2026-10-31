@@ -38,6 +38,10 @@ export interface GlobalShortcutGuards {
   readonly cellEditing: boolean
   readonly gridTarget: boolean
   readonly formulaBarTarget: boolean
+  /// Ctrl+Shift+4 currency symbol from the UI language (default "$").
+  readonly currencySymbol?: string
+  /// Ctrl+Shift+3 date pattern from the UI language (default "d-mmm-yy").
+  readonly datePattern?: string
 }
 
 type Gate = 'grid' | 'sheet' | 'idle' | 'formulaBar'
@@ -51,6 +55,8 @@ interface Chord {
   readonly cmdMac?: boolean
   /** Excel-for-Mac binding: Cmd+Ctrl together, mac only */
   readonly cmdCtrlMac?: boolean
+  /** real Ctrl on every platform (Cmd+Backspace is the mac clear key) */
+  readonly ctrlOnly?: boolean
 }
 
 interface Binding {
@@ -160,12 +166,28 @@ const BINDINGS: readonly Binding[] = [
   { code: 'PageUp', chord: {}, gate: 'grid', action: command('page-row:-1') },
   { code: 'PageDown', chord: { alt: true }, gate: 'grid', action: command('page-col:1') },
   { code: 'PageUp', chord: { alt: true }, gate: 'grid', action: command('page-col:-1') },
+  { code: 'KeyY', chord: { mod: true }, gate: 'sheet', action: command('redo') },
+  { code: 'Quote', chord: { mod: true }, gate: 'sheet', action: command('copy-above:formula') },
+  {
+    code: 'Quote',
+    chord: { mod: true, shift: true },
+    gate: 'sheet',
+    action: command('copy-above:value'),
+  },
+  { code: 'ArrowDown', chord: { alt: true }, gate: 'sheet', action: command('dv-dropdown-open') },
+  {
+    code: 'Backspace',
+    chord: { ctrlOnly: true },
+    gate: 'sheet',
+    action: command('scroll-to-active'),
+  },
 ]
 
 function chordMatches(event: GlobalShortcutKeyEvent, chord: Chord, isMac: boolean): boolean {
   if (event.shiftKey !== Boolean(chord.shift) || event.altKey !== Boolean(chord.alt)) return false
   if (chord.cmdMac) return isMac && event.metaKey && !event.ctrlKey
   if (chord.cmdCtrlMac) return isMac && event.metaKey && event.ctrlKey
+  if (chord.ctrlOnly) return event.ctrlKey && !event.metaKey
   return (event.metaKey || event.ctrlKey) === Boolean(chord.mod)
 }
 
@@ -198,7 +220,12 @@ export function resolveGlobalShortcut(
   }
   // number-format / border chords (Ctrl+Shift+digit, Ctrl+Shift+&/_, mac ⌘⌥
   // borders) write to the range: same gate as the table's `sheet` rows
-  const formatCommand = formatShortcutCommand(event, guards.isMac)
+  const formatCommand = formatShortcutCommand(
+    event,
+    guards.isMac,
+    guards.currencySymbol,
+    guards.datePattern,
+  )
   if (formatCommand && gateOpen('sheet', guards)) return { kind: 'command', command: formatCommand }
   return null
 }

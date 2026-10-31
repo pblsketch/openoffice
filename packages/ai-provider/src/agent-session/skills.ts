@@ -21,6 +21,15 @@
  * a person's skills can run to hundreds of megabytes. It is also handed to
  * Claude as a working folder (`--add-dir`) so that a skill's scripts may run;
  * writing there changes the copy only, and the next session restores it.
+ *
+ * A skill from an installed Claude plugin may name files beside its `skills`
+ * folder with `${CLAUDE_PLUGIN_ROOT}`. The copy is one plugin folder of the
+ * app's own, so three of the plugin's root folders are copied to its root as
+ * well: `scripts`, `references` and `assets`. Nothing else at the plugin root
+ * is copied. Claude loads more from a plugin root than skills (hooks, MCP and
+ * LSP servers, monitors, `bin`, settings, agents, commands), and some of those
+ * start a process with no tool call and no permission request, so only
+ * folders Claude never loads by themselves are taken.
  */
 import { createHash } from 'node:crypto'
 import { copyFile, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
@@ -172,6 +181,62 @@ async function copyFiles(files: readonly SkillFolderFile[], to: string): Promise
 }
 
 /**
+ * The only plugin root folders copied. Everything else at the root is left
+ * out, including what Claude would load and run by itself (`.lsp.json`,
+ * `monitors`, `hooks`, `.mcp.json`, `bin`, `settings.json`).
+ */
+const PLUGIN_COPIED_DIRS = new Set(['scripts', 'references', 'assets'])
+
+/** The plugin folder a plugin skill belongs to (`<plugin>/skills/<skill>`) */
+function pluginRootOf(skill: AgentSkillInput): string | undefined {
+  if (skill.source !== 'plugin') return undefined
+  const skillsDir = dirname(skill.dir)
+  return basename(skillsDir).toLowerCase() === 'skills' ? dirname(skillsDir) : undefined
+}
+
+/**
+ * Copy a plugin's supporting files to the copy's root, so that a SKILL.md's
+ * `${CLAUDE_PLUGIN_ROOT}/…` finds them. Links are not followed: nothing outside
+ * the plugin folder is read. The same size limits as a skill apply.
+ */
+async function copyPluginSupport(pluginRoot: string, bundleDir: string): Promise<void> {
+  let bytes = 0
+  let files = 0
+  const walk = async (current: string, rel: string): Promise<void> => {
+    if (bytes > MAX_USER_SKILL_BYTES || files > MAX_USER_SKILL_FILES) return
+    let entries
+    try {
+      entries = await readdir(current, { withFileTypes: true })
+    } catch {
+      return
+    }
+    entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+    for (const entry of entries) {
+      if (bytes > MAX_USER_SKILL_BYTES || files > MAX_USER_SKILL_FILES) return
+      if (entry.isSymbolicLink()) continue
+      // at the plugin root, only the listed folders: no file and no other folder
+      if (!rel && !(entry.isDirectory() && PLUGIN_COPIED_DIRS.has(entry.name))) continue
+      const path = join(current, entry.name)
+      const childRel = rel ? `${rel}/${entry.name}` : entry.name
+      if (entry.isDirectory()) {
+        await walk(path, childRel)
+        continue
+      }
+      if (!entry.isFile()) continue
+      const info = await stat(path).catch(() => undefined)
+      if (!info?.isFile()) continue
+      if (bytes + info.size > MAX_USER_SKILL_BYTES || files + 1 > MAX_USER_SKILL_FILES) return
+      const target = join(bundleDir, ...childRel.split('/'))
+      await mkdir(dirname(target), { recursive: true })
+      await copyFile(path, target)
+      bytes += info.size
+      files += 1
+    }
+  }
+  await walk(pluginRoot, '')
+}
+
+/**
  * Make the copy's SKILL.md say what the copy is: its name in the copy, and
  * `disable-model-invocation: true` for a skill used only when called (`false`
  * for one set to "AI decides" whose file says true). Other keys stay as written.
@@ -258,6 +323,8 @@ async function buildNow(
   const taken = new Set<string>()
   /** skill names a skill has already won, without case */
   const won = new Set<string>()
+  /** plugin roots whose supporting files were already copied */
+  const copiedPlugins = new Set<string>()
   const next: Manifest = {}
 
   for (const skill of byPriority(input)) {
@@ -295,6 +362,12 @@ async function buildNow(
     if (facts.tooLarge) {
       skipped.push({ ...info, reason: 'too-large' })
       continue
+    }
+    // a plugin skill may name files beside its skills folder: ${CLAUDE_PLUGIN_ROOT}/…
+    const pluginRoot = pluginRootOf(skill)
+    if (pluginRoot && !copiedPlugins.has(pluginRoot)) {
+      copiedPlugins.add(pluginRoot)
+      await copyPluginSupport(pluginRoot, bundleDir)
     }
     // what the copy depends on besides the files: a new name or a changed "only when called"
     // makes a new copy even when the files are the same

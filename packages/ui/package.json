@@ -42,6 +42,7 @@
     "@genoffice/i18n": "*",
     "@genoffice/pptx-render": "*",
     "@genoffice/agent-core": "*",
-    "@genoffice/ai-provider": "*"
+    "@genoffice/ai-provider": "*",
+    "@genoffice/project-store": "*"
   }
 }

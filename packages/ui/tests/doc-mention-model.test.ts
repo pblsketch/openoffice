@@ -147,6 +147,11 @@ describe('docMentionListOf (the shell answer)', () => {
     expect(docMentionListOf({ ok: true, items: [good, { name: 3 }, null] })).toEqual([good])
   })
 
+  it('keeps the project files group', () => {
+    const file = doc('회의록.hwpx', { group: 'project' })
+    expect(docMentionListOf({ ok: true, items: [file] })).toEqual([file])
+  })
+
   it('reads no list from a refusal or junk', () => {
     expect(docMentionListOf({ ok: false, reason: 'unavailable' })).toBeNull()
     expect(docMentionListOf(undefined)).toBeNull()
@@ -179,6 +184,24 @@ describe('filterDocMentions (what the list shows)', () => {
   it('keeps pane → open → recent within a rank whatever the input order', () => {
     const shuffled = [doc('x2', { group: 'recent' }), doc('x1', { group: 'pane' })]
     expect(filterDocMentions(shuffled, 'x').map((i) => i.name)).toEqual(['x1', 'x2'])
+  })
+
+  it('puts the project files after open documents and before recent ones', () => {
+    const shuffled = [
+      doc('계획 c', { group: 'recent' }),
+      doc('계획 b', { group: 'project' }),
+      doc('계획 a', { group: 'open' }),
+      doc('옛 계획', { group: 'recent' }),
+      doc('새 계획', { group: 'project' }),
+    ]
+    expect(filterDocMentions(shuffled, '계획').map((i) => i.name)).toEqual([
+      '계획 a',
+      '계획 b',
+      '계획 c',
+      '새 계획',
+      '옛 계획',
+    ])
+    expect(filterDocMentions(shuffled, '새').map((i) => i.group)).toEqual(['project'])
   })
 
   it('matches the file name only, case-folded, spaces included', () => {

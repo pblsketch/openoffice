@@ -13,6 +13,7 @@ import {
   type GoogleClient,
   type GoogleSignInFailure,
   type GoogleSignInOptions,
+  type GoogleTokens,
 } from './oauth'
 import { DriveApi, type DriveAccount } from './drive-api'
 
@@ -114,6 +115,29 @@ export class DriveConnection {
   async connect(
     options: Pick<GoogleSignInOptions, 'openBrowser' | 'pages'>,
   ): Promise<{ ok: true } | { ok: false; reason: GoogleSignInFailure | 'unavailable' }> {
+    const result = await this.signInOnce(options)
+    return result.ok ? { ok: true } : result
+  }
+
+  /**
+   * Google's file picker, through the same browser round trip as signing in
+   * (decision 0085). It connects when there is no connection yet, and gives the
+   * ids of the files the person chose, which the app may open from then on.
+   */
+  async pick(
+    options: Pick<GoogleSignInOptions, 'openBrowser' | 'pages'>,
+    multiple: boolean,
+  ): Promise<
+    { ok: true; picked: string[] } | { ok: false; reason: GoogleSignInFailure | 'unavailable' }
+  > {
+    return this.signInOnce({ ...options, pick: { multiple } })
+  }
+
+  private async signInOnce(
+    options: Pick<GoogleSignInOptions, 'openBrowser' | 'pages' | 'pick'>,
+  ): Promise<
+    { ok: true; picked: string[] } | { ok: false; reason: GoogleSignInFailure | 'unavailable' }
+  > {
     const client = this.options.client
     if (!client) return { ok: false, reason: 'unavailable' }
     this.signIn?.abort()
@@ -128,20 +152,28 @@ export class DriveConnection {
     })
     if (this.signIn === controller) this.signIn = null
     if (!result.ok) return result
-    const previous = this.refreshToken
-    this.refreshToken = result.tokens.refreshToken
-    this.accessToken = result.tokens.accessToken
-    this.expiresAt = result.tokens.expiresAt
+    const account = this.refreshToken ? this.account : null
+    await this.adopt(result.tokens)
+    // the same account picking again keeps its name on screen; a new sign-in reads it afresh
+    if (account) this.account = account
+    this.emit()
+    if (!account) await this.fetchAccount()
+    return { ok: true, picked: result.picked }
+  }
+
+  /**
+   * Keep the newest tokens. The previous refresh token is let go, not revoked:
+   * revoking can end the app's whole grant for the account, and with it the
+   * access to files picked before (decision 0085).
+   */
+  private async adopt(tokens: GoogleTokens): Promise<void> {
+    this.refreshToken = tokens.refreshToken
+    this.accessToken = tokens.accessToken
+    this.expiresAt = tokens.expiresAt
     this.account = null
     this.expired = false
-    this.persisted = await this.options.vault.save(result.tokens.refreshToken).catch(() => false)
+    this.persisted = await this.options.vault.save(tokens.refreshToken).catch(() => false)
     if (!this.persisted) await this.options.vault.clear().catch(() => {})
-    if (previous && previous !== result.tokens.refreshToken) {
-      void revokeGoogleToken(previous, this.options.fetch)
-    }
-    this.emit()
-    await this.fetchAccount()
-    return { ok: true }
   }
 
   cancelConnect(): void {

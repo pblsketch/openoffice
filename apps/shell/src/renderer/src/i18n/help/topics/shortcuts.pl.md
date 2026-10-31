@@ -690,6 +690,7 @@ Te klawisze działają, gdy karta HWP/HWPX jest na wierzchu, a dokument ma fokus
 | Tekst daty/godziny                     | ⌃K, D       | Ctrl+K, D          |
 | Edytuj obiekt, pole lub tabelę/komórkę | ⌃N, K       | Ctrl+N, K          |
 | Symbole                                | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+| Zamień na hanja                        | F9          | Klawisz Hanja / F9 |
 
 ### Tabela
 

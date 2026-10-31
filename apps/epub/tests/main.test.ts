@@ -177,6 +177,7 @@ describe('channels', () => {
       if (!channel.startsWith('epub:')) expect(channel).toBe(APP_CHANNELS.getLanguage)
     }
     const mainToRenderer = new Set<string>([
+      EPUB_CHANNELS.flushRequest,
       EPUB_CHANNELS.saveRequest,
       EPUB_CHANNELS.closeSaveRequest,
       EPUB_CHANNELS.fileRenamed,
@@ -335,7 +336,10 @@ describe('in-app MCP helpers', () => {
   it('read gives the book text with unsaved edits; save asks the renderer to save to the path', async () => {
     const { path, contents } = await openBook()
     await edit(contents, 'Unsaved words.')
-    const text = await epubReadText(contents as never)
+    const reading = epubReadText(contents as never)
+    const requestId = contents.sent.at(-1)![1]
+    call(EPUB_CHANNELS.flushResult, contents, requestId, true)
+    const text = await reading
     expect(text).toContain('# Chapter One')
     expect(text).toContain('Unsaved words.')
     const saving = epubSaveToPath(contents as never, path)
@@ -348,6 +352,90 @@ describe('in-app MCP helpers', () => {
     const { contents } = await openBook()
     sendEpubMenuCommand(contents as never, 'find')
     expect(contents.sent.at(-1)).toEqual([EPUB_CHANNELS.menuCommand, 'find'])
+  })
+})
+
+describe('MCP reads and pending renderer edits', () => {
+  it('waits for this renderer to flush before reading, without saving the file', async () => {
+    const { path, contents } = await openBook()
+    const original = readFileSync(path)
+    contents.send = (channel, ...args) => {
+      contents.sent.push([channel, ...args])
+      if (channel === 'epub:flush-request') {
+        void edit(contents, 'Just typed, not saved.').then(() => {
+          call('epub:flush-result', contents, args[0], true)
+        })
+      }
+    }
+    expect(await epubReadText(contents as never)).toContain('Just typed, not saved.')
+    expect(readFileSync(path)).toEqual(original)
+  })
+
+  it('rejects a read when the renderer cannot flush', async () => {
+    const { contents } = await openBook()
+    const reading = epubReadText(contents as never)
+    expect(contents.sent.at(-1)?.[0]).toBe('epub:flush-request')
+    const requestId = contents.sent.at(-1)![1]
+    const rejected = expect(reading).rejects.toThrow('could not flush')
+    call('epub:flush-result', contents, requestId, false)
+    await rejected
+  })
+
+  it('asks the caller to retry after input-method composition', async () => {
+    const { contents } = await openBook()
+    const reading = epubReadText(contents as never)
+    const requestId = contents.sent.at(-1)![1]
+    const rejected = expect(reading).rejects.toThrow('typing in progress, try again shortly')
+    call(EPUB_CHANNELS.flushResult, contents, requestId, 'composing')
+    await rejected
+    const retry = epubReadText(contents as never)
+    call(EPUB_CHANNELS.flushResult, contents, contents.sent.at(-1)![1], true)
+    await expect(retry).resolves.toContain('First paragraph.')
+  })
+
+  it('matches concurrent reads by request id and sender, ignoring late replies', async () => {
+    const { contents } = await openBook()
+    const { contents: other } = await openBook({}, 'other.epub')
+    const first = epubReadText(contents as never)
+    const firstId = contents.sent.at(-1)![1]
+    const second = epubReadText(contents as never)
+    const secondId = contents.sent.at(-1)![1]
+    expect(firstId).not.toBe(secondId)
+    let finished = false
+    void second.then(() => {
+      finished = true
+    })
+    call(EPUB_CHANNELS.flushResult, other, secondId, true)
+    call(EPUB_CHANNELS.flushResult, contents, firstId, true)
+    await expect(first).resolves.toContain('First paragraph.')
+    call(EPUB_CHANNELS.flushResult, contents, firstId, true)
+    await Promise.resolve()
+    expect(finished).toBe(false)
+    call(EPUB_CHANNELS.flushResult, contents, secondId, true)
+    await expect(second).resolves.toContain('First paragraph.')
+  })
+
+  it('rejects on timeout instead of returning stale text', async () => {
+    const { contents } = await openBook()
+    vi.useFakeTimers()
+    try {
+      const reading = epubReadText(contents as never)
+      const rejected = expect(reading).rejects.toThrow('timed out flushing')
+      await vi.advanceTimersByTimeAsync(10_000)
+      await rejected
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('rejects pending reads when the view is destroyed', async () => {
+    const { contents } = await openBook()
+    const reading = epubReadText(contents as never)
+    const rejected = expect(reading).rejects.toThrow('could not flush')
+    contents.destroyed = true
+    contents.listeners.get('destroyed')?.()
+    await rejected
   })
 })
 

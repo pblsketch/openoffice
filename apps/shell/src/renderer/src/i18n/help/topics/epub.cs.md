@@ -20,6 +20,15 @@ Editor e-knih otevírá knihy EPUB (`.epub`) na kartě. Knihu můžete číst, o
 - Odkaz v knize vás přesune na dané místo. Webové a e-mailové odkazy se otevřou ve výchozím prohlížeči; jiné adresy se neotevírají.
 - Vlastní skripty knihy se nikdy nespouštějí a nic se nenačítá z internetu. Zvuk a video se nepřehrávají.
 
+## Náhled
+
+- Kliknutím na **Náhled** na kartě **Domů** nebo **Zobrazení** uvidíte knihu rozdělenou na stránky, jak ji ukazuje čtečka e-knih. Náhled se otevře v místě, kde právě čtete.
+- Na liště nahoře vyberte obrazovku (**Čtečka e-knih**, **Telefon**, **Tablet** nebo **Přizpůsobit oknu**), orientaci na šířku, velikost textu a pozadí (bílé, sépie nebo tmavé). Široká obrazovka otočená na šířku ukazuje dvě stránky vedle sebe. Tato nastavení mění jen náhled, nikdy knihu.
+- Stránky otáčejte šipkami, klávesami Page Up a Page Down, mezerníkem, kolečkem myši nebo tlačítky po stranách. Za poslední stránkou kapitoly pokračujete další kapitolou. Obsah a odkazy v knize přesunou náhled na dané místo.
+- V náhledu nelze upravovat text. Když AI knihu změní nebo vrátíte změnu zpět, náhled se aktualizuje.
+- Kliknutím na **Zavřít náhled** nebo klávesou Esc se vrátíte k úpravám v místě, které náhled ukazoval.
+- Zalomení stránek se v aplikacích obchodů a na zařízeních trochu liší, berte proto náhled jako blízké přiblížení.
+
 ## Úpravy textu
 
 - Klikněte do odstavce a pište. Upravovat lze odstavce, nadpisy, položky seznamů, citace, buňky tabulek a popisky obrázků. Obrázky a rozvržení tabulek upravit nelze.
@@ -63,6 +72,6 @@ Editor e-knih otevírá knihy EPUB (`.epub`) na kartě. Knihu můžete číst, o
 
 - Přidávání, mazání a změna pořadí kapitol; změna názvu, autora nebo obálky; vkládání obrázků a tabulek; změna odstavce na nadpis nebo seznam.
 - Úpravy a překlad knih s pevným rozvržením a otevírání knih chráněných proti kopírování.
-- Obracení stránek jako v tištěné knize a vytvoření nové prázdné knihy.
+- Vytvoření nové prázdné knihy.
 - Porovnání originálu a překladu vedle sebe přímo v editoru. Místo toho otevřete dvojjazyčnou knihu a přeloženou knihu opravujte jako kteroukoli jinou.
 - Skrytí částí knihy před AI.

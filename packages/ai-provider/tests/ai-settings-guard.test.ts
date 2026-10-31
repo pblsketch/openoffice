@@ -73,6 +73,14 @@ describe('sanitizeAiSettings', () => {
     expect(Object.keys(sanitized!.providers)).toEqual(['openai'])
   })
 
+  it("drops a key provider's live model list: only the main process writes it (decision 0087)", () => {
+    const sanitized = sanitizeAiSettings({
+      ...baseSettings(),
+      providers: { gemini: { apiKey: 'k', model: 'm', models: ['planted'] } },
+    })
+    expect(sanitized!.providers.gemini).toEqual({ apiKey: 'k', model: 'm' })
+  })
+
   it('drops the reported attack payload verbatim shape (cliPath injection, ftp baseUrl)', () => {
     // exactly the payload the reviewer flagged: pre-guard, ai:set-settings
     // persisted this to ai-settings.json unchanged

@@ -46,7 +46,7 @@ export const de = {
     'Diese Anmeldung nutzt einen API-Schlüssel oder ein Konto mit nutzungsbasierter Abrechnung, oder ihre Art ließ sich nicht feststellen. Mit „Trotzdem verwenden“ läuft die KI über diese Verbindung, und jede Anfrage wird diesem Konto berechnet.',
   connectTitle: 'KI verbinden, um loszulegen',
   connectBody:
-    'Die KI läuft über Ihr vorhandenes Claude- oder Codex-Abonnement. Ein API-Schlüssel ist nicht nötig.',
+    'Die KI läuft über Ihr vorhandenes Claude- oder ChatGPT-Abonnement. Ein API-Schlüssel ist nicht nötig.',
   connectProviderTitle: 'Die Verbindung {provider} ist derzeit nicht nutzbar',
   connectKeyBody:
     'Die Einrichtung von {provider} ist noch nicht abgeschlossen. Schließen Sie sie in den Einstellungen ab oder wählen Sie eine andere KI.',
@@ -74,6 +74,8 @@ export const de = {
     'Das kostenlose Kontingent für heute ist aufgebraucht. Versuchen Sie es morgen erneut oder wählen Sie in den Einstellungen eine andere KI.',
   errFreeLimitReset:
     'Das kostenlose Kontingent für heute ist aufgebraucht. Ab {time} können Sie es wieder nutzen.',
+  errFreeTierModel:
+    'Für dieses Modell gibt es keine kostenlose Stufe, ein kostenloser Schlüssel kann es nicht nutzen. Wählen Sie ein Modell der kostenlosen Stufe (etwa ein Flash-Modell) oder aktivieren Sie die Abrechnung in der Konsole des Anbieters.',
   continueWith: 'Mit {provider} fortfahren',
   continueMeteredNote:
     'Die Verbindung {provider} ist kein Abonnement: Beim Fortfahren wird nach Verbrauch abgerechnet.',

@@ -260,12 +260,14 @@ describe('the AI panel’s edits', () => {
       {
         selection: vi.fn(async () => null),
         readText: vi.fn(async () => ''),
+        previewPage: vi.fn(async () => ({ pageCount: 1, page: 0 })),
         replaceText: vi.fn(async () => ({ ok: true })),
       },
       onChange,
     )
     await bridge.selection()
     await bridge.readText()
+    await bridge.previewPage()
     expect(onChange).not.toHaveBeenCalled()
     await expect(bridge.replaceText()).resolves.toEqual({ ok: true })
     // when it starts and when it lands

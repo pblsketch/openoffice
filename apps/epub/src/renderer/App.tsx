@@ -9,7 +9,9 @@
  * the in-book search on the left, and the status line. Editing inside the
  * frame, the history and find and replace are the edit controller's
  * (`edit/controller.ts`); this component wires keys, menus and buttons to it.
- * The AI panel docks at the right (`ai/AiDock.tsx`, spec §7). Book
+ * The book preview (`components/BookPreview.tsx`) covers the chapter view
+ * with the book as pages of an e-book reader until it is closed. The AI
+ * panel docks at the right (`ai/AiDock.tsx`, spec §7). Book
  * translation (spec §8, `translate/BookTranslation.tsx`) opens from the
  * ribbon, the menu and the AI panel, and locks editing while it runs.
  */
@@ -32,6 +34,7 @@ import type {
 import { openableLink } from '../shared/links'
 import { EpubAiDock, useEpubAi } from './ai/AiDock'
 import type { StartBookTranslation } from './ai/book-tools'
+import { BookPreview, type BookPreviewHandle, type PreviewPlace } from './components/BookPreview'
 import { ChapterFrame, type FrameWheel } from './components/ChapterFrame'
 import { EditHomeTools, EditQuickTools, ReplaceRow } from './components/EditTools'
 import { Ribbon } from './components/Ribbon'
@@ -67,7 +70,7 @@ import {
   nextReadingIndex,
   overscroll,
 } from './reader/navigation'
-import { stepFontScale, viewPrefsCss, type FrameColors } from './reader/view-prefs'
+import { frameColors, stepFontScale, viewPrefsCss } from './reader/view-prefs'
 import { BookTranslation, type BookTranslationHandle } from './translate/BookTranslation'
 import { TranslateButton } from './translate/TranslateButton'
 
@@ -148,21 +151,6 @@ const SEARCH_IDLE: SearchView = {
   finished: false,
 }
 
-/** The frame's colours: the page's `--epub-*` properties and search tokens (styles.css), with system colours as a fallback. */
-function frameColors(): FrameColors {
-  const style = getComputedStyle(document.documentElement)
-  const read = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback
-  return {
-    paper: read('--epub-paper', 'Canvas'),
-    ink: read('--epub-ink', 'CanvasText'),
-    nightPaper: read('--epub-night-paper', 'Canvas'),
-    nightInk: read('--epub-night-ink', 'CanvasText'),
-    nightLink: read('--epub-night-link', 'LinkText'),
-    hitBg: read('--search-hit-active-bg', 'Mark'),
-    hitInk: read('--search-hit-active-ink', 'MarkText'),
-  }
-}
-
 /** The reading text of a chapter as the frame will show it (the search's view of a chapter). */
 function chapterReadingText(chapter: OkChapter, assetBase: string): string {
   const html = buildChapterHtml({
@@ -192,6 +180,12 @@ export default function App(): React.JSX.Element {
   const [replacement, setReplacement] = useState('')
   const [replacing, setReplacing] = useState(false)
   const [autoSave, setAutoSave] = useAutoSavePref('epubapp.autoSave', api)
+  /** the book preview is open, from this place; the chapter it shows */
+  const [preview, setPreview] = useState<PreviewPlace | null>(null)
+  const [previewSpine, setPreviewSpine] = useState<number | null>(null)
+  const previewRef = useRef<BookPreviewHandle>(null)
+  const previewOpenRef = useRef(false)
+  previewOpenRef.current = preview !== null
   /** the book's file: the AI panel keeps its conversation per file */
   const [filePath, setFilePath] = useState<string | null>(null)
 
@@ -512,6 +506,12 @@ export default function App(): React.JSX.Element {
     (hits: readonly BookSearchHit[], index: number) => {
       const hit = hits[index]
       if (!hit) return
+      // a search result is shown in the editing view
+      if (previewOpenRef.current) {
+        previewOpenRef.current = false
+        setPreview(null)
+        setPreviewSpine(null)
+      }
       setActiveHit(index)
       activeHitRef.current = index
       void goTo(hit.spineIndex, { kind: 'hit', start: hit.start, length: hit.length })
@@ -630,6 +630,26 @@ export default function App(): React.JSX.Element {
     [api, save],
   )
 
+  // An MCP read needs the same pending edits as a save, without writing the file.
+  useEffect(
+    () =>
+      api.onFlushRequest?.((requestId) => {
+        if (phaseRef.current.kind !== 'open') {
+          api.sendFlushResult(requestId, false)
+          return
+        }
+        if (editor.composing) {
+          api.sendFlushResult(requestId, 'composing')
+          return
+        }
+        void editor.flush().then(
+          () => api.sendFlushResult(requestId, true),
+          () => api.sendFlushResult(requestId, false),
+        )
+      }),
+    [api, editor],
+  )
+
   // auto save: every 30 seconds and when the app loses focus, with the shell-wide setting
   const bookWritable = phase.kind === 'open' && phase.readOnly === null
   useEffect(() => {
@@ -717,10 +737,10 @@ export default function App(): React.JSX.Element {
           void save('saveAs')
           break
         case 'bold':
-          void editor.toggleMark('bold')
+          if (!previewOpenRef.current) void editor.toggleMark('bold')
           break
         case 'italic':
-          void editor.toggleMark('italic')
+          if (!previewOpenRef.current) void editor.toggleMark('italic')
           break
       }
     },
@@ -804,6 +824,54 @@ export default function App(): React.JSX.Element {
     [applyTarget, schedulePosition, editor],
   )
 
+  /** An outside address from a link in the book: only safe ones open, in the browser. */
+  const openOutside = useCallback(
+    (url: string) => {
+      if (!openableLink(url)) {
+        flash({ key: 'linkNotOpened', params: { url } })
+        return
+      }
+      void api
+        .openLink(url)
+        .then((opened) => {
+          if (!opened) flash({ key: 'linkNotOpened', params: { url } })
+        })
+        .catch(() => {})
+    },
+    [api, flash],
+  )
+
+  // ---- the book preview ----
+
+  /** Opens the preview where the reader is, with what was typed sent first. */
+  const openPreview = useCallback(async () => {
+    const current = shownRef.current
+    if (phaseRef.current.kind !== 'open' || !current || previewOpenRef.current) return
+    await editor.flush()
+    const doc = frameDocRef.current
+    previewOpenRef.current = true
+    setPreview({ spineIndex: current.spineIndex, blockId: doc ? topBlockId(doc) : null })
+  }, [editor])
+
+  /** Closes the preview; the editing view goes to the place the preview was showing. */
+  const closePreview = useCallback(() => {
+    const place = previewRef.current?.place() ?? null
+    previewOpenRef.current = false
+    setPreview(null)
+    setPreviewSpine(null)
+    if (place) {
+      void goTo(
+        place.spineIndex,
+        place.blockId ? { kind: 'block', id: place.blockId } : { kind: 'start' },
+      )
+    }
+  }, [goTo])
+
+  const togglePreview = useCallback(() => {
+    if (previewOpenRef.current) closePreview()
+    else void openPreview()
+  }, [closePreview, openPreview])
+
   const onFrameLink = useCallback(
     (href: string | null) => {
       const open = phaseRef.current
@@ -821,19 +889,10 @@ export default function App(): React.JSX.Element {
           route.fragment ? { kind: 'fragment', id: route.fragment } : { kind: 'start' },
         )
       } else if (route.kind === 'outside') {
-        if (!openableLink(route.url)) {
-          flash({ key: 'linkNotOpened', params: { url: route.url } })
-          return
-        }
-        void api
-          .openLink(route.url)
-          .then((opened) => {
-            if (!opened) flash({ key: 'linkNotOpened', params: { url: route.url } })
-          })
-          .catch(() => {})
+        openOutside(route.url)
       }
     },
-    [api, goTo, flash],
+    [goTo, openOutside],
   )
 
   const onFrameWheel = useCallback(
@@ -875,7 +934,8 @@ export default function App(): React.JSX.Element {
   // ---- what is drawn ----
 
   const tocEntries = book?.toc.entries ?? []
-  const tocCurrent = shown ? currentTocEntry(tocEntries, shown.spineIndex) : -1
+  const readingSpine = preview && previewSpine !== null ? previewSpine : (shown?.spineIndex ?? null)
+  const tocCurrent = readingSpine !== null ? currentTocEntry(tocEntries, readingSpine) : -1
   const chapterNames = useMemo(() => {
     const names = new Map<number, string>()
     for (const entry of book?.toc.entries ?? []) {
@@ -889,6 +949,10 @@ export default function App(): React.JSX.Element {
   const onTocPick = useCallback(
     (entry: EpubTocEntry) => {
       if (entry.spineIndex === null) return
+      if (previewOpenRef.current) {
+        previewRef.current?.goTo(entry.spineIndex, entry.fragment)
+        return
+      }
       void goTo(
         entry.spineIndex,
         entry.fragment ? { kind: 'fragment', id: entry.fragment } : { kind: 'start' },
@@ -941,6 +1005,7 @@ export default function App(): React.JSX.Element {
         prefs={prefs}
         searchOpen={side === 'search'}
         tocOpen={side === 'toc'}
+        previewOpen={preview !== null}
         closeMenusSignal={closeMenus}
         quickTools={
           <EditQuickTools
@@ -955,7 +1020,7 @@ export default function App(): React.JSX.Element {
         }
         homeEditTools={
           <EditHomeTools
-            editable={editState.editable}
+            editable={editState.editable && preview === null}
             canReplace={canReplace}
             replaceOpen={side === 'search' && replaceOpen}
             onBold={() => runCommand('bold')}
@@ -981,6 +1046,7 @@ export default function App(): React.JSX.Element {
         onLineHeight={(lineHeight) => updatePrefs({ lineHeight })}
         onToggleDark={() => updatePrefs({ dark: !prefs.dark })}
         onToggleToc={() => setSide((s) => (s === 'toc' ? null : 'toc'))}
+        onTogglePreview={togglePreview}
       />
       <div className="epub-main">
         {side === 'toc' && (
@@ -1034,12 +1100,26 @@ export default function App(): React.JSX.Element {
             lock={lockForTranslation}
             onWindowOpen={translationWindowChanged}
           />
-          {readOnly && shown && (
+          {preview && (
+            <BookPreview
+              ref={previewRef}
+              book={phase.book}
+              assetBase={phase.assetBase}
+              start={preview}
+              readChapter={readChapterForAi}
+              refreshSignal={editState}
+              chapterName={(i) => chapterNames.get(i) ?? t('chapterLabel', { n: i + 1 })}
+              openOutside={openOutside}
+              onChapter={setPreviewSpine}
+              onClose={closePreview}
+            />
+          )}
+          {readOnly && shown && !preview && (
             <div className="epub-chapter-notice" role="note" data-reason={readOnly}>
               {t(READ_ONLY_TEXT[readOnly])}
             </div>
           )}
-          <div className="epub-frame-wrap">
+          <div className="epub-frame-wrap" data-covered={preview ? 'true' : undefined}>
             {shown ? (
               <ChapterFrame
                 key={shown.key}
@@ -1058,7 +1138,7 @@ export default function App(): React.JSX.Element {
               </div>
             )}
           </div>
-          <div className="epub-turn-bar">
+          <div className="epub-turn-bar" data-covered={preview ? 'true' : undefined}>
             <button
               type="button"
               className="epub-turn"
@@ -1085,8 +1165,11 @@ export default function App(): React.JSX.Element {
       </div>
       <footer className="epub-status" aria-live="polite">
         <span className="epub-status-chapter">
-          {shown ? t('statusChapter', { n: shown.spineIndex + 1, total: spine.length }) : ''}
+          {readingSpine !== null
+            ? t('statusChapter', { n: readingSpine + 1, total: spine.length })
+            : ''}
         </span>
+        {preview && <span className="epub-status-preview">{t('previewStatus')}</span>}
         {readOnly && (
           <span className="epub-status-readonly" data-reason={readOnly}>
             {t(READ_ONLY_TEXT[readOnly])}

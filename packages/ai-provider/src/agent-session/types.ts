@@ -124,6 +124,12 @@ export type AgentSessionEvent =
   | { type: 'permission'; request: AgentPermissionRequest }
   /** the program finished answering one message; the session stays open for the next */
   | { type: 'turn-done'; ok: boolean }
+  /**
+   * documents were opened after the session started; the program's rules were
+   * built at the start and cannot protect these. `paths` is what the window may
+   * count, never program output.
+   */
+  | { type: 'documents-unprotected'; paths: string[] }
   /** the session ended with a failure; `kind` follows the app's run errors */
   | { type: 'error'; kind?: AiRunErrorKind | undefined; message: string }
   /** the program is gone (stopped, failed, or idle) */

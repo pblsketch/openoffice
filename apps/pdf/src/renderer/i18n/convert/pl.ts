@@ -66,6 +66,8 @@ export const pl = {
   cvErrFailed: 'Konwersja nie powiodła się.',
   cvPageImageAlt: 'Strona {page}',
   imgExportWholePages: 'Całe strony',
+  imgExportCurrentPage: 'Tylko bieżąca strona',
+  imgExportCurrentPageTip: 'Eksportuj oglądaną stronę jako jeden plik PNG',
   imgExportEmbedded: 'Tylko obrazy na stronach',
   imgExportEmbeddedTip:
     'Zapisz obrazy umieszczone na stronach jako pliki PNG w oryginalnej rozdzielczości',

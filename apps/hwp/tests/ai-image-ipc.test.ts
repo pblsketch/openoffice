@@ -2,10 +2,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
- * hwp:ai-generate-image and hwp:fetch-image — the two channels that bring a
- * picture into the Hangul document. The generation tool and the fetch gate are
- * shared; this module wires them to the view's document folder and the screen
- * path, exactly like the other editors.
+ * hwp:ai-generate-image, hwp:fetch-image and hwp:analyze-media — the channels that bring a
+ * picture into the Hangul document or let the model look at one that is already in it. The
+ * tools and the fetch gate are shared; this module wires them to the view's document folder
+ * and the screen path, exactly like the other editors.
  */
 
 type Handler = (event: { sender: unknown }, ...args: unknown[]) => unknown
@@ -17,8 +17,10 @@ vi.mock('electron', () => ({
 }))
 
 const generateImageTool = vi.fn()
+const analyzeMediaTool = vi.fn()
 vi.mock('@genoffice/ai-search', () => ({
   generateImageTool: (...args: unknown[]) => generateImageTool(...args),
+  analyzeMediaTool: (...args: unknown[]) => analyzeMediaTool(...args),
   documentMediaRoots: (path: string | null, pasted: string) =>
     [path ? `/roots${path}` : null, `/roots${pasted}`].filter(Boolean),
   withMediaCallSignal: (_sender: unknown, run: (signal: AbortSignal) => unknown) =>
@@ -42,6 +44,7 @@ const sender = { id: 9 }
 beforeEach(() => {
   handlers.clear()
   generateImageTool.mockReset()
+  analyzeMediaTool.mockReset()
   fetchImageBytes.mockReset()
 })
 
@@ -49,10 +52,10 @@ const register = (filePath: string | null = 'C:/docs/a.hwp') =>
   registerHwpImageIpc({ filePathOf: () => filePath })
 
 describe('hwp image channels', () => {
-  it('registers exactly its own two channels', () => {
+  it('registers exactly its own three channels', () => {
     register()
     expect([...handlers.keys()].sort()).toEqual(
-      [HWP_CHANNELS.aiGenerateImage, HWP_CHANNELS.fetchImage].sort(),
+      [HWP_CHANNELS.aiGenerateImage, HWP_CHANNELS.fetchImage, HWP_CHANNELS.analyzeMedia].sort(),
     )
   })
 
@@ -93,5 +96,45 @@ describe('hwp image channels', () => {
     const result = await handlers.get(HWP_CHANNELS.fetchImage)!({ sender }, 'file:///store/a.png')
     expect(result).toEqual({ base64: 'AA==', mime: 'image/png' })
     expect(fetchImageBytes).toHaveBeenCalledWith('file:///store/a.png')
+  })
+
+  it('shows a picture of the document to the reader, and takes no other address', async () => {
+    register()
+    analyzeMediaTool.mockResolvedValue({ text: 'a chart of sales' })
+    const result = await handlers.get(HWP_CHANNELS.analyzeMedia)!(
+      { sender },
+      {
+        mediaUrls: [
+          'data:image/png;base64,AA==',
+          'file:///etc/passwd',
+          'https://example.com/a.png',
+        ],
+        requirements: 'What does the chart show?',
+      },
+    )
+    expect(result).toEqual({ text: 'a chart of sales' })
+    const [settingsPath, op, options] = analyzeMediaTool.mock.calls[0] as [
+      string,
+      Record<string, unknown>,
+      Record<string, unknown>,
+    ]
+    expect(settingsPath).toContain('ai-settings.json')
+    // only the document's own picture bytes are taken: no path and no address
+    expect(op).toEqual({
+      mediaUrls: ['data:image/png;base64,AA=='],
+      requirements: 'What does the chart show?',
+    })
+    expect(options.context).toEqual({ path: 'screen', statuses: { codex: 'ready' } })
+    expect(options.signal).toBeInstanceOf(AbortSignal)
+  })
+
+  it('refuses a call without a picture data URL', async () => {
+    register()
+    const result = await handlers.get(HWP_CHANNELS.analyzeMedia)!(
+      { sender },
+      { mediaUrls: ['file:///etc/passwd'], requirements: 'What is it?' },
+    )
+    expect(result).toEqual({ error: 'no picture was given to look at' })
+    expect(analyzeMediaTool).not.toHaveBeenCalled()
   })
 })

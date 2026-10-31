@@ -35,6 +35,8 @@ export type IpcStreamErrorKind =
   | 'headless-limit'
   /** today's free allowance of a free key connection (OpenRouter `:free`, Gemini free tier) is used up */
   | 'free-limit'
+  /** the model is not offered on the free tier the key is on (Gemini answers with a quota of 0) */
+  | 'free-tier-model'
   /** the user declined to send a request larger than the context budget */
   | 'context-limit'
 

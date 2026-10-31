@@ -21,6 +21,7 @@ Chiaro / Scuro / Segui il sistema. L'opzione Segui il sistema segue l'aspetto de
 - **Pannello IA** — Disattivato, Compresso o Ultimo stato.
 - **Salva automaticamente tutti i documenti** attiva il salvataggio automatico per impostazione predefinita in ogni editor; puoi comunque disattivarlo per una singola finestra.
 - **Posizione di salvataggio** con il pulsante **Cambia** e **App predefinita per i documenti Office** per far gestire a GenOffice .docx / .xlsx / .pptx.
+- **Formato di salvataggio dei nuovi documenti HWP** sceglie se proporre prima HWP o HWPX al primo salvataggio di un nuovo documento. I documenti aperti mantengono il proprio formato.
 
 GenOffice non raccoglie né invia statistiche di utilizzo, quindi non c'è alcun interruttore.
 

@@ -67,10 +67,17 @@ function setup(
   imageGenAvailable?: () => boolean,
   attachmentPath?: (name: string) => string | null,
   attachmentNames?: () => string[],
+  pictureAnalysisAvailable?: () => boolean,
 ) {
   const bridge: AgentBridge = {
     foreignChanges: vi.fn(async () => 0),
     readText: vi.fn(async () => '제목\n본문입니다'),
+    listPictures: vi.fn(async () => ({ count: 0, limited: false, pictures: [] })),
+    readPicture: vi.fn(async () => ({
+      ok: false as const,
+      reason: 'no_such_picture' as const,
+      count: 0,
+    })),
     findText: vi.fn(async () => ({ count: 0, matches: [] })),
     listMemos: vi.fn(async () => ({ count: 0, memos: [] })),
     replaceText: vi.fn(async () => ({ ok: true as const, count: 1, inTable: false })),
@@ -85,6 +92,7 @@ function setup(
     insertTable: vi.fn(async () => ({ ok: true as const, rows: 2, cols: 3, inTable: false })),
     insertPicture: vi.fn(async () => ({ ok: true as const, inTable: false, place: PLACE })),
     formatText: vi.fn(async () => ({ ok: true as const, count: 1 })),
+    replaceFont: vi.fn(async () => ({ ok: true as const, ranges: 3, paragraphs: 2 })),
     formatParagraph: vi.fn(async () => ({ ok: true as const, inTable: false })),
     listTables: vi.fn(async () => ({ count: 0, partial: false, tables: [] })),
     readTable: vi.fn(async () => ({
@@ -241,6 +249,7 @@ function setup(
     ...(imageGenAvailable ? { imageGenAvailable } : {}),
     ...(attachmentPath ? { attachmentPath } : {}),
     ...(attachmentNames ? { attachmentNames } : {}),
+    ...(pictureAnalysisAvailable ? { pictureAnalysisAvailable } : {}),
   })
   const call = (name: string, input: Record<string, unknown> = {}) =>
     skill.executeTool({ id: '1', name, input } satisfies AgentToolCall)
@@ -335,6 +344,21 @@ describe('the document context sent with a message', () => {
     const context = skill.buildContext!()
     expect(context).toContain('Text (complete):')
     expect(context).not.toContain('aiMemoContext')
+  })
+
+  it('says how many pictures the document has', async () => {
+    const { skill, refreshContext } = setup({
+      listPictures: async () => ({
+        count: 2,
+        limited: false,
+        pictures: [
+          { picture: 1, type: 'image/png', page: 1, near: '', table: null },
+          { picture: 2, type: 'image/jpeg', page: 3, near: '', table: 2 },
+        ],
+      }),
+    })
+    await refreshContext()
+    expect(skill.buildContext!()).toContain('Pictures: 2')
   })
 })
 
@@ -1042,6 +1066,32 @@ describe('merge_cells and split_cell', () => {
     })
     expect(result.isError).toBe(true)
     expect(bridge.mergeCells).not.toHaveBeenCalled()
+  })
+
+  it('replaces a font everywhere, and says how much it changed', async () => {
+    const { call, bridge, changes } = setup()
+    const result = await call('replace_font', { from: '휴먼명조', to: '함초롬바탕' })
+    expect(bridge.replaceFont).toHaveBeenCalledWith('휴먼명조', '함초롬바탕')
+    expect(result.mutated).toBe(true)
+    expect(result.output).toContain('3 run(s)')
+    expect(changes[0]).toMatchObject({ kind: 'format', from: '휴먼명조', to: '함초롬바탕' })
+  })
+
+  it('says nothing changed when no text uses the font', async () => {
+    const { call, changes } = setup({
+      replaceFont: async () => ({ ok: true, ranges: 0, paragraphs: 0 }),
+    })
+    const result = await call('replace_font', { from: '없는글꼴', to: '함초롬바탕' })
+    expect(result.mutated).toBe(false)
+    expect(result.output).toContain('No text uses the font')
+    expect(changes).toEqual([])
+  })
+
+  it('needs both font names', async () => {
+    const { call, bridge } = setup()
+    const result = await call('replace_font', { from: '휴먼명조' })
+    expect(result.isError).toBe(true)
+    expect(bridge.replaceFont).not.toHaveBeenCalled()
   })
 
   it('splits a cell into rows and columns, or a merged cell back', async () => {
@@ -1940,6 +1990,8 @@ describe('the skill as the model sees it', () => {
       'read_memos',
       'find_text',
       'read_url',
+      'list_pictures',
+      'analyze_picture',
       'replace_text',
       'replace_all',
       'insert_paragraphs',
@@ -1949,6 +2001,7 @@ describe('the skill as the model sees it', () => {
       'insert_image',
       'generate_image',
       'format_text',
+      'replace_font',
       'format_paragraph',
       'replace_selection',
       'read_selection',
@@ -2104,5 +2157,68 @@ describe('pictures', () => {
     expect(result.isError).toBe(true)
     expect(result.output).toContain('there is no file named "probe.png"')
     expect(bridge.insertPicture).not.toHaveBeenCalled()
+  })
+
+  it('lists the pictures of the document with page, table and nearby words', async () => {
+    const { call } = setup({
+      listPictures: async () => ({
+        count: 2,
+        limited: false,
+        pictures: [
+          { picture: 1, type: 'image/png', page: 1, near: '첫째 그림', table: null },
+          { picture: 2, type: 'image/jpeg', page: 3, near: '', table: 2 },
+        ],
+      }),
+    })
+    const result = await call('list_pictures')
+    expect(result.isError).toBeUndefined()
+    expect(result.output).toContain('1. image/png, page 1 — near "첫째 그림"')
+    expect(result.output).toContain('2. image/jpeg, page 3, table 2')
+    expect(result.output).toContain('analyze_picture')
+    expect(result.summary).toBe('aiToolPictures:{"count":2}')
+  })
+
+  it('says when the document has no pictures', async () => {
+    const result = await setup().call('list_pictures')
+    expect(result.output).toBe('This document has no pictures.')
+    expect(result.summary).toBe('aiToolPictures:{"count":0}')
+  })
+
+  it('sends a document picture to the reader and returns its description', async () => {
+    const analyzeMedia = vi.fn(async () => ({ text: 'A chart of sales by month.' }))
+    api({ analyzeMedia })
+    const { call } = setup({
+      readPicture: async () => ({ ok: true, mime: 'image/png', base64: PNG }),
+    })
+    const result = await call('analyze_picture', {
+      picture: 1,
+      question: 'What does the chart show?',
+    })
+    expect(analyzeMedia).toHaveBeenCalledWith({
+      mediaUrls: [`data:image/png;base64,${PNG}`],
+      requirements: 'What does the chart show?',
+    })
+    expect(result.isError).toBeUndefined()
+    expect(result.output).toBe('A chart of sales by month.')
+    expect(result.summary).toBe('aiToolAnalyzePicture:{"picture":1}')
+  })
+
+  it('tells the model when that picture is not there', async () => {
+    const { call } = setup({
+      readPicture: async () => ({ ok: false, reason: 'no_such_picture', count: 2 }),
+    })
+    const result = await call('analyze_picture', { picture: 9, question: 'What is this?' })
+    expect(result.isError).toBe(true)
+    expect(result.output).toContain('the document has 2')
+  })
+
+  it('offers analyze_picture only while a reader is known to be connected', () => {
+    const off = setup({}, undefined, undefined, undefined, undefined, () => false).skill
+    expect(off.tools.map((tool) => tool.name)).not.toContain('analyze_picture')
+    expect(off.tools.map((tool) => tool.name)).toContain('list_pictures')
+    expect(off.systemPrompt).toContain('analyze_picture is currently unavailable')
+
+    const on = setup({}, undefined, undefined, undefined, undefined, () => true).skill
+    expect(on.tools.map((tool) => tool.name)).toContain('analyze_picture')
   })
 })

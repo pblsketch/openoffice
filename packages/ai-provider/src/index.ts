@@ -109,8 +109,10 @@ export type {
 export { AiRunError, aiStreamErrorFields } from './run-error'
 export {
   AI_PROVIDERS,
+  AI_SUBSCRIPTION_NOTICE_VERSION,
   DEFAULT_MAX_OUTPUT_TOKENS,
   HEADLESS_SUBSCRIPTION_CONSENT_VERSION,
+  LEGACY_NOTICE_VERSION_FOR_MIGRATION,
   MAX_MAX_OUTPUT_TOKENS,
   MIN_MAX_OUTPUT_TOKENS,
   clampMaxOutputTokens,
@@ -118,6 +120,8 @@ export {
   headlessSubscriptionOn,
   maxOutputTokensOf,
   resolveAiSettings,
+  subscriptionNoticeVersionOf,
+  withMigratedSubscriptionNoticeVersion,
 } from './providers'
 export {
   activeCustomEndpoint,
@@ -239,7 +243,7 @@ export { chatForProvider } from './chat'
 export { setAiUserAgent, setRescueFetch } from './fetch'
 export { isAiNetworkError } from './network-error'
 export { isAiOverloadedError } from './overload-error'
-export { freeLimitOf } from './free-ai'
+export { freeLimitOf, isOpenRouterFreeModel } from './free-ai'
 export type { FreeAiConnectResult, FreeAiProviderId, FreeAiQuota } from './free-ai'
 export { parseOutputCapRejection } from './output-cap'
 export { AiCreditsError, sseLines, streamForProvider } from './stream'

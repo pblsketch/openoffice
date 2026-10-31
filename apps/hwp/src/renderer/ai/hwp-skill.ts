@@ -14,8 +14,11 @@ import type {
   AgentMemoRemovalRefusal,
   AgentNoSuchStyle,
   AgentParagraphFormat,
+  AgentPicture,
+  AgentPictureList,
   AgentPlace,
   AgentPlaceRefusal,
+  AgentReadPictureResult,
   AgentSegment,
   AgentStyleKind,
   AgentTableCell,
@@ -31,6 +34,8 @@ import type { StringKey } from '../i18n/locale'
 export const CONTEXT_MAX_CHARS = 8000
 /** Most text one read_document call returns. */
 export const READ_PAGE_CHARS = 24000
+/** Most characters of a picture's description a call returns. */
+const MAX_ANALYZED_PICTURE_CHARS = 6000
 const CONTEXT_MAX_FIELDS = 40
 /** Selected text attached to a user message; a longer selection is read on demand. */
 export const SELECTION_CONTEXT_CHARS = 6000
@@ -86,6 +91,11 @@ export interface HwpSkillDeps {
   /** live predicate: the main process says an image route can run; false hides generate_image */
   imageGenAvailable?: () => boolean
   /**
+   * False when no connection can look at pictures: analyze_picture is then not offered and
+   * the model is told the document's pictures cannot be seen. Unknown (undefined) offers it.
+   */
+  pictureAnalysisAvailable?: () => boolean
+  /**
    * The path on this PC of a file attached to this conversation, by the exact name the
    * attachment list shows. The model names an attachment; only the panel decides which
    * paths exist, so a name the user did not attach has no path.
@@ -113,6 +123,10 @@ export interface HwpSkill {
 export const IMAGE_GEN_OFF_NOTE =
   '\n\nNote: generate_image is currently unavailable (no image provider: no Codex subscription connected and no image API key in Settings). Do not call or promise it; use image_search for imagery.'
 
+/** Told to the model when the panel knows that no connection can look at a picture. */
+export const PICTURE_ANALYSIS_OFF_NOTE =
+  '\n\nNote: analyze_picture is currently unavailable (no AI connection that can look at pictures and no picture-reading API key in Settings). Do not call it or promise to describe a picture: you cannot see what a picture of the document shows, so say that instead of guessing.'
+
 const SYSTEM_PROMPT = [
   brandText(
     'You are the assistant inside the GenOffice editor for Hangul word processor documents (HWP / HWPX), the format most Korean public offices write in.',
@@ -129,14 +143,16 @@ const SYSTEM_PROMPT = [
   '- Add a picture in a new paragraph after or before an anchor paragraph, or at the end: a real picture found on the web (image_search, then insert_image with its address) or an illustration the app draws (generate_image). A picture is saved inside the document, so it travels with the file. Only insert pictures the user asked for.',
   '- Work on the tables that are already there: list them (list_tables), read one cell by cell (read_table), write text into its cells, many at once (fill_cells), tick the choice boxes of a form (check_boxes), add or remove rows and columns (add_to_table, remove_from_table), and remove a whole table (delete_table).',
   '- Change formatting: bold, italic, underline, strikethrough, font, font size, text colour, highlight and the character style of a piece of text (format_text); alignment, line spacing, first-line indent, margins, space above and below and the paragraph style of a paragraph, and the character formatting of a whole paragraph (format_paragraph); the background colour of table cells (format_cells).',
+  '- Use one font instead of another everywhere in the document, body and table cells (replace_font). The format check hands the font names over; without it, ask which font the user means.',
   '- Work with the styles of the document: see what one looks like (read_style), add a paragraph or character style (create_style), and change a style: its name, the style that follows it and its look (edit_style).',
   '- Merge table cells into one (merge_cells; their text goes into it, one cell after another) or split a cell into several, or a merged cell back (split_cell). Read the table first: rows and columns count as read_table shows them.',
   '- Fill the form fields of the document (list_fields, fill_field). In Hangul these are called 누름틀. A field is picked by its number in list_fields, because several fields often share one name.',
   '- Make a table of contents (차례, 목차) from the headings you pick, with their page numbers, and write its page numbers again after the document changed (insert_toc, refresh_toc).',
   '- Add footnotes and endnotes (각주, 미주) with their mark right after a piece of body text (insert_note), list the notes with their text (list_notes), and rewrite or remove one (edit_note, delete_note). The text of the document does not show the notes; list_notes does.',
+  '- See the pictures of the document (body text and table cells): list them (list_pictures), then look at one and answer a question about it (analyze_picture). The document text does not show what a picture shows.',
   '',
   '## What they cannot do',
-  '- You cannot change numbering, borders or the page layout, and you cannot move, resize, replace or remove a picture that is already in the document (the user does that in the editor). You can only add a new one. A note cannot be put inside a table cell.',
+  '- You cannot change numbering, borders or the page layout, and you cannot move, resize, replace or remove a picture that is already in the document (the user does that in the editor). You can only add a new one. analyze_picture only looks at one. A note cannot be put inside a table cell.',
   "- A tick box that is a picture or a form control cannot be ticked: only a □ that is the paragraph's bullet or typed into the text can.",
   '- A table inside a cell of another table can be read, filled and removed, but its cells cannot be coloured, merged or split, it cannot get or lose rows and columns, and the alignment, spacing and paragraph style of its paragraphs cannot be changed. Its text can still be formatted, character styles included.',
   '- You cannot remove a style. The user can do that in the style dialog of the editor (F6).',
@@ -176,6 +192,12 @@ const SYSTEM_PROMPT = [
   '- The mark goes right after the words the note is about: pass those words as after, as short as is unambiguous. The document numbers the notes itself; never type a number into the text or the note.',
   '- Write the note text plainly: no number, no leading mark, no markdown. A source is written the way the document already cites (author, title, year, page).',
   '- To change a note, call list_notes and rewrite it with edit_note by its number there; edit_note replaces its whole text. Remove a note only when the user asks.',
+  '',
+  '## Pictures',
+  '- A picture in the document shows something the text cannot. When the user asks about one ("this photo", "the chart on page 2", "what does the picture say"), call list_pictures first, then analyze_picture with its number and a short English question saying what to find out.',
+  '- A picture the user attached to the message is already visible to you; analyze_picture is for pictures that are in the document.',
+  '- analyze_picture brings back a description, not the picture. Answer from that description and say when it does not show what was asked; never guess at a picture you have not looked at.',
+  '- list_pictures covers the body text and table cells; a picture in a text box, a header, a footer or the page background is not in the list. Say so when the user points at one of those.',
   '',
   '## When the user has selected text',
   '- When the context has a "Selected text" block, the user selected that part in the editor and the request is about it: "this", "here", "이 부분", "선택한 부분" mean the selection.',
@@ -345,6 +367,33 @@ const TOOLS: AgentToolDef[] = [
     },
   },
   {
+    name: 'list_pictures',
+    description:
+      'List the pictures in the document (body text and table cells) in reading order: the number analyze_picture takes, the image type, the page, the table it is in, and the text beside each one. The text of the document does not show pictures.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'analyze_picture',
+    description:
+      'Look at one picture that is in the document and answer a question about it; the answer comes back as text. A picture carries no words of its own, so this is the only way to know what it shows. Call list_pictures first for the number.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        picture: {
+          type: 'integer',
+          minimum: 1,
+          description: 'the picture number from list_pictures',
+        },
+        question: {
+          type: 'string',
+          description:
+            'what to find out about the picture, in English (for example "read the table in this picture")',
+        },
+      },
+      required: ['picture', 'question'],
+    },
+  },
+  {
     name: 'replace_text',
     description:
       'Replace one occurrence of a piece of text. Without occurrence the text must occur exactly once; with it, that occurrence (1-based, as listed by find_text) is replaced. An empty replacement deletes the text.',
@@ -508,6 +557,26 @@ const TOOLS: AgentToolDef[] = [
         ...TEXT_FORMAT_SCHEMA,
       },
       required: ['find'],
+    },
+  },
+  {
+    name: 'replace_font',
+    description:
+      'Use another font for every piece of text that uses one font: body text and table cells alike, in one undo step. Give both names exactly. This is how a document written in a font other computers do not have is made to open as it looks.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        from: {
+          type: 'string',
+          description: 'the font to replace, exactly as the document names it',
+        },
+        to: {
+          type: 'string',
+          description:
+            'the font to use instead; for Korean documents 함초롬바탕, 함초롬돋움 or 맑은고딕',
+        },
+      },
+      required: ['from', 'to'],
     },
   },
   {
@@ -1174,6 +1243,13 @@ function noSuchTable(table: number, count: number): string {
     : `There is no table ${table}: the document has ${count}. Call list_tables for the numbers.`
 }
 
+/** What a picture number that is not in the list means, with the number of pictures there are. */
+function noSuchPicture(count: number): string {
+  return count === 0
+    ? 'This document has no pictures.'
+    : `There is no picture by that number: the document has ${count}. Call list_pictures for the numbers.`
+}
+
 /** A replacement as an activity label; it reads the same in every language. */
 const arrow = (from: string, to: string) => `“${quote(from)}” → “${quote(to)}”`
 
@@ -1296,6 +1372,8 @@ function hostLabel(rawUrl: string): string {
 export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
   const { bridge, label } = deps
   const imageGenOn = (): boolean => deps.imageGenAvailable?.() !== false
+  /** unknown offers it: only a known "no picture reader" hides the tool and says so */
+  const pictureAnalysisOn = (): boolean => deps.pictureAnalysisAvailable?.() !== false
   let context = ''
   /** the runs the user selected, as they stand now (a replacement moves them on) */
   let selection: AgentSegment[] | null = null
@@ -1552,6 +1630,65 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
             `\n${result.url}\n\n${result.text}`,
           summary: label('aiToolReadUrl', { host: hostLabel(result.url), n: result.text.length }),
         }
+      }
+      case 'list_pictures': {
+        const list: AgentPictureList = await bridge.listPictures()
+        if (list.count === 0) {
+          return {
+            output: 'This document has no pictures.',
+            summary: label('aiToolPictures', { count: 0 }),
+          }
+        }
+        const lines = list.pictures.map((picture: AgentPicture) => {
+          const where = [
+            picture.type,
+            picture.page === null ? '' : `page ${picture.page}`,
+            picture.table === null ? '' : `table ${picture.table}`,
+          ]
+            .filter(Boolean)
+            .join(', ')
+          return `${picture.picture}. ${where}${picture.near ? ` — near "${picture.near}"` : ''}`
+        })
+        return {
+          output:
+            `Pictures in the document (${list.count})${list.limited ? ', the first ones listed' : ''}:\n` +
+            `${lines.join('\n')}\n` +
+            'Call analyze_picture with a picture number and a question to learn what it shows.',
+          summary: label('aiToolPictures', { count: list.count }),
+        }
+      }
+      case 'analyze_picture': {
+        const picture = call.input.picture
+        if (typeof picture !== 'number' || !Number.isInteger(picture) || picture < 1) {
+          return bad(call, 'picture must be a number from list_pictures')
+        }
+        const question = textArg(call, 'question')
+        if (!question) return bad(call, 'question must say what to find out about the picture')
+        const found: AgentReadPictureResult = await bridge.readPicture(picture)
+        if (!found.ok) {
+          return bad(
+            call,
+            found.reason === 'too_large'
+              ? `Picture ${picture} is too large to look at (${Math.round(found.bytes / 1024 / 1024)}MB). Tell the user instead of guessing.`
+              : noSuchPicture(found.count),
+          )
+        }
+        const result = await window.hwpApi.analyzeMedia({
+          mediaUrls: [`data:${found.mime};base64,${found.base64}`],
+          requirements: question,
+        })
+        if (!result.text) {
+          return {
+            output: result.error ?? 'the picture could not be looked at',
+            isError: true,
+            summary: label('aiToolAnalyzePictureFail', { picture }),
+          }
+        }
+        const text =
+          result.text.length > MAX_ANALYZED_PICTURE_CHARS
+            ? `${result.text.slice(0, MAX_ANALYZED_PICTURE_CHARS)}\n…(truncated)`
+            : result.text
+        return { output: text, summary: label('aiToolAnalyzePicture', { picture }) }
       }
       case 'replace_text': {
         const find = textArg(call, 'find')
@@ -1830,6 +1967,35 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
           output: `Formatted ${result.count} occurrence(s).`,
           mutated: true,
           summary: label('aiToolFormat', { text: quote(find) }),
+        }
+      }
+      case 'replace_font': {
+        const from = textArg(call, 'from')
+        if (!from) return bad(call, 'from must be a non-empty string')
+        const to = textArg(call, 'to')
+        if (!to) return bad(call, 'to must be a non-empty string')
+        const result = await bridge.replaceFont(from, to)
+        if (result.ranges === 0) {
+          return {
+            output: `No text uses the font "${from}". Nothing was changed.`,
+            mutated: false,
+            summary: `${from} → ${to}`,
+          }
+        }
+        deps.onChange({
+          kind: 'format',
+          from,
+          to,
+          count: result.ranges,
+        })
+        return {
+          output:
+            `Changed ${result.ranges} run(s) of text in ${result.paragraphs} paragraph(s) from "${from}" to "${to}".` +
+            (result.truncated
+              ? ' It stopped at the cap: some text still uses the old font, so run it again.'
+              : ''),
+          mutated: true,
+          summary: `${from} → ${to}`,
         }
       }
       case 'format_paragraph': {
@@ -2835,17 +3001,23 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
   return {
     skill: {
       id: 'hwp',
-      // the live predicate takes generate_image's sentence and tool out together
+      // the live predicates take each tool and its sentence out together
       get systemPrompt(): string {
         const attached = attachedImageNote(
           deps.attachmentNames?.() ?? [],
           'call insert_image with attachment set to the name',
         )
-        const base = SYSTEM_PROMPT + attached
-        return imageGenOn() ? base : `${base}${IMAGE_GEN_OFF_NOTE}`
+        let base = SYSTEM_PROMPT + attached
+        if (!imageGenOn()) base += IMAGE_GEN_OFF_NOTE
+        if (!pictureAnalysisOn()) base += PICTURE_ANALYSIS_OFF_NOTE
+        return base
       },
       get tools(): AgentToolDef[] {
-        return imageGenOn() ? TOOLS : TOOLS.filter((tool) => tool.name !== 'generate_image')
+        let offered = TOOLS
+        if (!imageGenOn()) offered = offered.filter((tool) => tool.name !== 'generate_image')
+        if (!pictureAnalysisOn())
+          offered = offered.filter((tool) => tool.name !== 'analyze_picture')
+        return offered
       },
       buildContext: () => [context, selectionContext()].filter(Boolean).join('\n\n'),
       executeTool: async (call, signal) => {
@@ -2864,7 +3036,7 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
     },
     refreshContext: async () => {
       try {
-        const [text, fields, tables, notes, styles, memos] = await Promise.all([
+        const [text, fields, tables, notes, styles, memos, pictures] = await Promise.all([
           bridge.readText(),
           bridge.listFields(),
           bridge.listTables(),
@@ -2873,6 +3045,7 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
           bridge.listStyles().catch(() => null),
           // only the count goes into the context; a failure leaves the rest of it usable
           bridge.listMemos().catch(() => null),
+          bridge.listPictures().catch(() => null),
         ])
         const footnotes = notes?.notes.filter((note) => note.kind === 'footnote').length ?? 0
         // numbered: the number is what fill_field takes, and names repeat
@@ -2889,6 +3062,11 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
           tables.count === 0
             ? 'Tables: none.'
             : `Tables: ${tables.count} (list_tables lists them; the text below shows their words but not their empty cells).`,
+          pictures === null
+            ? 'Pictures: could not be listed (list_pictures may still work).'
+            : pictures.count === 0
+              ? 'Pictures: none.'
+              : `Pictures: ${pictures.count} (list_pictures lists them and analyze_picture looks at one; the text below does not show what they show).`,
           notes === null
             ? 'Footnotes and endnotes: could not be listed (list_notes may still work).'
             : notes.count === 0

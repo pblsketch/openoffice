@@ -1,7 +1,8 @@
 /**
  * The document list the shell hands out, built for the editor that asked: the
  * document in the other split pane, then the other open tabs and detached
- * windows, then recently opened files. The asking tab and every copy of its
+ * windows, then (for the `@` list, when the asker's panel has a project) the
+ * newest files of that project (spec 5.13), then recently opened files. The asking tab and every copy of its
  * file are left out. Only files an editor may attach are kept (a known
  * extension, under the size cap) and one row is kept per path, the earlier
  * group winning; paths are compared the way the shell compares open paths
@@ -42,14 +43,26 @@ export interface AttachableFormats {
 export interface DocListDeps {
   openDocuments(): Promise<OpenDocumentEntry[]>
   recent(): Promise<RecentDocumentEntry[]>
+  /**
+   * The AI-visible files of the asker's project, newest first; [] without one.
+   * Only the `@` list asks (`DocListOptions.projectFiles`).
+   */
+  projectFiles?(asker: DocAsker): Promise<Array<{ path: string; title: string }>>
   stat(path: string): Promise<{ sizeBytes: number } | null>
   attachable: AttachableFormats
+}
+
+export interface DocListOptions {
+  /** add the "files of this project" group (the `@` list only) */
+  projectFiles?: boolean
 }
 
 /** how the shell compares open paths (see `isOpen` in index.ts) */
 const pathKey = (path: string): string => resolve(path).toLowerCase()
 
-export function createDocList(deps: DocListDeps): (asker?: DocAsker) => Promise<DocListResult> {
+export function createDocList(
+  deps: DocListDeps,
+): (asker?: DocAsker, options?: DocListOptions) => Promise<DocListResult> {
   const extOf = (path: string): string => extname(path).replace(/^\./, '').toLowerCase()
 
   const capFor = (ext: string): number =>
@@ -57,7 +70,7 @@ export function createDocList(deps: DocListDeps): (asker?: DocAsker) => Promise<
       ? deps.attachable.ATTACHABLE_IMAGE_MAX_BYTES
       : deps.attachable.ATTACHABLE_MAX_BYTES
 
-  return async (asker: DocAsker = {}) => {
+  return async (asker: DocAsker = {}, options: DocListOptions = {}) => {
     const items: DocListItem[] = []
     const seen = new Set<string>()
     const askerKey = asker.path ? pathKey(asker.path) : null
@@ -108,6 +121,16 @@ export function createDocList(deps: DocListDeps): (asker?: DocAsker) => Promise<
     const pane = asker.paneTabId ? others.find((doc) => doc.id === asker.paneTabId) : undefined
     if (pane) await includeOpen(pane, 'pane')
     for (const doc of others) if (doc !== pane) await includeOpen(doc, 'open')
+
+    if (options.projectFiles && deps.projectFiles) {
+      let files: Array<{ path: string; title: string }>
+      try {
+        files = await deps.projectFiles(asker)
+      } catch {
+        files = []
+      }
+      for (const file of files) await include(file.path, file.title, 'project', false)
+    }
 
     for (const doc of await deps.recent()) {
       await include(doc.path, doc.title, 'recent', doc.missing)

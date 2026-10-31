@@ -88,7 +88,7 @@ export function getSlideNotes(archive: PackageArchive, slidePath: string): strin
 
 /** text (\n-separated) → notes txBody. */
 function buildNotesTxBody(text: string): string {
-  const lines = text.split('\n')
+  const lines = text.split(/\r\n|\r|\n/)
   const paras = lines.every((l) => l === '')
     ? '<a:p><a:endParaRPr lang="zh-CN"/></a:p>'
     : lines

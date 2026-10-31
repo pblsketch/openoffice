@@ -13,6 +13,7 @@ export function docMentionOptionId(listId: string, index: number): string {
 const GROUP_LABEL: Record<DocMentionGroup, DocMentionStringKey> = {
   pane: 'groupPane',
   open: 'groupOpen',
+  project: 'groupProject',
   recent: 'groupRecent',
 }
 

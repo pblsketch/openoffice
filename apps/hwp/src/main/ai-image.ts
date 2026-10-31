@@ -1,19 +1,25 @@
 /**
- * Image search/generation for the Hangul editor's AI panel: the two channels
- * the renderer calls to bring a picture into the document.
+ * Picture search, generation and understanding for the Hangul editor's AI panel: the
+ * channels the renderer calls to bring a picture into the document or to ask what one in
+ * the document shows.
  *
- * The bytes are the renderer's business (it hands them to the editor plugin,
- * which inserts them inside one change); this side only reaches the network.
- * `generateImageTool` is the shared tool with the process-wide subscription
- * statuses, and `fetchImageBytes` reads a web address or the file the generator
- * wrote into its own store — that store is the only `file://` it answers.
+ * The bytes are the renderer's business (it hands them to the editor plugin, which inserts
+ * them inside one change); this side only reaches the network or the configured reader.
+ * `generateImageTool` and `analyzeMediaTool` are the shared tools with the process-wide
+ * subscription statuses, and `fetchImageBytes` reads a web address or the file the
+ * generator wrote into its own store — that store is the only `file://` it answers.
  *
- * The channels are this editor's own (`hwp:`); the shared `ai:*` and
- * subscription channels belong to the docs main and are never registered here.
+ * The channels are this editor's own (`hwp:`); the shared `ai:*` and subscription channels
+ * belong to the docs main and are never registered here.
  */
 import { join } from 'node:path'
 import { app, ipcMain } from 'electron'
-import { documentMediaRoots, generateImageTool, withMediaCallSignal } from '@genoffice/ai-search'
+import {
+  analyzeMediaTool,
+  documentMediaRoots,
+  generateImageTool,
+  withMediaCallSignal,
+} from '@genoffice/ai-search'
 import { sharedSubscriptionStatuses } from '@genoffice/ai-provider/subscription'
 import { fetchImageBytes } from '@genoffice/electron-utils/fetch-image-bytes'
 import { HWP_CHANNELS } from '../shared/ipc'
@@ -52,4 +58,26 @@ export function registerHwpImageIpc(options: HwpImageIpcOptions): void {
   )
 
   ipcMain.handle(HWP_CHANNELS.fetchImage, (_e, url: unknown) => fetchImageBytes(url))
+
+  // Picture understanding: the panel takes a picture out of the document and sends it as
+  // an image data URL. Only data URLs are taken (this editor has no path to hand over), and
+  // the call ends with its tab or when the tab's AI run is stopped.
+  ipcMain.handle(
+    HWP_CHANNELS.analyzeMedia,
+    (e, op: { mediaUrls?: unknown; requirements?: unknown }) =>
+      withMediaCallSignal(e.sender, (signal) => {
+        const mediaUrls = (Array.isArray(op?.mediaUrls) ? op.mediaUrls : [])
+          .map(String)
+          .filter((url) => /^data:image\//i.test(url))
+        if (mediaUrls.length === 0) return { error: 'no picture was given to look at' }
+        return analyzeMediaTool(
+          SETTINGS_PATH(),
+          { mediaUrls, requirements: String(op?.requirements ?? '') },
+          {
+            context: { path: 'screen', statuses: sharedSubscriptionStatuses() },
+            signal,
+          },
+        )
+      }),
+  )
 }

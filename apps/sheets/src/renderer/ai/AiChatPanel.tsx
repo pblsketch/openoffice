@@ -10,6 +10,8 @@ import {
   SkillUsedNotes,
   useComposerSkills,
   type OnTemplateSkill,
+  type ProjectChatEntry,
+  type ProjectMemoryLine,
   type SkillChipRef,
   type SkillUse,
 } from '@genoffice/ui'
@@ -263,6 +265,24 @@ export interface AiChatMessage {
   readonly skillProposals?: readonly string[] | undefined
   /** tokens the provider billed for this reply, summed across its turns (absent when unreported) */
   readonly usage?: AiTokenUsageView | undefined
+  /** memory lines a reopened project chat gave this message */
+  readonly memory?: readonly ProjectMemoryLine[] | undefined
+  /** tools another editor ran for this message (a reopened project chat) */
+  readonly otherEditorTools?: ProjectChatEntry['otherEditorTools'] | undefined
+}
+
+/** The project folder parts of the panel (built in App.tsx with `useProjectPanel` of @genoffice/ui) */
+export interface AiPanelProject {
+  /** the chat menu beside the title; null without a chosen project */
+  readonly chatMenu: React.ReactNode
+  /** the project chip under the input */
+  readonly picker: React.ReactNode
+  /** "this workbook is in the '…' project folder [Use]" above the composer */
+  readonly hint: React.ReactNode
+  /** unwritable, context and problem notices above the composer */
+  readonly notices: React.ReactNode
+  /** the other-editor summary and memory lines of one message */
+  readonly messageParts: (message: AiChatMessage) => React.ReactNode
 }
 
 const MODEL_BRIDGE: AiModelPickerBridge = {
@@ -345,6 +365,7 @@ export function AiChatPanel({
   onCitation,
   onExpand,
   onCollapse,
+  project,
 }: {
   readonly isOpen: boolean
   /** An explicit AI action focuses the composer, including when already open. */
@@ -416,6 +437,8 @@ export function AiChatPanel({
   readonly onCitation: (href: string) => void
   readonly onExpand: () => void
   readonly onCollapse: () => void
+  /** the project folder parts; absent: the panel shows none */
+  readonly project?: AiPanelProject | undefined
 }): React.JSX.Element {
   const { t, lang } = useI18n()
   // A reply that stopped because its connection cannot go on: the queue is paused, so the next
@@ -717,6 +740,7 @@ export function AiChatPanel({
           <AiMark size={22} />
           {aiSubscriptionText(lang, 'aiAssistant')}
         </span>
+        {project?.chatMenu}
         <div className="ai-panel-header-actions">
           <AiPanelSideButton
             lang={lang}
@@ -766,6 +790,7 @@ export function AiChatPanel({
                 )}
                 {entry.tools.length > 0 && <ToolChipList tools={entry.tools} />}
                 <SkillUsedNotes tools={entry.tools} />
+                {project?.messageParts(entry)}
                 {entry.skillProposals?.map((key) => renderSkillCard?.(key))}
                 {entry.text && (
                   <div dir="auto">
@@ -818,6 +843,7 @@ export function AiChatPanel({
               <>
                 {entry.tools.length > 0 && <ToolChipList tools={entry.tools} />}
                 <SkillUsedNotes tools={entry.tools} />
+                {project?.messageParts(entry)}
                 {entry.skillProposals?.map((key) => renderSkillCard?.(key))}
                 {entry.usage && (
                   <div className="ai-message-usage">
@@ -954,6 +980,8 @@ export function AiChatPanel({
           localModelCapabilities(subscription.settings).tools === false && (
             <AiToolsUnsupportedNotice lang={lang} />
           )}
+        {project?.hint}
+        {project?.notices}
         {attachNotice && <div className="ai-attach-notice">{attachNotice}</div>}
         {/* Above the input card, not inside its footer: the reset time is long and
             would otherwise squeeze the attach/send buttons in a narrow panel. */}
@@ -1110,6 +1138,7 @@ export function AiChatPanel({
               {onDrivePicked && <DocAttachButton lang={lang} onPicked={onDrivePicked} />}
             </>
           }
+          footerBelow={project?.picker}
           textareaRef={inputRef}
           onChange={onPromptChange}
           onSend={send}

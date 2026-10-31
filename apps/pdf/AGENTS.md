@@ -9,7 +9,7 @@ PDF 보기·주석·편집 에디터다. 화면은 PDF.js로 그리고, 저장�
 - IPC 계약 `src/shared/ipc.ts`(`PDF_CHANNELS`)와 편집 연산 설명(`src/shared/op-docs.ts`).
 - 페이지 탭의 "PDF 도구" 메뉴(결정 0030): 저장하지 않은 편집을 먼저 저장한 뒤 `pdf:open-in-pdf-tools`로 그 뷰의 파일과 도구 이름(`PDF_TOOLS_HANDOFF`)을 넘긴다. 메인은 그 뷰에 허가된 파일만 받아 셸이 주입한 `openPdfTools`를 부른다. 단독 실행에는 이 주입이 없어 메뉴가 아무것도 열지 못한다고 알린다.
 - PDF의 AI: 패널(`src/renderer/ai/AiPanel.tsx`), skill과 도구(`pdf-skill.ts`, `tools.ts`), 막힌 실행 판정(`ai-connection.ts`), 연결 상태 훅(`useSubscriptionConnection.ts`), preload가 내보내는 구독 API의 모양(`src/shared/subscription-api.ts`).
-- Markdown·EPUB 변환 화면(`src/renderer/convert/`): 변환 창(`ConvertDialog.tsx`, 페이지 범위·저장 위치·진행·취소, EPUB은 표지·책 정보·"원본 쪽마다 새 화면에서 시작"), 책 정보 "AI로 채우기"(`BookInfoAiFill.tsx`, `book-info-ai.ts`), "이미지를 폴더로 내보내기"의 "페이지 안의 그림만"(`ExportImagesMenu.tsx`, `embedded-images.ts`).
+- Markdown·EPUB 변환 화면(`src/renderer/convert/`): 변환 창(`ConvertDialog.tsx`, 페이지 범위·저장 위치·진행·취소, EPUB은 표지·책 정보·"원본 쪽마다 새 화면에서 시작". 셸의 "다른 이름으로 저장"에서 `.md`를 고르면 셸이 저장 창에서 고른 경로를 `initialTarget`으로 넘기고, 창은 폼 없이 그 경로로 바로 변환한다. 다른 변환과 같이 시작 전에 보류 중인 편집을 저장한다), 책 정보 "AI로 채우기"(`BookInfoAiFill.tsx`, `book-info-ai.ts`), "이미지를 폴더로 내보내기" 메뉴(`ExportImagesMenu.tsx`: "페이지 통째로", "지금 보는 쪽만", "페이지 안의 그림만". 앞의 둘은 `App.tsx`의 `exportImages`가 쪽을 150dpi로 그리고, 마지막은 `embedded-images.ts`가 구조 작업으로 뽑는다).
 - AI 페이지 읽기 화면(`src/renderer/ai-read/`): 페이지 고르기와 시작 전 확인(`AiReadDialog.tsx`), 작업·진행·이어하기 제안·이 문서의 보관분 지우기(`AiPageReading.tsx`), 페이지 그림 그리기(`render-page.ts`, 170dpi), 뷰어 검색의 "AI로 읽은 글에서 찾음"(`search-texts.ts`).
 - 문서 번역 화면(`src/renderer/translate/`): 언어·범위·형식 고르기와 시작 전 확인(`TranslateDialog.tsx`), 작업·멈춘 뒤의 선택·결과 파일 쓰기(`DocumentTranslation.tsx`), 결과 보고(`TranslateReport.tsx`).
 - 문서 작업 공용 부품(`src/renderer/doc-jobs/`): 탭의 작업 세션(`job-session.ts`), 쓸 제공자 정하기와 고정(`route.ts`), `ai:stream`으로 가는 모델 호출 하나(`model-call.ts`), 셸의 보관소 채널을 엔진의 보관소로 감싼 것(`ipc-store.ts`), 진행 줄(`JobProgressStrip.tsx`), 이어하기 제안(`ResumeOffer.tsx`), 작업에 고른 페이지 기억(`job-pages.ts`, 페이지 번호만).
@@ -34,7 +34,7 @@ PDF 보기·주석·편집 에디터다. 화면은 PDF.js로 그리고, 저장�
 
 ## 항상 지켜야 하는 것
 
-- 파일 경로는 허가된 것만 다룬다. 뷰마다 읽기가 허용된 경로와 "다른 이름으로 저장" 대상이 따로 기록되고(메인 프로세스의 대화 상자가 고른 것만), 핸들러는 그 밖의 경로를 거절한다. 렌더러가 보낸 경로를 그대로 읽거나 쓰는 핸들러를 추가하지 않는다.
+- 파일 경로는 허가된 것만 다룬다. 뷰마다 읽기가 허용된 경로와 "다른 이름으로 저장" 대상이 따로 기록되고(메인 프로세스의 대화 상자가 고른 것만), 핸들러는 그 밖의 경로를 거절한다. 렌더러가 보낸 경로를 그대로 읽거나 쓰는 핸들러를 추가하지 않는다. "다른 이름으로 저장"에서 `.md`를 고른 경우의 변환 대상(`pdf:convert-dialog-request`의 `outPath`)도 셸의 저장 창이 고른 경로를 셸이 그 뷰에 허가한 것뿐이고, 구조 작업의 `claimTarget`이 그 허가를 확인한다.
 - 쪽 비트맵은 문서 내용이다. 테마가 다시 칠하지 않는다. 야간 읽기는 쪽 비트맵에만 CSS 필터를 거는 화면 전용 표시이고(덧그림은 DOM에서 분리돼 있다) 저장·내보내기·인쇄 결과에는 영향이 없어야 한다. 리본 등 크롬 색은 토큰만 쓴다.
 - 영구 가림은 되돌릴 수 없는 내용 제거다. `redactPdf`는 영역과 겹치는 글자·그림을 PDFium으로 실제로 지운 사본을 만든다. 검은 사각형을 위에 그리는 것으로 대체하지 않는다. 입력 영역은 `validateRedactionRegions`를 거친다.
 - 문서 안에 쓰이는 값은 바꾸지 않는다. 주석 작성자(`/T`)의 기본값 `GenOffice`(`save-pdf.ts`)는 파일에 저장되는 데이터라 제품 이름으로 치환하지 않는다. 화면에 보이는 문구와 모델에게 주는 system prompt의 제품 이름만 `brandText`를 거친다(`ai/pdf-skill.ts`).
@@ -62,7 +62,7 @@ PDF 보기·주석·편집 에디터다. 화면은 PDF.js로 그리고, 저장�
 - 번역 창의 "대역"은 모든 형식에 쓰인다. Markdown·EPUB은 원문 문단 다음에 번역 문단을 두고, 번역 PDF는 원문 쪽 옆에 번역한 쪽을 둔다(`writeBack`의 `payload.bilingual`, 결정 0057).
 - 번역 PDF는 목표 언어가 `ar`, `he`, `hi`이거나 문서에 암호가 걸렸으면 고를 수 없게 하고 이유를 보인다. 저장 위치는 보내기 전에 고른다. 페이지 범위를 줘도 번역 PDF는 모든 페이지를 담고, 고른 페이지만 번역된다.
 - AI로 읽은 글은 뷰어 검색에서 위치 있는 글(본문 글자와 OCR)에 검색어가 없는 페이지에만 페이지 단위 결과로 더한다. 글자 선택과 워드·PPT·엑셀 변환에는 쓰지 않는다.
-- 첫 연결 안내는 이 모듈에서 `codexKeepsHistory`와 `sendsWholeDocument`를 켠 채로 띄운다(패널, AI 읽기 창, 번역 창, 책 정보 채우기). 페이지 그림과 문서 전체 글이 보내질 수 있다는 문장은 PDF 편집기만 보인다.
+- 첫 연결 안내는 이 모듈에서 `codexKeepsHistory`와 `sendsWholeDocument`를 켠 채로 띄운다(패널, AI 읽기 창, 번역 창, 책 정보 채우기). 페이지 그림과 문서 전체 글이 보내질 수 있다는 문장은 PDF 편집기만 보인다. 다른 편집기에서 일반 안내를 이미 확인했어도 이 문장은 `pdfSendNoticeSeen` 판(현재 1)으로 패널에서 한 번 더 보인다(`ai-connection.ts`의 `pdfSendNoticeDue`).
 - **복구 사본(결정 0061).** 저장하지 않은 편집이 있으면 화면이 약 30초마다, 입력이 약 2초 멈췄고 저장이 돌고 있지 않을 때만 사본을 요청하고(`src/renderer/recovery/copy-scheduler.ts`, 실패하면 열 번 건너뛴다), 뒷단이 저장 경로로 편집을 적용한 바이트를 공용 저장소로 `<userData>/pdf-autosave`에 둔다(`src/main/pdf-recovery.ts`). 원본 파일에는 쓰지 않는다. 사본이 있는 파일을 열면 화면이 아무것도 읽기 전에 묻고, 되살린 뷰는 그 바이트를 메모리에 두고 읽고, 저장은 그 바이트에서 시작하며, 저장 대상은 원래 경로다. 암호가 걸렸거나 암호화된 PDF는 사본이 없고 탭마다 한 번 알린다. 제목 없는 문서(스킬 양식의 사본, 되살린 제목 없는 사본)는 운영체제 임시 폴더(`genoffice-pdf-recovery`)의 작업 파일로 열리고 사본은 제목 없는 칸에 둔다. 이 모듈이 만든 작업 파일은 탭이 닫힐 때와 파일로 저장(`adopted`)한 뒤 지우고, 켤 때 그 폴더에서 하루 지난 것만 치운다. 다른 이름으로 저장은 사본을 남긴다(원래 탭이 여전히 저장 안 됨이므로). 영구 가림 사본과 서명 사본으로 옮겨 갈 때는 옛 사본을 새 파일로 옮기지 않고 지운다(`movedToNewFile`). 옮기면 되살릴 때 가림이 풀린다. "저장 안 함" 뒤에는 창 닫기가 다른 탭을 묻는 동안 새 사본을 쓰지 않고(`superseded`), 뷰가 사라질 때 저장 안 됨이어도 사본을 지운다. 닫기가 취소되면 껍데기 앱의 `pdfCloseCancelled(contents)`나, 그 뷰에 다시 들어온 키·포인터 입력으로 사본 쓰기가 다시 시작된다. 암호화 여부는 화면의 보고와 별개로 뒷단이 원본 바이트의 `/Encrypt`로도 확인한다. 껍데기 앱은 `pdfRecoveryEditor`, `pdfRecoveryIdentity`, `createPdfView`(제목 없는 사본을 열 때. `createPlainEditorView('pdf')`는 경로 없이 열지 못한다)를 쓴다.
 
 ## 이 모듈의 방식
@@ -75,6 +75,10 @@ PDF 보기·주석·편집 에디터다. 화면은 PDF.js로 그리고, 저장�
 - 패널은 다른 에디터와 같은 부품으로 조립한다. 연결이 없으면 `AiConnectPrompt`, 구독 첫 사용이면 `AiFirstConnectionNotice`(Codex 진단 기록 문장 `codexKeepsHistory`와 페이지 그림·문서 전체 글 문장 `sendsWholeDocument`를 켠 채로), 문장은 `aiRunErrorText`다. 대기열의 메시지는 `admitQueued`를 지나고, 연결이 없으면 대기열을 멈춘다.
 - PDF.js의 CMap·표준 글꼴·wasm은 `electron.vite.config.ts`가 렌더러 출력에 복사한다. 임베드되지 않은 한중일 글꼴의 문서가 이것으로 그려진다. 복사 경로는 POSIX 구분자여야 한다(Windows에서 `join`은 깨진다).
 - OCR은 플랫폼 도우미 실행 파일을 쓴다(Windows는 `Windows.Media.Ocr`). 도우미가 없는 빌드에서는 엔진이 없는 것으로 풀리고 뷰어는 OCR 없이 동작한다.
+- 다음 넷은 원본에서 받은 기능이다(2026-10-28 받아오기). 원본 동작을 그대로 두고, 고칠 때는 원본의 다음 변경과 부딪히지 않게 좁게 고친다.
+  - **OCR 글자 층 저장**(`ocr-bake.ts`): 자동 인식한 쪽은 저장할 때 줄마다 보이지 않는 글자(render mode 3)를 쓴다. 이 대기 중인 굽기는 저장 안 됨 표시에 넣지 않지만(읽기만 한 스캔은 깨끗하게 남는다), 저장을 누르면 쓰인다. 저장 뒤 다시 읽으면 글자 층이 있어 자동 인식이 다시 돌지 않는다. `App.tsx`의 `ocrBakeInserts` 메모는 `pageGeomRef` 선언 아래에 있어야 한다. 원본은 위에 두어, 스캔 PDF의 첫 쪽 인식이 끝나는 순간 렌더가 터져 창이 하얘졌다(0.12.9 신고). 원본을 받아올 때 이 자리를 되돌리지 않는다. `tests/render-order.test.ts`가 렌더 중에 도는 `useMemo`·`useState` 초기화가 아래에 선언된 값을 읽는지 잡는다.
+  - **책갈피 편집**(`OutlinePanel.tsx`, `save-pdf.ts`의 `applyOutline`): 고친 저장만 `/Outlines`를 다시 쓰고, 고치지 않은 저장은 바이트 그대로다. 고친 책갈피는 `editsPayload`로 자동 저장과 복구 사본에도 실린다.
+  - **Bates 번호**와 **비교**(옆 칸 `compare`): 둘 다 이 PC 안에서만 돈다. 비교는 뒷단이 PDFium으로 글자만 읽어 넘긴다.
 - 문자열은 `src/renderer/i18n/strings.ts`(한 파일에 21개 언어, `zh`가 키 집합)와 `cert-sign-strings.ts`에 있다. 새 기능의 문자열은 언어별 조각으로 나뉘어 있다(`i18n/convert/`, `i18n/ai-read/`, `i18n/translate/`, 읽기 도우미의 `i18n/reading/`, `i18n/annot-panel/`, `i18n/ai-reading/`, `i18n/bilingual/`, `i18n/highlight/`, `i18n/notes/`, 각각 `zh`가 키 집합, 묶는 파일은 `strings-<기능>.ts`). 노트 저장 창의 문구는 메인의 `note-link.ts`에 있다. 구독 연결 문장과 AI 진입 이름은 `@genoffice/ui`의 것을 쓴다.
 - 문서 작업 엔진은 화면 프로세스에서 돈다. 페이지 그림은 화면이 자기 PDF.js 사본으로 그리고, 모델 호출은 AI 창과 같은 `ai:stream`으로 간다. 결과 쓰기는 `ipc-store.ts`를 거쳐 셸의 보관소로 간다. 셸은 그 창에 열린 파일에서 자기가 계산한 해시만 받아들인다.
 - `src/shared/ipc.ts`의 `structure*`·`store*` 채널 모양을 바꾸면 셸의 처리 코드(`apps/shell/src/main/pdf-structure/`)도 함께 고치고 셸을 다시 빌드한다.
@@ -88,7 +92,7 @@ PDF 보기·주석·편집 에디터다. 화면은 PDF.js로 그리고, 저장�
 
 - 실행: `npm run test -w @genoffice/pdf`(또는 이 폴더에서 `npx vitest run`), `npm run typecheck -w @genoffice/pdf`. 환경은 `jsdom`이다.
 - AI 배선(`tests/ai-connection.test.ts`, `tests/ai-panel-subscription.test.ts`, `tests/subscription-api.test.ts`, `tests/ai-transport.test.ts`): 막힌 실행 판정, 핸들러가 없을 때의 상태, 가용성 답이 깨졌을 때 이미지 도구가 빠지는지, 첫 연결 안내의 문장. 이 모듈의 테스트는 제공자를 부르지 않는다.
-- 새 기능: 변환 창(`convert-dialog`, `convert-ai-fill`, `convert-export-images`, `convert-helpers`), 구조 채널의 preload 모양(`structure-api`), AI 페이지 읽기(`ai-page-reading`, `ai-read-pages-structured`, `ai-read-search-tool`), 번역(`document-translation`). 확인 전에 아무것도 보내지 않는지, 한 문서에 작업 하나, 탭이 사라지면 멈추는지, 이어하기 제안이 아무것도 시작하지 않는지, 한도 소진에서 바로 멈추는지는 이 테스트들이 지킨다. 바꾸면 함께 고친다.
+- 새 기능: 변환 창(`convert-dialog`, `convert-ai-fill`, `convert-export-images`, `convert-helpers`, Save As › Markdown의 즉시 변환 포함), 구조 채널의 preload 모양(`structure-api`), AI 페이지 읽기(`ai-page-reading`, `ai-read-pages-structured`, `ai-read-search-tool`), 번역(`document-translation`). 확인 전에 아무것도 보내지 않는지, 한 문서에 작업 하나, 탭이 사라지면 멈추는지, 이어하기 제안이 아무것도 시작하지 않는지, 한도 소진에서 바로 멈추는지는 이 테스트들이 지킨다. 바꾸면 함께 고친다.
 - 읽기 도우미: 단축키(`reading-shortcuts`), 카드와 저장 성공 때 확정(`reading-passage-cards`, `reading-passage-ui`, `reading-note-save`, `reading-save-confirmations`, `reading-ask-routing`), 보관소 채널의 모양(`reading-store-api`, `doc-jobs-reading`), 주석 패널(`annot-panel-*`), 추천 질문·인용·개요(`ai-reading-panel`, `ai-citations`, `ai-insights`), 대역 보기(`bilingual-view`, `bilingual-actions`), AI 핵심 표시(`highlight-*`, `/Subj` 저장의 바이트 비교는 `highlight-save-subject`), 노트(`note-link`, `note-link-handler`, `notes-ui`). 누르기 전에 보내지 않는지, 페이지 번역이 `translate.<언어>` 기록과 번역 메타를 건드리지 않는지, 노트 핸들러가 화면이 보낸 경로를 받지 않는지는 이 테스트들이 지킨다. `highlight-suggestions`는 "모두 받아들이고 저장" 버튼의 개수·비활성·콜백을 본다.
 - 사본의 주석 처리(`tests/annotations-save-copy.test.ts`): 기본은 그대로, `strip`은 형광펜만 지우고 링크를 남기는지, `flatten`은 주석이 사라지고 페이지 내용이 되는지, 편집 없는 `copyPdfToPath`가 바이트 그대로인지 본다. 인쇄의 `annotationMode`는 `tests/print.test.ts`가 본다.
 - 저장·가림·글자 편집을 바꾸면 결과 PDF를 다시 읽어 확인하는 테스트를 붙인다. 가림은 지운 글자가 추출 결과에 남지 않는지를 본다.

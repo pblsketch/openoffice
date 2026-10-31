@@ -104,6 +104,54 @@ beforeEach(() => {
 
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
+describe('Save As › Markdown target', () => {
+  const mdOut = () => join(dir, 'book.md')
+
+  it('accepts a Markdown target the shell dialog picked for the view', async () => {
+    const { handlers } = makeHandlers()
+    const out = mdOut()
+    const value = { docHash: 'h', outPath: out, warnings: [], assetsWritten: 0, assetsReused: 0 }
+    answer = () => ({ ok: true, value })
+    expect(handlers.grantTarget(OWNER, pdfPath, out, 'md')).toBe(true)
+    const r = await handlers.convert(ctx(), {
+      jobId: 'j',
+      path: pdfPath,
+      format: 'md',
+      outPath: out,
+    })
+    expect(r).toMatchObject({ ok: true, outPath: out })
+    expect(jobs).toHaveLength(1)
+  })
+
+  it('refuses a target that is not Markdown, not this view, or a source', () => {
+    const { handlers } = makeHandlers()
+    const out = mdOut()
+    expect(handlers.grantTarget(OTHER, pdfPath, out, 'md')).toBe(false)
+    expect(handlers.grantTarget(OWNER, join(dir, 'other.pdf'), out, 'md')).toBe(false)
+    expect(handlers.grantTarget(OWNER, pdfPath, join(dir, 'book.epub'), 'md')).toBe(false)
+    expect(handlers.grantTarget(OWNER, pdfPath, out, 'epub')).toBe(false)
+    // a file this view opened is read only, even when its name ends in .md
+    granted.get(OWNER)!.add(out)
+    expect(handlers.grantTarget(OWNER, pdfPath, out, 'md')).toBe(false)
+  })
+
+  it('does not grant the target to another view', async () => {
+    const { handlers } = makeHandlers()
+    const out = mdOut()
+    expect(handlers.grantTarget(OWNER, pdfPath, out, 'md')).toBe(true)
+    granted.set(OTHER, new Set([pdfPath]))
+    answer = () => ({ ok: false, error: 'failed' })
+    const r = await handlers.convert(ctx(OTHER), {
+      jobId: 'j',
+      path: pdfPath,
+      format: 'md',
+      outPath: out,
+    })
+    expect(r).toMatchObject({ ok: false, error: 'not-granted' })
+    expect(jobs).toEqual([])
+  })
+})
+
 describe('path permission', () => {
   it('refuses jobs on a file not granted to the view', async () => {
     const { handlers } = makeHandlers()

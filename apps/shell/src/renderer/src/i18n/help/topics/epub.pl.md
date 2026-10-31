@@ -20,6 +20,15 @@ Edytor e-booków otwiera książki EPUB (`.epub`) na karcie. Możesz czytać ksi
 - Odnośnik w książce przenosi do wskazanego miejsca. Odnośniki do stron internetowych i adresów e-mail otwierają się w domyślnej przeglądarce; inne adresy nie są otwierane.
 - Skrypty zapisane w książce nigdy się nie uruchamiają i nic nie jest pobierane z internetu. Dźwięk i wideo nie są odtwarzane.
 
+## Podgląd
+
+- Kliknij **Podgląd** na karcie **Narzędzia główne** lub **Widok**, aby zobaczyć książkę podzieloną na strony, tak jak pokazuje ją czytnik e-booków. Podgląd otwiera się w miejscu, które właśnie czytasz.
+- Na pasku u góry wybierz ekran (**Czytnik e-booków**, **Telefon**, **Tablet** lub **Dopasuj do okna**), orientację poziomą, rozmiar tekstu i tło (białe, sepia lub ciemne). Szeroki ekran ustawiony poziomo pokazuje dwie strony obok siebie. Te ustawienia zmieniają tylko podgląd, nigdy książkę.
+- Przewracaj strony klawiszami strzałek, Page Up i Page Down, spacją, kółkiem myszy lub przyciskami po obu stronach. Po ostatniej stronie rozdziału przechodzisz do następnego. Spis treści i linki w książce przenoszą podgląd w dane miejsce.
+- W podglądzie nie można edytować tekstu. Gdy AI zmienia książkę albo cofasz zmianę, podgląd się aktualizuje.
+- Kliknij **Zamknij podgląd** lub naciśnij Esc, aby wrócić do edycji w miejscu, które pokazywał podgląd.
+- Podział na strony różni się nieco w aplikacjach księgarń i na urządzeniach, więc traktuj podgląd jako bliskie przybliżenie.
+
 ## Edycja tekstu
 
 - Kliknij akapit i pisz. Edytować można akapity, nagłówki, elementy list, cytaty, komórki tabel i podpisy pod obrazami. Obrazów i układu tabel edytować nie można.
@@ -63,6 +72,6 @@ Edytor e-booków otwiera książki EPUB (`.epub`) na karcie. Możesz czytać ksi
 
 - Dodawanie, usuwanie i zmiana kolejności rozdziałów; zmiana tytułu, autora lub okładki; wstawianie obrazów i tabel; zamiana akapitu w nagłówek lub listę.
 - Edycja i tłumaczenie książek o stałym układzie oraz otwieranie książek zabezpieczonych przed kopiowaniem.
-- Przewracanie stron jak w drukowanej książce i tworzenie nowej, pustej książki.
+- Tworzenie nowej, pustej książki.
 - Porównywanie oryginału i tłumaczenia obok siebie w edytorze. Zamiast tego otwórz książkę dwujęzyczną, a przetłumaczoną książkę poprawiaj jak każdą inną.
 - Ukrywanie części książki przed AI.

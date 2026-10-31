@@ -36,6 +36,13 @@ W panelu AI edytorów Docs, Sheets, Slides, Hangul, HTML i map myśli możesz za
 - Gdy dwa dokumenty mają tę samą nazwę, ale leżą w różnych folderach, dodawana jest nazwa folderu bezpośrednio nadrzędnego, np. `@plan.docx(II semestr)`, i tę nazwę folderu dostaje też AI.
 - Edytory PDF i Markdown nie mają jeszcze załączników, więc żaden z tych sposobów nie jest tam dostępny.
 
+## Projekty
+
+- Kliknij nazwę projektu po lewej, pod polem wpisywania, aby wybrać projekt (jeden folder na twoim komputerze). AI odpowiada wtedy, znając pliki, instrukcje i pamięć tego folderu, a rozmowa jest zapisywana w folderze, więc możesz ją kontynuować w innym edytorze. Zobacz [Projekty](help://projects).
+- Gdy projekt jest wybrany, u góry panelu widać tytuł bieżącej rozmowy. Kliknij go, aby zobaczyć listę rozmów tego projektu i **Nowa rozmowa**.
+- Lista `@` w polu wpisywania pokazuje „Pliki w tym projekcie” po otwartych dokumentach.
+- Zapytanie z wybranym projektem wysyła do używanego AI również instrukcje (razem z `AGENTS.md` i `CLAUDE.md` z głównego poziomu folderu, które można wyłączyć na stronie projektu), pamięć i listę nazw plików tego projektu, krótki fragment każdego pliku, który AI znajdzie, przeszukując folder, oraz tekst każdego pliku, który AI przeczyta.
+
 ## Cofanie i bezpieczeństwo
 
 - Panel w Docs prowadzi **listę wersji**: jedna migawka na turę, możesz cofnąć się do dowolnej, a samo cofnięcie da się jeszcze cofnąć przez Ctrl+Z. Miganek przetrwa ponowne otwarcie dokumentu.

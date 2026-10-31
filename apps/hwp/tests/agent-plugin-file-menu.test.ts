@@ -13,6 +13,7 @@ const LABELS = {
   save: '저장',
   saveAs: '다른 이름으로 저장…',
   pdf: 'PDF로 내보내기…',
+  preview: '미리 보기…',
   print: '인쇄…',
 }
 
@@ -62,13 +63,14 @@ afterEach(() => {
 })
 
 describe('the File menu of the embedded editor', () => {
-  it('gets Save, Save As, Export as PDF and Print on top, in that order', () => {
+  it('gets Save, Save As, Export as PDF, Print Preview and Print on top, in that order', () => {
     const { plugin, commands, menu } = editor()
     expect(plugin.installFileMenu(LABELS)).toEqual({ ok: true })
     expect(menu).toEqual([
       'ext:ieum-save',
       'ext:ieum-save-as',
       'ext:ieum-export-pdf',
+      'ext:ieum-preview',
       'ext:ieum-print',
       'file:page-setup',
       'file:about',
@@ -85,18 +87,19 @@ describe('the File menu of the embedded editor', () => {
       'ext:ieum-save',
       'ext:ieum-save-as',
       'ext:ieum-export-pdf',
+      'ext:ieum-preview',
       'ext:ieum-print',
     ]) {
       commands.get(id)?.execute(undefined as never)
     }
-    expect(fired).toEqual(['save', 'saveAs', 'pdf', 'print'])
+    expect(fired).toEqual(['save', 'saveAs', 'pdf', 'preview', 'print'])
   })
 
   it('puts the items back once when asked again, without registering twice', () => {
     const { plugin, menu } = editor()
     plugin.installFileMenu(LABELS)
     expect(plugin.installFileMenu(LABELS)).toEqual({ ok: true })
-    expect(menu.filter((id) => id.startsWith('ext:'))).toHaveLength(4)
+    expect(menu.filter((id) => id.startsWith('ext:'))).toHaveLength(5)
   })
 
   it('says so when the editor has no File menu, and refuses missing labels', () => {

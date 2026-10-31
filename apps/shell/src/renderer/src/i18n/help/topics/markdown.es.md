@@ -44,6 +44,7 @@ Menú Archivo, todo local y todo pregunta dónde poner el resultado:
 
 La cinta de opciones lleva un conmutador **Código fuente** (localizado junto con la aplicación). Al activarlo, el editor se sustituye por el Markdown en crudo: exactamente el texto que escribe un guardado, nada embellecido, nada normalizado por debajo de usted.
 
+- **Teclado**: Ctrl+E (⌘E en Mac) alterna entre la vista de código fuente y el lienzo de edición renderizado. Pulsa F5 para leerlo a pantalla completa.
 - **La edición es fiel byte a byte.** Un guardado desde la vista de código fuente produce los mismos bytes que un guardado desde el editor: el BOM, los CRLF y la presencia de un salto de línea final se conservan.
 - **Es el mismo documento.** Alterne entre el editor y la fuente tantas veces como quiera; la fuente es el propio texto del editor, no una copia que haya que combinar.
 - **La barra de herramientas de formato no está disponible** mientras esta vista está abierta, porque la mayoría de esos botones insertan construcciones del editor que solo tienen sentido en la parte renderizada. Vuelve a aparecer cuando cierra la vista.

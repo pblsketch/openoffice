@@ -276,6 +276,16 @@ export function isNumericCell(value: string): boolean {
   return Number.isFinite(Number(value))
 }
 
+/// The text of a `="..."` cell, the way systems export codes and numbers to
+/// CSV or HTML so Excel keeps them as written ("0123" with its zero, a long
+/// ID without rounding). Excel evaluates that one formula on open and shows
+/// the quoted text, as text; nothing else that looks like a formula is
+/// evaluated here. Null when the value is anything else.
+export function quotedTextFormula(value: string): string | null {
+  const match = /^="((?:[^"]|"")*)"$/.exec(value)
+  return match ? match[1]!.replace(/""/g, '"') : null
+}
+
 function escapeXml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
@@ -308,10 +318,11 @@ export function buildWorksheetXml(
       if (value === '') return
       maxColumns = Math.max(maxColumns, columnIndex + 1)
       const reference = `${columnLabel(columnIndex)}${rowIndex + 1}`
+      const quoted = quotedTextFormula(value)
       cells.push(
-        isNumericCell(value)
+        quoted === null && isNumericCell(value)
           ? `<c r="${reference}"><v>${Number(value)}</v></c>`
-          : `<c r="${reference}" t="inlineStr"><is><t xml:space="preserve">${escapeXml(encodeXlsxEscapes(value))}</t></is></c>`,
+          : `<c r="${reference}" t="inlineStr"><is><t xml:space="preserve">${escapeXml(encodeXlsxEscapes(quoted ?? value))}</t></is></c>`,
       )
     })
     if (cells.length > 0) lines.push(`<row r="${rowIndex + 1}">${cells.join('')}</row>`)

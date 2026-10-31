@@ -220,6 +220,58 @@ afterEach(async () => {
 const BODY = '<p>The whale is <a href="#n" class="ref">here</a>.</p>\n<p>Second whale.</p>'
 
 describe('saving what was typed', () => {
+  it('flushes freshly typed text for an MCP read without saving', async () => {
+    let flush: ((requestId: string) => void) | undefined
+    const ack = vi.fn()
+    const h = fakeApi([{ body: BODY }], {
+      onFlushRequest: (handler) => {
+        flush = handler
+        return () => {
+          flush = undefined
+        }
+      },
+      sendFlushResult: ack,
+    })
+    const doc = await mount(h)
+    await typeInto(doc, 'b2', 'Second', 'Newly typed')
+    expect(h.book.source(0)).toContain('Second whale.')
+    await act(async () => flush?.('read-1'))
+    await until(() => ack.mock.calls.length === 1, 'the flush acknowledgement')
+    expect(ack).toHaveBeenCalledWith('read-1', true)
+    expect(h.book.source(0)).toContain('Newly typed whale.')
+    expect(h.saves).toEqual([])
+    await act(async () => root?.unmount())
+    root = null
+    expect(flush).toBeUndefined()
+  })
+
+  it('refuses an MCP flush during input-method composition', async () => {
+    let flush: ((requestId: string) => void) | undefined
+    const ack = vi.fn()
+    const h = fakeApi([{ body: BODY }], {
+      onFlushRequest: (handler) => {
+        flush = handler
+        return () => {
+          flush = undefined
+        }
+      },
+      sendFlushResult: ack,
+    })
+    const doc = await mount(h)
+    const original = h.book.source(0)
+    await act(async () => {
+      const win = doc.defaultView as unknown as typeof globalThis
+      doc
+        .querySelector('[data-epub-block="b2"]')!
+        .dispatchEvent(new win.Event('compositionstart', { bubbles: true }))
+      flush?.('read-composing')
+    })
+    expect(ack).toHaveBeenCalledWith('read-composing', 'composing')
+    expect(h.book.source(0)).toBe(original)
+    expect(h.order).toEqual([])
+    expect(h.saves).toEqual([])
+  })
+
   it('sends the typed text before the file is written, and marks the book unsaved until then', async () => {
     const h = fakeApi([{ body: BODY }])
     const doc = await mount(h)

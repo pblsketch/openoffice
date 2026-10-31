@@ -9,7 +9,7 @@ shell과 에디터들의 메인 프로세스(일부는 preload)가 함께 쓰는
 - 창과 메뉴: 공용 메뉴 템플릿(`src/app-menu.ts`), 우클릭 메뉴(`src/context-menu.ts`), 저장소 주소 상수(`src/github-menu.ts`), 파일 끌어다 놓기 다리(`src/drop-open.ts`), 렌더러 스킴과 프로토콜(`src/renderer-scheme.ts`, `src/renderer-protocol.ts`).
 - 인쇄와 내보내기: `printHtmlToPdf`·`sanitizePrintableBody`(`src/print-html-pdf.ts`), 인쇄 대화 상자용 임시 창(`src/print-window.ts`), headless 내보내기의 인자 문법·종료 코드·출력 봉투(`src/headless-export.ts`), 프로세스 전역 headless 플래그(`src/headless-mode.ts`).
 - 열기 암호(`src/office-encryption.ts`, 하위 경로 `/office-encryption`, 결정 0041): 엑셀·파워포인트 뒷단이 함께 쓰는 암호 파일 판별(`isEncryptedOoxml`·`isEncryptedOfficeFile`), 풀기(`decryptOfficeFile`, 실패 이유 `wrong-password`·`unsupported`), 다시 잠그기(`encryptOoxml`, Agile), 묻기 반복(`unlockOfficeFile`: 엑셀 기본 암호를 먼저 시도하고, 틀리면 다시 묻고, 취소면 `null`). `officecrypto-tool`을 부르는 곳은 여기 하나다(워드는 자기 `docx-encryption.ts`를 쓴다). 라이브러리는 앱 번들에 들어가므로 `devDependencies`에 둔다.
-- 스트림 정리: 렌더러가 사라지면 요청을 끊는 `abortOnDestroyed`(`src/abort-on-destroyed.ts`).
+- 스트림 정리: 렌더러가 사라지거나 화면을 새로 고칠 때 요청을 끊는 `abortOnDestroyed`(`src/abort-on-destroyed.ts`). 새로 고침은 `did-start-navigation`의 본문 이동으로 알아채고, 같은 문서 안의 이동과 하위 프레임 이동은 그대로 둔다.
 - 저장하지 않은 파일 확인(`src/unsaved-files.ts`): 파일을 다른 파일로 읽기 전에 "어떤 탭에 열려 있고 저장하지 않은 변경이 있는가"를 묻는 `assertFileSaved`·`withoutUnsavedFiles`·`fileHasUnsavedChanges`. 열린 문서의 목록은 shell이 `setOpenFilesSource`로 건다.
 - 생성 넘겨주기(`src/generate-handoff.ts`): 만들기 창의 요청을 새 탭의 webContents 앞으로 맡겨 두고(`queueGenerateHandoff`), 그 탭의 에디터가 한 번 가져가며(`takeGenerateHandoff`), 실행 시작(`reportGenerateRunStarted`)과 AI 없이 바꾼 사실(`recordGenerateConverted`)을 메모리에 남긴다. shell의 출처 기록이 이 사건들을 읽는다.
 - 문서 첨부 다리(`src/doc-attach-bridge.ts`, `src/doc-attach-channels.ts`, 하위 경로 `/doc-attach-bridge`·`/doc-attach-channels`, 결정 0035): 편집기 preload가 `window.aiOfficeDocs`(`DOC_ATTACH_BRIDGE_KEY`)로 내주는 다리다. `available()`(껍데기 앱이 문서 고르기를 내주는지)과 `pick()`(문서 고르기 창을 열어 고른 파일 경로를 받음)을 준다. `drive-ai-bridge`처럼 껍데기 앱이 없으면 `available`이 거짓, `pick`이 `{ ok: false, reason: 'unavailable' }`로 닫힌 쪽 실패를 한다. 채널은 `doc:attach-available`, `doc:pick-attachments`.
@@ -27,7 +27,7 @@ shell과 에디터들의 메인 프로세스(일부는 preload)가 함께 쓰는
 ## 항상 지켜야 하는 것
 
 - `shell.openExternal`로 가는 모든 URL은 `safeExternalUrl`을 거친다. 허용 프로토콜은 http·https이고(호출자가 옵션으로 넓힌 경우만 추가) `file:`, `javascript:`, 사용자 정의 스킴은 항상 거절한다. 반환값이 `null`이면 열지 않는다. 원래 입력으로 되돌아가 여는 코드를 쓰지 않는다. 검사한 값이 아니라 반환된(공백이 잘린) 문자열을 연다.
-- AI 도구 호출에서 온 주소는 프롬프트 주입으로 조작될 수 있다. 원격 요청은 `fetchWithSsrfGuard`로 하고, 리다이렉트를 자동으로 따라가게 두지 않는다. `isSafeRemoteUrl`로 한 번 검사하고 일반 `fetch`를 부르는 것은 충분하지 않다(검사와 요청 사이에 DNS가 바뀔 수 있다). 응답 본문은 `readBodyCapped`로 상한을 둔다.
+- AI 도구 호출에서 온 주소는 프롬프트 주입으로 조작될 수 있다. 원격 요청은 `fetchWithSsrfGuard`로 하고, 리다이렉트를 자동으로 따라가게 두지 않는다. `isSafeRemoteUrl`로 한 번 검사하고 일반 `fetch`를 부르는 것은 충분하지 않다(검사와 요청 사이에 DNS가 바뀔 수 있다). 응답 본문은 `readBodyCapped`로 상한을 둔다. 가드가 받은 `signal`은 DNS lookup에도 걸린다 — 요청 전체에 상한을 두는 호출자(`read_url`의 30초)가 느린 이름 풀이에서 그 상한을 넘기지 않게 하기 위해서다.
 - `safe-remote-url.ts`는 `undici`를 요청이 실제로 나갈 때만(`loadUndici`) 불러온다. 최상위 import로 되돌리면 이 모듈을 import하는 것만으로 llhttp wasm이 초기화되어, 가상 메모리 상한(`ulimit -v`)이 낮은 환경에서 명령줄의 문서 명령이 아무 출력도 없이 죽는다.
 - 로컬 파일을 URL로 읽어 주지 않는다. `readGeneratedImage`는 `GENERATED_IMAGE_DIR` 안의, uuid 이름에 이미지 확장자를 가진 파일만 읽고 그 밖의 `file://`에는 `null`을 준다. `saveImageFromUrl`은 `file:`을 받지 않는다.
 - 모든 webContents는 한 번 로드된 뒤 다른 곳으로 탐색하지 않는다. `installNavigationGuard`가 같은 주소의 새로 고침 외의 탐색을 막고 `window.open`을 기본 거절한다. 외부 링크를 열어야 하는 에디터는 특정 webContents에만 자기 핸들러를 다시 건다. 이 잠금을 푸는 예외를 여기에 추가하지 않는다.

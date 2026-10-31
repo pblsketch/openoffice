@@ -36,6 +36,13 @@ Im KI-Bereich der Editoren Docs, Sheets, Slides, Hangul, HTML und Mindmaps könn
 - Haben zwei Dokumente denselben Namen, liegen aber in verschiedenen Ordnern, wird der Name des direkt übergeordneten Ordners angefügt, etwa `@Plan.docx(2. Halbjahr)`, und auch die KI erhält diesen Ordnernamen.
 - Die Editoren für PDF und Markdown haben noch keine Anhänge, daher gibt es dort keinen der beiden Wege.
 
+## Projekte
+
+- Klicken Sie links unter dem Eingabefeld auf den Projektnamen, um ein Projekt (einen Ordner auf Ihrem PC) zu wählen. Die KI antwortet dann mit dem Wissen um die Dateien, Anweisungen und Erinnerungen dieses Ordners, und die Unterhaltung wird im Ordner gespeichert, sodass Sie sie in einem anderen Editor fortsetzen können. Siehe [Projekte](help://projects).
+- Ist ein Projekt gewählt, steht oben im Bereich der Titel der aktuellen Unterhaltung. Ein Klick darauf zeigt die Liste der Unterhaltungen dieses Projekts und **Neue Unterhaltung**.
+- Die `@`-Liste im Eingabefeld zeigt nach den geöffneten Dokumenten „Dateien in diesem Projekt“.
+- Eine Anfrage mit gewähltem Projekt sendet zusätzlich die Anweisungen (samt `AGENTS.md` und `CLAUDE.md` oben im Ordner, die Sie auf der Projektseite abschalten können), Erinnerungen und die Liste der Dateinamen dieses Projekts, einen kurzen Auszug aus jeder Datei, die die KI bei einer Suche im Ordner findet, sowie den Text jeder Datei, die die KI liest, an die KI, die Sie verwenden.
+
 ## Zurückrollen und Sicherheit
 
 - Der Docs-Bereich führt eine **Versionsliste**: einen Snapshot pro Durchgang, Sie können zu jedem davon zurückrollen, und auch das Zurückrollen selbst lässt sich mit Strg+Z rückgängig machen. Snapshots überstehen das erneute Öffnen des Dokuments.

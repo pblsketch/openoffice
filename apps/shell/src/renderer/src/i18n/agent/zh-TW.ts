@@ -79,4 +79,6 @@ export const zhTW = {
   errNeedsUpdate: '程式版本過舊，無法使用代理程式模式。請更新後再試一次。',
   errNotInstalled: '未安裝此程式。',
   errGeneric: '發生問題。請再試一次。',
+  documentsUnprotected:
+    '工作階段開始後開啟的 {n} 個文件不受該程式自身寫入保護的限制。若要保護它們，請停止工作階段並重新開始。',
 } satisfies Record<keyof typeof zh, string>

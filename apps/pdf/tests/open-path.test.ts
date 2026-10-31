@@ -150,7 +150,8 @@ describe('pdf create-document IPC', () => {
     )
 
     expect(result).toEqual({ ok: true, path: '/tmp/Summary.pdf' })
-    expect(createDocument).toHaveBeenCalledWith(request)
+    // the asking view goes with it: its panel's project decides where the file goes (spec 6)
+    expect(createDocument).toHaveBeenCalledWith(request, lastWebContents.id)
   })
 
   it('rejects unregistered or destroyed senders', async () => {

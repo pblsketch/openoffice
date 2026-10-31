@@ -23,12 +23,10 @@
  */
 import type { ChildProcess } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import { StringDecoder } from 'node:string_decoder'
 import type { AgentMessage, AgentToolCall, AgentToolDef } from '@genoffice/agent-core'
 import { isAiNetworkError } from './network-error'
+import { createTrackedTempDir, removeTrackedTempDir } from './subscription/temp-dirs'
 import {
   MAX_SSE_LINE_BYTES,
   isPlainObject,
@@ -828,9 +826,9 @@ async function runClaudeCodeTurn(
   if (request.input.truncated) cb.onInputTruncated?.()
 
   // an empty directory of the run's own: no project file of some other directory applies
-  const cwd = await mkdtemp(join(tmpdir(), TEMP_PREFIX))
+  const cwd = await createTrackedTempDir(TEMP_PREFIX)
   const removeCwd = (): void => {
-    void rm(cwd, { recursive: true, force: true, maxRetries: 3 }).catch(() => undefined)
+    void removeTrackedTempDir(cwd)
   }
   let child: ChildProcess
   try {
@@ -1444,9 +1442,9 @@ export async function listClaudeCodeModels(
   )(request.cliPath)
   if (signal.aborted) throw cancelledError()
 
-  const cwd = await mkdtemp(join(tmpdir(), TEMP_PREFIX))
+  const cwd = await createTrackedTempDir(TEMP_PREFIX)
   const removeCwd = (): void => {
-    void rm(cwd, { recursive: true, force: true, maxRetries: 3 }).catch(() => undefined)
+    void removeTrackedTempDir(cwd)
   }
   let child: ChildProcess
   try {

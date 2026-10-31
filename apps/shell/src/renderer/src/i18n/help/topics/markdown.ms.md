@@ -44,6 +44,7 @@ Menu Fail, semuanya setempat dan semuanya akan bertanya di mana hasilnya perlu d
 
 Reben itu membawa togol **Sumber** (dilocalkan bersama aplikasi). Hidupkan ia, dan editor akan digantikan oleh Markdown asal: betul-betul teks yang ditulis oleh sesuatu simpanan, tiada yang dicantikkan, dan tiada apa-apa yang dinormalkan di bawah anda.
 
+- **Papan kekunci**: Ctrl+E (⌘E pada Mac) menukar antara paparan sumber dan kanvas penyuntingan yang dipaparkan. Tekan F5 untuk membaca skrin penuh.
 - **Penyuntingan mengekalkan setiap bait dengan tepat.** Simpanan daripada paparan sumber menghasilkan bait yang sama seperti simpanan daripada editor — BOM, CRLF dan kehadiran baris akhir kosong semuanya kekal.
 - **Ia dokumen yang sama.** Anda boleh bergantian antara paparan ini dan editor dengan bebas; sumber itu ialah teks editor itu sendiri, bukan salinan yang perlu digabungkan.
 - **Bar alat pemformatan tidak tersedia** semasa ia terbuka, kerana kebanyakan butang itu memasukkan konstruksi editor yang hanya bermakna pada sisi yang dipaparkan. Ia kembali apabila anda menutup paparan tersebut.

@@ -8,7 +8,7 @@
  * the renderer hears when its copy was dropped. Real recovery store over a
  * temporary app data folder; Electron and the lazy-picture source are fakes.
  */
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -95,9 +95,11 @@ import {
   discardDocsRecovery,
   docsRecoveryIdentity,
   registerDocsIpc,
+  setDocsShellHooks,
 } from '../src/main/docs-main'
 import { encryptDocx } from '../src/main/docx-encryption'
 import { buildBlankDocx } from '@genoffice/docx-engine'
+import { docxToOdt } from '@genoffice/odt-engine'
 
 interface FakeTab {
   id: number
@@ -250,5 +252,104 @@ describe('restoring', () => {
     await writeCopy(tab, null, 'dropped by an MCP close')
     discardDocsRecovery(tab as never)
     expect(tab.send).toHaveBeenCalledWith('docs:recovery-copy-dropped')
+  })
+})
+
+describe('a new document into the panel project (spec 6)', () => {
+  type Writer = (id: number, fileName: string, bytes: Uint8Array) => Promise<string | null>
+  const useWriter = (write: Writer | undefined) =>
+    setDocsShellHooks(write ? ({ writeNewDocument: write } as never) : null)
+  const saveIntoProject = (tab: FakeTab, name: unknown, format: unknown, text: string) =>
+    invoke<{ ok: boolean; path?: string; skipped?: boolean; error?: string }>(
+      'docs:save-into-project',
+      tab,
+      name,
+      format,
+      bytesOf(text),
+    )
+
+  afterAll(() => setDocsShellHooks(null))
+
+  it('hands a bare name and the bytes to the shell writer; the tab then saves to that file', async () => {
+    const tab = newTab()
+    await writeCopy(tab, null, 'untitled before the first save')
+    const untitled = docsRecoveryIdentity(tab.id)!
+    const calls: Array<[number, string]> = []
+    const target = join(userFolder, 'Report (2).docx')
+    useWriter(async (id, fileName, bytes) => {
+      calls.push([id, fileName])
+      writeFileSync(target, bytes)
+      return target
+    })
+    const result = await saveIntoProject(tab, 'drafts/../Report.docx', 'docx', 'made doc')
+    expect(result).toMatchObject({ ok: true, path: target })
+    // the folder is never the renderer's to choose: only the name goes on
+    expect(calls).toEqual([[tab.id, 'Report.docx']])
+    expect(readFileSync(target, 'utf8')).toBe('made doc')
+    // the untitled copy is stale, and the file is the tab's own now
+    expect(store.copyInfo(untitled)).toBeNull()
+    const next = await invoke<{ ok: boolean }>('docs:save', tab, target, bytesOf('v2'), false)
+    expect(next.ok).toBe(true)
+    // a document that has its file is no new one
+    expect(await saveIntoProject(tab, 'Report.docx', 'docx', 'again')).toEqual({
+      ok: false,
+      skipped: true,
+    })
+    expect(calls).toHaveLength(1)
+  })
+
+  it('an ODT copy keeps its format in the name', async () => {
+    const tab = newTab()
+    const names: string[] = []
+    useWriter(async (_id, fileName) => {
+      names.push(fileName)
+      return join(userFolder, fileName)
+    })
+    const odt = (await docxToOdt(await buildBlankDocx({}))).odtBytes
+    const result = await invoke<{ ok: boolean }>(
+      'docs:save-into-project',
+      tab,
+      'Letter.odt',
+      'odt',
+      odt.buffer.slice(odt.byteOffset, odt.byteOffset + odt.byteLength),
+    )
+    expect(result.ok).toBe(true)
+    expect(names).toEqual(['Letter.odt'])
+  })
+
+  it('without a project nothing is written and the document stays untitled', async () => {
+    const tab = newTab()
+    useWriter(async () => null)
+    expect(await saveIntoProject(tab, 'Report.docx', 'docx', 'x')).toEqual({
+      ok: false,
+      skipped: true,
+    })
+    useWriter(undefined)
+    expect(await saveIntoProject(tab, 'Report.docx', 'docx', 'x')).toEqual({
+      ok: false,
+      skipped: true,
+    })
+  })
+
+  it('a refused write is reported with its reason; nothing is adopted', async () => {
+    const tab = newTab()
+    useWriter(async () => {
+      throw new Error('project folder refused the write')
+    })
+    expect(await saveIntoProject(tab, 'Report.docx', 'docx', 'x')).toEqual({
+      ok: false,
+      error: 'project folder refused the write',
+    })
+    // still untitled: a second try goes to the writer again
+    useWriter(async () => null)
+    expect((await saveIntoProject(tab, 'Report.docx', 'docx', 'x')).skipped).toBe(true)
+  })
+
+  it('a malformed request writes nothing', async () => {
+    const tab = newTab()
+    const write = vi.fn(async () => null)
+    useWriter(write)
+    expect((await saveIntoProject(tab, 42, 'docx', 'x')).ok).toBe(false)
+    expect(write).not.toHaveBeenCalled()
   })
 })

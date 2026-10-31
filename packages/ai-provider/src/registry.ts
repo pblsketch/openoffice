@@ -52,10 +52,11 @@ function metaOf(id: AiProviderId): AiProviderMeta {
  * only accept the default. Google's Gemini 3 docs strongly recommend keeping
  * the default temperature of 1.0 for the whole Gemini 3 family, since lower
  * values may cause looping or degraded reasoning, so our hard-coded 0.3
- * must not be sent there either.
+ * must not be sent there either. Gemini 4 is a reasoning model of the same
+ * line and gets the same treatment: leaving the field out never fails.
  */
 export function modelHasFixedSampling(model: string): boolean {
-  return /(^|\/)(kimi-k3([^\w]|$)|gpt-[5-9]([^\w]|$)|gemini-3([^\w]|$)|o1(-mini|-preview)?([^\w]|$)|o3(-mini)?([^\w]|$)|o4-mini([^\w]|$))/i.test(
+  return /(^|\/)(kimi-k3([^\w]|$)|gpt-[5-9]([^\w]|$)|gemini-[3-9]([^\w]|$)|o1(-mini|-preview)?([^\w]|$)|o3(-mini)?([^\w]|$)|o4-mini([^\w]|$))/i.test(
     model,
   )
 }
@@ -77,6 +78,10 @@ export function modelLacksVision(model: string): boolean {
   // GLM and MiniMax providers keep their own behaviour. Its Kimi, Qwen and
   // GLM-5.3-Flash ids do take images and fall through.
   if (/^(?:zai-org\/glm-5\.3|minimaxai\/minimax-m(?:3|2\.5))$/i.test(model)) return true
+  // Runcrate serves these text-only (GET api.runcrate.ai/v1/models gives them
+  // input_modalities ["text"]; zai-org/GLM-5.3 is covered above). Its DeepSeek
+  // V4.1 Flash, GLM-5.3-Flash and Kimi K2.6 ids take images and fall through.
+  if (/^(?:qwen\/qwen3\.8-flash|openai\/gpt-oss-120b)$/i.test(model)) return true
   return (
     /(^|\/)deep-?seek-v4-(?:pro(?:$|-)|flash(?!-vision))/i.test(model) ||
     /(^|\/)(?:ling-(?:3\.0-flash(?!-vl)|3\.0-tiny|2\.6-1t|2\.6-flash)|ring-2\.6-1t|longcat-2\.0(?:$|-))/i.test(
@@ -364,6 +369,12 @@ export const AI_PROVIDER_ADAPTERS: Record<AiProviderId, ProviderAdapter> = {
     capabilities: { auth: 'api-key', vision: true },
     // one chat-completions endpoint for every lab; the namespaced model id picks it
     resolveEndpoint: fixedEndpoint('openai-compatible', 'https://api.atlascloud.ai/v1'),
+  },
+  runcrate: {
+    meta: metaOf('runcrate'),
+    capabilities: { auth: 'api-key', vision: true },
+    // one chat-completions endpoint for every lab; the namespaced model id picks it
+    resolveEndpoint: fixedEndpoint('openai-compatible', 'https://api.runcrate.ai/v1'),
   },
   'opencode-zen': {
     meta: metaOf('opencode-zen'),

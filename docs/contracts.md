@@ -1,10 +1,10 @@
 # 바깥에 내놓는 약속
 
-이 프로그램을 밖에서 쓰는 쪽은 다섯이다. 터미널 명령어를 부르는 스크립트와 에이전트, 명령어 쪽 MCP 클라이언트, 앱 안 MCP 서버에 붙는 클라이언트, 사용자의 설정 파일, 그리고 원본 프로그램과 주고받는 문서.
+이 프로그램을 밖에서 쓰는 쪽은 여섯이다. 터미널 명령어를 부르는 스크립트와 에이전트, 명령어 쪽 MCP 클라이언트, 앱 안 MCP 서버에 붙는 클라이언트, 사용자의 설정 파일, 원본 프로그램과 주고받는 문서, 그리고 프로젝트 폴더의 `.ieumoffice/`를 읽거나 고치는 사람과 다른 프로그램.
 
 ## 공통
 
-- 모든 바깥 이름은 `ieumoffice`다. 명령어, MCP 등록 이름, 에이전트 스킬 이름과 폴더, 홈 폴더 아래 `.ieumoffice`.
+- 모든 바깥 이름은 `ieumoffice`다. 명령어, MCP 등록 이름, 에이전트 스킬 이름과 폴더, 홈 폴더 아래 `.ieumoffice`, 프로젝트 폴더 안의 `.ieumoffice`.
 - 원본이 쓰는 이름(`genoffice` 명령어, `~/.genoffice`, `genoffice` 연동 항목과 스킬 폴더)은 읽지도 쓰지도 않는다. 두 프로그램은 한 PC에 함께 있을 수 있다.
 - 문서 명령은 PC 안에서 끝난다. 밖으로 무언가를 보내는 명령은 `search`, `image`, `media`, `read-url`, `pdf ai-read`, `pdf translate`, `epub translate` 일곱뿐이다. 뒤의 셋은 `--yes`가 있을 때만 보낸다.
 
@@ -199,15 +199,16 @@
 
 **실패.** 세 명령이 실행될 수 없으면 종료 코드 4, `error: "app_unavailable"`.
 
-| `detail.errorCode`                                                                                                                                    | 뜻                                                                | 다시 시도                          |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------- |
-| `unavailable`                                                                                                                                         | 그 기능에 설정된 것이 없다                                        | 하지 않는다. 설정을 바꿔야 한다    |
-| `headless-limit`                                                                                                                                      | 더 이상 쓰이지 않음. 자동 호출의 시간당 한도가 없어져 내지 않는다 | 해당 없음                          |
-| `rate-limit`                                                                                                                                          | 구독 한도 소진                                                    | `detail.resetsAt`이 있으면 그 이후 |
-| `free-limit`                                                                                                                                          | 무료 연결의 오늘 사용량 소진                                      | `detail.resetsAt`이 있으면 그 이후 |
-| `http_error`                                                                                                                                          | 서버가 2xx가 아닌 상태로 답함(`read-url`)                         | 주소를 확인한 뒤 다시              |
-| `auth`                                                                                                                                                | GitHub가 읽기 토큰을 거절함(`read-url`)                           | 설정의 GitHub 읽기 토큰을 확인     |
-| `not-connected`, `signed-out`, `not-installed`, `metered-not-accepted`, `needs-update`, `unsafe-tools`, `timeout`, `network`, `overloaded`, `credits` | 실행이 그 이유로 실패                                             | 이유에 따라                        |
+| `detail.errorCode`                                                                                                                                    | 뜻                                                                | 다시 시도                                     |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------- |
+| `unavailable`                                                                                                                                         | 그 기능에 설정된 것이 없다                                        | 하지 않는다. 설정을 바꿔야 한다               |
+| `headless-limit`                                                                                                                                      | 더 이상 쓰이지 않음. 자동 호출의 시간당 한도가 없어져 내지 않는다 | 해당 없음                                     |
+| `rate-limit`                                                                                                                                          | 구독 한도 소진                                                    | `detail.resetsAt`이 있으면 그 이후            |
+| `free-limit`                                                                                                                                          | 무료 연결의 오늘 사용량 소진                                      | `detail.resetsAt`이 있으면 그 이후            |
+| `free-tier-model`                                                                                                                                     | 고른 모델이 키의 무료 등급에 없음(Gemini가 무료 한도 0으로 답함)  | 하지 않는다. 다른 모델을 고르거나 결제를 켠다 |
+| `http_error`                                                                                                                                          | 서버가 2xx가 아닌 상태로 답함(`read-url`)                         | 주소를 확인한 뒤 다시                         |
+| `auth`                                                                                                                                                | GitHub가 읽기 토큰을 거절함(`read-url`)                           | 설정의 GitHub 읽기 토큰을 확인                |
+| `not-connected`, `signed-out`, `not-installed`, `metered-not-accepted`, `needs-update`, `unsafe-tools`, `timeout`, `network`, `overloaded`, `credits` | 실행이 그 이유로 실패                                             | 이유에 따라                                   |
 
 ## MCP 서버 (`ieumoffice mcp`)
 
@@ -228,7 +229,8 @@
 명령어 쪽 서버와 다른 것이다. 실행 중인 앱이 직접 여는 서버이고, 열려 있는 문서를 다룬다.
 
 - 설정 → 연동에서 켠다. 기본은 꺼짐이다. 기본 포트는 3093이고 이 PC(`127.0.0.1`)에서만 닿는다. 인증은 없고, 요청의 Host·Origin이 이 PC의 것이 아니면 거절한다.
-- 도구: `get_app_info`, `open_documents`, `open_in_genoffice`(이 이름은 예전 철자를 유지한다), `create_session`, `save_session`, `read_document`, `read_docx`, `read_sheet`, `read_deck`, `read_pdf`, `create_docx`, `create_xlsx`, `create_pptx`, `apply_ops`, `apply_sheet_ops`, `apply_slide_ops`, `insert_content`, `replace_blocks`.
+- 도구: `get_app_info`, `open_documents`, `open_in_genoffice`(이 이름은 예전 철자를 유지한다), `create_session`, `save_session`, `read_document`, `read_docx`, `read_sheet`, `read_deck`, `read_pdf`, `create_docx`, `create_xlsx`, `create_pptx`, `apply_ops`, `apply_sheet_ops`, `apply_slide_ops`, `insert_content`, `replace_blocks`, `insert_picture`.
+- `insert_picture`는 열린 워드 탭에 그림을 넣는다(원본 genoffice#2267). 앱 안 AI의 같은 이름 도구를 그대로 거치므로 그림 주소는 http(s)와 `data:image/`만 받고, http(s) 주소면 앱이 그 주소에서 그림을 받아 온다. 에이전트 모드의 세션 서버에는 없다.
 - 열린 ODT 탭은 워드 문서로 다룬다(`open_documents`의 `format`이 `odt`). `read_docx`는 `.odt` 파일도 읽는다. `save_session`은 탭의 형식으로만 저장한다. 다른 확장자의 경로를 주면 거절하고 `ieumoffice convert`를 쓰라고 안내한다. 대화 상자가 없는 경로에서 형식이 조용히 바뀌지 않게 하기 위해서다.
 - 에이전트 설정에 넣는 항목 이름은 `ieumoffice-editor`다. 명령어 쪽 서버의 `ieumoffice`와 겹치지 않는다.
 - 에이전트 모드(결정 0032)의 세션 MCP 서버는 이것과 별개다. 앱이 띄운 프로그램만 쓰고, 세션마다 운영체제가 고른 포트와 새 토큰(`Authorization: Bearer`)을 요구하며, 도구는 `open_documents`(`list`·`read`만), `read_document`, `insert_content`, `replace_blocks`, `apply_ops`, `read_sheet`, `apply_sheet_ops`, `read_deck`, `apply_slide_ops`, `read_hwp`, `read_pdf`다. 읽기는 가린 자리를 `{{이름}}`으로 내보내고, `read_hwp`·`read_pdf`는 프로젝트 폴더 안만 읽는다. 결정 0048·0049로 `propose_skill`(에이전트 창에 스킬 카드를 띄움)과 `propose_skill_install`(깃허브 설치 미리보기를 띄움)이 더해져 13개다. 둘 다 파일을 쓰지 않는다. 바깥 호출자에게 약속하는 출력이 아니다. 위 서버의 출력은 바뀌지 않는다.
@@ -287,6 +289,7 @@ metadata:
 | `skills.hiddenBuiltins` | 숨긴 기본 스킬 이름 목록                                                                       | 없음                   |
 | `agentSkillNoticeSeen`  | 참/거짓. 에이전트 창의 스킬 안내를 봤는지                                                      | 없음                   |
 | `agentProjectPrefs`     | 프로젝트 폴더 절대 경로 → `{ codexWebSearch: 'cached' \| 'live' \| 'disabled', codexNetwork }` | 없음(`cached`, 거짓)   |
+| `hwpDefaultFormat`      | `'hwp'` 또는 `'hwpx'`. 파일이 없는 새 한글 문서의 첫 저장에 먼저 제안할 형식                   | `hwp`                  |
 
 - 식별자는 `〈출처〉:〈이름〉`, 플러그인은 `plugin:〈플러그인〉:〈이름〉`이다. 출처 값은 `builtin`(기본), `app`(`~/.ieumoffice/skills`, 깃허브 포함), `user`(`~/.claude/skills`), `plugin`(설치된 Claude 플러그인), `codex`(`~/.agents/skills`)다. 저장되는 값이라 바꾸지 않는다. 프로젝트 스킬(`project`)은 저장하지 않는다.
 - 알 수 없는 값은 무시하고 처음 상태로 읽는다. 처음 상태는 `builtin`·`app`이 켜짐·스스로 쓰기, `user`·`plugin`·`codex`가 꺼짐이다.
@@ -295,19 +298,19 @@ metadata:
 
 데이터 폴더(`%APPDATA%\IeumOffice`, 개발 실행은 `IeumOffice-Dev`)에 있다. 사람이 직접 고칠 수 있고, 명령어와 MCP는 읽기만 한다.
 
-| 값                                   | 종류                                             | 기본                                                       |
-| ------------------------------------ | ------------------------------------------------ | ---------------------------------------------------------- |
-| `provider`                           | `auto` 또는 제공자 식별자                        | `auto`                                                     |
-| `providers`                          | 제공자별 `{ apiKey, model, baseUrl?, cliPath? }` | 빈 표                                                      |
-| `meteredAccepted`                    | 구독 제공자별 참/거짓                            | 거짓                                                       |
-| `headlessSubscriptionEnabled`        | 참/거짓. 자동 호출 경로의 구독 사용              | 거짓                                                       |
-| `headlessSubscriptionConsentVersion` | 자동 호출 스위치를 켤 때 동의한 경고의 판(정수)  | 없음                                                       |
-| `subscriptionNoticeSeen`             | 참/거짓. 첫 연결 안내를 봤는지                   | 거짓                                                       |
-| `customEndpoints`, `customEndpoint`  | 직접 운영하는 서버 목록과 지금 쓰는 것의 식별자  | 없음                                                       |
-| `maxOutputTokens`                    | 모델 한 차례의 출력 상한                         | 코드의 기본값                                              |
-| `media`, `search`                    | 이미지·분석·검색 제공자 선택과 그 키             | 이미지 분석은 `chat`, 영상 분석은 `none`, 검색은 무료 경로 |
-| `readUrl`                            | `{ githubToken }`                                | 없음                                                       |
-| `internetTools`                      | `false`면 편집기 AI 창의 인터넷 도구를 끈다      | 켬(값 없음)                                                |
+| 값                                   | 종류                                                      | 기본                                                       |
+| ------------------------------------ | --------------------------------------------------------- | ---------------------------------------------------------- |
+| `provider`                           | `auto` 또는 제공자 식별자                                 | `auto`                                                     |
+| `providers`                          | 제공자별 `{ apiKey, model, baseUrl?, cliPath?, models? }` | 빈 표                                                      |
+| `meteredAccepted`                    | 구독 제공자별 참/거짓                                     | 거짓                                                       |
+| `headlessSubscriptionEnabled`        | 참/거짓. 자동 호출 경로의 구독 사용                       | 거짓                                                       |
+| `headlessSubscriptionConsentVersion` | 자동 호출 스위치를 켤 때 동의한 경고의 판(정수)           | 없음                                                       |
+| `subscriptionNoticeSeen`             | 참/거짓. 첫 연결 안내를 봤는지                            | 거짓                                                       |
+| `customEndpoints`, `customEndpoint`  | 직접 운영하는 서버 목록과 지금 쓰는 것의 식별자           | 없음                                                       |
+| `maxOutputTokens`                    | 모델 한 차례의 출력 상한                                  | 코드의 기본값                                              |
+| `media`, `search`                    | 이미지·분석·검색 제공자 선택과 그 키                      | 이미지 분석은 `chat`, 영상 분석은 `none`, 검색은 무료 경로 |
+| `readUrl`                            | `{ githubToken }`                                         | 없음                                                       |
+| `internetTools`                      | `false`면 편집기 AI 창의 인터넷 도구를 끈다               | 켬(값 없음)                                                |
 
 - 로컬 서버 항목(`kind: 'local'`)은 `modelProfiles`와 `timeoutMs`를 더 든다. `modelProfiles`는 모델 id별 `{ contextLength, maxContextLength, tools, vision, contextSource, toolsSource, visionSource, checkedAt, notes }`이고, source는 `server`·`user`·`test`뿐이다. `timeoutMs`는 60,000~600,000의 정수이고, 없으면 300,000으로 읽는다.
 - `customEndpoint: ''`는 "쓸 사용자 서버 없음"이다. 이때 `providers.custom`은 `{ apiKey: '', model: '', baseUrl: '' }`로 비고, `customEndpoint` 값이 아예 없는 예전 파일만 첫 서버를 고른다.
@@ -321,6 +324,8 @@ metadata:
 - `providers` 표가 아예 없는 파일은 제공자 설정 이전의 파일로 읽혀, 다른 값까지 기본값이 된다.
 - 종량 허용은 이 파일의 값만으로는 유효하지 않다. 같은 폴더의 기록(`subscription-metered.json`)에 적힌 로그인 종류가 지금 감지된 것과 같아야 한다.
 - 구독 제공자의 `model`에는 프로그램이 받는 값이 그대로 들어간다(Claude의 `opus`·`claude-opus-5-5` 같은 별칭이나 식별자, Codex의 모델 식별자). 빈 값은 프로그램의 기본 모델이다. 화면에 보이는 표시 이름은 저장하지 않는다.
+- 키 제공자의 `models`는 그 회사가 저장된 키에 내준 대화 모델 목록이다(결정 0087). 앱이 시작할 때와 그 제공자의 키나 주소가 바뀌었을 때 앱이 채우고, 최신순이다. 앱만 쓴다. 손으로 고쳐도 다음 조회 때 바뀌고, 앱 화면이 저장할 때는 파일에 있던 값이 그대로 남는다. 문자열이 아닌 항목, 256자를 넘는 항목, 중복은 읽을 때 버린다. 명령어와 MCP는 이 값을 읽지 않는다.
+- 저장된 Gemini 모델 `gemini-3.7-flash`는 `gemini-3.8-flash`로 읽는다(Google이 2026-10-08 내리고 그쪽으로 돌린다).
 - 구독에 로그인된 계정은 이 파일에도, `subscription-metered.json`에도 적히지 않는다. 그 기록에 남는 것은 로그인 방식의 종류뿐이다.
 
 ## 출처 기록 (`document-links.json`)
@@ -353,16 +358,111 @@ metadata:
 - 앱 안에서 이름을 바꾸거나 옮기면 `derived`와 `sources`의 경로가 따라간다. 디스크에 없는 파일이라는 이유로 기록을 지우지 않는다.
 - 터미널 명령어와 MCP는 이 파일을 읽지도 쓰지도 않는다.
 
-## Google 드라이브 (결정 0033)
+## 프로젝트 폴더 (`.ieumoffice/`, 결정 0088)
+
+사람이 AI 창에서 고르는 프로젝트는 PC의 폴더 하나이고, 그 프로젝트의 지침·기억·대화는 그 폴더 안의 `.ieumoffice/`에 있다. 사람이 메모장으로 읽고 고칠 수 있고, 다른 프로그램도 이 모양에 기대어 읽고 쓸 수 있다. 폴더를 옮기거나 복사하면 함께 간다. 동작 규칙은 `docs/business-rules.md`의 "프로젝트 폴더"에 있다.
+
+```
+<프로젝트 폴더>/
+├── AGENTS.md, CLAUDE.md        ← 있으면 지침으로 함께 읽는다(앱은 쓰지 않는다)
+└── .ieumoffice/
+    ├── project.json
+    ├── instructions.md
+    ├── memory.md
+    ├── memory.<YYYYMMDD-HHmmss>.bak.md   (정리 전 백업, 최근 3개)
+    ├── ignore
+    └── chats/
+        ├── <chatId>.json        대화 정보
+        └── <chatId>.jsonl       대화 내용
+```
+
+- 폴더와 파일 이름은 화면 언어와 상관없이 고정이다. 글은 UTF-8이다.
+- `.ieumoffice/`는 폴더를 고른 것만으로 생기지 않는다. 앱이 처음 무엇을 써야 할 때(지침 저장, 기억, 대화, 이름 바꾸기) 만든다.
+- 앱은 JSON·MD를 같은 폴더의 임시 파일에 쓴 뒤 이름을 바꾼다. 다른 프로그램이 쓸 때도 같은 방식을 권한다.
+- id(프로젝트 id, `chatId`)는 `^[A-Za-z0-9_-]+$`만 받는다. 어긋나는 파일은 무시한다.
+
+**`project.json`**
+
+```json
+{ "version": 1, "id": "<프로젝트 id>", "name": "<이름, 128자까지>", "createdAt": "<ISO 시각>" }
+```
+
+| 값          | 뜻                                                                                                                                                              |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `version`   | 형식의 판. 지금 `1`                                                                                                                                             |
+| `id`        | 프로젝트의 정체. 경로가 아니라 이 값으로 같은 프로젝트를 알아본다. 폴더를 복사해 같은 id가 두 곳에 있으면, 나중에 추가한 쪽을 복사본으로 보고 앱이 새 id를 쓴다 |
+| `name`      | 화면의 이름. 128자까지. 바꿔도 폴더 이름은 그대로다                                                                                                             |
+| `createdAt` | 만든 시각(ISO 8601)                                                                                                                                             |
+
+**`instructions.md`** 는 사람이 쓰는 지침이다. 앱은 프로젝트 화면에서 사람이 저장할 때만 쓰고, AI는 고치지 않는다. 형식은 자유로운 마크다운이다.
+
+**`memory.md`** 는 AI가 쌓는 기억이다. 사람이 고치거나 지워도 된다. 첫 줄은 설명 주석이고, 그 뒤로 한 줄에 한 항목(`- `로 시작)이다. 항목 끝의 괄호 안 날짜는 적힌 날이다.
+
+```text
+<!-- 이음오피스가 쌓는 기억. 고치거나 지워도 됩니다. -->
+- 보고서는 개조식, 문장 끝은 "~함"으로 쓴다. (2026-10-29)
+```
+
+- 앱은 기억을 쓰기 직전에 파일을 다시 읽어 그 위에 고친다. 다른 프로그램이 그사이 고친 것을 덮어쓰지 않는다.
+- 사람이 [정리하기]를 누르면, 바꾸기 전의 파일을 `memory.<YYYYMMDD-HHmmss>.bak.md`로 남긴다. 백업은 최근 3개만 남긴다.
+- 같은 폴더의 `memory*.md` 가운데 `.bak`이 아닌 다른 이름(동기화 서비스의 충돌 사본)은 읽지 않고, 프로젝트 화면이 그 이름을 알린다.
+
+**`ignore`** 는 AI가 보지 않을 파일·폴더다.
+
+- 한 줄에 하나다. 빈 줄과 `#`으로 시작하는 줄은 무시한다.
+- `*`(경로 구분자를 넘지 않는 아무 글자), `?`(한 글자), `**`(폴더 여러 단계)를 쓴다.
+- 끝의 `/`는 폴더에만 맞는다. 앞의 `/`는 프로젝트 폴더 기준이다.
+- `!`(되살리기)는 없다.
+- 대소문자는 Windows와 Mac에서 구분하지 않는다.
+- 걸린 파일은 AI 도구와 지시문의 파일 이름 목록, 홈 검색의 "바깥 AI로 다시 정렬"에 보내는 결과에서 빠진다. 홈 검색 결과 목록에는 보인다. 프로젝트 화면의 "AI가 보지 않게"는 그 경로 한 줄을 더한다.
+
+**대화 정보 `chats/<chatId>.json`**
+
+```json
+{
+  "version": 1,
+  "id": "<chatId>",
+  "projectId": "<이 대화가 생긴 프로젝트 id>",
+  "title": "<제목>",
+  "createdAt": "<ISO>",
+  "updatedAt": "<ISO>",
+  "origin": "<쓴 설치의 installId>",
+  "lastEditor": "docs|sheets|slides|pdf|markdown|html|mindmap|hwp|epub|home",
+  "documents": ["<이 대화를 쓴 문서의 폴더 안 상대 경로>", "..."]
+}
+```
+
+| 값           | 뜻                                                                                                                               |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| `projectId`  | 이 대화가 생긴 프로젝트의 id. 지금 `project.json`의 `id`와 같은 대화만 목록에 보인다(복사한 폴더의 대화는 보이지 않는다)         |
+| `title`      | 화면의 제목. 처음에는 첫 사용자 메시지의 앞 40자                                                                                 |
+| `updatedAt`  | 마지막으로 메시지가 더해진 시각. 목록은 이 값의 늦은 순이다                                                                      |
+| `origin`     | 이 대화를 만든 설치의 값(`app-settings.json`의 `projects.installId`, 설치마다 한 번 만드는 무작위 값)                            |
+| `lastEditor` | 마지막으로 메시지를 보낸 편집기. `home`은 홈 AI 질문                                                                             |
+| `documents`  | 이 대화를 쓴 문서의 프로젝트 폴더 안 상대 경로. 마지막으로 쓴 것이 맨 뒤다(다시 쓰면 맨 뒤로 옮긴다). 폴더 밖 문서는 넣지 않는다 |
+
+**대화 내용 `chats/<chatId>.jsonl`**
+
+- 줄마다 메시지 하나(JSON)다. 모양은 `project-store`의 메시지 기록과 같다(역할, 본문, 도구 기록, 범위, 스킬 칩, 스킬 제안, `seq`, 시각). 여기에 `editor`(그 메시지를 쓴 편집기, 위 `lastEditor`와 같은 값)와 `origin`(쓴 설치의 값)이 더해진다.
+- 저장 상한은 본문 32,000자, 도구 필드 16,000자, 메시지당 도구 64개·첨부 32개다.
+- 읽을 때 깨진 줄은 건너뛰고, 파일이 크면 끝 8 MiB만 읽는다.
+- 파일은 첫 어시스턴트 답이 올 때 만든다. 대화를 지우면 두 파일을 운영체제 휴지통으로 옮긴다.
+- **다른 PC의 대화**: 대화 정보의 `origin`이나 메시지 하나라도의 `origin`이 이 PC의 값과 다른 대화. 처음 믿음 확인의 대상이 되고, 목록에 "다른 PC"가 붙는다.
+
+**이 PC에만 두는 것.** 고정·최근 목록, 믿음 기록(프로젝트 id마다 `use`·`without`과, 앱이 마지막으로 보거나 쓴 `instructions.md`·`memory.md`·`AGENTS.md`·`CLAUDE.md`의 해시), 문서마다 고른 프로젝트와 마지막 대화, "프로젝트 없이"로 바꾼 문서, 프로젝트별 설정(기억 쌓기, 루트 `AGENTS.md`·`CLAUDE.md` 읽기), `installId`는 폴더가 아니라 데이터 폴더의 `app-settings.json`(`projects`)에 있다. 앱만 읽고 쓴다.
+
+**누가 쓰나.** 앱에서는 껍데기 앱 뒷단의 프로젝트 길잡이만 쓴다. 터미널 명령어와 MCP는 이 폴더를 읽지도 쓰지도 않는다. 에이전트 모드의 프로그램은 프로젝트 폴더에 쓸 수 있으므로 이 파일들을 바꿀 수 있다(`docs/tracking/findings.md`).
+
+## Google 드라이브 (결정 0033, 0085)
 
 같은 데이터 폴더에 둘이 있다. 터미널 명령어와 MCP는 둘 다 읽지도 쓰지도 않는다.
 
-- `google-drive.json`: `{ "version": 1, "token": "<base64>" }`. `token`은 운영체제 암호화(Electron `safeStorage`, Windows는 DPAPI)로 감싼 갱신 토큰이다. 다른 사용자나 다른 PC에서는 풀리지 않고, 풀리지 않는 파일은 연결이 없는 것으로 읽는다. 암호화를 쓸 수 없는 PC에서는 이 파일을 만들지 않는다. 연결 끊기와 Google의 연결 종료(`invalid_grant`)에 지운다.
+- `google-drive.json`: `{ "version": 1, "token": "<base64>" }`. `token`은 운영체제 암호화(Electron `safeStorage`: Windows는 DPAPI, macOS는 키체인, Linux는 키링이 있을 때만)로 감싼 갱신 토큰이다. 다른 사용자나 다른 PC에서는 풀리지 않고, 풀리지 않는 파일은 연결이 없는 것으로 읽는다. 암호화를 쓸 수 없는 PC에서는 이 파일을 만들지 않는다. 연결 끊기와 Google의 연결 종료(`invalid_grant`)에 지운다.
 - `drive-cache/`: 연 드라이브 파일의 PC 사본. 파일마다 `drive-cache/<드라이브 파일 id>/<이름>`이고, `drive-cache/index.json`이 사본과 드라이브 파일을 잇는다. 항목에는 드라이브 파일 id, 이름, 상위 폴더 id, PC 경로, 마지막으로 맞춘 내용의 해시(SHA-256)와 드라이브 쪽 해시(MD5)·변경 시각, 저장이 갈 드라이브 파일 id, "이 PC에만 저장"을 골랐는지, 마지막으로 연 시각이 있다. 문서 내용은 사본 파일에만 있다. 한 달 동안 열지 않았고 올리지 못한 변경이 없는 사본은 시작할 때 지운다.
 
-`app-settings.json`의 `driveAiAccess`(참/거짓, 기본 참)는 편집기의 AI가 드라이브를 찾고 읽어도 되는지다. 드라이브가 연결돼 있을 때만 뜻이 있다.
+`app-settings.json`의 `driveAiAccess`(참/거짓, 기본 참)는 편집기의 AI가 드라이브를 찾고 읽어도 되는지다. 드라이브가 연결돼 있을 때만 뜻이 있다. `driveTrainingAck`(참일 때만 확인, 기본 없음)는 사람이 "드라이브 파일과 함께 쓰는 AI 계정에서 모델 학습을 껐습니다"에 체크했는지다. 참이 아니면 연결, 고르기, 첨부, AI의 드라이브 도구가 멈춘다.
 
-창구 이름은 `drive:state`, `drive:connect`, `drive:cancel-connect`, `drive:disconnect`, `drive:set-ai-access`, `drive:list`, `drive:open`과 변경 알림 `drive:state-changed`, 편집기 AI용 `drive:ai-enabled`, `drive:ai-search`, `drive:ai-read`, 편집기 첨부용 `drive:connected`, `drive:pick-attachments`다. 고르기 창만 쓰는 창구는 `drive-picker:get-init`, `-list`, `-choose`, `-cancel`이고, 그 창이 아닌 곳에서 오면 답하지 않는다. 토큰은 어느 창구로도 화면에 나가지 않는다.
+창구 이름은 `drive:state`, `drive:connect`, `drive:cancel-connect`, `drive:disconnect`, `drive:set-ai-access`, `drive:set-training-ack`, `drive:list`(`recent`·`search`만), `drive:open`, `drive:pick-open`(Google 선택 창을 열고 고른 파일을 탭으로 연다)과 변경 알림 `drive:state-changed`, 편집기 AI용 `drive:ai-enabled`, `drive:ai-search`, `drive:ai-read`, 편집기 첨부용 `drive:connected`, `drive:pick-attachments`다. 앱이 그리던 고르기 창과 그 창구(`drive-picker:*`)는 없앴다(결정 0085). 토큰은 어느 창구로도 화면에 나가지 않는다.
 
 빌드: `GENOFFICE_GOOGLE_CLIENT_ID`(`….apps.googleusercontent.com`)와 `GENOFFICE_GOOGLE_CLIENT_SECRET`이 껍데기 앱을 빌드하는 환경에 있을 때만 드라이브가 들어간다. 없으면 상태는 `unavailable`이고 화면에 드라이브가 나오지 않는다.
 
@@ -402,7 +502,7 @@ metadata:
 - PDF 편집기의 "다른 이름으로 저장"은 **사본에만** 주석 처리를 고른다. 그대로 두기(기본, 다른 PDF 앱에서 고칠 수 있음), 페이지에 굽기(PDFium으로 주석·입력란을 페이지 내용으로 만들어 모든 뷰어에서 보이게 함, 되돌릴 수 없음), 주석 빼기(메모·형광펜·그리기·도장만 빼고 링크·입력란은 남김) 셋이다. 원본과 그 자리 저장은 바뀌지 않고, 편집이 없는 사본은 원본 바이트 그대로 복사한다. 인쇄는 주석을 기본으로 그리며, 인쇄 창에서 끌 수 있다.
 - 파워포인트 편집기에서 고른 디자인 템플릿은 문서 안이나 곁에 쓰지 않는다. 문서에 남는 것은 평범한 도형·글·글꼴 이름뿐이다.
 - 저장한 스타일 파일(`<데이터 폴더>/style-templates/<이름>.json`)에는 선택 항목 `basedOn`(기본 템플릿의 id)이 붙을 수 있다. 이 값을 모르는 예전 버전은 무시하고 그대로 읽는다.
-- 한글 문서(`.hwp`·`.hwpx`)는 연 형식 그대로 저장한다. 한 탭이 파일을 처음 덮어쓰기 전에 원본을 같은 폴더에 `<파일 이름>.bak`으로 남긴다. 암호가 걸린 문서는 저장하지 않는다. AI는 한글 문서에서 글자를 바꾸고, 문단을 넣고 지우고, 본문에 표를 넣고, 있는 표의 빈 칸을 채우고(글자가 있는 칸은 사용자가 바꾸라고 했을 때만 덮어쓰고, 그림이 든 칸은 쓰지 않는다), 본문의 표에 행과 열을 넣고 빼고, 첨부한 파일(한글·워드·엑셀·파워포인트·PDF·글자 파일·그림)을 참고 자료로 읽고, 사용자가 편집기에서 선택한 부분만 고치고, 글자 모양 일부(굵게·기울임·밑줄·취소선·크기·색·형광펜)와 문단의 정렬·줄 간격을 바꾸고, 누름틀을 채운다. 표·그림·누름틀이 놓인 문단은 지우지 않는다.
+- 한글 문서(`.hwp`·`.hwpx`)는 연 형식 그대로 저장한다. 파일이 없는 새 문서의 첫 저장은 설정 → 일반의 "새 한글 문서 저장 형식"(기본 HWP)을 먼저 제안한다. 한 탭이 파일을 처음 덮어쓰기 전에 원본을 같은 폴더에 `<파일 이름>.bak`으로 남긴다. 암호가 걸린 문서는 저장하지 않는다. AI는 한글 문서에서 글자를 바꾸고, 문단을 넣고 지우고, 본문에 표를 넣고, 있는 표의 빈 칸을 채우고(글자가 있는 칸은 사용자가 바꾸라고 했을 때만 덮어쓰고, 그림이 든 칸은 쓰지 않는다), 본문의 표에 행과 열을 넣고 빼고, 첨부한 파일(한글·워드·엑셀·파워포인트·PDF·글자 파일·그림)을 참고 자료로 읽고, 사용자가 편집기에서 선택한 부분만 고치고, 글자 모양 일부(굵게·기울임·밑줄·취소선·크기·색·형광펜)와 문단의 정렬·줄 간격을 바꾸고, 누름틀을 채운다. 표·그림·누름틀이 놓인 문단은 지우지 않는다.
 - 앱 안에서 한글 문서는 편집기 밖에서 읽기만 한다. 홈의 파일 검색과 지식 자료, 다른 편집기 AI의 첨부, 터미널 명령어(`ieumoffice hwp read`, `info`), MCP(앱의 `read_hwp`, 명령어 쪽의 `hwp_read`)가 글자를 읽는다. 문단은 한 줄로, 표는 행마다 칸을 `|`로 이어 적는다. MCP의 열린 문서 읽기는 한글 탭의 저장하지 않은 내용까지 읽고, 저장은 하지 않는다. 앱 안 MCP로는 한글 문서를 고치지 않는다. 암호가 걸린 문서는 읽지 않는다.
 - **터미널 명령어로 한글 문서를 만들고 고친다(결정 0079).** `ieumoffice hwp apply <파일> --ops`(MCP `hwp_apply`)와 `ieumoffice create --type hwp|hwpx --ops`(MCP `create_hwp`)다. 연산은 한글 편집기 AI의 도구 그대로이고(이름, 입력, 답한 글), 앱의 플러그인이 같은 엔진에서 한다. 그래서 찾은 말이 여러 곳이면 고르지 않고, 표·그림·누름틀·메모를 잃는 변경은 되돌리고 거절한다. 그림 넣기, 웹 읽기와 그림 찾기·만들기, 편집기 선택 도구는 명령어에 없다(`unsupported`). 연산 목록은 `ieumoffice guide hwp`이고 도구 정의에서 만든다. 저장은 앱의 저장과 같다. 연 형식 그대로(`--out`이면 그 확장자로) 쓰고, `.hwp`는 엔진이 다시 읽어 쪽수가 같을 때만 쓰며, 새 탭 폭·필드 종류·바탕쪽과 메모를 바로잡고(결정 0024·0026·0028), 덮어쓰는 파일은 먼저 `<파일 이름>.bak`으로 남긴다. 변경 추적이 든 `.hwp`는 지금의 내용으로 고치고(결정 0027) `detail.warnings`로 알린다. 읽기 연산만 든 묶음은 파일을 쓰지 않는다. 암호가 걸린 문서는 `unsupported`다. 앱이 탭으로 연 파일은 다른 형식처럼 `--force` 없이 쓰지 않는다.
 - **한글 메모(결정 0072).** `.hwp`·`.hwpx`의 메모는 본문·표 칸·글상자에서 읽고, 앱의 메모 패널에서 평문으로 넣고 고치고 지운다(한 영역에 새 메모 하나, 서식 있는 메모는 읽기 전용). 작성자는 사용자 이름 설정 → PC 계정 이름 → `IeumOffice`(제품 이름), 새 메모의 날짜는 파일이 담고 있을 때만 보인다. 메모 편집기가 열려 있는 동안 저장은 `메모 작성을 먼저 저장하거나 취소해 주세요.`로 막고, 탭 닫기·종료는 메모를 버리고 닫을지 묻는다. AI는 메모를 읽을 수 있지만 쓰는 도구가 없고, 앵커를 지우는 편집은 그 요청에 한해 사람의 승인을 받는다. 저장은 연 형식 그대로 하고, `.hwpx`에서 실제로 빠진 메모가 있을 때만 수와 함께 HWP 저장을 안내한다. 메모가 없는 문서의 저장 결과는 예전과 같다.

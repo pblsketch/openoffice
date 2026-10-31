@@ -113,7 +113,8 @@ function sizeOrUndefined(w: number, h: number): ImageSize | undefined {
   return w > 0 && h > 0 ? { w, h } : undefined
 }
 
-function jpegSize(b: Uint8Array): ImageSize | undefined {
+/** First JPEG SOF frame size; skips 0xFF fill bytes before markers (ITU T.81 B.1.1.2). */
+export function jpegSize(b: Uint8Array): ImageSize | undefined {
   let o = 2
   while (o + 4 <= b.length && b[o] === 0xff) {
     const marker = b[o + 1]!

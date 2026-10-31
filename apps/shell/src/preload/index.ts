@@ -19,6 +19,10 @@ import type {
 } from '@genoffice/ai-provider/browser'
 import { installDropOpenBridge } from '@genoffice/electron-utils/drop-open'
 import { userSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
+import {
+  PROJECT_FOLDER_BRIDGE_KEY,
+  projectFolderBridge,
+} from '@genoffice/electron-utils/project-folder-bridge'
 import { USER_SKILLS_BRIDGE_KEY } from '@genoffice/electron-utils/user-skills-channels'
 import type { UpdateUiState } from '../shared/update-api'
 import { normalizeAiPanelPrefs } from '@genoffice/ui/ai-panel-prefs'
@@ -36,6 +40,7 @@ import type {
   FileSearchPage,
   FileSearchRerank,
   FileSearchSettings,
+  HwpDefaultFormat,
 } from '../shared/home-api'
 import { HOME_CHANNELS } from '../shared/home-api'
 import { RECOVERY_LIST_CHANNELS } from '../shared/recovery-list-api'
@@ -515,6 +520,14 @@ const homeApi: HomeApi = {
     const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.pickDefaultSaveDir)
     return typeof result === 'string' && result ? result : null
   },
+  async getHwpDefaultFormat() {
+    const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.getHwpDefaultFormat)
+    return (result === 'hwpx' ? 'hwpx' : 'hwp') satisfies HwpDefaultFormat
+  },
+  async setHwpDefaultFormat(format) {
+    const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.setHwpDefaultFormat, format)
+    return (result === 'hwpx' ? 'hwpx' : 'hwp') satisfies HwpDefaultFormat
+  },
   onThemeChanged(handler) {
     const listener = (_event: Electron.IpcRendererEvent, theme: unknown) => {
       if (theme === 'light' || theme === 'dark' || theme === 'system') handler(theme)
@@ -679,8 +692,8 @@ const resultStoreApi: ResultStoreApi = {
 }
 contextBridge.exposeInMainWorld('aiOfficeResultStore', resultStoreApi)
 
-// Google Drive (decision 0033): state, browsing and opening. Main keeps the
-// tokens; this bridge only carries states, file lists and file ids.
+// Google Drive (decisions 0033, 0085): state, picking, listing and opening.
+// Main keeps the tokens; this bridge only carries states, file lists and file ids.
 const driveApi: DriveApi = {
   state: () => ipcRenderer.invoke(DRIVE_CHANNELS.state) as Promise<DriveUiState>,
   onStateChanged(listener) {
@@ -698,14 +711,18 @@ const driveApi: DriveApi = {
     await ipcRenderer.invoke(DRIVE_CHANNELS.disconnect)
   },
   setAiAccess: (on) => ipcRenderer.invoke(DRIVE_CHANNELS.setAiAccess, on === true),
+  setTrainingAck: (on) => ipcRenderer.invoke(DRIVE_CHANNELS.setTrainingAck, on === true),
   list: (listing, pageToken) => ipcRenderer.invoke(DRIVE_CHANNELS.list, listing, pageToken),
   open: (fileId) => ipcRenderer.invoke(DRIVE_CHANNELS.open, fileId),
+  pickOpen: () => ipcRenderer.invoke(DRIVE_CHANNELS.pickOpen),
 }
 contextBridge.exposeInMainWorld('aiOfficeDrive', driveApi)
 
 // the person's skills: settings → skills, the home AI question's `/` list,
 // skill reads and cards (the main process checks every request again)
 contextBridge.exposeInMainWorld(USER_SKILLS_BRIDGE_KEY, userSkillsBridge())
+// project folders (decision 0088): the home ask and the home project screen
+contextBridge.exposeInMainWorld(PROJECT_FOLDER_BRIDGE_KEY, projectFolderBridge(ipcRenderer))
 
 // Subscription channels are registered once for the whole app by the docs main.
 // Until that handler exists an invoke rejects; the renderer reads that as

@@ -438,9 +438,12 @@ Parallel과 DuckDuckGo로, 업데이트 확인은 GitHub로 갑니다. 편집기
 
 - [@CauchyRiemannEquations](https://github.com/CauchyRiemannEquations) — HTML 수식 편집
 - [@dossamlab](https://github.com/dossamlab) — 엑셀 PDF 내보내기
+- [@hahadark](https://github.com/hahadark) — 제어된 폴더 액세스 첫 실행 멈춤
 - [@hunkim](https://github.com/hunkim) — Upstage Solar 연결, 시험 개선
 - [@Neosiki](https://github.com/Neosiki) — CLI·HWP·ODT 수정
-- [@thecodinglog](https://github.com/thecodinglog) — 엑셀 수식 입력줄
+- [@thecodinglog](https://github.com/thecodinglog) — 엑셀 수식 입력줄·셀 메뉴
+- [@wlsgur11](https://github.com/wlsgur11) — 마크다운 내보내기
+- [@wonby1n](https://github.com/wonby1n) — EPUB MCP 읽기
 
 ## 라이선스와 출처
 

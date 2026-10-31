@@ -7,6 +7,8 @@ export interface LocalMarkup extends MarkupInput {
 export const MARKUP_COLORS: Record<MarkupType, [number, number, number]> = {
   highlight: [1, 0.87, 0.35],
   underline: [0.17, 0.4, 1],
+  // the palette green, so the markup menu finds the current swatch
+  squiggly: [0.486, 0.702, 0.259],
   strikeout: [0.86, 0.22, 0.18],
 }
 

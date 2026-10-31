@@ -21,6 +21,7 @@ Tiga pilihan ialah Cerah, Gelap, dan Ikut Sistem. Mod Ikut Sistem mengikut rupa 
 - **Panel AI** — Mati, Dikuncupkan atau Keadaan terakhir.
 - **Simpan automatik semua dokumen** membolehkan AutoSave secara lalai dalam setiap editor; anda masih boleh mematikannya untuk satu tetingkap sahaja.
 - **Lokasi simpanan** dengan butang **Tukar**, dan **Apl lalai untuk dokumen Office** untuk menuntut .docx / .xlsx / .pptx bagi GenOffice.
+- **Format simpanan dokumen HWP baharu** memilih sama ada HWP atau HWPX ditawarkan dahulu semasa menyimpan dokumen baharu kali pertama. Dokumen yang dibuka kekal dalam formatnya sendiri.
 
 GenOffice tidak mengumpul atau menghantar statistik penggunaan, jadi tiada suis untuknya.
 

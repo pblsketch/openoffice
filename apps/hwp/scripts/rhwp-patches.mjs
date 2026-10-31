@@ -51,6 +51,12 @@
  *   The bridge gains the two engine calls of vendor/rhwp-core patch 0014, setting and
  *   reading a section's page number (Hangul's 쪽 번호 매기기).
  *
+ * studio-quick-correct
+ *   Hangul's 빠른 교정 turns a straight quote typed into the document into a curly one,
+ *   opening after a blank (도구 → 빠른 교정 → 빠른 교정 내용 → 입력 자동 서식). The typed text
+ *   goes through studio-plugin/hancom-keys.mjs (quickCorrectTyped) before the editor puts it
+ *   in the document, so what is pasted, dropped or still composing is left alone.
+ *
  * studio-format-copy-safety, studio-format-copy, studio-format-copy-state
  *   The studio's format copy takes the cell's field name and form-edit flag with
  *   the cell's look; copying a plain cell over a named cell in a cell block
@@ -69,6 +75,15 @@
  *   "Insert row below" in a merged cell takes the cell's last row, so the new row lands
  *   below the merge instead of growing it. A caret in a plain cell inside another merge
  *   keeps that cell's row, because Hangul grows the merge there.
+ *
+ * studio-table-props-border-bg, studio-table-props-menu-label
+ *   The studio's 표/셀 속성 dialog shows the table's border and fill tabs only with the
+ *   table object selected, so from a cell (where the menu opens it) a table's own fill,
+ *   such as a black one, could not be changed. Like Hangul, the dialog has them from a cell
+ *   too, and the cell menu names it 표/셀 속성. The dialog used to send the border and fill
+ *   it showed on every OK, and the engine gives those to the table and to every cell: an
+ *   untouched OK wiped each cell's own lines and fill. It now sends only what changed
+ *   (vendor/rhwp-core patch 0021 then keeps the rest of each cell's look).
  *
  * studio-memo-command, studio-memo-label-ko, studio-memo-label-en
  *   The studio's Insert > Comment item is a stub. It becomes the app's memo: with a
@@ -96,9 +111,17 @@
  *   one synchronous draw reuses it, and what the answer depends on (the fonts
  *   found on the PC, the open document's substitutions) changes only when an
  *   asynchronous step ends, so every later draw asks again.
+ *
+ * studio-pc-fonts
+ *   The studio lists the PC's fonts only after the 찾기 button of its options dialog,
+ *   so its font lists held the base fonts and the document's own until then. At start-up
+ *   it now asks the PC for its font list and detects anew when that differs from the
+ *   kept one (studio-plugin/pc-fonts.mjs), then tells the font lists as the button does.
  */
 
+import { CLIPBOARD_HTML_MODULE } from '../studio-plugin/clipboard-html.mjs'
 import { HANCOM_KEYS_MODULE, studioCommandIds } from '../studio-plugin/hancom-keys.mjs'
+import { PC_FONTS_MODULE } from '../studio-plugin/pc-fonts.mjs'
 
 /** Must equal RENDERER_SCHEME in packages/electron-utils/src/renderer-scheme.ts. */
 export const APP_SCHEME = 'genoffice-app'
@@ -114,6 +137,12 @@ export { HANCOM_KEYS_MODULE }
 
 /** Module specifier the studio-format-copy patches import; build-studio.mjs aliases it. */
 export const FORMAT_COPY_MODULE = '@ieum/format-copy'
+
+/** Module specifier the studio-clipboard-objects patch imports; build-studio.mjs aliases it. */
+export { CLIPBOARD_HTML_MODULE }
+
+/** Module specifier the studio-pc-fonts patch imports; build-studio.mjs aliases it. */
+export { PC_FONTS_MODULE }
 
 const PATCHES = {
   'sdk-scheme': {
@@ -291,7 +320,7 @@ const PATCHES = {
           "import { FindDialog, navigateToSearchHit } from '@/ui/find-dialog';\n" +
           "import { CellBorderBgDialog } from '@/ui/cell-border-bg-dialog';\n" +
           "import { showToast } from '@/ui/toast';\n" +
-          `import { hancomCommands, installHancomMainKeys, installHancomMenuItems } from '${HANCOM_KEYS_MODULE}';`,
+          `import { hancomCommands, installHancomMainKeys, installHancomMenuItems, installHanjaKey } from '${HANCOM_KEYS_MODULE}';`,
       },
       // the new commands, with the studio parts they build on, and their menu items
       {
@@ -304,7 +333,9 @@ const PATCHES = {
           '}));\n' +
           'installHancomMenuItems(document, getLocale());\n' +
           '// the keys the main process takes first and hands back for the table (decision 0060)\n' +
-          'installHancomMainKeys(window, () => inputHandler, dispatcher);',
+          'installHancomMainKeys(window, () => inputHandler, dispatcher);\n' +
+          '// the Hanja key on a word already typed (the input method only converts while composing)\n' +
+          'installHanjaKey(window, () => inputHandler, dispatcher);',
       },
     ],
   },
@@ -326,6 +357,22 @@ const PATCHES = {
       '',
       '  applyStyle(sec: number, para: number, styleId: number): { ok: boolean } {',
     ].join('\n'),
+  },
+  'studio-quick-correct': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler-text\.ts$/,
+    edits: [
+      {
+        find: "import { showConfirm } from '@/ui/confirm-dialog';",
+        replace:
+          "import { showConfirm } from '@/ui/confirm-dialog';\n" +
+          `import { quickCorrectTyped } from '${HANCOM_KEYS_MODULE}';`,
+      },
+      // the typed character, before the editor decides what to do with it
+      {
+        find: '  const text = this.textarea.value;',
+        replace: '  const text = quickCorrectTyped(this, this.textarea.value, e?.inputType);',
+      },
+    ],
   },
   'studio-format-copy-safety': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler\.ts$/,
@@ -633,6 +680,96 @@ const PATCHES = {
       },
     ],
   },
+  // a copied block's pictures and tables reach another document (studio-plugin/clipboard-html.mjs),
+  // and a picture or table copied in another editor is not taken for this one's own
+  'studio-clipboard-objects': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler-keyboard\.ts$/,
+    edits: [
+      {
+        find: "import { tableObjectClipboardTarget } from './table-object-clipboard-target';",
+        replace: [
+          "import { tableObjectClipboardTarget } from './table-object-clipboard-target';",
+          `import { ieumPasteHtmlInCell, ieumPictureHtml, ieumSelectionHtml } from '${CLIPBOARD_HTML_MODULE}';`,
+        ].join('\n'),
+      },
+      {
+        find: '          html = this.wasm.exportSelectionHtml(',
+        replace: '          html = ieumSelectionHtml(this.wasm,',
+      },
+      // the engine's HTML paste into a cell drops the pictures; the app puts them in the cell
+      {
+        find: [
+          '        result = wasm.pasteHtmlInCellByPath(',
+          '          p.sectionIndex, p.parentParaIndex!, JSON.stringify(p.cellPath), p.charOffset, htmlForCore,',
+          '        );',
+        ].join('\n'),
+        replace: [
+          '        result = ieumPasteHtmlInCell(wasm, p, htmlForCore, (part: string) => wasm.pasteHtmlInCellByPath(',
+          '          p.sectionIndex, p.parentParaIndex!, JSON.stringify(p.cellPath), p.charOffset, part,',
+          '        ));',
+        ].join('\n'),
+      },
+      {
+        find: [
+          '        result = wasm.pasteHtmlInCell(',
+          '          p.sectionIndex, p.parentParaIndex, p.controlIndex!,',
+          '          p.cellIndex!, p.cellParaIndex!, p.charOffset, htmlForCore,',
+          '        );',
+        ].join('\n'),
+        replace: [
+          '        result = ieumPasteHtmlInCell(wasm, p, htmlForCore, (part: string) => wasm.pasteHtmlInCell(',
+          '          p.sectionIndex, p.parentParaIndex!, p.controlIndex!,',
+          '          p.cellIndex!, p.cellParaIndex!, p.charOffset, part,',
+          '        ));',
+        ].join('\n'),
+      },
+      // the studio pastes its own engine clipboard when the plain text is the same "[그림]"/"[표]"
+      // as its last copied object, for a browser that drops the HTML; HTML marked by another
+      // editor (another tab) is that editor's copy
+      {
+        find: '    text === internalClipboardText;',
+        replace: [
+          '    text === internalClipboardText &&',
+          '    readRhwpClipboardToken(html) === null;',
+        ].join('\n'),
+      },
+      // a picture copied in another editor also lies on the clipboard as a picture file, at its
+      // own pixel size; that editor's HTML has the size the picture had in its document
+      {
+        find: ['  const items = clipboardData?.items;', '  if (items) {'].join('\n'),
+        replace: [
+          '  const items = clipboardData?.items;',
+          '  if (items && readRhwpClipboardToken(html) === null) {',
+        ].join('\n'),
+      },
+      // a picture file from the clipboard went in with insertPicture, floating at the paper's top
+      // left corner in the body and over the text in a cell; as HTML it goes in at the caret
+      {
+        find: '    // 스냅샷으로 삽입 (Undo 지원)\n',
+        replace: [
+          '    const ieumHtml = ieumPictureHtml(data, ext, wHwp, hHwp);',
+          '    if (ieumHtml) {',
+          "      pasteExternalHtml.call(this, ieumHtml, '', hasSelection);",
+          '      return;',
+          '    }',
+          '    // 스냅샷으로 삽입 (Undo 지원)',
+          '',
+        ].join('\n'),
+      },
+      // Hangul's document model is pasted in the body only; elsewhere the studio goes on to the
+      // HTML path. Its snapshot step said "skipped" with undefined, which the history takes for
+      // the caret's new place: the caret lost its cell and the HTML landed at the body's top.
+      // null is the history's "nothing changed"
+      {
+        find: '        if (p.parentParaIndex !== undefined) return undefined;',
+        replace: '        if (p.parentParaIndex !== undefined) return null;',
+      },
+      {
+        find: '        if (!parsed.ok) return undefined;',
+        replace: '        if (!parsed.ok) return hasSelection ? this.cursor.getPosition() : null;',
+      },
+    ],
+  },
   'studio-memo-command': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]command[\\/]commands[\\/]insert\.ts$/,
     find: "  stub('insert:comment', t('command.insert.comment.label'), 'icon-comment'),",
@@ -685,6 +822,84 @@ const PATCHES = {
     file: /[\\/]rhwp-studio[\\/]src[\\/]i18n[\\/]locales[\\/]en\.ts$/,
     find: '  "command.insert.comment.label": "Comments",',
     replace: '  "command.insert.comment.label": "Memo",',
+  },
+  'studio-table-props-border-bg': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]ui[\\/]table-cell-props-dialog\.ts$/,
+    edits: [
+      {
+        find: "import { t as i18nText } from '../i18n/index.ts';",
+        replace: [
+          "import { t as i18nText } from '../i18n/index.ts';",
+          '',
+          '/**',
+          " * ieum: the table's border and fill go to the engine only when the dialog changed them.",
+          ' * The engine hands what it gets to the table and to every cell, so sending the values the',
+          " * dialog merely showed would overwrite each cell's own lines and fill. The dialog shows a",
+          ' * fill it cannot edit (gradient, picture) as none, and has no "no pattern" choice: an',
+          ' * unpatterned fill reads as an empty choice, and a solid fill is written with pattern -1',
+          ' * (the engine writes 0 otherwise, which Hangul draws as horizontal lines).',
+          ' */',
+          'function ieumKeepUnchangedTableLook(next: Record<string, unknown>, now: TableProperties): void {',
+          "  const sides = ['borderLeft', 'borderRight', 'borderTop', 'borderBottom'] as const;",
+          "  const color = (value: unknown) => String(value ?? '').toLowerCase();",
+          '  const pattern = (value: unknown) => {',
+          '    const n = Number(value);',
+          '    return Number.isFinite(n) && n > 0 ? n : 0;',
+          '  };',
+          '  const sameLine = (a: any, b: any) =>',
+          '    !!a && !!b && a.type === b.type && a.width === b.width && color(a.color) === color(b.color);',
+          '  if (sides.every((side) => sameLine(next[side], (now as any)[side]))) {',
+          '    for (const side of sides) delete next[side];',
+          '  }',
+          '  if (next.fillType === undefined) return;',
+          "  const wasSolid = now.fillType === 'solid';",
+          "  const unchanged = next.fillType === 'none'",
+          '    ? !wasSolid',
+          '    : wasSolid &&',
+          '      color(next.fillColor) === color(now.fillColor) &&',
+          '      pattern(next.patternType) === pattern(now.patternType) &&',
+          '      (pattern(next.patternType) === 0 || color(next.patternColor) === color(now.patternColor));',
+          '  if (unchanged) {',
+          "    for (const key of ['fillType', 'fillColor', 'patternColor', 'patternType']) delete next[key];",
+          "  } else if (next.fillType === 'solid' && pattern(next.patternType) === 0) {",
+          '    next.patternType = -1;',
+          '  }',
+          '}',
+        ].join('\n'),
+      },
+      // Hangul's 표/셀 속성 opened from a cell has the table's border and fill tabs too
+      {
+        find:
+          '      // 표 선택 시에만 테두리·배경 탭 표시 (셀 선택 시 별도 "셀 테두리/배경" 대화상자 사용)\n' +
+          "      ...(this.mode === 'table' ? [",
+        replace:
+          "      // ieum: from a cell too, like Hangul's 표/셀 속성 (the cells' own look stays in 셀 테두리/배경)\n" +
+          '      ...(true ? [',
+      },
+      {
+        find: "    if (this.mode === 'table' && this.borderTarget === 'table' && this.borderEdits) {",
+        replace: "    if (this.borderTarget === 'table' && this.borderEdits) {",
+      },
+      {
+        find: "    if (this.mode === 'table' && this.bgTarget === 'table' && this.bgColorRadio) {",
+        replace: "    if (this.bgTarget === 'table' && this.bgColorRadio) {",
+      },
+      {
+        find:
+          '    const applyProps = () => {\n' +
+          '      this.wasm.setCellProperties(sec, ppi, ci, this.cellIdx, newCellProps as Partial<CellProperties>);',
+        replace:
+          '    ieumKeepUnchangedTableLook(newTableProps, this.tableProps);\n' +
+          '    const applyProps = () => {\n' +
+          '      this.wasm.setCellProperties(sec, ppi, ci, this.cellIdx, newCellProps as Partial<CellProperties>);',
+      },
+    ],
+  },
+  'studio-table-props-menu-label': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler\.ts$/,
+    // the cell menu opens the whole 표/셀 속성 dialog; Hangul names it so
+    find: "      { type: 'command', commandId: 'table:cell-props', label: '셀 속성...' },",
+    replace: "      { type: 'command', commandId: 'table:cell-props', label: '표/셀 속성(P)...' },",
   },
   'studio-memo-anchors': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
@@ -778,6 +993,62 @@ const PATCHES = {
     replace:
       'descriptor.set!.call(this, scopedHostCanvasFont(String(value)) ?? memoSubstituteCssFontFamily(String(value)));',
   },
+  'studio-pc-fonts': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]main\.ts$/,
+    edits: [
+      {
+        find: ['  resolveLocalFont,', "} from '@/core/local-fonts';"].join('\n'),
+        replace: [
+          '  resolveLocalFont,',
+          '  getLocalFontRecords,',
+          "} from '@/core/local-fonts';",
+          `import { refreshPcFonts } from '${PC_FONTS_MODULE}';`,
+        ].join('\n'),
+      },
+      {
+        find: ['    setupEventListeners();', '    setupModalFocusRestore();'].join('\n'),
+        replace: [
+          '    setupEventListeners();',
+          '    void refreshPcFonts({',
+          '      queryLocalFonts: (globalThis as { queryLocalFonts?: () => Promise<{ family: string; fullName: string; postscriptName: string }[]> }).queryLocalFonts?.bind(globalThis),',
+          '      loadStored: loadStoredLocalFonts,',
+          '      records: () => getLocalFontRecords({ includeRegistered: true }),',
+          '      detect: () => detectLocalFonts({ force: true }),',
+          "      changed: () => eventBus.emit('local-fonts-changed', { source: 'pc-fonts' }),",
+          '      document,',
+          '    });',
+          '    setupModalFocusRestore();',
+        ].join('\n'),
+      },
+    ],
+  },
+  // Paste onto a cell block fills the selected cells (hancom-keys.mjs); the key handler
+  // keeps the block for Ctrl+V, and the paste event asks the module before the studio
+  // pastes at the caret. Menu "paste" comes through the same event.
+  'studio-cell-block-paste': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler-keyboard\.ts$/,
+    edits: [
+      {
+        find: "import { matchShortcut, defaultShortcuts } from '@/command/shortcut-map';",
+        replace:
+          "import { matchShortcut, defaultShortcuts } from '@/command/shortcut-map';\n" +
+          `import { hancomPasteCells } from '${HANCOM_KEYS_MODULE}';`,
+      },
+      {
+        find: [
+          '  if (this.isFormMode?.()) return;',
+          '',
+          '  // 개체/표 선택 모드 해제 후 붙여넣기 진행',
+        ].join('\n'),
+        replace: [
+          '  if (this.isFormMode?.()) return;',
+          '  if (hancomPasteCells(this, e)) return;',
+          '',
+          '  // 개체/표 선택 모드 해제 후 붙여넣기 진행',
+        ].join('\n'),
+      },
+    ],
+  },
 }
 
 /** The patches the studio build applies, in order; the SDK's own is applied by the renderer builds. */
@@ -795,11 +1066,15 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-hancom-equal-cells',
   'studio-hancom-chords',
   'studio-hancom-page-number',
+  'studio-quick-correct',
   'studio-format-copy-safety',
   'studio-format-copy',
   'studio-format-copy-state',
   'studio-single-cell-resize',
   'studio-merged-row-below',
+  'studio-clipboard-objects',
+  'studio-table-props-border-bg',
+  'studio-table-props-menu-label',
   'studio-memo-command',
   'studio-memo-context-menu',
   'studio-memo-label-ko',
@@ -808,6 +1083,8 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-memo-delete-undo',
   'studio-font-memo-state',
   'studio-font-memo-use',
+  'studio-cell-block-paste',
+  'studio-pc-fonts',
 ])
 
 /** Whether a patch is written against this file. */
@@ -920,6 +1197,9 @@ export const hancomHooks = [
       'moveToCellByIndex(',
       'moveTo(pos: DocumentPosition): void',
       'clearSelection(): void',
+      'isProtectedCellSelectionMode(): boolean',
+      'getExcludedCells(): Set<string>',
+      'captureCellSelection(): CellBlockSelectionState | null',
     ],
   },
   {
@@ -933,6 +1213,8 @@ export const hancomHooks = [
       'applyStyle(styleId: number): void',
       'executeOperation(desc: OperationDescriptor): void',
       'updateCellSelection(',
+      'private cellSelectionRenderer: CellSelectionRenderer | null',
+      'private updateCaret(skipScroll',
       'clearSelectedCellBlock(',
       'isFormMode(): boolean',
       'hasCopiedFormat(): boolean { return this.formatCopyState !== null; }',
@@ -941,6 +1223,8 @@ export const hancomHooks = [
       'getCursorPosition(): DocumentPosition',
       'focus(): void',
       "eventBus.on('format-char'",
+      // the typed character, for 빠른 교정 (quickCorrectTyped in hancom-keys.mjs)
+      'private getTextAt(pos: DocumentPosition, count: number): string',
     ],
   },
   {
@@ -961,6 +1245,10 @@ export const hancomHooks = [
       'setTableProperties(sec: number, parentPara: number, controlIdx: number, props: Partial<TableProperties>)',
       'changeShapeZOrder(',
       'getCellInfo(sec: number, parentPara: number, controlIdx: number, cellIdx: number): CellInfo',
+      'getTableDimensions(sec: number, parentPara: number, controlIdx: number): TableDimensions',
+      'insertTextInCell(sec: number, parentPara: number, controlIdx: number, cellIdx: number, cellParaIdx: number, charOffset: number, text: string)',
+      'splitParagraphInCell(sec: number, parentPara: number, controlIdx: number, cellIdx: number, cellParaIdx: number, charOffset: number',
+      'deleteRangeInCell(sec: number, parentPara: number, controlIdx: number, cellIdx: number, startCellPara: number',
       'getTableCellBboxes(sec: number,',
       'searchText(query: string, fromSec: number, fromPara: number, fromChar: number, forward: boolean',
       'getCharPropertiesAt(sec: number, para: number, charOffset: number)',
@@ -991,6 +1279,17 @@ export const hancomHooks = [
       'getTableDimensionsByPath(sec: number, parentPara: number, pathJson: string)',
       'getCellInfoByPath(sec: number, parentPara: number, pathJson: string)',
       'runInBatch<T>(fn: () => T): T',
+      // 문서 정보 reads the document through these (studio-plugin/document-info.mjs)
+      'getSectionCount(): number {',
+      'getTextRange(sec: number, para: number, charOffset: number, count: number): string {',
+      'getTextInCellByPath(sec: number, parentPara: number, pathJson: string, charOffset: number, count: number): string {',
+      'getControlTextPositions(sec: number, para: number): number[] {',
+      'getTableDimensions(sec: number, parentPara: number, controlIdx: number): TableDimensions {',
+      'getTextBoxControlIndex(sec: number, para: number): number {',
+      'getLineInfo(sec: number, para: number, charOffset: number): LineInfo {',
+      'getLineInfoInCell(sec: number, parentPara: number, controlIdx: number, cellIdx: number, cellParaIdx: number, charOffset: number): LineInfo {',
+      'getControlImageMime(sec: number, para: number, ci: number,',
+      'getDocumentInfo(): DocumentInfo {',
     ],
   },
   // the studio parts the studio-hancom-commands patch hands to the new commands
@@ -1014,6 +1313,8 @@ export const hancomHooks = [
     file: 'src/engine/command.ts',
     needles: [
       'export class InsertTextCommand',
+      // the Hanja conversion replaces a word with the studio's overwrite typing (5th argument)
+      "    private replacedText = '',",
       'export class ApplyCharFormatCommand',
       'export class ApplyParaFormatCommand',
     ],
@@ -1042,7 +1343,7 @@ export const hancomHooks = [
   },
   { file: 'src/ui/toast.ts', needles: ['export function showToast(options: ToastOptions): void'] },
   { file: 'src/i18n/core.ts', needles: ['export function getLocale(): Locale'] },
-  // what installHancomMainKeys is handed where the commands are registered
+  // what installHancomMainKeys and installHanjaKey are handed where the commands are registered
   {
     file: 'src/main.ts',
     needles: [

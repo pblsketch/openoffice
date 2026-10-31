@@ -317,6 +317,8 @@ export function agentEventView(event: AgentSessionEvent): AgentEventView {
     case 'error':
       // the message can carry program output (paths, diagnostics); the window shows the kind
       return { type: 'error', kind: event.kind }
+    case 'documents-unprotected':
+      return { type: 'documents-unprotected', count: event.paths.length }
     default:
       return event
   }

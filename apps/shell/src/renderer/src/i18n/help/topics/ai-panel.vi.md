@@ -36,6 +36,13 @@ Trong bảng AI của trình soạn thảo Docs, Sheets, Slides, Hangul, HTML v�
 - Khi hai tài liệu trùng tên nhưng nằm ở các thư mục khác nhau, tên thư mục ngay phía trên sẽ được thêm vào, như `@kế hoạch.docx(Học kỳ 2)`, và tên thư mục đó cũng được gửi cho AI.
 - Trình soạn thảo PDF và Markdown chưa có tính năng đính kèm, nên cả hai cách đều không dùng được ở đó.
 
+## Dự án
+
+- Nhấp vào tên dự án ở bên trái, ngay dưới ô nhập, để chọn một dự án (một thư mục trên máy tính của bạn). Khi đó AI trả lời khi đã biết các tệp, chỉ dẫn và ghi nhớ của thư mục ấy, và cuộc trò chuyện được lưu trong thư mục để bạn tiếp tục ở trình soạn thảo khác. Xem [Dự án](help://projects).
+- Khi đã chọn dự án, tiêu đề cuộc trò chuyện hiện tại hiện ở phía trên bảng. Nhấp vào đó để xem danh sách cuộc trò chuyện của dự án này và **Cuộc trò chuyện mới**.
+- Danh sách `@` trong ô nhập hiện mục "Tệp trong dự án này" sau các tài liệu đang mở.
+- Một yêu cầu có chọn dự án cũng gửi chỉ dẫn (kèm `AGENTS.md` và `CLAUDE.md` ở đầu thư mục, có thể tắt trong trang dự án), ghi nhớ và danh sách tên tệp của dự án đó, một đoạn trích ngắn của mỗi tệp AI tìm thấy khi tìm trong thư mục, cùng nội dung của bất kỳ tệp nào AI đọc, tới AI bạn đang dùng.
+
 ## Quay lui và an toàn
 
 - Bảng của Docs giữ một **danh sách phiên bản**: mỗi lượt một ảnh chụp, quay lui về bất kỳ ảnh nào, và bản thân thao tác quay lui cũng quay lui được bằng Ctrl+Z. Ảnh chụp vẫn còn sau khi mở lại tài liệu.

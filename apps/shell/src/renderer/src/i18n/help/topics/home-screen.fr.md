@@ -8,6 +8,7 @@ Accueil est la page de démarrage de GenOffice : une barre de navigation à gauc
 - **Favoris** : les fichiers que vous avez mis en favori. Survolez une ligne et cliquez sur l’étoile pour l’ajouter ou le retirer. **Déplacer vers un groupe** dans le menu ⋯ range les fichiers étoilés dans des groupes nommés ; la vue Étoilés filtre par groupe.
 - **Guide de l’utilisateur** : ouvre ce manuel.
 - **Ask AI** : le panneau de base de connaissances — posez des questions et recevez des réponses citées depuis vos fichiers étoilés (voir ci-dessous).
+- **Projets** : les dossiers (projets) avec lesquels l’IA peut travailler. Créez un projet ou utilisez un dossier existant, puis ouvrez-en un pour gérer ses consignes, sa mémoire, ses fichiers et ses conversations. Voir [Projets](help://projects).
 - **Dossiers** : les répertoires que vous ajoutez à la barre latérale avec **Ajouter un dossier…**, ou que vous y faites glisser depuis le gestionnaire de fichiers. Chacun devient une racine que vous pouvez ouvrir, dans laquelle créer des sous-dossiers, renommer et retirer ; une racine qui devient indisponible est signalée comme telle et peut être retirée de la liste. **Nouveau dossier** en crée un autre.
 - **La ligne tout en bas** : indique si une IA est connectée — **Connecter l’IA**, ou le nom de l’abonnement connecté — et ouvre les Paramètres.
 
@@ -60,5 +61,6 @@ Ce que fait chaque carte :
 - Étoilez d'abord des fichiers (tout type que l'app lit) ; l'en-tête du panneau compte le corpus, et une base vide vous invite à aller étoiler.
 - Les réponses citent leurs fichiers d'origine ; cliquez une citation pour ouvrir le fichier dans son éditeur.
 - Nécessite une IA connectée ; voir [Connexion par abonnement](help://subscription). La conversation ne vit qu'en mémoire — fermer l'app y met fin.
+- Choisissez un projet sous la zone de saisie : les fichiers du dossier sont alors eux aussi cherchés et lus, et la conversation est conservée dans ce dossier pour que vous puissiez la poursuivre dans un autre éditeur. Sans projet, la conversation ne vit qu’en mémoire, comme indiqué plus haut.
 - La recherche tourne sur l'index de fichiers local, comme la recherche de l'accueil ; les fichiers disparus sortent silencieusement du corpus.
 - Les groupes n'organisent que la liste Étoilés — la base de connaissances couvre toujours tous les fichiers étoilés.

@@ -5,7 +5,7 @@ import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { defaultAiSettings } from '@genoffice/ai-provider'
+import { AI_PROVIDERS, defaultAiSettings } from '@genoffice/ai-provider'
 import type { AiSettings, CodexModelCatalog } from '@genoffice/ai-provider'
 import type { HomeApi } from '../src/shared/home-api'
 import { LocaleProvider } from '../src/renderer/src/locale'
@@ -87,6 +87,14 @@ function installApi(settings: AiSettings): void {
         models: [],
         defaultModel: '',
         keyPlaceholder: 'k',
+        defaultBaseUrl: '',
+      },
+      {
+        id: 'gemini',
+        label: 'Gemini',
+        models: [],
+        defaultModel: 'gemini-3.8-flash',
+        keyPlaceholder: 'AIza...',
         defaultBaseUrl: '',
       },
       {
@@ -310,7 +318,32 @@ describe('the fold', () => {
     expect(modelBox()).toBeNull()
 
     await pickProvider('OpenAI')
-    expect(modelBox()).not.toBeNull() // the other entry still has no model list
+    // the other entry lists its own models, none of the endpoint's
+    const options = await modelOptions()
+    expect(options).toContain(AI_PROVIDERS.find((p) => p.id === 'openai')!.models[0])
+    expect(options).not.toContain('alpha')
+    expect(options).not.toContain('beta')
+  })
+
+  it("offers a key provider's live list and a way to type a model it lacks (decision 0087)", async () => {
+    const settings = storedSettings({ provider: 'gemini' })
+    settings.providers.gemini = {
+      apiKey: 'AIza-key',
+      model: 'gemini-3.8-flash',
+      models: ['gemini-4.1-flash'],
+    }
+    installApi(settings)
+    await openAiPane()
+    await tick()
+
+    const options = await modelOptions()
+    expect(options.slice(0, 2)).toEqual(['gemini-3.8-flash', 'gemini-4-argon'])
+    expect(options).toContain('gemini-4.1-flash')
+    expect(options.at(-1)).toBe('Enter another model…')
+
+    await pickModel('Enter another model…')
+    await type(modelBox()!, 'gemini-5-preview')
+    expect(modelBox()!.value).toBe('gemini-5-preview')
   })
 })
 

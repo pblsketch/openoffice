@@ -279,34 +279,24 @@
   color: var(--text-primary);
 }
 
-/* The attach picker: a tick box before each row */
-
-.drive-pick-item {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.drive-check {
-  display: flex;
-  align-items: center;
-  padding: 0 4px 0 6px;
-}
-
-.drive-check input {
-  width: 15px;
-  height: 15px;
-  margin: 0;
-  accent-color: var(--accent);
-  cursor: pointer;
-}
-
-.drive-row.ticked {
-  background: var(--bg-hover);
-}
-
 .drive-primary:disabled,
 .drive-ghost:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* Settings: what to turn off before Drive files go to an AI (decision 0085) */
+.set-drive-training {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 10px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.set-drive-training .set-drive-toggle {
+  margin: 6px 0 0;
+  align-items: center;
 }

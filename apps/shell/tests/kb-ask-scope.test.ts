@@ -251,25 +251,45 @@ describe('shell wiring (src/main/index.ts needs a running Electron, so the text 
     expect(handler).toContain(
       'kbRunScopes.narrow(event.sender.id, raw, starred, readStarredGroupMap)',
     )
-    expect(handler).toContain('searchSavedKnowledgeBase(')
+    expect(handler).toContain('searchSavedKnowledgeWithProject(')
     const narrowed = handler.indexOf('kbRunScopes.narrow(')
     expect(narrowed).toBeGreaterThan(handler.indexOf('store.pathsIndexedAsOnDisk('))
-    expect(narrowed).toBeLessThan(handler.indexOf('searchSavedKnowledgeBase('))
+    expect(narrowed).toBeLessThan(handler.indexOf('searchSavedKnowledgeWithProject('))
   })
 
-  it('refuses a read outside the scope right after the starred-files check', () => {
+  it('widens the search only by the project the run’s scope holds, with its visibility rule', () => {
+    const handler = between("ipcMain.handle('kb:search'", "ipcMain.handle('kb:read'")
+    const flat = handler.replace(/\s+/g, ' ')
+    expect(flat).toContain('const projectId = kbRunScopes.projectOf(event.sender.id, raw)')
+    expect(flat).toContain('projectFolderServices().tools.visibleTest(projectId)')
+    // project hits are quoted only from files indexed as they are on disk
+    expect(flat).toContain('(paths) => store.pathsIndexedAsOnDisk(paths)')
+  })
+
+  it('reads a starred file only within the scope, and anything else only as a project file', () => {
     const handler = between("ipcMain.handle('kb:read'", 'HOME_CHANNELS.rerankSearch')
-    const starredCheck = handler.indexOf('!readStarredFiles().includes(path)')
-    const scopeCheck = handler.indexOf(
-      '!kbRunScopes.narrow(event.sender.id, raw, [path], readStarredGroupMap).includes(path)',
+    const flat = handler.replace(/\s+/g, ' ')
+    const projectOf = flat.indexOf('const projectId = kbRunScopes.projectOf(owner, raw)')
+    const starredCheck = flat.indexOf('readStarredFiles().includes(path) &&')
+    const scopeCheck = flat.indexOf(
+      'kbRunScopes.narrow(owner, raw, [path], readStarredGroupMap).includes(path)',
     )
-    expect(starredCheck).toBeGreaterThan(0)
+    const read = flat.indexOf('readKnowledgeOrProjectPage(')
+    expect(projectOf).toBeGreaterThan(0)
+    expect(starredCheck).toBeGreaterThan(projectOf)
     expect(scopeCheck).toBeGreaterThan(starredCheck)
-    expect(scopeCheck).toBeLessThan(handler.indexOf('readKnowledgeFilePage('))
+    expect(read).toBeGreaterThan(scopeCheck)
+    expect(flat).toContain('projectFolderServices().tools.readPath(owner, projectId, target, at)')
+    expect(flat).not.toContain('readKnowledgeFilePage(')
   })
 
-  it('opens a scope from a group name only, resolved against the starred store', () => {
+  it('opens a scope from a group name, or a project plus a starred part, resolved in main', () => {
     const handler = between("ipcMain.handle('kb:open-scope'", "ipcMain.handle('kb:close-scope'")
+    expect(handler).toContain('parseKbOpenScope(raw)')
     expect(handler).toContain('kbRunScopes.open(event.sender.id, group, readStarredGroupMap())')
+    expect(handler).toContain('projectFolderServices().tools.isAvailable(projectId)')
+    expect(handler).toContain(
+      'kbRunScopes.openProject(event.sender.id, projectId, starred, readStarredGroupMap())',
+    )
   })
 })

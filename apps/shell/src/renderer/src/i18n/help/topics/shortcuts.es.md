@@ -690,6 +690,7 @@ Estas teclas funcionan cuando la pestaña HWP/HWPX está delante y el documento 
 | Cadena de fecha/hora               | ⌃K, D       | Ctrl+K, D          |
 | Editar objeto, campo o tabla/celda | ⌃N, K       | Ctrl+N, K          |
 | Símbolos                           | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+| Convertir a hanja                  | F9          | Tecla Hanja / F9   |
 
 ### Tabla
 

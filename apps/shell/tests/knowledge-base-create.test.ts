@@ -74,3 +74,52 @@ describe('createKnowledgeDocument', () => {
     expect(recent).toEqual([])
   })
 })
+
+describe('createKnowledgeDocument with a project chosen at home (spec 6)', () => {
+  function withProject() {
+    const made = makeDeps()
+    const placed: Array<[string, string]> = []
+    const docx: string[] = []
+    made.deps.project = {
+      write: async (fileName, bytes) => {
+        placed.push([fileName, Buffer.from(bytes).toString('utf8')])
+        return `/project/${fileName}`
+      },
+      docxBytes: async (markdown) => {
+        docx.push(markdown)
+        return Buffer.from('DOCX')
+      },
+    }
+    return { ...made, placed, docx }
+  }
+
+  it('writes markdown through the project write and never into the save folder', async () => {
+    const { deps, written, converted, recent, placed } = withProject()
+    const result = await createKnowledgeDocument(deps, { title: 'a/b', format: 'md', content: '#' })
+    expect(result).toEqual({ path: '/project/a_b.md' })
+    expect(placed).toEqual([['a_b.md', '#']])
+    expect(written).toEqual([])
+    expect(converted).toEqual([])
+    expect(recent).toEqual(['/project/a_b.md'])
+  })
+
+  it('makes the Word file first and writes its bytes only after that succeeded', async () => {
+    const { deps, placed, docx, converted } = withProject()
+    await createKnowledgeDocument(deps, { title: 'memo', format: 'docx', content: '# hi' })
+    expect(docx).toEqual(['# hi'])
+    expect(placed).toEqual([['memo.docx', 'DOCX']])
+    expect(converted).toEqual([])
+  })
+
+  it('writes nothing when the conversion fails', async () => {
+    const { deps, placed, recent } = withProject()
+    deps.project!.docxBytes = async () => {
+      throw new Error('cli failed')
+    }
+    await expect(
+      createKnowledgeDocument(deps, { title: 'memo', format: 'docx', content: '# hi' }),
+    ).rejects.toThrow('cli failed')
+    expect(placed).toEqual([])
+    expect(recent).toEqual([])
+  })
+})

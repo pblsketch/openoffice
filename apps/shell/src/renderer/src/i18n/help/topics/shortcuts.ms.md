@@ -690,6 +690,7 @@ Kekunci ini berfungsi apabila tab HWP/HWPX berada di hadapan dan dokumen mempuny
 | Teks tarikh/masa                     | ⌃K, D       | Ctrl+K, D          |
 | Sunting objek, medan atau jadual/sel | ⌃N, K       | Ctrl+N, K          |
 | Simbol                               | ⌃F10 / ⌥F10 | Ctrl+F10 / Alt+F10 |
+| Tukar kepada Hanja                   | F9          | Kekunci Hanja / F9 |
 
 ### Jadual
 

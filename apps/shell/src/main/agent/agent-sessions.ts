@@ -164,10 +164,17 @@ function oneLine(text: string): string {
  */
 export function codexSkillInstructions(skills: readonly AgentSkillEntry[]): string[] {
   if (skills.length === 0) return []
+  // the plugin root of the session's copy, for a SKILL.md that names files beside its folder
+  const bundleDir = skills[0]?.skillMd ? dirname(dirname(skills[0].skillMd)) : ''
   const lines = [
     '',
     'Skills: each skill below is a folder with a SKILL.md of instructions. When a skill is relevant to the task, or the person asks for it, read its SKILL.md first and follow it; paths in it are relative to its folder. A skill marked "manual" is used only when the person asks for it by name. To change a skill with propose_skill, give its name or its id as targetId.',
   ]
+  if (bundleDir) {
+    lines.push(
+      `In a SKILL.md, \${CLAUDE_PLUGIN_ROOT} means ${bundleDir}; the plugin's scripts and other files are there.`,
+    )
+  }
   for (const skill of skills) {
     const title = oneLine(skill.title)
     const named =
@@ -236,6 +243,10 @@ interface LiveSession {
   projectRoot: string
   /** the skills of the session's copy, once built */
   skills?: readonly AgentSkillEntry[] | undefined
+  /** documents the program was told to treat as read-only when the session started */
+  protectedDocuments: Set<string>
+  /** documents warned about already, so one notice is not repeated every message */
+  warnedDocuments: Set<string>
 }
 
 export interface AgentManager {
@@ -295,7 +306,18 @@ export function createAgentManager(deps: AgentManagerDeps): AgentManager {
 
       const id = randomUUID()
       const sessionDir = await mkdtemp(join(tmpdir(), 'ieum-agent-'))
-      const entry: LiveSession = { id, ownerId, session: undefined, sessionDir, projectRoot }
+      const openAtStart = deps.openDocuments()
+      const entry: LiveSession = {
+        id,
+        ownerId,
+        session: undefined,
+        sessionDir,
+        projectRoot,
+        protectedDocuments: new Set(
+          openAtStart.map((path) => comparablePath(path, path, platform)),
+        ),
+        warnedDocuments: new Set(),
+      }
       live.set(id, entry)
       try {
         const appMcp = deps.startAppMcp
@@ -318,7 +340,7 @@ export function createAgentManager(deps: AgentManagerDeps): AgentManager {
             appMcp !== undefined,
             skills?.skills,
           ),
-          openDocuments: deps.openDocuments(),
+          openDocuments: openAtStart,
           protectedPaths,
           skillBundleDir: skills?.dir,
           appMcp: appMcp ? { url: appMcp.url, token: appMcp.token } : undefined,
@@ -360,8 +382,23 @@ export function createAgentManager(deps: AgentManagerDeps): AgentManager {
     async send(ownerId, sessionId, text) {
       const entry = own(ownerId, sessionId)
       if (!entry?.session) throw new Error('No such agent session')
+      // documents opened since the session started were not in its program-level rules
+      const current = deps.openDocuments()
+      const added: string[] = []
+      for (const path of current) {
+        const key = comparablePath(path, path, platform)
+        if (entry.protectedDocuments.has(key)) continue
+        entry.protectedDocuments.add(key)
+        if (!entry.warnedDocuments.has(key)) {
+          entry.warnedDocuments.add(key)
+          added.push(path)
+        }
+      }
+      if (added.length > 0) {
+        deps.emit(ownerId, sessionId, { type: 'documents-unprotected', paths: added })
+      }
       // tabs opened or closed since the last message count from here on
-      entry.session.setOpenDocuments(deps.openDocuments())
+      entry.session.setOpenDocuments(current)
       await entry.session.send(text)
     },
 

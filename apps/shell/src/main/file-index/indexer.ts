@@ -18,6 +18,18 @@ export interface IndexerSources {
   roots: () => readonly string[]
   /** files outside the roots that should still be searchable (recents, starred) */
   extraPaths: () => readonly string[]
+  /**
+   * Of the files a scan is about to (re)index, those to index by name only
+   * because their content is not on this PC (project folders, spec 5.8). Asked
+   * once per scan with the whole batch; extracting such a file would download
+   * it. Absent: every file is extracted, as before.
+   */
+  nameOnly?: (paths: readonly string[]) => Promise<ReadonlySet<string>>
+}
+
+/** a scanned file and whether its body is left out (not on this PC) */
+interface QueuedFile extends ScannedFile {
+  cloud?: boolean
 }
 
 const RESCAN_DEBOUNCE_MS = 1500
@@ -34,6 +46,9 @@ const WORKER_REQUEST_TIMEOUT_MS = 120_000
  */
 const WORKER_HEAP_LIMIT_MB = 1024
 
+/** name-only rows written in one go before yielding to the event loop */
+const NAME_ONLY_BATCH = 64
+
 /**
  * Keeps the store in step with the disk: a scan diffs mtime/size against the
  * index, changed files queue for extraction on the worker one at a time, and
@@ -44,7 +59,7 @@ export class FileIndexer {
   private worker: Worker | null = null
   private nextId = 1
   private readonly waiting = new Map<number, (r: WorkerResponse) => void>()
-  private readonly queue: ScannedFile[] = []
+  private readonly queue: QueuedFile[] = []
   private readonly queued = new Set<string>()
   private draining = false
   private scanning = false
@@ -99,7 +114,7 @@ export class FileIndexer {
           if (res.truncated) complete = false
         } else walked = false
       }
-      if (walked) this.diff(seen, complete)
+      if (walked) await this.diff(seen, complete)
     } finally {
       this.scanning = false
     }
@@ -113,7 +128,7 @@ export class FileIndexer {
   /** bring the store in step with what the walk saw; extra paths are stat-ed here */
   // a budget-capped walk cannot tell a vanished file from one it never reached,
   // so entries are only removed when every root was walked to the end
-  private diff(seen: Map<string, ScannedFile>, complete: boolean): void {
+  private async diff(seen: Map<string, ScannedFile>, complete: boolean): Promise<void> {
     for (const p of this.sources.extraPaths()) {
       if (seen.has(p) || !isSupportedTreeFile(p)) continue
       const st = statOrNull(p)
@@ -125,17 +140,37 @@ export class FileIndexer {
       for (const path of known.keys()) if (!seen.has(path)) gone.push(path)
       this.store.remove(gone)
     }
+    const changed: ScannedFile[] = []
+    // name-only for want of the content: looked at again, extracted once local
+    const recheck: ScannedFile[] = []
     for (const f of seen.values()) {
       // an unchanged file that already failed is not retried: a parse that
       // kills the worker would otherwise be re-run on every scan
       const k = known.get(f.path)
-      if (k && k.mtimeMs === f.mtimeMs && k.sizeBytes === f.sizeBytes) continue
-      this.enqueue(f)
+      if (k && k.mtimeMs === f.mtimeMs && k.sizeBytes === f.sizeBytes) {
+        if (k.status === 'cloud') recheck.push(f)
+        continue
+      }
+      changed.push(f)
     }
+    const nameOnly = await this.decideNameOnly([...changed, ...recheck])
+    for (const f of changed) this.enqueue(nameOnly.has(f.path) ? { ...f, cloud: true } : f)
+    for (const f of recheck) if (!nameOnly.has(f.path)) this.enqueue(f)
     this.lastScanAt = Date.now()
   }
 
-  private enqueue(f: ScannedFile): void {
+  /** one call for the whole batch; a source that fails leaves every file name-only rather than extracted */
+  private async decideNameOnly(files: readonly ScannedFile[]): Promise<ReadonlySet<string>> {
+    const decide = this.sources.nameOnly
+    if (!decide || files.length === 0) return new Set()
+    try {
+      return await decide(files.map((f) => f.path))
+    } catch {
+      return new Set(files.map((f) => f.path))
+    }
+  }
+
+  private enqueue(f: QueuedFile): void {
     if (this.queued.has(f.path)) return
     this.queued.add(f.path)
     this.queue.push(f)
@@ -146,6 +181,7 @@ export class FileIndexer {
     if (this.draining) return
     this.draining = true
     try {
+      let nameOnlyRun = 0
       while (this.queue.length && !this.stopped) {
         const f = this.queue.shift()!
         this.queued.delete(f.path)
@@ -153,6 +189,12 @@ export class FileIndexer {
         const st = statOrNull(f.path)
         if (!st) {
           this.store.remove([f.path])
+          continue
+        }
+        if (f.cloud) {
+          // name and folder only: the content is never opened, so never downloaded
+          this.apply(st, { kind: 'name-only' }, 'cloud')
+          if (++nameOnlyRun % NAME_ONLY_BATCH === 0) await new Promise((r) => setImmediate(r))
           continue
         }
         const res = await this.ask({ id: 0, type: 'extract', path: st.path })
@@ -164,10 +206,14 @@ export class FileIndexer {
     }
   }
 
-  private apply(f: ScannedFile, r: Extracted): void {
+  private apply(
+    f: ScannedFile,
+    r: Extracted,
+    nameOnlyStatus: 'name-only' | 'cloud' = 'name-only',
+  ): void {
     try {
       if (r.kind === 'text') this.store.upsert(f, r.text, 'ok')
-      else if (r.kind === 'name-only') this.store.upsert(f, null, 'name-only')
+      else if (r.kind === 'name-only') this.store.upsert(f, null, nameOnlyStatus)
       else this.store.upsert(f, null, 'error')
     } catch {
       // a corrupt row must not stall the queue; the next scan retries it

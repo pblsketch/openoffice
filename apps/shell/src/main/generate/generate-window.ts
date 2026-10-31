@@ -18,7 +18,7 @@
  */
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
-import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { BrowserWindow, dialog, ipcMain, nativeTheme, shell } from 'electron'
 import type { IpcMainInvokeEvent, WebContents } from 'electron'
 import { productName, type Lang } from '@genoffice/i18n'
 import { safeExternalUrl } from '@genoffice/electron-utils'
@@ -36,6 +36,8 @@ import { convertSource, markdownRedactionNotice, type ConvertedDocument } from '
 import { inspectMaterial, SUPPORTED_MATERIAL_EXTS } from './materials'
 import { createOpenMaterials, type OpenMaterialsDeps } from './open-materials'
 import { GenerateSession, type MaterialRef } from './session'
+import { generateTitleBarOverlay } from './title-bar'
+import type { NewDocumentOpener } from '../projects/new-documents'
 
 export interface GenerateWindowDeps {
   /** the window the generate window sits above when the caller names none */
@@ -45,15 +47,17 @@ export interface GenerateWindowDeps {
   /**
    * Open a new untitled tab of `handoff.target` with the request queued for
    * it (TabManager.openGenerateTargetTab). Throws when no tab could open.
+   * `opener` is where the window was opened from: the new tab follows its
+   * project (spec 6).
    */
-  openTargetTab(handoff: GenerateHandoff): void
+  openTargetTab(handoff: GenerateHandoff, opener: NewDocumentOpener | null): void
   /**
    * 8.6: open a conversion's result as a new unsaved tab of its editor, with
    * the content queued for it and the conversion recorded
    * (TabManager.openConversionResult). Throws when no tab could open. Without
    * it, the window offers no conversion.
    */
-  openConvertedTab?(doc: ConvertedDocument): void
+  openConvertedTab?(doc: ConvertedDocument, opener: NewDocumentOpener | null): void
   /** every starred file in a Starred-view group */
   starredGroupPaths(group: string): string[]
   /** the shell tab id behind a webContents, for the run-started records */
@@ -65,6 +69,8 @@ export interface GenerateWindowDeps {
 let deps: GenerateWindowDeps | null = null
 let win: BrowserWindow | null = null
 let session: GenerateSession | null = null
+/** where the open window was opened from (home or an editor window) */
+let opener: NewDocumentOpener | null = null
 let ipcRegistered = false
 
 export function configureGenerateWindow(next: GenerateWindowDeps): void {
@@ -157,13 +163,13 @@ function sessionFor(d: GenerateWindowDeps, refs: MaterialRef[], kind?: AiTargetK
       saveActionFor: (path) => open.saveActionFor(path),
       saveMaterial: (path) => open.saveMaterial(path),
       showUntitled: (id) => open.showUntitled(id),
-      openTargetTab: (handoff) => d.openTargetTab(handoff),
+      openTargetTab: (handoff) => d.openTargetTab(handoff, opener),
       // 8.6: conversions without AI, offered only when the shell can open their result
       ...(d.openConvertedTab
         ? {
             convert: (kind: ConvertKind, path: string) =>
               convertSource(kind, path, { untitled: generateText(d.lang(), 'untitled') }),
-            openConvertedTab: (doc: ConvertedDocument) => d.openConvertedTab!(doc),
+            openConvertedTab: (doc: ConvertedDocument) => d.openConvertedTab!(doc, opener),
             redactionNotice: (path: string) => markdownRedactionNotice(path),
           }
         : {}),
@@ -184,9 +190,12 @@ export function openGenerateWindow(init: {
   refs: MaterialRef[]
   kind?: AiTargetKind
   parent?: BrowserWindow | null
+  /** the entry point's window (home or an editor); the new tab follows its project */
+  opener?: NewDocumentOpener | null
 }): void {
   const d = deps
   if (!d) throw new Error('the generate window is not configured')
+  opener = init.opener ?? null
   if (win && !win.isDestroyed() && session && !session.isClosed) {
     void session.reset(init.refs, init.kind)
     if (win.isMinimized()) win.restore()
@@ -211,7 +220,17 @@ export function openGenerateWindow(init: {
     maximizable: false,
     fullscreenable: false,
     autoHideMenuBar: true,
+    backgroundColor: generateTitleBarOverlay(nativeTheme.shouldUseDarkColors).color,
     title: `${generateText(lang, 'windowTitle')} - ${productName(lang)}`,
+    // Windows paints a native frame light even under a dark app theme; draw the
+    // title band ourselves and let Electron theme only its caption buttons.
+    // macOS native frames follow `nativeTheme`, so they are left alone.
+    ...(process.platform === 'darwin'
+      ? {}
+      : {
+          titleBarStyle: 'hidden' as const,
+          titleBarOverlay: generateTitleBarOverlay(nativeTheme.shouldUseDarkColors),
+        }),
     webPreferences: {
       preload: join(__dirname, '../preload/generate.js'),
       contextIsolation: true,
@@ -221,6 +240,16 @@ export function openGenerateWindow(init: {
   })
   win = next
   next.removeMenu()
+  // follow a theme switch while the window is open (nativeTheme fires 'updated')
+  const refreshTitleBar = () => {
+    if (next.isDestroyed() || process.platform === 'darwin') return
+    try {
+      next.setTitleBarOverlay(generateTitleBarOverlay(nativeTheme.shouldUseDarkColors))
+    } catch {
+      // the window was torn down between the check and the call
+    }
+  }
+  nativeTheme.on('updated', refreshTitleBar)
   next.webContents.setWindowOpenHandler(({ url }) => {
     const target = safeExternalUrl(url)
     if (target) void shell.openExternal(target)
@@ -232,7 +261,11 @@ export function openGenerateWindow(init: {
     if (session === current) void current.refresh()
   })
   next.on('closed', () => {
-    if (win === next) win = null
+    nativeTheme.off('updated', refreshTitleBar)
+    if (win === next) {
+      win = null
+      opener = null
+    }
     if (session === current) session = null
   })
 
@@ -246,7 +279,7 @@ export function openGenerateWindow(init: {
 
 /** Home: these files as the starting materials */
 export function openGenerateWindowWithPaths(paths: string[], parent?: BrowserWindow | null): void {
-  openGenerateWindow({ refs: paths.map((path) => ({ path })), parent })
+  openGenerateWindow({ refs: paths.map((path) => ({ path })), parent, opener: { kind: 'home' } })
 }
 
 /**
@@ -264,13 +297,18 @@ export function openGenerateWindowForDocument(doc: {
   const ref: MaterialRef = doc.filePath
     ? { path: doc.filePath }
     : { untitled: { webContentsId: doc.webContentsId, title: doc.title } }
-  openGenerateWindow({ refs: [ref], parent: doc.parent })
+  openGenerateWindow({
+    refs: [ref],
+    parent: doc.parent,
+    opener: { kind: 'window', webContentsId: doc.webContentsId },
+  })
 }
 
 export function closeGenerateWindow(): void {
   const current = win
   win = null
   session = null
+  opener = null
   if (current && !current.isDestroyed()) current.close()
 }
 

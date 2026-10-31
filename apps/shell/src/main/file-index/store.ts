@@ -24,7 +24,12 @@ const TOKENIZER_VERSION = 2
  */
 const EXTRACT_VERSION = 2
 
-export type IndexStatus = 'ok' | 'name-only' | 'error'
+/**
+ * `cloud`: indexed by name only because the file is not on this PC and lies in
+ * a project folder (spec 5.8); a later scan looks again and extracts the body
+ * once the file is local.
+ */
+export type IndexStatus = 'ok' | 'name-only' | 'error' | 'cloud'
 
 export interface IndexedFile {
   path: string
@@ -54,6 +59,11 @@ export interface SearchOptions {
   limit?: number
   /** attach this many characters of body around the first hit to each result */
   excerptChars?: number
+  /**
+   * keep only the files whose path passes; applied before ranking and paging, so
+   * files elsewhere cannot fill the page first and `total` counts the kept ones
+   */
+  within?: (path: string) => boolean
 }
 
 export interface SearchResult {
@@ -270,7 +280,9 @@ export class FileIndexStore {
     if (candidates.size === 0) return { hits: [], total: 0 }
     const wanted = parsed.include.length
     // the type filter applies before choosing all-term over any-term, so a pill never hides the fallback
-    const allRows = this.fetchRows([...candidates.keys()], opts.exts)
+    const fetched = this.fetchRows([...candidates.keys()], opts.exts)
+    const within = opts.within
+    const allRows = within ? fetched.filter((r) => within(r.path)) : fetched
     const fullRows = allRows.filter((r) => {
       const c = candidates.get(r.id)!
       return c.exact + c.relaxed === wanted

@@ -225,6 +225,8 @@ export type AgentEventView =
   | { type: 'tool'; action: AgentActionView; status: 'running' | 'done' | 'failed' | 'denied' }
   | { type: 'permission'; id: string; action: AgentActionView }
   | { type: 'turn-done'; ok: boolean }
+  /** documents opened after the session started: the program's own rules cannot protect them */
+  | { type: 'documents-unprotected'; count: number }
   | { type: 'error'; kind?: string | undefined }
   | { type: 'ended' }
 

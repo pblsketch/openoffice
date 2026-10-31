@@ -38,7 +38,7 @@ export const zh = {
   meteredMeaning:
     '当前登录使用的是 API 密钥或按量付费账户，或者无法确认登录方式。选择“仍然使用”后，AI 将通过此连接运行，每次请求都会向该账户计费。',
   connectTitle: '连接 AI 即可开始使用',
-  connectBody: 'AI 使用你已有的 Claude 或 Codex 订阅运行，无需 API 密钥。',
+  connectBody: 'AI 使用你已有的 Claude 或 ChatGPT 订阅运行，无需 API 密钥。',
   connectProviderTitle: '{provider} 连接目前无法使用',
   connectKeyBody: '{provider} 的设置尚未完成。请在设置中完成配置，或选择其他 AI。',
   errNotConnected: '尚未连接任何 AI。请先连接 Claude 或 Codex 订阅，或连接免费 AI。',
@@ -56,6 +56,8 @@ export const zh = {
   actionConnectFree: '连接免费 AI',
   errFreeLimit: '今日免费额度已用完。请明天再试，或在设置中选择其他 AI。',
   errFreeLimitReset: '今日免费额度已用完。{time} 后可再次使用。',
+  errFreeTierModel:
+    '此模型不提供免费额度，使用免费密钥无法调用。请在模型列表中选择可免费使用的模型（例如 Flash），或在该服务的控制台中开通付费。',
   continueWith: '改用 {provider} 继续',
   continueMeteredNote: '{provider} 连接不是订阅：继续使用将按用量收费。',
   usageLine: '已用 {percent}% · {time} 重置',

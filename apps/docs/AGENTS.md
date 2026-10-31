@@ -22,7 +22,7 @@ Word 문서(.docx)와 ODT(.odt) 에디터다. 그리고 배포되는 앱 전체�
 
 - 요청은 다른 제공자로 넘어가지 않는다. `ai:stream`과 `ai:chat`은 `resolveAiRun`으로 대상을 정하고, 실행할 수 없으면 어떤 제공자도 부르지 않고 원인(`errorCode`, `errorProvider`)이 담긴 오류 조각으로 답한다. `auto`는 `ready`인 구독으로만 풀리고, 돈이 드는 것(키 제공자, 종량제 로그인)은 저장된 선택일 때만 실행된다.
 - 렌더러가 보낸 설정은 저장할 때도, 요청마다도 `sanitizeAiSettings`를 거친다. 설정의 `cliPath`는 프로세스 실행에, `baseUrl`은 API 키 전송에 쓰이므로 렌더러의 사본을 그대로 믿지 않는다. 설정 파일을 읽을 때는 항상 `normalizeAiSettings`를 거친다(`storedAiSettings`). 사라진 선택을 덮어쓰거나 "고쳐서 다시 쓰는" 코드를 `ai:get-settings`에 넣지 않는다.
-- 구독 IPC는 `ensureSubscriptionIpc`로만 등록한다. 여러 에디터의 메인이 한 프로세스에서 돌고, 먼저 부른 쪽이 등록한다. 이 모듈이 넘기는 `setMeteredAccepted`는 정규화된 설정 전체를 원자적으로 쓰고(`withMeteredAccepted`) `ai:settings-changed`를 모든 창에 알린다.
+- 구독 IPC는 `ensureSubscriptionIpc`로만 등록한다. 여러 에디터의 메인이 한 프로세스에서 돌고, 먼저 부른 쪽이 등록한다. 이 모듈이 넘기는 `setMeteredAccepted`는 정규화된 설정 전체를 원자적으로 쓰고(`withMeteredAccepted`) `ai:settings-changed`를 모든 창에 알린다. `storedAiSettings`는 판이 없는 예전 첫 연결 안내를 판 1로 옮겨 적는다(`withMigratedSubscriptionNoticeVersion`). 그래야 PDF 문장이 늘어난 판 2의 안내를 그 사용자가 한 번 본다. 이미 판이 있거나 확인하지 않은 파일은 건드리지 않는다.
 - 오류 조각은 `aiStreamErrorChunk`로 만든다. `errorCode`·`errorProvider`·`errorResetsAt`이 빠지면 렌더러가 "막힌 실행" 알림 대신 날것의 문장을 보여 준다. 구독 사용량과 입력 축소는 `subscriptionStreamCallbacks`가 `subscription-usage`·`input-truncated` 조각으로 넘긴다. 입력이 줄었는데 알리지 않는 경로를 만들지 않는다.
 - 이미지·미디어 도구에는 `screenToolContext()`(`{ path: 'screen', statuses: sharedSubscriptionStatuses() }`)를 넘긴다. 컨텍스트 없이 부르면 구독이 연결되지 않은 것으로 취급된다.
 - AI 도구 호출에서 온 주소는 `fetchRemoteImage`와 크기 상한을 거친다(웹 검색 결과를 통한 프롬프트 주입이 가능한 값이다). 사설·링크 로컬 주소와 http(s)가 아닌 스킴은 거절된다.

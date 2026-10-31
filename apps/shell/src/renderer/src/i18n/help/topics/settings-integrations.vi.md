@@ -21,6 +21,7 @@ Sáng / Tối / Theo hệ thống. Khi chọn Theo hệ thống, giao diện bá
 - **Bảng AI** — Tắt, Thu gọn hoặc Trạng thái gần nhất.
 - **Tự động lưu tất cả tài liệu** bật AutoSave theo mặc định trong mọi trình soạn thảo; bạn vẫn có thể tắt nó cho một cửa sổ.
 - **Vị trí lưu** kèm nút **Thay đổi**, và **Ứng dụng mặc định cho tài liệu Office** để nhận .docx / .xlsx / .pptx về cho GenOffice.
+- **Định dạng lưu cho tài liệu HWP mới** chọn HWP hay HWPX được ưu tiên khi lưu tài liệu mới lần đầu. Tài liệu đã mở vẫn được lưu theo định dạng của nó.
 
 GenOffice không thu thập hay gửi số liệu thống kê sử dụng, nên không có công tắc nào cho việc đó.
 

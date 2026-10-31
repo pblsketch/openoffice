@@ -3,6 +3,10 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
 import { outboundBridge } from '@genoffice/electron-utils/outbound-bridge'
 import { userSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
+import {
+  PROJECT_FOLDER_BRIDGE_KEY,
+  projectFolderBridge,
+} from '@genoffice/electron-utils/project-folder-bridge'
 import { USER_SKILLS_BRIDGE_KEY } from '@genoffice/electron-utils/user-skills-channels'
 import type { Lang } from '@genoffice/i18n'
 import type { AiStreamChunk } from '@genoffice/ai-provider'
@@ -166,6 +170,8 @@ const api: PdfApi = {
   pagePreviewPng: (request) => ipcRenderer.invoke(PDF_CHANNELS.pagePreviewPng, request),
   extractPages: (request) => ipcRenderer.invoke(PDF_CHANNELS.extractPages, request),
   insertPdf: (request) => ipcRenderer.invoke(PDF_CHANNELS.insertPdf, request),
+  compareReadPdf: () => ipcRenderer.invoke(PDF_CHANNELS.compareReadPdf),
+  compareReadOpen: (path: string) => ipcRenderer.invoke(PDF_CHANNELS.compareReadOpen, path),
   insertBlankPage: (request) => ipcRenderer.invoke(PDF_CHANNELS.insertBlankPage, request),
   splitPdf: (request) => ipcRenderer.invoke(PDF_CHANNELS.splitPdf, request),
   mergePdf: (request) => ipcRenderer.invoke(PDF_CHANNELS.mergePdf, request),
@@ -177,8 +183,14 @@ const api: PdfApi = {
   exportImages: (request) => ipcRenderer.invoke(PDF_CHANNELS.exportImages, request),
   convertOffice: (format) => ipcRenderer.invoke(PDF_CHANNELS.convertOffice, format),
   onConvertDialogRequest: (handler) => {
-    const listener = (_e: Electron.IpcRendererEvent, format: unknown) => {
-      if (format === 'md' || format === 'epub') handler(format)
+    const listener = (_e: Electron.IpcRendererEvent, request: unknown) => {
+      if (!request || typeof request !== 'object') return
+      const { format, outPath } = request as { format?: unknown; outPath?: unknown }
+      if (format !== 'md' && format !== 'epub') return
+      if (outPath !== undefined && (typeof outPath !== 'string' || !outPath)) return
+      // only a Markdown target may be preset (Save As › Markdown)
+      if (outPath !== undefined && format !== 'md') return
+      handler(outPath === undefined ? { format } : { format, outPath })
     }
     ipcRenderer.on(PDF_CHANNELS.convertDialogRequest, listener)
     return () => ipcRenderer.removeListener(PDF_CHANNELS.convertDialogRequest, listener)
@@ -364,6 +376,8 @@ contextBridge.exposeInMainWorld('aiOfficeOutbound', outboundBridge())
 // the person's skills: the AI panel's `/` list and skill reads, skill cards (shell main checks each)
 contextBridge.exposeInMainWorld(USER_SKILLS_BRIDGE_KEY, userSkillsBridge())
 contextBridge.exposeInMainWorld('projectApi', projectApi)
+// project folders (decision 0088): main identifies this window, the bridge forwards ids only
+contextBridge.exposeInMainWorld(PROJECT_FOLDER_BRIDGE_KEY, projectFolderBridge(ipcRenderer))
 
 // open documents dragged from the OS onto this tab as a new shell tab
 installDropOpenBridge()

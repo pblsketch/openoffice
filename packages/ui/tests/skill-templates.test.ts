@@ -121,6 +121,7 @@ function renderPanel(options: {
   busy?: boolean
   setComposer?: (text: string) => void
   onTaken?: () => void
+  onHandedRun?: (info: { preview: boolean }) => void
 }): { current: () => Harness; rerender: (busy: boolean) => void } {
   let latest: Harness | null = null
   let busy = options.busy ?? false
@@ -139,6 +140,7 @@ function renderPanel(options: {
       send: options.send,
       setComposer: options.setComposer,
       onTaken: options.onTaken,
+      onHandedRun: options.onHandedRun,
       bridge: options.bridge,
     })
     latest = { templates, cards }
@@ -303,6 +305,46 @@ describe('the tab a request was handed to', () => {
     expect(sentText).toBe('for Friday')
     expect(use.chips).toEqual([{ id: 'app:letter', source: 'app', title: 'Letter' }])
     expect(use.text).toContain('body of app:letter')
+  })
+
+  it('says a handed-over request is going out before the send (spec 6), not a preview', async () => {
+    const { bridge } = templateBridge({
+      takeHandoff: vi.fn(async (): Promise<unknown> => ({
+        id: 'h1',
+        mode: 'skill',
+        target: 'slides',
+        text: 'fill it in',
+        chips: [],
+      })),
+    })
+    const order: string[] = []
+    const onHandedRun = vi.fn((info: { preview: boolean }) => {
+      order.push(`handed:${info.preview}`)
+    })
+    const send = vi.fn((): boolean => {
+      order.push('send')
+      return true
+    })
+    renderPanel({ editor: 'slides', bridge, send, onHandedRun })
+    await flush()
+    expect(order).toEqual(['handed:false', 'send'])
+  })
+
+  it('does not say so when nothing is sent (an unreadable skill)', async () => {
+    const { bridge } = templateBridge({
+      takeHandoff: vi.fn(async (): Promise<unknown> => ({
+        id: 'h1',
+        mode: 'skill',
+        target: 'docs',
+        text: 'go',
+        chips: [{ id: 'app:gone', source: 'app', title: 'Gone' }],
+      })),
+      aiRead: vi.fn(async (): Promise<unknown> => ({ ok: false, reason: 'disabled' })),
+    })
+    const onHandedRun = vi.fn()
+    renderPanel({ editor: 'docs', bridge, send: vi.fn(), onHandedRun })
+    await flush()
+    expect(onHandedRun).not.toHaveBeenCalled()
   })
 
   it('sends nothing when a handed-over skill cannot be read', async () => {
@@ -471,6 +513,14 @@ describe('the template preview tab (spec 5.6 steps 2-4, 9.11)', () => {
     // the pending card's fields came along (the name is the first field)
     const name = host.querySelector<HTMLInputElement>('input[type="text"]')!
     expect(name.value).toBe('family-letter')
+  })
+
+  it('marks the clearing request as a preview (it is never saved into a project)', async () => {
+    const { bridge } = templateBridge({ takeHandoff: handoff(PREVIEW) })
+    const onHandedRun = vi.fn()
+    renderPanel({ editor: 'docs', bridge, send: () => true, onHandedRun, document: DOC() })
+    await flush()
+    expect(onHandedRun).toHaveBeenCalledWith({ preview: true })
   })
 
   it('shows the card at once when the send gate did not start the run', async () => {

@@ -3,7 +3,7 @@ import type { zh } from './zh'
 export const cs = {
   driveNav: 'Disk Google',
   driveDesc:
-    'Otevírejte a upravujte soubory z Disku v GenOffice; při uložení se vrátí na Disk. Můžete také nechat AI vyhledávat a číst soubory na vašem Disku.',
+    'Vyberte soubory na Disku Google a pak je otevírejte a upravujte v GenOffice; při uložení se vrátí na Disk. GenOffice může otevřít jen soubory, které vyberete.',
   driveConnect: 'Připojit Disk Google',
   driveConnecting: 'Přihlaste se v prohlížeči účtem Google a povolte přístup…',
   driveCancel: 'Zrušit',
@@ -18,7 +18,7 @@ export const cs = {
     'Google ukončil připojení: přístup byl odebrán nebo přihlášení vypršelo. Připojte se znovu.',
   driveAiAccess: 'Nechat AI vyhledávat a číst soubory na Disku',
   driveAiAccessDesc:
-    'Když je zapnuto, AI v editorech může prohledávat celý Disk a číst text souborů. Co přečte, odchází poskytovateli AI, kterého používáte. AI nemůže soubory na Disku měnit, mazat ani sdílet.',
+    'Když je zapnuto, AI v editorech může prohledávat a číst soubory z Disku, které jste zde vybrali. Co přečte, odchází poskytovateli AI, kterého používáte. AI nemůže soubory na Disku měnit, mazat ani sdílet.',
   drivePrivacy:
     'Seznamy a obsah souborů putují jen mezi tímto počítačem a Googlem. Nikdy neprocházejí serverem tvůrců GenOffice.',
   driveFailDenied: 'Připojení se nezdařilo, protože ho Google nepovolil.',
@@ -26,23 +26,21 @@ export const cs = {
     'Připojení se nezdařilo, protože přístup k Disku nebyl zaškrtnut. Připojte se znovu a zaškrtněte položku Disku.',
   driveFailTimeout: 'Přihlášení nebylo dokončeno do 10 minut. Zkuste to znovu.',
   driveFailNetwork: 'Google není dostupný. Zkontrolujte připojení k internetu a zkuste to znovu.',
-  driveMyDrive: 'Můj disk',
-  driveShared: 'Sdíleno se mnou',
-  driveRecent: 'Nedávné',
-  driveSearchPlaceholder: 'Hledat na Disku',
+  driveRecent: 'Vybrané soubory',
+  driveSearchPlaceholder: 'Hledat ve vybraných souborech',
   driveSearchResults: 'Výsledky pro „{q}“',
   driveRefresh: 'Obnovit',
   driveNotConnectedTitle: 'Disk Google není připojen',
   driveNotConnectedBody:
-    'Po připojení zde můžete otevírat a upravovat soubory z Disku a při uložení se vrátí na Disk.',
+    'Po připojení můžete vybrat soubory z Disku, otevírat je a upravovat zde a při uložení se vrátí na Disk.',
   driveOpenSettings: 'Připojit v Nastavení',
-  driveEmpty: 'Žádné soubory.',
+  driveEmpty: 'Zatím žádné soubory. Klikněte na „Vybrat z Disku Google“ a nějaké vyberte.',
   driveLoading: 'Načítání…',
   driveLoadMore: 'Zobrazit další',
   driveOpening: 'Otevírání…',
   driveGoogleBadge: 'Formát Google',
   driveGoogleNote:
-    'Dokument Google se otevře jako soubor Office. Při uložení zůstane originál beze změny a do stejné složky se uloží soubor Office.',
+    'Dokument Google se otevře jako soubor Office. Při uložení zůstane originál beze změny a vedle něj nebo do složky Můj disk se uloží soubor Office.',
   driveReadOnly: 'Jen ke čtení',
   driveReadOnlyNote:
     'Tento soubor nemůžete upravovat. Při uložení se zobrazí dotaz, zda uložit kopii na Disk.',
@@ -54,10 +52,13 @@ export const cs = {
   driveErrRateLimit: 'Google na chvíli zdržuje požadavky. Zkuste to za chvíli.',
   driveErrNetwork: 'Disk Google není dostupný. Zkontrolujte připojení k internetu.',
   driveErrDisk: 'Soubor se nepodařilo uložit do tohoto počítače.',
-  drivePickTitle: 'Připojit z Disku',
-  drivePickAttach: 'Připojit',
-  drivePickSelected: 'Vybráno: {n}',
-  drivePickWorking: 'Načítání souborů z Disku…',
-  drivePickFolderNote: 'Zaškrtnutí složky připojí až 20 souborů z ní.',
-  drivePickGoogleNote: 'Dokument Google se připojí jako soubor Office.',
+  drivePick: 'Vybrat z Disku Google',
+  drivePicking: 'Vyberte soubory v okně Google, které se otevřelo v prohlížeči…',
+  drivePickNote:
+    'GenOffice může otevřít jen soubory z Disku, které vyberete v okně Google. Jednou vybrané soubory v tomto seznamu zůstanou.',
+  driveTrainingTitle: 'Než použijete soubory z Disku s AI',
+  driveTrainingBody:
+    'Google nedovoluje posílat soubory z Disku službě AI, která na nich trénuje své modely. Osobní tarify Claude, ChatGPT a Codex mohou vaše konverzace používat k trénování, pokud to nevypnete: v Claude v Nastavení → Soukromí, v ChatGPT v Nastavení → Ovládací prvky dat → „Improve the model for everyone“. Poskytovatelé s klíčem API ve výchozím stavu na datech z API netrénují. Bezplatná připojení AI soubory z Disku nikdy nedostanou.',
+  driveTrainingAck: 'V účtech AI, které používám se soubory z Disku, je trénování modelů vypnuté',
+  driveFailTraining: 'Nejdřív zaškrtněte položku o trénování modelů výše.',
 } satisfies Record<keyof typeof zh, string>

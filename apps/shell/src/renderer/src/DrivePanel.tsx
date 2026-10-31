@@ -7,6 +7,7 @@ import type {
   DriveUiState,
 } from '../../shared/drive-api'
 import { DRIVE_ERROR_KEYS, DriveBrowser } from './DriveBrowser'
+import { FAILURE_KEYS as PICK_FAILURE_KEYS } from './drive-failures'
 import { driveUiText, type DriveStringKey } from './i18n/strings-drive'
 import './drive.css'
 
@@ -77,6 +78,15 @@ export function DrivePanel({
     return result?.ok ? null : DRIVE_ERROR_KEYS[result?.kind ?? 'network']
   }
 
+  const pick = async (): Promise<DriveStringKey | null> => {
+    const result = await window.aiOfficeDrive!.pickOpen().catch(() => null)
+    if (!result) return 'driveErrNetwork'
+    if (result.ok) return result.problem ? DRIVE_ERROR_KEYS[result.problem] : null
+    if (result.reason === 'cancelled' || result.reason === 'busy') return null
+    if (result.reason === 'not-connected') return 'driveErrNotConnected'
+    return PICK_FAILURE_KEYS[result.reason]
+  }
+
   if (!state || state.state === 'unavailable') return <main className="content drive-panel" />
 
   if (state.state !== 'connected') {
@@ -105,7 +115,24 @@ export function DrivePanel({
         <h2 className="drive-title">{t('driveNav')}</h2>
         <span className="drive-account">{state.email || state.name}</span>
       </div>
-      <DriveBrowser lang={lang} dateLocale={dateLocale} list={list} onOpen={open} />
+      {state.trainingAck ? (
+        <DriveBrowser
+          lang={lang}
+          dateLocale={dateLocale}
+          list={list}
+          onOpen={open}
+          onPick={pick}
+          picking={state.picking}
+        />
+      ) : (
+        <div className="drive-empty-card">
+          <div className="drive-empty-title">{t('driveTrainingTitle')}</div>
+          <p className="drive-empty-body">{t('driveTrainingBody')}</p>
+          <button className="drive-primary" onClick={onOpenSettings}>
+            {t('driveOpenSettings')}
+          </button>
+        </div>
+      )}
     </main>
   )
 }

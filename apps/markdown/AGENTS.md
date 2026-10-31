@@ -26,6 +26,7 @@ Markdown 에디터다. 일반 `.md` 파일 위에서 TipTap 블록 편집기를 
 - 구독 API의 채널 이름과 판독 함수는 `@genoffice/ai-provider/browser`의 것을 쓰고 사본을 만들지 않는다. 보내기 판단은 `useAiSendGate`만 쓴다. 다른 제공자로 저절로 넘어가는 코드를 넣지 않는다.
 - 이미지 호스트의 자격 증명은 메인 프로세스에만 둔다. 업로드는 메인에서 하고 로컬 `assets/` 사본을 대체 경로로 유지한다.
 - ODT로 내보내기(`'odt'` 요청, `markdown:export-odt`)는 docx 내보내기가 만든 바로 그 바이트(`exportDocxBytes`)를 `@genoffice/odt-engine`의 `docxToOdt`로 바꾼 것이다. ODT용 문서를 따로 만들지 않는다. 그래서 가린 범위도 docx 내보내기와 똑같이 다뤄진다(가림은 모델에게만 적용되고 내보낸 파일에는 원래 글자가 들어간다). ODT 경로가 docx보다 더 드러내는 것이 없다.
+- **다른 이름으로 저장에서 고른 `.pdf`는 저장이 아니라 내보내기다.** 저장 창은 화면에 그릴 문서가 있을 때만(`mode: 'saveAs'`이고 렌더러가 `pdfHtml`을 보냈을 때) PDF를 함께 내놓고, 고른 이름이 `.pdf`면 그 HTML을 PDF로 써서 연 뒤(`markdown:export-pdf`와 같은 렌더) `{ ok: true, path, exported: 'pdf' }`로 답한다. 문서의 경로·바뀜 상태·자산은 그대로라 다음 저장은 계속 원래 `.md`에 쓴다. `exported`를 저장 성공으로 다루면 탭이 PDF를 가리키게 되므로 화면은 이 값을 먼저 본다. 텍스트·JSON 원문 편집기의 Save As에는 PDF를 내놓지 않는다.
 - ODT 내보내기 순서: 저장 창(`.odt`) → docx → ODT → `report`가 비어 있지 않으면 "바뀌는 것·빠지는 것" 확인 창(뒷단의 `dialog.showMessageBox`, 문구는 `odt-export.ts`의 21개 언어 사전) → 쓰기. 취소하면 아무것도 쓰지 않는다. 테마 부분이 있다는 것만으로는 보고하지 않으므로, 보통의 마크다운 문서는 확인 창 없이 바로 쓴다. 편집 화면 그림(`renderedObjects`)은 넘기지 않고, 수식은 엔진의 이름표 상자가 된다.
 - **"노트에 넣기"(결정 0043)는 노트 파일에 쓰지 않는다.** 셸이 노트 탭의 webContents에 글을 맡기면(`queueMarkdownNoteAppendFor`, 알림 `markdown:note-append-ready`), 그 탭의 화면이 `markdown:note-append-take`로 한 번만 가져가 블록 편집기의 문서 **끝에** 되돌릴 수 있는 편집으로 넣고 "바뀜" 상태로 만든다. 저장은 사람이 그 탭에서 한다. 이 편집기는 바깥에서 바뀐 파일을 다시 읽지 않으므로, 파일에 직접 쓰면 열린 탭과 디스크가 어긋난다. 맡긴 글은 그 노트 파일을 보여 주는 탭만 가져간다. 제목 없는 탭, 다른 파일을 보여 주는 탭, 원문 편집기로 연 파일, 가져간 뒤 다시 불러온 탭, 먼저 닫힌 탭은 아무것도 받지 않는다.
 - 미리 보기와 내보내기의 문서 스타일은 문서 내용이다. 크롬 색 토큰은 리본·패널 같은 UI에만 쓴다.
@@ -49,6 +50,7 @@ Markdown 에디터다. 일반 `.md` 파일 위에서 TipTap 블록 편집기를 
 - 저장 경로를 바꾸면 "고치지 않은 블록의 바이트가 그대로인지"를 테스트한다. 링크 참조 정의, 각주, 원시 HTML 블록, CRLF 파일, BOM이 있는 파일을 포함한다.
 - 가림을 바꾸면 쪼개진 표식, 가려진 범위를 가로지르는 선택, 모르는 노드 형태에서 원문이 모델용 글에 남지 않는지 테스트한다.
 - 노트에 넣기(`tests/note-append.test.ts`, `tests/note-append-editor.test.ts`): 그 노트를 보여 주는 탭만 한 번 가져가는지, 문서 끝에 넣고 바뀜이 되는지, 파일은 그대로인지.
+- Save As › PDF(`tests/save-as-pdf.test.ts`, `tests/save-as-pdf-wiring.test.ts`): 고른 `.pdf`가 PDF로만 쓰이고 Markdown 원본·경로가 그대로인지, 다음 저장이 계속 `.md`로 가는지, 화면에 그릴 문서가 없으면 PDF 선택지를 내놓지 않는지.
 - AI 배선: 가용성 답이 없을 때 이미지 도구가 빠지는지, 막힌 실행 판정, 핸들러가 없을 때의 연결 상태. 이 모듈의 테스트는 제공자를 부르지 않는다.
 - Windows에서 `tests/image-export.test.ts`의 "disposes only the closing renderer's unfinished export" 한 건은 변경과 무관하게 실패한다(경로가 `/`로 시작하는지 비교한다).
 - `node_modules`를 다른 체크아웃에 연결한 git worktree에서는 `ai-tools`·`slash-and-image` 테스트가 katex 모듈 해석 오류로 실패한다. 원래 체크아웃에서는 통과한다.

@@ -12,6 +12,8 @@ export type AgentLogEntry =
   | { kind: 'ended' }
   /** skills were changed while the session runs: they apply to the next one (spec 9.4) */
   | { kind: 'skills-changed' }
+  /** documents opened after the session started are outside its program-level protection */
+  | { kind: 'documents-unprotected'; count: number }
   /** a skill card or an install proposal a session asked for, by its key */
   | { kind: 'skill-card'; key: string }
   | { kind: 'skill-install'; key: string }
@@ -84,6 +86,11 @@ export function agentLogWith(state: AgentLogState, event: AgentEventView): Agent
       }
     case 'error':
       return { ...state, entries: [...state.entries, { kind: 'error', errorKind: event.kind }] }
+    case 'documents-unprotected':
+      return {
+        ...state,
+        entries: [...state.entries, { kind: 'documents-unprotected', count: event.count }],
+      }
     case 'ended':
       return {
         ...state,

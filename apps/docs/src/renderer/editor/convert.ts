@@ -1925,12 +1925,11 @@ export function normalizeZoteroFieldParts(doc: PmNode): PmNode {
     lostId.add(ref)
   }
   const groups = new Map<number, ZoteroTextRef[]>()
-  const idsInBlock = new Map<number, Set<number>>()
-  for (const ref of refs) {
-    const id = ref.fieldId!
-    groups.set(id, [...(groups.get(id) ?? []), ref])
-    idsInBlock.set(ref.blockIndex, new Set([...(idsInBlock.get(ref.blockIndex) ?? []), id]))
-  }
+  const order = new Map<ZoteroTextRef, number>()
+  refs.forEach((ref, index) => {
+    order.set(ref, index)
+    groups.set(ref.fieldId!, [...(groups.get(ref.fieldId!) ?? []), ref])
+  })
   const isParagraphBlock = (index: number) => {
     const type = blocks[index]?.type
     return type === 'docParagraph' || type === 'docHeading' || type === 'docListItem'
@@ -1941,10 +1940,13 @@ export function normalizeZoteroFieldParts(doc: PmNode): PmNode {
     for (let i = 1; i < members.length; i++) {
       const prev = members[i - 1]
       const cur = members[i]
-      let split = false
+      // a field pasted between two runs (into a citation's result or a
+      // bibliography paragraph) ends this field there instead of nesting
+      let split = refs
+        .slice(order.get(prev)! + 1, order.get(cur)!)
+        .some((between) => between.fieldId !== id)
       for (let b = prev.blockIndex + 1; b < cur.blockIndex && !split; b++) {
-        const others = idsInBlock.get(b)
-        split = !isParagraphBlock(b) || (others !== undefined && [...others].some((o) => o !== id))
+        split = !isParagraphBlock(b)
       }
       if (split) segments.push([cur])
       else segments[segments.length - 1].push(cur)
@@ -3085,7 +3087,12 @@ function nestedTextsDiff(
 export function textboxParaSignature(para: TextboxDisplay['paras'][number]): string {
   const m = para.listMarker
   const list = m ? [m.numId ?? null, m.ilvl ?? null, m.kind ?? null] : null
-  return JSON.stringify([para.align ?? null, normalizedRuns(para.runs), list])
+  return JSON.stringify([
+    para.align ?? null,
+    para.indentLeft ?? null,
+    normalizedRuns(para.runs),
+    list,
+  ])
 }
 
 /** all-empty sub-editor content counts as "still no text" for a paras:[] box */
@@ -3123,10 +3130,15 @@ function textboxParasPatch(node: PmNode, original: Block): TextboxParasPatchSet 
         // align/numPr are always explicit so a removed alignment or list
         // membership also clears w:jc / w:numPr
         const m = p.listMarker
+        // indentLeft may be inherited (style character units), so it is only
+        // written when the editor moved it; align/numPr stay always explicit
+        const origIndent = origParas[j]?.indentLeft ?? null
+        const indent = p.indentLeft ?? null
         return {
           runs: mergeRuns(p.runs),
           align: p.align ?? null,
           numPr: m?.numId != null ? { numId: m.numId, ilvl: m.ilvl ?? 0 } : null,
+          ...(indent !== origIndent ? { indentLeft: indent } : {}),
         }
       })
     } else if (origBox.shapeId) {
@@ -3139,6 +3151,7 @@ function textboxParasPatch(node: PmNode, original: Block): TextboxParasPatchSet 
             p.listMarker?.numId != null
               ? { numId: p.listMarker.numId, ilvl: p.listMarker.ilvl ?? 0 }
               : null,
+          ...(p.indentLeft != null ? { indentLeft: p.indentLeft } : {}),
         })),
       })
     }

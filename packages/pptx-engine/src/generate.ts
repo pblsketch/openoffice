@@ -889,11 +889,12 @@ function defRPrXml(d: ParagraphDefaultRunProps): string {
 
 function generateRunXml(r: TextRun): string {
   if (r.rawXml) return r.rawXml
-  // Soft-break sentinel → <a:br/>; embedded "\n" in text (new editor Shift+Enter input) splits into alternating run+br
+  // Soft-break sentinel → <a:br/>; embedded line endings in text (new editor Shift+Enter input) splits into alternating run+br
   if (isSoftBreakRun(r)) return '<a:br/>'
-  if (r.text.includes('\n') && !r.field) {
+  // CRLF (Windows) and a lone CR (old Mac) are line breaks too; a raw CR left in <a:t> reads back as an extra break
+  if (/[\r\n]/.test(r.text) && !r.field) {
     return r.text
-      .split('\n')
+      .split(/\r\n|\r|\n/)
       .map((part) => (part ? generateRunXml({ ...r, text: part }) : ''))
       .join('<a:br/>')
   }

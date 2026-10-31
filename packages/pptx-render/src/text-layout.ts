@@ -26,7 +26,7 @@ import { graphemes, isWideChar, type FontMetricsProvider, type RunStyle } from '
 import { emuToPx, ptToPx, type Viewport } from './coords'
 import type { MediaResolver } from './fill'
 import { formatAutoNum } from './auto-num'
-import { cacheKeyFor } from './image-dpi'
+import { cacheKeyFor, jpegSize } from './image-dpi'
 
 export { formatAutoNum }
 
@@ -589,19 +589,8 @@ export function imageAspect(dataUrl: string): number {
       } else if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes.length >= 10) {
         ratio = (bytes[6]! | (bytes[7]! << 8)) / (bytes[8]! | (bytes[9]! << 8))
       } else if (bytes[0] === 0xff && bytes[1] === 0xd8) {
-        for (let o = 2; o + 9 < bytes.length;) {
-          if (bytes[o] !== 0xff) break
-          const marker = bytes[o + 1]!
-          const len = (bytes[o + 2]! << 8) | bytes[o + 3]!
-          const sof = marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)
-          if (sof) {
-            const h = (bytes[o + 5]! << 8) | bytes[o + 6]!
-            const w = (bytes[o + 7]! << 8) | bytes[o + 8]!
-            ratio = w / h
-            break
-          }
-          o += 2 + len
-        }
+        const size = jpegSize(bytes)
+        if (size) ratio = size.w / size.h
       }
     } catch {
       ratio = 1

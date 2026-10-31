@@ -2,6 +2,7 @@ import { execSync, spawn } from 'node:child_process'
 import {
   existsSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   renameSync,
   rmSync,
@@ -27,7 +28,12 @@ import {
   shell,
   webContents,
 } from 'electron'
-import type { MenuItemConstructorOptions, NativeImage, WebContents } from 'electron'
+import type {
+  MenuItemConstructorOptions,
+  MessageBoxOptions,
+  NativeImage,
+  WebContents,
+} from 'electron'
 import { atomicWriteFile } from './atomic-write'
 import { tabStripOverlay } from './title-bar-overlay'
 import { shellWindowBackground } from './window-background'
@@ -127,6 +133,7 @@ import { registerIntegrationsIpc } from './integrations-ipc'
 import { registerResultStoreIpc } from './result-store-ipc'
 import { FEEDBACK_SURVEY_URL, feedbackDetails, feedbackText, platformLabel } from './feedback'
 import { registerDriveIpc, type DriveService } from './drive/drive-ipc'
+import { freeAiInUse } from './drive/drive-consent'
 import { registerOutboundIpc } from './outbound-confirm'
 import { projectSkillsAllowed, projectSkillsView, setProjectSkills } from './agent/project-skills'
 import {
@@ -176,6 +183,7 @@ import {
   uniquePathIn,
   authorizeMcpDocWrite,
   activeAiStreamCount,
+  legacyDocumentChatFor,
 } from '../../../docs/src/main/docs-main'
 import { blankXlsxBuffer } from '@genoffice/xlsx-gateway/gateway/csv-import'
 import { blankPdfBuffer } from '../../../pdf/src/main/blank-pdf'
@@ -261,7 +269,12 @@ import { convertPdfFileToPptxLocalWithPrompt } from './pdf2pptx-local'
 import { convertPdfFileToXlsxLocalWithPrompt } from './pdf2xlsx-local'
 import { closePdfPasswordDialog, promptPdfPassword } from './pdf-password-dialog'
 import { createDocumentPasswordPrompt } from './document-password-prompt'
-import { cancelWindowJob, registerPdfStructureIpc, runWindowJob } from './pdf-structure-ipc'
+import {
+  cancelWindowJob,
+  grantPdfStructureTarget,
+  registerPdfStructureIpc,
+  runWindowJob,
+} from './pdf-structure-ipc'
 import { registerPdfConvertUiIpc, requestPdfConvertDialog } from './pdf-convert-ui'
 import {
   configureMarkdownRuntime,
@@ -281,10 +294,16 @@ import {
   editorTakes,
   hwpFileRenamed,
   hwpReadText,
+  requestHwpPreview,
   requestHwpPrint,
   requestHwpSave,
   setHwpFileSavedHook,
 } from '../../../hwp/src/main/hwp-main'
+import {
+  HWP_DEFAULT_FORMAT_KEY,
+  normalizeHwpDefaultFormat,
+  readHwpDefaultFormat,
+} from '../../../hwp/src/main/default-format'
 import {
   configureHtmlRuntime,
   exportHtmlHeadless,
@@ -426,9 +445,45 @@ import {
   KbRunScopes,
   listKnowledgeFiles,
   parseKbCreateRequest,
-  readKnowledgeFilePage,
-  searchSavedKnowledgeBase,
+  parseKbOpenScope,
+  readKnowledgeOrProjectPage,
+  searchSavedKnowledgeWithProject,
 } from './knowledge-base'
+import {
+  PROJECT_EDITORS,
+  PROJECT_FOLDER_LISTEN_CHANNEL,
+  type ProjectEditor,
+} from '@genoffice/project-store'
+import { ProjectChatStore } from './projects/chat-store'
+import { resolveCloudOnly } from './projects/cloud-files'
+import { createCachedCloudResolver } from './projects/cloud-cache'
+import {
+  downloadPromptOptions,
+  folderPickerOptions,
+  trustChoiceOf,
+  trustPromptOptions,
+  useExistingPromptOptions,
+} from './projects/project-dialog-text'
+import {
+  createCachedFileLister,
+  createContextFiles,
+  projectMentionFiles,
+} from './projects/project-files'
+import { NewDocumentPlacer, type NewDocumentOpener } from './projects/new-documents'
+import { ProjectGuide } from './projects/project-guide'
+import {
+  createProjectNameOnly,
+  createRerankIgnoreFilter,
+  mergeIndexRoots,
+  projectFolderRoots,
+} from './projects/project-index'
+import {
+  registerProjectFolderIpc,
+  waitForPageReturn,
+  type ProjectIpcController,
+  type ProjectWindow,
+} from './projects/project-ipc'
+import { PROJECT_UNAVAILABLE, ProjectFolderTools, type DownloadAsk } from './projects/project-tools'
 import { runHeadlessExport, type HeadlessExporters } from './headless-export'
 import { TabManager, canonicalPath, type DetachedTab } from './tab-manager'
 import { tabMenuTemplate, type TabMenuActions, isProgramFile } from './tab-menu'
@@ -645,6 +700,26 @@ function bundledCliRunner(): ReturnType<typeof createCliRunner> {
   return cliRunner
 }
 
+/**
+ * Markdown made into .docx bytes by the bundled CLI in an app temp folder, for
+ * a home create_document with a project (spec 6): the file reaches the
+ * project folder only through its write guard, after the conversion succeeded.
+ */
+async function markdownDocxBytes(markdown: string): Promise<Uint8Array> {
+  const dir = mkdtempSync(join(tmpdir(), 'ieumoffice-kb-docx-'))
+  try {
+    const out = join(dir, 'document.docx')
+    await createFileViaCli(bundledCliRunner(), {
+      type: 'docx',
+      input: { name: 'content.md', content: markdown },
+      out,
+    })
+    return new Uint8Array(readFileSync(out))
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+
 configureDocsRuntime({
   preloadPath: join(DOCS_OUT, 'preload', 'index.js'),
   rendererUrl: process.env.DOCS_RENDERER_URL,
@@ -659,12 +734,17 @@ configureSheetsRuntime({
   // The sheets AI's create_document (docx/pdf/md) funnels into the docs-owned
   // creation flow, like the pdf app below.
   createDocument: createAiDocument,
+  newDocumentDir: (id) => newDocumentFolderFor(id),
+  writeNewDocument: (id, fileName, bytes) => writeProjectNewDocument(id, fileName, bytes),
 })
 configureSlidesRuntime({
   preloadPath: join(SLIDES_OUT, 'preload', 'index.js'),
   rendererDevUrl: process.env.SLIDES_RENDERER_URL,
   rendererFilePath: join(SLIDES_OUT, 'renderer', 'index.html'),
   openGeneratedPath: (path) => openGeneratedDocument(path),
+  newDocumentDir: (id) => newDocumentFolderFor(id),
+  // a deck a create flow handed to the AI goes into the panel's project once made (spec 6)
+  writeNewDocument: (id, fileName, bytes) => writeProjectNewDocument(id, fileName, bytes),
 })
 /** a PDF's note (reading-assist 4.9): its Markdown tab or detached window, else a new tab */
 const noteTabHost: NoteTabHost = {
@@ -693,23 +773,31 @@ configurePdfRuntime({
   openPdfTools: (path, tool) => openPdfToolsWithFile(path, tool),
   openNote: (path) => openNoteTab(noteTabHost, path) !== null,
   insertIntoNote: (path, text) => insertIntoNoteTab(noteTabHost, path, text),
+  newDocumentDir: (id) => newDocumentFolderFor(id),
 })
 configureMarkdownRuntime({
   preloadPath: join(MARKDOWN_OUT, 'preload', 'index.js'),
   rendererUrl: process.env.MARKDOWN_RENDERER_URL,
   rendererFile: join(MARKDOWN_OUT, 'renderer', 'index.html'),
   openGeneratedPath: (path) => openGeneratedDocument(path),
+  newDocumentDir: (id) => newDocumentFolderFor(id),
+  writeNewDocument: (id, fileName, bytes) => writeProjectNewDocument(id, fileName, bytes),
 })
 configureHtmlRuntime({
   preloadPath: join(HTML_OUT, 'preload', 'index.js'),
   rendererUrl: process.env.HTML_RENDERER_URL,
   rendererFile: join(HTML_OUT, 'renderer', 'index.html'),
   openGeneratedPath: (path) => openGeneratedDocument(path),
+  newDocumentDir: (id) => newDocumentFolderFor(id),
+  writeNewDocument: (id, fileName, bytes) => writeProjectNewDocument(id, fileName, bytes),
 })
 configureMindmapRuntime({
   preloadPath: join(MINDMAP_OUT, 'preload', 'index.js'),
   rendererUrl: process.env.MINDMAP_RENDERER_URL,
   rendererFile: join(MINDMAP_OUT, 'renderer', 'index.html'),
+  newDocumentDir: (id) => newDocumentFolderFor(id),
+  // a map a create flow handed to the AI goes into the panel's project once made (spec 6)
+  writeNewDocument: (id, fileName, bytes) => writeProjectNewDocument(id, fileName, bytes),
 })
 configureHwpRuntime({
   preloadPath: join(HWP_OUT, 'preload', 'index.js'),
@@ -719,6 +807,7 @@ configureHwpRuntime({
   openFileDialog: () => void openFileViaDialog(),
   goHome: () => tabManager?.openHomeTab(),
   newDocument: () => newHwpTab(),
+  newDocumentDir: (id) => newDocumentFolderFor(id),
 })
 configureEpubRuntime({
   preloadPath: join(EPUB_OUT, 'preload', 'index.js'),
@@ -1021,6 +1110,7 @@ const tMain = createI18n({
     menuDerivedDocuments: '用此文档新建的文档',
     menuOpenInDocs: '转换为 Docs 文档并打开',
     menuPrint: '打印…',
+    menuPreview: '打印预览…',
     menuOpen: '打开…',
     menuSave: '保存',
     menuSaveAs: '另存为…',
@@ -1171,6 +1261,7 @@ const tMain = createI18n({
     menuDerivedDocuments: 'Documents Made from This',
     menuOpenInDocs: 'Convert and Open in Docs',
     menuPrint: 'Print…',
+    menuPreview: 'Print Preview…',
     menuOpen: 'Open…',
     menuSave: 'Save',
     menuSaveAs: 'Save As…',
@@ -1321,6 +1412,7 @@ const tMain = createI18n({
     menuDerivedDocuments: 'Tài liệu tạo từ tài liệu này',
     menuOpenInDocs: 'Chuyển đổi và mở trong Docs',
     menuPrint: 'In…',
+    menuPreview: 'Xem trước khi in…',
     menuOpen: 'Mở…',
     menuSave: 'Lưu',
     menuSaveAs: 'Lưu dưới dạng…',
@@ -1476,6 +1568,7 @@ const tMain = createI18n({
     menuDerivedDocuments: 'この文書から作成した文書',
     menuOpenInDocs: 'Docs 文書に変換して開く',
     menuPrint: '印刷…',
+    menuPreview: '印刷プレビュー…',
     menuOpen: '開く…',
     menuSave: '保存',
     menuSaveAs: '名前を付けて保存…',
@@ -1632,6 +1725,7 @@ const tMain = createI18n({
     menuDerivedDocuments: '이 문서로 만든 문서',
     menuOpenInDocs: 'Docs 문서로 변환하여 열기',
     menuPrint: '인쇄…',
+    menuPreview: '미리 보기…',
     menuOpen: '열기…',
     menuSave: '저장',
     menuSaveAs: '다른 이름으로 저장…',
@@ -1786,6 +1880,7 @@ const tMain = createI18n({
     menuDerivedDocuments: 'Documents créés à partir de celui-ci',
     menuOpenInDocs: 'Convertir et ouvrir dans Docs',
     menuPrint: 'Imprimer…',
+    menuPreview: 'Aperçu avant impression…',
     menuOpen: 'Ouvrir…',
     menuSave: 'Enregistrer',
     menuSaveAs: 'Enregistrer sous…',
@@ -1943,6 +2038,7 @@ const tMain = createI18n({
     menuDerivedDocuments: 'Aus diesem erstellte Dokumente',
     menuOpenInDocs: 'In Docs umwandeln und öffnen',
     menuPrint: 'Drucken…',
+    menuPreview: 'Druckvorschau…',
     menuOpen: 'Öffnen…',
     menuSave: 'Speichern',
     menuSaveAs: 'Speichern unter…',
@@ -2100,6 +2196,7 @@ const tMain = createI18n({
     menuDerivedDocuments: 'Documentos creados a partir de este',
     menuOpenInDocs: 'Convertir y abrir en Docs',
     menuPrint: 'Imprimir…',
+    menuPreview: 'Vista previa de impresión…',
     menuOpen: 'Abrir…',
     menuSave: 'Guardar',
     menuSaveAs: 'Guardar como…',
@@ -2256,6 +2353,7 @@ const tMain = createI18n({
     menuDerivedDocuments: 'เอกสารที่สร้างจากเอกสารนี้',
     menuOpenInDocs: 'แปลงและเปิดใน Docs',
     menuPrint: 'พิมพ์…',
+    menuPreview: 'ดูตัวอย่างก่อนพิมพ์…',
     menuOpen: 'เปิด…',
     menuSave: 'บันทึก',
     menuSaveAs: 'บันทึกเป็น…',
@@ -2408,6 +2506,7 @@ const tMain = createI18n({
     menuDerivedDocuments: 'Dokumen yang dibuat dari dokumen ini',
     menuOpenInDocs: 'Konversi dan buka di Docs',
     menuPrint: 'Cetak…',
+    menuPreview: 'Pratinjau cetak…',
     menuOpen: 'Buka…',
     menuSave: 'Simpan',
     menuSaveAs: 'Simpan Sebagai…',
@@ -2564,6 +2663,7 @@ const tMain = createI18n({
     menuDerivedDocuments: 'Документы, созданные из этого',
     menuOpenInDocs: 'Преобразовать и открыть в Docs',
     menuPrint: 'Печать…',
+    menuPreview: 'Предварительный просмотр печати…',
     menuOpen: 'Открыть…',
     menuSave: 'Сохранить',
     menuSaveAs: 'Сохранить как…',
@@ -2719,6 +2819,7 @@ const tMain = createI18n({
     menuDerivedDocuments: 'المستندات المُنشأة من هذا المستند',
     menuOpenInDocs: 'التحويل والفتح في Docs',
     menuPrint: 'طباعة…',
+    menuPreview: 'معاينة الطباعة…',
     menuOpen: 'فتح…',
     menuSave: 'حفظ',
     menuSaveAs: 'حفظ باسم…',
@@ -2871,6 +2972,7 @@ const tMain = createI18n({
     menuDerivedDocuments: 'Documentos criados a partir deste',
     menuOpenInDocs: 'Converter e abrir no Docs',
     menuPrint: 'Imprimir…',
+    menuPreview: 'Visualizar impressão…',
     menuOpen: 'Abrir…',
     menuSave: 'Salvar',
     menuSaveAs: 'Salvar Como…',
@@ -3027,6 +3129,7 @@ const tMain = createI18n({
     menuDerivedDocuments: 'Documenti creati da questo',
     menuOpenInDocs: 'Converti e apri in Docs',
     menuPrint: 'Stampa…',
+    menuPreview: 'Anteprima di stampa…',
     menuOpen: 'Apri…',
     menuSave: 'Salva',
     menuSaveAs: 'Salva con nome…',
@@ -3183,6 +3286,7 @@ const tMain = createI18n({
     menuDerivedDocuments: 'Dokumenty utworzone z tego',
     menuOpenInDocs: 'Konwertuj i otwórz w Docs',
     menuPrint: 'Drukuj…',
+    menuPreview: 'Podgląd wydruku…',
     menuOpen: 'Otwórz…',
     menuSave: 'Zapisz',
     menuSaveAs: 'Zapisz jako…',
@@ -3338,6 +3442,7 @@ const tMain = createI18n({
     menuDerivedDocuments: 'Dokumenty vytvořené z tohoto',
     menuOpenInDocs: 'Převést a otevřít v Docs',
     menuPrint: 'Tisk…',
+    menuPreview: 'Náhled tisku…',
     menuOpen: 'Otevřít…',
     menuSave: 'Uložit',
     menuSaveAs: 'Uložit jako…',
@@ -3492,6 +3597,7 @@ const tMain = createI18n({
     menuDerivedDocuments: 'Documenten gemaakt van dit document',
     menuOpenInDocs: 'Converteren en openen in Docs',
     menuPrint: 'Afdrukken…',
+    menuPreview: 'Afdrukvoorbeeld…',
     menuOpen: 'Openen…',
     menuSave: 'Opslaan',
     menuSaveAs: 'Opslaan als…',
@@ -3649,6 +3755,7 @@ const tMain = createI18n({
     menuDerivedDocuments: 'Dokumen yang dibuat daripada dokumen ini',
     menuOpenInDocs: 'Tukar dan buka dalam Docs',
     menuPrint: 'Cetak…',
+    menuPreview: 'Pratonton cetak…',
     menuOpen: 'Buka…',
     menuSave: 'Simpan',
     menuSaveAs: 'Simpan Sebagai…',
@@ -3803,6 +3910,7 @@ const tMain = createI18n({
     menuDerivedDocuments: 'מסמכים שנוצרו מהמסמך הזה',
     menuOpenInDocs: 'המרה ופתיחה ב-Docs',
     menuPrint: 'הדפסה…',
+    menuPreview: 'תצוגה מקדימה של הדפסה…',
     menuOpen: 'פתיחה…',
     menuSave: 'שמירה',
     menuSaveAs: 'שמירה בשם…',
@@ -3956,6 +4064,7 @@ const tMain = createI18n({
     menuDerivedDocuments: 'इस दस्तावेज़ से बने दस्तावेज़',
     menuOpenInDocs: 'Docs में बदलें और खोलें',
     menuPrint: 'प्रिंट करें…',
+    menuPreview: 'प्रिंट पूर्वावलोकन…',
     menuOpen: 'खोलें…',
     menuSave: 'सहेजें',
     menuSaveAs: 'इस रूप में सहेजें…',
@@ -4111,6 +4220,7 @@ const tMain = createI18n({
     menuDerivedDocuments: '用此文件新增的文件',
     menuOpenInDocs: '轉換為 Docs 文件並開啟',
     menuPrint: '列印…',
+    menuPreview: '列印預覽…',
     menuOpen: '開啟…',
     menuSave: '儲存',
     menuSaveAs: '另存新檔…',
@@ -4405,8 +4515,17 @@ function ensureFileIndexer(): FileIndexer | null {
     return null
   }
   fileIndexer = new FileIndexer(fileIndexStore, extractWorkerPath, {
-    roots: () => folderRootPaths().filter((root) => existsSync(root)),
+    // the listed project folders join the walk (not the home folder list, spec 5.9)
+    roots: () =>
+      mergeIndexRoots(
+        folderRootPaths().filter((root) => existsSync(root)),
+        projectFolderRoots(APP_SETTINGS_PATH()),
+      ),
     extraPaths: () => [...readRecentFiles(), ...readStarredFiles()],
+    // inside a project folder a file that is not on this PC is indexed by name only (spec 5.8)
+    nameOnly: createProjectNameOnly({
+      projectRoots: () => projectFolderRoots(APP_SETTINGS_PATH()),
+    }),
   })
   return fileIndexer
 }
@@ -4861,6 +4980,15 @@ function createShellWindow(): void {
     openTab: (openPath, options) => ensureTabManager().openDocsTab(openPath, options),
     openAiDocTab: (content) =>
       ensureTabManager().openDocsTab(undefined, { newBlank: true, aiContent: content }),
+    // the AI's new Word document follows the project of the panel that asked (spec 6)
+    openAiDocTabFor: (content, owner) => {
+      const manager = ensureTabManager()
+      const tabId = manager.openDocsTab(undefined, { newBlank: true, aiContent: content })
+      const contents = manager.webContentsForTab(tabId)
+      if (contents) followOpenerProject(contents, { kind: 'window', webContentsId: owner })
+    },
+    newDocumentDir: (id) => newDocumentFolderFor(id),
+    writeNewDocument: (id, fileName, bytes) => writeProjectNewDocument(id, fileName, bytes),
     listTabs: () =>
       (tabManager?.list() ?? [])
         .filter((t) => t.kind === 'docs')
@@ -5509,6 +5637,250 @@ function startQueuedWorkbookNudge(): void {
   }, 700)
 }
 
+// ---- project folders (decision 0088) ----
+//
+// One project guide, one chat store and one set of project tools for the whole
+// app, made on first use (the guide needs the final app data folder). The tools
+// hold their own run scopes, so editor runs never evict the home ask's group
+// scopes. Every request is judged by the window that sent it (project-ipc.ts).
+
+interface ProjectFolderRuntime {
+  guide: ProjectGuide
+  chats: ProjectChatStore
+  tools: ProjectFolderTools
+  scopes: KbRunScopes
+}
+
+let projectFolderRuntime: ProjectFolderRuntime | null = null
+let projectFolderIpc: ProjectIpcController | null = null
+/** webContents whose close and reload the project layer already follows */
+const projectTrackedContents = new Set<number>()
+
+/**
+ * The "not on this PC" check for lists that are read often (the context file
+ * names of every send, the project screen): a verdict is reused for a short
+ * while instead of starting the detector each time. Reads never use it.
+ */
+const projectListCloudOnly = createCachedCloudResolver((paths) => resolveCloudOnly(paths))
+
+/**
+ * One project's AI-visible file walk, reused for a few seconds by the context
+ * file names, the `@` list and the list tool. An `ignore` edit is a new key;
+ * a change to the list or a new document in a folder drops the walks.
+ */
+const projectFileLister = createCachedFileLister()
+
+function projectFolderServices(): ProjectFolderRuntime {
+  if (projectFolderRuntime) return projectFolderRuntime
+  const guide = new ProjectGuide({
+    settingsPath: APP_SETTINGS_PATH(),
+    homeDir: homedir(),
+    userData: app.getPath('userData'),
+    defaultParentDir: () => defaultSaveDir(),
+    language: () => currentLang(),
+    contextFiles: createContextFiles({
+      resolveCloudOnly: projectListCloudOnly,
+      list: projectFileLister,
+    }),
+  })
+  const chats = new ProjectChatStore({ guide, trash: (path) => shell.trashItem(path) })
+  const scopes = new KbRunScopes()
+  const tools = new ProjectFolderTools({
+    guide,
+    scopes,
+    store: () => {
+      ensureFileIndexer()?.refreshIfStale(60_000)
+      return fileIndexStore
+    },
+    // list and search marks may reuse recent verdicts; a read always asks afresh
+    listCloudOnly: projectListCloudOnly,
+    listFiles: projectFileLister,
+    askDownload: (ask) => askProjectDownload(ask),
+  })
+  projectFolderRuntime = { guide, chats, tools, scopes }
+  return projectFolderRuntime
+}
+
+// New documents the AI makes go into the panel's project folder (spec 6). The
+// placer reads a window's chosen project from the request layer and writes
+// through the project guide's write guard only.
+const newDocuments = new NewDocumentPlacer({
+  guide: {
+    projectRoot: (id) => projectFolderServices().guide.projectRoot(id),
+    writeNewDocument: (id, target, data) =>
+      projectFolderServices().guide.writeNewDocument(id, target, data),
+  },
+  windowProject: async (id) => (projectFolderIpc ? projectFolderIpc.windowProject(id) : null),
+  documentOf: (id) => {
+    const win = projectWindowOf(id)
+    return win?.kind === 'editor' ? win.docPath : null
+  },
+})
+
+/** The folder an untitled document's save dialog opens in (spec 6); null: the default folder */
+function newDocumentFolderFor(webContentsId: number): Promise<string | null> {
+  return newDocuments.saveDialogFolder(webContentsId).catch(() => null)
+}
+
+/** A new document the AI made in this window, into its panel's project; null without one */
+async function writeProjectNewDocument(
+  webContentsId: number,
+  fileName: string,
+  bytes: Uint8Array,
+): Promise<string | null> {
+  const written = await newDocuments.writeFor(webContentsId, fileName, bytes)
+  // the new file belongs in the next file list right away
+  if (written) projectFileLister.invalidate()
+  return written
+}
+
+/** The home renderer's webContents id, when the shell window is up */
+function homeContentsId(): number | null {
+  return shellWindow && !shellWindow.isDestroyed() ? shellWindow.webContents.id : null
+}
+
+/**
+ * A create flow opened `contents` for `opener` (spec 5.2, 6): the new tab's AI
+ * panel starts in the opener's project and its new document goes into the
+ * opener's folder. Nothing changes when the opener has no project.
+ */
+function followOpenerProject(
+  contents: {
+    readonly id: number
+    isDestroyed(): boolean
+    once(e: 'destroyed', f: () => void): unknown
+  },
+  opener: NewDocumentOpener | null,
+): void {
+  if (!opener || contents.isDestroyed()) return
+  const id = contents.id
+  newDocuments.preset(id, newDocuments.placementOfOpener(opener, homeContentsId()))
+  contents.once('destroyed', () => newDocuments.forget(id))
+}
+
+/** The window a project dialog belongs to: the detached window of `owner`, else the shell */
+function projectDialogParent(owner: number): BrowserWindow | null {
+  const parent = detachedWindowForWebContents(owner) ?? shellWindow
+  return parent && !parent.isDestroyed() ? parent : null
+}
+
+async function projectMessageBox(owner: number, options: MessageBoxOptions): Promise<number> {
+  const parent = projectDialogParent(owner)
+  const result = parent
+    ? await dialog.showMessageBox(parent, options)
+    : await dialog.showMessageBox(options)
+  return result.response
+}
+
+/** "'<file>' is not on this PC; download it?" over the asking window (spec 5.8) */
+async function askProjectDownload(ask: DownloadAsk): Promise<boolean> {
+  const response = await projectMessageBox(
+    ask.owner,
+    downloadPromptOptions(currentLang(), ask.fileName),
+  )
+  return response === 0
+}
+
+const PROJECT_EDITOR_KINDS = new Set<string>(PROJECT_EDITORS.filter((kind) => kind !== 'home'))
+
+/** The AI window behind a webContents: the home renderer, an editor tab, or a detached editor */
+function projectWindowOf(id: number): ProjectWindow | null {
+  if (shellWindow && !shellWindow.isDestroyed() && shellWindow.webContents.id === id) {
+    return { kind: 'home' }
+  }
+  const doc = tabManager?.describeWebContents(id) ?? detachedDocumentFor(id)
+  if (!doc || !PROJECT_EDITOR_KINDS.has(doc.kind)) return null
+  return {
+    kind: 'editor',
+    editor: doc.kind as Exclude<ProjectEditor, 'home'>,
+    docPath: doc.filePath ?? null,
+  }
+}
+
+/** Follows a window's close (forget it) and page loads (its listeners are gone) */
+function trackProjectContents(contents: WebContents): void {
+  const id = contents.id
+  if (projectTrackedContents.has(id) || contents.isDestroyed()) return
+  projectTrackedContents.add(id)
+  contents.once('destroyed', () => {
+    projectTrackedContents.delete(id)
+    projectFolderIpc?.forget(id)
+  })
+  contents.on('did-start-navigation', (details) => {
+    if (details.isMainFrame && !details.isSameDocument) projectFolderIpc?.reset(id)
+  })
+}
+
+function registerProjectFolderChannels(): void {
+  projectFolderIpc = registerProjectFolderIpc({
+    services: projectFolderServices,
+    handle: (channel, handler) =>
+      ipcMain.handle(channel, (event, args: unknown) => {
+        trackProjectContents(event.sender)
+        return handler(event.sender.id, args)
+      }),
+    windowOf: projectWindowOf,
+    send: (target, channel, payload) => {
+      const contents = webContents.fromId(target)
+      if (!contents || contents.isDestroyed()) return false
+      contents.send(channel, payload)
+      return true
+    },
+    dialogs: {
+      pickFolder: async (owner, purpose) => {
+        const options = folderPickerOptions(currentLang(), purpose)
+        const parent = projectDialogParent(owner)
+        const result = parent
+          ? await dialog.showOpenDialog(parent, options)
+          : await dialog.showOpenDialog(options)
+        return result.canceled ? null : (result.filePaths[0] ?? null)
+      },
+      confirmUseExisting: async (owner, folderPath) =>
+        (await projectMessageBox(owner, useExistingPromptOptions(currentLang(), folderPath))) === 0,
+      askTrust: async (owner, prompt) =>
+        trustChoiceOf(await projectMessageBox(owner, trustPromptOptions(currentLang(), prompt))),
+      waitForReturn: async (owner) => {
+        const contents = webContents.fromId(owner)
+        return contents ? waitForPageReturn(contents) : false
+      },
+    },
+    legacyChatFor: (docPath) => legacyDocumentChatFor(docPath),
+    openFolder: async (path) => {
+      await shell.openPath(path)
+    },
+    openDocument: (path) => {
+      if (!openDocumentPath(path)) return null
+      const found = tabManager?.findTabByPath(path) ?? findDetachedTabByPath(path)
+      if (!found) return null
+      trackProjectContents(found.webContents)
+      return found.webContents.id
+    },
+    showHome: () => {
+      revealShellWindow()
+      tabManager?.openHomeTab()
+      const contents = shellWindow?.webContents
+      if (!contents || contents.isDestroyed()) return null
+      trackProjectContents(contents)
+      return contents.id
+    },
+    // the index walks the listed project folders: follow additions, removals and moves
+    projectsChanged: () => {
+      projectFileLister.invalidate()
+      fileIndexer?.refresh()
+    },
+    resolveCloudOnly: projectListCloudOnly,
+    presetProjectOf: (sender) => newDocuments.presetProjectOf(sender),
+  })
+  ipcMain.on(PROJECT_FOLDER_LISTEN_CHANNEL, (event, message: unknown) => {
+    trackProjectContents(event.sender)
+    const { method, listening } = (message && typeof message === 'object' ? message : {}) as {
+      method?: unknown
+      listening?: unknown
+    }
+    projectFolderIpc?.listen(event.sender.id, method, listening)
+  })
+}
+
 // ---- home IPC ----
 
 function statEntries(paths: string[]): RecentEntry[] {
@@ -5551,10 +5923,18 @@ function registerHomeIpc(): void {
   // A home ask narrowed to one starred group (spec 8.8) carries a scope main
   // minted for that run; main resolves the group's members itself on every
   // call (see KbRunScopes). A call without a scope is an unscoped ask.
+  // A home ask with a project chosen (spec 5.5) also reads that project folder:
+  // the scope then covers the project plus the starred part (all, or one group).
   const kbRunScopes = new KbRunScopes()
-  ipcMain.handle('kb:open-scope', (event, group: unknown): string =>
-    kbRunScopes.open(event.sender.id, group, readStarredGroupMap()),
-  )
+  ipcMain.handle('kb:open-scope', async (event, raw: unknown): Promise<string> => {
+    const { group, projectId } = parseKbOpenScope(raw)
+    if (projectId === null) return kbRunScopes.open(event.sender.id, group, readStarredGroupMap())
+    if (!(await projectFolderServices().tools.isAvailable(projectId))) {
+      throw new Error(PROJECT_UNAVAILABLE)
+    }
+    const starred = group === null ? 'all' : { group: group as string }
+    return kbRunScopes.openProject(event.sender.id, projectId, starred, readStarredGroupMap())
+  })
   ipcMain.handle('kb:close-scope', (event, scope: unknown): void =>
     kbRunScopes.close(event.sender.id, scope),
   )
@@ -5582,11 +5962,14 @@ function registerHomeIpc(): void {
     const starred = store.pathsIndexedAsOnDisk(readStarredFiles())
     // a group-scoped ask searches its group only: a further filter on the set above, never a wider one
     const inScope = kbRunScopes.narrow(event.sender.id, raw, starred, readStarredGroupMap)
+    // a scope that also holds a project searches that folder's AI-visible files too
+    const projectId = kbRunScopes.projectOf(event.sender.id, raw)
+    const within = projectId ? await projectFolderServices().tools.visibleTest(projectId) : null
     // a starred file open with unsaved changes is left out: its excerpt would
     // be the text as last saved, before any withholding mark still in the editor
-    const hits = await searchSavedKnowledgeBase(
-      (qq, pool) =>
-        store.search(qq, { limit: pool }).hits.map((h) => ({
+    const hits = await searchSavedKnowledgeWithProject(
+      (qq, pool, inside) =>
+        store.search(qq, { limit: pool, ...(inside ? { within: inside } : {}) }).hits.map((h) => ({
           path: h.path,
           name: h.name,
           ext: h.ext,
@@ -5595,6 +5978,8 @@ function registerHomeIpc(): void {
       q,
       inScope,
       Math.min(limit, 20),
+      within,
+      (paths) => store.pathsIndexedAsOnDisk(paths),
     )
     return hits
   })
@@ -5607,18 +5992,30 @@ function registerHomeIpc(): void {
     const path = typeof req.path === 'string' ? req.path : ''
     const offsetRaw = Number(req.offset)
     const offset = Number.isFinite(offsetRaw) ? Math.floor(offsetRaw) : 0
-    if (!path || !readStarredFiles().includes(path)) {
-      throw new Error('path is not in the knowledge base')
-    }
-    // a group-scoped ask reads its group only: the same refusal, on top of the check above
-    if (!kbRunScopes.narrow(event.sender.id, raw, [path], readStarredGroupMap).includes(path)) {
-      throw new Error(KB_NOT_IN_BASE)
-    }
-    return readKnowledgeFilePage(path, offset)
+    if (!path) throw new Error(KB_NOT_IN_BASE)
+    const owner = event.sender.id
+    // the project this run's scope also reads (a scope main does not hold is refused here)
+    const projectId = kbRunScopes.projectOf(owner, raw)
+    // a starred file reads as before when the scope allows it (a group-scoped ask reads its group only)
+    const starredAllowed =
+      readStarredFiles().includes(path) &&
+      kbRunScopes.narrow(owner, raw, [path], readStarredGroupMap).includes(path)
+    // anything else is read only as a file of the run's project: visibility,
+    // unsaved changes, size and the "not on this PC" question all apply there
+    return readKnowledgeOrProjectPage(
+      path,
+      offset,
+      starredAllowed,
+      projectId
+        ? (target, at) => projectFolderServices().tools.readPath(owner, projectId, target, at)
+        : null,
+    )
   })
 
-  ipcMain.handle('kb:create-document', async (_event, raw: unknown): Promise<unknown> => {
+  ipcMain.handle('kb:create-document', async (event, raw: unknown): Promise<unknown> => {
     const req = parseKbCreateRequest(raw)
+    // a project chosen at home: the new document goes to its folder's top (spec 6)
+    const placement = await newDocuments.placementFor(event.sender.id)
     return createKnowledgeDocument(
       {
         dir: defaultSaveDir,
@@ -5633,6 +6030,15 @@ function registerHomeIpc(): void {
           })
         },
         recordRecent: recordRecentFile,
+        ...(placement
+          ? {
+              project: {
+                write: (fileName: string, bytes: Uint8Array) =>
+                  newDocuments.write(placement, fileName, bytes),
+                docxBytes: (markdown: string) => markdownDocxBytes(markdown),
+              },
+            }
+          : {}),
       },
       req,
     )
@@ -5649,7 +6055,12 @@ function registerHomeIpc(): void {
         ? query.paths.filter((p): p is string => typeof p === 'string').slice(0, 20)
         : []
       if (!q || paths.length < 2 || !ensureFileIndexer() || !fileIndexStore) return null
-      searchReranker ??= new SearchReranker(fileIndexStore)
+      // what a project's `ignore` lists stays out of the excerpts sent out (spec 5.9)
+      searchReranker ??= new SearchReranker(
+        fileIndexStore,
+        undefined,
+        createRerankIgnoreFilter({ guide: projectFolderServices().guide }),
+      )
       // excerpts leave the machine here: only from files indexed as they are on disk
       return searchReranker.rerank(q, fileIndexStore.pathsIndexedAsOnDisk(paths), settings)
     },
@@ -6258,6 +6669,14 @@ function registerHomeIpc(): void {
     writeAppSetting(APP_SETTINGS_PATH(), DEFAULT_SAVE_DIR_KEY, picked)
     ensureFolderWatchers()
     return picked
+  })
+
+  ipcMain.handle(HOME_CHANNELS.getHwpDefaultFormat, () => readHwpDefaultFormat(app))
+
+  ipcMain.handle(HOME_CHANNELS.setHwpDefaultFormat, (_event, format: unknown) => {
+    const next = normalizeHwpDefaultFormat(format)
+    writeAppSetting(APP_SETTINGS_PATH(), HWP_DEFAULT_FORMAT_KEY, next)
+    return next
   })
 
   ipcMain.handle(HOME_CHANNELS.openGitHubRepo, () => {
@@ -7472,10 +7891,17 @@ function buildHwpMenu(): void {
           },
         },
         {
+          label: tm('menuPreview'),
+          click: () => {
+            const tab = activeHwpTarget()
+            if (tab) requestHwpPreview(tab.webContents, 'open')
+          },
+        },
+        {
           label: tm('menuPrint'),
           click: () => {
             const tab = activeHwpTarget()
-            if (tab) requestHwpPrint(tab.webContents, 'print')
+            if (tab) requestHwpPreview(tab.webContents, 'print')
           },
         },
         { type: 'separator' },
@@ -7845,8 +8271,11 @@ function buildMindmapMenu(): void {
 
 /**
  * Save As for pdf tabs: write pending edits to the picked path only, then open the copy.
- * Non-destructive: the original file is never written, and a cancelled dialog changes
- * nothing on disk (dialog first, no flush into the source).
+ * Non-destructive: the original file is never written with the copy, and a cancelled
+ * dialog changes nothing on disk (dialog first, no flush into the source). A Markdown
+ * target is a conversion, not a PDF copy: the path is granted to the view's conversion
+ * dialog, which saves pending edits first and then writes the .md there (the File menu's
+ * Markdown conversion does the same).
  */
 /** In-flight guard (same pattern as exportPdfAsDocxLocal): a re-trigger while the dialog
     or write is active must not start a second flow that overwrites the first one's
@@ -7862,11 +8291,33 @@ async function savePdfAs(tab = activePdfTarget()): Promise<void> {
   setPdfSaveAsInFlight(tab.webContents, true)
   try {
     const picked = await showSaveDialogWithMemory(dialog, host, {
-      defaultPath: tab.filePath,
-      filters: [{ name: tm('filterPdf'), extensions: ['pdf'] }],
+      // No extension in the suggestion: the file type chosen in the dialog supplies
+      // .pdf or .md. A typed name keeps the extension it was given.
+      defaultPath: tab.filePath.replace(/\.pdf$/i, ''),
+      filters: [
+        { name: tm('filterPdf'), extensions: ['pdf'] },
+        // Save As › Markdown: the tab's conversion dialog converts to the picked
+        // name; a name with another extension stays a plain PDF copy
+        { name: 'Markdown', extensions: ['md'] },
+      ],
     })
-    const target = pdfSaveAsTarget(picked, tab.filePath)
+    if (picked.canceled || !picked.filePath) return
+    // A dialog that does not add the chosen type's extension (some Linux desktops)
+    // leaves a bare name: the default type is PDF
+    const pickedPath = extname(picked.filePath) ? picked.filePath : `${picked.filePath}.pdf`
+    const target = pdfSaveAsTarget({ canceled: false, filePath: pickedPath }, tab.filePath)
     if (!target) return
+    if (/\.md$/i.test(target)) {
+      // The path came from this dialog, never from the renderer: grant it to the
+      // view's own conversion dialog, which then writes exactly there
+      if (!grantPdfStructureTarget(tab.webContents, tab.filePath, target, 'md')) {
+        console.error('[shell] pdf save as markdown: target was not granted')
+        await dialog.showMessageBox(host, { type: 'error', message: tm('errPdfSaveAsFailed') })
+        return
+      }
+      requestPdfConvertDialog(tab.webContents, 'md', target)
+      return
+    }
     // Always ask the renderer: it shows the annotation choices for the copy and,
     // with no pending edits and annotations kept, asks the pdf main process for a
     // byte-identical copy instead of rewriting the file here.
@@ -8410,6 +8861,7 @@ ipcMain.handle('ai:open-model-settings', () => {
 registerProjectIpc()
 registerDocsIpc()
 registerHomeIpc()
+registerProjectFolderChannels()
 registerIntegrationsIpc({
   settingsPath: APP_SETTINGS_PATH,
   window: () => shellWindow,
@@ -8494,6 +8946,9 @@ const templateTabs = createTemplateTabs({
   removeDir: async (dir) => rmSync(dir, { recursive: true, force: true }),
   templateFileOf: (id) => userSkills.templateFile(id),
   openCopy: (copy) => openTemplateCopyTab(copy),
+  // a skill template's copy follows the project of the panel that asked (spec 6)
+  copyOpenedFor: (contents, openerId) =>
+    followOpenerProject(contents, { kind: 'window', webContentsId: openerId }),
   focusTab: (tabId) => {
     const manager = tabManager
     if (!manager || !manager.list().some((tab) => tab.id === tabId)) return false
@@ -8711,7 +9166,8 @@ app.whenReady().then(async () => {
         (open) => resolve(open).toLowerCase() === resolve(path).toLowerCase(),
       ),
     parse: (path) => parseFileToText(path),
-    theme: () => currentTheme(),
+    freeAi: () => freeAiInUse(readStoredAiSettings()),
+    documentOf: (id) => tabManager?.describeWebContents(id)?.filePath ?? null,
   })
   // The "Attach documents" window: an editor's AI panel asks the shell for the
   // documents it already knows, and the shell hands back the paths it ticked.
@@ -8742,6 +9198,14 @@ app.whenReady().then(async () => {
       },
       recent: async () =>
         readRecentFiles().map((path) => ({ path, title: basename(path), missing: false })),
+      // spec 5.13: the newest AI-visible files of the asking panel's project
+      projectFiles: async (asker) => {
+        if (asker.webContentsId === undefined || !projectFolderIpc) return []
+        const projectId = await projectFolderIpc.windowProject(asker.webContentsId)
+        if (!projectId) return []
+        const visibility = await projectFolderServices().guide.aiVisibility(projectId)
+        return visibility ? projectMentionFiles(visibility, undefined, projectFileLister) : []
+      },
       stat: async (path) => {
         const entry = statPathEntries([path], new Set<string>())[0]
         return entry && !entry.missing ? { sizeBytes: entry.sizeBytes } : null
@@ -8848,13 +9312,18 @@ app.whenReady().then(async () => {
     parentWindow: () => shellWindow,
     lang: () => currentLang(),
     theme: () => currentTheme(),
-    openTargetTab: (handoff) => {
+    // the new tab follows the project of the window the create window was opened from (spec 6)
+    openTargetTab: (handoff, opener) => {
       revealShellWindow()
-      ensureTabManager().openGenerateTargetTab(handoff)
+      const manager = ensureTabManager()
+      const contents = manager.webContentsForTab(manager.openGenerateTargetTab(handoff))
+      if (contents) followOpenerProject(contents, opener)
     },
-    openConvertedTab: (doc) => {
+    openConvertedTab: (doc, opener) => {
       revealShellWindow()
-      ensureTabManager().openConversionResult(doc)
+      const manager = ensureTabManager()
+      const contents = manager.webContentsForTab(manager.openConversionResult(doc))
+      if (contents) followOpenerProject(contents, opener)
     },
     starredGroupPaths: (group) => {
       const groupOf = readStarredGroupMap()
@@ -9189,6 +9658,12 @@ app.on('will-quit', () => {
 
 /** what every way out of a normal run releases (will-quit, and an OS session end) */
 function releaseAppResources(): void {
+  // project use times held back to spare the settings file (written once a minute)
+  try {
+    projectFolderRuntime?.guide.flushTouches()
+  } catch {
+    // the settings file is not writable now; the list order is only a convenience
+  }
   fileIndexer?.stop()
   fileIndexStore?.close()
   for (const watcher of folderWatchers.values()) watcher.close()

@@ -7,6 +7,7 @@
   "description": "Shared helpers for the Electron main processes (no Electron dependency, pure TS)",
   "exports": {
     ".": "./src/index.ts",
+    "./ai-run-guard": "./src/ai-run-guard.ts",
     "./atomic-write": "./src/atomic-write.ts",
     "./drop-open": "./src/drop-open.ts",
     "./doc-attach-bridge": "./src/doc-attach-bridge.ts",
@@ -15,6 +16,7 @@
     "./drive-ai-channels": "./src/drive-ai-channels.ts",
     "./outbound-bridge": "./src/outbound-bridge.ts",
     "./outbound-channels": "./src/outbound-channels.ts",
+    "./project-folder-bridge": "./src/project-folder-bridge.ts",
     "./generated-images": "./src/generated-images.ts",
     "./font-store": "./src/font-store.ts",
     "./office-encryption": "./src/office-encryption.ts",

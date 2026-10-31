@@ -64,6 +64,9 @@ export interface ChartSeriesVisualState {
   /// Parent plot group (barChart, lineChart, ...); combo charts draw each
   /// series with its own group's type.
   plot?: string | undefined
+  /// Combo Select Data: this series rides the secondary axis pair. Only the
+  /// edit pipeline sets it; a reloaded file infers the axis from the group.
+  secondaryAxis?: boolean | undefined
 }
 
 /// One plot axis keyed by its side (b/t → x, l/r → y).
@@ -142,13 +145,21 @@ export interface ChartTextStyleState {
 }
 
 /// Numeric category labels (date serials, percents) render through their
-/// source number format instead of the raw number.
-export function formatCategoryLabel(raw: string, format: string | undefined): string {
+/// source number format instead of the raw number. `locale` picks the
+/// weekday/month names numfmt uses (Korean `aaa` must not print "Thu").
+export function formatCategoryLabel(
+  raw: string,
+  format: string | undefined,
+  locale?: string,
+): string {
   if (format === undefined || format === 'General' || raw.trim() === '') return raw
   const value = Number(raw)
   if (!Number.isFinite(value)) return raw
   try {
-    return numfmt.format(format, value, { throws: false })
+    return numfmt.format(format, value, {
+      throws: false,
+      ...(locale === undefined ? {} : { locale }),
+    })
   } catch {
     return raw
   }
@@ -348,9 +359,22 @@ export interface ChartStateEdit {
         valuesRef?: string | undefined
         categoriesRef?: string | undefined
         color?: string | undefined
+        /// Combo Select Data: plot group the series joins. A fully-tagged
+        /// set re-derives the chart's plot groups (a single family collapses
+        /// the combo into a plain chart).
+        plot?: ComboPlotFamily | undefined
+        /// Combo Select Data: the series rides the secondary axis pair.
+        secondaryAxis?: boolean | undefined
       }[]
     | undefined
 }
+
+/// Plot families a combo series replacement can group into (the suite's
+/// combo model is bars + lines, mirroring Insert Chart).
+export type ComboPlotFamily = 'barChart' | 'lineChart'
+
+/// Document order the save pipeline writes combo plot groups in.
+const COMBO_PLOT_ORDER: readonly ComboPlotFamily[] = ['barChart', 'lineChart']
 
 /// Switch Row/Column: cache-based transpose — old series names become the
 /// categories, each old category becomes a series (cell references cannot
@@ -367,6 +391,23 @@ export function transposeChartSeries(
     values: series.map((entry) => entry.values[index] ?? 0),
     categories: seriesNames,
   }))
+}
+
+/// Combo tagging for a full series replacement that carries no plot tags
+/// (Switch Row/Column): clustered columns on the primary axes, the last
+/// series a line on the secondary axis — Insert Chart's combo shape, so a
+/// transposed combo stays a combo instead of degrading to all-bars.
+export function comboSeriesSetDefaults(
+  entries: NonNullable<ChartStateEdit['seriesSet']>,
+): NonNullable<ChartStateEdit['seriesSet']> {
+  return entries.map((entry, index) => {
+    const line = entries.length >= 2 && index === entries.length - 1
+    return {
+      ...entry,
+      plot: (line ? 'lineChart' : 'barChart') as ComboPlotFamily,
+      secondaryAxis: line,
+    }
+  })
 }
 
 /// Chart families whose plot-level data labels the save pipeline can write
@@ -389,8 +430,18 @@ const SERIES_REPLACEABLE_PLOTS = new Set([
   'scatterChart',
 ])
 
+/// The multi-group combos the save pipeline can rebuild: exactly a bar and a
+/// line group, the suite's Insert Chart combo shape. Richer Excel combos
+/// (three families, scatter groups, 3D) fail closed.
+export function isComboChartTypes(chartTypes: readonly string[]): boolean {
+  return (
+    chartTypes.length === 2 && chartTypes.includes('barChart') && chartTypes.includes('lineChart')
+  )
+}
+
 export function chartSupportsSeriesReplace(chartTypes: readonly string[]): boolean {
-  return chartTypes.length === 1 && SERIES_REPLACEABLE_PLOTS.has(chartTypes[0] ?? '')
+  if (chartTypes.length === 1) return SERIES_REPLACEABLE_PLOTS.has(chartTypes[0] ?? '')
+  return isComboChartTypes(chartTypes)
 }
 
 export const CHART_EDIT_TYPES: Record<
@@ -456,6 +507,13 @@ export function applyChartStateEdit(
       ? 'standard'
       : edit.grouping
   const fallbackCategories = chart.series[0]?.categories ?? []
+  // A fully-tagged series set re-derives the plot groups: mixed families
+  // stay a combo, a single family collapses it into a plain chart.
+  const taggedPlots = edit.seriesSet?.map((entry) => entry.plot)
+  const derivedTypes =
+    taggedPlots !== undefined && taggedPlots.every((plot) => plot !== undefined)
+      ? COMBO_PLOT_ORDER.filter((family) => taggedPlots.includes(family))
+      : undefined
   // A full replacement drops every existing series (and their per-point
   // styling — matching the save-side rewrite).
   const baseSeries: ChartSeriesVisualState[] = edit.seriesSet
@@ -466,11 +524,14 @@ export function applyChartStateEdit(
         ...(entry.valuesRef === undefined ? {} : { valuesRef: entry.valuesRef }),
         ...(entry.categoriesRef === undefined ? {} : { categoriesRef: entry.categoriesRef }),
         ...(entry.color === undefined ? {} : { color: entry.color }),
+        ...(entry.plot === undefined ? {} : { plot: entry.plot }),
+        ...(entry.secondaryAxis === undefined ? {} : { secondaryAxis: entry.secondaryAxis }),
       }))
     : chart.series
   const valueAxis = mergeValueAxis(chart.valueAxis, edit.valueAxis)
   return {
     ...chart,
+    ...(derivedTypes === undefined ? {} : { chartTypes: derivedTypes }),
     ...(edit.title === undefined ? {} : { title: edit.title }),
     ...(edit.legend === undefined ? {} : { legend: edit.legend }),
     ...(edit.dataLabels === undefined ? {} : { dataLabels: edit.dataLabels }),
@@ -495,6 +556,11 @@ export function applyChartStateEdit(
       const data = edit.series?.find((entry) => entry.index === index)
       return {
         ...series,
+        // A type conversion lands on one plot group — stale combo tags
+        // (which group the series used to ride) must not survive it.
+        ...(typeOverride.chartTypes === undefined
+          ? {}
+          : { plot: undefined, secondaryAxis: undefined }),
         ...(color === undefined ? {} : { color }),
         ...(pointColors === undefined ? {} : { pointColors }),
         ...(pointExplosions === undefined ? {} : { pointExplosions }),

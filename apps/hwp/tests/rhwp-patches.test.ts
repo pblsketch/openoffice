@@ -9,6 +9,7 @@ import {
   APP_SCHEME,
   HANCOM_KEYS_MODULE,
   PASSWORD_FLAG,
+  PC_FONTS_MODULE,
   STUDIO_PATCHES,
   applyPatch,
   hancomHooks,
@@ -552,6 +553,131 @@ describe('rhwp font memo patches', () => {
   })
 })
 
+describe('rhwp PC fonts patch', () => {
+  // the studio's text around the patch, as the pinned release has it
+  const main = [
+    'import {',
+    '  clearStoredLocalFonts,',
+    '  detectLocalFonts,',
+    '  getLocalFontState,',
+    '  loadStoredLocalFonts,',
+    '  resolveLocalFont,',
+    "} from '@/core/local-fonts';",
+    '',
+    '    setupZoomControls();',
+    '    setupEventListeners();',
+    '    setupModalFocusRestore();',
+    '',
+  ].join('\n')
+  const patched = applyPatch('studio-pc-fonts', main)
+
+  it('looks at the PC once the studio listens for font changes, with its own detection', () => {
+    expect(patched).toContain(`import { refreshPcFonts } from '${PC_FONTS_MODULE}';`)
+    expect(patched).toContain('  getLocalFontRecords,\n')
+    const call = patched.indexOf('void refreshPcFonts({')
+    expect(call).toBeGreaterThan(patched.indexOf('setupEventListeners();'))
+    expect(call).toBeLessThan(patched.indexOf('setupModalFocusRestore();'))
+    expect(patched).toContain('detect: () => detectLocalFonts({ force: true }),')
+    expect(patched).toContain("eventBus.emit('local-fonts-changed'")
+  })
+
+  it('keeps CRLF sources working, fails when the text is gone, and is in the studio build', () => {
+    expect(applyPatch('studio-pc-fonts', main.replaceAll('\n', '\r\n'))).toContain(
+      'void refreshPcFonts({\r\n',
+    )
+    expect(() => applyPatch('studio-pc-fonts', main.replace('setupEventListeners', 'x'))).toThrow(
+      /studio-pc-fonts/,
+    )
+    expect(STUDIO_PATCHES).toContain('studio-pc-fonts')
+  })
+})
+
+describe('rhwp clipboard objects patch', () => {
+  // the studio's text around the patch, as the pinned release has it
+  const keyboard = [
+    "import { tableObjectClipboardTarget } from './table-object-clipboard-target';",
+    'export function onCopy(this: any, e: ClipboardEvent): void {',
+    '        } else {',
+    '          html = this.wasm.exportSelectionHtml(',
+    '            start.sectionIndex,',
+    '            start.paragraphIndex, start.charOffset,',
+    '            end.paragraphIndex, end.charOffset,',
+    '          );',
+    '        }',
+    '}',
+    '  const hasMatchingInternalControlText =',
+    '    this.wasm.clipboardHasControl?.() === true &&',
+    '    !!internalClipboardText &&',
+    '    text === internalClipboardText;',
+    '  const items = clipboardData?.items;',
+    '  if (items) {',
+    '    // 스냅샷으로 삽입 (Undo 지원)',
+    '        if (p.parentParaIndex !== undefined) return undefined;',
+    '        if (!parsed.ok) return undefined;',
+    '      if (isNestedCellPosition(p)) {',
+    '        result = wasm.pasteHtmlInCellByPath(',
+    '          p.sectionIndex, p.parentParaIndex!, JSON.stringify(p.cellPath), p.charOffset, htmlForCore,',
+    '        );',
+    '      } else if (p.parentParaIndex !== undefined) {',
+    '        result = wasm.pasteHtmlInCell(',
+    '          p.sectionIndex, p.parentParaIndex, p.controlIndex!,',
+    '          p.cellIndex!, p.cellParaIndex!, p.charOffset, htmlForCore,',
+    '        );',
+    '      }',
+  ].join('\n')
+
+  it('keep the caret in its cell when Hangul’s model is not pasted there', () => {
+    const patched = applyPatch('studio-clipboard-objects', keyboard)
+    expect(patched).toContain('        if (p.parentParaIndex !== undefined) return null;')
+    expect(patched).toContain(
+      '        if (!parsed.ok) return hasSelection ? this.cursor.getPosition() : null;',
+    )
+    expect(patched).not.toContain('return undefined;')
+  })
+
+  it('let the app put the pictures of HTML pasted into a cell', () => {
+    const patched = applyPatch('studio-clipboard-objects', keyboard)
+    expect(patched.match(/result = ieumPasteHtmlInCell\(wasm, p, htmlForCore,/g)).toHaveLength(2)
+    expect(patched).not.toMatch(/result = wasm\.pasteHtmlInCell/)
+  })
+
+  it('send a pasted picture file through the HTML paste first', () => {
+    const patched = applyPatch('studio-clipboard-objects', keyboard)
+    expect(patched).toContain(
+      [
+        '    const ieumHtml = ieumPictureHtml(data, ext, wHwp, hHwp);',
+        '    if (ieumHtml) {',
+        "      pasteExternalHtml.call(this, ieumHtml, '', hasSelection);",
+        '      return;',
+        '    }',
+        '    // 스냅샷으로 삽입 (Undo 지원)',
+      ].join('\n'),
+    )
+  })
+
+  it('let the app write a block, and leave another editor’s copy to that editor', () => {
+    const patched = applyPatch('studio-clipboard-objects', keyboard)
+    expect(patched).toContain(
+      "import { ieumPasteHtmlInCell, ieumPictureHtml, ieumSelectionHtml } from '@ieum/clipboard-html';",
+    )
+    expect(patched).toContain(
+      'html = ieumSelectionHtml(this.wasm,\n            start.sectionIndex,',
+    )
+    expect(patched).not.toContain('this.wasm.exportSelectionHtml(')
+    expect(patched).toContain(
+      '    text === internalClipboardText &&\n    readRhwpClipboardToken(html) === null;',
+    )
+    expect(patched).toContain('  if (items && readRhwpClipboardToken(html) === null) {')
+  })
+
+  it('fail when the text is gone, and are in the studio build', () => {
+    expect(() =>
+      applyPatch('studio-clipboard-objects', keyboard.replace('exportSelectionHtml', 'x')),
+    ).toThrow(/rhwp patch/)
+    expect(STUDIO_PATCHES).toContain('studio-clipboard-objects')
+  })
+})
+
 describe('the studio source the build fetched', () => {
   // build-studio.mjs keeps it under the tag the engine names (vendor/rhwp-core, decision 0050)
   const core = JSON.parse(
@@ -572,11 +698,13 @@ describe('the studio source the build fetched', () => {
     'src/core/wasm-bridge.ts',
     'src/engine/input-handler.ts',
     'src/engine/input-handler-keyboard.ts',
+    'src/engine/input-handler-text.ts',
     'src/engine/command.ts',
     'src/command/commands/edit.ts',
     'src/command/commands/insert.ts',
     'src/command/commands/table.ts',
     'src/command/shortcut-map.ts',
+    'src/ui/table-cell-props-dialog.ts',
     'src/command/registry.ts',
     'src/i18n/locales/ko.ts',
     'src/i18n/locales/en.ts',
@@ -656,7 +784,7 @@ describe('rhwp Hangul-key patches', () => {
     const patched = applyPatch('studio-hancom-commands', source)
     expect(patched).toContain("import { getLocale } from '@/i18n/core.ts';")
     expect(patched).toContain(
-      `import { hancomCommands, installHancomMainKeys, installHancomMenuItems } from '${HANCOM_KEYS_MODULE}';`,
+      `import { hancomCommands, installHancomMainKeys, installHancomMenuItems, installHanjaKey } from '${HANCOM_KEYS_MODULE}';`,
     )
     // the studio parts the new commands build on are handed over; the module imports none
     expect(patched).toContain(
@@ -676,6 +804,8 @@ describe('rhwp Hangul-key patches', () => {
     expect(patched).toContain('installHancomMenuItems(document, getLocale());')
     // the main process asks the editor about Ctrl+Shift+S and Ctrl+Shift+H through it
     expect(patched).toContain('installHancomMainKeys(window, () => inputHandler, dispatcher);')
+    // the Hanja key on a word already typed
+    expect(patched).toContain('installHanjaKey(window, () => inputHandler, dispatcher);')
   })
 
   it('give the bridge the page number calls of engine patch 0014', () => {

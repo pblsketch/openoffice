@@ -20,6 +20,15 @@ Editor e-book membuka buku EPUB (`.epub`) di sebuah tab. Anda bisa membaca buku,
 - Tautan di dalam buku membawa Anda ke tempat tujuannya. Tautan web dan email dibuka di peramban default Anda; alamat jenis lain tidak dibuka.
 - Skrip bawaan buku tidak pernah dijalankan dan tidak ada yang dimuat dari internet. Suara dan video tidak diputar.
 
+## Pratinjau
+
+- Klik **Pratinjau** di tab **Beranda** atau **Tampilan** untuk melihat buku per halaman, seperti yang ditampilkan e-reader. Pratinjau dibuka di tempat Anda sedang membaca.
+- Di bilah atas, pilih layar (**E-reader**, **Ponsel**, **Tablet**, atau **Sesuaikan jendela**), lanskap, ukuran teks, dan warna latar (putih, sepia, atau gelap). Layar lebar yang dimiringkan menampilkan dua halaman berdampingan. Pengaturan ini hanya mengubah pratinjau, tidak pernah mengubah buku.
+- Balik halaman dengan tombol panah, Page Up dan Page Down, spasi, roda mouse, atau tombol di kedua sisi. Membalik melewati halaman terakhir sebuah bab akan berlanjut ke bab berikutnya. Daftar isi dan tautan di dalam buku memindahkan pratinjau ke tempat itu.
+- Teks tidak dapat disunting di pratinjau. Saat AI mengubah buku atau Anda membatalkan perubahan, pratinjau ikut berubah.
+- Klik **Tutup pratinjau** atau tekan Esc untuk kembali menyunting, di tempat yang sedang ditampilkan pratinjau.
+- Pemisahan halaman sedikit berbeda di setiap aplikasi toko dan perangkat, jadi anggap pratinjau sebagai gambaran yang mendekati.
+
 ## Menyunting teks
 
 - Klik sebuah paragraf lalu mulailah mengetik. Paragraf, judul, butir daftar, kutipan, sel tabel, dan keterangan gambar dapat disunting. Gambar dan tata letak tabel tidak dapat disunting.
@@ -63,6 +72,6 @@ Editor e-book membuka buku EPUB (`.epub`) di sebuah tab. Anda bisa membaca buku,
 
 - Menambah, menghapus, atau mengurutkan ulang bab; mengubah judul, penulis, atau sampul; menyisipkan gambar atau tabel; mengubah paragraf menjadi judul atau daftar.
 - Menyunting atau menerjemahkan buku bertata letak tetap, dan membuka buku yang dilindungi salin.
-- Membalik halaman seperti buku cetak, dan membuat buku baru yang kosong.
+- Membuat buku baru yang kosong.
 - Membandingkan teks asli dan terjemahan berdampingan di dalam editor. Sebagai gantinya, buka buku dwibahasa, lalu perbaiki buku terjemahan seperti buku lainnya.
 - Menyembunyikan bagian buku dari AI.

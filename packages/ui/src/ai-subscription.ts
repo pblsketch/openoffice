@@ -542,6 +542,7 @@ export const AI_BLOCKED_RUN_KINDS = [
   'unsafe-tools',
   'not-connected',
   'free-limit',
+  'free-tier-model',
 ] as const satisfies readonly AiRunErrorKind[]
 
 export type AiBlockedRunKind = (typeof AI_BLOCKED_RUN_KINDS)[number]
@@ -649,6 +650,8 @@ export function aiRunErrorText(
       return hasTime
         ? aiSubscriptionText(lang, 'errFreeLimitReset', { time })
         : aiSubscriptionText(lang, 'errFreeLimit')
+    case 'free-tier-model':
+      return aiSubscriptionText(lang, 'errFreeTierModel')
     case 'context-limit':
       return aiContextText(lang, 'errContextLimit')
     default:

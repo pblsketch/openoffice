@@ -24,7 +24,12 @@ const SHELL_MAIN = join(SHELL_DIR, 'out/main/index.js')
  * one is read as predating the provider settings and falls back to the
  * defaults, which would drop the flag.
  */
-const AI_SETTINGS_NOTICE_SEEN = { providers: {}, subscriptionNoticeSeen: true }
+const AI_SETTINGS_NOTICE_SEEN = {
+  providers: {},
+  subscriptionNoticeSeen: true,
+  subscriptionNoticeVersion: 2,
+  pdfSendNoticeSeen: 1,
+}
 
 interface LaunchOptions {
   /** reuse a previous scratch dir to simulate a second launch */

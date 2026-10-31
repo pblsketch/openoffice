@@ -44,6 +44,7 @@ Menu Arquivo, tudo local e tudo pergunta onde colocar o resultado:
 
 O friso traz um interruptor **Código-fonte** (localizado com a aplicação). Ligue-o e o editor é substituído pelo Markdown em bruto: exatamente o texto que uma gravação escreve, nada embelezado, nada normalizado por baixo de si.
 
+- **Teclado**: Ctrl+E (⌘E no Mac) alterna entre a vista de código-fonte e a tela de edição renderizada. Pressione F5 para ler em tela cheia.
 - **A edição é fiel byte a byte.** Uma gravação a partir da vista de código-fonte produz exatamente os mesmos bytes que uma gravação a partir do editor — o BOM, o CRLF e a presença de uma quebra de linha no fim sobrevivem todos.
 - **É o mesmo documento.** Alterne para um lado e para o outro à vontade; a fonte é o próprio texto do editor, não uma cópia que seja preciso fundir.
 - **A barra de formatação fica indisponível** enquanto a vista está aberta, porque a maioria desses botões insere construções do editor que só têm significado do lado renderizado. Reaparece quando fecha a vista.

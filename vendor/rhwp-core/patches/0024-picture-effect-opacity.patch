@@ -1,0 +1,280 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pblsketch <239486537+pblsketch@users.noreply.github.com>
+Date: Thu, 29 Oct 2026 00:00:00 +0900
+Subject: [PATCH 24/25] =?UTF-8?q?fix(rendering):=20=EB=B0=9D=EA=B8=B0?=
+ =?UTF-8?q?=C2=B7=EB=8C=80=EB=B9=84=EB=A5=BC=20=EC=A1=B0=EA=B8=88=20?=
+ =?UTF-8?q?=EB=B0=94=EA=BE=BC=20=EA=B7=B8=EB=A6=BC=EC=9D=84=20=EC=9B=8C?=
+ =?UTF-8?q?=ED=84=B0=EB=A7=88=ED=81=AC=20=EB=B0=98=ED=88=AC=EB=AA=85?=
+ =?UTF-8?q?=EC=9C=BC=EB=A1=9C=20=EA=B7=B8=EB=A6=AC=EC=A7=80=20=EC=95=8A?=
+ =?UTF-8?q?=EB=8A=94=EB=8B=A4?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+회색조 + 밝기 −4 · 대비 −25 인 칸 배경 그림(교재 머리말 장식 막대)을 한컴
+한글 2024 는 불투명하게, 밝기·대비만 적용해 그린다(원본 255 → 213,
+125 → 115). 엔진은 두 군데서 이보다 옅게 그렸다.
+
+1. 워터마크 판정. "밝기·대비가 둘 다 0 이 아니면 워터마크"로 보아 이런
+   그림에도 투명도 0.17(LEGACY_IMAGE_WATERMARK_OPACITY)을 얹었다. 저장
+   파일에는 워터마크 비트가 없고, 한컴의 "워터마크 효과"는 밝기 70 · 대비
+   −50 을 넣는다. 반투명 합성을 이 값에만 쓴다(SVG 그림·쪽 배경, 웹
+   Canvas 그림·쪽 배경, skia 쪽 배경). `.hwp` 그림 레코드는 두 칸을
+   대비·밝기 순으로 IR 에 담으므로 (−50, 70) 도 같은 값으로 본다.
+   JPEG 워터마크 bake 술어(image_resolver::is_watermark_image)와 문서
+   메타정보의 워터마크 표시는 그대로 둔다.
+
+2. 필터 색공간. SVG 밝기·대비 필터를 기본 색공간(linearRGB)에서 계산해
+   같은 막대가 235 · 133 으로 나왔다. color-interpolation-filters="sRGB"
+   로 계산하면 212 · 115 로 한컴과 같다. 공개 견본 「2025 행정업무운영
+   편람(최종).hwpx」 3쪽 그림(밝기 8)도 한컴 인쇄 PDF 와의 평균 오차가
+   6.6 → 0.3 단계로 줄었다.
+
+합성 견본 samples/picture-effect/gray-cell-fill-brightness-contrast.hwpx
+(2행 표, 같은 회색조 그림 칸 채우기: 밝기 −4 · 대비 −25 / 70 · −50)와
+시험을 더했다. 저장 결과는 바뀌지 않는다.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+IeumOffice patch onto v0.8.7 (not proposed upstream yet).
+---
+ src/renderer/render_tree.rs   | 28 +++++++++++
+ src/renderer/skia/renderer.rs |  2 +-
+ src/renderer/svg.rs           | 10 ++--
+ src/renderer/svg/tests.rs     | 88 +++++++++++++++++++++++++++++++++++
+ src/renderer/web_canvas.rs    |  5 +-
+ 5 files changed, 127 insertions(+), 6 deletions(-)
+
+diff --git a/src/renderer/render_tree.rs b/src/renderer/render_tree.rs
+index a2f5dcf2c..5cb8f0ce8 100644
+--- a/src/renderer/render_tree.rs
++++ b/src/renderer/render_tree.rs
+@@ -83,6 +83,24 @@ pub const REAL_PICTURE_WATERMARK_FILL_CHROMA_GAIN: f64 = 0.42;
+ pub const REAL_PICTURE_WATERMARK_FILL_WHITE_BLEND: f64 = 0.16;
+ pub const LEGACY_IMAGE_WATERMARK_OPACITY: f64 = 0.17;
+ 
++/// 한컴 "워터마크 효과"가 넣는 밝기·대비 값(밝기 70 · 대비 −50)인지.
++///
++/// [`LEGACY_IMAGE_WATERMARK_OPACITY`] 반투명 합성은 이 값에만 쓴다. 저장 파일에는
++/// 워터마크 비트가 없고, 한컴은 "워터마크 효과"를 켜면 이 두 값을 넣는다. 종전에는
++/// "밝기·대비가 둘 다 0 이 아니면 워터마크"로 보아, 밝기·대비를 조금 바꾼 그림까지
++/// 반투명으로 그렸다. 회색조 + 밝기 −4 · 대비 −25 인 칸 배경 막대를 한컴 한글 2024 는
++/// 불투명하게, 밝기·대비만 적용해 그린다(원본 255 → 213, 125 → 115 — SVG
++/// `ensure_brightness_contrast_filter` 의 선형식을 sRGB 값에 건 결과와 같다). 엔진은 같은 값에 투명도
++/// 0.17 을 더 얹어 막대가 거의 보이지 않았다.
++///
++/// 인자 순서를 가리지 않는다. HWP5 그림 레코드(`SC_PICTURE`)는 두 칸을 대비·밝기
++/// 순으로 저장하고 IR 이 그 순서를 그대로 담는다(`hwpx_to_hwp` 의
++/// `normalize_picture_geometry_for_hwp` 참조). 그래서 `.hwp` 그림의 [`ImageNode`] 는
++/// 이 프리셋을 `(-50, 70)` 으로, `.hwpx` 그림과 채우기 그림은 `(70, -50)` 으로 나른다.
++pub fn is_hancom_watermark_preset(a: i8, b: i8) -> bool {
++    matches!((a, b), (70, -50) | (-50, 70))
++}
++
+ /// 한컴 "워터마크 효과" 프리셋(밝기 70 · 대비 −50)인지.
+ ///
+ /// [#6895] 인자는 **화면 순서**다. 종전에는 이진 저장 순서(`-50, 70`)로 적혀 있었는데,
+@@ -807,6 +825,11 @@ impl PageBackgroundImage {
+         self.brightness != 0 && self.contrast != 0
+     }
+ 
++    /// 반투명 합성 대상인 한컴 워터마크 값인지 ([`is_hancom_watermark_preset`]).
++    pub fn is_watermark_preset(&self) -> bool {
++        is_hancom_watermark_preset(self.brightness, self.contrast)
++    }
++
+     pub fn is_real_picture_watermark_tone_preset(&self) -> bool {
+         // 이 구조체는 이진 저장 순서를 담으므로 화면 순서로 바꿔 넘긴다(#6895).
+         let (bright, contrast) = self.display_brightness_contrast();
+@@ -1512,6 +1535,11 @@ impl ImageNode {
+         self.brightness != 0 && self.contrast != 0
+     }
+ 
++    /// 반투명 합성 대상인 한컴 워터마크 값인지 ([`is_hancom_watermark_preset`]).
++    pub fn is_watermark_preset(&self) -> bool {
++        is_hancom_watermark_preset(self.brightness, self.contrast)
++    }
++
+     pub fn is_real_picture_watermark_tone_preset(&self) -> bool {
+         // `ImageNode` 의 두 필드는 이미 화면 순서다(#6895).
+         is_real_picture_watermark_tone_preset(self.effect, self.brightness, self.contrast)
+diff --git a/src/renderer/skia/renderer.rs b/src/renderer/skia/renderer.rs
+index 8b66c148b..4b4f3a98a 100644
+--- a/src/renderer/skia/renderer.rs
++++ b/src/renderer/skia/renderer.rs
+@@ -1019,7 +1019,7 @@ impl SkiaLayerRenderer {
+                                 let legacy_non_realpic_watermark = !matches!(
+                                     image.effect,
+                                     crate::model::image::ImageEffect::RealPic
+-                                ) && image.is_watermark();
++                                ) && image.is_watermark_preset();
+                                 let needs_watermark_opacity =
+                                     preserve_color_watermark || legacy_non_realpic_watermark;
+                                 if needs_watermark_opacity {
+diff --git a/src/renderer/svg.rs b/src/renderer/svg.rs
+index a737a03f4..8fb30c143 100644
+--- a/src/renderer/svg.rs
++++ b/src/renderer/svg.rs
+@@ -1911,7 +1911,7 @@ impl SvgRenderer {
+         // 워터마크(GrayScale/Pattern 등)는 legacy opacity 계약을 계속 따른다.
+         let needs_watermark_opacity = preserve_color_watermark
+             || (!matches!(img.effect, crate::model::image::ImageEffect::RealPic)
+-                && img.is_watermark());
++                && img.is_watermark_preset());
+         if needs_watermark_opacity {
+             let opacity = if preserve_color_watermark {
+                 REAL_PICTURE_WATERMARK_PAGE_OPACITY
+@@ -2146,8 +2146,9 @@ impl SvgRenderer {
+         }
+         // 워터마크 반투명 영역. JPEG baked 워터마크는 이미 한컴 톤으로 픽셀화되어
+         // 있으므로 추가 opacity를 적용하지 않는다.
++        // 밝기·대비를 조금 바꾼 그림은 필터만 적용하고 불투명하게 둔다(한컴과 같다).
+         let needs_watermark_opacity =
+-            preserve_color_watermark || (is_watermark_image && !baked_watermark);
++            preserve_color_watermark || (img.is_watermark_preset() && !baked_watermark);
+         if needs_watermark_opacity {
+             let opacity = if preserve_color_watermark {
+                 REAL_PICTURE_WATERMARK_FILL_OPACITY
+@@ -2366,8 +2367,11 @@ impl SvgRenderer {
+         let slope = (100.0 + contrast as f64) / 100.0;
+         let intercept = (0.5 - 0.5 * slope) + b;
+ 
++        // 선형식은 sRGB 값에 그대로 건다. SVG 필터 기본 색공간(linearRGB)에서 계산하면
++        // 밝기 −4 · 대비 −25 의 회색조 막대가 255 → 235, 125 → 133 으로 한컴(213, 115)보다
++        // 옅게 나온다. sRGB 에서 계산한 값이 한컴 한글 2024 와 같다.
+         let def = format!(
+-            "<filter id=\"{id}\">\
++            "<filter id=\"{id}\" color-interpolation-filters=\"sRGB\">\
+                 <feComponentTransfer>\
+                     <feFuncR type=\"linear\" slope=\"{slope:.4}\" intercept=\"{intercept:.4}\"/>\
+                     <feFuncG type=\"linear\" slope=\"{slope:.4}\" intercept=\"{intercept:.4}\"/>\
+diff --git a/src/renderer/svg/tests.rs b/src/renderer/svg/tests.rs
+index 49cc56b36..8d3e6132d 100644
+--- a/src/renderer/svg/tests.rs
++++ b/src/renderer/svg/tests.rs
+@@ -1148,6 +1148,89 @@ fn test_background_image_realpic_watermark_fill_preserves_color_with_opacity() {
+     );
+ }
+ 
++/// 회색조 칸 배경 그림의 밝기·대비를 조금 바꾼 것(밝기 −4 · 대비 −25)은 워터마크가
++/// 아니다. 한컴 한글 2024 는 밝기·대비만 적용해 불투명하게 그린다 — 반투명 합성이
++/// 얹히면 머리말 장식 막대가 거의 보이지 않는다.
++#[test]
++fn test_image_node_mild_brightness_contrast_stays_opaque() {
++    let mut image = ImageNode::new(1, Some(make_minimal_tiff_2x2()));
++    image.fill_mode = Some(ImageFillMode::FitToSize);
++    image.effect = crate::model::image::ImageEffect::GrayScale;
++    image.brightness = -4;
++    image.contrast = -25;
++    let bbox = BoundingBox::new(10.0, 20.0, 100.0, 5.0);
++    let mut renderer = SvgRenderer::new();
++    renderer.begin_page(200.0, 100.0);
++
++    renderer.render_image_node(&image, &bbox);
++
++    let output = renderer.output();
++    assert!(
++        output.contains("rhwp-img-grayscale"),
++        "회색조 효과는 그대로 적용한다: {output}"
++    );
++    assert!(
++        output.contains("rhwp-img-bc-b-4c-25"),
++        "밝기·대비 필터는 그대로 적용한다: {output}"
++    );
++    assert!(
++        !output.contains("<g opacity="),
++        "워터마크 값이 아닌 밝기·대비에 반투명 합성을 얹으면 안 된다: {output}"
++    );
++}
++
++/// 한컴 워터마크 값(밝기 70 · 대비 −50)은 종전대로 반투명 합성한다. `.hwp` 그림
++/// 레코드는 두 값을 대비·밝기 순으로 담아 `(-50, 70)` 으로 오므로 그 순서도 같다.
++#[test]
++fn test_image_node_watermark_preset_keeps_legacy_opacity_in_both_orders() {
++    for (brightness, contrast) in [(70, -50), (-50, 70)] {
++        let mut image = ImageNode::new(1, Some(make_minimal_tiff_2x2()));
++        image.fill_mode = Some(ImageFillMode::FitToSize);
++        image.effect = crate::model::image::ImageEffect::GrayScale;
++        image.brightness = brightness;
++        image.contrast = contrast;
++        let bbox = BoundingBox::new(10.0, 20.0, 100.0, 50.0);
++        let mut renderer = SvgRenderer::new();
++        renderer.begin_page(200.0, 100.0);
++
++        renderer.render_image_node(&image, &bbox);
++
++        let output = renderer.output();
++        assert!(
++            output.contains(&format!(
++                "<g opacity=\"{}\">",
++                LEGACY_IMAGE_WATERMARK_OPACITY
++            )),
++            "워터마크 값 ({brightness}, {contrast}) 은 반투명 합성을 유지한다: {output}"
++        );
++    }
++}
++
++/// 쪽 배경도 같다. `PageBackgroundImage` 는 이진 저장 순서(대비, 밝기)를 담는다.
++#[test]
++fn test_page_background_mild_brightness_contrast_stays_opaque() {
++    let png = bmp_bytes_to_png_bytes(&make_minimal_bmp_2x2()).expect("BMP->PNG 변환 실패");
++    let image = PageBackgroundImage {
++        data: png,
++        fill_mode: ImageFillMode::FitToSize,
++        brightness: -25,
++        contrast: -4,
++        effect: crate::model::image::ImageEffect::GrayScale,
++    };
++    let bbox = BoundingBox::new(10.0, 20.0, 100.0, 50.0);
++    let mut renderer = SvgRenderer::new();
++    renderer.begin_page(200.0, 100.0);
++
++    renderer.render_page_background_image(&image, &bbox);
++
++    let output = renderer.output();
++    assert!(output.contains("rhwp-img-bc-b-4c-25"), "{output}");
++    assert!(
++        !output.contains("<g opacity="),
++        "워터마크 값이 아닌 쪽 배경에 반투명 합성을 얹으면 안 된다: {output}"
++    );
++}
++
+ #[test]
+ fn test_brightness_contrast_filter_zero_returns_none() {
+     let mut renderer = SvgRenderer::new();
+@@ -1167,6 +1250,11 @@ fn test_brightness_contrast_filter_nonzero_adds_defs() {
+     assert!(def.contains(&format!("id=\"{}\"", id)));
+     assert!(def.contains("<feComponentTransfer>"));
+     assert!(def.contains("feFuncR"));
++    // 한컴의 밝기·대비는 sRGB 값에 거는 선형식과 같다(기본 linearRGB 면 옅어진다).
++    assert!(
++        def.contains("color-interpolation-filters=\"sRGB\""),
++        "{def}"
++    );
+ }
+ 
+ #[test]
+diff --git a/src/renderer/web_canvas.rs b/src/renderer/web_canvas.rs
+index 4b6fde7db..92238baa1 100644
+--- a/src/renderer/web_canvas.rs
++++ b/src/renderer/web_canvas.rs
+@@ -847,7 +847,7 @@ impl WebCanvasRenderer {
+             // 아니다. 다만 기존 비-RealPic 워터마크는 legacy opacity 계약을 유지한다.
+             let needs_watermark_opacity = preserve_color_watermark
+                 || (!matches!(img.effect, crate::model::image::ImageEffect::RealPic)
+-                    && img.is_watermark());
++                    && img.is_watermark_preset());
+             if needs_watermark_opacity {
+                 let opacity = if preserve_color_watermark {
+                     REAL_PICTURE_WATERMARK_PAGE_OPACITY
+@@ -1109,8 +1109,9 @@ impl WebCanvasRenderer {
+             if let Some(ref f) = filter_str {
+                 self.ctx.set_filter(f);
+             }
++            // 밝기·대비를 조금 바꾼 그림은 필터만 적용하고 불투명하게 둔다(한컴과 같다).
+             let needs_watermark_opacity =
+-                preserve_color_watermark || (is_watermark_image && !baked_watermark);
++                preserve_color_watermark || (img.is_watermark_preset() && !baked_watermark);
+             let watermark_opacity = if needs_watermark_opacity {
+                 if preserve_color_watermark {
+                     REAL_PICTURE_WATERMARK_FILL_OPACITY

@@ -16,7 +16,6 @@ import {
   addColumnBefore,
   addRowAfter,
   addRowBefore,
-  deleteColumn,
   deleteRow,
   deleteTable,
   mergeCells,
@@ -79,6 +78,7 @@ import type { InkTool } from '../editor/ink'
 import type { RibbonFormatState } from './ribbon-format-state'
 import { distributeSelectedColumns, setSelectedColumnWidth } from '../editor/table-sizing'
 import {
+  deleteTableColumn,
   distributeRowsEvenly,
   enterSelectedTable,
   selectTablePart,
@@ -1569,7 +1569,10 @@ function RibbonInner({
         chain().updateAttributes('docParagraph', { listMarker: null }).run()
         return
       }
-      const numId = findNumIdOfKind(blocks, kind) ?? allocateNumId?.(kind) ?? null
+      const numId =
+        kind === 'ordered'
+          ? (allocateNumId?.(kind) ?? null)
+          : (findNumIdOfKind(blocks, kind) ?? allocateNumId?.(kind) ?? null)
       if (!numId) return
       const text = kind === 'bullet' ? '•' : '1.'
       chain()
@@ -2857,7 +2860,7 @@ function RibbonInner({
                       </button>
                       {(
                         [
-                          ['ribbonDeleteColumn', IconColDelete, deleteColumn],
+                          ['ribbonDeleteColumn', IconColDelete, deleteTableColumn],
                           ['ribbonDeleteRow', IconRowDelete, deleteRow],
                           ['ribbonDeleteTable', IconTableDelete, deleteTable],
                         ] as Array<[StringKey, (props: { size?: number }) => ReactNode, Command]>

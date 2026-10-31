@@ -21,6 +21,7 @@ Hell / Dunkel / System folgen. „System folgen“ richtet sich nach dem Erschei
 - **KI-Panel** — Aus, Eingeklappt oder Letzter Zustand.
 - **Alle Dokumente automatisch speichern** schaltet AutoSave in jedem Editor standardmäßig ein; für ein einzelnes Fenster können Sie es weiterhin abschalten.
 - **Speicherort** mit der Schaltfläche **Ändern** und **Standard-App für Office-Dokumente**, um .docx / .xlsx / .pptx für GenOffice zu beanspruchen.
+- **Speicherformat für neue HWP-Dokumente** legt fest, ob beim ersten Speichern eines neuen Dokuments zuerst HWP oder HWPX angeboten wird. Geöffnete Dokumente behalten ihr eigenes Format.
 
 GenOffice erhebt und sendet keine Nutzungsstatistiken; deshalb gibt es dafür auch keinen Schalter.
 

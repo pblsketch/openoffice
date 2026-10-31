@@ -20,6 +20,7 @@ import {
   hancomTableObjectKey,
   letterOf,
   MAIN_PROCESS_KEYS,
+  quickCorrectTyped,
   resizeRowColumnBlock,
   resizeSelectedCell,
   studioCommandIds,
@@ -1415,5 +1416,59 @@ describe('against the studio source the build fetched', () => {
     expect(match({ key: 'M', code: 'KeyM', ctrlKey: true, shiftKey: true })).toBe(
       'format:align-justify',
     )
+  })
+})
+
+describe("빠른 교정: straight quotes become curly ones (Hangul's 입력 자동 서식)", () => {
+  /** The editor's input handler as far as the correction reads it: the caret and the text before it. */
+  const typing = (
+    before: string,
+    options: { composing?: boolean; header?: boolean; footnote?: boolean } = {},
+  ) => ({
+    isComposing: options.composing === true,
+    cursor: {
+      isInHeaderFooter: () => options.header === true,
+      isInFootnote: () => options.footnote === true,
+    },
+    getCursorPosition: () => ({ sectionIndex: 0, paragraphIndex: 0, charOffset: before.length }),
+    getTextAt: (pos: { charOffset: number }, count: number) =>
+      before.slice(pos.charOffset, pos.charOffset + count),
+  })
+
+  it('opens after a blank or at the start of a paragraph, as Hangul does', () => {
+    expect(quickCorrectTyped(typing('그는 '), '"', 'insertText')).toBe('“')
+    expect(quickCorrectTyped(typing(''), '"', 'insertText')).toBe('“')
+    expect(quickCorrectTyped(typing('	'), '"', 'insertText')).toBe('“')
+    expect(quickCorrectTyped(typing('("'), '"', 'insertText')).toBe('”')
+  })
+
+  it('closes after any other character', () => {
+    expect(quickCorrectTyped(typing('안녕'), '"', 'insertText')).toBe('”')
+    expect(quickCorrectTyped(typing('word'), "'", 'insertText')).toBe('’')
+    expect(quickCorrectTyped(typing('그는 '), "'", 'insertText')).toBe('‘')
+  })
+
+  it('leaves what is pasted or dropped, and what the IME is composing', () => {
+    expect(quickCorrectTyped(typing('그는 '), '"', 'insertFromPaste')).toBe('"')
+    expect(quickCorrectTyped(typing('그는 '), '"', 'insertFromDrop')).toBe('"')
+    expect(quickCorrectTyped(typing('그는 ', { composing: true }), '"', 'insertText')).toBe('"')
+    expect(
+      quickCorrectTyped(typing('그는 ', { composing: true }), '한', 'insertCompositionText'),
+    ).toBe('한')
+  })
+
+  it('leaves a header, a footer and a note as they are', () => {
+    expect(quickCorrectTyped(typing('머리말 ', { header: true }), '"', 'insertText')).toBe('"')
+    expect(quickCorrectTyped(typing('각주 ', { footnote: true }), '"', 'insertText')).toBe('"')
+  })
+
+  it('leaves every other character alone', () => {
+    expect(quickCorrectTyped(typing('그는 '), 'a', 'insertText')).toBe('a')
+    expect(quickCorrectTyped(typing('그는 '), '“', 'insertText')).toBe('“')
+  })
+
+  it('reads Ctrl+Q,I (and Ctrl+Q,D) for 문서 정보, as Hangul does', () => {
+    expect(CHORDS.q.i).toBe('ieum:document-info')
+    expect(CHORDS.q.d).toBe('ieum:document-info')
   })
 })

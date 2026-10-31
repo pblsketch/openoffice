@@ -333,4 +333,91 @@ describe('the bundle', () => {
     expect(second.skills.map((skill) => skill.name)).toEqual(['beta'])
     expect(readdirSync(join(bundle, 'skills'))).toEqual(['beta'])
   })
+
+  it('brings a plugin’s other files so ${CLAUDE_PLUGIN_ROOT} resolves, without hooks or MCP', async () => {
+    const plugin = temp()
+    const skill = join(plugin, 'skills', 'pdf')
+    mkdirSync(join(skill, 'scripts'), { recursive: true })
+    writeFileSync(
+      join(skill, 'SKILL.md'),
+      skillMd('pdf', 'Run `${CLAUDE_PLUGIN_ROOT}/scripts/run.js`.'),
+    )
+    mkdirSync(join(plugin, 'scripts'), { recursive: true })
+    writeFileSync(join(plugin, 'scripts', 'run.js'), 'console.log("plugin")\n')
+    mkdirSync(join(plugin, 'hooks'), { recursive: true })
+    writeFileSync(join(plugin, 'hooks', 'hook.js'), 'console.log("hook")\n')
+    mkdirSync(join(plugin, '.claude-plugin'), { recursive: true })
+    writeFileSync(join(plugin, '.claude-plugin', 'plugin.json'), '{"name":"upstream"}')
+    writeFileSync(join(plugin, '.mcp.json'), '{"mcpServers":{}}')
+    const bundle = temp()
+
+    const result = await buildAgentSkillBundle(
+      [input('plugin', skill, 'pdf', { plugin: 'upstream' })],
+      bundle,
+    )
+
+    expect(result.skills.map((entry) => entry.name)).toEqual(['pdf'])
+    expect(existsSync(join(bundle, 'scripts', 'run.js'))).toBe(true)
+    expect(existsSync(join(bundle, 'hooks'))).toBe(false)
+    expect(existsSync(join(bundle, '.mcp.json'))).toBe(false)
+    expect(readFileSync(join(bundle, '.claude-plugin', 'plugin.json'), 'utf8')).toContain(
+      'ieum-skills',
+    )
+    // the model reads the variable; Claude expands it to this same root
+    expect(readFileSync(join(bundle, 'skills', 'pdf', 'SKILL.md'), 'utf8')).toContain(
+      '${CLAUDE_PLUGIN_ROOT}/scripts/run.js',
+    )
+  })
+
+  it('copies only scripts, references and assets from a plugin root', async () => {
+    const plugin = temp()
+    const skill = join(plugin, 'skills', 'pdf')
+    mkdirSync(skill, { recursive: true })
+    writeFileSync(join(skill, 'SKILL.md'), skillMd('pdf', 'Read the references.'))
+    for (const dir of ['scripts', 'references', 'assets']) {
+      mkdirSync(join(plugin, dir, 'nested'), { recursive: true })
+      writeFileSync(join(plugin, dir, 'nested', 'file.txt'), dir)
+    }
+    // what Claude would load from a plugin root by itself
+    writeFileSync(join(plugin, '.lsp.json'), '{"x":{"command":"node","args":["x.js"]}}')
+    mkdirSync(join(plugin, 'monitors'), { recursive: true })
+    writeFileSync(join(plugin, 'monitors', 'monitors.json'), '[]')
+    mkdirSync(join(plugin, 'bin'), { recursive: true })
+    writeFileSync(join(plugin, 'bin', 'tool'), 'echo tool\n')
+    writeFileSync(join(plugin, 'settings.json'), '{"agent":"x"}')
+    mkdirSync(join(plugin, 'hooks'), { recursive: true })
+    writeFileSync(join(plugin, 'hooks', 'hooks.json'), '{"hooks":{}}')
+    writeFileSync(join(plugin, '.mcp.json'), '{"mcpServers":{}}')
+    mkdirSync(join(plugin, 'agents'), { recursive: true })
+    writeFileSync(join(plugin, 'agents', 'a.md'), 'agent')
+    mkdirSync(join(plugin, 'commands'), { recursive: true })
+    writeFileSync(join(plugin, 'commands', 'c.md'), 'command')
+    mkdirSync(join(plugin, 'output-styles'), { recursive: true })
+    writeFileSync(join(plugin, 'output-styles', 's.md'), 'style')
+    writeFileSync(join(plugin, 'README.md'), 'readme')
+    const bundle = temp()
+
+    await buildAgentSkillBundle([input('plugin', skill, 'pdf', { plugin: 'upstream' })], bundle)
+
+    for (const dir of ['scripts', 'references', 'assets']) {
+      expect(readFileSync(join(bundle, dir, 'nested', 'file.txt'), 'utf8')).toBe(dir)
+    }
+    for (const entry of [
+      '.lsp.json',
+      'monitors',
+      'bin',
+      'settings.json',
+      'hooks',
+      '.mcp.json',
+      'agents',
+      'commands',
+      'output-styles',
+      'README.md',
+    ]) {
+      expect(existsSync(join(bundle, entry)), entry).toBe(false)
+    }
+    expect(readdirSync(bundle).sort()).toEqual(
+      ['.claude-plugin', '.ieum-skills.json', 'assets', 'references', 'scripts', 'skills'].sort(),
+    )
+  })
 })

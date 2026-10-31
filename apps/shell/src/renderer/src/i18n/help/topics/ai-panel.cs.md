@@ -36,6 +36,13 @@ V panelu AI editorů Docs, Sheets, Slides, hangul, HTML a myšlenkových map mů
 - Když mají dva dokumenty stejný název, ale leží v různých složkách, přidá se název složky bezprostředně nad nimi, například `@plán.docx(2. pololetí)`, a tento název složky dostane i AI.
 - Editory PDF a Markdown zatím přílohy nemají, takže tam není k dispozici ani jeden způsob.
 
+## Projekty
+
+- Projekt (jednu složku ve vašem počítači) vyberete kliknutím na název projektu vlevo pod vstupním polem. AI pak odpovídá se znalostí souborů, pokynů a paměti z této složky a konverzace se uloží do složky, takže v ní můžete pokračovat v jiném editoru. Viz [Projekty](help://projects).
+- S vybraným projektem se nahoře v panelu zobrazí název aktuální konverzace. Kliknutím na něj otevřete seznam konverzací projektu a **Nová konverzace**.
+- Seznam `@` ve vstupním poli ukazuje za otevřenými dokumenty „Soubory v tomto projektu“.
+- Požadavek s vybraným projektem posílá AI, kterou používáte, také pokyny projektu (spolu s `AGENTS.md` a `CLAUDE.md` v kořeni složky, které lze vypnout na stránce projektu), jeho paměť a seznam názvů souborů, krátký úryvek z každého souboru, který AI najde při hledání ve složce, a k tomu text každého souboru, který si AI přečte.
+
 ## Vrácení zpět a bezpečnost
 
 - Panel v Docs vede **seznam verzí**: jeden snímek na krok, můžete se vrátit k libovolnému a samotný návrat lze zase vrátit pomocí Ctrl+Z. Snímy přežijí i znovu otevření dokumentu.

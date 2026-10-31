@@ -81,4 +81,6 @@ export const zh = {
   errNeedsUpdate: '程序版本过旧，无法使用智能体模式。请更新后重试。',
   errNotInstalled: '未安装此程序。',
   errGeneric: '出现问题。请重试。',
+  documentsUnprotected:
+    '会话开始后打开的 {n} 个文档不受该程序自身写入保护的限制。若要保护它们，请停止会话并重新开始。',
 }

@@ -44,7 +44,7 @@ export const pl = {
     'To logowanie korzysta z klucza API lub konta rozliczanego za zużycie albo nie udało się ustalić jego rodzaju. Po wybraniu „Użyj mimo to” AI będzie działać przez to połączenie, a każde żądanie obciąży to konto.',
   connectTitle: 'Połącz AI, aby zacząć',
   connectBody:
-    'AI działa w ramach subskrypcji Claude lub Codex, którą już masz. Klucz API nie jest potrzebny.',
+    'AI działa w ramach subskrypcji Claude lub ChatGPT, którą już masz. Klucz API nie jest potrzebny.',
   connectProviderTitle: 'Połączenie {provider} jest teraz niedostępne',
   connectKeyBody:
     'Konfiguracja dostawcy {provider} nie została ukończona. Dokończ ją w Ustawieniach lub wybierz inne AI.',
@@ -69,6 +69,8 @@ export const pl = {
     'Dzisiejszy darmowy limit został wykorzystany. Spróbuj ponownie jutro lub wybierz inne AI w Ustawieniach.',
   errFreeLimitReset:
     'Dzisiejszy darmowy limit został wykorzystany. Możesz znów korzystać o {time}.',
+  errFreeTierModel:
+    'Ten model nie ma darmowego poziomu, więc darmowy klucz nie może go używać. Wybierz model objęty darmowym poziomem (np. model Flash) albo włącz rozliczenia w konsoli dostawcy.',
   continueWith: 'Kontynuuj z {provider}',
   continueMeteredNote:
     'Połączenie {provider} nie jest subskrypcją: dalsza praca jest płatna za zużycie.',

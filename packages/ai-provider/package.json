@@ -10,6 +10,7 @@
     "./browser": "./src/browser.ts",
     "./codex-app-server": "./src/codex-app-server.ts",
     "./custom-models": "./src/custom-models.ts",
+    "./key-models": "./src/key-model-refresh.ts",
     "./local-models": "./src/local-models.ts",
     "./local-test": "./src/local-test.ts",
     "./free-connect": "./src/free-connect.ts",

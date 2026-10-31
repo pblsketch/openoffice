@@ -85,4 +85,6 @@ export const ms = {
   errNeedsUpdate: 'Program terlalu lama untuk mod ejen. Kemas kini dan cuba lagi.',
   errNotInstalled: 'Program tidak dipasang.',
   errGeneric: 'Berlaku masalah. Cuba lagi.',
+  documentsUnprotected:
+    'Dokumen yang dibuka selepas sesi dimulakan ({n}) tidak dilindungi oleh perlindungan tulis program itu sendiri. Hentikan dan mulakan semula sesi untuk melindunginya.',
 } satisfies Record<keyof typeof zh, string>
