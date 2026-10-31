@@ -190,6 +190,21 @@ function readData(
   const values: Values = new Map()
   const ignored: string[] = []
   flatten(parsed, '', values, ignored)
+  for (const [key, value] of values) {
+    if (
+      typeof value === 'string' &&
+      // Keep the existing NUL cleanup; reject other XML-invalid input instead of losing it.
+      // eslint-disable-next-line no-control-regex
+      /[\u0001-\u0008\u000b\u000c\u000e-\u001f\ud800-\udfff\ufffe\uffff]/u.test(value)
+    ) {
+      throw new CliError(
+        EXIT.usage,
+        `--data value for "${key}" contains a character XML cannot represent`,
+        undefined,
+        { reason: 'invalid_argument' },
+      )
+    }
+  }
   return { values, ignored }
 }
 
