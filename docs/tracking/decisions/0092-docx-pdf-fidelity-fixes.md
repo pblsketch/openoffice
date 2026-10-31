@@ -38,6 +38,6 @@
 - 직접 만든 스타일의 목차도 점선 탭과 쪽 번호가 제자리에 나온다.
 - 표지의 색 띠가 제자리에 그려지고, 쪽 맨 아래 띠가 다음 쪽으로 밀리지 않는다. 좁은 제목 상자는 예전처럼 여백만큼 밀린 채로 남는다(`findings.md`).
 - 대체 글꼴 다섯과 템플릿 Noto Serif KR이 PDF에 TrueType으로 심어진다. Windows에서 대체 글꼴 셋(GenOffice Sans/Serif/Che Latin KR)의 글자 폭이 바뀐다. 이 세 글꼴은 고친 폭을 `hmtx` 표에만 적고 CFF 안의 폭은 옛 값으로 두었는데, Windows의 Chromium은 CFF 쪽 폭으로 그렸다. 예를 들어 바탕 대체 글꼴의 한글은 0.966em, 라틴 'A'는 1.37em이었다. 바꾼 뒤에는 의도한 값(한글 1.0em, 'A' 0.736em)이 되어 Mac·시험과 같아진다. 바탕체가 없는 Windows PC에서는 바탕·명조 문서의 줄바꿈과 쪽 나눔이 바뀐다. 사용자가 이것을 받아들였다.
-- 템플릿 글꼴 폴더가 커져 상한 `TEMPLATE_FONTS_MAX_BYTES`를 올린다. 설치 파일은 압축이 더 잘 되어 조금 작아진다.
+- 템플릿 글꼴 폴더가 42.9 MiB에서 51.1 MiB로 커져 상한 `TEMPLATE_FONTS_MAX_BYTES`를 45 MiB에서 55 MiB로 올렸다. 파일 이름(`.otf`)은 그대로다. 설치 파일은 압축이 더 잘 되어 약 2 MB 작아진다.
 - 원본을 받아올 때 `parse.ts`, `parse-fields.ts`, `parse-drawing-geometry.ts`, `patch.ts`, `types.ts`에서 충돌이 날 수 있다. "원본과 다른 점"의 시험이 그 충돌을 푼 결과를 지킨다(`docs/operations.md`).
 - PC에 설치된 가변 글꼴(예: Windows의 `NotoSansKR-VF.ttf`)과 Pretendard, 템플릿의 라틴 가변 글꼴은 여전히 Type3로 들어간다. Chromium의 한계다(`findings.md`).
