@@ -1834,13 +1834,15 @@ export function equalizeTableCells(services, axis, ko) {
  * A horizontal border dragged with the mouse, as Hangul's help has it (표 크기 조절: "아래쪽으로
  * 끌면 표의 크기가 늘어납니다"): the row above the border grows or shrinks from the height it draws
  * at, and the table with it; cells merged over that row take the change too. With Alt held the
- * row below gives way instead, the studio's own drag (Hangul's Alt+끌기). The studio stopped the
- * plain drag at the row below's stored height (282 against about 1,270 drawn), so a row moved
- * about 1 mm. The drag is written here, in one snapshot, and [] tells the studio it is done;
- * null leaves the drag to the studio (studio-hancom-row-drag).
+ * row below gives way instead (Hangul's Alt+끌기), as Alt+arrow moves a boundary (moveBoundary);
+ * at the table's bottom edge there is no row below, so the table grows. The studio worked both
+ * from the stored heights (282 against about 1,280 drawn): the plain drag stopped after about
+ * 1 mm, and the Alt drag grew every row a little instead of moving the boundary. The drag is
+ * written here, in one snapshot, and [] tells the studio it is done; null leaves it to the
+ * studio (studio-hancom-row-drag), as for column borders and tables inside a cell.
  */
 export function hancomRowDragUpdates(ih, state, delta, alt) {
-  if (alt || state?.edge?.type !== 'row' || !ih?.wasm) return null
+  if (state?.edge?.type !== 'row' || !ih?.wasm) return null
   const ref = state.tableRef
   if (!ref || (ref.path?.length ?? 0) > 1) return null
   let cells
@@ -1852,7 +1854,11 @@ export function hancomRowDragUpdates(ih, state, delta, alt) {
   const affected = cells.find((cell) => state.affectedCellIndices?.includes(cell.cellIdx))
   if (!affected) return null
   const row = affected.row + affected.rowSpan - 1
-  const updates = resizeLines(cells, 'row', row, row, delta)
+  const last = Math.max(...cells.map((cell) => cell.row + cell.rowSpan)) - 1
+  const updates =
+    alt && row < last
+      ? moveBoundary(cells, 'row', row, delta)
+      : resizeLines(cells, 'row', row, row, delta)
   if (applyCellSizes(ih, ref, updates, 'resizeTableCells', cells)) {
     if (ih.cursor?.isInCellSelectionMode?.()) ih.updateCellSelection?.()
   }

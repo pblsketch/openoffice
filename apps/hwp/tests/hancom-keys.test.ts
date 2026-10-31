@@ -1370,8 +1370,22 @@ describe('equal cell sizes (H/W)', () => {
     // drawn as asked: nothing more to put right
     expect(wasm.resizeTableCells).toHaveBeenCalledTimes(1)
     expect(wasm.setTableCellExtents).not.toHaveBeenCalled()
-    // Alt+drag, other edges and tables inside a cell stay the studio's
-    expect(hancomRowDragUpdates(ih, state, 750, true)).toBeNull()
+    // Alt+drag: the row below gives way, as Alt+arrow moves a boundary (row 0 drew 2250 now)
+    expect(hancomRowDragUpdates(ih, state, 750, true)).toEqual([])
+    expect(wasm.resizeTableCells.mock.calls[1][3]).toEqual([
+      { cellIdx: 0, heightDelta: 750 },
+      { cellIdx: 1, heightDelta: 750 },
+      { cellIdx: 2, heightDelta: -750 },
+      { cellIdx: 3, heightDelta: -750 },
+    ])
+    // at the bottom edge there is no row below: the table grows
+    const bottom = { ...state, affectedCellIndices: [2, 3] }
+    expect(hancomRowDragUpdates(ih, bottom, 300, true)).toEqual([])
+    expect(wasm.resizeTableCells.mock.calls[2][3]).toEqual([
+      { cellIdx: 2, heightDelta: 300 },
+      { cellIdx: 3, heightDelta: 300 },
+    ])
+    // column borders and tables inside a cell stay the studio's
     expect(hancomRowDragUpdates(ih, { ...state, edge: { type: 'col' } }, 750, false)).toBeNull()
     const nested = { ...state, tableRef: { ...state.tableRef, path: [{}, {}] } }
     expect(hancomRowDragUpdates(ih, nested, 750, false)).toBeNull()

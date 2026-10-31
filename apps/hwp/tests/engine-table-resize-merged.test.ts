@@ -244,6 +244,12 @@ describe('table size keys on merged tables, through the engine', () => {
       const after = apply(doc, moveBoundary(cellsOf(doc), 'col', 0, 300))
       expect(after.cols[3] - after.cols[0]).toBeCloseTo(before.cols[3] - before.cols[0], 0)
       expect(after.cols[1]).toBeCloseTo(before.cols[1] + 4, 0)
+      // a row boundary (Alt+Down, and the Alt drag): the first row draws taller and the last
+      // row, which the boundary does not touch, keeps its height
+      const rows = gridLines(doc).rows
+      const lower = apply(doc, moveBoundary(cellsOf(doc), 'row', 0, 300))
+      expect(lower.rows[1] - lower.rows[0]).toBeCloseTo(rows[1] - rows[0] + 4, 0)
+      expect(lower.rows[3] - lower.rows[2]).toBeCloseTo(rows[3] - rows[2], 0)
     })
 
     it(`Shift+arrow on the table and H/W keep the grid (${name})`, () => {

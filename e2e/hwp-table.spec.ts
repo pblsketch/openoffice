@@ -1333,6 +1333,34 @@ test.describe('HWP table keys', () => {
       // the row below keeps its height
       expect(after.rows[3] - after.rows[2]).toBeCloseTo(before.rows[3] - before.rows[2], 0)
 
+      // Alt+drag down on the border under A1:B1: the boundary moves as Alt+Down moves it; the
+      // last row, which the boundary does not touch, keeps its height (the studio's own Alt drag
+      // worked from the stored 282 and grew every row a little)
+      before = await lines()
+      {
+        const a2 = await box(1, 0)
+        const canvas = hwp.frameLocator(STUDIO_IFRAME).locator('#scroll-content canvas').first()
+        const origin = (await canvas.boundingBox())!
+        const x = origin.x + a2.x + a2.w / 2
+        const y = origin.y + a2.y
+        await hwp.mouse.move(x, y + 6)
+        await hwp.mouse.move(x, y, { steps: 3 })
+        await hwp.waitForTimeout(150)
+        await hwp.keyboard.down('Alt')
+        await hwp.mouse.down()
+        await hwp.mouse.move(x, y + 8, { steps: 4 })
+        await hwp.mouse.up()
+        await hwp.keyboard.up('Alt')
+      }
+      await expect
+        .poll(async () => {
+          const now = await lines()
+          return now.rows[1] - now.rows[0]
+        })
+        .toBeGreaterThan(before.rows[1] - before.rows[0] + 2)
+      after = await lines()
+      expect(after.rows[3] - after.rows[2]).toBeCloseTo(before.rows[3] - before.rows[2], 0)
+
       // H and W over the whole table, as Hangul writes them: the cells of each row (W) and of
       // each column (H) come out equally sized, so the grid splits where rows differ
       await fresh(merges)

@@ -8,9 +8,9 @@
  *   existing value included. A line with no seed carries on the previous line's series.
  * - One seed is copied. Two or more numbers go on by their step, or by their ratio when the step
  *   is not constant; a number inside text ("1번", "제2과") goes on the same way when the text
- *   around it is the same. Seeds that are consecutive items of a list (가나다, 갑을병정, 子丑寅,
+ *   around it is the same. Seeds that are consecutive items of a list (가나다, 갑을병정, the earthly branches,
  *   weekdays, months, letters) go on through the list and wrap round at its end, though seeds
- *   across the end (계, 갑) are no series. 一二三 and 첫째·둘째 count on past ten. Anything else
+ *   across the end (계, 갑) are no series. Hanja numerals and 첫째·둘째 count on past ten. Anything else
  *   repeats the seeds in turn.
  * - Numbers are written plainly: no thousands commas, no leading zeros, no trailing zeros.
  *
@@ -111,7 +111,7 @@ const HANJA_UNITS = [
   ['十', 10],
 ]
 
-/** 一 … 九千九百九十九 as a number, else null. */
+/** A Hanja numeral from one to 9999 as a number, else null. */
 export function hanjaNumber(text) {
   let rest = text
   let total = 0
@@ -134,7 +134,7 @@ export function hanjaNumber(text) {
   return total > 0 && text !== '' ? total : null
 }
 
-/** A number from 1 to 9999 in Hanja numerals; a one before 十, 百, 千 is left out. */
+/** A number from 1 to 9999 in Hanja numerals; a one before ten, hundred or thousand is left out. */
 export function hanjaNumeral(n) {
   if (!Number.isInteger(n) || n < 1 || n > 9999) return null
   let out = ''
