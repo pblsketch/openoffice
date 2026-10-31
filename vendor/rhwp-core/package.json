@@ -1,6 +1,6 @@
 {
   "name": "@rhwp/core",
-  "version": "0.8.7-ieum.15",
+  "version": "0.8.7-ieum.16",
   "description": "rhwp v0.8.7 HWP/HWPX engine (WebAssembly) rebuilt with the patches in ./patches",
   "private": true,
   "type": "module",
@@ -44,9 +44,10 @@
       "0023-duplex-master-page-shift.patch",
       "0024-picture-effect-opacity.patch",
       "0025-page-number-pages.patch",
-      "0026-hwpx-drop-rows-covered-by-merged-cells.patch"
+      "0026-hwpx-drop-rows-covered-by-merged-cells.patch",
+      "0027-merged-table-cell-extents.patch"
     ],
     "wasmPack": "0.15.0",
-    "wasmSha256": "044a322b23e60332b9c3ebc90aecd18e0c6405c7efc99d1950d22d5b9c07984e"
+    "wasmSha256": "94af2bc80f49b40d563c1bef13ab36c69cff516e0eaddefe467357816d78cc52"
   }
 }
