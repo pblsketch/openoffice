@@ -44,7 +44,9 @@ describe('no AI run starts from the generate path', () => {
 
   it('reads material text only through the redaction-aware reader', () => {
     const materials = src('../src/main/generate/materials.ts')
-    expect(materials).toMatch(/import \{ parseFileToText[^}]*\} from '@genoffice\/file-parse'/)
+    expect(materials).toMatch(
+      /import \{[^}]*\bparseFileToText\b[^}]*\} from '@genoffice\/file-parse'/,
+    )
     expect(materials).not.toMatch(/readFile\(/)
   })
 })

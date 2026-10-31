@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   KB_READ_MAX_BYTES,
+  kbReadMaxBytes,
   readKnowledgeFilePage,
   readKnowledgeFileText,
 } from '../src/main/knowledge-base'
@@ -35,5 +36,19 @@ describe('readKnowledgeFileText', () => {
     expect(page.totalChars).toBe('first chunk second chunk'.length)
     expect(page.text).toBe('first chunk second chunk')
     expect(page.offset).toBe(0)
+  })
+})
+
+describe('kbReadMaxBytes', () => {
+  it('has no cap for documents whose size is pictures', () => {
+    for (const name of ['deck.pptx', 'report.docx', 'form.hwpx', 'book.epub', 'scan.pdf']) {
+      expect(kbReadMaxBytes(join(dir, name)), name).toBe(Number.POSITIVE_INFINITY)
+    }
+  })
+
+  it('keeps the cap for files read whole', () => {
+    for (const name of ['huge.txt', 'old.hwp', 'photo.png']) {
+      expect(kbReadMaxBytes(join(dir, name)), name).toBe(KB_READ_MAX_BYTES)
+    }
   })
 })

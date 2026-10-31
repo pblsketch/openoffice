@@ -38,6 +38,8 @@ export interface AttachableFormats {
   ATTACHABLE_IMAGE_EXTS: ReadonlySet<string>
   ATTACHABLE_MAX_BYTES: number
   ATTACHABLE_IMAGE_MAX_BYTES: number
+  /** the cap for one extension (no cap for formats read at any size); the two caps above when absent */
+  attachableMaxBytes?: (ext: string) => number
 }
 
 export interface DocListDeps {
@@ -68,7 +70,7 @@ export function createDocList(
   const capFor = (ext: string): number =>
     deps.attachable.ATTACHABLE_IMAGE_EXTS.has(ext)
       ? deps.attachable.ATTACHABLE_IMAGE_MAX_BYTES
-      : deps.attachable.ATTACHABLE_MAX_BYTES
+      : (deps.attachable.attachableMaxBytes?.(ext) ?? deps.attachable.ATTACHABLE_MAX_BYTES)
 
   return async (asker: DocAsker = {}, options: DocListOptions = {}) => {
     const items: DocListItem[] = []

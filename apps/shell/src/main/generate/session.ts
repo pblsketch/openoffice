@@ -31,8 +31,8 @@ import type {
 import { defaultGeneratePrompt } from '../../shared/generate-default-prompts'
 import { MAX_IMAGE_MATERIAL_BYTES, MAX_MATERIAL_BYTES, MAX_MATERIALS } from './limits'
 import {
-  IMAGE_MATERIAL_EXTS,
   materialKey,
+  materialMaxBytes,
   summarizeMaterials,
   untitledMaterial,
   type MaterialStatus,
@@ -184,7 +184,7 @@ export class GenerateSession {
       ...(s.sizeBytes !== undefined ? { sizeBytes: s.sizeBytes } : {}),
     }
     if (s.problem) {
-      const limit = IMAGE_MATERIAL_EXTS.has(s.ext) ? MAX_IMAGE_MATERIAL_BYTES : MAX_MATERIAL_BYTES
+      const limit = materialMaxBytes(s.ext)
       return {
         ...base,
         state: 'excluded',

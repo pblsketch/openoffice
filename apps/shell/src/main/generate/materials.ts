@@ -15,7 +15,7 @@
  */
 import { stat } from 'node:fs/promises'
 import { basename, extname, isAbsolute, resolve } from 'node:path'
-import { parseFileToText, type ParsedFile } from '@genoffice/file-parse'
+import { attachableMaxBytes, parseFileToText, type ParsedFile } from '@genoffice/file-parse'
 import { fileHasUnsavedChanges } from '@genoffice/electron-utils/unsaved-files'
 import type { AiTargetKind, MaterialProblem } from '../../shared/generate-api'
 import {
@@ -34,6 +34,16 @@ export const IMAGE_MATERIAL_EXTS: ReadonlySet<string> = new Set([
   'gif',
   'webp',
 ])
+
+/**
+ * The largest material of this extension: pictures to the receiving editors'
+ * cap, formats whose size is pictures (zip-based documents, PDF) at any size,
+ * the rest to `MAX_MATERIAL_BYTES`.
+ */
+export function materialMaxBytes(ext: string): number {
+  if (IMAGE_MATERIAL_EXTS.has(ext)) return MAX_IMAGE_MATERIAL_BYTES
+  return Number.isFinite(attachableMaxBytes(ext)) ? MAX_MATERIAL_BYTES : Number.POSITIVE_INFINITY
+}
 
 /**
  * What a material can be: exactly what `parseFileToText` reads (its text,
@@ -152,8 +162,7 @@ export async function inspectMaterial(
     return { ...base, problem: 'missing' }
   }
   const sized = { ...base, sizeBytes: size }
-  const cap = IMAGE_MATERIAL_EXTS.has(ext) ? MAX_IMAGE_MATERIAL_BYTES : MAX_MATERIAL_BYTES
-  if (size > cap) return { ...sized, problem: 'too-large' }
+  if (size > materialMaxBytes(ext)) return { ...sized, problem: 'too-large' }
 
   // before any read: a file with unsaved changes is not read until saved
   if (await (deps.hasUnsavedChanges ?? fileHasUnsavedChanges)(path)) {

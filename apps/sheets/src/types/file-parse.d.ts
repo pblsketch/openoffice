@@ -24,4 +24,5 @@ export const ATTACHABLE_EXTS: ReadonlySet<string>
 export const ATTACHABLE_IMAGE_EXTS: ReadonlySet<string>
 export const ATTACHABLE_MAX_BYTES: number
 export const ATTACHABLE_IMAGE_MAX_BYTES: number
+export function attachableMaxBytes(ext: string): number
 export function isAttachableExt(ext: string): boolean
