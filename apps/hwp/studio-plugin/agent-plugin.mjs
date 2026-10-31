@@ -970,9 +970,30 @@ function replaceHit(doc, hit, replacement) {
   }
   const last = path[path.length - 1]
   if (path.length === 1 && typeof doc.replaceTextInCellDeferredPagination === 'function') {
-    // one engine call keeps a memo on the replaced text. It takes up to eight characters
-    // (code points), so a longer replacement is the head in that call and the rest typed
-    // right after it; the engine counts its offsets in characters, not UTF-16 units.
+    // one engine call keeps a memo on the replaced text. It removes and puts in up to eight
+    // characters (code points) each, so a longer match is first worn down from its end,
+    // eight characters to one per call (a plain delete would take a memo that lies wholly
+    // in the part it removes), and a longer replacement is the head in the last call and
+    // the rest typed right after it. The engine counts its offsets (and the match's) in
+    // characters, not UTF-16 units.
+    let removed = hit.length
+    while (removed > MAX_CELL_REPLACE_CHARS) {
+      const start = removed - MAX_CELL_REPLACE_CHARS
+      expectOk(
+        doc.replaceTextInCellDeferredPagination(
+          hit.sec,
+          hit.para,
+          last.controlIndex,
+          last.cellIndex,
+          last.cellParaIndex,
+          hit.charOffset + start,
+          MAX_CELL_REPLACE_CHARS,
+          ' ',
+        ),
+        'replace',
+      )
+      removed = start + 1
+    }
     const head = cellReplaceHead(replacement)
     const headLength = Array.from(head).length
     const total = Array.from(replacement).length
@@ -984,7 +1005,7 @@ function replaceHit(doc, hit, replacement) {
         last.cellIndex,
         last.cellParaIndex,
         hit.charOffset,
-        hit.length,
+        removed,
         head,
       ),
       'replace',

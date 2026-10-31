@@ -389,6 +389,87 @@ describe('replacing text in a memo’s cell', () => {
     }
   })
 
+  it('replaces more than eight characters of a cell, shorter or longer, keeping its memo', () => {
+    // the engine's one-call cell replace removes at most eight characters; a cell title
+    // of a school form is longer than that
+    for (const replacement of ['C', 'short', 'a much longer replacement', '😀😀😀😀😀😀😀😀😀😀']) {
+      const doc = blank(['title', ''])
+      doc.pasteHtml(0, 1, 0, '<table><tr><td>a long cell heading here</td></tr></table>')
+      const path = JSON.stringify([{ controlIndex: 0, cellIndex: 0, cellParaIndex: 0 }])
+      const made = JSON.parse(
+        doc.insertMemoByPath(
+          0,
+          1,
+          path,
+          0,
+          17,
+          JSON.stringify({ author: 'cell author', text: 'cell memo' }),
+        ),
+      ) as { ok: true; id: number }
+      const editor = openEditor(doc)
+
+      expect(editor.plugin.replaceText('a long cell heading', replacement)).toMatchObject({
+        ok: true,
+        inTable: true,
+      })
+      expect(editor.doc().getTextInCellByPath(0, 1, path, 0, 60)).toBe(`${replacement} here`)
+      expect(editor.plugin.listMemos().memos[0]).toMatchObject({
+        id: made.id,
+        text: 'cell memo',
+        startCharIdx: 0,
+      })
+    }
+  })
+
+  it('keeps a memo that lies wholly in the far part of a long replaced span', () => {
+    for (const [start, end] of [
+      [12, 19],
+      [2, 5],
+      [15, 24],
+    ]) {
+      const doc = blank(['title', ''])
+      doc.pasteHtml(0, 1, 0, '<table><tr><td>a long cell heading here</td></tr></table>')
+      const path = JSON.stringify([{ controlIndex: 0, cellIndex: 0, cellParaIndex: 0 }])
+      const made = JSON.parse(
+        doc.insertMemoByPath(0, 1, path, start, end, JSON.stringify({ author: 'a', text: 'm' })),
+      ) as { ok: true; id: number }
+      const editor = openEditor(doc)
+
+      expect(editor.plugin.replaceText('a long cell heading', 'new title')).toMatchObject({
+        ok: true,
+      })
+      expect(editor.doc().getTextInCellByPath(0, 1, path, 0, 60)).toBe('new title here')
+      expect(editor.plugin.listMemos().memos.map((memo) => memo.id)).toEqual([made.id])
+    }
+  })
+
+  it('replaces every long occurrence in cells at once', () => {
+    const doc = blank(['title', ''])
+    doc.pasteHtml(
+      0,
+      1,
+      0,
+      '<table><tr><td>first long cell title</td><td>second long cell title</td></tr></table>',
+    )
+    const editor = openEditor(doc)
+
+    expect(editor.plugin.replaceAllText('long cell title', 'heading')).toMatchObject({
+      ok: true,
+      count: 2,
+    })
+    const cell = (index: number) =>
+      editor
+        .doc()
+        .getTextInCellByPath(
+          0,
+          1,
+          JSON.stringify([{ controlIndex: 0, cellIndex: index, cellParaIndex: 0 }]),
+          0,
+          60,
+        )
+    expect([cell(0), cell(1)]).toEqual(['first heading', 'second heading'])
+  })
+
   it('keeps a text-box memo when its whole anchor is replaced', () => {
     const { doc, made, path } = textBoxWithMemo()
     const editor = openEditor(doc)
