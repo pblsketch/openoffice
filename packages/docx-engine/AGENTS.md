@@ -53,7 +53,7 @@ docx 한 파일의 읽기와 쓰기 전부를 맡는다.
 
 ## 원본과 다른 점 (결정 0092)
 
-원본의 개선을 받아온 뒤 아래 시험이 모두 통과해야 한다. 충돌을 풀 때 이 동작이 사라지지 않게 한다. 같은 수정을 원본 genspark-ai/genoffice#2331에 보냈다. 원본이 받아들이면 그 항목을 지운다.
+원본의 개선을 받아온 뒤 아래 시험이 모두 통과해야 한다. 충돌을 풀 때 이 동작이 사라지지 않게 한다. 같은 수정을 원본 #2331에 PR(원본 #2364)로 보냈다. 원본이 받아들이면 그 항목을 지운다.
 
 - **머리글·꼬리말의 `SECTIONPAGES`.** 필드는 `SECTION_PAGES_MARK`(U+E002)가 되고, 고친 머리글·꼬리말을 저장하면 `SECTIONPAGES` 필드로 돌아간다. `PAGE`·`NUMPAGES`보다 먼저 판정한다. 단어 경계 검사로는 `SECTIONPAGES` 안의 `PAGES`를 알아보지 못한다. `types.ts`, `parse.ts`의 `hfContentFromXml`, `patch.ts`의 `headerFooterPartXml`. 시험 `tests/hf-section-pages.test.ts`.
 - **직접 만든 스타일의 목차 줄.** `PAGEREF`가 있는 문단은 스타일 이름이 `toc N`이 아니어도 목차 줄로 읽는다. 조건은 스타일 사슬을 거친 탭 정의에 오른쪽 탭이 있고, 문단 안에 런 단위 탭이 있는 것이다. 채움 문자도 그 탭에서 읽는다. `parse-fields.ts`의 `unstyledTocEntry`, `tocLeaderOf`. 시험 `tests/field-display.test.ts`의 "an entry whose right tab stop comes only from a custom style is still a toc line (#2331)", "a PAGEREF cross-reference without a run tab stays plain text under a right-tab style".
