@@ -38,6 +38,7 @@ const STRINGS: MapStrings = {
   menuLabel: '라벨',
   menuNote: '메모',
   menuLink: '링크',
+  menuRemovePicture: '그림 지우기',
   decoration: {
     priority: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `우선순위 ${n}`),
     progress: [0, 13, 25, 38, 50, 63, 75, 88, 100].map((percent) => `진행 ${percent}%`),
@@ -951,17 +952,20 @@ describe("the map's own menu", () => {
       '라벨',
       '메모',
       '링크',
+      '그림 지우기',
     ])
     controller.setStrings({
       ...STRINGS,
       newTopic: 'New topic',
       menu: { ...STRINGS.menu, addChild: 'Add subtopic', summary: 'Summary' },
       menuLink: 'Link',
+      menuRemovePicture: 'Remove picture',
     })
     const texts = menuTexts(el)
     expect(texts[0]).toBe('Add subtopic')
     expect(texts[6]).toBe('Summary')
-    expect(texts.at(-1)).toBe('Link')
+    expect(texts.at(-2)).toBe('Link')
+    expect(texts.at(-1)).toBe('Remove picture')
     expect(controller.mind.newTopicName).toBe('New topic')
   })
 
@@ -969,12 +973,79 @@ describe("the map's own menu", () => {
     const { mind, el, host } = await mount()
     mind.selectNode(mind.findEle(IDS.c))
     const items = [...el.querySelectorAll<HTMLElement>('.context-menu .menu-list > li')]
-    items.at(-3)!.click()
-    items.at(-1)!.click()
+    items.at(-4)!.click()
+    items.at(-2)!.click()
     expect(host.onRequest.mock.calls).toEqual([
       ['label', IDS.c],
       ['link', IDS.c],
     ])
+  })
+
+  it('offers to remove a picture only on a topic that has one, and removes it', async () => {
+    const { mind, el, doc } = await mount()
+    const entry = () => el.querySelector<HTMLElement>('.context-menu .menu-list > li:last-child')!
+    const openOn = (id: string) => {
+      mind.selectNode(mind.findEle(id))
+      mind.bus.fire('showContextMenu', { target: topicEl(el, id) } as unknown as MouseEvent)
+    }
+    openOn(IDS.c)
+    expect(entry().classList.contains('disabled')).toBe(true)
+    openOn(IDS.a)
+    expect(entry().classList.contains('disabled')).toBe(false)
+    entry().click()
+    await settle()
+    expect(doc.sheets[0]!.rootTopic.children!.attached![0]!.image).toBeUndefined()
+  })
+})
+
+describe('removing a picture', () => {
+  it('takes it off the topic as one step that undoes back to the original bytes', async () => {
+    const { controller, doc, original, attached, el } = await mount()
+    const alpha = () => attached()[0]!
+    expect(alpha().image).toEqual({ src: 'xap:resources/picture.png', width: 40, height: 30 })
+    const before = copyOf(doc.sheets[0])
+
+    expect(controller.removePicture(IDS.a)).toBe(true)
+    await settle()
+    expect(alpha().image).toBeUndefined()
+    expect(topicEl(el, IDS.a).querySelector('img')).toBeNull()
+    // nothing else of the topic or the sheet moved
+    const after = copyOf(doc.sheets[0]) as { rootTopic: { children: { attached: unknown[] } } }
+    const expected = copyOf(before) as typeof after
+    delete (expected.rootTopic.children.attached[0] as { image?: unknown }).image
+    expect(after).toEqual(expected)
+    expect(doc.changed).toBe(true)
+
+    expect(controller.undo()).toBe(true)
+    await settle()
+    expect(doc.sheets[0]).toEqual(before)
+    expect(await doc.save()).toEqual(original)
+
+    expect(controller.redo()).toBe(true)
+    await settle()
+    expect(alpha().image).toBeUndefined()
+  })
+
+  it('turns down a topic without a picture and changes nothing', async () => {
+    const { controller, doc } = await mount()
+    expect(controller.removePicture(IDS.c)).toBe(false)
+    expect(controller.removePicture('00000000-0000-4000-8000-000000000000')).toBe(false)
+    await settle()
+    expect(doc.changed).toBe(false)
+  })
+
+  it('a state that merely lacks the picture never deletes it', async () => {
+    const { controller, mind, attached } = await mount()
+    // the library's data loses the picture without the user asking (as a bug might)
+    const alpha = mind.nodeData.children![0]!
+    alpha.metadata = { ...(alpha.metadata as object), image: null }
+    controller.flush()
+    await settle()
+    expect(attached()[0]!.image).toEqual({
+      src: 'xap:resources/picture.png',
+      width: 40,
+      height: 30,
+    })
   })
 })
 

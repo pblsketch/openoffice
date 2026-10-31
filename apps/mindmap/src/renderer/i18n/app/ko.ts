@@ -85,6 +85,7 @@ export const ko = {
   meAddParent: '상위 토픽 추가',
   meAddSibling: '형제 토픽 추가',
   meRemoveNode: '토픽 지우기',
+  meRemovePicture: '그림 지우기',
   meFocus: '집중 보기',
   meCancelFocus: '집중 보기 끝내기',
   meMoveUp: '위로 옮기기',
@@ -121,4 +122,9 @@ export const ko = {
   markerStar: '별',
   markerOther: '표식',
   pictureNotShown: '불러오지 않은 그림',
+  pictureDropNoTopic: '그림을 넣을 토픽 위에 놓으세요',
+  pictureDropUnsupported: 'PNG, JPG, GIF 그림만 넣을 수 있습니다',
+  pictureDropTooLarge: '10MB가 넘는 그림은 넣을 수 없습니다',
+  pictureDropFailed: '그림을 넣지 못했습니다',
+  pictureDropFirstOnly: '토픽 하나에는 그림이 하나만 들어가서 첫 그림만 넣었습니다',
 } satisfies Record<keyof typeof zh, string>

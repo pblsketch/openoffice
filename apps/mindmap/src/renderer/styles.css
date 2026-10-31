@@ -376,6 +376,12 @@ html.genoffice-popover-open .ribbon-tabs {
   outline-offset: 2px;
 }
 
+/* the topic a picture dragged from the desktop would land on */
+.mm-card .map-container .mm-picture-drop-target {
+  outline: 2px dashed var(--accent);
+  outline-offset: 3px;
+}
+
 .mm-card .map-container #input-box {
   outline: 2px solid var(--accent);
 }

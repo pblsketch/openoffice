@@ -62,6 +62,8 @@ export interface TreeContext {
   idsInUse: () => Set<string>
   /** ids of relationships whose curve the user moved */
   reshaped?: readonly string[]
+  /** ids of topics whose picture the user removed */
+  removedPictures?: readonly string[]
   /** whether the archive holds this entry (a picture added since the last save included) */
   entryExists?: (name: string) => boolean
 }
@@ -104,6 +106,8 @@ interface Run {
   ids: ReconcileIds
   /** whether the archive holds an entry; absent means "do not check" */
   entryExists?: (name: string) => boolean
+  /** topics whose picture the user removed; only these lose one to a state without it */
+  removedPictures: ReadonlySet<string>
   newId: (given: string) => string
   /** every topic of the state with the topic of the tree that now stands for it */
   pairs: { topic: XmindTopic; want: StateTopic }[]
@@ -122,6 +126,7 @@ function apply(sheet: XmindSheet, want: StateSheet, context: TreeContext): Recon
     idsBefore: topicIds(sheet),
     ids: { topics: new Map(), relationships: new Map() },
     ...(context.entryExists ? { entryExists: context.entryExists } : {}),
+    removedPictures: new Set(context.removedPictures),
     newId: idAllocator(context.idsInUse),
     pairs: [],
     ends: new Set(),
@@ -208,13 +213,19 @@ function writeValues(topic: XmindTopic, want: StateTopic, run: Run): void {
  * holds. A state that still shows a web address or a path is left alone — the
  * editor never loaded it, so it is not a change of the picture — and a
  * reference to an entry the file does not have is refused rather than written
- * as a picture nothing can show. Removing a picture is not a state either: the
- * editor shows no way to do it, so an empty state value never deletes one.
+ * as a picture nothing can show. An empty state value deletes a picture only
+ * for a topic the editor names as one whose picture the user removed: a state
+ * that merely lacks the picture (a topic the editor never drew it on) leaves
+ * it. The archive entry stays; another topic may show the same one.
  */
 function writeImage(topic: XmindTopic, want: StateTopic, run: Run): void {
   const image = want.image
-  const entry = image?.entryName
-  if (!image || !entry) return
+  if (!image) {
+    if (run.removedPictures.has(want.id) && topic.image !== undefined) delete topic.image
+    return
+  }
+  const entry = image.entryName
+  if (!entry) return
   const current = isRecord(topic.image) ? topic.image : null
   const currentEntry =
     current && typeof current.src === 'string' && current.src.startsWith('xap:')

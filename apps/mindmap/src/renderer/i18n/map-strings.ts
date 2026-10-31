@@ -32,6 +32,7 @@ export function mapStrings(lang: Lang): MapStrings {
     menuLabel: text('tbLabel'),
     menuNote: text('tbNote'),
     menuLink: text('tbLink'),
+    menuRemovePicture: text('meRemovePicture'),
     decoration: {
       priority: PRIORITY_LEVELS.map((n) => translateIn(lang, 'markerPriority', { n })),
       progress: PROGRESS_PERCENT.map((percent) => translateIn(lang, 'markerProgress', { percent })),
