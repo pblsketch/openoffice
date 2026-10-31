@@ -437,18 +437,19 @@ export interface ContentControlSummary {
 
 export const PREVIEW_CHARS = 200
 
-/** Block list an agent targets ops at: index, node type, heading level, text (clipped to `maxChars`). */
+/** Block list an agent targets ops at; merge can omit read-only nested text from its fill scan. */
 export function describeDocument(
   doc: OpenDocument,
   range?: [number, number],
   maxChars = PREVIEW_CHARS,
+  includeNestedTables = true,
 ): BlockSummary[] {
   const out: BlockSummary[] = []
   const root = doc.editor.state.doc
   const [start, end] = range ?? [0, root.childCount - 1]
   for (let i = start; i <= Math.min(end, root.childCount - 1); i++) {
     const node = root.child(i)
-    const { text, truncated } = clipText(blockText(node), maxChars)
+    const { text, truncated } = clipText(blockText(node, includeNestedTables), maxChars)
     out.push({
       index: i,
       type: node.type.name.replace(/^doc/, '').toLowerCase(),
@@ -469,8 +470,13 @@ export function describeDocument(
  * both read "1200". A break becomes a line break (a space inside a cell); cells are joined
  * with " | " and rows with a line break, the layout `hwp read` already uses.
  */
-function blockText(node: PmNode): string {
-  const breakAs = (sep: string) => (leaf: PmNode) => (leaf.type.name === 'hardBreak' ? sep : '')
+function blockText(node: PmNode, includeNestedTables: boolean): string {
+  const breakAs = (sep: string) => (leaf: PmNode) => {
+    if (leaf.type.name === 'hardBreak') return sep
+    if (includeNestedTables && leaf.type.name === 'docNestedTable' && leaf.attrs.model)
+      return tableModelText(leaf.attrs.model as TableModel)
+    return ''
+  }
   if (node.type.name !== 'docTable')
     return node.textBetween(0, node.content.size, '', breakAs('\n'))
   const rows: string[] = []
@@ -480,6 +486,34 @@ function blockText(node: PmNode): string {
     rows.push(cells.join(' | '))
   })
   return rows.join('\n')
+}
+
+/** Nested tables are atom nodes: their text lives in the retained table model. */
+function tableModelText(table: TableModel): string {
+  return table.rows
+    .map((row) =>
+      row
+        .map((cell) => {
+          const anchored = new Map<number, string[]>()
+          for (const [index, nested] of (cell.nestedTables ?? []).entries()) {
+            const at = Math.max(
+              0,
+              Math.min(cell.nestedTableAnchors?.[index] ?? cell.paras.length, cell.paras.length),
+            )
+            const entries = anchored.get(at) ?? []
+            entries.push(tableModelText(nested))
+            anchored.set(at, entries)
+          }
+          const lines: string[] = []
+          for (let i = 0; i <= cell.paras.length; i++) {
+            lines.push(...(anchored.get(i) ?? []))
+            if (i < cell.paras.length) lines.push(cell.paras[i]!)
+          }
+          return lines.join(' ')
+        })
+        .join(' | '),
+    )
+    .join('\n')
 }
 
 type PmNode = OpenDocument['editor']['state']['doc']

@@ -353,7 +353,7 @@ function scanDocx(doc: OpenDocument): {
   const found: Hit[] = []
   const tables = new Set<number>()
   const texts = new Map<string, string>()
-  for (const b of describeDocument(doc, undefined, Infinity)) {
+  for (const b of describeDocument(doc, undefined, Infinity, false)) {
     const inBlock = hits(b.text)
     if (inBlock.length) {
       texts.set(locKey({ block: b.index }), b.text)
