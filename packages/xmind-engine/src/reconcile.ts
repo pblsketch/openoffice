@@ -13,6 +13,12 @@ export interface ReconcileOptions {
    * dropped rather than left to contradict what the user drew.
    */
   reshapedRelationships?: readonly string[]
+  /**
+   * Ids of topics whose picture the user removed in the editor. A state that
+   * shows no picture deletes one only for these; for any other topic a missing
+   * picture is not taken as a change.
+   */
+  removedPictures?: readonly string[]
 }
 
 /**
@@ -38,10 +44,11 @@ export type ReconcileResult =
  *
  * `state` is the sheet's view data as it stands after the user's edit. What
  * is applied: the topics with their order and nesting, and per topic the
- * title, folding, labels, note and link; summaries; relationships; the
- * layout. What is never written from a state: pictures, markers and styles,
- * which the editor shows without editing, and the sheet's own title and
- * place, which `renameSheet` and its neighbours change.
+ * title, folding, labels, note and link; a picture put in from an archive
+ * entry, or taken off (`removedPictures`); summaries; relationships; the
+ * layout. What is never written from a state: markers and styles, which the
+ * editor shows without editing, and the sheet's own title and place, which
+ * `renameSheet` and its neighbours change.
  *
  * Sheets are reconciled one at a time: topics are paired by id inside the
  * sheet at `index`, and the same id on another sheet is another topic.
@@ -65,6 +72,7 @@ export function reconcileSheet(
   const outcome = reconcileTree(sheet, state, {
     idsInUse: () => idsInUse(document.sheets),
     reshaped: options.reshapedRelationships,
+    removedPictures: options.removedPictures,
     entryExists: (name) => document.hasEntry(name),
   })
   if (!outcome.ok) return { ok: false, problem: outcome.problem, view: sheetToView(sheet, index) }
