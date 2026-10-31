@@ -1079,7 +1079,31 @@ function cellEdit(
   raw: Scalar,
   style?: WorkbookStyleEdit,
 ): CellEdit {
+  const invalid = (message: string, suggestion?: string): never => {
+    const cell = `${columnLabel(column)}${row + 1}`
+    throw new CliError(
+      EXIT.usage,
+      `${sheet}!${cell}: ${message}`,
+      { sheet, cell },
+      { reason: 'invalid_argument', suggestion },
+    )
+  }
+  if (typeof raw === 'number' && Number.isInteger(raw) && !Number.isSafeInteger(raw)) {
+    invalid(
+      'integer is outside the safe range',
+      'supply large integers as a string to preserve every digit',
+    )
+  }
+  // With the Unicode flag, valid surrogate pairs match as one code point.
+  if (typeof raw === 'string' && /[\uD800-\uDFFF]/u.test(raw)) {
+    invalid('cell text contains an unpaired UTF-16 surrogate')
+  }
   const formula = typeof raw === 'string' && raw.startsWith('=') ? raw : undefined
+  // Cell text can use SpreadsheetML escapes; formula XML cannot.
+  // eslint-disable-next-line no-control-regex -- XML 1.0 forbids these characters
+  if (formula && /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/.test(formula)) {
+    invalid('formula contains a character forbidden in XML 1.0')
+  }
   return {
     sheetName: sheet,
     row,
