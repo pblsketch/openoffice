@@ -88,6 +88,7 @@ export const es = {
   meAddParent: 'Añadir tema superior',
   meAddSibling: 'Añadir tema hermano',
   meRemoveNode: 'Eliminar tema',
+  meRemovePicture: 'Quitar imagen',
   meFocus: 'Modo de enfoque',
   meCancelFocus: 'Salir del modo de enfoque',
   meMoveUp: 'Subir',
@@ -125,4 +126,9 @@ export const es = {
   markerStar: 'Estrella',
   markerOther: 'Marcador',
   pictureNotShown: 'Imagen no cargada',
+  pictureDropNoTopic: 'Suelta la imagen sobre un tema',
+  pictureDropUnsupported: 'Solo se pueden añadir imágenes PNG, JPG y GIF',
+  pictureDropTooLarge: 'No se pueden añadir imágenes de más de 10 MB',
+  pictureDropFailed: 'No se pudo añadir la imagen',
+  pictureDropFirstOnly: 'Un tema solo admite una imagen, así que solo se añadió la primera',
 } satisfies Record<keyof typeof zh, string>

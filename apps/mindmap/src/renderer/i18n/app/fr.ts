@@ -88,6 +88,7 @@ export const fr = {
   meAddParent: 'Ajouter un sujet parent',
   meAddSibling: 'Ajouter un sujet frère',
   meRemoveNode: 'Supprimer le sujet',
+  meRemovePicture: 'Supprimer l’image',
   meFocus: 'Mode focus',
   meCancelFocus: 'Quitter le mode focus',
   meMoveUp: 'Monter',
@@ -125,4 +126,9 @@ export const fr = {
   markerStar: 'Étoile',
   markerOther: 'Marqueur',
   pictureNotShown: 'Image non chargée',
+  pictureDropNoTopic: "Déposez l'image sur un sujet",
+  pictureDropUnsupported: 'Seules les images PNG, JPG et GIF peuvent être ajoutées',
+  pictureDropTooLarge: 'Les images de plus de 10 Mo ne peuvent pas être ajoutées',
+  pictureDropFailed: "Impossible d'ajouter l'image",
+  pictureDropFirstOnly: "Un sujet ne contient qu'une image : seule la première a été ajoutée",
 } satisfies Record<keyof typeof zh, string>

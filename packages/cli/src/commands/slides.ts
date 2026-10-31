@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs'
 import { basename, dirname } from 'node:path'
 import { flagBool, flagString } from '../args'
 import {
@@ -11,7 +10,7 @@ import {
   saveDeck,
 } from '../formats/pptx'
 import { previewChars } from '../preview'
-import { readInput, resolveInput, resolveOutput, stripBom, writeOutput } from '../fs'
+import { readInput, readTextFile, resolveInput, resolveOutput, stripBom, writeOutput } from '../fs'
 import { outputDirectory, parseScale, renderToPngs } from '../formats/render'
 import {
   auditDeckBytes,
@@ -310,7 +309,7 @@ async function check(
   ctx: CommandContext,
 ): Promise<CommandResult> {
   const path = resolveInput(file, ctx)
-  const text = stripBom(readFileSync(path, 'utf-8'))
+  const text = stripBom(readTextFile(path))
   const dir = dirname(path)
   if (looksLikeOutline(text)) {
     const r = parseOutline(text)
@@ -438,7 +437,7 @@ async function replace(
   const r = await replaceSlideFromSpec(
     opened,
     index,
-    stripBom(readFileSync(specPath, 'utf-8')),
+    stripBom(readTextFile(specPath)),
     specPath,
     ctx,
     stage,

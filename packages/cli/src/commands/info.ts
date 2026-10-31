@@ -11,7 +11,7 @@ import { hwpInfo } from '../formats/hwp'
 import { openOdtBytes } from '../formats/odt'
 import { pdfInfo } from '../formats/pdf'
 import { convertLegacyWorkbook, workbookSummary } from '../formats/xlsx'
-import { extension, readInput, resolveInput } from '../fs'
+import { extension, readInput, resolveInput, stripBom } from '../fs'
 import type { CommandDef } from '../registry'
 import { CliError, EXIT } from '../result'
 
@@ -179,13 +179,34 @@ function describeCsv(path: string): Description {
 }
 
 function describeText(path: string, ext: string): Description {
-  const text = Buffer.from(readInput(path)).toString('utf-8')
+  // a UTF-8 BOM is a file marker, not text: it is not a character and does not hide a first heading
+  const text = stripBom(Buffer.from(readInput(path)).toString('utf-8'))
   const lines = text.split(/\r\n|\r|\n/)
   const fields: Record<string, unknown> = { lines: lines.length, characters: text.length }
-  if (ext === 'md' || ext === 'markdown') {
-    fields.headings = lines.filter((l) => /^#{1,6}\s/.test(l)).length
-  }
+  if (ext === 'md' || ext === 'markdown') fields.headings = countHeadings(lines)
   return { headline: `${lines.length} lines`, fields }
+}
+
+/** ATX headings outside fenced code (a `# comment` line in a shell or Python block is not a heading). */
+function countHeadings(lines: readonly string[]): number {
+  let count = 0
+  let fence: { char: string; length: number } | undefined
+  for (const line of lines) {
+    const mark = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line)
+    if (fence) {
+      // a closing fence repeats the character at least as many times and carries nothing else
+      if (mark && mark[1]![0] === fence.char && mark[1]!.length >= fence.length && !mark[2]!.trim())
+        fence = undefined
+      continue
+    }
+    // a backtick fence's info string cannot hold a backtick (that is inline code)
+    if (mark && !(mark[1]![0] === '`' && mark[2]!.includes('`'))) {
+      fence = { char: mark[1]![0]!, length: mark[1]!.length }
+      continue
+    }
+    if (/^#{1,6}\s/.test(line)) count++
+  }
+  return count
 }
 
 function round(n: number): number {

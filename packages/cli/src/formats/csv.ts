@@ -55,9 +55,17 @@ export async function csvToXlsx(bytes: Uint8Array, sheetName: string): Promise<U
   return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength)
 }
 
-/** Excel sheet name from a file stem: forbidden characters become `_`, edge apostrophes go, 31 chars max. */
+/** Characters XML 1.0 cannot carry: controls other than tab/LF/CR, U+FFFE/U+FFFF and unpaired surrogates. */
+const XML_INVALID =
+  // eslint-disable-next-line no-control-regex
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
+
+/** Excel sheet name from a file stem: forbidden and XML-invalid characters become `_`, edge apostrophes go, 31 chars max. */
 export function sheetNameFromStem(stem: string): string {
-  const cleaned = stem.replace(/[\\/?*[\]:]/g, '_').replace(/^'+|'+$/g, '')
+  const cleaned = stem
+    .replace(/[\\/?*[\]:]/g, '_')
+    .replace(XML_INVALID, '_')
+    .replace(/^'+|'+$/g, '')
   // 31 UTF-16 units; the cut must not land inside an emoji or it leaves a lone surrogate
   const name = cleaned.slice(0, cutIndex(cleaned, 0, 31)).replace(/'+$/, '')
   return name || 'Sheet1'

@@ -1,6 +1,7 @@
 /**
- * "Export images" offers two ways: whole pages (the existing export) and only
- * the pictures in the pages, which runs the structure job `extractImages`.
+ * "Export images" offers three ways: every page, only the page being viewed
+ * (both rendered as pictures), and only the pictures in the pages, which runs
+ * the structure job `extractImages`.
  */
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
@@ -39,6 +40,7 @@ afterEach(async () => {
 
 async function renderMenu() {
   const onWholePages = vi.fn()
+  const onCurrentPage = vi.fn()
   const onEmbedded = vi.fn()
   container = document.createElement('div')
   document.body.appendChild(container)
@@ -51,11 +53,12 @@ async function renderMenu() {
         busy: false,
         label: en.exportImages,
         onWholePages,
+        onCurrentPage,
         onEmbedded,
       }),
     ),
   )
-  return { el: container, onWholePages, onEmbedded }
+  return { el: container, onWholePages, onCurrentPage, onEmbedded }
 }
 
 const click = async (element: Element | null) => {
@@ -64,31 +67,44 @@ const click = async (element: Element | null) => {
 }
 
 describe('Export images menu', () => {
-  it('offers whole pages and only the pictures in the pages', async () => {
-    const { el, onWholePages, onEmbedded } = await renderMenu()
+  it('offers whole pages, the current page and only the pictures in the pages', async () => {
+    const { el, onWholePages, onCurrentPage, onEmbedded } = await renderMenu()
     expect(el.querySelector('[role="menu"]')).toBeNull()
     await click(el.querySelector('[data-action="export-images"]'))
     const items = [...el.querySelectorAll('[role="menuitem"]')].map((b) => b.textContent)
-    expect(items).toEqual([en.imgExportWholePages, en.imgExportEmbedded])
+    expect(items).toEqual([en.imgExportWholePages, en.imgExportCurrentPage, en.imgExportEmbedded])
     expect(onWholePages).not.toHaveBeenCalled()
+    expect(onCurrentPage).not.toHaveBeenCalled()
     expect(onEmbedded).not.toHaveBeenCalled()
   })
 
   it('runs the existing whole-page export for "whole pages"', async () => {
-    const { el, onWholePages, onEmbedded } = await renderMenu()
+    const { el, onWholePages, onCurrentPage, onEmbedded } = await renderMenu()
     await click(el.querySelector('[data-action="export-images"]'))
     await click(el.querySelector('[data-action="export-whole-pages"]'))
     expect(onWholePages).toHaveBeenCalledTimes(1)
+    expect(onCurrentPage).not.toHaveBeenCalled()
+    expect(onEmbedded).not.toHaveBeenCalled()
+    expect(el.querySelector('[role="menu"]')).toBeNull()
+  })
+
+  it('runs the single-page export for "only the current page"', async () => {
+    const { el, onWholePages, onCurrentPage, onEmbedded } = await renderMenu()
+    await click(el.querySelector('[data-action="export-images"]'))
+    await click(el.querySelector('[data-action="export-current-page"]'))
+    expect(onCurrentPage).toHaveBeenCalledTimes(1)
+    expect(onWholePages).not.toHaveBeenCalled()
     expect(onEmbedded).not.toHaveBeenCalled()
     expect(el.querySelector('[role="menu"]')).toBeNull()
   })
 
   it('runs the picture export for "only the pictures in the pages"', async () => {
-    const { el, onWholePages, onEmbedded } = await renderMenu()
+    const { el, onWholePages, onCurrentPage, onEmbedded } = await renderMenu()
     await click(el.querySelector('[data-action="export-images"]'))
     await click(el.querySelector('[data-action="export-embedded-images"]'))
     expect(onEmbedded).toHaveBeenCalledTimes(1)
     expect(onWholePages).not.toHaveBeenCalled()
+    expect(onCurrentPage).not.toHaveBeenCalled()
   })
 })
 

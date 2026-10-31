@@ -86,6 +86,7 @@ export const hi = {
   meAddParent: 'मूल विषय जोड़ें',
   meAddSibling: 'समान स्तर का विषय जोड़ें',
   meRemoveNode: 'विषय हटाएँ',
+  meRemovePicture: 'चित्र हटाएँ',
   meFocus: 'फ़ोकस मोड',
   meCancelFocus: 'फ़ोकस मोड से बाहर निकलें',
   meMoveUp: 'ऊपर ले जाएँ',
@@ -123,4 +124,9 @@ export const hi = {
   markerStar: 'तारा',
   markerOther: 'चिह्न',
   pictureNotShown: 'चित्र लोड नहीं हुआ',
+  pictureDropNoTopic: 'चित्र को किसी विषय पर छोड़ें',
+  pictureDropUnsupported: 'केवल PNG, JPG और GIF चित्र जोड़े जा सकते हैं',
+  pictureDropTooLarge: '10 MB से बड़े चित्र नहीं जोड़े जा सकते',
+  pictureDropFailed: 'चित्र नहीं जोड़ा जा सका',
+  pictureDropFirstOnly: 'एक विषय में एक ही चित्र होता है, इसलिए केवल पहला जोड़ा गया',
 } satisfies Record<keyof typeof zh, string>

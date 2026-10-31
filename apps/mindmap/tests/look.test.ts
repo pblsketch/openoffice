@@ -382,8 +382,10 @@ describe('the colours of a map are document content', () => {
       'images.ts',
       'look.ts',
       'markers.ts',
+      'picture-drop.ts',
       'style-values.ts',
       'timeline-keys.ts',
+      'use-picture-drop.ts',
     ])
     for (const [name, code] of mapCode) {
       const source = code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')

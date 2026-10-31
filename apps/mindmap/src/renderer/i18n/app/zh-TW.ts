@@ -85,6 +85,7 @@ export const zhTW = {
   meAddParent: '新增父主題',
   meAddSibling: '新增同層主題',
   meRemoveNode: '刪除主題',
+  meRemovePicture: '刪除圖片',
   meFocus: '專注模式',
   meCancelFocus: '結束專注模式',
   meMoveUp: '上移',
@@ -121,4 +122,9 @@ export const zhTW = {
   markerStar: '星號',
   markerOther: '標記',
   pictureNotShown: '未載入的圖片',
+  pictureDropNoTopic: '請把圖片放到主題上',
+  pictureDropUnsupported: '只能加入 PNG、JPG 和 GIF 圖片',
+  pictureDropTooLarge: '無法加入超過 10 MB 的圖片',
+  pictureDropFailed: '無法加入圖片',
+  pictureDropFirstOnly: '一個主題只能放一張圖片，因此只加入了第一張',
 } satisfies Record<keyof typeof zh, string>

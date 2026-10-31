@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { extname, isAbsolute, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   MAX_REMOTE_IMAGE_BYTES,
   ResponseTooLargeError,
@@ -17,8 +18,8 @@ export interface ImageSource {
 
 /**
  * Image bytes for a spec or op field: a data: URL, an http(s) URL genoffice
- * downloads, or a local path (absolute, else relative to the current directory
- * and then to the file the reference came from).
+ * downloads, a file: URL, or a local path (absolute, else relative to the current
+ * directory and then to the file the reference came from).
  */
 /** Same byte budget as remote image downloads; checked on the encoded text
  *  (x4/3) before a single byte is allocated. */
@@ -30,7 +31,8 @@ export async function readImageSource(
   baseDir?: string,
 ): Promise<ImageSource | null> {
   if (/^data:/i.test(url)) {
-    const m = /^data:image\/([a-z0-9.+-]+);base64,(.*)$/is.exec(url)
+    // RFC 2397 allows media type parameters (charset, name, ...) before the base64 marker
+    const m = /^data:image\/([a-z0-9.+-]+)(?:;[^;,]+)*;base64,(.*)$/is.exec(url)
     if (!m) return null
     // Size the base64 text before decoding it: Buffer.from allocated the full
     // payload first (measured: a 400 MB data URL peaked at ~1 GB RSS before
@@ -51,9 +53,18 @@ export async function readImageSource(
     const declared = (resp.headers.get('content-type') ?? '').split('/')[1]?.split(';')[0] ?? ''
     return withType(bytes, declared)
   }
-  const candidates = isAbsolute(url)
-    ? [url]
-    : [resolve(ctx.cwd, url), ...(baseDir ? [resolve(baseDir, url)] : [])]
+  let local = url
+  if (/^file:/i.test(url)) {
+    // a file URL names an absolute path (already percent-decoded); one that cannot is not found
+    try {
+      local = fileURLToPath(url)
+    } catch {
+      return null
+    }
+  }
+  const candidates = isAbsolute(local)
+    ? [local]
+    : [resolve(ctx.cwd, local), ...(baseDir ? [resolve(baseDir, local)] : [])]
   const path = candidates.find((p) => existsSync(p))
   if (!path) return null
   assertAllowed(path, ctx.env, 'read')

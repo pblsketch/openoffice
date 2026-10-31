@@ -85,6 +85,7 @@ export const ar = {
   meAddParent: 'إضافة موضوع أصل',
   meAddSibling: 'إضافة موضوع مجاور',
   meRemoveNode: 'حذف الموضوع',
+  meRemovePicture: 'إزالة الصورة',
   meFocus: 'وضع التركيز',
   meCancelFocus: 'الخروج من وضع التركيز',
   meMoveUp: 'تحريك لأعلى',
@@ -121,4 +122,9 @@ export const ar = {
   markerStar: 'نجمة',
   markerOther: 'علامة',
   pictureNotShown: 'صورة لم تُحمَّل',
+  pictureDropNoTopic: 'أفلت الصورة على موضوع',
+  pictureDropUnsupported: 'يمكن إضافة صور PNG وJPG وGIF فقط',
+  pictureDropTooLarge: 'لا يمكن إضافة صور أكبر من 10 ميغابايت',
+  pictureDropFailed: 'تعذّرت إضافة الصورة',
+  pictureDropFirstOnly: 'يحمل الموضوع صورة واحدة فقط، لذا أُضيفت الصورة الأولى فقط',
 } satisfies Record<keyof typeof zh, string>

@@ -189,6 +189,20 @@ export function readInput(abs: string): Uint8Array {
   return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength)
 }
 
+/**
+ * A text file's bytes as text: UTF-16 with a byte order mark (what Windows PowerShell's `>` writes) is
+ * decoded as UTF-16, anything else as UTF-8. A UTF-8 BOM stays for `stripBom`, as before.
+ */
+export function decodeText(bytes: Uint8Array): string {
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder('utf-16le').decode(bytes)
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder('utf-16be').decode(bytes)
+  return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('utf-8')
+}
+
+export function readTextFile(path: string): string {
+  return decodeText(readFileSync(path))
+}
+
 /** Drops one leading UTF-8 BOM that editors put at the start of JSON files; a U+FEFF inside the text stays. */
 export function stripBom(text: string): string {
   return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text

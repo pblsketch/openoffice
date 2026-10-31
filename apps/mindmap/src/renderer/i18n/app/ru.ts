@@ -87,6 +87,7 @@ export const ru = {
   meAddParent: 'Добавить родительскую тему',
   meAddSibling: 'Добавить соседнюю тему',
   meRemoveNode: 'Удалить тему',
+  meRemovePicture: 'Удалить изображение',
   meFocus: 'Режим фокусировки',
   meCancelFocus: 'Выйти из режима фокусировки',
   meMoveUp: 'Переместить вверх',
@@ -124,4 +125,10 @@ export const ru = {
   markerStar: 'Звезда',
   markerOther: 'Маркер',
   pictureNotShown: 'Изображение не загружено',
+  pictureDropNoTopic: 'Перетащите изображение на тему',
+  pictureDropUnsupported: 'Можно добавлять только изображения PNG, JPG и GIF',
+  pictureDropTooLarge: 'Изображения больше 10 МБ добавить нельзя',
+  pictureDropFailed: 'Не удалось добавить изображение',
+  pictureDropFirstOnly:
+    'В теме может быть только одно изображение, поэтому добавлено только первое',
 } satisfies Record<keyof typeof zh, string>

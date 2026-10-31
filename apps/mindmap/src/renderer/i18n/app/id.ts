@@ -87,6 +87,7 @@ export const id = {
   meAddParent: 'Tambah topik induk',
   meAddSibling: 'Tambah topik setingkat',
   meRemoveNode: 'Hapus topik',
+  meRemovePicture: 'Hapus gambar',
   meFocus: 'Mode fokus',
   meCancelFocus: 'Keluar dari mode fokus',
   meMoveUp: 'Pindah ke atas',
@@ -124,4 +125,9 @@ export const id = {
   markerStar: 'Bintang',
   markerOther: 'Penanda',
   pictureNotShown: 'Gambar tidak dimuat',
+  pictureDropNoTopic: 'Letakkan gambar di atas topik',
+  pictureDropUnsupported: 'Hanya gambar PNG, JPG, dan GIF yang dapat ditambahkan',
+  pictureDropTooLarge: 'Gambar di atas 10 MB tidak dapat ditambahkan',
+  pictureDropFailed: 'Tidak dapat menambahkan gambar',
+  pictureDropFirstOnly: 'Satu topik hanya memuat satu gambar, jadi hanya yang pertama ditambahkan',
 } satisfies Record<keyof typeof zh, string>

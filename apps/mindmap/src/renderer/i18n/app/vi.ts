@@ -87,6 +87,7 @@ export const vi = {
   meAddParent: 'Thêm chủ đề cha',
   meAddSibling: 'Thêm chủ đề cùng cấp',
   meRemoveNode: 'Xóa chủ đề',
+  meRemovePicture: 'Xóa hình ảnh',
   meFocus: 'Chế độ tập trung',
   meCancelFocus: 'Thoát chế độ tập trung',
   meMoveUp: 'Di chuyển lên',
@@ -124,4 +125,9 @@ export const vi = {
   markerStar: 'Ngôi sao',
   markerOther: 'Dấu',
   pictureNotShown: 'Hình ảnh chưa được tải',
+  pictureDropNoTopic: 'Thả hình ảnh lên một chủ đề',
+  pictureDropUnsupported: 'Chỉ có thể thêm hình ảnh PNG, JPG và GIF',
+  pictureDropTooLarge: 'Không thể thêm hình ảnh lớn hơn 10 MB',
+  pictureDropFailed: 'Không thể thêm hình ảnh',
+  pictureDropFirstOnly: 'Mỗi chủ đề chỉ chứa một hình ảnh nên chỉ hình đầu tiên được thêm',
 } satisfies Record<keyof typeof zh, string>

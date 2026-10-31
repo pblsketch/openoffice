@@ -67,6 +67,8 @@ export const nl = {
   cvErrFailed: 'Omzetten is mislukt.',
   cvPageImageAlt: 'Pagina {page}',
   imgExportWholePages: "Hele pagina's",
+  imgExportCurrentPage: 'Alleen de huidige pagina',
+  imgExportCurrentPageTip: 'De pagina die je bekijkt exporteren als één PNG-bestand',
   imgExportEmbedded: "Alleen de afbeeldingen in de pagina's",
   imgExportEmbeddedTip:
     "De afbeeldingen in de pagina's opslaan als PNG-bestanden in de oorspronkelijke resolutie",

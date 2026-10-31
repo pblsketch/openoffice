@@ -24,7 +24,7 @@ import {
 } from '@genoffice/pptx-engine'
 import { HeuristicMetrics } from '@genoffice/pptx-render'
 import { extract } from '@genoffice/pdf2docx'
-import { assertAllowed, stripBom, type PathContext } from '../fs'
+import { assertAllowed, readTextFile, stripBom, type PathContext } from '../fs'
 import { CliError, EXIT, type ErrorHints } from '../result'
 
 const INVALID: ErrorHints = { reason: 'invalid_argument' }
@@ -244,7 +244,7 @@ export async function buildDeckFromDir(
   const pages: unknown[] = []
   for (const file of files) {
     try {
-      pages.push(JSON.parse(stripBom(readFileSync(file, 'utf-8'))))
+      pages.push(JSON.parse(stripBom(readTextFile(file))))
     } catch (err) {
       throw new CliError(
         EXIT.usage,
@@ -300,7 +300,7 @@ export function pageIndexOf(file: string): number {
 }
 
 export function readOutline(path: string): DeckOutline {
-  const r = parseOutline(stripBom(readFileSync(path, 'utf-8')))
+  const r = parseOutline(stripBom(readTextFile(path)))
   if (!r.ok) throw new CliError(EXIT.usage, `${path}: ${r.error}`, undefined, INVALID)
   return r.outline
 }

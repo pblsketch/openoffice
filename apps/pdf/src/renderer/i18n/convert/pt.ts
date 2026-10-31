@@ -65,6 +65,8 @@ export const pt = {
   cvErrFailed: 'Não foi possível converter.',
   cvPageImageAlt: 'Página {page}',
   imgExportWholePages: 'Páginas inteiras',
+  imgExportCurrentPage: 'Somente a página atual',
+  imgExportCurrentPageTip: 'Exportar a página que você está vendo como um arquivo PNG',
   imgExportEmbedded: 'Somente as imagens das páginas',
   imgExportEmbeddedTip:
     'Salvar as imagens inseridas nas páginas como arquivos PNG na resolução original',

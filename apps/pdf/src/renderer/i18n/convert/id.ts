@@ -65,6 +65,8 @@ export const id = {
   cvErrFailed: 'Konversi gagal.',
   cvPageImageAlt: 'Halaman {page}',
   imgExportWholePages: 'Halaman utuh',
+  imgExportCurrentPage: 'Hanya halaman ini',
+  imgExportCurrentPageTip: 'Ekspor halaman yang sedang dilihat sebagai satu file PNG',
   imgExportEmbedded: 'Hanya gambar di dalam halaman',
   imgExportEmbeddedTip:
     'Simpan gambar yang ada di dalam halaman sebagai file PNG dengan resolusi aslinya',

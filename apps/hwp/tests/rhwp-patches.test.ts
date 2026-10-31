@@ -9,6 +9,7 @@ import {
   APP_SCHEME,
   HANCOM_KEYS_MODULE,
   PASSWORD_FLAG,
+  PC_FONTS_MODULE,
   STUDIO_PATCHES,
   applyPatch,
   hancomHooks,
@@ -549,6 +550,45 @@ describe('rhwp font memo patches', () => {
   it('are in the studio build', () => {
     expect(STUDIO_PATCHES).toContain('studio-font-memo-state')
     expect(STUDIO_PATCHES).toContain('studio-font-memo-use')
+  })
+})
+
+describe('rhwp PC fonts patch', () => {
+  // the studio's text around the patch, as the pinned release has it
+  const main = [
+    'import {',
+    '  clearStoredLocalFonts,',
+    '  detectLocalFonts,',
+    '  getLocalFontState,',
+    '  loadStoredLocalFonts,',
+    '  resolveLocalFont,',
+    "} from '@/core/local-fonts';",
+    '',
+    '    setupZoomControls();',
+    '    setupEventListeners();',
+    '    setupModalFocusRestore();',
+    '',
+  ].join('\n')
+  const patched = applyPatch('studio-pc-fonts', main)
+
+  it('looks at the PC once the studio listens for font changes, with its own detection', () => {
+    expect(patched).toContain(`import { refreshPcFonts } from '${PC_FONTS_MODULE}';`)
+    expect(patched).toContain('  getLocalFontRecords,\n')
+    const call = patched.indexOf('void refreshPcFonts({')
+    expect(call).toBeGreaterThan(patched.indexOf('setupEventListeners();'))
+    expect(call).toBeLessThan(patched.indexOf('setupModalFocusRestore();'))
+    expect(patched).toContain('detect: () => detectLocalFonts({ force: true }),')
+    expect(patched).toContain("eventBus.emit('local-fonts-changed'")
+  })
+
+  it('keeps CRLF sources working, fails when the text is gone, and is in the studio build', () => {
+    expect(applyPatch('studio-pc-fonts', main.replaceAll('\n', '\r\n'))).toContain(
+      'void refreshPcFonts({\r\n',
+    )
+    expect(() => applyPatch('studio-pc-fonts', main.replace('setupEventListeners', 'x'))).toThrow(
+      /studio-pc-fonts/,
+    )
+    expect(STUDIO_PATCHES).toContain('studio-pc-fonts')
   })
 })
 

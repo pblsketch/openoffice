@@ -31,6 +31,7 @@ import { thumbnailForSave } from './document/thumbnail'
 import { saveMapIntoProject } from './document/save-into-project'
 import { useMapExport } from './export/use-map-export'
 import { MapController, type MapHost, type TopicRequest } from './map/controller'
+import { usePictureDrop } from './map/use-picture-drop'
 import { Toolbar } from './components/Toolbar'
 import { SheetTabs } from './components/SheetTabs'
 import { ThemePanel } from './components/ThemePanel'
@@ -511,6 +512,9 @@ export default function App() {
     [activeKey],
   )
 
+  // a picture dragged from the desktop onto a topic: the same way in as an AI picture
+  const pictureDrop = usePictureDrop({ host: ai.host, controller: activeController, say })
+
   const runCommand = useCallback(
     (command: MindmapMenuCommand) => {
       const map = activeController()
@@ -886,7 +890,13 @@ export default function App() {
 
       <main className="mm-stage">
         {/* the theme panel and the AI panel dock at this element's end side, one open at a time */}
-        <div className="mm-card" aria-label={t('appName')}>
+        <div
+          className="mm-card"
+          aria-label={t('appName')}
+          onDragOver={pictureDrop.onDragOver}
+          onDragLeave={pictureDrop.onDragLeave}
+          onDrop={pictureDrop.onDrop}
+        >
           {tabs.map((tab) => (
             <div
               key={tab.key}

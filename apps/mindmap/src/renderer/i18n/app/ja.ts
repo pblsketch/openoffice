@@ -86,6 +86,7 @@ export const ja = {
   meAddParent: '親トピックを追加',
   meAddSibling: '兄弟トピックを追加',
   meRemoveNode: 'トピックを削除',
+  meRemovePicture: '画像を削除',
   meFocus: 'フォーカスモード',
   meCancelFocus: 'フォーカスモードを終了',
   meMoveUp: '上へ移動',
@@ -123,4 +124,10 @@ export const ja = {
   markerStar: '星',
   markerOther: 'マーカー',
   pictureNotShown: '読み込まれていない画像',
+  pictureDropNoTopic: '画像はトピックの上にドロップしてください',
+  pictureDropUnsupported: '追加できるのは PNG、JPG、GIF 画像だけです',
+  pictureDropTooLarge: '10 MB を超える画像は追加できません',
+  pictureDropFailed: '画像を追加できませんでした',
+  pictureDropFirstOnly:
+    '1 つのトピックには画像を 1 枚しか入れられないため、最初の 1 枚だけ追加しました',
 } satisfies Record<keyof typeof zh, string>
