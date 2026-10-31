@@ -3295,31 +3295,31 @@
   },
   {
     "date": "2026-10-31",
-    "totalDownloads": 35263,
+    "totalDownloads": 35939,
     "installs": {
-      "windows": 25651,
-      "macos": 8051,
-      "linux": 1561
+      "windows": 26061,
+      "macos": 8261,
+      "linux": 1617
     },
-    "updateChecks": 47837,
+    "updateChecks": 49294,
     "releaseCount": 10,
-    "stars": 685,
+    "stars": 691,
     "forks": 129,
     "releases": [
       {
         "tag": "v0.12.9",
         "publishedAt": "2026-10-30T06:04:14Z",
-        "downloads": 2138
+        "downloads": 2768
       },
       {
         "tag": "v0.12.8",
         "publishedAt": "2026-10-28T09:19:57Z",
-        "downloads": 5958
+        "downloads": 5961
       },
       {
         "tag": "v0.12.7",
         "publishedAt": "2026-10-27T15:08:56Z",
-        "downloads": 3517
+        "downloads": 3558
       },
       {
         "tag": "v0.12.6",
@@ -3339,7 +3339,7 @@
       {
         "tag": "v0.12.3",
         "publishedAt": "2026-10-22T08:01:56Z",
-        "downloads": 6147
+        "downloads": 6149
       },
       {
         "tag": "v0.12.2",
@@ -3361,62 +3361,62 @@
       {
         "release": "v0.12.9",
         "asset": "IeumOffice-0.12.9-arm64-mac.zip",
-        "downloads": 72
+        "downloads": 166
       },
       {
         "release": "v0.12.9",
         "asset": "IeumOffice-0.12.9-arm64.dmg",
-        "downloads": 367
+        "downloads": 461
       },
       {
         "release": "v0.12.9",
         "asset": "IeumOffice-0.12.9-mac.zip",
-        "downloads": 16
+        "downloads": 19
       },
       {
         "release": "v0.12.9",
         "asset": "IeumOffice-0.12.9-x64.dmg",
-        "downloads": 52
+        "downloads": 60
       },
       {
         "release": "v0.12.9",
         "asset": "IeumOffice-0.12.9.AppImage",
-        "downloads": 55
+        "downloads": 76
       },
       {
         "release": "v0.12.9",
         "asset": "ieumoffice-0.12.9.x86_64.rpm",
-        "downloads": 8
+        "downloads": 11
       },
       {
         "release": "v0.12.9",
         "asset": "IeumOffice-Setup-0.12.9.exe",
-        "downloads": 1554
+        "downloads": 1950
       },
       {
         "release": "v0.12.9",
         "asset": "ieumoffice_0.12.9_amd64.deb",
-        "downloads": 14
+        "downloads": 25
       },
       {
         "release": "v0.12.9",
         "asset": "latest-linux.yml",
-        "downloads": 80
+        "downloads": 107
       },
       {
         "release": "v0.12.9",
         "asset": "latest-mac.yml",
-        "downloads": 2447
+        "downloads": 3181
       },
       {
         "release": "v0.12.9",
         "asset": "latest.yml",
-        "downloads": 2264
+        "downloads": 2960
       },
       {
         "release": "v0.12.8",
         "asset": "IeumOffice-0.12.8-arm64-mac.zip",
-        "downloads": 149
+        "downloads": 150
       },
       {
         "release": "v0.12.8",
@@ -3446,7 +3446,7 @@
       {
         "release": "v0.12.8",
         "asset": "IeumOffice-Setup-0.12.8.exe",
-        "downloads": 4468
+        "downloads": 4470
       },
       {
         "release": "v0.12.8",
@@ -3471,7 +3471,7 @@
       {
         "release": "v0.12.7",
         "asset": "IeumOffice-0.12.7-arm64-mac.zip",
-        "downloads": 84
+        "downloads": 94
       },
       {
         "release": "v0.12.7",
@@ -3491,17 +3491,17 @@
       {
         "release": "v0.12.7",
         "asset": "IeumOffice-0.12.7.AppImage",
-        "downloads": 96
+        "downloads": 116
       },
       {
         "release": "v0.12.7",
         "asset": "ieumoffice-0.12.7.x86_64.rpm",
-        "downloads": 5
+        "downloads": 6
       },
       {
         "release": "v0.12.7",
         "asset": "IeumOffice-Setup-0.12.7.exe",
-        "downloads": 2652
+        "downloads": 2662
       },
       {
         "release": "v0.12.7",
@@ -3711,7 +3711,7 @@
       {
         "release": "v0.12.3",
         "asset": "IeumOffice-Setup-0.12.3.exe",
-        "downloads": 4507
+        "downloads": 4509
       },
       {
         "release": "v0.12.3",
