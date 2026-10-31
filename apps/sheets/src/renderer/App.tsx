@@ -5668,9 +5668,8 @@ export function App({
         <SpellingDialog
           onClose={() => setSpellDialogOpen(false)}
           getWorkbook={() => univerRef.current?.univerAPI.getActiveWorkbook() ?? null}
-          isWithheld={(sheetId, row, column) =>
-            (redactionIndexRef.current ?? NO_REDACTIONS).labelAt(sheetId, row, column) !== null
-          }
+          // this fork has no withheld (redacted) cells: every cell is checked
+          isWithheld={() => false}
           onJumpTo={(sheetId, row, column) => {
             void selectWorkbookRange(
               readContext(),
