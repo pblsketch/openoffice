@@ -32,6 +32,7 @@ import {
   CLIPBOARD_HTML_MODULE,
   FORMAT_COPY_MODULE,
   HANCOM_KEYS_MODULE,
+  PC_FONTS_MODULE,
   STUDIO_PATCHES,
   missingHancomCommands,
   missingPluginHooks,
@@ -80,6 +81,7 @@ const HANCOM_KEYS = join(APP, 'studio-plugin', 'hancom-keys.mjs')
 const DOCUMENT_INFO = join(APP, 'studio-plugin', 'document-info.mjs')
 const FORMAT_COPY = join(APP, 'studio-plugin', 'format-copy.mjs')
 const CLIPBOARD_HTML = join(APP, 'studio-plugin', 'clipboard-html.mjs')
+const PC_FONTS = join(APP, 'studio-plugin', 'pc-fonts.mjs')
 const HANJA = join(APP, 'studio-plugin', 'hanja.mjs')
 const HANJA_CACHE = join(APP, 'node_modules', '.cache', 'libhangul-hanja')
 const STAMP = join(OUT, '.stamp')
@@ -103,6 +105,7 @@ function stampValue() {
   hash.update(readFileSync(DOCUMENT_INFO))
   hash.update(readFileSync(FORMAT_COPY))
   hash.update(readFileSync(CLIPBOARD_HTML))
+  hash.update(readFileSync(PC_FONTS))
   hash.update(readFileSync(HANJA))
   hash.update(HANJA_COMMIT)
   // and so is the engine: a rebuilt WASM must reach the studio
@@ -198,6 +201,7 @@ async function buildStudio() {
         [HANCOM_KEYS_MODULE]: HANCOM_KEYS,
         [FORMAT_COPY_MODULE]: FORMAT_COPY,
         [CLIPBOARD_HTML_MODULE]: CLIPBOARD_HTML,
+        [PC_FONTS_MODULE]: PC_FONTS,
       },
     },
     // upstream registers a service worker for its website build; this build
