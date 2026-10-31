@@ -105,6 +105,10 @@ const FILE_MENU = [
 const SELECTION_COMMAND = 'ext:ieum-selection'
 /** The command that selects the word under the caret (a double click in the page). */
 const WORD_COMMAND = 'ext:ieum-select-word'
+/** The command that selects the paragraph under the caret (a triple click in the page). */
+const PARAGRAPH_COMMAND = 'ext:ieum-select-paragraph'
+/** The command that keeps a drag begun with a double click on whole words. */
+const WORD_DRAG_COMMAND = 'ext:ieum-word-drag'
 /** The command that draws the marks of this plugin's changes on the pages. */
 const MARK_COMMAND = 'ext:ieum-mark-changes'
 /** Most places marked at once: a replace-all over a long document stops here. */
@@ -821,33 +825,172 @@ function wordAt(text, offset) {
   return { start, end }
 }
 
+/** An engine answer the bridge hands back either parsed or as JSON. */
+const answerOf = (value) => (typeof value === 'string' ? parse(value) : value)
+
 /**
- * Select the word the caret is in, the way a double click does in Hangul and every other
- * editor; the studio's own double click only opens headers, text boxes and objects. Leaves
- * the editor alone while it is in one of those modes.
+ * The caret's paragraph, wherever the caret is: the body or a table cell, a header or footer
+ * being edited, or a footnote being edited. `text` is the paragraph's text and `offset` the
+ * caret's place in it; `select(from, to)` selects from one such place's offset to another's,
+ * `from` staying the anchor. Null in a mode with no text caret (an object, a cell block).
  */
-function selectWord(services, readText) {
+function caretParagraph(services, readText) {
   const input = services && services.getInputHandler ? services.getInputHandler() : null
   const cursor = input ? input.cursor : null
-  if (!cursor || !cursor.getPosition) return false
-  const elsewhere = [
-    'isInPictureObjectSelection',
-    'isInHeaderFooter',
-    'isInCellSelectionMode',
-    'isInFootnote',
-  ].some((mode) => typeof cursor[mode] === 'function' && cursor[mode]())
-  if (elsewhere) return false
+  if (!cursor || !cursor.getPosition) return null
+  const elsewhere = ['isInPictureObjectSelection', 'isInCellSelectionMode'].some(
+    (mode) => typeof cursor[mode] === 'function' && cursor[mode](),
+  )
+  if (elsewhere) return null
+  if (typeof cursor.isInHeaderFooter === 'function' && cursor.isInHeaderFooter()) {
+    const target = {
+      sectionIdx: cursor.hfSectionIdx,
+      isHeader: cursor.headerFooterMode === 'header',
+      applyTo: cursor.hfApplyTo,
+    }
+    const para = cursor.hfParaIdx
+    const info = answerOf(
+      services.wasm.getHeaderFooterParaInfo(
+        target.sectionIdx,
+        target.isHeader,
+        target.applyTo,
+        para,
+      ),
+    )
+    return {
+      input,
+      kind: 'header',
+      key: `hf:${target.sectionIdx}:${target.isHeader}:${target.applyTo}:${para}`,
+      text: String(info?.text ?? ''),
+      offset: cursor.hfCharOffset,
+      at: (offset) => ({ ...target, paraIdx: para, charOffset: offset }),
+      select: (from, to) =>
+        cursor.selectHeaderFooterRange(
+          from.at(from.offset),
+          to.at(to.offset),
+          cursor.hfPreviewPage,
+        ),
+      forward: () => {
+        const ordered = cursor.getHeaderFooterSelectionOrdered?.()
+        return (
+          !ordered ||
+          (ordered.end.paraIdx === cursor.hfParaIdx &&
+            ordered.end.charOffset === cursor.hfCharOffset)
+        )
+      },
+    }
+  }
+  if (typeof cursor.isInFootnote === 'function' && cursor.isInFootnote()) {
+    const para = cursor.fnInnerParaIdx
+    const info = answerOf(
+      services.wasm.getFootnoteInfo(cursor.fnSectionIdx, cursor.fnParaIdx, cursor.fnControlIdx),
+    )
+    return {
+      input,
+      kind: 'footnote',
+      key: `fn:${cursor.fnSectionIdx}:${cursor.fnParaIdx}:${cursor.fnControlIdx}:${para}`,
+      text: String(info?.texts?.[para] ?? ''),
+      offset: cursor.fnCharOffset,
+      at: (offset) => ({ fnParaIdx: para, charOffset: offset }),
+      select: (from, to) => {
+        cursor.clearSelection()
+        cursor.setFnCursorPosition(from.at(from.offset).fnParaIdx, from.offset)
+        cursor.setFnAnchor()
+        cursor.setFnCursorPosition(to.at(to.offset).fnParaIdx, to.offset)
+        return true
+      },
+      forward: () => {
+        const ordered = cursor.getFootnoteSelectionOrdered?.()
+        return (
+          !ordered ||
+          (ordered.end.fnParaIdx === cursor.fnInnerParaIdx &&
+            ordered.end.charOffset === cursor.fnCharOffset)
+        )
+      },
+    }
+  }
   const position = cursor.getPosition()
   const at = endOf(position)
-  if (!at) return false
-  const word = wordAt(readText(at), at.offset)
+  if (!at) return null
+  return {
+    input,
+    kind: 'body',
+    key: placeKey({ ...at, offset: 0, length: 0 }),
+    text: readText(at),
+    offset: at.offset,
+    at: (offset) => ({ ...position, charOffset: offset }),
+    select: (from, to) => {
+      cursor.clearSelection()
+      cursor.moveTo(from.at(from.offset))
+      cursor.setAnchor()
+      cursor.moveTo(to.at(to.offset))
+      return true
+    },
+    forward: () => {
+      const ordered = cursor.getSelectionOrdered?.()
+      if (!ordered) return true
+      const now = cursor.getPosition()
+      return ['sectionIndex', 'paragraphIndex', 'cellIndex', 'cellParaIndex', 'charOffset'].every(
+        (key) => ordered.end[key] === now[key],
+      )
+    },
+  }
+}
+
+/** Select from one offset of a caret paragraph to another and show it. */
+function selectIn(place, start, end) {
+  const done = place.select({ ...place, offset: start }, { ...place, offset: end })
+  if (done !== false && place.input.updateCaret) place.input.updateCaret()
+  return done !== false
+}
+
+/**
+ * Select the word the caret is in, the way a double click does in Hangul and every other
+ * editor; the studio's own double click only opens headers, text boxes and objects. Works in
+ * the body, in cells, and in a header, footer or footnote being edited.
+ */
+function selectWord(services, readText) {
+  const place = caretParagraph(services, readText)
+  if (!place) return false
+  const word = wordAt(place.text, place.offset)
   if (!word) return false
-  cursor.clearSelection()
-  cursor.moveTo({ ...position, charOffset: word.start })
-  cursor.setAnchor()
-  cursor.moveTo({ ...position, charOffset: word.end })
-  if (input.updateCaret) input.updateCaret()
-  return true
+  return selectIn(place, word.start, word.end)
+}
+
+/** Select the whole paragraph the caret is in, as a triple click does in Hangul. */
+function selectParagraph(services, readText) {
+  const place = caretParagraph(services, readText)
+  if (!place || place.text.length === 0) return false
+  return selectIn(place, 0, place.text.length)
+}
+
+/**
+ * A drag begun with a double click selects whole words, as in Hangul: `start` notes the word
+ * the drag began on, `move` (after each of the studio's own drag steps, which put the
+ * selection's end under the pointer) widens both ends to word boundaries. Returns the drag
+ * state, with `widened` once the selection reached past its first word.
+ */
+function wordDrag(services, readText, drag, phase) {
+  const place = caretParagraph(services, readText)
+  if (!place) return phase === 'start' ? null : drag
+  if (phase === 'start') {
+    const word = wordAt(place.text, place.offset)
+    return word ? { place, start: word.start, end: word.end, widened: false } : null
+  }
+  // a paragraph of another kind (out of a header into the body): the studio's selection stays
+  if (!drag || place.kind !== drag.place.kind) return drag
+  const samePara = place.key === drag.place.key
+  if (samePara && place.offset >= drag.start && place.offset <= drag.end) {
+    selectIn(drag.place, drag.start, drag.end)
+    return drag
+  }
+  const forward = samePara ? place.offset > drag.end : place.forward()
+  const word = wordAt(place.text, place.offset) ?? { start: place.offset, end: place.offset }
+  const done = forward
+    ? drag.place.select({ ...drag.place, offset: drag.start }, { ...place, offset: word.end })
+    : drag.place.select({ ...drag.place, offset: drag.end }, { ...place, offset: word.start })
+  if (done !== false && place.input.updateCaret) place.input.updateCaret()
+  return { ...drag, widened: true }
 }
 
 const placeKey = (place) =>
@@ -3310,6 +3453,8 @@ function shiftMarks(marks, before, after, at) {
 
 /** Takes the plugin's double-click listener off the page again. */
 let stopListening = null
+/** A drag begun with a double click, kept on whole words (wordDrag); null when there is none. */
+let wordDragState = null
 /** Takes the marks off the page again, with what keeps them in place. */
 let stopMarking = null
 /** Takes the memo anchors off the page again, with what keeps them in place. */
@@ -3990,20 +4135,55 @@ export const agentPlugin = {
       // as above
     }
 
+    /** The text of a body or cell paragraph the caret is in, as the word commands read it. */
+    const readParagraph = (at) =>
+      host.read((doc) => {
+        const box = containerOf(doc, { sec: at.sec, para: at.para, cellPath: at.path })
+        return box.text(at.k, box.length(at.k))
+      })
+
     try {
       host.automation.registerCommand({
         id: WORD_COMMAND,
         label: 'Select the word',
         execute: (services) => {
           try {
-            selectWord(services, (at) =>
-              host.read((doc) => {
-                const box = containerOf(doc, { sec: at.sec, para: at.para, cellPath: at.path })
-                return box.text(at.k, box.length(at.k))
-              }),
-            )
+            selectWord(services, readParagraph)
           } catch {
             // a place the caret cannot be read at: nothing is selected, as before
+          }
+        },
+      })
+    } catch {
+      // as above
+    }
+
+    try {
+      host.automation.registerCommand({
+        id: PARAGRAPH_COMMAND,
+        label: 'Select the paragraph',
+        execute: (services) => {
+          try {
+            selectParagraph(services, readParagraph)
+          } catch {
+            // as for the word
+          }
+        },
+      })
+    } catch {
+      // as above
+    }
+
+    try {
+      host.automation.registerCommand({
+        id: WORD_DRAG_COMMAND,
+        label: 'Select by words while dragging',
+        execute: (services, params) => {
+          try {
+            const phase = params && params.phase === 'start' ? 'start' : 'move'
+            wordDragState = wordDrag(services, readParagraph, wordDragState, phase)
+          } catch {
+            // the studio's own drag selection stays
           }
         },
       })
@@ -4075,20 +4255,69 @@ export const agentPlugin = {
 
     const page = globalThis.document
     if (page) {
+      const inPage = (event) => {
+        const target = event.target
+        return Boolean(target && target.closest && target.closest('#scroll-container'))
+      }
+      const run = (id, params) => {
+        try {
+          host.automation.execute(id, params)
+        } catch {
+          // no such command in this editor: the click stays what it was
+        }
+      }
+      let dragFrame = 0
       const onDoubleClick = (event) => {
         // the studio handled it (a header, a text box, a picture), or it was not in the page
-        if (event.defaultPrevented) return
-        const target = event.target
-        if (!target || !target.closest || !target.closest('#scroll-container')) return
-        try {
-          host.automation.execute(WORD_COMMAND)
-        } catch {
-          // no such command in this editor: the double click stays what it was
-        }
+        if (event.defaultPrevented || !inPage(event)) return
+        // a double click that dragged on has its words selected already
+        if (wordDragState && wordDragState.widened) return
+        run(WORD_COMMAND)
+      }
+      // Hangul's other clicks: a triple click selects the paragraph, and a drag begun with a
+      // double click selects whole words. Both run after the studio has put the caret down.
+      // (The studio cancels every press in the page to keep its focus, so that says nothing.)
+      const onMouseDown = (event) => {
+        wordDragState = null
+        if (event.button !== 0 || event.detail !== 2) return
+        if (!inPage(event)) return
+        run(WORD_DRAG_COMMAND, { phase: 'start' })
+      }
+      const onMouseMove = (event) => {
+        if (!wordDragState || (event.buttons & 1) === 0 || dragFrame) return
+        // after the studio's own frame, which moved the selection's end to the pointer
+        dragFrame = globalThis.requestAnimationFrame(() => {
+          dragFrame = 0
+          if (wordDragState) run(WORD_DRAG_COMMAND, { phase: 'move' })
+        })
+      }
+      const onMouseUp = () => {
+        if (!wordDragState) return
+        // the studio sets the drag's last end on release; widen it once more after that
+        setTimeout(() => {
+          if (wordDragState && wordDragState.widened) run(WORD_DRAG_COMMAND, { phase: 'move' })
+        }, 0)
+      }
+      const onClick = (event) => {
+        if (event.button !== 0 || event.detail !== 3 || event.defaultPrevented) return
+        if (!inPage(event)) return
+        run(PARAGRAPH_COMMAND)
       }
       if (stopListening) stopListening()
       page.addEventListener('dblclick', onDoubleClick)
-      stopListening = () => page.removeEventListener('dblclick', onDoubleClick)
+      page.addEventListener('mousedown', onMouseDown)
+      page.addEventListener('mousemove', onMouseMove)
+      page.addEventListener('mouseup', onMouseUp)
+      page.addEventListener('click', onClick)
+      stopListening = () => {
+        page.removeEventListener('dblclick', onDoubleClick)
+        page.removeEventListener('mousedown', onMouseDown)
+        page.removeEventListener('mousemove', onMouseMove)
+        page.removeEventListener('mouseup', onMouseUp)
+        page.removeEventListener('click', onClick)
+        if (dragFrame) globalThis.cancelAnimationFrame(dragFrame)
+        wordDragState = null
+      }
     }
 
     const guarded =

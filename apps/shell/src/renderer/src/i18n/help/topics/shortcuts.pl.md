@@ -746,3 +746,5 @@ Działają tylko wtedy, gdy kursor znajduje się w pustej komórce tabeli. Osobn
 | Przejdź do karty Start (poza tabelą) | ⇧⌘H   | Ctrl+Shift+H    |
 
 Klawisz zapisany jako `Ctrl+N,T` oznacza: naciśnij Ctrl+N, puść, a następnie naciśnij T. `F5 → S` oznacza zaznaczenie bloku komórek za pomocą F5 i naciśnięcie S. `Ctrl+1 … Ctrl+0` oznaczają style od pierwszego do dziesiątego w dokumencie; `Ctrl+Alt+1 … Ctrl+Alt+0` stosują te same style. Gdy zaznaczony jest blok komórek, `Ctrl+Shift+S` (w macOS `⇧⌘S`) oznacza sumę bloku; poza nim ten klawisz zapisuje jako.
+
+Myszą, tak jak w Hangul, dwukrotne kliknięcie zaznacza słowo, trzykrotne cały akapit, a dwukrotne kliknięcie z przytrzymaniem i przeciągnięciem rozszerza zaznaczenie słowami. Działa to także podczas edycji nagłówka, stopki lub przypisu. Skopiowanie bloku komórek (`Ctrl+C`) kopiuje tekst komórek i samą tabelę, więc wklejenie w tekście głównym tworzy tę samą tabelę od nowa. Wklejenie, gdy kursor stoi tylko w komórce innej tabeli, otwiera okno Paste Cells: nadpisanie od tej komórki (komórki wychodzące poza tabelę są pomijane) albo wstawienie komórek powyżej, poniżej, z lewej lub z prawej.

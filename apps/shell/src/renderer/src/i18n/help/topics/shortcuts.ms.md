@@ -746,3 +746,5 @@ Hanya berfungsi apabila kursor berada dalam sel jadual yang kosong. Ada kekunci 
 | Pergi ke tab Utama (di luar jadual)        | ⇧⌘H   | Ctrl+Shift+H    |
 
 Kekunci yang ditulis `Ctrl+N,T` bermaksud tekan Ctrl+N, lepaskan, kemudian tekan T. `F5 → S` bermaksud pilih blok sel dengan F5 kemudian tekan S. `Ctrl+1 … Ctrl+0` ialah gaya pertama hingga kesepuluh dokumen; `Ctrl+Alt+1 … Ctrl+Alt+0` menggunakan gaya yang sama. Apabila blok sel dipilih, `Ctrl+Shift+S` (pada macOS `⇧⌘S`) ialah jumlah blok; di luar itu kekunci ini menyimpan sebagai.
+
+Dengan tetikus, seperti dalam Hangul, klik dua kali memilih satu perkataan, klik tiga kali seluruh perenggan, dan klik dua kali lalu tahan dan seret meluaskan pilihan perkataan demi perkataan. Ini juga berlaku semasa menyunting pengepala, pengaki atau nota kaki. Menyalin blok sel (`Ctrl+C`) menyalin teks sel dan jadual itu sendiri, jadi apabila ditampal dalam badan teks, jadual yang sama dibina semula. Menampal dengan kursor sahaja dalam sel jadual lain membuka dialog Paste Cells: tulis ganti bermula dari sel itu (sel yang terkeluar dari jadual dibuang) atau sisipkan sel di atas, di bawah, di kiri atau di kanan.

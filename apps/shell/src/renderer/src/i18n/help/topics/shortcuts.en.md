@@ -746,3 +746,5 @@ These work only while the caret is in an empty table cell. Separate keys calcula
 | Go to the Home tab (outside a table) | ⇧⌘H   | Ctrl+Shift+H    |
 
 A key written `Ctrl+N,T` means press Ctrl+N, release it, then press T. `F5 → S` means select a cell block with F5 and then press S. `Ctrl+1 … Ctrl+0` stand for the document’s first through tenth styles; `Ctrl+Alt+1 … Ctrl+Alt+0` apply the same styles. While a block of cells is selected, `Ctrl+Shift+S` (on macOS `⇧⌘S`) is the block sum; elsewhere that key saves under a new name.
+
+With the mouse, as in Hangul, a double click selects a word, a triple click selects the whole paragraph, and a double click held and dragged extends the selection word by word. This also works while you edit a header, footer or footnote. Copying a cell block (`Ctrl+C`) copies the cells' text and the table itself, so pasting it in the body makes the same table again. Pasting with just the caret in a cell of another table opens the Paste Cells dialog: overwrite from that cell (cells that fall outside the table are dropped), or insert the cells above, below, to the left or to the right.
