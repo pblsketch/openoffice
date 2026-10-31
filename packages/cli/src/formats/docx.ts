@@ -1054,7 +1054,7 @@ function xmlFields(xml: string): Array<Pick<FieldSummary, 'instr' | 'result' | '
   let dirty = false
   const simple: Array<{ instr: string; dirty: boolean; result: string }> = []
   const re =
-    /<w:fldChar\b([^>]*)\/?>|<w:instrText\b[^>]*>([\s\S]*?)<\/w:instrText>|<w:t\b[^>]*>([^<]*)<\/w:t>|<w:fldSimple\b([^>]*)>|<\/w:fldSimple>/g
+    /<w:fldChar\b([^>]*)\/?>|<w:instrText\b[^>]*>([\s\S]*?)<\/w:instrText>|<w:t\b[^>]*>([^<]*)<\/w:t>|<w:fldSimple\b([^>]*)>|<\/w:fldSimple>|<w:(br|cr|tab)\b[^>]*\/>/g
   for (const m of xml.matchAll(re)) {
     if (m[1] !== undefined) {
       const type = /w:fldCharType="(\w+)"/.exec(m[1])?.[1]
@@ -1083,6 +1083,10 @@ function xmlFields(xml: string): Array<Pick<FieldSummary, 'instr' | 'result' | '
         dirty: /\bw:dirty="(?:true|1)"/.test(m[4]),
         result: '',
       })
+    } else if (m[5] !== undefined) {
+      const text = m[5] === 'tab' ? '\t' : '\n'
+      if (depth === 1 && result !== null) result += text
+      else if (depth === 0 && simple.length) simple[simple.length - 1]!.result += text
     } else {
       const done = simple.pop()
       if (done) out.push({ instr: done.instr, result: decode(done.result), dirty: done.dirty })
