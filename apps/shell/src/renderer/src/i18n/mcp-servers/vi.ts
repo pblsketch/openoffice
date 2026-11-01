@@ -71,6 +71,7 @@ export const vi = {
   launchFromApp: 'Dùng bản mà ứng dụng đã tải về.',
   launchFromPc: 'Dùng chương trình có trên máy tính này.',
   launchAllow: 'Cho phép chạy',
+  launchRecheck: 'Lệnh đã thay đổi. Vui lòng kiểm tra lại.',
   runtimeAsk: 'Máy chủ này cần {runtime}. Để ứng dụng tải về nhé? (tổng cộng {size})',
   runtimeItem: '{runtime} {version}: {size}',
   runtimeWhere: 'Được lưu trong thư mục riêng của ứng dụng. Không thay đổi gì trên máy tính.',

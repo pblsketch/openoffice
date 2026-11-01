@@ -70,6 +70,7 @@ export const hi = {
   launchFromApp: 'ऐप की डाउनलोड की हुई कॉपी इस्तेमाल होती है।',
   launchFromPc: 'इस पीसी पर मौजूद प्रोग्राम इस्तेमाल होता है।',
   launchAllow: 'चलने की अनुमति दें',
+  launchRecheck: 'कमांड बदल गया है। कृपया इसे फिर से जाँचें।',
   runtimeAsk: 'इस सर्वर को {runtime} चाहिए। क्या ऐप इसे डाउनलोड करे? (कुल {size})',
   runtimeItem: '{runtime} {version}: {size}',
   runtimeWhere: 'इसे ऐप के अपने फ़ोल्डर में रखा जाता है। पीसी पर कुछ नहीं बदलता।',

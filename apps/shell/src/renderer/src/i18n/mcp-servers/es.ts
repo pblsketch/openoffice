@@ -73,6 +73,7 @@ export const es = {
   launchFromApp: 'Usa la copia que descargó la aplicación.',
   launchFromPc: 'Usa el programa de este PC.',
   launchAllow: 'Permitir ejecución',
+  launchRecheck: 'El comando cambió. Revíselo de nuevo.',
   runtimeAsk:
     'Este servidor necesita {runtime}. ¿Quiere que la aplicación lo descargue? ({size} en total)',
   runtimeItem: '{runtime} {version}: {size}',

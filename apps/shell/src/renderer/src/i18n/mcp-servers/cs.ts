@@ -70,6 +70,7 @@ export const cs = {
   launchFromApp: 'Používá kopii stáhnutou aplikací.',
   launchFromPc: 'Používá program na tomto počítači.',
   launchAllow: 'Povolit spuštění',
+  launchRecheck: 'Příkaz se změnil. Zkontrolujte ho znovu.',
   runtimeAsk: 'Tento server potřebuje {runtime}. Má ho aplikace stáhnout? (celkem: {size})',
   runtimeItem: '{runtime} {version}: {size}',
   runtimeWhere: 'Uloží se do vlastní složky aplikace. V počítači se nic nezmění.',

@@ -72,6 +72,7 @@ export const pl = {
   launchFromApp: 'Używa kopii pobranej przez aplikację.',
   launchFromPc: 'Używa programu z tego komputera.',
   launchAllow: 'Zezwól na uruchomienie',
+  launchRecheck: 'Polecenie się zmieniło. Sprawdź je ponownie.',
   runtimeAsk:
     'Ten serwer potrzebuje programu {runtime}. Czy aplikacja ma go pobrać? (łącznie: {size})',
   runtimeItem: '{runtime} {version}: {size}',

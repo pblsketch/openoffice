@@ -70,6 +70,7 @@ export const ar = {
   launchFromApp: 'يستخدم النسخة التي نزّلها التطبيق.',
   launchFromPc: 'يستخدم البرنامج الموجود على هذا الكمبيوتر.',
   launchAllow: 'السماح بالتشغيل',
+  launchRecheck: 'تغيّر الأمر. يُرجى مراجعته مرة أخرى.',
   runtimeAsk: 'يحتاج هذا الخادم إلى {runtime}. هل يُنزّله التطبيق؟ (الحجم الكلي: {size})',
   runtimeItem: '{runtime} {version}: {size}',
   runtimeWhere: 'يُحفظ في مجلد التطبيق الخاص. لا يتغير شيء على الكمبيوتر.',

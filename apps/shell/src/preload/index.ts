@@ -755,7 +755,8 @@ const mcpServersApi: McpServersApi = {
   },
   approveTool: (id, tool) => ipcRenderer.invoke(MCP_SERVERS_CHANNELS.approveTool, id, tool),
   approveInstructions: (id) => ipcRenderer.invoke(MCP_SERVERS_CHANNELS.approveInstructions, id),
-  approveLaunch: (id) => ipcRenderer.invoke(MCP_SERVERS_CHANNELS.approveLaunch, id),
+  approveLaunch: (id, planFingerprint) =>
+    ipcRenderer.invoke(MCP_SERVERS_CHANNELS.approveLaunch, id, planFingerprint),
   setToolPermission: (id, tool, permission) =>
     ipcRenderer.invoke(MCP_SERVERS_CHANNELS.setToolPermission, id, tool, permission),
   setKeepResultsInside: (id, on) =>

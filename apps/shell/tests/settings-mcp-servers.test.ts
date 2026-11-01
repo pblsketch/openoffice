@@ -36,6 +36,10 @@ actEnvironment.IS_REACT_ACT_ENVIRONMENT = true
 const en = (key: McpServersStringKey, params?: Record<string, string | number>) =>
   mcpServersText('en', key, params)
 
+/** plan fingerprints as `plannedLaunch` hands them out */
+const PLAN_SEEN = `sha256:${'1'.repeat(64)}`
+const PLAN_NOW = `sha256:${'2'.repeat(64)}`
+
 let host: HTMLDivElement
 let root: Root
 
@@ -379,6 +383,7 @@ describe('Settings → Integrations → MCP servers: a server', () => {
       ok: true,
       launch: {
         ok: true,
+        fingerprint: PLAN_SEEN,
         command: 'C:\\Program Files\\nodejs\\node.exe',
         args: [
           'C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npx-cli.js',
@@ -409,7 +414,57 @@ describe('Settings → Integrations → MCP servers: a server', () => {
     expect(env[2]!.textContent).toContain(en('launchAdded'))
     expect(launch.textContent).not.toContain('abcd')
     await click(button(en('launchAllow'), launch))
-    expect(h.api.approveLaunch).toHaveBeenCalledWith('s1')
+    // the approval names the plan the person saw
+    expect(h.api.approveLaunch).toHaveBeenCalledWith('s1', PLAN_SEEN)
+  })
+
+  it('shows the command again when it changed before "allow" reached the app', async () => {
+    const h = fakeApi([
+      serverView({
+        kind: 'local',
+        url: '',
+        command: 'npx',
+        args: ['@example/law'],
+        launchReviewNeeded: true,
+        status: { status: 'review-required', what: 'command' },
+        review: ['command'],
+      }),
+    ])
+    const planOf = (fingerprint: string, command: string): McpPlannedLaunchAnswer => ({
+      ok: true,
+      launch: {
+        ok: true,
+        fingerprint,
+        command,
+        args: ['@example/law'],
+        addedArgs: [],
+        env: [],
+        droppedEnv: [],
+        source: 'pc',
+        runtime: 'node',
+      },
+    })
+    h.api.plannedLaunch
+      .mockResolvedValueOnce(planOf(PLAN_SEEN, '/usr/bin/npx'))
+      .mockResolvedValueOnce(planOf(PLAN_NOW, '/app/runtimes/npx'))
+    h.api.approveLaunch.mockResolvedValueOnce({ ok: false, problem: 'launch-changed' })
+    await mount(h)
+    await click(button(en('show'), serverRow('s1')))
+    let launch = host.querySelector('[data-testid="mcp-launch"]')!
+    expect(launch.textContent).toContain('/usr/bin/npx')
+    await click(button(en('launchAllow'), launch))
+    expect(h.api.approveLaunch).toHaveBeenCalledWith('s1', PLAN_SEEN)
+    // nothing ran: the new plan is read and shown with the reason
+    expect(h.api.test).not.toHaveBeenCalled()
+    await vi.waitFor(() => expect(h.api.plannedLaunch).toHaveBeenCalledTimes(2))
+    await vi.waitFor(() => {
+      launch = host.querySelector('[data-testid="mcp-launch"]')!
+      expect(launch.textContent).toContain('/app/runtimes/npx')
+    })
+    expect(launch.textContent).toContain(en('launchRecheck'))
+    await click(button(en('launchAllow'), launch))
+    expect(h.api.approveLaunch).toHaveBeenLastCalledWith('s1', PLAN_NOW)
+    expect(h.api.test).toHaveBeenCalledWith('s1')
   })
 
   it('asks about a runtime download with the real sizes', async () => {

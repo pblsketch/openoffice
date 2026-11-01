@@ -70,6 +70,7 @@ export const ko = {
   launchFromApp: '앱이 받아 둔 프로그램을 씁니다.',
   launchFromPc: 'PC에 있는 프로그램을 씁니다.',
   launchAllow: '실행 허락',
+  launchRecheck: '명령이 바뀌어 다시 확인해 주세요.',
   runtimeAsk: '이 서버를 쓰려면 {runtime} 프로그램이 필요합니다. 앱이 받아 둘까요? (모두 {size})',
   runtimeItem: '{runtime} {version}: {size}',
   runtimeWhere: '앱 폴더 안에 두며, PC의 설정은 바꾸지 않습니다.',

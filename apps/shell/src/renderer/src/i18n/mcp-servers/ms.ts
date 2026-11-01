@@ -72,6 +72,7 @@ export const ms = {
   launchFromApp: 'Menggunakan salinan yang dimuat turun oleh aplikasi.',
   launchFromPc: 'Menggunakan program pada PC ini.',
   launchAllow: 'Benarkan berjalan',
+  launchRecheck: 'Arahan telah berubah. Sila semak semula.',
   runtimeAsk: 'Pelayan ini memerlukan {runtime}. Biarkan aplikasi memuat turunnya? (jumlah {size})',
   runtimeItem: '{runtime} {version}: {size}',
   runtimeWhere: 'Ia disimpan dalam folder aplikasi sendiri. Tiada apa-apa pada PC yang diubah.',

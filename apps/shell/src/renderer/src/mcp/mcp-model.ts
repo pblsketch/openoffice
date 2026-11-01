@@ -6,7 +6,7 @@ import {
   type McpRuntimeId,
   type McpSecretView,
   type McpServerSettingsView,
-  type McpServerStatus,
+  type McpServerStatusInfo,
   type McpServersApi,
   type McpServersSettingsView,
   type McpSettingsProblem,
@@ -29,7 +29,7 @@ declare global {
 
 export const mcpServersApi = (): McpServersApi | undefined => window.aiOfficeMcpServers
 
-export const STATUS_KEYS: Record<McpServerStatus['status'], McpServersStringKey> = {
+export const STATUS_KEYS: Record<McpServerStatusInfo['status'], McpServersStringKey> = {
   connected: 'statusConnected',
   connecting: 'statusConnecting',
   failed: 'statusFailed',

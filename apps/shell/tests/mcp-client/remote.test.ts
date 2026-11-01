@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { MCP_CALL_TIMEOUT_MS } from '../../src/main/mcp-client/limits'
 import type { McpOAuthConfig } from '../../src/main/mcp-client/store'
 import {
-  MCP_CALL_TIMEOUT_MS,
   RemoteMcpError,
   createRemoteMcpConnection,
   statusFailureOf,

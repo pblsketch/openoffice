@@ -7,7 +7,9 @@
  *   also what the confirmation shows: a resolved absolute path and an
  *   argument array, never a shell, in an empty folder the app made, with the
  *   minimal system variables and the registered ones only.
- * - A launch whose fingerprint is not the approved one never starts.
+ * - A launch whose fingerprint is not the approved one never starts, and
+ *   neither does one whose resolved plan (program path, arguments, variable
+ *   names) is not the plan the person allowed.
  * - One process per server, started at the first need and shared by every
  *   caller; it ends after an idle time, with the app (it is in the same
  *   registry as the subscription programs, so a force-killed app's leftover
@@ -43,7 +45,8 @@ import {
   shapeMcpResult,
   type ShapedMcpResult,
 } from '@genoffice/agent-core/user-mcp/result'
-import { launchReviewNeeded } from './fingerprint'
+import { launchReviewNeeded, planFingerprint } from './fingerprint'
+import { MCP_CALL_TIMEOUT_MS } from './limits'
 import type { ListedTool, McpListing } from './listing'
 import { prepareLocalLaunch, type LocalLaunchProblem, type PlannedLaunch } from './local-launch'
 import type { McpRuntimeKit } from './runtimes'
@@ -51,8 +54,6 @@ import type { McpServerConfig } from './store'
 
 /** Idle time after which a server is ended (5.3), a tunable default */
 export const MCP_LOCAL_IDLE_MS = 10 * 60_000
-/** Limit of one call (5.5), a tunable default */
-export const MCP_CALL_TIMEOUT_MS = 60_000
 /** Limit of a start up to the MCP handshake; npx may download the package first */
 export const MCP_LOCAL_START_TIMEOUT_MS = 3 * 60_000
 /** Failed starts in a row after which the server waits for the person (5.3) */
@@ -312,6 +313,8 @@ export function createLocalMcpConnection(
   let busy = 0
   let idleTimer: NodeJS.Timeout | null = null
   let restartWhenIdle = false
+  /** the last start found a resolved plan other than the approved one (4.5) */
+  let planReview = false
 
   const setState = (next: LocalMcpState): void => {
     state = next
@@ -400,6 +403,14 @@ export function createLocalMcpConnection(
       const problem = plan.ok ? 'did-not-start' : plan.problem
       throw failStart('start-failed', problem, plan.ok ? 'no environment' : plan.message, true)
     }
+    // 4.5: the program resolves elsewhere since the person allowed it (the PC's runtime gone
+    // and the app's in its place, another version): what would run now is asked about again
+    if (planFingerprint(plan) !== server.approvedPlan) {
+      planReview = true
+      setState({ state: 'review-required' })
+      throw new LocalMcpError('review-required', 'The command must be approved again')
+    }
+    planReview = false
 
     let cwd: string
     try {
@@ -689,7 +700,14 @@ export function createLocalMcpConnection(
         void connection.stop()
         return
       }
-      if (state.state === 'review-required') setState({ state: 'idle' })
+      // a review the launcher found (another resolved program) ends only with a new approval
+      if (
+        state.state === 'review-required' &&
+        (!planReview || before.approvedPlan !== next.approvedPlan)
+      ) {
+        planReview = false
+        setState({ state: 'idle' })
+      }
       const launchChanged =
         before.command !== next.command ||
         JSON.stringify(before.args) !== JSON.stringify(next.args) ||

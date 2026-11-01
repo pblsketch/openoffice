@@ -68,6 +68,7 @@ export const zhTW = {
   launchFromApp: '使用應用程式下載的程式。',
   launchFromPc: '使用這台電腦上的程式。',
   launchAllow: '允許執行',
+  launchRecheck: '命令已變更，請重新確認。',
   runtimeAsk: '使用這個伺服器需要 {runtime}。要讓應用程式下載嗎？（共 {size}）',
   runtimeItem: '{runtime} {version}：{size}',
   runtimeWhere: '它會放在應用程式自己的資料夾中，不會變更電腦上的任何設定。',

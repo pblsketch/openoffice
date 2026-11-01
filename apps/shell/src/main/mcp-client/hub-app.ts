@@ -76,9 +76,9 @@ export function startMcpHub(deps: McpHubAppDeps): McpHub {
         kit,
         clientInfo,
         appSignal,
+        // results are shaped and cut here, in the main process, as the hub does a remote
+        // server's (spec 5.5): one answer form reaches the windows and the relays
         workRoot: join(app.getPath('temp'), LOCAL_WORK_DIR_NAME),
-        // the AI window shapes and cuts the result once (spec 5.5)
-        resultMaxChars: Number.MAX_SAFE_INTEGER,
       }),
     kit,
     plannedLaunch: (server) => plannedLaunch(server, kit),

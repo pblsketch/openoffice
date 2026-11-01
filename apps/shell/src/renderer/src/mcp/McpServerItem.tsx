@@ -254,9 +254,15 @@ export function McpServerItem({
               s={s}
               locale={locale}
               server={server}
-              onApprove={async () => {
-                await api.approveLaunch(id).catch(() => undefined)
+              onApprove={async (planFingerprint) => {
+                const answer = await api.approveLaunch(id, planFingerprint).catch(() => null)
+                // the command to run is no longer the one shown: show it again, approve nothing
+                if (answer && !answer.ok && answer.problem === 'launch-changed') {
+                  onChanged()
+                  return 'changed'
+                }
                 await runTest()
+                return 'done'
               }}
             />
           )}
@@ -441,10 +447,15 @@ function LaunchReview({
   s: McpText
   locale: string
   server: McpServerSettingsView
-  onApprove(): Promise<void>
+  /** approve the plan of this fingerprint; `changed` when it is no longer what would run */
+  onApprove(planFingerprint: string): Promise<'done' | 'changed'>
 }) {
   const [launch, setLaunch] = useState<McpPlannedLaunchView | null>(null)
   const [busy, setBusy] = useState(false)
+  /** the last "allow" came too late: the plan changed and is shown again */
+  const [changed, setChanged] = useState(false)
+  /** bumped to read the plan again */
+  const [reload, setReload] = useState(0)
   const id = server.id
   // the plan follows what the person approves: the command, the arguments, the variable names
   const shape = JSON.stringify([server.command, server.args, Object.keys(server.env)])
@@ -462,9 +473,14 @@ function LaunchReview({
     return () => {
       alive = false
     }
-  }, [id, shape])
+  }, [id, shape, reload])
 
   if (!launch) return null
+  const changedNote = changed ? (
+    <div className="set-field-desc mcp-error" role="status">
+      {s('launchRecheck')}
+    </div>
+  ) : null
   // a server that ran before has an approved list or guide: its command changed
   const ranBefore = Object.keys(server.tools).length > 0 || server.instructions !== null
 
@@ -472,6 +488,7 @@ function LaunchReview({
     return (
       <div className="mcp-block" data-testid="mcp-launch">
         <div className="mcp-block-title">{s('launchTitle')}</div>
+        {changedNote}
         <div className="mcp-error">{launch.text}</div>
         {launch.question && (
           <RuntimeQuestion
@@ -500,6 +517,7 @@ function LaunchReview({
   return (
     <div className="mcp-block" data-testid="mcp-launch">
       <div className="mcp-block-title">{s('launchTitle')}</div>
+      {changedNote}
       <div className="set-field-desc">{s(ranBefore ? 'launchChanged' : 'launchFirst')}</div>
       <div className="mcp-launch-row">
         <span className="set-field-label">{s('launchProgram')}</span>
@@ -546,7 +564,14 @@ function LaunchReview({
           disabled={busy}
           onClick={() => {
             setBusy(true)
-            void onApprove().finally(() => setBusy(false))
+            setChanged(false)
+            void onApprove(launch.fingerprint)
+              .then((answer) => {
+                if (answer !== 'changed') return
+                setChanged(true)
+                setReload((n) => n + 1)
+              })
+              .finally(() => setBusy(false))
           }}
         >
           {s('launchAllow')}

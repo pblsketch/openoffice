@@ -45,7 +45,10 @@ import { createRemoteMcpConnection } from '../../src/main/mcp-client/remote'
 import type { McpRuntimeKit } from '../../src/main/mcp-client/runtimes'
 import type { McpSecretCodec } from '../../src/main/mcp-client/secrets'
 import { createMcpServersStore } from '../../src/main/mcp-client/store'
-import { MCP_SERVERS_CHANNELS as S } from '../../src/shared/mcp-servers-api'
+import {
+  MCP_SERVERS_CHANNELS as S,
+  type McpPlannedLaunchAnswer,
+} from '../../src/shared/mcp-servers-api'
 import {
   startFakeAuth,
   startFakeMcp,
@@ -237,7 +240,6 @@ async function rig(): Promise<Rig> {
         appSignal,
         registry,
         workRoot: join(root, 'work'),
-        resultMaxChars: Number.MAX_SAFE_INTEGER,
       }),
     kit: nodeKit,
     plannedLaunch: (server) => plannedLaunch(server, nodeKit),
@@ -412,7 +414,11 @@ async function registerBoth(r: Rig): Promise<{ lawId: string; docsId: string }> 
   expect(docs.ok).toBe(true)
   // a "my PC" server runs only once its command is approved (4.5)
   expect(await r.settings(S.test, docs.id)).toEqual({ ok: false, problem: 'launch-not-approved' })
-  expect(await r.settings(S.approveLaunch, docs.id)).toEqual({ ok: true })
+  // "allow to run" names the plan the confirmation showed
+  const planned = (await r.settings(S.plannedLaunch, docs.id)) as McpPlannedLaunchAnswer
+  const fingerprint = planned.ok && planned.launch.ok ? planned.launch.fingerprint : ''
+  expect(fingerprint).toMatch(/^sha256:/)
+  expect(await r.settings(S.approveLaunch, docs.id, fingerprint)).toEqual({ ok: true })
   expect(await r.settings(S.test, docs.id)).toEqual({ ok: true, toolCount: 10 })
   await r.state.refresh()
   return { lawId: law.id, docsId: docs.id }

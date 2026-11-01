@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mcpServersOf } from '@genoffice/agent-core'
+import { planFingerprint } from '../../src/main/mcp-client/fingerprint'
 import { createMcpHub, type McpHub, type McpHubDeps } from '../../src/main/mcp-client/hub'
 import {
   acceptFirstListing,
@@ -89,7 +90,7 @@ function localServer(name = 'docs'): McpServerConfig {
     args: ['-y', 'docs-mcp'],
     env: { API_KEY: 'ENV-SECRET-4321' },
   })
-  return acceptFirstListing(approveLaunch(server), LISTING)
+  return acceptFirstListing(approveLaunch(server, READY_FINGERPRINT), LISTING)
 }
 
 async function storeWith(...servers: McpServerConfig[]): Promise<McpServersStore> {
@@ -177,7 +178,13 @@ function fakeLocal(initial: McpServerConfig): FakeLocal {
       if (state.state === 'failed')
         throw new LocalMcpError(state.reason, state.message, state.problem)
     }),
-    listTools: vi.fn(async () => LISTING),
+    listTools: vi.fn(async () => {
+      // as the real launcher: a plan other than the approved one does not start
+      if (state.state === 'review-required') {
+        throw new LocalMcpError('review-required', 'The command must be approved again')
+      }
+      return LISTING
+    }),
     callTool: vi.fn(
       (_name: string, _args: Record<string, unknown>, signal?: AbortSignal) =>
         new Promise((resolve, reject) => {
@@ -207,7 +214,7 @@ function fakeLocal(initial: McpServerConfig): FakeLocal {
 }
 const fakeHang = { on: false }
 
-const READY_PLAN: PlannedLaunch = {
+const READY_PLAN: Extract<PlannedLaunch, { ok: true }> = {
   ok: true,
   command: '/usr/bin/node',
   args: ['/usr/lib/npx-cli.js', '--yes', '-y', 'docs-mcp'],
@@ -220,6 +227,9 @@ const READY_PLAN: PlannedLaunch = {
   source: 'pc',
   runtime: 'node',
 }
+
+/** the fingerprint the confirmation hands out with READY_PLAN */
+const READY_FINGERPRINT = planFingerprint(READY_PLAN)
 
 interface Rig {
   hub: McpHub
@@ -270,6 +280,10 @@ const idOf = (store: McpServersStore, name: string) =>
 function deepTexts(value: unknown): string {
   return JSON.stringify(value) ?? ''
 }
+
+/** the remote fake's default result, as the hub answers it */
+const FOUND = { ok: true, output: 'found it', isError: false }
+const NL2 = String.fromCharCode(10).repeat(2)
 
 // ---- tests --------------------------------------------------------------------
 
@@ -444,16 +458,70 @@ describe('MCP hub: a live tool list (5.7, 6.2)', () => {
 })
 
 describe('MCP hub: calls', () => {
-  it('passes a remote result on as received and a local one in CallToolResult form', async () => {
+  it('answers both kinds in the one form shaped for the AI (5.5)', async () => {
     const store = await storeWith(remoteServer(), localServer())
     const { hub } = rig(store)
-    expect(await hub.call('w1', 'law', 'search', { q: 'x' }, 'c1')).toEqual({
-      content: [{ type: 'text', text: 'found it' }],
-    })
+    expect(await hub.call('w1', 'law', 'search', { q: 'x' }, 'c1')).toEqual(FOUND)
     expect(await hub.call('w1', 'docs', 'search', { q: 'x' }, 'c2')).toEqual({
-      content: [{ type: 'text', text: 'local result' }],
+      ok: true,
+      output: 'local result',
       isError: false,
     })
+  })
+
+  it('shapes a remote result in the main process: no picture data reaches a window', async () => {
+    const store = await storeWith(remoteServer())
+    const { hub, remotes } = rig(store)
+    await hub.call('w1', 'law', 'search', {}, 'warm')
+    const picture =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAzX0QWAAAAABJRU5ErkJggg=='
+    remotes[0]!.callResult = {
+      content: [
+        { type: 'text', text: 'see the chart' },
+        { type: 'image', data: picture, mimeType: 'image/png' },
+      ],
+      structuredContent: { rows: 2 },
+    }
+    const answer = await hub.call('w1', 'law', 'search', {}, 'c1')
+    expect(answer).toEqual({
+      ok: true,
+      output: 'see the chart' + NL2 + '{"rows":2}' + NL2 + '[1 non-text item was not passed on.]',
+      isError: false,
+    })
+    expect(JSON.stringify(answer)).not.toContain(picture)
+
+    remotes[0]!.callResult = {
+      content: [{ type: 'text', text: 'x'.repeat(200_010) }],
+      isError: true,
+    }
+    const long = await hub.call('w1', 'law', 'search', {}, 'c2')
+    expect(long).toMatchObject({ ok: true, isError: true })
+    expect((long as { output: string }).output).toContain('The result was cut')
+  })
+
+  it('stops every call of a window that went away, and no other window’s', async () => {
+    const store = await storeWith(remoteServer(), localServer())
+    const { hub, remotes, locals } = rig(store)
+    await hub.call('w1', 'law', 'search', {}, 'warm')
+    remotes[0]!.hang = true
+    fakeHang.on = true
+    cleanups.push(() => {
+      fakeHang.on = false
+    })
+    const remoteCall = hub.call('w1', 'law', 'search', {}, 'a')
+    const localCall = hub.call('w1', 'docs', 'search', {}, 'b')
+    const otherWindow = hub.call('w2', 'law', 'search', {}, 'a')
+    await vi.waitFor(() => expect(remotes[0]!.callTool).toHaveBeenCalledTimes(3))
+    await vi.waitFor(() => expect(locals[0]?.callTool).toHaveBeenCalledTimes(1))
+    hub.cancelCaller('w1')
+    expect(await remoteCall).toEqual({ ok: false, error: 'law: the call was stopped.' })
+    expect(await localCall).toEqual({ ok: false, error: 'docs: the call was stopped.' })
+    let settled = false
+    void otherWindow.then(() => (settled = true))
+    await tick()
+    expect(settled).toBe(false)
+    hub.cancel('w2', 'a')
+    expect(await otherWindow).toEqual({ ok: false, error: 'law: the call was stopped.' })
   })
 
   it('refuses, naming the server and why: unknown, off, pending, disabled, command, login, failed', async () => {
@@ -500,7 +568,7 @@ describe('MCP hub: calls', () => {
       ok: false,
       error: 'docs: its command changed and must be approved again in Settings.',
     })
-    await hub.approveLaunch(docsId)
+    expect(await hub.approveLaunch(docsId, READY_FINGERPRINT)).toEqual({ ok: true })
 
     // a server that asked for a sign-in
     await hub.call('w1', 'law', 'search', {}, '7')
@@ -565,6 +633,94 @@ describe('MCP hub: calls', () => {
       error: 'docs: the server was removed during the call.',
     })
     expect(locals[0]?.stop).toHaveBeenCalled()
+  })
+})
+
+describe('MCP hub: allowing a command to run (4.5)', () => {
+  const unapproved = () =>
+    newMcpServerConfig({
+      name: 'docs',
+      kind: 'local',
+      command: 'npx',
+      args: ['-y', 'docs-mcp'],
+      env: { API_KEY: 'ENV-SECRET-4321' },
+    })
+
+  it('hands out the plan with its fingerprint and approves only that plan', async () => {
+    const store = await storeWith(unapproved())
+    const { hub } = rig(store)
+    const id = idOf(store, 'docs')
+    const answer = await hub.plannedLaunch(id)
+    expect(answer).toMatchObject({ ok: true, launch: { ok: true, fingerprint: READY_FINGERPRINT } })
+    expect(hub.settingsView().servers[0]?.launchReviewNeeded).toBe(true)
+
+    const other = planFingerprint({ ...READY_PLAN, command: '/elsewhere/node' })
+    expect(await hub.approveLaunch(id, other)).toEqual({ ok: false, problem: 'launch-changed' })
+    expect(store.server(id)?.approvedLaunch).toBeNull()
+
+    expect(await hub.approveLaunch(id, READY_FINGERPRINT)).toEqual({ ok: true })
+    expect(store.server(id)?.approvedPlan).toBe(READY_FINGERPRINT)
+    expect(hub.settingsView().servers[0]?.launchReviewNeeded).toBe(false)
+  })
+
+  it('refuses when the command to run changed after the person saw it', async () => {
+    const store = await storeWith(unapproved(), remoteServer())
+    let plan: PlannedLaunch = READY_PLAN
+    const { hub } = rig(store, { plannedLaunch: async () => plan })
+    const id = idOf(store, 'docs')
+    const shown = await hub.plannedLaunch(id)
+    const seen = shown.ok && shown.launch.ok ? shown.launch.fingerprint : ''
+    // the PC's Node went away: the app's downloaded one would run instead
+    plan = { ...READY_PLAN, command: 'C:/Users/u/AppData/IeumOffice/mcp-runtimes/node/node.exe' }
+    expect(await hub.approveLaunch(id, seen)).toEqual({ ok: false, problem: 'launch-changed' })
+    expect(store.server(id)?.approvedLaunch).toBeNull()
+    // a plan that cannot run cannot be approved either
+    plan = { ok: false, problem: 'runtime-missing', runtime: null, message: 'missing' }
+    expect(await hub.approveLaunch(id, seen)).toEqual({ ok: false, problem: 'launch-changed' })
+    expect(await hub.approveLaunch(idOf(store, 'law'), seen)).toEqual({
+      ok: false,
+      problem: 'not-local',
+    })
+  })
+
+  it('refuses when the stored command changed while the plan was computed', async () => {
+    const store = await storeWith(unapproved())
+    const id = idOf(store, 'docs')
+    let hubRef: McpHub | null = null
+    const { hub } = rig(store, {
+      plannedLaunch: async () => {
+        // an edit lands while the approval computes the plan again
+        if (hubRef) await hubRef.edit(id, { args: ['-y', 'other-mcp'] })
+        return READY_PLAN
+      },
+    })
+    hubRef = hub
+    expect(await hub.approveLaunch(id, READY_FINGERPRINT)).toEqual({
+      ok: false,
+      problem: 'launch-changed',
+    })
+    expect(store.server(id)?.approvedLaunch).toBeNull()
+  })
+
+  it('asks again when the launcher finds the program resolves elsewhere since the approval', async () => {
+    const store = await storeWith(localServer())
+    const { hub, locals } = rig(store)
+    const id = idOf(store, 'docs')
+    await hub.call('w1', 'docs', 'search', {}, 'warm')
+    const local = locals[0]!
+    local.setState({ state: 'review-required' })
+    const view = hub.settingsView().servers[0]
+    expect(view?.launchReviewNeeded).toBe(true)
+    expect(view?.status).toEqual({ status: 'review-required', what: 'command' })
+    expect(view?.review).toContain('command')
+    expect(hub.editorList()[0]).toMatchObject({ status: 'review-required', review: ['command'] })
+    local.callTool.mockClear()
+    expect(await hub.call('w1', 'docs', 'search', {}, 'c1')).toEqual({
+      ok: false,
+      error: 'docs: its command changed and must be approved again in Settings.',
+    })
+    expect(local.callTool).not.toHaveBeenCalled()
+    expect(await hub.test(id)).toEqual({ ok: false, problem: 'launch-not-approved' })
   })
 })
 
@@ -852,8 +1008,6 @@ describe('MCP hub: review fixes (13, 6.1, remote recovery)', () => {
     })
     return { promise, resolve }
   }
-
-  const FOUND = { content: [{ type: 'text', text: 'found it' }] }
 
   it('refuses a call that arrives while the server is being removed, and never runs it', async () => {
     const store = await storeWith(remoteServer())

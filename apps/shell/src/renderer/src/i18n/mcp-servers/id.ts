@@ -71,6 +71,7 @@ export const id = {
   launchFromApp: 'Memakai salinan yang diunduh aplikasi.',
   launchFromPc: 'Memakai program di PC ini.',
   launchAllow: 'Izinkan berjalan',
+  launchRecheck: 'Perintahnya berubah. Periksa lagi.',
   runtimeAsk: 'Server ini membutuhkan {runtime}. Unduh lewat aplikasi? (total {size})',
   runtimeItem: '{runtime} {version}: {size}',
   runtimeWhere: 'Disimpan di folder milik aplikasi. Tidak ada yang diubah di PC.',

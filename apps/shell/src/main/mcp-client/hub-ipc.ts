@@ -14,6 +14,7 @@ import {
   mcpServerPatchOf,
   pasteTextOf,
   permissionOfInput,
+  planFingerprintOf,
   serverIdOf,
   toolNameOf,
 } from './hub-input'
@@ -23,7 +24,7 @@ import {
  *
  * - `mcp-tools:*` for every AI window (the editors and the home window): the
  *   list, calls, cancel, retry, "open in Settings". A call id belongs to the
- *   window that sent it.
+ *   window that sent it, and the window's calls stop when it is destroyed.
  * - `mcp-servers:*` for Settings: answered only for the shell window, so an
  *   editor or the agent window cannot change a server or read its settings
  *   even by sending to the channel by name.
@@ -34,6 +35,8 @@ import {
 
 export interface McpIpcSender {
   readonly id: number
+  /** Electron's webContents event; `destroyed` ends the window's calls */
+  once?(event: 'destroyed', listener: () => void): unknown
 }
 
 export interface McpIpcEvent {
@@ -75,6 +78,16 @@ export const MCP_SETTINGS_CHANNEL_NAMES: readonly string[] = Object.values(MCP_S
 export function registerMcpHubIpc(deps: McpHubIpcDeps): () => void {
   const { hub, ipcMain } = deps
   const caller = (event: McpIpcEvent) => String(event.sender.id)
+  /** windows whose going away is watched, so their calls end with them */
+  const watched = new Set<number>()
+  const watch = (sender: McpIpcSender) => {
+    if (watched.has(sender.id) || typeof sender.once !== 'function') return
+    watched.add(sender.id)
+    sender.once('destroyed', () => {
+      watched.delete(sender.id)
+      hub.cancelCaller(String(sender.id))
+    })
+  }
 
   // ---- every AI window ----
 
@@ -82,6 +95,7 @@ export function registerMcpHubIpc(deps: McpHubIpcDeps): () => void {
   ipcMain.handle(MCP_TOOLS_CHANNELS.call, (event, raw) => {
     const request = mcpToolCallRequestOf(raw)
     if (!request) return { ok: false, error: 'The MCP call was malformed.' }
+    watch(event.sender)
     return hub.call(caller(event), request.server, request.tool, request.input, request.callId)
   })
   ipcMain.handle(MCP_TOOLS_CHANNELS.cancel, (event, raw) => {
@@ -155,10 +169,11 @@ export function registerMcpHubIpc(deps: McpHubIpcDeps): () => void {
     C.approveInstructions,
     withId((id) => hub.approveInstructions(id)),
   )
-  settings(
-    C.approveLaunch,
-    withId((id) => hub.approveLaunch(id)),
-  )
+  settings(C.approveLaunch, (rawId, rawFingerprint) => {
+    const id = serverIdOf(rawId)
+    const fingerprint = planFingerprintOf(rawFingerprint)
+    return id && fingerprint ? hub.approveLaunch(id, fingerprint) : malformed
+  })
   settings(C.setToolPermission, (rawId, rawTool, rawPermission) => {
     const id = serverIdOf(rawId)
     const tool = toolNameOf(rawTool)

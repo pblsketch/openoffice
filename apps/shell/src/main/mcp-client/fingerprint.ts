@@ -66,13 +66,45 @@ export function launchFingerprint(launch: LaunchShape): string {
   )
 }
 
-/** The fields of a stored server the launch fingerprint reads */
+/** The resolved launch the confirmation shows (a ready `PlannedLaunch`), as far as approval reads it */
+export interface PlanShape {
+  /** the full path of the program */
+  command: string
+  /** every argument, the app's own included */
+  args: readonly string[]
+  /** the variable names with where each comes from; values are never part of it */
+  env: readonly { name: string; origin: string }[]
+}
+
+/**
+ * What the person saw and allowed (4.5): the resolved program, every argument
+ * and the variable names with their origins. The settings view hands it out
+ * with the plan and the approval must bring it back; the launcher compares
+ * it before every start, so a program that resolves elsewhere since (the
+ * PC's Node gone and the app's downloaded one in its place) is asked about
+ * again.
+ */
+export function planFingerprint(plan: PlanShape): string {
+  return fingerprintOf(
+    stableJson({
+      command: plan.command,
+      args: [...plan.args],
+      env: [...plan.env]
+        .map((e) => ({ name: e.name, origin: e.origin }))
+        .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)),
+    }),
+  )
+}
+
+/** The fields of a stored server the launch fingerprints read */
 export interface LaunchFields {
   kind: 'remote' | 'local'
   command: string
   args: readonly string[]
   env: Record<string, string>
   approvedLaunch: string | null
+  /** `planFingerprint` of the plan the person allowed */
+  approvedPlan: string | null
 }
 
 export function serverLaunchFingerprint(server: LaunchFields): string {
@@ -86,8 +118,10 @@ export function serverLaunchFingerprint(server: LaunchFields): string {
 /**
  * A local server must not start until the person approves its launch: never
  * approved yet, or the command, arguments or env names changed since (12.1).
+ * Whether the resolved plan still is the approved one needs the plan itself;
+ * the launcher checks that (`planFingerprint`) before every start.
  */
 export function launchReviewNeeded(server: LaunchFields): boolean {
   if (server.kind !== 'local') return false
-  return server.approvedLaunch !== serverLaunchFingerprint(server)
+  return server.approvedLaunch !== serverLaunchFingerprint(server) || server.approvedPlan === null
 }

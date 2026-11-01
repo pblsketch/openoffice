@@ -3,6 +3,7 @@ import {
   fingerprintOf,
   instructionsFingerprint,
   launchFingerprint,
+  planFingerprint,
   launchReviewNeeded,
   stableJson,
   toolFingerprint,
@@ -32,6 +33,9 @@ const write = {
   inputSchema: { type: 'object' },
   annotations: { destructiveHint: true },
 }
+/** A plan fingerprint as the confirmation hands it out */
+const PLAN = `sha256:${'a'.repeat(64)}`
+
 const plain = { name: 'plain', description: 'No hints', inputSchema: { type: 'object' } }
 
 const listing = (over: Partial<McpListing> = {}): McpListing => ({
@@ -71,6 +75,35 @@ describe('fingerprints', () => {
       launchFingerprint({ command: 'a', args: ['b'], envNames: [] }),
     )
   })
+
+  it('bind a plan to the program it resolved to, every argument and the variable origins', () => {
+    const plan = {
+      command: 'C:/Program Files/nodejs/node.exe',
+      args: ['C:/Program Files/nodejs/node_modules/npm/bin/npx-cli.js', '--yes', 'pkg'],
+      env: [
+        { name: 'PATH', origin: 'system' },
+        { name: 'TOKEN', origin: 'registered' },
+      ],
+    }
+    const fp = planFingerprint(plan)
+    expect(fp).toMatch(/^sha256:[0-9a-f]{64}$/)
+    expect(planFingerprint({ ...plan, env: [...plan.env].reverse() })).toBe(fp)
+    // the app's downloaded Node instead of the PC's
+    expect(planFingerprint({ ...plan, command: 'C:/Users/u/mcp-runtimes/node/node.exe' })).not.toBe(
+      fp,
+    )
+    // without what the app added
+    expect(planFingerprint({ ...plan, args: [plan.args[0]!, 'pkg'] })).not.toBe(fp)
+    expect(
+      planFingerprint({
+        ...plan,
+        env: [
+          { name: 'PATH', origin: 'system' },
+          { name: 'TOKEN', origin: 'app' },
+        ],
+      }),
+    ).not.toBe(fp)
+  })
 })
 
 describe('initial values (4.7)', () => {
@@ -87,6 +120,7 @@ describe('initial values (4.7)', () => {
     expect(s.keepResultsInside).toBe(true)
     expect(s.id).toMatch(/.{8,}/)
     expect(s.approvedLaunch).toBeNull()
+    expect(s.approvedPlan).toBeNull()
   })
 
   it('accepts the first listing as approved, with no new-tool notice', () => {
@@ -235,8 +269,11 @@ describe('applyListing (6.2)', () => {
       env: { TOKEN: 'one' },
     })
     expect(launchReviewNeeded(s)).toBe(true) // never approved yet
-    s = approveLaunch(s)
+    s = approveLaunch(s, PLAN)
+    expect(s.approvedPlan).toBe(PLAN)
     expect(launchReviewNeeded(s)).toBe(false)
+    // an approval without the plan the person saw does not count
+    expect(launchReviewNeeded({ ...s, approvedPlan: null })).toBe(true)
     expect(launchReviewNeeded({ ...s, env: { TOKEN: 'two' } })).toBe(false) // value only
     expect(launchReviewNeeded({ ...s, env: { TOKEN: 'one', MORE: 'x' } })).toBe(true)
     expect(launchReviewNeeded({ ...s, args: ['-y', 'other-mcp'] })).toBe(true)

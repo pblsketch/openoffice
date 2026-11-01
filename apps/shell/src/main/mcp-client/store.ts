@@ -7,7 +7,7 @@ import {
   type McpInstructions,
   type McpServerKind,
   type McpServersView,
-  type McpServerView,
+  type McpServerRecordView,
   type McpToolAnnotations,
   type McpToolDefinition,
   type McpToolEntry,
@@ -68,6 +68,8 @@ export interface McpServerConfig {
   env: Record<string, string>
   /** fingerprint of the command, arguments and env names as approved, or null */
   approvedLaunch: string | null
+  /** fingerprint of the resolved plan the person allowed (`planFingerprint`), or null */
+  approvedPlan: string | null
   // both
   instructions: McpInstructions | null
   pendingInstructions: string | null
@@ -119,6 +121,7 @@ export function newMcpServerConfig(input: NewMcpServerInput): McpServerConfig {
     args: local ? [...(input.args ?? [])] : [],
     env: local ? { ...input.env } : {},
     approvedLaunch: null,
+    approvedPlan: null,
     instructions: null,
     pendingInstructions: null,
     tools: {},
@@ -204,6 +207,7 @@ function serverOf(v: unknown): McpServerConfig | null {
     enabled: v.enabled !== false,
     keepResultsInside: v.keepResultsInside !== false,
     approvedLaunch: kind === 'local' ? strOrNull(v.approvedLaunch) : null,
+    approvedPlan: kind === 'local' ? strOrNull(v.approvedPlan) : null,
     instructions: instructionsOf(v.instructions),
     pendingInstructions: strOrNull(v.pendingInstructions),
     tools,
@@ -239,7 +243,13 @@ export function serializeMcpServersFile(file: McpServersFile): string {
     const byKind =
       s.kind === 'remote'
         ? { url: s.url, transport: s.transport, headers: s.headers, oauth: s.oauth }
-        : { command: s.command, args: s.args, env: s.env, approvedLaunch: s.approvedLaunch }
+        : {
+            command: s.command,
+            args: s.args,
+            env: s.env,
+            approvedLaunch: s.approvedLaunch,
+            approvedPlan: s.approvedPlan,
+          }
     return {
       ...common,
       ...byKind,
@@ -309,7 +319,7 @@ export function createMcpServersStore(filePath: string, codec: McpSecretCodec): 
     return run
   }
 
-  function serverView(server: McpServerConfig): McpServerView {
+  function serverView(server: McpServerConfig): McpServerRecordView {
     const held = memoryOnly.get(server.id) ?? new Set<McpSecretRef>()
     const views = (record: Record<string, string>, prefix: string) =>
       Object.fromEntries(

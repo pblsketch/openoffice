@@ -69,6 +69,7 @@ export const he = {
   launchFromApp: 'משתמש בעותק שהאפליקציה הורידה.',
   launchFromPc: 'משתמש בתוכנה שבמחשב הזה.',
   launchAllow: 'אישור הפעלה',
+  launchRecheck: 'הפקודה השתנתה. נא לבדוק אותה שוב.',
   runtimeAsk: 'השרת הזה צריך את {runtime}. להוריד אותו? (סך הכול: {size})',
   runtimeItem: '{runtime} {version}: {size}',
   runtimeWhere: 'הוא נשמר בתיקייה של האפליקציה עצמה. שום דבר במחשב לא משתנה.',

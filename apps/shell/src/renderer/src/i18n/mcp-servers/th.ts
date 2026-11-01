@@ -70,6 +70,7 @@ export const th = {
   launchFromApp: 'ใช้ชุดที่แอปดาวน์โหลดไว้',
   launchFromPc: 'ใช้โปรแกรมบนพีซีเครื่องนี้',
   launchAllow: 'อนุญาตให้ทำงาน',
+  launchRecheck: 'คำสั่งเปลี่ยนไปแล้ว โปรดตรวจสอบอีกครั้ง',
   runtimeAsk: 'เซิร์ฟเวอร์นี้ต้องใช้ {runtime} ให้แอปดาวน์โหลดไหม (รวม {size})',
   runtimeItem: '{runtime} {version}: {size}',
   runtimeWhere: 'จะเก็บไว้ในโฟลเดอร์ของแอปเอง ไม่มีการเปลี่ยนแปลงใดบนพีซี',

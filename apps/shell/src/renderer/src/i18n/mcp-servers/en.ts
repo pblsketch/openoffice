@@ -72,6 +72,7 @@ export const en = {
   launchFromApp: 'Uses the copy the app downloaded.',
   launchFromPc: 'Uses the program on this PC.',
   launchAllow: 'Allow to run',
+  launchRecheck: 'The command changed. Please check it again.',
   runtimeAsk: 'This server needs {runtime}. Shall the app download it? ({size} in all)',
   runtimeItem: '{runtime} {version}: {size}',
   runtimeWhere: 'It is kept in the app’s own folder. Nothing on the PC is changed.',

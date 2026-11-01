@@ -18,7 +18,7 @@ import {
   leftoverRecordFile,
   type SubscriptionChildRegistry,
 } from '@genoffice/ai-provider/subscription'
-import { approveLaunch } from '../../src/main/mcp-client/listing'
+import { planFingerprint, serverLaunchFingerprint } from '../../src/main/mcp-client/fingerprint'
 import {
   MCP_LOCAL_SYSTEM_ENV,
   MCP_LOCAL_WINDOWS_ENV,
@@ -82,7 +82,14 @@ function localServer(
     args: input.args ?? [FIXTURE],
     env: input.env ?? {},
   })
-  return approve ? approveLaunch(server) : server
+  // the plan the person saw is filled in by `connect`, which knows the kit it resolves with
+  return approve ? { ...server, approvedLaunch: serverLaunchFingerprint(server) } : server
+}
+
+/** The fingerprint of a plan that must be ready */
+function readyFingerprint(plan: PlannedLaunch): string {
+  if (!plan.ok) throw new Error(`no plan: ${plan.message}`)
+  return planFingerprint(plan)
 }
 
 function alive(pid: number): boolean {
@@ -269,10 +276,16 @@ describe('a running server', () => {
     await rm(work, { recursive: true, force: true })
   })
 
-  function connect(
+  /**
+   * A connection to `server`. A server whose command was approved gets the
+   * plan the person would have seen (as the confirmation computes it with the
+   * same kit), so it starts; one whose plan cannot be made gets a stand-in, so
+   * the start reaches the reason it cannot run.
+   */
+  async function connect(
     server: McpServerConfig,
     deps: Partial<LocalMcpDeps> = {},
-  ): LocalMcpConnection & { spawns: SpawnCall[] } {
+  ): Promise<LocalMcpConnection & { spawns: SpawnCall[] }> {
     const recorder = recordingSpawn()
     const connection = createLocalMcpConnection(server, {
       kit: nodeKit(),
@@ -284,11 +297,18 @@ describe('a running server', () => {
       ...deps,
     })
     connections.push(connection)
+    if (server.approvedLaunch !== null && server.approvedPlan === null) {
+      const plan = await connection.plannedLaunch()
+      connection.setServer({
+        ...server,
+        approvedPlan: plan.ok ? planFingerprint(plan) : 'sha256:no-plan',
+      })
+    }
     return Object.assign(connection, { spawns: recorder.calls })
   }
 
   it('starts at the first need, lists the tools and instructions, and calls a tool', async () => {
-    const connection = connect(localServer())
+    const connection = await connect(localServer())
     expect(connection.status()).toEqual({ state: 'idle' })
     expect(connection.spawns).toHaveLength(0)
     const listing = await connection.listTools()
@@ -308,7 +328,7 @@ describe('a running server', () => {
 
   it('starts exactly the command the confirmation shows, without a shell, in an empty folder', async () => {
     const server = localServer({ env: { MY_TOKEN: 'tok-value' } })
-    const connection = connect(server)
+    const connection = await connect(server)
     await connection.ensure()
     const plan = (await connection.plannedLaunch()) as Extract<PlannedLaunch, { ok: true }>
     expect(plan.ok).toBe(true)
@@ -333,14 +353,14 @@ describe('a running server', () => {
       '; rm -rf x',
       '^&^|',
     ]
-    const connection = connect(localServer({ args: [FIXTURE, ...tricky] }))
+    const connection = await connect(localServer({ args: [FIXTURE, ...tricky] }))
     expect(JSON.parse(textOf(await connection.callTool('echo_args', {})))).toEqual(tricky)
     const where = JSON.parse(textOf(await connection.callTool('cwd', {})))
     expect(where.entries).toEqual([])
   })
 
   it('gives the server the minimal system variables and its registered ones, nothing of the app', async () => {
-    const connection = connect(
+    const connection = await connect(
       localServer({ env: { MY_TOKEN: 'tok-value', GENOFFICE_INJECTED: 'x' } }),
     )
     const env = JSON.parse(textOf(await connection.callTool('env', {}))) as Record<string, string>
@@ -368,7 +388,7 @@ describe('a running server', () => {
   })
 
   it('does not start a server whose command was never approved or changed since', async () => {
-    const never = connect(localServer({}, false))
+    const never = await connect(localServer({}, false))
     await expect(never.ensure()).rejects.toMatchObject({ reason: 'review-required' })
     expect(never.status()).toEqual({ state: 'review-required' })
     const result = await never.callTool('pid', {})
@@ -376,14 +396,43 @@ describe('a running server', () => {
     expect(never.spawns).toHaveLength(0)
 
     const approved = localServer()
-    const changed = connect({ ...approved, args: [...approved.args, '--extra'] })
+    const changed = await connect({ ...approved, args: [...approved.args, '--extra'] })
     await expect(changed.ensure()).rejects.toBeInstanceOf(LocalMcpError)
     expect(changed.spawns).toHaveLength(0)
   })
 
+  it('does not start when the program now resolves elsewhere than the plan the person allowed', async () => {
+    // the person allowed the PC's Node; the PC's is gone and another copy answers instead
+    const server = localServer()
+    const allowedPlan = await plannedLaunch(server, nodeKit(), { baseEnv: BASE_ENV })
+    const elsewhere = nodeKit({
+      node: {
+        ok: true,
+        command: resolve(work, 'mcp-runtimes', 'node', 'node.exe'),
+        prefixArgs: [],
+        env: {},
+        pathPrepend: [],
+        source: 'app',
+        runtime: 'node',
+      },
+    })
+    const approved = { ...server, approvedPlan: readyFingerprint(allowedPlan) }
+    const connection = await connect(approved, { kit: elsewhere })
+    await expect(connection.ensure()).rejects.toMatchObject({ reason: 'review-required' })
+    expect(connection.status()).toEqual({ state: 'review-required' })
+    expect(connection.spawns).toHaveLength(0)
+    // a setting that is not the approval leaves it waiting
+    connection.setServer({ ...approved, keepResultsInside: false })
+    expect(connection.status()).toEqual({ state: 'review-required' })
+    // approving what would run now lets it go on to start
+    const now = await connection.plannedLaunch()
+    connection.setServer({ ...approved, approvedPlan: readyFingerprint(now) })
+    expect(connection.status()).toEqual({ state: 'idle' })
+  })
+
   it('stops a server whose command changes while it runs', async () => {
     const server = localServer()
-    const connection = connect(server)
+    const connection = await connect(server)
     const pid = Number(textOf(await connection.callTool('pid', {})))
     connection.setServer({ ...server, command: 'node2' })
     expect(connection.status()).toEqual({ state: 'review-required' })
@@ -403,7 +452,7 @@ describe('a running server', () => {
         runtime: null,
       },
     })
-    const connection = connect(localServer({ command: 'my-server', args: [] }), {
+    const connection = await connect(localServer({ command: 'my-server', args: [] }), {
       kit,
       platform: 'win32',
     })
@@ -420,7 +469,7 @@ describe('a running server', () => {
   })
 
   it('stops after the idle time and starts again when needed', async () => {
-    const connection = connect(localServer(), { idleMs: 300 })
+    const connection = await connect(localServer(), { idleMs: 300 })
     const first = Number(textOf(await connection.callTool('pid', {})))
     expect(await waitUntil(() => !alive(first), 10_000)).toBe(true)
     expect(await waitUntil(() => connection.status().state === 'idle')).toBe(true)
@@ -430,7 +479,7 @@ describe('a running server', () => {
   })
 
   it('starts again on the next call after the server crashed', async () => {
-    const connection = connect(localServer())
+    const connection = await connect(localServer())
     const first = Number(textOf(await connection.callTool('pid', {})))
     const crashed = await connection.callTool('crash', {})
     expect(crashed.isError).toBe(true)
@@ -441,7 +490,7 @@ describe('a running server', () => {
   })
 
   it('after three failed starts in a row, waits for the person to retry', async () => {
-    const connection = connect(localServer({ args: [FIXTURE, '--fail-start'] }))
+    const connection = await connect(localServer({ args: [FIXTURE, '--fail-start'] }))
     for (let attempt = 1; attempt <= 3; attempt++) {
       await expect(connection.ensure()).rejects.toBeInstanceOf(LocalMcpError)
     }
@@ -464,7 +513,7 @@ describe('a running server', () => {
       vi.spyOn(console, name).mockImplementation(() => undefined),
     )
     try {
-      const connection = connect(localServer({ args: [FIXTURE, '--chatty'] }))
+      const connection = await connect(localServer({ args: [FIXTURE, '--chatty'] }))
       await connection.ensure()
       expect(
         await waitUntil(() => connection.stderrTail().at(-1) === 'chatty line 39', 5_000),
@@ -480,7 +529,7 @@ describe('a running server', () => {
   })
 
   it('declares no capabilities and refuses sampling, roots and elicitation', async () => {
-    const connection = connect(localServer())
+    const connection = await connect(localServer())
     expect(JSON.parse(textOf(await connection.callTool('caps', {})))).toEqual({})
     const asked = JSON.parse(textOf(await connection.callTool('ask_client', {})))
     // JSON-RPC "method not found"
@@ -492,7 +541,7 @@ describe('a running server', () => {
   })
 
   it('hears that the tool list changed', async () => {
-    const connection = connect(localServer())
+    const connection = await connect(localServer())
     const changed = vi.fn()
     connection.onToolsChanged(changed)
     await connection.callTool('add_tool', {})
@@ -501,13 +550,13 @@ describe('a running server', () => {
   })
 
   it('ends a call that takes too long, and one the caller stops', async () => {
-    const connection = connect(localServer(), { callTimeoutMs: 300 })
+    const connection = await connect(localServer(), { callTimeoutMs: 300 })
     const late = await connection.callTool('slow', { ms: 5_000 })
     expect(late.isError).toBe(true)
     expect(late.output).toMatch(/fixture/)
     expect(late.output).toMatch(/did not answer/)
 
-    const patient = connect(localServer())
+    const patient = await connect(localServer())
     await patient.ensure()
     const controller = new AbortController()
     const call = patient.callTool('slow', { ms: 5_000 }, controller.signal)
@@ -518,7 +567,7 @@ describe('a running server', () => {
   it('writes the server into the record of started programs, and takes it out when it stops', async () => {
     const dir = await mkdtemp(join(work, 'records-'))
     registry.recordIn(dir)
-    const connection = connect(localServer())
+    const connection = await connect(localServer())
     const pid = Number(textOf(await connection.callTool('pid', {})))
     await registry.flushed()
     const record = JSON.parse(await readFile(leftoverRecordFile(dir), 'utf8'))
@@ -532,7 +581,7 @@ describe('a running server', () => {
   })
 
   it('ends the whole process tree when it stops, and the app’s shutdown does too', async () => {
-    const connection = connect(localServer())
+    const connection = await connect(localServer())
     const pid = Number(textOf(await connection.callTool('pid', {})))
     const grandchild = Number(textOf(await connection.callTool('spawn_grandchild', {})))
     expect(alive(grandchild)).toBe(true)
@@ -540,7 +589,7 @@ describe('a running server', () => {
     expect(await waitUntil(() => !alive(pid) && !alive(grandchild))).toBe(true)
     expect(connection.status()).toEqual({ state: 'idle' })
 
-    const other = connect(localServer())
+    const other = await connect(localServer())
     const otherPid = Number(textOf(await other.callTool('pid', {})))
     const otherGrandchild = Number(textOf(await other.callTool('spawn_grandchild', {})))
     registry.shutdown()
@@ -548,7 +597,7 @@ describe('a running server', () => {
   })
 
   it('removes its working folder when the server ends', async () => {
-    const connection = connect(localServer())
+    const connection = await connect(localServer())
     const where = JSON.parse(textOf(await connection.callTool('cwd', {})))
     expect(existsSync(where.cwd)).toBe(true)
     await connection.stop()
