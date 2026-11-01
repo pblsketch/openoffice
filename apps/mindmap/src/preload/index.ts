@@ -66,6 +66,7 @@ const core: MindmapCoreApi = {
   sendCloseSaveResult: (ok) => ipcRenderer.send(MINDMAP_CHANNELS.closeSaveResult, ok),
   onFileRenamed: (handler) => listen<[string]>(MINDMAP_CHANNELS.fileRenamed, handler),
   openLink: (url) => ipcRenderer.invoke(MINDMAP_CHANNELS.openLink, url),
+  readLinkPreview: (url) => ipcRenderer.invoke(MINDMAP_CHANNELS.readLinkPreview, url),
   onMenuCommand: (handler) => listen<[MindmapMenuCommand]>(MINDMAP_CHANNELS.menuCommand, handler),
   getLanguage: () => ipcRenderer.invoke(APP_CHANNELS.getLanguage),
   onLanguageChanged: (handler) => listen<[Lang]>(APP_CHANNELS.languageChanged, handler),

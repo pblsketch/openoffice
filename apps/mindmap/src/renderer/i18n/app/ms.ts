@@ -77,6 +77,13 @@ export const ms = {
   openRejected: 'Fail ini tidak dapat dibuka kerana saiz atau strukturnya',
   labelHint: 'Asingkan beberapa label dengan koma',
   linkHint: 'Masukkan alamat web (http, https) atau alamat e-mel (mailto)',
+  linkPreviewOption: 'Ambil gambar dan tajuk pratonton',
+  linkPreviewNote: 'Menekan OK akan melawat laman ini sekali. Gambar disimpan di dalam fail peta',
+  linkPreviewLoading: 'Mengambil pratonton pautan…',
+  linkPreviewDone: 'Pratonton pautan ditambah',
+  linkPreviewTitleOnly: 'Halaman ini tiada gambar pratonton, jadi hanya tajuknya ditambah',
+  linkPreviewNothing: 'Tiada pratonton untuk ditambah ditemui pada halaman ini',
+  linkPreviewFailed: 'Halaman tidak dapat dibaca, jadi tiada pratonton ditambah',
   linkWontOpen:
     'Alamat ini disimpan dan dipaparkan sebagai teks, tetapi tidak akan dibuka apabila diklik. Hanya alamat web (http, https) dan alamat e-mel yang dibuka.',
   linkInternal:

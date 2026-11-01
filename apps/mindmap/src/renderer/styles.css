@@ -837,6 +837,29 @@ html.genoffice-popover-open .ribbon-tabs {
   color: var(--text-primary);
 }
 
+/* the link dialog's "fetch a preview": what ticking it does is said right under it */
+.mm-modal-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: -6px 0 14px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.mm-modal-check input {
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+
+.mm-modal-check-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
 .mm-field {
   width: 100%;
   box-sizing: border-box;

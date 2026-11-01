@@ -5,7 +5,8 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { LinkInputKind } from '../document/link-input'
+import { linkFromInput, type LinkInputKind } from '../document/link-input'
+import { previewableLink } from '../map/link-preview'
 import { type StringKey, useI18n } from '../i18n/locale'
 
 function Modal(p: { title: string; onCancel(): void; children: ReactNode; kind: string }) {
@@ -90,17 +91,24 @@ export interface TopicFieldRequest {
  * the field is one that will be kept but never opened, the dialog says so
  * before it is stored; an address in the form of a reference into the file is
  * turned down, and the dialog says why.
+ *
+ * For a web address the dialog offers to fetch the page's picture and title
+ * (decision 0099). The box says that pressing OK reaches the site; nothing is
+ * fetched unless it is ticked.
  */
 export function TopicFieldDialog(p: {
   request: TopicFieldRequest
-  onSubmit(value: string): boolean
+  onSubmit(value: string, options?: { preview: boolean }): boolean
   /** for a link: whether the address in the field would be opened, only kept, or not taken */
   linkKind?(value: string): LinkInputKind
+  /** for a link: whether "fetch a preview" starts ticked */
+  previewDefault?: boolean
   onClose(): void
 }) {
   const { t } = useI18n()
   const [value, setValue] = useState(p.request.value)
   const [refused, setRefused] = useState(false)
+  const [preview, setPreview] = useState(p.previewDefault ?? false)
   const field = useRef<HTMLInputElement & HTMLTextAreaElement>(null)
   useEffect(() => {
     field.current?.focus()
@@ -119,8 +127,12 @@ export function TopicFieldDialog(p: {
           ? 'linkWontOpen'
           : 'linkHint'
   const hintTone = refused ? ' error' : hintKey === 'linkWontOpen' ? ' warn' : ''
+  // offered only for an address that would be opened as a web page
+  const offersPreview =
+    kind === 'link' && linkKind === 'opens' && previewableLink(linkFromInput(value) ?? '')
   const submit = (next: string): void => {
-    if (p.onSubmit(next)) p.onClose()
+    const options = offersPreview && next !== '' ? { preview } : undefined
+    if (p.onSubmit(next, options)) p.onClose()
     else setRefused(true)
   }
   const shared = {
@@ -157,6 +169,15 @@ export function TopicFieldDialog(p: {
         >
           {t(hintKey)}
         </p>
+      )}
+      {offersPreview && (
+        <label className="mm-modal-check" data-option="link-preview">
+          <input type="checkbox" checked={preview} onChange={(e) => setPreview(e.target.checked)} />
+          <span>
+            {t('linkPreviewOption')}
+            <span className="mm-modal-check-note">{t('linkPreviewNote')}</span>
+          </span>
+        </label>
       )}
       <div className="mm-modal-actions">
         {p.request.value !== '' && (

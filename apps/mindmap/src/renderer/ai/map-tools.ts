@@ -631,6 +631,28 @@ export async function setTopicImage(
   picture: PictureBytes,
   turn: MapTurn | null,
 ): Promise<MapToolResult> {
+  return setTopicPicture(host, input, { picture }, turn)
+}
+
+/** A picture and a new title for one topic, put on it together. */
+export interface TopicPictureChange {
+  /** null leaves the topic's picture as it is */
+  picture: PictureBytes | null
+  /** the title the topic takes, from the title it has; null keeps it */
+  retitle?: (current: string) => string | null
+}
+
+/**
+ * `setTopicImage` with a title that may change in the same step: a link's
+ * preview (decision 0099) is one step of the undo history, picture and title.
+ */
+export async function setTopicPicture(
+  host: MapAiHost,
+  input: { sheet?: unknown; topicId?: unknown },
+  change: TopicPictureChange,
+  turn: MapTurn | null,
+): Promise<MapToolResult> {
+  const { picture } = change
   const topicId = textArg(input.topicId)
   if (topicId === null || topicId.trim() === '') return fail('topicId must name a topic of the map')
   host.flush()
@@ -646,32 +668,46 @@ export async function setTopicImage(
   const found = locate(data.nodeData, topicId)
   if (!found) return fail(`there is no topic with id "${topicId}" on sheet ${position}`)
 
+  const title = change.retitle?.(found.node.topic) ?? null
+  // not a failure: the topic already has what the change would give it
+  if (!picture && title === null) return { output: `topic ${topicId} is left as it is` }
+  if (title !== null) found.node.topic = title
+
   // the entry exists before the edit, so the reconciler can verify the
   // reference; an edit that does not land takes the entry back out again
-  const entryName = session.addPicture(picture.bytes, picture.ext)
+  const entryName = picture ? session.addPicture(picture.bytes, picture.ext) : null
   try {
-    found.node.metadata = {
-      ...metaOf(found.node),
-      image: {
-        src: `xap:${entryName}`,
-        entryName,
-        width: null,
-        height: null,
-      },
+    if (entryName !== null) {
+      found.node.metadata = {
+        ...metaOf(found.node),
+        image: {
+          src: `xap:${entryName}`,
+          entryName,
+          width: null,
+          height: null,
+        },
+      }
     }
     turn?.noteEdit(session, key)
     controller.edit((root) => takeTree(root, data.nodeData))
 
     const shown = topicInView(session.view(key).root, topicId)
-    if (shown?.image?.entryName !== entryName) {
+    if (entryName !== null && shown?.image?.entryName !== entryName) {
       session.removePicture(entryName)
       return fail(
         `the picture was not applied to topic "${topicId}"; the map is unchanged. Check the id with read_map and retry.`,
       )
     }
   } catch (error) {
-    session.removePicture(entryName)
+    if (entryName !== null) session.removePicture(entryName)
     throw error
+  }
+  if (entryName === null) {
+    return {
+      output: `Changed the title of topic ${topicId} of sheet ${position}; the user can undo this step.`,
+      mutated: true,
+      detail: { done: 1, total: 1 },
+    }
   }
   return {
     output: `Put the picture on topic ${topicId} of sheet ${position}. It is saved inside the map file (${entryName}); the user can undo this step.`,

@@ -476,6 +476,98 @@ describe('the link of a topic', () => {
       'This link cannot be opened',
     )
   })
+
+  describe('its preview (decision 0099)', () => {
+    const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 5, 5, 5])
+    const box = () => document.querySelector<HTMLInputElement>('[data-option="link-preview"] input')
+    const tick = async () => {
+      await act(async () => {
+        box()!.click()
+      })
+    }
+    /** Stands in for the main process: counts the pages read and answers with one picture. */
+    const answerPreviews = (fake: Fake) => {
+      const read: string[] = []
+      ;(fake.api as unknown as { readLinkPreview(url: string): Promise<unknown> }).readLinkPreview =
+        async (url: string) => {
+          read.push(url)
+          return {
+            ok: true,
+            title: 'A post',
+            picture: { base64: btoa(String.fromCharCode(...PNG)), mime: 'image/png' },
+          }
+        }
+      return read
+    }
+
+    it('is offered for a web address, unticked, and says that OK visits the site', async () => {
+      const { field } = await openLinkDialog('https://example.com/a')
+      expect(box()!.checked).toBe(false)
+      expect(document.querySelector('[data-option="link-preview"]')!.textContent).toContain(
+        'Pressing OK visits this site once',
+      )
+      // an address with no scheme is a web address too: https:// goes before it
+      await type(field, 'example.com/b')
+      expect(box()).not.toBeNull()
+      for (const address of ['mailto:a@b.c', 'javascript:alert(1)', '']) {
+        await type(field, address)
+        expect(box()).toBeNull()
+      }
+    })
+
+    it('reads nothing unless it is ticked', async () => {
+      const { fake, field } = await openLinkDialog('https://example.com/a')
+      const read = answerPreviews(fake)
+      await type(field, 'https://example.com/b')
+      await click('[data-action="field-ok"]')
+      await settle()
+      expect(read).toEqual([])
+    })
+
+    it('when ticked, reads the page once and keeps its picture inside the map file', async () => {
+      const { fake, first, field } = await openLinkDialog('https://example.com/a')
+      const read = answerPreviews(fake)
+      await type(field, 'example.com/post')
+      await tick()
+      await click('[data-action="field-ok"]')
+      await until(() => topicEl(first.id).querySelector('img') !== null, 'the picture')
+      expect(read).toEqual(['https://example.com/post'])
+      expect(container.querySelector('.mm-save-status')!.textContent).toBe('Link preview added')
+
+      await click('[data-action="save"]')
+      await savesReach(fake)
+      const saved = await openXmind(fake.saves[0]!.bytes)
+      if (saved.status !== 'ok') throw new Error('did not open')
+      const topic = saved.document.sheets[0]!.rootTopic.children!.attached![0]!
+      expect(topic.href).toBe('https://example.com/post')
+      // the topic had a title of its own: it stays
+      expect(topic.title).toBe(first.title)
+      const src = (topic.image as { src: string }).src
+      expect(await saved.document.readEntry(src.slice('xap:'.length))).toEqual(PNG)
+    })
+
+    it('starts ticked as it was left, but not over a picture the topic already shows', async () => {
+      const { fake, first, field } = await openLinkDialog('https://example.com/a')
+      answerPreviews(fake)
+      await tick()
+      await type(field, 'https://example.com/post')
+      await click('[data-action="field-ok"]')
+      await until(() => topicEl(first.id).querySelector('img') !== null, 'the picture')
+
+      // the same topic now shows a picture: unticked
+      await click('[data-action="link"]')
+      expect(box()!.checked).toBe(false)
+      await click('[data-action="field-cancel"]')
+      // another topic: ticked, as it was left
+      await selectOnMap(plainSheet().rootTopic.children!.attached![1]!.id)
+      await click('[data-action="link"]')
+      await type(
+        document.querySelector<HTMLInputElement>('[data-dialog="topic-link"] input')!,
+        'https://example.com/c',
+      )
+      expect(box()!.checked).toBe(true)
+    })
+  })
 })
 
 describe('a title still being typed', () => {
