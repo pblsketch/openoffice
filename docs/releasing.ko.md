@@ -58,10 +58,12 @@ Windows SDK는 스캔 문서 글자 인식 도우미(`win-ocr.exe`)를 만들 �
 
 **GitHub Actions로 만들기 (권장, 결정 0056).** Mac·Linux처럼 GitHub의 Windows 빌드 기계가 만들고, 설치 파일과 `latest.yml`에 "이 저장소의 이 커밋에서 만들었다"는 출처 증명을 붙입니다. 사용자는 `gh attestation verify IeumOffice-Setup-<버전>.exe --repo pblsketch/openoffice`로 확인할 수 있습니다.
 
-1. 6번대로 릴리스를 **본문만으로, "Set as a pre-release"를 체크해** 먼저 공개합니다. 파일은 아직 올리지 않습니다.
+1. 6번대로 릴리스를 **본문만으로** 먼저 공개합니다. 프리릴리스를 거치지 않고 바로 정식 공개합니다("Set as a pre-release"는 체크하지 않고 "Set as the latest release"를 체크). 파일은 아직 올리지 않습니다. 파일이 붙기 전까지 설치된 앱은 받을 것이 없다고 보고 조용히 넘어가고, 사이트의 내려받기 버튼은 릴리스 페이지로 갑니다.
 2. **Actions** 탭 → **Windows build** → **Run workflow**에서 가지는 `main`, **release_tag** 칸에 그 태그(예: `v0.12.4`)를 적고 실행합니다.
-3. 빌드, 검사(묶인 프로그램, `latest.yml`의 버전과 파일 이름, **서명이 없는지**), 창 없는 내보내기 시험이 모두 통과하면 설치 파일, `.blockmap`, `latest.yml`이 그 릴리스에 저절로 붙습니다. 빌드한 버전과 태그가 다르면 붙이지 않고 멈춥니다.
-4. 릴리스 페이지에서 세 파일이 붙었는지 보고, 8번의 베타 예행으로 넘어갑니다.
+3. 빌드, 검사(묶인 프로그램, `latest.yml`의 버전과 파일 이름, **서명이 없는지**), 창 없는 내보내기 시험이 모두 통과하면 설치 파일, `.blockmap`, `latest.yml`이 그 릴리스에 저절로 붙습니다. 이 순간부터 모든 사용자에게 나갑니다. 빌드한 버전과 태그가 다르면 붙이지 않고 멈춥니다.
+4. 릴리스 페이지에서 세 파일이 붙었는지 보고, 5번대로 설치본을 확인합니다. 옛 버전이 설치된 PC가 있으면 ☰ → **업데이트 확인…** 으로 업데이트가 끝까지 되는지도 봅니다. 문제가 보이면 10번을 따릅니다.
+
+빌드나 검사가 실패해 파일이 하나도 붙지 않았다면, 그 릴리스와 태그를 지워 직전 릴리스가 다시 "최신"이 되게 하고 고친 뒤 처음부터 다시 합니다. 받은 사람이 없으므로 같은 번호를 다시 써도 됩니다.
 
 **Google 드라이브 클라이언트.** 세 빌드(Windows·macOS·Linux)는 저장소 secrets의 `GENOFFICE_GOOGLE_CLIENT_ID`와 `GENOFFICE_GOOGLE_CLIENT_SECRET`을 앱 빌드와 묶기 단계에 넘깁니다(결정 0033, 0085). 두 값이 없으면 빌드는 그대로 끝나지만 설치본에 드라이브 기능이 빠집니다. 값은 저장소 주인이 `gh secret set GENOFFICE_GOOGLE_CLIENT_ID --repo pblsketch/openoffice`처럼 직접 넣고, 커밋이나 로그에 남기지 않습니다.
 
@@ -176,9 +178,9 @@ https://github.com/pblsketch/openoffice/releases/latest/download/latest.yml
 - 자동 업데이트가 두 번 연속 실패하면 업데이트 창이 "다운로드 페이지 열기" 버튼으로 바뀌고, 누르면 저장소의 릴리스 페이지가 열립니다. 거기서 설치 파일을 받아 직접 설치하면 됩니다.
 - 새 버전이 있으면 업데이트 창에 바뀐 점이 나옵니다. 길면 스크롤하고, "GitHub에서 전체 보기"로 릴리스 페이지를 열 수 있습니다. 여러 버전을 건너뛴 사용자는 그 사이 릴리스의 본문도 함께 봅니다.
 
-## 8. 업데이트가 실제로 되는지 처음부터 끝까지 확인하기 (버전 두 개로)
+## 8. 정식 공개 전에 혼자 먼저 받아 보기 (선택, 기본 절차 아님)
 
-모든 사용자에게 내보내기 전에, **베타 채널**로 먼저 혼자 받아 볼 수 있습니다. 프리릴리스로 올린 버전은 "베타 버전" 채널을 고른 앱에만 보이기 때문입니다.
+기본 절차는 프리릴리스를 거치지 않고 바로 정식 공개합니다(2026-11-01부터). 업데이트 장치를 크게 고친 버전처럼 모든 사용자에게 나가기 전에 설치본으로 꼭 확인해야 할 때만, 아래처럼 **베타 채널**로 먼저 혼자 받아 봅니다. 프리릴리스로 올린 버전은 "베타 버전" 채널을 고른 앱에만 보이기 때문입니다. 이때는 4번의 1에서 "Set as a pre-release"를 체크해 공개합니다.
 
 준비: 옛 버전 A가 설치된 PC. (예: 지금 쓰고 있는 `0.11.0`. 3~5번으로 만든 설치 파일로 설치한 것이어야 합니다. 개발용으로 띄운 앱은 업데이트를 하지 않습니다.)
 
@@ -301,14 +303,12 @@ Linux판(64비트 x64)도 베타로 냅니다. Windows·Mac 설치 파일과 **�
 0. Anthropic 상업 약관 동의 확인
 1. apps/shell/package.json 과 package-lock.json 의 버전 올리기 → 커밋, push
 2. (손 빌드일 때만) Rust PATH 설정
-3. GitHub 릴리스: 태그 v<버전>, 본문만, pre-release 체크 → Publish
-4. Actions → Windows build → Run workflow(main, release_tag) → 설치 파일·latest.yml 이 그 릴리스에 붙었는지 확인
+3. GitHub 릴리스: 태그 v<버전>, 본문만, pre-release 체크 없이 latest 로 → Publish (프리릴리스 단계 없음)
+4. Actions → Windows build → Run workflow(main, release_tag) → 설치 파일·latest.yml 이 그 릴리스에 붙었는지 확인 (붙는 순간 모든 사용자에게 나감)
    (Actions 를 못 쓰면: native:build → xlsx-sidecar.exe 복사 → npm run dist:win -- -- --publish never → 두 파일 손으로 올리기)
-5. 설치해서 버전과 .odt "연결 프로그램" 확인
-6. 옛 버전 앱에서 채널을 "베타 버전"으로 바꿔 업데이트 확인
-7. (Mac) Actions → macOS build → Run workflow → 결과의 dmg, zip, latest-mac.yml 을 같은 릴리스에 올리기
-8. (Linux) Actions → Linux build → Run workflow → 결과의 AppImage, deb, rpm, latest-linux.yml 을 같은 릴리스에 올리기
-9. 릴리스를 pre-release 해제 + latest 로 바꾸기
-10. 소개 사이트(ieumoffice-site): /updates 맨 위에 새 버전 항목 + 메인 한 줄 안내 고치기 → 확인 받고 push → 사이트에서 확인 → 질문 도우미 지식베이스 자동 갱신(Actions)
-11. docs/tracking/status.md 에 기준 버전과 확인한 내용 기록
+5. 설치해서 버전과 .odt "연결 프로그램" 확인, 옛 버전 앱이 있으면 ☰ → 업데이트 확인… 으로 끝까지 되는지 확인
+6. (Mac) Actions → macOS build → Run workflow → 결과의 dmg, zip, latest-mac.yml 을 같은 릴리스에 올리기
+7. (Linux) Actions → Linux build → Run workflow → 결과의 AppImage, deb, rpm, latest-linux.yml 을 같은 릴리스에 올리기
+8. 소개 사이트(ieumoffice-site): /updates 맨 위에 새 버전 항목 + 메인 한 줄 안내 고치기 → 확인 받고 push → 사이트에서 확인 → 질문 도우미 지식베이스 자동 갱신(Actions)
+9. docs/tracking/status.md 에 기준 버전과 확인한 내용 기록
 ```
