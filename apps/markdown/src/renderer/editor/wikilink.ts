@@ -463,9 +463,6 @@ function hiddenLinks(doc: PmNode): HiddenLink[] {
     // positions come from the literal match, so a mark the edit grew past its
     // brackets contributes nothing
     if (span.to - span.from !== span.raw.length) continue
-    // `![[Note|200]]` is an embed literal; this editor has no embed view, so
-    // it stays as written rather than reading as a stray `!200`
-    if (span.from > 0 && doc.textBetween(span.from - 1, span.from) === '!') continue
     const pipe = span.raw.indexOf('|')
     if (pipe < 0) continue
     // `[[Note|]]` never matches the link regex, so a matched pipe always has

@@ -166,7 +166,7 @@ export function buildExtensions(options: BuildExtensionsOptions): AnyExtension[]
     WikiAliasDisplay,
     // `^id` block markers: written on demand, dimmed in the view, plain text in the file
     BlockLink.configure(options.blockLink ?? {}),
-    // pasted `[[links]]` take their live shape at once
+    // pasted `[[links]]` and `![[embeds]]` take their live shape at once
     WikiPasteLive,
     WikiSuggest.configure({
       controller: options.wikiSuggestController,
