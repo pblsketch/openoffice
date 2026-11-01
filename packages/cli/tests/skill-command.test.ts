@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -24,12 +25,18 @@ describe('genoffice skill', () => {
     expect(existsSync(r.json().detail.path)).toBe(true)
   })
 
-  it('list shows every agent with detection and install state', async () => {
+  it('list shows every install row with detection and install state', async () => {
     const m = fakeMachine(['.claude', '.cursor'])
     const r = await run(['skill', 'list', '--json'], { env: m.env })
     expect(r.code).toBe(0)
     const agents = r.json().detail.agents as Array<Record<string, unknown>>
-    expect(agents.map((a) => a.agent)).toContain('codex')
+    // tools that read ~/.agents/skills share one row and have none of their own
+    expect(agents.map((a) => a.agent)).toEqual(['claude-code', 'agents', 'windsurf'])
+    expect(agents.find((a) => a.agent === 'agents')).toMatchObject({
+      detected: true,
+      legacy: false,
+      skills_dir: join(m.home, '.agents', 'skills'),
+    })
     const claude = agents.find((a) => a.agent === 'claude-code')!
     expect(claude).toMatchObject({
       detected: true,
@@ -38,7 +45,7 @@ describe('genoffice skill', () => {
       up_to_date: false,
       skills_dir: join(m.home, '.claude', 'skills'),
     })
-    expect(agents.find((a) => a.agent === 'codex')).toMatchObject({ detected: false })
+    expect(agents.find((a) => a.agent === 'windsurf')).toMatchObject({ detected: false })
     expect(r.json().detail.bundled_version).toBe(bundledVersion)
     expect((await run(['skill', '--list'], { env: m.env })).stdout).toContain('2 agent(s) detected')
   })
@@ -86,7 +93,9 @@ describe('genoffice skill', () => {
         .json()
         .detail.agents.map((a: any) => a.agent)
         .sort(),
-    ).toEqual(['claude-code', 'codex'])
+    ).toEqual(['agents', 'claude-code'])
+    expect(existsSync(join(m.home, '.agents', 'skills', 'ieumoffice', 'SKILL.md'))).toBe(true)
+    expect(existsSync(join(m.home, '.codex', 'skills'))).toBe(false)
 
     const typo = await run(['skill', 'install', 'claud-code', '--json'], { env: m.env })
     expect(typo.code).toBe(1)
@@ -100,7 +109,28 @@ describe('genoffice skill', () => {
 
     const forced = await run(['skill', 'install', 'cursor', '--force', '--json'], { env: m.env })
     expect(forced.code).toBe(0)
-    expect(existsSync(join(m.home, '.cursor', 'skills', 'ieumoffice', 'SKILL.md'))).toBe(true)
+    expect(forced.json().detail.agents).toEqual([
+      // `all` above already wrote the shared folder Cursor reads
+      expect.objectContaining({ agent: 'agents', action: 'unchanged', status: 'installed' }),
+    ])
+    expect(existsSync(join(m.home, '.agents', 'skills', 'ieumoffice', 'SKILL.md'))).toBe(true)
+    expect(existsSync(join(m.home, '.cursor'))).toBe(false)
+  })
+
+  it('install agents writes the shared folder for every tool that reads it', async () => {
+    const m = fakeMachine(['.gemini'])
+    const r = await run(['skill', 'install', 'agents', '--json'], { env: m.env })
+    expect(r.code).toBe(0)
+    expect(r.json().detail.agents).toEqual([
+      expect.objectContaining({
+        agent: 'agents',
+        action: 'written',
+        detected: true,
+        legacy: false,
+        skills_dir: join(m.home, '.agents', 'skills'),
+      }),
+    ])
+    expect(existsSync(join(m.home, '.gemini', 'skills'))).toBe(false)
   })
 
   it('refuses to downgrade a newer skill or overwrite a hand-edited one without --force', async () => {
@@ -163,13 +193,113 @@ describe('genoffice skill', () => {
 
   it('install all refuses before writing anything when one target is blocked', async () => {
     const m = fakeMachine(['.claude', '.codex'])
-    const codex = join(m.home, '.codex', 'skills', 'ieumoffice')
-    mkdirSync(codex, { recursive: true })
-    writeFileSync(join(codex, 'SKILL.md'), '---\nname: other-skill\n---\nx\n')
+    const shared = join(m.home, '.agents', 'skills', 'ieumoffice')
+    mkdirSync(shared, { recursive: true })
+    writeFileSync(join(shared, 'SKILL.md'), '---\nname: other-skill\n---\nx\n')
     const r = await run(['skill', 'install', 'all', '--json'], { env: m.env })
     expect(r.code).toBe(2)
-    expect(r.json().detail).toMatchObject({ agent: 'codex', status: 'occupied' })
+    expect(r.json().detail).toMatchObject({ agent: 'agents', status: 'occupied' })
     expect(existsSync(join(m.home, '.claude', 'skills', 'ieumoffice'))).toBe(false)
     expect(existsSync(join(m.env.GENOFFICE_USER_DATA, 'app-settings.json'))).toBe(false)
+  })
+
+  describe('a copy written into a tool folder before the shared row', () => {
+    /** a SKILL.md this app wrote into ~/.codex/skills in an older version, with its ledger entry */
+    function withLegacyCodexCopy(dots: string[]) {
+      const m = fakeMachine(dots)
+      const dir = join(m.home, '.codex', 'skills', 'ieumoffice')
+      mkdirSync(dir, { recursive: true })
+      const path = join(dir, 'SKILL.md')
+      const text = '---\nname: ieumoffice\nmetadata:\n  version: 0.0.1\n---\nold\n'
+      writeFileSync(path, text)
+      writeFileSync(
+        join(m.env.GENOFFICE_USER_DATA, 'app-settings.json'),
+        JSON.stringify({
+          agentSkillInstalls: {
+            [path]: {
+              version: '0.0.1',
+              sha256: createHash('sha256').update(text).digest('hex'),
+              at: '2026-10-01T00:00:00.000Z',
+              channel: 'app',
+            },
+          },
+        }),
+      )
+      return { ...m, path }
+    }
+
+    it('is listed as a legacy row next to the shared one', async () => {
+      const m = withLegacyCodexCopy(['.codex'])
+      const r = await run(['skill', 'list', '--json'], { env: m.env })
+      expect(r.code).toBe(0)
+      const agents = r.json().detail.agents as Array<Record<string, unknown>>
+      expect(agents.map((a) => a.agent)).toEqual(['claude-code', 'agents', 'codex', 'windsurf'])
+      expect(agents.find((a) => a.agent === 'codex')).toMatchObject({
+        legacy: true,
+        detected: true,
+        status: 'outdated',
+        installed_version: '0.0.1',
+        up_to_date: false,
+        skills_dir: join(m.home, '.codex', 'skills'),
+      })
+      expect(r.json().summary).toContain('older copies in codex 0.0.1')
+    })
+
+    it('install codex writes the shared folder and brings the old copy up to date', async () => {
+      const m = withLegacyCodexCopy(['.codex'])
+      const r = await run(['skill', 'install', 'codex', '--json'], { env: m.env })
+      expect(r.code).toBe(0)
+      expect(r.json().detail.agents).toEqual([
+        expect.objectContaining({ agent: 'agents', action: 'written', legacy: false }),
+        expect.objectContaining({
+          agent: 'codex',
+          action: 'written',
+          legacy: true,
+          status: 'installed',
+        }),
+      ])
+      const bundledText = readFileSync(join(REPO, 'skills/ieumoffice/SKILL.md'), 'utf-8')
+      expect(readFileSync(m.path, 'utf-8')).toBe(bundledText)
+      expect(
+        readFileSync(join(m.home, '.agents', 'skills', 'ieumoffice', 'SKILL.md'), 'utf-8'),
+      ).toBe(bundledText)
+    })
+
+    it('install all keeps it current too, and a tool folder alone never gets a new copy', async () => {
+      const m = withLegacyCodexCopy(['.codex', '.cursor'])
+      const r = await run(['skill', 'install', 'all', '--json'], { env: m.env })
+      expect(r.code).toBe(0)
+      expect(r.json().detail.agents.map((a: any) => `${a.agent}:${a.action}`)).toEqual([
+        'agents:written',
+        'codex:written',
+      ])
+      expect(existsSync(join(m.home, '.cursor', 'skills'))).toBe(false)
+    })
+
+    it('an old copy edited by hand is left alone with a warning unless --force', async () => {
+      const m = withLegacyCodexCopy(['.codex'])
+      writeFileSync(m.path, readFileSync(m.path, 'utf-8') + 'edited\n')
+      const r = await run(['skill', 'install', 'codex', '--json'], { env: m.env })
+      expect(r.code).toBe(0)
+      expect(r.json().warnings).toEqual([expect.objectContaining({ code: 'legacy_copy_left' })])
+      expect(r.json().detail.agents[1]).toMatchObject({
+        agent: 'codex',
+        action: 'unchanged',
+        status: 'modified',
+      })
+      expect(readFileSync(m.path, 'utf-8')).toContain('edited')
+
+      const forced = await run(['skill', 'install', 'codex', '--force', '--json'], { env: m.env })
+      expect(forced.code).toBe(0)
+      expect(forced.json().detail.agents[1]).toMatchObject({ agent: 'codex', action: 'written' })
+    })
+
+    it('is never deleted by an install', async () => {
+      const m = withLegacyCodexCopy(['.codex'])
+      writeFileSync(m.path, readFileSync(m.path, 'utf-8') + 'edited\n')
+      await run(['skill', 'install', 'agents', '--json'], { env: m.env })
+      await run(['skill', 'install', 'all', '--json'], { env: m.env })
+      expect(existsSync(m.path)).toBe(true)
+    })
   })
 })

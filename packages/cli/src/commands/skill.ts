@@ -3,13 +3,17 @@ import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import {
   agentIds,
+  agentLabel,
+  agentPresent,
   agentTarget,
   bundledSkillFrom,
-  detectAgents,
+  installRowFor,
   installSkill,
+  legacySkillCopies,
   LEDGER_KEY,
   ledgerFromSettings,
   readInstallState,
+  skillTargetIds,
   type AgentId,
   type AgentTarget,
   type BundledSkill,
@@ -28,6 +32,11 @@ import { didYouMean } from '../suggest'
  * machine and copy the bundled skill into their skills directory. Writes go
  * into the same ledger the app keeps (userData/app-settings.json), so the pane
  * shows a CLI install as "installed", not "foreign".
+ *
+ * Codex, Cursor, Gemini CLI, Copilot and OpenCode all read `~/.agents/skills`,
+ * so naming one of them installs into that shared row. A copy this app wrote
+ * into one of their own folders earlier is listed, kept at the bundled version
+ * along with the install, and never deleted here (decision 0095).
  */
 export const skillCommand: CommandDef = {
   name: 'skill',
@@ -83,26 +92,43 @@ interface AgentRow {
   status: SkillInstallState['status']
   installed_version: string | null
   up_to_date: boolean
+  /** a copy in the own folder of a tool the shared `agents` row now serves (kept current, never deleted on its own) */
+  legacy: boolean
 }
 
 function list(ctx: CommandContext) {
   const skill = bundled()
   const ledger = readLedger(ctx.env)
-  const detected = new Set(detectAgents(ctx.env, home(ctx.env)).map((a) => a.id))
-  const agents: AgentRow[] = agentIds().map((id) => {
-    const target = agentTarget(id, ctx.env, home(ctx.env))!
-    return row(target, detected.has(id), readInstallState(target.skillsDir, skill, ledger))
-  })
-  const current = agents.filter((a) => a.detected && a.up_to_date).length
-  const found = agents.filter((a) => a.detected)
+  const h = home(ctx.env)
+  const agents: AgentRow[] = [
+    ...skillTargetIds().map((id) => agentTarget(id, ctx.env, h)!),
+    ...legacySkillCopies(ledger, ctx.env, h),
+  ]
+    .sort((a, b) => agentIds().indexOf(a.id) - agentIds().indexOf(b.id))
+    .map((t) =>
+      row(t, agentPresent(t.id, ctx.env, h), readInstallState(t.skillsDir, skill, ledger)),
+    )
+  const found = agents.filter((a) => a.detected && !a.legacy)
+  const current = found.filter((a) => a.up_to_date).length
+  const legacy = agents.filter((a) => a.legacy)
   return {
-    summary: found.length
-      ? `${found.length} agent(s) detected, ${current} with skill ${skill.version}: ${found
-          .map((a) => `${a.agent} ${a.installed_version ?? '-'}`)
-          .join(', ')}`
-      : 'no coding agent detected on this machine',
+    summary:
+      (found.length
+        ? `${found.length} agent(s) detected, ${current} with skill ${skill.version}: ${found
+            .map((a) => `${a.agent} ${a.installed_version ?? '-'}`)
+            .join(', ')}`
+        : 'no coding agent detected on this machine') +
+      (legacy.length
+        ? `; older copies in ${legacy.map((a) => `${a.agent} ${a.installed_version ?? '-'}`).join(', ')}`
+        : ''),
     detail: { bundled_version: skill.version, skill_path: skillFile(), agents },
   }
+}
+
+interface InstallTarget {
+  target: AgentTarget | null
+  skillsDir: string
+  detected: boolean
 }
 
 function install(
@@ -124,25 +150,30 @@ function install(
   }
   const skill = bundled()
   const ledger = readLedger(ctx.env)
-  const detected = new Set(detectAgents(ctx.env, home(ctx.env)).map((a) => a.id))
-  const targets: Array<{ target: AgentTarget | null; skillsDir: string; detected: boolean }> = []
+  const h = home(ctx.env)
+  const targets: InstallTarget[] = []
+  /** legacy copies brought along: refreshed when they can be, skipped (with a warning) when not */
+  let legacy: AgentTarget[] = []
+  const rowTarget = (id: AgentId): InstallTarget => {
+    const t = agentTarget(id, ctx.env, h)!
+    return { target: t, skillsDir: t.skillsDir, detected: agentPresent(id, ctx.env, h) }
+  }
   if (dir) {
     targets.push({ target: null, skillsDir: resolve(ctx.cwd, dir), detected: true })
   } else if (name === 'all') {
-    for (const id of agentIds()) {
-      if (!detected.has(id)) continue
-      const t = agentTarget(id, ctx.env, home(ctx.env))!
-      targets.push({ target: t, skillsDir: t.skillsDir, detected: true })
+    for (const id of skillTargetIds()) {
+      if (agentPresent(id, ctx.env, h)) targets.push(rowTarget(id))
     }
-    if (!targets.length) {
+    legacy = legacySkillCopies(ledger, ctx.env, h)
+    if (!targets.length && !legacy.length) {
       throw new CliError(EXIT.usage, 'no coding agent detected on this machine', undefined, {
         reason: 'unsupported',
         suggestion: 'install into a folder with --dir <skills directory>',
       })
     }
   } else {
-    const t = agentTarget(name as AgentId, ctx.env, home(ctx.env))
-    if (!t) {
+    const named = agentIds().find((id) => id === name)
+    if (!named) {
       const guess = didYouMean(name!, agentIds())
       throw new CliError(
         EXIT.usage,
@@ -156,15 +187,19 @@ function install(
         },
       )
     }
-    if (!detected.has(t.id) && !force) {
+    // a tool the shared row serves installs there; its own folder is only kept current
+    const t = rowTarget(installRowFor(named))
+    const present = agentPresent(named, ctx.env, h)
+    if (!present && !force) {
       throw new CliError(
         EXIT.usage,
-        `${t.label} is not installed on this machine (${t.skillsDir} would be created)`,
-        { agent: t.id, skills_dir: t.skillsDir },
+        `${agentLabel(named)} is not installed on this machine (${t.skillsDir} would be created)`,
+        { agent: named, skills_dir: t.skillsDir },
         { reason: 'unsupported', suggestion: 'repeat with --force to create the folder anyway' },
       )
     }
-    targets.push({ target: t, skillsDir: t.skillsDir, detected: detected.has(t.id) })
+    targets.push({ ...t, detected: present })
+    legacy = legacySkillCopies(ledger, ctx.env, h, named)
   }
 
   // every target is checked before the first write, so a refusal never leaves a half-done batch
@@ -184,6 +219,11 @@ function install(
   const written: string[] = []
   const rows: Array<AgentRow & { action: 'written' | 'unchanged' }> = []
   let dirty = false
+  const write = (t: InstallTarget) => {
+    installSkill(t.skillsDir, skill, ledger, 'cli')
+    dirty = true
+    written.push(t.target?.id ?? t.skillsDir)
+  }
   for (const t of targets) {
     const label = t.target?.id ?? t.skillsDir
     let action: 'written' | 'unchanged' = 'unchanged'
@@ -193,15 +233,37 @@ function install(
         message: `${label}: skill ${skill.version} already installed`,
       })
     } else {
-      installSkill(t.skillsDir, skill, ledger, 'cli')
-      dirty = true
+      write(t)
       action = 'written'
-      written.push(label)
     }
     rows.push({
       ...row(t.target, t.detected, readInstallState(t.skillsDir, skill, ledger)),
       action,
     })
+  }
+  // the old copies stay where they are and only follow the bundled version, so the
+  // tool never finds two different skills under one name
+  for (const l of legacy) {
+    const t: InstallTarget = {
+      target: l,
+      skillsDir: l.skillsDir,
+      detected: agentPresent(l.id, ctx.env, h),
+    }
+    const before = readInstallState(l.skillsDir, skill, ledger)
+    let action: 'written' | 'unchanged' = 'unchanged'
+    if (before.status !== 'installed') {
+      const blocked = refusal(before, force)
+      if (blocked) {
+        warnings.push({
+          code: 'legacy_copy_left',
+          message: `${l.id}: ${blocked}; the older copy at ${before.path} was left as it is`,
+        })
+      } else {
+        write(t)
+        action = 'written'
+      }
+    }
+    rows.push({ ...row(l, t.detected, readInstallState(l.skillsDir, skill, ledger)), action })
   }
   if (dirty) writeLedger(ctx.env, ledger)
   return {
@@ -236,6 +298,7 @@ function row(target: AgentTarget | null, detected: boolean, state: SkillInstallS
     status: state.status,
     installed_version: state.installedVersion ?? null,
     up_to_date: state.status === 'installed' || state.status === 'newer',
+    legacy: target?.legacy === true,
   }
 }
 

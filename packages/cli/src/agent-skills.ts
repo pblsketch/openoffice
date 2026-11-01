@@ -29,14 +29,20 @@ export { SKILL_NAME }
 export const LEDGER_KEY = 'agentSkillInstalls'
 
 export type AgentId =
-  'claude-code' | 'codex' | 'cursor' | 'gemini' | 'copilot' | 'opencode' | 'windsurf'
+  'claude-code' | 'agents' | 'codex' | 'cursor' | 'gemini' | 'copilot' | 'opencode' | 'windsurf'
 
 export interface AgentTarget {
   id: AgentId
-  /** product name, shown as is (not translated) */
+  /** product name, shown as is (not translated); the shared row's is a description the app localizes */
   label: string
   /** global skills directory the agent scans */
   skillsDir: string
+  /**
+   * A tool's own skills folder that the shared `~/.agents` row now serves. Such
+   * a row is listed only while a copy this app wrote is still there, so it can
+   * be kept current or removed; it is never offered for a new install.
+   */
+  legacy?: boolean
 }
 
 export type SkillInstallStatus =
@@ -64,73 +70,140 @@ export interface SkillInstallState {
   older?: boolean
 }
 
+/**
+ * How a row of the table takes part in installing the skill:
+ * - `own`: the tool reads only its own folder (Claude Code, Windsurf), so it gets a row of its own
+ * - `shared`: `~/.agents/skills`, which every `reader` tool scans, so one row serves them all
+ * - `reader`: a tool that reads the shared folder; its own folder is only a legacy target
+ *   (a copy written there before stays listed, updatable and removable, never deleted on its own)
+ */
+type AgentRole = 'own' | 'shared' | 'reader'
+
 interface AgentDef {
   id: AgentId
   label: string
-  /** the folder whose presence means the tool is installed */
+  role: AgentRole
+  /** the tool's own dotfolder: its presence means the tool is installed, and `mcp` writes its config there */
   probe: (env: NodeJS.ProcessEnv, home: string) => string
-  /** the skills directory, relative to the probe folder unless absolute */
+  /** the skills directory, inside the probe folder */
   skills: (probe: string) => string
 }
 
+/** Table order is pane order: the shared row right after Claude Code, the readers' legacy copies under it. */
 const AGENTS: readonly AgentDef[] = [
   {
     id: 'claude-code',
     label: 'Claude Code',
+    role: 'own',
     probe: (env, home) => env.CLAUDE_CONFIG_DIR || join(home, '.claude'),
+    skills: (p) => join(p, 'skills'),
+  },
+  {
+    id: 'agents',
+    label: 'Shared folder (~/.agents): Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+    role: 'shared',
+    probe: (_env, home) => join(home, '.agents'),
     skills: (p) => join(p, 'skills'),
   },
   {
     id: 'codex',
     label: 'Codex',
+    role: 'reader',
     probe: (env, home) => env.CODEX_HOME || join(home, '.codex'),
     skills: (p) => join(p, 'skills'),
   },
   {
     id: 'cursor',
     label: 'Cursor',
+    role: 'reader',
     probe: (_env, home) => join(home, '.cursor'),
     skills: (p) => join(p, 'skills'),
   },
   {
     id: 'gemini',
     label: 'Gemini CLI',
+    role: 'reader',
     probe: (_env, home) => join(home, '.gemini'),
     skills: (p) => join(p, 'skills'),
   },
   {
     id: 'copilot',
     label: 'GitHub Copilot',
+    role: 'reader',
     probe: (_env, home) => join(home, '.copilot'),
     skills: (p) => join(p, 'skills'),
   },
   {
     id: 'opencode',
     label: 'OpenCode',
+    role: 'reader',
     probe: (env, home) => join(env.XDG_CONFIG_HOME || join(home, '.config'), 'opencode'),
     skills: (p) => join(p, 'skills'),
   },
   {
     id: 'windsurf',
     label: 'Windsurf',
+    role: 'own',
     probe: (_env, home) => join(home, '.codeium', 'windsurf'),
     skills: (p) => join(p, 'skills'),
   },
 ]
 
+/** The id of the shared `~/.agents` row. */
+export const SHARED_AGENT_ID = 'agents' satisfies AgentId
+
+/** Every name `skill install` takes, in table order: the install rows and the tools the shared row serves. */
 export function agentIds(): AgentId[] {
   return AGENTS.map((a) => a.id)
 }
 
-/** Agents whose dotfolder exists; the folder standing in for "installed" is a heuristic, so a stale one only adds a row. */
+/** The rows a new install can go to: Claude Code, the shared folder, Windsurf. */
+export function skillTargetIds(): AgentId[] {
+  return AGENTS.filter((a) => a.role !== 'reader').map((a) => a.id)
+}
+
+/** Whether `id` is a tool the shared row serves, whose own folder only holds a legacy copy. */
+export function isSharedReader(id: AgentId): boolean {
+  return AGENTS.find((a) => a.id === id)?.role === 'reader'
+}
+
+/** The row a new install for `id` goes to: the shared row for its readers, the tool's own row otherwise. */
+export function installRowFor(id: AgentId): AgentId {
+  return isSharedReader(id) ? SHARED_AGENT_ID : id
+}
+
+/** The product name for any id of the table. */
+export function agentLabel(id: AgentId): string {
+  return AGENTS.find((x) => x.id === id)?.label ?? id
+}
+
+/**
+ * Whether the tool is on this machine, judged by its dotfolder. The shared row
+ * counts as present when `~/.agents` exists or any tool that reads it does.
+ */
+export function agentPresent(
+  id: AgentId,
+  env: NodeJS.ProcessEnv = process.env,
+  home = homedir(),
+): boolean {
+  const a = AGENTS.find((x) => x.id === id)
+  if (!a) return false
+  if (isDir(a.probe(env, home))) return true
+  return a.role === 'shared' && AGENTS.some((r) => r.role === 'reader' && isDir(r.probe(env, home)))
+}
+
+/**
+ * Install rows (own and shared) whose tool is present; the folder standing in
+ * for "installed" is a heuristic, so a stale one only adds a row. Tools the
+ * shared row serves get no row here: see `legacySkillCopies`.
+ */
 export function detectAgents(
   env: NodeJS.ProcessEnv = process.env,
   home = homedir(),
 ): AgentTarget[] {
   const out: AgentTarget[] = []
   for (const a of AGENTS) {
-    const probe = a.probe(env, home)
-    if (isDir(probe)) out.push({ id: a.id, label: a.label, skillsDir: a.skills(probe) })
+    if (a.role !== 'reader' && agentPresent(a.id, env, home)) out.push(targetOf(a, env, home))
   }
   return out
 }
@@ -145,14 +218,59 @@ export function agentConfigDir(
   return a ? a.probe(env, home) : null
 }
 
+/** The skills folder of any row; for a tool the shared row serves, its own (legacy) folder. */
 export function agentTarget(
   id: AgentId,
   env: NodeJS.ProcessEnv = process.env,
   home = homedir(),
 ): AgentTarget | null {
   const a = AGENTS.find((x) => x.id === id)
-  if (!a) return null
-  return { id: a.id, label: a.label, skillsDir: a.skills(a.probe(env, home)) }
+  return a ? targetOf(a, env, home) : null
+}
+
+/**
+ * Copies this app wrote (by the ledger) into the own folder of a tool the
+ * shared row now serves, and that are still there. They are kept current and
+ * can be removed by the person; nothing deletes them on its own. `only` narrows
+ * the list: a reader id to its own copy, the shared row's id to every reader,
+ * any other row to none.
+ */
+export function legacySkillCopies(
+  ledger: SkillLedger,
+  env: NodeJS.ProcessEnv = process.env,
+  home = homedir(),
+  only?: AgentId,
+): AgentTarget[] {
+  if (only && only !== SHARED_AGENT_ID && !isSharedReader(only)) return []
+  const out: AgentTarget[] = []
+  for (const a of AGENTS) {
+    if (a.role !== 'reader') continue
+    if (only && only !== SHARED_AGENT_ID && only !== a.id) continue
+    const t = targetOf(a, env, home)
+    if (ledger[skillFilePath(t.skillsDir)] && existsSync(join(t.skillsDir, SKILL_NAME))) out.push(t)
+  }
+  return out
+}
+
+/** What Settings → Integrations lists: the install rows present here, then the legacy copies, in table order. */
+export function skillRows(
+  ledger: SkillLedger,
+  env: NodeJS.ProcessEnv = process.env,
+  home = homedir(),
+): AgentTarget[] {
+  const order = agentIds()
+  return [...detectAgents(env, home), ...legacySkillCopies(ledger, env, home)].sort(
+    (a, b) => order.indexOf(a.id) - order.indexOf(b.id),
+  )
+}
+
+function targetOf(a: AgentDef, env: NodeJS.ProcessEnv, home: string): AgentTarget {
+  return {
+    id: a.id,
+    label: a.label,
+    skillsDir: a.skills(a.probe(env, home)),
+    ...(a.role === 'reader' ? { legacy: true } : {}),
+  }
 }
 
 export interface SkillFrontmatter {
