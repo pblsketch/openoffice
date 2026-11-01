@@ -373,6 +373,58 @@ describe('the tab a request was handed to', () => {
     await flush()
     expect(bridge.takeHandoff).not.toHaveBeenCalled()
   })
+
+  describe('a handed-over skill that expects MCP servers (user MCP spec 8)', () => {
+    const handedWithMcp = () =>
+      templateBridge({
+        takeHandoff: vi
+          .fn()
+          .mockResolvedValueOnce({
+            id: 'h1',
+            mode: 'skill',
+            target: 'docs',
+            text: 'go',
+            chips: [{ id: 'app:notes', source: 'app', title: 'Notes' }],
+          })
+          .mockResolvedValue(null),
+        aiRead: vi.fn(async (id: string): Promise<unknown> => ({
+          ok: true,
+          skill: { id, title: 'Notes', body: 'b', files: [], mcpServers: ['notion', 'gone'] },
+        })),
+      })
+    const sentText = (send: ReturnType<typeof vi.fn>) =>
+      (send.mock.calls[0] as unknown as [string, SkillUse])[1].text
+
+    it('names only the servers this window cannot use now', async () => {
+      // the window's MCP bridge lists notion as connected; gone is not registered
+      vi.stubGlobal('aiOfficeMcpTools', {
+        list: vi.fn(async () => [{ name: 'notion', status: 'connected', tools: [] }]),
+        call: vi.fn(async () => ({ content: [] })),
+        cancel: vi.fn(),
+        onChanged: vi.fn(() => () => {}),
+        retry: vi.fn(async () => {}),
+        openSettings: vi.fn(async () => {}),
+      })
+      const { bridge } = handedWithMcp()
+      const send = vi.fn((): boolean => true)
+      renderPanel({ editor: 'docs', bridge, send })
+      await flush()
+      expect(send).toHaveBeenCalledTimes(1)
+      const text = sentText(send)
+      expect(text).not.toContain('MCP server notion')
+      expect(text).toContain('MCP server gone')
+    })
+
+    it('counts no server usable without an MCP bridge', async () => {
+      const { bridge } = handedWithMcp()
+      const send = vi.fn((): boolean => true)
+      renderPanel({ editor: 'docs', bridge, send })
+      await flush()
+      const text = sentText(send)
+      expect(text).toContain('MCP server notion')
+      expect(text).toContain('MCP server gone')
+    })
+  })
 })
 
 const DOC = (over: Partial<TemplateDocument> = {}): TemplateDocument => ({

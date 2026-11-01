@@ -21,6 +21,9 @@ import {
   DriveAttachButton,
   type DriveAttachPicked,
   DocAttachButton,
+  McpPermissionCard,
+  McpServerButton,
+  useMcpWindow,
   NO_SKILL_USE,
   SentSkillChips,
   skillChipRefsOf,
@@ -52,6 +55,8 @@ import {
   type IpcStreamError,
   type KbFileInfo,
   composeWithDrive,
+  windowMcpState,
+  windowMcpUsableServers,
   type MindMapTreeNode,
 } from '@genoffice/agent-core'
 import type { AiSubscriptionProviderId, AiSubscriptionUsage } from '@genoffice/ai-provider/browser'
@@ -568,9 +573,12 @@ export function AiPanel({
   })
   const msgQueueRef = useRef(msgQueue)
   msgQueueRef.current = msgQueue
+  /** this window's MCP servers (user MCP spec 7.5); the chips name the ones not usable now */
+  const mcpWindow = useMcpWindow()
   /** the skills called with `/` or `$`: the list, the chips and the text a request gets */
   const skills = useComposerSkills({
     lang,
+    usableMcpServers: mcpWindow.state?.usableServers(),
     // a chip whose skill has a template runs in a new tab (spec 5.7)
     onTemplateSkill: (request) => skillTemplatesRef.current.onTemplateSkill(request),
   })
@@ -898,6 +906,8 @@ export function AiPanel({
     skillsRef.current.restoreHistory(
       msgs.map((m) => (m.role === 'user' ? skillChipRefsOf(m.skills) : undefined)),
     )
+    // a reopened conversation starts with no MCP choices of another chat (user MCP spec 7.6)
+    windowMcpState()?.newConversation()
     // restore model context: follow-ups after reopening a file continue the previous conversation (only when the loop is idle with no history)
     loopRef.current?.restore(msgs.map((m) => ({ role: m.role, text: m.text })))
   }
@@ -1173,6 +1183,8 @@ export function AiPanel({
           messages: () => loopRef.current?.messages ?? [],
           // a template skill the model used offers its new document (spec 5.7)
           onUsed: (skill) => skillTemplatesRef.current.onUsed(skill),
+          // use_skill names the MCP servers it expects that are not usable now (spec 8)
+          mcpServerUsable: (name) => windowMcpUsableServers().has(name),
           onProposal: (proposal) => {
             skillCardsRef.current.add(proposal)
             patchLastAssistant((last) => ({
@@ -1627,6 +1639,8 @@ export function AiPanel({
     }
     abandonWriter()
     loopRef.current?.reset()
+    // servers off in this chat and "always allow in this chat" go too (user MCP spec 7.6)
+    windowMcpState()?.newConversation()
     sendGate.reset()
     setInputTruncated(false)
     setBusy(false)
@@ -2102,6 +2116,8 @@ export function AiPanel({
           )
         })}
         {skillTemplates.notes}
+        {/* an MCP tool waiting for the person's yes (user MCP spec 7.4) */}
+        <McpPermissionCard lang={lang} />
       </div>
 
       <div className="ai-composer">
@@ -2331,6 +2347,7 @@ export function AiPanel({
               </button>
               <DriveAttachButton lang={lang} onPicked={attachFromDrive} />
               <DocAttachButton lang={lang} onPicked={attachFromDrive} />
+              <McpServerButton lang={lang} />
               <button
                 className={`ai-track-btn${trackOn ? ' on' : ''}`}
                 onClick={toggleTrackChanges}
