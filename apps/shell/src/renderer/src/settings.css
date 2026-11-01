@@ -712,6 +712,15 @@
   color: var(--success);
 }
 
+/* an older copy in a tool's own folder, listed under the shared row that now serves that tool */
+.set-intg-row-legacy {
+  padding-left: 16px;
+}
+
+.set-intg-legacy {
+  color: var(--text-muted);
+}
+
 .set-intg-actions {
   flex-shrink: 0;
   display: flex;
