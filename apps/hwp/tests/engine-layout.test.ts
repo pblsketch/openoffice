@@ -18,6 +18,11 @@
  * lines) and saved by Hangul 2024; its stored line positions were then moved
  * up as if the rectangle were not there, and restarted at the top of a page
  * where that shorter layout would have ended page 1, as in the reported file.
+ * The para-float-tail-table case is built on the same reproduction (filler
+ * lines on page 1; page 2 opens with a heading that has space before it, then
+ * a filler line and a two-line paragraph whose text ends with a top-and-bottom
+ * table placed 1100 HWPUNIT below the paragraph's last line) and saved by
+ * Hangul 2024.
  */
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
@@ -193,6 +198,30 @@ describe('vendored rhwp engine', () => {
     const second = boxes(doc, 1).filter((b) => b.type === 'TextLine')
     expect(second).toHaveLength(18)
     for (const b of second) expect(b.bottom).toBeLessThanOrEqual(body.y + body.h + 0.5)
+  })
+
+  it('keeps a paragraph-relative table below the host lines it follows', () => {
+    // The table's control follows the text of a two-line paragraph, so Hangul
+    // measures its 1100 offset from the second line and draws it just below
+    // that line. The layout pass placed the table from the paging pass's own
+    // paragraph origin, which here was 7.2px above the drawn one (it had not
+    // yet counted the previous paragraph's 540 line gap), so the table covered
+    // the second line.
+    const doc = open('para-float-tail-table.hwpx')
+    expect(doc.pageCount()).toBe(2)
+    const page = boxes(doc, 1)
+    const table = page.find((b) => b.type === 'Table' && b.pi === 6)!
+    const lines = page.filter((b) => b.type === 'TextLine' && b.pi === 6)
+    expect(table).toBeDefined()
+    expect(lines).toHaveLength(2)
+    const last = lines.reduce((a, b) => (b.top > a.top ? b : a))
+    expect(table.top).toBeGreaterThanOrEqual(last.bottom - 0.5)
+    expect(table.top).toBeCloseTo(last.top + px(1100), 0)
+    // what follows starts below the table: Hangul puts the next line right at its
+    // bottom, with neither the host's space after nor the next space before
+    const after = page.filter((b) => b.pi > 6).sort((a, b) => a.top - b.top)
+    for (const box of after) expect(box.top).toBeGreaterThanOrEqual(table.bottom - 0.5)
+    expect(after[0].top).toBeCloseTo(table.bottom, 0)
   })
 
   it('fills a cell zone to the end of the merged cell it ends on', () => {

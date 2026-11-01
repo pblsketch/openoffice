@@ -1,6 +1,6 @@
 {
   "name": "@rhwp/core",
-  "version": "0.8.7-ieum.16",
+  "version": "0.8.7-ieum.17",
   "description": "rhwp v0.8.7 HWP/HWPX engine (WebAssembly) rebuilt with the patches in ./patches",
   "private": true,
   "type": "module",
@@ -45,9 +45,10 @@
       "0024-picture-effect-opacity.patch",
       "0025-page-number-pages.patch",
       "0026-hwpx-drop-rows-covered-by-merged-cells.patch",
-      "0027-merged-table-cell-extents.patch"
+      "0027-merged-table-cell-extents.patch",
+      "0028-paragraph-float-follows-drawn-host.patch"
     ],
     "wasmPack": "0.15.0",
-    "wasmSha256": "94af2bc80f49b40d563c1bef13ab36c69cff516e0eaddefe467357816d78cc52"
+    "wasmSha256": "7a64efbf3e2ff7f3d88f7cb8135c754ec26e704d190c8d0954a9d9442eba92ac"
   }
 }
