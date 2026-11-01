@@ -5,6 +5,7 @@ import { brandText, PRODUCT_NAME } from '@genoffice/i18n'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import type { ZodRawShape } from 'zod'
 
 /**
@@ -39,6 +40,13 @@ export interface McpServerOptions {
    * current settings inside the factory: it runs at connect time.
    */
   toolsFactory?: () => McpToolDefinition[]
+  /**
+   * Build the whole MCP server per client session instead of registering tool
+   * definitions: for a server whose tools carry JSON schemas as they came and
+   * whose list is read at each request (an agent session's relay of a person's
+   * MCP server). Takes precedence over `tools` and `toolsFactory`.
+   */
+  serverFactory?: () => McpSessionServer
   logger?: (message: string) => void
   /** reported to clients in the initialize handshake; defaults to the app version when wired */
   version?: string
@@ -53,6 +61,11 @@ export interface McpServerOptions {
   token?: string
 }
 
+/** What a client session is served by: the SDK's high-level or low-level server */
+export interface McpSessionServer {
+  connect(transport: Transport): Promise<void>
+}
+
 export const DEFAULT_MCP_PORT = 3093
 const LISTEN_RETRY_DELAY_MS = 1500
 const MAX_BODY_BYTES = 32 * 1024 * 1024
@@ -60,6 +73,7 @@ const MAX_BODY_BYTES = 32 * 1024 * 1024
 export class McpServerService {
   private readonly tools: McpToolDefinition[]
   private readonly toolsFactory?: () => McpToolDefinition[]
+  private readonly serverFactory?: () => McpSessionServer
   private readonly logger: (message: string) => void
   private readonly version: string
   private readonly maxListenAttempts: number
@@ -69,7 +83,7 @@ export class McpServerService {
   private running = false
 
   /** per-session servers/transports, keyed by session id */
-  private readonly sessionServers = new Map<string, McpServer>()
+  private readonly sessionServers = new Map<string, McpSessionServer>()
   private readonly streamableTransports = new Map<string, StreamableHTTPServerTransport>()
   private readonly legacyTransports = new Map<string, SSEServerTransport>()
   private readonly sockets = new Set<Socket>()
@@ -80,6 +94,7 @@ export class McpServerService {
   constructor(options: McpServerOptions) {
     this.tools = options.tools ?? []
     this.toolsFactory = options.toolsFactory
+    this.serverFactory = options.serverFactory
     this.port = options.port
     this.logger = options.logger ?? (() => undefined)
     this.version = options.version ?? '0.1.0'
@@ -105,7 +120,8 @@ export class McpServerService {
 
   // ── tool registration ─────────────────────────────────────────────────────
 
-  private createSessionServer(): McpServer {
+  private createSessionServer(): McpSessionServer {
+    if (this.serverFactory) return this.serverFactory()
     const server = new McpServer({ name: PRODUCT_NAME, version: this.version })
     // a factory gives each connected client its own tool instances (session
     // state lives in their closures); otherwise the fixed set is shared
