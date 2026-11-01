@@ -11,7 +11,10 @@ import { MCP_TOOLS_CHANNELS as C, type McpToolRefusal } from './mcp-tools-channe
 export interface McpToolsBridge {
   /** the registered servers with their approved tools; never a secret */
   list(): Promise<unknown>
-  /** the CallToolResult as received, or `{ ok: false, error }` */
+  /**
+   * The result the main process already shaped for the AI,
+   * `{ ok: true, output, isError }`, or `{ ok: false, error }`
+   */
   call(
     server: string,
     tool: string,

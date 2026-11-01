@@ -143,14 +143,12 @@ export {
   createMcpWindowState,
   createUserMcpSkill,
   hasMcpToolsBridge,
-  mcpCallAnswerOf,
   mcpServersOf,
   windowMcpState,
   windowMcpToolsBridge,
   windowMcpUsableServers,
 } from './user-mcp-skill'
 export type {
-  McpCallAnswer,
   McpFailReason,
   McpPermissionAnswer,
   McpPermissionRequest,

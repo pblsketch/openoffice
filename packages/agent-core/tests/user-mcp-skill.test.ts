@@ -10,13 +10,13 @@ import {
   createMcpWindowState,
   createUserMcpSkill,
   hasMcpToolsBridge,
-  mcpCallAnswerOf,
   mcpServersOf,
   windowMcpState,
   windowMcpToolsBridge,
   windowMcpUsableServers,
   type McpToolsBridgeLike,
 } from '../src/user-mcp-skill'
+import { MCP_RESULT_UNREADABLE, mcpCallAnswerOf } from '../src/user-mcp/result'
 
 type Raw = Record<string, unknown>
 
@@ -51,8 +51,11 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
 function fakeBridge(initial: Raw[]) {
   let servers = initial
   const listeners = new Set<() => void>()
+  // the hub answers results already shaped in the main process
   let answer: (server: string, tool: string) => unknown = (s, t) => ({
-    content: [{ type: 'text', text: `result of ${s}/${t}` }],
+    ok: true,
+    output: `result of ${s}/${t}`,
+    isError: false,
   })
   const bridge = {
     list: vi.fn(async () => servers),
@@ -172,15 +175,13 @@ describe('the instructions block (spec 7.3)', () => {
     expect(prompt).not.toContain('chat guide')
   })
 
-  it('leaves out instructions waiting for review, and is empty with no server on', async () => {
+  it('carries no instructions the list leaves out, and is empty with no server on', async () => {
+    // the hub lists no instructions while a change waits for review
     const { skill, setServers } = await setup([
-      server('law', [tool('law', 'search')], {
-        instructions: 'old text',
-        instructionsPending: true,
-      }),
+      server('law', [tool('law', 'search')], { instructions: null }),
     ])
     expect(skill.systemPrompt).toContain('mcp__law__search')
-    expect(skill.systemPrompt).not.toContain('old text')
+    expect(skill.systemPrompt).not.toContain('server-instructions')
     setServers([])
     await flush()
     expect(skill.systemPrompt).toBe('')
@@ -210,9 +211,15 @@ describe('calling a tool', () => {
     expect(refused.isError).toBe(true)
     expect(refused.output).toContain('notes')
     expect(refused.output).toContain('could not reach the server')
-    setAnswer(() => ({ content: [{ type: 'text', text: 'bad query' }], isError: true }))
+    setAnswer(() => ({ ok: true, output: 'bad query', isError: true }))
     const failed = await run('mcp__notes__find')
     expect(failed).toMatchObject({ output: 'bad query', isError: true })
+    // only the shaped form is read: a raw result never passes as text
+    setAnswer(() => ({ content: [{ type: 'image', data: 'AAAA' }] }))
+    const raw = await run('mcp__notes__find')
+    expect(raw).toMatchObject({ isError: true })
+    expect(raw.output).toContain(MCP_RESULT_UNREADABLE)
+    expect(raw.output).not.toContain('AAAA')
     setAnswer(() => {
       throw new Error('ipc broke')
     })
@@ -423,13 +430,22 @@ describe('the preload answers', () => {
     expect(mcpServersOf({ servers: 'no' })).toEqual([])
   })
 
-  it('reads call answers', () => {
+  it('reads call answers: a refusal, or the result the hub shaped', () => {
     expect(mcpCallAnswerOf({ ok: false, error: 'stopped' })).toEqual({
       ok: false,
       error: 'stopped',
     })
     expect(mcpCallAnswerOf(null).ok).toBe(false)
-    expect(mcpCallAnswerOf({ content: [] })).toEqual({ ok: true, result: { content: [] } })
+    expect(mcpCallAnswerOf({ ok: true, output: 'found', isError: false })).toEqual({
+      ok: true,
+      output: 'found',
+      isError: false,
+    })
+    expect(mcpCallAnswerOf({ ok: true, output: 'no', isError: true })).toMatchObject({
+      isError: true,
+    })
+    expect(mcpCallAnswerOf({ content: [] })).toEqual({ ok: false, error: MCP_RESULT_UNREADABLE })
+    expect(mcpCallAnswerOf('text')).toEqual({ ok: false, error: MCP_RESULT_UNREADABLE })
   })
 
   it('finds the window bridge only when it carries every call', () => {
@@ -511,19 +527,66 @@ describe('composing with the window bridges', () => {
     expect(windowMcpUsableServers()).toEqual(new Set(['notes', 'law']))
   })
 
-  it('drops every MCP tool while internet tools are off', async () => {
+  it('drops every MCP tool, its prompt block and its servers while internet tools are off', async () => {
     const on = { value: false }
-    g.aiOfficeMcpTools = fakeBridge([server('law', [tool('law', 'search')])]).bridge
+    g.aiOfficeMcpTools = fakeBridge([
+      server('law', [tool('law', 'search')], { instructions: 'Search first.' }),
+    ]).bridge
     g.aiOfficeOutbound = outbound(on)
     const skill = composeWithDrive('x', '', () => [userMessage], [editor()])
     await flush()
     expect(skill.tools.map((t) => t.name)).toEqual(['edit_text'])
+    // nothing of the servers reaches the model, and the skills see none usable
+    expect(skill.systemPrompt).not.toContain('MCP server')
+    expect(skill.systemPrompt).not.toContain('mcp__law__search')
+    expect(skill.systemPrompt).not.toContain('Search first.')
+    expect(windowMcpUsableServers().size).toBe(0)
     const refused = await Promise.resolve(skill.executeTool(call('mcp__law__search')))
     expect(refused).toMatchObject({ output: INTERNET_TOOLS_OFF, isError: true })
     on.value = true
     const allowed = await Promise.resolve(skill.executeTool(call('mcp__law__search')))
     expect(allowed.isError).toBeFalsy()
     expect(skill.tools.map((t) => t.name)).toContain('mcp__law__search')
+    expect(skill.systemPrompt).toContain('MCP server "law"')
+    expect(windowMcpUsableServers()).toEqual(new Set(['law']))
+  })
+
+  it('follows the internet-tools switch as the main process announces it', async () => {
+    let announce: (on: boolean) => void = () => {}
+    const fake = fakeBridge([server('law', [tool('law', 'search')])])
+    const state = createMcpWindowState(fake.bridge, {
+      internetToolsEnabled: async () => true,
+      onInternetToolsChanged: (listener) => {
+        announce = listener
+        return () => {}
+      },
+      confirmAddresses: async () => true,
+    })
+    const skill = createUserMcpSkill(state, () => [])
+    await flush()
+    expect(state.usableServers()).toEqual(new Set(['law']))
+    expect(skill.systemPrompt).toContain('MCP server "law"')
+    announce(false)
+    expect(state.internetToolsOn()).toBe(false)
+    expect(state.usableServers().size).toBe(0)
+    expect(skill.systemPrompt).toBe('')
+    announce(true)
+    expect(skill.systemPrompt).toContain('MCP server "law"')
+    state.dispose()
+  })
+
+  it('counts the switch as off until the main process answers', async () => {
+    const fake = fakeBridge([server('law', [tool('law', 'search')])])
+    let answer: (on: boolean) => void = () => {}
+    const state = createMcpWindowState(fake.bridge, {
+      internetToolsEnabled: () => new Promise<boolean>((done) => (answer = done)),
+      confirmAddresses: async () => true,
+    })
+    await flush()
+    expect(state.usableServers().size).toBe(0)
+    answer(true)
+    await vi.waitFor(() => expect(state.usableServers()).toEqual(new Set(['law'])))
+    state.dispose()
   })
 
   it('composes without Drive for the home window', async () => {

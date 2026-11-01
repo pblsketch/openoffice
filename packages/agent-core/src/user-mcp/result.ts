@@ -6,6 +6,11 @@
  * in one line instead. `isError` stays a tool error. A result longer than the
  * limit keeps its start and a note that it was cut.
  *
+ * The shell's hub shapes every result, of a remote or a "my PC" server, in
+ * the main process (`shapedMcpAnswer`), so nothing else of it crosses to a
+ * window; the AI windows and the agent relays read that one answer form
+ * (`mcpCallAnswerOf`).
+ *
  * A file with no imports, exported as `@genoffice/agent-core/user-mcp/result`
  * for the main process that makes the calls.
  */
@@ -83,4 +88,35 @@ export function shapeMcpResult(
     return { output: failed ? MCP_ERROR_EMPTY : MCP_RESULT_EMPTY, isError: failed }
   }
   return { output: cut(output, maxChars), isError: failed }
+}
+
+/**
+ * The hub's answer to a call: the result already shaped for the AI, or the
+ * reason the call could not be made (English, naming the server).
+ */
+export type McpCallAnswer =
+  { ok: true; output: string; isError: boolean } | { ok: false; error: string }
+
+/** A shaped result as the hub answers it */
+export function shapedMcpAnswer(shaped: ShapedMcpResult): McpCallAnswer {
+  return { ok: true, output: shaped.output, isError: shaped.isError }
+}
+
+export const MCP_NO_ANSWER = 'The MCP connection did not answer.'
+
+/** An answer that crossed a process boundary, checked; anything else is unreadable */
+export function mcpCallAnswerOf(raw: unknown): McpCallAnswer {
+  if (raw === null || raw === undefined) return { ok: false, error: MCP_NO_ANSWER }
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ok: false, error: MCP_RESULT_UNREADABLE }
+  }
+  const answer = raw as Record<string, unknown>
+  if (answer.ok === false) {
+    const error = typeof answer.error === 'string' ? answer.error : ''
+    return { ok: false, error: error || 'The call could not be made.' }
+  }
+  if (answer.ok === true && typeof answer.output === 'string') {
+    return { ok: true, output: answer.output, isError: answer.isError === true }
+  }
+  return { ok: false, error: MCP_RESULT_UNREADABLE }
 }

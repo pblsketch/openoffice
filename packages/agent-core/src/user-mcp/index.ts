@@ -23,12 +23,15 @@ export type {
 } from './names'
 export {
   MCP_ERROR_EMPTY,
+  MCP_NO_ANSWER,
   MCP_RESULT_EMPTY,
   MCP_RESULT_MAX_CHARS,
   MCP_RESULT_UNREADABLE,
+  mcpCallAnswerOf,
   shapeMcpResult,
+  shapedMcpAnswer,
 } from './result'
-export type { ShapedMcpResult } from './result'
+export type { McpCallAnswer, ShapedMcpResult } from './result'
 export {
   guardReceivedContent,
   keepInsideRefusal,
