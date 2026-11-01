@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./ai-panel-prefs": "./src/ai-panel-prefs.ts",
+    "./clipboard-picture": "./src/clipboard-picture.ts",
     "./ai-subscription-login-window": "./src/ai-subscription-login-window.ts",
     "./template-fonts": "./src/template-fonts.ts",
     "./tokens.css": "./src/tokens.css",

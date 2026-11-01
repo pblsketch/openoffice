@@ -3,6 +3,7 @@ import { Image } from '@tiptap/extension-image'
 import { Link } from '@tiptap/extension-link'
 import { Paragraph } from '@tiptap/extension-paragraph'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
+import { clipboardPictureIsRendering } from '@genoffice/ui/clipboard-picture'
 import { MAX_PASTED_IMAGE_BYTES } from '../../shared/ipc'
 import { t } from '../i18n/locale'
 import { showToast } from '../components/toast-bus'
@@ -219,7 +220,14 @@ export const LocalImage = Image.extend({
             return true
           },
           handlePaste(view, event) {
-            const file = imageFileIn(event.clipboardData)
+            const data = event.clipboardData
+            // a spreadsheet copy's picture is a rendering of its table: paste the table
+            if (
+              data &&
+              clipboardPictureIsRendering(data.getData('text/html'), data.getData('text/plain'))
+            )
+              return false
+            const file = imageFileIn(data)
             if (!file) return false
             void persistAndInsert(editor, file, view.state.selection.from)
             return true

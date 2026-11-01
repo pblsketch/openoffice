@@ -721,7 +721,7 @@ const PATCHES = {
         find: "import { tableObjectClipboardTarget } from './table-object-clipboard-target';",
         replace: [
           "import { tableObjectClipboardTarget } from './table-object-clipboard-target';",
-          `import { ieumPasteHtmlInCell, ieumPictureHtml, ieumSelectionHtml } from '${CLIPBOARD_HTML_MODULE}';`,
+          `import { ieumPasteHtmlInCell, ieumPictureHtml, ieumPictureIsRendering, ieumSelectionHtml } from '${CLIPBOARD_HTML_MODULE}';`,
         ].join('\n'),
       },
       {
@@ -766,12 +766,13 @@ const PATCHES = {
         ].join('\n'),
       },
       // a picture copied in another editor also lies on the clipboard as a picture file, at its
-      // own pixel size; that editor's HTML has the size the picture had in its document
+      // own pixel size; that editor's HTML has the size the picture had in its document. A
+      // spreadsheet copy's picture is a rendering of its table, which pastes as a table
       {
         find: ['  const items = clipboardData?.items;', '  if (items) {'].join('\n'),
         replace: [
           '  const items = clipboardData?.items;',
-          '  if (items && readRhwpClipboardToken(html) === null) {',
+          '  if (items && readRhwpClipboardToken(html) === null && !ieumPictureIsRendering(html, text)) {',
         ].join('\n'),
       },
       // a picture file from the clipboard went in with insertPicture, floating at the paper's top
