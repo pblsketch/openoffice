@@ -155,6 +155,9 @@ const TEXT = {
   unknownServer: (name: string) => `No MCP server named ${quoted(name)} is registered in this app.`,
   unknownTool: (s: string, t: string) => `${s}: the server has no tool named ${quoted(t)}.`,
   disabled: (s: string) => `${s}: the server is turned off in Settings.`,
+  removing: (s: string) => `${s}: the server is being removed in Settings.`,
+  unusable: (s: string, t: string) =>
+    `${s}: the tool ${quoted(t)} cannot be used because of its name.`,
   toolOff: (s: string, t: string) => `${s}: the tool ${quoted(t)} is turned off in Settings.`,
   pending: (s: string, t: string) =>
     `${s}: the tool ${quoted(t)} changed and waits for the person’s review in Settings.`,
@@ -228,6 +231,11 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
   const remoteUse = new Map<RemoteMcpConnection, number>()
   const retiring = new Set<RemoteMcpConnection>()
   const pastes = new Map<string, { servers: PastedServer[]; at: number }>()
+  /**
+   * Servers being turned off or removed: set before the store is written, so
+   * a call arriving meanwhile is refused instead of running (13)
+   */
+  const stopping = new Map<string, 'disabled' | 'removed'>()
   const app = new AbortController()
   let notifyQueued = false
 
@@ -482,6 +490,10 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
       note(server, trouble)
       return trouble
     }
+    // a list that lands while the server is turned off or removed is not applied
+    const halt = stopping.get(id)
+    if (halt) return { kind: 'stopped', reason: halt }
+    if (!store.server(id)?.enabled) return { kind: 'stopped', reason: 'disabled' }
     if (server.kind === 'remote') {
       live.failure = null
       live.loginRequired = false
@@ -577,15 +589,31 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
       case 'login-required':
         return TEXT.login(server.name)
       case 'failed':
+        // an unreachable address may be back: the call tries to connect once more and
+        // the status stays failed until it works; other failures wait for the person
+        if (server.kind === 'remote' && status.reason === 'unreachable') break
         return TEXT.failed(server.name, status.reason)
       default:
         break
     }
-    const tool = Object.entries(server.tools).find(([name]) => name === toolName)?.[1]
+    const names = Object.keys(server.tools)
+    const index = names.indexOf(toolName)
+    if (index < 0) return listed ? TEXT.unknownTool(server.name, toolName) : null
+    const tool = server.tools[names[index] as string]
     if (!tool) return listed ? TEXT.unknownTool(server.name, toolName) : null
+    // a tool with no usable AI-facing name is never declared; the main process refuses it too
+    if (mapServerToolNames(server.name, names)[index]?.problem) {
+      return TEXT.unusable(server.name, toolName)
+    }
     if (tool.permission === 'off') return TEXT.toolOff(server.name, toolName)
     if (tool.pending) return TEXT.pending(server.name, toolName)
     return null
+  }
+
+  function stoppingRefusal(server: McpServerConfig): string | null {
+    const halt = stopping.get(server.id)
+    if (!halt) return null
+    return halt === 'removed' ? TEXT.removing(server.name) : TEXT.disabled(server.name)
   }
 
   async function runCall(
@@ -638,7 +666,7 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
     const found = findByName(serverName)
     if (!found) return refusal(TEXT.unknownServer(serverName))
     const live = liveOf(found.id)
-    const early = refusalFor(found, toolName, live.listed)
+    const early = stoppingRefusal(found) ?? refusalFor(found, toolName, live.listed)
     if (early) return refusal(early)
 
     const key = `${caller}\u0000${callId}`
@@ -650,9 +678,10 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
       // the first use after the app started reads the list (5.7) and applies its changes
       const trouble = await ensureListed(found.id, signal)
       if (trouble) return refusal(troubleText(found.name, trouble))
+      if (signal.aborted) return refusal(troubleText(found.name, troubleOf(null, signal)))
       const server = store.server(found.id)
       if (!server) return refusal(TEXT.stopped.removed(found.name))
-      const late = refusalFor(server, toolName, true)
+      const late = stoppingRefusal(server) ?? refusalFor(server, toolName, true)
       if (late) return refusal(late)
       return await runCall(server, toolName, input, signal)
     } finally {
@@ -906,16 +935,23 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
   async function remove(id: string): Promise<McpSettingsResult> {
     const server = store.server(id)
     if (!server) return invalid('not-found')
+    // before any wait: no call may start against a server on its way out (13)
+    stopping.set(id, 'removed')
     stopCalls(id, 'removed')
     const live = lives.get(id)
     live?.signIn?.abort()
     // 4.9: ask the server to revoke the sign-in before its tokens are forgotten
     let revoker: RemoteMcpConnection | null = null
-    if (server.kind === 'remote') {
-      revoker = live?.remote ?? deps.remote(server, storeOAuthAccess(store, id))
-      await revoker.revoke().catch(() => {})
+    try {
+      if (server.kind === 'remote') {
+        revoker = live?.remote ?? deps.remote(server, storeOAuthAccess(store, id))
+        await revoker.revoke().catch(() => {})
+      }
+      await store.removeServer(id)
+    } finally {
+      stopCalls(id, 'removed')
+      stopping.delete(id)
     }
-    await store.removeServer(id)
     if (live) {
       for (const unsubscribe of live.unsubscribe.splice(0)) unsubscribe()
       if (live.local) await live.local.stop().catch(() => {})
@@ -1100,12 +1136,23 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
   }
 
   async function setEnabled(id: string, on: boolean): Promise<McpSettingsResult> {
-    // 13: turning a server off ends the calls under way
-    if (!on) stopCalls(id, 'disabled')
-    const result = await change(id, (s) => ({ ...s, enabled: on }))
-    // turned back on: an old failure gets a fresh try
-    if (result.ok && on) retry(id)
-    return result
+    if (on) {
+      // a removal under way stays in force
+      if (stopping.get(id) === 'disabled') stopping.delete(id)
+      const result = await change(id, (s) => ({ ...s, enabled: true }))
+      // turned back on: an old failure gets a fresh try
+      if (result.ok) retry(id)
+      return result
+    }
+    // before the write: calls arriving meanwhile are refused, those under way end (13)
+    stopping.set(id, 'disabled')
+    stopCalls(id, 'disabled')
+    try {
+      return await change(id, (s) => ({ ...s, enabled: false }))
+    } finally {
+      stopCalls(id, 'disabled')
+      if (stopping.get(id) === 'disabled') stopping.delete(id)
+    }
   }
 
   async function stopAll(): Promise<void> {

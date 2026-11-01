@@ -843,3 +843,163 @@ describe('MCP hub: runtimes (5.4, 13)', () => {
     expect(answer).toMatchObject({ ok: true, launch: { ok: false, problem: 'runtime-missing' } })
   })
 })
+
+describe('MCP hub: review fixes (13, 6.1, remote recovery)', () => {
+  function deferred() {
+    let resolve!: () => void
+    const promise = new Promise<void>((r) => {
+      resolve = r
+    })
+    return { promise, resolve }
+  }
+
+  const FOUND = { content: [{ type: 'text', text: 'found it' }] }
+
+  it('refuses a call that arrives while the server is being removed, and never runs it', async () => {
+    const store = await storeWith(remoteServer())
+    const gate = deferred()
+    const remotes: FakeRemote[] = []
+    const { hub } = rig(store, {
+      remote: () => {
+        const r = fakeRemote()
+        r.revoke.mockImplementation(() => gate.promise)
+        remotes.push(r)
+        return r
+      },
+    })
+    await hub.call('w1', 'law', 'search', {}, 'warm')
+    const removing = hub.remove(idOf(store, 'law'))
+    const late = await hub.call('w1', 'law', 'search', {}, 'late')
+    expect(late).toEqual({ ok: false, error: 'law: the server is being removed in Settings.' })
+    expect(remotes[0]!.callTool).toHaveBeenCalledTimes(1)
+    gate.resolve()
+    expect(await removing).toEqual({ ok: true })
+  })
+
+  it('refuses a call that arrives while turning the server off is being saved', async () => {
+    const store = await storeWith(remoteServer())
+    const { hub, remotes } = rig(store)
+    await hub.call('w1', 'law', 'search', {}, 'warm')
+    const turningOff = hub.setEnabled(idOf(store, 'law'), false)
+    const late = await hub.call('w1', 'law', 'search', {}, 'late')
+    expect(late).toEqual({ ok: false, error: 'law: the server is turned off in Settings.' })
+    expect(remotes[0]!.callTool).toHaveBeenCalledTimes(1)
+    await turningOff
+    // on again: calls go through
+    await hub.setEnabled(idOf(store, 'law'), true)
+    expect(await hub.call('w1', 'law', 'search', {}, 'again')).toEqual(FOUND)
+  })
+
+  it('cuts a call that is still reading the tool list when the server is turned off', async () => {
+    const store = await storeWith(remoteServer())
+    const gate = deferred()
+    const remotes: FakeRemote[] = []
+    const { hub } = rig(store, {
+      remote: () => {
+        const r = fakeRemote()
+        r.listTools.mockImplementation(async () => {
+          await gate.promise
+          return LISTING
+        })
+        remotes.push(r)
+        return r
+      },
+    })
+    const running = hub.call('w1', 'law', 'search', {}, 'c1')
+    await vi.waitFor(() => expect(remotes[0]?.listTools).toHaveBeenCalled())
+    const off = hub.setEnabled(idOf(store, 'law'), false)
+    gate.resolve()
+    await off
+    expect(await running).toEqual({
+      ok: false,
+      error: 'law: the server was turned off during the call.',
+    })
+    expect(remotes[0]!.callTool).not.toHaveBeenCalled()
+  })
+
+  it('refuses a tool whose name cannot be used (6.1)', async () => {
+    const long = 't'.repeat(70)
+    const listing: McpListing = {
+      tools: [...LISTING.tools, { name: long, inputSchema: { type: 'object' } }],
+      instructions: LISTING.instructions,
+    }
+    const store = await storeWith(acceptFirstListing(remoteServer(), listing))
+    const remotes: FakeRemote[] = []
+    const { hub } = rig(store, {
+      remote: () => {
+        const r = fakeRemote()
+        r.listing = listing
+        remotes.push(r)
+        return r
+      },
+    })
+    expect(hub.editorList()[0]?.tools.find((t) => t.name === long)?.unusable).toBe('too-long')
+    const answer = await hub.call('w1', 'law', long, {}, 'c1')
+    expect(answer).toMatchObject({
+      ok: false,
+      error: expect.stringContaining('cannot be used because of its name'),
+    })
+    for (const r of remotes) expect(r.callTool).not.toHaveBeenCalled()
+  })
+
+  it('tries an unreachable remote server again on the next call, without a retry', async () => {
+    const store = await storeWith(remoteServer())
+    const remotes: FakeRemote[] = []
+    const { hub } = rig(store, {
+      remote: () => {
+        const r = fakeRemote()
+        r.listError = new RemoteMcpError('law', 'unreachable')
+        remotes.push(r)
+        return r
+      },
+    })
+    expect(await hub.call('w1', 'law', 'search', {}, 'c1')).toEqual({
+      ok: false,
+      error: 'law: the server could not be reached.',
+    })
+    expect(hub.editorList()[0]).toMatchObject({ status: 'failed', failReason: 'unreachable' })
+    // still down: tried once more, still failed
+    expect(await hub.call('w1', 'law', 'search', {}, 'c2')).toMatchObject({ ok: false })
+    expect(remotes[0]!.listTools).toHaveBeenCalledTimes(2)
+    // back up: the next call connects and the status clears
+    remotes[0]!.listError = null
+    expect(await hub.call('w1', 'law', 'search', {}, 'c3')).toEqual(FOUND)
+    expect(hub.editorList()[0]?.status).toBe('connected')
+  })
+
+  it('a call failing unreachable marks the server and the next call reconnects', async () => {
+    const store = await storeWith(remoteServer())
+    const { hub, remotes } = rig(store)
+    await hub.call('w1', 'law', 'search', {}, 'warm')
+    remotes[0]!.callTool.mockRejectedValueOnce(new RemoteMcpError('law', 'unreachable'))
+    expect(await hub.call('w1', 'law', 'search', {}, 'c1')).toMatchObject({ ok: false })
+    expect(hub.editorList()[0]?.status).toBe('failed')
+    expect(await hub.call('w1', 'law', 'search', {}, 'c2')).toEqual(FOUND)
+    expect(hub.editorList()[0]?.status).toBe('connected')
+  })
+
+  it('keeps refusing failures that need the person until retry or sign-in', async () => {
+    for (const reason of ['refused-redirect', 'insecure-address', 'login-required'] as const) {
+      const store = await storeWith(remoteServer())
+      const remotes: FakeRemote[] = []
+      const { hub } = rig(store, {
+        remote: () => {
+          const r = fakeRemote()
+          r.listError = new RemoteMcpError('law', reason)
+          remotes.push(r)
+          return r
+        },
+      })
+      await hub.call('w1', 'law', 'search', {}, 'c1')
+      remotes[0]!.listError = null
+      expect(await hub.call('w1', 'law', 'search', {}, 'c2'), reason).toMatchObject({ ok: false })
+      expect(remotes[0]!.listTools, reason).toHaveBeenCalledTimes(1)
+      if (reason === 'login-required') {
+        expect(await hub.signIn(idOf(store, 'law'))).toEqual({ ok: true })
+      } else {
+        hub.retryByName('law')
+      }
+      expect(await hub.call('w1', 'law', 'search', {}, 'c3'), reason).toEqual(FOUND)
+    }
+  })
+})
