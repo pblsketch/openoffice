@@ -18,6 +18,8 @@ import type {
   CodexModelCatalog,
 } from '@genoffice/ai-provider/browser'
 import { installDropOpenBridge } from '@genoffice/electron-utils/drop-open'
+import { mcpToolsBridge } from '@genoffice/electron-utils/mcp-tools-bridge'
+import { outboundBridge } from '@genoffice/electron-utils/outbound-bridge'
 import { userSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
 import {
   PROJECT_FOLDER_BRIDGE_KEY,
@@ -772,6 +774,12 @@ contextBridge.exposeInMainWorld(MCP_SERVERS_SETTINGS_KEY, mcpServersApi)
 contextBridge.exposeInMainWorld(USER_SKILLS_BRIDGE_KEY, userSkillsBridge())
 // project folders (decision 0088): the home ask and the home project screen
 contextBridge.exposeInMainWorld(PROJECT_FOLDER_BRIDGE_KEY, projectFolderBridge(ipcRenderer))
+// the home AI question's outbound guard: the internet-tools switch and the address
+// question (decision 0062); without it the guard in the renderer blocks nothing
+contextBridge.exposeInMainWorld('aiOfficeOutbound', outboundBridge())
+// the person's MCP servers for the home AI question: list and call approved tools
+// (the main process checks each). The home window gets no Drive bridge.
+contextBridge.exposeInMainWorld('aiOfficeMcpTools', mcpToolsBridge())
 
 // Subscription channels are registered once for the whole app by the docs main.
 // Until that handler exists an invoke rejects; the renderer reads that as
