@@ -27,14 +27,15 @@
 - 오류 문장도 계약이다. 클라이언트는 `error.code`를 버리고 `message`만 `Error`로 넘긴다. 렌더러(`univer-sync.ts`)는 재계산이 겹쳤는지를 `busy with another recalculation`이라는 문장 조각으로 알아본다. `recalc_busy`의 문장을 바꾸면 "바쁨"이 실패로 세어지고, 실패가 쌓이면 렌더러가 재계산을 끈다.
 - 원본의 수정이 응답에 필드를 더할 때는 zod 스키마도 함께 고치고 선택 필드로 받는다. `.strict()`로 선언된 객체에 모르는 필드가 생기면 응답 전체가 거절되고, 반대로 낡은 실행 파일이 붙으면 그 필드가 없다. 새 명령 variant에는 `#[serde(rename_all = "camelCase")]`를 붙인다. `Command`의 `rename_all`은 명령 이름에만 걸리므로 빼먹으면 필드를 snake_case로 기다린다.
 - `save_archive`는 손대지 않은 항목을 압축된 바이트 그대로 옮긴다(`raw_copy_file_rename`). 풀었다가 다시 압축하지 않는다. 바뀐 항목과 새 항목만 `contentPath` 파일을 읽어 Deflate로 쓴다. 항목은 원본 순서를 따르고 새 항목은 끝에 붙는다. 응답의 `beforeEntries`·`afterEntries`(이름, CRC, 압축 크기, 원래 크기)가 보존을 증명하는 자료이므로 그 뜻을 바꾸지 않는다.
-- `save_archive`는 `targetPath`를 바로 덮어쓴다. 원본과 같은 파일이면 `Save target must differ from the source archive.`로 거절한다. 원본을 읽으면서 쓰기 때문이다. 한 이름은 `replacements`·`removals`·`additions` 중 한 곳에만 올 수 있고, 없는 항목의 교체·삭제와 있는 항목의 추가는 거절한다.
+- `save_archive`는 `targetPath`를 바로 덮어쓴다. 원본과 같은 파일이면 `Save target must differ from the source archive.`로 거절한다. 원본을 읽으면서 쓰기 때문이다. 한 이름은 `replacements`·`removals`·`additions`·`streamPatches` 중 한 곳에만 올 수 있고, 없는 항목의 교체·삭제·`streamPatches`와 있는 항목의 추가는 거절한다. `streamPatches`(선택, 원본 36a509e8f)는 문자열로 고칠 수 없을 만큼 큰 시트 부품을 칸 단위 패치 프로그램(`patchPath`의 JSON)으로 받아 흘려 쓰며 고친다(`src/stream_patch.rs`). 지금 뒷단은 이 필드를 보내지 않는다. 디스크가 fsync를 거절해도(ENOTSUP 등) 저장은 실패로 치지 않는다(`sync_best_effort`).
 - 읽기 명령은 통합 문서 파일에 쓰지 않는다. 재계산도 값만 돌려주고 IronCalc 모델을 파일로 저장하지 않는다. 예외는 `convert_workbook` 하나다. 값·수식·날짜 서식만 담은 새 파일을 만드는 것이고 보존 저장이 아니다.
 - 크기 한도는 아래 상수가 정한다. 값을 바꾸지 않는다.
 
   | 상수                                        | 값                 | 걸리는 곳                                                       |
   | ------------------------------------------- | ------------------ | --------------------------------------------------------------- |
   | `MAX_ENTRY_COUNT`                           | 10,000개           | `open`과 묶기 명령의 압축 항목 수. 저장은 원본 항목 + 추가 항목 |
-  | `MAX_EXTRACTED_ENTRY_BYTES`                 | 500 MiB            | `read_entries`가 꺼내는 항목, `read_zip_string`으로 읽는 부품   |
+  | `MAX_EXTRACTED_ENTRY_BYTES`                 | 500 MiB            | `read_entries`가 꺼내는 항목                                    |
+  | `MAX_METADATA_PART_BYTES`                   | 64 MiB             | `read_zip_string`으로 통째로 읽는 부품, 관계 부품 정리          |
   | `MAX_MEDIA_BYTES`                           | 20 MiB             | `read_media` 한 건                                              |
   | `MAX_RANGE_CELLS`                           | 100,000칸          | `read_range` 한 번                                              |
   | `MAX_FIND_MATCHES`, `FIND_TIME_BUDGET`      | 100,000건, 8초     | `find_cells` 한 쪽. 넘으면 `nextCursor`를 주고 끊는다           |
