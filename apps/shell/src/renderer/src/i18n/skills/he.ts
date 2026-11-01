@@ -28,6 +28,7 @@ export const he = {
   invokeManual: 'רק כשקוראים לה',
   badgeTemplate: 'כוללת תבנית',
   badgeScripts: 'כוללת סקריפטים · פועלת במלואה בחלון הסוכן',
+  badgeMcpServer: 'נדרש שרת MCP: {servers}',
   badgeAgentOnly: 'בחלון הסוכן בלבד',
   unreadableNoFrontmatter: 'חסרים נתוני כותרת',
   unreadableBadName: 'השם לא עומד בכללים',

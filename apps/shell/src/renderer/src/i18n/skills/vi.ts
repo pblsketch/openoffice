@@ -28,6 +28,7 @@ export const vi = {
   invokeManual: 'Chỉ khi được gọi',
   badgeTemplate: 'Có mẫu',
   badgeScripts: 'Có tập lệnh · hoạt động đầy đủ trong cửa sổ tác tử',
+  badgeMcpServer: 'Cần máy chủ MCP: {servers}',
   badgeAgentOnly: 'Chỉ trong cửa sổ tác tử',
   unreadableNoFrontmatter: 'thiếu phần thông tin đầu',
   unreadableBadName: 'tên không đúng quy tắc',

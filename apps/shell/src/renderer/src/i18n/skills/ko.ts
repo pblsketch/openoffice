@@ -28,6 +28,7 @@ export const ko = {
   invokeManual: '부를 때만',
   badgeTemplate: '양식 포함',
   badgeScripts: '스크립트 포함 · 에이전트 창에서 완전히 동작',
+  badgeMcpServer: 'MCP 서버 필요: {servers}',
   badgeAgentOnly: '에이전트 창 전용',
   unreadableNoFrontmatter: '앞머리 없음',
   unreadableBadName: '이름이 맞지 않음',

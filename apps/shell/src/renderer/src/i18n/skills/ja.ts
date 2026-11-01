@@ -28,6 +28,7 @@ export const ja = {
   invokeManual: '呼び出したときだけ',
   badgeTemplate: 'テンプレートあり',
   badgeScripts: 'スクリプトあり · エージェントウィンドウで完全に動作',
+  badgeMcpServer: 'MCP サーバーが必要: {servers}',
   badgeAgentOnly: 'エージェントウィンドウ専用',
   unreadableNoFrontmatter: 'フロントマターがない',
   unreadableBadName: '名前がルールに合わない',

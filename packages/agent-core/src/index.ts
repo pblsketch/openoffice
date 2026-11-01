@@ -133,3 +133,4 @@ export type {
   IpcSubscriptionUsage,
   IpcTransportOptions,
 } from './electron-transport'
+export * from './skill-mcp-refs'

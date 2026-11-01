@@ -80,6 +80,7 @@ export {
   skillForRequestOf,
   skillRequestText,
   type SkillForRequest,
+  type SkillRequestOptions,
   type SkillRequestBuild,
 } from './skill-send'
 export { SentSkillChips, SkillChip, SkillChipRow, SkillPicker } from './SkillPicker'

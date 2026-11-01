@@ -21,6 +21,7 @@ import {
   listedCount,
   skillDisplayDesc,
   skillDisplayTitle,
+  skillMcpServersNeeded,
   skillMenuActions,
   sourceLabel,
   unreadableKey,
@@ -50,8 +51,16 @@ const CONFIRM_BUTTON: Record<RowConfirm['kind'], SkillsStringKey> = {
   overwrite: 'overwrite',
 }
 
-/** Settings → Skills (spec 5.1): every skill of every source with its state */
-export function SkillsPane() {
+const NO_MCP_SERVERS: ReadonlySet<string> = new Set()
+
+/**
+ * Settings → Skills (spec 5.1): every skill of every source with its state.
+ * `usableMcpServers` are the MCP servers registered and on; a row names the
+ * other servers its skill refers to (spec 8). None by default.
+ */
+export function SkillsPane({
+  usableMcpServers = NO_MCP_SERVERS,
+}: { usableMcpServers?: ReadonlySet<string> | undefined } = {}) {
   const { lang, dateLocale } = useI18n()
   const s: Text = (key, params) => skillsText(lang, key, params)
   const api = userSkillsApi()
@@ -334,6 +343,7 @@ export function SkillsPane() {
                 view={view}
                 lang={lang}
                 text={s}
+                usableMcpServers={usableMcpServers}
                 onToggle={() => void setState(view, { enabled: !view.enabled })}
                 onInvoke={(invoke) => void setState(view, { invoke })}
                 onAction={(action) => runAction(view, action)}
@@ -419,6 +429,7 @@ function SkillRow({
   view,
   lang,
   text,
+  usableMcpServers,
   onToggle,
   onInvoke,
   onAction,
@@ -427,6 +438,7 @@ function SkillRow({
   view: UserSkillView
   lang: Lang
   text: Text
+  usableMcpServers: ReadonlySet<string>
   onToggle: () => void
   onInvoke: (invoke: UserSkillInvokeValue) => void
   onAction: (action: SkillMenuAction) => void
@@ -440,6 +452,7 @@ function SkillRow({
   if (view.template && view.templateExists) badges.push('badgeTemplate')
   if (view.hasScripts) badges.push('badgeScripts')
   if (view.agentOnly) badges.push('badgeAgentOnly')
+  const mcpServers = skillMcpServersNeeded(view, usableMcpServers)
 
   return (
     <div
@@ -463,13 +476,18 @@ function SkillRow({
               {text('unreadableNote', { reason: text(unreadableKey(unreadable)) })}
             </div>
           )}
-          {badges.length > 0 && (
+          {(badges.length > 0 || mcpServers.length > 0) && (
             <div className="skl-badges">
               {badges.map((key) => (
                 <span key={key} className="skl-badge">
                   {text(key)}
                 </span>
               ))}
+              {mcpServers.length > 0 && (
+                <span className="skl-badge" dir="auto">
+                  {text('badgeMcpServer', { servers: mcpServers.join(', ') })}
+                </span>
+              )}
             </div>
           )}
         </div>

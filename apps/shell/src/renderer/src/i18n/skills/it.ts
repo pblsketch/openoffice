@@ -28,6 +28,7 @@ export const it = {
   invokeManual: 'Solo se richiamata',
   badgeTemplate: 'Con modello',
   badgeScripts: "Con script · funziona del tutto nella finestra dell'agente",
+  badgeMcpServer: 'Richiede il server MCP: {servers}',
   badgeAgentOnly: "Solo finestra dell'agente",
   unreadableNoFrontmatter: 'intestazione dei metadati assente',
   unreadableBadName: 'il nome non rispetta le regole',

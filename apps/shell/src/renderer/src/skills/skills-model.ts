@@ -5,6 +5,7 @@
  * this only arranges it for the screen.
  */
 import type { Lang } from '@genoffice/i18n'
+import { unusableMcpServers } from '@genoffice/agent-core/skill-mcp-refs'
 import { builtinSkillDesc, isBuiltinSkillName, skillDisplayName } from '@genoffice/ui'
 import type { UserSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
 import type {
@@ -18,6 +19,17 @@ import type { SkillsStringKey } from '../i18n/strings-skills'
 /** The settings screen's skills bridge (src/preload/index.ts); absent outside the shell */
 export function userSkillsApi(): UserSkillsBridge | undefined {
   return (window as unknown as { aiOfficeUserSkills?: UserSkillsBridge }).aiOfficeUserSkills
+}
+
+/**
+ * The MCP servers a row names (spec 8): the ones the skill refers to that are
+ * not registered and on. An older main process sends no list: none.
+ */
+export function skillMcpServersNeeded(
+  view: Pick<UserSkillView, 'mcpServers'>,
+  usable: ReadonlySet<string>,
+): string[] {
+  return unusableMcpServers(view.mcpServers ?? [], (name) => usable.has(name))
 }
 
 /** The list's groups in screen order (spec 5.1); project skills never show here */
