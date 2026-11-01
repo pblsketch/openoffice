@@ -40,6 +40,9 @@ import { boundOrderedList, boundTable, boundTaskList } from './boundedTokenizers
 import { WikiLink, WikiLinkResolve, WikiAliasDisplay } from './wikilink'
 import type { WikiLinkOptions } from './wikilink'
 import type { SlashController, SlashItem } from './slashCommand'
+import { WikiSuggest } from './wikiSuggest'
+import type { WikiSuggestController } from './wikiSuggest'
+import { WikiEmbed } from './wikiEmbed'
 import { BlockLink } from './blockId'
 import type { BlockLinkOptions } from './blockId'
 import { WikiPasteLive } from './wikiPaste'
@@ -49,6 +52,11 @@ import { t } from '../i18n/locale'
 export interface BuildExtensionsOptions {
   slashController: SlashController
   slashItems: () => SlashItem[]
+  /**
+   * The `[[` suggester. Omitted in tests and headless paths: the plugin then
+   * runs with no menu sink, so nothing intercepts the keys around a `[[`.
+   */
+  wikiSuggestController?: WikiSuggestController
   /**
    * Wiki-link navigation. Omitted in tests and headless paths: the resolver is
    * then left on its default, which reports every link unresolved rather than
@@ -148,6 +156,7 @@ export function buildExtensions(options: BuildExtensionsOptions): AnyExtension[]
     ImageAwareLink.configure({ openOnClick: false }),
     MarkdownLinkOpen,
     WikiLink,
+    WikiEmbed,
     // GFM footnotes: `[^1]` references and `[^1]: text` definitions (see footnote.ts)
     FootnoteDefinition,
     FootnoteReference,
@@ -157,8 +166,13 @@ export function buildExtensions(options: BuildExtensionsOptions): AnyExtension[]
     WikiAliasDisplay,
     // `^id` block markers: written on demand, dimmed in the view, plain text in the file
     BlockLink.configure(options.blockLink ?? {}),
-    // pasted `[[links]]` take their live shape at once
+    // pasted `[[links]]` and `![[embeds]]` take their live shape at once
     WikiPasteLive,
+    WikiSuggest.configure({
+      controller: options.wikiSuggestController,
+      // keys the fragment cache: the same note asked from another document is another question
+      getDocumentPath: options.wikiLink?.getDocumentPath,
+    }),
     BlockDragHandle,
     BlockKeymap,
     AiHighlight,
