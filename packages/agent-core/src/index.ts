@@ -134,3 +134,33 @@ export type {
   IpcSubscriptionUsage,
   IpcTransportOptions,
 } from './electron-transport'
+export { composeWithGuards } from './drive-skill'
+export {
+  MCP_CALL_STOPPED,
+  MCP_PERMISSION_DENIED,
+  USER_MCP_SKILL_ID,
+  createMcpPermissionStore,
+  createMcpWindowState,
+  createUserMcpSkill,
+  hasMcpToolsBridge,
+  mcpCallAnswerOf,
+  mcpServersOf,
+  windowMcpState,
+  windowMcpToolsBridge,
+  windowMcpUsableServers,
+} from './user-mcp-skill'
+export type {
+  McpCallAnswer,
+  McpFailReason,
+  McpPermissionAnswer,
+  McpPermissionRequest,
+  McpPermissionStore,
+  McpReviewSubject,
+  McpServerStatus,
+  McpServerView,
+  McpToolPermission,
+  McpToolView,
+  McpToolsBridgeLike,
+  McpWindowState,
+  UserMcpSkill,
+} from './user-mcp-skill'
