@@ -43,13 +43,13 @@ const NOT_CHAT =
   /(embed|(^|[-_/])tts|whisper|transcri|speech|audio|realtime|(^|[-_/])live([-_]|$)|dall-e|gpt-image|imagen|(^|[-_/])image([-_]|$)|-image-|veo|sora|video|moderation|rerank|robotics|(^|[-_/])aqa($|-)|nano-banana|lyria|computer-use|deep-research|(^|[-_/])ocr([-_]|$)|babbage|davinci)/i
 
 /**
- * Ids a provider lists but this app cannot drive. OpenAI serves the GPT-6
- * family, the Codex and the -pro models on the Responses API only (Chat
- * Completions has no full tool use for them, see the catalog note); the
- * OpenCode gateways route GPT, Grok and Muse Spark the same way.
+ * Ids a provider lists but this app cannot drive. OpenAI's GPT-5.4+ and GPT-6
+ * ids go to the Responses API (modelUsesResponsesApi), but the Codex and the
+ * -pro models are left out; the OpenCode gateways route GPT, Grok and Muse
+ * Spark on the Responses API only, which this app does not speak to them.
  */
 const UNSUPPORTED: Partial<Record<AiProviderId, RegExp>> = {
-  openai: /^(gpt-6|o\d+-pro|.*-pro($|-\d)|.*codex)/i,
+  openai: /^(o\d+-pro|.*-pro($|-\d)|.*codex)/i,
   'opencode-zen': /^(gpt-|grok|muse)/i,
   'opencode-go': /^(gpt-|grok|muse)/i,
 }

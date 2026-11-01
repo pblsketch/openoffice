@@ -123,6 +123,12 @@ describe('provider model catalog', () => {
     expect(kimi.defaultModel).toBe('kimi-k3.1-pro')
     expect(kimi.needsBaseUrl).toBeUndefined()
   })
+
+  it('seeds Claude with Sonnet 5.5 as default', () => {
+    const anthropic = AI_PROVIDERS.find((provider) => provider.id === 'anthropic')!
+    expect(anthropic.models.slice(0, 2)).toEqual(['claude-opus-5-5', 'claude-sonnet-5-5'])
+    expect(anthropic.defaultModel).toBe('claude-sonnet-5-5')
+  })
 })
 
 describe('resolveAiSettings', () => {
