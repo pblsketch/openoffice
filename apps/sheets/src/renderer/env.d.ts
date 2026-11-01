@@ -15,6 +15,11 @@ declare global {
     readonly projectApi: ProjectApi
     /** absent when the preload predates the split-pane bridge (or outside the shell) */
     readonly aiOfficeSplit?: SplitPaneBridge
+    /** the frame's spell engine, bridged from webFrame in the preload */
+    readonly nativeSpell?: {
+      readonly isWordMisspelled: (word: string) => boolean
+      readonly getWordSuggestions: (word: string) => string[]
+    }
   }
 }
 

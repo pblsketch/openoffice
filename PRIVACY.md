@@ -133,8 +133,8 @@ app's own features:
   when it is shown, it loads whatever online resources its own code refers
   to. Exporting a Markdown document that contains pictures by web address
   downloads those pictures from where they are hosted. The spell checker of
-  the Word editor is the one built into the app's browser engine, which may
-  download dictionary files from a Google server.
+  the Word and Excel editors is the one built into the app's browser engine,
+  which may download dictionary files from a Google server.
 
 ## What IeumOffice never does
 

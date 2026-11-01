@@ -104,6 +104,8 @@ export {
   mergePPrFormat,
   setPPrChange,
   stripPPrChange,
+  paraMarkRevisionXml,
+  setParaMarkRevision,
   stripParaMarkRevision,
   resolveParaMarkRPrChange,
   paraMarkColor,
@@ -155,6 +157,7 @@ export {
   ommlToLatex,
   ommlToMathML,
 } from './math'
+export { patchRunPictureXml, type RunPictureGeometry } from './run-picture'
 export { scanBody, type BodyElement, type BodyScan } from './scan'
 export {
   BLANK_BULLET_NUM_ID,
@@ -247,8 +250,13 @@ export {
 
 export { previewFontSettings } from './font-settings'
 export {
+  applyRevisionResolutions,
   applyTrackedChangesXml,
   countTrackedChangesXml,
+  readPropChangeXml,
+  resolvePropChangeXml,
+  type PropChangeRecord,
+  type RevisionResolution,
   type RevisionXmlFilter,
   type RevisionXmlMode,
   type RevisionXmlResult,

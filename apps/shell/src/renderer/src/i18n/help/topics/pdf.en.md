@@ -8,7 +8,7 @@ The PDF editor has five ribbon tabs: **Home / Annotate / Edit / Page / View**. I
 - Zoom: the ratio control bottom-right; ctrl+wheel steps the zoom.
 - Rotation: per-page or all pages from the Page menu; rotations are written back on save.
 - Search: ctrl+F full-text with all hits highlighted.
-- Encrypted PDFs: a password prompt (its own small window) opens them; the password is used for this session only.
+- Encrypted PDFs: a password prompt (its own small window) opens them; the password is used for this session only. You can edit and save such a document; the save keeps its password. **Annotate → Protect** sets, changes or removes the password and what readers may do.
 
 ## Text selection and markup (Annotate)
 
@@ -102,7 +102,7 @@ While the annotation bar is showing over selected text, one key runs an action s
 | Enter | Open the Ask AI box                      |
 
 - The keys work the same with a Korean or any other input method switched on. They are ignored while you type in a field or hold Ctrl or Alt.
-- In a document that is locked against editing (password-protected), H, U, S and N do nothing and show the reason, as the bar's buttons do.
+- In a document that is locked against editing (its owner password forbids changes), H, U, S and N do nothing and show the reason, as the bar's buttons do.
 
 ## Passage cards
 

@@ -9,7 +9,11 @@ import {
   installSkill,
   LEDGER_KEY,
   ledgerFromSettings,
+  legacySkillCopies,
   readInstallState,
+  SHARED_AGENT_ID,
+  skillFilePath,
+  skillRows,
   uninstallSkill,
   type BundledSkill,
   type SkillLedger,
@@ -64,20 +68,33 @@ export function registerIntegrationsIpc(deps: IntegrationsDeps): void {
       },
       skillVersion: skill.version,
       skillNeedsCli: /^\s+cli:\s*['"]?>=\s*(\d+\.\d+\.\d+)/m.exec(skill.text)?.[1] ?? '',
-      agents: detectAgents().map((a) => ({ ...a, state: readInstallState(a.skillsDir, skill, l) })),
+      agents: skillRows(l).map((a) => ({ ...a, state: readInstallState(a.skillsDir, skill, l) })),
     }
   })
 
   ipcMain.handle(
     INTEGRATIONS_CHANNELS.installSkill,
     (_e, target: { agentId?: AgentId; dir?: string }): SkillInstallState => {
-      const skillsDir = target.dir ?? agentTarget(target.agentId!)?.skillsDir
+      const row = target.dir ? null : agentTarget(target.agentId!)
+      const skillsDir = target.dir ?? row?.skillsDir
       if (!skillsDir) throw new Error('unknown skill target')
       if (target.dir && !isInstallableSkillDir(skillsDir, vouchedSkillDirs())) {
         throw new Error('unknown skill target')
       }
       const l = ledger()
-      installSkill(skillsDir, bundled(), l)
+      // a tool the shared row serves gets no new copy of its own: only one this app already wrote is rewritten
+      if (row?.legacy && !l[skillFilePath(skillsDir)]) throw new Error('unknown skill target')
+      const skill = bundled()
+      installSkill(skillsDir, skill, l)
+      // the shared row brings the older copies along so a tool never finds two versions under one
+      // name; a copy edited by hand (or otherwise not plainly outdated) waits for its own row's click
+      if (row?.id === SHARED_AGENT_ID) {
+        for (const copy of legacySkillCopies(l, process.env, undefined, SHARED_AGENT_ID)) {
+          if (readInstallState(copy.skillsDir, skill, l).status === 'outdated') {
+            installSkill(copy.skillsDir, skill, l)
+          }
+        }
+      }
       saveLedger(l)
       return stateOf(skillsDir)
     },

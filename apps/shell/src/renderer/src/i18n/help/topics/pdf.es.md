@@ -8,7 +8,7 @@ El editor de PDF tiene cinco pestañas en la cinta de opciones: **Inicio / Anota
 - Zoom: el control de proporción de la esquina inferior derecha; ctrl+rueda ajusta el zoom por pasos.
 - Rotación: por página o de todas las páginas desde el menú Páginas; las rotaciones se vuelven a escribir al guardar.
 - Búsqueda: ctrl+F en texto completo, con todas las coincidencias resaltadas.
-- PDF cifrados: una solicitud de contraseña (en su propia ventana pequeña) los abre; la contraseña solo se usa en esta sesión.
+- PDF cifrados: una solicitud de contraseña (en su propia ventana pequeña) los abre; la contraseña solo se usa en esta sesión. Puede editar y guardar un documento así; al guardar se conserva su contraseña. **Anotar → Proteger** establece, cambia o quita la contraseña y lo que pueden hacer los lectores.
 
 ## Selección de texto y marcado (Anotar)
 
@@ -102,7 +102,7 @@ Mientras la barra de anotación está visible sobre el texto seleccionado, una s
 | Intro | Abrir el cuadro **Preguntar a la IA**      |
 
 - Las teclas funcionan igual con un método de entrada coreano o de cualquier otro idioma. Se ignoran mientras escribe en un campo o mantiene pulsado Ctrl o Alt.
-- En un documento bloqueado para edición (protegido con contraseña), H, U, S y N no hacen nada y muestran el motivo, igual que los botones de la barra.
+- En un documento bloqueado para edición (su contraseña de propietario impide cambios), H, U, S y N no hacen nada y muestran el motivo, igual que los botones de la barra.
 
 ## Tarjetas de pasaje
 

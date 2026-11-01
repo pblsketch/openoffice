@@ -77,24 +77,26 @@ function baseStatus(): IntegrationsStatus {
         state: { status: 'missing', path: '/home/u/.claude/skills/ieumoffice/SKILL.md' },
       },
       {
+        id: 'agents',
+        label: 'Shared folder (~/.agents): Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+        skillsDir: '/home/u/.agents/skills',
+        state: {
+          status: 'foreign',
+          path: '/home/u/.agents/skills/ieumoffice/SKILL.md',
+          installedVersion: '2.1.0',
+        },
+      },
+      {
+        // written by an older version, before the shared row served Codex
         id: 'codex',
         label: 'Codex',
         skillsDir: '/home/u/.codex/skills',
+        legacy: true,
         state: {
           status: 'outdated',
           path: '/home/u/.codex/skills/ieumoffice/SKILL.md',
           installedVersion: '2.0.0',
           older: true,
-        },
-      },
-      {
-        id: 'cursor',
-        label: 'Cursor',
-        skillsDir: '/home/u/.cursor/skills',
-        state: {
-          status: 'foreign',
-          path: '/home/u/.cursor/skills/ieumoffice/SKILL.md',
-          installedVersion: '2.1.0',
         },
       },
     ],
@@ -128,17 +130,26 @@ describe('Settings → Integrations', () => {
     const rows = [...host.querySelectorAll('.set-intg-row')]
     expect(rows.map((r) => r.getAttribute('data-agent'))).toEqual([
       'claude-code',
+      'agents',
       'codex',
-      'cursor',
     ])
     expect(rows[0]!.textContent).toContain('Skill not installed')
     expect(buttonWithText('Install', rows[0]!)).toBeTruthy()
-    expect(rows[1]!.textContent).toContain('Installed 2.0.0, update to 2.1.0 available')
-    expect(buttonWithText('Update', rows[1]!)).toBeTruthy()
-    expect(buttonWithText('Uninstall', rows[1]!)).toBeTruthy()
-    // foreign and current: shown, no button
-    expect(rows[2]!.textContent).toContain('Installed 2.1.0 (not by this app)')
-    expect(rows[2]!.querySelectorAll('button')).toHaveLength(0)
+    // the shared row: its label is translated, and foreign and current means no button
+    expect(rows[1]!.querySelector('.set-field-label')!.textContent).toBe(
+      'Shared folder (~/.agents): Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+    )
+    expect(rows[1]!.textContent).toContain('Installed 2.1.0 (not by this app)')
+    expect(rows[1]!.querySelectorAll('button')).toHaveLength(0)
+    expect(rows[1]!.querySelector('.set-intg-legacy')).toBeNull()
+    // the older copy in Codex's own folder: still kept current and removable, with the hint
+    expect(rows[2]!.classList.contains('set-intg-row-legacy')).toBe(true)
+    expect(rows[2]!.textContent).toContain('Installed 2.0.0, update to 2.1.0 available')
+    expect(buttonWithText('Update', rows[2]!)).toBeTruthy()
+    expect(buttonWithText('Uninstall', rows[2]!)).toBeTruthy()
+    expect(rows[2]!.querySelector('.set-intg-legacy')!.textContent).toBe(
+      "Older copy in Codex's own folder. Codex now reads the skill from the shared folder (~/.agents); once it is installed there, you can remove this copy.",
+    )
     // CLI block: launcher path, PATH state in plain words, the manual command as copyable code
     expect(host.textContent).toContain('/Applications/IeumOffice.app/Contents/Resources/cli')
     expect(host.textContent).toContain("not on your terminal's PATH")
@@ -219,6 +230,37 @@ describe('Settings → Integrations', () => {
     expect(after.getAttribute('data-state')).toBe('installed')
     expect(after.textContent).toContain('Skill 2.1.0 installed · ready in your next chat')
     expect(buttonWithText('Uninstall', after)).toBeTruthy()
+  })
+
+  it('names the older copies the shared row brings along before it writes', async () => {
+    const status = baseStatus()
+    status.agents[1]!.state = {
+      status: 'missing',
+      path: '/home/u/.agents/skills/ieumoffice/SKILL.md',
+    }
+    const install = vi.fn(async () => status.agents[1]!.state)
+    await openIntegrations({
+      status: async () => status,
+      installSkill: install as IntegrationsApi['installSkill'],
+    })
+    const row = host.querySelector('[data-agent="agents"]')!
+    await click(buttonWithText('Install', row))
+    expect(row.querySelector('.set-intg-confirm')!.textContent).toContain(
+      'Will write: /home/u/.agents/skills/ieumoffice/SKILL.md The older copies at /home/u/.codex/skills/ieumoffice/SKILL.md are updated as well.',
+    )
+    await click(buttonWithText('Confirm', row))
+    expect(install).toHaveBeenCalledWith({ agentId: 'agents' })
+  })
+
+  it('never offers a new install on a legacy row', async () => {
+    const status = baseStatus()
+    status.agents[2]!.state = {
+      status: 'missing',
+      path: '/home/u/.codex/skills/ieumoffice/SKILL.md',
+    }
+    await openIntegrations({ status: async () => status })
+    const row = host.querySelector('[data-agent="codex"]')!
+    expect(row.querySelectorAll('button')).toHaveLength(0)
   })
 
   it('installs into a picked folder and saves the zip through the main process', async () => {

@@ -1714,13 +1714,21 @@ export function textboxBoxStyle(box: TextboxDisplay, opts?: { inCell?: boolean }
   // preset/custom geometry renders as an SVG background so the border follows
   // the outline (a clip-path would clip a CSS outline away with the box corners)
   const geomCss = box.pathData
-    ? custGeomBackgroundCss(box.pathData, boxW, boxH, box.fill, box.borderColor)
+    ? custGeomBackgroundCss(box.pathData, boxW, boxH, box.fill, box.borderColor, box.borderWidthPx)
     : box.prst
-      ? shapeBackgroundCss(box.prst, boxW, boxH, box.fill, box.borderColor, {
-          diag: box.lineDiag,
-          flipH: box.flipH,
-          flipV: box.flipV,
-        })
+      ? shapeBackgroundCss(
+          box.prst,
+          boxW,
+          boxH,
+          box.fill,
+          box.borderColor,
+          {
+            diag: box.lineDiag,
+            flipH: box.flipH,
+            flipV: box.flipV,
+          },
+          box.borderWidthPx,
+        )
       : null
   const waStyle = box.wordArtId ? WORDART_CSS[box.wordArtId] : undefined
   // picture fill (photo boxes / a:blipFill): tiles repeat at natural size,

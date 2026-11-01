@@ -53,7 +53,9 @@ import { tiptapFindTarget } from './editor/findTarget'
 import { collectOutline, type OutlineItem } from './editor/outline'
 import { buildSlashItems } from './editor/slashCommand'
 import type { SlashController, SlashMenuState } from './editor/slashCommand'
-import { wikiFragmentPosition } from './editor/wikilink'
+import { wikiFragmentPosition, wikiTargetOf } from './editor/wikilink'
+import type { WikiSuggestController, WikiSuggestState } from './editor/wikiSuggest'
+import { invalidateWikiHeads } from './editor/wikiSuggest'
 import { dirOf, setImageBaseDir, VIEW_IMAGE_EVENT } from './editor/localImage'
 import { Ribbon } from './components/Ribbon'
 import type { MarkdownTheme } from '../shared/markdown-theme'
@@ -62,6 +64,7 @@ import { RedactMenu } from './components/RedactMenu'
 import { OutlinePane } from './components/OutlinePane'
 import { SourcePane } from './components/SourcePane'
 import { SlashMenu, type SlashMenuHandle } from './components/SlashMenu'
+import { WikiSuggestMenu, type WikiSuggestMenuHandle } from './components/WikiSuggestMenu'
 import { BacklinksPane } from './components/BacklinksPane'
 import { TagsPane } from './components/TagsPane'
 import { GraphView } from './components/GraphView'
@@ -189,6 +192,7 @@ export default function App() {
     params?: Record<string, string | number>
   } | null>(null)
   const [slashState, setSlashState] = useState<SlashMenuState | null>(null)
+  const [wikiSuggestState, setWikiSuggestState] = useState<WikiSuggestState | null>(null)
   const [fmOpen, setFmOpen] = useState(false)
   const [fmText, setFmText] = useState('')
   // Persisted so a closed AI panel stays closed on next launch (docs/slides parity)
@@ -274,6 +278,7 @@ export default function App() {
   }
   const filePathRef = useRef<string | null>(null)
   const slashMenuRef = useRef<SlashMenuHandle>(null)
+  const wikiSuggestMenuRef = useRef<WikiSuggestMenuHandle>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const zoomOut = useCallback(
@@ -325,6 +330,32 @@ export default function App() {
     })
   }, [])
 
+  /**
+   * Close an unresolved `[[link]]` the Obsidian way: create the note it names
+   * and open it. Main decides where the file lands (beside this document, or
+   * under the vault root when the target carries a directory) and never
+   * overwrites; the answer carries the `#fragment`, so opening rides the same
+   * path every resolved link takes and no document text has to change.
+   */
+  const createWikiNoteAndOpen = useCallback(
+    (target: string): void => {
+      // The browser test harness stubs markdownApi without the Electron-only
+      // wiki channels; a missing API leaves the link as written.
+      if (typeof window.markdownApi.createWikiNote !== 'function') return
+      void window.markdownApi.createWikiNote({ target }).then((result) => {
+        if (!result.ok) {
+          showToast(translate('wikiLinkUnresolved', { target }), 'error')
+          return
+        }
+        void window.markdownApi.rememberWikiFragment(result.path, result.fragment)
+        void window.markdownApi.openSourcePath(result.path)
+        // a link into the note already on screen opens no tab; jump here
+        if (filePathRef.current === result.path) jumpToWikiFragment(result.path)
+      })
+    },
+    [jumpToWikiFragment],
+  )
+
   const extensions = useMemo(() => {
     const controller: SlashController = {
       onOpen: setSlashState,
@@ -332,10 +363,17 @@ export default function App() {
       onKeyDown: (event) => slashMenuRef.current?.handleKey(event) ?? false,
       onClose: () => setSlashState(null),
     }
+    const wikiSuggestController: WikiSuggestController = {
+      onOpen: setWikiSuggestState,
+      onUpdate: setWikiSuggestState,
+      onKeyDown: (event) => wikiSuggestMenuRef.current?.handleKey(event) ?? false,
+      onClose: () => setWikiSuggestState(null),
+    }
     return buildExtensions({
       slashController: controller,
       slashItems: () =>
         buildSlashItems({ insertImage: filePathRef.current ? insertImage : undefined }),
+      wikiSuggestController,
       wikiLink: {
         getDocumentPath: () => filePathRef.current ?? '',
         onOpen: (path, fragment) => {
@@ -346,7 +384,15 @@ export default function App() {
         },
         // the module-level `t`, not the hook's: this memo holds the closure for
         // the life of the editor, and the hook's `t` is a new function each render
-        onUnresolved: (target) => showToast(translate('wikiLinkUnresolved', { target }), 'error'),
+        onUnresolved: (target, embed) => {
+          // an embed of a missing file usually names a picture, which an empty
+          // note cannot stand in for; only a link creates its note
+          if (embed) {
+            showToast(translate('wikiLinkUnresolved', { target }), 'error')
+            return
+          }
+          createWikiNoteAndOpen(wikiTargetOf(target))
+        },
       },
       blockLink: {
         getDocumentPath: () => filePathRef.current ?? '',
@@ -354,7 +400,7 @@ export default function App() {
         onNothing: () => showToast(translate('blockLinkNone'), 'error'),
       },
     })
-  }, [insertImage, jumpToWikiFragment])
+  }, [createWikiNoteAndOpen, insertImage, jumpToWikiFragment])
 
   // status-bar text statistics: Word's CJK counting rule (asian chars count
   // one by one, non-asian words by whitespace) shared with the docs status bar
@@ -776,6 +822,8 @@ export default function App() {
             setSaveState('idle')
             return true
           }
+          // what this note offers `[[...#` has just changed on disk
+          invalidateWikiHeads()
           const unchanged =
             editorRef.current?.state.doc === docAtSave &&
             envelopeRef.current.frontmatter === fmAtSave
@@ -1554,6 +1602,13 @@ export default function App() {
       </div>
       {!sourceMode && (
         <SlashMenu ref={slashMenuRef} state={slashState} onDismiss={() => setSlashState(null)} />
+      )}
+      {!sourceMode && (
+        <WikiSuggestMenu
+          ref={wikiSuggestMenuRef}
+          state={wikiSuggestState}
+          onDismiss={() => setWikiSuggestState(null)}
+        />
       )}
       <RedactMenu editor={editor} enabled={redactEnabled} />
       <ToastHost />

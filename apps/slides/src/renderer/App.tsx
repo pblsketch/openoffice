@@ -33,7 +33,7 @@ import type {
   TransitionKind,
 } from '../shared/ipc'
 import { baseName } from '../shared/base-name'
-import { mergeBroadcastUpdate, mergeSlideUpdate } from '../shared/slide-update'
+import { mergeBroadcastUpdate, mergeSlideUpdate, setDeckRefresh } from '../shared/slide-update'
 import { SlideCanvas, selectionChromeColor, type SlideCanvasHandle } from './SlideCanvas'
 import { tableCellOverlayBox } from './table-hit'
 import { ZOOM_PREVIEW_EVENT } from './zoom-preview'
@@ -984,19 +984,24 @@ export function App() {
   // Shared session (a second window on the same file): apply the other window's
   // edits without touching local selection or an open editor — the ids are stable,
   // so the selection stays valid; a same-element conflict resolves last-write-wins.
+  const refreshDeck = useCallback(() => {
+    void window.slidesApi
+      .getRenderSlides()
+      .then((slides) => {
+        if (slides) setSlides(slides)
+      })
+      .catch((error) => console.error('Failed to refresh deck:', error))
+  }, [])
+  useEffect(() => {
+    setDeckRefresh(refreshDeck)
+    return () => setDeckRefresh(null)
+  }, [refreshDeck])
   useEffect(
     () =>
       window.slidesApi.onDeckChanged?.(({ slides: all, order }) => {
         setSlides((current) =>
           order
-            ? (mergeBroadcastUpdate(current, { slides: all, order }, () => {
-                void window.slidesApi
-                  .getRenderSlides()
-                  .then((slides) => {
-                    if (slides) setSlides(slides)
-                  })
-                  .catch((error) => console.error('Failed to refresh deck:', error))
-              }) ?? current)
+            ? (mergeBroadcastUpdate(current, { slides: all, order }, refreshDeck) ?? current)
             : all,
         )
         setCurrent((c) => Math.min(c, Math.max(0, (order?.length ?? all.length) - 1)))
@@ -1007,7 +1012,7 @@ export function App() {
         // session instead of assuming the change dirtied it
         void window.slidesApi.isDirty?.().then((d) => setDirty(!!d))
       }),
-    [],
+    [refreshDeck],
   )
 
   // Auto-save (off by default): when on and a file path exists, silently write back every 30s + on blur.
@@ -1049,7 +1054,10 @@ export function App() {
   }, [autoSave, path, editing, editingCell, save])
 
   const saveAs = useCallback(() => fileActions.saveAs(() => ctxRef.current), [])
-  const exportImages = useCallback(() => fileActions.exportImages(ctxRef.current), [])
+  const exportImages = useCallback(
+    (format: 'png' | 'jpg' = 'png') => fileActions.exportImages(ctxRef.current, format),
+    [],
+  )
   const exportPdf = useCallback(() => void fileActions.exportPdf(ctxRef.current), [])
 
   // Headless export mode (--headless-export): this renderer lives in a hidden
@@ -2433,7 +2441,8 @@ export function App() {
       else if (cmd === 'save-as') void saveAs()
       // macOS has no File ribbon tab, so these only exist in the menu
       else if (cmd === 'export-pdf') void exportPdf()
-      else if (cmd === 'export-images') void exportImages()
+      else if (cmd === 'export-images') void exportImages('png')
+      else if (cmd === 'export-images-jpg') void exportImages('jpg')
       else if (cmd === 'print') setPrintDlgOpen(true)
       // Through the preview path so the zoom pivots on the viewport center, not the scroll origin
       else if (cmd === 'zoom-in') previewZoom(nextPreset)
@@ -3421,7 +3430,8 @@ export function App() {
         onSaveAs={() => void saveAs()}
         onExportPdf={() => void exportPdf()}
         onPrint={() => setPrintDlgOpen(true)}
-        onExportImages={() => void exportImages()}
+        onExportImages={() => void exportImages('png')}
+        onExportImagesJpg={() => void exportImages('jpg')}
         onFormat={onFormat}
         zoom={zoom}
         onZoom={previewZoom}

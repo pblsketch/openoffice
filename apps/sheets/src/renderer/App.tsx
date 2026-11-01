@@ -198,6 +198,8 @@ import { startFullLoad } from './full-load'
 import { opensInFormulaMode, workbookCellCounts } from './load-budget'
 import { installReplaceAutoSearch } from './replace-autosearch'
 import { FindReplacePanel } from './FindReplacePanel'
+import { SpellingDialog } from './SpellingDialog'
+import { spellcheckEnabled, storeSpellcheckEnabled } from './spellcheck-pref'
 import {
   installCrossHighlight,
   loadCrossHighlightPreference,
@@ -704,6 +706,13 @@ export function App({
   /// Cross-highlight ("reading mode") of the active row/column, persisted in
   /// localStorage like the auto-save flag; off until the user opts in.
   const [crossHighlightVisible, setCrossHighlightVisible] = useState(loadCrossHighlightPreference)
+  /// Spelling preference (Review ▸ Proofing / F7), docs' spellcheck-pref shape:
+  /// localStorage-backed, default on. Session Ignore-All words ride along and
+  /// live for the app session — docs scopes them to the open document, sheets
+  /// keeps one renderer session, the white-list is harmless across files.
+  const [spellcheckOn, setSpellcheckOn] = useState(spellcheckEnabled)
+  const [spellDialogOpen, setSpellDialogOpen] = useState(false)
+  const spellSessionIgnoredRef = useRef<Set<string>>(new Set())
   const crossHighlightRef = useRef<CrossHighlightHandle | null>(null)
   const outlineGutterRef = useRef<OutlineGutterHandle | null>(null)
   const visualInstallTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -4418,6 +4427,23 @@ export function App({
       setMessage(t(next ? 'appFormulaBarShown' : 'appFormulaBarHidden'))
       return
     }
+    if (command === 'spell-check') {
+      // the preference gates the whole feature: F7 and the Review button both
+      // land here, so a disabled checker is one consistent answer everywhere
+      if (!spellcheckOn) {
+        setMessage(t('appSpellOff'))
+        return
+      }
+      setSpellDialogOpen(true)
+      return
+    }
+    if (command === 'spellcheck-toggle') {
+      const next = !spellcheckOn
+      setSpellcheckOn(next)
+      storeSpellcheckEnabled(next)
+      setMessage(t(next ? 'appSpellOn' : 'appSpellOff'))
+      return
+    }
     const runtime = univerRef.current
     if (command === 'calc-mode:auto' || command === 'calc-mode:manual') {
       if (!runtime) return
@@ -5566,6 +5592,7 @@ export function App({
         onUnprotectSheet={unprotectActiveSheet}
         sheetTabActions={sheetTabActions}
         onGetWorkbookProtection={workbookProtectionEcho}
+        spellcheckOn={spellcheckOn}
         formulaBarVisible={formulaBarVisible}
         crossHighlightVisible={crossHighlightVisible}
         onGetProtectedRanges={protectedRangesSnapshot}
@@ -5635,6 +5662,29 @@ export function App({
               .registerContainerElement(element)
             return () => disposable?.dispose()
           }}
+        />
+      )}
+      {spellDialogOpen && (
+        <SpellingDialog
+          onClose={() => setSpellDialogOpen(false)}
+          getWorkbook={() => univerRef.current?.univerAPI.getActiveWorkbook() ?? null}
+          // this fork has no withheld (redacted) cells: every cell is checked
+          isWithheld={() => false}
+          onJumpTo={(sheetId, row, column) => {
+            void selectWorkbookRange(
+              readContext(),
+              sheetId,
+              { startRow: row, endRow: row, startColumn: column, endColumn: column },
+              setMessage,
+            )
+          }}
+          lazyNote={
+            lazyWorkbookRef.current && !lazyWorkbookRef.current.flags.preloadComplete
+              ? t('appLoadedRegionOnly')
+              : ''
+          }
+          sessionIgnoredRef={spellSessionIgnoredRef}
+          setMessage={setMessage}
         />
       )}
       {cellsDialog !== null && univerRef.current && (

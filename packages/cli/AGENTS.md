@@ -52,6 +52,7 @@
 - 명령은 `CommandDef` 하나다. `defaultRegistry()`에 등록하면 도움말, README 예시, 스킬 문서, MCP 도구가 같은 표에서 나온다. `tests/help-sync.test.ts`가 등록된 명령과 옵션이 `README.md`와 `skills/ieumoffice/SKILL.md`에 모두 나오는지 확인하므로, 옵션을 추가하면 세 곳을 함께 고친다.
 - `slides read --comments`는 저장된 pptx의 클래식 메모를 페이지별 `comments`(`authorId`·`idx`·`작성자`·`시각`·`본문`)와 `hidden`으로 낸다. `--slide`·`--full`과 독립이고, 터미널 읽기는 다른 읽기 명령처럼 가리기를 적용하지 않는다.
 - 스킬 본문을 고치면 `metadata.version`을 올린다. 스킬은 사용자의 에이전트 폴더로 복사되고 버전이 커질 때만 교체되기 때문이다(`npm run check:skill-version`).
+- 스킬 설치 자리 표(`src/agent-skills.ts`의 `AGENTS`)는 줄마다 역할이 있다. `own`(Claude Code, Windsurf)과 `shared`(`agents`, `~/.agents/skills`)만 새로 설치하는 줄이고, `reader`(Codex, Cursor, Gemini CLI, Copilot, OpenCode)는 공용 폴더를 읽는 도구라 자기 폴더에는 이 앱이 예전에 쓴 사본을 맞추거나 지우는 일만 한다. 그 사본을 자동으로 지우는 코드를 넣지 않는다(결정 0095). `mcp`가 도구를 찾을 때는 스킬 줄과 상관없이 `agentPresent`·`agentLabel`·`agentConfigDir`로 각 도구의 자기 폴더를 본다.
 - MCP 도구는 명령의 두 번째 구현이 아니다. 도구 호출을 명령줄 인자로 바꿔(`buildArgv`) 같은 명령을 실행한다. 인라인 값(ops, 명세, Markdown)은 임시 파일에 써서 경로로 넘긴다.
 - 명령줄은 Electron 없이 앱의 userData를 찾는다(`genofficeUserDataDir`). AI 설정은 그 안의 `ai-settings.json`이고, 자동 호출의 잠금·장부와 종량 허용 기록은 같은 폴더에 둔다(`aiDataDir`). PDF 결과 보관소도 같은 폴더의 `pdf-store`다. 앱과 모든 명령줄 프로세스가 같은 폴더를 써야 차례가 하나로 지켜지고 보관된 결과를 함께 쓴다.
 - 번역 PDF는 HarfBuzz의 `hb-subset.wasm`이 있어야 쓴다. 설치본에서는 `Resources/wasm/hb-subset.wasm`, 저장소에서는 `harfbuzzjs`의 것을 찾고, `GENOFFICE_HB_SUBSET_WASM`으로 바꿀 수 있다(`hbSubsetWasmPath`).

@@ -3,24 +3,27 @@ import { Plugin, PluginKey } from '@tiptap/pm/state'
 import type { Transaction } from '@tiptap/pm/state'
 import type { Node as PmNode } from '@tiptap/pm/model'
 import { WIKI_LINK_RE } from './wikilink'
+import { WIKI_EMBED_RE } from './wikiEmbed'
 
 /**
  * Pasted wiki syntax goes live. The markdown tokenizers run on load, not on a
  * paste, so `[[Note]]` pasted from Obsidian — or the `[[Note#^id]]` the
  * copy-link button put on the clipboard — arrived as plain text that only
  * became a link on the next open. After a paste, the `[[...]]` literals in
- * the pasted text take the wikiLink mark, the shape the tokenizer builds, so
- * the resolver styles and opens them at once. This editor has no embed node:
- * a pasted `![[...]]` reads as it does on load, a `!` before a link. Typing
- * is left alone, so a half-typed literal never changes under the caret.
+ * the pasted text take the wikiLink mark and the `![[...]]` ones become embed
+ * nodes, the shapes the tokenizers build, so the resolver styles and opens
+ * them at once. Typing is left alone: the `[[` suggester is the live path
+ * there, and a half-typed literal must not turn into an atom under the caret.
  */
 
 interface Conversion {
   from: number
   to: number
+  /** the embed literal to become a node; null for a link, which keeps its text */
+  embed: string | null
 }
 
-/** the `[[...]]` literals in the text nodes of the textblocks across [from, to] */
+/** the `[[...]]` and `![[...]]` literals touching [from, to]; typed ones elsewhere in the block stay text */
 function conversions(doc: PmNode, from: number, to: number): Conversion[] {
   const out: Conversion[] = []
   doc.nodesBetween(from, to, (node, pos) => {
@@ -42,13 +45,19 @@ function conversions(doc: PmNode, from: number, to: number): Conversion[] {
           at = open + 2
           continue
         }
-        const match = WIKI_LINK_RE.exec(text.slice(open))
+        const bang = open > 0 && text[open - 1] === '!' && !(open > 1 && text[open - 2] === '\\')
+        const start = bang ? open - 1 : open
+        const match = (bang ? WIKI_EMBED_RE : WIKI_LINK_RE).exec(text.slice(start))
         if (!match) {
           at = open + 2
           continue
         }
-        out.push({ from: base + open, to: base + open + match[0].length })
-        at = open + match[0].length
+        const matchFrom = base + start
+        const matchTo = matchFrom + match[0].length
+        if (matchTo > from && matchFrom < to) {
+          out.push({ from: matchFrom, to: matchTo, embed: bang ? match[0] : null })
+        }
+        at = start + match[0].length
       }
     })
     return false
@@ -95,9 +104,15 @@ export const WikiPasteLive = Extension.create({
           const found = conversions(state.doc, range.from, range.to)
           if (found.length === 0) return null
           const tr = state.tr
-          // a mark keeps every position, so the order does not matter
-          const link = state.schema.marks.wikiLink!.create()
-          for (const c of found) tr.addMark(c.from, c.to, link)
+          const { schema } = state
+          // from the end, so the positions before each replacement stay valid
+          for (const c of found.sort((a, b) => b.from - a.from)) {
+            if (c.embed !== null) {
+              tr.replaceWith(c.from, c.to, schema.nodes.wikiEmbed!.create({ raw: c.embed }))
+            } else {
+              tr.addMark(c.from, c.to, schema.marks.wikiLink!.create())
+            }
+          }
           return tr
         },
       }),

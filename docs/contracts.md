@@ -245,6 +245,11 @@
 - 이름과 폴더는 `ieumoffice`다. 저장소의 `skills/ieumoffice/SKILL.md`가 원본이고, 앱의 설정 → 연동에서 고른 에이전트에 설치한다. 터미널에서는 `npx skills add pblsketch/openoffice`.
 - 스킬 문서는 사용자의 에이전트 폴더로 복사되고, 문서의 `metadata.version`이 커졌을 때만 새것으로 바뀐다. 본문을 고치고 버전을 올리지 않으면 고친 내용이 아무에게도 닿지 않는다(검사 `npm run check:skill-version`).
 - 스킬과 도움말이 에이전트에게 알려 주는 명령은 모두 `ieumoffice`로 시작한다.
+- 설치 자리(결정 0095). 새로 설치하는 줄은 셋이다. Claude Code(`~/.claude/skills`, `CLAUDE_CONFIG_DIR`를 따름), 공용 폴더 `agents`(`~/.agents/skills`), Windsurf(`~/.codeium/windsurf/skills`). 공용 폴더는 Codex, Cursor, Gemini CLI, Copilot, OpenCode가 읽고, `~/.agents`나 그 다섯 도구의 폴더 중 하나가 있으면(`CODEX_HOME`, `XDG_CONFIG_HOME`를 따름) 보인다.
+- 다섯 도구의 자기 폴더(`~/.codex/skills` 등)에는 새로 쓰지 않는다. 이 앱이 예전에 거기 쓴 사본(설치 장부에 있고 아직 있는 것)은 예전 사본 줄로 남아, 업데이트·제거할 수 있고 공용 줄을 설치할 때 함께 새 버전이 된다(손으로 고친 것은 제외). 자동으로 지우지 않는다. 장부에 없는 사본은 목록에 없고 건드리지 않는다.
+- `ieumoffice skill list`는 Claude Code·`agents`·Windsurf 줄과 예전 사본 줄을 낸다. 줄의 필드(`agent`, `label`, `detected`, `skills_dir`, `status`, `installed_version`, `up_to_date`)는 그대로이고 `legacy`(예전 사본이면 `true`)가 더해졌다.
+- `ieumoffice skill install <agent|all>`의 이름은 `claude-code`, `agents`, `codex`, `cursor`, `gemini`, `copilot`, `opencode`, `windsurf`다. 다섯 도구의 이름은 그 도구가 이 PC에 있는지 보고(없으면 `--force`) 공용 폴더에 쓰며, 그 도구의 예전 사본이 있으면 함께 맞춘다. `all`은 있는 줄 모두와 예전 사본 모두다. 손으로 고친 예전 사본은 `--force`가 없으면 그대로 두고 경고 `legacy_copy_left`를 낸다. 결과 줄의 `action`은 `written`·`unchanged`다.
+- `ieumoffice skill remove <agent> [--dir <path>]`는 이 앱이 쓴 사본 하나를 지운다(설정 → 연동의 제거와 같다). 다섯 도구의 이름은 그 도구 자기 폴더의 예전 사본, `agents`는 공용 사본이다. 이 앱이 쓰지 않은 파일은 지우지 않고 경고 `not_installed_by_app`을 낸다. 결과 줄의 `action`은 `removed`·`unchanged`다.
 - 이 스킬은 앱 안의 사용자 스킬 목록에는 나오지 않는다(이름 `ieumoffice`는 어느 출처에서든 읽지 않는다, 결정 0048).
 
 ## 사용자 스킬 (결정 0048)
@@ -495,7 +500,7 @@ metadata:
 
 - `.docx`·`.xlsx`·`.pptx`·PDF·마크다운·HTML 파일은 원본 프로그램과 같은 방식으로 읽고 쓴다. 한쪽에서 만든 문서를 다른 쪽에서 열 수 있다.
 - **마인드맵.** XMind 파일(`.xmind`, `content.json`이 든 형식)을 열고 같은 형식으로 저장한다. 이 앱이 보여 주지 않는 요소와 모르는 값도 저장할 때 그대로 나가고, 바뀐 것이 없으면 원본과 바이트까지 같은 파일을 쓴다. 바뀌었으면 `content.json`만 다시 쓰고, 미리보기 그림(`Thumbnails/thumbnail.png`)은 새로 만들었을 때만 바꾸며, `manifest.json`은 고치지 않는다. 예전 형식(`content.xml`만 있는 파일)과 암호가 걸린 파일은 열지 않는다. 테마는 사용자가 고를 때와 새 시트를 만들 때(새 파일 포함, 기본 테마) 파일 형식의 속성표로 적고, 이 앱만의 표식은 넣지 않는다. 그 밖에는 이미 있는 시트의 테마를 그대로 둔다. 터미널 명령어와 그 MCP 서버는 `.xmind`를 다루지 않는다.
-- **열기 암호.** 열기 암호가 걸린 `.docx`·`.xlsx`·`.xlsm`·`.xls`·`.pptx`는 열 때 암호를 묻고, 저장(다른 이름으로 저장 포함)할 때 같은 암호로 다시 잠근다. 다시 잠그는 방식은 Office 2013 이후의 기본(ECMA-376 Agile)이다. 수정 암호만 걸린 `.xls`처럼 엑셀의 기본 암호로 잠긴 파일은 묻지 않고 열며, 그런 `.xls`를 `.xlsx`로 저장하면 열기 암호를 걸지 않는다. 풀 수 없는 방식이면 열지 않고 알린다(결정 0041).
+- **열기 암호.** 열기 암호가 걸린 `.docx`·`.xlsx`·`.xlsm`·`.xls`·`.pptx`는 열 때 암호를 묻고, 저장(다른 이름으로 저장 포함)할 때 같은 암호로 다시 잠근다. 다시 잠그는 방식은 Office 2013 이후의 기본(ECMA-376 Agile)이다. 수정 암호만 걸린 `.xls`처럼 엑셀의 기본 암호로 잠긴 파일은 묻지 않고 열며, 그런 `.xls`를 `.xlsx`로 저장하면 열기 암호를 걸지 않는다. 풀 수 없는 방식이면 열지 않고 알린다(결정 0041). 암호가 걸린 PDF도 열 때 암호를 묻고, 저장할 때 원래의 암호화 항목을 그대로 두어 다시 잠근다. PDF 편집기의 주석 → 보호에서 암호를 걸거나 바꾸거나 풀면 다음 저장이 AES-256(V5/R6)으로 새로 잠근다. 인증서로 잠긴 PDF는 열지 않고 알린다.
 - 가리기 표시는 문서 안에 저장되고, 그 이름공간 주소는 원본과 같다. 원본으로 가린 문서를 열면 가리기가 그대로 인식된다.
 - 문서 곁에 저장되는 보조 파일의 이름(`.genoffice-assets.json` 등)도 원본과 같다.
 - `.odt`는 한컴 한글 2024가 읽은 결과를 기준으로 맞춘다. 받은 ODT를 고쳐 저장하면 고친 부분만 다시 쓰고, 나머지 zip 항목과 XML은 바이트 그대로다. 고친 것이 없으면 원본과 같은 파일이 나온다. 다시 묶을 때 `mimetype`을 맨 앞에 압축 없이 둔다(한컴은 이것을 받은 파일과 똑같이 읽는다). 한컴이 아닌 프로그램의 ODT도 같은 규칙으로 열지만, 합격 기준에는 넣지 않았다.

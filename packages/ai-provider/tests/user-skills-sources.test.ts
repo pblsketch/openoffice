@@ -230,6 +230,17 @@ describe('the list', () => {
     expect(ids(skills)).toEqual(['user:kept'])
   })
 
+  it('does not list the ieumoffice skill installed into the shared ~/.agents folder', async () => {
+    // Settings → Integrations writes ~/.agents/skills/ieumoffice for Codex, Cursor and the rest;
+    // that folder is also the app's `codex` source, so the reserved name has to keep it out
+    const home = temp()
+    const shared = join(home, '.agents', 'skills')
+    skill(shared, 'ieumoffice')
+    skill(shared, 'kept-shared')
+    const skills = await listUserSkills({ homeDir: home })
+    expect(ids(skills)).toEqual(['codex:kept-shared'])
+  })
+
   it('names a skill by its front matter, not its folder', async () => {
     const home = temp()
     skill(join(home, '.claude', 'skills'), 'folder-name', { name: 'real-name' })

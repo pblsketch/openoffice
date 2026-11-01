@@ -1,17 +1,26 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import JSZip from 'jszip'
 import { describe, expect, it } from 'vitest'
 import {
+  agentConfigDir,
+  agentIds,
+  agentLabel,
+  agentPresent,
   agentTarget,
   buildSkillZip,
   bundledSkillFrom,
   compareVersions,
   detectAgents,
+  installRowFor,
   installSkill,
+  isSharedReader,
+  legacySkillCopies,
   parseSkillFrontmatter,
   readInstallState,
+  skillRows,
+  skillTargetIds,
   uninstallSkill,
   type SkillLedger,
 } from '../src/agent-skills'
@@ -26,20 +35,131 @@ function home(): string {
 }
 
 describe('detectAgents', () => {
-  it('lists the tools whose dotfolder exists, honouring the env overrides', () => {
+  it('lists the install rows whose tool is present, honouring the env overrides', () => {
     const h = home()
     mkdirSync(join(h, '.claude'))
     mkdirSync(join(h, '.cursor'))
-    mkdirSync(join(h, 'codex-elsewhere'))
-    mkdirSync(join(h, '.config', 'opencode'), { recursive: true })
-    const found = detectAgents({ CODEX_HOME: join(h, 'codex-elsewhere') }, h)
-    expect(found.map((a) => a.id)).toEqual(['claude-code', 'codex', 'cursor', 'opencode'])
+    mkdirSync(join(h, '.codeium', 'windsurf'), { recursive: true })
+    const found = detectAgents({}, h)
+    // Cursor reads ~/.agents/skills, so it brings the shared row, not a row of its own
+    expect(found.map((a) => a.id)).toEqual(['claude-code', 'agents', 'windsurf'])
     expect(found[0]!.skillsDir).toBe(join(h, '.claude', 'skills'))
-    expect(found[1]!.skillsDir).toBe(join(h, 'codex-elsewhere', 'skills'))
-    expect(found[3]!.skillsDir).toBe(join(h, '.config', 'opencode', 'skills'))
-    expect(agentTarget('windsurf', {}, h)!.skillsDir).toBe(
-      join(h, '.codeium', 'windsurf', 'skills'),
-    )
+    expect(found[1]!.skillsDir).toBe(join(h, '.agents', 'skills'))
+    expect(found[2]!.skillsDir).toBe(join(h, '.codeium', 'windsurf', 'skills'))
+    expect(found.some((a) => a.legacy)).toBe(false)
+  })
+
+  it('shows the shared row for ~/.agents itself or any tool that reads it', () => {
+    const none = home()
+    expect(detectAgents({}, none)).toEqual([])
+    expect(agentPresent('agents', {}, none)).toBe(false)
+
+    const shared = home()
+    mkdirSync(join(shared, '.agents'))
+    expect(detectAgents({}, shared).map((a) => a.id)).toEqual(['agents'])
+
+    for (const dot of ['.cursor', '.gemini', '.copilot', join('.config', 'opencode')]) {
+      const h = home()
+      mkdirSync(join(h, dot), { recursive: true })
+      expect(detectAgents({}, h).map((a) => a.id)).toEqual(['agents'])
+    }
+
+    // CODEX_HOME and XDG_CONFIG_HOME move the probed folders; ~/.codex alone then means nothing
+    const moved = home()
+    mkdirSync(join(moved, '.codex'))
+    expect(detectAgents({ CODEX_HOME: join(moved, 'nowhere') }, moved)).toEqual([])
+    mkdirSync(join(moved, 'codex-elsewhere'))
+    expect(
+      detectAgents({ CODEX_HOME: join(moved, 'codex-elsewhere') }, moved).map((a) => a.id),
+    ).toEqual(['agents'])
+    mkdirSync(join(moved, 'xdg', 'opencode'), { recursive: true })
+    expect(agentPresent('opencode', { XDG_CONFIG_HOME: join(moved, 'xdg') }, moved)).toBe(true)
+  })
+
+  it('keeps a label, a dotfolder and a presence check for every tool, row or not', () => {
+    const h = home()
+    mkdirSync(join(h, 'codex-elsewhere'))
+    const env = { CODEX_HOME: join(h, 'codex-elsewhere') }
+    expect(agentLabel('codex')).toBe('Codex')
+    expect(agentLabel('copilot')).toBe('GitHub Copilot')
+    expect(agentConfigDir('codex', env, h)).toBe(join(h, 'codex-elsewhere'))
+    expect(agentPresent('codex', env, h)).toBe(true)
+    expect(agentPresent('cursor', env, h)).toBe(false)
+    expect(agentTarget('codex', env, h)).toMatchObject({
+      skillsDir: join(h, 'codex-elsewhere', 'skills'),
+      legacy: true,
+    })
+    expect(agentTarget('claude-code', env, h)!.legacy).toBeUndefined()
+  })
+
+  it('sends a new install for a reader tool to the shared row', () => {
+    expect(skillTargetIds()).toEqual(['claude-code', 'agents', 'windsurf'])
+    expect(agentIds()).toEqual([
+      'claude-code',
+      'agents',
+      'codex',
+      'cursor',
+      'gemini',
+      'copilot',
+      'opencode',
+      'windsurf',
+    ])
+    for (const id of ['codex', 'cursor', 'gemini', 'copilot', 'opencode'] as const) {
+      expect(isSharedReader(id)).toBe(true)
+      expect(installRowFor(id)).toBe('agents')
+    }
+    for (const id of ['claude-code', 'agents', 'windsurf'] as const) {
+      expect(isSharedReader(id)).toBe(false)
+      expect(installRowFor(id)).toBe(id)
+    }
+  })
+})
+
+describe('legacySkillCopies / skillRows', () => {
+  it('lists a copy this app wrote in the own folder of a reader tool, and nothing else there', () => {
+    const h = home()
+    mkdirSync(join(h, '.claude'))
+    mkdirSync(join(h, '.codex'))
+    mkdirSync(join(h, '.gemini'))
+    const b = bundled()
+    const ledger: SkillLedger = {}
+    // written by this app before the shared row existed
+    const codexCopy = installSkill(join(h, '.codex', 'skills'), b, ledger)
+    // someone else's copy in Gemini's folder: not ours, not listed
+    mkdirSync(join(h, '.gemini', 'skills', 'ieumoffice'), { recursive: true })
+    writeFileSync(join(h, '.gemini', 'skills', 'ieumoffice', 'SKILL.md'), skillText('1.0.0'))
+
+    const copies = legacySkillCopies(ledger, {}, h)
+    expect(copies).toEqual([
+      { id: 'codex', label: 'Codex', skillsDir: join(h, '.codex', 'skills'), legacy: true },
+    ])
+    expect(legacySkillCopies(ledger, {}, h, 'codex')).toHaveLength(1)
+    expect(legacySkillCopies(ledger, {}, h, 'agents')).toHaveLength(1)
+    expect(legacySkillCopies(ledger, {}, h, 'gemini')).toEqual([])
+    expect(legacySkillCopies(ledger, {}, h, 'claude-code')).toEqual([])
+
+    expect(skillRows(ledger, {}, h).map((r) => r.id)).toEqual(['claude-code', 'agents', 'codex'])
+
+    // a copy removed by hand leaves a stale ledger entry: the row goes, nothing is offered there
+    rmSync(join(h, '.codex', 'skills', 'ieumoffice'), { recursive: true })
+    expect(ledger[codexCopy]).toBeDefined()
+    expect(legacySkillCopies(ledger, {}, h)).toEqual([])
+    expect(skillRows(ledger, {}, h).map((r) => r.id)).toEqual(['claude-code', 'agents'])
+  })
+
+  it('never deletes a legacy copy when the shared row is installed', () => {
+    const h = home()
+    mkdirSync(join(h, '.cursor'))
+    const b = bundled('1.2.0')
+    const ledger: SkillLedger = {}
+    const old = installSkill(join(h, '.cursor', 'skills'), bundled('1.1.0'), ledger)
+    installSkill(agentTarget('agents', {}, h)!.skillsDir, b, ledger)
+    expect(existsSync(old)).toBe(true)
+    expect(readInstallState(join(h, '.cursor', 'skills'), b, ledger)).toMatchObject({
+      status: 'outdated',
+      older: true,
+    })
+    expect(skillRows(ledger, {}, h).map((r) => r.id)).toEqual(['agents', 'cursor'])
   })
 })
 
