@@ -25,6 +25,7 @@ import type { ChildProcess } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { StringDecoder } from 'node:string_decoder'
 import type { AgentMessage, AgentToolCall, AgentToolDef } from '@genoffice/agent-core'
+import { CLAUDE_EFFORTS, aiEffortOf, aiEffortsOf } from './effort'
 import { isAiNetworkError } from './network-error'
 import { createTrackedTempDir, removeTrackedTempDir } from './subscription/temp-dirs'
 import {
@@ -133,8 +134,9 @@ const AFTER_TOOL_RESULTS =
 export const MODEL_NAME = /^[A-Za-z0-9][A-Za-z0-9._:[\]-]{0,127}$/
 
 /**
- * The whole command line: fixed flags, plus the configured model and, for a
- * structured turn, the output schema. Built-in tools off (`--tools ""`),
+ * The whole command line: fixed flags, plus the configured model, the
+ * configured effort when it is one of `CLAUDE_EFFORTS` and, for a structured
+ * turn, the output schema. Built-in tools off (`--tools ""`),
  * user/project/local settings and with them hooks and plugins ignored
  * (`--restricted`, `--setting-sources ""`), no MCP server from any
  * configuration (`--strict-mcp-config`), no skills, nothing written to the
@@ -144,16 +146,19 @@ export const MODEL_NAME = /^[A-Za-z0-9][A-Za-z0-9._:[\]-]{0,127}$/
  *
  * The schema is built by `claudeCodeOutputSchema` from tool names only, and
  * every name must have the shape model APIs take, so nothing a person wrote
- * reaches the command line.
+ * reaches the command line. The effort is a word of that fixed list or left
+ * out: anything else runs the CLI's own default.
  */
 export function claudeCodeCliLaunchArgs(
   model: string,
   outputSchema?: Record<string, unknown>,
+  effort?: string,
 ): string[] {
   const name = model.trim()
   if (name && !MODEL_NAME.test(name)) {
     throw new Error(`Invalid Claude Code model name: ${name.slice(0, 80)}`)
   }
+  const level = claudeCodeEffort(effort)
   return [
     '-p',
     '--input-format',
@@ -171,8 +176,15 @@ export function claudeCodeCliLaunchArgs(
     '--disable-slash-commands',
     '--no-session-persistence',
     ...(name ? ['--model', name] : []),
+    ...(level ? ['--effort', level] : []),
     ...(outputSchema ? ['--json-schema', JSON.stringify(outputSchema)] : []),
   ]
+}
+
+/** A configured effort as `--effort` takes it, or undefined (the CLI's own default) */
+export function claudeCodeEffort(effort: unknown): string | undefined {
+  const level = aiEffortOf(effort)
+  return level && CLAUDE_EFFORTS.includes(level) ? level : undefined
 }
 
 // ── What goes over stdin ──
@@ -817,6 +829,7 @@ async function runClaudeCodeTurn(
   const args = claudeCodeCliLaunchArgs(
     config.model,
     mode === 'structured' ? claudeCodeOutputSchema(tools) : undefined,
+    config.effort,
   )
   const program = await (
     deps.resolveProgram ??
@@ -1377,8 +1390,9 @@ const DEFAULT_MODEL_VALUE = 'default'
 
 /**
  * The models named in the CLI's answer to the setup request: `{ value,
- * displayName, resolvedModel }` each. `value` is what `--model` takes, so an
- * entry whose value could not be passed there is left out. Only the `models`
+ * displayName, resolvedModel, supportedEffortLevels }` each. `value` is what
+ * `--model` takes, so an entry whose value could not be passed there is left
+ * out, and so are levels `--effort` does not take. Only the `models`
  * field is read; the answer also names the account, which is not touched.
  */
 export function claudeCodeModels(initialized: unknown): AiSubscriptionModel[] {
@@ -1399,11 +1413,18 @@ export function claudeCodeModels(initialized: unknown): AiSubscriptionModel[] {
     // the default is listed only when the CLI says what it runs on
     if (isDefault && !resolved) continue
     const name = typeof entry.displayName === 'string' ? entry.displayName.trim() : ''
+    const efforts =
+      entry.supportsEffort === false
+        ? undefined
+        : aiEffortsOf(entry.supportedEffortLevels)?.filter((level) =>
+            CLAUDE_EFFORTS.includes(level),
+          )
     models.push({
       id,
       label: name || value,
       ...(resolved ? { resolved } : {}),
       ...(isDefault ? { isDefault: true } : {}),
+      ...(efforts?.length ? { efforts } : {}),
     })
   }
   return models

@@ -4,6 +4,7 @@ import type {
   AgentToolDef,
   IpcStreamErrorKind,
 } from '@genoffice/agent-core'
+import type { AiEffort } from './effort'
 
 export type AiProviderId =
   | 'codex'
@@ -75,6 +76,10 @@ export interface AiSubscriptionModel {
   resolved?: string | undefined
   /** this is the model an empty selection runs on */
   isDefault?: boolean | undefined
+  /** the effort levels the CLI takes for this model; absent when it takes none or does not tell */
+  efforts?: AiEffort[] | undefined
+  /** the level the CLI runs this model at when none is chosen, when it tells */
+  defaultEffort?: AiEffort | undefined
 }
 
 /**
@@ -152,6 +157,12 @@ export interface AiProviderConfig {
    * pickers show it after the fixed catalog.
    */
   models?: string[] | undefined
+  /**
+   * subscription providers: how hard the model thinks (`AI_EFFORTS`). Absent or
+   * empty runs the CLI's own default; a level the model does not take is not
+   * handed on.
+   */
+  effort?: string | undefined
 }
 
 /** Where one value of a local model profile came from */

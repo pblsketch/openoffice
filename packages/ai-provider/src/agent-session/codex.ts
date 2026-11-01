@@ -32,9 +32,11 @@ import {
   activePermissionProfileId,
   attachBoundedRpcStdout,
   codexAttachedMcpServers,
+  codexListedEffort,
   codexMcpServerOverrides,
   codexRunError,
 } from '../codex-app-server'
+import type { AiEffort } from '../effort'
 import { isPlainObject } from '../protocols/shared'
 import { AiRunError } from '../run-error'
 import { resolveSubscriptionProgram, type SubscriptionProgram } from '../subscription/locate'
@@ -476,6 +478,8 @@ export async function startCodexAgentSession(
   let stopping = false
   let threadId = ''
   let turnId = ''
+  // the configured level when the model takes it; every turn names it, the default otherwise
+  let effort: AiEffort | undefined
   let busy = false
   let stderr = ''
   let nextId = 1
@@ -749,7 +753,11 @@ export async function startCodexAgentSession(
     }
     delete (userMcpServers as Record<string, unknown>)[APP_MCP_SERVER_NAME]
 
-    const model = options.model.trim() || (await defaultModel(request))
+    // read once when it is needed for the default model, and again only for a level
+    let listed: unknown
+    const model =
+      options.model.trim() || defaultModelOf((listed = await request('model/list', MODEL_LIST)))
+    effort = await codexAgentEffort(request, model, options.effort, listed)
     const started = await request(
       'thread/start',
       codexAgentThreadParams(options, model, userMcpServers, readableDirs),
@@ -821,6 +829,7 @@ export async function startCodexAgentSession(
         await request('turn/start', {
           threadId,
           input: [{ type: 'text', text: message, text_elements: [] }],
+          ...(effort ? { effort } : {}),
         })
       } catch (error) {
         busy = false
@@ -852,10 +861,28 @@ function codexThreadNetworkAccess(started: unknown): boolean | undefined {
   return typeof sandbox.networkAccess === 'boolean' ? sandbox.networkAccess : undefined
 }
 
-async function defaultModel(
+/**
+ * The configured effort when Codex lists it for the model. The list is read
+ * only when a level is configured, and one that cannot be read leaves the
+ * level out rather than failing the session.
+ */
+async function codexAgentEffort(
   request: (method: string, params: unknown) => Promise<unknown>,
-): Promise<string> {
-  const result = await request('model/list', { cursor: null, limit: 100, includeHidden: false })
+  model: string,
+  configured: string | undefined,
+  listed: unknown,
+): Promise<AiEffort | undefined> {
+  if (!configured?.trim()) return undefined
+  try {
+    return codexListedEffort(listed ?? (await request('model/list', MODEL_LIST)), model, configured)
+  } catch {
+    return undefined
+  }
+}
+
+const MODEL_LIST = { cursor: null, limit: 100, includeHidden: false }
+
+function defaultModelOf(result: unknown): string {
   const data = isPlainObject(result) && Array.isArray(result.data) ? result.data : []
   let first = ''
   for (const value of data) {

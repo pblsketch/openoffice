@@ -1,6 +1,7 @@
 import {
   AI_PROVIDERS,
   AI_SUBSCRIPTION_PROVIDERS,
+  aiEffortOf,
   customEndpointLabel,
   isKeyProviderConfigured,
   isSubscriptionProvider,
@@ -10,10 +11,12 @@ import {
   selectAiProvider,
   subscriptionConnection,
   upsertCustomEndpoint,
+  type AiEffort,
   type AiProviderId,
   type AiProviderSelection,
   type AiSettings,
   type AiSubscriptionModel,
+  type AiSubscriptionProviderId,
   type AiSubscriptionStatuses,
 } from '@genoffice/ai-provider/browser'
 import { aiProviderDisplayName, aiSubscriptionProviderName } from './ai-subscription'
@@ -239,4 +242,92 @@ export function withAiProviderSelection(
     endpoint: pick.endpoint,
     model: pick.model,
   })
+}
+
+/** What the effort row offers for the subscription a request runs on */
+export interface AiEffortChoice {
+  readonly provider: AiSubscriptionProviderId
+  /** the levels the CLI lists for the model that runs, in order */
+  readonly efforts: readonly AiEffort[]
+  /** the stored level when that model takes it; absent runs the CLI's default */
+  readonly current?: AiEffort | undefined
+  /** the level the CLI runs that model at when none is chosen, when it tells */
+  readonly defaultEffort?: AiEffort | undefined
+}
+
+/**
+ * The CLI's entry for a stored model selection: the entry of that id, or for
+ * the empty selection the one the CLI runs it on (Claude lists it with the
+ * empty id, Codex flags one of its entries).
+ */
+function listedModelOf(
+  listed: readonly AiSubscriptionModel[],
+  stored: string,
+): AiSubscriptionModel | undefined {
+  return (
+    listed.find((model) => model.id === stored) ??
+    (stored === '' ? listed.find((model) => model.isDefault) : undefined)
+  )
+}
+
+/**
+ * The effort row for the provider requests run on right now: a subscription
+ * whose CLI lists the levels its current model takes. Undefined otherwise (a
+ * key provider, nothing connected, a model the CLI does not list, or one that
+ * takes no level), and then no row is shown.
+ */
+export function aiEffortChoice(
+  input: AiSettings,
+  statuses: AiSubscriptionStatuses,
+): AiEffortChoice | undefined {
+  const settings = resolveCustomEndpoints(input)
+  const choice = selectAiProvider(settings, statuses)
+  if (!choice.connected || !isSubscriptionProvider(choice.provider)) return undefined
+  const provider = choice.provider
+  const config = settings.providers?.[provider]
+  const entry = listedModelOf(statuses[provider]?.models ?? [], config?.model?.trim() ?? '')
+  const efforts = entry?.efforts
+  if (!entry || !efforts?.length) return undefined
+  const stored = aiEffortOf(config?.effort)
+  return {
+    provider,
+    efforts,
+    ...(stored && efforts.includes(stored) ? { current: stored } : {}),
+    ...(entry.defaultEffort ? { defaultEffort: entry.defaultEffort } : {}),
+  }
+}
+
+/** Settings with a provider's effort set, or cleared (`undefined`) to run the CLI's default */
+export function withAiEffort(
+  settings: AiSettings,
+  provider: AiSubscriptionProviderId,
+  effort: AiEffort | undefined,
+): AiSettings {
+  const config = settings.providers[provider] ?? { apiKey: '', model: '' }
+  const { effort: _previous, ...rest } = config
+  return {
+    ...settings,
+    providers: { ...settings.providers, [provider]: effort ? { ...rest, effort } : rest },
+  }
+}
+
+/**
+ * Settings after a model pick, with each subscription's stored effort cleared
+ * when its CLI lists the selected model without that level. A model the CLI
+ * does not list keeps the level: what it takes is not known.
+ */
+export function withAiEffortFitted(
+  settings: AiSettings,
+  statuses: AiSubscriptionStatuses,
+): AiSettings {
+  let next = settings
+  for (const provider of AI_SUBSCRIPTION_PROVIDERS) {
+    const config = next.providers?.[provider]
+    if (!config?.effort) continue
+    const entry = listedModelOf(statuses[provider]?.models ?? [], config.model?.trim() ?? '')
+    if (!entry) continue
+    const effort = aiEffortOf(config.effort)
+    if (!effort || !entry.efforts?.includes(effort)) next = withAiEffort(next, provider, undefined)
+  }
+  return next
 }

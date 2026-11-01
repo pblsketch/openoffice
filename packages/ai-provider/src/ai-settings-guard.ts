@@ -16,6 +16,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 import { localEndpointFieldsOf } from './local-profile'
+import { aiEffortOf } from './effort'
 import { AI_SUBSCRIPTION_PROVIDERS, readUrlSettingsOf } from './providers'
 import { AI_PROVIDER_ADAPTERS, normalizeBaseUrl } from './registry'
 import type {
@@ -94,6 +95,9 @@ function sanitizeProviderConfig(input: unknown): AiProviderConfig {
   }
   const cliPath = sanitizeCliPath(raw.cliPath)
   if (cliPath !== undefined) config.cliPath = cliPath
+  // a level of the fixed list or nothing: the Claude bridge hands it to `--effort`
+  const effort = aiEffortOf(raw.effort)
+  if (effort !== undefined) config.effort = effort
   return config
 }
 

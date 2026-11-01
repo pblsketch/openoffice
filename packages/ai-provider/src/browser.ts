@@ -51,6 +51,8 @@ export {
   setCodexImageGenerationAvailable,
 } from './image-backend'
 export type { AiImageBackend, AiImageBackendContext } from './image-backend'
+export { AI_EFFORTS, CLAUDE_EFFORTS, aiEffortOf, aiEffortsOf } from './effort'
+export type { AiEffort } from './effort'
 export { subscriptionConnectHelpUrl } from './connect-help'
 export type { SubscriptionConnectHelpPath } from './connect-help'
 export {

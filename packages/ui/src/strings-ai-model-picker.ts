@@ -1,3 +1,4 @@
+import type { AiEffort } from '@genoffice/ai-provider/browser'
 import type { Lang } from '@genoffice/i18n'
 
 export interface AiModelPickerStrings {
@@ -7,6 +8,18 @@ export interface AiModelPickerStrings {
   choose: string
   /** last row: jump to Settings › AI Model */
   manage: string
+}
+
+export interface AiEffortStrings {
+  /** heading of the row that picks how hard the model thinks */
+  title: string
+  /** tooltip of that heading */
+  hint: string
+  /** the entry that leaves the level to the program */
+  auto: string
+  /** the same, when the program tells which level that is; `{level}` is its name */
+  autoNamed: string
+  levels: Record<AiEffort, string>
 }
 
 export const AI_MODEL_PICKER_STRINGS: Record<Lang, AiModelPickerStrings> = {
@@ -31,4 +44,322 @@ export const AI_MODEL_PICKER_STRINGS: Record<Lang, AiModelPickerStrings> = {
   hi: { title: 'मॉडल', choose: 'मॉडल चुनें', manage: 'मॉडल प्रबंधित करें…' },
   'zh-TW': { title: '模型', choose: '選擇模型', manage: '管理模型…' },
   vi: { title: 'Mô hình', choose: 'Chọn mô hình', manage: 'Quản lý mô hình…' },
+}
+
+export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
+  zh: {
+    title: '思考深度',
+    hint: '模型作答前思考的深度。越深越慢，消耗的订阅用量也越多。',
+    auto: '默认',
+    autoNamed: '默认（{level}）',
+    levels: {
+      none: '不思考',
+      minimal: '最少',
+      low: '低',
+      medium: '中',
+      high: '高',
+      xhigh: '很高',
+      max: '最高',
+    },
+  },
+  en: {
+    title: 'Effort',
+    hint: 'How hard the model thinks before it answers. Higher is slower and uses more of your subscription.',
+    auto: 'Default',
+    autoNamed: 'Default ({level})',
+    levels: {
+      none: 'None',
+      minimal: 'Minimal',
+      low: 'Low',
+      medium: 'Medium',
+      high: 'High',
+      xhigh: 'Extra high',
+      max: 'Max',
+    },
+  },
+  ja: {
+    title: '思考の深さ',
+    hint: '回答前にモデルがどれだけ深く考えるか。深いほど時間がかかり、サブスクリプションの使用量も増えます。',
+    auto: '既定',
+    autoNamed: '既定（{level}）',
+    levels: {
+      none: 'なし',
+      minimal: '最小',
+      low: '低',
+      medium: '中',
+      high: '高',
+      xhigh: 'とても高い',
+      max: '最大',
+    },
+  },
+  ko: {
+    title: '생각 깊이',
+    hint: '답하기 전에 모델이 얼마나 깊이 생각할지 정합니다. 깊을수록 느리고 구독 사용량을 더 씁니다.',
+    auto: '기본',
+    autoNamed: '기본({level})',
+    levels: {
+      none: '생각 안 함',
+      minimal: '최소',
+      low: '낮음',
+      medium: '보통',
+      high: '높음',
+      xhigh: '매우 높음',
+      max: '최대',
+    },
+  },
+  fr: {
+    title: 'Effort de réflexion',
+    hint: "À quel point le modèle réfléchit avant de répondre. Plus c'est élevé, plus c'est lent et plus cela consomme votre abonnement.",
+    auto: 'Par défaut',
+    autoNamed: 'Par défaut ({level})',
+    levels: {
+      none: 'Aucun',
+      minimal: 'Minimal',
+      low: 'Faible',
+      medium: 'Moyen',
+      high: 'Élevé',
+      xhigh: 'Très élevé',
+      max: 'Maximum',
+    },
+  },
+  de: {
+    title: 'Denkaufwand',
+    hint: 'Wie gründlich das Modell nachdenkt, bevor es antwortet. Höher ist langsamer und verbraucht mehr von Ihrem Abo.',
+    auto: 'Standard',
+    autoNamed: 'Standard ({level})',
+    levels: {
+      none: 'Keiner',
+      minimal: 'Minimal',
+      low: 'Niedrig',
+      medium: 'Mittel',
+      high: 'Hoch',
+      xhigh: 'Sehr hoch',
+      max: 'Maximal',
+    },
+  },
+  es: {
+    title: 'Esfuerzo de razonamiento',
+    hint: 'Cuánto piensa el modelo antes de responder. Cuanto más alto, más lento y más uso de tu suscripción.',
+    auto: 'Predeterminado',
+    autoNamed: 'Predeterminado ({level})',
+    levels: {
+      none: 'Ninguno',
+      minimal: 'Mínimo',
+      low: 'Bajo',
+      medium: 'Medio',
+      high: 'Alto',
+      xhigh: 'Muy alto',
+      max: 'Máximo',
+    },
+  },
+  th: {
+    title: 'ระดับการคิด',
+    hint: 'โมเดลคิดลึกแค่ไหนก่อนตอบ ยิ่งสูงยิ่งช้าและใช้โควตาการสมัครสมาชิกมากขึ้น',
+    auto: 'ค่าเริ่มต้น',
+    autoNamed: 'ค่าเริ่มต้น ({level})',
+    levels: {
+      none: 'ไม่คิด',
+      minimal: 'น้อยที่สุด',
+      low: 'ต่ำ',
+      medium: 'ปานกลาง',
+      high: 'สูง',
+      xhigh: 'สูงมาก',
+      max: 'สูงสุด',
+    },
+  },
+  id: {
+    title: 'Upaya berpikir',
+    hint: 'Seberapa keras model berpikir sebelum menjawab. Makin tinggi makin lambat dan makin banyak memakai kuota langganan Anda.',
+    auto: 'Bawaan',
+    autoNamed: 'Bawaan ({level})',
+    levels: {
+      none: 'Tidak ada',
+      minimal: 'Minimal',
+      low: 'Rendah',
+      medium: 'Sedang',
+      high: 'Tinggi',
+      xhigh: 'Sangat tinggi',
+      max: 'Maksimal',
+    },
+  },
+  ru: {
+    title: 'Глубина размышлений',
+    hint: 'Насколько глубоко модель думает перед ответом. Чем выше, тем медленнее и тем больше расходуется подписка.',
+    auto: 'По умолчанию',
+    autoNamed: 'По умолчанию ({level})',
+    levels: {
+      none: 'Нет',
+      minimal: 'Минимальная',
+      low: 'Низкая',
+      medium: 'Средняя',
+      high: 'Высокая',
+      xhigh: 'Очень высокая',
+      max: 'Максимальная',
+    },
+  },
+  ar: {
+    title: 'عمق التفكير',
+    hint: 'مدى تفكير النموذج قبل أن يجيب. كلما ارتفع كان أبطأ واستهلك من اشتراكك أكثر.',
+    auto: 'الافتراضي',
+    autoNamed: 'الافتراضي ({level})',
+    levels: {
+      none: 'بلا تفكير',
+      minimal: 'أدنى',
+      low: 'منخفض',
+      medium: 'متوسط',
+      high: 'مرتفع',
+      xhigh: 'مرتفع جدًا',
+      max: 'أقصى',
+    },
+  },
+  pt: {
+    title: 'Esforço de raciocínio',
+    hint: 'Quanto o modelo pensa antes de responder. Quanto mais alto, mais lento e mais uso da sua assinatura.',
+    auto: 'Padrão',
+    autoNamed: 'Padrão ({level})',
+    levels: {
+      none: 'Nenhum',
+      minimal: 'Mínimo',
+      low: 'Baixo',
+      medium: 'Médio',
+      high: 'Alto',
+      xhigh: 'Muito alto',
+      max: 'Máximo',
+    },
+  },
+  it: {
+    title: 'Sforzo di ragionamento',
+    hint: "Quanto il modello ragiona prima di rispondere. Più è alto, più è lento e più consuma l'abbonamento.",
+    auto: 'Predefinito',
+    autoNamed: 'Predefinito ({level})',
+    levels: {
+      none: 'Nessuno',
+      minimal: 'Minimo',
+      low: 'Basso',
+      medium: 'Medio',
+      high: 'Alto',
+      xhigh: 'Molto alto',
+      max: 'Massimo',
+    },
+  },
+  pl: {
+    title: 'Wysiłek myślenia',
+    hint: 'Jak głęboko model myśli przed odpowiedzią. Wyżej oznacza wolniej i większe zużycie subskrypcji.',
+    auto: 'Domyślny',
+    autoNamed: 'Domyślny ({level})',
+    levels: {
+      none: 'Brak',
+      minimal: 'Minimalny',
+      low: 'Niski',
+      medium: 'Średni',
+      high: 'Wysoki',
+      xhigh: 'Bardzo wysoki',
+      max: 'Maksymalny',
+    },
+  },
+  cs: {
+    title: 'Hloubka uvažování',
+    hint: 'Jak důkladně model přemýšlí, než odpoví. Vyšší je pomalejší a spotřebuje víc z předplatného.',
+    auto: 'Výchozí',
+    autoNamed: 'Výchozí ({level})',
+    levels: {
+      none: 'Žádná',
+      minimal: 'Minimální',
+      low: 'Nízká',
+      medium: 'Střední',
+      high: 'Vysoká',
+      xhigh: 'Velmi vysoká',
+      max: 'Maximální',
+    },
+  },
+  nl: {
+    title: 'Denkinspanning',
+    hint: 'Hoe grondig het model nadenkt voordat het antwoordt. Hoger is trager en gebruikt meer van je abonnement.',
+    auto: 'Standaard',
+    autoNamed: 'Standaard ({level})',
+    levels: {
+      none: 'Geen',
+      minimal: 'Minimaal',
+      low: 'Laag',
+      medium: 'Gemiddeld',
+      high: 'Hoog',
+      xhigh: 'Zeer hoog',
+      max: 'Maximaal',
+    },
+  },
+  ms: {
+    title: 'Usaha berfikir',
+    hint: 'Sejauh mana model berfikir sebelum menjawab. Lebih tinggi lebih perlahan dan menggunakan lebih banyak langganan anda.',
+    auto: 'Lalai',
+    autoNamed: 'Lalai ({level})',
+    levels: {
+      none: 'Tiada',
+      minimal: 'Minimum',
+      low: 'Rendah',
+      medium: 'Sederhana',
+      high: 'Tinggi',
+      xhigh: 'Sangat tinggi',
+      max: 'Maksimum',
+    },
+  },
+  he: {
+    title: 'עומק החשיבה',
+    hint: 'כמה לעומק המודל חושב לפני שהוא עונה. גבוה יותר איטי יותר ומנצל יותר מהמנוי.',
+    auto: 'ברירת מחדל',
+    autoNamed: 'ברירת מחדל ({level})',
+    levels: {
+      none: 'ללא',
+      minimal: 'מינימלי',
+      low: 'נמוך',
+      medium: 'בינוני',
+      high: 'גבוה',
+      xhigh: 'גבוה מאוד',
+      max: 'מרבי',
+    },
+  },
+  hi: {
+    title: 'सोचने का स्तर',
+    hint: 'उत्तर देने से पहले मॉडल कितना गहराई से सोचे। जितना ऊँचा, उतना धीमा और सदस्यता का उतना अधिक उपयोग।',
+    auto: 'डिफ़ॉल्ट',
+    autoNamed: 'डिफ़ॉल्ट ({level})',
+    levels: {
+      none: 'कोई नहीं',
+      minimal: 'न्यूनतम',
+      low: 'कम',
+      medium: 'मध्यम',
+      high: 'उच्च',
+      xhigh: 'बहुत उच्च',
+      max: 'अधिकतम',
+    },
+  },
+  'zh-TW': {
+    title: '思考深度',
+    hint: '模型作答前思考的深度。越深越慢，耗用的訂閱用量也越多。',
+    auto: '預設',
+    autoNamed: '預設（{level}）',
+    levels: {
+      none: '不思考',
+      minimal: '最少',
+      low: '低',
+      medium: '中',
+      high: '高',
+      xhigh: '很高',
+      max: '最高',
+    },
+  },
+  vi: {
+    title: 'Mức suy nghĩ',
+    hint: 'Mức độ mô hình suy nghĩ trước khi trả lời. Càng cao càng chậm và càng dùng nhiều gói đăng ký của bạn.',
+    auto: 'Mặc định',
+    autoNamed: 'Mặc định ({level})',
+    levels: {
+      none: 'Không',
+      minimal: 'Tối thiểu',
+      low: 'Thấp',
+      medium: 'Trung bình',
+      high: 'Cao',
+      xhigh: 'Rất cao',
+      max: 'Tối đa',
+    },
+  },
 }
