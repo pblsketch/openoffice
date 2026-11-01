@@ -18,7 +18,7 @@ Probeer het op een willekeurige alinea:
 
 ![De annotatiebalk na het selecteren van tekst](img/pdf-highlight.png)
 
-2. Kies **markeren** (het gele monster opent een kleurenpalet), **onderstrepen** of **doorhalen**; **Vraag AI** stuurt de selectie met je vraag naar het AI-paneel.
+2. Kies een van de drie kleuren voor **markeren**, of **onderstrepen**, **golflijn** of **doorhalen**. Om een markeerkleur te wijzigen, klik je er met rechts op en kies je een nieuwe. Na onderstrepen, een golflijn of doorhalen opent er een rij kleuren op de balk: klik op een andere kleur om die te wijzigen, en de volgende markering krijgt ook die kleur. **Vraag AI** stuurt de selectie met je vraag naar het AI-paneel.
 3. Wil je een annotatie ongedaan maken, selecteer dan hetzelfde fragment opnieuw met slepen en klik op de al actieve knop op de balk (een schakelaar in Word-stijl), of selecteer het en druk op Verwijderen.
 
 Verwacht gedrag:

@@ -18,7 +18,7 @@ Coba pada paragraf mana pun:
 
 ![Bilah anotasi setelah memilih teks](img/pdf-highlight.png)
 
-2. Pilih **Sorot** (swatch kuning membuka palet warna), **Garis bawah** atau **Coret**; **Tanya AI** mengirim pilihan beserta pertanyaan Anda ke panel AI.
+2. Pilih salah satu dari tiga warna **Sorot**, atau **Garis bawah**, **Berombak**, atau **Coret**. Untuk mengganti warna sorotan, klik kanan warna itu lalu pilih warna baru. Setelah garis bawah, garis berombak, atau coretan, sebaris warna terbuka di bilah: klik warna lain untuk menggantinya, dan tanda berikutnya juga memakai warna itu. **Tanya AI** mengirim pilihan beserta pertanyaan Anda ke panel AI.
 3. Untuk membatalkan sebuah anotasi, seret-pilih ulang bagian yang sama lalu klik tombol aktif pada bilah itu (sakelar bergaya Word), atau pilih bagian itu dan tekan Delete.
 
 Catatan:

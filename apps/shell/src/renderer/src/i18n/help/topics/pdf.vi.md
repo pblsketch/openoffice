@@ -18,7 +18,7 @@ Hãy thử trên bất kỳ đoạn nào:
 
 ![Thanh chú thích sau khi chọn văn bản](img/pdf-highlight.png)
 
-2. Chọn **Tô sáng** (ô vuông vàng mở bảng màu), **Gạch chân** hoặc **Gạch ngang**; **Hỏi AI** gửi phần đã chọn kèm câu hỏi của bạn tới bảng AI.
+2. Chọn một trong ba màu **Tô sáng**, hoặc **Gạch chân**, **Gạch sóng**, **Gạch ngang**. Để đổi một màu tô sáng, nhấp chuột phải vào màu đó rồi chọn màu mới. Sau khi gạch chân, gạch sóng hoặc gạch ngang, thanh sẽ mở một hàng màu: nhấp màu khác để đổi, và lần sau cũng dùng màu đó. **Hỏi AI** gửi phần đã chọn kèm câu hỏi của bạn tới bảng AI.
 3. Để bỏ một dấu đánh, hãy kéo chọn lại đoạn văn đó rồi nhấp nút đang bật trên thanh (một nút bật/tắt kiểu Word), hoặc chọn rồi nhấn Delete.
 
 Lưu ý:

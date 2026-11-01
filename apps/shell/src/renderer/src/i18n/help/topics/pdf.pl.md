@@ -18,7 +18,7 @@ Spróbuj na dowolnym akapicie:
 
 ![Pasek adnotacji po zaznaczeniu tekstu](img/pdf-highlight.png)
 
-2. Wybierz **wyróżnienie** (żółta próbka otwiera paletę kolorów), **podkreślenie** albo **przekreślenie**; **Zapytaj AI** wysyła zaznaczenie razem z Twoim pytaniem do panelu AI.
+2. Wybierz jeden z trzech kolorów **wyróżnienia** albo **podkreślenie**, **falistą** linię lub **przekreślenie**. Aby zmienić kolor wyróżnienia, kliknij go prawym przyciskiem i wybierz nowy. Po podkreśleniu, linii falistej lub przekreśleniu na pasku otwiera się rząd kolorów: kliknij inny kolor, aby go zmienić, a kolejne oznaczenie też będzie w tym kolorze. **Zapytaj AI** wysyła zaznaczenie razem z Twoim pytaniem do panelu AI.
 3. Aby cofnąć adnotację, zaznacz przeciągnięciem ten sam fragment i kliknij aktywny przycisk na pasku (przełącznik w stylu Worda), albo zaznacz go i naciśnij Usuń.
 
 Oczekiwane działanie:
