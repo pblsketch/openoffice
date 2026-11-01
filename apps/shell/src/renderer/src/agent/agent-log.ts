@@ -124,7 +124,8 @@ export function agentLogAfterAnswer(state: AgentLogState, id: string): AgentLogS
 
 /**
  * The other waiting requests that allowing `id` for the session also covers:
- * every web search, or page reads of the same site
+ * every web search, page reads of the same site, or calls of the same tool of
+ * the person's MCP server
  */
 export function coveredBySessionAllow(state: AgentLogState, id: string): string[] {
   const asked = state.pending.find((request) => request.id === id)?.action
@@ -133,6 +134,11 @@ export function coveredBySessionAllow(state: AgentLogState, id: string): string[
     .filter(({ id: other, action }) => {
       if (other === id) return false
       if (asked.kind === 'web-search') return action.kind === 'web-search'
+      if (asked.kind === 'mcp-tool') {
+        return (
+          action.kind === 'mcp-tool' && action.tool === asked.tool && action.server === asked.server
+        )
+      }
       return (
         asked.kind === 'web-fetch' &&
         !!asked.host &&

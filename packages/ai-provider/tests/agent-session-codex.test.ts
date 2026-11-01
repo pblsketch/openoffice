@@ -875,3 +875,147 @@ describe('a running session', () => {
     expect(events.filter((event) => event.type === 'ended')).toHaveLength(1)
   })
 })
+
+describe('relays of the person’s MCP servers (user MCP spec 9)', () => {
+  const RELAYS = [
+    { name: 'law', url: 'http://127.0.0.1:4100/mcp', token: 'relay-tok', tools: ['search'] },
+  ]
+
+  it('adds each relay with its session token and approve mode, over a same-named user server', () => {
+    const params = codexAgentThreadParams(
+      options({
+        appMcp: { url: 'http://127.0.0.1:3093/mcp', token: 'tok' },
+        userMcpRelays: RELAYS,
+      }),
+      'gpt-x',
+      { github: { enabled: false }, law: { enabled: false } },
+    )
+    expect((params.config as any).mcp_servers).toEqual({
+      github: { enabled: false },
+      law: {
+        url: 'http://127.0.0.1:4100/mcp',
+        http_headers: { Authorization: 'Bearer relay-tok' },
+        default_tools_approval_mode: 'approve',
+      },
+      'ieumoffice-editor': {
+        url: 'http://127.0.0.1:3093/mcp',
+        http_headers: { Authorization: 'Bearer tok' },
+        default_tools_approval_mode: 'approve',
+      },
+    })
+  })
+
+  it('never lets a relay take the app server name', () => {
+    const params = codexAgentThreadParams(
+      options({
+        userMcpRelays: [{ name: 'ieumoffice-editor', url: 'http://x/mcp', token: 'r', tools: [] }],
+      }),
+      'gpt-x',
+      {},
+    )
+    expect((params.config as any).mcp_servers).toEqual({})
+  })
+
+  it('answers the tool approvals of a relay as of the app server, and declines others', () => {
+    const approval = {
+      serverName: 'law',
+      mode: 'form',
+      _meta: { codex_approval_kind: 'mcp_tool_call' },
+    }
+    expect(codexElicitationAnswer(approval, RELAYS).action).toBe('accept')
+    expect(codexElicitationAnswer(approval).action).toBe('decline')
+    expect(codexElicitationAnswer({ ...approval, serverName: 'github' }, RELAYS).action).toBe(
+      'decline',
+    )
+    expect(codexElicitationAnswer({ ...approval, mode: 'url' }, RELAYS).action).toBe('decline')
+  })
+
+  it('counts a relay tool it did not list as extra, by bare or qualified name', () => {
+    expect(
+      codexAppMcpExtraTools(
+        {
+          data: [
+            { name: 'law', tools: { search: {}, mcp__law__search: {}, delete_all: {} } },
+            { name: 'other', tools: { anything: {} } },
+          ],
+        },
+        RELAYS,
+      ),
+    ).toEqual(['delete_all'])
+  })
+
+  it('starts with the relay attached, and asks Codex with the relay over the user server', async () => {
+    const { run, server } = await start(
+      baseHandlers({
+        'config/read': () => ({
+          config: { mcp_servers: { github: { command: 'x' }, law: { command: 'y' } } },
+        }),
+        'mcpServerStatus/list': () => ({
+          data: [
+            { name: 'github', runtimeStatus: 'disabled', tools: {} },
+            { name: 'law', runtimeStatus: 'ready', tools: { search: {} } },
+          ],
+        }),
+      }),
+      { userMcpRelays: RELAYS },
+    )
+    const session = await run
+    const thread = server().received.find((m) => m.method === 'thread/start')
+    expect(thread?.params.config.mcp_servers.law).toEqual({
+      url: 'http://127.0.0.1:4100/mcp',
+      http_headers: { Authorization: 'Bearer relay-tok' },
+      default_tools_approval_mode: 'approve',
+    })
+    session.stop()
+  })
+
+  it('refuses a thread whose relay lists a tool it did not list, or another server', async () => {
+    const extra = await start(
+      baseHandlers({
+        'mcpServerStatus/list': () => ({
+          data: [{ name: 'law', runtimeStatus: 'ready', tools: { search: {}, delete_all: {} } }],
+        }),
+      }),
+      { userMcpRelays: RELAYS },
+    )
+    await expect(extra.run).rejects.toMatchObject({ kind: 'unsafe-tools' })
+    const foreign = await start(
+      baseHandlers({
+        'mcpServerStatus/list': () => ({
+          data: [{ name: 'github', runtimeStatus: 'ready', tools: {} }],
+        }),
+      }),
+      { userMcpRelays: RELAYS },
+    )
+    await expect(foreign.run).rejects.toMatchObject({ kind: 'unsafe-tools' })
+  })
+
+  it('lets a relay start during the session, and stops on any other server', async () => {
+    const starting = (name: string) => (fake: FakeCodex) => {
+      setImmediate(() =>
+        fake.send({
+          method: 'mcpServer/startupStatus/updated',
+          params: { name, status: 'starting' },
+        }),
+      )
+      return { turn: { id: 'tu1' } }
+    }
+    const relay = await start(baseHandlers({ 'turn/start': starting('law') }), {
+      userMcpRelays: RELAYS,
+    })
+    const ok = await relay.run
+    await ok.send('x')
+    await tick()
+    expect(relay.events.some((event) => event.type === 'error')).toBe(false)
+    ok.stop()
+    const other = await start(baseHandlers({ 'turn/start': starting('github') }), {
+      userMcpRelays: RELAYS,
+    })
+    const stopped = await other.run
+    await stopped.send('x')
+    await tick()
+    expect(other.events).toContainEqual(
+      expect.objectContaining({ type: 'error', kind: 'unsafe-tools' }),
+    )
+  })
+})

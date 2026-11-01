@@ -9486,6 +9486,8 @@ app.whenReady().then(async () => {
       if (!mcp) throw new Error('the MCP runtime is not configured')
       return startAgentMcpServer({ ...mcp, skillTools }, projectRoot)
     },
+    // the person's MCP servers reach a session through relays the app opens (user MCP spec 9)
+    userMcp: () => mcpHub,
     listSkills: () => userSkills.list(),
     openTemplatePreview: (owner, input) => templateTabs.openPreview(owner, input),
     // the enabled skills (settings → skills), and the project's only while the person has

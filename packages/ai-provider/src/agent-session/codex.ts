@@ -19,7 +19,8 @@
  *   other AI window. Only web search differs: the person's choice for the
  *   project folder, as in the Codex app;
  * - every user MCP server switched off for the thread, the app's own server
- *   added, and the attached list checked afterwards;
+ *   and the session's relays of the person's MCP servers in the app (user MCP
+ *   spec 9) added, and the attached list checked afterwards;
  * - the login checked before the thread opens: a metered login runs only when
  *   the person accepted it.
  */
@@ -47,12 +48,13 @@ import {
   type SubscriptionSpawn,
 } from '../subscription/process'
 import { codexAccountInfo } from '../subscription/status'
-import { APP_MCP_SERVER_NAME, isAgentAppMcpTool } from './claude'
+import { APP_MCP_SERVER_NAME, agentUsableRelays, isAgentAppMcpTool } from './claude'
 import { probeCodexSandbox, type CodexSandboxProbeResult } from './codex-sandbox-probe'
 import { agentPolicyVerdict, comparablePath, isInsidePath } from './policy'
 import type {
   AgentAction,
   AgentCodexWebSearch,
+  AgentMcpRelay,
   AgentPermissionAnswer,
   AgentPermissionMode,
   AgentSession,
@@ -225,6 +227,15 @@ export function codexAgentThreadParams(
   readableDirs: readonly string[] = [],
 ): Record<string, unknown> {
   const mcpServers: Record<string, unknown> = { ...userMcpServers }
+  // a relay replaces the person's Codex server of the same name: the relay is what the session
+  // gets, and the app asks before a call when the tool's permission says so (user MCP spec 9)
+  for (const relay of agentUsableRelays(options.userMcpRelays)) {
+    mcpServers[relay.name] = {
+      url: relay.url,
+      http_headers: { Authorization: `Bearer ${relay.token}` },
+      default_tools_approval_mode: 'approve',
+    }
+  }
   if (options.appMcp) {
     mcpServers[APP_MCP_SERVER_NAME] = {
       url: options.appMcp.url,
@@ -306,39 +317,59 @@ export function codexDeclineDecision(params: Record<string, unknown>): 'decline'
 }
 
 /**
- * The tools Codex lists for the app's own server in one page of
- * `mcpServerStatus/list` that the session was not meant to get (spec 6.6).
- * Other servers are the attachment check's; a tool listed under a qualified
- * name counts by its bare name.
+ * The tools Codex lists in one page of `mcpServerStatus/list` that the session
+ * was not meant to get: of the app's own server (spec 6.6), and of each relay
+ * (user MCP spec 9) beyond the tools it listed at the start. Other servers are
+ * the attachment check's; a tool listed under a qualified name counts by its
+ * bare name.
  */
-export function codexAppMcpExtraTools(statusList: unknown): string[] {
+export function codexAppMcpExtraTools(
+  statusList: unknown,
+  relays: readonly AgentMcpRelay[] = [],
+): string[] {
   const data = isPlainObject(statusList) ? statusList.data : undefined
   if (!Array.isArray(data)) return []
+  const relayByName = new Map(agentUsableRelays(relays).map((relay) => [relay.name, relay]))
   const extra: string[] = []
   for (const entry of data) {
-    if (!isPlainObject(entry) || entry.name !== APP_MCP_SERVER_NAME) continue
-    const tools = isPlainObject(entry.tools) ? entry.tools : {}
-    for (const name of Object.keys(tools)) if (!isAgentAppMcpTool(name)) extra.push(name)
+    if (!isPlainObject(entry)) continue
+    const tools = Object.keys(isPlainObject(entry.tools) ? entry.tools : {})
+    if (entry.name === APP_MCP_SERVER_NAME) {
+      for (const name of tools) if (!isAgentAppMcpTool(name)) extra.push(name)
+      continue
+    }
+    const relay = typeof entry.name === 'string' ? relayByName.get(entry.name) : undefined
+    if (!relay) continue
+    const prefix = `mcp__${relay.name}__`
+    for (const name of tools) {
+      const bare = name.startsWith(prefix) ? name.slice(prefix.length) : name
+      if (!relay.tools.includes(bare)) extra.push(name)
+    }
   }
   return extra
 }
 
 /**
  * The answer to an MCP elicitation. Codex asks this way before each MCP tool
- * call; only the app's own server is attached and its tools are the app's to
- * allow. Anything else (a form a server wants filled, a link to open) is
- * declined.
+ * call; only the app's own server and the session's relays are attached, and
+ * their tools are the app's to allow (a relay asks the person itself when the
+ * tool's permission says so). Anything else (a form a server wants filled, a
+ * link to open) is declined.
  */
-export function codexElicitationAnswer(params: Record<string, unknown>): {
+export function codexElicitationAnswer(
+  params: Record<string, unknown>,
+  relays: readonly AgentMcpRelay[] = [],
+): {
   action: 'accept' | 'decline'
   content: Record<string, never> | null
   _meta: null
 } {
   const meta = isPlainObject(params._meta) ? params._meta : {}
+  const appServer =
+    params.serverName === APP_MCP_SERVER_NAME ||
+    agentUsableRelays(relays).some((relay) => relay.name === params.serverName)
   const toolApproval =
-    params.serverName === APP_MCP_SERVER_NAME &&
-    params.mode === 'form' &&
-    meta.codex_approval_kind === 'mcp_tool_call'
+    appServer && params.mode === 'form' && meta.codex_approval_kind === 'mcp_tool_call'
   return toolApproval
     ? { action: 'accept', content: {}, _meta: null }
     : { action: 'decline', content: null, _meta: null }
@@ -418,6 +449,9 @@ export async function startCodexAgentSession(
 ): Promise<AgentSession> {
   const platform = deps.platform ?? process.platform
   const network = options.network === true
+  const relays = agentUsableRelays(options.userMcpRelays)
+  /** the MCP servers the thread may start: the app's own and the session's relays */
+  const givenServers = new Set([APP_MCP_SERVER_NAME, ...relays.map((relay) => relay.name)])
   const program = await (
     deps.resolveProgram ??
     ((configuredPath) => resolveSubscriptionProgram(PROVIDER, { configuredPath }))
@@ -589,7 +623,7 @@ export async function startCodexAgentSession(
       return
     }
     if (method === 'mcpServer/elicitation/request') {
-      writeLine({ id: rpcId, result: codexElicitationAnswer(params) })
+      writeLine({ id: rpcId, result: codexElicitationAnswer(params, relays) })
       return
     }
     // anything else (more permissions, questions, attestation, sign-in tokens) is not the
@@ -605,7 +639,7 @@ export async function startCodexAgentSession(
       case 'mcpServer/startupStatus/updated': {
         const name = text(params.name)
         const status = text(params.status)
-        if ((status === 'starting' || status === 'ready') && name !== APP_MCP_SERVER_NAME) {
+        if ((status === 'starting' || status === 'ready') && !givenServers.has(name ?? '')) {
           stopNow(
             new AiRunError('unsafe-tools', 'Codex started an MCP server that was switched off'),
           )
@@ -752,6 +786,7 @@ export async function startCodexAgentSession(
       throw new AiRunError('unsafe-tools', 'Codex could not report its configured MCP servers')
     }
     delete (userMcpServers as Record<string, unknown>)[APP_MCP_SERVER_NAME]
+    for (const relay of relays) delete (userMcpServers as Record<string, unknown>)[relay.name]
 
     // read once when it is needed for the default model, and again only for a level
     let listed: unknown
@@ -796,18 +831,18 @@ export async function startCodexAgentSession(
         limit: 100,
       })
       attached.push(...codexAttachedMcpServers(result))
-      extraTools.push(...codexAppMcpExtraTools(result))
+      extraTools.push(...codexAppMcpExtraTools(result, relays))
       const next = isPlainObject(result) ? result.nextCursor : undefined
       cursor = typeof next === 'string' && next ? next : null
       if (!cursor) break
     }
-    if (cursor !== null || attached.some((name) => name !== APP_MCP_SERVER_NAME)) {
+    if (cursor !== null || attached.some((name) => !givenServers.has(name))) {
       throw new AiRunError('unsafe-tools', 'Codex attached an MCP server the app did not give it')
     }
     if (extraTools.length > 0) {
       throw new AiRunError(
         'unsafe-tools',
-        `Codex listed tools of the app server the app did not give it: ${extraTools.length}`,
+        `Codex listed tools of the app's servers the app did not give it: ${extraTools.length}`,
       )
     }
     emit({ type: 'started', provider: PROVIDER, model, skills: [] })

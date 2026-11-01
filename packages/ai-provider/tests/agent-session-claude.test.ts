@@ -11,6 +11,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   AGENT_APP_MCP_TOOLS,
   CLAUDE_AGENT_TOOLS,
+  agentUsableRelays,
   claudeAgentAction,
   claudeAgentInitProblem,
   claudeAgentLaunchArgs,
@@ -670,5 +671,210 @@ describe('a session', () => {
     await tick()
     expect(harness.events).toContainEqual(expect.objectContaining({ type: 'error' }))
     expect(harness.events.at(-1)).toEqual({ type: 'ended' })
+  })
+})
+
+describe('relays of the person’s MCP servers (user MCP spec 9)', () => {
+  const RELAYS = [
+    {
+      name: 'law',
+      url: 'http://127.0.0.1:4100/mcp',
+      token: 'relay-tok-1',
+      tools: ['search', 'get_text'],
+    },
+    { name: 'notes-2', url: 'http://127.0.0.1:4101/mcp', token: 'relay-tok-2', tools: ['find'] },
+  ]
+  const APP_SERVER = { name: 'ieumoffice-editor', status: 'connected' }
+
+  it('accepts this session’s relays and the tools each listed at the start', () => {
+    expect(
+      claudeAgentInitProblem(
+        {
+          ...INIT,
+          tools: [...INIT.tools, 'mcp__law__search', 'mcp__law__get_text', 'mcp__notes-2__find'],
+          mcp_servers: [
+            APP_SERVER,
+            { name: 'law', status: 'connected' },
+            { name: 'notes-2', status: 'connected' },
+          ],
+        },
+        RELAYS,
+      ),
+    ).toBeUndefined()
+    // fewer tools than listed (one dropped out for review) still passes
+    expect(
+      claudeAgentInitProblem(
+        { ...INIT, tools: [...INIT.tools, 'mcp__law__search'], mcp_servers: [{ name: 'law' }] },
+        RELAYS,
+      ),
+    ).toBeUndefined()
+  })
+
+  it('refuses any other server, a tool a relay did not list, and relays of no session', () => {
+    expect(
+      claudeAgentInitProblem(
+        { ...INIT, mcp_servers: [{ name: 'github', status: 'connected' }] },
+        RELAYS,
+      ),
+    ).toMatch(/MCP server/)
+    expect(
+      claudeAgentInitProblem({ ...INIT, tools: [...INIT.tools, 'mcp__law__delete_all'] }, RELAYS),
+    ).toMatch(/tools/)
+    expect(
+      claudeAgentInitProblem({ ...INIT, tools: [...INIT.tools, 'mcp__github__search'] }, RELAYS),
+    ).toMatch(/tools/)
+    // a tool of one relay under another relay's name
+    expect(
+      claudeAgentInitProblem({ ...INIT, tools: [...INIT.tools, 'mcp__notes-2__search'] }, RELAYS),
+    ).toMatch(/tools/)
+    // without relays the same report is refused, as before
+    expect(
+      claudeAgentInitProblem({
+        ...INIT,
+        tools: [...INIT.tools, 'mcp__law__search'],
+        mcp_servers: [{ name: 'law' }],
+      }),
+    ).toMatch(/tools/)
+    expect(claudeAgentInitProblem({ ...INIT, mcp_servers: [{ name: 'law' }] })).toMatch(
+      /MCP server/,
+    )
+  })
+
+  it('never takes a relay named like the app server or of a malformed name', () => {
+    expect(
+      agentUsableRelays([
+        { name: 'ieumoffice-editor', url: 'u', token: 't', tools: ['create_docx'] },
+        { name: 'IEUMOFFICE-EDITOR', url: 'u', token: 't', tools: [] },
+        { name: 'a__b', url: 'u', token: 't', tools: [] },
+        { name: '_x', url: 'u', token: 't', tools: [] },
+        { name: 'x y', url: 'u', token: 't', tools: [] },
+        { name: 'law', url: 'u', token: 't', tools: [] },
+        { name: 'LAW', url: 'u', token: 't', tools: [] },
+      ]).map((relay) => relay.name),
+    ).toEqual(['law'])
+    expect(
+      claudeAgentInitProblem(
+        { ...INIT, tools: [...INIT.tools, 'mcp__ieumoffice-editor__create_docx'] },
+        [{ name: 'ieumoffice-editor', url: 'u', token: 't', tools: ['create_docx'] }],
+      ),
+    ).toMatch(/tools/)
+  })
+
+  it('classifies a relay tool as an app tool, and another server’s tool as other', () => {
+    expect(claudeAgentAction('mcp__law__search', { q: 'x' }, RELAYS)).toEqual({
+      kind: 'app-tool',
+      tool: 'mcp__law__search',
+      paths: [],
+    })
+    expect(claudeAgentAction('mcp__github__search', {}, RELAYS).kind).toBe('other')
+    expect(claudeAgentAction('mcp__law__search', {}).kind).toBe('other')
+  })
+
+  it('adds an allow rule per relay in auto mode only', () => {
+    const base = { openDocuments: [], protectedPaths: [], userMcpRelays: RELAYS }
+    const trusted = claudeAgentSettings({ ...base, mode: 'trust-project' }, 'win32') as any
+    expect(trusted.permissions.allow).toEqual(['mcp__law', 'mcp__notes-2'])
+    for (const mode of ['ask-commands', 'ask-writes'] as const) {
+      expect(claudeAgentSettings({ ...base, mode }, 'win32')).toEqual({
+        permissions: { blockReadsOutsideWorkingDirectories: true, deny: [] },
+      })
+    }
+    expect(
+      claudeAgentSettings(
+        { openDocuments: [], protectedPaths: [], mode: 'trust-project' },
+        'win32',
+      ),
+    ).toEqual({ permissions: { blockReadsOutsideWorkingDirectories: true, deny: [] } })
+  })
+
+  it('writes the relays into the session MCP file with session tokens only', async () => {
+    const { session, harness } = await start(() => undefined, {
+      appMcp: { url: 'http://127.0.0.1:4000/mcp', token: 'app-tok' },
+      userMcpRelays: RELAYS,
+      mode: 'trust-project',
+    })
+    const config = JSON.parse(harness.files.get(join('C:\\Temp\\session-1', 'claude-mcp.json'))!)
+    expect(config).toEqual({
+      mcpServers: {
+        law: {
+          type: 'http',
+          url: 'http://127.0.0.1:4100/mcp',
+          headers: { Authorization: 'Bearer relay-tok-1' },
+        },
+        'notes-2': {
+          type: 'http',
+          url: 'http://127.0.0.1:4101/mcp',
+          headers: { Authorization: 'Bearer relay-tok-2' },
+        },
+        'ieumoffice-editor': {
+          type: 'http',
+          url: 'http://127.0.0.1:4000/mcp',
+          headers: { Authorization: 'Bearer app-tok' },
+        },
+      },
+    })
+    const settings = JSON.parse(
+      harness.files.get(join('C:\\Temp\\session-1', 'claude-settings.json'))!,
+    )
+    expect(settings.permissions.allow).toEqual(['mcp__law', 'mcp__notes-2'])
+    expect(harness.spawnCalls[0]!.args).toContain('--strict-mcp-config')
+    expect(harness.spawnCalls[0]!.args.join(' ')).not.toContain('relay-tok')
+    session.stop()
+  })
+
+  it('writes an MCP file for relays even without the app server', async () => {
+    const { session, harness } = await start(() => undefined, { userMcpRelays: [RELAYS[0]!] })
+    const config = JSON.parse(harness.files.get(join('C:\\Temp\\session-1', 'claude-mcp.json'))!)
+    expect(Object.keys(config.mcpServers)).toEqual(['law'])
+    session.stop()
+  })
+
+  it('starts with the relays reported and lets their calls through to the relay', async () => {
+    const { session, harness } = await start(
+      (child) => {
+        child.send(
+          {
+            ...INIT,
+            tools: [...INIT.tools, 'mcp__law__search'],
+            mcp_servers: [{ name: 'law', status: 'connected' }],
+          },
+          {
+            type: 'control_request',
+            request_id: 'm1',
+            request: {
+              subtype: 'can_use_tool',
+              tool_name: 'mcp__law__search',
+              input: { q: 'x' },
+              tool_use_id: 'um1',
+            },
+          },
+        )
+      },
+      { userMcpRelays: RELAYS },
+    )
+    await session.send('look it up')
+    await tick()
+    expect(harness.events).toContainEqual(expect.objectContaining({ type: 'started' }))
+    const response = harness.child.lines.find(
+      (line) => line.type === 'control_response' && line.response?.request_id === 'm1',
+    )
+    expect(response?.response.response.behavior).toBe('allow')
+    // the relay asks the person; the program level does not ask a second time
+    expect(harness.events.some((event) => event.type === 'permission')).toBe(false)
+    session.stop()
+  })
+
+  it('stops a session that reports a server other than its relays', async () => {
+    const { session, harness } = await start(
+      (child) => {
+        child.send({ ...INIT, mcp_servers: [{ name: 'github', status: 'connected' }] })
+      },
+      { userMcpRelays: RELAYS },
+    )
+    await session.send('x')
+    await tick()
+    expect(harness.events).toContainEqual(
+      expect.objectContaining({ type: 'error', kind: 'unsafe-tools' }),
+    )
   })
 })
