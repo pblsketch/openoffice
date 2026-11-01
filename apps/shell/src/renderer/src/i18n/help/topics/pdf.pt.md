@@ -18,7 +18,7 @@ Experimente num parágrafo qualquer:
 
 ![A barra de anotação depois de selecionar texto](img/pdf-highlight.png)
 
-2. Escolha **Destacar** (o quadrado amarelo abre uma paleta de cores), **Sublinhar** ou **Tachar**; **Perguntar à IA** envia a seleção com a sua pergunta para o painel de IA.
+2. Escolha uma das três cores de **Destacar**, ou **Sublinhar**, **Ondulado** ou **Tachar**. Para mudar uma cor de destaque, clique nela com o botão direito e escolha outra. Depois de sublinhar, ondular ou tachar, abre-se uma fila de cores na barra: clique noutra cor para a mudar, e a marca seguinte também usará essa cor. **Perguntar à IA** envia a seleção com a sua pergunta para o painel de IA.
 3. Para desfazer uma anotação, volte a arrastar-seleccionar o mesmo trecho e clique no botão ativo da barra (um interruptor ao estilo do Word), ou selecione-o e prima Delete.
 
 A ter em conta:

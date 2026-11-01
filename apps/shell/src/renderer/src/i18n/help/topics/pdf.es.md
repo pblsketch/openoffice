@@ -18,7 +18,7 @@ Pruébelo en cualquier párrafo:
 
 ![La barra de anotación tras seleccionar texto](img/pdf-highlight.png)
 
-2. Elija **Resaltar** (la muestra amarilla abre una paleta de colores), **Subrayar** o **Tachar**; **Preguntar a la IA** envía la selección junto con su pregunta al panel de IA.
+2. Elija uno de los tres colores de **Resaltar**, o **Subrayar**, **Ondulado** o **Tachar**. Para cambiar un color de resaltado, haga clic derecho sobre él y elija otro. Tras subrayar, ondular o tachar, se abre una fila de colores en la barra: haga clic en otro color para cambiarlo; la próxima marca también usará ese color. **Preguntar a la IA** envía la selección junto con su pregunta al panel de IA.
 3. Para deshacer una anotación, vuelva a seleccionar el mismo fragmento arrastrándolo y haga clic en el botón activo de la barra (un conmutador al estilo de Word), o selecciónelo y pulse Supr.
 
 Referencia:

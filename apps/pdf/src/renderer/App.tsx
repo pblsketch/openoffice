@@ -47,6 +47,20 @@ import type { LocalMarkup, PageGeom } from './annotations'
 import { groupLineSpans } from './text-line'
 import { DRAW_COLORS, DrawLayer, cssRgb } from './DrawLayer'
 import { ColorPickerPopover } from './ColorPicker'
+import {
+  HIGHLIGHT_PENS_KEY,
+  LINE_MARKUP_COLORS_KEY,
+  parseHighlightPens,
+  parseLineMarkupColors,
+  planHighlightPen,
+  placeSelectionBar,
+  sameColor,
+  selectionBarSide,
+  SEL_BAR_ROW_HEIGHT,
+  type Box,
+  type LineMarkupType,
+  type Rgb,
+} from './selection-colors'
 import type { DrawTool, LocalDrawing, SavedNotePin } from './DrawLayer'
 import { NoteMarginColumn } from './NoteMargin'
 import type { NoteMarginDraft, NoteMarginThread } from './NoteMargin'
@@ -289,6 +303,7 @@ import type {
   FormWidgetEditInput,
   ImageEditInput,
   ImageLayer,
+  MarkupInput,
   MarkupType,
   MetadataInput,
   NoteEditInput,
@@ -701,8 +716,16 @@ export default function App() {
   useEffect(() => {
     window.pdfApi.getUsername().then(setNoteAuthor, () => {})
   }, [])
+  /** the selection bar's three highlighter pens (user-editable, remembered) */
+  const [highlightPens, setHighlightPens] = useState<Rgb[]>(() =>
+    parseHighlightPens(localStorage.getItem(HIGHLIGHT_PENS_KEY)),
+  )
+  /** the remembered color of underline, squiggly and strikeout */
+  const [lineMarkupColors, setLineMarkupColors] = useState(() =>
+    parseLineMarkupColors(localStorage.getItem(LINE_MARKUP_COLORS_KEY)),
+  )
   const [highlightColor, setHighlightColor] = useState<[number, number, number]>(
-    MARKUP_COLORS.highlight,
+    () => highlightPens[0] ?? MARKUP_COLORS.highlight,
   )
   const [highlightColorOpen, setHighlightColorOpen] = useState(false)
   const [convertOpen, setConvertOpen] = useState(false)
@@ -1203,10 +1226,18 @@ export default function App() {
   /** Markup bar over the current selection; quads (PDF space, keyed by original page
       index) drive the Word-style toggle state of the buttons */
   const [selPopup, setSelPopup] = useState<{
-    x: number
-    y: number
+    /** the selection box in window coordinates */
+    anchor: Box
+    /** the side the bar opened on; it grows away from the selection on that side */
+    side: 'above' | 'below'
     quads: Map<number, number[][]>
   } | null>(null)
+  const selBarRef = useRef<HTMLDivElement>(null)
+  /** the line markup the bar shows a color row for, after the bar applied it */
+  const [selColorRow, setSelColorRow] = useState<LineMarkupType | null>(null)
+  /** the pen whose color picker is open (right-click on a pen) */
+  const [penEdit, setPenEdit] = useState<{ index: number; anchor: Box } | null>(null)
+  const penEditRef = useRef<HTMLDivElement>(null)
   /** AI scope selection cached at mouseup — the native DOM selection collapses the
       moment focus moves into the AI panel, so the chip/context read this snapshot.
       Cleared by clicking elsewhere on the document or the chip's ×. */
@@ -3171,6 +3202,56 @@ export default function App() {
     return quads.size > 0 ? quads : null
   }
 
+  const windowBox = (): Box => ({
+    left: 0,
+    top: 0,
+    right: window.innerWidth,
+    bottom: window.innerHeight,
+  })
+
+  /** The window box the selection bar and its pickers stay inside: the viewer, scrollbars excluded */
+  const selBarBounds = (): Box => {
+    const el = scrollRef.current
+    if (!el) return windowBox()
+    const r = el.getBoundingClientRect()
+    const left = r.left + el.clientLeft
+    const top = r.top + el.clientTop
+    return { left, top, right: left + el.clientWidth, bottom: top + el.clientHeight }
+  }
+
+  // Place the selection bar (and the pen picker) after every render: their size
+  // changes with the color row and the UI language, so they are measured here
+  useLayoutEffect(() => {
+    const bar = selBarRef.current
+    if (bar && selPopup) {
+      const { left, top } = placeSelectionBar({
+        anchor: selPopup.anchor,
+        width: bar.offsetWidth,
+        height: bar.offsetHeight,
+        bounds: selBarBounds(),
+        outer: windowBox(),
+        side: selPopup.side,
+      })
+      bar.style.left = `${left}px`
+      bar.style.top = `${top}px`
+    }
+    const picker = penEditRef.current
+    if (picker && penEdit) {
+      const anchor = penEdit.anchor
+      const { left, top } = placeSelectionBar({
+        anchor,
+        width: picker.offsetWidth,
+        height: picker.offsetHeight,
+        bounds: selBarBounds(),
+        outer: windowBox(),
+        side: selectionBarSide(anchor, selBarBounds(), picker.offsetHeight, 4),
+        gap: 4,
+      })
+      picker.style.left = `${left}px`
+      picker.style.top = `${top}px`
+    }
+  })
+
   /** Mouse released over selected text → show the markup bar centered above the selection box (below if it doesn't fit) */
   const handleMouseUp = () => {
     // In edit-text mode a drag means "choose the characters to edit" (the click
@@ -3210,9 +3291,12 @@ export default function App() {
       }
       // Read-only documents still get the bar for its Ask-AI entry (Q&A works);
       // the markup buttons themselves are hidden in that state
+      const anchor = { left: box.left, top: box.top, right: box.right, bottom: box.bottom }
+      setSelColorRow(null)
+      setPenEdit(null)
       setSelPopup({
-        x: Math.min(Math.max(box.left + box.width / 2, 70), window.innerWidth - 70),
-        y: box.top >= 52 ? box.top - 44 : Math.min(box.bottom + 8, window.innerHeight - 44),
+        anchor,
+        side: selectionBarSide(anchor, selBarBounds(), SEL_BAR_ROW_HEIGHT),
         quads,
       })
     }, 0)
@@ -3240,12 +3324,12 @@ export default function App() {
   /** Word-style toggle: apply `type` to the selection, or remove it when the whole
       selection already carries it. Selection and bar survive so more markup types can
       be stacked/toggled on the same text; clicking anywhere else dismisses them. */
-  const applyMarkup = (type: MarkupType) => {
-    if (readOnly) return
+  const applyMarkup = (type: MarkupType): 'added' | 'removed' | null => {
+    if (readOnly) return null
     const selQuads = selectionQuads()
     if (!selQuads) {
       setSelPopup(null)
-      return
+      return null
     }
     const matches = [...selQuads].map(
       ([origIdx, quads]) => [origIdx, quads, markupMatching(origIdx, type, quads)] as const,
@@ -3261,7 +3345,7 @@ export default function App() {
               : [],
         ),
       )
-      return
+      return 'removed'
     }
     // Pages already carrying the markup are skipped, not duplicated (Word semantics:
     // applying to a partially-marked selection marks the rest)
@@ -3275,13 +3359,153 @@ export default function App() {
                 markup: {
                   pageIndex: origIdx,
                   type,
-                  color: type === 'highlight' ? highlightColor : MARKUP_COLORS[type],
+                  color: type === 'highlight' ? highlightColor : lineMarkupColors[type],
                   quads,
                 },
               },
             ],
       ),
     )
+    return 'added'
+  }
+
+  type MarkupMatch = NonNullable<ReturnType<typeof markupMatching>>
+
+  const markupColorOf = (m: MarkupMatch): Rgb =>
+    'pending' in m ? m.pending.color : (m.saved.color ?? MARKUP_COLORS[m.saved.type])
+
+  /** Saved annotations' /Subj (an accepted AI highlight's category), read once for a batch */
+  const savedSubjects = async (
+    annots: readonly SavedMarkupAnnot[],
+  ): Promise<Map<number, string>> => {
+    const out = new Map<number, string>()
+    const read = window.pdfApi.annotSubjects
+    if (annots.length === 0 || !filePath || typeof read !== 'function') return out
+    try {
+      const list = await read(filePath)
+      for (const a of annots) {
+        const match = list.find((i) => i.pageIndex === a.pageIndex && i.objNum === a.objNum)
+        if (match?.subj) out.set(a.objNum, match.subj)
+      }
+    } catch {
+      // recolor without the category, as the context menu does
+    }
+    return out
+  }
+
+  /** One edit: recolor existing markups (a saved one is replaced the way the context
+      menu does it, keeping its /Subj) and add new ones */
+  const paintMarkups = (
+    color: Rgb,
+    recolor: readonly MarkupMatch[],
+    add: readonly MarkupInput[],
+  ) => {
+    const saved = recolor.flatMap((m) => ('saved' in m ? [m.saved] : []))
+    const build = (subjects: Map<number, string>): Op[] => [
+      ...recolor.flatMap((m): Op[] => {
+        if ('pending' in m) return [{ op: 'recolorMarkup', id: m.pending.id, color }]
+        const subject = subjects.get(m.saved.objNum)
+        return [
+          { op: 'deleteSavedAnnot', annot: m.saved },
+          {
+            op: 'addMarkup',
+            markup: {
+              pageIndex: m.saved.pageIndex,
+              type: m.saved.type,
+              color,
+              quads: m.saved.quads,
+              ...(subject ? { subject } : {}),
+            },
+          },
+        ]
+      }),
+      ...add.map((markup): Op => ({ op: 'addMarkup', markup })),
+    ]
+    if (saved.length === 0) {
+      applyEditOps(build(new Map()))
+      return
+    }
+    void savedSubjects(saved).then((subjects) => applyEditOps(build(subjects)))
+  }
+
+  /** A highlighter pen on the bar: paint the selection in its color, recolor a
+      highlight of another color, or remove a highlight of the same color */
+  const applyHighlightPen = (pen: Rgb) => {
+    if (readOnly) return
+    const selQuads = selectionQuads()
+    if (!selQuads) {
+      setSelPopup(null)
+      return
+    }
+    setHighlightColor(pen)
+    setSelColorRow(null)
+    const pages = [...selQuads].map(([origIdx, quads]) => {
+      const m = markupMatching(origIdx, 'highlight', quads)
+      return { page: { origIdx, quads, m }, existing: m ? markupColorOf(m) : null }
+    })
+    const plan = planHighlightPen(pages, pen)
+    if (plan.kind === 'remove') {
+      applyEditOps(
+        plan.pages.flatMap(({ m }): Op[] =>
+          m && 'pending' in m
+            ? [{ op: 'removeMarkup', id: m.pending.id }]
+            : m && 'saved' in m
+              ? [{ op: 'deleteSavedAnnot', annot: m.saved }]
+              : [],
+        ),
+      )
+      return
+    }
+    paintMarkups(
+      pen,
+      plan.recolor.flatMap(({ m }) => (m ? [m] : [])),
+      plan.add.map(({ origIdx, quads }) => ({
+        pageIndex: origIdx,
+        type: 'highlight',
+        color: pen,
+        quads,
+      })),
+    )
+  }
+
+  /** Underline / squiggly / strikeout from the bar: the color row opens for what was just added */
+  const applyLineMarkupFromBar = (type: LineMarkupType) => {
+    const result = applyMarkup(type)
+    setPenEdit(null)
+    setSelColorRow(result === 'added' ? type : null)
+  }
+
+  /** A swatch in the bar's color row: recolor that markup on the selection and remember the color */
+  const recolorSelectionMarkup = (type: LineMarkupType, color: Rgb) => {
+    setLineMarkupColors((prev) => {
+      const next = { ...prev, [type]: color }
+      try {
+        localStorage.setItem(LINE_MARKUP_COLORS_KEY, JSON.stringify(next))
+      } catch {
+        // storage full or unavailable: the color still holds for this session
+      }
+      return next
+    })
+    const selQuads = selectionQuads() ?? selPopup?.quads
+    if (!selQuads) return
+    const recolor = [...selQuads].flatMap(([origIdx, quads]) => {
+      const m = markupMatching(origIdx, type, quads)
+      return m && !sameColor(markupColorOf(m), color) ? [m] : []
+    })
+    if (recolor.length > 0) paintMarkups(color, recolor, [])
+  }
+
+  /** Change one pen's color from its picker; the highlighter follows when it was that pen */
+  const setHighlightPen = (index: number, color: Rgb) => {
+    const old = highlightPens[index]
+    const next = highlightPens.map((p, i) => (i === index ? color : p))
+    setHighlightPens(next)
+    if (old && sameColor(old, highlightColor)) setHighlightColor(color)
+    try {
+      localStorage.setItem(HIGHLIGHT_PENS_KEY, JSON.stringify(next))
+    } catch {
+      // storage full or unavailable: the pen still holds for this session
+    }
   }
 
   /** Ask-AI entry on the markup bar: capture the selection box as the popover
@@ -3295,9 +3519,7 @@ export default function App() {
         : null
     const rect: AskAnchorRect | null = box
       ? { left: box.left, top: box.top, right: box.right, bottom: box.bottom }
-      : selPopup
-        ? { left: selPopup.x, top: selPopup.y, right: selPopup.x, bottom: selPopup.y + 36 }
-        : null
+      : (selPopup?.anchor ?? null)
     if (!rect) return
     setSelPopup(null)
     setAskPop({
@@ -3326,9 +3548,7 @@ export default function App() {
         ? sel.getRangeAt(0).getBoundingClientRect()
         : null
     if (box) return { left: box.left, top: box.top, right: box.right, bottom: box.bottom }
-    return selPopup
-      ? { left: selPopup.x, top: selPopup.y, right: selPopup.x, bottom: selPopup.y + 36 }
-      : null
+    return selPopup?.anchor ?? null
   }
 
   /** One selection-bar shortcut (reading-assist 4.1): the same as pressing its button */
@@ -3336,9 +3556,11 @@ export default function App() {
     if (!selPopup) return
     switch (action) {
       case 'highlight':
+        applyMarkup(action)
+        return
       case 'underline':
       case 'strikeout':
-        applyMarkup(action)
+        applyLineMarkupFromBar(action)
         return
       case 'note': {
         // an empty note at the end of the selection, its input open (the note tool's draft)
@@ -3394,6 +3616,25 @@ export default function App() {
         active.add(type)
     }
     return active
+    // markupMatching reads markups/annotDeletes/savedMarkups; they are all listed
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selPopup, markups, annotDeletes, savedMarkups])
+
+  /** The current color of each markup type the whole selection carries in one color
+      (the pressed pen, the color row's current swatch) */
+  const selMarkupColor = useMemo(() => {
+    const colors = new Map<MarkupType, Rgb>()
+    if (!selPopup) return colors
+    for (const type of ['highlight', 'underline', 'squiggly', 'strikeout'] as const) {
+      const found = [...selPopup.quads].map(([origIdx, quads]) =>
+        markupMatching(origIdx, type, quads),
+      )
+      const first = found[0]
+      if (!first || found.some((m) => !m)) continue
+      const color = markupColorOf(first)
+      if (found.every((m) => m && sameColor(markupColorOf(m), color))) colors.set(type, color)
+    }
+    return colors
     // markupMatching reads markups/annotDeletes/savedMarkups; they are all listed
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selPopup, markups, annotDeletes, savedMarkups])
@@ -8252,6 +8493,11 @@ export default function App() {
     inside: () => [highlightWrapRef.current],
   })
 
+  // A pen's color picker on the selection bar (the bar itself toggles it)
+  useDismissablePopover(penEdit !== null, () => setPenEdit(null), {
+    inside: () => [penEditRef.current, selBarRef.current],
+  })
+
   // Transparency presets fold-out inside the image selection popup
   useDismissablePopover(opacityMenu, () => setOpacityMenu(false), {
     inside: () => [opacityBtnRef.current, opacityMenuRef.current],
@@ -12225,131 +12471,208 @@ export default function App() {
             )}
             {selPopup && (
               <div
-                className="pdf-sel-popup"
-                style={{ left: selPopup.x, top: selPopup.y }}
+                ref={selBarRef}
+                className={`pdf-sel-popup${selPopup.side === 'above' ? ' is-above' : ''}`}
                 onMouseDown={(e) => e.preventDefault()}
               >
-                {!readOnly && (
-                  <>
-                    <button
-                      type="button"
-                      className={activeMarkupTypes.has('highlight') ? 'is-active' : undefined}
-                      data-tip={labelWithKey(
-                        t,
-                        activeMarkupTypes.has('highlight') ? t('removeMarkup') : t('highlight'),
-                        'highlight',
-                      )}
-                      aria-label={labelWithKey(
-                        t,
-                        activeMarkupTypes.has('highlight') ? t('removeMarkup') : t('highlight'),
-                        'highlight',
-                      )}
-                      onClick={() => applyMarkup('highlight')}
-                    >
-                      <span
-                        className="sel-swatch sel-swatch-hl"
-                        style={{ background: cssRgb(highlightColor) }}
-                      />
-                    </button>
-                    <button
-                      type="button"
-                      className={activeMarkupTypes.has('underline') ? 'is-active' : undefined}
-                      data-tip={labelWithKey(
-                        t,
-                        activeMarkupTypes.has('underline') ? t('removeMarkup') : t('underline'),
-                        'underline',
-                      )}
-                      aria-label={labelWithKey(
-                        t,
-                        activeMarkupTypes.has('underline') ? t('removeMarkup') : t('underline'),
-                        'underline',
-                      )}
-                      onClick={() => applyMarkup('underline')}
-                    >
-                      <span className="sel-swatch sel-swatch-ul">U</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={activeMarkupTypes.has('squiggly') ? 'is-active' : undefined}
-                      data-tip={
-                        activeMarkupTypes.has('squiggly') ? t('removeMarkup') : t('squiggly')
-                      }
-                      aria-label={
-                        activeMarkupTypes.has('squiggly') ? t('removeMarkup') : t('squiggly')
-                      }
-                      onClick={() => applyMarkup('squiggly')}
-                    >
-                      {/* Swatch painted inline from the palette so it always matches the applied color */}
-                      <span className="sel-swatch">
-                        <svg width="14" height="10" viewBox="0 0 28 10" fill="none" aria-hidden>
-                          <polyline
-                            points="1,5 4.5,1.5 8,8.5 11.5,1.5 15,8.5 18.5,1.5 22,8.5 25.5,5"
-                            stroke={cssRgb(MARKUP_COLORS.squiggly)}
-                            strokeWidth="2.2"
-                            strokeLinecap="round"
+                <div className="pdf-sel-popup-row">
+                  {!readOnly && (
+                    <>
+                      {highlightPens.map((pen, index) => {
+                        const current = selMarkupColor.get('highlight')
+                        const pressed = !!current && sameColor(current, pen)
+                        const label = pressed ? t('removeMarkup') : t('selPenTip')
+                        // H paints with the highlighter's current color: name the key on that pen
+                        const tip = sameColor(pen, highlightColor)
+                          ? labelWithKey(t, label, 'highlight')
+                          : label
+                        return (
+                          <button
+                            key={index}
+                            type="button"
+                            className={`pdf-sel-pen${pressed ? ' is-active' : ''}${penEdit?.index === index ? ' is-editing' : ''}`}
+                            data-tip={tip}
+                            aria-label={tip}
+                            aria-pressed={pressed}
+                            onClick={() => {
+                              setPenEdit(null)
+                              applyHighlightPen(pen)
+                            }}
+                            onContextMenu={(e) => {
+                              e.preventDefault()
+                              const r = e.currentTarget.getBoundingClientRect()
+                              setSelColorRow(null)
+                              setPenEdit(
+                                penEdit?.index === index
+                                  ? null
+                                  : {
+                                      index,
+                                      anchor: {
+                                        left: r.left,
+                                        top: r.top,
+                                        right: r.right,
+                                        bottom: r.bottom,
+                                      },
+                                    },
+                              )
+                            }}
+                          >
+                            <span
+                              className="sel-swatch sel-swatch-hl"
+                              style={{ background: cssRgb(pen) }}
+                            />
+                          </button>
+                        )
+                      })}
+                      <span className="pdf-sel-popup-sep" aria-hidden />
+                      <button
+                        type="button"
+                        className={activeMarkupTypes.has('underline') ? 'is-active' : undefined}
+                        data-tip={labelWithKey(
+                          t,
+                          activeMarkupTypes.has('underline') ? t('removeMarkup') : t('underline'),
+                          'underline',
+                        )}
+                        aria-label={labelWithKey(
+                          t,
+                          activeMarkupTypes.has('underline') ? t('removeMarkup') : t('underline'),
+                          'underline',
+                        )}
+                        onClick={() => applyLineMarkupFromBar('underline')}
+                      >
+                        <span
+                          className="sel-swatch sel-swatch-ul"
+                          style={{ color: cssRgb(lineMarkupColors.underline) }}
+                        >
+                          U
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className={activeMarkupTypes.has('squiggly') ? 'is-active' : undefined}
+                        data-tip={
+                          activeMarkupTypes.has('squiggly') ? t('removeMarkup') : t('squiggly')
+                        }
+                        aria-label={
+                          activeMarkupTypes.has('squiggly') ? t('removeMarkup') : t('squiggly')
+                        }
+                        onClick={() => applyLineMarkupFromBar('squiggly')}
+                      >
+                        {/* Swatch painted inline from the remembered color so it always matches the applied one */}
+                        <span className="sel-swatch">
+                          <svg width="14" height="10" viewBox="0 0 28 10" fill="none" aria-hidden>
+                            <polyline
+                              points="1,5 4.5,1.5 8,8.5 11.5,1.5 15,8.5 18.5,1.5 22,8.5 25.5,5"
+                              stroke={cssRgb(lineMarkupColors.squiggly)}
+                              strokeWidth="2.2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className={activeMarkupTypes.has('strikeout') ? 'is-active' : undefined}
+                        data-tip={labelWithKey(
+                          t,
+                          activeMarkupTypes.has('strikeout') ? t('removeMarkup') : t('strikeout'),
+                          'strikeout',
+                        )}
+                        aria-label={labelWithKey(
+                          t,
+                          activeMarkupTypes.has('strikeout') ? t('removeMarkup') : t('strikeout'),
+                          'strikeout',
+                        )}
+                        onClick={() => applyLineMarkupFromBar('strikeout')}
+                      >
+                        <span
+                          className="sel-swatch sel-swatch-st"
+                          style={{ color: cssRgb(lineMarkupColors.strikeout) }}
+                        >
+                          S
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className="pdf-sel-note"
+                        data-tip={labelWithKey(t, t('noteTitle'), 'note')}
+                        aria-label={labelWithKey(t, t('noteTitle'), 'note')}
+                        onClick={() => runSelectionBarAction('note')}
+                      >
+                        <svg viewBox="0 0 20 20" width="15" height="15" fill="none" aria-hidden>
+                          <path
+                            d="M3.5 4.5h13v8h-7l-3.6 2.9V12.5H3.5z"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
                             strokeLinejoin="round"
                           />
+                          <path
+                            d="M6.5 7.5h7M6.5 10h4.5"
+                            stroke="currentColor"
+                            strokeWidth="1.2"
+                            strokeLinecap="round"
+                          />
                         </svg>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      className={activeMarkupTypes.has('strikeout') ? 'is-active' : undefined}
-                      data-tip={labelWithKey(
-                        t,
-                        activeMarkupTypes.has('strikeout') ? t('removeMarkup') : t('strikeout'),
-                        'strikeout',
-                      )}
-                      aria-label={labelWithKey(
-                        t,
-                        activeMarkupTypes.has('strikeout') ? t('removeMarkup') : t('strikeout'),
-                        'strikeout',
-                      )}
-                      onClick={() => applyMarkup('strikeout')}
-                    >
-                      <span className="sel-swatch sel-swatch-st">S</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="pdf-sel-note"
-                      data-tip={labelWithKey(t, t('noteTitle'), 'note')}
-                      aria-label={labelWithKey(t, t('noteTitle'), 'note')}
-                      onClick={() => runSelectionBarAction('note')}
-                    >
-                      <svg viewBox="0 0 20 20" width="15" height="15" fill="none" aria-hidden>
-                        <path
-                          d="M3.5 4.5h13v8h-7l-3.6 2.9V12.5H3.5z"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinejoin="round"
-                        />
-                        <path
-                          d="M6.5 7.5h7M6.5 10h4.5"
-                          stroke="currentColor"
-                          strokeWidth="1.2"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                      {t('drawNote')}
-                    </button>
-                    <span className="pdf-sel-popup-sep" aria-hidden />
-                  </>
-                )}
-                <button
-                  type="button"
-                  className="pdf-sel-ask"
-                  data-tip={labelWithKey(t, t('aiAskTitle'), 'ask')}
-                  aria-label={labelWithKey(t, t('aiAskBtn'), 'ask')}
-                  onClick={openAskPopover}
-                >
-                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden>
-                    <path
-                      d="M12 3l1.7 4.6L18 9.3l-4.3 1.7L12 15.6l-1.7-4.6L6 9.3l4.3-1.7L12 3zM19 15l.85 2.3L22 18.15l-2.15.85L19 21.3l-.85-2.3-2.15-.85 2.15-.85L19 15z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                  {t('aiAskBtn')}
-                </button>
+                        {t('drawNote')}
+                      </button>
+                      <span className="pdf-sel-popup-sep" aria-hidden />
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    className="pdf-sel-ask"
+                    data-tip={labelWithKey(t, t('aiAskTitle'), 'ask')}
+                    aria-label={labelWithKey(t, t('aiAskBtn'), 'ask')}
+                    onClick={openAskPopover}
+                  >
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden>
+                      <path
+                        d="M12 3l1.7 4.6L18 9.3l-4.3 1.7L12 15.6l-1.7-4.6L6 9.3l4.3-1.7L12 3zM19 15l.85 2.3L22 18.15l-2.15.85L19 21.3l-.85-2.3-2.15-.85 2.15-.85L19 15z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                    {t('aiAskBtn')}
+                  </button>
+                </div>
+                {!readOnly &&
+                  selColorRow &&
+                  (() => {
+                    const type = selColorRow
+                    const current = selMarkupColor.get(type)
+                    if (!current) return null
+                    return (
+                      <div className="pdf-sel-colors" role="group" aria-label={t('drawColor')}>
+                        {MARKUP_PALETTE.map(({ hex, color }, i) => {
+                          const selected = sameColor(color, current)
+                          return (
+                            <button
+                              key={hex}
+                              type="button"
+                              className={selected ? 'is-current' : undefined}
+                              style={{ background: hex }}
+                              aria-label={`${t('drawColor')} ${i + 1}`}
+                              aria-pressed={selected}
+                              onClick={() => recolorSelectionMarkup(type, color)}
+                            />
+                          )
+                        })}
+                      </div>
+                    )
+                  })()}
+              </div>
+            )}
+            {selPopup && penEdit && !readOnly && (
+              <div
+                ref={penEditRef}
+                className="pdf-sel-pen-picker"
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                <ColorPickerPopover
+                  value={rgbToHex(highlightPens[penEdit.index] ?? highlightColor)}
+                  onPick={(hex) => setHighlightPen(penEdit.index, hexToRgb(hex))}
+                  onClose={() => setPenEdit(null)}
+                />
               </div>
             )}
             {askPop && (

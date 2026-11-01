@@ -18,7 +18,7 @@ Cuba pada mana-mana perenggan:
 
 ![Bar anotasi selepas memilih teks](img/pdf-highlight.png)
 
-2. 2. Pilih **sorotan** yang contoh kuningnya membuka palet warna, **garisan bawah**, atau **potongan garis**, dan **Tanya AI** menghantar pilihan itu bersama soalan anda ke panel AI.
+2. Pilih salah satu daripada tiga warna **sorotan**, atau **garisan bawah**, **gelombang** atau **potongan garis**. Untuk menukar warna sorotan, klik kanan warna itu dan pilih warna baharu. Selepas garisan bawah, gelombang atau potongan garis, satu baris warna terbuka pada bar: klik warna lain untuk menukarnya, dan tanda seterusnya juga memakai warna itu. **Tanya AI** menghantar pilihan itu bersama soalan anda ke panel AI.
 3. Untuk membatalkan anotasi, pilih semula petikan yang sama dan klik butang yang sedang aktif pada bar tersebut, atau pilih dan tekan Delete.
 
 Butiran yang perlu diketahui:

@@ -18,7 +18,7 @@ Try it on any paragraph:
 
 ![The annotation bar after selecting text](img/pdf-highlight.png)
 
-2. Pick **highlight** (the yellow swatch opens a color palette), **underline** or **strikethrough**; **Ask AI** sends the selection with your question to the AI panel.
+2. Pick one of the three **highlight** colors, or **underline**, **squiggly** or **strikethrough**. To change a highlight color, right-click it and choose a new one. After an underline, squiggly or strikethrough, a color row opens on the bar: click another color to change it, and the next one is drawn in that color too. **Ask AI** sends the selection with your question to the AI panel.
 3. To undo an annotation, drag-select the same passage again and click the active button on the bar (a Word-style toggle), or select it and press Delete.
 
 Reference:

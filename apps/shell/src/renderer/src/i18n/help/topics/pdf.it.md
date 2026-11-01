@@ -18,7 +18,7 @@ Prova su un qualsiasi paragrafo:
 
 ![La barra di annotazione dopo aver selezionato il testo](img/pdf-highlight.png)
 
-2. Scegli **evidenziazione** (il campione giallo apre una tavolozza di colori), **sottolineatura** o **barratura**; **Chiedi all'IA** invia la selezione insieme alla tua domanda al pannello IA.
+2. Scegli uno dei tre colori di **evidenziazione**, oppure **sottolineatura**, **ondulato** o **barratura**. Per cambiare un colore di evidenziazione, fai clic destro su di esso e scegline uno nuovo. Dopo una sottolineatura, un'ondulata o una barratura, sulla barra si apre una fila di colori: fai clic su un altro colore per cambiarlo, e il segno successivo userà anch'esso quel colore. **Chiedi all'IA** invia la selezione insieme alla tua domanda al pannello IA.
 3. Per annullare un'annotazione, riseleziona con il trascinamento lo stesso passaggio e fai clic sul pulsante già attivo sulla barra (un interruttore in stile Word), oppure selezionalo e premi Canc.
 
 Per sapere cosa aspettarti:

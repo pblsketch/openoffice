@@ -18,7 +18,7 @@ Vyzkoušejte na libovolném odstavci:
 
 ![Lišta s anotací po výběru textu](img/pdf-highlight.png)
 
-2. Zvolte **zvýraznění** (žlutý vzorek otevře paletu barev), **podtržení** nebo **přeškrtnutí**; **Zeptat se AI** odešle výběr spolu s vaší otázkou do panelu AI.
+2. Zvolte jednu ze tří barev **zvýraznění**, nebo **podtržení**, **vlnovku** či **přeškrtnutí**. Barvu zvýraznění změníte tak, že na ni kliknete pravým tlačítkem a vyberete novou. Po podtržení, vlnovce nebo přeškrtnutí se na liště otevře řada barev: klepnutím na jinou barvu ji změníte a další značka bude také v této barvě. **Zeptat se AI** odešle výběr spolu s vaší otázkou do panelu AI.
 3. Chcete-li anotaci zrušit, znovu přetáhnutím vyberte stejný úsek a klikněte na již aktivní tlačítko na liště (přepínač ve stylu Wordu), nebo výběr vyberte a stiskněte Odstranit.
 
 Co očekávat:
