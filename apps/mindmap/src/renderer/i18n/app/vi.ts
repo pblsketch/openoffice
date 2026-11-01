@@ -29,6 +29,7 @@ export const vi = {
   notePanelHint: 'Ghi chú được đưa vào sơ đồ khi bạn nhấp ra chỗ khác.',
   tbLabel: 'Nhãn',
   tbLink: 'Liên kết',
+  tbPicture: 'Chèn hình ảnh',
   tbLayout: 'Bố cục',
   tbFoldAll: 'Thu gọn tất cả',
   tbUnfoldAll: 'Mở rộng tất cả',

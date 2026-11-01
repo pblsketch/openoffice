@@ -78,12 +78,13 @@ export interface MapStrings {
   menuLabel: string
   menuNote: string
   menuLink: string
+  menuInsertPicture: string
   menuRemovePicture: string
   /** names of the markers and of a picture that is not shown, for assistive technology */
   decoration: DecorationStrings
 }
 
-export type TopicRequest = 'label' | 'note' | 'link'
+export type TopicRequest = 'label' | 'note' | 'link' | 'picture'
 
 /** What the controller needs from the screen around it. */
 export interface MapHost {
@@ -91,7 +92,7 @@ export interface MapHost {
   confirmDelete(count: number): Promise<boolean>
   /** open a topic's web link; the main process checks the address and opens it */
   openLink(url: string): void
-  /** the user asked to edit the labels, the note or the link of a topic */
+  /** the user asked to edit the labels, the note or the link of a topic, or to put a picture on it */
   onRequest(kind: TopicRequest, topicId: string): void
   /** the selection, the history, the zoom or the layout changed */
   onStateChange(): void
@@ -767,6 +768,7 @@ export class MapController {
       { name: this.#strings.menuLabel, onclick: ask('label') },
       { name: this.#strings.menuNote, onclick: ask('note') },
       { name: this.#strings.menuLink, onclick: ask('link') },
+      { name: this.#strings.menuInsertPicture, onclick: ask('picture') },
       // the last entry: shown only on a topic with a picture (`#onContextMenu`)
       {
         name: this.#strings.menuRemovePicture,

@@ -29,6 +29,7 @@ export const he = {
   notePanelHint: 'ההערה מועברת למפה כשאתם לוחצים במקום אחר.',
   tbLabel: 'תווית',
   tbLink: 'קישור',
+  tbPicture: 'הוספת תמונה',
   tbLayout: 'פריסה',
   tbFoldAll: 'כיווץ הכול',
   tbUnfoldAll: 'הרחבת הכול',

@@ -29,6 +29,7 @@ export const pt = {
   notePanelHint: 'A nota é aplicada ao mapa quando você clica em outro lugar.',
   tbLabel: 'Rótulo',
   tbLink: 'Link',
+  tbPicture: 'Inserir imagem',
   tbLayout: 'Layout',
   tbFoldAll: 'Recolher tudo',
   tbUnfoldAll: 'Expandir tudo',

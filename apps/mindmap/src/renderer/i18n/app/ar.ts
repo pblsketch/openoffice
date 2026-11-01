@@ -29,6 +29,7 @@ export const ar = {
   notePanelHint: 'تُطبَّق الملاحظة على الخريطة عند النقر في مكان آخر.',
   tbLabel: 'تسمية',
   tbLink: 'رابط',
+  tbPicture: 'إدراج صورة',
   tbLayout: 'التخطيط',
   tbFoldAll: 'طي الكل',
   tbUnfoldAll: 'بسط الكل',

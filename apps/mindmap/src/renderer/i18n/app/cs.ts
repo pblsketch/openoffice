@@ -29,6 +29,7 @@ export const cs = {
   notePanelHint: 'Poznámka se přenese do mapy, když kliknete jinam.',
   tbLabel: 'Štítek',
   tbLink: 'Odkaz',
+  tbPicture: 'Vložit obrázek',
   tbLayout: 'Rozložení',
   tbFoldAll: 'Sbalit vše',
   tbUnfoldAll: 'Rozbalit vše',

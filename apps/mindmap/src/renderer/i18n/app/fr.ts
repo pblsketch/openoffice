@@ -29,6 +29,7 @@ export const fr = {
   notePanelHint: 'La note est appliquée à la carte lorsque vous cliquez ailleurs.',
   tbLabel: 'Étiquette',
   tbLink: 'Lien',
+  tbPicture: 'Insérer une image',
   tbLayout: 'Disposition',
   tbFoldAll: 'Tout replier',
   tbUnfoldAll: 'Tout déplier',

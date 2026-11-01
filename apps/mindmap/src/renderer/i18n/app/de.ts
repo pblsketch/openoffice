@@ -29,6 +29,7 @@ export const de = {
   notePanelHint: 'Die Notiz wird in die Mindmap übernommen, wenn Sie woanders klicken.',
   tbLabel: 'Etikett',
   tbLink: 'Link',
+  tbPicture: 'Bild einfügen',
   tbLayout: 'Layout',
   tbFoldAll: 'Alle einklappen',
   tbUnfoldAll: 'Alle ausklappen',

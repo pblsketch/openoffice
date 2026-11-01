@@ -29,6 +29,7 @@ export const ms = {
   notePanelHint: 'Nota dimasukkan ke peta apabila anda mengklik di tempat lain.',
   tbLabel: 'Label',
   tbLink: 'Pautan',
+  tbPicture: 'Sisipkan gambar',
   tbLayout: 'Susun atur',
   tbFoldAll: 'Lipat semua',
   tbUnfoldAll: 'Buka semua',

@@ -29,6 +29,7 @@ export const ko = {
   notePanelHint: '다른 곳을 누르면 지도에 반영됩니다.',
   tbLabel: '라벨',
   tbLink: '링크',
+  tbPicture: '그림 넣기',
   tbLayout: '배치',
   tbFoldAll: '모두 접기',
   tbUnfoldAll: '모두 펴기',

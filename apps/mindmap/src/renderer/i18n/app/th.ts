@@ -29,6 +29,7 @@ export const th = {
   notePanelHint: 'โน้ตจะถูกนำไปใช้กับแผนที่เมื่อคุณคลิกที่อื่น',
   tbLabel: 'ป้ายกำกับ',
   tbLink: 'ลิงก์',
+  tbPicture: 'แทรกรูปภาพ',
   tbLayout: 'เค้าโครง',
   tbFoldAll: 'พับทั้งหมด',
   tbUnfoldAll: 'กางทั้งหมด',

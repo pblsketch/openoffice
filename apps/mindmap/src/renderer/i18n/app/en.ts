@@ -29,6 +29,7 @@ export const en = {
   notePanelHint: 'The note goes into the map when you click elsewhere.',
   tbLabel: 'Label',
   tbLink: 'Link',
+  tbPicture: 'Insert picture',
   tbLayout: 'Layout',
   tbFoldAll: 'Fold all',
   tbUnfoldAll: 'Unfold all',
