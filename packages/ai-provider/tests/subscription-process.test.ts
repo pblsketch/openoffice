@@ -12,6 +12,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   SUBSCRIPTION_LEFTOVER_FILE_PREFIX,
+  USER_MCP_CHILD_KIND,
   cleanupLeftoverSubscriptionChildren,
   createSubscriptionChildRegistry,
   inspectProcesses,
@@ -322,7 +323,7 @@ describe('what a force-killed app left behind', () => {
   })
 
   async function writeRecord(
-    children: Array<{ pid: number; command: string; startedAt?: number }>,
+    children: Array<{ pid: number; command: string; startedAt?: number; provider?: string }>,
     owner = { pid: OWNER, startedAt: OWNER_STARTED },
   ): Promise<string> {
     const file = join(dir, `${SUBSCRIPTION_LEFTOVER_FILE_PREFIX}${owner.pid}.json`)
@@ -371,6 +372,33 @@ describe('what a force-killed app left behind', () => {
     expect(job.killed).toEqual([5001])
     expect(result.killed).toEqual([5001])
     expect(existsSync(file)).toBe(false)
+  })
+
+  it('ends a recorded user MCP server by the same checks as a subscription CLI', async () => {
+    const file = await writeRecord([
+      { pid: 5001, command: 'C:\\nodejs\\node.exe', provider: USER_MCP_CHILD_KIND },
+      { pid: 5002, command: 'C:\\nodejs\\node.exe', provider: USER_MCP_CHILD_KIND },
+      { pid: 5003, command: 'C:\\nodejs\\node.exe', provider: USER_MCP_CHILD_KIND },
+    ])
+    const job = cleanup({
+      5001: { startedAt: CHILD_STARTED - 400, image: 'c:\\NODEJS\\node.exe' },
+      // the pid now belongs to another program
+      5002: { startedAt: CHILD_STARTED, image: 'C:\\Windows\\System32\\notepad.exe' },
+      // the same program, started long after ours
+      5003: { startedAt: CHILD_STARTED + 3_600_000, image: 'C:\\nodejs\\node.exe' },
+    })
+    const result = await job.run()
+    expect(job.killed).toEqual([5001])
+    expect(result.skipped.sort()).toEqual([5002, 5003])
+    expect(existsSync(file)).toBe(false)
+  })
+
+  it('ignores a record line of a kind it does not know', async () => {
+    await writeRecord([{ pid: 5001, command: 'C:\\npm\\claude.exe', provider: 'something-else' }])
+    const job = cleanup({ 5001: { startedAt: CHILD_STARTED, image: 'C:\\npm\\claude.exe' } })
+    const result = await job.run()
+    expect(job.killed).toEqual([])
+    expect(result).toEqual({ killed: [], skipped: [] })
   })
 
   it('leaves a process alone when the pid now belongs to something started later', async () => {
@@ -529,6 +557,25 @@ describe('what a force-killed app left behind', () => {
     child.emit('exit', 0, null)
     await registry.flushed()
     expect(JSON.parse(await readFile(file, 'utf8')).children).toEqual([])
+  })
+
+  it('a registry writes down a user MCP server under its own kind', async () => {
+    const registry = createSubscriptionChildRegistry({ killTree: () => undefined })
+    registry.recordIn(dir)
+    const child = new FakeChild(6002)
+    registry.track(child, { provider: USER_MCP_CHILD_KIND, command: 'C:\\nodejs\\node.exe' })
+    await registry.flushed()
+    const record = JSON.parse(await readFile(leftoverRecordFile(dir), 'utf8'))
+    expect(record.children).toEqual([
+      expect.objectContaining({
+        pid: 6002,
+        provider: 'user-mcp',
+        command: 'C:\\nodejs\\node.exe',
+      }),
+    ])
+    child.emit('exit', 0, null)
+    await registry.flushed()
+    expect(JSON.parse(await readFile(leftoverRecordFile(dir), 'utf8')).children).toEqual([])
   })
 
   it('shutdown removes the record together with the children', async () => {
