@@ -173,6 +173,7 @@ describe('create new note', () => {
     ;(window as any).markdownApi.createWikiNote = async () => ({
       ok: true as const,
       path: '/vault/My_Zzz.md',
+      target: 'My_Zzz',
       fragment: '',
       created: true,
     })
