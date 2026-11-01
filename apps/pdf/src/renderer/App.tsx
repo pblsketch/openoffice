@@ -5147,17 +5147,19 @@ export default function App() {
   showNoticeRef.current = showNotice
 
   // A password or encrypted PDF gets no recovery copy (its content would sit unprotected in
-  // the app data folder): the main process answers the notice once per tab
+  // the app data folder), nor does one the next save will protect: the main process
+  // answers the notice once per tab
   useEffect(() => {
     if (status !== 'ready') return
-    const unprotectable = passwordRef.current !== undefined || documentEncrypted
+    const unprotectable =
+      passwordRef.current !== undefined || documentEncrypted || encryption !== null
     void window.pdfApi
       .reportUnprotectable?.(unprotectable)
       .then((notice) => {
         if (notice) showNoticeRef.current(notice)
       })
       .catch(() => {})
-  }, [status, documentEncrypted])
+  }, [status, documentEncrypted, encryption])
 
   // the note of each PDF (reading-assist 4.9): no path crosses, the main process knows both
   const noteActions = useNoteActions({
@@ -5765,7 +5767,13 @@ export default function App() {
   // Crash-recovery copies (spec 1): what a save would write, kept in the app data folder
   // (never the file), about every 30s once input pauses; a password or encrypted PDF has none
   const recoveryCopies = useRecoveryCopies({
-    wanted: () => ordinaryDirty && filePath !== '' && status === 'ready' && !readOnly,
+    wanted: () =>
+      ordinaryDirty &&
+      filePath !== '' &&
+      status === 'ready' &&
+      !readOnly &&
+      !documentEncrypted &&
+      encryption === null,
     busy: () =>
       saveInFlightRef.current !== null ||
       saveAsFlowRef.current ||
@@ -8282,6 +8290,17 @@ export default function App() {
       // A permanent redaction copy has its own confirmation and must not wait
       // behind a second dialog; it keeps annotations as they are.
       if (redactionApplyConfirmedRef.current) {
+        void saveAsTo(targetPath, 'keep')
+          .catch((err: unknown) => {
+            opFailed(err instanceof Error ? err.message : String(err))
+            return false
+          })
+          .then((ok) => window.pdfApi.sendSaveAsResult(ok))
+        return
+      }
+      // Flattening or stripping annotations reworks the saved output, which a
+      // protected document has encrypted again: its copy keeps them as they are.
+      if (encryption !== null || diskPasswordRef.current !== null) {
         void saveAsTo(targetPath, 'keep')
           .catch((err: unknown) => {
             opFailed(err instanceof Error ? err.message : String(err))

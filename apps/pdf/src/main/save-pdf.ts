@@ -1595,7 +1595,7 @@ export async function pdfBytesWithEditsOf(
 /**
  * Whether a save request changes anything. The renderer always sends the
  * complete static-fill record set, which only image edits change, so that
- * set alone does not count.
+ * set alone does not count; a protection change does.
  */
 export function saveRequestHasEdits(request: SavePdfRequest): boolean {
   const some = (list: readonly unknown[] | undefined) => (list?.length ?? 0) > 0
@@ -1616,7 +1616,9 @@ export function saveRequestHasEdits(request: SavePdfRequest): boolean {
     some(request.rotations) ||
     some(request.deletedPages) ||
     some(request.pageOrder) ||
-    request.metadata !== undefined
+    request.metadata !== undefined ||
+    // setting, changing or lifting the password rewrites the file
+    request.protectionDirty === true
   )
 }
 

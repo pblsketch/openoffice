@@ -995,6 +995,11 @@ export function pdfRecoveryIdentity(webContentsId: number): RecoveryIdentity | n
   return recovery.untitledIdentity(webContentsId)
 }
 
+/** Whether a save request opens or writes password protection (a protected session) */
+function carriesProtection(request: SavePdfRequest | null | undefined): boolean {
+  return request?.encryption !== undefined || request?.decryption !== undefined
+}
+
 /** The view's own document: a restored recovery copy until it is saved, else the file */
 async function viewDocumentBytes(wcId: number, path: string): Promise<Uint8Array> {
   return recovery.viewBytes(wcId, path) ?? new Uint8Array(await readFile(path))
@@ -1548,6 +1553,11 @@ function registerPdfIpc(): void {
     if (annotations !== 'keep' && target === path) {
       return { ok: false, error: 'pdf: annotation handling requires Save As' }
     }
+    // Flattening and stripping run on the saved output, which a protected
+    // document has already encrypted again; the renderer keeps them for plain files.
+    if (annotations !== 'keep' && carriesProtection(request)) {
+      return { ok: false, error: 'pdf: annotation handling needs a document without a password' }
+    }
     if (request.copyOnly === true) {
       if (target === path) return { ok: false, error: 'pdf: copyOnly requires Save As' }
       if (request.redactions !== undefined) {
@@ -1696,6 +1706,8 @@ function registerPdfIpc(): void {
     async (e, request: SavePdfRequest): Promise<Uint8Array | null> => {
       const path = request?.path
       if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) return null
+      // a password-protected document is not copied into a skill's templates
+      if (carriesProtection(request)) return null
       try {
         const restored = recovery.viewBytes(e.sender.id, path)
         return restored
@@ -2641,6 +2653,9 @@ function registerPdfIpc(): void {
     async (e, request: SavePdfRequest): Promise<PdfRecoveryCopyResult> => {
       const path = request?.path
       if (!pdfPathGranted(e.sender.id, path) || request.targetPath !== undefined) return 'skipped'
+      // a document that is or is about to be password-protected gets no copy: the
+      // request carries its password, and the copy would be the protected file
+      if (carriesProtection(request)) return 'skipped'
       const restored = recovery.viewBytes(e.sender.id, path)
       return recovery.writeCopy(e.sender.id, path, async () => {
         // read once; a password or encrypted PDF gets no copy whatever the renderer reported
