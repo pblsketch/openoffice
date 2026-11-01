@@ -294,6 +294,57 @@ describe('genoffice skill', () => {
       expect(forced.json().detail.agents[1]).toMatchObject({ agent: 'codex', action: 'written' })
     })
 
+    it('skill remove codex takes away only that old copy, and remove agents the shared one', async () => {
+      const m = withLegacyCodexCopy(['.codex'])
+      await run(['skill', 'install', 'agents', '--json'], { env: m.env })
+      const shared = join(m.home, '.agents', 'skills', 'ieumoffice', 'SKILL.md')
+
+      const r = await run(['skill', 'remove', 'codex', '--json'], { env: m.env })
+      expect(r.code).toBe(0)
+      expect(r.json().detail.agents[0]).toMatchObject({
+        agent: 'codex',
+        action: 'removed',
+        legacy: true,
+        status: 'missing',
+      })
+      expect(existsSync(m.path)).toBe(false)
+      expect(existsSync(shared)).toBe(true)
+      const settings = JSON.parse(
+        readFileSync(join(m.env.GENOFFICE_USER_DATA, 'app-settings.json'), 'utf-8'),
+      )
+      expect(Object.keys(settings.agentSkillInstalls)).toEqual([shared])
+      const listed = await run(['skill', 'list', '--json'], { env: m.env })
+      expect(listed.json().detail.agents.map((a: any) => a.agent)).not.toContain('codex')
+
+      const again = await run(['skill', 'remove', 'codex', '--json'], { env: m.env })
+      expect(again.code).toBe(0)
+      expect(again.json().warnings).toEqual([
+        expect.objectContaining({ code: 'not_installed_by_app' }),
+      ])
+
+      const sharedGone = await run(['skill', 'remove', 'agents', '--json'], { env: m.env })
+      expect(sharedGone.json().detail.agents[0]).toMatchObject({ action: 'removed' })
+      expect(existsSync(shared)).toBe(false)
+    })
+
+    it('skill remove leaves a copy this app did not write', async () => {
+      const m = fakeMachine(['.claude'])
+      const dir = join(m.home, '.claude', 'skills', 'ieumoffice')
+      mkdirSync(dir, { recursive: true })
+      writeFileSync(
+        join(dir, 'SKILL.md'),
+        '---\nname: ieumoffice\nmetadata:\n  version: 0.0.1\n---\n',
+      )
+      const r = await run(['skill', 'remove', 'claude-code', '--json'], { env: m.env })
+      expect(r.code).toBe(0)
+      expect(r.json().detail.agents[0]).toMatchObject({ action: 'unchanged', status: 'foreign' })
+      expect(existsSync(join(dir, 'SKILL.md'))).toBe(true)
+
+      const typo = await run(['skill', 'remove', 'codx', '--json'], { env: m.env })
+      expect(typo.code).toBe(1)
+      expect(typo.json().suggestion).toContain('codex')
+    })
+
     it('is never deleted by an install', async () => {
       const m = withLegacyCodexCopy(['.codex'])
       writeFileSync(m.path, readFileSync(m.path, 'utf-8') + 'edited\n')

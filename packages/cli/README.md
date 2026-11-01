@@ -80,7 +80,9 @@ ieumoffice guide hwp                                                    # the hw
 ieumoffice guide docs                                                   # op signatures + restricted-HTML rules (`guide <domain> --json` = the catalog with each op's schema and a fingerprint)
 ieumoffice selection report.docx --json   # what the user has selected in the editor showing the file
 ieumoffice skill list   # coding agents found on this machine and the skill version each has
+ieumoffice skill install codex   # Codex, Cursor, Gemini CLI, Copilot and OpenCode share ~/.agents/skills (`skill install agents`)
 ieumoffice skill install --dir ./skills --force   # copy the bundled skill into a skills directory
+ieumoffice skill remove codex   # remove a copy this app wrote (here: the older one in ~/.codex/skills)
 ieumoffice install-cli   # put ieumoffice on the PATH
 ieumoffice mcp --http 3000 [--host 127.0.0.1] [--token secret]   # Streamable HTTP for clients on other machines; omit --http for stdio
 ieumoffice mcp --compact-schemas   # advertise ops/cells/data as plain arrays instead of the per-op schema (smaller tools/list; also GENOFFICE_MCP_COMPACT_SCHEMAS=1)

@@ -14,6 +14,7 @@ import {
   ledgerFromSettings,
   readInstallState,
   skillTargetIds,
+  uninstallSkill,
   type AgentId,
   type AgentTarget,
   type BundledSkill,
@@ -27,6 +28,8 @@ import { bundledSkillPath } from '../resources'
 import { CliError, EXIT, type Warning } from '../result'
 import { didYouMean } from '../suggest'
 
+const SUBCOMMANDS = ['list', 'install', 'remove', 'path']
+
 /**
  * The headless twin of Settings → Integrations: list the coding agents on this
  * machine and copy the bundled skill into their skills directory. Writes go
@@ -36,19 +39,20 @@ import { didYouMean } from '../suggest'
  * Codex, Cursor, Gemini CLI, Copilot and OpenCode all read `~/.agents/skills`,
  * so naming one of them installs into that shared row. A copy this app wrote
  * into one of their own folders earlier is listed, kept at the bundled version
- * along with the install, and never deleted here (decision 0095).
+ * along with the install, and only `skill remove <tool>` deletes it (decision 0095).
  */
 export const skillCommand: CommandDef = {
   name: 'skill',
   summary:
-    'List the coding agents found on this machine and install or update the bundled ieumoffice skill for them.',
-  usage: 'skill list | skill install <agent|all> [--dir <path>] [--force] | skill path',
+    'List the coding agents found on this machine and install, update or remove the bundled ieumoffice skill for them.',
+  usage:
+    'skill list | skill install <agent|all> [--dir <path>] [--force] | skill remove <agent> [--dir <path>] | skill path',
   options: [
     { name: 'list', description: 'same as `skill list`' },
     {
       name: 'dir',
       value: 'path',
-      description: 'install: write into this skills directory instead',
+      description: 'install/remove: use this skills directory instead',
     },
     {
       name: 'force',
@@ -67,16 +71,18 @@ export const skillCommand: CommandDef = {
       }
       case 'install':
         return install(args.positionals[1], flagString(args, 'dir'), flagBool(args, 'force'), ctx)
+      case 'remove':
+        return remove(args.positionals[1], flagString(args, 'dir'), ctx)
       default:
         throw new CliError(
           EXIT.usage,
           `unknown skill subcommand: ${sub}`,
-          { supported: ['list', 'install', 'path'] },
+          { supported: SUBCOMMANDS },
           {
             reason: 'invalid_argument',
-            suggestion: didYouMean(sub, ['list', 'install', 'path'])
-              ? `did you mean \`${didYouMean(sub, ['list', 'install', 'path'])}\`?`
-              : 'use `skill list`, `skill install <agent|all>` or `skill path`',
+            suggestion: didYouMean(sub, SUBCOMMANDS)
+              ? `did you mean \`${didYouMean(sub, SUBCOMMANDS)}\`?`
+              : 'use `skill list`, `skill install <agent|all>`, `skill remove <agent>` or `skill path`',
           },
         )
     }
@@ -272,6 +278,72 @@ function install(
       : `skill ${skill.version} already up to date`,
     ...(warnings.length ? { warnings } : {}),
     detail: { bundled_version: skill.version, agents: rows },
+  }
+}
+
+/**
+ * Remove the copy this app wrote in one row's folder, the twin of the pane's
+ * Uninstall. A tool the shared row serves names its own (legacy) folder here,
+ * not the shared one: `remove agents` is what takes the shared copy away. A
+ * file this app did not write is left alone.
+ */
+function remove(name: string | undefined, dir: string | undefined, ctx: CommandContext) {
+  if (!name && !dir) {
+    throw new CliError(EXIT.usage, 'skill remove needs an agent name or --dir', undefined, {
+      reason: 'missing_argument',
+      suggestion: `agents: ${agentIds().join(', ')}`,
+    })
+  }
+  const h = home(ctx.env)
+  let target: AgentTarget | null = null
+  if (!dir) {
+    target = agentIds().includes(name as AgentId) ? agentTarget(name as AgentId, ctx.env, h) : null
+    if (!target) {
+      const guess = didYouMean(name!, agentIds())
+      throw new CliError(
+        EXIT.usage,
+        `unknown agent: ${name}`,
+        { supported: agentIds() },
+        {
+          reason: 'unsupported',
+          suggestion: guess ? `did you mean \`${guess}\`?` : `agents: ${agentIds().join(', ')}`,
+        },
+      )
+    }
+  }
+  const skillsDir = dir ? resolve(ctx.cwd, dir) : target!.skillsDir
+  const skill = bundled()
+  const ledger = readLedger(ctx.env)
+  const removed = uninstallSkill(skillsDir, ledger)
+  if (removed) writeLedger(ctx.env, ledger)
+  const after = readInstallState(skillsDir, skill, ledger)
+  const label = target?.id ?? skillsDir
+  return {
+    summary: removed
+      ? `removed the skill from ${label}`
+      : `${label}: nothing this app installed to remove`,
+    ...(removed
+      ? {}
+      : {
+          warnings: [
+            {
+              code: 'not_installed_by_app',
+              message:
+                after.status === 'missing'
+                  ? `${label}: no skill at ${after.path}`
+                  : `${label}: the skill at ${after.path} was not written by this app; left as it is`,
+            },
+          ],
+        }),
+    detail: {
+      bundled_version: skill.version,
+      agents: [
+        {
+          ...row(target, target ? agentPresent(target.id, ctx.env, h) : true, after),
+          action: removed ? 'removed' : 'unchanged',
+        },
+      ],
+    },
   }
 }
 
