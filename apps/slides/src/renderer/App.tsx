@@ -2340,6 +2340,19 @@ export function App() {
     showThumbs,
     viewMode,
   ])
+  // Width the list's right border and scrollbar lane take out of its inline width.
+  // The lane is always reserved (scrollbar-gutter in CSS), so thumbnails sized to
+  // the rest keep their right edge in view whether or not the list scrolls.
+  const [thumbsChromeW, setThumbsChromeW] = useState(0)
+  useLayoutEffect(() => {
+    const list = thumbsListRef.current
+    if (!list) return
+    const measure = () => setThumbsChromeW(list.offsetWidth - list.clientWidth)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(list)
+    return () => ro.disconnect()
+  }, [showThumbs, viewMode])
   const visibleSorterItems = useVisibleThumbs(sorterViewRef, '.sorter-item', [
     slides.length,
     viewMode,
@@ -3848,8 +3861,9 @@ export function App() {
                         onContextMenu={(e) => onGapContextMenu(e)}
                       >
                         {(() => {
-                          // width = sidebar minus horizontal padding (20) and .thumb border (4)
-                          const thumbW = Math.max(60, thumbsW - 24)
+                          // width = sidebar minus its border and scrollbar lane, horizontal
+                          // padding (20) and .thumb border (4)
+                          const thumbW = Math.max(60, thumbsW - thumbsChromeW - 24)
                           const thumbItem = (s: RenderSlide, i: number) => (
                             <div
                               key={i}

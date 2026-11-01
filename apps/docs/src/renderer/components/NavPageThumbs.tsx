@@ -27,6 +27,8 @@ export interface ThumbSnapshot {
 
 const FALLBACK_PAGE_H = 1056
 const THUMB_GUTTER = 12
+/** .nav-thumb's 1px border on each side, drawn outside the page (content-box) */
+const THUMB_BORDER = 2
 const THUMB_MAX_W = 200
 
 /**
@@ -188,6 +190,7 @@ export function NavPageThumbs({
 }: {
   editor: Editor
   zoom: number
+  /** inner width of the scrolling nav body (scrollbar lane excluded) */
   width: number
   /** bumps when the document or its pagination changed */
   layoutVersion: number
@@ -267,7 +270,10 @@ export function NavPageThumbs({
   }
 
   if (!snap) return <div className="nav-empty">{t('appNavPagesPending')}</div>
-  const scale = Math.max(0.05, Math.min(width - THUMB_GUTTER * 2, THUMB_MAX_W) / snap.pageW)
+  const scale = Math.max(
+    0.05,
+    Math.min(width - THUMB_GUTTER * 2 - THUMB_BORDER, THUMB_MAX_W) / snap.pageW,
+  )
   const indices = snap.pages.map((_, i) => i).filter((i) => !hitPages || hitPages.has(i))
   if (indices.length === 0) return <div className="nav-empty">{t('appNavNoResults')}</div>
   return (

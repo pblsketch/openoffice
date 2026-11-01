@@ -3399,6 +3399,12 @@ th.cell-rev-del {
   padding: 6px 0;
 }
 
+/* Pages tab: keep the scrollbar lane even when nothing scrolls, so thumbnails
+   sized to the width beside it never slide under a scrollbar that appears */
+.nav-body-pages {
+  scrollbar-gutter: stable;
+}
+
 .nav-tree {
   min-height: 100%;
 }
@@ -3560,6 +3566,8 @@ th.cell-rev-del {
 .nav-thumb {
   position: relative;
   flex: none;
+  /* the inline size is the scaled page; the border sits outside it */
+  box-sizing: content-box;
   padding: 0;
   border: 1px solid var(--border);
   background: var(--page-bg, var(--docs-paper));
