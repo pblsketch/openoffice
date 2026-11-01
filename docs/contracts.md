@@ -245,6 +245,11 @@
 - 이름과 폴더는 `ieumoffice`다. 저장소의 `skills/ieumoffice/SKILL.md`가 원본이고, 앱의 설정 → 연동에서 고른 에이전트에 설치한다. 터미널에서는 `npx skills add pblsketch/openoffice`.
 - 스킬 문서는 사용자의 에이전트 폴더로 복사되고, 문서의 `metadata.version`이 커졌을 때만 새것으로 바뀐다. 본문을 고치고 버전을 올리지 않으면 고친 내용이 아무에게도 닿지 않는다(검사 `npm run check:skill-version`).
 - 스킬과 도움말이 에이전트에게 알려 주는 명령은 모두 `ieumoffice`로 시작한다.
+- 설치 자리(결정 0095). 새로 설치하는 줄은 셋이다. Claude Code(`~/.claude/skills`, `CLAUDE_CONFIG_DIR`를 따름), 공용 폴더 `agents`(`~/.agents/skills`), Windsurf(`~/.codeium/windsurf/skills`). 공용 폴더는 Codex, Cursor, Gemini CLI, Copilot, OpenCode가 읽고, `~/.agents`나 그 다섯 도구의 폴더 중 하나가 있으면(`CODEX_HOME`, `XDG_CONFIG_HOME`를 따름) 보인다.
+- 다섯 도구의 자기 폴더(`~/.codex/skills` 등)에는 새로 쓰지 않는다. 이 앱이 예전에 거기 쓴 사본(설치 장부에 있고 아직 있는 것)은 예전 사본 줄로 남아, 업데이트·제거할 수 있고 공용 줄을 설치할 때 함께 새 버전이 된다(손으로 고친 것은 제외). 자동으로 지우지 않는다. 장부에 없는 사본은 목록에 없고 건드리지 않는다.
+- `ieumoffice skill list`는 Claude Code·`agents`·Windsurf 줄과 예전 사본 줄을 낸다. 줄의 필드(`agent`, `label`, `detected`, `skills_dir`, `status`, `installed_version`, `up_to_date`)는 그대로이고 `legacy`(예전 사본이면 `true`)가 더해졌다.
+- `ieumoffice skill install <agent|all>`의 이름은 `claude-code`, `agents`, `codex`, `cursor`, `gemini`, `copilot`, `opencode`, `windsurf`다. 다섯 도구의 이름은 그 도구가 이 PC에 있는지 보고(없으면 `--force`) 공용 폴더에 쓰며, 그 도구의 예전 사본이 있으면 함께 맞춘다. `all`은 있는 줄 모두와 예전 사본 모두다. 손으로 고친 예전 사본은 `--force`가 없으면 그대로 두고 경고 `legacy_copy_left`를 낸다. 결과 줄의 `action`은 `written`·`unchanged`다.
+- `ieumoffice skill remove <agent> [--dir <path>]`는 이 앱이 쓴 사본 하나를 지운다(설정 → 연동의 제거와 같다). 다섯 도구의 이름은 그 도구 자기 폴더의 예전 사본, `agents`는 공용 사본이다. 이 앱이 쓰지 않은 파일은 지우지 않고 경고 `not_installed_by_app`을 낸다. 결과 줄의 `action`은 `removed`·`unchanged`다.
 - 이 스킬은 앱 안의 사용자 스킬 목록에는 나오지 않는다(이름 `ieumoffice`는 어느 출처에서든 읽지 않는다, 결정 0048).
 
 ## 사용자 스킬 (결정 0048)
@@ -298,21 +303,21 @@ metadata:
 
 데이터 폴더(`%APPDATA%\IeumOffice`, 개발 실행은 `IeumOffice-Dev`)에 있다. 사람이 직접 고칠 수 있고, 명령어와 MCP는 읽기만 한다.
 
-| 값                                   | 종류                                                      | 기본                                                       |
-| ------------------------------------ | --------------------------------------------------------- | ---------------------------------------------------------- |
-| `provider`                           | `auto` 또는 제공자 식별자                                 | `auto`                                                     |
-| `providers`                          | 제공자별 `{ apiKey, model, baseUrl?, cliPath?, models? }` | 빈 표                                                      |
-| `meteredAccepted`                    | 구독 제공자별 참/거짓                                     | 거짓                                                       |
-| `headlessSubscriptionEnabled`        | 참/거짓. 자동 호출 경로의 구독 사용                       | 거짓                                                       |
-| `headlessSubscriptionConsentVersion` | 자동 호출 스위치를 켤 때 동의한 경고의 판(정수)           | 없음                                                       |
-| `subscriptionNoticeSeen`             | 참/거짓. 첫 연결 안내를 봤는지                            | 거짓                                                       |
-| `customEndpoints`, `customEndpoint`  | 직접 운영하는 서버 목록과 지금 쓰는 것의 식별자           | 없음                                                       |
-| `maxOutputTokens`                    | 모델 한 차례의 출력 상한                                  | 코드의 기본값                                              |
-| `media`, `search`                    | 이미지·분석·검색 제공자 선택과 그 키                      | 이미지 분석은 `chat`, 영상 분석은 `none`, 검색은 무료 경로 |
-| `readUrl`                            | `{ githubToken }`                                         | 없음                                                       |
-| `internetTools`                      | `false`면 편집기 AI 창의 인터넷 도구를 끈다               | 켬(값 없음)                                                |
+| 값                                   | 종류                                                                              | 기본                                                       |
+| ------------------------------------ | --------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `provider`                           | `auto` 또는 제공자 식별자                                                         | `auto`                                                     |
+| `providers`                          | 제공자별 `{ apiKey, model, baseUrl?, cliPath?, models?, effort?, modelEfforts? }` | 빈 표                                                      |
+| `meteredAccepted`                    | 구독 제공자별 참/거짓                                                             | 거짓                                                       |
+| `headlessSubscriptionEnabled`        | 참/거짓. 자동 호출 경로의 구독 사용                                               | 거짓                                                       |
+| `headlessSubscriptionConsentVersion` | 자동 호출 스위치를 켤 때 동의한 경고의 판(정수)                                   | 없음                                                       |
+| `subscriptionNoticeSeen`             | 참/거짓. 첫 연결 안내를 봤는지                                                    | 거짓                                                       |
+| `customEndpoints`, `customEndpoint`  | 직접 운영하는 서버 목록과 지금 쓰는 것의 식별자                                   | 없음                                                       |
+| `maxOutputTokens`                    | 모델 한 차례의 출력 상한                                                          | 코드의 기본값                                              |
+| `media`, `search`                    | 이미지·분석·검색 제공자 선택과 그 키                                              | 이미지 분석은 `chat`, 영상 분석은 `none`, 검색은 무료 경로 |
+| `readUrl`                            | `{ githubToken }`                                                                 | 없음                                                       |
+| `internetTools`                      | `false`면 편집기 AI 창의 인터넷 도구를 끈다                                       | 켬(값 없음)                                                |
 
-- 로컬 서버 항목(`kind: 'local'`)은 `modelProfiles`와 `timeoutMs`를 더 든다. `modelProfiles`는 모델 id별 `{ contextLength, maxContextLength, tools, vision, contextSource, toolsSource, visionSource, checkedAt, notes }`이고, source는 `server`·`user`·`test`뿐이다. `timeoutMs`는 60,000~600,000의 정수이고, 없으면 300,000으로 읽는다.
+- 로컬 서버 항목(`kind: 'local'`)은 `modelProfiles`와 `timeoutMs`를 더 든다. `modelProfiles`는 모델 id별 `{ contextLength, maxContextLength, tools, vision, contextSource, toolsSource, visionSource, checkedAt, notes, efforts, defaultEffort }`이고, source는 `server`·`user`·`test`뿐이다. `timeoutMs`는 60,000~600,000의 정수이고, 없으면 300,000으로 읽는다.
 - `customEndpoint: ''`는 "쓸 사용자 서버 없음"이다. 이때 `providers.custom`은 `{ apiKey: '', model: '', baseUrl: '' }`로 비고, `customEndpoint` 값이 아예 없는 예전 파일만 첫 서버를 고른다.
 - 키와 토큰(`providers.*.apiKey`, `customEndpoints[].apiKey`, `media.providers.*.apiKey`, `search.providers.*.apiKey`, `readUrl.githubToken`)은 Windows와 Linux(GNOME 키링·KWallet이 있을 때)에서 앱이 저장할 때 `sealed:v1:<base64>`로 봉인된다(결정 0063). 사람이 평문으로 적어 넣어도 읽히고, 앱이 다음에 저장하거나 시작할 때 봉인된다. 명령어와 MCP는 봉인된 값을 앱에게 풀어 받아 쓰고(처음 한 번 1~2초), 풀지 못한 값은 빈 키로 읽는다. 명령어는 봉인하지 않는다. macOS는 봉인하지 않는다.
 - `readUrl.githubToken`은 비공개 GitHub 파일을 읽는 읽기 토큰이다. 키와 같은 방식으로 저장되고, `api.github.com` 요청에만 실린다. 다른 사이트나 리다이렉트 홉에는 보내지 않는다.
@@ -324,6 +329,8 @@ metadata:
 - `providers` 표가 아예 없는 파일은 제공자 설정 이전의 파일로 읽혀, 다른 값까지 기본값이 된다.
 - 종량 허용은 이 파일의 값만으로는 유효하지 않다. 같은 폴더의 기록(`subscription-metered.json`)에 적힌 로그인 종류가 지금 감지된 것과 같아야 한다.
 - 구독 제공자의 `model`에는 프로그램이 받는 값이 그대로 들어간다(Claude의 `opus`·`claude-opus-5-5` 같은 별칭이나 식별자, Codex의 모델 식별자). 빈 값은 프로그램의 기본 모델이다. 화면에 보이는 표시 이름은 저장하지 않는다.
+- `effort`는 생각 깊이다(결정 0096). `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max` 가운데 하나이고, 없으면 프로그램이나 회사의 기본이다. 다른 값은 앱이 저장할 때 지우고, 손으로 적어도 실행에 넘기지 않는다. Claude에는 `low`~`max`만, Codex에는 그 모델이 받는 값만, 키 제공자에는 `modelEfforts`가 그 모델에 적은 값만 넘긴다. 로컬 서버는 `customEndpoints[].effort`에 두고, 쓰는 서버의 값이 `providers.custom`에 옮겨진다. 명령어와 MCP의 실행도 이 값을 쓴다.
+- 키 제공자의 `modelEfforts`는 모델 id별 `{ efforts, defaultEffort? }`이고, 그 회사의 모델 목록이 알려 준 단계다(Anthropic, OpenRouter, DeepSeek, xAI). `models`와 함께 앱이 채우고, 앱 화면이 저장할 때는 파일에 있던 값이 그대로 남는다. 모르는 단계, 256자를 넘는 id, 2,000개를 넘는 항목은 읽을 때 버린다. 로컬 서버의 `efforts`·`defaultEffort`는 Ollama가 그 모델에 대해 알려 준 단계다.
 - 키 제공자의 `models`는 그 회사가 저장된 키에 내준 대화 모델 목록이다(결정 0087). 앱이 시작할 때와 그 제공자의 키나 주소가 바뀌었을 때 앱이 채우고, 최신순이다. 앱만 쓴다. 손으로 고쳐도 다음 조회 때 바뀌고, 앱 화면이 저장할 때는 파일에 있던 값이 그대로 남는다. 문자열이 아닌 항목, 256자를 넘는 항목, 중복은 읽을 때 버린다. 명령어와 MCP는 이 값을 읽지 않는다.
 - 저장된 Gemini 모델 `gemini-3.7-flash`는 `gemini-3.8-flash`로 읽는다(Google이 2026-10-08 내리고 그쪽으로 돌린다).
 - 구독에 로그인된 계정은 이 파일에도, `subscription-metered.json`에도 적히지 않는다. 그 기록에 남는 것은 로그인 방식의 종류뿐이다.
@@ -493,7 +500,7 @@ metadata:
 
 - `.docx`·`.xlsx`·`.pptx`·PDF·마크다운·HTML 파일은 원본 프로그램과 같은 방식으로 읽고 쓴다. 한쪽에서 만든 문서를 다른 쪽에서 열 수 있다.
 - **마인드맵.** XMind 파일(`.xmind`, `content.json`이 든 형식)을 열고 같은 형식으로 저장한다. 이 앱이 보여 주지 않는 요소와 모르는 값도 저장할 때 그대로 나가고, 바뀐 것이 없으면 원본과 바이트까지 같은 파일을 쓴다. 바뀌었으면 `content.json`만 다시 쓰고, 미리보기 그림(`Thumbnails/thumbnail.png`)은 새로 만들었을 때만 바꾸며, `manifest.json`은 고치지 않는다. 예전 형식(`content.xml`만 있는 파일)과 암호가 걸린 파일은 열지 않는다. 테마는 사용자가 고를 때와 새 시트를 만들 때(새 파일 포함, 기본 테마) 파일 형식의 속성표로 적고, 이 앱만의 표식은 넣지 않는다. 그 밖에는 이미 있는 시트의 테마를 그대로 둔다. 터미널 명령어와 그 MCP 서버는 `.xmind`를 다루지 않는다.
-- **열기 암호.** 열기 암호가 걸린 `.docx`·`.xlsx`·`.xlsm`·`.xls`·`.pptx`는 열 때 암호를 묻고, 저장(다른 이름으로 저장 포함)할 때 같은 암호로 다시 잠근다. 다시 잠그는 방식은 Office 2013 이후의 기본(ECMA-376 Agile)이다. 수정 암호만 걸린 `.xls`처럼 엑셀의 기본 암호로 잠긴 파일은 묻지 않고 열며, 그런 `.xls`를 `.xlsx`로 저장하면 열기 암호를 걸지 않는다. 풀 수 없는 방식이면 열지 않고 알린다(결정 0041).
+- **열기 암호.** 열기 암호가 걸린 `.docx`·`.xlsx`·`.xlsm`·`.xls`·`.pptx`는 열 때 암호를 묻고, 저장(다른 이름으로 저장 포함)할 때 같은 암호로 다시 잠근다. 다시 잠그는 방식은 Office 2013 이후의 기본(ECMA-376 Agile)이다. 수정 암호만 걸린 `.xls`처럼 엑셀의 기본 암호로 잠긴 파일은 묻지 않고 열며, 그런 `.xls`를 `.xlsx`로 저장하면 열기 암호를 걸지 않는다. 풀 수 없는 방식이면 열지 않고 알린다(결정 0041). 암호가 걸린 PDF도 열 때 암호를 묻고, 저장할 때 원래의 암호화 항목을 그대로 두어 다시 잠근다. PDF 편집기의 주석 → 보호에서 암호를 걸거나 바꾸거나 풀면 다음 저장이 AES-256(V5/R6)으로 새로 잠근다. 인증서로 잠긴 PDF는 열지 않고 알린다.
 - 가리기 표시는 문서 안에 저장되고, 그 이름공간 주소는 원본과 같다. 원본으로 가린 문서를 열면 가리기가 그대로 인식된다.
 - 문서 곁에 저장되는 보조 파일의 이름(`.genoffice-assets.json` 등)도 원본과 같다.
 - `.odt`는 한컴 한글 2024가 읽은 결과를 기준으로 맞춘다. 받은 ODT를 고쳐 저장하면 고친 부분만 다시 쓰고, 나머지 zip 항목과 XML은 바이트 그대로다. 고친 것이 없으면 원본과 같은 파일이 나온다. 다시 묶을 때 `mimetype`을 맨 앞에 압축 없이 둔다(한컴은 이것을 받은 파일과 똑같이 읽는다). 한컴이 아닌 프로그램의 ODT도 같은 규칙으로 열지만, 합격 기준에는 넣지 않았다.

@@ -83,6 +83,8 @@ const FORMAT_COPY = join(APP, 'studio-plugin', 'format-copy.mjs')
 const CLIPBOARD_HTML = join(APP, 'studio-plugin', 'clipboard-html.mjs')
 const PC_FONTS = join(APP, 'studio-plugin', 'pc-fonts.mjs')
 const HANJA = join(APP, 'studio-plugin', 'hanja.mjs')
+const TABLE_AUTO_FILL = join(APP, 'studio-plugin', 'table-auto-fill.mjs')
+const TABLE_SIZES = join(APP, 'studio-plugin', 'table-sizes.mjs')
 const HANJA_CACHE = join(APP, 'node_modules', '.cache', 'libhangul-hanja')
 const STAMP = join(OUT, '.stamp')
 
@@ -107,6 +109,8 @@ function stampValue() {
   hash.update(readFileSync(CLIPBOARD_HTML))
   hash.update(readFileSync(PC_FONTS))
   hash.update(readFileSync(HANJA))
+  hash.update(readFileSync(TABLE_AUTO_FILL))
+  hash.update(readFileSync(TABLE_SIZES))
   hash.update(HANJA_COMMIT)
   // and so is the engine: a rebuilt WASM must reach the studio
   hash.update(readFileSync(join(CORE_DIR, 'rhwp_bg.wasm')))

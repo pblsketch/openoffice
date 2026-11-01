@@ -403,6 +403,9 @@ export const es = {
   appTableNameUsed: 'El nombre de tabla "{name}" ya se usó en esta sesión.',
   appTableNameInFile: 'El nombre de tabla "{name}" ya lo usa una tabla del archivo.',
   appTableOverlapsSession: 'El rango se superpone con la tabla "{name}" creada en esta sesión.',
+  appTableOverlapsFile: 'El rango se superpone con la tabla "{name}" del archivo.',
+  appTableAlreadyInTable:
+    'La selección ya está en la tabla "{name}": cambie el estilo desde Diseño de tabla.',
   appTablesNeedFile: 'Abra primero un archivo XLSX — las tablas se escriben en el archivo.',
   appTableSelectRange:
     'Seleccione primero el rango de datos — con los encabezados en su primera fila.',
@@ -1576,4 +1579,29 @@ export const es = {
   appVisualFlipV: 'Voltear verticalmente',
   appVisualFlipH: 'Voltear horizontalmente',
   appCtxPasteVisual: 'Pegar imagen o forma',
+
+  // ── Spelling check (F7 / Review ▸ Proofing) ──
+  appSpellTitle: 'Ortografía',
+  appSpellBtnDetail: 'Comprobar el texto de la hoja (F7)',
+  appSpellToggle: 'Comprobar ortografía',
+  appSpellToggleTip:
+    'Activa la comprobación ortográfica (F7 y el botón de Revisar); desactivada, los cuadros de comentarios dejan de mostrar subrayados',
+  appSpellOn: 'Comprobación ortográfica activada.',
+  appSpellOff: 'La comprobación ortográfica está desactivada. Actívala en Revisar ▸ Corrección.',
+  appSpellRecheck: 'Volver a comprobar',
+  appSpellNone: 'No se encontraron errores ortográficos sospechosos.',
+  appSpellFindings: '{count} errores sospechosos. Haz clic en una fila para localizarlo.',
+  appSpellTruncated: 'Demasiadas celdas de texto; solo se comprobaron las primeras.',
+  appSpellColWord: 'Sospechoso',
+  appSpellIgnore: 'Omitir',
+  appSpellIgnoreAll: 'Omitir todos',
+  appSpellLearn: 'Agregar al diccionario',
+  appSpellNoSuggestions: 'Sin sugerencias',
+  appSpellIgnoredAll: '"{word}" no se volverá a marcar en esta sesión.',
+  appSpellLearned: '"{word}" se agregó al diccionario.',
+  appSpellChanged: '{address} corregido.',
+  appSpellChangeFailed: 'No se pudo corregir {address}.',
+  appSpellUnavailable: 'La corrección ortográfica no está disponible en esta ventana.',
+  appSpellReplaceAll: 'Reemplazar todo por «{suggestion}»',
+  appSpellChangedAll: 'Se corrigieron {count} celdas de «{word}».',
 } satisfies Record<keyof typeof zh, string>

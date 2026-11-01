@@ -1,0 +1,448 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pblsketch <239486537+pblsketch@users.noreply.github.com>
+Date: Sun, 1 Nov 2026 00:00:00 +0900
+Subject: [PATCH 28/28] =?UTF-8?q?fix(layout):=20=EB=AC=B8=EB=8B=A8=20?=
+ =?UTF-8?q?=EA=B8=B0=EC=A4=80=20=EC=9C=84=EC=95=84=EB=9E=98=20=ED=91=9C?=
+ =?UTF-8?q?=EB=A5=BC=20=EA=B7=B8=EB=A0=A4=EC=A7=84=20=EA=B8=80=EC=A4=84=20?=
+ =?UTF-8?q?=EC=9B=90=EC=A0=90=EC=97=90=20=EB=91=90=EA=B3=A0=20=ED=91=9C=20?=
+ =?UTF-8?q?=EB=92=A4=20=EA=B0=84=EA=B2=A9=EC=9D=84=20=ED=95=9C=EA=B8=80?=
+ =?UTF-8?q?=EC=B2=98=EB=9F=BC=20=EC=9E=B0=EB=8B=A4?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+조판이 저장 호스트 줄로 정한 문단 기준 위아래 표 자리를 그리기는 col_area.y만
+더해 썼다. 호스트 글줄은 그리기 흐름의 문단 원점에 그려지므로, 두 커서가 어긋나면
+(쪽 첫 문단 앞 간격을 조판만 빼거나, 앞 문단의 줄 간격·뒤 간격이 표 문단 진입 때
+조판 커서에 아직 없으면) 표만 올라가 글줄을 덮었다. 같은 저장 줄 계산을 그리기
+원점으로 다시 해서 표·문단 끝 흐름·다음 문단 앞 간격 판정을 함께 옮긴다. 글 없는
+문단의 표(앵커가 곧 문단 시작인 자리)도 같다. 조판이 계산 뒤 표를 위로 올린 자리와
+원점을 함께 넘긴 자리는 그대로 둔다.
+
+글 있는 문단의 표가 문단 흐름을 끝내면 한글은 그 문단의 뒤 간격을 표 아래에 두지
+않고, 다음 문단 첫 줄을 표 아래끝에서 시작한다(앞 간격도 두지 않음). MS 워드 호환 문서
+(호환 문서 대상 2, HWPX applyPrevspacingBeneathObject)만 다음 문단의 앞 간격을
+둔다. 그런 문단의 NextLine 문단 끝에서 뒤 간격을 빼고, 조판이 그 자리에 후속 줄 원점을
+건다. 글 없는 문단의 표는 저장 프레임 분할 경로와 맞물려 종전 회계를 둔다.
+---
+ src/model/document.rs                     |  20 ++
+ src/model/provenance.rs                   |  18 ++
+ src/renderer/layout.rs                    | 242 +++++++++++++++++++++-
+ src/renderer/typeset/section/controls.rs  |  15 +-
+ src/renderer/typeset/table/block/entry.rs |  13 +-
+ 5 files changed, 301 insertions(+), 7 deletions(-)
+
+diff --git a/src/model/document.rs b/src/model/document.rs
+index 9ef723925..9ec38de7f 100644
+--- a/src/model/document.rs
++++ b/src/model/document.rs
+@@ -373,6 +373,25 @@ impl Document {
+             .map(|(_, d)| d.as_slice())
+     }
+ 
++    /// 문서 호환 설정이 개체 아래 문단의 앞 간격을 적용하는가.
++    ///
++    /// HWPX 는 헤더의 `compatibleDocument` 블록(원본 보존 `hwpx_head_tail`)에
++    /// `applyPrevspacingBeneathObject` 를 둔다. HWP5 는 레이아웃 호환 비트 대신
++    /// 호환 문서 레코드의 대상 프로그램(2 = MS 워드)으로 판정한다 — 한컴 2024 는
++    /// 대상이 MS 워드이면 이 설정이 든 묶음을 늘 함께 저장하고, 대상이 한글이면
++    /// 개별 설정을 지운다.
++    pub fn applies_prev_spacing_beneath_object(&self) -> bool {
++        if let Some(tail) = &self.doc_info.hwpx_head_tail {
++            return tail.contains("applyPrevspacingBeneathObject");
++        }
++        self.doc_info.extra_records.iter().any(|record| {
++            record.tag_id == crate::parser::tags::HWPTAG_COMPATIBLE_DOCUMENT
++                && record.data.get(..4).is_some_and(|target| {
++                    u32::from_le_bytes([target[0], target[1], target[2], target[3]]) == 2
++                })
++        })
++    }
++
+     /// [#2403 Stage 1] 레이아웃 호환 정책 질의 표면.
+     ///
+     /// 기존 분기의 1:1 파생 — `hwp3_layout` = `is_hwp3_variant`,
+@@ -416,6 +435,7 @@ impl Document {
+         // 구성)는 봉인 자체가 없어 편집이 아니어도 raw_stream 이 없으므로,
+         // raw_stream 부재만으로 판정하면 오탐이다(오라클 미편집인데 편집 게이트
+         // 발동). 봉인 존재를 함께 요구해 실제 로드된 문서의 편집만 잡는다.
++        .with_prev_spacing_beneath_object(self.applies_prev_spacing_beneath_object())
+         .with_session_edited(
+             self.provenance.format == SourceFormat::Hwp5
+                 && self
+diff --git a/src/model/provenance.rs b/src/model/provenance.rs
+index 89c5d5b35..a1a5dd6fc 100644
+--- a/src/model/provenance.rs
++++ b/src/model/provenance.rs
+@@ -59,6 +59,9 @@ pub struct LayoutCompatibilityProfile {
+     hwp5_origin_hwpx: bool,
+     native_hwp5_layout: bool,
+     hangul2024_layout: bool,
++    /// 문서가 MS 워드 호환으로 저장돼 개체 아래 문단의 앞 간격을 적용한다
++    /// (HWPX `applyPrevspacingBeneathObject`, HWP5 호환 문서 대상 MS 워드).
++    prev_spacing_beneath_object: bool,
+     /// 이 세션에서 편집 명령이 문서를 변조했다(native HWP5 섹션의 raw_stream 소실).
+     /// 저장 시점 형상 전용 보정(선언 높이 fit-down 등)은 편집 문서에서 꺼야 한다 —
+     /// 한글 편집기도 편집 중에는 측정 기반으로 재조판한다.
+@@ -83,10 +86,25 @@ impl LayoutCompatibilityProfile {
+             hwp5_origin_hwpx,
+             native_hwp5_layout,
+             hangul2024_layout: false,
++            prev_spacing_beneath_object: false,
+             session_edited: false,
+         }
+     }
+ 
++    /// 개체 아래 문단의 앞 간격 적용 여부를 표시한다. `Document::layout_profile`
++    /// 만 문서의 호환 설정에서 이 값을 유도한다.
++    pub(crate) fn with_prev_spacing_beneath_object(mut self, enabled: bool) -> Self {
++        self.prev_spacing_beneath_object = enabled;
++        self
++    }
++
++    /// 위아래 개체가 문단 흐름을 정한 자리 바로 뒤 문단에 앞 간격을 두는가.
++    /// 한글 표준 문서는 두지 않는다(다음 줄이 개체 아래끝에서 시작한다). 한컴은
++    /// 호환 대상을 MS 워드로 저장한 문서에만 이 설정을 켠다.
++    pub fn prev_spacing_beneath_object(&self) -> bool {
++        self.prev_spacing_beneath_object
++    }
++
+     /// 이 세션의 편집 변조를 표시한다. `Document::layout_profile` 만 이 값을
+     /// 유도한다(native HWP5 raw_stream 소실 신호).
+     pub(crate) fn with_session_edited(mut self, enabled: bool) -> Self {
+diff --git a/src/renderer/layout.rs b/src/renderer/layout.rs
+index 3dcd11475..ffc0031e7 100644
+--- a/src/renderer/layout.rs
++++ b/src/renderer/layout.rs
+@@ -1372,6 +1372,165 @@ pub(crate) fn stored_float_anchor_offset_hu(
+     (anchor_top - base).max(0)
+ }
+ 
++/// 저장 호스트 줄로 정한 문단 기준 자리차지 표의 자리를 **그리기 흐름의 문단 원점**으로
++/// 옮긴 값.
++///
++/// 조판은 표 자리(`ParagraphFloatPlacement`)를 자기 흐름 커서에서 정하고, 그리기는
++/// 거기에 `col_area.y` 만 더해 쓴다. 그런데 호스트 글줄은 그리기 흐름의 문단 원점에
++/// 그려진다. 두 커서가 같은 문단에서 어긋나면 표만 그 차이만큼 밀려 글줄과 겹친다.
++/// 어긋나는 경우는 둘이다 — 쪽 첫 문단의 앞 간격(저장 vpos 가 0 이 아닌 쪽)을 조판만
++/// 원점으로 빼는 쪽, 그리고 앞 문단의 줄 간격·뒤 간격이 표 문단에 들어설 때 조판
++/// 커서에 아직 더해지지 않은 경우(글 문단은 저장 vpos 맞춤이 채우지만 표 문단은 그
++/// 맞춤을 지나지 않는다). 수업운영 안내 3쪽 문단 42(두 줄, 표 제어 문자는 글 끝,
++/// 앞 간격 2000HU 로 시작하는 쪽)에서 조판 문단 원점 199.7 · 그리기 235.7 이라 표가
++/// 36.0px 올라가 둘째 줄을 덮었다.
++///
++/// 저장 줄로 정한 자리는 문단 원점 기준의 상대 기하이므로, 조판과 **같은 계산**을
++/// 그리기 원점으로 다시 해서 앵커 줄의 차이만큼 통째로 옮긴다. 표 그리기와 문단 끝의
++/// 흐름(`NextLine`)이 같은 값을 봐야 하므로 두 곳 모두 이 함수를 쓴다. 조판이 원점을
++/// 함께 넘긴 자리(`stored_host_origin`)는 글줄도 그 원점에 그리므로 옮기지 않는다. 저장
++/// 줄을 증거로 쓸 수 없는 문단(편집·합성 줄)은 `None` 이라 종전 그대로다.
++fn stored_host_placement_in_layout_frame(
++    para: &Paragraph,
++    control_index: usize,
++    placement: &super::float_placement::ParagraphFloatPlacement,
++    layout_para_start: f64,
++    spacing_before: f64,
++    dpi: f64,
++) -> Option<super::float_placement::ParagraphFloatPlacement> {
++    use super::float_placement::{ParagraphFloatFlow, ParagraphFloatPlacement};
++    let Some(Control::Table(table)) = para.controls.get(control_index) else {
++        return None;
++    };
++    if !para_has_non_whitespace_text(para) {
++        return empty_host_placement_in_layout_frame(
++            table,
++            placement,
++            layout_para_start,
++            spacing_before,
++            dpi,
++        );
++    }
++    if placement.stored_host_origin.is_some()
++        || !matches!(
++            placement.flow,
++            ParagraphFloatFlow::Exclusion | ParagraphFloatFlow::NextLine
++        )
++        || !layout_para_start.is_finite()
++        || !para_has_non_whitespace_text(para)
++    {
++        return None;
++    }
++    // 조판의 두 저장 경로와 같은 원점 규칙: 글 끝 제어 문자는 앞 간격 뒤(쪽 맨 위면
++    // 앞 간격 없이), 글 앞 제어 문자는 앞 간격 전이다.
++    let tail_origin = layout_para_start
++        + if layout_para_start > 0.0 {
++            spacing_before
++        } else {
++            0.0
++        };
++    let recomputed =
++        ParagraphFloatPlacement::from_stored_host(para, table, control_index, tail_origin, 0.0, dpi)
++            .or_else(|| {
++                ParagraphFloatPlacement::from_stored_head_host(
++                    para,
++                    table,
++                    control_index,
++                    layout_para_start,
++                    0.0,
++                    dpi,
++                )
++            })?;
++    // 조판이 계산 뒤에 표만 더 내린 자리(같은 문단의 앞 표 밴드 피하기)도 그 밴드가
++    // 그리기 원점에 그려지므로 같은 거리만큼 옮긴다(issue2439 둘째 표). 반대로 표를
++    // 계산보다 위로 올린 자리(분할 표 첫 조각이 앞 간격을 빼는 처리)는 조판 원점에
++    // 묶인 보정이라 옮기지 않는다 — 화학제품 표시기준 61쪽 "결과" 표를 옮기면 글줄
++    // 기준선에 붙었다. 그 처리가 앞 간격을 두 번 빼는 것은 findings 에 남긴다.
++    let stored_drop = recomputed.table_top - recomputed.anchor_y;
++    let placed_drop = placement.table_top - placement.anchor_y;
++    if placed_drop < stored_drop - 0.5 {
++        return None;
++    }
++    let shift = recomputed.anchor_y - placement.anchor_y;
++    (shift.is_finite() && shift.abs() > 0.5).then(|| ParagraphFloatPlacement {
++        anchor_y: placement.anchor_y + shift,
++        stored_successor_line_origin: placement
++            .stored_successor_line_origin
++            .map(|origin| origin + shift),
++        table_top: placement.table_top + shift,
++        occupied_bottom: placement.occupied_bottom + shift,
++        ..*placement
++    })
++}
++
++/// 글 없는 문단의 위아래 표도 같은 이유로 옮긴다. 조판의 빈 호스트 자리
++/// (`from_empty_reflow_host`)는 앵커가 곧 문단 시작이고 표 위끝이 앞 간격과 세로
++/// 오프셋만큼 아래다 — 그 관계가 그대로인 자리만 그리기 문단 시작으로 옮긴다.
++fn empty_host_placement_in_layout_frame(
++    table: &crate::model::table::Table,
++    placement: &super::float_placement::ParagraphFloatPlacement,
++    layout_para_start: f64,
++    spacing_before: f64,
++    dpi: f64,
++) -> Option<super::float_placement::ParagraphFloatPlacement> {
++    use super::float_placement::{ParagraphFloatFlow, ParagraphFloatPlacement};
++    if placement.stored_host_origin.is_some()
++        || placement.flow != ParagraphFloatFlow::Exclusion
++        || !is_para_topbottom_float(&table.common)
++        || !layout_para_start.is_finite()
++    {
++        return None;
++    }
++    let drop = spacing_before + hwpunit_to_px(signed_hwpunit(table.common.vertical_offset), dpi);
++    let outer_top = hwpunit_to_px(i32::from(table.outer_margin_top), dpi);
++    let placed_drop = placement.table_top - placement.anchor_y;
++    // 바깥 위 여백을 상자 안에 둔 자리와 밖에 둔 자리 둘 다 같은 원점 관계다.
++    if (placed_drop - drop).abs() > 0.5 && (placed_drop - drop - outer_top).abs() > 0.5 {
++        return None;
++    }
++    let shift = layout_para_start - placement.anchor_y;
++    (shift.is_finite() && shift.abs() > 0.5).then(|| ParagraphFloatPlacement {
++        anchor_y: placement.anchor_y + shift,
++        stored_successor_line_origin: placement
++            .stored_successor_line_origin
++            .map(|origin| origin + shift),
++        table_top: placement.table_top + shift,
++        occupied_bottom: placement.occupied_bottom + shift,
++        ..*placement
++    })
++}
++
++/// 단의 그리기 문단 원점(`para_start_y`)으로 옮긴 자리 — 옮길 근거가 없으면 원래 자리.
++/// 표를 그린 자리와 문단 끝 흐름, 다음 문단의 앞 간격 판정이 같은 값을 보게 한다.
++fn placement_in_drawn_frame(
++    paragraphs: &[Paragraph],
++    styles: &ResolvedStyleSet,
++    para_start_y: &std::collections::HashMap<usize, f64>,
++    col_y: f64,
++    (owner, control_index): (usize, usize),
++    placement: &super::float_placement::ParagraphFloatPlacement,
++    dpi: f64,
++) -> super::float_placement::ParagraphFloatPlacement {
++    paragraphs
++        .get(owner)
++        .zip(para_start_y.get(&owner))
++        .and_then(|(para, start)| {
++            let spacing_before = styles
++                .para_styles
++                .get(para.para_shape_id as usize)
++                .map_or(0.0, |style| style.spacing_before);
++            stored_host_placement_in_layout_frame(
++                para,
++                control_index,
++                placement,
++                start - col_y,
++                spacing_before,
++                dpi,
++            )
++        })
++        .unwrap_or(*placement)
++}
++
+ /// [#6879] 이 float 보다 **앞에** 줄을 차지하는 TAC 형제가 있는가.
+ ///
+ /// `#6879` 가 앵커 줄 기준점을 조각 경로 밖(일반 배치·흐름 예약)까지 넓힌 형상은
+@@ -9723,9 +9882,29 @@ impl LayoutEngine {
+                     .get(paragraphs[item_para].para_shape_id as usize)
+                     .map(|style| style.spacing_before)
+                     .unwrap_or(0.0);
++                // 앞 문단의 표 자리는 그 문단을 그린 원점으로 옮긴 값으로 견준다.
++                let previous_frames: std::collections::HashMap<_, _> = col_content
++                    .paragraph_float_placements
++                    .iter()
++                    .filter(|(&(owner, _), _)| owner.checked_add(1) == Some(item_para))
++                    .map(|(&key, placement)| {
++                        (
++                            key,
++                            placement_in_drawn_frame(
++                                paragraphs,
++                                styles,
++                                &para_start_y,
++                                col_area.y,
++                                key,
++                                placement,
++                                self.dpi,
++                            ),
++                        )
++                    })
++                    .collect();
+                 let stored_frame_shared_spacing =
+                     crate::renderer::float_placement::stored_frame_successor_shared_spacing_px(
+-                        &col_content.paragraph_float_placements,
++                        &previous_frames,
+                         item_para,
+                         spacing_before,
+                         y_offset - col_area.y,
+@@ -10139,7 +10318,23 @@ impl LayoutEngine {
+                     .get(item_para)
+                     .and_then(|para| styles.para_styles.get(para.para_shape_id as usize))
+                     .map_or(0.0, |style| style.spacing_after);
+-                for (&(owner, _), placement) in &col_content.paragraph_float_placements {
++                for (&(owner, control_index), placement) in &col_content.paragraph_float_placements
++                {
++                    // 표를 그린 자리와 같은 원점에서 문단 끝을 잰다.
++                    let framed = (owner == item_para
++                        && placement.flow == super::float_placement::ParagraphFloatFlow::NextLine)
++                        .then(|| {
++                            placement_in_drawn_frame(
++                                paragraphs,
++                                styles,
++                                &para_start_y,
++                                col_area.y,
++                                (owner, control_index),
++                                placement,
++                                self.dpi,
++                            )
++                        });
++                    let placement = framed.as_ref().unwrap_or(placement);
+                     if owner == item_para
+                         && matches!(
+                             placement.flow,
+@@ -10152,6 +10347,15 @@ impl LayoutEngine {
+                     if owner == item_para
+                         && placement.flow == super::float_placement::ParagraphFloatFlow::NextLine
+                     {
++                        // 조판과 같다 — 글 있는 문단은 표 아래끝에 뒤 간격을 두지 않는다.
++                        let spacing_after = if paragraphs
++                            .get(owner)
++                            .is_some_and(para_has_non_whitespace_text)
++                        {
++                            0.0
++                        } else {
++                            spacing_after
++                        };
+                         new_y =
+                             col_area.y + placement.paragraph_end(new_y - col_area.y, spacing_after);
+                         hcursor.min_flow_floor = hcursor.min_flow_floor.max(new_y);
+@@ -13798,6 +14002,40 @@ impl LayoutEngine {
+         if let Some(shift) = tac_in_front_decoration_line_shift {
+             para_y_for_table += shift;
+         }
++        // 조판이 정한 표 자리를 이 문단이 실제로 그려지는 원점으로 옮긴다
++        // (`stored_host_placement_in_layout_frame`). 표 그리기와 뒤 흐름이 같은 값을
++        // 봐야 하므로 이 항목의 컨텍스트에서 그 자리만 바꿔 넘긴다.
++        let shifted_float_placements;
++        let shifted_ctx;
++        let host_frame_placement = paragraphs.get(para_index).and_then(|para| {
++            let placement = ctx
++                .paragraph_float_placements
++                .get(&(para_index, control_index))?;
++            let spacing_before = styles
++                .para_styles
++                .get(para.para_shape_id as usize)
++                .map_or(0.0, |style| style.spacing_before);
++            stored_host_placement_in_layout_frame(
++                para,
++                control_index,
++                placement,
++                para_y_for_table - col_area.y,
++                spacing_before,
++                self.dpi,
++            )
++        });
++        let ctx = if let Some(placement) = host_frame_placement {
++            let mut placements = ctx.paragraph_float_placements.clone();
++            placements.insert((para_index, control_index), placement);
++            shifted_float_placements = placements;
++            shifted_ctx = ColumnItemCtx {
++                paragraph_float_placements: &shifted_float_placements,
++                ..*ctx
++            };
++            &shifted_ctx
++        } else {
++            ctx
++        };
+         if let Some(para) = paragraphs.get(para_index) {
+             let is_tac = para
+                 .controls
+diff --git a/src/renderer/typeset/section/controls.rs b/src/renderer/typeset/section/controls.rs
+index 18add5c65..ccf6610c2 100644
+--- a/src/renderer/typeset/section/controls.rs
++++ b/src/renderer/typeset/section/controls.rs
+@@ -620,10 +620,17 @@ impl TypesetEngine {
+         // #6950: text and its tail table may be emitted in paint order rather
+         // than logical order. Finish the paragraph after ALL its controls;
+         // post-text must not return flow to a position above its own table.
+-        let spacing_after = styles
+-            .para_styles
+-            .get(para.para_shape_id as usize)
+-            .map_or(0.0, |style| style.spacing_after);
++        // 한글은 글 있는 문단의 위아래 표 아래끝에 그 문단의 뒤 간격을 더하지 않는다 —
++        // 뒤 간격은 글줄 끝에만 붙는다(저장 사다리, 한글 2024 재저장 실험). 글 없는
++        // 문단의 표는 저장 프레임 분할 경로와 맞물려 종전 회계를 둔다.
++        let spacing_after = if crate::renderer::typeset::para_has_non_whitespace_text(para) {
++            0.0
++        } else {
++            styles
++                .para_styles
++                .get(para.para_shape_id as usize)
++                .map_or(0.0, |style| style.spacing_after)
++        };
+         st.finish_paragraph_float_flow(para_idx, spacing_after);
+     }
+ }
+diff --git a/src/renderer/typeset/table/block/entry.rs b/src/renderer/typeset/table/block/entry.rs
+index 133757d01..da02691dc 100644
+--- a/src/renderer/typeset/table/block/entry.rs
++++ b/src/renderer/typeset/table/block/entry.rs
+@@ -1794,7 +1794,18 @@ impl TypesetEngine {
+                 p.occupied_bottom <= whole_frame_budget
+             })
+         {
+-            if let Some(placement) = resolved_host_placement {
++            if let Some(mut placement) = resolved_host_placement {
++                // 표가 문단 흐름을 끝내면 한글은 다음 문단 첫 줄을 표 아래끝에서
++                // 시작한다 — 그 문단의 앞 간격은 이 자리가 이미 포함한다(한글 2024
++                // 재저장 실험: 앞 간격 600~3000HU 모두 표 아래끝). MS 워드 호환
++                // 문서만 앞 간격을 둔다.
++                if placement.flow == crate::renderer::float_placement::ParagraphFloatFlow::NextLine
++                    && placement.stored_successor_line_origin.is_none()
++                    && para_has_non_whitespace_text(para)
++                    && !st.profile.prev_spacing_beneath_object()
++                {
++                    placement.stored_successor_line_origin = Some(placement.occupied_bottom);
++                }
+                 st.record_paragraph_float_placement((para_idx, ctrl_idx), placement);
+             }
+             // [#3674 진단] fit 분기 발동 사유 — 동작 불변.
+-- 
+2.52.0.windows.1
+

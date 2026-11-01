@@ -187,3 +187,51 @@
   line-height: 14px;
   white-space: nowrap;
 }
+
+/* how hard the running model thinks: a row of levels under the list, shown when the CLI lists them */
+.ai-effort {
+  flex-shrink: 0;
+  margin-top: 4px;
+  padding: 4px 8px 6px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.ai-effort-head {
+  padding: 1px 0 5px;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ai-effort-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ai-effort-option {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-30);
+  background: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ai-effort-option:hover,
+.ai-effort-option:focus-visible {
+  background: var(--hover);
+  color: var(--text);
+  outline: none;
+}
+
+.ai-effort-option.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-weight: 600;
+}

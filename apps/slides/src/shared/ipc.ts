@@ -223,6 +223,10 @@ export interface SetElementFontOp {
   strike?: boolean
   /** Font color #RRGGBB */
   color?: string
+  /** Text highlight #RRGGBB; null removes it */
+  highlight?: string | null
+  /** Character spacing in points; null or 0 = normal */
+  letterSpacingPt?: number | null
   /** In-group editing: all sourceIds are direct children of that group */
   groupId?: string
 }
@@ -627,6 +631,8 @@ export interface ShapeKey {
   sourceId: string
   spid: number | null
   name: string
+  /** <p:cNvPr hidden="1">: the element is in the file but never drawn (Selection Pane eye) */
+  hidden?: boolean
 }
 
 /** Overwrite-set the whole page's animation list (add/remove/reorder/param changes all use this). */
@@ -1172,13 +1178,15 @@ export interface EditChartOp {
 
 // ── Export (PDF / images) ─────────────────────────────────────────────
 
-/** Export as images: the renderer has already rendered hi-res PNGs; the main process only writes them to disk. */
+/** Export as images: the renderer has already rendered hi-res pages; the main process only writes them to disk. */
 export interface ExportImagesOp {
   /** Target directory (absolute path chosen via pickExportDir) */
   dir: string
-  /** File base name (without extension), written as <baseName>-01.png / -02.png … */
+  /** File base name (without extension), written as <baseName>-01.png / -02.png … (or .jpg) */
   baseName: string
-  /** base64 per page PNG (without the data: prefix), in page order */
+  /** Image format of the rendered pages; anything but 'jpg' is written as .png */
+  format?: 'png' | 'jpg'
+  /** base64 per page image (without the data: prefix), in page order */
   pngsBase64: string[]
 }
 
@@ -1291,6 +1299,7 @@ export type MenuCommand =
   | 'save-as'
   | 'export-pdf'
   | 'export-images'
+  | 'export-images-jpg'
   | 'print'
   | 'zoom-in'
   | 'zoom-out'
@@ -1513,6 +1522,18 @@ export interface SlidesApi {
   duplicateSlides: (op: DuplicateSlidesOp) => Promise<(SlideUpdate & { index: number }) | null>
   /** Bring element to front/back or move one layer forward/backward */
   reorderElement: (op: ReorderElementOp) => Promise<RenderSlide | null>
+  /** Selection Pane eye: hide/show a top-level element (the slide is reparsed: all element ids change) */
+  setElementHidden: (op: {
+    slideIndex: number
+    sourceId: string
+    hidden: boolean
+  }) => Promise<RenderSlide | null>
+  /** Selection Pane rename (<p:cNvPr name>) */
+  setElementName: (op: {
+    slideIndex: number
+    sourceId: string
+    name: string
+  }) => Promise<RenderSlide | null>
   /** Table cell text edit */
   editTableCell: (op: EditTableCellOp) => Promise<RenderSlide | null>
   /** Row/column insert/delete (tables with merged cells refused, returns null); ids change after reparse, requiring a whole-page replace and reselect */

@@ -622,6 +622,46 @@ describe('a running session', () => {
     session.stop()
   })
 
+  it('names a configured level on every turn when the model takes it, reading the list once', async () => {
+    const listed = {
+      data: [
+        {
+          id: 'gpt-x',
+          isDefault: true,
+          supportedReasoningEfforts: [{ reasoningEffort: 'high', description: '' }],
+        },
+      ],
+    }
+    const turns = async (effort: string | undefined, model = '') => {
+      const { run, server } = await start(baseHandlers({ 'model/list': () => listed }), {
+        effort,
+        model,
+      })
+      const session = await run
+      await session.send('one')
+      await session.send('two').catch(() => undefined)
+      const received = server().received
+      session.stop()
+      return {
+        lists: received.filter((message) => message.method === 'model/list').length,
+        efforts: received
+          .filter((message) => message.method === 'turn/start')
+          .map((message) => (message.params as { effort?: unknown }).effort),
+        thread: received.find((message) => message.method === 'thread/start')!.params,
+      }
+    }
+    const high = await turns('high')
+    expect(high.lists).toBe(1)
+    expect(high.efforts[0]).toBe('high')
+    expect(JSON.stringify(high.thread)).not.toContain('effort')
+    // a configured model reads the list only for the level
+    expect((await turns('high', 'gpt-x')).lists).toBe(1)
+    expect((await turns(undefined, 'gpt-x')).lists).toBe(0)
+    // a level the model does not take, or no level, is left out
+    expect((await turns('low')).efforts[0]).toBeUndefined()
+    expect((await turns(undefined)).efforts[0]).toBeUndefined()
+  })
+
   it('asks the person about a command that needs approval, and answers Codex', async () => {
     const { run, events, server } = await start(
       baseHandlers({

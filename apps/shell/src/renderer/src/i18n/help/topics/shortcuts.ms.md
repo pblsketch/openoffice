@@ -312,20 +312,24 @@ Menutup tab ialah satu-satunya tempat kedua platform berasingan sepenuhnya: ⌘W
 
 ### Penyuntingan
 
-| Tindakan                                          | macOS  | Windows / Linux |
-| ------------------------------------------------- | ------ | --------------- |
-| Slaid baharu                                      | ⇧⌘N    | Ctrl+M          |
-| Cari (bukan semasa menyunting teks dalam bentuk)  | ⌘F     | Ctrl+F          |
-| Anotasi pilihan dengan AI (dengan bentuk dipilih) | ⌘K     | Ctrl+K          |
-| Zum masuk                                         | ⌘=     | Ctrl+=          |
-| Zum keluar                                        | ⌘-     | Ctrl+-          |
-| Saiz sebenar (100%)                               | ⌘0     | Ctrl+0          |
-| Pilih semua                                       | ⌘A     | Ctrl+A          |
-| Berganti pilihan bentuk ke hadapan / ke belakang  | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Tindakan                                                              | macOS  | Windows / Linux |
+| --------------------------------------------------------------------- | ------ | --------------- |
+| Slaid baharu                                                          | ⇧⌘N    | Ctrl+M          |
+| Cari (bukan semasa menyunting teks dalam bentuk)                      | ⌘F     | Ctrl+F          |
+| Anotasi pilihan dengan AI (dengan bentuk dipilih)                     | ⌘K     | Ctrl+K          |
+| Zum masuk                                                             | ⌘=     | Ctrl+=          |
+| Zum keluar                                                            | ⌘-     | Ctrl+-          |
+| Saiz sebenar (100%)                                                   | ⌘0     | Ctrl+0          |
+| Pilih semua                                                           | ⌘A     | Ctrl+A          |
+| Berganti pilihan bentuk ke hadapan / ke belakang                      | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Ulang tindakan terakhir (format, isian, garisan, penjajaran, pendua…) | F4     | F4              |
+| Tunjukkan/sembunyikan Anak Tetingkap Pemilihan                        | ⌥F10   | Alt+F10         |
 
 Slaid baharu ialah pembahagian platform yang satu lagi. Setiap platform mempunyai kekunci sendiri dan yang satu lagi tidak melakukan apa-apa: ⇧⌘N pada macOS, Ctrl+M pada Windows dan Linux. `⌘M` tidak boleh undertake kerja itu pada macOS kerana itulah kekunci Perkecil sistem.
 
 Pilih semua mengikut fokus: dengan baris lakaran kenit, kerangka atau penyusun slaid yang difokuskan, ia memilih setiap slaid, dan di tempat lain ia memilih setiap elemen pada slaid semasa. Tab berputar melalui bentuk-bentuk pada slaid itu, dan hanya apabila kanvas slaid itu sendiri difokuskan.
+
+F4 juga berfungsi di dalam kotak teks, menggunakan format terakhir pada teks yang dipilih.
 
 ### Pemformatan teks
 
@@ -694,18 +698,25 @@ Kekunci ini berfungsi apabila tab HWP/HWPX berada di hadapan dan dokumen mempuny
 
 ### Jadual
 
-| Tindakan           | macOS        | Windows / Linux        |
-| ------------------ | ------------ | ---------------------- |
-| Tambah baris/lajur | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| Padam baris/lajur  | ⌥⌫           | Alt+Delete             |
-| Pisahkan sel       | F5 → S       | F5 → S                 |
-| Gabungkan sel      | F5 → M       | F5 → M                 |
-| Jumlah blok        | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| Purata blok        | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| Hasil darab blok   | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| Pisahkan jadual    | ⌃N, A        | Ctrl+N, A              |
-| Gabungkan jadual   | ⌃N, Z        | Ctrl+N, Z              |
-| Formula pengiraan  | ⌃N, F        | Ctrl+N, F              |
+| Tindakan                             | macOS        | Windows / Linux        |
+| ------------------------------------ | ------------ | ---------------------- |
+| Tambah baris/lajur                   | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Padam baris/lajur                    | ⌥⌫           | Alt+Delete             |
+| Pisahkan sel                         | F5 → S       | F5 → S                 |
+| Gabungkan sel                        | F5 → M       | F5 → M                 |
+| Sifat jadual/sel                     | F5 → P       | F5 → P                 |
+| Sempadan / lorekan, setiap sel       | F5 → L / C   | F5 → L / C             |
+| Sempadan / lorekan, sel sebagai satu | F5 → B / F   | F5 → B / F             |
+| Samakan tinggi baris / lebar lajur   | F5 → H / W   | F5 → H / W             |
+| Isi automatik jadual                 | F5 → A       | F5 → A                 |
+| Kembali menyunting sel               | F5 → ⏎       | F5 → Enter             |
+| Inden tergantung pantas (dalam sel)  | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| Jumlah blok                          | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Purata blok                          | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Hasil darab blok                     | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Pisahkan jadual                      | ⌃N, A        | Ctrl+N, A              |
+| Gabungkan jadual                     | ⌃N, Z        | Ctrl+N, Z              |
+| Formula pengiraan                    | ⌃N, F        | Ctrl+N, F              |
 
 ### Pengiraan jadual
 

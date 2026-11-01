@@ -332,6 +332,7 @@ export function createAgentManager(deps: AgentManagerDeps): AgentManager {
           projectRoot,
           mode: request.mode,
           model: config?.model ?? '',
+          effort: config?.effort,
           cliPath: config?.cliPath,
           instructions: await agentInstructions(
             request.provider,

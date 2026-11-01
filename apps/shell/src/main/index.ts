@@ -4794,20 +4794,20 @@ function installTabShortcuts(): void {
     contents.on('before-input-event', (event, input) => {
       const manager = tabManager
       if (!manager) return
-      // Ctrl+Tab in a Hangul table cell inserts a tab, as Hancom does; elsewhere the
-      // shell keeps it for cycling tabs. The editor answers from its own key map.
+      // Ctrl+Tab in a Hangul table cell inserts a tab and Ctrl+Shift+Tab lines the paragraph
+      // up at the caret, as Hancom does; elsewhere the shell keeps them for cycling tabs. The
+      // editor answers from its own key map.
       if (
         input.type === 'keyDown' &&
         input.key === 'Tab' &&
         input.control &&
         !input.alt &&
-        !input.shift &&
         !input.meta &&
         manager.describeWebContents(contents.id)?.kind === 'hwp'
       ) {
         event.preventDefault()
-        void editorTakes(contents, 'ctrl-tab').then((taken) => {
-          if (!taken) manager.cycleTab(1)
+        void editorTakes(contents, input.shift ? 'ctrl-shift-tab' : 'ctrl-tab').then((taken) => {
+          if (!taken) manager.cycleTab(input.shift ? -1 : 1)
         })
         return
       }

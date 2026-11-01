@@ -2,8 +2,10 @@
  * What the renderers and the main side agree on for the subscription providers:
  * IPC channel names, the payloads that travel on them, and the few fixed values
  * the UI shows (install command, install page). Browser-safe: this file imports
- * types only, so preload and renderer bundles can use it as is.
+ * types and the plain effort list only, so preload and renderer bundles can use
+ * it as is.
  */
+import { aiEffortOf, aiEffortsOf } from '../effort'
 import type {
   AiSubscriptionCliId,
   AiSubscriptionModel,
@@ -360,7 +362,8 @@ function modelLabelOf(value: unknown): string {
 
 /**
  * A model list as a status carries it: the listed fields only, ids the CLI
- * could be given, names trimmed and bounded, one entry per id, at most
+ * could be given, names trimmed and bounded, effort levels from the known
+ * list only, one entry per id, at most
  * `SUBSCRIPTION_MODELS_MAX` entries. The entry with an empty id stands for the
  * CLI's own default and is kept only when it tells what that resolves to.
  * Absent when nothing usable is left.
@@ -378,11 +381,16 @@ export function subscriptionModelsOf(value: unknown): AiSubscriptionModel[] | un
     const resolved = modelIdOf(entry.resolved)
     if (isDefaultEntry && !resolved) continue
     seen.add(id)
+    // levels outside the known list are dropped; the default counts only as one the model takes
+    const efforts = aiEffortsOf(entry.efforts)
+    const defaultEffort = aiEffortOf(entry.defaultEffort)
     models.push({
       id,
       label: modelLabelOf(entry.label) || id || (resolved as string),
       ...(resolved ? { resolved } : {}),
       ...(isDefaultEntry || entry.isDefault === true ? { isDefault: true } : {}),
+      ...(efforts ? { efforts } : {}),
+      ...(efforts && defaultEffort && efforts.includes(defaultEffort) ? { defaultEffort } : {}),
     })
   }
   return models.length > 0 ? models : undefined

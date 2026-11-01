@@ -312,20 +312,24 @@ Een tabblad sluiten is de enige plek waar de twee platformen volledig uit elkaar
 
 ### Bewerken
 
-| Actie                                                    | macOS  | Windows / Linux |
-| -------------------------------------------------------- | ------ | --------------- |
-| Nieuwe dia                                               | ⇧⌘N    | Ctrl+M          |
-| Zoeken (niet tijdens het bewerken van tekst in een vorm) | ⌘F     | Ctrl+F          |
-| De selectie met AI annoteren (met vormen geselecteerd)   | ⌘K     | Ctrl+K          |
-| Inzoomen                                                 | ⌘=     | Ctrl+=          |
-| Uitzoomen                                                | ⌘-     | Ctrl+-          |
-| Werkelijke grootte (100%)                                | ⌘0     | Ctrl+0          |
-| Alles selecteren                                         | ⌘A     | Ctrl+A          |
-| Vormselectie vooruit / achteruit doorlopen               | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Actie                                                                     | macOS  | Windows / Linux |
+| ------------------------------------------------------------------------- | ------ | --------------- |
+| Nieuwe dia                                                                | ⇧⌘N    | Ctrl+M          |
+| Zoeken (niet tijdens het bewerken van tekst in een vorm)                  | ⌘F     | Ctrl+F          |
+| De selectie met AI annoteren (met vormen geselecteerd)                    | ⌘K     | Ctrl+K          |
+| Inzoomen                                                                  | ⌘=     | Ctrl+=          |
+| Uitzoomen                                                                 | ⌘-     | Ctrl+-          |
+| Werkelijke grootte (100%)                                                 | ⌘0     | Ctrl+0          |
+| Alles selecteren                                                          | ⌘A     | Ctrl+A          |
+| Vormselectie vooruit / achteruit doorlopen                                | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Laatste actie herhalen (opmaak, opvulling, lijn, uitlijning, dupliceren…) | F4     | F4              |
+| Selectievenster weergeven/verbergen                                       | ⌥F10   | Alt+F10         |
 
 Nieuwe dia is de andere platformsplitsing. Elk platform heeft zijn eigen toets en de andere doet niets: ⇧⌘N op macOS, Ctrl+M op Windows en Linux. ⌘M kan dat op macOS niet doen omdat dat de systeemtoets voor Minimaliseren is.
 
 Alles selecteren volgt de focus: met het miniatuurpaneel, overzichtspaneel of de dia-sorteerder gefocusd selecteert het alle dia's, en elders elk element op de huidige dia. Tab doorloopt de vormen op de dia, en alleen wanneer het diavlak zelf focus heeft.
+
+F4 werkt ook in een tekstvak en past de laatste opmaak toe op de geselecteerde tekst.
 
 ### Tekstopmaak
 
@@ -694,18 +698,25 @@ Deze toetsen werken zolang het tabblad HWP/HWPX vooraan staat en het document fo
 
 ### Tabel
 
-| Actie                 | macOS        | Windows / Linux        |
-| --------------------- | ------------ | ---------------------- |
-| Rij/kolom toevoegen   | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| Rij/kolom verwijderen | ⌥⌫           | Alt+Delete             |
-| Cel splitsen          | F5 → S       | F5 → S                 |
-| Cellen samenvoegen    | F5 → M       | F5 → M                 |
-| Bloksom               | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| Blokgemiddelde        | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| Blokproduct           | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| Tabel splitsen        | ⌃N, A        | Ctrl+N, A              |
-| Tabellen samenvoegen  | ⌃N, Z        | Ctrl+N, Z              |
-| Berekeningsformule    | ⌃N, F        | Ctrl+N, F              |
+| Actie                                    | macOS        | Windows / Linux        |
+| ---------------------------------------- | ------------ | ---------------------- |
+| Rij/kolom toevoegen                      | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Rij/kolom verwijderen                    | ⌥⌫           | Alt+Delete             |
+| Cel splitsen                             | F5 → S       | F5 → S                 |
+| Cellen samenvoegen                       | F5 → M       | F5 → M                 |
+| Tabel-/celeigenschappen                  | F5 → P       | F5 → P                 |
+| Randen / arcering, per cel               | F5 → L / C   | F5 → L / C             |
+| Randen / arcering, cellen als één        | F5 → B / F   | F5 → B / F             |
+| Gelijke rijhoogte / kolombreedte         | F5 → H / W   | F5 → H / W             |
+| Tabel automatisch vullen                 | F5 → A       | F5 → A                 |
+| Terug naar de cel bewerken               | F5 → ⏎       | F5 → Enter             |
+| Snel verkeerd-om inspringen (in een cel) | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| Bloksom                                  | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Blokgemiddelde                           | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Blokproduct                              | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Tabel splitsen                           | ⌃N, A        | Ctrl+N, A              |
+| Tabellen samenvoegen                     | ⌃N, Z        | Ctrl+N, Z              |
+| Berekeningsformule                       | ⌃N, F        | Ctrl+N, F              |
 
 ### Tabelberekeningen
 

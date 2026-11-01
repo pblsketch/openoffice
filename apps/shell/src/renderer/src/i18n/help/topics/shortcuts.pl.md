@@ -312,20 +312,24 @@ Zamykanie karty to jedyne miejsce, w którym obie platformy dzielą się całkow
 
 ### Edycja
 
-| Czynność                                                   | macOS  | Windows / Linux |
-| ---------------------------------------------------------- | ------ | --------------- |
-| Nowy slajd                                                 | ⇧⌘N    | Ctrl+M          |
-| Znajdź (nie podczas edycji tekstu w kształcie)             | ⌘F     | Ctrl+F          |
-| Opisz zaznaczenie za pomocą AI (z zaznaczonymi kształtami) | ⌘K     | Ctrl+K          |
-| Powiększ                                                   | ⌘=     | Ctrl+=          |
-| Pomniejsz                                                  | ⌘-     | Ctrl+-          |
-| Rozmiar rzeczywisty (100%)                                 | ⌘0     | Ctrl+0          |
-| Zaznacz wszystko                                           | ⌘A     | Ctrl+A          |
-| Przechodź po zaznaczeniu kształtów do przodu / do tyłu     | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Czynność                                                                          | macOS  | Windows / Linux |
+| --------------------------------------------------------------------------------- | ------ | --------------- |
+| Nowy slajd                                                                        | ⇧⌘N    | Ctrl+M          |
+| Znajdź (nie podczas edycji tekstu w kształcie)                                    | ⌘F     | Ctrl+F          |
+| Opisz zaznaczenie za pomocą AI (z zaznaczonymi kształtami)                        | ⌘K     | Ctrl+K          |
+| Powiększ                                                                          | ⌘=     | Ctrl+=          |
+| Pomniejsz                                                                         | ⌘-     | Ctrl+-          |
+| Rozmiar rzeczywisty (100%)                                                        | ⌘0     | Ctrl+0          |
+| Zaznacz wszystko                                                                  | ⌘A     | Ctrl+A          |
+| Przechodź po zaznaczeniu kształtów do przodu / do tyłu                            | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Powtórz ostatnią czynność (format, wypełnienie, linia, wyrównanie, duplikowanie…) | F4     | F4              |
+| Pokaż/ukryj okienko zaznaczenia                                                   | ⌥F10   | Alt+F10         |
 
 Nowy slajd to drugi podział platform. Każda platforma ma własny klawisz, a drugi nic nie robi: ⇧⌘N w macOS, Ctrl+M w Windows i Linux. ⌘M nie może tego zrobić w macOS, bo jest systemowym skrótem Minimalizuj.
 
 Zaznacz wszystko zależy od fokusu: przy fokusie na panel miniatur, panelu konspektu lub sortowaniu slajdów zaznacza wszystkie slajdy, a wszędzie indziej wszystkie elementy bieżącego slajdu. Tab przechodzi po kształtach slajdu i tylko wtedy, gdy fokus ma sama plansza slajdu.
+
+F4 działa też w polu tekstowym: stosuje ostatni format do zaznaczonego tekstu.
 
 ### Formatowanie tekstu
 
@@ -694,18 +698,25 @@ Te klawisze działają, gdy karta HWP/HWPX jest na wierzchu, a dokument ma fokus
 
 ### Tabela
 
-| Czynność             | macOS        | Windows / Linux        |
-| -------------------- | ------------ | ---------------------- |
-| Dodaj wiersz/kolumnę | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| Usuń wiersz/kolumnę  | ⌥⌫           | Alt+Delete             |
-| Podziel komórkę      | F5 → S       | F5 → S                 |
-| Scal komórki         | F5 → M       | F5 → M                 |
-| Suma bloku           | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| Średnia bloku        | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| Iloczyn bloku        | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| Podziel tabelę       | ⌃N, A        | Ctrl+N, A              |
-| Połącz tabele        | ⌃N, Z        | Ctrl+N, Z              |
-| Formuła obliczeniowa | ⌃N, F        | Ctrl+N, F              |
+| Czynność                                      | macOS        | Windows / Linux        |
+| --------------------------------------------- | ------------ | ---------------------- |
+| Dodaj wiersz/kolumnę                          | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Usuń wiersz/kolumnę                           | ⌥⌫           | Alt+Delete             |
+| Podziel komórkę                               | F5 → S       | F5 → S                 |
+| Scal komórki                                  | F5 → M       | F5 → M                 |
+| Właściwości tabeli/komórki                    | F5 → P       | F5 → P                 |
+| Obramowanie / cieniowanie, każda komórka      | F5 → L / C   | F5 → L / C             |
+| Obramowanie / cieniowanie, komórki jako jedna | F5 → B / F   | F5 → B / F             |
+| Równa wysokość wiersza / szerokość kolumny    | F5 → H / W   | F5 → H / W             |
+| Autouzupełnianie tabeli                       | F5 → A       | F5 → A                 |
+| Powrót do edycji komórki                      | F5 → ⏎       | F5 → Enter             |
+| Szybkie wcięcie wiszące (w komórce)           | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| Suma bloku                                    | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Średnia bloku                                 | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Iloczyn bloku                                 | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Podziel tabelę                                | ⌃N, A        | Ctrl+N, A              |
+| Połącz tabele                                 | ⌃N, Z        | Ctrl+N, Z              |
+| Formuła obliczeniowa                          | ⌃N, F        | Ctrl+N, F              |
 
 ### Obliczenia tabeli
 

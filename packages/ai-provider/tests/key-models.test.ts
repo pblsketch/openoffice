@@ -105,7 +105,7 @@ describe('listKeyProviderModels — Anthropic', () => {
 })
 
 describe('listKeyProviderModels — OpenAI-compatible', () => {
-  it('drops non-chat, Responses-only and dated-snapshot ids, newest first', async () => {
+  it('drops non-chat, -pro, Codex and dated-snapshot ids, newest first', async () => {
     const fetchMock = fetchSequence(
       json({
         object: 'list',
@@ -131,7 +131,7 @@ describe('listKeyProviderModels — OpenAI-compatible', () => {
 
     const models = await listKeyProviderModels('openai', { apiKey: 'sk-1' }, fetchMock)
 
-    expect(models).toEqual(['gpt-5.7', 'gpt-5.6-sol', 'o4-mini'])
+    expect(models).toEqual(['gpt-6-sol', 'gpt-5.7', 'gpt-5.6-sol', 'o4-mini'])
     expect(fetchMock.mock.calls[0]![0]).toBe('https://api.openai.com/v1/models')
     expect(headerOf(fetchMock, 0, 'Authorization')).toBe('Bearer sk-1')
   })

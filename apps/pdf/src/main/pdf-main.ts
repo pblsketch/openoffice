@@ -44,6 +44,7 @@ import { brandText, createI18n, getUiLang } from '@genoffice/i18n'
 import { generateImageTool, documentMediaRoots, withMediaCallSignal } from '@genoffice/ai-search'
 import { sharedSubscriptionStatuses } from '@genoffice/ai-provider/subscription'
 import { PDF_CHANNELS, PDF_TOOLS_HANDOFF, type PdfToolsHandoffTool } from '../shared/ipc'
+import { CertificateEncryptionError, WrongPasswordError, decryptDocument } from './pdf-crypt'
 import { buildExportImagePaths, hasValidExportPageNumbers } from './export-images'
 import type {
   ExportImagesRequest,
@@ -107,6 +108,8 @@ import {
   splitPdfBytes,
 } from './save-pdf'
 import { readPdfText } from './read-text'
+import { shrinkDocument } from './pdf-shrink'
+import { PDFDocument } from 'pdf-lib'
 import {
   addSignature,
   isSignatureData,
@@ -992,6 +995,11 @@ export function pdfRecoveryIdentity(webContentsId: number): RecoveryIdentity | n
   return recovery.untitledIdentity(webContentsId)
 }
 
+/** Whether a save request opens or writes password protection (a protected session) */
+function carriesProtection(request: SavePdfRequest | null | undefined): boolean {
+  return request?.encryption !== undefined || request?.decryption !== undefined
+}
+
 /** The view's own document: a restored recovery copy until it is saved, else the file */
 async function viewDocumentBytes(wcId: number, path: string): Promise<Uint8Array> {
   return recovery.viewBytes(wcId, path) ?? new Uint8Array(await readFile(path))
@@ -1476,6 +1484,30 @@ function registerPdfIpc(): void {
       : buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
   })
 
+  // pdf.js has already accepted `password` for these bytes on the render side;
+  // a failure here therefore means the standard handler refused it
+  ipcMain.handle(PDF_CHANNELS.decryptPdf, async (_e, bytes: unknown, password: unknown) => {
+    if (!(bytes instanceof Uint8Array) || typeof password !== 'string') {
+      return { ok: false as const, reason: 'pdf: malformed decrypt request' }
+    }
+    try {
+      const opened = await decryptDocument(bytes, password)
+      return {
+        ok: true as const,
+        bytes: opened.bytes,
+        permissions: opened.permissions,
+        neededPassword: opened.neededPassword,
+        unlockedAs: opened.unlockedAs,
+      }
+    } catch (err) {
+      if (err instanceof WrongPasswordError) return { ok: false as const, reason: 'wrong-password' }
+      if (err instanceof CertificateEncryptionError) {
+        return { ok: false as const, reason: 'certificate-encryption' }
+      }
+      return { ok: false as const, reason: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
   ipcMain.handle(
     PDF_CHANNELS.createDocument,
     async (e, request: unknown): Promise<CreateDocumentResult> => {
@@ -1520,6 +1552,11 @@ function registerPdfIpc(): void {
     // bake or delete the document's own annotations.
     if (annotations !== 'keep' && target === path) {
       return { ok: false, error: 'pdf: annotation handling requires Save As' }
+    }
+    // Flattening and stripping run on the saved output, which a protected
+    // document has already encrypted again; the renderer keeps them for plain files.
+    if (annotations !== 'keep' && carriesProtection(request)) {
+      return { ok: false, error: 'pdf: annotation handling needs a document without a password' }
     }
     if (request.copyOnly === true) {
       if (target === path) return { ok: false, error: 'pdf: copyOnly requires Save As' }
@@ -1669,6 +1706,8 @@ function registerPdfIpc(): void {
     async (e, request: SavePdfRequest): Promise<Uint8Array | null> => {
       const path = request?.path
       if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) return null
+      // a password-protected document is not copied into a skill's templates
+      if (carriesProtection(request)) return null
       try {
         const restored = recovery.viewBytes(e.sender.id, path)
         return restored
@@ -1733,6 +1772,53 @@ function registerPdfIpc(): void {
         console.warn('[pdf] untitled copy saved hook failed:', err)
       }
       return target
+    },
+  )
+
+  // An attachment to embed: the open dialog is main-side, the bytes travel base64
+  // over the same IPC the stamp images already use
+  ipcMain.handle(PDF_CHANNELS.pickAttachmentFile, async (e) => {
+    if (!allowedByWc.has(e.sender.id)) {
+      return { ok: false as const, reason: 'pdf: sender is not a registered PDF view' }
+    }
+    const win = BrowserWindow.fromWebContents(e.sender) ?? BrowserWindow.getFocusedWindow()
+    const picked = await showOpenDialogWithMemory(dialog, win ?? undefined, {
+      properties: ['openFile'],
+    })
+    const file = picked.filePaths[0]
+    if (picked.canceled || !file) return { ok: false as const, cancelled: true }
+    try {
+      const bytes = await readFile(file)
+      return {
+        ok: true as const,
+        name: basename(file),
+        bytesBase64: bytes.toString('base64'),
+      }
+    } catch (err) {
+      return { ok: false as const, reason: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  ipcMain.handle(
+    PDF_CHANNELS.exportAttachment,
+    async (e, path: unknown, name: unknown, bytesBase64: unknown) => {
+      if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) {
+        return { ok: false as const, reason: 'pdf: path not granted to this view' }
+      }
+      if (typeof name !== 'string' || typeof bytesBase64 !== 'string') {
+        return { ok: false as const, reason: 'pdf: malformed export request' }
+      }
+      const parent = BrowserWindow.fromWebContents(e.sender)
+      const picked = parent
+        ? await dialog.showSaveDialog(parent, { defaultPath: join(dirname(path), name) })
+        : await dialog.showSaveDialog({ defaultPath: join(dirname(path), name) })
+      if (picked.canceled || !picked.filePath) return { ok: false as const, cancelled: true }
+      try {
+        await writeFile(picked.filePath, Buffer.from(bytesBase64, 'base64'))
+        return { ok: true as const, targetPath: picked.filePath }
+      } catch (err) {
+        return { ok: false as const, reason: err instanceof Error ? err.message : String(err) }
+      }
     },
   )
 
@@ -2026,17 +2112,69 @@ function registerPdfIpc(): void {
   // Compare: the open document's own text through the same pdfium engine as the
   // picked side — pdf.js and pdfium break lines differently, and a diff across
   // engines reports added and removed lines on files that are identical.
-  ipcMain.handle(PDF_CHANNELS.compareReadOpen, async (e, path: unknown) => {
+  ipcMain.handle(PDF_CHANNELS.compareReadOpen, async (e, path: unknown, password: unknown) => {
     if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) {
       return { ok: false as const, reason: 'pdf: path not granted to this view' }
     }
     try {
-      const text = await readPdfText(new Uint8Array(await readFile(path)))
+      const text = await readPdfText(new Uint8Array(await readFile(path)), {
+        password: typeof password === 'string' ? password : undefined,
+      })
       return {
         ok: true as const,
         name: basename(path),
         pageCount: text.pageCount,
         pages: text.pages.map((page) => page.text),
+      }
+    } catch (err) {
+      return { ok: false as const, reason: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  // Reduce File Size: shrink a copy picked through the save dialog; the open
+  // document is untouched
+  ipcMain.handle(PDF_CHANNELS.reduceFileSize, async (e, path: unknown) => {
+    if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) {
+      return { ok: false as const, reason: 'pdf: path not granted to this view' }
+    }
+    const parent = BrowserWindow.fromWebContents(e.sender)
+    const base = basename(path).replace(/\.pdf$/i, '')
+    // the file name belongs in defaultPath: `title` only labels the dialog and
+    // leaves the name field empty with no directory
+    const filters = [{ name: tm('filterPdf'), extensions: ['pdf'] }]
+    const picked = parent
+      ? await dialog.showSaveDialog(parent, {
+          defaultPath: base + '-small.pdf',
+          filters,
+        })
+      : await dialog.showSaveDialog({ defaultPath: base + '-small.pdf', filters })
+    if (picked.canceled || !picked.filePath) return { ok: false as const, canceled: true }
+    try {
+      const source = new Uint8Array(await readFile(path))
+      const doc = await PDFDocument.load(source, { updateMetadata: false })
+      const result = shrinkDocument(doc)
+      // Object streams stay on: turning them off expands any file whose
+      // producer used them — bigger output that the toast reported as a
+      // reduction. A run that does not come out smaller writes nothing.
+      const after = await doc.save({ useObjectStreams: true })
+      if (after.length >= source.length) {
+        return {
+          ok: true as const,
+          targetPath: picked.filePath,
+          bytesBefore: source.length,
+          bytesAfter: after.length,
+          streamsRecompressed: result.streamsRecompressed,
+          imagesDownsampled: result.imagesDownsampled,
+        }
+      }
+      await writePdfAtomically(picked.filePath, after)
+      return {
+        ok: true as const,
+        targetPath: picked.filePath,
+        bytesBefore: source.length,
+        bytesAfter: after.length,
+        streamsRecompressed: result.streamsRecompressed,
+        imagesDownsampled: result.imagesDownsampled,
       }
     } catch (err) {
       return { ok: false as const, reason: err instanceof Error ? err.message : String(err) }
@@ -2267,6 +2405,7 @@ function registerPdfIpc(): void {
         return { ok: false, error: 'pdf: no images' }
       if (!hasValidExportPageNumbers(pageNumbers, images.length))
         return { ok: false, error: 'pdf: invalid page numbers' }
+      const ext = request?.format === 'jpg' ? 'jpg' : 'png'
       const win =
         BrowserWindow.fromWebContents(e.sender) ?? BrowserWindow.getFocusedWindow() ?? undefined
       const picked = await showOpenDialogWithMemory(dialog, win, {
@@ -2276,7 +2415,7 @@ function registerPdfIpc(): void {
       const dir = picked.filePaths[0]
       if (picked.canceled || !dir) return { ok: true, canceled: true }
       try {
-        const outputPaths = buildExportImagePaths(dir, baseName, pageNumbers)
+        const outputPaths = buildExportImagePaths(dir, baseName, pageNumbers, ext)
         for (const [i, b64] of images.entries()) {
           await writeFile(outputPaths[i]!, Buffer.from(b64, 'base64'))
         }
@@ -2514,6 +2653,9 @@ function registerPdfIpc(): void {
     async (e, request: SavePdfRequest): Promise<PdfRecoveryCopyResult> => {
       const path = request?.path
       if (!pdfPathGranted(e.sender.id, path) || request.targetPath !== undefined) return 'skipped'
+      // a document that is or is about to be password-protected gets no copy: the
+      // request carries its password, and the copy would be the protected file
+      if (carriesProtection(request)) return 'skipped'
       const restored = recovery.viewBytes(e.sender.id, path)
       return recovery.writeCopy(e.sender.id, path, async () => {
         // read once; a password or encrypted PDF gets no copy whatever the renderer reported

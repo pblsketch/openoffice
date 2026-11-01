@@ -19,6 +19,7 @@ import { flushActiveEdit } from './file-actions'
 import { shouldRouteHistoryToDeck } from './undo-routing'
 import { rangeSelection } from '../shared/slide-selection'
 import { nextPreset, prevPreset } from './zoom-steps'
+import { repeatLast } from './repeat-action'
 
 /** Whether focus is in a text input (input/textarea/contentEditable) — these cases use native undo/delete */
 function inTextField(): boolean {
@@ -145,6 +146,21 @@ export function handleGlobalKeydown(
     void ctx.redo()
     return
   }
+  // F4 repeats the last repeatable action (PowerPoint); inside the text editor it hits
+  // the current selection, in other fields the key is left alone
+  if (e.key === 'F4' && !mod && !e.altKey && !e.shiftKey) {
+    if (e.defaultPrevented || (inField && !inEditorOverlay())) return
+    if (ctx.viewMode === 'reading' || ctx.masterItems || ctx.cropTarget) return
+    if (repeatLast(ctx)) e.preventDefault()
+    return
+  }
+  // Alt+F10 shows/hides the selection pane (PowerPoint)
+  if (e.key === 'F10' && e.altKey && !mod && !e.shiftKey) {
+    if (ctx.viewMode === 'reading' || ctx.masterItems) return
+    e.preventDefault()
+    ctx.toggleSelectionPane()
+    return
+  }
   // ⌘F find/replace
   if (mod && !e.altKey && (e.key === 'f' || e.key === 'F')) {
     if (editing) return
@@ -236,6 +252,13 @@ export function handleGlobalKeydown(
   if (e.key === 'Escape' && ctx.brushMode) {
     e.preventDefault()
     ctx.setBrushMode(null)
+    ctx.setStatus('')
+    return
+  }
+  // Esc: disarm the animation painter
+  if (e.key === 'Escape' && ctx.animPainter) {
+    e.preventDefault()
+    ctx.setAnimPainter(null)
     ctx.setStatus('')
     return
   }

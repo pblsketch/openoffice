@@ -312,20 +312,24 @@ Zavírání panelu je jediné místo, kde se dvě platformy zcela rozdělí: ⌘
 
 ### Úpravy
 
-| Akce                                         | macOS  | Windows / Linux |
-| -------------------------------------------- | ------ | --------------- |
-| Nový snímek                                  | ⇧⌘N    | Ctrl+M          |
-| Najít (ne při úpravě textu v tvaru)          | ⌘F     | Ctrl+F          |
-| Opatrnit výběr pomocí AI (s vybranými tvary) | ⌘K     | Ctrl+K          |
-| Přiblížit                                    | ⌘=     | Ctrl+=          |
-| Oddálit                                      | ⌘-     | Ctrl+-          |
-| Skutečná velikost (100%)                     | ⌘0     | Ctrl+0          |
-| Vybrat vše                                   | ⌘A     | Ctrl+A          |
-| Přecházet výběrem tvarů vpřed / vzad         | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Akce                                                                   | macOS  | Windows / Linux |
+| ---------------------------------------------------------------------- | ------ | --------------- |
+| Nový snímek                                                            | ⇧⌘N    | Ctrl+M          |
+| Najít (ne při úpravě textu v tvaru)                                    | ⌘F     | Ctrl+F          |
+| Opatrnit výběr pomocí AI (s vybranými tvary)                           | ⌘K     | Ctrl+K          |
+| Přiblížit                                                              | ⌘=     | Ctrl+=          |
+| Oddálit                                                                | ⌘-     | Ctrl+-          |
+| Skutečná velikost (100%)                                               | ⌘0     | Ctrl+0          |
+| Vybrat vše                                                             | ⌘A     | Ctrl+A          |
+| Přecházet výběrem tvarů vpřed / vzad                                   | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Zopakovat poslední akci (formát, výplň, čára, zarovnání, duplikování…) | F4     | F4              |
+| Zobrazit/skrýt podokno výběru                                          | ⌥F10   | Alt+F10         |
 
 Nový snímek je druhé rozdělení platforem. Každá platforma má vlastní klávesu a druhá nic nedělá: ⇧⌘N na macOS, Ctrl+M na Windows a Linuxu. ⌘M to na macOS nemůže udělat, protože je to systémová klávesa Minimalizovat.
 
 Vybrat vše sleduje fokus: s fokusem na panel náhledů, panel osnovy nebo třídění snímků vybere všechny snímky, všude jinde všechny prvky aktuálního snímku. Tab prochází tvary na snímku, a to jen když má fokus samotné plátno snímku.
+
+F4 funguje i uvnitř textového pole: na vybraný text použije poslední formát.
 
 ### Formátování textu
 
@@ -694,18 +698,25 @@ Tyto klávesy fungují, když je karta HWP/HWPX vpředu a dokument má fokus. Dv
 
 ### Tabulka
 
-| Akce                    | macOS        | Windows / Linux        |
-| ----------------------- | ------------ | ---------------------- |
-| Přidat řádek/sloupec    | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| Odstranit řádek/sloupec | ⌥⌫           | Alt+Delete             |
-| Rozdělit buňku          | F5 → S       | F5 → S                 |
-| Sloučit buňky           | F5 → M       | F5 → M                 |
-| Součet bloku            | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| Průměr bloku            | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| Součin bloku            | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| Rozdělit tabulku        | ⌃N, A        | Ctrl+N, A              |
-| Spojit tabulky          | ⌃N, Z        | Ctrl+N, Z              |
-| Výpočtový vzorec        | ⌃N, F        | Ctrl+N, F              |
+| Akce                                     | macOS        | Windows / Linux        |
+| ---------------------------------------- | ------------ | ---------------------- |
+| Přidat řádek/sloupec                     | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Odstranit řádek/sloupec                  | ⌥⌫           | Alt+Delete             |
+| Rozdělit buňku                           | F5 → S       | F5 → S                 |
+| Sloučit buňky                            | F5 → M       | F5 → M                 |
+| Vlastnosti tabulky/buňky                 | F5 → P       | F5 → P                 |
+| Ohraničení / stínování, každá buňka      | F5 → L / C   | F5 → L / C             |
+| Ohraničení / stínování, buňky jako jedna | F5 → B / F   | F5 → B / F             |
+| Stejná výška řádku / šířka sloupce       | F5 → H / W   | F5 → H / W             |
+| Automatické vyplnění tabulky             | F5 → A       | F5 → A                 |
+| Zpět k úpravě buňky                      | F5 → ⏎       | F5 → Enter             |
+| Rychlé předsazení (v buňce)              | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| Součet bloku                             | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Průměr bloku                             | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Součin bloku                             | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Rozdělit tabulku                         | ⌃N, A        | Ctrl+N, A              |
+| Spojit tabulky                           | ⌃N, Z        | Ctrl+N, Z              |
+| Výpočtový vzorec                         | ⌃N, F        | Ctrl+N, F              |
 
 ### Výpočty v tabulce
 

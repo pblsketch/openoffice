@@ -376,6 +376,9 @@ export const id = {
   appTableNameInFile: 'Nama tabel "{name}" sudah digunakan oleh tabel di dalam file.',
   appTableOverlapsSession:
     'Rentang tumpang-tindih dengan tabel "{name}" yang dibuat pada sesi ini.',
+  appTableOverlapsFile: 'Rentang tumpang tindih dengan tabel "{name}" di file.',
+  appTableAlreadyInTable:
+    'Pilihan sudah berada di tabel "{name}" — ubah gayanya dari Desain Tabel.',
   appTablesNeedFile: 'Buka file XLSX dahulu — tabel ditulis ke file.',
   appTableSelectRange: 'Pilih rentang data dahulu — header di baris pertamanya.',
   appTableCreated: 'Tabel dibuat — simpan dengan ⌘S.',
@@ -1533,4 +1536,29 @@ export const id = {
   appVisualFlipV: 'Balik Vertikal',
   appVisualFlipH: 'Balik Horizontal',
   appCtxPasteVisual: 'Tempel Gambar atau Bentuk',
+
+  // ── Spelling check (F7 / Review ▸ Proofing) ──
+  appSpellTitle: 'Ejaan',
+  appSpellBtnDetail: 'Periksa teks lembar (F7)',
+  appSpellToggle: 'Periksa ejaan',
+  appSpellToggleTip:
+    'Mengaktifkan pemeriksaan ejaan (F7 dan tombol Tinjau); saat nonaktif, kotak komentar tidak lagi menampilkan garis bergelombang',
+  appSpellOn: 'Pemeriksaan ejaan diaktifkan.',
+  appSpellOff: 'Pemeriksaan ejaan nonaktif. Aktifkan di Tinjau ▸ Pemeriksaan.',
+  appSpellRecheck: 'Periksa ulang',
+  appSpellNone: 'Tidak ditemukan kesalahan ejaan yang dicurigai.',
+  appSpellFindings: '{count} kesalahan yang dicurigai. Klik baris untuk menemukannya.',
+  appSpellTruncated: 'Terlalu banyak sel teks; hanya bagian awal yang diperiksa.',
+  appSpellColWord: 'Dicurigai',
+  appSpellIgnore: 'Abaikan',
+  appSpellIgnoreAll: 'Abaikan semua',
+  appSpellLearn: 'Tambahkan ke kamus',
+  appSpellNoSuggestions: 'Tidak ada saran',
+  appSpellIgnoredAll: '"{word}" tidak akan ditandai lagi pada sesi ini.',
+  appSpellLearned: '"{word}" ditambahkan ke kamus.',
+  appSpellChanged: '{address} diperbaiki.',
+  appSpellChangeFailed: 'Gagal memperbaiki {address}.',
+  appSpellUnavailable: 'Pemeriksaan ejaan tidak tersedia di jendela ini.',
+  appSpellReplaceAll: 'Ganti semua dengan "{suggestion}"',
+  appSpellChangedAll: '{count} sel dengan "{word}" telah diperbaiki.',
 } satisfies Record<keyof typeof zh, string>

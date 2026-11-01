@@ -8,7 +8,7 @@ O editor de PDF tem cinco separadores no friso: **Página Inicial / Anotar / Edi
 - Zoom: o controlo de proporção no canto inferior direito; ctrl+roda ajusta o zoom por degraus.
 - Rotação: por página ou em todas as páginas a partir do menu Páginas; as rotações são gravadas ao salvar.
 - Pesquisar: ctrl+F para procurar em todo o texto com todas as ocorrências realçadas.
-- PDFs encriptados: aparece um pedido de palavra-passe (uma pequena janela própria) para os abrir; a palavra-passe só é usada nesta sessão.
+- PDFs encriptados: aparece um pedido de palavra-passe (uma pequena janela própria) para os abrir; a palavra-passe só é usada nesta sessão. Pode editar e guardar um documento assim; ao guardar, a palavra-passe mantém-se. **Anotar → Proteger** define, altera ou remove a palavra-passe e o que os leitores podem fazer.
 
 ## Selecionar texto e marcar (Anotar)
 
@@ -102,7 +102,7 @@ Enquanto a barra de anotação está visível sobre o texto selecionado, uma ún
 | Enter | Abrir a caixa **Perguntar à IA**           |
 
 - As teclas funcionam da mesma forma com um método de entrada coreano ou de qualquer outro idioma. São ignoradas enquanto você digita num campo ou segura Ctrl ou Alt.
-- Num documento bloqueado para edição (protegido por senha), H, U, S e N não fazem nada e mostram o motivo, como os botões da barra.
+- Num documento bloqueado para edição (a palavra-passe do proprietário impede alterações), H, U, S e N não fazem nada e mostram o motivo, como os botões da barra.
 
 ## Cartões de trecho
 

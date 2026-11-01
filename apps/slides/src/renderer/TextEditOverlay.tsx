@@ -520,7 +520,7 @@ export function populateEditorDom(
             if (run.srcFontFamily) span.dataset.font = run.srcFontFamily
           }
           span.style.color = normalizeCss(run.color)
-          // Text highlight: display-only (extraction never reads it back; the patch path keeps <a:highlight>)
+          // Text highlight: extraction reads it back; the main process writes only a real change
           if (run.highlight) span.style.backgroundColor = normalizeCss(run.highlight)
           p.appendChild(span)
         }
@@ -1034,6 +1034,8 @@ function sameRunFormat(a: EditRun, b: EditRun): boolean {
     a.fontSize === b.fontSize &&
     a.fontFamily === b.fontFamily &&
     a.color === b.color &&
+    (a.highlight ?? null) === (b.highlight ?? null) &&
+    (a.letterSpacing ?? null) === (b.letterSpacing ?? null) &&
     (a.redact ?? null) === (b.redact ?? null) &&
     (a.link ? encodeLinkTarget(a.link) : '') === (b.link ? encodeLinkTarget(b.link) : '')
   )
@@ -1118,6 +1120,10 @@ export function extractParagraphs(root: HTMLElement, norm: number): EditParagrap
           ...(inherited.fontSize != null ? { fontSize: inherited.fontSize } : {}),
           ...(inherited.fontFamily ? { fontFamily: inherited.fontFamily } : {}),
           ...(inherited.color ? { color: inherited.color } : {}),
+          ...(inherited.highlight !== undefined ? { highlight: inherited.highlight } : {}),
+          ...(inherited.letterSpacing !== undefined
+            ? { letterSpacing: inherited.letterSpacing }
+            : {}),
           ...(inherited.srcRun != null ? { srcRun: inherited.srcRun } : {}),
           // explicit null = not withheld (the DOM is authoritative here, exactly as for `link`):
           // absent would mean "keep whatever the model had", so a run whose mark the reader just
@@ -1216,6 +1222,19 @@ export function extractParagraphs(root: HTMLElement, norm: number): EditParagrap
     if (el.tagName === 'SUP' || style.verticalAlign === 'super') next.baseline = 30
     else if (el.tagName === 'SUB' || style.verticalAlign === 'sub') next.baseline = -25
     if (style.color) next.color = rgbToHex(style.color)
+    // Highlight (populate's run background or hiliteColor's product); transparent = removed
+    if (style.backgroundColor) {
+      next.highlight = /^(transparent|rgba\(\s*0,\s*0,\s*0,\s*0\s*\))$/i.test(style.backgroundColor)
+        ? null
+        : (rgbToHex(style.backgroundColor) ?? next.highlight)
+    }
+    // Character spacing set in this edit (applySelectionLetterSpacing). The fragments' own
+    // letter-spacing is display-only and never read back: the source run keeps its spc.
+    const lsMark = el.dataset?.letterSpacing
+    if (lsMark != null) {
+      const pt = parseFloat(lsMark)
+      next.letterSpacing = Number.isFinite(pt) && pt ? pt : null
+    }
     if (style.fontSize) {
       const px = parseFloat(style.fontSize)
       if (!Number.isNaN(px)) next.fontSize = pxToPt(px, norm)
@@ -1828,4 +1847,168 @@ function rgbToHex(rgb: string): string | undefined {
   if (!m) return undefined
   const h = (n: string) => parseInt(n, 10).toString(16).padStart(2, '0')
   return `#${h(m[1]!)}${h(m[2]!)}${h(m[3]!)}`.toUpperCase()
+}
+
+/**
+ * Change the case of the editor selection in place. Text nodes are rewritten one by one, so
+ * every span keeps its formatting; the selection is transformed as one string (with a line
+ * break between paragraphs) so sentence and word starts read across spans. transform must
+ * keep the string length. Returns false when there is no non-empty selection in the editor.
+ */
+export function applySelectionCase(transform: (text: string) => string): boolean {
+  const root = document.activeElement
+  if (!(root instanceof HTMLElement) || !root.isContentEditable) return false
+  const sel = window.getSelection()
+  if (!sel?.rangeCount || sel.getRangeAt(0).collapsed) return false
+  const range = sel.getRangeAt(0)
+  const parts: Array<{ node: Text; start: number; end: number; at: number }> = []
+  let joined = ''
+  let lastBlock: Element | null = null
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  while (walker.nextNode()) {
+    const node = walker.currentNode as Text
+    if (!range.intersectsNode(node)) continue
+    const start = node === range.startContainer ? range.startOffset : 0
+    const end = node === range.endContainer ? range.endOffset : node.data.length
+    if (end <= start) continue
+    const block = node.parentElement?.closest('[data-src-para], p, div') ?? null
+    if (parts.length && block !== lastBlock) joined += '\n'
+    lastBlock = block
+    parts.push({ node, start, end, at: joined.length })
+    joined += node.data.slice(start, end)
+  }
+  if (!parts.length) return false
+  const out = transform(joined)
+  if (out.length !== joined.length || out === joined) return out === joined
+  for (const p of parts) {
+    const next = out.slice(p.at, p.at + (p.end - p.start))
+    if (next === p.node.data.slice(p.start, p.end)) continue
+    p.node.replaceData(p.start, p.end - p.start, next)
+    // Measured advances no longer match the new glyphs
+    releaseFragment(fragmentAround(p.node, root))
+  }
+  const first = parts[0]!
+  const last = parts[parts.length - 1]!
+  const next = document.createRange()
+  next.setStart(first.node, first.start)
+  next.setEnd(last.node, last.end)
+  sel.removeAllRanges()
+  sel.addRange(next)
+  saveEditSelection()
+  return true
+}
+
+/** Character format the format painter carries between text selections (sizes in pt) */
+export interface SelectionRunFormat {
+  fontFamily?: string
+  fontSizePt?: number
+  bold: boolean
+  italic: boolean
+  underline: boolean
+  strike: boolean
+  color?: string
+}
+
+/** Character format at the start of the editor selection; null when no editor holds a non-empty selection */
+export function selectionRunFormat(): SelectionRunFormat | null {
+  const root = document.activeElement
+  if (!(root instanceof HTMLElement) || !root.isContentEditable) return null
+  const sel = window.getSelection()
+  if (!sel?.rangeCount || sel.getRangeAt(0).collapsed) return null
+  const start = sel.getRangeAt(0).startContainer
+  const el = start instanceof HTMLElement ? start : start.parentElement
+  if (!el || !root.contains(el)) return null
+  const cs = window.getComputedStyle(el)
+  const norm = parseFloat(root.dataset.norm ?? '') || 1
+  const px = parseFloat(cs.fontSize)
+  const family = firstFontFamily(cs.fontFamily)
+  const color = rgbToHex(cs.color)
+  return {
+    ...(family ? { fontFamily: family } : {}),
+    ...(Number.isFinite(px) ? { fontSizePt: pxToPt(px, norm) } : {}),
+    bold: document.queryCommandState('bold'),
+    italic: document.queryCommandState('italic'),
+    underline: document.queryCommandState('underline'),
+    strike: document.queryCommandState('strikeThrough'),
+    ...(color ? { color } : {}),
+  }
+}
+
+/** Paint a character format onto the editor selection; false when there is no non-empty selection */
+export function applySelectionRunFormat(fmt: SelectionRunFormat): boolean {
+  const root = document.activeElement
+  if (!(root instanceof HTMLElement) || !root.isContentEditable) return false
+  const sel = window.getSelection()
+  if (!sel?.rangeCount || sel.getRangeAt(0).collapsed) return false
+  if (fmt.fontFamily) applySelectionFontFamily(fmt.fontFamily)
+  if (fmt.fontSizePt) setSelectionFontSizePt(fmt.fontSizePt)
+  const toggles: Array<[string, boolean]> = [
+    ['bold', fmt.bold],
+    ['italic', fmt.italic],
+    ['underline', fmt.underline],
+    ['strikeThrough', fmt.strike],
+  ]
+  for (const [cmd, want] of toggles) {
+    const on = document.queryCommandState(cmd)
+    if (want && !on) document.execCommand(cmd)
+    else if (!want && on) document.execCommand(cmd)
+    else if (!want) {
+      // Reports off for a partly formatted selection: turn it fully on, then off
+      document.execCommand(cmd)
+      if (document.queryCommandState(cmd)) document.execCommand(cmd)
+    }
+  }
+  if (fmt.color) {
+    document.execCommand('styleWithCSS', false, 'true')
+    document.execCommand('foreColor', false, fmt.color)
+  }
+  return true
+}
+
+/** Highlight the editor selection (#RRGGBB) or clear it (null); false outside the editor */
+export function applySelectionHighlight(hex: string | null): boolean {
+  const root = document.activeElement
+  if (!(root instanceof HTMLElement) || !root.isContentEditable) return false
+  document.execCommand('styleWithCSS', false, 'true')
+  document.execCommand('hiliteColor', false, hex ?? 'transparent')
+  return true
+}
+
+/**
+ * Set the character spacing (pt; 0 = normal) of the editor selection. Each selected text
+ * node is wrapped in a span carrying the value (data-letter-spacing, read back on commit);
+ * the measured fragments around it give up their fixed advance.
+ */
+export function applySelectionLetterSpacing(pt: number): boolean {
+  const root = document.activeElement
+  if (!(root instanceof HTMLElement) || !root.isContentEditable) return false
+  const sel = window.getSelection()
+  if (!sel?.rangeCount || sel.getRangeAt(0).collapsed) return false
+  const range = sel.getRangeAt(0)
+  const norm = parseFloat(root.dataset.norm ?? '') || 1
+  const parts: Array<{ node: Text; start: number; end: number }> = []
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  while (walker.nextNode()) {
+    const node = walker.currentNode as Text
+    if (!range.intersectsNode(node)) continue
+    const start = node === range.startContainer ? range.startOffset : 0
+    const end = node === range.endContainer ? range.endOffset : node.data.length
+    if (end > start) parts.push({ node, start, end })
+  }
+  if (!parts.length) return false
+  const spans: HTMLElement[] = []
+  for (const p of parts) {
+    let node = p.node
+    if (p.end < node.data.length) node.splitText(p.end)
+    if (p.start > 0) node = node.splitText(p.start)
+    const span = document.createElement('span')
+    span.dataset.letterSpacing = String(pt)
+    span.style.letterSpacing = pt ? `${(pt * 96 * norm) / 72}px` : 'normal'
+    node.parentNode!.insertBefore(span, node)
+    span.appendChild(node)
+    releaseFragment(fragmentAround(span, root))
+    spans.push(span)
+  }
+  reselectSpans(spans)
+  return true
 }

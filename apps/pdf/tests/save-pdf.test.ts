@@ -29,6 +29,7 @@ import {
   mergePdfBytes,
   readStaticFormFills,
   replacePagesBytes,
+  saveRequestHasEdits,
   savePdfToPath,
   setPageSizeBytes,
   splitPagesBytes,
@@ -510,6 +511,14 @@ describe('static form fill metadata', () => {
     const cleared = await apply(withFill, request({ staticFormFills: [] }))
 
     expect(await readStaticFormFills(cleared)).toEqual([])
+  })
+})
+
+describe('saveRequestHasEdits', () => {
+  it('counts a protection change, which rewrites the file', () => {
+    expect(saveRequestHasEdits(request())).toBe(false)
+    expect(saveRequestHasEdits(request({ protectionDirty: false }))).toBe(false)
+    expect(saveRequestHasEdits(request({ protectionDirty: true }))).toBe(true)
   })
 })
 

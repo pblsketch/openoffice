@@ -3,6 +3,7 @@
 // active entry is copied into that slot on every change: nothing downstream
 // learns about endpoints, and a settings file from before the list existed
 // still works because its single slot becomes the first entry.
+import { aiEffortOf, aiModelEffortOf } from './effort'
 import { localEndpointFieldsOf } from './local-profile'
 import type { AiCustomEndpoint, AiProviderConfig, AiSettings } from './types'
 
@@ -44,6 +45,7 @@ function normalizeEndpoints(raw: unknown): AiCustomEndpoint[] {
       apiKey: str(e.apiKey),
       model: str(e.model),
       ...(models && models.length > 0 ? { models } : {}),
+      ...(aiEffortOf(e.effort) ? { effort: aiEffortOf(e.effort) } : {}),
       // local-only fields survive a read/write round trip; malformed ones are dropped
       ...localEndpointFieldsOf(e),
     })
@@ -103,8 +105,30 @@ export function resolveCustomEndpoints(settings: AiSettings): AiSettings {
     customEndpoint: active.id,
     providers: {
       ...settings.providers,
-      custom: { apiKey: active.apiKey, model: active.model, baseUrl: active.baseUrl },
+      custom: {
+        apiKey: active.apiKey,
+        model: active.model,
+        baseUrl: active.baseUrl,
+        ...effortOf(active),
+      },
     },
+  }
+}
+
+/**
+ * The active server's level and what its model profile says the model takes,
+ * in the shape the request path reads from `providers.custom` (decision 0096).
+ */
+function effortOf(endpoint: AiCustomEndpoint): Pick<AiProviderConfig, 'effort' | 'modelEfforts'> {
+  const effort = aiEffortOf(endpoint.effort)
+  const profile = endpoint.modelProfiles?.[endpoint.model]
+  const taken = aiModelEffortOf({
+    efforts: profile?.efforts,
+    defaultEffort: profile?.defaultEffort,
+  })
+  return {
+    ...(effort ? { effort } : {}),
+    ...(taken && endpoint.model ? { modelEfforts: { [endpoint.model]: taken } } : {}),
   }
 }
 

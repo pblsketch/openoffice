@@ -8,7 +8,7 @@ Editor PDF mempunyai lima tab pada reben: **Laman Utama / Anotasi / Edit / Halam
 - Zum: kawalan nisbah di penjuru kanan bawah. Gunakan ctrl dan roda tetikus untuk menukar zum secara berperingkat.
 - Putaran: setiap halaman atau kesemua halaman melalui menu Halaman, dan putaran itu ditulis semula semasa menyimpan.
 - Carian: ctrl+F untuk mencari teks penuh, dengan semua hasil ditanda.
-- PDF yang disulitkan: prompts pertanyaan kata laluan dalam tetingkap kecil tersendiri, dan kata laluan itu hanya digunakan untuk sesi ini.
+- PDF yang disulitkan: prompts pertanyaan kata laluan dalam tetingkap kecil tersendiri, dan kata laluan itu hanya digunakan untuk sesi ini. Dokumen seperti ini boleh disunting dan disimpan; apabila disimpan, kata laluannya kekal. **Anotasi → Lindung** menetapkan, menukar atau membuang kata laluan dan perkara yang dibenarkan kepada pembaca.
 
 ## Memilih teks dan menanda (Anotasi)
 
@@ -104,7 +104,7 @@ Selagi bar anotasi kelihatan di atas teks yang dipilih, satu kekunci sahaja teru
 | Enter   | Buka kotak **Tanya AI**                   |
 
 - Kekunci ini berfungsi sama walaupun kaedah input bahasa Korea atau bahasa lain dihidupkan. Kekunci tidak dikira pintasan semasa anda menaip dalam medan atau menahan Ctrl atau Alt.
-- Dalam dokumen yang dikunci daripada disunting (dilindungi kata laluan), H, U, S dan N tidak berbuat apa-apa dan memaparkan sebabnya, sama seperti butang pada bar.
+- Dalam dokumen yang dikunci daripada disunting (kata laluan pemiliknya melarang perubahan), H, U, S dan N tidak berbuat apa-apa dan memaparkan sebabnya, sama seperti butang pada bar.
 
 ## Kad petikan
 

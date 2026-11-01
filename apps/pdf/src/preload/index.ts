@@ -151,7 +151,11 @@ const api: PdfApi = {
   consumePending: () => ipcRenderer.invoke(PDF_CHANNELS.consumePending),
   openSourcePath: (path: string) => ipcRenderer.invoke('home:open-path', path),
   readFile: (path) => ipcRenderer.invoke(PDF_CHANNELS.readFile, path),
+  decryptPdf: (bytes, password) => ipcRenderer.invoke(PDF_CHANNELS.decryptPdf, bytes, password),
   save: (request) => ipcRenderer.invoke(PDF_CHANNELS.save, request),
+  pickAttachmentFile: () => ipcRenderer.invoke(PDF_CHANNELS.pickAttachmentFile),
+  exportAttachment: (path, name, bytesBase64) =>
+    ipcRenderer.invoke(PDF_CHANNELS.exportAttachment, path, name, bytesBase64),
   requestRedactionCopy: (path) => ipcRenderer.invoke(PDF_CHANNELS.requestRedactionCopy, path),
   autoRename: (path, baseName) => ipcRenderer.invoke(PDF_CHANNELS.autoRename, path, baseName),
   isUntitled: (path) => ipcRenderer.invoke(PDF_CHANNELS.isUntitled, path),
@@ -171,7 +175,9 @@ const api: PdfApi = {
   extractPages: (request) => ipcRenderer.invoke(PDF_CHANNELS.extractPages, request),
   insertPdf: (request) => ipcRenderer.invoke(PDF_CHANNELS.insertPdf, request),
   compareReadPdf: () => ipcRenderer.invoke(PDF_CHANNELS.compareReadPdf),
-  compareReadOpen: (path: string) => ipcRenderer.invoke(PDF_CHANNELS.compareReadOpen, path),
+  compareReadOpen: (path: string, password?: string) =>
+    ipcRenderer.invoke(PDF_CHANNELS.compareReadOpen, path, password),
+  reduceFileSize: (path) => ipcRenderer.invoke(PDF_CHANNELS.reduceFileSize, path),
   insertBlankPage: (request) => ipcRenderer.invoke(PDF_CHANNELS.insertBlankPage, request),
   splitPdf: (request) => ipcRenderer.invoke(PDF_CHANNELS.splitPdf, request),
   mergePdf: (request) => ipcRenderer.invoke(PDF_CHANNELS.mergePdf, request),

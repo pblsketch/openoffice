@@ -1,10 +1,12 @@
 import { chatAnthropic } from './protocols/anthropic'
 import { chatGemini } from './protocols/gemini'
 import { chatOpenAiCompatible } from './protocols/openai-compatible'
+import { chatOpenAiResponses } from './protocols/openai-responses'
 import { ResponseBodyTooLargeError } from './protocols/shared'
 import { chatCodexAppServer } from './codex-app-server'
 import { chatClaudeCodeCli } from './claude-code-cli'
 import { chatChatGpt } from './chatgpt/responses'
+import { keyEffortBody } from './key-effort'
 import { getProviderAdapter, type ResolvedEndpoint } from './registry'
 import type { AiChatResponse, AiProviderConfig, AiProviderSelection } from './types'
 import { AI_CHAT_RESPONSE_TIMEOUT_MS, createStreamWatchdog } from './watchdog'
@@ -31,6 +33,8 @@ export async function chatForProvider(
         error: e instanceof Error ? e.message : String(e),
       })
     }
+    // read before the wire id replaces the model: the table is by the listed id
+    const effortBody = keyEffortBody(provider, config, endpoint.protocol)
     if (endpoint.model) config = { ...config, model: endpoint.model }
     switch (endpoint.protocol) {
       case 'codex-app-server':
@@ -40,7 +44,7 @@ export async function chatForProvider(
       case 'chatgpt-responses':
         return chatChatGpt(config, system, user, wd.signal)
       case 'anthropic':
-        return chatAnthropic(wd, config, system, user, endpoint.baseUrl)
+        return chatAnthropic(wd, config, system, user, endpoint.baseUrl, effortBody)
       case 'gemini':
         return chatGemini(wd, config, system, user, endpoint.baseUrl, {
           omitTemperature: endpoint.omitTemperature,
@@ -48,6 +52,10 @@ export async function chatForProvider(
       case 'openai-compatible':
         return chatOpenAiCompatible(wd, endpoint.baseUrl, config, system, user, {
           omitTemperature: endpoint.omitTemperature,
+          bodyExtras: effortBody ? { ...endpoint.bodyExtras, ...effortBody } : endpoint.bodyExtras,
+        })
+      case 'openai-responses':
+        return chatOpenAiResponses(wd, endpoint.baseUrl, config, system, user, {
           bodyExtras: endpoint.bodyExtras,
         })
     }

@@ -75,6 +75,7 @@ export function ColorWell({
             themeColors: t('ribbonThemeColorsSection'),
             standardColors: t('ribbonStandardColors'),
             moreColors: t('ribbonMoreColors'),
+            eyedropper: t('ribbonEyedropper'),
           }}
           onPick={(hex) => {
             if (hex) onPick(hex)

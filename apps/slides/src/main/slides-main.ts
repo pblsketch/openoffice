@@ -25,6 +25,7 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { cleanupExpiredGeneratedPages } from './generated-page-temp'
+import { buildExportImagePaths } from './export-images'
 import { exportSlidesPdf } from './pdf-export'
 import { printSlidesHtml } from './print-window'
 import { shutdownSubscriptionChildren } from '@genoffice/ai-provider/subscription'
@@ -1856,6 +1857,8 @@ export function registerSlidesIpc(): void {
       italic: op.italic,
       underline: op.underline,
       color: op.color,
+      highlight: op.highlight,
+      letterSpacingPt: op.letterSpacingPt,
     }
     pushHistory(session)
     const r = journaledTxn(session, 'edit', {
@@ -3639,6 +3642,39 @@ export function registerSlidesIpc(): void {
     return getChartElementData(slide, sourceId)
   })
 
+  // Selection Pane: show/hide (reparses the slide, so every element id changes) and rename
+  ipcMain.handle(
+    'slides:set-element-hidden',
+    (e, op: { slideIndex: number; sourceId: string; hidden: boolean }) => {
+      const session = sessions.get(e.sender.id)
+      if (!session) return null
+      const r = sessionTxn(session, {
+        ops: [
+          {
+            op: 'setElementHidden',
+            target: { slide: op.slideIndex, el: op.sourceId },
+            hidden: op.hidden,
+          },
+        ],
+      })
+      return r ? rebuildSlide(session, op.slideIndex) : null
+    },
+  )
+
+  ipcMain.handle(
+    'slides:set-element-name',
+    (e, op: { slideIndex: number; sourceId: string; name: string }) => {
+      const session = sessions.get(e.sender.id)
+      if (!session) return null
+      const r = sessionTxn(session, {
+        ops: [
+          { op: 'renameElement', target: { slide: op.slideIndex, el: op.sourceId }, name: op.name },
+        ],
+      })
+      return r ? rebuildSlide(session, op.slideIndex) : null
+    },
+  )
+
   ipcMain.handle('slides:reorder-element', (e, op: ReorderElementOp) => {
     const session = sessions.get(e.sender.id)
     if (!session) return null
@@ -4549,11 +4585,17 @@ export function registerSlidesIpc(): void {
     const session = sessions.get(e.sender.id)
     const slide = session?.opened.deck.slides[slideIndex]
     if (!slide) return []
-    return slide.elements.map((el) => ({
-      sourceId: el.id,
-      spid: elementSpid(el),
-      name: el.name ?? '',
-    }))
+    return slide.elements.map((el) => {
+      // Hidden elements parse as passthroughs without a model name: read their own cNvPr
+      const cNvPr = /<p:cNvPr\b[^>]*>/.exec(el.anchor?.originalXml ?? '')?.[0] ?? ''
+      const rawName = /\sname="([^"]*)"/.exec(cNvPr)?.[1]
+      return {
+        sourceId: el.id,
+        spid: elementSpid(el),
+        name: el.name ?? (rawName ? decodeXmlAttr(rawName) : ''),
+        ...(/\shidden="(?:1|true)"/.test(cNvPr) ? { hidden: true } : {}),
+      }
+    })
   })
 
   ipcMain.handle('slides:set-animations', (e, op: SetAnimationsOp) => {
@@ -4981,13 +5023,10 @@ export function registerSlidesIpc(): void {
     'slides:export-images',
     async (_e, op: ExportImagesOp): Promise<ExportImagesResult> => {
       try {
-        // Zero-padding width follows the total page count (3 digits for ≥100 pages)
-        const pad = op.pngsBase64.length >= 100 ? 3 : 2
-        const paths: string[] = []
-        for (let i = 0; i < op.pngsBase64.length; i++) {
-          const p = join(op.dir, `${op.baseName}-${String(i + 1).padStart(pad, '0')}.png`)
-          await writeFile(p, Buffer.from(op.pngsBase64[i], 'base64'))
-          paths.push(p)
+        const ext = op.format === 'jpg' ? 'jpg' : 'png'
+        const paths = buildExportImagePaths(op.dir, op.baseName, op.pngsBase64.length, ext)
+        for (let i = 0; i < paths.length; i++) {
+          await writeFile(paths[i], Buffer.from(op.pngsBase64[i], 'base64'))
         }
         return { ok: true, paths }
       } catch (err) {
@@ -5462,6 +5501,7 @@ export function buildSlidesMenu(): Menu {
         // to export or print at all
         { label: tm('menuExportPdf'), click: () => send('export-pdf') },
         { label: tm('menuExportImages'), click: () => send('export-images') },
+        { label: tm('menuExportImagesJpg'), click: () => send('export-images-jpg') },
         { label: tm('menuPrint'), accelerator: 'CmdOrCtrl+P', click: () => send('print') },
         { type: 'separator' },
         // tab mode: the item closes the focused tab or window, never the app,
@@ -5646,5 +5686,15 @@ export function startSlidesStandalone(): void {
 
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit()
+  })
+}
+
+/** XML attribute text → string (the predefined entities and numeric character references) */
+function decodeXmlAttr(s: string): string {
+  const named: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" }
+  return s.replace(/&(?:#x([0-9a-f]+)|#(\d+)|([a-z]+));/gi, (m, hex, dec, name) => {
+    const code = hex ? parseInt(hex, 16) : dec ? parseInt(dec, 10) : NaN
+    if (Number.isFinite(code)) return code <= 0x10ffff ? String.fromCodePoint(code) : m
+    return named[String(name).toLowerCase()] ?? m
   })
 }

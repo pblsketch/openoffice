@@ -447,6 +447,39 @@ describe('Claude Code bridge: what is started', () => {
     expect(record.child).toBeUndefined()
   })
 
+  it('hands a configured effort to --effort, and only a level the CLI takes', async () => {
+    expect(claudeCodeCliLaunchArgs('opus', undefined, 'high')).toEqual([
+      ...claudeCodeCliLaunchArgs('opus'),
+      '--effort',
+      'high',
+    ])
+    // after the model and before the schema
+    const schema = claudeCodeOutputSchema(tools)
+    expect(claudeCodeCliLaunchArgs('opus', schema, ' max ').slice(-4)).toEqual([
+      '--effort',
+      'max',
+      '--json-schema',
+      JSON.stringify(schema),
+    ])
+    // Codex's levels, flag-shaped text and anything else run the CLI's own default
+    for (const effort of ['', 'none', 'minimal', '--tools Bash', 'HIGH', 'ultra']) {
+      expect(claudeCodeCliLaunchArgs('opus', undefined, effort)).toEqual(
+        claudeCodeCliLaunchArgs('opus'),
+      )
+    }
+    const record = harness(answer(turnJson('Done.')))
+    await streamClaudeCodeCli(
+      { ...config, effort: 'low' },
+      'system',
+      [{ role: 'user', text: 'hi' }],
+      tools,
+      1024,
+      record.callbacks,
+      record.deps,
+    )
+    expect(record.args).toEqual(claudeCodeCliLaunchArgs('haiku', schema, 'low'))
+  })
+
   it('starts the CLI without the variables that would move it off the subscription', async () => {
     const record = harness(answer(turnJson('Done.')), {
       baseEnv: {
@@ -1881,6 +1914,44 @@ describe('Claude Code bridge: the model list', () => {
     const failure = (await list(record).catch((error: unknown) => error)) as Error
     expect(failure).toBeInstanceOf(Error)
     expect(failure.message).not.toMatch(/Acme|Seoul/)
+  })
+
+  it('reads the effort levels each model takes, only those --effort accepts', () => {
+    const models = claudeCodeModels({
+      models: [
+        {
+          value: 'default',
+          resolvedModel: 'claude-opus-5-5',
+          displayName: 'Default',
+          supportsEffort: true,
+          supportedEffortLevels: ['max', 'low', 'high', 'medium', 'xhigh'],
+        },
+        {
+          value: 'sonnet',
+          displayName: 'Sonnet',
+          supportsEffort: true,
+          supportedEffortLevels: ['low', 'medium', 'high', 'ultra', '--tools'],
+        },
+        { value: 'haiku', displayName: 'Haiku' },
+        // the CLI says the model takes none: a stray list is not believed
+        {
+          value: 'claude-haiku-4-5',
+          displayName: 'Haiku 4.5',
+          supportsEffort: false,
+          supportedEffortLevels: ['low'],
+        },
+        { value: 'fable', displayName: 'Fable', supportedEffortLevels: ['none', 'minimal'] },
+      ],
+    })
+    expect(models.map((model) => [model.id, model.efforts])).toEqual([
+      ['', ['low', 'medium', 'high', 'xhigh', 'max']],
+      ['sonnet', ['low', 'medium', 'high']],
+      ['haiku', undefined],
+      ['claude-haiku-4-5', undefined],
+      ['fable', undefined],
+    ])
+    // the status keeps them as they are
+    expect(subscriptionModelsOf(models)).toEqual(models)
   })
 
   it('is the model source of the status check for Claude', async () => {

@@ -16,7 +16,7 @@
 - 보내기 규칙: `aiSendGate`와 관련 순수 함수(`src/ai-send-gate.ts`), 그것을 패널에 배선한 훅 `useAiSendGate`(`src/use-ai-send-gate.ts`).
 - 구독 연결 관련 문자열 21개 언어(`src/strings-ai-subscription/<lang>.ts`, 집계 파일 `src/strings-ai-subscription.ts`)와 실행 오류 문장 `aiRunErrorText`.
 - 보이는 로그인 창의 글(결정 0059): `aiSubscriptionLoginWindowText`(`src/ai-subscription-login-window.ts`, 하위 경로 `@genoffice/ui/ai-subscription-login-window`). 편집기 뒷단이 창을 열 때 부르므로 React와 화면 코드를 가져오지 않는다. 창 제목, 번호 붙은 단계(Claude 넷, Codex 둘), 끝나지 않았을 때의 글을 만든다. 그 회사 프로그램의 창이므로 제품 이름을 넣지 않는다(다른 구독 문구와 같은 시험이 지킨다). 아랍어·히브리어·힌디어·태국어는 콘솔이 그리지 못해 창에만 영어를 쓴다.
-- AI와 무관한 공용 부품: `Dropdown`, 색 선택기, 찾기 패널, 리본 접기, 이미지 대화 상자·뷰어, `Markdown`, 아이콘, 글꼴 목록, WordArt 프리셋.
+- AI와 무관한 공용 부품: `Dropdown`, 색 선택기(문구 `eyedropper`를 넘긴 편집기에만 화면 색 따오기 줄이 생긴다, `pickScreenColor`), 찾기 패널, 리본 접기, 이미지 대화 상자·뷰어, `Markdown`, 아이콘, 글꼴 목록, WordArt 프리셋.
 - PC 글꼴 불러오기(`src/system-fonts.ts`): 워드·엑셀·파워포인트 글꼴 상자가 쓰는 `createSystemFontSource`와 훅 `useSystemFontSource`. 편집기마다 한글 이름을 묻는 다리만 넘긴다(한글 편집기는 rhwp의 찾기를 쓴다, `apps/hwp/studio-plugin/pc-fonts.mjs`).
 - 디자인 템플릿 글꼴: 폴더 `template-fonts/`(글꼴 파일, 패밀리마다의 라이선스 글, `README.md`)와 그 목록 `src/template-fonts.ts`(`@genoffice/ui/template-fonts`). 폴더는 `src/` 밖에 있어 어느 편집기 빌드에도 복사되지 않는다.
 
@@ -39,6 +39,7 @@
 - 저절로 다른 제공자로 바꾸지 않는다. 막힌 실행 뒤의 "다른 연결로 계속"은 사용자가 버튼을 눌렀을 때만이고, 후보(`aiContinueOption`)는 `ready`인 다른 구독, 없으면 이미 동의한 종량제 로그인이다. 막힌 제공자 자신과 키 제공자는 후보가 아니다. 누르면 그 제공자가 저장된 선택이 되어 모델 선택기에 보인다(`withAiContinueProvider`).
 - 로그인된 계정은 설정 화면의 카드에만 보인다. `AiSubscriptionCard`는 `showAccount`를 받았을 때만 계정을 그리고, `onSwitchAccount`·`onLogout`을 둘 다 받았을 때만 두 버튼을 낸다. `compact` 카드는 무엇을 받든 둘 다 내지 않는다. `AiConnectPrompt`와 에디터 패널에는 이 props를 넘기지 않는다. 두 버튼은 강조 버튼(`primary`)이 되지 않는다.
 - 구독 그룹의 모델 목록은 프로그램이 알려 준 것이 있으면 그것을 쓴다(`status.models`). 항목마다 표시 이름과 실제 모델 식별자를 함께 보이고(`AiProviderPickerGroup.details`), 기본 항목에는 그것이 가리키는 모델을 적는다. 목록이 없으면 `AI_PROVIDERS`의 고정 목록을 예전처럼 보인다. 고르면 저장되는 값은 프로그램이 받는 `id`이고 표시 이름이 아니다. 저장된 값이 목록에 없어도 그 값은 목록에 남는다. 모델 선택기를 열 때는 `onRefreshSubscriptions`로 구독 상태를 다시 확인해, 앱을 다시 시작하지 않아도 새 모델이 나타나게 한다(`AI_MODEL_PICKER_REFRESH_MS`로 2분에 한 번).
+- 생각 깊이 줄(결정 0096)은 `aiEffortChoice`가 정한다. 지금 답할 AI의 모델이 받는 단계를 구독 프로그램의 목록(빈 값이면 프로그램의 기본 항목), 키 제공자의 `modelEfforts`, 로컬 서버의 모델 프로필 가운데 하나가 알려 줄 때만 줄이 생긴다. 고르면 `withAiEffort`로 저장하고(로컬 서버는 그 서버 항목에) 목록은 닫지 않는다. 모델을 고를 때는 `withAiEffortFitted`가 그 모델이 받지 않는 단계를 지운다. 문구는 `AI_EFFORT_STRINGS`(21개 언어)다.
 - 선택 표시(칩)와 설정의 "사용할 AI"는 `aiSubscriptionModelName`으로 모델 이름을 얻는다. 자동일 때도 실제로 답할 모델을 보인다. 목록이 없으면 이름을 붙이지 않고 예전 글을 그대로 쓴다.
 - 모델 선택기에 올리는 항목은 고르는 즉시 실행 가능한 것만이다. `auto`는 구독으로 풀릴 때만 나오고, 종량제 로그인은 동의한 것만 비용 표시와 함께 나온다. 목록에 없는 상태로 되돌리는 일은 설정 화면에서 한다.
 - 패널이 설정을 쓸 때는 `changeStoredAiSettings`를 거친다. 패널이 쥐고 있는 사본이 아니라 지금 저장된 값에 변경을 적용한다. 다른 창이나 설정 화면이 그사이 쓴 값을 덮어쓰지 않기 위해서다.

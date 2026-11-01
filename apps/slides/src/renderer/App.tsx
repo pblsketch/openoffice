@@ -33,7 +33,7 @@ import type {
   TransitionKind,
 } from '../shared/ipc'
 import { baseName } from '../shared/base-name'
-import { mergeBroadcastUpdate, mergeSlideUpdate } from '../shared/slide-update'
+import { mergeBroadcastUpdate, mergeSlideUpdate, setDeckRefresh } from '../shared/slide-update'
 import { SlideCanvas, selectionChromeColor, type SlideCanvasHandle } from './SlideCanvas'
 import { tableCellOverlayBox } from './table-hit'
 import { ZOOM_PREVIEW_EVENT } from './zoom-preview'
@@ -125,6 +125,11 @@ import { AiPanel } from './ai/AiPanel'
 import { useAiDock } from './ai/use-ai-dock'
 import { ChartDataDialog } from './components/ChartDataDialog'
 import type { BrushFormat } from './format-brush'
+import type { AnimPainterState } from './action-context'
+import { rememberRepeat } from './repeat-action'
+import { batched } from './history-batch'
+import { SelectionPane } from './components/SelectionPane'
+import { mergeOutline } from './merge-shapes'
 import { isTextUndoTarget, shouldRouteHistoryToDeck } from './undo-routing'
 import type {
   ActionCtx,
@@ -506,6 +511,7 @@ export function App() {
   // ── Animations tab: current page's animation list + pane/preview ─────────────
   const [animations, setAnimations] = useState<AnimationItem[]>([])
   const [showAnimPane, setShowAnimPane] = useState(false)
+  const [showSelPane, setShowSelPane] = useState(false)
   /** Animation pane selection (the timing controls bind to it first); -1 = none */
   const [selAnim, setSelAnim] = useState(-1)
   /** Canvas animation preview (plays when nonce>0; re-entering +1) */
@@ -652,6 +658,7 @@ export function App() {
    *  - 'continuous' = continuous mode (double-click the button to enter, Esc to exit)
    */
   const [brushMode, setBrushMode] = useState<'once' | 'continuous' | null>(null)
+  const [animPainter, setAnimPainter] = useState<AnimPainterState | null>(null)
 
   const slide = slides[current]
   // Rail multi-selection: stale entries (page deleted, anchor moved elsewhere) collapse to the anchor
@@ -977,19 +984,24 @@ export function App() {
   // Shared session (a second window on the same file): apply the other window's
   // edits without touching local selection or an open editor — the ids are stable,
   // so the selection stays valid; a same-element conflict resolves last-write-wins.
+  const refreshDeck = useCallback(() => {
+    void window.slidesApi
+      .getRenderSlides()
+      .then((slides) => {
+        if (slides) setSlides(slides)
+      })
+      .catch((error) => console.error('Failed to refresh deck:', error))
+  }, [])
+  useEffect(() => {
+    setDeckRefresh(refreshDeck)
+    return () => setDeckRefresh(null)
+  }, [refreshDeck])
   useEffect(
     () =>
       window.slidesApi.onDeckChanged?.(({ slides: all, order }) => {
         setSlides((current) =>
           order
-            ? (mergeBroadcastUpdate(current, { slides: all, order }, () => {
-                void window.slidesApi
-                  .getRenderSlides()
-                  .then((slides) => {
-                    if (slides) setSlides(slides)
-                  })
-                  .catch((error) => console.error('Failed to refresh deck:', error))
-              }) ?? current)
+            ? (mergeBroadcastUpdate(current, { slides: all, order }, refreshDeck) ?? current)
             : all,
         )
         setCurrent((c) => Math.min(c, Math.max(0, (order?.length ?? all.length) - 1)))
@@ -1000,7 +1012,7 @@ export function App() {
         // session instead of assuming the change dirtied it
         void window.slidesApi.isDirty?.().then((d) => setDirty(!!d))
       }),
-    [],
+    [refreshDeck],
   )
 
   // Auto-save (off by default): when on and a file path exists, silently write back every 30s + on blur.
@@ -1042,7 +1054,10 @@ export function App() {
   }, [autoSave, path, editing, editingCell, save])
 
   const saveAs = useCallback(() => fileActions.saveAs(() => ctxRef.current), [])
-  const exportImages = useCallback(() => fileActions.exportImages(ctxRef.current), [])
+  const exportImages = useCallback(
+    (format: 'png' | 'jpg' = 'png') => fileActions.exportImages(ctxRef.current, format),
+    [],
+  )
   const exportPdf = useCallback(() => void fileActions.exportPdf(ctxRef.current), [])
 
   // Headless export mode (--headless-export): this renderer lives in a hidden
@@ -1656,6 +1671,19 @@ export function App() {
     [],
   )
 
+  // Painter armed while editing text: the selection made with the mouse takes the format
+  const brushInText = !!brushMode && !!(editing || editingCell)
+  useEffect(() => {
+    if (!brushInText) return
+    const onUp = (e: MouseEvent) => {
+      if (!(e.target instanceof Element) || !e.target.closest('.slide-text-editor')) return
+      // after the browser has settled the selection for this release
+      window.setTimeout(() => clipboardActions.applyBrushToTextSelection(ctxRef.current), 0)
+    }
+    document.addEventListener('mouseup', onUp)
+    return () => document.removeEventListener('mouseup', onUp)
+  }, [brushInText])
+
   /**
    * Format-painter-aware select handler: while the painter is active, intercept clicks →
    * applyBrushToElement, without changing the selection (existing selection preserved).
@@ -1664,6 +1692,10 @@ export function App() {
     (id: string | null, additive = false) => {
       if (brushMode && id) {
         void applyBrushToElement(id)
+        return
+      }
+      if (animPainter && id) {
+        void animationActions.paintAnimationsOnto(ctxRef.current, id)
         return
       }
       // Clicking blank/an element outside the group during in-group editing = exit the group
@@ -1675,7 +1707,7 @@ export function App() {
       }
       setSelectedId(id, additive)
     },
-    [brushMode, applyBrushToElement, setSelectedId, enteredGroupId, enteredGroupNode],
+    [brushMode, animPainter, applyBrushToElement, setSelectedId, enteredGroupId, enteredGroupNode],
   )
 
   const handleEnterGroup = useCallback((groupId: string, childId: string | null) => {
@@ -1878,6 +1910,19 @@ export function App() {
         setShowFormat(false)
         setShowBgFormat(false)
         setShowComments(false)
+        setShowSelPane(false)
+      }
+      return !v
+    })
+  }, [])
+
+  const toggleSelectionPane = useCallback(() => {
+    setShowSelPane((v) => {
+      if (!v) {
+        setShowFormat(false)
+        setShowBgFormat(false)
+        setShowComments(false)
+        setShowAnimPane(false)
       }
       return !v
     })
@@ -1889,6 +1934,7 @@ export function App() {
     setShowFormat(false)
     setShowAnimPane(false)
     setShowComments(false)
+    setShowSelPane(false)
   }, [])
 
   /** Open the format pane (Home ribbon toggle / element context menu); never auto-opens on selection */
@@ -1897,6 +1943,7 @@ export function App() {
     setShowBgFormat(false)
     setShowAnimPane(false)
     setShowComments(false)
+    setShowSelPane(false)
     if (section === 'size') setFormatSizeNonce((n) => n + 1)
   }, [])
 
@@ -2109,6 +2156,7 @@ export function App() {
     setShowFormat(false)
     setShowBgFormat(false)
     setShowAnimPane(false)
+    setShowSelPane(false)
     if (focus) {
       setCommentsMode('page')
       setCommentsFocusNonce((n) => n + 1)
@@ -2340,6 +2388,19 @@ export function App() {
     showThumbs,
     viewMode,
   ])
+  // Width the list's right border and scrollbar lane take out of its inline width.
+  // The lane is always reserved (scrollbar-gutter in CSS), so thumbnails sized to
+  // the rest keep their right edge in view whether or not the list scrolls.
+  const [thumbsChromeW, setThumbsChromeW] = useState(0)
+  useLayoutEffect(() => {
+    const list = thumbsListRef.current
+    if (!list) return
+    const measure = () => setThumbsChromeW(list.offsetWidth - list.clientWidth)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(list)
+    return () => ro.disconnect()
+  }, [showThumbs, viewMode])
   const visibleSorterItems = useVisibleThumbs(sorterViewRef, '.sorter-item', [
     slides.length,
     viewMode,
@@ -2380,7 +2441,8 @@ export function App() {
       else if (cmd === 'save-as') void saveAs()
       // macOS has no File ribbon tab, so these only exist in the menu
       else if (cmd === 'export-pdf') void exportPdf()
-      else if (cmd === 'export-images') void exportImages()
+      else if (cmd === 'export-images') void exportImages('png')
+      else if (cmd === 'export-images-jpg') void exportImages('jpg')
       else if (cmd === 'print') setPrintDlgOpen(true)
       // Through the preview path so the zoom pivots on the viewport center, not the scroll origin
       else if (cmd === 'zoom-in') previewZoom(nextPreset)
@@ -2496,11 +2558,11 @@ export function App() {
 
   const startEdit = useCallback(
     (sourceId: string, caret?: EditCaret) => {
-      if (brushMode) return // the click already applied the format brush
+      if (brushMode || animPainter) return // the click already applied the painter
       const isChild = enteredGroupNode?.children.some((c) => c.sourceId === sourceId)
       setEditing({ sourceId, caret, ...(isChild ? { groupId: enteredGroupNode!.sourceId } : {}) })
     },
-    [enteredGroupNode, brushMode],
+    [enteredGroupNode, brushMode, animPainter],
   )
 
   // Audio/video playback overlay: triggered by double-clicking a media element, closed on page switch/Escape
@@ -3179,6 +3241,9 @@ export function App() {
     viewMode,
     animations,
     setAnimations,
+    animPainter,
+    setAnimPainter,
+    toggleSelectionPane,
     selAnim,
     setSelAnim,
     setHoverAnim,
@@ -3365,7 +3430,8 @@ export function App() {
         onSaveAs={() => void saveAs()}
         onExportPdf={() => void exportPdf()}
         onPrint={() => setPrintDlgOpen(true)}
-        onExportImages={() => void exportImages()}
+        onExportImages={() => void exportImages('png')}
+        onExportImagesJpg={() => void exportImages('jpg')}
         onFormat={onFormat}
         zoom={zoom}
         onZoom={previewZoom}
@@ -3389,6 +3455,7 @@ export function App() {
             if (!v) {
               setShowAnimPane(false)
               setShowBgFormat(false)
+              setShowSelPane(false)
             }
             return !v
           })
@@ -3451,6 +3518,16 @@ export function App() {
         onAnimTiming={patchAnimTiming}
         animPaneOpen={showAnimPane}
         onToggleAnimPane={toggleAnimPane}
+        animPainterMode={animPainter?.mode ?? null}
+        onAnimPainterClick={() => animationActions.armAnimPainter(ctxRef.current, 'once')}
+        onAnimPainterDoubleClick={() =>
+          animationActions.armAnimPainter(ctxRef.current, 'continuous')
+        }
+        selectionPaneOpen={showSelPane}
+        onToggleSelectionPane={toggleSelectionPane}
+        onChangeCase={(mode) => styleActions.onChangeCase(ctxRef.current, mode)}
+        onHighlight={(hex) => styleActions.onHighlight(ctxRef.current, hex)}
+        onLetterSpacing={(pt) => styleActions.onLetterSpacing(ctxRef.current, pt)}
         animCount={animations.length}
         onAnimPreview={() => setAnimPreview((n) => n + 1)}
         onSlideShow={startSlideShow}
@@ -3659,6 +3736,15 @@ export function App() {
         onArrange={(op) => void alignSelected(op)}
         onFlip={(axis) => void flipSelected(axis)}
         canDistribute={selectedIds.length >= 3}
+        canMatchSize={selectedIds.length >= 2}
+        onMergeShapes={(mode) => void arrangeActions.mergeSelected(ctxRef.current, mode)}
+        canMergeShapes={
+          selectedIds.length >= 2 &&
+          selectedIds.every((id) => {
+            const n = slide?.nodes.find((x) => x.sourceId === id)
+            return !!n && mergeOutline(n) !== null
+          })
+        }
       />
 
       <div className="app-main">
@@ -3848,8 +3934,9 @@ export function App() {
                         onContextMenu={(e) => onGapContextMenu(e)}
                       >
                         {(() => {
-                          // width = sidebar minus horizontal padding (20) and .thumb border (4)
-                          const thumbW = Math.max(60, thumbsW - 24)
+                          // width = sidebar minus its border and scrollbar lane, horizontal
+                          // padding (20) and .thumb border (4)
+                          const thumbW = Math.max(60, thumbsW - thumbsChromeW - 24)
                           const thumbItem = (s: RenderSlide, i: number) => (
                             <div
                               key={i}
@@ -4010,7 +4097,7 @@ export function App() {
                       />
                     )}
                     <div
-                      className={`stage-wrap${stageFitsViewport ? ' stage-fits-viewport' : ''}${brushMode ? ' format-brush-mode' : ''}`}
+                      className={`stage-wrap${stageFitsViewport ? ' stage-fits-viewport' : ''}${brushMode || animPainter ? ' format-brush-mode' : ''}`}
                       ref={stageWrapRef}
                       onMouseDownCapture={() => {
                         // Focus leaves the rail so slide-level Delete/cut/copy stop applying
@@ -4467,7 +4554,21 @@ export function App() {
                         .setTextBodyProps({ slideIndex: current, sourceId: id, props })
                         .then((r) => r && applySlide(current, r))
                     }
-                    onEffects={(id, effects) => sendEffects(current, id, effects)}
+                    onEffects={(id, effects) => {
+                      rememberRepeat((c) =>
+                        batched(async () => {
+                          for (const sid of c.selectedIds) {
+                            const r = await window.slidesApi.setEffects({
+                              slideIndex: c.current,
+                              sourceId: sid,
+                              effects,
+                            })
+                            if (r) c.applySlide(c.current, r)
+                          }
+                        }),
+                      )
+                      sendEffects(current, id, effects)
+                    }}
                     onStroke={(id, stroke) => void onStroke(id, stroke)}
                     onCollapse={() => setShowFormat(false)}
                     onPictureCrop={startCrop}
@@ -4501,6 +4602,66 @@ export function App() {
                     onDelete={(c) => void deleteComment(c)}
                     onGoToSlide={goToCommentSlide}
                     onCollapse={() => setShowComments(false)}
+                  />
+                ) : showSelPane ? (
+                  <SelectionPane
+                    slideIndex={current}
+                    slide={slide}
+                    selectedIds={selectedIds}
+                    enteredGroupId={enteredGroupId}
+                    onSelect={(id, groupId, additive) => {
+                      if (groupId) {
+                        setEnteredGroupId(groupId)
+                        setSelectedIds((prev) =>
+                          additive && enteredGroupId === groupId
+                            ? nextSelection(prev, id, true)
+                            : [id],
+                        )
+                      } else {
+                        if (enteredGroupId) setEnteredGroupId(null)
+                        setSelectedIds((prev) =>
+                          nextSelection(enteredGroupId ? [] : prev, id, additive),
+                        )
+                      }
+                    }}
+                    onMove={(dir) =>
+                      void batched(async () => {
+                        // Forward moves the front-most first so neighbours never leapfrog
+                        const order = slide?.nodes.map((n) => n.sourceId) ?? []
+                        const ids = [...selectedIds].sort(
+                          (a, b) => order.indexOf(a) - order.indexOf(b),
+                        )
+                        if (dir === 'forward') ids.reverse()
+                        for (const id of ids) {
+                          await arrangeActions.reorderSelected(ctxRef.current, id, dir)
+                        }
+                      })
+                    }
+                    onSetHidden={(id, hidden) => {
+                      const slideIndex = current
+                      void window.slidesApi
+                        .setElementHidden({ slideIndex, sourceId: id, hidden })
+                        .then(async (r) => {
+                          if (!r) return
+                          // the slide was reparsed: every element id changed
+                          setEnteredGroupId(null)
+                          setSelectedIds([])
+                          applySlide(slideIndex, r)
+                          setDirty(true)
+                          setAnimations(await window.slidesApi.getAnimations(slideIndex))
+                        })
+                    }}
+                    onRename={(id, name) => {
+                      const slideIndex = current
+                      void window.slidesApi
+                        .setElementName({ slideIndex, sourceId: id, name })
+                        .then((r) => {
+                          if (!r) return
+                          applySlide(slideIndex, r)
+                          setDirty(true)
+                        })
+                    }}
+                    onCollapse={() => setShowSelPane(false)}
                   />
                 ) : null}
               </>

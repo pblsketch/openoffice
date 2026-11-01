@@ -312,20 +312,24 @@ Fechar um separador é o único sítio onde as duas plataformas se separam por c
 
 ### Edição
 
-| Ação                                                    | macOS  | Windows / Linux |
-| ------------------------------------------------------- | ------ | --------------- |
-| Novo diapositivo                                        | ⇧⌘N    | Ctrl+M          |
-| Localizar (não enquanto edita texto numa forma)         | ⌘F     | Ctrl+F          |
-| Anotar a seleção com IA (com formas selecionadas)       | ⌘K     | Ctrl+K          |
-| Ampliar                                                 | ⌘=     | Ctrl+=          |
-| Reduzir                                                 | ⌘-     | Ctrl+-          |
-| Tamanho real (100 %)                                    | ⌘0     | Ctrl+0          |
-| Selecionar tudo                                         | ⌘A     | Ctrl+A          |
-| Percorrer a seleção de formas para a frente / para trás | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Ação                                                                             | macOS  | Windows / Linux |
+| -------------------------------------------------------------------------------- | ------ | --------------- |
+| Novo diapositivo                                                                 | ⇧⌘N    | Ctrl+M          |
+| Localizar (não enquanto edita texto numa forma)                                  | ⌘F     | Ctrl+F          |
+| Anotar a seleção com IA (com formas selecionadas)                                | ⌘K     | Ctrl+K          |
+| Ampliar                                                                          | ⌘=     | Ctrl+=          |
+| Reduzir                                                                          | ⌘-     | Ctrl+-          |
+| Tamanho real (100 %)                                                             | ⌘0     | Ctrl+0          |
+| Selecionar tudo                                                                  | ⌘A     | Ctrl+A          |
+| Percorrer a seleção de formas para a frente / para trás                          | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Repetir a última ação (formatação, preenchimento, linha, alinhamento, duplicar…) | F4     | F4              |
+| Mostrar/ocultar o Painel de Seleção                                              | ⌥F10   | Alt+F10         |
 
 O novo diapositivo é a outra divisão entre plataformas. Cada plataforma tem a sua própria tecla e a outra não faz nada: `⇧⌘N` no macOS, Ctrl+M no Windows e Linux. `⌘M` não pode fazer o trabalho no macOS porque é a tecla do sistema para minimizar.
 
 Selecionar tudo segue o foco: com o painel de miniaturas, o painel de esquema ou o organizador de diapositivos com o foco, seleciona todos os diapositivos, e em qualquer outro sítio seleciona todos os elementos do diapositivo atual. Tab percorre as formas do diapositivo, e só quando o próprio painel do diapositivo tem o foco.
+
+F4 também funciona dentro da caixa de texto, aplicando a última formatação ao texto selecionado.
 
 ### Formatação de texto
 
@@ -694,18 +698,25 @@ Estas teclas funcionam quando o separador HWP/HWPX está à frente e o documento
 
 ### Tabela
 
-| Ação                   | macOS        | Windows / Linux        |
-| ---------------------- | ------------ | ---------------------- |
-| Adicionar linha/coluna | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| Eliminar linha/coluna  | ⌥⌫           | Alt+Delete             |
-| Dividir célula         | F5 → S       | F5 → S                 |
-| Unir células           | F5 → M       | F5 → M                 |
-| Soma do bloco          | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| Média do bloco         | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| Produto do bloco       | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| Dividir tabela         | ⌃N, A        | Ctrl+N, A              |
-| Unir tabelas           | ⌃N, Z        | Ctrl+N, Z              |
-| Fórmula de cálculo     | ⌃N, F        | Ctrl+N, F              |
+| Ação                                        | macOS        | Windows / Linux        |
+| ------------------------------------------- | ------------ | ---------------------- |
+| Adicionar linha/coluna                      | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Eliminar linha/coluna                       | ⌥⌫           | Alt+Delete             |
+| Dividir célula                              | F5 → S       | F5 → S                 |
+| Unir células                                | F5 → M       | F5 → M                 |
+| Propriedades da tabela/célula               | F5 → P       | F5 → P                 |
+| Bordas / sombreamento, cada célula          | F5 → L / C   | F5 → L / C             |
+| Bordas / sombreamento, células como uma     | F5 → B / F   | F5 → B / F             |
+| Igualar altura da linha / largura da coluna | F5 → H / W   | F5 → H / W             |
+| Preenchimento automático da tabela          | F5 → A       | F5 → A                 |
+| Voltar a editar a célula                    | F5 → ⏎       | F5 → Enter             |
+| Recuo deslocado rápido (numa célula)        | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| Soma do bloco                               | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Média do bloco                              | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Produto do bloco                            | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Dividir tabela                              | ⌃N, A        | Ctrl+N, A              |
+| Unir tabelas                                | ⌃N, Z        | Ctrl+N, Z              |
+| Fórmula de cálculo                          | ⌃N, F        | Ctrl+N, F              |
 
 ### Cálculos de tabela
 

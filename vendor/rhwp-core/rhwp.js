@@ -10841,6 +10841,36 @@ export class HwpDocument {
         wasm.hwpdocument_setShowTransparentBorders(this.__wbg_ptr, enabled);
     }
     /**
+     * 칸들의 가로(세로) 시작·끝 좌표를 정하고 격자를 다시 매긴다 — 셀 너비·높이를 같게.
+     * `json`: `[{"cellIdx":0,"start":0,"end":14267}, …]`.
+     * @param {number} section_idx
+     * @param {number} parent_para_idx
+     * @param {number} control_idx
+     * @param {boolean} vertical
+     * @param {string} json
+     * @returns {string}
+     */
+    setTableCellExtents(section_idx, parent_para_idx, control_idx, vertical, json) {
+        let deferred3_0;
+        let deferred3_1;
+        try {
+            const ptr0 = passStringToWasm0(json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            const len0 = WASM_VECTOR_LEN;
+            const ret = wasm.hwpdocument_setTableCellExtents(this.__wbg_ptr, section_idx, parent_para_idx, control_idx, vertical, ptr0, len0);
+            var ptr2 = ret[0];
+            var len2 = ret[1];
+            if (ret[3]) {
+                ptr2 = 0; len2 = 0;
+                throw takeFromExternrefTable0(ret[2]);
+            }
+            deferred3_0 = ptr2;
+            deferred3_1 = len2;
+            return getStringFromWasm0(ptr2, len2);
+        } finally {
+            wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+        }
+    }
+    /**
      * 표 속성을 수정한다.
      *
      * 반환: JSON `{"ok":true}`

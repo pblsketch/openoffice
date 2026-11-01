@@ -270,6 +270,29 @@ Common mistakes
 
 - Repeating `front`/`back` on an element already at that extreme fails; check the outline order first.
 
+### setElementHidden
+
+`{hidden:boolean} — top-level elements only`
+
+Hides an element from the slide (it stays in the file and in the Selection Pane)
+or shows a hidden one again. Every element id on the slide changes afterwards:
+read the slide again before the next edit.
+
+```json
+{ "op": "setElementHidden", "target": { "slide": 0, "el": "e_SHAPE" }, "hidden": true }
+```
+
+### renameElement
+
+`{name:string} — top-level elements only, 1..255 characters`
+
+Renames an element: the name the Selection Pane and the animation list show.
+The slide and its text do not change.
+
+```json
+{ "op": "renameElement", "target": { "slide": 0, "el": "e_SHAPE" }, "name": "Logo" }
+```
+
 ### groupElements
 
 `{els:[id,id,…]} — at least two ids; target.el unused`

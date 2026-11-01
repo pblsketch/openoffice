@@ -312,20 +312,24 @@ Einen Tab zu schließen ist die eine Stelle, an der sich die beiden Plattformen 
 
 ### Bearbeiten
 
-| Aktion                                                | macOS  | Windows / Linux |
-| ----------------------------------------------------- | ------ | --------------- |
-| Neue Folie                                            | ⇧⌘N    | Ctrl+M          |
-| Suchen (nicht beim Bearbeiten von Text in einer Form) | ⌘F     | Ctrl+F          |
-| Auswahl mit KI kommentieren (mit ausgewählten Formen) | ⌘K     | Ctrl+K          |
-| Vergrößern                                            | ⌘=     | Ctrl+=          |
-| Verkleinern                                           | ⌘-     | Ctrl+-          |
-| Originalgröße (100 %)                                 | ⌘0     | Ctrl+0          |
-| Alles auswählen                                       | ⌘A     | Ctrl+A          |
-| Formenauswahl vorwärts / rückwärts durchlaufen        | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Aktion                                                                              | macOS  | Windows / Linux |
+| ----------------------------------------------------------------------------------- | ------ | --------------- |
+| Neue Folie                                                                          | ⇧⌘N    | Ctrl+M          |
+| Suchen (nicht beim Bearbeiten von Text in einer Form)                               | ⌘F     | Ctrl+F          |
+| Auswahl mit KI kommentieren (mit ausgewählten Formen)                               | ⌘K     | Ctrl+K          |
+| Vergrößern                                                                          | ⌘=     | Ctrl+=          |
+| Verkleinern                                                                         | ⌘-     | Ctrl+-          |
+| Originalgröße (100 %)                                                               | ⌘0     | Ctrl+0          |
+| Alles auswählen                                                                     | ⌘A     | Ctrl+A          |
+| Formenauswahl vorwärts / rückwärts durchlaufen                                      | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Letzte Aktion wiederholen (Formatierung, Füllung, Linie, Ausrichtung, Duplizieren…) | F4     | F4              |
+| Auswahlbereich ein-/ausblenden                                                      | ⌥F10   | Alt+F10         |
 
 Neue Folie ist die andere Plattformtrennung. Jede Plattform hat ihre eigene Taste, und die andere tut nichts: `⇧⌘N` auf macOS, Ctrl+M unter Windows und Linux. `⌘M` kann auf macOS nicht die Aufgabe erfüllen, weil das die systemweite Taste zum Minimieren ist.
 
 Alles auswählen richtet sich nach dem Fokus: Ist das Miniaturenbereichsfenster, der Gliederungsbereich oder die Foliensortierung fokussiert, wählt der Befehl alle Folien aus, und überall sonst wählt er jedes Element der aktuellen Folie aus. Tab durchläuft die Formen auf der Folie, und nur wenn die Folienfläche selbst den Fokus hat.
+
+F4 funktioniert auch im Textfeld und wendet die letzte Formatierung auf den ausgewählten Text an.
 
 ### Textformatierung
 
@@ -694,18 +698,25 @@ Diese Tasten gelten, solange der Tab HWP/HWPX im Vordergrund ist und das Dokumen
 
 ### Tabelle
 
-| Aktion                  | macOS        | Windows / Linux        |
-| ----------------------- | ------------ | ---------------------- |
-| Zeile/Spalte hinzufügen | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| Zeile/Spalte löschen    | ⌥⌫           | Alt+Delete             |
-| Zelle teilen            | F5 → S       | F5 → S                 |
-| Zellen verbinden        | F5 → M       | F5 → M                 |
-| Blocksumme              | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| Blockmittelwert         | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| Blockprodukt            | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| Tabelle teilen          | ⌃N, A        | Ctrl+N, A              |
-| Tabelle verbinden       | ⌃N, Z        | Ctrl+N, Z              |
-| Berechnungsformel       | ⌃N, F        | Ctrl+N, F              |
+| Aktion                                      | macOS        | Windows / Linux        |
+| ------------------------------------------- | ------------ | ---------------------- |
+| Zeile/Spalte hinzufügen                     | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Zeile/Spalte löschen                        | ⌥⌫           | Alt+Delete             |
+| Zelle teilen                                | F5 → S       | F5 → S                 |
+| Zellen verbinden                            | F5 → M       | F5 → M                 |
+| Tabellen-/Zelleigenschaften                 | F5 → P       | F5 → P                 |
+| Rahmen / Schattierung je Zelle              | F5 → L / C   | F5 → L / C             |
+| Rahmen / Schattierung als eine Zelle        | F5 → B / F   | F5 → B / F             |
+| Gleiche Zeilenhöhe / Spaltenbreite          | F5 → H / W   | F5 → H / W             |
+| Tabelle automatisch füllen                  | F5 → A       | F5 → A                 |
+| Zurück zur Zellbearbeitung                  | F5 → ⏎       | F5 → Enter             |
+| Schneller hängender Einzug (in einer Zelle) | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| Blocksumme                                  | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Blockmittelwert                             | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Blockprodukt                                | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Tabelle teilen                              | ⌃N, A        | Ctrl+N, A              |
+| Tabelle verbinden                           | ⌃N, Z        | Ctrl+N, Z              |
+| Berechnungsformel                           | ⌃N, F        | Ctrl+N, F              |
 
 ### Tabellenberechnung
 

@@ -11,7 +11,15 @@
 //
 // Main-process only: it sends the key. The renderer reads the result from the
 // settings file (`providers.<id>.models`), which only the main process writes.
+//
+// The same answer tells, for the vendors this app hands a level to, which
+// effort levels each model takes (decision 0096): Anthropic's
+// `capabilities.effort`, OpenRouter's `reasoning.supported_efforts`,
+// DeepSeek's `effort.supported_levels`, xAI's `capabilities.reasoning_effort`
+// (xAI's short list may leave it out, so its full list is read as well).
+import { AI_EFFORTS, aiModelEffortOf, type AiModelEffort } from './effort'
 import { withUserAgent } from './fetch'
+import { takesKeyEffort } from './key-effort'
 import { endpointUrl, readCappedResponseText } from './protocols/shared'
 import { currentModelId, opencodeSessionHeaders } from './providers'
 import { AI_PROVIDER_ADAPTERS } from './registry'
@@ -43,13 +51,13 @@ const NOT_CHAT =
   /(embed|(^|[-_/])tts|whisper|transcri|speech|audio|realtime|(^|[-_/])live([-_]|$)|dall-e|gpt-image|imagen|(^|[-_/])image([-_]|$)|-image-|veo|sora|video|moderation|rerank|robotics|(^|[-_/])aqa($|-)|nano-banana|lyria|computer-use|deep-research|(^|[-_/])ocr([-_]|$)|babbage|davinci)/i
 
 /**
- * Ids a provider lists but this app cannot drive. OpenAI serves the GPT-6
- * family, the Codex and the -pro models on the Responses API only (Chat
- * Completions has no full tool use for them, see the catalog note); the
- * OpenCode gateways route GPT, Grok and Muse Spark the same way.
+ * Ids a provider lists but this app cannot drive. OpenAI's GPT-5.4+ and GPT-6
+ * ids go to the Responses API (modelUsesResponsesApi), but the Codex and the
+ * -pro models are left out; the OpenCode gateways route GPT, Grok and Muse
+ * Spark on the Responses API only, which this app does not speak to them.
  */
 const UNSUPPORTED: Partial<Record<AiProviderId, RegExp>> = {
-  openai: /^(gpt-6|o\d+-pro|.*-pro($|-\d)|.*codex)/i,
+  openai: /^(o\d+-pro|.*-pro($|-\d)|.*codex)/i,
   'opencode-zen': /^(gpt-|grok|muse)/i,
   'opencode-go': /^(gpt-|grok|muse)/i,
 }
@@ -78,10 +86,50 @@ interface Listed {
   id: string
   /** seconds since the epoch, when the list says */
   created?: number | undefined
+  /** the effort levels the list names for the model */
+  effort?: AiModelEffort | undefined
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
+
+/** What a vendor's list says about one model's effort levels, in any of the shapes the vendors use */
+function listedEffortOf(entry: Record<string, unknown>): AiModelEffort | undefined {
+  const capabilities = isRecord(entry.capabilities) ? entry.capabilities : undefined
+  // Anthropic: `capabilities.effort.<level>.supported`
+  const anthropic = capabilities && isRecord(capabilities.effort) ? capabilities.effort : undefined
+  if (anthropic && anthropic.supported !== false) {
+    const levels = AI_EFFORTS.filter((level) => {
+      const leaf = anthropic[level]
+      return isRecord(leaf) && leaf.supported === true
+    })
+    if (levels.length > 0) return aiModelEffortOf({ efforts: levels })
+  }
+  // OpenRouter: `reasoning.supported_efforts` (null means "any", which says nothing per model)
+  const reasoning = isRecord(entry.reasoning) ? entry.reasoning : undefined
+  if (reasoning && Array.isArray(reasoning.supported_efforts)) {
+    return aiModelEffortOf({
+      efforts: reasoning.supported_efforts,
+      defaultEffort: reasoning.default_effort,
+    })
+  }
+  // DeepSeek: `effort.supported_levels`
+  const effort = isRecord(entry.effort) ? entry.effort : undefined
+  if (effort && Array.isArray(effort.supported_levels)) {
+    return aiModelEffortOf({
+      efforts: effort.supported_levels,
+      defaultEffort: effort.default_level,
+    })
+  }
+  // xAI: `capabilities.reasoning_effort`
+  if (capabilities && Array.isArray(capabilities.reasoning_effort)) {
+    return aiModelEffortOf({
+      efforts: capabilities.reasoning_effort,
+      defaultEffort: capabilities.default_reasoning_effort,
+    })
+  }
+  return undefined
+}
 
 /** What an OpenAI-style entry says about itself, beyond its id */
 function servesChat(entry: Record<string, unknown>): boolean {
@@ -148,7 +196,11 @@ async function listAnthropic(
     if (!isRecord(body) || !Array.isArray(body.data)) break
     for (const entry of body.data) {
       if (isRecord(entry) && typeof entry.id === 'string') {
-        out.push({ id: entry.id, created: createdOf(entry.created_at) })
+        out.push({
+          id: entry.id,
+          created: createdOf(entry.created_at),
+          effort: listedEffortOf(entry),
+        })
       }
     }
     if (body.has_more !== true || typeof body.last_id !== 'string') break
@@ -213,9 +265,46 @@ async function listOpenAiCompatible(
   const out: Listed[] = []
   for (const entry of data) {
     if (!isRecord(entry) || typeof entry.id !== 'string' || !servesChat(entry)) continue
-    out.push({ id: entry.id, created: createdOf(entry.created ?? entry.created_at) })
+    out.push({
+      id: entry.id,
+      created: createdOf(entry.created ?? entry.created_at),
+      effort: listedEffortOf(entry),
+    })
   }
   return out
+}
+
+/**
+ * xAI's short list may leave a model's capabilities out; its full list
+ * (`language-models`) carries them. Filled in where the short one said
+ * nothing; a failed read leaves the list as it was.
+ */
+async function withXaiEfforts(
+  base: string,
+  apiKey: string,
+  listed: Listed[],
+  fetchImpl: typeof fetch,
+): Promise<Listed[]> {
+  if (listed.every((entry) => entry.effort)) return listed
+  try {
+    const body = await getJson(
+      endpointUrl(base, 'language-models'),
+      { Authorization: `Bearer ${apiKey}` },
+      fetchImpl,
+    )
+    const models = isRecord(body) && Array.isArray(body.models) ? body.models : []
+    const byId = new Map<string, AiModelEffort>()
+    for (const entry of models) {
+      if (!isRecord(entry) || typeof entry.id !== 'string') continue
+      const effort = listedEffortOf(entry)
+      if (effort) byId.set(entry.id, effort)
+    }
+    return listed.map((entry) =>
+      entry.effort || !byId.has(entry.id) ? entry : { ...entry, effort: byId.get(entry.id) },
+    )
+  } catch {
+    return listed
+  }
 }
 
 /**
@@ -249,6 +338,32 @@ export function keyModelIdsOf(provider: AiProviderId, listed: readonly Listed[])
     .slice(0, MAX_KEY_PROVIDER_MODELS)
 }
 
+/** A key provider's list: the ids the pickers offer, and the levels of those that take one */
+export interface KeyModelListing {
+  models: string[]
+  /** by id; only for the providers this app hands a level to, and only ids in `models` */
+  efforts: Record<string, AiModelEffort>
+}
+
+export function keyModelListingOf(
+  provider: AiProviderId,
+  listed: readonly Listed[],
+): KeyModelListing {
+  const models = keyModelIdsOf(provider, listed)
+  const efforts: Record<string, AiModelEffort> = {}
+  if (takesKeyEffort(provider)) {
+    const kept = new Set(models)
+    for (const entry of listed) {
+      if (!entry.effort) continue
+      const id = currentModelId(provider, entry.id.trim())
+      if (kept.has(id) && !Object.prototype.hasOwnProperty.call(efforts, id)) {
+        efforts[id] = entry.effort
+      }
+    }
+  }
+  return { models, efforts }
+}
+
 /** Key providers whose models can be listed: every one but the subscriptions and the user's own servers */
 export function listsKeyProviderModels(provider: AiProviderId): boolean {
   const adapter = AI_PROVIDER_ADAPTERS[provider]
@@ -265,6 +380,15 @@ export async function listKeyProviderModels(
   config: Pick<AiProviderConfig, 'apiKey' | 'baseUrl'>,
   fetchImpl: typeof fetch = fetch,
 ): Promise<string[] | null> {
+  return (await listKeyProviderModelListing(provider, config, fetchImpl))?.models ?? null
+}
+
+/** `listKeyProviderModels` with the effort levels the same answer named. Never throws. */
+export async function listKeyProviderModelListing(
+  provider: AiProviderId,
+  config: Pick<AiProviderConfig, 'apiKey' | 'baseUrl'>,
+  fetchImpl: typeof fetch = fetch,
+): Promise<KeyModelListing | null> {
   const apiKey = config.apiKey.trim()
   if (!apiKey || !listsKeyProviderModels(provider)) return null
   try {
@@ -274,7 +398,7 @@ export async function listKeyProviderModels(
       model: '',
       ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),
     })
-    const listed =
+    let listed =
       endpoint.protocol === 'anthropic'
         ? await listAnthropic(endpoint.baseUrl, apiKey, fetchImpl)
         : endpoint.protocol === 'gemini'
@@ -282,8 +406,11 @@ export async function listKeyProviderModels(
           : endpoint.protocol === 'openai-compatible'
             ? await listOpenAiCompatible(endpoint.baseUrl, apiKey, fetchImpl)
             : []
-    const ids = keyModelIdsOf(provider, listed)
-    return ids.length > 0 ? ids : null
+    if (provider === 'xai' && listed.length > 0) {
+      listed = await withXaiEfforts(endpoint.baseUrl, apiKey, listed, fetchImpl)
+    }
+    const listing = keyModelListingOf(provider, listed)
+    return listing.models.length > 0 ? listing : null
   } catch {
     return null
   }

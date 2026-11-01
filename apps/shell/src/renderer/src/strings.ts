@@ -345,6 +345,10 @@ export const strings = {
     intgStateForeign: '已安装 {v}（非本应用安装）',
     intgStateNewer: '已安装 {v}（比本应用附带的新）',
     intgStateOccupied: '目录已被占用',
+    intgSharedAgentsLabel: '共享文件夹（~/.agents）：Codex、Cursor、Gemini CLI、Copilot、OpenCode',
+    intgLegacyHint:
+      '这是 {tool} 自有文件夹中的旧副本。{tool} 现在从共享文件夹（~/.agents）读取技能；在那里安装后，即可移除此副本。',
+    intgConfirmAlsoUpdate: '{paths} 中的旧副本也会一并更新。',
     intgInstall: '安装',
     intgUpdate: '更新',
     intgUninstall: '卸载',
@@ -922,6 +926,11 @@ export const strings = {
     intgStateForeign: 'Installed {v} (not by this app)',
     intgStateNewer: 'Installed {v} (newer than the bundled one)',
     intgStateOccupied: 'Folder already in use',
+    intgSharedAgentsLabel:
+      'Shared folder (~/.agents): Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+    intgLegacyHint:
+      "Older copy in {tool}'s own folder. {tool} now reads the skill from the shared folder (~/.agents); once it is installed there, you can remove this copy.",
+    intgConfirmAlsoUpdate: 'The older copies at {paths} are updated as well.',
     intgInstall: 'Install',
     intgUpdate: 'Update',
     intgUninstall: 'Uninstall',
@@ -1508,6 +1517,11 @@ export const strings = {
     intgStateForeign: 'Đã cài đặt {v} (không phải do ứng dụng này)',
     intgStateNewer: 'Đã cài đặt {v} (mới hơn bản đi kèm)',
     intgStateOccupied: 'Thư mục đã được sử dụng',
+    intgSharedAgentsLabel:
+      'Thư mục dùng chung (~/.agents): Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+    intgLegacyHint:
+      'Bản sao cũ trong thư mục riêng của {tool}. {tool} hiện đọc kỹ năng từ thư mục dùng chung (~/.agents); sau khi cài vào đó, bạn có thể gỡ bản sao này.',
+    intgConfirmAlsoUpdate: 'Các bản sao cũ tại {paths} cũng được cập nhật.',
     intgInstall: 'Cài đặt',
     intgUpdate: 'Cập nhật',
     intgUninstall: 'Gỡ cài đặt',
@@ -2106,6 +2120,11 @@ export const strings = {
     intgStateForeign: 'インストール済み {v}（このアプリ以外で）',
     intgStateNewer: 'インストール済み {v}（同梱版より新しい）',
     intgStateOccupied: 'フォルダーは使用中です',
+    intgSharedAgentsLabel:
+      '共有フォルダー（~/.agents）：Codex、Cursor、Gemini CLI、Copilot、OpenCode',
+    intgLegacyHint:
+      '{tool} 専用フォルダーに残っている古いコピーです。{tool} は現在、共有フォルダー（~/.agents）のスキルを読み込みます。そちらにインストールした後は、このコピーを削除してかまいません。',
+    intgConfirmAlsoUpdate: '{paths} にある古いコピーも一緒に更新されます。',
     intgInstall: 'インストール',
     intgUpdate: '更新',
     intgUninstall: 'アンインストール',
@@ -2703,6 +2722,10 @@ export const strings = {
     intgStateForeign: '설치됨 {v} (이 앱이 설치하지 않음)',
     intgStateNewer: '설치됨 {v} (내장 버전보다 최신)',
     intgStateOccupied: '폴더가 이미 사용 중',
+    intgSharedAgentsLabel: '공용 폴더(~/.agents): Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+    intgLegacyHint:
+      '{tool} 전용 폴더에 남은 예전 사본입니다. {tool}은(는) 이제 공용 폴더(~/.agents)의 스킬을 읽습니다. 공용 폴더에 설치한 뒤에는 이 사본을 지워도 됩니다.',
+    intgConfirmAlsoUpdate: '{paths}에 있는 예전 사본도 함께 업데이트합니다.',
     intgInstall: '설치',
     intgUpdate: '업데이트',
     intgUninstall: '제거',
@@ -3300,6 +3323,11 @@ export const strings = {
     intgStateForeign: 'Installé {v} (pas par cette application)',
     intgStateNewer: 'Installé {v} (plus récent que la version fournie)',
     intgStateOccupied: 'Dossier déjà utilisé',
+    intgSharedAgentsLabel:
+      'Dossier partagé (~/.agents) : Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+    intgLegacyHint:
+      'Ancienne copie dans le dossier propre à {tool}. {tool} lit désormais le skill dans le dossier partagé (~/.agents) ; une fois qu’il y est installé, vous pouvez supprimer cette copie.',
+    intgConfirmAlsoUpdate: 'Les anciennes copies situées dans {paths} sont aussi mises à jour.',
     intgInstall: 'Installer',
     intgUpdate: 'Mettre à jour',
     intgUninstall: 'Désinstaller',
@@ -3914,6 +3942,11 @@ export const strings = {
     intgStateForeign: 'Installiert {v} (nicht von dieser App)',
     intgStateNewer: 'Installiert {v} (neuer als die mitgelieferte)',
     intgStateOccupied: 'Ordner bereits belegt',
+    intgSharedAgentsLabel:
+      'Gemeinsamer Ordner (~/.agents): Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+    intgLegacyHint:
+      'Ältere Kopie im eigenen Ordner von {tool}. {tool} liest den Skill jetzt aus dem gemeinsamen Ordner (~/.agents); sobald er dort installiert ist, können Sie diese Kopie entfernen.',
+    intgConfirmAlsoUpdate: 'Die älteren Kopien unter {paths} werden ebenfalls aktualisiert.',
     intgInstall: 'Installieren',
     intgUpdate: 'Aktualisieren',
     intgUninstall: 'Deinstallieren',
@@ -4527,6 +4560,11 @@ export const strings = {
     intgStateForeign: 'Instalado {v} (no por esta aplicación)',
     intgStateNewer: 'Instalado {v} (más reciente que el incluido)',
     intgStateOccupied: 'La carpeta ya está en uso',
+    intgSharedAgentsLabel:
+      'Carpeta compartida (~/.agents): Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+    intgLegacyHint:
+      'Copia antigua en la carpeta propia de {tool}. {tool} ahora lee la habilidad desde la carpeta compartida (~/.agents); una vez instalada allí, puede quitar esta copia.',
+    intgConfirmAlsoUpdate: 'Las copias antiguas en {paths} también se actualizan.',
     intgInstall: 'Instalar',
     intgUpdate: 'Actualizar',
     intgUninstall: 'Desinstalar',
@@ -5119,6 +5157,11 @@ export const strings = {
     intgStateForeign: 'ติดตั้งแล้ว {v} (ไม่ได้ติดตั้งโดยแอปนี้)',
     intgStateNewer: 'ติดตั้งแล้ว {v} (ใหม่กว่าที่มาพร้อมแอป)',
     intgStateOccupied: 'โฟลเดอร์ถูกใช้งานอยู่แล้ว',
+    intgSharedAgentsLabel:
+      'โฟลเดอร์ที่ใช้ร่วมกัน (~/.agents): Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+    intgLegacyHint:
+      'สำเนาเก่าในโฟลเดอร์ของ {tool} เอง ตอนนี้ {tool} อ่านสกิลจากโฟลเดอร์ที่ใช้ร่วมกัน (~/.agents) แล้ว เมื่อติดตั้งที่นั่นแล้ว คุณลบสำเนานี้ได้',
+    intgConfirmAlsoUpdate: 'สำเนาเก่าที่ {paths} จะได้รับการอัปเดตด้วย',
     intgInstall: 'ติดตั้ง',
     intgUpdate: 'อัปเดต',
     intgUninstall: 'ถอนการติดตั้ง',
@@ -5715,6 +5758,11 @@ export const strings = {
     intgStateForeign: 'Terpasang {v} (bukan oleh aplikasi ini)',
     intgStateNewer: 'Terpasang {v} (lebih baru dari yang bawaan)',
     intgStateOccupied: 'Folder sudah dipakai',
+    intgSharedAgentsLabel:
+      'Folder bersama (~/.agents): Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+    intgLegacyHint:
+      'Salinan lama di folder milik {tool} sendiri. {tool} kini membaca skill dari folder bersama (~/.agents); setelah skill terpasang di sana, Anda dapat menghapus salinan ini.',
+    intgConfirmAlsoUpdate: 'Salinan lama di {paths} juga ikut diperbarui.',
     intgInstall: 'Pasang',
     intgUpdate: 'Perbarui',
     intgUninstall: 'Hapus',
@@ -6316,6 +6364,10 @@ export const strings = {
     intgStateForeign: 'Установлен {v} (не этим приложением)',
     intgStateNewer: 'Установлен {v} (новее встроенного)',
     intgStateOccupied: 'Папка уже занята',
+    intgSharedAgentsLabel: 'Общая папка (~/.agents): Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+    intgLegacyHint:
+      'Старая копия в собственной папке {tool}. Теперь {tool} читает навык из общей папки (~/.agents); после установки туда эту копию можно удалить.',
+    intgConfirmAlsoUpdate: 'Старые копии в {paths} тоже будут обновлены.',
     intgInstall: 'Установить',
     intgUpdate: 'Обновить',
     intgUninstall: 'Удалить',
@@ -6912,6 +6964,11 @@ export const strings = {
     intgStateForeign: 'مثبّت {v} (ليس بواسطة هذا التطبيق)',
     intgStateNewer: 'مثبّت {v} (أحدث من المرفق)',
     intgStateOccupied: 'المجلد مستخدم بالفعل',
+    intgSharedAgentsLabel:
+      'المجلد المشترك (~/.agents): Codex وCursor وGemini CLI وCopilot وOpenCode',
+    intgLegacyHint:
+      'نسخة قديمة في المجلد الخاص بـ {tool}. أصبح {tool} يقرأ المهارة من المجلد المشترك (~/.agents)؛ وبعد تثبيتها هناك يمكنك إزالة هذه النسخة.',
+    intgConfirmAlsoUpdate: 'تُحدَّث أيضًا النسخ القديمة الموجودة في {paths}.',
     intgInstall: 'تثبيت',
     intgUpdate: 'تحديث',
     intgUninstall: 'إلغاء التثبيت',
@@ -7504,6 +7561,11 @@ export const strings = {
     intgStateForeign: 'Instalado {v} (não por este aplicativo)',
     intgStateNewer: 'Instalado {v} (mais recente que o incluído)',
     intgStateOccupied: 'Pasta já em uso',
+    intgSharedAgentsLabel:
+      'Pasta compartilhada (~/.agents): Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+    intgLegacyHint:
+      'Cópia antiga na pasta própria do {tool}. O {tool} agora lê a habilidade da pasta compartilhada (~/.agents); depois de instalá-la lá, você pode remover esta cópia.',
+    intgConfirmAlsoUpdate: 'As cópias antigas em {paths} também são atualizadas.',
     intgInstall: 'Instalar',
     intgUpdate: 'Atualizar',
     intgUninstall: 'Desinstalar',
@@ -8101,6 +8163,11 @@ export const strings = {
     intgStateForeign: 'Installato {v} (non da questa app)',
     intgStateNewer: 'Installato {v} (più recente di quello incluso)',
     intgStateOccupied: 'Cartella già in uso',
+    intgSharedAgentsLabel:
+      'Cartella condivisa (~/.agents): Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+    intgLegacyHint:
+      'Copia precedente nella cartella di {tool}. {tool} ora legge l’abilità dalla cartella condivisa (~/.agents); dopo averla installata lì, puoi rimuovere questa copia.',
+    intgConfirmAlsoUpdate: 'Vengono aggiornate anche le copie precedenti in {paths}.',
     intgInstall: 'Installa',
     intgUpdate: 'Aggiorna',
     intgUninstall: 'Disinstalla',
@@ -8696,6 +8763,11 @@ export const strings = {
     intgStateForeign: 'Zainstalowano {v} (nie przez tę aplikację)',
     intgStateNewer: 'Zainstalowano {v} (nowszy niż dołączony)',
     intgStateOccupied: 'Folder jest już zajęty',
+    intgSharedAgentsLabel:
+      'Folder wspólny (~/.agents): Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+    intgLegacyHint:
+      'Starsza kopia we własnym folderze {tool}. {tool} czyta teraz umiejętność ze wspólnego folderu (~/.agents); po zainstalowaniu jej tam możesz usunąć tę kopię.',
+    intgConfirmAlsoUpdate: 'Starsze kopie w {paths} też zostaną zaktualizowane.',
     intgInstall: 'Zainstaluj',
     intgUpdate: 'Aktualizuj',
     intgUninstall: 'Odinstaluj',
@@ -9237,6 +9309,11 @@ export const strings = {
     intgStateForeign: 'Nainstalováno {v} (ne touto aplikací)',
     intgStateNewer: 'Nainstalováno {v} (novější než přibalený)',
     intgStateOccupied: 'Složka je již obsazena',
+    intgSharedAgentsLabel:
+      'Sdílená složka (~/.agents): Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+    intgLegacyHint:
+      'Starší kopie ve vlastní složce nástroje {tool}. {tool} nyní čte dovednost ze sdílené složky (~/.agents); jakmile ji tam nainstalujete, můžete tuto kopii odebrat.',
+    intgConfirmAlsoUpdate: 'Aktualizují se i starší kopie v {paths}.',
     intgInstall: 'Nainstalovat',
     intgUpdate: 'Aktualizovat',
     intgUninstall: 'Odinstalovat',
@@ -9878,6 +9955,10 @@ export const strings = {
     intgStateForeign: 'Geïnstalleerd {v} (niet door deze app)',
     intgStateNewer: 'Geïnstalleerd {v} (nieuwer dan de meegeleverde)',
     intgStateOccupied: 'Map al in gebruik',
+    intgSharedAgentsLabel: 'Gedeelde map (~/.agents): Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+    intgLegacyHint:
+      'Oudere kopie in de eigen map van {tool}. {tool} leest de vaardigheid nu uit de gedeelde map (~/.agents); zodra die daar is geïnstalleerd, kun je deze kopie verwijderen.',
+    intgConfirmAlsoUpdate: 'De oudere kopieën in {paths} worden ook bijgewerkt.',
     intgInstall: 'Installeren',
     intgUpdate: 'Bijwerken',
     intgUninstall: 'Verwijderen',
@@ -10473,6 +10554,11 @@ export const strings = {
     intgStateForeign: 'Dipasang {v} (bukan oleh aplikasi ini)',
     intgStateNewer: 'Dipasang {v} (lebih baharu daripada yang disertakan)',
     intgStateOccupied: 'Folder sudah digunakan',
+    intgSharedAgentsLabel:
+      'Folder kongsi (~/.agents): Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+    intgLegacyHint:
+      'Salinan lama dalam folder {tool} sendiri. {tool} kini membaca kemahiran daripada folder kongsi (~/.agents); selepas ia dipasang di sana, anda boleh membuang salinan ini.',
+    intgConfirmAlsoUpdate: 'Salinan lama di {paths} turut dikemas kini.',
     intgInstall: 'Pasang',
     intgUpdate: 'Kemas kini',
     intgUninstall: 'Nyahpasang',
@@ -11054,6 +11140,11 @@ export const strings = {
     intgStateForeign: 'מותקן {v} (לא על ידי יישום זה)',
     intgStateNewer: 'מותקן {v} (חדש יותר מהמצורף)',
     intgStateOccupied: 'התיקייה כבר בשימוש',
+    intgSharedAgentsLabel:
+      'תיקייה משותפת (~/.agents): Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+    intgLegacyHint:
+      'עותק ישן בתיקייה הפרטית של {tool}. {tool} קורא עכשיו את המיומנות מהתיקייה המשותפת (~/.agents); אחרי שהיא מותקנת שם, אפשר להסיר את העותק הזה.',
+    intgConfirmAlsoUpdate: 'גם העותקים הישנים ב-{paths} מתעדכנים.',
     intgInstall: 'התקנה',
     intgUpdate: 'עדכון',
     intgUninstall: 'הסרה',
@@ -11634,6 +11725,10 @@ export const strings = {
     intgStateForeign: 'इंस्टॉल {v} (इस ऐप द्वारा नहीं)',
     intgStateNewer: 'इंस्टॉल {v} (साथ दिए गए से नया)',
     intgStateOccupied: 'फ़ोल्डर पहले से उपयोग में है',
+    intgSharedAgentsLabel: 'साझा फ़ोल्डर (~/.agents): Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+    intgLegacyHint:
+      '{tool} के अपने फ़ोल्डर में पुरानी कॉपी। {tool} अब साझा फ़ोल्डर (~/.agents) से कौशल पढ़ता है; वहाँ इंस्टॉल होने के बाद आप यह कॉपी हटा सकते हैं।',
+    intgConfirmAlsoUpdate: '{paths} में मौजूद पुरानी कॉपियाँ भी अपडेट होंगी।',
     intgInstall: 'इंस्टॉल',
     intgUpdate: 'अपडेट',
     intgUninstall: 'अनइंस्टॉल',
@@ -12201,6 +12296,10 @@ export const strings = {
     intgStateForeign: '已安裝 {v}（非本應用程式安裝）',
     intgStateNewer: '已安裝 {v}（比本應用程式隨附的新）',
     intgStateOccupied: '資料夾已被佔用',
+    intgSharedAgentsLabel: '共用資料夾（~/.agents）：Codex、Cursor、Gemini CLI、Copilot、OpenCode',
+    intgLegacyHint:
+      '這是 {tool} 自有資料夾中的舊副本。{tool} 現在從共用資料夾（~/.agents）讀取技能；在那裡安裝後，即可移除此副本。',
+    intgConfirmAlsoUpdate: '{paths} 中的舊副本也會一併更新。',
     intgInstall: '安裝',
     intgUpdate: '更新',
     intgUninstall: '解除安裝',

@@ -312,20 +312,24 @@ Menutup tab adalah satu-satunya tempat kedua platform benar-benar terpisah: ⌘W
 
 ### Penyuntingan
 
-| Tindakan                                           | macOS  | Windows / Linux |
-| -------------------------------------------------- | ------ | --------------- |
-| Slide baru                                         | ⇧⌘N    | Ctrl+M          |
-| Temukan (bukan saat menyunting teks dalam bentuk)  | ⌘F     | Ctrl+F          |
-| Anotasi seleksi dengan AI (dengan bentuk terpilih) | ⌘K     | Ctrl+K          |
-| Perbesar                                           | ⌘=     | Ctrl+=          |
-| Perkecil                                           | ⌘-     | Ctrl+-          |
-| Ukuran asli (100%)                                 | ⌘0     | Ctrl+0          |
-| Pilih semua                                        | ⌘A     | Ctrl+A          |
-| Berganti seleksi bentuk maju / mundur              | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Tindakan                                                             | macOS  | Windows / Linux |
+| -------------------------------------------------------------------- | ------ | --------------- |
+| Slide baru                                                           | ⇧⌘N    | Ctrl+M          |
+| Temukan (bukan saat menyunting teks dalam bentuk)                    | ⌘F     | Ctrl+F          |
+| Anotasi seleksi dengan AI (dengan bentuk terpilih)                   | ⌘K     | Ctrl+K          |
+| Perbesar                                                             | ⌘=     | Ctrl+=          |
+| Perkecil                                                             | ⌘-     | Ctrl+-          |
+| Ukuran asli (100%)                                                   | ⌘0     | Ctrl+0          |
+| Pilih semua                                                          | ⌘A     | Ctrl+A          |
+| Berganti seleksi bentuk maju / mundur                                | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Ulangi tindakan terakhir (format, isian, garis, perataan, duplikat…) | F4     | F4              |
+| Tampilkan/sembunyikan Panel Pilihan                                  | ⌥F10   | Alt+F10         |
 
 Slide baru adalah pembagian platform yang lain. Tiap platform punya tombolnya sendiri dan tombol platform lain tidak melakukan apa pun: ⇧⌘N di macOS, Ctrl+M di Windows dan Linux. `⌘M` tidak bisa mengerjakan itu di macOS karena itulah tombol Perkecil milik sistem.
 
 Pilih semua mengikuti fokus: dengan rel thumbnail, kerangka garis besar, atau penyusun slide yang fokus, ia memilih setiap slide, dan di tempat lain ia memilih setiap elemen pada slide sekarang. Tab berganti antarbentuk di slide itu, dan hanya ketika kanvas slide itu sendiri yang fokus.
+
+F4 juga berfungsi di dalam kotak teks, menerapkan format terakhir ke teks yang dipilih.
 
 ### Format teks
 
@@ -694,18 +698,25 @@ Tombol ini berlaku saat tab HWP/HWPX berada di depan dan dokumen memiliki fokus.
 
 ### Tabel
 
-| Tindakan           | macOS        | Windows / Linux        |
-| ------------------ | ------------ | ---------------------- |
-| Tambah baris/kolom | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| Hapus baris/kolom  | ⌥⌫           | Alt+Delete             |
-| Pisahkan sel       | F5 → S       | F5 → S                 |
-| Gabungkan sel      | F5 → M       | F5 → M                 |
-| Jumlah blok        | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| Rata-rata blok     | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| Produk blok        | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| Pisahkan tabel     | ⌃N, A        | Ctrl+N, A              |
-| Gabungkan tabel    | ⌃N, Z        | Ctrl+N, Z              |
-| Rumus perhitungan  | ⌃N, F        | Ctrl+N, F              |
+| Tindakan                           | macOS        | Windows / Linux        |
+| ---------------------------------- | ------------ | ---------------------- |
+| Tambah baris/kolom                 | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Hapus baris/kolom                  | ⌥⌫           | Alt+Delete             |
+| Pisahkan sel                       | F5 → S       | F5 → S                 |
+| Gabungkan sel                      | F5 → M       | F5 → M                 |
+| Properti tabel/sel                 | F5 → P       | F5 → P                 |
+| Batas / bayangan, tiap sel         | F5 → L / C   | F5 → L / C             |
+| Batas / bayangan, sel sebagai satu | F5 → B / F   | F5 → B / F             |
+| Samakan tinggi baris / lebar kolom | F5 → H / W   | F5 → H / W             |
+| Isi otomatis tabel                 | F5 → A       | F5 → A                 |
+| Kembali menyunting sel             | F5 → ⏎       | F5 → Enter             |
+| Indentasi gantung cepat (di sel)   | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| Jumlah blok                        | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Rata-rata blok                     | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Produk blok                        | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Pisahkan tabel                     | ⌃N, A        | Ctrl+N, A              |
+| Gabungkan tabel                    | ⌃N, Z        | Ctrl+N, Z              |
+| Rumus perhitungan                  | ⌃N, F        | Ctrl+N, F              |
 
 ### Perhitungan tabel
 

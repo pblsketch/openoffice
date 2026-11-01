@@ -141,6 +141,8 @@ export interface AgentSessionOptions {
   mode: AgentPermissionMode
   /** model id as the program takes it; empty for the program's default */
   model: string
+  /** how hard the model thinks (`AI_EFFORTS`); absent for the program's default */
+  effort?: string | undefined
   /** the user's own path to the CLI (settings), if any */
   cliPath?: string | undefined
   /** text the app adds to the program's own instructions (language, app tools, project notes) */

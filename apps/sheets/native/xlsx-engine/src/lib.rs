@@ -17,12 +17,15 @@ pub mod archive;
 pub mod convert;
 pub mod find;
 pub mod recalc;
+mod rels_normalize;
 mod richdata;
 mod shared_formulas;
 pub mod spreadsheetml;
+pub mod stream_patch;
 mod visuals;
 
 mod cell_images;
+mod escher;
 mod refs;
 mod sparklines;
 mod table_styles;
@@ -31,6 +34,7 @@ mod tests;
 mod types;
 mod workbook;
 mod worksheet;
+mod xls_biff;
 mod xlsx_package;
 mod xml_util;
 

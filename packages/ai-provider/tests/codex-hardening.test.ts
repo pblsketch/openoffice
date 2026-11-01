@@ -1078,6 +1078,95 @@ describe('Codex default model', () => {
   })
 })
 
+describe('Codex effort', () => {
+  const MODELS = {
+    data: [
+      {
+        id: 'gpt-default',
+        isDefault: true,
+        supportedReasoningEfforts: [
+          { reasoningEffort: 'low', description: '' },
+          { reasoningEffort: 'high', description: '' },
+        ],
+      },
+      { id: 'gpt-plain', isDefault: false },
+    ],
+    nextCursor: null,
+  }
+  type Messages = Parameters<typeof streamCodexAppServer>[2]
+  const sent = (child: FakeCodex, method: string) =>
+    child.requests.filter((request) => request.method === method)
+  const efforts = (child: FakeCodex) =>
+    sent(child, 'turn/start').map((request) => (request.params as { effort?: unknown }).effort)
+  const stream = (
+    config: { apiKey: string; model: string; effort?: string },
+    cb: StreamCallbacks,
+    messages: Messages = [{ role: 'user', text: 'hi' }],
+  ) => streamCodexAppServer(config, 'system', messages, [], 1024, cb)
+
+  it('names a configured level on the turn when the model takes it', async () => {
+    const h = harness({ 'model/list': () => MODELS })
+    await stream({ apiKey: '', model: 'gpt-default', effort: 'high' }, callbacks().cb)
+    await stream({ apiKey: '', model: '', effort: 'low' }, callbacks().cb)
+    const child = h.child()
+    expect(efforts(child)).toEqual(['high', 'low'])
+    // read once per process, and never put on the thread
+    expect(sent(child, 'model/list')).toHaveLength(1)
+    for (const request of sent(child, 'thread/start')) {
+      expect(JSON.stringify(request.params)).not.toContain('effort')
+    }
+  })
+
+  it('leaves the level out when the model does not take it or none is set', async () => {
+    const h = harness({ 'model/list': () => MODELS })
+    await stream({ apiKey: '', model: 'gpt-default', effort: 'max' }, callbacks().cb)
+    await stream({ apiKey: '', model: 'gpt-plain', effort: 'high' }, callbacks().cb)
+    await stream({ apiKey: '', model: 'gpt-unlisted', effort: 'high' }, callbacks().cb)
+    await stream({ apiKey: '', model: 'gpt-default', effort: '--evil' }, callbacks().cb)
+    await stream({ apiKey: '', model: 'gpt-default' }, callbacks().cb)
+    const child = h.child()
+    expect(efforts(child)).toEqual([undefined, undefined, undefined, undefined, undefined])
+    for (const request of sent(child, 'turn/start')) {
+      expect(request.params).not.toHaveProperty('effort')
+    }
+  })
+
+  it('runs at the default level when the list cannot be read', async () => {
+    const h = harness({
+      'model/list': () => {
+        throw { code: -32000, message: 'unavailable' }
+      },
+    })
+    const { cb, deltas } = callbacks()
+    await stream({ apiKey: '', model: 'gpt-default', effort: 'high' }, cb)
+    expect(deltas).toEqual(['hello'])
+    expect(sent(h.child(), 'turn/start')[0]!.params).not.toHaveProperty('effort')
+  })
+
+  it('starts a new thread when the level changes, since a turn level holds for the next turns', async () => {
+    const h = harness({ 'model/list': () => MODELS })
+    const history: Messages = [{ role: 'user', text: 'hi' }]
+    const turn = async (effort?: string) => {
+      await stream(
+        { apiKey: '', model: 'gpt-default', ...(effort ? { effort } : {}) },
+        { ...callbacks().cb, sessionId: 'session-1' },
+        [...history],
+      )
+      history.push({ role: 'assistant', text: 'hello' }, { role: 'user', text: 'more' })
+    }
+    await turn('high')
+    await turn('high')
+    const child = h.child()
+    expect(sent(child, 'thread/start')).toHaveLength(1)
+    await turn('low')
+    expect(sent(child, 'thread/start')).toHaveLength(2)
+    // back to the default: the thread run at "low" would keep it
+    await turn()
+    expect(sent(child, 'thread/start')).toHaveLength(3)
+    expect(efforts(child)).toEqual(['high', 'high', 'low', undefined])
+  })
+})
+
 describe('Codex model list for the status', () => {
   const LIST = {
     data: [
@@ -1100,7 +1189,7 @@ describe('Codex model list for the status', () => {
 
   it('maps the entries Codex lists: id, display name, the concrete model, the default', () => {
     expect(codexSubscriptionModels(LIST.data)).toEqual([
-      { id: 'gpt-next-codex', label: 'GPT-Next-Codex', isDefault: true },
+      { id: 'gpt-next-codex', label: 'GPT-Next-Codex', isDefault: true, efforts: ['medium'] },
       { id: 'gpt-next', label: 'GPT-Next', resolved: 'gpt-next-2026-09-01' },
       { id: 'gpt-mini', label: 'gpt-mini' },
     ])
@@ -1135,7 +1224,12 @@ describe('Codex model list for the status', () => {
   it('is what the status check asks for Codex models', async () => {
     harness({ 'model/list': () => LIST })
     const models = await listSubscriptionModels('codex')
-    expect(models?.[0]).toEqual({ id: 'gpt-next-codex', label: 'GPT-Next-Codex', isDefault: true })
+    expect(models?.[0]).toEqual({
+      id: 'gpt-next-codex',
+      label: 'GPT-Next-Codex',
+      isDefault: true,
+      efforts: ['medium'],
+    })
   })
 
   it('a Codex too old to list its models gives no list', async () => {

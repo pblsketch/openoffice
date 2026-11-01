@@ -1,13 +1,15 @@
 /**
- * Pasted wiki syntax. The tokenizers only run on load, so a `[[link]]` that
- * arrived through the clipboard used to sit as plain text until the file was
- * reopened; after a paste it now takes the shape the tokenizer would have
- * built. Typing is not a paste and is left alone.
+ * Pasted wiki syntax. The tokenizers only run on load, so a `[[link]]` or
+ * `![[embed]]` that arrived through the clipboard used to sit as plain text
+ * until the file was reopened; after a paste it now takes the shape the
+ * tokenizers would have built. Typing is not a paste and is left to the `[[`
+ * suggester.
  */
 import { afterAll, describe, expect, it } from 'vitest'
 import { Editor } from '@tiptap/core'
 import { buildExtensions } from '../src/renderer/editor/extensions'
 import { collectWikiTargets } from '../src/renderer/editor/wikilink'
+import { collectWikiEmbedTargets } from '../src/renderer/editor/wikiEmbed'
 
 const editors: Editor[] = []
 afterAll(() => {
@@ -70,13 +72,12 @@ describe('pasted wiki syntax goes live', () => {
     expect(editor.getMarkdown()).toBe('Start. see [[Other#^abc123]] now')
   })
 
-  it('reads a pasted ![[embed]] the way a load reads it: a `!` before a link', () => {
-    const loaded = openDoc('Start. ![[Pic.png|200]] tail')
+  it('turns a pasted ![[embed]] into the embed node', () => {
     const editor = openDoc('Start.')
     caretAfter(editor, 'Start')
     paste(editor, ' ![[Pic.png|200]] tail')
-    expect(inlines(editor)).toEqual(inlines(loaded))
-    expect(collectWikiTargets(editor.state.doc)).toEqual(['[[Pic.png|200]]'])
+    expect(inlines(editor)).toEqual(['Start. :', '<wikiEmbed ![[Pic.png|200]]>', ' tail:'])
+    expect(collectWikiEmbedTargets(editor.state.doc)).toEqual(['Pic.png|200'])
     expect(editor.getMarkdown()).toBe('Start. ![[Pic.png|200]] tail')
   })
 
@@ -119,6 +120,15 @@ describe('pasted wiki syntax goes live', () => {
     caretAfter(editor, 'Start')
     editor.commands.insertContent(' [[Typed]]')
     expect(collectWikiTargets(editor.state.doc)).toEqual([])
+  })
+
+  it('leaves a typed literal elsewhere in the block alone on a later paste', () => {
+    const editor = openDoc('Start.')
+    caretAfter(editor, 'Start')
+    editor.commands.insertContent(' [[Typed]]')
+    paste(editor, ' then [[Pasted]]')
+    expect(collectWikiTargets(editor.state.doc)).toEqual(['[[Pasted]]'])
+    expect(editor.getMarkdown()).toBe('Start. [[Typed]] then [[Pasted]]')
   })
 
   it('leaves a link that is already live as it is', () => {

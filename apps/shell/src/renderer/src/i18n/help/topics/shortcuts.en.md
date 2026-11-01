@@ -312,20 +312,24 @@ Closing a tab is the one place the two platforms split completely: ⌘W on macOS
 
 ### Editing
 
-| Action                                                | macOS  | Windows / Linux |
-| ----------------------------------------------------- | ------ | --------------- |
-| New slide                                             | ⇧⌘N    | Ctrl+M          |
-| Find (not while editing text in a shape)              | ⌘F     | Ctrl+F          |
-| Annotate the selection with AI (with shapes selected) | ⌘K     | Ctrl+K          |
-| Zoom in                                               | ⌘=     | Ctrl+=          |
-| Zoom out                                              | ⌘-     | Ctrl+-          |
-| Actual size (100%)                                    | ⌘0     | Ctrl+0          |
-| Select all                                            | ⌘A     | Ctrl+A          |
-| Cycle shape selection forward / back                  | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Action                                                         | macOS  | Windows / Linux |
+| -------------------------------------------------------------- | ------ | --------------- |
+| New slide                                                      | ⇧⌘N    | Ctrl+M          |
+| Find (not while editing text in a shape)                       | ⌘F     | Ctrl+F          |
+| Annotate the selection with AI (with shapes selected)          | ⌘K     | Ctrl+K          |
+| Zoom in                                                        | ⌘=     | Ctrl+=          |
+| Zoom out                                                       | ⌘-     | Ctrl+-          |
+| Actual size (100%)                                             | ⌘0     | Ctrl+0          |
+| Select all                                                     | ⌘A     | Ctrl+A          |
+| Cycle shape selection forward / back                           | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Repeat the last action (format, fill, line, align, duplicate…) | F4     | F4              |
+| Show/hide the Selection Pane                                   | ⌥F10   | Alt+F10         |
 
 New slide is the other platform split. Each platform has its own key and the other one does nothing: ⇧⌘N on macOS, Ctrl+M on Windows and Linux. ⌘M cannot do the job on macOS because that is the system Minimize key.
 
 Select all follows focus: with the thumbnail pane, outline pane or slide sorter focused it selects every slide, and anywhere else it selects every element on the current slide. Tab cycles through the shapes on the slide, and only when the slide canvas itself is focused.
+
+F4 also works inside a text box, applying the last format to the selected text.
 
 ### Text formatting
 
@@ -694,18 +698,25 @@ These keys work while the HWP/HWPX tab is in front and the document has focus. T
 
 ### Table
 
-| Action              | macOS        | Windows / Linux        |
-| ------------------- | ------------ | ---------------------- |
-| Add row/column      | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| Delete row/column   | ⌥⌫           | Alt+Delete             |
-| Split cell          | F5 → S       | F5 → S                 |
-| Merge cells         | F5 → M       | F5 → M                 |
-| Block sum           | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| Block average       | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| Block product       | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| Split table         | ⌃N, A        | Ctrl+N, A              |
-| Attach table        | ⌃N, Z        | Ctrl+N, Z              |
-| Calculation formula | ⌃N, F        | Ctrl+N, F              |
+| Action                           | macOS        | Windows / Linux        |
+| -------------------------------- | ------------ | ---------------------- |
+| Add row/column                   | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Delete row/column                | ⌥⌫           | Alt+Delete             |
+| Split cell                       | F5 → S       | F5 → S                 |
+| Merge cells                      | F5 → M       | F5 → M                 |
+| Table/cell properties            | F5 → P       | F5 → P                 |
+| Borders / shading, each cell     | F5 → L / C   | F5 → L / C             |
+| Borders / shading, cells as one  | F5 → B / F   | F5 → B / F             |
+| Equal row height / column width  | F5 → H / W   | F5 → H / W             |
+| Table auto fill                  | F5 → A       | F5 → A                 |
+| Back to editing the cell         | F5 → ⏎       | F5 → Enter             |
+| Quick hanging indent (in a cell) | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| Block sum                        | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Block average                    | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Block product                    | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Split table                      | ⌃N, A        | Ctrl+N, A              |
+| Attach table                     | ⌃N, Z        | Ctrl+N, Z              |
+| Calculation formula              | ⌃N, F        | Ctrl+N, F              |
 
 ### Table calculations
 

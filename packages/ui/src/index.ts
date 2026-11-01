@@ -223,6 +223,8 @@ export {
   type ColorPickerProps,
   type ColorPickerStrings,
   type ColorSwatch,
+  canPickScreenColor,
+  pickScreenColor,
 } from './color-picker'
 export { installScreenTips } from './screentip'
 export {
@@ -562,3 +564,4 @@ export type {
   ProjectToolRecord,
 } from './use-project-panel'
 export type { ProjectChatStringKey } from './strings-project-chat'
+export { useScrollWindow } from './scroll-window'

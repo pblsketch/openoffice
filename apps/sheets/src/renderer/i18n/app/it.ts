@@ -407,6 +407,9 @@ export const it = {
   appTableNameInFile: 'Il nome di tabella "{name}" è già usato da una tabella nel file.',
   appTableOverlapsSession:
     'L\'intervallo si sovrappone alla tabella "{name}" creata in questa sessione.',
+  appTableOverlapsFile: 'L\'intervallo si sovrappone alla tabella "{name}" del file.',
+  appTableAlreadyInTable:
+    'La selezione è già nella tabella "{name}": cambia lo stile da Progettazione tabella.',
   appTablesNeedFile: 'Apri prima un file XLSX — le tabelle vengono scritte nel file.',
   appTableSelectRange: "Seleziona prima l'intervallo di dati — intestazioni nella prima riga.",
   appTableCreated: 'Tabella creata — salva con ⌘S.',
@@ -1572,4 +1575,29 @@ export const it = {
   appVisualFlipV: 'Capovolgi verticalmente',
   appVisualFlipH: 'Capovolgi orizzontalmente',
   appCtxPasteVisual: 'Incolla immagine o forma',
+
+  // ── Spelling check (F7 / Review ▸ Proofing) ──
+  appSpellTitle: 'Ortografia',
+  appSpellBtnDetail: 'Controlla il testo del foglio (F7)',
+  appSpellToggle: 'Controllo ortografia',
+  appSpellToggleTip:
+    'Attiva il controllo ortografico (F7 e il pulsante Revisione); disattivato, le caselle dei commenti non mostrano più le sottolineature',
+  appSpellOn: 'Controllo ortografico attivato.',
+  appSpellOff: 'Il controllo ortografico è disattivato. Attivalo in Revisione ▸ Correzione.',
+  appSpellRecheck: 'Ricontrolla',
+  appSpellNone: 'Nessun errore ortografico sospetto trovato.',
+  appSpellFindings: '{count} errori sospetti. Fai clic su una riga per individuarlo.',
+  appSpellTruncated: 'Troppe celle di testo; sono state controllate solo le prime.',
+  appSpellColWord: 'Sospetto',
+  appSpellIgnore: 'Ignora',
+  appSpellIgnoreAll: 'Ignora tutti',
+  appSpellLearn: 'Aggiungi al dizionario',
+  appSpellNoSuggestions: 'Nessun suggerimento',
+  appSpellIgnoredAll: '"{word}" non verrà più segnalato in questa sessione.',
+  appSpellLearned: '"{word}" è stato aggiunto al dizionario.',
+  appSpellChanged: '{address} corretto.',
+  appSpellChangeFailed: 'Impossibile correggere {address}.',
+  appSpellUnavailable: 'Il controllo ortografico non è disponibile in questa finestra.',
+  appSpellReplaceAll: 'Sostituisci tutto con «{suggestion}»',
+  appSpellChangedAll: 'Corrette {count} celle di «{word}».',
 } satisfies Record<keyof typeof zh, string>

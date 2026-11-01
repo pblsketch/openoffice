@@ -6,7 +6,7 @@ GenOffice speaks the Model Context Protocol, so a coding agent can read, write a
 
 **Settings ▸ Integrations** is the place to do this. The pane has two halves, and you can use either or both.
 
-**The skill.** One row per coding agent found on this machine — Claude Code, Codex, Cursor, Gemini CLI, Copilot CLI, OpenCode, Windsurf — each with **Install**, **Update** and **Uninstall**, plus **Install into another folder…**, **Download skill (zip)** and **Copy path**. If your assistant is not listed, point GenOffice at a folder it reads `SKILL.md` from, or save the zip and let the assistant install it. The skill and MCP can sit side by side: the assistant picks one, and they do exactly the same things.
+**The skill.** One row per coding agent found on this machine — Claude Code, the shared folder `~/.agents` (read by Codex, Cursor, Gemini CLI, Copilot CLI and OpenCode), Windsurf — each with **Install**, **Update** and **Uninstall**, plus **Install into another folder…**, **Download skill (zip)** and **Copy path**. If your assistant is not listed, point GenOffice at a folder it reads `SKILL.md` from, or save the zip and let the assistant install it. The skill and MCP can sit side by side: the assistant picks one, and they do exactly the same things. A copy installed earlier into one of those five tools' own folders stays listed under the shared row and keeps being updated; once the shared folder has the skill, you can remove that copy.
 
 **MCP.** Two routes are offered: **Started by the assistant (recommended)**, where you add the shown config to your client and the assistant launches the server itself, and **Local HTTP server**, which the app runs for you. Either way the assistant ends up talking to GenOffice and you never type a command.
 

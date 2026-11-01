@@ -312,20 +312,24 @@ Fermer un onglet est le seul endroit où les deux plateformes se séparent compl
 
 ### Édition
 
-| Action                                                         | macOS  | Windows / Linux |
-| -------------------------------------------------------------- | ------ | --------------- |
-| Nouvelle diapositive                                           | ⇧⌘N    | Ctrl+M          |
-| Rechercher (pas pendant l’édition de texte dans une forme)     | ⌘F     | Ctrl+F          |
-| Annoter la sélection avec l’IA (avec des formes sélectionnées) | ⌘K     | Ctrl+K          |
-| Zoom avant                                                     | ⌘=     | Ctrl+=          |
-| Zoom arrière                                                   | ⌘-     | Ctrl+-          |
-| Taille réelle (100 %)                                          | ⌘0     | Ctrl+0          |
-| Tout sélectionner                                              | ⌘A     | Ctrl+A          |
-| Faire défiler la sélection de forme vers l’avant / l’arrière   | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Action                                                                                   | macOS  | Windows / Linux |
+| ---------------------------------------------------------------------------------------- | ------ | --------------- |
+| Nouvelle diapositive                                                                     | ⇧⌘N    | Ctrl+M          |
+| Rechercher (pas pendant l’édition de texte dans une forme)                               | ⌘F     | Ctrl+F          |
+| Annoter la sélection avec l’IA (avec des formes sélectionnées)                           | ⌘K     | Ctrl+K          |
+| Zoom avant                                                                               | ⌘=     | Ctrl+=          |
+| Zoom arrière                                                                             | ⌘-     | Ctrl+-          |
+| Taille réelle (100 %)                                                                    | ⌘0     | Ctrl+0          |
+| Tout sélectionner                                                                        | ⌘A     | Ctrl+A          |
+| Faire défiler la sélection de forme vers l’avant / l’arrière                             | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Répéter la dernière action (mise en forme, remplissage, trait, alignement, duplication…) | F4     | F4              |
+| Afficher/masquer le volet Sélection                                                      | ⌥F10   | Alt+F10         |
 
 La nouvelle diapositive est l’autre divergence entre plateformes. Chaque plateforme a sa propre touche et l’autre ne fait rien : `⇧⌘N` sur macOS, Ctrl+M sous Windows et Linux. `⌘M` ne peut pas faire le travail sur macOS, car c’est la touche système Réduire.
 
 Tout sélectionner suit le focus : quand le volet des miniatures, le volet du plan ou le trieur de diapositives a le focus, la commande sélectionne toutes les diapositives ; partout ailleurs, elle sélectionne tous les éléments de la diapositive en cours. Tab parcourt les formes de la diapositive, et uniquement lorsque le canevas de la diapositive lui-même a le focus.
+
+F4 fonctionne aussi dans la zone de texte : il applique la dernière mise en forme au texte sélectionné.
 
 ### Mise en forme du texte
 
@@ -694,18 +698,25 @@ Ces touches s’appliquent lorsque l’onglet HWP/HWPX est au premier plan et qu
 
 ### Tableau
 
-| Action                      | macOS        | Windows / Linux        |
-| --------------------------- | ------------ | ---------------------- |
-| Ajouter une ligne/colonne   | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| Supprimer une ligne/colonne | ⌥⌫           | Alt+Delete             |
-| Fractionner la cellule      | F5 → S       | F5 → S                 |
-| Fusionner les cellules      | F5 → M       | F5 → M                 |
-| Somme du bloc               | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| Moyenne du bloc             | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| Produit du bloc             | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| Fractionner le tableau      | ⌃N, A        | Ctrl+N, A              |
-| Joindre les tableaux        | ⌃N, Z        | Ctrl+N, Z              |
-| Formule de calcul           | ⌃N, F        | Ctrl+N, F              |
+| Action                                     | macOS        | Windows / Linux        |
+| ------------------------------------------ | ------------ | ---------------------- |
+| Ajouter une ligne/colonne                  | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Supprimer une ligne/colonne                | ⌥⌫           | Alt+Delete             |
+| Fractionner la cellule                     | F5 → S       | F5 → S                 |
+| Fusionner les cellules                     | F5 → M       | F5 → M                 |
+| Propriétés du tableau/de la cellule        | F5 → P       | F5 → P                 |
+| Bordures / trame, chaque cellule           | F5 → L / C   | F5 → L / C             |
+| Bordures / trame, cellules comme une seule | F5 → B / F   | F5 → B / F             |
+| Même hauteur de ligne / largeur de colonne | F5 → H / W   | F5 → H / W             |
+| Remplissage automatique du tableau         | F5 → A       | F5 → A                 |
+| Revenir à la modification de la cellule    | F5 → ⏎       | F5 → Enter             |
+| Retrait négatif rapide (dans une cellule)  | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| Somme du bloc                              | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Moyenne du bloc                            | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Produit du bloc                            | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Fractionner le tableau                     | ⌃N, A        | Ctrl+N, A              |
+| Joindre les tableaux                       | ⌃N, Z        | Ctrl+N, Z              |
+| Formule de calcul                          | ⌃N, F        | Ctrl+N, F              |
 
 ### Calculs de tableau
 

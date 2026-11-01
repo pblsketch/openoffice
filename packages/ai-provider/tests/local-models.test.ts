@@ -384,6 +384,8 @@ describe('inspectLocalModel against an Ollama server', () => {
         runningContextLength: 8192,
         tools: true,
         vision: true,
+        // the capability list names no "thinking": the model takes no level
+        efforts: [],
       },
     })
     expect(requestedUrl(mock, 0)).toBe('http://127.0.0.1:11434/api/show')
@@ -402,7 +404,7 @@ describe('inspectLocalModel against an Ollama server', () => {
 
     expect(
       await inspectLocalModel({ baseUrl: OLLAMA_BASE, model: 'qwen3:8b', server: 'ollama' }),
-    ).toEqual({ ok: true, profile: { tools: false, vision: false } })
+    ).toEqual({ ok: true, profile: { efforts: [], tools: false, vision: false } })
   })
 
   it('leaves both capability fields unknown when the list is absent', async () => {
@@ -426,7 +428,7 @@ describe('inspectLocalModel against an Ollama server', () => {
 
     expect(
       await inspectLocalModel({ baseUrl: OLLAMA_BASE, model: 'qwen3:8b', server: 'ollama' }),
-    ).toEqual({ ok: true, profile: { tools: false, vision: true } })
+    ).toEqual({ ok: true, profile: { efforts: [], tools: false, vision: true } })
   })
 
   it('reports no running context when the model is not loaded', async () => {
@@ -438,7 +440,10 @@ describe('inspectLocalModel against an Ollama server', () => {
 
     expect(
       await inspectLocalModel({ baseUrl: OLLAMA_BASE, model: 'qwen3:8b', server: 'ollama' }),
-    ).toEqual({ ok: true, profile: { contextLength: 4096, tools: true, vision: false } })
+    ).toEqual({
+      ok: true,
+      profile: { efforts: [], contextLength: 4096, tools: true, vision: false },
+    })
   })
 
   it('keeps the show profile when /api/ps fails', async () => {
@@ -450,7 +455,10 @@ describe('inspectLocalModel against an Ollama server', () => {
 
     expect(
       await inspectLocalModel({ baseUrl: OLLAMA_BASE, model: 'qwen3:8b', server: 'ollama' }),
-    ).toEqual({ ok: true, profile: { contextLength: 4096, tools: true, vision: false } })
+    ).toEqual({
+      ok: true,
+      profile: { efforts: [], contextLength: 4096, tools: true, vision: false },
+    })
   })
 
   it('reports an http failure on /api/show and does not proceed to /api/ps', async () => {
@@ -520,7 +528,7 @@ describe('inspectLocalModel and the server kind', () => {
 
     expect(await inspectLocalModel({ baseUrl: OLLAMA_BASE, model: 'qwen3:8b' })).toEqual({
       ok: true,
-      profile: { tools: true, vision: false },
+      profile: { efforts: [], tools: true, vision: false },
     })
     expect(requestedUrl(mock, 0)).toBe('http://127.0.0.1:11434/api/tags')
     expect(requestedUrl(mock, 1)).toBe('http://127.0.0.1:11434/api/show')

@@ -8,7 +8,7 @@ Der PDF-Editor hat fünf Tabs im Menüband: **Start / Anmerken / Bearbeiten / Se
 - Zoom: die Verhältnissteuerung unten rechts; Strg+Radrad zoomt stufenweise.
 - Drehung: einzelne oder alle Seiten über das Menü „Seiten“; Drehungen werden beim Speichern zurückgeschrieben.
 - Suche: Strg+F als Volltextsuche, alle Treffer werden hervorgehoben.
-- Verschlüsselte PDFs: Eine Passwortabfrage (in einem eigenen kleinen Fenster) öffnet sie; das Passwort gilt nur für diese Sitzung.
+- Verschlüsselte PDFs: Eine Passwortabfrage (in einem eigenen kleinen Fenster) öffnet sie; das Passwort gilt nur für diese Sitzung. Sie können ein solches Dokument bearbeiten und speichern; beim Speichern bleibt das Kennwort erhalten. **Anmerken → Schützen** legt das Kennwort und die erlaubten Aktionen für Leser fest, ändert oder entfernt sie.
 
 ## Textauswahl und Markierungen (Anmerken)
 
@@ -102,7 +102,7 @@ Solange die Anmerkungsleiste über markiertem Text sichtbar ist, löst eine einz
 | Enter | Eingabefeld von **KI fragen** öffnen              |
 
 - Die Tasten funktionieren auch mit koreanischer oder jeder anderen Eingabemethode gleich. Während Sie in einem Feld tippen oder Strg bzw. Alt gedrückt halten, werden sie ignoriert.
-- In einem gegen Bearbeitung gesperrten Dokument (Kennwortschutz) bewirken H, U, S und N nichts und nennen wie die Schaltflächen der Leiste den Grund.
+- In einem gegen Bearbeitung gesperrten Dokument (das Besitzerkennwort verbietet Änderungen) bewirken H, U, S und N nichts und nennen wie die Schaltflächen der Leiste den Grund.
 
 ## Passagenkarten
 

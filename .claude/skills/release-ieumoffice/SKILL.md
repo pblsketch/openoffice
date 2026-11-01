@@ -1,6 +1,6 @@
 ---
 name: release-ieumoffice
-description: IeumOffice의 새 버전을 내는 작업(버전 올리기, Windows 설치 파일, GitHub 릴리스와 latest.yml, 베타 채널 예행, Mac 빌드)과 앱의 업데이트 창에 그대로 보이는 릴리스 본문 작성·윤문을 맡을 때 읽는다. Use when cutting a release, shipping a version, publishing an installer, writing or polishing release notes, or rehearsing an update on the beta channel.
+description: IeumOffice의 새 버전을 내는 작업(버전 올리기, Windows 설치 파일, GitHub 릴리스와 latest.yml, Mac·Linux 빌드)과 앱의 업데이트 창에 그대로 보이는 릴리스 본문 작성·윤문을 맡을 때 읽는다. Use when cutting a release, shipping a version, publishing an installer, or writing or polishing release notes.
 ---
 
 # 릴리스 작업
@@ -14,11 +14,10 @@ description: IeumOffice의 새 버전을 내는 작업(버전 올리기, Windows
 ## 사람의 승인 없이는 진행하지 않는다
 
 1. Anthropic 상업 약관 동의 확인(releasing.ko.md 1번). 확인 전에는 아무것도 만들지 않는다.
-2. 이번 버전 번호와 공개 방식 — 프리릴리스 예행인지 정식 공개인지. Windows 설치 파일은 Actions의 **Windows build**로 만들어 출처 증명을 붙이는 것이 기본이다(결정 0056). 손 빌드로 바꾸려면 그 이유와 함께 묻는다.
-3. **GitHub에서 "Publish release"를 누르기 전.**
-4. **예행 릴리스의 프리릴리스 표시를 풀기 전** — 그 순간 모든 사용자에게 나간다.
-5. 게시할 릴리스 본문 최종본.
-6. **소개 사이트 저장소(`ieumoffice-site`)에 push하기 전** — push가 곧 공개다. 바뀐 글과 캡처를 먼저 보여 준다.
+2. 이번 버전 번호. 공개는 프리릴리스를 거치지 않고 바로 정식 공개하는 것이 기본이다(releasing.ko.md 4번). 베타 채널로 혼자 먼저 받아 보는 예행(8번)은 저장소 주인이 고를 때만 한다. Windows 설치 파일은 Actions의 **Windows build**로 만들어 출처 증명을 붙이는 것이 기본이다(결정 0056). 손 빌드로 바꾸려면 그 이유와 함께 묻는다.
+3. **GitHub에서 "Publish release"를 누르기 전** — 정식 공개이므로 Windows 파일이 붙는 순간 모든 사용자에게 나간다. 예행을 고른 경우에는 프리릴리스 표시를 풀기 전에도 묻는다.
+4. 게시할 릴리스 본문 최종본.
+5. **소개 사이트 저장소(`ieumoffice-site`)에 push하기 전** — push가 곧 공개다. 바뀐 글과 캡처를 먼저 보여 준다.
 
 ## 릴리스 본문 — 사용자가 앱 안에서 읽는 글
 
@@ -64,7 +63,7 @@ description: IeumOffice의 새 버전을 내는 작업(버전 올리기, Windows
 
 - 합치기 전 검사는 `docs/standards.md`의 목록을 따른다.
 - 개발 미리보기: `GENOFFICE_FAKE_UPDATE=9.9.9 npm run dev`로 업데이트 창을 띄운다. 내용 상자, 스크롤, 두 섹션일 때 `vX.Y.Z` 머리글, "GitHub에서 전체 보기"를 본다.
-- 베타 예행(releasing.ko.md 8번)에서 설치본으로 확인한다.
+- 공개 뒤 옛 버전 설치본에서 ☰ → 업데이트 확인…으로 확인한다(releasing.ko.md 4번의 4). 문제가 보이면 10번대로 더 퍼지지 않게 막는다.
   - 새 버전 번호와 바뀐 점이 함께 보이는가
   - 본문이 스크롤되고 글자가 선택되는가
   - 건너뛴 버전이 있으면 버전 머리글이 붙는가
@@ -74,7 +73,7 @@ description: IeumOffice의 새 버전을 내는 작업(버전 올리기, Windows
 
 ## 하지 않는 것
 
-- 확인 없이 Publish하거나 프리릴리스 표시를 풀지 않는다.
+- 확인 없이 Publish하지 않는다. 예행을 했다면 프리릴리스 표시도 확인 없이 풀지 않는다.
 - 태그·파일 이름을 바꾸거나 낮은 번호로 되돌리지 않는다. 문제가 있으면 번호를 하나 더 올린다(releasing.ko.md 10번).
 - 설치 파일과 `latest.yml`을 다른 빌드에서 섞지 않는다.
 - 구독 로그인 파일을 읽거나 만지지 않는다(AGENTS.md의 절대 규칙).
