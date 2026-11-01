@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { TFunc } from './locale'
 import { McpServerSection } from './McpServerSection'
 import { DriveSettingsCard } from './DriveSettingsCard'
+import { McpServersCard } from './mcp/McpServersCard'
 import {
   SHARED_AGENT_ID,
   type AgentId,
@@ -207,6 +208,8 @@ export function IntegrationsPane({
       <h3 className="set-pane-title">{t('setSecIntegrations')}</h3>
 
       <DriveSettingsCard />
+
+      <McpServersCard />
 
       <section className="set-intg-hero">
         <div className="set-intg-hero-title">{t('intgHeroTitle')}</div>
