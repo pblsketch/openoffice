@@ -1,6 +1,6 @@
 # IeumOffice Privacy
 
-Last updated: October 29, 2026
+Last updated: November 2, 2026
 
 IeumOffice opens, edits and saves documents on your own PC. The project runs
 no server of its own: nothing is sent to IeumOffice or to its maintainers, and
@@ -56,6 +56,11 @@ by that service's own terms and by your account settings there.
 | You disconnect Google Drive                                                                                                                                                                      | A request to revoke the app's access                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | **Google** (`oauth2.googleapis.com`)                                                                                                                                                                                                                        |
 | You start a session in the **Agent** window and send it a message                                                                                                                                | What you typed, and whatever the program reads while it works: files in the project folder you chose (as they are on disk, hidden parts included), output of commands you allowed, documents open in the app that it reads through the app (hidden parts as their labels), and the skills it was given (the ones turned on in Settings → Skills and those in the project folder): the name and description of each with every message, and the text of those it reads. Commands you allow can also reach other websites on their own (Claude Code; Codex runs them without internet unless you turned on **Internet access for commands** for that project folder)                                                                                                                                                                              | **Anthropic** (Claude Code) or **OpenAI** (Codex), under your own account, as for chat                                                                                                                                                                      |
 | In the **Agent** window, Claude Code searches the web or reads a web page (it asks you first), or Codex searches the web (**Saved results** by default; **Live** or **Off** per project folder)  | The search query; for a page read, a request for that address                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | The search goes through **Anthropic** (Claude Code) or **OpenAI** (Codex); a page read goes to that page's site                                                                                                                                             |
+| You add an MCP server under Settings → Integrations → **MCP servers** and press **Check connection**, or an AI window first uses that server after the app starts                                | The app's name and version and a request for the server's tool list and its guidance text. A server by address also gets the key or headers you entered, or the sign-in token the app holds for it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | **The server you added** (its address), or, for a server on this PC, the program the app starts on this PC                                                                                                                                                  |
+| You press **Sign in with the browser** on an MCP server                                                                                                                                          | Your browser opens that server's sign-in page. The app asks the server where to sign in, registers itself there as a client each time (unless you entered a client ID), and sends the one-time code it got back to receive a sign-in token; while signed in, the app renews that token with the same sign-in service                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | **The sign-in service the server names**                                                                                                                                                                                                                    |
+| The AI in an editor's AI window, Home's Ask AI or the Agent window calls a tool of an MCP server you added (after you allowed it, or at once for a tool set to **Always allow**)                 | What the AI wrote for that call. It can include content from the open document, attachments, files and earlier answers; parts hidden from AI stay hidden as their labels. What the server returns then goes to the AI provider in use, as for chat                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | **The server you added**; for a server on this PC, the program on this PC, which may itself reach other sites                                                                                                                                               |
+| You remove an MCP server you signed in to                                                                                                                                                        | A request to end the sign-in, if the server's sign-in service offers one                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | **The sign-in service the server names**                                                                                                                                                                                                                    |
+| You press **Download** when a server on this PC needs Node.js, uv or Python that this PC does not have, or a newer app version needs a newer copy of one you downloaded before                   | A download request for that program, at the version fixed in this app version                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | **Node.js** (`nodejs.org`), **uv** releases on GitHub (`github.com/astral-sh/uv`), and for Python the builds uv itself downloads (python-build-standalone, published on GitHub)                                                                             |
 
 Every one of these is a direct connection, so the receiving service sees your
 public IP address, as any website you visit does.
@@ -234,6 +239,47 @@ there, as everything else you send to the AI does.
 You can remove the app's access at any time with **Disconnect**, or from your
 Google Account's security settings.
 
+## Your own MCP servers
+
+You can connect MCP servers you choose under Settings → Integrations →
+**MCP servers**, so that the AI windows can use their tools. Nothing is
+connected until you add a server. The app itself is the client: Claude Code
+and Codex are not given your servers, and in the editors' AI windows and
+Home's Ask AI they still run with no tools of their own.
+
+- **What a server receives.** When the AI calls one of its tools, the server
+  gets what the AI wrote for that call, which can include content from the
+  open document and from attachments; parts hidden from AI stay hidden as
+  their labels. The server also gets the key, headers or sign-in token you
+  gave for it. What the server does with that is up to whoever runs it, so
+  add only servers whose operators you trust. What the server returns goes to
+  the AI provider you use, like any other tool result, and is kept in the
+  chat history.
+- **You decide per tool.** Each tool is **Always allow**, **Ask first** or
+  **Don’t use**. At first only tools the server marks as only reading are
+  **Always allow**. For an **Ask first** tool the AI window shows what will be
+  sent and runs the call only after you allow it. A tool whose description
+  changes is held back until you approve the change.
+- **Keeping what a server returns inside.** While **Protect what this server
+  returns** is on (the default), once that server's result is in a chat, the
+  AI in that chat cannot use web tools or other servers' tools, so the
+  content cannot be passed on to them. The Agent window cannot enforce this
+  and says so when a session starts with such a server.
+- **Servers on this PC.** For a server that runs as a program on this PC, the
+  app shows the exact command and runs it only after you press **Allow to
+  run**. The program runs with your user rights and can read files and reach
+  the internet like any program you start yourself. If it needs Node.js, uv
+  or Python and this PC has none, the app downloads them only after you press
+  **Download**, from the sources listed above, and keeps them in its data
+  folder (`mcp-runtimes`).
+- **Sign-in.** A sign-in opens the server's own page in your browser; the app
+  has no sign-in form of its own. Removing a server deletes its keys and
+  sign-in on this PC and asks the server to end the sign-in where it offers
+  that. Changing a server's address forgets its sign-in on this PC without
+  asking the old server to end it.
+- Terminal commands, their MCP server and the app's own MCP server never use
+  these servers.
+
 ## Project folders
 
 A project is a folder on your PC that you pick under an AI panel's input
@@ -330,6 +376,18 @@ Nothing in this list is uploaded by the app.
   disconnect. If this PC cannot encrypt it (on Linux, also when no keyring
   holds the key), it is not saved and the connection lasts until the app
   closes.
+- **The MCP servers you added** (`mcp-servers.json` in the data folder): each
+  server's name, address or command, the tools it offers with what you
+  allowed for each, and its guidance text. Keys, header values, sign-in
+  tokens and environment variable values are encrypted with the system's
+  protection for your user account (on Windows, macOS, and Linux with a
+  desktop keyring); where that is not possible they are not saved and last
+  until the app closes. A key written into a server's address itself is
+  stored as part of that address, unencrypted. The last lines a server on
+  this PC printed as errors are kept in memory only, never in a file.
+- **Programs downloaded for servers on this PC** (`mcp-runtimes` in the data
+  folder): Node.js, uv and the Python uv installs, used only by those
+  servers. Your PC's own settings and `PATH` are not changed.
 - **Drive files you attached to an AI chat**, in a temporary folder
   (`ieumoffice-drive-attach`), deleted after a week.
 - **Copies of the Drive files you opened** (`drive-cache` in the data
