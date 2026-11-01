@@ -757,3 +757,5 @@ Fungují jen tehdy, když je kurzor v prázdné buňce tabulky. Samostatné klá
 | Přejít na kartu Domů (mimo tabulku) | ⇧⌘H   | Ctrl+Shift+H    |
 
 Klávesa zapsaná jako `Ctrl+N,T` znamená: stiskněte Ctrl+N, uvolněte a potom stiskněte T. `F5 → S` znamená vybrat blok buněk klávesou F5 a potom stisknout S. `Ctrl+1 … Ctrl+0` označují první až desátý styl dokumentu; `Ctrl+Alt+1 … Ctrl+Alt+0` použijí stejné styly. Když je vybraný blok buněk, `Ctrl+Shift+S` (v macOS `⇧⌘S`) je součet bloku; jinde tato klávesa ukládá jako.
+
+Myší, stejně jako v Hangulu, dvojklik vybere slovo, trojklik celý odstavec a dvojklik s podrženým tlačítkem a tažením rozšiřuje výběr po slovech. Platí to i při úpravách záhlaví, zápatí nebo poznámky pod čarou. Zkopírováním bloku buněk (`Ctrl+C`) se zkopíruje text buněk i samotná tabulka, takže vložením do textu vznikne stejná tabulka znovu. Vložení, když je kurzor jen v buňce jiné tabulky, otevře okno Paste Cells: přepsat od této buňky (buňky mimo tabulku se zahodí) nebo buňky vložit nad, pod, vlevo či vpravo.

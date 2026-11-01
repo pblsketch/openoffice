@@ -757,3 +757,5 @@ Chỉ hoạt động khi con trỏ ở trong một ô bảng trống. Có phím 
 | Đi tới thẻ Trang chủ (ngoài bảng) | ⇧⌘H   | Ctrl+Shift+H    |
 
 Phím ghi là `Ctrl+N,T` nghĩa là nhấn Ctrl+N, nhả ra rồi nhấn T. `F5 → S` nghĩa là chọn khối ô bằng F5 rồi nhấn S. `Ctrl+1 … Ctrl+0` là kiểu thứ nhất đến thứ mười của tài liệu; `Ctrl+Alt+1 … Ctrl+Alt+0` áp dụng cùng các kiểu đó. Khi chọn một khối ô, `Ctrl+Shift+S` (trên macOS `⇧⌘S`) là tổng khối; ngoài khối, phím này lưu thành tên mới.
+
+Với chuột, giống như trong Hangul, nhấp đúp chọn một từ, nhấp ba lần chọn cả đoạn, còn nhấp đúp rồi giữ và kéo sẽ mở rộng vùng chọn theo từng từ. Điều này cũng áp dụng khi sửa đầu trang, chân trang hoặc chú thích cuối trang. Sao chép một khối ô (`Ctrl+C`) sẽ sao chép cả chữ trong ô lẫn chính bảng, nên khi dán vào phần thân văn bản sẽ tạo lại đúng bảng đó. Dán khi chỉ đặt con trỏ trong một ô của bảng khác sẽ mở hộp thoại Paste Cells: ghi đè bắt đầu từ ô đó (các ô vượt ra ngoài bảng bị bỏ) hoặc chèn các ô ở trên, dưới, bên trái hoặc bên phải.

@@ -757,3 +757,5 @@ Hanya berlaku saat kursor berada di sel tabel yang kosong. Ada tombol terpisah u
 | Ke tab Beranda (di luar tabel)            | ⇧⌘H   | Ctrl+Shift+H    |
 
 Tombol yang ditulis `Ctrl+N,T` berarti tekan Ctrl+N, lepaskan, lalu tekan T. `F5 → S` berarti pilih blok sel dengan F5 lalu tekan S. `Ctrl+1 … Ctrl+0` adalah gaya pertama hingga kesepuluh dokumen; `Ctrl+Alt+1 … Ctrl+Alt+0` menerapkan gaya yang sama. Saat blok sel dipilih, `Ctrl+Shift+S` (di macOS `⇧⌘S`) adalah jumlah blok; di luar itu tombol ini menyimpan sebagai.
+
+Dengan mouse, seperti di Hangul, klik dua kali memilih satu kata, klik tiga kali seluruh paragraf, dan klik dua kali lalu tahan dan seret memperluas pilihan kata demi kata. Ini juga berlaku saat mengedit header, footer, atau catatan kaki. Menyalin blok sel (`Ctrl+C`) menyalin teks sel sekaligus tabelnya, sehingga jika ditempel di badan teks, tabel yang sama dibuat lagi. Menempel dengan kursor saja di sel tabel lain membuka dialog Paste Cells: timpa mulai dari sel itu (sel yang keluar dari tabel dibuang) atau sisipkan sel di atas, di bawah, di kiri, atau di kanan.

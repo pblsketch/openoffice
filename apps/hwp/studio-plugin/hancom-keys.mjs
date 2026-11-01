@@ -1102,8 +1102,61 @@ function clearCellBlock(ih) {
   return done === true
 }
 
-/** The selected cells as rows of tabs and lines, as Hancom puts them on the clipboard. */
-function cellBlockTsv(ih) {
+/** An engine answer the bridge hands back either parsed or as JSON. */
+const answerOf = (value) => (typeof value === 'string' ? JSON.parse(value) : value)
+
+const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }
+const escapeHtml = (text) => String(text).replace(/[&<>"]/g, (ch) => HTML_ESCAPES[ch])
+
+/** A tab-separated field, quoted when it holds a tab, a line break or a quote (as spreadsheets do). */
+const tsvField = (text) => (/[\t\n"]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text)
+
+/** Look of a copied cell when the engine cannot export the table's own: a thin black line. */
+const PLAIN_CELL_STYLE = 'border:0.4pt solid #000000;padding:1.41pt 5.1pt'
+
+/** The text of one cell, its paragraphs as lines. */
+function cellTextOf(ih, context, cellIdx) {
+  const { sec, ppi, ci } = context
+  const count = ih.wasm.getCellParagraphCount(sec, ppi, ci, cellIdx)
+  const lines = []
+  for (let p = 0; p < count; p += 1) {
+    const length = ih.wasm.getCellParagraphLength(sec, ppi, ci, cellIdx, p)
+    lines.push(ih.wasm.getTextInCell(sec, ppi, ci, cellIdx, p, 0, length))
+  }
+  return lines.join('\n')
+}
+
+/**
+ * The look (style attribute) and formatted content of every cell of a table, in cell order,
+ * from the engine's HTML export. That export leaves out spans and widths, which the copy
+ * puts back from the cells themselves. Null when it cannot be read cell for cell.
+ */
+function exportedCellLooks(ih, context, cellCount) {
+  const Parser = globalThis.DOMParser
+  if (!Parser || !ih.wasm.exportControlHtml) return null
+  try {
+    const html = ih.wasm.exportControlHtml(context.sec, context.ppi, context.ci, '')
+    const doc = new Parser().parseFromString(html, 'text/html')
+    const cells = [...doc.querySelectorAll('td, th')]
+    if (cells.length !== cellCount) return null
+    // the export breaks lines between its tags; a paste would read each break as a paragraph
+    return cells.map((td) => ({
+      style: td.getAttribute('style') ?? '',
+      content: td.innerHTML.replace(/>\s*\n\s*</g, '><').trim(),
+    }))
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The selected cells as they go on the clipboard. `text` is tab-separated rows (a merged
+ * cell's text in its first slot, the slots it covers empty), as spreadsheets read it.
+ * `html` is a table of the same cells with their spans, widths, lines and fills: pasted in
+ * the body (here, in Hancom Hangul, in a word processor) it makes that table again, as
+ * Hangul's own cell copy does. Null, with the reason told, when the cells cannot be copied.
+ */
+export function cellBlockCopy(ih) {
   const cursor = ih?.cursor
   const context = cursor?.getCellTableContext?.()
   const range = cursor?.getSelectedCellRange?.()
@@ -1116,93 +1169,128 @@ function cellBlockTsv(ih) {
     )
     return null
   }
-  let dims
-  const cells = []
+  const { startRow, startCol, endRow, endCol } = range
+  const rows = endRow - startRow + 1
+  const cols = endCol - startCol + 1
+  const picked = []
   try {
-    dims = ih.wasm.getTableDimensions(context.sec, context.ppi, context.ci)
+    const dims = ih.wasm.getTableDimensions(context.sec, context.ppi, context.ci)
+    const looks = exportedCellLooks(ih, context, dims.cellCount)
     for (let i = 0; i < dims.cellCount; i += 1) {
       const info = ih.wasm.getCellInfo(context.sec, context.ppi, context.ci, i)
-      if (info.rowSpan > 1 || info.colSpan > 1) {
-        tellUser(
-          koreanUi
-            ? '병합된 칸이 있어 복사하지 않았습니다.'
-            : 'Not copied: the table has merged cells.',
-        )
-        return null
+      if (info.row < startRow || info.row > endRow || info.col < startCol || info.col > endCol) {
+        continue
       }
-      cells.push({ ...info, cellIdx: i })
+      const props = answerOf(ih.wasm.getCellProperties?.(context.sec, context.ppi, context.ci, i))
+      picked.push({
+        row: info.row - startRow,
+        col: info.col - startCol,
+        // a merged cell reaching past the block is cut at the block's edge
+        rowSpan: Math.min(info.row + Math.max(1, info.rowSpan) - 1, endRow) - info.row + 1,
+        colSpan: Math.min(info.col + Math.max(1, info.colSpan) - 1, endCol) - info.col + 1,
+        text: cellTextOf(ih, context, i),
+        look: looks?.[i] ?? null,
+        // HWPUNIT: 100 to the point
+        width: Number(props?.width) > 0 ? Number(props.width) / 100 : 0,
+        height: Number(props?.height) > 0 ? Number(props.height) / 100 : 0,
+      })
     }
   } catch {
     return null
   }
-  const rows = []
-  for (let row = range.startRow; row <= range.endRow; row += 1) {
-    const line = []
-    for (let col = range.startCol; col <= range.endCol; col += 1) {
-      const cell = cells.find((c) => c.row === row && c.col === col)
-      if (!cell) return null
-      const paragraphs = []
-      try {
-        const count = ih.wasm.getCellParagraphCount(
-          context.sec,
-          context.ppi,
-          context.ci,
-          cell.cellIdx,
-        )
-        for (let p = 0; p < count; p += 1) {
-          const length = ih.wasm.getCellParagraphLength(
-            context.sec,
-            context.ppi,
-            context.ci,
-            cell.cellIdx,
-            p,
-          )
-          paragraphs.push(
-            ih.wasm.getTextInCell(context.sec, context.ppi, context.ci, cell.cellIdx, p, 0, length),
-          )
-        }
-      } catch {
-        return null
-      }
-      line.push(paragraphs.join('\n'))
-    }
-    rows.push(line.join('\t'))
+  if (picked.length === 0) return null
+  const grid = Array.from({ length: rows }, () => Array.from({ length: cols }, () => ''))
+  for (const cell of picked) grid[cell.row][cell.col] = cell.text
+  const text = grid.map((line) => line.map(tsvField).join('\t')).join('\n')
+  const htmlRows = []
+  for (let r = 0; r < rows; r += 1) {
+    const cells = picked
+      .filter((cell) => cell.row === r)
+      .sort((x, y) => x.col - y.col)
+      .map((cell) => {
+        const style = [
+          (cell.look ? cell.look.style : PLAIN_CELL_STYLE).replace(/;\s*$/, ''),
+          cell.width ? `width:${cell.width}pt` : '',
+          cell.height ? `height:${cell.height}pt` : '',
+        ]
+          .filter(Boolean)
+          .join(';')
+        const content = cell.look
+          ? cell.look.content
+          : cell.text
+              .split('\n')
+              .map((line) => `<p>${escapeHtml(line)}</p>`)
+              .join('')
+        const spans =
+          (cell.rowSpan > 1 ? ` rowspan="${cell.rowSpan}"` : '') +
+          (cell.colSpan > 1 ? ` colspan="${cell.colSpan}"` : '')
+        return `<td${spans} style="${escapeHtml(style)}">${content}</td>`
+      })
+    htmlRows.push(`<tr>${cells.join('')}</tr>`)
   }
-  return rows.join('\n')
+  const html = `<table style="border-collapse:collapse;">${htmlRows.join('')}</table>`
+  return { text, html }
 }
 
-/** Copy without waiting: a key press is a user gesture, so the DOM copy runs. */
-function writeClipboardText(text) {
+/**
+ * Copy without waiting: a key press is a user gesture, so the DOM copy runs, and its copy
+ * event takes both the text and the HTML. The async clipboard is the fallback.
+ */
+function writeClipboard({ text, html }) {
   try {
     const doc = globalThis.document
     if (doc) {
+      const fill = (event) => {
+        if (!event.clipboardData) return
+        event.clipboardData.setData('text/plain', text)
+        if (html) event.clipboardData.setData('text/html', html)
+        event.preventDefault()
+        event.stopImmediatePropagation()
+      }
       const area = doc.createElement('textarea')
       area.value = text
       area.setAttribute('readonly', '')
       area.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0'
       doc.body.appendChild(area)
       area.select()
-      const done = doc.execCommand('copy')
-      area.remove()
+      doc.addEventListener('copy', fill, true)
+      let done = false
+      try {
+        done = doc.execCommand('copy')
+      } finally {
+        doc.removeEventListener('copy', fill, true)
+        area.remove()
+      }
       if (done) return true
     }
   } catch {
     // fall through to the async clipboard
   }
   try {
-    void globalThis.navigator?.clipboard?.writeText?.(text)
+    const Item = globalThis.ClipboardItem
+    const clipboard = globalThis.navigator?.clipboard
+    if (Item && clipboard?.write && html) {
+      void clipboard.write([
+        new Item({
+          'text/plain': new Blob([text], { type: 'text/plain' }),
+          'text/html': new Blob([html], { type: 'text/html' }),
+        }),
+      ])
+    } else {
+      void clipboard?.writeText?.(text)
+    }
   } catch {
     // the key is still consumed
   }
   return false
 }
 
-/** Ctrl+C / Ctrl+X in a cell block: the cells as tab-separated text; cut also empties them. */
+/** Ctrl+C / Ctrl+X in a cell block: the cells as text and as a table; cut also empties them. */
 function copyCellBlock(ih, cut) {
-  const text = cellBlockTsv(ih)
-  if (text === null) return false
-  writeClipboardText(text)
-  // the async clipboard may still be writing; the text is on its way, so a cut empties now
+  const copied = cellBlockCopy(ih)
+  if (copied === null) return false
+  writeClipboard(copied)
+  // the async clipboard may still be writing; the cells are on their way, so a cut empties now
   if (cut) clearCellBlock(ih)
   return true
 }
@@ -1328,16 +1416,277 @@ function writeCell(bridge, at, cellIdx, value) {
   })
 }
 
+/** The studio's dialog base (handed in with the commands), for the 셀 붙이기 dialog. */
+let modalDialog = null
+
+/** Where pasted cells can go, as Hangul's 셀 붙이기 dialog offers them. */
+export const CELL_PASTE_MODES = ['overwrite', 'up', 'down', 'left', 'right']
+
+/**
+ * Paste copied cells with the caret in one cell of a table (no block), as Hangul does: the
+ * 셀 붙이기 dialog asks where they go, and they overwrite the table from the caret's cell or
+ * come in as new rows or columns beside it. Only a clipboard that holds a table of more than
+ * one cell (cells copied here or in Hangul, a spreadsheet range) is taken; anything else, a
+ * selection, and places other than a cell of a body table keep the studio's paste.
+ */
+function cellPasteAtCaret(ih, e) {
+  const cursor = ih?.cursor
+  if (!cursor?.getPosition || !ih.wasm || !ih.executeOperation) return false
+  const elsewhere = [
+    'isInHeaderFooter',
+    'isInFootnote',
+    'isInTextBox',
+    'isInPictureObjectSelection',
+    'isInTableObjectSelection',
+    'hasSelection',
+  ].some((mode) => typeof cursor[mode] === 'function' && cursor[mode]())
+  if (elsewhere) return false
+  const caret = cursor.getPosition()
+  if (caret?.parentParaIndex === undefined || caret.cellIndex === undefined) return false
+  if ((caret.cellPath?.length ?? 0) > 1) return false
+  const grid = cellGridFromHtml(e?.clipboardData?.getData?.('text/html') ?? '')
+  if (!grid || grid.length * grid[0].length < 2) return false
+  const at = { sec: caret.sectionIndex, ppi: caret.parentParaIndex, ci: caret.controlIndex }
+  let cell
+  try {
+    cell = ih.wasm.getCellInfo(at.sec, at.ppi, at.ci, caret.cellIndex)
+    const props = answerOf(ih.wasm.getCellProperties?.(at.sec, at.ppi, at.ci, caret.cellIndex))
+    if (props?.cellProtect) return false
+  } catch {
+    return false
+  }
+  const paste = (mode) => pasteCellsAt(ih, at, cell, grid, mode, caret)
+  if (!modalDialog) {
+    // a host without the dialog base (a test): Hangul's default, overwrite
+    paste('overwrite')
+    return true
+  }
+  cellPasteDialog(modalDialog, koreanUi, paste).show()
+  return true
+}
+
+/**
+ * Put copied cells into a table, one undo step. `cell` is the caret's cell (row, col and
+ * spans). `overwrite` writes them from that cell over the table's own and drops what falls
+ * outside it. `up`/`down` insert as many rows above/below the caret's row and fill them from
+ * the first column; `left`/`right` insert columns beside the caret's column and fill them
+ * from the first row. As Hangul does, when the pasted cells are narrower (shorter) than the
+ * table, the last pasted column (row) is merged across the rest of each new row (column).
+ * Only the cells' text changes; new cells take the look the engine gives a new row/column.
+ */
+export function pasteCellsAt(ih, at, cell, grid, mode, caret) {
+  const { sec, ppi, ci } = at
+  const rows = grid.length
+  const cols = grid[0].length
+  let outside = 0
+  let first = null
+  ih.executeOperation({
+    kind: 'snapshot',
+    operationType: 'ieumPasteCellsAt',
+    operation: (bridge) => {
+      let r0 = cell.row
+      let c0 = cell.col
+      const lastRow = cell.row + Math.max(1, cell.rowSpan) - 1
+      const lastCol = cell.col + Math.max(1, cell.colSpan) - 1
+      if (mode === 'up' || mode === 'down') {
+        for (let i = 0; i < rows; i += 1) {
+          bridge.insertTableRow(sec, ppi, ci, mode === 'up' ? cell.row : lastRow, mode === 'down')
+        }
+        r0 = mode === 'up' ? cell.row : lastRow + 1
+        c0 = 0
+      } else if (mode === 'left' || mode === 'right') {
+        for (let i = 0; i < cols; i += 1) {
+          bridge.insertTableColumn(
+            sec,
+            ppi,
+            ci,
+            mode === 'left' ? cell.col : lastCol,
+            mode === 'right',
+          )
+        }
+        r0 = 0
+        c0 = mode === 'left' ? cell.col : lastCol + 1
+      }
+      const places = () => {
+        const dims = bridge.getTableDimensions(sec, ppi, ci)
+        const byPlace = new Map()
+        for (let i = 0; i < dims.cellCount; i += 1) {
+          const info = bridge.getCellInfo(sec, ppi, ci, i)
+          byPlace.set(`${info.row}:${info.col}`, i)
+        }
+        return { dims, byPlace }
+      }
+      let { dims, byPlace } = places()
+      const stretch = (r1, c1, r2, c2) => {
+        if (!byPlace.has(`${r1}:${c1}`) || !byPlace.has(`${r2}:${c2}`)) return
+        try {
+          bridge.mergeTableCells(sec, ppi, ci, r1, c1, r2, c2)
+        } catch {
+          // a merge the engine refuses leaves the new cells as they are
+        }
+      }
+      if ((mode === 'up' || mode === 'down') && cols < dims.colCount) {
+        for (let dr = 0; dr < rows; dr += 1) stretch(r0 + dr, cols - 1, r0 + dr, dims.colCount - 1)
+        ;({ dims, byPlace } = places())
+      }
+      if ((mode === 'left' || mode === 'right') && rows < dims.rowCount) {
+        for (let dc = 0; dc < cols; dc += 1) stretch(rows - 1, c0 + dc, dims.rowCount - 1, c0 + dc)
+        ;({ dims, byPlace } = places())
+      }
+      for (let dr = 0; dr < rows; dr += 1) {
+        for (let dc = 0; dc < cols; dc += 1) {
+          const value = grid[dr][dc]
+          if (value === null) continue
+          const row = r0 + dr
+          const col = c0 + dc
+          if (row >= dims.rowCount || col >= dims.colCount) {
+            outside += 1
+            continue
+          }
+          // a merged cell takes the value of its first slot; the slots it covers are skipped
+          const cellIdx = byPlace.get(`${row}:${col}`)
+          if (cellIdx === undefined) continue
+          writeCell(bridge, at, cellIdx, value)
+          if (first === null) first = cellIdx
+        }
+      }
+      const cellIndex = first ?? byPlace.get(`${r0}:${c0}`) ?? caret.cellIndex
+      const cellPath = Array.isArray(caret.cellPath)
+        ? caret.cellPath.map((entry, i, path) =>
+            i === path.length - 1 ? { ...entry, cellIndex, cellParaIndex: 0 } : entry,
+          )
+        : caret.cellPath
+      return { ...caret, cellIndex, cellParaIndex: 0, charOffset: 0, cellPath }
+    },
+  })
+  ih.updateCaret?.()
+  if (outside > 0) tellUser(outsideMessage(outside))
+  return true
+}
+
+/**
+ * Hangul's 셀 붙이기 dialog: where the copied cells go. Overwrite is the default. Putting the
+ * cells into the caret's cell as a table of their own is shown but cannot be chosen: the
+ * engine cannot make a table inside a cell.
+ */
+function cellPasteDialog(ModalDialog, ko, onPaste) {
+  const choices = [
+    { mode: 'up', ko: '위쪽에 끼워 넣기', en: 'Insert above' },
+    { mode: 'down', ko: '아래쪽에 끼워 넣기', en: 'Insert below' },
+    { mode: 'left', ko: '왼쪽에 끼워 넣기', en: 'Insert to the left' },
+    { mode: 'right', ko: '오른쪽에 끼워 넣기', en: 'Insert to the right' },
+  ]
+  class CellPasteDialog extends ModalDialog {
+    constructor() {
+      super(ko ? '셀 붙이기' : 'Paste Cells', 340)
+      this.mode = 'overwrite'
+      this.enterKey = null
+    }
+
+    createBody() {
+      const doc = globalThis.document
+      const body = doc.createElement('div')
+      // The shared dialog skin owns the body padding (studio-plugin/dialog-theme.mjs).
+      const heading = (text) => {
+        const h = doc.createElement('div')
+        h.className = 'dialog-section-title'
+        h.textContent = text
+        return h
+      }
+      const option = (mode, text, disabled = false) => {
+        const label = doc.createElement('label')
+        label.style.cssText = 'display:flex;align-items:center;gap:6px;white-space:nowrap'
+        const input = doc.createElement('input')
+        input.type = 'radio'
+        input.name = 'ieum-cell-paste'
+        input.value = mode
+        input.checked = mode === this.mode
+        input.disabled = disabled
+        input.addEventListener('change', () => {
+          if (input.checked) this.mode = mode
+        })
+        label.append(input, text)
+        if (disabled) {
+          label.style.opacity = '0.5'
+          label.title = ko
+            ? '셀 안에 표를 만드는 기능은 아직 없습니다.'
+            : 'A table cannot be made inside a cell yet.'
+        } else {
+          // a double click on a choice pastes at once
+          label.addEventListener('dblclick', () => {
+            this.mode = mode
+            this.confirm()
+          })
+        }
+        return label
+      }
+      body.appendChild(heading(ko ? '끼워 넣기' : 'Insert'))
+      const grid = doc.createElement('div')
+      grid.style.cssText =
+        'display:grid;grid-template-columns:repeat(2,auto);gap:6px 18px;margin:6px 0 12px'
+      for (const choice of choices)
+        grid.appendChild(option(choice.mode, ko ? choice.ko : choice.en))
+      body.appendChild(grid)
+      body.appendChild(heading(ko ? '칸에 넣기' : 'Into the cells'))
+      const over = doc.createElement('div')
+      over.style.cssText = 'display:grid;gap:6px;margin-top:6px'
+      over.append(
+        option('overwrite', ko ? '덮어쓰기' : 'Overwrite'),
+        option('nested', ko ? '셀 안에 표로 넣기' : 'Insert as a table in the cell', true),
+      )
+      body.appendChild(over)
+      return body
+    }
+
+    confirm() {
+      const primary = this.dialog?.querySelector('.dialog-btn-primary')
+      primary?.click()
+    }
+
+    show() {
+      const doc = globalThis.document
+      // Enter on a choice pastes too: the base takes keys at the document before they reach
+      // a radio button and leaves Enter alone on one, so this listener goes first
+      this.enterKey = (event) => {
+        if (event.key !== 'Enter') return
+        const target = event.target
+        if (!target?.closest?.('.dialog-wrap') || target.type !== 'radio') return
+        event.preventDefault()
+        event.stopPropagation()
+        this.confirm()
+      }
+      doc.addEventListener('keydown', this.enterKey, true)
+      super.show()
+      const primary = this.dialog?.querySelector('.dialog-btn-primary')
+      if (primary) primary.textContent = ko ? '붙이기' : 'Paste'
+    }
+
+    hide() {
+      if (this.enterKey) globalThis.document.removeEventListener('keydown', this.enterKey, true)
+      this.enterKey = null
+      super.hide()
+    }
+
+    onConfirm() {
+      if (CELL_PASTE_MODES.includes(this.mode)) onPaste(this.mode)
+      return true
+    }
+  }
+  return new CellPasteDialog()
+}
+
 /**
  * Paste onto a cell block, as Hangul does when cells are selected first: the copied cells
  * (a spreadsheet range, a table, tab-separated text) overwrite the table's cells from the
  * block's top-left cell, contents only, each cell keeping its own look. A single value fills
  * every selected cell. One undo step, which brings the old contents and the block back.
- * Without a block the studio pastes as before. True when this took the paste.
+ * Without a block, copied cells pasted at a caret in a cell go through the 셀 붙이기 dialog
+ * (cellPasteAtCaret); anything else the studio pastes as before. True when this took the paste.
  */
 export function hancomPasteCells(ih, e) {
   const cursor = ih?.cursor
-  if (!cursor?.isInCellSelectionMode?.() || cursor.isProtectedCellSelectionMode?.()) return false
+  if (!cursor?.isInCellSelectionMode?.()) return cellPasteAtCaret(ih, e)
+  if (cursor.isProtectedCellSelectionMode?.()) return false
   const context = cursor.getCellTableContext?.()
   const range = cursor.getSelectedCellRange?.()
   if (!context || !range || !ih.wasm || !ih.executeOperation) return false
@@ -2504,6 +2853,7 @@ export function hancomCommands(locale, studio = {}) {
   koreanUi = ko
   toastSink = studio.showToast ?? toastSink
   insertTabCommand = studio.InsertTabCommand ?? insertTabCommand
+  modalDialog = studio.ModalDialog ?? modalDialog
   const commands = [
     {
       id: 'ieum:delete-line',
