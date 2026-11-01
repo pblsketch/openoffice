@@ -72,6 +72,7 @@ export const fr = {
   launchFromApp: 'Utilise la copie téléchargée par l’app.',
   launchFromPc: 'Utilise le programme présent sur ce PC.',
   launchAllow: 'Autoriser l’exécution',
+  launchRecheck: 'La commande a changé. Vérifiez-la de nouveau.',
   runtimeAsk:
     'Ce serveur a besoin de {runtime}. L’app doit-elle le télécharger ? ({size} au total)',
   runtimeItem: '{runtime} {version} : {size}',

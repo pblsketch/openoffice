@@ -1,7 +1,8 @@
+import { windowOutboundBridge, type OutboundBridgeLike } from './outbound-guard'
 import type { AgentSkill } from './skill'
 import type { AgentMessage, AgentToolCall, AgentToolDef, ToolExecution } from './types'
 import { isValidServerName, parseMcpToolName, parseMcpToolNameIn } from './user-mcp/names'
-import { shapeMcpResult } from './user-mcp/result'
+import { mcpCallAnswerOf } from './user-mcp/result'
 
 /**
  * The person's own MCP servers in an AI window (user MCP spec 7).
@@ -73,10 +74,12 @@ export interface McpToolsBridgeLike {
   /** the registered servers, `McpServerView[]` (unchecked until `mcpServersOf`) */
   list(): Promise<unknown>
   /**
-   * Run one tool, connecting first when needed. Answers the MCP
-   * CallToolResult as received, or `{ ok: false, error }` when the call
-   * could not be made (server failed, needs a login or a review, off,
-   * removed or cancelled, time ran out). `tool` is the server's own name.
+   * Run one tool, connecting first when needed. Answers the result already
+   * shaped for the AI in the main process, `{ ok: true, output, isError }`
+   * (`McpCallAnswer`, whatever kind the server is), or `{ ok: false, error }`
+   * when the call could not be made (server failed, needs a login or a
+   * review, off, removed or cancelled, time ran out). `tool` is the server's
+   * own name.
    */
   call(
     server: string,
@@ -200,27 +203,13 @@ export function mcpServersOf(raw: unknown): McpServerView[] {
       ...(review.length > 0 ? { review } : {}),
       newToolCount: Number.isFinite(count) && count > 0 ? Math.floor(count) : 0,
       keepResultsInside: entry.keepResultsInside !== false,
-      instructions: instructions && entry.instructionsPending !== true ? instructions : null,
+      instructions: instructions || null,
       tools: (Array.isArray(entry.tools) ? entry.tools : [])
         .map((t: unknown) => toolOf(name, t))
         .filter((t): t is McpToolView => t !== null),
     })
   }
   return out
-}
-
-export type McpCallAnswer = { ok: true; result: unknown } | { ok: false; error: string }
-
-/** A call answer that crossed the preload boundary: a refusal, or the CallToolResult to shape */
-export function mcpCallAnswerOf(raw: unknown): McpCallAnswer {
-  if (raw === null || raw === undefined) {
-    return { ok: false, error: 'The MCP connection did not answer.' }
-  }
-  if (isRecord(raw) && raw.ok === false) {
-    const error = str(raw.error)
-    return { ok: false, error: error || 'The call could not be made.' }
-  }
-  return { ok: true, result: raw }
 }
 
 // ---- asking the person (spec 7.4) -------------------------------------------
@@ -312,8 +301,15 @@ export interface McpWindowState {
   /** servers the person turned off in this conversation (spec 7.5) */
   serversOffInChat(): ReadonlySet<string>
   setServerOffInChat(server: string, off: boolean): void
-  /** servers on in Settings and not turned off in this conversation */
+  /**
+   * Servers on in Settings and not turned off in this conversation; none
+   * while "Let AI use internet tools" is off (decision 0062)
+   */
   usableServers(): ReadonlySet<string>
+  /** the internet-tools switch as last heard; on without an outbound bridge */
+  internetToolsOn(): boolean
+  /** ask the main process for the internet-tools switch again */
+  checkInternetTools(): Promise<void>
   /** whether "always allow in this conversation" was given for this tool */
   allowedInChat(exposedName: string): boolean
   allowInChat(exposedName: string): void
@@ -332,9 +328,21 @@ export interface McpWindowState {
   dispose(): void
 }
 
-export function createMcpWindowState(bridge: McpToolsBridgeLike): McpWindowState {
+/**
+ * `outbound` is the window's internet-tools switch (`window.aiOfficeOutbound`),
+ * read the way `guardOutbound` reads it: off until the main process answers,
+ * then followed. With the switch off no server is usable and the skill's
+ * prompt block is empty (its tools are left out by `guardOutbound`, which
+ * also refuses their calls). Without a bridge (a test, an older preload)
+ * nothing is switched off, as `guardOutbound` lets it be.
+ */
+export function createMcpWindowState(
+  bridge: McpToolsBridgeLike,
+  outbound: OutboundBridgeLike | null = null,
+): McpWindowState {
   const permissions = createMcpPermissionStore()
   const listeners = new Set<() => void>()
+  let internetOn = outbound === null
   let servers: readonly McpServerView[] = []
   let offInChat: ReadonlySet<string> = new Set()
   let allowed = new Set<string>()
@@ -364,16 +372,26 @@ export function createMcpWindowState(bridge: McpToolsBridgeLike): McpWindowState
       notify()
     }
   }
+  const setInternet = (on: boolean) => {
+    if (internetOn === on) return
+    internetOn = on
+    notify()
+  }
+  const askInternet = async () => {
+    if (!outbound) return
+    setInternet((await outbound.internetToolsEnabled().catch(() => false)) === true)
+  }
   /** read the list; an older read that answers later does not overwrite a newer one */
   const refresh = async () => {
     const mine = ++seq
-    const raw = await bridge.list().catch(() => null)
+    const [raw] = await Promise.all([bridge.list().catch(() => null), askInternet()])
     if (mine !== seq) return
     servers = mcpServersOf(raw)
     notify()
   }
   void refresh()
-  const off = bridge.onChanged(() => void refresh())
+  const offList = bridge.onChanged(() => void refresh())
+  const offInternet = outbound?.onInternetToolsChanged?.((on) => setInternet(on === true))
 
   return {
     bridge,
@@ -391,10 +409,16 @@ export function createMcpWindowState(bridge: McpToolsBridgeLike): McpWindowState
     },
     usableServers: () => {
       usable ??= new Set(
-        servers.filter((s) => s.status !== 'disabled' && !offInChat.has(s.name)).map((s) => s.name),
+        internetOn
+          ? servers
+              .filter((s) => s.status !== 'disabled' && !offInChat.has(s.name))
+              .map((s) => s.name)
+          : [],
       )
       return usable
     },
+    internetToolsOn: () => internetOn,
+    checkInternetTools: askInternet,
     allowedInChat: (exposedName) => allowed.has(exposedName),
     allowInChat: (exposedName) => {
       allowed.add(exposedName)
@@ -415,7 +439,10 @@ export function createMcpWindowState(bridge: McpToolsBridgeLike): McpWindowState
       listeners.add(listener)
       return () => listeners.delete(listener)
     },
-    dispose: off,
+    dispose: () => {
+      offList()
+      offInternet?.()
+    },
   }
 }
 
@@ -427,15 +454,15 @@ export function windowMcpState(): McpWindowState | null {
   if (!bridge) return null
   if (windowState?.bridge !== bridge) {
     windowState?.state.dispose()
-    windowState = { bridge, state: createMcpWindowState(bridge) }
+    windowState = { bridge, state: createMcpWindowState(bridge, windowOutboundBridge()) }
   }
   return windowState.state
 }
 
 /**
  * Names of the servers usable in this window's conversation now (on in
- * Settings, not turned off in this chat); empty without an MCP bridge. For
- * the skipped-steps sentence and the skill chips.
+ * Settings, not turned off in this chat, internet tools on); empty without
+ * an MCP bridge. For the skipped-steps sentence and the skill chips.
  */
 export function windowMcpUsableServers(): ReadonlySet<string> {
   return windowMcpState()?.usableServers() ?? new Set()
@@ -492,11 +519,16 @@ const listable = (t: McpToolView) =>
 interface Listing {
   servers: readonly McpServerView[]
   off: ReadonlySet<string>
+  internet: boolean
   tools: AgentToolDef[]
   prompt: string
 }
 
-function listingOf(servers: readonly McpServerView[], off: ReadonlySet<string>): Listing {
+function listingOf(
+  servers: readonly McpServerView[],
+  off: ReadonlySet<string>,
+  internet: boolean,
+): Listing {
   const seen = new Set<string>()
   const tools: AgentToolDef[] = []
   const blocks: string[] = []
@@ -513,7 +545,15 @@ function listingOf(servers: readonly McpServerView[], off: ReadonlySet<string>):
     }
     blocks.push(serverBlock(server, mine))
   }
-  return { servers, off, tools, prompt: blocks.length ? [MCP_INTRO, ...blocks].join('\n\n') : '' }
+  return {
+    servers,
+    off,
+    internet,
+    tools,
+    // internet tools off: guardOutbound drops the tools, and no server name, tool name or
+    // server instructions reach the model either
+    prompt: internet && blocks.length ? [MCP_INTRO, ...blocks].join('\n\n') : '',
+  }
 }
 
 export interface UserMcpSkill extends AgentSkill {
@@ -539,7 +579,10 @@ export function createUserMcpSkill(
   const current = (): Listing => {
     const servers = state.servers()
     const off = state.serversOffInChat()
-    if (listing?.servers !== servers || listing.off !== off) listing = listingOf(servers, off)
+    const internet = state.internetToolsOn()
+    if (listing?.servers !== servers || listing.off !== off || listing.internet !== internet) {
+      listing = listingOf(servers, off, internet)
+    }
     return listing
   }
 
@@ -551,6 +594,8 @@ export function createUserMcpSkill(
 
   const execute = async (call: AgentToolCall, signal?: AbortSignal): Promise<ToolExecution> => {
     state.checkConversation()
+    // what guardOutbound just asked; the list and prompt follow it from here
+    await state.checkInternetTools()
     const servers = state.servers()
     const parsed = parseMcpToolNameIn(
       call.name,
@@ -619,12 +664,12 @@ export function createUserMcpSkill(
         .catch(() => undefined)
       return { output: MCP_CALL_STOPPED, isError: true, summary }
     }
+    // shaped in the main process (remote and "my PC" alike): the one answer form
     const answer = mcpCallAnswerOf(raw)
     if (!answer.ok) {
       return { output: `MCP server "${server}": ${answer.error}`, isError: true, summary }
     }
-    const shaped = shapeMcpResult(answer.result)
-    return { output: shaped.output, summary, ...(shaped.isError ? { isError: true } : {}) }
+    return { output: answer.output, summary, ...(answer.isError ? { isError: true } : {}) }
   }
 
   return {
@@ -639,6 +684,7 @@ export function createUserMcpSkill(
     buildContext: () => {
       // run start: an emptied history is a new chat
       state.checkConversation()
+      void state.checkInternetTools()
       return ''
     },
     executeTool: (call, signal) => execute(call, signal),

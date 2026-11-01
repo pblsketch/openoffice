@@ -38,6 +38,10 @@ export const permissionOfInput = (v: unknown): McpPermission | undefined =>
 export const booleanOf = (v: unknown): boolean | undefined =>
   typeof v === 'boolean' ? v : undefined
 
+/** A plan fingerprint as `plannedLaunch` handed it out (`sha256:` and 64 hex digits) */
+export const planFingerprintOf = (v: unknown): string | undefined =>
+  typeof v === 'string' && /^sha256:[0-9a-f]{64}$/.test(v) ? v : undefined
+
 const BAD = Symbol('bad')
 type Read<T> = T | undefined | typeof BAD
 

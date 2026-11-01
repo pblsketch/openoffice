@@ -73,6 +73,7 @@ export const nl = {
   launchFromApp: 'Gebruikt de kopie die de app heeft gedownload.',
   launchFromPc: 'Gebruikt het programma op deze pc.',
   launchAllow: 'Uitvoeren toestaan',
+  launchRecheck: 'De opdracht is gewijzigd. Controleer hem opnieuw.',
   runtimeAsk: 'Deze server heeft {runtime} nodig. Mag de app het downloaden? (in totaal {size})',
   runtimeItem: '{runtime} {version}: {size}',
   runtimeWhere: 'Het wordt bewaard in de eigen map van de app. Er verandert niets op de pc.',

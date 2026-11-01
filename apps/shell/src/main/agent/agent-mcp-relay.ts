@@ -7,7 +7,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import type { McpServerView } from '@genoffice/agent-core'
 import { isValidServerName } from '@genoffice/agent-core/user-mcp/names'
-import { shapeMcpResult } from '@genoffice/agent-core/user-mcp/result'
+import { mcpCallAnswerOf } from '@genoffice/agent-core/user-mcp/result'
 import type { AgentMcpRelay } from '@genoffice/ai-provider/agent-session'
 import { McpServerService } from '../mcp/mcp-server'
 
@@ -140,18 +140,14 @@ const errorResult = (text: string): CallToolResult => ({
   isError: true,
 })
 
-/** The hub's answer as the program gets it: a refusal is a tool error, a result is shaped once */
-export function relayResultOf(result: unknown): CallToolResult {
-  if (
-    result !== null &&
-    typeof result === 'object' &&
-    (result as { ok?: unknown }).ok === false &&
-    typeof (result as { error?: unknown }).error === 'string'
-  ) {
-    return errorResult((result as { error: string }).error)
-  }
-  const shaped = shapeMcpResult(result)
-  return { content: [{ type: 'text', text: shaped.output }], isError: shaped.isError }
+/**
+ * The hub's answer as the program gets it: a refusal is a tool error, a
+ * result goes on as the hub shaped it (the same text an AI window gets)
+ */
+export function relayResultOf(answer: unknown): CallToolResult {
+  const checked = mcpCallAnswerOf(answer)
+  if (!checked.ok) return errorResult(checked.error)
+  return { content: [{ type: 'text', text: checked.output }], isError: checked.isError }
 }
 
 /** The instructions a relay gives the program: the approved ones, framed as the server's notes */

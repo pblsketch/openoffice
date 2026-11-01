@@ -505,6 +505,7 @@ metadata:
       "args": ["-y", "some-mcp-server"],
       "env": { "API_KEY": "sealed:v1:…" },
       "approvedLaunch": "sha256:…", // or null until the person allows the command
+      "approvedPlan": "sha256:…", // the resolved plan the person was shown and allowed, or null
       // both
       "instructions": { "approved": "sha256:…", "text": "…" }, // or null
       "pendingInstructions": null, // changed text awaiting approval
@@ -525,8 +526,8 @@ metadata:
 - 서버마다 자기 종류의 칸만 쓴다. `runtimes`는 처음에 `{}`이고, 사람이 받기를 허락한 것만 생긴다.
 - 봉인되는 칸은 헤더 값, `oauth.clientSecret`, `oauth.tokens`, `env` 값이다(`sealed:v1:<base64>`, 운영체제 암호화). `oauth.tokens`는 토큰과 인증 서버 정보(만료, 인증 서버 주소, 그 메타데이터, 등록한 클라이언트)를 담은 JSON을 통째로 봉인한 것이다. 암호화를 쓸 수 없는 PC에서는 그 칸을 비워 두고 값은 메모리에만 있다. 다른 계정이나 PC에서 봉인한 값은 빈 값으로 읽힌다.
 - 도구 정의와 안내 글은 비밀이 아니어서 봉인하지 않는다. `url`과 `command`·`args`도 평문이다. 주소의 질의 문자열에 넣은 열쇠는 평문으로 남는다.
-- 지문은 `sha256:`과 16진수다. 도구 지문은 `{ name, description, inputSchema }`(설명은 줄바꿈을 `\n`으로, 유니코드를 NFC로 맞춤)를 키 순서로 정렬한 JSON의 해시이고, 표시(`annotations`)는 넣지 않는다. 안내 지문은 같은 정규화를 거친 글의 해시다. `approvedLaunch`는 명령, 인자, 환경 변수 **이름**의 해시다.
-- 도구 하나의 "확인 필요"는 `pending`이 비어 있지 않은 것이다. 승인하면 `pending`이 `definition`이 되고 `approved`가 새 지문이 된다. 안내도 같다(`pendingInstructions`). 내 PC 서버의 "명령 확인 필요"는 지금 명령·인자·환경 변수 이름의 지문이 `approvedLaunch`와 다른 것이다.
+- 지문은 `sha256:`과 16진수다. 도구 지문은 `{ name, description, inputSchema }`(설명은 줄바꿈을 `\n`으로, 유니코드를 NFC로 맞춤)를 키 순서로 정렬한 JSON의 해시이고, 표시(`annotations`)는 넣지 않는다. 안내 지문은 같은 정규화를 거친 글의 해시다. `approvedLaunch`는 명령, 인자, 환경 변수 **이름**의 해시다. `approvedPlan`은 확인 화면이 보인 계획, 곧 `{ command, args, env }`(풀린 실행 파일 전체 경로, 앱이 덧붙인 것까지의 인자 전부, 환경 변수 `{ name, origin }`을 이름 순으로 정렬)를 키 순서로 정렬한 JSON의 해시다. 값은 들어가지 않는다.
+- 도구 하나의 "확인 필요"는 `pending`이 비어 있지 않은 것이다. 승인하면 `pending`이 `definition`이 되고 `approved`가 새 지문이 된다. 안내도 같다(`pendingInstructions`). 내 PC 서버의 "명령 확인 필요"는 지금 명령·인자·환경 변수 이름의 지문이 `approvedLaunch`와 다르거나, `approvedPlan`이 비었거나, 실행하려고 다시 계산한 계획의 지문이 `approvedPlan`과 다른 것이다. 마지막 것은 실행해 봐야 알므로 파일에 따로 적지 않는다. "실행 허락"(`mcp-servers:approve-launch`)은 서버 id와 확인 화면이 받은 계획 지문(`mcp-servers:planned-launch`의 답 `launch.fingerprint`)을 함께 보내고, 뒷단이 다시 계산한 계획과 다르면 `{ ok: false, problem: "launch-changed" }`로 답해 아무것도 바꾸지 않는다.
 - `permission`이 세 값 밖이면 `ask`로 읽는다. 처음 값은 `annotations.readOnlyHint`가 `true`인 도구만 `always`다.
 
 **값 집합(화면 표시).** 서버 상태는 `connected`, `connecting`, `failed`(까닭 하나: `unreachable`, `runtime-missing`, `start-failed`, `refused-redirect`, `insecure-address`), `login-required`, `review-required`(무엇이 바뀌었는지가 붙는다), `disabled`다. 여럿이면 `disabled` > `review-required`(명령) > `login-required` > `failed` > `connecting` > `connected`. 도구 표시는 정상, 확인 필요, 켤 수 없음(이름) 셋이다.
@@ -547,7 +548,7 @@ metadata:
 
 **클라이언트로서.** `initialize`의 `capabilities`는 `{}`, `clientInfo`는 제품 이름과 앱 판이다. 서버의 sampling, elicitation, roots 요청은 거절한다. 도구 목록과 호출(`tools/list`, `tools/call`), 목록 변경 알림(`notifications/tools/list_changed`)만 쓴다. 결과는 `content`의 글 블록과 `structuredContent`(JSON 글, 같은 JSON이 글 블록에 이미 있으면 뺌)만 AI에게 넘기고, 나머지 블록은 개수만 알린다. `isError`는 도구 오류다. 호출마다 60초, 결과는 200,000자에서 자른다. 주소 서버에는 설정한 헤더 가운데 프로토콜이 쓰는 이름(`content-type`, `accept`, `mcp-session-id`, `mcp-protocol-version`, `last-event-id`)은 보내지 않는다.
 
-**편집기 다리.** 편집기 9곳과 홈 창의 preload가 `window.aiOfficeMcpTools`(`@genoffice/electron-utils/mcp-tools-bridge`)로 내준다. `list()`, `call(server, tool, input, callId)`, `cancel(callId)`, `onChanged(listener)`, `retry(server)`, `openSettings(server)`가 있고, 창구는 `mcp-tools:list`, `mcp-tools:call`, `mcp-tools:cancel`, `mcp-tools:retry`, `mcp-tools:open-settings`와 변경 알림 `mcp-tools:changed`다. 목록에는 승인된 도구 정의와 상태만 있고 비밀값은 없다. 껍데기 앱이 없는 창은 빈 목록과 거절을 받는다. 설정 화면의 창구(`mcp-servers:*`)는 껍데기 앱의 메인 창에만 답한다. 바깥 프로그램에 약속하는 것은 아니다.
+**편집기 다리.** 편집기 9곳과 홈 창의 preload가 `window.aiOfficeMcpTools`(`@genoffice/electron-utils/mcp-tools-bridge`)로 내준다. `list()`, `call(server, tool, input, callId)`, `cancel(callId)`, `onChanged(listener)`, `retry(server)`, `openSettings(server)`가 있고, `call`의 답은 두 종류의 서버 모두 뒷단에서 거르고 자른 글 `{ ok: true, output, isError }`이거나 거절 `{ ok: false, error }`다(`@genoffice/agent-core/user-mcp/result`의 `McpCallAnswer`). 서버가 돌려준 결과 그대로는 창으로 건너가지 않는다. 창이 닫히면 그 창의 호출은 끊긴다. 창구는 `mcp-tools:list`, `mcp-tools:call`, `mcp-tools:cancel`, `mcp-tools:retry`, `mcp-tools:open-settings`와 변경 알림 `mcp-tools:changed`다. 목록에는 승인된 도구 정의와 상태만 있고 비밀값은 없다. 껍데기 앱이 없는 창은 빈 목록과 거절을 받는다. 설정 화면의 창구(`mcp-servers:*`)는 껍데기 앱의 메인 창에만 답한다. 바깥 프로그램에 약속하는 것은 아니다.
 
 ## 구독 연결 상태 (앱 안의 창구)
 

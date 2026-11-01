@@ -20,6 +20,7 @@ import {
 } from '../../src/main/agent/agent-mcp-relay'
 
 const schema = { type: 'object', properties: { q: { type: 'string' } } }
+const NL2 = String.fromCharCode(10).repeat(2)
 
 function tool(name: string, over: Partial<McpToolView> = {}, server = 'law'): McpToolView {
   return {
@@ -76,7 +77,7 @@ describe('which servers and tools a session gets', () => {
 })
 
 describe('the hub’s answer as the program gets it', () => {
-  it('turns a refusal into a tool error and shapes a result once', () => {
+  it('turns a refusal into a tool error and passes on the result the hub shaped', () => {
     expect(
       relayResultOf({ ok: false, error: 'law: the server is turned off in Settings.' }),
     ).toEqual({
@@ -85,15 +86,22 @@ describe('the hub’s answer as the program gets it', () => {
     })
     expect(
       relayResultOf({
-        content: [
-          { type: 'text', text: 'found' },
-          { type: 'image', data: 'x', mimeType: 'a' },
-        ],
+        ok: true,
+        output: 'found' + NL2 + '[1 non-text item was not passed on.]',
+        isError: false,
       }),
     ).toEqual({
-      content: [{ type: 'text', text: 'found\n\n[1 non-text item was not passed on.]' }],
+      content: [{ type: 'text', text: 'found' + NL2 + '[1 non-text item was not passed on.]' }],
       isError: false,
     })
+    expect(relayResultOf({ ok: true, output: 'no such law', isError: true })).toEqual({
+      content: [{ type: 'text', text: 'no such law' }],
+      isError: true,
+    })
+    // anything but the hub's answer form is a tool error, never raw content
+    const raw = relayResultOf({ content: [{ type: 'image', data: 'AAAA' }] })
+    expect(raw.isError).toBe(true)
+    expect(JSON.stringify(raw)).not.toContain('AAAA')
   })
 })
 
@@ -111,7 +119,7 @@ function fakeHub(servers: McpServerView[]): FakeHub {
     servers,
     calls: [],
     cancelled: [],
-    answer: (s, t) => ({ content: [{ type: 'text', text: `${s}/${t} ok` }] }),
+    answer: (s, t) => ({ ok: true, output: `${s}/${t} ok`, isError: false }),
     editorList: () => hub.servers,
     call: async (caller, s, t, input, callId) => {
       hub.calls.push({ caller, server: s, tool: t, input, callId })
@@ -280,7 +288,7 @@ describe('a session’s relays', () => {
     hub.call = async (caller, s, t, input, callId) => {
       hub.calls.push({ caller, server: s, tool: t, input, callId })
       await new Promise<void>((resolve) => (release = resolve))
-      return { content: [{ type: 'text', text: 'late' }] }
+      return { ok: true, output: 'late', isError: false }
     }
     const relays = await startAgentMcpRelays({
       hub,

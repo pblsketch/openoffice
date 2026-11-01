@@ -143,7 +143,36 @@ describe('MCP hub channels', () => {
         'sometimes',
       ),
     ).toEqual({ ok: false, problem: 'invalid' })
+    // "allow to run" names the plan the person saw; without it nothing is approved
+    const approve = handlers.get(MCP_SERVERS_CHANNELS.approveLaunch)!
+    expect(await approve({ sender: shell }, 'id')).toEqual({ ok: false, problem: 'invalid' })
+    expect(await approve({ sender: shell }, 'id', 'sha256:short')).toEqual({
+      ok: false,
+      problem: 'invalid',
+    })
     expect(hub.ran).toEqual([])
+    const plan = `sha256:${'0'.repeat(64)}`
+    expect(await approve({ sender: shell }, 'id', plan)).toMatchObject({ args: ['id', plan] })
+    expect(hub.ran).toEqual(['approveLaunch'])
     vi.restoreAllMocks()
+  })
+
+  it('stops the calls of a window when it is destroyed, watching each window once', async () => {
+    const { handlers, hub } = register()
+    const listeners: (() => void)[] = []
+    const window = {
+      id: 9,
+      once: vi.fn((event: string, listener: () => void) => {
+        if (event === 'destroyed') listeners.push(listener)
+      }),
+    }
+    const call = handlers.get(MCP_TOOLS_CHANNELS.call)!
+    const request = { server: 'law', tool: 'search', input: {}, callId: 'c1' }
+    await call({ sender: window }, request)
+    await call({ sender: window }, { ...request, callId: 'c2' })
+    expect(window.once).toHaveBeenCalledTimes(1)
+    expect(hub.ran).toEqual(['call', 'call'])
+    listeners[0]!()
+    expect(hub.ran).toEqual(['call', 'call', 'cancelCaller'])
   })
 })

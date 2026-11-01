@@ -74,6 +74,7 @@ export const pt = {
   launchFromApp: 'Usa a cópia que o aplicativo baixou.',
   launchFromPc: 'Usa o programa deste PC.',
   launchAllow: 'Permitir execução',
+  launchRecheck: 'O comando mudou. Verifique-o novamente.',
   runtimeAsk: 'Este servidor precisa de {runtime}. O aplicativo deve baixá-lo? ({size} no total)',
   runtimeItem: '{runtime} {version}: {size}',
   runtimeWhere: 'Fica guardado na pasta do próprio aplicativo. Nada no PC é alterado.',

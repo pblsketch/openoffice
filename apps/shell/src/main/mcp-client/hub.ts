@@ -1,9 +1,12 @@
 import { randomUUID } from 'node:crypto'
-import type {
-  McpServerView as BridgeServerView,
-  McpToolView as BridgeToolView,
-} from '@genoffice/agent-core'
+import type { McpServerView, McpToolView } from '@genoffice/agent-core'
 import { mapServerToolNames, serverNameProblem } from '@genoffice/agent-core/user-mcp/names'
+import {
+  MCP_RESULT_MAX_CHARS,
+  shapeMcpResult,
+  shapedMcpAnswer,
+  type McpCallAnswer,
+} from '@genoffice/agent-core/user-mcp/result'
 import type { Lang } from '@genoffice/i18n'
 import {
   serverStatusOf,
@@ -18,7 +21,7 @@ import {
   type McpServerInput,
   type McpServerPatch,
   type McpServerSettingsView,
-  type McpServerStatus,
+  type McpServerStatusInfo,
   type McpServersSettingsView,
   type McpSettingsResult,
   type McpSignInAnswer,
@@ -26,7 +29,7 @@ import {
   type McpToolNameView,
 } from '../../shared/mcp-servers-api'
 import { checkServerAddress } from './address'
-import { launchReviewNeeded } from './fingerprint'
+import { launchReviewNeeded, planFingerprint, serverLaunchFingerprint } from './fingerprint'
 import { mcpLaunchProblemText, mcpSignInPages, type McpLaunchProblemKey } from './hub-strings'
 import {
   acceptFirstListing,
@@ -98,16 +101,22 @@ export interface McpHub {
   onChanged(listener: () => void): () => void
 
   // the AI windows
-  editorList(): BridgeServerView[]
-  /** `caller` keeps call ids of different windows apart */
+  editorList(): McpServerView[]
+  /**
+   * `caller` keeps call ids of different windows apart. The answer is the
+   * result shaped for the AI (5.5), the same for both kinds of server, or
+   * the reason the call could not be made.
+   */
   call(
     caller: string,
     server: string,
     tool: string,
     input: Record<string, unknown>,
     callId: string,
-  ): Promise<unknown>
+  ): Promise<McpCallAnswer>
   cancel(caller: string, callId: string): void
+  /** the caller's window went away: stop every call of it */
+  cancelCaller(caller: string): void
   retryByName(server: string): { ok: boolean }
   openSettingsByName(server: string): { ok: boolean }
 
@@ -122,7 +131,8 @@ export interface McpHub {
   cancelSignIn(id: string): void
   approveTool(id: string, tool: string): Promise<McpSettingsResult>
   approveInstructions(id: string): Promise<McpSettingsResult>
-  approveLaunch(id: string): Promise<McpSettingsResult>
+  /** `planFingerprint`: the fingerprint of the plan the person was shown (`plannedLaunch`) */
+  approveLaunch(id: string, planFingerprint: string): Promise<McpSettingsResult>
   setToolPermission(id: string, tool: string, permission: McpPermission): Promise<McpSettingsResult>
   setKeepResultsInside(id: string, on: boolean): Promise<McpSettingsResult>
   setEnabled(id: string, on: boolean): Promise<McpSettingsResult>
@@ -149,7 +159,7 @@ const FAIL_TEXT: Record<McpFailReason, string> = {
 /** a tool name as quoted back to the model: what it sent, shortened */
 const quoted = (text: string) => JSON.stringify(text.slice(0, 80))
 
-const refusal = (error: string) => ({ ok: false as const, error })
+const refusal = (error: string): McpCallAnswer => ({ ok: false, error })
 
 const TEXT = {
   unknownServer: (name: string) => `No MCP server named ${quoted(name)} is registered in this app.`,
@@ -198,6 +208,8 @@ interface Live {
 
 interface Call {
   serverId: string
+  /** the window (or agent session) the call came from */
+  caller: string
   controller: AbortController
 }
 
@@ -333,13 +345,25 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
     return live?.local?.status() ?? null
   }
 
-  function statusOf(server: McpServerConfig): McpServerStatus {
+  /**
+   * A local server whose command must be allowed (again): the stored command
+   * changed, or the launcher found that it now resolves to another program
+   * than the one the person allowed (4.5)
+   */
+  function commandReviewNeeded(server: McpServerConfig): boolean {
+    if (server.kind !== 'local') return false
+    return (
+      launchReviewNeeded(server) || localState(lives.get(server.id))?.state === 'review-required'
+    )
+  }
+
+  function statusOf(server: McpServerConfig): McpServerStatusInfo {
     const live = lives.get(server.id)
     if (server.kind === 'local') {
       const state = localState(live)
       return serverStatusOf({
         enabled: server.enabled,
-        commandReviewNeeded: launchReviewNeeded(server) || state?.state === 'review-required',
+        commandReviewNeeded: commandReviewNeeded(server),
         loginRequired: false,
         failure: state?.state === 'failed' ? state.reason : null,
         connecting: state?.state === 'starting',
@@ -358,7 +382,7 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
     const review: McpReviewSubject[] = []
     if (toolsAwaitingReview(server).length > 0) review.push('tools')
     if (server.pendingInstructions !== null) review.push('instructions')
-    if (server.kind === 'local' && launchReviewNeeded(server)) review.push('command')
+    if (commandReviewNeeded(server)) review.push('command')
     return review
   }
 
@@ -542,7 +566,7 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
     return store.get().servers.find((s) => s.name === name) ?? null
   }
 
-  function editorView(server: McpServerConfig): BridgeServerView {
+  function editorView(server: McpServerConfig): McpServerView {
     const status = statusOf(server)
     const review = reviewOf(server)
     const entries = Object.entries(server.tools)
@@ -550,7 +574,7 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
       server.name,
       entries.map(([name]) => name),
     )
-    const tools: BridgeToolView[] = entries.map(([name, tool], index) => {
+    const tools: McpToolView[] = entries.map(([name, tool], index) => {
       const mapped = names[index]
       return {
         name,
@@ -616,19 +640,23 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
     return halt === 'removed' ? TEXT.removing(server.name) : TEXT.disabled(server.name)
   }
 
+  /**
+   * Run one call. Either kind answers the result shaped for the AI here in
+   * the main process (5.5): a local connection shapes its own results, a
+   * remote one's are shaped below, so pictures and other non-text blocks
+   * never cross to a window and the windows read one answer form.
+   */
   async function runCall(
     server: McpServerConfig,
     tool: string,
     input: Record<string, unknown>,
     signal: AbortSignal,
-  ): Promise<unknown> {
+  ): Promise<McpCallAnswer> {
     if (server.kind === 'local') {
       const conn = localOf(server)
       try {
         await conn.ensure(signal)
-        const shaped = await conn.callTool(tool, input, signal)
-        // already shaped for the model (5.5); handed on in the CallToolResult form the window reads
-        return { content: [{ type: 'text', text: shaped.output }], isError: shaped.isError }
+        return shapedMcpAnswer(await conn.callTool(tool, input, signal))
       } catch (error) {
         const trouble = troubleOf(error, signal)
         return refusal(troubleText(server.name, trouble))
@@ -644,7 +672,7 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
         live.loginRequired = false
         notify()
       }
-      return result
+      return shapedMcpAnswer(shapeMcpResult(result, MCP_RESULT_MAX_CHARS))
     } catch (error) {
       const trouble = troubleOf(error, signal)
       note(server, trouble)
@@ -662,7 +690,7 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
     toolName: string,
     input: Record<string, unknown>,
     callId: string,
-  ): Promise<unknown> {
+  ): Promise<McpCallAnswer> {
     const found = findByName(serverName)
     if (!found) return refusal(TEXT.unknownServer(serverName))
     const live = liveOf(found.id)
@@ -672,7 +700,7 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
     const key = `${caller}\u0000${callId}`
     calls.get(key)?.controller.abort('cancelled')
     const controller = new AbortController()
-    calls.set(key, { serverId: found.id, controller })
+    calls.set(key, { serverId: found.id, caller, controller })
     const signal = controller.signal
     try {
       // the first use after the app started reads the list (5.7) and applies its changes
@@ -733,6 +761,7 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
       }
       return {
         ...view,
+        launchReviewNeeded: commandReviewNeeded(server),
         status: statusOf(server),
         review: reviewOf(server),
         toolNames: toolNamesOf(server),
@@ -991,6 +1020,7 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
     if (plan.ok) {
       return {
         ok: true,
+        fingerprint: planFingerprint(plan),
         command: plan.command,
         args: [...plan.args],
         addedArgs: [...plan.addedArgs],
@@ -1051,6 +1081,9 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
     const trouble = await relist(id, { first, signal: app.signal })
     if (trouble) {
       if (trouble.kind === 'login') return { ok: false, problem: 'login-required' }
+      // the program resolves elsewhere than the person allowed: the command is shown again
+      const now = store.server(id)
+      if (now && commandReviewNeeded(now)) return { ok: false, problem: 'launch-not-approved' }
       const reason: McpFailReason = trouble.kind === 'failed' ? trouble.reason : 'unreachable'
       const failure = store.server(id) ? failureOf(store.server(id) as McpServerConfig) : null
       return { ok: false, problem: 'failed', reason, text: failure?.text ?? null }
@@ -1123,6 +1156,36 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
     return plannedLaunchOf(id)
   }
 
+  /**
+   * "Allow to run" (4.5): only for the very plan the person was shown. The
+   * plan is computed again, by the function the launcher uses; when it is
+   * not the one `planFingerprint` names (the command, the program it
+   * resolves to, the arguments or the variable names changed since the view
+   * was made), nothing is approved and the screen shows the plan again.
+   */
+  async function approveLaunch(id: string, fingerprint: string): Promise<McpSettingsResult> {
+    const server = store.server(id)
+    if (!server) return invalid('not-found')
+    if (server.kind !== 'local') return invalid('not-local')
+    const shape = serverLaunchFingerprint(server)
+    const plan = await deps.plannedLaunch(server)
+    if (!plan.ok || planFingerprint(plan) !== fingerprint) return invalid('launch-changed')
+    let stale = false
+    const done = await replaceServer(id, (s) => {
+      // an edit that landed while the plan was computed is not what was shown
+      if (serverLaunchFingerprint(s) !== shape) {
+        stale = true
+        return s
+      }
+      return approveLaunchOf(s, fingerprint)
+    })
+    if (!done) return invalid('not-found')
+    if (stale) return invalid('launch-changed')
+    follow(id)
+    notify()
+    return { ok: true }
+  }
+
   function retry(id: string): McpSettingsResult {
     const server = store.server(id)
     if (!server) return invalid('not-found')
@@ -1190,6 +1253,13 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
       entry.controller.abort('cancelled')
       calls.delete(key)
     },
+    cancelCaller: (caller) => {
+      for (const [key, entry] of calls) {
+        if (entry.caller !== caller) continue
+        entry.controller.abort('cancelled')
+        calls.delete(key)
+      }
+    },
     retryByName: (name) => {
       const server = findByName(name)
       if (!server) return { ok: false }
@@ -1248,7 +1318,7 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
     },
     approveTool: (id, tool) => change(id, (s) => approveToolOf(s, tool)),
     approveInstructions: (id) => change(id, approveInstructionsOf),
-    approveLaunch: (id) => change(id, approveLaunchOf),
+    approveLaunch,
     setToolPermission: (id, tool, permission) =>
       change(id, (s) => setToolPermissionOf(s, tool, permission)),
     setKeepResultsInside: (id, on) => change(id, (s) => ({ ...s, keepResultsInside: on })),

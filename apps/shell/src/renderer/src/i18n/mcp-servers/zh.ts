@@ -66,6 +66,7 @@ export const zh = {
   launchFromApp: '使用应用下载的程序。',
   launchFromPc: '使用这台电脑上的程序。',
   launchAllow: '允许运行',
+  launchRecheck: '命令已更改，请重新确认。',
   runtimeAsk: '使用此服务器需要 {runtime}。要让应用下载吗？（共 {size}）',
   runtimeItem: '{runtime} {version}：{size}',
   runtimeWhere: '它保存在应用自己的文件夹中，不会更改电脑上的任何设置。',

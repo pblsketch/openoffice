@@ -108,6 +108,7 @@ describe('normalizeMcpServersFile', () => {
       args: [],
       env: {},
       approvedLaunch: null,
+      approvedPlan: null,
       instructions: null,
       pendingInstructions: null,
       tools: {},
@@ -160,7 +161,8 @@ describe('createMcpServersStore', () => {
     const store = createMcpServersStore(path, codec())
     await store.load()
     const r = remote()
-    const l = local()
+    // an approved launch keeps the plan the person saw
+    const l = { ...local(), approvedLaunch: 'sha256:launch', approvedPlan: 'sha256:plan' }
     await store.update((f) => ({ ...f, runtimes: { node: { allowed: true } }, servers: [r, l] }))
 
     const text = readFileSync(path, 'utf8')
@@ -181,6 +183,8 @@ describe('createMcpServersStore', () => {
     // fields of the other kind are not written
     expect(raw.servers[0]).not.toHaveProperty('command')
     expect(raw.servers[1]).not.toHaveProperty('url')
+    expect(raw.servers[1].approvedPlan).toBe('sha256:plan')
+    expect(raw.servers[0]).not.toHaveProperty('approvedPlan')
 
     const again = createMcpServersStore(path, codec())
     expect(await again.load()).toEqual({ state: 'ok', unreadable: [] })

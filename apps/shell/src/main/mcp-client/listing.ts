@@ -207,10 +207,13 @@ export function approveInstructions(server: McpServerConfig): McpServerConfig {
   }
 }
 
-/** The person approved the command, arguments and env names shown to them */
-export function approveLaunch(server: McpServerConfig): McpServerConfig {
+/**
+ * The person approved the command shown to them: the stored command,
+ * arguments and env names, and the resolved plan they saw (`planFingerprint`)
+ */
+export function approveLaunch(server: McpServerConfig, plan: string): McpServerConfig {
   if (server.kind !== 'local') return server
-  return { ...server, approvedLaunch: serverLaunchFingerprint(server) }
+  return { ...server, approvedLaunch: serverLaunchFingerprint(server), approvedPlan: plan }
 }
 
 /** The person opened this server's tool list: the new-tool notice goes */

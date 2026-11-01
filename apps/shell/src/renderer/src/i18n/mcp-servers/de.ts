@@ -75,6 +75,7 @@ export const de = {
   launchFromApp: 'Verwendet die Kopie, die die App heruntergeladen hat.',
   launchFromPc: 'Verwendet das Programm auf diesem PC.',
   launchAllow: 'Ausführen erlauben',
+  launchRecheck: 'Der Befehl hat sich geändert. Bitte prüfen Sie ihn erneut.',
   runtimeAsk: 'Dieser Server braucht {runtime}. Soll die App es herunterladen? (insgesamt {size})',
   runtimeItem: '{runtime} {version}: {size}',
   runtimeWhere: 'Es wird im eigenen Ordner der App abgelegt. Am PC wird nichts verändert.',

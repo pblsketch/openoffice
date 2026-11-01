@@ -15,6 +15,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import type { McpFailReason, McpTransport } from '../../shared/mcp-servers-api'
 import { checkResolvedServerAddress, systemResolver, type HostResolver } from './address'
+import { MCP_CALL_TIMEOUT_MS } from './limits'
 import type { ListedTool, McpListing } from './listing'
 import {
   accessTokenExpired,
@@ -49,9 +50,6 @@ import {
  * Error texts carry the server name and a reason word, never an address,
  * header, token or server message.
  */
-
-/** each tools/list page and each tool call; a tunable default */
-export const MCP_CALL_TIMEOUT_MS = 60_000
 
 /** ending the server-side session on close is courtesy; it may not hold up closing */
 const TERMINATE_TIMEOUT_MS = 5_000

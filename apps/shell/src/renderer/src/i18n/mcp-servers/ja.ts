@@ -71,6 +71,7 @@ export const ja = {
   launchFromApp: 'アプリがダウンロードしたものを使います。',
   launchFromPc: 'この PC にあるプログラムを使います。',
   launchAllow: '実行を許可',
+  launchRecheck: 'コマンドが変わりました。もう一度確認してください。',
   runtimeAsk:
     'このサーバーには {runtime} が必要です。アプリでダウンロードしますか？（合計 {size}）',
   runtimeItem: '{runtime} {version}: {size}',

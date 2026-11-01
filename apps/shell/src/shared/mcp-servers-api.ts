@@ -61,7 +61,7 @@ export type McpFailReason =
   'unreachable' | 'runtime-missing' | 'start-failed' | 'refused-redirect' | 'insecure-address'
 
 /** The one status a server card shows (12.2) */
-export type McpServerStatus =
+export type McpServerStatusInfo =
   | { status: 'connected' }
   | { status: 'connecting' }
   | { status: 'failed'; reason: McpFailReason }
@@ -86,7 +86,7 @@ export interface McpServerStatusFacts {
  * (command) > login-required > failed > connecting > connected. Tool and
  * instruction reviews are shown apart from the server status.
  */
-export function serverStatusOf(facts: McpServerStatusFacts): McpServerStatus {
+export function serverStatusOf(facts: McpServerStatusFacts): McpServerStatusInfo {
   if (!facts.enabled) return { status: 'disabled' }
   if (facts.commandReviewNeeded) return { status: 'review-required', what: 'command' }
   if (facts.loginRequired) return { status: 'login-required' }
@@ -120,8 +120,12 @@ export interface McpSecretView {
   last4: string
 }
 
-/** A registered server for the settings screen, with its secrets reduced to views */
-export interface McpServerView {
+/**
+ * A registered server for the settings screen, with its secrets reduced to
+ * views. Not the AI windows' `McpServerView` of agent-core, which carries the
+ * approved tools only.
+ */
+export interface McpServerRecordView {
   id: string
   name: string
   kind: McpServerKind
@@ -148,7 +152,7 @@ export interface McpServersView {
   /** this PC seals secrets; when false, cards say they must be entered again after a restart */
   sealing: boolean
   runtimes: Record<string, { allowed: boolean }>
-  servers: McpServerView[]
+  servers: McpServerRecordView[]
 }
 
 // ---- the settings channel ---------------------------------------------------
@@ -201,8 +205,8 @@ export interface McpToolNameView {
 }
 
 /** A registered server as the settings card shows it */
-export interface McpServerSettingsView extends McpServerView {
-  status: McpServerStatus
+export interface McpServerSettingsView extends McpServerRecordView {
+  status: McpServerStatusInfo
   /** what waits for review: changed tools, changed instructions, a changed command */
   review: McpReviewSubject[]
   /** per tool, keyed like `tools` */
@@ -266,7 +270,9 @@ export type McpServerPatch = Partial<Omit<McpServerInput, 'kind' | 'paste'>>
  * server has it; address: the address is not allowed (detail: the problem);
  * plain-http-unconfirmed: plain http was not confirmed; paste-expired: the
  * pasted text is no longer held; not-remote / not-local: the action needs the
- * other kind; invalid: the request was malformed (detail: the field).
+ * other kind; invalid: the request was malformed (detail: the field);
+ * launch-changed: the command to run is no longer the one the person was
+ * shown (show the new plan and ask again).
  */
 export type McpSettingsProblem =
   | 'not-found'
@@ -279,6 +285,7 @@ export type McpSettingsProblem =
   | 'not-remote'
   | 'not-local'
   | 'failed'
+  | 'launch-changed'
 
 export type McpSettingsResult<T extends object = object> =
   ({ ok: true } & T) | { ok: false; problem: McpSettingsProblem; detail?: string }
@@ -349,6 +356,8 @@ export type McpSignInAnswer =
 export type McpPlannedLaunchView =
   | {
       ok: true
+      /** what `approveLaunch` brings back, so the approval is of exactly this plan */
+      fingerprint: string
       command: string
       args: string[]
       addedArgs: string[]
@@ -386,8 +395,12 @@ export interface McpServersApi {
   cancelSignIn(id: string): Promise<void>
   approveTool(id: string, tool: string): Promise<McpSettingsResult>
   approveInstructions(id: string): Promise<McpSettingsResult>
-  /** the person pressed "allow" under the command `plannedLaunch` showed */
-  approveLaunch(id: string): Promise<McpSettingsResult>
+  /**
+   * The person pressed "allow" under the command `plannedLaunch` showed, whose
+   * `fingerprint` comes back here; `launch-changed` when that is no longer
+   * the command that would run
+   */
+  approveLaunch(id: string, planFingerprint: string): Promise<McpSettingsResult>
   setToolPermission(id: string, tool: string, permission: McpPermission): Promise<McpSettingsResult>
   setKeepResultsInside(id: string, on: boolean): Promise<McpSettingsResult>
   setEnabled(id: string, on: boolean): Promise<McpSettingsResult>
