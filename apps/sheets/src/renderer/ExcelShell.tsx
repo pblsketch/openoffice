@@ -72,6 +72,7 @@ import {
   isFormulaBarKeyTarget,
   isGridKeyTarget,
   shouldInterceptClearSelection,
+  shouldInterceptRedoRepeat,
 } from './clear-selection-keyboard'
 import {
   accountingStyle,
@@ -819,6 +820,12 @@ export function ExcelShell({
   useEffect(() => {
     const onKeyDownCapture = (event: KeyboardEvent): void => {
       if (openingWorkbookRef.current) return
+      if (shouldInterceptRedoRepeat(event, onIsCellEditingRef.current(), isModalOpen())) {
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        dispatchCommandRef.current('redo-or-repeat')
+        return
+      }
       if (!shouldInterceptClearSelection(event, onIsCellEditingRef.current())) return
       event.preventDefault()
       event.stopImmediatePropagation()
