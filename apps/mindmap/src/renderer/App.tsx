@@ -32,6 +32,7 @@ import { saveMapIntoProject } from './document/save-into-project'
 import { useMapExport } from './export/use-map-export'
 import { MapController, type MapHost, type TopicRequest } from './map/controller'
 import { usePictureDrop } from './map/use-picture-drop'
+import { applyLinkPreview, type LinkPreviewOutcome } from './map/link-preview'
 import { Toolbar } from './components/Toolbar'
 import { SheetTabs } from './components/SheetTabs'
 import { ThemePanel } from './components/ThemePanel'
@@ -63,6 +64,14 @@ const AUTO_SAVE_INTERVAL_MS = 30_000
 /** Labels are typed in one field, separated by a comma: the plain one, the full-width one or the ideographic one. */
 const LABEL_SEPARATORS = /[,\uFF0C\u3001]/
 const TOAST_MS = 4000
+/** whether "fetch a preview" was ticked the last time a web link was put on a topic */
+const LINK_PREVIEW_PREF = 'mindmapapp.linkPreview'
+const LINK_PREVIEW_TEXT: Record<LinkPreviewOutcome, StringKey> = {
+  done: 'linkPreviewDone',
+  'title-only': 'linkPreviewTitleOnly',
+  nothing: 'linkPreviewNothing',
+  failed: 'linkPreviewFailed',
+}
 
 /** true while the keyboard is in a text field or in a title being typed on the map */
 function typingInText(): boolean {
@@ -776,15 +785,37 @@ export default function App() {
     else say('selectTopicFirst')
   }
 
-  const submitField = (value: string): boolean => {
+  const submitField = (value: string, options?: { preview: boolean }): boolean => {
     const map = controller
     if (!map || !fieldRequest) return true
     const { field, topicId } = fieldRequest
     if (field === 'label') return map.setLabels(topicId, value.split(LABEL_SEPARATORS))
     if (field === 'note') return map.setNote(topicId, value)
     // Any address is kept; the controller turns down only a reference into the file.
-    return map.setLink(topicId, linkFromInput(value))
+    const address = linkFromInput(value)
+    const taken = map.setLink(topicId, address)
+    if (taken && options) {
+      localStorage.setItem(LINK_PREVIEW_PREF, options.preview ? '1' : '0')
+      if (options.preview && address) fetchLinkPreview(topicId, address, map.mind.newTopicName)
+    }
+    return taken
   }
+
+  /** The page behind a link, read once because the person asked for it in the dialog (decision 0099). */
+  const fetchLinkPreview = (topicId: string, address: string, newTopicName: string): void => {
+    say('linkPreviewLoading')
+    void applyLinkPreview(ai.host, topicId, address, {
+      read: (url) => window.mindmapApi.readLinkPreview(url),
+      newTopicName,
+    }).then(
+      (outcome) => say(LINK_PREVIEW_TEXT[outcome]),
+      () => say('linkPreviewFailed'),
+    )
+  }
+
+  /** "fetch a preview" starts ticked as it was left, but never over a picture the topic already shows */
+  const previewDefault = (topicId: string): boolean =>
+    localStorage.getItem(LINK_PREVIEW_PREF) === '1' && !controller?.topic(topicId)?.hasPicture
 
   // computed on every render: `t` is a new function each time and must not be a hook dependency
   const statusText =
@@ -982,6 +1013,7 @@ export default function App() {
           request={fieldRequest}
           onSubmit={submitField}
           linkKind={linkInputKind}
+          previewDefault={previewDefault(fieldRequest.topicId)}
           onClose={() => setFieldRequest(null)}
         />
       )}

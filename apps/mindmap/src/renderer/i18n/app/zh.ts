@@ -73,6 +73,13 @@ export const zh = {
   openRejected: '由于文件大小或结构问题，无法打开',
   labelHint: '多个标签请用逗号分隔',
   linkHint: '请输入网址（http、https）或邮箱地址（mailto）',
+  linkPreviewOption: '获取预览图片和标题',
+  linkPreviewNote: '点击“确定”会访问此网站一次。图片会保存在思维导图文件中',
+  linkPreviewLoading: '正在获取链接预览…',
+  linkPreviewDone: '已添加链接预览',
+  linkPreviewTitleOnly: '此页面没有预览图片，因此只添加了标题',
+  linkPreviewNothing: '此页面没有找到可添加的预览',
+  linkPreviewFailed: '无法读取页面，因此未添加预览',
   linkWontOpen:
     '此地址仅以文字形式保留和显示，点击不会打开。只有网址（http、https）和邮箱地址才会被打开。',
   linkInternal: '这种形式的地址用于指向导图文件内部，无法在此填写。',

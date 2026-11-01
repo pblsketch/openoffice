@@ -77,6 +77,13 @@ export const cs = {
   openRejected: 'Tento soubor nelze otevřít kvůli jeho velikosti nebo struktuře',
   labelHint: 'Více štítků oddělte čárkami',
   linkHint: 'Zadejte webovou adresu (http, https) nebo e-mailovou adresu (mailto)',
+  linkPreviewOption: 'Načíst náhledový obrázek a název',
+  linkPreviewNote: 'Stisknutím OK se tento web jednou navštíví. Obrázek se uloží do souboru mapy',
+  linkPreviewLoading: 'Načítání náhledu odkazu…',
+  linkPreviewDone: 'Náhled odkazu byl přidán',
+  linkPreviewTitleOnly: 'Tato stránka nemá náhledový obrázek, proto byl přidán jen její název',
+  linkPreviewNothing: 'Na této stránce nebyl nalezen žádný náhled k přidání',
+  linkPreviewFailed: 'Stránku nelze přečíst, proto nebyl přidán žádný náhled',
   linkWontOpen:
     'Tato adresa se uchová a zobrazí jako text, ale kliknutím se neotevře. Otevírají se pouze webové adresy (http, https) a e-mailové adresy.',
   linkInternal: 'Adresa v tomto tvaru odkazuje dovnitř souboru mapy a nelze ji zde zadat.',

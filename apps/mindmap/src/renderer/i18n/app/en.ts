@@ -77,6 +77,13 @@ export const en = {
   openRejected: 'This file cannot be opened because of its size or structure',
   labelHint: 'Separate several labels with commas',
   linkHint: 'Enter a web address (http, https) or an email address (mailto)',
+  linkPreviewOption: 'Fetch the preview picture and title',
+  linkPreviewNote: 'Pressing OK visits this site once. The picture is saved inside the map file',
+  linkPreviewLoading: 'Fetching the link preview…',
+  linkPreviewDone: 'Link preview added',
+  linkPreviewTitleOnly: 'This page has no preview picture, so only its title was added',
+  linkPreviewNothing: 'No preview to add was found on this page',
+  linkPreviewFailed: 'The page could not be read, so no preview was added',
   linkWontOpen:
     'This address is kept and shown as text, but clicking it will not open it. Only web addresses (http, https) and email addresses are opened.',
   linkInternal: 'An address of this form points inside the map file and cannot be entered here.',

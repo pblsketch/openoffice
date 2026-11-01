@@ -78,6 +78,15 @@ export const de = {
   openRejected: 'Diese Datei kann wegen ihrer Größe oder Struktur nicht geöffnet werden',
   labelHint: 'Mehrere Etiketten durch Kommas trennen',
   linkHint: 'Webadresse (http, https) oder E-Mail-Adresse (mailto) eingeben',
+  linkPreviewOption: 'Vorschaubild und Titel abrufen',
+  linkPreviewNote:
+    'Mit OK wird diese Website einmal aufgerufen. Das Bild wird in der Kartendatei gespeichert',
+  linkPreviewLoading: 'Linkvorschau wird abgerufen…',
+  linkPreviewDone: 'Linkvorschau hinzugefügt',
+  linkPreviewTitleOnly: 'Diese Seite hat kein Vorschaubild, daher wurde nur ihr Titel hinzugefügt',
+  linkPreviewNothing: 'Auf dieser Seite wurde keine Vorschau gefunden',
+  linkPreviewFailed:
+    'Die Seite konnte nicht gelesen werden, daher wurde keine Vorschau hinzugefügt',
   linkWontOpen:
     'Diese Adresse wird als Text gespeichert und angezeigt, aber ein Klick öffnet sie nicht. Geöffnet werden nur Webadressen (http, https) und E-Mail-Adressen.',
   linkInternal:

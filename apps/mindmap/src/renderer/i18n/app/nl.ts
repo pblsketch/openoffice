@@ -78,6 +78,15 @@ export const nl = {
   openRejected: 'Dit bestand kan vanwege de grootte of structuur niet worden geopend',
   labelHint: "Scheid meerdere labels met komma's",
   linkHint: 'Voer een webadres (http, https) of een e-mailadres (mailto) in',
+  linkPreviewOption: 'Voorbeeldafbeelding en titel ophalen',
+  linkPreviewNote:
+    'Met OK wordt deze site één keer bezocht. De afbeelding wordt in het kaartbestand opgeslagen',
+  linkPreviewLoading: 'Linkvoorbeeld ophalen…',
+  linkPreviewDone: 'Linkvoorbeeld toegevoegd',
+  linkPreviewTitleOnly:
+    'Deze pagina heeft geen voorbeeldafbeelding, dus alleen de titel is toegevoegd',
+  linkPreviewNothing: 'Op deze pagina is geen voorbeeld gevonden om toe te voegen',
+  linkPreviewFailed: 'De pagina kon niet worden gelezen, dus er is geen voorbeeld toegevoegd',
   linkWontOpen:
     'Dit adres wordt als tekst bewaard en getoond, maar wordt niet geopend als u erop klikt. Alleen webadressen (http, https) en e-mailadressen worden geopend.',
   linkInternal:

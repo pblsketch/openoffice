@@ -78,6 +78,15 @@ export const it = {
   openRejected: 'Questo file non può essere aperto a causa delle dimensioni o della struttura',
   labelHint: 'Separa più etichette con le virgole',
   linkHint: 'Inserisci un indirizzo web (http, https) o un indirizzo e-mail (mailto)',
+  linkPreviewOption: 'Recupera immagine e titolo di anteprima',
+  linkPreviewNote:
+    'Premendo OK il sito viene visitato una volta. L’immagine viene salvata nel file della mappa',
+  linkPreviewLoading: 'Recupero dell’anteprima del collegamento…',
+  linkPreviewDone: 'Anteprima del collegamento aggiunta',
+  linkPreviewTitleOnly:
+    'Questa pagina non ha un’immagine di anteprima, quindi è stato aggiunto solo il titolo',
+  linkPreviewNothing: 'In questa pagina non è stata trovata alcuna anteprima da aggiungere',
+  linkPreviewFailed: 'Impossibile leggere la pagina, quindi non è stata aggiunta alcuna anteprima',
   linkWontOpen:
     'Questo indirizzo viene conservato e mostrato come testo, ma facendo clic non verrà aperto. Vengono aperti solo indirizzi web (http, https) e indirizzi e-mail.',
   linkInternal:

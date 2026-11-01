@@ -76,6 +76,14 @@ export const ko = {
   openRejected: '파일의 크기나 구조 때문에 열 수 없습니다',
   labelHint: '쉼표로 나누어 여러 개를 적을 수 있습니다',
   linkHint: '웹 주소(http, https)나 메일 주소(mailto)를 적습니다',
+  linkPreviewOption: '미리보기 그림과 제목 가져오기',
+  linkPreviewNote:
+    '확인을 누르면 이 사이트에 한 번 접속합니다. 받은 그림은 지도 파일 안에 저장됩니다',
+  linkPreviewLoading: '링크 미리보기를 가져오는 중…',
+  linkPreviewDone: '링크 미리보기를 넣었습니다',
+  linkPreviewTitleOnly: '이 페이지에는 미리보기 그림이 없어 제목만 넣었습니다',
+  linkPreviewNothing: '이 페이지에서 넣을 미리보기를 찾지 못했습니다',
+  linkPreviewFailed: '페이지를 읽지 못해 미리보기를 가져오지 못했습니다',
   linkWontOpen:
     '이 주소는 글자로만 보이고 눌러도 열리지 않습니다. 웹 주소(http, https)와 메일 주소만 열립니다.',
   linkInternal: '이 꼴의 주소는 지도 파일 안을 가리키는 데 쓰여서 여기에 적을 수 없습니다.',

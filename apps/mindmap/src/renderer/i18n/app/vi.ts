@@ -78,6 +78,13 @@ export const vi = {
   openRejected: 'Không thể mở tệp này do kích thước hoặc cấu trúc của tệp',
   labelHint: 'Phân tách nhiều nhãn bằng dấu phẩy',
   linkHint: 'Nhập địa chỉ web (http, https) hoặc địa chỉ email (mailto)',
+  linkPreviewOption: 'Lấy hình và tiêu đề xem trước',
+  linkPreviewNote: 'Nhấn OK sẽ truy cập trang này một lần. Hình được lưu bên trong tệp bản đồ',
+  linkPreviewLoading: 'Đang lấy bản xem trước của liên kết…',
+  linkPreviewDone: 'Đã thêm bản xem trước của liên kết',
+  linkPreviewTitleOnly: 'Trang này không có hình xem trước nên chỉ thêm tiêu đề',
+  linkPreviewNothing: 'Không tìm thấy bản xem trước nào trên trang này',
+  linkPreviewFailed: 'Không đọc được trang nên chưa thêm bản xem trước',
   linkWontOpen:
     'Địa chỉ này được lưu và hiển thị dưới dạng văn bản, nhưng nhấp vào sẽ không mở. Chỉ địa chỉ web (http, https) và địa chỉ email mới được mở.',
   linkInternal: 'Địa chỉ có dạng này dùng để trỏ vào bên trong tệp sơ đồ nên không thể nhập ở đây.',

@@ -120,6 +120,8 @@ export interface TopicInfo {
   labels: string[]
   note: string | null
   link: string | null
+  /** the topic shows a picture */
+  hasPicture: boolean
   isRoot: boolean
 }
 
@@ -367,6 +369,7 @@ export class MapController {
       labels: [...meta.labels],
       note: meta.note,
       link: meta.link,
+      hasPicture: meta.image !== null,
       isRoot: !node.parent,
     }
   }
@@ -579,9 +582,13 @@ export class MapController {
    */
   edit(change: (root: MapNode) => void): void {
     const mind = this.mind
+    const selected = this.selectedTopicIds()
     change(mind.nodeData as MapNode)
     normaliseTree(mind.nodeData, topicIdsOf(this.#lastView))
     mind.refresh()
+    // drawn again, the topics that were selected and are still there stay selected
+    const again = selected.map((id) => this.#element(id)).filter((topic) => topic !== null)
+    if (again.length > 0) mind.selectNodes(again)
     mind.bus.fire('operation', {
       name: 'reshapeNode',
       obj: mind.nodeData,
