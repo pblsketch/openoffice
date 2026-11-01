@@ -116,56 +116,41 @@ async function cellBoxes(frame: Frame): Promise<CellBox[]> {
   })
 }
 
-// TEMP diagnostics for the Linux CI failure of the second test; removed once found
-async function diag(hwp: Page, frame: Frame, step: string): Promise<void> {
-  const state = await frame.evaluate(async () => {
+async function caret(frame: Frame): Promise<{ paragraphIndex: number; charOffset: number }> {
+  return frame.evaluate(() => {
     const studio = (
       window as unknown as {
-        rhwpStudio: Studio & {
+        rhwpStudio: {
           automation: {
             registerCommand(def: { id: string; label: string; execute(s: unknown): void }): void
             execute(id: string): void
           }
-          __diagPos?: boolean
+          __caret?: boolean
         }
       }
     ).rhwpStudio
-    if (!studio.__diagPos) {
+    if (!studio.__caret) {
       studio.automation.registerCommand({
-        id: 'ext:e2e-diag-pos',
-        label: 'E2E diag pos',
+        id: 'ext:e2e-caret',
+        label: 'E2E caret',
         execute(services) {
-          const s = services as { getInputHandler(): { getCursorPosition(): unknown } }
-          ;(window as unknown as { __diag: unknown }).__diag = s
-            .getInputHandler()
-            .getCursorPosition()
+          const s = services as {
+            getInputHandler(): {
+              getCursorPosition(): { paragraphIndex: number; charOffset: number }
+            }
+          }
+          const pos = s.getInputHandler().getCursorPosition()
+          ;(window as unknown as { __caret: unknown }).__caret = {
+            paragraphIndex: pos.paragraphIndex,
+            charOffset: pos.charOffset,
+          }
         },
       })
-      studio.__diagPos = true
+      studio.__caret = true
     }
-    studio.automation.execute('ext:e2e-diag-pos')
-    await studio.plugins.load('ieum-agent')
-    const safe = async (method: string) => {
-      try {
-        return await studio.plugins.invoke('ieum-agent', method, [])
-      } catch (e) {
-        return String(e)
-      }
-    }
-    return {
-      pos: (window as unknown as { __diag: unknown }).__diag,
-      tables: await safe('listTables'),
-      selection: await safe('selection'),
-      text: await safe('readText'),
-      active: document.activeElement?.tagName + '#' + (document.activeElement?.id ?? ''),
-    }
-  })
-  console.log(`[diag ${step}] ${JSON.stringify(state).slice(0, 1500)}`)
-  const { mkdir } = await import('node:fs/promises')
-  const { join } = await import('node:path')
-  await mkdir(join(__dirname, 'artifacts', 'screenshots'), { recursive: true })
-  await hwp.screenshot({
-    path: join(__dirname, 'artifacts', 'screenshots', `cell-paste-${step}.png`),
+    studio.automation.execute('ext:e2e-caret')
+    return (window as unknown as { __caret: { paragraphIndex: number; charOffset: number } })
+      .__caret
   })
 }
 
@@ -293,19 +278,19 @@ test.describe('hwp: Hangul clicks and copied cells', () => {
       await first.move(box.x + 215, lineY, { steps: 8 })
       await first.up({ clickCount: 2 })
       await expect.poll(() => selectedText(frame)).toMatch(/^alpha bravo( charlie)?$/)
-      await diag(hwp, frame, '1-after-drag')
+      // on Linux CI the keys below outran the end of the word drag and the table never landed
+      await hwp.waitForTimeout(300)
 
       // two 3×3 tables, the first filled
       await hwp.keyboard.press('End')
       await hwp.keyboard.press('Enter')
-      await diag(hwp, frame, '2-after-enter')
+      await expect.poll(() => caret(frame)).toEqual({ paragraphIndex: 1, charOffset: 0 })
       await insertTable(frame, 3, 3)
-      await diag(hwp, frame, '3-after-table')
+      await expect.poll(() => tableCount(frame)).toBe(1)
       for (let i = 1; i <= 9; i += 1) {
         await hwp.keyboard.type(String(i))
         if (i < 9) await hwp.keyboard.press('Tab')
       }
-      await diag(hwp, frame, '4-after-typing')
       await expect.poll(async () => (await cellBoxes(frame)).length).toBe(9)
       const cells = await cellBoxes(frame)
       const topLeft = cells.find((cell) => cell.row === 0 && cell.col === 0)!
