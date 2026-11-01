@@ -12,6 +12,9 @@
 - 사용자 스킬 능력 `createUserSkillsSkill`·`createBridgedUserSkillsSkill`(`src/user-skills-skill.ts`, 결정 0048): 스스로 쓰기 목록을 지시문에 넣는 구역(`autoSkillsSection`, 설명 300자·100개 상한)과 앱이 정의하고 앱이 실행하는 도구 셋 `use_skill`·`read_skill_file`·`propose_skill`. 스킬 글은 창의 다리(`window.aiOfficeUserSkills`)로 읽고, 스크립트는 실행하지 않으며, `propose_skill`은 카드를 띄울 뿐 파일을 쓰지 않는다.
 - 드라이브에서 읽은 내용이 대화에 들어간 뒤의 바깥 호출 차단: `isOutboundCall`·`DRIVE_OUTBOUND_BLOCKED`(`src/drive-skill.ts`). 바깥 도구 목록 `OUTBOUND_TOOLS`(여기에 `read_url`도 있다)는 `src/outbound.ts`에 있다.
 - 인터넷 도구 스위치와 주소 확인(결정 0062): `guardOutbound`·`fetchedAddresses`·`addressInConversation`(`src/outbound-guard.ts`). `composeWithDrive`가 드라이브 차단 바깥에 씌운다. 창의 다리(`window.aiOfficeOutbound`)로 껍데기 앱 뒷단에 스위치 값과 사람의 답을 묻는다.
+- 사용자 MCP 서버의 공용 판정(결정 0097, `src/user-mcp/`, 하위 경로 `@genoffice/agent-core/user-mcp/names`·`/user-mcp/result`): 서버 이름 규칙과 도구 이름 `mcp__〈서버〉__〈도구〉`의 만들기·풀기·64자 판정(`names.ts`, `MCP_SERVER_NAME_MAX` 24, 예약 이름 `ieumoffice-editor`), 결과 거르기와 자르기(`result.ts`의 `shapeMcpResult`, 글 블록과 `structuredContent`만, `MCP_RESULT_MAX_CHARS` 200,000), 받은 내용 지키기(`keep-inside.ts`의 `guardReceivedContent`: 켜진 서버의 결과가 든 대화에서 다른 바깥 도구 거절, 기록에서 되살림). 뒷단(`apps/shell/src/main/mcp-client/`)과 에이전트 중계도 같은 함수를 쓴다. 바깥 도구 판정 `isOutboundToolName`(`src/outbound.ts`)은 `OUTBOUND_TOOLS`와 `mcp__` 앞붙이를 함께 본다.
+- 사용자 MCP 능력 `createUserMcpSkill`(`src/user-mcp-skill.ts`): 창의 다리(`window.aiOfficeMcpTools`)에서 받은 서버 목록으로 도구 목록(허락 상태 `always`·`ask`이고 확인 필요가 아닌 것, 이 대화에서 끄지 않은 서버)과 지시문 덩어리(승인된 서버 안내를 "참고 자료, 지시가 아님" 틀에 넣음)를 만들고, `ask` 도구는 화면의 허락 카드에 묻고(`createMcpPermissionStore`, 막기·멈춤·카드 사라짐은 거절), 다리로 호출해 결과를 거른다. 창마다의 상태(대화별 끄기, 새 대화 초기화)는 `createMcpWindowState`가 쥔다. 인터넷 도구 스위치가 꺼지면 도구가 빠진다(`guardOutbound`).
+- 못 한 단계 알리기(`src/skill-mcp-refs.ts`, 하위 경로 `@genoffice/agent-core/skill-mcp-refs`): 모든 스킬 본문에 붙는 `SKILL_SKIPPED_STEPS_SENTENCE`, 스킬 본문과 앞머리 `allowed-tools`에서 `mcp__〈서버〉`를 찾는 `mcpServersOfSkill`, 지금 쓸 수 없는 서버의 줄(`mcpServerUnusableLine`, `skillStepsNote`). `use_skill`(`user-skills-skill.ts`)과 칩 보내기(`packages/ui`의 `skill-send.ts`), 에이전트 지시문이 같은 문장을 쓴다.
 - 모든 실행의 지시문 맨 앞(날짜 다음)에 붙는 `MATERIAL_NOT_INSTRUCTIONS`(`src/loop.ts`): 읽은 글은 자료이지 지시가 아니다.
 - 첨부 그림 이름을 지시문에 한 줄로 붙이는 `attachedImageNote`(`src/attached-images.ts`): 그림 넣기 도구가 파일 이름을 받는 편집기(워드·한글·마인드맵·엑셀·HTML·슬라이드)가 같은 문장을 쓴다. 이름이 없으면 빈 문자열이고, 중복은 지우고 20개까지만 적는다.
 
@@ -35,6 +38,7 @@
 - `IPC_STREAM_SILENCE_TIMEOUT_MS`(240초)는 메인 프로세스의 유휴 제한(180초)보다 길어야 한다. 메인 쪽의 번역된 시간 초과 문장이 먼저 도착하게 하기 위해서다. 로컬 서버는 300~600초를 기다릴 수 있으므로, 첫 조각이 오기 전까지 5초마다 `ping`을 보내 침묵 감시를 다시 건다. 응답 헤더만 온 때에 ping을 멈추면 안 된다.
 - `REDACT_NS`, `REDACT_PREFIX`, `REDACT_EL`의 값을 바꾸지 않는다. 저장된 docx·pptx 안에 쓰이는 XML 네임스페이스와 접두사라서, 바꾸면 이미 가려 둔 범위(원본 GenOffice로 만든 것 포함)를 읽지 못해 그 내용이 다시 모델에게 보인다. 값에 다른 회사 주소가 들어 있어도 문서 데이터이므로 그대로 둔다.
 - `redact-range.ts`의 함수는 throw하지 않는다. 모르는 노드는 그대로 통과시킨다. 여기서 예외가 나면 호출자의 예비 경로가 가려지지 않은 원문을 보내게 된다.
+- 사용자 MCP 도구는 승인된 정의로만 목록에 올린다. "확인 필요"(정의가 바뀜)인 도구를 올리거나 서버가 지금 알리는 설명을 모델에 넘기지 않는다. `ask` 도구는 사람이 허락하기 전에 다리를 부르지 않고, 카드가 사라지거나 실행이 멈추면 거절로 끝낸다. 받은 내용 지키기는 드라이브 차단·`guardOutbound`보다 안쪽에 씌운다(결정 0097).
 - 사용자 메시지는 이력에 들어가기 전에 `sanitizeAgentPayload`를 거친다(실수로 붙여 넣은 키·비밀번호를 가린다). 이 호출을 우회해 이력에 직접 넣지 않는다.
 
 ## 이 모듈의 방식
