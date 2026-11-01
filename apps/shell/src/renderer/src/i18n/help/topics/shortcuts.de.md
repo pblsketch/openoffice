@@ -694,18 +694,25 @@ Diese Tasten gelten, solange der Tab HWP/HWPX im Vordergrund ist und das Dokumen
 
 ### Tabelle
 
-| Aktion                  | macOS        | Windows / Linux        |
-| ----------------------- | ------------ | ---------------------- |
-| Zeile/Spalte hinzufügen | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| Zeile/Spalte löschen    | ⌥⌫           | Alt+Delete             |
-| Zelle teilen            | F5 → S       | F5 → S                 |
-| Zellen verbinden        | F5 → M       | F5 → M                 |
-| Blocksumme              | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| Blockmittelwert         | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| Blockprodukt            | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| Tabelle teilen          | ⌃N, A        | Ctrl+N, A              |
-| Tabelle verbinden       | ⌃N, Z        | Ctrl+N, Z              |
-| Berechnungsformel       | ⌃N, F        | Ctrl+N, F              |
+| Aktion                                      | macOS        | Windows / Linux        |
+| ------------------------------------------- | ------------ | ---------------------- |
+| Zeile/Spalte hinzufügen                     | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Zeile/Spalte löschen                        | ⌥⌫           | Alt+Delete             |
+| Zelle teilen                                | F5 → S       | F5 → S                 |
+| Zellen verbinden                            | F5 → M       | F5 → M                 |
+| Tabellen-/Zelleigenschaften                 | F5 → P       | F5 → P                 |
+| Rahmen / Schattierung je Zelle              | F5 → L / C   | F5 → L / C             |
+| Rahmen / Schattierung als eine Zelle        | F5 → B / F   | F5 → B / F             |
+| Gleiche Zeilenhöhe / Spaltenbreite          | F5 → H / W   | F5 → H / W             |
+| Tabelle automatisch füllen                  | F5 → A       | F5 → A                 |
+| Zurück zur Zellbearbeitung                  | F5 → ⏎       | F5 → Enter             |
+| Schneller hängender Einzug (in einer Zelle) | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| Blocksumme                                  | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Blockmittelwert                             | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Blockprodukt                                | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Tabelle teilen                              | ⌃N, A        | Ctrl+N, A              |
+| Tabelle verbinden                           | ⌃N, Z        | Ctrl+N, Z              |
+| Berechnungsformel                           | ⌃N, F        | Ctrl+N, F              |
 
 ### Tabellenberechnung
 

@@ -453,6 +453,7 @@ export const hwpdocument_setShapeProperties: (a: number, b: number, c: number, d
 export const hwpdocument_setShowControlCodes: (a: number, b: number) => void;
 export const hwpdocument_setShowParagraphMarks: (a: number, b: number) => void;
 export const hwpdocument_setShowTransparentBorders: (a: number, b: number) => void;
+export const hwpdocument_setTableCellExtents: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number, number, number];
 export const hwpdocument_setTableProperties: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
 export const hwpdocument_setTextBoxAt: (a: number, b: number, c: number, d: number) => [number, number, number, number];
 export const hwpdocument_set_debug_overlay: (a: number, b: number) => void;

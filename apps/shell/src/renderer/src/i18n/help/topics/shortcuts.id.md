@@ -694,18 +694,25 @@ Tombol ini berlaku saat tab HWP/HWPX berada di depan dan dokumen memiliki fokus.
 
 ### Tabel
 
-| Tindakan           | macOS        | Windows / Linux        |
-| ------------------ | ------------ | ---------------------- |
-| Tambah baris/kolom | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| Hapus baris/kolom  | ⌥⌫           | Alt+Delete             |
-| Pisahkan sel       | F5 → S       | F5 → S                 |
-| Gabungkan sel      | F5 → M       | F5 → M                 |
-| Jumlah blok        | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| Rata-rata blok     | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| Produk blok        | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| Pisahkan tabel     | ⌃N, A        | Ctrl+N, A              |
-| Gabungkan tabel    | ⌃N, Z        | Ctrl+N, Z              |
-| Rumus perhitungan  | ⌃N, F        | Ctrl+N, F              |
+| Tindakan                           | macOS        | Windows / Linux        |
+| ---------------------------------- | ------------ | ---------------------- |
+| Tambah baris/kolom                 | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Hapus baris/kolom                  | ⌥⌫           | Alt+Delete             |
+| Pisahkan sel                       | F5 → S       | F5 → S                 |
+| Gabungkan sel                      | F5 → M       | F5 → M                 |
+| Properti tabel/sel                 | F5 → P       | F5 → P                 |
+| Batas / bayangan, tiap sel         | F5 → L / C   | F5 → L / C             |
+| Batas / bayangan, sel sebagai satu | F5 → B / F   | F5 → B / F             |
+| Samakan tinggi baris / lebar kolom | F5 → H / W   | F5 → H / W             |
+| Isi otomatis tabel                 | F5 → A       | F5 → A                 |
+| Kembali menyunting sel             | F5 → ⏎       | F5 → Enter             |
+| Indentasi gantung cepat (di sel)   | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| Jumlah blok                        | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Rata-rata blok                     | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Produk blok                        | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Pisahkan tabel                     | ⌃N, A        | Ctrl+N, A              |
+| Gabungkan tabel                    | ⌃N, Z        | Ctrl+N, Z              |
+| Rumus perhitungan                  | ⌃N, F        | Ctrl+N, F              |
 
 ### Perhitungan tabel
 

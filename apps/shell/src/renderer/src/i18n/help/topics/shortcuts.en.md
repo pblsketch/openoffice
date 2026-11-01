@@ -694,18 +694,25 @@ These keys work while the HWP/HWPX tab is in front and the document has focus. T
 
 ### Table
 
-| Action              | macOS        | Windows / Linux        |
-| ------------------- | ------------ | ---------------------- |
-| Add row/column      | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| Delete row/column   | ⌥⌫           | Alt+Delete             |
-| Split cell          | F5 → S       | F5 → S                 |
-| Merge cells         | F5 → M       | F5 → M                 |
-| Block sum           | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| Block average       | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| Block product       | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| Split table         | ⌃N, A        | Ctrl+N, A              |
-| Attach table        | ⌃N, Z        | Ctrl+N, Z              |
-| Calculation formula | ⌃N, F        | Ctrl+N, F              |
+| Action                           | macOS        | Windows / Linux        |
+| -------------------------------- | ------------ | ---------------------- |
+| Add row/column                   | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Delete row/column                | ⌥⌫           | Alt+Delete             |
+| Split cell                       | F5 → S       | F5 → S                 |
+| Merge cells                      | F5 → M       | F5 → M                 |
+| Table/cell properties            | F5 → P       | F5 → P                 |
+| Borders / shading, each cell     | F5 → L / C   | F5 → L / C             |
+| Borders / shading, cells as one  | F5 → B / F   | F5 → B / F             |
+| Equal row height / column width  | F5 → H / W   | F5 → H / W             |
+| Table auto fill                  | F5 → A       | F5 → A                 |
+| Back to editing the cell         | F5 → ⏎       | F5 → Enter             |
+| Quick hanging indent (in a cell) | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| Block sum                        | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Block average                    | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Block product                    | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Split table                      | ⌃N, A        | Ctrl+N, A              |
+| Attach table                     | ⌃N, Z        | Ctrl+N, Z              |
+| Calculation formula              | ⌃N, F        | Ctrl+N, F              |
 
 ### Table calculations
 

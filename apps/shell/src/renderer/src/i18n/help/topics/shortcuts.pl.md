@@ -694,18 +694,25 @@ Te klawisze działają, gdy karta HWP/HWPX jest na wierzchu, a dokument ma fokus
 
 ### Tabela
 
-| Czynność             | macOS        | Windows / Linux        |
-| -------------------- | ------------ | ---------------------- |
-| Dodaj wiersz/kolumnę | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| Usuń wiersz/kolumnę  | ⌥⌫           | Alt+Delete             |
-| Podziel komórkę      | F5 → S       | F5 → S                 |
-| Scal komórki         | F5 → M       | F5 → M                 |
-| Suma bloku           | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| Średnia bloku        | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| Iloczyn bloku        | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| Podziel tabelę       | ⌃N, A        | Ctrl+N, A              |
-| Połącz tabele        | ⌃N, Z        | Ctrl+N, Z              |
-| Formuła obliczeniowa | ⌃N, F        | Ctrl+N, F              |
+| Czynność                                      | macOS        | Windows / Linux        |
+| --------------------------------------------- | ------------ | ---------------------- |
+| Dodaj wiersz/kolumnę                          | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Usuń wiersz/kolumnę                           | ⌥⌫           | Alt+Delete             |
+| Podziel komórkę                               | F5 → S       | F5 → S                 |
+| Scal komórki                                  | F5 → M       | F5 → M                 |
+| Właściwości tabeli/komórki                    | F5 → P       | F5 → P                 |
+| Obramowanie / cieniowanie, każda komórka      | F5 → L / C   | F5 → L / C             |
+| Obramowanie / cieniowanie, komórki jako jedna | F5 → B / F   | F5 → B / F             |
+| Równa wysokość wiersza / szerokość kolumny    | F5 → H / W   | F5 → H / W             |
+| Autouzupełnianie tabeli                       | F5 → A       | F5 → A                 |
+| Powrót do edycji komórki                      | F5 → ⏎       | F5 → Enter             |
+| Szybkie wcięcie wiszące (w komórce)           | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| Suma bloku                                    | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Średnia bloku                                 | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Iloczyn bloku                                 | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Podziel tabelę                                | ⌃N, A        | Ctrl+N, A              |
+| Połącz tabele                                 | ⌃N, Z        | Ctrl+N, Z              |
+| Formuła obliczeniowa                          | ⌃N, F        | Ctrl+N, F              |
 
 ### Obliczenia tabeli
 

@@ -699,8 +699,10 @@ describe('the studio source the build fetched', () => {
     'src/engine/input-handler.ts',
     'src/engine/input-handler-keyboard.ts',
     'src/engine/input-handler-text.ts',
+    'src/engine/input-handler-table.ts',
     'src/engine/command.ts',
     'src/command/commands/edit.ts',
+    'src/command/commands/format.ts',
     'src/command/commands/insert.ts',
     'src/command/commands/table.ts',
     'src/command/shortcut-map.ts',
@@ -796,7 +798,7 @@ describe('rhwp Hangul-key patches', () => {
     expect(patched).toContain("import { showToast } from '@/ui/toast';")
     expect(patched).toContain(
       '  InsertTextCommand, InsertTabCommand, ModalDialog, FindDialog, navigateToSearchHit,\n' +
-        '  CellBorderBgDialog, showToast,\n}));',
+        '  CellBorderBgDialog, TableCellPropsDialog, showToast,\n}));',
     )
     expect(patched.indexOf('registry.registerAll(hancomCommands(getLocale(), {')).toBeGreaterThan(
       patched.indexOf('registry.registerAll(toolCommands);'),
@@ -839,6 +841,10 @@ describe('rhwp Hangul-key patches', () => {
       'return JSON.parse((this.doc as any).resizeTableCell(sec, parentPara, controlIdx, row, col, vertical, forward));',
     )
     expect(patched.indexOf('resizeTableCell(')).toBeLessThan(patched.indexOf('  moveTableOffset('))
+    // and the cell placing call of engine patch 0027 (H/W, Shift+Up/Down)
+    expect(patched).toContain(
+      'return JSON.parse((this.doc as any).setTableCellExtents(sec, parentPara, controlIdx, vertical, JSON.stringify(extents)));',
+    )
   })
 
   it('puts a new row below a merged cell after the merge, in both insert paths', () => {
@@ -953,10 +959,11 @@ describe('rhwp Hangul-key patches', () => {
     expect(patched).toContain(
       '  this._cellBlockLetterImeGuard?.reset();\n  if (hancomChordKey(this, e)) return;\n  if (this._pendingChordK)',
     )
-    // a table-object key and H/W in a cell block come before the selection is dropped
+    // a table-object key and a cell block's keys come before the selection is dropped; the
+    // block's keys are told what the studio's shortcut table makes of the key
     expect(patched).toContain(
       '  if (hancomTableObjectKey(this, e)) return;\n' +
-        '  if (hancomCellBlockKey(this, e)) return;\n' +
+        '  if (hancomCellBlockKey(this, e, (ev: KeyboardEvent) => matchShortcut(ev, defaultShortcuts))) return;\n' +
         '  if (hancomCellKey(this, e)) return;\n' +
         '  if (this.connectorDrawingMode) {',
     )
@@ -992,5 +999,102 @@ describe('rhwp Hangul-key patches', () => {
     ] as const) {
       expect(STUDIO_PATCHES).toContain(name)
     }
+  })
+})
+
+describe('the table/cell properties dialog on a cell block', () => {
+  it('hands what its cell tab wrote to the module, in the same apply', () => {
+    const source = [
+      "import { t as i18nText } from '../i18n/index.ts';",
+      '',
+      '    const applyProps = () => {',
+      '      this.wasm.setCellProperties(sec, ppi, ci, this.cellIdx, newCellProps as Partial<CellProperties>);',
+      '      this.wasm.setTableProperties(sec, ppi, ci, newTableProps as Partial<TableProperties>);',
+      '    };',
+      '',
+    ].join('\n')
+    const patched = applyPatch('studio-hancom-cell-props-block', source)
+    expect(patched).toContain(`import { hancomBlockCellProps } from '${HANCOM_KEYS_MODULE}';`)
+    expect(patched).toContain(
+      '      this.wasm.setCellProperties(sec, ppi, ci, this.cellIdx, newCellProps as Partial<CellProperties>);\n' +
+        '      hancomBlockCellProps(this, newCellProps);\n' +
+        '      this.wasm.setTableProperties(',
+    )
+    // after the border/fill patch, which rewrites the lines just above
+    const order = STUDIO_PATCHES.indexOf('studio-hancom-cell-props-block')
+    expect(order).toBeGreaterThan(STUDIO_PATCHES.indexOf('studio-table-props-border-bg'))
+  })
+
+  it('fails when the apply is gone', () => {
+    expect(() =>
+      applyPatch(
+        'studio-hancom-cell-props-block',
+        "import { t as i18nText } from '../i18n/index.ts';\n",
+      ),
+    ).toThrow(/exactly one occurrence/)
+  })
+})
+
+describe('the character and paragraph dialogs on a cell block', () => {
+  it("format the whole block through the editor's block path", () => {
+    const source = [
+      '    execute(services) {',
+      '      const ih = services.getInputHandler();',
+      '      if (!ih) return;',
+      '      const charProps = ih.getCharProperties();',
+      '      const savedSel = ih.getSelection();',
+      '      if (!savedSel) return;',
+      '      dialog.onApply = (mods) => {',
+      '        ih.applyCharPropsToRange(savedSel.start, savedSel.end, mods);',
+      '      };',
+      '    },',
+      '    execute(services) {',
+      '      const range = sel ?? { start: curPos, end: curPos };',
+      '      dialog.onApply = (mods) => {',
+      '        ih.applyParaPropsToRange(range.start, range.end, mods);',
+      '      };',
+      '    },',
+      '',
+    ].join('\n')
+    const patched = applyPatch('studio-hancom-block-format-dialogs', source)
+    expect(patched).toContain('      if (!savedSel && !ieumBlock) return;')
+    expect(patched).toContain("        if (ieumBlock) services.eventBus.emit('format-char', mods);")
+    expect(patched).toContain(
+      '        else if (savedSel) ih.applyCharPropsToRange(savedSel.start, savedSel.end, mods);',
+    )
+    expect(patched).toContain('        if (ieumBlock) ih.applyParaPropsAtCursor(mods);')
+    expect(patched).toContain(
+      '        else ih.applyParaPropsToRange(range.start, range.end, mods);',
+    )
+    expect(patched.split('const ieumBlock = ih.isInCellSelectionMode();')).toHaveLength(3)
+    expect(STUDIO_PATCHES).toContain('studio-hancom-block-format-dialogs')
+  })
+})
+
+describe("Hangul's plain drag of a horizontal table border", () => {
+  it('asks the module first and lets the border go below the next line', () => {
+    const source = [
+      "import { showToast } from '@/ui/toast';",
+      '  return {',
+      '    min: prev === undefined ? -Infinity : prev + minSizePx,',
+      '    max: next === undefined ? Infinity : next - minSizePx,',
+      '  };',
+      '  const inCellSel = this.cursor.isInCellSelectionMode();',
+      "  if (state.edge.type === 'col' && inCellSel && range) {",
+      '    updates = [];',
+      '  } else {',
+      '  }',
+      '',
+    ].join('\n')
+    const patched = applyPatch('studio-hancom-row-drag', source)
+    expect(patched).toContain(`import { hancomRowDragUpdates } from '${HANCOM_KEYS_MODULE}';`)
+    expect(patched).toContain(
+      "    max: next === undefined || edge.type === 'row' ? Infinity : next - minSizePx,",
+    )
+    expect(patched).toContain(
+      '  const ieumRowDrag = hancomRowDragUpdates(this, state, deltaHwpUnit, e.altKey);',
+    )
+    expect(patched).toContain("  } else if (state.edge.type === 'col' && inCellSel && range) {")
+    expect(STUDIO_PATCHES).toContain('studio-hancom-row-drag')
   })
 })

@@ -916,7 +916,14 @@ export function hancomFileKey(
  */
 export async function editorTakes(
   wc: WebContents,
-  key: 'ctrl-shift-s' | 'ctrl-shift-h' | 'ctrl-tab' | 'ctrl-e' | 'ctrl-c' | 'ctrl-x',
+  key:
+    | 'ctrl-shift-s'
+    | 'ctrl-shift-h'
+    | 'ctrl-tab'
+    | 'ctrl-shift-tab'
+    | 'ctrl-e'
+    | 'ctrl-c'
+    | 'ctrl-x',
 ): Promise<boolean> {
   if (wc.isDestroyed()) return false
   const frame = wc.mainFrame?.framesInSubtree.find((f) => /\/studio\//.test(f.url))

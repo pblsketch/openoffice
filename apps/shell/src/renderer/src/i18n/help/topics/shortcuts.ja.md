@@ -694,18 +694,25 @@ GenOffice HTML はライブプレビューの横にコードエディターを�
 
 ### 表
 
-| 操作         | macOS        | Windows / Linux        |
-| ------------ | ------------ | ---------------------- |
-| 行/列の追加  | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| 行/列の削除  | ⌥⌫           | Alt+Delete             |
-| セルの分割   | F5 → S       | F5 → S                 |
-| セルの結合   | F5 → M       | F5 → M                 |
-| ブロック合計 | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| ブロック平均 | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| ブロック積   | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| 表の分割     | ⌃N, A        | Ctrl+N, A              |
-| 表の連結     | ⌃N, Z        | Ctrl+N, Z              |
-| 計算式       | ⌃N, F        | Ctrl+N, F              |
+| 操作                     | macOS        | Windows / Linux        |
+| ------------------------ | ------------ | ---------------------- |
+| 行/列の追加              | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| 行/列の削除              | ⌥⌫           | Alt+Delete             |
+| セルの分割               | F5 → S       | F5 → S                 |
+| セルの結合               | F5 → M       | F5 → M                 |
+| 表/セルのプロパティ      | F5 → P       | F5 → P                 |
+| 各セルの罫線 / 背景      | F5 → L / C   | F5 → L / C             |
+| 複数セルの罫線 / 背景    | F5 → B / F   | F5 → B / F             |
+| セルの高さ / 幅を揃える  | F5 → H / W   | F5 → H / W             |
+| 表の自動入力             | F5 → A       | F5 → A                 |
+| セルブロックから編集へ   | F5 → ⏎       | F5 → Enter             |
+| ぶら下げインデント(表内) | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| ブロック合計             | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| ブロック平均             | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| ブロック積               | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| 表の分割                 | ⌃N, A        | Ctrl+N, A              |
+| 表の連結                 | ⌃N, Z        | Ctrl+N, Z              |
+| 計算式                   | ⌃N, F        | Ctrl+N, F              |
 
 ### 表の計算
 

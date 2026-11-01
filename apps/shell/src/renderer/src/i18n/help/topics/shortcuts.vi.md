@@ -694,18 +694,25 @@ Các phím này hoạt động khi thẻ HWP/HWPX ở phía trước và tài li
 
 ### Bảng
 
-| Hành động       | macOS        | Windows / Linux        |
-| --------------- | ------------ | ---------------------- |
-| Thêm hàng/cột   | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| Xóa hàng/cột    | ⌥⌫           | Alt+Delete             |
-| Tách ô          | F5 → S       | F5 → S                 |
-| Hợp nhất ô      | F5 → M       | F5 → M                 |
-| Tổng khối       | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| Trung bình khối | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| Tích khối       | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| Tách bảng       | ⌃N, A        | Ctrl+N, A              |
-| Nối bảng        | ⌃N, Z        | Ctrl+N, Z              |
-| Công thức tính  | ⌃N, F        | Ctrl+N, F              |
+| Hành động                            | macOS        | Windows / Linux        |
+| ------------------------------------ | ------------ | ---------------------- |
+| Thêm hàng/cột                        | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Xóa hàng/cột                         | ⌥⌫           | Alt+Delete             |
+| Tách ô                               | F5 → S       | F5 → S                 |
+| Hợp nhất ô                           | F5 → M       | F5 → M                 |
+| Thuộc tính bảng/ô                    | F5 → P       | F5 → P                 |
+| Viền / tô nền, từng ô                | F5 → L / C   | F5 → L / C             |
+| Viền / tô nền, các ô như một         | F5 → B / F   | F5 → B / F             |
+| Bằng chiều cao hàng / chiều rộng cột | F5 → H / W   | F5 → H / W             |
+| Tự động điền bảng                    | F5 → A       | F5 → A                 |
+| Quay lại sửa ô                       | F5 → ⏎       | F5 → Enter             |
+| Thụt lề treo nhanh (trong ô)         | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| Tổng khối                            | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Trung bình khối                      | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Tích khối                            | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Tách bảng                            | ⌃N, A        | Ctrl+N, A              |
+| Nối bảng                             | ⌃N, Z        | Ctrl+N, Z              |
+| Công thức tính                       | ⌃N, F        | Ctrl+N, F              |
 
 ### Tính toán bảng
 
