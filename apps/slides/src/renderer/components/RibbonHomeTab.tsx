@@ -9,6 +9,7 @@ import {
   isSymbolFontFamily,
   matchesFontQuery,
   splitHangulFamilies,
+  useScrollWindow,
 } from '@genoffice/ui'
 import { useI18n } from '../i18n/locale'
 import { saveEditSelection } from '../TextEditOverlay'
@@ -195,11 +196,15 @@ export function RibbonHomeTab({ rb }: { rb: RibbonTabCtx }) {
   )
   // anywhere in the name, or in its Korean name
   const matchesFontFilter = (f: string) => matchesFontQuery(fontFilter, f, fontInfo)
+  const fontMenuWindow = useScrollWindow(fontOpen)
+  let fontRow = 0
+  const previewAt = (f: string) =>
+    fontMenuWindow.inWindow(fontRow++) ? fontPreviewFamily(f) : undefined
   const fontOption = (f: string) => (
     <button
       key={f}
       className={f === curFontFamily ? 'on' : ''}
-      style={{ fontFamily: fontPreviewFamily(f) }}
+      style={{ fontFamily: previewAt(f) }}
       onMouseDown={(e) => {
         e.preventDefault()
         onFontFamily(f)
@@ -627,6 +632,8 @@ export function RibbonHomeTab({ rb }: { rb: RibbonTabCtx }) {
               {fontOpen && (
                 <div
                   className="rb-drop rb-menu rb-menu-scroll rb-font-menu"
+                  ref={fontMenuWindow.ref}
+                  onScroll={fontMenuWindow.onScroll}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
                   {(curFontFamily &&
