@@ -385,7 +385,10 @@ export function createPdfRecovery(deps: PdfRecoveryDeps) {
         try {
           const identity = state.untitled.identity
           const ticket = recoveryStore.beginWrite(identity)
-          const result = await recoveryStore.writeCopy(identity, asBuffer(await written()), {
+          const bytes = await written()
+          // the save wrote a password-protected file: no copy of it is kept
+          if (pdfLooksEncrypted(bytes)) return
+          const result = await recoveryStore.writeCopy(identity, asBuffer(bytes), {
             title: state.untitled.title,
             ticket,
           })

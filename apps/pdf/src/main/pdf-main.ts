@@ -44,6 +44,7 @@ import { brandText, createI18n, getUiLang } from '@genoffice/i18n'
 import { generateImageTool, documentMediaRoots, withMediaCallSignal } from '@genoffice/ai-search'
 import { sharedSubscriptionStatuses } from '@genoffice/ai-provider/subscription'
 import { PDF_CHANNELS, PDF_TOOLS_HANDOFF, type PdfToolsHandoffTool } from '../shared/ipc'
+import { CertificateEncryptionError, WrongPasswordError, decryptDocument } from './pdf-crypt'
 import { buildExportImagePaths, hasValidExportPageNumbers } from './export-images'
 import type {
   ExportImagesRequest,
@@ -994,6 +995,11 @@ export function pdfRecoveryIdentity(webContentsId: number): RecoveryIdentity | n
   return recovery.untitledIdentity(webContentsId)
 }
 
+/** Whether a save request opens or writes password protection (a protected session) */
+function carriesProtection(request: SavePdfRequest | null | undefined): boolean {
+  return request?.encryption !== undefined || request?.decryption !== undefined
+}
+
 /** The view's own document: a restored recovery copy until it is saved, else the file */
 async function viewDocumentBytes(wcId: number, path: string): Promise<Uint8Array> {
   return recovery.viewBytes(wcId, path) ?? new Uint8Array(await readFile(path))
@@ -1478,6 +1484,30 @@ function registerPdfIpc(): void {
       : buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
   })
 
+  // pdf.js has already accepted `password` for these bytes on the render side;
+  // a failure here therefore means the standard handler refused it
+  ipcMain.handle(PDF_CHANNELS.decryptPdf, async (_e, bytes: unknown, password: unknown) => {
+    if (!(bytes instanceof Uint8Array) || typeof password !== 'string') {
+      return { ok: false as const, reason: 'pdf: malformed decrypt request' }
+    }
+    try {
+      const opened = await decryptDocument(bytes, password)
+      return {
+        ok: true as const,
+        bytes: opened.bytes,
+        permissions: opened.permissions,
+        neededPassword: opened.neededPassword,
+        unlockedAs: opened.unlockedAs,
+      }
+    } catch (err) {
+      if (err instanceof WrongPasswordError) return { ok: false as const, reason: 'wrong-password' }
+      if (err instanceof CertificateEncryptionError) {
+        return { ok: false as const, reason: 'certificate-encryption' }
+      }
+      return { ok: false as const, reason: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
   ipcMain.handle(
     PDF_CHANNELS.createDocument,
     async (e, request: unknown): Promise<CreateDocumentResult> => {
@@ -1522,6 +1552,11 @@ function registerPdfIpc(): void {
     // bake or delete the document's own annotations.
     if (annotations !== 'keep' && target === path) {
       return { ok: false, error: 'pdf: annotation handling requires Save As' }
+    }
+    // Flattening and stripping run on the saved output, which a protected
+    // document has already encrypted again; the renderer keeps them for plain files.
+    if (annotations !== 'keep' && carriesProtection(request)) {
+      return { ok: false, error: 'pdf: annotation handling needs a document without a password' }
     }
     if (request.copyOnly === true) {
       if (target === path) return { ok: false, error: 'pdf: copyOnly requires Save As' }
@@ -1671,6 +1706,8 @@ function registerPdfIpc(): void {
     async (e, request: SavePdfRequest): Promise<Uint8Array | null> => {
       const path = request?.path
       if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) return null
+      // a password-protected document is not copied into a skill's templates
+      if (carriesProtection(request)) return null
       try {
         const restored = recovery.viewBytes(e.sender.id, path)
         return restored
@@ -2075,12 +2112,14 @@ function registerPdfIpc(): void {
   // Compare: the open document's own text through the same pdfium engine as the
   // picked side — pdf.js and pdfium break lines differently, and a diff across
   // engines reports added and removed lines on files that are identical.
-  ipcMain.handle(PDF_CHANNELS.compareReadOpen, async (e, path: unknown) => {
+  ipcMain.handle(PDF_CHANNELS.compareReadOpen, async (e, path: unknown, password: unknown) => {
     if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) {
       return { ok: false as const, reason: 'pdf: path not granted to this view' }
     }
     try {
-      const text = await readPdfText(new Uint8Array(await readFile(path)))
+      const text = await readPdfText(new Uint8Array(await readFile(path)), {
+        password: typeof password === 'string' ? password : undefined,
+      })
       return {
         ok: true as const,
         name: basename(path),
@@ -2614,6 +2653,9 @@ function registerPdfIpc(): void {
     async (e, request: SavePdfRequest): Promise<PdfRecoveryCopyResult> => {
       const path = request?.path
       if (!pdfPathGranted(e.sender.id, path) || request.targetPath !== undefined) return 'skipped'
+      // a document that is or is about to be password-protected gets no copy: the
+      // request carries its password, and the copy would be the protected file
+      if (carriesProtection(request)) return 'skipped'
       const restored = recovery.viewBytes(e.sender.id, path)
       return recovery.writeCopy(e.sender.id, path, async () => {
         // read once; a password or encrypted PDF gets no copy whatever the renderer reported

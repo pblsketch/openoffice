@@ -150,6 +150,7 @@ import {
   remapOutlineTree,
 } from './heading-outline'
 import { printPdf } from './print'
+import { mayChangeProtection } from './protection-gate'
 import { PasswordDialog } from './PasswordDialog'
 import { PropertiesDialog } from './PropertiesDialog'
 import { ConvertDialog } from './convert/ConvertDialog'
@@ -213,6 +214,7 @@ import {
   togglePreview,
   useAiHighlights,
 } from './highlight/useAiHighlights'
+import { ProtectionDialog } from './ProtectionDialog'
 import { BatesDialog } from './BatesDialog'
 import { buildBatesInserts, type BatesConfig } from './bates'
 import { MeasureScaleDialog } from './MeasureScaleDialog'
@@ -278,6 +280,8 @@ import { useRecoveryCopies } from './recovery/useRecoveryCopies'
 import type {
   AnnotDeleteInput,
   DrawingInput,
+  PdfEncryptionInput,
+  PdfPermissions,
   FormValueInput,
   ImageEditFailure,
   FormFieldInput,
@@ -395,6 +399,7 @@ import {
   IconSign,
   IconCertSign,
   IconSignatures,
+  IconProtect,
   IconBates,
   IconMeasure,
   IconPreviousField,
@@ -584,14 +589,15 @@ export default function App() {
   useEffect(() => saveDefaultFit(defaultFit), [defaultFit])
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState('1')
-  const [sidebar, setSidebar] = useState<'thumbs' | 'outline' | 'notes' | 'compare' | 'attachments' | null>(() =>
-    loadSidebarOpen() ? 'thumbs' : null,
-  )
+  const [sidebar, setSidebar] = useState<
+    'thumbs' | 'outline' | 'notes' | 'compare' | 'attachments' | null
+  >(() => (loadSidebarOpen() ? 'thumbs' : null))
   useEffect(() => saveSidebarOpen(sidebar !== null), [sidebar])
   const [compareResult, setCompareResult] = useState<CompareResult | null>(null)
   const [compareName, setCompareName] = useState<string | null>(null)
   const [compareBusy, setCompareBusy] = useState(false)
   const [compareSwapped, setCompareSwapped] = useState(false)
+  const compareSidesRef = useRef<{ mine: PageText[]; theirs: PageText[] } | null>(null)
   const [sidebarW, setSidebarW] = useState(loadSidebarW)
   /** raster width for thumbnails — only updated when a drag ends (re-rastering every frame would jank) */
   const [thumbRasterW, setThumbRasterW] = useState(() => loadSidebarW() - SIDEBAR_CHROME)
@@ -1116,12 +1122,32 @@ export default function App() {
   const [pendingSign, setPendingSign] = useState<SignatureData | null>(null)
   /** A /Sig widget selected from the form layer; confirmed signatures fit this rect directly. */
   const [signatureTarget, setSignatureTarget] = useState<FormWidget | null>(null)
-  const [exporting, setExporting] = useState(false)
+  const [exporting, setExporting] = useState<'png' | 'jpg' | null>(null)
   const [formCatalog, setFormCatalog] = useState<FormCatalog | null>(null)
   const [formHasXfa, setFormHasXfa] = useState(false)
   const [documentEncrypted, setDocumentEncrypted] = useState(false)
   /** opened from a crash-recovery copy and not saved since: unsaved with no pending edit */
   const [restoredUnsaved, setRestoredUnsaved] = useState(false)
+  /** false until a password-protected document has been opened for editing by the
+      session's own decryptor (pdf.js accepting the password is not the same claim) */
+  const [sessionUnlocked, setSessionUnlocked] = useState(false)
+  /** protection the next save writes; null while the document saves plain */
+  const [encryption, setEncryption] = useState<PdfEncryptionInput | null>(null)
+  /** password of the file on disk (null: it is plain) — a protection change makes it
+      differ from `encryption.userPassword` until the save lands */
+  const diskPasswordRef = useRef<string | null>(null)
+  /** the password the in-flight save is writing: it reaches diskPasswordRef
+      only once that save lands — the file on disk still carries the old one */
+  const pendingDiskPasswordRef = useRef<string | null | undefined>(undefined)
+  const [protectionDlg, setProtectionDlg] = useState(false)
+  /** the protection configuration differs from the file on disk (set, changed or
+      lifted since the last load); cleared by the post-save reload */
+  const [protectionDirty, setProtectionDirty] = useState(false)
+  /** what the file on disk allows this session: the /P limits bind a user
+      password (or the empty one of an owner-only file); the owner's ignore them */
+  const [diskLock, setDiskLock] = useState<{ unlockedAsOwner: boolean; modifying: boolean } | null>(
+    null,
+  )
   /** embedded files as pdf.js reports them (filename → byte length) */
   const [savedAttachments, setSavedAttachments] = useState<Map<string, number> | null>(null)
   const [pendingAttachmentAdds, setPendingAttachmentAdds] = useState<
@@ -1524,6 +1550,35 @@ export default function App() {
         const formFeatures = documentFormFeatures(documentInfo, bytes)
         setFormHasXfa(formFeatures.hasXfa)
         setDocumentEncrypted(formFeatures.encrypted)
+        if (formFeatures.encrypted) {
+          // pdf.js already accepted this password for rendering; the session's own
+          // handler must accept it too before the document counts as editable
+          const password = passwordRef.current ?? ''
+          const outcome = await window.pdfApi.decryptPdf(bytes, password)
+          if (outcome.ok) {
+            setEncryption({
+              userPassword: password,
+              ownerPassword: password,
+              permissions: outcome.permissions,
+            })
+            setSessionUnlocked(true)
+            setDiskLock({
+              unlockedAsOwner: outcome.unlockedAs === 'owner',
+              modifying: outcome.permissions.modifying,
+            })
+          } else {
+            setEncryption(null)
+            setSessionUnlocked(false)
+            setDiskLock(null)
+          }
+          diskPasswordRef.current = password
+        } else {
+          setEncryption(null)
+          setSessionUnlocked(false)
+          setDiskLock(null)
+          diskPasswordRef.current = null
+        }
+        setProtectionDirty(false)
         for (let i = 1; i <= loaded.numPages; i++) {
           const page = await loaded.getPage(i)
           // Unrotated size; display size is derived by geom from the total rotation
@@ -1873,6 +1928,20 @@ export default function App() {
         setStatus('ready')
       } catch (err) {
         if ((err as Error | null)?.name === 'PasswordException') {
+          // a certificate-encrypted document has no password to type: pdf.js
+          // reports it like a password failure, and the answer has to name the
+          // real reason instead of looping the prompt
+          try {
+            const raw = new Uint8Array(await window.pdfApi.readFile(path))
+            const probe = await window.pdfApi.decryptPdf(raw, '')
+            if (!probe.ok && probe.reason === 'certificate-encryption') {
+              showNotice(t('pwCertEncrypted'))
+              setStatus('error')
+              return
+            }
+          } catch {
+            /* classification is best-effort: the prompt still works without it */
+          }
           // like docs: a failed attempt clears the field alongside the error
           setPwWrong(passwordRef.current !== undefined)
           setPwInput('')
@@ -1897,8 +1966,19 @@ export default function App() {
     })()
   }, [openPath])
 
-  /** pdf-lib cannot write encrypted files, including owner-protected files that open without a password. */
-  const readOnly = status === 'ready' && (passwordRef.current !== undefined || documentEncrypted)
+  /** Editable once the session can both read and write the document: password-opened
+      files count after our own decryptor accepted them (the save pipeline re-reads the
+      protected bytes from disk, which pdf-lib alone cannot). A session holding only
+      the user password — or the empty one of an owner-only file — is additionally
+      bound by the /P the file carries: modifying denied means read-only. */
+  const readOnly =
+    status === 'ready' &&
+    documentEncrypted &&
+    (!sessionUnlocked || (diskLock !== null && !diskLock.unlockedAsOwner && !diskLock.modifying))
+  /** Only the owner password may change or lift protection: a user-password
+      session, even one allowed to modify the content, must not be able to strip
+      the owner's password. A plain document has no protection to lose. */
+  const protectionEditable = mayChangeProtection(readOnly, diskLock)
 
   // ── Reading assistant: passage cards, their dotted marks, save confirmations ──
   const saveConfirmations = useMemo(() => createSaveConfirmations(), [])
@@ -2489,6 +2569,7 @@ export default function App() {
     order !== null ||
     metadata !== null ||
     restoredUnsaved ||
+    protectionDirty ||
     (pendingOutline?.edited ?? false) ||
     pendingAttachmentAdds.length > 0 ||
     pendingAttachmentRemoves.length > 0
@@ -4969,8 +5050,10 @@ export default function App() {
     if (!doc || compareBusy) return
     // Both sides must come from the same extraction engine — pdf.js and pdfium
     // break lines differently, and a cross-engine diff reports phantom changes
-    // on identical files. The open document therefore needs a file on disk.
-    if (!filePath) {
+    // on identical files. The open document therefore needs its current state
+    // on disk: no file yet, or pending edits, both mean "save first". Redaction
+    // marks stay out — a save does not apply them, so they could never unblock.
+    if (!filePath || ordinaryDirty) {
       showNotice(t('compareNeedsSaved'))
       return
     }
@@ -4981,22 +5064,25 @@ export default function App() {
         if (!('canceled' in picked)) showNotice(picked.reason)
         return
       }
-      const mine = await window.pdfApi.compareReadOpen(filePath)
+      const mine = await window.pdfApi.compareReadOpen(filePath, passwordRef.current)
       if (!mine.ok) {
         showNotice(mine.reason)
         return
       }
       const mineSide: PageText[] = mine.pages.map((text, pageIndex) => ({ pageIndex, text }))
       const theirs: PageText[] = picked.pages.map((text, pageIndex) => ({ pageIndex, text }))
-      const [oldSide, newSide] = compareSwapped ? [theirs, mineSide] : [mineSide, theirs]
+      compareSidesRef.current = { mine: mineSide, theirs }
       setCompareName(picked.name)
-      setCompareResult(compareDocuments(oldSide, newSide))
+      setCompareResult(compareSides(mineSide, theirs, compareSwapped))
     } catch (err) {
       showNotice(err instanceof Error ? err.message : String(err))
     } finally {
       setCompareBusy(false)
     }
   }
+
+  const compareSides = (mine: PageText[], theirs: PageText[], swapped: boolean): CompareResult =>
+    swapped ? compareDocuments(theirs, mine) : compareDocuments(mine, theirs)
 
   const attachmentRows = (): AttachmentRow[] => {
     const rows: AttachmentRow[] = []
@@ -5061,17 +5147,19 @@ export default function App() {
   showNoticeRef.current = showNotice
 
   // A password or encrypted PDF gets no recovery copy (its content would sit unprotected in
-  // the app data folder): the main process answers the notice once per tab
+  // the app data folder), nor does one the next save will protect: the main process
+  // answers the notice once per tab
   useEffect(() => {
     if (status !== 'ready') return
-    const unprotectable = passwordRef.current !== undefined || documentEncrypted
+    const unprotectable =
+      passwordRef.current !== undefined || documentEncrypted || encryption !== null
     void window.pdfApi
       .reportUnprotectable?.(unprotectable)
       .then((notice) => {
         if (notice) showNoticeRef.current(notice)
       })
       .catch(() => {})
-  }, [status, documentEncrypted])
+  }, [status, documentEncrypted, encryption])
 
   // the note of each PDF (reading-assist 4.9): no path crosses, the main process knows both
   const noteActions = useNoteActions({
@@ -5182,6 +5270,12 @@ export default function App() {
     deletedPages: [...deleted],
     ...(order ? { pageOrder: visList } : {}),
     ...(metadata ? { metadata } : {}),
+    // false = keep the file's own /Encrypt entries, true = write the dialog's
+    protectionDirty,
+    ...(diskPasswordRef.current !== null
+      ? { decryption: { userPassword: diskPasswordRef.current } }
+      : {}),
+    ...(encryption ? { encryption } : {}),
     ...(pendingOutline?.edited && pendingOutline.tree ? { outline: pendingOutline.tree } : {}),
     ...(pendingAttachmentAdds.length > 0 || pendingAttachmentRemoves.length > 0
       ? { attachments: { add: pendingAttachmentAdds, remove: pendingAttachmentRemoves } }
@@ -5237,6 +5331,19 @@ export default function App() {
       noteFlush.noteEdits !== noteEdits ||
       ocrBakeInserts.length > 0
     if (!anythingToSave || !filePath) return Promise.resolve(!anythingToSave)
+    // Writing a protection with no owner password would hand ownership to
+    // anyone, so a protection change with both passwords empty is refused. An
+    // unchanged owner-only file is not affected: its own /Encrypt entries are
+    // carried over, so the save keeps the owner's password without knowing it.
+    if (
+      protectionDirty &&
+      encryption !== null &&
+      encryption.userPassword === '' &&
+      encryption.ownerPassword === ''
+    ) {
+      showNotice(t('pwOwnerNeeded'))
+      return Promise.resolve(false)
+    }
     // What this save writes — the post-save reload subtracts exactly this, keeping
     // any edits the user makes while the write is in flight
     const snapshot: SavedSnapshot = {
@@ -5290,6 +5397,12 @@ export default function App() {
       }
       if (result.skippedImageEdits && result.skippedImageEdits.length > 0) {
         noticeSkippedImages(result.skippedImageEdits)
+      }
+      // The write landed: a pending protection change is what the disk carries now
+      if (pendingDiskPasswordRef.current !== undefined) {
+        diskPasswordRef.current =
+          pendingDiskPasswordRef.current === '' ? null : pendingDiskPasswordRef.current
+        pendingDiskPasswordRef.current = undefined
       }
       // Reload: changes are in the file now, canvas renders directly, saved pending ops are cleared
       try {
@@ -5499,11 +5612,21 @@ export default function App() {
     // for ordinary Save As copies only.
     const annotationChoice = applyingRedactions || annotations === 'keep' ? {} : { annotations }
     setSaveState('saving')
+    // the redaction copy is a save like any other: on a protected document the
+    // main process has to decrypt the source and re-protect the cleaned output
+    const protection = {
+      ...(encryption !== null ? { encryption } : {}),
+      ...(diskPasswordRef.current !== null
+        ? { decryption: { userPassword: diskPasswordRef.current } }
+        : {}),
+      protectionDirty,
+    }
     const result = await window.pdfApi.save({
       path: filePath,
       targetPath,
       ...edits,
       ...annotationChoice,
+      ...protection,
     })
     if (!result.ok) {
       opFailed(result.error)
@@ -5522,6 +5645,12 @@ export default function App() {
       // The main process has committed this path and its read grant. Reload the
       // sanitized bytes, clearing undo/search state that could expose old content.
       const scrollTop = scrollRef.current?.scrollTop ?? 0
+      // a protection change rode this save: the file on disk now needs the new password
+      if (pendingDiskPasswordRef.current !== undefined) {
+        diskPasswordRef.current =
+          pendingDiskPasswordRef.current === '' ? null : pendingDiskPasswordRef.current
+        pendingDiskPasswordRef.current = undefined
+      }
       setFilePath(targetPath)
       setStatus('loading')
       try {
@@ -5638,7 +5767,13 @@ export default function App() {
   // Crash-recovery copies (spec 1): what a save would write, kept in the app data folder
   // (never the file), about every 30s once input pauses; a password or encrypted PDF has none
   const recoveryCopies = useRecoveryCopies({
-    wanted: () => ordinaryDirty && filePath !== '' && status === 'ready' && !readOnly,
+    wanted: () =>
+      ordinaryDirty &&
+      filePath !== '' &&
+      status === 'ready' &&
+      !readOnly &&
+      !documentEncrypted &&
+      encryption === null,
     busy: () =>
       saveInFlightRef.current !== null ||
       saveAsFlowRef.current ||
@@ -5998,7 +6133,14 @@ export default function App() {
     const inserts = buildBatesInserts(
       visList.map((origIdx) => {
         const geom = pageGeom(origIdx)
-        return { width: geom.pw, height: geom.ph, rotate: geom.rot, x0: geom.x0, y0: geom.y0 }
+        return {
+          width: geom.pw,
+          height: geom.ph,
+          rotate: geom.rot,
+          x0: geom.x0,
+          y0: geom.y0,
+          userUnit: geom.userUnit,
+        }
       }),
       config,
       (text, size) => measureTextWidth(text, fontOf(size)),
@@ -6879,7 +7021,7 @@ export default function App() {
   const exportImages = (allPages: boolean, format: 'png' | 'jpg' = 'png') =>
     flushThen(async () => {
       if (!doc || exporting) return
-      setExporting(true)
+      setExporting(format)
       try {
         const targets = allPages ? visList : [curOrigIdx].filter((i) => i >= 0)
         const images: string[] = []
@@ -6926,7 +7068,7 @@ export default function App() {
       } catch (err) {
         opFailed(err instanceof Error ? err.message : String(err))
       } finally {
-        setExporting(false)
+        setExporting(null)
       }
     })
 
@@ -8156,6 +8298,17 @@ export default function App() {
           .then((ok) => window.pdfApi.sendSaveAsResult(ok))
         return
       }
+      // Flattening or stripping annotations reworks the saved output, which a
+      // protected document has encrypted again: its copy keeps them as they are.
+      if (encryption !== null || diskPasswordRef.current !== null) {
+        void saveAsTo(targetPath, 'keep')
+          .catch((err: unknown) => {
+            opFailed(err instanceof Error ? err.message : String(err))
+            return false
+          })
+          .then((ok) => window.pdfApi.sendSaveAsResult(ok))
+        return
+      }
       setSaveCopyMode('keep')
       setSaveCopyDlg({ targetPath })
     })
@@ -8523,7 +8676,8 @@ export default function App() {
   /** Export images › only the pictures in the pages: a structure job on the saved file */
   const exportPagePictures = (): void => {
     if (exporting) return
-    setExporting(true)
+    // the pictures run from the same export menu as the PNG pages
+    setExporting('png')
     setImagesProgress(null)
     void exportEmbeddedImages({
       api: {
@@ -8540,7 +8694,7 @@ export default function App() {
       onProgress: (done, total) => setImagesProgress({ done, total }),
       notice: showNotice,
     }).finally(() => {
-      setExporting(false)
+      setExporting(null)
       setImagesProgress(null)
     })
   }
@@ -8772,6 +8926,40 @@ export default function App() {
     widget.signed || signedFormWidgetIds.has(widget.id)
   const firstSignatureWidget =
     formWidgets.find((widget) => widget.kind === 'signature' && !formWidgetSigned(widget)) ?? null
+
+  const applyProtection = (result: {
+    userPassword: string
+    ownerPassword: string
+    permissions: PdfPermissions
+  }): void => {
+    if (!mayChangeProtection(readOnly, diskLock)) {
+      showNotice(t('pwOwnerNeeded'))
+      setProtectionDlg(false)
+      return
+    }
+    setEncryption(result)
+    setProtectionDirty(true)
+    // the next save writes a file that only opens with the new password; the
+    // file ON DISK keeps the old one until that write lands, so the disk
+    // password follows the save instead of leading it
+    passwordRef.current = result.userPassword
+    pendingDiskPasswordRef.current = result.userPassword
+    setProtectionDlg(false)
+  }
+
+  const removeProtection = (): void => {
+    if (!mayChangeProtection(readOnly, diskLock)) {
+      showNotice(t('pwOwnerNeeded'))
+      setProtectionDlg(false)
+      return
+    }
+    setEncryption(null)
+    setProtectionDirty(true)
+    // the next save writes plain; until then the disk file still needs the old password
+    passwordRef.current = undefined
+    pendingDiskPasswordRef.current = ''
+    setProtectionDlg(false)
+  }
 
   const openCertSignDialog = () => {
     if (dirty || saveInFlightRef.current !== null) {
@@ -9264,9 +9452,9 @@ export default function App() {
                   <ExportImagesMenu
                     t={t}
                     icon={<IconExportImg />}
-                    busy={exporting}
+                    busy={exporting !== null}
                     label={
-                      exporting
+                      exporting === 'png'
                         ? imagesProgress && imagesProgress.total > 0
                           ? t('imgExportProgress', imagesProgress)
                           : t('exporting')
@@ -9279,13 +9467,13 @@ export default function App() {
                   <button
                     className="rb-big"
                     data-tip={t('exportImagesAllJpg')}
-                    disabled={exporting}
+                    disabled={exporting !== null}
                     onClick={() => void exportImages(true, 'jpg')}
                   >
                     <span className="rb-big-icon">
                       <IconExportImg />
                     </span>
-                    <span>{exporting ? t('exporting') : t('exportImagesJpg')}</span>
+                    <span>{exporting === 'jpg' ? t('exporting') : t('exportImagesJpg')}</span>
                   </button>
                   <button
                     className="rb-big"
@@ -9424,6 +9612,17 @@ export default function App() {
                       <IconCertSign />
                     </span>
                     <span>{t('certSign')}</span>
+                  </button>
+                  <button
+                    className="rb-big"
+                    disabled={!protectionEditable || status !== 'ready'}
+                    data-tip={t('protectHint')}
+                    onClick={() => setProtectionDlg(true)}
+                  >
+                    <span className="rb-big-icon">
+                      <IconProtect />
+                    </span>
+                    <span>{t('protect')}</span>
                   </button>
                   {digitalSignatures.length > 0 && (
                     <button
@@ -9933,7 +10132,7 @@ export default function App() {
                   </button>
                   <button
                     className="rb-big"
-                    disabled={readOnly || sizes.length === 0}
+                    disabled={readOnly || pageCount === 0}
                     data-tip={t('batesHint')}
                     onClick={() => setBatesDlg(true)}
                   >
@@ -10388,8 +10587,10 @@ export default function App() {
                   busy={compareBusy}
                   onPick={() => void runCompare()}
                   onSwap={() => {
-                    setCompareSwapped((v) => !v)
-                    setCompareResult(null)
+                    const swapped = !compareSwapped
+                    setCompareSwapped(swapped)
+                    const sides = compareSidesRef.current
+                    setCompareResult(sides ? compareSides(sides.mine, sides.theirs, swapped) : null)
                   }}
                   onGoToPage={(pageNo) => scrollToPage(pageNo)}
                 />
@@ -12628,10 +12829,27 @@ export default function App() {
                 onClose={() => setConvertDialog(null)}
               />
             )}
+            {protectionDlg && (
+              <ProtectionDialog
+                t={t}
+                hasPassword={encryption !== null || documentEncrypted}
+                permissions={
+                  encryption?.permissions ?? {
+                    printing: true,
+                    modifying: true,
+                    annotating: true,
+                    copying: true,
+                  }
+                }
+                onApply={applyProtection}
+                onRemove={removeProtection}
+                onClose={() => setProtectionDlg(false)}
+              />
+            )}
             {batesDlg && (
               <BatesDialog
                 t={t}
-                pageCount={sizes.length}
+                pageCount={pageCount}
                 onApply={applyBates}
                 onClose={() => setBatesDlg(false)}
               />
