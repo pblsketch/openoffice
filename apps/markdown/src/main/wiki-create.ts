@@ -10,14 +10,24 @@
  * document — the first place the resolver looks. The file that comes into
  * being is empty: it is a destination, not a document.
  */
-import { mkdir, stat } from 'node:fs/promises'
+import { mkdir, stat, writeFile } from 'node:fs/promises'
 import { dirname, extname, isAbsolute, join } from 'node:path'
 
-import { atomicWriteFile } from './atomic-write'
 import { splitTarget } from './wiki-resolve'
 
 /** characters no file name can carry; Windows names the set, the rest inherit it */
 const ILLEGAL_NAME_CHARS = /[/\\:*?"<>|]/g
+
+/**
+ * Windows device names. `CON`, `NUL.md` or `com1.txt` open the device instead
+ * of a file (the part before the first dot decides), so a segment spelling one
+ * is refused rather than written.
+ */
+const RESERVED_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i
+
+function isReservedSegment(segment: string): boolean {
+  return RESERVED_NAME.test(segment.split('.')[0]!.trim())
+}
 
 /**
  * One directory segment of a created note's path, safe to join on every
@@ -63,8 +73,8 @@ async function fileExists(path: string): Promise<boolean> {
 /**
  * Create (or find) the note `target` names; null when the target cannot name
  * a note at all — empty (`[[#Heading]]` addresses this document), climbing
- * out with `..`, or absolute. A file already at the path is returned as is,
- * never touched.
+ * out with `..`, absolute, or spelling a Windows device name. A file already
+ * at the path is returned as is, never touched.
  */
 export async function createWikiNote(
   target: string,
@@ -79,6 +89,7 @@ export async function createWikiNote(
     .split(/[\\/]/)
     .filter((segment) => segment !== '' && segment !== '.')
     .map(sanitizeSegment)
+  if (segments.some(isReservedSegment)) return null
   const base = segments[segments.length - 1]!
   // resolution's own candidate rule, mirrored exactly: an extension is the
   // file as written, a bare stem stands for `<stem>.md`
@@ -95,6 +106,15 @@ export async function createWikiNote(
   // already there: opening it is the whole job, a second write would clobber it
   if (await fileExists(path)) return { path, target: linkTarget, fragment, created: false }
   await mkdir(dirname(path), { recursive: true })
-  await atomicWriteFile(path, Buffer.alloc(0))
+  // exclusive create: a file that appeared since the check above is kept, not
+  // emptied. The note starts empty, so there is no partial write to guard.
+  try {
+    await writeFile(path, '', { flag: 'wx' })
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'EEXIST' && (await fileExists(path))) {
+      return { path, target: linkTarget, fragment, created: false }
+    }
+    throw err
+  }
   return { path, target: linkTarget, fragment, created: true }
 }

@@ -97,6 +97,10 @@ describe('createWikiNote', () => {
     ['a climb out of the vault', '../evil'],
     ['a climb hidden in a path', 'folder/../evil'],
     ['an absolute path', '/etc/evil'],
+    ['a Windows device name', 'CON'],
+    ['a device name with an extension', 'nul.md'],
+    ['a device name as a directory', 'com1/Note'],
+    ['a device name in another case and trailing space', 'Lpt9 '],
   ])('refuses %s', async (_name, target) => {
     const root = await scratch()
     expect(await createWikiNote(target, { root, fromDir: '' })).toBeNull()
