@@ -38,7 +38,7 @@ Markdown 에디터다. 일반 `.md` 파일 위에서 TipTap 블록 편집기를 
 - 메인 코드는 shell 번들에 들어간다(`../../../markdown/src/main/markdown-main`을 상대 경로로 import한다). `src/main`을 고친 뒤에는 shell을 다시 빌드한다.
 - 경로는 뷰별로 허가된 것만 다룬다. 새 창을 만들 때 `grantAndTrack`으로 열 파일을 등록한다.
 - 위키 링크의 바탕 폴더(vault)는 기본 저장 폴더(`configuredDefaultSaveDir`)다. `[[` 자동 완성(`wikiSuggest.ts`, 목록은 `wiki-notes.ts`, `#` 뒤 제목·블록 id는 `wiki-heads.ts`)과 `![[넣기]]`(`wikiEmbed.ts`)는 이 폴더를 읽기만 한다. `![[넣기]]`가 화면에 실제로 불러오는 것은 그림 하나다. `md-asset` 처리기는 열린 문서의 폴더 아래 그림과, vault 아래 그림(실제 경로로 풀어도 vault 안일 때만)을 내준다. 노트를 넣으면 카드만 보이고 그 노트의 글은 읽지 않는다.
-- 없는 노트를 가리키는 링크에서 노트를 만드는 일(`wiki-create.ts`, `markdown:create-wiki-note`)은 빈 파일 하나를 쓴다. 폴더가 붙은 이름은 vault 아래에, 맨 이름은 열린 문서 옆에 만든다. `..`, 절대 경로, Windows 장치 이름(`CON`, `NUL`, `COM1` 등)은 거절하고, 이미 있는 파일은 열기만 하고 덮어쓰지 않는다(배타적 만들기).
+- 없는 노트를 가리키는 링크에서 노트를 만드는 일(`wiki-create.ts`, `markdown:create-wiki-note`)은 빈 파일 하나를 쓴다. 폴더가 붙은 이름은 vault 아래에, 맨 이름은 열린 문서 옆에 만든다. `..`, 절대 경로, Windows 장치 이름(`CON`, `NUL`, `COM1` 등), 노트가 아닌 확장자(`.md`·`.markdown`·`.txt` 밖, 예: `[[tool.exe]]`)는 거절하고, 이미 있는 파일은 열기만 하고 덮어쓰지 않는다(배타적 만들기).
 - TipTap 패키지는 `electron.vite.config.ts`의 `dedupe`로 이 앱의 사본 하나에 고정한다. 문서 에디터가 다른 버전을 쓰고 npm이 일부를 저장소 루트로 올리기 때문에, 고정하지 않으면 번들에 코어가 둘 들어간다. TipTap 확장을 추가하면 이 목록에도 넣는다.
 - 패널은 다른 에디터와 같은 부품으로 조립한다(`AiConnectPrompt`, `AiFirstConnectionNotice`, `AiBlockedNotice`, `aiRunErrorText`). 막힌 실행의 원인은 전송이 기록한 마지막 실패가 그 메시지의 실패일 때만 쓴다.
 - `odt-export.ts`는 HTML 편집기의 같은 이름 파일과 내용이 같다. 한쪽을 고치면 다른 쪽도 고친다.

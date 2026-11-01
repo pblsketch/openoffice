@@ -4,7 +4,7 @@
  * overwrite what is already there, or reach outside the vault.
  */
 import { afterEach, describe, expect, it } from 'vitest'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -81,9 +81,17 @@ describe('createWikiNote', () => {
     expect((await createWikiNote('Note.md', { root, fromDir: '' }))?.path).toBe(
       join(root, 'Note.md'),
     )
-    expect((await createWikiNote('Figure 1.png', { root, fromDir: '' }))?.path).toBe(
-      join(root, 'Figure 1.png'),
+    expect((await createWikiNote('Notes.txt', { root, fromDir: '' }))?.path).toBe(
+      join(root, 'Notes.txt'),
     )
+  })
+
+  it('a target naming a file type that is not a note creates nothing', async () => {
+    const root = await scratch()
+    for (const target of ['Figure 1.png', 'tool.exe', 'folder/run.bat', 'Report.DOCX']) {
+      expect(await createWikiNote(target, { root, fromDir: '' })).toBeNull()
+    }
+    expect(await readdir(root)).toEqual([])
   })
 
   it('the fragment rides back untouched', async () => {

@@ -25,6 +25,13 @@ const ILLEGAL_NAME_CHARS = /[/\\:*?"<>|]/g
  */
 const RESERVED_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i
 
+/**
+ * The note types a created file may have: the ones resolution and the vault
+ * index read as notes. A link naming any other extension (`[[tool.exe]]`,
+ * `[[Figure 1.png]]`) creates nothing; an empty file of that type is no note.
+ */
+const NOTE_EXTS = new Set(['.md', '.markdown', '.txt'])
+
 function isReservedSegment(segment: string): boolean {
   return RESERVED_NAME.test(segment.split('.')[0]!.trim())
 }
@@ -73,7 +80,8 @@ async function fileExists(path: string): Promise<boolean> {
 /**
  * Create (or find) the note `target` names; null when the target cannot name
  * a note at all — empty (`[[#Heading]]` addresses this document), climbing
- * out with `..`, absolute, or spelling a Windows device name. A file already
+ * out with `..`, absolute, spelling a Windows device name, or naming a file
+ * type that is not a note. A file already
  * at the path is returned as is, never touched.
  */
 export async function createWikiNote(
@@ -93,7 +101,9 @@ export async function createWikiNote(
   const base = segments[segments.length - 1]!
   // resolution's own candidate rule, mirrored exactly: an extension is the
   // file as written, a bare stem stands for `<stem>.md`
-  const fileName = extname(base) ? base : `${base}.md`
+  const ext = extname(base).toLowerCase()
+  if (ext && !NOTE_EXTS.has(ext)) return null
+  const fileName = ext ? base : `${base}.md`
   const dir =
     segments.length > 1
       ? options.root
