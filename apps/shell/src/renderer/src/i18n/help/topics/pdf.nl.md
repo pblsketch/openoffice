@@ -8,7 +8,7 @@ De pdf-editor heeft vijf linttabs: **Start / Annoteren / Bewerken / Pagina's / B
 - Zoom: de verhoudingsknop rechtsonder; ctrl+scrollwiel verandert de zoom in stappen.
 - Draaien: per pagina of voor alle pagina's via het menu Pagina's; draaiingen worden bij opslaan teruggeschreven.
 - Zoeken: ctrl+F op volledige tekst met alle treffers gemarkeerd.
-- Versleutelde pdf's: een wachtwoordvraag (in een eigen klein venster) opent ze; het wachtwoord wordt alleen voor deze sessie gebruikt.
+- Versleutelde pdf's: een wachtwoordvraag (in een eigen klein venster) opent ze; het wachtwoord wordt alleen voor deze sessie gebruikt. Zo'n document kunt u bewerken en opslaan; bij opslaan blijft het wachtwoord behouden. **Annoteren → Beveiligen** stelt het wachtwoord en wat lezers mogen in, wijzigt of verwijdert ze.
 
 ## Tekst selecteren en markeren (Annoteren)
 
@@ -102,7 +102,7 @@ Zolang de annotatiebalk boven geselecteerde tekst staat, voert één toets metee
 | Enter | Het vak **Vraag AI** openen                    |
 
 - De toetsen werken hetzelfde met een Koreaanse of elke andere invoermethode. Ze worden genegeerd terwijl je in een veld typt of Ctrl of Alt ingedrukt houdt.
-- In een document dat tegen bewerken is vergrendeld (met wachtwoord), doen H, U, S en N niets en tonen ze de reden, net als de knoppen op de balk.
+- In een document dat tegen bewerken is vergrendeld (het eigenaarswachtwoord verbiedt wijzigingen), doen H, U, S en N niets en tonen ze de reden, net als de knoppen op de balk.
 
 ## Passagekaarten
 

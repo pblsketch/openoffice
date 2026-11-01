@@ -8,7 +8,7 @@ L’éditeur PDF a cinq onglets de ruban : **Accueil / Annoter / Édition / Page
 - Zoom : le contrôle de ratio en bas à droite ; ctrl+molette règle le zoom par crans.
 - Rotation : page par page ou pour toutes les pages depuis le menu Pages ; les rotations sont réécrites à l’enregistrement.
 - Recherche : ctrl+F en texte intégral, toutes les occurrences sont mises en évidence.
-- PDF chiffrés : une demande de mot de passe (dans sa propre petite fenêtre) permet de les ouvrir ; le mot de passe ne sert que pour cette session.
+- PDF chiffrés : une demande de mot de passe (dans sa propre petite fenêtre) permet de les ouvrir ; le mot de passe ne sert que pour cette session. Vous pouvez modifier et enregistrer un tel document ; l’enregistrement conserve son mot de passe. **Annoter → Protéger** définit, change ou retire le mot de passe et ce que les lecteurs peuvent faire.
 
 ## Sélection de texte et marquage (Annoter)
 
@@ -102,7 +102,7 @@ Tant que la barre d’annotation est affichée au-dessus d’un texte sélection
 | Entrée | Ouvrir la zone **Demander à l’IA**           |
 
 - Les touches fonctionnent de la même façon avec une méthode de saisie coréenne ou toute autre. Elles sont ignorées pendant la saisie dans un champ ou si Ctrl ou Alt est enfoncé.
-- Dans un document verrouillé contre la modification (protégé par mot de passe), H, U, S et N n’ont aucun effet et affichent la raison, comme les boutons de la barre.
+- Dans un document verrouillé contre la modification (son mot de passe propriétaire interdit les modifications), H, U, S et N n’ont aucun effet et affichent la raison, comme les boutons de la barre.
 
 ## Fiches de passage
 

@@ -8,7 +8,7 @@ Editor PDF punya lima tab di pita: **Beranda / Anotasi / Edit / Halaman / Tampil
 - Zoom: kendali rasio di kanan bawah; ctrl+roda mengubah tingkat zoom.
 - Rotasi: per halaman atau semua halaman dari menu Halaman; rotasi ditulis kembali saat menyimpan.
 - Cari: ctrl+F untuk mencari seluruh teks dengan semua hasil disorot.
-- PDF terenkripsi: akan muncul Kotak Dialog Kata Sandi (jendela kecil tersendiri) untuk membukanya; kata sandi hanya dipakai untuk sesi ini.
+- PDF terenkripsi: akan muncul Kotak Dialog Kata Sandi (jendela kecil tersendiri) untuk membukanya; kata sandi hanya dipakai untuk sesi ini. Dokumen seperti ini dapat disunting dan disimpan; saat disimpan, kata sandinya tetap ada. **Anotasi → Lindungi** menetapkan, mengubah, atau menghapus kata sandi dan hal yang boleh dilakukan pembaca.
 
 ## Memilih teks dan memberi markup (Anotasi)
 
@@ -102,7 +102,7 @@ Selama bilah anotasi tampil di atas teks yang dipilih, satu tombol saja langsung
 | Enter  | Buka kotak **Tanya AI**                  |
 
 - Tombol-tombol ini bekerja sama saja saat metode input Korea atau bahasa lain aktif. Tombol tidak dianggap pintasan selama Anda mengetik di kolom isian atau menahan Ctrl atau Alt.
-- Di dokumen yang dikunci dari penyuntingan (dilindungi kata sandi), H, U, S, dan N tidak melakukan apa pun dan menampilkan alasannya, sama seperti tombol di bilah.
+- Di dokumen yang dikunci dari penyuntingan (kata sandi pemiliknya melarang perubahan), H, U, S, dan N tidak melakukan apa pun dan menampilkan alasannya, sama seperti tombol di bilah.
 
 ## Kartu kutipan
 
