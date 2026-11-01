@@ -245,6 +245,11 @@
 - 이름과 폴더는 `ieumoffice`다. 저장소의 `skills/ieumoffice/SKILL.md`가 원본이고, 앱의 설정 → 연동에서 고른 에이전트에 설치한다. 터미널에서는 `npx skills add pblsketch/openoffice`.
 - 스킬 문서는 사용자의 에이전트 폴더로 복사되고, 문서의 `metadata.version`이 커졌을 때만 새것으로 바뀐다. 본문을 고치고 버전을 올리지 않으면 고친 내용이 아무에게도 닿지 않는다(검사 `npm run check:skill-version`).
 - 스킬과 도움말이 에이전트에게 알려 주는 명령은 모두 `ieumoffice`로 시작한다.
+- 설치 자리(결정 0095). 새로 설치하는 줄은 셋이다. Claude Code(`~/.claude/skills`, `CLAUDE_CONFIG_DIR`를 따름), 공용 폴더 `agents`(`~/.agents/skills`), Windsurf(`~/.codeium/windsurf/skills`). 공용 폴더는 Codex, Cursor, Gemini CLI, Copilot, OpenCode가 읽고, `~/.agents`나 그 다섯 도구의 폴더 중 하나가 있으면(`CODEX_HOME`, `XDG_CONFIG_HOME`를 따름) 보인다.
+- 다섯 도구의 자기 폴더(`~/.codex/skills` 등)에는 새로 쓰지 않는다. 이 앱이 예전에 거기 쓴 사본(설치 장부에 있고 아직 있는 것)은 예전 사본 줄로 남아, 업데이트·제거할 수 있고 공용 줄을 설치할 때 함께 새 버전이 된다(손으로 고친 것은 제외). 자동으로 지우지 않는다. 장부에 없는 사본은 목록에 없고 건드리지 않는다.
+- `ieumoffice skill list`는 Claude Code·`agents`·Windsurf 줄과 예전 사본 줄을 낸다. 줄의 필드(`agent`, `label`, `detected`, `skills_dir`, `status`, `installed_version`, `up_to_date`)는 그대로이고 `legacy`(예전 사본이면 `true`)가 더해졌다.
+- `ieumoffice skill install <agent|all>`의 이름은 `claude-code`, `agents`, `codex`, `cursor`, `gemini`, `copilot`, `opencode`, `windsurf`다. 다섯 도구의 이름은 그 도구가 이 PC에 있는지 보고(없으면 `--force`) 공용 폴더에 쓰며, 그 도구의 예전 사본이 있으면 함께 맞춘다. `all`은 있는 줄 모두와 예전 사본 모두다. 손으로 고친 예전 사본은 `--force`가 없으면 그대로 두고 경고 `legacy_copy_left`를 낸다. 결과 줄의 `action`은 `written`·`unchanged`다.
+- `ieumoffice skill remove <agent> [--dir <path>]`는 이 앱이 쓴 사본 하나를 지운다(설정 → 연동의 제거와 같다). 다섯 도구의 이름은 그 도구 자기 폴더의 예전 사본, `agents`는 공용 사본이다. 이 앱이 쓰지 않은 파일은 지우지 않고 경고 `not_installed_by_app`을 낸다. 결과 줄의 `action`은 `removed`·`unchanged`다.
 - 이 스킬은 앱 안의 사용자 스킬 목록에는 나오지 않는다(이름 `ieumoffice`는 어느 출처에서든 읽지 않는다, 결정 0048).
 
 ## 사용자 스킬 (결정 0048)

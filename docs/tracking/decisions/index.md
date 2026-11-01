@@ -95,3 +95,4 @@
 | [0092](0092-docx-pdf-fidelity-fixes.md)                       | 워드 → PDF 결함 넷을 이 저장소에서 고치고, 엔진의 원본과 다른 점을 목록으로 지킨다              | 2026-10-31 |
 | [0093](0093-mindmap-picture-drop-and-remove.md)               | 마인드맵 그림은 사람이 끌어 놓아 넣고, 사람이 고른 토픽에서만 지운다                            | 2026-10-31 |
 | [0094](0094-slides-engine-highlight-spacing-visibility.md)    | 슬라이드 엔진에 강조 색·문자 간격과 도형 숨기기·이름을 더하고, 도형 병합 라이브러리를 들인다    | 2026-10-31 |
+| [0095](0095-skills-shared-agents-folder.md)                   | 스킬은 공용 폴더 `~/.agents`에 설치하고, 도구 폴더에 남은 예전 사본은 지우지 않고 계속 맞춘다   | 2026-11-01 |
