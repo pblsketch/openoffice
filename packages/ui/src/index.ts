@@ -141,6 +141,24 @@ export {
   type SkillProposalsOptions,
 } from './use-skill-proposals'
 export { SKILL_CARD_STRINGS, skillCardText, type SkillCardStringKey } from './strings-skill-card'
+export { McpPermissionCard, McpPermissionPrompt } from './McpPermissionCard'
+export { McpServerButton } from './McpServerButton'
+export {
+  resolveMcpWindowState,
+  useMcpPermissionRequests,
+  useMcpWindow,
+  type McpWindowView,
+} from './use-mcp-window'
+export {
+  MCP_INPUT_PREVIEW_CHARS,
+  mcpInputPreview,
+  mcpInputText,
+  mcpServerAction,
+  mcpServerButtonVisible,
+  mcpServerStatusText,
+  type McpServerAction,
+} from './user-mcp-model'
+export { USER_MCP_STRINGS, userMcpText, type UserMcpStringKey } from './strings-user-mcp'
 export {
   TEMPLATE_EDITORS,
   chipRefForSkill,
