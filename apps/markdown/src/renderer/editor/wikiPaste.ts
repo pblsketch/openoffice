@@ -20,7 +20,7 @@ interface Conversion {
   to: number
 }
 
-/** the `[[...]]` literals in the text nodes of the textblocks across [from, to] */
+/** the `[[...]]` literals touching [from, to]; typed ones elsewhere in the block stay text */
 function conversions(doc: PmNode, from: number, to: number): Conversion[] {
   const out: Conversion[] = []
   doc.nodesBetween(from, to, (node, pos) => {
@@ -47,7 +47,9 @@ function conversions(doc: PmNode, from: number, to: number): Conversion[] {
           at = open + 2
           continue
         }
-        out.push({ from: base + open, to: base + open + match[0].length })
+        const matchFrom = base + open
+        const matchTo = matchFrom + match[0].length
+        if (matchTo > from && matchFrom < to) out.push({ from: matchFrom, to: matchTo })
         at = open + match[0].length
       }
     })

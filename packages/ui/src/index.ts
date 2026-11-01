@@ -562,3 +562,4 @@ export type {
   ProjectToolRecord,
 } from './use-project-panel'
 export type { ProjectChatStringKey } from './strings-project-chat'
+export { useScrollWindow } from './scroll-window'

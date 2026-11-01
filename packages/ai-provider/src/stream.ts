@@ -3,6 +3,7 @@ import { withOutputCapFallback } from './output-cap'
 import { streamAnthropic } from './protocols/anthropic'
 import { streamGemini } from './protocols/gemini'
 import { streamOpenAiCompatible } from './protocols/openai-compatible'
+import { streamOpenAiResponses } from './protocols/openai-responses'
 import { streamCodexAppServer } from './codex-app-server'
 import { streamClaudeCodeCli } from './claude-code-cli'
 import { streamChatGpt } from './chatgpt/responses'
@@ -13,6 +14,7 @@ import type { AiProviderConfig, AiProviderSelection } from './types'
 export { streamAnthropic } from './protocols/anthropic'
 export { streamGemini } from './protocols/gemini'
 export { streamOpenAiCompatible } from './protocols/openai-compatible'
+export { streamOpenAiResponses } from './protocols/openai-responses'
 export { AiCreditsError, sseLines } from './protocols/shared'
 export type { StreamCallbacks } from './protocols/shared'
 
@@ -69,6 +71,10 @@ export async function streamForProvider(
           useMaxCompletionTokens: endpoint.useMaxCompletionTokens,
           bodyExtras: endpoint.bodyExtras,
           ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
+        })
+      case 'openai-responses':
+        return streamOpenAiResponses(baseUrl, config, system, messages, tools, cap, cb, {
+          bodyExtras: endpoint.bodyExtras,
         })
     }
   })
