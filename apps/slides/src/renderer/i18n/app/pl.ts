@@ -267,4 +267,12 @@ export const pl = {
   appStatusSummaryZoomInserted: 'Wstawiono slajd powiększenia podsumowania z {count} kafelkami',
   appSectionSummary: 'Sekcja podsumowania',
   appSectionN: 'Sekcja {n}',
+  appStatusAnimPainterNone: 'Zaznaczony element nie ma animacji',
+  appStatusAnimPainterOnce:
+    'Kliknij element, do którego chcesz zastosować animacje; kliknij przycisk dwukrotnie, aby włączyć tryb ciągły',
+  appStatusAnimPainterContinuous: 'Tryb ciągły Malarza animacji; naciśnij Esc, aby wyjść',
+  appStatusAnimPainted: 'Zastosowano animacje',
+  appStatusMergeUnsupported:
+    'Nie można scalić tych kształtów (linie, obrazy, tabele, wykresy i niektóre kształty są pomijane)',
+  appStatusMergeEmpty: 'Po scaleniu nic nie zostało (kształty nie nakładają się)',
 } satisfies Record<keyof typeof zh, string>

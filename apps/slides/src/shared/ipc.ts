@@ -223,6 +223,10 @@ export interface SetElementFontOp {
   strike?: boolean
   /** Font color #RRGGBB */
   color?: string
+  /** Text highlight #RRGGBB; null removes it */
+  highlight?: string | null
+  /** Character spacing in points; null or 0 = normal */
+  letterSpacingPt?: number | null
   /** In-group editing: all sourceIds are direct children of that group */
   groupId?: string
 }
@@ -627,6 +631,8 @@ export interface ShapeKey {
   sourceId: string
   spid: number | null
   name: string
+  /** <p:cNvPr hidden="1">: the element is in the file but never drawn (Selection Pane eye) */
+  hidden?: boolean
 }
 
 /** Overwrite-set the whole page's animation list (add/remove/reorder/param changes all use this). */
@@ -1513,6 +1519,18 @@ export interface SlidesApi {
   duplicateSlides: (op: DuplicateSlidesOp) => Promise<(SlideUpdate & { index: number }) | null>
   /** Bring element to front/back or move one layer forward/backward */
   reorderElement: (op: ReorderElementOp) => Promise<RenderSlide | null>
+  /** Selection Pane eye: hide/show a top-level element (the slide is reparsed: all element ids change) */
+  setElementHidden: (op: {
+    slideIndex: number
+    sourceId: string
+    hidden: boolean
+  }) => Promise<RenderSlide | null>
+  /** Selection Pane rename (<p:cNvPr name>) */
+  setElementName: (op: {
+    slideIndex: number
+    sourceId: string
+    name: string
+  }) => Promise<RenderSlide | null>
   /** Table cell text edit */
   editTableCell: (op: EditTableCellOp) => Promise<RenderSlide | null>
   /** Row/column insert/delete (tables with merged cells refused, returns null); ids change after reparse, requiring a whole-page replace and reselect */

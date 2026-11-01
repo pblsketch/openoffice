@@ -329,6 +329,10 @@ const api: SlidesApi = {
   deleteSlides: (op: DeleteSlidesOp) => ipcRenderer.invoke('slides:delete-slides', op),
   duplicateSlides: (op: DuplicateSlidesOp) => ipcRenderer.invoke('slides:duplicate-slides', op),
   reorderElement: (op: ReorderElementOp) => ipcRenderer.invoke('slides:reorder-element', op),
+  setElementHidden: (op: { slideIndex: number; sourceId: string; hidden: boolean }) =>
+    ipcRenderer.invoke('slides:set-element-hidden', op),
+  setElementName: (op: { slideIndex: number; sourceId: string; name: string }) =>
+    ipcRenderer.invoke('slides:set-element-name', op),
   editTableCell: (op: EditTableCellOp) => ipcRenderer.invoke('slides:edit-table-cell', op),
   tableStructure: (op: TableStructureIpcOp) => ipcRenderer.invoke('slides:table-structure', op),
   tableMerge: (op: TableMergeIpcOp) => ipcRenderer.invoke('slides:table-merge', op),

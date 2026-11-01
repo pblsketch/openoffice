@@ -8,7 +8,11 @@ import type { ReorderDirection } from '../shared/ipc'
 import type { ActionCtx, UngroupedSet } from './action-context'
 import { FIT_WIDTH } from './app-constants'
 import { inkNodesOf, rasterizeStroke, type InkStroke } from './ink'
+import { extractBrushFormat } from './format-brush'
+import { batched } from './history-batch'
+import { mergeShapes, type MergeMode } from './merge-shapes'
 import { t } from './i18n/locale'
+import { rememberRepeat } from './repeat-action'
 
 const GROUPABLE = new Set(['text', 'shape', 'picture'])
 
@@ -103,15 +107,28 @@ export async function regroupSelected(ctx: ActionCtx): Promise<void> {
 }
 
 export type AlignOp =
-  'left' | 'center-h' | 'right' | 'top' | 'center-v' | 'bottom' | 'distribute-h' | 'distribute-v'
+  | 'left'
+  | 'center-h'
+  | 'right'
+  | 'top'
+  | 'center-v'
+  | 'bottom'
+  | 'distribute-h'
+  | 'distribute-v'
+  | 'same-w'
+  | 'same-h'
+  | 'same-size'
 
 /**
  * Align/distribute selected elements.
  * Coordinates are computed in the renderer (pure geometry) and updated in bulk via batchEditTransform.
  * - align: 6 alignments (relative to the bounding box; to the page for single selection)
  * - distribute: 'horizontal' | 'vertical' (≥3 elements)
+ * - same-w/same-h/same-size: match the first selected element's width/height (≥2 elements),
+ *   each element keeping its top-left corner
  */
 export async function alignSelected(ctx: ActionCtx, op: AlignOp): Promise<void> {
+  rememberRepeat((c) => alignSelected(c, op))
   const { slide, selectedIds, current } = ctx
   if (!slide || selectedIds.length === 0) return
   const nodes = selectedIds
@@ -138,6 +155,28 @@ export async function alignSelected(ctx: ActionCtx, op: AlignOp): Promise<void> 
   // Single selection aligns relative to the page
   const container =
     nodes.length === 1 ? { x: 0, y: 0, w: slide.widthPx, h: slide.heightPx } : bbox(rects)
+
+  if (op === 'same-w' || op === 'same-h' || op === 'same-size') {
+    if (nodes.length < 2) return
+    const ref = nodes[0]!.box
+    const updated = await window.slidesApi.batchEditTransform({
+      slideIndex: current,
+      fitWidthPx: FIT_WIDTH,
+      items: nodes.map((n) => ({
+        sourceId: n.sourceId,
+        xPx: n.box.x,
+        yPx: n.box.y,
+        wPx: op === 'same-h' ? n.box.w : ref.w,
+        hPx: op === 'same-w' ? n.box.h : ref.h,
+        rotationDeg: n.box.rotationDeg,
+      })),
+    })
+    if (updated) {
+      ctx.applySlide(current, updated)
+      ctx.setDirty(true)
+    }
+    return
+  }
 
   let newPositions: Array<{ x: number; y: number }>
 
@@ -212,6 +251,11 @@ export async function reorderSelected(
   sourceId: string,
   dir: ReorderDirection,
 ): Promise<void> {
+  rememberRepeat((c) =>
+    batched(async () => {
+      for (const id of c.selectedIds) await reorderSelected(c, id, dir)
+    }),
+  )
   const updated = await window.slidesApi.reorderElement({
     slideIndex: ctx.current,
     sourceId,
@@ -244,6 +288,7 @@ export async function commitInk(ctx: ActionCtx, stroke: InkStroke): Promise<void
  * them on the model.
  */
 export async function flipSelected(ctx: ActionCtx, axis: 'h' | 'v'): Promise<void> {
+  rememberRepeat((c) => flipSelected(c, axis))
   if (ctx.selectedIds.length === 0) return
   const groupId = ctx.groupIdOf(ctx.selectedIds[0]!)
   const updated = await window.slidesApi.flipElements({
@@ -267,6 +312,7 @@ export async function flipSelected(ctx: ActionCtx, axis: 'h' | 'v'): Promise<voi
  * Connectors are skipped — their geometry is endpoint-based (no Transformer either).
  */
 export async function rotateSelected(ctx: ActionCtx, deltaDeg: number): Promise<void> {
+  rememberRepeat((c) => rotateSelected(c, deltaDeg))
   const items: Array<{
     sourceId: string
     box: { x: number; y: number; w: number; h: number; rotationDeg: number }
@@ -353,4 +399,76 @@ export async function clearInk(ctx: ActionCtx): Promise<void> {
     inkNodesOf(ctx.slide).map((e) => e.node.sourceId),
   )
   ctx.setStatus(t('appStatusInkCleared'))
+}
+
+/**
+ * Merge Shapes: replace the selected shapes with the merged outline(s) as custom-geometry
+ * shapes in the first selected shape's fill, line and effects (PowerPoint keeps the first
+ * shape's format). One undo step; the result becomes the selection.
+ */
+export async function mergeSelected(ctx: ActionCtx, mode: MergeMode): Promise<void> {
+  const { slide, current } = ctx
+  if (!slide) return
+  const nodes = ctx.selectedIds
+    .map((id) => slide.nodes.find((n) => n.sourceId === id))
+    .filter((n): n is RenderNode => !!n)
+  if (nodes.length < 2 || nodes.length !== ctx.selectedIds.length) return
+  const merged = mergeShapes(nodes, mode)
+  if (!merged) {
+    ctx.setStatus(t('appStatusMergeUnsupported'))
+    return
+  }
+  if (!merged.length) {
+    ctx.setStatus(t('appStatusMergeEmpty'))
+    return
+  }
+  rememberRepeat((c) => mergeSelected(c, mode))
+  const fmt = extractBrushFormat(nodes[0]!, slide.scale)
+  const api = window.slidesApi
+  const created: string[] = []
+  let last: RenderSlide | null = null
+  const keep = (r: RenderSlide | null) => {
+    if (r) last = r
+  }
+  await batched(async () => {
+    for (const m of merged) {
+      const added = await api.addElement({
+        slideIndex: current,
+        kind: 'rect',
+        xPx: m.box.x,
+        yPx: m.box.y,
+        wPx: m.box.w,
+        hPx: m.box.h,
+        fitWidthPx: FIT_WIDTH,
+      })
+      if (!added) continue
+      const id = added.sourceId
+      created.push(id)
+      keep(added.slide)
+      keep(
+        await api.setShapeGeometry({
+          slideIndex: current,
+          sourceId: id,
+          pathPx: m.path,
+          fitWidthPx: FIT_WIDTH,
+        }),
+      )
+      if (fmt?.fill !== undefined)
+        keep(await api.editFill({ slideIndex: current, sourceId: id, fill: fmt.fill }))
+      if (fmt?.stroke !== undefined)
+        keep(await api.editStroke({ slideIndex: current, sourceId: id, stroke: fmt.stroke }))
+      if (fmt?.effects)
+        keep(await api.setEffects({ slideIndex: current, sourceId: id, effects: fmt.effects }))
+    }
+    if (created.length) {
+      keep(
+        await api.deleteElements({ slideIndex: current, sourceIds: nodes.map((n) => n.sourceId) }),
+      )
+    }
+  })
+  if (last) {
+    ctx.applySlide(current, last)
+    ctx.setSelectedIds(created)
+    ctx.setDirty(true)
+  }
 }

@@ -94,3 +94,4 @@
 | [0091](0091-read-large-documents-text-parts.md)               | 사진이 많아 큰 zip 문서는 글 파트만 읽고, 그 형식과 PDF에는 AI 읽기 크기 상한을 두지 않는다     | 2026-10-30 |
 | [0092](0092-docx-pdf-fidelity-fixes.md)                       | 워드 → PDF 결함 넷을 이 저장소에서 고치고, 엔진의 원본과 다른 점을 목록으로 지킨다              | 2026-10-31 |
 | [0093](0093-mindmap-picture-drop-and-remove.md)               | 마인드맵 그림은 사람이 끌어 놓아 넣고, 사람이 고른 토픽에서만 지운다                            | 2026-10-31 |
+| [0094](0094-slides-engine-highlight-spacing-visibility.md)    | 슬라이드 엔진에 강조 색·문자 간격과 도형 숨기기·이름을 더하고, 도형 병합 라이브러리를 들인다    | 2026-10-31 |

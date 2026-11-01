@@ -312,20 +312,24 @@ Zavírání panelu je jediné místo, kde se dvě platformy zcela rozdělí: ⌘
 
 ### Úpravy
 
-| Akce                                         | macOS  | Windows / Linux |
-| -------------------------------------------- | ------ | --------------- |
-| Nový snímek                                  | ⇧⌘N    | Ctrl+M          |
-| Najít (ne při úpravě textu v tvaru)          | ⌘F     | Ctrl+F          |
-| Opatrnit výběr pomocí AI (s vybranými tvary) | ⌘K     | Ctrl+K          |
-| Přiblížit                                    | ⌘=     | Ctrl+=          |
-| Oddálit                                      | ⌘-     | Ctrl+-          |
-| Skutečná velikost (100%)                     | ⌘0     | Ctrl+0          |
-| Vybrat vše                                   | ⌘A     | Ctrl+A          |
-| Přecházet výběrem tvarů vpřed / vzad         | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Akce                                                                   | macOS  | Windows / Linux |
+| ---------------------------------------------------------------------- | ------ | --------------- |
+| Nový snímek                                                            | ⇧⌘N    | Ctrl+M          |
+| Najít (ne při úpravě textu v tvaru)                                    | ⌘F     | Ctrl+F          |
+| Opatrnit výběr pomocí AI (s vybranými tvary)                           | ⌘K     | Ctrl+K          |
+| Přiblížit                                                              | ⌘=     | Ctrl+=          |
+| Oddálit                                                                | ⌘-     | Ctrl+-          |
+| Skutečná velikost (100%)                                               | ⌘0     | Ctrl+0          |
+| Vybrat vše                                                             | ⌘A     | Ctrl+A          |
+| Přecházet výběrem tvarů vpřed / vzad                                   | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Zopakovat poslední akci (formát, výplň, čára, zarovnání, duplikování…) | F4     | F4              |
+| Zobrazit/skrýt podokno výběru                                          | ⌥F10   | Alt+F10         |
 
 Nový snímek je druhé rozdělení platforem. Každá platforma má vlastní klávesu a druhá nic nedělá: ⇧⌘N na macOS, Ctrl+M na Windows a Linuxu. ⌘M to na macOS nemůže udělat, protože je to systémová klávesa Minimalizovat.
 
 Vybrat vše sleduje fokus: s fokusem na panel náhledů, panel osnovy nebo třídění snímků vybere všechny snímky, všude jinde všechny prvky aktuálního snímku. Tab prochází tvary na snímku, a to jen když má fokus samotné plátno snímku.
+
+F4 funguje i uvnitř textového pole: na vybraný text použije poslední formát.
 
 ### Formátování textu
 

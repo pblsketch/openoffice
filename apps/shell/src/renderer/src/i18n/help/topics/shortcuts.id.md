@@ -312,20 +312,24 @@ Menutup tab adalah satu-satunya tempat kedua platform benar-benar terpisah: ⌘W
 
 ### Penyuntingan
 
-| Tindakan                                           | macOS  | Windows / Linux |
-| -------------------------------------------------- | ------ | --------------- |
-| Slide baru                                         | ⇧⌘N    | Ctrl+M          |
-| Temukan (bukan saat menyunting teks dalam bentuk)  | ⌘F     | Ctrl+F          |
-| Anotasi seleksi dengan AI (dengan bentuk terpilih) | ⌘K     | Ctrl+K          |
-| Perbesar                                           | ⌘=     | Ctrl+=          |
-| Perkecil                                           | ⌘-     | Ctrl+-          |
-| Ukuran asli (100%)                                 | ⌘0     | Ctrl+0          |
-| Pilih semua                                        | ⌘A     | Ctrl+A          |
-| Berganti seleksi bentuk maju / mundur              | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Tindakan                                                             | macOS  | Windows / Linux |
+| -------------------------------------------------------------------- | ------ | --------------- |
+| Slide baru                                                           | ⇧⌘N    | Ctrl+M          |
+| Temukan (bukan saat menyunting teks dalam bentuk)                    | ⌘F     | Ctrl+F          |
+| Anotasi seleksi dengan AI (dengan bentuk terpilih)                   | ⌘K     | Ctrl+K          |
+| Perbesar                                                             | ⌘=     | Ctrl+=          |
+| Perkecil                                                             | ⌘-     | Ctrl+-          |
+| Ukuran asli (100%)                                                   | ⌘0     | Ctrl+0          |
+| Pilih semua                                                          | ⌘A     | Ctrl+A          |
+| Berganti seleksi bentuk maju / mundur                                | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Ulangi tindakan terakhir (format, isian, garis, perataan, duplikat…) | F4     | F4              |
+| Tampilkan/sembunyikan Panel Pilihan                                  | ⌥F10   | Alt+F10         |
 
 Slide baru adalah pembagian platform yang lain. Tiap platform punya tombolnya sendiri dan tombol platform lain tidak melakukan apa pun: ⇧⌘N di macOS, Ctrl+M di Windows dan Linux. `⌘M` tidak bisa mengerjakan itu di macOS karena itulah tombol Perkecil milik sistem.
 
 Pilih semua mengikuti fokus: dengan rel thumbnail, kerangka garis besar, atau penyusun slide yang fokus, ia memilih setiap slide, dan di tempat lain ia memilih setiap elemen pada slide sekarang. Tab berganti antarbentuk di slide itu, dan hanya ketika kanvas slide itu sendiri yang fokus.
+
+F4 juga berfungsi di dalam kotak teks, menerapkan format terakhir ke teks yang dipilih.
 
 ### Format teks
 

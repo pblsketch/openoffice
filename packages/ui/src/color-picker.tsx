@@ -111,6 +111,9 @@ export interface ColorPickerStrings {
   recentColors?: string | undefined
   /** Omit to hide the "More Colors…" native-picker row. */
   moreColors?: string | undefined
+  /** Label of the "pick a color from the screen" row; omit to hide it (also hidden where
+      the browser has no EyeDropper API). */
+  eyedropper?: string | undefined
   /** Label of the full-width top button ("Automatic" / "No Fill"…); omit to hide it. */
   auto?: string | undefined
   /** Tooltip for a theme shade cell (1-based row/column); defaults to the hex value. */
@@ -135,6 +138,43 @@ export interface ColorPickerProps {
 }
 
 const normalizeHex = (hex: string): string => `#${hex.replace(/^#/, '').toUpperCase()}`
+
+interface EyeDropperLike {
+  open: () => Promise<{ sRGBHex: string }>
+}
+type EyeDropperCtor = new () => EyeDropperLike
+
+const eyeDropperCtor = (): EyeDropperCtor | undefined =>
+  typeof window === 'undefined'
+    ? undefined
+    : (window as unknown as { EyeDropper?: EyeDropperCtor }).EyeDropper
+
+/** Whether a color can be picked from the screen here (Chromium EyeDropper API) */
+export function canPickScreenColor(): boolean {
+  return !!eyeDropperCtor()
+}
+
+/** #RRGGBB of a pixel picked anywhere on screen; null when cancelled (Esc) or unavailable */
+export async function pickScreenColor(): Promise<string | null> {
+  const Ctor = eyeDropperCtor()
+  if (!Ctor) return null
+  try {
+    const r = await new Ctor().open()
+    return eyedropperHex(r.sRGBHex)
+  } catch {
+    return null
+  }
+}
+
+/** EyeDropper result ("#rrggbb", or "rgb(a)(…)" when the picked pixel is translucent) → #RRGGBB */
+export function eyedropperHex(value: string): string | null {
+  const hex = /^#([0-9a-f]{6})/i.exec(value)
+  if (hex) return normalizeHex(hex[1]!)
+  const rgb = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(value)
+  if (!rgb) return null
+  const h = (n: string) => Math.min(255, parseInt(n, 10)).toString(16).padStart(2, '0')
+  return normalizeHex(`${h(rgb[1]!)}${h(rgb[2]!)}${h(rgb[3]!)}`)
+}
 
 /** The shared Word-style color picker panel: Automatic/None, theme colors with
     tint/shade grid, standard colors and a "More Colors…" native picker entry.
@@ -300,6 +340,36 @@ export function ColorPicker({
             {gridRow(rows.length - 1)}
           </div>
         </>
+      )}
+      {strings.eyedropper && canPickScreenColor() && (
+        <button
+          type="button"
+          className="gcp-eyedropper"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            void pickScreenColor().then((hex) => {
+              if (hex) onPick(hex)
+            })
+          }}
+        >
+          <span className="gcp-more-icon">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M10.2 3.3a1.6 1.6 0 0 1 2.3 0l.2.2a1.6 1.6 0 0 1 0 2.3l-1.4 1.4-2.5-2.5Z" />
+              <path d="M8.8 4.7 11.3 7.2M10 6 4.6 11.4 3.5 13.5l-1 .1.1-1 2.1-1.1L10.1 6" />
+            </svg>
+          </span>
+          {strings.eyedropper}
+        </button>
       )}
       {strings.moreColors && (
         <label className="gcp-more">

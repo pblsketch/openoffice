@@ -312,20 +312,24 @@ Einen Tab zu schließen ist die eine Stelle, an der sich die beiden Plattformen 
 
 ### Bearbeiten
 
-| Aktion                                                | macOS  | Windows / Linux |
-| ----------------------------------------------------- | ------ | --------------- |
-| Neue Folie                                            | ⇧⌘N    | Ctrl+M          |
-| Suchen (nicht beim Bearbeiten von Text in einer Form) | ⌘F     | Ctrl+F          |
-| Auswahl mit KI kommentieren (mit ausgewählten Formen) | ⌘K     | Ctrl+K          |
-| Vergrößern                                            | ⌘=     | Ctrl+=          |
-| Verkleinern                                           | ⌘-     | Ctrl+-          |
-| Originalgröße (100 %)                                 | ⌘0     | Ctrl+0          |
-| Alles auswählen                                       | ⌘A     | Ctrl+A          |
-| Formenauswahl vorwärts / rückwärts durchlaufen        | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Aktion                                                                              | macOS  | Windows / Linux |
+| ----------------------------------------------------------------------------------- | ------ | --------------- |
+| Neue Folie                                                                          | ⇧⌘N    | Ctrl+M          |
+| Suchen (nicht beim Bearbeiten von Text in einer Form)                               | ⌘F     | Ctrl+F          |
+| Auswahl mit KI kommentieren (mit ausgewählten Formen)                               | ⌘K     | Ctrl+K          |
+| Vergrößern                                                                          | ⌘=     | Ctrl+=          |
+| Verkleinern                                                                         | ⌘-     | Ctrl+-          |
+| Originalgröße (100 %)                                                               | ⌘0     | Ctrl+0          |
+| Alles auswählen                                                                     | ⌘A     | Ctrl+A          |
+| Formenauswahl vorwärts / rückwärts durchlaufen                                      | ⇥ / ⇧⇥ | Tab / Shift+Tab |
+| Letzte Aktion wiederholen (Formatierung, Füllung, Linie, Ausrichtung, Duplizieren…) | F4     | F4              |
+| Auswahlbereich ein-/ausblenden                                                      | ⌥F10   | Alt+F10         |
 
 Neue Folie ist die andere Plattformtrennung. Jede Plattform hat ihre eigene Taste, und die andere tut nichts: `⇧⌘N` auf macOS, Ctrl+M unter Windows und Linux. `⌘M` kann auf macOS nicht die Aufgabe erfüllen, weil das die systemweite Taste zum Minimieren ist.
 
 Alles auswählen richtet sich nach dem Fokus: Ist das Miniaturenbereichsfenster, der Gliederungsbereich oder die Foliensortierung fokussiert, wählt der Befehl alle Folien aus, und überall sonst wählt er jedes Element der aktuellen Folie aus. Tab durchläuft die Formen auf der Folie, und nur wenn die Folienfläche selbst den Fokus hat.
+
+F4 funktioniert auch im Textfeld und wendet die letzte Formatierung auf den ausgewählten Text an.
 
 ### Textformatierung
 

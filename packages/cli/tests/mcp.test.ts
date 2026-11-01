@@ -282,8 +282,9 @@ describe('mcp server', () => {
     // 90 KiB before the four PDF document tools (pdf_images, pdf_ai_read, pdf_translate, pdf_status)
     // and hwp_read (about 1 KiB) joined the catalog; 97 KiB before epub_translate and epub_status
     // (about 2 KiB); 99 KiB before hwp_apply with its typed ops and create_hwp (about 12 KiB,
-    // decision 0079)
-    expect(bytes).toBeLessThanOrEqual(112 * 1024)
+    // decision 0079); 112 KiB before the slide highlight, character spacing, hide and rename ops
+    // (about 0.5 KiB, decision 0094)
+    expect(bytes).toBeLessThanOrEqual(113 * 1024)
     expect(bytes).toBeGreaterThan(60 * 1024)
   })
 

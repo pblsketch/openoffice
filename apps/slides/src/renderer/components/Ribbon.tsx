@@ -20,6 +20,8 @@ import {
   THEME_COLORS,
   THEME_COLOR_SHADES,
   STANDARD_COLORS,
+  canPickScreenColor,
+  pickScreenColor,
 } from '@genoffice/ui'
 import { getRecentColors, pushRecentColor } from '../recent-colors'
 import { ICON_COLORS } from '../insert-presets'
@@ -55,6 +57,8 @@ import {
   IconSave,
   IconSetupShow,
   IconSparkle,
+  IconAnimPainter,
+  IconMergeShapes,
   IconUndo,
   IconFitWindow,
   IconZoom100,
@@ -964,6 +968,19 @@ function ShapeFillMenu({
             }}
           />
         </label>
+        {canPickScreenColor() && (
+          <button
+            type="button"
+            className="rbf-row"
+            onClick={() => {
+              void pickScreenColor().then((hex) => {
+                if (hex) pickHex(hex)
+              })
+            }}
+          >
+            {t('ribbonEyedropper')}
+          </button>
+        )}
         {onPickImage && (
           <button
             type="button"
@@ -1185,6 +1202,9 @@ export function Ribbon({
   onAnimTiming,
   animPaneOpen,
   onToggleAnimPane,
+  animPainterMode,
+  onAnimPainterClick,
+  onAnimPainterDoubleClick,
   animCount,
   onAnimPreview,
   onSlideShow,
@@ -1261,6 +1281,14 @@ export function Ribbon({
   onArrange,
   onFlip,
   canDistribute,
+  canMatchSize,
+  onMergeShapes,
+  canMergeShapes,
+  onChangeCase,
+  onHighlight,
+  onLetterSpacing,
+  selectionPaneOpen,
+  onToggleSelectionPane,
 }: Props) {
   const { t } = useI18n()
   const contextTab = contextTabForElement(contextElementType ?? null)
@@ -1322,6 +1350,10 @@ export function Ribbon({
   const [collapseOpen, setCollapseOpen] = useState<string | null>(null)
   const [translateOpen, setTranslateOpen] = useState(false)
   const [arrangeOpen, setArrangeOpen] = useState(false)
+  const [caseOpen, setCaseOpen] = useState(false)
+  const [highlightOpen, setHighlightOpen] = useState(false)
+  const [spacingOpen, setSpacingOpen] = useState(false)
+  const [mergeOpen, setMergeOpen] = useState(false)
   const [slideShowOpen, setSlideShowOpen] = useState(false)
   const [slideShowFromStart, setSlideShowFromStart] = useState(false)
   // Insert tab dropdown galleries (at most one open at a time)
@@ -1364,6 +1396,10 @@ export function Ribbon({
     if (!keep.includes('layout')) setLayoutOpen(false)
     if (!keep.includes('translate')) setTranslateOpen(false)
     if (!keep.includes('arrange')) setArrangeOpen(false)
+    if (!keep.includes('case')) setCaseOpen(false)
+    if (!keep.includes('highlight')) setHighlightOpen(false)
+    if (!keep.includes('spacing')) setSpacingOpen(false)
+    if (!keep.includes('merge')) setMergeOpen(false)
     if (!keep.includes('insert')) setInsertDrop(null)
     if (!keep.includes('chart')) setChartDrop(null)
     if (!keep.includes('collapse')) setCollapseOpen(null)
@@ -1384,6 +1420,10 @@ export function Ribbon({
     layoutOpen ||
     chartDrop != null ||
     arrangeOpen ||
+    caseOpen ||
+    highlightOpen ||
+    spacingOpen ||
+    mergeOpen ||
     slideShowOpen ||
     paraOpen ||
     pictureBorderOpen ||
@@ -1629,6 +1669,12 @@ export function Ribbon({
     aiOpen,
     brushMode,
     canDistribute,
+    canMatchSize,
+    onChangeCase,
+    onHighlight,
+    onLetterSpacing,
+    selectionPaneOpen,
+    onToggleSelectionPane,
     canPaste,
     closePanels,
     curBulletChar,
@@ -1695,6 +1741,9 @@ export function Ribbon({
     slideCount,
     zoom,
     arrangeOpen,
+    caseOpen,
+    highlightOpen,
+    spacingOpen,
     collapseOpen,
     collapsedGroups,
     colorOpen,
@@ -1715,6 +1764,9 @@ export function Ribbon({
     onCustomTextColor,
     paraOpen,
     setArrangeOpen,
+    setCaseOpen,
+    setHighlightOpen,
+    setSpacingOpen,
     setCollapseOpen,
     setColorOpen,
     setFontOpen,
@@ -2405,6 +2457,29 @@ export function Ribbon({
                 </span>
                 <span>{t('ribbonAnimPane')}</span>
               </button>
+              {onAnimPainterClick && (
+                <button
+                  className={`rb-big ${animPainterMode ? 'active' : ''}`}
+                  disabled={!hasDoc || !hasSelection}
+                  data-tip={
+                    animPainterMode === 'continuous'
+                      ? t('ribbonAnimPainterTipContinuous')
+                      : animPainterMode === 'once'
+                        ? t('ribbonAnimPainterTipOnce')
+                        : t('ribbonAnimPainterTip')
+                  }
+                  onClick={onAnimPainterClick}
+                  onDoubleClick={(e) => {
+                    e.preventDefault()
+                    onAnimPainterDoubleClick?.()
+                  }}
+                >
+                  <span className="rb-big-icon">
+                    <IconAnimPainter size={BIG} />
+                  </span>
+                  <span>{t('ribbonAnimPainter')}</span>
+                </button>
+              )}
               <button
                 className={`rb-big ${animByParagraph ? 'active' : ''}`}
                 disabled={!hasDoc}
@@ -3354,6 +3429,51 @@ export function Ribbon({
                   </div>
                 )}
               </div>
+              {onMergeShapes && (
+                <div className="rb-drop-wrap">
+                  <button
+                    className={`rb-big ${mergeOpen ? 'active' : ''}`}
+                    disabled={!canMergeShapes}
+                    data-tip={
+                      canMergeShapes ? t('ribbonMergeShapesTip') : t('ribbonMergeShapesHint')
+                    }
+                    onMouseDown={(e) => {
+                      e.stopPropagation()
+                      closeSiblingPanels(e, closePanels, 'merge')
+                    }}
+                    onClick={() => setMergeOpen((v) => !v)}
+                  >
+                    <span className="rb-big-icon">
+                      <IconMergeShapes size={BIG} />
+                      <RbCaret />
+                    </span>
+                    <span>{t('ribbonMergeShapes')}</span>
+                  </button>
+                  {mergeOpen && (
+                    <div className="rb-drop rb-menu" onMouseDown={(e) => e.stopPropagation()}>
+                      {(
+                        [
+                          ['union', t('ribbonMergeUnion')],
+                          ['combine', t('ribbonMergeCombine')],
+                          ['fragment', t('ribbonMergeFragment')],
+                          ['intersect', t('ribbonMergeIntersect')],
+                          ['subtract', t('ribbonMergeSubtract')],
+                        ] as const
+                      ).map(([mode, label]) => (
+                        <button
+                          key={mode}
+                          onClick={() => {
+                            setMergeOpen(false)
+                            onMergeShapes(mode)
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </Group>
             <div className="ribbon-sep" />
             <Group label={t('ribbonGroupShapeStyle')}>
