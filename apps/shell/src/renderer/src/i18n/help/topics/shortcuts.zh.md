@@ -694,18 +694,25 @@ GenOffice HTML 在实时预览旁边显示代码编辑器。作用于页面元�
 
 ### 表格
 
-| 操作       | macOS        | Windows / Linux        |
-| ---------- | ------------ | ---------------------- |
-| 添加行/列  | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| 删除行/列  | ⌥⌫           | Alt+Delete             |
-| 拆分单元格 | F5 → S       | F5 → S                 |
-| 合并单元格 | F5 → M       | F5 → M                 |
-| 块求和     | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| 块平均值   | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| 块乘积     | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| 拆分表格   | ⌃N, A        | Ctrl+N, A              |
-| 连接表格   | ⌃N, Z        | Ctrl+N, Z              |
-| 计算式     | ⌃N, F        | Ctrl+N, F              |
+| 操作                    | macOS        | Windows / Linux        |
+| ----------------------- | ------------ | ---------------------- |
+| 添加行/列               | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| 删除行/列               | ⌥⌫           | Alt+Delete             |
+| 拆分单元格              | F5 → S       | F5 → S                 |
+| 合并单元格              | F5 → M       | F5 → M                 |
+| 表格/单元格属性         | F5 → P       | F5 → P                 |
+| 每个单元格的边框 / 底纹 | F5 → L / C   | F5 → L / C             |
+| 多个单元格的边框 / 底纹 | F5 → B / F   | F5 → B / F             |
+| 单元格高度 / 宽度相同   | F5 → H / W   | F5 → H / W             |
+| 表格自动填充            | F5 → A       | F5 → A                 |
+| 从单元格块回到编辑      | F5 → ⏎       | F5 → Enter             |
+| 快速悬挂缩进(表格内)    | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| 块求和                  | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| 块平均值                | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| 块乘积                  | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| 拆分表格                | ⌃N, A        | Ctrl+N, A              |
+| 连接表格                | ⌃N, Z        | Ctrl+N, Z              |
+| 计算式                  | ⌃N, F        | Ctrl+N, F              |
 
 ### 表格计算
 

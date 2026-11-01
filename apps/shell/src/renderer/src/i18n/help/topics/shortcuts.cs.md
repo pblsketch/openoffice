@@ -694,18 +694,25 @@ Tyto klávesy fungují, když je karta HWP/HWPX vpředu a dokument má fokus. Dv
 
 ### Tabulka
 
-| Akce                    | macOS        | Windows / Linux        |
-| ----------------------- | ------------ | ---------------------- |
-| Přidat řádek/sloupec    | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| Odstranit řádek/sloupec | ⌥⌫           | Alt+Delete             |
-| Rozdělit buňku          | F5 → S       | F5 → S                 |
-| Sloučit buňky           | F5 → M       | F5 → M                 |
-| Součet bloku            | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| Průměr bloku            | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| Součin bloku            | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| Rozdělit tabulku        | ⌃N, A        | Ctrl+N, A              |
-| Spojit tabulky          | ⌃N, Z        | Ctrl+N, Z              |
-| Výpočtový vzorec        | ⌃N, F        | Ctrl+N, F              |
+| Akce                                     | macOS        | Windows / Linux        |
+| ---------------------------------------- | ------------ | ---------------------- |
+| Přidat řádek/sloupec                     | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Odstranit řádek/sloupec                  | ⌥⌫           | Alt+Delete             |
+| Rozdělit buňku                           | F5 → S       | F5 → S                 |
+| Sloučit buňky                            | F5 → M       | F5 → M                 |
+| Vlastnosti tabulky/buňky                 | F5 → P       | F5 → P                 |
+| Ohraničení / stínování, každá buňka      | F5 → L / C   | F5 → L / C             |
+| Ohraničení / stínování, buňky jako jedna | F5 → B / F   | F5 → B / F             |
+| Stejná výška řádku / šířka sloupce       | F5 → H / W   | F5 → H / W             |
+| Automatické vyplnění tabulky             | F5 → A       | F5 → A                 |
+| Zpět k úpravě buňky                      | F5 → ⏎       | F5 → Enter             |
+| Rychlé předsazení (v buňce)              | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| Součet bloku                             | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Průměr bloku                             | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Součin bloku                             | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Rozdělit tabulku                         | ⌃N, A        | Ctrl+N, A              |
+| Spojit tabulky                           | ⌃N, Z        | Ctrl+N, Z              |
+| Výpočtový vzorec                         | ⌃N, F        | Ctrl+N, F              |
 
 ### Výpočty v tabulce
 

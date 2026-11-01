@@ -694,18 +694,25 @@ Ces touches s’appliquent lorsque l’onglet HWP/HWPX est au premier plan et qu
 
 ### Tableau
 
-| Action                      | macOS        | Windows / Linux        |
-| --------------------------- | ------------ | ---------------------- |
-| Ajouter une ligne/colonne   | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| Supprimer une ligne/colonne | ⌥⌫           | Alt+Delete             |
-| Fractionner la cellule      | F5 → S       | F5 → S                 |
-| Fusionner les cellules      | F5 → M       | F5 → M                 |
-| Somme du bloc               | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| Moyenne du bloc             | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| Produit du bloc             | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| Fractionner le tableau      | ⌃N, A        | Ctrl+N, A              |
-| Joindre les tableaux        | ⌃N, Z        | Ctrl+N, Z              |
-| Formule de calcul           | ⌃N, F        | Ctrl+N, F              |
+| Action                                     | macOS        | Windows / Linux        |
+| ------------------------------------------ | ------------ | ---------------------- |
+| Ajouter une ligne/colonne                  | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Supprimer une ligne/colonne                | ⌥⌫           | Alt+Delete             |
+| Fractionner la cellule                     | F5 → S       | F5 → S                 |
+| Fusionner les cellules                     | F5 → M       | F5 → M                 |
+| Propriétés du tableau/de la cellule        | F5 → P       | F5 → P                 |
+| Bordures / trame, chaque cellule           | F5 → L / C   | F5 → L / C             |
+| Bordures / trame, cellules comme une seule | F5 → B / F   | F5 → B / F             |
+| Même hauteur de ligne / largeur de colonne | F5 → H / W   | F5 → H / W             |
+| Remplissage automatique du tableau         | F5 → A       | F5 → A                 |
+| Revenir à la modification de la cellule    | F5 → ⏎       | F5 → Enter             |
+| Retrait négatif rapide (dans une cellule)  | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| Somme du bloc                              | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Moyenne du bloc                            | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Produit du bloc                            | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Fractionner le tableau                     | ⌃N, A        | Ctrl+N, A              |
+| Joindre les tableaux                       | ⌃N, Z        | Ctrl+N, Z              |
+| Formule de calcul                          | ⌃N, F        | Ctrl+N, F              |
 
 ### Calculs de tableau
 

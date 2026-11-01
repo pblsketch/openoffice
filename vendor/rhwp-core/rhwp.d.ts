@@ -2365,6 +2365,11 @@ export class HwpDocument {
      */
     setShowTransparentBorders(enabled: boolean): void;
     /**
+     * 칸들의 가로(세로) 시작·끝 좌표를 정하고 격자를 다시 매긴다 — 셀 너비·높이를 같게.
+     * `json`: `[{"cellIdx":0,"start":0,"end":14267}, …]`.
+     */
+    setTableCellExtents(section_idx: number, parent_para_idx: number, control_idx: number, vertical: boolean, json: string): string;
+    /**
      * 표 속성을 수정한다.
      *
      * 반환: JSON `{"ok":true}`
@@ -3043,6 +3048,7 @@ export interface InitOutput {
     readonly hwpdocument_setShowControlCodes: (a: number, b: number) => void;
     readonly hwpdocument_setShowParagraphMarks: (a: number, b: number) => void;
     readonly hwpdocument_setShowTransparentBorders: (a: number, b: number) => void;
+    readonly hwpdocument_setTableCellExtents: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number, number, number];
     readonly hwpdocument_setTableProperties: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly hwpdocument_setTextBoxAt: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly hwpdocument_set_debug_overlay: (a: number, b: number) => void;

@@ -694,18 +694,25 @@ Questi tasti funzionano quando la scheda HWP/HWPX è in primo piano e il documen
 
 ### Tabella
 
-| Azione                | macOS        | Windows / Linux        |
-| --------------------- | ------------ | ---------------------- |
-| Aggiungi riga/colonna | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| Elimina riga/colonna  | ⌥⌫           | Alt+Delete             |
-| Dividi cella          | F5 → S       | F5 → S                 |
-| Unisci celle          | F5 → M       | F5 → M                 |
-| Somma del blocco      | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| Media del blocco      | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| Prodotto del blocco   | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| Dividi tabella        | ⌃N, A        | Ctrl+N, A              |
-| Unisci tabelle        | ⌃N, Z        | Ctrl+N, Z              |
-| Formula di calcolo    | ⌃N, F        | Ctrl+N, F              |
+| Azione                                        | macOS        | Windows / Linux        |
+| --------------------------------------------- | ------------ | ---------------------- |
+| Aggiungi riga/colonna                         | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| Elimina riga/colonna                          | ⌥⌫           | Alt+Delete             |
+| Dividi cella                                  | F5 → S       | F5 → S                 |
+| Unisci celle                                  | F5 → M       | F5 → M                 |
+| Proprietà tabella/cella                       | F5 → P       | F5 → P                 |
+| Bordi / sfondo, ogni cella                    | F5 → L / C   | F5 → L / C             |
+| Bordi / sfondo, celle come una                | F5 → B / F   | F5 → B / F             |
+| Stessa altezza di riga / larghezza di colonna | F5 → H / W   | F5 → H / W             |
+| Riempimento automatico della tabella          | F5 → A       | F5 → A                 |
+| Torna a modificare la cella                   | F5 → ⏎       | F5 → Enter             |
+| Rientro sporgente rapido (in una cella)       | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| Somma del blocco                              | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| Media del blocco                              | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| Prodotto del blocco                           | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| Dividi tabella                                | ⌃N, A        | Ctrl+N, A              |
+| Unisci tabelle                                | ⌃N, Z        | Ctrl+N, Z              |
+| Formula di calcolo                            | ⌃N, F        | Ctrl+N, F              |
 
 ### Calcoli di tabella
 

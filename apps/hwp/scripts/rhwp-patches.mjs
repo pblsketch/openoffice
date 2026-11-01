@@ -43,9 +43,29 @@
  *   registered (with the studio parts they build on) and put into the menus, its
  *   two stub "equal cell size" commands hand over to the app's own equalizer, and
  *   its key handler hands the Ctrl+N/K/Q/M/G sequences, the keys that depend on
- *   the caret (the easy table formulas, Ctrl+Enter/Ctrl+Backspace in a cell, H/W
- *   in a cell block) and the table-object keys (P/T/L/C/Ctrl+E) to the module, on
- *   the IME path too.
+ *   the caret (the easy table formulas, Ctrl+Enter/Ctrl+Backspace in a cell, a cell
+ *   block's letters, Enter and F3, and the format keys that act on the whole block)
+ *   and the table-object keys (P/T/L/C/Ctrl+E) to the module, on the IME path too.
+ *
+ * studio-hancom-cell-props-block
+ *   The studio's 표/셀 속성 writes its cell tab into the cell the caret is in, even when
+ *   it was opened on a cell block. Hangul writes it into every selected cell. The
+ *   dialog's apply hands what it wrote to studio-plugin/hancom-keys.mjs
+ *   (hancomBlockCellProps), which writes what the user changed into the other cells
+ *   of the block, in the same undo step.
+ *
+ * studio-hancom-row-drag
+ *   Hangul's plain drag of a horizontal table border sizes the row above it and the table
+ *   (help: 표 크기 조절); Alt+drag lets the row below give way. The studio did the latter on a
+ *   plain drag and capped it by the row below's stored height, about 1 mm in any table. The
+ *   drag end asks studio-plugin/hancom-keys.mjs (hancomRowDragUpdates) first, and the drag may
+ *   go below the next line.
+ *
+ * studio-hancom-block-format-dialogs
+ *   On a cell block the studio's 글자 모양 (Alt+L) wanted a text selection and did
+ *   nothing, and its 문단 모양 (Alt+T) formatted the caret's paragraph alone. Hangul
+ *   formats every selected cell. Opened on a block, each dialog now applies through the
+ *   editor's own block path (the format-char event, applyParaPropsAtCursor).
  *
  * studio-hancom-page-number
  *   The bridge gains the two engine calls of vendor/rhwp-core patch 0014, setting and
@@ -70,6 +90,8 @@
  *   The bridge gains the one-cell resize call of vendor/rhwp-core patch 0016, which
  *   moves one cell's right or bottom boundary and its next cell's opposite boundary
  *   (Hangul's Shift+arrow). The engine keeps the resulting irregular grid as spans.
+ *   It also gains setTableCellExtents of patch 0027, which places cells at given starts
+ *   and ends along one axis: Hangul's H/W and Shift+↑/↓ (studio-plugin/table-sizes.mjs).
  *
  * studio-merged-row-below
  *   "Insert row below" in a merged cell takes the cell's last row, so the new row lands
@@ -319,6 +341,7 @@ const PATCHES = {
           "import { ModalDialog } from '@/ui/dialog';\n" +
           "import { FindDialog, navigateToSearchHit } from '@/ui/find-dialog';\n" +
           "import { CellBorderBgDialog } from '@/ui/cell-border-bg-dialog';\n" +
+          "import { TableCellPropsDialog } from '@/ui/table-cell-props-dialog';\n" +
           "import { showToast } from '@/ui/toast';\n" +
           `import { hancomCommands, installHancomMainKeys, installHancomMenuItems, installHanjaKey } from '${HANCOM_KEYS_MODULE}';`,
       },
@@ -329,7 +352,7 @@ const PATCHES = {
           'registry.registerAll(toolCommands);\n' +
           'registry.registerAll(hancomCommands(getLocale(), {\n' +
           '  InsertTextCommand, InsertTabCommand, ModalDialog, FindDialog, navigateToSearchHit,\n' +
-          '  CellBorderBgDialog, showToast,\n' +
+          '  CellBorderBgDialog, TableCellPropsDialog, showToast,\n' +
           '}));\n' +
           'installHancomMenuItems(document, getLocale());\n' +
           '// the keys the main process takes first and hands back for the table (decision 0060)\n' +
@@ -496,6 +519,15 @@ const PATCHES = {
       '    return JSON.parse((this.doc as any).resizeTableCell(sec, parentPara, controlIdx, row, col, vertical, forward));',
       '  }',
       '',
+      '  /** Cells placed at given starts and ends along one axis (vendor/rhwp-core patch 0027). */',
+      '  setTableCellExtents(',
+      '    sec: number, parentPara: number, controlIdx: number, vertical: boolean,',
+      '    extents: Array<{ cellIdx: number; start: number; end: number }>,',
+      '  ): { ok: boolean; reason?: string } {',
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return JSON.parse((this.doc as any).setTableCellExtents(sec, parentPara, controlIdx, vertical, JSON.stringify(extents)));',
+      '  }',
+      '',
       '  moveTableOffset(sec: number, parentPara: number, controlIdx: number, deltaH: number, deltaV: number): { ok: boolean; ppi: number; ci: number } {',
     ].join('\n'),
   },
@@ -645,7 +677,7 @@ const PATCHES = {
         find: '  if (this.connectorDrawingMode) {',
         replace:
           '  if (hancomTableObjectKey(this, e)) return;\n' +
-          '  if (hancomCellBlockKey(this, e)) return;\n' +
+          '  if (hancomCellBlockKey(this, e, (ev: KeyboardEvent) => matchShortcut(ev, defaultShortcuts))) return;\n' +
           '  if (hancomCellKey(this, e)) return;\n' +
           '  if (this.connectorDrawingMode) {',
       },
@@ -895,6 +927,99 @@ const PATCHES = {
       },
     ],
   },
+  'studio-hancom-cell-props-block': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]ui[\\/]table-cell-props-dialog\.ts$/,
+    edits: [
+      {
+        find: "import { t as i18nText } from '../i18n/index.ts';",
+        replace:
+          "import { t as i18nText } from '../i18n/index.ts';\n" +
+          `import { hancomBlockCellProps } from '${HANCOM_KEYS_MODULE}';`,
+      },
+      // the other cells of a block take the cell tab too, in the same undo step
+      {
+        find: [
+          '      this.wasm.setCellProperties(sec, ppi, ci, this.cellIdx, newCellProps as Partial<CellProperties>);',
+          '      this.wasm.setTableProperties(',
+        ].join('\n'),
+        replace: [
+          '      this.wasm.setCellProperties(sec, ppi, ci, this.cellIdx, newCellProps as Partial<CellProperties>);',
+          '      hancomBlockCellProps(this, newCellProps);',
+          '      this.wasm.setTableProperties(',
+        ].join('\n'),
+      },
+    ],
+  },
+  'studio-hancom-row-drag': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler-table\.ts$/,
+    edits: [
+      {
+        find: "import { showToast } from '@/ui/toast';",
+        replace:
+          "import { showToast } from '@/ui/toast';\n" +
+          `import { hancomRowDragUpdates } from '${HANCOM_KEYS_MODULE}';`,
+      },
+      // a horizontal border may go past the next line: the table grows below it
+      {
+        find: '    max: next === undefined ? Infinity : next - minSizePx,',
+        replace:
+          "    max: next === undefined || edge.type === 'row' ? Infinity : next - minSizePx,",
+      },
+      {
+        find: "  if (state.edge.type === 'col' && inCellSel && range) {",
+        replace: [
+          "  // ieum: Hangul's plain drag of a horizontal border sizes the row above and the table",
+          '  const ieumRowDrag = hancomRowDragUpdates(this, state, deltaHwpUnit, e.altKey);',
+          '  if (ieumRowDrag) {',
+          '    updates = ieumRowDrag;',
+          '    if (updates.length === 0) {',
+          '      this.cleanupResizeDrag();',
+          '      return;',
+          '    }',
+          "  } else if (state.edge.type === 'col' && inCellSel && range) {",
+        ].join('\n'),
+      },
+    ],
+  },
+  'studio-hancom-block-format-dialogs': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]command[\\/]commands[\\/]format\.ts$/,
+    edits: [
+      // 글자 모양 on a cell block: the studio wanted a text selection and did nothing
+      {
+        find: '      const savedSel = ih.getSelection();\n      if (!savedSel) return;',
+        replace: [
+          '      const savedSel = ih.getSelection();',
+          "      // ieum: on a cell block (F5) the dialog formats every selected cell, as Hangul's does",
+          '      const ieumBlock = ih.isInCellSelectionMode();',
+          '      if (!savedSel && !ieumBlock) return;',
+        ].join('\n'),
+      },
+      {
+        find: '        ih.applyCharPropsToRange(savedSel.start, savedSel.end, mods);',
+        replace: [
+          "        // the editor's own block path (format-char), one undo step for the block",
+          "        if (ieumBlock) services.eventBus.emit('format-char', mods);",
+          '        else if (savedSel) ih.applyCharPropsToRange(savedSel.start, savedSel.end, mods);',
+        ].join('\n'),
+      },
+      // 문단 모양 on a cell block: the studio formatted the caret's paragraph alone
+      {
+        find: [
+          '      dialog.onApply = (mods) => {',
+          '        ih.applyParaPropsToRange(range.start, range.end, mods);',
+          '      };',
+        ].join('\n'),
+        replace: [
+          "      // ieum: on a cell block (F5) every selected cell's paragraphs, as Hangul's does",
+          '      const ieumBlock = ih.isInCellSelectionMode();',
+          '      dialog.onApply = (mods) => {',
+          '        if (ieumBlock) ih.applyParaPropsAtCursor(mods);',
+          '        else ih.applyParaPropsToRange(range.start, range.end, mods);',
+          '      };',
+        ].join('\n'),
+      },
+    ],
+  },
   'studio-table-props-menu-label': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler\.ts$/,
     // the cell menu opens the whole 표/셀 속성 dialog; Hangul names it so
@@ -1074,6 +1199,9 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-merged-row-below',
   'studio-clipboard-objects',
   'studio-table-props-border-bg',
+  'studio-hancom-cell-props-block',
+  'studio-hancom-block-format-dialogs',
+  'studio-hancom-row-drag',
   'studio-table-props-menu-label',
   'studio-memo-command',
   'studio-memo-context-menu',
@@ -1225,6 +1353,11 @@ export const hancomHooks = [
       "eventBus.on('format-char'",
       // the typed character, for 빠른 교정 (quickCorrectTyped in hancom-keys.mjs)
       'private getTextAt(pos: DocumentPosition, count: number): string',
+      // a cell block's cells (표/셀 속성 on a block) and whether it holds more than one
+      'private getSelectedCellBlock(): SelectedCellBlock | null',
+      'hasMultiCellSelection(): boolean',
+      // Ctrl+Shift+Tab in a cell: the studio's Shift+Tab hanging indent
+      'applyHangingIndentAtCursor(): boolean',
     ],
   },
   {
@@ -1319,10 +1452,36 @@ export const hancomHooks = [
       'export class ApplyParaFormatCommand',
     ],
   },
-  // the table-object L/C keys open the studio's own border/background dialog on its tab
+  // the drag state hancomRowDragUpdates reads at the end of a border drag
+  {
+    file: 'src/engine/input-handler-table.ts',
+    needles: [
+      'tableRef: { ...this.cachedTableRef },',
+      '    affectedCellIndices,',
+      "const rawNewPos = state.edge.type === 'row' ? pageY : pageX;",
+      'const deltaHwpUnit = Math.round(deltaPagePx * 75);',
+    ],
+  },
+  // a cell block's L/C/B/F open the studio's own border/background dialog on its tab
   {
     file: 'src/ui/cell-border-bg-dialog.ts',
     needles: ['export class CellBorderBgDialog', 'private switchTab(idx: number)'],
+  },
+  // the table-object L/C keys open 표/셀 속성 on its border/background tab, and a block's
+  // 표/셀 속성 reads what the dialog showed and where (hancomBlockCellProps)
+  {
+    file: 'src/ui/table-cell-props-dialog.ts',
+    needles: [
+      'export class TableCellPropsDialog',
+      'private tabs: HTMLButtonElement[] = [];',
+      'private switchTab(idx: number)',
+      'btn.dataset.tab = def.id;',
+      'private cellProps!: CellProperties;',
+      'private tableCtx: { sec: number; ppi: number; ci: number };',
+      'private cellIdx: number;',
+      "private mode: 'table' | 'cell';",
+      'private services: CommandServices | undefined;',
+    ],
   },
   // the studio parts the studio-format-copy patches hand to the app's module
   {

@@ -1,0 +1,454 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pblsketch <239486537+pblsketch@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 00:00:00 +0900
+Subject: [PATCH] =?UTF-8?q?fix(table):=20=ED=95=A9=EC=B9=9C=20=EC=B9=B8?=
+ =?UTF-8?q?=EC=9D=B4=20=EC=9E=88=EB=8A=94=20=ED=91=9C=EC=9D=98=20=EC=B9=B8?=
+ =?UTF-8?q?=20=ED=95=98=EB=82=98=20=ED=81=AC=EA=B8=B0=20=EB=B0=94=EA=BE=B8?=
+ =?UTF-8?q?=EA=B8=B0=EC=99=80=20=EC=B9=B8=20=EC=9E=90=EB=A6=AC=20=EC=A0=95?=
+ =?UTF-8?q?=ED=95=98=EA=B8=B0?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+resizeTableCell(Shift+←/→)이 행마다 너비를 누적해 칸을 다시 놓던 것을
+칸마다의 시작·끝 좌표로 바꾼다. 위 행에서 세로로 합쳐 내려온 칸의 자리를
+다른 칸이 차지하지 않는다(한컴 한글 2024와 74가지 경우 모두 같음).
+
+setTableCellExtents를 더한다. 한 축(가로/세로)을 따라 칸들의 시작·끝을
+받아 격자를 다시 매기고 표의 크기를 맞춘다. 셀 너비·높이를 같게(H/W)와
+세로 Shift+↑/↓를 앱이 한컴처럼 계산해 이 호출로 쓴다.
+---
+ src/document_core/commands/table_ops.rs | 356 +++++++++++++++++-------
+ src/wasm_api.rs                         |  21 ++
+ 2 files changed, 269 insertions(+), 108 deletions(-)
+
+diff --git a/src/document_core/commands/table_ops.rs b/src/document_core/commands/table_ops.rs
+index 40d756268..d2dd99759 100644
+--- a/src/document_core/commands/table_ops.rs
++++ b/src/document_core/commands/table_ops.rs
+@@ -3792,8 +3792,11 @@ impl DocumentCore {
+     /// 갈라진다**: 147행 3열에서 (0,0) 폭을 늘리면 열이 넷이 되고 (0,0)은 `col_span` 2,
+     /// 다른 행의 1열 칸들이 `col_span` 2 가 된다(전부 실측 그대로).
+     ///
+-    /// 격자 재유도는 좌표로 한다 — 행마다 폭을 누적해 **경계 집합의 합집합**을 새 격자 열로
+-    /// 삼고, 각 칸의 `col`/`col_span` 을 제 구간이 덮는 경계 수로 다시 매긴다(세로는 대칭).
++    /// 격자 재유도는 좌표로 한다 — 격자선마다 좌표를 정하고(칸의 끝 = 시작 + 크기), 모든 칸의
++    /// 시작·끝 좌표의 **합집합**을 새 격자 열로 삼아 각 칸의 `col`/`col_span` 을 다시 매긴다
++    /// (세로는 대칭). 위 행에서 내려온 합친 칸도 좌표로 놓으므로 그 자리를 다른 칸이 차지하지
++    /// 않는다. 옮기는 경계는 캐럿 칸이 걸친 행(열)에서만이고, 그 경계를 맞댄 칸이 그 밖으로
++    /// 이어지면(옆이 세로로 합친 칸) 한글처럼 옮기지 않는다.
+     ///
+     /// 앞선 호출이 만든 `col_span`/`row_span`은 그대로 두고 같은 줄의 다음 칸을 다시 찾아
+     /// 옮긴다. 마지막 열·행(옮길 경계가 없다)과 이웃이 한 걸음(283)보다 얇은 자리는
+@@ -3816,136 +3819,273 @@ impl DocumentCore {
+ 
+         let table = self.get_table_mut(section_idx, parent_para_idx, control_idx)?;
+         let delta = if forward { STEP } else { -STEP };
+-
+-        // 캐럿 칸과 같은 줄에서 그 다음 칸을 찾는다. 앞선 Shift+화살표가 만든
+-        // `col_span`/`row_span`이 있어도 다음 칸을 찾아 다시 옮길 수 있다.
+-        let (target_idx, next_idx) = if vertical {
+-            let mut line: Vec<usize> = table
+-                .cells
+-                .iter()
+-                .enumerate()
+-                .filter(|(_, cell)| cell.col == col)
+-                .map(|(idx, _)| idx)
+-                .collect();
+-            line.sort_by_key(|&idx| table.cells[idx].row);
+-            let Some(pos) = line.iter().position(|&idx| table.cells[idx].row == row) else {
+-                return Ok(r#"{"ok":false,"reason":"칸을 찾지 못했다"}"#.to_string());
+-            };
+-            let Some(&next) = line.get(pos + 1) else {
+-                return Ok(r#"{"ok":true,"moved":false}"#.to_string());
+-            };
+-            (line[pos], next)
+-        } else {
+-            let mut line: Vec<usize> = table
+-                .cells
+-                .iter()
+-                .enumerate()
+-                .filter(|(_, cell)| cell.row == row)
+-                .map(|(idx, _)| idx)
+-                .collect();
+-            line.sort_by_key(|&idx| table.cells[idx].col);
+-            let Some(pos) = line.iter().position(|&idx| table.cells[idx].col == col) else {
+-                return Ok(r#"{"ok":false,"reason":"칸을 찾지 못했다"}"#.to_string());
+-            };
+-            let Some(&next) = line.get(pos + 1) else {
+-                return Ok(r#"{"ok":true,"moved":false}"#.to_string());
+-            };
+-            (line[pos], next)
++        let cross_of = |c: &crate::model::table::Cell| {
++            if vertical {
++                (c.col, c.col_span.max(1))
++            } else {
++                (c.row, c.row_span.max(1))
++            }
+         };
+-
+-        // 대상 칸과 다음 칸의 크기를 서로 반대로 바꾼다. 한 걸음보다 얇으면 무동작.
+-        let target_size = if vertical {
+-            table.cells[target_idx].height
+-        } else {
+-            table.cells[target_idx].width
++        let size_of =
++            |c: &crate::model::table::Cell| i64::from(if vertical { c.height } else { c.width });
++        let Some(mut extents) = cell_axis_extents(table, vertical) else {
++            return Ok(r#"{"ok":false,"reason":"칸 자리를 정하지 못했다"}"#.to_string());
+         };
+-        let next_size = if vertical {
+-            table.cells[next_idx].height
+-        } else {
+-            table.cells[next_idx].width
++
++        // 캐럿 칸과, 그 오른쪽(아래) 경계를 맞댄 칸들 — 위에서 내려온 합친 칸도 이웃이다.
++        let Some(target_idx) = table
++            .cells
++            .iter()
++            .position(|c| c.row == row && c.col == col)
++        else {
++            return Ok(r#"{"ok":false,"reason":"칸을 찾지 못했다"}"#.to_string());
+         };
+-        if (target_size as i64 + delta) <= 0 || (next_size as i64 - delta) <= 0 {
++        let boundary = extents[target_idx].1;
++        let (lo, n) = cross_of(&table.cells[target_idx]);
++        let hi = lo + n;
++        let neighbours: Vec<usize> = (0..table.cells.len())
++            .filter(|&i| {
++                let (s, n) = cross_of(&table.cells[i]);
++                extents[i].0 == boundary && s < hi && s + n > lo
++            })
++            .collect();
++        if neighbours.is_empty() {
++            return Ok(r#"{"ok":true,"moved":false}"#.to_string());
++        }
++        // 이웃이 캐럿 칸의 행(열) 밖으로 이어지면 그 칸의 옆선이 갈라진다 — 한글 2024도
++        // 이때는 옮기지 않는다(2026-10-31 실측: 옆이 세로로 합친 칸인 B2).
++        if neighbours.iter().any(|&i| {
++            let (s, n) = cross_of(&table.cells[i]);
++            s < lo || s + n > hi
++        }) {
+             return Ok(r#"{"ok":true,"moved":false}"#.to_string());
+         }
+-        for (idx, step) in [(target_idx, delta), (next_idx, -delta)] {
++        let thin = |i: usize, change: i64| size_of(&table.cells[i]) + change <= 0;
++        if thin(target_idx, delta) || neighbours.iter().any(|&i| thin(i, -delta)) {
++            return Ok(r#"{"ok":true,"moved":false}"#.to_string());
++        }
++
++        // 캐럿 칸의 끝과 이웃들의 시작만 움직인다.
++        extents[target_idx].1 += delta;
++        for &i in &neighbours {
++            extents[i].0 += delta;
++        }
++        let changes: Vec<(usize, i64)> = std::iter::once((target_idx, delta))
++            .chain(neighbours.iter().map(|&i| (i, -delta)))
++            .collect();
++        for (idx, step) in changes {
+             let cell = &mut table.cells[idx];
+             cell.set_list_header_flag_pub(CELL_FLAG_JUST_RESIZED, true);
+             if vertical {
+-                cell.height = (cell.height as i64 + step) as u32;
++                cell.height = (i64::from(cell.height) + step) as u32;
+             } else {
+-                cell.width = (cell.width as i64 + step) as u32;
++                cell.width = (i64::from(cell.width) + step) as u32;
+                 cell.shift_text_area_width(step);
+             }
+         }
++        rebuild_axis_from_extents(table, vertical, &extents);
++        self.document.sections[section_idx].raw_stream = None;
++        self.mark_cell_control_dirty(section_idx, parent_para_idx, control_idx);
++        self.mark_section_dirty(section_idx);
++        self.paginate_if_needed();
++        Ok(r#"{"ok":true,"moved":true}"#.to_string())
++    }
+ 
+-        // 격자 재유도 — 경계 집합의 합집합으로 열(행)을 다시 매긴다.
+-        if vertical {
+-            let mut bounds: BTreeSet<u64> = BTreeSet::from([0]);
+-            let cols: BTreeSet<u16> = table.cells.iter().map(|c| c.col).collect();
+-            for &c in &cols {
+-                let mut acc = 0u64;
+-                let mut in_col: Vec<&crate::model::table::Cell> =
+-                    table.cells.iter().filter(|x| x.col == c).collect();
+-                in_col.sort_by_key(|x| x.row);
+-                for cell in in_col {
+-                    acc += u64::from(cell.height);
+-                    bounds.insert(acc);
++    /// 칸들의 가로(세로) **시작·끝 좌표**를 정하고 격자를 다시 매긴다 — 한글의 `셀 너비를 같게`
++    /// (`TableDistributeCellWidth`)·`셀 높이를 같게`가 합친 칸이 있는 표에서 하는 일이다.
++    ///
++    /// 한글 2024 실측(2026-10-31): 너비는 **행마다** 그 행에 놓인 칸들을 같게, 높이는 **열마다**
++    /// 같게 한다. 행마다 칸 수가 다르면 경계가 어긋나 격자가 갈라진다(위 행만 A·B를 합친 3×3 은
++    /// 열이 넷이 된다). 그 좌표 계산은 앱이 하고(`studio-plugin/table-sizes.mjs`), 여기서는 받은
++    /// 좌표대로 크기를 쓰고 `resize_table_cell_native` 와 같은 방식으로 격자를 다시 매긴다.
++    ///
++    /// `json` 은 `[{"cellIdx":0,"start":0,"end":14267}, …]`. 빠진 칸은 지금 자리를 지킨다.
++    /// 시작이 끝보다 크거나 같으면 거절한다.
++    pub fn set_table_cell_extents_native(
++        &mut self,
++        section_idx: usize,
++        parent_para_idx: usize,
++        control_idx: usize,
++        vertical: bool,
++        json: &str,
++    ) -> Result<String, HwpError> {
++        let mut given: Vec<(usize, i64, i64)> = Vec::new();
++        let trimmed = json.trim();
++        if !trimmed.starts_with('[') || !trimmed.ends_with(']') {
++            return Err(HwpError::RenderError("잘못된 JSON 배열 형식".to_string()));
++        }
++        let inner = &trimmed[1..trimmed.len() - 1];
++        let (mut depth, mut start) = (0i32, 0usize);
++        for (i, ch) in inner.char_indices() {
++            match ch {
++                '{' => {
++                    if depth == 0 {
++                        start = i;
++                    }
++                    depth += 1;
+                 }
++                '}' => {
++                    depth -= 1;
++                    if depth == 0 {
++                        let obj = &inner[start..=i];
++                        let (Some(idx), Some(s), Some(e)) = (
++                            Self::parse_json_i32(obj, "cellIdx"),
++                            Self::parse_json_i32(obj, "start"),
++                            Self::parse_json_i32(obj, "end"),
++                        ) else {
++                            return Err(HwpError::RenderError("칸 좌표가 빠졌다".to_string()));
++                        };
++                        if idx < 0 || s < 0 || e <= s {
++                            return Err(HwpError::RenderError("칸 좌표가 맞지 않다".to_string()));
++                        }
++                        given.push((idx as usize, i64::from(s), i64::from(e)));
++                    }
++                }
++                _ => {}
+             }
+-            let xs: Vec<u64> = bounds.into_iter().collect();
+-            // 각 열을 위에서부터 다시 매긴다.
+-            let mut order: Vec<usize> = (0..table.cells.len()).collect();
+-            order.sort_by_key(|&i| (table.cells[i].col, table.cells[i].row));
+-            let mut acc_by_col: std::collections::BTreeMap<u16, u64> = Default::default();
+-            for i in order {
+-                let cell = &mut table.cells[i];
+-                let start = *acc_by_col.entry(cell.col).or_insert(0);
+-                let end = start + u64::from(cell.height);
+-                let s = xs.partition_point(|&x| x < start);
+-                let e = xs.partition_point(|&x| x < end);
+-                cell.row = s as u16;
+-                cell.row_span = (e - s).max(1) as u16;
+-                acc_by_col.insert(cell.col, end);
++        }
++        let table = self.get_table_mut(section_idx, parent_para_idx, control_idx)?;
++        let Some(mut extents) = cell_axis_extents(table, vertical) else {
++            return Ok(r#"{"ok":false,"reason":"칸 자리를 정하지 못했다"}"#.to_string());
++        };
++        if given.iter().any(|&(idx, _, _)| idx >= table.cells.len()) {
++            return Ok(r#"{"ok":false,"reason":"없는 칸"}"#.to_string());
++        }
++        for &(idx, s, e) in &given {
++            let step = (e - s) - (extents[idx].1 - extents[idx].0);
++            extents[idx] = (s, e);
++            let cell = &mut table.cells[idx];
++            if vertical {
++                cell.height = (e - s) as u32;
++            } else {
++                cell.width = (e - s) as u32;
++                cell.shift_text_area_width(step);
+             }
+-            table.row_count = (xs.len() - 1) as u16;
++        }
++        rebuild_axis_from_extents(table, vertical, &extents);
++        // 표의 선언 크기는 좌표의 끝으로 맞춘다. `update_ctrl_dimensions` 는 한 칸짜리 칸의
++        // 열 폭으로 너비를 다시 재므로, 행마다 경계가 어긋난 격자에서는 맞지 않는다.
++        let total = extents.iter().map(|&(_, e)| e).max().unwrap_or(0).max(0) as u32;
++        if vertical {
++            table.sync_ctrl_height(total);
+         } else {
+-            let mut bounds: BTreeSet<u64> = BTreeSet::from([0]);
+-            let rows: BTreeSet<u16> = table.cells.iter().map(|c| c.row).collect();
+-            for &r in &rows {
+-                let mut acc = 0u64;
+-                let mut in_row: Vec<&crate::model::table::Cell> =
+-                    table.cells.iter().filter(|x| x.row == r).collect();
+-                in_row.sort_by_key(|x| x.col);
+-                for cell in in_row {
+-                    acc += u64::from(cell.width);
+-                    bounds.insert(acc);
+-                }
+-            }
+-            let xs: Vec<u64> = bounds.into_iter().collect();
+-            let mut order: Vec<usize> = (0..table.cells.len()).collect();
+-            order.sort_by_key(|&i| (table.cells[i].row, table.cells[i].col));
+-            let mut acc_by_row: std::collections::BTreeMap<u16, u64> = Default::default();
+-            for i in order {
+-                let cell = &mut table.cells[i];
+-                let start = *acc_by_row.entry(cell.row).or_insert(0);
+-                let end = start + u64::from(cell.width);
+-                let s = xs.partition_point(|&x| x < start);
+-                let e = xs.partition_point(|&x| x < end);
+-                cell.col = s as u16;
+-                cell.col_span = (e - s).max(1) as u16;
+-                acc_by_row.insert(cell.row, end);
++            table.common.width = total;
++            if table.raw_ctrl_data.len() >= common_obj_offsets::WIDTH.end {
++                table.raw_ctrl_data[common_obj_offsets::WIDTH]
++                    .copy_from_slice(&total.to_le_bytes());
+             }
+-            table.col_count = (xs.len() - 1) as u16;
+         }
+-        table.cells.sort_by_key(|c| (c.row, c.col));
+-        table.rebuild_grid();
+-        table.rebuild_row_sizes();
+         self.document.sections[section_idx].raw_stream = None;
+         self.mark_cell_control_dirty(section_idx, parent_para_idx, control_idx);
+         self.mark_section_dirty(section_idx);
+         self.paginate_if_needed();
+-        Ok(r#"{"ok":true,"moved":true}"#.to_string())
++        Ok(r#"{"ok":true}"#.to_string())
++    }
++}
++
++/// 축(가로면 열, 세로면 행)을 따라 각 칸이 놓인 시작·끝 좌표(HWPUNIT).
++///
++/// 격자선마다 좌표를 정한다 — 칸마다 `선[끝] = 선[시작] + 크기`. 좁은 칸부터 정해 합친 칸의
++/// 크기가 걸친 칸들의 합과 조금 어긋나도 격자는 한 벌로 맞춘다. 위 행에서 내려온 합친 칸도
++/// 좌표로 놓이므로, 행마다 크기를 누적하던 때처럼 그 자리를 다른 칸이 차지하지 않는다.
++/// 정할 수 없는 격자선이 남으면 `None`.
++pub(crate) fn cell_axis_extents(
++    table: &crate::model::table::Table,
++    vertical: bool,
++) -> Option<Vec<(i64, i64)>> {
++    let span_of = |c: &crate::model::table::Cell| {
++        if vertical {
++            (usize::from(c.row), usize::from(c.row_span.max(1)))
++        } else {
++            (usize::from(c.col), usize::from(c.col_span.max(1)))
++        }
++    };
++    let size_of =
++        |c: &crate::model::table::Cell| i64::from(if vertical { c.height } else { c.width });
++    let count = table
++        .cells
++        .iter()
++        .map(|c| {
++            let (s, n) = span_of(c);
++            s + n
++        })
++        .max()
++        .unwrap_or(0);
++    let mut lines: Vec<Option<i64>> = vec![None; count + 1];
++    lines[0] = Some(0);
++    let mut by_span: Vec<usize> = (0..table.cells.len()).collect();
++    by_span.sort_by_key(|&i| {
++        let (s, n) = span_of(&table.cells[i]);
++        (n, s)
++    });
++    for _ in 0..=count {
++        let mut grew = false;
++        for &i in &by_span {
++            let cell = &table.cells[i];
++            let (s, n) = span_of(cell);
++            match (lines[s], lines[s + n]) {
++                (Some(start), None) => {
++                    lines[s + n] = Some(start + size_of(cell));
++                    grew = true;
++                }
++                (None, Some(end)) => {
++                    lines[s] = Some(end - size_of(cell));
++                    grew = true;
++                }
++                _ => {}
++            }
++        }
++        if !grew {
++            break;
++        }
++    }
++    if lines.iter().any(|l| l.is_none()) {
++        return None;
++    }
++    Some(
++        table
++            .cells
++            .iter()
++            .map(|c| {
++                let (s, n) = span_of(c);
++                (lines[s].unwrap_or(0), lines[s + n].unwrap_or(0))
++            })
++            .collect(),
++    )
++}
++
++/// 칸들의 시작·끝 좌표(`extents`, 칸 순서 그대로)의 합집합을 새 격자선으로 삼아 각 칸의
++/// 열(행)과 걸침을 다시 매긴다. 크기는 부르는 쪽이 이미 고쳐 두었다.
++pub(crate) fn rebuild_axis_from_extents(
++    table: &mut crate::model::table::Table,
++    vertical: bool,
++    extents: &[(i64, i64)],
++) {
++    let mut set: std::collections::BTreeSet<i64> = std::collections::BTreeSet::new();
++    for &(s, e) in extents {
++        set.insert(s);
++        set.insert(e);
++    }
++    let lines: Vec<i64> = set.into_iter().collect();
++    let index = |x: i64| lines.partition_point(|&l| l < x) as u16;
++    for (cell, &(s, e)) in table.cells.iter_mut().zip(extents) {
++        let (a, b) = (index(s), index(e));
++        if vertical {
++            cell.row = a;
++            cell.row_span = (b - a).max(1);
++        } else {
++            cell.col = a;
++            cell.col_span = (b - a).max(1);
++        }
++    }
++    if vertical {
++        table.row_count = (lines.len().max(2) - 1) as u16;
++    } else {
++        table.col_count = (lines.len().max(2) - 1) as u16;
+     }
++    table.cells.sort_by_key(|c| (c.row, c.col));
++    table.rebuild_grid();
++    table.rebuild_row_sizes();
+ }
+ 
+ /// 셀 텍스트에서 숫자를 추출한다 (콤마 제거, 공백 무시).
+diff --git a/src/wasm_api.rs b/src/wasm_api.rs
+index ae794ace6..f806fa227 100644
+--- a/src/wasm_api.rs
++++ b/src/wasm_api.rs
+@@ -3562,6 +3562,27 @@ impl HwpDocument {
+         .map_err(|e| e.into())
+     }
+ 
++    /// 칸들의 가로(세로) 시작·끝 좌표를 정하고 격자를 다시 매긴다 — 셀 너비·높이를 같게.
++    /// `json`: `[{"cellIdx":0,"start":0,"end":14267}, …]`.
++    #[wasm_bindgen(js_name = setTableCellExtents)]
++    pub fn set_table_cell_extents(
++        &mut self,
++        section_idx: u32,
++        parent_para_idx: u32,
++        control_idx: u32,
++        vertical: bool,
++        json: &str,
++    ) -> Result<String, JsValue> {
++        self.set_table_cell_extents_native(
++            section_idx as usize,
++            parent_para_idx as usize,
++            control_idx as usize,
++            vertical,
++            json,
++        )
++        .map_err(|e| e.into())
++    }
++
+     /// 표의 위치 오프셋(vertical_offset, horizontal_offset)을 이동한다.
+     ///
+     /// delta_h, delta_v: HWPUNIT 단위 이동량 (양수=오른쪽/아래, 음수=왼쪽/위)

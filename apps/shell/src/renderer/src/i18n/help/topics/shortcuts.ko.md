@@ -694,18 +694,25 @@ GenOffice HTML은 실시간 미리보기 옆에 코드 편집기를 보여 줍�
 
 ### 표
 
-| 동작           | macOS        | Windows / Linux        |
-| -------------- | ------------ | ---------------------- |
-| 줄/칸 추가하기 | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
-| 줄/칸 지우기   | ⌥⌫           | Alt+Delete             |
-| 셀 나누기      | F5 → S       | F5 → S                 |
-| 셀 합치기      | F5 → M       | F5 → M                 |
-| 블록 합계      | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
-| 블록 평균      | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
-| 블록 곱        | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
-| 표 나누기      | ⌃N, A        | Ctrl+N, A              |
-| 표 붙이기      | ⌃N, Z        | Ctrl+N, Z              |
-| 계산식         | ⌃N, F        | Ctrl+N, F              |
+| 동작                  | macOS        | Windows / Linux        |
+| --------------------- | ------------ | ---------------------- |
+| 줄/칸 추가하기        | ⌥⏎ / ⌥Insert | Alt+Enter / Alt+Insert |
+| 줄/칸 지우기          | ⌥⌫           | Alt+Delete             |
+| 셀 나누기             | F5 → S       | F5 → S                 |
+| 셀 합치기             | F5 → M       | F5 → M                 |
+| 표/셀 속성            | F5 → P       | F5 → P                 |
+| 각 셀 테두리 / 배경   | F5 → L / C   | F5 → L / C             |
+| 여러 셀 테두리 / 배경 | F5 → B / F   | F5 → B / F             |
+| 셀 높이 / 너비를 같게 | F5 → H / W   | F5 → H / W             |
+| 표 자동 채우기        | F5 → A       | F5 → A                 |
+| 셀 블록에서 편집으로  | F5 → ⏎       | F5 → Enter             |
+| 빠른 내어쓰기(표 안)  | ⌃⇧⇥          | Ctrl+Shift+Tab         |
+| 블록 합계             | F5 → ⇧⌘S     | F5 → Ctrl+Shift+S      |
+| 블록 평균             | F5 → ⌃⇧A     | F5 → Ctrl+Shift+A      |
+| 블록 곱               | F5 → ⌃⇧P     | F5 → Ctrl+Shift+P      |
+| 표 나누기             | ⌃N, A        | Ctrl+N, A              |
+| 표 붙이기             | ⌃N, Z        | Ctrl+N, Z              |
+| 계산식                | ⌃N, F        | Ctrl+N, F              |
 
 ### 표 계산
 
