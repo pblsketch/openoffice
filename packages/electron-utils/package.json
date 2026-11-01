@@ -18,6 +18,8 @@
     "./outbound-channels": "./src/outbound-channels.ts",
     "./project-folder-bridge": "./src/project-folder-bridge.ts",
     "./generated-images": "./src/generated-images.ts",
+    "./mcp-tools-bridge": "./src/mcp-tools-bridge.ts",
+    "./mcp-tools-channels": "./src/mcp-tools-channels.ts",
     "./font-store": "./src/font-store.ts",
     "./office-encryption": "./src/office-encryption.ts",
     "./headless-export": "./src/headless-export.ts",

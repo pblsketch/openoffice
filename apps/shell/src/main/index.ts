@@ -133,6 +133,8 @@ import { registerIntegrationsIpc } from './integrations-ipc'
 import { registerResultStoreIpc } from './result-store-ipc'
 import { FEEDBACK_SURVEY_URL, feedbackDetails, feedbackText, platformLabel } from './feedback'
 import { registerDriveIpc, type DriveService } from './drive/drive-ipc'
+import { startMcpHub } from './mcp-client/hub-app'
+import type { McpHub } from './mcp-client/hub'
 import { freeAiInUse } from './drive/drive-consent'
 import { registerOutboundIpc } from './outbound-confirm'
 import { projectSkillsAllowed, projectSkillsView, setProjectSkills } from './agent/project-skills'
@@ -831,6 +833,8 @@ registerPrivilegedSchemes([EPUB_ASSET_SCHEME_PRIVILEGE])
 const APP_SETTINGS_PATH = () => join(app.getPath('userData'), 'app-settings.json')
 /** Google Drive (decision 0033); registered once this instance holds the single-instance lock */
 let driveService: DriveService | null = null
+/** the person's own MCP servers (user MCP spec 5.1); started once the app is ready */
+let mcpHub: McpHub | null = null
 const OPEN_DOCUMENTS_PATH = () => join(app.getPath('userData'), OPEN_DOCUMENTS_FILE)
 /** only the instance holding the single-instance lock may write or remove the registry */
 let ownsOpenDocumentsRegistry = false
@@ -9170,6 +9174,21 @@ app.whenReady().then(async () => {
     freeAi: () => freeAiInUse(readStoredAiSettings()),
     documentOf: (id) => tabManager?.describeWebContents(id)?.filePath ?? null,
   })
+  // The person's own MCP servers: one connection per server for every window;
+  // Settings changes them through a channel only the shell window may use.
+  mcpHub = startMcpHub({
+    lang: () => currentLang(),
+    shellWindow: () => shellWindow,
+    openIntegrations: () => {
+      const win = shellWindow
+      if (!win || win.isDestroyed()) return
+      if (win.isMinimized()) win.restore()
+      win.show()
+      win.focus()
+      tabManager?.openHomeTab()
+      win.webContents.send(HOME_CHANNELS.openSettings, { section: 'integrations' })
+    },
+  })
   // The "Attach documents" window: an editor's AI panel asks the shell for the
   // documents it already knows, and the shell hands back the paths it ticked.
   // One window at a time, over the window that asked. The same list, built for
@@ -9644,6 +9663,8 @@ app.on('before-quit', () => {
   // release the MCP port synchronously (macOS keeps the process alive after
   // the last window closes, so window-all-closed is not enough)
   stopMcpSync()
+  // the person's MCP servers: calls end, servers stop, a runtime download stops
+  void mcpHub?.stopAll()
 })
 
 // after every window has closed, so the shell window's own 'closed' republish cannot revive the file
@@ -9674,6 +9695,7 @@ function releaseAppResources(): void {
   if (ownsOpenDocumentsRegistry) clearOpenDocuments(OPEN_DOCUMENTS_PATH())
   stopAgentSessions()
   driveService?.stop()
+  void mcpHub?.stopAll()
   stopQuickLookRuntime()
   shutdownSubscriptionChildren()
 }
