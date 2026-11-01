@@ -192,6 +192,8 @@ async function openedView(path: string | null): Promise<FakeWebContents> {
 
 const fileIdentity = (path: string) => ({ kind: 'pdf' as const, filePath: path })
 
+const ALL_PERMISSIONS = { printing: true, modifying: true, annotating: true, copying: true }
+
 beforeEach(() => {
   store = createRecoveryStore({ userDataDir: makeDir('pdf-recovery-data-') })
   setPdfRecoveryStore(store)
@@ -554,6 +556,44 @@ describe('password and encrypted PDFs, checked in the main process', () => {
     expect(store.copyInfo(fileIdentity(path))).toBeNull()
     configurePdfRuntime({ preloadPath: '' })
     expect(recoveryEditor('pdf')?.isUnprotectable(wc as never)).toBe(true)
+  })
+
+  it('get no copy and no template while a save is to protect them', async () => {
+    const path = await makePdfFile()
+    const wc = await openedView(path)
+    const protecting: SavePdfRequest = {
+      ...editedRequest(path),
+      protectionDirty: true,
+      encryption: { userPassword: 'pw', ownerPassword: 'pw', permissions: ALL_PERMISSIONS },
+    }
+
+    expect(await writeCopy(wc, protecting)).toBe('skipped')
+    expect(store.copyInfo(fileIdentity(path))).toBeNull()
+    expect(await invoke(PDF_CHANNELS.templateBytes, wc, protecting)).toBeNull()
+    // the same edits on the plain document still get their copy
+    expect(await writeCopy(wc, editedRequest(path))).toBe('written')
+  })
+
+  it('an untitled document saved with a password keeps no copy of the protected file', async () => {
+    const working = join(makeDir('pdf-recovery-protect-'), 'template.pdf')
+    writeFileSync(working, await pdfBytes())
+    markPdfUntitledCopy(working)
+    const view = await openedView(working)
+    expect(await writeCopy(view, editedRequest(working))).toBe('written')
+    const [before] = store.listCopies({ untitled: true })
+    const plainCopy = await store.readCopy(before!.identity)
+
+    const saved = await save(view, {
+      ...emptyRequest(working),
+      protectionDirty: true,
+      encryption: { userPassword: 'pw', ownerPassword: 'pw', permissions: ALL_PERMISSIONS },
+    })
+    expect(saved).toMatchObject({ ok: true })
+    expect(readFileSync(working).includes('/Encrypt')).toBe(true)
+    // the untitled slot was not refreshed from the protected working file
+    const after = await store.readCopy(before!.identity)
+    expect(after?.equals(plainCopy!)).toBe(true)
+    expect(after?.includes('/Encrypt')).toBe(false)
   })
 })
 

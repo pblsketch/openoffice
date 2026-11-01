@@ -8,7 +8,7 @@ Edytor PDF ma pięć kart na wstążce: **Narzędzia główne / Adnotacje / Edyc
 - Powiększenie: regulator współczynnika w prawym dolnym rogu; ctrl+kółko zmienia powiększenie stopniowo.
 - Obracanie: dla jednej strony lub wszystkich z menu Strony; obroty są zapisywane w pliku przy zapisie.
 - Wyszukiwanie: ctrl+F na pełnym tekście z podświetleniem wszystkich trafień.
-- Zaszyfrowane pliki PDF: otwiera je monit o haśle (we własnym małym oknie); hasło jest używane tylko w tej sesji.
+- Zaszyfrowane pliki PDF: otwiera je monit o haśle (we własnym małym oknie); hasło jest używane tylko w tej sesji. Taki dokument można edytować i zapisywać; zapis zachowuje hasło. **Adnotacje → Chroń** ustawia, zmienia lub usuwa hasło oraz to, co wolno czytelnikom.
 
 ## Zaznaczanie tekstu i oznaczanie (Adnotacje)
 
@@ -102,7 +102,7 @@ Dopóki nad zaznaczonym tekstem widać pasek adnotacji, jeden klawisz od razu wy
 | Enter   | Otwarcie pola **Zapytaj AI**           |
 
 - Klawisze działają tak samo przy koreańskiej lub dowolnej innej metodzie wprowadzania. Są pomijane, gdy piszesz w polu tekstowym albo trzymasz Ctrl lub Alt.
-- W dokumencie zablokowanym przed edycją (chronionym hasłem) H, U, S i N nic nie robią i pokazują powód, tak jak przyciski paska.
+- W dokumencie zablokowanym przed edycją (hasło właściciela zabrania zmian) H, U, S i N nic nie robią i pokazują powód, tak jak przyciski paska.
 
 ## Karty fragmentów
 

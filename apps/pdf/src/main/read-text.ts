@@ -39,6 +39,8 @@ export interface ReadPdfTextOptions {
   pages?: readonly number[]
   /** stop extracting once the accumulated text reaches this many chars */
   charBudget?: number
+  /** user password for an encrypted file */
+  password?: string
 }
 
 /**
@@ -147,7 +149,7 @@ export function readPdfText(
 ): Promise<PdfTextDoc> {
   return chainPdfium(async () => {
     const m = await loadPdfium()
-    return withDocument(m, bytes, async (doc) => {
+    const extract = async (doc: number): Promise<PdfTextDoc> => {
       const pageCount = m._FPDF_GetPageCount(doc)
       const from = Math.max(1, Math.min(options.fromPage ?? 1, pageCount))
       const to = Math.max(from, Math.min(options.toPage ?? pageCount, pageCount))
@@ -220,6 +222,7 @@ export function readPdfText(
         }
       }
       return { pageCount, info, pages, truncated }
-    })
+    }
+    return withDocument(m, bytes, extract, options.password)
   })
 }

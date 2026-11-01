@@ -8,7 +8,8 @@ use std::thread;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use xlsx_sidecar::archive::{
-    EntryContent, archive_manifest, read_entries_to_dir, save_archive, scan_entries_for_text,
+    EntryContent, StreamPatchEntry, archive_manifest, read_entries_to_dir, save_archive,
+    scan_entries_for_text,
 };
 use xlsx_sidecar::find::FindCellsRequest;
 use xlsx_sidecar::recalc::{RecalcCache, RecalcEdit, RecalcRead, recalc_cells};
@@ -92,6 +93,9 @@ enum Command {
         replacements: Vec<EntryContent>,
         removals: Vec<String>,
         additions: Vec<EntryContent>,
+        /// Oversized entries rewritten by the streaming cell-upsert pass.
+        #[serde(default)]
+        stream_patches: Vec<StreamPatchEntry>,
     },
     #[serde(rename_all = "camelCase")]
     RecalcCells {
@@ -619,6 +623,7 @@ fn handle_request(
             replacements,
             removals,
             additions,
+            stream_patches,
         } => {
             // The saved bytes supersede any resident formula model for the
             // target. The source is only read, so its warm model stays valid;
@@ -633,6 +638,7 @@ fn handle_request(
                 &replacements,
                 &removals,
                 &additions,
+                &stream_patches,
             )
             .and_then(to_json_value)
         }

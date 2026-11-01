@@ -8,7 +8,7 @@ Trình soạn thảo PDF có năm thẻ ruy-bâng: **Trang chủ / Chú thích /
 - Thu phóng: bộ điều khiển tỉ lệ ở góc dưới bên phải; ctrl+lăn chuột thay đổi từng bậc.
 - Xoay: theo từng trang hoặc tất cả các trang từ menu Trang; góc xoay được ghi lại khi lưu.
 - Tìm kiếm: ctrl+F tìm trong toàn văn, tô sáng mọi kết quả.
-- PDF có mã hóa: một lời nhắc mật khẩu (một cửa sổ nhỏ riêng) mở tệp; mật khẩu chỉ dùng cho phiên làm việc này.
+- PDF có mã hóa: một lời nhắc mật khẩu (một cửa sổ nhỏ riêng) mở tệp; mật khẩu chỉ dùng cho phiên làm việc này. Bạn có thể sửa và lưu tài liệu như vậy; khi lưu, mật khẩu vẫn được giữ. **Chú thích → Bảo vệ** đặt, đổi hoặc gỡ mật khẩu và những việc người đọc được phép làm.
 
 ## Chọn văn bản và đánh dấu (Chú thích)
 
@@ -102,7 +102,7 @@ Trong lúc thanh chú thích đang hiện phía trên đoạn văn bản đã ch
 | Enter | Mở ô **Hỏi AI**                       |
 
 - Các phím vẫn hoạt động như vậy khi bộ gõ tiếng Hàn hay bộ gõ khác đang bật. Khi bạn đang gõ trong một ô nhập hoặc giữ Ctrl hay Alt, chúng không được coi là phím tắt.
-- Trong tài liệu bị khóa chỉnh sửa (được bảo vệ bằng mật khẩu), H, U, S và N không làm gì và hiện lý do giống các nút trên thanh.
+- Trong tài liệu bị khóa chỉnh sửa (mật khẩu chủ sở hữu cấm thay đổi), H, U, S và N không làm gì và hiện lý do giống các nút trên thanh.
 
 ## Thẻ đoạn văn
 

@@ -8,7 +8,7 @@ Editor PDF má pět karet na pásku: **Domů / Anotace / Úpravy / Stránky / Zo
 - Přiblížení: ovladač poměru vpravo dole; ctrl+kolečko mění přiblížení po stupních.
 - Otáčení: jednotlivé stránky nebo všechny z nabídky Stránky; otočení se při uložení zapíší zpět do souboru.
 - Vyhledávání: ctrl+F v celém textu se zvýrazněním všech nálezů.
-- Šifrované soubory PDF: otevře je výzva k zadání hesla (v samostatném malém okně); heslo se použije pouze pro tuto relaci.
+- Šifrované soubory PDF: otevře je výzva k zadání hesla (v samostatném malém okně); heslo se použije pouze pro tuto relaci. Takový dokument lze upravovat a ukládat; uložení heslo zachová. **Anotace → Chránit** nastaví, změní nebo odebere heslo a to, co smějí čtenáři.
 
 ## Výběr textu a značení (Anotace)
 
@@ -102,7 +102,7 @@ Dokud je nad vybraným textem vidět panel anotací, jedna klávesa hned provede
 | Enter   | Otevření pole **Zeptat se AI**         |
 
 - Klávesy fungují stejně i při korejské nebo jakékoli jiné metodě zadávání. Nevšímají si jich, když píšete do pole nebo držíte Ctrl či Alt.
-- V dokumentu zamčeném proti úpravám (chráněném heslem) H, U, S a N nic neudělají a stejně jako tlačítka panelu ukážou důvod.
+- V dokumentu zamčeném proti úpravám (heslo vlastníka zakazuje změny) H, U, S a N nic neudělají a stejně jako tlačítka panelu ukážou důvod.
 
 ## Karty úryvků
 

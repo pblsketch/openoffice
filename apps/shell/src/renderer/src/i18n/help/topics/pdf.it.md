@@ -8,7 +8,7 @@ L'editor PDF ha cinque schede nella barra multifunzione: **Home / Annota / Modif
 - Zoom: il controllo del rapporto in basso a destra; ctrl+rotellina cambia lo zoom a scatti.
 - Rotazione: per singola pagina o per tutte dal menu Pagine; le rotazioni vengono riscritte al salvataggio.
 - Ricerca: ctrl+F a testo completo con tutte le occorrenze evidenziate.
-- PDF cifrati: una richiesta della password (in una piccola finestra separata) li apre; la password viene usata solo per questa sessione.
+- PDF cifrati: una richiesta della password (in una piccola finestra separata) li apre; la password viene usata solo per questa sessione. Puoi modificare e salvare un documento così; il salvataggio mantiene la password. **Annota → Proteggi** imposta, cambia o rimuove la password e ciò che i lettori possono fare.
 
 ## Selezione del testo e marcatura (Annota)
 
@@ -102,7 +102,7 @@ Finché la barra delle annotazioni è visibile sopra il testo selezionato, un so
 | Invio | Apre la casella **Chiedi all'IA**              |
 
 - I tasti funzionano allo stesso modo anche con un metodo di input coreano o di qualsiasi altra lingua. Vengono ignorati mentre scrivi in un campo o tieni premuto Ctrl o Alt.
-- In un documento bloccato alla modifica (protetto da password), H, U, S e N non fanno nulla e mostrano il motivo, come i pulsanti della barra.
+- In un documento bloccato alla modifica (la password del proprietario vieta le modifiche), H, U, S e N non fanno nulla e mostrano il motivo, come i pulsanti della barra.
 
 ## Schede dei passaggi
 
