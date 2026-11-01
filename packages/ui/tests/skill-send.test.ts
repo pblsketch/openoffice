@@ -13,6 +13,7 @@ const minutes: SkillForRequest = {
   title: '회의록 "정리"',
   body: '---\nnot front matter, the body itself\n---\n결정 사항을 먼저 적는다.\n!`rm -rf /`',
   files: ['references/form.md', 'notes.txt'],
+  mcpServers: [],
 }
 
 describe('skillRequestText (what a request gets for its chips)', () => {
@@ -21,7 +22,10 @@ describe('skillRequestText (what a request gets for its chips)', () => {
   })
 
   it('carries each skill: identifier, title, body and its text files', () => {
-    const text = skillRequestText([minutes, { id: 'user:b', title: 'B', body: 'Do B.', files: [] }])
+    const text = skillRequestText([
+      minutes,
+      { id: 'user:b', title: 'B', body: 'Do B.', files: [], mcpServers: [] },
+    ])
     expect(text).toContain('<skill id="app:minutes" title="회의록 &quot;정리&quot;">')
     expect(text).toContain('결정 사항을 먼저 적는다.')
     expect(text).toContain("Text files in this skill's folder: references/form.md, notes.txt")
@@ -42,6 +46,7 @@ describe('buildSkillRequest (total cap)', () => {
     title: 'Big',
     body: 'x'.repeat(chars),
     files: [],
+    mcpServers: [],
   })
 
   it('caps the total at 150,000 characters by default', () => {
@@ -69,7 +74,9 @@ describe('readSkillsForRequest', () => {
     })
     const out = await readSkillsForRequest({ aiRead }, ['app:a', 'app:off', 'app:a', 'app:gone'])
     expect(aiRead).toHaveBeenCalledTimes(3)
-    expect(out.skills).toEqual([{ id: 'app:a', title: 'A', body: 'Body A', files: ['f.md'] }])
+    expect(out.skills).toEqual([
+      { id: 'app:a', title: 'A', body: 'Body A', files: ['f.md'], mcpServers: [] },
+    ])
     expect(out.missing).toEqual(['app:off', 'app:gone'])
   })
 
@@ -78,6 +85,6 @@ describe('readSkillsForRequest', () => {
     expect(skillForRequestOf({ ok: true, skill: { id: 'a:b' } })).toBeUndefined()
     expect(
       skillForRequestOf({ ok: true, skill: { id: 'a:b', body: '', files: [1, 'x'] } }),
-    ).toEqual({ id: 'a:b', title: 'a:b', body: '', files: ['x'] })
+    ).toEqual({ id: 'a:b', title: 'a:b', body: '', files: ['x'], mcpServers: [] })
   })
 })

@@ -28,6 +28,7 @@ export const ms = {
   invokeManual: 'Hanya apabila dipanggil',
   badgeTemplate: 'Ada templat',
   badgeScripts: 'Ada skrip · berfungsi sepenuhnya dalam tetingkap ejen',
+  badgeMcpServer: 'Memerlukan pelayan MCP: {servers}',
   badgeAgentOnly: 'Tetingkap ejen sahaja',
   unreadableNoFrontmatter: 'tiada maklumat pengepala',
   unreadableBadName: 'nama tidak mematuhi peraturan',

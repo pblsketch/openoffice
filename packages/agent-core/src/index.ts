@@ -164,3 +164,4 @@ export type {
   McpWindowState,
   UserMcpSkill,
 } from './user-mcp-skill'
+export * from './skill-mcp-refs'

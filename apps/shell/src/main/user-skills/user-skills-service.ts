@@ -28,6 +28,7 @@ import {
   isInsideDir,
   listSkillFolderFiles,
   listUserSkills,
+  mcpServersOfSkillMd,
   parseSkillMd,
   parseUserSkillId,
   pickEnabledUserSkills,
@@ -211,6 +212,7 @@ function viewOf(
     invoke: skill.invoke,
     hidden: skill.hidden,
     hasScripts: skill.hasScripts,
+    mcpServers: skill.mcpServers,
     template: skill.template,
     templateExists: skill.templateExists,
     agentOnly: skill.agentOnly,
@@ -883,6 +885,8 @@ export function createUserSkillsService(deps: UserSkillsServiceDeps) {
             ),
           template: skill.templateExists ? skill.template : undefined,
           hasScripts: skill.hasScripts,
+          // read again from the text sent now, not the list's copy
+          mcpServers: mcpServersOfSkillMd(parsed),
         },
       }
     },

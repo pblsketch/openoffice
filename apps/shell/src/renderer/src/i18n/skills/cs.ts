@@ -28,6 +28,7 @@ export const cs = {
   invokeManual: 'Jen na vyvolání',
   badgeTemplate: 'Obsahuje šablonu',
   badgeScripts: 'Obsahuje skripty · plně funguje v okně agenta',
+  badgeMcpServer: 'Vyžaduje server MCP: {servers}',
   badgeAgentOnly: 'Jen v okně agenta',
   unreadableNoFrontmatter: 'chybí hlavička s metadaty',
   unreadableBadName: 'název neodpovídá pravidlům',

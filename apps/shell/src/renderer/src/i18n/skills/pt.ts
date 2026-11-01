@@ -28,6 +28,7 @@ export const pt = {
   invokeManual: 'Só quando chamada',
   badgeTemplate: 'Tem modelo',
   badgeScripts: 'Tem scripts · funciona por completo na janela do agente',
+  badgeMcpServer: 'Requer servidor MCP: {servers}',
   badgeAgentOnly: 'Só na janela do agente',
   unreadableNoFrontmatter: 'sem cabeçalho de metadados',
   unreadableBadName: 'o nome não segue as regras',

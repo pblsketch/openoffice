@@ -11,7 +11,8 @@
     "./redact-core": "./src/redact-core.ts",
     "./user-skill-names": "./src/user-skill-names.ts",
     "./user-mcp/names": "./src/user-mcp/names.ts",
-    "./user-mcp/result": "./src/user-mcp/result.ts"
+    "./user-mcp/result": "./src/user-mcp/result.ts",
+    "./skill-mcp-refs": "./src/skill-mcp-refs.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
