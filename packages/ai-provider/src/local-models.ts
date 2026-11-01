@@ -13,6 +13,7 @@
 // failure, which is right for a chat turn and wrong for a probe of a server that
 // is very often simply not running. The user agent it would have added is still
 // set by `withUserAgent`, since gateways reject a bare `node`.
+import { aiEffortOf, aiEffortsOf, type AiEffort } from './effort'
 import { withUserAgent } from './fetch'
 import { ResponseBodyTooLargeError, endpointUrl, readCappedResponseText } from './protocols/shared'
 import { AiTimeoutError, createStreamWatchdog } from './watchdog'
@@ -54,6 +55,12 @@ export interface AiLocalInspection {
   tools?: boolean | undefined
   /** absent when the server listed no capabilities at all */
   vision?: boolean | undefined
+  /**
+   * the effort levels the model takes (`thinking.values`); empty when the
+   * server's capability list says the model does not think, absent when it says nothing
+   */
+  efforts?: AiEffort[] | undefined
+  defaultEffort?: AiEffort | undefined
 }
 
 export type AiLocalInspectionResult =
@@ -388,6 +395,15 @@ async function inspectOllamaModel(
   if (Array.isArray(body.capabilities)) {
     profile.tools = body.capabilities.includes('tools')
     profile.vision = body.capabilities.includes('vision')
+    if (!body.capabilities.includes('thinking')) profile.efforts = []
+  }
+  // named levels (`think: "high"`); a model that only turns thinking on or off lists none
+  const thinking = isRecord(body.thinking) ? body.thinking : undefined
+  const efforts = aiEffortsOf(thinking?.values)
+  if (efforts) {
+    profile.efforts = efforts
+    const defaultEffort = aiEffortOf(thinking?.default)
+    if (defaultEffort && efforts.includes(defaultEffort)) profile.defaultEffort = defaultEffort
   }
   const contextLength = contextLengthOf(body.model_info)
   if (contextLength !== undefined) profile.contextLength = contextLength

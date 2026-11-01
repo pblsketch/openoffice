@@ -8,6 +8,7 @@ import { streamCodexAppServer } from './codex-app-server'
 import { streamClaudeCodeCli } from './claude-code-cli'
 import { streamChatGpt } from './chatgpt/responses'
 import type { StreamCallbacks } from './protocols/shared'
+import { keyEffortBody } from './key-effort'
 import { getProviderAdapter, type AiProtocol } from './registry'
 import type { AiProviderConfig, AiProviderSelection } from './types'
 
@@ -43,6 +44,8 @@ export async function streamForProvider(
 ): Promise<void> {
   const endpoint = getProviderAdapter(provider).resolveEndpoint(config)
   const { baseUrl } = endpoint
+  // read before the wire id replaces the model: the table is by the listed id
+  const effortBody = keyEffortBody(provider, config, endpoint.protocol)
   if (endpoint.model) config = { ...config, model: endpoint.model }
   if (endpoint.protocol === 'codex-app-server') {
     return streamCodexAppServer(config, system, messages, tools, maxTokens, cb)
@@ -60,7 +63,7 @@ export async function streamForProvider(
   return withOutputCapFallback(baseUrl, config.model, maxTokens, (cap) => {
     switch (protocol) {
       case 'anthropic':
-        return streamAnthropic(config, system, messages, tools, cap, cb, baseUrl)
+        return streamAnthropic(config, system, messages, tools, cap, cb, baseUrl, effortBody)
       case 'gemini':
         return streamGemini(config, system, messages, tools, cap, cb, baseUrl, {
           omitTemperature: endpoint.omitTemperature,
@@ -69,7 +72,7 @@ export async function streamForProvider(
         return streamOpenAiCompatible(baseUrl, config, system, messages, tools, cap, cb, {
           omitTemperature: endpoint.omitTemperature,
           useMaxCompletionTokens: endpoint.useMaxCompletionTokens,
-          bodyExtras: endpoint.bodyExtras,
+          bodyExtras: effortBody ? { ...endpoint.bodyExtras, ...effortBody } : endpoint.bodyExtras,
           ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
         })
       case 'openai-responses':

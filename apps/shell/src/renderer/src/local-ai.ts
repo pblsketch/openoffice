@@ -14,6 +14,8 @@
 import {
   DEFAULT_LOCAL_TIMEOUT_MS,
   MAX_LOCAL_TIMEOUT_MS,
+  aiEffortOf,
+  aiEffortsOf,
   MIN_LOCAL_TIMEOUT_MS,
   localContextTokensOf,
   localEndpointTimeoutMs,
@@ -444,6 +446,9 @@ export interface LocalInspection {
   runningContextLength?: number | undefined
   tools?: boolean | undefined
   vision?: boolean | undefined
+  /** the effort levels the model takes; empty when the server says it does not think */
+  efforts?: readonly string[] | undefined
+  defaultEffort?: string | undefined
 }
 
 function isCheckTime(value: unknown): value is number {
@@ -486,6 +491,17 @@ export function applyInspection(
   if (typeof inspection.vision === 'boolean' && profile.visionSource !== 'user') {
     next.vision = inspection.vision
     next.visionSource = 'server'
+  }
+  // only the server reports levels (decision 0096): its newest answer replaces the old one
+  if (Array.isArray(inspection.efforts)) {
+    const efforts = aiEffortsOf(inspection.efforts)
+    const defaultEffort = aiEffortOf(inspection.defaultEffort)
+    delete next.efforts
+    delete next.defaultEffort
+    if (efforts) {
+      next.efforts = efforts
+      if (defaultEffort && efforts.includes(defaultEffort)) next.defaultEffort = defaultEffort
+    }
   }
   return next
 }

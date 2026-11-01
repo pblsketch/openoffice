@@ -303,21 +303,21 @@ metadata:
 
 데이터 폴더(`%APPDATA%\IeumOffice`, 개발 실행은 `IeumOffice-Dev`)에 있다. 사람이 직접 고칠 수 있고, 명령어와 MCP는 읽기만 한다.
 
-| 값                                   | 종류                                                      | 기본                                                       |
-| ------------------------------------ | --------------------------------------------------------- | ---------------------------------------------------------- |
-| `provider`                           | `auto` 또는 제공자 식별자                                 | `auto`                                                     |
-| `providers`                          | 제공자별 `{ apiKey, model, baseUrl?, cliPath?, models? }` | 빈 표                                                      |
-| `meteredAccepted`                    | 구독 제공자별 참/거짓                                     | 거짓                                                       |
-| `headlessSubscriptionEnabled`        | 참/거짓. 자동 호출 경로의 구독 사용                       | 거짓                                                       |
-| `headlessSubscriptionConsentVersion` | 자동 호출 스위치를 켤 때 동의한 경고의 판(정수)           | 없음                                                       |
-| `subscriptionNoticeSeen`             | 참/거짓. 첫 연결 안내를 봤는지                            | 거짓                                                       |
-| `customEndpoints`, `customEndpoint`  | 직접 운영하는 서버 목록과 지금 쓰는 것의 식별자           | 없음                                                       |
-| `maxOutputTokens`                    | 모델 한 차례의 출력 상한                                  | 코드의 기본값                                              |
-| `media`, `search`                    | 이미지·분석·검색 제공자 선택과 그 키                      | 이미지 분석은 `chat`, 영상 분석은 `none`, 검색은 무료 경로 |
-| `readUrl`                            | `{ githubToken }`                                         | 없음                                                       |
-| `internetTools`                      | `false`면 편집기 AI 창의 인터넷 도구를 끈다               | 켬(값 없음)                                                |
+| 값                                   | 종류                                                                              | 기본                                                       |
+| ------------------------------------ | --------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `provider`                           | `auto` 또는 제공자 식별자                                                         | `auto`                                                     |
+| `providers`                          | 제공자별 `{ apiKey, model, baseUrl?, cliPath?, models?, effort?, modelEfforts? }` | 빈 표                                                      |
+| `meteredAccepted`                    | 구독 제공자별 참/거짓                                                             | 거짓                                                       |
+| `headlessSubscriptionEnabled`        | 참/거짓. 자동 호출 경로의 구독 사용                                               | 거짓                                                       |
+| `headlessSubscriptionConsentVersion` | 자동 호출 스위치를 켤 때 동의한 경고의 판(정수)                                   | 없음                                                       |
+| `subscriptionNoticeSeen`             | 참/거짓. 첫 연결 안내를 봤는지                                                    | 거짓                                                       |
+| `customEndpoints`, `customEndpoint`  | 직접 운영하는 서버 목록과 지금 쓰는 것의 식별자                                   | 없음                                                       |
+| `maxOutputTokens`                    | 모델 한 차례의 출력 상한                                                          | 코드의 기본값                                              |
+| `media`, `search`                    | 이미지·분석·검색 제공자 선택과 그 키                                              | 이미지 분석은 `chat`, 영상 분석은 `none`, 검색은 무료 경로 |
+| `readUrl`                            | `{ githubToken }`                                                                 | 없음                                                       |
+| `internetTools`                      | `false`면 편집기 AI 창의 인터넷 도구를 끈다                                       | 켬(값 없음)                                                |
 
-- 로컬 서버 항목(`kind: 'local'`)은 `modelProfiles`와 `timeoutMs`를 더 든다. `modelProfiles`는 모델 id별 `{ contextLength, maxContextLength, tools, vision, contextSource, toolsSource, visionSource, checkedAt, notes }`이고, source는 `server`·`user`·`test`뿐이다. `timeoutMs`는 60,000~600,000의 정수이고, 없으면 300,000으로 읽는다.
+- 로컬 서버 항목(`kind: 'local'`)은 `modelProfiles`와 `timeoutMs`를 더 든다. `modelProfiles`는 모델 id별 `{ contextLength, maxContextLength, tools, vision, contextSource, toolsSource, visionSource, checkedAt, notes, efforts, defaultEffort }`이고, source는 `server`·`user`·`test`뿐이다. `timeoutMs`는 60,000~600,000의 정수이고, 없으면 300,000으로 읽는다.
 - `customEndpoint: ''`는 "쓸 사용자 서버 없음"이다. 이때 `providers.custom`은 `{ apiKey: '', model: '', baseUrl: '' }`로 비고, `customEndpoint` 값이 아예 없는 예전 파일만 첫 서버를 고른다.
 - 키와 토큰(`providers.*.apiKey`, `customEndpoints[].apiKey`, `media.providers.*.apiKey`, `search.providers.*.apiKey`, `readUrl.githubToken`)은 Windows와 Linux(GNOME 키링·KWallet이 있을 때)에서 앱이 저장할 때 `sealed:v1:<base64>`로 봉인된다(결정 0063). 사람이 평문으로 적어 넣어도 읽히고, 앱이 다음에 저장하거나 시작할 때 봉인된다. 명령어와 MCP는 봉인된 값을 앱에게 풀어 받아 쓰고(처음 한 번 1~2초), 풀지 못한 값은 빈 키로 읽는다. 명령어는 봉인하지 않는다. macOS는 봉인하지 않는다.
 - `readUrl.githubToken`은 비공개 GitHub 파일을 읽는 읽기 토큰이다. 키와 같은 방식으로 저장되고, `api.github.com` 요청에만 실린다. 다른 사이트나 리다이렉트 홉에는 보내지 않는다.
@@ -329,6 +329,8 @@ metadata:
 - `providers` 표가 아예 없는 파일은 제공자 설정 이전의 파일로 읽혀, 다른 값까지 기본값이 된다.
 - 종량 허용은 이 파일의 값만으로는 유효하지 않다. 같은 폴더의 기록(`subscription-metered.json`)에 적힌 로그인 종류가 지금 감지된 것과 같아야 한다.
 - 구독 제공자의 `model`에는 프로그램이 받는 값이 그대로 들어간다(Claude의 `opus`·`claude-opus-5-5` 같은 별칭이나 식별자, Codex의 모델 식별자). 빈 값은 프로그램의 기본 모델이다. 화면에 보이는 표시 이름은 저장하지 않는다.
+- `effort`는 생각 깊이다(결정 0096). `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max` 가운데 하나이고, 없으면 프로그램이나 회사의 기본이다. 다른 값은 앱이 저장할 때 지우고, 손으로 적어도 실행에 넘기지 않는다. Claude에는 `low`~`max`만, Codex에는 그 모델이 받는 값만, 키 제공자에는 `modelEfforts`가 그 모델에 적은 값만 넘긴다. 로컬 서버는 `customEndpoints[].effort`에 두고, 쓰는 서버의 값이 `providers.custom`에 옮겨진다. 명령어와 MCP의 실행도 이 값을 쓴다.
+- 키 제공자의 `modelEfforts`는 모델 id별 `{ efforts, defaultEffort? }`이고, 그 회사의 모델 목록이 알려 준 단계다(Anthropic, OpenRouter, DeepSeek, xAI). `models`와 함께 앱이 채우고, 앱 화면이 저장할 때는 파일에 있던 값이 그대로 남는다. 모르는 단계, 256자를 넘는 id, 2,000개를 넘는 항목은 읽을 때 버린다. 로컬 서버의 `efforts`·`defaultEffort`는 Ollama가 그 모델에 대해 알려 준 단계다.
 - 키 제공자의 `models`는 그 회사가 저장된 키에 내준 대화 모델 목록이다(결정 0087). 앱이 시작할 때와 그 제공자의 키나 주소가 바뀌었을 때 앱이 채우고, 최신순이다. 앱만 쓴다. 손으로 고쳐도 다음 조회 때 바뀌고, 앱 화면이 저장할 때는 파일에 있던 값이 그대로 남는다. 문자열이 아닌 항목, 256자를 넘는 항목, 중복은 읽을 때 버린다. 명령어와 MCP는 이 값을 읽지 않는다.
 - 저장된 Gemini 모델 `gemini-3.7-flash`는 `gemini-3.8-flash`로 읽는다(Google이 2026-10-08 내리고 그쪽으로 돌린다).
 - 구독에 로그인된 계정은 이 파일에도, `subscription-metered.json`에도 적히지 않는다. 그 기록에 남는 것은 로그인 방식의 종류뿐이다.

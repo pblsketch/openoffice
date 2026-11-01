@@ -140,9 +140,13 @@ export async function streamAnthropic(
   maxTokens: number,
   cb: StreamCallbacks,
   baseUrl = ANTHROPIC_BASE_URL,
+  /** request fields the route adds, such as the effort (`output_config`) */
+  bodyExtras?: Record<string, unknown>,
 ): Promise<void> {
   const wd = createStreamWatchdog(cb.signal)
-  return wd.guard(() => anthropicTurn(config, system, messages, tools, maxTokens, cb, baseUrl, wd))
+  return wd.guard(() =>
+    anthropicTurn(config, system, messages, tools, maxTokens, cb, baseUrl, wd, bodyExtras),
+  )
 }
 
 async function anthropicTurn(
@@ -154,6 +158,7 @@ async function anthropicTurn(
   cb: StreamCallbacks,
   baseUrl: string,
   wd: StreamWatchdog,
+  bodyExtras?: Record<string, unknown>,
 ): Promise<void> {
   const onBytes = () => {
     wd.touch()
@@ -188,6 +193,7 @@ async function anthropicTurn(
               })),
             }
           : {}),
+        ...bodyExtras,
         stream: true,
       }),
     })
@@ -329,6 +335,7 @@ export async function chatAnthropic(
   system: string,
   user: string,
   baseUrl = ANTHROPIC_BASE_URL,
+  bodyExtras?: Record<string, unknown>,
 ): Promise<AiChatResponse> {
   const response = await aiFetch(endpointUrl(baseUrl, 'v1/messages'), {
     method: 'POST',
@@ -346,6 +353,7 @@ export async function chatAnthropic(
       max_tokens: 8192,
       system,
       messages: [{ role: 'user', content: user }],
+      ...bodyExtras,
     }),
   })
   wd.touch()

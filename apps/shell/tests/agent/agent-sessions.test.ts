@@ -266,6 +266,19 @@ describe('starting a session', () => {
     expect(options.protectedPaths).toContain(join(home, 'AppData', 'IeumOffice'))
   })
 
+  it('passes on the model and the effort chosen for that program', async () => {
+    const { m, project, claude } = manager({
+      settings: {
+        providers: {
+          ...normalizeAiSettings({ providers: {} }).providers,
+          'claude-code': { apiKey: '', model: 'opus', effort: 'high' },
+        },
+      },
+    })
+    await m.start(1, { provider: 'claude-code', projectRoot: project, mode: 'ask-commands' })
+    expect(claude.mock.calls[0]![0]).toMatchObject({ model: 'opus', effort: 'high' })
+  })
+
   it('names the window and session the MCP server’s skill tools answer to, and gives the window the session’s skills', async () => {
     const { m, project, home, startAppMcp } = manager()
     const result = await m.start(4, {

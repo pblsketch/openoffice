@@ -13,7 +13,12 @@
 // as well; this keeps the stored one.
 import { createHash } from 'node:crypto'
 
-import { listKeyProviderModels, listsKeyProviderModels } from './key-models'
+import { aiModelEffortsOf, type AiModelEffort } from './effort'
+import {
+  listKeyProviderModelListing,
+  listsKeyProviderModels,
+  type KeyModelListing,
+} from './key-models'
 import { listedModelsOf } from './providers'
 import type { AiProviderConfig, AiProviderId, AiSettings } from './types'
 
@@ -32,9 +37,18 @@ export function withStoredKeyModels(next: AiSettings, stored: AiSettings): AiSet
   const providers = { ...next.providers }
   for (const [id, config] of Object.entries(providers) as [AiProviderId, AiProviderConfig][]) {
     if (!config) continue
-    const { models: _sent, ...rest } = config
+    const { models: _sent, modelEfforts: _sentEfforts, ...rest } = config
     const models = listedModelsOf(stored.providers?.[id]?.models)
-    providers[id] = models ? { ...rest, models } : rest
+    // the custom slot's table is a mirror of the active server, rebuilt from the server list
+    const modelEfforts =
+      id === 'custom'
+        ? aiModelEffortsOf(config.modelEfforts)
+        : aiModelEffortsOf(stored.providers?.[id]?.modelEfforts)
+    providers[id] = {
+      ...rest,
+      ...(models ? { models } : {}),
+      ...(modelEfforts ? { modelEfforts } : {}),
+    }
   }
   return { ...next, providers }
 }
@@ -48,15 +62,30 @@ export function withKeyProviderModels(
   settings: AiSettings,
   provider: AiProviderId,
   models: readonly string[],
+  /** the levels by id; absent leaves the stored table as it is, empty removes it */
+  efforts?: Readonly<Record<string, AiModelEffort>>,
 ): AiSettings {
   const config = settings.providers[provider]
   if (!config) return settings
-  const { models: old, ...rest } = config
+  const { models: old, modelEfforts: oldEfforts, ...rest } = config
   const listed = listedModelsOf(models)
-  if ((old ?? []).join('\n') === (listed ?? []).join('\n')) return settings
+  const table = efforts === undefined ? aiModelEffortsOf(oldEfforts) : aiModelEffortsOf(efforts)
+  if (
+    (old ?? []).join('\n') === (listed ?? []).join('\n') &&
+    JSON.stringify(oldEfforts ?? null) === JSON.stringify(table ?? null)
+  ) {
+    return settings
+  }
   return {
     ...settings,
-    providers: { ...settings.providers, [provider]: listed ? { ...rest, models: listed } : rest },
+    providers: {
+      ...settings.providers,
+      [provider]: {
+        ...rest,
+        ...(listed ? { models: listed } : {}),
+        ...(table ? { modelEfforts: table } : {}),
+      },
+    },
   }
 }
 
@@ -65,8 +94,11 @@ export interface KeyModelRefresherDeps {
   read(): AiSettings
   /** write the settings the update returns, applied to the file as it is at that moment */
   write(update: (latest: AiSettings) => AiSettings): void
-  /** the listing; replaced in tests */
-  list?: typeof listKeyProviderModels
+  /** the listing; replaced in tests (a bare id list carries no levels) */
+  list?: (
+    provider: AiProviderId,
+    config: Pick<AiProviderConfig, 'apiKey' | 'baseUrl'>,
+  ) => Promise<KeyModelListing | string[] | null>
 }
 
 export interface KeyModelRefresher {
@@ -77,21 +109,22 @@ export interface KeyModelRefresher {
 }
 
 export function createKeyModelRefresher(deps: KeyModelRefresherDeps): KeyModelRefresher {
-  const list = deps.list ?? listKeyProviderModels
+  const list = deps.list ?? ((provider, config) => listKeyProviderModelListing(provider, config))
   /** per provider, what its key and base URL were when it was last asked (in this run) */
   const askedWith = new Map<AiProviderId, string>()
   const inFlight = new Set<Promise<void>>()
 
   const refresh = (provider: AiProviderId, config: AiProviderConfig, fingerprint: string) => {
     const run = list(provider, { apiKey: config.apiKey, baseUrl: config.baseUrl })
-      .then((models) => {
+      .then((answer) => {
         // no list (unreachable, refused, no endpoint): the stored one stays
-        if (!models) return
+        if (!answer) return
+        const listing = Array.isArray(answer) ? { models: answer, efforts: undefined } : answer
         deps.write((latest) => {
           const now = latest.providers[provider]
           // the key changed while the list was on its way: that key's list is not this one
           if (!now || fingerprintOf(now) !== fingerprint) return latest
-          return withKeyProviderModels(latest, provider, models)
+          return withKeyProviderModels(latest, provider, listing.models, listing.efforts)
         })
       })
       .catch(() => undefined)

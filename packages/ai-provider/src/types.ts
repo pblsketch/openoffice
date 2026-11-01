@@ -4,6 +4,7 @@ import type {
   AgentToolDef,
   IpcStreamErrorKind,
 } from '@genoffice/agent-core'
+import type { AiEffort, AiModelEffort } from './effort'
 
 export type AiProviderId =
   | 'codex'
@@ -76,6 +77,10 @@ export interface AiSubscriptionModel {
   resolved?: string | undefined
   /** this is the model an empty selection runs on */
   isDefault?: boolean | undefined
+  /** the effort levels the CLI takes for this model; absent when it takes none or does not tell */
+  efforts?: AiEffort[] | undefined
+  /** the level the CLI runs this model at when none is chosen, when it tells */
+  defaultEffort?: AiEffort | undefined
 }
 
 /**
@@ -153,6 +158,18 @@ export interface AiProviderConfig {
    * pickers show it after the fixed catalog.
    */
   models?: string[] | undefined
+  /**
+   * how hard the model thinks (`AI_EFFORTS`, decision 0096). Absent or empty
+   * runs the program's or vendor's own default; a level the model does not
+   * take is not handed on.
+   */
+  effort?: string | undefined
+  /**
+   * key providers: the levels each listed model takes, by model id, as the
+   * vendor's list reported them. Written by the main process with `models`;
+   * on `custom`, mirrored from the active local server's model profile.
+   */
+  modelEfforts?: Record<string, AiModelEffort> | undefined
 }
 
 /** Where one value of a local model profile came from */
@@ -179,6 +196,10 @@ export interface AiLocalModelProfile {
   checkedAt?: number | undefined
   /** license, model card address and other notes (trimmed, max 500 characters) */
   notes?: string | undefined
+  /** the effort levels the server reports for the model (Ollama's `thinking.values`) */
+  efforts?: AiEffort[] | undefined
+  /** the level the server runs the model at when none is sent */
+  defaultEffort?: AiEffort | undefined
 }
 
 /** One user-hosted OpenAI-compatible server; the active one is mirrored into `providers.custom` */
@@ -196,6 +217,8 @@ export interface AiCustomEndpoint {
   modelProfiles?: Record<string, AiLocalModelProfile> | undefined
   /** first-response limit in milliseconds (60,000..600,000); absent means the 300,000 default */
   timeoutMs?: number | undefined
+  /** how hard the model thinks on this server (`AI_EFFORTS`); mirrored into `providers.custom` */
+  effort?: string | undefined
 }
 
 /** Live picker data returned by Codex app-server's model/list method. */

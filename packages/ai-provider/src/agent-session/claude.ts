@@ -16,6 +16,7 @@ import { writeFile } from 'node:fs/promises'
 import { join, posix, win32 } from 'node:path'
 import {
   MODEL_NAME,
+  claudeCodeEffort,
   exitFailure,
   readLines,
   reportedFailure,
@@ -113,6 +114,8 @@ export function claudeAgentPermissionMode(mode: AgentPermissionMode): 'default' 
 
 export interface ClaudeAgentLaunch {
   model: string
+  /** a level of `CLAUDE_EFFORTS`; anything else is left out */
+  effort?: string | undefined
   mode: AgentPermissionMode
   settingsFile: string
   mcpConfigFile?: string | undefined
@@ -124,6 +127,7 @@ export function claudeAgentLaunchArgs(launch: ClaudeAgentLaunch): string[] {
   if (model && !MODEL_NAME.test(model)) {
     throw new Error(`Invalid Claude Code model name: ${model.slice(0, 80)}`)
   }
+  const effort = claudeCodeEffort(launch.effort)
   return [
     '-p',
     '--input-format',
@@ -153,6 +157,7 @@ export function claudeAgentLaunchArgs(launch: ClaudeAgentLaunch): string[] {
       : []),
     '--no-session-persistence',
     ...(model ? ['--model', model] : []),
+    ...(effort ? ['--effort', effort] : []),
   ]
 }
 
@@ -322,6 +327,7 @@ export async function startClaudeAgentSession(
   }
   const args = claudeAgentLaunchArgs({
     model: options.model,
+    effort: options.effort,
     mode: options.mode,
     settingsFile,
     mcpConfigFile,

@@ -20,6 +20,7 @@ import {
   throwIfToolJsonOverBudget,
   type StreamCallbacks,
 } from './protocols/shared'
+import { aiEffortOf, aiEffortsOf, type AiEffort } from './effort'
 import { AiRunError } from './run-error'
 import { subscriptionModelsOf } from './subscription/contract'
 import { onSubscriptionLoginChange } from './subscription/launch'
@@ -79,6 +80,9 @@ interface ModelEntry {
   displayName?: unknown
   hidden?: unknown
   isDefault?: unknown
+  /** `[{ reasoningEffort, description }]`: the levels a turn of this model takes */
+  supportedReasoningEfforts?: unknown
+  defaultReasoningEffort?: unknown
 }
 
 const DIAGNOSTIC_LIMIT = 16_000
@@ -744,8 +748,20 @@ function fingerprint(message: AgentMessage): string {
   return createHash('sha256').update(JSON.stringify(message)).digest('hex')
 }
 
-function sessionSignature(system: string, tools: AgentToolDef[], model: string): string {
-  return createHash('sha256').update(JSON.stringify({ system, tools, model })).digest('hex')
+/**
+ * What a reused thread must have been started with. The effort is part of it:
+ * a turn's effort also holds for the turns after it, so a thread run at one
+ * level is not reused at another, nor at the default.
+ */
+function sessionSignature(
+  system: string,
+  tools: AgentToolDef[],
+  model: string,
+  effort: AiEffort | undefined,
+): string {
+  return createHash('sha256')
+    .update(JSON.stringify({ system, tools, model, effort: effort ?? '' }))
+    .digest('hex')
 }
 
 function incrementalMessages(
@@ -1185,7 +1201,8 @@ async function runCodexAppServer(
   const run = async (client: CodexAppServerClient): Promise<void> => {
     await assertRunnableAccount(client)
     const model = config.model.trim() || (await defaultModelFor(client))
-    const signature = sessionSignature(system, tools, model)
+    const effort = await effortFor(client, model, config.effort)
+    const signature = sessionSignature(system, tools, model, effort)
     let session = client.getSession(nativeSessionId)
     let nextMessages = incrementalMessages(session, signature, messages)
     if (!session || nextMessages === null) {
@@ -1216,6 +1233,7 @@ async function runCodexAppServer(
               ...imagePaths.map((path) => ({ type: 'localImage', path })),
             ],
             outputSchema: codexAppServerOutputSchema(tools),
+            ...(effort ? { effort } : {}),
           }),
         cb.signal,
         cb,
@@ -1357,6 +1375,35 @@ function modelEntryId(entry: ModelEntry): string {
       : ''
 }
 
+/** The known effort levels Codex lists for one `model/list` entry */
+function modelEntryEfforts(entry: ModelEntry): AiEffort[] | undefined {
+  const options = Array.isArray(entry.supportedReasoningEfforts)
+    ? entry.supportedReasoningEfforts
+    : []
+  return aiEffortsOf(options.map((option) => objectValue(option)?.reasoningEffort))
+}
+
+/**
+ * The configured effort when one page of a `model/list` answer lists it for
+ * `model`, undefined otherwise (Codex then runs the level it would anyway).
+ */
+export function codexListedEffort(
+  listed: unknown,
+  model: string,
+  configured: unknown,
+): AiEffort | undefined {
+  const effort = aiEffortOf(configured)
+  if (!effort) return undefined
+  const data = objectValue(listed)?.data
+  for (const value of Array.isArray(data) ? data : []) {
+    const entry = objectValue(value) as ModelEntry | undefined
+    if (!entry || entry.hidden === true) continue
+    if (modelEntryId(entry) !== model && entry.model !== model) continue
+    return modelEntryEfforts(entry)?.includes(effort) ? effort : undefined
+  }
+  return undefined
+}
+
 /** Every entry of `model/list` that is not hidden, page by page, as Codex gives it */
 async function readModelEntries(client: CodexAppServerClient): Promise<ModelEntry[]> {
   const entries: ModelEntry[] = []
@@ -1378,9 +1425,13 @@ async function readModelEntries(client: CodexAppServerClient): Promise<ModelEntr
 }
 
 async function readModelCatalog(client: CodexAppServerClient): Promise<CodexModelCatalog> {
+  return modelCatalogOf(await readModelEntries(client))
+}
+
+function modelCatalogOf(entries: ModelEntry[]): CodexModelCatalog {
   const models: string[] = []
   let defaultModel = ''
-  for (const entry of await readModelEntries(client)) {
+  for (const entry of entries) {
     const id = modelEntryId(entry)
     if (!id || models.includes(id)) continue
     models.push(id)
@@ -1403,6 +1454,7 @@ export function codexSubscriptionModels(entries: unknown): AiSubscriptionModel[]
     const entry = objectValue(value) as ModelEntry | undefined
     if (!entry || entry.hidden === true) return []
     const id = modelEntryId(entry)
+    const efforts = modelEntryEfforts(entry)
     return id
       ? [
           {
@@ -1412,6 +1464,7 @@ export function codexSubscriptionModels(entries: unknown): AiSubscriptionModel[]
               ? { resolved: entry.model }
               : {}),
             ...(entry.isDefault === true ? { isDefault: true } : {}),
+            ...(efforts ? { efforts, defaultEffort: entry.defaultReasoningEffort } : {}),
           },
         ]
       : []
@@ -1425,6 +1478,8 @@ export function codexSubscriptionModels(entries: unknown): AiSubscriptionModel[]
     label: model.label,
     ...(model.resolved ? { resolved: model.resolved } : {}),
     ...(model === fallback ? { isDefault: true } : {}),
+    ...(model.efforts ? { efforts: model.efforts } : {}),
+    ...(model.defaultEffort ? { defaultEffort: model.defaultEffort } : {}),
   }))
 }
 
@@ -1462,6 +1517,41 @@ setSubscriptionModelSource('codex', ({ configuredPath, signal }) =>
  */
 const RPC_UNSUPPORTED = /^Codex app-server error \((?:-32601|-32600)\)/
 
+/**
+ * The list each running process gave, read once for what a run needs from it
+ * (the default model, the levels a model takes); an entry is gone with its
+ * process, and a failed reading is not kept, so the next run asks again.
+ */
+const listedModels = new WeakMap<CodexAppServerClient, Promise<ModelEntry[]>>()
+
+function listedModelEntries(client: CodexAppServerClient): Promise<ModelEntry[]> {
+  const known = listedModels.get(client)
+  if (known) return known
+  const reading = readModelEntries(client)
+  listedModels.set(client, reading)
+  reading.catch(() => {
+    if (listedModels.get(client) === reading) listedModels.delete(client)
+  })
+  return reading
+}
+
+/**
+ * The configured effort when the model takes it, undefined otherwise: Codex
+ * then runs the level it would run anyway. Only a configured level makes the
+ * bridge read the list (once per process), and a list it cannot read leaves
+ * the level out rather than failing the run.
+ */
+async function effortFor(
+  client: CodexAppServerClient,
+  model: string,
+  configured: unknown,
+): Promise<AiEffort | undefined> {
+  const effort = aiEffortOf(configured)
+  if (!effort) return undefined
+  const entries = await listedModelEntries(client).catch(() => undefined)
+  return codexListedEffort({ data: entries }, model, effort)
+}
+
 /** The default model each running process listed; an entry is gone with its process */
 const defaultModels = new WeakMap<CodexAppServerClient, Promise<string>>()
 
@@ -1476,24 +1566,26 @@ const defaultModels = new WeakMap<CodexAppServerClient, Promise<string>>()
 function defaultModelFor(client: CodexAppServerClient): Promise<string> {
   const known = defaultModels.get(client)
   if (known) return known
-  const reading = readModelCatalog(client).then(
-    ({ defaultModel }) => {
-      if (defaultModel) return defaultModel
-      throw new Error('Codex listed no model, so there is no default model to run with')
-    },
-    (error: unknown) => {
-      if (error instanceof AiRunError) throw error
-      const detail = error instanceof Error ? error.message : String(error)
-      if (RPC_UNSUPPORTED.test(detail)) {
-        throw new AiRunError(
-          'needs-update',
-          'Codex is too old for this app: it cannot list its models, so there is no default model to run with',
-          { provider: 'codex' },
-        )
-      }
-      throw new Error(`Codex could not report its default model: ${detail}`, { cause: error })
-    },
-  )
+  const reading = listedModelEntries(client)
+    .then(modelCatalogOf)
+    .then(
+      ({ defaultModel }) => {
+        if (defaultModel) return defaultModel
+        throw new Error('Codex listed no model, so there is no default model to run with')
+      },
+      (error: unknown) => {
+        if (error instanceof AiRunError) throw error
+        const detail = error instanceof Error ? error.message : String(error)
+        if (RPC_UNSUPPORTED.test(detail)) {
+          throw new AiRunError(
+            'needs-update',
+            'Codex is too old for this app: it cannot list its models, so there is no default model to run with',
+            { provider: 'codex' },
+          )
+        }
+        throw new Error(`Codex could not report its default model: ${detail}`, { cause: error })
+      },
+    )
   defaultModels.set(client, reading)
   // a failed reading is not kept: the next run asks again
   reading.catch(() => {

@@ -5,6 +5,7 @@
 // Pure and browser-safe: the settings screen and the main process read the same
 // rules. Absent never means false — a value nobody reported stays unknown, and
 // only a `user` source outranks what a later observation reports.
+import { aiEffortOf, aiEffortsOf } from './effort'
 import type { AiCustomEndpoint, AiLocalModelProfile, AiLocalValueSource, AiSettings } from './types'
 
 /** context assumed when a local model's window is unknown (conservative on purpose) */
@@ -71,6 +72,13 @@ export function localModelProfileOf(raw: unknown): AiLocalModelProfile | undefin
   // notes are free text: trimmed, bounded, and left out when blank
   const notes = str(raw.notes).slice(0, MAX_LOCAL_NOTES_LENGTH)
   if (notes) profile.notes = notes
+  // the levels the server named; a default counts only as one of them
+  const efforts = aiEffortsOf(raw.efforts)
+  if (efforts) {
+    profile.efforts = efforts
+    const defaultEffort = aiEffortOf(raw.defaultEffort)
+    if (defaultEffort && efforts.includes(defaultEffort)) profile.defaultEffort = defaultEffort
+  }
   return Object.keys(profile).length > 0 ? profile : undefined
 }
 
@@ -191,6 +199,11 @@ export function mergeLocalModelProfile(
 
   const notes = incoming?.notes ?? base?.notes
   if (notes !== undefined) merged.notes = notes
+
+  // only the server reports levels: the newer report, with its default, replaces the older one
+  const levels = incoming?.efforts ? incoming : base
+  if (levels?.efforts) merged.efforts = levels.efforts
+  if (levels?.efforts && levels.defaultEffort) merged.defaultEffort = levels.defaultEffort
 
   return merged
 }

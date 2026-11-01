@@ -523,6 +523,19 @@ describe('mergeLoadedModel', () => {
 })
 
 describe('applyInspection', () => {
+  it('takes the effort levels the server names, and clears them when it names none', () => {
+    const named = applyInspection(
+      { efforts: ['low'], defaultEffort: 'low' },
+      { efforts: ['low', 'medium', 'high', 'ultra'], defaultEffort: 'medium' },
+    )
+    expect(named).toMatchObject({ efforts: ['low', 'medium', 'high'], defaultEffort: 'medium' })
+    const none = applyInspection(named, { efforts: [] })
+    expect(none).not.toHaveProperty('efforts')
+    expect(none).not.toHaveProperty('defaultEffort')
+    // an inspection that says nothing about levels keeps them
+    expect(applyInspection(named, { tools: true })).toMatchObject({ efforts: named.efforts })
+  })
+
   it('prefers the running context and keeps a distinct maximum', () => {
     const profile: AiLocalModelProfile = {
       notes: 'keep me',
