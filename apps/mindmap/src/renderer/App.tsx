@@ -43,6 +43,7 @@ import {
   type ConfirmRequest,
   Notice,
   TopicFieldDialog,
+  type TopicField,
   type TopicFieldRequest,
 } from './components/dialogs'
 import type { MindmapMenuCommand, SaveMode } from '../shared/ipc'
@@ -143,7 +144,7 @@ export default function App() {
 
   // ---- what a map on screen needs from the screen around it ----
 
-  const openField = useCallback((field: TopicRequest, topicId: string) => {
+  const openField = useCallback((field: TopicField, topicId: string) => {
     const active = [...controllers.current.values()].find((candidate) => candidate.topic(topicId))
     const topic = active?.topic(topicId)
     if (!topic) return
@@ -747,10 +748,17 @@ export default function App() {
     }
   }
 
-  // ---- labels, notes, links ----
+  // ---- labels, notes, links, pictures ----
 
-  /** Labels and links are modal; a note belongs in the side panel, where it stays while the map is used. */
+  /**
+   * Labels and links are modal; a note belongs in the side panel, where it
+   * stays while the map is used. A picture is chosen in the file window.
+   */
   const openTopicField = (field: TopicRequest, topicId: string): void => {
+    if (field === 'picture') {
+      pictureDrop.choose(topicId)
+      return
+    }
     if (field === 'note') {
       setThemeOpen(false)
       ai.setOpen(false)
@@ -842,6 +850,7 @@ export default function App() {
         onNote={() => requestField('note')}
         onLabel={() => requestField('label')}
         onLink={() => requestField('link')}
+        onPicture={() => requestField('picture')}
         onLayout={(layout: ViewLayout) => controller?.setLayout(layout)}
         onToggleTheme={() => {
           closeNote()

@@ -29,6 +29,7 @@ export const pl = {
   notePanelHint: 'Notatka trafia do mapy, gdy klikniesz gdzie indziej.',
   tbLabel: 'Etykieta',
   tbLink: 'Link',
+  tbPicture: 'Wstaw obraz',
   tbLayout: 'Układ',
   tbFoldAll: 'Zwiń wszystko',
   tbUnfoldAll: 'Rozwiń wszystko',

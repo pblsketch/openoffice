@@ -29,6 +29,7 @@ export const zhTW = {
   notePanelHint: '點擊其他位置時，備註會寫入地圖。',
   tbLabel: '標籤',
   tbLink: '連結',
+  tbPicture: '插入圖片',
   tbLayout: '版面配置',
   tbFoldAll: '全部摺疊',
   tbUnfoldAll: '全部展開',

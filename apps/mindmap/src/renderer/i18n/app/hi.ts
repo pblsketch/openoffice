@@ -29,6 +29,7 @@ export const hi = {
   notePanelHint: 'जब आप कहीं और क्लिक करते हैं तो नोट मानचित्र में जुड़ जाता है।',
   tbLabel: 'लेबल',
   tbLink: 'लिंक',
+  tbPicture: 'चित्र डालें',
   tbLayout: 'लेआउट',
   tbFoldAll: 'सभी समेटें',
   tbUnfoldAll: 'सभी फैलाएँ',

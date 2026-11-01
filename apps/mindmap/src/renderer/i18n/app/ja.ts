@@ -29,6 +29,7 @@ export const ja = {
   notePanelHint: '別の場所をクリックすると地図に反映されます。',
   tbLabel: 'ラベル',
   tbLink: 'リンク',
+  tbPicture: '画像を挿入',
   tbLayout: 'レイアウト',
   tbFoldAll: 'すべて折りたたむ',
   tbUnfoldAll: 'すべて展開',

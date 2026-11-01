@@ -29,6 +29,7 @@ export const nl = {
   notePanelHint: 'De notitie wordt in de kaart overgenomen wanneer u ergens anders klikt.',
   tbLabel: 'Label',
   tbLink: 'Koppeling',
+  tbPicture: 'Afbeelding invoegen',
   tbLayout: 'Indeling',
   tbFoldAll: 'Alles inklappen',
   tbUnfoldAll: 'Alles uitklappen',

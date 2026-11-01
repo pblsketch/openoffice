@@ -29,6 +29,7 @@ export const ru = {
   notePanelHint: 'Заметка попадает в карту, когда вы щёлкаете в другом месте.',
   tbLabel: 'Метка',
   tbLink: 'Ссылка',
+  tbPicture: 'Вставить изображение',
   tbLayout: 'Макет',
   tbFoldAll: 'Свернуть все',
   tbUnfoldAll: 'Развернуть все',

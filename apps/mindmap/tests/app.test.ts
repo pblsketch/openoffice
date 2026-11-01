@@ -854,3 +854,60 @@ describe('a picture dropped from the desktop', () => {
     expect(fake.dirty.at(-1) ?? false).toBe(false)
   })
 })
+
+describe('"Insert picture" on the toolbar', () => {
+  const FIRST = 'cccccccc-cccc-4ccc-8ccc-ccccccccccc1'
+  const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 7, 7, 7])
+
+  /** Stands in for the person at the file window: picks this file, or closes the window. */
+  function fileWindowAnswers(file: File | null) {
+    return vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(function (
+      this: HTMLInputElement,
+    ) {
+      if (this.type !== 'file') return
+      if (file) {
+        Object.defineProperty(this, 'files', { value: [file] })
+        this.dispatchEvent(new Event('change'))
+      } else this.dispatchEvent(new Event('cancel'))
+    })
+  }
+
+  afterEach(() => vi.restoreAllMocks())
+
+  const button = () => container.querySelector<HTMLButtonElement>('[data-action="picture"]')!
+
+  it('waits for a topic, then puts the chosen picture on it, saved inside the map file', async () => {
+    const { fake } = await openWith(plainSheet())
+    expect(button().disabled).toBe(true)
+    expect(button().getAttribute('aria-label')).toBe('Insert picture')
+
+    const window = fileWindowAnswers(
+      new File([PNG as BlobPart], 'photo.png', { type: 'image/png' }),
+    )
+    await selectOnMap(FIRST)
+    await click('[data-action="picture"]')
+    expect(window).toHaveBeenCalledTimes(1)
+    await until(() => fake.dirty.at(-1) === true, 'the map to change')
+
+    await click('[data-action="save"]')
+    await savesReach(fake)
+    const saved = await openXmind(fake.saves[0]!.bytes)
+    if (saved.status !== 'ok') throw new Error('did not open')
+    const image = saved.document.sheets[0]!.rootTopic.children!.attached![0]!.image as {
+      src: string
+    }
+    expect(image.src).toMatch(/^xap:resources\/[0-9a-f-]+\.png$/)
+    expect(await saved.document.readEntry(image.src.slice('xap:'.length))).toEqual(PNG)
+  })
+
+  it('changes nothing when the file window is closed without a picture', async () => {
+    const { fake } = await openWith(plainSheet())
+    const window = fileWindowAnswers(null)
+    await selectOnMap(FIRST)
+    await click('[data-action="picture"]')
+    expect(window).toHaveBeenCalledTimes(1)
+    await settle()
+    expect(fake.dirty.at(-1) ?? false).toBe(false)
+    expect(container.querySelector('.mm-save-status')!.textContent).toBe('')
+  })
+})

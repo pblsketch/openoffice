@@ -27,6 +27,7 @@ export const zh = {
   notePanelHint: '点击其他位置时，备注会写入导图。',
   tbLabel: '标签',
   tbLink: '链接',
+  tbPicture: '插入图片',
   tbLayout: '布局',
   tbFoldAll: '全部折叠',
   tbUnfoldAll: '全部展开',

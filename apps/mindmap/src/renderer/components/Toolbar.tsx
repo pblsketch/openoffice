@@ -3,7 +3,7 @@
  * and one thin row of icon buttons for the map.
  *
  * Buttons are grouped as the editor's layout says, left to right:
- * topics | relationship, summary, note, label, link | layout, theme, fold |
+ * topics | relationship, summary, note, label, link, picture | layout, theme, fold |
  * zoom, export | "make another document from this one" | AI at the far end.
  * A group or button whose function is not built yet is not drawn; its place is
  * marked below so it lands where it belongs. The theme button opens and closes
@@ -23,6 +23,7 @@ import {
   IconLink,
   IconMakeFrom,
   IconNote,
+  IconPicture,
   IconRedo,
   IconRelationship,
   IconSave,
@@ -67,6 +68,8 @@ export interface ToolbarProps {
   onNote(): void
   onLabel(): void
   onLink(): void
+  /** opens the file window for a picture on the selected topic */
+  onPicture(): void
   onLayout(layout: ViewLayout): void
   onToggleTheme(): void
   onFoldAll(): void
@@ -207,6 +210,14 @@ export function Toolbar(p: ToolbarProps) {
             </ToolButton>
             <ToolButton action="link" label={t('tbLink')} disabled={topicOff} onClick={p.onLink}>
               <IconLink />
+            </ToolButton>
+            <ToolButton
+              action="picture"
+              label={t('tbPicture')}
+              disabled={topicOff}
+              onClick={p.onPicture}
+            >
+              <IconPicture />
             </ToolButton>
           </div>
         </div>

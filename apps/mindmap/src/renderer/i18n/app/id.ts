@@ -29,6 +29,7 @@ export const id = {
   notePanelHint: 'Catatan diterapkan ke peta saat Anda mengklik di tempat lain.',
   tbLabel: 'Label',
   tbLink: 'Tautan',
+  tbPicture: 'Sisipkan gambar',
   tbLayout: 'Tata letak',
   tbFoldAll: 'Lipat semua',
   tbUnfoldAll: 'Buka semua',
