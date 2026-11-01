@@ -26,6 +26,14 @@ export interface RecordedRequest {
   headers: Record<string, string | string[] | undefined>
 }
 
+/** One tool the fake server lists when `FakeMcpOptions.tools` is given */
+export interface FakeTool {
+  name: string
+  description: string
+  inputSchema?: { type: 'object'; properties?: Record<string, unknown> }
+  annotations?: { readOnlyHint?: boolean }
+}
+
 export interface FakeMcpOptions {
   /** 'streamable': Streamable HTTP only; 'sse': legacy SSE only (POST to the URL answers 405) */
   mode?: 'streamable' | 'sse'
@@ -39,6 +47,12 @@ export interface FakeMcpOptions {
   acceptedTokens?: Set<string>
   /** the authorization server named in the protected resource metadata */
   authServer?: () => string
+  /**
+   * The tools to list, read again at every listing (so a test can change a
+   * description or add a tool); replaces the `toolCount` numbered tools.
+   * Calls answer as for any other name, with the special tools still special.
+   */
+  tools?: () => readonly FakeTool[]
 }
 
 export interface FakeMcp {
@@ -97,6 +111,16 @@ export async function startFakeMcp(options: FakeMcpOptions = {}): Promise<FakeMc
       },
     )
     server.setRequestHandler(ListToolsRequestSchema, (request) => {
+      if (options.tools) {
+        return {
+          tools: options.tools().map((t) => ({
+            name: t.name,
+            description: t.description,
+            inputSchema: t.inputSchema ?? { type: 'object' as const, properties: {} },
+            ...(t.annotations ? { annotations: t.annotations } : {}),
+          })),
+        }
+      }
       const start = request.params?.cursor ? Number(request.params.cursor) : 0
       const end = Math.min(start + pageSize, toolCount)
       const tools = []
