@@ -41,6 +41,7 @@ export {
   windowOutboundBridge,
 } from './outbound-guard'
 export type { OutboundBridgeLike } from './outbound-guard'
+export * from './user-mcp'
 export type {
   DriveBridgeLike,
   DriveCallResult,
