@@ -49,7 +49,7 @@ export const AI_MODEL_PICKER_STRINGS: Record<Lang, AiModelPickerStrings> = {
 export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   zh: {
     title: '思考深度',
-    hint: '模型作答前思考的深度。越深越慢，消耗的订阅用量也越多。',
+    hint: '模型作答前思考的深度。越深越慢，消耗的订阅用量或 API 费用也越多。',
     auto: '默认',
     autoNamed: '默认（{level}）',
     levels: {
@@ -64,7 +64,7 @@ export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   },
   en: {
     title: 'Effort',
-    hint: 'How hard the model thinks before it answers. Higher is slower and uses more of your subscription.',
+    hint: 'How hard the model thinks before it answers. Higher is slower and uses more of your subscription or API credit.',
     auto: 'Default',
     autoNamed: 'Default ({level})',
     levels: {
@@ -79,7 +79,7 @@ export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   },
   ja: {
     title: '思考の深さ',
-    hint: '回答前にモデルがどれだけ深く考えるか。深いほど時間がかかり、サブスクリプションの使用量も増えます。',
+    hint: '回答前にモデルがどれだけ深く考えるか。深いほど時間がかかり、サブスクリプションの使用量や API 料金も増えます。',
     auto: '既定',
     autoNamed: '既定（{level}）',
     levels: {
@@ -94,7 +94,7 @@ export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   },
   ko: {
     title: '생각 깊이',
-    hint: '답하기 전에 모델이 얼마나 깊이 생각할지 정합니다. 깊을수록 느리고 구독 사용량을 더 씁니다.',
+    hint: '답하기 전에 모델이 얼마나 깊이 생각할지 정합니다. 깊을수록 느리고, 구독 사용량이나 API 요금을 더 씁니다.',
     auto: '기본',
     autoNamed: '기본({level})',
     levels: {
@@ -109,7 +109,7 @@ export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   },
   fr: {
     title: 'Effort de réflexion',
-    hint: "À quel point le modèle réfléchit avant de répondre. Plus c'est élevé, plus c'est lent et plus cela consomme votre abonnement.",
+    hint: "À quel point le modèle réfléchit avant de répondre. Plus c'est élevé, plus c'est lent et plus cela consomme votre abonnement ou vos crédits API.",
     auto: 'Par défaut',
     autoNamed: 'Par défaut ({level})',
     levels: {
@@ -124,7 +124,7 @@ export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   },
   de: {
     title: 'Denkaufwand',
-    hint: 'Wie gründlich das Modell nachdenkt, bevor es antwortet. Höher ist langsamer und verbraucht mehr von Ihrem Abo.',
+    hint: 'Wie gründlich das Modell nachdenkt, bevor es antwortet. Höher ist langsamer und verbraucht mehr von Ihrem Abo oder API-Guthaben.',
     auto: 'Standard',
     autoNamed: 'Standard ({level})',
     levels: {
@@ -139,7 +139,7 @@ export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   },
   es: {
     title: 'Esfuerzo de razonamiento',
-    hint: 'Cuánto piensa el modelo antes de responder. Cuanto más alto, más lento y más uso de tu suscripción.',
+    hint: 'Cuánto piensa el modelo antes de responder. Cuanto más alto, más lento y más uso de tu suscripción o de tu crédito de API.',
     auto: 'Predeterminado',
     autoNamed: 'Predeterminado ({level})',
     levels: {
@@ -154,7 +154,7 @@ export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   },
   th: {
     title: 'ระดับการคิด',
-    hint: 'โมเดลคิดลึกแค่ไหนก่อนตอบ ยิ่งสูงยิ่งช้าและใช้โควตาการสมัครสมาชิกมากขึ้น',
+    hint: 'โมเดลคิดลึกแค่ไหนก่อนตอบ ยิ่งสูงยิ่งช้าและใช้โควตาการสมัครสมาชิกหรือค่าใช้จ่าย API มากขึ้น',
     auto: 'ค่าเริ่มต้น',
     autoNamed: 'ค่าเริ่มต้น ({level})',
     levels: {
@@ -169,7 +169,7 @@ export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   },
   id: {
     title: 'Upaya berpikir',
-    hint: 'Seberapa keras model berpikir sebelum menjawab. Makin tinggi makin lambat dan makin banyak memakai kuota langganan Anda.',
+    hint: 'Seberapa keras model berpikir sebelum menjawab. Makin tinggi makin lambat dan makin banyak memakai kuota langganan atau kredit API Anda.',
     auto: 'Bawaan',
     autoNamed: 'Bawaan ({level})',
     levels: {
@@ -184,7 +184,7 @@ export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   },
   ru: {
     title: 'Глубина размышлений',
-    hint: 'Насколько глубоко модель думает перед ответом. Чем выше, тем медленнее и тем больше расходуется подписка.',
+    hint: 'Насколько глубоко модель думает перед ответом. Чем выше, тем медленнее и тем больше расходуется подписка или средства API.',
     auto: 'По умолчанию',
     autoNamed: 'По умолчанию ({level})',
     levels: {
@@ -199,7 +199,7 @@ export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   },
   ar: {
     title: 'عمق التفكير',
-    hint: 'مدى تفكير النموذج قبل أن يجيب. كلما ارتفع كان أبطأ واستهلك من اشتراكك أكثر.',
+    hint: 'مدى تفكير النموذج قبل أن يجيب. كلما ارتفع كان أبطأ واستهلك من اشتراكك أو رصيد API أكثر.',
     auto: 'الافتراضي',
     autoNamed: 'الافتراضي ({level})',
     levels: {
@@ -214,7 +214,7 @@ export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   },
   pt: {
     title: 'Esforço de raciocínio',
-    hint: 'Quanto o modelo pensa antes de responder. Quanto mais alto, mais lento e mais uso da sua assinatura.',
+    hint: 'Quanto o modelo pensa antes de responder. Quanto mais alto, mais lento e mais uso da sua assinatura ou do seu crédito de API.',
     auto: 'Padrão',
     autoNamed: 'Padrão ({level})',
     levels: {
@@ -229,7 +229,7 @@ export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   },
   it: {
     title: 'Sforzo di ragionamento',
-    hint: "Quanto il modello ragiona prima di rispondere. Più è alto, più è lento e più consuma l'abbonamento.",
+    hint: "Quanto il modello ragiona prima di rispondere. Più è alto, più è lento e più consuma l'abbonamento o il credito API.",
     auto: 'Predefinito',
     autoNamed: 'Predefinito ({level})',
     levels: {
@@ -244,7 +244,7 @@ export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   },
   pl: {
     title: 'Wysiłek myślenia',
-    hint: 'Jak głęboko model myśli przed odpowiedzią. Wyżej oznacza wolniej i większe zużycie subskrypcji.',
+    hint: 'Jak głęboko model myśli przed odpowiedzią. Wyżej oznacza wolniej i większe zużycie subskrypcji lub środków API.',
     auto: 'Domyślny',
     autoNamed: 'Domyślny ({level})',
     levels: {
@@ -259,7 +259,7 @@ export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   },
   cs: {
     title: 'Hloubka uvažování',
-    hint: 'Jak důkladně model přemýšlí, než odpoví. Vyšší je pomalejší a spotřebuje víc z předplatného.',
+    hint: 'Jak důkladně model přemýšlí, než odpoví. Vyšší je pomalejší a spotřebuje víc z předplatného nebo kreditu API.',
     auto: 'Výchozí',
     autoNamed: 'Výchozí ({level})',
     levels: {
@@ -274,7 +274,7 @@ export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   },
   nl: {
     title: 'Denkinspanning',
-    hint: 'Hoe grondig het model nadenkt voordat het antwoordt. Hoger is trager en gebruikt meer van je abonnement.',
+    hint: 'Hoe grondig het model nadenkt voordat het antwoordt. Hoger is trager en gebruikt meer van je abonnement of API-tegoed.',
     auto: 'Standaard',
     autoNamed: 'Standaard ({level})',
     levels: {
@@ -289,7 +289,7 @@ export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   },
   ms: {
     title: 'Usaha berfikir',
-    hint: 'Sejauh mana model berfikir sebelum menjawab. Lebih tinggi lebih perlahan dan menggunakan lebih banyak langganan anda.',
+    hint: 'Sejauh mana model berfikir sebelum menjawab. Lebih tinggi lebih perlahan dan menggunakan lebih banyak langganan atau kredit API anda.',
     auto: 'Lalai',
     autoNamed: 'Lalai ({level})',
     levels: {
@@ -304,7 +304,7 @@ export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   },
   he: {
     title: 'עומק החשיבה',
-    hint: 'כמה לעומק המודל חושב לפני שהוא עונה. גבוה יותר איטי יותר ומנצל יותר מהמנוי.',
+    hint: 'כמה לעומק המודל חושב לפני שהוא עונה. גבוה יותר איטי יותר ומנצל יותר מהמנוי או מקרדיט ה-API.',
     auto: 'ברירת מחדל',
     autoNamed: 'ברירת מחדל ({level})',
     levels: {
@@ -319,7 +319,7 @@ export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   },
   hi: {
     title: 'सोचने का स्तर',
-    hint: 'उत्तर देने से पहले मॉडल कितना गहराई से सोचे। जितना ऊँचा, उतना धीमा और सदस्यता का उतना अधिक उपयोग।',
+    hint: 'उत्तर देने से पहले मॉडल कितना गहराई से सोचे। जितना ऊँचा, उतना धीमा और सदस्यता या API क्रेडिट का उतना अधिक उपयोग।',
     auto: 'डिफ़ॉल्ट',
     autoNamed: 'डिफ़ॉल्ट ({level})',
     levels: {
@@ -334,7 +334,7 @@ export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   },
   'zh-TW': {
     title: '思考深度',
-    hint: '模型作答前思考的深度。越深越慢，耗用的訂閱用量也越多。',
+    hint: '模型作答前思考的深度。越深越慢，耗用的訂閱用量或 API 費用也越多。',
     auto: '預設',
     autoNamed: '預設（{level}）',
     levels: {
@@ -349,7 +349,7 @@ export const AI_EFFORT_STRINGS: Record<Lang, AiEffortStrings> = {
   },
   vi: {
     title: 'Mức suy nghĩ',
-    hint: 'Mức độ mô hình suy nghĩ trước khi trả lời. Càng cao càng chậm và càng dùng nhiều gói đăng ký của bạn.',
+    hint: 'Mức độ mô hình suy nghĩ trước khi trả lời. Càng cao càng chậm và càng dùng nhiều gói đăng ký hoặc tín dụng API của bạn.',
     auto: 'Mặc định',
     autoNamed: 'Mặc định ({level})',
     levels: {

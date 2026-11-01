@@ -16,7 +16,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 import { localEndpointFieldsOf } from './local-profile'
-import { aiEffortOf } from './effort'
+import { aiEffortOf, aiModelEffortsOf } from './effort'
 import { AI_SUBSCRIPTION_PROVIDERS, readUrlSettingsOf } from './providers'
 import { AI_PROVIDER_ADAPTERS, normalizeBaseUrl } from './registry'
 import type {
@@ -98,6 +98,9 @@ function sanitizeProviderConfig(input: unknown): AiProviderConfig {
   // a level of the fixed list or nothing: the Claude bridge hands it to `--effort`
   const effort = aiEffortOf(raw.effort)
   if (effort !== undefined) config.effort = effort
+  // known levels only; the request path reads it, and a save takes the file's table instead
+  const modelEfforts = aiModelEffortsOf(raw.modelEfforts)
+  if (modelEfforts !== undefined) config.modelEfforts = modelEfforts
   return config
 }
 
@@ -155,6 +158,7 @@ function sanitizeCustomEndpoints(raw: unknown): AiCustomEndpoint[] {
       apiKey: config.apiKey,
       model: config.model,
       ...(models && models.length > 0 ? { models } : {}),
+      ...(config.effort ? { effort: config.effort } : {}),
       // local-only fields: bounded, and dropped rather than rejecting the endpoint
       ...localEndpointFieldsOf(e),
     })

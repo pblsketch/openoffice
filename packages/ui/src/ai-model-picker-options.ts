@@ -1,22 +1,25 @@
 import {
   AI_PROVIDERS,
   AI_SUBSCRIPTION_PROVIDERS,
+  activeCustomEndpoint,
   aiEffortOf,
+  aiModelEffortOf,
   customEndpointLabel,
   isKeyProviderConfigured,
   isSubscriptionProvider,
+  keyModelEffort,
   keyProviderModels,
   providerSelectionOf,
   resolveCustomEndpoints,
   selectAiProvider,
   subscriptionConnection,
+  takesKeyEffort,
   upsertCustomEndpoint,
   type AiEffort,
   type AiProviderId,
   type AiProviderSelection,
   type AiSettings,
   type AiSubscriptionModel,
-  type AiSubscriptionProviderId,
   type AiSubscriptionStatuses,
 } from '@genoffice/ai-provider/browser'
 import { aiProviderDisplayName, aiSubscriptionProviderName } from './ai-subscription'
@@ -244,14 +247,16 @@ export function withAiProviderSelection(
   })
 }
 
-/** What the effort row offers for the subscription a request runs on */
+/** What the effort row offers for the provider a request runs on (decision 0096) */
 export interface AiEffortChoice {
-  readonly provider: AiSubscriptionProviderId
-  /** the levels the CLI lists for the model that runs, in order */
+  readonly provider: AiProviderId
+  /** on `custom`: the server the level is stored on */
+  readonly endpoint?: string | undefined
+  /** the levels the program or the vendor lists for the model that runs, in order */
   readonly efforts: readonly AiEffort[]
-  /** the stored level when that model takes it; absent runs the CLI's default */
+  /** the stored level when that model takes it; absent runs the default */
   readonly current?: AiEffort | undefined
-  /** the level the CLI runs that model at when none is chosen, when it tells */
+  /** the level the model runs at when none is chosen, when it is told */
   readonly defaultEffort?: AiEffort | undefined
 }
 
@@ -270,11 +275,63 @@ function listedModelOf(
   )
 }
 
+/** What one model takes, as far as a report tells: its levels, `[]` for none */
+interface KnownEfforts {
+  readonly efforts: readonly AiEffort[]
+  readonly defaultEffort?: AiEffort | undefined
+}
+
 /**
- * The effort row for the provider requests run on right now: a subscription
- * whose CLI lists the levels its current model takes. Undefined otherwise (a
- * key provider, nothing connected, a model the CLI does not list, or one that
- * takes no level), and then no row is shown.
+ * The levels `model` takes on `provider`, from what the CLI, the vendor's
+ * list or the local server reported; undefined when nothing tells.
+ */
+function knownEfforts(
+  settings: AiSettings,
+  statuses: AiSubscriptionStatuses,
+  provider: AiProviderId,
+  model: string,
+): KnownEfforts | undefined {
+  if (isSubscriptionProvider(provider)) {
+    const entry = listedModelOf(statuses[provider]?.models ?? [], model)
+    return entry ? { efforts: entry.efforts ?? [], defaultEffort: entry.defaultEffort } : undefined
+  }
+  if (!takesKeyEffort(provider)) return undefined
+  if (provider === 'custom') {
+    const profile = activeCustomEndpoint(settings)?.modelProfiles?.[model]
+    if (!profile) return undefined
+    const taken = aiModelEffortOf({
+      efforts: profile.efforts,
+      defaultEffort: profile.defaultEffort,
+    })
+    // a model the server was asked about, without levels, takes none
+    return taken ?? (profile.checkedAt ? { efforts: [] } : undefined)
+  }
+  const config = settings.providers?.[provider]
+  const taken = keyModelEffort(config, model)
+  if (taken) return taken
+  // a model the vendor listed, in a list that named levels, takes none
+  return config?.models?.includes(model) && config.modelEfforts ? { efforts: [] } : undefined
+}
+
+/** The model a provider runs; on `custom`, the active server's */
+function runningModel(settings: AiSettings, provider: AiProviderId): string {
+  return provider === 'custom'
+    ? (activeCustomEndpoint(settings)?.model ?? '')
+    : (settings.providers?.[provider]?.model?.trim() ?? '')
+}
+
+/** The stored level of a provider; on `custom`, the active server's */
+function storedEffort(settings: AiSettings, provider: AiProviderId): AiEffort | undefined {
+  if (provider === 'custom') return aiEffortOf(activeCustomEndpoint(settings)?.effort)
+  return aiEffortOf(settings.providers?.[provider]?.effort)
+}
+
+/**
+ * The effort row for the provider requests run on right now, when what it
+ * runs on lists the levels its model takes: a subscription CLI, a key
+ * provider whose model list names them, or a local server's model profile.
+ * Undefined otherwise (nothing connected, a model nobody lists, one that takes
+ * no level), and then no row is shown.
  */
 export function aiEffortChoice(
   input: AiSettings,
@@ -282,52 +339,64 @@ export function aiEffortChoice(
 ): AiEffortChoice | undefined {
   const settings = resolveCustomEndpoints(input)
   const choice = selectAiProvider(settings, statuses)
-  if (!choice.connected || !isSubscriptionProvider(choice.provider)) return undefined
+  if (!choice.connected) return undefined
   const provider = choice.provider
-  const config = settings.providers?.[provider]
-  const entry = listedModelOf(statuses[provider]?.models ?? [], config?.model?.trim() ?? '')
-  const efforts = entry?.efforts
-  if (!entry || !efforts?.length) return undefined
-  const stored = aiEffortOf(config?.effort)
+  const known = knownEfforts(settings, statuses, provider, runningModel(settings, provider))
+  if (!known?.efforts.length) return undefined
+  const stored = storedEffort(settings, provider)
   return {
     provider,
-    efforts,
-    ...(stored && efforts.includes(stored) ? { current: stored } : {}),
-    ...(entry.defaultEffort ? { defaultEffort: entry.defaultEffort } : {}),
-  }
-}
-
-/** Settings with a provider's effort set, or cleared (`undefined`) to run the CLI's default */
-export function withAiEffort(
-  settings: AiSettings,
-  provider: AiSubscriptionProviderId,
-  effort: AiEffort | undefined,
-): AiSettings {
-  const config = settings.providers[provider] ?? { apiKey: '', model: '' }
-  const { effort: _previous, ...rest } = config
-  return {
-    ...settings,
-    providers: { ...settings.providers, [provider]: effort ? { ...rest, effort } : rest },
+    ...(provider === 'custom' && settings.customEndpoint
+      ? { endpoint: settings.customEndpoint }
+      : {}),
+    efforts: known.efforts,
+    ...(stored && known.efforts.includes(stored) ? { current: stored } : {}),
+    ...(known.defaultEffort ? { defaultEffort: known.defaultEffort } : {}),
   }
 }
 
 /**
- * Settings after a model pick, with each subscription's stored effort cleared
- * when its CLI lists the selected model without that level. A model the CLI
- * does not list keeps the level: what it takes is not known.
+ * Settings with a provider's level set, or cleared (`undefined`) to run the
+ * default. On `custom` the level belongs to the server `endpoint` names.
+ */
+export function withAiEffort(
+  input: AiSettings,
+  provider: AiProviderId,
+  effort: AiEffort | undefined,
+  endpoint?: string,
+): AiSettings {
+  if (provider === 'custom') {
+    const settings = resolveCustomEndpoints(input)
+    const entry = settings.customEndpoints?.find((e) => e.id === endpoint)
+    if (!entry) return settings
+    const { effort: _previous, ...rest } = entry
+    return upsertCustomEndpoint(settings, effort ? { ...rest, effort } : rest)
+  }
+  const config = input.providers[provider] ?? { apiKey: '', model: '' }
+  const { effort: _previous, ...rest } = config
+  return {
+    ...input,
+    providers: { ...input.providers, [provider]: effort ? { ...rest, effort } : rest },
+  }
+}
+
+/**
+ * Settings after a model pick, with a stored level cleared wherever the
+ * selected model is known not to take it. A model nobody lists keeps the
+ * level: what it takes is not known.
  */
 export function withAiEffortFitted(
-  settings: AiSettings,
+  input: AiSettings,
   statuses: AiSubscriptionStatuses,
 ): AiSettings {
-  let next = settings
-  for (const provider of AI_SUBSCRIPTION_PROVIDERS) {
-    const config = next.providers?.[provider]
-    if (!config?.effort) continue
-    const entry = listedModelOf(statuses[provider]?.models ?? [], config.model?.trim() ?? '')
-    if (!entry) continue
-    const effort = aiEffortOf(config.effort)
-    if (!effort || !entry.efforts?.includes(effort)) next = withAiEffort(next, provider, undefined)
+  let next = resolveCustomEndpoints(input)
+  for (const provider of Object.keys(next.providers ?? {}) as AiProviderId[]) {
+    const effort = storedEffort(next, provider)
+    if (!effort) continue
+    const known = knownEfforts(next, statuses, provider, runningModel(next, provider))
+    if (known && !known.efforts.includes(effort)) {
+      next = withAiEffort(next, provider, undefined, next.customEndpoint)
+    }
   }
   return next
 }

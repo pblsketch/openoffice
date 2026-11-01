@@ -1,11 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Lang } from '@genoffice/i18n'
-import type {
-  AiEffort,
-  AiSettings,
-  AiSubscriptionProviderId,
-  AiSubscriptionStatuses,
-} from '@genoffice/ai-provider/browser'
+import type { AiEffort, AiSettings, AiSubscriptionStatuses } from '@genoffice/ai-provider/browser'
 import {
   aiEffortChoice,
   aiProviderPickerGroups,
@@ -14,6 +9,7 @@ import {
   withAiEffort,
   withAiEffortFitted,
   withAiProviderSelection,
+  type AiEffortChoice,
   type AiProviderPickerGroup,
   type AiProviderPickerSelection,
 } from './ai-model-picker-options'
@@ -190,8 +186,8 @@ export function AiModelPicker({
   }
 
   // the list stays open: the level is picked after the model, and the row shows what is set
-  const pickEffort = (provider: AiSubscriptionProviderId, effort: AiEffort | undefined) => {
-    save((latest) => withAiEffort(latest, provider, effort))
+  const pickEffort = (choice: AiEffortChoice, effort: AiEffort | undefined) => {
+    save((latest) => withAiEffort(latest, choice.provider, effort, choice.endpoint))
   }
 
   const manage = () => {
@@ -395,7 +391,7 @@ export function AiModelPicker({
                       type="button"
                       className={`ai-effort-option${selected ? ' selected' : ''}`}
                       aria-pressed={selected}
-                      onClick={() => pickEffort(effortChoice.provider, level)}
+                      onClick={() => pickEffort(effortChoice, level)}
                     >
                       {label}
                     </button>
