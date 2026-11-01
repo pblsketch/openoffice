@@ -197,7 +197,8 @@ afterEach(async () => {
 
 async function rig(): Promise<Rig> {
   const root = await mkdtemp(join(tmpdir(), 'user-mcp-it-'))
-  cleanups.push(() => rm(root, { recursive: true, force: true }))
+  // a stopped "my PC" server can hold its working folder for a moment on Windows
+  cleanups.push(() => rm(root, { recursive: true, force: true, maxRetries: 50, retryDelay: 100 }))
   const registry: SubscriptionChildRegistry = createSubscriptionChildRegistry()
   cleanups.push(() => registry.shutdown())
 
