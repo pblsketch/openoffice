@@ -4081,6 +4081,24 @@ button {
   color: var(--text);
 }
 
+/* icon buttons in the composer footer beside the model picker (the MCP server button) */
+.ai-attach-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ai-attach-btn:hover {
+  filter: brightness(0.7);
+}
+
 .ai-chat {
   display: flex;
   flex: 1;

@@ -169,6 +169,8 @@ import {
   type AgentImage,
   type IpcStreamError,
   composeWithDrive,
+  windowMcpState,
+  windowMcpUsableServers,
 } from '@genoffice/agent-core'
 import type {
   AiSettings,
@@ -1557,6 +1559,8 @@ export function App({
     // skill cards come back closed; a saved card's record is not part of the conversation
     const msgs = skillCardsRef.current.restore(stored)
     setHistoricChat(msgs.map(storedChatMessageOf))
+    // a reopened conversation starts with no MCP choices of another chat (user MCP spec 7.6)
+    windowMcpState()?.newConversation()
     // Restore model context: follow-ups after reopening the file continue the
     // previous conversation (only when the loop is idle and has no history)
     agentLoopRef.current?.restore(msgs.map((m) => ({ role: m.role, text: m.text })))
@@ -1708,6 +1712,8 @@ export function App({
           messages: () => agentLoopRef.current?.messages ?? [],
           // a template skill the model used offers its new document (spec 5.7)
           onUsed: (skill) => skillTemplatesRef.current.onUsed(skill),
+          // use_skill names the MCP servers it expects that are not usable now (spec 8)
+          mcpServerUsable: (name) => windowMcpUsableServers().has(name),
           onProposal: (proposal) => {
             skillCardsRef.current.add(proposal)
             patchLastAssistant((entry) => ({
@@ -2009,6 +2015,8 @@ export function App({
   function resetConversation(): void {
     sendGate.reset()
     agentLoopRef.current?.reset()
+    // servers off in this chat and "always allow in this chat" go too (user MCP spec 7.6)
+    windowMcpState()?.newConversation()
     setAiRunScope(undefined)
     setAiBusy(false)
     setChat([])
