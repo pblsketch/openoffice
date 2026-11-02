@@ -4,10 +4,7 @@
 // sends notifications/tools/list_changed like a real server would.
 import { readFileSync, existsSync, appendFileSync, watchFile } from 'node:fs'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js'
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js'
 
 export function readState(stateFile) {
   if (!stateFile || !existsSync(stateFile)) return {}

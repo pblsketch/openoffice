@@ -55,7 +55,9 @@ const http = createServer(async (req, res) => {
   }
   if (!entry) {
     res.writeHead(400, { 'content-type': 'application/json' })
-    res.end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32000, message: 'No session' }, id: null }))
+    res.end(
+      JSON.stringify({ jsonrpc: '2.0', error: { code: -32000, message: 'No session' }, id: null }),
+    )
     return
   }
   await entry.transport.handleRequest(req, res, body)
