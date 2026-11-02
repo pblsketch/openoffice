@@ -26,6 +26,10 @@ import {
   safeTextAlign,
   safeTextTransform,
   splitAlpha,
+  BRANCH_LINE_WIDTH_DRAWN_MAX,
+  safeBranchLineWidth,
+  safeBranchShape,
+  safeLinePattern,
 } from '../src/renderer/map/style-values'
 
 /** A topic style that sets nothing. */
@@ -336,6 +340,47 @@ describe("a topic's own style", () => {
         expect(family, String(value)).not.toMatch(/["'`;:,(){}[\]<>\\=@/*!]/u)
         expect([...family].every((character) => character >= ' ')).toBe(true)
       }
+    }
+  })
+})
+
+describe('the values of a branch line', () => {
+  const shape = (word: string): string => `org.xmind.branchConnection.${word}`
+
+  it('a shape a user can pick is itself; a shape only read is the nearest one', () => {
+    for (const word of ['curve', 'straight', 'elbow', 'roundedElbow', 'arrowedCurve', 'none']) {
+      expect(safeBranchShape(shape(word)), word).toBe(word)
+    }
+    expect(safeBranchShape(shape('fold'))).toBe('elbow')
+    expect(safeBranchShape(shape('fold2'))).toBe('elbow')
+    expect(safeBranchShape(shape('roundedfold'))).toBe('roundedElbow')
+    expect(safeBranchShape(shape('bight'))).toBe('curve')
+    expect(safeBranchShape(shape('timeline.horizontal'))).toBe('straight')
+  })
+
+  it('any other shape is no value', () => {
+    for (const value of [shape('mystery'), shape(''), 'curve', shape('Curve'), shape('toString')]) {
+      expect(safeBranchShape(value), value).toBeNull()
+    }
+    for (const value of HOSTILE) expect(safeBranchShape(value), String(value)).toBeNull()
+  })
+
+  it('a pattern is one of the words of the format', () => {
+    for (const word of ['solid', 'dash', 'dot', 'dash-dot', 'dash-dot-dot', 'round-dot']) {
+      expect(safeLinePattern(word)).toBe(word)
+    }
+    for (const value of ['dashed', 'Dash', 'constructor', ...HOSTILE]) {
+      expect(safeLinePattern(value), String(value)).toBeNull()
+    }
+  })
+
+  it('a width is drawn one point to one pixel, as the theme tables are written', () => {
+    expect(safeBranchLineWidth('3pt')).toBe(3)
+    expect(safeBranchLineWidth('3')).toBe(3)
+    expect(safeBranchLineWidth('2.5px')).toBe(2.5)
+    expect(safeBranchLineWidth('40pt')).toBe(BRANCH_LINE_WIDTH_DRAWN_MAX)
+    for (const value of ['0', '0pt', '65', '9999px', '-2', '3em', ...HOSTILE]) {
+      expect(safeBranchLineWidth(value), String(value)).toBeNull()
     }
   })
 })
