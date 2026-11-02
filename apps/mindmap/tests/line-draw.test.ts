@@ -3,6 +3,8 @@
  * jsdom: each line drawn with the values the file holds for it (through the
  * filter), the map-wide tapered lines and rainbow, the tree and the timeline
  * keeping their own lines, and a map without line values drawn as before.
+ * An arrowhead is drawn apart and never dashed, a picked colour is drawn as
+ * picked, and a pattern starts with a whole dash at the topic it leaves.
  * Drawing never writes: the file keeps every value it had.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -10,6 +12,7 @@ import {
   applySheetRainbow,
   applySheetTheme,
   DEFAULT_THEME_ID,
+  mixColors,
   sheetToView,
   themeLook,
   type XmindDocument,
@@ -127,6 +130,18 @@ function mainLines(el: HTMLElement): SVGPathElement[] {
   return MAINS.map((_id, at) => lines[placeOf(el, at)]!)
 }
 
+/** The drawing that holds the lines below main topic `at` (in the file's order). */
+function subLayer(el: HTMLElement, at: number): SVGSVGElement {
+  const wrapper = el.querySelectorAll('me-main > me-wrapper')[placeOf(el, at)]!
+  return wrapper.querySelector<SVGSVGElement>(':scope > svg.subLines')!
+}
+
+/** A `#rrggbb` colour as a browser writes it back. */
+function rgb(hex: string): string {
+  const value = Number.parseInt(hex.slice(1, 7), 16)
+  return `rgb(${value >> 16}, ${(value >> 8) & 0xff}, ${value & 0xff})`
+}
+
 /** The lines below main topic `at` (in the file's order), in the library's order: parent before child. */
 function subLines(el: HTMLElement, at: number): SVGPathElement[] {
   const wrapper = el.querySelectorAll('me-main > me-wrapper')[placeOf(el, at)]!
@@ -146,6 +161,9 @@ describe('a map without line values', () => {
       expect(path.getAttribute('fill')).toBe('none')
     }
     expect(subLines(el, 0)).toHaveLength(3)
+    // the lines below keep the theme's lighter layer
+    expect(subLayer(el, 0).getAttribute('style')).toBeNull()
+    expect(el.querySelectorAll('.mm-line-head')).toHaveLength(0)
   })
 
   it('takes the same paths when laid out', async () => {
@@ -223,7 +241,9 @@ describe('the shape of a line', () => {
     mind.linkDiv()
     const [intoOne, intoTwo] = mainLines(el).map((path) => path.getAttribute('d')!)
     expect(intoOne).toMatch(/^M [\d.-]+ [\d.-]+ H [\d.-]+ V [\d.-]+ H [\d.-]+$/)
-    expect(intoTwo).toMatch(/ C .* L .* L /)
+    // the curve alone: its arrowhead is drawn apart, after the lines
+    expect(intoTwo).toMatch(/^M [\d.-]+ [\d.-]+ C [\d. -]+$/)
+    expect(el.querySelectorAll('svg.lines polygon.mm-line-head')).toHaveLength(1)
     const [intoA, intoDeep, intoB] = subLines(el, 0).map((path) => path.getAttribute('d')!)
     // One A has no shape of its own: the line into it takes its parent's
     expect(intoA).toMatch(/ V /)
@@ -231,6 +251,48 @@ describe('the shape of a line', () => {
     // and no further: Deep's parent, One A, has no shape of its own, so the theme's
     expect(intoDeep).toMatch(/ C /)
     expect(intoB).toMatch(/^M [\d.-]+ [\d.-]+$/)
+  })
+
+  it('an arrowhead is a filled triangle after the lines, whole on a dashed line', async () => {
+    const { el, mind } = await mount(
+      sheetWith({
+        one: { 'line-class': shape('arrowedCurve'), 'line-pattern': 'dot' },
+        two: {
+          'line-class': shape('arrowedCurve'),
+          'line-pattern': 'dash',
+          'line-color': '#0000ff',
+        },
+      }),
+    )
+    layOut()
+    mind.linkDiv()
+    const look = themeLook(DEFAULT_THEME_ID)
+    const lines = [...el.querySelector('svg.lines')!.children]
+    // the library's lines keep their places; the heads come after them
+    expect(lines.map((child) => child.tagName.toLowerCase())).toEqual([
+      'path',
+      'path',
+      'polygon',
+      'polygon',
+    ])
+    const heads = lines.slice(2)
+    for (const head of heads) {
+      expect(head.getAttribute('class')).toBe('mm-line-head')
+      expect(head.getAttribute('stroke-dasharray')).toBeNull()
+      expect((head as SVGElement).style.strokeDasharray).toBe('')
+      expect(head.getAttribute('points')!.split(' ')).toHaveLength(3)
+    }
+    expect(heads.map((head) => head.getAttribute('fill')).sort()).toEqual(
+      ['#0000ff', look.branches[0]!.color].sort(),
+    )
+    // the lines themselves are dashed
+    for (const path of mainLines(el)) expect(path.style.strokeDasharray).not.toBe('')
+    // below One: the lines into One A and One B take One's shape, the one into Deep the theme's
+    const below = [...subLayer(el, 0).children].map((child) => child.tagName.toLowerCase())
+    expect(below).toEqual(['path', 'path', 'path', 'polygon', 'polygon'])
+    const subHead = subLayer(el, 0).querySelector<SVGElement>('polygon')!
+    expect(subHead.style.fill).toBe('var(--mm-branch)')
+    expect(subHead.style.strokeDasharray).toBe('')
   })
 
   it('a shape only read is drawn as the nearest one, and the file keeps its value', async () => {
@@ -365,5 +427,51 @@ describe('the map-wide settings', () => {
     expect(doc.sheets[0]!.theme).toEqual(theme)
     expect(await session.produceBytes()).toEqual(original)
     expect(sheetToView(doc.sheets[0]!, 0).root.line).toBeUndefined()
+  })
+})
+
+describe('colours and patterns as picked', () => {
+  it('a picked colour below a main topic is drawn as picked, not lighter', async () => {
+    const { el } = await mount(sheetWith({ oneA: { 'line-color': '#ff0000' } }))
+    const look = themeLook(DEFAULT_THEME_ID)
+    // the layer is drawn whole
+    expect(subLayer(el, 0).style.opacity).toBe('1')
+    const [intoA, intoDeep, intoB] = subLines(el, 0)
+    expect(intoA!.style.stroke).toBe('rgb(255, 0, 0)')
+    expect(intoDeep!.style.stroke).toBe('rgb(255, 0, 0)')
+    // a line the theme colours takes the lighter colour itself
+    const lighter = mixColors(look.branches[0]!.color, look.ground, 1 - look.lines.sub.opacity)
+    expect(intoB!.style.stroke).toBe(rgb(lighter))
+  })
+
+  it('with the rainbow off, the lines beside a picked one take the lighter theme colour', async () => {
+    const { el } = await mount(
+      sheetWith(
+        { oneB: { 'line-color': '#00ff00' } },
+        settingsOnly({ 'multi-line-colors': 'none' }),
+      ),
+    )
+    const look = themeLook(DEFAULT_THEME_ID)
+    const [intoA, , intoB] = subLines(el, 0)
+    expect(intoB!.style.stroke).toBe('rgb(0, 255, 0)')
+    expect(intoA!.style.stroke).toBe(
+      rgb(mixColors(look.strongText, look.ground, 1 - look.lines.sub.opacity)),
+    )
+  })
+
+  it('a pattern starts with a whole dash where the line comes out from under its topic', async () => {
+    const { el, mind } = await mount(sheetWith({ one: { 'line-pattern': 'dash' } }))
+    layOut()
+    mind.linkDiv()
+    // the line from the centre starts under the central topic: the dashes are moved on by that much
+    const intoOne = mainLines(el)[0]!
+    expect(Number(intoOne.getAttribute('stroke-dashoffset'))).toBeGreaterThan(0)
+    // the lines below start at their topic's edge
+    for (const path of subLines(el, 0)) {
+      expect(path.style.strokeDasharray).not.toBe('')
+      expect(path.getAttribute('stroke-dashoffset')).toBeNull()
+    }
+    // a line without a pattern has no offset
+    expect(mainLines(el)[1]!.getAttribute('stroke-dashoffset')).toBeNull()
   })
 })
