@@ -378,6 +378,7 @@ describe('the colours of a map are document content', () => {
 
   it('the code that draws the look names no chrome token and reads no app theme', () => {
     expect(mapCode.map(([name]) => name).sort()).toEqual([
+      'boundary-shapes.ts',
       'branches.ts',
       'decorate.ts',
       'images.ts',
@@ -387,7 +388,9 @@ describe('the colours of a map are document content', () => {
       'markers.ts',
       'multi-select.ts',
       'picture-drop.ts',
+      'relationship-shapes.ts',
       'style-values.ts',
+      'summary-shapes.ts',
       'text-format.ts',
       'timeline-keys.ts',
       'title-runs.ts',
