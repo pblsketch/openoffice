@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, createElement, useEffect, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import type { XmindSheet } from '@genoffice/xmind-engine'
-import { FormatPanel } from '../src/renderer/components/FormatPanel'
+import { FORMAT_TAB_KEY, FormatPanel } from '../src/renderer/components/FormatPanel'
 import { formatModel } from '../src/renderer/components/format-model'
 import { noticeText } from '../src/renderer/components/map-notices'
 import { DocumentSession } from '../src/renderer/document/session'
@@ -101,6 +101,7 @@ afterEach(() => {
   act(() => root?.unmount())
   for (const controller of mounted.splice(0)) controller.destroy()
   document.body.innerHTML = ''
+  localStorage.removeItem(FORMAT_TAB_KEY)
   vi.unstubAllGlobals()
 })
 
@@ -195,6 +196,12 @@ async function click(element: HTMLElement): Promise<void> {
   })
 }
 
+/** The "Line" side of the switch above a topic's format. */
+const showLine = (): Promise<void> => click(button('format-tab-line'))
+const tabsPressed = (): string[] => pressed('format-tab')
+const section = (name: string): Element | null =>
+  panel().querySelector(`[data-format-section="${name}"]`)
+
 async function pick(className: string, value: string): Promise<void> {
   await click(panel().querySelector<HTMLElement>(`.${className} .gs-dd-btn`)!)
   await click(
@@ -218,7 +225,9 @@ describe('the format panel', () => {
     const { controller, mind, on } = await mount()
     await on(() => mind.selectNode(mind.findEle(ID.a)))
     expect(kind()).toBe('topics')
-    expect(panel().querySelector('[data-format-section="text"]')).not.toBeNull()
+    expect(section('text')).not.toBeNull()
+    await showLine()
+    expect(section('text')).toBeNull()
     expect(pressed('line-shape')).toEqual(['straight'])
     expect(dropdownValue('line-width')).toBe('3')
     expect(dropdownValue('line-pattern')).toBe('solid')
@@ -246,6 +255,7 @@ describe('the format panel', () => {
   it('offers the thicknesses 1, 2, 3, 4 and 6 pt and shows another one as it is', async () => {
     const { mind, on } = await mount()
     await on(() => mind.selectNode(mind.findEle(ID.b)))
+    await showLine()
     // B has no width of its own: the theme's, which is not one of the choices
     const shown = dropdownValue('line-width')!
     await click(panel().querySelector<HTMLElement>('.line-width .gs-dd-btn')!)
@@ -262,6 +272,7 @@ describe('the format panel', () => {
     const { mind, on } = await mount()
     await on(() => mind.selectNodes([mind.findEle(ID.a), mind.findEle(ID.b)]))
     expect(kind()).toBe('topics')
+    await showLine()
     expect(dropdownValue('line-width')).toBe('mixed')
     expect(state()).toContain('mixed')
     expect(pressed('line-shape')).toEqual([])
@@ -270,6 +281,7 @@ describe('the format panel', () => {
   it('shows a shape the file has that cannot be picked as another shape, kept in the file', async () => {
     const { controller, mind, on } = await mount()
     await on(() => mind.selectNode(mind.findEle(ID.folded)))
+    await showLine()
     expect(state()).toEqual(['other'])
     expect(panel().textContent).toContain('Another shape (kept as in the file)')
     expect(pressed('line-shape')).toEqual([])
@@ -281,6 +293,7 @@ describe('the format panel', () => {
     for (const layout of ['tree', 'timeline'] as const) {
       await on(() => controller.setLayout(layout))
       await on(() => mind.selectNode(mind.findEle(ID.a)))
+      await showLine()
       expect(state()).toEqual(['locked'])
       expect(panel().textContent).toContain('Line shapes cannot be changed in this layout.')
       expect(button('line-shape-curve').disabled).toBe(true)
@@ -292,6 +305,68 @@ describe('the format panel', () => {
     await on(() => controller.setLayout('right'))
     await on(() => mind.selectNode(mind.findEle(ID.a)))
     expect(button('line-shape-curve').disabled).toBe(false)
+  })
+
+  it('shows one group of a topic at a time, text first, with the painter and "clear" above both', async () => {
+    const { mind, on } = await mount()
+    await on(() => mind.selectNode(mind.findEle(ID.a)))
+    const tabs = panel().querySelector('.mm-format-tabs')!
+    expect([...tabs.querySelectorAll('button')].map((tab) => tab.textContent)).toEqual([
+      strings.en.formatTextSection,
+      strings.en.formatLineSection,
+    ])
+    expect(tabsPressed()).toEqual(['text'])
+    expect(section('text')).not.toBeNull()
+    expect(section('line')).toBeNull()
+    // the switch names the group: the group has no title of its own
+    expect(section('text')!.querySelector('.mm-format-section-title')).toBeNull()
+
+    await showLine()
+    expect(tabsPressed()).toEqual(['line'])
+    expect(section('text')).toBeNull()
+    expect(section('line')).not.toBeNull()
+    expect(section('line')!.querySelector('.mm-format-section-title')).toBeNull()
+    // the actions stay, above the switch
+    const actions = panel().querySelector('.mm-format-actions')!
+    expect(actions.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(button('format-painter').disabled).toBe(false)
+    expect(button('format-clear').disabled).toBe(false)
+
+    await click(button('format-tab-text'))
+    expect(tabsPressed()).toEqual(['text'])
+    expect(section('line')).toBeNull()
+  })
+
+  it('keeps the last group chosen: for the next topic, and when the panel opens again', async () => {
+    const { mind, on } = await mount()
+    await on(() => mind.selectNode(mind.findEle(ID.a)))
+    await showLine()
+    expect(localStorage.getItem(FORMAT_TAB_KEY)).toBe('line')
+    await on(() => mind.selectNode(mind.findEle(ID.b)))
+    expect(tabsPressed()).toEqual(['line'])
+
+    // nothing selected: no switch, the text format greyed out as before
+    await on(() => mind.clearSelection())
+    expect(kind()).toBe('none')
+    expect(panel().querySelector('.mm-format-tabs')).toBeNull()
+    expect(section('text')).not.toBeNull()
+
+    // the panel closed and opened again
+    act(() => root.unmount())
+    const again = await mount()
+    await again.on(() => again.mind.selectNode(again.mind.findEle(ID.a)))
+    expect(tabsPressed()).toEqual(['line'])
+    expect(section('line')).not.toBeNull()
+  })
+
+  it('has no switch for a relationship, a summary or a boundary', async () => {
+    const { controller, mind, on } = await mount()
+    await on(() => mind.selectNode(mind.findEle(ID.a)))
+    await showLine()
+    await on(() => controller.selectBoundary(ID.boundary))
+    expect(kind()).toBe('boundary')
+    expect(panel().querySelector('.mm-format-tabs')).toBeNull()
+    expect(section('boundary')!.querySelector('.mm-format-section-title')).not.toBeNull()
   })
 
   it('shows a relationship’s shape, ends and curve, and changes them', async () => {

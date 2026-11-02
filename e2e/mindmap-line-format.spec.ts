@@ -659,6 +659,12 @@ async function openFormatPanel(map: Page): Promise<void> {
   await map.waitForSelector(PANEL)
 }
 
+/** The "Line" side of the switch above a topic's format (the panel shows text or line, one at a time). */
+async function showLineFormat(map: Page): Promise<void> {
+  await map.locator(`${PANEL} [data-action="format-tab-line"]`).click()
+  await map.waitForSelector(LINE)
+}
+
 async function pickFrom(map: Page, dropdown: string, value: string): Promise<void> {
   await map.locator(`${dropdown} .gs-dd-btn`).click()
   await map.locator(`${dropdown} .gs-dd-pop [data-value="${value}"]`).click()
@@ -970,6 +976,7 @@ test.describe('mind map line format', () => {
       await map.locator(topic(ID.a)).click()
       await openFormatPanel(map)
       expect(await formatKind(map)).toBe('topics')
+      await showLineFormat(map)
       await expect(map.locator(LINE)).toBeVisible()
       await map.locator(`${LINE} [data-action="line-shape-straight"]`).click()
       await map.waitForTimeout(250)
@@ -1233,6 +1240,7 @@ test.describe('mind map line format', () => {
       await again.waitForTimeout(600)
       await again.locator(topic(ID.a)).click()
       await openFormatPanel(again)
+      await showLineFormat(again)
       const locked = again.locator(`${LINE} [data-format-state="locked"]`)
       await expect.soft(locked).toBeVisible()
       await expect.soft(again.locator(`${LINE} [data-action="line-shape-straight"]`)).toBeDisabled()
@@ -1482,6 +1490,7 @@ test.describe('mind map line format', () => {
       // ── three changes of three kinds, each taken back with Ctrl+Z: the save is the file as it was
       const bWidth = (await mainLine(map, ID.b)).width
       await map.locator(topic(ID.b)).click()
+      await showLineFormat(map)
       await pickFrom(map, `${LINE} .line-width`, '6')
       expect.soft((await mainLine(map, ID.b)).width).toBe('6px')
       await map.locator(topic(ID.c1)).click()

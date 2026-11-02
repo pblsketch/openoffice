@@ -1193,6 +1193,45 @@ textarea.mm-field {
   font-weight: 600;
 }
 
+/* "Text" | "Line" above a topic's format: one group at a time */
+.mm-format-tabs {
+  display: flex;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.mm-format-tab {
+  flex: 1 1 0;
+  height: 26px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.mm-format-tab:hover:not(.on) {
+  background: var(--hover);
+  color: var(--text-primary);
+}
+
+/* the group shown is marked the way the app marks what it has selected */
+.mm-format-tab.on {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+
+.mm-format-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 /* "copy format" and "clear format", and the other buttons with a word on them */
 .mm-format-actions {
   display: flex;

@@ -114,6 +114,54 @@ describe('countPreservedElements', () => {
   })
 })
 
+describe('leaving out the boundaries the view draws', () => {
+  it('counts only the boundaries the view cannot draw', () => {
+    // bound-1 is drawn; ub (under a summary topic) and db (on a floating topic) are not, xb is
+    expect(countPreservedElements(sample(), { shownBoundaries: false })).toBe(4)
+    expect(countPreservedElements(nested(), { shownBoundaries: false })).toBe(9 + 2 + 2)
+    expect(countPreservedElements(sample(), { shownBoundaries: true })).toBe(5)
+  })
+
+  it('still counts a boundary whose range the view cannot read or whose id repeats', () => {
+    const sheet = {
+      id: 's',
+      rootTopic: {
+        id: 'r',
+        children: { attached: [{ id: 'k0' }, { id: 'k1' }] },
+        boundaries: [
+          { id: 'drawn', range: '(0,1)' },
+          { id: 'drawn', range: '(0,0)' },
+          { id: 'past-the-end', range: '(1,2)' },
+          { id: 'unreadable', range: 'everything' },
+          { range: '(0,0)' },
+          { id: 'whole', range: 'master' },
+        ],
+      },
+    } as XmindSheet
+    expect(countPreservedElements(sheet)).toBe(6)
+    expect(countPreservedElements(sheet, { shownBoundaries: false })).toBe(4)
+  })
+
+  it('applies to the whole document', async () => {
+    const document = await openSheets([sample(), { id: 's2', rootTopic: { id: 'r' } }, nested()])
+    expect(countPreservedInDocument(document, { shownBoundaries: false })).toEqual({
+      total: 17,
+      sheets: [4, 0, 13],
+    })
+    expect(countPreservedInDocument(document).total).toBe(19)
+  })
+
+  it('does not count a drawn boundary that goes with the topics; the default still does', () => {
+    expect(countPreservedWithTopics(sample(), ['a1', 'a2'], { shownBoundaries: false })).toBe(0)
+    expect(countPreservedWithTopics(sample(), ['a1', 'a2'])).toBe(1)
+    expect(countPreservedWithTopics(sample(), ['a'], { shownBoundaries: false })).toBe(2)
+    expect(countPreservedWithTopics(sample(), ['a'])).toBe(3)
+    // ub goes with x and is not drawn; xb is drawn
+    expect(countPreservedWithTopics(nested(), ['x'], { shownBoundaries: false })).toBe(6 + 1 + 2)
+    expect(countPreservedWithTopics(nested(), ['x'])).toBe(6 + 2 + 2)
+  })
+})
+
 describe('countPreservedWithTopics', () => {
   it('counts what the view leaves out below the topic', () => {
     // callout-1, under-summary, bound-1

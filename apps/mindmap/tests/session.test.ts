@@ -254,6 +254,25 @@ describe('what the editor does not show', () => {
     expect(session.preservedWith(second.key, ['cccccccc-cccc-4ccc-8ccc-ccccccccccc1'])).toBe(0)
   })
 
+  it('does not call a boundary the map draws hidden, but the AI guard still counts it', async () => {
+    const { session, first } = await richSession()
+    // the boundary around Alpha's branches is drawn: the user sees it
+    expect(session.preservedTotal()).toBe(RICH_PRESERVED)
+    expect(session.hiddenWith(first.key, [IDS.a])).toBe(2)
+    expect(session.preservedWith(first.key, [IDS.a])).toBe(3)
+    // every branch it goes around: the boundary and the summary's hidden branch go
+    expect(session.hiddenWith(first.key, [IDS.a1, IDS.a2, IDS.a3])).toBe(1)
+    expect(session.preservedWith(first.key, [IDS.a1, IDS.a2, IDS.a3])).toBe(2)
+  })
+
+  it('still names a boundary the map cannot draw as hidden', async () => {
+    const sheet = plainSheet()
+    const root = sheet.rootTopic as unknown as Record<string, unknown>
+    root.boundaries = [{ id: 'out-of-range', range: '(5,6)' }]
+    const session = new DocumentSession(await documentOf(sheet))
+    expect(session.preservedTotal()).toBe(1)
+  })
+
   it('knows a sheet whose theme this app did not write', async () => {
     const { session } = await richSession()
     expect(session.hasUnknownTheme()).toBe(true)

@@ -386,6 +386,21 @@ describe('edit_map', () => {
     expect(attached(b!)).toEqual([])
   })
 
+  it('does not delete a topic whose boundary is drawn on the map either', async () => {
+    const sheet = plainSheet()
+    const one = attached(sheet.rootTopic)[0]!
+    one.children = { attached: [topic('dddddddd-dddd-4ddd-8ddd-ddddddddddd1', 'Below one')] }
+    Object.assign(one, { boundaries: [{ id: 'drawn', range: '(0,0)', title: 'on screen' }] })
+    const r = await rigOf(sheet)
+    // the boundary is drawn: the open notice does not count it, the guard does
+    expect(r.session.preservedTotal()).toBe(0)
+    const read = readTopic(r.host, { id: one.id }).output
+    expect(JSON.parse(read.slice(read.indexOf('{'))).hiddenElements).toBe(1)
+    const out = await editMap(r.host, { edits: [{ op: 'delete', id: one.id }] }, null)
+    expect(out.output).toMatch(/#0 delete FAILED .*only the user may delete/)
+    expect(attached(r.sheet(1).rootTopic).map((each) => each.id)).toContain(one.id)
+  })
+
   it('counts what a topic moved in below another would take when that one is deleted', async () => {
     const r = await rigOf(richSheet())
     const out = await editMap(
