@@ -268,8 +268,8 @@ describe('cards in a stored conversation', () => {
 describe('the skills attached to a request', () => {
   it('reads back the ids skillRequestText writes', () => {
     const text = skillRequestText([
-      { id: 'app:home-letter', title: 'Say "hi" <now>', body: 'b', files: [] },
-      { id: 'plugin:a&b:c', title: 't', body: 'b', files: ['x.md'] },
+      { id: 'app:home-letter', title: 'Say "hi" <now>', body: 'b', files: [], mcpServers: [] },
+      { id: 'plugin:a&b:c', title: 't', body: 'b', files: ['x.md'], mcpServers: [] },
     ])
     expect(attachedSkillIdsOf(`question${text}`)).toEqual(['app:home-letter', 'plugin:a&b:c'])
   })

@@ -339,6 +339,7 @@ describe('the colours of a map are document content', () => {
   const tokens = chromeTokens()
   const mapCss = readFileSync(join(RENDERER, 'map.css'), 'utf8')
   const mapCode = readdirSync(join(RENDERER, 'map'))
+    .filter((name) => name.endsWith('.ts'))
     .filter((name) => name !== 'controller.ts' && name !== 'text-guard.ts')
     .map((name) => [name, readFileSync(join(RENDERER, 'map', name), 'utf8')] as const)
 
@@ -383,11 +384,13 @@ describe('the colours of a map are document content', () => {
       'link-preview.ts',
       'look.ts',
       'markers.ts',
+      'multi-select.ts',
       'picture-drop.ts',
       'style-values.ts',
       'text-format.ts',
       'timeline-keys.ts',
       'title-runs.ts',
+      'topic-resize.ts',
       'use-picture-drop.ts',
     ])
     for (const [name, code] of mapCode) {

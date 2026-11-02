@@ -9,6 +9,8 @@ export * from './agent-session/messages'
 export {
   AGENT_APP_MCP_TOOLS,
   APP_MCP_SERVER_NAME,
+  agentRelayToolOf,
+  agentUsableRelays,
   isAgentAppMcpTool,
   CLAUDE_AGENT_TOOLS,
   claudeAgentAction,

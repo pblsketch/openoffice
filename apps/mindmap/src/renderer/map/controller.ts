@@ -39,6 +39,7 @@ import {
 } from '@genoffice/xmind-engine'
 import {
   type Arrow,
+  boxWidth,
   cleanPastedNode,
   directionOfLayout,
   emptyMeta,
@@ -59,6 +60,7 @@ import type { DocumentSession } from '../document/session'
 import { type DecorationStrings, TopicDecorator } from './decorate'
 import { PictureStore } from './images'
 import { libraryTheme, lookOfSheet } from './look'
+import { installMultiSelect } from './multi-select'
 import { escapeMapText } from './text-guard'
 import {
   type FormatToggle,
@@ -77,6 +79,7 @@ import {
 } from './text-format'
 import { drawnRuns, fillBox, readBox, selectIn, selectionIn } from './title-runs'
 import { isArrowKey, timelineArrowTarget } from './timeline-keys'
+import { installTopicResize } from './topic-resize'
 
 type MenuOption = Exclude<NonNullable<Options['contextMenu']>, boolean>
 /** The library's context menu texts. All twelve are passed in the user's language. */
@@ -138,6 +141,8 @@ export interface TopicInfo {
   link: string | null
   /** the topic shows a picture */
   hasPicture: boolean
+  /** the width the user gave the box; null when it takes the width of its text */
+  width: number | null
   isRoot: boolean
 }
 
@@ -322,6 +327,10 @@ export class MapController {
     container.addEventListener('copy', onCopy, true)
     container.addEventListener('compositionstart', onComposition)
     container.addEventListener('compositionend', onComposition)
+    this.#dispose.push(
+      installMultiSelect({ mind, addChild: () => this.addChild() }),
+      installTopicResize({ mind, setWidth: (id, width) => this.setWidth(id, width) }),
+    )
     this.#dispose.push(() => {
       container.removeEventListener('keydown', onKeyDownFirst, true)
       container.removeEventListener('click', onClick, true)
@@ -390,6 +399,7 @@ export class MapController {
       note: meta.note,
       link: meta.link,
       hasPicture: meta.image !== null,
+      width: meta.width,
       isRoot: !node.parent,
     }
   }
@@ -621,6 +631,18 @@ export class MapController {
     queueMicrotask(() => {
       if (!this.#destroyed && this.#node(node.id)) this.#patchMeta(node.id, { titleRuns: runs })
     })
+  }
+
+  /**
+   * Gives a topic's box a width in pixels, or the width of its text again
+   * (null), as one step. False when the box already has that width.
+   */
+  setWidth(topicId: string, width: number | null): boolean {
+    const node = this.#node(topicId)
+    const next = boxWidth(width)
+    if (!node || (width !== null && next === null)) return false
+    if (this.#meta(node).width === next) return false
+    return this.#patchMeta(topicId, { width: next })
   }
 
   /**
@@ -952,6 +974,11 @@ export class MapController {
    * The library's edit box takes the size, colour, padding and box of the
    * topic it stands in for, but not how heavy and how tall its text is. With
    * those too, a title does not change its look while it is typed.
+   *
+   * The library pins the box by the topic's left edge, so it grows to the
+   * right. Left of the centre a topic's right edge is the one next to its
+   * parent, and a title typed there would grow over the parent: there the box
+   * is pinned by the right edge and grows to the left, as the topic will.
    */
   #dressEditBox(topicId: string): void {
     const topic = this.#element(topicId)
@@ -966,6 +993,11 @@ export class MapController {
     box.style.textDecoration = drawn.textDecoration
     box.style.textAlign = drawn.textAlign
     box.style.textTransform = drawn.textTransform
+    if (topic.closest('.lhs')) {
+      const right = parseFloat(box.style.left) + topic.offsetWidth
+      box.style.left = 'auto'
+      box.style.right = `${this.mind.nodes.clientWidth - right}px`
+    }
   }
 
   #menuEntries(): NonNullable<MenuOption['extend']> {

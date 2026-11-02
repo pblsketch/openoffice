@@ -28,6 +28,7 @@ export const pl = {
   invokeManual: 'Tylko na wezwanie',
   badgeTemplate: 'Zawiera szablon',
   badgeScripts: 'Zawiera skrypty · w pełni działa w oknie agenta',
+  badgeMcpServer: 'Wymaga serwera MCP: {servers}',
   badgeAgentOnly: 'Tylko okno agenta',
   unreadableNoFrontmatter: 'brak nagłówka z metadanymi',
   unreadableBadName: 'nazwa nie spełnia zasad',

@@ -37,6 +37,9 @@ import {
   DriveAttachButton,
   type DriveAttachPicked,
   DocAttachButton,
+  McpPermissionCard,
+  McpServerButton,
+  useMcpWindow,
   NO_SKILL_USE,
   SentSkillChips,
   skillChipRefsOf,
@@ -79,7 +82,13 @@ import {
 } from '@genoffice/ui'
 import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactElement, ReactNode } from 'react'
-import { AgentLoop, composeWithDrive } from '@genoffice/agent-core'
+import {
+  AgentLoop,
+  composeWithDrive,
+  windowMcpState,
+  windowMcpUsableServers,
+  toolStepLabel,
+} from '@genoffice/agent-core'
 import type { AgentImage, IpcStreamError } from '@genoffice/agent-core'
 import type {
   AddFolderResult,
@@ -472,9 +481,12 @@ export function AiPanel({
   })
   const msgQueueRef = useRef(msgQueue)
   msgQueueRef.current = msgQueue
+  /** this window's MCP servers (user MCP spec 7.5); the chips name the ones not usable now */
+  const mcpWindow = useMcpWindow()
   /** the skills called with `/` or `$`: the list, the chips and the text a request gets */
   const skills = useComposerSkills({
     lang,
+    usableMcpServers: mcpWindow.state?.usableServers(),
     // a chip whose skill has a template runs in a new tab (spec 5.7)
     onTemplateSkill: (request) => skillTemplatesRef.current.onTemplateSkill(request),
   })
@@ -865,6 +877,8 @@ export function AiPanel({
           messages: () => loopRef.current?.messages ?? [],
           // a template skill the model used offers its new document (spec 5.7)
           onUsed: (skill) => skillTemplatesRef.current.onUsed(skill),
+          // use_skill names the MCP servers it expects that are not usable now (spec 8)
+          mcpServerUsable: (name) => windowMcpUsableServers().has(name),
           onProposal: (proposal) => {
             skillCardsRef.current.add(proposal)
             patchLast((last) => ({
@@ -884,7 +898,7 @@ export function AiPanel({
           patchLast((last) => ({
             tools: [
               ...(last.tools ?? []),
-              { name: call.name, summary: call.name.replace(/[_-]+/g, ' '), running: true },
+              { name: call.name, summary: toolStepLabel(call.name), running: true },
             ],
           }))
         },
@@ -1052,6 +1066,8 @@ export function AiPanel({
           )
         }
         if (applied && !loopRef.current?.busy) {
+          // a reopened conversation starts with no MCP choices of another chat (user MCP spec 7.6)
+          windowMcpState()?.newConversation()
           loopRef.current?.restore(msgs.map((m) => ({ role: m.role, text: m.text })))
           const seen = new Set(sentAttachmentsRef.current.map((a) => a.path))
           for (const a of msgs.flatMap((m) => restoredAtts(m) ?? [])) {
@@ -1294,6 +1310,8 @@ export function AiPanel({
     sendGate.reset()
     stop()
     loopRef.current?.reset()
+    // servers off in this chat and "always allow in this chat" go too (user MCP spec 7.6)
+    windowMcpState()?.newConversation()
     setBusy(false)
     busyRef.current = false
     setChat([])
@@ -1317,6 +1335,8 @@ export function AiPanel({
     // a conversation on screen gives way; an empty panel keeps what its composer holds
     if (busy || chat.length > 0) resetConversation()
     else loopRef.current?.reset()
+    // another chat opens: no MCP choices of the one before (user MCP spec 7.6)
+    windowMcpState()?.newConversation()
     setProjectNotices([])
     setProjectProblem(null)
     setConsolidated(null)
@@ -1884,6 +1904,8 @@ export function AiPanel({
           )
         })}
         {skillTemplates.notes}
+        {/* an MCP tool waiting for the person's yes (user MCP spec 7.4) */}
+        <McpPermissionCard lang={lang} />
       </div>
 
       {(turns.length > 0 || rollbackNote) && (
@@ -2021,6 +2043,7 @@ export function AiPanel({
               </button>
               <DriveAttachButton lang={lang} onPicked={attachFromDrive} />
               <DocAttachButton lang={lang} onPicked={attachFromDrive} />
+              <McpServerButton lang={lang} />
             </>
           }
         />

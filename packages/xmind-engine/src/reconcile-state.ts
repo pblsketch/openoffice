@@ -51,6 +51,8 @@ export interface StateTopic {
   textStyle: Partial<Record<TextStyleKey, string>>
   /** the title in parts with a format of their own; null for a plain title */
   titleRuns: StateRun[] | null
+  /** the width given to the topic's box; null when it takes the width of its text */
+  width: number | null
   summaries: StateSummary[]
   children: StateTopic[]
 }
@@ -106,8 +108,20 @@ export function readState(state: unknown): StateSheet {
  */
 function readTopic(topic: unknown, depth: number, seen: Set<string>): StateTopic {
   if (!isRecord(topic)) refuse('a topic of the state is not an object')
-  const { id, title, folded, labels, note, link, image, style, titleRuns, summaries, children } =
-    topic
+  const {
+    id,
+    title,
+    folded,
+    labels,
+    note,
+    link,
+    image,
+    width,
+    style,
+    titleRuns,
+    summaries,
+    children,
+  } = topic
   if (typeof id !== 'string' || id === '') refuse('a topic of the state has no id')
   if (seen.has(id)) refuse(`topic id ${id} is used more than once in the state`)
   seen.add(id)
@@ -122,6 +136,10 @@ function readTopic(topic: unknown, depth: number, seen: Set<string>): StateTopic
   }
   // a state written before pictures were carried has no key: that is "no picture to set"
   if (image != null && !isViewImage(image)) refuse(`the picture of topic ${id} is not a reference`)
+  // no key and null are the same: the topic takes the width of its text
+  if (width != null && !(typeof width === 'number' && Number.isFinite(width) && width > 0)) {
+    refuse(`the width of topic ${id} is not a positive number`)
+  }
   // a state written before text formats were carried has neither key: nothing set, nothing cut
   if (style != null && !isRecord(style)) refuse(`the style of topic ${id} is not a set of values`)
   if (titleRuns != null && !Array.isArray(titleRuns)) {
@@ -137,6 +155,7 @@ function readTopic(topic: unknown, depth: number, seen: Set<string>): StateTopic
     note,
     link,
     image: image == null ? null : copyImage(image),
+    width: width == null ? null : (width as number),
     textStyle: readTextStyle(style),
     titleRuns: Array.isArray(titleRuns) ? readRuns(titleRuns, id) : null,
     summaries: summaries.map((summary) => readSummary(summary, id)),

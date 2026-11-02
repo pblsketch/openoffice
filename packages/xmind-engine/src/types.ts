@@ -30,6 +30,8 @@ export interface XmindTopic {
   markers?: unknown
   /** `{ src, width, height }` */
   image?: unknown
+  /** the width the user gave the topic's box, in pixels */
+  customWidth?: unknown
   /** `{ id, properties }`: what was set on this topic directly */
   style?: unknown
   /** the arrangement of this topic's branches */

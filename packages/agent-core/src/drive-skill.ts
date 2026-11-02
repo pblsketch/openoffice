@@ -2,6 +2,8 @@ import type { AgentMessage, AgentToolCall, AgentToolDef, ToolExecution } from '.
 import { composeSkills, type AgentSkill } from './skill'
 import { isOutboundCall } from './outbound'
 import { guardOutbound, windowOutboundBridge } from './outbound-guard'
+import { createUserMcpSkill, windowMcpState } from './user-mcp-skill'
+import { guardReceivedContent } from './user-mcp/keep-inside'
 
 export { OUTBOUND_TOOLS, isOutboundCall } from './outbound'
 
@@ -313,11 +315,41 @@ export function windowDriveBridge(): DriveBridgeLike | null {
 }
 
 /**
+ * The guarded composition every AI window uses: the editor's skills, the
+ * window's Drive skill (if given) and the person's MCP servers (when the
+ * preload carries `window.aiOfficeMcpTools`) composed into one, then wrapped
+ * innermost first: keep received content inside (user MCP spec 7.2) and the
+ * Drive block, then the internet-tools switch and address confirmation
+ * (guardOutbound, decision 0062). Without an MCP bridge no MCP skill and no
+ * keep-inside guard are added, so such a window behaves as before.
+ */
+function composeGuarded(
+  id: string,
+  intro: string,
+  messages: () => readonly AgentMessage[],
+  skills: AgentSkill[],
+  drive: DriveSkill | null,
+): AgentSkill {
+  const mcp = windowMcpState()
+  const all = [
+    ...skills,
+    ...(drive ? [drive] : []),
+    ...(mcp ? [createUserMcpSkill(mcp, messages)] : []),
+  ]
+  const composed = composeSkills(id, intro, all)
+  const kept = mcp
+    ? guardReceivedContent(composed, { keepsInside: (server) => mcp.keepsInside(server), messages })
+    : composed
+  return guardOutbound(guardDriveContent(kept, drive), windowOutboundBridge(), messages)
+}
+
+/**
  * composeSkills plus Google Drive: when this window's preload carries the
  * Drive calls, the Drive skill joins the editor's skills and the result is
  * guarded so outbound tools stop once Drive content is in the conversation.
- * Outside that, the person's internet-tools switch and address confirmation
- * apply (guardOutbound, decision 0062).
+ * The person's MCP servers join the same way (composeGuarded). Outside that,
+ * the person's internet-tools switch and address confirmation apply
+ * (guardOutbound, decision 0062).
  * `messages` reads the loop's history (the loop is built after its skill).
  */
 export function composeWithDrive(
@@ -328,9 +360,19 @@ export function composeWithDrive(
 ): AgentSkill {
   const bridge = windowDriveBridge()
   const drive = bridge ? createBridgedDriveSkill(bridge, messages) : null
-  return guardOutbound(
-    guardDriveContent(composeSkills(id, intro, drive ? [...skills, drive] : skills), drive),
-    windowOutboundBridge(),
-    messages,
-  )
+  return composeGuarded(id, intro, messages, skills, drive)
+}
+
+/**
+ * composeWithDrive without the Drive skill, for the home window's AI
+ * question (user MCP spec 7.2): the same guards in the same order, and the
+ * person's MCP servers when the window's preload carries them.
+ */
+export function composeWithGuards(
+  id: string,
+  intro: string,
+  messages: () => readonly AgentMessage[],
+  skills: AgentSkill[],
+): AgentSkill {
+  return composeGuarded(id, intro, messages, skills, null)
 }

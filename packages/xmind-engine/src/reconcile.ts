@@ -53,11 +53,12 @@ export type ReconcileResult =
  * `state` is the sheet's view data as it stands after the user's edit. What
  * is applied: the topics with their order and nesting, and per topic the
  * title, folding, labels, note and link; a picture put in from an archive
- * entry, or taken off (`removedPictures`); summaries; relationships; the
- * layout; the text format of the topics the editor names (`restyledTopics`)
- * and of the topics the state adds. What is never written from a state:
- * markers and the fill, which the editor shows without editing, and the
- * sheet's own title and place, which `renameSheet` and its neighbours change.
+ * entry, or taken off (`removedPictures`); the width given to a topic's box;
+ * summaries; relationships; the layout; the text format of the topics the
+ * editor names (`restyledTopics`) and of the topics the state adds. What is
+ * never written from a state: markers and the fill, which the editor shows
+ * without editing, and the sheet's own title and place, which `renameSheet`
+ * and its neighbours change.
  *
  * Sheets are reconciled one at a time: topics are paired by id inside the
  * sheet at `index`, and the same id on another sheet is another topic.
@@ -126,6 +127,7 @@ function shownBy(sheet: ViewSheet, ids?: ReconcileIds): string {
     isRecord(shown.image)
       ? [shown.image.src, shown.image.entryName, shown.image.width, shown.image.height]
       : null,
+    typeof shown.width === 'number' ? shown.width : null,
     Array.isArray(shown.markers) ? shown.markers : [],
     styleValues(isRecord(shown.style) ? shown.style : {}),
     runsShown(shown.titleRuns),

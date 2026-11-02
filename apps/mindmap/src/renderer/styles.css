@@ -376,6 +376,38 @@ html.genoffice-popover-open .ribbon-tabs {
   outline-offset: 2px;
 }
 
+/*
+ * The grip a selected topic's box is widened or narrowed by (map/topic-resize.ts):
+ * a short bar on its outer edge, the left one on the left side of the map.
+ */
+.mm-card .map-container me-root me-tpc.selected {
+  position: relative;
+}
+
+.mm-card .map-container me-tpc.selected::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 4px;
+  height: min(18px, 70%);
+  border-radius: 2px;
+  background: var(--accent);
+  transform: translate(50%, -50%);
+  pointer-events: none;
+}
+
+.mm-card .map-container .lhs me-tpc.selected::after {
+  right: auto;
+  left: 0;
+  transform: translate(-50%, -50%);
+}
+
+.mm-card .map-container[data-mm-resize],
+.mm-card .map-container[data-mm-resize] * {
+  cursor: ew-resize !important;
+}
+
 /* the topic a picture dragged from the desktop would land on */
 .mm-card .map-container .mm-picture-drop-target {
   outline: 2px dashed var(--accent);
@@ -384,6 +416,11 @@ html.genoffice-popover-open .ribbon-tabs {
 
 .mm-card .map-container #input-box {
   outline: 2px solid var(--accent);
+}
+
+/* a summary's title is typed in a box as wide as the one it is drawn in (map.css), not the library's narrower one */
+.mm-card .map-container #input-box[data-type='summary'] {
+  max-width: 30em !important;
 }
 
 .mm-card .map-container me-parent me-tpc .show {

@@ -78,6 +78,8 @@ export interface UserSkillView {
   /** a builtin the person hid; it is off */
   hidden: boolean
   hasScripts: boolean
+  /** MCP servers the skill refers to (body and front matter `allowed-tools`, spec 8) */
+  mcpServers: string[]
   /** the template path inside the skill folder (`assets/...`), when the skill names one */
   template: string | undefined
   templateExists: boolean
@@ -272,6 +274,8 @@ export interface UserSkillAiRead {
   /** the template path when the skill names one and the file is there */
   template: string | undefined
   hasScripts: boolean
+  /** MCP servers the skill refers to (body and front matter `allowed-tools`, spec 8) */
+  mcpServers: string[]
 }
 
 /** Open a template skill's copy in a new tab and hand the request over (spec 5.7) */

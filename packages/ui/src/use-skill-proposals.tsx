@@ -49,6 +49,11 @@ export interface PanelUserSkillsOptions {
   onProposal: (proposal: SkillProposal) => void
   /** the model used a skill on its own (the template flow offers its template) */
   onUsed?: ((skill: UserSkillText) => void) | undefined
+  /**
+   * whether an MCP server can be used in this conversation now (user MCP
+   * spec 8); without it `use_skill` counts no referenced server as usable
+   */
+  mcpServerUsable?: ((name: string) => boolean) | undefined
   /** tests inject one; the default is the window's `aiOfficeUserSkills` */
   bridge?: UserSkillsBridgeLike | null | undefined
 }
@@ -66,6 +71,7 @@ export function panelUserSkills(options: PanelUserSkillsOptions): AgentSkill[] {
       messages: options.messages,
       onProposal: options.onProposal,
       onUsed: options.onUsed,
+      mcpServerUsable: options.mcpServerUsable,
       labels: {
         used: (title) => skillCardText(options.lang(), 'skillUsed', { title }),
         proposed: (title) => skillCardText(options.lang(), 'skillProposed', { title }),

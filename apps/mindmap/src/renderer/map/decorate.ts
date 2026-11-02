@@ -26,7 +26,7 @@
  */
 import type { MindElixirInstance, Topic } from 'mind-elixir'
 import { mixColors, type ThemeLook, type ViewImage } from '@genoffice/xmind-engine'
-import type { MapNodeMeta } from '../document/convert'
+import { boxWidth, type MapNodeMeta } from '../document/convert'
 import {
   type BranchBoxes,
   type BranchGeometry,
@@ -281,8 +281,22 @@ export class TopicDecorator {
     const meta = metaOf(topic)
     this.#ownStyle(topic, meta)
     this.#titleRuns(topic, meta)
+    this.#width(topic, meta)
     this.#markers(topic, meta)
     this.#picture(topic, meta)
+  }
+
+  // ---- the width of the box ----
+
+  /** A box the user gave a width: that width, past the usual longest line, the text wrapping inside. */
+  #width(topic: DecoratedTopic, meta: Partial<MapNodeMeta>): void {
+    const width = boxWidth(meta.width)
+    const { style } = topic
+    const value = width === null ? '' : `${Math.round(width * 100) / 100}px`
+    if (style.width === value) return
+    style.width = value
+    style.maxWidth = width === null ? '' : 'none'
+    style.overflowWrap = width === null ? '' : 'anywhere'
   }
 
   // ---- the level ----

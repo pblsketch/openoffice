@@ -369,7 +369,7 @@ describe('cleaning a copy', () => {
   it('keeps on a topic only the style properties the editor sets', () => {
     const root = document.createElement('me-nodes')
     root.innerHTML =
-      '<me-tpc style="position: fixed; width: 9999px; opacity: 0; border-color: red; ' +
+      '<me-tpc style="position: fixed; width: 240px; max-width: none; opacity: 0; border-color: red; ' +
       'color: #112233; background-color: #445566; font-size: 20px; font-weight: 700; ' +
       'line-height: 28px; box-shadow: none; font-style: italic; text-align: right; ' +
       "text-transform: uppercase; font-family: 'A', sans-serif\">t</me-tpc>"
@@ -384,6 +384,9 @@ describe('cleaning a copy', () => {
         'font-size',
         'font-weight',
         'line-height',
+        // the width the user gave the box
+        'width',
+        'max-width',
         'font-style',
         'text-align',
         'text-transform',

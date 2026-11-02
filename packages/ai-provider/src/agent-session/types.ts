@@ -35,8 +35,16 @@ export type AgentActionKind =
   | 'write'
   /** run a command or a script */
   | 'command'
-  /** a tool of the app's own MCP server (open documents) */
+  /**
+   * a tool of the app's own MCP server (open documents), or of this session's
+   * relay of a person's MCP server (user MCP spec 9): the relay asks itself
+   */
   | 'app-tool'
+  /**
+   * a call that reaches the app's relay of a person's MCP server, when the
+   * tool's permission is `ask` and the relay asks the person (user MCP spec 9)
+   */
+  | 'mcp-tool'
   /** load a skill's instructions */
   | 'skill'
   /** search the web (the program's own search tool) */
@@ -66,6 +74,8 @@ export interface AgentAction {
   target?: string | undefined
   /** the site (host name, lower case) of a page address, when it has one */
   host?: string | undefined
+  /** the person's MCP server an `mcp-tool` action calls */
+  server?: string | undefined
 }
 
 /** A request shown to the person; `id` is answered with `AgentPermissionAnswer` */
@@ -135,6 +145,21 @@ export type AgentSessionEvent =
   /** the program is gone (stopped, failed, or idle) */
   | { type: 'ended' }
 
+/**
+ * One relay of a person's MCP server for a session (user MCP spec 9): an MCP
+ * server of the app on loopback with a token of this session, named like the
+ * person's server. The program gets the address and the token, never the
+ * server's own address, keys or environment.
+ */
+export interface AgentMcpRelay {
+  /** the person's server name; the program's tool names are `mcp__<name>__<tool>` */
+  name: string
+  url: string
+  token: string
+  /** the tools the relay lists at the start, as the program names them after `mcp__<name>__` */
+  tools: string[]
+}
+
 export interface AgentSessionOptions {
   /** absolute path of the project folder; the program's working directory */
   projectRoot: string
@@ -158,6 +183,8 @@ export interface AgentSessionOptions {
   skillBundleDir?: string | undefined
   /** the app's own MCP server for open documents, if the session may use it */
   appMcp?: { url: string; token: string } | undefined
+  /** the relays of the person's MCP servers that were on when the session started */
+  userMcpRelays?: AgentMcpRelay[] | undefined
   /** a folder the session may write its own files into (settings, MCP config) */
   sessionDir: string
 }

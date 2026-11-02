@@ -4,9 +4,9 @@
  * This is the engine's own shape, not the data shape of the drawing library;
  * the editor converts. It carries only what is shown or edited: titles, the
  * order of branches, folding, labels, the note as plain text, the link,
- * summaries, relationships, the layout, the picture reference, marker ids,
- * the style values set on a topic itself and the parts of a title that carry a
- * text format of their own.
+ * summaries, relationships, the layout, the picture reference, the width
+ * given to a topic's box, marker ids, the style values set on a topic itself
+ * and the parts of a title that carry a text format of their own.
  *
  * Everything else stays in the source tree and is not here: boundaries,
  * floating topics, callouts, the branches under a summary topic, links to
@@ -53,6 +53,11 @@ export interface ViewTopic {
    */
   link: string | null
   image: ViewImage | null
+  /**
+   * the width the user gave the topic's box, in pixels (`customWidth`); left
+   * out when the topic takes the width of its text
+   */
+  width?: number
   /** marker ids only, e.g. `priority-1` */
   markers: string[]
   style: ViewTopicStyle
@@ -134,6 +139,7 @@ function topicToView(topic: XmindTopic, shown: Set<string>): ViewTopic {
   const attached = topic.children?.attached ?? []
   const summaries = summariesToView(topic, attached.length)
   for (const summary of summaries) shown.add(summary.topicId)
+  const width = topicWidth(topic.customWidth)
   return {
     id: topic.id,
     title: stringOr(topic.title, ''),
@@ -142,6 +148,7 @@ function topicToView(topic: XmindTopic, shown: Set<string>): ViewTopic {
     note: noteText(topic.notes),
     link: isShownLink(topic.href) ? topic.href : null,
     image: imageToView(topic.image),
+    ...(width === null ? {} : { width }),
     markers: records(topic.markers)
       .map((marker) => marker.markerId)
       .filter((id): id is string => typeof id === 'string'),
@@ -179,6 +186,14 @@ export function isShownLink(href: unknown): href is string {
 }
 
 const ATTACHMENT_SCHEME = 'xap:'
+
+/**
+ * The width a topic's box was given, when the file holds one that can be
+ * drawn: a positive number. Any other value stays in the file and is not shown.
+ */
+export function topicWidth(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null
+}
 
 function imageToView(image: unknown): ViewImage | null {
   if (!isRecord(image) || typeof image.src !== 'string' || image.src === '') return null

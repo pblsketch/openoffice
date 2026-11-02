@@ -2354,6 +2354,24 @@ html[dir='rtl'] .quick-title-row {
   color: var(--danger);
 }
 
+/* icon buttons in the composer footer beside the model picker (the MCP server button) */
+.kb-ask .ai-attach-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.kb-ask .ai-attach-btn:hover {
+  filter: brightness(0.7);
+}
+
 /* citation links inside answers (filenav): a soft pill, click opens the file */
 .kb-ask-assistant a {
   display: inline-flex;

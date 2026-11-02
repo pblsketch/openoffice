@@ -28,6 +28,7 @@ export const th = {
   invokeManual: 'เฉพาะเมื่อเรียก',
   badgeTemplate: 'มีแม่แบบ',
   badgeScripts: 'มีสคริปต์ · ทำงานได้เต็มที่ในหน้าต่างเอเจนต์',
+  badgeMcpServer: 'ต้องใช้เซิร์ฟเวอร์ MCP: {servers}',
   badgeAgentOnly: 'เฉพาะหน้าต่างเอเจนต์',
   unreadableNoFrontmatter: 'ไม่มีส่วนหัวข้อมูล',
   unreadableBadName: 'ชื่อไม่ตรงตามกฎ',

@@ -429,8 +429,23 @@ describe('the AI’s reads, checked again in main', () => {
         files: ['notes.md'],
         template: undefined,
         hasScripts: true,
+        mcpServers: [],
       },
     })
+  })
+
+  it('names the MCP servers a skill refers to, in the list and in the read (spec 8)', async () => {
+    skill(
+      join(appDir(), 'case-brief'),
+      'case-brief',
+      'Drafts a brief',
+      'allowed-tools:\n  - Read\n  - mcp__korean-law__search_decisions\n',
+      'Check each case with mcp__korean-law__get_decision_text and mcp__web__fetch.\n',
+    )
+    expect((await byId('app:case-brief'))?.mcpServers).toEqual(['korean-law', 'web'])
+    const read = await service.aiRead('app:case-brief')
+    expect(read.ok && read.skill.mcpServers).toEqual(['korean-law', 'web'])
+    expect((await byId('app:mine'))?.mcpServers).toEqual([])
   })
 
   it('refuses skills that are off, for the agent window only, or unknown', async () => {

@@ -197,7 +197,16 @@ export type AgentTemplateBlank =
   { ok: true; tabId: string; previewId: string } | { ok: false; reason: string }
 
 export type AgentStartResponse =
-  | { ok: true; sessionId: string; skills: AgentSessionSkill[] }
+  | {
+      ok: true
+      sessionId: string
+      skills: AgentSessionSkill[]
+      /**
+       * the person's MCP servers attached that keep received content inside: this window
+       * cannot keep it, and the start warning names them (user MCP spec 9)
+       */
+      mcpKeepInside?: string[] | undefined
+    }
   | {
       ok: false
       reason: 'bad-folder' | 'not-connected' | 'start-failed' | 'not-accepted' | 'provider-blocked'
@@ -206,7 +215,16 @@ export type AgentStartResponse =
 
 /** What a tool line or a permission request shows; paths and commands are shown as they are */
 export interface AgentActionView {
-  kind: 'read' | 'write' | 'command' | 'app-tool' | 'skill' | 'web-search' | 'web-fetch' | 'other'
+  kind:
+    | 'read'
+    | 'write'
+    | 'command'
+    | 'app-tool'
+    | 'mcp-tool'
+    | 'skill'
+    | 'web-search'
+    | 'web-fetch'
+    | 'other'
   tool: string
   command?: string | undefined
   /** a shorter reading of the command for the progress line; the full one stays in `command` */
@@ -217,6 +235,8 @@ export interface AgentActionView {
   target?: string | undefined
   /** the site of a page address, when it has one */
   host?: string | undefined
+  /** the person's MCP server an `mcp-tool` request calls; its input is in `target` */
+  server?: string | undefined
 }
 
 export type AgentEventView =
