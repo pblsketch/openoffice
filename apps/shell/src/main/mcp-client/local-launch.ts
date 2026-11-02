@@ -11,7 +11,7 @@
  * with an argument array; a Windows `.cmd`/`.bat`, which only a command
  * window can run, is refused instead.
  */
-import { extname, isAbsolute } from 'node:path'
+import { extname, posix, win32 } from 'node:path'
 import type { McpRuntimeId, McpRuntimeKit, RuntimeMissing } from './runtimes'
 import type { McpServerConfig } from './store'
 
@@ -156,7 +156,7 @@ function npxNeedsYes(args: readonly string[]): boolean {
 
 /** Windows drops trailing dots and spaces from a file name, so `x.cmd. ` is `x.cmd` */
 function windowsExtension(path: string): string {
-  return extname(path.replace(/[. ]+$/, '')).toLowerCase()
+  return win32.extname(path.replace(/[. ]+$/, '')).toLowerCase()
 }
 
 function findName(env: NodeJS.ProcessEnv, name: string, platform: NodeJS.Platform): string | null {
@@ -185,7 +185,8 @@ export async function prepareLocalLaunch(
     signal: options.signal,
   })
   if (!resolved.ok) return blocked('runtime-missing', resolved.message, resolved)
-  if (!isAbsolute(resolved.command)) {
+  const pathRules = platform === 'win32' ? win32 : posix
+  if (!pathRules.isAbsolute(resolved.command)) {
     return blocked('not-a-program', 'the program was not found by its full path')
   }
   if (platform === 'win32') {
