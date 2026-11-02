@@ -116,6 +116,10 @@ enum Command {
     UpdateExternalLinks {
         path: PathBuf,
     },
+    #[serde(rename_all = "camelCase")]
+    ReadExternalLinks {
+        path: PathBuf,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -669,6 +673,9 @@ fn handle_request(
         }
         Command::UpdateExternalLinks { path } => {
             xlsx_sidecar::external_links::update_external_link_values(&path).and_then(to_json_value)
+        }
+        Command::ReadExternalLinks { path } => {
+            xlsx_sidecar::external_links::read_external_link_statuses(&path).and_then(to_json_value)
         }
     };
     Some(match result {

@@ -41,6 +41,9 @@ ieumoffice sheet read book.xlsx [--sheet Data] [--range A1:D20] [--formats] --js
 ieumoffice sheet apply book.xlsx --cells cells.json    # [{cell:"B2", value|formula, style?, sheet?}]
 ieumoffice sheet apply book.xlsx --ops ops.json [--dry-run]   # workbook DSL: cells, formats, charts, tables, filters, conditional formats, validation, links, notes, panes, page setup, sheets (`ieumoffice guide sheets`)
 ieumoffice sheet check book.xlsx --json                # formula errors, missing-sheet references, broken defined names, chart ranges off the data, ### columns (suggest: set_col_width), placeholder text, existing rules; exit 0
+ieumoffice sheet links book.xlsx                       # external [n] links: stored path, resolved path, reachable, source sheets
+ieumoffice sheet links book.xlsx --update              # re-read reachable sources and write the computed values as the formulas' cached <v> (formulas untouched; unreachable links keep their cache)
+ieumoffice sheet links book.xlsx --break 1,2           # break links: formulas become their cached values, the links' parts are removed and surviving links renumber
 ieumoffice create --type docx --from report.md --out report.docx      # or --from fragment.html (restricted HTML)
 ieumoffice convert notes.md --to docx|html
 ieumoffice convert report.docx --to html               # the Word editor's standalone-HTML export
