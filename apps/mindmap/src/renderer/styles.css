@@ -429,10 +429,13 @@ html.genoffice-popover-open .ribbon-tabs {
   cursor: pointer;
 }
 
-/* the title of a boundary is typed in a box as wide as a topic's */
+/* the title of a boundary is typed in a box as wide as a topic's; an empty
+   title still shows a box to type in */
 .mm-card .map-container #input-box[data-type='boundary'] {
   position: absolute;
+  min-width: 4em;
   max-width: 30em;
+  padding: 0 4px;
 }
 
 /* while the format painter holds a format, every press on the map puts it on */
