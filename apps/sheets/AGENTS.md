@@ -36,6 +36,8 @@ Excel 통합 문서(.xlsx, .csv 등) 에디터다. 화면은 Univer 격자 위�
 
 ## 이 모듈의 방식
 
+- **셀을 고치는 중에는 글꼴 단추가 고른 글자에만 걸린다.** 굵게·기울임·밑줄·취소선·글꼴·크기·크게/작게·글자색은 셀을 고치는 중이면(수식 입력은 빼고, `cellEditorHoldsText`) Univer의 글자 단위 명령(`SetInlineFormat*`)으로 가고, 커서만 있으면 이어서 칠 글자의 서식이 된다. 편집기가 없을 때와 서식 대화 상자의 `:on`/`:off`, 이중 밑줄은 셀 전체에 건다. 예전에는 늘 셀 전체에 걸어서, 셀 안의 소제목만 굵게 하면 셀 글이 모두 굵어졌다(2026-11-02 신고). 이 단추들은 누를 때 포커스를 가져가지 않는다(`keepCellEditorFocus`). 그래야 편집기의 선택이 남고 이어서 칠 수 있다. 글자 단위 서식은 편집 기록의 `rich`로 저장된다.
+- **병합 단추는 이미 병합된 칸을 엑셀처럼 다룬다.** Univer의 병합은 기존 병합과 겹치는 범위를 통째로 거절한다. 그래서 리본은 `planRibbonMerge`(`merge-selection.ts`)로 범위를 걸친 병합까지 넓힌 뒤, 겹치는 병합을 풀고 전체를 다시 합친다(파일 세션에서는 `unmerge_cells`·`merge_cells`를 한 계획으로 보내 되돌리기 한 번에 돌아간다). 병합된 칸 하나에 "병합하고 가운데 맞춤"을 누르면 병합을 푼다. 전체 병합은 `isForceMerge`로 행마다 다시 합친다. AI의 `merge_cells`는 그대로다.
 - **발표 모드는 격자만 남긴다.** Ctrl+F5는 전체화면으로 열고 A1부터 보여 주며, Shift+F5는 지금 셀을 유지한 채 연다. Esc·F5로 끝난다. 엑셀의 plain F5는 기존 Go To이므로 가져오지 않는다. `.app-shell.sheet-presenting`이 이 앱의 리본(`.excel-header`), AI 창(`.copilot`), 상태 표시줄을 숨긴다. Univer의 이름 상자·수식 입력줄·시트 탭은 격자의 일부라 그대로 둔다. 키 판정은 `@genoffice/ui`의 `presentationKeyOf` 하나다.
 - 메인 코드는 shell 번들에 들어간다(`../../../sheets/src/main/sheets-main`을 상대 경로로 import한다). `src/main`을 고친 뒤에는 shell을 다시 빌드한다.
 - 사이드카 위치는 주입받는다. 배포 앱은 `resources/native/`, 개발 실행은 `native/xlsx-engine/target/release/`의 실행 파일을 쓰고 `XLSX_SIDECAR_PATH`로 바꿀 수 있다. 사이드카가 죽으면 `workbook:sidecar-crashed`로 알리고 같은 경로를 정상 열기 경로로 다시 연다.
