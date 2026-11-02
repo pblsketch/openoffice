@@ -1005,7 +1005,9 @@ export class MapController {
    * named in `options`: the engine writes those only for what is named.
    * A topic that stands under another parent afterwards (moved, or new) takes
    * the line values its new parent has written on itself, with its branch, in
-   * the same step (`line-format.ts`).
+   * the same step (`line-format.ts`), unless the same edit set its line: a
+   * topic named in `restyledLines` (or whose line `change` set through the
+   * controller) keeps the values it was given.
    */
   edit(change: (root: MapNode, parts: MapParts) => void, options: EditOptions = {}): void {
     const mind = this.mind
@@ -1013,6 +1015,7 @@ export class MapController {
     const arrow = this.#currentArrowId()
     const summary = this.#currentSummaryId()
     const parents = parentsOf(mind.nodeData)
+    const relinedBefore = new Set(this.#relined)
     this.#name(options)
     const parts: MapParts = {
       arrows: (mind.arrows ?? []) as MapArrow[],
@@ -1025,7 +1028,10 @@ export class MapController {
     mind.meta = withBoundaries(mind.meta, parts.boundaries)
     normaliseTree(mind.nodeData, topicIdsOf(this.#lastView))
     this.#keepableRecordIds(parts)
-    for (const id of inheritArrivals(mind.nodeData, parents)) this.#relined.add(id)
+    // a line this edit set itself wins over the line of a new parent
+    const explicit = new Set(options.restyledLines ?? [])
+    for (const id of this.#relined) if (!relinedBefore.has(id)) explicit.add(id)
+    for (const id of inheritArrivals(mind.nodeData, parents, explicit)) this.#relined.add(id)
     mind.refresh()
     this.#putSelectionBack(selected, arrow, summary)
     mind.bus.fire('operation', {

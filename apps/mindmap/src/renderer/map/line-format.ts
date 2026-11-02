@@ -264,12 +264,17 @@ export function branchNodes(node: NodeObj): NodeObj[] {
 const MAX_DEPTH = 1024
 
 /**
- * Makes the edits on a topic and on every topic below it. Returns the ids of
- * the topics whose values changed.
+ * Makes the edits on a topic and on every topic below it, except those in
+ * `skip`. Returns the ids of the topics whose values changed.
  */
-export function editBranchLine(node: NodeObj, edits: StyleEdits<BranchLineKey>): string[] {
+export function editBranchLine(
+  node: NodeObj,
+  edits: StyleEdits<BranchLineKey>,
+  skip?: ReadonlySet<string>,
+): string[] {
   const changed: string[] = []
   for (const at of branchNodes(node)) {
+    if (skip?.has(at.id)) continue
     const before = ownLineOf(at)
     const after = withEdits(before, edits)
     if (sameValues(before, after)) continue
@@ -293,10 +298,14 @@ export function editOwnLine(node: NodeObj, edits: StyleEdits<BranchLineKey>): bo
  * values the parent has written on itself (those the engine writes). Nothing
  * changes when the parent has none. Returns the ids of the topics that changed.
  */
-export function inheritBranchLine(parent: NodeObj, node: NodeObj): string[] {
+export function inheritBranchLine(
+  parent: NodeObj,
+  node: NodeObj,
+  skip?: ReadonlySet<string>,
+): string[] {
   const line = writableLineOf(parent)
   if (Object.keys(line).length === 0) return []
-  return editBranchLine(node, line)
+  return editBranchLine(node, line, skip)
 }
 
 /** The parent of every topic of a tree, by id; the central topic has none. */
@@ -316,11 +325,15 @@ export function parentsOf(root: NodeObj): Map<string, string | null> {
  * After a change of the tree: every topic that stands under another parent
  * than before (or is new), and is not below another such topic, takes the
  * line values of its new parent with its branch. `before` is `parentsOf` the
+ * tree before the change. A topic in `explicit` had its line set by the same
+ * change, which wins: it keeps the values it was given (the topics below it
+ * that are not named still take the parent's).
  * tree before the change. Returns the ids of the topics that changed.
  */
 export function inheritArrivals(
   root: NodeObj,
   before: ReadonlyMap<string, string | null>,
+  explicit?: ReadonlySet<string>,
 ): string[] {
   const changed: string[] = []
   const visit = (node: NodeObj, depth: number): void => {
@@ -328,7 +341,7 @@ export function inheritArrivals(
     for (const child of node.children ?? []) {
       const was = before.get(child.id)
       if (was === undefined || was !== node.id) {
-        changed.push(...inheritBranchLine(node, child))
+        changed.push(...inheritBranchLine(node, child, explicit))
         continue
       }
       visit(child, depth + 1)

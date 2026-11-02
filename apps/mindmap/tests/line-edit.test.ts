@@ -8,12 +8,19 @@
  * of the file.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { XmindDocument, XmindSheet, XmindTopic } from '@genoffice/xmind-engine'
+import {
+  DEFAULT_THEME_ID,
+  themeLook,
+  type XmindDocument,
+  type XmindSheet,
+  type XmindTopic,
+} from '@genoffice/xmind-engine'
 import { MapController, type MapHost, type MapNotice } from '../src/renderer/map/controller'
 import { DocumentSession } from '../src/renderer/document/session'
 import type { MapNode } from '../src/renderer/document/convert'
 import { mapStrings } from '../src/renderer/i18n/map-strings'
 import { BOUNDARY_ID_ATTRIBUTE } from '../src/renderer/map/relations'
+import { themeColorsAt } from '../src/renderer/map/format-painter'
 import { copyOf, documentOf, topic } from './helpers/fixtures'
 
 const CURVE = 'org.xmind.branchConnection.curve'
@@ -99,6 +106,16 @@ function linesSheet(): XmindSheet {
     ],
   }
 }
+
+/** The lines sheet with A2 drawn in a colour of its own, other than the one A has. */
+function ownColourSheet(): XmindSheet {
+  const sheet = linesSheet()
+  const a2 = sheet.rootTopic.children!.attached![0]!.children!.attached![1]!
+  ;(a2.style as { properties: Record<string, string> }).properties['line-color'] = '#999999'
+  return sheet
+}
+
+const OTHER = 'e0000000-0000-4000-8000-00000000000f'
 
 const mounted: MapController[] = []
 afterEach(() => {
@@ -337,17 +354,26 @@ describe('topics that arrive in a branch', () => {
     expect(props(ID.a2)).toMatchObject({ ...LINE_A, 'line-pattern': 'dot' })
   })
 
-  it('moved before a topic of another branch it takes that parent’s values; moved within its branch nothing changes', async () => {
-    const { mind, props, controller } = await mount()
+  it('moved before a topic of another branch it takes that parent’s values, as one step', async () => {
+    const { mind, props, controller, unchanged } = await mount()
     await mind.moveNodeBefore([mind.findEle(ID.c1)], mind.findEle(ID.a1))
     await settle()
     expect(props(ID.c1)).toMatchObject(LINE_A)
     controller.undo()
-    // a key that moves a topic up among its siblings does not change its parent
+    expect(await unchanged()).toBe(true)
+  })
+
+  it('moved up among its siblings by a key, a topic keeps every value of its own', async () => {
+    const { mind, props, find } = await mount(ownColourSheet())
+    const before = copyOf(props(ID.a2))
+    expect(before['line-color']).toBe('#999999')
     mind.selectNode(mind.findEle(ID.a2))
     press(mind.container, 'ArrowUp', { altKey: true })
     await settle()
-    expect(props(ID.a2)['line-pattern']).toBe('dot')
+    // it did move, under the same parent
+    expect(find(ID.a)!.children!.attached!.map((child) => child.id)).toEqual([ID.a2, ID.a1])
+    expect(props(ID.a2)).toEqual(before)
+    expect(props(ID.a2x)['line-color']).toBe('#112233')
   })
 
   it('cut and pasted into a formatted branch, the topic comes back whole and takes the values', async () => {
@@ -363,7 +389,7 @@ describe('topics that arrive in a branch', () => {
   })
 
   it('copied and pasted into a formatted branch, the new topics take the values', async () => {
-    const { mind, props, find } = await mount()
+    const { controller, mind, props, find, unchanged } = await mount()
     mind.selectNode(mind.findEle(ID.c))
     const copy = clipboardEvent('copy')
     mind.container.dispatchEvent(copy.event)
@@ -373,6 +399,22 @@ describe('topics that arrive in a branch', () => {
     expect(pasted.id).not.toBe(ID.c)
     expect(props(pasted.id)).toMatchObject(LINE_A)
     expect(props(pasted.children!.attached![0]!.id)).toMatchObject(LINE_A)
+    controller.undo()
+    expect(await unchanged()).toBe(true)
+  })
+
+  it('copied and pasted under a topic without values, the new topics keep their own', async () => {
+    const { controller, mind, props, find, unchanged } = await mount()
+    mind.selectNode(mind.findEle(ID.a2))
+    const copy = clipboardEvent('copy')
+    mind.container.dispatchEvent(copy.event)
+    await pasteInto(mind, ID.b1, copy.text())
+    const pasted = find(ID.b1)!.children!.attached![0]!
+    expect(pasted.id).not.toBe(ID.a2)
+    expect(props(pasted.id)).toEqual({ ...LINE_A, 'line-pattern': 'dot' })
+    expect(props(pasted.children!.attached![0]!.id)).toEqual(LINE_A)
+    controller.undo()
+    expect(await unchanged()).toBe(true)
   })
 
   it('pasted under a topic without values, the topics keep their own', async () => {
@@ -395,6 +437,47 @@ describe('topics that arrive in a branch', () => {
     expect(added.title).toBe('Added')
     expect(props(added.id)).toMatchObject(LINE_A)
     for (const id of [ID.c, ID.c1]) expect(props(id)).toMatchObject(LINE_A)
+    controller.undo()
+    expect(await unchanged()).toBe(true)
+  })
+})
+
+describe('a new topic put above a branch, and a line set in the same edit', () => {
+  it('a new parent takes the values of the topic above it for itself; the branch below keeps its own', async () => {
+    const { controller, mind, props, find, unchanged } = await mount(ownColourSheet())
+    const before = { a2: copyOf(props(ID.a2)), a2x: copyOf(props(ID.a2x)) }
+    mind.insertParent(mind.findEle(ID.a2))
+    await settle()
+    const inserted = find(ID.a)!.children!.attached![1]!
+    expect(inserted.id).not.toBe(ID.a2)
+    expect(inserted.children!.attached!.map((child) => child.id)).toEqual([ID.a2])
+    expect(props(inserted.id)).toEqual(LINE_A)
+    expect(props(ID.a2)).toEqual(before.a2)
+    expect(props(ID.a2x)).toEqual(before.a2x)
+    controller.commitEdit()
+    while (controller.canUndo) controller.undo()
+    expect(await unchanged()).toBe(true)
+  })
+
+  it('a topic moved into a formatted branch whose line the same edit set keeps that line', async () => {
+    const { controller, props, find, unchanged } = await mount()
+    controller.edit(
+      (root) => {
+        const a = root.children![0]!
+        const c = root.children!.splice(2, 1)[0]!
+        a.children!.push(c)
+        const own = { color: '#00ff00' }
+        c.metadata = { ...c.metadata!, line: own }
+        c.children![0]!.metadata = { ...c.children![0]!.metadata!, line: own }
+        // and a new topic the edit gives no line takes the parent's
+        c.children!.push({ id: OTHER, topic: 'Plain new' } as MapNode)
+      },
+      { restyledLines: [ID.c, ID.c1] },
+    )
+    expect(find(ID.a)!.children!.attached!.map((child) => child.id)).toContain(ID.c)
+    expect(props(ID.c)).toEqual({ 'line-color': '#00ff00' })
+    expect(props(ID.c1)).toEqual({ 'line-color': '#00ff00' })
+    expect(props(OTHER)).toEqual(LINE_A)
     controller.undo()
     expect(await unchanged()).toBe(true)
   })
@@ -607,10 +690,15 @@ describe('boundaries', () => {
     expect(controller.addBoundary([ID.a, ID.b]).ok).toBe(true)
   })
 
-  it('outside the layout to both sides the range may reach over the centre', async () => {
-    const { controller } = await mount()
+  it('outside the layout to both sides the range may reach over the centre, and takes in the branch between', async () => {
+    const { controller, find } = await mount()
     controller.setLayout('right')
-    expect(controller.addBoundary([ID.a, ID.c]).ok).toBe(true)
+    const outcome = controller.addBoundary([ID.c, ID.a])
+    expect(outcome.ok).toBe(true)
+    const records = find(ID.root)!.boundaries as Record<string, unknown>[]
+    expect(records).toEqual([{ id: (outcome as { id: string }).id, range: '(0,2)' }])
+    // B, not selected, stands between A and C and is inside it
+    expect(controller.boundary()).toMatchObject({ topicId: ID.root, range: { start: 0, end: 2 } })
   })
 
   it('selecting a boundary ends the selection of topics, and selecting a topic ends the boundary’s', async () => {
@@ -775,7 +863,10 @@ describe('clear format', () => {
 
 describe('the format painter', () => {
   it('held for one topic: the next topic takes the format, with its branch, as one step', async () => {
-    const { controller, mind, props, unchanged, notices } = await mount()
+    const sheet = linesSheet()
+    const a2 = sheet.rootTopic.children!.attached![0]!.children!.attached![1]!
+    ;(a2.style as { properties: Record<string, string> }).properties['svg:fill'] = '#ABCDEF'
+    const { controller, mind, props, unchanged, notices } = await mount(sheet)
     expect(controller.formatPainter).toEqual({ active: false, sticky: false, kind: null })
     expect(controller.startFormatPainter()).toEqual({ ok: false, reason: 'nothing-selected' })
     expect(notices).toEqual([{ code: 'painter-nothing-selected' }])
@@ -789,8 +880,9 @@ describe('the format painter', () => {
     }
     // the text and the fill go on the target alone
     expect(props(ID.c)).toHaveProperty('fo:font-size')
-    expect(props(ID.c)).toHaveProperty('svg:fill')
+    expect(props(ID.c)['svg:fill']).toBe('#abcdef')
     expect(props(ID.c1)).not.toHaveProperty('fo:font-size')
+    expect(props(ID.c1)).not.toHaveProperty('svg:fill')
     expect(controller.formatPainter.active).toBe(false)
     expect(mind.container.dataset.mmPainter).toBeUndefined()
     controller.undo()
@@ -854,6 +946,9 @@ describe('the format painter', () => {
       pattern: source.pattern,
       shape: source.shape,
     })
+    // the fill the theme gives B1 (third level, second main branch), written as A1's own
+    const theme = themeColorsAt(themeLook(DEFAULT_THEME_ID), 3, 1)
+    expect(props(ID.a1)['svg:fill']).toBe(theme.fill === null ? 'none' : theme.fill.slice(0, 7))
     // the text: the weight and size the theme gives B1's level, written as A1's own
     expect(props(ID.a1)['fo:font-weight']).toMatch(/^[1-9]00$/)
     expect(props(ID.a1)['fo:font-size']).toMatch(/^\d+(\.5)?pt$/)
@@ -914,6 +1009,55 @@ describe('the format painter', () => {
     expect(made).not.toBe(ID.boundary)
     // the title stays the target's
     expect((find(ID.b)!.boundaries as Record<string, unknown>[])[0]!.title).toBe('old')
+  })
+})
+
+describe('the format painter undoes to the file', () => {
+  it('put on a relationship, one undo gives back the bytes of the file', async () => {
+    layOut()
+    const { controller, mind, relationship, unchanged } = await mount()
+    const group = [...mind.arrowSvg.children].find(
+      (child) => (child as SVGGElement).dataset.linkid === ID.styledRel,
+    ) as Parameters<typeof mind.selectArrow>[0]
+    mind.selectArrow(group)
+    controller.startFormatPainter()
+    expect(controller.applyFormatTo({ kind: 'relationship', id: ID.rel })).toEqual({ ok: true })
+    expect((relationship(ID.rel).style as { properties: unknown }).properties).toEqual({
+      'shape-class': 'org.xmind.relationshipShape.angled',
+      'arrow-end-class': 'org.xmind.arrowShape.dot',
+      'line-color': '#cc3300',
+    })
+    controller.undo()
+    expect(controller.canUndo).toBe(false)
+    expect(await unchanged()).toBe(true)
+  })
+
+  it('put on a boundary, one undo gives back the bytes of the file', async () => {
+    const sheet = linesSheet()
+    const c = sheet.rootTopic.children!.attached![2]!
+    c.boundaries = [
+      {
+        id: OTHER,
+        range: '(0,0)',
+        style: {
+          id: 'their-boundary',
+          properties: { 'shape-class': 'org.xmind.boundaryShape.waves', 'line-color': '#336699' },
+        },
+      },
+    ]
+    const { controller, find, unchanged } = await mount(sheet)
+    controller.selectBoundary(OTHER)
+    controller.startFormatPainter()
+    expect(controller.applyFormatTo({ kind: 'boundary', id: ID.boundary })).toEqual({ ok: true })
+    const record = (find(ID.b)!.boundaries as Record<string, unknown>[])[0]!
+    expect((record.style as { properties: unknown }).properties).toEqual({
+      'shape-class': 'org.xmind.boundaryShape.waves',
+      'line-color': '#336699',
+    })
+    expect(record.title).toBe('old')
+    controller.undo()
+    expect(controller.canUndo).toBe(false)
+    expect(await unchanged()).toBe(true)
   })
 })
 
