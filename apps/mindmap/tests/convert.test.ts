@@ -383,7 +383,7 @@ describe('nodes from the clipboard', () => {
         note: null,
         link: null,
         image: null,
-width: null,
+        width: null,
         markers: [],
         style: {},
         titleRuns: null,
