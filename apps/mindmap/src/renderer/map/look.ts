@@ -23,16 +23,38 @@ import {
   DEFAULT_THEME_ID,
   mixColors,
   recogniseSheetTheme,
+  sheetLineSettings,
   themeLook,
   type ThemeLook,
   type ThemeTopicShape,
   type XmindSheet,
 } from '@genoffice/xmind-engine'
 import { type BranchGeometry, mainBranchPath, subBranchPath } from './branches'
+import type { MapLineSettings } from './line-resolve'
 
-/** The look a sheet is drawn with: its own theme when this app wrote it, the default look otherwise. */
-export function lookOfSheet(sheet: XmindSheet): ThemeLook {
-  return themeLook(recogniseSheetTheme(sheet) ?? DEFAULT_THEME_ID)
+/**
+ * A look as a sheet is drawn with it: the theme's look and the sheet's
+ * map-wide line settings. The settings belong to the sheet, not to the theme,
+ * so a look made from a theme alone has none and leaves those of the sheet
+ * as they were (`TopicDecorator.setLook`).
+ */
+export interface SheetLook extends ThemeLook {
+  lineSettings?: MapLineSettings
+}
+
+/** The map-wide line settings of a sheet, whatever its theme: the default look follows them too. */
+export function lineSettingsOfSheet(sheet: XmindSheet): MapLineSettings {
+  const { tapered, rainbow } = sheetLineSettings(sheet)
+  return { tapered, rainbow }
+}
+
+/**
+ * The look a sheet is drawn with: its own theme when this app wrote it, the
+ * default look otherwise, with the sheet's line settings either way.
+ */
+export function lookOfSheet(sheet: XmindSheet): SheetLook {
+  const look = themeLook(recogniseSheetTheme(sheet) ?? DEFAULT_THEME_ID)
+  return { ...look, lineSettings: lineSettingsOfSheet(sheet) }
 }
 
 /** Line height for a font size, in whole pixels so that topic boxes land on whole pixels. */
@@ -163,11 +185,6 @@ export function branchVars(look: ThemeLook, index: number): Record<string, strin
     '--mm-main-label-fill': branch.main.fill === null ? branch.label.fill : look.ground,
     '--mm-sub-label-fill': branch.sub.fill === null ? branch.label.fill : look.ground,
   }
-}
-
-/** The colour of the line from the centre to main branch `index`. */
-export function branchColor(look: ThemeLook, index: number): string {
-  return look.branches[index % look.branches.length]!.color
 }
 
 /** How far inside a filled central topic a main branch starts; the topic is drawn over that end. */

@@ -381,6 +381,7 @@ describe('the colours of a map are document content', () => {
       'branches.ts',
       'decorate.ts',
       'images.ts',
+      'line-resolve.ts',
       'link-preview.ts',
       'look.ts',
       'markers.ts',

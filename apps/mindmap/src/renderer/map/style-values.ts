@@ -22,8 +22,20 @@
  *
  * The same filter is for the screen, exported pictures, print and the preview
  * picture: all of them draw from `ownTopicStyle`.
+ *
+ * The values of a branch line go through the same shapes: a colour, a width
+ * (`safeBranchLineWidth`), a pattern from the format's list, and a shape: the
+ * words a user can pick as themselves, the words other programs write that
+ * this app only reads as the nearest picked shape (`safeBranchShape`).
  */
-import type { ViewRunStyle, ViewTopicStyle } from '@genoffice/xmind-engine'
+import {
+  BRANCH_LINE_CLASS_PREFIX,
+  BRANCH_LINE_SHAPES,
+  classWord,
+  LINE_PATTERNS,
+  type ViewRunStyle,
+  type ViewTopicStyle,
+} from '@genoffice/xmind-engine'
 
 /** A colour as this app writes it: `#rrggbb` or `#rrggbbaa`, lower case. */
 export type SafeColor = `#${string}`
@@ -130,6 +142,65 @@ export function safeLineWidth(value: unknown): number | null {
   if (read.amount < LINE_WIDTH_MEANT.min || read.amount > LINE_WIDTH_MEANT.max) return null
   const pixels = read.unit === 'px' ? read.amount : read.amount * PX_PER_PT
   return round(Math.min(LINE_WIDTH_DRAWN_MAX, pixels))
+}
+
+/** The widest branch line drawn, in CSS pixels: the widest the engine writes, in points. */
+export const BRANCH_LINE_WIDTH_DRAWN_MAX = 20
+
+/**
+ * The width of a branch line in CSS pixels, at most
+ * `BRANCH_LINE_WIDTH_DRAWN_MAX`; null for anything else and for no width at
+ * all. One point is one pixel, as the theme tables are written
+ * (`theme-table.ts` writes a look's line widths as that many points), so a
+ * line drawn from a theme and one drawn from a topic's own value of the same
+ * number have the same width. A bare number and pixels are read the same way.
+ */
+export function safeBranchLineWidth(value: unknown): number | null {
+  const read = readNumber(value)
+  if (!read) return null
+  if (read.amount <= LINE_WIDTH_MEANT.min || read.amount > LINE_WIDTH_MEANT.max) return null
+  return round(Math.min(BRANCH_LINE_WIDTH_DRAWN_MAX, read.amount))
+}
+
+/** A shape of a branch line this app draws. */
+export type BranchLineShape = (typeof BRANCH_LINE_SHAPES)[number]
+/** A pattern of a line, as the format names it. */
+export type LinePattern = (typeof LINE_PATTERNS)[number]
+
+/** Shapes other programs write that this app reads only, each drawn as the nearest one it draws. */
+const READ_ONLY_BRANCH_SHAPES: Readonly<Record<string, BranchLineShape>> = {
+  fold: 'elbow',
+  fold2: 'elbow',
+  roundedfold: 'roundedElbow',
+  bight: 'curve',
+  'timeline.horizontal': 'straight',
+}
+
+function isListed<T extends string>(list: readonly T[], value: string): value is T {
+  return (list as readonly string[]).includes(value)
+}
+
+/** Whether a `line-class` value is a shape a user can pick, as the file writes it. */
+export function isPickableBranchShape(value: unknown): boolean {
+  const word = classWord(value, BRANCH_LINE_CLASS_PREFIX)
+  return word !== null && isListed(BRANCH_LINE_SHAPES, word)
+}
+
+/**
+ * The shape to draw for a `line-class` value: a shape a user can pick as
+ * itself, a shape only read as the nearest one; null for any other value (it
+ * is drawn as the theme draws that line).
+ */
+export function safeBranchShape(value: unknown): BranchLineShape | null {
+  const word = classWord(value, BRANCH_LINE_CLASS_PREFIX)
+  if (word === null) return null
+  if (isListed(BRANCH_LINE_SHAPES, word)) return word
+  return Object.hasOwn(READ_ONLY_BRANCH_SHAPES, word) ? READ_ONLY_BRANCH_SHAPES[word]! : null
+}
+
+/** A pattern of a line; null for any word not in the format's list. */
+export function safeLinePattern(value: unknown): LinePattern | null {
+  return typeof value === 'string' && isListed(LINE_PATTERNS, value) ? value : null
 }
 
 // A name and nothing that could end it, as the engine writes one (`isWritableTextStyle`).

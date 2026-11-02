@@ -12,8 +12,9 @@
  *   `textContent`. The link chip is a span holding the address as text,
  *   whatever the address is; it is never an anchor.
  * - `metadata` carries the values themselves (labels, note, link, the width of
- *   the box, the text format in `style` and `titleRuns`) plus what the editor
- *   shows without editing (picture, markers, the fill in `style`).
+ *   the box, the text format in `style` and `titleRuns`, the line values set
+ *   on the topic in `line`, as the file holds them) plus what the editor shows
+ *   without editing (picture, markers, the fill in `style`).
  * - `dangerouslySetInnerHTML`, `hyperLink`, `image`, `icons` and `style` are
  *   never set.
  *
@@ -29,7 +30,9 @@
  */
 import type { MindElixirData, NodeObj, TagObj } from 'mind-elixir'
 import {
+  BRANCH_LINE_PROPERTIES,
   isShownLink,
+  isWritableBranchLine,
   isWritableTextStyle,
   MAX_TITLE_RUNS,
   newXmindId,
@@ -37,6 +40,7 @@ import {
   TEXT_STYLE_KEYS,
   type ViewRunStyle,
   type ViewTitleRun,
+  type ViewBranchLine,
   type ViewImage,
   type ViewLayout,
   type ViewRelationship,
@@ -62,6 +66,11 @@ export interface MapNodeMeta {
   style: ViewTopicStyle
   /** the title in parts with a text format of their own; null for a plain title */
   titleRuns: ViewTitleRun[] | null
+  /**
+   * the line values set on the topic itself, as the file holds them (they are
+   * drawn through the filter, `map/line-resolve.ts`); absent when it has none
+   */
+  line?: ViewBranchLine
 }
 
 export type MapNode = NodeObj<MapNodeMeta>
@@ -153,6 +162,7 @@ function topicToNode(topic: ViewTopic, isRoot: boolean): MapNode {
       markers: [...topic.markers],
       style: { ...topic.style },
       titleRuns: topic.titleRuns ? copyRuns(topic.titleRuns) : null,
+      ...(topic.line && Object.keys(topic.line).length > 0 ? { line: { ...topic.line } } : {}),
     },
   }
   // The library has no fold handle on the central topic; its value is kept by `mindToState`.
@@ -213,6 +223,7 @@ export interface StateBase {
 
 function readMeta(value: unknown): MapNodeMeta {
   const meta = isObject(value) ? value : {}
+  const line = readLine(meta.line)
   return {
     labels: Array.isArray(meta.labels)
       ? meta.labels.filter((label) => typeof label === 'string')
@@ -226,7 +237,24 @@ function readMeta(value: unknown): MapNodeMeta {
       : [],
     style: isObject(meta.style) ? (meta.style as ViewTopicStyle) : {},
     titleRuns: Array.isArray(meta.titleRuns) ? (meta.titleRuns as ViewTitleRun[]) : null,
+    ...(line ? { line } : {}),
   }
+}
+
+const LINE_KEYS = Object.keys(BRANCH_LINE_PROPERTIES) as (keyof ViewBranchLine)[]
+
+/** The string values of a line, by the view's names; null when there are none. */
+function readLine(
+  value: unknown,
+  keep: (key: keyof ViewBranchLine, value: string) => boolean = () => true,
+): ViewBranchLine | null {
+  if (!isObject(value)) return null
+  const out: ViewBranchLine = {}
+  for (const key of LINE_KEYS) {
+    const given = value[key]
+    if (typeof given === 'string' && keep(key, given)) out[key] = given
+  }
+  return Object.keys(out).length > 0 ? out : null
 }
 
 function copyRuns(runs: readonly ViewTitleRun[]): ViewTitleRun[] {
@@ -253,6 +281,8 @@ export function mindToState(data: MindElixirData, base: StateBase): ViewSheet {
       markers: meta.markers,
       style: meta.style,
       titleRuns: meta.titleRuns,
+      // always given, so a line the screen lost is seen as a difference (the file keeps its own)
+      line: meta.line ? { ...meta.line } : {},
       summaries: [],
       children: [],
     }
@@ -382,8 +412,9 @@ function isObject(value: unknown): value is Record<string, unknown> {
  * What stays: the id (the library replaces it anyway), the title as text,
  * folding, the side, the labels, note and web link, the width of the box, the
  * text format values the engine would write, the parts of the title when they
- * spell it, and the children. What a state cannot write (picture, markers, the
- * fill) is cleared, so the screen never shows something the file will not hold.
+ * spell it, the line values the engine would write, and the children. What a
+ * state cannot write (picture, markers, the fill) is cleared, so the screen
+ * never shows something the file will not hold.
  */
 export function cleanPastedNode(node: unknown, depth = 0): void {
   if (!isObject(node)) return
@@ -398,6 +429,8 @@ export function cleanPastedNode(node: unknown, depth = 0): void {
     style: writableTextStyle(pasted.style),
     titleRuns: writableRuns(pasted.titleRuns, title),
   }
+  const line = readLine(pasted.line, isWritableBranchLine)
+  if (line) meta.line = line
   const kept: Record<string, unknown> = {
     id: typeof node.id === 'string' ? node.id : '',
     topic: title,

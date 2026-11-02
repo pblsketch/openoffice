@@ -263,6 +263,19 @@ describe('what the editor does not show', () => {
     // a new map carries this app's default theme, which is recognised
     expect(fresh.hasUnknownTheme()).toBe(false)
   })
+
+  it('a theme holding nothing but the two map-wide line settings is no theme to tell about', async () => {
+    const sheet = plainSheet()
+    const properties: Record<string, string> = {
+      'line-tapered': 'tapered',
+      'multi-line-colors': 'none',
+    }
+    sheet.theme = { map: { id: 'aaaaaaaa-0000-4000-8000-0000000000ee', properties } }
+    expect(new DocumentSession(await documentOf(sheet)).hasUnknownTheme()).toBe(false)
+    // with anything else on it, it is a theme this app did not write
+    properties['svg:fill'] = '#101010'
+    expect(new DocumentSession(await documentOf(sheet)).hasUnknownTheme()).toBe(true)
+  })
 })
 
 describe('bytes', () => {
