@@ -11,6 +11,8 @@ import {
   sanitizeToolName,
   serverNameProblem,
   suggestServerName,
+  suggestServerNameFrom,
+  toolStepLabel,
 } from '../src/user-mcp'
 
 describe('server names', () => {
@@ -148,5 +150,47 @@ describe('parsing a tool name', () => {
       server: 'notes',
       tool: 'a__b',
     })
+  })
+})
+
+describe('suggestServerNameFrom (P7)', () => {
+  it('keeps the usual suggestion when the name has letters to keep', () => {
+    expect(suggestServerNameFrom('korean law', [], { url: 'https://x.example.com/mcp' })).toBe(
+      'korean-law',
+    )
+  })
+
+  it('takes a telling host label for an address server', () => {
+    expect(suggestServerNameFrom('내 사전', [], { url: 'https://dict.example.com/mcp' })).toBe(
+      'dict',
+    )
+    expect(suggestServerNameFrom('법령', [], { url: 'https://mcp.law.go.kr/sse' })).toBe('law')
+    expect(suggestServerNameFrom('사전', ['dict'], { url: 'https://dict.example.com' })).toBe(
+      'dict-2',
+    )
+    // an address by number or this PC says nothing
+    expect(suggestServerNameFrom('메모', [], { url: 'http://127.0.0.1:9/mcp' })).toBe('server')
+    expect(suggestServerNameFrom('메모', [], { url: 'http://localhost:9/mcp' })).toBe('server')
+  })
+
+  it('takes the package or script a command runs', () => {
+    const from = (command: string, args: string[]) =>
+      suggestServerNameFrom('도구', [], { command, args })
+    expect(from('npx', ['-y', '@modelcontextprotocol/server-filesystem', 'C:/docs'])).toBe(
+      'server-filesystem',
+    )
+    expect(from('uvx', ['mcp-server-fetch@latest'])).toBe('mcp-server-fetch')
+    expect(from('uv', ['run', 'notes'])).toBe('notes')
+    expect(from('node', ['C:\\tools\\notes-server.mjs'])).toBe('notes-server')
+    expect(from('C:\\Program Files\\Dict\\dict.exe', [])).toBe('dict')
+    expect(from('npx', [])).toBe('server')
+  })
+})
+
+describe('toolStepLabel (P9)', () => {
+  it('reads a user MCP tool as "server · tool" and other tools with spaces', () => {
+    expect(toolStepLabel('mcp__dict__save_note')).toBe('dict · save_note')
+    expect(toolStepLabel('read_document')).toBe('read document')
+    expect(toolStepLabel('web-search')).toBe('web search')
   })
 })

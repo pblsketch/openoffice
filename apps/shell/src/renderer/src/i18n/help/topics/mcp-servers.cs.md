@@ -6,10 +6,10 @@ Server MCP je služba, která nabízí AI nástroje mimo aplikaci, například v
 
 1. Otevřete **Nastavení ▸ Integrace** a na kartě **Servery MCP** klikněte na **Přidat server**.
 2. Vyberte, jak server přidat.
-   - **Vložit text nastavení**: vložte celý text nastavení z návodu serveru a klikněte na **Načíst**. GenOffice vyplní pole. Pokud je v jednom textu více serverů, potvrzujete je jeden po druhém.
+   - **Vložit text nastavení**: vložte celý text nastavení z návodu serveru a klikněte na **Načíst**. GenOffice vyplní pole. Pokud je v jednom textu více serverů, potvrzujete je jeden po druhém. Pokud text čte klíč nebo hodnotu z proměnné počítače (`${NÁZEV}`), zůstane to pole prázdné a vyplníte ho sami.
    - **Zadat ručně**: zadejte název a adresu. Pokud vám návod serveru dává klíč, vložte ho do pole **Klíč (volitelné)**.
 3. Přečtěte si upozornění nad tlačítkem pro přidání a klikněte na **Přidat**.
-4. Kliknutím na **Zkontrolovat připojení** zobrazíte seznam nástrojů, které server nabízí. U serveru, který vyžaduje přihlášení, klikněte na **Přihlásit se v prohlížeči** a přihlášení dokončete tam.
+4. Po přidání GenOffice hned ověří připojení a načte seznam nástrojů. Server, který vyžaduje přihlášení, na vás počká a prohlížeč sám neotevře. Kliknutím na **Zkontrolovat připojení** zobrazíte seznam nástrojů, které server nabízí. U serveru, který vyžaduje přihlášení, klikněte na **Přihlásit se v prohlížeči** a přihlášení dokončete tam.
 
 Název serveru tvoří písmena, číslice, `-` a `_`, nejvýše 24 znaků. AI vidí nástroje tohoto serveru pod názvy ve tvaru `mcp__name__tool`. Pokud dovednost volá nástroje podle názvů tohoto tvaru, přidejte server pod stejným názvem, jaký dovednost používá.
 
@@ -31,7 +31,7 @@ Název serveru tvoří písmena, číslice, `-` a `_`, nejvýše 24 znaků. AI v
 ## Použití serverů v okně AI
 
 - Servery fungují v oknech AI editorů a v Ask AI na stránce Domů. Dokud je server zapnutý, objeví se vedle vstupního pole tlačítko **Připojené servery**.
-- Kliknutím na ně uvidíte stav každého serveru a můžete server vypnout nebo zapnout jen pro tuto konverzaci. Nová konverzace začíná se všemi servery, které jste zapnuli v nastavení.
+- Kliknutím na ně uvidíte stav každého serveru a můžete server vypnout nebo zapnout jen pro tuto konverzaci. Nová konverzace začíná se všemi servery, které jste zapnuli v nastavení. Server, jehož připojení nikdy nebylo ověřeno, má stav **Zatím neověřeno**; ověřte ho v Nastavení, abyste získali jeho nástroje.
 - Vypnutí volby **Povolit AI internetové nástroje** v **Nastavení ▸ AI média a vyhledávání** odebere také všechny nástroje serverů MCP.
 - Když dovednost očekává nástroj ze serveru, který teď nemůžete použít, AI v odpovědi řekne, který krok nemohla provést. **Nastavení ▸ Dovednosti** také ukazuje u každé dovednosti server, který potřebuje.
 - Okno agenta může používat nástroje zapnutých serverů také. Platí stejná oprávnění a relace si ponechá nastavení, se kterým začala. Viz [Režim agenta](help://agent-mode).

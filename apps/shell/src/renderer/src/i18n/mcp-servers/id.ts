@@ -185,4 +185,19 @@ export const id = {
   pasteNoTarget: 'Server ini tidak punya alamat maupun perintah, jadi tidak bisa ditambahkan.',
   pasteUnsupported: 'Server ini memakai jenis koneksi yang tidak didukung aplikasi.',
   pasteDone: 'Server ditambahkan: {n}',
+  statusReady: 'Siap · terhubung saat dipakai',
+  statusUnchecked: 'Belum diperiksa',
+  failHttpError: 'Server menjawab dengan galat. Periksa apakah alamatnya benar.',
+  failUnreachableNear:
+    'Server tidak terjangkau. Periksa apakah server berjalan dan alamatnya benar.',
+  httpRecheck: 'Alamat berubah. Alamat baru juga tidak terenkripsi, jadi konfirmasi lagi.',
+  pasteUnreadableLine: 'Teks tidak bisa dibaca. Periksa koma dan kurung (baris {line}).',
+  pasteTypeIgnored:
+    'Jenis koneksi "{type}" tidak dikenal aplikasi, jadi diabaikan. Aplikasi mencoba cara biasa.',
+  valueFromVar:
+    'Masukkan nilainya. Teks yang ditempel membacanya dari variabel PC {name}, dan aplikasi tidak membaca variabel PC.',
+  launchSystemFold: 'Variabel dasar PC: {n}',
+  permPaused: 'Tidak dipakai sampai Anda menyetujui perubahannya (lalu: {perm})',
+  permUnusable: 'Tidak bisa diaktifkan',
+  direction: 'Di sini, AI di GenOffice memakai alat dari server luar.',
 } satisfies Record<keyof typeof zh, string>

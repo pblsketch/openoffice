@@ -6,10 +6,10 @@ An MCP server is a service that offers tools the AI can use from outside the app
 
 1. Open **Settings ▸ Integrations** and press **Add a server** on the **MCP servers** card.
 2. Choose how to add it.
-   - **Paste settings text**: paste the whole settings text from the server's guide and press **Read**. GenOffice fills in the fields. If one text holds several servers, you confirm them one at a time.
+   - **Paste settings text**: paste the whole settings text from the server's guide and press **Read**. GenOffice fills in the fields. If one text holds several servers, you confirm them one at a time. If the text reads a key or a value from a PC variable (`${NAME}`), that field is left empty for you to fill in.
    - **Enter it**: type a name and the address. If the server's guide gives you a key, put it in the **Key** field.
 3. Read the notice above the add button and press **Add**.
-4. Press **Check connection** to see the list of tools the server offers. For a server that needs a sign-in, press **Sign in with the browser** and finish signing in there.
+4. Once you register, GenOffice checks the connection right away and gets the list of tools. A server that needs a sign-in waits for you instead of opening the browser. Press **Check connection** to see the list of tools the server offers. For a server that needs a sign-in, press **Sign in with the browser** and finish signing in there.
 
 A server name uses letters, digits, `-` and `_`, up to 24 characters. The AI sees this server's tools under names shaped like `mcp__name__tool`. If a skill calls tools by names of that shape, add the server under the same name the skill uses.
 
@@ -31,7 +31,7 @@ A server name uses letters, digits, `-` and `_`, up to 24 characters. The AI see
 ## Using servers in an AI window
 
 - Servers work in the editors' AI windows and in Home's Ask AI. While a server is turned on, a **Connected servers** button appears next to the input.
-- Press it to see each server's state and to turn a server off or on for this conversation only. A new conversation starts with every server you turned on in Settings.
+- Press it to see each server's state and to turn a server off or on for this conversation only. A new conversation starts with every server you turned on in Settings. A server whose connection was never checked shows **Not checked yet**; check it in Settings to get its tools.
 - Turning off **Let AI use internet tools** under **Settings ▸ AI Media & Search** also removes every MCP server tool.
 - When a skill expects a tool from a server you cannot use right now, the AI says in its answer which step it could not do. **Settings ▸ Skills** also shows the server a skill needs next to that skill.
 - The Agent window can use the tools of servers that are turned on, too. The same permissions apply, and a session keeps the settings it started with. See [Agent mode](help://agent-mode).

@@ -195,4 +195,21 @@ export const de = {
     'Dieser Server hat weder eine Adresse noch einen Befehl und kann daher nicht hinzugefügt werden.',
   pasteUnsupported: 'Dieser Server nutzt eine Verbindungsart, die die App nicht unterstützt.',
   pasteDone: 'Hinzugefügte Server: {n}',
+  statusReady: 'Bereit · verbindet sich bei Bedarf',
+  statusUnchecked: 'Noch nicht geprüft',
+  failHttpError: 'Der Server hat mit einem Fehler geantwortet. Prüfen Sie, ob die Adresse stimmt.',
+  failUnreachableNear:
+    'Der Server war nicht erreichbar. Prüfen Sie, ob er läuft und ob die Adresse stimmt.',
+  httpRecheck:
+    'Die Adresse hat sich geändert. Auch die neue ist unverschlüsselt, bitte erneut bestätigen.',
+  pasteUnreadableLine:
+    'Der Text konnte nicht gelesen werden. Prüfen Sie Kommas und Klammern (Zeile {line}).',
+  pasteTypeIgnored:
+    'Die Verbindungsart „{type}“ kennt die App nicht; sie wurde ignoriert. Die App versucht den üblichen Weg.',
+  valueFromVar:
+    'Geben Sie den Wert ein. Der eingefügte Text liest ihn aus der PC-Variablen {name}, und die App liest keine PC-Variablen.',
+  launchSystemFold: 'Grundvariablen des PCs: {n}',
+  permPaused: 'Nicht in Gebrauch, bis Sie die Änderung genehmigen (danach: {perm})',
+  permUnusable: 'Kann nicht eingeschaltet werden',
+  direction: 'Hier nutzt die KI von GenOffice Werkzeuge externer Server.',
 } satisfies Record<keyof typeof zh, string>

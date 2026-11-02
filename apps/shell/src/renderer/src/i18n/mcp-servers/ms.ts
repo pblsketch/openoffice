@@ -188,4 +188,19 @@ export const ms = {
   pasteNoTarget: 'Pelayan ini tiada alamat mahupun arahan, jadi ia tidak boleh ditambah.',
   pasteUnsupported: 'Pelayan ini menggunakan jenis sambungan yang tidak disokong oleh aplikasi.',
   pasteDone: 'Pelayan ditambah: {n}',
+  statusReady: 'Sedia · bersambung apabila digunakan',
+  statusUnchecked: 'Belum disemak',
+  failHttpError: 'Pelayan menjawab dengan ralat. Semak sama ada alamatnya betul.',
+  failUnreachableNear:
+    'Pelayan tidak dapat dicapai. Semak sama ada ia sedang berjalan dan alamatnya betul.',
+  httpRecheck: 'Alamat berubah. Alamat baharu juga tidak disulitkan, jadi sahkan sekali lagi.',
+  pasteUnreadableLine: 'Teks tidak dapat dibaca. Semak koma dan kurungan (baris {line}).',
+  pasteTypeIgnored:
+    'Jenis sambungan "{type}" tidak dikenali apl, jadi ia diabaikan. Apl mencuba cara biasa.',
+  valueFromVar:
+    'Masukkan nilainya. Teks yang ditampal membacanya daripada pemboleh ubah PC {name}, dan apl tidak membaca pemboleh ubah PC.',
+  launchSystemFold: 'Pemboleh ubah asas PC: {n}',
+  permPaused: 'Tidak digunakan sehingga anda meluluskan perubahan (selepas itu: {perm})',
+  permUnusable: 'Tidak boleh dihidupkan',
+  direction: 'Di sini, AI dalam GenOffice menggunakan alat daripada pelayan luar.',
 } satisfies Record<keyof typeof zh, string>

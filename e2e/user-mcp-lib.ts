@@ -1,6 +1,6 @@
 /**
  * Shared bits for the exploratory user-MCP specs (user-mcp-*.spec.ts):
- * scratch folders under F:\ieum-scratch\user-mcp-e2e (or the OS temp folder
+ * scratch folders under F:\ieum-scratch\user-mcp-fix2\e2e (or the OS temp folder
  * elsewhere), the two local test servers, and a launch that also points the
  * app's home folder at a scratch folder so nothing reads the real one.
  */
@@ -13,8 +13,8 @@ import type { Page } from '@playwright/test'
 import { freeMcpPort, launchShell, type LaunchedApp } from './helpers'
 
 export const SCRATCH = existsSync('F:\\ieum-scratch')
-  ? 'F:\\ieum-scratch\\user-mcp-e2e'
-  : join(tmpdir(), 'user-mcp-e2e')
+  ? 'F:\\ieum-scratch\\user-mcp-fix2\\e2e'
+  : join(tmpdir(), 'user-mcp-fix2-e2e')
 export const SHOTS = join(SCRATCH, 'shots')
 export const FIXTURES = resolve(__dirname, 'user-mcp-fixtures')
 export const STDIO_SERVER = join(FIXTURES, 'stdio-server.mjs')

@@ -6,10 +6,10 @@ Un servidor MCP es un servicio que ofrece a la IA herramientas externas a la apl
 
 1. Abre **Configuración ▸ Integraciones** y pulsa **Añadir un servidor** en la tarjeta **Servidores MCP**.
 2. Elige cómo añadirlo.
-   - **Pegar texto de configuración**: pega entero el texto de configuración de la guía del servidor y pulsa **Leer**. GenOffice rellena los campos. Si un solo texto contiene varios servidores, los confirmas uno por uno.
+   - **Pegar texto de configuración**: pega entero el texto de configuración de la guía del servidor y pulsa **Leer**. GenOffice rellena los campos. Si un solo texto contiene varios servidores, los confirmas uno por uno. Si el texto lee una clave o un valor de una variable del PC (`${NOMBRE}`), ese campo queda vacío para que lo rellenes tú.
    - **Introducirlo**: escribe un nombre y la dirección. Si la guía del servidor te da una clave, ponla en el campo **Clave (opcional)**.
 3. Lee el aviso que hay sobre el botón de añadir y pulsa **Añadir**.
-4. Pulsa **Comprobar conexión** para ver la lista de herramientas que ofrece el servidor. Si el servidor necesita iniciar sesión, pulsa **Iniciar sesión con el navegador** y termina de iniciar sesión allí.
+4. Al añadirlo, GenOffice comprueba la conexión enseguida y obtiene la lista de herramientas. Un servidor que necesita iniciar sesión te espera en lugar de abrir el navegador. Pulsa **Comprobar conexión** para ver la lista de herramientas que ofrece el servidor. Si el servidor necesita iniciar sesión, pulsa **Iniciar sesión con el navegador** y termina de iniciar sesión allí.
 
 El nombre de un servidor usa letras, dígitos, `-` y `_`, con un máximo de 24 caracteres. La IA ve las herramientas de este servidor con nombres de la forma `mcp__name__tool`. Si una habilidad llama a herramientas con nombres de esa forma, añade el servidor con el mismo nombre que usa la habilidad.
 
@@ -31,7 +31,7 @@ El nombre de un servidor usa letras, dígitos, `-` y `_`, con un máximo de 24 c
 ## Usar los servidores en una ventana de IA
 
 - Los servidores funcionan en las ventanas de IA de los editores y en Ask AI de Inicio. Mientras un servidor esté activado, aparece un botón **Servidores conectados** junto al campo de entrada.
-- Púlsalo para ver el estado de cada servidor y para desactivar o activar un servidor solo en esta conversación. Una conversación nueva empieza con todos los servidores que activaste en Configuración.
+- Púlsalo para ver el estado de cada servidor y para desactivar o activar un servidor solo en esta conversación. Una conversación nueva empieza con todos los servidores que activaste en Configuración. Un servidor cuya conexión nunca se comprobó muestra **Aún sin comprobar**; compruébala en Ajustes para obtener sus herramientas.
 - Si desactivas **Permitir que la IA use herramientas de internet** en **Configuración ▸ Medios de IA y búsqueda**, también se quitan todas las herramientas de los servidores MCP.
 - Cuando una habilidad espera una herramienta de un servidor que ahora no puedes usar, la IA dice en su respuesta qué paso no pudo hacer. **Configuración ▸ Habilidades** también muestra, junto a la habilidad, el servidor que necesita.
 - La ventana del agente también puede usar las herramientas de los servidores activados. Se aplican los mismos permisos, y una sesión conserva los ajustes con los que empezó. Consulta [Modo agente](help://agent-mode).

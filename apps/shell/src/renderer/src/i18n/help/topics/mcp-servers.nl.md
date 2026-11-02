@@ -6,10 +6,10 @@ Een MCP-server is een dienst die de AI hulpmiddelen van buiten de app aanbiedt, 
 
 1. Open **Instellingen ▸ Integraties** en klik op de kaart **MCP-servers** op **Server toevoegen**.
 2. Kies hoe je de server toevoegt.
-   - **Instellingstekst plakken**: plak de hele instellingstekst uit de handleiding van de server en klik op **Lezen**. GenOffice vult de velden in. Staan er in één tekst meerdere servers, dan bevestig je ze een voor een.
+   - **Instellingstekst plakken**: plak de hele instellingstekst uit de handleiding van de server en klik op **Lezen**. GenOffice vult de velden in. Staan er in één tekst meerdere servers, dan bevestig je ze een voor een. Leest de tekst een sleutel of waarde uit een pc-variabele (`${NAAM}`), dan blijft dat veld leeg en vult u het zelf in.
    - **Zelf invoeren**: typ een naam en het adres. Geeft de handleiding van de server je een sleutel, vul die dan in bij **Sleutel (optioneel)**.
 3. Lees de melding boven de knop om toe te voegen en klik op **Toevoegen**.
-4. Klik op **Verbinding controleren** om de lijst met hulpmiddelen van de server te zien. Heeft de server een aanmelding nodig, klik dan op **Aanmelden via de browser** en rond het aanmelden daar af.
+4. Na het toevoegen controleert GenOffice meteen de verbinding en haalt de lijst met hulpmiddelen op. Een server die een aanmelding nodig heeft, wacht op u in plaats van de browser te openen. Klik op **Verbinding controleren** om de lijst met hulpmiddelen van de server te zien. Heeft de server een aanmelding nodig, klik dan op **Aanmelden via de browser** en rond het aanmelden daar af.
 
 Een servernaam bestaat uit letters, cijfers, `-` en `_`, tot 24 tekens. De AI ziet de hulpmiddelen van deze server onder namen van de vorm `mcp__name__tool`. Roept een vaardigheid hulpmiddelen aan onder namen van die vorm, voeg de server dan toe onder dezelfde naam als de vaardigheid gebruikt.
 
@@ -31,7 +31,7 @@ Een servernaam bestaat uit letters, cijfers, `-` en `_`, tot 24 tekens. De AI zi
 ## Servers gebruiken in een AI-venster
 
 - Servers werken in de AI-vensters van de editors en in Ask AI op Start. Zolang een server aanstaat, verschijnt naast het invoerveld de knop **Verbonden servers**.
-- Klik erop om de status van elke server te zien en om een server alleen voor dit gesprek uit of aan te zetten. Een nieuw gesprek begint met alle servers die je in Instellingen hebt aangezet.
+- Klik erop om de status van elke server te zien en om een server alleen voor dit gesprek uit of aan te zetten. Een nieuw gesprek begint met alle servers die je in Instellingen hebt aangezet. Een server waarvan de verbinding nooit is gecontroleerd, toont **Nog niet gecontroleerd**; controleer die in Instellingen om de hulpmiddelen te krijgen.
 - Zet je **AI internettools laten gebruiken** onder **Instellingen ▸ AI-media en zoeken** uit, dan verdwijnen ook alle hulpmiddelen van MCP-servers.
 - Verwacht een vaardigheid een hulpmiddel van een server die je nu niet kunt gebruiken, dan zegt de AI in zijn antwoord welke stap hij niet kon uitvoeren. **Instellingen ▸ Vaardigheden** toont naast de vaardigheid ook de server die ze nodig heeft.
 - Ook het agentvenster kan de hulpmiddelen van servers die aanstaan gebruiken. Dezelfde toestemmingen gelden en een sessie houdt de instellingen aan waarmee ze begon. Zie [Agentmodus](help://agent-mode).

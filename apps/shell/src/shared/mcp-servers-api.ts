@@ -56,13 +56,29 @@ export interface McpInstructions {
   text: string
 }
 
-/** Why a server could not be reached or started (12.2) */
+/**
+ * Why a server could not be reached or started (12.2). `unreachable`: no
+ * connection at all; `http-error`: the server answered with an HTTP error
+ * (often a wrong address).
+ */
 export type McpFailReason =
-  'unreachable' | 'runtime-missing' | 'start-failed' | 'refused-redirect' | 'insecure-address'
+  | 'unreachable'
+  | 'http-error'
+  | 'runtime-missing'
+  | 'start-failed'
+  | 'refused-redirect'
+  | 'insecure-address'
 
-/** The one status a server card shows (12.2) */
+/**
+ * The one status a server card shows (12.2). `unchecked`: no tool list was
+ * ever read from the server, so it offers nothing yet; `ready`: approved
+ * tools are stored but the server was not reached in this run of the app
+ * (it connects on first use); `connected`: reached in this run.
+ */
 export type McpServerStatusInfo =
   | { status: 'connected' }
+  | { status: 'ready' }
+  | { status: 'unchecked' }
   | { status: 'connecting' }
   | { status: 'failed'; reason: McpFailReason }
   | { status: 'login-required' }
@@ -79,12 +95,17 @@ export interface McpServerStatusFacts {
   /** the last connection attempt failed, or null */
   failure: McpFailReason | null
   connecting: boolean
+  /** a tool list was read from it, or a call went through, in this run of the app */
+  reached: boolean
+  /** approved tools or guide are stored from an earlier listing */
+  listedBefore: boolean
 }
 
 /**
  * The single status shown when several apply: disabled > review-required
- * (command) > login-required > failed > connecting > connected. Tool and
- * instruction reviews are shown apart from the server status.
+ * (command) > login-required > failed > connecting > unchecked > ready >
+ * connected. Tool and instruction reviews are shown apart from the server
+ * status.
  */
 export function serverStatusOf(facts: McpServerStatusFacts): McpServerStatusInfo {
   if (!facts.enabled) return { status: 'disabled' }
@@ -92,7 +113,8 @@ export function serverStatusOf(facts: McpServerStatusFacts): McpServerStatusInfo
   if (facts.loginRequired) return { status: 'login-required' }
   if (facts.failure) return { status: 'failed', reason: facts.failure }
   if (facts.connecting) return { status: 'connecting' }
-  return { status: 'connected' }
+  if (facts.reached) return { status: 'connected' }
+  return facts.listedBefore ? { status: 'ready' } : { status: 'unchecked' }
 }
 
 /** How one tool row shows: usable, waiting for review, or never usable by its name */
@@ -304,6 +326,15 @@ export interface McpPastedServerView {
   env: Record<string, McpSecretView>
   keyNeeded: boolean
   keyEnvVar: string | null
+  /**
+   * Header and variable values the paste took from a PC variable (`${NAME}`,
+   * `${env:NAME}`): name → that variable. Their values are left empty for the
+   * person to enter; the PC is never read.
+   */
+  headerVars: Record<string, string>
+  envVars: Record<string, string>
+  /** a connection type the app does not know; ignored, the usual way is tried */
+  typeIgnored: string | null
   ignored: string[]
   problem: 'no-target' | 'unsupported-type' | null
 }
@@ -317,7 +348,12 @@ export type McpPasteView =
       servers: McpPastedServerView[]
       ignored: string[]
     }
-  | { ok: false; error: 'empty' | 'unreadable' | 'no-servers' }
+  | {
+      ok: false
+      error: 'empty' | 'unreadable' | 'no-servers'
+      /** a JSON or TOML text with a mistake: the line it is on (from 1), when known */
+      line?: number
+    }
 
 /**
  * "Connection check" (4.6). runtime-download: a runtime must be downloaded
@@ -411,4 +447,72 @@ export interface McpServersApi {
   answerRuntimeDownload(id: string, download: boolean): Promise<McpPlannedLaunchAnswer>
   /** clear a failure (and the three-failure lock) so the next use tries again */
   retry(id: string): Promise<McpSettingsResult>
+}
+
+/**
+ * Where a plain-http address leads, judged from the text alone (4.3), for
+ * the form to answer at once: `near`: this PC or a private range (allowed
+ * after confirmation); `public`: a number address on the internet (never
+ * allowed); `name`: a host name, judged by the main process when it
+ * connects; null: not a plain-http address.
+ */
+export function plainHttpReach(raw: string): 'near' | 'public' | 'name' | null {
+  let url: URL
+  try {
+    url = new URL(raw.trim())
+  } catch {
+    return null
+  }
+  if (url.protocol !== 'http:' || url.hostname === '') return null
+  const host = url.hostname.replace(/^\[|\]$/g, '').toLowerCase()
+  if (host === 'localhost' || host.endsWith('.localhost')) return 'near'
+  const v4 = ipv4Of(host)
+  if (v4) return nearIpv4(v4) ? 'near' : 'public'
+  if (host.includes(':')) return nearIpv6(host) ? 'near' : 'public'
+  return 'name'
+}
+
+/** Whether a reached-for address is on this PC or a private network (no internet to blame) */
+export function isNearAddress(raw: string): boolean {
+  const reach = plainHttpReach(raw)
+  if (reach === 'near' || reach === 'name') return true
+  if (reach === 'public') return false
+  try {
+    const host = new URL(raw.trim()).hostname.replace(/^\[|\]$/g, '').toLowerCase()
+    if (host === 'localhost') return true
+    const v4 = ipv4Of(host)
+    if (v4) return nearIpv4(v4)
+    return host.includes(':') && nearIpv6(host)
+  } catch {
+    return false
+  }
+}
+
+function ipv4Of(host: string): number[] | null {
+  const m = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
+  if (!m) return null
+  const parts = m.slice(1).map(Number)
+  return parts.every((p) => p <= 255) ? parts : null
+}
+
+/** 127/8, 10/8, 172.16/12, 192.168/16 */
+function nearIpv4([a, b]: number[]): boolean {
+  return a === 127 || a === 10 || (a === 172 && b! >= 16 && b! <= 31) || (a === 192 && b === 168)
+}
+
+/** ::1, fc00::/7, fe80::/10, and an IPv4 address carried as ::ffff:a.b.c.d */
+function nearIpv6(host: string): boolean {
+  if (host === '::1') return true
+  const mapped = host.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/)
+  if (mapped) {
+    const v4 = ipv4Of(mapped[1]!)
+    return v4 !== null && nearIpv4(v4)
+  }
+  const hex = host.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/)
+  if (hex) {
+    const high = parseInt(hex[1]!, 16)
+    return nearIpv4([high >> 8, high & 0xff])
+  }
+  const first = parseInt(host.split(':')[0] || '0', 16)
+  return (first & 0xfe00) === 0xfc00 || (first & 0xffc0) === 0xfe80
 }

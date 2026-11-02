@@ -14,11 +14,14 @@ export {
   sanitizeToolName,
   serverNameProblem,
   suggestServerName,
+  suggestServerNameFrom,
+  toolStepLabel,
 } from './names'
 export type {
   McpToolNameEntry,
   ParsedMcpToolName,
   ServerNameProblem,
+  ServerNameSource,
   ToolNameProblem,
 } from './names'
 export {

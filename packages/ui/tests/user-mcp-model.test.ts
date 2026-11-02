@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { McpServerView } from '@genoffice/agent-core'
 import {
+  MCP_DESCRIPTION_PREVIEW_CHARS,
   MCP_INPUT_PREVIEW_CHARS,
+  mcpDescriptionPreview,
   mcpInputPreview,
   mcpInputText,
   mcpServerAction,
@@ -64,6 +66,15 @@ describe('mcpServerStatusText', () => {
     expect(ko({ status: 'login-required' })).toBe('다시 로그인 필요')
     expect(ko({ status: 'review-required' })).toBe('확인 필요')
     expect(ko({ status: 'disabled' })).toBe('꺼짐')
+    // never "connected" before the app reached it (B1)
+    expect(ko({ status: 'unchecked' })).toBe('확인 전')
+    expect(ko({ status: 'ready' })).toBe('준비됨')
+  })
+
+  it('says a server turned off for this conversation is off here, not connected (P8)', () => {
+    expect(mcpServerStatusText('ko', server({ name: 's' }), true)).toBe('이 대화에서 끔')
+    // off in Settings stays "off"
+    expect(mcpServerStatusText('ko', server({ name: 's', status: 'disabled' }), true)).toBe('꺼짐')
   })
 
   it('adds the reason of a failure', () => {
@@ -74,6 +85,7 @@ describe('mcpServerStatusText', () => {
     expect(reason('start-failed')).toBe('연결 못 함 · 시작 실패')
     expect(reason('refused-redirect')).toBe('연결 못 함 · 다른 주소로 넘기려 해 막음')
     expect(reason('insecure-address')).toBe('연결 못 함 · 안전하지 않은 주소')
+    expect(reason('http-error')).toBe('연결 못 함 · 서버가 오류로 답함')
   })
 })
 
@@ -86,7 +98,24 @@ describe('mcpServerAction', () => {
     expect(action('failed')).toBe('retry')
     expect(action('connected')).toBeNull()
     expect(action('connecting')).toBeNull()
-    expect(action('disabled')).toBeNull()
+    expect(action('ready')).toBeNull()
+    // never checked: go check it in Settings (B1); off in Settings: turn it on there (P8)
+    expect(action('unchecked')).toBe('check')
+    expect(action('disabled')).toBe('enable')
+  })
+})
+
+describe('mcpDescriptionPreview', () => {
+  it('shows the start of a long description until the person asks for more (P10)', () => {
+    expect(mcpDescriptionPreview('  Saves a note.  ', false)).toEqual({
+      text: 'Saves a note.',
+      more: false,
+    })
+    const long = 'y'.repeat(MCP_DESCRIPTION_PREVIEW_CHARS + 3)
+    const cut = mcpDescriptionPreview(long, false)
+    expect(cut.more).toBe(true)
+    expect([...cut.text.replace(/…$/, '')]).toHaveLength(MCP_DESCRIPTION_PREVIEW_CHARS)
+    expect(mcpDescriptionPreview(long, true)).toEqual({ text: long, more: false })
   })
 })
 

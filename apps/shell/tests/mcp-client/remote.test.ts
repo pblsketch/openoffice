@@ -196,6 +196,17 @@ describe('remote MCP connection', () => {
     expect(statusFailureOf(error)).toBe('unreachable')
   })
 
+  it('tells a server that answered with an HTTP error from one it could not reach (B4)', async () => {
+    const answered = vi.fn(async () => new Response('Not Found', { status: 404 }))
+    const c = connect('http://127.0.0.1:9/mcp', { fetch: answered })
+    const error = await c.connect().catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(RemoteMcpError)
+    expect((error as Error).message).toBe('fake: http-error')
+    expect(statusFailureOf(error)).toBe('http-error')
+    // Streamable HTTP first, then SSE: both asked before giving up
+    expect(answered.mock.calls.length).toBeGreaterThanOrEqual(2)
+  })
+
   it('refuses plain http to a name that resolves to a public address', async () => {
     const spy = vi.fn((input: string | URL | Request, init?: RequestInit) => fetch(input, init))
     const c = connect('http://mcp.example.test:9/mcp', {

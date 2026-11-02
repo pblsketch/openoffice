@@ -1,14 +1,15 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { serverNameProblem, suggestServerName } from '@genoffice/agent-core/user-mcp/names'
-import type {
-  McpPastedServerView,
-  McpSecretView,
-  McpServerInput,
-  McpServerKind,
-  McpServerPatch,
-  McpServerSettingsView,
-  McpSettingsResult,
-  McpTransport,
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { serverNameProblem, suggestServerNameFrom } from '@genoffice/agent-core/user-mcp/names'
+import {
+  plainHttpReach,
+  type McpPastedServerView,
+  type McpSecretView,
+  type McpServerInput,
+  type McpServerKind,
+  type McpServerPatch,
+  type McpServerSettingsView,
+  type McpSettingsResult,
+  type McpTransport,
 } from '../../../shared/mcp-servers-api'
 import {
   NAME_PROBLEM_KEYS,
@@ -34,6 +35,8 @@ interface Row {
   value: string
   /** the value the main process holds for this name, when there is one */
   held: McpSecretView | null
+  /** the pasted value named this PC variable instead: ask for the value */
+  fromVar: string | null
 }
 
 interface Fields {
@@ -52,12 +55,22 @@ interface Fields {
   args: string
   env: Row[]
   allowPlainHttp: boolean
+  /** a plain-http address the person confirmed before (editing); '' when none */
+  confirmedUrl: string
 }
 
 const AUTHORIZATION = 'authorization'
 
-const heldRows = (record: Record<string, McpSecretView>): Row[] =>
-  Object.entries(record).map(([name, held]) => ({ name, value: '', held }))
+const heldRows = (
+  record: Record<string, McpSecretView>,
+  vars: Record<string, string> = {},
+): Row[] =>
+  Object.entries(record).map(([name, held]) => ({
+    name,
+    value: '',
+    held,
+    fromVar: Object.entries(vars).find(([k]) => k === name)?.[1] ?? null,
+  }))
 
 function splitKey(record: Record<string, McpSecretView>): {
   keyHeld: McpSecretView | null
@@ -85,6 +98,7 @@ const emptyFields = (): Fields => ({
   args: '',
   env: [],
   allowPlainHttp: false,
+  confirmedUrl: '',
 })
 
 function pastedFields(server: McpPastedServerView): Fields {
@@ -96,10 +110,10 @@ function pastedFields(server: McpPastedServerView): Fields {
     url: server.url,
     transport: server.transport,
     keyHeld,
-    headers: heldRows(rest),
+    headers: heldRows(rest, server.headerVars),
     command: server.command,
     args: server.args.join('\n'),
-    env: heldRows(server.env),
+    env: heldRows(server.env, server.envVars),
   }
 }
 
@@ -121,6 +135,9 @@ function serverFields(server: McpServerSettingsView): Fields {
     command: server.command,
     args: server.args.join('\n'),
     env: heldRows(server.env),
+    // an address confirmed when it was registered stays confirmed while it is unchanged
+    allowPlainHttp: isPlainHttp(server.url),
+    confirmedUrl: isPlainHttp(server.url) ? server.url : '',
   }
 }
 
@@ -177,29 +194,35 @@ export function McpServerAddForm({
     added: number
   } | null>(null)
   const [reading, setReading] = useState(false)
+  const pasteRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (way === 'paste' && !pasted) pasteRef.current?.focus()
+  }, [way, pasted])
 
   const read = async () => {
     const api = mcpServersApi()
     if (!api || reading) return
     const text = pasteText
-    // the text may hold keys: it leaves the form as soon as it is sent
-    setPasteText('')
     setPasteError(null)
     setReading(true)
     try {
       const view = await api.parsePaste(text)
       if (!view.ok) {
+        // the text stays for the person to fix
         setPasteError(
-          s(
-            view.error === 'empty'
-              ? 'pasteEmpty'
-              : view.error === 'no-servers'
-                ? 'pasteNoServers'
-                : 'pasteUnreadable',
-          ),
+          view.error === 'empty'
+            ? s('pasteEmpty')
+            : view.error === 'no-servers'
+              ? s('pasteNoServers')
+              : view.line !== undefined
+                ? s('pasteUnreadableLine', { line: view.line })
+                : s('pasteUnreadable'),
         )
         return
       }
+      // the text may hold keys: it leaves the form once it has been read
+      setPasteText('')
       setPasted({
         token: view.token,
         servers: view.servers,
@@ -234,7 +257,7 @@ export function McpServerAddForm({
 
   if (pasted) {
     const server = pasted.servers[pasted.index]!
-    const ignored = [...pasted.ignored, ...server.ignored]
+    const ignored = [...pasted.ignored, ...(server.typeIgnored ? ['type'] : []), ...server.ignored]
     return (
       <div className="mcp-form" data-testid="mcp-form">
         <div className="mcp-form-title">{s('formAdd')}</div>
@@ -258,8 +281,11 @@ export function McpServerAddForm({
                 </div>
               )}
               {ignored.length > 0 && (
-                <div className="set-field-desc">
+                <div className="set-field-desc" data-testid="mcp-paste-ignored">
                   {s('pasteIgnored', { items: ignored.join(', ') })}
+                  {server.typeIgnored && (
+                    <> {s('pasteTypeIgnored', { type: server.typeIgnored })}</>
+                  )}
                 </div>
               )}
               {server.problem && (
@@ -310,6 +336,7 @@ export function McpServerAddForm({
             <span className="set-field-label">{s('pasteLabel')}</span>
             <span className="set-field-desc">{s('pasteHint')}</span>
             <textarea
+              ref={pasteRef}
               name="paste"
               className="mcp-input mcp-paste"
               rows={8}
@@ -479,10 +506,13 @@ function ServerFields({
   )
   const keyRef = useRef<HTMLInputElement>(null)
   const clientRef = useRef<HTMLInputElement>(null)
+  const nameRef = useRef<HTMLInputElement>(null)
 
+  // the form opens on its first field, or on the field a sign-in answer asked for
   useEffect(() => {
     if (focus === 'key') keyRef.current?.focus()
-    if (focus === 'advanced') clientRef.current?.focus()
+    else if (focus === 'advanced') clientRef.current?.focus()
+    else nameRef.current?.focus()
   }, [focus])
 
   const set = <K extends keyof Fields>(key: K, value: Fields[K]) =>
@@ -491,9 +521,20 @@ function ServerFields({
   const name = f.name.trim()
   const nameTaken = taken.some((t) => t.toLowerCase() === name.toLowerCase())
   const nameProblem = name === '' ? null : serverNameProblem(name)
-  const suggestion = nameProblem || nameTaken ? suggestServerName(name, taken) : null
   const local = f.kind === 'local'
+  const suggestion =
+    nameProblem || nameTaken
+      ? suggestServerNameFrom(
+          name,
+          taken,
+          local ? { command: f.command, args: argLines(f.args) } : { url: f.url },
+        )
+      : null
   const plain = !local && isPlainHttp(f.url)
+  // an internet address by number is refused right here: plain http is never allowed there
+  const publicHttp = plain && plainHttpReach(f.url) === 'public'
+  // editing: an address confirmed before needs no new confirmation until it changes
+  const urlChanged = f.confirmedUrl !== '' && f.url.trim() !== f.confirmedUrl.trim()
   const missingTarget = local ? f.command.trim() === '' : f.url.trim() === ''
   const canSubmit =
     !busy &&
@@ -502,6 +543,7 @@ function ServerFields({
     !nameProblem &&
     !nameTaken &&
     !missingTarget &&
+    !publicHttp &&
     (!plain || f.allowPlainHttp)
 
   const submit = async () => {
@@ -529,6 +571,17 @@ function ServerFields({
     return s(view.key, { last4: view.last4 })
   }
 
+  /** Enter in a one-line field registers (or saves) once the form is complete */
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Enter' || e.nativeEvent.isComposing) return
+    const target = e.target as HTMLElement
+    if (target.tagName !== 'INPUT') return
+    const type = (target as HTMLInputElement).type
+    if (type === 'checkbox' || type === 'radio') return
+    e.preventDefault()
+    void submit()
+  }
+
   const rows = (
     list: 'headers' | 'env',
     nameLabel: string,
@@ -537,55 +590,66 @@ function ServerFields({
   ) => (
     <div className="mcp-rows">
       {f[list].map((row, i) => (
-        <div className="mcp-pair" key={i}>
-          <input
-            name={`${prefix}-name-${i}`}
-            className="mcp-input"
-            aria-label={nameLabel}
-            placeholder={nameLabel}
-            spellCheck={false}
-            value={row.name}
-            onChange={(e) =>
-              set(
-                list,
-                f[list].map((r, j) => (j === i ? { ...r, name: e.target.value, held: null } : r)),
-              )
-            }
-          />
-          <input
-            name={`${prefix}-value-${i}`}
-            className="mcp-input"
-            type="password"
-            autoComplete="off"
-            aria-label={s('value')}
-            placeholder={placeholder(row.held) || s('value')}
-            value={row.value}
-            onChange={(e) =>
-              set(
-                list,
-                f[list].map((r, j) => (j === i ? { ...r, value: e.target.value } : r)),
-              )
-            }
-          />
-          <button
-            type="button"
-            className="set-btn"
-            onClick={() =>
-              set(
-                list,
-                f[list].filter((_, j) => j !== i),
-              )
-            }
-          >
-            {s('removeRow')}
-          </button>
+        <div className="mcp-pair-wrap" key={i}>
+          <div className="mcp-pair">
+            <input
+              name={`${prefix}-name-${i}`}
+              className="mcp-input"
+              aria-label={nameLabel}
+              placeholder={nameLabel}
+              spellCheck={false}
+              value={row.name}
+              onChange={(e) =>
+                set(
+                  list,
+                  f[list].map((r, j) =>
+                    j === i ? { ...r, name: e.target.value, held: null, fromVar: null } : r,
+                  ),
+                )
+              }
+            />
+            <input
+              name={`${prefix}-value-${i}`}
+              className="mcp-input"
+              type="password"
+              autoComplete="off"
+              aria-label={s('value')}
+              placeholder={(row.fromVar ? '' : placeholder(row.held)) || s('value')}
+              value={row.value}
+              onChange={(e) =>
+                set(
+                  list,
+                  f[list].map((r, j) => (j === i ? { ...r, value: e.target.value } : r)),
+                )
+              }
+            />
+            <button
+              type="button"
+              className="set-btn"
+              onClick={() =>
+                set(
+                  list,
+                  f[list].filter((_, j) => j !== i),
+                )
+              }
+            >
+              {s('removeRow')}
+            </button>
+          </div>
+          {row.fromVar && row.value === '' && (
+            <div className="set-field-desc mcp-note" data-testid="mcp-value-from-var">
+              {s('valueFromVar', { name: row.fromVar })}
+            </div>
+          )}
         </div>
       ))}
       <div>
         <button
           type="button"
           className="set-btn"
-          onClick={() => set(list, [...f[list], { name: '', value: '', held: null }])}
+          onClick={() =>
+            set(list, [...f[list], { name: '', value: '', held: null, fromVar: null }])
+          }
         >
           {addLabel}
         </button>
@@ -594,7 +658,7 @@ function ServerFields({
   )
 
   return (
-    <div className="mcp-form-body">
+    <div className="mcp-form-body" onKeyDown={onKeyDown}>
       {top}
       {!kindFixed && (
         <div className="mcp-form-row" role="radiogroup" aria-label={s('kind')}>
@@ -620,6 +684,7 @@ function ServerFields({
         <span className="set-field-label">{s('name')}</span>
         <span className="set-field-desc">{s('nameHint')}</span>
         <input
+          ref={nameRef}
           name="name"
           className="mcp-input"
           spellCheck={false}
@@ -684,13 +749,21 @@ function ServerFields({
               placeholder="https://"
               value={f.url}
               onChange={(e) => {
-                set('url', e.target.value)
-                set('allowPlainHttp', false)
+                const url = e.target.value
+                set('url', url)
+                // back to the address confirmed before: that confirmation still holds
+                set('allowPlainHttp', f.confirmedUrl !== '' && url.trim() === f.confirmedUrl.trim())
               }}
             />
           </label>
-          {plain && (
+          {publicHttp && (
+            <div className="set-field-desc mcp-error" data-testid="mcp-public-http">
+              {s('addrPublicHttp')}
+            </div>
+          )}
+          {plain && !publicHttp && (
             <div className="mcp-warn-box">
+              {urlChanged && <div data-testid="mcp-http-recheck">{s('httpRecheck')}</div>}
               <div>{s('httpWarn')}</div>
               <label className="mcp-check">
                 <input

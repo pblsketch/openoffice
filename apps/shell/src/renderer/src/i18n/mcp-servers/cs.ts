@@ -183,4 +183,19 @@ export const cs = {
   pasteNoTarget: 'Tento server nemá adresu ani příkaz, proto ho nelze přidat.',
   pasteUnsupported: 'Tento server používá druh připojení, který aplikace nepodporuje.',
   pasteDone: 'Přidané servery: {n}',
+  statusReady: 'Připraveno · připojí se při použití',
+  statusUnchecked: 'Zatím neověřeno',
+  failHttpError: 'Server odpověděl chybou. Zkontrolujte, zda je adresa správná.',
+  failUnreachableNear:
+    'Server se nepodařilo zastihnout. Zkontrolujte, že běží a že je adresa správná.',
+  httpRecheck: 'Adresa se změnila. Ani nová není šifrovaná, potvrďte to znovu.',
+  pasteUnreadableLine: 'Text se nepodařilo přečíst. Zkontrolujte čárky a závorky (řádek {line}).',
+  pasteTypeIgnored:
+    'Typ připojení „{type}“ aplikace nezná, proto byl vynechán. Aplikace zkusí obvyklý způsob.',
+  valueFromVar:
+    'Zadejte hodnotu. Vložený text ji čte z proměnné počítače {name} a aplikace proměnné počítače nečte.',
+  launchSystemFold: 'Základní proměnné počítače: {n}',
+  permPaused: 'Nepoužívá se, dokud změnu neschválíte (potom: {perm})',
+  permUnusable: 'Nelze zapnout',
+  direction: 'Zde AI v GenOffice používá nástroje vnějších serverů.',
 } satisfies Record<keyof typeof zh, string>

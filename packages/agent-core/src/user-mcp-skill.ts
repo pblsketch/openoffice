@@ -1,7 +1,12 @@
 import { windowOutboundBridge, type OutboundBridgeLike } from './outbound-guard'
 import type { AgentSkill } from './skill'
 import type { AgentMessage, AgentToolCall, AgentToolDef, ToolExecution } from './types'
-import { isValidServerName, parseMcpToolName, parseMcpToolNameIn } from './user-mcp/names'
+import {
+  isValidServerName,
+  parseMcpToolName,
+  parseMcpToolNameIn,
+  toolStepLabel,
+} from './user-mcp/names'
 import { mcpCallAnswerOf } from './user-mcp/result'
 
 /**
@@ -23,12 +28,30 @@ import { mcpCallAnswerOf } from './user-mcp/result'
 
 export type McpToolPermission = 'always' | 'ask' | 'off'
 
-/** One status at a time, as the settings screen shows it (spec 12.2) */
+/**
+ * One status at a time, as the settings screen shows it (spec 12.2).
+ * `unchecked`: no tool list was ever read from it (nothing to offer yet, the
+ * person runs the connection check in Settings); `ready`: tools approved
+ * before, not reached yet in this run of the app (it connects on first use).
+ */
 export type McpServerStatus =
-  'connected' | 'connecting' | 'failed' | 'login-required' | 'review-required' | 'disabled'
+  | 'connected'
+  | 'ready'
+  | 'unchecked'
+  | 'connecting'
+  | 'failed'
+  | 'login-required'
+  | 'review-required'
+  | 'disabled'
 
+/** `http-error`: the server answered, with an HTTP error (the address may be wrong) */
 export type McpFailReason =
-  'unreachable' | 'runtime-missing' | 'start-failed' | 'refused-redirect' | 'insecure-address'
+  | 'unreachable'
+  | 'http-error'
+  | 'runtime-missing'
+  | 'start-failed'
+  | 'refused-redirect'
+  | 'insecure-address'
 
 /** What changed and waits for the person's review */
 export type McpReviewSubject = 'tools' | 'instructions' | 'command'
@@ -47,6 +70,8 @@ export interface McpToolView {
   pending: boolean
   /** why the tool cannot be turned on (a name problem), if it cannot */
   unusable?: string
+  /** the server marked it as one that may delete or change things (`destructiveHint`) */
+  destructive?: boolean
 }
 
 export interface McpServerView {
@@ -117,6 +142,8 @@ export function windowMcpToolsBridge(): McpToolsBridgeLike | null {
 
 const STATUSES: ReadonlySet<string> = new Set([
   'connected',
+  'ready',
+  'unchecked',
   'connecting',
   'failed',
   'login-required',
@@ -125,6 +152,7 @@ const STATUSES: ReadonlySet<string> = new Set([
 ])
 const FAIL_REASONS: ReadonlySet<string> = new Set([
   'unreachable',
+  'http-error',
   'runtime-missing',
   'start-failed',
   'refused-redirect',
@@ -161,6 +189,7 @@ function toolOf(server: string, raw: unknown): McpToolView | null {
     permission,
     pending: raw.pending === true,
     ...(unusable ? { unusable } : {}),
+    ...(raw.destructive === true ? { destructive: true } : {}),
   }
 }
 
@@ -224,6 +253,10 @@ export interface McpPermissionRequest {
   exposedName: string
   /** what would be sent */
   input: Record<string, unknown>
+  /** the tool's approved description, as the server wrote it */
+  description: string
+  /** the server marked the tool as one that may delete or change things */
+  destructive: boolean
 }
 
 /**
@@ -326,7 +359,14 @@ export interface McpWindowState {
   subscribe(listener: () => void): () => void
   /** stop following the bridge's changes */
   dispose(): void
+  /** the activity line of a call the person blocked, in the window's language */
+  blockedStepLabel(server: string, tool: string): string
+  /** the AI window's permission card sets it in the person's language */
+  setBlockedStepLabel(label: (server: string, tool: string) => string): void
 }
+
+/** The blocked step's line until the window gives one in the person's language */
+const defaultBlockedLabel = (server: string, tool: string) => `${server} · ${tool}: blocked`
 
 /**
  * `outbound` is the window's internet-tools switch (`window.aiOfficeOutbound`),
@@ -351,6 +391,7 @@ export function createMcpWindowState(
   /** the followed history held messages when last seen */
   let sawContent = false
   let seq = 0
+  let blockedLabel = defaultBlockedLabel
 
   const notify = () => {
     usable = null
@@ -442,6 +483,10 @@ export function createMcpWindowState(
     dispose: () => {
       offList()
       offInternet?.()
+    },
+    blockedStepLabel: (server, tool) => blockedLabel(server, tool),
+    setBlockedStepLabel: (label) => {
+      blockedLabel = label
     },
   }
 }
@@ -589,7 +634,7 @@ export function createUserMcpSkill(
   const refuse = (call: AgentToolCall, output: string): ToolExecution => ({
     output,
     isError: true,
-    summary: call.name,
+    summary: toolStepLabel(call.name),
   })
 
   const execute = async (call: AgentToolCall, signal?: AbortSignal): Promise<ToolExecution> => {
@@ -624,10 +669,23 @@ export function createUserMcpSkill(
     if (signal?.aborted) return refuse(call, MCP_CALL_STOPPED)
     if (tool.permission === 'ask' && !state.allowedInChat(call.name)) {
       const answer = await state.permissions.ask(
-        { server: server.name, tool: tool.name, exposedName: call.name, input: call.input },
+        {
+          server: server.name,
+          tool: tool.name,
+          exposedName: call.name,
+          input: call.input,
+          description: tool.description,
+          destructive: tool.destructive === true,
+        },
         signal,
       )
-      if (answer === 'deny') return refuse(call, MCP_PERMISSION_DENIED)
+      if (answer === 'deny') {
+        return {
+          output: MCP_PERMISSION_DENIED,
+          isError: true,
+          summary: state.blockedStepLabel(server.name, tool.name),
+        }
+      }
       if (answer === 'conversation') state.allowInChat(call.name)
       if (signal?.aborted) return refuse(call, MCP_CALL_STOPPED)
     }
@@ -657,7 +715,7 @@ export function createUserMcpSkill(
     } finally {
       signal?.removeEventListener('abort', onAbort)
     }
-    const summary = `${server}: ${tool}`
+    const summary = `${server} · ${tool}`
     if (raw === 'stopped') {
       void Promise.resolve()
         .then(() => state.bridge.cancel(callId))

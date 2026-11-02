@@ -186,4 +186,19 @@ export const en = {
   pasteNoTarget: 'This server has neither an address nor a command, so it can’t be added.',
   pasteUnsupported: 'This server uses a connection type the app doesn’t support.',
   pasteDone: 'Servers added: {n}',
+  statusReady: 'Ready · connects when used',
+  statusUnchecked: 'Not checked yet',
+  failHttpError: 'The server answered with an error. Check that the address is right.',
+  failUnreachableNear:
+    'Couldn’t reach the server. Check that it is running and that the address is right.',
+  httpRecheck: 'The address changed. The new one is not encrypted either, so confirm again.',
+  pasteUnreadableLine: 'Couldn’t read the text. Check the commas and brackets (line {line}).',
+  pasteTypeIgnored:
+    'The connection type "{type}" is not one the app knows, so it was ignored. The app tries the usual way.',
+  valueFromVar:
+    'Enter the value. The pasted text reads it from the PC variable {name}, and the app doesn’t read PC variables.',
+  launchSystemFold: 'Basic PC variables: {n}',
+  permPaused: 'Not used until you approve the change (then: {perm})',
+  permUnusable: 'Can’t be turned on',
+  direction: 'Here, the AI in GenOffice uses tools from outside servers.',
 } satisfies Record<keyof typeof zh, string>

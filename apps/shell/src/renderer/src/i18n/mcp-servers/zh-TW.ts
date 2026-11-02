@@ -173,4 +173,17 @@ export const zhTW = {
   pasteNoTarget: '這個伺服器既沒有網址也沒有指令，無法新增。',
   pasteUnsupported: '這個伺服器使用應用程式不支援的連線方式，無法新增。',
   pasteDone: '已新增 {n} 個伺服器。',
+  statusReady: '已就緒 · 使用時連線',
+  statusUnchecked: '尚未檢查',
+  failHttpError: '伺服器回傳了錯誤。請檢查網址是否正確。',
+  failUnreachableNear: '無法連到伺服器。請檢查伺服器是否在執行、網址是否正確。',
+  httpRecheck: '網址已變更。新網址同樣不加密傳輸，請再次確認。',
+  pasteUnreadableLine: '無法讀取這段文字。請檢查逗號和括號（第 {line} 行）。',
+  pasteTypeIgnored:
+    '連線方式（"{type}"）不是應用程式認得的值，已略過。應用程式會用一般方式嘗試連線。',
+  valueFromVar: '請填入這個值。貼上的文字要從電腦變數 {name} 讀取它，但應用程式不會讀取電腦變數。',
+  launchSystemFold: '電腦基本變數 {n} 個',
+  permPaused: '核准變更前不使用（核准後：{perm}）',
+  permUnusable: '無法開啟',
+  direction: '這裡是讓 GenOffice 的 AI 使用外部伺服器的工具。',
 } satisfies Record<keyof typeof zh, string>

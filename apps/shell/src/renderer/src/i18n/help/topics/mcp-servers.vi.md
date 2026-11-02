@@ -6,10 +6,10 @@ Máy chủ MCP là một dịch vụ cung cấp các công cụ mà AI có thể
 
 1. Mở **Cài đặt ▸ Tích hợp** và nhấn **Thêm máy chủ** trên thẻ **Máy chủ MCP**.
 2. Chọn cách thêm.
-   - **Dán đoạn cài đặt**: dán nguyên đoạn cài đặt trong hướng dẫn của máy chủ rồi nhấn **Đọc**. GenOffice sẽ điền các ô giúp bạn. Nếu một đoạn có nhiều máy chủ, bạn xác nhận từng máy chủ một.
+   - **Dán đoạn cài đặt**: dán nguyên đoạn cài đặt trong hướng dẫn của máy chủ rồi nhấn **Đọc**. GenOffice sẽ điền các ô giúp bạn. Nếu một đoạn có nhiều máy chủ, bạn xác nhận từng máy chủ một. Nếu đoạn văn bản đọc khóa hoặc giá trị từ biến của máy (`${TÊN}`), ô đó để trống để bạn tự nhập.
    - **Tự nhập**: nhập tên và địa chỉ. Nếu hướng dẫn của máy chủ có đưa một khóa, hãy điền vào ô **Khóa (không bắt buộc)**.
 3. Đọc thông báo phía trên nút thêm, rồi nhấn **Thêm**.
-4. Nhấn **Kiểm tra kết nối** để xem danh sách công cụ mà máy chủ cung cấp. Với máy chủ cần đăng nhập, hãy nhấn **Đăng nhập bằng trình duyệt** và hoàn tất việc đăng nhập ở đó.
+4. Sau khi thêm, GenOffice kiểm tra kết nối ngay và lấy danh sách công cụ. Máy chủ cần đăng nhập sẽ chờ bạn thay vì tự mở trình duyệt. Nhấn **Kiểm tra kết nối** để xem danh sách công cụ mà máy chủ cung cấp. Với máy chủ cần đăng nhập, hãy nhấn **Đăng nhập bằng trình duyệt** và hoàn tất việc đăng nhập ở đó.
 
 Tên máy chủ dùng chữ cái, chữ số, `-` và `_`, tối đa 24 ký tự. AI thấy công cụ của máy chủ này dưới tên có dạng `mcp__name__tool`. Nếu một kỹ năng gọi công cụ bằng tên dạng này, hãy thêm máy chủ với đúng tên mà kỹ năng đó dùng.
 
@@ -31,7 +31,7 @@ Tên máy chủ dùng chữ cái, chữ số, `-` và `_`, tối đa 24 ký tự
 ## Dùng máy chủ trong cửa sổ AI
 
 - Máy chủ hoạt động trong cửa sổ AI của các trình soạn thảo và trong ô Hỏi AI ở trang chủ. Khi có máy chủ đang bật, nút **Máy chủ đã kết nối** sẽ hiện cạnh ô nhập.
-- Nhấn nút đó để xem trạng thái từng máy chủ, và tắt hoặc bật một máy chủ chỉ trong cuộc trò chuyện này. Cuộc trò chuyện mới bắt đầu với mọi máy chủ mà bạn đã bật trong Cài đặt.
+- Nhấn nút đó để xem trạng thái từng máy chủ, và tắt hoặc bật một máy chủ chỉ trong cuộc trò chuyện này. Cuộc trò chuyện mới bắt đầu với mọi máy chủ mà bạn đã bật trong Cài đặt. Máy chủ chưa từng được kiểm tra kết nối sẽ hiện **Chưa kiểm tra**; hãy kiểm tra trong Cài đặt để có các công cụ của nó.
 - Tắt **Cho phép AI dùng công cụ internet** trong **Cài đặt ▸ Phương tiện AI & Tìm kiếm** cũng sẽ gỡ toàn bộ công cụ của máy chủ MCP.
 - Khi một kỹ năng cần công cụ của một máy chủ mà hiện bạn không dùng được, AI sẽ nói trong câu trả lời là bước nào nó không làm được. **Cài đặt ▸ Kỹ năng** cũng hiện máy chủ mà kỹ năng cần ngay cạnh kỹ năng đó.
 - Cửa sổ tác tử cũng dùng được công cụ của các máy chủ đang bật. Áp dụng cùng quyền, và một phiên giữ nguyên thiết lập lúc bắt đầu. Xem [Chế độ tác tử](help://agent-mode).

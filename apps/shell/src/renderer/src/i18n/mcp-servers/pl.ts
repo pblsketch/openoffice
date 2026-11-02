@@ -190,4 +190,20 @@ export const pl = {
   pasteNoTarget: 'Ten serwer nie ma ani adresu, ani polecenia, więc nie można go dodać.',
   pasteUnsupported: 'Ten serwer używa rodzaju połączenia, którego aplikacja nie obsługuje.',
   pasteDone: 'Dodane serwery: {n}',
+  statusReady: 'Gotowy · połączy się przy użyciu',
+  statusUnchecked: 'Jeszcze nie sprawdzono',
+  failHttpError: 'Serwer odpowiedział błędem. Sprawdź, czy adres jest poprawny.',
+  failUnreachableNear:
+    'Nie udało się połączyć z serwerem. Sprawdź, czy działa i czy adres jest poprawny.',
+  httpRecheck: 'Adres się zmienił. Nowy też nie jest szyfrowany, potwierdź ponownie.',
+  pasteUnreadableLine:
+    'Nie udało się odczytać tekstu. Sprawdź przecinki i nawiasy (wiersz {line}).',
+  pasteTypeIgnored:
+    'Aplikacja nie zna typu połączenia „{type}”, więc go pominęła. Spróbuje zwykłego sposobu.',
+  valueFromVar:
+    'Wpisz wartość. Wklejony tekst odczytuje ją ze zmiennej {name} komputera, a aplikacja nie czyta zmiennych komputera.',
+  launchSystemFold: 'Podstawowe zmienne komputera: {n}',
+  permPaused: 'Nieużywane, dopóki nie zatwierdzisz zmiany (potem: {perm})',
+  permUnusable: 'Nie można włączyć',
+  direction: 'Tutaj AI w GenOffice korzysta z narzędzi zewnętrznych serwerów.',
 } satisfies Record<keyof typeof zh, string>

@@ -6,10 +6,10 @@ Server MCP adalah layanan yang menyediakan alat yang bisa dipakai AI dari luar a
 
 1. Buka **Pengaturan ▸ Integrasi** lalu tekan **Tambah server** pada kartu **Server MCP**.
 2. Pilih cara menambahkannya.
-   - **Tempel teks pengaturan**: tempel seluruh teks pengaturan dari panduan server lalu tekan **Baca**. GenOffice mengisi kolom-kolomnya. Jika satu teks berisi beberapa server, Anda mengonfirmasinya satu per satu.
+   - **Tempel teks pengaturan**: tempel seluruh teks pengaturan dari panduan server lalu tekan **Baca**. GenOffice mengisi kolom-kolomnya. Jika satu teks berisi beberapa server, Anda mengonfirmasinya satu per satu. Jika teks itu membaca kunci atau nilai dari variabel PC (`${NAMA}`), kolom itu dibiarkan kosong untuk Anda isi.
    - **Isi sendiri**: ketik nama dan alamat. Jika panduan server memberi kunci, masukkan ke kolom **Kunci (opsional)**.
 3. Baca pemberitahuan di atas tombol tambah, lalu tekan **Tambah**.
-4. Tekan **Periksa koneksi** untuk melihat daftar alat yang disediakan server. Untuk server yang memerlukan login, tekan **Masuk lewat browser** dan selesaikan proses masuk di sana.
+4. Setelah ditambahkan, GenOffice langsung memeriksa koneksi dan mengambil daftar alat. Server yang memerlukan login menunggu Anda, bukan membuka browser sendiri. Tekan **Periksa koneksi** untuk melihat daftar alat yang disediakan server. Untuk server yang memerlukan login, tekan **Masuk lewat browser** dan selesaikan proses masuk di sana.
 
 Nama server memakai huruf, angka, `-` dan `_`, maksimal 24 karakter. AI melihat alat server ini dengan nama berbentuk `mcp__name__tool`. Jika sebuah skill memanggil alat dengan nama berbentuk ini, tambahkan server dengan nama yang sama seperti yang dipakai skill tersebut.
 
@@ -31,7 +31,7 @@ Nama server memakai huruf, angka, `-` dan `_`, maksimal 24 karakter. AI melihat 
 ## Memakai server di jendela AI
 
 - Server bekerja di jendela AI editor dan di Tanya AI pada Beranda. Selama ada server yang aktif, tombol **Server yang terhubung** muncul di samping kolom input.
-- Tekan tombol itu untuk melihat status tiap server, dan untuk mematikan atau menyalakan server hanya di percakapan ini. Percakapan baru dimulai dengan semua server yang Anda aktifkan di Pengaturan.
+- Tekan tombol itu untuk melihat status tiap server, dan untuk mematikan atau menyalakan server hanya di percakapan ini. Percakapan baru dimulai dengan semua server yang Anda aktifkan di Pengaturan. Server yang koneksinya belum pernah diperiksa tampil sebagai **Belum diperiksa**; periksa di Pengaturan untuk mendapatkan alatnya.
 - Mematikan **Izinkan AI memakai alat internet** di **Pengaturan ▸ Media & Pencarian AI** juga menghapus semua alat server MCP.
 - Jika sebuah skill mengharapkan alat dari server yang saat ini tidak bisa Anda pakai, AI menyebutkan dalam jawabannya langkah mana yang tidak bisa dikerjakan. **Pengaturan ▸ Skill** juga menampilkan server yang dibutuhkan sebuah skill di samping skill itu.
 - Jendela Agen juga bisa memakai alat dari server yang aktif. Izin yang sama berlaku, dan sebuah sesi mempertahankan pengaturan saat ia dimulai. Lihat [Mode agen](help://agent-mode).
