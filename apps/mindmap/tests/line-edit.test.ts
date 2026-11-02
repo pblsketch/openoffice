@@ -821,6 +821,34 @@ describe('boundaries', () => {
     expect(doc.changed).toBe(false)
   })
 
+  it('its title is one line: Shift+Enter breaks no line, and a typed or pasted break is a space', async () => {
+    layOut()
+    const { controller, el, find } = await mount()
+    const title = () => (find(ID.b)!.boundaries as Record<string, unknown>[])[0]!.title
+    controller.selectBoundary(ID.boundary)
+    controller.editBoundaryTitle(ID.boundary)
+    const box = el.querySelector<HTMLElement>('#input-box')!
+    const shiftEnter = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    })
+    box.dispatchEvent(shiftEnter)
+    expect(shiftEnter.defaultPrevented).toBe(true)
+    // the box stays open: Shift+Enter neither breaks the line nor takes the title
+    expect(el.querySelector('#input-box')).toBe(box)
+    box.textContent = 'first\r\n  second\nthird'
+    box.dispatchEvent(new FocusEvent('blur'))
+    expect(title()).toBe('first second third')
+    expect(el.querySelector('#input-box')).toBeNull()
+
+    // the controller's own way in takes one line too
+    expect(controller.setBoundaryTitle(ID.boundary, 'a\nb')).toBe(true)
+    expect(title()).toBe('a b')
+    expect(controller.setBoundaryTitle(ID.boundary, 'a \n b')).toBe(false)
+  })
+
   it('takes every value, the fill included, as one step; taking them off goes back to none', async () => {
     const { controller, find, unchanged } = await mount()
     controller.selectBoundary(ID.boundary)

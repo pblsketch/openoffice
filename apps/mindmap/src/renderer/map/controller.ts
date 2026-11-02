@@ -80,7 +80,7 @@ import {
 } from '../document/convert'
 import type { DocumentSession } from '../document/session'
 import { type BoundaryRefusal, boundaryPlaceFor } from './boundary-edit'
-import { openBoundaryTitleBox } from './boundary-title'
+import { oneLineTitle, openBoundaryTitleBox } from './boundary-title'
 import { type DecorationStrings, TopicDecorator } from './decorate'
 import {
   type FormatKind,
@@ -1397,10 +1397,10 @@ export class MapController {
     return true
   }
 
-  /** Gives a boundary a title; an empty one takes the title off. Text only. One step; false when it is the same. */
+  /** Gives a boundary a title, on one line; an empty one takes the title off. Text only. One step; false when it is the same. */
   setBoundaryTitle(id: string, title: string): boolean {
     const boundary = this.boundary(id)
-    const next = title.trim()
+    const next = oneLineTitle(title)
     if (!boundary || boundary.title === next) return false
     this.edit((_root, parts) => {
       const target = parts.boundaries.find((entry) => entry.id === id)
