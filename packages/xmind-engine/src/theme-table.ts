@@ -61,14 +61,15 @@ const SOFT_FILL_IN_FILE = 0.08
 
 /**
  * The file takes whole numbers. A half rounds down, so that a line drawn
- * thinner on screen is still the thinner one in the file.
+ * thinner on screen is still the thinner one in the file. The editor writes a
+ * value it draws the same way (its format painter).
  */
-function whole(value: number): number {
+export function wholeNumber(value: number): number {
   return Math.ceil(value - 0.5)
 }
 
 function points(value: number): string {
-  return `${whole(value)}pt`
+  return `${wholeNumber(value)}pt`
 }
 
 interface LevelColors {
@@ -111,7 +112,7 @@ function topicProperties(
 ): ThemeLevelProperties {
   return {
     'fo:font-size': points(shape.fontSize),
-    'fo:font-weight': String(whole(shape.fontWeight / 100) * 100),
+    'fo:font-weight': String(wholeNumber(shape.fontWeight / 100) * 100),
     'fo:color': colors.text,
     'svg:fill': colors.fill,
     'fill-pattern': shape.fill === 'none' ? 'none' : 'solid',

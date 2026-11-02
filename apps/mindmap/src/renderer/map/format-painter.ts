@@ -8,8 +8,8 @@
  * the target as its own, so it looks the same wherever it sits; this is the
  * one place where a value the theme already draws is written (decision 0101
  * otherwise leaves those out). A value the file cannot hold as it is drawn is
- * written the way the theme tables are (`theme-table.ts`: whole points, a half
- * rounding down; a colour without its opacity). A property whose value on the
+ * written the way the theme tables are (`wholeNumber` of the engine: whole
+ * points, a half rounding down; a colour without its opacity). A property whose value on the
  * source does not pass the filter (the editor cannot draw it) is left as the
  * target has it. The text and the fill go onto the target alone, the line onto
  * the target and every topic below it (`line-format.ts`).
@@ -33,6 +33,7 @@ import {
   type ViewBranchLine,
   type ViewTitleRun,
   type ViewTopicStyle,
+  wholeNumber,
 } from '@genoffice/xmind-engine'
 import type { ResolvedBranchLine } from './line-resolve'
 import type { StyleEdits, StyleValues } from './line-format'
@@ -85,14 +86,6 @@ export interface TopicSource {
   drawn: ResolvedBranchLine
 }
 
-/**
- * The file takes whole numbers. A half rounds down, so that a line drawn
- * thinner on screen is still the thinner one in the file (as `theme-table.ts`).
- */
-function whole(value: number): number {
-  return Math.ceil(value - 0.5)
-}
-
 /** A colour as the file's line and fill values take it: `#rrggbb`, without an opacity. */
 function solidColor(value: string): string | null {
   const color = safeColor(value)
@@ -125,7 +118,7 @@ export function topicPaintOf(source: TopicSource): TopicPaint {
   }
   if (!unread('fontWeight', own.fontWeight)) {
     const weight = own.fontWeight ?? source.base.fontWeight
-    text.fontWeight = String(Math.min(900, Math.max(100, whole(weight / 100) * 100)))
+    text.fontWeight = String(Math.min(900, Math.max(100, wholeNumber(weight / 100) * 100)))
   }
   if (!unread('fontSize', own.fontSize)) {
     text.fontSize = `${pointsOf(own.fontSize ?? source.base.fontSize)}pt`
@@ -165,7 +158,7 @@ function lineOf(source: TopicSource): ViewBranchLine {
   }
   if (!unread('width', safeBranchLineWidth)) {
     out.width = lineWidthValue(
-      Math.min(MAX_LINE_WIDTH, Math.max(MIN_LINE_WIDTH, whole(drawn.width))),
+      Math.min(MAX_LINE_WIDTH, Math.max(MIN_LINE_WIDTH, wholeNumber(drawn.width))),
     )
   }
   if (!unread('pattern', safeLinePattern)) out.pattern = drawn.pattern

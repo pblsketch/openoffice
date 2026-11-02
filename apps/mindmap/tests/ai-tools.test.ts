@@ -880,13 +880,75 @@ describe('line format and relationships', () => {
     expect(props(r, moving)).toEqual({ ...line, 'line-width': '5pt' })
     const [, added, set] = attached(findTopic(r.sheet(1).rootTopic, one!.id)!)
     expect(added!.style).toMatchObject({ properties: line })
-    // a line the same batch set wins over the line of the new parent
-    expect(set!.style).toMatchObject({ properties: { 'line-color': '#999999' } })
-    expect((set!.style as { properties: object }).properties).not.toHaveProperty('line-class')
+    // a key the same batch set wins over the parent's; the other keys are the parent's
+    expect(set!.style).toMatchObject({ properties: { ...line, 'line-color': '#999999' } })
 
     // moved under a topic without a line of its own, a topic keeps its line
     await editMap(r.host, { edits: [{ op: 'move', id: moving, parentId: two!.id }] }, null)
     expect(props(r, moving)).toEqual({ ...line, 'line-width': '5pt' })
+  })
+
+  /** A plain sheet whose branch One carries a blue dashed line, and whose branch Two has a red topic under it. */
+  function arrivingSheet(): { sheet: XmindSheet; one: string; two: string; red: string } {
+    const sheet = plainSheet()
+    const [one, two] = attached(sheet.rootTopic)
+    one!.style = {
+      id: 'one-style',
+      properties: { 'line-color': '#0000ff', 'line-pattern': 'dash' },
+    }
+    const red = 'dddddddd-dddd-4ddd-8ddd-ddddddddddd2'
+    two!.children = {
+      attached: [
+        topic(red, 'Red', {
+          style: { id: 'red-style', properties: { 'line-color': '#ff0000' } },
+        }),
+      ],
+    }
+    return { sheet, one: one!.id, two: two!.id, red }
+  }
+
+  it('a key the batch sets on a moved topic wins even when it is the value the topic had', async () => {
+    const { sheet, one, red } = arrivingSheet()
+    const r = await rigOf(sheet)
+    for (const edits of [
+      [
+        { op: 'move', id: red, parentId: one },
+        { op: 'set_line', id: red, color: '#ff0000' },
+      ],
+      // the order of the batch does not matter
+      [
+        { op: 'set_line', id: red, color: '#ff0000' },
+        { op: 'move', id: red, parentId: one },
+      ],
+    ]) {
+      const out = await editMap(r.host, { edits }, null)
+      expect(out.output).toContain('2 of 2 edit(s) applied')
+      // the colour set, and the parent's pattern
+      expect(props(r, red)).toEqual({ 'line-color': '#ff0000', 'line-pattern': 'dash' })
+      expect(r.controller().undo()).toBe(true)
+      expect(props(r, red)).toEqual({ 'line-color': '#ff0000' })
+    }
+  })
+
+  it('a moved topic whose width alone the batch sets takes the parent’s colour and pattern', async () => {
+    const { sheet, one, red } = arrivingSheet()
+    const r = await rigOf(sheet)
+    const out = await editMap(
+      r.host,
+      {
+        edits: [
+          { op: 'move', id: red, parentId: one },
+          { op: 'set_line', id: red, width: 4 },
+        ],
+      },
+      null,
+    )
+    expect(out.output).toContain('2 of 2 edit(s) applied')
+    expect(props(r, red)).toEqual({
+      'line-color': '#0000ff',
+      'line-pattern': 'dash',
+      'line-width': '4pt',
+    })
   })
 
   it('is one step of the history: one undo gives back the bytes of the file', async () => {

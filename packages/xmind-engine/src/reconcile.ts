@@ -5,6 +5,7 @@ import {
   RELATIONSHIP_STYLE_PROPERTIES,
   SUMMARY_STYLE_PROPERTIES,
 } from './line-style'
+import { readStateCurve } from './reconcile-state'
 import { type ReconcileIds, reconcileTree } from './reconcile-tree'
 import { idsInUse } from './tree-walk'
 import { isRecord } from './types'
@@ -225,7 +226,7 @@ function shownBy(sheet: ViewSheet, ids?: ReconcileIds, carried?: Carried): strin
       topicId(relationship.toId),
       relationship.title,
       valuesOf(RELATIONSHIP_STYLE_PROPERTIES, style),
-      curve ? [curve.from.x, curve.from.y, curve.to.x, curve.to.y] : null,
+      curveShown(curve),
     ]
   })
   const present = new Set<string>()
@@ -249,6 +250,17 @@ function shownBy(sheet: ViewSheet, ids?: ReconcileIds, carried?: Carried): strin
     sorted(relationships),
     sorted(boundaries),
   ])
+}
+
+/**
+ * The curve a relationship shows, as compared: its four numbers, null for the
+ * automatic one. A curve of a state that is not two points is not written
+ * (`readStateCurve`), so it never equals what the view shows.
+ */
+function curveShown(curve: unknown): unknown {
+  if (curve === null || curve === undefined) return null
+  const read = readStateCurve(curve)
+  return read ? [read.from.x, read.from.y, read.to.x, read.to.y] : 'not two points'
 }
 
 /** What a view shows, by id, for the parts a state may not carry. */

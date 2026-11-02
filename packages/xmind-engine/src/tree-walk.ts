@@ -7,7 +7,7 @@
  */
 
 import { isRecord, type XmindSheet, type XmindTopic } from './types'
-import { parseRange, type ShownBoundaryRecord, shownBoundaryRecords } from './view'
+import { parseRange, type ShownBoundaryRecord, shownSheetBoundaries } from './view'
 
 export type JsonRecord = Record<string, unknown>
 
@@ -79,14 +79,13 @@ export interface ShownParts {
   summaries: (ShownSummary & { owner: XmindTopic })[]
   /** the ids a shown relationship ends on: the topics above and the summary topics */
   ends: Set<string>
-  /** the boundaries the view shows, each with the topic that carries it */
+  /** the boundaries the view shows, each with the topic that carries it (`shownSheetBoundaries`) */
   boundaries: (ShownBoundaryRecord & { owner: XmindTopic })[]
 }
 
 export function shownParts(sheet: XmindSheet): ShownParts {
   const topics = new Map<string, XmindTopic>()
   const summaries: ShownParts['summaries'] = []
-  const boundaries: ShownParts['boundaries'] = []
   const ends = new Set<string>()
   const pending: XmindTopic[] = [sheet.rootTopic]
   for (let topic = pending.pop(); topic; topic = pending.pop()) {
@@ -96,11 +95,9 @@ export function shownParts(sheet: XmindSheet): ShownParts {
       summaries.push({ ...summary, owner: topic })
       ends.add(summary.topic.id)
     }
-    for (const boundary of shownBoundaryRecords(topic))
-      boundaries.push({ ...boundary, owner: topic })
     for (const branch of topic.children?.attached ?? []) pending.push(branch)
   }
-  return { topics, summaries, ends, boundaries }
+  return { topics, summaries, ends, boundaries: shownSheetBoundaries(sheet) }
 }
 
 /** Whether the view shows a relationship: it names both ends, and both are shown. */

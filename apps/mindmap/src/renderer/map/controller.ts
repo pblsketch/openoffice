@@ -80,7 +80,7 @@ import {
 } from '../document/convert'
 import type { DocumentSession } from '../document/session'
 import { type BoundaryRefusal, boundaryPlaceFor } from './boundary-edit'
-import { openBoundaryTitleBox } from './boundary-title'
+import { oneLineTitle, openBoundaryTitleBox } from './boundary-title'
 import { type DecorationStrings, TopicDecorator } from './decorate'
 import {
   type FormatKind,
@@ -106,10 +106,15 @@ import {
   editOwnLine,
   inheritArrivals,
   inheritBranchLine,
+  type LineEditsById,
+  noteBranchLineEdits,
   ownLineOf,
   parentsOf,
   type RelationshipStyleChange,
   relationshipStyleEdits,
+  restyleArrowRecord,
+  restyleSummaryRecord,
+  sameCurve,
   sameValues,
   type StyleEdits,
   type SummaryStyleChange,
@@ -125,12 +130,7 @@ import {
   BOUNDARY_TITLE_CLASS,
   RelationDrawer,
 } from './relations'
-import {
-  curveToDeltas,
-  deltasToCurve,
-  relationshipArrowStyle,
-  relationshipPaint,
-} from './relationship-shapes'
+import { deltasToCurve } from './relationship-shapes'
 import { PictureStore } from './images'
 import { libraryTheme, lineSettingsOfSheet, lookOfSheet } from './look'
 import { installMultiSelect } from './multi-select'
@@ -222,6 +222,11 @@ export interface EditOptions {
   restyled?: readonly string[]
   /** topics whose line format changed */
   restyledLines?: readonly string[]
+  /**
+   * the line keys the edit set itself, by topic id: on a topic that stands
+   * under a new parent afterwards they win over that parent's values, key by key
+   */
+  lineEdits?: ReadonlyMap<string, StyleEdits<BranchLineKey>>
   /** topics whose fill changed */
   refilled?: readonly string[]
   /** relationships whose format or curve changed */
@@ -1005,9 +1010,8 @@ export class MapController {
    * named in `options`: the engine writes those only for what is named.
    * A topic that stands under another parent afterwards (moved, or new) takes
    * the line values its new parent has written on itself, with its branch, in
-   * the same step (`line-format.ts`), unless the same edit set its line: a
-   * topic named in `restyledLines` (or whose line `change` set through the
-   * controller) keeps the values it was given.
+   * the same step (`line-format.ts`); the keys the same edit set on it
+   * (`lineEdits`) are put on top of those, key by key.
    */
   edit(change: (root: MapNode, parts: MapParts) => void, options: EditOptions = {}): void {
     const mind = this.mind
@@ -1015,7 +1019,6 @@ export class MapController {
     const arrow = this.#currentArrowId()
     const summary = this.#currentSummaryId()
     const parents = parentsOf(mind.nodeData)
-    const relinedBefore = new Set(this.#relined)
     this.#name(options)
     const parts: MapParts = {
       arrows: (mind.arrows ?? []) as MapArrow[],
@@ -1028,10 +1031,10 @@ export class MapController {
     mind.meta = withBoundaries(mind.meta, parts.boundaries)
     normaliseTree(mind.nodeData, topicIdsOf(this.#lastView))
     this.#keepableRecordIds(parts)
-    // a line this edit set itself wins over the line of a new parent
-    const explicit = new Set(options.restyledLines ?? [])
-    for (const id of this.#relined) if (!relinedBefore.has(id)) explicit.add(id)
-    for (const id of inheritArrivals(mind.nodeData, parents, explicit)) this.#relined.add(id)
+    // the keys this edit set itself win over the line of a new parent
+    for (const id of inheritArrivals(mind.nodeData, parents, options.lineEdits)) {
+      this.#relined.add(id)
+    }
     mind.refresh()
     this.#putSelectionBack(selected, arrow, summary)
     mind.bus.fire('operation', {
@@ -1199,13 +1202,18 @@ export class MapController {
       ),
     )
     if (!changes) return refused('unchanged')
+    const lineEdits: LineEditsById = new Map()
+    for (const id of found) noteBranchLineEdits(lineEdits, this.#node(id)!, edits)
     this.commitEdit()
-    this.edit((root) => {
-      for (const id of found) {
-        const node = this.mind.getObjById(id, root)
-        if (node) for (const changed of editBranchLine(node, edits)) this.#relined.add(changed)
-      }
-    })
+    this.edit(
+      (root) => {
+        for (const id of found) {
+          const node = this.mind.getObjById(id, root)
+          if (node) for (const changed of editBranchLine(node, edits)) this.#relined.add(changed)
+        }
+      },
+      { lineEdits },
+    )
     return { ok: true }
   }
 
@@ -1296,7 +1304,7 @@ export class MapController {
     this.edit(
       (_root, parts) => {
         for (const arrow of parts.arrows) {
-          if (changes.includes(arrow.id)) restyleArrow(arrow, edits, curve)
+          if (changes.includes(arrow.id)) restyleArrowRecord(arrow, edits, curve)
         }
       },
       { restyledRelationships: changes },
@@ -1334,10 +1342,7 @@ export class MapController {
     this.edit(
       (_root, parts) => {
         for (const summary of parts.summaries) {
-          if (!changes.includes(summary.id)) continue
-          const style = withEdits(summary.metadata?.style, edits)
-          if (Object.keys(style).length > 0) summary.metadata = { ...summary.metadata, style }
-          else delete summary.metadata
+          if (changes.includes(summary.id)) restyleSummaryRecord(summary, edits)
         }
       },
       { restyledSummaries: changes },
@@ -1392,10 +1397,10 @@ export class MapController {
     return true
   }
 
-  /** Gives a boundary a title; an empty one takes the title off. Text only. One step; false when it is the same. */
+  /** Gives a boundary a title, on one line; an empty one takes the title off. Text only. One step; false when it is the same. */
   setBoundaryTitle(id: string, title: string): boolean {
     const boundary = this.boundary(id)
-    const next = title.trim()
+    const next = oneLineTitle(title)
     if (!boundary || boundary.title === next) return false
     this.edit((_root, parts) => {
       const target = parts.boundaries.find((entry) => entry.id === id)
@@ -1504,6 +1509,8 @@ export class MapController {
       )
     })
     if (!changes) return refused('unchanged')
+    const lineEdits: LineEditsById = new Map()
+    for (const id of found) noteBranchLineEdits(lineEdits, this.#node(id)!, CLEAR_BRANCH_LINE)
     this.commitEdit()
     this.edit(
       (root) => {
@@ -1515,7 +1522,7 @@ export class MapController {
           for (const changed of editBranchLine(node, CLEAR_BRANCH_LINE)) this.#relined.add(changed)
         }
       },
-      { restyled: found },
+      { restyled: found, lineEdits },
     )
     return { ok: true }
   }
@@ -1662,6 +1669,8 @@ export class MapController {
     )
     if (!restyled && !relined) return refused('unchanged')
     const refilled = paint.fill !== undefined && paint.fill !== meta.style.fill
+    const lineEdits: LineEditsById = new Map()
+    noteBranchLineEdits(lineEdits, node, paint.line)
     this.commitEdit()
     this.edit(
       (root) => {
@@ -1672,7 +1681,7 @@ export class MapController {
         target.metadata = { ...own, style: painted.style, titleRuns: painted.titleRuns }
         for (const changed of editBranchLine(target, paint.line)) this.#relined.add(changed)
       },
-      { restyled: [id], refilled: refilled ? [id] : [] },
+      { restyled: [id], refilled: refilled ? [id] : [], lineEdits },
     )
     return { ok: true }
   }
@@ -2032,8 +2041,9 @@ export class MapController {
   /**
    * A press on the map, before the library has it. While the painter holds a
    * format, a press on an item puts it on that item; otherwise a press on a
-   * boundary's outline or title selects the boundary. The library does not
-   * see a press taken here, nor its release.
+   * boundary's outline or title selects the boundary, and a press on empty
+   * space lets a selected boundary go (the library still has that press).
+   * The library does not see a press taken here, nor its release.
    */
   #onPointerDown(event: PointerEvent): void {
     if (event.button !== 0) return
@@ -2044,7 +2054,11 @@ export class MapController {
       const under = boundaryUnder(element.ownerDocument, event.clientX, event.clientY)
       if (under !== null) target = { kind: 'boundary', id: under }
     }
-    if (!target) return
+    if (!target) {
+      // empty space ends the other selections (the library's), and the boundary's with them
+      if (!element.closest(AN_ITEM)) this.selectBoundary(null)
+      return
+    }
     if (this.#painter) {
       this.#takePress(event)
       this.applyFormatTo(target)
@@ -2690,49 +2704,6 @@ const TITLE_BOX_RISE = 16
 
 function refused<R extends string>(reason: R): { ok: false; reason: R } {
   return { ok: false, reason }
-}
-
-/** Whether a relationship's curve (absent or null: drawn on its own) is the one wanted. */
-function sameCurve(current: ViewCurve | null | undefined, wanted: ViewCurve | null): boolean {
-  if (!current || !wanted) return !current && !wanted
-  return (
-    current.from.x === wanted.from.x &&
-    current.from.y === wanted.from.y &&
-    current.to.x === wanted.to.x &&
-    current.to.y === wanted.to.y
-  )
-}
-
-/**
- * Gives a relationship of the library other values and, when `curve` is not
- * undefined, another curve (null: drawn on its own). The library's own line
- * options follow the values, so it draws them before the editor's drawing
- * goes on top (`relations.ts`).
- */
-function restyleArrow(
-  arrow: MapArrow,
-  edits: StyleEdits<RelationshipStyleKey> | null,
-  curve: ViewCurve | null | undefined,
-): void {
-  const meta: NonNullable<MapArrow['metadata']> = { ...arrow.metadata }
-  if (edits) {
-    const style = withEdits(meta.style, edits)
-    if (Object.keys(style).length > 0) meta.style = style
-    else delete meta.style
-    const lineStyle = relationshipArrowStyle(relationshipPaint(meta.style))
-    if (lineStyle) arrow.style = lineStyle
-    else delete arrow.style
-  }
-  if (curve !== undefined) {
-    meta.curve = curve
-    if (curve) Object.assign(arrow, curveToDeltas(curve))
-    else {
-      delete arrow.delta1
-      delete arrow.delta2
-    }
-  }
-  if (Object.keys(meta).length > 0) arrow.metadata = meta
-  else delete arrow.metadata
 }
 
 function sameIds(a: readonly string[], b: readonly string[]): boolean {

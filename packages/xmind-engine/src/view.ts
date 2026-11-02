@@ -171,8 +171,14 @@ export type ViewBoundaryRange = { start: number; end: number } | 'master'
 /** The view of one sheet of the source tree. */
 export function sheetToView(sheet: XmindSheet, index: number): ViewSheet {
   const shown = new Set<string>()
-  const boundaries: ViewBoundary[] = []
-  const root = topicToView(sheet.rootTopic, shown, boundaries)
+  const root = topicToView(sheet.rootTopic, shown)
+  const boundaries = shownSheetBoundaries(sheet).map((shownBoundary): ViewBoundary => ({
+    id: shownBoundary.id,
+    topicId: shownBoundary.owner.id,
+    range: shownBoundary.range,
+    title: stringOr(shownBoundary.record.title, ''),
+    style: styleValues(shownBoundary.record.style, BOUNDARY_STYLE_PROPERTIES),
+  }))
   const { layout, exact } = layoutFromStructureClass(sheet.rootTopic.structureClass)
   return {
     index,
@@ -191,20 +197,11 @@ export function sheetToView(sheet: XmindSheet, index: number): ViewSheet {
  * MAX_TOPIC_DEPTH. `shown` collects the ids a relationship may end on: the
  * topic itself and the summary topics of the summaries it shows.
  */
-function topicToView(topic: XmindTopic, shown: Set<string>, boundaries: ViewBoundary[]): ViewTopic {
+function topicToView(topic: XmindTopic, shown: Set<string>): ViewTopic {
   shown.add(topic.id)
   const attached = topic.children?.attached ?? []
   const summaries = summariesToView(topic, attached.length)
   for (const summary of summaries) shown.add(summary.topicId)
-  for (const shownBoundary of shownBoundaryRecords(topic)) {
-    boundaries.push({
-      id: shownBoundary.id,
-      topicId: topic.id,
-      range: shownBoundary.range,
-      title: stringOr(shownBoundary.record.title, ''),
-      style: styleValues(shownBoundary.record.style, BOUNDARY_STYLE_PROPERTIES),
-    })
-  }
   const width = topicWidth(topic.customWidth)
   const line = styleValues(topic.style, BRANCH_LINE_PROPERTIES)
   return {
@@ -223,7 +220,7 @@ function topicToView(topic: XmindTopic, shown: Set<string>, boundaries: ViewBoun
     ...(Object.keys(line).length > 0 ? { line } : {}),
     titleRuns: titleRunsToView(topic.attributedTitle, stringOr(topic.title, '')),
     summaries,
-    children: attached.map((child) => topicToView(child, shown, boundaries)),
+    children: attached.map((child) => topicToView(child, shown)),
   }
 }
 
@@ -350,6 +347,31 @@ export function shownBoundaryRecords(topic: XmindTopic): ShownBoundaryRecord[] {
     const range = parseRange(record.range)
     if (!range || range.end >= branchCount) continue
     out.push({ id: record.id, range, record })
+  }
+  return out
+}
+
+/**
+ * The boundary records the view of a sheet shows, each with the topic that
+ * carries it: those of `shownBoundaryRecords` on the attached branches, the
+ * central topic first and each topic before its branches. Of records that
+ * share an id only the first is shown, as the editor keeps the first; the
+ * others stay in the file as they are.
+ */
+export function shownSheetBoundaries(
+  sheet: XmindSheet,
+): (ShownBoundaryRecord & { owner: XmindTopic })[] {
+  const out: (ShownBoundaryRecord & { owner: XmindTopic })[] = []
+  const ids = new Set<string>()
+  const pending: XmindTopic[] = [sheet.rootTopic]
+  for (let topic = pending.pop(); topic; topic = pending.pop()) {
+    for (const shownBoundary of shownBoundaryRecords(topic)) {
+      if (ids.has(shownBoundary.id)) continue
+      ids.add(shownBoundary.id)
+      out.push({ ...shownBoundary, owner: topic })
+    }
+    const attached = topic.children?.attached ?? []
+    for (let at = attached.length - 1; at >= 0; at--) pending.push(attached[at]!)
   }
   return out
 }

@@ -459,24 +459,31 @@ describe('a new topic put above a branch, and a line set in the same edit', () =
     expect(await unchanged()).toBe(true)
   })
 
-  it('a topic moved into a formatted branch whose line the same edit set keeps that line', async () => {
+  it('a topic moved into a formatted branch keeps the keys the same edit set, over the parent’s', async () => {
     const { controller, props, find, unchanged } = await mount()
+    const own = { color: '#00ff00' }
     controller.edit(
       (root) => {
         const a = root.children![0]!
         const c = root.children!.splice(2, 1)[0]!
         a.children!.push(c)
-        const own = { color: '#00ff00' }
         c.metadata = { ...c.metadata!, line: own }
         c.children![0]!.metadata = { ...c.children![0]!.metadata!, line: own }
         // and a new topic the edit gives no line takes the parent's
         c.children!.push({ id: OTHER, topic: 'Plain new' } as MapNode)
       },
-      { restyledLines: [ID.c, ID.c1] },
+      {
+        restyledLines: [ID.c, ID.c1],
+        lineEdits: new Map([
+          [ID.c, own],
+          [ID.c1, own],
+        ]),
+      },
     )
     expect(find(ID.a)!.children!.attached!.map((child) => child.id)).toContain(ID.c)
-    expect(props(ID.c)).toEqual({ 'line-color': '#00ff00' })
-    expect(props(ID.c1)).toEqual({ 'line-color': '#00ff00' })
+    // the colour set; the keys it did not set are the parent's
+    expect(props(ID.c)).toEqual({ ...LINE_A, 'line-color': '#00ff00' })
+    expect(props(ID.c1)).toEqual({ ...LINE_A, 'line-color': '#00ff00' })
     expect(props(OTHER)).toEqual(LINE_A)
     controller.undo()
     expect(await unchanged()).toBe(true)
@@ -734,6 +741,20 @@ describe('boundaries', () => {
     expect(controller.selectedBoundaryId).toBe(ID.boundary)
   })
 
+  it('a press on empty space lets the boundary go, so a later Delete takes nothing', async () => {
+    layOut()
+    const { controller, mind, find } = await mount()
+    controller.selectBoundary(ID.boundary)
+    const down = pointer(mind.nodes, 'pointerdown')
+    // the library still has the press
+    expect(down.defaultPrevented).toBe(false)
+    expect(controller.selectedBoundaryId).toBeNull()
+    expect(controller.selection()).toEqual({ kind: 'none' })
+    press(mind.container, 'Delete')
+    expect((find(ID.b)!.boundaries as Record<string, unknown>[])[0]!.id).toBe(ID.boundary)
+    expect(controller.canUndo).toBe(false)
+  })
+
   it('Delete removes the selected boundary, as one step; the topics stay', async () => {
     const { controller, mind, find, unchanged } = await mount()
     controller.selectBoundary(ID.boundary)
@@ -798,6 +819,34 @@ describe('boundaries', () => {
     controller.undo()
     controller.undo()
     expect(doc.changed).toBe(false)
+  })
+
+  it('its title is one line: Shift+Enter breaks no line, and a typed or pasted break is a space', async () => {
+    layOut()
+    const { controller, el, find } = await mount()
+    const title = () => (find(ID.b)!.boundaries as Record<string, unknown>[])[0]!.title
+    controller.selectBoundary(ID.boundary)
+    controller.editBoundaryTitle(ID.boundary)
+    const box = el.querySelector<HTMLElement>('#input-box')!
+    const shiftEnter = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    })
+    box.dispatchEvent(shiftEnter)
+    expect(shiftEnter.defaultPrevented).toBe(true)
+    // the box stays open: Shift+Enter neither breaks the line nor takes the title
+    expect(el.querySelector('#input-box')).toBe(box)
+    box.textContent = 'first\r\n  second\nthird'
+    box.dispatchEvent(new FocusEvent('blur'))
+    expect(title()).toBe('first second third')
+    expect(el.querySelector('#input-box')).toBeNull()
+
+    // the controller's own way in takes one line too
+    expect(controller.setBoundaryTitle(ID.boundary, 'a\nb')).toBe(true)
+    expect(title()).toBe('a b')
+    expect(controller.setBoundaryTitle(ID.boundary, 'a \n b')).toBe(false)
   })
 
   it('takes every value, the fill included, as one step; taking them off goes back to none', async () => {

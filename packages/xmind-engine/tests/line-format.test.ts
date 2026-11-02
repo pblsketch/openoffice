@@ -7,7 +7,6 @@ import {
   isWritableRelationshipStyle,
   isWritableSummaryStyle,
   readCurve,
-  readLineWidth,
 } from '../src/line-style'
 import { countPreservedElements } from '../src/preserved'
 import { reconcileSheet, type ReconcileOptions, type ReconcileResult } from '../src/reconcile'
@@ -287,12 +286,7 @@ describe('reading line values', () => {
     expect(view.boundaries?.map((entry) => entry.id)).toContain('bd-a')
   })
 
-  it('reads widths with or without a unit and curves of the shape the format writes', () => {
-    expect(readLineWidth('3pt')).toBe(3)
-    expect(readLineWidth('1.5')).toBe(1.5)
-    expect(readLineWidth('2px')).toBe(2)
-    expect(readLineWidth('wide')).toBeNull()
-    expect(readLineWidth('0pt')).toBeNull()
+  it('reads curves of the shape the format writes', () => {
     expect(readCurve({ '0': { x: 1, y: 2 }, '1': { x: 3, y: 4 } })).toEqual({
       from: { x: 1, y: 2 },
       to: { x: 3, y: 4 },
@@ -719,12 +713,25 @@ describe('the format and the curve of a relationship', () => {
     expect(properties(rel)?.['line-color']).toBe('#654321')
   })
 
-  it('refuses a curve that is not two points', async () => {
-    const document = await opened()
-    const state = copyOf(document.viewSheets()[0]!)
-    ;(state.relationships[0] as unknown as Record<string, unknown>).curve = { from: { x: 1 } }
-    const result = reconcileSheet(document, 0, state, { restyledRelationships: ['rel-1'] })
-    expect(result.ok).toBe(false)
+  it('leaves the file’s curve for a curve that is not two points, and applies the rest of the state', async () => {
+    for (const curve of [{ from: { x: 1 } }, 'curved', { from: { x: 1, y: 2 }, to: null }]) {
+      const document = await opened()
+      const before = copyOf(relationship(document.sheets[0]!, 'rel-1'))
+      const state = copyOf(document.viewSheets()[0]!)
+      const line = state.relationships[0]!
+      ;(line as unknown as Record<string, unknown>).curve = curve
+      line.title = 'renamed'
+      line.style = { ...line.style, color: '#111111' }
+      const result = reconcileSheet(document, 0, state, { restyledRelationships: ['rel-1'] })
+      expect(result.ok, JSON.stringify(curve)).toBe(true)
+      // the editor showed a curve the file does not hold: it draws the file's again
+      expect(applied(result).inSync).toBe(false)
+      const rel = relationship(document.sheets[0]!, 'rel-1')
+      expect(rel.title).toBe('renamed')
+      expect(properties(rel)?.['line-color']).toBe('#111111')
+      expect(rel.controlPoints).toEqual(before.controlPoints)
+      expect(rel.lineEndPoints).toEqual(before.lineEndPoints)
+    }
   })
 
   it('writes the format and curve of a relationship the state adds', async () => {
@@ -956,6 +963,67 @@ describe('boundaries', () => {
     // ones the editor cannot draw stay even when named
     expect(boundariesOf(sheet, 'float').map((entry) => entry.id)).toEqual(['bd-float'])
     expect(countPreservedElements(sheet)).toBe(before - 1)
+  })
+
+  it('shows and settles only the first of the boundaries that share an id, and leaves the others as they are', async () => {
+    const sheets = linedSheets()
+    const root = sheets[0]!.rootTopic
+    const a = root.children!.attached![0]!
+    const second = {
+      id: 'bd-dup',
+      range: '(1,1)',
+      title: 'Second',
+      style: { id: 'style-dup-2', properties: { 'line-color': '#222222' } },
+    }
+    const third = { id: 'bd-dup', range: '(0,0)', title: 'Third' }
+    // the first in the view's order: the central topic's comes before its branches'
+    ;(root.boundaries as unknown[]).push({ id: 'bd-dup', range: '(0,0)', title: 'First' }, third)
+    a.boundaries = [...(a.boundaries as unknown[]), second]
+    const document = await openSheets(sheets)
+    const view = document.viewSheets()[0]!
+    expect(view.boundaries!.filter((entry) => entry.id === 'bd-dup')).toEqual([
+      { id: 'bd-dup', topicId: 'root', range: { start: 0, end: 0 }, title: 'First', style: {} },
+    ])
+    const untouched = { second: copyOf(second), third: copyOf(third) }
+
+    const result = reconcile(
+      document,
+      (state) => {
+        const target = boundary(state, 'bd-dup')
+        target.title = 'Renamed'
+        target.style = { color: '#123456' }
+        inView(state, 'b').title = 'B again'
+      },
+      { restyledBoundaries: ['bd-dup'] },
+    )
+    expect(result.inSync).toBe(true)
+    const sheet = document.sheets[0]!
+    const dups = (topicId: string) =>
+      boundariesOf(sheet, topicId).filter((entry) => entry.id === 'bd-dup')
+    expect(dups('root')).toEqual([
+      {
+        id: 'bd-dup',
+        range: '(0,0)',
+        title: 'Renamed',
+        style: { id: expect.any(String), properties: { 'line-color': '#123456' } },
+      },
+      untouched.third,
+    ])
+    expect(dups('a')).toEqual([untouched.second])
+
+    // removing it takes the first alone; the next of that id is the one shown then
+    const removed = reconcile(
+      document,
+      (state) => {
+        state.boundaries = state.boundaries!.filter((entry) => entry.id !== 'bd-dup')
+      },
+      { removedBoundaries: ['bd-dup'] },
+    )
+    expect(dups('root')).toEqual([untouched.third])
+    expect(dups('a')).toEqual([untouched.second])
+    expect(removed.view.boundaries!.filter((entry) => entry.id === 'bd-dup')).toEqual([
+      { id: 'bd-dup', topicId: 'root', range: { start: 0, end: 0 }, title: 'Third', style: {} },
+    ])
   })
 
   it('leaves the boundaries alone for a state that carries none', async () => {

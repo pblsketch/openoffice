@@ -11,6 +11,8 @@
  * has a shape the engine writes is decided where it is written. A key left out
  * of a state is "not set", except for the boundaries of a sheet and the curve
  * of a relationship, where a missing key means "not carried": nothing changes.
+ * A curve that is not two points is read as not carried too: the file keeps
+ * its own, and the rest of the state still applies.
  */
 
 import { VIEW_LAYOUTS, type ViewLayout } from './layout'
@@ -100,7 +102,7 @@ export interface StateRelationship {
   toId: string
   title: string
   style: ViewRelationshipStyle
-  /** undefined when the state carries no curve; null asks for the automatic one */
+  /** undefined when the state carries no curve, or none that can be written; null asks for the automatic one */
   curve: ViewCurve | null | undefined
 }
 
@@ -299,20 +301,22 @@ function readRelationship(relationship: unknown): StateRelationship {
     toId: toId as string,
     title,
     style: readStyle(style, RELATIONSHIP_STYLE_PROPERTIES),
-    curve: curve === undefined ? undefined : readStateCurve(curve, id as string),
+    curve: readStateCurve(curve),
   }
 }
 
-function readStateCurve(curve: unknown, owner: string): ViewCurve | null {
+/** A curve of the state; undefined (the curve untouched) for anything that is not two points. */
+export function readStateCurve(curve: unknown): ViewCurve | null | undefined {
   if (curve === null) return null
-  const point = (value: unknown): { x: number; y: number } => {
-    if (!isRecord(value) || !isFiniteNumber(value.x) || !isFiniteNumber(value.y)) {
-      refuse(`the curve of relationship ${owner} is not two points`)
-    }
-    return { x: value.x, y: value.y }
-  }
-  if (!isRecord(curve)) refuse(`the curve of relationship ${owner} is not two points`)
-  return { from: point(curve.from), to: point(curve.to) }
+  if (!isRecord(curve)) return undefined
+  const from = statePoint(curve.from)
+  const to = statePoint(curve.to)
+  return from && to ? { from, to } : undefined
+}
+
+function statePoint(value: unknown): { x: number; y: number } | null {
+  if (!isRecord(value) || !isFiniteNumber(value.x) || !isFiniteNumber(value.y)) return null
+  return { x: value.x, y: value.y }
 }
 
 /** Boundary ids are unique in the copy. */
