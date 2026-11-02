@@ -5,6 +5,11 @@
  * (skeleton), the colour band and the ground variant. Picking in one list
  * keeps the other two, so every click is one of the 96 themes.
  *
+ * Below them are two switches for the lines of the whole sheet: lines that
+ * taper towards the main topics, and a colour of the band for each main
+ * branch. Like a theme, they are written to the sheet when switched, are not
+ * steps of the history, and stay when another theme is picked.
+ *
  * The panel itself is chrome and takes the app's colours from tokens. The
  * small pictures in it show map colours: those are document content, come
  * straight from the engine's theme data and look the same whether the app is
@@ -12,6 +17,7 @@
  * anywhere.
  */
 import type { ReactNode } from 'react'
+import type { MapLineSettings } from '../map/line-resolve'
 import {
   parseThemeId,
   THEME_BAND_IDS,
@@ -36,7 +42,11 @@ export interface ThemePanelProps {
   /** false while that is the default look standing in for a theme this app did not write */
   written: boolean
   disabled: boolean
+  /** the map-wide line settings the sheet is drawn with */
+  lines: MapLineSettings
   onPick(id: ThemeId): void
+  onTapered(on: boolean): void
+  onRainbow(on: boolean): void
   onClose(): void
 }
 
@@ -142,6 +152,26 @@ export function ThemePanel(p: ThemePanelProps) {
           ))}
         </Group>
 
+        <section className="mm-theme-group" data-theme-group="lines">
+          <h3 className="mm-theme-label">{t('themeLines')}</h3>
+          <div className="mm-theme-switches">
+            <Switch
+              action="theme-tapered"
+              label={t('themeTapered')}
+              on={p.lines.tapered}
+              disabled={p.disabled}
+              onSwitch={p.onTapered}
+            />
+            <Switch
+              action="theme-rainbow"
+              label={t('themeRainbow')}
+              on={p.lines.rainbow}
+              disabled={p.disabled}
+              onSwitch={p.onRainbow}
+            />
+          </div>
+        </section>
+
         <p className="mm-theme-hint">{t('themePerSheet')}</p>
       </div>
     </aside>
@@ -186,6 +216,33 @@ function Option(p: {
     >
       <span className="mm-theme-picture">{p.children}</span>
       <span className="mm-theme-name">{p.name}</span>
+    </button>
+  )
+}
+
+/** A setting that is on or off, switched by a press. */
+function Switch(p: {
+  action: string
+  label: string
+  on: boolean
+  disabled: boolean
+  onSwitch(on: boolean): void
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={p.on}
+      className={`mm-theme-switch${p.on ? ' on' : ''}`}
+      data-action={p.action}
+      disabled={p.disabled}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => p.onSwitch(!p.on)}
+    >
+      <span className="mm-theme-switch-track" aria-hidden="true">
+        <span className="mm-theme-switch-knob" />
+      </span>
+      <span className="mm-theme-switch-label">{p.label}</span>
     </button>
   )
 }

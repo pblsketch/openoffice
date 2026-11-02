@@ -1171,8 +1171,37 @@ textarea.mm-field {
   background: none;
 }
 
-.mm-format-clear {
+/* a section for each kind of item: text, the line of a branch, a relationship, a summary, a boundary */
+.mm-format-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mm-format-section + .mm-format-section {
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.mm-format-section-title {
+  margin: 0 2px;
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+/* "copy format" and "clear format", and the other buttons with a word on them */
+.mm-format-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mm-format-action {
+  display: inline-flex;
+  align-items: center;
   align-self: flex-start;
+  gap: 4px;
   height: 30px;
   padding: 0 12px;
   border: 1px solid var(--border);
@@ -1184,11 +1213,148 @@ textarea.mm-field {
   cursor: pointer;
 }
 
-.mm-format-clear:hover:not(:disabled) {
+.mm-format-action svg {
+  flex: 0 0 auto;
+  margin-left: -4px;
+}
+
+.mm-format-action:hover:not(:disabled) {
   background: var(--hover);
 }
 
-.mm-format-clear:disabled {
+/* the painter holding a format, a fill of none: marked the way the app marks what it has selected */
+.mm-format-action.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.mm-format-action[data-painter='sticky'] {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.mm-format-action:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+.mm-format-shapes {
+  flex-wrap: wrap;
+}
+
+/* "mixed", "other shape", and why the shape cannot be picked in this layout */
+.mm-format-state {
+  margin: 0 2px 6px;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.mm-format-width,
+.mm-format-pattern {
+  width: 100%;
+  font-size: 12.5px;
+}
+
+.mm-pattern-sample {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* "no fill" above the palette of a boundary's fill */
+.mm-format-group .mm-format-action + .mm-format-colors {
+  margin-top: 6px;
+}
+
+/* ---- the line switches of the theme panel ---- */
+
+.mm-theme-switches {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mm-theme-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 4px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.mm-theme-switch:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.mm-theme-switch:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.mm-theme-switch-track {
+  position: relative;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--border-strong, var(--border));
+  transition: background 0.15s;
+}
+
+.mm-theme-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--surface);
+  transition: left 0.15s;
+}
+
+.mm-theme-switch.on .mm-theme-switch-track {
+  background: var(--accent);
+}
+
+.mm-theme-switch.on .mm-theme-switch-knob {
+  left: 14px;
+}
+
+/* ---- the menu on a boundary ---- */
+
+.mm-boundary-menu {
+  position: fixed;
+  z-index: 50;
+  min-width: 140px;
+  padding: 4px 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: var(--shadow-menu);
+}
+
+.mm-boundary-menu-item {
+  display: block;
+  width: 100%;
+  padding: 6px 14px;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.mm-boundary-menu-item:hover {
+  background: var(--hover);
 }
