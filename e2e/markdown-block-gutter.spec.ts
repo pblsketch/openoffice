@@ -41,6 +41,12 @@ test('the block gutter sits left of the hovered block, like Notion', async () =>
     await gutterBeside(page, editor.locator('p').first())
     await gutterBeside(page, editor.locator('li').nth(1))
     await page.screenshot({ path: screenshotPath('markdown-block-gutter') })
+
+    // the grip's menu acts on that one item: it moves inside the list
+    await gutterBeside(page, editor.locator('li').first())
+    await page.locator('.md-gutter-grip').click()
+    await page.locator('.md-block-menu-item', { hasText: 'Move down' }).click()
+    await expect(editor.locator('li')).toHaveText(['second item', 'first item'])
   } finally {
     await closeAndSaveVideo(launched, 'markdown-block-gutter')
   }
