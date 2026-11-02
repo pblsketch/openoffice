@@ -1003,3 +1003,65 @@ describe('"Insert picture" on the toolbar', () => {
     expect(container.querySelector('.mm-save-status')!.textContent).toBe('')
   })
 })
+
+describe('the text format', () => {
+  const ONE = 'cccccccc-cccc-4ccc-8ccc-ccccccccccc1'
+  const pressed = (action: string): string | null =>
+    container.querySelector(`[data-action="${action}"]`)!.getAttribute('aria-pressed')
+
+  it('the toolbar toggles and the panel set the format of the selected topic, and the save carries it', async () => {
+    const { fake } = await openWith(plainSheet())
+    await selectOnMap(ONE)
+    await click('[data-action="italic"]')
+    expect(pressed('italic')).toBe('true')
+    expect(topicEl(ONE).style.fontStyle).toBe('italic')
+    expect(fake.dirty.at(-1)).toBe(true)
+
+    await click('[data-action="text-format"]')
+    expect(container.querySelector('.mm-format-panel')).not.toBeNull()
+    expect(pressed('text-format')).toBe('true')
+    expect(pressed('format-italic')).toBe('true')
+    await click('[data-action="format-align-left"]')
+    await click('[data-action="format-strike"]')
+    const size = container.querySelector<HTMLInputElement>('[data-action="format-size"]')!
+    await act(async () => {
+      const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+      setValue.call(size, '21')
+      size.dispatchEvent(new Event('input', { bubbles: true }))
+      size.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    })
+    await settle()
+    expect(topicEl(ONE).style.textDecoration).toContain('line-through')
+    expect(topicEl(ONE).style.textAlign).toBe('left')
+
+    await click('[data-action="save"]')
+    await savesReach(fake)
+    const saved = await openXmind(fake.saves[0]!.bytes)
+    if (saved.status !== 'ok') throw new Error('the saved map does not open')
+    const one = saved.document.sheets[0]!.rootTopic.children!.attached![0]!
+    expect((one.style as { properties: unknown }).properties).toEqual({
+      'fo:font-style': 'italic',
+      'fo:text-align': 'left',
+      'fo:text-decoration': 'line-through',
+      'fo:font-size': '21pt',
+    })
+
+    await click('[data-action="format-close"]')
+    expect(container.querySelector('.mm-format-panel')).toBeNull()
+  })
+
+  it('the panel says what to do without a selected topic, and opens one panel at a time', async () => {
+    await openWith(plainSheet())
+    await click('[data-action="theme"]')
+    await click('[data-action="text-format"]')
+    expect(container.querySelector('.mm-format-panel')).not.toBeNull()
+    expect(container.querySelector('[data-theme-id]')).toBeNull()
+    expect(container.querySelector('.mm-format-panel')!.textContent).toContain(
+      'Select a topic to change its text format.',
+    )
+    expect(
+      container.querySelector<HTMLButtonElement>('[data-action="format-bold"]')!.disabled,
+    ).toBe(true)
+    expect(container.querySelector<HTMLButtonElement>('[data-action="bold"]')!.disabled).toBe(true)
+  })
+})

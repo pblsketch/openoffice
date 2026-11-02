@@ -44,6 +44,8 @@ export interface TextFormat {
   fontFamily?: string | null
   align?: TextAlign | null
   textCase?: TextTransform | null
+  /** takes every text format off the topic and its title first; the fill stays */
+  clear?: true
 }
 
 /** The keys a part of a title may be given. */
@@ -125,6 +127,11 @@ export function formatTopic(
   format: TextFormat,
   base: TextBase,
 ): { style: ViewTopicStyle; titleRuns: ViewTitleRun[] | null } {
+  if (format.clear) {
+    const bare: ViewTopicStyle = style.fill === undefined ? {} : { fill: style.fill }
+    const { clear: _clear, ...rest } = format
+    return formatTopic(bare, null, rest, base)
+  }
   const next: ViewTopicStyle = { ...style }
   const set = (key: keyof ViewTopicStyle, value: string | null): void => {
     if (value === null) delete next[key]

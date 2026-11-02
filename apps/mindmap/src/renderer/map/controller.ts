@@ -522,6 +522,11 @@ export class MapController {
   #textBase(node: NodeObj): TextBase {
     let depth = 1
     for (let up = node.parent; up; up = up.parent) depth++
+    return this.textBaseAt(depth)
+  }
+
+  /** What a topic this deep (1: the central topic) shows without a format of its own. */
+  textBaseAt(depth: number): TextBase {
     const { shapes, deepSizes } = this.#look
     const shape = depth === 1 ? shapes.central : depth === 2 ? shapes.main : shapes.sub
     const deep = depth > 3 ? deepSizes[Math.min(depth - 4, deepSizes.length - 1)] : undefined
@@ -554,6 +559,8 @@ export class MapController {
     }
     box.addEventListener('keydown', (event) => this.#onTitleKey(event, editing))
     box.addEventListener('blur', () => this.#endTitleEdit(editing), { once: true })
+    // the format panel says that its toggles now go to the selected characters
+    this.#host.onStateChange()
   }
 
   #onTitleKey(event: KeyboardEvent, editing: TitleEdit): void {
@@ -596,7 +603,9 @@ export class MapController {
    */
   #endTitleEdit(editing: TitleEdit): void {
     if (this.#editing === editing) this.#editing = null
-    if (editing.cancelled || this.#destroyed) return
+    if (this.#destroyed) return
+    this.#host.onStateChange()
+    if (editing.cancelled) return
     const { box, node } = editing
     // what the library takes: the box's text, cut, and nothing when it is empty
     const text = box.innerText?.trim() || ''
@@ -774,9 +783,11 @@ export class MapController {
    * This is the way in for edits that are not one library call: several at
    * once, or topics that are folded away and have no element.
    */
-  edit(change: (root: MapNode) => void): void {
+  edit(change: (root: MapNode) => void, options: { restyled?: readonly string[] } = {}): void {
     const mind = this.mind
     const selected = this.selectedTopicIds()
+    // topics whose text format `change` set: the engine writes it only for these
+    for (const id of options.restyled ?? []) this.#restyled.add(id)
     change(mind.nodeData as MapNode)
     normaliseTree(mind.nodeData, topicIdsOf(this.#lastView))
     mind.refresh()
