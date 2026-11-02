@@ -389,6 +389,8 @@
 
 .mm-card .map-container .mm-boundaries .mm-boundary-shape {
   stroke-linejoin: round;
+  /* the outline takes a press (it selects the boundary); what it goes around does not */
+  pointer-events: stroke;
 }
 
 .mm-card .map-container .mm-boundaries g:not([data-mm-color]) > .mm-boundary-shape {
@@ -413,6 +415,7 @@
   fill: var(--mm-text);
   font-size: 12px;
   font-weight: 600;
+  pointer-events: auto;
 }
 
 .mm-card .map-container .svg-label {

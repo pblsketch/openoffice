@@ -20,13 +20,17 @@
  */
 import {
   addSheet,
+  applySheetRainbow,
+  applySheetTapered,
   applySheetTheme,
+  BRANCH_LINE_PROPERTIES,
   checkContentStructure,
   countPreservedInDocument,
   countPreservedWithTopics,
   deleteSheet,
   isRecord,
   isUnknownSheetTheme,
+  isWritableBranchLine,
   newXmindId,
   type NewSheetOptions,
   openXmind,
@@ -35,9 +39,12 @@ import {
   recogniseSheetTheme,
   renameSheet,
   type SheetEditResult,
+  type SheetLineSettings,
+  sheetLineSettings,
   sheetsToOutline,
   sheetToView,
   type ThemeId,
+  type ViewBranchLine,
   type ViewSheet,
   type XmindDocument,
   type XmindSheet,
@@ -54,12 +61,22 @@ export interface SheetTab {
 export interface ApplyOptions {
   /** true for a change the drawing library recorded in its history; false for one it did not (folding, the layout) */
   step: boolean
-  /** ids of relationships whose curve the user moved */
-  reshapedRelationships?: readonly string[]
   /** ids of topics whose picture the user took off */
   removedPictures?: readonly string[]
   /** ids of topics whose text format the user changed */
   restyledTopics?: readonly string[]
+  /** ids of topics whose line format the user changed (or that took the line format of a new parent) */
+  restyledTopicLines?: readonly string[]
+  /** ids of topics whose fill the user changed */
+  refilledTopics?: readonly string[]
+  /** ids of relationships whose format or curve the user changed */
+  restyledRelationships?: readonly string[]
+  /** summary topic ids of summaries whose bracket the user changed */
+  restyledSummaries?: readonly string[]
+  /** ids of boundaries whose format the user changed */
+  restyledBoundaries?: readonly string[]
+  /** ids of boundaries the user removed */
+  removedBoundaries?: readonly string[]
 }
 
 export interface SaveBytesOptions {
@@ -100,6 +117,8 @@ export class DocumentSession {
    */
   #baseline: Promise<Uint8Array | null>
   readonly #listeners = new Set<() => void>()
+  /** per sheet: the colour list its branch colours had before the user switched them off this run */
+  readonly #rainbowColors = new Map<string, string>()
 
   /**
    * `baseline`: the bytes `document` was opened from. Left out, it is taken
@@ -181,9 +200,14 @@ export class DocumentSession {
           : entry.snapshots[entry.cursor]!
     }
     const result = reconcileSheet(this.#document, index, state, {
-      reshapedRelationships: options.reshapedRelationships,
       removedPictures: options.removedPictures,
       restyledTopics: options.restyledTopics,
+      restyledTopicLines: options.restyledTopicLines,
+      refilledTopics: options.refilledTopics,
+      restyledRelationships: options.restyledRelationships,
+      restyledSummaries: options.restyledSummaries,
+      restyledBoundaries: options.restyledBoundaries,
+      removedBoundaries: options.removedBoundaries,
     })
     const changed = result.ok && result.changed
     if (before) {
@@ -265,6 +289,12 @@ export class DocumentSession {
    * again. One step of the history, like a reconciled change, so the caller
    * has the drawing library record a step for it as well.
    *
+   * `line` are line values the topics take on the way in (those the new
+   * parent has written on itself, `map/line-format.ts`): each value the
+   * engine writes goes onto every topic that arrives and every branch below
+   * it, over the value of the same key. Left out or empty, the topics keep
+   * their own.
+   *
    * Null, with nothing changed, when it cannot be done: the target is not a
    * shown topic, an id is in the file again, or the result would not be a
    * tree a file may hold.
@@ -274,22 +304,22 @@ export class DocumentSession {
     parentId: string,
     topics: readonly XmindTopic[],
     relationships: readonly Record<string, unknown>[] = [],
+    options: { line?: ViewBranchLine } = {},
   ): ViewSheet | null {
     const { entry, index } = this.#at(key)
     const live = this.#document.sheets[index]!
     const taken = this.topicIds()
-    const arriving = new Set<string>()
-    for (const topic of topics) collectIds(topic, arriving)
-    if (topics.length === 0 || [...arriving].some((id) => taken.has(id))) return null
+    const incoming = new Set<string>()
+    for (const topic of topics) collectIds(topic, incoming)
+    if (topics.length === 0 || [...incoming].some((id) => taken.has(id))) return null
 
     const next = structuredClone(live)
     const parent = findShown(next.rootTopic, parentId)
     if (!parent) return null
     const children = (parent.children ??= {})
-    children.attached = [
-      ...(children.attached ?? []),
-      ...topics.map((topic) => structuredClone(topic)),
-    ]
+    const arriving = topics.map((topic) => structuredClone(topic))
+    for (const topic of arriving) putBranchLine(topic, options.line ?? {})
+    children.attached = [...(children.attached ?? []), ...arriving]
     // what was pasted into a folded topic is shown, as the library does it
     if (parent.branch === 'folded') delete parent.branch
 
@@ -355,6 +385,41 @@ export class DocumentSession {
   /** How many preserve-only elements would go with these topics (or summaries, by summary topic id). */
   preservedWith(key: string, topicIds: readonly string[]): number {
     return countPreservedWithTopics(this.sheet(key), topicIds)
+  }
+
+  // ---- the map-wide line settings: switched in the theme panel, outside the map's history ----
+
+  /** The tapered lines and the branch colours of a sheet, as its theme holds them. */
+  lineSettings(key: string): SheetLineSettings {
+    return sheetLineSettings(this.sheet(key))
+  }
+
+  /**
+   * The user switched the tapered lines of a sheet. Written into the sheet's
+   * theme (that key alone), like a theme the user picks; not a step of the
+   * history. False, with nothing written, when the sheet already reads that way.
+   */
+  applyTapered(key: string, on: boolean): boolean {
+    const changed = applySheetTapered(this.#document, this.#at(key).index, on)
+    if (changed) this.#notify()
+    return changed
+  }
+
+  /**
+   * The user switched the branch colours of a sheet, as `applyTapered`.
+   * Switching them off keeps the colour list the sheet held, for this run
+   * only (the file keeps no copy), so switching them on again gives it back
+   * on a sheet whose theme is not one of this app's.
+   */
+  applyRainbow(key: string, on: boolean): boolean {
+    const { index } = this.#at(key)
+    const before = sheetLineSettings(this.#document.sheets[index]!)
+    if (!on && before.rainbow && before.rainbowColors !== null) {
+      this.#rainbowColors.set(key, before.rainbowColors)
+    }
+    const changed = applySheetRainbow(this.#document, index, on, this.#rainbowColors.get(key))
+    if (changed) this.#notify()
+    return changed
   }
 
   // ---- the theme of a sheet: picked in the theme panel, outside the map's history ----
@@ -530,6 +595,34 @@ function collectIds(topic: XmindTopic, into: Set<string>, depth = 0): void {
     for (const child of kind) {
       if (isRecord(child)) collectIds(child as XmindTopic, into, depth + 1)
     }
+  }
+}
+
+/**
+ * Writes line values onto a topic and every branch below it, over the values
+ * of the same keys. Only values the engine writes; the rest of each style
+ * stays as it is.
+ */
+function putBranchLine(topic: XmindTopic, line: ViewBranchLine, depth = 0): void {
+  const values = (Object.keys(BRANCH_LINE_PROPERTIES) as (keyof ViewBranchLine)[]).flatMap(
+    (name) => {
+      const value = line[name]
+      return value !== undefined && isWritableBranchLine(name, value)
+        ? [[BRANCH_LINE_PROPERTIES[name], value] as const]
+        : []
+    },
+  )
+  if (values.length === 0) return
+  if (!isRecord(topic.style)) topic.style = { id: newXmindId(), properties: {} }
+  const style = topic.style as Record<string, unknown>
+  if (!isRecord(style.properties)) style.properties = {}
+  const properties = style.properties as Record<string, unknown>
+  for (const [property, value] of values) properties[property] = value
+  if (depth > MAX_WALK_DEPTH) return
+  const attached = topic.children?.attached
+  if (!Array.isArray(attached)) return
+  for (const child of attached) {
+    if (isRecord(child)) putBranchLine(child, line, depth + 1)
   }
 }
 

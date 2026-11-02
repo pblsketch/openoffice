@@ -281,6 +281,14 @@ export function boundariesOf(data: Pick<MindElixirData, 'meta'>): ViewBoundary[]
   return readBoundaries(data.meta?.[BOUNDARIES_KEY]) ?? []
 }
 
+/** The library's `meta` with these boundaries in it, everything else of it kept. */
+export function withBoundaries(
+  meta: Record<string, unknown> | undefined,
+  boundaries: readonly ViewBoundary[],
+): Record<string, unknown> {
+  return { ...(meta ?? {}), [BOUNDARIES_KEY]: boundaries.map(copyBoundary) }
+}
+
 /** What `mindToState` needs to know besides the library's data. */
 export interface StateBase {
   /** the view the screen was last brought in line with */
