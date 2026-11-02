@@ -23,6 +23,7 @@
     "./font-store": "./src/font-store.ts",
     "./office-encryption": "./src/office-encryption.ts",
     "./headless-export": "./src/headless-export.ts",
+    "./print-cups": "./src/print-cups.ts",
     "./print-job": "./src/print-job.ts",
     "./print-window": "./src/print-window.ts",
     "./remote-image": "./src/remote-image.ts",

@@ -28,6 +28,7 @@ import type {
   PrintJobOptions,
   MenuCommand,
   AutoSaveDefault,
+  PrintPaper,
   ContextMenuRequest,
   DocTheme,
   UiTheme,
@@ -204,7 +205,8 @@ const api: DesktopApi = {
     ipcRenderer.invoke('docs:merge-output', request),
   fontMetrics: (family: string) => ipcRenderer.invoke('docs:font-metrics', family),
   fontFamilyInfo: (families) => ipcRenderer.invoke('app:font-family-info', families),
-  print: (scale?: number, job?: PrintJobOptions) => ipcRenderer.invoke('docs:print', scale, job),
+  print: (scale?: number, job?: PrintJobOptions, paper?: PrintPaper) =>
+    ipcRenderer.invoke('docs:print', scale, job, paper),
   listPrinters: () => ipcRenderer.invoke('docs:printers'),
   exportPdf: (
     defaultName: string,
