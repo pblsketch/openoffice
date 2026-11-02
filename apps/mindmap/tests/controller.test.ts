@@ -472,7 +472,7 @@ describe('deleting', () => {
     mind.selectNode(mind.findEle(IDS.a))
     press(mind.container, 'Delete')
     await settle()
-    expect(host.confirmDelete).toHaveBeenCalledExactlyOnceWith(3)
+    expect(host.confirmDelete).toHaveBeenCalledExactlyOnceWith(2)
     expect(attached().map((child) => child.id)).toEqual([IDS.a, IDS.b, IDS.c])
     expect(doc.changed).toBe(false)
   })
@@ -482,7 +482,7 @@ describe('deleting', () => {
     mind.selectNode(mind.findEle(IDS.a))
     press(mind.container, 'Delete')
     await settle()
-    expect(host.confirmDelete).toHaveBeenCalledExactlyOnceWith(3)
+    expect(host.confirmDelete).toHaveBeenCalledExactlyOnceWith(2)
     expect(attached().map((child) => child.id)).toEqual([IDS.b, IDS.c])
     expect(JSON.stringify(doc.sheets[0])).not.toContain(IDS.callout)
   })
@@ -495,6 +495,29 @@ describe('deleting', () => {
     expect(attached()).toHaveLength(3)
     expect(await controller.removeTopics([IDS.b], 'refuse')).toEqual({ ok: true })
     expect(attached().map((child) => child.id)).toEqual([IDS.a, IDS.c])
+  })
+
+  it('the user is not asked about a boundary the map draws; a caller that may not ask still counts it', async () => {
+    const sheet = plainSheet()
+    const branches = [
+      'cccccccc-cccc-4ccc-8ccc-ccccccccccc1',
+      'cccccccc-cccc-4ccc-8ccc-ccccccccccc2',
+    ]
+    // a boundary on screen around both branches
+    Object.assign(sheet.rootTopic, { boundaries: [{ id: 'drawn', range: '(0,1)' }] })
+    const { controller, mind, host, doc, attached } = await mount([sheet])
+    expect(await controller.removeTopics(branches, 'refuse')).toEqual({
+      ok: false,
+      reason: 'preserved',
+      preserved: 1,
+    })
+    expect(attached()).toHaveLength(2)
+    mind.selectNodes(branches.map((id) => mind.findEle(id)))
+    press(mind.container, 'Delete')
+    await settle()
+    expect(host.confirmDelete).not.toHaveBeenCalled()
+    expect(attached()).toHaveLength(0)
+    expect(doc.sheets[0]!.rootTopic).not.toHaveProperty('boundaries')
   })
 
   it('the central topic is never deleted', async () => {
@@ -1023,7 +1046,7 @@ describe('cut and paste', () => {
     })
 
     const clipboard = await cut(mind, IDS.a)
-    expect(host.confirmDelete).toHaveBeenCalledExactlyOnceWith(3)
+    expect(host.confirmDelete).toHaveBeenCalledExactlyOnceWith(2)
     expect(attached().map((source) => source.id)).toEqual([IDS.b, IDS.c])
     const afterCut = JSON.stringify(doc.sheets[0])
 

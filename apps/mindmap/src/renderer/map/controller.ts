@@ -862,14 +862,16 @@ export class MapController {
   /**
    * Deletes topics with everything below them. When that would take elements
    * the editor does not show, the user is asked first (`ask`) or the deletion
-   * is turned down with their number (`refuse`).
+   * is turned down with their number (`refuse`). The user is not asked about a
+   * boundary the map draws; a caller that may not ask counts it all the same
+   * (`#takenWith`).
    */
   async removeTopics(ids: readonly string[], mode: DeleteMode = 'ask'): Promise<RemoveOutcome> {
     const wanted = new Set(ids)
     wanted.delete(this.mind.nodeData.id)
     const found = [...wanted].filter((id) => this.#node(id))
     if (found.length === 0) return { ok: false, reason: 'nothing' }
-    const preserved = this.#session.preservedWith(this.#key, found)
+    const preserved = this.#takenWith(found, mode)
     if (preserved > 0) {
       if (mode === 'refuse') return { ok: false, reason: 'preserved', preserved }
       if (!(await this.#host.confirmDelete(preserved))) {
@@ -887,12 +889,23 @@ export class MapController {
     return { ok: true }
   }
 
+  /**
+   * What a deletion takes that stands in its way: for the user (`ask`), the
+   * elements they cannot see; for a caller that may not ask (`refuse`), every
+   * preserve-only element, boundaries on the map among them.
+   */
+  #takenWith(ids: readonly string[], mode: DeleteMode): number {
+    return mode === 'refuse'
+      ? this.#session.preservedWith(this.#key, ids)
+      : this.#session.hiddenWith(this.#key, ids)
+  }
+
   /** Removes a summary (by the id of its summary topic), asking first when branches hang under it. */
   async removeSummary(id: string, mode: DeleteMode = 'ask'): Promise<RemoveOutcome> {
     if (!this.mind.summaries.some((summary) => summary.id === id)) {
       return { ok: false, reason: 'nothing' }
     }
-    const preserved = this.#session.preservedWith(this.#key, [id])
+    const preserved = this.#takenWith([id], mode)
     if (preserved > 0) {
       if (mode === 'refuse') return { ok: false, reason: 'preserved', preserved }
       if (!(await this.#host.confirmDelete(preserved))) {
@@ -2198,7 +2211,7 @@ export class MapController {
       void this.mind.removeNodes(removable)
       return false
     }
-    const preserved = this.#session.preservedWith(
+    const preserved = this.#session.hiddenWith(
       this.#key,
       removable.map((topic) => topic.nodeObj.id),
     )

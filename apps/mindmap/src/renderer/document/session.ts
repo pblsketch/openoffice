@@ -376,14 +376,30 @@ export class DocumentSession {
 
   // ---- what the editor does not show ----
 
-  /** How many preserve-only elements the file holds. */
+  /**
+   * How many elements of the file the editor does not show: the number the
+   * open notice names. A boundary the map draws is not among them.
+   */
   preservedTotal(): number {
-    return countPreservedInDocument(this.#document).total
+    return countPreservedInDocument(this.#document, { shownBoundaries: false }).total
   }
 
-  /** How many preserve-only elements would go with these topics (or summaries, by summary topic id). */
+  /**
+   * How many preserve-only elements would go with these topics (or summaries,
+   * by summary topic id), every boundary among them, drawn or not. The guard
+   * that keeps the AI from deleting such topics counts with this.
+   */
   preservedWith(key: string, topicIds: readonly string[]): number {
     return countPreservedWithTopics(this.sheet(key), topicIds)
+  }
+
+  /**
+   * How many elements the user cannot see would go with these topics (or
+   * summaries): `preservedWith` without the boundaries the map draws. The
+   * question before the user deletes names this number.
+   */
+  hiddenWith(key: string, topicIds: readonly string[]): number {
+    return countPreservedWithTopics(this.sheet(key), topicIds, { shownBoundaries: false })
   }
 
   // ---- the map-wide line settings: switched in the theme panel, outside the map's history ----

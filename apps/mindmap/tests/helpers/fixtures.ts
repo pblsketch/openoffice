@@ -33,8 +33,8 @@ export const IDS = {
   relHidden: '99999999-9999-4999-8999-999999999992',
 } as const
 
-/** What the rich sheet holds that the editor does not show: callout, branch under the summary, floating topic and its child, boundary, hidden relationship. */
-export const RICH_PRESERVED = 6
+/** What the rich sheet holds that the editor does not show: callout, branch under the summary, floating topic and its child, hidden relationship. Its boundary is drawn. */
+export const RICH_PRESERVED = 5
 
 /** A structure class the editor only stands in for; the file's value must survive. */
 export const FISHBONE = 'org.xmind.ui.fishbone.leftHeaded'

@@ -10,7 +10,7 @@
 - 선 서식(`line-style.ts`, 결정 0102): 가지 선·연결선·요약·경계의 속성 이름과 `org.xmind.*` 접두어, 고를 수 있는 낱말 목록, 굵기(`"<n>pt"`, 1~20) 읽기·쓰기, 곡선(`controlPoints`) 변환, 엔진이 쓰는 값의 꼴(`isWritable*`). 지도 전체 선 설정(`theme-lines.ts`): 시트 theme의 map 단계에 있는 `line-tapered`·`multi-line-colors`를 읽고 그 키 하나만 적기, 두 키만 있는 theme을 "테마 없음"으로 보기(`isBlankSheetTheme`, `isUnknownSheetTheme`).
 - 글자 서식(`text-style.ts`, 결정 0101): 토픽 전체의 글자 서식 속성 이름, 제목 조각(`attributedTitle`) 읽기, 엔진이 쓰는 값의 꼴(`isWritableTextStyle`).
 - 맞추기(`reconcile*.ts`, `tree-walk.ts`): 편집기의 결과 상태를 받아 원본 나무를 그 상태로 맞춘다. 요약·경계의 순번 다시 적기(`reconcile-ranges.ts`)를 포함한다.
-- 시트 추가·이름 바꾸기·삭제(`sheets.ts`), 새 파일(`create.ts`), 메모(`notes.ts`), 배치 값(`layout.ts`), 새 식별자(`ids.ts`, 소문자 UUID v4), 보존만 하는 요소 세기(`preserved.ts`).
+- 시트 추가·이름 바꾸기·삭제(`sheets.ts`), 새 파일(`create.ts`), 메모(`notes.ts`), 배치 값(`layout.ts`), 새 식별자(`ids.ts`, 소문자 UUID v4), 보존만 하는 요소 세기(`preserved.ts`. 기본은 모든 경계를 세고, `shownBoundaries: false`면 보기용 자료가 그리는 경계를 빼고 센다).
 - 개요 글: 지도 → 글(`outline.ts`의 `sheetsToOutline`), 글 → 지도(`outline-parse.ts`의 `outlineToSheets`, `createXmindDocumentFromOutline`). 두 쪽이 맞춰야 하는 표기는 `outline-marks.ts`에 있다.
 - 테마: 값의 표(`theme-data.ts`, 뼈대 4 × 색 띠 8 × 바탕 3 = 96가지), 그리는 값(`theme-look.ts`), 파일 형식의 속성표로 옮기기와 다시 알아보기(`theme-table.ts`), 시트에 적기(`theme-sheet.ts`), 색 계산(`theme-color.ts`). 파일은 세 단계(중심·큰 가지·그 아래)만 적으므로, 그 아래 단계가 조금씩 작아지는 규칙(`THEME_DEEP_LEVELS`)은 그리는 값에만 있다.
 

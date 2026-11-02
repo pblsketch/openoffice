@@ -782,7 +782,7 @@ describe('deleting a topic from the screen', () => {
     await pressOnMap('Delete')
     const dialog = document.querySelector('[data-dialog="delete-hidden"]')!
     expect(dialog.textContent).toContain(
-      '3 elements that are not shown here will be deleted with it.',
+      '2 elements that are not shown here will be deleted with it.',
     )
     await click('[data-action="confirm-cancel"]')
     expect(container.querySelector(`[data-nodeid="me${IDS.a}"]`)).not.toBeNull()
