@@ -9,7 +9,7 @@ import type {
   ReadUrlResult,
 } from '../../shared/ipc'
 import { t } from '../i18n/locale'
-import { MIND_MAP_LIMITS, MIND_MAP_TOOL, parseMindMapTree } from './mind-map'
+import { MIND_MAP_LIMITS, MIND_MAP_TOOL, parseMindMapTree } from '@genoffice/agent-core/mind-map'
 import { executeOps, opNames } from './ops'
 import { odtGuardRefusalText, odtToolRefusal, startOdtToolCall } from './odt-tools'
 import { clipExcerpt, repliesOf, resolveCommentAnchor } from './comment-ops'
