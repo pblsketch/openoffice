@@ -18,6 +18,8 @@ export interface XmindTopic {
   id: string
   children?: XmindTopicChildren
   title?: unknown
+  /** `[{ text, "fo:…": value }]`: the title in parts with a text format of their own (see `text-style.ts`) */
+  attributedTitle?: unknown
   /** `'folded'` when the branch is collapsed */
   branch?: unknown
   labels?: unknown

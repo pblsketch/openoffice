@@ -12,8 +12,8 @@
  *   `textContent`. The link chip is a span holding the address as text,
  *   whatever the address is; it is never an anchor.
  * - `metadata` carries the values themselves (labels, note, link, the width of
- *   the box) plus what the editor shows without editing (picture, markers,
- *   style).
+ *   the box, the text format in `style` and `titleRuns`) plus what the editor
+ *   shows without editing (picture, markers, the fill in `style`).
  * - `dangerouslySetInnerHTML`, `hyperLink`, `image`, `icons` and `style` are
  *   never set.
  *
@@ -30,7 +30,13 @@
 import type { MindElixirData, NodeObj, TagObj } from 'mind-elixir'
 import {
   isShownLink,
+  isWritableTextStyle,
+  MAX_TITLE_RUNS,
   newXmindId,
+  RUN_STYLE_KEYS,
+  TEXT_STYLE_KEYS,
+  type ViewRunStyle,
+  type ViewTitleRun,
   type ViewImage,
   type ViewLayout,
   type ViewRelationship,
@@ -44,7 +50,7 @@ import {
 export type Arrow = NonNullable<MindElixirData['arrows']>[number]
 export type Summary = NonNullable<MindElixirData['summaries']>[number]
 
-/** What a node carries besides its title. Labels, note, link, picture and width are edited; the rest is shown only. */
+/** What a node carries besides its title. Markers and the fill are shown only. */
 export interface MapNodeMeta {
   labels: string[]
   note: string | null
@@ -54,6 +60,8 @@ export interface MapNodeMeta {
   width: number | null
   markers: string[]
   style: ViewTopicStyle
+  /** the title in parts with a text format of their own; null for a plain title */
+  titleRuns: ViewTitleRun[] | null
 }
 
 export type MapNode = NodeObj<MapNodeMeta>
@@ -99,7 +107,16 @@ export function layoutOfDirection(direction: unknown, structure: MapStructure = 
 }
 
 export function emptyMeta(): MapNodeMeta {
-  return { labels: [], note: null, link: null, image: null, width: null, markers: [], style: {} }
+  return {
+    labels: [],
+    note: null,
+    link: null,
+    image: null,
+    width: null,
+    markers: [],
+    style: {},
+    titleRuns: null,
+  }
 }
 
 /** The tags a node is drawn with. Plain text only. */
@@ -135,6 +152,7 @@ function topicToNode(topic: ViewTopic, isRoot: boolean): MapNode {
       width: topic.width ?? null,
       markers: [...topic.markers],
       style: { ...topic.style },
+      titleRuns: topic.titleRuns ? copyRuns(topic.titleRuns) : null,
     },
   }
   // The library has no fold handle on the central topic; its value is kept by `mindToState`.
@@ -207,7 +225,12 @@ function readMeta(value: unknown): MapNodeMeta {
       ? meta.markers.filter((marker) => typeof marker === 'string')
       : [],
     style: isObject(meta.style) ? (meta.style as ViewTopicStyle) : {},
+    titleRuns: Array.isArray(meta.titleRuns) ? (meta.titleRuns as ViewTitleRun[]) : null,
   }
+}
+
+function copyRuns(runs: readonly ViewTitleRun[]): ViewTitleRun[] {
+  return runs.map((run) => ({ text: run.text, style: { ...run.style } }))
 }
 
 /**
@@ -229,6 +252,7 @@ export function mindToState(data: MindElixirData, base: StateBase): ViewSheet {
       ...(meta.width === null ? {} : { width: meta.width }),
       markers: meta.markers,
       style: meta.style,
+      titleRuns: meta.titleRuns,
       summaries: [],
       children: [],
     }
@@ -356,24 +380,27 @@ function isObject(value: unknown): value is Record<string, unknown> {
  * picture address as it is.
  *
  * What stays: the id (the library replaces it anyway), the title as text,
- * folding, the side, the labels, note and web link, the width of the box, and
- * the children. What a
- * state cannot write (picture, markers, style) is cleared, so the screen never
- * shows something the file will not hold.
+ * folding, the side, the labels, note and web link, the width of the box, the
+ * text format values the engine would write, the parts of the title when they
+ * spell it, and the children. What a state cannot write (picture, markers, the
+ * fill) is cleared, so the screen never shows something the file will not hold.
  */
 export function cleanPastedNode(node: unknown, depth = 0): void {
   if (!isObject(node)) return
   const pasted = readMeta(node.metadata)
+  const title = typeof node.topic === 'string' ? node.topic : String(node.topic ?? '')
   const meta: MapNodeMeta = {
     ...emptyMeta(),
     labels: pasted.labels,
     note: pasted.note,
     link: pasted.link,
     width: pasted.width,
+    style: writableTextStyle(pasted.style),
+    titleRuns: writableRuns(pasted.titleRuns, title),
   }
   const kept: Record<string, unknown> = {
     id: typeof node.id === 'string' ? node.id : '',
-    topic: typeof node.topic === 'string' ? node.topic : String(node.topic ?? ''),
+    topic: title,
   }
   if (node.expanded === false) kept.expanded = false
   if (node.direction === 0 || node.direction === 1) kept.direction = node.direction
@@ -390,6 +417,35 @@ export function cleanPastedNode(node: unknown, depth = 0): void {
 }
 
 const MAX_PASTE_DEPTH = 200
+
+/** The text format values of a style that the engine would write; nothing else. */
+function writableTextStyle(style: unknown): ViewTopicStyle {
+  const out: ViewTopicStyle = {}
+  if (!isObject(style)) return out
+  for (const key of TEXT_STYLE_KEYS) {
+    const value = style[key]
+    if (typeof value === 'string' && isWritableTextStyle(key, value)) out[key] = value
+  }
+  return out
+}
+
+/** Parts of a title that spell it, each with the values the engine would write; null otherwise. */
+function writableRuns(runs: unknown, title: string): ViewTitleRun[] | null {
+  if (!Array.isArray(runs) || runs.length === 0 || runs.length > MAX_TITLE_RUNS) return null
+  const out: ViewTitleRun[] = []
+  for (const run of runs as unknown[]) {
+    if (!isObject(run) || typeof run.text !== 'string') return null
+    const style: ViewRunStyle = {}
+    const given = isObject(run.style) ? run.style : {}
+    for (const key of RUN_STYLE_KEYS) {
+      const value = given[key]
+      if (typeof value === 'string' && isWritableTextStyle(key, value)) style[key] = value
+    }
+    out.push({ text: run.text, style })
+  }
+  if (out.map((run) => run.text).join('') !== title) return null
+  return out.some((run) => Object.keys(run.style).length > 0) ? out : null
+}
 
 /** The shape of an id the file format uses, and so the only shape a new topic's id is kept in. */
 export const XMIND_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/

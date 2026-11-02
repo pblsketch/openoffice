@@ -62,6 +62,22 @@ import { PictureStore } from './images'
 import { libraryTheme, lookOfSheet } from './look'
 import { installMultiSelect } from './multi-select'
 import { escapeMapText } from './text-guard'
+import {
+  type FormatToggle,
+  formatParts,
+  formatShortcut,
+  formatTopic,
+  isRunFormat,
+  normaliseRuns,
+  partsShow,
+  type RunFormat,
+  type ShownFormat,
+  shownFormat,
+  type TextBase,
+  type TextFormat,
+  trimRuns,
+} from './text-format'
+import { drawnRuns, fillBox, readBox, selectIn, selectionIn } from './title-runs'
 import { isArrowKey, timelineArrowTarget } from './timeline-keys'
 import { installTopicResize } from './topic-resize'
 
@@ -153,6 +169,10 @@ export class MapController {
   readonly #removedRelationships = new Set<string>()
   /** topics whose picture the user took off since the last reconcile (the engine deletes only these) */
   readonly #removedPictures = new Set<string>()
+  /** topics whose text format the user changed since the last reconcile (the engine writes it only for these) */
+  readonly #restyled = new Set<string>()
+  /** the topic title being typed, while it is */
+  #editing: TitleEdit | null = null
   readonly #libraryUndo: () => void
   readonly #libraryRedo: () => void
   readonly #libraryRemoveSummary: (id: string) => void
@@ -430,6 +450,189 @@ export class MapController {
     return this.#patchMeta(topicId, { link: address })
   }
 
+  // ---- text format ----
+
+  /** What the topic in hand shows: the one whose title is typed, else the first selected. */
+  textFormat(): ShownFormat | null {
+    const id = this.#editing?.id ?? this.selectedTopicIds()[0]
+    const node = id === undefined ? null : this.#node(id)
+    if (!node) return null
+    const meta = this.#meta(node)
+    return shownFormat(meta.style, meta.titleRuns, this.#textBase(node))
+  }
+
+  /**
+   * Turns bold, italic, underline or strike on or off. While a title is typed
+   * it is the selected part of it (all of it when nothing is selected); else
+   * it is every selected topic as a whole, on unless all of them show it.
+   */
+  toggleTextFormat(key: FormatToggle): boolean {
+    const editing = this.#editing
+    if (editing) {
+      const node = editing.node
+      const range = selectionIn(editing.box) ?? { start: 0, end: 0 }
+      const shows = partsShow(
+        readBox(editing.box),
+        range.start,
+        range.end,
+        key,
+        this.#meta(node).style,
+        this.#textBase(node),
+      )
+      return this.#formatTyped({ [key]: !shows })
+    }
+    const ids = this.selectedTopicIds()
+    const nodes = ids.map((id) => this.#node(id)).filter((node) => node !== null)
+    if (nodes.length === 0) return false
+    const all = nodes.every((node) => {
+      const meta = this.#meta(node)
+      return shownFormat(meta.style, meta.titleRuns, this.#textBase(node))[key]
+    })
+    return this.formatTopics(ids, { [key]: !all })
+  }
+
+  /**
+   * A change of format from the format panel. While a title is typed, what a
+   * part can carry goes to the selected part; anything else ends the typing
+   * and goes to that topic as a whole. Otherwise it goes to every selected
+   * topic as a whole.
+   */
+  formatText(format: TextFormat): boolean {
+    const editing = this.#editing
+    if (editing) {
+      if (isRunFormat(format)) return this.#formatTyped(format)
+      this.commitEdit()
+      return this.formatTopics([editing.id], format)
+    }
+    return this.formatTopics(this.selectedTopicIds(), format)
+  }
+
+  /**
+   * Gives topics a format as a whole, as one step. The keys the change sets are
+   * taken off the parts of their titles, so the whole title shows it. False
+   * when none of the topics is there.
+   */
+  formatTopics(ids: readonly string[], format: TextFormat): boolean {
+    const found = ids.filter((id) => this.#node(id))
+    if (found.length === 0) return false
+    for (const id of found) this.#restyled.add(id)
+    this.edit((root) => {
+      for (const id of found) {
+        const node = this.mind.getObjById(id, root) as MapNode | null
+        if (!node) continue
+        const meta = this.#meta(node)
+        const next = formatTopic(meta.style, meta.titleRuns, format, this.#textBase(node))
+        node.metadata = { ...meta, style: next.style, titleRuns: next.titleRuns }
+      }
+    })
+    return true
+  }
+
+  /** What a topic shows without a format of its own: the size and weight its theme gives its level. */
+  #textBase(node: NodeObj): TextBase {
+    let depth = 1
+    for (let up = node.parent; up; up = up.parent) depth++
+    return this.textBaseAt(depth)
+  }
+
+  /** What a topic this deep (1: the central topic) shows without a format of its own. */
+  textBaseAt(depth: number): TextBase {
+    const { shapes, deepSizes } = this.#look
+    const shape = depth === 1 ? shapes.central : depth === 2 ? shapes.main : shapes.sub
+    const deep = depth > 3 ? deepSizes[Math.min(depth - 4, deepSizes.length - 1)] : undefined
+    return { fontWeight: shape.fontWeight, fontSize: deep ?? shape.fontSize }
+  }
+
+  /**
+   * The edit box of a topic title opened. A title with parts is put into it as
+   * parts, and the box takes the format keys (`#onTitleKey`). The listeners go
+   * on before the library's own (it adds them after it reports the opening), so
+   * the parts are read off the box before the library takes its text.
+   */
+  #beginTitleEdit(node: NodeObj): void {
+    const box = this.mind.nodes.querySelector<HTMLElement>('#input-box')
+    if (!box) return
+    const meta = this.#meta(node)
+    const runs = drawnRuns(meta.titleRuns, node.topic) ? meta.titleRuns : null
+    const editing: TitleEdit = {
+      id: node.id,
+      node,
+      box,
+      before: runs ? normaliseRuns(runs) : null,
+      cancelled: false,
+    }
+    this.#editing = editing
+    if (runs) {
+      fillBox(box, runs)
+      // the library selected the whole title; the parts replaced what it selected
+      selectIn(box, 0, node.topic.length)
+    }
+    box.addEventListener('keydown', (event) => this.#onTitleKey(event, editing))
+    box.addEventListener('blur', () => this.#endTitleEdit(editing), { once: true })
+    // the format panel says that its toggles now go to the selected characters
+    this.#host.onStateChange()
+  }
+
+  #onTitleKey(event: KeyboardEvent, editing: TitleEdit): void {
+    if (event.isComposing) return
+    if (event.key === 'Escape') {
+      editing.cancelled = true
+      return
+    }
+    const toggle = formatShortcut(event)
+    if (!toggle) return
+    event.preventDefault()
+    this.toggleTextFormat(toggle)
+  }
+
+  /** Gives the selected part of the title being typed a format (all of it when nothing is selected). */
+  #formatTyped(format: RunFormat): boolean {
+    const editing = this.#editing
+    if (!editing) return false
+    const { box, node } = editing
+    const range = selectionIn(box) ?? { start: 0, end: 0 }
+    const runs = formatParts(
+      readBox(box),
+      range.start,
+      range.end,
+      format,
+      this.#meta(node).style,
+      this.#textBase(node),
+    )
+    fillBox(box, runs)
+    selectIn(box, range.start, range.end)
+    return true
+  }
+
+  /**
+   * The edit box is closing. Runs before the library takes the box's text. The
+   * parts are read off the box and cut the way the library cuts the text; when
+   * they differ from the ones the title had, they go into the node now, so the
+   * library's step for a new title carries them, or as a step of their own when
+   * the text stayed the same (the library then records nothing).
+   */
+  #endTitleEdit(editing: TitleEdit): void {
+    if (this.#editing === editing) this.#editing = null
+    if (this.#destroyed) return
+    this.#host.onStateChange()
+    if (editing.cancelled) return
+    const { box, node } = editing
+    // what the library takes: the box's text, cut, and nothing when it is empty
+    const text = box.innerText?.trim() || ''
+    if (text === '') return
+    const read = trimRuns(readBox(box), text)
+    const runs = read ? normaliseRuns(read) : null
+    if (JSON.stringify(runs) === JSON.stringify(editing.before)) return
+    this.#restyled.add(node.id)
+    if (text !== node.topic) {
+      node.metadata = { ...this.#meta(node), titleRuns: runs }
+      return
+    }
+    queueMicrotask(() => {
+      if (!this.#destroyed && this.#node(node.id)) this.#patchMeta(node.id, { titleRuns: runs })
+    })
+  }
+
   /**
    * Gives a topic's box a width in pixels, or the width of its text again
    * (null), as one step. False when the box already has that width.
@@ -602,9 +805,11 @@ export class MapController {
    * This is the way in for edits that are not one library call: several at
    * once, or topics that are folded away and have no element.
    */
-  edit(change: (root: MapNode) => void): void {
+  edit(change: (root: MapNode) => void, options: { restyled?: readonly string[] } = {}): void {
     const mind = this.mind
     const selected = this.selectedTopicIds()
+    // topics whose text format `change` set: the engine writes it only for these
+    for (const id of options.restyled ?? []) this.#restyled.add(id)
     change(mind.nodeData as MapNode)
     normaliseTree(mind.nodeData, topicIdsOf(this.#lastView))
     mind.refresh()
@@ -783,6 +988,11 @@ export class MapController {
     box.style.fontWeight = drawn.fontWeight
     box.style.lineHeight = drawn.lineHeight
     box.style.letterSpacing = drawn.letterSpacing
+    box.style.fontFamily = drawn.fontFamily
+    box.style.fontStyle = drawn.fontStyle
+    box.style.textDecoration = drawn.textDecoration
+    box.style.textAlign = drawn.textAlign
+    box.style.textTransform = drawn.textTransform
     if (topic.closest('.lhs')) {
       const right = parseFloat(box.style.left) + topic.offsetWidth
       box.style.left = 'auto'
@@ -971,6 +1181,7 @@ export class MapController {
     // Opening the edit box changes nothing yet, and the library records no step for it.
     if (operation.name === 'beginEdit') {
       this.#dressEditBox(operation.obj.id)
+      this.#beginTitleEdit(operation.obj)
       return
     }
     // The session recorded this step and the screen was drawn from it: nothing to reconcile.
@@ -1126,11 +1337,13 @@ export class MapController {
       step: options.step,
       reshapedRelationships: options.reshaped,
       removedPictures: [...this.#removedPictures],
+      restyledTopics: [...this.#restyled],
     })
     this.#layoutPicked = false
     this.#removedSummaries.clear()
     this.#removedRelationships.clear()
     this.#removedPictures.clear()
+    this.#restyled.clear()
     this.#lastView = result.view
     if (!result.ok) {
       console.warn('[mindmap] the screen could not be applied to the map:', result.problem)
@@ -1150,6 +1363,7 @@ export class MapController {
     this.#removedSummaries.clear()
     this.#removedRelationships.clear()
     this.#removedPictures.clear()
+    this.#restyled.clear()
     this.#lastView = view
     const data = this.mind.getDataString()
     const state = mindToState(JSON.parse(data), {
@@ -1188,7 +1402,15 @@ export class MapController {
       return
     }
     // While a title is typed, every key belongs to the text (Ctrl+arrow moves by words).
+    // The format keys there are taken by the edit box itself (`#onTitleKey`).
     if (event.target instanceof Element && event.target.closest('#input-box')) return
+    const toggle = formatShortcut(event)
+    if (toggle && this.selectedTopicIds().length > 0) {
+      event.stopImmediatePropagation()
+      event.preventDefault()
+      this.toggleTextFormat(toggle)
+      return
+    }
     if (this.#timelineArrow(event)) {
       event.stopImmediatePropagation()
       event.preventDefault()
@@ -1274,6 +1496,17 @@ export class MapController {
 }
 
 /** What a cut took out of the sheet: the source topics, and the relationship records that went with them. */
+/** A topic title being typed. */
+interface TitleEdit {
+  id: string
+  node: NodeObj
+  box: HTMLElement
+  /** the parts the title had when the box opened */
+  before: ReturnType<typeof normaliseRuns>
+  /** the box was closed with Escape: the library puts the old title back */
+  cancelled: boolean
+}
+
 interface CutStash {
   /** ids of the topics that were cut (not of the topics below them) */
   ids: string[]

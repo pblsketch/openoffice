@@ -261,6 +261,80 @@ describe('edit_map', () => {
     expect(r.controller().canUndo).toBe(false)
   })
 
+  it('set_format gives whole topics a text format, checked key by key, and read_topic reports it', async () => {
+    const r = await rigOf(plainSheet())
+    const [one, two] = attached(r.sheet(1).rootTopic)
+    const out = await editMap(
+      r.host,
+      {
+        edits: [
+          {
+            op: 'set_format',
+            id: one!.id,
+            bold: false,
+            italic: true,
+            strike: true,
+            color: '#112233',
+            size: 18,
+            font: 'Noto Sans KR',
+            align: 'left',
+            case: 'uppercase',
+          },
+          { op: 'set_format', id: two!.id, color: 'red' },
+          { op: 'set_format', id: two!.id, font: 'A", serif' },
+          { op: 'set_format', id: two!.id, size: 400 },
+          { op: 'set_format', id: two!.id, align: 'justify' },
+          { op: 'set_format', id: two!.id },
+          { op: 'set_format', id: two!.id, underline: 'yes' },
+        ],
+      },
+      null,
+    )
+    expect(out.output).toContain('1 of 7 edit(s) applied')
+    expect(out.output).toMatch(/#1 set_format FAILED.*#rrggbb/)
+    expect(out.output).toMatch(/#2 set_format FAILED.*one font name/)
+    expect(out.output).toMatch(/#3 set_format FAILED.*points/)
+    expect(out.output).toMatch(/#4 set_format FAILED.*align/)
+    expect(out.output).toMatch(/#5 set_format FAILED.*at least one/)
+    expect(out.output).toMatch(/#6 set_format FAILED.*true or false/)
+    // a main topic of the default theme is drawn bold: not bold is a weight of its own
+    expect(findTopic(r.sheet(1).rootTopic, one!.id)!.style).toEqual({
+      id: expect.any(String),
+      properties: {
+        'fo:font-weight': '400',
+        'fo:font-style': 'italic',
+        'fo:text-decoration': 'line-through',
+        'fo:color': '#112233',
+        'fo:font-size': '18pt',
+        'fo:font-family': 'Noto Sans KR',
+        'fo:text-align': 'left',
+        'fo:text-transform': 'uppercase',
+      },
+    })
+    expect(findTopic(r.sheet(1).rootTopic, two!.id)!.style).toBeUndefined()
+    const read = readTopic(r.host, { id: one!.id })
+    const info = JSON.parse(read.output.slice(read.output.indexOf('{'))) as { format: unknown }
+    expect(info.format).toEqual({
+      bold: false,
+      italic: true,
+      underline: false,
+      strike: true,
+      color: '#112233',
+      size: 18,
+      font: 'Noto Sans KR',
+      align: 'left',
+      case: 'uppercase',
+    })
+
+    // clear puts the theme's look back, and the batch is one step to undo
+    await editMap(r.host, { edits: [{ op: 'set_format', id: one!.id, clear: true }] }, null)
+    expect(findTopic(r.sheet(1).rootTopic, one!.id)!.style).toBeUndefined()
+    r.controller().undo()
+    expect(findTopic(r.sheet(1).rootTopic, one!.id)!.style).toMatchObject({
+      properties: { 'fo:color': '#112233' },
+    })
+  })
+
   it(`refuses a batch of more than ${EDIT_BATCH_LIMIT} edits whole`, async () => {
     const r = await rigOf(plainSheet())
     const before = copyOf(r.sheet(1))

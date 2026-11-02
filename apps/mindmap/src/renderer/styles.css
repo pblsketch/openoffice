@@ -1071,3 +1071,101 @@ textarea.mm-field {
   font-size: 12.5px;
   line-height: 1.6;
 }
+
+/* ---- the text format panel beside the map (it shares the theme panel's frame) ---- */
+
+.mm-format-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.mm-format-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mm-format-font,
+.mm-format-case {
+  width: 100%;
+  font-size: 12.5px;
+}
+
+.mm-format-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.mm-format-button:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+/* a format in force is marked the way the app marks everything it has selected */
+.mm-format-button.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.mm-format-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.mm-format-size-input {
+  width: 64px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.mm-format-size-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* the palette sits in the panel, not over it: no frame or shadow of its own */
+.mm-format-colors .gcp-palette {
+  width: 100%;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background: none;
+}
+
+.mm-format-clear {
+  align-self: flex-start;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.mm-format-clear:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.mm-format-clear:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

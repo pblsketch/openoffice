@@ -58,6 +58,7 @@ const SYSTEM_PROMPT = [
   '- You cannot delete a topic that carries elements the editor does not show (floating topics, callouts, boundaries, branches under a summary, hidden relationships). Such a deletion is refused; tell the user they have to delete that topic themselves.',
   '- You cannot delete sheets, and the central topic cannot be deleted or moved.',
   '- Titles, labels and notes are plain text: markup and markdown are shown as typed, never rendered. Keep titles short (a few words); put explanations in the note.',
+  '- To change how a topic looks (bold, italic, underline, strikethrough, text colour, size, font, alignment, letter case), use set_format; read_topic shows the format a topic has. set_format formats the whole topic. Formatting only some words of a title is done by the user in the editor; do not put ** or other marks in a title for it.',
   '',
   '## Writing a whole map: write_map',
   '- For "make a map about …", or to turn an attachment into a map, write the whole map at once with write_map, as an outline:',
@@ -114,7 +115,7 @@ const TOOLS: AgentToolDef[] = [
   },
   {
     name: MAP_TOOL_NAMES.editMap,
-    description: `Change topics of one sheet with up to ${EDIT_BATCH_LIMIT} edits, applied in order as one undoable step. Each edit is checked on its own; the result lists each edit as ok (with the id of a new topic) or FAILED with the reason. Edits: add {parentId, title, index?, note?, labels?, link?, ref?}; set_title {id, title}; move {id, parentId, index?}; delete {id}; set_note {id, note|null}; set_labels {id, labels}; set_link {id, link|null}; fold {id}; unfold {id}. index is the 0-based position among the parent's subtopics (the end when left out).`,
+    description: `Change topics of one sheet with up to ${EDIT_BATCH_LIMIT} edits, applied in order as one undoable step. Each edit is checked on its own; the result lists each edit as ok (with the id of a new topic) or FAILED with the reason. Edits: add {parentId, title, index?, note?, labels?, link?, ref?}; set_title {id, title}; move {id, parentId, index?}; delete {id}; set_note {id, note|null}; set_labels {id, labels}; set_link {id, link|null}; fold {id}; unfold {id}; set_format {id, bold?, italic?, underline?, strike?, color? "#rrggbb"|null, size? points|null, font? name|null, align? left|center|right, case? none|uppercase|lowercase|capitalize, clear? true} — the text format of the whole topic; null or clear puts the theme's look back. index is the 0-based position among the parent's subtopics (the end when left out).`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -143,6 +144,28 @@ const TOOLS: AgentToolDef[] = [
                 type: 'string',
                 description:
                   'add: a name for the new topic that later edits of this call can use as an id',
+              },
+              bold: { type: 'boolean' },
+              italic: { type: 'boolean' },
+              underline: { type: 'boolean' },
+              strike: { type: 'boolean', description: 'set_format: strikethrough' },
+              color: {
+                type: ['string', 'null'],
+                description: 'set_format: text colour "#rrggbb"; null: the theme colour',
+              },
+              size: {
+                type: ['number', 'null'],
+                description: 'set_format: font size in points (6 to 96); null: the theme size',
+              },
+              font: {
+                type: ['string', 'null'],
+                description: 'set_format: one font name installed on the PC; null: the map font',
+              },
+              align: { type: 'string', enum: ['left', 'center', 'right'] },
+              case: { type: 'string', enum: ['none', 'uppercase', 'lowercase', 'capitalize'] },
+              clear: {
+                type: 'boolean',
+                description: 'set_format: take every text format off the topic first',
               },
             },
             required: ['op'],

@@ -387,7 +387,9 @@ describe('the colours of a map are document content', () => {
       'multi-select.ts',
       'picture-drop.ts',
       'style-values.ts',
+      'text-format.ts',
       'timeline-keys.ts',
+      'title-runs.ts',
       'topic-resize.ts',
       'use-picture-drop.ts',
     ])

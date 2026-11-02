@@ -128,6 +128,7 @@ describe('sheetToView', () => {
       fill: '#445566',
       fontWeight: '700',
       fontSize: '18pt',
+      fontFamily: 'Some Family',
     })
     expect(find(sheetToView(sample(), 0).root, 'a')!.style).toEqual({})
     const remote = sheetWithRoot({ image: { src: 'https://example.com/p.png' } })
@@ -251,7 +252,7 @@ describe('sheetToView', () => {
       'bound-1',
       'futureTopicKey',
       'futureSheetKey',
-      'Some Family',
+      'line-width',
       'theme-map',
       'controlPoints',
       'someone.else',
@@ -298,6 +299,7 @@ describe('sheetToView', () => {
       image: null,
       markers: ['flag'],
       style: { fill: '#abc' },
+      titleRuns: null,
       summaries: [],
       children: [],
     })

@@ -45,7 +45,15 @@ import {
   readableOn,
 } from './look'
 import { markerElement, markerGlyph } from './markers'
-import { isPlainStyle, NO_FILL, ownTopicStyle, splitAlpha } from './style-values'
+import {
+  decorationValue,
+  fontFamilyValue,
+  isPlainStyle,
+  NO_FILL,
+  ownTopicStyle,
+  splitAlpha,
+} from './style-values'
+import { drawnRuns, runElement, TITLE_RUN_CLASS } from './title-runs'
 
 /** What assistive technology reads for the things drawn here. All of it comes from the app's dictionaries. */
 export interface DecorationStrings {
@@ -69,6 +77,7 @@ interface DecoratedTopic extends Topic {
   mmPicture?: HTMLElement
   mmPictureSrc?: string
   mmOwn?: string
+  mmRuns?: string
 }
 
 const SVG = 'http://www.w3.org/2000/svg'
@@ -271,6 +280,7 @@ export class TopicDecorator {
     this.#level(topic)
     const meta = metaOf(topic)
     this.#ownStyle(topic, meta)
+    this.#titleRuns(topic, meta)
     this.#width(topic, meta)
     this.#markers(topic, meta)
     this.#picture(topic, meta)
@@ -337,11 +347,42 @@ export class TopicDecorator {
     style.fontWeight = own.fontWeight === null ? '' : String(own.fontWeight)
     style.fontSize = own.fontSize === null ? '' : `${own.fontSize}px`
     style.lineHeight = own.fontSize === null ? '' : `${lineHeightFor(own.fontSize)}px`
+    style.fontFamily = own.fontFamily === null ? '' : fontFamilyValue(own.fontFamily)
+    style.fontStyle = own.italic === null ? '' : own.italic ? 'italic' : 'normal'
+    style.textDecoration = own.decoration === null ? '' : decorationValue(own.decoration)
+    style.textAlign = own.textAlign ?? ''
+    style.textTransform = own.textTransform ?? ''
     if (key === '') delete topic.dataset.mmOwn
     else topic.dataset.mmOwn = 'true'
     // a fill of its own on a topic that is bare text in this skeleton still needs the shape of a box
     if (own.fill && own.fill !== NO_FILL) topic.dataset.mmOwnFill = 'true'
     else delete topic.dataset.mmOwnFill
+  }
+
+  // ---- the parts of the title ----
+
+  /**
+   * A title whose parts carry a format of their own is drawn as one span per
+   * part: the part's text as `textContent`, its format through the filter. The
+   * library draws the title as one text whenever it draws the topic, so the
+   * spans are made again when they are not there. A title without parts is
+   * left as the library drew it.
+   */
+  #titleRuns(topic: DecoratedTopic, meta: Partial<MapNodeMeta>): void {
+    const text = (topic as Topic & { text?: HTMLElement }).text
+    if (!text) return
+    const title = typeof topic.nodeObj?.topic === 'string' ? topic.nodeObj.topic : ''
+    const runs = drawnRuns(meta.titleRuns, title)
+    const drawn = text.firstElementChild?.classList.contains(TITLE_RUN_CLASS) === true
+    if (!runs) {
+      if (drawn) text.textContent = title
+      topic.mmRuns = undefined
+      return
+    }
+    const key = JSON.stringify(runs)
+    if (drawn && topic.mmRuns === key) return
+    topic.mmRuns = key
+    text.replaceChildren(...runs.map(runElement))
   }
 
   // ---- markers ----

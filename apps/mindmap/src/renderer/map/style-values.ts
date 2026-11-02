@@ -12,7 +12,10 @@
  *   `pt` and `px`, written back as a number of CSS pixels.
  *
  * Words are taken only when they are in the short lists below, and each stands
- * for a value this app chose (`bold` is 700, `none` is "no fill"). Everything
+ * for a value this app chose (`bold` is 700, `none` is "no fill", `italic`,
+ * `line-through`, `center`, `uppercase`). A font name is taken only when it is
+ * one plain name (no quote, comma, bracket, colon or other sign that could end
+ * it), and is drawn quoted, followed by the sans-serif face. Everything
  * else (another word, a function, a list, a sentence, a sign, an exponent) is
  * no value: the answer is null and the property is drawn the way the theme
  * draws it. The file's own value is never touched by any of this.
@@ -20,7 +23,7 @@
  * The same filter is for the screen, exported pictures, print and the preview
  * picture: all of them draw from `ownTopicStyle`.
  */
-import type { ViewTopicStyle } from '@genoffice/xmind-engine'
+import type { ViewRunStyle, ViewTopicStyle } from '@genoffice/xmind-engine'
 
 /** A colour as this app writes it: `#rrggbb` or `#rrggbbaa`, lower case. */
 export type SafeColor = `#${string}`
@@ -29,14 +32,29 @@ export type SafeColor = `#${string}`
 export const NO_FILL = 'none'
 
 /** What a topic's own style values come to. Null: draw that property as the theme does. */
-export interface OwnTopicStyle {
-  color: SafeColor | null
+export interface OwnTopicStyle extends OwnTextStyle {
   fill: SafeColor | typeof NO_FILL | null
+  textAlign: TextAlign | null
+  textTransform: TextTransform | null
+}
+
+/** The text format of a topic or of a part of its title. Null: as the topic around it. */
+export interface OwnTextStyle {
+  color: SafeColor | null
   /** 100 to 900 */
   fontWeight: number | null
   /** CSS pixels */
   fontSize: number | null
+  /** a font name this app checked; drawn as that name, then the sans-serif face */
+  fontFamily: string | null
+  italic: boolean | null
+  /** the lines through the text: under it, through it; null: as the topic around it */
+  decoration: { underline: boolean; strike: boolean } | null
 }
+
+export type TextAlign = 'left' | 'center' | 'right'
+/** `none`: the case as typed (the format's `manual`) */
+export type TextTransform = 'none' | 'uppercase' | 'lowercase' | 'capitalize'
 
 const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i
 /** up to four digits, up to three decimals, one known unit or none */
@@ -114,19 +132,97 @@ export function safeLineWidth(value: unknown): number | null {
   return round(Math.min(LINE_WIDTH_DRAWN_MAX, pixels))
 }
 
+// A name and nothing that could end it, as the engine writes one (`isWritableTextStyle`).
+// eslint-disable-next-line no-control-regex -- keeping control characters out is the point here
+const FONT_NAME = /^[^\u0000-\u001f\u007f"'`;:{}()<>\\[\]=@/*!,]{1,100}$/u
+
+/** A font name to draw: a plain name, trimmed; null for anything that could be more than a name. */
+export function safeFontFamily(value: unknown): string | null {
+  if (typeof value !== 'string' || value.trim() !== value || !FONT_NAME.test(value)) return null
+  return value
+}
+
+/** The CSS value for a checked font name: that face, then the plain sans-serif one. */
+export function fontFamilyValue(name: string): string {
+  return `"${name}", sans-serif`
+}
+
+/** Italic or upright; null for any other word. */
+export function safeItalic(value: unknown): boolean | null {
+  if (value === 'italic') return true
+  if (value === 'normal') return false
+  return null
+}
+
+const DECORATIONS: Readonly<Record<string, { underline: boolean; strike: boolean }>> = {
+  none: { underline: false, strike: false },
+  underline: { underline: true, strike: false },
+  'line-through': { underline: false, strike: true },
+  'underline line-through': { underline: true, strike: true },
+  'line-through underline': { underline: true, strike: true },
+}
+
+/** The lines through the text; null for any other value. */
+export function safeDecoration(value: unknown): { underline: boolean; strike: boolean } | null {
+  return typeof value === 'string' && Object.hasOwn(DECORATIONS, value)
+    ? { ...DECORATIONS[value]! }
+    : null
+}
+
+/** The CSS value for the lines through the text. */
+export function decorationValue(decoration: { underline: boolean; strike: boolean }): string {
+  const lines = [decoration.underline ? 'underline' : '', decoration.strike ? 'line-through' : '']
+  return lines.filter((line) => line !== '').join(' ') || 'none'
+}
+
+const ALIGNS: ReadonlySet<string> = new Set<TextAlign>(['left', 'center', 'right'])
+
+export function safeTextAlign(value: unknown): TextAlign | null {
+  return typeof value === 'string' && ALIGNS.has(value) ? (value as TextAlign) : null
+}
+
+const TRANSFORMS: Readonly<Record<string, TextTransform>> = {
+  manual: 'none',
+  none: 'none',
+  uppercase: 'uppercase',
+  lowercase: 'lowercase',
+  capitalize: 'capitalize',
+}
+
+export function safeTextTransform(value: unknown): TextTransform | null {
+  return typeof value === 'string' && Object.hasOwn(TRANSFORMS, value) ? TRANSFORMS[value]! : null
+}
+
+/** The text format values of a topic or of a part of its title, as far as they may reach a style. */
+export function ownTextStyle(style: ViewRunStyle | null | undefined): OwnTextStyle {
+  return {
+    color: safeColor(style?.color),
+    fontWeight: safeFontWeight(style?.fontWeight),
+    fontSize: safeFontSize(style?.fontSize),
+    fontFamily: safeFontFamily(style?.fontFamily),
+    italic: safeItalic(style?.fontStyle),
+    decoration: safeDecoration(style?.textDecoration),
+  }
+}
+
 /** The style values set on a topic itself, as far as they may reach a style. */
 export function ownTopicStyle(style: ViewTopicStyle | null | undefined): OwnTopicStyle {
   return {
-    color: safeColor(style?.color),
+    ...ownTextStyle(style),
     fill: safeFill(style?.fill),
-    fontWeight: safeFontWeight(style?.fontWeight),
-    fontSize: safeFontSize(style?.fontSize),
+    textAlign: safeTextAlign(style?.textAlign),
+    textTransform: safeTextTransform(style?.textTransform),
   }
 }
 
 /** Whether a topic sets nothing of its own that is drawn. */
 export function isPlainStyle(own: OwnTopicStyle): boolean {
-  return own.color === null && own.fill === null && own.fontWeight === null && own.fontSize === null
+  return Object.values(own).every((value) => value === null)
+}
+
+/** Whether a part of a title carries nothing of its own that is drawn. */
+export function isPlainText(own: OwnTextStyle): boolean {
+  return Object.values(own).every((value) => value === null)
 }
 
 /** The `#rrggbb` part of a safe colour and its opacity from 0 to 1. */

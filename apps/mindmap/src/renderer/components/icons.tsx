@@ -206,3 +206,65 @@ export const IconClose = () => (
     <path d="m3.25 3.25 5.5 5.5M8.75 3.25l-5.5 5.5" />
   </Icon>
 )
+
+// ---- text format ----
+
+/** the letter B */
+export const IconBold = () => (
+  <Icon>
+    <path d="M6.75 4.75h4a2.5 2.5 0 0 1 0 5h-4zM6.75 9.75h4.75a2.75 2.75 0 0 1 0 5.5h-4.75z" />
+  </Icon>
+)
+
+/** a slanted stroke between two serifs */
+export const IconItalic = () => (
+  <Icon>
+    <path d="M9.25 4.75h5M5.75 15.25h5M11.75 4.75l-3.5 10.5" />
+  </Icon>
+)
+
+/** the letter U on a line */
+export const IconUnderline = () => (
+  <Icon>
+    <path d="M6.25 3.75v5a3.75 3.75 0 0 0 7.5 0v-5M5.25 16.25h9.5" />
+  </Icon>
+)
+
+/** the letter S, struck through */
+export const IconStrike = () => (
+  <Icon>
+    <path d="M13.25 6c-.5-.9-1.6-1.25-3.25-1.25-1.9 0-3.25.85-3.25 2.25 0 .8.4 1.35 1.15 1.75M4.75 10h10.5M7 13.25c.5 1.25 1.6 2 3.25 2 2 0 3.5-.9 3.5-2.4 0-.6-.2-1.05-.6-1.35" />
+  </Icon>
+)
+
+/** a large and a small A: the whole text format */
+export const IconTextFormat = () => (
+  <Icon>
+    <path d="M3.75 15.25l3.5-10.5 3.5 10.5M5 11.25h4.5" />
+    <path d="M12.25 15.25l2.25-6 2.25 6M12.9 13.25h3.2" />
+  </Icon>
+)
+
+export const IconAlignLeft = () => (
+  <Icon>
+    <path d="M3.75 5.25h12.5M3.75 8.5h8M3.75 11.75h12.5M3.75 15h8" />
+  </Icon>
+)
+
+export const IconAlignCenter = () => (
+  <Icon>
+    <path d="M3.75 5.25h12.5M6 8.5h8M3.75 11.75h12.5M6 15h8" />
+  </Icon>
+)
+
+export const IconAlignRight = () => (
+  <Icon>
+    <path d="M3.75 5.25h12.5M8.25 8.5h8M3.75 11.75h12.5M8.25 15h8" />
+  </Icon>
+)
+
+export const IconMinus = () => (
+  <Icon size={14}>
+    <path d="M2.75 7h8.5" />
+  </Icon>
+)
