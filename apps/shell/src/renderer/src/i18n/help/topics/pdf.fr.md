@@ -18,7 +18,7 @@ Essayez sur n’importe quel paragraphe :
 
 ![La barre d’annotation après la sélection de texte](img/pdf-highlight.png)
 
-2. Choisissez **Surligner** (la pastille jaune ouvre une palette de couleurs), **Souligner** ou **Barrer** ; **Demander à l’IA** envoie la sélection avec votre question au panneau IA.
+2. Choisissez l’une des trois couleurs de **Surligner**, ou **Souligner**, **Ondulé** ou **Barrer**. Pour changer une couleur de surlignage, faites un clic droit dessus et choisissez-en une autre. Après un soulignement, un trait ondulé ou un barré, une rangée de couleurs s’ouvre sur la barre : cliquez sur une autre couleur pour la changer ; la suivante utilisera aussi cette couleur. **Demander à l’IA** envoie la sélection avec votre question au panneau IA.
 3. Pour annuler une annotation, sélectionnez de nouveau le même passage par glissement et cliquez sur le bouton actif de la barre (un interrupteur à la Word), ou sélectionnez-le et appuyez sur Suppr.
 
 Référence :

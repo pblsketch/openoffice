@@ -13,6 +13,7 @@ import {
   aiContextConfirmText,
   aiRunErrorText,
   aiSubscriptionText,
+  clipboardPictureIsRendering,
   useAiSendGate,
   DriveAttachButton,
   type DriveAttachPicked,
@@ -3032,7 +3033,12 @@ export function AiPanel({
                 }
               }}
               onPaste={(e) => {
-                const files = Array.from(e.clipboardData.files)
+                const data = e.clipboardData
+                if (
+                  clipboardPictureIsRendering(data.getData('text/html'), data.getData('text/plain'))
+                )
+                  return
+                const files = Array.from(data.files)
                 if (files.length === 0) return
                 e.preventDefault()
                 void onPasteFiles(files)

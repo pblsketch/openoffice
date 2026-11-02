@@ -29,6 +29,7 @@ export const ja = {
   notePanelHint: '別の場所をクリックすると地図に反映されます。',
   tbLabel: 'ラベル',
   tbLink: 'リンク',
+  tbPicture: '画像を挿入',
   tbLayout: 'レイアウト',
   tbFoldAll: 'すべて折りたたむ',
   tbUnfoldAll: 'すべて展開',
@@ -75,6 +76,14 @@ export const ja = {
   openRejected: 'ファイルのサイズまたは構造のため開けません',
   labelHint: '複数のラベルはカンマで区切ります',
   linkHint: 'Web アドレス（http、https）またはメールアドレス（mailto）を入力します',
+  linkPreviewOption: 'プレビュー画像とタイトルを取得',
+  linkPreviewNote:
+    'OK を押すとこのサイトに一度だけアクセスします。画像はマップファイルの中に保存されます',
+  linkPreviewLoading: 'リンクのプレビューを取得しています…',
+  linkPreviewDone: 'リンクのプレビューを追加しました',
+  linkPreviewTitleOnly: 'このページにはプレビュー画像がないため、タイトルだけを追加しました',
+  linkPreviewNothing: 'このページには追加できるプレビューがありませんでした',
+  linkPreviewFailed: 'ページを読み込めなかったため、プレビューを追加できませんでした',
   linkWontOpen:
     'このアドレスは文字として保存・表示されるだけで、クリックしても開きません。開くのは Web アドレス（http、https）とメールアドレスだけです。',
   linkInternal:

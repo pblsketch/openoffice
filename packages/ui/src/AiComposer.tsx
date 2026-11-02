@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import { IconEnter, IconSend, IconStop } from './icons'
 import { useAiPanelPrefs } from './ai-panel-prefs-store'
+import { clipboardPictureIsRendering } from './clipboard-picture'
 import type { AiComposerSkills } from './use-composer-skills'
 import { useComposerPickers, type AiComposerDocs } from './use-doc-mention'
 
@@ -147,14 +148,16 @@ export function AiComposer({
           }
         }}
         onPaste={(e) => {
-          const files = Array.from(e.clipboardData.files)
+          const text = e.clipboardData.getData('text/plain')
+          const files = clipboardPictureIsRendering(e.clipboardData.getData('text/html'), text)
+            ? []
+            : Array.from(e.clipboardData.files)
           if (files.length > 0) {
             if (!onPasteFiles) return
             e.preventDefault()
             onPasteFiles(files)
             return
           }
-          const text = e.clipboardData.getData('text/plain')
           if (text && onPasteText?.(text)) e.preventDefault()
         }}
       />

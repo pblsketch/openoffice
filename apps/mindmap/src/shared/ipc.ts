@@ -42,6 +42,8 @@ export const MINDMAP_CHANNELS = {
   fileRenamed: 'mindmap:file-renamed',
   /** invoke(url) → boolean: open a topic's web link in the system browser */
   openLink: 'mindmap:open-link',
+  /** invoke(url) → `LinkPreviewResult`: the picture and title a web page names for itself (decision 0099) */
+  readLinkPreview: 'mindmap:read-link-preview',
 
   // ---- commands from the menu (implemented; the shell menu of T11 sends them) ----
   /** main → renderer(`MindmapMenuCommand`) */
@@ -218,6 +220,12 @@ export type SaveIntoProjectResult =
  * `exportRequest` and Print through `printRequest`, so the main process can
  * wait for their outcome.
  */
+/** What a web page names for itself; the picture is the downloaded bytes, any format. */
+export type LinkPreviewResult =
+  | { ok: true; title: string | null; picture: { base64: string; mime: string } | null }
+  /** not a web address, the page could not be read, or it is not a page */
+  | { ok: false; reason: 'not-web' | 'unreachable' | 'not-page' }
+
 export type MindmapMenuCommand =
   | 'undo'
   | 'redo'
@@ -401,6 +409,11 @@ export interface MindmapCoreApi {
   onFileRenamed(handler: (newPath: string) => void): () => void
   /** Ask the main process to open a web link; false when the address is not one it opens */
   openLink(url: string): Promise<boolean>
+  /**
+   * Reads the web page at `url` once for its picture and title. Only when the
+   * person asked for a preview in the link dialog: this reaches the page's site.
+   */
+  readLinkPreview(url: string): Promise<LinkPreviewResult>
   /** Commands from the menu (undo, redo, zoom, …) */
   onMenuCommand(handler: (command: MindmapMenuCommand) => void): () => void
   getLanguage(): Promise<Lang>

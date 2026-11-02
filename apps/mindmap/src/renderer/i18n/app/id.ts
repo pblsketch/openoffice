@@ -29,6 +29,7 @@ export const id = {
   notePanelHint: 'Catatan diterapkan ke peta saat Anda mengklik di tempat lain.',
   tbLabel: 'Label',
   tbLink: 'Tautan',
+  tbPicture: 'Sisipkan gambar',
   tbLayout: 'Tata letak',
   tbFoldAll: 'Lipat semua',
   tbUnfoldAll: 'Buka semua',
@@ -76,6 +77,14 @@ export const id = {
   openRejected: 'File ini tidak dapat dibuka karena ukuran atau strukturnya',
   labelHint: 'Pisahkan beberapa label dengan koma',
   linkHint: 'Masukkan alamat web (http, https) atau alamat email (mailto)',
+  linkPreviewOption: 'Ambil gambar dan judul pratinjau',
+  linkPreviewNote: 'Menekan OK akan membuka situs ini sekali. Gambar disimpan di dalam file peta',
+  linkPreviewLoading: 'Mengambil pratinjau tautan…',
+  linkPreviewDone: 'Pratinjau tautan ditambahkan',
+  linkPreviewTitleOnly:
+    'Halaman ini tidak punya gambar pratinjau, jadi hanya judulnya yang ditambahkan',
+  linkPreviewNothing: 'Tidak ada pratinjau yang bisa ditambahkan dari halaman ini',
+  linkPreviewFailed: 'Halaman tidak dapat dibaca, jadi tidak ada pratinjau yang ditambahkan',
   linkWontOpen:
     'Alamat ini disimpan dan ditampilkan sebagai teks, tetapi tidak akan dibuka saat diklik. Hanya alamat web (http, https) dan alamat email yang dibuka.',
   linkInternal:

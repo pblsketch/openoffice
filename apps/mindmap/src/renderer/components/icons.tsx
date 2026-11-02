@@ -118,6 +118,15 @@ export const IconLink = () => (
   </Icon>
 )
 
+/** a picture: a frame with a hill and the sun */
+export const IconPicture = () => (
+  <Icon>
+    <rect x="3.75" y="4.75" width="12.5" height="10.5" rx="1" />
+    <path d="m3.75 13.25 4-4 3.5 3.5 1.75-1.75 3.25 3.25" />
+    <Dot cx={12.75} cy={8.25} />
+  </Icon>
+)
+
 /** how the branches are laid out: one topic, and the two it forks into */
 export const IconLayout = () => (
   <Icon>

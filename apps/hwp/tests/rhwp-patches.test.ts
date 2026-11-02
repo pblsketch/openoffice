@@ -658,7 +658,7 @@ describe('rhwp clipboard objects patch', () => {
   it('let the app write a block, and leave another editor’s copy to that editor', () => {
     const patched = applyPatch('studio-clipboard-objects', keyboard)
     expect(patched).toContain(
-      "import { ieumPasteHtmlInCell, ieumPictureHtml, ieumSelectionHtml } from '@ieum/clipboard-html';",
+      "import { ieumPasteHtmlInCell, ieumPictureHtml, ieumPictureIsRendering, ieumSelectionHtml } from '@ieum/clipboard-html';",
     )
     expect(patched).toContain(
       'html = ieumSelectionHtml(this.wasm,\n            start.sectionIndex,',
@@ -667,7 +667,9 @@ describe('rhwp clipboard objects patch', () => {
     expect(patched).toContain(
       '    text === internalClipboardText &&\n    readRhwpClipboardToken(html) === null;',
     )
-    expect(patched).toContain('  if (items && readRhwpClipboardToken(html) === null) {')
+    expect(patched).toContain(
+      '  if (items && readRhwpClipboardToken(html) === null && !ieumPictureIsRendering(html, text)) {',
+    )
   })
 
   it('fail when the text is gone, and are in the studio build', () => {

@@ -1,9 +1,10 @@
 /**
- * A picture file dropped from the desktop onto a topic: which files count,
+ * A picture file dropped from the desktop onto a topic, or chosen in the file
+ * window: which files count, what the window offers,
  * how the bytes are told apart, and that the drop goes the way an AI picture
  * goes (a new entry, the reference through the controller, one undo step).
  */
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { XmindTopic } from '@genoffice/xmind-engine'
 import { DocumentSession } from '../src/renderer/document/session'
 import { MapController } from '../src/renderer/map/controller'
@@ -11,9 +12,11 @@ import { mapStrings } from '../src/renderer/i18n/map-strings'
 import type { MapAiHost } from '../src/renderer/ai/map-tools'
 import { MAX_PICTURE_BYTES } from '../src/renderer/ai/image-tools'
 import {
+  choosePictureFile,
   dragCarriesPicture,
   dropPicture,
   isPictureFile,
+  PICTURE_ACCEPT,
   readDroppedPicture,
   topicAt,
 } from '../src/renderer/map/picture-drop'
@@ -29,6 +32,7 @@ const fileOf = (bytes: Uint8Array, name: string, type = ''): File =>
 
 const mounted: MapController[] = []
 afterEach(() => {
+  vi.restoreAllMocks()
   mounted.splice(0).forEach((controller) => controller.destroy())
   document.body.innerHTML = ''
 })
@@ -183,5 +187,39 @@ describe('dropping a picture on a topic', () => {
     expect(r.session.document.entryNames).toEqual(entries)
     expect(r.session.document.changed).toBe(changed)
     expect(r.topicOf(IDS.a1)!.image).toBeUndefined()
+  })
+})
+
+describe('the file window of "Insert picture"', () => {
+  /** Stands in for the person at the file window: picks the file, or closes the window. */
+  function answerWith(file: File | null) {
+    const opened: HTMLInputElement[] = []
+    vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(function (
+      this: HTMLInputElement,
+    ) {
+      opened.push(this)
+      if (file) {
+        Object.defineProperty(this, 'files', { value: [file] })
+        this.dispatchEvent(new Event('change'))
+      } else this.dispatchEvent(new Event('cancel'))
+    })
+    return opened
+  }
+
+  it('offers one picture of the kinds a map keeps, and gives the one chosen', async () => {
+    const photo = fileOf(PNG, 'photo.png', 'image/png')
+    const opened = answerWith(photo)
+    expect(await choosePictureFile()).toBe(photo)
+    expect(opened).toHaveLength(1)
+    expect(opened[0]!.type).toBe('file')
+    expect(opened[0]!.accept).toBe(PICTURE_ACCEPT)
+    expect(opened[0]!.multiple).toBe(false)
+    // the window is all there is of it: nothing is left in the page
+    expect(opened[0]!.isConnected).toBe(false)
+  })
+
+  it('gives nothing when the window is closed without a picture', async () => {
+    answerWith(null)
+    expect(await choosePictureFile()).toBeNull()
   })
 })

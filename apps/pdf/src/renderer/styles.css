@@ -830,18 +830,68 @@ button {
 
 /* ── Markup floating bar for selected text ── */
 
+/* Placed by App.tsx (placeSelectionBar) inside the viewer; above the selection the
+   color row goes on top so the button row keeps its place next to the text */
 .pdf-sel-popup {
   position: fixed;
   z-index: 30;
   display: flex;
-  gap: 2px;
+  flex-direction: column;
+  gap: 4px;
   padding: 4px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: var(--pdf-shadow-popup);
-  transform: translateX(-50%);
   user-select: none;
+}
+
+.pdf-sel-popup.is-above {
+  flex-direction: column-reverse;
+}
+
+.pdf-sel-popup-row {
+  display: flex;
+  gap: 2px;
+}
+
+/* The color row under (or over) the buttons after an underline, squiggly or strikeout */
+.pdf-sel-colors {
+  display: flex;
+  gap: 6px;
+  padding: 2px 4px;
+}
+
+.pdf-sel-popup .pdf-sel-colors button {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background-clip: padding-box;
+}
+
+.pdf-sel-popup .pdf-sel-colors button.is-current {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.pdf-sel-popup button.pdf-sel-pen {
+  width: 26px;
+}
+
+.pdf-sel-popup button.pdf-sel-pen.is-editing {
+  background: var(--hover);
+}
+
+/* A pen's color picker (right-click on a pen), placed by App.tsx like the bar */
+.pdf-sel-pen-picker {
+  position: fixed;
+  z-index: 31;
+}
+
+.pdf-sel-pen-picker .pdf-color-popover {
+  position: static;
 }
 
 .pdf-sel-popup button {

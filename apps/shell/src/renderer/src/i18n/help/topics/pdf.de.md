@@ -18,7 +18,7 @@ Probieren Sie es an einem beliebigen Absatz aus:
 
 ![Die Annotationsleiste nach der Textauswahl](img/pdf-highlight.png)
 
-2. Wählen Sie **Hervorheben** (das gelbe Feld öffnet eine Farbpalette), **Unterstreichen** oder **Durchstreichen**; **KI fragen** sendet die Auswahl mit Ihrer Frage an den KI-Bereich.
+2. Wählen Sie eine der drei **Hervorheben**-Farben oder **Unterstreichen**, **Wellenlinie** bzw. **Durchstreichen**. Um eine Markerfarbe zu ändern, klicken Sie sie mit der rechten Maustaste an und wählen eine neue. Nach dem Unterstreichen, einer Wellenlinie oder dem Durchstreichen öffnet sich in der Leiste eine Farbreihe: Ein Klick auf eine andere Farbe ändert sie, und die nächste wird ebenfalls in dieser Farbe gezeichnet. **KI fragen** sendet die Auswahl mit Ihrer Frage an den KI-Bereich.
 3. Um eine Annotation rückgängig zu machen, wählen Sie dieselbe Stelle erneut durch Ziehen aus und klicken Sie auf die aktive Schaltfläche der Leiste (ein Umschalter im Word-Stil) oder wählen Sie sie aus und drücken Sie Entf.
 
 Referenz:

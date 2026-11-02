@@ -29,6 +29,7 @@ export const pt = {
   notePanelHint: 'A nota é aplicada ao mapa quando você clica em outro lugar.',
   tbLabel: 'Rótulo',
   tbLink: 'Link',
+  tbPicture: 'Inserir imagem',
   tbLayout: 'Layout',
   tbFoldAll: 'Recolher tudo',
   tbUnfoldAll: 'Expandir tudo',
@@ -76,6 +77,15 @@ export const pt = {
   openRejected: 'Este arquivo não pode ser aberto por causa do tamanho ou da estrutura',
   labelHint: 'Separe vários rótulos com vírgulas',
   linkHint: 'Digite um endereço web (http, https) ou um endereço de e-mail (mailto)',
+  linkPreviewOption: 'Obter a imagem e o título de pré-visualização',
+  linkPreviewNote:
+    'Ao clicar em OK, este site é visitado uma vez. A imagem é guardada dentro do arquivo do mapa',
+  linkPreviewLoading: 'Obtendo a pré-visualização do link…',
+  linkPreviewDone: 'Pré-visualização do link adicionada',
+  linkPreviewTitleOnly:
+    'Esta página não tem imagem de pré-visualização, então só o título foi adicionado',
+  linkPreviewNothing: 'Nenhuma pré-visualização foi encontrada nesta página',
+  linkPreviewFailed: 'Não foi possível ler a página, então nenhuma pré-visualização foi adicionada',
   linkWontOpen:
     'Este endereço é mantido e exibido como texto, mas clicar nele não o abrirá. Somente endereços web (http, https) e endereços de e-mail são abertos.',
   linkInternal:

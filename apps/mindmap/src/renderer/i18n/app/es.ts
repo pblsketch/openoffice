@@ -29,6 +29,7 @@ export const es = {
   notePanelHint: 'La nota se aplica al mapa al hacer clic en otro lugar.',
   tbLabel: 'Etiqueta',
   tbLink: 'Enlace',
+  tbPicture: 'Insertar imagen',
   tbLayout: 'Disposición',
   tbFoldAll: 'Plegar todo',
   tbUnfoldAll: 'Desplegar todo',
@@ -77,6 +78,15 @@ export const es = {
   openRejected: 'Este archivo no se puede abrir debido a su tamaño o estructura',
   labelHint: 'Separe varias etiquetas con comas',
   linkHint: 'Escriba una dirección web (http, https) o una dirección de correo (mailto)',
+  linkPreviewOption: 'Obtener la imagen y el título de vista previa',
+  linkPreviewNote:
+    'Al pulsar Aceptar se visita este sitio una vez. La imagen se guarda dentro del archivo del mapa',
+  linkPreviewLoading: 'Obteniendo la vista previa del enlace…',
+  linkPreviewDone: 'Vista previa del enlace añadida',
+  linkPreviewTitleOnly:
+    'Esta página no tiene imagen de vista previa, así que solo se añadió su título',
+  linkPreviewNothing: 'No se encontró ninguna vista previa en esta página',
+  linkPreviewFailed: 'No se pudo leer la página, así que no se añadió ninguna vista previa',
   linkWontOpen:
     'Esta dirección se conserva y se muestra como texto, pero no se abrirá al hacer clic. Solo se abren direcciones web (http, https) y direcciones de correo.',
   linkInternal:

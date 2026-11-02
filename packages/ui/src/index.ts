@@ -48,6 +48,7 @@ export {
   type DocMentionStringKey,
 } from './strings-doc-mention'
 export { AiComposer } from './AiComposer'
+export { clipboardPictureIsRendering } from './clipboard-picture'
 export {
   SKILL_CHIPS_MAX,
   aiSkillsBridge,

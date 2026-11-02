@@ -29,6 +29,7 @@ export const fr = {
   notePanelHint: 'La note est appliquée à la carte lorsque vous cliquez ailleurs.',
   tbLabel: 'Étiquette',
   tbLink: 'Lien',
+  tbPicture: 'Insérer une image',
   tbLayout: 'Disposition',
   tbFoldAll: 'Tout replier',
   tbUnfoldAll: 'Tout déplier',
@@ -77,6 +78,14 @@ export const fr = {
   openRejected: 'Ce fichier ne peut pas être ouvert en raison de sa taille ou de sa structure',
   labelHint: 'Séparez plusieurs étiquettes par des virgules',
   linkHint: 'Saisissez une adresse web (http, https) ou une adresse e-mail (mailto)',
+  linkPreviewOption: 'Récupérer l’image d’aperçu et le titre',
+  linkPreviewNote:
+    'Appuyer sur OK visite ce site une fois. L’image est enregistrée dans le fichier de la carte',
+  linkPreviewLoading: 'Récupération de l’aperçu du lien…',
+  linkPreviewDone: 'Aperçu du lien ajouté',
+  linkPreviewTitleOnly: 'Cette page n’a pas d’image d’aperçu : seul son titre a été ajouté',
+  linkPreviewNothing: 'Aucun aperçu à ajouter n’a été trouvé sur cette page',
+  linkPreviewFailed: 'La page n’a pas pu être lue : aucun aperçu n’a été ajouté',
   linkWontOpen:
     "Cette adresse est conservée et affichée comme du texte, mais un clic ne l'ouvrira pas. Seules les adresses web (http, https) et les adresses e-mail sont ouvertes.",
   linkInternal:

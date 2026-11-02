@@ -484,6 +484,7 @@ import { runCellsChoice } from './insert-delete-cells'
 import type { CellsMode } from './insert-delete-cells'
 import { installFormatPainter } from './format-painter'
 import { installCopyMaterialize } from './copy-materialize'
+import { installCopyPicture } from './copy-picture'
 import {
   applyPasteSpecial,
   readPasteSpecialSource,
@@ -2443,6 +2444,9 @@ export function App({
     // Copy/cut load their selection into the lazy window first so streamed
     // workbooks don't serialize blanks for never-viewed rows.
     const copyMaterializeDisposable = installCopyMaterialize(runtime, lazyWorkbookRef, setMessage)
+    // Range copies also carry a picture of the cells, as Excel's do, so chat
+    // apps that paste images (KakaoTalk) get the table as a photo.
+    const copyPictureDisposable = installCopyPicture(runtime)
     statusBarStatsFilterRef.current = installStatusBarStatsFilter(
       runtime,
       () => statusBarFuncsRef.current,
@@ -3681,6 +3685,7 @@ export function App({
       cfDisplayKeyDisposable.dispose()
       nullResultDisposable.dispose()
       copyMaterializeDisposable.dispose()
+      copyPictureDisposable.dispose()
       statusBarFileStatsDisposable.dispose()
       statusBarStatsFilterRef.current?.dispose()
       statusBarStatsFilterRef.current = null

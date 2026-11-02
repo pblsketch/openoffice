@@ -29,6 +29,7 @@ export const pl = {
   notePanelHint: 'Notatka trafia do mapy, gdy klikniesz gdzie indziej.',
   tbLabel: 'Etykieta',
   tbLink: 'Link',
+  tbPicture: 'Wstaw obraz',
   tbLayout: 'Układ',
   tbFoldAll: 'Zwiń wszystko',
   tbUnfoldAll: 'Rozwiń wszystko',
@@ -76,6 +77,13 @@ export const pl = {
   openRejected: 'Tego pliku nie można otworzyć ze względu na jego rozmiar lub strukturę',
   labelHint: 'Oddziel kilka etykiet przecinkami',
   linkHint: 'Wpisz adres internetowy (http, https) lub adres e-mail (mailto)',
+  linkPreviewOption: 'Pobierz obraz podglądu i tytuł',
+  linkPreviewNote: 'Kliknięcie OK raz odwiedza tę witrynę. Obraz jest zapisywany w pliku mapy',
+  linkPreviewLoading: 'Pobieranie podglądu linku…',
+  linkPreviewDone: 'Dodano podgląd linku',
+  linkPreviewTitleOnly: 'Ta strona nie ma obrazu podglądu, więc dodano tylko jej tytuł',
+  linkPreviewNothing: 'Na tej stronie nie znaleziono podglądu do dodania',
+  linkPreviewFailed: 'Nie udało się odczytać strony, więc nie dodano podglądu',
   linkWontOpen:
     'Ten adres jest zachowywany i wyświetlany jako tekst, ale kliknięcie go nie otworzy. Otwierane są tylko adresy internetowe (http, https) i adresy e-mail.',
   linkInternal:
