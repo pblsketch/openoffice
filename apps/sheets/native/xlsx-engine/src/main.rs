@@ -103,6 +103,10 @@ enum Command {
         edits: Vec<RecalcEdit>,
         reads: Vec<RecalcRead>,
     },
+    #[serde(rename_all = "camelCase")]
+    UpdateExternalLinks {
+        path: PathBuf,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -644,6 +648,9 @@ fn handle_request(
         }
         Command::RecalcCells { path, edits, reads } => {
             return recalc.dispatch(request_id, path, edits, reads, output);
+        }
+        Command::UpdateExternalLinks { path } => {
+            xlsx_sidecar::external_links::update_external_link_values(&path).and_then(to_json_value)
         }
     };
     Some(match result {
