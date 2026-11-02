@@ -19,15 +19,24 @@
  * theme's path exactly. The underline of the line skeleton belongs to the
  * topic, so it is drawn whatever the shape of the line into it, and with the
  * line's own values: it is the same path. The arrowhead is a triangle drawn
- * apart (`BranchDrawing.head`), so it stays whole on a dashed line. A line
+ * apart (`BranchDrawing.head`), so it stays whole on a dashed line; on a
+ * line that runs on into an underline it sits at the underline's far end. A line
  * from the centre can be drawn tapered instead (`taperedBranchPath`): a
  * filled outline along the line's own shape, wide at the centre and as wide
  * as the line at the topic. A pattern is laid onto a line by its length
  * (`fittedLinePattern`), so that it starts and ends with a dash.
  *
+ * Lines that leave one parent may share a trunk: the elbows of siblings, and
+ * the branches of a tree. Drawn together (`mainBranchDrawings`,
+ * `subBranchDrawings`, `treeBranchDrawings`), each draws only its own piece
+ * of the trunk, from where the line before it turns off to where it turns
+ * off itself, so lines of different values never lie on top of each other.
+ * Together they draw the same shape the whole lines drew.
+ *
  * A tree and a timeline have their own lines: a trunk near the parent's left
  * edge that turns toward each topic below it, and, between the steps of a
- * timeline, a line from one main topic to the next with an arrowhead.
+ * timeline, a line from one main topic to the next with an arrowhead, drawn
+ * apart as the arrowhead of a curve is.
  */
 import type { ThemeBranchShape } from '@genoffice/xmind-engine'
 import type { BranchLineShape, LinePattern } from './style-values'
@@ -75,6 +84,8 @@ export interface BranchLine {
   shape?: BranchLineShape
   /** CSS pixels; the arrowhead of `arrowedCurve` grows with it */
   width?: number
+  /** round dots keep clear of an arrowhead, so the last one shows whole */
+  pattern?: LinePattern
 }
 
 const DOWN = 'down'
@@ -153,17 +164,25 @@ function sharpFallingElbow(sx: number, sy: number, ex: number, ey: number): stri
   return `M ${n(sx)} ${n(sy)} V ${n(my)} H ${n(ex)} V ${n(ey)}`
 }
 
-/** Down from `(sx, sy)`, then across to `(ex, ey)`; the corner rounded. */
-function trunkElbow(sx: number, sy: number, ex: number, ey: number, radius: number): string {
-  const r = Math.max(0, Math.min(radius, Math.abs(ex - sx), Math.abs(ey - sy)))
-  return (
-    `M ${n(sx)} ${n(sy)} V ${n(ey - r)} Q ${n(sx)} ${n(ey)} ${n(sx + r)} ${n(ey)}` + ` H ${n(ex)}`
-  )
-}
-
 /** How long the arrowhead of `arrowedCurve` is for a line this wide, from its base to its point. */
 function headSize(width: number | undefined): number {
   return Math.max(ARROW, (width ?? 0) * 2.5)
+}
+
+/**
+ * How far back from an arrowhead's point the line under it stops. A line
+ * ends half its width inside the head's base, so the two meet with no seam;
+ * a line of round dots stops a gap short of the base instead, so its last
+ * dot shows whole, apart from the head as the dots are from each other.
+ */
+function headBack(
+  size: number,
+  width: number | undefined,
+  pattern: LinePattern | undefined,
+): number {
+  const w = width ?? 0
+  if (pattern === 'round-dot') return size + Math.max(1, w)
+  return size - Math.min(w / 2, size / 2)
 }
 
 /** How far each side of the line the base of that arrowhead reaches, in lengths of the head. */
@@ -218,6 +237,7 @@ interface ConnectorOptions {
   bend: number
   radius: number
   width?: number
+  pattern?: LinePattern
 }
 
 /** A line between the ends: its path data, the points along its middle, and its arrowhead (a triangle) if it has one. */
@@ -242,8 +262,7 @@ function shaft(shape: BranchLineShape, ends: Ends, options: ConnectorOptions): S
     const along = arrival(falling, from, to, ends.side)
     const size = headSize(options.width)
     head = arrowTriangle(to, along, size)
-    // half the line's width into the head, so the line and the head meet with no seam
-    const back = size - Math.min((options.width ?? 0) / 2, size / 2)
+    const back = headBack(size, options.width, options.pattern)
     end = { x: to.x - along.x * back, y: to.y - along.y * back }
   }
   const { x: sx, y: sy } = from
@@ -381,28 +400,100 @@ export interface BranchDrawing {
   /**
    * The line may share a piece with the lines beside it: an elbow runs
    * across on the same trunk as its siblings. A pattern on such a line keeps
-   * its dashes as they are (`fittedLinePattern`).
+   * its dashes as they are (`fittedLinePattern`). Lines drawn together
+   * (`mainBranchDrawings`, `subBranchDrawings`) share nothing: each draws its
+   * own piece of a trunk.
    */
   shared: boolean
+}
+
+type Box = { left: number; top: number; right: number; bottom: number }
+
+/**
+ * An arrowhead on a line that runs on into its topic's underline goes at the
+ * far end of the underline, the end of the text, so the line and the
+ * underline read as one arrow. The underline stops at the head's base.
+ */
+function underlineHead(
+  ends: Ends,
+  options: ConnectorOptions,
+): { underline: NonNullable<Ends['underline']>; head: Point[] } {
+  const band = ends.underline!
+  const way = Math.sign(band.end - band.x) || ends.side
+  const size = headSize(options.width)
+  const back = Math.min(headBack(size, options.width, options.pattern), Math.abs(band.end - band.x))
+  return {
+    underline: { ...band, end: band.end - way * back },
+    head: arrowTriangle({ x: band.end, y: band.y }, { x: way, y: 0 }, size),
+  }
+}
+
+/** The line of a shape between its ends, and the underline drawn on after it. */
+function connector(
+  shape: BranchLineShape,
+  ends: Ends,
+  options: ConnectorOptions,
+): { line: Shaft; underline: Ends['underline'] } {
+  if (shape === 'arrowedCurve' && ends.underline !== null && !ends.underline.apart) {
+    const { underline, head } = underlineHead(ends, options)
+    return { line: { ...shaft('curve', ends, options), head }, underline }
+  }
+  return { line: shaft(shape, ends, options), underline: ends.underline }
 }
 
 function drawing(
   shape: BranchLineShape,
   ends: Ends,
   options: ConnectorOptions,
-  under: { left: number; top: number; right: number; bottom: number } | null,
+  under: Box | null,
 ): BranchDrawing {
-  const line = shaft(shape, ends, options)
-  const joined = ends.underline !== null && !ends.underline.apart
+  const { line, underline } = connector(shape, ends, options)
   let length = pathLength(line.middle)
-  if (joined)
-    length += Math.abs(ends.underline!.end - ends.to.x) + distance(line.middle.at(-1)!, ends.to)
+  if (underline !== null && !underline.apart)
+    length += Math.abs(underline.end - ends.to.x) + distance(line.middle.at(-1)!, ends.to)
   return {
-    d: drawn(line.line, ends.underline),
+    d: drawn(line.line, underline),
     head: line.head ? line.head.map((point) => `${n(point.x)},${n(point.y)}`).join(' ') : null,
     length,
     lead: under ? leadInside(line.middle, under) : 0,
     shared: shape === 'elbow' || shape === 'roundedElbow',
+  }
+}
+
+/** One line of several drawn together: its boxes and what it asks for. */
+export interface BranchItem {
+  box: BranchBoxes
+  line?: BranchLine
+}
+
+/** A line made ready to draw: its shape, its ends, and the box it starts under (the central topic's). */
+interface Planned {
+  shape: BranchLineShape
+  ends: Ends
+  options: ConnectorOptions
+  under: Box | null
+}
+
+function mainPlan(geometry: BranchGeometry, { box, line = {} }: BranchItem): Planned {
+  return {
+    shape: line.shape ?? 'curve',
+    ends: mainEnds(geometry, box),
+    options: { bend: 0.5, radius: geometry.cornerRadius, width: line.width, pattern: line.pattern },
+    under: { left: box.pL, top: box.pT, right: box.pL + box.pW, bottom: box.pT + box.pH },
+  }
+}
+
+function subPlan(geometry: BranchGeometry, { box, line = {} }: BranchItem): Planned {
+  return {
+    shape: line.shape ?? themeSubShape(geometry),
+    ends: subEnds(geometry, box),
+    options: {
+      bend: 0.55,
+      radius: geometry.cornerRadius,
+      width: line.width,
+      pattern: line.pattern,
+    },
+    under: null,
   }
 }
 
@@ -412,10 +503,8 @@ export function mainBranchDrawing(
   box: BranchBoxes,
   line: BranchLine = {},
 ): BranchDrawing {
-  const ends = mainEnds(geometry, box)
-  const options = { bend: 0.5, radius: geometry.cornerRadius, width: line.width }
-  const centre = { left: box.pL, top: box.pT, right: box.pL + box.pW, bottom: box.pT + box.pH }
-  return drawing(line.shape ?? 'curve', ends, options, centre)
+  const plan = mainPlan(geometry, { box, line })
+  return drawing(plan.shape, plan.ends, plan.options, plan.under)
 }
 
 /** From a topic to one below it. */
@@ -424,9 +513,201 @@ export function subBranchDrawing(
   box: BranchBoxes,
   line: BranchLine = {},
 ): BranchDrawing {
-  const ends = subEnds(geometry, box)
-  const options = { bend: 0.55, radius: geometry.cornerRadius, width: line.width }
-  return drawing(line.shape ?? themeSubShape(geometry), ends, options, null)
+  const plan = subPlan(geometry, { box, line })
+  return drawing(plan.shape, plan.ends, plan.options, plan.under)
+}
+
+/** All the lines from the central topic, drawn together so that a trunk they share is drawn once. */
+export function mainBranchDrawings(
+  geometry: BranchGeometry,
+  items: readonly BranchItem[],
+): BranchDrawing[] {
+  return together(items.map((item) => mainPlan(geometry, item)))
+}
+
+/** The lines below one main topic, drawn together so that a trunk they share is drawn once. */
+export function subBranchDrawings(
+  geometry: BranchGeometry,
+  items: readonly BranchItem[],
+): BranchDrawing[] {
+  return together(items.map((item) => subPlan(geometry, item)))
+}
+
+// ---- lines that share a trunk ----
+
+/**
+ * An elbow in a frame of its own: `u` runs along the piece that leaves the
+ * parent and the piece that reaches the topic, `v` along the trunk between
+ * them (for a level elbow `u` is x and `v` is y; for a falling one the other
+ * way round).
+ */
+interface Elbow {
+  /** its place among the lines drawn together */
+  at: number
+  falling: boolean
+  /** where it leaves the parent */
+  su: number
+  sv: number
+  /** where its trunk runs */
+  tu: number
+  /** where it reaches the topic */
+  eu: number
+  ev: number
+  /** its corners; 0 for square ones */
+  r: number
+  /** the way from the parent to the trunk, and the way along the trunk */
+  side: number
+  fall: number
+  /** its ends are level: no trunk, one straight piece */
+  level: boolean
+}
+
+function elbowOf(at: number, plan: Planned): Elbow {
+  const { falling, from, to } = plan.ends
+  const s = falling ? { u: from.y, v: from.x } : { u: from.x, v: from.y }
+  const e = falling ? { u: to.y, v: to.x } : { u: to.x, v: to.y }
+  const du = e.u - s.u
+  const dv = e.v - s.v
+  const rounded = plan.shape === 'roundedElbow'
+  return {
+    at,
+    falling,
+    su: s.u,
+    sv: s.v,
+    tu: s.u + du / 2,
+    eu: e.u,
+    ev: e.v,
+    r: rounded ? Math.max(0, Math.min(plan.options.radius, Math.abs(du) / 2, Math.abs(dv) / 2)) : 0,
+    side: du >= 0 ? 1 : -1,
+    fall: dv >= 0 ? 1 : -1,
+    level: Math.abs(dv) < 1,
+  }
+}
+
+/** Where a line that does not draw the whole of its elbow starts: on the piece from the parent (`u`), or on the trunk (`v`). */
+type TrunkStart = { u: number } | { v: number }
+
+/**
+ * Splits a trunk among the elbows that run down it. The one that turns
+ * nearest the parent draws the piece from the parent and its own turn, as it
+ * always did. On each side of it along the trunk, every other one draws from
+ * where the one before it turns off to where it turns off itself; the first
+ * on a side starts with its own turn, where the piece from the parent ends.
+ * So no piece of the trunk is drawn twice, and each piece carries the values
+ * of the line that runs on from it. Null: the whole elbow.
+ */
+function trunkStarts(group: readonly Elbow[]): Array<[Elbow, TrunkStart | null]> {
+  const reach = (elbow: Elbow): number => Math.abs(elbow.ev - elbow.sv)
+  const owner = group.reduce((best, elbow) => (reach(elbow) < reach(best) ? elbow : best))
+  const starts: Array<[Elbow, TrunkStart | null]> = [[owner, null]]
+  // how far short of the trunk the owner's piece from the parent stops: at its turn
+  const turnBack = owner.level ? 0 : owner.r
+  for (const fall of [1, -1]) {
+    let before: Elbow | null = !owner.level && owner.fall === fall ? owner : null
+    const along = group
+      .filter((elbow) => elbow !== owner && !elbow.level && elbow.fall === fall)
+      .sort((a, b) => reach(a) - reach(b))
+    for (const elbow of along) {
+      starts.push([
+        elbow,
+        before
+          ? { v: before.ev - fall * before.r }
+          : { u: elbow.tu - elbow.side * Math.max(elbow.r, turnBack) },
+      ])
+      before = elbow
+    }
+  }
+  for (const elbow of group) {
+    if (elbow !== owner && elbow.level) starts.push([elbow, { v: elbow.sv }])
+  }
+  return starts
+}
+
+/** The part of an elbow from `start` on: its path data and the points along its middle. */
+function elbowPiece(elbow: Elbow, start: TrunkStart): { d: string; middle: Point[] } {
+  const { falling, tu, sv, eu, ev, r, side, fall, level } = elbow
+  const at = (u: number, v: number): Point => (falling ? { x: v, y: u } : { x: u, y: v })
+  const middle: Point[] = []
+  let d = ''
+  let here: Point = { x: 0, y: 0 }
+  const move = (point: Point): void => {
+    d = `M ${n(point.x)} ${n(point.y)}`
+    here = point
+    middle.push(point)
+  }
+  const line = (point: Point): void => {
+    if (distance(here, point) < 0.005) return
+    if (point.y === here.y) d += ` H ${n(point.x)}`
+    else if (point.x === here.x) d += ` V ${n(point.y)}`
+    else d += ` L ${n(point.x)} ${n(point.y)}`
+    here = point
+    middle.push(point)
+  }
+  const corner = (control: Point, point: Point): void => {
+    if (r <= 0) return
+    d += ` Q ${n(control.x)} ${n(control.y)} ${n(point.x)} ${n(point.y)}`
+    middle.push(...cornerPoints(here, control, point))
+    here = point
+  }
+  if ('u' in start) {
+    move(at(start.u, sv))
+    line(at(tu - side * r, sv))
+    corner(at(tu, sv), at(tu, sv + fall * r))
+  } else {
+    move(at(tu, start.v))
+  }
+  if (level) {
+    line(at(eu, sv))
+  } else {
+    line(at(tu, ev - fall * r))
+    corner(at(tu, ev), at(tu + side * r, ev))
+    line(at(eu, ev))
+  }
+  return { d, middle }
+}
+
+/**
+ * The lines, drawn together. Elbows that leave the same point and run down
+ * the same trunk split it among them (`trunkStarts`). A line no other line
+ * leaves beside shares nothing, so a pattern on it is fitted to it.
+ */
+function together(plans: readonly Planned[]): BranchDrawing[] {
+  const drawings = plans.map((plan) => drawing(plan.shape, plan.ends, plan.options, plan.under))
+  const startOf = (plan: Planned): string => `${n(plan.ends.from.x)} ${n(plan.ends.from.y)}`
+  const leaving = new Map<string, number>()
+  for (const plan of plans) leaving.set(startOf(plan), (leaving.get(startOf(plan)) ?? 0) + 1)
+  const trunks = new Map<string, Elbow[]>()
+  plans.forEach((plan, at) => {
+    if (plan.shape !== 'elbow' && plan.shape !== 'roundedElbow') return
+    const elbow = elbowOf(at, plan)
+    const key = `${elbow.falling} ${n(elbow.su)} ${n(elbow.sv)} ${Math.round(elbow.tu)}`
+    trunks.set(key, [...(trunks.get(key) ?? []), elbow])
+  })
+  for (const group of trunks.values()) {
+    if (group.length < 2) continue
+    for (const [elbow, start] of trunkStarts(group)) {
+      const whole = drawings[elbow.at]!
+      if (start === null) {
+        drawings[elbow.at] = { ...whole, shared: false }
+        continue
+      }
+      const { ends } = plans[elbow.at]!
+      const piece = elbowPiece(elbow, start)
+      const band = ends.underline
+      const joined = band !== null && !band.apart
+      drawings[elbow.at] = {
+        d: drawn(piece.d, band),
+        head: null,
+        length: pathLength(piece.middle) + (joined ? Math.abs(band.end - ends.to.x) : 0),
+        lead: 0,
+        shared: false,
+      }
+    }
+  }
+  plans.forEach((plan, at) => {
+    if (leaving.get(startOf(plan)) === 1) drawings[at] = { ...drawings[at]!, shared: false }
+  })
+  return drawings
 }
 
 /** The path from the central topic to a main topic (its arrowhead, if any, is drawn apart). */
@@ -657,23 +938,27 @@ function polygonPath(points: readonly Point[]): string {
  * line starts, square along the central topic's edge. It is `taperBaseWidth`
  * wide there and narrows smoothly, faster at first, to the line's own width at
  * the topic. A curve with an arrow ends
- * in a filled arrowhead, the line stopping at its base. The underline of the
+ * in a filled arrowhead, the line stopping at its base; with the underline of
+ * the line skeleton the head goes at the underline's far end. The underline of the
  * line skeleton goes on at the line's width, as part of the same outline. No
  * line (`none`) leaves the underline alone.
  */
 export function taperedBranchPath(
   geometry: BranchGeometry,
   box: BranchBoxes,
-  line: Required<BranchLine>,
+  line: { shape: BranchLineShape; width: number },
 ): string {
   const ends = mainEnds(geometry, box)
   const { width } = line
   const parts: string[] = []
   const points: Point[] = []
   const widths: number[] = []
+  let band = ends.underline
   if (line.shape !== 'none') {
     const options = { bend: 0.5, radius: geometry.cornerRadius, width }
-    const { middle, head } = shaft(line.shape, ends, options)
+    const drawn = connector(line.shape, ends, options)
+    const { middle, head } = drawn.line
+    band = drawn.underline
     const base = taperBaseWidth(width)
     const total = pathLength(middle)
     let along = 0
@@ -685,7 +970,6 @@ export function taperedBranchPath(
     })
     if (head) parts.push(polygonPath(head))
   }
-  const band = ends.underline
   if (band !== null) {
     if (!band.apart && points.length > 0) {
       points.push({ x: band.x, y: band.y }, { x: band.end, y: band.y })
@@ -755,6 +1039,14 @@ export interface FittedDash {
  * same factor, to fit along the line a whole number of times. Round dots sit
  * half their width in from both ends, so each shows whole.
  *
+ * Lines that leave one topic start at the same point and run on top of each
+ * other for a little while. So on a line long enough for a few periods, the
+ * first period keeps the pattern's own lengths and only the rest is
+ * stretched: the dashes of such lines start alike and lie on each other
+ * where the lines do. The dashes are then written out one by one, up to the
+ * end of the line and a gap past it (`FITTED_MAX` numbers at most; a longer
+ * list is stretched all along instead).
+ *
  * A line that shares a piece with the lines beside it (`shared`: the trunk of
  * an elbow) is not stretched, since each line's own factor would set the
  * dashes of the shared piece apart; it only starts with a whole dash. A line
@@ -772,44 +1064,68 @@ export function fittedLinePattern(
   const inset = linecap === 'round' ? width / 2 : 0
   const start = Math.max(0, line.lead) + inset
   const seen = line.length - start - inset
-  let scale = 1
-  if (!line.shared && seen > 0) {
-    const period = dashes.reduce((sum, length) => sum + length, 0)
-    const first = dashes[0]!
-    // whole periods, then the first dash: the line ends where that dash ends
-    let periods = Math.round((seen - first) / period)
-    if (seen < (first + period) / 2) periods = 0
-    else periods = Math.max(1, periods)
-    const fitted = periods * period + first
-    if (fitted > 0) scale = seen / fitted
+  const period = dashes.reduce((sum, length) => sum + length, 0)
+  const first = dashes[0]!
+  // finer than a path's points, and rounded where each dash ends, so no error adds up along the line
+  const fine = (value: number): number => Math.round(value * 10000) / 10000
+  const laid = (list: readonly number[]): FittedDash => {
+    let along = 0
+    const written = list.map((length) => {
+      const from = fine(along)
+      along += length
+      return fine(fine(along) - from)
+    })
+    const total = written.reduce((sum, length) => sum + length, 0)
+    const phase = total > 0 ? start % total : 0
+    return {
+      dasharray: written.join(' '),
+      dashoffset: fine(phase === 0 ? 0 : total - phase),
+      linecap,
+    }
   }
-  const scaled = dashes.map((length) => length * scale)
-  const period = scaled.reduce((sum, length) => sum + length, 0)
-  const phase = period > 0 ? start % period : 0
-  // finer than a path's points: a small error in each dash adds up along the line
-  const fine = (value: number): string => String(Math.round(value * 10000) / 10000)
-  return {
-    dasharray: scaled.map(fine).join(' '),
-    dashoffset: Number(fine(phase === 0 ? 0 : period - phase)),
-    linecap,
+  if (line.shared || !(seen > 0)) return laid(dashes)
+  // whole periods, then the first dash: the line ends where that dash ends
+  let periods = Math.round((seen - first) / period)
+  if (seen < (first + period) / 2) periods = 0
+  else periods = Math.max(1, periods)
+  if (periods >= KEPT_FROM && (periods + 1) * dashes.length + 2 <= FITTED_MAX) {
+    const scale = (seen - period) / ((periods - 1) * period + first)
+    const rest = dashes.map((length) => length * scale)
+    const list = [...dashes]
+    for (let at = 1; at < periods; at++) list.push(...rest)
+    // the last dash, and a gap past the end of the line so the list never starts again on it
+    list.push(first * scale, line.length + period)
+    return laid(list)
   }
+  const fitted = periods * period + first
+  const scale = fitted > 0 ? seen / fitted : 1
+  return laid(dashes.map((length) => length * scale))
 }
+
+/** How many periods a line takes before its first one keeps the pattern's own lengths. */
+const KEPT_FROM = 3
+/** The most numbers a pattern laid onto one line is written with. */
+const FITTED_MAX = 400
 
 // ---- tree and timeline ----
 
 /** Which topic a branch of a tree leaves from: the boxes of the three levels are measured differently. */
 export type TreeParent = 'central' | 'main' | 'sub'
 
-/**
- * A branch of a tree: down the trunk near the parent's left edge, then
- * across to the topic's left edge. All the branches of one parent run down
- * the same trunk, so together they draw it.
- */
-export function treeBranchPath(
-  geometry: BranchGeometry,
-  box: BranchBoxes,
-  from: TreeParent,
-): string {
+/** One branch of a tree: where its trunk starts, the topic it turns to, its corner, and the underline it runs on into. */
+interface TreeLine {
+  sx: number
+  sy: number
+  ex: number
+  ey: number
+  r: number
+  /** the far end of the topic's underline; null without one */
+  end: number | null
+  /** how much of it lies under the topic it leaves */
+  lead: number
+}
+
+function treeLine(geometry: BranchGeometry, box: BranchBoxes, from: TreeParent): TreeLine {
   const { pT, pL, pW, pH, cT, cL, cW, cH } = box
   // a topic below the main level has space around it inside its box; the others fill theirs
   const padX = from === 'sub' ? geometry.subPadX : 0
@@ -823,38 +1139,167 @@ export function treeBranchPath(
   const ex = cL + childPadX
   const ey = underline === null ? cT + cH / 2 : underlineY(cT + cH - childPadY, underline)
   const radius = geometry.subShape === 'rounded-elbow' ? geometry.cornerRadius : TREE_CURVE
-  const path = trunkElbow(sx, sy, ex, ey, radius)
-  return underline === null ? path : `${path} H ${n(cL + cW - childPadX)}`
+  return {
+    sx,
+    sy,
+    ex,
+    ey,
+    r: Math.max(0, Math.min(radius, Math.abs(ex - sx), Math.abs(ey - sy))),
+    end: underline === null ? null : cL + cW - childPadX,
+    lead: toMain ? geometry.centralInset : 0,
+  }
+}
+
+/** The branch from `top` on its trunk: down, the corner rounded, across, and on under the topic. */
+function treePath(line: TreeLine, top: number): string {
+  const { sx, ex, ey, r, end } = line
+  const path =
+    `M ${n(sx)} ${n(top)} V ${n(ey - r)} Q ${n(sx)} ${n(ey)} ${n(sx + r)} ${n(ey)}` + ` H ${n(ex)}`
+  return end === null ? path : `${path} H ${n(end)}`
+}
+
+/**
+ * A branch of a tree: down the trunk near the parent's left edge, then
+ * across to the topic's left edge. All the branches of one parent run down
+ * the same trunk; drawn on its own, a branch draws it from the top.
+ */
+export function treeBranchPath(
+  geometry: BranchGeometry,
+  box: BranchBoxes,
+  from: TreeParent,
+): string {
+  const line = treeLine(geometry, box, from)
+  return treePath(line, line.sy)
+}
+
+/** One branch of a tree among those drawn together. */
+export interface TreeItem {
+  box: BranchBoxes
+  from: TreeParent
+}
+
+/**
+ * The branches of a tree, drawn together. The branches of one parent run
+ * down its trunk: the first from the top, each other one from where the one
+ * above it turns off, so no piece of the trunk is drawn twice and each piece
+ * carries the values of the branch that runs on from it.
+ */
+export function treeBranchDrawings(
+  geometry: BranchGeometry,
+  items: readonly TreeItem[],
+): BranchDrawing[] {
+  const lines = items.map((item) => treeLine(geometry, item.box, item.from))
+  const trunks = new Map<string, number[]>()
+  lines.forEach((line, at) => {
+    const key = `${n(line.sx)} ${n(line.sy)}`
+    trunks.set(key, [...(trunks.get(key) ?? []), at])
+  })
+  const drawings: BranchDrawing[] = []
+  for (const trunk of trunks.values()) {
+    trunk.sort((a, b) => lines[a]!.ey - lines[b]!.ey)
+    let before: TreeLine | null = null
+    for (const at of trunk) {
+      const line = lines[at]!
+      const { sx, ex, ey, r, end } = line
+      const top = before ? before.ey - before.r : line.sy
+      const turn = { x: sx, y: ey - r }
+      const middle: Point[] = [
+        { x: sx, y: top },
+        turn,
+        ...cornerPoints(turn, { x: sx, y: ey }, { x: sx + r, y: ey }),
+        { x: ex, y: ey },
+      ]
+      if (end !== null) middle.push({ x: end, y: ey })
+      drawings[at] = {
+        d: treePath(line, top),
+        head: null,
+        length: pathLength(middle),
+        lead: before ? 0 : line.lead,
+        shared: false,
+      }
+      before = line
+    }
+  }
+  return drawings
+}
+
+/** A step of a timeline as drawn: the line, and its arrowhead drawn apart. */
+export interface TimelineStep {
+  /** the line, and the underline of the topic it reaches */
+  d: string
+  /** the arrowhead: an open point, and the last piece of the line under it, to be stroked whole */
+  arrow: string
+  length: number
+  lead: number
+  shared: boolean
+}
+
+/** The point at `t` along a cubic curve, and the first part of the curve up to it. */
+function cubicUpTo(p0: Point, p1: Point, p2: Point, p3: Point, t: number): [Point, Point, Point] {
+  const mix = (p: Point, q: Point): Point => ({
+    x: p.x + (q.x - p.x) * t,
+    y: p.y + (q.y - p.y) * t,
+  })
+  const a = mix(p0, p1)
+  const b = mix(p1, p2)
+  const c = mix(p2, p3)
+  const ab = mix(a, b)
+  const bc = mix(b, c)
+  return [a, ab, mix(ab, bc)]
 }
 
 /**
  * A step of a timeline: from the right edge of the step before (the central
  * topic for the first) to the left edge of this main topic, ending in an
- * arrowhead.
+ * arrowhead. The head is drawn apart, with the last piece of the line under
+ * it, so a pattern never cuts it: the line stops at the head's base (a line
+ * of round dots a gap before it, so its last dot shows whole). The head grows
+ * with a line's own width (`width`); without one it keeps its size.
  */
-export function timelineStepPath(
+export function timelineStepDrawing(
   geometry: BranchGeometry,
   box: BranchBoxes,
   fromCentral: boolean,
-): string {
+  line: { width?: number; pattern?: LinePattern } = {},
+): TimelineStep {
   const { pT, pL, pW, pH, cT, cL, cW, cH } = box
   const underline = geometry.mainUnderline
   const sx = fromCentral ? pL + pW - geometry.centralInset : pL + pW
   const sy = fromCentral || underline === null ? pT + pH / 2 : underlineY(pT + pH, underline)
   const ey = underline === null ? cT + cH / 2 : underlineY(cT + cH, underline)
   const ex = cL - 2
-  const head =
-    ` M ${n(ex - ARROW)} ${n(ey - ARROW * 0.7)} L ${n(ex)} ${n(ey)}` +
-    ` L ${n(ex - ARROW)} ${n(ey + ARROW * 0.7)}`
-  const path = `${levelCurve(sx, sy, ex, ey)}${head}`
-  return underline === null ? path : `${path} M ${n(cL)} ${n(ey)} H ${n(cL + cW)}`
-}
-
-/**
- * How much of a line of a tree or a timeline lies under the topic it leaves:
- * the part under the central topic, for a line from there; none otherwise.
- * Such lines share their trunk, so a pattern on them is never stretched.
- */
-export function structureLead(geometry: BranchGeometry, fromCentral: boolean): number {
-  return fromCentral ? geometry.centralInset : 0
+  const size = headSize(line.width)
+  const base = ex - size
+  const stop = base - (line.pattern === 'round-dot' ? Math.max(1, line.width ?? 1) : 0)
+  const start = { x: sx, y: sy }
+  let d = `M ${n(sx)} ${n(sy)}`
+  let middle: Point[] = [start]
+  let neck: Point = { x: base, y: ey }
+  if (stop > sx) {
+    // the same curve as the whole step, cut where it reaches `stop`
+    const mx = sx + (ex - sx) / 2
+    const curve = [start, { x: mx, y: sy }, { x: mx, y: ey }, { x: ex, y: ey }] as const
+    let low = 0
+    let high = 1
+    for (let step = 0; step < 40; step++) {
+      const mid = (low + high) / 2
+      if (cubicUpTo(...curve, mid)[2].x < stop) low = mid
+      else high = mid
+    }
+    const [c1, c2, end] = cubicUpTo(...curve, low)
+    d = `M ${n(sx)} ${n(sy)} C ${n(c1.x)} ${n(c1.y)} ${n(c2.x)} ${n(c2.y)} ${n(end.x)} ${n(end.y)}`
+    middle = cubicPoints(start, c1, c2, end)
+    if (stop === base) neck = end
+  }
+  const arrow =
+    `M ${n(neck.x)} ${n(neck.y)} L ${n(ex)} ${n(ey)}` +
+    ` M ${n(ex - size)} ${n(ey - size * 0.7)} L ${n(ex)} ${n(ey)}` +
+    ` L ${n(ex - size)} ${n(ey + size * 0.7)}`
+  return {
+    d: underline === null ? d : `${d} M ${n(cL)} ${n(ey)} H ${n(cL + cW)}`,
+    arrow,
+    length: pathLength(middle),
+    lead: fromCentral ? geometry.centralInset : 0,
+    shared: false,
+  }
 }

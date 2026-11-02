@@ -19,7 +19,7 @@ import {
   type BranchBoxes,
   mainBranchPath,
   subBranchPath,
-  timelineStepPath,
+  timelineStepDrawing,
   TREE_INDENT,
   TREE_TRUNK,
   treeBranchPath,
@@ -322,16 +322,17 @@ describe('the branch lines', () => {
       cW: 90,
       cH: 30,
     }
-    const d = timelineStepPath(pill, step, false)
-    const values = numbers(d)
-    expect(values.slice(0, 2)).toEqual([100, 15])
+    // the arrowhead is drawn apart (so a pattern on the line never cuts it): line and head
+    // together draw what the one path with the head in it drew
+    const { d, arrow } = timelineStepDrawing(pill, step, false)
+    expect(numbers(d).slice(0, 2)).toEqual([100, 15])
     // the arrowhead's point is just before the main topic, at its middle
-    expect(d).toMatch(/ L 148 15 L /)
-    expect(values.slice(-2)).toEqual([142, 15 + 6 * 0.7])
+    expect(arrow).toMatch(/ L 148 15 L /)
+    expect(numbers(arrow).slice(-2)).toEqual([142, 15 + 6 * 0.7])
     // from the central topic the line starts hidden under its edge
-    expect(numbers(timelineStepPath(pill, step, true))[0]).toBe(100 - pill.centralInset)
+    expect(numbers(timelineStepDrawing(pill, step, true).d)[0]).toBe(100 - pill.centralInset)
     // in the line skeleton the main topic sits on its line
-    expect(timelineStepPath(line, step, false)).toMatch(/ M 150 [\d.]+ H 240$/)
+    expect(timelineStepDrawing(line, step, false).d).toMatch(/ M 150 [\d.]+ H 240$/)
   })
 })
 
