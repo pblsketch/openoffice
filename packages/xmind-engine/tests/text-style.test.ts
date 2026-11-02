@@ -25,7 +25,11 @@ function formattedSheets(): XmindSheet[] {
               title: 'Styled',
               style: {
                 id: 'style-styled',
-                properties: { 'svg:fill': '#445566', 'fo:font-style': 'italic', 'line-width': '2pt' },
+                properties: {
+                  'svg:fill': '#445566',
+                  'fo:font-style': 'italic',
+                  'line-width': '2pt',
+                },
               },
             },
             {
@@ -42,7 +46,13 @@ function formattedSheets(): XmindSheet[] {
               attributedTitle: [{ text: 'Old text', 'fo:font-weight': '700' }],
             },
           ],
-          summary: [{ id: 'sum-topic', title: 'Sum', attributedTitle: [{ text: 'Sum', 'fo:color': '#ff0000' }] }],
+          summary: [
+            {
+              id: 'sum-topic',
+              title: 'Sum',
+              attributedTitle: [{ text: 'Sum', 'fo:color': '#ff0000' }],
+            },
+          ],
         },
         summaries: [{ id: 'sum-rec', range: '(0,1)', topicId: 'sum-topic' }],
       },
@@ -71,7 +81,10 @@ describe('reading a text format', () => {
     expect(titleRunsToView([], '')).toBeNull()
     // alignment and case belong to the whole topic, and a value that is not text is no value
     expect(
-      titleRunsToView([{ text: 'a', 'fo:text-align': 'center', 'fo:color': 5, 'fo:font-style': 'italic' }], 'a'),
+      titleRunsToView(
+        [{ text: 'a', 'fo:text-align': 'center', 'fo:color': 5, 'fo:font-style': 'italic' }],
+        'a',
+      ),
     ).toEqual([{ text: 'a', style: { fontStyle: 'italic' } }])
   })
 
@@ -101,7 +114,8 @@ describe('reading a text format', () => {
       ['textAlign', 'center'],
       ['textTransform', 'uppercase'],
     ]
-    for (const [key, value] of good) expect(isWritableTextStyle(key, value), `${key} ${value}`).toBe(true)
+    for (const [key, value] of good)
+      expect(isWritableTextStyle(key, value), `${key} ${value}`).toBe(true)
     const bad: [Parameters<typeof isWritableTextStyle>[0], string][] = [
       ['color', 'red'],
       ['color', '#abc'],
@@ -120,7 +134,8 @@ describe('reading a text format', () => {
       ['textAlign', 'justify'],
       ['textTransform', 'full-width'],
     ]
-    for (const [key, value] of bad) expect(isWritableTextStyle(key, value), `${key} ${value}`).toBe(false)
+    for (const [key, value] of bad)
+      expect(isWritableTextStyle(key, value), `${key} ${value}`).toBe(false)
   })
 })
 
@@ -140,7 +155,10 @@ describe('reconciling a text format', () => {
     inView(state, 'plain').style = { fontWeight: '700' }
     inView(state, 'styled').style = { fill: '#445566', textDecoration: 'line-through' }
     // not named: the state's values are not taken
-    expect(applied(reconcileSheet(document, 0, state))).toMatchObject({ changed: false, inSync: false })
+    expect(applied(reconcileSheet(document, 0, state))).toMatchObject({
+      changed: false,
+      inSync: false,
+    })
     expect(inSource(document.sheets[0]!, 'plain')!.style).toBeUndefined()
 
     const named = applied(
@@ -154,7 +172,11 @@ describe('reconciling a text format', () => {
     // italic taken out, the strike put in; the fill, another property and the id stay
     expect(inSource(document.sheets[0]!, 'styled')!.style).toEqual({
       id: 'style-styled',
-      properties: { 'svg:fill': '#445566', 'line-width': '2pt', 'fo:text-decoration': 'line-through' },
+      properties: {
+        'svg:fill': '#445566',
+        'line-width': '2pt',
+        'fo:text-decoration': 'line-through',
+      },
     })
   })
 
@@ -200,11 +222,14 @@ describe('reconciling a text format', () => {
     expect(inSource(document.sheets[0]!, 'plain')).toEqual({
       id: 'plain',
       title: 'Plain',
-      attributedTitle: [{ text: 'Pl', 'fo:color': '#ff0000', 'fo:font-weight': '700' }, { text: 'ain' }],
+      attributedTitle: [
+        { text: 'Pl', 'fo:color': '#ff0000', 'fo:font-weight': '700' },
+        { text: 'ain' },
+      ],
     })
-    expect(inView((await openOk(await document.save())).viewSheets()[0]!, 'plain').titleRuns).toEqual(
-      plain.titleRuns.map((part) => ({ text: part.text, style: part.style })),
-    )
+    expect(
+      inView((await openOk(await document.save())).viewSheets()[0]!, 'plain').titleRuns,
+    ).toEqual(plain.titleRuns.map((part) => ({ text: part.text, style: part.style })))
   })
 
   it('keeps every key of parts the user did not change', async () => {
@@ -237,7 +262,10 @@ describe('reconciling a text format', () => {
       { text: 'Hello big ', style: {} },
       { text: 'world', style: { fontWeight: '700', fontSize: '20pt' } },
     ]
-    expect(applied(reconcileSheet(document, 0, state))).toMatchObject({ changed: true, inSync: true })
+    expect(applied(reconcileSheet(document, 0, state))).toMatchObject({
+      changed: true,
+      inSync: true,
+    })
     expect(inSource(document.sheets[0]!, 'rich')!.attributedTitle).toEqual([
       { text: 'Hello big ' },
       { text: 'world', 'fo:font-weight': '700', 'fo:font-size': '20pt' },
@@ -275,7 +303,10 @@ describe('reconciling a text format', () => {
       id: expect.any(String),
       properties: { 'fo:color': '#ff0000', 'fo:font-style': 'italic' },
     })
-    expect(made.attributedTitle).toEqual([{ text: 'Bold', 'fo:font-weight': '700' }, { text: ' and red' }])
+    expect(made.attributedTitle).toEqual([
+      { text: 'Bold', 'fo:font-weight': '700' },
+      { text: ' and red' },
+    ])
   })
 
   it('takes the parts off a summary topic and a relationship whose title is edited', async () => {
@@ -296,7 +327,9 @@ describe('reconciling a text format', () => {
     applied(reconcileSheet(document, 0, state))
     const sheet = document.sheets[0]!
     expect(sheet.rootTopic.children!.summary![0]).toEqual({ id: 'sum-topic', title: 'Total' })
-    expect(sheet.relationships).toEqual([{ id: 'rel', end1Id: 'plain', end2Id: 'styled', title: 'Line' }])
+    expect(sheet.relationships).toEqual([
+      { id: 'rel', end1Id: 'plain', end2Id: 'styled', title: 'Line' },
+    ])
   })
 
   it('refuses parts that are not text with a format', async () => {
