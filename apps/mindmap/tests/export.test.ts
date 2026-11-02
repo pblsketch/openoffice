@@ -37,7 +37,15 @@ import {
 import { containedSize, shrinkPixels } from '../src/renderer/export/resample'
 import { documentName, sheetExportName } from '../src/renderer/export/names'
 import { thumbnailFor } from '../src/renderer/export/use-map-export'
-import { documentOf, documentWithEntries, plainSheet, TINY_PNG, topic } from './helpers/fixtures'
+import {
+  documentOf,
+  documentWithEntries,
+  FORMAT_IDS,
+  lineFormatSheet,
+  plainSheet,
+  TINY_PNG,
+  topic,
+} from './helpers/fixtures'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const RENDERER = resolve(HERE, '../src/renderer')
@@ -366,6 +374,18 @@ describe('cleaning a copy', () => {
     expect(root.querySelector('me-tpc')!.getAttribute('data-mm-level')).toBe('4')
   })
 
+  it('keeps the room a boundary takes in the layout, so the copy is laid out as the map is', () => {
+    const root = document.createElement('me-nodes')
+    root.innerHTML =
+      '<me-main><me-wrapper data-mm-room="31 0 0 12" style="padding-top: 31px; padding-right: 12px">' +
+      '<me-parent><me-tpc>t</me-tpc></me-parent></me-wrapper></me-main>'
+    cleanCopy(root)
+    const wrapper = root.querySelector<HTMLElement>('me-wrapper')!
+    expect(wrapper.getAttribute('data-mm-room')).toBe('31 0 0 12')
+    expect(wrapper.style.paddingTop).toBe('31px')
+    expect(wrapper.style.paddingRight).toBe('12px')
+  })
+
   it('keeps on a topic only the style properties the editor sets', () => {
     const root = document.createElement('me-nodes')
     root.innerHTML =
@@ -481,5 +501,182 @@ describe('the preview picture of a save', () => {
     const started = Date.now()
     expect(await thumbnailFor(session, new Map([[key, controller]]), 500)).toBeNull()
     expect(Date.now() - started).toBeLessThan(1500)
+  })
+})
+
+// ---- relationships, summary brackets and boundaries ----
+
+/** jsdom lays nothing out: each element a box of its own, so boundaries and shaped lines have a place. */
+function layOut(): void {
+  const boxes = new WeakMap<Element, DOMRect>()
+  let next = 0
+  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(100)
+  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(30)
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+    if (this.localName === 'me-nodes') return new DOMRect(0, 0, 100, 100)
+    let box = boxes.get(this)
+    if (!box) {
+      next++
+      box = new DOMRect(40 + next * 70, 20 + next * 45, 100, 30)
+      boxes.set(this, box)
+    }
+    return box
+  })
+}
+
+/** The line format sheet with a hostile value in every place a value of the format can be. */
+function hostileFormatSheet(): XmindSheet {
+  const sheet = lineFormatSheet()
+  const evil = `url(https://${EVIL}/x.png)`
+  const lines = sheet.relationships as Record<string, unknown>[]
+  lines.push({
+    id: 'e1000000-0000-4000-8000-000000000001',
+    end1Id: FORMAT_IDS.rightA,
+    end2Id: FORMAT_IDS.rightB,
+    title: HOSTILE_LINE,
+    style: {
+      id: 'e1000000-0000-4000-8000-000000000002',
+      properties: {
+        'shape-class': 'javascript:alert(1)',
+        'arrow-begin-class': `org.xmind.arrowShape.${HOSTILE_TITLE}`,
+        'arrow-end-class': evil,
+        'line-color': `#fff; background:${evil}`,
+        'line-width': 'expression(alert(1))',
+        'line-pattern': evil,
+      },
+    },
+  })
+  const right = sheet.rootTopic.children!.attached![0]!
+  ;(right.summaries as Record<string, unknown>[])[0]!.style = {
+    id: 'e1000000-0000-4000-8000-000000000003',
+    properties: { 'shape-class': evil },
+  }
+  ;(right.boundaries as Record<string, unknown>[])[0] = {
+    id: FORMAT_IDS.around,
+    range: '(0,1)',
+    title: HOSTILE_TITLE,
+    style: {
+      id: 'e1000000-0000-4000-8000-000000000004',
+      properties: {
+        'shape-class': evil,
+        'line-color': evil,
+        'line-width': `3pt; background:${evil}`,
+        'line-pattern': 'expression(alert(1))',
+        'svg:fill': evil,
+      },
+    },
+  }
+  return sheet
+}
+
+async function formatSnapshot(sheet: XmindSheet): Promise<MapSnapshot> {
+  layOut()
+  const doc = await documentOf(sheet)
+  const { mind } = show(doc)
+  await settle()
+  // a selected relationship: its glow is editing only
+  mind.selectArrow(mind.arrowSvg.querySelector('g') as never)
+  return copyDrawing({ mind, readEntry: (name) => doc.readEntry(name) }, BOX)
+}
+
+describe('an export draws relationships, brackets and boundaries as the screen does', () => {
+  it('the shaped lines, the ends, the brackets and the boundaries are in the page and the picture', async () => {
+    const snapshot = await formatSnapshot(lineFormatSheet())
+    const page = parseHtml(snapshotPage(snapshot))
+    const svg = new DOMParser().parseFromString(snapshotSvg(snapshot, 1), 'image/svg+xml')
+    expect(svg.querySelector('parsererror')).toBeNull()
+    for (const doc of [page, svg]) {
+      expect(doc.querySelectorAll('.mm-boundaries g[data-mm-boundary]').length).toBe(4)
+      expect(doc.querySelectorAll('.topiclinks .mm-rel-end').length).toBeGreaterThanOrEqual(3)
+      expect(doc.querySelector('.summary g[data-mm-shape="curly"]')).not.toBeNull()
+      const styled = [...doc.querySelectorAll('.topiclinks > g')].find(
+        (group) => group.getAttribute('data-linkid') === FORMAT_IDS.styledLine,
+      )!
+      expect(styled.hasAttribute('data-mm-color')).toBe(true)
+      expect(doc.querySelector('.mm-boundaries path[stroke-dasharray="8 4"]')).not.toBeNull()
+      expect(doc.querySelector('.mm-boundaries path[fill="#eeddcc"]')).not.toBeNull()
+      // a title's chip is kept; the rim a selected boundary shows has no colour, so it draws nothing
+      expect(doc.querySelectorAll('.mm-boundaries .mm-boundary-chip').length).toBeGreaterThan(0)
+      for (const ring of doc.querySelectorAll('.mm-boundaries .mm-boundary-ring')) {
+        expect(ring.hasAttribute('stroke')).toBe(false)
+      }
+      // the dashes fitted to a relationship's line stay on it
+      const line = styled.querySelector('path:not([stroke="transparent"]):not(.mm-rel-end)')!
+      expect(line.getAttribute('style') ?? '').toMatch(/stroke-dasharray: none/)
+      // the title is text
+      const titles = [...doc.querySelectorAll('.mm-boundary-title')].map(
+        (title) => title.textContent,
+      )
+      expect(titles).toContain('<b>around</b>')
+      expect(doc.querySelectorAll('.mm-boundaries b, .arrow-highlight').length).toBe(0)
+    }
+  })
+
+  it('the same with the app light and dark', async () => {
+    document.documentElement.setAttribute('data-theme', 'light')
+    const light = await formatSnapshot(lineFormatSheet())
+    const lightPage = snapshotPage(light)
+    const lightSvg = snapshotSvg(light, 1)
+    mounted.splice(0).forEach((controller) => controller.destroy())
+    document.body.innerHTML = ''
+    vi.restoreAllMocks()
+    document.documentElement.setAttribute('data-theme', 'dark')
+    const dark = await formatSnapshot(lineFormatSheet())
+    expect(snapshotPage(dark)).toBe(lightPage)
+    expect(snapshotSvg(dark, 1)).toBe(lightSvg)
+  })
+
+  it('hostile values of the format make no element, name no address and leave no unfiltered style', async () => {
+    const snapshot = await formatSnapshot(hostileFormatSheet())
+    const html = snapshotPage(snapshot)
+    const svgText = snapshotSvg(snapshot, 1)
+    for (const output of [html, svgText]) {
+      const doc =
+        output === html
+          ? parseHtml(output)
+          : new DOMParser().parseFromString(output, 'image/svg+xml')
+      expect(doc.querySelector('parsererror')).toBeNull()
+      expect(doc.querySelectorAll('script, iframe, a, object, embed, image').length).toBe(0)
+      for (const element of doc.querySelectorAll('*')) {
+        for (const { name, value } of element.attributes) {
+          expect(name, `${element.localName} ${name}`).not.toMatch(/^on|^href$|^xlink:href$/i)
+          expect(value, `${element.localName} ${name}`).not.toContain(EVIL)
+          expect(value, `${element.localName} ${name}`).not.toMatch(/url\(|expression|javascript:/i)
+        }
+      }
+      // the boundary's title is its characters
+      const titles = [...doc.querySelectorAll('.mm-boundary-title')].map(
+        (title) => title.textContent,
+      )
+      expect(titles).toContain(HOSTILE_TITLE)
+    }
+  })
+})
+
+describe('cleaning the copy of a drawn line', () => {
+  it('keeps of an inline style only the properties of a line, with values of a known form', () => {
+    const root = document.createElement('me-nodes')
+    root.innerHTML =
+      '<svg class="lines"><path d="M0 0" style="stroke: #aabbcc; stroke-width: 3px; ' +
+      'stroke-dasharray: 12 6; stroke-linecap: butt; position: fixed"></path>' +
+      '<path d="M0 0" style="stroke: var(--mm-strong); fill: var(--surface)"></path>' +
+      '<path d="M0 0" style="stroke: url(https://x.example/a); stroke-width: calc(1px + 2px)"></path>' +
+      '<path d="M0 0" fill="url(#x)" stroke="#123456" stroke-dasharray="3 3"></path>' +
+      '<g class="arrow-highlight"><path d="M0 0"></path></g></svg>'
+    cleanCopy(root)
+    const paths = [...root.querySelectorAll('path')]
+    expect(paths).toHaveLength(4)
+    // a browser writes a hex colour back as rgb()
+    expect(paths[0]!.style.getPropertyValue('stroke')).toBe('rgb(170, 187, 204)')
+    expect(paths[0]!.style.getPropertyValue('stroke-width')).toBe('3px')
+    expect(paths[0]!.style.getPropertyValue('stroke-dasharray')).toBe('12 6')
+    expect(paths[0]!.style.getPropertyValue('stroke-linecap')).toBe('butt')
+    expect(paths[0]!.style.getPropertyValue('position')).toBe('')
+    expect(paths[1]!.getAttribute('style')).toBe('stroke: var(--mm-strong);')
+    expect(paths[2]!.hasAttribute('style')).toBe(false)
+    expect(paths[3]!.hasAttribute('fill')).toBe(false)
+    expect(paths[3]!.getAttribute('stroke')).toBe('#123456')
+    expect(paths[3]!.getAttribute('stroke-dasharray')).toBe('3 3')
+    expect(root.querySelector('.arrow-highlight')).toBeNull()
   })
 })

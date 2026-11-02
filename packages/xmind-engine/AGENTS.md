@@ -6,10 +6,11 @@
 
 - 열기(`open.ts`): zip 안전 검사(`packages/zip-gate`)를 먼저 하고, 결과를 다섯 가지로 낸다. `ok`, `legacy-format`(`content.xml`만 있는 예전 형식), `encrypted`(`manifest.json`의 `file-entries` 가운데 `encryption-data`를 가진 항목이 있음), `unreadable`(JSON이 아니거나 구조 검사 실패, zip이 아님), `rejected`(zip 안전 검사가 거절. zip 자체의 암호화 항목도 여기다). `ok`일 때만 문서(`XmindDocument`)가 생긴다.
 - 원본 나무와 저장(`types.ts`, `document.ts`, `archive.ts`, `content.ts`): `content.json`을 해석한 원본 나무를 통째로 들고, zip 안의 모든 항목을 원본 바이트 그대로 기억한다. `addEntry`는 `resources/` 아래 새 그림 항목을 받아 다음 저장에 더하고(결정 0075), `readEntry`는 저장 전에도 그 바이트를 읽어 준다. 구조 검사(`structure-check.ts`): 최상위가 시트 목록, 시트마다 중심 토픽, 한 시트 안에서 토픽 식별자가 겹치지 않음, 토픽 깊이 256단계까지.
-- 보기용 자료(`view.ts`): 편집기에 주는 시트별 자료. 제목, 가지 순서, 접힘, 라벨, 일반 글 메모, 웹 링크, 요약, 연결선, 배치, 그림 참조, 사용자가 정한 상자 폭(`customWidth`, 양수일 때만 `width`), 표식 식별자, 토픽 자체 스타일 값, 제목 조각(`titleRuns`)만 담는다. 부를 때마다 새 사본이다.
+- 보기용 자료(`view.ts`): 편집기에 주는 시트별 자료. 제목, 가지 순서, 접힘, 라벨, 일반 글 메모, 웹 링크, 요약, 연결선, 배치, 그림 참조, 사용자가 정한 상자 폭(`customWidth`, 양수일 때만 `width`), 표식 식별자, 토픽 자체 스타일 값, 제목 조각(`titleRuns`), 토픽에 직접 적힌 선 값(`line`), 연결선 서식과 곡선(`style`, `curve`), 요약 괄호 모양(요약 기록의 `style`), 그릴 수 있는 경계(`boundaries`, 접힌 가지 아래 것 포함)만 담는다. 부를 때마다 새 사본이다.
+- 선 서식(`line-style.ts`, 결정 0102): 가지 선·연결선·요약·경계의 속성 이름과 `org.xmind.*` 접두어, 고를 수 있는 낱말 목록, 굵기(`"<n>pt"`, 1~20) 읽기·쓰기, 곡선(`controlPoints`) 변환, 엔진이 쓰는 값의 꼴(`isWritable*`). 지도 전체 선 설정(`theme-lines.ts`): 시트 theme의 map 단계에 있는 `line-tapered`·`multi-line-colors`를 읽고 그 키 하나만 적기, 두 키만 있는 theme을 "테마 없음"으로 보기(`isBlankSheetTheme`, `isUnknownSheetTheme`).
 - 글자 서식(`text-style.ts`, 결정 0101): 토픽 전체의 글자 서식 속성 이름, 제목 조각(`attributedTitle`) 읽기, 엔진이 쓰는 값의 꼴(`isWritableTextStyle`).
 - 맞추기(`reconcile*.ts`, `tree-walk.ts`): 편집기의 결과 상태를 받아 원본 나무를 그 상태로 맞춘다. 요약·경계의 순번 다시 적기(`reconcile-ranges.ts`)를 포함한다.
-- 시트 추가·이름 바꾸기·삭제(`sheets.ts`), 새 파일(`create.ts`), 메모(`notes.ts`), 배치 값(`layout.ts`), 새 식별자(`ids.ts`, 소문자 UUID v4), 보존만 하는 요소 세기(`preserved.ts`).
+- 시트 추가·이름 바꾸기·삭제(`sheets.ts`), 새 파일(`create.ts`), 메모(`notes.ts`), 배치 값(`layout.ts`), 새 식별자(`ids.ts`, 소문자 UUID v4), 보존만 하는 요소 세기(`preserved.ts`. 기본은 모든 경계를 세고, `shownBoundaries: false`면 보기용 자료가 그리는 경계를 빼고 센다).
 - 개요 글: 지도 → 글(`outline.ts`의 `sheetsToOutline`), 글 → 지도(`outline-parse.ts`의 `outlineToSheets`, `createXmindDocumentFromOutline`). 두 쪽이 맞춰야 하는 표기는 `outline-marks.ts`에 있다.
 - 테마: 값의 표(`theme-data.ts`, 뼈대 4 × 색 띠 8 × 바탕 3 = 96가지), 그리는 값(`theme-look.ts`), 파일 형식의 속성표로 옮기기와 다시 알아보기(`theme-table.ts`), 시트에 적기(`theme-sheet.ts`), 색 계산(`theme-color.ts`). 파일은 세 단계(중심·큰 가지·그 아래)만 적으므로, 그 아래 단계가 조금씩 작아지는 규칙(`THEME_DEEP_LEVELS`)은 그리는 값에만 있다.
 
@@ -23,7 +24,7 @@
 
 ## 항상 지켜야 하는 것
 
-- **모르는 요소를 지우지 않는다.** 원본 나무의 모든 단계에 모르는 키가 그대로 있고, 저장 때 그대로 나간다. 형(`types.ts`)도 닫힌 모양으로 만들지 않는다. 지워지는 것은 사용자가 지운 토픽과 그 아래뿐이다. 보기용 자료에 나올 수 없는 것(떠 있는 토픽, 말풍선, 요약 아래 가지, 경계)은 상태에 없다는 이유로 지우지 않는다.
+- **모르는 요소를 지우지 않는다.** 원본 나무의 모든 단계에 모르는 키가 그대로 있고, 저장 때 그대로 나간다. 형(`types.ts`)도 닫힌 모양으로 만들지 않는다. 지워지는 것은 사용자가 지운 토픽과 그 아래뿐이다. 보기용 자료에 나올 수 없는 것(떠 있는 토픽, 말풍선, 요약 아래 가지, 그릴 수 없는 경계)은 상태에 없다는 이유로 지우지 않는다. 경계는 상태에 없어도 지우지 않고, 맞추기의 `removedBoundaries`에 이름이 있을 때만 지운다.
 - **바뀐 것이 없는 저장은 원본과 바이트까지 같다.** `save`는 표시가 없고 원본 나무를 다시 써낸 글이 처음과 같으면 원본 바이트를 그대로 돌려준다. 바뀌었으면 `content.json`만 다시 쓰고, 다른 항목은 이름·순서·시각·압축 방식까지 그대로 옮긴다. 미리보기 그림은 PNG를 넘겼을 때만 바꾼다. `manifest.json`은 새 그림 항목을 더할 때 그 항목을 `file-entries`에 적을 때만 고친다(결정 0075의 유일한 예외).
 - **`ok`로 열리지 않은 파일에서는 문서가 생기지 않는다.** `XmindDocument`는 패키지 밖으로 생성자를 내보내지 않는다. 문서는 `openXmind`와 새 파일 함수에서만 나온다. 저장할 바이트를 만들 수 있는 것은 문서뿐이다.
 - **맞추기는 결과만 본다.** 화면의 동작을 하나하나 번역하지 않는다. 짝은 토픽 식별자로 짓고, 편집기가 고치는 값 가운데 실제로 달라진 것만 적는다. 옮긴 토픽은 원본 덩어리째(모르는 키 포함) 옮긴다. 맞추기가 받은 상태는 화면 창에서 왔으므로 믿지 않고 `reconcile-state.ts`에서 검사·복사한 뒤에 쓴다.
@@ -33,8 +34,9 @@
 - **그림은 이름이 불린 토픽에서만 지운다.** 상태에 그림이 없어도 맞추기는 지우지 않는다. 호출자가 `removedPictures`에 그 토픽 id를 넣었을 때만 `image`를 지우고, 보관 항목은 남긴다(결정 0093).
 - **상자 폭은 상태대로 적고 지운다.** 상태의 `width`가 숫자면 `customWidth`에 적고, 없거나 `null`이면 파일의 양수 폭을 지운다. 그릴 수 없는 꼴(글자, 0 이하)의 `customWidth`는 화면에 없는 값이라 그대로 둔다. 양수가 아닌 `width`를 담은 상태는 거절한다.
 - **사용자가 고친 메모는 일반 글로만 다시 쓰고 서식 있는 쪽을 뺀다.** 남겨 두면 원래 프로그램이 예전 내용을 보여 준다. 고치지 않은 메모는 그대로다.
-- **테마는 사용자가 고를 때와 새 시트를 만들 때만 적는다.** 적는 곳은 `theme-sheet.ts` 하나다. 열기·알아보기·저장은 시트의 `theme`을 건드리지 않는다.
-- **이 앱만의 표식을 파일에 넣지 않는다.** 테마는 속성표 자체로 알아본다(`recogniseTheme`). 이 앱이 적은 표와 속성까지 같으면 그 테마이고, 다른 프로그램의 테마나 다른 프로그램이 다시 저장해 속성이 달라진 표는 알아보지 않는다.
+- **테마는 사용자가 고를 때와 새 시트를 만들 때만 적는다.** 적는 곳은 `theme-sheet.ts`와, 사용자가 테마 칸의 두 설정을 바꿀 때의 `theme-lines.ts`(map 단계의 그 키 하나만, 이 앱의 테마가 아니어도) 둘이다. 다른 테마를 적을 때 두 설정을 옮긴다. 열기·알아보기·저장은 시트의 `theme`을 건드리지 않는다.
+- **선 서식은 이름이 불린 것과 새 것에만 쓴다(결정 0102).** 맞추기는 `restyledTopicLines`·`refilledTopics`·`restyledRelationships`·`restyledSummaries`(요약 토픽 id)·`restyledBoundaries`에 든 것과 상태가 새로 더한 것에만 상태의 서식을 쓴다. `isWritable*` 꼴일 때만 쓰고, 지운 키만 빼며, 비면 스타일째 뺀다. 연결선 곡선은 이름이 불린 연결선에서 상태가 곡선을 담으면 `controlPoints`를 쓰고 `lineEndPoints`를 빼며, `null`이면 둘 다 뺀다. 경계 자리(부모·범위)는 `inSync` 비교에 넣지 않는다(감싼 토픽을 따라가므로 편집기는 결과의 보기용 자료에서 받는다).
+- **이 앱만의 표식을 파일에 넣지 않는다.** 테마는 속성표 자체로 알아본다(`recogniseTheme`). 이 앱이 적은 표와 속성까지 같으면 그 테마이고, 다른 프로그램의 테마나 다른 프로그램이 다시 저장해 속성이 달라진 표는 알아보지 않는다. 예외로 map 단계의 `line-tapered` 값과 `multi-line-colors`의 켜고 끔(`none`)은 견주지 않는다(결정 0102). 켜져 있으면 색 목록은 그 테마의 띠 색이어야 한다.
 - **배포한 테마 표는 계속 알아본다.** 배포된 판이 적은 테마의 값(띠 색, 크기, 규칙)을 바꾸기 전에, 바꿀 테마들의 마지막 배포판 표를 `SHIPPED_THEME_TABLES`에 같은 테마 식별자로 옮겨 둔다. `tests/theme-table.test.ts`가 지금 적는 표를 고정해 두어, 값이 바뀌면 실패하는 것으로 이 일을 알린다. 0.12 판이 적은 21pt·15pt·14pt 표는 그 목록에 있다(오늘 표에 그 크기를 되돌려 넣어 만든다). 그 목록도 따로 고정되어 있어, 띠 색이나 규칙이 움직이면 예전 표가 흔들리기 전에 실패한다. 그때는 손으로 적는다. 서로 다른 두 테마가 같은 표가 되면 모듈을 불러오는 순간 예외가 난다.
 - **파일에 들어가는 색은 정수 계산으로만 만든다**(`mixColors`, `raiseColor`). 거듭제곱·제곱근을 쓰는 측정 함수는 화면용 선택에만 쓴다. 판과 실행 환경이 달라도 같은 파일이 나와야 한다.
 - **지도의 색은 문서 내용이다.** 테마 값은 모두 평범한 `#rrggbb` 값이고 화면 틀 토큰을 참조하지 않는다.
@@ -47,7 +49,7 @@
 - 문서 하나 = 원본 바이트 + JSZip 객체 + 원본 나무 + 처음 써낸 글. "바뀜"은 표시(`markChanged`, `replaceSheet`)이거나, 지금 나무를 써낸 글이 처음과 다를 때다. 그래서 시트를 추가했다가 지우거나 이름을 바꿨다가 되돌린 문서는 원본 바이트로 저장된다. 시트 탭의 작업(`sheets.ts`)은 표시를 남기지 않는다.
 - `content.json`은 플랫폼의 JSON으로 읽고 쓴다. 원래 프로그램이 같은 방식으로 쓰므로 그 파일은 글자 그대로 돌아온다. 다른 곳에서 온 파일은 바뀐 저장에서 달라질 수 있다(배정밀도를 넘는 숫자, 겹친 키, 정수 모양의 키 순서). zip 항목마다의 덧붙은 필드(확장 시각 등)는 옮기지 않는다.
 - 배치는 여섯 가지(왼쪽, 오른쪽, 양쪽, 아래, 트리, 타임라인)만 그린다. 트리는 파일 형식의 `org.xmind.ui.tree.right`, 타임라인은 `org.xmind.ui.timeline.horizontal`로 읽고 쓴다. 그 밖의 배치 값(왼쪽으로 자라는 트리, 세로 타임라인, 피시본 등)은 양쪽이나 오른쪽으로 대신 그리게 하고, 파일의 값은 사용자가 배치를 바꿀 때까지 그대로 둔다. 대신 그리는 배치는 왼쪽·아래·트리·타임라인이 되지 않는다.
-- 개요 글의 모양은 다음과 같고 테스트가 고정한다. 시트마다 `# 제목`, 토픽은 두 칸씩 들여쓴 `- ` 목록, 라벨은 `[ ]`, 웹 링크는 `< >`, 메모는 `> ` 줄, 요약·떠 있는 토픽·말풍선은 `(summary)`·`(floating)`·`(callout)` 표시가 붙은 항목. 접힌 토픽도 나온다. 큰 시트는 읽기용 선택(`OUTLINE_READING_OPTIONS`)으로 토픽 300개를 넘으면 3단계 아래를 접는다.
+- 개요 글의 모양은 다음과 같고 테스트가 고정한다. 시트마다 `# 제목`, 토픽은 두 칸씩 들여쓴 `- ` 목록, 라벨은 `[ ]`, 웹 링크는 `< >`, 메모는 `> ` 줄, 요약·떠 있는 토픽·말풍선은 `(summary)`·`(floating)`·`(callout)` 표시가 붙은 항목. 접힌 토픽도 나온다. 큰 시트는 읽기용 선택(`OUTLINE_READING_OPTIONS`)으로 토픽 300개를 넘으면 3단계 아래를 접는다. 식별자 모드(AI의 `read_map`)에서만 그릴 수 있는 연결선·요약·경계가 제목이 없어도 식별자와 서식 값(`[shape=…]`, `[around …]`)과 함께 나온다. 식별자 없는 개요 글은 서식이 있든 없든 글자 하나 바뀌지 않는다.
 - 글 → 지도는 보통의 마크다운도 받는다. `#`마다 시트, 아래 제목 단계와 목록 들여쓰기가 위아래 관계, 가장 바깥 항목이 하나면 그것이 중심 토픽, 본문 문단·표·코드·인용은 바로 위 토픽의 메모로 들어간다. 지도 → 글 → 지도를 거치면 시트 수, 제목, 위아래 관계와 순서, 라벨, 웹 링크, 메모가 같다. 보통의 마크다운에서 `(summary)`·`(floating)`·`(callout)` 같은 표시로 시작하는 목록 항목은 그 낱말을 표시로 읽어 제목에서 떼는데, 알고 둔 모호함이다(이 엔진이 써낸 글은 그런 제목을 `\(`로 escape하므로 왕복에는 문제가 없다).
 - 새 파일의 만든 프로그램 이름과 판은 `packages/i18n`의 제품 이름과 `XMIND_ENGINE_VERSION`(이 패키지의 `version`과 같게 테스트가 지킨다)에서 온다. 새 시트의 기본 테마("종이")는 `theme-sheet.ts`가 불려 올 때 `setDefaultSheetTheme`으로 건다.
 - 열기의 크기 한도는 다른 문서 엔진과 같은 `DEFAULT_ZIP_LIMITS`다.
@@ -56,5 +58,5 @@
 
 - 실행: `npm run test -w @genoffice/xmind-engine`, `npm run typecheck -w @genoffice/xmind-engine`. Windows에서 전부 통과한다.
 - 시험 파일은 `tests/helpers.ts`가 손으로 그때그때 만든다. 다른 프로그램이 만든 파일·나무·테마·그림은 저장소에 없다.
-- 바꾸면 반드시 테스트하는 것: 열기의 다섯 결과(`tests/open.test.ts`), 바뀐 것 없는 저장의 바이트 일치와 제목 하나만 고친 저장에서 `content.json`만 다른 것(`tests/save.test.ts`), 모르는 값이 옮긴 토픽과 함께 가는 것과 지운 토픽 아래만 사라지는 것(`tests/reconcile*.test.ts`), 요약·경계의 순번(`tests/reconcile-ranges.test.ts`, `tests/reconcile-follow.test.ts`), 보존만 하는 요소의 수(`tests/preserved.test.ts`), 개요 글 형식과 왕복(`tests/outline.test.ts`, `tests/outline-parse.test.ts`), 96개 테마를 적고 다시 알아보는 것과 지금 적는 표의 고정(`tests/theme-table.test.ts`), 그림 항목 더하기·되돌리기와 매니페스트·다시 열기, 상태가 가리키는 그림 쓰기와 없는 항목 무시(`tests/resource-image.test.ts`), 글자 서식과 제목 조각을 읽고 이름 불린 토픽에만 쓰며 고친 제목의 옛 조각을 빼는 것(`tests/text-style.test.ts`), 이름이 불린 토픽에서만 그림 지우기와 상자 폭 적기·지우기·거절(`tests/reconcile.test.ts`), 화면과 Node 양쪽에서 도는지(`tests/browser-safety.test.ts`).
+- 바꾸면 반드시 테스트하는 것: 열기의 다섯 결과(`tests/open.test.ts`), 바뀐 것 없는 저장의 바이트 일치와 제목 하나만 고친 저장에서 `content.json`만 다른 것(`tests/save.test.ts`), 모르는 값이 옮긴 토픽과 함께 가는 것과 지운 토픽 아래만 사라지는 것(`tests/reconcile*.test.ts`), 요약·경계의 순번(`tests/reconcile-ranges.test.ts`, `tests/reconcile-follow.test.ts`), 보존만 하는 요소의 수(`tests/preserved.test.ts`), 개요 글 형식과 왕복(`tests/outline.test.ts`, `tests/outline-parse.test.ts`), 96개 테마를 적고 다시 알아보는 것과 지금 적는 표의 고정(`tests/theme-table.test.ts`), 그림 항목 더하기·되돌리기와 매니페스트·다시 열기, 상태가 가리키는 그림 쓰기와 없는 항목 무시(`tests/resource-image.test.ts`), 글자 서식과 제목 조각을 읽고 이름 불린 토픽에만 쓰며 고친 제목의 옛 조각을 빼는 것(`tests/text-style.test.ts`), 선·연결선·요약·경계 값을 읽고 이름 불린 것에만 쓰며 곡선 저장·경계 더하기와 이름 불린 것만 지우기·원본 바이트(`tests/line-format.test.ts`), 지도 전체 두 설정을 적고 96개 테마를 계속 알아보는 것(`tests/theme-lines.test.ts`), 이름이 불린 토픽에서만 그림 지우기와 상자 폭 적기·지우기·거절(`tests/reconcile.test.ts`), 화면과 Node 양쪽에서 도는지(`tests/browser-safety.test.ts`).
 - 만든 파일이 원래 프로그램에서 열리는지는 자동 테스트로 확인하지 못한다. 실제 프로그램에 올려 확인한다.

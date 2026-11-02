@@ -11,7 +11,6 @@ import {
   fontFamilyValue,
   FONT_SIZE_DRAWN,
   isPlainStyle,
-  LINE_WIDTH_DRAWN_MAX,
   NO_FILL,
   type OwnTopicStyle,
   ownTopicStyle,
@@ -22,10 +21,13 @@ import {
   safeFontSize,
   safeFontWeight,
   safeItalic,
-  safeLineWidth,
   safeTextAlign,
   safeTextTransform,
   splitAlpha,
+  BRANCH_LINE_WIDTH_DRAWN_MAX,
+  safeBranchLineWidth,
+  safeBranchShape,
+  safeLinePattern,
 } from '../src/renderer/map/style-values'
 
 /** A topic style that sets nothing. */
@@ -211,22 +213,6 @@ describe('a font weight', () => {
   })
 })
 
-describe('a line width', () => {
-  it('is a number of pixels, a bare number counting as points', () => {
-    expect(safeLineWidth('2')).toBe(2.67)
-    expect(safeLineWidth('3pt')).toBe(4)
-    expect(safeLineWidth('1.5px')).toBe(1.5)
-    expect(safeLineWidth('0')).toBe(0)
-  })
-
-  it('is never wider than the editor draws a line, and nothing when no file means it', () => {
-    expect(safeLineWidth('40pt')).toBe(LINE_WIDTH_DRAWN_MAX)
-    expect(safeLineWidth('65')).toBeNull()
-    expect(safeLineWidth('9999px')).toBeNull()
-    for (const value of HOSTILE) expect(safeLineWidth(value), String(value)).toBeNull()
-  })
-})
-
 describe("a topic's own style", () => {
   it('keeps what is colour-shaped or number-shaped and the known words', () => {
     expect(
@@ -336,6 +322,47 @@ describe("a topic's own style", () => {
         expect(family, String(value)).not.toMatch(/["'`;:,(){}[\]<>\\=@/*!]/u)
         expect([...family].every((character) => character >= ' ')).toBe(true)
       }
+    }
+  })
+})
+
+describe('the values of a branch line', () => {
+  const shape = (word: string): string => `org.xmind.branchConnection.${word}`
+
+  it('a shape a user can pick is itself; a shape only read is the nearest one', () => {
+    for (const word of ['curve', 'straight', 'elbow', 'roundedElbow', 'arrowedCurve', 'none']) {
+      expect(safeBranchShape(shape(word)), word).toBe(word)
+    }
+    expect(safeBranchShape(shape('fold'))).toBe('elbow')
+    expect(safeBranchShape(shape('fold2'))).toBe('elbow')
+    expect(safeBranchShape(shape('roundedfold'))).toBe('roundedElbow')
+    expect(safeBranchShape(shape('bight'))).toBe('curve')
+    expect(safeBranchShape(shape('timeline.horizontal'))).toBe('straight')
+  })
+
+  it('any other shape is no value', () => {
+    for (const value of [shape('mystery'), shape(''), 'curve', shape('Curve'), shape('toString')]) {
+      expect(safeBranchShape(value), value).toBeNull()
+    }
+    for (const value of HOSTILE) expect(safeBranchShape(value), String(value)).toBeNull()
+  })
+
+  it('a pattern is one of the words of the format', () => {
+    for (const word of ['solid', 'dash', 'dot', 'dash-dot', 'dash-dot-dot', 'round-dot']) {
+      expect(safeLinePattern(word)).toBe(word)
+    }
+    for (const value of ['dashed', 'Dash', 'constructor', ...HOSTILE]) {
+      expect(safeLinePattern(value), String(value)).toBeNull()
+    }
+  })
+
+  it('a width is drawn one point to one pixel, as the theme tables are written', () => {
+    expect(safeBranchLineWidth('3pt')).toBe(3)
+    expect(safeBranchLineWidth('3')).toBe(3)
+    expect(safeBranchLineWidth('2.5px')).toBe(2.5)
+    expect(safeBranchLineWidth('40pt')).toBe(BRANCH_LINE_WIDTH_DRAWN_MAX)
+    for (const value of ['0', '0pt', '65', '9999px', '-2', '3em', ...HOSTILE]) {
+      expect(safeBranchLineWidth(value), String(value)).toBeNull()
     }
   })
 })

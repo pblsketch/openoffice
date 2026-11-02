@@ -460,7 +460,7 @@ describe('reconcileSheet: topics only the state has', () => {
     const back = expectApplied(reconcileSheet(document, 0, shown))
     expect(back.ids.topics.size).toBe(0)
     expect(back.inSync).toBe(false) // the picture and the fill were not brought back
-    // the text format is: a topic the state adds is written with the one it shows
+    // the text and line format are: a topic the state adds is written with the ones it shows
     expect(inSource(document.sheets[0]!, SOME_UUID)).toEqual({
       id: SOME_UUID,
       title: 'Beta \u{1F600} 한글',
@@ -471,6 +471,7 @@ describe('reconcileSheet: topics only the state has', () => {
           'fo:font-family': 'Some Family',
           'fo:font-size': '18pt',
           'fo:font-weight': '700',
+          'line-width': '2pt',
         },
       },
     })

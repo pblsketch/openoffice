@@ -345,15 +345,88 @@
   stroke-linejoin: round;
 }
 
-.mm-card .map-container .topiclinks > g > path:not([stroke='transparent']) {
+/*
+ * A relationship takes these unless it has a value of its own: the group is
+ * then marked (data-mm-color, -width, -pattern; map/relations.ts) and the
+ * filtered value on its paths stands.
+ */
+.mm-card .map-container .topiclinks > g:not([data-mm-color]) > path:not([stroke='transparent']) {
   stroke: var(--mm-relation);
+}
+
+.mm-card .map-container .topiclinks > g:not([data-mm-width]) > path:not([stroke='transparent']) {
   stroke-width: 1.5;
+}
+
+.mm-card .map-container .topiclinks > g:not([data-mm-pattern]) > path:not([stroke='transparent']) {
   stroke-linecap: round;
+}
+
+.mm-card .map-container .topiclinks > g > path:not([stroke='transparent']) {
   stroke-linejoin: round;
 }
 
-.mm-card .map-container .topiclinks > g > path[stroke-dasharray] {
+.mm-card .map-container .topiclinks > g:not([data-mm-pattern]) > path[stroke-dasharray] {
   stroke-dasharray: 5 5;
+}
+
+/* an end drawn by this editor that is a solid shape is filled with the line's colour, and has no outline */
+.mm-card .map-container .topiclinks > g:not([data-mm-color]) > path.mm-rel-end[data-mm-filled] {
+  fill: var(--mm-relation);
+}
+
+.mm-card .map-container .topiclinks > g > path.mm-rel-end[data-mm-solid] {
+  stroke: none;
+}
+
+/* ---- boundaries: a layer under everything else of the map (map/relations.ts) ---- */
+
+.mm-card .map-container .mm-boundaries {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.mm-card .map-container .mm-boundaries .mm-boundary-shape {
+  stroke-linejoin: round;
+  /* the outline takes a press (it selects the boundary); what it goes around does not */
+  pointer-events: stroke;
+}
+
+.mm-card .map-container .mm-boundaries g:not([data-mm-color]) > .mm-boundary-shape {
+  stroke: var(--mm-relation);
+}
+
+.mm-card .map-container .mm-boundaries g:not([data-mm-width]) > .mm-boundary-shape {
+  stroke-width: 1.5;
+}
+
+/* a boundary without a fill of its own lies on a faint fill of its line's colour, drawn only */
+.mm-card
+  .map-container
+  .mm-boundaries
+  g:not([data-mm-color]):not([data-mm-fill])
+  > .mm-boundary-shape {
+  fill: var(--mm-relation);
+  fill-opacity: 0.08;
+}
+
+/* a boundary's title is written on a chip of the map's ground, so the outline under it stops at its ends */
+.mm-card .map-container .mm-boundaries .mm-boundary-chip {
+  fill: var(--mm-ground);
+  stroke: none;
+  pointer-events: auto;
+}
+
+.mm-card .map-container .mm-boundaries .mm-boundary-title {
+  fill: var(--mm-text);
+  font-size: 12px;
+  font-weight: 600;
+  pointer-events: auto;
 }
 
 .mm-card .map-container .svg-label {
@@ -395,8 +468,20 @@
   font-size: 12px;
 }
 
+/* the title of a relationship with values of its own (map/relations.ts): its ground only as large as its text */
+.mm-card .map-container .svg-label[data-type='arrow'][data-mm-placed] {
+  padding: 0 3px;
+  border-radius: 3px;
+}
+
 /* a relationship or summary without a title still needs something to click on */
 .mm-card .map-container .svg-label:empty {
   min-width: 1.5em;
   min-height: 1em;
+}
+
+/* ... but a relationship's empty title hides none of its line */
+.mm-card .map-container .svg-label[data-type='arrow']:empty {
+  padding: 0;
+  background-color: transparent;
 }

@@ -37,6 +37,9 @@ import { Toolbar } from './components/Toolbar'
 import { SheetTabs } from './components/SheetTabs'
 import { ThemePanel } from './components/ThemePanel'
 import { FormatPanel } from './components/FormatPanel'
+import { formatModel } from './components/format-model'
+import { noticeText } from './components/map-notices'
+import { BoundaryMenu } from './components/BoundaryMenu'
 import { NotePanel, type NotePanelHandle } from './components/NotePanel'
 import { MindmapAiDock, useMindmapAi } from './ai/AiDock'
 import { useMapHandoff } from './ai/use-handoff'
@@ -98,8 +101,13 @@ export default function App() {
   /** why a new map could not be saved into its project folder (spec 6); shown until the next save */
   const [projectSaveProblem, setProjectSaveProblem] = useState<string | null>(null)
   const [themeOpen, setThemeOpen] = useState(false)
-  /** the text format panel beside the map */
+  /** the format panel beside the map */
   const [formatOpen, setFormatOpen] = useState(false)
+  /** the menu asked for on a boundary: which one, and where */
+  const [boundaryMenu, setBoundaryMenu] = useState<{ id: string; x: number; y: number } | null>(
+    null,
+  )
+  const closeBoundaryMenu = useCallback(() => setBoundaryMenu(null), [])
   /** F5: the map alone, shell chrome covered by HTML fullscreen */
   const [presenting, setPresenting] = useState(false)
   const [noteOpen, setNoteOpen] = useState(
@@ -188,6 +196,9 @@ export default function App() {
       },
       onRequest: (field, topicId) => openTopicFieldRef.current(field, topicId),
       onStateChange: () => setMapTick((tick) => tick + 1),
+      // a boundary that could not be made, a format that cannot go there: said on the status line
+      onNotice: (notice) => say(noticeText(notice)),
+      onBoundaryMenu: (id, at) => setBoundaryMenu({ id, x: at.x, y: at.y }),
     }),
     [ask, say],
   )
@@ -885,6 +896,8 @@ export default function App() {
         onSummary={() => {
           if (!controller?.addSummary()) say('selectTopicFirst')
         }}
+        // a boundary turned down is told by the controller (onNotice)
+        onBoundary={() => controller?.addBoundary()}
         onNote={() => requestField('note')}
         onLabel={() => requestField('label')}
         onLink={() => requestField('link')}
@@ -973,16 +986,28 @@ export default function App() {
             themeId={controller.themeId}
             written={controller.themeWritten}
             disabled={!controller}
+            lines={controller.lineSettings}
             onPick={pickTheme}
+            onTapered={(on) => controller.setTapered(on)}
+            onRainbow={(on) => controller.setRainbow(on)}
             onClose={() => setThemeOpen(false)}
           />
         )}
         {formatOpen && (
           <FormatPanel
+            model={controller ? formatModel(controller) : { kind: 'none' }}
             format={controller?.textFormat() ?? null}
             editing={controller?.editingText ?? false}
+            painter={controller?.formatPainter ?? { active: false, sticky: false, kind: null }}
             onToggle={(key) => controller?.toggleTextFormat(key)}
             onFormat={(format) => controller?.formatText(format)}
+            onBranchLine={(change) => controller?.setBranchLine(change)}
+            onRelationship={(change) => controller?.setRelationshipStyle(change)}
+            onCurveAuto={() => controller?.resetRelationshipCurve()}
+            onSummary={(change) => controller?.setSummaryStyle(change)}
+            onBoundary={(change) => controller?.setBoundaryStyle(change)}
+            onClear={() => controller?.clearFormat()}
+            onPainter={() => controller?.toggleFormatPainter()}
             onClose={() => setFormatOpen(false)}
           />
         )}
@@ -1034,6 +1059,14 @@ export default function App() {
         </button>
       </footer>
 
+      {boundaryMenu && (
+        <BoundaryMenu
+          x={boundaryMenu.x}
+          y={boundaryMenu.y}
+          onRemove={() => controller?.removeBoundary(boundaryMenu.id)}
+          onClose={closeBoundaryMenu}
+        />
+      )}
       {confirm && <ConfirmDialog request={confirm} onAnswer={answer} />}
       {fieldRequest && (
         <TopicFieldDialog

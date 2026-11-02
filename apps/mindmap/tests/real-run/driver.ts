@@ -267,7 +267,7 @@ async function editingRun(): Promise<void> {
   const source = await createXmindDocumentFromSheets(testSheets())
   const original = await source.save()
   writeFileSync(path, original)
-  const preserved = countPreservedInDocument(source).total
+  const preserved = countPreservedInDocument(source, { shownBoundaries: false }).total
 
   const { app, page } = await launch(path)
   try {

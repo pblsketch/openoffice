@@ -7,7 +7,7 @@
  */
 
 import { isRecord, type XmindSheet, type XmindTopic } from './types'
-import { parseRange } from './view'
+import { parseRange, type ShownBoundaryRecord, shownSheetBoundaries } from './view'
 
 export type JsonRecord = Record<string, unknown>
 
@@ -79,6 +79,8 @@ export interface ShownParts {
   summaries: (ShownSummary & { owner: XmindTopic })[]
   /** the ids a shown relationship ends on: the topics above and the summary topics */
   ends: Set<string>
+  /** the boundaries the view shows, each with the topic that carries it (`shownSheetBoundaries`) */
+  boundaries: (ShownBoundaryRecord & { owner: XmindTopic })[]
 }
 
 export function shownParts(sheet: XmindSheet): ShownParts {
@@ -95,7 +97,7 @@ export function shownParts(sheet: XmindSheet): ShownParts {
     }
     for (const branch of topic.children?.attached ?? []) pending.push(branch)
   }
-  return { topics, summaries, ends }
+  return { topics, summaries, ends, boundaries: shownSheetBoundaries(sheet) }
 }
 
 /** Whether the view shows a relationship: it names both ends, and both are shown. */

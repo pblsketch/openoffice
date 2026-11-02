@@ -5,6 +5,7 @@ import {
   OUTLINE_FOLD_BELOW_LEVEL,
   OUTLINE_KIND_MARKS,
   OUTLINE_READING_OPTIONS,
+  outlineStyleWords,
   sheetsToOutline,
   sheetToOutline,
 } from '../src/outline'
@@ -135,7 +136,7 @@ describe('the outline format', () => {
   it('walks the source tree of an opened file, not the view', async () => {
     const document = await openOk(await buildMapFile({ content: sampleSheets() }))
     const view = JSON.stringify(document.viewSheets())
-    for (const hidden of ['kept only', 'Says', 'Floating', 'Group']) {
+    for (const hidden of ['kept only', 'Says', 'Floating']) {
       expect(view).not.toContain(hidden)
     }
     expect(sheetsToOutline(document.sheets)).toBe(
@@ -452,7 +453,8 @@ describe('the outline an assistant reads', () => {
         '    >',
         '    > Ask <b>Mina</b> & co.',
         '    - (+7 more)',
-        '    - (boundary) Indoors',
+        '    - (boundary) {#bound} Indoors [around {#a2}..{#a3}]',
+        '    - (boundary) {#bound-2} [around {#a1}..{#a1}]',
         '  - Budget {#b}',
         '  - Packing {#c}',
         '    > Light',
@@ -537,6 +539,217 @@ describe('the outline an assistant reads', () => {
     const whole = sheetToOutline(small, OUTLINE_READING_OPTIONS)
     expect(whole).toContain(`${'  '.repeat(7)}- chain 1 {#chain1}`)
     expect(whole).not.toContain('more)')
+  })
+})
+
+/**
+ * A sheet with the line format of relationships, a summary and boundaries:
+ * drawn ones with and without a title or values, and ones the editor does not
+ * draw (a boundary whose range reaches past the branches, one on a floating
+ * topic, a relationship from a floating topic).
+ */
+function linesSheet(): XmindSheet {
+  return {
+    id: 's',
+    title: 'Lines',
+    rootTopic: {
+      id: 'r',
+      title: 'Centre',
+      children: {
+        attached: [
+          {
+            id: 'a',
+            title: 'A',
+            children: {
+              attached: [
+                { id: 'a1', title: 'A1' },
+                { id: 'a2', title: 'A2 [x]' },
+              ],
+              summary: [{ id: 's1', title: 'Sum' }],
+            },
+            summaries: [
+              {
+                id: 'sum-rec',
+                range: '(0,1)',
+                topicId: 's1',
+                style: { properties: { 'shape-class': 'org.xmind.summaryShape.curly' } },
+              },
+            ],
+            boundaries: [
+              {
+                id: 'b1',
+                range: '(0,1)',
+                title: 'Box',
+                style: {
+                  id: 'b1-style',
+                  properties: {
+                    'shape-class': 'org.xmind.boundaryShape.waves',
+                    'line-color': '#336699',
+                    'line-width': '2pt',
+                    'line-pattern': 'dash',
+                    'svg:fill': 'none',
+                  },
+                },
+              },
+              { id: 'b2', range: '(1,1)' },
+              { id: 'b3', range: '(5,9)', title: 'Broken' },
+            ],
+          },
+          { id: 'b', title: 'B', boundaries: [{ id: 'bm', range: 'master' }] },
+        ],
+        detached: [
+          {
+            id: 'f',
+            title: 'Float',
+            boundaries: [{ id: 'bf', range: 'master', title: 'On float' }],
+          },
+        ],
+      },
+    },
+    relationships: [
+      {
+        id: 'r1',
+        end1Id: 'a1',
+        end2Id: 'b',
+        title: 'leads to',
+        style: {
+          properties: {
+            'shape-class': 'org.xmind.relationshipShape.curved',
+            'arrow-begin-class': 'org.xmind.arrowShape.ring',
+            'arrow-end-class': 'org.xmind.arrowShape.triangle',
+            'line-color': '#CC3300',
+            'line-width': '3pt',
+            'line-pattern': 'weird], x',
+          },
+        },
+        controlPoints: { '0': { x: 1, y: 2 }, '1': { x: 3, y: 4 } },
+      },
+      { id: 'r2', end1Id: 'a2', end2Id: 'a1' },
+      { id: 'r3', end1Id: 'f', end2Id: 'b', title: 'from float' },
+      { id: 'r4', end1Id: 's1', end2Id: 'b', title: '' },
+    ],
+  } as XmindSheet
+}
+
+describe('the relationships, summaries and boundaries an assistant reads', () => {
+  it('names every drawn one by its id, with its ends, its range and its format', () => {
+    expect(sheetToOutline(linesSheet(), OUTLINE_READING_OPTIONS)).toBe(
+      text(
+        '# Lines',
+        '',
+        '- Centre {#r}',
+        '  - A {#a}',
+        '    - A1 {#a1}',
+        '      - (relationship) {#r1} A1 {#a1} -> B {#b}: leads to [shape=curved, begin=ring, end=triangle, color=#cc3300, width=3, pattern=other]',
+        '    - A2 \\[x\\] {#a2}',
+        '      - (relationship) {#r2} A2 \\[x\\] {#a2} -> A1 {#a1}',
+        '    - (summary) Sum {#s1} [over {#a1}..{#a2}, shape=curly]',
+        '      - (relationship) {#r4} Sum {#s1} -> B {#b}',
+        '    - (boundary) {#b1} Box [around {#a1}..{#a2}, shape=waves, color=#336699, width=2, pattern=dash, fill=none]',
+        '    - (boundary) {#b2} [around {#a2}..{#a2}]',
+        '  - B {#b}',
+        '    - (boundary) {#bm} [around {#b}]',
+        '  - (floating) Float {#f}',
+      ),
+    )
+  })
+
+  it('writes without ids exactly what it wrote before, whatever format is set', () => {
+    const plain = linesSheet()
+    const strip = (topic: Record<string, unknown>): void => {
+      for (const list of ['summaries', 'boundaries'] as const) {
+        for (const record of (topic[list] as Record<string, unknown>[] | undefined) ?? []) {
+          delete record.style
+        }
+      }
+      const children = (topic.children ?? {}) as Record<string, Record<string, unknown>[]>
+      for (const kind of Object.values(children)) kind.forEach(strip)
+    }
+    strip(plain.rootTopic as unknown as Record<string, unknown>)
+    for (const line of plain.relationships as Record<string, unknown>[]) {
+      delete line.style
+      delete line.controlPoints
+    }
+    const outline = sheetToOutline(linesSheet())
+    expect(outline).toBe(sheetToOutline(plain))
+    expect(outline).toBe(
+      text(
+        '# Lines',
+        '',
+        '- Centre',
+        '  - A',
+        '    - A1',
+        '      - (relationship) leads to -> B',
+        '    - A2 \\[x\\]',
+        '    - (summary) Sum',
+        '    - (boundary) Box',
+        '    - (boundary) Broken',
+        '  - B',
+        '  - (floating) Float',
+        '    - (boundary) On float',
+        '    - (relationship) from float -> B',
+      ),
+    )
+  })
+
+  it('reads one branch, judging what is drawn on the whole sheet', () => {
+    const sheet = linesSheet()
+    expect(sheetToOutline(sheet, { ...OUTLINE_READING_OPTIONS, branch: 'a' })).toBe(
+      text(
+        '# Lines',
+        '',
+        '- A {#a}',
+        '  - A1 {#a1}',
+        '    - (relationship) {#r1} A1 {#a1} -> B {#b}: leads to [shape=curved, begin=ring, end=triangle, color=#cc3300, width=3, pattern=other]',
+        '  - A2 \\[x\\] {#a2}',
+        '    - (relationship) {#r2} A2 \\[x\\] {#a2} -> A1 {#a1}',
+        '  - (summary) Sum {#s1} [over {#a1}..{#a2}, shape=curly]',
+        '    - (relationship) {#r4} Sum {#s1} -> B {#b}',
+        '  - (boundary) {#b1} Box [around {#a1}..{#a2}, shape=waves, color=#336699, width=2, pattern=dash, fill=none]',
+        '  - (boundary) {#b2} [around {#a2}..{#a2}]',
+      ),
+    )
+    // a floating topic is not drawn, and neither is the boundary on it
+    expect(sheetToOutline(sheet, { ...OUTLINE_READING_OPTIONS, branch: 'f' })).toBe(
+      text('# Lines', '', '- Float {#f}'),
+    )
+    expect(sheetToOutline(sheet, { ...OUTLINE_READING_OPTIONS, branch: 'none' })).toBe(
+      text('# Lines', ''),
+    )
+  })
+
+  it('puts the values in words the format panel and edit_map use', () => {
+    expect(
+      outlineStyleWords('branch', {
+        shape: 'org.xmind.branchConnection.roundedElbow',
+        width: '12pt',
+        color: '#ABCDEF',
+        pattern: 'round-dot',
+      }),
+    ).toEqual([
+      ['shape', 'roundedElbow'],
+      ['width', '12'],
+      ['color', '#abcdef'],
+      ['pattern', 'round-dot'],
+    ])
+    expect(
+      outlineStyleWords('branch', {
+        shape: 'org.xmind.branchConnection.timeline.horizontal',
+        width: '1.5',
+        color: 'red',
+        pattern: '<b>',
+      }),
+    ).toEqual([
+      ['shape', 'timeline.horizontal'],
+      ['width', '1.5'],
+      ['color', 'other'],
+      ['pattern', 'other'],
+    ])
+    expect(outlineStyleWords('boundary', { shape: 'roundedRect', fill: '#00FF00' })).toEqual([
+      ['shape', 'other'],
+      ['fill', '#00ff00'],
+    ])
+    expect(outlineStyleWords('summary', undefined)).toEqual([])
   })
 })
 

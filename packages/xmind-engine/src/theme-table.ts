@@ -12,6 +12,12 @@
  * wrote in an earlier release. Anything else, such as a theme from another
  * program or one of ours that another program saved again with different
  * properties, is not recognised, and nothing here ever changes it.
+ *
+ * Two properties of the `map` level are the user's own settings rather than
+ * part of the theme (see `theme-lines.ts`): whether lines taper, and whether
+ * each branch line takes its own colour. Recognising leaves the value of the
+ * first out, and takes the second either as `none` or as the theme's own
+ * colour list.
  */
 
 import { contrastRatio, mixColors } from './theme-color'
@@ -22,6 +28,7 @@ import {
   type ThemeId,
   type ThemeTopicShape,
 } from './theme-data'
+import { LINE_TAPERED, MAP_LEVEL, MULTI_LINE_COLORS, SETTING_OFF } from './theme-line-keys'
 import { themeLook, type ThemeLook } from './theme-look'
 import { isRecord, type XmindSheet } from './types'
 
@@ -54,14 +61,15 @@ const SOFT_FILL_IN_FILE = 0.08
 
 /**
  * The file takes whole numbers. A half rounds down, so that a line drawn
- * thinner on screen is still the thinner one in the file.
+ * thinner on screen is still the thinner one in the file. The editor writes a
+ * value it draws the same way (its format painter).
  */
-function whole(value: number): number {
+export function wholeNumber(value: number): number {
   return Math.ceil(value - 0.5)
 }
 
 function points(value: number): string {
-  return `${whole(value)}pt`
+  return `${wholeNumber(value)}pt`
 }
 
 interface LevelColors {
@@ -104,7 +112,7 @@ function topicProperties(
 ): ThemeLevelProperties {
   return {
     'fo:font-size': points(shape.fontSize),
-    'fo:font-weight': String(whole(shape.fontWeight / 100) * 100),
+    'fo:font-weight': String(wholeNumber(shape.fontWeight / 100) * 100),
     'fo:color': colors.text,
     'svg:fill': colors.fill,
     'fill-pattern': shape.fill === 'none' ? 'none' : 'solid',
@@ -190,8 +198,10 @@ export function themePropertiesOf(look: ThemeLook): ThemeProperties {
 /**
  * What a table is compared by: its levels and their properties in a fixed
  * order, as text. Null for anything that is not a table of properties. The
- * `id` of a level is the one part left out, because it is made anew on every
- * write; a level with any other key beside `properties` is not ours.
+ * `id` of a level is left out, because it is made anew on every write; a
+ * level with any other key beside `properties` is not ours. So is the value
+ * of `line-tapered` on the map level, which the user switches without
+ * changing the theme: only whether the property is there is compared.
  */
 function tableKey(theme: unknown): string | null {
   if (!isRecord(theme)) return null
@@ -205,7 +215,8 @@ function tableKey(theme: unknown): string | null {
     for (const property of Object.keys(properties).sort()) {
       const value = properties[property]
       if (typeof value !== 'string') return null
-      pairs.push([property, value])
+      const ignored = name === MAP_LEVEL && property === LINE_TAPERED
+      pairs.push([property, ignored ? '' : value])
     }
     levels.push([name, pairs])
   }
@@ -217,6 +228,16 @@ function propertiesKey(properties: ThemeProperties): string {
     Object.entries(properties).map(([name, level]) => [name, { properties: level }]),
   )
   return tableKey(table)!
+}
+
+/**
+ * A table with the branch colours switched off, the way the theme panel
+ * leaves it. A table without the property stays as it is.
+ */
+function withRainbowOff(properties: ThemeProperties): ThemeProperties {
+  const map = properties[MAP_LEVEL]
+  if (map?.[MULTI_LINE_COLORS] === undefined) return properties
+  return { ...properties, [MAP_LEVEL]: { ...map, [MULTI_LINE_COLORS]: SETTING_OFF } }
 }
 
 function frozen(properties: ThemeProperties): ThemeProperties {
@@ -293,7 +314,8 @@ export type ThemeRecogniser = (theme: unknown) => ThemeId | null
 /**
  * A recogniser over the two lists. A table must be equal to a listed one in
  * every level and every property (their order does not matter, the level ids
- * are not compared).
+ * are not compared). On the map level, `line-tapered` may hold any value, and
+ * `multi-line-colors` may be `none` in the place of the listed colours.
  *
  * Throws when two different themes share a table: a file could then not be
  * told apart, whichever of the two wrote it. With the lists of this module
@@ -306,12 +328,13 @@ export function createThemeRecogniser(
 ): ThemeRecogniser {
   const themes = new Map<string, ThemeId>()
   for (const { themeId, properties } of [...writtenTables, ...shippedBefore]) {
-    const key = propertiesKey(properties)
-    const known = themes.get(key)
-    if (known !== undefined && known !== themeId) {
-      throw new Error(`xmind: themes ${known} and ${themeId} have the same table`)
+    for (const key of [propertiesKey(properties), propertiesKey(withRainbowOff(properties))]) {
+      const known = themes.get(key)
+      if (known !== undefined && known !== themeId) {
+        throw new Error(`xmind: themes ${known} and ${themeId} have the same table`)
+      }
+      themes.set(key, themeId)
     }
-    themes.set(key, themeId)
   }
   return (theme) => {
     const key = tableKey(theme)

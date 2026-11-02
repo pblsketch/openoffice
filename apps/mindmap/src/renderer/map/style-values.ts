@@ -22,8 +22,28 @@
  *
  * The same filter is for the screen, exported pictures, print and the preview
  * picture: all of them draw from `ownTopicStyle`.
+ *
+ * The values of a branch line go through the same shapes: a colour, a width
+ * (`safeBranchLineWidth`), a pattern from the format's list, and a shape: the
+ * words a user can pick as themselves, the words other programs write that
+ * this app only reads as the nearest picked shape (`safeBranchShape`).
  */
-import type { ViewRunStyle, ViewTopicStyle } from '@genoffice/xmind-engine'
+import {
+  ARROW_SHAPE_PREFIX,
+  ARROW_SHAPES,
+  BOUNDARY_SHAPE_PREFIX,
+  BOUNDARY_SHAPES,
+  BRANCH_LINE_CLASS_PREFIX,
+  BRANCH_LINE_SHAPES,
+  classWord,
+  LINE_PATTERNS,
+  RELATIONSHIP_SHAPE_PREFIX,
+  RELATIONSHIP_SHAPES,
+  SUMMARY_SHAPE_PREFIX,
+  SUMMARY_SHAPES,
+  type ViewRunStyle,
+  type ViewTopicStyle,
+} from '@genoffice/xmind-engine'
 
 /** A colour as this app writes it: `#rrggbb` or `#rrggbbaa`, lower case. */
 export type SafeColor = `#${string}`
@@ -66,9 +86,8 @@ const PX_PER_PT = 96 / 72
 const FONT_SIZE_MEANT = { min: 1, max: 400 } as const
 /** What a topic is drawn with at the least and at the most, in CSS pixels. */
 export const FONT_SIZE_DRAWN = { min: 8, max: 96 } as const
-/** Line widths a file may mean, and the widest one drawn (CSS pixels). */
+/** Line widths a file may mean. */
 const LINE_WIDTH_MEANT = { min: 0, max: 64 } as const
-export const LINE_WIDTH_DRAWN_MAX = 12
 
 /** The words this app knows for a weight, and the weight each stands for here. */
 const WEIGHT_WORDS: Readonly<Record<string, number>> = { normal: 400, bold: 700 }
@@ -123,13 +142,63 @@ export function safeFill(value: unknown): SafeColor | typeof NO_FILL | null {
   return value === NO_FILL ? NO_FILL : safeColor(value)
 }
 
-/** A line width in CSS pixels, at most `LINE_WIDTH_DRAWN_MAX`. A bare number is points. */
-export function safeLineWidth(value: unknown): number | null {
+/** The widest branch line drawn, in CSS pixels: the widest the engine writes, in points. */
+export const BRANCH_LINE_WIDTH_DRAWN_MAX = 20
+
+/**
+ * The width of a branch line in CSS pixels, at most
+ * `BRANCH_LINE_WIDTH_DRAWN_MAX`; null for anything else and for no width at
+ * all. One point is one pixel, as the theme tables are written
+ * (`theme-table.ts` writes a look's line widths as that many points), so a
+ * line drawn from a theme and one drawn from a topic's own value of the same
+ * number have the same width. A bare number and pixels are read the same way.
+ */
+export function safeBranchLineWidth(value: unknown): number | null {
   const read = readNumber(value)
   if (!read) return null
-  if (read.amount < LINE_WIDTH_MEANT.min || read.amount > LINE_WIDTH_MEANT.max) return null
-  const pixels = read.unit === 'px' ? read.amount : read.amount * PX_PER_PT
-  return round(Math.min(LINE_WIDTH_DRAWN_MAX, pixels))
+  if (read.amount <= LINE_WIDTH_MEANT.min || read.amount > LINE_WIDTH_MEANT.max) return null
+  return round(Math.min(BRANCH_LINE_WIDTH_DRAWN_MAX, read.amount))
+}
+
+/** A shape of a branch line this app draws. */
+export type BranchLineShape = (typeof BRANCH_LINE_SHAPES)[number]
+/** A pattern of a line, as the format names it. */
+export type LinePattern = (typeof LINE_PATTERNS)[number]
+
+/** Shapes other programs write that this app reads only, each drawn as the nearest one it draws. */
+const READ_ONLY_BRANCH_SHAPES: Readonly<Record<string, BranchLineShape>> = {
+  fold: 'elbow',
+  fold2: 'elbow',
+  roundedfold: 'roundedElbow',
+  bight: 'curve',
+  'timeline.horizontal': 'straight',
+}
+
+function isListed<T extends string>(list: readonly T[], value: string): value is T {
+  return (list as readonly string[]).includes(value)
+}
+
+/** Whether a `line-class` value is a shape a user can pick, as the file writes it. */
+export function isPickableBranchShape(value: unknown): boolean {
+  const word = classWord(value, BRANCH_LINE_CLASS_PREFIX)
+  return word !== null && isListed(BRANCH_LINE_SHAPES, word)
+}
+
+/**
+ * The shape to draw for a `line-class` value: a shape a user can pick as
+ * itself, a shape only read as the nearest one; null for any other value (it
+ * is drawn as the theme draws that line).
+ */
+export function safeBranchShape(value: unknown): BranchLineShape | null {
+  const word = classWord(value, BRANCH_LINE_CLASS_PREFIX)
+  if (word === null) return null
+  if (isListed(BRANCH_LINE_SHAPES, word)) return word
+  return Object.hasOwn(READ_ONLY_BRANCH_SHAPES, word) ? READ_ONLY_BRANCH_SHAPES[word]! : null
+}
+
+/** A pattern of a line; null for any word not in the format's list. */
+export function safeLinePattern(value: unknown): LinePattern | null {
+  return typeof value === 'string' && isListed(LINE_PATTERNS, value) ? value : null
 }
 
 // A name and nothing that could end it, as the engine writes one (`isWritableTextStyle`).
@@ -229,4 +298,65 @@ export function isPlainText(own: OwnTextStyle): boolean {
 export function splitAlpha(color: SafeColor): { solid: string; alpha: number } {
   if (color.length !== 9) return { solid: color, alpha: 1 }
   return { solid: color.slice(0, 7), alpha: Number.parseInt(color.slice(7), 16) / 255 }
+}
+
+/** A shape of a relationship this app draws. */
+export type RelationshipShape = (typeof RELATIONSHIP_SHAPES)[number]
+/** A shape of a relationship's end this app draws. */
+export type ArrowShape = (typeof ARROW_SHAPES)[number]
+/** A shape of a summary's bracket this app draws. */
+export type SummaryShape = (typeof SUMMARY_SHAPES)[number]
+/** A shape of a boundary this app draws. */
+export type BoundaryShape = (typeof BOUNDARY_SHAPES)[number]
+
+/** Whether a shape value is one a user can pick, as the file writes it (`org.xmind.…<word>`). */
+function isPickableClass(value: unknown, prefix: string, words: readonly string[]): boolean {
+  const word = classWord(value, prefix)
+  return word !== null && words.includes(word)
+}
+
+export function isPickableRelationshipShape(value: unknown): boolean {
+  return isPickableClass(value, RELATIONSHIP_SHAPE_PREFIX, RELATIONSHIP_SHAPES)
+}
+
+export function isPickableArrowShape(value: unknown): boolean {
+  return isPickableClass(value, ARROW_SHAPE_PREFIX, ARROW_SHAPES)
+}
+
+export function isPickableSummaryShape(value: unknown): boolean {
+  return isPickableClass(value, SUMMARY_SHAPE_PREFIX, SUMMARY_SHAPES)
+}
+
+export function isPickableBoundaryShape(value: unknown): boolean {
+  return isPickableClass(value, BOUNDARY_SHAPE_PREFIX, BOUNDARY_SHAPES)
+}
+
+/** The shape to draw a relationship with; null (drawn curved) for any other value. */
+export function safeRelationshipShape(value: unknown): RelationshipShape | null {
+  const word = classWord(value, RELATIONSHIP_SHAPE_PREFIX)
+  return word !== null && isListed(RELATIONSHIP_SHAPES, word) ? word : null
+}
+
+/**
+ * The shape to draw an end of a relationship with. Another program's end
+ * (`ring`, `eye`, `doublearrow` and every other word after the format's
+ * prefix) is drawn as `normal`; a value of another form is null and the end
+ * is drawn as that end is drawn by default.
+ */
+export function safeArrowShape(value: unknown): ArrowShape | null {
+  const word = classWord(value, ARROW_SHAPE_PREFIX)
+  if (word === null) return null
+  return isListed(ARROW_SHAPES, word) ? word : 'normal'
+}
+
+/** The shape to draw a summary's bracket with; null (the bracket as before) for any other value. */
+export function safeSummaryShape(value: unknown): SummaryShape | null {
+  const word = classWord(value, SUMMARY_SHAPE_PREFIX)
+  return word !== null && isListed(SUMMARY_SHAPES, word) ? word : null
+}
+
+/** The shape to draw a boundary with; null (drawn as `roundedRect`) for any other value. */
+export function safeBoundaryShape(value: unknown): BoundaryShape | null {
+  const word = classWord(value, BOUNDARY_SHAPE_PREFIX)
+  return word !== null && isListed(BOUNDARY_SHAPES, word) ? word : null
 }
