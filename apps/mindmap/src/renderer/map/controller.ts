@@ -58,6 +58,7 @@ import {
 } from '../document/convert'
 import type { DocumentSession } from '../document/session'
 import { type DecorationStrings, TopicDecorator } from './decorate'
+import { RelationDrawer } from './relations'
 import { PictureStore } from './images'
 import { libraryTheme, lookOfSheet } from './look'
 import { installMultiSelect } from './multi-select'
@@ -191,6 +192,8 @@ export class MapController {
   #look: ThemeLook
   readonly #pictures: PictureStore
   readonly #decorator: TopicDecorator
+  /** the format of relationships, summary brackets and boundaries, drawn over the library's */
+  readonly #relations: RelationDrawer
   #relinkTimer: ReturnType<typeof setTimeout> | null = null
   /** the lines have to be drawn again, but the sheet was not on screen to be measured */
   #relinkWhenShown = false
@@ -251,6 +254,7 @@ export class MapController {
       strings: this.#strings.decoration,
       onResize: this.#relink,
     })
+    this.#relations = new RelationDrawer(mind)
     // The library draws the lines from what it measures. The editor's own
     // drawing goes in right before that, so it is measured too; the branch
     // colours of the lines follow right after.
@@ -259,6 +263,7 @@ export class MapController {
       this.#decorator.before()
       libraryLinkDiv(mainNode)
       this.#decorator.after(mainNode)
+      this.#relations.drawAll()
     }
     mind.keypress = {
       // Space edits, like F2: a summary or a relationship when one is selected, else the topic
@@ -291,6 +296,9 @@ export class MapController {
     mind.bus.addListener('expandNode', this.#onQuietChange)
     mind.bus.addListener('changeDirection', this.#onLayoutPicked)
     mind.bus.addListener('linkDiv', this.#scheduleQuietSync)
+    // the ends of a curve being dragged follow it; a relationship of another shape shows no handles
+    mind.bus.addListener('updateArrowDelta', this.#onArrowMoved)
+    mind.bus.addListener('selectArrow', this.#onArrowSelected)
     for (const event of [
       'selectNodes',
       'unselectNodes',
@@ -1160,8 +1168,6 @@ export class MapController {
   }
 
   #renameArrow(arrow: Arrow): void {
-    // a line in two directions is not something the file's relationships say
-    delete arrow.bidirectional
     if (XMIND_ID.test(arrow.id)) return
     const container = this.mind.container
     const group = container.querySelector<SVGGElement>(`g[data-linkid="${arrow.id}"]`)
@@ -1190,6 +1196,11 @@ export class MapController {
     this.#cutPending = null
     if (operation.name === 'removeSummary') this.#removedSummaries.add(operation.obj.id)
     if (operation.name === 'removeArrow') this.#removedRelationships.add(operation.obj.id)
+    // the library drew these on its own, without the editor's drawing of them
+    if (operation.name === 'createArrow' || operation.name === 'reshapeArrow') {
+      this.#relations.drawRelationships()
+    }
+    if (operation.name === 'createSummary') this.#relations.drawSummaries()
     this.#sync({
       step: true,
       reshaped: operation.name === 'reshapeArrow' ? [operation.obj.id] : [],
@@ -1303,6 +1314,14 @@ export class MapController {
     this.#sync({ step: false })
   }
 
+  #onArrowMoved = (): void => {
+    this.#relations.drawRelationships()
+  }
+
+  #onArrowSelected = (): void => {
+    this.#relations.fitHandles()
+  }
+
   #onState = (): void => {
     this.#host.onStateChange()
   }
@@ -1348,7 +1367,12 @@ export class MapController {
     if (!result.ok) {
       console.warn('[mindmap] the screen could not be applied to the map:', result.problem)
       this.#draw(result.view)
-    } else if (!result.inSync || result.ids.topics.size > 0 || result.ids.relationships.size > 0) {
+    } else if (
+      !result.inSync ||
+      result.ids.topics.size > 0 ||
+      result.ids.relationships.size > 0 ||
+      result.ids.boundaries.size > 0
+    ) {
       this.#draw(result.view)
     } else {
       this.#syncedData = data

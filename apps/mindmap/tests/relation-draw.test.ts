@@ -1,0 +1,401 @@
+/**
+ * Relationships, summary brackets and boundaries on screen, with the real
+ * drawing library in jsdom: each drawn with the values the file holds for it
+ * (through the filter), the library's handles on a curve only, the boundaries
+ * in a layer under everything else, and a map without such values drawn as
+ * before. Drawing never writes: the file keeps every value it had.
+ */
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { XmindDocument } from '@genoffice/xmind-engine'
+import { MapController, type MapHost } from '../src/renderer/map/controller'
+import { DocumentSession } from '../src/renderer/document/session'
+import { mapStrings } from '../src/renderer/i18n/map-strings'
+import type { MapArrow, MapSummary } from '../src/renderer/document/convert'
+import { parseSummaryFrame, summaryBracketPath } from '../src/renderer/map/summary-shapes'
+import { BOUNDARY_PAD } from '../src/renderer/map/boundary-shapes'
+import {
+  BOUNDARY_ID_ATTRIBUTE,
+  BOUNDARY_LAYER_CLASS,
+  RELATIONSHIP_END_CLASS,
+} from '../src/renderer/map/relations'
+import {
+  copyOf,
+  documentOf,
+  FORMAT_IDS as ID,
+  lineFormatSheet,
+  plainSheet,
+  richSheet,
+} from './helpers/fixtures'
+
+const mounted: MapController[] = []
+afterEach(() => {
+  mounted.splice(0).forEach((controller) => controller.destroy())
+  document.body.innerHTML = ''
+  vi.restoreAllMocks()
+})
+
+function show(doc: XmindDocument) {
+  const session = new DocumentSession(doc)
+  const el = document.createElement('div')
+  document.body.appendChild(el)
+  const host: MapHost = {
+    confirmDelete: vi.fn(async () => true),
+    openLink: vi.fn(),
+    onRequest: vi.fn(),
+    onStateChange: vi.fn(),
+  }
+  const key = session.tabs()[0]!.key
+  const controller = new MapController({
+    el,
+    session,
+    sheetKey: key,
+    strings: mapStrings('en'),
+    host,
+  })
+  mounted.push(controller)
+  return { doc, session, el, key, controller, mind: controller.mind }
+}
+
+/**
+ * jsdom lays nothing out: every element gets a box of its own, each a little
+ * further down and to the right, and the map is 100 wide at a scale of 1;
+ * the library measures each topic 100 by 30.
+ */
+function layOut(): void {
+  const boxes = new WeakMap<Element, DOMRect>()
+  let next = 0
+  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(100)
+  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(30)
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+    if (this.localName === 'me-nodes') return new DOMRect(0, 0, 100, 100)
+    let box = boxes.get(this)
+    if (!box) {
+      next++
+      box = new DOMRect(40 + next * 70, 20 + next * 45, 100, 30)
+      boxes.set(this, box)
+    }
+    return box
+  })
+}
+
+async function mountFormatted() {
+  layOut()
+  return show(await documentOf(lineFormatSheet()))
+}
+
+const groupOf = (el: HTMLElement, id: string) =>
+  [...el.querySelectorAll<SVGGElement>('.topiclinks > g')].find(
+    (group) => group.dataset.linkid === id,
+  )!
+
+type Group = SVGGElement & { line: SVGPathElement; arrow1: SVGPathElement; arrow2: SVGPathElement }
+
+const numbers = (d: string): number[] => (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number)
+
+describe('relationships', () => {
+  it('one without values is drawn exactly as the library draws it', async () => {
+    const { el } = await mountFormatted()
+    const plain = groupOf(el, ID.plainLine) as Group
+    expect(plain.getAttributeNames().filter((name) => name.startsWith('data-mm'))).toEqual([])
+    expect(plain.querySelectorAll(`.${RELATIONSHIP_END_CLASS}`)).toHaveLength(0)
+    expect(plain.arrow1.hasAttribute('visibility')).toBe(false)
+    expect(plain.arrow1.getAttribute('d')).not.toBe('')
+    // the library's own dashes, which the map's rules turn into the relationship's 5 5
+    expect(plain.line.getAttribute('stroke-dasharray')).toBe('8,2')
+    expect(plain.line.getAttribute('d')).toMatch(/^M .* C /)
+  })
+
+  it('a map without such values has no mark of them anywhere', async () => {
+    layOut()
+    const { el } = show(await documentOf(plainSheet()))
+    expect(el.querySelector(`.${BOUNDARY_LAYER_CLASS}`)).toBeNull()
+    expect(
+      el.querySelector('[data-mm-color], [data-mm-width], [data-mm-pattern], [data-mm-shape]'),
+    ).toBeNull()
+  })
+
+  it('one with values: its colour, width and pattern on the line, its two ends drawn by the editor', async () => {
+    const { el } = await mountFormatted()
+    const styled = groupOf(el, ID.styledLine) as Group
+    for (const mark of ['data-mm-color', 'data-mm-width', 'data-mm-pattern']) {
+      expect(styled.hasAttribute(mark), mark).toBe(true)
+    }
+    expect(styled.line.getAttribute('stroke')).toBe('#cc3300')
+    expect(styled.line.getAttribute('stroke-width')).toBe('3')
+    expect(styled.line.getAttribute('stroke-dasharray')).toBe('none')
+    const ends = [...styled.querySelectorAll<SVGPathElement>(`.${RELATIONSHIP_END_CLASS}`)]
+    expect(ends.map((end) => end.getAttribute('data-mm-end'))).toEqual(['begin', 'end'])
+    for (const end of ends) {
+      // a dot and a triangle are filled with the line's colour
+      expect(end.getAttribute('fill')).toBe('#cc3300')
+      expect(end.getAttribute('stroke')).toBe('#cc3300')
+    }
+    // the dot at the start is drawn with arcs, the triangle is a closed path
+    expect(ends[0]!.getAttribute('d')).toMatch(/ A /)
+    expect(ends[1]!.getAttribute('d')).toMatch(/ Z$/)
+    // the library's own arrowheads are hidden and carry the ends drawn
+    expect(styled.arrow1.getAttribute('visibility')).toBe('hidden')
+    expect(styled.arrow2.getAttribute('visibility')).toBe('hidden')
+    expect(styled.arrow1.getAttribute('d')).toBe(ends[1]!.getAttribute('d'))
+    expect(styled.arrow2.getAttribute('d')).toBe(ends[0]!.getAttribute('d'))
+  })
+
+  it('a curve the file gives is the curve drawn', async () => {
+    const { el, mind } = await mountFormatted()
+    const arrow = (mind.arrows as MapArrow[]).find((line) => line.id === ID.styledLine)!
+    expect(arrow.delta1).toEqual({ x: 40, y: -30 })
+    expect(arrow.delta2).toEqual({ x: -50, y: 25 })
+    const styled = groupOf(el, ID.styledLine) as Group
+    const [, , c1x, c1y, c2x, c2y] = numbers(styled.line.getAttribute('d')!)
+    // the control points stand at those offsets from the middle of each end's box
+    const from = mind.findEle(ID.rightB)
+    const to = mind.findEle(ID.left)
+    expect(c1x! - c2x!).toBe(
+      from.offsetLeft + from.offsetWidth / 2 + 40 - (to.offsetLeft + to.offsetWidth / 2 - 50),
+    )
+    expect(c1y! - c2y!).toBe(
+      -30 - 25 + (from.offsetTop + from.offsetHeight / 2) - (to.offsetTop + to.offsetHeight / 2),
+    )
+  })
+
+  it('each shape has its own path; only a curve keeps the library’s', async () => {
+    const { el, mind } = await mountFormatted()
+    const arrow = (mind.arrows as MapArrow[]).find((line) => line.id === ID.plainLine)!
+    const shapes: Record<string, RegExp> = {
+      curved: /^M [-\d.]+ [-\d.]+ C /,
+      straight: /^M [-\d.]+ [-\d.]+ L [-\d.]+ [-\d.]+$/,
+      angled: /^M [-\d.]+ [-\d.]+ [HV] [-\d.]+ [HV] [-\d.]+ [HV] [-\d.]+$/,
+      zigzag: /^M [-\d.]+ [-\d.]+( L [-\d.]+ [-\d.]+){5,}$/,
+    }
+    for (const [shape, form] of Object.entries(shapes)) {
+      arrow.metadata = { style: { shape: `org.xmind.relationshipShape.${shape}` } }
+      mind.linkDiv()
+      const group = groupOf(el, ID.plainLine) as Group
+      expect(group.line.getAttribute('d'), shape).toMatch(form)
+      // the see-through path that takes the clicks follows the line
+      expect(group.line.previousElementSibling!.getAttribute('d'), shape).toBe(
+        group.line.getAttribute('d'),
+      )
+      const ends = group.querySelectorAll(`.${RELATIONSHIP_END_CLASS}`)
+      if (shape === 'curved') {
+        // every value the default: the library's own arrowhead, as for a line without values
+        expect(ends).toHaveLength(0)
+        expect(group.arrow1.hasAttribute('visibility')).toBe(false)
+        continue
+      }
+      // the default end: the open arrowhead, drawn by the editor
+      expect(ends, shape).toHaveLength(1)
+      expect(ends[0]!.getAttribute('fill')).toBe('none')
+    }
+  })
+
+  it('drawn again without the library drawing first, a shaped line keeps its path and its ends', async () => {
+    const { el, mind } = await mountFormatted()
+    const straight = groupOf(el, ID.straightLine) as Group
+    const d = straight.line.getAttribute('d')
+    const ends = straight.querySelectorAll(`.${RELATIONSHIP_END_CLASS}`).length
+    expect(ends).toBe(1)
+    // a dragged curve elsewhere, or a new relationship, draws the relationships again
+    mind.bus.fire('updateArrowDelta', mind.arrows[0]!)
+    mind.bus.fire('updateArrowDelta', mind.arrows[0]!)
+    expect(straight.line.getAttribute('d')).toBe(d)
+    expect(straight.querySelectorAll(`.${RELATIONSHIP_END_CLASS}`)).toHaveLength(ends)
+  })
+
+  it('the handles show on a curve only', async () => {
+    const { el, mind } = await mountFormatted()
+    mind.selectArrow(groupOf(el, ID.straightLine) as never)
+    for (const handle of [mind.P2, mind.P3, mind.linkController]) {
+      expect((handle as unknown as HTMLElement).style.display).toBe('none')
+    }
+    mind.unselectArrow()
+    mind.selectArrow(groupOf(el, ID.styledLine) as never)
+    for (const handle of [mind.P2, mind.P3]) {
+      expect((handle as unknown as HTMLElement).style.display).not.toBe('none')
+    }
+  })
+
+  it('a line in two directions is not taken away: the library may keep both ends', async () => {
+    const { mind, controller } = await mountFormatted()
+    expect(controller.addRelationship(ID.rightA, ID.rightB)).toBe(true)
+    const added = mind.arrows[mind.arrows.length - 1]!
+    added.bidirectional = true
+    mind.linkDiv()
+    expect(mind.arrows[mind.arrows.length - 1]!.bidirectional).toBe(true)
+  })
+
+  it('drawing writes nothing: the file keeps its values and its curves', async () => {
+    const { doc, mind, controller } = await mountFormatted()
+    const before = copyOf(doc.sheets)
+    mind.linkDiv()
+    mind.selectArrow(mind.arrowSvg.querySelector('g') as never)
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    expect(controller.canUndo).toBe(false)
+    expect(doc.changed).toBe(false)
+    expect(doc.sheets).toEqual(before)
+  })
+})
+
+describe('summary brackets', () => {
+  it('a bracket with a shape is drawn in it, where the library put its own', async () => {
+    const { el } = await mountFormatted()
+    const group = el.querySelector<SVGGElement>(`.summary > g#s-${ID.summaryTopic}`)!
+    expect(group.getAttribute('data-mm-shape')).toBe('curly')
+    expect(group.querySelector('path')!.getAttribute('d')).toMatch(/ Q /)
+  })
+
+  it('every shape a user can pick; without one, and for `bracket`, the library’s own', async () => {
+    const { el, mind } = await mountFormatted()
+    const summary = (mind.summaries as MapSummary[])[0]!
+    summary.metadata = undefined
+    mind.linkDiv()
+    const library = el.querySelector(`.summary > g#s-${ID.summaryTopic} path`)!.getAttribute('d')!
+    const frame = parseSummaryFrame(library)
+    expect(frame).not.toBeNull()
+    for (const shape of [
+      'curly',
+      'angle',
+      'square',
+      'round',
+      'sharp',
+      'fold',
+      'straight',
+    ] as const) {
+      summary.metadata = { style: { shape: `org.xmind.summaryShape.${shape}` } }
+      mind.linkDiv()
+      const path = el.querySelector(`.summary > g#s-${ID.summaryTopic} path`)!
+      expect(path.getAttribute('d'), shape).toBe(summaryBracketPath(shape, frame!))
+    }
+    for (const style of [{ shape: 'org.xmind.summaryShape.bracket' }, { shape: 'x' }, {}]) {
+      summary.metadata = { style }
+      mind.linkDiv()
+      const group = el.querySelector(`.summary > g#s-${ID.summaryTopic}`)!
+      expect(group.querySelector('path')!.getAttribute('d')).toBe(library)
+      expect(group.hasAttribute('data-mm-shape')).toBe(false)
+    }
+  })
+
+  it('a map whose summaries have no shape keeps the library’s brackets', async () => {
+    layOut()
+    const { el } = show(await documentOf(richSheet()))
+    const paths = [...el.querySelectorAll('.summary path')]
+    expect(paths.length).toBeGreaterThan(0)
+    for (const path of paths) expect(path.getAttribute('d')).toMatch(/ c 5 0 | c -5 0 | c 0 5 /)
+  })
+})
+
+describe('boundaries', () => {
+  const layerOf = (el: HTMLElement) => el.querySelector(`me-nodes > .${BOUNDARY_LAYER_CLASS}`)!
+  const groupsOf = (el: HTMLElement, id: string) =>
+    [...layerOf(el).querySelectorAll('g')].filter(
+      (group) => group.getAttribute(BOUNDARY_ID_ATTRIBUTE) === id,
+    )
+
+  it('lie in a layer under everything else of the map', async () => {
+    const { el } = await mountFormatted()
+    const nodes = el.querySelector('me-nodes')!
+    expect(nodes.firstElementChild).toBe(layerOf(el))
+  })
+
+  it('around a range, around the whole map, and once per side; none under a folded branch', async () => {
+    const { el } = await mountFormatted()
+    expect(groupsOf(el, ID.around)).toHaveLength(1)
+    expect(groupsOf(el, ID.master)).toHaveLength(1)
+    const sides = groupsOf(el, ID.sides)
+    expect(sides).toHaveLength(2)
+    // the title only on the first side
+    expect(sides.map((group) => group.querySelectorAll('text').length)).toEqual([1, 0])
+    expect(groupsOf(el, ID.underFold)).toHaveLength(0)
+  })
+
+  it('a folded branch shows its box only; opened, its boundary is drawn', async () => {
+    const { el, mind } = await mountFormatted()
+    expect(groupsOf(el, ID.underFold)).toHaveLength(0)
+    mind.expandNode(mind.findEle(ID.folded), true)
+    expect(groupsOf(el, ID.underFold)).toHaveLength(1)
+  })
+
+  it('the master boundary goes around every topic of the map', async () => {
+    const { el } = await mountFormatted()
+    const d = groupsOf(el, ID.master)[0]!.querySelector('path')!.getAttribute('d')!
+    const xs = numbers(d).filter((_, at) => at % 2 === 0)
+    const ys = numbers(d).filter((_, at) => at % 2 === 1)
+    for (const topic of el.querySelectorAll('me-tpc')) {
+      const box = topic.getBoundingClientRect()
+      expect(Math.min(...xs)).toBeLessThanOrEqual(box.left - BOUNDARY_PAD + 0.01)
+      expect(Math.max(...xs)).toBeGreaterThanOrEqual(box.right + BOUNDARY_PAD - 0.01)
+      expect(Math.min(...ys)).toBeLessThanOrEqual(box.top - BOUNDARY_PAD + 0.01)
+      expect(Math.max(...ys)).toBeGreaterThanOrEqual(box.bottom + BOUNDARY_PAD - 0.01)
+    }
+  })
+
+  it('the title is text, never markup', async () => {
+    const { el } = await mountFormatted()
+    const title = groupsOf(el, ID.around)[0]!.querySelector('text')!
+    expect(title.textContent).toBe('<b>around</b>')
+    expect(title.children).toHaveLength(0)
+    expect(el.querySelector('.mm-boundaries b')).toBeNull()
+    expect(title.getAttribute(BOUNDARY_ID_ATTRIBUTE)).toBe(ID.around)
+  })
+
+  it('without values: rounded, the map’s colours from its rules; with values: those, filtered', async () => {
+    const { el } = await mountFormatted()
+    const master = groupsOf(el, ID.master)[0]!
+    expect(master.getAttributeNames().filter((name) => name.startsWith('data-mm-'))).toEqual([
+      BOUNDARY_ID_ATTRIBUTE,
+    ])
+    const plain = master.querySelector('path')!
+    for (const name of ['stroke', 'stroke-width', 'fill', 'stroke-dasharray']) {
+      expect(plain.hasAttribute(name), name).toBe(false)
+    }
+    expect(plain.getAttribute('d')).toMatch(/ Q /)
+    const around = groupsOf(el, ID.around)[0]!
+    const outline = around.querySelector('path')!
+    expect(outline.getAttribute('stroke')).toBe('#336699')
+    expect(outline.getAttribute('stroke-width')).toBe('2')
+    expect(outline.getAttribute('fill')).toBe('#eeddcc')
+    expect(outline.getAttribute('stroke-dasharray')).toBe('8 4')
+    for (const mark of ['data-mm-color', 'data-mm-width', 'data-mm-fill']) {
+      expect(around.hasAttribute(mark), mark).toBe(true)
+    }
+  })
+
+  it('a line colour without a fill lies on a faint fill of that colour; a hostile value is not drawn', async () => {
+    const { el, mind } = await mountFormatted()
+    const carried = mind.meta!.boundaries as { id: string; style: Record<string, string> }[]
+    carried.find((boundary) => boundary.id === ID.master)!.style = { color: '#112233' }
+    carried.find((boundary) => boundary.id === ID.around)!.style = {
+      color: 'url(https://evil.example/)',
+      fill: 'expression(alert(1))',
+      shape: 'javascript:alert(1)',
+    }
+    mind.linkDiv()
+    const master = groupsOf(el, ID.master)[0]!.querySelector('path')!
+    expect(master.getAttribute('fill')).toBe('#112233')
+    expect(master.getAttribute('fill-opacity')).toBe('0.08')
+    const around = groupsOf(el, ID.around)[0]!
+    expect(around.outerHTML).not.toMatch(/evil|expression|javascript/)
+  })
+
+  it('every shape a user can pick has its own outline', async () => {
+    const { el, mind } = await mountFormatted()
+    const carried = mind.meta!.boundaries as { id: string; style: Record<string, string> }[]
+    const seen = new Set<string>()
+    for (const shape of [
+      'rect',
+      'roundedRect',
+      'scallops',
+      'waves',
+      'tension',
+      'polygon',
+      'roundedPolygon',
+    ]) {
+      carried.find((boundary) => boundary.id === ID.master)!.style = {
+        shape: `org.xmind.boundaryShape.${shape}`,
+      }
+      mind.linkDiv()
+      seen.add(groupsOf(el, ID.master)[0]!.querySelector('path')!.getAttribute('d')!)
+    }
+    expect(seen.size).toBe(7)
+  })
+})
