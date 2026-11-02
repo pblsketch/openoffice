@@ -18,31 +18,50 @@
  *
  * `before` runs right before the library measures the topics to draw the
  * branch lines, so what is added is already part of what it measures. `after`
- * runs right after. It gives each line from the centre the colour of its
- * branch by its place in the map, and it draws every line again from the
+ * runs right after. It draws every line with the values `line-resolve.ts`
+ * decides for it (colour, width, pattern, shape; the rainbow colour of a main
+ * branch by its place in the map), and it draws every line again from the
  * exact boxes: the library measures in whole pixels, each line in the frame
  * of its own drawing, so a line and the underline it continues could end up
  * a pixel apart. Measured exactly, they meet.
+ *
+ * A line drawn as the theme draws it gets nothing of its own: the lines from
+ * the centre keep the colour attribute they always had, the others the rules
+ * of `map.css`. Only a value that differs goes onto the path, as a style: a
+ * filtered colour of the file (or `--mm-strong`, the theme's line colour,
+ * with the rainbow off), a width in pixels, the dashes of a pattern. A tree
+ * and a timeline keep their own lines and take only those three.
  */
 import type { MindElixirInstance, Topic } from 'mind-elixir'
+import type { NodeObj } from 'mind-elixir'
 import { mixColors, type ThemeLook, type ViewImage } from '@genoffice/xmind-engine'
 import { boxWidth, type MapNodeMeta } from '../document/convert'
 import {
   type BranchBoxes,
   type BranchGeometry,
+  linePatternDash,
   mainBranchPath,
   subBranchPath,
+  taperedBranchPath,
   timelineStepPath,
   treeBranchPath,
 } from './branches'
 import { archivePictureEntry, pictureBox, type PictureStore } from './images'
 import {
-  branchColor,
+  branchIndexOf,
+  DEFAULT_LINE_SETTINGS,
+  lineChainOf,
+  type MapLineSettings,
+  resolveBranchLine,
+  type ResolvedBranchLine,
+} from './line-resolve'
+import {
   branchCount,
   branchGeometry,
   branchVars,
   lineHeightFor,
   readableOn,
+  type SheetLook,
 } from './look'
 import { markerElement, markerGlyph } from './markers'
 import {
@@ -110,12 +129,13 @@ export class TopicDecorator {
   readonly #onResize: () => void
   #look: ThemeLook
   #geometry: BranchGeometry
+  #lineSettings: MapLineSettings
   #strings: DecorationStrings
 
   constructor(options: {
     mind: MindElixirInstance
     pictures: PictureStore
-    look: ThemeLook
+    look: SheetLook
     strings: DecorationStrings
     onResize(): void
   }) {
@@ -123,13 +143,39 @@ export class TopicDecorator {
     this.#pictures = options.pictures
     this.#look = options.look
     this.#geometry = branchGeometry(options.look)
+    this.#lineSettings = { ...(options.look.lineSettings ?? DEFAULT_LINE_SETTINGS) }
     this.#strings = options.strings
     this.#onResize = options.onResize
   }
 
-  setLook(look: ThemeLook): void {
+  /**
+   * Draws with another look. A look that carries the sheet's line settings
+   * (`lookOfSheet`) brings them along; one made from a theme alone leaves the
+   * settings as they were, since picking a theme keeps them.
+   */
+  setLook(look: SheetLook): void {
     this.#look = look
     this.#geometry = branchGeometry(look)
+    if (look.lineSettings) this.#lineSettings = { ...look.lineSettings }
+  }
+
+  /** The map-wide line settings the lines are drawn with. */
+  get lineSettings(): MapLineSettings {
+    return { ...this.#lineSettings }
+  }
+
+  /** Switches the map-wide line settings; they take effect on the next drawing of the lines. */
+  setLineSettings(settings: MapLineSettings): void {
+    this.#lineSettings = { tapered: settings.tapered, rainbow: settings.rainbow }
+  }
+
+  /** The values the line into a topic is drawn with now, inherited ones included. */
+  lineOf(node: NodeObj): ResolvedBranchLine {
+    return resolveBranchLine(lineChainOf(node), {
+      look: this.#look,
+      rainbow: this.#lineSettings.rainbow,
+      branchIndex: branchIndexOf(node),
+    })
   }
 
   setStrings(strings: DecorationStrings): void {
@@ -161,51 +207,119 @@ export class TopicDecorator {
   }
 
   /**
-   * After the library drew the lines: the lines from the centre take the colour
-   * of their branch, and every line is drawn again from exact measurements.
-   * `only` is the main branch the library just drew the lower lines of, when
-   * it drew those of one branch alone.
+   * After the library drew the lines: every line is drawn with the values
+   * decided for it, and, when the map is laid out, again from exact
+   * measurements. `only` is the main branch the library just drew the lower
+   * lines of, when it drew those of one branch alone.
+   *
+   * The paths are the library's own elements, in the order it made them: one
+   * per main branch, and below each main branch one per topic, parent before
+   * child. Any other number of paths below a main branch means the library
+   * drew something this walk does not know: those paths stand as drawn.
    */
   after(only?: Element | null): void {
     const look = this.#look
+    const geometry = this.#geometry
+    const { tapered, rainbow } = this.#lineSettings
     const mains = this.#mind.nodeData.children ?? []
     const lines = this.#mind.lines.children
     const wrappers = this.#mainWrappers()
+    // null when not laid out (hidden sheet, or no layout engine): the library's own paths stand
+    const measured = this.#measured()
+    // set by the controller when the map is drawn as a tree or a timeline
+    const structure = this.#mind.container.dataset.mmStructure
+    const structured = structure === 'tree' || structure === 'timeline'
+
     wrappers.forEach((wrapper, at) => {
       const topic = mainTopicOf(wrapper)
       if (!topic) return
-      const index = Math.max(0, mains.indexOf(topic.nodeObj as never))
-      lines[at]?.setAttribute('stroke', branchColor(look, index))
       // the library writes the colour of its own palette here; the rules of `map.css` decide instead
       topic.style.borderColor = ''
+      const index = Math.max(0, mains.indexOf(topic.nodeObj as never))
+      const context = { look, rainbow, branchIndex: index }
+      const resolve = (node: NodeObj): ResolvedBranchLine =>
+        resolveBranchLine(lineChainOf(node), context)
+      const direction = wrapper.parentElement?.className ?? ''
+
+      const path = lines[at]
+      if (path) {
+        const line = resolve(topic.nodeObj)
+        let filled = false
+        if (measured) {
+          const box = (from: DOMRect): BranchBoxes =>
+            measured.boxes(from, measured.rect(topic), measured.frame, direction)
+          let d: string
+          if (structure === 'tree') {
+            d = treeBranchPath(geometry, box(measured.centre), 'central')
+          } else if (structure === 'timeline') {
+            // each step leaves from the one before it, the first from the central topic
+            const before = at > 0 ? mainTopicOf(wrappers[at - 1]!) : null
+            const from = before ? measured.rect(before) : measured.centre
+            d = timelineStepPath(geometry, box(from), !before)
+          } else if (tapered && line.shape !== 'none' && line.pattern === 'solid') {
+            // a filled outline cannot be dashed: a line with a pattern stays a line
+            const shape = { shape: line.shape, width: line.width }
+            d = taperedBranchPath(geometry, box(measured.centre), shape)
+            filled = true
+          } else {
+            d = mainBranchPath(geometry, box(measured.centre), line)
+          }
+          path.setAttribute('d', d)
+        }
+        paintLine(path, line, { main: true, filled })
+      }
+
+      if (only && only !== wrapper) return
+      const drawn = wrapper.lastElementChild
+      if (!drawn || drawn.tagName.toLowerCase() !== 'svg') return
+      const pieces = subLinesOf(wrapper)
+      if (pieces.length !== drawn.children.length) return
+      const origin = measured ? wrapper.getBoundingClientRect() : null
+      pieces.forEach((piece, place) => {
+        const path = drawn.children[place]!
+        const line = piece.node ? resolve(piece.node) : null
+        if (measured && origin) {
+          const from = measured.rect(piece.from)
+          const box = measured.boxes(
+            from,
+            measured.rect(piece.to),
+            origin,
+            direction,
+            piece.isFirst,
+          )
+          // below the main topics, a timeline lists its topics as a tree does
+          const d = structured
+            ? treeBranchPath(geometry, box, piece.isFirst ? 'main' : 'sub')
+            : subBranchPath(geometry, box, line ?? {})
+          path.setAttribute('d', d)
+        }
+        if (line) paintLine(path, line, { main: false, filled: false })
+      })
     })
-    this.#drawExactly(wrappers, only ?? null)
   }
 
   /**
-   * Sets the path of every branch line from the boxes as they really are, in
-   * fractions of a pixel. The paths are the library's own elements, in the
-   * order it made them: one per main branch, and below each main branch one
-   * per topic, parent before child.
+   * How the map is laid out, in fractions of a pixel: its frame, the central
+   * topic's box, each element's box (measured once in a pass), and the boxes
+   * of two elements inside a frame as the branch functions take them. Null
+   * while nothing has a size.
    */
-  #drawExactly(wrappers: readonly HTMLElement[], only: Element | null): void {
+  #measured() {
     const { nodes, map } = this.#mind
     const frame = nodes.getBoundingClientRect()
-    // not laid out (hidden sheet, or no layout engine): the library's own paths stand
-    if (!(frame.width > 0) || !(nodes.offsetWidth > 0)) return
+    if (!(frame.width > 0) || !(nodes.offsetWidth > 0)) return null
     const scale = frame.width / nodes.offsetWidth
     const centre = map.querySelector('me-root')?.getBoundingClientRect()
-    if (!centre) return
-    const geometry = this.#geometry
-    const lines = this.#mind.lines.children
-    // set by the controller when the map is drawn as a tree or a timeline
-    const structure = this.#mind.container.dataset.mmStructure
-    // below the main topics, a timeline lists its topics as a tree does
-    const subPath =
-      structure === 'tree' || structure === 'timeline'
-        ? (box: BranchBoxes) => treeBranchPath(geometry, box, box.isFirst ? 'main' : 'sub')
-        : (box: BranchBoxes) => subBranchPath(geometry, box)
-
+    if (!centre) return null
+    const rects = new Map<Element, DOMRect>()
+    const rect = (element: Element): DOMRect => {
+      let known = rects.get(element)
+      if (!known) {
+        known = element.getBoundingClientRect()
+        rects.set(element, known)
+      }
+      return known
+    }
     const boxes = (
       parent: DOMRect,
       child: DOMRect,
@@ -224,47 +338,7 @@ export class TopicDecorator {
       direction,
       isFirst,
     })
-
-    wrappers.forEach((wrapper, at) => {
-      const topic = mainTopicOf(wrapper)
-      const direction = wrapper.parentElement?.className ?? ''
-      if (!topic) return
-      const rect = topic.getBoundingClientRect()
-      let main: string
-      if (structure === 'tree') {
-        main = treeBranchPath(geometry, boxes(centre, rect, frame, direction), 'central')
-      } else if (structure === 'timeline') {
-        // each step leaves from the one before it, the first from the central topic
-        const before = at > 0 ? mainTopicOf(wrappers[at - 1]!) : null
-        const from = before?.getBoundingClientRect() ?? centre
-        main = timelineStepPath(geometry, boxes(from, rect, frame, direction), !before)
-      } else {
-        main = mainBranchPath(geometry, boxes(centre, rect, frame, direction))
-      }
-      lines[at]?.setAttribute('d', main)
-      if (only && only !== wrapper) return
-      const drawn = wrapper.lastElementChild
-      if (!drawn || drawn.tagName.toLowerCase() !== 'svg') return
-      const origin = wrapper.getBoundingClientRect()
-      const paths: string[] = []
-      const walk = (branch: Element, isFirst: boolean): void => {
-        const parent = branch.firstElementChild
-        const below = branch.children[1]
-        if (!parent || !below || below.tagName !== 'ME-CHILDREN') return
-        const from = parent.getBoundingClientRect()
-        for (const child of below.children) {
-          const to = child.firstElementChild
-          if (!to) continue
-          paths.push(subPath(boxes(from, to.getBoundingClientRect(), origin, direction, isFirst)))
-          // the library draws below a topic only while its fold handle says it is open
-          if ((to.children[1] as { expanded?: boolean } | undefined)?.expanded) walk(child, false)
-        }
-      }
-      walk(wrapper, true)
-      // any other number of paths means the library drew something this walk does not know: its paths stand
-      if (paths.length !== drawn.children.length) return
-      paths.forEach((d, index) => drawn.children[index]!.setAttribute('d', d))
-    })
+    return { frame, centre, rect, boxes }
   }
 
   #mainWrappers(): HTMLElement[] {
@@ -509,6 +583,70 @@ export class TopicDecorator {
     }
     box.appendChild(svg)
   }
+}
+
+/** One line below a main topic: the parent's and the child's row (`me-parent`), and the child's node. */
+interface SubLine {
+  from: Element
+  to: Element
+  node: NodeObj | null
+  /** the parent is the main topic */
+  isFirst: boolean
+}
+
+/** The lines the library draws below a main topic, in its order: parent before child, open branches only. */
+function subLinesOf(wrapper: Element): SubLine[] {
+  const pieces: SubLine[] = []
+  const walk = (branch: Element, isFirst: boolean): void => {
+    const parent = branch.firstElementChild
+    const below = branch.children[1]
+    if (!parent || !below || below.tagName !== 'ME-CHILDREN') return
+    for (const child of below.children) {
+      const to = child.firstElementChild
+      if (!to) continue
+      const topic = to.firstElementChild as Topic | null
+      pieces.push({ from: parent, to, node: topic?.nodeObj ?? null, isFirst })
+      // the library draws below a topic only while its fold handle says it is open
+      if ((to.children[1] as { expanded?: boolean } | undefined)?.expanded) walk(child, false)
+    }
+  }
+  walk(wrapper, true)
+  return pieces
+}
+
+/**
+ * Puts the values of one line on its path. What the theme draws anyway is
+ * taken off, so a line drawn as the theme draws it carries nothing of its
+ * own. A line from the centre takes its colour as an attribute, as it always
+ * did (`stroke`, or `fill` when tapered); the others through a style, since
+ * `map.css` colours them.
+ */
+function paintLine(
+  path: Element,
+  line: ResolvedBranchLine,
+  how: { main: boolean; filled: boolean },
+): void {
+  const { style } = path as SVGElement
+  if (how.main) {
+    path.setAttribute('stroke', how.filled ? 'none' : line.color)
+    path.setAttribute('fill', how.filled ? line.color : 'none')
+  } else if (line.colorFrom === 'rainbow') {
+    style.removeProperty('stroke')
+  } else {
+    // with the rainbow off and nothing written: the theme's line colour, the central topic's
+    style.setProperty('stroke', line.colorFrom === 'theme' ? 'var(--mm-strong)' : line.color)
+  }
+  const width = how.filled || line.widthFrom === 'theme' ? null : `${line.width}px`
+  const dash = how.filled ? null : linePatternDash(line.pattern, line.width)
+  setOrRemove(style, 'stroke-width', width)
+  setOrRemove(style, 'stroke-dasharray', dash?.dasharray ?? null)
+  setOrRemove(style, 'stroke-linecap', dash?.linecap ?? null)
+  if (style.length === 0) path.removeAttribute('style')
+}
+
+function setOrRemove(style: CSSStyleDeclaration, name: string, value: string | null): void {
+  if (value === null) style.removeProperty(name)
+  else style.setProperty(name, value)
 }
 
 function mainTopicOf(wrapper: Element): Topic | null {
