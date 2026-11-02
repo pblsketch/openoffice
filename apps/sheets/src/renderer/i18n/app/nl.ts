@@ -1198,6 +1198,8 @@ export const nl = {
   appRefreshAll: 'Alles vernieuwen',
   appWorkbookNoPivot: 'Geen draaitabellen in deze werkmap.',
   appRefreshAllTitle: 'Alle draaitabellen vernieuwen',
+  appQueriesConnections: 'Query’s en verbindingen',
+  appQueriesConnectionsTitle: 'De query’s en gegevensverbindingen van de werkmap weergeven',
   appErrorCheckingDetail: 'Blad scannen op foutwaarden',
   appErrorsFound: '{count} fouten — bij {cell}: {value}',
   appCheckingErrors: 'Het hele werkblad wordt op fouten gecontroleerd…',

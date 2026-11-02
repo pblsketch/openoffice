@@ -49,6 +49,7 @@ import { AllowEditRangesDialog } from './AllowEditRangesDialog'
 import { ProtectSheetDialog } from './ProtectSheetDialog'
 import type { SheetProtectionAllow } from '@genoffice/xlsx-gateway/gateway/xlsx-protection'
 import { GoToDialog } from './GoToDialog'
+import { QueriesDialog } from './QueriesDialog'
 import { SheetTabContextMenu } from './SheetTabContextMenu'
 import type { SheetTabActions } from './sheet-tab-actions'
 import { PasteSpecialDialog } from './PasteSpecialDialog'
@@ -85,7 +86,7 @@ import { isModalOpen, resolveGlobalShortcut } from './global-shortcuts'
 
 import type { ChartSeriesVisualState } from '@genoffice/xlsx-gateway/domain/chart-visual'
 import type { ChangePlan } from '@genoffice/xlsx-gateway/domain/workbook.types'
-import type { AttachmentMeta } from '../shared/desktop-api'
+import type { AttachmentMeta, WorkbookQueriesResult } from '../shared/desktop-api'
 import {
   AiChatPanel,
   type AiChatMessage,
@@ -426,6 +427,8 @@ interface ExcelShellProps {
   /// Name Box / Go To jump; returns an error message, or null on success.
   readonly onGoToReference: (ref: string) => string | null
   readonly onListDefinedNames: () => readonly { name: string; ref: string }[]
+  /// Data › Queries & Connections: the open workbook's connections (read-only).
+  readonly onReadWorkbookQueries: () => Promise<WorkbookQueriesResult>
   readonly onReadPasteSpecialSource: () => Promise<PasteSpecialSource>
   /// Resolves to an error message, or null on success.
   readonly onPasteSpecial: (
@@ -554,6 +557,7 @@ export function ExcelShell({
   activeCellA1,
   onGoToReference,
   onListDefinedNames,
+  onReadWorkbookQueries,
   onReadPasteSpecialSource,
   onPasteSpecial,
   functionArguments,
@@ -704,6 +708,7 @@ export function ExcelShell({
   const [showFillSeries, setShowFillSeries] = useState(false)
   const [showConsolidateDialog, setShowConsolidateDialog] = useState(false)
   const [showGoTo, setShowGoTo] = useState(false)
+  const [showQueries, setShowQueries] = useState(false)
   const [pasteSpecialSource, setPasteSpecialSource] = useState<PasteSpecialSource | null>(null)
   const [showZoomDialog, setShowZoomDialog] = useState(false)
   const [statsMenuAt, setStatsMenuAt] = useState<{ x: number; y: number } | null>(null)
@@ -758,6 +763,7 @@ export function ExcelShell({
     else if (command === 'subtotal-open') setShowSubtotalDialog(true)
     else if (command === 'consolidate-open') setShowConsolidateDialog(true)
     else if (command === 'goto-open') setShowGoTo(true)
+    else if (command === 'queries-open') setShowQueries(true)
     else if (command === PASTE_SPECIAL_OPEN_SHELL_COMMAND) {
       void onReadPasteSpecialSource().then((source) => setPasteSpecialSource(source))
     } else if (command === 'header-footer-open') setShowHeaderFooter(true)
@@ -1377,6 +1383,13 @@ export function ExcelShell({
           source={pasteSpecialSource}
           onApply={(options) => onPasteSpecial(pasteSpecialSource, options)}
           onClose={() => setPasteSpecialSource(null)}
+        />
+      )}
+      {showQueries && (
+        <QueriesDialog
+          load={onReadWorkbookQueries}
+          onGo={onGoToReference}
+          onClose={() => setShowQueries(false)}
         />
       )}
       {showGoTo && (
@@ -3116,6 +3129,14 @@ function Ribbon({
             >
               <ToolSymbol symbol="⟳" />
               {t('appRefreshAll')}
+            </button>
+            <button
+              className="styles-row as-button"
+              data-tip={t('appQueriesConnectionsTitle')}
+              onClick={() => onCommand('queries-open')}
+            >
+              <ToolSymbol symbol="⇄" />
+              {t('appQueriesConnections')}
             </button>
           </div>
         </RibbonGroup>
