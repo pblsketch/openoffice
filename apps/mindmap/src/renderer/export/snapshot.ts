@@ -158,6 +158,9 @@ const TOPIC_STYLE = [
   'font-weight',
   'font-size',
   'line-height',
+  'width',
+  'max-width',
+  'overflow-wrap',
 ] as const
 
 function keepTopicStyle(topic: HTMLElement): void {

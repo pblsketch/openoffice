@@ -11,8 +11,9 @@
  *   chip each for a note and for a link. The library sets them with
  *   `textContent`. The link chip is a span holding the address as text,
  *   whatever the address is; it is never an anchor.
- * - `metadata` carries the values themselves (labels, note, link) plus what
- *   the editor shows without editing (picture, markers, style).
+ * - `metadata` carries the values themselves (labels, note, link, the width of
+ *   the box) plus what the editor shows without editing (picture, markers,
+ *   style).
  * - `dangerouslySetInnerHTML`, `hyperLink`, `image`, `icons` and `style` are
  *   never set.
  *
@@ -43,12 +44,14 @@ import {
 export type Arrow = NonNullable<MindElixirData['arrows']>[number]
 export type Summary = NonNullable<MindElixirData['summaries']>[number]
 
-/** What a node carries besides its title. The first three are edited; the rest is shown only. */
+/** What a node carries besides its title. Labels, note, link, picture and width are edited; the rest is shown only. */
 export interface MapNodeMeta {
   labels: string[]
   note: string | null
   link: string | null
   image: ViewImage | null
+  /** the width the user gave the topic's box, in pixels; null when it takes the width of its text */
+  width: number | null
   markers: string[]
   style: ViewTopicStyle
 }
@@ -96,7 +99,7 @@ export function layoutOfDirection(direction: unknown, structure: MapStructure = 
 }
 
 export function emptyMeta(): MapNodeMeta {
-  return { labels: [], note: null, link: null, image: null, markers: [], style: {} }
+  return { labels: [], note: null, link: null, image: null, width: null, markers: [], style: {} }
 }
 
 /** The tags a node is drawn with. Plain text only. */
@@ -129,6 +132,7 @@ function topicToNode(topic: ViewTopic, isRoot: boolean): MapNode {
       note: topic.note,
       link: topic.link,
       image: topic.image ? { ...topic.image } : null,
+      width: topic.width ?? null,
       markers: [...topic.markers],
       style: { ...topic.style },
     },
@@ -198,6 +202,7 @@ function readMeta(value: unknown): MapNodeMeta {
     note: typeof meta.note === 'string' && meta.note !== '' ? meta.note : null,
     link: isShownLink(meta.link) ? meta.link : null,
     image: isObject(meta.image) ? (meta.image as unknown as ViewImage) : null,
+    width: boxWidth(meta.width),
     markers: Array.isArray(meta.markers)
       ? meta.markers.filter((marker) => typeof marker === 'string')
       : [],
@@ -221,6 +226,7 @@ export function mindToState(data: MindElixirData, base: StateBase): ViewSheet {
       note: meta.note,
       link: meta.link,
       image: meta.image,
+      ...(meta.width === null ? {} : { width: meta.width }),
       markers: meta.markers,
       style: meta.style,
       summaries: [],
@@ -334,6 +340,11 @@ function isRange(start: unknown, end: unknown, branches: number): boolean {
   )
 }
 
+/** A width a box can be drawn with: a positive number of pixels. */
+export function boxWidth(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -345,7 +356,8 @@ function isObject(value: unknown): value is Record<string, unknown> {
  * picture address as it is.
  *
  * What stays: the id (the library replaces it anyway), the title as text,
- * folding, the side, the labels, note and web link, and the children. What a
+ * folding, the side, the labels, note and web link, the width of the box, and
+ * the children. What a
  * state cannot write (picture, markers, style) is cleared, so the screen never
  * shows something the file will not hold.
  */
@@ -357,6 +369,7 @@ export function cleanPastedNode(node: unknown, depth = 0): void {
     labels: pasted.labels,
     note: pasted.note,
     link: pasted.link,
+    width: pasted.width,
   }
   const kept: Record<string, unknown> = {
     id: typeof node.id === 'string' ? node.id : '',

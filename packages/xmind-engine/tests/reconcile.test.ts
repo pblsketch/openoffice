@@ -864,6 +864,58 @@ describe('reconcileSheet: sheets are reconciled one at a time', () => {
   })
 })
 
+describe('reconcileSheet: the width of a topic box', () => {
+  /** The sample with a width on topics `a1` and `a3` as the file holds them. */
+  function withWidths(a1: unknown, a3: unknown): unknown[] {
+    const content = sampleSheets() as Array<{ rootTopic: XmindSheet['rootTopic'] }>
+    const below = content[0]!.rootTopic.children!.attached![0]!.children!.attached!
+    below[0]!.customWidth = a1
+    below[2]!.customWidth = a3
+    return content
+  }
+
+  it('shows a width the file holds and leaves topics without one alone', async () => {
+    const document = await openSheets(withWidths(240, 'wide'))
+    const view = document.viewSheets()[0]!
+    expect(inView(view, 'a1').width).toBe(240)
+    expect('width' in inView(view, 'a3')).toBe(false)
+    expect('width' in inView(view, 'a')).toBe(false)
+  })
+
+  it('writes the width the user gave a box, and only that', async () => {
+    const { document, before, result, sheet } = await edit((view) => {
+      inView(view, 'a1').width = 312
+    })
+    expect(expectApplied(result)).toMatchObject({ changed: true, inSync: true })
+    expect(inSource(sheet, 'a1')!.customWidth).toBe(312)
+    expect(differences(before[0], sheet)).toEqual([
+      '$.rootTopic.children.attached[0].children.attached[0].customWidth',
+    ])
+    expect(document.changed).toBe(true)
+  })
+
+  it('takes the width off when the box goes back to the width of its text', async () => {
+    const content = withWidths(240, 'wide')
+    const { result, sheet } = await edit((view) => {
+      delete inView(view, 'a1').width
+    }, content)
+    expect(expectApplied(result)).toMatchObject({ changed: true, inSync: true })
+    expect('customWidth' in inSource(sheet, 'a1')!).toBe(false)
+    // a value the editor cannot draw shows as none, and a state without a width keeps it
+    expect(inSource(sheet, 'a3')!.customWidth).toBe('wide')
+  })
+
+  it('refuses a width that is not a positive number', async () => {
+    for (const width of [0, -5, Number.NaN, '200']) {
+      const { document, result } = await edit((view) => {
+        ;(inView(view, 'a1') as { width?: unknown }).width = width
+      })
+      expect(result.ok).toBe(false)
+      expect(document.changed).toBe(false)
+    }
+  })
+})
+
 describe('reconcileSheet: a state that cannot be applied', () => {
   const deep = (levels: number) => {
     let topic = freshTopic('deep-0', 'bottom')

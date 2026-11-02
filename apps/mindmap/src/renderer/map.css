@@ -365,6 +365,31 @@
   line-height: 1.4;
 }
 
+/*
+ * A summary's title is a box like a topic's: the longest line a topic has, the
+ * text wrapping inside it (and keeping the line breaks typed into it). Its
+ * colours are the map's own, as the bracket's are: it stands outside every
+ * branch. The library centres it on the point it gives; under a bracket that
+ * points down, the box hangs from the end of the bracket instead.
+ */
+.mm-card .map-container .svg-label[data-type='summary'] {
+  max-width: 30em;
+  padding: 6px 12px;
+  border: 1.5px solid var(--mm-summary);
+  border-radius: 8px;
+  background-color: var(--mm-ground);
+  color: var(--mm-strong) !important;
+  font-size: var(--mm-sub-size);
+  font-weight: 600;
+  line-height: var(--mm-sub-lh);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.mm-card .map-container .svg-label[data-type='summary'][data-anchor='middle'] {
+  transform: translateY(calc(50% - 10px));
+}
+
 .mm-card .map-container .svg-label[data-type='arrow'] {
   background-color: var(--mm-ground);
   font-size: 12px;
