@@ -6,10 +6,10 @@ Pelayan MCP ialah perkhidmatan yang menyediakan alat yang boleh digunakan oleh A
 
 1. Buka **Tetapan ▸ Integrasi** dan tekan **Tambah pelayan** pada kad **Pelayan MCP**.
 2. Pilih cara menambahnya.
-   - **Tampal teks tetapan**: tampal seluruh teks tetapan daripada panduan pelayan dan tekan **Baca**. GenOffice mengisi ruang-ruangnya. Jika satu teks mengandungi beberapa pelayan, anda mengesahkannya satu demi satu.
+   - **Tampal teks tetapan**: tampal seluruh teks tetapan daripada panduan pelayan dan tekan **Baca**. GenOffice mengisi ruang-ruangnya. Jika satu teks mengandungi beberapa pelayan, anda mengesahkannya satu demi satu. Jika teks itu membaca kunci atau nilai daripada pemboleh ubah PC (`${NAMA}`), ruangan itu dibiarkan kosong untuk anda isi.
    - **Masukkan sendiri**: taip nama dan alamat. Jika panduan pelayan memberikan kunci, letakkannya dalam ruang **Kunci (pilihan)**.
 3. Baca notis di atas butang tambah, kemudian tekan **Tambah**.
-4. Tekan **Semak sambungan** untuk melihat senarai alat yang disediakan oleh pelayan. Bagi pelayan yang memerlukan log masuk, tekan **Log masuk dengan pelayar** dan selesaikan log masuk di situ.
+4. Selepas ditambah, GenOffice terus menyemak sambungan dan mendapatkan senarai alat. Pelayan yang memerlukan log masuk menunggu anda dan tidak membuka pelayar sendiri. Tekan **Semak sambungan** untuk melihat senarai alat yang disediakan oleh pelayan. Bagi pelayan yang memerlukan log masuk, tekan **Log masuk dengan pelayar** dan selesaikan log masuk di situ.
 
 Nama pelayan menggunakan huruf, digit, `-` dan `_`, sehingga 24 aksara. AI melihat alat pelayan ini dengan nama berbentuk `mcp__name__tool`. Jika sesuatu kemahiran memanggil alat dengan nama berbentuk ini, tambahkan pelayan dengan nama yang sama seperti yang digunakan oleh kemahiran itu.
 
@@ -31,7 +31,7 @@ Nama pelayan menggunakan huruf, digit, `-` dan `_`, sehingga 24 aksara. AI melih
 ## Menggunakan pelayan dalam tetingkap AI
 
 - Pelayan berfungsi dalam tetingkap AI penyunting dan dalam Tanya AI di Laman Utama. Semasa sesebuah pelayan dihidupkan, butang **Pelayan yang disambungkan** muncul di sebelah ruang input.
-- Tekan butang itu untuk melihat keadaan setiap pelayan dan untuk mematikan atau menghidupkan pelayan bagi perbualan ini sahaja. Perbualan baharu bermula dengan semua pelayan yang anda hidupkan dalam Tetapan.
+- Tekan butang itu untuk melihat keadaan setiap pelayan dan untuk mematikan atau menghidupkan pelayan bagi perbualan ini sahaja. Perbualan baharu bermula dengan semua pelayan yang anda hidupkan dalam Tetapan. Pelayan yang sambungannya belum pernah disemak dipaparkan sebagai **Belum disemak**; semak dalam Tetapan untuk mendapatkan alatnya.
 - Mematikan **Benarkan AI menggunakan alat internet** di bawah **Tetapan ▸ Media & Carian AI** turut mengalihkan semua alat pelayan MCP.
 - Apabila sesuatu kemahiran mengharapkan alat daripada pelayan yang tidak dapat anda gunakan sekarang, AI menyatakan dalam jawapannya langkah mana yang tidak dapat dilakukannya. **Tetapan ▸ Kemahiran** juga menunjukkan pelayan yang diperlukan oleh sesuatu kemahiran di sebelah kemahiran itu.
 - Tetingkap Ejen juga boleh menggunakan alat pelayan yang dihidupkan. Kebenaran yang sama terpakai, dan sesi mengekalkan tetapan semasa ia bermula. Lihat [Mod ejen](help://agent-mode).

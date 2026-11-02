@@ -6,10 +6,10 @@ Un serveur MCP est un service qui propose à l’IA des outils extérieurs à l�
 
 1. Ouvrez **Paramètres ▸ Intégrations** et cliquez sur **Ajouter un serveur** dans la carte **Serveurs MCP**.
 2. Choisissez la façon de l’ajouter.
-   - **Coller un texte de réglages** : collez en entier le texte de réglages fourni par le guide du serveur, puis cliquez sur **Lire**. GenOffice remplit les champs. Si un seul texte contient plusieurs serveurs, vous les confirmez un par un.
+   - **Coller un texte de réglages** : collez en entier le texte de réglages fourni par le guide du serveur, puis cliquez sur **Lire**. GenOffice remplit les champs. Si un seul texte contient plusieurs serveurs, vous les confirmez un par un. Si le texte lit une clé ou une valeur dans une variable du PC (`${NOM}`), ce champ reste vide et c’est à vous de le remplir.
    - **Saisir** : indiquez un nom et l’adresse. Si le guide du serveur vous donne une clé, mettez-la dans le champ **Clé (facultative)**.
 3. Lisez l’avis au-dessus du bouton d’ajout, puis cliquez sur **Ajouter**.
-4. Cliquez sur **Vérifier la connexion** pour voir la liste des outils proposés par le serveur. Si le serveur demande une connexion, cliquez sur **Se connecter avec le navigateur** et terminez la connexion dans le navigateur.
+4. Dès l’ajout, GenOffice vérifie la connexion et récupère la liste des outils. Un serveur qui demande une connexion attend votre action au lieu d’ouvrir le navigateur. Cliquez sur **Vérifier la connexion** pour voir la liste des outils proposés par le serveur. Si le serveur demande une connexion, cliquez sur **Se connecter avec le navigateur** et terminez la connexion dans le navigateur.
 
 Le nom d’un serveur se compose de lettres, de chiffres, de `-` et de `_`, sur 24 caractères au plus. L’IA voit les outils de ce serveur sous des noms de la forme `mcp__name__tool`. Si une compétence appelle des outils par des noms de cette forme, ajoutez le serveur sous le nom que la compétence utilise.
 
@@ -31,7 +31,7 @@ Le nom d’un serveur se compose de lettres, de chiffres, de `-` et de `_`, sur 
 ## Utiliser les serveurs dans une fenêtre IA
 
 - Les serveurs fonctionnent dans les fenêtres IA des éditeurs et dans Ask AI de l’accueil. Tant qu’un serveur est activé, un bouton **Serveurs connectés** apparaît à côté du champ de saisie.
-- Cliquez dessus pour voir l’état de chaque serveur et pour en désactiver ou en activer un pour cette conversation seulement. Une nouvelle conversation démarre avec tous les serveurs que vous avez activés dans les paramètres.
+- Cliquez dessus pour voir l’état de chaque serveur et pour en désactiver ou en activer un pour cette conversation seulement. Une nouvelle conversation démarre avec tous les serveurs que vous avez activés dans les paramètres. Un serveur dont la connexion n’a jamais été vérifiée affiche **Pas encore vérifié** ; vérifiez-la dans les réglages pour obtenir ses outils.
 - Désactiver **Autoriser l’IA à utiliser les outils internet** sous **Paramètres ▸ Médias IA et recherche** retire aussi tous les outils des serveurs MCP.
 - Quand une compétence attend un outil d’un serveur que vous ne pouvez pas utiliser pour le moment, l’IA indique dans sa réponse l’étape qu’elle n’a pas pu faire. **Paramètres ▸ Compétences** affiche aussi, à côté de la compétence, le serveur dont elle a besoin.
 - La fenêtre de l’agent peut aussi utiliser les outils des serveurs activés. Les mêmes autorisations s’appliquent, et une session garde les réglages avec lesquels elle a démarré. Voir [Mode agent](help://agent-mode).

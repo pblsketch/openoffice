@@ -6,10 +6,10 @@ Un server MCP è un servizio che offre all’IA strumenti esterni all’app, com
 
 1. Apri **Impostazioni ▸ Integrazioni** e premi **Aggiungi un server** nella scheda **Server MCP**.
 2. Scegli come aggiungerlo.
-   - **Incolla il testo delle impostazioni**: incolla per intero il testo delle impostazioni dalla guida del server e premi **Leggi**. GenOffice compila i campi. Se un unico testo contiene più server, li confermi uno alla volta.
+   - **Incolla il testo delle impostazioni**: incolla per intero il testo delle impostazioni dalla guida del server e premi **Leggi**. GenOffice compila i campi. Se un unico testo contiene più server, li confermi uno alla volta. Se il testo legge una chiave o un valore da una variabile del PC (`${NOME}`), quel campo resta vuoto e lo compili tu.
    - **Inserisci a mano**: scrivi un nome e l’indirizzo. Se la guida del server ti fornisce una chiave, inseriscila nel campo **Chiave (facoltativa)**.
 3. Leggi l’avviso sopra il pulsante di aggiunta e premi **Aggiungi**.
-4. Premi **Verifica connessione** per vedere l’elenco degli strumenti offerti dal server. Se il server richiede un accesso, premi **Accedi con il browser** e completa l’accesso nel browser.
+4. Appena aggiunto, GenOffice verifica subito la connessione e ottiene l’elenco degli strumenti. Un server che richiede un accesso ti aspetta invece di aprire il browser. Premi **Verifica connessione** per vedere l’elenco degli strumenti offerti dal server. Se il server richiede un accesso, premi **Accedi con il browser** e completa l’accesso nel browser.
 
 Il nome di un server usa lettere, cifre, `-` e `_`, fino a 24 caratteri. L’IA vede gli strumenti di questo server con nomi della forma `mcp__name__tool`. Se un’abilità richiama strumenti con nomi di questa forma, aggiungi il server con lo stesso nome usato dall’abilità.
 
@@ -31,7 +31,7 @@ Il nome di un server usa lettere, cifre, `-` e `_`, fino a 24 caratteri. L’IA 
 ## Usare i server in una finestra IA
 
 - I server funzionano nelle finestre IA degli editor e in Ask AI della Home. Finché un server è attivo, accanto al campo di inserimento compare il pulsante **Server collegati**.
-- Premilo per vedere lo stato di ogni server e per disattivare o attivare un server solo per questa conversazione. Una nuova conversazione parte con tutti i server che hai attivato in Impostazioni.
+- Premilo per vedere lo stato di ogni server e per disattivare o attivare un server solo per questa conversazione. Una nuova conversazione parte con tutti i server che hai attivato in Impostazioni. Un server la cui connessione non è mai stata verificata mostra **Non ancora verificato**; verificala nelle Impostazioni per avere i suoi strumenti.
 - Se disattivi **Consenti all’IA di usare gli strumenti internet** in **Impostazioni ▸ Media e ricerca IA**, vengono rimossi anche tutti gli strumenti dei server MCP.
 - Quando un’abilità si aspetta uno strumento da un server che al momento non puoi usare, l’IA dice nella risposta quale passaggio non ha potuto eseguire. **Impostazioni ▸ Abilità** mostra anche, accanto all’abilità, il server di cui ha bisogno.
 - Anche la finestra dell’agente può usare gli strumenti dei server attivi. Valgono le stesse autorizzazioni e una sessione mantiene le impostazioni con cui è partita. Vedi [Modalità agente](help://agent-mode).

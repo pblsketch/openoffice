@@ -6,10 +6,10 @@ Serwer MCP to usługa, która daje AI narzędzia spoza aplikacji, na przykład w
 
 1. Otwórz **Ustawienia ▸ Integracje** i na karcie **Serwery MCP** kliknij **Dodaj serwer**.
 2. Wybierz sposób dodania.
-   - **Wklej tekst ustawień**: wklej cały tekst ustawień z instrukcji serwera i kliknij **Odczytaj**. GenOffice wypełni pola. Jeśli w jednym tekście jest kilka serwerów, potwierdzasz je po kolei.
+   - **Wklej tekst ustawień**: wklej cały tekst ustawień z instrukcji serwera i kliknij **Odczytaj**. GenOffice wypełni pola. Jeśli w jednym tekście jest kilka serwerów, potwierdzasz je po kolei. Jeśli tekst odczytuje klucz lub wartość ze zmiennej komputera (`${NAZWA}`), to pole zostaje puste i uzupełniasz je sam.
    - **Wpisz ręcznie**: wpisz nazwę i adres. Jeśli instrukcja serwera podaje klucz, wpisz go w polu **Klucz (opcjonalnie)**.
 3. Przeczytaj komunikat nad przyciskiem dodawania i kliknij **Dodaj**.
-4. Kliknij **Sprawdź połączenie**, aby zobaczyć listę narzędzi serwera. Jeśli serwer wymaga logowania, kliknij **Zaloguj się przez przeglądarkę** i dokończ logowanie w przeglądarce.
+4. Po dodaniu GenOffice od razu sprawdza połączenie i pobiera listę narzędzi. Serwer, który wymaga logowania, czeka na Ciebie zamiast otwierać przeglądarkę. Kliknij **Sprawdź połączenie**, aby zobaczyć listę narzędzi serwera. Jeśli serwer wymaga logowania, kliknij **Zaloguj się przez przeglądarkę** i dokończ logowanie w przeglądarce.
 
 Nazwa serwera składa się z liter, cyfr, `-` i `_` i ma najwyżej 24 znaki. AI widzi narzędzia tego serwera pod nazwami w postaci `mcp__name__tool`. Jeśli umiejętność wywołuje narzędzia po nazwach takiej postaci, dodaj serwer pod tą samą nazwą, której używa umiejętność.
 
@@ -31,7 +31,7 @@ Nazwa serwera składa się z liter, cyfr, `-` i `_` i ma najwyżej 24 znaki. AI 
 ## Używanie serwerów w oknie AI
 
 - Serwery działają w oknach AI edytorów i w Ask AI na stronie głównej. Gdy serwer jest włączony, obok pola wpisywania pojawia się przycisk **Połączone serwery**.
-- Kliknij go, aby zobaczyć stan każdego serwera oraz wyłączyć lub włączyć serwer tylko dla tej rozmowy. Nowa rozmowa zaczyna się ze wszystkimi serwerami, które włączyłeś w ustawieniach.
+- Kliknij go, aby zobaczyć stan każdego serwera oraz wyłączyć lub włączyć serwer tylko dla tej rozmowy. Nowa rozmowa zaczyna się ze wszystkimi serwerami, które włączyłeś w ustawieniach. Serwer, którego połączenia nigdy nie sprawdzono, ma stan **Jeszcze nie sprawdzono**; sprawdź je w Ustawieniach, aby dostać jego narzędzia.
 - Wyłączenie opcji **Pozwól AI używać narzędzi internetowych** w **Ustawienia ▸ Media i wyszukiwanie AI** usuwa też wszystkie narzędzia serwerów MCP.
 - Gdy umiejętność oczekuje narzędzia z serwera, którego teraz nie możesz użyć, AI w odpowiedzi powie, którego kroku nie mogło wykonać. **Ustawienia ▸ Umiejętności** pokazują też przy każdej umiejętności serwer, którego potrzebuje.
 - Okno agenta również może używać narzędzi włączonych serwerów. Obowiązują te same uprawnienia, a sesja zachowuje ustawienia, z którymi się zaczęła. Zobacz [Tryb agenta](help://agent-mode).

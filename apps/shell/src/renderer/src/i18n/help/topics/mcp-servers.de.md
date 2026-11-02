@@ -6,10 +6,10 @@ Ein MCP-Server ist ein Dienst, der der KI Werkzeuge von außerhalb der App zur V
 
 1. Öffnen Sie **Einstellungen ▸ Integrationen** und klicken Sie auf der Karte **MCP-Server** auf **Server hinzufügen**.
 2. Wählen Sie, wie Sie ihn hinzufügen.
-   - **Einstellungstext einfügen**: Fügen Sie den ganzen Einstellungstext aus der Anleitung des Servers ein und klicken Sie auf **Lesen**. GenOffice füllt die Felder aus. Enthält ein Text mehrere Server, bestätigen Sie sie nacheinander.
+   - **Einstellungstext einfügen**: Fügen Sie den ganzen Einstellungstext aus der Anleitung des Servers ein und klicken Sie auf **Lesen**. GenOffice füllt die Felder aus. Enthält ein Text mehrere Server, bestätigen Sie sie nacheinander. Liest der Text einen Schlüssel oder Wert aus einer PC-Variablen (`${NAME}`), bleibt dieses Feld leer und Sie tragen den Wert selbst ein.
    - **Selbst eingeben**: Geben Sie einen Namen und die Adresse ein. Wenn die Anleitung des Servers einen Schlüssel nennt, tragen Sie ihn ins Feld **Schlüssel (optional)** ein.
 3. Lesen Sie den Hinweis über der Schaltfläche zum Hinzufügen und klicken Sie auf **Hinzufügen**.
-4. Klicken Sie auf **Verbindung prüfen**, um die Liste der Werkzeuge des Servers zu sehen. Braucht der Server eine Anmeldung, klicken Sie auf **Im Browser anmelden** und schließen Sie die Anmeldung dort ab.
+4. Nach dem Hinzufügen prüft GenOffice die Verbindung sofort und holt die Werkzeugliste. Ein Server, der eine Anmeldung braucht, wartet auf Sie, statt den Browser zu öffnen. Klicken Sie auf **Verbindung prüfen**, um die Liste der Werkzeuge des Servers zu sehen. Braucht der Server eine Anmeldung, klicken Sie auf **Im Browser anmelden** und schließen Sie die Anmeldung dort ab.
 
 Ein Servername besteht aus Buchstaben, Ziffern, `-` und `_` und ist höchstens 24 Zeichen lang. Die KI sieht die Werkzeuge dieses Servers unter Namen der Form `mcp__name__tool`. Ruft ein Skill Werkzeuge unter Namen dieser Form auf, fügen Sie den Server unter demselben Namen hinzu, den der Skill verwendet.
 
@@ -31,7 +31,7 @@ Ein Servername besteht aus Buchstaben, Ziffern, `-` und `_` und ist höchstens 2
 ## Server im KI-Bereich nutzen
 
 - Server funktionieren in den KI-Bereichen der Editoren und in Ask AI auf der Startseite. Solange ein Server eingeschaltet ist, erscheint neben dem Eingabefeld die Schaltfläche **Verbundene Server**.
-- Klicken Sie darauf, um den Status jedes Servers zu sehen und einen Server nur für dieses Gespräch aus- oder einzuschalten. Ein neues Gespräch beginnt mit allen Servern, die Sie in den Einstellungen eingeschaltet haben.
+- Klicken Sie darauf, um den Status jedes Servers zu sehen und einen Server nur für dieses Gespräch aus- oder einzuschalten. Ein neues Gespräch beginnt mit allen Servern, die Sie in den Einstellungen eingeschaltet haben. Ein Server, dessen Verbindung nie geprüft wurde, zeigt **Noch nicht geprüft**; prüfen Sie sie in den Einstellungen, um seine Werkzeuge zu erhalten.
 - Wenn Sie **KI darf Internet-Tools nutzen** unter **Einstellungen ▸ KI-Medien & Suche** ausschalten, entfallen auch alle Werkzeuge der MCP-Server.
 - Erwartet ein Skill ein Werkzeug von einem Server, den Sie gerade nicht nutzen können, sagt die KI in ihrer Antwort, welchen Schritt sie nicht ausführen konnte. **Einstellungen ▸ Skills** zeigt außerdem neben dem Skill den Server, den er braucht.
 - Auch das Agentenfenster kann die Werkzeuge eingeschalteter Server nutzen. Es gelten dieselben Berechtigungen, und eine Sitzung behält die Einstellungen, mit denen sie gestartet wurde. Siehe [Agentenmodus](help://agent-mode).
