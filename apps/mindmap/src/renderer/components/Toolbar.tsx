@@ -4,11 +4,11 @@
  *
  * Buttons are grouped as the editor's layout says, left to right:
  * topics | bold, italic, underline, strike, text format |
- * relationship, summary, note, label, link, picture | layout, theme, fold |
+ * relationship, summary, boundary, note, label, link, picture | layout, theme, fold |
  * zoom, export | "make another document from this one" | AI at the far end.
  * A group or button whose function is not built yet is not drawn; its place is
  * marked below so it lands where it belongs. The theme button opens and closes
- * the theme panel beside the map, the text format button the format panel.
+ * the theme panel beside the map, the format button the format panel.
  * The four format buttons show what the topic in hand shows; they keep the
  * focus, so while a title is typed they format its selected characters.
  */
@@ -20,6 +20,7 @@ import type { FormatToggle, ShownFormat } from '../map/text-format'
 import { ExportMenu } from './ExportMenu'
 import {
   IconBold,
+  IconBoundary,
   IconItalic,
   IconStrike,
   IconTextFormat,
@@ -78,6 +79,8 @@ export interface ToolbarProps {
   onAddSibling(): void
   onRelationship(): void
   onSummary(): void
+  /** a boundary around the selected topics */
+  onBoundary(): void
   onNote(): void
   onLabel(): void
   onLink(): void
@@ -264,6 +267,14 @@ export function Toolbar(p: ToolbarProps) {
               onClick={p.onSummary}
             >
               <IconSummary />
+            </ToolButton>
+            <ToolButton
+              action="boundary"
+              label={t('tbBoundary')}
+              disabled={topicOff}
+              onClick={p.onBoundary}
+            >
+              <IconBoundary />
             </ToolButton>
             <ToolButton
               action="note"
