@@ -7,7 +7,6 @@ import {
   isWritableRelationshipStyle,
   isWritableSummaryStyle,
   readCurve,
-  readLineWidth,
 } from '../src/line-style'
 import { countPreservedElements } from '../src/preserved'
 import { reconcileSheet, type ReconcileOptions, type ReconcileResult } from '../src/reconcile'
@@ -287,12 +286,7 @@ describe('reading line values', () => {
     expect(view.boundaries?.map((entry) => entry.id)).toContain('bd-a')
   })
 
-  it('reads widths with or without a unit and curves of the shape the format writes', () => {
-    expect(readLineWidth('3pt')).toBe(3)
-    expect(readLineWidth('1.5')).toBe(1.5)
-    expect(readLineWidth('2px')).toBe(2)
-    expect(readLineWidth('wide')).toBeNull()
-    expect(readLineWidth('0pt')).toBeNull()
+  it('reads curves of the shape the format writes', () => {
     expect(readCurve({ '0': { x: 1, y: 2 }, '1': { x: 3, y: 4 } })).toEqual({
       from: { x: 1, y: 2 },
       to: { x: 3, y: 4 },

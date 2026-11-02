@@ -132,19 +132,6 @@ export function lineWidthValue(points: number): string {
   return `${points}pt`
 }
 
-/**
- * The width a file gives, in its own unit: `"3pt"`, and also a bare number or
- * pixels, as other programs write them. Null for anything else and for a
- * width that is not positive.
- */
-export function readLineWidth(value: unknown): number | null {
-  if (typeof value !== 'string') return null
-  const match = /^\s*(\d+(?:\.\d+)?)\s*(pt|px)?\s*$/i.exec(value)
-  if (!match) return null
-  const width = Number(match[1])
-  return Number.isFinite(width) && width > 0 ? width : null
-}
-
 /** The word of a shape value with this prefix, or null when the value has another form. */
 export function classWord(value: unknown, prefix: string): string | null {
   if (typeof value !== 'string' || !value.startsWith(prefix)) return null
