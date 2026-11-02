@@ -1,17 +1,34 @@
 import type { XmindDocument } from './document'
+import {
+  BOUNDARY_STYLE_PROPERTIES,
+  BRANCH_LINE_PROPERTIES,
+  RELATIONSHIP_STYLE_PROPERTIES,
+  SUMMARY_STYLE_PROPERTIES,
+} from './line-style'
 import { type ReconcileIds, reconcileTree } from './reconcile-tree'
 import { idsInUse } from './tree-walk'
 import { isRecord } from './types'
 import type { ViewTitleRun } from './text-style'
-import { sheetToView, type ViewSheet, type ViewTopic, type ViewTopicStyle } from './view'
+import {
+  sheetToView,
+  type ViewBoundary,
+  type ViewRelationship,
+  type ViewSheet,
+  type ViewSummary,
+  type ViewTopic,
+  type ViewTopicStyle,
+} from './view'
 
 export type { ReconcileIds } from './reconcile-tree'
 
 export interface ReconcileOptions {
   /**
-   * Ids of relationships whose curve the user moved in the editor. The editor's
-   * curve is not written to the file, so the shape the file holds for these is
-   * dropped rather than left to contradict what the user drew.
+   * Ids of relationships whose curve the user moved in an editor that does
+   * not send the curve. That curve cannot be written, so the shape the file
+   * holds for these is dropped rather than left to contradict what the user
+   * drew. An editor that sends the curve (`ViewRelationship.curve`) names the
+   * relationship in `restyledRelationships` instead, and the curve is
+   * written; a relationship in both lists follows that one.
    */
   reshapedRelationships?: readonly string[]
   /**
@@ -27,6 +44,29 @@ export interface ReconcileOptions {
    * state; any other topic keeps the ones it has, whatever the state shows.
    */
   restyledTopics?: readonly string[]
+  /**
+   * Ids of topics whose line format (`ViewTopic.line`) the user changed. Only
+   * for these and for topics the state adds are line values written from a
+   * state. The same rule holds for the lists below.
+   */
+  restyledTopicLines?: readonly string[]
+  /** Ids of topics whose fill (`ViewTopicStyle.fill`, `svg:fill`) the user changed. */
+  refilledTopics?: readonly string[]
+  /** Ids of relationships whose format (`style`) or curve (`curve`) the user changed. */
+  restyledRelationships?: readonly string[]
+  /**
+   * Summary topic ids (`ViewSummary.topicId`) of summaries whose bracket the
+   * user changed. The bracket is written on the summary record, never on the
+   * summary topic.
+   */
+  restyledSummaries?: readonly string[]
+  /** Ids of boundaries whose format the user changed. Titles are written whenever they differ. */
+  restyledBoundaries?: readonly string[]
+  /**
+   * Ids of boundaries the user removed. Only these are taken out: a boundary
+   * missing from a state stays, and one the view cannot show is never removed.
+   */
+  removedBoundaries?: readonly string[]
 }
 
 /**
@@ -54,11 +94,14 @@ export type ReconcileResult =
  * is applied: the topics with their order and nesting, and per topic the
  * title, folding, labels, note and link; a picture put in from an archive
  * entry, or taken off (`removedPictures`); the width given to a topic's box;
- * summaries; relationships; the layout; the text format of the topics the
- * editor names (`restyledTopics`) and of the topics the state adds. What is
- * never written from a state: markers and the fill, which the editor shows
- * without editing, and the sheet's own title and place, which `renameSheet`
- * and its neighbours change.
+ * summaries; relationships; boundaries added, retitled or removed
+ * (`removedBoundaries`); the layout; the text format, the line format and the
+ * fill of the topics the editor names (`restyledTopics`, `restyledTopicLines`,
+ * `refilledTopics`) and the format of the relationships, summaries and
+ * boundaries it names, with the text and line format of what the state adds.
+ * What is never written from a state: markers, which the editor shows without
+ * editing, and the sheet's own title and place, which `renameSheet` and its
+ * neighbours change.
  *
  * Sheets are reconciled one at a time: topics are paired by id inside the
  * sheet at `index`, and the same id on another sheet is another topic.
@@ -84,6 +127,12 @@ export function reconcileSheet(
     reshaped: options.reshapedRelationships,
     removedPictures: options.removedPictures,
     restyledTopics: options.restyledTopics,
+    restyledTopicLines: options.restyledTopicLines,
+    refilledTopics: options.refilledTopics,
+    restyledRelationships: options.restyledRelationships,
+    restyledSummaries: options.restyledSummaries,
+    restyledBoundaries: options.restyledBoundaries,
+    removedBoundaries: options.removedBoundaries,
     entryExists: (name) => document.hasEntry(name),
   })
   if (!outcome.ok) return { ok: false, problem: outcome.problem, view: sheetToView(sheet, index) }
@@ -104,7 +153,7 @@ export function reconcileSheet(
     }
   }
   const view = sheetToView(sheet, index)
-  const inSync = shownBy(state, outcome.ids) === shownBy(view)
+  const inSync = shownBy(state, outcome.ids, carriedBy(view)) === shownBy(view)
   return { ok: true, changed: outcome.changed, inSync, view, ids: outcome.ids }
 }
 
@@ -114,9 +163,31 @@ export function reconcileSheet(
  * summary records: a summary is known by its summary topic. A state that
  * passed reconciling has the shape read here for all it applies; the parts
  * reconciling never reads are taken as "nothing" when they are missing.
+ *
+ * The line format came later than the rest, so a state may not carry it: a
+ * topic without `line`, a summary or relationship without `style`, a
+ * relationship without `curve`, a sheet without `boundaries`. For these the
+ * values of `carried` (the view after reconciling) stand in, so an editor that
+ * does not send them is not asked to draw again for them. The ids of
+ * boundaries are compared as given: one the engine gave a new id is drawn again.
+ * Where a boundary sits is not compared: it follows the branches it covers and
+ * is never the state's to decide, so the editor takes it from the view. A
+ * boundary of the state on a topic the state no longer has is one the state
+ * deleted along with that topic.
  */
-function shownBy(sheet: ViewSheet, ids?: ReconcileIds): string {
+function shownBy(sheet: ViewSheet, ids?: ReconcileIds, carried?: Carried): string {
   const topicId = (id: string): string => ids?.topics.get(id) ?? id
+  const relationshipId = (id: string): string => ids?.relationships.get(id) ?? id
+  const lineOf = (shown: ViewTopic): unknown =>
+    valuesOf(
+      BRANCH_LINE_PROPERTIES,
+      'line' in shown ? shown.line : carried?.topics.get(topicId(shown.id))?.line,
+    )
+  const summaryStyleOf = (summary: ViewSummary): unknown =>
+    valuesOf(
+      SUMMARY_STYLE_PROPERTIES,
+      'style' in summary ? summary.style : carried?.summaries.get(topicId(summary.topicId))?.style,
+    )
   const topic = (shown: ViewTopic): unknown => [
     topicId(shown.id),
     shown.title,
@@ -131,23 +202,86 @@ function shownBy(sheet: ViewSheet, ids?: ReconcileIds): string {
     Array.isArray(shown.markers) ? shown.markers : [],
     styleValues(isRecord(shown.style) ? shown.style : {}),
     runsShown(shown.titleRuns),
+    lineOf(shown),
     sorted(
       shown.summaries.map((summary) => [
         topicId(summary.topicId),
         summary.title,
         summary.start,
         summary.end,
+        summaryStyleOf(summary),
       ]),
     ),
     shown.children.map(topic),
   ]
-  const relationships = sheet.relationships.map((relationship) => [
-    ids?.relationships.get(relationship.id) ?? relationship.id,
-    topicId(relationship.fromId),
-    topicId(relationship.toId),
-    relationship.title,
+  const relationships = sheet.relationships.map((relationship) => {
+    const id = relationshipId(relationship.id)
+    const known = carried?.relationships.get(id)
+    const style = 'style' in relationship ? relationship.style : known?.style
+    const curve = 'curve' in relationship ? relationship.curve : known?.curve
+    return [
+      id,
+      topicId(relationship.fromId),
+      topicId(relationship.toId),
+      relationship.title,
+      valuesOf(RELATIONSHIP_STYLE_PROPERTIES, style),
+      curve ? [curve.from.x, curve.from.y, curve.to.x, curve.to.y] : null,
+    ]
+  })
+  const present = new Set<string>()
+  const pending: ViewTopic[] = [sheet.root]
+  for (let shown = pending.pop(); shown; shown = pending.pop()) {
+    present.add(shown.id)
+    pending.push(...shown.children)
+  }
+  const boundaries = (
+    Array.isArray(sheet.boundaries) ? sheet.boundaries : (carried?.boundaries ?? [])
+  )
+    .filter((boundary) => present.has(boundary.topicId))
+    .map((boundary) => [
+      boundary.id,
+      boundary.title,
+      valuesOf(BOUNDARY_STYLE_PROPERTIES, boundary.style),
+    ])
+  return JSON.stringify([
+    sheet.layout,
+    topic(sheet.root),
+    sorted(relationships),
+    sorted(boundaries),
   ])
-  return JSON.stringify([sheet.layout, topic(sheet.root), sorted(relationships)])
+}
+
+/** What a view shows, by id, for the parts a state may not carry. */
+interface Carried {
+  topics: Map<string, ViewTopic>
+  summaries: Map<string, ViewSummary>
+  relationships: Map<string, ViewRelationship>
+  boundaries: ViewBoundary[]
+}
+
+function carriedBy(view: ViewSheet): Carried {
+  const topics = new Map<string, ViewTopic>()
+  const summaries = new Map<string, ViewSummary>()
+  const pending: ViewTopic[] = [view.root]
+  for (let topic = pending.pop(); topic; topic = pending.pop()) {
+    topics.set(topic.id, topic)
+    for (const summary of topic.summaries) summaries.set(summary.topicId, summary)
+    pending.push(...topic.children)
+  }
+  return {
+    topics,
+    summaries,
+    relationships: new Map(view.relationships.map((line) => [line.id, line])),
+    boundaries: view.boundaries ?? [],
+  }
+}
+
+/** The values under these names, in their order; anything that is not a set of values is none. */
+function valuesOf(names: Readonly<Record<string, string>>, values: unknown): unknown[] {
+  return Object.keys(names).map((key) => {
+    const value = isRecord(values) ? values[key] : undefined
+    return typeof value === 'string' ? value : null
+  })
 }
 
 const STYLE_KEYS = [

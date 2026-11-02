@@ -12,9 +12,13 @@
  *   view could have shown can be missing from a state; floating topics,
  *   callouts and the branches under a summary topic are never in one and stay.
  *   Nothing else is removed. A summary or boundary goes only when every branch
- *   it covered was deleted, or when it is a summary the state took off a topic
- *   that is still there; while one covered branch exists it follows that
- *   branch (see `reconcile-ranges.ts`).
+ *   it covered was deleted, when it is a summary the state took off a topic
+ *   that is still there, or when it is a boundary the caller names as removed;
+ *   while one covered branch exists it follows that branch (see
+ *   `reconcile-ranges.ts`).
+ * - style values: written only for what the caller names as changed by the
+ *   user, and for what the state adds (see `writeStyle`). Anything else keeps
+ *   the values the file has, whatever the state shows.
  * - a topic of the tree under another parent, or at another place: the object
  *   in the tree is moved whole, with every key the view does not know.
  *
@@ -26,21 +30,44 @@
 
 import { newXmindId } from './ids'
 import { layoutFromStructureClass, structureClassForLayout } from './layout'
+import {
+  BOUNDARY_STYLE_PROPERTIES,
+  BRANCH_LINE_PROPERTIES,
+  curveToControlPoints,
+  FILL_PROPERTY,
+  isWritableBoundaryStyle,
+  isWritableBranchLine,
+  isWritableFill,
+  isWritableRelationshipStyle,
+  isWritableSummaryStyle,
+  readCurve,
+  RELATIONSHIP_STYLE_PROPERTIES,
+  SUMMARY_STYLE_PROPERTIES,
+  type ViewCurve,
+} from './line-style'
 import { noteText } from './notes'
 import {
   addSummary,
   dropEmptyChildren,
   followRanges,
+  removeBoundary,
   removeSummary,
   snapshotRanges,
 } from './reconcile-ranges'
-import { readState, Refusal, refuse, type StateSheet, type StateTopic } from './reconcile-state'
+import {
+  readState,
+  Refusal,
+  refuse,
+  type StateBoundary,
+  type StateRelationship,
+  type StateSheet,
+  type StateTopic,
+} from './reconcile-state'
 import { isResourceEntry } from './resource-entry'
 import { checkContentStructure } from './structure-check'
 import {
   isWritableTextStyle,
   RUN_STYLE_KEYS,
-  TEXT_STYLE_KEYS,
   TEXT_STYLE_PROPERTIES,
   titleRunsToView,
   type ViewTitleRun,
@@ -63,17 +90,30 @@ import { formatRange, isShownLink, topicWidth } from './view'
 export interface ReconcileIds {
   topics: Map<string, string>
   relationships: Map<string, string>
+  boundaries: Map<string, string>
 }
 
 export interface TreeContext {
   /** every id of the file, asked for only when a new id is needed */
   idsInUse: () => Set<string>
-  /** ids of relationships whose curve the user moved */
+  /** ids of relationships whose curve the user moved in an editor that sends no curve */
   reshaped?: readonly string[]
   /** ids of topics whose picture the user removed */
   removedPictures?: readonly string[]
   /** ids of topics whose text format the user changed */
   restyledTopics?: readonly string[]
+  /** ids of topics whose line format the user changed */
+  restyledTopicLines?: readonly string[]
+  /** ids of topics whose fill the user changed */
+  refilledTopics?: readonly string[]
+  /** ids of relationships whose format or curve the user changed */
+  restyledRelationships?: readonly string[]
+  /** summary topic ids of summaries whose bracket the user changed */
+  restyledSummaries?: readonly string[]
+  /** ids of boundaries whose format the user changed */
+  restyledBoundaries?: readonly string[]
+  /** ids of boundaries the user removed */
+  removedBoundaries?: readonly string[]
   /** whether the archive holds this entry (a picture added since the last save included) */
   entryExists?: (name: string) => boolean
 }
@@ -120,6 +160,14 @@ interface Run {
   removedPictures: ReadonlySet<string>
   /** topics whose text format the user changed; only these (and new ones) get one from the state */
   restyled: ReadonlySet<string>
+  /** the same for the line format of topics, the fill, relationships, summaries and boundaries */
+  relined: ReadonlySet<string>
+  refilled: ReadonlySet<string>
+  restyledRelationships: ReadonlySet<string>
+  restyledSummaries: ReadonlySet<string>
+  restyledBoundaries: ReadonlySet<string>
+  /** boundaries the user removed; no other boundary is taken out for missing from the state */
+  removedBoundaries: ReadonlySet<string>
   newId: (given: string) => string
   /** every topic of the state with the topic of the tree that now stands for it */
   pairs: { topic: XmindTopic; want: StateTopic }[]
@@ -136,18 +184,26 @@ function apply(sheet: XmindSheet, want: StateSheet, context: TreeContext): Recon
     want,
     shown: shownParts(sheet),
     idsBefore: topicIds(sheet),
-    ids: { topics: new Map(), relationships: new Map() },
+    ids: { topics: new Map(), relationships: new Map(), boundaries: new Map() },
     ...(context.entryExists ? { entryExists: context.entryExists } : {}),
     removedPictures: new Set(context.removedPictures),
     restyled: new Set(context.restyledTopics),
+    relined: new Set(context.restyledTopicLines),
+    refilled: new Set(context.refilledTopics),
+    restyledRelationships: new Set(context.restyledRelationships),
+    restyledSummaries: new Set(context.restyledSummaries),
+    restyledBoundaries: new Set(context.restyledBoundaries),
+    removedBoundaries: new Set(context.removedBoundaries),
     newId: idAllocator(context.idsInUse),
     pairs: [],
     ends: new Set(),
   }
   const ranges = [...run.shown.topics.values()].map(snapshotRanges)
+  const boundaryIdsBefore = boundaryIds(sheet)
 
   settleTopics(run)
   const settled = settleSummaries(run)
+  settleBoundaries(run)
   // Every range the sheet had is placed again, also one on a topic that is now
   // deleted: a covered branch may live on under another topic.
   const parentOf = new Map<string, XmindTopic>()
@@ -157,6 +213,7 @@ function apply(sheet: XmindSheet, want: StateSheet, context: TreeContext): Recon
   for (const snapshot of ranges) {
     if (snapshot) followRanges(snapshot, settled, parentOf)
   }
+  addBoundaries(run, boundaryIdsBefore)
   settleRelationships(run, new Set(context.reshaped))
   settleLayout(run)
   dropDanglingRelationships(run)
@@ -198,7 +255,15 @@ function writeValues(topic: XmindTopic, want: StateTopic, run: Run, isNew: boole
   const retitled = text(topic.title) !== want.title
   if (retitled) topic.title = want.title
   const restyled = isNew || run.restyled.has(want.id)
-  if (restyled) writeTextStyle(topic, want)
+  writeStyle(topic, [
+    ...(restyled ? styleChanges(TEXT_STYLE_PROPERTIES, want.textStyle, isWritableTextStyle) : []),
+    ...(isNew || run.relined.has(want.id)
+      ? styleChanges(BRANCH_LINE_PROPERTIES, want.line, isWritableBranchLine)
+      : []),
+    ...(run.refilled.has(want.id)
+      ? [{ property: FILL_PROPERTY, wanted: want.fill, writable: isWritableFill }]
+      : []),
+  ])
   if (restyled || retitled) writeTitleRuns(topic, want)
   if ((topic.branch === 'folded') !== want.folded) {
     if (want.folded) topic.branch = 'folded'
@@ -280,39 +345,60 @@ function writeImage(topic: XmindTopic, want: StateTopic, run: Run): void {
   topic.image = next
 }
 
+/** One style property a state may set: what the state shows, and which values the engine writes. */
+interface StyleChange {
+  property: string
+  wanted: string | undefined
+  writable: (value: string) => boolean
+}
+
+/** The changes a state's values make under these property names. */
+function styleChanges<K extends string>(
+  names: Readonly<Record<K, string>>,
+  wanted: Partial<Record<K, string>>,
+  writable: (key: K, value: string) => boolean,
+): StyleChange[] {
+  return (Object.keys(names) as K[]).map((key) => ({
+    property: names[key],
+    wanted: wanted[key],
+    writable: (value) => writable(key, value),
+  }))
+}
+
 /**
- * The text style values of the whole topic, for a topic the user restyled or
- * the state adds. Per key: a value equal to the file's is left as it is, even
- * one the engine would not write itself (the user changed another key); a
- * missing value takes the key out; any other value is written only when it has
- * a shape the engine writes (`isWritableTextStyle`), and otherwise the file
- * keeps its own, and the screen is drawn again from it. Every other property
- * of the style, the fill among them, stays.
+ * Style values on whatever carries a style: a topic, a summary or boundary
+ * record, a relationship. The caller passes only the properties the user
+ * changed there (or every one, for something the state adds). Per property: a
+ * value equal to the file's is left as it is, even one the engine would not
+ * write itself (the user changed another key); a missing value takes the key
+ * out; any other value is written only when it has a shape the engine writes,
+ * and otherwise the file keeps its own, and the screen is drawn again from it.
+ * Every other property of the style stays, and so does its id. A style that
+ * held nothing but the values taken out goes with them; one with more of its
+ * own stays. A new style gets a new id.
  */
-function writeTextStyle(topic: XmindTopic, want: StateTopic): void {
-  const style = isRecord(topic.style) ? topic.style : null
+function writeStyle(holder: JsonRecord, changes: readonly StyleChange[]): void {
+  if (changes.length === 0) return
+  const style = isRecord(holder.style) ? holder.style : null
   const properties = style && isRecord(style.properties) ? style.properties : null
   const next: JsonRecord = { ...(properties ?? {}) }
-  for (const key of TEXT_STYLE_KEYS) {
-    const property = TEXT_STYLE_PROPERTIES[key]
+  for (const { property, wanted, writable } of changes) {
     const current = typeof next[property] === 'string' ? next[property] : undefined
-    const wanted = want.textStyle[key]
     if (wanted === current) continue
     if (wanted === undefined) delete next[property]
-    else if (isWritableTextStyle(key, wanted)) next[property] = wanted
+    else if (writable(wanted)) next[property] = wanted
   }
   if (sameRecord(next, properties ?? {})) return
   if (Object.keys(next).length === 0) {
-    // A style that held nothing but these values goes with them; one with more of its own stays.
     if (style && Object.keys(style).every((key) => key === 'id' || key === 'properties')) {
-      delete topic.style
+      delete holder.style
     } else if (style) {
       style.properties = next
     }
     return
   }
   if (style) style.properties = next
-  else topic.style = { id: newXmindId(), properties: next }
+  else holder.style = { id: newXmindId(), properties: next }
 }
 
 /**
@@ -424,6 +510,10 @@ function settleSummaries(run: Run): Set<JsonRecord> {
           addSummary(topic, known.record, known.topic)
         }
         if (renumbered) known.record.range = formatRange(wanted.start, wanted.end)
+        // the bracket sits in the record's style; the summary topic's style is the shape of its box
+        if (run.restyledSummaries.has(wanted.topicId)) {
+          writeStyle(known.record, summaryChanges(wanted.style))
+        }
         if (text(known.topic.title) !== wanted.title) {
           known.topic.title = wanted.title
           // parts of the old text would show it again; the editor writes a summary's title plain
@@ -441,11 +531,12 @@ function settleSummaries(run: Run): Set<JsonRecord> {
       created.add(wanted.topicId)
       const topicId = run.newId(wanted.topicId)
       if (topicId !== wanted.topicId) run.ids.topics.set(wanted.topicId, topicId)
-      const record = {
+      const record: JsonRecord = {
         id: run.newId(wanted.id),
         range: formatRange(wanted.start, wanted.end),
         topicId,
       }
+      writeStyle(record, summaryChanges(wanted.style))
       addSummary(topic, record, { id: topicId, title: wanted.title })
       run.ends.add(topicId)
     }
@@ -459,6 +550,121 @@ function settleSummaries(run: Run): Set<JsonRecord> {
   return settled
 }
 
+function summaryChanges(style: StateTopic['summaries'][number]['style']): StyleChange[] {
+  return styleChanges(SUMMARY_STYLE_PROPERTIES, style, isWritableSummaryStyle)
+}
+
+function relationshipChanges(wanted: StateRelationship): StyleChange[] {
+  return styleChanges(RELATIONSHIP_STYLE_PROPERTIES, wanted.style, isWritableRelationshipStyle)
+}
+
+function boundaryChanges(wanted: StateBoundary): StyleChange[] {
+  return styleChanges(BOUNDARY_STYLE_PROPERTIES, wanted.style, isWritableBoundaryStyle)
+}
+
+/**
+ * The boundaries the view showed, before their ranges follow the branches:
+ * one the caller names as removed goes; one the state carries gets the title
+ * the state shows, and the format when the caller names it as changed. A
+ * boundary that is missing from the state stays, and so does every one the
+ * view cannot show. Where a boundary sits is not taken from the state: it
+ * follows the branches it covers.
+ */
+function settleBoundaries(run: Run): void {
+  const wanted = new Map((run.want.boundaries ?? []).map((boundary) => [boundary.id, boundary]))
+  for (const shown of run.shown.boundaries) {
+    if (run.removedBoundaries.has(shown.id)) {
+      removeBoundary(shown.owner, shown.record)
+      continue
+    }
+    const want = wanted.get(shown.id)
+    if (!want) continue
+    const { record } = shown
+    if (text(record.title) !== want.title) {
+      if (want.title === '') delete record.title
+      else record.title = want.title
+      delete record.attributedTitle
+    }
+    if (run.restyledBoundaries.has(shown.id)) writeStyle(record, boundaryChanges(want))
+  }
+}
+
+/**
+ * The boundaries only the state has: each goes on the topic the state names,
+ * around the branches it names there (which are the branches that topic now
+ * has) or around the topic itself, with a new id when the one given is taken
+ * or not of the format's shape. An id the file already uses for a boundary the
+ * view does not show, a topic the state does not have, and a range past its
+ * branches are refused.
+ */
+function addBoundaries(run: Run, idsBefore: ReadonlySet<string>): void {
+  if (!run.want.boundaries) return
+  const shown = new Set(run.shown.boundaries.map((boundary) => boundary.id))
+  const byStateId = new Map(run.pairs.map((pair) => [pair.want.id, pair]))
+  for (const wanted of run.want.boundaries) {
+    if (shown.has(wanted.id) || run.removedBoundaries.has(wanted.id)) continue
+    if (idsBefore.has(wanted.id)) {
+      refuse(`boundary id ${wanted.id} belongs to a boundary that is not shown`)
+    }
+    const pair = byStateId.get(wanted.topicId)
+    if (!pair)
+      refuse(`boundary ${wanted.id} is on ${wanted.topicId}, which the state does not have`)
+    const { range } = wanted
+    if (range !== 'master' && range.end >= pair.want.children.length) {
+      refuse(`the range of boundary ${wanted.id} reaches past the branches of its topic`)
+    }
+    const list = pair.topic.boundaries
+    if (list !== undefined && !Array.isArray(list)) {
+      refuse(`topic ${pair.topic.id} holds something that is not a list under boundaries`)
+    }
+    const id = run.newId(wanted.id)
+    if (id !== wanted.id) run.ids.boundaries.set(wanted.id, id)
+    const record: JsonRecord = {
+      id,
+      range: range === 'master' ? 'master' : formatRange(range.start, range.end),
+    }
+    if (wanted.title !== '') record.title = wanted.title
+    writeStyle(record, boundaryChanges(wanted))
+    if (Array.isArray(list)) list.push(record)
+    else pair.topic.boundaries = [record]
+  }
+}
+
+/** Every boundary id of a sheet, shown or not. */
+function boundaryIds(sheet: XmindSheet): Set<string> {
+  const ids = new Set<string>()
+  for (const topic of everyTopic(sheet)) {
+    for (const record of recordsOf(topic.boundaries)) {
+      if (typeof record.id === 'string') ids.add(record.id)
+    }
+  }
+  return ids
+}
+
+/**
+ * The curve of a relationship, as the state asks for it: `undefined` leaves the
+ * file's curve; `null` takes it out, end points and all, so the line is drawn
+ * on its own; a curve other than the one the file gives is written as
+ * `controlPoints`, and the end points the file had for the old curve go.
+ */
+function writeCurve(record: JsonRecord, curve: ViewCurve | null | undefined): void {
+  if (curve === undefined) return
+  if (curve === null) {
+    for (const key of CURVE_KEYS) delete record[key]
+    return
+  }
+  const current = readCurve(record.controlPoints)
+  const same =
+    current !== null &&
+    current.from.x === curve.from.x &&
+    current.from.y === curve.from.y &&
+    current.to.x === curve.to.x &&
+    current.to.y === curve.to.y
+  if (same) return
+  record.controlPoints = curveToControlPoints(curve)
+  delete record.lineEndPoints
+}
+
 /** The keys that hold the shape of a relationship's curve. */
 const CURVE_KEYS = ['controlPoints', 'lineEndPoints'] as const
 
@@ -468,9 +674,12 @@ const CURVE_KEYS = ['controlPoints', 'lineEndPoints'] as const
  * created. A relationship the view does not show is not in any state and is
  * not touched here.
  *
- * The curve is kept as long as it still fits: it goes when an end changed and
- * when the caller says the user moved the curve, because the editor's own
- * curve is not translated into the file's.
+ * The format and the curve are written only for a relationship the caller
+ * names as restyled (`writeStyle`, `writeCurve`) and for one the state adds.
+ * A relationship that is not named keeps its curve as long as it still fits:
+ * it goes when an end changed, and when the caller names it only as reshaped
+ * (an editor that sends no curve: its own curve cannot be written, and the
+ * file's would contradict what the user drew).
  *
  * An end has to be a topic or a summary of the state. The one exception is a
  * relationship of the tree that the state lists unchanged though one of its
@@ -507,8 +716,12 @@ function settleRelationships(run: Run, reshaped: ReadonlySet<string>): void {
         record.end1Id = from
         record.end2Id = to
       }
-      if (moved || reshaped.has(wanted.id)) {
+      const listed = run.restyledRelationships.has(wanted.id)
+      if (listed) writeStyle(record, relationshipChanges(wanted))
+      if (moved || (!listed && reshaped.has(wanted.id))) {
         for (const key of CURVE_KEYS) delete record[key]
+      } else if (listed) {
+        writeCurve(record, wanted.curve)
       }
       if (text(record.title) !== wanted.title) {
         record.title = wanted.title
@@ -524,6 +737,8 @@ function settleRelationships(run: Run, reshaped: ReadonlySet<string>): void {
     if (id !== wanted.id) run.ids.relationships.set(wanted.id, id)
     const made: JsonRecord = { id, end1Id: from, end2Id: to }
     if (wanted.title !== '') made.title = wanted.title
+    writeStyle(made, relationshipChanges(wanted))
+    if (wanted.curve) made.controlPoints = curveToControlPoints(wanted.curve)
     created.push(made)
   }
 
