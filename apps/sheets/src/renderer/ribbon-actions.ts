@@ -13,13 +13,24 @@ import {
   FOCUSING_EDITOR_STANDALONE,
   IContextService,
   IUndoRedoService,
+  IUniverInstanceService,
+  UniverInstanceType,
   WrapStrategy,
+  type DocumentDataModel,
   type ICellData,
   type IStyleData,
 } from '@univerjs/core'
+import { DocSelectionManagerService } from '@univerjs/docs'
 import {
+  SetInlineFormatBoldCommand,
+  SetInlineFormatFontFamilyCommand,
+  SetInlineFormatFontSizeCommand,
+  SetInlineFormatItalicCommand,
+  SetInlineFormatStrikethroughCommand,
   SetInlineFormatSubscriptCommand,
   SetInlineFormatSuperscriptCommand,
+  SetInlineFormatTextColorCommand,
+  SetInlineFormatUnderlineCommand,
 } from '@univerjs/docs-ui'
 import { IRenderManagerService, SHEET_VIEWPORT_KEY } from '@univerjs/engine-render'
 import { SheetSkeletonManagerService } from '@univerjs/preset-sheets-core'
@@ -90,6 +101,7 @@ import { requestCellsAction } from './insert-delete-cells'
 import { applyRightToLeftView, sheetIsRightToLeft } from './sheet-rtl-view'
 import type { CellsMode } from './insert-delete-cells'
 import { mergeWorkbooksIntoCurrent } from './merge-workbooks'
+import { expandOverMerges, planRibbonMerge, type RibbonMergePlan } from './merge-selection'
 import { openActiveDataValidationDropdown } from './data-validation-dropdown'
 import {
   handleOpenSlicerPicker,
@@ -199,6 +211,79 @@ function cellEditorHoldsText(runtime: UniverRuntime): boolean {
     !context.getContextValue(FOCUSING_EDITOR_INPUT_FORMULA) &&
     !context.getContextValue(FOCUSING_EDITOR_STANDALONE)
   )
+}
+
+/// Font size of the run under the cell editor's caret or selection, for the
+/// grow/shrink buttons to step from; undefined when the run sets none.
+function inlineFontSizeAtCaret(runtime: UniverRuntime): number | undefined {
+  const injector = runtime.univer.__getInjector()
+  const active = injector.get(DocSelectionManagerService).getActiveTextRange()
+  const doc = injector
+    .get(IUniverInstanceService)
+    .getCurrentUnitOfType<DocumentDataModel>(UniverInstanceType.UNIVER_DOC)
+  const runs = doc?.getBody()?.textRuns
+  if (!active || !runs) return undefined
+  const run = runs.find(({ st, ed }) => active.startOffset >= st && active.endOffset <= ed)
+  return run?.ts?.fs
+}
+
+const INLINE_FONT_COMMANDS = new Set([
+  'bold',
+  'italic',
+  'underline',
+  'strike',
+  'font-family',
+  'font-size',
+  'font-size-step',
+  'font-color',
+])
+
+/// The editor-side form of a font command while the cell editor holds text:
+/// the selected characters take the format (a caret arms the typing style),
+/// as in Excel. Without it, bolding a heading inside a cell bolded the whole
+/// cell. Null keeps the cell-level path: the explicit :on/:off forms come
+/// from Format Cells, and double underline has no inline form.
+function inlineFontCommand(
+  runtime: UniverRuntime,
+  range: NonNullable<ReturnType<ActiveWorkbook['getActiveRange']>>,
+  name: string,
+  argument: string,
+): { id: string; params?: object } | null {
+  if (!INLINE_FONT_COMMANDS.has(name) || !cellEditorHoldsText(runtime)) return null
+  switch (name) {
+    case 'bold':
+      return argument ? null : { id: SetInlineFormatBoldCommand.id }
+    case 'italic':
+      return argument ? null : { id: SetInlineFormatItalicCommand.id }
+    case 'underline':
+      return argument ? null : { id: SetInlineFormatUnderlineCommand.id }
+    case 'strike':
+      return argument ? null : { id: SetInlineFormatStrikethroughCommand.id }
+    case 'font-family':
+      return argument
+        ? { id: SetInlineFormatFontFamilyCommand.id, params: { value: argument } }
+        : null
+    case 'font-size': {
+      const size = Number(argument)
+      return Number.isFinite(size) && size > 0 && size <= 409
+        ? { id: SetInlineFormatFontSizeCommand.id, params: { value: size } }
+        : null
+    }
+    case 'font-size-step': {
+      const current = inlineFontSizeAtCaret(runtime) ?? range.getFontSize() ?? 11
+      return {
+        id: SetInlineFormatFontSizeCommand.id,
+        params: { value: stepFontSize(current, argument === '-1' ? -1 : 1) },
+      }
+    }
+    default:
+      // 'auto' clears the run's color back to the cell's, like Univer's own
+      // reset-range-text-color inside the editor
+      return {
+        id: SetInlineFormatTextColorCommand.id,
+        params: { value: argument === 'auto' ? null : argument },
+      }
+  }
 }
 
 /// Commands whose wire format is `name:argument:extra` (three segments).
@@ -1531,6 +1616,12 @@ export function handleRibbonCommand(ctx: RibbonCommandContext, command: string):
     )
   }
   try {
+    const inline = inlineFontCommand(runtime, range, name, argument)
+    if (inline) {
+      void runtime.univerAPI.executeCommand(inline.id, inline.params)
+      ctx.setMessage(t('appAppliedToSelection'))
+      return
+    }
     const style = selectionStyle(range)
     switch (name) {
       case 'bold':
@@ -1725,42 +1816,72 @@ export function handleRibbonCommand(ctx: RibbonCommandContext, command: string):
       }
       case 'merge': {
         const sheet = runtime.univerAPI.getActiveWorkbook()?.getActiveSheet()
-        // Merge Across stays on Univer's command: there is no merge_across op
-        // yet, and one merge_cells per row would fan a whole-column selection
-        // out into a million ops.
-        if (ctx.lazyWorkbookRef.current && sheet && argument !== 'across') {
+        const selection = range.getRange()
+        const merges = sheet?.getSheet().getMergeData() ?? []
+        if (argument === 'across') {
+          // Merge Across stays on Univer's command: there is no merge_across
+          // op yet, and one merge_cells per row would fan a whole-column
+          // selection out into a million ops. isForceMerge replaces merges
+          // already in the rows instead of refusing the whole command.
+          const box = expandOverMerges(selection, merges)
+          const target = sheet
+            ? sheet.getRange(
+                box.startRow,
+                box.startColumn,
+                box.endRow - box.startRow + 1,
+                box.endColumn - box.startColumn + 1,
+              )
+            : range
+          target.mergeAcross({ isForceMerge: true })
+          break
+        }
+        const plan: RibbonMergePlan =
+          argument === 'unmerge'
+            ? { kind: 'unmerge', range: selection }
+            : planRibbonMerge(selection, merges, argument === 'center' ? 'center' : 'cells')
+        if (plan.kind === 'none') break
+        const box = plan.range
+        if (ctx.lazyWorkbookRef.current && sheet) {
           const sheetId = sheet.getSheetId()
-          const top = range.getRow()
-          const left = range.getColumn()
-          const bottom = top + range.getHeight() - 1
-          const right = left + range.getWidth() - 1
-          const a1 = `${columnLabel(left)}${top + 1}:${columnLabel(right)}${bottom + 1}`
-          const ops: WorkbookOperation[] =
-            argument === 'unmerge'
-              ? [{ op: 'unmerge_cells', sheetId, range: a1 }]
-              : [{ op: 'merge_cells', sheetId, range: a1 }]
-          if (argument === 'center') {
-            // The merged cell renders its anchor's format; formatting only the
-            // anchor also keeps whole-column merges under the range-op cap.
-            ops.push({
-              op: 'format_range',
-              sheetId,
-              range: `${columnLabel(left)}${top + 1}`,
-              format: { horizontalAlign: 'center' },
-            })
+          const anchor = `${columnLabel(box.startColumn)}${box.startRow + 1}`
+          const a1 = `${anchor}:${columnLabel(box.endColumn)}${box.endRow + 1}`
+          const ops: WorkbookOperation[] = []
+          // One plan is one undo step, so replacing merges and merging the
+          // whole box come back together on ⌘Z.
+          if (plan.kind === 'unmerge' || plan.replacesMerges) {
+            ops.push({ op: 'unmerge_cells', sheetId, range: a1 })
+          }
+          if (plan.kind === 'merge') {
+            ops.push({ op: 'merge_cells', sheetId, range: a1 })
+            if (argument === 'center') {
+              // The merged cell renders its anchor's format; formatting only
+              // the anchor also keeps whole-column merges under the range-op cap.
+              ops.push({
+                op: 'format_range',
+                sheetId,
+                range: anchor,
+                format: { horizontalAlign: 'center' },
+              })
+            }
           }
           // return, not break: the post-switch notice must not land before
           // the async apply (or over a gate refusal)
           void ctx.runOps(ops, t('appAppliedToSelection'))
           return
         }
-        if (argument === 'unmerge') {
-          range.breakApart()
-        } else if (argument === 'across') {
-          range.mergeAcross()
+        const target = sheet
+          ? sheet.getRange(
+              box.startRow,
+              box.startColumn,
+              box.endRow - box.startRow + 1,
+              box.endColumn - box.startColumn + 1,
+            )
+          : range
+        if (plan.kind === 'unmerge') {
+          target.breakApart()
         } else {
-          range.merge()
-          if (argument === 'center') range.setHorizontalAlignment('center')
+          target.merge({ isForceMerge: plan.replacesMerges })
+          if (argument === 'center') target.setHorizontalAlignment('center')
         }
         break
       }
