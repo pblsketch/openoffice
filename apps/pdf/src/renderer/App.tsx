@@ -350,6 +350,7 @@ import { useVisibleSet, PdfPage, MarkupOverlay } from './PdfPage'
 import { PdfThumb, ThumbPendingOverlay } from './PdfThumb'
 import type { ThumbMenu } from './PdfThumb'
 import { SignDropOverlay, signPlaceK, imagePlaceK, staticFormFillPlaceK } from './SignDropOverlay'
+import { SIGN_COLOR_KEY, parseSignColor } from './signature-colors'
 import {
   EDIT_FONT_BY_ID,
   measureTextWidth,
@@ -1143,6 +1144,18 @@ export default function App() {
   const [signaturesDlg, setSignaturesDlg] = useState(false)
   /** Confirmed signature awaiting placement; when non-null the page enters click-to-place mode */
   const [pendingSign, setPendingSign] = useState<SignatureData | null>(null)
+  /** the visual signature's ink color: its own, remembered, black unless the user picks another */
+  const [signColor, setSignColorState] = useState<[number, number, number]>(() =>
+    parseSignColor(localStorage.getItem(SIGN_COLOR_KEY)),
+  )
+  const setSignColor = (color: [number, number, number]) => {
+    setSignColorState(color)
+    try {
+      localStorage.setItem(SIGN_COLOR_KEY, JSON.stringify(color))
+    } catch {
+      // storage full or unavailable: the color still holds for this session
+    }
+  }
   /** A /Sig widget selected from the form layer; confirmed signatures fit this rect directly. */
   const [signatureTarget, setSignatureTarget] = useState<FormWidget | null>(null)
   const [exporting, setExporting] = useState<'png' | 'jpg' | null>(null)
@@ -6221,7 +6234,7 @@ export default function App() {
         }
         return out
       })
-      drawing = { kind: 'ink', pageIndex: origIdx, color: drawColor, width: 1.6, paths }
+      drawing = { kind: 'ink', pageIndex: origIdx, color: signColor, width: 1.6, paths }
     }
     applyEditOps([{ op: 'addDrawing', drawing }])
     setPendingSign(null)
@@ -6232,7 +6245,7 @@ export default function App() {
     applyEditOps([
       {
         op: 'addDrawing',
-        drawing: signatureDrawingForField(sig, target, drawColor),
+        drawing: signatureDrawingForField(sig, target, signColor),
         formWidgetId: target.id,
       },
     ])
@@ -11228,7 +11241,7 @@ export default function App() {
                               dispW={geomDispSize(geom).width}
                               dispH={geomDispSize(geom).height}
                               scale={scale}
-                              color={drawColor}
+                              color={signColor}
                               title={t('signHint')}
                               onPlace={(vx, vy) => placeSignature(origIdx, vx, vy)}
                             />
@@ -13229,7 +13242,8 @@ export default function App() {
             )}
             {signDlg && (
               <SignatureDialog
-                color={drawColor}
+                color={signColor}
+                onColorChange={setSignColor}
                 t={t}
                 onCancel={() => {
                   setSignDlg(false)

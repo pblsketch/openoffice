@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, PointerEvent as ReactPointerEvent, ReactElement } from 'react'
 import { cssRgb } from './DrawLayer'
+import { ColorPickerPopover } from './ColorPicker'
+import { SIGN_COLORS, signColorName } from './signature-colors'
+import type { SignColorName } from './signature-colors'
+import { hexToRgb, rgbToHex } from './text-edit-preview'
 import type { TFunc } from './i18n/locale'
 import type { SavedSignature, SignatureData, SignatureStrokes } from '../shared/ipc'
 import { useModalDialog } from './modal-dialog'
@@ -138,13 +142,22 @@ function StrokesThumb({
 }
 
 /** Signature dialog: draw on a pad, type text, or upload an image; confirming enters placement mode */
+const SIGN_COLOR_LABEL: Record<SignColorName, 'signColorBlack' | 'signColorBlue' | 'signColorRed'> =
+  {
+    black: 'signColorBlack',
+    blue: 'signColorBlue',
+    red: 'signColorRed',
+  }
+
 export function SignatureDialog({
   color,
+  onColorChange,
   t,
   onCancel,
   onConfirm,
 }: {
   color: [number, number, number]
+  onColorChange: (color: [number, number, number]) => void
   t: TFunc
   onCancel: () => void
   onConfirm: (sig: SignatureData) => void
@@ -157,8 +170,12 @@ export function SignatureDialog({
   /** Signatures persisted in userData; picking one skips creation and goes straight to placement */
   const [saved, setSaved] = useState<SavedSignature[]>([])
   const [saveForReuse, setSaveForReuse] = useState(true)
+  const [moreColorsOpen, setMoreColorsOpen] = useState(false)
+  const moreColorsWrapRef = useRef<HTMLSpanElement>(null)
+  const colorName = signColorName(color)
   const fileRef = useRef<HTMLInputElement>(null)
-  const dialogRef = useModalDialog(onCancel)
+  // The color popover handles Escape itself while open
+  const dialogRef = useModalDialog(onCancel, { escape: !moreColorsOpen })
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const pathsRef = useRef<number[][]>([])
   const curRef = useRef<number[] | null>(null)
@@ -175,6 +192,24 @@ export function SignatureDialog({
       alive = false
     }
   }, [])
+
+  // outside-click / Escape close for the color popover (no blur close: the
+  // native "More Colors" dialog blurs the window while it is open)
+  useEffect(() => {
+    if (!moreColorsOpen) return
+    const onDown = (event: MouseEvent): void => {
+      if (!moreColorsWrapRef.current?.contains(event.target as Node)) setMoreColorsOpen(false)
+    }
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setMoreColorsOpen(false)
+    }
+    window.addEventListener('pointerdown', onDown, true)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('pointerdown', onDown, true)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [moreColorsOpen])
 
   const removeSaved = (id: string) => {
     setSaved((prev) => prev.filter((s) => s.id !== id))
@@ -334,6 +369,42 @@ export function SignatureDialog({
             {t('signImage')}
           </button>
         </div>
+        {mode !== 'image' && (
+          <div className="pdf-sign-colors" role="group" aria-label={t('signColor')}>
+            <span className="pdf-sign-colors-label">{t('signColor')}</span>
+            {SIGN_COLORS.map(({ name, rgb }) => (
+              <button
+                key={name}
+                type="button"
+                className={`pdf-sign-color${colorName === name ? ' is-current' : ''}`}
+                style={{ background: cssRgb(rgb) }}
+                aria-label={t(SIGN_COLOR_LABEL[name])}
+                aria-pressed={colorName === name}
+                onClick={() => onColorChange([...rgb])}
+              />
+            ))}
+            <span ref={moreColorsWrapRef} className="pdf-sign-color-more-wrap">
+              <button
+                type="button"
+                className={`pdf-sign-color pdf-sign-color-more${colorName === null ? ' is-current' : ''}`}
+                style={colorName === null ? { background: cssRgb(color) } : undefined}
+                aria-label={t('moreColors')}
+                aria-pressed={colorName === null}
+                aria-expanded={moreColorsOpen}
+                onClick={() => setMoreColorsOpen((v) => !v)}
+              >
+                {colorName !== null && '+'}
+              </button>
+              {moreColorsOpen && (
+                <ColorPickerPopover
+                  value={rgbToHex(color)}
+                  onPick={(hex) => onColorChange(hexToRgb(hex))}
+                  onClose={() => setMoreColorsOpen(false)}
+                />
+              )}
+            </span>
+          </div>
+        )}
         {mode === 'draw' && (
           <canvas
             ref={canvasRef}
