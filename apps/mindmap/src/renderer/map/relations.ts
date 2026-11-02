@@ -16,10 +16,14 @@
  *   dragged), and a `data-mm-color` / `data-mm-width` / `data-mm-pattern`
  *   mark on the group so the map's rules leave those to it;
  * - a path of its own for a shape that is not curved, and the title moved to
- *   the middle of it;
- * - the two ends drawn by this app (`mm-rel-end`). The library's arrowheads
- *   are hidden and carry the same paths, so the selection's glow and the
- *   places that take a click follow the ends that are drawn.
+ *   the middle of it, or along it to the nearest place where it covers no
+ *   topic;
+ * - the two ends drawn by this app (`mm-rel-end`), the line stopping under
+ *   each and its dashes fitted to meet them (`relationshipDrawing`); a colour
+ *   the map shows through goes on the whole group as its `opacity`. The
+ *   library's arrowheads are hidden and carry the same paths, so the
+ *   selection's glow and the places that take a click follow the ends that
+ *   are drawn.
  *
  * Only a curved relationship has the library's handles; the others hide them
  * when selected, and the curve the file keeps is never touched by drawing.
@@ -34,10 +38,15 @@
  * a folded branch is its own box. A boundary none of whose topics is shown is
  * not drawn. One whose topics stand on both sides of the central topic is
  * drawn once per side, its title on the first. A `master` boundary on the
- * central topic goes around the whole map. Each outline is a group marked
- * with the boundary's id (`data-mm-boundary`), and so is its title. The
- * title is text (`textContent`), never markup. A map without boundaries has
- * no layer at all.
+ * central topic goes around the whole map. All the outlines of a map are
+ * placed together (`boundaryOutlines`), so one around another stands outside
+ * it and two side by side keep apart. Each outline is a group marked with
+ * the boundary's id (`data-mm-boundary`), and so is its title, which is
+ * written on a chip of the map's ground where it covers nothing
+ * (`boundaryTitlePlace`). Under the outline lies a rim of no colour of its
+ * own, which `styles.css` paints while the boundary is selected. The title
+ * is text (`textContent`), never markup. A map without boundaries has no
+ * layer at all.
  *
  * No colour is written here except a filtered value of the file; every other
  * colour is a `--mm-` property, given by `map.css`.
@@ -45,23 +54,29 @@
 import type { MindElixirInstance, Topic } from 'mind-elixir'
 import { boundariesOf, type MapArrow, type MapSummary } from '../document/convert'
 import {
+  BOUNDARY_TITLE_HEIGHT,
   BOUNDARY_WIDTH,
+  boundaryOutlines,
   boundaryPaint,
   boundaryPath,
   boundaryPieces,
+  boundaryTitlePlace,
+  outlineEdges,
   type Rect,
 } from './boundary-shapes'
 import { linePatternDash } from './branches'
 import {
-  arrowMarker,
   type Box,
-  type RelationshipEnd,
+  labelAlong,
   relationshipArrowStyle,
+  relationshipDrawing,
   relationshipGeometry,
   relationshipLinecap,
   relationshipPaint,
+  type RelationshipPath,
   RELATIONSHIP_WIDTH,
 } from './relationship-shapes'
+import { splitAlpha } from './style-values'
 import { parseSummaryFrame, summaryBracketPath, summaryPaint } from './summary-shapes'
 
 const SVG = 'http://www.w3.org/2000/svg'
@@ -72,13 +87,17 @@ export const BOUNDARY_LAYER_CLASS = 'mm-boundaries'
 export const BOUNDARY_ID_ATTRIBUTE = 'data-mm-boundary'
 export const BOUNDARY_SHAPE_CLASS = 'mm-boundary-shape'
 export const BOUNDARY_TITLE_CLASS = 'mm-boundary-title'
+/** The rim under a boundary's outline that shows when it is selected. */
+export const BOUNDARY_RING_CLASS = 'mm-boundary-ring'
+/** The chip of the map's ground a boundary's title is written on. */
+export const BOUNDARY_CHIP_CLASS = 'mm-boundary-chip'
 /** An end of a relationship drawn by this app. */
 export const RELATIONSHIP_END_CLASS = 'mm-rel-end'
 
-/** How far a boundary's title stands above its outline. */
-const TITLE_RISE = 5
-/** How far in from the outline's left edge the title starts. */
-const TITLE_INSET = 12
+/** How far a title's text stands in from the ends of its chip. */
+const CHIP_PAD = 5
+/** How far below the middle of its chip a title's baseline is (its text is 12px; `map.css`). */
+const TITLE_BASELINE = 4
 
 /** The group the library draws a relationship in. */
 interface ArrowGroup extends SVGGElement {
@@ -100,12 +119,25 @@ interface Frame {
   scale: number
 }
 
+/** What drawing the relationships measures of the map, once. */
+interface Measured {
+  frame: Frame | null
+  topics: Map<string, Topic>
+  /** the box of every topic drawn */
+  boxes: Rect[]
+}
+
+/** On a relationship's title once this editor has placed it, so it goes back where the library puts it when the values go. */
+const LABEL_MARK = 'data-mm-placed'
+
 export class RelationDrawer {
   readonly #mind: MindElixirInstance
   /** the paths the library gave the brackets, kept while their elements live */
   readonly #libraryBrackets = new WeakMap<Element, string>()
-  /** the curves the library drew the relationships with, kept while their elements live */
-  readonly #libraryCurves = new WeakMap<Element, LibraryCurve>()
+  /** the curves the library drew the relationships with, and their paths, kept while their elements live */
+  readonly #libraryCurves = new WeakMap<Element, LibraryCurve & { d: string }>()
+  /** the path this editor last wrote on each line, so it is not taken for the library's */
+  readonly #written = new WeakMap<Element, string>()
   #layer: SVGSVGElement | null = null
 
   constructor(mind: MindElixirInstance) {
@@ -123,8 +155,14 @@ export class RelationDrawer {
 
   drawRelationships(): void {
     // measured once, and only when a relationship of a shape other than the curve needs it
-    let measured: { frame: Frame | null; topics: Map<string, Topic> } | null = null
-    const measure = () => (measured ??= { frame: this.#frame(), topics: this.#topicsById() })
+    let measured: Measured | null = null
+    const measure = (): Measured => {
+      if (measured) return measured
+      const frame = this.#frame()
+      const topics = this.#topicsById()
+      const boxes = frame ? [...topics.values()].map((topic) => rectIn(frame, topic)) : []
+      return (measured = { frame, topics, boxes })
+    }
     for (const group of this.#arrowGroups()) this.#drawRelationship(group, measure)
     this.fitHandles()
   }
@@ -149,17 +187,15 @@ export class RelationDrawer {
     return [...svg.children].filter((child): child is ArrowGroup => child.localName === 'g')
   }
 
-  #drawRelationship(
-    group: ArrowGroup,
-    measure: () => { frame: Frame | null; topics: Map<string, Topic> },
-  ): void {
+  #drawRelationship(group: ArrowGroup, measure: () => Measured): void {
     const arrow = group.arrowObj
     const line = group.line
     if (!arrow || !line) return
-    // the curve the library drew last: a shape of this editor has replaced it on the line
-    const fresh = libraryCurve(line.getAttribute('d') ?? '')
-    if (fresh) this.#libraryCurves.set(line, fresh)
-    const drawn = fresh ?? this.#libraryCurves.get(line)
+    // the curve the library drew last: a path of this editor has replaced it on the line
+    const current = line.getAttribute('d') ?? ''
+    const fresh = current !== this.#written.get(line) ? libraryCurve(current) : null
+    if (fresh) this.#libraryCurves.set(line, { ...fresh, d: current })
+    const drawn = this.#libraryCurves.get(line)
     if (!drawn) return
     for (const end of group.querySelectorAll(`.${RELATIONSHIP_END_CLASS}`)) end.remove()
     const paint = relationshipPaint(arrow.metadata?.style)
@@ -173,48 +209,80 @@ export class RelationDrawer {
     setMark(group, 'data-mm-width', paint.width !== null)
     setMark(group, 'data-mm-pattern', paint.pattern !== null)
     const heads = [group.arrow1, group.arrow2].filter((head) => head !== undefined)
+    const label = group.labelEl
     if (paint.plain) {
+      // as the library drew it: its curve, its dashes, its arrowheads and the title where it put it
+      if (current !== drawn.d) line.setAttribute('d', drawn.d)
+      this.#written.delete(line)
+      line.style.removeProperty('stroke-dasharray')
+      line.removeAttribute('stroke-dashoffset')
+      group.removeAttribute('opacity')
       for (const head of heads) {
         head.removeAttribute('visibility')
         hitOf(head)?.removeAttribute('visibility')
+      }
+      if (label?.hasAttribute(LABEL_MARK)) {
+        label.removeAttribute(LABEL_MARK)
+        const middle = relationshipGeometry('curved', {
+          from: { cx: drawn.p1.x, cy: drawn.p1.y, w: 0, h: 0 },
+          to: { cx: drawn.p2.x, cy: drawn.p2.y, w: 0, h: 0 },
+          c1: drawn.c1,
+          c2: drawn.c2,
+        }).label
+        placeLabel(label, middle.x, middle.y)
       }
       return
     }
 
     const width = paint.width ?? RELATIONSHIP_WIDTH
-    if (paint.color !== null) line.setAttribute('stroke', paint.color)
+    // a colour that lets the map show through is put on the whole relationship, so where the
+    // line goes in under an end it does not show darker
+    const colour = paint.color === null ? null : splitAlpha(paint.color)
+    if (colour) line.setAttribute('stroke', colour.solid)
+    if (colour && colour.alpha < 1) group.setAttribute('opacity', num(colour.alpha))
+    else group.removeAttribute('opacity')
     if (paint.width !== null) line.setAttribute('stroke-width', String(paint.width))
-    if (lineStyle?.strokeDasharray) line.setAttribute('stroke-dasharray', lineStyle.strokeDasharray)
     const linecap = relationshipLinecap(paint)
     if (linecap) line.setAttribute('stroke-linecap', linecap)
+    label?.setAttribute(LABEL_MARK, '')
 
-    let begin: RelationshipEnd = { tip: drawn.p1, from: drawn.c1 }
-    let end: RelationshipEnd = { tip: drawn.p2, from: drawn.c2 }
+    let path: RelationshipPath = { kind: 'cubic', ...drawn }
     if (paint.shape !== 'curved') {
-      const { frame, topics } = measure()
+      const { frame, topics, boxes } = measure()
       const at = (id: string, fallback: { x: number; y: number }): Box => {
         const topic = topics.get(id)
         return frame && topic ? boxIn(frame, topic) : { cx: fallback.x, cy: fallback.y, w: 0, h: 0 }
       }
-      const shape = relationshipGeometry(paint.shape, {
-        from: at(arrow.from, drawn.p1),
-        to: at(arrow.to, drawn.p2),
-        c1: drawn.c1,
-        c2: drawn.c2,
-      })
-      line.setAttribute('d', shape.d)
+      const shape = relationshipGeometry(
+        paint.shape,
+        { from: at(arrow.from, drawn.p1), to: at(arrow.to, drawn.p2), c1: drawn.c1, c2: drawn.c2 },
+        width,
+      )
+      path = shape.path
       hitOf(line)?.setAttribute('d', shape.d)
-      begin = shape.begin
-      end = shape.end
-      placeLabel(group.labelEl, shape.label.x, shape.label.y)
+      if (label) {
+        // in the middle of the line, or the nearest place along it where it covers no topic
+        const titled = (label.textContent ?? '').trim() !== ''
+        const place = titled
+          ? labelAlong(path, { w: label.offsetWidth, h: label.offsetHeight }, boxes)
+          : shape.label
+        placeLabel(label, place.x, place.y)
+      }
     }
 
+    const drawing = relationshipDrawing(paint, path)
+    line.setAttribute('d', drawing.d)
+    this.#written.set(line, drawing.d)
+    // inline, over the dashes `map.css` gives a relationship without a pattern of its own
+    line.style.setProperty('stroke-dasharray', drawing.dasharray)
+    if (drawing.dashoffset > 0) line.setAttribute('stroke-dashoffset', num(drawing.dashoffset))
+    else line.removeAttribute('stroke-dashoffset')
+
     const markers = [
-      { kind: paint.begin, at: begin, head: group.arrow2, name: 'begin' },
-      { kind: paint.end, at: end, head: group.arrow1, name: 'end' },
+      { marker: drawing.begin, head: group.arrow2, name: 'begin' },
+      { marker: drawing.end, head: group.arrow1, name: 'end' },
     ]
-    for (const { kind, at, head, name } of markers) {
-      const marker = arrowMarker(kind, at.tip, at.from, width)
+    for (const { marker, head, name } of markers) {
       if (head) {
         // hidden, with the path of the end drawn: the selection glow and the click follow it
         head.setAttribute('d', marker?.d ?? '')
@@ -222,18 +290,24 @@ export class RelationDrawer {
         hitOf(head)?.setAttribute('d', marker?.d ?? '')
       }
       if (!marker) continue
-      const path = group.ownerDocument.createElementNS(SVG, 'path')
-      path.setAttribute('class', RELATIONSHIP_END_CLASS)
-      path.setAttribute('data-mm-end', name)
-      path.setAttribute('d', marker.d)
-      path.setAttribute('stroke-linecap', 'round')
-      path.setAttribute('stroke-linejoin', 'round')
-      if (paint.color !== null) path.setAttribute('stroke', paint.color)
-      if (paint.width !== null) path.setAttribute('stroke-width', String(paint.width))
-      if (!marker.filled) path.setAttribute('fill', 'none')
-      else if (paint.color !== null) path.setAttribute('fill', paint.color)
-      else path.setAttribute('data-mm-filled', '')
-      group.appendChild(path)
+      const end = group.ownerDocument.createElementNS(SVG, 'path')
+      end.setAttribute('class', RELATIONSHIP_END_CLASS)
+      end.setAttribute('data-mm-end', name)
+      end.setAttribute('d', marker.d)
+      if (marker.filled) {
+        // a filled end has no outline: its corners and its tip stay sharp
+        end.setAttribute('data-mm-solid', '')
+        end.setAttribute('stroke', 'none')
+        if (colour) end.setAttribute('fill', colour.solid)
+        else end.setAttribute('data-mm-filled', '')
+      } else {
+        end.setAttribute('fill', 'none')
+        end.setAttribute('stroke-linecap', 'round')
+        end.setAttribute('stroke-linejoin', 'round')
+        if (colour) end.setAttribute('stroke', colour.solid)
+        if (paint.width !== null) end.setAttribute('stroke-width', String(paint.width))
+      }
+      group.appendChild(end)
     }
     // the glow of a selected relationship copies the paths it is made of
     const glow = group.querySelector('.arrow-highlight')
@@ -292,45 +366,84 @@ export class RelationDrawer {
     const frame = this.#frame()
     if (!frame) return
     const topics = this.#topicsById()
-    for (const boundary of boundaries) {
-      const pieces = boundaryPieces(this.#enclosed(boundary, frame, topics))
+    // every outline of the map first: where each goes depends on the others
+    const drawn = boundaries.flatMap((boundary) => {
       const paint = boundaryPaint(boundary.style)
-      for (const piece of pieces) {
-        const group = doc.createElementNS(SVG, 'g')
-        group.setAttribute(BOUNDARY_ID_ATTRIBUTE, boundary.id)
-        setMark(group, 'data-mm-color', paint.color !== null)
-        setMark(group, 'data-mm-width', paint.width !== null)
-        setMark(group, 'data-mm-fill', paint.fill !== null)
-        const outline = doc.createElementNS(SVG, 'path')
-        outline.setAttribute('class', BOUNDARY_SHAPE_CLASS)
-        outline.setAttribute('d', boundaryPath(paint.shape, piece.rect))
-        if (paint.color !== null) outline.setAttribute('stroke', paint.color)
-        if (paint.width !== null) outline.setAttribute('stroke-width', String(paint.width))
-        if (paint.fill !== null) outline.setAttribute('fill', paint.fill)
-        else if (paint.color !== null) {
-          // the faint fill of a boundary without one is the colour of its line
-          outline.setAttribute('fill', paint.color)
-          outline.setAttribute('fill-opacity', '0.08')
-        }
-        const dash = paint.pattern
-          ? linePatternDash(paint.pattern, paint.width ?? BOUNDARY_WIDTH)
-          : null
-        if (dash) {
-          outline.setAttribute('stroke-dasharray', dash.dasharray)
-          outline.setAttribute('stroke-linecap', dash.linecap)
-        }
-        group.appendChild(outline)
-        if (piece.withTitle && boundary.title.trim() !== '') {
-          const title = doc.createElementNS(SVG, 'text')
-          title.setAttribute('class', BOUNDARY_TITLE_CLASS)
-          title.setAttribute(BOUNDARY_ID_ATTRIBUTE, boundary.id)
-          title.setAttribute('x', num(piece.rect.x + TITLE_INSET))
-          title.setAttribute('y', num(piece.rect.y - TITLE_RISE))
-          title.textContent = boundary.title
-          group.appendChild(title)
-        }
-        layer.appendChild(group)
+      const titled = boundary.title.trim() !== ''
+      return boundaryPieces(this.#enclosed(boundary, frame, topics)).map((piece) => ({
+        boundary,
+        paint,
+        content: piece.content,
+        shape: paint.shape,
+        withTitle: piece.withTitle && titled,
+      }))
+    })
+    const topicBoxes = [...topics.values()].map((topic) => rectIn(frame, topic))
+    const outlines = boundaryOutlines(drawn, topicBoxes)
+
+    const titles: { group: SVGGElement; at: number }[] = []
+    drawn.forEach(({ boundary, paint, withTitle }, at) => {
+      const rect = outlines[at]!
+      const group = doc.createElementNS(SVG, 'g')
+      group.setAttribute(BOUNDARY_ID_ATTRIBUTE, boundary.id)
+      setMark(group, 'data-mm-color', paint.color !== null)
+      setMark(group, 'data-mm-width', paint.width !== null)
+      setMark(group, 'data-mm-fill', paint.fill !== null)
+      const outline = doc.createElementNS(SVG, 'path')
+      outline.setAttribute('class', BOUNDARY_SHAPE_CLASS)
+      outline.setAttribute('d', boundaryPath(paint.shape, rect))
+      if (paint.color !== null) outline.setAttribute('stroke', paint.color)
+      if (paint.width !== null) outline.setAttribute('stroke-width', String(paint.width))
+      if (paint.fill !== null) outline.setAttribute('fill', paint.fill)
+      else if (paint.color !== null) {
+        // the faint fill of a boundary without one is the colour of its line
+        outline.setAttribute('fill', paint.color)
+        outline.setAttribute('fill-opacity', '0.08')
       }
+      const dash = paint.pattern
+        ? linePatternDash(paint.pattern, paint.width ?? BOUNDARY_WIDTH)
+        : null
+      if (dash) {
+        outline.setAttribute('stroke-dasharray', dash.dasharray)
+        outline.setAttribute('stroke-linecap', dash.linecap)
+      }
+      // under the outline, the rim it shows while selected (`styles.css`); of no colour of its own, so unseen otherwise
+      const ring = doc.createElementNS(SVG, 'path')
+      ring.setAttribute('class', BOUNDARY_RING_CLASS)
+      ring.setAttribute('d', outline.getAttribute('d') ?? '')
+      ring.setAttribute('fill', 'none')
+      ring.setAttribute('stroke-width', num((paint.width ?? BOUNDARY_WIDTH) + 4))
+      group.append(ring, outline)
+      layer.appendChild(group)
+      if (withTitle) titles.push({ group, at })
+    })
+
+    // the titles, each on a chip of the map's ground, where it covers no topic, no other title and no other outline
+    const obstacles: Rect[] = [...topicBoxes]
+    for (const handle of this.#mind.nodes.querySelectorAll('me-epd:not(.minus)')) {
+      obstacles.push(rectIn(frame, handle))
+    }
+    for (const { group, at } of titles) {
+      const { boundary } = drawn[at]!
+      const rect = outlines[at]!
+      const chip = doc.createElementNS(SVG, 'rect')
+      chip.setAttribute('class', BOUNDARY_CHIP_CLASS)
+      const title = doc.createElementNS(SVG, 'text')
+      title.setAttribute('class', BOUNDARY_TITLE_CLASS)
+      title.setAttribute(BOUNDARY_ID_ATTRIBUTE, boundary.id)
+      title.textContent = boundary.title
+      group.append(chip, title)
+      const size = { w: textWidth(title) + 2 * CHIP_PAD, h: BOUNDARY_TITLE_HEIGHT }
+      const others = outlines.flatMap((other, index) => (index === at ? [] : outlineEdges(other)))
+      const place = boundaryTitlePlace(rect, size, [...obstacles, ...others])
+      chip.setAttribute('x', num(place.x))
+      chip.setAttribute('y', num(place.y))
+      chip.setAttribute('width', num(size.w))
+      chip.setAttribute('height', num(size.h))
+      chip.setAttribute('rx', '4')
+      title.setAttribute('x', num(place.x + CHIP_PAD))
+      title.setAttribute('y', num(place.y + size.h / 2 + TITLE_BASELINE))
+      obstacles.push({ x: place.x, y: place.y, ...size })
     }
   }
 
@@ -342,18 +455,17 @@ export class RelationDrawer {
   ): Rect[][] {
     const owner = topics.get(boundary.topicId)
     if (!owner?.nodeObj) return []
+    // the topics, and the "+" of each folded branch, which the outline goes around too
+    const shownIn = (root: ParentNode): Rect[] =>
+      [...root.querySelectorAll('me-tpc, me-epd:not(.minus)')].map((el) => rectIn(frame, el))
     const rectsBelow = (topic: Topic): Rect[] => {
       const wrapper = topic.parentElement?.parentElement
-      const shown =
-        wrapper && wrapper.localName === 'me-wrapper'
-          ? [...wrapper.querySelectorAll('me-tpc')]
-          : [topic]
-      return shown.map((element) => rectIn(frame, element))
+      return wrapper && wrapper.localName === 'me-wrapper'
+        ? shownIn(wrapper)
+        : [rectIn(frame, topic)]
     }
     if (boundary.range === 'master') {
-      if (!owner.nodeObj.parent) {
-        return [[...this.#mind.nodes.querySelectorAll('me-tpc')].map((el) => rectIn(frame, el))]
-      }
+      if (!owner.nodeObj.parent) return [shownIn(this.#mind.nodes)]
       return [rectsBelow(owner)]
     }
     const groups = new Map<string, Rect[]>()
@@ -454,6 +566,19 @@ function placeLabel(label: HTMLElement | undefined, x: number, y: number): void 
   label.dataset.y = String(y)
   label.style.left = `${x - label.clientWidth / 2}px`
   label.style.top = `${y - label.clientHeight / 2}px`
+}
+
+/** How wide a title is drawn; guessed from its letters where the page cannot measure text. */
+function textWidth(text: SVGTextElement): number {
+  try {
+    const measured = text.getComputedTextLength()
+    if (measured > 0) return measured
+  } catch {
+    // measured as below
+  }
+  let width = 0
+  for (const char of text.textContent ?? '') width += (char.codePointAt(0) ?? 0) >= 0x1100 ? 12 : 7
+  return width
 }
 
 function setMark(element: Element, name: string, on: boolean): void {

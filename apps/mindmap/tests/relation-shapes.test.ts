@@ -20,9 +20,18 @@ import {
   borderPoint,
   curveToDeltas,
   deltasToCurve,
+  fitDashes,
+  labelAlong,
+  markerReach,
+  markerSize,
+  pathLength,
+  pointAlong,
   relationshipArrowStyle,
+  relationshipDrawing,
   relationshipGeometry,
   relationshipPaint,
+  trimPath,
+  zigzagMeasure,
 } from '../src/renderer/map/relationship-shapes'
 import {
   parseSummaryFrame,
@@ -30,11 +39,19 @@ import {
   summaryPaint,
 } from '../src/renderer/map/summary-shapes'
 import {
+  BOUNDARY_NEST_GAP,
   BOUNDARY_PAD,
+  BOUNDARY_SIDE_GAP,
+  BOUNDARY_TITLE_HEIGHT,
+  boundaryExtent,
+  boundaryOutlines,
   boundaryPaint,
   boundaryPath,
   boundaryPieces,
+  boundaryTitlePlace,
+  outlineEdges,
 } from '../src/renderer/map/boundary-shapes'
+import type { BoundaryShape } from '../src/renderer/map/style-values'
 
 const rel = (word: string) => `${RELATIONSHIP_SHAPE_PREFIX}${word}`
 const arrow = (word: string) => `${ARROW_SHAPE_PREFIX}${word}`
@@ -198,21 +215,62 @@ describe('the ends of a relationship', () => {
       expect(marker, kind).not.toBeNull()
       expect(marker!.d, kind).toMatch(/^M /)
       drawn.add(marker!.d)
-      // the end touches the tip
-      expect(marker!.d, kind).toMatch(/100 50|100\.\d* 50/)
+      // the end reaches the tip: a filled one with its point, an open one with its round stroke
+      const xs = numbers(marker!.d).filter((_, at) => at % 2 === 0)
+      const reach = Math.max(...xs) + (marker!.filled ? 0 : 1.5 / 2)
+      expect(reach, kind).toBeCloseTo(100, 1)
     }
     expect(drawn.size).toBe(ARROW_SHAPES.length - 1)
   })
 
-  it('the normal end is the open arrowhead the library draws', () => {
+  it('the normal end is the open arrowhead the library draws, its round point on the tip', () => {
     const marker = arrowMarker('normal', tip, from, 1.5)!
     expect(marker.filled).toBe(false)
     const [x1, y1, x, y, x2, y2] = numbers(marker.d)
-    expect([x, y]).toEqual([100, 50])
-    expect(x1).toBeCloseTo(100 - 12 * Math.cos(Math.PI / 6))
+    // half the line's width back, so the round join of the stroke ends on the tip
+    expect([x, y]).toEqual([99.25, 50])
+    expect(markerSize(1.5)).toBe(12)
+    expect(x1).toBeCloseTo(99.25 - 12 * Math.cos(Math.PI / 6))
     expect(y1).toBeCloseTo(50 + 12 * Math.sin(Math.PI / 6))
-    expect(x2).toBeCloseTo(100 - 12 * Math.cos(Math.PI / 6))
+    expect(x2).toBeCloseTo(99.25 - 12 * Math.cos(Math.PI / 6))
     expect(y2).toBeCloseTo(50 - 12 * Math.sin(Math.PI / 6))
+    // the line meets it at its point
+    expect(marker.inset).toBe(0.75)
+    expect(marker.overlap).toBe(0)
+  })
+
+  it('the line stops inside each end, where the end is as wide as the line', () => {
+    for (const width of [1, 1.5, 3, 6]) {
+      const size = markerSize(width)
+      const at = (kind: (typeof ARROW_SHAPES)[number]) => arrowMarker(kind, tip, from, width)!
+      const overlap = Math.min(1, width / 2)
+      expect(at('triangle').inset).toBeCloseTo(size - overlap)
+      expect(at('spearhead').inset).toBeCloseTo(size * 0.65 - overlap)
+      expect(at('square').inset).toBeCloseTo(size * 0.7 - overlap)
+      // the herringbone's spine starts where the line stops, and ends half a width short of the tip
+      const bone = at('herringbone')
+      expect(bone.inset).toBeCloseTo(size * 1.1 - overlap)
+      expect(numbers(bone.d).slice(0, 2)[0]).toBeCloseTo(100 - width / 2)
+      // the dot and the diamond: where they are as wide as the line
+      const r = size * 0.35
+      expect(at('dot').inset).toBeCloseTo(r + Math.sqrt(r * r - (width / 2) ** 2) - overlap)
+      const diamond = at('diamond')
+      const halfAt = (back: number) => (0.35 / 0.5) * (size - back)
+      expect(halfAt(diamond.inset + overlap)).toBeCloseTo(width / 2)
+      for (const kind of ARROW_SHAPES) {
+        if (kind === 'none') continue
+        // the line never runs past the end it goes under
+        expect(at(kind).inset, kind).toBeLessThanOrEqual(markerReach(kind, width))
+        expect(at(kind).inset, kind).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it('ends grow with the width of the line', () => {
+    expect(markerSize(1)).toBeLessThan(markerSize(1.5))
+    expect(markerSize(3)).toBeLessThan(markerSize(6))
+    expect(markerSize(6) / 6).toBeGreaterThan(4)
+    expect(markerReach('none', 3)).toBe(0)
   })
 
   it('solid ends are filled, open ones are not', () => {
@@ -231,6 +289,185 @@ describe('the ends of a relationship', () => {
       Math.min(...thin.filter((_, at) => at % 2 === 0)),
     )
     expect(arrowMarker('triangle', tip, tip, 1.5)).toBeNull()
+  })
+})
+
+describe('the line between the ends', () => {
+  const straight = {
+    kind: 'polyline' as const,
+    points: [
+      { x: 0, y: 0 },
+      { x: 200, y: 0 },
+    ],
+  }
+  const curve = {
+    kind: 'cubic' as const,
+    p1: { x: 0, y: 0 },
+    c1: { x: 60, y: -80 },
+    c2: { x: 140, y: 80 },
+    p2: { x: 200, y: 0 },
+  }
+
+  it('a path is measured, walked and cut short at either end', () => {
+    expect(pathLength(straight)).toBe(200)
+    expect(pointAlong(straight, 30)).toEqual({ x: 30, y: 0 })
+    expect(pointAlong(straight, 30, true)).toEqual({ x: 170, y: 0 })
+    expect(trimPath(straight, 10, 20)).toEqual({
+      kind: 'polyline',
+      points: [
+        { x: 10, y: 0 },
+        { x: 180, y: 0 },
+      ],
+    })
+    expect(trimPath(straight, 120, 100)).toBeNull()
+    // an angled path keeps its corners
+    const angled = {
+      kind: 'polyline' as const,
+      points: [
+        { x: 0, y: 0 },
+        { x: 50, y: 0 },
+        { x: 50, y: 50 },
+        { x: 100, y: 50 },
+      ],
+    }
+    expect(trimPath(angled, 5, 5)).toEqual({
+      kind: 'polyline',
+      points: [
+        { x: 5, y: 0 },
+        { x: 50, y: 0 },
+        { x: 50, y: 50 },
+        { x: 95, y: 50 },
+      ],
+    })
+    // a curve stays a curve, its ends on the old one
+    const cut = trimPath(curve, 15, 15)!
+    expect(cut.kind).toBe('cubic')
+    const total = pathLength(curve)
+    expect(pathLength(cut)).toBeCloseTo(total - 30, 0)
+    const start = pointAlong(curve, 15)
+    if (cut.kind === 'cubic') {
+      expect(cut.p1.x).toBeCloseTo(start.x, 1)
+      expect(cut.p1.y).toBeCloseTo(start.y, 1)
+    }
+  })
+
+  it('dashes are fitted so the line starts and ends with a dash', () => {
+    const fitted = fitDashes([4, 2], 101)
+    const period = fitted[0]! + fitted[1]!
+    // whole repeats and then the first dash once more
+    const repeats = (101 - fitted[0]!) / period
+    expect(repeats).toBeCloseTo(Math.round(repeats))
+    expect(fitted[0]! / fitted[1]!).toBeCloseTo(2)
+    expect(fitDashes([4, 2], 5)).toEqual([])
+    expect(fitDashes([0, 2], 10)).toEqual([0, 2])
+  })
+
+  it('the line stops under each end and the dashes meet each end', () => {
+    for (const width of [1, 1.5, 3, 6]) {
+      for (const kind of ['triangle', 'dot', 'normal', 'herringbone'] as const) {
+        const paint = relationshipPaint({
+          begin: arrow(kind),
+          end: arrow(kind),
+          width: `${width}pt`,
+          pattern: 'dash',
+          shape: rel('straight'),
+        })
+        const drawing = relationshipDrawing(paint, straight)
+        const marker = arrowMarker(kind, { x: 200, y: 0 }, { x: 0, y: 0 }, paint.width!)!
+        const [x1, , x2] = numbers(drawing.d)
+        expect(x1, kind).toBeCloseTo(marker.inset)
+        expect(200 - x2!, kind).toBeCloseTo(marker.inset)
+        expect(drawing.end!.d).toBe(marker.d)
+        // a dash comes out from under the first end and goes in under the last
+        const dashes = drawing.dasharray.split(' ').map(Number)
+        const period = dashes.reduce((sum, dash) => sum + dash, 0)
+        const shown = x2! - x1! - 2 * marker.overlap
+        // (the dashes are written to a hundredth of a pixel)
+        const repeats = (shown - dashes[0]!) / period
+        expect(Math.abs(repeats - Math.round(repeats)), kind).toBeLessThan(0.05)
+        const phase = (drawing.dashoffset + marker.overlap) % period
+        expect(Math.min(phase, period - phase), kind).toBeLessThan(0.05)
+      }
+    }
+  })
+
+  it('an end on a curve points along the curve over its length', () => {
+    const paint = relationshipPaint({ end: arrow('triangle'), width: '6pt' })
+    const drawing = relationshipDrawing(paint, curve)
+    const reach = markerReach('triangle', paint.width!)
+    const base = pointAlong(curve, reach, true)
+    const [tx, ty, ax, ay, bx, by] = numbers(drawing.end!.d)
+    // the middle of the triangle's back is on the curve (within a fraction of a pixel)
+    expect(Math.hypot((ax! + bx!) / 2 - base.x, (ay! + by!) / 2 - base.y)).toBeLessThan(0.5)
+    expect([tx, ty]).toEqual([200, 0])
+    expect(drawing.begin).toBeNull()
+  })
+
+  it('a solid line, and the dashes a relationship always had', () => {
+    const solid = relationshipDrawing(
+      relationshipPaint({ pattern: 'solid', end: arrow('dot') }),
+      straight,
+    )
+    expect(solid.dasharray).toBe('none')
+    const plainDashes = relationshipDrawing(relationshipPaint({ end: arrow('dot') }), straight)
+    const [dash, gap] = plainDashes.dasharray.split(' ').map(Number)
+    expect(dash).toBeCloseTo(gap!)
+    expect(dash).toBeGreaterThan(4)
+    expect(dash).toBeLessThan(6)
+  })
+
+  it('a zigzag on a wider line swings wider and longer, and its ends are straight for the largest end', () => {
+    const thin = zigzagMeasure(1.5)
+    const wide = zigzagMeasure(6)
+    expect(wide.step).toBeGreaterThan(thin.step)
+    expect(wide.amplitude).toBeGreaterThan(thin.amplitude)
+    for (const width of [1, 1.5, 3, 6]) {
+      for (const kind of ARROW_SHAPES) {
+        expect(zigzagMeasure(width).lead, kind).toBeGreaterThan(markerReach(kind, width))
+      }
+    }
+    const ends = {
+      from: { cx: 0, cy: 0, w: 40, h: 20 },
+      to: { cx: 600, cy: 0, w: 40, h: 20 },
+      c1: { x: 0, y: 0 },
+      c2: { x: 0, y: 0 },
+    }
+    const shape = relationshipGeometry('zigzag', ends, 6)
+    const ys = numbers(shape.d).filter((_, at) => at % 2 === 1)
+    expect(Math.max(...ys)).toBeCloseTo(wide.amplitude)
+    // the straight lead at the end takes the whole end
+    const [tip, before] =
+      shape.path.kind === 'polyline' ? shape.path.points.slice(-2).reverse() : []
+    expect(tip!.x - before!.x).toBeGreaterThan(markerReach('herringbone', 6))
+  })
+})
+
+describe('where a relationship’s title goes', () => {
+  const line = {
+    kind: 'polyline' as const,
+    points: [
+      { x: 0, y: 0 },
+      { x: 300, y: 0 },
+    ],
+  }
+  const size = { w: 60, h: 16 }
+
+  it('in the middle when it covers no topic there', () => {
+    expect(labelAlong(line, size, [])).toEqual({ x: 150, y: 0 })
+  })
+
+  it('at the nearest place along the line where it covers none', () => {
+    const topic = { x: 130, y: -10, w: 60, h: 20 }
+    const at = labelAlong(line, size, [topic])
+    expect(at.y).toBe(0)
+    expect(at.x + size.w / 2 + 3).toBeLessThanOrEqual(topic.x)
+    // the nearest: just clear of the topic
+    expect(at.x).toBeGreaterThan(topic.x - size.w / 2 - 3 - 3)
+  })
+
+  it('in the middle when there is no such place', () => {
+    const everywhere = { x: -10, y: -10, w: 320, h: 20 }
+    expect(labelAlong(line, size, [everywhere])).toEqual({ x: 150, y: 0 })
   })
 })
 
@@ -380,7 +617,7 @@ describe('the values and shapes of a boundary', () => {
     expect(boundaryPath('rect', box)).toBe('M 100 50 H 300 V 130 H 100 Z')
   })
 
-  it('one outline per group of boxes, padded; the title only on the first', () => {
+  it('one outline per group of boxes; the title only on the first', () => {
     const pieces = boundaryPieces([
       [
         { x: 10, y: 10, w: 50, h: 20 },
@@ -390,25 +627,120 @@ describe('the values and shapes of a boundary', () => {
       [{ x: -200, y: 0, w: 40, h: 10 }],
     ])
     expect(pieces).toEqual([
-      {
-        rect: {
-          x: 10 - BOUNDARY_PAD,
-          y: 10 - BOUNDARY_PAD,
-          w: 70 + 2 * BOUNDARY_PAD,
-          h: 50 + 2 * BOUNDARY_PAD,
-        },
-        withTitle: true,
-      },
-      {
-        rect: {
-          x: -200 - BOUNDARY_PAD,
-          y: -BOUNDARY_PAD,
-          w: 40 + 2 * BOUNDARY_PAD,
-          h: 10 + 2 * BOUNDARY_PAD,
-        },
-        withTitle: false,
-      },
+      { content: { x: 10, y: 10, w: 70, h: 50 }, withTitle: true },
+      { content: { x: -200, y: 0, w: 40, h: 10 }, withTitle: false },
     ])
     expect(boundaryPieces([[], []])).toEqual([])
+  })
+})
+
+describe('where the outlines of a map go', () => {
+  const content = { x: 100, y: 100, w: 100, h: 60 }
+  const one = (shape: BoundaryShape, withTitle = false) => ({ content, shape, withTitle })
+
+  it('each stands the same way off its boxes on every side', () => {
+    expect(boundaryOutlines([one('rect')])).toEqual([
+      {
+        x: 100 - BOUNDARY_PAD,
+        y: 100 - BOUNDARY_PAD,
+        w: 100 + 2 * BOUNDARY_PAD,
+        h: 60 + 2 * BOUNDARY_PAD,
+      },
+    ])
+    // a six-sided one less at its sides, where its points stand out: as far off at both ends
+    const [hexagon] = boundaryOutlines([one('roundedPolygon')])
+    expect(hexagon!.x - 100).toBeCloseTo(-(hexagon!.x + hexagon!.w - 200))
+    const drawn = boundaryExtent('roundedPolygon', hexagon!)
+    expect(100 - drawn.x).toBeLessThan(2 * BOUNDARY_PAD)
+    // sides drawn inward stand further off, so they do not come nearer than the others
+    const [tension] = boundaryOutlines([one('tension')])
+    expect(tension!.x).toBeLessThan(100 - BOUNDARY_PAD)
+  })
+
+  it('one with a title has room under its top edge for the title written on it', () => {
+    const [titled] = boundaryOutlines([one('rect', true)])
+    expect(100 - titled!.y).toBeGreaterThanOrEqual(BOUNDARY_TITLE_HEIGHT / 2 + 2)
+  })
+
+  it('stops short of a topic just outside its boxes', () => {
+    const parent = { x: 80, y: 60, w: 120, h: 36 }
+    const below = { x: 100, y: 168, w: 80, h: 20 }
+    const beside = { x: 30, y: 110, w: 50, h: 20 }
+    const [rect] = boundaryOutlines([one('rect', true)], [parent, below, beside, content])
+    expect(rect!.y).toBeGreaterThan(parent.y + parent.h)
+    expect(rect!.y + rect!.h).toBeLessThan(below.y)
+    expect(rect!.x).toBeGreaterThan(beside.x + beside.w)
+  })
+
+  it('one around another stands outside its drawing, further above for titles', () => {
+    const inner = {
+      content: { x: 120, y: 120, w: 40, h: 20 },
+      shape: 'scallops' as const,
+      withTitle: true,
+    }
+    const outer = {
+      content: { x: 100, y: 100, w: 100, h: 100 },
+      shape: 'rect' as const,
+      withTitle: true,
+    }
+    const [i, o] = boundaryOutlines([inner, outer])
+    const drawn = boundaryExtent('scallops', i!)
+    expect(o!.x).toBeLessThanOrEqual(drawn.x - BOUNDARY_NEST_GAP)
+    expect(o!.y).toBeLessThanOrEqual(drawn.y - BOUNDARY_NEST_GAP - BOUNDARY_TITLE_HEIGHT)
+    expect(o!.x + o!.w).toBeGreaterThanOrEqual(drawn.x + drawn.w + BOUNDARY_NEST_GAP)
+    // two around the same boxes: the later one goes outside, their top lines apart
+    const [first, second] = boundaryOutlines([one('rect'), one('rect')])
+    expect(second!.y).toBeLessThan(first!.y - BOUNDARY_NEST_GAP + 0.01)
+    expect(second!.x).toBeLessThan(first!.x)
+  })
+
+  it('two side by side keep a gap between them', () => {
+    const upper = {
+      content: { x: 100, y: 100, w: 80, h: 20 },
+      shape: 'rect' as const,
+      withTitle: false,
+    }
+    const lower = {
+      content: { x: 100, y: 126, w: 80, h: 20 },
+      shape: 'rect' as const,
+      withTitle: false,
+    }
+    const [a, b] = boundaryOutlines([upper, lower])
+    expect(b!.y - (a!.y + a!.h)).toBeGreaterThanOrEqual(BOUNDARY_SIDE_GAP - 0.01)
+    // and still go around their boxes
+    expect(a!.y + a!.h).toBeGreaterThan(120)
+    expect(b!.y).toBeLessThan(126)
+  })
+})
+
+describe('where a boundary title goes', () => {
+  const outline = { x: 100, y: 100, w: 200, h: 100 }
+  const chip = { w: 50, h: BOUNDARY_TITLE_HEIGHT }
+
+  it('on the top edge near its left end, as a legend on a frame', () => {
+    expect(boundaryTitlePlace(outline, chip, [])).toEqual({ x: 112, y: 100 - chip.h / 2 })
+  })
+
+  it('elsewhere on the outline, or beside it, where it covers no topic', () => {
+    const parent = { x: 60, y: 70, w: 300, h: 35 }
+    const place = boundaryTitlePlace(outline, chip, [parent])
+    const box = { ...place, ...chip }
+    expect(box.y >= parent.y + parent.h || box.y + box.h <= parent.y).toBe(true)
+    // the bottom edge, when that is free
+    expect(place.y).toBe(200 - chip.h / 2)
+  })
+
+  it('where it covers least when nothing is free', () => {
+    const everywhere = { x: -1000, y: -1000, w: 3000, h: 3000 }
+    const nearly = { x: 0, y: 0, w: 1000, h: 1000 }
+    expect(boundaryTitlePlace(outline, chip, [everywhere])).toEqual({ x: 112, y: 91 })
+    const place = boundaryTitlePlace(outline, chip, [nearly, { x: 100, y: 80, w: 400, h: 40 }])
+    expect(place).not.toEqual({ x: 112, y: 91 })
+  })
+
+  it('the lines of an outline, as thin boxes', () => {
+    const edges = outlineEdges(outline)
+    expect(edges).toHaveLength(4)
+    expect(edges[0]).toEqual({ x: 100, y: 99, w: 200, h: 2 })
   })
 })

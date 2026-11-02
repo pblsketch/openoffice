@@ -583,6 +583,14 @@ describe('an export draws relationships, brackets and boundaries as the screen d
       expect(styled.hasAttribute('data-mm-color')).toBe(true)
       expect(doc.querySelector('.mm-boundaries path[stroke-dasharray="8 4"]')).not.toBeNull()
       expect(doc.querySelector('.mm-boundaries path[fill="#eeddcc"]')).not.toBeNull()
+      // a title's chip is kept; the rim a selected boundary shows has no colour, so it draws nothing
+      expect(doc.querySelectorAll('.mm-boundaries .mm-boundary-chip').length).toBeGreaterThan(0)
+      for (const ring of doc.querySelectorAll('.mm-boundaries .mm-boundary-ring')) {
+        expect(ring.hasAttribute('stroke')).toBe(false)
+      }
+      // the dashes fitted to a relationship's line stay on it
+      const line = styled.querySelector('path:not([stroke="transparent"]):not(.mm-rel-end)')!
+      expect(line.getAttribute('style') ?? '').toMatch(/stroke-dasharray: none/)
       // the title is text
       const titles = [...doc.querySelectorAll('.mm-boundary-title')].map(
         (title) => title.textContent,
