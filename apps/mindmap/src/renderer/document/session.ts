@@ -26,6 +26,7 @@ import {
   countPreservedWithTopics,
   deleteSheet,
   isRecord,
+  isUnknownSheetTheme,
   newXmindId,
   type NewSheetOptions,
   openXmind,
@@ -373,14 +374,13 @@ export class DocumentSession {
     this.#notify()
   }
 
-  /** Whether a sheet carries a theme this app did not write: it is drawn with the default look. */
+  /**
+   * Whether a sheet carries a theme this app did not write: it is drawn with
+   * the default look. A theme holding nothing but the map-wide line settings
+   * is no theme (`isUnknownSheetTheme`).
+   */
   hasUnknownTheme(): boolean {
-    return this.#document.sheets.some(
-      (sheet) =>
-        isRecord(sheet.theme) &&
-        Object.keys(sheet.theme).length > 0 &&
-        recogniseSheetTheme(sheet) === null,
-    )
+    return this.#document.sheets.some(isUnknownSheetTheme)
   }
 
   // ---- output ----
