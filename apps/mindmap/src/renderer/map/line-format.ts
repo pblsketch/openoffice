@@ -264,22 +264,13 @@ export function branchNodes(node: NodeObj): NodeObj[] {
 const MAX_DEPTH = 1024
 
 /**
- * Makes the edits on a topic and on every topic below it, except those in
- * `skip`. Returns the ids of the topics whose values changed.
+ * Makes the edits on a topic and on every topic below it. Returns the ids of
+ * the topics whose values changed.
  */
-export function editBranchLine(
-  node: NodeObj,
-  edits: StyleEdits<BranchLineKey>,
-  skip?: ReadonlySet<string>,
-): string[] {
+export function editBranchLine(node: NodeObj, edits: StyleEdits<BranchLineKey>): string[] {
   const changed: string[] = []
   for (const at of branchNodes(node)) {
-    if (skip?.has(at.id)) continue
-    const before = ownLineOf(at)
-    const after = withEdits(before, edits)
-    if (sameValues(before, after)) continue
-    putLine(at, after)
-    changed.push(at.id)
+    if (editOwnLine(at, edits)) changed.push(at.id)
   }
   return changed
 }
@@ -294,18 +285,42 @@ export function editOwnLine(node: NodeObj, edits: StyleEdits<BranchLineKey>): bo
 }
 
 /**
+ * The line edits one change asked for, by topic id: the keys a change set
+ * itself, which win over the values of a new parent key by key.
+ */
+export type LineEditsById = Map<string, StyleEdits<BranchLineKey>>
+
+/** Notes the edits as asked for on a topic and on every topic below it, over keys noted before. */
+export function noteBranchLineEdits(
+  into: LineEditsById,
+  node: NodeObj,
+  edits: StyleEdits<BranchLineKey>,
+): void {
+  for (const at of branchNodes(node)) into.set(at.id, { ...into.get(at.id), ...edits })
+}
+
+/**
  * A topic arrived under `parent`: it and every topic below it take the line
- * values the parent has written on itself (those the engine writes). Nothing
+ * values the parent has written on itself (those the engine writes), and then
+ * the keys `explicit` names for them, which the same change set. Nothing
  * changes when the parent has none. Returns the ids of the topics that changed.
  */
 export function inheritBranchLine(
   parent: NodeObj,
   node: NodeObj,
-  skip?: ReadonlySet<string>,
+  explicit?: ReadonlyMap<string, StyleEdits<BranchLineKey>>,
 ): string[] {
   const line = writableLineOf(parent)
   if (Object.keys(line).length === 0) return []
-  return editBranchLine(node, line, skip)
+  const changed: string[] = []
+  for (const at of branchNodes(node)) {
+    const before = ownLineOf(at)
+    const after = withEdits(withEdits(before, line), explicit?.get(at.id) ?? {})
+    if (sameValues(before, after)) continue
+    putLine(at, after)
+    changed.push(at.id)
+  }
+  return changed
 }
 
 /** The parent of every topic of a tree, by id; the central topic has none. */
@@ -325,15 +340,15 @@ export function parentsOf(root: NodeObj): Map<string, string | null> {
  * After a change of the tree: every topic that stands under another parent
  * than before (or is new), and is not below another such topic, takes the
  * line values of its new parent with its branch. `before` is `parentsOf` the
- * tree before the change. A topic in `explicit` had its line set by the same
- * change, which wins: it keeps the values it was given (the topics below it
- * that are not named still take the parent's).
- * tree before the change. Returns the ids of the topics that changed.
+ * tree before the change. The keys `explicit` names for a topic were set by
+ * the same change and win over the parent's, key by key, even where they
+ * hold the value the topic had: a topic whose width alone was set still
+ * takes the parent's colour. Returns the ids of the topics that changed.
  */
 export function inheritArrivals(
   root: NodeObj,
   before: ReadonlyMap<string, string | null>,
-  explicit?: ReadonlySet<string>,
+  explicit?: ReadonlyMap<string, StyleEdits<BranchLineKey>>,
 ): string[] {
   const changed: string[] = []
   const visit = (node: NodeObj, depth: number): void => {

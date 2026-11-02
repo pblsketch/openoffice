@@ -106,6 +106,8 @@ import {
   editOwnLine,
   inheritArrivals,
   inheritBranchLine,
+  type LineEditsById,
+  noteBranchLineEdits,
   ownLineOf,
   parentsOf,
   type RelationshipStyleChange,
@@ -222,6 +224,11 @@ export interface EditOptions {
   restyled?: readonly string[]
   /** topics whose line format changed */
   restyledLines?: readonly string[]
+  /**
+   * the line keys the edit set itself, by topic id: on a topic that stands
+   * under a new parent afterwards they win over that parent's values, key by key
+   */
+  lineEdits?: ReadonlyMap<string, StyleEdits<BranchLineKey>>
   /** topics whose fill changed */
   refilled?: readonly string[]
   /** relationships whose format or curve changed */
@@ -1005,9 +1012,8 @@ export class MapController {
    * named in `options`: the engine writes those only for what is named.
    * A topic that stands under another parent afterwards (moved, or new) takes
    * the line values its new parent has written on itself, with its branch, in
-   * the same step (`line-format.ts`), unless the same edit set its line: a
-   * topic named in `restyledLines` (or whose line `change` set through the
-   * controller) keeps the values it was given.
+   * the same step (`line-format.ts`); the keys the same edit set on it
+   * (`lineEdits`) are put on top of those, key by key.
    */
   edit(change: (root: MapNode, parts: MapParts) => void, options: EditOptions = {}): void {
     const mind = this.mind
@@ -1015,7 +1021,6 @@ export class MapController {
     const arrow = this.#currentArrowId()
     const summary = this.#currentSummaryId()
     const parents = parentsOf(mind.nodeData)
-    const relinedBefore = new Set(this.#relined)
     this.#name(options)
     const parts: MapParts = {
       arrows: (mind.arrows ?? []) as MapArrow[],
@@ -1028,10 +1033,10 @@ export class MapController {
     mind.meta = withBoundaries(mind.meta, parts.boundaries)
     normaliseTree(mind.nodeData, topicIdsOf(this.#lastView))
     this.#keepableRecordIds(parts)
-    // a line this edit set itself wins over the line of a new parent
-    const explicit = new Set(options.restyledLines ?? [])
-    for (const id of this.#relined) if (!relinedBefore.has(id)) explicit.add(id)
-    for (const id of inheritArrivals(mind.nodeData, parents, explicit)) this.#relined.add(id)
+    // the keys this edit set itself win over the line of a new parent
+    for (const id of inheritArrivals(mind.nodeData, parents, options.lineEdits)) {
+      this.#relined.add(id)
+    }
     mind.refresh()
     this.#putSelectionBack(selected, arrow, summary)
     mind.bus.fire('operation', {
@@ -1199,13 +1204,18 @@ export class MapController {
       ),
     )
     if (!changes) return refused('unchanged')
+    const lineEdits: LineEditsById = new Map()
+    for (const id of found) noteBranchLineEdits(lineEdits, this.#node(id)!, edits)
     this.commitEdit()
-    this.edit((root) => {
-      for (const id of found) {
-        const node = this.mind.getObjById(id, root)
-        if (node) for (const changed of editBranchLine(node, edits)) this.#relined.add(changed)
-      }
-    })
+    this.edit(
+      (root) => {
+        for (const id of found) {
+          const node = this.mind.getObjById(id, root)
+          if (node) for (const changed of editBranchLine(node, edits)) this.#relined.add(changed)
+        }
+      },
+      { lineEdits },
+    )
     return { ok: true }
   }
 
@@ -1504,6 +1514,8 @@ export class MapController {
       )
     })
     if (!changes) return refused('unchanged')
+    const lineEdits: LineEditsById = new Map()
+    for (const id of found) noteBranchLineEdits(lineEdits, this.#node(id)!, CLEAR_BRANCH_LINE)
     this.commitEdit()
     this.edit(
       (root) => {
@@ -1515,7 +1527,7 @@ export class MapController {
           for (const changed of editBranchLine(node, CLEAR_BRANCH_LINE)) this.#relined.add(changed)
         }
       },
-      { restyled: found },
+      { restyled: found, lineEdits },
     )
     return { ok: true }
   }
@@ -1662,6 +1674,8 @@ export class MapController {
     )
     if (!restyled && !relined) return refused('unchanged')
     const refilled = paint.fill !== undefined && paint.fill !== meta.style.fill
+    const lineEdits: LineEditsById = new Map()
+    noteBranchLineEdits(lineEdits, node, paint.line)
     this.commitEdit()
     this.edit(
       (root) => {
@@ -1672,7 +1686,7 @@ export class MapController {
         target.metadata = { ...own, style: painted.style, titleRuns: painted.titleRuns }
         for (const changed of editBranchLine(target, paint.line)) this.#relined.add(changed)
       },
-      { restyled: [id], refilled: refilled ? [id] : [] },
+      { restyled: [id], refilled: refilled ? [id] : [], lineEdits },
     )
     return { ok: true }
   }

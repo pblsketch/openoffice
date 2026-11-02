@@ -459,24 +459,31 @@ describe('a new topic put above a branch, and a line set in the same edit', () =
     expect(await unchanged()).toBe(true)
   })
 
-  it('a topic moved into a formatted branch whose line the same edit set keeps that line', async () => {
+  it('a topic moved into a formatted branch keeps the keys the same edit set, over the parent’s', async () => {
     const { controller, props, find, unchanged } = await mount()
+    const own = { color: '#00ff00' }
     controller.edit(
       (root) => {
         const a = root.children![0]!
         const c = root.children!.splice(2, 1)[0]!
         a.children!.push(c)
-        const own = { color: '#00ff00' }
         c.metadata = { ...c.metadata!, line: own }
         c.children![0]!.metadata = { ...c.children![0]!.metadata!, line: own }
         // and a new topic the edit gives no line takes the parent's
         c.children!.push({ id: OTHER, topic: 'Plain new' } as MapNode)
       },
-      { restyledLines: [ID.c, ID.c1] },
+      {
+        restyledLines: [ID.c, ID.c1],
+        lineEdits: new Map([
+          [ID.c, own],
+          [ID.c1, own],
+        ]),
+      },
     )
     expect(find(ID.a)!.children!.attached!.map((child) => child.id)).toContain(ID.c)
-    expect(props(ID.c)).toEqual({ 'line-color': '#00ff00' })
-    expect(props(ID.c1)).toEqual({ 'line-color': '#00ff00' })
+    // the colour set; the keys it did not set are the parent's
+    expect(props(ID.c)).toEqual({ ...LINE_A, 'line-color': '#00ff00' })
+    expect(props(ID.c1)).toEqual({ ...LINE_A, 'line-color': '#00ff00' })
     expect(props(OTHER)).toEqual(LINE_A)
     controller.undo()
     expect(await unchanged()).toBe(true)

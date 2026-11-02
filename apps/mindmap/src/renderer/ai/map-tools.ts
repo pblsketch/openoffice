@@ -80,6 +80,8 @@ import {
   CLEAR_RELATIONSHIP_STYLE,
   CLEAR_SUMMARY_STYLE,
   editBranchLine,
+  type LineEditsById,
+  noteBranchLineEdits,
   type RelationshipStyleChange,
   relationshipStyleEdits,
   sameValues,
@@ -367,6 +369,8 @@ export interface EditContext {
 export interface EditNames {
   restyled: string[]
   restyledLines: string[]
+  /** the line keys `set_line` set, by topic id: they win over a new parent's (`EditOptions.lineEdits`) */
+  lineEdits: LineEditsById
   restyledRelationships: string[]
   restyledSummaries: string[]
   restyledBoundaries: string[]
@@ -482,6 +486,7 @@ export function applyEditBatch(
   const names: EditNames = {
     restyled: [],
     restyledLines: [],
+    lineEdits: new Map(),
     restyledRelationships: [],
     restyledSummaries: [],
     restyledBoundaries: [],
@@ -712,9 +717,9 @@ export function applyEditBatch(
         const line = styleArg(edit, 'line')
         if ('error' in line) return refused(line.error, id)
         // the line into the topic and every line below it, as the user's change does
-        names.restyledLines.push(
-          ...editBranchLine(node, line.edits as StyleEdits<keyof ViewBranchLine>),
-        )
+        const edits = line.edits as StyleEdits<keyof ViewBranchLine>
+        names.restyledLines.push(...editBranchLine(node, edits))
+        noteBranchLineEdits(names.lineEdits, node, edits)
         return result(true, { id })
       }
       case 'fold':
