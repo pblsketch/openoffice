@@ -162,6 +162,8 @@ async function main(): Promise<void> {
     await page.locator(topic(ID.other)).click()
     await page.locator('[data-action="text-format"]').click()
     await page.waitForSelector('.mm-format-panel')
+    // the text side of the switch, whichever side was chosen last
+    await page.locator('[data-action="format-tab-text"]').click()
     await page.locator('[data-action="format-italic"]').click()
     await page.locator('.mm-format-colors button[title]').nth(14).click()
     await page.locator('[data-action="format-size"]').fill('20')

@@ -10,6 +10,10 @@
  * - a boundary: its shape, line colour, thickness, line style and fill;
  * - nothing: a word on what to select, with the text format greyed out.
  *
+ * For topics a switch at the top ("text" | "line") shows one of the two
+ * groups at a time, so neither needs scrolling to; the painter and "clear
+ * format" stay above it. The last choice is kept (`FORMAT_TAB_KEY`).
+ *
  * It shows the values of the item in hand (the topic whose title is typed,
  * else the first selected) and sends changes to the controller, which gives
  * them to every selected item. A value the selected topics draw differently
@@ -108,6 +112,28 @@ export interface FormatPanelProps {
   onClose(): void
 }
 
+/** Which group of a topic's format the panel shows. */
+export type FormatTab = 'text' | 'line'
+
+/** Where the last choice of `FormatTab` is kept, like the app's other mindmap preferences. */
+export const FORMAT_TAB_KEY = 'mindmapapp.formatTab'
+
+function savedFormatTab(): FormatTab {
+  try {
+    return localStorage.getItem(FORMAT_TAB_KEY) === 'line' ? 'line' : 'text'
+  } catch {
+    return 'text'
+  }
+}
+
+function saveFormatTab(tab: FormatTab): void {
+  try {
+    localStorage.setItem(FORMAT_TAB_KEY, tab)
+  } catch {
+    // storage off: the choice holds until the panel closes
+  }
+}
+
 /** The font list's value for "the map's own face". */
 const DEFAULT_FONT = ''
 
@@ -193,6 +219,15 @@ export function FormatPanel(p: FormatPanelProps) {
   const painter = p.painter
   const painterState = !painter.active ? 'off' : painter.sticky ? 'sticky' : 'once'
   const nothing = model.kind === 'none'
+  const [tab, setTab] = useState<FormatTab>(savedFormatTab)
+  // topics with a line to show get the switch; with nothing selected the text format stays greyed out
+  const switched = model.kind === 'topics' && model.line !== null
+  const showText =
+    model.kind === 'none' || (model.kind === 'topics' && (!switched || tab === 'text'))
+  const pickTab = (next: FormatTab): void => {
+    setTab(next)
+    saveFormatTab(next)
+  }
 
   return (
     <aside className="mm-theme-panel mm-format-panel" aria-label={t('formatTitle')}>
@@ -244,17 +279,20 @@ export function FormatPanel(p: FormatPanelProps) {
           </p>
         )}
 
-        {(model.kind === 'none' || model.kind === 'topics') && (
+        {switched && <TabSwitch tab={tab} onPick={pickTab} />}
+
+        {showText && (
           <TextSection
             format={model.kind === 'topics' ? p.format : null}
             editing={p.editing}
+            bare={switched}
             onToggle={p.onToggle}
             onFormat={p.onFormat}
           />
         )}
 
-        {model.kind === 'topics' && model.line && (
-          <Section title={t('formatLineSection')} kind="line">
+        {model.kind === 'topics' && model.line && tab === 'line' && (
+          <Section title={t('formatLineSection')} kind="line" bare>
             <Group label={t('lineShape')}>
               {model.line.shapeLocked ? (
                 <p className="mm-format-state" data-format-state="locked">
@@ -437,10 +475,46 @@ function shownIs<T>(shown: Shown<T>, wanted: T): boolean {
   return shown.state === 'value' && shown.value === wanted
 }
 
+/**
+ * "Text" | "Line": the two groups of a topic's format, one shown at a time.
+ * The buttons keep the focus where it is, like the others of the panel.
+ */
+function TabSwitch(p: { tab: FormatTab; onPick(tab: FormatTab): void }) {
+  const { t } = useI18n()
+  const tabs: { value: FormatTab; label: string }[] = [
+    { value: 'text', label: t('formatTextSection') },
+    { value: 'line', label: t('formatLineSection') },
+  ]
+  return (
+    <div
+      className="mm-format-tabs"
+      role="group"
+      aria-label={t('formatTitle')}
+      data-format-tab={p.tab}
+    >
+      {tabs.map((tab) => (
+        <button
+          key={tab.value}
+          type="button"
+          className={`mm-format-tab${p.tab === tab.value ? ' on' : ''}`}
+          data-action={`format-tab-${tab.value}`}
+          aria-pressed={p.tab === tab.value}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => p.onPick(tab.value)}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 /** The text format: today's controls, greyed out without a topic. */
 function TextSection(p: {
   format: ShownFormat | null
   editing: boolean
+  /** under the switch, which already names the group: no title of its own */
+  bare: boolean
   onToggle(key: FormatToggle): void
   onFormat(format: TextFormat): void
 }) {
@@ -474,7 +548,7 @@ function TextSection(p: {
     { value: 'right', label: t('alignRight'), icon: <IconAlignRight /> },
   ]
   return (
-    <Section title={t('formatTextSection')} kind="text">
+    <Section title={t('formatTextSection')} kind="text" bare={p.bare}>
       {p.editing && <p className="mm-theme-note">{t('formatEditingNote')}</p>}
 
       <Group label={t('formatFont')}>
@@ -567,10 +641,11 @@ function pickerStrings(t: TFunc, auto: string) {
   }
 }
 
-function Section(p: { title: string; kind: string; children: ReactNode }) {
+/** A group of the panel; `bare` leaves the title to the switch above it (still read out by name). */
+function Section(p: { title: string; kind: string; bare?: boolean; children: ReactNode }) {
   return (
     <section className="mm-format-section" data-format-section={p.kind} aria-label={p.title}>
-      <h3 className="mm-format-section-title">{p.title}</h3>
+      {!p.bare && <h3 className="mm-format-section-title">{p.title}</h3>}
       {p.children}
     </section>
   )

@@ -20,7 +20,7 @@
     - `picture-drop.ts`·`use-picture-drop.ts`: 사람이 그림 파일을 토픽에 넣는 일. 지도 그릇(`mm-card`)의 끌어 놓기 자리와 "그림 넣기"의 파일 창이다.
     - `link-preview.ts`: 링크 미리보기(결정 0099). 메인이 읽어 온 페이지의 그림과 제목을 토픽에 넣는 일, 그림을 지도에 둘 꼴로 바꾸는 일, 제목을 바꿔도 되는지의 판단.
   - `export/`: 내보내기(PNG, PDF, 마크다운 개요), 인쇄, 저장 때 넣는 미리보기 그림. 아래 "내보내기와 인쇄"를 본다.
-  - `components/`: 도구 줄, 시트 탭, 대화 상자와 안내, 테마 패널(`ThemePanel.tsx`), 서식 칸(`FormatPanel.tsx`: 고른 것이 토픽이면 글자와 선, 연결선·요약·경계면 그 서식, 서식 복사 단추. 보일 값은 `format-model.ts`, 글꼴 목록은 `system-fonts.ts`), 경계 오른쪽 클릭 메뉴(`BoundaryMenu.tsx`), 컨트롤러의 이유 코드를 상태 줄 문구로 바꾸는 `map-notices.ts`, 선택한 토픽의 메모를 지도 옆에서 고치는 메모 패널(`NotePanel.tsx`), 내보내기 단추(`ExportMenu.tsx`), 직접 그린 그림(`icons.tsx`).
+  - `components/`: 도구 줄, 시트 탭, 대화 상자와 안내, 테마 패널(`ThemePanel.tsx`), 서식 칸(`FormatPanel.tsx`: 고른 것이 토픽이면 맨 위 "글자 | 선" 전환으로 둘 중 하나만 보이고 마지막 고른 쪽을 `mindmapapp.formatTab`에 기억, 연결선·요약·경계면 그 서식 한 묶음, 서식 복사·서식 지우기 단추는 전환 위. 보일 값은 `format-model.ts`, 글꼴 목록은 `system-fonts.ts`), 경계 오른쪽 클릭 메뉴(`BoundaryMenu.tsx`), 컨트롤러의 이유 코드를 상태 줄 문구로 바꾸는 `map-notices.ts`, 선택한 토픽의 메모를 지도 옆에서 고치는 메모 패널(`NotePanel.tsx`), 내보내기 단추(`ExportMenu.tsx`), 직접 그린 그림(`icons.tsx`).
   - `i18n/`: 21개 언어 문구(`app/<언어>.ts`)와 mind-elixir 메뉴 문구(`map-strings.ts`).
   - `ai/`: AI 창(`AiPanel.tsx`), 창을 지도 오른쪽에 붙이는 자리와 AI가 지도를 보는 창구(`AiDock.tsx`의 `useMindmapAi`·`MindmapAiDock`), 도구가 지도에 하는 일(`map-tools.ts`), 지도 skill과 지시문(`mindmap-skill.ts`), 첨부·검색 skill, 전송과 연결 상태. 문구는 `i18n/ai/<언어>.ts`.
 - 메인 프로세스(`src/main/mindmap-main.ts`): 파일 읽기·쓰기, 뷰마다 허용된 경로, 닫기 전 저장 확인, 이름 바뀜 따라가기, 링크 열기, 단독 실행. 링크 미리보기의 페이지 읽기는 `src/main/link-preview.ts`(`mindmap:read-link-preview`). 내보내기·인쇄 창구는 `src/main/export-main.ts`.

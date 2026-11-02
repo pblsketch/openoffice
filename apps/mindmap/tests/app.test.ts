@@ -1096,7 +1096,13 @@ describe('the line format on the screen', () => {
     expect(container.querySelector('[data-format-section="line"]')).toBeNull()
     await selectOnMap(ONE)
     expect(container.querySelector('[data-format-kind="topics"]')).not.toBeNull()
+    // text first; the switch above shows the line instead
+    expect(container.querySelector('[data-format-section="text"]')).not.toBeNull()
+    expect(container.querySelector('[data-format-section="line"]')).toBeNull()
+    await click('[data-action="format-tab-line"]')
+    expect(container.querySelector('[data-format-section="text"]')).toBeNull()
     expect(container.querySelector('[data-format-section="line"]')).not.toBeNull()
+    expect(localStorage.getItem('mindmapapp.formatTab')).toBe('line')
     await click('[data-action="line-shape-straight"]')
     expect(
       container.querySelector('[data-action="line-shape-straight"]')!.getAttribute('aria-pressed'),
@@ -1105,6 +1111,15 @@ describe('the line format on the screen', () => {
     expect(container.querySelector('[data-action="text-format"]')!.getAttribute('aria-label')).toBe(
       'Format',
     )
+
+    // closed and opened again: the line is still the group shown
+    await click('[data-action="text-format"]')
+    expect(container.querySelector('.mm-format-panel')).toBeNull()
+    await click('[data-action="text-format"]')
+    expect(container.querySelector('[data-format-section="line"]')).not.toBeNull()
+    expect(
+      container.querySelector('[data-action="format-tab-line"]')!.getAttribute('aria-pressed'),
+    ).toBe('true')
   })
 
   it('the theme panel switches the tapered lines and the branch colours: written, not undone', async () => {

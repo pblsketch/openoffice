@@ -145,6 +145,15 @@ describe('the editor dictionaries', () => {
     }
   })
 
+  it('name the two sides of the text | line switch in every language, short and differently', () => {
+    for (const lang of LANGS) {
+      const sides = [strings[lang].formatTextSection, strings[lang].formatLineSection]
+      expect(sides[0], lang).not.toBe(sides[1])
+      // two buttons side by side in a narrow panel
+      for (const side of sides) expect(side.length, `${lang}: ${side}`).toBeLessThanOrEqual(12)
+    }
+  })
+
   it('give the map its own menu in every language, all twelve entries', () => {
     for (const lang of LANGS) {
       const menu = mapStrings(lang).menu

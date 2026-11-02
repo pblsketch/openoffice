@@ -299,6 +299,8 @@ async function main(): Promise<void> {
     await page.locator(topic(ID.a)).click()
     await openFormatPanel(page)
     check((await formatKind(page)) === 'topics', 'the panel shows the topic format for A')
+    // the panel shows text or line, one at a time
+    await page.locator(`${PANEL} [data-action="format-tab-line"]`).click()
     await page.locator(`${LINE} [data-action="line-shape-straight"]`).click()
     await page.waitForTimeout(250)
     await pickFrom(page, `${LINE} .line-width`, '4')
