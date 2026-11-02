@@ -952,6 +952,67 @@ describe('boundaries', () => {
     expect(countPreservedElements(sheet)).toBe(before - 1)
   })
 
+  it('shows and settles only the first of the boundaries that share an id, and leaves the others as they are', async () => {
+    const sheets = linedSheets()
+    const root = sheets[0]!.rootTopic
+    const a = root.children!.attached![0]!
+    const second = {
+      id: 'bd-dup',
+      range: '(1,1)',
+      title: 'Second',
+      style: { id: 'style-dup-2', properties: { 'line-color': '#222222' } },
+    }
+    const third = { id: 'bd-dup', range: '(0,0)', title: 'Third' }
+    // the first in the view's order: the central topic's comes before its branches'
+    ;(root.boundaries as unknown[]).push({ id: 'bd-dup', range: '(0,0)', title: 'First' }, third)
+    a.boundaries = [...(a.boundaries as unknown[]), second]
+    const document = await openSheets(sheets)
+    const view = document.viewSheets()[0]!
+    expect(view.boundaries!.filter((entry) => entry.id === 'bd-dup')).toEqual([
+      { id: 'bd-dup', topicId: 'root', range: { start: 0, end: 0 }, title: 'First', style: {} },
+    ])
+    const untouched = { second: copyOf(second), third: copyOf(third) }
+
+    const result = reconcile(
+      document,
+      (state) => {
+        const target = boundary(state, 'bd-dup')
+        target.title = 'Renamed'
+        target.style = { color: '#123456' }
+        inView(state, 'b').title = 'B again'
+      },
+      { restyledBoundaries: ['bd-dup'] },
+    )
+    expect(result.inSync).toBe(true)
+    const sheet = document.sheets[0]!
+    const dups = (topicId: string) =>
+      boundariesOf(sheet, topicId).filter((entry) => entry.id === 'bd-dup')
+    expect(dups('root')).toEqual([
+      {
+        id: 'bd-dup',
+        range: '(0,0)',
+        title: 'Renamed',
+        style: { id: expect.any(String), properties: { 'line-color': '#123456' } },
+      },
+      untouched.third,
+    ])
+    expect(dups('a')).toEqual([untouched.second])
+
+    // removing it takes the first alone; the next of that id is the one shown then
+    const removed = reconcile(
+      document,
+      (state) => {
+        state.boundaries = state.boundaries!.filter((entry) => entry.id !== 'bd-dup')
+      },
+      { removedBoundaries: ['bd-dup'] },
+    )
+    expect(dups('root')).toEqual([untouched.third])
+    expect(dups('a')).toEqual([untouched.second])
+    expect(removed.view.boundaries!.filter((entry) => entry.id === 'bd-dup')).toEqual([
+      { id: 'bd-dup', topicId: 'root', range: { start: 0, end: 0 }, title: 'Third', style: {} },
+    ])
+  })
+
   it('leaves the boundaries alone for a state that carries none', async () => {
     const document = await opened()
     const result = reconcile(document, (state) => delete state.boundaries)
