@@ -40,6 +40,8 @@ export interface StateTopic {
    * here only so that the state and the view compare equal.
    */
   image: ViewImage | null
+  /** the width given to the topic's box; null when it takes the width of its text */
+  width: number | null
   summaries: StateSummary[]
   children: StateTopic[]
 }
@@ -90,7 +92,7 @@ export function readState(state: unknown): StateSheet {
  */
 function readTopic(topic: unknown, depth: number, seen: Set<string>): StateTopic {
   if (!isRecord(topic)) refuse('a topic of the state is not an object')
-  const { id, title, folded, labels, note, link, image, summaries, children } = topic
+  const { id, title, folded, labels, note, link, image, width, summaries, children } = topic
   if (typeof id !== 'string' || id === '') refuse('a topic of the state has no id')
   if (seen.has(id)) refuse(`topic id ${id} is used more than once in the state`)
   seen.add(id)
@@ -105,6 +107,10 @@ function readTopic(topic: unknown, depth: number, seen: Set<string>): StateTopic
   }
   // a state written before pictures were carried has no key: that is "no picture to set"
   if (image != null && !isViewImage(image)) refuse(`the picture of topic ${id} is not a reference`)
+  // no key and null are the same: the topic takes the width of its text
+  if (width != null && !(typeof width === 'number' && Number.isFinite(width) && width > 0)) {
+    refuse(`the width of topic ${id} is not a positive number`)
+  }
   if (!Array.isArray(summaries)) refuse(`the summaries of topic ${id} are not a list`)
   if (!Array.isArray(children)) refuse(`the children of topic ${id} are not a list`)
   return {
@@ -115,6 +121,7 @@ function readTopic(topic: unknown, depth: number, seen: Set<string>): StateTopic
     note,
     link,
     image: image == null ? null : copyImage(image),
+    width: width == null ? null : (width as number),
     summaries: summaries.map((summary) => readSummary(summary, id)),
     children: children.map((child) => readTopic(child, depth + 1, seen)),
   }

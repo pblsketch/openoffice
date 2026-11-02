@@ -337,14 +337,24 @@ describe('cleaning a copy', () => {
   it('keeps on a topic only the style properties the editor sets', () => {
     const root = document.createElement('me-nodes')
     root.innerHTML =
-      '<me-tpc style="position: fixed; width: 9999px; opacity: 0; border-color: red; ' +
+      '<me-tpc style="position: fixed; width: 240px; max-width: none; opacity: 0; border-color: red; ' +
       'color: #112233; background-color: #445566; font-size: 20px; font-weight: 700; ' +
       'line-height: 28px; box-shadow: none">t</me-tpc>'
     cleanCopy(root)
     const topic = root.querySelector<HTMLElement>('me-tpc')!
     const names = Array.from({ length: topic.style.length }, (_, at) => topic.style.item(at))
     expect(names.sort()).toEqual(
-      ['background-color', 'box-shadow', 'color', 'font-size', 'font-weight', 'line-height'].sort(),
+      [
+        'background-color',
+        'box-shadow',
+        'color',
+        'font-size',
+        'font-weight',
+        'line-height',
+        // the width the user gave the box
+        'width',
+        'max-width',
+      ].sort(),
     )
     expect(topic.style.fontSize).toBe('20px')
     expect(topic.style.lineHeight).toBe('28px')

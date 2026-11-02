@@ -362,20 +362,45 @@ describe('nodes from the clipboard', () => {
       icons: ['<b>x</b>'],
       style: { background: 'url(https://example.com/x)' },
       tags: [{ text: 'forged', className: 'mm-chip mm-chip-link' }],
-      metadata: { labels: ['ok', 5], note: 7, link: 'xmind:#topic', image: { src: 'x' } },
-      children: [{ id: 'y', topic: 42, dangerouslySetInnerHTML: '<b>x</b>' }],
+      metadata: {
+        labels: ['ok', 5],
+        note: 7,
+        link: 'xmind:#topic',
+        image: { src: 'x' },
+        width: '9999px',
+      },
+      children: [
+        { id: 'y', topic: 42, dangerouslySetInnerHTML: '<b>x</b>', metadata: { width: 180 } },
+      ],
     }
     cleanPastedNode(pasted)
     expect(pasted).toEqual({
       id: 'x',
       topic: '<img src=x onerror=alert(1)>',
       tags: ['ok'],
-      metadata: { labels: ['ok'], note: null, link: null, image: null, markers: [], style: {} },
+      metadata: {
+        labels: ['ok'],
+        note: null,
+        link: null,
+        image: null,
+        width: null,
+        markers: [],
+        style: {},
+      },
       children: [
         {
           id: 'y',
           topic: '42',
-          metadata: { labels: [], note: null, link: null, image: null, markers: [], style: {} },
+          // the width of a copied box comes along: it is a number the file can hold
+          metadata: {
+            labels: [],
+            note: null,
+            link: null,
+            image: null,
+            width: 180,
+            markers: [],
+            style: {},
+          },
         },
       ],
     })

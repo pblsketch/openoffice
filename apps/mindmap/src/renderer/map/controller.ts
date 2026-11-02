@@ -39,6 +39,7 @@ import {
 } from '@genoffice/xmind-engine'
 import {
   type Arrow,
+  boxWidth,
   cleanPastedNode,
   directionOfLayout,
   emptyMeta,
@@ -59,8 +60,10 @@ import type { DocumentSession } from '../document/session'
 import { type DecorationStrings, TopicDecorator } from './decorate'
 import { PictureStore } from './images'
 import { libraryTheme, lookOfSheet } from './look'
+import { installMultiSelect } from './multi-select'
 import { escapeMapText } from './text-guard'
 import { isArrowKey, timelineArrowTarget } from './timeline-keys'
+import { installTopicResize } from './topic-resize'
 
 type MenuOption = Exclude<NonNullable<Options['contextMenu']>, boolean>
 /** The library's context menu texts. All twelve are passed in the user's language. */
@@ -122,6 +125,8 @@ export interface TopicInfo {
   link: string | null
   /** the topic shows a picture */
   hasPicture: boolean
+  /** the width the user gave the box; null when it takes the width of its text */
+  width: number | null
   isRoot: boolean
 }
 
@@ -302,6 +307,10 @@ export class MapController {
     container.addEventListener('copy', onCopy, true)
     container.addEventListener('compositionstart', onComposition)
     container.addEventListener('compositionend', onComposition)
+    this.#dispose.push(
+      installMultiSelect({ mind, addChild: () => this.addChild() }),
+      installTopicResize({ mind, setWidth: (id, width) => this.setWidth(id, width) }),
+    )
     this.#dispose.push(() => {
       container.removeEventListener('keydown', onKeyDownFirst, true)
       container.removeEventListener('click', onClick, true)
@@ -370,6 +379,7 @@ export class MapController {
       note: meta.note,
       link: meta.link,
       hasPicture: meta.image !== null,
+      width: meta.width,
       isRoot: !node.parent,
     }
   }
@@ -418,6 +428,18 @@ export class MapController {
     if (address === '') return this.#patchMeta(topicId, { link: null })
     if (!isShownLink(address)) return false
     return this.#patchMeta(topicId, { link: address })
+  }
+
+  /**
+   * Gives a topic's box a width in pixels, or the width of its text again
+   * (null), as one step. False when the box already has that width.
+   */
+  setWidth(topicId: string, width: number | null): boolean {
+    const node = this.#node(topicId)
+    const next = boxWidth(width)
+    if (!node || (width !== null && next === null)) return false
+    if (this.#meta(node).width === next) return false
+    return this.#patchMeta(topicId, { width: next })
   }
 
   /**

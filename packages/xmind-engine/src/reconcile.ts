@@ -45,7 +45,8 @@ export type ReconcileResult =
  * `state` is the sheet's view data as it stands after the user's edit. What
  * is applied: the topics with their order and nesting, and per topic the
  * title, folding, labels, note and link; a picture put in from an archive
- * entry, or taken off (`removedPictures`); summaries; relationships; the
+ * entry, or taken off (`removedPictures`); the width given to a topic's box;
+ * summaries; relationships; the
  * layout. What is never written from a state: markers and styles, which the
  * editor shows without editing, and the sheet's own title and place, which
  * `renameSheet` and its neighbours change.
@@ -116,6 +117,7 @@ function shownBy(sheet: ViewSheet, ids?: ReconcileIds): string {
     isRecord(shown.image)
       ? [shown.image.src, shown.image.entryName, shown.image.width, shown.image.height]
       : null,
+    typeof shown.width === 'number' ? shown.width : null,
     Array.isArray(shown.markers) ? shown.markers : [],
     styleValues(isRecord(shown.style) ? shown.style : {}),
     sorted(

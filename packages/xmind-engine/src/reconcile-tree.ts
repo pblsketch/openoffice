@@ -46,7 +46,7 @@ import {
   shownParts,
 } from './tree-walk'
 import { isRecord, type XmindSheet, type XmindTopic } from './types'
-import { formatRange, isShownLink } from './view'
+import { formatRange, isShownLink, topicWidth } from './view'
 
 /**
  * The ids reconciling wrote in place of ids the state gave, by the id given.
@@ -206,6 +206,16 @@ function writeValues(topic: XmindTopic, want: StateTopic, run: Run): void {
     else topic.href = want.link
   }
   writeImage(topic, want, run)
+  // A width the file holds in a form that is not drawn shows as none, so it stays
+  // until the user gives the box a width.
+  const width = topicWidth(topic.customWidth)
+  if (width !== want.width) {
+    if (want.width === null) {
+      if (width !== null) delete topic.customWidth
+    } else {
+      topic.customWidth = want.width
+    }
+  }
 }
 
 /**
