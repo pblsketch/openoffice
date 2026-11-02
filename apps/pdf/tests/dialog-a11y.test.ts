@@ -98,7 +98,13 @@ describe('SignatureDialog a11y', () => {
     root = createRoot(container)
     await act(async () => {
       root!.render(
-        createElement(SignatureDialog, { t, color: [0, 0, 0], onCancel, onConfirm: () => {} }),
+        createElement(SignatureDialog, {
+          t,
+          color: [0, 0, 0],
+          onColorChange: () => {},
+          onCancel,
+          onConfirm: () => {},
+        }),
       )
       await Promise.resolve()
     })
