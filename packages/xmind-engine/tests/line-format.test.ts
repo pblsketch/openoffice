@@ -487,26 +487,6 @@ describe('the line format of a topic', () => {
     expect(inSource(sheet, 'only-line')).not.toHaveProperty('style')
   })
 
-  it('takes out a line value the file holds as a number when the state clears it', async () => {
-    const sheets = linedSheets()
-    const b = sheets[0]!.rootTopic.children!.attached![1]!
-    b.style = { id: 'style-b', properties: { 'line-width': 2, 'line-color': '#00ff00' } }
-    const document = await openSheets(sheets)
-    // the view carries no number: the width is not shown
-    expect(inView(document.viewSheets()[0]!, 'b').line).toEqual({ color: '#00ff00' })
-    // a topic that is not listed keeps it
-    reconcile(document, (state) => delete inView(state, 'b').line)
-    expect(properties(inSource(document.sheets[0]!, 'b'))).toEqual({
-      'line-width': 2,
-      'line-color': '#00ff00',
-    })
-    const result = reconcile(document, (state) => delete inView(state, 'b').line, {
-      restyledTopicLines: ['b'],
-    })
-    expect(result.inSync).toBe(true)
-    expect(inSource(document.sheets[0]!, 'b')).not.toHaveProperty('style')
-  })
-
   it('keeps the file values of a topic that is not listed, whatever the state shows', async () => {
     const document = await opened()
     const result = reconcile(document, (state) => {

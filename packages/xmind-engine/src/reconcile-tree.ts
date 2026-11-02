@@ -371,8 +371,7 @@ function styleChanges<K extends string>(
  * changed there (or every one, for something the state adds). Per property: a
  * value equal to the file's is left as it is, even one the engine would not
  * write itself (the user changed another key); a missing value takes the key
- * out, whatever the file holds there (a number too, which the view does not
- * show); any other value is written only when it has a shape the engine writes,
+ * out; any other value is written only when it has a shape the engine writes,
  * and otherwise the file keeps its own, and the screen is drawn again from it.
  * Every other property of the style stays, and so does its id. A style that
  * held nothing but the values taken out goes with them; one with more of its
@@ -384,12 +383,10 @@ function writeStyle(holder: JsonRecord, changes: readonly StyleChange[]): void {
   const properties = style && isRecord(style.properties) ? style.properties : null
   const next: JsonRecord = { ...(properties ?? {}) }
   for (const { property, wanted, writable } of changes) {
-    if (wanted === undefined) {
-      delete next[property]
-      continue
-    }
-    if (wanted === next[property]) continue
-    if (writable(wanted)) next[property] = wanted
+    const current = typeof next[property] === 'string' ? next[property] : undefined
+    if (wanted === current) continue
+    if (wanted === undefined) delete next[property]
+    else if (writable(wanted)) next[property] = wanted
   }
   if (sameRecord(next, properties ?? {})) return
   if (Object.keys(next).length === 0) {
