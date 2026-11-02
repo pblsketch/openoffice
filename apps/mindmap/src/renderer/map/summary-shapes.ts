@@ -11,7 +11,8 @@
  * library put it.
  *
  * `bracket` is the library's own path; a summary without a shape, or with one
- * this app does not know, keeps it.
+ * this app does not know, keeps it. Every shape reaches as far as the
+ * library's stem (10 past the spine), so the title stands as far from each.
  */
 import type { ViewSummaryStyle } from '@genoffice/xmind-engine'
 import { safeSummaryShape, type SummaryShape } from './style-values'
@@ -119,6 +120,7 @@ export function summaryBracketPath(shape: SummaryShape, frame: SummaryFrame): st
     case 'fold':
       return `M ${at(a, -d)} L ${at(m, 0)} L ${at(b, -d)} M ${at(m, 0)} L ${at(m, d)}`
     case 'straight':
-      return `M ${at(a, 0)} L ${at(b, 0)}`
+      // with the stem every other shape reaches the title by, so it stands as near it
+      return `M ${at(a, 0)} L ${at(b, 0)} M ${at(m, 0)} L ${at(m, d)}`
   }
 }

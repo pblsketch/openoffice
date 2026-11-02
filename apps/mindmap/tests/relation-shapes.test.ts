@@ -20,8 +20,10 @@ import {
   borderPoint,
   curveToDeltas,
   deltasToCurve,
+  endsGap,
   fitDashes,
   labelAlong,
+  labelSpot,
   markerReach,
   markerSize,
   pathLength,
@@ -48,8 +50,9 @@ import {
   boundaryPaint,
   boundaryPath,
   boundaryPieces,
+  boundaryReach,
   boundaryTitlePlace,
-  outlineEdges,
+  TITLE_INSET,
 } from '../src/renderer/map/boundary-shapes'
 import type { BoundaryShape } from '../src/renderer/map/style-values'
 
@@ -442,6 +445,78 @@ describe('the line between the ends', () => {
   })
 })
 
+describe('a short relationship', () => {
+  const vertical = (length: number) => ({
+    kind: 'polyline' as const,
+    points: [
+      { x: 0, y: 0 },
+      { x: 0, y: length },
+    ],
+  })
+
+  it('a zigzag with no room for two clean turns is drawn straight', () => {
+    const between = (gap: number, width: number) =>
+      relationshipGeometry(
+        'zigzag',
+        {
+          from: { cx: 0, cy: 0, w: 40, h: 20 },
+          to: { cx: 0, cy: 20 + gap, w: 40, h: 20 },
+          c1: { x: 0, y: 0 },
+          c2: { x: 0, y: 0 },
+        },
+        width,
+      )
+    for (const width of [1, 3, 6]) {
+      const short = between(30, width)
+      expect(short.path.kind === 'polyline' && short.path.points, String(width)).toHaveLength(2)
+      const long = between(400, width)
+      const points = long.path.kind === 'polyline' ? long.path.points : []
+      // the straight ends, and at least two turns between them
+      expect(points.length - 4, String(width)).toBeGreaterThanOrEqual(2)
+    }
+  })
+
+  it('the two ends never meet: on a short line they are drawn smaller, a little line between them', () => {
+    for (const width of [1, 3, 6]) {
+      for (const length of [12, 20, 30, 45]) {
+        const paint = relationshipPaint({
+          begin: arrow('spearhead'),
+          end: arrow('triangle'),
+          width: `${width}pt`,
+          shape: rel('straight'),
+        })
+        const drawing = relationshipDrawing(paint, vertical(length))
+        const reach = (marker: typeof drawing.begin, kind: 'spearhead' | 'triangle') => {
+          if (!marker) return 0
+          const ys = numbers(marker.d).filter((_, at) => at % 2 === 1)
+          return kind === 'spearhead' ? Math.max(...ys) : length - Math.min(...ys)
+        }
+        const used = reach(drawing.begin, 'spearhead') + reach(drawing.end, 'triangle')
+        expect(used, `${width} ${length}`).toBeLessThanOrEqual(length - endsGap(width) + 0.01)
+      }
+    }
+    // a line long enough keeps its ends at their size
+    const paint = relationshipPaint({ end: arrow('triangle'), width: '3pt' })
+    const long = relationshipDrawing(paint, vertical(200))
+    const full = arrowMarker('triangle', { x: 0, y: 200 }, { x: 0, y: 0 }, 3)!
+    expect(long.end!.d).toBe(full.d)
+  })
+
+  it('each end has room its title keeps clear of, drawn or not', () => {
+    const paint = relationshipPaint({ begin: arrow('dot'), end: arrow('none'), width: '3pt' })
+    const drawing = relationshipDrawing(paint, vertical(200))
+    expect(drawing.endBoxes).toHaveLength(2)
+    const [begin, end] = drawing.endBoxes
+    // around the dot at the start, as long as it reaches
+    expect(begin!.y).toBeLessThan(0)
+    expect(begin!.y + begin!.h).toBeGreaterThanOrEqual(markerReach('dot', 3))
+    // a small room at an end without a drawing
+    expect(end!.y).toBeLessThan(200)
+    expect(end!.y + end!.h).toBeGreaterThan(200)
+    expect(end!.h).toBeLessThan(10)
+  })
+})
+
 describe('where a relationship’s title goes', () => {
   const line = {
     kind: 'polyline' as const,
@@ -465,9 +540,54 @@ describe('where a relationship’s title goes', () => {
     expect(at.x).toBeGreaterThan(topic.x - size.w / 2 - 3 - 3)
   })
 
-  it('in the middle when there is no such place', () => {
-    const everywhere = { x: -10, y: -10, w: 320, h: 20 }
+  it('in the middle when nothing is free anywhere', () => {
+    const everywhere = { x: -1000, y: -1000, w: 3000, h: 3000 }
     expect(labelAlong(line, size, [everywhere])).toEqual({ x: 150, y: 0 })
+    expect(labelSpot(line, size, [everywhere]).moved).toBe(false)
+  })
+
+  it('never on an end of its line: along it, or beside its middle when the line is short', () => {
+    const ends = [
+      { x: -2, y: -8, w: 20, h: 16 },
+      { x: 282, y: -8, w: 20, h: 16 },
+    ]
+    // a long line: the middle is free of the ends
+    expect(labelSpot(line, size, [], ends)).toEqual({ at: { x: 150, y: 0 }, moved: false })
+    // a line shorter than its title: beside the middle, clear of both ends and of the line
+    const short = {
+      kind: 'polyline' as const,
+      points: [
+        { x: 0, y: 0 },
+        { x: 0, y: 40 },
+      ],
+    }
+    const shortEnds = [
+      { x: -8, y: -2, w: 16, h: 18 },
+      { x: -8, y: 24, w: 16, h: 18 },
+    ]
+    const spot = labelSpot(short, size, [], shortEnds)
+    expect(spot.moved).toBe(true)
+    const box = { x: spot.at.x - size.w / 2, y: spot.at.y - size.h / 2, ...size }
+    for (const end of shortEnds) {
+      expect(box.x >= end.x + end.w || box.x + box.w <= end.x).toBe(true)
+    }
+    expect(spot.at.y).toBeCloseTo(20)
+  })
+
+  it('a title on a topic in the middle of a curve moves along the curve', () => {
+    const curve = {
+      kind: 'cubic' as const,
+      p1: { x: 0, y: 0 },
+      c1: { x: 100, y: 0 },
+      c2: { x: 200, y: 0 },
+      p2: { x: 300, y: 0 },
+    }
+    const topic = { x: 120, y: -20, w: 60, h: 40 }
+    const spot = labelSpot(curve, size, [topic])
+    expect(spot.moved).toBe(true)
+    expect(spot.at.x + size.w / 2 <= topic.x || spot.at.x - size.w / 2 >= topic.x + topic.w).toBe(
+      true,
+    )
   })
 })
 
@@ -554,6 +674,14 @@ describe('the bracket of a summary', () => {
       expect(Math.max(...ys), shape).toBeLessThanOrEqual(120)
     }
     expect(paths.size).toBe(SUMMARY_SHAPES.length)
+  })
+
+  it('every shape reaches as far towards the title as the library’s stem, so the title stands as near each', () => {
+    const frame = parseSummaryFrame(right)!
+    for (const shape of SUMMARY_SHAPES) {
+      const xs = numbers(summaryBracketPath(shape, frame)).filter((_, at) => at % 2 === 0)
+      expect(Math.max(...xs), shape).toBe(310)
+    }
   })
 
   it('the bracket keeps to its side: to the left and downward it is mirrored', () => {
@@ -662,6 +790,42 @@ describe('where the outlines of a map go', () => {
     expect(100 - titled!.y).toBeGreaterThanOrEqual(BOUNDARY_TITLE_HEIGHT / 2 + 2)
   })
 
+  it('one with a title is at least as wide as the title, growing away from the parent', () => {
+    const narrow = { content: { x: 100, y: 100, w: 30, h: 20 }, shape: 'tension' as const }
+    const [base] = boundaryOutlines([{ ...narrow, withTitle: true }])
+    const [right] = boundaryOutlines([{ ...narrow, withTitle: true, titleWidth: 140 }])
+    expect(right!.w).toBeGreaterThanOrEqual(140 + 2 * TITLE_INSET)
+    expect(right!.x).toBeCloseTo(base!.x)
+    const [left] = boundaryOutlines([{ ...narrow, withTitle: true, titleWidth: 140, grow: 'left' }])
+    expect(left!.w).toBeCloseTo(right!.w)
+    expect(left!.x + left!.w).toBeCloseTo(base!.x + base!.w)
+    // without a title it keeps to its boxes
+    const [untitled] = boundaryOutlines([{ ...narrow, withTitle: false, titleWidth: 140 }])
+    expect(untitled!.w).toBeLessThan(140)
+  })
+
+  it('how far a drawing reaches past its boxes: pads, bulges, the title above it and its width', () => {
+    const content = { x: 100, y: 100, w: 200, h: 60 }
+    const plainRect = boundaryReach({ content, shape: 'rect', withTitle: false })
+    expect(plainRect).toEqual({
+      top: BOUNDARY_PAD,
+      bottom: BOUNDARY_PAD,
+      left: BOUNDARY_PAD,
+      right: BOUNDARY_PAD,
+    })
+    const titled = boundaryReach({ content, shape: 'rect', withTitle: true })
+    const [outline] = boundaryOutlines([{ content, shape: 'rect', withTitle: true }])
+    // the chip sits on the top edge: half of it above
+    expect(titled.top).toBeCloseTo(100 - outline!.y + BOUNDARY_TITLE_HEIGHT / 2)
+    const waves = boundaryReach({ content, shape: 'waves', withTitle: false })
+    const [wavy] = boundaryOutlines([{ content, shape: 'waves', withTitle: false }])
+    const drawn = boundaryExtent('waves', wavy!)
+    expect(waves.bottom).toBeCloseTo(drawn.y + drawn.h - 160)
+    expect(waves.left).toBeCloseTo(100 - drawn.x)
+    const wide = boundaryReach({ content, shape: 'rect', withTitle: true, titleWidth: 400 })
+    expect(wide.right + wide.left + 200).toBeCloseTo(400 + 2 * TITLE_INSET)
+  })
+
   it('stops short of a topic just outside its boxes', () => {
     const parent = { x: 80, y: 60, w: 120, h: 36 }
     const below = { x: 100, y: 168, w: 80, h: 20 }
@@ -718,29 +882,11 @@ describe('where a boundary title goes', () => {
   const chip = { w: 50, h: BOUNDARY_TITLE_HEIGHT }
 
   it('on the top edge near its left end, as a legend on a frame', () => {
-    expect(boundaryTitlePlace(outline, chip, [])).toEqual({ x: 112, y: 100 - chip.h / 2 })
+    expect(boundaryTitlePlace(outline, chip)).toEqual({ x: 112, y: 100 - chip.h / 2 })
   })
 
-  it('elsewhere on the outline, or beside it, where it covers no topic', () => {
-    const parent = { x: 60, y: 70, w: 300, h: 35 }
-    const place = boundaryTitlePlace(outline, chip, [parent])
-    const box = { ...place, ...chip }
-    expect(box.y >= parent.y + parent.h || box.y + box.h <= parent.y).toBe(true)
-    // the bottom edge, when that is free
-    expect(place.y).toBe(200 - chip.h / 2)
-  })
-
-  it('where it covers least when nothing is free', () => {
-    const everywhere = { x: -1000, y: -1000, w: 3000, h: 3000 }
-    const nearly = { x: 0, y: 0, w: 1000, h: 1000 }
-    expect(boundaryTitlePlace(outline, chip, [everywhere])).toEqual({ x: 112, y: 91 })
-    const place = boundaryTitlePlace(outline, chip, [nearly, { x: 100, y: 80, w: 400, h: 40 }])
-    expect(place).not.toEqual({ x: 112, y: 91 })
-  })
-
-  it('the lines of an outline, as thin boxes', () => {
-    const edges = outlineEdges(outline)
-    expect(edges).toHaveLength(4)
-    expect(edges[0]).toEqual({ x: 100, y: 99, w: 200, h: 2 })
+  it('on an outline hardly wider than it, in the middle of the top edge', () => {
+    const tight = { ...outline, w: 60 }
+    expect(boundaryTitlePlace(tight, chip)).toEqual({ x: 105, y: 91 })
   })
 })

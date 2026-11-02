@@ -80,6 +80,7 @@ import {
 } from '../document/convert'
 import type { DocumentSession } from '../document/session'
 import { type BoundaryRefusal, boundaryPlaceFor } from './boundary-edit'
+import { BoundaryRoom } from './boundary-room'
 import { oneLineTitle, openBoundaryTitleBox } from './boundary-title'
 import { type DecorationStrings, TopicDecorator } from './decorate'
 import {
@@ -419,13 +420,16 @@ export class MapController {
       onResize: this.#relink,
     })
     this.#relations = new RelationDrawer(mind)
+    const room = new BoundaryRoom(mind)
     // The library draws the lines from what it measures. The editor's own
-    // drawing goes in right before that, so it is measured too; the branch
-    // colours of the lines follow right after.
+    // drawing goes in right before that, so it is measured too, and so does
+    // the room the boundaries take (when that room changed, every branch is
+    // measured again, not only the one asked for); the branch colours of the
+    // lines follow right after.
     const libraryLinkDiv = mind.linkDiv.bind(mind)
     mind.linkDiv = (mainNode) => {
       this.#decorator.before()
-      libraryLinkDiv(mainNode)
+      libraryLinkDiv(room.make() ? undefined : mainNode)
       this.#decorator.after(mainNode)
       this.#relations.drawAll()
       this.#markBoundary()

@@ -12,12 +12,16 @@
  * - `boundaryOutlines`: where all the outlines of a map go, together. Each
  *   stands `BOUNDARY_PAD` from its boxes; one that goes around another stands
  *   a little outside it (and further above one with a title), and two side by
- *   side give way to each other so a gap stays between them.
+ *   side give way to each other so a gap stays between them. One with a title
+ *   is at least as wide as its title.
+ * - `boundaryReach`: how far the drawing of one outline, with its title,
+ *   reaches past its boxes on each side: the room the map makes for it
+ *   (`boundary-room.ts`), so the outlines and titles of a map keep clear of
+ *   the topics and of each other.
  * - `boundaryPath`: the outline of each shape around a box. The shapes are
  *   drawn by this app; another program's shape is drawn rounded.
  * - `boundaryTitlePlace`: where a title's chip goes: on the outline's top
- *   edge, or the first other place near the outline where it covers no topic
- *   and no other outline or title.
+ *   edge, near its left end, as a legend sits on a frame.
  */
 import type { ViewBoundaryStyle } from '@genoffice/xmind-engine'
 import {
@@ -164,15 +168,81 @@ export interface OutlineRequest {
   content: Rect
   shape: BoundaryShape
   withTitle: boolean
+  /** how wide the chip of its title is; the outline is made at least that wide, and a little more */
+  titleWidth?: number
+  /** the side an outline narrower than its title grows to: away from the parent (right unless given) */
+  grow?: 'left' | 'right'
+}
+
+/** How far each side of an outline stands from the boxes it goes around. */
+export interface Pads {
+  top: number
+  bottom: number
+  left: number
+  right: number
+}
+
+/**
+ * How far each side of an outline stands from its boxes, before anything
+ * around it is taken into account: `BOUNDARY_PAD`, more where its sides are
+ * drawn inward (tension, waves) and less at the sides of a six-sided one,
+ * whose points stand out there, so each looks as far off all round. One with
+ * a title has room under its top edge for the lower half of the title
+ * written on it, and a little air between that and the topic below.
+ */
+export function outlinePads(content: Rect, shape: BoundaryShape, withTitle: boolean): Pads {
+  // a side drawn inward comes that much nearer the boxes
+  const inward =
+    shape === 'tension'
+      ? tensionDepth(content.w + 2 * BOUNDARY_PAD, content.h + 2 * BOUNDARY_PAD)
+      : shape === 'waves'
+        ? WAVE_BULGE / 2
+        : 0
+  const pad = BOUNDARY_PAD + inward
+  const side =
+    shape === 'polygon' || shape === 'roundedPolygon'
+      ? Math.max(4, pad - polygonCut(content.h + 2 * pad) / 2)
+      : pad
+  const top = withTitle ? Math.max(pad, BOUNDARY_TITLE_HEIGHT / 2 + TITLE_AIR) : pad
+  return { top, bottom: pad, left: side, right: side }
+}
+
+/** How much wider than its pads make it an outline is drawn, so that its title fits on its top edge. */
+function titleWidening(request: OutlineRequest, rectWidth: number): number {
+  if (!request.withTitle || !(request.titleWidth !== undefined && request.titleWidth > 0)) return 0
+  return Math.max(0, request.titleWidth + 2 * TITLE_INSET - rectWidth)
+}
+
+/**
+ * How far the drawing of one outline reaches past its boxes on each side, on
+ * its own: its pads, the bulges and points of its shape, the upper half of
+ * its title's chip, and the widening for a title wider than its boxes (on
+ * the side it grows to).
+ */
+export function boundaryReach(request: OutlineRequest): Pads {
+  const { content, shape, withTitle } = request
+  const pads = outlinePads(content, shape, withTitle)
+  const rect = {
+    x: content.x - pads.left,
+    y: content.y - pads.top,
+    w: content.w + pads.left + pads.right,
+    h: content.h + pads.top + pads.bottom,
+  }
+  const bulge = bulgeOf(shape, rect)
+  const wider = titleWidening(request, rect.w)
+  return {
+    top: pads.top + Math.max(bulge.y, withTitle ? BOUNDARY_TITLE_HEIGHT / 2 : 0),
+    bottom: pads.bottom + bulge.y,
+    left: pads.left + bulge.x + (request.grow === 'left' ? wider : 0),
+    right: pads.right + bulge.x + (request.grow === 'left' ? 0 : wider),
+  }
 }
 
 /**
  * The box of each outline of a map, in the order given, all placed together:
  *
- * - each stands `BOUNDARY_PAD` from its boxes, more where its sides are drawn
- *   inward (tension, waves) and less at the sides of a six-sided one, whose
- *   points stand out there, so each looks as far off all round; one with a
- *   title has room under its top edge for the title written on it;
+ * - each stands off its boxes as `outlinePads` says, and is at least as wide
+ *   as its title and a little more (growing to the side given);
  * - it stops short of a topic just outside its boxes (`topics`), such as the
  *   parent right above the branches of a tree, or the next branch below;
  * - one whose boxes take in another's stands `BOUNDARY_NEST_GAP` outside that
@@ -181,6 +251,9 @@ export interface OutlineRequest {
  * - two side by side (neither inside the other) give way on the sides that
  *   face each other, so `BOUNDARY_SIDE_GAP` stays between them, as far as
  *   their boxes and what is inside them allow.
+ *
+ * The map makes room for each outline (`boundary-room.ts`), so the last two
+ * rarely have anything to do.
  */
 export function boundaryOutlines(
   requests: readonly OutlineRequest[],
@@ -192,27 +265,15 @@ export function boundaryOutlines(
     // of two around the same boxes, the later goes outside
     (!contains(requests[i]!.content, requests[j]!.content) || i < j)
 
-  const rects = requests.map(({ content, shape, withTitle }) => {
-    // a side drawn inward comes that much nearer the boxes
-    const inward =
-      shape === 'tension'
-        ? tensionDepth(content.w + 2 * BOUNDARY_PAD, content.h + 2 * BOUNDARY_PAD)
-        : shape === 'waves'
-          ? WAVE_BULGE / 2
-          : 0
-    const pad = BOUNDARY_PAD + inward
-    const side =
-      shape === 'polygon' || shape === 'roundedPolygon'
-        ? Math.max(4, pad - polygonCut(content.h + 2 * pad) / 2)
-        : pad
-    // room under the top edge for the lower half of a title written on it
-    const top = withTitle ? Math.max(pad, BOUNDARY_TITLE_HEIGHT / 2 + 3) : pad
-    const pads = { top, bottom: pad, left: side, right: side }
+  const rects = requests.map((request) => {
+    const { content, shape, withTitle } = request
+    const pads = outlinePads(content, shape, withTitle)
+    const pad = pads.bottom
     // the bulges and points of the drawing stand out of its box: they too stop short of a topic
     const bulge = bulgeOf(shape, {
-      x: content.x - side,
+      x: content.x - pads.left,
       y: content.y - pad,
-      w: content.w + 2 * side,
+      w: content.w + pads.left + pads.right,
       h: content.h + 2 * pad,
     })
     // a topic just outside the boxes (the parent above a tree's branch, the next branch below) stays outside
@@ -233,24 +294,36 @@ export function boundaryOutlines(
         pads.right = Math.min(pads.right, room(box.x - (content.x + content.w), bulge.x))
       }
     }
-    return {
+    const rect = {
       x: content.x - pads.left,
       y: content.y - pads.top,
       w: content.w + pads.left + pads.right,
       h: content.h + pads.top + pads.bottom,
     }
+    // as wide as its title, and a little more
+    const wider = titleWidening(request, rect.w)
+    if (request.grow === 'left') rect.x -= wider
+    rect.w += wider
+    return rect
   })
 
   // around another: outside its drawing, the smaller ones first so each grows around what is inside it
   const area = (at: number): number => requests[at]!.content.w * requests[at]!.content.h
   const order = requests.map((_, at) => at).sort((a, b) => area(a) - area(b) || a - b)
   // how far in each side may come: its boxes, and the drawings of the outlines inside it
-  const floors = requests.map(({ content }) => ({
-    left: content.x - 1,
-    top: content.y - 1,
-    right: content.x + content.w + 1,
-    bottom: content.y + content.h + 1,
-  }))
+  const floors = requests.map(({ content, withTitle }, at) => {
+    // one widened for its title does not give that width back
+    const rect = rects[at]!
+    const titled = withTitle && rect.w > content.w + 2 * BOUNDARY_PAD + 0.5
+    return {
+      left: titled ? Math.min(content.x, rect.x + 2) - 1 : content.x - 1,
+      top: content.y - 1,
+      right: titled
+        ? Math.max(content.x + content.w, rect.x + rect.w - 2) + 1
+        : content.x + content.w + 1,
+      bottom: content.y + content.h + 1,
+    }
+  })
   for (const i of order) {
     for (let j = 0; j < requests.length; j++) {
       if (!inside(i, j)) continue
@@ -318,77 +391,24 @@ export function boundaryOutlines(
   return rects
 }
 
-function overlaps(a: Rect, b: Rect, margin: number): boolean {
-  return (
-    a.x < b.x + b.w + margin &&
-    b.x < a.x + a.w + margin &&
-    a.y < b.y + b.h + margin &&
-    b.y < a.y + a.h + margin
-  )
-}
-
 /**
  * Where the chip of a boundary's title goes (its top left corner): on the
- * outline's top edge near its left end, as a legend sits on a frame; when
- * that covers something, the first of the top edge's right end, the bottom
- * edge's two ends and the places beside the outline that covers nothing.
- * `obstacles` are what a title must not cover: the topics, the other titles,
- * the lines of the other outlines. Where it covers least when nothing is free.
+ * outline's top edge near its left end, as a legend sits on a frame. The map
+ * makes room above each outline for it (`boundary-room.ts`), and an outline
+ * is at least as wide as its title (`boundaryOutlines`).
  */
 export function boundaryTitlePlace(
   outline: Rect,
   chip: { w: number; h: number },
-  obstacles: readonly Rect[],
 ): { x: number; y: number } {
-  const { x, y, w, h } = outline
-  const inset = Math.max(0, Math.min(TITLE_INSET, (w - chip.w) / 2))
-  const left = x + inset
-  const right = x + w - inset - chip.w
-  const gap = 4
-  const candidates = [
-    { x: left, y: y - chip.h / 2 },
-    { x: right, y: y - chip.h / 2 },
-    { x: left, y: y + h - chip.h / 2 },
-    { x: right, y: y + h - chip.h / 2 },
-    { x: x + w + gap, y },
-    { x: x + w + gap, y: y + h / 2 - chip.h / 2 },
-    { x: x - gap - chip.w, y },
-    { x: x - gap - chip.w, y: y + h / 2 - chip.h / 2 },
-  ]
-  // the first place that covers nothing; when there is none, the one that covers least
-  let best = candidates[0]!
-  let least = Infinity
-  for (const at of candidates) {
-    const box = { ...at, w: chip.w, h: chip.h }
-    let covered = 0
-    for (const other of obstacles) {
-      if (!overlaps(box, other, 2)) continue
-      const w = Math.min(box.x + box.w, other.x + other.w + 2) - Math.max(box.x, other.x - 2)
-      const h = Math.min(box.y + box.h, other.y + other.h + 2) - Math.max(box.y, other.y - 2)
-      covered += Math.max(0, w) * Math.max(0, h)
-    }
-    if (covered === 0) return at
-    if (covered < least) {
-      least = covered
-      best = at
-    }
-  }
-  return best
+  const inset = Math.max(0, Math.min(TITLE_INSET, (outline.w - chip.w) / 2))
+  return { x: outline.x + inset, y: outline.y - chip.h / 2 }
 }
 
 /** How far in from an outline's end its title starts. */
-const TITLE_INSET = 12
-
-/** The lines of an outline's box, as thin boxes: what another boundary's title must not lie on. */
-export function outlineEdges(rect: Rect): Rect[] {
-  const t = 1
-  return [
-    { x: rect.x, y: rect.y - t, w: rect.w, h: 2 * t },
-    { x: rect.x, y: rect.y + rect.h - t, w: rect.w, h: 2 * t },
-    { x: rect.x - t, y: rect.y, w: 2 * t, h: rect.h },
-    { x: rect.x + rect.w - t, y: rect.y, w: 2 * t, h: rect.h },
-  ]
-}
+export const TITLE_INSET = 12
+/** The air between the chip of a title and the topic under it. */
+const TITLE_AIR = 6
 
 function n(value: number): string {
   return String(Math.round(value * 100) / 100)

@@ -8,16 +8,19 @@
  * Relationships. The library draws each one as a group: its line, the
  * library's own arrowhead at the end and, for a line in two directions, at
  * the start. A relationship without values is left exactly as the library
- * drew it (`map.css` gives it the map's colour, 1.5 wide, dashed). One with
- * values gets:
+ * drew it (`map.css` gives it the map's colour, 1.5 wide, dashed), except
+ * that its title, where the library put it on a topic or on an end of the
+ * line, is moved the same way as below (`data-mm-moved`). One with values
+ * gets:
  *
  * - its colour, width and dashes on the line (the same values are the
  *   library's line options, so the library keeps them while a curve is
  *   dragged), and a `data-mm-color` / `data-mm-width` / `data-mm-pattern`
  *   mark on the group so the map's rules leave those to it;
- * - a path of its own for a shape that is not curved, and the title moved to
- *   the middle of it, or along it to the nearest place where it covers no
- *   topic;
+ * - a path of its own for a shape that is not curved;
+ * - its title in the middle of the line, or along it to the nearest place
+ *   where it covers no topic and neither end (`labelSpot`), beside the line
+ *   when there is none;
  * - the two ends drawn by this app (`mm-rel-end`), the line stopping under
  *   each and its dashes fitted to meet them (`relationshipDrawing`); a colour
  *   the map shows through goes on the whole group as its `opacity`. The
@@ -40,10 +43,11 @@
  * drawn once per side, its title on the first. A `master` boundary on the
  * central topic goes around the whole map. All the outlines of a map are
  * placed together (`boundaryOutlines`), so one around another stands outside
- * it and two side by side keep apart. Each outline is a group marked with
- * the boundary's id (`data-mm-boundary`), and so is its title, which is
- * written on a chip of the map's ground where it covers nothing
- * (`boundaryTitlePlace`). Under the outline lies a rim of no colour of its
+ * it and two side by side keep apart; the map has made room for each
+ * (`boundary-room.ts`). Each outline is a group marked with the boundary's
+ * id (`data-mm-boundary`), and so is its title, which is written on a chip
+ * of the map's ground on the outline's top edge (`boundaryTitlePlace`); an
+ * outline is at least as wide as its title. Under the outline lies a rim of no colour of its
  * own, which `styles.css` paints while the boundary is selected. The title
  * is text (`textContent`), never markup. A map without boundaries has no
  * layer at all.
@@ -61,13 +65,12 @@ import {
   boundaryPath,
   boundaryPieces,
   boundaryTitlePlace,
-  outlineEdges,
   type Rect,
 } from './boundary-shapes'
 import { linePatternDash } from './branches'
 import {
   type Box,
-  labelAlong,
+  labelSpot,
   relationshipArrowStyle,
   relationshipDrawing,
   relationshipGeometry,
@@ -129,6 +132,8 @@ interface Measured {
 
 /** On a relationship's title once this editor has placed it, so it goes back where the library puts it when the values go. */
 const LABEL_MARK = 'data-mm-placed'
+/** On the title of a relationship without values that this editor moved off a topic or an end. */
+const LABEL_MOVED = 'data-mm-moved'
 
 export class RelationDrawer {
   readonly #mind: MindElixirInstance
@@ -154,7 +159,7 @@ export class RelationDrawer {
   // ---- relationships ----
 
   drawRelationships(): void {
-    // measured once, and only when a relationship of a shape other than the curve needs it
+    // measured once, and only when a relationship needs it (a shape other than the curve, or a title)
     let measured: Measured | null = null
     const measure = (): Measured => {
       if (measured) return measured
@@ -221,14 +226,25 @@ export class RelationDrawer {
         head.removeAttribute('visibility')
         hitOf(head)?.removeAttribute('visibility')
       }
-      if (label?.hasAttribute(LABEL_MARK)) {
-        label.removeAttribute(LABEL_MARK)
-        const middle = relationshipGeometry('curved', {
-          from: { cx: drawn.p1.x, cy: drawn.p1.y, w: 0, h: 0 },
-          to: { cx: drawn.p2.x, cy: drawn.p2.y, w: 0, h: 0 },
-          c1: drawn.c1,
-          c2: drawn.c2,
-        }).label
+      if (!label) return
+      const placedBefore = label.hasAttribute(LABEL_MARK)
+      label.removeAttribute(LABEL_MARK)
+      // where the library puts it, unless that lies on a topic or on an end of the line
+      const path: RelationshipPath = { kind: 'cubic', ...drawn }
+      const spot = titledLabel(label)
+        ? labelSpot(
+            path,
+            labelSize(label),
+            measure().boxes,
+            relationshipDrawing(paint, path).endBoxes,
+          )
+        : null
+      if (spot?.moved) {
+        label.setAttribute(LABEL_MOVED, '')
+        placeLabel(label, spot.at.x, spot.at.y)
+      } else if (label.hasAttribute(LABEL_MOVED) || placedBefore) {
+        label.removeAttribute(LABEL_MOVED)
+        const middle = libraryMiddle(drawn)
         placeLabel(label, middle.x, middle.y)
       }
       return
@@ -247,8 +263,9 @@ export class RelationDrawer {
     label?.setAttribute(LABEL_MARK, '')
 
     let path: RelationshipPath = { kind: 'cubic', ...drawn }
+    let middle = libraryMiddle(drawn)
     if (paint.shape !== 'curved') {
-      const { frame, topics, boxes } = measure()
+      const { frame, topics } = measure()
       const at = (id: string, fallback: { x: number; y: number }): Box => {
         const topic = topics.get(id)
         return frame && topic ? boxIn(frame, topic) : { cx: fallback.x, cy: fallback.y, w: 0, h: 0 }
@@ -259,18 +276,19 @@ export class RelationDrawer {
         width,
       )
       path = shape.path
+      middle = shape.label
       hitOf(line)?.setAttribute('d', shape.d)
-      if (label) {
-        // in the middle of the line, or the nearest place along it where it covers no topic
-        const titled = (label.textContent ?? '').trim() !== ''
-        const place = titled
-          ? labelAlong(path, { w: label.offsetWidth, h: label.offsetHeight }, boxes)
-          : shape.label
-        placeLabel(label, place.x, place.y)
-      }
     }
 
     const drawing = relationshipDrawing(paint, path)
+    if (label) {
+      // in the middle of the line, or the nearest place along it where it covers no topic and neither end
+      const place = titledLabel(label)
+        ? labelSpot(path, labelSize(label), measure().boxes, drawing.endBoxes).at
+        : middle
+      label.removeAttribute(LABEL_MOVED)
+      placeLabel(label, place.x, place.y)
+    }
     line.setAttribute('d', drawing.d)
     this.#written.set(line, drawing.d)
     // inline, over the dashes `map.css` gives a relationship without a pattern of its own
@@ -366,16 +384,33 @@ export class RelationDrawer {
     const frame = this.#frame()
     if (!frame) return
     const topics = this.#topicsById()
+    // how wide each title is written, measured where it is drawn
+    const titleWidths = new Map<string, number>()
+    const measuring = doc.createElementNS(SVG, 'text')
+    measuring.setAttribute('class', BOUNDARY_TITLE_CLASS)
+    layer.appendChild(measuring)
+    for (const boundary of boundaries) {
+      if (boundary.title.trim() === '' || titleWidths.has(boundary.title)) continue
+      measuring.textContent = boundary.title
+      titleWidths.set(boundary.title, textWidth(measuring) + 2 * CHIP_PAD)
+    }
+    measuring.remove()
     // every outline of the map first: where each goes depends on the others
     const drawn = boundaries.flatMap((boundary) => {
       const paint = boundaryPaint(boundary.style)
       const titled = boundary.title.trim() !== ''
-      return boundaryPieces(this.#enclosed(boundary, frame, topics)).map((piece) => ({
+      const groups = this.#enclosed(boundary, frame, topics).filter(
+        (group) => group.rects.length > 0,
+      )
+      return boundaryPieces(groups.map((group) => group.rects)).map((piece, at) => ({
         boundary,
         paint,
         content: piece.content,
         shape: paint.shape,
         withTitle: piece.withTitle && titled,
+        titleWidth: titleWidths.get(boundary.title) ?? 0,
+        // an outline narrower than its title grows away from the central topic
+        grow: groups[at]!.side.includes('lhs') ? ('left' as const) : ('right' as const),
       }))
     })
     const topicBoxes = [...topics.values()].map((topic) => rectIn(frame, topic))
@@ -418,11 +453,7 @@ export class RelationDrawer {
       if (withTitle) titles.push({ group, at })
     })
 
-    // the titles, each on a chip of the map's ground, where it covers no topic, no other title and no other outline
-    const obstacles: Rect[] = [...topicBoxes]
-    for (const handle of this.#mind.nodes.querySelectorAll('me-epd:not(.minus)')) {
-      obstacles.push(rectIn(frame, handle))
-    }
+    // the titles, each on a chip of the map's ground on the top edge of its outline
     for (const { group, at } of titles) {
       const { boundary } = drawn[at]!
       const rect = outlines[at]!
@@ -433,9 +464,11 @@ export class RelationDrawer {
       title.setAttribute(BOUNDARY_ID_ATTRIBUTE, boundary.id)
       title.textContent = boundary.title
       group.append(chip, title)
-      const size = { w: textWidth(title) + 2 * CHIP_PAD, h: BOUNDARY_TITLE_HEIGHT }
-      const others = outlines.flatMap((other, index) => (index === at ? [] : outlineEdges(other)))
-      const place = boundaryTitlePlace(rect, size, [...obstacles, ...others])
+      const size = {
+        w: titleWidths.get(boundary.title) ?? textWidth(title) + 2 * CHIP_PAD,
+        h: BOUNDARY_TITLE_HEIGHT,
+      }
+      const place = boundaryTitlePlace(rect, size)
       chip.setAttribute('x', num(place.x))
       chip.setAttribute('y', num(place.y))
       chip.setAttribute('width', num(size.w))
@@ -443,16 +476,15 @@ export class RelationDrawer {
       chip.setAttribute('rx', '4')
       title.setAttribute('x', num(place.x + CHIP_PAD))
       title.setAttribute('y', num(place.y + size.h / 2 + TITLE_BASELINE))
-      obstacles.push({ x: place.x, y: place.y, ...size })
     }
   }
 
-  /** The boxes a boundary goes around, one group per side of the central topic, in the order of its range. */
+  /** The boxes a boundary goes around, one group per side of the central topic (named as its `me-main` is), in the order of its range. */
   #enclosed(
     boundary: { topicId: string; range: { start: number; end: number } | 'master' },
     frame: Frame,
     topics: Map<string, Topic>,
-  ): Rect[][] {
+  ): { side: string; rects: Rect[] }[] {
     const owner = topics.get(boundary.topicId)
     if (!owner?.nodeObj) return []
     // the topics, and the "+" of each folded branch, which the outline goes around too
@@ -465,8 +497,8 @@ export class RelationDrawer {
         : [rectIn(frame, topic)]
     }
     if (boundary.range === 'master') {
-      if (!owner.nodeObj.parent) return [shownIn(this.#mind.nodes)]
-      return [rectsBelow(owner)]
+      if (!owner.nodeObj.parent) return [{ side: '', rects: shownIn(this.#mind.nodes) }]
+      return [{ side: owner.closest('me-main')?.className ?? '', rects: rectsBelow(owner) }]
     }
     const groups = new Map<string, Rect[]>()
     const children = owner.nodeObj.children ?? []
@@ -480,7 +512,7 @@ export class RelationDrawer {
       group.push(...rectsBelow(topic))
       groups.set(side, group)
     }
-    return [...groups.values()]
+    return [...groups].map(([side, rects]) => ({ side, rects }))
   }
 
   // ---- measuring ----
@@ -557,6 +589,24 @@ function libraryCurve(d: string): LibraryCurve | null {
 function hitOf(path: Element): Element | null {
   const before = path.previousElementSibling
   return before?.getAttribute('stroke') === 'transparent' ? before : null
+}
+
+/** The middle of a curve the library drew, where it puts the title. */
+function libraryMiddle(curve: LibraryCurve): { x: number; y: number } {
+  return relationshipGeometry('curved', {
+    from: { cx: curve.p1.x, cy: curve.p1.y, w: 0, h: 0 },
+    to: { cx: curve.p2.x, cy: curve.p2.y, w: 0, h: 0 },
+    c1: curve.c1,
+    c2: curve.c2,
+  }).label
+}
+
+function titledLabel(label: HTMLElement): boolean {
+  return (label.textContent ?? '').trim() !== ''
+}
+
+function labelSize(label: HTMLElement): { w: number; h: number } {
+  return { w: label.offsetWidth, h: label.offsetHeight }
 }
 
 /** Puts a title centred on a point, as the library places one. */
