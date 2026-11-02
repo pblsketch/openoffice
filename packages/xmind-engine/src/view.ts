@@ -4,8 +4,9 @@
  * This is the engine's own shape, not the data shape of the drawing library;
  * the editor converts. It carries only what is shown or edited: titles, the
  * order of branches, folding, labels, the note as plain text, the link,
- * summaries, relationships, the layout, the picture reference, marker ids and
- * the style values set on a topic itself.
+ * summaries, relationships, the layout, the picture reference, marker ids,
+ * the style values set on a topic itself and the parts of a title that carry a
+ * text format of their own.
  *
  * Everything else stays in the source tree and is not here: boundaries,
  * floating topics, callouts, the branches under a summary topic, links to
@@ -19,6 +20,7 @@
 
 import { layoutFromStructureClass, type ViewLayout } from './layout'
 import { noteText } from './notes'
+import { titleRunsToView, type ViewTitleRun } from './text-style'
 import { isRecord, type XmindSheet, type XmindTopic } from './types'
 
 export interface ViewSheet {
@@ -54,18 +56,28 @@ export interface ViewTopic {
   /** marker ids only, e.g. `priority-1` */
   markers: string[]
   style: ViewTopicStyle
+  /**
+   * the title cut into parts that carry a text format of their own; null when
+   * the title is one plain run (see `text-style.ts`). The parts' text is the title.
+   */
+  titleRuns: ViewTitleRun[] | null
   /** summaries over this topic's branches */
   summaries: ViewSummary[]
   /** the attached branches, in file order */
   children: ViewTopic[]
 }
 
-/** Values set on the topic itself, as the strings the file holds (`#rrggbb`, `700`, `14pt`). */
+/** Values set on the topic itself, as the strings the file holds (`#rrggbb`, `700`, `14pt`, `italic`). */
 export interface ViewTopicStyle {
   color?: string
   fill?: string
   fontWeight?: string
   fontSize?: string
+  fontFamily?: string
+  fontStyle?: string
+  textDecoration?: string
+  textAlign?: string
+  textTransform?: string
 }
 
 export interface ViewImage {
@@ -134,6 +146,7 @@ function topicToView(topic: XmindTopic, shown: Set<string>): ViewTopic {
       .map((marker) => marker.markerId)
       .filter((id): id is string => typeof id === 'string'),
     style: styleToView(topic.style),
+    titleRuns: titleRunsToView(topic.attributedTitle, stringOr(topic.title, '')),
     summaries,
     children: attached.map((child) => topicToView(child, shown)),
   }
@@ -184,6 +197,11 @@ const STYLE_PROPERTIES = {
   fill: 'svg:fill',
   fontWeight: 'fo:font-weight',
   fontSize: 'fo:font-size',
+  fontFamily: 'fo:font-family',
+  fontStyle: 'fo:font-style',
+  textDecoration: 'fo:text-decoration',
+  textAlign: 'fo:text-align',
+  textTransform: 'fo:text-transform',
 } as const satisfies Record<keyof ViewTopicStyle, string>
 
 function styleToView(style: unknown): ViewTopicStyle {

@@ -2,6 +2,7 @@ import type { XmindDocument } from './document'
 import { type ReconcileIds, reconcileTree } from './reconcile-tree'
 import { idsInUse } from './tree-walk'
 import { isRecord } from './types'
+import type { ViewTitleRun } from './text-style'
 import { sheetToView, type ViewSheet, type ViewTopic, type ViewTopicStyle } from './view'
 
 export type { ReconcileIds } from './reconcile-tree'
@@ -19,6 +20,13 @@ export interface ReconcileOptions {
    * picture is not taken as a change.
    */
   removedPictures?: readonly string[]
+  /**
+   * Ids of topics whose text format the user changed in the editor: the style
+   * values for the whole topic or the format of a part of its title. Only for
+   * these (and for topics the state adds) are text style values written from a
+   * state; any other topic keeps the ones it has, whatever the state shows.
+   */
+  restyledTopics?: readonly string[]
 }
 
 /**
@@ -46,9 +54,10 @@ export type ReconcileResult =
  * is applied: the topics with their order and nesting, and per topic the
  * title, folding, labels, note and link; a picture put in from an archive
  * entry, or taken off (`removedPictures`); summaries; relationships; the
- * layout. What is never written from a state: markers and styles, which the
- * editor shows without editing, and the sheet's own title and place, which
- * `renameSheet` and its neighbours change.
+ * layout; the text format of the topics the editor names (`restyledTopics`)
+ * and of the topics the state adds. What is never written from a state:
+ * markers and the fill, which the editor shows without editing, and the
+ * sheet's own title and place, which `renameSheet` and its neighbours change.
  *
  * Sheets are reconciled one at a time: topics are paired by id inside the
  * sheet at `index`, and the same id on another sheet is another topic.
@@ -73,6 +82,7 @@ export function reconcileSheet(
     idsInUse: () => idsInUse(document.sheets),
     reshaped: options.reshapedRelationships,
     removedPictures: options.removedPictures,
+    restyledTopics: options.restyledTopics,
     entryExists: (name) => document.hasEntry(name),
   })
   if (!outcome.ok) return { ok: false, problem: outcome.problem, view: sheetToView(sheet, index) }
@@ -118,6 +128,7 @@ function shownBy(sheet: ViewSheet, ids?: ReconcileIds): string {
       : null,
     Array.isArray(shown.markers) ? shown.markers : [],
     styleValues(isRecord(shown.style) ? shown.style : {}),
+    runsShown(shown.titleRuns),
     sorted(
       shown.summaries.map((summary) => [
         topicId(summary.topicId),
@@ -137,8 +148,27 @@ function shownBy(sheet: ViewSheet, ids?: ReconcileIds): string {
   return JSON.stringify([sheet.layout, topic(sheet.root), sorted(relationships)])
 }
 
+const STYLE_KEYS = [
+  'color',
+  'fill',
+  'fontWeight',
+  'fontSize',
+  'fontFamily',
+  'fontStyle',
+  'textDecoration',
+  'textAlign',
+  'textTransform',
+] as const satisfies readonly (keyof ViewTopicStyle)[]
+
+/** Parts that carry no format are the plain title: either way the title is drawn one plain run. */
+function runsShown(runs: unknown): unknown {
+  if (!Array.isArray(runs)) return null
+  const parts = runs.map((part: ViewTitleRun) => [part.text, styleValues(part.style ?? {})])
+  return runs.some((part: ViewTitleRun) => Object.keys(part.style ?? {}).length > 0) ? parts : null
+}
+
 function styleValues(style: ViewTopicStyle): unknown[] {
-  return [style.color, style.fill, style.fontWeight, style.fontSize].map((value) => value ?? null)
+  return STYLE_KEYS.map((key) => style[key] ?? null)
 }
 
 function sorted(items: unknown[]): string[] {

@@ -38,6 +38,14 @@ import { readState, Refusal, refuse, type StateSheet, type StateTopic } from './
 import { isResourceEntry } from './resource-entry'
 import { checkContentStructure } from './structure-check'
 import {
+  isWritableTextStyle,
+  RUN_STYLE_KEYS,
+  TEXT_STYLE_KEYS,
+  TEXT_STYLE_PROPERTIES,
+  titleRunsToView,
+  type ViewTitleRun,
+} from './text-style'
+import {
   everyTopic,
   isShownRelationship,
   type JsonRecord,
@@ -64,6 +72,8 @@ export interface TreeContext {
   reshaped?: readonly string[]
   /** ids of topics whose picture the user removed */
   removedPictures?: readonly string[]
+  /** ids of topics whose text format the user changed */
+  restyledTopics?: readonly string[]
   /** whether the archive holds this entry (a picture added since the last save included) */
   entryExists?: (name: string) => boolean
 }
@@ -108,6 +118,8 @@ interface Run {
   entryExists?: (name: string) => boolean
   /** topics whose picture the user removed; only these lose one to a state without it */
   removedPictures: ReadonlySet<string>
+  /** topics whose text format the user changed; only these (and new ones) get one from the state */
+  restyled: ReadonlySet<string>
   newId: (given: string) => string
   /** every topic of the state with the topic of the tree that now stands for it */
   pairs: { topic: XmindTopic; want: StateTopic }[]
@@ -127,6 +139,7 @@ function apply(sheet: XmindSheet, want: StateSheet, context: TreeContext): Recon
     ids: { topics: new Map(), relationships: new Map() },
     ...(context.entryExists ? { entryExists: context.entryExists } : {}),
     removedPictures: new Set(context.removedPictures),
+    restyled: new Set(context.restyledTopics),
     newId: idAllocator(context.idsInUse),
     pairs: [],
     ends: new Set(),
@@ -158,10 +171,11 @@ function apply(sheet: XmindSheet, want: StateSheet, context: TreeContext): Recon
  */
 function settleTopics(run: Run): void {
   const settle = (want: StateTopic): XmindTopic => {
-    const topic = run.shown.topics.get(want.id) ?? createTopic(run, want)
+    const known = run.shown.topics.get(want.id)
+    const topic = known ?? createTopic(run, want)
     run.pairs.push({ topic, want })
     run.ends.add(topic.id)
-    writeValues(topic, want, run)
+    writeValues(topic, want, run, !known)
     writeBranches(topic, want.children.map(settle))
     return topic
   }
@@ -180,8 +194,12 @@ function createTopic(run: Run, want: StateTopic): XmindTopic {
 }
 
 /** The values the editor edits, each written only when the state differs from what the view shows. */
-function writeValues(topic: XmindTopic, want: StateTopic, run: Run): void {
-  if (text(topic.title) !== want.title) topic.title = want.title
+function writeValues(topic: XmindTopic, want: StateTopic, run: Run, isNew: boolean): void {
+  const retitled = text(topic.title) !== want.title
+  if (retitled) topic.title = want.title
+  const restyled = isNew || run.restyled.has(want.id)
+  if (restyled) writeTextStyle(topic, want)
+  if (restyled || retitled) writeTitleRuns(topic, want)
   if ((topic.branch === 'folded') !== want.folded) {
     if (want.folded) topic.branch = 'folded'
     else delete topic.branch
@@ -252,6 +270,89 @@ function writeImage(topic: XmindTopic, want: StateTopic, run: Run): void {
   topic.image = next
 }
 
+/**
+ * The text style values of the whole topic, for a topic the user restyled or
+ * the state adds. Per key: a value equal to the file's is left as it is, even
+ * one the engine would not write itself (the user changed another key); a
+ * missing value takes the key out; any other value is written only when it has
+ * a shape the engine writes (`isWritableTextStyle`), and otherwise the file
+ * keeps its own, and the screen is drawn again from it. Every other property
+ * of the style, the fill among them, stays.
+ */
+function writeTextStyle(topic: XmindTopic, want: StateTopic): void {
+  const style = isRecord(topic.style) ? topic.style : null
+  const properties = style && isRecord(style.properties) ? style.properties : null
+  const next: JsonRecord = { ...(properties ?? {}) }
+  for (const key of TEXT_STYLE_KEYS) {
+    const property = TEXT_STYLE_PROPERTIES[key]
+    const current = typeof next[property] === 'string' ? next[property] : undefined
+    const wanted = want.textStyle[key]
+    if (wanted === current) continue
+    if (wanted === undefined) delete next[property]
+    else if (isWritableTextStyle(key, wanted)) next[property] = wanted
+  }
+  if (sameRecord(next, properties ?? {})) return
+  if (Object.keys(next).length === 0) {
+    // A style that held nothing but these values goes with them; one with more of its own stays.
+    if (style && Object.keys(style).every((key) => key === 'id' || key === 'properties')) {
+      delete topic.style
+    } else if (style) {
+      style.properties = next
+    }
+    return
+  }
+  if (style) style.properties = next
+  else topic.style = { id: newXmindId(), properties: next }
+}
+
+/**
+ * The parts of the title, for a topic the user restyled or retitled or the
+ * state adds. Parts that spell the title and carry a format are written, with
+ * the values of a shape the engine writes; anything else takes the parts out,
+ * since parts that no longer spell the title would show the title from before
+ * the edit in the program the format comes from. A part's keys the editor does
+ * not know are not kept when the parts are written again.
+ */
+function writeTitleRuns(topic: XmindTopic, want: StateTopic): void {
+  const runs = want.titleRuns
+  const spells = runs !== null && runs.map((part) => part.text).join('') === want.title
+  // The parts the file has, read as the view reads them: unchanged parts keep every key they have.
+  const shown = titleRunsToView(topic.attributedTitle, want.title)
+  if (spells && shown !== null && sameRuns(shown, runs)) return
+  const parts = spells
+    ? runs.map((part) => {
+        const out: JsonRecord = { text: part.text }
+        for (const key of RUN_STYLE_KEYS) {
+          const value = part.style[key]
+          if (value !== undefined && isWritableTextStyle(key, value)) {
+            out[TEXT_STYLE_PROPERTIES[key]] = value
+          }
+        }
+        return out
+      })
+    : []
+  const formatted = parts.some((part) => Object.keys(part).length > 1)
+  if (!formatted) {
+    if (topic.attributedTitle !== undefined) delete topic.attributedTitle
+    return
+  }
+  if (JSON.stringify(topic.attributedTitle) !== JSON.stringify(parts)) {
+    topic.attributedTitle = parts
+  }
+}
+
+function sameRuns(a: readonly ViewTitleRun[], b: readonly ViewTitleRun[]): boolean {
+  const key = (runs: readonly ViewTitleRun[]): string =>
+    JSON.stringify(
+      runs.map((part) => [part.text, RUN_STYLE_KEYS.map((name) => part.style[name] ?? null)]),
+    )
+  return key(a) === key(b)
+}
+
+function sameRecord(a: JsonRecord, b: JsonRecord): boolean {
+  return JSON.stringify(a) === JSON.stringify(b)
+}
+
 function writeBranches(topic: XmindTopic, branches: XmindTopic[]): void {
   const current = topic.children?.attached ?? []
   if (
@@ -313,7 +414,11 @@ function settleSummaries(run: Run): Set<JsonRecord> {
           addSummary(topic, known.record, known.topic)
         }
         if (renumbered) known.record.range = formatRange(wanted.start, wanted.end)
-        if (text(known.topic.title) !== wanted.title) known.topic.title = wanted.title
+        if (text(known.topic.title) !== wanted.title) {
+          known.topic.title = wanted.title
+          // parts of the old text would show it again; the editor writes a summary's title plain
+          delete known.topic.attributedTitle
+        }
         run.ends.add(known.topic.id)
         continue
       }
@@ -395,7 +500,10 @@ function settleRelationships(run: Run, reshaped: ReadonlySet<string>): void {
       if (moved || reshaped.has(wanted.id)) {
         for (const key of CURVE_KEYS) delete record[key]
       }
-      if (text(record.title) !== wanted.title) record.title = wanted.title
+      if (text(record.title) !== wanted.title) {
+        record.title = wanted.title
+        delete record.attributedTitle
+      }
       continue
     }
     requireEnds()

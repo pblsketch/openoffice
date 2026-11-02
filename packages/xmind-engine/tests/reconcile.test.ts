@@ -459,10 +459,20 @@ describe('reconcileSheet: topics only the state has', () => {
     shown.relationships = []
     const back = expectApplied(reconcileSheet(document, 0, shown))
     expect(back.ids.topics.size).toBe(0)
-    expect(back.inSync).toBe(false) // the picture and style were not brought back
+    expect(back.inSync).toBe(false) // the picture and the fill were not brought back
+    // the text format is: a topic the state adds is written with the one it shows
     expect(inSource(document.sheets[0]!, SOME_UUID)).toEqual({
       id: SOME_UUID,
       title: 'Beta \u{1F600} 한글',
+      style: {
+        id: expect.any(String),
+        properties: {
+          'fo:color': '#112233',
+          'fo:font-family': 'Some Family',
+          'fo:font-size': '18pt',
+          'fo:font-weight': '700',
+        },
+      },
     })
   })
 })

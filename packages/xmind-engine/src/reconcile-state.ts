@@ -4,12 +4,19 @@
  * The state comes from a renderer window and is not trusted: it is typed as
  * view data, but nothing has checked that. Everything reconciling reads is
  * checked and copied here first, so the rest works on values of a known shape
- * and never on the caller's objects. What reconciling never writes (pictures,
- * markers, styles, the sheet's own title) is not looked at.
+ * and never on the caller's objects. What reconciling never writes (markers,
+ * the fill, the sheet's own title) is not looked at.
  */
 
 import { VIEW_LAYOUTS, type ViewLayout } from './layout'
 import { MAX_TOPIC_DEPTH } from './structure-check'
+import {
+  MAX_TITLE_RUNS,
+  RUN_STYLE_KEYS,
+  TEXT_STYLE_KEYS,
+  type TextStyleKey,
+  type ViewRunStyle,
+} from './text-style'
 import { isRecord } from './types'
 import { isShownLink, type ViewImage } from './view'
 
@@ -40,8 +47,17 @@ export interface StateTopic {
    * here only so that the state and the view compare equal.
    */
   image: ViewImage | null
+  /** the text style values the state shows for the whole topic; a missing key is "not set" */
+  textStyle: Partial<Record<TextStyleKey, string>>
+  /** the title in parts with a format of their own; null for a plain title */
+  titleRuns: StateRun[] | null
   summaries: StateSummary[]
   children: StateTopic[]
+}
+
+export interface StateRun {
+  text: string
+  style: ViewRunStyle
 }
 
 export interface StateSummary {
@@ -90,7 +106,8 @@ export function readState(state: unknown): StateSheet {
  */
 function readTopic(topic: unknown, depth: number, seen: Set<string>): StateTopic {
   if (!isRecord(topic)) refuse('a topic of the state is not an object')
-  const { id, title, folded, labels, note, link, image, summaries, children } = topic
+  const { id, title, folded, labels, note, link, image, style, titleRuns, summaries, children } =
+    topic
   if (typeof id !== 'string' || id === '') refuse('a topic of the state has no id')
   if (seen.has(id)) refuse(`topic id ${id} is used more than once in the state`)
   seen.add(id)
@@ -105,6 +122,11 @@ function readTopic(topic: unknown, depth: number, seen: Set<string>): StateTopic
   }
   // a state written before pictures were carried has no key: that is "no picture to set"
   if (image != null && !isViewImage(image)) refuse(`the picture of topic ${id} is not a reference`)
+  // a state written before text formats were carried has neither key: nothing set, nothing cut
+  if (style != null && !isRecord(style)) refuse(`the style of topic ${id} is not a set of values`)
+  if (titleRuns != null && !Array.isArray(titleRuns)) {
+    refuse(`the title parts of topic ${id} are not a list`)
+  }
   if (!Array.isArray(summaries)) refuse(`the summaries of topic ${id} are not a list`)
   if (!Array.isArray(children)) refuse(`the children of topic ${id} are not a list`)
   return {
@@ -115,9 +137,41 @@ function readTopic(topic: unknown, depth: number, seen: Set<string>): StateTopic
     note,
     link,
     image: image == null ? null : copyImage(image),
+    textStyle: readTextStyle(style),
+    titleRuns: Array.isArray(titleRuns) ? readRuns(titleRuns, id) : null,
     summaries: summaries.map((summary) => readSummary(summary, id)),
     children: children.map((child) => readTopic(child, depth + 1, seen)),
   }
+}
+
+/** The text style values of a state topic: strings only, under the keys a text format has. */
+function readTextStyle(style: unknown): Partial<Record<TextStyleKey, string>> {
+  const out: Partial<Record<TextStyleKey, string>> = {}
+  if (!isRecord(style)) return out
+  for (const key of TEXT_STYLE_KEYS) {
+    const value = style[key]
+    if (typeof value === 'string') out[key] = value
+  }
+  return out
+}
+
+function readRuns(runs: unknown[], owner: string): StateRun[] {
+  if (runs.length > MAX_TITLE_RUNS) refuse(`the title of topic ${owner} is cut into too many parts`)
+  return runs.map((run) => {
+    if (!isRecord(run) || typeof run.text !== 'string') {
+      refuse(`a title part of topic ${owner} is not a text with a format`)
+    }
+    if (run.style != null && !isRecord(run.style)) {
+      refuse(`a title part of topic ${owner} has a format that is not a set of values`)
+    }
+    const given = isRecord(run.style) ? run.style : {}
+    const style: ViewRunStyle = {}
+    for (const key of RUN_STYLE_KEYS) {
+      const value = given[key]
+      if (typeof value === 'string') style[key] = value
+    }
+    return { text: run.text, style }
+  })
 }
 
 function isViewImage(value: unknown): value is ViewImage {
