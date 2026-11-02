@@ -418,6 +418,29 @@ html.genoffice-popover-open .ribbon-tabs {
   outline: 2px solid var(--accent);
 }
 
+/* a selected boundary (map/controller.ts): a glow of the app's accent around its outline and title */
+.mm-card .map-container .mm-boundaries g.selected {
+  outline: none;
+  filter: drop-shadow(0 0 1.5px var(--accent)) drop-shadow(0 0 1.5px var(--accent));
+}
+
+.mm-card .map-container .mm-boundaries .mm-boundary-shape,
+.mm-card .map-container .mm-boundaries .mm-boundary-title {
+  cursor: pointer;
+}
+
+/* the title of a boundary is typed in a box as wide as a topic's */
+.mm-card .map-container #input-box[data-type='boundary'] {
+  position: absolute;
+  max-width: 30em;
+}
+
+/* while the format painter holds a format, every press on the map puts it on */
+.mm-card .map-container[data-mm-painter],
+.mm-card .map-container[data-mm-painter] * {
+  cursor: copy !important;
+}
+
 /* a summary's title is typed in a box as wide as the one it is drawn in (map.css), not the library's narrower one */
 .mm-card .map-container #input-box[data-type='summary'] {
   max-width: 30em !important;
