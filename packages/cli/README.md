@@ -54,7 +54,7 @@ ieumoffice search "electron headless export" [--images] [--max 6] --json
 ieumoffice read-url https://example.com/guide.md [--offset 50000] --json   # the readable text of an http(s) page (article, document, skill); the address goes to that site; private GitHub files use the app's read-only token
 ieumoffice image "isometric office, soft light" --aspect 16:9 --out hero.png
 ieumoffice media photo.jpg --ask "What text is in this picture?" --json
-ieumoffice docs read report.docx [--range 0-9] [--html] [--full] [--comments] [--revisions] [--header-footer] --json   # blocks (--full: whole text), comment threads, tracked changes, header/footer text
+ieumoffice docs read report.docx [--range 0-9] [--html] [--full] [--comments] [--revisions] [--header-footer] --json   # blocks (--full: whole text; contentControls chain + inlineContentControls for w:sdt controls), comment threads, tracked changes, header/footer text
 ieumoffice docs apply report.docx --ops ops.json [--dry-run]           # apply_ops entries + insert_content / replace_blocks / insert_image / insert_chart / edit_chart / set_header_footer / reply_comment / resolve_comment
 ieumoffice docs check report.docx --json                               # fields without results, broken bookmark references, stale TOC, missing images, empty charts/headings, heading level skips, placeholder text, pending revisions, open comments; exit 0
 ieumoffice docs compare original.docx revised.docx --out redline.docx [--author name] [--date iso] [--granularity word|char] [--ignore formatting,case,whitespace]   # redline: the revised document with the differences marked as tracked insertions and deletions; --json reports the counts
