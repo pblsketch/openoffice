@@ -2032,8 +2032,9 @@ export class MapController {
   /**
    * A press on the map, before the library has it. While the painter holds a
    * format, a press on an item puts it on that item; otherwise a press on a
-   * boundary's outline or title selects the boundary. The library does not
-   * see a press taken here, nor its release.
+   * boundary's outline or title selects the boundary, and a press on empty
+   * space lets a selected boundary go (the library still has that press).
+   * The library does not see a press taken here, nor its release.
    */
   #onPointerDown(event: PointerEvent): void {
     if (event.button !== 0) return
@@ -2044,7 +2045,11 @@ export class MapController {
       const under = boundaryUnder(element.ownerDocument, event.clientX, event.clientY)
       if (under !== null) target = { kind: 'boundary', id: under }
     }
-    if (!target) return
+    if (!target) {
+      // empty space ends the other selections (the library's), and the boundary's with them
+      if (!element.closest(AN_ITEM)) this.selectBoundary(null)
+      return
+    }
     if (this.#painter) {
       this.#takePress(event)
       this.applyFormatTo(target)

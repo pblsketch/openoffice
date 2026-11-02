@@ -734,6 +734,20 @@ describe('boundaries', () => {
     expect(controller.selectedBoundaryId).toBe(ID.boundary)
   })
 
+  it('a press on empty space lets the boundary go, so a later Delete takes nothing', async () => {
+    layOut()
+    const { controller, mind, find } = await mount()
+    controller.selectBoundary(ID.boundary)
+    const down = pointer(mind.nodes, 'pointerdown')
+    // the library still has the press
+    expect(down.defaultPrevented).toBe(false)
+    expect(controller.selectedBoundaryId).toBeNull()
+    expect(controller.selection()).toEqual({ kind: 'none' })
+    press(mind.container, 'Delete')
+    expect((find(ID.b)!.boundaries as Record<string, unknown>[])[0]!.id).toBe(ID.boundary)
+    expect(controller.canUndo).toBe(false)
+  })
+
   it('Delete removes the selected boundary, as one step; the topics stay', async () => {
     const { controller, mind, find, unchanged } = await mount()
     controller.selectBoundary(ID.boundary)
