@@ -8,7 +8,7 @@
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { closeAndSaveVideo, waitForPageWithUrl } from './helpers'
+import { closeAndSaveVideo, freeMcpPort, waitForPageWithUrl } from './helpers'
 import { launchKo, openIntegrations, scratchDir, shot, startServers } from './user-mcp-lib'
 
 test.describe.configure({ mode: 'serial' })
@@ -56,12 +56,17 @@ async function stubScriptedAi(app: ElectronApplication): Promise<void> {
         const mcpTools = (request.tools ?? []).filter((t) => t.name.startsWith('mcp__'))
         g.__mcpAiLog.push({
           keys: Object.keys(request.messages[0] ?? {}),
-          shape: request.messages.map((m) => `${m.role}:${typeof m.content === 'string' ? 'str' + (m.content as string).length : String(JSON.stringify(m.content ?? null)).slice(0, 60)}`),
+          shape: request.messages.map(
+            (m) =>
+              `${m.role}:${typeof m.content === 'string' ? 'str' + (m.content as string).length : String(JSON.stringify(m.content ?? null)).slice(0, 60)}`,
+          ),
           last: lastText.slice(0, 200),
           toolCount: (request.tools ?? []).length,
           mcpTools: mcpTools.map((t) => `${t.name}: ${(t.description ?? '').slice(0, 80)}`),
           systemHasInstructions: String(request.system ?? '').includes('test server'),
-          systemMcpExcerpt: (String(request.system ?? '').match(/[^\n]*test server[^\n]*/g) ?? []).slice(0, 3),
+          systemMcpExcerpt: (
+            String(request.system ?? '').match(/[^\n]*test server[^\n]*/g) ?? []
+          ).slice(0, 3),
         })
         const marks = [...all.matchAll(/TOOL:([A-Za-z0-9_-]+):(\{[^}]*\})/g)]
         const m = marks[marks.length - 1]
@@ -123,13 +128,18 @@ test('AI window: server button, list, approval card, skills marks, narrow window
       await form.getByRole('button', { name: '등록', exact: true }).click()
       await expect(card.locator('.mcp-server-name', { hasText: name })).toBeVisible()
     }
-    // the first run of this spec skipped this and the AI got no mcp__ tools although the
-    // list said "connected"; press "check" like the help's step 4 says
-    const dictRow = card.locator('li.mcp-server', { has: page.locator('.mcp-server-name', { hasText: /^dict$/ }) })
-    if ((await dictRow.getAttribute('data-open')) !== 'true') await dictRow.getByRole('button', { name: '열기' }).click()
-    await dictRow.getByRole('button', { name: '연결 확인' }).click()
+    // B1: the first run had to press "check" here, or the AI got no mcp__ tools although
+    // the list said "connected"; registering now checks by itself
+    const dictRow = card.locator('li.mcp-server', {
+      has: page.locator('.mcp-server-name', { hasText: /^dict$/ }),
+    })
+    if ((await dictRow.getAttribute('data-open')) !== 'true')
+      await dictRow.getByRole('button', { name: '열기' }).click()
     await expect(dictRow.locator('li.mcp-tool')).toHaveCount(2, { timeout: 30_000 })
-    const spare = card.locator('li.mcp-server', { has: page.locator('.mcp-server-name', { hasText: /^spare$/ }) })
+    await expect(dictRow).toHaveAttribute('data-status', 'connected')
+    const spare = card.locator('li.mcp-server', {
+      has: page.locator('.mcp-server-name', { hasText: /^spare$/ }),
+    })
     await spare.locator('input[name="enabled"]').click()
     await expect(spare).toHaveAttribute('data-status', 'disabled')
 
@@ -173,37 +183,72 @@ test('AI window: server button, list, approval card, skills marks, narrow window
     await editor.keyboard.press('Enter')
     const pop = editor.locator('.ai-mcp-pop')
     await expect(pop).toBeVisible()
-    console.log('focused in list:', await editor.evaluate(() => document.activeElement?.outerHTML.slice(0, 160)))
+    console.log(
+      'focused in list:',
+      await editor.evaluate(() => document.activeElement?.outerHTML.slice(0, 160)),
+    )
     console.log('list text:', (await pop.innerText()).replace(/\n/g, ' | '))
+    // B1: approved before, not reached yet in this run: ready, not "connected"
+    const dictItem = pop.locator('li.ai-mcp-row', { hasText: 'dict' })
+    await expect(dictItem.locator('.ai-mcp-row-status')).toHaveText('준비됨')
     await shot(editor, '42-ai-window-server-list')
     await editor.keyboard.press('Escape')
     await expect(pop).toBeHidden()
-    console.log('focus after Escape on button?', await btn.evaluate((el) => el === document.activeElement))
+    console.log(
+      'focus after Escape on button?',
+      await btn.evaluate((el) => el === document.activeElement),
+    )
 
     // 1) a tool that asks first
     await send(editor, '메모를 저장해 줘 TOOL:mcp__dict__save_note:{"text":"hello"}')
     const cardEl = editor.locator('.ai-mcp-card')
-    const appeared = await cardEl.waitFor({ timeout: 20_000 }).then(() => true, () => false)
+    const appeared = await cardEl.waitFor({ timeout: 20_000 }).then(
+      () => true,
+      () => false,
+    )
     console.log('approval card appeared:', appeared)
     await shot(editor, '43-approval-card')
     if (appeared) {
       console.log('card text:', (await cardEl.innerText()).replace(/\n/g, ' | '))
-      console.log('focus in card?', await cardEl.evaluate((el) => el.contains(document.activeElement)))
+      console.log(
+        'focus in card?',
+        await cardEl.evaluate((el) => el.contains(document.activeElement)),
+      )
       const logBefore = await readFile(servers.log, 'utf8').catch(() => '')
       console.log('server got save_note before answer?', logBefore.includes('tools/call save_note'))
       await cardEl.getByRole('button', { name: '이번만 허용' }).click()
       await editor.waitForTimeout(2500)
-      console.log('server got save_note after allow once?', (await readFile(servers.log, 'utf8').catch(() => '')).includes('tools/call save_note'))
+      console.log(
+        'server got save_note after allow once?',
+        (await readFile(servers.log, 'utf8').catch(() => '')).includes('tools/call save_note'),
+      )
       await shot(editor, '44-after-allow-once')
 
       // again: "once" must ask again; this time block
       await send(editor, '하나 더 TOOL:mcp__dict__save_note:{"text":"second"}')
-      const again = await cardEl.waitFor({ timeout: 20_000 }).then(() => true, () => false)
+      const again = await cardEl.waitFor({ timeout: 20_000 }).then(
+        () => true,
+        () => false,
+      )
       console.log('card asked again after "once":', again)
       if (again) {
         await cardEl.getByRole('button', { name: '막기' }).click()
         await editor.waitForTimeout(2500)
-        console.log('server got "second"?', (await readFile(servers.log, 'utf8').catch(() => '')).includes('second'))
+        console.log(
+          'server got "second"?',
+          (await readFile(servers.log, 'utf8').catch(() => '')).includes('second'),
+        )
+        // P9: how the steps read now
+        for (const summary of await editor.locator('.ai-work-group-summary').all()) {
+          await summary.click().catch(() => {})
+        }
+        await editor.waitForTimeout(300)
+        console.log(
+          'step rows:',
+          (await editor.locator('.ai-work-group').allInnerTexts()).map((t) =>
+            t.replace(/\n/g, ' | '),
+          ),
+        )
         await shot(editor, '45-after-deny')
       }
     }
@@ -213,17 +258,27 @@ test('AI window: server button, list, approval card, skills marks, narrow window
     await editor.waitForTimeout(4000)
     console.log('card for always-allowed tool?', await cardEl.isVisible())
     console.log('AI requests so far:', JSON.stringify(await aiLog(app), null, 1).slice(0, 5000))
-    console.log('server got lookup apple?', (await readFile(servers.log, 'utf8').catch(() => '')).includes('"word":"apple"'))
+    console.log(
+      'server got lookup apple?',
+      (await readFile(servers.log, 'utf8').catch(() => '')).includes('"word":"apple"'),
+    )
     await shot(editor, '46-always-allowed-call')
 
     // 3) turn dict off for this conversation, then ask for it again
     await btn.click()
     await pop.getByRole('checkbox', { name: /dict/ }).uncheck()
+    console.log(
+      'list after turning dict off here (P8):',
+      (await pop.innerText()).replace(/\n/g, ' | '),
+    )
     await shot(editor, '47-dict-off-in-chat')
     await editor.keyboard.press('Escape')
     await send(editor, '배 뜻 TOOL:mcp__dict__lookup_word:{"word":"pear"}')
     await editor.waitForTimeout(4000)
-    console.log('server got pear while off in chat?', (await readFile(servers.log, 'utf8').catch(() => '')).includes('"word":"pear"'))
+    console.log(
+      'server got pear while off in chat?',
+      (await readFile(servers.log, 'utf8').catch(() => '')).includes('"word":"pear"'),
+    )
     await shot(editor, '48-call-while-off')
 
     // 4) narrow window
@@ -261,10 +316,30 @@ test('registered but never checked: what the lists say and what the AI gets; liv
     await form.locator('input[name="allow-plain-http"]').check()
     await form.getByRole('button', { name: '등록', exact: true }).click()
     const item = card.locator('li.mcp-server').first()
-    await page.waitForTimeout(3000)
-    console.log('fresh: status', await item.getAttribute('data-status'), '| meta:', (await item.locator('.mcp-server-meta').innerText()).replace(/\n/g, ' '))
+    // B1: registering checks the server; "connected" only after the app reached it
+    await expect(item).toHaveAttribute('data-status', 'connected', { timeout: 30_000 })
+    await expect(item.locator('li.mcp-tool')).toHaveCount(2)
+    console.log(
+      'fresh: status',
+      await item.getAttribute('data-status'),
+      '| meta:',
+      (await item.locator('.mcp-server-meta').innerText()).replace(/\n/g, ' '),
+    )
     await shot(page, '50-fresh-registered-no-check')
-    console.log('server log after register (no check):', JSON.stringify(await readFile(servers.log, 'utf8').catch(() => '')))
+    const afterRegister = await readFile(servers.log, 'utf8').catch(() => '')
+    expect(afterRegister).toContain('tools/list')
+
+    // a server at an address where nothing answers: never "connected"
+    await card.getByRole('button', { name: '서버 더하기' }).click()
+    const second = card.getByTestId('mcp-form')
+    await second.locator('input[name="name"]').fill('wrong')
+    await second.locator('input[name="url"]').fill(`http://127.0.0.1:${await freeMcpPort()}/mcp`)
+    await second.locator('input[name="allow-plain-http"]').check()
+    await second.getByRole('button', { name: '등록', exact: true }).click()
+    const wrong = card.locator('li.mcp-server', {
+      has: page.locator('.mcp-server-name', { hasText: /^wrong$/ }),
+    })
+    await expect(wrong).toHaveAttribute('data-status', 'failed', { timeout: 30_000 })
   } finally {
     await closeAndSaveVideo(launched, 'user-mcp-fresh-setup')
   }
@@ -281,21 +356,41 @@ test('registered but never checked: what the lists say and what the AI gets; liv
     const btn = editor.locator('.ai-mcp-server-btn')
     await expect(btn).toBeVisible({ timeout: 15_000 })
     await btn.click()
-    console.log('fresh AI list:', (await editor.locator('.ai-mcp-pop').innerText()).replace(/\n/g, ' | '))
+    const freshPop = editor.locator('.ai-mcp-pop')
+    console.log('fresh AI list:', (await freshPop.innerText()).replace(/\n/g, ' | '))
+    // B1: the checked server is ready (not reached yet in this run); the one never
+    // listed is "not checked yet" and sends the person to Settings
+    await expect(
+      freshPop.locator('li.ai-mcp-row', { hasText: 'dict' }).locator('.ai-mcp-row-status'),
+    ).toHaveText('준비됨')
+    const wrongRow = freshPop.locator('li.ai-mcp-row', { hasText: 'wrong' })
+    await expect(wrongRow.locator('.ai-mcp-row-status')).toHaveText('확인 전')
+    await expect(wrongRow.getByRole('button', { name: '설정에서 연결 확인' })).toBeVisible()
     await shot(editor, '51-fresh-ai-list')
     await editor.keyboard.press('Escape')
     await send(editor, '사과 뜻 TOOL:mcp__dict__lookup_word:{"word":"apple"}')
     await editor.waitForTimeout(5000)
     const log = (await aiLog(app)) as Array<{ mcpTools: string[] }>
-    console.log('fresh: mcp tools given to AI per request:', JSON.stringify(log.map((r) => r.mcpTools)))
-    console.log('fresh: server got the call?', (await readFile(servers.log, 'utf8').catch(() => '')).includes('apple'))
+    console.log(
+      'fresh: mcp tools given to AI per request:',
+      JSON.stringify(log.map((r) => r.mcpTools)),
+    )
+    // B1: the AI gets the server's tools from the first request
+    expect(log[0]?.mcpTools.some((t) => t.startsWith('mcp__dict__lookup_word'))).toBe(true)
+    console.log(
+      'fresh: server got the call?',
+      (await readFile(servers.log, 'utf8').catch(() => '')).includes('apple'),
+    )
     await shot(editor, '52-fresh-ai-call')
 
     // a server-side change while this AI window is open: does the button show "new tools"?
     await servers.setHttpState({ extraTool: true })
     await editor.waitForTimeout(5000)
     await btn.click()
-    console.log('after server added a tool, AI list:', (await editor.locator('.ai-mcp-pop').innerText()).replace(/\n/g, ' | '))
+    console.log(
+      'after server added a tool, AI list:',
+      (await editor.locator('.ai-mcp-pop').innerText()).replace(/\n/g, ' | '),
+    )
     await shot(editor, '53-ai-list-after-new-tool')
     await editor.keyboard.press('Escape')
     console.log('server log:\n' + (await readFile(servers.log, 'utf8').catch(() => '')))
