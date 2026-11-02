@@ -335,6 +335,66 @@ describe('the shape of a line', () => {
   })
 })
 
+describe('the trunk of a tree', () => {
+  const tree = (lines: Parameters<typeof sheetWith>[0] = {}): XmindSheet => {
+    const sheet = sheetWith(lines)
+    sheet.rootTopic.structureClass = 'org.xmind.ui.tree.right'
+    return sheet
+  }
+  const start = (path: SVGPathElement): string =>
+    path.getAttribute('d')!.split(' ').slice(1, 3).join(' ')
+
+  it('without line values, every branch runs down the trunk from its top, as it always did', async () => {
+    const { el, mind } = await mount(tree())
+    layOut()
+    mind.linkDiv()
+    const [one, two] = mainLines(el)
+    expect(start(two!)).toBe(start(one!))
+  })
+
+  it('with line values, each branch draws only its own piece of the trunk', async () => {
+    const { el, mind } = await mount(tree({ two: { 'line-width': '4pt', 'line-pattern': 'dash' } }))
+    layOut()
+    mind.linkDiv()
+    const [one, two] = mainLines(el)
+    const [, topOne] = start(one!).split(' ').map(Number)
+    const [, topTwo] = start(two!).split(' ').map(Number)
+    // the second starts where the first turns off, below the top
+    expect(topTwo).toBeGreaterThan(topOne!)
+    expect(two!.style.strokeDasharray).not.toBe('')
+  })
+})
+
+describe('the arrowheads of a timeline', () => {
+  it('are drawn apart after the lines, whole on a dashed line, with the line colour and width', async () => {
+    const sheet = sheetWith({
+      one: { 'line-pattern': 'dot', 'line-color': '#00ff00', 'line-width': '4pt' },
+    })
+    sheet.rootTopic.structureClass = 'org.xmind.ui.timeline.horizontal'
+    const { el, mind } = await mount(sheet)
+    layOut()
+    mind.linkDiv()
+    const drawn = [...el.querySelector('svg.lines')!.children]
+    expect(drawn.map((child) => child.tagName.toLowerCase())).toEqual([
+      'path',
+      'path',
+      'path',
+      'path',
+    ])
+    const [intoOne] = mainLines(el)
+    expect(intoOne!.style.strokeDasharray).not.toBe('')
+    const arrows = [...el.querySelectorAll<SVGPathElement>('svg.lines path.mm-line-head')]
+    expect(arrows).toHaveLength(2)
+    const own = arrows.find((arrow) => arrow.getAttribute('stroke') === '#00ff00')!
+    expect(own.getAttribute('fill')).toBe('none')
+    expect(own.style.strokeWidth).toBe('4px')
+    expect(own.style.strokeDasharray).toBe('')
+    expect(own.getAttribute('d')).toMatch(/^M [\d.-]+ [\d.-]+ L [\d.-]+ [\d.-]+ M /)
+    // the line itself carries no arrowhead any more
+    expect(intoOne!.getAttribute('d')).not.toMatch(/ L /)
+  })
+})
+
 describe('the map-wide settings', () => {
   it('rainbow off: every line takes the central topic line colour, the topic boxes keep theirs', async () => {
     const { el, session } = await mount(

@@ -31,9 +31,11 @@
  * filtered colour of the file (or `--mm-strong`, the theme's line colour,
  * with the rainbow off), a width in pixels, the dashes of a pattern (laid
  * onto the measured line so it starts and ends with a dash). A tree and a
- * timeline keep their own lines and take only those three. An arrowhead is a
- * triangle of its own, put after all the library's lines so each line keeps
- * its place, and never dashed. The theme draws the lines below a main topic a
+ * timeline keep their own lines and take only those three. The lines of one
+ * parent are drawn together, so lines that run down the same trunk each draw
+ * only their own piece of it. An arrowhead (of a curve with an arrow, or of a
+ * step of a timeline) is an element of its own, put after all the library's
+ * lines so each line keeps its place, and never dashed. The theme draws the lines below a main topic a
  * little lighter, as one layer; in a branch with a picked line colour that
  * layer is drawn whole, so the picked colour shows as picked, and the lines
  * the theme colours take the lighter colour themselves.
@@ -44,14 +46,15 @@ import { mixColors, type ThemeLook, type ViewImage } from '@genoffice/xmind-engi
 import { boxWidth, type MapNodeMeta } from '../document/convert'
 import {
   type BranchBoxes,
+  type BranchDrawing,
   fittedLinePattern,
   type BranchGeometry,
   linePatternDash,
-  mainBranchDrawing,
-  structureLead,
-  subBranchDrawing,
+  mainBranchDrawings,
+  subBranchDrawings,
   taperedBranchPath,
-  timelineStepPath,
+  timelineStepDrawing,
+  treeBranchDrawings,
   treeBranchPath,
 } from './branches'
 import { archivePictureEntry, pictureBox, type PictureStore } from './images'
@@ -227,7 +230,7 @@ export class TopicDecorator {
     const look = this.#look
     const geometry = this.#geometry
     const { tapered, rainbow } = this.#lineSettings
-    const mains = this.#mind.nodeData.children ?? []
+    const mainNodes = this.#mind.nodeData.children ?? []
     // the library's paths, taken before any arrowhead is added after them
     const lines = [...this.#mind.lines.children]
     const mainHeads: Element[] = []
@@ -238,102 +241,155 @@ export class TopicDecorator {
     const structure = this.#mind.container.dataset.mmStructure
     const structured = structure === 'tree' || structure === 'timeline'
 
-    wrappers.forEach((wrapper, at) => {
+    const mains: MainLine[] = wrappers.flatMap((wrapper, at) => {
       const topic = mainTopicOf(wrapper)
-      if (!topic) return
-      // the library writes the colour of its own palette here; the rules of `map.css` decide instead
-      topic.style.borderColor = ''
-      const index = Math.max(0, mains.indexOf(topic.nodeObj as never))
+      if (!topic) return []
+      const index = Math.max(0, mainNodes.indexOf(topic.nodeObj as never))
       const context = { look, rainbow, branchIndex: index }
       const resolve = (node: NodeObj): ResolvedBranchLine =>
         resolveBranchLine(lineChainOf(node), context)
       const direction = wrapper.parentElement?.className ?? ''
+      return [{ wrapper, at, topic, resolve, line: resolve(topic.nodeObj), direction }]
+    })
 
-      const path = lines[at]
-      if (path) {
-        const line = resolve(topic.nodeObj)
-        let filled = false
-        let span: LineSpan | null = null
-        let head: string | null = null
-        if (measured) {
-          const box = (from: DOMRect): BranchBoxes =>
-            measured.boxes(from, measured.rect(topic), measured.frame, direction)
-          let d: string
-          if (structure === 'tree') {
-            d = treeBranchPath(geometry, box(measured.centre), 'central')
-            span = { lead: structureLead(geometry, true), length: 0, shared: true }
-          } else if (structure === 'timeline') {
-            // each step leaves from the one before it, the first from the central topic
-            const before = at > 0 ? mainTopicOf(wrappers[at - 1]!) : null
-            const from = before ? measured.rect(before) : measured.centre
-            d = timelineStepPath(geometry, box(from), !before)
-            span = { lead: structureLead(geometry, !before), length: 0, shared: true }
-          } else if (tapered && line.shape !== 'none' && line.pattern === 'solid') {
-            // a filled outline cannot be dashed: a line with a pattern stays a line
-            const shape = { shape: line.shape, width: line.width }
-            d = taperedBranchPath(geometry, box(measured.centre), shape)
-            filled = true
-          } else {
-            const drawing = mainBranchDrawing(geometry, box(measured.centre), line)
-            d = drawing.d
-            span = drawing
-            head = drawing.head
-          }
-          path.setAttribute('d', d)
+    // the lines from the centre, drawn together: lines that share a trunk each draw their own piece
+    const drawn: Array<MainDrawn | null> = mains.map(() => null)
+    if (measured) {
+      const boxOf = (main: MainLine, from: DOMRect): BranchBoxes =>
+        measured.boxes(from, measured.rect(main.topic), measured.frame, main.direction)
+      if (structure === 'tree') {
+        const items = mains.map((main) => ({
+          box: boxOf(main, measured.centre),
+          from: 'central' as const,
+        }))
+        // With no line values at all the branches keep their whole lines, so the trunk looks as
+        // it always did; split, it would change colour from branch to branch.
+        const asTheme = mains.every(
+          ({ line }) => !picked(line) && line.widthFrom === 'theme' && line.patternFrom === 'theme',
+        )
+        if (asTheme) {
+          items.forEach(({ box, from }, place) => {
+            const d = treeBranchPath(geometry, box, from)
+            drawn[place] = { d, span: null, head: null, arrow: null, filled: false }
+          })
+        } else {
+          treeBranchDrawings(geometry, items).forEach((tree, place) => {
+            drawn[place] = { d: tree.d, span: tree, head: null, arrow: null, filled: false }
+          })
         }
-        paintLine(path, line, { main: true, filled, span })
-        if (head !== null) mainHeads.push(headElement(path, head, line.color, true))
+      } else if (structure === 'timeline') {
+        mains.forEach((main, place) => {
+          // each step leaves from the one before it, the first from the central topic
+          const before = main.at > 0 ? mainTopicOf(wrappers[main.at - 1]!) : null
+          const from = before ? measured.rect(before) : measured.centre
+          const own = main.line.widthFrom === 'theme' ? undefined : main.line.width
+          const step = timelineStepDrawing(geometry, boxOf(main, from), !before, {
+            width: own,
+            pattern: main.line.pattern,
+          })
+          drawn[place] = { d: step.d, span: step, head: null, arrow: step.arrow, filled: false }
+        })
+      } else {
+        // a filled outline cannot be dashed: a line with a pattern stays a line
+        const filled = (main: MainLine): boolean =>
+          tapered && main.line.shape !== 'none' && main.line.pattern === 'solid'
+        const plain = mains.filter((main) => !filled(main))
+        const drawings = mainBranchDrawings(
+          geometry,
+          plain.map((main) => ({ box: boxOf(main, measured.centre), line: main.line })),
+        )
+        mains.forEach((main, place) => {
+          if (filled(main)) {
+            const shape = { shape: main.line.shape, width: main.line.width }
+            const d = taperedBranchPath(geometry, boxOf(main, measured.centre), shape)
+            drawn[place] = { d, span: null, head: null, arrow: null, filled: true }
+            return
+          }
+          const drawing = drawings[plain.indexOf(main)]!
+          drawn[place] = {
+            d: drawing.d,
+            span: drawing,
+            head: drawing.head,
+            arrow: null,
+            filled: false,
+          }
+        })
+      }
+    }
+
+    mains.forEach((main, place) => {
+      const { wrapper, topic, resolve, direction } = main
+      // the library writes the colour of its own palette here; the rules of `map.css` decide instead
+      topic.style.borderColor = ''
+
+      const path = lines[main.at]
+      if (path) {
+        const line = main.line
+        const done = drawn[place]
+        if (done) path.setAttribute('d', done.d)
+        paintLine(path, line, {
+          main: true,
+          filled: done?.filled ?? false,
+          span: done?.span ?? null,
+        })
+        if (done?.head) mainHeads.push(headElement(path, done.head, line.color, true))
+        if (done?.arrow) mainHeads.push(arrowElement(path, done.arrow, line))
       }
 
       if (only && only !== wrapper) return
-      const drawn = wrapper.lastElementChild
-      if (!drawn || drawn.tagName.toLowerCase() !== 'svg') return
+      const svg = wrapper.lastElementChild
+      if (!svg || svg.tagName.toLowerCase() !== 'svg') return
       const pieces = subLinesOf(wrapper)
-      const paths = [...drawn.children]
+      const paths = [...svg.children]
       if (pieces.length !== paths.length) return
       const origin = measured ? wrapper.getBoundingClientRect() : null
       const resolved = pieces.map((piece) => (piece.node ? resolve(piece.node) : null))
       // A colour picked for a line is drawn as picked: the lines of this branch then leave
       // the theme's lighter layer, and each line the theme colours is drawn lighter itself.
       const opaque = resolved.some((line) => line !== null && picked(line))
-      const layer = (drawn as SVGElement).style
+      const layer = (svg as SVGElement).style
       setOrRemove(layer, 'opacity', opaque ? '1' : null)
-      if (layer.length === 0) drawn.removeAttribute('style')
-      const heads: Element[] = []
-      pieces.forEach((piece, place) => {
-        const path = paths[place]!
-        const line = resolved[place]!
-        let span: LineSpan | null = null
-        let head: string | null = null
-        if (measured && origin) {
-          const from = measured.rect(piece.from)
-          const box = measured.boxes(
-            from,
+      if (layer.length === 0) svg.removeAttribute('style')
+      // the lines below this main topic, drawn together; below the main topics a timeline lists its topics as a tree does
+      let drawings: BranchDrawing[] | null = null
+      if (measured && origin) {
+        const boxes = pieces.map((piece) =>
+          measured.boxes(
+            measured.rect(piece.from),
             measured.rect(piece.to),
             origin,
             direction,
             piece.isFirst,
-          )
-          // below the main topics, a timeline lists its topics as a tree does
-          let d: string
-          if (structured) {
-            d = treeBranchPath(geometry, box, piece.isFirst ? 'main' : 'sub')
-            span = { lead: structureLead(geometry, false), length: 0, shared: true }
-          } else {
-            const drawing = subBranchDrawing(geometry, box, line ?? {})
-            d = drawing.d
-            span = drawing
-            head = drawing.head
-          }
-          path.setAttribute('d', d)
-        }
+          ),
+        )
+        drawings = structured
+          ? treeBranchDrawings(
+              geometry,
+              boxes.map((box, place) => ({
+                box,
+                from: pieces[place]!.isFirst ? ('main' as const) : ('sub' as const),
+              })),
+            )
+          : subBranchDrawings(
+              geometry,
+              boxes.map((box, place) => ({ box, line: resolved[place] ?? {} })),
+            )
+      }
+      const heads: Element[] = []
+      pieces.forEach((_piece, place) => {
+        const path = paths[place]!
+        const line = resolved[place]!
+        const drawing = drawings?.[place] ?? null
+        if (drawing) path.setAttribute('d', drawing.d)
         if (!line) return
         const stroke = subStroke(line, look, opaque)
-        paintLine(path, line, { main: false, filled: false, span, stroke })
-        if (head !== null) heads.push(headElement(path, head, stroke ?? 'var(--mm-branch)', false))
+        paintLine(path, line, { main: false, filled: false, span: drawing, stroke })
+        if (drawing?.head) {
+          heads.push(headElement(path, drawing.head, stroke ?? 'var(--mm-branch)', false))
+        }
       })
       // after every line, so each line keeps its place among the library's paths
-      drawn.append(...heads)
+      svg.append(...heads)
     })
     this.#mind.lines.append(...mainHeads)
   }
@@ -661,6 +717,28 @@ interface LineSpan {
   shared: boolean
 }
 
+/** A line from the centre: its main branch, its place among the library's paths, and its values. */
+interface MainLine {
+  wrapper: HTMLElement
+  at: number
+  topic: Topic
+  resolve(node: NodeObj): ResolvedBranchLine
+  line: ResolvedBranchLine
+  direction: string
+}
+
+/** How a line from the centre is drawn when laid out. */
+interface MainDrawn {
+  d: string
+  span: LineSpan | null
+  /** the filled arrowhead of a curve with an arrow (polygon points) */
+  head: string | null
+  /** the open arrowhead of a step of a timeline (path data) */
+  arrow: string | null
+  /** a tapered line: a filled outline */
+  filled: boolean
+}
+
 /** A colour the file holds for the line itself or a topic above it, rather than the rainbow's or the theme's. */
 function picked(line: ResolvedBranchLine): boolean {
   return line.colorFrom === 'own' || line.colorFrom === 'inherited'
@@ -700,6 +778,22 @@ function headElement(line: Element, points: string, color: string, main: boolean
     head.style.setProperty('stroke', color)
   }
   return head
+}
+
+/**
+ * The arrowhead of a step of a timeline: an open point with the last piece
+ * of the line under it, stroked whole with the line's colour and width,
+ * never dashed. Its round ends and the theme's width come from `map.css`, as
+ * the line's do.
+ */
+function arrowElement(line: Element, d: string, value: ResolvedBranchLine): Element {
+  const arrow = line.ownerDocument.createElementNS(SVG, 'path')
+  arrow.setAttribute('class', HEAD_CLASS)
+  arrow.setAttribute('d', d)
+  arrow.setAttribute('fill', 'none')
+  arrow.setAttribute('stroke', value.color)
+  if (value.widthFrom !== 'theme') arrow.style.setProperty('stroke-width', `${value.width}px`)
+  return arrow
 }
 
 /**

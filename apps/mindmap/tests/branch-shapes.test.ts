@@ -13,11 +13,18 @@ import {
   fittedLinePattern,
   linePatternDash,
   mainBranchDrawing,
+  mainBranchDrawings,
   mainBranchPath,
   subBranchDrawing,
+  subBranchDrawings,
   subBranchPath,
   taperBaseWidth,
   taperedBranchPath,
+  timelineStepDrawing,
+  TREE_INDENT,
+  TREE_TRUNK,
+  treeBranchDrawings,
+  treeBranchPath,
 } from '../src/renderer/map/branches'
 import { branchGeometry } from '../src/renderer/map/look'
 
@@ -162,7 +169,7 @@ describe('the other shapes', () => {
   })
 
   it('in the line skeleton the underline stays, whatever the shape', () => {
-    for (const shape of ['straight', 'elbow', 'roundedElbow', 'arrowedCurve', 'none'] as const) {
+    for (const shape of ['straight', 'elbow', 'roundedElbow', 'none'] as const) {
       const d = mainBranchPath(line, main, { shape })
       expect(d, shape).toContain(`H ${main.cL + main.cW}`)
       const below = subBranchPath(line, sub, { shape })
@@ -170,6 +177,47 @@ describe('the other shapes', () => {
     }
     // with no line, only the underline is drawn
     expect(mainBranchPath(line, main, { shape: 'none' })).toMatch(/^M [\d.]+ [\d.]+ H [\d.]+$/)
+  })
+
+  it('in the line skeleton a curve with an arrow points from the far end of the underline', () => {
+    for (const [drawing, far, way] of [
+      [mainBranchDrawing(line, main, { shape: 'arrowedCurve', width: 4 }), main.cL + main.cW, 1],
+      [
+        mainBranchDrawing(line, { ...main, cL: 150, direction: 'lhs' }, { shape: 'arrowedCurve' }),
+        150,
+        -1,
+      ],
+      [subBranchDrawing(line, sub, { shape: 'arrowedCurve' }), sub.cL + sub.cW - line.subPadX, 1],
+    ] as const) {
+      const head = pairs(drawing.head!)
+      const tip = head.find((point) => point.x === far)!
+      expect(tip).toBeDefined()
+      // the head lies along the underline, at its height (the curve ends there, then `H` runs on)
+      expect(drawing.d).toMatch(/ H [\d.]+$/)
+      expect(tip.y).toBe(numbers(drawing.d).at(-2))
+      const base = head.filter((point) => point !== tip)
+      for (const point of base) expect(Math.sign(far - point.x)).toBe(way)
+      // the underline stops inside the head, at or past its base
+      const end = numbers(drawing.d).at(-1)!
+      expect(Math.sign(far - end)).toBe(way)
+      expect(Math.abs(far - end)).toBeLessThanOrEqual(Math.abs(far - base[0]!.x))
+    }
+  })
+
+  it('a line of round dots stops a gap before its arrowhead, so its last dot shows whole', () => {
+    const width = 6
+    const dots = mainBranchDrawing(pill, main, {
+      shape: 'arrowedCurve',
+      width,
+      pattern: 'round-dot',
+    })
+    const base = Math.min(...pairs(dots.head!).map((point) => point.x))
+    const [ex] = numbers(dots.d).slice(-2)
+    // the last dot sits half its width in from the end: its edge is clear of the base
+    expect(ex).toBeLessThanOrEqual(base - width)
+    // a solid line still ends inside the base
+    const solid = mainBranchDrawing(pill, main, { shape: 'arrowedCurve', width })
+    expect(numbers(solid.d).at(-2)!).toBeGreaterThan(base)
   })
 })
 
@@ -389,33 +437,67 @@ describe('a pattern laid onto a line', () => {
     )
   })
 
+  /** The dashes a fitted pattern draws along a line of this length, each as [from, to]. */
+  const drawnDashes = (fitted: { dasharray: string; dashoffset: number }, length: number) => {
+    const list = numbers(fitted.dasharray)
+    const total = list.reduce((sum, value) => sum + value, 0)
+    const on: Array<[number, number]> = []
+    // where along the line the list starts: back by the offset, then round again and again
+    for (let from = -fitted.dashoffset; from < length; from += total) {
+      let at = from
+      list.forEach((value, place) => {
+        if (place % 2 === 0 && at + value >= 0 && at <= length) on.push([at, at + value])
+        at += value
+      })
+    }
+    return on
+  }
+
   it('ends with the end of a dash, the dashes stretched a little to fit', () => {
     for (const pattern of ['dash', 'dot', 'dash-dot', 'dash-dot-dot'] as const) {
       for (const length of [37, 80, 151.5, 400]) {
         const fitted = fittedLinePattern(pattern, 2, { length, lead: 5, shared: false })!
-        const dashes = numbers(fitted.dasharray)
-        const period = sum(fitted.dasharray)
-        const seen = length - 5
-        // whole periods and then the first dash
-        const periods = (seen - dashes[0]!) / period
-        expect(Math.abs(periods - Math.round(periods)), `${pattern} ${length}`).toBeLessThan(0.005)
+        const what = `${pattern} ${length}`
+        // what lies under the topic is not seen
+        const on = drawnDashes(fitted, length).filter(([, to]) => to > 5.001)
+        // the first dash starts where the line comes out, the last one ends with the line
+        expect(on[0]![0], what).toBeCloseTo(5, 3)
+        expect(on.at(-1)![1], what).toBeCloseTo(length, 2)
         // never far from the pattern's own lengths
         const own = numbers(linePatternDash(pattern, 2)!.dasharray)
-        expect(dashes[0]! / own[0]!, `${pattern} ${length}`).toBeGreaterThan(0.6)
-        expect(dashes[0]! / own[0]!, `${pattern} ${length}`).toBeLessThan(1.5)
+        for (const [from, to] of on) {
+          const ratio = (to - from) / Math.min(...own.filter((_, at) => at % 2 === 0))
+          expect(ratio, what).toBeGreaterThan(0.6)
+        }
+        expect((on[0]![1] - on[0]![0]) / own[0]!, what).toBeLessThan(1.5)
       }
     }
   })
 
+  it('keeps the first period as it is on a longer line, so lines leaving one topic start alike', () => {
+    const own = numbers(linePatternDash('dash-dot', 3)!.dasharray)
+    const starts = [120, 157, 233].map((length) => {
+      const fitted = fittedLinePattern('dash-dot', 3, { length, lead: 0, shared: false })!
+      const on = drawnDashes(fitted, length)
+      expect(on.at(-1)![1]).toBeCloseTo(length, 2)
+      return numbers(fitted.dasharray).slice(0, own.length)
+    })
+    for (const start of starts) expect(start).toEqual(own)
+    // a long line of fine dots is stretched all along, its list kept short
+    const long = fittedLinePattern('dot', 1, { length: 2000, lead: 0, shared: false })!
+    expect(numbers(long.dasharray)).toHaveLength(2)
+  })
+
   it('puts round dots whole at both ends', () => {
     const width = 4
-    const fitted = fittedLinePattern('round-dot', width, { length: 100, lead: 0, shared: false })!
-    expect(fitted.linecap).toBe('round')
-    const period = sum(fitted.dasharray)
-    // the first dot half a width in, the last half a width before the end
-    expect(period - fitted.dashoffset).toBeCloseTo(width / 2, 1)
-    const periods = (100 - width) / period
-    expect(Math.abs(periods - Math.round(periods))).toBeLessThan(0.01)
+    for (const length of [30, 100]) {
+      const fitted = fittedLinePattern('round-dot', width, { length, lead: 0, shared: false })!
+      expect(fitted.linecap).toBe('round')
+      // the first dot half a width in, the last half a width before the end
+      const on = drawnDashes(fitted, length)
+      expect(on[0]![0]).toBeCloseTo(width / 2, 3)
+      expect(on.at(-1)![1]).toBeCloseTo(length - width / 2, 3)
+    }
   })
 
   it('keeps the dashes of a line that shares its trunk as they are', () => {
@@ -429,5 +511,267 @@ describe('a pattern laid onto a line', () => {
     const fitted = fittedLinePattern('dash', 3, { length: 10, lead: 0, shared: false })!
     expect(numbers(fitted.dasharray)[0]).toBeCloseTo(10, 5)
     expect(fittedLinePattern('solid', 3, { length: 100, lead: 0, shared: false })).toBeNull()
+  })
+})
+
+/** The straight pieces of a path of absolute `M`, `H`, `V`, `L`, `Q` and `C` commands. */
+function straightPieces(d: string): Array<{ from: Point; to: Point }> {
+  const pieces: Array<{ from: Point; to: Point }> = []
+  let here: Point = { x: 0, y: 0 }
+  for (const [, command, args] of d.matchAll(/([MHVLQC])([^MHVLQC]*)/g)) {
+    const values = numbers(args!)
+    if (command === 'M') here = { x: values[0]!, y: values[1]! }
+    else if (command === 'Q' || command === 'C') here = { x: values.at(-2)!, y: values.at(-1)! }
+    else {
+      const to =
+        command === 'H'
+          ? { x: values[0]!, y: here.y }
+          : command === 'V'
+            ? { x: here.x, y: values[0]! }
+            : { x: values[0]!, y: values[1]! }
+      pieces.push({ from: here, to })
+      here = to
+    }
+  }
+  return pieces
+}
+
+type Stretch = [number, number]
+
+/** The stretches of the paths' straight pieces along `axis` at `at` (a vertical line at x, or a level one at y). */
+function stretchesOn(paths: readonly string[], axis: 'x' | 'y', at: number): Stretch[] {
+  const other = axis === 'x' ? 'y' : 'x'
+  return paths.flatMap((d) =>
+    straightPieces(d)
+      .filter(
+        (piece) => Math.abs(piece.from[axis] - at) < 0.01 && Math.abs(piece.to[axis] - at) < 0.01,
+      )
+      .map((piece): Stretch => [
+        Math.min(piece.from[other], piece.to[other]),
+        Math.max(piece.from[other], piece.to[other]),
+      ]),
+  )
+}
+
+/** How much of the stretches lies on top of another. */
+function overlap(stretches: readonly Stretch[]): number {
+  let total = 0
+  stretches.forEach(([low, high], at) => {
+    for (const [otherLow, otherHigh] of stretches.slice(at + 1)) {
+      total += Math.max(0, Math.min(high, otherHigh) - Math.max(low, otherLow))
+    }
+  })
+  return total
+}
+
+/** The lowest and highest point the stretches reach. */
+const reach = (stretches: readonly Stretch[]): Stretch => [
+  Math.min(...stretches.map(([low]) => low)),
+  Math.max(...stretches.map(([, high]) => high)),
+]
+
+/** The last point of a path, as written. */
+const lastPoint = (d: string): string[] => d.split(' ').slice(-2)
+
+describe('lines that share a trunk, drawn together', () => {
+  // a main topic with five topics below it, the middle one level with it
+  const parent = { pT: 100, pL: 0, pW: 100, pH: 30, direction: 'rhs', isFirst: true }
+  const boxes: BranchBoxes[] = [-60, 20, 100, 180, 260].map((cT) => ({
+    ...parent,
+    cT,
+    cL: 160,
+    cW: 120,
+    cH: 30,
+  }))
+  const ex = 160 + block.subPadX
+  const trunk = (100 + ex) / 2
+
+  for (const shape of ['elbow', 'roundedElbow'] as const) {
+    it(`each ${shape} draws only its own piece of the trunk, and together they draw the whole`, () => {
+      const items = boxes.map((box) => ({ box, line: { shape } }))
+      const together = subBranchDrawings(block, items).map((drawing) => drawing.d)
+      const alone = boxes.map((box) => subBranchPath(block, box, { shape }))
+      // the line that turns nearest the parent is drawn whole, as before: here the level one
+      expect(together[2]).toBe(alone[2])
+      const drawn = stretchesOn(together, 'x', trunk)
+      expect(overlap(drawn)).toBeCloseTo(0, 5)
+      expect(overlap(stretchesOn(alone, 'x', trunk))).toBeGreaterThan(100)
+      // together they reach as far along the trunk as the lines drawn alone, and each ends at its topic
+      expect(reach(drawn)).toEqual(reach(stretchesOn(alone, 'x', trunk)))
+      together.forEach((d, at) => expect(lastPoint(d)).toEqual(lastPoint(alone[at]!)))
+      // the first below the level line starts with its own turn, where the piece from the parent ends
+      const [startX, startY] = numbers(together[3]!)
+      const sy = numbers(alone[2]!)[1]!
+      expect(startY).toBe(sy)
+      expect(startX).toBeLessThanOrEqual(trunk)
+      expect(startX).toBeGreaterThanOrEqual(trunk - block.cornerRadius)
+      // the one after it starts on the trunk, where that one turns off
+      const [nextX, nextY] = numbers(together[4]!)
+      expect(nextX).toBe(trunk)
+      expect(nextY).toBeCloseTo(195 - (shape === 'elbow' ? 0 : block.cornerRadius), 5)
+    })
+  }
+
+  it('a line that starts on the trunk counts only its own piece, with nothing under a topic', () => {
+    const items = boxes.map((box) => ({
+      box,
+      line: { shape: 'elbow' as const, pattern: 'dash' as const },
+    }))
+    const drawings = subBranchDrawings(block, items)
+    const alone = subBranchDrawing(block, boxes[4]!, { shape: 'elbow' })
+    expect(drawings[4]!.length).toBeLessThan(alone.length)
+    expect(drawings[4]!.length).toBeCloseTo(275 - 195 + (ex - trunk), 5)
+    for (const drawing of drawings) {
+      expect(drawing.lead).toBe(0)
+      expect(drawing.shared).toBe(false)
+      expect(drawing.head).toBeNull()
+    }
+  })
+
+  it('lines from the centre split their trunk too, each side on its own', () => {
+    const centre = { pT: 300, pL: 300, pW: 200, pH: 60 }
+    const right: BranchBoxes[] = [150, 250, 350, 450].map((cT) => ({
+      ...centre,
+      cT,
+      cL: 600,
+      cW: 90,
+      cH: 32,
+      direction: 'rhs',
+    }))
+    const left = right.map((box) => ({ ...box, cL: 110, direction: 'lhs' }))
+    const items = [...right, ...left].map((box) => ({
+      box,
+      line: { shape: 'roundedElbow' as const },
+    }))
+    const drawings = mainBranchDrawings(pill, items)
+    const rightTrunk = (500 - pill.centralInset + 600) / 2
+    const leftTrunk = (300 + pill.centralInset + 200) / 2
+    for (const [at, part] of [
+      [rightTrunk, drawings.slice(0, 4)],
+      [leftTrunk, drawings.slice(4)],
+    ] as const) {
+      const drawn = stretchesOn(
+        part.map((drawing) => drawing.d),
+        'x',
+        at,
+      )
+      expect(drawn).toHaveLength(4)
+      expect(overlap(drawn)).toBeCloseTo(0, 5)
+    }
+    // only the line that leaves the centre on each side starts under it
+    expect(drawings.filter((drawing) => drawing.lead > 0)).toHaveLength(2)
+  })
+
+  it('downward, the lines split the trunk that runs across', () => {
+    const items = [100, 300, 500, 700].map((cL) => ({
+      box: { ...down, cL, cT: 260 },
+      line: { shape: 'roundedElbow' as const },
+    }))
+    const together = subBranchDrawings(pill, items).map((drawing) => drawing.d)
+    const across = stretchesOn(together, 'y', (160 + 260) / 2)
+    expect(across).toHaveLength(4)
+    expect(overlap(across)).toBeCloseTo(0, 5)
+  })
+
+  it('lines of other shapes, and elbows on trunks of their own, are drawn whole', () => {
+    const shapes = ['curve', 'elbow', 'straight', 'roundedElbow', 'arrowedCurve'] as const
+    const items = boxes.map((box, at) => ({
+      box: { ...box, cL: 160 + at * 30 },
+      line: { shape: shapes[at]! },
+    }))
+    expect(subBranchDrawings(block, items).map((drawing) => drawing.d)).toEqual(
+      items.map((item) => subBranchPath(block, item.box, item.line)),
+    )
+  })
+
+  it('a map without line values draws the same shape as before', () => {
+    const items = boxes.map((box) => ({ box }))
+    for (const geometry of [pill, block, line]) {
+      const together = subBranchDrawings(geometry, items).map((drawing) => drawing.d)
+      const alone = boxes.map((box) => subBranchPath(geometry, box))
+      // the theme's curves share nothing; its rounded elbows share a trunk, drawn once
+      if (geometry.subShape === 'curve') expect(together).toEqual(alone)
+      else expect(together[2]).toBe(alone[2])
+    }
+  })
+})
+
+describe('the branches of a tree, drawn together', () => {
+  const parent = { pT: 0, pL: 0, pW: 160, pH: 40, direction: 'rhs' }
+  const boxes: BranchBoxes[] = [80, 140, 200].map((cT) => ({
+    ...parent,
+    cT,
+    cL: TREE_INDENT,
+    cW: 120,
+    cH: 30,
+  }))
+
+  it('the first runs from the top of the trunk; each other one from where the one above turns off', () => {
+    const items = boxes.map((box) => ({ box, from: 'central' as const }))
+    const drawings = treeBranchDrawings(pill, items)
+    expect(drawings[0]!.d).toBe(treeBranchPath(pill, boxes[0]!, 'central'))
+    const drawn = stretchesOn(
+      drawings.map((drawing) => drawing.d),
+      'x',
+      TREE_TRUNK,
+    )
+    expect(overlap(drawn)).toBeCloseTo(0, 5)
+    expect(reach(drawn)[0]).toBe(parent.pH - pill.centralInset)
+    // the second starts where the first begins its corner
+    expect(numbers(drawings[1]!.d).slice(0, 2)).toEqual([TREE_TRUNK, 95 - 8])
+    drawings.forEach((drawing, at) =>
+      expect(lastPoint(drawing.d)).toEqual(lastPoint(treeBranchPath(pill, boxes[at]!, 'central'))),
+    )
+    // only the first starts under the central topic; a pattern is fitted to each
+    expect(drawings.map((drawing) => drawing.lead)).toEqual([pill.centralInset, 0, 0])
+    expect(drawings.every((drawing) => !drawing.shared && drawing.length > 0)).toBe(true)
+  })
+
+  it('in the line skeleton each runs on under its topic', () => {
+    const drawings = treeBranchDrawings(
+      line,
+      boxes.map((box) => ({ box, from: 'sub' as const })),
+    )
+    for (const drawing of drawings) {
+      expect(drawing.d).toMatch(new RegExp(` H ${TREE_INDENT + 120 - line.subPadX}$`))
+    }
+  })
+})
+
+describe('a step of a timeline', () => {
+  const step: BranchBoxes = {
+    pT: 0,
+    pL: 0,
+    pW: 100,
+    pH: 30,
+    cT: 0,
+    cL: 150,
+    cW: 90,
+    cH: 30,
+    direction: 'rhs',
+  }
+
+  it('draws its arrowhead apart, the line stopping at its base', () => {
+    const drawing = timelineStepDrawing(pill, step, false)
+    expect(drawing.d).toMatch(/^M 100 15 C [\d. ]+$/)
+    expect(numbers(drawing.d).slice(-2)).toEqual([142, 15])
+    // the head: the last piece of the line, and an open point just before the main topic
+    expect(drawing.arrow).toBe('M 142 15 L 148 15 M 142 10.8 L 148 15 L 142 19.2')
+    expect(drawing.length).toBeCloseTo(42, 5)
+    expect(drawing.shared).toBe(false)
+    // from the central topic the line starts hidden under its edge
+    const first = timelineStepDrawing(pill, step, true)
+    expect(numbers(first.d)[0]).toBe(100 - pill.centralInset)
+    expect(first.lead).toBe(pill.centralInset)
+    // in the line skeleton the main topic sits on its line
+    expect(timelineStepDrawing(line, step, false).d).toMatch(/ M 150 [\d.]+ H 240$/)
+  })
+
+  it('a wide line has a larger head; round dots stop a gap before it', () => {
+    const wide = timelineStepDrawing(pill, step, false, { width: 4 })
+    expect(numbers(wide.arrow).slice(0, 2)).toEqual([138, 15])
+    const dots = timelineStepDrawing(pill, step, false, { width: 4, pattern: 'round-dot' })
+    expect(numbers(dots.d).at(-2)).toBeCloseTo(134, 5)
+    expect(numbers(dots.arrow).slice(0, 2)).toEqual([138, 15])
   })
 })
