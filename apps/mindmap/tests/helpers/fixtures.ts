@@ -167,3 +167,125 @@ export async function documentWithEntries(
   if (opened.status !== 'ok') throw new Error(`the test map does not open: ${opened.status}`)
   return opened.document
 }
+
+export const FORMAT_IDS = {
+  sheet: 'f0000000-0000-4000-8000-000000000000',
+  root: 'f0000000-0000-4000-8000-000000000001',
+  right: 'f0000000-0000-4000-8000-000000000002',
+  rightA: 'f0000000-0000-4000-8000-000000000003',
+  rightB: 'f0000000-0000-4000-8000-000000000004',
+  left: 'f0000000-0000-4000-8000-000000000005',
+  folded: 'f0000000-0000-4000-8000-000000000006',
+  foldedA: 'f0000000-0000-4000-8000-000000000007',
+  summaryRecord: 'f0000000-0000-4000-8000-000000000008',
+  summaryTopic: 'f0000000-0000-4000-8000-000000000009',
+  plainLine: 'f0000000-0000-4000-8000-00000000000a',
+  styledLine: 'f0000000-0000-4000-8000-00000000000b',
+  straightLine: 'f0000000-0000-4000-8000-00000000000c',
+  around: 'f0000000-0000-4000-8000-00000000000d',
+  master: 'f0000000-0000-4000-8000-00000000000e',
+  sides: 'f0000000-0000-4000-8000-00000000000f',
+  underFold: 'f0000000-0000-4000-8000-000000000010',
+} as const
+
+/**
+ * A sheet with the line format of what hangs on no branch: a relationship
+ * without values, one with every value and a curve, a straight one; a summary
+ * bracket with a shape; boundaries around a range, around the whole map, over
+ * both sides of the central topic and under a folded branch.
+ */
+export function lineFormatSheet(): XmindSheet {
+  const id = FORMAT_IDS
+  const right = topic(
+    id.right,
+    'Right',
+    {
+      summaries: [
+        {
+          id: id.summaryRecord,
+          range: '(0,1)',
+          topicId: id.summaryTopic,
+          style: {
+            id: 'summary-style',
+            properties: { 'shape-class': 'org.xmind.summaryShape.curly' },
+          },
+        },
+      ],
+      boundaries: [
+        {
+          id: id.around,
+          range: '(0,1)',
+          title: '<b>around</b>',
+          style: {
+            id: 'boundary-style',
+            properties: {
+              'shape-class': 'org.xmind.boundaryShape.waves',
+              'line-color': '#336699',
+              'line-width': '2pt',
+              'line-pattern': 'dash',
+              'svg:fill': '#eeddcc',
+            },
+          },
+        },
+      ],
+      children: { summary: [topic(id.summaryTopic, 'Both')] },
+    },
+    [topic(id.rightA, 'Right A'), topic(id.rightB, 'Right B')],
+  )
+  const folded = topic(
+    id.folded,
+    'Folded',
+    { branch: 'folded', boundaries: [{ id: id.underFold, range: '(0,0)', title: 'unseen' }] },
+    [topic(id.foldedA, 'Folded A')],
+  )
+  const root = topic(
+    id.root,
+    'Centre',
+    {
+      structureClass: 'org.xmind.ui.map.unbalanced',
+      boundaries: [
+        { id: id.master, range: 'master', title: 'everything' },
+        { id: id.sides, range: '(0,2)', title: 'both sides' },
+      ],
+    },
+    [right, folded, topic(id.left, 'Left')],
+  )
+  return {
+    id: id.sheet,
+    class: 'sheet',
+    title: 'Lines',
+    rootTopic: root,
+    relationships: [
+      { id: id.plainLine, end1Id: id.rightA, end2Id: id.left, title: 'plain' },
+      {
+        id: id.styledLine,
+        end1Id: id.rightB,
+        end2Id: id.left,
+        title: 'styled',
+        style: {
+          id: 'line-style',
+          properties: {
+            'shape-class': 'org.xmind.relationshipShape.curved',
+            'arrow-begin-class': 'org.xmind.arrowShape.dot',
+            'arrow-end-class': 'org.xmind.arrowShape.triangle',
+            'line-color': '#cc3300',
+            'line-width': '3pt',
+            'line-pattern': 'solid',
+          },
+        },
+        controlPoints: { '0': { x: 40, y: -30 }, '1': { x: -50, y: 25 } },
+      },
+      {
+        id: id.straightLine,
+        end1Id: id.rightA,
+        end2Id: id.folded,
+        title: '',
+        style: {
+          id: 'straight-style',
+          properties: { 'shape-class': 'org.xmind.relationshipShape.straight' },
+        },
+        controlPoints: { '0': { x: 1, y: 2 }, '1': { x: 3, y: 4 } },
+      },
+    ],
+  }
+}

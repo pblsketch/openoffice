@@ -29,10 +29,18 @@
  * this app only reads as the nearest picked shape (`safeBranchShape`).
  */
 import {
+  ARROW_SHAPE_PREFIX,
+  ARROW_SHAPES,
+  BOUNDARY_SHAPE_PREFIX,
+  BOUNDARY_SHAPES,
   BRANCH_LINE_CLASS_PREFIX,
   BRANCH_LINE_SHAPES,
   classWord,
   LINE_PATTERNS,
+  RELATIONSHIP_SHAPE_PREFIX,
+  RELATIONSHIP_SHAPES,
+  SUMMARY_SHAPE_PREFIX,
+  SUMMARY_SHAPES,
   type ViewRunStyle,
   type ViewTopicStyle,
 } from '@genoffice/xmind-engine'
@@ -300,4 +308,65 @@ export function isPlainText(own: OwnTextStyle): boolean {
 export function splitAlpha(color: SafeColor): { solid: string; alpha: number } {
   if (color.length !== 9) return { solid: color, alpha: 1 }
   return { solid: color.slice(0, 7), alpha: Number.parseInt(color.slice(7), 16) / 255 }
+}
+
+/** A shape of a relationship this app draws. */
+export type RelationshipShape = (typeof RELATIONSHIP_SHAPES)[number]
+/** A shape of a relationship's end this app draws. */
+export type ArrowShape = (typeof ARROW_SHAPES)[number]
+/** A shape of a summary's bracket this app draws. */
+export type SummaryShape = (typeof SUMMARY_SHAPES)[number]
+/** A shape of a boundary this app draws. */
+export type BoundaryShape = (typeof BOUNDARY_SHAPES)[number]
+
+/** Whether a shape value is one a user can pick, as the file writes it (`org.xmind.…<word>`). */
+function isPickableClass(value: unknown, prefix: string, words: readonly string[]): boolean {
+  const word = classWord(value, prefix)
+  return word !== null && words.includes(word)
+}
+
+export function isPickableRelationshipShape(value: unknown): boolean {
+  return isPickableClass(value, RELATIONSHIP_SHAPE_PREFIX, RELATIONSHIP_SHAPES)
+}
+
+export function isPickableArrowShape(value: unknown): boolean {
+  return isPickableClass(value, ARROW_SHAPE_PREFIX, ARROW_SHAPES)
+}
+
+export function isPickableSummaryShape(value: unknown): boolean {
+  return isPickableClass(value, SUMMARY_SHAPE_PREFIX, SUMMARY_SHAPES)
+}
+
+export function isPickableBoundaryShape(value: unknown): boolean {
+  return isPickableClass(value, BOUNDARY_SHAPE_PREFIX, BOUNDARY_SHAPES)
+}
+
+/** The shape to draw a relationship with; null (drawn curved) for any other value. */
+export function safeRelationshipShape(value: unknown): RelationshipShape | null {
+  const word = classWord(value, RELATIONSHIP_SHAPE_PREFIX)
+  return word !== null && isListed(RELATIONSHIP_SHAPES, word) ? word : null
+}
+
+/**
+ * The shape to draw an end of a relationship with. Another program's end
+ * (`ring`, `eye`, `doublearrow` and every other word after the format's
+ * prefix) is drawn as `normal`; a value of another form is null and the end
+ * is drawn as that end is drawn by default.
+ */
+export function safeArrowShape(value: unknown): ArrowShape | null {
+  const word = classWord(value, ARROW_SHAPE_PREFIX)
+  if (word === null) return null
+  return isListed(ARROW_SHAPES, word) ? word : 'normal'
+}
+
+/** The shape to draw a summary's bracket with; null (the bracket as before) for any other value. */
+export function safeSummaryShape(value: unknown): SummaryShape | null {
+  const word = classWord(value, SUMMARY_SHAPE_PREFIX)
+  return word !== null && isListed(SUMMARY_SHAPES, word) ? word : null
+}
+
+/** The shape to draw a boundary with; null (drawn as `roundedRect`) for any other value. */
+export function safeBoundaryShape(value: unknown): BoundaryShape | null {
+  const word = classWord(value, BOUNDARY_SHAPE_PREFIX)
+  return word !== null && isListed(BOUNDARY_SHAPES, word) ? word : null
 }

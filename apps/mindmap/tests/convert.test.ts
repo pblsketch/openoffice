@@ -88,7 +88,19 @@ describe('view data to library data', () => {
     expect(data.summaries).toEqual([
       { id: IDS.summaryTopic, label: 'Summary', parent: IDS.a, start: 0, end: 1 },
     ])
-    expect(data.arrows).toEqual([{ id: IDS.relShown, label: 'leads to', from: IDS.a1, to: IDS.c }])
+    // the curve the file gives is the library's control points too
+    const curve = { from: { x: 10, y: 20 }, to: { x: -10, y: -20 } }
+    expect(data.arrows).toEqual([
+      {
+        id: IDS.relShown,
+        label: 'leads to',
+        from: IDS.a1,
+        to: IDS.c,
+        metadata: { curve },
+        delta1: curve.from,
+        delta2: curve.to,
+      },
+    ])
   })
 
   it('maps the four layouts to the four directions', () => {
