@@ -88,7 +88,12 @@ const groupOf = (el: HTMLElement, id: string) =>
     (group) => group.dataset.linkid === id,
   )!
 
-type Group = SVGGElement & { line: SVGPathElement; arrow1: SVGPathElement; arrow2: SVGPathElement }
+type Group = SVGGElement & {
+  line: SVGPathElement
+  arrow1: SVGPathElement
+  arrow2: SVGPathElement
+  labelEl?: HTMLElement
+}
 
 const numbers = (d: string): number[] => (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number)
 
@@ -122,13 +127,15 @@ describe('relationships', () => {
     }
     expect(styled.line.getAttribute('stroke')).toBe('#cc3300')
     expect(styled.line.getAttribute('stroke-width')).toBe('3')
-    expect(styled.line.getAttribute('stroke-dasharray')).toBe('none')
+    // inline, over the dashes the map's rules give a relationship without a pattern
+    expect(styled.line.style.getPropertyValue('stroke-dasharray')).toBe('none')
     const ends = [...styled.querySelectorAll<SVGPathElement>(`.${RELATIONSHIP_END_CLASS}`)]
     expect(ends.map((end) => end.getAttribute('data-mm-end'))).toEqual(['begin', 'end'])
     for (const end of ends) {
-      // a dot and a triangle are filled with the line's colour
+      // a dot and a triangle are filled with the line's colour, with no outline to round their corners
       expect(end.getAttribute('fill')).toBe('#cc3300')
-      expect(end.getAttribute('stroke')).toBe('#cc3300')
+      expect(end.getAttribute('stroke')).toBe('none')
+      expect(end.hasAttribute('data-mm-solid')).toBe(true)
     }
     // the dot at the start is drawn with arcs, the triangle is a closed path
     expect(ends[0]!.getAttribute('d')).toMatch(/ A /)
@@ -146,7 +153,13 @@ describe('relationships', () => {
     expect(arrow.delta1).toEqual({ x: 40, y: -30 })
     expect(arrow.delta2).toEqual({ x: -50, y: 25 })
     const styled = groupOf(el, ID.styledLine) as Group
-    const [, , c1x, c1y, c2x, c2y] = numbers(styled.line.getAttribute('d')!)
+    // the curve as the library drew it is on the path that takes the clicks; the line drawn
+    // is the same curve, stopped short where the ends are drawn
+    const curve = styled.line.previousElementSibling!.getAttribute('d')!
+    const drawn = styled.line.getAttribute('d')!
+    expect(drawn).toMatch(/^M [-\d.]+ [-\d.]+ C /)
+    expect(drawn).not.toBe(curve)
+    const [, , c1x, c1y, c2x, c2y] = numbers(curve)
     // the control points stand at those offsets from the middle of each end's box
     const from = mind.findEle(ID.rightB)
     const to = mind.findEle(ID.left)
@@ -171,11 +184,15 @@ describe('relationships', () => {
       arrow.metadata = { style: { shape: `org.xmind.relationshipShape.${shape}` } }
       mind.linkDiv()
       const group = groupOf(el, ID.plainLine) as Group
-      expect(group.line.getAttribute('d'), shape).toMatch(form)
-      // the see-through path that takes the clicks follows the line
-      expect(group.line.previousElementSibling!.getAttribute('d'), shape).toBe(
-        group.line.getAttribute('d'),
-      )
+      // the see-through path that takes the clicks has the whole path of the shape
+      const whole = group.line.previousElementSibling!.getAttribute('d')!
+      expect(whole, shape).toMatch(form)
+      // the line drawn is that path, stopped short under an end drawn by the editor
+      if (shape === 'curved') expect(group.line.getAttribute('d'), shape).toBe(whole)
+      else
+        expect(group.line.getAttribute('d'), shape).toMatch(
+          /^M [-\d.]+ [-\d.]+( L [-\d.]+ [-\d.]+)+$/,
+        )
       const ends = group.querySelectorAll(`.${RELATIONSHIP_END_CLASS}`)
       if (shape === 'curved') {
         // every value the default: the library's own arrowhead, as for a line without values
@@ -187,6 +204,31 @@ describe('relationships', () => {
       expect(ends, shape).toHaveLength(1)
       expect(ends[0]!.getAttribute('fill')).toBe('none')
     }
+  })
+
+  it('a colour the map shows through is put on the whole relationship, so nothing shows darker where it overlaps', async () => {
+    const { el, mind } = await mountFormatted()
+    const arrow = (mind.arrows as MapArrow[]).find((line) => line.id === ID.plainLine)!
+    arrow.metadata = {
+      style: {
+        color: '#cc330080',
+        end: 'org.xmind.arrowShape.triangle',
+        shape: 'org.xmind.relationshipShape.straight',
+      },
+    }
+    mind.linkDiv()
+    const group = groupOf(el, ID.plainLine) as Group
+    expect(group.getAttribute('opacity')).toBe('0.5')
+    expect(group.line.getAttribute('stroke')).toBe('#cc3300')
+    expect(group.querySelector(`.${RELATIONSHIP_END_CLASS}`)!.getAttribute('fill')).toBe('#cc3300')
+    // its title is placed by the editor, and goes back to the library's place when the values go
+    const label = group.labelEl as HTMLElement
+    expect(label.hasAttribute('data-mm-placed')).toBe(true)
+    arrow.metadata = {}
+    mind.linkDiv()
+    const again = groupOf(el, ID.plainLine) as Group
+    expect(again.hasAttribute('opacity')).toBe(false)
+    expect((again.labelEl as HTMLElement).hasAttribute('data-mm-placed')).toBe(false)
   })
 
   it('drawn again without the library drawing first, a shaped line keeps its path and its ends', async () => {
@@ -317,7 +359,7 @@ describe('boundaries', () => {
 
   it('the master boundary goes around every topic of the map', async () => {
     const { el } = await mountFormatted()
-    const d = groupsOf(el, ID.master)[0]!.querySelector('path')!.getAttribute('d')!
+    const d = groupsOf(el, ID.master)[0]!.querySelector('.mm-boundary-shape')!.getAttribute('d')!
     const xs = numbers(d).filter((_, at) => at % 2 === 0)
     const ys = numbers(d).filter((_, at) => at % 2 === 1)
     for (const topic of el.querySelectorAll('me-tpc')) {
@@ -327,6 +369,34 @@ describe('boundaries', () => {
       expect(Math.min(...ys)).toBeLessThanOrEqual(box.top - BOUNDARY_PAD + 0.01)
       expect(Math.max(...ys)).toBeGreaterThanOrEqual(box.bottom + BOUNDARY_PAD - 0.01)
     }
+  })
+
+  it('the title is written on a chip; under the outline, a rim of no colour of its own', async () => {
+    const { el } = await mountFormatted()
+    const group = groupsOf(el, ID.around)[0]!
+    expect([...group.children].map((child) => child.getAttribute('class'))).toEqual([
+      'mm-boundary-ring',
+      'mm-boundary-shape',
+      'mm-boundary-chip',
+      'mm-boundary-title',
+    ])
+    const ring = group.querySelector('.mm-boundary-ring')!
+    expect(ring.getAttribute('d')).toBe(
+      group.querySelector('.mm-boundary-shape')!.getAttribute('d'),
+    )
+    expect(ring.getAttribute('fill')).toBe('none')
+    expect(ring.hasAttribute('stroke')).toBe(false)
+    // wider than the outline (2), so it shows on both sides of it when selected
+    expect(ring.getAttribute('stroke-width')).toBe('6')
+    const chip = group.querySelector('.mm-boundary-chip')!
+    const title = group.querySelector('.mm-boundary-title')!
+    const x = Number(chip.getAttribute('x'))
+    const width = Number(chip.getAttribute('width'))
+    expect(width).toBeGreaterThan(0)
+    expect(Number(title.getAttribute('x'))).toBeGreaterThan(x)
+    expect(Number(title.getAttribute('x'))).toBeLessThan(x + width)
+    // a chip carries no colour: the map's ground comes from its rules
+    expect(chip.hasAttribute('fill')).toBe(false)
   })
 
   it('the title is text, never markup', async () => {
@@ -344,13 +414,13 @@ describe('boundaries', () => {
     expect(master.getAttributeNames().filter((name) => name.startsWith('data-mm-'))).toEqual([
       BOUNDARY_ID_ATTRIBUTE,
     ])
-    const plain = master.querySelector('path')!
+    const plain = master.querySelector('.mm-boundary-shape')!
     for (const name of ['stroke', 'stroke-width', 'fill', 'stroke-dasharray']) {
       expect(plain.hasAttribute(name), name).toBe(false)
     }
     expect(plain.getAttribute('d')).toMatch(/ Q /)
     const around = groupsOf(el, ID.around)[0]!
-    const outline = around.querySelector('path')!
+    const outline = around.querySelector('.mm-boundary-shape')!
     expect(outline.getAttribute('stroke')).toBe('#336699')
     expect(outline.getAttribute('stroke-width')).toBe('2')
     expect(outline.getAttribute('fill')).toBe('#eeddcc')
@@ -370,7 +440,7 @@ describe('boundaries', () => {
       shape: 'javascript:alert(1)',
     }
     mind.linkDiv()
-    const master = groupsOf(el, ID.master)[0]!.querySelector('path')!
+    const master = groupsOf(el, ID.master)[0]!.querySelector('.mm-boundary-shape')!
     expect(master.getAttribute('fill')).toBe('#112233')
     expect(master.getAttribute('fill-opacity')).toBe('0.08')
     const around = groupsOf(el, ID.around)[0]!
@@ -394,7 +464,7 @@ describe('boundaries', () => {
         shape: `org.xmind.boundaryShape.${shape}`,
       }
       mind.linkDiv()
-      seen.add(groupsOf(el, ID.master)[0]!.querySelector('path')!.getAttribute('d')!)
+      seen.add(groupsOf(el, ID.master)[0]!.querySelector('.mm-boundary-shape')!.getAttribute('d')!)
     }
     expect(seen.size).toBe(7)
   })

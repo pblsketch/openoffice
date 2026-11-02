@@ -9,8 +9,15 @@
  * - `boundaryPieces`: the outlines to draw for groups of boxes. A boundary
  *   whose topics stand on both sides of the central topic is drawn once per
  *   side, its title on the first only.
+ * - `boundaryOutlines`: where all the outlines of a map go, together. Each
+ *   stands `BOUNDARY_PAD` from its boxes; one that goes around another stands
+ *   a little outside it (and further above one with a title), and two side by
+ *   side give way to each other so a gap stays between them.
  * - `boundaryPath`: the outline of each shape around a box. The shapes are
  *   drawn by this app; another program's shape is drawn rounded.
+ * - `boundaryTitlePlace`: where a title's chip goes: on the outline's top
+ *   edge, or the first other place near the outline where it covers no topic
+ *   and no other outline or title.
  */
 import type { ViewBoundaryStyle } from '@genoffice/xmind-engine'
 import {
@@ -33,7 +40,13 @@ export interface Rect {
 }
 
 /** How far an outline stands from the boxes it goes around. */
-export const BOUNDARY_PAD = 8
+export const BOUNDARY_PAD = 10
+/** How far an outline stands outside an outline it goes around. */
+export const BOUNDARY_NEST_GAP = 6
+/** The least gap between two outlines side by side. */
+export const BOUNDARY_SIDE_GAP = 4
+/** How tall the chip a boundary's title is written on is. */
+export const BOUNDARY_TITLE_HEIGHT = 18
 /** How wide a boundary is drawn without a width of its own (CSS pixels; `map.css`). */
 export const BOUNDARY_WIDTH = 1.5
 
@@ -66,9 +79,9 @@ export function boundaryPaint(
   }
 }
 
-/** One outline to draw: the box it goes around (padded) and whether the title goes on it. */
+/** One outline to draw: the boxes it goes around (one box around them all) and whether the title goes on it. */
 export interface BoundaryPiece {
-  rect: Rect
+  content: Rect
   withTitle: boolean
 }
 
@@ -88,26 +101,293 @@ export function unionRect(rects: readonly Rect[]): Rect | null {
   return { x: left, y: top, w: right - left, h: bottom - top }
 }
 
-/**
- * One outline for each group of boxes that has any, in the order given, each
- * standing `BOUNDARY_PAD` from its boxes. The title goes on the first.
- */
+/** One outline for each group of boxes that has any, in the order given. The title goes on the first. */
 export function boundaryPieces(groups: readonly (readonly Rect[])[]): BoundaryPiece[] {
   const pieces: BoundaryPiece[] = []
   for (const group of groups) {
-    const around = unionRect(group)
-    if (!around) continue
-    pieces.push({
-      rect: {
-        x: around.x - BOUNDARY_PAD,
-        y: around.y - BOUNDARY_PAD,
-        w: around.w + 2 * BOUNDARY_PAD,
-        h: around.h + 2 * BOUNDARY_PAD,
-      },
-      withTitle: pieces.length === 0,
-    })
+    const content = unionRect(group)
+    if (!content) continue
+    pieces.push({ content, withTitle: pieces.length === 0 })
   }
   return pieces
+}
+
+/** How far in the middle of each side of a tension outline is drawn. */
+function tensionDepth(w: number, h: number): number {
+  return Math.min(12, w * 0.08, h * 0.08)
+}
+
+/** How far the points of a six-sided outline stand out from the sides of its box. */
+function polygonCut(height: number): number {
+  return Math.min(12, height / 4)
+}
+
+/** How far the drawing of an outline of this shape stands out of its box, at the most. */
+function bulgeOf(shape: BoundaryShape, rect: Rect): { x: number; y: number } {
+  switch (shape) {
+    case 'polygon':
+    case 'roundedPolygon':
+      return { x: polygonCut(rect.h), y: 0 }
+    case 'scallops':
+      return { x: SCALLOP_BULGE / 2, y: SCALLOP_BULGE / 2 }
+    case 'waves':
+      return { x: WAVE_BULGE / 2, y: WAVE_BULGE / 2 }
+    default:
+      return { x: 0, y: 0 }
+  }
+}
+
+/** The box the drawing of an outline of this shape takes. */
+export function boundaryExtent(shape: BoundaryShape, rect: Rect): Rect {
+  const bulge = bulgeOf(shape, rect)
+  return {
+    x: rect.x - bulge.x,
+    y: rect.y - bulge.y,
+    w: rect.w + 2 * bulge.x,
+    h: rect.h + 2 * bulge.y,
+  }
+}
+
+const NEAR = 0.5
+
+function contains(outer: Rect, inner: Rect): boolean {
+  return (
+    inner.x >= outer.x - NEAR &&
+    inner.y >= outer.y - NEAR &&
+    inner.x + inner.w <= outer.x + outer.w + NEAR &&
+    inner.y + inner.h <= outer.y + outer.h + NEAR
+  )
+}
+
+/** One outline of a map, as `boundaryOutlines` takes it. */
+export interface OutlineRequest {
+  content: Rect
+  shape: BoundaryShape
+  withTitle: boolean
+}
+
+/**
+ * The box of each outline of a map, in the order given, all placed together:
+ *
+ * - each stands `BOUNDARY_PAD` from its boxes, more where its sides are drawn
+ *   inward (tension, waves) and less at the sides of a six-sided one, whose
+ *   points stand out there, so each looks as far off all round; one with a
+ *   title has room under its top edge for the title written on it;
+ * - it stops short of a topic just outside its boxes (`topics`), such as the
+ *   parent right above the branches of a tree, or the next branch below;
+ * - one whose boxes take in another's stands `BOUNDARY_NEST_GAP` outside that
+ *   one's drawing, and further above it by half a title for each of the two
+ *   with a title. Of two around the same boxes, the later one goes outside;
+ * - two side by side (neither inside the other) give way on the sides that
+ *   face each other, so `BOUNDARY_SIDE_GAP` stays between them, as far as
+ *   their boxes and what is inside them allow.
+ */
+export function boundaryOutlines(
+  requests: readonly OutlineRequest[],
+  topics: readonly Rect[] = [],
+): Rect[] {
+  const inside = (i: number, j: number): boolean =>
+    i !== j &&
+    contains(requests[j]!.content, requests[i]!.content) &&
+    // of two around the same boxes, the later goes outside
+    (!contains(requests[i]!.content, requests[j]!.content) || i < j)
+
+  const rects = requests.map(({ content, shape, withTitle }) => {
+    // a side drawn inward comes that much nearer the boxes
+    const inward =
+      shape === 'tension'
+        ? tensionDepth(content.w + 2 * BOUNDARY_PAD, content.h + 2 * BOUNDARY_PAD)
+        : shape === 'waves'
+          ? WAVE_BULGE / 2
+          : 0
+    const pad = BOUNDARY_PAD + inward
+    const side =
+      shape === 'polygon' || shape === 'roundedPolygon'
+        ? Math.max(4, pad - polygonCut(content.h + 2 * pad) / 2)
+        : pad
+    // room under the top edge for the lower half of a title written on it
+    const top = withTitle ? Math.max(pad, BOUNDARY_TITLE_HEIGHT / 2 + 3) : pad
+    const pads = { top, bottom: pad, left: side, right: side }
+    // the bulges and points of the drawing stand out of its box: they too stop short of a topic
+    const bulge = bulgeOf(shape, {
+      x: content.x - side,
+      y: content.y - pad,
+      w: content.w + 2 * side,
+      h: content.h + 2 * pad,
+    })
+    // a topic just outside the boxes (the parent above a tree's branch, the next branch below) stays outside
+    for (const box of topics) {
+      if (contains(content, box)) continue
+      const across =
+        box.x < content.x + content.w + pads.right && box.x + box.w > content.x - pads.left
+      const along =
+        box.y < content.y + content.h + pads.bottom && box.y + box.h > content.y - pads.top
+      const room = (gap: number, out: number): number => Math.max(1, gap - 2 - out)
+      if (across && box.y + box.h <= content.y + NEAR) {
+        pads.top = Math.min(pads.top, room(content.y - (box.y + box.h), bulge.y))
+      } else if (across && box.y >= content.y + content.h - NEAR) {
+        pads.bottom = Math.min(pads.bottom, room(box.y - (content.y + content.h), bulge.y))
+      } else if (along && box.x + box.w <= content.x + NEAR) {
+        pads.left = Math.min(pads.left, room(content.x - (box.x + box.w), bulge.x))
+      } else if (along && box.x >= content.x + content.w - NEAR) {
+        pads.right = Math.min(pads.right, room(box.x - (content.x + content.w), bulge.x))
+      }
+    }
+    return {
+      x: content.x - pads.left,
+      y: content.y - pads.top,
+      w: content.w + pads.left + pads.right,
+      h: content.h + pads.top + pads.bottom,
+    }
+  })
+
+  // around another: outside its drawing, the smaller ones first so each grows around what is inside it
+  const area = (at: number): number => requests[at]!.content.w * requests[at]!.content.h
+  const order = requests.map((_, at) => at).sort((a, b) => area(a) - area(b) || a - b)
+  // how far in each side may come: its boxes, and the drawings of the outlines inside it
+  const floors = requests.map(({ content }) => ({
+    left: content.x - 1,
+    top: content.y - 1,
+    right: content.x + content.w + 1,
+    bottom: content.y + content.h + 1,
+  }))
+  for (const i of order) {
+    for (let j = 0; j < requests.length; j++) {
+      if (!inside(i, j)) continue
+      const drawn = boundaryExtent(requests[i]!.shape, rects[i]!)
+      const halfTitles = (requests[i]!.withTitle ? 1 : 0) + (requests[j]!.withTitle ? 1 : 0)
+      const above = BOUNDARY_NEST_GAP + (halfTitles * BOUNDARY_TITLE_HEIGHT) / 2
+      const outer = rects[j]!
+      // the outer one's own points and bulges stand out of its box already; only its box has to clear
+      const left = Math.min(outer.x, drawn.x - BOUNDARY_NEST_GAP)
+      const top = Math.min(outer.y, drawn.y - above)
+      const right = Math.max(outer.x + outer.w, drawn.x + drawn.w + BOUNDARY_NEST_GAP)
+      const bottom = Math.max(outer.y + outer.h, drawn.y + drawn.h + BOUNDARY_NEST_GAP)
+      rects[j] = { x: left, y: top, w: right - left, h: bottom - top }
+      const floor = floors[j]!
+      floor.left = Math.min(floor.left, drawn.x - 2)
+      floor.top = Math.min(floor.top, drawn.y - 2)
+      floor.right = Math.max(floor.right, drawn.x + drawn.w + 2)
+      floor.bottom = Math.max(floor.bottom, drawn.y + drawn.h + 2)
+    }
+  }
+
+  // side by side (neither inside the other): each gives way on the side facing the other
+  for (let i = 0; i < requests.length; i++) {
+    for (let j = i + 1; j < requests.length; j++) {
+      if (inside(i, j) || inside(j, i)) continue
+      const a = requests[i]!.content
+      const b = requests[j]!.content
+      const gapY = Math.max(b.y - (a.y + a.h), a.y - (b.y + b.h))
+      const gapX = Math.max(b.x - (a.x + a.w), a.x - (b.x + b.w))
+      if (gapY >= 0 && gapX < 0) {
+        const [upper, lower] = a.y < b.y ? [i, j] : [j, i]
+        const up = rects[upper]!
+        const low = rects[lower]!
+        const need = up.y + up.h + BOUNDARY_SIDE_GAP - low.y
+        if (need <= 0) continue
+        const fromUp = Math.min(need / 2, Math.max(0, up.y + up.h - floors[upper]!.bottom))
+        const fromLow = Math.min(need - fromUp, Math.max(0, floors[lower]!.top - low.y))
+        up.h -=
+          fromUp +
+          Math.min(
+            need - fromUp - fromLow,
+            Math.max(0, up.y + up.h - fromUp - floors[upper]!.bottom),
+          )
+        low.y += fromLow
+        low.h -= fromLow
+      } else if (gapX >= 0 && gapY < 0) {
+        const [before, after] = a.x < b.x ? [i, j] : [j, i]
+        const left = rects[before]!
+        const right = rects[after]!
+        const need = left.x + left.w + BOUNDARY_SIDE_GAP - right.x
+        if (need <= 0) continue
+        const fromLeft = Math.min(need / 2, Math.max(0, left.x + left.w - floors[before]!.right))
+        const fromRight = Math.min(need - fromLeft, Math.max(0, floors[after]!.left - right.x))
+        left.w -=
+          fromLeft +
+          Math.min(
+            need - fromLeft - fromRight,
+            Math.max(0, left.x + left.w - fromLeft - floors[before]!.right),
+          )
+        right.x += fromRight
+        right.w -= fromRight
+      }
+    }
+  }
+  return rects
+}
+
+function overlaps(a: Rect, b: Rect, margin: number): boolean {
+  return (
+    a.x < b.x + b.w + margin &&
+    b.x < a.x + a.w + margin &&
+    a.y < b.y + b.h + margin &&
+    b.y < a.y + a.h + margin
+  )
+}
+
+/**
+ * Where the chip of a boundary's title goes (its top left corner): on the
+ * outline's top edge near its left end, as a legend sits on a frame; when
+ * that covers something, the first of the top edge's right end, the bottom
+ * edge's two ends and the places beside the outline that covers nothing.
+ * `obstacles` are what a title must not cover: the topics, the other titles,
+ * the lines of the other outlines. Where it covers least when nothing is free.
+ */
+export function boundaryTitlePlace(
+  outline: Rect,
+  chip: { w: number; h: number },
+  obstacles: readonly Rect[],
+): { x: number; y: number } {
+  const { x, y, w, h } = outline
+  const inset = Math.max(0, Math.min(TITLE_INSET, (w - chip.w) / 2))
+  const left = x + inset
+  const right = x + w - inset - chip.w
+  const gap = 4
+  const candidates = [
+    { x: left, y: y - chip.h / 2 },
+    { x: right, y: y - chip.h / 2 },
+    { x: left, y: y + h - chip.h / 2 },
+    { x: right, y: y + h - chip.h / 2 },
+    { x: x + w + gap, y },
+    { x: x + w + gap, y: y + h / 2 - chip.h / 2 },
+    { x: x - gap - chip.w, y },
+    { x: x - gap - chip.w, y: y + h / 2 - chip.h / 2 },
+  ]
+  // the first place that covers nothing; when there is none, the one that covers least
+  let best = candidates[0]!
+  let least = Infinity
+  for (const at of candidates) {
+    const box = { ...at, w: chip.w, h: chip.h }
+    let covered = 0
+    for (const other of obstacles) {
+      if (!overlaps(box, other, 2)) continue
+      const w = Math.min(box.x + box.w, other.x + other.w + 2) - Math.max(box.x, other.x - 2)
+      const h = Math.min(box.y + box.h, other.y + other.h + 2) - Math.max(box.y, other.y - 2)
+      covered += Math.max(0, w) * Math.max(0, h)
+    }
+    if (covered === 0) return at
+    if (covered < least) {
+      least = covered
+      best = at
+    }
+  }
+  return best
+}
+
+/** How far in from an outline's end its title starts. */
+const TITLE_INSET = 12
+
+/** The lines of an outline's box, as thin boxes: what another boundary's title must not lie on. */
+export function outlineEdges(rect: Rect): Rect[] {
+  const t = 1
+  return [
+    { x: rect.x, y: rect.y - t, w: rect.w, h: 2 * t },
+    { x: rect.x, y: rect.y + rect.h - t, w: rect.w, h: 2 * t },
+    { x: rect.x - t, y: rect.y, w: 2 * t, h: rect.h },
+    { x: rect.x + rect.w - t, y: rect.y, w: 2 * t, h: rect.h },
+  ]
 }
 
 function n(value: number): string {
@@ -152,6 +432,10 @@ function roundedThrough(points: readonly Point[], radius: number): string {
   return `${parts.join(' ')} Z`
 }
 
+/** How far out the curves of scallops and of waves go (a curve through its control point goes half as far). */
+const SCALLOP_BULGE = 8
+const WAVE_BULGE = 6
+
 /**
  * Each side of the box as a row of curves from corner to corner, each bulging
  * out by `bulge` (in, when negative) at its middle; `alternate` turns every
@@ -194,18 +478,17 @@ export function boundaryPath(shape: BoundaryShape, rect: Rect): string {
     case 'roundedRect':
       return roundedThrough(corners(rect), Math.min(10, w / 2, h / 2))
     case 'scallops':
-      return curvedSides(rect, 18, 8, false)
+      return curvedSides(rect, 18, SCALLOP_BULGE, false)
     case 'waves':
-      return curvedSides(rect, 24, 6, true)
+      return curvedSides(rect, 24, WAVE_BULGE, true)
     case 'tension': {
       // the sides drawn in, as if pulled by the corners
-      const depth = Math.min(12, w * 0.08, h * 0.08)
-      return curvedSides(rect, Math.max(w, h) * 2, -depth * 2, false)
+      return curvedSides(rect, Math.max(w, h) * 2, -tensionDepth(w, h) * 2, false)
     }
     case 'polygon':
     case 'roundedPolygon': {
       // six sides: the box with a point on its left and its right
-      const cut = Math.min(16, h / 2)
+      const cut = polygonCut(h)
       const points: Point[] = [
         { x, y },
         { x: x + w, y },

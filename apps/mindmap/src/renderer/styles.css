@@ -418,13 +418,27 @@ html.genoffice-popover-open .ribbon-tabs {
   outline: 2px solid var(--accent);
 }
 
-/* a selected boundary (map/controller.ts): a glow of the app's accent around its outline and title */
+/*
+ * A selected boundary (map/controller.ts): a sharp rim of the app's accent on
+ * both sides of its outline (a wider path drawn under it, map/relations.ts)
+ * and around the chip of its title.
+ */
 .mm-card .map-container .mm-boundaries g.selected {
   outline: none;
-  filter: drop-shadow(0 0 1.5px var(--accent)) drop-shadow(0 0 1.5px var(--accent));
+}
+
+.mm-card .map-container .mm-boundaries g.selected > .mm-boundary-ring {
+  stroke: var(--accent);
+  stroke-linejoin: round;
+}
+
+.mm-card .map-container .mm-boundaries g.selected > .mm-boundary-chip {
+  stroke: var(--accent);
+  stroke-width: 1.5px;
 }
 
 .mm-card .map-container .mm-boundaries .mm-boundary-shape,
+.mm-card .map-container .mm-boundaries .mm-boundary-chip,
 .mm-card .map-container .mm-boundaries .mm-boundary-title {
   cursor: pointer;
 }
