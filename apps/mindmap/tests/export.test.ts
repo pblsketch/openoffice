@@ -103,6 +103,7 @@ const ID = {
   folded: 'e0000000-0000-4000-8000-000000000009',
   under: 'e0000000-0000-4000-8000-00000000000a',
   line: 'e0000000-0000-4000-8000-00000000000b',
+  rich: 'e0000000-0000-4000-8000-00000000000c',
 }
 
 /** The address every hostile value points at. It must appear nowhere in an output. */
@@ -132,8 +133,22 @@ function hostileSheet(): XmindSheet {
             'fo:color': `red; background:url(https://${EVIL}/color.png)`,
             'fo:font-size': 'calc(100px)',
             'fo:font-weight': 'expression(alert(1))',
+            'fo:font-family': `x"; background:url(https://${EVIL}/font.png)`,
+            'fo:text-decoration': `url(https://${EVIL}/line.png)`,
+            'fo:text-transform': 'expression(alert(1))',
           },
         },
+      }),
+      topic(ID.rich, `Bold ${HOSTILE_TITLE}`, {
+        attributedTitle: [
+          { text: 'Bold ', 'fo:font-weight': '700', 'fo:font-style': 'italic' },
+          {
+            text: HOSTILE_TITLE,
+            'fo:color': `url(https://${EVIL}/run.png)`,
+            'fo:font-family': `a"); background:url(https://${EVIL}/run-font.png`,
+            'fo:text-decoration': 'line-through',
+          },
+        ],
       }),
       topic(ID.pictures, 'Pictures', {}, [
         topic(ID.inside, 'Inside', {
@@ -242,6 +257,23 @@ describe('the page and the picture of a map with hostile text, styles and pictur
     expect(style).not.toMatch(/url|calc|expression|background|red/i)
   })
 
+  it('parts of a title are spans of text, formatted only through the filter', async () => {
+    const { snapshot } = await hostileSnapshot()
+    const page = parseHtml(snapshotPage(snapshot))
+    const rich = page.querySelector<HTMLElement>(`[data-nodeid="me${ID.rich}"]`)!
+    const parts = [...rich.querySelectorAll<HTMLElement>('.mm-run')]
+    expect(parts.map((part) => part.textContent)).toEqual(['Bold ', HOSTILE_TITLE])
+    expect(parts.every((part) => part.children.length === 0)).toBe(true)
+    expect(parts[0]!.style.fontWeight).toBe('700')
+    expect(parts[0]!.style.fontStyle).toBe('italic')
+    expect(parts[1]!.style.textDecoration).toContain('line-through')
+    for (const part of parts) {
+      expect(part.getAttribute('style') ?? '').not.toMatch(/url|expression|background|evil/i)
+      expect(part.style.fontFamily).toBe('')
+      expect(part.style.color).toBe('')
+    }
+  })
+
   it('leave out what is only there for editing', async () => {
     const { snapshot, el } = await hostileSnapshot()
     // on screen: a selection, fold handles, an edit box
@@ -339,12 +371,24 @@ describe('cleaning a copy', () => {
     root.innerHTML =
       '<me-tpc style="position: fixed; width: 9999px; opacity: 0; border-color: red; ' +
       'color: #112233; background-color: #445566; font-size: 20px; font-weight: 700; ' +
-      'line-height: 28px; box-shadow: none">t</me-tpc>'
+      'line-height: 28px; box-shadow: none; font-style: italic; text-align: right; ' +
+      "text-transform: uppercase; font-family: 'A', sans-serif\">t</me-tpc>"
     cleanCopy(root)
     const topic = root.querySelector<HTMLElement>('me-tpc')!
     const names = Array.from({ length: topic.style.length }, (_, at) => topic.style.item(at))
     expect(names.sort()).toEqual(
-      ['background-color', 'box-shadow', 'color', 'font-size', 'font-weight', 'line-height'].sort(),
+      [
+        'background-color',
+        'box-shadow',
+        'color',
+        'font-size',
+        'font-weight',
+        'line-height',
+        'font-style',
+        'text-align',
+        'text-transform',
+        'font-family',
+      ].sort(),
     )
     expect(topic.style.fontSize).toBe('20px')
     expect(topic.style.lineHeight).toBe('28px')

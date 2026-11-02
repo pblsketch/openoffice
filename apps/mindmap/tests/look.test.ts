@@ -385,7 +385,9 @@ describe('the colours of a map are document content', () => {
       'markers.ts',
       'picture-drop.ts',
       'style-values.ts',
+      'text-format.ts',
       'timeline-keys.ts',
+      'title-runs.ts',
       'use-picture-drop.ts',
     ])
     for (const [name, code] of mapCode) {

@@ -85,8 +85,9 @@ export function titleRunsToView(attributed: unknown, title: string): ViewTitleRu
 const COLOR = /^#(?:[0-9a-f]{6}|[0-9a-f]{8})$/i
 const WEIGHT = /^[1-9]00$/
 const SIZE = /^(\d{1,3})(?:\.\d{1,2})?pt$/
-// A name and nothing that could end it: no quotes, no separators of a style, no control characters.
-const FAMILY = /^[^\u0000-\u001f\u007f"'`;:{}()<>\\[\]=@/*!]{1,100}$/u
+// One name and nothing that could end it: no quotes, no list, no separators of a style, no control characters.
+// eslint-disable-next-line no-control-regex -- keeping control characters out is the point here
+const FAMILY = /^[^\u0000-\u001f\u007f"'`;:,{}()<>\\[\]=@/*!]{1,100}$/u
 
 const WORDS: Readonly<Partial<Record<TextStyleKey, ReadonlySet<string>>>> = {
   fontStyle: new Set(['normal', 'italic']),

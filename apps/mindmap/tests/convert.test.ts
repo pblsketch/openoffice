@@ -370,14 +370,73 @@ describe('nodes from the clipboard', () => {
       id: 'x',
       topic: '<img src=x onerror=alert(1)>',
       tags: ['ok'],
-      metadata: { labels: ['ok'], note: null, link: null, image: null, markers: [], style: {} },
+      metadata: {
+        labels: ['ok'],
+        note: null,
+        link: null,
+        image: null,
+        markers: [],
+        style: {},
+        titleRuns: null,
+      },
       children: [
         {
           id: 'y',
           topic: '42',
-          metadata: { labels: [], note: null, link: null, image: null, markers: [], style: {} },
+          metadata: {
+            labels: [],
+            note: null,
+            link: null,
+            image: null,
+            markers: [],
+            style: {},
+            titleRuns: null,
+          },
         },
       ],
     })
+  })
+
+  it('keeps a text format the engine would write, and nothing else of the style', () => {
+    const pasted = {
+      id: 'x',
+      topic: 'Bold part',
+      metadata: {
+        style: {
+          fontWeight: '700',
+          fontStyle: 'italic',
+          textDecoration: 'underline',
+          color: 'red; background: url(x)',
+          fontFamily: 'Font", serif',
+          fill: '#ff0000',
+          textAlign: 'center',
+        },
+        titleRuns: [
+          { text: 'Bold', style: { fontWeight: '700', color: 'url(x)' } },
+          { text: ' part', style: {} },
+        ],
+      },
+    }
+    cleanPastedNode(pasted)
+    expect((pasted.metadata as { style: unknown }).style).toEqual({
+      fontWeight: '700',
+      fontStyle: 'italic',
+      textDecoration: 'underline',
+      textAlign: 'center',
+    })
+    expect((pasted.metadata as { titleRuns: unknown }).titleRuns).toEqual([
+      { text: 'Bold', style: { fontWeight: '700' } },
+      { text: ' part', style: {} },
+    ])
+  })
+
+  it('drops parts that do not spell the pasted title', () => {
+    const pasted = {
+      id: 'x',
+      topic: 'Another title',
+      metadata: { titleRuns: [{ text: 'Old', style: { fontWeight: '700' } }] },
+    }
+    cleanPastedNode(pasted)
+    expect((pasted.metadata as { titleRuns: unknown }).titleRuns).toBeNull()
   })
 })

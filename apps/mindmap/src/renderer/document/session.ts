@@ -57,6 +57,8 @@ export interface ApplyOptions {
   reshapedRelationships?: readonly string[]
   /** ids of topics whose picture the user took off */
   removedPictures?: readonly string[]
+  /** ids of topics whose text format the user changed */
+  restyledTopics?: readonly string[]
 }
 
 export interface SaveBytesOptions {
@@ -180,6 +182,7 @@ export class DocumentSession {
     const result = reconcileSheet(this.#document, index, state, {
       reshapedRelationships: options.reshapedRelationships,
       removedPictures: options.removedPictures,
+      restyledTopics: options.restyledTopics,
     })
     const changed = result.ok && result.changed
     if (before) {
