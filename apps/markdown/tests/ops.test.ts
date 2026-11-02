@@ -1,8 +1,15 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { Editor } from '@tiptap/core'
-import { TextSelection } from '@tiptap/pm/state'
+import { NodeSelection, TextSelection } from '@tiptap/pm/state'
 import { buildExtensions } from '../src/renderer/editor/extensions'
-import { OP_META, runOps, uiOp, validateOps, type OpMeta } from '../src/renderer/editor/ops'
+import {
+  OP_META,
+  moveSelectedBlocks,
+  runOps,
+  uiOp,
+  validateOps,
+  type OpMeta,
+} from '../src/renderer/editor/ops'
 
 const editors: Editor[] = []
 afterEach(() => {
@@ -366,5 +373,84 @@ describe('UI ops on the selection', () => {
     expect(uiOp(editor, { op: 'editTable', target: 'selection', action: 'addRowAfter' })).toBe(
       false,
     )
+  })
+})
+
+describe('block handle on one list item', () => {
+  function selectItem(editor: Editor, index: number): void {
+    let seen = 0
+    let found = -1
+    editor.state.doc.descendants((node, pos) => {
+      if (found >= 0) return false
+      if (node.type.name === 'listItem' || node.type.name === 'taskItem') {
+        if (seen === index) {
+          found = pos
+          return false
+        }
+        seen++
+      }
+      return true
+    })
+    expect(found).toBeGreaterThanOrEqual(0)
+    editor.view.dispatch(
+      editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, found)),
+    )
+  }
+
+  const items = (editor: Editor): string[] => {
+    const out: string[] = []
+    editor.state.doc.descendants((node) => {
+      if (node.type.name === 'listItem' || node.type.name === 'taskItem') {
+        out.push(node.textContent)
+        return false
+      }
+      return true
+    })
+    return out
+  }
+
+  it('duplicate and delete act on the selected item, not the whole list', () => {
+    const editor = createEditor('- one\n- two\n- three')
+    selectItem(editor, 1)
+    expect(uiOp(editor, { op: 'duplicateBlocks', target: 'selection' })).toBe(true)
+    expect(items(editor)).toEqual(['one', 'two', 'two', 'three'])
+    expect(blocks(editor)).toEqual(['bulletList:onetwotwothree', 'paragraph:'])
+
+    selectItem(editor, 1)
+    expect(uiOp(editor, { op: 'deleteBlocks', target: 'selection' })).toBe(true)
+    expect(items(editor)).toEqual(['one', 'two', 'three'])
+  })
+
+  it('deleting the last item takes the empty list with it', () => {
+    const editor = createEditor('- only one left')
+    selectItem(editor, 0)
+    expect(uiOp(editor, { op: 'deleteBlocks', target: 'selection' })).toBe(true)
+    expect(blocks(editor)).toEqual(['paragraph:'])
+    expect(editor.state.doc.firstChild!.type.name).toBe('paragraph')
+  })
+
+  it('move up/down swaps the item with its sibling and stops at the edges', () => {
+    const editor = createEditor('- one\n- two\n- three')
+    selectItem(editor, 0)
+    expect(moveSelectedBlocks(editor, 1)).toBe(true)
+    expect(items(editor)).toEqual(['two', 'one', 'three'])
+    expect(editor.state.selection).toBeInstanceOf(NodeSelection)
+    expect(moveSelectedBlocks(editor, -1)).toBe(true)
+    expect(items(editor)).toEqual(['one', 'two', 'three'])
+    expect(moveSelectedBlocks(editor, -1)).toBe(false)
+    expect(items(editor)).toEqual(['one', 'two', 'three'])
+  })
+
+  it('inserting after a node selection lifts the item, the same as a caret there', () => {
+    const editor = createEditor('- one\n- two\n\nafter')
+    selectItem(editor, 0)
+    expect(uiOp(editor, { op: 'insertHorizontalRule', after: 'selection' })).toBe(true)
+    expect(blocks(editor).map((b) => b.split(':')[0])).toEqual([
+      'paragraph',
+      'horizontalRule',
+      'bulletList',
+      'paragraph',
+    ])
+    expect(editor.getMarkdown()).toContain('- two')
   })
 })

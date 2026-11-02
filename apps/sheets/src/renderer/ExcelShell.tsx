@@ -82,7 +82,6 @@ import {
   ribbonDatePattern,
 } from './excel-format-shortcuts'
 import { isModalOpen, resolveGlobalShortcut } from './global-shortcuts'
-import { stepFontSize } from './font-size-ladder'
 
 import type { ChartSeriesVisualState } from '@genoffice/xlsx-gateway/domain/chart-visual'
 import type { ChangePlan } from '@genoffice/xlsx-gateway/domain/workbook.types'
@@ -134,6 +133,13 @@ import { builtinTablePalette, tableStyleNames, type TableStyleFamily } from './t
 import { STATUS_BAR_FUNCS, type StatusBarFunc } from './status-bar-stats'
 import { SHEET_ZOOM_MAX, SHEET_ZOOM_MIN, clampZoomPercent } from './zoom-range'
 import { ZoomDialog } from './ZoomDialog'
+
+/// The font buttons format the characters selected in the cell editor; not
+/// taking focus on press (as Excel's ribbon does) keeps that selection and
+/// lets typing carry on in the cell after a click.
+function keepCellEditorFocus(event: { preventDefault(): void }): void {
+  event.preventDefault()
+}
 
 // No File tab: file commands live in the macOS
 // application menu (File → Open/Save/Save As) and the toolbar icons.
@@ -3647,14 +3653,16 @@ function Ribbon({
             <button
               data-tip={t('appIncreaseFontSize')}
               aria-label={t('appIncreaseFontSize')}
-              onClick={() => onCommand(`font-size:${stepFontSize(echoSize, 1)}`)}
+              onMouseDown={keepCellEditorFocus}
+              onClick={() => onCommand('font-size-step:1')}
             >
               <ToolSymbol symbol="A↑" />
             </button>
             <button
               data-tip={t('appDecreaseFontSize')}
               aria-label={t('appDecreaseFontSize')}
-              onClick={() => onCommand(`font-size:${stepFontSize(echoSize, -1)}`)}
+              onMouseDown={keepCellEditorFocus}
+              onClick={() => onCommand('font-size-step:-1')}
             >
               <ToolSymbol symbol="A↓" />
             </button>
@@ -3663,6 +3671,7 @@ function Ribbon({
             <button
               data-tip={t('appBold')}
               className={selectionFormat?.bold ? 'is-active' : ''}
+              onMouseDown={keepCellEditorFocus}
               onClick={() => onCommand('bold')}
             >
               <b>B</b>
@@ -3670,6 +3679,7 @@ function Ribbon({
             <button
               data-tip={t('appItalic')}
               className={selectionFormat?.italic ? 'is-active' : ''}
+              onMouseDown={keepCellEditorFocus}
               onClick={() => onCommand('italic')}
             >
               <em>I</em>
@@ -3677,6 +3687,7 @@ function Ribbon({
             <button
               data-tip={t('appUnderline')}
               className={selectionFormat?.underline ? 'is-active' : ''}
+              onMouseDown={keepCellEditorFocus}
               onClick={() => onCommand('underline')}
             >
               <u>U</u>
@@ -3690,6 +3701,7 @@ function Ribbon({
             <button
               data-tip={t('appStrikethrough')}
               className={selectionFormat?.strike ? 'is-active' : ''}
+              onMouseDown={keepCellEditorFocus}
               onClick={() => onCommand('strike')}
             >
               <s>S</s>
@@ -3698,6 +3710,7 @@ function Ribbon({
               data-tip={t('appSuperscript')}
               aria-label={t('appSuperscript')}
               className={selectionFormat?.vertAlign === 'superscript' ? 'is-active' : ''}
+              onMouseDown={keepCellEditorFocus}
               onClick={() => onCommand('superscript')}
             >
               <ToolSymbol symbol="x²" />
@@ -3706,6 +3719,7 @@ function Ribbon({
               data-tip={t('appSubscript')}
               aria-label={t('appSubscript')}
               className={selectionFormat?.vertAlign === 'subscript' ? 'is-active' : ''}
+              onMouseDown={keepCellEditorFocus}
               onClick={() => onCommand('subscript')}
             >
               <ToolSymbol symbol="x₂" />
