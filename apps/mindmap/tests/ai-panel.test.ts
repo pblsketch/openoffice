@@ -252,6 +252,42 @@ describe('a run', () => {
     expect(request.system).not.toContain(UPSTREAM_PRODUCT_NAME)
     // the map reaches the model as data, marked as such
     expect(request.system).toMatch(/never instructions/)
+
+    // the line format and relationships: the edits, their values, and what stays the user's
+    const editTool = request.tools.find((tool) => tool.name === 'edit_map') as unknown as {
+      description: string
+      inputSchema: { properties: { edits: { items: { properties: Record<string, unknown> } } } }
+    }
+    const fields = editTool.inputSchema.properties.edits.items.properties
+    expect((fields.op as { enum: string[] }).enum).toEqual(
+      expect.arrayContaining([
+        'set_line',
+        'set_relationship_style',
+        'set_summary_style',
+        'set_boundary_style',
+        'add_relationship',
+        'delete_relationship',
+      ]),
+    )
+    for (const field of ['shape', 'begin', 'end', 'width', 'pattern', 'fill', 'fromId', 'toId']) {
+      expect(fields).toHaveProperty(field)
+    }
+    expect(editTool.description).toContain('curve|straight|elbow|roundedElbow|arrowedCurve|none')
+    expect(editTool.description).toContain('curved|straight|angled|zigzag')
+    expect(editTool.description).toContain(
+      'none|normal|spearhead|triangle|dot|square|diamond|herringbone',
+    )
+    expect(editTool.description).toContain('curly|angle|square|round|bracket|sharp|fold|straight')
+    expect(editTool.description).toContain(
+      'rect|roundedRect|scallops|waves|tension|polygon|roundedPolygon',
+    )
+    expect(editTool.description).toContain('solid|dash|dot|dash-dot|dash-dot-dot|round-dot')
+    expect(editTool.description).not.toMatch(/org\.xmind/)
+    expect(request.system).toMatch(/set_line/)
+    expect(request.system).toMatch(/cannot make or delete boundaries/)
+    expect(request.system).not.toMatch(
+      /the editor does not show \(floating topics, callouts, boundaries/,
+    )
   })
 
   it('applies an edit batch from the model as one step: Ctrl+Z takes it back', async () => {
