@@ -747,6 +747,11 @@ export class MapController {
    * The library's edit box takes the size, colour, padding and box of the
    * topic it stands in for, but not how heavy and how tall its text is. With
    * those too, a title does not change its look while it is typed.
+   *
+   * The library pins the box by the topic's left edge, so it grows to the
+   * right. Left of the centre a topic's right edge is the one next to its
+   * parent, and a title typed there would grow over the parent: there the box
+   * is pinned by the right edge and grows to the left, as the topic will.
    */
   #dressEditBox(topicId: string): void {
     const topic = this.#element(topicId)
@@ -756,6 +761,11 @@ export class MapController {
     box.style.fontWeight = drawn.fontWeight
     box.style.lineHeight = drawn.lineHeight
     box.style.letterSpacing = drawn.letterSpacing
+    if (topic.closest('.lhs')) {
+      const right = parseFloat(box.style.left) + topic.offsetWidth
+      box.style.left = 'auto'
+      box.style.right = `${this.mind.nodes.clientWidth - right}px`
+    }
   }
 
   #menuEntries(): NonNullable<MenuOption['extend']> {

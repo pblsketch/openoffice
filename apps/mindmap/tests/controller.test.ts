@@ -151,6 +151,36 @@ describe('shortcuts', () => {
     expect(controller.canUndo).toBe(true)
   })
 
+  it.each([
+    ['left', { left: 'auto', right: '880px' }],
+    ['right', { left: '20px', right: '' }],
+  ] as const)(
+    'on the %s of the centre the box a new title is typed in grows away from the parent',
+    async (layout, pinned) => {
+      // jsdom lays nothing out: every topic is 100px wide at 20px, in a sheet 1000px wide
+      vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(100)
+      vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1000)
+      vi.spyOn(HTMLElement.prototype, 'offsetLeft', 'get').mockReturnValue(20)
+      vi.spyOn(HTMLElement.prototype, 'offsetParent', 'get').mockImplementation(function (
+        this: HTMLElement,
+      ) {
+        return this.parentElement?.closest('me-nodes') ?? null
+      })
+      try {
+        const { controller, mind, el } = await mount()
+        controller.setLayout(layout)
+        await settle()
+        mind.selectNode(mind.findEle(IDS.c))
+        press(mind.container, 'Tab')
+        await settle()
+        const box = el.querySelector<HTMLElement>('#input-box')!
+        expect({ left: box.style.left, right: box.style.right }).toEqual(pinned)
+      } finally {
+        vi.restoreAllMocks()
+      }
+    },
+  )
+
   it('Enter adds a sibling after the selected topic', async () => {
     const { mind, attached } = await mount()
     mind.selectNode(mind.findEle(IDS.a2))
