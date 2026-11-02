@@ -80,17 +80,20 @@ import {
   CLEAR_RELATIONSHIP_STYLE,
   CLEAR_SUMMARY_STYLE,
   editBranchLine,
+  isLineWidth,
+  LINE_COLOR,
   type LineEditsById,
   noteBranchLineEdits,
   type RelationshipStyleChange,
   relationshipStyleEdits,
+  restyleArrowRecord,
+  restyleSummaryRecord,
   sameValues,
   type StyleEdits,
   type SummaryStyleChange,
   summaryStyleEdits,
   withEdits,
 } from '../map/line-format'
-import { relationshipArrowStyle, relationshipPaint } from '../map/relationship-shapes'
 import {
   ownTopicStyle,
   safeColor,
@@ -602,7 +605,7 @@ export function applyEditBatch(
           if (!arrow) return refused(noPart('relationship', edit.id), id)
           const style = styleArg(edit, 'relationship')
           if ('error' in style) return refused(style.error, id)
-          if (restyleArrow(arrow, style.edits as StyleEdits<RelationshipStyleKey>)) {
+          if (restyleArrowRecord(arrow, style.edits as StyleEdits<RelationshipStyleKey>)) {
             names.restyledRelationships.push(id)
             changed.arrows = true
           }
@@ -613,7 +616,7 @@ export function applyEditBatch(
           if (!summary) return refused(noPart('summary', edit.id), id)
           const style = styleArg(edit, 'summary')
           if ('error' in style) return refused(style.error, id)
-          if (restyleSummary(summary, style.edits as StyleEdits<SummaryStyleKey>)) {
+          if (restyleSummaryRecord(summary, style.edits as StyleEdits<SummaryStyleKey>)) {
             names.restyledSummaries.push(id)
             changed.summaries = true
           }
@@ -773,30 +776,6 @@ function noPart(kind: 'relationship' | 'summary' | 'boundary', id: unknown): str
   return `there is no ${kind} with id "${String(id)}" drawn on this sheet${by}; read_map lists the ones you can change`
 }
 
-/** Gives a relationship of the editor other values, and the library's own line options with them. True when anything changed. */
-function restyleArrow(arrow: MapArrow, edits: StyleEdits<RelationshipStyleKey>): boolean {
-  const meta: NonNullable<MapArrow['metadata']> = { ...arrow.metadata }
-  const style = withEdits(meta.style, edits)
-  if (sameValues(meta.style, style)) return false
-  if (Object.keys(style).length > 0) meta.style = style
-  else delete meta.style
-  const lineStyle = relationshipArrowStyle(relationshipPaint(meta.style))
-  if (lineStyle) arrow.style = lineStyle
-  else delete arrow.style
-  if (Object.keys(meta).length > 0) arrow.metadata = meta
-  else delete arrow.metadata
-  return true
-}
-
-/** Gives a summary of the editor another bracket. True when it changed. */
-function restyleSummary(summary: MapSummary, edits: StyleEdits<SummaryStyleKey>): boolean {
-  const style = withEdits(summary.metadata?.style, edits)
-  if (sameValues(summary.metadata?.style, style)) return false
-  if (Object.keys(style).length > 0) summary.metadata = { ...summary.metadata, style }
-  else delete summary.metadata
-  return true
-}
-
 type StyleTarget = 'line' | 'relationship' | 'summary' | 'boundary'
 
 /** The values each kind of format takes, in the order the tool lists them, and the words a shape may be. */
@@ -825,7 +804,6 @@ const CLEARING: Readonly<Record<StyleTarget, StyleEdits<string>>> = {
   summary: CLEAR_SUMMARY_STYLE,
   boundary: CLEAR_BOUNDARY_STYLE,
 }
-const HEX_COLOR = /^#[0-9a-f]{6}$/i
 
 /**
  * The change a `set_line`, `set_…_style` edit asks for, checked value by
@@ -865,24 +843,19 @@ function styleArg(
       }
       change[key] = value
     } else if (key === 'width') {
-      const fits =
-        typeof value === 'number' &&
-        Number.isInteger(value) &&
-        value >= MIN_LINE_WIDTH &&
-        value <= MAX_LINE_WIDTH
-      if (!fits) {
+      if (!isLineWidth(value)) {
         return {
           error: `width must be whole points from ${MIN_LINE_WIDTH} to ${MAX_LINE_WIDTH}, or null`,
         }
       }
       change[key] = value
     } else if (key === 'fill') {
-      if (value !== 'none' && !(typeof value === 'string' && HEX_COLOR.test(value))) {
+      if (value !== 'none' && !(typeof value === 'string' && LINE_COLOR.test(value))) {
         return { error: 'fill must be a "#rrggbb" colour or none (no fill), or null' }
       }
       change[key] = String(value).toLowerCase()
     } else {
-      if (typeof value !== 'string' || !HEX_COLOR.test(value)) {
+      if (typeof value !== 'string' || !LINE_COLOR.test(value)) {
         return { error: 'color must be a "#rrggbb" colour, or null' }
       }
       change[key] = value.toLowerCase()

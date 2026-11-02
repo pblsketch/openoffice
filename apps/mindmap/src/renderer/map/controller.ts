@@ -112,6 +112,9 @@ import {
   parentsOf,
   type RelationshipStyleChange,
   relationshipStyleEdits,
+  restyleArrowRecord,
+  restyleSummaryRecord,
+  sameCurve,
   sameValues,
   type StyleEdits,
   type SummaryStyleChange,
@@ -127,12 +130,7 @@ import {
   BOUNDARY_TITLE_CLASS,
   RelationDrawer,
 } from './relations'
-import {
-  curveToDeltas,
-  deltasToCurve,
-  relationshipArrowStyle,
-  relationshipPaint,
-} from './relationship-shapes'
+import { deltasToCurve } from './relationship-shapes'
 import { PictureStore } from './images'
 import { libraryTheme, lineSettingsOfSheet, lookOfSheet } from './look'
 import { installMultiSelect } from './multi-select'
@@ -1306,7 +1304,7 @@ export class MapController {
     this.edit(
       (_root, parts) => {
         for (const arrow of parts.arrows) {
-          if (changes.includes(arrow.id)) restyleArrow(arrow, edits, curve)
+          if (changes.includes(arrow.id)) restyleArrowRecord(arrow, edits, curve)
         }
       },
       { restyledRelationships: changes },
@@ -1344,10 +1342,7 @@ export class MapController {
     this.edit(
       (_root, parts) => {
         for (const summary of parts.summaries) {
-          if (!changes.includes(summary.id)) continue
-          const style = withEdits(summary.metadata?.style, edits)
-          if (Object.keys(style).length > 0) summary.metadata = { ...summary.metadata, style }
-          else delete summary.metadata
+          if (changes.includes(summary.id)) restyleSummaryRecord(summary, edits)
         }
       },
       { restyledSummaries: changes },
@@ -2709,49 +2704,6 @@ const TITLE_BOX_RISE = 16
 
 function refused<R extends string>(reason: R): { ok: false; reason: R } {
   return { ok: false, reason }
-}
-
-/** Whether a relationship's curve (absent or null: drawn on its own) is the one wanted. */
-function sameCurve(current: ViewCurve | null | undefined, wanted: ViewCurve | null): boolean {
-  if (!current || !wanted) return !current && !wanted
-  return (
-    current.from.x === wanted.from.x &&
-    current.from.y === wanted.from.y &&
-    current.to.x === wanted.to.x &&
-    current.to.y === wanted.to.y
-  )
-}
-
-/**
- * Gives a relationship of the library other values and, when `curve` is not
- * undefined, another curve (null: drawn on its own). The library's own line
- * options follow the values, so it draws them before the editor's drawing
- * goes on top (`relations.ts`).
- */
-function restyleArrow(
-  arrow: MapArrow,
-  edits: StyleEdits<RelationshipStyleKey> | null,
-  curve: ViewCurve | null | undefined,
-): void {
-  const meta: NonNullable<MapArrow['metadata']> = { ...arrow.metadata }
-  if (edits) {
-    const style = withEdits(meta.style, edits)
-    if (Object.keys(style).length > 0) meta.style = style
-    else delete meta.style
-    const lineStyle = relationshipArrowStyle(relationshipPaint(meta.style))
-    if (lineStyle) arrow.style = lineStyle
-    else delete arrow.style
-  }
-  if (curve !== undefined) {
-    meta.curve = curve
-    if (curve) Object.assign(arrow, curveToDeltas(curve))
-    else {
-      delete arrow.delta1
-      delete arrow.delta2
-    }
-  }
-  if (Object.keys(meta).length > 0) arrow.metadata = meta
-  else delete arrow.metadata
 }
 
 function sameIds(a: readonly string[], b: readonly string[]): boolean {
