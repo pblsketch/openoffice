@@ -77,4 +77,15 @@ describe('buildPrintHtml', () => {
     const boxes = [...printed.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')]
     expect(boxes.map((box) => box.checked)).toEqual([true, false])
   })
+
+  // A table taller than the space left on the page used to jump whole to the
+  // next page (leaving a near-empty page) and then split there anyway.
+  it('lets tables split between rows, never inside one', () => {
+    const html = buildPrintHtml(editorRoot('<p>x</p>'), 'Notes')
+    const rules = [...html.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, , body]) => /break-inside\s*:\s*avoid/.test(body))
+      .flatMap(([, sel]) => sel.split(',').map((s) => s.trim()))
+    expect(rules).toContain('tr')
+    expect(rules).not.toContain('table')
+  })
 })
