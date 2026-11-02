@@ -28,6 +28,7 @@ export const de = {
   invokeManual: 'Nur auf Aufruf',
   badgeTemplate: 'Mit Vorlage',
   badgeScripts: 'Mit Skripten · funktioniert vollständig im Agent-Fenster',
+  badgeMcpServer: 'MCP-Server erforderlich: {servers}',
   badgeAgentOnly: 'Nur im Agent-Fenster',
   unreadableNoFrontmatter: 'kein Front Matter',
   unreadableBadName: 'Name entspricht nicht den Regeln',

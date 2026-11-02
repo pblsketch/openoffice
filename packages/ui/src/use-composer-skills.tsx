@@ -61,6 +61,8 @@ export interface AiComposerSkills {
   chips: readonly SkillChipView[]
   notice: string | null
   dollarAtStartOnly?: boolean | undefined
+  /** MCP servers registered and on; the chip row names the others (spec 8) */
+  usableMcpServers?: ReadonlySet<string> | undefined
   /** the list opened: read it again (spec 9.2) */
   onOpen: () => void
   onPick: (item: SkillPickerItem) => void
@@ -77,6 +79,11 @@ export interface ComposerSkillsOptions {
   onTemplateSkill?: OnTemplateSkill | undefined
   /** total cap of the added text */
   maxChars?: number | undefined
+  /**
+   * MCP servers registered and on (spec 8): the chips name the others and the
+   * request tells the model they cannot be used; none by default
+   */
+  usableMcpServers?: ReadonlySet<string> | undefined
   /** tests inject one; the default is the window's `aiOfficeUserSkills` */
   bridge?: AiSkillsBridge | null | undefined
 }
@@ -123,6 +130,8 @@ export function useComposerSkills(options: ComposerSkillsOptions): ComposerSkill
   const hasBridge = bridgeRef.current !== null
   const templateRef = useRef(options.onTemplateSkill)
   templateRef.current = options.onTemplateSkill
+  const usableMcpRef = useRef(options.usableMcpServers)
+  usableMcpRef.current = options.usableMcpServers
 
   const [items, setItems] = useState<SkillPickerItem[]>([])
   const [loaded, setLoaded] = useState(false)
@@ -244,7 +253,10 @@ export function useComposerSkills(options: ComposerSkillsOptions): ComposerSkill
             setNotice(t('missingNotice'))
             return
           }
-          const built = buildSkillRequest(skills, maxChars)
+          const usable = usableMcpRef.current
+          const built = buildSkillRequest(skills, maxChars, {
+            mcpServerUsable: usable ? (name) => usable.has(name) : undefined,
+          })
           if (!built.ok) {
             setNotice(t('tooLarge'))
             return
@@ -289,6 +301,7 @@ export function useComposerSkills(options: ComposerSkillsOptions): ComposerSkill
         chips,
         notice,
         dollarAtStartOnly,
+        usableMcpServers: options.usableMcpServers,
         onOpen: refresh,
         onPick,
         onRemove,
@@ -457,6 +470,7 @@ export function useSkillPickerInput({
       lang={skills.lang}
       chips={skills.chips}
       notice={skills.notice}
+      usableMcpServers={skills.usableMcpServers}
       onRemove={skills.onRemove}
     />
   ) : null

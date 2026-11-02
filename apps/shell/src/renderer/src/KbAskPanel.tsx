@@ -4,7 +4,7 @@ import {
   CREATE_DOCUMENT_TOOL,
   USE_SKILL_TOOL,
   USER_SKILL_TOOL_NAMES,
-  composeSkills,
+  composeWithGuards,
   createDocumentSkill,
   createIpcTransport,
   createKnowledgeBaseSkill,
@@ -12,6 +12,8 @@ import {
   type AgentTransport,
   type CreateDocumentFormat,
   type KbFileInfo,
+  windowMcpState,
+  windowMcpUsableServers,
 } from '@genoffice/agent-core'
 import {
   AiBlockedNotice,
@@ -28,6 +30,9 @@ import {
   consolidateProjectMemory,
   createFileNav,
   Markdown,
+  McpPermissionCard,
+  McpServerButton,
+  useMcpWindow,
   NO_SKILL_USE,
   ProjectChatMenu,
   ProjectFolderHintLine,
@@ -212,9 +217,12 @@ export function KbAskPanel({
   const [connectAsked, setConnectAsked] = useState(false)
   /** a question sent while the connection was still being checked: it waits for the answer */
   const heldRef = useRef<string | null>(null)
+  /** this window's MCP servers (user MCP spec 7.5); the chips name the ones not usable now */
+  const mcpWindow = useMcpWindow()
   /** the skills called with `/` or `$` in the composer, and the text a question gets for them */
   const skills = useComposerSkills({
     lang,
+    usableMcpServers: mcpWindow.state?.usableServers(),
     // a chip whose skill has a template opens its copy in a new tab (spec 9.7)
     onTemplateSkill: (request) => skillTemplatesRef.current.onTemplateSkill(request),
   })
@@ -326,6 +334,8 @@ export function KbAskPanel({
       memoryChatRef.current = null
       setMessages(kept?.messages ?? [])
       loop?.reset()
+      // another chat shows: no MCP choices of the one before (user MCP spec 7.6)
+      windowMcpState()?.newConversation()
       if (kept) loop?.restore(kept.model)
       return
     }
@@ -339,6 +349,8 @@ export function KbAskPanel({
     showingProjectRef.current = true
     setMessages(opened.entries.map(askMessageOf))
     loop?.reset()
+    // another chat shows: no MCP choices of the one before (user MCP spec 7.6)
+    windowMcpState()?.newConversation()
     loop?.restore(opened.model)
   }
 
@@ -445,7 +457,9 @@ export function KbAskPanel({
       // a local model that reported no tool support answers in text only
       toolsAllowed: () =>
         settingsRef.current ? localModelCapabilities(settingsRef.current).tools !== false : true,
-      skill: composeSkills('kb+skills', '', [
+      // the outbound guards and the person's MCP servers as in the editors, without Drive
+      // (user MCP spec 7.2)
+      skill: composeWithGuards('kb+skills', '', () => loopRef.current?.messages ?? [], [
         createKnowledgeBaseSkill({
           listFiles: () => corpusRef.current,
           // a narrowed run's calls carry its scope; main keeps them to the group
@@ -460,6 +474,8 @@ export function KbAskPanel({
           messages: () => loopRef.current?.messages ?? [],
           // a template skill the model used offers its new document (spec 5.7)
           onUsed: (skill) => skillTemplatesRef.current.onUsed(skill),
+          // use_skill names the MCP servers it expects that are not usable now (spec 8)
+          mcpServerUsable: (name) => windowMcpUsableServers().has(name),
           onProposal: (proposal) => {
             skillCardsRef.current.add(proposal)
             patchLast((last) => ({
@@ -1163,6 +1179,8 @@ export function KbAskPanel({
           </div>
         ))}
         {skillTemplates.notes}
+        {/* an MCP tool waiting for the person's yes (user MCP spec 7.4) */}
+        <McpPermissionCard lang={lang} />
         {connectPromptOpen && (
           <>
             <AiConnectPrompt
@@ -1280,7 +1298,10 @@ export function KbAskPanel({
         sendIconDisabled={<img src={sendEnterOff} alt="" aria-hidden />}
         stopIcon={<img src={sendStop} alt="" aria-hidden />}
         footerStart={
-          sessionUsage ? <AiUsageChip usage={sessionUsage} session lang={lang} /> : undefined
+          <>
+            {sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
+            <McpServerButton lang={lang} />
+          </>
         }
         footerBelow={
           projectChat.available ? (

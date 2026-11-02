@@ -28,6 +28,7 @@ export const hi = {
   invokeManual: 'सिर्फ़ बुलाने पर',
   badgeTemplate: 'टेम्पलेट शामिल',
   badgeScripts: 'स्क्रिप्ट शामिल · एजेंट विंडो में पूरी तरह काम करता है',
+  badgeMcpServer: 'MCP सर्वर आवश्यक: {servers}',
   badgeAgentOnly: 'सिर्फ़ एजेंट विंडो',
   unreadableNoFrontmatter: 'शुरुआती जानकारी नहीं है',
   unreadableBadName: 'नाम नियमों के अनुसार नहीं है',

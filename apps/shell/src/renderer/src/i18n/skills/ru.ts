@@ -28,6 +28,7 @@ export const ru = {
   invokeManual: 'Только по вызову',
   badgeTemplate: 'Есть шаблон',
   badgeScripts: 'Есть скрипты · полностью работает в окне агента',
+  badgeMcpServer: 'Нужен MCP-сервер: {servers}',
   badgeAgentOnly: 'Только в окне агента',
   unreadableNoFrontmatter: 'нет блока метаданных',
   unreadableBadName: 'имя не соответствует правилам',

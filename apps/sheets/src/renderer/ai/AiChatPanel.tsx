@@ -6,6 +6,9 @@ import {
   DriveAttachButton,
   type DriveAttachPicked,
   DocAttachButton,
+  McpPermissionCard,
+  McpServerButton,
+  useMcpWindow,
   SentSkillChips,
   SkillUsedNotes,
   useComposerSkills,
@@ -466,7 +469,14 @@ export function AiChatPanel({
   })
   msgQueueRef.current = msgQueue
   /** the skills called with `/` or `$` (sheets: `$` only at the start, so $A$1 stays typing) */
-  const skills = useComposerSkills({ lang, dollarAtStartOnly: true, onTemplateSkill })
+  /** this window's MCP servers (user MCP spec 7.5); the chips name the ones not usable now */
+  const mcpWindow = useMcpWindow()
+  const skills = useComposerSkills({
+    lang,
+    dollarAtStartOnly: true,
+    onTemplateSkill,
+    usableMcpServers: mcpWindow.state?.usableServers(),
+  })
   const skillsRef = useRef(skills)
   skillsRef.current = skills
   // the next request re-reads the current text of the skills the reopened conversation used
@@ -901,6 +911,8 @@ export function AiChatPanel({
           </div>
         ))}
         {skillNotes}
+        {/* an MCP tool waiting for the person's yes (user MCP spec 7.4) */}
+        <McpPermissionCard lang={lang} />
 
         {preview && (
           <section className="preview ai-preview-card" aria-label={t('aiPreviewAria')}>
@@ -1136,6 +1148,7 @@ export function AiChatPanel({
               </button>
               {onDrivePicked && <DriveAttachButton lang={lang} onPicked={onDrivePicked} />}
               {onDrivePicked && <DocAttachButton lang={lang} onPicked={onDrivePicked} />}
+              <McpServerButton lang={lang} />
             </>
           }
           footerBelow={project?.picker}

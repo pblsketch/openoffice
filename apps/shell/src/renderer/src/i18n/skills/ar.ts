@@ -28,6 +28,7 @@ export const ar = {
   invokeManual: 'عند الاستدعاء فقط',
   badgeTemplate: 'يتضمن قالبًا',
   badgeScripts: 'يتضمن نصوصًا برمجية · يعمل بالكامل في نافذة الوكيل',
+  badgeMcpServer: 'يلزم خادم MCP: {servers}',
   badgeAgentOnly: 'نافذة الوكيل فقط',
   unreadableNoFrontmatter: 'لا توجد ترويسة بيانات وصفية',
   unreadableBadName: 'الاسم لا يطابق القواعد',

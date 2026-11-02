@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type { Lang } from '@genoffice/i18n'
-import type { UserSkillText } from '@genoffice/agent-core'
+import { windowMcpState, type UserSkillText } from '@genoffice/agent-core'
 import type { SkillProposals } from './use-skill-proposals'
 import type { OnTemplateSkill, SkillUse } from './use-composer-skills'
 import { buildSkillRequest, readSkillsForRequest } from './skill-send'
@@ -86,6 +86,18 @@ export interface SkillTemplates {
   reset: () => void
   /** what the panel shows now (tests) */
   current: readonly SkillTemplateNote[]
+}
+
+/**
+ * The MCP servers usable in this window now (user MCP spec 8), for a request
+ * handed to a tab that just opened: its server list may not have been read
+ * yet, so it is read first. Empty without an MCP bridge.
+ */
+async function windowMcpUsableNow(): Promise<ReadonlySet<string>> {
+  const mcp = windowMcpState()
+  if (!mcp) return new Set()
+  if (mcp.servers().length === 0) await mcp.refresh()
+  return mcp.usableServers()
 }
 
 /**
@@ -219,7 +231,10 @@ export function useSkillTemplates(options: SkillTemplatesOptions): SkillTemplate
           b,
           taken.chips.map((c) => c.id),
         )
-        const built = buildSkillRequest(skills)
+        const usable = await windowMcpUsableNow()
+        const built = buildSkillRequest(skills, undefined, {
+          mcpServerUsable: (name) => usable.has(name),
+        })
         if (!liveRef.current) return
         if (missing.length > 0 || !built.ok) {
           // spec 9.1: nothing is sent without a chosen skill

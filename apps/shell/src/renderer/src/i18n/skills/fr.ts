@@ -29,6 +29,7 @@ export const fr = {
   invokeManual: 'Seulement sur appel',
   badgeTemplate: 'Contient un modèle',
   badgeScripts: 'Contient des scripts · fonctionne pleinement dans la fenêtre de l’agent',
+  badgeMcpServer: 'Serveur MCP requis : {servers}',
   badgeAgentOnly: 'Fenêtre de l’agent uniquement',
   unreadableNoFrontmatter: 'pas d’en-tête',
   unreadableBadName: 'le nom ne respecte pas les règles',

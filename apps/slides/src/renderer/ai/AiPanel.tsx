@@ -18,6 +18,9 @@ import {
   DriveAttachButton,
   type DriveAttachPicked,
   DocAttachButton,
+  McpPermissionCard,
+  McpServerButton,
+  useMcpWindow,
   NO_SKILL_USE,
   SentSkillChips,
   skillChipRefsOf,
@@ -48,6 +51,9 @@ import {
   type IpcStreamError,
   type ToolDisplay,
   composeWithDrive,
+  windowMcpState,
+  windowMcpUsableServers,
+  toolStepLabel,
 } from '@genoffice/agent-core'
 import type { RenderSlide } from '@genoffice/pptx-render'
 import type { AiSubscriptionProviderId, AiSubscriptionUsage } from '@genoffice/ai-provider/browser'
@@ -544,9 +550,12 @@ export function AiPanel({
       return true
     },
   })
+  /** this window's MCP servers (user MCP spec 7.5); the chips name the ones not usable now */
+  const mcpWindow = useMcpWindow()
   /** the skills called with `/` or `$`: the list, the chips and the text a request gets */
   const skills = useComposerSkills({
     lang,
+    usableMcpServers: mcpWindow.state?.usableServers(),
     // a chip whose skill has a template runs in a new tab (spec 5.7)
     onTemplateSkill: (request) => skillTemplatesRef.current.onTemplateSkill(request),
   })
@@ -901,6 +910,8 @@ export function AiPanel({
         skillsRef.current.restoreHistory(
           msgs.map((m) => (m.role === 'user' ? skillChipRefsOf(m.skills) : undefined)),
         )
+        // a reopened conversation starts with no MCP choices of another chat (user MCP spec 7.6)
+        windowMcpState()?.newConversation()
         // Restore model context: follow-ups after reopening a file continue the earlier conversation (only when the loop is idle with no history)
         loopRef.current?.restore(msgs.map((m) => ({ role: m.role, text: m.text })))
       })
@@ -1689,6 +1700,8 @@ export function AiPanel({
           messages: () => loopRef.current?.messages ?? [],
           // a template skill the model used offers its new document (spec 5.7)
           onUsed: (skill) => skillTemplatesRef.current.onUsed(skill),
+          // use_skill names the MCP servers it expects that are not usable now (spec 8)
+          mcpServerUsable: (name) => windowMcpUsableServers().has(name),
           onProposal: (proposal) => {
             skillCardsRef.current.add(proposal)
             patchLastAssistant((last) => ({
@@ -1708,7 +1721,7 @@ export function AiPanel({
           // Live "running" chip: replaced in place by onToolExecuted
           const activity: ToolActivity = {
             name: call.name,
-            summary: call.name.replace(/[_-]+/g, ' '),
+            summary: toolStepLabel(call.name),
             running: true,
           }
           patchLastAssistant((last) => ({ tools: [...(last.tools ?? []), activity] }))
@@ -2428,6 +2441,8 @@ export function AiPanel({
     dismissClarify()
     qcAbortRef.current?.abort()
     loopRef.current?.reset()
+    // servers off in this chat and "always allow in this chat" go too (user MCP spec 7.6)
+    windowMcpState()?.newConversation()
     setBusy(false)
     setChat([])
     // Same as docs (#195): the restored transcript is painted above the live
@@ -2835,6 +2850,8 @@ export function AiPanel({
           )
         })}
         {skillTemplates.notes}
+        {/* an MCP tool waiting for the person's yes (user MCP spec 7.4) */}
+        <McpPermissionCard lang={lang} />
         {activeClarify && (
           <div className="ai-clarify-chip" role="status">
             <span className="ai-clarify-chip-eyebrow">{t('aiClarifyTitle')}</span>
@@ -3046,6 +3063,7 @@ export function AiPanel({
               </button>
               <DriveAttachButton lang={lang} onPicked={attachFromDrive} />
               <DocAttachButton lang={lang} onPicked={attachFromDrive} />
+              <McpServerButton lang={lang} />
               {busy ? (
                 <button
                   className="ai-send-btn ai-stop-btn"

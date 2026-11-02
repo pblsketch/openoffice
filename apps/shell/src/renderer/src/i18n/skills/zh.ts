@@ -26,6 +26,7 @@ export const zh = {
   invokeManual: '仅调用时',
   badgeTemplate: '含模板',
   badgeScripts: '含脚本 · 在智能体窗口中完整运行',
+  badgeMcpServer: '需要 MCP 服务器：{servers}',
   badgeAgentOnly: '仅限智能体窗口',
   unreadableNoFrontmatter: '缺少前置信息',
   unreadableBadName: '名称不符合规则',

@@ -132,6 +132,8 @@ export function agentPolicyVerdict(
       return action.host && ctx.allowances?.webHosts.has(action.host.toLowerCase())
         ? { decision: 'allow' }
         : { decision: 'ask' }
+    // the relay asks the person itself; a request of this kind that reaches the policy asks
+    case 'mcp-tool':
     case 'other':
       return { decision: 'ask' }
   }
