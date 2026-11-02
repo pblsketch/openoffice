@@ -173,7 +173,13 @@ describe('sheetToView', () => {
   it('carries relationships between shown topics only', () => {
     const view = sheetToView(sample(), 0)
     expect(view.relationships).toEqual([
-      { id: 'rel-1', fromId: 'a1', toId: 'b', title: 'leads to' },
+      {
+        id: 'rel-1',
+        fromId: 'a1',
+        toId: 'b',
+        title: 'leads to',
+        curve: { from: { x: 1.5, y: 2 }, to: { x: 3, y: 4 } },
+      },
     ])
     const odd = sheetWithRoot(
       { children: { attached: [{ id: 'x' }, { id: 'y' }] } },
@@ -249,7 +255,6 @@ describe('sheetToView', () => {
       'float',
       'callout-1',
       'under-summary',
-      'bound-1',
       'futureTopicKey',
       'futureSheetKey',
       'line-width',

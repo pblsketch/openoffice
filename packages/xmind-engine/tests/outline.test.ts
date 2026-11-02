@@ -135,7 +135,7 @@ describe('the outline format', () => {
   it('walks the source tree of an opened file, not the view', async () => {
     const document = await openOk(await buildMapFile({ content: sampleSheets() }))
     const view = JSON.stringify(document.viewSheets())
-    for (const hidden of ['kept only', 'Says', 'Floating', 'Group']) {
+    for (const hidden of ['kept only', 'Says', 'Floating']) {
       expect(view).not.toContain(hidden)
     }
     expect(sheetsToOutline(document.sheets)).toBe(
