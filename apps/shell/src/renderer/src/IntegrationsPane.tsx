@@ -403,6 +403,9 @@ export function IntegrationsPane({
           <span className="set-intg-step-no">2</span>
           {t('intgMcpPartTitle')}
         </h4>
+        <div className="set-field-desc set-intg-who" data-testid="intg-mcp-who">
+          {t('intgMcpPartWho')}
+        </div>
         <div className="set-field-desc set-intg-lead">{t('intgMcpPartDesc')}</div>
 
         <div className="set-intg-mcp">

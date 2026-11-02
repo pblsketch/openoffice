@@ -43,7 +43,7 @@ import {
   type McpListing,
 } from './listing'
 import { LocalMcpError, type LocalMcpConnection, type LocalMcpState } from './local'
-import type { PlannedLaunch } from './local-launch'
+import type { LocalLaunchProblem, PlannedLaunch } from './local-launch'
 import { storeOAuthAccess, type McpFetch, type McpOAuthAccess } from './oauth'
 import { parseMcpPaste, type PastedServer } from './paste'
 import { RemoteMcpError, type RemoteMcpConnection } from './remote'
@@ -149,6 +149,7 @@ export interface McpHub {
 
 const FAIL_TEXT: Record<McpFailReason, string> = {
   unreachable: 'the server could not be reached',
+  'http-error': 'the server answered with an error; its address may be wrong',
   'runtime-missing': 'the program it needs is not on this PC',
   'start-failed': 'the server could not be started',
   'refused-redirect':
@@ -195,8 +196,13 @@ interface Live {
   local: LocalMcpConnection | null
   /** connection attempts under way (remote) */
   connecting: number
-  /** the last connection failure (remote); a local server keeps its own */
+  /**
+   * The last connection failure. A local server keeps its own after three
+   * failed starts; this one also holds a single failed start, so the card
+   * shows it at once (with `localProblem` for the reason view).
+   */
   failure: McpFailReason | null
+  localProblem: LocalLaunchProblem | 'did-not-start' | null
   /** the server asked for a sign-in (remote) */
   loginRequired: boolean
   /** a tool list was read from the live connection in this run (5.7) */
@@ -279,6 +285,7 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
         local: null,
         connecting: 0,
         failure: null,
+        localProblem: null,
         loginRequired: false,
         listed: false,
         listing: null,
@@ -319,7 +326,14 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
     const conn = deps.local(server, app.signal)
     live.local = conn
     live.unsubscribe.push(
-      conn.onStateChanged(() => notify()),
+      conn.onStateChanged((state) => {
+        // a start that worked clears the failure of the one before
+        if (state.state === 'running') {
+          live.failure = null
+          live.localProblem = null
+        }
+        notify()
+      }),
       conn.onToolsChanged(() => void relistQuietly(server.id, conn)),
     )
     return conn
@@ -359,14 +373,21 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
 
   function statusOf(server: McpServerConfig): McpServerStatusInfo {
     const live = lives.get(server.id)
+    // approved tools or guide stored from an earlier listing: usable before connecting
+    const listedBefore =
+      Object.keys(server.tools).length > 0 ||
+      server.instructions !== null ||
+      server.pendingInstructions !== null
     if (server.kind === 'local') {
       const state = localState(live)
       return serverStatusOf({
         enabled: server.enabled,
         commandReviewNeeded: commandReviewNeeded(server),
         loginRequired: false,
-        failure: state?.state === 'failed' ? state.reason : null,
+        failure: state?.state === 'failed' ? state.reason : (live?.failure ?? null),
         connecting: state?.state === 'starting',
+        reached: !!live && (live.listed || state?.state === 'running'),
+        listedBefore,
       })
     }
     return serverStatusOf({
@@ -375,6 +396,8 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
       loginRequired: !!live && (live.loginRequired || live.remote?.needsSignIn() === true),
       failure: live?.failure ?? null,
       connecting: (live?.connecting ?? 0) > 0,
+      reached: live?.listed === true,
+      listedBefore,
     })
   }
 
@@ -408,6 +431,7 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
         case 'refused-redirect':
         case 'insecure-address':
         case 'unreachable':
+        case 'http-error':
           return { kind: 'failed', reason: error.reason }
         case 'timeout':
           return { kind: 'call', text: TEXT.timeout }
@@ -436,10 +460,21 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
     return { kind: 'failed', reason: 'unreachable' }
   }
 
-  /** what a trouble does to the remote server's status (a local server keeps its own) */
-  function note(server: McpServerConfig, trouble: Trouble): void {
-    if (server.kind !== 'remote') return
+  /**
+   * What a trouble does to the server's status. A local server keeps its own
+   * state; a start that failed is noted here too, so a single failed start
+   * shows as "could not connect" with its reason and standard error (the
+   * launcher itself stops trying only after three).
+   */
+  function note(server: McpServerConfig, trouble: Trouble, error?: unknown): void {
     const live = liveOf(server.id)
+    if (server.kind !== 'remote') {
+      if (trouble.kind !== 'failed' || !(error instanceof LocalMcpError)) return
+      live.failure = trouble.reason
+      live.localProblem = error.problem
+      notify()
+      return
+    }
     if (trouble.kind === 'login') live.loginRequired = true
     else if (trouble.kind === 'failed') live.failure = trouble.reason
     else return
@@ -511,17 +546,16 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
       listing = await readListing(server, options.signal)
     } catch (error) {
       const trouble = troubleOf(error, options.signal)
-      note(server, trouble)
+      note(server, trouble, error)
       return trouble
     }
     // a list that lands while the server is turned off or removed is not applied
     const halt = stopping.get(id)
     if (halt) return { kind: 'stopped', reason: halt }
     if (!store.server(id)?.enabled) return { kind: 'stopped', reason: 'disabled' }
-    if (server.kind === 'remote') {
-      live.failure = null
-      live.loginRequired = false
-    }
+    live.failure = null
+    live.localProblem = null
+    if (server.kind === 'remote') live.loginRequired = false
     await replaceServer(id, (s) =>
       options.first ? acceptFirstListing(s, listing) : applyListing(s, listing).server,
     )
@@ -585,6 +619,7 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
         permission: tool.permission,
         pending: tool.pending !== null,
         ...(mapped?.problem ? { unusable: mapped.problem } : {}),
+        ...(tool.definition.annotations?.destructiveHint === true ? { destructive: true } : {}),
       }
     })
     return {
@@ -615,7 +650,14 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
       case 'failed':
         // an unreachable address may be back: the call tries to connect once more and
         // the status stays failed until it works; other failures wait for the person
-        if (server.kind === 'remote' && status.reason === 'unreachable') break
+        if (
+          server.kind === 'remote' &&
+          (status.reason === 'unreachable' || status.reason === 'http-error')
+        ) {
+          break
+        }
+        // one failed start shows at once, but the launcher tries again until its third
+        if (server.kind === 'local' && localState(lives.get(server.id))?.state !== 'failed') break
         return TEXT.failed(server.name, status.reason)
       default:
         break
@@ -659,6 +701,7 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
         return shapedMcpAnswer(await conn.callTool(tool, input, signal))
       } catch (error) {
         const trouble = troubleOf(error, signal)
+        note(server, trouble, error)
         return refusal(troubleText(server.name, trouble))
       }
     }
@@ -741,11 +784,17 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
     if (server.kind !== 'local') return null
     const live = lives.get(server.id)
     const state = localState(live)
-    if (state?.state !== 'failed') return null
+    let failed: { reason: McpFailReason; problem: LocalLaunchProblem | 'did-not-start' } | null =
+      null
+    if (state?.state === 'failed') failed = { reason: state.reason, problem: state.problem }
+    else if (live?.failure) {
+      failed = { reason: live.failure, problem: live.localProblem ?? 'did-not-start' }
+    }
+    if (!failed) return null
     const problem: McpLaunchProblemKey =
-      state.problem === 'runtime-missing' || state.reason === 'runtime-missing'
+      failed.problem === 'runtime-missing' || failed.reason === 'runtime-missing'
         ? 'runtime-missing'
-        : state.problem
+        : failed.problem
     return {
       text: mcpLaunchProblemText(deps.lang(), problem),
       stderrTail: live?.local?.stderrTail() ?? [],
@@ -955,7 +1004,11 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
     }
     await replaceServer(id, () => next)
     const live = lives.get(id)
-    if (live && (next.url !== current.url || next.command !== current.command)) live.listed = false
+    if (live && (next.url !== current.url || next.command !== current.command)) {
+      live.listed = false
+      live.failure = null
+      live.localProblem = null
+    }
     follow(id)
     notify()
     return { ok: true }
@@ -1061,6 +1114,10 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
         if (question && !question.allowed)
           return { ok: false, problem: 'runtime-download', question }
         if (!question) {
+          // the card shows it as the server's failure, with its reason, once
+          live.failure = plan.problem === 'runtime-missing' ? 'runtime-missing' : 'start-failed'
+          live.localProblem = plan.problem
+          notify()
           return {
             ok: false,
             problem: 'failed',
@@ -1070,6 +1127,8 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
         }
       }
       localOf(server).retry()
+      live.failure = null
+      live.localProblem = null
     } else {
       live.failure = null
       live.loginRequired = false
@@ -1192,6 +1251,7 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
     const live = lives.get(id)
     if (live) {
       live.failure = null
+      live.localProblem = null
       live.local?.retry()
     }
     notify()
@@ -1303,6 +1363,9 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
           env: views(s.env),
           keyNeeded: s.keyNeeded,
           keyEnvVar: s.keyEnvVar,
+          headerVars: { ...s.headerVars },
+          envVars: { ...s.envVars },
+          typeIgnored: s.typeIgnored,
           ignored: [...s.ignored],
           problem: s.problem,
         })),

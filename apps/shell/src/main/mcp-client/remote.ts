@@ -60,10 +60,12 @@ const TERMINATE_TIMEOUT_MS = 5_000
  * sent the request to another origin; insecure-address: plain http to an
  * address outside this PC and the private ranges; login-required: the server
  * wants a sign-in (or a new key); server-error: the server answered the
- * request with an MCP error.
+ * request with an MCP error; http-error: the server answered, but with an
+ * HTTP error status and no MCP (often a wrong address).
  */
 export type RemoteMcpErrorReason =
   | 'unreachable'
+  | 'http-error'
   | 'timeout'
   | 'aborted'
   | 'refused-redirect'
@@ -93,6 +95,7 @@ export function statusFailureOf(error: unknown): McpFailReason | 'login-required
     case 'login-required':
     case 'refused-redirect':
     case 'insecure-address':
+    case 'http-error':
       return error.reason
     default:
       return 'unreachable'
@@ -219,6 +222,13 @@ export function createRemoteMcpConnection(
    * errors from its event stream into its own, so the reason is kept here.
    */
   let seenFailure: RemoteMcpErrorReason | null = null
+  /**
+   * The server answered a request of this connection attempt with an HTTP
+   * error status (not 401): it is there, but this is likely not its MCP
+   * address. Not a failure by itself, since Streamable HTTP falls back to SSE
+   * on a 4xx.
+   */
+  let answeredError = false
   const listeners = new Set<() => void>()
 
   const fail = (reason: RemoteMcpErrorReason) => new RemoteMcpError(server.name, reason)
@@ -235,7 +245,10 @@ export function createRemoteMcpConnection(
       if (err.code === Number(ErrorCode.ConnectionClosed)) return fail('unreachable')
       return fail('server-error')
     }
-    return fail('unreachable')
+    if (err instanceof StreamableHTTPError && typeof err.code === 'number' && err.code >= 400) {
+      return fail('http-error')
+    }
+    return fail(answeredError ? 'http-error' : 'unreachable')
   }
 
   // ---- tokens ----
@@ -281,6 +294,7 @@ export function createRemoteMcpConnection(
       }
       if (bearer) headers.set('Authorization', `Bearer ${bearer}`)
       const response = await options.fetch(url.href, { ...init, headers, redirect: 'manual' })
+      if (response.status >= 400 && response.status !== 401) answeredError = true
       if (response.type === 'opaqueredirect') throw record('refused-redirect')
       if (REDIRECT_STATUSES.has(response.status)) {
         const target = redirectTarget(response, url)
@@ -344,6 +358,7 @@ export function createRemoteMcpConnection(
 
   async function open(): Promise<Client> {
     seenFailure = null
+    answeredError = false
     const check = await checkResolvedServerAddress(server.url, resolve)
     if (!check.ok) throw fail(check.problem === 'unresolved' ? 'unreachable' : 'insecure-address')
     try {
@@ -372,6 +387,8 @@ export function createRemoteMcpConnection(
           }
           client = next
           signInNeeded = false
+          // a 4xx before the SSE fallback worked says nothing about later failures
+          answeredError = false
           return next
         })
         .finally(() => {

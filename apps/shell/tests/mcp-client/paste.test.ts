@@ -36,6 +36,9 @@ describe('parseMcpPaste: JSON with mcpServers', () => {
         env: { API_KEY: 'abc123' },
         keyNeeded: false,
         keyEnvVar: null,
+        headerVars: {},
+        envVars: {},
+        typeIgnored: null,
         ignored: [],
         problem: null,
       },
@@ -175,10 +178,11 @@ args = [
     expect(s.env).toEqual({ K: 'v' })
   })
 
-  it('reports a broken TOML text as unreadable', () => {
+  it('reports a broken TOML text as unreadable, with the line of the mistake (P2)', () => {
     expect(parseMcpPaste('[mcp_servers.a]\ncommand = "unterminated\n')).toEqual({
       ok: false,
       error: 'unreadable',
+      line: 2,
     })
   })
 })
@@ -213,14 +217,38 @@ describe('parseMcpPaste: problems', () => {
     expect(s.problem).toBe('no-target')
   })
 
-  it('flags an unsupported type', () => {
-    const [s] = servers(JSON.stringify({ mcpServers: { a: { type: 'ws', url: 'wss://x' } } }))
-    expect(s.problem).toBe('unsupported-type')
+  it('sets an unknown type aside and says so, instead of refusing quietly (P3)', () => {
+    const [s] = servers(
+      JSON.stringify({ mcpServers: { a: { type: 'websocket', url: 'https://x.example/mcp' } } }),
+    )
+    expect(s.problem).toBeNull()
+    expect(s.typeIgnored).toBe('websocket')
+    expect(s.transport).toBe('auto')
+    const [local] = servers(JSON.stringify({ mcpServers: { b: { type: 'local', command: 'x' } } }))
+    expect(local.typeIgnored).toBe('local')
+    expect(local.problem).toBeNull()
+  })
+
+  it('takes the types it can connect with without a word (P3)', () => {
+    const list = servers(
+      JSON.stringify({
+        mcpServers: {
+          a: { type: 'sse', url: 'https://a.example/sse' },
+          b: { type: 'streamable_http', url: 'https://b.example/mcp' },
+          c: { type: 'stdio', command: 'x' },
+        },
+      }),
+    )
+    expect(list.map((s) => [s.typeIgnored, s.transport])).toEqual([
+      [null, 'sse'],
+      [null, 'auto'],
+      [null, 'auto'],
+    ])
   })
 
   it('reports empty text, unreadable text and no servers', () => {
     expect(parseMcpPaste('   ')).toEqual({ ok: false, error: 'empty' })
-    expect(parseMcpPaste('{ not json')).toEqual({ ok: false, error: 'unreadable' })
+    expect(parseMcpPaste('{ not json')).toMatchObject({ ok: false, error: 'unreadable' })
     expect(parseMcpPaste('{"mcpServers": {}}')).toEqual({ ok: false, error: 'no-servers' })
     expect(parseMcpPaste('hello there')).toEqual({ ok: false, error: 'unreadable' })
   })
@@ -231,5 +259,98 @@ describe('parseMcpPaste: problems', () => {
     )
     expect(s.env).toEqual({ K: 'v' })
     expect(({} as Record<string, unknown>).polluted).toBeUndefined()
+  })
+})
+
+describe('parseMcpPaste: values taken from PC variables (B2)', () => {
+  it('never keeps ${VAR} as a key: the key field asks for it instead', () => {
+    const [s] = servers(
+      JSON.stringify({
+        mcpServers: {
+          dict: {
+            type: 'http',
+            url: 'https://dict.example.com/mcp',
+            headers: { Authorization: 'Bearer ${DICT_API_KEY}', 'X-Team': '${env:TEAM_ID}' },
+          },
+        },
+      }),
+    )
+    expect(s.headers.Authorization).toBeUndefined()
+    expect(s.keyNeeded).toBe(true)
+    expect(s.keyEnvVar).toBe('DICT_API_KEY')
+    expect(s.headers['X-Team']).toBe('')
+    expect(s.headerVars).toEqual({ 'X-Team': 'TEAM_ID' })
+    expect(JSON.stringify(s)).not.toContain('${')
+  })
+
+  it('leaves a variable value written as ${VAR} empty and names the variable', () => {
+    process.env.API_KEY = 'from-the-pc'
+    try {
+      const [s] = servers(
+        JSON.stringify({
+          mcpServers: {
+            notes: {
+              command: 'node',
+              args: ['server.js'],
+              env: { API_KEY: '${API_KEY}', MODE: 'fast', OTHER: 'x-${env:OTHER_KEY}' },
+            },
+          },
+        }),
+      )
+      expect(s.env).toEqual({ API_KEY: '', MODE: 'fast', OTHER: '' })
+      expect(s.envVars).toEqual({ API_KEY: 'API_KEY', OTHER: 'OTHER_KEY' })
+      // the PC is never read
+      expect(JSON.stringify(s)).not.toContain('from-the-pc')
+    } finally {
+      delete process.env.API_KEY
+    }
+  })
+
+  it('keeps values that only look a little like a placeholder', () => {
+    const [s] = servers(
+      JSON.stringify({ mcpServers: { a: { command: 'x', env: { A: '$HOME', B: '{x}' } } } }),
+    )
+    expect(s.env).toEqual({ A: '$HOME', B: '{x}' })
+    expect(s.envVars).toEqual({})
+  })
+})
+
+describe('parseMcpPaste: where a JSON mistake is (P2)', () => {
+  it('names the line of a trailing comma, counted in the pasted text', () => {
+    const text = [
+      '{',
+      '  "mcpServers": {',
+      '    "dict": { "url": "https://d.example/mcp" },',
+      '  }',
+      '}',
+    ].join('\n')
+    expect(parseMcpPaste(text)).toEqual({ ok: false, error: 'unreadable', line: 4 })
+    // a fence and prose before it do not shift the count off the paste
+    const fenced = `Add this:\n\n\`\`\`json\n${text}\n\`\`\``
+    expect(parseMcpPaste(fenced)).toEqual({ ok: false, error: 'unreadable', line: 7 })
+  })
+
+  it('names no line for text that is not settings at all', () => {
+    expect(parseMcpPaste('npx -y @example/dict-mcp --key YOUR_KEY')).toEqual({
+      ok: false,
+      error: 'unreadable',
+    })
+  })
+})
+
+describe('parseMcpPaste: names from the address or the command (P7)', () => {
+  it('makes a name from the host or the package when the pasted one has no letters to keep', () => {
+    const list = servers(
+      JSON.stringify({
+        mcpServers: {
+          '내 사전': { url: 'https://dict.example.com/mcp' },
+          법령: { command: 'npx', args: ['-y', '@scope/korean-law-mcp@1.2.0'] },
+          메모: { command: 'node', args: ['C:/tools/notes-server.mjs'] },
+          숫자: { url: 'http://127.0.0.1:9000/mcp' },
+        },
+      }),
+    )
+    expect(list.map((s) => s.name)).toEqual(['dict', 'korean-law-mcp', 'notes-server', 'server'])
+    expect(list.every((s) => s.nameChanged)).toBe(true)
   })
 })

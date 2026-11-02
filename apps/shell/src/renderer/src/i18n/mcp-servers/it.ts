@@ -191,4 +191,19 @@ export const it = {
     'Questo server non ha né un indirizzo né un comando, quindi non può essere aggiunto.',
   pasteUnsupported: 'Questo server usa un tipo di connessione che l’app non supporta.',
   pasteDone: 'Server aggiunti: {n}',
+  statusReady: 'Pronto · si collega quando serve',
+  statusUnchecked: 'Non ancora verificato',
+  failHttpError: 'Il server ha risposto con un errore. Controlla che l’indirizzo sia giusto.',
+  failUnreachableNear:
+    'Impossibile raggiungere il server. Controlla che sia in esecuzione e che l’indirizzo sia giusto.',
+  httpRecheck: 'L’indirizzo è cambiato. Anche il nuovo non è cifrato: conferma di nuovo.',
+  pasteUnreadableLine: 'Impossibile leggere il testo. Controlla virgole e parentesi (riga {line}).',
+  pasteTypeIgnored:
+    'Il tipo di connessione «{type}» non è noto all’app ed è stato ignorato. L’app prova il modo consueto.',
+  valueFromVar:
+    'Inserisci il valore. Il testo incollato lo legge dalla variabile {name} del PC, e l’app non legge le variabili del PC.',
+  launchSystemFold: 'Variabili di base del PC: {n}',
+  permPaused: 'Non usato finché non approvi la modifica (poi: {perm})',
+  permUnusable: 'Non può essere attivato',
+  direction: 'Qui l’IA di GenOffice usa gli strumenti di server esterni.',
 } satisfies Record<keyof typeof zh, string>

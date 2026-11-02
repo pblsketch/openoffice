@@ -20,6 +20,8 @@ const ACTION_LABELS: Record<McpServerAction, UserMcpStringKey> = {
   login: 'relogin',
   review: 'review',
   retry: 'retry',
+  check: 'checkInSettings',
+  enable: 'enableInSettings',
 }
 
 /** Call a bridge method without letting a refusal escape as an unhandled rejection */
@@ -81,8 +83,8 @@ function ServerRow({
         </span>
       </label>
       <div className="ai-mcp-row-meta">
-        <span className={`ai-mcp-row-status is-${server.status}`}>
-          {mcpServerStatusText(lang, server)}
+        <span className={`ai-mcp-row-status is-${on || disabled ? server.status : 'off-in-chat'}`}>
+          {mcpServerStatusText(lang, server, !on)}
         </span>
         {server.newToolCount > 0 && (
           <span className="ai-mcp-row-new">
@@ -102,10 +104,11 @@ function ServerRow({
 /**
  * The server button beside the AI input (user MCP spec 7.5). Shown only
  * while at least one registered server is on in Settings. It opens the
- * server list: per server, on/off for this conversation only, its status,
- * "New tools: n" and the action its status needs. Sign in again and review
- * open Settings → Integrations at that server; retry asks the shell to
- * connect again.
+ * server list: per server, on/off for this conversation only, its status
+ * ("Off in this conversation" once turned off here), "New tools: n" and the
+ * action its status needs. Sign in again, review, check (never checked) and
+ * turn on (off in Settings) open Settings → Integrations at that server;
+ * retry asks the shell to connect again.
  *
  * `state` defaults to this window's MCP state (`windowMcpState()`); pass
  * `null` for none. `className` defaults to the panels' attach-button class.

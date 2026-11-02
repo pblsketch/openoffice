@@ -200,6 +200,8 @@ describe('calling a tool', () => {
     expect(typeof callId).toBe('string')
     expect(result.output).toBe('result of law/search.v2')
     expect(result.isError).toBeFalsy()
+    // the step line reads "server · tool", not the AI-facing name (P9)
+    expect(result.summary).toBe('law · search.v2')
   })
 
   it('turns a refusal of the bridge and an error result into tool errors naming the server', async () => {
@@ -284,6 +286,9 @@ describe('asking the person (spec 7.4)', () => {
       tool: 'read',
       exposedName: 'mcp__law__read',
       input: { q: 'a' },
+      // the card shows what the tool does (P10)
+      description: 'read description',
+      destructive: false,
     })
     expect(bridge.call).not.toHaveBeenCalled()
     state.permissions.answer(request!.id, 'once')
@@ -317,7 +322,12 @@ describe('asking the person (spec 7.4)', () => {
     const pending = run('mcp__law__read')
     await flush()
     state.permissions.answer(state.permissions.requests()[0]!.id, 'deny')
-    expect(await pending).toMatchObject({ output: MCP_PERMISSION_DENIED, isError: true })
+    expect(await pending).toMatchObject({
+      output: MCP_PERMISSION_DENIED,
+      isError: true,
+      // the step shows it was blocked, in the words the window gave (P9)
+      summary: 'law · read: blocked',
+    })
     expect(MCP_PERMISSION_DENIED).toContain('The person did not allow this')
     expect(MCP_PERMISSION_DENIED).toContain('Do not try it again in another form')
     expect(bridge.call).not.toHaveBeenCalled()
@@ -347,8 +357,22 @@ describe('asking the person (spec 7.4)', () => {
     const store = createMcpPermissionStore()
     const seen: number[] = []
     store.subscribe(() => seen.push(store.requests().length))
-    const a = store.ask({ server: 's', tool: 'a', exposedName: 'mcp__s__a', input: {} })
-    const b = store.ask({ server: 's', tool: 'b', exposedName: 'mcp__s__b', input: {} })
+    const a = store.ask({
+      server: 's',
+      tool: 'a',
+      exposedName: 'mcp__s__a',
+      input: {},
+      description: '',
+      destructive: false,
+    })
+    const b = store.ask({
+      server: 's',
+      tool: 'b',
+      exposedName: 'mcp__s__b',
+      input: {},
+      description: '',
+      destructive: false,
+    })
     expect(store.requests().map((r) => r.tool)).toEqual(['a', 'b'])
     const snapshot = store.requests()
     expect(store.requests()).toBe(snapshot) // stable between changes
@@ -400,6 +424,59 @@ describe('the conversation state (spec 7.5, 7.6)', () => {
     expect(state.serversOffInChat().size).toBe(0)
     expect(state.allowedInChat('mcp__law__search')).toBe(false)
     expect(listener).toHaveBeenCalled()
+  })
+})
+
+describe('what the AI windows show (B1, P9, P10)', () => {
+  it('passes the server marks of a tool to the permission card', async () => {
+    const { run, state } = await setup([
+      server('notes', [
+        tool('notes', 'drop', { permission: 'ask', destructive: true, description: 'Delete it' }),
+      ]),
+    ])
+    void run('mcp__notes__drop')
+    await flush()
+    expect(state.permissions.requests()[0]).toMatchObject({
+      description: 'Delete it',
+      destructive: true,
+    })
+  })
+
+  it('uses the blocked-step words the window sets', async () => {
+    const { run, state } = await setup([
+      server('law', [tool('law', 'read', { permission: 'ask' })]),
+    ])
+    state.setBlockedStepLabel((s, t) => `${s} · ${t}: 막음`)
+    const pending = run('mcp__law__read')
+    await flush()
+    state.permissions.answer(state.permissions.requests()[0]!.id, 'deny')
+    expect((await pending).summary).toBe('law · read: 막음')
+  })
+
+  it('labels a refused call as "server · tool" too', async () => {
+    const { run } = await setup([server('law', [tool('law', 'read', { permission: 'off' })])])
+    expect((await run('mcp__law__read')).summary).toBe('law · read')
+  })
+
+  it('keeps the new statuses, the HTTP error reason and the destructive mark', () => {
+    const list = mcpServersOf([
+      server('a', [], { status: 'unchecked' }),
+      server('b', [], { status: 'ready' }),
+      server('c', [], { status: 'failed', failReason: 'http-error' }),
+      server('d', [
+        tool('d', 'drop', { destructive: true }),
+        tool('d', 'keep', { destructive: 'yes' }),
+      ]),
+    ])
+    expect(list.map((s) => s.status)).toEqual(['unchecked', 'ready', 'failed', 'connected'])
+    expect(list[2]!.failReason).toBe('http-error')
+    expect(list[3]!.tools.map((t) => t.destructive)).toEqual([true, undefined])
+  })
+
+  it('lists no tool of a never-checked server, which has none', async () => {
+    const { skill } = await setup([server('fresh', [], { status: 'unchecked' })])
+    expect(skill.tools).toEqual([])
+    expect(skill.systemPrompt).toBe('')
   })
 })
 

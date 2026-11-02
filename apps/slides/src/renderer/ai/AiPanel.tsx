@@ -52,6 +52,7 @@ import {
   composeWithDrive,
   windowMcpState,
   windowMcpUsableServers,
+  toolStepLabel,
 } from '@genoffice/agent-core'
 import type { RenderSlide } from '@genoffice/pptx-render'
 import type { AiSubscriptionProviderId, AiSubscriptionUsage } from '@genoffice/ai-provider/browser'
@@ -1719,7 +1720,7 @@ export function AiPanel({
           // Live "running" chip: replaced in place by onToolExecuted
           const activity: ToolActivity = {
             name: call.name,
-            summary: call.name.replace(/[_-]+/g, ' '),
+            summary: toolStepLabel(call.name),
             running: true,
           }
           patchLastAssistant((last) => ({ tools: [...(last.tools ?? []), activity] }))

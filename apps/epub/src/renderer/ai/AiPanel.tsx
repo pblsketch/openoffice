@@ -82,6 +82,7 @@ import {
   composeWithDrive,
   windowMcpState,
   windowMcpUsableServers,
+  toolStepLabel,
 } from '@genoffice/agent-core'
 import type { AgentImage, IpcStreamError } from '@genoffice/agent-core'
 import type {
@@ -762,7 +763,7 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
           patchLast((last) => ({
             tools: [
               ...(last.tools ?? []),
-              { name: call.name, summary: call.name.replace(/[_-]+/g, ' '), running: true },
+              { name: call.name, summary: toolStepLabel(call.name), running: true },
             ],
           }))
         },

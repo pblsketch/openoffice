@@ -255,6 +255,11 @@
   margin-top: 0;
 }
 
+.mcp-perm-inactive {
+  margin-left: auto;
+  text-align: end;
+}
+
 .mcp-perm {
   display: inline-flex;
   margin-left: auto;
@@ -378,6 +383,12 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.mcp-pair-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .mcp-name-fix {

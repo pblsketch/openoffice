@@ -297,7 +297,8 @@ describe('MCP hub: the list the AI windows get', () => {
     expect(list.map((s) => s.name)).toEqual(['law', 'docs'])
     const law = list[0]
     expect(law).toMatchObject({
-      status: 'connected',
+      // approved before, not reached in this run: ready, never "connected" (B1)
+      status: 'ready',
       newToolCount: 0,
       keepResultsInside: true,
       instructions: 'Use search first.',
@@ -375,7 +376,57 @@ describe('MCP hub: status (12.2)', () => {
     expect(answer).toEqual({ ok: false, error: 'law: the server could not be reached.' })
     expect(hub.editorList()[0]).toMatchObject({ status: 'failed', failReason: 'unreachable' })
     expect(hub.retryByName('law')).toEqual({ ok: true })
-    expect(hub.editorList()[0]?.status).toBe('connected')
+    // the failure is gone; the server was not reached yet in this run
+    expect(hub.editorList()[0]?.status).toBe('ready')
+  })
+
+  it('never says connected before the app reached a server (B1)', async () => {
+    const fresh = newMcpServerConfig({
+      name: 'fresh',
+      kind: 'remote',
+      url: 'https://f.example/mcp',
+    })
+    const store = await storeWith(fresh, remoteServer())
+    const { hub } = rig(store)
+    const status = (name: string) => hub.editorList().find((s) => s.name === name)?.status
+    const settings = (name: string) =>
+      hub.settingsView().servers.find((s) => s.name === name)?.status
+    // nothing listed yet: unchecked, in the AI windows and in Settings alike
+    expect(status('fresh')).toBe('unchecked')
+    expect(settings('fresh')).toEqual({ status: 'unchecked' })
+    // approved tools from before: ready until the first use connects
+    expect(status('law')).toBe('ready')
+    // the connection check lists the tools: connected
+    expect(await hub.test(idOf(store, 'fresh'))).toEqual({ ok: true, toolCount: 2 })
+    expect(status('fresh')).toBe('connected')
+    // a call reaches the other one
+    await hub.call('w1', 'law', 'search', {}, 'c1')
+    expect(status('law')).toBe('connected')
+    // the agent-core validator keeps the new values
+    expect(mcpServersOf(hub.editorList()).map((s) => s.status)).toEqual(['connected', 'connected'])
+  })
+
+  it('reports a server that answered with an HTTP error apart from one it could not reach (B4)', async () => {
+    const store = await storeWith(remoteServer())
+    const { hub } = rig(store, {
+      remote: () => {
+        const r = fakeRemote()
+        r.listError = new RemoteMcpError('law', 'http-error')
+        return r
+      },
+    })
+    expect(await hub.test(idOf(store, 'law'))).toEqual({
+      ok: false,
+      problem: 'failed',
+      reason: 'http-error',
+      text: null,
+    })
+    expect(hub.editorList()[0]).toMatchObject({ status: 'failed', failReason: 'http-error' })
+    const answer = await hub.call('w1', 'law', 'search', {}, 'c1')
+    expect(answer).toEqual({
+      ok: false,
+      error: 'law: the server answered with an error; its address may be wrong.',
+    })
   })
 })
 
@@ -886,6 +937,116 @@ describe('MCP hub: Settings', () => {
       changed: false,
       problem: null,
     })
+  })
+
+  it('shows a single failed start at once, with its reason, stderr and a retry (B3)', async () => {
+    const store = await storeWith(localServer())
+    const starts: LocalMcpConnection[] = []
+    const { hub } = rig(store, {
+      lang: () => 'ko',
+      local: (server) => {
+        const l = fakeLocal(server)
+        // the launcher keeps trying until its third failure: its own state stays idle
+        l.listTools = vi.fn(async () => {
+          throw new LocalMcpError('start-failed', 'The server did not start', 'did-not-start')
+        }) as unknown as FakeLocal['listTools']
+        l.ensure = vi.fn(async () => {
+          throw new LocalMcpError('start-failed', 'The server did not start', 'did-not-start')
+        }) as unknown as FakeLocal['ensure']
+        starts.push(l)
+        return l
+      },
+    })
+    const id = idOf(store, 'docs')
+    const result = await hub.test(id)
+    expect(result).toMatchObject({ ok: false, problem: 'failed', reason: 'start-failed' })
+    const docs = hub.settingsView().servers[0]!
+    // never "connected": could not connect, start failed, with the reason view
+    expect(docs.status).toEqual({ status: 'failed', reason: 'start-failed' })
+    expect(docs.failure).toEqual({
+      text: expect.any(String),
+      stderrTail: ['npm ERR! could not find package'],
+    })
+    expect(hub.editorList()[0]).toMatchObject({ status: 'failed', failReason: 'start-failed' })
+    // the next call still tries to start it (the lock is the launcher's, after three)
+    await hub.call('w1', 'docs', 'search', {}, 'c1')
+    expect(starts[0]!.listTools).toHaveBeenCalledTimes(2)
+    // "try again" clears it
+    expect(hub.retry(id)).toEqual({ ok: true })
+    expect(hub.settingsView().servers[0]!.status.status).not.toBe('failed')
+  })
+
+  it('shows a command that cannot start as the server failure, once (B3, B4)', async () => {
+    const store = await storeWith(localServer())
+    const { hub } = rig(store, {
+      lang: () => 'ko',
+      plannedLaunch: async () => ({
+        ok: false,
+        problem: 'needs-command-window',
+        runtime: null,
+        message: 'this command cannot run without a command window',
+      }),
+    })
+    const result = await hub.test(idOf(store, 'docs'))
+    expect(result).toMatchObject({ ok: false, problem: 'failed', reason: 'start-failed' })
+    const docs = hub.settingsView().servers[0]!
+    expect(docs.status).toEqual({ status: 'failed', reason: 'start-failed' })
+    expect(docs.failure?.text).toBe('이 명령은 명령 창 없이 실행할 수 없습니다.')
+  })
+
+  it('clears a failed start once the server runs', async () => {
+    const store = await storeWith(localServer())
+    let fail = true
+    const { hub } = rig(store, {
+      local: (server) => {
+        const l = fakeLocal(server)
+        l.listTools = vi.fn(async () => {
+          if (fail) throw new LocalMcpError('start-failed', 'did not start', 'did-not-start')
+          l.setState({ state: 'running' })
+          return LISTING
+        }) as unknown as FakeLocal['listTools']
+        return l
+      },
+    })
+    const id = idOf(store, 'docs')
+    await hub.test(id)
+    expect(hub.settingsView().servers[0]!.status.status).toBe('failed')
+    fail = false
+    expect(await hub.test(id)).toMatchObject({ ok: true })
+    expect(hub.settingsView().servers[0]!.status).toEqual({ status: 'connected' })
+    expect(hub.settingsView().servers[0]!.failure).toBeNull()
+  })
+
+  it('carries the "may delete or change" mark of a tool to the AI windows (P10)', async () => {
+    const server = acceptFirstListing(
+      newMcpServerConfig({ name: 'notes', kind: 'remote', url: 'https://n.example/mcp' }),
+      {
+        tools: [
+          {
+            name: 'drop',
+            description: 'Delete a note',
+            inputSchema: { type: 'object' },
+            annotations: { destructiveHint: true },
+          },
+          {
+            name: 'read',
+            description: 'Read a note',
+            inputSchema: { type: 'object' },
+            annotations: { readOnlyHint: true },
+          },
+        ],
+        instructions: null,
+      },
+    )
+    const store = await storeWith(server)
+    const { hub } = rig(store)
+    const tools = hub.editorList()[0]!.tools
+    expect(tools.find((t) => t.name === 'drop')).toMatchObject({
+      description: 'Delete a note',
+      destructive: true,
+    })
+    expect(tools.find((t) => t.name === 'read')?.destructive).toBeUndefined()
+    expect(mcpServersOf(hub.editorList())[0]!.tools).toEqual(tools)
   })
 
   it('signs in through the system browser with pages in the person’s language', async () => {

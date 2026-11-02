@@ -51,11 +51,23 @@ function render(lang: 'en' | 'ko' = 'en') {
 }
 
 /** put a request to the person through the store, as the skill does */
-function ask(tool: string, input: Record<string, unknown> = { q: 'cats' }, server = 'search') {
+function ask(
+  tool: string,
+  input: Record<string, unknown> = { q: 'cats' },
+  server = 'search',
+  about: { description?: string; destructive?: boolean } = {},
+) {
   let answer: McpPermissionAnswer | undefined
   let promise!: Promise<McpPermissionAnswer>
   act(() => {
-    promise = state.permissions.ask({ server, tool, exposedName: `mcp__${server}__${tool}`, input })
+    promise = state.permissions.ask({
+      server,
+      tool,
+      exposedName: `mcp__${server}__${tool}`,
+      input,
+      description: about.description ?? '',
+      destructive: about.destructive ?? false,
+    })
     void promise.then((a) => (answer = a))
   })
   return { promise, answer: () => answer }
@@ -169,6 +181,33 @@ describe('McpPermissionCard', () => {
       '막기',
     ])
     expect(card()?.textContent).toContain('보낼 내용')
+  })
+
+  it('shows the tool description and the "may delete or change" mark of the server (P10)', async () => {
+    render('ko')
+    const long = `Saves a note. ${'z'.repeat(300)}`
+    ask('save_note', { text: 'hi' }, 'dict', { description: long, destructive: true })
+    await flush()
+    expect(host.querySelector('[data-mcp-destructive]')?.textContent).toBe('지우거나 바꿀 수 있음')
+    expect(card()?.textContent).toContain('도구 설명')
+    const about = () => host.querySelector('.ai-mcp-card-about')!.textContent ?? ''
+    expect(about().startsWith('Saves a note.')).toBe(true)
+    expect(about()).not.toContain(long)
+    act(() => button('더 보기')!.click())
+    expect(about()).toBe(long)
+  })
+
+  it('shows no mark and no description when the server gave neither', async () => {
+    render()
+    ask('find')
+    await flush()
+    expect(host.querySelector('[data-mcp-destructive]')).toBeNull()
+    expect(host.querySelector('.ai-mcp-card-about')).toBeNull()
+  })
+
+  it('gives the window the blocked-step line in the language of the person (P9)', () => {
+    render('ko')
+    expect(state.blockedStepLabel('dict', 'save_note')).toBe('dict · save_note: 막음')
   })
 
   it('renders nothing without an MCP bridge', () => {

@@ -410,8 +410,13 @@ describe('Settings → Integrations → MCP servers: a server', () => {
     expect(args.map((a) => a.getAttribute('data-added'))).toEqual(['true', 'true', 'false'])
     expect(args[1]!.textContent).toContain(en('launchAdded'))
     const env = [...launch.querySelectorAll('[data-env]')]
-    expect(env.map((e) => e.getAttribute('data-env'))).toEqual(['PATH', 'LAW_KEY', 'UV_CACHE_DIR'])
-    expect(env[2]!.textContent).toContain(en('launchAdded'))
+    // what the person registered and what the app adds come first; the PC's own are folded (P4)
+    expect(env.map((e) => e.getAttribute('data-env'))).toEqual(['LAW_KEY', 'UV_CACHE_DIR', 'PATH'])
+    expect(env[1]!.textContent).toContain(en('launchAdded'))
+    const folded = launch.querySelector('[data-testid="mcp-launch-system-env"]')!
+    expect(folded.tagName).toBe('DETAILS')
+    expect(folded.querySelector('summary')!.textContent).toBe(en('launchSystemFold', { n: 1 }))
+    expect(folded.querySelector('[data-env="PATH"]')).not.toBeNull()
     expect(launch.textContent).not.toContain('abcd')
     await click(button(en('launchAllow'), launch))
     // the approval names the plan the person saw
@@ -548,7 +553,11 @@ describe('Settings → Integrations → MCP servers: a server', () => {
     expect(bad.getAttribute('data-display')).toBe('unusable')
     expect(bad.textContent).toContain(en('toolUnusableCollision'))
     expect(bad.textContent).toContain(en('toolRenamed', { name: 'a.b' }))
-    expect((bad.querySelector('[data-perm="off"]') as HTMLButtonElement).disabled).toBe(true)
+    // a tool that cannot be used shows no pressed permission, only why (P5)
+    expect(bad.querySelector('[data-perm]')).toBeNull()
+    expect(bad.querySelector('[data-testid="mcp-perm-inactive"]')!.textContent).toBe(
+      en('permUnusable'),
+    )
   })
 
   it('shows a changed tool and a changed guide next to the old ones and approves them', async () => {
@@ -683,6 +692,267 @@ describe('Settings → Integrations → MCP servers: a server', () => {
     await act(async () => h.emitOpen('s1'))
     await flush()
     expect(serverRow('s1').getAttribute('data-open')).toBe('true')
+  })
+})
+
+describe('Settings → Integrations → MCP servers: E2E findings', () => {
+  it('checks a server right after it is registered, without opening a browser (B1)', async () => {
+    const h = fakeApi([])
+    h.api.add.mockImplementation(async () => {
+      h.state.view = {
+        ...h.state.view,
+        servers: [serverView({ id: 'new', name: 'dict', status: { status: 'unchecked' } })],
+      }
+      return { ok: true as const, id: 'new' }
+    })
+    h.api.test.mockImplementation(async () => ({
+      ok: false as const,
+      problem: 'login-required' as const,
+    }))
+    await mount(h)
+    await click(button(en('add')))
+    await type(field('name'), 'dict')
+    await type(field('url'), 'https://dict.example.com/mcp')
+    await click(button(en('register')))
+    await flush()
+    expect(h.api.test).toHaveBeenCalledWith('new')
+    expect(h.api.signIn).not.toHaveBeenCalled()
+    expect(serverRow('new').textContent).toContain(en('testLogin'))
+    expect(button(en('signIn'), serverRow('new'))).toBeDefined()
+  })
+
+  it('does not check a my-PC server before its command is allowed (B1)', async () => {
+    const h = fakeApi([])
+    h.api.add.mockImplementation(async () => {
+      h.state.view = {
+        ...h.state.view,
+        servers: [
+          serverView({
+            id: 'new',
+            kind: 'local',
+            url: '',
+            command: 'node',
+            launchReviewNeeded: true,
+            status: { status: 'review-required', what: 'command' },
+          }),
+        ],
+      }
+      return { ok: true as const, id: 'new' }
+    })
+    await mount(h)
+    await click(button(en('add')))
+    await click(host.querySelector('[name="kind"][value="local"]'))
+    await type(field('name'), 'notes')
+    await type(field('command'), 'node')
+    await click(button(en('register')))
+    await flush()
+    expect(h.api.test).not.toHaveBeenCalled()
+    expect(serverRow('new').getAttribute('data-open')).toBe('true')
+  })
+
+  it('shows "not checked yet" and "ready" instead of "connected" (B1)', async () => {
+    await mount(
+      fakeApi([
+        serverView({ id: 'a', name: 'fresh', status: { status: 'unchecked' } }),
+        serverView({ id: 'b', name: 'old', status: { status: 'ready' } }),
+      ]),
+    )
+    expect(serverRow('a').querySelector('.mcp-status')!.textContent).toBe(en('statusUnchecked'))
+    expect(serverRow('b').querySelector('.mcp-status')!.textContent).toBe(en('statusReady'))
+  })
+
+  it('says a failure once, and does not blame the internet for this PC (B4)', async () => {
+    const h = fakeApi([
+      serverView({
+        url: 'http://127.0.0.1:9/mcp',
+        status: { status: 'failed', reason: 'unreachable' },
+      }),
+      serverView({
+        id: 's2',
+        name: 'far',
+        url: 'https://far.example/mcp',
+        status: { status: 'failed', reason: 'http-error' },
+      }),
+    ])
+    h.api.test.mockImplementation(async () => ({
+      ok: false as const,
+      problem: 'failed' as const,
+      reason: 'unreachable' as const,
+      text: null,
+    }))
+    await mount(h)
+    await click(button(en('show'), serverRow('s1')))
+    await click(button(en('test'), serverRow('s1')))
+    const text = serverRow('s1').textContent ?? ''
+    expect(text).toContain(en('failUnreachableNear'))
+    expect(text).not.toContain(en('failUnreachable'))
+    expect(text.split(en('failUnreachableNear')).length - 1).toBe(1)
+    await click(button(en('show'), serverRow('s2')))
+    expect(serverRow('s2').textContent).toContain(en('failHttpError'))
+  })
+
+  it('remembers the http confirmation while the address stays, and asks again with a reason when it changes (B5)', async () => {
+    const h = fakeApi([serverView({ url: 'http://127.0.0.1:9/mcp' })])
+    await mount(h)
+    await click(button(en('show'), serverRow('s1')))
+    await click(button(en('edit'), serverRow('s1')))
+    const box = () => host.querySelector<HTMLInputElement>('[name="allow-plain-http"]')!
+    expect(box().checked).toBe(true)
+    expect(host.querySelector('[data-testid="mcp-http-recheck"]')).toBeNull()
+    expect(button(en('save'))!.disabled).toBe(false)
+    await type(field('url'), 'http://127.0.0.1:10/mcp')
+    expect(box().checked).toBe(false)
+    expect(host.querySelector('[data-testid="mcp-http-recheck"]')!.textContent).toBe(
+      en('httpRecheck'),
+    )
+    expect(button(en('save'))!.disabled).toBe(true)
+    // back to the confirmed address: confirmed again
+    await type(field('url'), 'http://127.0.0.1:9/mcp')
+    expect(box().checked).toBe(true)
+    await click(button(en('save')))
+    expect(h.api.edit).toHaveBeenCalledWith(
+      's1',
+      expect.objectContaining({ url: 'http://127.0.0.1:9/mcp', allowPlainHttp: true }),
+    )
+  })
+
+  it('puts focus on the first field and registers on Enter once complete (B6)', async () => {
+    const h = fakeApi([])
+    await mount(h)
+    await click(button(en('add')))
+    expect(document.activeElement).toBe(field('name'))
+    await type(field('name'), 'dict')
+    const enter = async (el: Element) => {
+      await act(async () => {
+        el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+        await Promise.resolve()
+      })
+      await flush()
+    }
+    // not complete yet: nothing is sent
+    await enter(field('name')!)
+    expect(h.api.add).not.toHaveBeenCalled()
+    await type(field('url'), 'https://dict.example.com/mcp')
+    await enter(field('url')!)
+    expect(h.api.add).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'dict', url: 'https://dict.example.com/mcp' }),
+    )
+  })
+
+  it('refuses a public http address at the field, with no box to tick (P1)', async () => {
+    await mount(fakeApi([]))
+    await click(button(en('add')))
+    await type(field('name'), 'far')
+    await type(field('url'), 'http://203.0.113.5/mcp')
+    expect(host.querySelector('[data-testid="mcp-public-http"]')!.textContent).toBe(
+      en('addrPublicHttp'),
+    )
+    expect(host.querySelector('[name="allow-plain-http"]')).toBeNull()
+    expect(button(en('register'))!.disabled).toBe(true)
+  })
+
+  it('keeps the pasted text when it cannot be read, and says which line (P2)', async () => {
+    const h = fakeApi([])
+    h.api.parsePaste.mockImplementation(async () => ({
+      ok: false as const,
+      error: 'unreadable' as const,
+      line: 4,
+    }))
+    await mount(h)
+    await click(button(en('add')))
+    await click(button(en('wayPaste')))
+    expect(document.activeElement).toBe(field('paste'))
+    const text = '{\n "mcpServers": {\n  "dict": {}\n },\n}'
+    await type(field('paste'), text)
+    await click(button(en('pasteRead')))
+    expect(field('paste')!.value).toBe(text)
+    expect(host.textContent).toContain(en('pasteUnreadableLine', { line: 4 }))
+  })
+
+  it('asks for values the paste took from PC variables, and lists an unknown type as ignored (B2, P3)', async () => {
+    const h = fakeApi([])
+    h.api.parsePaste.mockImplementation(async () => ({
+      ok: true as const,
+      token: 'tok',
+      format: 'json' as const,
+      ignored: [],
+      servers: [
+        {
+          pastedName: 'dict',
+          name: 'dict',
+          nameChanged: false,
+          kind: 'remote' as const,
+          url: 'https://dict.example.com/mcp',
+          transport: 'auto' as const,
+          headers: { 'X-Team': { state: 'missing' as const, last4: '' } },
+          command: '',
+          args: [],
+          env: {},
+          keyNeeded: true,
+          keyEnvVar: 'DICT_API_KEY',
+          headerVars: { 'X-Team': 'TEAM_ID' },
+          envVars: {},
+          typeIgnored: 'websocket',
+          ignored: [],
+          problem: null,
+        },
+      ],
+    }))
+    await mount(h)
+    await click(button(en('add')))
+    await click(button(en('wayPaste')))
+    await type(field('paste'), '{"mcpServers":{}}')
+    await click(button(en('pasteRead')))
+    const form = host.querySelector('[data-testid="mcp-form"]')!
+    expect(form.textContent).toContain(en('keyFromVar', { name: 'DICT_API_KEY' }))
+    expect(form.querySelector('[data-testid="mcp-value-from-var"]')!.textContent).toBe(
+      en('valueFromVar', { name: 'TEAM_ID' }),
+    )
+    expect(form.querySelector('[data-testid="mcp-paste-ignored"]')!.textContent).toContain(
+      en('pasteTypeIgnored', { type: 'websocket' }),
+    )
+    // typing the value clears the prompt
+    await type(field('header-value-0', form), 'team-7')
+    expect(form.querySelector('[data-testid="mcp-value-from-var"]')).toBeNull()
+  })
+
+  it('suggests a name from the address when the typed one has no letters to keep (P7)', async () => {
+    await mount(fakeApi([]))
+    await click(button(en('add')))
+    await type(field('url'), 'https://dict.example.com/mcp')
+    await type(field('name'), '내 사전')
+    expect(host.textContent).toContain(en('nameSuggest', { name: 'dict' }))
+  })
+
+  it('shows a tool waiting for review with no pressed permission, and why (P5)', async () => {
+    await mount(
+      fakeApi([
+        serverView({
+          tools: {
+            search: {
+              permission: 'always',
+              approved: 'sha256:1',
+              definition: { description: 'old', inputSchema: {} },
+              pending: { description: 'new', inputSchema: {} },
+            },
+          },
+          toolNames: {
+            search: { exposedName: 'mcp__korean-law__search', changed: false, problem: null },
+          },
+        }),
+      ]),
+    )
+    await click(button(en('show'), serverRow('s1')))
+    const tool = host.querySelector('[data-mcp-tool="search"]')!
+    expect(tool.querySelector('[aria-pressed="true"]')).toBeNull()
+    expect(tool.querySelector('[data-testid="mcp-perm-inactive"]')!.textContent).toBe(
+      en('permPaused', { perm: en('permAlways') }),
+    )
+  })
+
+  it('says which way the card goes (P6)', async () => {
+    await mount(fakeApi([]))
+    expect(host.querySelector('[data-testid="mcp-servers-who"]')!.textContent).toBe(en('direction'))
   })
 })
 

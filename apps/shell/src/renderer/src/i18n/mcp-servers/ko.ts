@@ -181,4 +181,18 @@ export const ko = {
   pasteNoTarget: '이 서버에는 주소도 명령도 없어 등록할 수 없습니다.',
   pasteUnsupported: '앱이 다루지 않는 연결 방식이라 등록할 수 없습니다.',
   pasteDone: '서버 {n}개를 등록했습니다.',
+  statusReady: '준비됨 · 쓸 때 연결',
+  statusUnchecked: '확인 전',
+  failHttpError: '서버가 오류로 답했습니다. 주소가 맞는지 확인하세요.',
+  failUnreachableNear: '서버에 닿지 못했습니다. 서버가 켜져 있는지, 주소가 맞는지 확인하세요.',
+  httpRecheck: '주소가 바뀌었습니다. 새 주소도 암호화 없이 오가니 다시 확인해 주세요.',
+  pasteUnreadableLine: '글을 읽지 못했습니다. 쉼표나 괄호를 확인하세요({line}번째 줄).',
+  pasteTypeIgnored:
+    '앱이 모르는 연결 방식("{type}")이라 무시했습니다. 보통 방식으로 연결해 봅니다.',
+  valueFromVar:
+    '값을 넣어 주세요. 붙여넣은 글은 이 값을 PC 변수 {name}에서 읽게 되어 있는데, 앱은 PC 변수를 읽지 않습니다.',
+  launchSystemFold: 'PC 기본 변수 {n}개',
+  permPaused: '바뀐 내용을 승인할 때까지 쓰지 않음(승인하면: {perm})',
+  permUnusable: '켤 수 없음',
+  direction: '여기서는 GenOffice의 AI가 바깥 서버의 도구를 씁니다.',
 } satisfies Record<keyof typeof zh, string>

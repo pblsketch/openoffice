@@ -19,7 +19,9 @@ import {
   TOOL_PROBLEM_KEYS,
   appAddedArgs,
   enabledToolCount,
+  failureTextKey,
   formatBytes,
+  launchEnvGroups,
   mcpServersApi,
   reviewCount,
   signInOutcome,
@@ -46,6 +48,13 @@ interface ItemProps {
   open: boolean
   /** an AI window asked for this server: bring it into view */
   requested: boolean
+  /**
+   * Just registered: run the connection check once by itself (B1). A server
+   * that needs a browser sign-in stops at "sign in needed"; the browser opens
+   * only when the person presses the button.
+   */
+  autoCheck?: boolean
+  onAutoChecked?: () => void
   onOpen(open: boolean): void
   /** something changed: read the list again */
   onChanged(): void
@@ -58,6 +67,8 @@ export function McpServerItem({
   taken,
   open,
   requested,
+  autoCheck = false,
+  onAutoChecked,
   onOpen,
   onChanged,
 }: ItemProps) {
@@ -69,6 +80,7 @@ export function McpServerItem({
   const [editing, setEditing] = useState<{ focus: McpFormFocus } | null>(null)
   const [confirmRemove, setConfirmRemove] = useState(false)
   const rowRef = useRef<HTMLLIElement>(null)
+  const autoChecked = useRef(false)
   const { id } = server
 
   // opening the tool list is what clears "n new tools" (6.2)
@@ -80,6 +92,17 @@ export function McpServerItem({
   useEffect(() => {
     if (requested) rowRef.current?.scrollIntoView?.({ block: 'nearest' })
   }, [requested])
+
+  // a server just registered is checked at once, so it never reads "connected" unchecked;
+  // a "my PC" server is checked after "allow to run" (before that it would only be refused)
+  const runTestRef = useRef<(() => Promise<void>) | null>(null)
+  const needsLaunchApproval = server.kind === 'local' && server.launchReviewNeeded
+  useEffect(() => {
+    if (!autoCheck || autoChecked.current) return
+    autoChecked.current = true
+    onAutoChecked?.()
+    if (!needsLaunchApproval) void runTestRef.current?.()
+  }, [autoCheck, onAutoChecked, needsLaunchApproval])
 
   if (!api) return null
 
@@ -120,7 +143,8 @@ export function McpServerItem({
           setQuestion(result.question)
           break
         case 'failed':
-          setMessage({ tone: 'error', text: result.text ?? s(FAIL_KEYS[result.reason]) })
+          // the server's status block says why, once, with "Details" and "Try again"
+          setMessage(null)
           break
         default:
           setMessage({ tone: 'error', text: s('saveFailed') })
@@ -132,6 +156,8 @@ export function McpServerItem({
       onChanged()
     }
   }
+
+  runTestRef.current = runTest
 
   const signIn = async () => {
     setBusy('sign-in')
@@ -229,8 +255,10 @@ export function McpServerItem({
           )}
 
           {status.status === 'failed' && (
-            <div className="mcp-block">
-              <div className="mcp-error">{server.failure?.text ?? s(FAIL_KEYS[status.reason])}</div>
+            <div className="mcp-block" data-testid="mcp-failure">
+              <div className="mcp-error">
+                {server.failure?.text ?? s(failureTextKey(server) ?? FAIL_KEYS[status.reason])}
+              </div>
               {server.failure && (
                 <details className="set-intg-details" data-testid="mcp-stderr">
                   <summary>{s('details')}</summary>
@@ -509,6 +537,7 @@ function LaunchReview({
   }
 
   const added = appAddedArgs(launch.args, launch.addedArgs, server.args)
+  const envGroups = launchEnvGroups(launch.env)
   const originKey = {
     app: 'launchAdded',
     registered: 'launchRegistered',
@@ -542,14 +571,29 @@ function LaunchReview({
       {launch.env.length > 0 && (
         <div className="mcp-launch-row">
           <span className="set-field-label">{s('launchEnv')}</span>
-          <ul className="mcp-launch-list">
-            {launch.env.map((variable) => (
-              <li key={variable.name} data-env={variable.name} data-origin={variable.origin}>
-                <code className="mcp-code">{variable.name}</code>
-                <span className="mcp-tag">{s(originKey[variable.origin])}</span>
-              </li>
-            ))}
-          </ul>
+          {envGroups.own.length > 0 && (
+            <ul className="mcp-launch-list">
+              {envGroups.own.map((variable) => (
+                <li key={variable.name} data-env={variable.name} data-origin={variable.origin}>
+                  <code className="mcp-code">{variable.name}</code>
+                  <span className="mcp-tag">{s(originKey[variable.origin])}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {envGroups.system.length > 0 && (
+            <details className="set-intg-details" data-testid="mcp-launch-system-env">
+              <summary>{s('launchSystemFold', { n: envGroups.system.length })}</summary>
+              <ul className="mcp-launch-list">
+                {envGroups.system.map((variable) => (
+                  <li key={variable.name} data-env={variable.name} data-origin={variable.origin}>
+                    <code className="mcp-code">{variable.name}</code>
+                    <span className="mcp-tag">{s(originKey[variable.origin])}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </div>
       )}
       {launch.droppedEnv.length > 0 && (
@@ -667,22 +711,29 @@ function ToolRow({
         {hints?.destructiveHint === true && (
           <span className="mcp-tag mcp-tag-strong">{s('toolDestructive')}</span>
         )}
-        <div className="mcp-perm" role="group" aria-label={names?.exposedName ?? name}>
-          {MCP_PERMISSIONS.map((permission) => (
-            <button
-              key={permission}
-              type="button"
-              data-perm={permission}
-              aria-pressed={tool.permission === permission}
-              disabled={frozen}
-              onClick={() => {
-                if (tool.permission !== permission) onPermission(permission)
-              }}
-            >
-              {s(PERMISSION_KEYS[permission])}
-            </button>
-          ))}
-        </div>
+        {frozen ? (
+          <span className="mcp-perm-inactive set-field-desc" data-testid="mcp-perm-inactive">
+            {display.display === 'review'
+              ? s('permPaused', { perm: s(PERMISSION_KEYS[tool.permission]) })
+              : s('permUnusable')}
+          </span>
+        ) : (
+          <div className="mcp-perm" role="group" aria-label={names?.exposedName ?? name}>
+            {MCP_PERMISSIONS.map((permission) => (
+              <button
+                key={permission}
+                type="button"
+                data-perm={permission}
+                aria-pressed={tool.permission === permission}
+                onClick={() => {
+                  if (tool.permission !== permission) onPermission(permission)
+                }}
+              >
+                {s(PERMISSION_KEYS[permission])}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       {names?.changed && <div className="set-field-desc">{s('toolRenamed', { name })}</div>}
       {display.display === 'unusable' && (

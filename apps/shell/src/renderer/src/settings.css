@@ -695,6 +695,13 @@
   padding: 4px 0 8px;
 }
 
+/* which way a part goes: who uses whom (the two MCP parts point opposite ways) */
+.set-intg-who {
+  padding: 2px 0 0;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
 .set-intg-warn {
   padding: 0 0 8px;
   color: var(--danger);

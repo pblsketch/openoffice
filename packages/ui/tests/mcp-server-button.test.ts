@@ -126,6 +126,9 @@ describe('McpServerButton', () => {
     expect(set).toHaveBeenLastCalledWith('search', true)
     expect(state!.serversOffInChat().has('search')).toBe(true)
     expect(box().checked).toBe(false)
+    // off here reads as off in this conversation, never "connected" (P8)
+    expect(row('search')?.textContent).toContain('Off in this conversation')
+    expect(row('search')?.textContent).not.toContain('Connected')
     act(() => box().click())
     expect(set).toHaveBeenLastCalledWith('search', false)
     expect(box().checked).toBe(true)
@@ -140,6 +143,32 @@ describe('McpServerButton', () => {
     const box = row('old')!.querySelector<HTMLInputElement>('input[type="checkbox"]')!
     expect(box.disabled).toBe(true)
     expect(box.checked).toBe(false)
+  })
+
+  it('offers to turn on in Settings a server that is off there (P8)', async () => {
+    const fake = await render([
+      { name: 'search', status: 'connected' },
+      { name: 'old', status: 'disabled' },
+    ])
+    open()
+    act(() => rowButton('old', 'Turn on in Settings')!.click())
+    expect(fake.bridge.openSettings).toHaveBeenLastCalledWith('old')
+  })
+
+  it('sends a never-checked server to Settings to check it (B1)', async () => {
+    const fake = await render([{ name: 'fresh', status: 'unchecked' }], 'ko')
+    open()
+    expect(row('fresh')?.textContent).toContain('확인 전')
+    expect(row('fresh')?.textContent).not.toContain('연결됨')
+    act(() => rowButton('fresh', '설정에서 연결 확인')!.click())
+    expect(fake.bridge.openSettings).toHaveBeenLastCalledWith('fresh')
+  })
+
+  it('says a server approved before but not reached yet is ready, not connected (B1)', async () => {
+    await render([{ name: 'dict', status: 'ready' }], 'ko')
+    open()
+    expect(row('dict')?.textContent).toContain('준비됨')
+    expect(row('dict')?.querySelectorAll('button')).toHaveLength(0)
   })
 
   it('offers the action that fits each status', async () => {

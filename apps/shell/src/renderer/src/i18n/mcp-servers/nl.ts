@@ -192,4 +192,20 @@ export const nl = {
     'Deze server heeft geen adres en geen opdracht en kan daarom niet worden toegevoegd.',
   pasteUnsupported: 'Deze server gebruikt een soort verbinding die de app niet ondersteunt.',
   pasteDone: 'Servers toegevoegd: {n}',
+  statusReady: 'Klaar · maakt verbinding bij gebruik',
+  statusUnchecked: 'Nog niet gecontroleerd',
+  failHttpError: 'De server antwoordde met een fout. Controleer of het adres klopt.',
+  failUnreachableNear:
+    'De server was niet bereikbaar. Controleer of hij draait en of het adres klopt.',
+  httpRecheck: 'Het adres is gewijzigd. Ook het nieuwe is niet versleuteld, bevestig opnieuw.',
+  pasteUnreadableLine:
+    'De tekst kon niet worden gelezen. Controleer komma’s en haakjes (regel {line}).',
+  pasteTypeIgnored:
+    'Het verbindingstype "{type}" kent de app niet; het is genegeerd. De app probeert de gewone manier.',
+  valueFromVar:
+    'Vul de waarde in. De geplakte tekst leest die uit de pc-variabele {name}, en de app leest geen pc-variabelen.',
+  launchSystemFold: 'Basisvariabelen van de pc: {n}',
+  permPaused: 'Niet gebruikt tot u de wijziging goedkeurt (daarna: {perm})',
+  permUnusable: 'Kan niet worden ingeschakeld',
+  direction: 'Hier gebruikt de AI in GenOffice hulpmiddelen van externe servers.',
 } satisfies Record<keyof typeof zh, string>

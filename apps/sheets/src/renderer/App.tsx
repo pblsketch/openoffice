@@ -171,6 +171,7 @@ import {
   composeWithDrive,
   windowMcpState,
   windowMcpUsableServers,
+  toolStepLabel,
 } from '@genoffice/agent-core'
 import type {
   AiSettings,
@@ -1743,7 +1744,7 @@ export function App({
             tools: [
               ...entry.tools,
               {
-                summary: call.name.replace(/[_-]+/g, ' '),
+                summary: toolStepLabel(call.name),
                 isError: false,
                 name: call.name,
                 running: true,

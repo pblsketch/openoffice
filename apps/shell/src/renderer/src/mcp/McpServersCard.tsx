@@ -27,6 +27,8 @@ export function McpServersCard() {
   /** the server an AI window asked for: scrolled into view once */
   const [requested, setRequested] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
+  /** servers just registered: each runs its connection check once */
+  const [toCheck, setToCheck] = useState<ReadonlySet<string>>(() => new Set())
   const [notice, setNotice] = useState<string | null>(null)
   const alive = useRef(true)
 
@@ -74,6 +76,9 @@ export function McpServersCard() {
   return (
     <section className="set-intg-part mcp-card" data-testid="mcp-servers">
       <h4 className="set-pane-subtitle">{s('title')}</h4>
+      <div className="set-field-desc set-intg-who" data-testid="mcp-servers-who">
+        {s('direction')}
+      </div>
       <div className="set-field-desc set-intg-lead">{s('desc')}</div>
       {view && !view.sealing && <div className="mcp-note set-field-desc">{s('noSealing')}</div>}
 
@@ -91,6 +96,14 @@ export function McpServersCard() {
                 taken={names.filter((name) => name !== server.name)}
                 open={openIds.has(server.id)}
                 requested={requested === server.id}
+                autoCheck={toCheck.has(server.id)}
+                onAutoChecked={() =>
+                  setToCheck((prev) => {
+                    const next = new Set(prev)
+                    next.delete(server.id)
+                    return next
+                  })
+                }
                 onOpen={(open) => setOpen(server.id, open)}
                 onChanged={() => void refresh()}
               />
@@ -111,6 +124,7 @@ export function McpServersCard() {
           onAdded={(id, fromPaste) => {
             if (!fromPaste) setAdding(false)
             setOpen(id, true)
+            setToCheck((prev) => new Set(prev).add(id))
             void refresh()
           }}
           onPasteDone={(count) => {

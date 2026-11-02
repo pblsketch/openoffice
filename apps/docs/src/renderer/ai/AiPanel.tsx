@@ -58,6 +58,7 @@ import {
   windowMcpState,
   windowMcpUsableServers,
   type MindMapTreeNode,
+  toolStepLabel,
 } from '@genoffice/agent-core'
 import type { AiSubscriptionProviderId, AiSubscriptionUsage } from '@genoffice/ai-provider/browser'
 import { localModelCapabilities } from '@genoffice/ai-provider/browser'
@@ -1203,7 +1204,7 @@ export function AiPanel({
           patchLastAssistant((last) => ({
             tools: [
               ...(last.tools ?? []),
-              { name: call.name, summary: call.name.replace(/[_-]+/g, ' '), running: true },
+              { name: call.name, summary: toolStepLabel(call.name), running: true },
             ],
           }))
         },

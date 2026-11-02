@@ -84,6 +84,96 @@ export function suggestServerName(
   return trimEdges(base.slice(0, maxLength)) || 'server'
 }
 
+/** Where a server is reached or what it runs, for a name when the given one has no usable letter */
+export interface ServerNameSource {
+  url?: string
+  command?: string
+  args?: readonly string[]
+}
+
+/** Host labels that say nothing about the server */
+const PLAIN_HOST_LABELS = new Set(['www', 'mcp', 'api', 'app', 'server', 'servers'])
+/** Commands that run the package named in their arguments */
+const PACKAGE_RUNNERS = new Set([
+  'npx',
+  'bunx',
+  'uvx',
+  'pnpx',
+  'pipx',
+  'uv',
+  'pnpm',
+  'npm',
+  'bun',
+  'yarn',
+])
+/** Words before the package in `uv run`, `pnpm dlx`, `npm exec`, ... */
+const RUNNER_WORDS = new Set(['run', 'dlx', 'exec', 'x', 'tool'])
+
+const baseName = (path: string) => path.split(/[\\/]/).pop() ?? ''
+
+/** A word for a server from its address: the first telling label of the host name */
+function nameFromUrl(raw: string): string {
+  let host: string
+  try {
+    host = new URL(raw.trim()).hostname
+  } catch {
+    return ''
+  }
+  // an address by number says nothing; neither does this PC
+  if (host === '' || host.includes(':') || /^[\d.]+$/.test(host) || host === 'localhost') return ''
+  const labels = host.split('.').filter(Boolean)
+  const telling = labels.slice(0, Math.max(1, labels.length - 1))
+  return telling.find((label) => !PLAIN_HOST_LABELS.has(label.toLowerCase())) ?? ''
+}
+
+/** A word for a server from what it runs: the package a runner starts, or the script or program */
+function nameFromCommand(command: string, args: readonly string[]): string {
+  const program = baseName(command.trim())
+    .replace(/\.(exe|cmd|bat)$/i, '')
+    .toLowerCase()
+  const words = args.filter((a) => a.trim() !== '' && !a.startsWith('-'))
+  const target = PACKAGE_RUNNERS.has(program)
+    ? (words.find((w) => !RUNNER_WORDS.has(w)) ?? '')
+    : /^(node|python3?|deno)$/.test(program)
+      ? (words[0] ?? '')
+      : program
+  if (!target) return ''
+  // a scoped package keeps its own part; a version or a path goes
+  let word = target.startsWith('@') ? (target.split('/')[1] ?? '') : target
+  word = baseName(word)
+    .replace(/@[^@]*$/, '')
+    .replace(/\.[A-Za-z0-9]+$/, '')
+  return word
+}
+
+/**
+ * `suggestServerName`, but a name with no usable letter (a Korean name, for
+ * one) is made from the address host (`dict` for `dict.example.com`) or the
+ * package or script the command runs, before falling back to `server`.
+ */
+export function suggestServerNameFrom(
+  raw: string,
+  taken: Iterable<string> = [],
+  source: ServerNameSource = {},
+): string {
+  const cleaned = raw.replace(/[^A-Za-z0-9_-]+/g, '-')
+  if (/[A-Za-z0-9]/.test(cleaned)) return suggestServerName(raw, taken)
+  const derived =
+    (source.url ? nameFromUrl(source.url) : '') ||
+    (source.command ? nameFromCommand(source.command, source.args ?? []) : '')
+  return suggestServerName(derived || 'server', taken)
+}
+
+/**
+ * A tool step as a person reads it: `server · tool` for a user MCP tool,
+ * other tool names with their underscores and dashes as spaces.
+ */
+export function toolStepLabel(name: string): string {
+  const parsed = parseMcpToolName(name)
+  if (parsed) return `${parsed.server} · ${parsed.tool}`
+  return name.replace(/[_-]+/g, ' ')
+}
+
 /** The tool part made safe: every character outside [A-Za-z0-9_-] becomes `_` */
 export function sanitizeToolName(raw: string): string {
   return raw.replace(/[^A-Za-z0-9_-]/g, '_')

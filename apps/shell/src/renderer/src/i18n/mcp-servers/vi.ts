@@ -186,4 +186,20 @@ export const vi = {
   pasteNoTarget: 'Máy chủ này không có địa chỉ cũng không có lệnh nên không thể thêm.',
   pasteUnsupported: 'Máy chủ này dùng kiểu kết nối mà ứng dụng không hỗ trợ.',
   pasteDone: 'Đã thêm máy chủ: {n}',
+  statusReady: 'Sẵn sàng · kết nối khi dùng',
+  statusUnchecked: 'Chưa kiểm tra',
+  failHttpError: 'Máy chủ trả lời bằng một lỗi. Hãy kiểm tra địa chỉ có đúng không.',
+  failUnreachableNear:
+    'Không kết nối được máy chủ. Hãy kiểm tra máy chủ đang chạy và địa chỉ đúng.',
+  httpRecheck: 'Địa chỉ đã đổi. Địa chỉ mới cũng không mã hóa, hãy xác nhận lại.',
+  pasteUnreadableLine:
+    'Không đọc được đoạn văn bản. Hãy kiểm tra dấu phẩy và dấu ngoặc (dòng {line}).',
+  pasteTypeIgnored:
+    'Ứng dụng không biết kiểu kết nối "{type}" nên đã bỏ qua. Ứng dụng sẽ thử cách thông thường.',
+  valueFromVar:
+    'Hãy nhập giá trị. Đoạn văn bản đã dán đọc giá trị này từ biến {name} của máy, còn ứng dụng không đọc biến của máy.',
+  launchSystemFold: 'Biến cơ bản của máy: {n}',
+  permPaused: 'Không dùng cho đến khi bạn duyệt thay đổi (sau đó: {perm})',
+  permUnusable: 'Không thể bật',
+  direction: 'Ở đây, AI trong GenOffice dùng công cụ của máy chủ bên ngoài.',
 } satisfies Record<keyof typeof zh, string>

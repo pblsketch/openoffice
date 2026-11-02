@@ -187,4 +187,21 @@ export const ja = {
   pasteNoTarget: 'このサーバーにはアドレスもコマンドもないため、追加できません。',
   pasteUnsupported: 'このサーバーは、アプリが対応していない接続方法を使っています。',
   pasteDone: '追加したサーバー: {n}',
+  statusReady: '準備完了 · 使うときに接続',
+  statusUnchecked: '未確認',
+  failHttpError: 'サーバーがエラーを返しました。アドレスが正しいか確認してください。',
+  failUnreachableNear:
+    'サーバーに届きませんでした。サーバーが動いているか、アドレスが正しいか確認してください。',
+  httpRecheck:
+    'アドレスが変わりました。新しいアドレスも暗号化されないため、もう一度確認してください。',
+  pasteUnreadableLine:
+    'テキストを読み取れませんでした。カンマや括弧を確認してください（{line} 行目）。',
+  pasteTypeIgnored:
+    '接続方式（"{type}"）はアプリが知らない値なので無視しました。通常の方法で接続を試みます。',
+  valueFromVar:
+    '値を入力してください。貼り付けたテキストはこの値を PC の変数 {name} から読むようになっていますが、アプリは PC の変数を読みません。',
+  launchSystemFold: 'PC の基本変数 {n} 個',
+  permPaused: '変更を承認するまで使いません（承認後: {perm}）',
+  permUnusable: 'オンにできません',
+  direction: 'ここでは GenOffice の AI が外部サーバーのツールを使います。',
 } satisfies Record<keyof typeof zh, string>

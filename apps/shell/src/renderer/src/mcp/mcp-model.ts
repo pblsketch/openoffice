@@ -1,5 +1,6 @@
 import type { ServerNameProblem, ToolNameProblem } from '@genoffice/agent-core/user-mcp/names'
 import {
+  isNearAddress,
   toolDisplayOf,
   type McpFailReason,
   type McpPermission,
@@ -31,6 +32,8 @@ export const mcpServersApi = (): McpServersApi | undefined => window.aiOfficeMcp
 
 export const STATUS_KEYS: Record<McpServerStatusInfo['status'], McpServersStringKey> = {
   connected: 'statusConnected',
+  ready: 'statusReady',
+  unchecked: 'statusUnchecked',
   connecting: 'statusConnecting',
   failed: 'statusFailed',
   'login-required': 'statusLogin',
@@ -40,6 +43,7 @@ export const STATUS_KEYS: Record<McpServerStatusInfo['status'], McpServersString
 
 export const FAIL_KEYS: Record<McpFailReason, McpServersStringKey> = {
   unreachable: 'failUnreachable',
+  'http-error': 'failHttpError',
   'runtime-missing': 'failRuntimeMissing',
   'start-failed': 'failStartFailed',
   'refused-redirect': 'failRedirect',
@@ -193,3 +197,39 @@ export function secretPlaceholderKey(
 
 /** Whether an address is plain http (the warning and the confirmation of 4.3) */
 export const isPlainHttp = (url: string): boolean => /^\s*http:\/\//i.test(url)
+
+/**
+ * The text of a failure the card shows once: a "my PC" server's own reason
+ * from the main process, else the reason's words. A server that could not
+ * be reached at an address on this PC or a private network is not blamed on
+ * the internet connection.
+ */
+export function failureTextKey(server: McpServerSettingsView): McpServersStringKey | null {
+  if (server.status.status !== 'failed') return null
+  const reason = server.status.reason
+  if (reason === 'unreachable' && server.kind === 'remote' && isNearAddress(server.url)) {
+    return 'failUnreachableNear'
+  }
+  return FAIL_KEYS[reason]
+}
+
+/** The test answer's reason as the card says it, the same way as `failureTextKey` */
+export function testFailureKey(
+  reason: McpFailReason,
+  server: Pick<McpServerSettingsView, 'kind' | 'url'>,
+): McpServersStringKey {
+  if (reason === 'unreachable' && server.kind === 'remote' && isNearAddress(server.url)) {
+    return 'failUnreachableNear'
+  }
+  return FAIL_KEYS[reason]
+}
+
+/** The system variables of a planned launch go last, folded; what the person set comes first */
+export function launchEnvGroups<T extends { origin: 'system' | 'registered' | 'app' }>(
+  env: readonly T[],
+): { own: T[]; system: T[] } {
+  return {
+    own: env.filter((v) => v.origin !== 'system'),
+    system: env.filter((v) => v.origin === 'system'),
+  }
+}

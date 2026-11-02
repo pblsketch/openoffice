@@ -11,7 +11,10 @@
  */
 
 export class TomlError extends Error {
-  constructor(message: string, line: number) {
+  constructor(
+    message: string,
+    readonly line: number,
+  ) {
     super(`${message} (line ${line})`)
     this.name = 'TomlError'
   }
