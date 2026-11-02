@@ -48,12 +48,12 @@ import {
 } from './branches'
 import { archivePictureEntry, pictureBox, type PictureStore } from './images'
 import {
-  branchIndexOf,
   DEFAULT_LINE_SETTINGS,
   lineChainOf,
   type MapLineSettings,
   resolveBranchLine,
   type ResolvedBranchLine,
+  resolveNodeLine,
 } from './line-resolve'
 import {
   branchCount,
@@ -171,11 +171,7 @@ export class TopicDecorator {
 
   /** The values the line into a topic is drawn with now, inherited ones included. */
   lineOf(node: NodeObj): ResolvedBranchLine {
-    return resolveBranchLine(lineChainOf(node), {
-      look: this.#look,
-      rainbow: this.#lineSettings.rainbow,
-      branchIndex: branchIndexOf(node),
-    })
+    return resolveNodeLine(node, { look: this.#look, rainbow: this.#lineSettings.rainbow })
   }
 
   setStrings(strings: DecorationStrings): void {

@@ -11,7 +11,6 @@ import {
   fontFamilyValue,
   FONT_SIZE_DRAWN,
   isPlainStyle,
-  LINE_WIDTH_DRAWN_MAX,
   NO_FILL,
   type OwnTopicStyle,
   ownTopicStyle,
@@ -22,7 +21,6 @@ import {
   safeFontSize,
   safeFontWeight,
   safeItalic,
-  safeLineWidth,
   safeTextAlign,
   safeTextTransform,
   splitAlpha,
@@ -212,22 +210,6 @@ describe('a font weight', () => {
 
   it('is nothing for every hostile value', () => {
     for (const value of HOSTILE) expect(safeFontWeight(value), String(value)).toBeNull()
-  })
-})
-
-describe('a line width', () => {
-  it('is a number of pixels, a bare number counting as points', () => {
-    expect(safeLineWidth('2')).toBe(2.67)
-    expect(safeLineWidth('3pt')).toBe(4)
-    expect(safeLineWidth('1.5px')).toBe(1.5)
-    expect(safeLineWidth('0')).toBe(0)
-  })
-
-  it('is never wider than the editor draws a line, and nothing when no file means it', () => {
-    expect(safeLineWidth('40pt')).toBe(LINE_WIDTH_DRAWN_MAX)
-    expect(safeLineWidth('65')).toBeNull()
-    expect(safeLineWidth('9999px')).toBeNull()
-    for (const value of HOSTILE) expect(safeLineWidth(value), String(value)).toBeNull()
   })
 })
 

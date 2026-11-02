@@ -39,7 +39,6 @@ import {
   recogniseSheetTheme,
   renameSheet,
   type SheetEditResult,
-  type SheetLineSettings,
   sheetLineSettings,
   sheetsToOutline,
   sheetToView,
@@ -388,11 +387,6 @@ export class DocumentSession {
   }
 
   // ---- the map-wide line settings: switched in the theme panel, outside the map's history ----
-
-  /** The tapered lines and the branch colours of a sheet, as its theme holds them. */
-  lineSettings(key: string): SheetLineSettings {
-    return sheetLineSettings(this.sheet(key))
-  }
 
   /**
    * The user switched the tapered lines of a sheet. Written into the sheet's

@@ -86,9 +86,8 @@ const PX_PER_PT = 96 / 72
 const FONT_SIZE_MEANT = { min: 1, max: 400 } as const
 /** What a topic is drawn with at the least and at the most, in CSS pixels. */
 export const FONT_SIZE_DRAWN = { min: 8, max: 96 } as const
-/** Line widths a file may mean, and the widest one drawn (CSS pixels). */
+/** Line widths a file may mean. */
 const LINE_WIDTH_MEANT = { min: 0, max: 64 } as const
-export const LINE_WIDTH_DRAWN_MAX = 12
 
 /** The words this app knows for a weight, and the weight each stands for here. */
 const WEIGHT_WORDS: Readonly<Record<string, number>> = { normal: 400, bold: 700 }
@@ -141,15 +140,6 @@ export function safeFontWeight(value: unknown): number | null {
 /** A fill: a colour, or the known word for "no fill". */
 export function safeFill(value: unknown): SafeColor | typeof NO_FILL | null {
   return value === NO_FILL ? NO_FILL : safeColor(value)
-}
-
-/** A line width in CSS pixels, at most `LINE_WIDTH_DRAWN_MAX`. A bare number is points. */
-export function safeLineWidth(value: unknown): number | null {
-  const read = readNumber(value)
-  if (!read) return null
-  if (read.amount < LINE_WIDTH_MEANT.min || read.amount > LINE_WIDTH_MEANT.max) return null
-  const pixels = read.unit === 'px' ? read.amount : read.amount * PX_PER_PT
-  return round(Math.min(LINE_WIDTH_DRAWN_MAX, pixels))
 }
 
 /** The widest branch line drawn, in CSS pixels: the widest the engine writes, in points. */
