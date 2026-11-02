@@ -12,7 +12,8 @@ import { DocumentSession } from '../src/renderer/document/session'
 import { mapStrings } from '../src/renderer/i18n/map-strings'
 import type { MapArrow, MapSummary } from '../src/renderer/document/convert'
 import { parseSummaryFrame, summaryBracketPath } from '../src/renderer/map/summary-shapes'
-import { BOUNDARY_PAD } from '../src/renderer/map/boundary-shapes'
+import { BOUNDARY_PAD, BOUNDARY_TITLE_HEIGHT } from '../src/renderer/map/boundary-shapes'
+import { ROOM_HALF_GAP, ROOM_MARK } from '../src/renderer/map/boundary-room'
 import {
   BOUNDARY_ID_ATTRIBUTE,
   BOUNDARY_LAYER_CLASS,
@@ -467,5 +468,93 @@ describe('boundaries', () => {
       seen.add(groupsOf(el, ID.master)[0]!.querySelector('.mm-boundary-shape')!.getAttribute('d')!)
     }
     expect(seen.size).toBe(7)
+  })
+})
+
+describe('the room the boundaries take in the layout', () => {
+  /**
+   * As `layOut`, but each wrapper of the library is as large as the topics in
+   * it, so the room a boundary needs is all to be made.
+   */
+  function layOutTight(): void {
+    const boxes = new WeakMap<Element, DOMRect>()
+    let next = 0
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(100)
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(30)
+    const own = (element: Element): DOMRect => {
+      let box = boxes.get(element)
+      if (!box) {
+        next++
+        box = new DOMRect(40 + next * 70, 20 + next * 45, 100, 30)
+        boxes.set(element, box)
+      }
+      return box
+    }
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
+      if (this.localName === 'me-nodes') return new DOMRect(0, 0, 100, 100)
+      if (this.localName === 'me-wrapper') {
+        const inside = [...this.querySelectorAll('me-tpc')].map(own)
+        const left = Math.min(...inside.map((box) => box.left))
+        const top = Math.min(...inside.map((box) => box.top))
+        const right = Math.max(...inside.map((box) => box.right))
+        const bottom = Math.max(...inside.map((box) => box.bottom))
+        return new DOMRect(left, top, right - left, bottom - top)
+      }
+      return own(this)
+    })
+  }
+
+  const wrapperOf = (mind: { findEle(id: string): HTMLElement }, id: string) =>
+    mind.findEle(id).parentElement!.parentElement as HTMLElement
+
+  it('a map without boundaries is laid out as the library lays it out', async () => {
+    layOutTight()
+    const { el } = show(await documentOf(plainSheet()))
+    expect(el.querySelector(`[${ROOM_MARK}]`)).toBeNull()
+    for (const wrapper of el.querySelectorAll<HTMLElement>('me-wrapper')) {
+      expect(wrapper.style.padding).toBe('')
+    }
+  })
+
+  it('room above the first branch a boundary goes around (more with a title) and below the last', async () => {
+    layOutTight()
+    const { mind } = show(await documentOf(lineFormatSheet()))
+    const first = wrapperOf(mind, ID.rightA)
+    const last = wrapperOf(mind, ID.rightB)
+    expect(first.hasAttribute(ROOM_MARK)).toBe(true)
+    expect(last.hasAttribute(ROOM_MARK)).toBe(true)
+    // the outline's padding, its waves and half the title written on its top edge, and a gap
+    expect(parseFloat(first.style.paddingTop)).toBeGreaterThanOrEqual(
+      BOUNDARY_PAD + BOUNDARY_TITLE_HEIGHT / 2 + ROOM_HALF_GAP,
+    )
+    expect(parseFloat(last.style.paddingBottom)).toBeGreaterThanOrEqual(
+      BOUNDARY_PAD + ROOM_HALF_GAP,
+    )
+    expect(parseFloat(last.style.paddingBottom)).toBeLessThan(parseFloat(first.style.paddingTop))
+    // a branch between them, or after them, gets none of it
+    expect(first.style.paddingBottom).toBe('')
+    expect(last.style.paddingTop).toBe('')
+  })
+
+  it('made anew each time the map is drawn: the same room again, none once the boundaries are gone', async () => {
+    layOutTight()
+    const { el, mind, controller } = show(await documentOf(lineFormatSheet()))
+    const room = () =>
+      [...el.querySelectorAll(`[${ROOM_MARK}]`)].map((element) => [
+        element.getAttribute(ROOM_MARK),
+        (element as HTMLElement).style.cssText,
+      ])
+    const before = room()
+    expect(before.length).toBeGreaterThan(0)
+    mind.linkDiv()
+    expect(room()).toEqual(before)
+    for (const boundary of controller.boundaries()) controller.removeBoundary(boundary.id)
+    expect(el.querySelector(`[${ROOM_MARK}]`)).toBeNull()
+    for (const wrapper of el.querySelectorAll<HTMLElement>('me-wrapper')) {
+      expect(wrapper.style.paddingTop).toBe('')
+      expect(wrapper.style.paddingBottom).toBe('')
+    }
   })
 })

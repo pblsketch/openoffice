@@ -374,6 +374,18 @@ describe('cleaning a copy', () => {
     expect(root.querySelector('me-tpc')!.getAttribute('data-mm-level')).toBe('4')
   })
 
+  it('keeps the room a boundary takes in the layout, so the copy is laid out as the map is', () => {
+    const root = document.createElement('me-nodes')
+    root.innerHTML =
+      '<me-main><me-wrapper data-mm-room="31 0 0 12" style="padding-top: 31px; padding-right: 12px">' +
+      '<me-parent><me-tpc>t</me-tpc></me-parent></me-wrapper></me-main>'
+    cleanCopy(root)
+    const wrapper = root.querySelector<HTMLElement>('me-wrapper')!
+    expect(wrapper.getAttribute('data-mm-room')).toBe('31 0 0 12')
+    expect(wrapper.style.paddingTop).toBe('31px')
+    expect(wrapper.style.paddingRight).toBe('12px')
+  })
+
   it('keeps on a topic only the style properties the editor sets', () => {
     const root = document.createElement('me-nodes')
     root.innerHTML =

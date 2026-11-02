@@ -379,6 +379,7 @@ describe('the colours of a map are document content', () => {
   it('the code that draws the look names no chrome token and reads no app theme', () => {
     expect(mapCode.map(([name]) => name).sort()).toEqual([
       'boundary-edit.ts',
+      'boundary-room.ts',
       'boundary-shapes.ts',
       'boundary-title.ts',
       'branches.ts',

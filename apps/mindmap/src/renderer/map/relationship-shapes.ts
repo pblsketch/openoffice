@@ -14,8 +14,10 @@
  * - `arrowMarker`: the drawing of each end, made by this app, and where the
  *   line stops under it (`inset`).
  * - `relationshipDrawing`: the line cut short under its ends, the ends placed
- *   along the path, and the dashes fitted so a dash meets each end.
- * - `labelAlong`: where a title goes so that it covers no topic.
+ *   along the path (made smaller on a line too short for both, so they never
+ *   meet), and the dashes fitted so a dash meets each end.
+ * - `labelSpot` / `labelAlong`: where a title goes so that it covers no topic
+ *   and neither end of its line.
  * - `curveToDeltas` / `deltasToCurve`: a curve as the file keeps it (each
  *   control point measured from the reference point of the topic at that
  *   end, the middle of its box) and as the library keeps it (`delta1`,
@@ -271,11 +273,20 @@ function angled(from: Box, to: Box): RelationshipGeometry {
   }
 }
 
-/** Straight for a short way at each end, a zigzag across the line in between. */
+/** How many turns a zigzag has at the least; a line with no room for them is drawn straight. */
+const ZIGZAG_LEAST_TURNS = 2
+
+/**
+ * Straight for a short way at each end, a zigzag across the line in between.
+ * A line too short for the straight ends and two clean turns between them is
+ * drawn straight: a zigzag squeezed shorter than that is a tangle.
+ */
 function zigzag(p1: Point, p2: Point, width: number): RelationshipGeometry {
   const label = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 }
   const length = Math.hypot(p2.x - p1.x, p2.y - p1.y)
-  if (length === 0) {
+  const measure = zigzagMeasure(width)
+  const span = length - 2 * measure.lead
+  if (!(span >= (ZIGZAG_LEAST_TURNS + 1) * measure.step * 0.75)) {
     return {
       d: `M ${p(p1)} L ${p(p2)}`,
       path: { kind: 'polyline', points: [p1, p2] },
@@ -284,14 +295,12 @@ function zigzag(p1: Point, p2: Point, width: number): RelationshipGeometry {
       label,
     }
   }
-  const measure = zigzagMeasure(width)
   const ux = (p2.x - p1.x) / length
   const uy = (p2.y - p1.y) / length
-  const lead = Math.min(measure.lead, length * 0.3)
+  const lead = measure.lead
   const a = { x: p1.x + ux * lead, y: p1.y + uy * lead }
   const b = { x: p2.x - ux * lead, y: p2.y - uy * lead }
-  const span = length - 2 * lead
-  const steps = Math.max(2, Math.round(span / measure.step))
+  const steps = Math.max(ZIGZAG_LEAST_TURNS + 1, Math.round(span / measure.step))
   // a short line swings less, so its zigs keep their angle
   const amplitude = Math.min(measure.amplitude, (span / steps) * 0.9)
   const points: Point[] = [p1, a]
@@ -478,9 +487,12 @@ export function markerSize(width: number): number {
   return 7.5 + width * 3
 }
 
-/** How far back from its tip an end of this kind reaches on a line this wide; 0 for none. */
-export function markerReach(kind: ArrowShape, width: number): number {
-  const size = markerSize(width)
+/** How far back from its tip an end of this kind reaches on a line this wide (drawn `size` long); 0 for none. */
+export function markerReach(
+  kind: ArrowShape,
+  width: number,
+  size: number = markerSize(width),
+): number {
   switch (kind) {
     case 'none':
       return 0
@@ -498,7 +510,8 @@ export function markerReach(kind: ArrowShape, width: number): number {
 
 /**
  * The drawing of an end of the kind given, its tip on `tip`, pointing away
- * from `from`. Null for `none` and for an end with no direction.
+ * from `from`, `size` long (`markerSize` unless given). Null for `none` and
+ * for an end with no direction.
  *
  * Each drawing ends on `tip`: a filled end has no outline, and an open one
  * (`normal`, `herringbone`) is drawn half a line's width back, so its round
@@ -509,13 +522,13 @@ export function arrowMarker(
   tip: Point,
   from: Point,
   width: number,
+  size: number = markerSize(width),
 ): ArrowMarker | null {
   if (kind === 'none') return null
   const length = Math.hypot(tip.x - from.x, tip.y - from.y)
   if (!(length > 0)) return null
   const ux = (tip.x - from.x) / length
   const uy = (tip.y - from.y) / length
-  const size = markerSize(width)
   const half = width / 2
   // how far into a solid end the line runs, so the two meet without a seam
   const overlap = Math.min(1, half)
@@ -617,6 +630,13 @@ export interface RelationshipDrawing {
   dasharray: string
   /** where the dashes start: the first one starts where the line comes out from under its end */
   dashoffset: number
+  /** the room each end of the line takes, drawn or not: what its title keeps clear of */
+  endBoxes: LabelObstacle[]
+}
+
+/** The least length of line left between the two ends of a relationship. */
+export function endsGap(width: number): number {
+  return Math.max(3, width)
 }
 
 /**
@@ -631,15 +651,44 @@ export function relationshipDrawing(
 ): RelationshipDrawing {
   const width = paint.width ?? RELATIONSHIP_WIDTH
   const total = pathLength(path)
+  // on a line too short for both ends and a little line between, both are drawn smaller
+  // (each reach grows with the size in a straight line, so the size that fits is exact)
+  const fixed = markerReach(paint.begin, width, 0) + markerReach(paint.end, width, 0)
+  const growing = markerReach(paint.begin, width, 1) + markerReach(paint.end, width, 1) - fixed
+  let size = markerSize(width)
+  if (growing > 0 && fixed + growing * size + endsGap(width) > total) {
+    size = Math.max(0, (total - endsGap(width) - fixed) / growing)
+  }
+  // too small to read as an end: none is drawn
+  const drawn = size >= Math.max(3, width * 1.2)
   const markerAt = (kind: ArrowShape, fromEnd: boolean): ArrowMarker | null => {
-    const reach = markerReach(kind, width)
-    if (reach === 0) return null
+    const reach = markerReach(kind, width, size)
+    if (reach === 0 || !drawn) return null
     // on a line shorter than the end, the end points along the whole line
     const from = pointAlong(path, Math.min(reach, total), fromEnd)
-    return arrowMarker(kind, pointAlong(path, 0, fromEnd), from, width)
+    return arrowMarker(kind, pointAlong(path, 0, fromEnd), from, width, size)
   }
   const begin = markerAt(paint.begin, false)
   const end = markerAt(paint.end, true)
+  const endBox = (
+    marker: ArrowMarker | null,
+    kind: ArrowShape,
+    fromEnd: boolean,
+  ): LabelObstacle => {
+    const tip = pointAlong(path, 0, fromEnd)
+    const reach = marker ? Math.min(markerReach(kind, width, size), total) : 0
+    const back = pointAlong(path, reach, fromEnd)
+    const around = (marker ? size / 2 : 2) + width / 2
+    const x = Math.min(tip.x, back.x) - around
+    const y = Math.min(tip.y, back.y) - around
+    return {
+      x,
+      y,
+      w: Math.max(tip.x, back.x) + around - x,
+      h: Math.max(tip.y, back.y) + around - y,
+    }
+  }
+  const endBoxes = [endBox(begin, paint.begin, false), endBox(end, paint.end, true)]
   const cut = trimPath(path, begin?.inset ?? 0, end?.inset ?? 0)
   const line = cut ?? path
   const hiddenStart = cut ? (begin?.overlap ?? 0) : 0
@@ -658,6 +707,7 @@ export function relationshipDrawing(
     end,
     dasharray: fitted.length > 0 ? fitted.map(n).join(' ') : 'none',
     dashoffset: period > 0 && hiddenStart > 0 ? Number(n(period - (hiddenStart % period))) : 0,
+    endBoxes,
   }
 }
 
@@ -671,36 +721,86 @@ export interface LabelObstacle {
 
 /**
  * Where a relationship's title goes on its path: in the middle, or, when its
- * box there would lie on a topic, at the nearest place along the path where
- * it lies on none. The middle when there is no such place.
+ * box there would lie on a topic or on an end of the line (`ends`), at the
+ * nearest place along the path where it lies on none; when there is no such
+ * place, beside the middle of the line, on whichever side is free. Where it
+ * covers least when nothing is free, the ends counting more than the topics
+ * (the middle among equals). `moved`: it is not in the middle.
  */
-export function labelAlong(
+export function labelSpot(
   path: RelationshipPath,
   size: { w: number; h: number },
   obstacles: readonly LabelObstacle[],
+  ends: readonly LabelObstacle[] = [],
   margin = 3,
-): Point {
+): { at: Point; moved: boolean } {
   const points = pathSamples(path)
   const lengths = runningLengths(points)
   const total = lengths[lengths.length - 1] ?? 0
   const middle = alongPoints(points, lengths, total / 2)
-  const free = (at: Point): boolean =>
-    obstacles.every(
-      (box) =>
-        at.x + size.w / 2 + margin <= box.x ||
-        at.x - size.w / 2 - margin >= box.x + box.w ||
-        at.y + size.h / 2 + margin <= box.y ||
-        at.y - size.h / 2 - margin >= box.y + box.h,
-    )
-  if (free(middle)) return middle
+  const cover = (at: Point, box: LabelObstacle): number => {
+    const w =
+      Math.min(at.x + size.w / 2 + margin, box.x + box.w) -
+      Math.max(at.x - size.w / 2 - margin, box.x)
+    const h =
+      Math.min(at.y + size.h / 2 + margin, box.y + box.h) -
+      Math.max(at.y - size.h / 2 - margin, box.y)
+    return w > 0 && h > 0 ? w * h : 0
+  }
+  const covered = (at: Point): number =>
+    obstacles.reduce((sum, box) => sum + cover(at, box), 0) +
+    10 * ends.reduce((sum, box) => sum + cover(at, box), 0)
+  if (covered(middle) === 0) return { at: middle, moved: false }
   const step = 2
   for (let away = step; away <= total / 2; away += step) {
     for (const distance of [total / 2 - away, total / 2 + away]) {
       const at = alongPoints(points, lengths, distance)
-      if (free(at)) return at
+      if (covered(at) === 0) return { at, moved: true }
     }
   }
-  return middle
+  // beside the middle, across the way the line goes from end to end (not the way its middle
+  // piece goes: the middle of an angled line runs across it), far enough off that the box
+  // does not lie on it
+  const before = points[0] ?? middle
+  const after = points[points.length - 1] ?? middle
+  const length = Math.hypot(after.x - before.x, after.y - before.y)
+  const candidates = [middle]
+  if (length > 0) {
+    const nx = -(after.y - before.y) / length
+    const ny = (after.x - before.x) / length
+    const off = (Math.abs(nx) * size.w) / 2 + (Math.abs(ny) * size.h) / 2 + margin + 2
+    // a little further out each time, past the ends that stand out of the line
+    for (const further of [0, 4, 8, 12, 18, 24, 32, 44, 60]) {
+      for (const sign of [-1, 1]) {
+        const at = {
+          x: middle.x + nx * (off + further) * sign,
+          y: middle.y + ny * (off + further) * sign,
+        }
+        if (covered(at) === 0) return { at, moved: true }
+        candidates.push(at)
+      }
+    }
+  }
+  let best = candidates[0]!
+  let least = Infinity
+  for (const at of candidates) {
+    const amount = covered(at)
+    if (amount < least - 0.01) {
+      least = amount
+      best = at
+    }
+  }
+  return { at: best, moved: best !== middle }
+}
+
+/** Where a relationship's title goes on its path (`labelSpot`): the point. */
+export function labelAlong(
+  path: RelationshipPath,
+  size: { w: number; h: number },
+  obstacles: readonly LabelObstacle[],
+  ends: readonly LabelObstacle[] = [],
+): Point {
+  return labelSpot(path, size, obstacles, ends).at
 }
 
 /** The library's control points (`delta1`, `delta2`) for a curve as the file keeps it. */
