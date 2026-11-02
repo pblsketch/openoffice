@@ -713,12 +713,25 @@ describe('the format and the curve of a relationship', () => {
     expect(properties(rel)?.['line-color']).toBe('#654321')
   })
 
-  it('refuses a curve that is not two points', async () => {
-    const document = await opened()
-    const state = copyOf(document.viewSheets()[0]!)
-    ;(state.relationships[0] as unknown as Record<string, unknown>).curve = { from: { x: 1 } }
-    const result = reconcileSheet(document, 0, state, { restyledRelationships: ['rel-1'] })
-    expect(result.ok).toBe(false)
+  it('leaves the file’s curve for a curve that is not two points, and applies the rest of the state', async () => {
+    for (const curve of [{ from: { x: 1 } }, 'curved', { from: { x: 1, y: 2 }, to: null }]) {
+      const document = await opened()
+      const before = copyOf(relationship(document.sheets[0]!, 'rel-1'))
+      const state = copyOf(document.viewSheets()[0]!)
+      const line = state.relationships[0]!
+      ;(line as unknown as Record<string, unknown>).curve = curve
+      line.title = 'renamed'
+      line.style = { ...line.style, color: '#111111' }
+      const result = reconcileSheet(document, 0, state, { restyledRelationships: ['rel-1'] })
+      expect(result.ok, JSON.stringify(curve)).toBe(true)
+      // the editor showed a curve the file does not hold: it draws the file's again
+      expect(applied(result).inSync).toBe(false)
+      const rel = relationship(document.sheets[0]!, 'rel-1')
+      expect(rel.title).toBe('renamed')
+      expect(properties(rel)?.['line-color']).toBe('#111111')
+      expect(rel.controlPoints).toEqual(before.controlPoints)
+      expect(rel.lineEndPoints).toEqual(before.lineEndPoints)
+    }
   })
 
   it('writes the format and curve of a relationship the state adds', async () => {
