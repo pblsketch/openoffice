@@ -84,6 +84,10 @@ export class HwpDocument {
      */
     applyEndnoteShape(section_idx: number, props_json: string): string;
     /**
+     * 각주 모양을 적용한다.
+     */
+    applyFootnoteShape(section_idx: number, props_json: string): string;
+    /**
      * 머리말/꼬리말 마당(템플릿)을 적용한다.
      */
     applyHfTemplate(section_idx: number, is_header: boolean, apply_to: number, template_id: number): string;
@@ -939,6 +943,10 @@ export class HwpDocument {
      * 각주 정보를 조회한다.
      */
     getFootnoteInfo(section_idx: number, para_idx: number, control_idx: number): string;
+    /**
+     * 각주 모양을 조회한다.
+     */
+    getFootnoteShape(section_idx: number): string;
     /**
      * 페이지 좌표에서 양식 개체를 찾는다.
      *
@@ -2613,6 +2621,7 @@ export interface InitOutput {
     readonly hwpdocument_applyCharFormatInCellEx: (a: number, b: number, c: number) => [number, number, number, number];
     readonly hwpdocument_applyCharFormatInHeaderFooter: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number, number];
     readonly hwpdocument_applyEndnoteShape: (a: number, b: number, c: number, d: number) => [number, number, number, number];
+    readonly hwpdocument_applyFootnoteShape: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly hwpdocument_applyHfTemplate: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
     readonly hwpdocument_applyParaFormat: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
     readonly hwpdocument_applyParaFormatAtCursor: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
@@ -2782,6 +2791,7 @@ export interface InitOutput {
     readonly hwpdocument_getFontDecisionTrace: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly hwpdocument_getFootnoteAtCursor: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly hwpdocument_getFootnoteInfo: (a: number, b: number, c: number, d: number) => [number, number, number, number];
+    readonly hwpdocument_getFootnoteShape: (a: number, b: number) => [number, number, number, number];
     readonly hwpdocument_getFormObjectAt: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly hwpdocument_getFormObjectInfo: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly hwpdocument_getFormValue: (a: number, b: number, c: number, d: number) => [number, number, number, number];
