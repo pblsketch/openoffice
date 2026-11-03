@@ -30,6 +30,7 @@ openoffice/
 │   │   ├── ai-friendly-docs.md    ← 행정문서 점검(행안부 가이드라인) 계획(설계)
 │   │   ├── ai-web-reading.md      ← AI 웹 읽기 계획(초안)
 │   │   ├── connect-guide.md       ← AI 연결 도우미 계획(진행 중)
+│   │   ├── diagram-editor.md      ← 다이어그램(.drawio) 편집기 계획(초안)
 │   │   ├── epub-editor.md         ← EPUB 편집기 계획(구현됨, 사람 확인 남음)
 │   │   ├── hwp-format-copy.md     ← 한글 모양 복사(서식 복사) 분석·설계(1단계 구현됨, 사람 확인 남음)
 │   │   ├── pdf-reading-assist.md  ← PDF 읽기 도우미 계획
