@@ -22,6 +22,7 @@ import type {
   RecentEntry,
   RenameResult,
 } from '../shared/home-api'
+import { documentExtension } from './app-routing'
 import { isValidRenameName } from './rename-validation'
 import { statPathEntries } from './recent-files'
 
@@ -48,6 +49,12 @@ export const TREE_FILE_EXTENSIONS: ReadonlySet<string> = new Set([
   'hwp',
   'hwpx',
   'epub',
+  'drawio',
+  'dio',
+  'vsdx',
+  // draw.io pictures, by their double extension (documentExtension)
+  'drawio.svg',
+  'drawio.png',
 ])
 
 const HIDDEN_DIR_NAMES = new Set(['node_modules', '__macosx'])
@@ -56,7 +63,7 @@ const HIDDEN_FILE_NAMES = new Set(['thumbs.db', 'desktop.ini'])
 const MD_ASSET_MANIFEST = '.genoffice-assets.json'
 
 export function isSupportedTreeFile(name: string): boolean {
-  return TREE_FILE_EXTENSIONS.has(extname(name).slice(1).toLowerCase())
+  return TREE_FILE_EXTENSIONS.has(documentExtension(name))
 }
 
 /** dotfiles, Office lock files, OS junk and the Markdown `assets/` folder stay out of the tree */
@@ -197,7 +204,9 @@ export function createFolder(parent: string, name: string, errors: FolderErrors)
  */
 export function uniqueNameIn(dir: string, name: string, isDir = false): string {
   if (!existsSync(join(dir, name))) return name
-  const ext = isDir ? '' : extname(name)
+  const docExt = isDir ? '' : documentExtension(name)
+  // a draw.io picture keeps its double extension (`flow (2).drawio.svg`)
+  const ext = isDir ? '' : docExt.includes('.') ? `.${name.slice(-docExt.length)}` : extname(name)
   const base = name.slice(0, name.length - ext.length)
   for (let i = 2; ; i++) {
     const candidate = `${base} (${i})${ext}`

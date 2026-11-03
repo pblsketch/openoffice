@@ -68,6 +68,7 @@ export const RECOVERY_EDITOR_KINDS = [
   'markdown',
   'html',
   'mindmap',
+  'diagram',
 ] as const
 
 export type RecoveryEditorKind = (typeof RECOVERY_EDITOR_KINDS)[number]
@@ -367,6 +368,7 @@ const KIND_DEFAULT_EXT: Record<RecoveryEditorKind, string> = {
   markdown: '.md',
   html: '.html',
   mindmap: '.xmind',
+  diagram: '.drawio',
 }
 
 export function recoveryFolderName(kind: RecoveryEditorKind): string {

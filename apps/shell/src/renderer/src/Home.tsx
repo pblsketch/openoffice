@@ -15,6 +15,7 @@ import iconHtml from './assets/file-html.svg'
 import iconMindmap from './assets/file-mindmap.svg'
 import iconHwp from './assets/file-hwp.svg'
 import iconEpub from './assets/file-epub.svg'
+import iconDiagram from './assets/file-diagram.svg'
 import { placeFolderMenu } from './folder-menu-position'
 import type {
   FolderEntry,
@@ -105,13 +106,19 @@ const FILE_ICONS: Record<string, string> = {
   hwp: iconHwp,
   hwpx: iconHwp,
   epub: iconEpub,
+  // a draw.io picture and a Visio drawing open in the diagram tab, so they wear its tile
+  drawio: iconDiagram,
+  dio: iconDiagram,
+  'drawio.svg': iconDiagram,
+  'drawio.png': iconDiagram,
+  vsdx: iconDiagram,
 }
 
 /* Formats the open-local card advertises. Too long for the card at any window
    width, so it ellipsizes and a hover ScreenTip carries the full list. Keep in
    sync with the main-process open-dialog filter (OPEN_DIALOG_EXTENSIONS). */
 const OPEN_LOCAL_EXTENSIONS =
-  '.docx / .odt / .xlsx / .xlsm / .xls / .csv / .tsv / .pptx / .pdf / .md / .html / .xmind / .hwp / .hwpx / .epub'
+  '.docx / .odt / .xlsx / .xlsm / .xls / .csv / .tsv / .pptx / .pdf / .md / .html / .xmind / .hwp / .hwpx / .epub / .drawio / .dio / .drawio.svg / .drawio.png / .vsdx'
 
 /** drag payload of home file/folder rows (JSON array of absolute paths) */
 const DRAG_PATHS_MIME = 'application/x-genoffice-paths'
@@ -306,6 +313,7 @@ const FILTERS: { key: string; label: StringKey }[] = [
   { key: 'xmind', label: 'filterMindmap' },
   { key: 'hwp', label: 'filterHwp' },
   { key: 'epub', label: 'filterEpub' },
+  { key: 'drawio', label: 'filterDiagram' },
 ]
 
 /** sidebar filter keys that stand for a family of extensions (mirrors recent-files.ts) */
@@ -316,6 +324,7 @@ const FILTER_FAMILY: Record<string, readonly string[]> = {
   md: ['md', 'markdown', 'txt', 'json'],
   html: ['html', 'htm'],
   hwp: ['hwp', 'hwpx'],
+  drawio: ['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx'],
 }
 
 function matchesFilter(entry: RecentEntry, filter: string): boolean {
@@ -1918,6 +1927,12 @@ export function Home({
       title: t('newMindmap'),
       sub: '.xmind',
       action: () => window.aiOffice.newMindmap(newFileOpts),
+    },
+    {
+      ext: 'drawio',
+      title: t('newDiagram'),
+      sub: '.drawio',
+      action: () => window.aiOffice.newDiagram(newFileOpts),
     },
     {
       ext: 'hwp',
