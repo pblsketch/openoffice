@@ -248,6 +248,56 @@ describe('keys that are Hangul table keys where the caret is', () => {
     expect(goHome).toHaveBeenCalledTimes(1)
   })
 
+  it.each(['darwin', 'win32'] as const)(
+    'Ctrl/Cmd+C and X the editor does not take still copy and cut (%s)',
+    async (platform) => {
+      // macOS copies only through the menu's roles, which never see a resent
+      // key: Cmd+C did nothing while Cmd+V worked (2026-11-02 report)
+      const real = process.platform
+      Object.defineProperty(process, 'platform', { value: platform })
+      try {
+        const mod =
+          platform === 'darwin' ? { meta: true, control: false } : { meta: false, control: true }
+        for (const code of ['KeyC', 'KeyX'] as const) {
+          const body = withEditorFrame(false) as FakeContents & Record<string, unknown>
+          const clipboard = { copy: vi.fn(), cut: vi.fn(), sendInputEvent: vi.fn() }
+          Object.assign(body, clipboard)
+          expect(press(code, mod, body).preventDefault, code).toHaveBeenCalled()
+          await flush()
+          if (platform === 'darwin') {
+            expect(clipboard[code === 'KeyC' ? 'copy' : 'cut'], code).toHaveBeenCalledTimes(1)
+            expect(clipboard.sendInputEvent, code).not.toHaveBeenCalled()
+          } else {
+            expect(clipboard.copy, code).not.toHaveBeenCalled()
+            expect(clipboard.cut, code).not.toHaveBeenCalled()
+            expect(
+              clipboard.sendInputEvent.mock.calls.map((call) => call[0].type),
+              code,
+            ).toEqual(['keyDown', 'keyUp'])
+          }
+        }
+      } finally {
+        Object.defineProperty(process, 'platform', { value: real })
+      }
+    },
+  )
+
+  it('leaves Cmd+C to the editor when it takes the key (a cell block)', async () => {
+    const real = process.platform
+    Object.defineProperty(process, 'platform', { value: 'darwin' })
+    try {
+      const block = withEditorFrame(true) as FakeContents & Record<string, unknown>
+      const clipboard = { copy: vi.fn(), cut: vi.fn(), sendInputEvent: vi.fn() }
+      Object.assign(block, clipboard)
+      press('KeyC', { meta: true, control: false }, block)
+      await flush()
+      expect(clipboard.copy).not.toHaveBeenCalled()
+      expect(clipboard.sendInputEvent).not.toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(process, 'platform', { value: real })
+    }
+  })
+
   it('fall back to what the app does when the editor frame cannot say', async () => {
     const lost = withEditorFrame(true)
     lost.mainFrame!.framesInSubtree[1].executeJavaScript = async () => {
