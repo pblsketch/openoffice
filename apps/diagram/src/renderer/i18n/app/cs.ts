@@ -12,6 +12,8 @@ export const cs = {
   failNoDiagram: 'Soubor neobsahuje žádné stránky diagramu.',
   failUnreadable: 'Soubor nelze přečíst.',
   failImport: 'Tento soubor nelze importovat: {reason}',
+  importVisioUnreadable: 'Soubor je poškozený nebo to není výkres aplikace Visio.',
+  importVisioNoPages: 'Výkres aplikace Visio neobsahuje žádné stránky.',
   failEditor: 'Editor diagramů se nepodařilo spustit.',
   noticeRemotePictures: 'Obrázky z internetu se nezobrazují (počet: {count}).',
   noticeRemoteFonts:

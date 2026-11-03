@@ -12,6 +12,8 @@ export const zhTW = {
   failNoDiagram: '檔案中沒有圖表頁面。',
   failUnreadable: '無法讀取此檔案。',
   failImport: '無法匯入此檔案：{reason}',
+  importVisioUnreadable: '檔案已損毀，或不是 Visio 繪圖。',
+  importVisioNoPages: 'Visio 繪圖中沒有頁面。',
   failEditor: '圖表編輯器無法啟動。',
   noticeRemotePictures: '來自網際網路的圖片 {count} 張不會顯示。',
   noticeRemoteFonts: '來自網際網路的字型 {count} 處不會載入，改用本機字型顯示。',

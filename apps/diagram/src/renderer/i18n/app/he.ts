@@ -12,6 +12,8 @@ export const he = {
   failNoDiagram: 'אין בקובץ עמודי תרשים.',
   failUnreadable: 'לא ניתן לקרוא את הקובץ.',
   failImport: 'לא ניתן לייבא את הקובץ: {reason}',
+  importVisioUnreadable: 'הקובץ פגום או שאינו שרטוט Visio.',
+  importVisioNoPages: 'אין עמודים בשרטוט ה-Visio.',
   failEditor: 'לא ניתן היה להפעיל את עורך התרשימים.',
   noticeRemotePictures: '{count} תמונות מהאינטרנט אינן מוצגות.',
   noticeRemoteFonts: '{count} גופנים מהאינטרנט אינם נטענים; במקומם משמשים הגופנים של מחשב זה.',

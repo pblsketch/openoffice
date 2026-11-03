@@ -12,6 +12,8 @@ export const vi = {
   failNoDiagram: 'Tệp không có trang sơ đồ nào.',
   failUnreadable: 'Không thể đọc tệp.',
   failImport: 'Không thể nhập tệp này: {reason}',
+  importVisioUnreadable: 'Tệp bị hỏng hoặc không phải bản vẽ Visio.',
+  importVisioNoPages: 'Bản vẽ Visio không có trang nào.',
   failEditor: 'Không thể khởi động trình chỉnh sửa sơ đồ.',
   noticeRemotePictures: '{count} hình ảnh từ Internet không được hiển thị.',
   noticeRemoteFonts:

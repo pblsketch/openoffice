@@ -117,6 +117,16 @@ export interface BridgeOps {
    * the ones taken back; it stops at the first batch something else covers.
    */
   undoBatches: { request: { tokens: string[] }; reply: { undone: number } }
+  /**
+   * Convert a Visio drawing (`.vsdx` bytes) with draw.io's own importer.
+   * Changes nothing on screen. `xml` is a draw.io file with uncompressed
+   * pages; `unconvertedPictures` counts the pictures the importer could not
+   * turn into something the editor draws (metafiles it cannot read).
+   */
+  importVisio: {
+    request: { bytes: Uint8Array }
+    reply: { xml: string; pages: number; unconvertedPictures: number }
+  }
   /** draw.io's dark view on or off */
   setDark: { request: { dark: boolean }; reply: Record<string, never> }
   /** whether serializations compress pages (follows the opened file) */
@@ -207,6 +217,7 @@ const BRIDGE_OPS: ReadonlySet<string> = new Set<BridgeOp>([
   'applyPrimitives',
   'applyBatch',
   'convertMermaid',
+  'importVisio',
   'undoBatches',
   'setDark',
   'setCompressed',

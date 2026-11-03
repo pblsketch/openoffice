@@ -12,6 +12,8 @@ export const ru = {
   failNoDiagram: 'В файле нет страниц диаграммы.',
   failUnreadable: 'Не удаётся прочитать файл.',
   failImport: 'Не удаётся импортировать этот файл: {reason}',
+  importVisioUnreadable: 'Файл повреждён или не является документом Visio.',
+  importVisioNoPages: 'В документе Visio нет страниц.',
   failEditor: 'Не удалось запустить редактор диаграмм.',
   noticeRemotePictures: 'Изображения из интернета ({count}) не показываются.',
   noticeRemoteFonts:

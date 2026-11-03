@@ -5,8 +5,8 @@
  * what it returns into draw.io. The tab stays untitled; its first save
  * proposes `.drawio` next to the source file.
  *
- * No importer is registered yet: the Visio task registers `vsdx`. Until then
- * such a file is refused with the unsupported-file message.
+ * `visio-import.ts` registers `vsdx` when the editor screen starts. A kind
+ * with nothing registered is refused with the unsupported-file message.
  */
 import type { DiagramImportKind } from '../../shared/ipc'
 import type { DiagramNotices } from '../../shared/notices'

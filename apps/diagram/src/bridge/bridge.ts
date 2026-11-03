@@ -18,7 +18,7 @@
  * history, and answers the host's requests: the pages as model XML, the
  * selection, primitive changes and whole AI tool calls (with Mermaid drawings
  * converted by draw.io's own converter) as one undo step, taking an AI
- * call's step back, the dark view, page
+ * call's step back, Visio drawings converted by draw.io's own importer, the dark view, page
  * compression, and page pictures for exports.
  *
  * Messages: only from the parent window and the parent's origin; ours go to
@@ -39,6 +39,7 @@ import { liveDiagram, readPageXmls, type DrawioUi } from './drawio-adapter'
 import { guardAutoRouting } from './libavoid-guard'
 import { convertMermaid } from './mermaid'
 import { isAppShortcut } from './shortcuts'
+import { importVisio } from './visio'
 
 declare const mxEvent: any
 declare const mxUtils: any
@@ -435,6 +436,8 @@ async function answer(request: BridgeRequestMessage): Promise<unknown> {
       return applyBatch(args.steps)
     case 'convertMermaid':
       return convertMermaid(ui, String(args.text ?? ''))
+    case 'importVisio':
+      return importVisio(ui, args.bytes)
     case 'undoBatches':
       return undoBatches(args.tokens)
     case 'setDark':

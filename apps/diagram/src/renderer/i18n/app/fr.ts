@@ -15,6 +15,8 @@ export const fr = {
   failNoDiagram: 'Le fichier ne contient aucune page de diagramme.',
   failUnreadable: 'Impossible de lire le fichier.',
   failImport: "Impossible d'importer ce fichier : {reason}",
+  importVisioUnreadable: "Le fichier est endommagé ou n'est pas un dessin Visio.",
+  importVisioNoPages: 'Le dessin Visio ne contient aucune page.',
   failEditor: "L'éditeur de diagrammes n'a pas pu démarrer.",
   noticeRemotePictures: "{count} images provenant d'Internet ne sont pas affichées.",
   noticeRemoteFonts:
