@@ -48,3 +48,6 @@ _scratch-*
 # Local planning and agent state (never committed)
 .dryforge
 .omc
+
+# draw.io release downloaded and verified by vendor/drawio/bundle.mjs
+/vendor/drawio/.cache/

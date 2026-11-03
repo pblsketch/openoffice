@@ -134,6 +134,17 @@
 - **AI가 표 칸 안의 9자 넘는 글을 바꾸지 못했다(v0.12.5~0.12.9).** 칸 안 바꾸기는 메모를 지키려고 엔진의 `replaceTextInCellDeferredPagination` 한 번으로 하는데, 이 함수는 원래 입력기 조합용이라 지울 글자와 넣을 글자를 **둘 다** 1~8자만 받는다(`렌더링 오류: deferred 셀 replace는 … 1~8자 교체만 지원합니다`). 학교 양식은 제목을 표 칸에 두는 일이 많아 "제목 바꿔 줘"가 통째로 거절됐다. → `replaceHit`가 긴 찾은 글을 끝에서부터 8자씩 1자로 줄여 가며 같은 함수를 여러 번 부르고, 마지막 한 번에 새 글의 앞 8자를 넣은 뒤 나머지를 친다. 지우기(`deleteTextInCellByPath`)로 뒷부분을 먼저 걷어내면 그 부분에만 걸린 메모가 함께 지워져 메모 승인을 묻게 되므로 쓰지 않는다. 시험은 `tests/agent-plugin-memo-guard.test.ts`의 "replacing text in a memo’s cell".
 - **작업 사본에서 엔진이 npm 0.8.7로 풀린다.** 사본의 `node_modules/@rhwp/core`가 본 검사본의 npm 패키지를 가리키는 연결이면 시험과 빌드가 패치 전 엔진을 쓴다. → 사본의 `node_modules/@rhwp`를 실제 폴더로 두고 `core`만 사본의 `vendor/rhwp-core`로 연결한다. 사본을 지우기 전에는 이 연결부터 끊는다.
 
+## 다이어그램 편집기 (결정 0103)
+
+- **다이어그램 탭이 하얗게 뜬다.** 셸은 앱 화면 프로토콜(`genoffice-app://`)을 기본 세션에만 등록한다. 다이어그램 탭은 자기 파티션(`persist:ieum-diagram`)에서 돌므로, 그 세션에도 같은 프로토콜이 있어야 편집기 페이지가 뜬다. → `diagram-session.ts`가 그 세션에 앱 화면 프로토콜과 `drawio-app://`를 함께 등록한다. 다이어그램 세션을 쓰는 새 창(숨은 인쇄 창, 창 없는 내보내기)은 같은 파티션(`DIAGRAM_PARTITION`)으로 만들고, 그 전에 `diagramSession()`이 한 번 불려 처리기가 걸려 있어야 한다.
+- **특권 스킴은 셸이 한 번에 등록한다.** `protocol.registerSchemesAsPrivileged`는 앱이 준비되기 전에, 한 프로세스에서 한 번만 부를 수 있다. 편집기 모듈이 따로 부르면 다른 편집기의 스킴 등록과 부딪힌다. → 셸의 한 번의 호출(`registerPrivilegedSchemes([EPUB_ASSET_SCHEME_PRIVILEGE, DRAWIO_SCHEME_PRIVILEGE])`)에 `DRAWIO_SCHEME_PRIVILEGE`를 실어 보낸다. 다이어그램 모듈이 직접 부르는 것은 편집기를 혼자 띄울 때뿐이다.
+- **`js/extensions.min.js`를 빼면 편집기가 열리지 않는다.** draw.io는 시작할 때 이 파일을 늘 읽고, Mermaid 변환과 Visio 가져오기도 이 파일에 기댄다. 그런데 이 파일 안에 ELK와 libavoid가 바이트 그대로 들어 있어, `js/elk`·`js/libavoid-js` 폴더를 빼도 두 부품은 여전히 실린다. 처음 시험에서 "ELK 없이도 Mermaid 결과가 같다"고 본 것도 이 때문이었다. → 파일을 빼지 않고, 그 두 부품의 구간만 잘라낸 사본을 싣는다(`vendor/drawio/README.md`의 "잘라내기"). 판을 올려 구간을 찾지 못하면 빌드가 실패한다.
+- **도형을 옮길 때마다 "AvoidRouting is not defined"로 실패한다.** libavoid 핵심(`AvoidRouting`)을 싣지 않았는데 draw.io가 실시간 자동 경로(`LibavoidRouting.installAutoRouting`)를 설치하면, 도형 끌기·가져오기·Mermaid 넣기마다 없는 핵심을 부른다. → 다리 스크립트의 `libavoid-guard.ts`가 핵심이 없는 동안 그 설치를 막는다. libavoid를 쓴 선은 보통 경로로 그려진다.
+- **AI가 다른 쪽에 넣은 도형이 저장에서 빠진다.** draw.io는 저장할 때 화면에 보이는 쪽만 모델에서 다시 직렬화하고, 다른 쪽은 "바뀜" 표시가 있을 때만 다시 받는다. 다리가 쪽을 바꿔(`SelectPage`) 셀을 넣고 돌아오면 그 쪽은 표시가 없어 예전 XML이 저장된다. → `drawio-adapter.ts`가 편집 중에 쪽을 바꿀 때 떠나는 쪽을 "바뀜"으로 표시한다.
+- **앱 안 MCP의 연산이 두 번 들어간다.** draw.io가 뜨는 동안에는 화면이 질문에 답하지 않는다. 읽기는 답이 올 때까지 다시 물어도 되지만, 연산 적용을 다시 보내면 두 번 적용된다. → 읽기에 답이 온 뒤(화면이 듣고 있다는 뜻) 연산 목록을 한 번만 보낸다(`mcp-queries.ts`). 한 보기의 적용은 하나씩 차례로 돈다.
+- **Mermaid 그림에 바깥 글꼴 주소가 들어간다.** draw.io가 싣는 Mermaid 12의 기본 테마(redux)는 웹 글꼴을 쓴다. → 다리의 `mermaid.ts`는 지금 기본값이 웹 글꼴을 쓰면 버전 없이(Mermaid 11 기본값) 바꾼다. 세션이 글꼴 요청을 막더라도 파일 안에 바깥 주소가 남지 않게 하려는 것이다.
+- **`.vsdx`가 아닌 Visio 형식이 다른 변환 경로를 탄다.** draw.io의 가져오기는 파일 이름 끝으로 경로를 고르고, 옛 형식(`.vsd`·`.vdx`·`.vss` 등)은 다른 변환 경로로 보낸다. → 다리는 가져오기에 늘 `drawing.vsdx`라는 이름을 준다. 옛 형식은 뒷단이 처음부터 "열 수 없는 파일"로 거절한다.
+
 ## 에이전트 모드
 
 - **Claude의 권한 요청이 앱에 오지 않고 "This command requires approval"로 끝난다.** `--permission-prompts host`만으로는 표준 출력으로 오지 않는다. → `--permission-prompt-tool stdio`를 함께 준다. 그러면 `control_request`(`can_use_tool`)로 오고, `{ behavior: 'allow', updatedInput }` 또는 `{ behavior: 'deny', message }`로 답한다.

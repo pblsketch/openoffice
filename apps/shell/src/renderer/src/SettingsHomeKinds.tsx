@@ -26,6 +26,7 @@ export const HOME_KIND_LABEL: Record<HomeKind, { title: StringKey; sub?: string 
   md: { title: 'newMarkdown', sub: '.md' },
   html: { title: 'newHtml', sub: '.html' },
   xmind: { title: 'newMindmap', sub: '.xmind' },
+  drawio: { title: 'newDiagram', sub: '.drawio' },
   hwp: { title: 'newHwp', sub: '.hwp' },
   pdf: { title: 'newPdf', sub: '.pdf' },
   pdfTools: { title: 'pdfToolsCard' },

@@ -83,6 +83,7 @@ describe('copy addressing', () => {
       'markdown-autosave',
       'html-autosave',
       'mindmap-autosave',
+      'diagram-autosave',
     ])
   })
 

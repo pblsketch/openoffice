@@ -140,6 +140,25 @@
 - `--partial`로 멈춘 경우 `pdf translate`처럼 `status: "partial"`이고, `detail.stopped: { errorCode, resetsAt? }`와 `done_blocks`·`total_blocks`가 더해진다.
 - `epub status`의 `done_blocks`·`total_blocks`와 `job` 모양은 `pdf status`와 같다. 진행에는 책 제목과 목차 항목 단위도 든다.
 
+## 다이어그램 명령
+
+draw.io 다이어그램(`.drawio`, `.dio`, `.drawio.svg`, `.drawio.png`)을 읽고 고치고 만들고 그림으로 바꾼다. 연산은 앱의 AI 창과 같은 정의(`@genoffice/drawio-model`의 `DIAGRAM_OPS`)이고 같은 규칙으로 검사한다. `.vsdx`는 종료 코드 2, `unsupported`다. Visio 파일은 앱에서 열어 가져온다.
+
+| 명령                                                                                                                        | 동작                                                                                                                                                                                                                                                                                                       | 앱                                                                                                |
+| --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `diagram read <파일> [--page <id\|이름>]`                                                                                   | 쪽마다 도형·선 읽기 표. `--json`의 `detail`은 `{ pages: [{ id, name, shapes, edges }] }`이고, `--page`를 주면 그 쪽 하나다                                                                                                                                                                                 | 필요 없음                                                                                         |
+| `diagram apply <파일> --ops <JSON\|@파일\|-> [--page <id\|이름>] [--out <경로>] [--best-effort\|--stop-on-error] [--force]` | 연산 묶음을 적용해 쓴다. `page`가 없는 연산은 `--page`의 쪽, 없으면 첫 쪽에서 한다. 쓰는 형식은 `--out`(없으면 그 파일)의 이름이 정한다                                                                                                                                                                    | `.drawio`·`.dio`는 필요 없음. `.drawio.svg`·`.drawio.png`를 쓰거나 `insert_mermaid`가 있으면 필요 |
+| `create --type drawio --out <경로> [--ops <JSON\|@파일\|->] [--mermaid <파일\|->]`                                          | 빈 쪽 하나인 새 다이어그램. 둘 중 하나는 있어야 하고, 둘 다면 Mermaid를 먼저 그린 뒤 연산을 한다. 압축하지 않은 `.drawio`로 쓰고, `--out`이 `.drawio.svg`·`.drawio.png`면 그 형식으로 쓴다                                                                                                                 | `--mermaid`가 있거나 그림 형식이면 필요                                                           |
+| `convert <파일> --to pdf\|png\|svg [--page <id\|이름>] [--out <경로>]`                                                      | PDF는 파일 하나다(쪽마다 한 장, 그 쪽의 용지 크기). PNG·SVG·PDF는 늘 밝은 색이다(SVG에 어두운 뷰어에서 바뀌는 색을 넣지 않는다). PNG·SVG는 `--page`를 주면 파일 하나, 아니면 쪽이 하나여도 쪽마다 `<이름>-p<쪽 번호>.<확장자>`다. `--page`가 있으면 `--out`은 그 파일, 없으면 폴더다(기본은 다이어그램 옆) | 필요                                                                                              |
+| `guide diagram`                                                                                                             | 연산 목록. `DIAGRAM_OPS`에서 만든다                                                                                                                                                                                                                                                                        | 필요 없음                                                                                         |
+
+- 앱이 필요한데 찾지 못하면 종료 코드 4, `app_unavailable`이고 아무것도 쓰지 않는다. 앱은 창 없이 `--headless-export`(`docs/headless-pdf-export.md`)로 돌고 다이어그램 탭의 세션에서 일한다. 그래서 다이어그램 탭처럼 이 PC 밖으로 요청을 하나도 보내지 않는다.
+- `.drawio`·`.dio`를 앱 없이 쓸 때는 바뀌지 않은 `<diagram>` 요소를 바이트 그대로 두고, 바뀐 쪽만 원래 압축 형태로 다시 쓰며, `mxfile`의 다른 속성은 건드리지 않는다. 앱을 거쳐 쓰면 draw.io의 저장과 같은 직렬화이고, 쪽 압축은 연 파일을 따른다.
+- 묶음은 기본으로 모두 아니면 아무것도 아니다. 하나라도 거절되면 쓰지 않고 종료 코드 1이며, `error`는 첫 실패의 이유(`unknown_op`, `target_not_found`, `invalid_argument`)다. `detail.failures`·`detail.batch`·`detail.results`에 모든 연산의 결과가 있다. `--best-effort`·`--stop-on-error`는 남은 것을 쓰고 `status: "partial"`로 답한다. 읽기 연산만 든 묶음은 파일을 쓰지 않는다. 없는 `--page`는 종료 코드 1, `target_not_found`이고 `detail.pages`에 쪽 목록이 있다.
+- `--ops`는 JSON 글 그대로, `@<파일>`, 파일 경로, `-`(표준 입력)를 받는다. 배열이나 `{ "ops": [...] }`다.
+- 성공 `detail`: `diagram apply`는 `{ format, via?, results, created, batch, failures? }`다. `results[]`는 연산마다 `{ index, op, status, created?, error?, read? }`이고, `created`는 이 묶음이 만든 id 전부다. `create --type drawio`는 같은 모양에 `mermaid: { created }`가 더해지고, `results`의 `index`는 `--ops` 안의 차례다. `convert`는 `{ pages, output_paths? }`이고 `output_paths`는 파일이 여럿일 때만 있다.
+- 이미 있는 다른 파일 위에 쓰기와 앱이 탭으로 연 파일은 공통 규칙(`--force`)을 따른다. `convert`는 쓸 파일마다 검사하고, 하나라도 걸리면 앱을 띄우지 않는다.
+
 ## 웹 페이지 읽기 (`read-url`)
 
 `ieumoffice read-url <url> [--offset <n>]`은 http(s) 주소 하나를 그 사이트에서 받아 읽을 수 있는 글로 돌려준다. HTML은 글자로 바꾸고, GitHub `blob` 주소는 raw 주소로 바꿔 읽는다. 주소는 `fetchWithSsrfGuard`를 지나며 사설·루프백 주소와 그런 곳으로 가는 리다이렉트는 거절한다. 한 번에 50,000자를 주고, 이어 읽기는 `--offset`(기본 0)으로 한다. 제공자·구독·자동 호출 장부를 쓰지 않는다. 비공개 GitHub 파일은 설정의 읽기 토큰을 쓰며, 그 토큰은 `api.github.com` 요청에만 실린다.
@@ -214,13 +233,13 @@
 
 - 표준 입출력으로 같은 명령들을 도구로 내놓는다. `--http <포트>`를 주면 Streamable HTTP로 내놓는다(`--host`, `--token`).
 - 등록 예: `claude mcp add --transport stdio ieumoffice -- ieumoffice mcp`. `ieumoffice mcp install <에이전트|all>`이 각 에이전트의 설정 파일에 `ieumoffice` 항목만 쓴다. 같은 이름의 항목이 다른 프로그램을 가리키면 `occupied`로 알리고 `--force` 없이는 건드리지 않는다.
-- 도구는 명령 동사마다 하나다(`docs_read`, `docs_apply`, `hwp_read`, `hwp_apply`, `sheet_apply`, `slides_render`, `convert`, `read_url`, `pdf_read`, `pdf_images`, `pdf_ai_read`, `pdf_translate`, `pdf_status`, `epub_translate`, `epub_status` 등). 매개변수는 명령의 옵션 목록에서 그대로 나온다(`allow-paid`는 `allow_paid`, `no-cover`는 `no_cover`). 두 표면이 어긋나지 않는다.
+- 도구는 명령 동사마다 하나다(`docs_read`, `docs_apply`, `hwp_read`, `hwp_apply`, `diagram_read`, `diagram_apply`, `create_drawio`, `sheet_apply`, `slides_render`, `convert`, `read_url`, `pdf_read`, `pdf_images`, `pdf_ai_read`, `pdf_translate`, `pdf_status`, `epub_translate`, `epub_status` 등). 매개변수는 명령의 옵션 목록에서 그대로 나온다(`allow-paid`는 `allow_paid`, `no-cover`는 `no_cover`). 두 표면이 어긋나지 않는다. `diagram_read`·`diagram_apply`·`convert`의 `page`는 다이어그램 쪽의 id나 이름(글자)이고, `create_drawio`의 `mermaid`는 Mermaid 글 그대로다.
 - `pdf_ai_read`·`pdf_translate`·`epub_translate`는 `yes`가 없으면 명령처럼 예상만 답한다. `yes`가 있으면 작업을 MCP 서버 프로세스 안에서 띄우고 바로 답한다(`detail.started: true`, `detail.estimate`). 진행, 멈춘 이유, `resetsAt`, 결과 파일 경로는 `pdf_status`(EPUB은 `epub_status`)의 `job`으로 본다. 이어하기는 같은 도구를 다시 부르면 된다.
 - 그 결과 파일은 작업이 끝날 때 쓴다. `partial: true`로 부른 작업은 멈출 때 끝난 부분만 반영해 쓴다. 위치 규칙은 명령어와 같고, 경로는 `job.outputs`로 알려 준다.
 - 서버가 끝나면 그 작업도 멈춘다(`last_error: "interrupted"`). 보관된 결과는 남는다.
 - 결과는 `--json`이 내는 것과 같은 객체다. 실패는 `isError`와 같은 `error` 이유로 온다.
 - 환경변수 `GENOFFICE_MCP_COMPACT_SCHEMAS`는 예전 철자를 유지한다. `--http`의 토큰은 `--token`, 없으면 `GENOFFICE_MCP_TOKEN`에서 읽고, 둘 다 없으면 인증 없이 받는다. 인증 없이 받는 것은 이 PC 주소(`127.0.0.1`, `localhost`, `::1`)에서 열 때뿐이다. 그 밖의 `--host`에 토큰이 없으면 서버를 열지 않고 종료 코드 1, `error: "invalid_argument"`로 끝난다. 에이전트 설정 폴더를 찾을 때의 홈 폴더는 `GENOFFICE_HOME`으로 바꿀 수 있다.
-- 안내 자료는 리소스로도 내놓는다(`ieumoffice://guide/docs`, `…/sheets`, `…/slides`, `…/slides/design`, `…/slides/spec`, `…/slides/templates`, 내장 템플릿마다 `…/slides/templates/<id>`).
+- 안내 자료는 리소스로도 내놓는다(`ieumoffice://guide/docs`, `…/sheets`, `…/hwp`, `…/diagram`, `…/slides`, `…/slides/design`, `…/slides/spec`, `…/slides/templates`, 내장 템플릿마다 `…/slides/templates/<id>`).
 - 내장 디자인 템플릿은 `ieumoffice guide slides templates [<id>]`로 고른다. 목록의 `--json`은 `detail.templates`(`[{ id, name, scheme, description, fonts }]`, 정해진 순서), 템플릿 하나는 `detail`(`{ id, name, scheme, description, fonts, styleSheet }`)이다. 모르는 id는 종료 코드 1, `error: "invalid_argument"`, `detail.templates`에 쓸 수 있는 id 목록이다. MCP `guide` 도구는 세 번째 위치 인자 `name`으로 id를 받는다.
 - 앱의 설정 → 연동 화면이 지금 설치본에 맞는 등록 예시를 보여 준다.
 
@@ -229,7 +248,7 @@
 명령어 쪽 서버와 다른 것이다. 실행 중인 앱이 직접 여는 서버이고, 열려 있는 문서를 다룬다.
 
 - 설정 → 연동에서 켠다. 기본은 꺼짐이다. 기본 포트는 3093이고 이 PC(`127.0.0.1`)에서만 닿는다. 인증은 없고, 요청의 Host·Origin이 이 PC의 것이 아니면 거절한다.
-- 도구: `get_app_info`, `open_documents`, `open_in_genoffice`(이 이름은 예전 철자를 유지한다), `create_session`, `save_session`, `read_document`, `read_docx`, `read_sheet`, `read_deck`, `read_pdf`, `create_docx`, `create_xlsx`, `create_pptx`, `apply_ops`, `apply_sheet_ops`, `apply_slide_ops`, `insert_content`, `replace_blocks`, `insert_picture`.
+- 도구: `get_app_info`, `open_documents`, `open_in_genoffice`(이 이름은 예전 철자를 유지한다), `create_session`, `save_session`, `read_document`, `read_docx`, `read_sheet`, `read_deck`, `read_pdf`, `create_docx`, `create_xlsx`, `create_pptx`, `apply_ops`, `apply_sheet_ops`, `apply_slide_ops`, `insert_content`, `replace_blocks`, `insert_picture`, `read_diagram`, `apply_diagram_ops`.
 - `insert_picture`는 열린 워드 탭에 그림을 넣는다(원본 genoffice#2267). 앱 안 AI의 같은 이름 도구를 그대로 거치므로 그림 주소는 http(s)와 `data:image/`만 받고, http(s) 주소면 앱이 그 주소에서 그림을 받아 온다. 에이전트 모드의 세션 서버에는 없다.
 - 열린 ODT 탭은 워드 문서로 다룬다(`open_documents`의 `format`이 `odt`). `read_docx`는 `.odt` 파일도 읽는다. `save_session`은 탭의 형식으로만 저장한다. 다른 확장자의 경로를 주면 거절하고 `ieumoffice convert`를 쓰라고 안내한다. 대화 상자가 없는 경로에서 형식이 조용히 바뀌지 않게 하기 위해서다.
 - 에이전트 설정에 넣는 항목 이름은 `ieumoffice-editor`다. 명령어 쪽 서버의 `ieumoffice`와 겹치지 않는다.
@@ -239,6 +258,12 @@
 - `get_app_info`의 `families`에 `{ family: "xmind", label: "mind map", editor: { open: ["xmind"], save: ["xmind"], export: ["png", "pdf", "md"] } }`가 있다. `mcp` 항목은 없다.
 - `open_documents`의 목록에 EPUB 탭이 `kind: "epub"`, `type: "e-book"`으로 나온다(떼어 낸 창도 같다). `read`의 `content`는 spine 순서로 이은 책 글이고(제목은 `#`), 저장하지 않은 편집이 들어 있다. `close`의 저장은 편집기의 저장과 같은 규칙을 지나고, 바꾼 것이 없으면 파일을 쓰지 않는다. 책을 만들거나 고치는 도구는 없다.
 - `get_app_info`의 `families`에 `{ family: "epub", label: "e-book", editor: { open: ["epub"], save: ["epub"], export: [] } }`가 있다.
+- `open_documents`의 목록에 다이어그램 탭이 `kind: "diagram"`, `type: "diagram"`으로 나온다(떼어 낸 창도 같다). `format`은 파일의 형식(`drawio`, `dio`, `drawio.svg`, `drawio.png`)이고, 한 번도 저장하지 않은 다이어그램과 Visio 파일에서 만든 탭은 `drawio`다. `read`의 `content`는 모든 쪽의 읽기 표 글(쪽 목록, 쪽마다 도형과 선의 줄)이고 저장하지 않은 편집이 들어 있다. `save`와 `close`의 저장은 편집기의 저장과 같은 길을 지나고, 바꾼 것이 없으면 파일을 쓰지 않는다. 한 번도 저장하지 않은 다이어그램은 기본 저장 폴더에 겹치지 않는 이름의 `.drawio`로 저장된다. 열리지 않은 파일과 가져온 `.vsdx`에는 쓰지 않는다. 다이어그램은 `create_session`·`save_session`의 대상이 아니다.
+- `read_diagram`(입력 `document?`, `page?`)은 다이어그램 한 쪽의 읽기 표를 글과 값으로 함께 낸다. 출력은 `{ id, title, path, dirty, content, pages, page }`다. `content`는 표의 글(쪽 목록 포함)이고, `pages`는 `[{ id, name, current? }]`, `page`는 `{ id, name, shapes: [{ id, label, shape, x, y, width, height, parent?, fill?, stroke? }], edges: [{ id, label, source, target, parent? }], selected? }`로 같은 내용이다(명령줄 `diagram read --json`의 쪽과 같은 모양). 예전 판의 편집기가 값을 보내지 않으면 `pages`·`page`는 빠지고 `content`만 있다. `page`(쪽 id나 이름)가 없으면 화면에 보이는 쪽이고, 그 쪽에서 사람이 고른 id가 함께 나온다(`selected`). 저장하지 않은 편집이 들어 있다.
+- `apply_diagram_ops`(입력 `document?`, `ops`)는 연산 목록을 차례로 적용하고, 호출 하나가 편집기의 되돌리기 한 번이다. 출력은 `{ id, title, path, status: "ok", changed, created, results }`이고, `results`는 연산마다 `{ index, op, status, created?, error? }`, `created`는 만들어진 도형·선·쪽의 id다. 하나라도 거절되면 아무것도 바꾸지 않고 오류로 돌아오며, 오류 글에 연산마다 결과가 한 줄씩 있다(`<번호> <연산>: FAILED <code>: <까닭>` 또는 `ok (not applied)`). 저장은 하지 않는다(`open_documents`의 `save`). 두 도구의 입력 스키마는 `@genoffice/drawio-model`의 `DIAGRAM_OPS`에서 만든다(편집기 AI 창과 같은 정의). `ops`의 항목은 바꾸는 연산 전부의 키를 합친 것이고, 연산별 검사는 편집기의 계획이 한다.
+- 두 도구의 `document`는 `open_documents`가 준 id나 경로다. 없으면 앞에 있는 다이어그램이다(초점을 가진 떼어 낸 창의 다이어그램, 아니면 앱 창에서 활성인 다이어그램 탭). 앞에 다이어그램이 없으면 열린 다이어그램의 목록(한 줄에 하나씩 id, 경로, 제목)을 오류 글에 담아 거절한다. 앱 안 MCP 서버의 오류는 글 하나(`isError`)이고 따로 `detail` 칸이 없어서, 목록은 오류 글에 있다. 다른 종류의 문서를 주면 거절한다. 뒤에 있는 탭을 고치면 그 탭을 앞으로 낸다.
+- `get_app_info`의 `families`에 `{ family: "drawio", label: "diagram", editor: { open: ["drawio", "dio", "drawio.svg", "drawio.png", "vsdx"], save: ["drawio", "dio", "drawio.svg", "drawio.png"], export: ["png", "svg", "pdf"] } }`가 있다. `mcp` 항목은 없다.
+- 에이전트 모드의 세션 서버에는 두 다이어그램 도구가 없다(도구 목록은 그대로다). 그 서버의 `open_documents`는 다이어그램 탭도 목록에 내고 `read`로 같은 글을 읽는다.
 
 ## 에이전트 스킬
 

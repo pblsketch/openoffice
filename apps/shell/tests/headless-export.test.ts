@@ -43,6 +43,7 @@ function stubExporters(): { exporters: HeadlessExporters; calls: string[] } {
       slides: make('slides'),
       markdown: make('markdown'),
       html: make('html'),
+      diagram: make('diagram'),
     },
   }
 }

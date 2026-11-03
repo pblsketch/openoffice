@@ -90,7 +90,9 @@ describe('the book editor runtime', () => {
 
   it('registers the asset scheme in the single privileged-scheme call, before ready', () => {
     expect(main.match(/registerPrivilegedSchemes\(\[/g)).toHaveLength(1)
-    expect(main).toContain('registerPrivilegedSchemes([EPUB_ASSET_SCHEME_PRIVILEGE])')
+    expect(main).toContain(
+      'registerPrivilegedSchemes([EPUB_ASSET_SCHEME_PRIVILEGE, DRAWIO_SCHEME_PRIVILEGE])',
+    )
     expect(main.indexOf('registerPrivilegedSchemes([')).toBeLessThan(
       main.indexOf('app.whenReady().then(async () => {'),
     )

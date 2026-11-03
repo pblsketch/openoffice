@@ -108,6 +108,8 @@ export {
   type OpenFilesSource,
 } from './unsaved-files'
 export {
+  DIAGRAM_BATCH_MODES,
+  DIAGRAM_FILE_TARGETS,
   HEADLESS_EXIT,
   HEADLESS_EXPORT_FLAG,
   HEADLESS_SUPPORTED_EXTENSIONS,
@@ -116,12 +118,16 @@ export {
   headlessExitCode,
   headlessModuleFor,
   headlessSummary,
+  isDiagramFileTarget,
   parseHeadlessExportArgv,
+  type DiagramBatchMode,
+  type DiagramFileTarget,
   type HeadlessArgvParse,
   type HeadlessExitCode,
   type HeadlessExportFormat,
   type HeadlessExportModule,
   type HeadlessExportOutcome,
+  type HeadlessExportProduct,
   type HeadlessExportRequest,
   type HeadlessExportTarget,
 } from './headless-export'

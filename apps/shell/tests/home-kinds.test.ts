@@ -32,10 +32,14 @@ describe('reading the homeKinds setting', () => {
   })
 
   it('puts a kind missing from a saved order beside the kind before it', () => {
-    // a saved order from a version without `hwp`: it lands right after `xmind`
+    // a saved order from a version without `hwp`: it lands right after `drawio`
     const saved = HOME_KINDS.filter((kind) => kind !== 'hwp').reverse()
     const { order } = normalizeHomeKinds({ order: saved })
-    expect(order[order.indexOf('xmind') + 1]).toBe('hwp')
+    expect(order[order.indexOf('drawio') + 1]).toBe('hwp')
+    // a saved order from before the diagram editor: `drawio` lands right after `xmind`
+    const beforeDiagram = HOME_KINDS.filter((kind) => kind !== 'drawio').reverse()
+    const { order: withDiagram } = normalizeHomeKinds({ order: beforeDiagram })
+    expect(withDiagram[withDiagram.indexOf('xmind') + 1]).toBe('drawio')
     // with nothing before it in the first order, it goes first
     const { order: noDocx } = normalizeHomeKinds({ order: ['pdf', 'xlsx'] })
     expect(noDocx[0]).toBe('docx')

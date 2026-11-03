@@ -69,4 +69,18 @@ describe('document commands instantiate no WebAssembly', () => {
     expect(JSON.parse(read.out.join('\n')).detail.blocks).toBe(4)
     expect(calls).toEqual([])
   })
+
+  it('creates, edits and reads a diagram without loading a parser', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ieumoffice-no-wasm-'))
+    const file = join(dir, 'flow.drawio')
+    const ops = '[{"op":"add_shape","id":"a","label":"A","x":0,"y":0}]'
+    const created = await cli(['create', '--type', 'drawio', '--ops', ops, '--out', file, '--json'])
+    expect(created.code).toBe(0)
+    const applied = await cli(['diagram', 'apply', file, '--ops', '[{"op":"add_page","name":"B"}]'])
+    expect(applied.code).toBe(0)
+    const read = await cli(['diagram', 'read', file, '--json'])
+    expect(read.code).toBe(0)
+    expect(JSON.parse(read.out.join('\n')).detail.pages).toHaveLength(2)
+    expect(calls).toEqual([])
+  })
 })

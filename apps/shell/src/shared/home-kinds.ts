@@ -11,6 +11,7 @@ export const HOME_KINDS = [
   'md',
   'html',
   'xmind',
+  'drawio',
   'hwp',
   'pdf',
   'pdfTools',

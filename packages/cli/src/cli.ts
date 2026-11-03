@@ -9,6 +9,7 @@ import { cliSecretCodecFor } from './secrets'
 import { capabilitiesCommand } from './commands/capabilities'
 import { convertCommand } from './commands/convert'
 import { docsCommand } from './commands/docs'
+import { diagramCommand } from './commands/diagram'
 import { createCommand } from './commands/create'
 import { guideCommand } from './commands/guide'
 import { imageCommand } from './commands/image'
@@ -70,6 +71,7 @@ export function defaultRegistry(): CommandRegistry {
     .register(pdfCommand)
     .register(epubCommand)
     .register(hwpCommand)
+    .register(diagramCommand)
     .register(renderCommand)
     .register(guideCommand)
     .register(searchCommand)

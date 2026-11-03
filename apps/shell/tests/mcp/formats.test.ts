@@ -38,8 +38,8 @@ describe('format registry', () => {
     expect(sheet.mcp?.save).not.toContain('tsv')
   })
 
-  it('keeps the editor-only families (md/html/xmind/epub) without an mcp block', () => {
-    for (const family of ['md', 'html', 'xmind', 'epub'] as const) {
+  it('keeps the editor-only families (md/html/xmind/epub/drawio) without an mcp block', () => {
+    for (const family of ['md', 'html', 'xmind', 'epub', 'drawio'] as const) {
       expect(formatFamily(family).mcp).toBeUndefined()
     }
     // the three edit-in-place families carry full mcp blocks; pdf and hwp are read-only
@@ -98,6 +98,17 @@ describe('format registry', () => {
     expect(book.mcp).toBeUndefined()
   })
 
+  it('registers the diagram family: four diagram formats open and save, a Visio drawing only opens', () => {
+    const diagram = formatFamily('drawio')
+    expect(diagram.label).toBe('diagram')
+    expect(diagram.editorOpen).toEqual(['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx'])
+    expect(diagram.editorSave).toEqual(['drawio', 'dio', 'drawio.svg', 'drawio.png'])
+    expect(diagram.editorExport).toEqual(['png', 'svg', 'pdf'])
+    // no session, generator or file reader: diagrams are reached through
+    // open_documents and the two diagram tools
+    expect(diagram.mcp).toBeUndefined()
+  })
+
   it('reports labels for guided errors', () => {
     expect(familyLabel('docx')).toBe('Word document')
     expect(familyLabel('xlsx')).toBe('spreadsheet')
@@ -146,6 +157,7 @@ describe('capabilityReport', () => {
       'xmind',
       'hwp',
       'epub',
+      'drawio',
     ])
     const docx = report.find((r) => r.family === 'docx')!
     expect(docx.editor.open).toEqual(['docx', 'odt'])
@@ -165,6 +177,15 @@ describe('capabilityReport', () => {
       family: 'epub',
       label: 'e-book',
       editor: { open: ['epub'], save: ['epub'], export: [] },
+    })
+    expect(report.find((r) => r.family === 'drawio')).toEqual({
+      family: 'drawio',
+      label: 'diagram',
+      editor: {
+        open: ['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx'],
+        save: ['drawio', 'dio', 'drawio.svg', 'drawio.png'],
+        export: ['png', 'svg', 'pdf'],
+      },
     })
   })
 })
