@@ -61,6 +61,10 @@ export function liveDiagram(ui: DrawioUi): LiveDiagram {
     },
     selectPage: (pageId) => {
       if (graph().isEditing()) graph().stopEditing(false)
+      // draw.io refreshes the saved XML of the page on screen only, once the
+      // edit ends; the page this edit leaves may have changed in it, so its
+      // XML is taken again as the page is left (else its changes are lost)
+      ui.currentPage?.setDiagramModified?.(true)
       model().execute(new SelectPage(ui, pageById(ui, pageId)))
     },
     addPage: (id, name) => {
@@ -127,6 +131,22 @@ export function liveDiagram(ui: DrawioUi): LiveDiagram {
       const cell = m.getCell(id)
       // already gone with a container removed before it
       if (cell) m.remove(cell)
+    },
+    insertXml: (xml, x, y) => {
+      // draw.io's own Insert › Mermaid: cropped to x, y, the converted-diagram
+      // edge style, and errors thrown instead of shown (`noErrorHandling`)
+      const styles =
+        typeof ui.getConvertedDiagramStyles === 'function' ? ui.getConvertedDiagramStyles() : null
+      // A page switched to inside this edit is not in the graph's view yet: its
+      // default parent still names the layer of the page shown before, which
+      // the import would draw into. The page's own first layer takes it then.
+      const g = graph()
+      const parent = g.defaultParent
+      if (parent != null && !model().contains(parent)) g.setDefaultParent(null)
+      const cells: any[] = ui.importXml(xml, x, y, true, true, null, styles) ?? []
+      const ids = new Set<string>()
+      for (const cell of cells) collectIds(cell, ids)
+      return [...ids]
     },
   }
 }

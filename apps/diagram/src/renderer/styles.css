@@ -56,9 +56,17 @@ body,
   color: var(--text-secondary);
 }
 
+/* draw.io and, at its right end, the AI panel */
+.dg-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
 .dg-stage {
   position: relative;
   flex: 1;
+  min-width: 0;
   min-height: 0;
 }
 

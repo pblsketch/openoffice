@@ -1,11 +1,11 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { createI18n, htmlDir, htmlLang, type Lang, type Params } from '@genoffice/i18n'
-import { appStrings } from './strings-app'
+import { strings } from './strings'
 
-const translate = createI18n(appStrings)
+const translate = createI18n(strings)
 
-export type StringKey = keyof typeof appStrings.zh
+export type StringKey = keyof typeof strings.zh
 export type TFunc = (key: StringKey, params?: Params) => string
 
 const LocaleContext = createContext<Lang>('zh')

@@ -7,14 +7,18 @@
  *   PreConfig would otherwise reset): no draw.io AI, no web fonts, no export
  *   server, the menus the app takes out;
  * - hides draw.io's logo and links to its web pages;
- * - catches `App.main` to reach the editor object once draw.io made it.
+ * - catches `App.main` to reach the editor object once draw.io made it;
+ * - keeps draw.io's live libavoid routing uninstalled, its core not being in
+ *   the bundle (`libavoid-guard.ts`).
  *
  * With the editor object it hides actions, sends the ones the app does itself
  * (help, print, the picture and PDF exports, save) to the host, keeps the app's
  * shortcuts (Ctrl+S, Ctrl+Shift+S, Ctrl+P), opens only the links a person
  * clicked (through the host), tracks unsaved changes against the undo
  * history, and answers the host's requests: the pages as model XML, the
- * selection, primitive changes as one undo step, the dark view, page
+ * selection, primitive changes and whole AI tool calls (with Mermaid drawings
+ * converted by draw.io's own converter) as one undo step, taking an AI
+ * call's step back, the dark view, page
  * compression, and page pictures for exports.
  *
  * Messages: only from the parent window and the parent's origin; ours go to
@@ -30,8 +34,10 @@ import {
   type PageInfo,
 } from '../shared/bridge-protocol'
 import { DRAWIO_CONFIG, HIDDEN_ACTIONS, HIDE_CSS, REDIRECTED_ACTIONS } from '../shared/drawio-start'
-import { applyPrimitivesLive } from './apply-primitives'
+import { applyPrimitivesLive, applyStepsLive } from './apply-primitives'
 import { liveDiagram, readPageXmls, type DrawioUi } from './drawio-adapter'
+import { guardAutoRouting } from './libavoid-guard'
+import { convertMermaid } from './mermaid'
 import { isAppShortcut } from './shortcuts'
 
 declare const mxEvent: any
@@ -65,6 +71,10 @@ Object.defineProperty(w, 'DRAWIO_CONFIG', {
   get: () => config,
   set: () => {},
 })
+
+// libavoid's routing core is not in the bundle: draw.io's live auto-routing,
+// which would call it on every shape move, stays uninstalled until it is
+guardAutoRouting(w, () => typeof w.AvoidRouting !== 'undefined')
 
 const hideStyle = document.createElement('style')
 hideStyle.textContent = HIDE_CSS
@@ -236,6 +246,45 @@ window.addEventListener(
   true,
 )
 
+// ---- AI batches and taking them back ----
+
+/** The undo step each applied batch became, by the token handed to the host. */
+const batchEdits = new Map<string, unknown>()
+let batchSeq = 0
+
+function applyBatch(steps: unknown): BridgeOps['applyBatch']['reply'] {
+  if (!Array.isArray(steps)) throw new Error('steps must be a list')
+  const graph = ui.editor.graph
+  if (graph.isEditing()) graph.stopEditing(false)
+  const manager = ui.editor.undoManager
+  const before = manager.history.length
+  const result = applyStepsLive(liveDiagram(ui), steps)
+  let token: string | null = null
+  const edit = topEdit()
+  if (manager.history.length > before && edit !== null) {
+    token = `b${++batchSeq}`
+    batchEdits.set(token, edit)
+    if (batchEdits.size > 200) batchEdits.delete(batchEdits.keys().next().value as string)
+  }
+  return { ...result, token }
+}
+
+/** Undoes the named batches newest first while each is the newest step of the history. */
+function undoBatches(tokens: unknown): BridgeOps['undoBatches']['reply'] {
+  if (!Array.isArray(tokens)) throw new Error('tokens must be a list')
+  const graph = ui.editor.graph
+  if (graph.isEditing()) graph.stopEditing(false)
+  let undone = 0
+  for (const token of [...tokens].reverse()) {
+    const edit = typeof token === 'string' ? batchEdits.get(token) : undefined
+    if (edit === undefined || topEdit() !== edit) break
+    ui.editor.undoManager.undo()
+    batchEdits.delete(token as string)
+    undone++
+  }
+  return { undone }
+}
+
 // ---- pictures of pages ----
 
 /** Runs `use` with a graph showing the page (the live graph for the page on screen). */
@@ -382,6 +431,12 @@ async function answer(request: BridgeRequestMessage): Promise<unknown> {
       if (graph.isEditing()) graph.stopEditing(false)
       return applyPrimitivesLive(liveDiagram(ui), args.primitives)
     }
+    case 'applyBatch':
+      return applyBatch(args.steps)
+    case 'convertMermaid':
+      return convertMermaid(ui, String(args.text ?? ''))
+    case 'undoBatches':
+      return undoBatches(args.tokens)
     case 'setDark':
       ui.setDarkMode(args.dark === true)
       return {}

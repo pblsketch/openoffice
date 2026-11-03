@@ -11,8 +11,11 @@
  * calls them (the language getter excepted, see the main module).
  */
 import type { Lang } from '@genoffice/i18n'
+import type { AiSettings, AiStreamChunk, AiStreamRequest } from '@genoffice/ai-provider'
 import type { DiagramFormat } from '@genoffice/drawio-model'
+import type { AiPanelPrefs } from '@genoffice/ui'
 import type { DiagramNotices } from './notices'
+import type { DiagramSubscriptionApi } from './subscription-api'
 
 export const DIAGRAM_CHANNELS = {
   // ---- open and save ----
@@ -73,11 +76,16 @@ export const DIAGRAM_CHANNELS = {
   /** invoke → `DiagramSeed | null`: take the content left for this view, once */
   seedTake: 'diagram:seed-take',
 
-  // ---- chat attachments (the AI panel task; same shapes as the other editors) ----
+  // ---- chat attachments (same shapes as the other editors; `src/main/ai-attachments.ts`) ----
+  /** invoke → `AttachmentAddResult | null`: the open dialog; null when cancelled */
   filesPick: 'diagram:files-pick',
+  /** invoke(paths) → `AttachmentAddResult`: dropped or pasted files */
   filesAdd: 'diagram:files-add',
+  /** invoke(data, ext) → `AttachmentAddResult`: a picture pasted without a file */
   filesAddPastedImage: 'diagram:files-add-pasted-image',
+  /** invoke(path, offset, maxChars) → `AttachmentReadResult` */
   filesRead: 'diagram:files-read',
+  /** invoke(path) → `AttachmentImageResult` */
   filesReadImage: 'diagram:files-read-image',
   /** renderer → main(title): name an untitled diagram's tab from the first AI request */
   provisionalTitle: 'diagram:provisional-title',
@@ -108,6 +116,23 @@ export const APP_CHANNELS = {
   getAutoSaveDefault: 'app:get-auto-save-default',
   autoSaveDefaultChanged: 'app:auto-save-default-changed',
   chromePressed: 'app:chrome-pressed',
+  getAiPanelPrefs: 'app:get-ai-panel-prefs',
+  setAiPanelPrefs: 'app:set-ai-panel-prefs',
+  aiPanelPrefsChanged: 'app:ai-panel-prefs-changed',
+  openSourcePath: 'home:open-path',
+} as const
+
+/** The shared AI channels, registered once for the whole app by the docs main. Called, never registered. */
+export const AI_CHANNELS = {
+  getSettings: 'ai:get-settings',
+  setSettings: 'ai:set-settings',
+  settingsChanged: 'ai:settings-changed',
+  openModelSettings: 'ai:open-model-settings',
+  stream: 'ai:stream',
+  streamChunk: 'ai:stream-chunk',
+  streamCancel: 'ai:stream-cancel',
+  webSearch: 'ai:web-search',
+  readUrl: 'ai:read-url',
 } as const
 
 export type UiTheme = 'light' | 'dark' | 'system'
@@ -294,6 +319,65 @@ export interface DiagramSeed {
   xml: string
 }
 
+// ---- chat attachments (same shapes as the other editors) ----
+
+/** image attachments skip text extraction: read as base64 on send and passed to the model with the user message */
+export const ATTACHMENT_IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp'])
+
+export interface AttachmentMeta {
+  path: string
+  name: string
+  ext: string
+  sizeBytes: number
+}
+
+export interface AttachmentAddResult {
+  accepted: AttachmentMeta[]
+  /** per-file reasons, already localized */
+  rejected: string[]
+}
+
+export interface AttachmentReadResult {
+  ok: boolean
+  name?: string
+  totalChars?: number
+  offset?: number
+  text?: string
+  error?: string
+}
+
+export interface AttachmentImageResult {
+  ok: boolean
+  base64?: string
+  mime?: string
+  error?: string
+}
+
+export interface WebSearchResult {
+  answer?: string
+  results: Array<{ title: string; url: string; snippet: string }>
+  method: string
+  /** failure reason when method === 'error' */
+  error?: string
+}
+
+/** One page of a web page read for the AI (the shared ai:read-url handler) */
+export type ReadUrlResult =
+  | {
+      ok: true
+      /** the final address after redirects */
+      url: string
+      title?: string
+      text: string
+      /** where this slice of the text starts */
+      offset: number
+      totalChars: number
+      truncated: boolean
+      /** where the next slice starts; only when truncated */
+      nextOffset?: number
+    }
+  | { ok: false; error: string; errorCode: string }
+
 // ---- questions from the in-app MCP server ----
 
 export interface DiagramReadQuery {
@@ -386,6 +470,40 @@ export interface DiagramQueryApi {
   sendBytesResult(reply: BytesReply): void
 }
 
-export type DiagramApi = DiagramCoreApi & DiagramExportApi & DiagramRecoveryApi & DiagramQueryApi
+/** The AI panel's bridge. A preload from an older build may lack any of it. */
+export interface DiagramAiApi {
+  pickAttachments(): Promise<AttachmentAddResult | null>
+  addAttachmentPaths(paths: string[]): Promise<AttachmentAddResult>
+  addPastedImage(data: ArrayBuffer, ext: string): Promise<AttachmentAddResult>
+  readAttachment(path: string, offset: number, maxChars: number): Promise<AttachmentReadResult>
+  readAttachmentImage(path: string): Promise<AttachmentImageResult>
+  /** local path of a dropped / pasted File, '' when it has none */
+  getPathForFile(file: File): string
+  /** name an untitled diagram's tab from the first AI request */
+  setProvisionalTitle(title: string): void
+  /** open any shell-routed document path (a citation in an AI answer) */
+  openSourcePath(path: string): Promise<void>
+  getAiPanelPrefs(): Promise<AiPanelPrefs>
+  setAiPanelPrefs(patch: Partial<AiPanelPrefs>): Promise<AiPanelPrefs>
+  onAiPanelPrefsChanged(handler: (prefs: AiPanelPrefs) => void): () => void
+  getAiSettings(): Promise<AiSettings>
+  setAiSettings(settings: AiSettings): Promise<void>
+  onAiSettingsChanged(handler: () => void): () => void
+  /** shell only: switch to Home and open Settings › AI Model (rejects in standalone) */
+  openAiModelSettings(): Promise<void>
+  subscription: DiagramSubscriptionApi
+  aiStream(request: AiStreamRequest): Promise<void>
+  aiStreamCancel(requestId: string): Promise<void>
+  onAiStream(handler: (chunk: AiStreamChunk) => void): () => void
+  webSearch(query: string, maxResults?: number): Promise<WebSearchResult>
+  /** Read one web page as text (the shared ai:read-url handler), paged by character offset */
+  readUrl(url: string, offset?: number): Promise<ReadUrlResult>
+}
+
+export type DiagramApi = DiagramCoreApi &
+  DiagramExportApi &
+  DiagramRecoveryApi &
+  DiagramQueryApi &
+  DiagramAiApi
 
 export type { DiagramNotices }

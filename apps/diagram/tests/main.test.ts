@@ -113,6 +113,7 @@ import {
   diagramIsDirty,
   diagramTabIdentity,
   requestDiagramSave,
+  setDiagramProvisionalTitleHook,
 } from '../src/main/diagram-main'
 import { DIAGRAM_CHANNELS } from '../src/shared/ipc'
 import type { OpenFileResult, SaveDiagramResult, SaveTargetResult } from '../src/shared/ipc'
@@ -361,5 +362,45 @@ describe('tab identity', () => {
       title: 'Flow',
     })
     expect(diagramTabIdentity(99_999)).toBeNull()
+  })
+})
+
+describe('the AI panel’s channels', () => {
+  it('registers this editor’s attachment channels under diagram: and no shared one', () => {
+    view()
+    for (const channel of [
+      DIAGRAM_CHANNELS.filesPick,
+      DIAGRAM_CHANNELS.filesAdd,
+      DIAGRAM_CHANNELS.filesAddPastedImage,
+      DIAGRAM_CHANNELS.filesRead,
+      DIAGRAM_CHANNELS.filesReadImage,
+      DIAGRAM_CHANNELS.provisionalTitle,
+    ]) {
+      expect(handlers.has(channel), channel).toBe(true)
+    }
+    expect([...handlers.keys()].filter((name) => name.startsWith('ai:'))).toEqual([])
+  })
+
+  it('accepts a diagram file as an attachment and refuses what cannot be read', async () => {
+    const contents = view()
+    const path = copyFixture('out.drawio', 'Plan.drawio')
+    const result = await call<{ accepted: Array<{ name: string }>; rejected: string[] }>(
+      DIAGRAM_CHANNELS.filesAdd,
+      contents,
+      [path, join(dir, 'missing.drawio'), join(dir, 'tool.exe')],
+    )
+    expect(result.accepted.map((meta) => meta.name)).toEqual(['Plan.drawio'])
+    expect(result.rejected).toHaveLength(2)
+  })
+
+  it('names only an untitled diagram’s tab from the first request', async () => {
+    const named: string[] = []
+    setDiagramProvisionalTitleHook((_wc, title) => named.push(title))
+    send(DIAGRAM_CHANNELS.provisionalTitle, view(), '  A   release   flow  ')
+    const opened = view(copyFixture('out.drawio', 'Kept.drawio'))
+    await call<OpenFileResult>(DIAGRAM_CHANNELS.openFile, opened, join(dir, 'Kept.drawio'))
+    send(DIAGRAM_CHANNELS.provisionalTitle, opened, 'something else')
+    expect(named).toEqual(['A release flow'])
+    setDiagramProvisionalTitleHook(null)
   })
 })
