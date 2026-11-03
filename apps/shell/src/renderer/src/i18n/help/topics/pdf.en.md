@@ -6,6 +6,7 @@ The PDF editor has five ribbon tabs: **Home / Annotate / Edit / Page / View**. I
 
 - Left sidebar: **thumbnails** (click to jump, visible range highlighted) or **outline** (bookmarks, when present).
 - Zoom: the ratio control bottom-right; ctrl+wheel steps the zoom.
+- Moving the view: turn on the **Hand tool** (Home and View tabs) and drag to move the page up, down and sideways. While it is on, dragging selects no text and a plain click still follows a link. Dragging with the middle button (wheel) held down moves the view without the tool. Esc or picking another tool turns it off.
 - Rotation: per-page or all pages from the Page menu; rotations are written back on save.
 - Search: ctrl+F full-text with all hits highlighted.
 - Encrypted PDFs: a password prompt (its own small window) opens them; the password is used for this session only. You can edit and save such a document; the save keeps its password. **Annotate → Protect** sets, changes or removes the password and what readers may do.

@@ -6,6 +6,7 @@ El editor de PDF tiene cinco pestañas en la cinta de opciones: **Inicio / Anota
 
 - Barra lateral izquierda: **Miniaturas** (haga clic para saltar, el intervalo visible aparece resaltado) o **Esquema** (los marcadores, cuando existen).
 - Zoom: el control de proporción de la esquina inferior derecha; ctrl+rueda ajusta el zoom por pasos.
+- Mover la vista: active la **Herramienta Mano** (pestañas Inicio y Vista) y arrastre para mover la página en cualquier dirección. Mientras está activa, arrastrar no selecciona texto y un clic simple sigue abriendo los enlaces. Arrastrar con el botón central (rueda) pulsado mueve la vista sin la herramienta. Esc u otra herramienta la desactiva.
 - Rotación: por página o de todas las páginas desde el menú Páginas; las rotaciones se vuelven a escribir al guardar.
 - Búsqueda: ctrl+F en texto completo, con todas las coincidencias resaltadas.
 - PDF cifrados: una solicitud de contraseña (en su propia ventana pequeña) los abre; la contraseña solo se usa en esta sesión. Puede editar y guardar un documento así; al guardar se conserva su contraseña. **Anotar → Proteger** establece, cambia o quita la contraseña y lo que pueden hacer los lectores.
