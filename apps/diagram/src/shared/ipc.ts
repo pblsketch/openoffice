@@ -12,7 +12,7 @@
  */
 import type { Lang } from '@genoffice/i18n'
 import type { AiSettings, AiStreamChunk, AiStreamRequest } from '@genoffice/ai-provider'
-import type { DiagramFormat, DiagramOpResult } from '@genoffice/drawio-model'
+import type { DiagramFormat, DiagramOpResult, DiagramReadResult } from '@genoffice/drawio-model'
 import type { AiPanelPrefs } from '@genoffice/ui'
 import type { DiagramNotices } from './notices'
 import type { DiagramSubscriptionApi } from './subscription-api'
@@ -45,6 +45,12 @@ export const DIAGRAM_CHANNELS = {
   openLink: 'diagram:open-link',
   /** renderer → main: draw.io's Help was picked; the shell opens the app's own help topic */
   openHelp: 'diagram:open-help',
+  /**
+   * invoke(message) → boolean: the tab's file did not open after all (a Visio
+   * import draw.io refused); true when the shell closed the tab and shows
+   * `message`, false when the editor shows it in the tab
+   */
+  openFailed: 'diagram:open-failed',
 
   // ---- commands from the menu ----
   /** main → renderer(`DiagramMenuCommand`) */
@@ -272,8 +278,8 @@ export interface ExportPageImage {
 export interface ExportImagesRequest {
   format: 'png' | 'svg'
   pages: ExportPageImage[]
-  /** true when the diagram has more pages than these (the current page only) */
-  partial: boolean
+  /** every page (a file per page, `<name>-p<n>`, even for one page) or the page on screen (one file) */
+  scope: ExportScope
   /** file name (no extension) suggested in the dialog */
   suggestedName: string
 }
@@ -438,7 +444,9 @@ export interface DiagramReadQuery {
   current?: boolean
 }
 
-export type DiagramReadReply = { id: string; text: string } | { id: string; error: string }
+/** `read` (one page's table as values) comes with a one-page read, for the in-app MCP server's object */
+export type DiagramReadReply =
+  { id: string; text: string; read?: DiagramReadResult } | { id: string; error: string }
 
 export interface DiagramApplyQuery {
   id: string
@@ -487,6 +495,8 @@ export interface DiagramCoreApi {
   /** a link a person clicked on a shape; false when the address is not one that opens */
   openLink(url: string): Promise<boolean>
   openHelp(): void
+  /** the file did not open: ask the shell to close the tab and show why; false = show it here */
+  openFailed(message: string): Promise<boolean>
   onMenuCommand(handler: (command: DiagramMenuCommand) => void): () => void
   getLanguage(): Promise<Lang>
   onLanguageChanged(handler: (lang: Lang) => void): () => void

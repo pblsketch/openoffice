@@ -7,6 +7,7 @@ import {
   isAllowedDiagramRequest,
   isAllowedNavigation,
   newRequestLog,
+  REFUSED_ADDRESSES_KEPT,
   screenRequest,
   windowOpenAction,
 } from '../src/main/network-guard'
@@ -109,8 +110,24 @@ describe('request log', () => {
     expect(screenRequest(log, 'drawio-app://editor/index.html', [])).toBe(true)
     expect(screenRequest(log, 'https://example.com/a?secret=1', [])).toBe(false)
     expect(log.allowed).toBe(1)
+    expect(log.refused).toBe(1)
     expect([...log.schemes]).toEqual(['drawio-app:'])
     expect(log.blocked).toEqual(['https://example.com/a'])
+  })
+
+  it('counts every refusal but keeps only the last addresses', () => {
+    const log = newRequestLog()
+    const total = REFUSED_ADDRESSES_KEPT + 25
+    for (let n = 1; n <= total; n++) {
+      expect(screenRequest(log, `https://example.com/${n}?q=${n}`, [])).toBe(false)
+    }
+    expect(log.refused).toBe(total)
+    expect(log.blocked).toHaveLength(REFUSED_ADDRESSES_KEPT)
+    expect(log.blocked[0]).toBe('https://example.com/26')
+    expect(log.blocked.at(-1)).toBe(`https://example.com/${total}`)
+    // a refused request is still refused after the list is full
+    expect(screenRequest(log, 'https://example.org/late', [])).toBe(false)
+    expect(log.blocked.at(-1)).toBe('https://example.org/late')
   })
 })
 

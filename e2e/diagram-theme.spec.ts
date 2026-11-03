@@ -38,7 +38,14 @@ const normalizePdf = (bytes: Buffer): string =>
     .replace(/\/(CreationDate|ModDate) ?\(D:[^)]*\)/g, '/$1 ()')
     .replace(/<xmp:(CreateDate|ModifyDate|MetadataDate)>[^<]*</g, '<xmp:$1><')
 
-const OUTPUTS = ['diagram.drawio', 'diagram.drawio.svg', 'picture.png', 'picture.svg', 'sheet.pdf']
+/** the export of every page writes a file per page, a one-page diagram too: `<name>-p1` */
+const OUTPUTS = [
+  'diagram.drawio',
+  'diagram.drawio.svg',
+  'picture-p1.png',
+  'picture-p1.svg',
+  'sheet.pdf',
+]
 
 async function writeOutputs(app: ElectronApplication, page: Page, dir: string): Promise<void> {
   await mkdir(dir, { recursive: true })

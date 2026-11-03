@@ -357,6 +357,8 @@ import {
   DRAWIO_SCHEME_PRIVILEGE,
   configureDiagramRuntime,
   diagramFileRenamed,
+  diagramHasRecoveryCopy,
+  diagramOpenRefusal,
   diagramSaveToPath,
   requestDiagramSave,
   sendDiagramExportRequest,
@@ -364,8 +366,11 @@ import {
   sendDiagramPrintRequest,
   setDiagramFileSavedHook,
   setDiagramHelpHook,
+  setDiagramOpenFailedHook,
   setDiagramProvisionalTitleHook,
+  visioOpenRefusal,
 } from '../../../diagram/src/main/diagram-main'
+import { openDiagramChecked } from './diagram-open-gate'
 import {
   diagramApplyOps,
   diagramReadPage,
@@ -5282,6 +5287,20 @@ function createShellWindow(): void {
     revealShellWindow()
     tabManager?.openHelpTab('diagram')
   })
+  // a tab whose file did not open after all (a Visio drawing draw.io could not
+  // import): the tab goes and the reason shows as an app warning (spec 3.5)
+  setDiagramOpenFailedHook((wc, message) => {
+    const tabId = manager.tabIdForWebContents(wc.id)
+    const detachedId = tabId === undefined ? detachedDocumentFor(wc.id)?.id : undefined
+    if (tabId === undefined && detachedId === undefined) return false
+    // after the answer reaches the editor: closing the tab ends its page
+    setImmediate(() => {
+      if (tabId !== undefined) manager.closeTabWithoutPrompt(tabId)
+      else if (detachedId !== undefined) closeDetachedWithoutPrompt(detachedId)
+      showAppWarning(message)
+    })
+    return true
+  })
   setHtmlProvisionalTitleHook((wc, title) => {
     manager.setTabTitleFor(wc.id, title)
     detachedSetTitleFor(wc.id, title)
@@ -5422,8 +5441,8 @@ function notifyUnsupportedFile(filePath: string): void {
 }
 
 /** shell-hosted warning box; focused when a shell window exists, standalone otherwise */
-function showAppWarning(message: string): void {
-  const options = { type: 'warning' as const, message }
+function showAppWarning(message: string, detail?: string): void {
+  const options = { type: 'warning' as const, message, ...(detail ? { detail } : {}) }
   if (shellWindow) {
     shellWindow.show()
     shellWindow.focus()
@@ -5560,13 +5579,28 @@ function routeDocumentPath(filePath: string): boolean {
     return true
   }
   // a Visio drawing opens as a new diagram made from it; opening it again
-  // comes back to that tab (findDiagramTabByPath asks the editor)
+  // comes back to that tab (findDiagramTabByPath asks the editor). A file that
+  // does not open gets no tab, only the reason (spec 3.1, 3.5).
   if (DIAGRAM_RE.test(filePath)) {
-    recordRecentFile(filePath)
     const existing = tabManager.findDiagramTabByPath(filePath)
-    if (existing) tabManager.activateTab(existing)
-    else tabManager.openDiagramTab(filePath)
-    return true
+    if (existing) {
+      recordRecentFile(filePath)
+      tabManager.activateTab(existing)
+      return true
+    }
+    return openDiagramChecked(filePath, {
+      refusal: (path) => diagramOpenRefusal(path, { hasRecoveryCopy: diagramHasRecoveryCopy }),
+      visioRefusal: (path) => visioOpenRefusal(path),
+      open: (path) => {
+        if (!tabManager) return
+        // the check of a .vsdx took a moment: the same file may have a tab by now
+        const opened = tabManager.findDiagramTabByPath(path)
+        recordRecentFile(path)
+        if (opened) tabManager.activateTab(opened)
+        else tabManager.openDiagramTab(path)
+      },
+      warn: (message, path) => showAppWarning(message, basename(path)),
+    })
   }
   notifyUnsupportedFile(filePath)
   return false

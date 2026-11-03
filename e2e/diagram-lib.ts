@@ -374,10 +374,20 @@ export async function answerMessageBoxes(
   }, response)
 }
 
+/** The messages of the message boxes shown since `answerMessageBoxes`. */
+export const messageBoxes = (app: ElectronApplication): Promise<string[]> =>
+  app.evaluate(() => [
+    ...((globalThis as unknown as { __messageBoxes?: string[] }).__messageBoxes ?? []),
+  ])
+
+/** The pages of diagram views open now (tabs and detached windows). */
+export const diagramViewCount = (app: ElectronApplication): number =>
+  app.windows().filter((page) => page.url().includes('://diagram/')).length
+
 /**
  * File › Export as PNG / SVG / PDF, all pages, into `target`; waits for the
- * file. Pictures of a diagram with several pages land as `<name>-p<n>.<ext>`:
- * the first page's file is returned then.
+ * file. Pictures of every page land as `<name>-p<n>.<ext>`, one page
+ * too: the first page's file is returned then.
  */
 export async function exportFromMenu(
   app: ElectronApplication,

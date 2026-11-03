@@ -1,6 +1,6 @@
 import type { WebContents } from 'electron'
 import type { OpenDocumentTab } from '../../shared/tabs-api'
-import type { DiagramControl } from './tools/diagram-tools'
+import type { DiagramControl, DiagramPageReadAnswer } from './tools/diagram-tools'
 
 /**
  * The shell's implementation of the diagram tools' control: the open-document
@@ -23,7 +23,7 @@ export interface DiagramBridgeDeps {
   /** bring the window hosting the tab forward */
   revealWindow?: (tabId: string) => void
   /** the editor's read table: one page, or the page on screen when `page` is left out */
-  readPage: (contents: WebContents, page?: string) => Promise<string>
+  readPage: (contents: WebContents, page?: string) => Promise<DiagramPageReadAnswer>
   /** the editor's executor: plan and apply as one undo step, all or nothing */
   applyOps: (contents: WebContents, ops: unknown[]) => Promise<unknown>
 }

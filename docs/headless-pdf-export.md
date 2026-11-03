@@ -54,8 +54,8 @@ Diagrams take more targets and three more switches:
 
 - `pdf` is one file, one sheet per page at that page's own size, made the
   way the export menu makes it. `png` and `svg` write one file per page,
-  `<out name>-p<n>.<ext>` beside `--out`, unless `--page` (1-based) picks one
-  page or the diagram has one page; then `--out` is the file.
+  `<out name>-p<n>.<ext>` beside `--out` (a one-page diagram too), unless
+  `--page` (1-based) picks one page; then `--out` is the file.
 - A diagram file target runs the JSON ops of `--ops` on the diagram with the
   AI panel's executor (Mermaid included, converted by draw.io) and writes the
   result with draw.io's own serialization, as Save does; `--out` must end in

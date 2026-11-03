@@ -92,6 +92,19 @@ describe('reading', () => {
     expect(result.output).not.toContain('Selected:')
   })
 
+  it('gives the same page as values too, for the in-app MCP server’s object', async () => {
+    const drawio = new FakeDrawio(undefined, 'p2')
+    drawio.selected = ['c']
+    const read = await liveDiagramRead(fakeFrame(drawio).frame)
+    if (!read.ok) throw new Error(read.error)
+    expect(read.read.pages.map((page) => [page.id, page.current ?? false])).toEqual([
+      ['p1', false],
+      ['p2', true],
+    ])
+    expect(read.read.page).toMatchObject({ id: 'p2', name: 'Two', selected: ['c'] })
+    expect(read.read.page.shapes.map((shape) => [shape.id, shape.label])).toEqual([['c', 'Alone']])
+  })
+
   it('answers a page that is not there as an error', async () => {
     const result = await runDiagramTool(hostOf(fakeFrame()), DIAGRAM_TOOL_NAMES.read, {
       page: 'Nowhere',

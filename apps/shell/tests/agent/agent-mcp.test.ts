@@ -142,7 +142,11 @@ describe('diagrams in an agent session', () => {
       openDocumentsControl: control,
       // the in-app server's diagram control rides along in the runtime deps; the session ignores it
       ...({
-        diagramControl: { list: async () => [], read: async () => '', apply: async () => ({}) },
+        diagramControl: {
+          list: async () => [],
+          read: async () => ({ text: '' }),
+          apply: async () => ({}),
+        },
       } as object),
     },
     'C:\\Users\\me\\Project',

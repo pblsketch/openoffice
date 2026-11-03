@@ -102,15 +102,21 @@ export function isAllowedNavigation(input: {
   )
 }
 
+/** How many refused addresses the log keeps (the newest); `refused` counts them all. */
+export const REFUSED_ADDRESSES_KEPT = 100
+
 export interface RequestLog {
   allowed: number
+  /** every refused request since the log began */
+  refused: number
+  /** the last `REFUSED_ADDRESSES_KEPT` refused addresses, oldest first */
   blocked: string[]
   /** schemes seen among allowed requests */
   schemes: Set<string>
 }
 
 export function newRequestLog(): RequestLog {
-  return { allowed: 0, blocked: [], schemes: new Set() }
+  return { allowed: 0, refused: 0, blocked: [], schemes: new Set() }
 }
 
 /** Notes one request in the log and answers whether it may go. */
@@ -129,6 +135,8 @@ export function screenRequest(
     return true
   }
   // keep the address short and never the query: it might carry content
+  log.refused++
   log.blocked.push(url.split('?')[0]!.slice(0, 200))
+  if (log.blocked.length > REFUSED_ADDRESSES_KEPT) log.blocked.shift()
   return false
 }

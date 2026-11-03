@@ -55,7 +55,36 @@ describe('opening a diagram', () => {
     const route = fnSource('routeDocumentPath')
     expect(route).toContain('if (DIAGRAM_RE.test(filePath)) {')
     expect(route).toContain('tabManager.findDiagramTabByPath(filePath)')
-    expect(route).toContain('tabManager.openDiagramTab(filePath)')
+    expect(route).toContain('tabManager.openDiagramTab(path)')
+  })
+
+  it('checks a diagram before its tab opens: a broken file gets only the reason (spec 3.1, 3.5)', () => {
+    const route = fnSource('routeDocumentPath')
+    const branch = route.slice(route.indexOf('if (DIAGRAM_RE.test(filePath)) {'))
+    // every open path routes here; the tab opens only through the checked gate
+    expect(branch).toContain('return openDiagramChecked(filePath, {')
+    expect(branch).not.toContain('tabManager.openDiagramTab(filePath)')
+    expect(branch).toContain(
+      'refusal: (path) => diagramOpenRefusal(path, { hasRecoveryCopy: diagramHasRecoveryCopy }),',
+    )
+    expect(branch).toContain('visioRefusal: (path) => visioOpenRefusal(path),')
+    expect(branch).toContain('warn: (message, path) => showAppWarning(message, basename(path)),')
+    // a refused file is not put in Recent: only the open (or an open tab) records it
+    const beforeGate = branch.slice(0, branch.indexOf('return openDiagramChecked'))
+    expect(beforeGate.match(/recordRecentFile\(/g)).toHaveLength(1)
+    expect(beforeGate).toContain('if (existing) {')
+  })
+
+  it('closes a tab whose Visio import failed and shows the reason as an app warning', () => {
+    const at = main.indexOf('setDiagramOpenFailedHook((wc, message) => {')
+    expect(at).toBeGreaterThan(0)
+    const hook = main.slice(at, main.indexOf('\n  })', at))
+    expect(hook).toContain('manager.tabIdForWebContents(wc.id)')
+    expect(hook).toContain('detachedDocumentFor(wc.id)?.id')
+    expect(hook).toContain('manager.closeTabWithoutPrompt(tabId)')
+    expect(hook).toContain('closeDetachedWithoutPrompt(detachedId)')
+    expect(hook).toContain('showAppWarning(message)')
+    expect(hook).toContain('return true')
   })
 
   it('offers every diagram form in the open dialog, with its own filter', () => {

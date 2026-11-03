@@ -9,6 +9,7 @@ import { countUnconvertedPictures, isDrawableImageData } from '../src/shared/vis
 import { VISIO_IMPORT_NAME, importVisio, uncompressedPages } from '../src/bridge/visio'
 import { diagramImporter, registerDiagramImporter } from '../src/renderer/document/importers'
 import { importVisioFile, registerVisioImporter } from '../src/renderer/document/visio-import'
+import { settleOpenFailure } from '../src/renderer/document/open-failure'
 import { t } from '../src/renderer/i18n/locale'
 import type { DrawioFrame } from '../src/renderer/drawio/frame-client'
 
@@ -232,5 +233,31 @@ describe('fixtures', () => {
     const metafiles = readFileSync(join(__dirname, 'fixtures', 'visio-metafiles.vsdx'))
     expect(metafiles.includes(Buffer.from('visio/media/image2.wmf'))).toBe(true)
     expect(metafiles.includes(Buffer.from('visio/media/image3.emf'))).toBe(true)
+  })
+})
+
+describe('an import that fails once the tab is open', () => {
+  const reason = 'This file cannot be imported: The file is damaged or is not a Visio drawing.'
+
+  it('asks the shell to close the tab and say why; nothing is shown in the tab', async () => {
+    const askShell = vi.fn(async () => true)
+    const showInTab = vi.fn()
+    await settleOpenFailure(reason, askShell, showInTab)
+    expect(askShell).toHaveBeenCalledWith(reason)
+    expect(showInTab).not.toHaveBeenCalled()
+  })
+
+  it('shows the reason in the tab when the shell does not close it', async () => {
+    for (const askShell of [
+      vi.fn(async () => false),
+      vi.fn(async () => {
+        throw new Error('no handler')
+      }),
+      undefined,
+    ]) {
+      const showInTab = vi.fn()
+      await settleOpenFailure(reason, askShell, showInTab)
+      expect(showInTab).toHaveBeenCalledWith(reason)
+    }
   })
 })

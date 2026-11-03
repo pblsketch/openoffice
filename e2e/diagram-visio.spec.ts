@@ -1,7 +1,8 @@
 import { existsSync, readdirSync, rmSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test, expect } from '@playwright/test'
+import JSZip from 'jszip'
 import { closeAndSaveVideo, launchShell, screenshotPath } from './helpers'
 import {
   answerMessageBoxes,
@@ -10,8 +11,10 @@ import {
   copyAsset,
   diagramRequests,
   diagramTabs,
+  diagramViewCount,
   fileText,
   liveText,
+  messageBoxes,
   openDiagramPage,
   openPath,
   saveDialogCalls,
@@ -97,6 +100,43 @@ test.describe('Visio import', () => {
         'visio-shapes.drawio',
         'visio-shapes.vsdx',
       ])
+
+      // ── a .vsdx that is no Visio drawing: no tab, the reason as an app warning
+      const broken = await scratchDir('visio-broken')
+      try {
+        const tabsBefore = (await diagramTabs(shell)).length
+        const viewsBefore = diagramViewCount(app)
+        const notVisio = join(broken, 'not-visio.vsdx')
+        await writeFile(notVisio, 'PK but not a drawing')
+        let shown = (await messageBoxes(app)).length
+        await openPath(shell, notVisio)
+        await expect
+          .poll(async () => (await messageBoxes(app)).slice(shown))
+          .toEqual(['This file cannot be imported: The file is damaged or is not a Visio drawing.'])
+        expect(await diagramTabs(shell)).toHaveLength(tabsBefore)
+        expect(diagramViewCount(app)).toBe(viewsBefore)
+
+        // ── a Visio drawing draw.io turns down once its tab is open (no pages):
+        // the editor has the shell close that tab and show the reason
+        const zip = await JSZip.loadAsync(shapesBytes)
+        zip.file(
+          'visio/pages/pages.xml',
+          '<?xml version="1.0" encoding="utf-8"?><Pages xmlns="http://schemas.microsoft.com/office/visio/2012/main"/>',
+        )
+        const pageless = join(broken, 'no-pages.vsdx')
+        await writeFile(pageless, await zip.generateAsync({ type: 'nodebuffer' }))
+        shown = (await messageBoxes(app)).length
+        await openPath(shell, pageless)
+        await expect
+          .poll(async () => (await messageBoxes(app)).slice(shown), { timeout: 60_000 })
+          .toEqual([expect.stringMatching(/^This file cannot be imported: /)])
+        await expect.poll(async () => (await diagramTabs(shell)).length).toBe(tabsBefore)
+        await expect.poll(() => diagramViewCount(app)).toBe(viewsBefore)
+        // the tab that was there for a moment left nothing behind but its warning
+        expect(readdirSync(broken).sort()).toEqual(['no-pages.vsdx', 'not-visio.vsdx'])
+      } finally {
+        rmSync(broken, { recursive: true, force: true })
+      }
 
       // the import ran on this PC: nothing was asked of anywhere else
       const requests = await diagramRequests(app)

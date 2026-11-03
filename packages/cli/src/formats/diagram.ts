@@ -530,14 +530,17 @@ export interface DiagramConvertPlan {
   pageIndex?: number
   /** the files to write, in page order */
   outputs: string[]
-  /** the name the app is given (`-p<n>` goes beside it for several pages) */
+  /** a PNG/SVG file per page (no `--page`): `outputs` are `<name>-p<n>` files */
+  perPage?: true
+  /** the name the app is given (`-p<n>` goes beside it for a file per page) */
   appOut: string
 }
 
 /**
- * Where `convert` writes: PDF is one file; PNG/SVG one file for one page
- * (`--page`, or a one-page diagram), else one file per page named
- * `<name>-p<n>.<ext>` in the `--out` folder (default: beside the input).
+ * Where `convert` writes (spec 9.3): PDF is one file; PNG/SVG one file for the
+ * page `--page` picks, else one file per page named `<name>-p<n>.<ext>` (a
+ * one-page diagram too, as the editor's export of all pages) in the `--out`
+ * folder (default: beside the input).
  */
 export function planDiagramConvert(
   opened: OpenedDiagram,
@@ -549,8 +552,8 @@ export function planDiagramConvert(
   const pageIndex = pageIndexOf(opened.file, pageRef)
   const name = diagramBaseName(opened.path) || 'diagram'
   const pages = opened.file.state.pages.length
-  const several = to !== 'pdf' && pageIndex === undefined && pages > 1
-  if (!several) {
+  const perPage = to !== 'pdf' && pageIndex === undefined
+  if (!perPage) {
     const output = resolve(out, join(dirname(opened.path), `${name}.${to}`))
     return {
       to,
@@ -568,7 +571,7 @@ export function planDiagramConvert(
     if (isFile || /\.(png|svg)$/i.test(out)) {
       throw new CliError(
         EXIT.usage,
-        `the diagram has ${pages} pages, so --out names a folder for the ${to.toUpperCase()} files, not a file: ${out}`,
+        `without --page every page is a ${to.toUpperCase()} file of its own (the diagram has ${pages}), so --out names a folder, not a file: ${out}`,
         { pages: pageList(opened.file) },
         {
           reason: 'invalid_argument',
@@ -580,8 +583,8 @@ export function planDiagramConvert(
   }
   const appOut = join(folder, `${name}.${to}`)
   const numbers = opened.file.state.pages.map((_, index) => index + 1)
-  const outputs = pageFilePaths(appOut, to, numbers).map((path) => resolve(path, path))
-  return { to, outputs, appOut: join(dirname(outputs[0]!), basename(appOut)) }
+  const outputs = pageFilePaths(appOut, to, numbers, true).map((path) => resolve(path, path))
+  return { to, outputs, perPage: true, appOut: join(dirname(outputs[0]!), basename(appOut)) }
 }
 
 /** Runs the plan in the app; answers the files it wrote. */
@@ -609,7 +612,7 @@ export async function convertDiagram(
     outputPath: written[0]!,
     detail: {
       pages: plan.pageIndex === undefined ? opened.file.state.pages.length : 1,
-      ...(written.length > 1 ? { output_paths: written } : {}),
+      ...(plan.perPage || written.length > 1 ? { output_paths: written } : {}),
     },
   }
 }

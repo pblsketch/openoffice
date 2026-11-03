@@ -193,7 +193,9 @@ function renderer(
         : query.current
           ? 'Pages: ...\ncurrent page'
           : 'Pages: ...\nevery page'
-      call(DIAGRAM_CHANNELS.readResult, contents, { id: query.id, text })
+      // a one-page read also carries the table as values, as the editor's does
+      const read = query.page || query.current ? pageTable(query.page ?? 'p1') : undefined
+      call(DIAGRAM_CHANNELS.readResult, contents, { id: query.id, text, ...(read ? { read } : {}) })
     } else if (channel === DIAGRAM_CHANNELS.applyRequest) {
       const query = payload as DiagramApplyQuery
       seen.applies.push(query)
@@ -225,6 +227,26 @@ function renderer(
     }
   }
   return seen
+}
+
+/** the one-page table the fake renderer answers with */
+function pageTable(pageId: string) {
+  return {
+    pages: [
+      { id: 'p1', name: 'Page-1', current: true as const },
+      { id: pageId, name: pageId },
+    ],
+    page: {
+      id: pageId,
+      name: pageId,
+      shapes: [
+        { id: 'a', label: 'Start', shape: 'rounded', x: 40, y: 40, width: 120, height: 60 },
+        { id: 'b', label: 'End', shape: 'ellipse', x: 240, y: 40, width: 80, height: 80 },
+      ],
+      edges: [{ id: 'e', label: '', source: 'a', target: 'b' }],
+      ...(pageId === 'p1' ? { selected: ['a'] } : {}),
+    },
+  }
 }
 
 function diagramTab(overrides: Partial<OpenDocumentTab> = {}): OpenDocumentTab {
@@ -492,12 +514,14 @@ describe('read_diagram', () => {
       diagramTab({ id: 't8', title: 'back.drawio', active: false }),
       diagramTab({ title: 'Untitled diagram', dirty: false }),
     ])
+    // the same table as text (content) and as values (pages, page), spec 8.1
     expect(await read({})).toEqual({
       id: 't7',
       title: 'Untitled diagram',
       path: null,
       dirty: false,
       content: 'Pages: ...\ncurrent page',
+      ...pageTable('p1'),
     })
     expect(frontSeen.reads[0]).toMatchObject({ current: true })
     expect(backSeen.reads).toEqual([])
@@ -514,12 +538,33 @@ describe('read_diagram', () => {
       diagramTab({ id: 't8', filePath: path, active: false }),
     ]
     const { read } = diagramTools({ t7: front, t8: named }, tabs)
-    expect((await read({ document: path, page: 'Page-2' })).content).toBe('Pages: ...\npage Page-2')
+    const second = await read({ document: path, page: 'Page-2' })
+    expect(second.content).toBe('Pages: ...\npage Page-2')
+    expect(second.page).toEqual(pageTable('Page-2').page)
+    expect(second.pages).toEqual(pageTable('Page-2').pages)
     expect((await read({ document: 't8' })).content).toBe('Pages: ...\ncurrent page')
     expect(seen.reads.map((q) => q.page ?? (q.current ? '(current)' : '(all)'))).toEqual([
       'Page-2',
       '(current)',
     ])
+  })
+
+  it('gives the text alone when the editor sends no table (an older editor build)', async () => {
+    const contents = await openedView()
+    contents.onSend = (channel, payload) => {
+      if (channel !== DIAGRAM_CHANNELS.readRequest) return
+      const query = payload as DiagramReadQuery
+      call(DIAGRAM_CHANNELS.readResult, contents, {
+        id: query.id,
+        text: 'Pages: ...',
+        read: { pages: 'not a list' },
+      })
+    }
+    const { read } = diagramTools({ t7: contents }, [diagramTab()])
+    const answer = await read({})
+    expect(answer.content).toBe('Pages: ...')
+    expect(answer).not.toHaveProperty('page')
+    expect(answer).not.toHaveProperty('pages')
   })
 
   it('takes the diagram in a focused detached window over the shell’s active tab', async () => {

@@ -100,6 +100,9 @@ import {
   windowOpenAction,
 } from './network-guard'
 import {
+  diagramRecoveryStore,
+  fileRecoveryIdentity,
+  recoveryAvailable,
   resolveViewOpen,
   setViewOpenDecision,
   takeUntitledCopy,
@@ -118,6 +121,7 @@ export { DRAWIO_SCHEME_PRIVILEGE } from './drawio-protocol'
 export { DIAGRAM_PARTITION } from './network-guard'
 export { diagramRequestLog } from './diagram-session'
 export { registerDiagramAiIpc, setDiagramProvisionalTitleHook } from './ai-attachments'
+export { diagramOpenRefusal, visioOpenRefusal } from './open-check'
 /** How long a tab that stays open after "Don't Save" takes no copy. */
 export { DONT_SAVE_HOLD_MS as DIAGRAM_DONT_SAVE_HOLD_MS } from './recovery-main'
 
@@ -261,6 +265,32 @@ let helpHook: ((wc: WebContents) => void) | null = null
 export function setDiagramHelpHook(hook: ((wc: WebContents) => void) | null): void {
   helpHook = hook
 }
+
+let openFailedHook: ((wc: WebContents, message: string) => boolean) | null = null
+/**
+ * A tab's file did not open after all (a Visio drawing draw.io could not
+ * import, a file that broke after the shell's check): the shell closes the tab
+ * and shows `message` as an app warning, answering true. Without the hook (the
+ * editor run on its own) or false, the editor shows the reason in its tab.
+ */
+export function setDiagramOpenFailedHook(
+  hook: ((wc: WebContents, message: string) => boolean) | null,
+): void {
+  openFailedHook = hook
+}
+
+/** A recovery copy of this file is kept (the tab opens even when the file does not, to offer it). */
+export function diagramHasRecoveryCopy(filePath: string): boolean {
+  if (!recoveryAvailable()) return false
+  try {
+    return diagramRecoveryStore().copyInfo(fileRecoveryIdentity(filePath)) !== null
+  } catch {
+    return false
+  }
+}
+
+/** Longest reason passed on to the warning box. */
+const OPEN_FAILED_MAX_CHARS = 2000
 
 function copyAgain(contents: WebContents): () => void {
   return () => {
@@ -839,6 +869,17 @@ function registerDiagramIpc(): void {
   })
 
   ipcMain.on(DIAGRAM_CHANNELS.openHelp, (e) => helpHook?.(e.sender))
+
+  // only a view whose file did not open, or whose import has not become a file
+  // yet, may close itself this way
+  ipcMain.handle(DIAGRAM_CHANNELS.openFailed, (e, message: unknown): boolean => {
+    const wcId = e.sender.id
+    if (typeof message !== 'string' || message.trim() === '') return false
+    if (unopenedByWc.get(wcId) !== 'failed' && !importByWc.has(wcId)) return false
+    refuseWrites(wcId)
+    if (!openFailedHook) return false
+    return openFailedHook(e.sender, message.trim().slice(0, OPEN_FAILED_MAX_CHARS))
+  })
 
   ipcMain.on(DIAGRAM_CHANNELS.dirtyChanged, (e, dirty: unknown) => {
     if (dirty === true && mayWrite(e.sender.id)) dirtyByWc.add(e.sender.id)
