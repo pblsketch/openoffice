@@ -83,6 +83,22 @@ describe('collectLaunchPaths', () => {
     expect(collectLaunchPaths(['GenOffice.exe', '/novel.epub'], undefined, () => false)).toEqual([])
   })
 
+  it('accepts diagrams, draw.io pictures and Visio drawings, not plain pictures', () => {
+    const argv = [
+      'GenOffice.exe',
+      'C:\\maps\\flow.drawio',
+      '/maps/flow.dio',
+      '/maps/flow.drawio.svg',
+      '/maps/FLOW.DRAWIO.PNG',
+      '/maps/plan.vsdx',
+      '/maps/photo.png',
+    ]
+    expect(collectLaunchPaths(argv, undefined, () => true)).toEqual(argv.slice(1, 6))
+    expect(
+      collectLaunchPaths(['GenOffice.exe'], { launchPaths: ['/maps/flow.drawio'] }, () => true),
+    ).toEqual(['/maps/flow.drawio'])
+  })
+
   it('still drops a path nothing opens', () => {
     // a file that exists but is not a document the shell can route
     expect(collectLaunchPaths(['GenOffice.app', '/photo.png'], undefined, () => true)).toEqual([])
