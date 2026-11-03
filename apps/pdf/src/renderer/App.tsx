@@ -168,7 +168,7 @@ import { mayChangeProtection } from './protection-gate'
 import { PasswordDialog } from './PasswordDialog'
 import { PropertiesDialog } from './PropertiesDialog'
 import { ConvertDialog } from './convert/ConvertDialog'
-import { ExportImagesMenu } from './convert/ExportImagesMenu'
+import { ConvertMenu } from './convert/ConvertMenu'
 import { exportEmbeddedImages } from './convert/embedded-images'
 import { AiPageReading, type AiPageReadingHandle } from './ai-read/AiPageReading'
 import {
@@ -436,8 +436,6 @@ import {
   IconFieldPreview,
   IconFormCheck,
   IconFormCross,
-  IconExportImg,
-  IconConvertPdf,
   IconInsertImage,
   IconEditImage,
   IconLink,
@@ -731,7 +729,6 @@ export default function App() {
     () => highlightPens[0] ?? MARKUP_COLORS.highlight,
   )
   const [highlightColorOpen, setHighlightColorOpen] = useState(false)
-  const [convertOpen, setConvertOpen] = useState(false)
   const [convertBusy, setConvertBusy] = useState(false)
   /** the Markdown / EPUB conversion dialog that is open; `outPath` = a Save As target */
   const [convertDialog, setConvertDialog] = useState<PdfConvertDialogRequest | null>(null)
@@ -8508,7 +8505,6 @@ export default function App() {
   const opacityBtnRef = useRef<HTMLButtonElement | null>(null)
   const opacityMenuRef = useRef<HTMLDivElement | null>(null)
   const staticColorFieldRef = useRef<HTMLDivElement | null>(null)
-  const convertWrapRef = useRef<HTMLDivElement | null>(null)
   const aiReadWrapRef = useRef<HTMLDivElement | null>(null)
 
   // Thumbnail context menu
@@ -8582,10 +8578,6 @@ export default function App() {
     inside: () => [staticColorFieldRef.current],
   })
 
-  // Converter dropdown (Home tab)
-  useDismissablePopover(convertOpen, () => setConvertOpen(false), {
-    inside: () => [convertWrapRef.current],
-  })
   // AI page reading menu (Home tab)
   useDismissablePopover(aiReadMenuOpen, () => setAiReadMenuOpen(false), {
     inside: () => [aiReadWrapRef.current],
@@ -8955,7 +8947,6 @@ export default function App() {
 
   /** Converter dropdown → the shell's local conversion flows (save dialog, password prompt) */
   const convertTo = async (format: PdfConvertFormat): Promise<void> => {
-    setConvertOpen(false)
     if (convertBusy) return
     setConvertBusy(true)
     try {
@@ -8969,7 +8960,6 @@ export default function App() {
 
   /** Converter dropdown › Markdown / EPUB → the conversion dialog */
   const openConvertDialog = (format: PdfReflowFormat): void => {
-    setConvertOpen(false)
     setConvertDialog({ format })
   }
 
@@ -9750,31 +9740,21 @@ export default function App() {
               <div className="ribbon-sep" />
               <div className="ribbon-group">
                 <div className="ribbon-group-items">
-                  <div className="rb-drop-wrap" ref={convertWrapRef}>
-                    <button
-                      className={`rb-big${convertOpen ? ' active' : ''}`}
-                      data-tip={t('convertPdfTip')}
-                      disabled={convertBusy}
-                      onClick={() => setConvertOpen((v) => !v)}
-                    >
-                      <span className="rb-big-icon">
-                        <IconConvertPdf />
-                        <RbCaret />
-                      </span>
-                      <span>{t('convertPdf')}</span>
-                    </button>
-                    {convertOpen && (
-                      <div className="rb-drop rb-menu">
-                        <button onClick={() => void convertTo('docx')}>{t('convertToWord')}</button>
-                        <button onClick={() => void convertTo('xlsx')}>
-                          {t('convertToExcel')}
-                        </button>
-                        <button onClick={() => void convertTo('pptx')}>{t('convertToPpt')}</button>
-                        <button onClick={() => openConvertDialog('md')}>{t('cvToMarkdown')}</button>
-                        <button onClick={() => openConvertDialog('epub')}>{t('cvToEpub')}</button>
-                      </div>
-                    )}
-                  </div>
+                  <ConvertMenu
+                    t={t}
+                    busy={convertBusy || exporting !== null}
+                    label={
+                      exporting
+                        ? imagesProgress && imagesProgress.total > 0
+                          ? t('imgExportProgress', imagesProgress)
+                          : t('exporting')
+                        : t('convertPdf')
+                    }
+                    onConvert={(format) => void convertTo(format)}
+                    onReflow={openConvertDialog}
+                    onPageImages={(allPages, format) => void exportImages(allPages, format)}
+                    onEmbedded={exportPagePictures}
+                  />
                 </div>
               </div>
               <div className="ribbon-sep" />
@@ -9793,32 +9773,6 @@ export default function App() {
                       <IconPrint />
                     </span>
                     <span>{printing ? t('printPreparing') : t('print')}</span>
-                  </button>
-                  <ExportImagesMenu
-                    t={t}
-                    icon={<IconExportImg />}
-                    busy={exporting !== null}
-                    label={
-                      exporting === 'png'
-                        ? imagesProgress && imagesProgress.total > 0
-                          ? t('imgExportProgress', imagesProgress)
-                          : t('exporting')
-                        : t('exportImages')
-                    }
-                    onWholePages={() => void exportImages(true)}
-                    onCurrentPage={() => void exportImages(false)}
-                    onEmbedded={exportPagePictures}
-                  />
-                  <button
-                    className="rb-big"
-                    data-tip={t('exportImagesAllJpg')}
-                    disabled={exporting !== null}
-                    onClick={() => void exportImages(true, 'jpg')}
-                  >
-                    <span className="rb-big-icon">
-                      <IconExportImg />
-                    </span>
-                    <span>{exporting === 'jpg' ? t('exporting') : t('exportImagesJpg')}</span>
                   </button>
                   <button
                     className="rb-big"

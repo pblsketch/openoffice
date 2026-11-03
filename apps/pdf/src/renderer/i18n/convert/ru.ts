@@ -68,6 +68,7 @@ export const ru = {
   imgExportWholePages: 'Страницы целиком',
   imgExportCurrentPage: 'Только текущая страница',
   imgExportCurrentPageTip: 'Экспортировать просматриваемую страницу в один файл PNG',
+  imgExportCurrentPageJpgTip: 'Экспортировать просматриваемую страницу в один файл JPG',
   imgExportEmbedded: 'Только изображения на страницах',
   imgExportEmbeddedTip:
     'Сохранить изображения, размещённые на страницах, в файлы PNG в исходном разрешении',
