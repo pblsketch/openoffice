@@ -1,0 +1,36 @@
+{
+  "version": "v32.6.9",
+  "url": "https://github.com/jgraph/drawio/releases/download/v32.6.9/draw.war",
+  "sha256": "31afc82b7920c409d0591f6126ccb6c377d7800e7f11ab324f88bdf1e4249ce7",
+  "size": 49701599,
+  "remove": [
+    "WEB-INF/**",
+    "META-INF/**",
+    "js/diagramly/**",
+    "js/grapheditor/**",
+    "js/plantuml/**",
+    "js/libavoid-js/**",
+    "js/elk/**",
+    "js/integrate.min.js",
+    "js/viewer.min.js",
+    "connect/**",
+    "teams.html",
+    "onedrive3.html",
+    "js/onedrive/**",
+    "service-worker*",
+    "workbox-*",
+    "js/deflate/base64.js",
+    "images/glyphicons_*.png"
+  ],
+  "cut": [
+    {
+      "file": "js/extensions.min.js",
+      "pieces": [
+        "js/elk/drawio-elk.min.js",
+        "js/libavoid-js/libavoid.min.js",
+        "js/libavoid-js/libavoid-routing.js"
+      ],
+      "sha256": "276ff2a892efc41b9921326d8e6a5c7bb0aaf4b98353eac7b6ad21adfb651a30"
+    }
+  ]
+}

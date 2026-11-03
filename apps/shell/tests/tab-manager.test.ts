@@ -210,6 +210,19 @@ vi.mock('../../epub/src/main/epub-main', () => ({
   requestEpubClose: (...args: unknown[]) => requestEpubClose(...(args as [])),
 }))
 
+const createDiagramView = vi.fn(() => makeFakeView())
+const diagramIsDirty = vi.fn(() => false)
+const requestDiagramClose = vi.fn(() => Promise.resolve(true))
+/** what the diagram editor reports per view: a `.vsdx` opens as an untitled import */
+const diagramTabIdentity = vi.fn((_id: number): Record<string, unknown> | null => null)
+
+vi.mock('../../diagram/src/main/diagram-main', () => ({
+  createDiagramView: (...args: unknown[]) => createDiagramView(...(args as [])),
+  diagramIsDirty: (...args: unknown[]) => diagramIsDirty(...(args as [])),
+  requestDiagramClose: (...args: unknown[]) => requestDiagramClose(...(args as [])),
+  diagramTabIdentity: (id: number) => diagramTabIdentity(id),
+}))
+
 import { helpTopicParam, helpViewUrl, TabManager } from '../src/main/tab-manager'
 import type { TabKind } from '../src/shared/tabs-api'
 
@@ -261,6 +274,9 @@ beforeEach(() => {
   requestMindmapClose.mockImplementation(() => Promise.resolve(true))
   epubIsDirty.mockImplementation(() => false)
   requestEpubClose.mockImplementation(() => Promise.resolve(true))
+  diagramIsDirty.mockImplementation(() => false)
+  requestDiagramClose.mockImplementation(() => Promise.resolve(true))
+  diagramTabIdentity.mockImplementation(() => null)
   shellWindow = makeShellWindow()
   onChanged = vi.fn()
   applyMenuFor = vi.fn()
@@ -407,6 +423,45 @@ describe('opening tabs', () => {
     expect(manager.activeEpubTab()).toMatchObject({ id, filePath: '/tmp/novel.epub' })
     manager.openSlidesTab()
     expect(manager.activeEpubTab()).toBeUndefined()
+  })
+
+  it('opens a diagram tab for its file, and an untitled one-page diagram without one', () => {
+    const fileId = manager.openDiagramTab('/tmp/flow.drawio')
+    expect(createDiagramView).toHaveBeenLastCalledWith('/tmp/flow.drawio')
+    expect(manager.list().find((t) => t.id === fileId)).toMatchObject({
+      kind: 'diagram',
+      title: 'flow.drawio',
+      filePath: '/tmp/flow.drawio',
+      active: true,
+    })
+    expect(applyMenuFor).toHaveBeenLastCalledWith('diagram')
+    expect(manager.findDiagramTabByPath('/tmp/flow.drawio')).toBe(fileId)
+    expect(manager.activeDiagramTab()).toMatchObject({ id: fileId, filePath: '/tmp/flow.drawio' })
+
+    const untitledId = manager.openDiagramTab()
+    expect(createDiagramView).toHaveBeenLastCalledWith(undefined)
+    const untitled = manager.list().find((t) => t.id === untitledId)
+    expect(untitled).toMatchObject({ kind: 'diagram', title: 'Diagram' })
+    expect(untitled?.filePath).toBeUndefined()
+    manager.openSlidesTab()
+    expect(manager.activeDiagramTab()).toBeUndefined()
+  })
+
+  it('opens a Visio drawing as an untitled diagram the same file finds again', () => {
+    diagramTabIdentity.mockImplementation(() => ({
+      sourcePath: '/tmp/plan.vsdx',
+      untitled: true,
+      title: 'plan',
+      imported: 'vsdx',
+    }))
+    const id = manager.openDiagramTab('/tmp/plan.vsdx')
+    expect(createDiagramView).toHaveBeenLastCalledWith('/tmp/plan.vsdx')
+    const tab = manager.list().find((t) => t.id === id)
+    // the drawing is never written: the tab has no file until its first save
+    expect(tab).toMatchObject({ kind: 'diagram', title: 'plan' })
+    expect(tab?.filePath).toBeUndefined()
+    expect(manager.findDiagramTabByPath('/tmp/plan.vsdx')).toBe(id)
+    expect(manager.findDiagramTabByPath('/tmp/other.vsdx')).toBeUndefined()
   })
 
   it('titles an untitled mind map with the name the shell supplies for that kind', () => {
@@ -1001,6 +1056,15 @@ describe('file path bookkeeping', () => {
         return lastCreatedView(createEpubView)
       },
     },
+    {
+      kind: 'diagram',
+      file: '/tmp/one.drawio',
+      renamed: '/tmp/two.drawio',
+      open: () => {
+        manager.openDiagramTab('/tmp/one.drawio')
+        return lastCreatedView(createDiagramView)
+      },
+    },
   ]
 
   it.each(RENAMABLE)('a rename reports the $kind view', (c) => {
@@ -1218,6 +1282,28 @@ describe('dirty-tab queries (shell close guard)', () => {
     expect(manager.list().some((t) => t.id === id)).toBe(true)
   })
 
+  it('lists dirty diagram tabs and asks before closing one', async () => {
+    manager.openDiagramTab('/tmp/clean.drawio')
+    const dirtyId = manager.openDiagramTab('/tmp/dirty.drawio')
+    const dirtyView = lastCreatedView(createDiagramView)
+    expect(manager.dirtyDiagramTabs()).toEqual([])
+    diagramIsDirty.mockImplementation(
+      ((id: number) => id === dirtyView.webContents.id) as () => boolean,
+    )
+    expect(manager.dirtyDiagramTabs()).toEqual([
+      { id: dirtyId, webContents: dirtyView.webContents },
+    ])
+    const documents = await manager.openDocuments()
+    expect(documents.map((d) => [d.kind, d.filePath, d.dirty])).toEqual([
+      ['diagram', '/tmp/clean.drawio', false],
+      ['diagram', '/tmp/dirty.drawio', true],
+    ])
+    requestDiagramClose.mockImplementation(() => Promise.resolve(false))
+    await manager.closeTab(dirtyId)
+    expect(requestDiagramClose).toHaveBeenCalledWith(dirtyView.webContents, expect.anything())
+    expect(manager.list().some((t) => t.id === dirtyId)).toBe(true)
+  })
+
   it('lists every live docs tab for the async dirtiness sweep', () => {
     manager.openDocsTab()
     manager.openSheetsTab()
@@ -1249,8 +1335,9 @@ describe('detach / attach (Open in New Window, tear-off, dock)', () => {
     const html = manager.openHtmlTab()
     const mindmap = manager.openMindmapTab()
     const epub = manager.openEpubTab('/tmp/novel.epub')
+    const diagram = manager.openDiagramTab('/tmp/flow.drawio')
     const present = manager.openHtmlPresentTab({ id: 999 } as never, 'Preview')
-    for (const id of [docs, sheets, slides, pdf, markdown, html, mindmap, epub])
+    for (const id of [docs, sheets, slides, pdf, markdown, html, mindmap, epub, diagram])
       expect(manager.canDetachTab(id)).toBe(true)
     expect(manager.canDetachTab('home')).toBe(false)
     expect(manager.canDetachTab(present)).toBe(false)

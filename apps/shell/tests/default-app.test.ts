@@ -192,7 +192,10 @@ describe('createDefaultAppService', () => {
     ]
     const run = vi.fn<RunCommand>(async (_cmd, args) => {
       const index = OFFICE_TYPES.findIndex((t) => args[1].endsWith(`.${t.ext}\\UserChoice`))
-      if (index >= 0) return `    ProgId    REG_SZ    ${upstream[index]}\r\n`
+      // the diagram types are the upstream app's to leave unclaimed
+      if (index >= 0 && index < upstream.length) {
+        return `    ProgId    REG_SZ    ${upstream[index]}\r\n`
+      }
       throw new Error('missing')
     })
     const svc = createDefaultAppService({ ...base, platform: 'win32', run })

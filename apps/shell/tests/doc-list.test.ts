@@ -197,6 +197,35 @@ describe('createDocList', () => {
     expect(items.map((i) => i.title)).toEqual(['ok.docx', 'pic.png'])
   })
 
+  it('knows a draw.io picture by its double extension, at the document cap', async () => {
+    const sizes: Record<string, number> = {
+      'C:/docs/flow.drawio.svg': MAX,
+      'C:/docs/flow.drawio.png': IMG_MAX + 1,
+      'C:/docs/plain.svg': 1,
+      'C:/docs/photo.png': IMG_MAX + 1,
+    }
+    const pictureExt = (name: string): string | null =>
+      /\.drawio\.(svg|png)$/i.exec(name)?.[0].slice(1).toLowerCase() ?? null
+    const items = await itemsOf(
+      deps({
+        openDocuments: async () =>
+          Object.keys(sizes).map((path, i) => ({
+            id: `t${i}`,
+            path,
+            title: path.slice(path.lastIndexOf('/') + 1),
+            dirty: false,
+          })),
+        stat: async (path) => ({ sizeBytes: sizes[path] ?? 0 }),
+        attachable: {
+          ...attachable,
+          ATTACHABLE_EXTS: new Set([...attachable.ATTACHABLE_EXTS, 'drawio.svg', 'drawio.png']),
+          diagramPictureExtOfName: pictureExt,
+        },
+      }),
+    )
+    expect(items.map((i) => i.title)).toEqual(['flow.drawio.svg', 'flow.drawio.png'])
+  })
+
   it('marks a missing recent file, and one that cannot be stat-ed, as missing', async () => {
     const items = await itemsOf(
       deps({

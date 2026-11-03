@@ -11,8 +11,11 @@ export {
   ATTACHABLE_MAX_BYTES,
   ATTACHABLE_IMAGE_MAX_BYTES,
   attachableMaxBytes,
+  diagramPictureExtOfName,
   isAttachableExt,
+  type DiagramPictureExt,
 } from './attachable'
+export { diagramPictureExtOf, diagramToText } from './diagram'
 export { docToText } from './doc'
 export { docxToText } from './docx'
 export { checkedHwpBytes, hwpMemosOf, hwpToText, type HwpMemo } from './hwp'

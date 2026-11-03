@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 
-export type GuideDomain = 'slides' | 'docs' | 'sheets' | 'hwp'
+export type GuideDomain = 'slides' | 'docs' | 'sheets' | 'hwp' | 'diagram'
 
 /** The subset of JSON Schema the op catalogs use (zod's output and the docs tool schemas). */
 export interface JsonSchema {

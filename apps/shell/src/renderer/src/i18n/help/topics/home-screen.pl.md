@@ -44,6 +44,8 @@ Karty nad listami tworzą nowy dokument jednym krokiem. Kliknięcie karty tworzy
 
 Nowy plik trafia do folderu aktualnie zaznaczonego na pasku bocznym; jeśli nic nie jest zaznaczone, trafia do folderu domyślnego.
 
+Aby ukryć karty lub zmienić ich kolejność, użyj **Nowe dokumenty na stronie głównej** w Ustawienia → Ogólne. Wyłączony typ znika tylko z kart i z menu Nowy; pliki tego typu nadal się otwierają. Na stronie głównej ⌘N/Ctrl+N tworzy pierwszy wciąż widoczny typ.
+
 Co robi każda karta:
 
 - **AI Docs** (.docx): pusty dokument tekstowy w edytorze Docs. Plik zostaje zapisany na dysku dopiero przy **pierwszym zapisaniu**; nowe dokumenty otwierają się z rozwiniętym panelem AI (wyłączasz to w Ustawienia → „Otwieraj panel AI w nowych dokumentach”).

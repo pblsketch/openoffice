@@ -17,6 +17,10 @@
  * rhwp tag (manifests only, cached under node_modules/.cache). Without them a
  * local build degrades to a pointer; with CI or IEUM_RELEASE set the gap is an
  * error, and electron-builder's beforePack rejects a notice that has it.
+ *
+ * The draw.io section reads the pinned draw.io release through
+ * vendor/drawio/bundle.mjs (downloaded once into vendor/drawio/.cache) for
+ * the license files it ships; without it the section is a gap like the above.
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, rmSync } from 'node:fs'
 import { join, dirname, relative } from 'node:path'
@@ -24,6 +28,7 @@ import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import { builtinModules, createRequire } from 'node:module'
 import { licenseText } from './license-text.mjs'
+import { loadDrawio, loadInventory, VENDOR_DIR as DRAWIO_VENDOR } from '../vendor/drawio/bundle.mjs'
 
 const require = createRequire(import.meta.url)
 
@@ -65,6 +70,7 @@ const SRC_GLOBS = [
   'apps/mindmap/src',
   'apps/hwp/src',
   'apps/epub/src',
+  'apps/diagram/src',
   'apps/markdown/src',
   'apps/pdf/src',
   'apps/sheets/src',
@@ -766,6 +772,133 @@ and "PowerPoint" are trademarks of Microsoft Corporation. "한글" (Hangul),
 ${PRODUCT_NAME} opens.
 `
 
+const BSD_3_CLAUSE = `Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+3. Neither the name of the copyright holder nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.`
+
+/** the license terms of one draw.io inventory component, by its SPDX expression */
+async function drawioComponentTerms(c, read) {
+  switch (c.license) {
+    case 'MIT':
+      return MIT_PERMISSION
+    case 'MIT AND Zlib':
+      return `${MIT_PERMISSION}\n\nzlib License (the parts ported from zlib):\n\n${ZLIB_LICENSE}`
+    case 'BSD-3-Clause':
+      return BSD_3_CLAUSE
+    case 'Apache-2.0':
+      return 'Licensed under the Apache License, Version 2.0 (full text at the start of this section).'
+    case 'OFL-1.1':
+      return 'Licensed under the SIL Open Font License 1.1 (full text in section 4).'
+    case 'CC-BY-4.0':
+      return (await read(c.licenseFile)).toString('utf8').trim()
+    default:
+      throw new Error(`no license text for draw.io component ${c.name}: ${c.license}`)
+  }
+}
+
+/**
+ * draw.io and everything inside the bundle the diagram editor ships: the
+ * release it comes from, what was left out or cut and why, the Apache-2.0
+ * text, and each component of vendor/drawio/inventory.json with its terms.
+ * The shape-library restriction and the template license are copied from
+ * the release files verbatim.
+ */
+async function drawioSection(drawio, inventory) {
+  const { config } = drawio
+  const [self, ...others] = inventory.components
+  let text = `
+draw.io ${config.version} (${self.url}), Apache License 2.0.
+${self.copyright}
+
+The diagram editor ships the files of the draw.io release asset
+${config.url}
+(SHA-256 ${config.sha256}) under resources/modules/diagram/drawio.
+${self.note}
+
+Changes from the release:
+
+- ${drawio.removedFiles.length} release files are left out: server parts, development sources,
+  bundles and helpers the editor does not load, cloud connection pages,
+  service workers, and parts under licenses this application does not ship
+  (PlantUML, ELK, libavoid, and the Glyphicons sharing icons, CC BY 3.0),
+  matched by these patterns:
+${config.remove.map((p) => `    ${p}`).join('\n')}
+`
+  for (const cut of config.cut) {
+    const d = drawio.derived.get(cut.file)
+    text += `- ${cut.file} is the release file (${d.originalLength} bytes) with the bytes
+  of the following files of the same release removed, each found verbatim
+  exactly once inside it (byte offsets in the release file). Nothing else in
+  it is changed; the result is ${d.bytes.length} bytes, SHA-256 ${cut.sha256}.
+${d.ranges.map((r) => `    ${r.name}: bytes ${r.offset}-${r.offset + r.length - 1}`).join('\n')}
+  Those files are ELK (EPL-2.0) and libavoid with its routing core
+  (LGPL-2.1), which this application does not ship.
+`
+  }
+  text += `- Every other shipped file is byte-identical to the release. When the
+  editor page is served, the application adds its own bridge script to
+  index.html in memory; the shipped file itself is not changed.
+`
+  text += sub('Apache License 2.0 — full text (draw.io LICENSE)')
+  // trimEnd only: the license title is indented in the original
+  text += readFileSync(join(DRAWIO_VENDOR, 'LICENSE'), 'utf8').replace(/^\n+/, '').trimEnd() + '\n'
+
+  for (const c of others) {
+    const version = c.version ? ` ${c.version}` : ''
+    const license = c.offered
+      ? `${c.license} (dual ${c.offered}, used under ${c.license})`
+      : c.license
+    text += sub(`${c.name}${version} — ${license}`)
+    text += `${c.copyright}\n${c.url}\nShipped in: ${c.files.join(', ')}\n`
+    if (c.note) text += `${c.note}\n`
+    if (c.restrictionFiles) {
+      const byText = new Map()
+      for (const f of c.restrictionFiles) {
+        const restriction = (await drawio.read(f)).toString('utf8').trim()
+        byText.set(restriction, [...(byText.get(restriction) ?? []), f])
+      }
+      for (const [restriction, files] of byText) {
+        text += `\nRestriction, verbatim from ${files.join(', ')}:\n\n${restriction}\n`
+      }
+    }
+    text += `\n${await drawioComponentTerms(c, drawio.read)}\n`
+  }
+  return text
+}
+
+out += hr('7. draw.io (diagram editor)')
+let drawio = null
+try {
+  drawio = await loadDrawio()
+} catch (err) {
+  gap(`draw.io bundle unavailable (${err.message.split('\n')[0]})`)
+}
+if (drawio === null) {
+  out += '\ndraw.io release unavailable at generation time; see vendor/drawio/inventory.json.\n'
+} else {
+  out += await drawioSection(drawio, loadInventory())
+}
+
 for (const term of ['@embedpdf/pdfium', 'Copyright 2014 PDFium Authors', 'Apache License']) {
   if (!out.includes(term)) {
     throw new Error(`generated third-party notice is missing PDFium term: ${term}`)
@@ -778,7 +911,7 @@ writeFileSync(dest, out)
 console.log(
   `written: ${relative(ROOT, dest)} (${(out.length / 1024).toFixed(0)} KB) — ` +
     `${resolved.length} npm packages, ${crates?.length ?? 0} xlsx-sidecar crates, ` +
-    `${wasmCrates?.length ?? 0} rhwp crates`,
+    `${wasmCrates?.length ?? 0} rhwp crates, draw.io ${drawio ? drawio.config.version : 'missing'}`,
 )
 if (noText.length > 0) console.warn(`no license file published: ${noText.join(', ')}`)
 if (missing.size > 0) console.warn(`not installed, skipped: ${[...missing].join(', ')}`)

@@ -11,6 +11,7 @@ const discardDocsRecovery = vi.fn()
 const discardSheetsRecovery = vi.fn()
 const discardMindmapRecovery = vi.fn()
 const hwpDiscardRecoveryCopy = vi.fn()
+const discardDiagramRecovery = vi.fn()
 
 vi.mock('electron', () => ({ app: { getPath: () => '' } }))
 
@@ -61,6 +62,12 @@ vi.mock('../../hwp/src/main/hwp-main', () => ({
   setHwpRecoveryTitle: () => {},
 }))
 
+vi.mock('../../diagram/src/main/diagram-main', () => ({
+  discardDiagramRecovery: (...args: unknown[]) => discardDiagramRecovery(...args),
+  diagramRecoveryIdentity: () => null,
+  setDiagramRecoveryTitleHook: () => {},
+}))
+
 vi.mock('../src/main/tab-manager', () => ({ createPlainEditorView: () => ({}) }))
 
 const { discardEditorRecovery } = await import('../src/main/recovery-shell')
@@ -94,10 +101,12 @@ describe('discardEditorRecovery', () => {
     discardEditorRecovery('docs', contents() as never)
     discardEditorRecovery('mindmap', contents() as never)
     discardEditorRecovery('hwp', contents() as never)
+    discardEditorRecovery('diagram', contents() as never)
 
     expect(discardDocsRecovery).toHaveBeenCalledTimes(1)
     expect(discardMindmapRecovery).toHaveBeenCalledTimes(1)
     expect(hwpDiscardRecoveryCopy).toHaveBeenCalledTimes(1)
+    expect(discardDiagramRecovery).toHaveBeenCalledTimes(1)
     expect(discardSheetsRecovery).not.toHaveBeenCalled()
   })
 })

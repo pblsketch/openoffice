@@ -1175,6 +1175,91 @@ const PATCHES = {
       },
     ],
   },
+  // A page canvas is rasterized at the device resolution but shown in a box of the logical
+  // page size, at a position that falls between device pixels by a different fraction on
+  // each page; smoothing it again blurred the text, page by page differently. Show the
+  // samples as they are when the canvas holds one per device pixel (upstream #8191,
+  // 609725346, without its print-paper parts that 0.8.7 lacks). A canvas the surface budget
+  // drew smaller, a zoom preview and the print profile keep the default smoothing.
+  'studio-page-raster-filter': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]view[\\/]canvas-view\.ts$/,
+    edits: [
+      {
+        find: 'export class CanvasView {',
+        replace: [
+          '/** The image-rendering for a page canvas: its own samples when each axis holds one per device pixel. */',
+          'function pageRasterFilter(',
+          '  canvasWidth: number,',
+          '  canvasHeight: number,',
+          '  deviceWidth: number,',
+          '  deviceHeight: number,',
+          '  profile: string,',
+          "): 'crisp-edges' | 'auto' {",
+          '  const ownsDeviceAxis = (actual: number, logical: number): boolean => (',
+          '    Number.isFinite(logical) && logical > 0',
+          '    && (actual === Math.floor(logical) || actual === Math.ceil(logical))',
+          '  );',
+          "  return profile !== 'print'",
+          '    && ownsDeviceAxis(canvasWidth, deviceWidth)',
+          "    && ownsDeviceAxis(canvasHeight, deviceHeight) ? 'crisp-edges' : 'auto';",
+          '}',
+          '',
+          'export class CanvasView {',
+        ].join('\n'),
+      },
+      {
+        find: [
+          "      element.style.transform = 'translateX(-50%)';",
+          '    }',
+          "    element.style.transformOrigin = '';",
+          '  }',
+        ].join('\n'),
+        replace: [
+          "      element.style.transform = 'translateX(-50%)';",
+          '    }',
+          "    element.style.transformOrigin = '';",
+          '    this.applyCanvasRasterFilter(element, pageIdx, this.viewportManager.getZoom());',
+          '  }',
+        ].join('\n'),
+      },
+      {
+        find: [
+          '      element.style.width = cssWidth;',
+          '      element.style.height = cssHeight;',
+          '    }',
+          '  }',
+        ].join('\n'),
+        replace: [
+          '      element.style.width = cssWidth;',
+          '      element.style.height = cssHeight;',
+          '      this.applyCanvasRasterFilter(element, pageIdx, zoom);',
+          '    }',
+          '  }',
+          '',
+          '  private applyCanvasRasterFilter(element: HTMLElement, pageIdx: number, zoom: number): void {',
+          '    const page = this.pages[pageIdx];',
+          "    if (!page || element.tagName !== 'CANVAS') return;",
+          '    const canvas = element as HTMLCanvasElement;',
+          '    const dpr = globalThis.devicePixelRatio || 1;',
+          '    canvas.style.imageRendering = pageRasterFilter(',
+          '      canvas.width,',
+          '      canvas.height,',
+          '      page.width * zoom * dpr,',
+          '      page.height * zoom * dpr,',
+          '      this.pageRenderer.getRenderProfile(),',
+          '    );',
+          '  }',
+        ].join('\n'),
+      },
+      {
+        find: '  private applyZoomPreviewBox(element: HTMLElement, pageIdx: number, scale: number): void {',
+        replace: [
+          '  private applyZoomPreviewBox(element: HTMLElement, pageIdx: number, scale: number): void {',
+          "    if (element.tagName === 'CANVAS') element.style.imageRendering = 'auto';",
+        ].join('\n'),
+      },
+    ],
+  },
 }
 
 /** The patches the studio build applies, in order; the SDK's own is applied by the renderer builds. */
@@ -1214,6 +1299,7 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-font-memo-use',
   'studio-cell-block-paste',
   'studio-pc-fonts',
+  'studio-page-raster-filter',
 ])
 
 /** Whether a patch is written against this file. */
