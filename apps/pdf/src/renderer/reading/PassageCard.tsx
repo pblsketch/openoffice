@@ -53,6 +53,7 @@ export function PassageCardView({
   anchor,
   body,
   readOnly,
+  readOnlyReason,
   extraActions,
   onCopy,
   onKeepAsNote,
@@ -67,6 +68,7 @@ export function PassageCardView({
   anchor: AskAnchorRect
   body: PassageCardBody
   readOnly: boolean
+  readOnlyReason?: string
   /** the extension slot: more actions on a ready card */
   extraActions?: ReactNode
   onCopy: () => void
@@ -80,7 +82,7 @@ export function PassageCardView({
   const shortExcerpt = excerpt.replace(/\s+/g, ' ').trim()
   const ready = body.kind === 'card' ? body : null
   const noteTip = readOnly
-    ? t('roEncrypted')
+    ? (readOnlyReason ?? t('roEncrypted'))
     : ready?.note === 'pending'
       ? t('rdNotePendingTip')
       : t('rdSaveAsNoteTip')

@@ -1164,6 +1164,8 @@ export default function App() {
   const [formCatalog, setFormCatalog] = useState<FormCatalog | null>(null)
   const [formHasXfa, setFormHasXfa] = useState(false)
   const [documentEncrypted, setDocumentEncrypted] = useState(false)
+  /** Opened with blank stand-ins for lost page objects (page-tree-patch) */
+  const [documentDamaged, setDocumentDamaged] = useState(false)
   /** opened from a crash-recovery copy and not saved since: unsaved with no pending edit */
   const [restoredUnsaved, setRestoredUnsaved] = useState(false)
   /** false until a password-protected document has been opened for editing by the
@@ -1557,7 +1559,11 @@ export default function App() {
     ) => {
       const data = await window.pdfApi.readFile(path)
       const bytes = new Uint8Array(data)
-      setFormHasXfa(hasXfaMarker(bytes))
+      // getDocument transfers the buffer to its worker, leaving `data` and `bytes`
+      // empty here: take what is needed from them first
+      const byteLength = data.byteLength
+      const xfaMarker = hasXfaMarker(bytes)
+      setFormHasXfa(xfaMarker)
       if (!saved) {
         setFormCatalog(null)
         setSavedAttachments(null)
@@ -1609,13 +1615,16 @@ export default function App() {
           keywords: documentInfo.Keywords ?? '',
         })
         const formFeatures = documentFormFeatures(documentInfo, bytes)
-        setFormHasXfa(formFeatures.hasXfa)
+        setFormHasXfa(formFeatures.hasXfa || xfaMarker)
         setDocumentEncrypted(formFeatures.encrypted)
         if (formFeatures.encrypted) {
           // pdf.js already accepted this password for rendering; the session's own
           // handler must accept it too before the document counts as editable
           const password = passwordRef.current ?? ''
-          const outcome = await window.pdfApi.decryptPdf(bytes, password)
+          const outcome = await window.pdfApi.decryptPdf(
+            new Uint8Array(await window.pdfApi.readFile(path)),
+            password,
+          )
           if (outcome.ok) {
             setEncryption({
               userPassword: password,
@@ -1640,15 +1649,45 @@ export default function App() {
           diskPasswordRef.current = null
         }
         setProtectionDirty(false)
-        for (let i = 1; i <= loaded.numPages; i++) {
-          const page = await loaded.getPage(i)
-          // Unrotated size; display size is derived by geom from the total rotation
-          const vp = page.getViewport({ scale: 1, rotation: 0 })
-          all.push({ width: vp.width, height: vp.height })
-          rots.push(page.rotate ?? 0)
-          origins.push([page.view[0]!, page.view[1]!])
-          userUnits.push(page.userUnit ?? 1)
+        const probePages = async (d: PDFDocumentProxy) => {
+          all.length = rots.length = origins.length = userUnits.length = 0
+          for (let i = 1; i <= d.numPages; i++) {
+            const page = await d.getPage(i)
+            // Unrotated size; display size is derived by geom from the total rotation
+            const vp = page.getViewport({ scale: 1, rotation: 0 })
+            all.push({ width: vp.width, height: vp.height })
+            rots.push(page.rotate ?? 0)
+            origins.push([page.view[0]!, page.view[1]!])
+            userUnits.push(page.userUnit ?? 1)
+          }
         }
+        let damaged = false
+        try {
+          await probePages(loaded)
+        } catch (pageErr) {
+          // A page object lost to damaged bytes takes every page PDF.js walks past it
+          // down with it. Show the lost one blank, as Acrobat does, from patched bytes
+          // in memory; the view stays read-only since saving would see the damage.
+          const { patchMissingPageKids } = await import('./page-tree-patch')
+          const patched = await patchMissingPageKids(
+            new Uint8Array(await window.pdfApi.readFile(path)),
+          )
+          if (!patched) throw pageErr
+          const retry = getDocument({
+            data: patched.bytes,
+            password: passwordRef.current,
+            ...DOC_OPTS,
+          })
+          const reopened = await retry.promise.catch(() => {
+            void retry.destroy()
+            throw pageErr
+          })
+          void loaded.loadingTask.destroy()
+          loaded = reopened
+          await probePages(loaded)
+          damaged = true
+        }
+        setDocumentDamaged(damaged)
       } catch (err) {
         // getMetadata/page probing failed after the document resolved but before
         // setDoc adopted it: destroy the half-open document (pdfjs-dist 6.x
@@ -1923,7 +1962,7 @@ export default function App() {
           return mapped.every((n, i) => n === i) ? null : mapped
         })
       }
-      setFileSize(data.byteLength)
+      setFileSize(byteLength)
       setSelected(null)
       setMarkupMenu(null)
       setPageSel(EMPTY_PAGE_SELECTION)
@@ -2031,11 +2070,16 @@ export default function App() {
       files count after our own decryptor accepted them (the save pipeline re-reads the
       protected bytes from disk, which pdf-lib alone cannot). A session holding only
       the user password — or the empty one of an owner-only file — is additionally
-      bound by the /P the file carries: modifying denied means read-only. */
+      bound by the /P the file carries: modifying denied means read-only. A file shown
+      with blank stand-ins for lost pages is read-only too: the save pipeline reads the
+      damaged file, whose pages no longer line up with the view. */
   const readOnly =
     status === 'ready' &&
-    documentEncrypted &&
-    (!sessionUnlocked || (diskLock !== null && !diskLock.unlockedAsOwner && !diskLock.modifying))
+    (documentDamaged ||
+      (documentEncrypted &&
+        (!sessionUnlocked ||
+          (diskLock !== null && !diskLock.unlockedAsOwner && !diskLock.modifying))))
+  const readOnlyReason = documentDamaged ? t('roDamaged') : t('roEncrypted')
   /** Only the owner password may change or lift protection: a user-password
       session, even one allowed to modify the content, must not be able to strip
       the owner's password. A plain document has no protection to lose. */
@@ -3627,7 +3671,7 @@ export default function App() {
       e.preventDefault()
       if ('blocked' in verdict) {
         // the same reason the hidden markup buttons stand for
-        showNotice(t('roEncrypted'))
+        showNotice(readOnlyReason)
         return
       }
       runSelectionBarAction(verdict.action)
@@ -9546,7 +9590,7 @@ export default function App() {
             </button>
           )}
           <span className="ribbon-tabs-spacer" />
-          {readOnly && <span className="tb-readonly">{t('roEncrypted')}</span>}
+          {readOnly && <span className="tb-readonly">{readOnlyReason}</span>}
           {/* Pending edits wait for an explicit save or an enabled autosave. */}
           {saveState === 'saving' ? (
             <span className="tb-save-pending">{t('saving')}</span>
@@ -10682,6 +10726,7 @@ export default function App() {
             lang={lang}
             t={t}
             readOnly={readOnly}
+            readOnlyReason={readOnlyReason}
             title={(metadata ?? docInfo).title?.trim() || ''}
             pageText={async (origIdx) => (doc ? readPageText(doc, origIdx) : '')}
             addNote={(note) => {
