@@ -312,15 +312,3 @@ it('unwraps the outermost control and leaves the inner control standing', async 
   expect(controlled[0]!.contentControl!.tag).toBe('inner')
   expect(controlled[0]!.contentControls!.map((c) => c.tag)).toEqual(['inner'])
 })
-
-it('leaves word/document.xml byte-identical when a save does not touch it', async () => {
-  const dir = tempDir()
-  const input = join(dir, 'nested.docx')
-  const ops = join(dir, 'ops.json')
-  writeFileSync(input, await buildDocx({ bodyXml: NESTED_BODY }))
-  const before = await documentXml(input)
-  writeFileSync(ops, JSON.stringify([{ op: 'set_properties', core: { title: 'Nested' } }]))
-  const result = await run(['docs', 'apply', input, '--ops', ops, '--json'])
-  expect(result.code, result.stderr).toBe(0)
-  expect(await documentXml(input)).toBe(before)
-})

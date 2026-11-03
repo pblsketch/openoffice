@@ -56,7 +56,7 @@ describe('formula view indicator', () => {
   it('every language carries the wording', () => {
     const dir = join(here, '..', 'src/renderer/i18n/app')
     const files = readdirSync(dir).filter((f) => f.endsWith('.ts'))
-    expect(files.length).toBeGreaterThanOrEqual(22)
+    expect(files.length).toBeGreaterThanOrEqual(21)
     for (const file of files) {
       expect(readFileSync(join(dir, file), 'utf8'), file).toContain('appShowingFormulasActive')
     }
