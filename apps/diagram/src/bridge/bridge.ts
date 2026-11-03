@@ -1,0 +1,427 @@
+/**
+ * Our one script inside the draw.io frame (spec 4, 6, 10). The protocol
+ * handler puts it first in draw.io's `index.html`; draw.io's own files are
+ * never changed. Before draw.io loads it:
+ *
+ * - fixes draw.io's configuration (`DRAWIO_CONFIG`, which draw.io's own
+ *   PreConfig would otherwise reset): no draw.io AI, no web fonts, no export
+ *   server, the menus the app takes out;
+ * - hides draw.io's logo and links to its web pages;
+ * - catches `App.main` to reach the editor object once draw.io made it.
+ *
+ * With the editor object it hides actions, sends the ones the app does itself
+ * (help, print, the picture and PDF exports, save) to the host, keeps the app's
+ * shortcuts (Ctrl+S, Ctrl+Shift+S, Ctrl+P), opens only the links a person
+ * clicked (through the host), tracks unsaved changes against the undo
+ * history, and answers the host's requests: the pages as model XML, the
+ * selection, primitive changes as one undo step, the dark view, page
+ * compression, and page pictures for exports.
+ *
+ * Messages: only from the parent window and the parent's origin; ours go to
+ * that origin only.
+ */
+import {
+  DRAWIO_MENU_ACTIONS,
+  isFromHost,
+  parseBridgeMessage,
+  type BridgeEvent,
+  type BridgeOps,
+  type BridgeRequestMessage,
+  type PageInfo,
+} from '../shared/bridge-protocol'
+import { DRAWIO_CONFIG, HIDDEN_ACTIONS, HIDE_CSS, REDIRECTED_ACTIONS } from '../shared/drawio-start'
+import { applyPrimitivesLive } from './apply-primitives'
+import { liveDiagram, readPageXmls, type DrawioUi } from './drawio-adapter'
+import { isAppShortcut } from './shortcuts'
+
+declare const mxEvent: any
+declare const mxUtils: any
+declare const mxConstants: any
+declare const Graph: any
+declare const Editor: any
+
+const w = window as any
+const hostOrigin: string = (() => {
+  try {
+    return location.ancestorOrigins?.[0] ?? ''
+  } catch {
+    return ''
+  }
+})()
+
+function emit(event: BridgeEvent): void {
+  if (!hostOrigin || window.parent === window) return
+  window.parent.postMessage({ ieum: 1, kind: 'event', ...event }, hostOrigin)
+}
+
+// ---- before draw.io loads ----
+
+// draw.io's PreConfig.js assigns `window.DRAWIO_CONFIG = null`; the property
+// keeps ours (an assignment to a getter-only property is ignored outside strict mode)
+const config = JSON.parse(JSON.stringify(DRAWIO_CONFIG)) as Record<string, unknown>
+Object.defineProperty(w, 'DRAWIO_CONFIG', {
+  configurable: false,
+  enumerable: true,
+  get: () => config,
+  set: () => {},
+})
+
+const hideStyle = document.createElement('style')
+hideStyle.textContent = HIDE_CSS
+;(document.head ?? document.documentElement).appendChild(hideStyle)
+
+/** draw.io's globals that change what it reaches for, set once its code is there. */
+function patchDrawio(): void {
+  try {
+    Editor.enableServiceWorker = false
+    Editor.enableWebFonts = false
+    Editor.enableRealtime = false
+    Editor.enableExportUrl = false
+    Editor.enableAi = false
+    Editor.gptUrl = null
+  } catch {
+    // an older or newer draw.io without one of these: the configuration still applies
+  }
+  // A link opens only when a person clicked it, and only through the host,
+  // which applies the same rule as the mind map editor. Nothing else leaves.
+  Graph.prototype.openLink = function (href: unknown): null {
+    const url = typeof Graph.sanitizeLink === 'function' ? Graph.sanitizeLink(href) : href
+    const clicked = (navigator as any).userActivation?.isActive === true
+    if (clicked && typeof url === 'string' && /^(https?:|mailto:)/i.test(url)) {
+      emit({ name: 'openLink', url })
+    }
+    return null
+  }
+}
+
+let ui: DrawioUi = null
+
+// draw.io assigns `App = function…` and then `App.main = …`; both are caught
+// so that the editor object is handed to us the moment `App.main` makes it.
+let appClass: any
+Object.defineProperty(w, 'App', {
+  configurable: true,
+  get: () => appClass,
+  set: (value: any) => {
+    appClass = value
+    if (typeof value !== 'function') return
+    let main: any
+    Object.defineProperty(value, 'main', {
+      configurable: true,
+      get: () =>
+        function (this: unknown, callback?: (made: DrawioUi) => void, factory?: unknown) {
+          patchDrawio()
+          return main.call(
+            this,
+            (made: DrawioUi) => {
+              attach(made)
+              callback?.(made)
+            },
+            factory,
+          )
+        },
+      set: (fn: any) => {
+        main = fn
+      },
+    })
+  },
+})
+
+// ---- the editor object ----
+
+let savedTop: unknown = null
+let forcedDirty = false
+let revision = 0
+let lastDirty = false
+/** the last step at each recent revision, so a save can mark the state it wrote */
+const topAtRevision = new Map<number, unknown>()
+/** a state no undo position can match: a save of content that is gone from the history */
+const STALE = Symbol('stale')
+
+function topEdit(): unknown {
+  const manager = ui?.editor?.undoManager
+  if (!manager || manager.indexOfNextAdd <= 0) return null
+  return manager.history[manager.indexOfNextAdd - 1] ?? null
+}
+
+function reportDirty(): void {
+  const dirty = forcedDirty || topEdit() !== savedTop
+  if (dirty !== lastDirty) {
+    lastDirty = dirty
+    emit({ name: 'dirty', dirty })
+  }
+}
+
+function reportChange(): void {
+  revision++
+  topAtRevision.set(revision, topEdit())
+  if (topAtRevision.size > 200) topAtRevision.delete(topAtRevision.keys().next().value as number)
+  emit({ name: 'changed', revision })
+  reportDirty()
+}
+
+let selectionTimer: ReturnType<typeof setTimeout> | null = null
+function selectedIds(): string[] {
+  const cells: any[] = ui?.editor?.graph?.getSelectionCells?.() ?? []
+  return cells.map((cell) => String(cell.id))
+}
+
+function currentPageId(): string | null {
+  return ui?.currentPage ? String(ui.currentPage.getId()) : null
+}
+
+function attach(made: DrawioUi): void {
+  ui = made
+  for (const name of HIDDEN_ACTIONS) {
+    const action = ui.actions.get(name)
+    if (action) action.visible = false
+  }
+  for (const [name, command] of Object.entries(REDIRECTED_ACTIONS)) {
+    const action = ui.actions.get(name)
+    if (!action) continue
+    action.funct = () => emit({ name: 'command', command })
+    action.isEnabled = () => true
+  }
+  const manager = ui.editor.undoManager
+  for (const name of [mxEvent.ADD, mxEvent.UNDO, mxEvent.REDO, mxEvent.CLEAR]) {
+    manager.addListener(name, reportChange)
+  }
+  ui.editor.graph.getSelectionModel().addListener(mxEvent.CHANGE, () => {
+    if (selectionTimer) clearTimeout(selectionTimer)
+    selectionTimer = setTimeout(() => emit({ name: 'selection', ids: selectedIds() }), 50)
+  })
+  ui.editor.addListener('pageSelected', () => emit({ name: 'currentPage', id: currentPageId() }))
+  emit({ name: 'ready' })
+}
+
+// A plain link in draw.io's own screens (a dialog, a label) never takes the
+// frame away from draw.io: the click is stopped here. Outside the drawing, a
+// web link a person clicked goes to the host like a shape link; inside the
+// drawing draw.io's own link handling (openLink above) does that.
+document.addEventListener(
+  'click',
+  (event) => {
+    const target = event.target instanceof Element ? event.target : null
+    const anchor = target?.closest('a[href]') as HTMLAnchorElement | null
+    if (!anchor) return
+    const href = anchor.getAttribute('href') ?? ''
+    if (href === '' || href.startsWith('#') || /^javascript:/i.test(href)) return
+    let url: URL
+    try {
+      url = new URL(href, location.href)
+    } catch {
+      event.preventDefault()
+      return
+    }
+    if (url.origin === location.origin && url.pathname === location.pathname) return
+    event.preventDefault()
+    const inDrawing = anchor.closest('.geDiagramContainer') !== null
+    if (!inDrawing && event.isTrusted && /^(https?:|mailto:)$/.test(url.protocol)) {
+      emit({ name: 'openLink', url: url.href })
+    }
+  },
+  true,
+)
+
+// The app's own shortcuts work while draw.io has the keyboard; draw.io keeps the rest.
+window.addEventListener(
+  'keydown',
+  (event) => {
+    const key = isAppShortcut(event)
+    if (!key) return
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    emit({ name: 'shortcut', key })
+  },
+  true,
+)
+
+// ---- pictures of pages ----
+
+/** Runs `use` with a graph showing the page (the live graph for the page on screen). */
+async function withPageGraph<T>(
+  pageId: string,
+  use: (graph: any, page: any) => Promise<T>,
+): Promise<T> {
+  const page = ui.getPageById(pageId)
+  if (!page) throw new Error(`no page ${pageId}`)
+  if (page === ui.currentPage) return use(ui.editor.graph, page)
+  const graph = ui.createTemporaryGraph(ui.editor.graph.getStylesheet())
+  ui.updatePageRoot(page)
+  if (page.viewState) {
+    graph.background = page.viewState.background
+    graph.shadowVisible = page.viewState.shadowVisible
+  }
+  document.body.appendChild(graph.container)
+  try {
+    graph.model.setRoot(page.root)
+    return await use(graph, page)
+  } finally {
+    graph.container.parentNode?.removeChild(graph.container)
+  }
+}
+
+function pageSvg(pageId: string, theme: 'light' | 'auto'): Promise<BridgeOps['pageSvg']['reply']> {
+  return withPageGraph(
+    pageId,
+    (graph, page) =>
+      new Promise((resolve, reject) => {
+        try {
+          const lookup = Object.create(null)
+          const imageExport = graph.createSvgImageExport(false)
+          const background = graph.background === mxConstants.NONE ? null : graph.background
+          const svg = ui.getSvgWithFontLookup(lookup, imageExport, () =>
+            graph.getSvg(
+              background,
+              1,
+              0,
+              null,
+              null,
+              null,
+              null,
+              imageExport,
+              null,
+              graph.shadowVisible,
+              null,
+              theme,
+            ),
+          )
+          if (graph.shadowVisible) graph.addSvgShadow(svg)
+          if (page?.getAlt) Graph.addSvgTitle(svg, page.getAlt())
+          ui.embedFonts(
+            svg,
+            (withFonts: any) =>
+              ui.editor.convertImages(withFonts, (done: any) =>
+                resolve({
+                  svg: mxUtils.getXml(done),
+                  width: parseFloat(done.getAttribute('width')) || 0,
+                  height: parseFloat(done.getAttribute('height')) || 0,
+                }),
+              ),
+            false,
+            lookup,
+          )
+        } catch (err) {
+          reject(err instanceof Error ? err : new Error(String(err)))
+        }
+      }),
+  )
+}
+
+function pagePng(pageId: string): Promise<BridgeOps['pagePng']['reply']> {
+  return withPageGraph(
+    pageId,
+    (graph) =>
+      new Promise((resolve, reject) => {
+        try {
+          // light colors whatever the app's theme: PNG and PDF are the same in both
+          ui.editor.exportToCanvas(
+            (canvas: HTMLCanvasElement) => {
+              const url = canvas.toDataURL('image/png')
+              resolve({ base64: url.slice(url.indexOf(',') + 1) })
+            },
+            null,
+            null,
+            null,
+            (err: unknown) => reject(err instanceof Error ? err : new Error(String(err))),
+            null,
+            true,
+            1,
+            false,
+            graph.shadowVisible,
+            null,
+            graph,
+            0,
+            null,
+            false,
+            'light',
+          )
+        } catch (err) {
+          reject(err instanceof Error ? err : new Error(String(err)))
+        }
+      }),
+  )
+}
+
+function pageInfo(): BridgeOps['pageInfo']['reply'] {
+  const file = ui.getXmlFileData(true, false, true)
+  const diagrams = file.getElementsByTagName('diagram')
+  const pages: PageInfo[] = []
+  for (let i = 0; i < diagrams.length; i++) {
+    const diagram = diagrams[i]
+    const model = diagram.getElementsByTagName('mxGraphModel')[0]
+    const number = (name: string, fallback: number): number => {
+      const value = parseFloat(model?.getAttribute(name) ?? '')
+      return Number.isFinite(value) && value > 0 ? value : fallback
+    }
+    pages.push({
+      id: String(diagram.getAttribute('id') ?? `page-${i + 1}`),
+      name: String(diagram.getAttribute('name') ?? `Page-${i + 1}`),
+      pageWidth: number('pageWidth', 827),
+      pageHeight: number('pageHeight', 1169),
+    })
+  }
+  return { pages, currentPage: currentPageId() }
+}
+
+// ---- requests from the host ----
+
+async function answer(request: BridgeRequestMessage): Promise<unknown> {
+  if (!ui) throw new Error('the editor is still starting')
+  const args = request.args as any
+  switch (request.op) {
+    case 'readPages':
+      return { pages: readPageXmls(ui), currentPage: currentPageId(), selected: selectedIds() }
+    case 'selection':
+      return { ids: selectedIds() }
+    case 'pageInfo':
+      return pageInfo()
+    case 'applyPrimitives': {
+      if (!Array.isArray(args.primitives)) throw new Error('primitives must be a list')
+      const graph = ui.editor.graph
+      if (graph.isEditing()) graph.stopEditing(false)
+      return applyPrimitivesLive(liveDiagram(ui), args.primitives)
+    }
+    case 'setDark':
+      ui.setDarkMode(args.dark === true)
+      return {}
+    case 'setCompressed':
+      Editor.defaultCompressed = args.compressed === true
+      return {}
+    case 'markSaved': {
+      const at = typeof args.revision === 'number' ? args.revision : revision
+      savedTop = at === revision ? topEdit() : topAtRevision.has(at) ? topAtRevision.get(at) : STALE
+      forcedDirty = false
+      reportDirty()
+      return {}
+    }
+    case 'markUnsaved':
+      forcedDirty = true
+      reportDirty()
+      return {}
+    case 'pageSvg':
+      return pageSvg(String(args.pageId), args.theme === 'light' ? 'light' : 'auto')
+    case 'pagePng':
+      return pagePng(String(args.pageId))
+    case 'runAction': {
+      const name = String(args.action)
+      if (!(DRAWIO_MENU_ACTIONS as readonly string[]).includes(name)) {
+        throw new Error(`not an action the app runs: ${name}`)
+      }
+      ui.actions.get(name)?.funct()
+      return {}
+    }
+  }
+}
+
+window.addEventListener('message', (event) => {
+  if (!isFromHost(event, window.parent, hostOrigin)) return
+  const message = parseBridgeMessage(event.data)
+  if (!message || message.kind !== 'request') return
+  const reply = (body: { ok: true; value: unknown } | { ok: false; error: string }): void =>
+    window.parent.postMessage({ ieum: 1, kind: 'reply', id: message.id, ...body }, hostOrigin)
+  answer(message).then(
+    (value) => reply({ ok: true, value }),
+    (err: unknown) => reply({ ok: false, error: err instanceof Error ? err.message : String(err) }),
+  )
+})
