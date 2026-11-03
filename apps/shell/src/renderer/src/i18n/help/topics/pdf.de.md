@@ -6,6 +6,7 @@ Der PDF-Editor hat fünf Tabs im Menüband: **Start / Anmerken / Bearbeiten / Se
 
 - Linke Seitenleiste: **Miniaturen** (anklicken zum Springen, der sichtbare Bereich ist hervorgehoben) oder **Gliederung** (Lesezeichen, sofern vorhanden).
 - Zoom: die Verhältnissteuerung unten rechts; Strg+Radrad zoomt stufenweise.
+- Ansicht verschieben: Mit dem **Hand-Werkzeug** (Registerkarten Start und Ansicht) verschieben Sie die Seite durch Ziehen in alle Richtungen. Solange es aktiv ist, wird beim Ziehen kein Text markiert, und ein einfacher Klick folgt weiterhin einem Link. Ziehen mit gedrückter mittlerer Taste (Mausrad) verschiebt die Ansicht auch ohne das Werkzeug. Esc oder ein anderes Werkzeug schaltet es aus.
 - Drehung: einzelne oder alle Seiten über das Menü „Seiten“; Drehungen werden beim Speichern zurückgeschrieben.
 - Suche: Strg+F als Volltextsuche, alle Treffer werden hervorgehoben.
 - Verschlüsselte PDFs: Eine Passwortabfrage (in einem eigenen kleinen Fenster) öffnet sie; das Passwort gilt nur für diese Sitzung. Sie können ein solches Dokument bearbeiten und speichern; beim Speichern bleibt das Kennwort erhalten. **Anmerken → Schützen** legt das Kennwort und die erlaubten Aktionen für Leser fest, ändert oder entfernt sie.

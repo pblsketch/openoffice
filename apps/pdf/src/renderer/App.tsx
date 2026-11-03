@@ -387,6 +387,7 @@ import { buildOcrBakeInserts } from './ocr-bake'
 import { planEditOps, reduceBucket } from './edit-ops'
 import type { Bucket, Op, OpContext, PlanResult } from './edit-ops'
 import { rectsNear } from './edit-state'
+import { usePanDrag } from './pan-drag'
 import type {
   StampConfig,
   SavedMarkupAnnot,
@@ -463,6 +464,7 @@ import {
   IconPageSize,
   IconFitWidth,
   IconFitPage,
+  IconHand,
   IconOutline,
   IconDrawColor,
   RbCaret,
@@ -1374,6 +1376,21 @@ export default function App() {
   /** Reading position saved when this file was last viewed; applied once after open */
   const pendingViewRestoreRef = useRef<PdfViewState | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  /** Hand tool: the left button drags the view (the middle button always does) */
+  const [handTool, setHandTool] = useState(false)
+  usePanDrag(scrollRef, handTool)
+  const otherToolArmed =
+    !!drawTool ||
+    editTextMode ||
+    editImageMode ||
+    !!pendingSign ||
+    !!imagePick ||
+    !!pendingTextInsert ||
+    !!pendingStaticFill ||
+    !!formDesignTool
+  useEffect(() => {
+    if (otherToolArmed) setHandTool(false)
+  }, [otherToolArmed])
   const thumbsRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   /** Local approximations of document fonts by pdf.js font id (see doc-font.ts);
@@ -8665,6 +8682,7 @@ export default function App() {
         else if (noteDraft) setNoteDraft(null)
         else if (activeNote) setActiveNote(null)
         else if (drawTool) setDrawTool(null)
+        else if (handTool) setHandTool(false)
         else if (markupMenu) setMarkupMenu(null)
         else if (formMenu) setFormMenu(null)
         else if (formDesignTool) setFormDesignTool(null)
@@ -9093,6 +9111,30 @@ export default function App() {
             <IconFitPage />
           </span>
           <span>{t('fitPage')}</span>
+        </button>
+        <button
+          className={`rb-big${handTool ? ' active' : ''}`}
+          data-tip={t('handToolTip')}
+          aria-pressed={handTool}
+          onClick={() => {
+            if (!handTool) {
+              setDrawTool(null)
+              setEditTextMode(false)
+              setEditImageMode(false)
+              setPendingSign(null)
+              setImagePick(null)
+              setPendingTextInsert(null)
+              setTextDraft(null)
+              setPendingStaticFill(null)
+              setFormDesignTool(null)
+            }
+            setHandTool((v) => !v)
+          }}
+        >
+          <span className="rb-big-icon">
+            <IconHand />
+          </span>
+          <span>{t('handTool')}</span>
         </button>
         {showDefaultFit && (
           <div className="rb-col rb-open-view">
@@ -11071,7 +11113,7 @@ export default function App() {
             )}
             <div
               ref={scrollRef}
-              className={`pdf-scroll${drawTool ? ' pdf-drawing' : ''}${nightMode ? ' pdf-night' : ''}`}
+              className={`pdf-scroll${drawTool ? ' pdf-drawing' : ''}${handTool ? ' pdf-hand' : ''}${nightMode ? ' pdf-night' : ''}`}
               onScroll={() => {
                 handleScroll()
                 setSelPopup(null)

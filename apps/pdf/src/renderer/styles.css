@@ -2342,6 +2342,25 @@ button {
   pointer-events: none;
 }
 
+/* Hand tool: dragging the pane moves the view instead of selecting text
+   (pan-drag.ts); links keep their pointer and still follow on a plain click */
+.pdf-scroll.pdf-hand,
+.pdf-scroll.pdf-hand .pdf-page,
+.pdf-scroll.pdf-hand .textLayer span {
+  cursor: grab;
+}
+
+.pdf-scroll.pdf-hand .textLayer {
+  user-select: none;
+}
+
+/* set by pan-drag.ts for the length of a drag, from either button */
+.pdf-scroll[data-panning],
+.pdf-scroll[data-panning] * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
 .pdf-draw-shape {
   cursor: move;
 }
