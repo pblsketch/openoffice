@@ -17,15 +17,13 @@ export const pt = {
   importVisioUnreadable: 'O arquivo está danificado ou não é um desenho do Visio.',
   importVisioNoPages: 'O desenho do Visio não tem páginas.',
   failEditor: 'Não foi possível iniciar o editor de diagramas.',
-  noticeRemotePictures: '{count} imagens da internet não são exibidas.',
+  noticeRemotePictures: 'Imagens da internet não exibidas: {count}.',
   noticeRemoteFonts:
-    '{count} fontes da internet não são carregadas; são usadas as fontes deste computador.',
-  noticePlantUml:
-    '{count} formas PlantUML aparecem como a imagem salva; o código delas não pode ser editado.',
-  noticeLibavoid:
-    '{count} conectores que desviam de obstáculos são desenhados com o traçado comum.',
-  noticeElk: '{count} layouts automáticos (ELK) não estão disponíveis aqui.',
-  noticeVisioPictures: 'Não foi possível converter {count} imagens do Visio.',
+    'Fontes da internet não carregadas (são usadas as fontes deste computador): {count}.',
+  noticePlantUml: 'Formas PlantUML exibidas como a imagem salva, sem código editável: {count}.',
+  noticeLibavoid: 'Conectores que desviam de obstáculos, desenhados com o traçado comum: {count}.',
+  noticeElk: 'Layouts automáticos (ELK) não disponíveis aqui: {count}.',
+  noticeVisioPictures: 'Imagens do Visio que não puderam ser convertidas: {count}.',
   noticeClose: 'Fechar',
   statusSaved: 'Salvo',
   statusSaving: 'Salvando…',
@@ -55,7 +53,7 @@ export const pt = {
   closeUnsavedDetail: 'Deseja salvá-las antes de fechar?',
   btnSave: 'Salvar',
   btnDontSave: 'Não salvar',
-  exportReplaceMsg: 'Já existem {count} arquivos com esses nomes.',
+  exportReplaceMsg: 'Arquivos com esses nomes que já existem: {count}.',
   exportReplaceDetail: 'Deseja substituí-los?',
   btnReplace: 'Substituir',
 } satisfies Record<keyof typeof zh, string>

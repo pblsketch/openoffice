@@ -17,15 +17,15 @@ export const de = {
   importVisioUnreadable: 'Die Datei ist beschädigt oder keine Visio-Zeichnung.',
   importVisioNoPages: 'Die Visio-Zeichnung enthält keine Seiten.',
   failEditor: 'Der Diagramm-Editor konnte nicht gestartet werden.',
-  noticeRemotePictures: '{count} Bilder aus dem Internet werden nicht angezeigt.',
+  noticeRemotePictures: 'Nicht angezeigte Bilder aus dem Internet: {count}.',
   noticeRemoteFonts:
-    '{count} Schriftarten aus dem Internet werden nicht geladen; stattdessen werden Schriftarten dieses Computers verwendet.',
+    'Nicht geladene Schriftarten aus dem Internet (stattdessen werden Schriftarten dieses Computers verwendet): {count}.',
   noticePlantUml:
-    '{count} PlantUML-Formen werden als gespeichertes Bild angezeigt; ihr Quelltext kann nicht bearbeitet werden.',
+    'PlantUML-Formen, die als gespeichertes Bild angezeigt werden und deren Quelltext nicht bearbeitet werden kann: {count}.',
   noticeLibavoid:
-    '{count} Verbinder, die Hindernisse umgehen, werden mit normaler Linienführung gezeichnet.',
-  noticeElk: '{count} automatische Layouts (ELK) sind hier nicht verfügbar.',
-  noticeVisioPictures: '{count} Visio-Bilder konnten nicht umgewandelt werden.',
+    'Verbinder, die Hindernisse umgehen und mit normaler Linienführung gezeichnet werden: {count}.',
+  noticeElk: 'Hier nicht verfügbare automatische Layouts (ELK): {count}.',
+  noticeVisioPictures: 'Nicht umgewandelte Visio-Bilder: {count}.',
   noticeClose: 'Schließen',
   statusSaved: 'Gespeichert',
   statusSaving: 'Wird gespeichert…',
@@ -55,7 +55,7 @@ export const de = {
   closeUnsavedDetail: 'Möchten Sie sie vor dem Schließen speichern?',
   btnSave: 'Speichern',
   btnDontSave: 'Nicht speichern',
-  exportReplaceMsg: '{count} Dateien mit diesen Namen sind bereits vorhanden.',
+  exportReplaceMsg: 'Bereits vorhandene Dateien mit diesen Namen: {count}.',
   exportReplaceDetail: 'Möchten Sie sie ersetzen?',
   btnReplace: 'Ersetzen',
 } satisfies Record<keyof typeof zh, string>

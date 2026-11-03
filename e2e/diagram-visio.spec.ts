@@ -60,7 +60,7 @@ test.describe('Visio import', () => {
       // ── WMF and a broken EMF are not drawn: the notice counts the two
       const pictures = await openDiagramPage(app, () => openPath(shell, metafiles))
       await expect(pictures.locator('.dg-notice')).toContainText(
-        '2 Visio pictures could not be converted.',
+        'Visio pictures that could not be converted: 2.',
       )
       expect(await liveText(pictures)).toContain('Pictures')
       await pictures.screenshot({ path: screenshotPath('diagram-visio-metafiles') })

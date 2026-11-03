@@ -18,15 +18,15 @@ export const fr = {
   importVisioUnreadable: "Le fichier est endommagé ou n'est pas un dessin Visio.",
   importVisioNoPages: 'Le dessin Visio ne contient aucune page.',
   failEditor: "L'éditeur de diagrammes n'a pas pu démarrer.",
-  noticeRemotePictures: "{count} images provenant d'Internet ne sont pas affichées.",
+  noticeRemotePictures: "Images provenant d'Internet non affichées : {count}.",
   noticeRemoteFonts:
-    "{count} polices provenant d'Internet ne sont pas chargées ; les polices de cet ordinateur sont utilisées.",
+    "Polices provenant d'Internet non chargées (les polices de cet ordinateur sont utilisées) : {count}.",
   noticePlantUml:
-    "{count} formes PlantUML s'affichent sous forme d'image enregistrée ; leur source ne peut pas être modifiée.",
+    "Formes PlantUML affichées sous forme d'image enregistrée, sans source modifiable : {count}.",
   noticeLibavoid:
-    '{count} connecteurs qui contournent les obstacles sont tracés avec le routage ordinaire.',
-  noticeElk: '{count} mises en page automatiques (ELK) ne sont pas disponibles ici.',
-  noticeVisioPictures: "{count} images Visio n'ont pas pu être converties.",
+    'Connecteurs contournant les obstacles, tracés avec le routage ordinaire : {count}.',
+  noticeElk: 'Mises en page automatiques (ELK) non disponibles ici : {count}.',
+  noticeVisioPictures: 'Images Visio non converties : {count}.',
   noticeClose: 'Fermer',
   statusSaved: 'Enregistré',
   statusSaving: 'Enregistrement…',
@@ -56,7 +56,7 @@ export const fr = {
   closeUnsavedDetail: 'Voulez-vous les enregistrer avant de fermer ?',
   btnSave: 'Enregistrer',
   btnDontSave: 'Ne pas enregistrer',
-  exportReplaceMsg: '{count} fichiers portant ces noms existent déjà.',
+  exportReplaceMsg: 'Fichiers portant ces noms qui existent déjà : {count}.',
   exportReplaceDetail: 'Voulez-vous les remplacer ?',
   btnReplace: 'Remplacer',
 } satisfies Record<keyof typeof zh, string>
