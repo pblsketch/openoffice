@@ -205,6 +205,7 @@ function assertModuleTreesPresent() {
     '../mindmap/out',
     '../hwp/out',
     '../epub/out',
+    '../diagram/out/drawio/index.html',
     '../../packages/cli/dist/genoffice.cjs',
     '../../packages/cli/dist/node_modules/jsdom',
   ]) {
@@ -562,6 +563,14 @@ const config = {
     {
       from: '../epub/out',
       to: 'modules/epub',
+    },
+    // the diagram editor with the trimmed draw.io bundle in out/drawio
+    // (vendor/drawio/bundle.mjs), read as resources/modules/diagram/drawio;
+    // the stamp only tells the build step the bundle is current
+    {
+      from: '../diagram/out',
+      to: 'modules/diagram',
+      filter: ['**/*', '!drawio.stamp.json'],
     },
     // PDF text editing engines: the bundled main resolves these under
     // Resources/wasm when node_modules is absent (apps/pdf/src/main/wasm-path.ts)

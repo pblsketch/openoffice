@@ -7,9 +7,9 @@
   "description": "Diagram editor module: hosts the draw.io editor offline in a shell tab to open, edit, save and export .drawio diagrams",
   "main": "out/main/index.js",
   "scripts": {
-    "dev": "electron-vite dev",
-    "dev:renderer": "vite --config vite.renderer.config.ts",
-    "build": "electron-vite build",
+    "dev": "node ../../vendor/drawio/prepare.mjs && electron-vite dev",
+    "dev:renderer": "node ../../vendor/drawio/prepare.mjs && vite --config vite.renderer.config.ts",
+    "build": "electron-vite build && node ../../vendor/drawio/prepare.mjs",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit"
   },

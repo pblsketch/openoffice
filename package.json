@@ -40,7 +40,7 @@
     "shell": "npm run build:all && electron apps/shell",
     "test:e2e": "playwright test --config e2e/playwright.config.ts",
     "notices": "node tools/gen-third-party-notices.mjs",
-    "licenses": "node tools/check-licenses.mjs",
+    "licenses": "node tools/check-licenses.mjs && node tools/check-drawio-bundle.mjs",
     "free-models:check": "node tools/check-free-models.mjs",
     "free-models:trial": "node tools/trial-free-models.mjs",
     "dist:mac": "npm run notices && npm run build:all && npm run native:build:universal -w @genoffice/sheets && npm run dist:mac -w @genoffice/shell",
