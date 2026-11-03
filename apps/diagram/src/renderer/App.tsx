@@ -27,14 +27,13 @@ import { DrawioFrame, base64Bytes } from './drawio/frame-client'
 import { diagramImporter } from './document/importers'
 import { applyLiveOps, liveDiagramRead, liveDiagramText } from './document/live-ops'
 import { DiagramCopier, RECOVERY_COPY_TIMING } from './document/recovery-copies'
+import { SVG_FILE_HEAD } from './document/page-pictures'
 import { t as translate, useI18n, type StringKey } from './i18n/locale'
 import { useDarkView } from './theme'
 import { DiagramAiDock, useDiagramAi } from './ai/AiDock'
 
 const AUTO_SAVE_INTERVAL_MS = 30_000
 const TOAST_MS = 4_000
-const SVG_FILE_HEAD =
-  '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n'
 
 type Status = 'loading' | 'ready' | 'failed'
 type SaveState = 'idle' | 'saving' | 'saved' | 'failed'

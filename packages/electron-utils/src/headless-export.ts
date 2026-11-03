@@ -3,6 +3,10 @@
  *
  *   <app binary> --headless-export <input-file> --to <format> --out <path> [--json]
  *
+ * Diagrams take three more switches: `--page <n>` (1-based page), `--ops <file>`
+ * (a JSON array of diagram ops run before a diagram file is written) and
+ * `--batch <mode>` (how a rejected op is handled).
+ *
  * Pure logic only — the Electron-side host that actually renders the file
  * lives in the shell main process (apps/shell/src/main/headless-export.ts).
  * Keeping the grammar and the exit codes here makes them unit-testable and
@@ -14,10 +18,21 @@
  */
 
 /** Editor module that owns a given input extension. */
-export type HeadlessExportModule = 'docs' | 'sheets' | 'slides' | 'markdown' | 'html'
+export type HeadlessExportModule = 'docs' | 'sheets' | 'slides' | 'markdown' | 'html' | 'diagram'
+
+/** Diagram file formats a diagram job can write (the input's ops applied first). */
+export const DIAGRAM_FILE_TARGETS = ['drawio', 'dio', 'drawio.svg', 'drawio.png'] as const
+
+export type DiagramFileTarget = (typeof DIAGRAM_FILE_TARGETS)[number]
 
 /** Conversion targets the headless entry accepts; see HEADLESS_TARGETS for which module renders which. */
-export type HeadlessExportFormat = 'pdf' | 'docx' | 'html' | 'md'
+export type HeadlessExportFormat =
+  'pdf' | 'docx' | 'html' | 'md' | 'png' | 'svg' | DiagramFileTarget
+
+/** How a diagram batch treats a rejected op (the planner's modes of `@genoffice/drawio-model`). */
+export const DIAGRAM_BATCH_MODES = ['all-or-nothing', 'best-effort', 'stop-on-error'] as const
+
+export type DiagramBatchMode = (typeof DIAGRAM_BATCH_MODES)[number]
 
 /** Targets each editor module can render without a dialog. */
 export const HEADLESS_TARGETS: Record<HeadlessExportModule, readonly HeadlessExportFormat[]> = {
@@ -26,9 +41,23 @@ export const HEADLESS_TARGETS: Record<HeadlessExportModule, readonly HeadlessExp
   slides: ['pdf'],
   markdown: ['pdf'],
   html: ['pdf', 'docx'],
+  diagram: ['pdf', 'png', 'svg', ...DIAGRAM_FILE_TARGETS],
 }
 
-const ALL_TARGETS: readonly HeadlessExportFormat[] = ['pdf', 'docx', 'html', 'md']
+const ALL_TARGETS: readonly HeadlessExportFormat[] = [
+  'pdf',
+  'docx',
+  'html',
+  'md',
+  'png',
+  'svg',
+  ...DIAGRAM_FILE_TARGETS,
+]
+
+/** Whether a target writes a diagram file (ops may run first) rather than a picture or a document. */
+export function isDiagramFileTarget(format: HeadlessExportFormat): format is DiagramFileTarget {
+  return (DIAGRAM_FILE_TARGETS as readonly string[]).includes(format)
+}
 
 /** What a hidden renderer window is asked to produce. */
 export interface HeadlessExportTarget {
@@ -59,6 +88,12 @@ export interface HeadlessExportRequest {
   outPath: string
   /** print the machine-readable one-line envelope instead of a human sentence */
   json: boolean
+  /** diagrams: the 1-based page a picture export takes, or the page ops without `page` work on */
+  page?: number
+  /** diagrams: a JSON file holding the ops to run before a diagram file is written */
+  ops?: string
+  /** diagrams: how a rejected op is handled (default all-or-nothing) */
+  batch?: DiagramBatchMode
 }
 
 export type HeadlessArgvParse =
@@ -66,9 +101,26 @@ export type HeadlessArgvParse =
   | { kind: 'ok'; request: HeadlessExportRequest }
   | { kind: 'error'; json: boolean; message: string }
 
+/**
+ * What an exporter reports when one file at `--out` does not say it all: the
+ * files it wrote (several pages, or none when a diagram batch changed nothing)
+ * and facts for the caller (a diagram batch's per-op results).
+ */
+export interface HeadlessExportProduct {
+  paths: string[]
+  detail?: Record<string, unknown>
+}
+
 /** Result of an export attempt, rendered by `formatHeadlessEnvelope`. */
 export type HeadlessExportOutcome =
-  | { ok: true; input: string; outPath: string }
+  | {
+      ok: true
+      input: string
+      outPath: string
+      /** the files written, when an exporter reported them (see HeadlessExportProduct) */
+      outPaths?: string[]
+      detail?: Record<string, unknown>
+    }
   | { ok: false; code: Exclude<HeadlessExitCode, 0>; message: string }
 
 const MODULE_BY_EXTENSION: ReadonlyArray<readonly [RegExp, HeadlessExportModule]> = [
@@ -77,6 +129,7 @@ const MODULE_BY_EXTENSION: ReadonlyArray<readonly [RegExp, HeadlessExportModule]
   [/\.pptx$/i, 'slides'],
   [/\.(md|markdown)$/i, 'markdown'],
   [/\.(html|htm)$/i, 'html'],
+  [/\.(drawio|dio|drawio\.svg|drawio\.png)$/i, 'diagram'],
 ]
 
 /** Which editor module can render this input, or null when the extension is unsupported. */
@@ -87,7 +140,7 @@ export function headlessModuleFor(inputPath: string): HeadlessExportModule | nul
 
 /** Extensions the headless entry accepts, for error messages. */
 export const HEADLESS_SUPPORTED_EXTENSIONS =
-  '.docx, .xlsx, .xlsm, .xls, .csv, .pptx, .md, .markdown, .html, .htm'
+  '.docx, .xlsx, .xlsm, .xls, .csv, .pptx, .md, .markdown, .html, .htm, .drawio, .dio, .drawio.svg, .drawio.png'
 
 /** `--flag value` and `--flag=value` both read the same. */
 function readOption(argv: readonly string[], index: number, flag: string): string | null {
@@ -118,6 +171,9 @@ export function parseHeadlessExportArgv(argv: readonly string[]): HeadlessArgvPa
   let input: string | null = null
   let to: string | null = null
   let outPath: string | null = null
+  let page: string | null = null
+  let ops: string | null = null
+  let batch: string | null = null
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i] ?? ''
@@ -139,6 +195,24 @@ export function parseHeadlessExportArgv(argv: readonly string[]): HeadlessArgvPa
       if (consumesNext(argv, i, '--out')) i++
       continue
     }
+    if (arg === '--page' || arg.startsWith('--page=')) {
+      page = readOption(argv, i, '--page')
+      if (page === null) return fail('--page needs a page number')
+      if (consumesNext(argv, i, '--page')) i++
+      continue
+    }
+    if (arg === '--ops' || arg.startsWith('--ops=')) {
+      ops = readOption(argv, i, '--ops')
+      if (ops === null) return fail('--ops needs a file')
+      if (consumesNext(argv, i, '--ops')) i++
+      continue
+    }
+    if (arg === '--batch' || arg.startsWith('--batch=')) {
+      batch = readOption(argv, i, '--batch')
+      if (batch === null) return fail('--batch needs a mode')
+      if (consumesNext(argv, i, '--batch')) i++
+      continue
+    }
   }
 
   if (!input) return fail(`${HEADLESS_EXPORT_FLAG} needs an input file`)
@@ -148,15 +222,36 @@ export function parseHeadlessExportArgv(argv: readonly string[]): HeadlessArgvPa
     return fail(`unsupported target format "${to}" (${ALL_TARGETS.join(', ')})`)
   }
   if (!outPath) return fail('--out is required')
+  const pageNumber = page === null ? undefined : Number(page)
+  if (pageNumber !== undefined && (!Number.isSafeInteger(pageNumber) || pageNumber < 1)) {
+    return fail(`--page must be a page number from 1 (got "${page}")`)
+  }
+  const batchMode = DIAGRAM_BATCH_MODES.find((mode) => mode === batch)
+  if (batch !== null && !batchMode) {
+    return fail(`unsupported batch mode "${batch}" (${DIAGRAM_BATCH_MODES.join(', ')})`)
+  }
 
-  return { kind: 'ok', request: { input, targetFormat, outPath, json } }
+  return {
+    kind: 'ok',
+    request: {
+      input,
+      targetFormat,
+      outPath,
+      json,
+      ...(pageNumber !== undefined ? { page: pageNumber } : {}),
+      ...(ops !== null ? { ops } : {}),
+      ...(batchMode ? { batch: batchMode } : {}),
+    },
+  }
 }
 
 /** One-sentence description of an outcome, shared by the plain and JSON forms. */
 export function headlessSummary(outcome: HeadlessExportOutcome): string {
-  return outcome.ok
-    ? `Exported ${outcome.input} to ${outcome.outPath}`
-    : `Export failed: ${outcome.message}`
+  if (!outcome.ok) return `Export failed: ${outcome.message}`
+  const paths = outcome.outPaths ?? [outcome.outPath]
+  if (paths.length === 0) return `Ran ${outcome.input}; nothing was written`
+  if (paths.length > 1) return `Exported ${outcome.input} to ${paths.length} files`
+  return `Exported ${outcome.input} to ${paths[0]}`
 }
 
 /**
@@ -169,7 +264,13 @@ export function formatHeadlessEnvelope(outcome: HeadlessExportOutcome, json: boo
   if (!json) return summary
   return JSON.stringify(
     outcome.ok
-      ? { status: 'ok', summary, output_path: outcome.outPath }
+      ? {
+          status: 'ok',
+          summary,
+          output_path: outcome.outPath,
+          ...(outcome.outPaths ? { output_paths: outcome.outPaths } : {}),
+          ...(outcome.detail ? { detail: outcome.detail } : {}),
+        }
       : { status: 'error', summary, error: outcome.message.replace(/\s*[\r\n]+\s*/g, ' ') },
   )
 }

@@ -965,6 +965,32 @@ export function createDiagramView(openPath?: string | null): WebContentsView {
   return view
 }
 
+/**
+ * The hidden window of a windowless job (`headless-main.ts`): the tab's
+ * session, guards and granted file, the file as saved (no recovery question),
+ * and the page told to run the job instead of the editor. Call after app ready.
+ */
+export function createDiagramHiddenWindow(openPath: string): BrowserWindow {
+  registerDiagramIpc()
+  diagramSession(sessionPaths())
+  const win = new BrowserWindow({
+    show: false,
+    width: 1300,
+    height: 880,
+    webPreferences: {
+      preload: runtime.preloadPath,
+      ...VIEW_PREFERENCES,
+      backgroundThrottling: false,
+    },
+  })
+  grantAndTrack(win.webContents, openPath)
+  setViewOpenDecision(win.webContents.id, 'original')
+  const url = new URL(diagramRendererUrl())
+  url.searchParams.set('headless', '1')
+  void win.loadURL(url.toString())
+  return win
+}
+
 /** Before app ready, once per process: the schemes a standalone run needs (the shell lists them itself). */
 export function registerDiagramPrivilegedSchemes(): void {
   protocol.registerSchemesAsPrivileged([RENDERER_SCHEME_PRIVILEGE, DRAWIO_SCHEME_PRIVILEGE])

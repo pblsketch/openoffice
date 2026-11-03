@@ -47,7 +47,8 @@ const asBuffer = (bytes: Uint8Array): Buffer =>
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47]
 
-function looksLike(format: 'png' | 'svg', bytes: Uint8Array): boolean {
+/** Whether bytes a renderer sent are a picture of that format. */
+export function looksLike(format: 'png' | 'svg', bytes: Uint8Array): boolean {
   if (format === 'png') return PNG_SIGNATURE.every((byte, i) => bytes[i] === byte)
   const head = new TextDecoder().decode(bytes.subarray(0, 512)).trimStart()
   return head.startsWith('<svg') || head.startsWith('<?xml') || head.startsWith('<!DOCTYPE svg')

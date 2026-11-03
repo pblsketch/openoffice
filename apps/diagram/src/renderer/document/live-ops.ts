@@ -16,6 +16,7 @@ import {
   formatDiagramText,
   planDiagramOps,
   readDiagramTable,
+  type DiagramApplyMode,
   type DiagramBatchResult,
   type DiagramOpResult,
   type DiagramPrimitive,
@@ -119,13 +120,25 @@ export function stepsOfPlan(
   return { steps, drawingSteps }
 }
 
+export interface LiveApplyOptions {
+  /** The AI panel and the in-app MCP server always use the default, all-or-nothing. */
+  mode?: DiagramApplyMode
+  /** The page ops without `page` work on, instead of the page on screen (a windowless job's `--page`). */
+  defaultPage?: string
+}
+
 /**
  * Plans `ops` against the diagram on screen and applies them as one undo
  * step. A rejected plan is answered as it is, with nothing applied. This is
  * the one executor of `apply_diagram_ops` for an open tab (AI panel and
- * in-app MCP).
+ * in-app MCP) and of the command line's windowless jobs, which alone pass a
+ * partial mode: the ops it keeps go in, still as one step.
  */
-export async function applyLiveOps(frame: DrawioFrame, ops: unknown[]): Promise<LiveApplyResult> {
+export async function applyLiveOps(
+  frame: DrawioFrame,
+  ops: unknown[],
+  options: LiveApplyOptions = {},
+): Promise<LiveApplyResult> {
   const snapshot = await liveSnapshot(frame)
 
   // Mermaid first, with draw.io's converter: read-only, one request per distinct text
@@ -162,12 +175,13 @@ export async function applyLiveOps(frame: DrawioFrame, ops: unknown[]): Promise<
   }
 
   const plan = planDiagramOps(snapshot.state, ops, {
-    mode: 'all-or-nothing',
+    mode: options.mode ?? 'all-or-nothing',
+    ...(options.defaultPage !== undefined ? { defaultPage: options.defaultPage } : {}),
     ...(snapshot.currentPage ? { currentPage: snapshot.currentPage } : {}),
     selected: snapshot.selected,
     mermaid,
   })
-  if (plan.status !== 'ok' || !plan.changed) return { ...plan, applied: [], token: null }
+  if (plan.status === 'rejected' || !plan.changed) return { ...plan, applied: [], token: null }
 
   const { steps, drawingSteps } = stepsOfPlan(plan.primitives, drawings)
   const reply = await frame.request('applyBatch', { steps })

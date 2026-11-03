@@ -140,6 +140,25 @@
 - `--partial`로 멈춘 경우 `pdf translate`처럼 `status: "partial"`이고, `detail.stopped: { errorCode, resetsAt? }`와 `done_blocks`·`total_blocks`가 더해진다.
 - `epub status`의 `done_blocks`·`total_blocks`와 `job` 모양은 `pdf status`와 같다. 진행에는 책 제목과 목차 항목 단위도 든다.
 
+## 다이어그램 명령
+
+draw.io 다이어그램(`.drawio`, `.dio`, `.drawio.svg`, `.drawio.png`)을 읽고 고치고 만들고 그림으로 바꾼다. 연산은 앱의 AI 창과 같은 정의(`@genoffice/drawio-model`의 `DIAGRAM_OPS`)이고 같은 규칙으로 검사한다. `.vsdx`는 종료 코드 2, `unsupported`다. Visio 파일은 앱에서 열어 가져온다.
+
+| 명령                                                                                                                        | 동작                                                                                                                                                                                                                        | 앱                                                                                                |
+| --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `diagram read <파일> [--page <id\|이름>]`                                                                                   | 쪽마다 도형·선 읽기 표. `--json`의 `detail`은 `{ pages: [{ id, name, shapes, edges }] }`이고, `--page`를 주면 그 쪽 하나다                                                                                                  | 필요 없음                                                                                         |
+| `diagram apply <파일> --ops <JSON\|@파일\|-> [--page <id\|이름>] [--out <경로>] [--best-effort\|--stop-on-error] [--force]` | 연산 묶음을 적용해 쓴다. `page`가 없는 연산은 `--page`의 쪽, 없으면 첫 쪽에서 한다. 쓰는 형식은 `--out`(없으면 그 파일)의 이름이 정한다                                                                                     | `.drawio`·`.dio`는 필요 없음. `.drawio.svg`·`.drawio.png`를 쓰거나 `insert_mermaid`가 있으면 필요 |
+| `create --type drawio --out <경로> [--ops <JSON\|@파일\|->] [--mermaid <파일\|->]`                                          | 빈 쪽 하나인 새 다이어그램. 둘 중 하나는 있어야 하고, 둘 다면 Mermaid를 먼저 그린 뒤 연산을 한다. 압축하지 않은 `.drawio`로 쓰고, `--out`이 `.drawio.svg`·`.drawio.png`면 그 형식으로 쓴다                                  | `--mermaid`가 있거나 그림 형식이면 필요                                                           |
+| `convert <파일> --to pdf\|png\|svg [--page <id\|이름>] [--out <경로>]`                                                      | PDF는 파일 하나다(쪽마다 한 장, 그 쪽의 용지 크기). PNG·SVG는 `--page`를 주거나 쪽이 하나면 파일 하나, 아니면 쪽마다 `<이름>-p<쪽 번호>.<확장자>`다. 파일이 하나면 `--out`은 그 파일, 여럿이면 폴더다(기본은 다이어그램 옆) | 필요                                                                                              |
+| `guide diagram`                                                                                                             | 연산 목록. `DIAGRAM_OPS`에서 만든다                                                                                                                                                                                         | 필요 없음                                                                                         |
+
+- 앱이 필요한데 찾지 못하면 종료 코드 4, `app_unavailable`이고 아무것도 쓰지 않는다. 앱은 창 없이 `--headless-export`(`docs/headless-pdf-export.md`)로 돌고 다이어그램 탭의 세션에서 일한다. 그래서 다이어그램 탭처럼 이 PC 밖으로 요청을 하나도 보내지 않는다.
+- `.drawio`·`.dio`를 앱 없이 쓸 때는 바뀌지 않은 `<diagram>` 요소를 바이트 그대로 두고, 바뀐 쪽만 원래 압축 형태로 다시 쓰며, `mxfile`의 다른 속성은 건드리지 않는다. 앱을 거쳐 쓰면 draw.io의 저장과 같은 직렬화이고, 쪽 압축은 연 파일을 따른다.
+- 묶음은 기본으로 모두 아니면 아무것도 아니다. 하나라도 거절되면 쓰지 않고 종료 코드 1이며, `error`는 첫 실패의 이유(`unknown_op`, `target_not_found`, `invalid_argument`)다. `detail.failures`·`detail.batch`·`detail.results`에 모든 연산의 결과가 있다. `--best-effort`·`--stop-on-error`는 남은 것을 쓰고 `status: "partial"`로 답한다. 읽기 연산만 든 묶음은 파일을 쓰지 않는다. 없는 `--page`는 종료 코드 1, `target_not_found`이고 `detail.pages`에 쪽 목록이 있다.
+- `--ops`는 JSON 글 그대로, `@<파일>`, 파일 경로, `-`(표준 입력)를 받는다. 배열이나 `{ "ops": [...] }`다.
+- 성공 `detail`: `diagram apply`는 `{ format, via?, results, created, batch, failures? }`다. `results[]`는 연산마다 `{ index, op, status, created?, error?, read? }`이고, `created`는 이 묶음이 만든 id 전부다. `create --type drawio`는 같은 모양에 `mermaid: { created }`가 더해지고, `results`의 `index`는 `--ops` 안의 차례다. `convert`는 `{ pages, output_paths? }`이고 `output_paths`는 파일이 여럿일 때만 있다.
+- 이미 있는 다른 파일 위에 쓰기와 앱이 탭으로 연 파일은 공통 규칙(`--force`)을 따른다. `convert`는 쓸 파일마다 검사하고, 하나라도 걸리면 앱을 띄우지 않는다.
+
 ## 웹 페이지 읽기 (`read-url`)
 
 `ieumoffice read-url <url> [--offset <n>]`은 http(s) 주소 하나를 그 사이트에서 받아 읽을 수 있는 글로 돌려준다. HTML은 글자로 바꾸고, GitHub `blob` 주소는 raw 주소로 바꿔 읽는다. 주소는 `fetchWithSsrfGuard`를 지나며 사설·루프백 주소와 그런 곳으로 가는 리다이렉트는 거절한다. 한 번에 50,000자를 주고, 이어 읽기는 `--offset`(기본 0)으로 한다. 제공자·구독·자동 호출 장부를 쓰지 않는다. 비공개 GitHub 파일은 설정의 읽기 토큰을 쓰며, 그 토큰은 `api.github.com` 요청에만 실린다.
@@ -214,13 +233,13 @@
 
 - 표준 입출력으로 같은 명령들을 도구로 내놓는다. `--http <포트>`를 주면 Streamable HTTP로 내놓는다(`--host`, `--token`).
 - 등록 예: `claude mcp add --transport stdio ieumoffice -- ieumoffice mcp`. `ieumoffice mcp install <에이전트|all>`이 각 에이전트의 설정 파일에 `ieumoffice` 항목만 쓴다. 같은 이름의 항목이 다른 프로그램을 가리키면 `occupied`로 알리고 `--force` 없이는 건드리지 않는다.
-- 도구는 명령 동사마다 하나다(`docs_read`, `docs_apply`, `hwp_read`, `hwp_apply`, `sheet_apply`, `slides_render`, `convert`, `read_url`, `pdf_read`, `pdf_images`, `pdf_ai_read`, `pdf_translate`, `pdf_status`, `epub_translate`, `epub_status` 등). 매개변수는 명령의 옵션 목록에서 그대로 나온다(`allow-paid`는 `allow_paid`, `no-cover`는 `no_cover`). 두 표면이 어긋나지 않는다.
+- 도구는 명령 동사마다 하나다(`docs_read`, `docs_apply`, `hwp_read`, `hwp_apply`, `diagram_read`, `diagram_apply`, `create_drawio`, `sheet_apply`, `slides_render`, `convert`, `read_url`, `pdf_read`, `pdf_images`, `pdf_ai_read`, `pdf_translate`, `pdf_status`, `epub_translate`, `epub_status` 등). 매개변수는 명령의 옵션 목록에서 그대로 나온다(`allow-paid`는 `allow_paid`, `no-cover`는 `no_cover`). 두 표면이 어긋나지 않는다. `diagram_read`·`diagram_apply`·`convert`의 `page`는 다이어그램 쪽의 id나 이름(글자)이고, `create_drawio`의 `mermaid`는 Mermaid 글 그대로다.
 - `pdf_ai_read`·`pdf_translate`·`epub_translate`는 `yes`가 없으면 명령처럼 예상만 답한다. `yes`가 있으면 작업을 MCP 서버 프로세스 안에서 띄우고 바로 답한다(`detail.started: true`, `detail.estimate`). 진행, 멈춘 이유, `resetsAt`, 결과 파일 경로는 `pdf_status`(EPUB은 `epub_status`)의 `job`으로 본다. 이어하기는 같은 도구를 다시 부르면 된다.
 - 그 결과 파일은 작업이 끝날 때 쓴다. `partial: true`로 부른 작업은 멈출 때 끝난 부분만 반영해 쓴다. 위치 규칙은 명령어와 같고, 경로는 `job.outputs`로 알려 준다.
 - 서버가 끝나면 그 작업도 멈춘다(`last_error: "interrupted"`). 보관된 결과는 남는다.
 - 결과는 `--json`이 내는 것과 같은 객체다. 실패는 `isError`와 같은 `error` 이유로 온다.
 - 환경변수 `GENOFFICE_MCP_COMPACT_SCHEMAS`는 예전 철자를 유지한다. `--http`의 토큰은 `--token`, 없으면 `GENOFFICE_MCP_TOKEN`에서 읽고, 둘 다 없으면 인증 없이 받는다. 인증 없이 받는 것은 이 PC 주소(`127.0.0.1`, `localhost`, `::1`)에서 열 때뿐이다. 그 밖의 `--host`에 토큰이 없으면 서버를 열지 않고 종료 코드 1, `error: "invalid_argument"`로 끝난다. 에이전트 설정 폴더를 찾을 때의 홈 폴더는 `GENOFFICE_HOME`으로 바꿀 수 있다.
-- 안내 자료는 리소스로도 내놓는다(`ieumoffice://guide/docs`, `…/sheets`, `…/slides`, `…/slides/design`, `…/slides/spec`, `…/slides/templates`, 내장 템플릿마다 `…/slides/templates/<id>`).
+- 안내 자료는 리소스로도 내놓는다(`ieumoffice://guide/docs`, `…/sheets`, `…/hwp`, `…/diagram`, `…/slides`, `…/slides/design`, `…/slides/spec`, `…/slides/templates`, 내장 템플릿마다 `…/slides/templates/<id>`).
 - 내장 디자인 템플릿은 `ieumoffice guide slides templates [<id>]`로 고른다. 목록의 `--json`은 `detail.templates`(`[{ id, name, scheme, description, fonts }]`, 정해진 순서), 템플릿 하나는 `detail`(`{ id, name, scheme, description, fonts, styleSheet }`)이다. 모르는 id는 종료 코드 1, `error: "invalid_argument"`, `detail.templates`에 쓸 수 있는 id 목록이다. MCP `guide` 도구는 세 번째 위치 인자 `name`으로 id를 받는다.
 - 앱의 설정 → 연동 화면이 지금 설치본에 맞는 등록 예시를 보여 준다.
 
