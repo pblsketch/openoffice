@@ -104,15 +104,21 @@ describe('save names', () => {
   })
 })
 
-describe('picture export file names', () => {
-  it('writes one page to the chosen name', () => {
-    expect(pageFilePaths(join('d', 'flow.png'), 'png', [3])).toEqual([join('d', 'flow.png')])
+describe('picture export file names (spec 5, 9.3)', () => {
+  it('writes the one page picked (the page on screen, --page) to the chosen name', () => {
+    expect(pageFilePaths(join('d', 'flow.png'), 'png', [3], false)).toEqual([join('d', 'flow.png')])
   })
 
-  it('writes several pages next to it as <name>-p<n>', () => {
-    expect(pageFilePaths(join('d', 'flow.svg'), 'svg', [1, 2])).toEqual([
+  it('writes every page next to it as <name>-p<n>', () => {
+    expect(pageFilePaths(join('d', 'flow.svg'), 'svg', [1, 2], true)).toEqual([
       join('d', 'flow-p1.svg'),
       join('d', 'flow-p2.svg'),
+    ])
+  })
+
+  it('names the one page of a one-page diagram the same way when every page is asked for', () => {
+    expect(pageFilePaths(join('d', 'flow.png'), 'png', [1], true)).toEqual([
+      join('d', 'flow-p1.png'),
     ])
   })
 })

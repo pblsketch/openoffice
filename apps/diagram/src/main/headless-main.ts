@@ -153,10 +153,12 @@ async function exportPictures(
       throw new Error(`page ${p.number} is not a ${format} picture`)
     return { number: p.number, bytes }
   })
+  // without a page picked, a file per page (spec 9.3), a one-page diagram too
   const paths = pageFilePaths(
     outPath,
     format,
     files.map((f) => f.number),
+    page === undefined,
   )
   for (const [index, file] of files.entries())
     await atomicWriteFile(paths[index]!, asBuffer(file.bytes))

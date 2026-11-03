@@ -209,13 +209,16 @@ export function registerDiagramExportIpc(options: DiagramExportIpcOptions): void
       extname(picked.filePath).toLowerCase() === `.${format}`
         ? picked.filePath
         : `${picked.filePath}.${format}`
+    // all pages: a file per page (a one-page diagram too); the page on screen: the chosen file
     const paths = pageFilePaths(
       chosen,
       format,
       files.map((f) => f.number),
+      request.scope !== 'current',
     )
     // the dialog already asked about the one chosen name
-    if (paths.length > 1 && !(await confirmReplace(e.sender, paths))) {
+    const unasked = paths.length !== 1 || paths[0] !== chosen
+    if (unasked && !(await confirmReplace(e.sender, paths))) {
       return { ok: true, canceled: true }
     }
     try {

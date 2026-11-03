@@ -278,8 +278,8 @@ export interface ExportPageImage {
 export interface ExportImagesRequest {
   format: 'png' | 'svg'
   pages: ExportPageImage[]
-  /** true when the diagram has more pages than these (the current page only) */
-  partial: boolean
+  /** every page (a file per page, `<name>-p<n>`, even for one page) or the page on screen (one file) */
+  scope: ExportScope
   /** file name (no extension) suggested in the dialog */
   suggestedName: string
 }

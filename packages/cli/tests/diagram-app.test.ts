@@ -44,13 +44,13 @@ function threePages(dir: string): string {
   return path
 }
 
-/** What the real app writes for a picture export: the named file, or one per page beside it. */
+/** What the real app writes for a picture export: the named file for one page picked or a PDF, else one per page beside it. */
 function writesPictures(pages: number): (job: DiagramAppJob) => DiagramAppResult {
   return (job) => {
     const ext = job.to
     const base = basename(job.out).slice(0, -(ext.length + 1))
     const paths =
-      pages === 1 || job.page !== undefined || ext === 'pdf'
+      job.page !== undefined || ext === 'pdf'
         ? [job.out]
         : Array.from({ length: pages }, (_, i) =>
             join(dirname(job.out), `${base}-p${i + 1}.${ext}`),
@@ -104,6 +104,36 @@ describe('convert of a diagram through the app', () => {
     )
     expect(refused.code).toBe(1)
     expect(refused.json().error).toBe('invalid_argument')
+  })
+
+  it('a one-page diagram without --page is a file per page too: <name>-p1, --out a folder', async () => {
+    const dir = tempDir()
+    const file = join(dir, 'single.drawio')
+    writeFileSync(file, `<mxfile><diagram id="p1" name="One">${model()}</diagram></mxfile>`)
+    answer = writesPictures(1)
+    const r = await run(['convert', file, '--to', 'png', '--json'], { env: env() })
+    expect(r.code, r.stdout).toBe(0)
+    expect(calls[0]!.job).toEqual({ input: file, to: 'png', out: join(dir, 'single.png') })
+    expect(r.json().output_path).toBe(join(dir, 'single-p1.png'))
+    expect(r.json().detail).toEqual({ pages: 1, output_paths: [join(dir, 'single-p1.png')] })
+    const folder = join(dir, 'pictures')
+    const into = await run(['convert', file, '--to', 'svg', '--out', folder, '--json'], {
+      env: env(),
+    })
+    expect(into.code, into.stdout).toBe(0)
+    expect(into.json().output_path).toBe(join(folder, 'single-p1.svg'))
+    const asFile = await run(
+      ['convert', file, '--to', 'png', '--out', join(dir, 'one.png'), '--json'],
+      { env: env() },
+    )
+    expect(asFile.code).toBe(1)
+    expect(asFile.json().error).toBe('invalid_argument')
+    const picked = await run(
+      ['convert', file, '--to', 'png', '--page', 'One', '--out', join(dir, 'one.png'), '--json'],
+      { env: env() },
+    )
+    expect(picked.code, picked.stdout).toBe(0)
+    expect(picked.json().output_path).toBe(join(dir, 'one.png'))
   })
 
   it('PDF is one file with every page', async () => {

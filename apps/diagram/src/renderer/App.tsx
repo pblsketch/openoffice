@@ -335,7 +335,7 @@ export default function App({ initialTheme }: { initialTheme: UiTheme }) {
     const info = await client.request('pageInfo', {})
     const all = info.pages.map((page, index) => ({ ...page, number: index + 1 }))
     const chosen = scope === 'all' ? all : all.filter((page) => page.id === info.currentPage)
-    return { client, chosen, total: all.length }
+    return { client, chosen }
   }, [])
 
   const suggestedName = (): string =>
@@ -371,7 +371,7 @@ export default function App({ initialTheme }: { initialTheme: UiTheme }) {
           if (!result.ok) say(translate('exportFailed', { error: result.error }))
           return
         }
-        const { client, chosen, total } = await pagesFor(scope)
+        const { client, chosen } = await pagesFor(scope)
         const pages: { number: number; bytes: Uint8Array }[] = []
         for (const page of chosen) {
           const bytes =
@@ -386,7 +386,7 @@ export default function App({ initialTheme }: { initialTheme: UiTheme }) {
         const result = await window.diagramApi.exportImages({
           format,
           pages,
-          partial: pages.length < total,
+          scope,
           suggestedName: suggestedName(),
         })
         if (!result.ok) say(translate('exportFailed', { error: result.error }))
