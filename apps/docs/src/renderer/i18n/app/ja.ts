@@ -370,6 +370,9 @@ export const ja = {
   appAiBadgeTip: 'AI を使用します',
   appTranslate: '翻訳',
   appTranslateTo: '{lang}に翻訳',
+  appEasyWords: 'やさしい言葉で説明',
+  appEasyWordsPrompt:
+    '選択したテキストを、やさしい文章が必要な人(子ども、お年寄り、日本語を学んでいる人)にもわかるように、日本語でかみくだいて説明してください。身近な言葉と短い文を使い、事実・数字・条件はすべて残してください。ドキュメントは変更しないでください：「{text}」',
   redactMenuLabel: '選択範囲をAIから隠す',
   redactDialogDesc:
     '文章はドキュメントとファイルに残り、AI には下のマーカーしか見えません。名前をつけると、何を表すかAIが理解できます。',

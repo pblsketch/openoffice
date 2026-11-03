@@ -3,12 +3,15 @@
  * language, or English when the book is already in the UI language. The
  * book's language is its first `dc:language`; a book that names none (or
  * only `und`) gets pdf-structure's script-based guess from its text, with
- * that guess's limits (every Latin-script book reads as `en`).
+ * that guess's limits (every Latin-script book reads as `en`). An easy
+ * explanation (`mode` 'easy') defaults to the UI language always, also for a
+ * book written in it.
  */
 import {
   LANGUAGE_SAMPLE_CHARS,
   defaultTargetLanguage,
   guessLanguageFromText,
+  type TranslationMode,
 } from '@genoffice/pdf-structure'
 import { EPUB_METADATA_PAGE, type EpubTranslationUnit } from './units'
 
@@ -27,15 +30,18 @@ export function epubBookLanguage(
 
 /**
  * The default target: the UI language (normalized to one of the 21), or
- * English when the book's language has the same primary subtag.
+ * English when the book's language has the same primary subtag. `mode`
+ * 'easy': the UI language, whatever the book's language.
  */
 export function defaultEpubTargetLanguage(
   uiLanguage: string,
   bookLanguages: readonly string[],
   sampleText: string,
+  mode: TranslationMode = 'translate',
 ): TargetLanguage {
   // with no text to guess from, the PDF rule gives the normalized UI language
   const ui = defaultTargetLanguage(uiLanguage, '')
+  if (mode === 'easy') return ui
   const book = epubBookLanguage(bookLanguages, sampleText)
   return book !== undefined && primary(book) === primary(ui) ? 'en' : ui
 }

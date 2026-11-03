@@ -58,4 +58,18 @@ export const nl = {
   blTranslateAll: 'Alle pagina’s vertalen…',
   blTranslateAllTip:
     'Opent het venster voor documentvertaling. Er wordt bevestiging gevraagd voordat er iets wordt verzonden.',
+  blMode: 'Weergave',
+  blModeTranslate: 'Vertaling',
+  blModeEasy: 'Eenvoudige uitleg',
+  blEasyLanguage: 'Taal van de uitleg',
+  blEasyStoredLangs: 'Bewaarde uitleg',
+  blEasyPage: 'Deze pagina eenvoudig uitleggen',
+  blEasyRest: 'De rest eenvoudig uitleggen ({count})',
+  blEasyPaidYes: 'Uitleggen',
+  blEasyPageRunning: 'Bezig met uitleggen… {done}/{total}',
+  blEasyRetranslate: 'Opnieuw uitleggen',
+  blEasyRetranslating: 'Opnieuw aan het uitleggen…',
+  blEasyDiscardEditAsk: 'Je wijziging weggooien en opnieuw uitleggen?',
+  blEasyEditLabel: 'Uitleg bewerken',
+  blEasyTranslateAll: 'Alle pagina’s eenvoudig uitleggen…',
 } satisfies Record<keyof typeof zh, string>

@@ -355,6 +355,9 @@ export const pl = {
   appAiBadgeTip: 'Używa AI',
   appTranslate: 'Przetłumacz',
   appTranslateTo: 'Przetłumacz na {lang}',
+  appEasyWords: 'Wyjaśnij prostymi słowami',
+  appEasyWordsPrompt:
+    'Wyjaśnij zaznaczony fragment po polsku tak, aby zrozumiały go także osoby, które potrzebują prostego tekstu (dzieci, osoby starsze, osoby uczące się polskiego). Używaj codziennych słów i krótkich zdań, zachowaj wszystkie fakty, liczby i warunki. Nie modyfikuj dokumentu: „{text}”',
   redactMenuLabel: 'Ukryj zaznaczenie przed AI',
   redactDialogDesc:
     'Słowa zostają w dokumencie i w pliku; model widzi tylko symbol. Nadaj mu nazwę, by wiedział, co oznacza.',

@@ -55,6 +55,7 @@ Rechtermuisklik ergens in de tekst — het menu volgt waarop je klikte. Hoofdgro
 - **Klembord**: knippen / kopiëren / plakken / **plakken als platte tekst**.
 - **Lettertype, alinea**: lettertype en maat wijzigen, vet/curatief/onderstreept, uitlijning/inspringen/regelafstand zonder naar het lint te gaan.
 - **Synoniemen**: toont synoniemen voor het geselecteerde woord; klik er een aan om het te vervangen.
+- **Uitleggen in eenvoudige woorden** (AI): stuurt de selectie naar het AI-paneel om haar in eenvoudige woorden in de taal van de interface uit te leggen, en voert dat meteen uit. Zonder selectie staat het uit, en tekst die voor de AI verborgen is, wordt niet verstuurd.
 - **Vertalen** (AI): vertaalt de selectie naar de doeltaal (Engels, vereenvoudigd Chinees, Japans, Koreaans, Frans, Duits, Spaans, ...) via het AI-paneel.
 - **Nieuwe opmerking**: koppelt een opmerking aan de selectie.
 - **Spelling** (bij een verkeerd gespeld woord): voorgestelde vervangingen, alles negeren, aan woordenboek toevoegen, proefleestaal instellen.

@@ -345,6 +345,9 @@ export const en = {
   appAiBadgeTip: 'Uses AI',
   appTranslate: 'Translate',
   appTranslateTo: 'Translate to {lang}',
+  appEasyWords: 'Explain in plain words',
+  appEasyWordsPrompt:
+    'Explain the selected text in English so that someone who needs easy reading (a child, an older person, or someone learning English) can understand it. Use everyday words and short sentences, and keep every fact, number and condition. Do not modify the document: "{text}"',
   redactMenuLabel: 'Hide the selection from AI',
   redactDialogDesc:
     'The words stay in the document and in the file; the model sees the placeholder below instead. Name it so the model knows what it stands for.',

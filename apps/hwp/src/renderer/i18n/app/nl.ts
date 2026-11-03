@@ -237,4 +237,7 @@ export const nl = {
   checkAskAi: 'Het herstellen aan de AI geven',
   checkHandedOff: 'Het verzoek staat in het AI-veld. Controleer het en verstuur het.',
   checkFixFailed: 'De wijziging is niet gelukt.',
+  easyWordsLabel: 'Uitleggen in eenvoudige woorden',
+  easyWordsPrompt:
+    'Leg de hieronder geselecteerde tekst in het Nederlands uit, zodat ook iemand die makkelijk leesbare tekst nodig heeft hem begrijpt. Gebruik gewone woorden en korte zinnen en laat geen feit, getal of voorwaarde weg. Wijzig het document niet.\n\nGeselecteerde tekst:\n{text}',
 } satisfies Record<keyof typeof zh, string>

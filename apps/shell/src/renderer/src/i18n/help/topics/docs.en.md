@@ -51,6 +51,7 @@ Right-click anywhere in the body — the menu follows what you clicked. Main gro
 - **Clipboard**: cut / copy / paste / **paste as plain text**.
 - **Font, paragraph**: change family and size, bold/italic/underline, alignment/indent/spacing without visiting the ribbon.
 - **Synonyms**: lists synonyms for the selected word; click one to replace.
+- **Explain in plain words** (AI): sends the selection to the AI panel to be explained in easy words, in the screen language, and runs at once. It is off without a selection, and text hidden from the AI is not sent.
 - **Translate** (AI): translate the selection into the target language (English, Simplified Chinese, Japanese, Korean, French, German, Spanish, ...) via the AI panel.
 - **New comment**: attach a comment to the selection.
 - **Spelling** (on a misspelled word): suggested replacements, ignore all, add to dictionary, set proofing language.

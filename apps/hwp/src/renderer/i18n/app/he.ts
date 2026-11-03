@@ -224,4 +224,7 @@ export const he = {
   checkAskAi: 'להעביר את התיקון ל-AI',
   checkHandedOff: 'הבקשה נמצאת בשדה ה-AI. בדוק אותה ושלח.',
   checkFixFailed: 'לא ניתן היה לשנות.',
+  easyWordsLabel: 'הסבר במילים פשוטות',
+  easyWordsPrompt:
+    'הסבר בעברית את הטקסט שנבחר למטה כך שגם מי שזקוק לטקסט קל לקריאה יבין אותו. השתמש במילים יומיומיות ובמשפטים קצרים, ואל תשמיט אף עובדה, מספר או תנאי. אל תשנה את המסמך.\n\nהטקסט שנבחר:\n{text}',
 } satisfies Record<keyof typeof zh, string>

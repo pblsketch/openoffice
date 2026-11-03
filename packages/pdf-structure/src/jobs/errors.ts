@@ -5,7 +5,7 @@
  * fields of an error stream chunk (`errorCode`, `errorResetsAt`). This module
  * reads either shape structurally, so the engine needs neither package.
  */
-import type { JobKind, JobProgress } from '../store/store'
+import type { JobKind, JobProgress, TranslationMode } from '../store/store'
 
 /**
  * Kinds that end the job at once: nothing more is sent and calls in flight
@@ -82,6 +82,8 @@ export interface RunningDocumentJob {
   lang?: string
   /** the run of a 'highlight' job */
   runId?: string
+  /** 'easy' for an easy explanation's job; absent for every plain one */
+  mode?: Extract<TranslationMode, 'easy'>
   /** items (pages or blocks) done / total, including those done before this run */
   progress: JobProgress
 }

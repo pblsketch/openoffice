@@ -81,4 +81,27 @@ export const zh = {
   trRestartEditedCount: '有 {count} 个段落经人工修改。',
   trRestartDiscardEdited: '连同人工修改的 {count} 个段落一起删除',
   trRestartKeepEdited: '保留修改过的段落',
+  trMode: '方式',
+  trModeTranslate: '翻译',
+  trModeEasy: '通俗解释',
+  trPdfEasy: '通俗解释的文字会变长，放不进原来的位置。Markdown 和 EPUB 仍可使用。',
+  trEasyFormatMd: '通俗解释 Markdown',
+  trEasyFormatEpub: '通俗解释 EPUB',
+  trEasyBilingual: '原文后附解释：在每段原文之后放上它的通俗解释（不勾选则只含解释）',
+  trEasyFileWord: '通俗解释',
+  trEasyPickTitle: '保存通俗解释 {format}',
+  trConfirmEasyLanguage: '解释语言：{language}',
+  trEasyConfirmDone: '共 {total} 个文字块，其中 {done} 个已解释，不会再次发送',
+  trEasyConfirmNothing:
+    '所选页面的文字块都已解释。不发送任何内容，直接用已保存的通俗解释写入文件。',
+  trEasyProviderChange:
+    '已保存的通俗解释是用 {stored} 生成的。改用 {next} 继续，同一份解释里会混有两个 AI 的文字。',
+  trEasyStart: '开始解释',
+  trEasyRestart: '从头重新解释…',
+  trEasyRestartConfirm:
+    '要删除已保存的{language}通俗解释（{count} 个文字块）并重新解释所有文字块吗？删除的解释无法恢复。',
+  trEasyRestartYes: '重新解释',
+  trEasyRunning: '正在生成{language}通俗解释… {done}/{total} 个文字块',
+  trEasyDone: '{language}通俗解释已完成（{count} 个文字块）。',
+  trResumeEasy: '未完成的通俗解释（{language}）{percent}% — 要继续吗？',
 }

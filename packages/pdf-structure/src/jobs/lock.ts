@@ -67,6 +67,7 @@ function snapshot(info: RunningDocumentJob): RunningDocumentJob {
   }
   if (info.lang !== undefined) out.lang = info.lang
   if (info.runId !== undefined) out.runId = info.runId
+  if (info.mode === 'easy') out.mode = 'easy'
   return out
 }
 

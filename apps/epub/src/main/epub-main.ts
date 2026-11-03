@@ -552,10 +552,22 @@ async function writeTranslated(
   if (typeof request !== 'object' || request === null) {
     return { ok: false, error: 'invalid-request', message: 'request must be an object' }
   }
-  const { kind, lang, chapters: rawChapters, path, docHash } = request as Record<string, unknown>
+  const {
+    kind,
+    lang,
+    mode,
+    chapters: rawChapters,
+    path,
+    docHash,
+  } = request as Record<string, unknown>
   if (kind !== 'translated' && kind !== 'bilingual') {
     return { ok: false, error: 'invalid-request', message: 'bad kind' }
   }
+  // left out it is a translation, as before; 'easy' builds the easy explanation's book
+  if (mode !== undefined && mode !== 'translate' && mode !== 'easy') {
+    return { ok: false, error: 'invalid-request', message: 'bad mode' }
+  }
+  const easy = mode === 'easy'
   if (typeof lang !== 'string' || !LANGUAGE_TAG.test(lang) || lang.length > 128) {
     return { ok: false, error: 'invalid-request', message: 'bad language' }
   }
@@ -574,12 +586,15 @@ async function writeTranslated(
   }
   const bytes = session.bytes
   try {
-    const stored = await store().readTranslation(docHash, lang)
+    const stored = easy
+      ? await store().readTranslation(docHash, lang, 'easy')
+      : await store().readTranslation(docHash, lang)
     const built = await buildTranslatedEpub(bytes, {
       kind,
       lang,
       ...(chapters ? { chapters } : {}),
       results: stored?.blocks ?? new Map(),
+      ...(easy ? { mode: 'easy' as const } : {}),
     })
     if (!built.ok)
       return { ok: false, error: 'refused', message: `${built.reason}: ${built.detail}` }
@@ -816,11 +831,13 @@ function registerEpubIpc(): void {
     store,
     knows: (owner, docHash) => knownHashesByWc.get(owner)?.has(docHash) === true,
   }))
-  ipcMain.handle(EPUB_CHANNELS.storeTranslations, (e, docHash: unknown) =>
-    handlers.translations(e.sender.id, docHash),
+  ipcMain.handle(EPUB_CHANNELS.storeTranslations, (e, docHash: unknown, mode: unknown) =>
+    handlers.translations(e.sender.id, docHash, mode),
   )
-  ipcMain.handle(EPUB_CHANNELS.storeTranslation, (e, docHash: unknown, lang: unknown) =>
-    handlers.translation(e.sender.id, docHash, lang),
+  ipcMain.handle(
+    EPUB_CHANNELS.storeTranslation,
+    (e, docHash: unknown, lang: unknown, mode: unknown) =>
+      handlers.translation(e.sender.id, docHash, lang, mode),
   )
   ipcMain.handle(EPUB_CHANNELS.storeUnfinishedJobs, (e, docHash: unknown) =>
     handlers.unfinishedJobs(e.sender.id, docHash),

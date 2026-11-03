@@ -103,6 +103,17 @@ const FILE_MENU = [
 ]
 /** The command that reads what the user has selected in the editor. */
 const SELECTION_COMMAND = 'ext:ieum-selection'
+/**
+ * The command behind the editor's right-click item 쉬운 말로 풀기, which the
+ * studio-easy-words-context-menu patch puts into the body and table cell menus. The menu
+ * shows the command's label, which the app gives in its language (installEasyWords).
+ */
+export const EASY_WORDS_COMMAND = 'ext:ieum-easy-words'
+/**
+ * The event that item fires on the editor's window, with the selected text as its detail
+ * (`{ text }`): the app asks its AI panel to explain that text in plain words.
+ */
+export const EASY_WORDS_EVENT = 'ieum:easy-words'
 /** The command that selects the word under the caret (a double click in the page). */
 const WORD_COMMAND = 'ext:ieum-select-word'
 /** The command that selects the paragraph under the caret (a triple click in the page). */
@@ -6272,6 +6283,52 @@ export const agentPlugin = {
           }
         } catch {
           // an editor without a File menu
+          return { ok: false }
+        }
+        return { ok: true }
+      }),
+
+      /**
+       * Name the editor's right-click item 쉬운 말로 풀기 (EASY_WORDS_COMMAND) in the app's
+       * language. The item is off while nothing is selected. A click reads the selection as
+       * selection() does and fires EASY_WORDS_EVENT with its text, a line per paragraph; it
+       * changes nothing in the document. A later call gives the item its new name.
+       */
+      installEasyWords: guarded((label) => {
+        if (typeof label !== 'string' || !label.trim()) {
+          throw fail('BAD_ARGUMENT', 'label must be a non-empty string')
+        }
+        if (!host.automation.registerCommand) return { ok: false }
+        try {
+          // the studio's registry overwrites an id; a host that refuses one is cleared first
+          host.automation.unregisterCommand?.(EASY_WORDS_COMMAND)
+        } catch {
+          // nothing registered yet
+        }
+        try {
+          host.automation.registerCommand({
+            id: EASY_WORDS_COMMAND,
+            label,
+            canExecute: (ctx) =>
+              ctx?.hasDocument === true &&
+              (ctx.hasSelection === true || ctx.inCellSelectionMode === true),
+            execute: () => {
+              let read
+              try {
+                read = api.selection()
+              } catch {
+                return
+              }
+              if (!read?.ok) return
+              const text = read.segments
+                .map((segment) => segment.text)
+                .join('\n')
+                .trim()
+              if (!text) return
+              globalThis.dispatchEvent?.(new CustomEvent(EASY_WORDS_EVENT, { detail: { text } }))
+            },
+          })
+        } catch {
           return { ok: false }
         }
         return { ok: true }

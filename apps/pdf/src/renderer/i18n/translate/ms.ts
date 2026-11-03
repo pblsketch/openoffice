@@ -87,4 +87,30 @@ export const ms = {
   trRestartEditedCount: '{count} perenggan telah disunting oleh seseorang.',
   trRestartDiscardEdited: 'Padam juga {count} perenggan yang disunting oleh seseorang',
   trRestartKeepEdited: 'Kekalkan perenggan yang disunting',
+  trMode: 'Jenis',
+  trModeTranslate: 'Terjemahan',
+  trModeEasy: 'Penerangan mudah',
+  trPdfEasy:
+    'Penerangan mudah lebih panjang daripada asalnya, jadi tidak muat di tempatnya. Markdown dan EPUB boleh.',
+  trEasyFormatMd: 'Markdown penerangan mudah',
+  trEasyFormatEpub: 'EPUB penerangan mudah',
+  trEasyBilingual:
+    'Asal kemudian penerangan: setiap perenggan asal diikuti penerangan mudahnya (dimatikan: penerangan sahaja)',
+  trEasyFileWord: 'penerangan mudah',
+  trEasyPickTitle: 'Simpan {format} penerangan mudah',
+  trConfirmEasyLanguage: 'Bahasa penerangan: {language}',
+  trEasyConfirmDone:
+    '{done} daripada {total} blok sudah diterangkan dan tidak akan dihantar semula',
+  trEasyConfirmNothing:
+    'Semua blok pada halaman yang dipilih sudah diterangkan. Tiada apa-apa dihantar; fail ditulis daripada penerangan yang disimpan.',
+  trEasyProviderChange:
+    'Penerangan yang disimpan dibuat dengan {stored}. Meneruskan dengan {next} akan mencampurkan dua AI dalam satu penerangan.',
+  trEasyStart: 'Mula menerangkan',
+  trEasyRestart: 'Terangkan semula dari awal…',
+  trEasyRestartConfirm:
+    'Padam penerangan mudah dalam bahasa {language} yang disimpan ({count} blok) dan terangkan semula semua blok? Penerangan yang dipadam tidak boleh dipulihkan.',
+  trEasyRestartYes: 'Terangkan semula',
+  trEasyRunning: 'Menulis penerangan mudah dalam bahasa {language}… {done}/{total} blok',
+  trEasyDone: 'Penerangan mudah dalam bahasa {language} selesai ({count} blok).',
+  trResumeEasy: 'Penerangan mudah yang belum selesai ({language}) {percent}% — teruskan?',
 } satisfies Record<keyof typeof zh, string>

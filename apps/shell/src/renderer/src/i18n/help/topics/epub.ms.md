@@ -67,6 +67,7 @@ Editor e-buku membuka buku EPUB (`.epub`) dalam satu tab. Anda boleh membaca buk
 - Apa yang telah diterjemah akan disimpan. Jika anda berhenti, pilih **Eksport yang sudah diterjemah** (selebihnya kekal dalam bahasa asal) atau **Sambung kemudian**. Apabila anda membuka buku yang terjemahannya belum selesai, GenOffice menawarkan untuk menyambungnya. **Terjemah semula dari awal** terlebih dahulu memadam terjemahan yang disimpan bagi bahasa itu.
 - Terjemahan yang disimpan dikira di bawah Tetapan ▸ Umum ▸ **Hasil AI yang disimpan**, bersama-sama hasil dokumen PDF, dan **Padam semua** turut memadamnya.
 - Terjemahan yang sama juga boleh dijalankan daripada [arahan terminal](help://cli) sebagai `ieumoffice epub translate`.
+- Pilih **Bahasa mudah** pada **Mod** untuk menulis semula buku dengan perkataan mudah dalam bahasa yang dipilih. Hasilnya ialah **Buku bahasa mudah** dan **Teks asal diikuti bahasa mudah**; tajuknya ditanda sebagai versi bahasa mudah dalam bahasa itu, dan nama failnya membawa tanda itu dalam bahasa antara muka supaya berbeza daripada nama fail terjemahan. Bahasanya pada mulanya bahasa antara muka dan boleh sama dengan bahasa buku. Versi mudah disimpan berasingan daripada terjemahan, tawaran untuk menyambungnya muncul sendiri, dan arahan terminal tidak membuatnya.
 
 ## Belum disokong
 

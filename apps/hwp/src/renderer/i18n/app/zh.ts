@@ -219,4 +219,7 @@ export const zh = {
   checkAskAi: '交给 AI 修改',
   checkHandedOff: '请求已放入 AI 输入框，请确认后发送。',
   checkFixFailed: '未能修改。',
+  easyWordsLabel: '用简单的话解释',
+  easyWordsPrompt:
+    '请用中文解释下面选中的文字，让需要浅显文字的人也能看懂。用日常词语和短句，不要漏掉任何事实、数字或条件。不要修改文档。\n\n选中的文字：\n{text}',
 }

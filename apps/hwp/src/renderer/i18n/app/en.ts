@@ -228,4 +228,7 @@ export const en = {
   checkAskAi: 'Hand the fixing to the AI',
   checkHandedOff: 'The request is in the AI box. Read it, then send it.',
   checkFixFailed: 'Could not make the change.',
+  easyWordsLabel: 'Explain in plain words',
+  easyWordsPrompt:
+    'Explain the selected text below in English so that someone who needs easy-to-read text can understand it. Use everyday words and short sentences, and leave out no fact, number or condition. Do not change the document.\n\nSelected text:\n{text}',
 } satisfies Record<keyof typeof zh, string>

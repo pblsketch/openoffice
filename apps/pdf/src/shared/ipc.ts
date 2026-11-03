@@ -15,6 +15,7 @@ import type {
   JobStatus,
   TranslationBlockEntry,
   TranslationBlockInput,
+  TranslationMode,
 } from '../../../../packages/pdf-structure/src/store/store'
 import type {
   HighlightBlockEntry,
@@ -1386,6 +1387,9 @@ export interface PdfStructureApi {
 // ── result store (window.pdfApi.store) ──
 // Document hashes are accepted only after the main process computed them for
 // this view (docHash, migrate, or a structure job's answer).
+// A translation call or write takes an optional `mode` (TranslationMode):
+// left out it is 'translate' and reaches the plain translation as before;
+// 'easy' reaches the easy explanation kept apart in the same store.
 
 /** a translation as stored, blocks in a plain list */
 export interface PdfStoredTranslation {
@@ -1404,13 +1408,39 @@ export type PdfStoreWriteRequest =
       provider?: string
       model?: string
     }
-  | { kind: 'translationMeta'; docHash: string; lang: string; provider: string; model: string }
-  | { kind: 'translationBlocks'; docHash: string; lang: string; blocks: TranslationBlockInput[] }
-  | { kind: 'deleteTranslation'; docHash: string; lang: string }
-  /** the record is found by (kind, key): `lang`, or `runId` for 'highlight' (JobRecordInput) */
+  | {
+      kind: 'translationMeta'
+      docHash: string
+      lang: string
+      provider: string
+      model: string
+      mode?: TranslationMode
+    }
+  | {
+      kind: 'translationBlocks'
+      docHash: string
+      lang: string
+      blocks: TranslationBlockInput[]
+      mode?: TranslationMode
+    }
+  | { kind: 'deleteTranslation'; docHash: string; lang: string; mode?: TranslationMode }
+  /**
+   * the record is found by (kind, key): `lang`, or `runId` for 'highlight'
+   * (JobRecordInput); `job.mode` 'easy' keeps an easy explanation's record apart
+   */
   | { kind: 'job'; docHash: string; job: JobRecordInput }
-  /** `lang` for translate / translate-page / summary, `runId` for highlight, neither for ai-read */
-  | { kind: 'heartbeat'; docHash: string; job: JobKind; lang?: string; runId?: string }
+  /**
+   * `lang` for translate / translate-page / summary, `runId` for highlight,
+   * neither for ai-read; `mode` 'easy' for an easy explanation's job
+   */
+  | {
+      kind: 'heartbeat'
+      docHash: string
+      job: JobKind
+      lang?: string
+      runId?: string
+      mode?: TranslationMode
+    }
   /** write (or replace) a passage card; the store stamps savedAt */
   | { kind: 'passage'; docHash: string; card: PassageCardInput }
   | { kind: 'deletePassage'; docHash: string; id: string }
@@ -1435,9 +1465,15 @@ export type PdfStoreWriteRequest =
       lang: string
       key: TranslationBlockKey
       text: string
+      mode?: TranslationMode
     }
   /** "translate again from the start" keeping the edits; answers `removed` */
-  | { kind: 'deleteTranslationExceptEdited'; docHash: string; lang: string }
+  | {
+      kind: 'deleteTranslationExceptEdited'
+      docHash: string
+      lang: string
+      mode?: TranslationMode
+    }
 
 /** what a store write answers besides `ok` */
 export interface PdfStoreWriteResult {
@@ -1466,11 +1502,15 @@ export interface PdfStoreMigrateResult {
   highlightBlocks?: number
   /** insights entries moved; present only when some were */
   insights?: number
+  /** easy explanation blocks moved; present only when some were */
+  easyBlocks?: number
+  /** easy explanation languages that received anything; present only when some did */
+  easyLanguages?: string[]
 }
 
 /** what deleting the document's stored results also removes (the confirmation names it) */
 export interface PdfStoreDeleteCounts {
-  /** translation blocks a person edited, in every language */
+  /** blocks a person edited, in every language, of the translations and the easy explanations */
   editedTranslationBlocks: number
   passages: number
 }
@@ -1492,12 +1532,20 @@ export interface PdfStoreApi {
   /** result-store key of the open file's current bytes */
   docHash(path: string): Promise<PdfStructureOutcome<{ docHash: string }>>
   aiReadPages(docHash: string): Promise<PdfStructureOutcome<{ pages: AiReadPageEntry[] }>>
-  translations(docHash: string): Promise<PdfStructureOutcome<{ langs: string[] }>>
+  /** languages of the stored translations, or of the easy explanations with `mode` 'easy' */
+  translations(
+    docHash: string,
+    mode?: TranslationMode,
+  ): Promise<PdfStructureOutcome<{ langs: string[] }>>
   translation(
     docHash: string,
     lang: string,
+    mode?: TranslationMode,
   ): Promise<PdfStructureOutcome<{ translation: PdfStoredTranslation | null }>>
-  /** not complete (stopped, or running elsewhere): the source of the resume offer */
+  /**
+   * not complete (stopped, or running elsewhere): the source of the resume
+   * offer. Easy explanations' records come too, each with `mode: 'easy'`.
+   */
   unfinishedJobs(docHash: string): Promise<PdfStructureOutcome<{ jobs: JobStatus[] }>>
   write(request: PdfStoreWriteRequest): Promise<PdfStructureOutcome<PdfStoreWriteResult>>
   /** after an in-app save: carry results and job records to the new hash */
@@ -1531,9 +1579,10 @@ export interface PdfStoreApi {
   pageFingerprints(
     request: PdfStorePageFingerprintsRequest,
   ): Promise<PdfStructureOutcome<{ docHash: string; fingerprints: string[] }>>
-  /** stored translation languages, most recently written first */
+  /** stored translation languages (easy explanations' with `mode` 'easy'), most recently written first */
   translationRecency(
     docHash: string,
+    mode?: TranslationMode,
   ): Promise<PdfStructureOutcome<{ langs: PdfTranslationRecency[] }>>
 }
 

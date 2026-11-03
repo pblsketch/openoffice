@@ -117,6 +117,13 @@
  *   so a selection can take a memo without going to the Insert menu. The menu keeps the
  *   selection, and the memo editor reads it when it opens.
  *
+ * studio-easy-words-context-menu
+ *   The same two right-click menus gain 쉬운 말로 풀기 next to 메모: it asks the AI panel to
+ *   explain the selected text in plain words, in the app's language, and changes nothing in
+ *   the document. The item is the command the app's plugin registers (EASY_WORDS_COMMAND),
+ *   so its name is the label the app gives it, and it is off while nothing is selected.
+ *   Before the plugin registers it the menus leave it out.
+ *
  * studio-memo-anchors, studio-memo-delete-undo
  *   The engine drops a memo when Backspace or Delete removes the last character of its
  *   anchor (vendor/rhwp-core patch 0018, decision 0072). The studio's undo of a typed
@@ -142,6 +149,7 @@
  */
 
 import { CLIPBOARD_HTML_MODULE } from '../studio-plugin/clipboard-html.mjs'
+import { EASY_WORDS_COMMAND } from '../studio-plugin/agent-plugin.mjs'
 import { HANCOM_KEYS_MODULE, studioCommandIds } from '../studio-plugin/hancom-keys.mjs'
 import { PC_FONTS_MODULE } from '../studio-plugin/pc-fonts.mjs'
 
@@ -846,6 +854,39 @@ const PATCHES = {
       },
     ],
   },
+  'studio-easy-words-context-menu': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler\.ts$/,
+    edits: [
+      // the end of the menu of body text (and of a header or footer), after 메모
+      {
+        find: [
+          '    ];',
+          '  }',
+          '',
+          '  /** 특수 키 처리 (Backspace, Enter, 화살표, Ctrl+Z/Y) */',
+        ].join('\n'),
+        replace: [
+          `      { type: 'command', commandId: '${EASY_WORDS_COMMAND}' },`,
+          '    ];',
+          '  }',
+          '',
+          '  /** 특수 키 처리 (Backspace, Enter, 화살표, Ctrl+Z/Y) */',
+        ].join('\n'),
+      },
+      // the menu inside a table cell, after 메모 and before the table's own commands
+      {
+        find: [
+          "      { type: 'separator' },",
+          "      { type: 'command', commandId: 'table:split', label: '표 나누기' },",
+        ].join('\n'),
+        replace: [
+          `      { type: 'command', commandId: '${EASY_WORDS_COMMAND}' },`,
+          "      { type: 'separator' },",
+          "      { type: 'command', commandId: 'table:split', label: '표 나누기' },",
+        ].join('\n'),
+      },
+    ],
+  },
   'studio-memo-label-ko': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]i18n[\\/]locales[\\/]ko\.ts$/,
     find: '  "command.insert.comment.label": "주석",',
@@ -1291,6 +1332,7 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-table-props-menu-label',
   'studio-memo-command',
   'studio-memo-context-menu',
+  'studio-easy-words-context-menu',
   'studio-memo-label-ko',
   'studio-memo-label-en',
   'studio-memo-anchors',

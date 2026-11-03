@@ -29,3 +29,24 @@ export function jobKeyOf(job: {
   const field = jobKeyField(job.kind)
   return field === null ? undefined : job[field]
 }
+
+/**
+ * How a translation is made (spec 6.4): a plain translation, or an easy
+ * explanation. Both keep entries of the same shape, and the store keeps them
+ * apart: easy results live in `easy/<lang>/` beside `translations/<lang>/`,
+ * and an easy job's record is `<kind>.<lang>.easy.json` with `mode: "easy"`.
+ * Leaving the mode out always means 'translate'.
+ */
+export const TRANSLATION_MODES = ['translate', 'easy'] as const
+export type TranslationMode = (typeof TRANSLATION_MODES)[number]
+
+export const isTranslationMode = (v: unknown): v is TranslationMode =>
+  (TRANSLATION_MODES as readonly unknown[]).includes(v)
+
+/** the job kinds an easy explanation runs as; every other kind is plain only */
+export const MODE_JOB_KINDS: readonly JobKind[] = ['translate', 'translate-page']
+
+/** a job of `kind` may be recorded in `mode` */
+export function jobModeAllowed(kind: JobKind, mode: TranslationMode): boolean {
+  return mode === 'translate' || MODE_JOB_KINDS.includes(kind)
+}

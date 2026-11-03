@@ -86,4 +86,30 @@ export const hi = {
   trRestartEditedCount: '{count} अनुच्छेद किसी व्यक्ति ने संपादित किए हैं।',
   trRestartDiscardEdited: 'व्यक्ति द्वारा संपादित {count} अनुच्छेद भी हटाएँ',
   trRestartKeepEdited: 'संपादित अनुच्छेद रखें',
+  trMode: 'प्रकार',
+  trModeTranslate: 'अनुवाद',
+  trModeEasy: 'सरल व्याख्या',
+  trPdfEasy:
+    'सरल व्याख्या मूल से लंबी हो जाती है, इसलिए अपनी जगह में नहीं समाती। Markdown और EPUB बन सकते हैं।',
+  trEasyFormatMd: 'सरल व्याख्या वाला Markdown',
+  trEasyFormatEpub: 'सरल व्याख्या वाला EPUB',
+  trEasyBilingual:
+    'मूल, फिर व्याख्या: मूल के हर अनुच्छेद के बाद उसकी सरल व्याख्या आती है (बंद हो तो केवल व्याख्या)',
+  trEasyFileWord: 'सरल व्याख्या',
+  trEasyPickTitle: 'सरल व्याख्या वाला {format} सहेजें',
+  trConfirmEasyLanguage: 'व्याख्या की भाषा: {language}',
+  trEasyConfirmDone:
+    '{total} में से {done} ब्लॉक पहले ही समझाए जा चुके हैं और दोबारा नहीं भेजे जाएँगे',
+  trEasyConfirmNothing:
+    'चुने गए पेजों के सभी ब्लॉक पहले ही समझाए जा चुके हैं। कुछ नहीं भेजा जाएगा; फ़ाइलें सहेजी गई व्याख्या से लिखी जाएँगी।',
+  trEasyProviderChange:
+    'सहेजी गई व्याख्या {stored} से बनी थी। {next} से जारी रखने पर एक ही व्याख्या में दो AI का काम मिल जाएगा।',
+  trEasyStart: 'व्याख्या शुरू करें',
+  trEasyRestart: 'शुरू से फिर समझाएँ…',
+  trEasyRestartConfirm:
+    '{language} में सहेजी गई सरल व्याख्या ({count} ब्लॉक) हटाकर सभी ब्लॉक फिर से समझाएँ? हटाई गई व्याख्याएँ वापस नहीं आ सकतीं।',
+  trEasyRestartYes: 'फिर समझाएँ',
+  trEasyRunning: '{language} में सरल व्याख्या लिखी जा रही है… {done}/{total} ब्लॉक',
+  trEasyDone: '{language} में सरल व्याख्या पूरी हो गई ({count} ब्लॉक)।',
+  trResumeEasy: 'अधूरी सरल व्याख्या ({language}) {percent}% — जारी रखें?',
 } satisfies Record<keyof typeof zh, string>

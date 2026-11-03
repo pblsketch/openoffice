@@ -356,6 +356,9 @@ export const it = {
   appAiBadgeTip: "Usa l'IA",
   appTranslate: 'Traduci',
   appTranslateTo: 'Traduci in {lang}',
+  appEasyWords: 'Spiega con parole semplici',
+  appEasyWordsPrompt:
+    "Spiega il testo selezionato in italiano in modo che lo capisca anche chi ha bisogno di un testo facile (bambini, persone anziane, chi sta imparando l'italiano). Usa parole di tutti i giorni e frasi brevi, e mantieni tutti i fatti, i numeri e le condizioni. Non modificare il documento: «{text}»",
   redactMenuLabel: 'Nascondi la selezione all’IA',
   redactDialogDesc:
     'Le parole restano nel documento e nel file; il modello vede solo il segnaposto. Dai un nome perché sappia cosa rappresenta.',

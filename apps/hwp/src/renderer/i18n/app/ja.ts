@@ -229,4 +229,7 @@ export const ja = {
   checkAskAi: 'AI に修正を任せる',
   checkHandedOff: 'AI の入力欄に依頼を入れました。確認して送信してください。',
   checkFixFailed: '変更できませんでした。',
+  easyWordsLabel: 'やさしい言葉で説明',
+  easyWordsPrompt:
+    '下の選んだ文章を、やさしい文章が必要な人にもわかるように日本語で説明してください。ふだん使う言葉と短い文で書き、事実・数字・条件はひとつも落とさないでください。文書は変更しないでください。\n\n選んだ文章:\n{text}',
 } satisfies Record<keyof typeof zh, string>

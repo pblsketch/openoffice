@@ -67,6 +67,7 @@ Editor e-knih otevírá knihy EPUB (`.epub`) na kartě. Knihu můžete číst, o
 - Co už je přeložené, se uchovává. Když překlad zastavíte, zvolte **Exportovat dosud přeložené** (zbytek zůstane v původním jazyce) nebo **Pokračovat později**. Když otevřete knihu s nedokončeným překladem, GenOffice nabídne, že v něm bude pokračovat. **Přeložit znovu od začátku** nejprve smaže uchovaný překlad do daného jazyka.
 - Uchované překlady se započítávají v Nastavení ▸ Obecné ▸ **Uložené výsledky AI** spolu s výsledky dokumentů PDF a **Smazat vše** odstraní i je.
 - Stejný překlad lze spustit i z [příkazů terminálu](help://cli) jako `ieumoffice epub translate`.
+- Zvolte v poli **Režim** možnost **Jednoduchý jazyk** a kniha se přepíše jednoduchými slovy ve zvoleném jazyce. Výsledky jsou **Kniha v jednoduchém jazyce** a **Originál a po něm jednoduchý jazyk**; jejich název nese v tom jazyce označení verze v jednoduchém jazyce a název souboru je nese v jazyce rozhraní, aby se lišil od názvu překladu. Jazyk je nejprve jazykem rozhraní a může to být i jazyk knihy. Jednoduchá verze se uchovává odděleně od překladů, pokračování se nabízí zvlášť a příkazy terminálu ji nevytvářejí.
 
 ## Zatím nepodporováno
 

@@ -77,6 +77,7 @@ import { ATTACHMENT_IMAGE_EXTS } from '../../shared/ipc'
 import type { AttachmentAddResult, AttachmentMeta } from '../../shared/ipc'
 import type { AgentMemoRemovalRefusal, AgentPlace } from '../../../studio-plugin/agent-plugin.mjs'
 import type { AgentBridge } from './agent-bridge'
+import type { AiPrefill } from './easy-words'
 import { blockedRunOf, type AiBlockedRun } from './ai-connection'
 import { AttachmentList, MAX_IMAGES_PER_MESSAGE, PASTE_MIME_EXT } from './attachments'
 import { createFilesSkill } from './files-skill'
@@ -213,6 +214,7 @@ export function AiPanel({
   templateDocument,
   onSkillHandoff,
   prefill,
+  onPrefillTaken,
 }: {
   /** the document operations of the open editor */
   bridge: AgentBridge
@@ -223,8 +225,16 @@ export function AiPanel({
   templateDocument?: TemplateDocument | null
   /** this tab took a request handed over by the template flow: show the panel */
   onSkillHandoff?: () => void
-  /** a request from the document check: fills the input box, never sends it */
-  prefill?: { text: string; nonce: number } | null
+  /**
+   * a request handed to the panel: the document check's fills the input box and waits for
+   * the user; one with `autoRun` (the editor's right-click 쉬운 말로 풀기) is sent at once
+   */
+  prefill?: AiPrefill | null
+  /**
+   * the panel took an `autoRun` request: the owner clears it (`afterPrefillTaken`), so the
+   * request runs once even when the panel mounts again with the same props
+   */
+  onPrefillTaken?: (taken: AiPrefill) => void
 }): ReactElement {
   const { lang, t } = useI18n()
   const [chat, setChat] = useState<ChatEntry[]>([])
@@ -236,7 +246,7 @@ export function AiPanel({
 
   // a request handed over by the document check: it waits in the input box for the user
   useEffect(() => {
-    if (!prefill) return
+    if (!prefill || prefill.autoRun) return
     setPrompt(prefill.text)
   }, [prefill])
 
@@ -996,6 +1006,15 @@ export function AiPanel({
     })()
     return true
   }
+
+  // a request that runs as soon as it arrives goes through the same gate as a typed one;
+  // when that gate does not start it, it waits in the input box as a typed one would
+  useEffect(() => {
+    if (!prefill?.autoRun) return
+    if (!send(prefill.text)) setPrompt(prefill.text)
+    onPrefillTaken?.(prefill)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per handed request
+  }, [prefill])
 
   const stop = (): void => {
     // a run waiting on the memo question stops now: the call is answered "keep"

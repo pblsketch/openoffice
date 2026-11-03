@@ -1,11 +1,13 @@
 /**
  * The strip above the pages while the side-by-side translation view is on:
- * the language picker, the translation text size, what the view is waiting
- * for, the unsaved-page-edit notice, and the one-time "fold the column?"
- * prompt. Nothing here sends anything.
+ * the "translation / easy explanation" switch, the language picker, the
+ * translation text size, what the view is waiting for, the unsaved-page-edit
+ * notice, and the one-time "fold the column?" prompt. Nothing here sends
+ * anything: the switch only changes which stored results the column reads.
  */
 import type { ReactElement, ReactNode } from 'react'
 import type { Lang } from '@genoffice/i18n'
+import type { TranslationMode } from '../../../../../packages/pdf-structure/src/store/job-keys'
 import { TRANSLATION_LANGUAGES } from '../../../../../packages/pdf-structure/src/translate/language'
 import type { TFunc } from '../i18n/locale'
 import { languageName } from '../translate/translate-model'
@@ -15,7 +17,9 @@ import type { BilingualLoad } from './useBilingualData'
 export interface BilingualBarProps {
   load: BilingualLoad
   lang: string | null
-  /** languages with a stored translation, most recent first */
+  /** the results shown (default: the plain translation) */
+  mode?: TranslationMode
+  /** languages with stored results of `mode`, most recent first */
   storedLangs: readonly string[]
   uiLang: Lang
   fontSize: number
@@ -23,6 +27,8 @@ export interface BilingualBarProps {
   askCollapse: boolean
   t: TFunc
   onLang: (lang: string) => void
+  /** the switch was pressed (absent: no switch) */
+  onMode?: (mode: TranslationMode) => void
   onFontSize: (px: number) => void
   onCollapse: () => void
   onDismissCollapse: () => void
@@ -33,6 +39,21 @@ export interface BilingualBarProps {
 
 export function BilingualBar(props: BilingualBarProps): ReactElement {
   const { load, lang, storedLangs, uiLang, fontSize, t } = props
+  const mode: TranslationMode = props.mode === 'easy' ? 'easy' : 'translate'
+  const easy = mode === 'easy'
+  const modeButton = (value: TranslationMode, label: string) => (
+    <button
+      type="button"
+      className={`bl-bar-btn${mode === value ? ' bl-primary' : ''}`}
+      data-bl-mode={value}
+      aria-pressed={mode === value}
+      onClick={() => {
+        if (mode !== value) props.onMode?.(value)
+      }}
+    >
+      {label}
+    </button>
+  )
   const stored = storedLangs.filter((l) => (TRANSLATION_LANGUAGES as readonly string[]).includes(l))
   const others = TRANSLATION_LANGUAGES.filter((l) => !stored.includes(l))
   const option = (code: string) => (
@@ -43,13 +64,21 @@ export function BilingualBar(props: BilingualBarProps): ReactElement {
   return (
     <div className="bl-bar" role="region" aria-label={t('blToggle')}>
       <span className="bl-bar-title">{t('blToggle')}</span>
+      {props.onMode && (
+        <span className="bl-bar-font" role="group" aria-label={t('blMode')} data-bl-mode-switch>
+          {modeButton('translate', t('blModeTranslate'))}
+          {modeButton('easy', t('blModeEasy'))}
+        </span>
+      )}
       {load.kind === 'ready' && lang !== null && (
         <label className="bl-bar-lang">
-          <span>{t('blLanguage')}</span>
+          <span>{easy ? t('blEasyLanguage') : t('blLanguage')}</span>
           <select value={lang} onChange={(e) => props.onLang(e.target.value)}>
             {stored.length > 0 ? (
               <>
-                <optgroup label={t('blStoredLangs')}>{stored.map(option)}</optgroup>
+                <optgroup label={easy ? t('blEasyStoredLangs') : t('blStoredLangs')}>
+                  {stored.map(option)}
+                </optgroup>
                 <optgroup label={t('blOtherLangs')}>{others.map(option)}</optgroup>
               </>
             ) : (

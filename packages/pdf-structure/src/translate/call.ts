@@ -20,6 +20,11 @@
  * JobUnitFailure: nothing is stored, the batch stays pending, and resuming
  * the translation sends it again. Run errors (rate limit, timeout, …) from
  * `send` go to the job engine untouched; it retries or stops (spec §9).
+ *
+ * `mode` 'easy' makes the call an easy explanation's: the easy instruction,
+ * and `mode: 'easy'` on each request. Everything else (sentence lists, the
+ * checks, the fall back to a paragraph, the resends) is the same. No block is
+ * skipped for being in the target language already: every block is sent.
  */
 import { JobUnitFailure } from '../jobs/errors'
 import type {
@@ -27,6 +32,7 @@ import type {
   TranslationJobItem,
   TranslationSourceBlock,
 } from '../jobs/translate'
+import type { TranslationMode } from '../store/job-keys'
 import { sentenceEndsPair } from '../store/sentence-ends'
 import { runsText } from '../tree/inline'
 import { translationSentenceSeparator } from './language'
@@ -52,6 +58,8 @@ export interface TranslationModelRequest extends TranslationRequest {
   sourceLang?: string
   /** 0 for the first send, then 1, 2 for the resends */
   attempt: number
+  /** 'easy' for an easy explanation's call; absent for a plain translation */
+  mode?: Extract<TranslationMode, 'easy'>
 }
 
 /** one model call: the answer text, or a thrown run error */
@@ -72,6 +80,8 @@ export interface TranslationModelCallOptions {
    * default locale's rules.
    */
   sourceLang?: string
+  /** 'easy': write an easy explanation (the easy instruction); default 'translate' */
+  mode?: TranslationMode
 }
 
 type Translated = Extract<TranslationBlockResult, { status: 'translated' }>
@@ -149,6 +159,10 @@ export function createTranslationModelCall<B extends TranslationSourceBlock>(
   if (!Number.isInteger(maxResends) || maxResends < 0) {
     throw new RangeError(`translation: invalid resend count ${maxResends}`)
   }
+  const easy = o.mode === 'easy'
+  if (o.mode !== undefined && o.mode !== 'translate' && !easy) {
+    throw new TypeError(`translation: invalid mode ${JSON.stringify(o.mode)}`)
+  }
   const separator = translationSentenceSeparator(o.lang)
   return async (batch, signal) => {
     const splits = batch.map((item) => splitSentences(item.block.runs, o.sourceLang))
@@ -158,16 +172,15 @@ export function createTranslationModelCall<B extends TranslationSourceBlock>(
     let anyParsed = false
     for (let attempt = 0; attempt <= maxResends && pending.length > 0; attempt++) {
       if (signal.aborted) throw signal.reason
-      const request = buildTranslationRequest(
-        o.lang,
-        pending.map((i) => requestBlock(splits[i]!, String(i + 1))),
-      )
+      const blocks = pending.map((i) => requestBlock(splits[i]!, String(i + 1)))
+      const request = buildTranslationRequest(o.lang, blocks, easy ? 'easy' : 'translate')
       const answer = await o.send(
         {
           ...request,
           lang: o.lang,
           ...(o.sourceLang !== undefined ? { sourceLang: o.sourceLang } : {}),
           attempt,
+          ...(easy ? { mode: 'easy' as const } : {}),
         },
         signal,
       )

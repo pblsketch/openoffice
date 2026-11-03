@@ -21,7 +21,13 @@
  * The engine never decides to start: the caller runs it after the user
  * confirmed (spec §9).
  */
-import type { JobKind, JobLastError, JobProgress, JobRecordInput } from '../store/store'
+import type {
+  JobKind,
+  JobLastError,
+  JobProgress,
+  JobRecordInput,
+  TranslationMode,
+} from '../store/store'
 import type { ResultStore } from '../store/store'
 import { classifyRunError, isJobStopKind, JobUnitFailure } from './errors'
 
@@ -83,6 +89,8 @@ export interface RunJobUnitsOptions<U, R> extends JobTuning {
   lang?: string
   /** the run of a highlight job */
   runId?: string
+  /** 'easy': an easy explanation's job, recorded apart (translate and translate-page only) */
+  mode?: TranslationMode
   store: Pick<DocumentJobStore, 'writeJob'>
   /** the units to send, in order (already-done units left out) */
   units: readonly U[]
@@ -216,9 +224,10 @@ export async function runJobUnits<U, R>(o: RunJobUnitsOptions<U, R>): Promise<Jo
   else external?.addEventListener('abort', onExternalAbort, { once: true })
 
   // ── the job record: writes are serialized so the final one lands last ──
-  const base: Pick<JobRecordInput, 'kind' | 'lang' | 'runId'> = { kind: o.kind }
+  const base: Pick<JobRecordInput, 'kind' | 'lang' | 'runId' | 'mode'> = { kind: o.kind }
   if (o.lang !== undefined) base.lang = o.lang
   if (o.runId !== undefined) base.runId = o.runId
+  if (o.mode === 'easy') base.mode = 'easy'
   let recordWriteFailed = false
   let records: Promise<boolean> = Promise.resolve(true)
   const writeRecord = (record: JobRecordInput): Promise<boolean> => {

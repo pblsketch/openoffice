@@ -296,7 +296,7 @@ describe('translation instruction and messages', () => {
     for (const lang of LANGS) {
       const system = translationSystemPrompt(lang)
       const name = translationLanguageName(lang)
-      const style = system.indexOf('How to write:')
+      const style = system.indexOf('How the translation should read:')
       expect(style).toBeGreaterThan(-1)
       expect(style).toBeLessThan(system.indexOf('Rules:'))
       expect(system).toContain(`skilled ${name} writer`)

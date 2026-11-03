@@ -231,4 +231,7 @@ export const ms = {
   checkAskAi: 'Serahkan pembaikan kepada AI',
   checkHandedOff: 'Permintaan ada dalam kotak AI. Semak kemudian hantar.',
   checkFixFailed: 'Tidak dapat menukar.',
+  easyWordsLabel: 'Terangkan dengan kata mudah',
+  easyWordsPrompt:
+    'Terangkan teks yang dipilih di bawah dalam bahasa Melayu supaya orang yang memerlukan teks mudah dibaca juga boleh memahaminya. Gunakan perkataan harian dan ayat pendek, dan jangan tinggalkan sebarang fakta, nombor atau syarat. Jangan ubah dokumen.\n\nTeks yang dipilih:\n{text}',
 } satisfies Record<keyof typeof zh, string>

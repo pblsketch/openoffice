@@ -501,6 +501,17 @@ export type AgentFileCommand = 'save' | 'saveAs' | 'pdf' | 'preview' | 'print'
 /** The event those items fire on the editor's window; `detail` is the AgentFileCommand. */
 export declare const FILE_COMMAND_EVENT: 'ieum:file-command'
 
+/** The command behind the editor's right-click item 쉬운 말로 풀기. */
+export declare const EASY_WORDS_COMMAND: 'ext:ieum-easy-words'
+
+/** The event that item fires on the editor's window; `detail` is an AgentEasyWordsDetail. */
+export declare const EASY_WORDS_EVENT: 'ieum:easy-words'
+
+/** What a click on 쉬운 말로 풀기 hands the app: the selected text, a line per paragraph. */
+export interface AgentEasyWordsDetail {
+  text: string
+}
+
 /** The parts of the editor toolbar's style list (a select element) syncStyleList uses. */
 export interface StyleListElement {
   readonly options: ArrayLike<{ value: string; textContent: string | null }>
@@ -875,6 +886,7 @@ export interface AgentPluginSurface {
   ): AgentRemoveLinesResult
   deleteTable(table: number, options?: AgentChangeOptions): AgentDeleteTableResult
   installFileMenu(labels: Record<AgentFileCommand, string>): { ok: boolean }
+  installEasyWords(label: string): { ok: boolean }
   reveal(place: AgentPlace): { ok: boolean }
   selection(): AgentSelectionResult
   replaceSelection(
@@ -1006,6 +1018,13 @@ export type AgentPageTarget =
   | { ok: false; reason: 'no_paragraph' }
 
 /** The part of the studio's plugin host this plugin uses. */
+/** The part of the editor's state a command's canExecute reads. */
+export interface AgentEditorContext {
+  hasDocument: boolean
+  hasSelection: boolean
+  inCellSelectionMode: boolean
+}
+
 export interface AgentPluginHost {
   read<T>(fn: (doc: never) => T): T
   transaction<T>(label: string, fn: (tx: { doc(): never; deferPagination(): void }) => T): T
@@ -1016,8 +1035,11 @@ export interface AgentPluginHost {
       id: string
       label: string
       shortcutLabel?: string
+      /** whether the command is on now; the editor greys its menu item out otherwise */
+      canExecute?(context: AgentEditorContext): boolean
       execute(services: never, params?: never): void
     }): void
+    unregisterCommand?(id: string): void
     addMenuItem?(spec: { menuId: string; commandId: string; position?: 'top' | 'bottom' }): void
   }
 }

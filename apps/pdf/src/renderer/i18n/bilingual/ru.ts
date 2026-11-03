@@ -57,4 +57,18 @@ export const ru = {
   blTranslateAll: 'Перевести все страницы…',
   blTranslateAllTip:
     'Открывает окно перевода документа. Перед отправкой запрашивает подтверждение.',
+  blMode: 'Показ',
+  blModeTranslate: 'Перевод',
+  blModeEasy: 'Простое объяснение',
+  blEasyLanguage: 'Язык объяснения',
+  blEasyStoredLangs: 'Сохранённые объяснения',
+  blEasyPage: 'Объяснить эту страницу просто',
+  blEasyRest: 'Объяснить остальное просто ({count})',
+  blEasyPaidYes: 'Объяснить',
+  blEasyPageRunning: 'Объяснение… {done}/{total}',
+  blEasyRetranslate: 'Объяснить заново',
+  blEasyRetranslating: 'Объясняется заново…',
+  blEasyDiscardEditAsk: 'Отменить правку и объяснить заново?',
+  blEasyEditLabel: 'Изменить объяснение',
+  blEasyTranslateAll: 'Объяснить все страницы просто…',
 } satisfies Record<keyof typeof zh, string>

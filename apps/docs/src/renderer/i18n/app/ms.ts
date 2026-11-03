@@ -354,6 +354,9 @@ export const ms = {
   appAiBadgeTip: 'Menggunakan AI',
   appTranslate: 'Terjemah',
   appTranslateTo: 'Terjemah ke {lang}',
+  appEasyWords: 'Terangkan dengan kata mudah',
+  appEasyWordsPrompt:
+    'Terangkan teks yang dipilih dalam bahasa Melayu supaya mudah difahami juga oleh orang yang memerlukan bacaan mudah (kanak-kanak, warga emas, orang yang sedang belajar bahasa Melayu). Gunakan perkataan harian dan ayat pendek, serta kekalkan semua fakta, nombor dan syarat. Jangan ubah dokumen: "{text}"',
   redactMenuLabel: 'Sembunyikan pilihan daripada AI',
   redactDialogDesc:
     'Perkataan kekal dalam dokumen dan fail; model hanya melihat placeholder di bawah. Beri nama supaya model tahu apa yang diwakili.',

@@ -238,4 +238,7 @@ export const de = {
   checkAskAi: 'Das Beheben der KI übergeben',
   checkHandedOff: 'Die Anfrage steht im KI-Feld. Prüfen und senden.',
   checkFixFailed: 'Die Änderung war nicht möglich.',
+  easyWordsLabel: 'In einfachen Worten erklären',
+  easyWordsPrompt:
+    'Erkläre den unten ausgewählten Text auf Deutsch so, dass ihn auch jemand versteht, der leicht verständliche Texte braucht. Verwende Alltagswörter und kurze Sätze und lass keine Tatsache, Zahl oder Bedingung weg. Ändere das Dokument nicht.\n\nAusgewählter Text:\n{text}',
 } satisfies Record<keyof typeof zh, string>

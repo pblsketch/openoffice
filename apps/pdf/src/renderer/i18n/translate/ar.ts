@@ -85,4 +85,28 @@ export const ar = {
   trRestartEditedCount: 'عدد الفقرات التي عدّلها شخص: {count}.',
   trRestartDiscardEdited: 'حذف الفقرات التي عدّلها شخص أيضًا ({count})',
   trRestartKeepEdited: 'الإبقاء على الفقرات المعدلة',
+  trMode: 'النوع',
+  trModeTranslate: 'ترجمة',
+  trModeEasy: 'شرح مبسط',
+  trPdfEasy: 'الشرح المبسط أطول من النص الأصلي فلا يتسع في مكانه. يمكن استخدام Markdown وEPUB.',
+  trEasyFormatMd: 'Markdown بشرح مبسط',
+  trEasyFormatEpub: 'EPUB بشرح مبسط',
+  trEasyBilingual:
+    'الأصل ثم الشرح: بعد كل فقرة من الأصل يأتي شرحها المبسط (عند الإيقاف: الشرح فقط)',
+  trEasyFileWord: 'شرح مبسط',
+  trEasyPickTitle: 'حفظ {format} بشرح مبسط',
+  trConfirmEasyLanguage: 'لغة الشرح: {language}',
+  trEasyConfirmDone: '{done} من {total} كتلة مشروحة بالفعل ولن تُرسل مرة أخرى',
+  trEasyConfirmNothing:
+    'كل الكتل في الصفحات المختارة مشروحة بالفعل. لن يُرسل شيء، وستُكتب الملفات من الشرح المحفوظ.',
+  trEasyProviderChange:
+    'أُنجز الشرح المحفوظ باستخدام {stored}. المتابعة باستخدام {next} ستخلط نصوص ذكاءين اصطناعيين في شرح واحد.',
+  trEasyStart: 'بدء الشرح',
+  trEasyRestart: 'إعادة الشرح من البداية…',
+  trEasyRestartConfirm:
+    'هل تريد حذف الشرح المبسط المحفوظ باللغة {language} ({count} كتلة) وإعادة شرح كل الكتل؟ لا يمكن استعادة الشروح المحذوفة.',
+  trEasyRestartYes: 'إعادة الشرح',
+  trEasyRunning: 'جارٍ كتابة الشرح المبسط باللغة {language}… {done}/{total} كتلة',
+  trEasyDone: 'اكتمل الشرح المبسط باللغة {language} ({count} كتلة).',
+  trResumeEasy: 'شرح مبسط غير مكتمل ({language}) {percent}% — هل تريد المتابعة؟',
 } satisfies Record<keyof typeof zh, string>

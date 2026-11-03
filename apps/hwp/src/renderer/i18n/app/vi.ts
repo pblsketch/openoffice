@@ -228,4 +228,7 @@ export const vi = {
   checkAskAi: 'Giao việc sửa cho AI',
   checkHandedOff: 'Yêu cầu đã ở trong ô AI. Hãy xem lại rồi gửi.',
   checkFixFailed: 'Không thể thay đổi.',
+  easyWordsLabel: 'Giải thích bằng lời dễ hiểu',
+  easyWordsPrompt:
+    'Hãy giải thích đoạn văn được chọn dưới đây bằng tiếng Việt để cả người cần văn bản dễ đọc cũng hiểu được. Dùng từ ngữ hằng ngày và câu ngắn, không bỏ sót bất kỳ sự kiện, con số hay điều kiện nào. Không sửa tài liệu.\n\nĐoạn văn được chọn:\n{text}',
 } satisfies Record<keyof typeof zh, string>

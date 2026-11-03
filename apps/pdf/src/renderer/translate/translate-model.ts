@@ -3,10 +3,20 @@
  * functions: which output formats a document and a target language allow,
  * the default output name, language names, and the result report that merges
  * what the stored translation holds (T12 reasons) with what the translated-PDF
- * writer did (T13 report).
+ * writer did (T13 report), and the easy explanation's results as the
+ * Markdown / EPUB writer is handed them (translation-reading spec 5.4).
  */
 import type { Lang } from '@genoffice/i18n'
 import type { TranslationReport } from '../../../../../packages/pdf-structure/src/translate/result'
+import { translationUnits } from '../../../../../packages/pdf-structure/src/translate/result'
+import { easyExplanationLabel } from '../../../../../packages/pdf-structure/src/translate/easy-label'
+import {
+  blockKeyString,
+  translationBlockKeys,
+} from '../../../../../packages/pdf-structure/src/store/keys'
+import type { TranslationMode } from '../../../../../packages/pdf-structure/src/store/job-keys'
+import type { StoredTranslation } from '../../../../../packages/pdf-structure/src/store/store'
+import type { InlineRun } from '../../../../../packages/pdf-structure/src/tree/types'
 import type {
   OriginalPage,
   WritebackReport,
@@ -26,10 +36,18 @@ export const TRANSLATION_FORMATS: readonly TranslationFormat[] = ['pdf', 'md', '
  */
 export const PDF_UNWRITABLE_LANGS: ReadonlySet<string> = new Set(['ar', 'he', 'hi'])
 
-/** why the translated PDF cannot be chosen, or null when it can */
-export type PdfFormatBlock = 'encrypted' | 'script' | null
+/**
+ * why the translated PDF cannot be chosen, or null when it can; 'easy': an
+ * easy explanation runs longer than its source and does not fit in place
+ */
+export type PdfFormatBlock = 'easy' | 'encrypted' | 'script' | null
 
-export function pdfFormatBlock(encrypted: boolean, lang: string): PdfFormatBlock {
+export function pdfFormatBlock(
+  encrypted: boolean,
+  lang: string,
+  mode: TranslationMode = 'translate',
+): PdfFormatBlock {
+  if (mode === 'easy') return 'easy'
   if (encrypted) return 'encrypted'
   if (PDF_UNWRITABLE_LANGS.has(lang)) return 'script'
   return null
@@ -43,10 +61,95 @@ export function writableFormats(
   return TRANSLATION_FORMATS.filter((f) => chosen.has(f) && (f !== 'pdf' || block === null))
 }
 
-/** default output name without extension: `<name>.<lang>` (the save dialog adds it) */
-export function translationOutputName(fileName: string, lang: string): string {
+/**
+ * default output name without extension: `<name>.<lang>` (the save dialog
+ * adds it); an easy explanation's is `<name> (<easy>).<lang>`, with the UI
+ * language's word for it, so it never takes a translation's default name
+ */
+export function translationOutputName(fileName: string, lang: string, easyWord?: string): string {
   const stem = fileName.replace(/\.pdf$/i, '') || 'document'
-  return `${stem}.${lang}`
+  // the word is screen text: keep it to characters a file name can hold
+  const word = easyWord?.replace(/[\\/:*?"<>|]/g, ' ').trim()
+  return word ? `${stem} (${word}).${lang}` : `${stem}.${lang}`
+}
+
+/** the title of an easy explanation's EPUB: the marker in the target language */
+export function easyResultTitle(title: string, lang: string): string {
+  return `${title} (${easyExplanationLabel(lang)})`
+}
+
+/** what the Markdown / EPUB writer is handed for an easy explanation */
+export interface EasyResult {
+  /** explained runs by text-unit key (a person's edit as plain text) */
+  units: Array<{ key: string; runs: InlineRun[] }>
+  /** what the stored easy explanation holds for the written pages */
+  report: TranslationReport
+}
+
+/**
+ * The stored easy explanation as the writer's `units` (the writer reads only
+ * the plain translation from the store by itself), and its report for the
+ * written pages. With `markHeading` the first heading of the written pages
+ * carries the easy-explanation marker in the target language (the Markdown
+ * result's first title).
+ */
+export function easyResultOf(
+  tree: Parameters<typeof translationUnits>[0],
+  lang: string,
+  stored: StoredTranslation | null,
+  pages: readonly number[] | null,
+  markHeading: boolean,
+): EasyResult {
+  const all = translationUnits(tree)
+  const keys = translationBlockKeys(all)
+  const written = pages ? new Set(pages) : null
+  const headings = new Set(tree.blocks.filter((b) => b.kind === 'heading').map((b) => b.id))
+  const units: EasyResult['units'] = []
+  const untranslated: TranslationReport['untranslated'] = []
+  let total = 0
+  let translated = 0
+  let pending = 0
+  let marked = !markHeading
+  all.forEach((unit, i) => {
+    const entry = stored?.blocks.get(blockKeyString(keys[i]!))
+    let runs: InlineRun[] | null = null
+    if (entry?.status === 'translated' && entry.text !== undefined) {
+      const plain: InlineRun[] = [{ kind: 'text', text: entry.text }]
+      runs = entry.edited ? plain : (entry.runs ?? plain)
+    }
+    const onWritten = !written || written.has(unit.page)
+    if (onWritten) {
+      total++
+      if (runs) translated++
+      else if (!entry) pending++
+      else {
+        untranslated.push({
+          unitKey: unit.key,
+          blockId: unit.blockId,
+          page: unit.page,
+          reason: entry.reason ?? 'unknown',
+        })
+      }
+    }
+    if (!marked && onWritten && headings.has(unit.key)) {
+      marked = true
+      runs = [...(runs ?? unit.runs), { kind: 'text', text: ` (${easyExplanationLabel(lang)})` }]
+    }
+    if (runs) units.push({ key: unit.key, runs })
+  })
+  return {
+    units,
+    report: {
+      lang,
+      total,
+      translated,
+      untranslated,
+      pending,
+      complete: pending === 0,
+      provider: stored?.provider ?? null,
+      model: stored?.model ?? null,
+    },
+  }
 }
 
 /** each language's name in itself, when the platform cannot name it */

@@ -86,4 +86,29 @@ export const en = {
   trRestartEditedCount: '{count} paragraphs were edited by a person.',
   trRestartDiscardEdited: 'Also delete the {count} paragraphs a person edited',
   trRestartKeepEdited: 'Keep the edited paragraphs',
+  trMode: 'Mode',
+  trModeTranslate: 'Translation',
+  trModeEasy: 'Plain-language explanation',
+  trPdfEasy:
+    'A plain-language explanation runs longer than the original, so it does not fit in its place. Markdown and EPUB work.',
+  trEasyFormatMd: 'Plain-language Markdown',
+  trEasyFormatEpub: 'Plain-language EPUB',
+  trEasyBilingual:
+    'Source then explanation: each source paragraph is followed by its plain-language explanation (off: the explanation only)',
+  trEasyFileWord: 'plain language',
+  trEasyPickTitle: 'Save plain-language {format}',
+  trConfirmEasyLanguage: 'Explanation language: {language}',
+  trEasyConfirmDone: '{done} of {total} blocks are already explained and will not be sent again',
+  trEasyConfirmNothing:
+    'Every block on the chosen pages is already explained. Nothing is sent; the files are written from the stored explanation.',
+  trEasyProviderChange:
+    'The stored explanation was made with {stored}. Continuing with {next} mixes two AIs in one explanation.',
+  trEasyStart: 'Start explaining',
+  trEasyRestart: 'Explain again from the start…',
+  trEasyRestartConfirm:
+    'Delete the stored {language} explanation ({count} blocks) and explain every block again? Deleted explanations cannot be restored.',
+  trEasyRestartYes: 'Explain again',
+  trEasyRunning: 'Writing the {language} plain-language explanation… {done}/{total} blocks',
+  trEasyDone: 'The {language} plain-language explanation is finished ({count} blocks).',
+  trResumeEasy: 'Unfinished plain-language explanation ({language}) {percent}% — continue?',
 } satisfies Record<keyof typeof zh, string>

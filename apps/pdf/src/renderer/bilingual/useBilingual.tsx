@@ -20,6 +20,10 @@
  * sentence found on no drawn page falls back to the block outline and the
  * paragraph highlight.
  *
+ * The bar switches between the plain translation and the easy explanation
+ * (translation-reading spec 5.3); the choice is remembered like the width
+ * and the text size (./view-mode), and only changes what is read.
+ *
  * The actions (./BilingualActions) plug into `slots` and call `refresh`
  * after they wrote to the store. Nothing here sends anything or writes to
  * the store.
@@ -57,6 +61,7 @@ import {
   type BilingualSlots,
 } from './BilingualColumn'
 import { BilingualBar } from './BilingualBar'
+import { loadBilingualMode, saveBilingualMode } from './view-mode'
 import { useBilingualData, type BilingualData, type BilingualDataApi } from './useBilingualData'
 import {
   hitTestSentenceBoxes,
@@ -145,6 +150,7 @@ interface SentenceCache {
 }
 
 export function useBilingual(o: UseBilingualOptions): BilingualView {
+  const [mode, setModeState] = useState(loadBilingualMode)
   const data = useBilingualData({
     enabled: o.enabled,
     filePath: o.filePath,
@@ -152,7 +158,12 @@ export function useBilingual(o: UseBilingualOptions): BilingualView {
     uiLang: o.uiLang,
     revision: o.revision,
     api: o.api,
+    mode,
   })
+  const onMode = useCallback((next: typeof mode) => {
+    setModeState(next)
+    saveBilingualMode(next)
+  }, [])
   const [width, setWidth] = useState(loadBilingualW)
   const [fontSize, setFontSize] = useState(loadBilingualFont)
   const [collapsed, setCollapsed] = useState(false)
@@ -367,6 +378,7 @@ export function useBilingual(o: UseBilingualOptions): BilingualView {
       <BilingualBar
         load={data.load}
         lang={data.lang}
+        mode={data.mode}
         storedLangs={data.storedLangs}
         uiLang={o.uiLang}
         fontSize={fontSize}
@@ -374,6 +386,7 @@ export function useBilingual(o: UseBilingualOptions): BilingualView {
         askCollapse={askCollapse}
         t={t}
         onLang={data.setLang}
+        onMode={onMode}
         onFontSize={onFontSize}
         onCollapse={() => {
           setCollapsed(true)
@@ -418,6 +431,7 @@ export function useBilingual(o: UseBilingualOptions): BilingualView {
         page={page}
         docHash={data.model ? data.docHash : null}
         lang={data.model ? data.lang : null}
+        mode={data.mode}
         width={width}
         height={height}
         fontSize={fontSize}
