@@ -6,6 +6,7 @@
  */
 export {
   BLOCK_OVERHEAD_TOKENS,
+  SENTENCE_OVERHEAD_TOKENS,
   TRANSLATION_BATCH_TOKENS,
   batchTranslationItems,
   blockTokens,
@@ -20,7 +21,15 @@ export {
   type PlaceholderFailure,
 } from './placeholders'
 export {
+  SENTENCE_ABBREVIATIONS,
+  placeholderTags,
+  splitSentences,
+  type EncodedSentence,
+  type SentenceSplit,
+} from './sentences'
+export {
   buildTranslationRequest,
+  parseSentenceTranslationOutput,
   parseTranslationOutput,
   translationSystemPrompt,
   type TranslationRequest,
@@ -40,6 +49,8 @@ export {
   defaultTargetLanguageForTree,
   isTranslationLanguage,
   translationLanguageName,
+  translationSentenceSeparator,
+  translationSourceLanguage,
 } from './language'
 export { translationStyleLines } from './style'
 export {

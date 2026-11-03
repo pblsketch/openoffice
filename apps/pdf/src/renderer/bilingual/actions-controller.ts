@@ -41,6 +41,7 @@ import {
 import type { TranslationBlockKey } from '../../../../../packages/pdf-structure/src/store/keys'
 import {
   translationJobParts,
+  translationSourceLanguage,
   type TranslationSend,
 } from '../../../../../packages/pdf-structure/src/translate'
 import { runsText } from '../../../../../packages/pdf-structure/src/tree/inline'
@@ -606,6 +607,8 @@ export class BilingualActionsController {
         unit,
         send,
         store,
+        // the whole document's language, as the page and document jobs use
+        sourceLang: this.data?.tree ? translationSourceLanguage(this.data.tree) : undefined,
         model: { provider: route.provider, model: route.model },
         signal: abort.signal,
       })

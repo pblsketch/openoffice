@@ -128,6 +128,7 @@ Pulse **E** o **T**, o las fichas de explicar y traducir del cuadro **Preguntar 
 - **Traducir esta página** (o **Traducir el resto** si ya hay una parte hecha) envía la página con un solo clic mientras usa una suscripción; junto al botón figura el nombre de la IA a la que va. En una conexión que cobra por uso, el primer clic en una pestaña pregunta antes «cobrará por esto · Traducir / Cancelar».
 - Haga doble clic en un párrafo traducido para editarlo. Los párrafos editados se guardan como texto sin formato y se usan tal cual en los archivos PDF, Markdown y EPUB traducidos. **Volver a traducir** en un párrafo envía solo ese párrafo y pregunta antes si lo había editado.
 - Al pasar el ratón sobre un párrafo traducido se recuadra su lugar en la página original. El ancho y el tamaño de letra de la columna se pueden ajustar. **Traducir todas las páginas…** abre la ventana **Traducir documento**, cuyo formato **Solo guardar (sin archivo)** conserva la traducción sin escribir ningún archivo.
+- Los párrafos traducidos de nuevo quedan enlazados frase por frase. Al pasar el ratón por una frase traducida se resalta esa frase en la página original, y al pasarlo por una frase original se ilumina su traducción. Donde la frase no se encuentra en la página, y en los párrafos traducidos antes o editados por usted, el enlace sigue siendo por párrafo.
 
 ## Resaltado con IA
 

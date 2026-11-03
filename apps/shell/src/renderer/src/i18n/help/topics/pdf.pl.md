@@ -128,6 +128,7 @@ Naciśnij **E** lub **T** albo żetony wyjaśnienia i tłumaczenia w polu **Zapy
 - **Przetłumacz tę stronę** (lub **Przetłumacz resztę**, gdy część jest gotowa) wysyła stronę jednym kliknięciem, gdy korzystasz z subskrypcji; obok przycisku widać nazwę docelowej AI. Przy połączeniu rozliczanym za użycie pierwsze kliknięcie na karcie najpierw pyta „pobierze za to opłatę · Przetłumacz / Anuluj”.
 - Kliknij dwukrotnie przetłumaczony akapit, aby go edytować. Edytowane akapity są przechowywane jako zwykły tekst i trafiają bez zmian do przetłumaczonych plików PDF, Markdown i EPUB. **Przetłumacz ponownie** przy akapicie wysyła tylko ten akapit i najpierw pyta, jeśli był edytowany.
 - Najechanie myszą na przetłumaczony akapit obrysowuje jego miejsce na stronie źródłowej. Szerokość kolumny i rozmiar tekstu można zmieniać. **Przetłumacz wszystkie strony…** otwiera okno **Przetłumacz dokument**, którego format **Tylko zachowaj (bez pliku)** zachowuje tłumaczenie bez zapisywania pliku.
+- Nowo przetłumaczone akapity są połączone zdanie po zdaniu. Najechanie na przetłumaczone zdanie zaznacza to zdanie na stronie oryginału, a najechanie na zdanie oryginału podświetla jego tłumaczenie. Tam, gdzie zdania nie da się znaleźć na stronie, oraz w akapitach przetłumaczonych wcześniej lub poprawionych przez Ciebie połączenie pozostaje akapitami.
 
 ## Wyróżnianie przez AI
 

@@ -33,6 +33,7 @@ export {
   type TranslationMetaInput,
 } from './store'
 export { StoreWriteError } from './files'
+export { sentenceEndsPair, validSentenceEnds, type SentenceEnds } from './sentence-ends'
 export {
   HIGHLIGHT_MAX_LABELS,
   HIGHLIGHT_PRESET_IDS,

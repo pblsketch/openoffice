@@ -11,6 +11,15 @@
  * pointer over the source text of a block highlights that block's paragraph.
  * Blocks without boxes (AI-read pages) only keep their order.
  *
+ * Sentence linking (translation-reading spec 4.4): a unit that keeps valid
+ * sentence boundaries reacts per sentence. When a drawn page is first
+ * needed, its PDF.js text content is read once and the source sentences on
+ * it are located (./sentence-geometry) in tree space, so zoom and unsaved
+ * rotation need no new pass; the pointer only hit-tests that result. Pages
+ * outside the drawn window are not read and their results are dropped. A
+ * sentence found on no drawn page falls back to the block outline and the
+ * paragraph highlight.
+ *
  * The actions (./BilingualActions) plug into `slots` and call `refresh`
  * after they wrote to the store. Nothing here sends anything or writes to
  * the store.
@@ -39,6 +48,7 @@ import {
   regionCssBox,
   shouldAskToCollapse,
   type BilingualCounts,
+  type BilingualModel,
 } from './model'
 import {
   BilingualColumn,
@@ -48,6 +58,22 @@ import {
 } from './BilingualColumn'
 import { BilingualBar } from './BilingualBar'
 import { useBilingualData, type BilingualData, type BilingualDataApi } from './useBilingualData'
+import {
+  hitTestSentenceBoxes,
+  locatePageSentences,
+  pageChars,
+  sentenceBoxesOn,
+  sentenceLocated,
+  sentenceTargets,
+  targetsByPage,
+  textItemsOf,
+  type PageSentences,
+} from './sentence-geometry'
+
+/** where the view reads a page's text items (the open PDF.js document) */
+export interface BilingualTextSource {
+  getPage(pageNo: number): Promise<{ getTextContent(): Promise<{ items: readonly unknown[] }> }>
+}
 
 export interface UseBilingualOptions {
   enabled: boolean
@@ -61,6 +87,8 @@ export interface UseBilingualOptions {
   /** bumped after a save that changed the file */
   revision: number
   api: BilingualDataApi | null
+  /** the open document's pages, for their text items (sentence linking); null: paragraphs only */
+  textSource?: BilingualTextSource | null
   scrollRef: RefObject<HTMLElement | null>
   scale: number
   /** the page's on-screen geometry (saved rotation plus any unsaved one) */
@@ -94,7 +122,27 @@ export interface BilingualView {
   pageCounts: (page: number) => BilingualCounts | null
 }
 
-type Hover = { id: string; from: 'column' | 'page' } | null
+type Hover = {
+  id: string
+  /** a sentence of a sentence-linked unit (column or page); absent: the whole item */
+  unitKey?: string
+  sentence?: number
+  from: 'column' | 'page'
+} | null
+
+/** a sentence the column reports under the pointer */
+export interface BilingualSentenceRef {
+  unitKey: string
+  index: number
+}
+
+/** the located sentences of the drawn pages, for one model and one text source */
+interface SentenceCache {
+  model: BilingualModel | null
+  source: BilingualTextSource | null
+  /** by on-screen page index; null while its text content is being read */
+  pages: Map<number, PageSentences | null>
+}
 
 export function useBilingual(o: UseBilingualOptions): BilingualView {
   const data = useBilingualData({
@@ -112,6 +160,14 @@ export function useBilingual(o: UseBilingualOptions): BilingualView {
   /** the fold prompt shows once in the tab's life */
   const askedRef = useRef(false)
   const [hover, setHover] = useState<Hover>(null)
+  const hoverRef = useRef<Hover>(null)
+  hoverRef.current = hover
+  /** bumped when a page's sentences land while something is hovered */
+  const [, setSentenceRev] = useState(0)
+  const cacheRef = useRef<SentenceCache>({ model: null, source: null, pages: new Map() })
+  /** the drawn pages this render asked for (filled while the columns render) */
+  const wantedRef = useRef<Set<number>>(new Set())
+  wantedRef.current = new Set()
 
   const { enabled, scrollRef } = o
   const extraWidth = enabled ? (collapsed ? BILINGUAL_COLLAPSED_W : width) + PAGE_GAP : 0
@@ -172,11 +228,27 @@ export function useBilingual(o: UseBilingualOptions): BilingualView {
         cur.savedRot(origIdx),
         cur.scale,
       )
+      const located = cacheRef.current.pages.get(origIdx)
+      const sentence = located ? hitTestSentenceBoxes(located.boxes, x, y) : null
+      if (sentence) {
+        setHover((h) => {
+          if (h?.from === 'column') return h
+          return h?.unitKey === sentence.unitKey && h.sentence === sentence.sentence
+            ? h
+            : {
+                id: sentence.itemId,
+                unitKey: sentence.unitKey,
+                sentence: sentence.sentence,
+                from: 'page',
+              }
+        })
+        return
+      }
       const id = hitTestRegions(model.regionsByPage.get(page), x, y)
       setHover((h) => {
         if (h?.from === 'column') return h
         if (!id) return h ? null : h
-        return h?.id === id ? h : { id, from: 'page' }
+        return h?.id === id && h.sentence === undefined ? h : { id, from: 'page' }
       })
     }
     el.addEventListener('mousemove', onMove, { passive: true })
@@ -188,9 +260,73 @@ export function useBilingual(o: UseBilingualOptions): BilingualView {
   }, [enabled, scrollRef, data.model])
 
   const onColumnHover = useCallback(
-    (id: string | null) => setHover(id ? { id, from: 'column' } : null),
+    (id: string | null, sentence?: BilingualSentenceRef) =>
+      setHover(
+        id
+          ? sentence
+            ? { id, unitKey: sentence.unitKey, sentence: sentence.index, from: 'column' }
+            : { id, from: 'column' }
+          : null,
+      ),
     [],
   )
+
+  // the drawn pages' sentences: read each page's text once, drop pages that left the window
+  const model = data.model
+  const textSource = o.textSource ?? null
+  const targets = useMemo(() => (model ? targetsByPage(sentenceTargets(model)) : null), [model])
+  useEffect(() => {
+    if (cacheRef.current.model !== model || cacheRef.current.source !== textSource) {
+      cacheRef.current = { model, source: textSource, pages: new Map() }
+    }
+    const current = cacheRef.current
+    const wanted = enabled && model && textSource && targets ? wantedRef.current : new Set<number>()
+    for (const origIdx of [...current.pages.keys()]) {
+      if (!wanted.has(origIdx)) current.pages.delete(origIdx)
+    }
+    if (!model || !textSource || !targets) return
+    for (const origIdx of wanted) {
+      if (current.pages.has(origIdx)) continue
+      const cur = latest.current
+      const page = columnPageOf(origIdx, cur.savedPageCount)
+      const onPage = page === null ? undefined : targets.get(page)
+      if (page === null || !onPage || onPage.length === 0) continue
+      // the boxes are in the saved page's space: no unsaved rotation, no scale
+      const geom = { ...cur.pageGeom(origIdx), rot: cur.savedRot(origIdx) }
+      current.pages.set(origIdx, null)
+      void (async () => {
+        let result: PageSentences | null
+        try {
+          const pdfPage = await textSource.getPage(origIdx + 1)
+          const content = await pdfPage.getTextContent()
+          result = locatePageSentences(page, pageChars(textItemsOf(content.items), geom), onPage)
+        } catch {
+          result = null
+        }
+        // the model, the source or the window moved on while reading: drop the result
+        if (cacheRef.current !== current || current.pages.get(origIdx) !== null) return
+        if (!result) {
+          current.pages.delete(origIdx)
+          return
+        }
+        current.pages.set(origIdx, result)
+        if (hoverRef.current) setSentenceRev((v) => v + 1)
+      })()
+    }
+  })
+
+  /** the located sentences of the drawn pages read so far */
+  const locatedPages = (): PageSentences[] =>
+    [...cacheRef.current.pages.values()].filter((p): p is PageSentences => p !== null)
+
+  // what the hover lights: one located sentence, or the whole item (as before)
+  const sentenceHover =
+    hover?.unitKey !== undefined &&
+    hover.sentence !== undefined &&
+    sentenceLocated(locatedPages(), hover.unitKey, hover.sentence)
+      ? { unitKey: hover.unitKey, index: hover.sentence }
+      : null
+  const hoverId = hover && !sentenceHover ? hover.id : null
 
   // drag the column's left edge: wider to the left
   const onResizeStart = useCallback(
@@ -256,6 +392,8 @@ export function useBilingual(o: UseBilingualOptions): BilingualView {
     const origIdx = row[0]
     if (origIdx === undefined) return null
     const height = Math.floor(geomDispSize(o.pageGeom(origIdx)).height * o.scale)
+    const pageNo = columnPageOf(origIdx, o.savedPageCount)
+    if (!collapsed && pageNo !== null && drawnRows.has(rowIdx)) wantedRef.current.add(origIdx)
     if (collapsed) {
       return (
         <BilingualFoldedColumn
@@ -266,7 +404,6 @@ export function useBilingual(o: UseBilingualOptions): BilingualView {
         />
       )
     }
-    const pageNo = columnPageOf(origIdx, o.savedPageCount)
     const page =
       pageNo === null
         ? null
@@ -285,7 +422,9 @@ export function useBilingual(o: UseBilingualOptions): BilingualView {
         height={height}
         fontSize={fontSize}
         drawn={drawnRows.has(rowIdx)}
-        hoverId={hover?.id ?? null}
+        hoverId={hoverId}
+        hoverUnitKey={sentenceHover?.unitKey ?? null}
+        hoverSentence={sentenceHover?.index ?? null}
         t={t}
         slots={o.slots}
         onHover={onColumnHover}
@@ -301,6 +440,14 @@ export function useBilingual(o: UseBilingualOptions): BilingualView {
     if (!item || page === null) return null
     const geom = o.pageGeom(origIdx)
     const savedRot = o.savedRot(origIdx)
+    if (sentenceHover) {
+      const lit = sentenceBoxesOn(
+        cacheRef.current.pages.get(origIdx),
+        sentenceHover.unitKey,
+        sentenceHover.index,
+      ).map((b) => regionCssBox(b, geom, savedRot, o.scale))
+      return lit.length > 0 ? <BilingualPageOverlay boxes={lit} kind="sentence" /> : null
+    }
     const boxes = item.regions
       .filter((r) => r.page === page)
       .map((r) => regionCssBox(r.box, geom, savedRot, o.scale))

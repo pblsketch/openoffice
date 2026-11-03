@@ -128,6 +128,7 @@ Druk op **E** of **T**, of op de chips voor uitleggen en vertalen in het vak **V
 - **Deze pagina vertalen** (of **De rest vertalen** als een deel al klaar is) verstuurt de pagina met één klik zolang je een abonnement gebruikt; naast de knop staat naar welke AI het gaat. Bij een verbinding die per gebruik betaalt, vraagt de eerste klik in een tabblad eerst "brengt hiervoor kosten in rekening · Vertalen / Annuleren".
 - Dubbelklik op een vertaalde alinea om die te bewerken. Bewerkte alinea’s worden als platte tekst bewaard en ongewijzigd gebruikt in vertaalde pdf-, Markdown- en EPUB-bestanden. **Opnieuw vertalen** bij een alinea stuurt alleen die alinea en vraagt het eerst als je haar hebt bewerkt.
 - Beweeg je de muis over een vertaalde alinea, dan krijgt haar plek op de bronpagina een kader. Breedte en tekstgrootte van de kolom zijn instelbaar. **Alle pagina’s vertalen…** opent het venster **Document vertalen**, waarvan de indeling **Alleen bewaren (geen bestand)** de vertaling bewaart zonder een bestand te schrijven.
+- Nieuw vertaalde alinea’s zijn zin voor zin gekoppeld. Als u de muis op een vertaalde zin houdt, wordt die zin op de bronpagina gemarkeerd; op een bronzin licht de vertaling op. Waar de zin niet op de pagina te vinden is, en bij eerder vertaalde of door u bewerkte alinea’s, blijft de koppeling per alinea.
 
 ## AI-markering
 
