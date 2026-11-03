@@ -13,6 +13,7 @@ import type {
   AgentMatch,
   AgentMemoRemovalRefusal,
   AgentNoSuchStyle,
+  AgentPageSetupChange,
   AgentParagraphFormat,
   AgentPicture,
   AgentPictureList,
@@ -103,6 +104,14 @@ export interface HwpSkillDeps {
   attachmentPath?: (name: string) => string | null
   /** exact names of the image files in this chat, for the prompt */
   attachmentNames?: () => string[]
+  /**
+   * The bytes (base64) of an HWP / HWPX file attached to this conversation, by the exact
+   * name the attachment list shows, for read_formatting. Like attachmentPath, only files
+   * the panel shows can be read.
+   */
+  readAttachmentDocument?: (
+    name: string,
+  ) => Promise<{ ok: true; base64: string } | { ok: false; error: string }>
 }
 
 export interface HwpSkill {
@@ -149,10 +158,14 @@ const SYSTEM_PROMPT = [
   '- Fill the form fields of the document (list_fields, fill_field). In Hangul these are called 누름틀. A field is picked by its number in list_fields, because several fields often share one name.',
   '- Make a table of contents (차례, 목차) from the headings you pick, with their page numbers, and write its page numbers again after the document changed (insert_toc, refresh_toc).',
   '- Add footnotes and endnotes (각주, 미주) with their mark right after a piece of body text (insert_note), list the notes with their text (list_notes), and rewrite or remove one (edit_note, delete_note). The text of the document does not show the notes; list_notes does.',
+  '- Change the settings of all footnotes or endnotes (각주·미주 모양): number format such as 1) or ①, the characters around the number, superscript, start number, numbering, placement and separator line (read_note_settings, set_note_settings).',
+  '- Change the page setup (쪽 설정, 편집 용지): paper size, orientation and margins, for the whole document or one section (read_page_setup, set_page_setup).',
+  "- Number or bullet paragraphs, or take that away (list, list_level and bullet of format_paragraph, format_selection and format_look): the editor's own numbering, not typed characters.",
+  '- Read how a document is formatted, this one or an attached .hwp / .hwpx, and copy that formatting: page setup, note settings, styles and the looks of body paragraphs (read_formatting); format all body paragraphs of one look at once (format_look).',
   '- See the pictures of the document (body text and table cells): list them (list_pictures), then look at one and answer a question about it (analyze_picture). The document text does not show what a picture shows.',
   '',
   '## What they cannot do',
-  '- You cannot change numbering, borders or the page layout, and you cannot move, resize, replace or remove a picture that is already in the document (the user does that in the editor). You can only add a new one. analyze_picture only looks at one. A note cannot be put inside a table cell.',
+  '- You cannot change paragraph borders, columns, headers and footers or the page borders, and you cannot move, resize, replace or remove a picture that is already in the document (the user does that in the editor). You can only add a new one. analyze_picture only looks at one. A note cannot be put inside a table cell.',
   "- A tick box that is a picture or a form control cannot be ticked: only a □ that is the paragraph's bullet or typed into the text can.",
   '- A table inside a cell of another table can be read, filled and removed, but its cells cannot be coloured, merged or split, it cannot get or lose rows and columns, and the alignment, spacing and paragraph style of its paragraphs cannot be changed. Its text can still be formatted, character styles included.',
   '- You cannot remove a style. The user can do that in the style dialog of the editor (F6).',
@@ -192,6 +205,18 @@ const SYSTEM_PROMPT = [
   '- The mark goes right after the words the note is about: pass those words as after, as short as is unambiguous. The document numbers the notes itself; never type a number into the text or the note.',
   '- Write the note text plainly: no number, no leading mark, no markdown. A source is written the way the document already cites (author, title, year, page).',
   '- To change a note, call list_notes and rewrite it with edit_note by its number there; edit_note replaces its whole text. Remove a note only when the user asks.',
+  '- The number at a note (1), ①, *) comes from the note settings: change its look for all notes with set_note_settings, never by editing note text. A note listed with noAutoNumber has no automatic number: its text starts with a number someone typed, which is all the reader sees there. To renumber or restyle such notes, rewrite their typed numbers with edit_note (the text includes them); tell the user that only notes with an automatic number follow the note settings.',
+  '- When the user says the numbers of the notes look doubled or wrong, read list_notes and read_note_settings first and say what you found before changing anything.',
+  '',
+  '## Page setup and lists',
+  '- Change the page setup only when the user asks. Margins and paper are in millimetres; say that pages may break differently afterwards.',
+  '- For numbered or bulleted paragraphs use list on the paragraphs instead of typing 1. or ● into their text. Korean official documents often type their level marks (□, ㅇ, -, 1., 가.) as text: keep that scheme when the document uses it.',
+  '',
+  "## Copying another document's formatting",
+  '- When the user asks to make this document look like an attached one, call read_formatting with that attachment, then read_formatting for this document, and match them: page setup (set_page_setup), note settings (set_note_settings), the styles both use (edit_style, create_style), and each kind of body paragraph (format_look for each look of this document that plays the role of a look of the other: body text with body text, headings with headings of the same level, quotations, captions).',
+  '- Match looks by their role, judged from samples, style names, size and alignment, not by their order. Leave a look alone when the other document has nothing like it, and say so.',
+  '- format_look sets the character formatting of all text of those paragraphs: pass only the properties that differ, and leave bold, italic and colour out unless the whole paragraph has them. mixedFormatting counts paragraphs with words formatted differently inside them.',
+  '- The paragraphs a format_look changed get a new look id (the other looks keep theirs); read_formatting again to see the result. Afterwards say in a few lines what you matched.',
   '',
   '## Pictures',
   '- A picture in the document shows something the text cannot. When the user asks about one ("this photo", "the chart on page 2", "what does the picture say"), call list_pictures first, then analyze_picture with its number and a short English question saying what to find out.',
@@ -285,6 +310,13 @@ const PARAGRAPH_FORMAT_SCHEMA = {
   space_before: { type: 'number', description: 'space above the paragraph in points (0 to 200)' },
   space_after: { type: 'number', description: 'space below the paragraph in points (0 to 200)' },
   style: { type: 'string', description: 'name of a paragraph style of the document' },
+  list: {
+    type: 'string',
+    enum: ['number', 'bullet', 'none'],
+    description: "numbered or bulleted paragraph (the editor's numbering), or none to take it away",
+  },
+  list_level: { type: 'integer', minimum: 1, maximum: 7, description: 'level of a list paragraph' },
+  bullet: { type: 'string', description: 'the bullet character of list bullet, default ●' },
 }
 
 /** Paragraph styles named in the context at most. */
@@ -965,6 +997,134 @@ const TOOLS: AgentToolDef[] = [
       required: ['note'],
     },
   },
+  {
+    name: 'read_note_settings',
+    description:
+      'Show the footnote and endnote settings of the document (각주·미주 모양): number format, characters before and after the number, superscript, start number, numbering, placement and separator line.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'set_note_settings',
+    description:
+      'Change the footnote or endnote settings of the whole document; only what you pass changes. The notes are numbered again in the new format, in the text and at the notes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', enum: ['footnote', 'endnote'] },
+        number_format: {
+          type: 'string',
+          enum: [
+            'digit',
+            'circledDigit',
+            'upperRoman',
+            'lowerRoman',
+            'upperAlpha',
+            'lowerAlpha',
+            'circledUpperAlpha',
+            'circledLowerAlpha',
+            'hangulSyllable',
+            'circledHangulSyllable',
+            'hangulJamo',
+            'circledHangulJamo',
+            'hangulDigit',
+            'hanjaDigit',
+            'circledHanjaDigit',
+            'userChar',
+          ],
+          description:
+            '1 2 3 is digit, ① ② is circledDigit, 가 나 다 is hangulSyllable; userChar repeats symbol',
+        },
+        symbol: {
+          type: 'string',
+          description: 'the one character the userChar format uses, for example *',
+        },
+        prefix: { type: 'string', description: 'one character before the number, or "" for none' },
+        suffix: {
+          type: 'string',
+          description: 'one character after the number, or "" for none; 1) has suffix ")"',
+        },
+        superscript: { type: 'boolean', description: 'raise the number at the note itself' },
+        start_number: { type: 'integer', minimum: 1, maximum: 9999 },
+        numbering: {
+          type: 'string',
+          enum: ['continue', 'restartSection', 'restartPage'],
+          description: 'endnotes take continue or restartSection',
+        },
+        placement: {
+          type: 'string',
+          enum: ['eachColumn', 'belowText', 'rightColumn', 'documentEnd', 'sectionEnd'],
+          description:
+            'footnotes: eachColumn (foot of each column), belowText (right below the text), rightColumn; endnotes: documentEnd, sectionEnd',
+        },
+        separator: { type: 'boolean', description: 'a line above the notes' },
+      },
+      required: ['kind'],
+    },
+  },
+  {
+    name: 'read_page_setup',
+    description:
+      'Show the page setup of each section (쪽 설정, 편집 용지): paper size, orientation and margins, in millimetres.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'set_page_setup',
+    description:
+      'Change the page setup of the whole document, or of one section: only what you pass changes. Lengths are in millimetres. Refused when the margins would leave no room for text.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        paper: { type: 'string', enum: ['A3', 'A4', 'A5', 'B4', 'B5', 'Letter', 'Legal'] },
+        width: {
+          type: 'number',
+          description: 'paper width in mm (portrait), with height, instead of paper',
+        },
+        height: { type: 'number', description: 'paper height in mm (portrait)' },
+        orientation: { type: 'string', enum: ['portrait', 'landscape'] },
+        margin_left: { type: 'number', description: 'mm' },
+        margin_right: { type: 'number', description: 'mm' },
+        margin_top: { type: 'number', description: 'mm' },
+        margin_bottom: { type: 'number', description: 'mm' },
+        margin_header: { type: 'number', description: 'space for the header, mm' },
+        margin_footer: { type: 'number', description: 'space for the footer, mm' },
+        margin_gutter: { type: 'number', description: 'binding margin, mm' },
+        section: {
+          type: 'integer',
+          minimum: 1,
+          description: 'only this section (from 1); default the whole document',
+        },
+      },
+    },
+  },
+  {
+    name: 'read_formatting',
+    description:
+      'Read how a document is formatted: its page setup, footnote and endnote settings, the styles it uses with their look, and the looks of its body paragraphs grouped (font, size, alignment, line spacing, indents, spacing, list), most used first, with sample text. Without attachment it reads this document, and each look has an id that format_look takes. With attachment it reads an attached HWP / HWPX document, to copy its formatting.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        attachment: {
+          type: 'string',
+          description:
+            'the exact name of an attached .hwp or .hwpx file; leave out for this document',
+        },
+      },
+    },
+  },
+  {
+    name: 'format_look',
+    description:
+      'Format every body paragraph of one look of this document at once (an id from read_formatting): paragraph style, paragraph formatting, list, and character formatting of all their text, as format_paragraph does for one paragraph. One undo step.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        look: { type: 'string', description: 'a look id from read_formatting of this document' },
+        ...PARAGRAPH_FORMAT_SCHEMA,
+        ...TEXT_FORMAT_SCHEMA,
+      },
+      required: ['look'],
+    },
+  },
 ]
 
 const NO_NOTE_HELP = (count: number) =>
@@ -1092,6 +1252,31 @@ const ALIGN_LABELS = {
   justify: 'aiFmtAlignJustify',
 } as const satisfies Record<string, StringKey>
 
+/** How the first note looks in each number format, for the change list. */
+const NOTE_NUMBER_SAMPLES: Record<string, string> = {
+  digit: '1',
+  circledDigit: '①',
+  upperRoman: 'I',
+  lowerRoman: 'i',
+  upperAlpha: 'A',
+  lowerAlpha: 'a',
+  circledUpperAlpha: 'Ⓐ',
+  circledLowerAlpha: 'ⓐ',
+  hangulSyllable: '가',
+  circledHangulSyllable: '㉮',
+  hangulJamo: 'ㄱ',
+  circledHangulJamo: '㉠',
+  hangulDigit: '일',
+  hanjaDigit: '一',
+  circledHanjaDigit: '㊀',
+}
+
+const LIST_LABELS = {
+  number: 'aiFmtListNumber',
+  bullet: 'aiFmtListBullet',
+  none: 'aiFmtListNone',
+} as const satisfies Record<string, StringKey>
+
 /**
  * The format a call asks for: the properties the model actually sent. What they may hold
  * is checked by the editor, which answers a bad value with a message the model can act on.
@@ -1110,6 +1295,8 @@ function formatArgs(call: AgentToolCall): AgentParagraphFormat {
     'align',
     'indent',
     'style',
+    'list',
+    'bullet',
   ]) {
     const value = call.input[key]
     if (value !== undefined && value !== null) format[key] = value
@@ -1122,6 +1309,7 @@ function formatArgs(call: AgentToolCall): AgentParagraphFormat {
     ['space_before', 'spacingBefore'],
     ['space_after', 'spacingAfter'],
     ['char_style', 'charStyle'],
+    ['list_level', 'listLevel'],
   ] as const) {
     const value = call.input[from]
     if (value !== undefined && value !== null) format[to] = value
@@ -1165,6 +1353,10 @@ function describeFormat(
     ['spacingAfter', 'aiFmtSpaceAfter'],
   ] as const) {
     if (format[key] !== undefined) parts.push(`${label(name)} ${format[key]}pt`)
+  }
+  if (format.list !== undefined) {
+    const name = label(LIST_LABELS[format.list])
+    parts.push(format.listLevel !== undefined ? `${name} ${format.listLevel}` : name)
   }
   return parts.join(' · ')
 }
@@ -1459,6 +1651,28 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
   /** A note as the user knows it: "footnote 3", in the UI language. */
   const noteName = (kind: 'footnote' | 'endnote', number: number | null): string =>
     label(kind === 'endnote' ? 'aiNoteEndnote' : 'aiNoteFootnote', { number: number ?? '' }).trim()
+
+  /** New note settings as the panel lists them: the number as it now looks, when that changed. */
+  const describeNoteSettings = (settings: Record<string, unknown>): string => {
+    const shown = ['numberFormat', 'symbol', 'prefix', 'suffix'].some((key) => key in settings)
+    if (!shown) return label('aiSettingsChanged')
+    const format = typeof settings.numberFormat === 'string' ? settings.numberFormat : 'digit'
+    const sample =
+      format === 'userChar' ? String(settings.symbol ?? '*') : (NOTE_NUMBER_SAMPLES[format] ?? '1')
+    return `${String(settings.prefix ?? '')}${sample}${String(settings.suffix ?? '')}`
+  }
+
+  /** A page setup change as the panel lists it. */
+  const describePageSetup = (setup: AgentPageSetupChange): string => {
+    const parts: string[] = []
+    if (setup.paper) parts.push(setup.paper)
+    else if (setup.width !== undefined) parts.push(`${setup.width}×${setup.height}mm`)
+    if (setup.orientation) {
+      parts.push(label(setup.orientation === 'landscape' ? 'aiPageLandscape' : 'aiPagePortrait'))
+    }
+    if (setup.margins) parts.push(label('aiPageMarginsChanged'))
+    return parts.join(' · ')
+  }
 
   /**
    * Downloads one picture (a search result or a generated file), measures it and adds it in a
@@ -2884,11 +3098,16 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
           listed.elsewhere > 0
             ? `\n${listed.elsewhere} more note(s) sit inside table cells or text boxes, which these tools cannot reach.`
             : ''
+        const typed = listed.notes.filter((note) => note.noAutoNumber).length
+        const typedNote =
+          typed > 0
+            ? `\n${typed} note(s) marked noAutoNumber have no automatic number: the number at the start of their text was typed, and is the only number shown there. The note settings do not change it.`
+            : ''
         return {
           output:
             listed.count === 0
               ? `This document has no footnotes or endnotes in its body text.${elsewhere}`
-              : `${JSON.stringify(listed.notes, null, 1)}${listed.count > listed.notes.length ? `\n[${listed.count - listed.notes.length} more not listed]` : ''}${elsewhere}`,
+              : `${JSON.stringify(listed.notes, null, 1)}${listed.count > listed.notes.length ? `\n[${listed.count - listed.notes.length} more not listed]` : ''}${elsewhere}${typedNote}`,
           summary: label('aiToolNotes', { count: listed.count }),
         }
       }
@@ -2991,6 +3210,192 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
           output: 'Removed the note. The notes after it are renumbered by the document.',
           mutated: true,
           summary: label('aiToolDeleteNote', { note: name }),
+        }
+      }
+      case 'read_note_settings': {
+        const settings = await bridge.noteSettings()
+        const unsupported =
+          settings.footnote === null
+            ? '\nThis editor cannot read or change the footnote settings.'
+            : ''
+        return {
+          output: `${JSON.stringify({ footnote: settings.footnote, endnote: settings.endnote })}${unsupported}`,
+          summary: label('aiToolNoteSettings'),
+        }
+      }
+      case 'set_note_settings': {
+        const kind = call.input.kind
+        if (kind !== 'footnote' && kind !== 'endnote') {
+          return bad(call, 'kind must be footnote or endnote')
+        }
+        const settings: Record<string, unknown> = {}
+        for (const [from, to] of [
+          ['number_format', 'numberFormat'],
+          ['symbol', 'symbol'],
+          ['prefix', 'prefix'],
+          ['suffix', 'suffix'],
+          ['superscript', 'superscript'],
+          ['start_number', 'startNumber'],
+          ['numbering', 'numbering'],
+          ['placement', 'placement'],
+          ['separator', 'separator'],
+        ] as const) {
+          const value = call.input[from]
+          if (value !== undefined && value !== null) settings[to] = value
+        }
+        if (Object.keys(settings).length === 0) {
+          return bad(call, 'Name at least one setting to change.')
+        }
+        const outcome = await changeWithMemoApproval(
+          () => bridge.setNoteSettings(kind, settings),
+          (options) => bridge.setNoteSettings(kind, settings, options),
+        )
+        if (outcome.kind !== 'done')
+          return bad(call, memoRemovalDeclined(outcome.refusal, outcome.kind))
+        const result = outcome.result
+        if (!result.ok) {
+          return bad(
+            call,
+            result.reason === 'unsupported'
+              ? `Nothing was changed: this editor cannot change the ${kind} settings. Tell the user to change them in the editor (입력 › 각주/미주 › 모양).`
+              : 'Nothing was changed.',
+          )
+        }
+        const name = label(kind === 'endnote' ? 'aiEndnote' : 'aiFootnote')
+        deps.onChange({
+          kind: 'format',
+          from: label('aiNoteSettingsOf', { kind: name }),
+          to: describeNoteSettings(settings),
+          count: 1,
+        })
+        return {
+          output: `Changed the ${kind} settings of the whole document; the notes are numbered in the new format. Now: ${JSON.stringify(result.settings)}`,
+          mutated: true,
+          summary: label('aiToolNoteSettingsSet', { kind: name }),
+        }
+      }
+      case 'read_page_setup': {
+        const setup = await bridge.pageSetup()
+        return {
+          output: JSON.stringify(
+            setup.sections.length === 1
+              ? setup.sections[0]
+              : setup.sections.map((section, index) => ({ section: index + 1, ...section })),
+          ),
+          summary: label('aiToolPageSetup'),
+        }
+      }
+      case 'set_page_setup': {
+        const setup: AgentPageSetupChange = {}
+        const paper = call.input.paper
+        if (typeof paper === 'string') setup.paper = paper
+        if (typeof call.input.width === 'number') setup.width = call.input.width
+        if (typeof call.input.height === 'number') setup.height = call.input.height
+        const orientation = call.input.orientation
+        if (orientation === 'portrait' || orientation === 'landscape')
+          setup.orientation = orientation
+        const margins: Record<string, number> = {}
+        for (const side of ['left', 'right', 'top', 'bottom', 'header', 'footer', 'gutter']) {
+          const value = call.input[`margin_${side}`]
+          if (typeof value === 'number') margins[side] = value
+        }
+        if (Object.keys(margins).length > 0) setup.margins = margins
+        if (Object.keys(setup).length === 0) {
+          return bad(
+            call,
+            'Name at least one thing to change: paper, width and height, orientation or a margin.',
+          )
+        }
+        const section = typeof call.input.section === 'number' ? call.input.section : null
+        const outcome = await changeWithMemoApproval(
+          () => bridge.setPageSetup(setup, section),
+          (options) => bridge.setPageSetup(setup, section, options),
+        )
+        if (outcome.kind !== 'done')
+          return bad(call, memoRemovalDeclined(outcome.refusal, outcome.kind))
+        const result = outcome.result
+        if (!result.ok) {
+          return bad(
+            call,
+            result.reason === 'no_such_section'
+              ? `There is no such section: the document has ${result.count}.`
+              : result.reason === 'no_text_area'
+                ? `Nothing was changed: with those margins section ${result.section} would have less than 2 cm left for text.`
+                : 'Nothing was changed.',
+          )
+        }
+        deps.onChange({
+          kind: 'format',
+          from: label('aiPageSetup'),
+          to: describePageSetup(setup),
+          count: result.sections,
+        })
+        return {
+          output: `Changed the page setup of ${result.sections === 1 && section ? `section ${section}` : 'the document'}. Now: ${JSON.stringify(result.pageSetup)}. Pages may break differently now.`,
+          mutated: true,
+          summary: label('aiToolPageSetupSet'),
+        }
+      }
+      case 'read_formatting': {
+        const attachment = textArg(call, 'attachment')?.trim() ?? ''
+        let base64: string | null = null
+        if (attachment) {
+          if (!deps.readAttachmentDocument) {
+            return bad(call, 'Attachments cannot be read for their formatting here.')
+          }
+          const read = await deps.readAttachmentDocument(attachment)
+          if (signal?.aborted) return bad(call, 'stopped by the user')
+          if (!read.ok) return bad(call, read.error)
+          base64 = read.base64
+        }
+        const result = await bridge.formatting(base64)
+        if (!result.ok) {
+          return bad(call, `The document could not be opened: ${result.message}`)
+        }
+        const { ok: _ok, ...formatting } = result
+        const head = attachment
+          ? `Formatting of the attached document "${attachment}" (its looks have no id: apply what you take from them to this document with format_look, format_paragraph, edit_style or create_style, set_page_setup and set_note_settings).`
+          : 'Formatting of this document. A look id is what format_look takes.'
+        return {
+          output: `${head}\n${JSON.stringify(formatting)}`,
+          summary: attachment
+            ? label('aiToolFormattingOf', { name: quote(attachment) })
+            : label('aiToolFormatting'),
+        }
+      }
+      case 'format_look': {
+        const look = textArg(call, 'look')?.trim() ?? ''
+        if (!look) return bad(call, 'look must be a look id from read_formatting of this document')
+        const format = formatArgs(call)
+        if (Object.keys(format).length === 0) return bad(call, NO_FORMAT_HELP)
+        const outcome = await changeWithMemoApproval(
+          () => bridge.formatLook(look, format),
+          (options) => bridge.formatLook(look, format, options),
+        )
+        if (outcome.kind !== 'done')
+          return bad(call, memoRemovalDeclined(outcome.refusal, outcome.kind))
+        const result = outcome.result
+        if (!result.ok) {
+          if (result.reason === 'no_such_style') return bad(call, noSuchStyle(result))
+          if (result.reason === 'no_such_look') {
+            return bad(
+              call,
+              `There is no look ${look} in this document now (a change may have given its paragraphs another look). Looks now: ${JSON.stringify(result.looks)}`,
+            )
+          }
+          return bad(call, HAS_OBJECTS_HELP)
+        }
+        deps.onChange({
+          kind: 'format',
+          from: label('aiLookParagraphs', { count: result.paragraphs }),
+          to: describeFormat(format, label),
+          count: result.paragraphs,
+          place: result.place,
+        })
+        return {
+          output: `Formatted ${result.paragraphs} paragraph(s) of that look.${keptOwnLookNote(result.keptOwnLook)} These paragraphs have a new look id now; the other looks keep theirs.`,
+          mutated: true,
+          summary: label('aiToolFormatLook', { count: result.paragraphs }),
         }
       }
       default:

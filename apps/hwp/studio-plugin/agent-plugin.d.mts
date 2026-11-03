@@ -118,6 +118,12 @@ export interface AgentParagraphFormat extends AgentTextFormat {
   spacingAfter?: number
   /** a paragraph style of the document, by its name (listStyles) */
   style?: string
+  /** a numbered or bulleted paragraph (the editor's number and bullet buttons), or none */
+  list?: 'number' | 'bullet' | 'none'
+  /** the level of a list paragraph, 1 to 7 */
+  listLevel?: number
+  /** the bullet character of a bulleted paragraph; default ● */
+  bullet?: string
 }
 
 /** A call named a style the document does not have; `styles` are the ones of that kind it has. */
@@ -539,7 +545,152 @@ export interface AgentNote {
   text: string
   /** it holds something besides text (an equation, a picture): it is not rewritten */
   objects?: true
+  /**
+   * it has no automatic number: what reads as its number is typed text (a document
+   * generator's), part of `text`, and no number is drawn besides
+   */
+  noAutoNumber?: true
 }
+
+/** One kind of note's settings, as noteSettings reads them and setNoteSettings takes them. */
+export interface AgentNoteShape {
+  /** the engine's name of the number format: digit, circledDigit, upperRoman, hangulSyllable, userChar… */
+  numberFormat: string
+  /** the symbol of the userChar format */
+  symbol?: string
+  /** characters before and after the number ("" for none) */
+  prefix: string
+  suffix: string
+  /** the number in the note is raised */
+  superscript: boolean
+  startNumber: number
+  /** footnotes: continue, restartSection, restartPage; endnotes: continue, restartSection */
+  numbering: string
+  /** footnotes: eachColumn, belowText, rightColumn; endnotes: documentEnd, sectionEnd */
+  placement: string
+  /** a line above the notes */
+  separator: boolean
+}
+
+export interface AgentNoteSettings {
+  sections: number
+  /** null when this engine cannot read them */
+  footnote: AgentNoteShape | null
+  endnote: AgentNoteShape | null
+}
+
+/** What setNoteSettings takes: only the settings to change. */
+export type AgentNoteShapeChange = Partial<Omit<AgentNoteShape, 'symbol'>> & { symbol?: string }
+
+export type AgentNoteSettingsResult =
+  | { ok: true; kind: AgentNoteKind; settings: AgentNoteShape | null }
+  /** this engine cannot change footnote settings */
+  | { ok: false; reason: 'unsupported' }
+  | AgentMemoRemovalRefusal
+
+/** A section's page setup, in millimetres. */
+export interface AgentPageSetup {
+  /** A3, A4, A5, B4, B5, Letter or Legal, when the paper is one of them */
+  paper?: string
+  /** the paper, portrait */
+  width: number
+  height: number
+  orientation: 'portrait' | 'landscape'
+  margins: {
+    left: number
+    right: number
+    top: number
+    bottom: number
+    header: number
+    footer: number
+    gutter: number
+  }
+}
+
+/** What setPageSetup takes: paper by name or width and height (portrait), orientation, any margins. */
+export interface AgentPageSetupChange {
+  paper?: string
+  width?: number
+  height?: number
+  orientation?: 'portrait' | 'landscape'
+  margins?: Partial<AgentPageSetup['margins']>
+}
+
+export type AgentPageSetupResult =
+  | { ok: true; sections: number; pageSetup: AgentPageSetup }
+  | { ok: false; reason: 'no_such_section'; count: number }
+  /** the margins would leave less than 2 cm for text in that section (from 1) */
+  | { ok: false; reason: 'no_text_area'; section: number }
+  | AgentMemoRemovalRefusal
+
+/** How a group of body paragraphs looks, in the format calls' units. */
+export interface AgentLook {
+  /** what formatLook takes; absent for another document's looks */
+  id?: string
+  /** how many body paragraphs look like this */
+  paragraphs: number
+  style: string
+  font: string
+  size: number
+  bold: boolean
+  italic: boolean
+  underline: boolean
+  color: string
+  align: string
+  lineSpacing?: number
+  /** a line spacing that is not a percentage (Fixed, SpaceOnly, Minimum) */
+  lineSpacingKind?: string
+  indent: number
+  marginLeft: number
+  marginRight: number
+  spacingBefore: number
+  spacingAfter: number
+  list?: 'number' | 'bullet' | 'outline'
+  listLevel?: number
+  /** paragraphs of the group whose formatting changes inside their text */
+  mixedFormatting?: number
+  samples: string[]
+}
+
+export interface AgentFormatting {
+  /** one page setup when every section has it, else one per section */
+  pageSetup: AgentPageSetup | (AgentPageSetup & { section: number })[]
+  notes: { footnote?: AgentNoteShape; endnote?: AgentNoteShape }
+  /** the paragraph styles the body uses, and the character styles */
+  styles: {
+    name: string
+    kind: 'paragraph' | 'character'
+    paragraphs: number
+    look: Record<string, unknown>
+  }[]
+  /** non-empty body paragraphs looked at */
+  paragraphs: number
+  looks: AgentLook[]
+  /** looks past the ones listed */
+  otherLooks?: number
+  /** the document has more paragraphs than were looked at */
+  truncated?: true
+}
+
+export type AgentFormattingResult =
+  ({ ok: true } & AgentFormatting) | { ok: false; reason: 'unreadable'; message: string }
+
+export type AgentFormatLookResult =
+  | {
+      ok: true
+      paragraphs: number
+      place: AgentPlace
+      /** paragraphs that keep some formatting of their own over the new style */
+      keptOwnLook?: number
+    }
+  | {
+      ok: false
+      reason: 'no_such_look'
+      looks: { id: string; paragraphs: number; sample: string }[]
+    }
+  | AgentNoSuchStyle
+  | { ok: false; reason: 'has_objects'; count: number }
+  | AgentMemoRemovalRefusal
 
 export interface AgentNoteList {
   count: number
@@ -912,6 +1063,25 @@ export interface AgentPluginSurface {
   ): AgentInsertNoteResult
   editNote(note: number, text: string, options?: AgentChangeOptions): AgentEditNoteResult
   deleteNote(note: number, options?: AgentChangeOptions): AgentDeleteNoteResult
+  noteSettings(): AgentNoteSettings
+  setNoteSettings(
+    kind: AgentNoteKind,
+    settings: AgentNoteShapeChange,
+    options?: AgentChangeOptions,
+  ): AgentNoteSettingsResult
+  pageSetup(): { sections: AgentPageSetup[] }
+  setPageSetup(
+    setup: AgentPageSetupChange,
+    section?: number | null,
+    options?: AgentChangeOptions,
+  ): AgentPageSetupResult
+  /** this document's formatting, or that of another HWP / HWPX document given as base64 */
+  formatting(base64?: string | null): AgentFormattingResult
+  formatLook(
+    look: string,
+    format: AgentParagraphFormat,
+    options?: AgentChangeOptions,
+  ): AgentFormatLookResult
   measureTabs(spots: AgentTabSpot[]): { tabs: (AgentTabMeasure | null)[] }
   listStyles(): AgentStyleNames
   readStyle(name: string): AgentReadStyleResult

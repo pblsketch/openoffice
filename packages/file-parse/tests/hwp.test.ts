@@ -4,7 +4,7 @@ import JSZip from 'jszip'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import init, { HwpDocument } from '@rhwp/core'
 import { parseFileToText } from '../src/index'
-import { hwpToText } from '../src/hwp'
+import { checkedHwpBytes, hwpToText } from '../src/hwp'
 import { buildPdfFixture, writeFixture } from './helpers/fixtures'
 
 /**
@@ -283,6 +283,26 @@ describe('hwp files that cannot be read', () => {
     bytes.writeUInt32LE(600_000_000, centralName - 46 + 24)
     await expect(hwpToText(new Uint8Array(bytes))).rejects.toThrow(
       /declares 600000000 uncompressed bytes/,
+    )
+  })
+})
+
+describe('the bytes handed to an engine that reads them itself', () => {
+  it('passes an HWPX zip and an HWP 5 file under their own names', async () => {
+    const doc = build(['한 줄'])
+    const hwpx = new Uint8Array(doc.exportHwpx())
+    const hwp = new Uint8Array(doc.exportHwp())
+    await expect(checkedHwpBytes(hwpx, 'hwpx')).resolves.toBe(hwpx)
+    await expect(checkedHwpBytes(hwp, 'hwp')).resolves.toBe(hwp)
+    // an HWPX saved under the old name is read by its content
+    await expect(checkedHwpBytes(hwpx, 'hwp')).resolves.toBe(hwpx)
+  })
+
+  it('refuses content that is not what the name says', async () => {
+    const hwp = new Uint8Array(build(['한 줄']).exportHwp())
+    await expect(checkedHwpBytes(hwp, 'hwpx')).rejects.toThrow(/Content mismatch/)
+    await expect(checkedHwpBytes(new TextEncoder().encode('plain text'), 'hwp')).rejects.toThrow(
+      /Content mismatch/,
     )
   })
 })
