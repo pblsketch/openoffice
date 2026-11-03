@@ -94,6 +94,29 @@ export interface BridgeOps {
    * those the cells really got; a failure takes the whole step back.
    */
   applyPrimitives: { request: { primitives: DiagramPrimitive[] }; reply: { created: string[] } }
+  /**
+   * Apply a whole tool call as ONE undo step: primitive changes and converted
+   * Mermaid drawings, in order, inside one model update. Everything is checked
+   * first; a failure anywhere takes the whole step back. `steps` holds the ids
+   * each step made; `token` names the step for `undoBatches` (null when
+   * nothing changed).
+   */
+  applyBatch: {
+    request: { steps: DiagramApplyStep[] }
+    reply: { created: string[]; steps: string[][]; token: string | null }
+  }
+  /**
+   * Convert Mermaid source with draw.io's own converter, the way its Insert ›
+   * Mermaid does (an editable group carrying the source). Changes nothing; a
+   * text the converter refuses fails with the converter's reason.
+   */
+  convertMermaid: { request: { text: string }; reply: { xml: string } }
+  /**
+   * Undo the batches named by `tokens` (newest last), newest first, for as
+   * long as each one is the newest step of the undo history. `undone` counts
+   * the ones taken back; it stops at the first batch something else covers.
+   */
+  undoBatches: { request: { tokens: string[] }; reply: { undone: number } }
   /** draw.io's dark view on or off */
   setDark: { request: { dark: boolean }; reply: Record<string, never> }
   /** whether serializations compress pages (follows the opened file) */
@@ -116,6 +139,15 @@ export interface BridgeOps {
   /** one of draw.io's own actions the app menu reaches (undo, zoom, find) */
   runAction: { request: { action: DrawioMenuAction }; reply: Record<string, never> }
 }
+
+/**
+ * One part of an `applyBatch` call. `mermaid` inserts draw.io's converted
+ * Mermaid XML (from `convertMermaid`) on `page` with its top-left corner at
+ * x, y, as draw.io's own Insert does (the position snaps to the grid).
+ */
+export type DiagramApplyStep =
+  | { kind: 'primitives'; primitives: DiagramPrimitive[] }
+  | { kind: 'mermaid'; page: string; xml: string; x: number; y: number }
 
 /** draw.io actions the app's menu may run. */
 export const DRAWIO_MENU_ACTIONS = [
@@ -173,6 +205,9 @@ const BRIDGE_OPS: ReadonlySet<string> = new Set<BridgeOp>([
   'selection',
   'pageInfo',
   'applyPrimitives',
+  'applyBatch',
+  'convertMermaid',
+  'undoBatches',
   'setDark',
   'setCompressed',
   'markSaved',

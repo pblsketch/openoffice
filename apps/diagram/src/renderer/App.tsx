@@ -25,10 +25,11 @@ import type {
 import { hasNotices, scanDiagramNotices, type DiagramNotices } from '../shared/notices'
 import { DrawioFrame, base64Bytes } from './drawio/frame-client'
 import { diagramImporter } from './document/importers'
-import { applyLiveOps, liveDiagramText } from './document/live-ops'
+import { applyLiveOps, liveDiagramRead, liveDiagramText } from './document/live-ops'
 import { DiagramCopier, RECOVERY_COPY_TIMING } from './document/recovery-copies'
 import { t as translate, useI18n, type StringKey } from './i18n/locale'
 import { useDarkView } from './theme'
+import { DiagramAiDock, useDiagramAi } from './ai/AiDock'
 
 const AUTO_SAVE_INTERVAL_MS = 30_000
 const TOAST_MS = 4_000
@@ -101,6 +102,12 @@ export default function App({ initialTheme }: { initialTheme: UiTheme }) {
   const copierRef = useRef<DiagramCopier | null>(null)
 
   useSplitPaneFocusPing()
+
+  // the AI panel reads and changes the diagram through the frame, once draw.io is up
+  const ai = useDiagramAi({
+    client: () => clientRef.current,
+    ready: () => statusRef.current === 'ready',
+  })
 
   const say = useCallback((text: string) => setToast(text), [])
   useEffect(() => {
@@ -559,7 +566,15 @@ export default function App({ initialTheme }: { initialTheme: UiTheme }) {
         })
         return
       }
-      liveDiagramText(client)
+      // one page when the asker names one, every page otherwise
+      const read =
+        typeof query.page === 'string' && query.page !== ''
+          ? liveDiagramRead(client, query.page).then((page) => {
+              if (!page.ok) throw new Error(page.error)
+              return page.text
+            })
+          : liveDiagramText(client)
+      read
         .then((text) => api.sendReadResult({ id: query.id, text }))
         .catch((err: unknown) =>
           api.sendReadResult({
@@ -656,21 +671,24 @@ export default function App({ initialTheme }: { initialTheme: UiTheme }) {
   return (
     <div className="dg-app">
       {notices && <NoticeBar notices={notices} onClose={() => setNotices(null)} />}
-      <div className="dg-stage">
-        <iframe
-          key={frameKey}
-          ref={frameRef}
-          className="dg-frame"
-          title={t('appName')}
-          src={frameSrc}
-          onLoad={onFrameLoad}
-        />
-        {status === 'loading' && (
-          <div className="dg-progress" role="status">
-            <div className="dg-spinner" aria-hidden="true" />
-            <div>{t('loading')}</div>
-          </div>
-        )}
+      <div className="dg-body">
+        <div className="dg-stage">
+          <iframe
+            key={frameKey}
+            ref={frameRef}
+            className="dg-frame"
+            title={t('appName')}
+            src={frameSrc}
+            onLoad={onFrameLoad}
+          />
+          {status === 'loading' && (
+            <div className="dg-progress" role="status">
+              <div className="dg-spinner" aria-hidden="true" />
+              <div>{t('loading')}</div>
+            </div>
+          )}
+        </div>
+        <DiagramAiDock ai={ai} filePath={path} />
       </div>
       <div className="dg-foot">
         <span className="dg-status" aria-live="polite">

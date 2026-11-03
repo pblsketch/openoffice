@@ -2,9 +2,11 @@
 // step, pages switched inside the step, and taken back whole on failure.
 import { describe, expect, it } from 'vitest'
 import type { DiagramCell, DiagramPrimitive } from '@genoffice/drawio-model'
+import { guardAutoRouting } from '../src/bridge/libavoid-guard'
 import {
   PrimitiveError,
   applyPrimitivesLive,
+  applyStepsLive,
   type LiveDiagram,
 } from '../src/bridge/apply-primitives'
 
@@ -145,6 +147,21 @@ class FakeDiagram implements LiveDiagram {
   removeCell = (id: string) => {
     this.#page().cells.delete(id)
   }
+  /** an import of a converted drawing: `ids` cells under the page's layer */
+  drawingIds: string[] = ['d1', 'd2']
+  insertXml = (xml: string, x: number, y: number) => {
+    this.#maybeFail(`insert:${xml}`)
+    for (const id of this.drawingIds) {
+      this.#page().cells.set(id, {
+        id,
+        parent: '1',
+        value: xml,
+        style: '',
+        geometry: { x, y, width: 10, height: 10 },
+      })
+    }
+    return [...this.drawingIds]
+  }
 }
 
 const vertex = (page: string, id: string, extra: Partial<DiagramCell> = {}): DiagramPrimitive => ({
@@ -277,5 +294,115 @@ describe('applyPrimitivesLive', () => {
     const live = new FakeDiagram()
     expect(applyPrimitivesLive(live, [])).toEqual({ created: [] })
     expect(live.log).toEqual([])
+  })
+})
+
+describe('applyStepsLive (a whole AI call)', () => {
+  const drawing = (page: string, xml = 'mermaid') =>
+    ({ kind: 'mermaid', page, xml, x: 40, y: 80 }) as const
+
+  it('applies primitives and drawings in order as one undo step', () => {
+    const live = new FakeDiagram()
+    const before = live.snapshot()
+    const result = applyStepsLive(live, [
+      { kind: 'primitives', primitives: [vertex('p1', 's1')] },
+      drawing('p2'),
+      {
+        kind: 'primitives',
+        primitives: [{ kind: 'update_cell', page: 'p1', id: 'p1-a', value: 'Z' }],
+      },
+    ])
+    expect(result.steps).toEqual([['s1'], ['d1', 'd2'], []])
+    expect(result.created).toEqual(['s1', 'd1', 'd2'])
+    expect(live.log).toEqual([
+      'begin',
+      'add:s1',
+      'select:p2',
+      'insert:mermaid',
+      'select:p1',
+      'update:p1-a',
+      'end',
+    ])
+    expect(live.pages.get('p2')!.cells.get('d1')!.geometry).toMatchObject({ x: 40, y: 80 })
+    expect(live.current).toBe('p1')
+    expect(live.history).toHaveLength(1)
+    live.dropLastStep()
+    expect(live.snapshot()).toBe(before)
+  })
+
+  it('draws on a page an earlier primitive of the call added', () => {
+    const live = new FakeDiagram()
+    applyStepsLive(live, [
+      { kind: 'primitives', primitives: [{ kind: 'add_page', id: 'p3', name: 'New' }] },
+      drawing('p3'),
+    ])
+    expect(live.pages.get('p3')!.cells.has('d1')).toBe(true)
+    expect(live.history).toHaveLength(1)
+  })
+
+  it('changes nothing when a drawing does not fit: no page, nothing to draw, no spot', () => {
+    const live = new FakeDiagram()
+    const before = live.snapshot()
+    for (const steps of [
+      [{ kind: 'primitives', primitives: [vertex('p1', 's1')] }, drawing('p9')],
+      [drawing('p1', '  ')],
+      [{ ...drawing('p1'), x: Number.NaN }],
+      [{ kind: 'something' }],
+      [{ kind: 'primitives', primitives: [{ kind: 'remove_page', page: 'p2' }] }, drawing('p2')],
+    ] as never[][]) {
+      expect(() => applyStepsLive(live, steps)).toThrow(PrimitiveError)
+      expect(live.snapshot()).toBe(before)
+      expect(live.log).toEqual([])
+    }
+  })
+
+  it('takes the whole call back when the import fails or adds nothing', () => {
+    const live = new FakeDiagram()
+    const before = live.snapshot()
+    live.failOn = 'insert:broken'
+    expect(() =>
+      applyStepsLive(live, [
+        { kind: 'primitives', primitives: [vertex('p1', 's1')] },
+        drawing('p2', 'broken'),
+      ]),
+    ).toThrow(/insert:broken/)
+    expect(live.snapshot()).toBe(before)
+    expect(live.history).toHaveLength(0)
+
+    live.failOn = null
+    live.drawingIds = []
+    expect(() =>
+      applyStepsLive(live, [
+        { kind: 'primitives', primitives: [vertex('p1', 's1')] },
+        drawing('p1'),
+      ]),
+    ).toThrow(/added nothing/)
+    expect(live.snapshot()).toBe(before)
+    expect(live.history).toHaveLength(0)
+  })
+})
+
+describe('guardAutoRouting (libavoid without its core)', () => {
+  it('keeps draw.io from installing live routing while the core is missing', () => {
+    const page: Record<string, unknown> = {}
+    let core = false
+    guardAutoRouting(page, () => core)
+    // as draw.io's extensions bundle runs: the object, then its install function
+    page.LibavoidRouting = { isAutoEdge: () => false }
+    const integration = page.LibavoidRouting as Record<string, unknown>
+    const install = () => 'installed'
+    integration.installAutoRouting = install
+    // draw.io's own guard: `LibavoidRouting.installAutoRouting != null`
+    expect(integration.installAutoRouting).toBeNull()
+    expect(integration.isAutoEdge).toBeTypeOf('function')
+    core = true
+    expect(integration.installAutoRouting).toBe(install)
+  })
+
+  it('lets a var declaration in a classic script land in the guarded property', () => {
+    const page: Record<string, unknown> = {}
+    guardAutoRouting(page, () => false)
+    new Function('g', 'with (g) { LibavoidRouting = { installAutoRouting: function () {} } }')(page)
+    expect((page.LibavoidRouting as Record<string, unknown>).installAutoRouting).toBeNull()
   })
 })

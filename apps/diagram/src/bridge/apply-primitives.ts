@@ -14,8 +14,14 @@
  *   the page that was on screen comes back at the end.
  * - Should draw.io throw half-way, the edit is undone and dropped from the
  *   history: the diagram is as before and no redo is left behind.
+ *
+ * A whole AI tool call is a list of steps (`applyStepsLive`): runs of
+ * primitives and converted Mermaid drawings, in order, under the same rules
+ * and inside the same one edit, so a call that mixes them is still one undo
+ * step and still all or nothing.
  */
 import type { DiagramCell, DiagramGeometry, DiagramPrimitive } from '@genoffice/drawio-model'
+import type { DiagramApplyStep } from '../shared/bridge-protocol'
 
 /** The live diagram, as far as applying primitives needs it. */
 export interface LiveDiagram {
@@ -43,6 +49,12 @@ export interface LiveDiagram {
   ): void
   /** remove a cell (and what it contains) from the page on screen, when it is still there */
   removeCell(id: string): void
+  /**
+   * Import a converted drawing (an `mxGraphModel` XML) into the page on
+   * screen with its top-left corner at x, y; answers the ids of every cell
+   * it added. Inside the running edit, like the changes above.
+   */
+  insertXml(xml: string, x: number, y: number): string[]
 }
 
 export class PrimitiveError extends Error {}
@@ -50,37 +62,50 @@ export class PrimitiveError extends Error {}
 const pageOf = (primitive: DiagramPrimitive): string | null =>
   primitive.kind === 'add_page' ? null : primitive.page
 
-/** Checks the batch against the diagram as it is. Throws `PrimitiveError` on the first problem. */
-export function checkPrimitives(live: LiveDiagram, primitives: readonly DiagramPrimitive[]): void {
-  const pages = new Set(live.pageIds())
-  const cells = new Map<string, Set<string>>()
-  const cellsOf = (pageId: string): Set<string> => {
-    let set = cells.get(pageId)
+type DrawingStep = Extract<DiagramApplyStep, { kind: 'mermaid' }>
+
+/** Walks a batch against the diagram as it would stand at each primitive. */
+class BatchChecker {
+  readonly #live: LiveDiagram
+  readonly #pages: Set<string>
+  readonly #cells = new Map<string, Set<string>>()
+  #index = 0
+
+  constructor(live: LiveDiagram) {
+    this.#live = live
+    this.#pages = new Set(live.pageIds())
+  }
+
+  #cellsOf(pageId: string): Set<string> {
+    let set = this.#cells.get(pageId)
     if (!set) {
-      set = new Set(live.cellIds(pageId))
-      cells.set(pageId, set)
+      set = new Set(this.#live.cellIds(pageId))
+      this.#cells.set(pageId, set)
     }
     return set
   }
-  for (const [index, primitive] of primitives.entries()) {
-    const at = `primitive ${index} (${primitive.kind})`
+
+  primitive(primitive: DiagramPrimitive): void {
+    const at = `primitive ${this.#index++} (${primitive.kind})`
     const page = pageOf(primitive)
-    if (page !== null && !pages.has(page)) throw new PrimitiveError(`${at}: no page ${page}`)
+    if (page !== null && !this.#pages.has(page)) throw new PrimitiveError(`${at}: no page ${page}`)
     switch (primitive.kind) {
       case 'add_page':
-        if (pages.has(primitive.id)) throw new PrimitiveError(`${at}: page ${primitive.id} exists`)
-        pages.add(primitive.id)
-        cells.set(primitive.id, new Set(['0', '1']))
+        if (this.#pages.has(primitive.id)) {
+          throw new PrimitiveError(`${at}: page ${primitive.id} exists`)
+        }
+        this.#pages.add(primitive.id)
+        this.#cells.set(primitive.id, new Set(['0', '1']))
         break
       case 'rename_page':
         break
       case 'remove_page':
-        if (pages.size <= 1) throw new PrimitiveError(`${at}: the last page stays`)
-        pages.delete(primitive.page)
-        cells.delete(primitive.page)
+        if (this.#pages.size <= 1) throw new PrimitiveError(`${at}: the last page stays`)
+        this.#pages.delete(primitive.page)
+        this.#cells.delete(primitive.page)
         break
       case 'add_cell': {
-        const own = cellsOf(primitive.page)
+        const own = this.#cellsOf(primitive.page)
         const { cell } = primitive
         if (own.has(cell.id)) throw new PrimitiveError(`${at}: cell ${cell.id} exists`)
         if (cell.parent === null || !own.has(cell.parent)) {
@@ -93,18 +118,52 @@ export function checkPrimitives(live: LiveDiagram, primitives: readonly DiagramP
         break
       }
       case 'update_cell':
-        if (!cellsOf(primitive.page).has(primitive.id)) {
+        if (!this.#cellsOf(primitive.page).has(primitive.id)) {
           throw new PrimitiveError(`${at}: no cell ${primitive.id}`)
         }
         break
       case 'remove_cells': {
-        const own = cellsOf(primitive.page)
+        const own = this.#cellsOf(primitive.page)
         for (const id of primitive.ids) {
           if (!own.has(id)) throw new PrimitiveError(`${at}: no cell ${id}`)
         }
         for (const id of primitive.ids) own.delete(id)
         break
       }
+    }
+  }
+
+  /** A drawing to import: its page must be there at its turn, with a usable spot and XML. */
+  drawing(step: DrawingStep): void {
+    const at = `drawing on page ${String(step.page)}`
+    if (typeof step.page !== 'string' || !this.#pages.has(step.page)) {
+      throw new PrimitiveError(`${at}: no such page`)
+    }
+    if (typeof step.xml !== 'string' || step.xml.trim() === '') {
+      throw new PrimitiveError(`${at}: nothing to draw`)
+    }
+    if (!Number.isFinite(step.x) || !Number.isFinite(step.y)) {
+      throw new PrimitiveError(`${at}: x and y must be finite numbers`)
+    }
+  }
+}
+
+/** Checks the batch against the diagram as it is. Throws `PrimitiveError` on the first problem. */
+export function checkPrimitives(live: LiveDiagram, primitives: readonly DiagramPrimitive[]): void {
+  const checker = new BatchChecker(live)
+  for (const primitive of primitives) checker.primitive(primitive)
+}
+
+/** Checks every step of a call, in order. Throws `PrimitiveError` on the first problem. */
+export function checkSteps(live: LiveDiagram, steps: readonly DiagramApplyStep[]): void {
+  const checker = new BatchChecker(live)
+  for (const step of steps) {
+    if (step?.kind === 'primitives' && Array.isArray(step.primitives)) {
+      for (const primitive of step.primitives) checker.primitive(primitive)
+    } else if (step?.kind === 'mermaid') {
+      checker.drawing(step)
+    } else {
+      throw new PrimitiveError('a step must be primitives or a drawing')
     }
   }
 }
@@ -151,15 +210,41 @@ export function applyPrimitivesLive(
   live: LiveDiagram,
   primitives: readonly DiagramPrimitive[],
 ): { created: string[] } {
-  checkPrimitives(live, primitives)
-  if (primitives.length === 0) return { created: [] }
+  const { created } = applyStepsLive(live, [{ kind: 'primitives', primitives: [...primitives] }])
+  return { created }
+}
+
+/**
+ * Applies a whole call (primitives and drawings, in order) as one undo step
+ * and answers the ids made, all of them and per step. Throws like
+ * `applyPrimitivesLive`; a drawing that adds nothing is a failure too.
+ */
+export function applyStepsLive(
+  live: LiveDiagram,
+  steps: readonly DiagramApplyStep[],
+): { created: string[]; steps: string[][] } {
+  checkSteps(live, steps)
+  const empty = steps.every((step) => step.kind === 'primitives' && step.primitives.length === 0)
+  if (empty) return { created: [], steps: steps.map(() => []) }
   const before = live.historyLength()
   const shown = live.currentPageId()
   const created: string[] = []
+  const perStep: string[][] = []
   let failure: unknown = null
   live.beginUpdate()
   try {
-    for (const primitive of primitives) applyOne(live, primitive, created)
+    for (const step of steps) {
+      const made: string[] = []
+      if (step.kind === 'primitives') {
+        for (const primitive of step.primitives) applyOne(live, primitive, made)
+      } else {
+        if (live.currentPageId() !== step.page) live.selectPage(step.page)
+        made.push(...live.insertXml(step.xml, step.x, step.y))
+        if (made.length === 0) throw new PrimitiveError('the drawing added nothing')
+      }
+      perStep.push(made)
+      created.push(...made)
+    }
     if (shown !== null && live.currentPageId() !== shown && live.pageIds().includes(shown)) {
       live.selectPage(shown)
     }
@@ -172,5 +257,5 @@ export function applyPrimitivesLive(
     if (live.historyLength() > before) live.dropLastStep()
     throw failure
   }
-  return { created }
+  return { created, steps: perStep }
 }

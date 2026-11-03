@@ -91,6 +91,7 @@ import { openableLink } from '../shared/links'
 import { DRAWIO_SCHEME_PRIVILEGE } from './drawio-protocol'
 import { diagramSession } from './diagram-session'
 import { registerDiagramExportIpc } from './export-main'
+import { registerDiagramAiIpc } from './ai-attachments'
 import { tm } from './i18n-main'
 import {
   DIAGRAM_PARTITION,
@@ -116,6 +117,7 @@ import {
 export { DRAWIO_SCHEME_PRIVILEGE } from './drawio-protocol'
 export { DIAGRAM_PARTITION } from './network-guard'
 export { diagramRequestLog } from './diagram-session'
+export { registerDiagramAiIpc, setDiagramProvisionalTitleHook } from './ai-attachments'
 /** How long a tab that stays open after "Don't Save" takes no copy. */
 export { DONT_SAVE_HOLD_MS as DIAGRAM_DONT_SAVE_HOLD_MS } from './recovery-main'
 
@@ -884,6 +886,9 @@ function registerDiagramIpc(): void {
   })
 
   registerDiagramExportIpc({ filePathOf: (wcId) => savePathByWc.get(wcId) })
+  // the AI panel's attachments and the provisional name of an untitled diagram
+  // (a tab with a file, or made from an imported file, keeps its name)
+  registerDiagramAiIpc({ hasFile: (wcId) => savePathByWc.has(wcId) || importByWc.has(wcId) })
 
   // Language channel shared with other modules; removeHandler tolerates duplicate registration
   ipcMain.removeHandler(APP_CHANNELS.getLanguage)
