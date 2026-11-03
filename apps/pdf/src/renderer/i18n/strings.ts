@@ -589,6 +589,7 @@ export const strings = {
     pwHide: '隐藏密码',
     pwCertEncrypted: '这个 PDF 使用证书加密而不是密码保护，请在签发它的应用中打开。',
     roEncrypted: '加密文档仅支持查看',
+    roDamaged: '文件已损坏：无法读取的页面显示为空白，仅支持查看',
     extractRangeTitle: '抽取页面为 PDF',
     extractRangeHint: '页码或范围，如 1-3,5（共 {total} 页）',
     ok: '确定',
@@ -1042,6 +1043,7 @@ export const strings = {
     pwCertEncrypted:
       'This PDF is protected with a certificate, not a password. Open it in the app that issued it.',
     roEncrypted: 'Encrypted document is view-only',
+    roDamaged: 'Damaged file: unreadable pages show blank, view-only',
     extractRangeTitle: 'Extract Pages as PDF',
     extractRangeHint: 'Pages or ranges, e.g. 1-3,5 (of {total})',
     ok: 'OK',
@@ -1506,6 +1508,7 @@ export const strings = {
     pwCertEncrypted:
       'PDF này được bảo vệ bằng chứng chỉ, không phải mật khẩu. Hãy mở bằng ứng dụng đã phát hành.',
     roEncrypted: 'Tài liệu đã mã hóa chỉ có thể xem',
+    roDamaged: 'Tệp bị hỏng: trang không đọc được hiển thị trống, chỉ có thể xem',
     extractRangeTitle: 'Trích xuất các trang thành PDF',
     extractRangeHint: 'Các trang hoặc phạm vi, ví dụ: 1-3,5 (trên {total})',
     ok: 'OK',
@@ -1969,6 +1972,7 @@ export const strings = {
     pwCertEncrypted:
       'この PDF はパスワードではなく証明書で保護されています。発行したアプリで開いてください。',
     roEncrypted: '暗号化文書は閲覧のみ',
+    roDamaged: '破損したファイル: 読めないページは空白で表示、閲覧のみ',
     extractRangeTitle: 'ページを PDF として抽出',
     extractRangeHint: 'ページ番号、例 1-3,5（全 {total} ページ）',
     ok: 'OK',
@@ -2431,6 +2435,7 @@ export const strings = {
     pwHide: '암호 숨기기',
     pwCertEncrypted: '이 PDF는 암호가 아닌 인증서로 보호되어 있습니다. 발급한 앱에서 여세요.',
     roEncrypted: '암호화 문서는 보기 전용입니다',
+    roDamaged: '손상된 파일이라 읽지 못한 쪽은 빈 쪽으로 보이고, 보기 전용입니다',
     extractRangeTitle: '페이지를 PDF로 추출',
     extractRangeHint: '페이지 또는 범위, 예 1-3,5 (총 {total}쪽)',
     ok: '확인',
@@ -2897,6 +2902,7 @@ export const strings = {
     pwCertEncrypted:
       "Ce PDF est protégé par un certificat, pas par un mot de passe. Ouvrez-le dans l'application qui l'a émis.",
     roEncrypted: 'Document chiffré en lecture seule',
+    roDamaged: 'Fichier endommagé : pages illisibles affichées vides, lecture seule',
     extractRangeTitle: 'Extraire les pages en PDF',
     extractRangeHint: 'Pages ou plages, ex. 1-3,5 (sur {total})',
     ok: 'OK',
@@ -3369,6 +3375,7 @@ export const strings = {
     pwCertEncrypted:
       'Diese PDF ist mit einem Zertifikat geschützt, nicht mit einem Kennwort. Öffnen Sie sie in der Anwendung, die sie ausgestellt hat.',
     roEncrypted: 'Verschlüsseltes Dokument ist schreibgeschützt',
+    roDamaged: 'Beschädigte Datei: unlesbare Seiten bleiben leer, schreibgeschützt',
     extractRangeTitle: 'Seiten als PDF extrahieren',
     extractRangeHint: 'Seiten oder Bereiche, z. B. 1-3,5 (von {total})',
     ok: 'OK',
@@ -3838,6 +3845,7 @@ export const strings = {
     pwCertEncrypted:
       'Este PDF está protegido con un certificado, no con una contraseña. Ábralo en la aplicación que lo emitió.',
     roEncrypted: 'El documento cifrado es de solo lectura',
+    roDamaged: 'Archivo dañado: las páginas ilegibles se muestran en blanco, solo lectura',
     extractRangeTitle: 'Extraer páginas como PDF',
     extractRangeHint: 'Páginas o rangos, p. ej. 1-3,5 (de {total})',
     ok: 'Aceptar',
@@ -4305,6 +4313,7 @@ export const strings = {
     pwHide: 'ซ่อนรหัสผ่าน',
     pwCertEncrypted: 'PDF นี้ป้องกันด้วยใบรับรอง ไม่ใช่รหัสผ่าน โปรดเปิดในแอปที่ออกเอกสาร',
     roEncrypted: 'เอกสารที่เข้ารหัสดูได้อย่างเดียว',
+    roDamaged: 'ไฟล์เสียหาย: หน้าที่อ่านไม่ได้แสดงเป็นหน้าว่าง ดูได้อย่างเดียว',
     extractRangeTitle: 'แยกหน้าเป็น PDF',
     extractRangeHint: 'หน้าหรือช่วง เช่น 1-3,5 (จาก {total} หน้า)',
     ok: 'ตกลง',
@@ -4767,6 +4776,7 @@ export const strings = {
     pwCertEncrypted:
       'PDF ini dilindungi dengan sertifikat, bukan kata sandi. Buka di aplikasi yang menerbitkannya.',
     roEncrypted: 'Dokumen terenkripsi hanya bisa dilihat',
+    roDamaged: 'File rusak: halaman yang tidak terbaca tampil kosong, hanya bisa dilihat',
     extractRangeTitle: 'Ekstrak halaman sebagai PDF',
     extractRangeHint: 'Halaman atau rentang, mis. 1-3,5 (dari {total})',
     ok: 'OK',
@@ -5233,6 +5243,7 @@ export const strings = {
     pwCertEncrypted:
       'Этот PDF защищён сертификатом, а не паролем. Откройте его в программе, которая его выпустила.',
     roEncrypted: 'Зашифрованный документ только для просмотра',
+    roDamaged: 'Файл повреждён: нечитаемые страницы пустые, только для просмотра',
     extractRangeTitle: 'Извлечь страницы в PDF',
     extractRangeHint: 'Страницы или диапазоны, напр. 1-3,5 (из {total})',
     ok: 'ОК',
@@ -5696,6 +5707,7 @@ export const strings = {
     pwHide: 'إخفاء كلمة المرور',
     pwCertEncrypted: 'هذا الملف محمي بشهادة وليس بكلمة مرور. افتحه في التطبيق الذي أصدره.',
     roEncrypted: 'المستند المشفّر للعرض فقط',
+    roDamaged: 'ملف تالف: تظهر الصفحات غير المقروءة فارغة، للعرض فقط',
     extractRangeTitle: 'استخراج الصفحات كملف PDF',
     extractRangeHint: 'صفحات أو نطاقات، مثل 1-3,5 (من {total})',
     ok: 'موافق',
@@ -6159,6 +6171,7 @@ export const strings = {
     pwCertEncrypted:
       'Este PDF está protegido com um certificado, não com uma senha. Abra-o no aplicativo que o emitiu.',
     roEncrypted: 'Documento criptografado é somente leitura',
+    roDamaged: 'Arquivo danificado: páginas ilegíveis aparecem em branco, somente leitura',
     extractRangeTitle: 'Extrair páginas como PDF',
     extractRangeHint: 'Páginas ou intervalos, ex. 1-3,5 (de {total})',
     ok: 'OK',
@@ -6629,6 +6642,7 @@ export const strings = {
     pwCertEncrypted:
       "Questo PDF è protetto da un certificato, non da una password. Aprilo nell'app che lo ha emesso.",
     roEncrypted: 'Il documento crittografato è di sola lettura',
+    roDamaged: 'File danneggiato: le pagine illeggibili sono vuote, sola lettura',
     extractRangeTitle: 'Estrai pagine come PDF',
     extractRangeHint: 'Pagine o intervalli, es. 1-3,5 (di {total})',
     ok: 'OK',
@@ -7097,6 +7111,7 @@ export const strings = {
     pwCertEncrypted:
       'Ten PDF jest chroniony certyfikatem, a nie hasłem. Otwórz go w aplikacji, która go wystawiła.',
     roEncrypted: 'Zaszyfrowany dokument jest tylko do odczytu',
+    roDamaged: 'Uszkodzony plik: nieczytelne strony są puste, tylko do odczytu',
     extractRangeTitle: 'Wyodrębnij strony jako PDF',
     extractRangeHint: 'Strony lub zakresy, np. 1-3,5 (z {total})',
     ok: 'OK',
@@ -7563,6 +7578,7 @@ export const strings = {
     pwCertEncrypted:
       'Tento PDF je chráněn certifikátem, nikoli heslem. Otevřete jej v aplikaci, která jej vydala.',
     roEncrypted: 'Šifrovaný dokument je pouze pro čtení',
+    roDamaged: 'Poškozený soubor: nečitelné stránky jsou prázdné, pouze pro čtení',
     extractRangeTitle: 'Extrahovat stránky jako PDF',
     extractRangeHint: 'Stránky nebo rozsahy, např. 1-3,5 (z {total})',
     ok: 'OK',
@@ -8030,6 +8046,7 @@ export const strings = {
     pwCertEncrypted:
       'Deze PDF is beveiligd met een certificaat, niet met een wachtwoord. Open hem in de app die hem heeft uitgegeven.',
     roEncrypted: 'Versleuteld document is alleen-lezen',
+    roDamaged: 'Beschadigd bestand: onleesbare pagina’s zijn leeg, alleen-lezen',
     extractRangeTitle: "Pagina's extraheren als PDF",
     extractRangeHint: "Pagina's of bereiken, bijv. 1-3,5 (van {total})",
     ok: 'OK',
@@ -8496,6 +8513,7 @@ export const strings = {
     pwCertEncrypted:
       'PDF ini dilindungi dengan sijil, bukan kata laluan. Buka dalam aplikasi yang mengeluarkannya.',
     roEncrypted: 'Dokumen yang disulitkan hanya boleh dilihat',
+    roDamaged: 'Fail rosak: halaman yang tidak dapat dibaca kosong, hanya boleh dilihat',
     extractRangeTitle: 'Ekstrak halaman sebagai PDF',
     extractRangeHint: 'Halaman atau julat, cth. 1-3,5 (daripada {total})',
     ok: 'OK',
@@ -8958,6 +8976,7 @@ export const strings = {
     pwHide: 'הסתר סיסמה',
     pwCertEncrypted: 'קובץ PDF זה מוגן בתעודה ולא בסיסמה. פתח אותו ביישום שהנפיק אותו.',
     roEncrypted: 'מסמך מוצפן ניתן לצפייה בלבד',
+    roDamaged: 'קובץ פגום: עמודים שלא ניתן לקרוא מוצגים ריקים, לצפייה בלבד',
     extractRangeTitle: 'חילוץ עמודים כ-PDF',
     extractRangeHint: 'עמודים או טווחים, למשל 1-3,5 (מתוך {total})',
     ok: 'אישור',
@@ -9413,6 +9432,7 @@ export const strings = {
     pwCertEncrypted:
       'यह PDF प्रमाणपत्र से सुरक्षित है, पासवर्ड से नहीं। इसे जारी करने वाले ऐप में खोलें।',
     roEncrypted: 'एन्क्रिप्टेड दस्तावेज़ केवल देखने के लिए है',
+    roDamaged: 'क्षतिग्रस्त फ़ाइल: न पढ़े जा सकने वाले पृष्ठ खाली दिखते हैं, केवल देखने के लिए',
     extractRangeTitle: 'पृष्ठों को PDF के रूप में निकालें',
     extractRangeHint: 'पृष्ठ या श्रेणियाँ, जैसे 1-3,5 (कुल {total})',
     ok: 'ठीक है',
@@ -9873,6 +9893,7 @@ export const strings = {
     pwHide: '隱藏密碼',
     pwCertEncrypted: '這個 PDF 使用憑證加密而不是密碼保護，請在簽發它的應用程式中開啟。',
     roEncrypted: '加密文件僅支援檢視',
+    roDamaged: '檔案已損毀：無法讀取的頁面顯示為空白，僅支援檢視',
     extractRangeTitle: '擷取頁面為 PDF',
     extractRangeHint: '頁碼或範圍，如 1-3,5（共 {total} 頁）',
     ok: '確定',
