@@ -553,6 +553,82 @@ describe('rhwp font memo patches', () => {
   })
 })
 
+describe('rhwp page raster filter patch', () => {
+  // the studio's text around the patch, as the pinned release has it
+  const view = [
+    'export class CanvasView {',
+    '  private positionPageElement(element: HTMLElement, pageIdx: number): void {',
+    '    if (pageLeft >= 0) {',
+    "      element.style.transform = 'none';",
+    '    } else {',
+    "      element.style.transform = 'translateX(-50%)';",
+    '    }',
+    "    element.style.transformOrigin = '';",
+    '  }',
+    '',
+    '  private applyPageSurfaceCssSize(pageIdx: number, mainCanvas: HTMLCanvasElement, zoom: number): void {',
+    '    for (const element of this.pageSurfaceElements(pageIdx, mainCanvas)) {',
+    '      element.style.width = cssWidth;',
+    '      element.style.height = cssHeight;',
+    '    }',
+    '  }',
+    '',
+    '  private applyZoomPreviewBox(element: HTMLElement, pageIdx: number, scale: number): void {',
+    '    element.style.top = `${this.virtualScroll.getPageOffset(pageIdx)}px`;',
+    '  }',
+    '}',
+    '',
+  ].join('\n')
+  const patched = applyPatch('studio-page-raster-filter', view)
+
+  /** The decision the patch adds, as the studio runs it. */
+  function filter(): (w: number, h: number, dw: number, dh: number, profile: string) => string {
+    const start = patched.indexOf('function pageRasterFilter(')
+    const block = patched.slice(start, patched.indexOf('\n}\n', start) + 2)
+    const js = ts.transpileModule(block, {
+      compilerOptions: { target: ts.ScriptTarget.ES2022 },
+    }).outputText
+    return new Function(`${js}\nreturn pageRasterFilter`)()
+  }
+
+  it('show a canvas drawn one sample per device pixel as it is', () => {
+    const decide = filter()
+    // A4 at 123% and 125% scaling: 1057.5 device pixels wide, the canvas has 1058
+    expect(decide(1058, 1494, 1057.5, 1493.3, 'screen')).toBe('crisp-edges')
+    expect(decide(1057, 1493, 1057.5, 1493.3, 'screen')).toBe('crisp-edges')
+    expect(decide(794, 1123, 794, 1123, 'screen')).toBe('crisp-edges')
+  })
+
+  it('smooth a canvas drawn at another scale, and the print profile', () => {
+    const decide = filter()
+    // the surface budget drew the page at a lower DPR
+    expect(decide(846, 1195, 1057.5, 1493.3, 'screen')).toBe('auto')
+    expect(decide(1058, 1195, 1057.5, 1493.3, 'screen')).toBe('auto')
+    expect(decide(1058, 1494, 1057.5, 1493.3, 'print')).toBe('auto')
+    expect(decide(1058, 1494, Number.NaN, 1493.3, 'screen')).toBe('auto')
+  })
+
+  it('set the filter where a page is placed or sized, and smoothing for a zoom preview', () => {
+    expect(patched).toContain(
+      "    element.style.transformOrigin = '';\n" +
+        '    this.applyCanvasRasterFilter(element, pageIdx, this.viewportManager.getZoom());\n  }',
+    )
+    expect(patched).toContain(
+      '      element.style.height = cssHeight;\n      this.applyCanvasRasterFilter(element, pageIdx, zoom);\n    }',
+    )
+    expect(patched).toContain(
+      '  private applyCanvasRasterFilter(element: HTMLElement, pageIdx: number, zoom: number): void {',
+    )
+    expect(patched).toContain(
+      "scale: number): void {\n    if (element.tagName === 'CANVAS') element.style.imageRendering = 'auto';",
+    )
+  })
+
+  it('is in the studio build', () => {
+    expect(STUDIO_PATCHES).toContain('studio-page-raster-filter')
+  })
+})
+
 describe('rhwp PC fonts patch', () => {
   // the studio's text around the patch, as the pinned release has it
   const main = [
@@ -712,6 +788,7 @@ describe('the studio source the build fetched', () => {
     'src/command/registry.ts',
     'src/i18n/locales/ko.ts',
     'src/i18n/locales/en.ts',
+    'src/view/canvas-view.ts',
   ].map((file) => join(studio, file))
 
   // only where a build has fetched it; a fresh checkout has nothing to look at
