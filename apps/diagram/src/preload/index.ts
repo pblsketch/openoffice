@@ -73,6 +73,7 @@ const core: DiagramCoreApi = {
   onFileRenamed: (handler) => listen<[string]>(DIAGRAM_CHANNELS.fileRenamed, handler),
   openLink: (url) => ipcRenderer.invoke(DIAGRAM_CHANNELS.openLink, url),
   openHelp: () => ipcRenderer.send(DIAGRAM_CHANNELS.openHelp),
+  openFailed: (message) => ipcRenderer.invoke(DIAGRAM_CHANNELS.openFailed, message),
   onMenuCommand: (handler) => listen<[DiagramMenuCommand]>(DIAGRAM_CHANNELS.menuCommand, handler),
   getLanguage: () => ipcRenderer.invoke(APP_CHANNELS.getLanguage),
   onLanguageChanged: (handler) => listen<[Lang]>(APP_CHANNELS.languageChanged, handler),

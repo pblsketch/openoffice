@@ -45,6 +45,12 @@ export const DIAGRAM_CHANNELS = {
   openLink: 'diagram:open-link',
   /** renderer → main: draw.io's Help was picked; the shell opens the app's own help topic */
   openHelp: 'diagram:open-help',
+  /**
+   * invoke(message) → boolean: the tab's file did not open after all (a Visio
+   * import draw.io refused); true when the shell closed the tab and shows
+   * `message`, false when the editor shows it in the tab
+   */
+  openFailed: 'diagram:open-failed',
 
   // ---- commands from the menu ----
   /** main → renderer(`DiagramMenuCommand`) */
@@ -487,6 +493,8 @@ export interface DiagramCoreApi {
   /** a link a person clicked on a shape; false when the address is not one that opens */
   openLink(url: string): Promise<boolean>
   openHelp(): void
+  /** the file did not open: ask the shell to close the tab and show why; false = show it here */
+  openFailed(message: string): Promise<boolean>
   onMenuCommand(handler: (command: DiagramMenuCommand) => void): () => void
   getLanguage(): Promise<Lang>
   onLanguageChanged(handler: (lang: Lang) => void): () => void

@@ -55,4 +55,5 @@
 - 터미널의 `diagram apply`는 `.drawio`·`.dio`에서 고치지 않은 쪽을 원래 바이트 그대로 둔다. 그림 형식과 Mermaid는 앱을 창 없이 띄워 한다.
 - 다이어그램 탭은 복구 사본을 `diagram-autosave`에 남긴다. draw.io가 자기 저장소에 두는 것(스크래치 패드, 사용자 도형 묶음, 최근 색)은 그 탭의 지속 파티션에 남고 밖으로 나가지 않는다(`docs/security.md`, `PRIVACY.md`).
 - 설치 파일이 draw.io 묶음만큼 커졌다(계획 때 어림 30~40MB).
-- 알려진 한계(Visio 가져오기 실패가 이미 연 탭 안에 보임, 언어를 바꾸면 되돌리기 기록이 사라짐, 앱 안 MCP와 AI 창의 고치기가 서로 줄 서지 않음, 프로젝트 폴더 맥락 없음 등)는 `docs/tracking/findings.md`와 `apps/diagram/AGENTS.md`에 있다. 실제 draw.io에서 우리가 저장한 파일 열기, 실제 Visio 파일, 21개 언어, Mac·Linux, 실제 구독 확인은 사람이 한다(`docs/tracking/status.md`).
+- 깨진 파일과 원본이 없는 `.drawio.svg`·`.drawio.png`, Visio 도면이 아닌 `.vsdx`는 탭을 열기 전에 걸러 탭 없이 까닭만 보인다. draw.io의 Visio 가져오기가 탭을 연 뒤에 실패하면 편집기가 셸에 그 탭을 닫게 하고 같은 까닭을 앱 경고로 보인다.
+- 알려진 한계(언어를 바꾸면 되돌리기 기록이 사라짐, 앱 안 MCP와 AI 창의 고치기가 서로 줄 서지 않음, 프로젝트 폴더 맥락 없음 등)는 `docs/tracking/findings.md`와 `apps/diagram/AGENTS.md`에 있다. 실제 draw.io에서 우리가 저장한 파일 열기, 실제 Visio 파일, 21개 언어, Mac·Linux, 실제 구독 확인은 사람이 한다(`docs/tracking/status.md`).

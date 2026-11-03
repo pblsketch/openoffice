@@ -72,6 +72,7 @@ import {
   createDiagramView,
   diagramFilePath,
   diagramTabIdentity,
+  setDiagramOpenFailedHook,
 } from '../src/main/diagram-main'
 import { DIAGRAM_CHANNELS } from '../src/shared/ipc'
 import type { OpenFileResult, SaveTargetResult } from '../src/shared/ipc'
@@ -88,7 +89,10 @@ beforeEach(() => {
   })
   showSaveDialog.mockReset()
 })
-afterEach(() => rmSync(dir, { recursive: true, force: true }))
+afterEach(() => {
+  setDiagramOpenFailedHook(null)
+  rmSync(dir, { recursive: true, force: true })
+})
 
 type Contents = ReturnType<typeof fakeContents>
 const call = async <T>(channel: string, contents: Contents, ...args: unknown[]): Promise<T> =>
@@ -152,5 +156,65 @@ describe('Visio files', () => {
       untitled: false,
       title: 'plan',
     })
+  })
+})
+
+describe('a file that did not open after all (spec 3.1, 3.5)', () => {
+  const visioView = async (): Promise<Contents> => {
+    const source = join(dir, 'broken.vsdx')
+    writeFileSync(source, readFileSync(join(fixtures, 'visio-shapes.vsdx')))
+    const contents = view(source)
+    await call(DIAGRAM_CHANNELS.openFile, contents, source)
+    return contents
+  }
+
+  it('a failed Visio import asks the shell to close the tab and show the reason', async () => {
+    const hook = vi.fn(() => true)
+    setDiagramOpenFailedHook(hook)
+    const contents = await visioView()
+    const reason = 'This file cannot be imported: The Visio drawing has no pages.'
+    expect(await call(DIAGRAM_CHANNELS.openFailed, contents, `  ${reason}  `)).toBe(true)
+    expect(hook).toHaveBeenCalledWith(contents, reason)
+    // nothing is written for it afterwards
+    expect(
+      await call<SaveTargetResult>(DIAGRAM_CHANNELS.saveTarget, contents, { mode: 'save' }),
+    ).toMatchObject({ ok: false })
+  })
+
+  it('a file that did not open asks the same', async () => {
+    const hook = vi.fn(() => true)
+    setDiagramOpenFailedHook(hook)
+    const path = join(dir, 'broken.drawio')
+    writeFileSync(path, 'hello')
+    const contents = view(path)
+    expect(await call<OpenFileResult>(DIAGRAM_CHANNELS.openFile, contents, path)).toEqual({
+      status: 'not_xml',
+    })
+    expect(await call(DIAGRAM_CHANNELS.openFailed, contents, 'not XML')).toBe(true)
+    expect(hook).toHaveBeenCalledWith(contents, 'not XML')
+  })
+
+  it('without the shell (the editor on its own) the editor keeps the reason in its tab', async () => {
+    const contents = await visioView()
+    expect(await call(DIAGRAM_CHANNELS.openFailed, contents, 'no pages')).toBe(false)
+  })
+
+  it('a diagram that opened cannot close itself this way, nor an empty reason', async () => {
+    const hook = vi.fn(() => true)
+    setDiagramOpenFailedHook(hook)
+    const path = join(dir, 'good.drawio')
+    writeFileSync(
+      path,
+      '<mxfile><diagram id="a" name="A"><mxGraphModel><root><mxCell id="0"/></root></mxGraphModel></diagram></mxfile>',
+    )
+    const contents = view(path)
+    expect(await call<OpenFileResult>(DIAGRAM_CHANNELS.openFile, contents, path)).toMatchObject({
+      status: 'ok',
+    })
+    expect(await call(DIAGRAM_CHANNELS.openFailed, contents, 'gone')).toBe(false)
+    const imported = await visioView()
+    expect(await call(DIAGRAM_CHANNELS.openFailed, imported, '   ')).toBe(false)
+    expect(await call(DIAGRAM_CHANNELS.openFailed, imported, 42)).toBe(false)
+    expect(hook).not.toHaveBeenCalled()
   })
 })

@@ -17,14 +17,15 @@ import type {
   DiagramMenuCommand,
   ExportFormat,
   ExportScope,
-  OpenFileResult,
   PrintPage,
   SaveRequestMode,
   UiTheme,
 } from '../shared/ipc'
 import { hasNotices, scanDiagramNotices, type DiagramNotices } from '../shared/notices'
+import { OPEN_FAILURE_KEYS } from '../shared/open-failure'
 import { DrawioFrame, base64Bytes } from './drawio/frame-client'
 import { diagramImporter } from './document/importers'
+import { settleOpenFailure } from './document/open-failure'
 import { applyLiveOps, liveDiagramRead, liveDiagramText } from './document/live-ops'
 import { DiagramCopier, RECOVERY_COPY_TIMING } from './document/recovery-copies'
 import { SVG_FILE_HEAD } from './document/page-pictures'
@@ -42,16 +43,6 @@ type SaveState = 'idle' | 'saving' | 'saved' | 'failed'
 type Pending =
   | { kind: 'xml'; xml: string; dirty: boolean }
   | { kind: 'import'; importer: DiagramImportKind; bytes: Uint8Array; title: string }
-
-const FAILURE_KEY: Record<Exclude<OpenFileResult['status'], 'ok' | 'import'>, StringKey> = {
-  unsupported: 'failUnsupported',
-  no_original: 'failNoOriginal',
-  corrupt_image: 'failCorruptImage',
-  not_xml: 'failNotXml',
-  decompress_failed: 'failDecompress',
-  no_diagram: 'failNoDiagram',
-  unreadable: 'failUnreadable',
-}
 
 const MENU_ACTIONS: Record<DiagramMenuCommand, DrawioMenuAction> = {
   undo: 'undo',
@@ -120,6 +111,22 @@ export default function App({ initialTheme }: { initialTheme: UiTheme }) {
     setStatus('failed')
   }, [])
 
+  /**
+   * The file did not open (spec 3.1, 3.5): the shell closes the tab and shows
+   * why; the reason stays in the tab only when the shell does not.
+   */
+  const failOpen = useCallback((key: StringKey, params?: Record<string, string | number>) => {
+    pendingRef.current = null
+    return settleOpenFailure(
+      translate(key, params),
+      (message) => window.diagramApi.openFailed(message),
+      (message) => {
+        setFailure(message)
+        setStatus('failed')
+      },
+    )
+  }, [])
+
   // ---- opening: what the frame loads once draw.io is up ----
 
   useEffect(() => {
@@ -139,7 +146,7 @@ export default function App({ initialTheme }: { initialTheme: UiTheme }) {
           return
         }
         if (file.status !== 'ok') {
-          fail(FAILURE_KEY[file.status])
+          await failOpen(OPEN_FAILURE_KEYS[file.status])
           return
         }
         formatRef.current = file.format
@@ -159,7 +166,7 @@ export default function App({ initialTheme }: { initialTheme: UiTheme }) {
       console.error('[diagram] open failed:', err)
       fail('failEditor')
     })
-  }, [fail])
+  }, [fail, failOpen])
 
   /** draw.io is ready: give it the diagram. */
   const loadIntoFrame = useCallback(async () => {
@@ -171,12 +178,12 @@ export default function App({ initialTheme }: { initialTheme: UiTheme }) {
     if (pending.kind === 'import') {
       const importer = diagramImporter(pending.importer)
       if (!importer) {
-        fail('failUnsupported')
+        await failOpen(OPEN_FAILURE_KEYS.unsupported)
         return
       }
       const result = await importer({ bytes: pending.bytes, title: pending.title, frame: client })
       if (!result.ok) {
-        fail('failImport', { reason: result.reason })
+        await failOpen('failImport', { reason: result.reason })
         return
       }
       extraNoticesRef.current = result.notices ?? {}
@@ -187,7 +194,7 @@ export default function App({ initialTheme }: { initialTheme: UiTheme }) {
       xml = pending.xml
     }
     client.sendEmbed({ action: 'load', xml, autosave: 0, dark: darkRef.current })
-  }, [fail])
+  }, [failOpen])
 
   /** draw.io loaded the diagram: set what is saved, read what the notice tells. */
   const afterLoad = useCallback(
