@@ -3634,6 +3634,20 @@ button {
   cursor: default;
 }
 
+.rb-menu-sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--border);
+}
+
+/* Section name inside a ribbon dropdown (the PNG / JPG exports of the converter menu) */
+.rb-menu-heading {
+  padding: 4px 10px 2px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 /* Dialog color well (stamp dialog): swatch trigger + the shared picker popover.
    The popover is fixed + anchored so it escapes the modal's overflow-y clip. */
 .pdf-color-well-wrap {

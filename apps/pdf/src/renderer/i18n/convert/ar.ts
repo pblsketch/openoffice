@@ -65,6 +65,7 @@ export const ar = {
   imgExportWholePages: 'الصفحات كاملة',
   imgExportCurrentPage: 'الصفحة الحالية فقط',
   imgExportCurrentPageTip: 'تصدير الصفحة المعروضة كملف PNG واحد',
+  imgExportCurrentPageJpgTip: 'تصدير الصفحة المعروضة كملف JPG واحد',
   imgExportEmbedded: 'الصور داخل الصفحات فقط',
   imgExportEmbeddedTip: 'حفظ الصور الموضوعة في الصفحات ملفات PNG بدقتها الأصلية',
   imgExportFolderTitle: 'مجلد تصدير الصور',

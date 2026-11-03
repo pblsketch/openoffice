@@ -66,6 +66,7 @@ export const vi = {
   imgExportWholePages: 'Toàn bộ trang',
   imgExportCurrentPage: 'Chỉ trang hiện tại',
   imgExportCurrentPageTip: 'Xuất trang đang xem thành một tệp PNG',
+  imgExportCurrentPageJpgTip: 'Xuất trang đang xem thành một tệp JPG',
   imgExportEmbedded: 'Chỉ hình trong trang',
   imgExportEmbeddedTip: 'Lưu các hình được đặt trong trang thành tệp PNG với độ phân giải gốc',
   imgExportFolderTitle: 'Thư mục để xuất hình',

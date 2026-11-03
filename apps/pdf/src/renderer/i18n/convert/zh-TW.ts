@@ -61,6 +61,7 @@ export const zhTW = {
   imgExportWholePages: '整頁',
   imgExportCurrentPage: '僅目前頁面',
   imgExportCurrentPageTip: '將正在檢視的頁面匯出為一個 PNG 檔案',
+  imgExportCurrentPageJpgTip: '將正在檢視的頁面匯出為一個 JPG 檔案',
   imgExportEmbedded: '僅頁面中的圖片',
   imgExportEmbeddedTip: '將頁面中內嵌的圖片依原始解析度儲存為 PNG 檔案',
   imgExportFolderTitle: '選擇匯出圖片的資料夾',

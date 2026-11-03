@@ -1,7 +1,8 @@
 /**
- * "Export images" offers three ways: every page, only the page being viewed
- * (both rendered as pictures), and only the pictures in the pages, which runs
- * the structure job `extractImages`.
+ * "Convert PDF" holds every way out of the PDF: Word / Excel / PPT / Markdown /
+ * EPUB, then the picture exports — PNG of every page, only the page being viewed
+ * (both rendered as pictures) or only the pictures in the pages, which runs the
+ * structure job `extractImages`, and JPG of every page or only the current one.
  */
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
@@ -9,7 +10,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createI18n } from '@genoffice/i18n'
 import { strings } from '../src/renderer/i18n/strings'
 import type { TFunc } from '../src/renderer/i18n/locale'
-import { ExportImagesMenu } from '../src/renderer/convert/ExportImagesMenu'
+import { ConvertMenu } from '../src/renderer/convert/ConvertMenu'
 import {
   exportEmbeddedImages,
   type EmbeddedImagesApi,
@@ -38,27 +39,20 @@ afterEach(async () => {
   container = null
 })
 
-async function renderMenu() {
-  const onWholePages = vi.fn()
-  const onCurrentPage = vi.fn()
-  const onEmbedded = vi.fn()
+async function renderMenu(busy = false) {
+  const handlers = {
+    onConvert: vi.fn(),
+    onReflow: vi.fn(),
+    onPageImages: vi.fn(),
+    onEmbedded: vi.fn(),
+  }
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
   await act(async () =>
-    root!.render(
-      createElement(ExportImagesMenu, {
-        t,
-        icon: null,
-        busy: false,
-        label: en.exportImages,
-        onWholePages,
-        onCurrentPage,
-        onEmbedded,
-      }),
-    ),
+    root!.render(createElement(ConvertMenu, { t, busy, label: en.convertPdf, ...handlers })),
   )
-  return { el: container, onWholePages, onCurrentPage, onEmbedded }
+  return { el: container, ...handlers }
 }
 
 const click = async (element: Element | null) => {
@@ -66,45 +60,78 @@ const click = async (element: Element | null) => {
   await act(async () => (element as HTMLElement).click())
 }
 
-describe('Export images menu', () => {
-  it('offers whole pages, the current page and only the pictures in the pages', async () => {
-    const { el, onWholePages, onCurrentPage, onEmbedded } = await renderMenu()
+const openMenu = async (el: HTMLElement) => click(el.querySelector('[data-action="convert-pdf"]'))
+
+describe('Convert PDF menu', () => {
+  it('lists the conversions, then the PNG and JPG exports under their own headings', async () => {
+    const { el, onConvert, onReflow, onPageImages, onEmbedded } = await renderMenu()
     expect(el.querySelector('[role="menu"]')).toBeNull()
-    await click(el.querySelector('[data-action="export-images"]'))
+    await openMenu(el)
     const items = [...el.querySelectorAll('[role="menuitem"]')].map((b) => b.textContent)
-    expect(items).toEqual([en.imgExportWholePages, en.imgExportCurrentPage, en.imgExportEmbedded])
-    expect(onWholePages).not.toHaveBeenCalled()
-    expect(onCurrentPage).not.toHaveBeenCalled()
-    expect(onEmbedded).not.toHaveBeenCalled()
+    expect(items).toEqual([
+      en.convertToWord,
+      en.convertToExcel,
+      en.convertToPpt,
+      en.cvToMarkdown,
+      en.cvToEpub,
+      en.imgExportWholePages,
+      en.imgExportCurrentPage,
+      en.imgExportEmbedded,
+      en.imgExportWholePages,
+      en.imgExportCurrentPage,
+    ])
+    const headings = [...el.querySelectorAll('.rb-menu-heading')].map((h) => h.textContent)
+    expect(headings).toEqual([en.exportImages, en.exportImagesJpg])
+    for (const handler of [onConvert, onReflow, onPageImages, onEmbedded]) {
+      expect(handler).not.toHaveBeenCalled()
+    }
   })
 
-  it('runs the existing whole-page export for "whole pages"', async () => {
-    const { el, onWholePages, onCurrentPage, onEmbedded } = await renderMenu()
-    await click(el.querySelector('[data-action="export-images"]'))
-    await click(el.querySelector('[data-action="export-whole-pages"]'))
-    expect(onWholePages).toHaveBeenCalledTimes(1)
-    expect(onCurrentPage).not.toHaveBeenCalled()
-    expect(onEmbedded).not.toHaveBeenCalled()
-    expect(el.querySelector('[role="menu"]')).toBeNull()
+  it('cannot open while a conversion or an export runs', async () => {
+    const { el } = await renderMenu(true)
+    const button = el.querySelector<HTMLButtonElement>('[data-action="convert-pdf"]')
+    expect(button?.disabled).toBe(true)
   })
 
-  it('runs the single-page export for "only the current page"', async () => {
-    const { el, onWholePages, onCurrentPage, onEmbedded } = await renderMenu()
-    await click(el.querySelector('[data-action="export-images"]'))
-    await click(el.querySelector('[data-action="export-current-page"]'))
-    expect(onCurrentPage).toHaveBeenCalledTimes(1)
-    expect(onWholePages).not.toHaveBeenCalled()
+  it('hands Word / Excel / PPT to the shell and Markdown / EPUB to the dialog', async () => {
+    const { el, onConvert, onReflow } = await renderMenu()
+    const pick = async (label: string) => {
+      await openMenu(el)
+      const item = [...el.querySelectorAll('[role="menuitem"]')].find(
+        (b) => b.textContent === label,
+      )
+      await click(item ?? null)
+      expect(el.querySelector('[role="menu"]')).toBeNull()
+    }
+    await pick(en.convertToWord)
+    await pick(en.convertToExcel)
+    await pick(en.convertToPpt)
+    await pick(en.cvToMarkdown)
+    await pick(en.cvToEpub)
+    expect(onConvert.mock.calls).toEqual([['docx'], ['xlsx'], ['pptx']])
+    expect(onReflow.mock.calls).toEqual([['md'], ['epub']])
+  })
+
+  it.each([
+    ['export-whole-pages', true, 'png'],
+    ['export-current-page', false, 'png'],
+    ['export-whole-pages-jpg', true, 'jpg'],
+    ['export-current-page-jpg', false, 'jpg'],
+  ] as const)('%s renders pages as pictures', async (action, allPages, format) => {
+    const { el, onPageImages, onEmbedded } = await renderMenu()
+    await openMenu(el)
+    await click(el.querySelector(`[data-action="${action}"]`))
+    expect(onPageImages.mock.calls).toEqual([[allPages, format]])
     expect(onEmbedded).not.toHaveBeenCalled()
     expect(el.querySelector('[role="menu"]')).toBeNull()
   })
 
   it('runs the picture export for "only the pictures in the pages"', async () => {
-    const { el, onWholePages, onCurrentPage, onEmbedded } = await renderMenu()
-    await click(el.querySelector('[data-action="export-images"]'))
+    const { el, onPageImages, onEmbedded } = await renderMenu()
+    await openMenu(el)
     await click(el.querySelector('[data-action="export-embedded-images"]'))
     expect(onEmbedded).toHaveBeenCalledTimes(1)
-    expect(onWholePages).not.toHaveBeenCalled()
-    expect(onCurrentPage).not.toHaveBeenCalled()
+    expect(onPageImages).not.toHaveBeenCalled()
   })
 })
 

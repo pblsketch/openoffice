@@ -69,6 +69,7 @@ export const ms = {
   imgExportWholePages: 'Halaman penuh',
   imgExportCurrentPage: 'Halaman semasa sahaja',
   imgExportCurrentPageTip: 'Eksport halaman yang sedang dilihat sebagai satu fail PNG',
+  imgExportCurrentPageJpgTip: 'Eksport halaman yang sedang dilihat sebagai satu fail JPG',
   imgExportEmbedded: 'Gambar dalam halaman sahaja',
   imgExportEmbeddedTip:
     'Simpan gambar yang diletakkan dalam halaman sebagai fail PNG pada resolusi asalnya',
