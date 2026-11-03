@@ -10,6 +10,8 @@ export const zh = {
   failNoDiagram: '文件中没有图表页面。',
   failUnreadable: '无法读取此文件。',
   failImport: '无法导入此文件：{reason}',
+  importVisioUnreadable: '文件已损坏，或不是 Visio 绘图。',
+  importVisioNoPages: 'Visio 绘图中没有页面。',
   failEditor: '图表编辑器无法启动。',
   noticeRemotePictures: '来自互联网的图片 {count} 张不会显示。',
   noticeRemoteFonts: '来自互联网的字体 {count} 处不会加载，改用本机字体显示。',

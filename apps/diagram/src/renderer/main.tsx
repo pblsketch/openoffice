@@ -3,9 +3,12 @@ import { htmlDir, htmlLang, type Lang } from '@genoffice/i18n'
 import App from './App'
 import { LocaleProvider } from './i18n/locale'
 import { applyTheme } from './theme'
+import { registerVisioImporter } from './document/visio-import'
 import type { UiTheme } from '../shared/ipc'
 import '@genoffice/ui/tokens.css'
 import './styles.css'
+
+registerVisioImporter()
 
 void (async () => {
   const [lang, theme] = await Promise.all([

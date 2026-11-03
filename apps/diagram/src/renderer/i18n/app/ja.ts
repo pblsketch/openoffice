@@ -15,6 +15,8 @@ export const ja = {
   failNoDiagram: 'ファイルにダイアグラムのページがありません。',
   failUnreadable: 'ファイルを読み込めません。',
   failImport: 'このファイルを読み込めません: {reason}',
+  importVisioUnreadable: 'ファイルが壊れているか、Visio の図面ではありません。',
+  importVisioNoPages: 'Visio の図面にページがありません。',
   failEditor: 'ダイアグラムエディターを起動できませんでした。',
   noticeRemotePictures: 'インターネット上の画像 {count} 個は表示されません。',
   noticeRemoteFonts:

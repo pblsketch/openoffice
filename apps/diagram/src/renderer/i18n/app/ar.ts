@@ -12,6 +12,8 @@ export const ar = {
   failNoDiagram: 'لا يحتوي الملف على صفحات مخطط.',
   failUnreadable: 'تعذّرت قراءة الملف.',
   failImport: 'تعذّر استيراد هذا الملف: {reason}',
+  importVisioUnreadable: 'الملف تالف أو ليس رسمًا من Visio.',
+  importVisioNoPages: 'لا يحتوي رسم Visio على أي صفحات.',
   failEditor: 'تعذّر تشغيل محرر المخططات.',
   noticeRemotePictures: 'لن تُعرض {count} صور من الإنترنت.',
   noticeRemoteFonts:

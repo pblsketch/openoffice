@@ -12,6 +12,8 @@ export const id = {
   failNoDiagram: 'File tidak memiliki halaman diagram.',
   failUnreadable: 'File tidak dapat dibaca.',
   failImport: 'File ini tidak dapat diimpor: {reason}',
+  importVisioUnreadable: 'File rusak atau bukan gambar Visio.',
+  importVisioNoPages: 'Gambar Visio tidak memiliki halaman.',
   failEditor: 'Editor diagram tidak dapat dimulai.',
   noticeRemotePictures: '{count} gambar dari internet tidak ditampilkan.',
   noticeRemoteFonts:

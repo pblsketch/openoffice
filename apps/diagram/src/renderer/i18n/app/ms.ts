@@ -12,6 +12,8 @@ export const ms = {
   failNoDiagram: 'Fail tidak mempunyai halaman rajah.',
   failUnreadable: 'Fail tidak dapat dibaca.',
   failImport: 'Fail ini tidak dapat diimport: {reason}',
+  importVisioUnreadable: 'Fail rosak atau bukan lukisan Visio.',
+  importVisioNoPages: 'Lukisan Visio tidak mempunyai halaman.',
   failEditor: 'Editor rajah tidak dapat dimulakan.',
   noticeRemotePictures: '{count} imej dari internet tidak dipaparkan.',
   noticeRemoteFonts: '{count} fon dari internet tidak dimuatkan; fon pada komputer ini digunakan.',

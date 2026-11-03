@@ -14,6 +14,8 @@ export const nl = {
   failNoDiagram: "Het bestand bevat geen diagrampagina's.",
   failUnreadable: 'Het bestand kan niet worden gelezen.',
   failImport: 'Dit bestand kan niet worden geïmporteerd: {reason}',
+  importVisioUnreadable: 'Het bestand is beschadigd of is geen Visio-tekening.',
+  importVisioNoPages: "De Visio-tekening bevat geen pagina's.",
   failEditor: 'De diagrameditor kon niet worden gestart.',
   noticeRemotePictures: '{count} afbeeldingen van internet worden niet getoond.',
   noticeRemoteFonts:

@@ -12,6 +12,8 @@ export const ko = {
   failNoDiagram: '파일에 다이어그램 쪽이 없습니다.',
   failUnreadable: '파일을 읽을 수 없습니다.',
   failImport: '이 파일을 가져올 수 없습니다: {reason}',
+  importVisioUnreadable: '파일이 손상되었거나 Visio 도면이 아닙니다.',
+  importVisioNoPages: 'Visio 도면에 쪽이 없습니다.',
   failEditor: '다이어그램 편집기를 시작하지 못했습니다.',
   noticeRemotePictures: '인터넷에 있는 그림 {count}개는 보이지 않습니다.',
   noticeRemoteFonts: '인터넷에서 받는 글꼴 {count}곳은 불러오지 않고 이 PC의 글꼴로 보입니다.',

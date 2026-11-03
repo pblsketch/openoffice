@@ -12,6 +12,8 @@ export const th = {
   failNoDiagram: 'ไฟล์ไม่มีหน้าไดอะแกรม',
   failUnreadable: 'ไม่สามารถอ่านไฟล์ได้',
   failImport: 'ไม่สามารถนำเข้าไฟล์นี้: {reason}',
+  importVisioUnreadable: 'ไฟล์เสียหายหรือไม่ใช่ภาพวาด Visio',
+  importVisioNoPages: 'ภาพวาด Visio ไม่มีหน้า',
   failEditor: 'ไม่สามารถเริ่มตัวแก้ไขไดอะแกรมได้',
   noticeRemotePictures: 'รูปภาพจากอินเทอร์เน็ต {count} รูปจะไม่แสดง',
   noticeRemoteFonts: 'ฟอนต์จากอินเทอร์เน็ต {count} แห่งจะไม่ถูกโหลด และจะใช้ฟอนต์ในเครื่องนี้แทน',

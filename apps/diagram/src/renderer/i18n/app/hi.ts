@@ -12,6 +12,8 @@ export const hi = {
   failNoDiagram: 'फ़ाइल में कोई आरेख पृष्ठ नहीं है।',
   failUnreadable: 'फ़ाइल पढ़ी नहीं जा सकती।',
   failImport: 'यह फ़ाइल आयात नहीं की जा सकती: {reason}',
+  importVisioUnreadable: 'फ़ाइल क्षतिग्रस्त है या Visio ड्रॉइंग नहीं है।',
+  importVisioNoPages: 'Visio ड्रॉइंग में कोई पृष्ठ नहीं है।',
   failEditor: 'आरेख संपादक शुरू नहीं हो सका।',
   noticeRemotePictures: 'इंटरनेट के {count} चित्र नहीं दिखाए जाते।',
   noticeRemoteFonts:

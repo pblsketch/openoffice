@@ -12,6 +12,8 @@ export const pl = {
   failNoDiagram: 'Plik nie zawiera stron diagramu.',
   failUnreadable: 'Nie można odczytać pliku.',
   failImport: 'Nie można zaimportować tego pliku: {reason}',
+  importVisioUnreadable: 'Plik jest uszkodzony lub nie jest rysunkiem programu Visio.',
+  importVisioNoPages: 'Rysunek programu Visio nie zawiera stron.',
   failEditor: 'Nie udało się uruchomić edytora diagramów.',
   noticeRemotePictures: 'Obrazy z internetu nie są wyświetlane (liczba: {count}).',
   noticeRemoteFonts:
