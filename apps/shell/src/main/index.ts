@@ -536,6 +536,15 @@ import {
 } from './quick-look/quick-look-window'
 import { normalizeQuickLookSettings } from '../shared/quick-look-home'
 import {
+  HOME_KINDS_CHANNELS,
+  HOME_KINDS_SETTING_KEY,
+  normalizeHomeKinds,
+  storedHomeKinds,
+  visibleHomeKinds,
+  type HomeKind,
+  type HomeKindsSettings,
+} from '../shared/home-kinds'
+import {
   configureAgentWindow,
   isAgentWindowContents,
   stopAgentSessions,
@@ -6913,6 +6922,22 @@ function registerHomeIpc(): void {
 
   ipcMain.handle(HOME_CHANNELS.getHwpDefaultFormat, () => readHwpDefaultFormat(app))
 
+  ipcMain.handle(HOME_KINDS_CHANNELS.get, () => readHomeKinds())
+
+  ipcMain.handle(HOME_KINDS_CHANNELS.set, (_event, raw: unknown) => {
+    writeAppSetting(
+      APP_SETTINGS_PATH(),
+      HOME_KINDS_SETTING_KEY,
+      storedHomeKinds(normalizeHomeKinds(raw)),
+    )
+    const next = readHomeKinds()
+    // the setting lives on the home page, so the home menu is the active one
+    applyMenuFor('home')
+    installDockMenu()
+    for (const wc of webContents.getAllWebContents()) wc.send(HOME_KINDS_CHANNELS.changed, next)
+    return next
+  })
+
   ipcMain.handle(HOME_CHANNELS.setHwpDefaultFormat, (_event, format: unknown) => {
     const next = normalizeHwpDefaultFormat(format)
     writeAppSetting(APP_SETTINGS_PATH(), HWP_DEFAULT_FORMAT_KEY, next)
@@ -7023,6 +7048,62 @@ const TAB_MENU_ICON: Record<TabKind, keyof MenuIconSet> = {
   epub: 'epub',
   diagram: 'diagram',
   help: 'home',
+}
+
+function readHomeKinds(): HomeKindsSettings {
+  return normalizeHomeKinds(readAppSettings(APP_SETTINGS_PATH())[HOME_KINDS_SETTING_KEY])
+}
+
+/** what each new-document entry is called and opens in the shell's menus */
+const NEW_KIND_MENU: Record<
+  Exclude<HomeKind, 'pdfTools'>,
+  { label: Parameters<typeof tm>[0]; icon: keyof MenuIconSet; open: () => void }
+> = {
+  docx: { label: 'menuNewDoc', icon: 'docx', open: () => newDocTab() },
+  xlsx: { label: 'menuNewSheet', icon: 'xlsx', open: () => void newSheetTab() },
+  pptx: { label: 'menuNewSlide', icon: 'pptx', open: () => newSlideTab() },
+  md: { label: 'menuNewMarkdown', icon: 'md', open: () => newMarkdownTab() },
+  html: { label: 'menuNewHtml', icon: 'html', open: () => newHtmlTab() },
+  xmind: { label: 'menuNewMindmap', icon: 'mindmap', open: () => newMindmapTab() },
+  drawio: { label: 'menuNewDiagram', icon: 'diagram', open: () => newDiagramTab() },
+  hwp: { label: 'menuNewHwp', icon: 'hwp', open: () => newHwpTab() },
+  pdf: { label: 'menuNewPdf', icon: 'pdf', open: () => void newPdfTab() },
+}
+
+/**
+ * The new-document entries in home's order, without the kinds the person hid
+ * (Settings → General). `only` keeps a menu to its own shorter list; `section`
+ * puts the "New" header above and a separator below, both left out when every
+ * kind is hidden; `accelerator` goes on the first entry.
+ */
+function newDocumentMenuItems(opts: {
+  icons?: boolean
+  only?: readonly HomeKind[]
+  section?: boolean
+  accelerator?: string
+}): MenuItemConstructorOptions[] {
+  const items = visibleHomeKinds(readHomeKinds()).flatMap((kind): MenuItemConstructorOptions[] => {
+    if (kind === 'pdfTools' || (opts.only && !opts.only.includes(kind))) return []
+    const entry = NEW_KIND_MENU[kind]
+    return [
+      {
+        label: tm(entry.label),
+        ...(opts.icons ? { icon: menuIcons()[entry.icon] } : {}),
+        click: entry.open,
+      },
+    ]
+  })
+  if (items.length > 0 && opts.accelerator) {
+    items[0] = { ...items[0], accelerator: opts.accelerator }
+  }
+  if (!opts.section || items.length === 0) return items
+  return [
+    // enabled:false so pre-Sonoma macOS / Windows (no 'header' support) degrade
+    // to an inert label instead of a clickable no-op item
+    { label: tm('menuSectionNew'), type: 'header', enabled: false },
+    ...items,
+    { type: 'separator' },
+  ]
 }
 
 // tab views see neither DOM events nor a focus change when the user clicks the
@@ -7770,55 +7851,7 @@ function registerTabsIpc(): void {
   ipcMain.handle(TABS_CHANNELS.showNewMenu, (_event, x: unknown, y: unknown) => {
     if (!tabManager || !shellWindow) return
     const menu = Menu.buildFromTemplate([
-      // enabled:false so pre-Sonoma macOS / Windows (no 'header' support) degrade
-      // to an inert label instead of a clickable no-op item
-      { label: tm('menuSectionNew'), type: 'header', enabled: false },
-      {
-        label: tm('menuNewDoc'),
-        icon: menuIcons().docx,
-        click: () => newDocTab(),
-      },
-      {
-        label: tm('menuNewSheet'),
-        icon: menuIcons().xlsx,
-        click: () => void newSheetTab(),
-      },
-      {
-        label: tm('menuNewSlide'),
-        icon: menuIcons().pptx,
-        click: () => newSlideTab(),
-      },
-      {
-        label: tm('menuNewMarkdown'),
-        icon: menuIcons().md,
-        click: () => newMarkdownTab(),
-      },
-      {
-        label: tm('menuNewHtml'),
-        icon: menuIcons().html,
-        click: () => newHtmlTab(),
-      },
-      {
-        label: tm('menuNewMindmap'),
-        icon: menuIcons().mindmap,
-        click: () => newMindmapTab(),
-      },
-      {
-        label: tm('menuNewDiagram'),
-        icon: menuIcons().diagram,
-        click: () => newDiagramTab(),
-      },
-      {
-        label: tm('menuNewHwp'),
-        icon: menuIcons().hwp,
-        click: () => newHwpTab(),
-      },
-      {
-        label: tm('menuNewPdf'),
-        icon: menuIcons().pdf,
-        click: () => void newPdfTab(),
-      },
-      { type: 'separator' },
+      ...newDocumentMenuItems({ icons: true, section: true }),
       { label: tm('menuOpen'), click: () => void openFileViaDialog() },
     ])
     menu.popup({
@@ -7849,24 +7882,8 @@ function buildHomeMenu(): void {
     {
       label: tm('menuFile'),
       submenu: [
-        { label: tm('menuSectionNew'), type: 'header', enabled: false },
-        {
-          label: tm('menuNewDoc'),
-          accelerator: 'CmdOrCtrl+N',
-          click: () => newDocTab(),
-        },
-        {
-          label: tm('menuNewSheet'),
-          click: () => void newSheetTab(),
-        },
-        { label: tm('menuNewSlide'), click: () => newSlideTab() },
-        { label: tm('menuNewMarkdown'), click: () => newMarkdownTab() },
-        { label: tm('menuNewHtml'), click: () => newHtmlTab() },
-        { label: tm('menuNewMindmap'), click: () => newMindmapTab() },
-        { label: tm('menuNewDiagram'), click: () => newDiagramTab() },
-        { label: tm('menuNewHwp'), click: () => newHwpTab() },
-        { label: tm('menuNewPdf'), click: () => void newPdfTab() },
-        { type: 'separator' },
+        // Ctrl+N makes the first entry home lists
+        ...newDocumentMenuItems({ section: true, accelerator: 'CmdOrCtrl+N' }),
         {
           label: tm('menuOpen'),
           accelerator: 'CmdOrCtrl+O',
@@ -9138,17 +9155,7 @@ function installDockMenu(): void {
   app.dock?.setMenu(
     Menu.buildFromTemplate([
       { label: tm('menuHome'), click: () => tabManager?.openHomeTab() },
-      {
-        label: tm('menuNewDoc'),
-        click: () => newDocTab(),
-      },
-      {
-        label: tm('menuNewSheet'),
-        click: () => void newSheetTab(),
-      },
-      { label: tm('menuNewSlide'), click: () => newSlideTab() },
-      { label: tm('menuNewMarkdown'), click: () => newMarkdownTab() },
-      { label: tm('menuNewPdf'), click: () => void newPdfTab() },
+      ...newDocumentMenuItems({ only: ['docx', 'xlsx', 'pptx', 'md', 'pdf'] }),
     ]),
   )
 }

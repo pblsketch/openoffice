@@ -7,6 +7,7 @@ import { strings } from '../src/renderer/src/strings'
 import { OFFICE_TYPES } from '../src/main/default-app'
 import { RECOVERY_LIST_EDITOR_KINDS } from '../src/shared/recovery-list-api'
 import { HOME_CHANNELS } from '../src/shared/home-api'
+import { HOME_KINDS } from '../src/shared/home-kinds'
 
 /**
  * The diagram editor is hosted like the mind map editor: every place the
@@ -18,6 +19,10 @@ import { HOME_CHANNELS } from '../src/shared/home-api'
 const main = readFileSync(join(__dirname, '../src/main/index.ts'), 'utf8')
 const home = readFileSync(join(__dirname, '../src/renderer/src/Home.tsx'), 'utf8')
 const preload = readFileSync(join(__dirname, '../src/preload/index.ts'), 'utf8')
+const homeKindsSetting = readFileSync(
+  join(__dirname, '../src/renderer/src/SettingsHomeKinds.tsx'),
+  'utf8',
+)
 const sessionRecord = readFileSync(join(__dirname, '../src/main/session-record.ts'), 'utf8')
 const recoveryList = readFileSync(join(__dirname, '../src/renderer/src/RecoveryList.tsx'), 'utf8')
 
@@ -223,10 +228,11 @@ describe('the diagram menu', () => {
   })
 
   it('offers a new diagram from the tab strip and the home menu', () => {
-    expect(main).toContain("label: tm('menuNewDiagram'),\n        icon: menuIcons().diagram,")
-    expect(fnSource('buildHomeMenu')).toContain(
-      "{ label: tm('menuNewDiagram'), click: () => newDiagramTab() }",
+    // the tab strip's "+" menu and home's File menu both list NEW_KIND_MENU in home's order
+    expect(main).toContain(
+      "drawio: { label: 'menuNewDiagram', icon: 'diagram', open: () => newDiagramTab() },",
     )
+    expect(HOME_KINDS).toContain('drawio')
     expect(main).toContain('diagram: loadMenuIcon(menuDiagramIcon1x, menuDiagramIcon2x)')
   })
 
@@ -273,8 +279,8 @@ describe('the home screen', () => {
   })
 
   it('makes a new, untitled diagram from its tile', () => {
-    expect(home).toContain("title: t('newDiagram'),")
-    expect(home).toContain('action: () => window.aiOffice.newDiagram(newFileOpts),')
+    expect(home).toContain('drawio: () => window.aiOffice.newDiagram(newFileOpts),')
+    expect(homeKindsSetting).toContain("drawio: { title: 'newDiagram', sub: '.drawio' },")
     expect(HOME_CHANNELS.newDiagram).toBe('home:new-diagram')
     expect(preload).toContain('ipcRenderer.invoke(HOME_CHANNELS.newDiagram, opts)')
     const at = main.indexOf('ipcMain.handle(HOME_CHANNELS.newDiagram')

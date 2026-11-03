@@ -44,6 +44,8 @@ Kartu di atas daftar membuat dokumen baru dalam satu langkah. Mengklik kartu mem
 
 File baru akan masuk ke folder yang sedang dipilih di bilah sisi; jika tidak ada yang dipilih, file masuk ke folder bawaan.
 
+Untuk menyembunyikan kartu atau mengubah urutannya, pilih di **Dokumen baru di Beranda** pada Pengaturan → Umum. Jenis yang dimatikan hanya hilang dari kartu dan menu Baru; file jenis itu tetap terbuka seperti biasa. Di Beranda, ⌘N/Ctrl+N membuat jenis pertama yang masih tampil.
+
 Apa yang dilakukan tiap kartu:
 
 - **AI Docs** (.docx): dokumen teks kosong di editor Docs. File baru ditulis ke disk saat **penyimpanan pertama**; dokumen baru terbuka dengan panel AI terbentang (nonaktifkan lewat Pengaturan → "Buka panel AI di dokumen baru").

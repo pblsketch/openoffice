@@ -79,6 +79,12 @@ import {
   type QuickLookSettings,
 } from '../shared/quick-look-home'
 import type { QuickLookPayload } from '../shared/quick-look-api'
+import {
+  HOME_KINDS_CHANNELS,
+  normalizeHomeKinds,
+  type HomeKindsApi,
+  type HomeKindsSettings,
+} from '../shared/home-kinds'
 import type { SubscriptionApi } from '../shared/subscription-api'
 import {
   SHELL_SUBSCRIPTION_CHANNELS,
@@ -1013,6 +1019,22 @@ const quickLookHomeApi: QuickLookHomeApi = {
   },
 }
 contextBridge.exposeInMainWorld('aiOfficeQuickLookHome', quickLookHomeApi)
+
+// Which new-document entries home lists (Settings → General)
+const homeKindsApi: HomeKindsApi = {
+  async get() {
+    return normalizeHomeKinds(await ipcRenderer.invoke(HOME_KINDS_CHANNELS.get))
+  },
+  async set(settings: HomeKindsSettings) {
+    return normalizeHomeKinds(await ipcRenderer.invoke(HOME_KINDS_CHANNELS.set, settings))
+  },
+  onChanged(handler) {
+    const listener = (_event: IpcRendererEvent, raw: unknown) => handler(normalizeHomeKinds(raw))
+    ipcRenderer.on(HOME_KINDS_CHANNELS.changed, listener)
+    return () => ipcRenderer.removeListener(HOME_KINDS_CHANNELS.changed, listener)
+  },
+}
+contextBridge.exposeInMainWorld('aiOfficeHomeKinds', homeKindsApi)
 
 // Home's launch recovery list (crash recovery spec 6): the rows the main
 // process asks about at launch, and the user's choices back

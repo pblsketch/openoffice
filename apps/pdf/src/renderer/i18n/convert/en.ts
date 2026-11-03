@@ -65,6 +65,7 @@ export const en = {
   imgExportWholePages: 'Whole pages',
   imgExportCurrentPage: 'Only the current page',
   imgExportCurrentPageTip: 'Export the page you are viewing as one PNG file',
+  imgExportCurrentPageJpgTip: 'Export the page you are viewing as one JPG file',
   imgExportEmbedded: 'Only the pictures in the pages',
   imgExportEmbeddedTip:
     'Save the pictures placed in the pages as PNG files at their original resolution',

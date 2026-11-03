@@ -62,6 +62,7 @@ export const ko = {
   imgExportWholePages: '페이지 통째로',
   imgExportCurrentPage: '지금 보는 쪽만',
   imgExportCurrentPageTip: '지금 보고 있는 쪽 하나를 PNG 파일로 내보냅니다',
+  imgExportCurrentPageJpgTip: '지금 보고 있는 쪽 하나를 JPG 파일로 내보냅니다',
   imgExportEmbedded: '페이지 안의 그림만',
   imgExportEmbeddedTip: '페이지에 들어 있는 그림을 원래 해상도의 PNG 파일로 저장합니다',
   imgExportFolderTitle: '그림을 내보낼 폴더',

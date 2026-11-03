@@ -44,6 +44,8 @@ Die Karten über den Listen erzeugen in einem Schritt ein neues Dokument. Ein Kl
 
 Die neue Datei landet im aktuell in der Seitenleiste ausgewählten Ordner; ohne Auswahl geht sie in den Standardordner.
 
+Um Karten auszublenden oder ihre Reihenfolge zu ändern, nutzen Sie **Neue Dokumente auf der Startseite** unter Einstellungen → Allgemein. Ein ausgeschalteter Typ verschwindet nur aus den Karten und den Menüs „Neu“; Dateien dieses Typs lassen sich weiterhin öffnen. Auf der Startseite erstellt ⌘N/Ctrl+N den ersten noch angezeigten Typ.
+
 Was die einzelnen Karten tun:
 
 - **AI Docs** (.docx): ein leeres Textdokument im Docs-Editor. Die Datei wird erst beim **ersten Speichern** auf den Datenträger geschrieben; neue Dokumente öffnen mit ausgeklapptem KI-Bereich (abschaltbar unter Einstellungen → „KI-Panel in neuen Dokumenten öffnen“).

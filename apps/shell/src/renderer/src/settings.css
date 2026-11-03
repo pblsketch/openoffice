@@ -1290,3 +1290,80 @@
 .set-local-actions {
   justify-content: space-between;
 }
+
+/* Settings → General: which new-document entries home lists, and their order */
+.set-home-kinds-body {
+  flex: 1;
+  gap: 10px;
+}
+
+.set-home-kinds-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.set-home-kinds-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.set-home-kind {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 4px 10px 4px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.set-home-kind:last-child {
+  border-bottom: none;
+}
+
+.set-home-kind-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.set-home-kind-name.off {
+  color: var(--text-tertiary);
+}
+
+.set-home-kind-sub {
+  margin-left: 6px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.set-home-kind-move {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.set-home-kind-move:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.set-home-kind-move:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.set-home-kind .set-switch {
+  margin-left: 6px;
+}
