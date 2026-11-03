@@ -834,6 +834,13 @@ function installFileShortcuts(wc: WebContents): void {
       const key = input.code === 'KeyE' ? 'ctrl-e' : input.code === 'KeyC' ? 'ctrl-c' : 'ctrl-x'
       void editorTakes(wc, key).then((taken) => {
         if (taken) return
+        // macOS turns Cmd+C/X into copy/cut only through the menu's roles, which
+        // never see a resent key, so copy stopped working there (2026-11-02 report)
+        if (process.platform === 'darwin' && key !== 'ctrl-e') {
+          if (key === 'ctrl-c') wc.copy()
+          else wc.cut()
+          return
+        }
         resending = true
         const modifiers: Array<'control' | 'meta' | 'shift' | 'alt'> = []
         if (input.control) modifiers.push('control')
