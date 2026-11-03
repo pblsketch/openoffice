@@ -144,6 +144,7 @@ import {
   ATTACHABLE_IMAGE_MAX_BYTES,
   ATTACHABLE_MAX_BYTES,
   attachableMaxBytes,
+  diagramPictureExtOfName,
   parseFileToText,
 } from '@genoffice/file-parse'
 import { createDocList } from './doc-picker/doc-list'
@@ -9236,6 +9237,7 @@ app.whenReady().then(async () => {
         ATTACHABLE_MAX_BYTES,
         ATTACHABLE_IMAGE_MAX_BYTES,
         attachableMaxBytes,
+        diagramPictureExtOfName,
       },
     }),
     lang: () => currentLang(),

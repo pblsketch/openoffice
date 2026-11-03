@@ -6,7 +6,7 @@
  * changes is not read at all. Then the panel's side of the same contract: it
  * asks for 24,000 characters at a time.
  */
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -139,6 +139,38 @@ describe('reading an attachment', () => {
     writeFileSync(path, new Uint8Array([0x89, 0x50, 0x4e, 0x47]))
     const read = await call<AttachmentReadResult>(MINDMAP_CHANNELS.filesRead, path, 0, 24_000)
     expect(read.ok).toBe(false)
+    const image = await call<{ ok: boolean; mime?: string }>(MINDMAP_CHANNELS.filesReadImage, path)
+    expect(image).toMatchObject({ ok: true, mime: 'image/png' })
+  })
+})
+
+describe('a draw.io diagram kept in a picture', () => {
+  const fixtures = join(__dirname, '../../../packages/drawio-model/tests/fixtures')
+
+  it('takes a .drawio.png that holds its diagram as diagram text, not as a picture', async () => {
+    const path = join(dir, 'flow.drawio.png')
+    writeFileSync(path, readFileSync(join(fixtures, 'out.drawio.png')))
+    const added = await call<AttachmentAddResult>(MINDMAP_CHANNELS.filesAdd, [path])
+    expect(added.accepted.map((a) => a.ext)).toEqual(['drawio.png'])
+    const read = await call<AttachmentReadResult>(MINDMAP_CHANNELS.filesRead, path, 0, 24_000)
+    expect(read.ok).toBe(true)
+    expect(read.text).toContain('한글 처리 단계')
+  })
+
+  it('takes a .drawio.svg, which as a plain .svg it would not', async () => {
+    const path = join(dir, 'flow.drawio.svg')
+    writeFileSync(path, readFileSync(join(fixtures, 'out.drawio.svg')))
+    const added = await call<AttachmentAddResult>(MINDMAP_CHANNELS.filesAdd, [path])
+    expect(added.accepted.map((a) => a.ext)).toEqual(['drawio.svg'])
+    const read = await call<AttachmentReadResult>(MINDMAP_CHANNELS.filesRead, path, 0, 24_000)
+    expect(read.text).toContain('시작')
+  })
+
+  it('keeps a picture that only carries the name a picture', async () => {
+    const path = join(dir, 'shot.drawio.png')
+    writeFileSync(path, new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+    const added = await call<AttachmentAddResult>(MINDMAP_CHANNELS.filesAdd, [path])
+    expect(added.accepted.map((a) => a.ext)).toEqual(['png'])
     const image = await call<{ ok: boolean; mime?: string }>(MINDMAP_CHANNELS.filesReadImage, path)
     expect(image).toMatchObject({ ok: true, mime: 'image/png' })
   })
