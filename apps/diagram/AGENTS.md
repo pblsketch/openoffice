@@ -1,12 +1,12 @@
 # apps/diagram (`@genoffice/diagram`)
 
-다이어그램 편집기다. draw.io(jgraph/drawio, Apache-2.0) 웹 편집기를 PC 안에서만 띄워 `.drawio`·`.dio`·`.drawio.svg`·`.drawio.png`를 탭에서 열고 고치고 저장하고 내보낸다. 화면에 보이는 이름은 "다이어그램"이고, "draw.io"는 어떤 파일을 다루는지 알리는 데만 쓴다(열기·저장 창의 형식 이름). draw.io 로고는 쓰지 않는다. 파일 형식·읽기 표·연산의 뜻은 `packages/drawio-model`에 있고, 이 모듈은 draw.io를 띄워 그 결과를 디스크와 잇는다. 기준 문서는 다이어그램 작업의 `spec.md` 3·4·5·6절이다.
+다이어그램 편집기다. draw.io(jgraph/drawio, Apache-2.0) 웹 편집기를 PC 안에서만 띄워 `.drawio`·`.dio`·`.drawio.svg`·`.drawio.png`를 탭에서 열고 고치고 저장하고 내보낸다. 화면에 보이는 이름은 "다이어그램"이고, "draw.io"는 어떤 파일을 다루는지 알리는 데만 쓴다(열기·저장 창의 형식 이름). draw.io 로고는 쓰지 않는다. 파일 형식·읽기 표·연산의 뜻은 `packages/drawio-model`에 있고, 이 모듈은 draw.io를 띄워 그 결과를 디스크와 잇는다. 계획과 까닭은 `docs/plans/diagram-editor.md`와 결정 0103(`docs/tracking/decisions/0103-diagram-editor.md`)에 있다.
 
 ## 맡은 범위
 
 - 메인 프로세스(`src/main/`). 셸이 상대 경로로 가져와 셸 번들 안에서 돈다.
   - `diagram-main.ts`: 보기 만들기(`createDiagramView`), 열기와 거절, 저장 두 단계(`diagram:save-target`이 어디에 쓸지 정하고 한 번 쓰는 표를 주면, `diagram:save`가 그 형식으로 draw.io가 만든 바이트를 쓴다), 프로젝트로 저장, 닫기 확인, 이름 바뀜 따라가기, 링크 열기, 메뉴·내보내기·인쇄 요청 전달, 복구 사본 계약 등록, 단독 실행(`startDiagramStandalone`). 셸에 내보내는 함수는 아래 "셸과의 약속"에 있다.
-  - `diagram-session.ts`: 다이어그램 탭 전용 **지속 세션 파티션**(`persist:ieum-diagram`). 이 세션에 `drawio-app://`와 앱 렌더러 프로토콜(`genoffice-app://diagram/…`)을 등록하고, 요청 거절(`webRequest.onBeforeRequest`), 맞춤법 사전 받기 끔, 권한(클립보드 쓰기만)을 건다. 세션이 본 요청 수와 거절한 주소를 `diagramRequestLog()`로 내준다.
+  - `diagram-session.ts`: 다이어그램 탭 전용 **지속 세션 파티션**(`persist:ieum-diagram`). 이 세션에 `drawio-app://`와 앱 렌더러 프로토콜(`genoffice-app://diagram/…`)을 등록하고, 요청 거절(`webRequest.onBeforeRequest`), 맞춤법 사전 받기 끔, 권한(클립보드 쓰기만)을 건다. 세션이 허락한 요청 수, 거절한 요청 수(`refused`)와 마지막으로 거절한 주소 100개(`blocked`, 쿼리 없이)를 `diagramRequestLog()`로 내준다. 창 없는 일의 결과 `detail.requests`도 이 셋이다.
   - `drawio-protocol.ts`: `drawio-app://editor/…`. 정리한 draw.io 묶음 폴더 안의 파일만 GET·HEAD로 낸다(`..`·인코딩한 구분자·NUL·폴더 밖 경로 거절). `index.html`을 낼 때만 `<head>` 맨 앞에 우리 다리 스크립트(`/__ieum/bridge.js`) 한 줄을 끼운다. 인쇄할 쪽 문서는 `/__ieum/print/<표>`로 한 번만 낸다. 모든 응답에 CSP와 `nosniff`를 붙인다.
   - `network-guard.ts`: 요청 허용 판정(앱 렌더러 스킴, `drawio-app:`, `data:`, `blob:`만, 개발 실행일 때만 개발 서버의 localhost), 새 창 거절, 이동 규칙, 요청 기록.
   - `export-main.ts`·`export-paths.ts`·`print-document.ts`: PNG·SVG 파일 쓰기(모든 쪽이면 쪽이 하나여도 쪽마다 `<이름>-p<쪽 번호>.<확장자>`, 지금 쪽이면 고른 이름 하나. 명령줄 `convert`도 같은 `pageFilePaths`를 쓴다. 이미 있는 파일은 물은 뒤 바꿈), PDF와 인쇄. PDF와 인쇄는 다이어그램 세션의 숨은 창에 쪽마다 한 장(그 쪽의 용지 크기, draw.io 단위 1/100인치)인 문서를 띄워 Electron이 만든다. draw.io의 인쇄 창은 쓰지 않는다.
