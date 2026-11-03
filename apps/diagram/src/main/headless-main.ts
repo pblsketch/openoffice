@@ -207,7 +207,8 @@ export async function exportDiagramHeadless(
     if (!target || target === 'vsdx') throw new Error(`cannot write a diagram as ${format}`)
     product = await writeDiagram(input, outPath, target, request)
   }
-  // what the diagram session let through and refused in this run: a scripted check reads `blocked`
-  const { allowed, blocked } = diagramRequestLog()
-  return { ...product, detail: { ...product.detail, requests: { allowed, blocked } } }
+  // what the diagram session let through and refused in this run: a scripted check reads
+  // `refused` (every refusal) and `blocked` (the last refused addresses)
+  const { allowed, refused, blocked } = diagramRequestLog()
+  return { ...product, detail: { ...product.detail, requests: { allowed, refused, blocked } } }
 }

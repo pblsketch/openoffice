@@ -39,10 +39,19 @@ export interface DiagramSessionPaths {
 let installed: { session: Session; paths: DiagramSessionPaths } | null = null
 const requestLog: RequestLog = newRequestLog()
 
-/** What the diagram session let through and refused since the app started. */
-export function diagramRequestLog(): { allowed: number; blocked: string[]; schemes: string[] } {
+/**
+ * What the diagram session let through and refused since the app started:
+ * counts of both, and the last refused addresses (`REFUSED_ADDRESSES_KEPT`).
+ */
+export function diagramRequestLog(): {
+  allowed: number
+  refused: number
+  blocked: string[]
+  schemes: string[]
+} {
   return {
     allowed: requestLog.allowed,
+    refused: requestLog.refused,
     blocked: [...requestLog.blocked],
     schemes: [...requestLog.schemes].sort(),
   }
