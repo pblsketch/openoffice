@@ -41,3 +41,4 @@
 - 템플릿 글꼴 폴더가 42.9 MiB에서 51.1 MiB로 커져 상한 `TEMPLATE_FONTS_MAX_BYTES`를 45 MiB에서 55 MiB로 올렸다. 파일 이름(`.otf`)은 그대로다. 설치 파일은 압축이 더 잘 되어 약 2 MB 작아진다.
 - 원본을 받아올 때 `parse.ts`, `parse-fields.ts`, `parse-drawing-geometry.ts`, `patch.ts`, `types.ts`에서 충돌이 날 수 있다. "원본과 다른 점"의 시험이 그 충돌을 푼 결과를 지킨다(`docs/operations.md`).
 - PC에 설치된 가변 글꼴(예: Windows의 `NotoSansKR-VF.ttf`)과 Pretendard, 템플릿의 라틴 가변 글꼴은 여전히 Type3로 들어간다. Chromium의 한계다(`findings.md`).
+- 2026-11-03: 원본이 같은 수정을 원본 #2364로 받아들였다(원본 d1ecc15cf). 그 뒤 받아오기에서 엔진 파일(`parse.ts`, `parse-fields.ts`, `parse-drawing-geometry.ts`, `patch.ts`, `types.ts`)과 시험이 원본과 글자 그대로 같아져, `packages/docx-engine/AGENTS.md`의 "원본과 다른 점" 목록을 비웠다. 대체 글꼴 파일 다섯도 원본과 같다. 워드 앱 쪽 화면 수정은 이 저장소가 원본의 워드 앱 스냅숏을 받지 않아 파일이 서로 다르다.

@@ -35,6 +35,17 @@
 - 바꾸는 중에 모양이 바뀌거나 빠지는 것이 있으면 파일은 쓰고, 항목마다 `warnings[]`로 알린다. 코드는 `odt_converted`(바뀜)와 `odt_dropped`(빠짐)다. 같은 목록이 `detail.odt_report`에 `[{ kind: "converted" | "dropped", feature, count }]`로 온다. `feature`는 바뀌지 않는 식별자다: `toc`, `chart`, `equation`, `shape`, `textbox`, `columns`, `citation`, `cross_reference`, `page_color`, `mirror_margins`, `theme`, `comment`, `revision`, `ink`, `watermark`, `password`, `protection`, `form_field`, `object`.
 - 암호가 걸린 ODT는 열지 않는다. 종료 코드 2, `error: "unsupported"`, `suggestion`은 "암호를 푼 뒤 다시 시도하라"다.
 
+**옛 워드 문서(`.doc`·`.dot`).**
+
+- `convert <file.doc|.dot> --to docx`만 받는다. 앱을 띄우지 않고 `@genoffice/doc2docx`로 바꾼다. `.doc`로 다시 쓰는 길은 없다.
+- 바꾸며 빠지거나 바뀐 것은 파일을 쓰고 `detail.warnings`에 적는다. 암호가 걸린 문서, Word 97보다 오래된 판, 깨진 파일은 종료 코드 3으로 끝나고, `detail.reason`에 `doc2docx`의 이유 코드(`encrypted`, `unsupported_version`, `not_cfb`, `corrupt` 등)가 온다.
+
+**엑셀 외부 연결(`sheet links`).**
+
+- `sheet links <file.xlsx>`는 수식이 `[n]`으로 가리키는 다른 통합 문서 목록을 읽기만 한다. `detail.links[]`의 `index`가 수식의 `[n]`, `source`가 푼 경로, `reachable`이 그 파일이 있는지다.
+- `--update`는 닿는 원본을 다시 읽어 계산한 값을 수식의 저장된 값(`<v>`)에만 쓴다. 수식은 그대로이고, 닿지 않는 연결은 예전 값을 둔다. `--break <1부터 센 번호들>`은 그 연결을 끊는다. 수식은 저장된 값이 되고 연결 파트를 지우며, 남은 연결의 번호를 다시 매긴다. 둘을 함께 주면 종료 코드 1, `invalid_argument`.
+- 쓰는 두 옵션은 `sheet apply`와 같은 파일 규칙(`--out`, `--force`, 허용 폴더, 앱에 열린 파일)을 따른다.
+
 ## PDF 명령
 
 `pdf read`, `pdf images`, `pdf status`와 `convert`는 PC 안에서 끝난다. `pdf ai-read`와 `pdf translate`는 아래 "AI를 부르는 PDF 명령"의 규칙을 따른다.
