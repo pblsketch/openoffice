@@ -317,6 +317,56 @@ describe('open_documents on a book tab', () => {
   })
 })
 
+describe('open_documents on a diagram tab', () => {
+  const diagramDoc = (dirty: boolean, filePath?: string): OpenDocumentTab =>
+    tab({
+      id: 't10',
+      kind: 'diagram',
+      title: 'Untitled diagram',
+      dirty,
+      ...(filePath ? { filePath } : {}),
+    })
+
+  it('reads every page and saves through the editor save; a recovery discard is the editor’s', async () => {
+    const read = vi.fn(async () => 'Pages: Page-1 (p1) [current]\n')
+    const save = vi.fn(async () => undefined)
+    const recoveryDiscard = vi.fn()
+    const { call } = await controlWith([diagramDoc(true, 'C:/d/flow.drawio.svg')], {
+      diagram: { read, save },
+      recoveryDiscard,
+    })
+    expect(await call({ action: 'read', target: 't10' })).toMatchObject({
+      type: 'diagram',
+      kind: 'diagram',
+      content: 'Pages: Page-1 (p1) [current]\n',
+    })
+    expect((await call({ action: 'save', target: 't10' })).savedTo).toBe('C:/d/flow.drawio.svg')
+    expect(save).toHaveBeenCalledWith(expect.anything(), 'C:/d/flow.drawio.svg')
+    await call({ action: 'close', target: 't10', unsaved: 'discard' })
+    expect(recoveryDiscard).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'diagram' }),
+      expect.anything(),
+    )
+    expect(save).toHaveBeenCalledTimes(1)
+  })
+
+  it('a never-saved diagram is saved as .drawio in the default folder', async () => {
+    const save = vi.fn(async () => undefined)
+    const { call } = await controlWith([diagramDoc(true)], {
+      diagram: { read: async () => '', save },
+    })
+    const savedTo = String((await call({ action: 'close', target: 't10' })).savedTo)
+    expect(savedTo).toMatch(/Untitled diagram\.drawio$/)
+    expect(save).toHaveBeenCalledWith(expect.anything(), savedTo)
+  })
+
+  it('names the missing editor instead of failing silently', async () => {
+    const { call } = await controlWith([diagramDoc(true)])
+    await expect(call({ action: 'read', target: 't10' })).rejects.toThrow(/diagram editor/)
+    await expect(call({ action: 'save', target: 't10' })).rejects.toThrow(/diagram editor/)
+  })
+})
+
 describe('open_documents close: PDF guard', () => {
   it('refuses to close a PDF tab, naming the reason', async () => {
     const doc = tab({ id: 't6', kind: 'pdf', title: 'six.pdf', filePath: 'C:/docs/six.pdf' })

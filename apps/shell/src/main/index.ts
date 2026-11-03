@@ -212,6 +212,7 @@ import { createDocsControl, installDocsBridge } from './mcp/docs-bridge'
 import { createSlidesControl } from './mcp/slides-bridge'
 import { createSheetsControl, installSheetsBridge } from './mcp/sheets-bridge'
 import { createOpenDocumentsControl, createOpenTargetResolver } from './mcp/open-documents-bridge'
+import { createDiagramControl } from './mcp/diagram-bridge'
 import { sanitizeFileBase } from './mcp/tools/document-tools'
 import { createFileViaCli } from './mcp/headless-cli'
 import {
@@ -356,13 +357,20 @@ import {
   DRAWIO_SCHEME_PRIVILEGE,
   configureDiagramRuntime,
   diagramFileRenamed,
+  diagramSaveToPath,
   requestDiagramSave,
   sendDiagramExportRequest,
   sendDiagramMenuCommand,
   sendDiagramPrintRequest,
   setDiagramFileSavedHook,
   setDiagramHelpHook,
+  setDiagramProvisionalTitleHook,
 } from '../../../diagram/src/main/diagram-main'
+import {
+  diagramApplyOps,
+  diagramReadPage,
+  diagramReadText,
+} from '../../../diagram/src/main/mcp-queries'
 import type { DiagramMenuCommand } from '../../../diagram/src/shared/ipc'
 import type {
   AutoSaveDefault,
@@ -5281,6 +5289,10 @@ function createShellWindow(): void {
     manager.setTabTitleFor(wc.id, title)
     detachedSetTitleFor(wc.id, title)
   })
+  setDiagramProvisionalTitleHook((wc, title) => {
+    manager.setTabTitleFor(wc.id, title)
+    detachedSetTitleFor(wc.id, title)
+  })
   // A redacted copy becomes this tab's document; the source still exists.
   setPdfRedactionSavedHook((wc, path) => {
     manager.setTabFileFor(wc.id, path)
@@ -9777,6 +9789,7 @@ app.whenReady().then(async () => {
         read: epubReadText,
         save: epubSaveToPath,
       },
+      diagram: { read: diagramReadText, save: diagramSaveToPath },
     }),
     // the headless create_*/read_* tools delegate to the bundled genoffice CLI
     // (the same engines, no second implementation); it runs on the app's own
@@ -9798,6 +9811,23 @@ app.whenReady().then(async () => {
       revealWindow: (tabId) => {
         if (!isDetachedTabId(tabId)) revealShellWindow()
       },
+    }),
+    // read_diagram / apply_diagram_ops: the diagram editor's own read table and executor
+    diagramControl: createDiagramControl({
+      list: async () => {
+        const tabs = tabManager ? await tabManager.openDocuments() : []
+        return [...tabs, ...(await detachedOpenDocuments())]
+      },
+      webContentsFor: (tabId) => liveDocumentContents(tabId),
+      isDetached: (tabId) => isDetachedTabId(tabId),
+      activate: (tabId) => {
+        if (!activateDetached(tabId)) tabManager?.activateTab(tabId)
+      },
+      revealWindow: (tabId) => {
+        if (!isDetachedTabId(tabId)) revealShellWindow()
+      },
+      readPage: diagramReadPage,
+      applyOps: diagramApplyOps,
     }),
     logFilePath: join(app.getPath('userData'), 'mcp-log.txt'),
   })

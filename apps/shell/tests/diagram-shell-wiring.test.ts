@@ -92,6 +92,27 @@ describe('opening a diagram', () => {
     const hook = main.slice(at, main.indexOf('\n  })', at))
     expect(hook).toContain("tabManager?.openHelpTab('diagram')")
   })
+
+  it('names an untitled diagram tab from the first AI request, as the mind map does', () => {
+    const at = main.indexOf('setDiagramProvisionalTitleHook((wc, title) => {')
+    expect(at).toBeGreaterThan(0)
+    const hook = main.slice(at, main.indexOf('\n  })', at))
+    expect(hook).toContain('manager.setTabTitleFor(wc.id, title)')
+    expect(hook).toContain('detachedSetTitleFor(wc.id, title)')
+  })
+})
+
+describe('the in-app MCP server', () => {
+  it('reads and saves open diagrams through the editor, and drives the two diagram tools', () => {
+    expect(main).toContain('diagram: { read: diagramReadText, save: diagramSaveToPath },')
+    const at = main.indexOf('diagramControl: createDiagramControl({')
+    expect(at).toBeGreaterThan(0)
+    const control = main.slice(at, main.indexOf('\n    }),', at))
+    // a restored tab is loaded first, as for every other open-document tool
+    expect(control).toContain('webContentsFor: (tabId) => liveDocumentContents(tabId)')
+    expect(control).toContain('readPage: diagramReadPage')
+    expect(control).toContain('applyOps: diagramApplyOps')
+  })
 })
 
 describe('the diagram editor runtime', () => {

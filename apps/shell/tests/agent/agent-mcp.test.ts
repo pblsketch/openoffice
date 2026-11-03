@@ -119,3 +119,76 @@ describe('the tool set', () => {
     }
   })
 })
+
+describe('diagrams in an agent session', () => {
+  const diagramTab = {
+    id: 't4',
+    kind: 'diagram',
+    title: 'flow.drawio',
+    filePath: 'C:\\Users\\me\\Project\\flow.drawio',
+    dirty: true,
+    active: true,
+  } as const
+  const control: OpenDocumentsControl = {
+    list: async () => [diagramTab],
+    read: async (doc) => (doc.kind === 'diagram' ? 'Pages: Page-1 (p1) [current]\\n...' : ''),
+    close: vi.fn(async () => ({})),
+    save: vi.fn(async () => ({ savedPath: '' })),
+  }
+  const tools = buildAgentMcpTools(
+    {
+      version: '0.0.0',
+      defaultSaveDir: () => 'C:\\Out',
+      openDocumentsControl: control,
+      // the in-app server's diagram control rides along in the runtime deps; the session ignores it
+      ...({
+        diagramControl: { list: async () => [], read: async () => '', apply: async () => ({}) },
+      } as object),
+    },
+    'C:\\Users\\me\\Project',
+    'win32',
+  )
+  const run = (args: Record<string, unknown>) =>
+    tools.find((tool) => tool.name === 'open_documents')!.handler(args) as Promise<
+      Record<string, unknown>
+    >
+
+  it('keeps the tool list: no diagram tools are added', () => {
+    const names = tools.map((tool) => tool.name)
+    for (const name of names) expect(AGENT_MCP_TOOL_NAMES).toContain(name)
+    expect([...AGENT_MCP_TOOL_NAMES].sort()).toEqual(
+      [
+        'open_documents',
+        'read_document',
+        'insert_content',
+        'replace_blocks',
+        'apply_ops',
+        'read_sheet',
+        'apply_sheet_ops',
+        'read_deck',
+        'apply_slide_ops',
+        'read_hwp',
+        'read_pdf',
+        'propose_skill',
+        'propose_skill_install',
+      ].sort(),
+    )
+    expect(names).not.toContain('read_diagram')
+    expect(names).not.toContain('apply_diagram_ops')
+  })
+
+  it('lists and reads an open diagram as text, and still never saves or closes it', async () => {
+    const listed = (await run({ action: 'list' })).documents as Array<Record<string, unknown>>
+    expect(listed).toEqual([
+      expect.objectContaining({ id: 't4', kind: 'diagram', type: 'diagram' }),
+    ])
+    expect(await run({ action: 'read', target: 't4' })).toMatchObject({
+      kind: 'diagram',
+      content: 'Pages: Page-1 (p1) [current]\\n...',
+    })
+    await expect(run({ action: 'save', target: 't4' })).rejects.toThrow(/not available/)
+    await expect(run({ action: 'close', target: 't4' })).rejects.toThrow(/not available/)
+    expect(control.save).not.toHaveBeenCalled()
+    expect(control.close).not.toHaveBeenCalled()
+  })
+})

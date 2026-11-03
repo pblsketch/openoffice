@@ -229,7 +229,7 @@
 명령어 쪽 서버와 다른 것이다. 실행 중인 앱이 직접 여는 서버이고, 열려 있는 문서를 다룬다.
 
 - 설정 → 연동에서 켠다. 기본은 꺼짐이다. 기본 포트는 3093이고 이 PC(`127.0.0.1`)에서만 닿는다. 인증은 없고, 요청의 Host·Origin이 이 PC의 것이 아니면 거절한다.
-- 도구: `get_app_info`, `open_documents`, `open_in_genoffice`(이 이름은 예전 철자를 유지한다), `create_session`, `save_session`, `read_document`, `read_docx`, `read_sheet`, `read_deck`, `read_pdf`, `create_docx`, `create_xlsx`, `create_pptx`, `apply_ops`, `apply_sheet_ops`, `apply_slide_ops`, `insert_content`, `replace_blocks`, `insert_picture`.
+- 도구: `get_app_info`, `open_documents`, `open_in_genoffice`(이 이름은 예전 철자를 유지한다), `create_session`, `save_session`, `read_document`, `read_docx`, `read_sheet`, `read_deck`, `read_pdf`, `create_docx`, `create_xlsx`, `create_pptx`, `apply_ops`, `apply_sheet_ops`, `apply_slide_ops`, `insert_content`, `replace_blocks`, `insert_picture`, `read_diagram`, `apply_diagram_ops`.
 - `insert_picture`는 열린 워드 탭에 그림을 넣는다(원본 genoffice#2267). 앱 안 AI의 같은 이름 도구를 그대로 거치므로 그림 주소는 http(s)와 `data:image/`만 받고, http(s) 주소면 앱이 그 주소에서 그림을 받아 온다. 에이전트 모드의 세션 서버에는 없다.
 - 열린 ODT 탭은 워드 문서로 다룬다(`open_documents`의 `format`이 `odt`). `read_docx`는 `.odt` 파일도 읽는다. `save_session`은 탭의 형식으로만 저장한다. 다른 확장자의 경로를 주면 거절하고 `ieumoffice convert`를 쓰라고 안내한다. 대화 상자가 없는 경로에서 형식이 조용히 바뀌지 않게 하기 위해서다.
 - 에이전트 설정에 넣는 항목 이름은 `ieumoffice-editor`다. 명령어 쪽 서버의 `ieumoffice`와 겹치지 않는다.
@@ -239,6 +239,12 @@
 - `get_app_info`의 `families`에 `{ family: "xmind", label: "mind map", editor: { open: ["xmind"], save: ["xmind"], export: ["png", "pdf", "md"] } }`가 있다. `mcp` 항목은 없다.
 - `open_documents`의 목록에 EPUB 탭이 `kind: "epub"`, `type: "e-book"`으로 나온다(떼어 낸 창도 같다). `read`의 `content`는 spine 순서로 이은 책 글이고(제목은 `#`), 저장하지 않은 편집이 들어 있다. `close`의 저장은 편집기의 저장과 같은 규칙을 지나고, 바꾼 것이 없으면 파일을 쓰지 않는다. 책을 만들거나 고치는 도구는 없다.
 - `get_app_info`의 `families`에 `{ family: "epub", label: "e-book", editor: { open: ["epub"], save: ["epub"], export: [] } }`가 있다.
+- `open_documents`의 목록에 다이어그램 탭이 `kind: "diagram"`, `type: "diagram"`으로 나온다(떼어 낸 창도 같다). `format`은 파일의 형식(`drawio`, `dio`, `drawio.svg`, `drawio.png`)이고, 한 번도 저장하지 않은 다이어그램과 Visio 파일에서 만든 탭은 `drawio`다. `read`의 `content`는 모든 쪽의 읽기 표 글(쪽 목록, 쪽마다 도형과 선의 줄)이고 저장하지 않은 편집이 들어 있다. `save`와 `close`의 저장은 편집기의 저장과 같은 길을 지나고, 바꾼 것이 없으면 파일을 쓰지 않는다. 한 번도 저장하지 않은 다이어그램은 기본 저장 폴더에 겹치지 않는 이름의 `.drawio`로 저장된다. 열리지 않은 파일과 가져온 `.vsdx`에는 쓰지 않는다. 다이어그램은 `create_session`·`save_session`의 대상이 아니다.
+- `read_diagram`(입력 `document?`, `page?`)은 다이어그램 한 쪽의 읽기 표 글(쪽 목록 포함)을 낸다. 출력은 `{ id, title, path, dirty, content }`다. `page`(쪽 id나 이름)가 없으면 화면에 보이는 쪽이고, 그 쪽에서 사람이 고른 id가 함께 나온다. 저장하지 않은 편집이 들어 있다.
+- `apply_diagram_ops`(입력 `document?`, `ops`)는 연산 목록을 차례로 적용하고, 호출 하나가 편집기의 되돌리기 한 번이다. 출력은 `{ id, title, path, status: "ok", changed, created, results }`이고, `results`는 연산마다 `{ index, op, status, created?, error? }`, `created`는 만들어진 도형·선·쪽의 id다. 하나라도 거절되면 아무것도 바꾸지 않고 오류로 돌아오며, 오류 글에 연산마다 결과가 한 줄씩 있다(`<번호> <연산>: FAILED <code>: <까닭>` 또는 `ok (not applied)`). 저장은 하지 않는다(`open_documents`의 `save`). 두 도구의 입력 스키마는 `@genoffice/drawio-model`의 `DIAGRAM_OPS`에서 만든다(편집기 AI 창과 같은 정의). `ops`의 항목은 바꾸는 연산 전부의 키를 합친 것이고, 연산별 검사는 편집기의 계획이 한다.
+- 두 도구의 `document`는 `open_documents`가 준 id나 경로다. 없으면 앞에 있는 다이어그램이다(초점을 가진 떼어 낸 창의 다이어그램, 아니면 앱 창에서 활성인 다이어그램 탭). 앞에 다이어그램이 없으면 열린 다이어그램의 목록(id, 경로, 제목)을 오류 글에 담아 거절한다. 다른 종류의 문서를 주면 거절한다. 뒤에 있는 탭을 고치면 그 탭을 앞으로 낸다.
+- `get_app_info`의 `families`에 `{ family: "drawio", label: "diagram", editor: { open: ["drawio", "dio", "drawio.svg", "drawio.png", "vsdx"], save: ["drawio", "dio", "drawio.svg", "drawio.png"], export: ["png", "svg", "pdf"] } }`가 있다. `mcp` 항목은 없다.
+- 에이전트 모드의 세션 서버에는 두 다이어그램 도구가 없다(도구 목록은 그대로다). 그 서버의 `open_documents`는 다이어그램 탭도 목록에 내고 `read`로 같은 글을 읽는다.
 
 ## 에이전트 스킬
 
