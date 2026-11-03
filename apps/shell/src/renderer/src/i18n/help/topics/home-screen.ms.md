@@ -44,6 +44,8 @@ Kad di atas senarai menubuhkan dokumen baharu dalam satu langkah. Klik pada kad 
 
 Fail baharu akan mendarat dalam folder yang sedang dipilih dalam bar sisi. Jika tiada apa-apa yang dipilih, ia akan ke folder lalai.
 
+Untuk menyembunyikan kad atau menukar susunannya, gunakan **Dokumen baharu di Laman Utama** dalam Tetapan → Umum. Jenis yang dimatikan hanya hilang daripada kad dan menu Baharu; fail jenis itu masih dibuka seperti biasa. Di Laman Utama, ⌘N/Ctrl+N mencipta jenis pertama yang masih dipaparkan.
+
 Apa yang setiap kad lakukan:
 
 - **AI Docs** (.docx): dokumen teks kosong dalam editor Docs. Fail hanya ditulis ke cakera semasa **simpanan pertama**. Dokumen baharu dibuka dengan panel AI dikembangkan, dan anda boleh matikan melalui Tetapan → "Buka panel AI dalam dokumen baharu".
