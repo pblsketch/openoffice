@@ -1,4 +1,5 @@
-import { readFile, stat } from 'node:fs/promises'
+import { readFile, stat, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { rmSync } from 'node:fs'
 import { test, expect } from '@playwright/test'
 import { closeAndSaveVideo, launchShell, screenshotPath } from './helpers'
@@ -13,6 +14,7 @@ import {
   fileFormat,
   fileText,
   liveText,
+  messageBoxes,
   openDiagramPage,
   openPath,
   scratchDir,
@@ -113,6 +115,34 @@ test.describe('diagram file formats', () => {
         ),
         'no close prompt for a saved diagram',
       ).toEqual([])
+
+      // ── a file that does not open gets no tab: the reason shows as an app warning
+      await test.step('broken files', async () => {
+        const broken = [
+          {
+            name: 'broken.drawio',
+            bytes: 'not a diagram',
+            reason: 'The file is not in the diagram format (XML). It may be damaged.',
+          },
+          {
+            name: 'picture.drawio.svg',
+            bytes: '<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>',
+            reason: 'This picture has no diagram inside, so it cannot be opened as a diagram.',
+          },
+        ]
+        for (const { name, bytes, reason } of broken) {
+          const path = join(dir, name)
+          await writeFile(path, bytes)
+          const shown = (await messageBoxes(app)).length
+          await openPath(shell, path)
+          await expect.poll(async () => (await messageBoxes(app)).slice(shown)).toEqual([reason])
+          expect(await diagramTabs(shell), `${name} opens no tab`).toEqual([])
+          expect(
+            app.windows().filter((page) => page.url().includes('://diagram/')),
+            `${name} starts no editor`,
+          ).toHaveLength(0)
+        }
+      })
     } finally {
       await closeAndSaveVideo(launched, 'diagram-formats')
       rmSync(dir, { recursive: true, force: true })
