@@ -24,12 +24,12 @@ import type {
 } from '../shared/ipc'
 import { hasNotices, scanDiagramNotices, type DiagramNotices } from '../shared/notices'
 import { OPEN_FAILURE_KEYS } from '../shared/open-failure'
-import { DrawioFrame, base64Bytes } from './drawio/frame-client'
+import { DrawioFrame } from './drawio/frame-client'
 import { diagramImporter } from './document/importers'
 import { settleOpenFailure } from './document/open-failure'
 import { applyLiveOps, liveDiagramRead, liveDiagramText } from './document/live-ops'
 import { DiagramCopier, RECOVERY_COPY_TIMING } from './document/recovery-copies'
-import { SVG_FILE_HEAD } from './document/page-pictures'
+import { pagePictureBytes } from './document/page-pictures'
 import { t as translate, useI18n, type StringKey } from './i18n/locale'
 import { useDarkView } from './theme'
 import { DiagramAiDock, useDiagramAi } from './ai/AiDock'
@@ -375,14 +375,10 @@ export default function App({ initialTheme }: { initialTheme: UiTheme }) {
         const { client, chosen } = await pagesFor(scope)
         const pages: { number: number; bytes: Uint8Array }[] = []
         for (const page of chosen) {
-          const bytes =
-            format === 'png'
-              ? base64Bytes((await client.request('pagePng', { pageId: page.id })).base64)
-              : new TextEncoder().encode(
-                  SVG_FILE_HEAD +
-                    (await client.request('pageSvg', { pageId: page.id, theme: 'auto' })).svg,
-                )
-          pages.push({ number: page.number, bytes })
+          pages.push({
+            number: page.number,
+            bytes: await pagePictureBytes(client, format, page.id),
+          })
         }
         const result = await window.diagramApi.exportImages({
           format,

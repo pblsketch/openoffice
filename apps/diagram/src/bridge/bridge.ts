@@ -412,8 +412,7 @@ function pagePng(pageId: string): Promise<BridgeOps['pagePng']['reply']> {
           // light colors whatever the app's theme: PNG and PDF are the same in both
           ui.editor.exportToCanvas(
             (canvas: HTMLCanvasElement) => {
-              const url = canvas.toDataURL('image/png')
-              resolve({ base64: url.slice(url.indexOf(',') + 1) })
+              canvasPngBytes(canvas).then((bytes) => resolve({ bytes }), reject)
             },
             null,
             null,
@@ -436,6 +435,32 @@ function pagePng(pageId: string): Promise<BridgeOps['pagePng']['reply']> {
         }
       }),
   )
+}
+
+/**
+ * The PNG file of a canvas, then the canvas's pixels let go at once: a large
+ * page is hundreds of megabytes of pixels that would otherwise wait for the
+ * garbage collector. No base64 text on the way.
+ */
+async function canvasPngBytes(canvas: HTMLCanvasElement): Promise<Uint8Array> {
+  try {
+    const blob = await new Promise<Blob | null>((done) => canvas.toBlob(done, 'image/png'))
+    if (!blob) throw new Error('the page could not be drawn as PNG')
+    return new Uint8Array(await blob.arrayBuffer())
+  } finally {
+    canvas.width = 0
+    canvas.height = 0
+  }
+}
+
+/** The buffers a reply hands over instead of copying (the bytes of a picture). */
+function transferablesOf(value: unknown): Transferable[] {
+  const bytes = (value as { bytes?: unknown } | null)?.bytes
+  return bytes instanceof Uint8Array &&
+    bytes.byteOffset === 0 &&
+    bytes.buffer instanceof ArrayBuffer
+    ? [bytes.buffer]
+    : []
 }
 
 function pageInfo(): BridgeOps['pageInfo']['reply'] {
@@ -523,7 +548,11 @@ window.addEventListener('message', (event) => {
   const message = parseBridgeMessage(event.data)
   if (!message || message.kind !== 'request') return
   const reply = (body: { ok: true; value: unknown } | { ok: false; error: string }): void =>
-    window.parent.postMessage({ ieum: 1, kind: 'reply', id: message.id, ...body }, hostOrigin)
+    window.parent.postMessage(
+      { ieum: 1, kind: 'reply', id: message.id, ...body },
+      hostOrigin,
+      body.ok ? transferablesOf(body.value) : [],
+    )
   answer(message).then(
     (value) => reply({ ok: true, value }),
     (err: unknown) => reply({ ok: false, error: err instanceof Error ? err.message : String(err) }),

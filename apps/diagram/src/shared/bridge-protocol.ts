@@ -139,13 +139,16 @@ export interface BridgeOps {
   markSaved: { request: { revision?: number }; reply: Record<string, never> }
   /** the current content is not what any file holds (a restored copy, a reload) */
   markUnsaved: { request: Record<string, never>; reply: Record<string, never> }
-  /** one page as SVG; `theme: 'light'` for PDF and print */
+  /**
+   * one page as SVG; `theme: 'light'` for every export, PDF and print (light
+   * colors only), `'auto'` for draw.io's adaptive `light-dark()` colors
+   */
   pageSvg: {
     request: { pageId: string; theme: 'light' | 'auto' }
     reply: PageSvg
   }
-  /** one page as PNG (always light), base64 without the data: prefix */
-  pagePng: { request: { pageId: string }; reply: { base64: string } }
+  /** one page as the bytes of a PNG file (always light), handed over without a copy */
+  pagePng: { request: { pageId: string }; reply: { bytes: Uint8Array } }
   /** one of draw.io's own actions the app menu reaches (undo, zoom, find) */
   runAction: { request: { action: DrawioMenuAction }; reply: Record<string, never> }
 }

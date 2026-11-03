@@ -1,8 +1,8 @@
 /**
  * Export and print of the diagram editor, on the main-process side (spec 5).
  *
- * The renderer makes the pictures with draw.io (PNG always in light colors,
- * SVG as draw.io writes it, light SVGs for PDF and print); this side asks
+ * The renderer makes the pictures with draw.io (PNG and SVG always in light
+ * colors, light SVGs for PDF and print); this side asks
  * where to write, writes, and makes PDF and print sheets itself in a hidden
  * window of the diagram's session (the same request refusal applies), never
  * through draw.io's print dialog.
