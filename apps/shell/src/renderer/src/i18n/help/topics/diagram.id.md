@@ -14,7 +14,7 @@ Editor diagram membuka file draw.io di sebuah tab. Anda bisa menggambar diagram 
 
 - Layar penyuntingan adalah layar draw.io apa adanya: menu di atas, bentuk di kiri, panel format di kanan, dan tab halaman di bawah.
 - Simpan (Ctrl+S), Simpan Sebagai (Ctrl+Shift+S), dan Cetak (Ctrl+P) ditangani oleh GenOffice. Berpindah tab dan pintasan lain yang berlaku di seluruh aplikasi tetap berfungsi. Semua pintasan lainnya milik editor itu sendiri, termasuk urungkan (Ctrl+Z).
-- **Bantuan** di menu editor membuka halaman ini.
+- **Bantuan** (F1) di menu editor membuka halaman ini.
 - Editor memakai bahasa GenOffice. Saat Anda mengganti bahasa, editor dimulai ulang: perubahan yang belum disimpan tetap ada, tetapi riwayat urungkan hilang.
 - Editor mengikuti tema GenOffice. Pada tema gelap, gambarnya juga ditampilkan dengan warna gelap, tetapi file yang disimpan, PNG, PDF, dan hasil cetak persis sama seperti pada tema terang.
 

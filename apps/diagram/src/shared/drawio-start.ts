@@ -15,7 +15,8 @@ export function drawioLang(lang: Lang): string {
 /**
  * The editor page's address. Embed mode with the JSON protocol, offline,
  * stealth (no outside services), lockdown (no outside data), no exit button,
- * no "save and exit", draw.io's own spinner while it loads, and the dark view
+ * no "save and exit", no "browser" storage (its Import from › Browser is an
+ * empty dialog here), draw.io's own spinner while it loads, and the dark view
  * when the app is dark.
  */
 export function drawioStartUrl(options: { lang: Lang; dark: boolean }): string {
@@ -28,6 +29,7 @@ export function drawioStartUrl(options: { lang: Lang; dark: boolean }): string {
     ['lang', drawioLang(options.lang)],
     ['noExitBtn', '1'],
     ['saveAndExit', '0'],
+    ['browser', '0'],
     ['spin', '1'],
   ]
   if (options.dark) params.push(['dark', '1'])
@@ -35,11 +37,30 @@ export function drawioStartUrl(options: { lang: Lang; dark: boolean }): string {
 }
 
 /**
+ * draw.io's export targets the app does not carry out (only PNG, SVG and PDF
+ * go through the app's export). Each of these would open draw.io's own
+ * "save as" dialog, whose places (this device, download, a new window) all
+ * end nowhere in the app.
+ */
+export const HIDDEN_EXPORTS: readonly string[] = [
+  'exportJpg',
+  'exportWebp',
+  'exportAnimatedGif',
+  'exportXml',
+  'exportJson',
+  'exportHtml',
+  'exportUrl',
+  'exportVsdx',
+  'export',
+]
+
+/**
  * draw.io actions taken off the screen: about, help sites and feedback,
- * cloud files and sharing, publishing and embedding, plugins, PlantUML,
- * draw.io's appearance and theme switches (the app's theme decides), its
- * language switch (the app's language decides), collaboration, and leaving
- * the editor.
+ * cloud files and sharing, publishing and embedding, the export targets
+ * above, plugins, PlantUML, draw.io's appearance and theme switches (the
+ * app's theme decides), its language switch (the app's language decides),
+ * collaboration, and leaving the editor. Its keyboard shortcuts stay: the
+ * bridge shows them in a draw.io dialog.
  */
 export const HIDDEN_ACTIONS: readonly string[] = [
   'about',
@@ -47,12 +68,10 @@ export const HIDDEN_ACTIONS: readonly string[] = [
   'feedback',
   'downloadDesktop',
   'quickStart',
-  'keyboardShortcuts',
   'plugins',
   'publishLink',
   'share',
-  'exportUrl',
-  'exportHtml',
+  ...HIDDEN_EXPORTS,
   'plantUml',
   'lightMode',
   'darkMode',

@@ -26,7 +26,7 @@ function headlessFrame() {
         }
       case 'pagePng':
         pictures.push(`png:${(args as { pageId: string }).pageId}`)
-        return { base64: 'iVBORw0K' }
+        return { bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]) }
       case 'pageSvg':
         pictures.push(`svg:${(args as { pageId: string; theme: string }).theme}`)
         return { svg: '<svg/>', width: 100, height: 50 }
@@ -54,12 +54,15 @@ describe('export jobs', () => {
     if (!report.ok || report.kind !== 'images') throw new Error('no images')
     expect(report.pages.map((p) => p.number)).toEqual([1, 2])
     expect(all.pictures).toEqual(['png:p1', 'png:p2'])
+    expect([...report.pages[0]!.bytes]).toEqual([0x89, 0x50, 0x4e, 0x47])
 
     const one = headlessFrame()
     const svg = await runHeadlessJob(one.frame, { kind: 'export', format: 'svg', page: 2 }, drawio)
     if (!svg.ok || svg.kind !== 'images') throw new Error('no images')
     expect(svg.pages.map((p) => p.number)).toEqual([2])
     expect(new TextDecoder().decode(svg.pages[0]!.bytes)).toBe(`${SVG_FILE_HEAD}<svg/>`)
+    // a plain SVG is light only, like PNG and PDF: no adaptive colors that turn dark in a dark viewer
+    expect(one.pictures).toEqual(['svg:light'])
   })
 
   it('makes light sheets at each page size for PDF; a page out of range fails', async () => {

@@ -1,6 +1,7 @@
 import { readFile, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { rmSync } from 'node:fs'
+import { deflateRawSync } from 'node:zlib'
 import { test, expect } from '@playwright/test'
 import { closeAndSaveVideo, launchShell, screenshotPath } from './helpers'
 import {
@@ -9,8 +10,10 @@ import {
   clickMenu,
   closeTab,
   contentsIdOf,
+  bridgeRequest,
   copyAsset,
   diagramTabs,
+  drawioFrame,
   fileFormat,
   fileText,
   liveText,
@@ -37,6 +40,37 @@ const FORMATS = [
 
 /** long enough for a save request to reach the editor and, were it to write, the disk */
 const SAVE_SETTLE_MS = 2_500
+
+/** draw.io's page compression: raw deflate of the URI-encoded XML, in base64 */
+const compressPage = (xml: string): string =>
+  deflateRawSync(Buffer.from(encodeURIComponent(xml))).toString('base64')
+
+const pageModel = (cells: string): string =>
+  `<mxGraphModel dx="800" dy="600" grid="1" gridSize="10" pageWidth="827" pageHeight="1169"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells}</root></mxGraphModel>`
+
+const box = (id: string, label: string, x: number): string =>
+  `<mxCell id="${id}" value="${label}" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="${x}" y="40" width="120" height="60" as="geometry"/></mxCell>`
+
+/**
+ * Three compressed pages. The first has a shape with a web link, a shape
+ * with a link to the second page, and a label holding a web link.
+ */
+const MULTI_PAGE_FILE =
+  '<mxfile host="e2e">' +
+  `<diagram id="pg1" name="첫 쪽">${compressPage(
+    pageModel(
+      '<UserObject label="Web link" link="https://example.com/e2e-link" id="web"><mxCell style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="40" y="40" width="120" height="60" as="geometry"/></mxCell></UserObject>' +
+        '<UserObject label="Page link" link="data:page/id,pg2" id="tosecond"><mxCell style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="200" y="40" width="120" height="60" as="geometry"/></mxCell></UserObject>' +
+        box(
+          'label',
+          '&lt;a href=&quot;https://example.org/label-link&quot;&gt;label link&lt;/a&gt;',
+          360,
+        ),
+    ),
+  )}</diagram>` +
+  `<diagram id="pg2" name="둘째 쪽">${compressPage(pageModel(box('b', '둘째 쪽 도형', 40)))}</diagram>` +
+  `<diagram id="pg3" name="Page 3">${compressPage(pageModel(box('c', 'Third page', 40)))}</diagram>` +
+  '</mxfile>'
 
 test.describe('diagram file formats', () => {
   test('open, save unchanged, change, save, open again: .drawio, .dio, .drawio.svg, .drawio.png', async () => {
@@ -145,6 +179,93 @@ test.describe('diagram file formats', () => {
       })
     } finally {
       await closeAndSaveVideo(launched, 'diagram-formats')
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  test('pages and links: showing another page is no change; a clicked web link opens in the browser', async () => {
+    test.setTimeout(240_000)
+    const dir = await scratchDir('pages-links')
+    const path = join(dir, 'multi.drawio')
+    await writeFile(path, MULTI_PAGE_FILE)
+    const original = await readFile(path)
+    const originalTime = (await stat(path)).mtimeMs
+    const launched = await launchShell({ onboardingSeen: true, videoDir: 'diagram-pages-links' })
+    const { app, page: shell } = launched
+    try {
+      await answerMessageBoxes(app, 1)
+      // the browser is not started: the main process records what it would open
+      await app.evaluate(({ shell: system }) => {
+        const state = globalThis as unknown as { __opened: string[] }
+        state.__opened = []
+        system.openExternal = (async (url: string) => {
+          state.__opened.push(url)
+        }) as typeof system.openExternal
+      })
+      const opened = () =>
+        app.evaluate(() => [...(globalThis as unknown as { __opened: string[] }).__opened])
+      const currentPage = async (): Promise<string | null> =>
+        (await bridgeRequest<{ currentPage: string | null }>(page, 'pageInfo', {})).currentPage
+
+      const page = await openDiagramPage(app, () => openPath(shell, path))
+      const frame = drawioFrame(page)
+
+      await test.step('showing other pages', async () => {
+        await frame.locator('.geTabContainer .geTab', { hasText: '둘째 쪽' }).click()
+        await expect.poll(currentPage).toBe('pg2')
+        await frame.locator('.geTabContainer .geTab', { hasText: 'Page 3' }).click()
+        await expect.poll(currentPage).toBe('pg3')
+        await frame.locator('.geTabContainer .geTab', { hasText: '첫 쪽' }).click()
+        await expect.poll(currentPage).toBe('pg1')
+        await page.waitForTimeout(500)
+        expect(await statusText(page)).not.toContain('Unsaved')
+        // a save with nothing changed writes nothing
+        await clickMenu(app, 'File', '^Save$')
+        await page.waitForTimeout(SAVE_SETTLE_MS)
+        expect((await readFile(path)).equals(original)).toBe(true)
+        expect((await stat(path)).mtimeMs).toBe(originalTime)
+      })
+
+      await test.step('clicking links', async () => {
+        // the link under a selected shape
+        const web = (await frame.locator('text=Web link').first().boundingBox())!
+        await page.mouse.click(web.x + web.width / 2, web.y + web.height / 2)
+        const hint = frame.locator('.geHint a', { hasText: 'https://example.com/e2e-link' })
+        await expect(hint).toHaveCount(1)
+        const at = (await hint.boundingBox())!
+        await page.mouse.click(at.x + Math.min(30, at.width / 2), at.y + at.height / 2)
+        await expect.poll(opened).toEqual(['https://example.com/e2e-link'])
+
+        // a link inside a label
+        const inLabel = (await frame.locator('a', { hasText: 'label link' }).first().boundingBox())!
+        await page.mouse.click(inLabel.x + inLabel.width / 2, inLabel.y + inLabel.height / 2)
+        await expect
+          .poll(opened)
+          .toEqual(['https://example.com/e2e-link', 'https://example.org/label-link'])
+
+        // a page link moves to its page; nothing is opened, nothing changed
+        const toSecond = (await frame.locator('text=Page link').first().boundingBox())!
+        await page.mouse.click(toSecond.x + toSecond.width / 2, toSecond.y + toSecond.height / 2)
+        const pageHint = frame.locator('.geHint a').first()
+        await expect(pageHint).toHaveCount(1)
+        const ph = (await pageHint.boundingBox())!
+        await page.mouse.click(ph.x + Math.min(30, ph.width / 2), ph.y + ph.height / 2)
+        await expect.poll(currentPage).toBe('pg2')
+        expect(await opened()).toHaveLength(2)
+        expect(app.windows().filter((w) => !/^(file:|genoffice-app:)/.test(w.url()))).toEqual([])
+      })
+
+      // closed without a question; the file's bytes are as they were
+      await page.waitForTimeout(500)
+      expect(await statusText(page)).not.toContain('Unsaved')
+      const [tab] = await diagramTabs(shell)
+      await closeTab(shell, tab!.id)
+      await expect.poll(async () => (await diagramTabs(shell)).length).toBe(0)
+      expect(await messageBoxes(app), 'no close prompt after only showing pages').toEqual([])
+      expect((await readFile(path)).equals(original)).toBe(true)
+      expect((await stat(path)).mtimeMs).toBe(originalTime)
+    } finally {
+      await closeAndSaveVideo(launched, 'diagram-pages-links')
       rmSync(dir, { recursive: true, force: true })
     }
   })

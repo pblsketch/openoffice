@@ -14,7 +14,7 @@ Editor rajah membuka fail draw.io dalam satu tab. Anda boleh melukis carta alir,
 
 - Skrin penyuntingan ialah skrin draw.io seperti asalnya: menu di bahagian atas, bentuk di sebelah kiri, panel format di sebelah kanan dan tab halaman di bahagian bawah.
 - Simpan (Ctrl+S), Simpan Sebagai (Ctrl+Shift+S) dan Cetak (Ctrl+P) dikendalikan oleh GenOffice. Menukar tab dan pintasan lain untuk seluruh aplikasi terus berfungsi. Semua pintasan lain ialah milik editor itu sendiri, termasuk buat asal (Ctrl+Z).
-- **Bantuan** dalam menu editor membuka halaman ini.
+- **Bantuan** (F1) dalam menu editor membuka halaman ini.
 - Editor menggunakan bahasa GenOffice. Apabila anda menukar bahasa, editor dimulakan semula: perubahan yang belum disimpan kekal, tetapi sejarah buat asal hilang.
 - Editor mengikut tema GenOffice. Dalam tema gelap, lukisan juga dipaparkan dalam warna gelap, tetapi fail yang disimpan, PNG, PDF dan cetakan adalah sama persis seperti dalam tema cerah.
 

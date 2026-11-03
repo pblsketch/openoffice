@@ -18,13 +18,15 @@
   - `ai-attachments.ts`: AI 창의 첨부(`diagram:files-*`: 고르기, 끌어다 놓기·붙여넣기, 클립보드 그림, 글 읽기, 그림 읽기)와 이름 없는 다이어그램의 임시 이름(`diagram:provisional-title`, 첫 요청의 첫 줄). 마인드맵 편집기의 것과 같은 규칙이다(형식 목록은 `packages/file-parse`, 바뀐 채 열린 파일은 읽지 않음, 한 번에 48,000자). `registerDiagramAiIpc`는 `createDiagramView`가 부르는 등록 함수 안에서 불리고 두 번째 호출은 아무것도 하지 않는다. 파일이 있거나 가져온 파일로 만든 탭에는 임시 이름을 붙이지 않는다.
 - preload(`src/preload/index.ts`): 편집기 화면에만 `window.diagramApi`(편집기 창구와 AI 창의 다리: 첨부, 공용 `ai:*`·구독 창구 부르기, 창 설정)와 셸 공용 다리(화면 나누기, 프로젝트 폴더, 끌어다 놓기, 대화 기록 `projectApi`, 드라이브, 인터넷 도구 스위치, 사용자 MCP, 사용자 스킬, 문서 붙이기)를 연다. draw.io 틀에는 아무것도 주지 않는다.
 - 다리 스크립트(`src/bridge/`, 빌드 결과 `out/bridge/bridge.js`): draw.io 틀 안에서 도는 우리 스크립트 하나.
-  - `bridge.ts`: draw.io보다 먼저 돌며 `DRAWIO_CONFIG`를 고정하고(draw.io의 PreConfig가 덮지 못하게), 로고·draw.io 사이트 링크·도움말 아이콘을 숨기고, `App.main`을 잡아 편집기 객체를 얻는다. 그 뒤 화면에서 뺄 동작을 숨기고, 앱이 대신할 동작(도움말, 인쇄, PNG·SVG·PDF 내보내기, 저장)을 앱으로 보내고, Ctrl+S·Ctrl+Shift+S·Ctrl+P를 앱으로 보내고, 사람이 누른 링크만 앱으로 보내고, 되돌리기 기록으로 바뀜 여부를 알리고, 앱의 요청(쪽 XML, 선택, 기본 변경 적용, Visio 가져오기, 어두운 보기, 압축, 쪽 그림, 메뉴 동작)에 답한다.
+  - `bridge.ts`: draw.io보다 먼저 돌며 `DRAWIO_CONFIG`를 고정하고(draw.io의 PreConfig가 덮지 못하게), 로고·draw.io 사이트 링크·도움말 아이콘을 숨기고, `App.main`을 잡아 편집기 객체를 얻는다. 그 뒤 화면에서 뺄 동작을 숨기고, 앱이 대신할 동작(도움말, 인쇄, PNG·SVG·PDF 내보내기, 저장)을 앱으로 보내고, draw.io의 도움말 메뉴에 앱 도움말과 단축키 그림(draw.io 대화상자 안)을 두고, Ctrl+S·Ctrl+Shift+S·Ctrl+P와 F1(도움말)을 앱으로 보내고, 사람이 누른 링크만 앱으로 보내고, 되돌리기 기록으로 바뀜 여부를 알리고, 앱의 요청(쪽 XML, 선택, 기본 변경 적용, Visio 가져오기, 어두운 보기, 압축, 쪽 그림, 메뉴 동작)에 답한다.
   - `apply-primitives.ts`: 기본 변경(`DiagramPrimitive`)을 살아 있는 다이어그램에 **되돌리기 한 번**으로 넣는 규칙. 먼저 전부 검사하고, `beginUpdate()`/`endUpdate()` 한 번 안에서 넣고, 다른 쪽의 셀은 그 안에서 쪽을 바꿔(draw.io의 `SelectPage`) 고친 뒤 원래 쪽으로 돌아온다. draw.io가 도중에 실패하면 그 단계를 되돌리고 기록에서 지운다.
     AI 도구 호출 하나는 단계 목록(`applyStepsLive`)이다. 기본 변경 묶음과 변환된 Mermaid 그림(`kind: 'mermaid'`)을 차례로, 같은 검사 규칙과 **같은 한 번의 편집** 안에서 넣는다. 그림이 아무것도 더하지 않거나 draw.io가 도중에 실패하면 호출 전체를 되돌린다.
   - `mermaid.ts`: draw.io 자신의 Mermaid 변환기(`EditorUi.parseMermaidDiagram`, draw.io의 삽입 › Mermaid와 같은 그룹 감싸기)로 바꾸기만 한다(다이어그램은 바뀌지 않는다). 지금 기본값이 웹 글꼴을 쓰면(Mermaid 12의 redux 테마) 버전 없이(Mermaid 11 기본값) 바꿔 바깥 글꼴 주소가 그림에 들어가지 않게 한다. 변환기가 거절하면 그 까닭 그대로 실패한다.
   - `visio.ts`: draw.io 자신의 Visio 가져오기(`EditorUi.importVisio`, 그 안의 `mxVsdxCodec`)로 `.vsdx` 바이트를 draw.io XML로 바꾸기만 한다(화면의 다이어그램은 바뀌지 않는다). 가져오기에는 늘 `.vsdx` 이름(`drawing.vsdx`)을 주어 draw.io가 옛 형식(`.vsd`·`.vdx`·`.vss`…)의 다른 변환 경로를 타지 않게 한다. draw.io는 압축된 쪽을 내므로 쪽을 풀어(`Graph.decompress`) 돌려주고, 바꾸지 못한 그림 수(`shared/visio-pictures.ts`)를 함께 센다.
   - `libavoid-guard.ts`: 묶음에 libavoid 경로 계산 핵심(`AvoidRouting`)이 없는 동안 draw.io의 실시간 자동 경로(`LibavoidRouting.installAutoRouting`)를 설치하지 않게 막는다. 설치되면 도형을 옮길 때마다 없는 핵심을 불러 "AvoidRouting is not defined"로 실패했다(도형 끌기, 가져오기, Mermaid 넣기 모두).
   - `drawio-adapter.ts`: 위 규칙을 draw.io의 객체(`EditorUi`, 모델, 쪽, 되돌리기 관리자)에 잇는다. 편집 중에 쪽을 바꿀 때는 떠나는 쪽을 "바뀜"으로 표시해 그 쪽의 저장 XML을 다시 받게 한다(draw.io는 화면의 쪽만 다시 받으므로, 표시하지 않으면 다른 쪽에 넣은 셀이 저장에서 빠진다). Mermaid 그림은 draw.io의 `importXml`로 넣는다(잘라 맞추기, 변환된 다이어그램의 선 스타일, 오류는 던지기). `shortcuts.ts`: 앱이 가져가는 단축키.
+  - `dirty.ts`: 바뀜 표시가 셈하는 단계. draw.io가 보기만 바꾼 단계(`ignoreEdit`, 쪽 바꾸기)는 되돌리기 기록에 있어도 셈하지 않는다. 쪽만 바꾼 다이어그램은 바뀌지 않았고, 저장해도 쓰지 않는다.
+  - `link-clicks.ts`: 사람이 누른 링크(도형 아래 링크, 글 안의 링크, 대화상자의 링크)를 틀이 따라가지 못하게 막고 `http:`·`https:`·`mailto:`만 앱에 넘긴다. 한 번 누름이 draw.io의 `openLink`와 클릭으로 두 번 와도 한 번만 넘긴다.
 - 공용(`src/shared/`): 창구 표와 자료 모양(`ipc.ts`), 형식별 저장 판단(`formats.ts`), 틀과 다리 사이 메시지와 출처 확인(`bridge-protocol.ts`), draw.io 시작 인자·설정·숨길 목록(`drawio-start.ts`), 열 때 알림 세기(`notices.ts`), Visio 가져오기에서 그려지지 않는 그림 세기(`visio-pictures.ts`), 링크 규칙(`links.ts`).
 - 화면(`src/renderer/`)
   - `headless.ts`: 창 없는 일의 화면(`?headless=1`). 편집기 대신 draw.io 틀만 띄워 일 하나(`runHeadlessJob`)를 하고 보고한다. 저장·자동 저장·복구 사본·AI는 없다. `document/page-pictures.ts`: 쪽 그림(PNG, SVG 파일 머리, PDF용 밝은 SVG)을 `App.tsx`와 함께 쓴다.
@@ -59,7 +61,7 @@
 - **열지 못한 파일에는 쓰지 않는다.** 경로가 저장 대상이 되는 것은 뒷단이 그 바이트를 다이어그램으로 연 뒤다. 렌더러가 보낸 바이트도 대상 형식으로 열려야 쓴다. 가져온 `.vsdx`에는 쓰지 않는다.
 - **Visio 가져오기는 이 PC 안에서만 한다.** draw.io의 가져오기가 `.vsdx`를 직접 읽고 EMF 그림도 PC 안에서 바꾼다(`emfToSvg`). 바깥 서버로 그림을 바꾸러 가는 경로는 없고, 옛 형식 경로는 `.vsdx` 이름으로 막는다. 바꾸지 못한 그림(WMF, draw.io가 거절한 EMF, 형식이 맞지 않는 그림)은 그대로 두고 수만 알린다. 옛 `.vsd`·`.vss`는 열지 않는다(뒷단이 "열 수 없는 파일"로 거절).
 - **저장은 draw.io의 직렬화 그대로다.** `.drawio`·`.dio`는 `xml`, `.drawio.svg`는 `xmlsvg`(테마와 상관없게 `theme: 'auto'`), `.drawio.png`는 `xmlpng`(웹판처럼 첫 쪽 그림). 쪽 압축은 연 파일을 따르고 새 다이어그램은 압축하지 않는다.
-- **PNG·PDF·인쇄는 앱 테마와 상관없이 같다.** PNG는 다리가 `light`로 그리고, PDF·인쇄는 `light` SVG와 흰 바탕으로 만든다. 어두운 보기는 화면에서만이다(결정 0103의 "화면 색" 예외).
+- **PNG·SVG·PDF·인쇄는 앱 테마와 상관없이 같다.** PNG는 다리가 `light`로 그리고, SVG 내보내기는 `light` SVG(draw.io의 `light-dark()` 색 없음), PDF·인쇄는 `light` SVG와 흰 바탕으로 만든다. `.drawio.svg` 저장만 draw.io의 `auto` 직렬화다. 어두운 보기는 화면에서만이다(결정 0103의 "화면 색" 예외).
 - **링크는 사람이 누른 것만, `http:`·`https:`·`mailto:`만 연다.** 다리는 사용자 동작이 있을 때만 앱에 넘기고, 뒷단이 `openableLink`로 다시 확인한 뒤 기본 브라우저로 연다. draw.io 화면의 일반 링크는 틀을 떠나지 못하게 막는다.
 - **창구 이름은 `diagram:`으로 시작한다.** `src/shared/ipc.ts`에 있는 이름만 쓴다. 공용 `ai:*`와 구독 창구는 등록하지 않는다.
 - **AI 도구 호출 하나는 되돌리기 한 번이고, 하나라도 거절되면 아무것도 바뀌지 않는다.** 기본 변경과 Mermaid 그림을 다리 요청 한 번(`applyBatch`)으로 보내고, 다리는 모델 편집 한 번 안에서 넣는다. 연산 묶음을 여러 요청으로 나누지 않는다.

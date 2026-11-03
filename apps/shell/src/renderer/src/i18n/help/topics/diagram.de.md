@@ -14,7 +14,7 @@ Der Diagramm-Editor öffnet draw.io-Dateien in einem Tab. Sie zeichnen darin Flu
 
 - Die Bearbeitungsansicht ist die unveränderte draw.io-Oberfläche: oben die Menüs, links die Formen, rechts der Formatbereich und unten die Seiten-Tabs.
 - Speichern (Ctrl+S), Speichern unter (Ctrl+Shift+S) und Drucken (Ctrl+P) übernimmt GenOffice. Das Wechseln zwischen Tabs und die übrigen app-weiten Tastenkürzel funktionieren weiter. Alle anderen Tastenkürzel gehören dem Editor selbst, auch Rückgängig (Ctrl+Z).
-- **Hilfe** in den Menüs des Editors öffnet diese Seite.
+- **Hilfe** (F1) in den Menüs des Editors öffnet diese Seite.
 - Der Editor verwendet die Sprache von GenOffice. Wenn Sie die Sprache wechseln, startet der Editor neu: Ungespeicherte Änderungen bleiben erhalten, der Rückgängig-Verlauf geht aber verloren.
 - Der Editor folgt dem Design von GenOffice. Im dunklen Design erscheint auch die Zeichnung in dunklen Farben, die gespeicherte Datei, PNG, PDF und Ausdrucke sind aber genau dieselben wie im hellen Design.
 

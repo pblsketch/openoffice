@@ -17,15 +17,15 @@ export const nl = {
   importVisioUnreadable: 'Het bestand is beschadigd of is geen Visio-tekening.',
   importVisioNoPages: "De Visio-tekening bevat geen pagina's.",
   failEditor: 'De diagrameditor kon niet worden gestart.',
-  noticeRemotePictures: '{count} afbeeldingen van internet worden niet getoond.',
+  noticeRemotePictures: 'Niet getoonde afbeeldingen van internet: {count}.',
   noticeRemoteFonts:
-    '{count} lettertypen van internet worden niet geladen; de lettertypen van deze computer worden gebruikt.',
+    'Niet geladen lettertypen van internet (de lettertypen van deze computer worden gebruikt): {count}.',
   noticePlantUml:
-    '{count} PlantUML-vormen worden als hun opgeslagen afbeelding getoond; de bron kan niet worden bewerkt.',
+    'PlantUML-vormen die als opgeslagen afbeelding worden getoond en waarvan de bron niet kan worden bewerkt: {count}.',
   noticeLibavoid:
-    '{count} verbindingslijnen die obstakels ontwijken, worden met de gewone route getekend.',
-  noticeElk: '{count} automatische indelingen (ELK) zijn hier niet beschikbaar.',
-  noticeVisioPictures: '{count} Visio-afbeeldingen konden niet worden omgezet.',
+    'Verbindingslijnen die obstakels ontwijken en met de gewone route worden getekend: {count}.',
+  noticeElk: 'Hier niet beschikbare automatische indelingen (ELK): {count}.',
+  noticeVisioPictures: 'Niet omgezette Visio-afbeeldingen: {count}.',
   noticeClose: 'Sluiten',
   statusSaved: 'Opgeslagen',
   statusSaving: 'Opslaan…',
@@ -55,7 +55,7 @@ export const nl = {
   closeUnsavedDetail: 'Wilt u ze opslaan voordat u sluit?',
   btnSave: 'Opslaan',
   btnDontSave: 'Niet opslaan',
-  exportReplaceMsg: 'Er bestaan al {count} bestanden met deze namen.',
+  exportReplaceMsg: 'Al bestaande bestanden met deze namen: {count}.',
   exportReplaceDetail: 'Wilt u ze vervangen?',
   btnReplace: 'Vervangen',
 } satisfies Record<keyof typeof zh, string>

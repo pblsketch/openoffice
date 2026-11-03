@@ -79,6 +79,15 @@ export function buildPrintHtml(pages: readonly PrintPage[], title = ''): string 
   ].join('\n')
 }
 
+/**
+ * Whether a print that did not happen was the person closing the print
+ * dialog. Electron reports that as `cancelled` (older releases: `Print job
+ * canceled`); a cancel is not a failure and shows nothing.
+ */
+export function isPrintCancel(failureReason: unknown): boolean {
+  return typeof failureReason === 'string' && /cancel/i.test(failureReason)
+}
+
 /** Documents waiting to be shown once, by token. */
 const documents = new Map<string, string>()
 

@@ -14,7 +14,7 @@ L’éditeur de diagrammes ouvre les fichiers draw.io dans un onglet. Vous y des
 
 - L’écran de modification est celui de draw.io, sans changement : les menus en haut, les formes à gauche, le panneau de format à droite et les onglets de pages en bas.
 - Enregistrer (Ctrl+S), Enregistrer sous (Ctrl+Shift+S) et Imprimer (Ctrl+P) sont pris en charge par GenOffice. Le changement d’onglet et les autres raccourcis de l’application continuent de fonctionner. Tous les autres raccourcis appartiennent à l’éditeur, y compris l’annulation (Ctrl+Z).
-- **Aide**, dans les menus de l’éditeur, ouvre cette page.
+- **Aide** (F1), dans les menus de l’éditeur, ouvre cette page.
 - L’éditeur suit la langue de GenOffice. Quand vous changez de langue, l’éditeur redémarre : les modifications non enregistrées sont gardées, mais l’historique d’annulation est perdu.
 - L’éditeur suit le thème de GenOffice. Avec le thème sombre, le dessin s’affiche lui aussi en couleurs sombres, mais le fichier enregistré, les PNG, les PDF et les impressions sont identiques à ceux du thème clair.
 

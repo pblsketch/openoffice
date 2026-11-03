@@ -35,10 +35,12 @@ import {
 } from '../shared/bridge-protocol'
 import { DRAWIO_CONFIG, HIDDEN_ACTIONS, HIDE_CSS, REDIRECTED_ACTIONS } from '../shared/drawio-start'
 import { applyPrimitivesLive, applyStepsLive } from './apply-primitives'
+import { lastContentEdit } from './dirty'
 import { liveDiagram, readPageXmls, type DrawioUi } from './drawio-adapter'
+import { clickedLinkUrl, createLinkGate, isInPageHref } from './link-clicks'
 import { guardAutoRouting } from './libavoid-guard'
 import { convertMermaid } from './mermaid'
-import { isAppShortcut } from './shortcuts'
+import { isAppShortcut, isHelpKey } from './shortcuts'
 import { importVisio } from './visio'
 
 declare const mxEvent: any
@@ -46,6 +48,7 @@ declare const mxUtils: any
 declare const mxConstants: any
 declare const Graph: any
 declare const Editor: any
+declare const mxResources: any
 
 const w = window as any
 const hostOrigin: string = (() => {
@@ -59,6 +62,12 @@ const hostOrigin: string = (() => {
 function emit(event: BridgeEvent): void {
   if (!hostOrigin || window.parent === window) return
   window.parent.postMessage({ ieum: 1, kind: 'event', ...event }, hostOrigin)
+}
+
+/** One click, one link handed to the host, whichever way the click reached us. */
+const linkGate = createLinkGate()
+function handOverLink(url: string): void {
+  if (linkGate(url)) emit({ name: 'openLink', url })
 }
 
 // ---- before draw.io loads ----
@@ -98,9 +107,8 @@ function patchDrawio(): void {
   Graph.prototype.openLink = function (href: unknown): null {
     const url = typeof Graph.sanitizeLink === 'function' ? Graph.sanitizeLink(href) : href
     const clicked = (navigator as any).userActivation?.isActive === true
-    if (clicked && typeof url === 'string' && /^(https?:|mailto:)/i.test(url)) {
-      emit({ name: 'openLink', url })
-    }
+    const target = clicked && typeof url === 'string' ? clickedLinkUrl(url, location.href) : null
+    if (target) handOverLink(target)
     return null
   }
 }
@@ -155,8 +163,13 @@ function topEdit(): unknown {
   return manager.history[manager.indexOfNextAdd - 1] ?? null
 }
 
+/** The step that stands for the content: view-only steps (showing another page) are skipped. */
+function contentTop(): unknown {
+  return lastContentEdit(ui?.editor?.undoManager)
+}
+
 function reportDirty(): void {
-  const dirty = forcedDirty || topEdit() !== savedTop
+  const dirty = forcedDirty || contentTop() !== savedTop
   if (dirty !== lastDirty) {
     lastDirty = dirty
     emit({ name: 'dirty', dirty })
@@ -165,7 +178,7 @@ function reportDirty(): void {
 
 function reportChange(): void {
   revision++
-  topAtRevision.set(revision, topEdit())
+  topAtRevision.set(revision, contentTop())
   if (topAtRevision.size > 200) topAtRevision.delete(topAtRevision.keys().next().value as number)
   emit({ name: 'changed', revision })
   reportDirty()
@@ -193,6 +206,7 @@ function attach(made: DrawioUi): void {
     action.funct = () => emit({ name: 'command', command })
     action.isEnabled = () => true
   }
+  showHelpInHelpMenu(ui)
   const manager = ui.editor.undoManager
   for (const name of [mxEvent.ADD, mxEvent.UNDO, mxEvent.REDO, mxEvent.CLEAR]) {
     manager.addListener(name, reportChange)
@@ -205,10 +219,44 @@ function attach(made: DrawioUi): void {
   emit({ name: 'ready' })
 }
 
-// A plain link in draw.io's own screens (a dialog, a label) never takes the
-// frame away from draw.io: the click is stopped here. Outside the drawing, a
-// web link a person clicked goes to the host like a shape link; inside the
-// drawing draw.io's own link handling (openLink above) does that.
+/**
+ * draw.io's Help menu offline holds only its keyboard shortcuts and "about"
+ * (hidden): it gets the app's help first. Its keyboard shortcuts picture,
+ * which draw.io would open as a new window (refused), is shown in a draw.io
+ * dialog instead, as draw.io's desktop app does.
+ */
+function showHelpInHelpMenu(made: DrawioUi): void {
+  const shortcuts = made.actions.get('keyboardShortcuts')
+  if (shortcuts) {
+    shortcuts.funct = () => {
+      const ratio = 1165 / 1427
+      let width = Math.max(200, Math.min(1427, window.innerWidth - 120))
+      let height = Math.round(width * ratio)
+      const room = Math.max(150, window.innerHeight - 120)
+      if (height > room) {
+        height = room
+        width = Math.round(height / ratio)
+      }
+      const picture = document.createElement('img')
+      picture.setAttribute('src', 'shortcuts.svg')
+      picture.setAttribute('alt', String(mxResources.get('keyboardShortcuts')))
+      picture.style.display = 'block'
+      picture.style.width = `${width}px`
+      picture.style.height = `${height}px`
+      made.showDialog(picture, width, height, true, true, null, true)
+    }
+  }
+  const menu = made.menus?.get?.('help')
+  if (menu) {
+    menu.funct = (popup: unknown, parent: unknown) =>
+      made.menus.addMenuItems(popup, ['help', 'keyboardShortcuts'], parent)
+  }
+}
+
+// No link click takes the frame away from draw.io: every one is stopped
+// here. A web or mail link a person clicked (under a shape, in a label, in a
+// dialog) goes to the host, which opens it in the browser. draw.io's own
+// handling of its custom links (a page link, an action) still runs.
 document.addEventListener(
   'click',
   (event) => {
@@ -216,28 +264,25 @@ document.addEventListener(
     const anchor = target?.closest('a[href]') as HTMLAnchorElement | null
     if (!anchor) return
     const href = anchor.getAttribute('href') ?? ''
-    if (href === '' || href.startsWith('#') || /^javascript:/i.test(href)) return
-    let url: URL
-    try {
-      url = new URL(href, location.href)
-    } catch {
-      event.preventDefault()
-      return
-    }
-    if (url.origin === location.origin && url.pathname === location.pathname) return
+    if (isInPageHref(href, location.href)) return
     event.preventDefault()
-    const inDrawing = anchor.closest('.geDiagramContainer') !== null
-    if (!inDrawing && event.isTrusted && /^(https?:|mailto:)$/.test(url.protocol)) {
-      emit({ name: 'openLink', url: url.href })
-    }
+    const url = event.isTrusted ? clickedLinkUrl(href, location.href) : null
+    if (url) handOverLink(url)
   },
   true,
 )
 
-// The app's own shortcuts work while draw.io has the keyboard; draw.io keeps the rest.
+// The app's own shortcuts work while draw.io has the keyboard; draw.io keeps
+// the rest. F1 opens the app's help on the diagram page, like draw.io's Help.
 window.addEventListener(
   'keydown',
   (event) => {
+    if (isHelpKey(event)) {
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      emit({ name: 'command', command: 'help' })
+      return
+    }
     const key = isAppShortcut(event)
     if (!key) return
     event.preventDefault()
@@ -367,8 +412,7 @@ function pagePng(pageId: string): Promise<BridgeOps['pagePng']['reply']> {
           // light colors whatever the app's theme: PNG and PDF are the same in both
           ui.editor.exportToCanvas(
             (canvas: HTMLCanvasElement) => {
-              const url = canvas.toDataURL('image/png')
-              resolve({ base64: url.slice(url.indexOf(',') + 1) })
+              canvasPngBytes(canvas).then((bytes) => resolve({ bytes }), reject)
             },
             null,
             null,
@@ -391,6 +435,32 @@ function pagePng(pageId: string): Promise<BridgeOps['pagePng']['reply']> {
         }
       }),
   )
+}
+
+/**
+ * The PNG file of a canvas, then the canvas's pixels let go at once: a large
+ * page is hundreds of megabytes of pixels that would otherwise wait for the
+ * garbage collector. No base64 text on the way.
+ */
+async function canvasPngBytes(canvas: HTMLCanvasElement): Promise<Uint8Array> {
+  try {
+    const blob = await new Promise<Blob | null>((done) => canvas.toBlob(done, 'image/png'))
+    if (!blob) throw new Error('the page could not be drawn as PNG')
+    return new Uint8Array(await blob.arrayBuffer())
+  } finally {
+    canvas.width = 0
+    canvas.height = 0
+  }
+}
+
+/** The buffers a reply hands over instead of copying (the bytes of a picture). */
+function transferablesOf(value: unknown): Transferable[] {
+  const bytes = (value as { bytes?: unknown } | null)?.bytes
+  return bytes instanceof Uint8Array &&
+    bytes.byteOffset === 0 &&
+    bytes.buffer instanceof ArrayBuffer
+    ? [bytes.buffer]
+    : []
 }
 
 function pageInfo(): BridgeOps['pageInfo']['reply'] {
@@ -448,7 +518,8 @@ async function answer(request: BridgeRequestMessage): Promise<unknown> {
       return {}
     case 'markSaved': {
       const at = typeof args.revision === 'number' ? args.revision : revision
-      savedTop = at === revision ? topEdit() : topAtRevision.has(at) ? topAtRevision.get(at) : STALE
+      savedTop =
+        at === revision ? contentTop() : topAtRevision.has(at) ? topAtRevision.get(at) : STALE
       forcedDirty = false
       reportDirty()
       return {}
@@ -477,7 +548,11 @@ window.addEventListener('message', (event) => {
   const message = parseBridgeMessage(event.data)
   if (!message || message.kind !== 'request') return
   const reply = (body: { ok: true; value: unknown } | { ok: false; error: string }): void =>
-    window.parent.postMessage({ ieum: 1, kind: 'reply', id: message.id, ...body }, hostOrigin)
+    window.parent.postMessage(
+      { ieum: 1, kind: 'reply', id: message.id, ...body },
+      hostOrigin,
+      body.ok ? transferablesOf(body.value) : [],
+    )
   answer(message).then(
     (value) => reply({ ok: true, value }),
     (err: unknown) => reply({ ok: false, error: err instanceof Error ? err.message : String(err) }),
