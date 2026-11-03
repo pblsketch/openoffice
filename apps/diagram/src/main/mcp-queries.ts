@@ -18,6 +18,7 @@
 import { randomUUID } from 'node:crypto'
 import { ipcMain } from 'electron'
 import type { WebContents } from 'electron'
+import type { DiagramReadResult } from '@genoffice/drawio-model'
 import {
   DIAGRAM_CHANNELS,
   type DiagramApplyReply,
@@ -57,13 +58,36 @@ function listen(): void {
 
 const GONE = 'the diagram is no longer open'
 
+/**
+ * One page read: the table as text (`content` of the tools) and as values
+ * (`pages`, `page`; the same rows, for the in-app MCP server's object).
+ */
+export interface DiagramPageRead {
+  text: string
+  pages?: DiagramReadResult['pages']
+  page?: DiagramReadResult['page']
+}
+
+/** The renderer's one-page table, when it is shaped like one. */
+function pageTableOf(read: unknown): DiagramReadResult | undefined {
+  if (!read || typeof read !== 'object') return undefined
+  const { pages, page } = read as { pages?: unknown; page?: unknown }
+  if (!Array.isArray(pages) || !page || typeof page !== 'object') return undefined
+  const { shapes, edges } = page as { shapes?: unknown; edges?: unknown }
+  if (!Array.isArray(shapes) || !Array.isArray(edges)) return undefined
+  return read as DiagramReadResult
+}
+
 /** Ask for the read table, sending again until the renderer answers. */
-function askRead(contents: WebContents, scope: Omit<DiagramReadQuery, 'id'>): Promise<string> {
+function askRead(
+  contents: WebContents,
+  scope: Omit<DiagramReadQuery, 'id'>,
+): Promise<DiagramPageRead> {
   if (contents.isDestroyed()) return Promise.reject(new Error(GONE))
   listen()
   const wcId = contents.id
   const query: DiagramReadQuery = { id: randomUUID(), ...scope }
-  return new Promise<string>((resolve, reject) => {
+  return new Promise<DiagramPageRead>((resolve, reject) => {
     let settled = false
     const finish = (done: () => void): void => {
       if (settled) return
@@ -90,7 +114,8 @@ function askRead(contents: WebContents, scope: Omit<DiagramReadQuery, 'id'>): Pr
         const reply = raw as DiagramReadReply
         if ('text' in reply && typeof reply.text === 'string') {
           const text = reply.text
-          finish(() => resolve(text))
+          const table = pageTableOf(reply.read)
+          finish(() => resolve(table ? { text, pages: table.pages, page: table.page } : { text }))
         } else if ('error' in reply) {
           const error = String(reply.error)
           finish(() => reject(new Error(error)))
@@ -102,15 +127,16 @@ function askRead(contents: WebContents, scope: Omit<DiagramReadQuery, 'id'>): Pr
 }
 
 /** Every page as the read table text, unsaved edits included (the `read` of an open document). */
-export function diagramReadText(contents: WebContents): Promise<string> {
-  return askRead(contents, {})
+export async function diagramReadText(contents: WebContents): Promise<string> {
+  return (await askRead(contents, {})).text
 }
 
 /**
- * One page as the read table text with the page list: `page` by id or name, or
- * the page on screen (with the ids selected there) when it is left out.
+ * One page as the read table, text and values, with the page list: `page` by
+ * id or name, or the page on screen (with the ids selected there) when it is
+ * left out.
  */
-export function diagramReadPage(contents: WebContents, page?: string): Promise<string> {
+export function diagramReadPage(contents: WebContents, page?: string): Promise<DiagramPageRead> {
   return askRead(contents, page ? { page } : { current: true })
 }
 

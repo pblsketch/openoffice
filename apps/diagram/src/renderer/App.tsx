@@ -578,11 +578,11 @@ export default function App({ initialTheme }: { initialTheme: UiTheme }) {
         named || query.current === true
           ? liveDiagramRead(client, named ? query.page : undefined).then((page) => {
               if (!page.ok) throw new Error(page.error)
-              return page.text
+              return { text: page.text, read: page.read }
             })
-          : liveDiagramText(client)
+          : liveDiagramText(client).then((text) => ({ text }))
       read
-        .then((text) => api.sendReadResult({ id: query.id, text }))
+        .then((answer) => api.sendReadResult({ id: query.id, ...answer }))
         .catch((err: unknown) =>
           api.sendReadResult({
             id: query.id,

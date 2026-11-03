@@ -109,7 +109,7 @@ describe('without the app', () => {
         asked = true
         return []
       },
-      read: async () => '',
+      read: async () => ({ text: '' }),
       apply: async () => ({}),
     }
     const [, apply] = createDiagramTools({ control })

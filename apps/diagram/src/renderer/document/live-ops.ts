@@ -20,6 +20,7 @@ import {
   type DiagramBatchResult,
   type DiagramOpResult,
   type DiagramPrimitive,
+  type DiagramReadResult,
   type DiagramState,
   type MermaidConverter,
 } from '@genoffice/drawio-model'
@@ -53,7 +54,8 @@ export async function liveDiagramText(frame: DrawioFrame): Promise<string> {
 }
 
 export type LivePageRead =
-  { ok: true; text: string; pageId: string; pageName: string } | { ok: false; error: string }
+  | { ok: true; text: string; pageId: string; pageName: string; read: DiagramReadResult }
+  | { ok: false; error: string }
 
 /**
  * One page as the read table text: the page on screen when `page` is left
@@ -72,6 +74,7 @@ export async function liveDiagramRead(frame: DrawioFrame, page?: string): Promis
     text: formatDiagramRead(read),
     pageId: read.page.id,
     pageName: read.page.name,
+    read,
   }
 }
 

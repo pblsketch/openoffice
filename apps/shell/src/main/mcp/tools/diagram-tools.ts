@@ -2,6 +2,7 @@ import { PRODUCT_NAME } from '@genoffice/i18n'
 import {
   DIAGRAM_OPS,
   type DiagramOpDefinition,
+  type DiagramReadResult,
   type OpPropertySchema,
 } from '@genoffice/drawio-model'
 import { z } from 'zod'
@@ -32,14 +33,26 @@ export interface DiagramControl {
    * focused window, which is in front of the shell's active tab.
    */
   isDetached?: (tabId: string) => boolean
-  /** one page's read table text with the page list; the page on screen when `page` is left out */
-  read: (tab: OpenDocumentTab, page?: string) => Promise<string>
+  /** one page's read table with the page list; the page on screen when `page` is left out */
+  read: (tab: OpenDocumentTab, page?: string) => Promise<DiagramPageReadAnswer>
   /**
    * Plan and apply `ops` as one undo step, all or nothing; resolves with the
    * editor's result (the outcome of every op, the ids created), a refused
    * plan included.
    */
   apply: (tab: OpenDocumentTab, ops: unknown[]) => Promise<unknown>
+}
+
+/**
+ * One page read: the table as text, and the same rows as values (spec 8.1:
+ * `pages` with the page on screen marked `current`, and `page` with its
+ * shapes, edges and the ids selected there). The values may be missing from
+ * an older editor build; the text is always there.
+ */
+export interface DiagramPageReadAnswer {
+  text: string
+  pages?: DiagramReadResult['pages']
+  page?: DiagramReadResult['page']
 }
 
 export interface DiagramToolsDeps {
@@ -238,7 +251,10 @@ export function createDiagramTools(deps: DiagramToolsDeps): McpToolDefinition[] 
       description:
         `Read an open diagram. ${READ_OP.description} ` +
         'Without page: the page on screen, with the ids the user has selected there. ' +
-        'Unsaved edits are included. Without document: the diagram in front.',
+        'Unsaved edits are included. Without document: the diagram in front. ' +
+        'The result has the table as text (content) and as values: pages [{id, name, current?}] and ' +
+        'page {id, name, shapes [{id, label, shape, x, y, width, height, parent?, fill?, stroke?}], ' +
+        'edges [{id, label, source, target, parent?}], selected?}.',
       inputSchema: {
         document: DOCUMENT_ARG,
         page: propertySchema(
@@ -251,8 +267,13 @@ export function createDiagramTools(deps: DiagramToolsDeps): McpToolDefinition[] 
         const doc = await targetDiagram(control, args.document)
         const page =
           typeof args.page === 'string' && args.page.trim() ? args.page.trim() : undefined
-        const content = await control.read(doc, page)
-        return { ...describeTarget(doc), dirty: doc.dirty, content }
+        const answer = await control.read(doc, page)
+        return {
+          ...describeTarget(doc),
+          dirty: doc.dirty,
+          content: answer.text,
+          ...(answer.pages && answer.page ? { pages: answer.pages, page: answer.page } : {}),
+        }
       },
     },
     {

@@ -12,7 +12,7 @@
  */
 import type { Lang } from '@genoffice/i18n'
 import type { AiSettings, AiStreamChunk, AiStreamRequest } from '@genoffice/ai-provider'
-import type { DiagramFormat, DiagramOpResult } from '@genoffice/drawio-model'
+import type { DiagramFormat, DiagramOpResult, DiagramReadResult } from '@genoffice/drawio-model'
 import type { AiPanelPrefs } from '@genoffice/ui'
 import type { DiagramNotices } from './notices'
 import type { DiagramSubscriptionApi } from './subscription-api'
@@ -444,7 +444,9 @@ export interface DiagramReadQuery {
   current?: boolean
 }
 
-export type DiagramReadReply = { id: string; text: string } | { id: string; error: string }
+/** `read` (one page's table as values) comes with a one-page read, for the in-app MCP server's object */
+export type DiagramReadReply =
+  { id: string; text: string; read?: DiagramReadResult } | { id: string; error: string }
 
 export interface DiagramApplyQuery {
   id: string
