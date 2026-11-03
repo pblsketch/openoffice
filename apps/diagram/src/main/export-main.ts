@@ -32,7 +32,13 @@ import type {
 import { safeFileNameBase } from '../shared/formats'
 import { tm } from './i18n-main'
 import { DIAGRAM_PARTITION, isAllowedNavigation, windowOpenAction } from './network-guard'
-import { buildPrintHtml, dropPrintDocument, holdPrintDocument, isPrintPage } from './print-document'
+import {
+  buildPrintHtml,
+  dropPrintDocument,
+  holdPrintDocument,
+  isPrintCancel,
+  isPrintPage,
+} from './print-document'
 
 function bytesOf(value: unknown): Uint8Array | null {
   if (value instanceof Uint8Array) return value
@@ -113,6 +119,10 @@ async function printWindow(pages: readonly PrintPage[], title: string): Promise<
   const token = holdPrintDocument(buildPrintHtml(pages, title))
   try {
     await win.loadURL(`${DRAWIO_ORIGIN}${BRIDGE_PREFIX}print/${token}`)
+  } catch (err) {
+    // a document that did not load leaves no hidden window behind
+    if (!win.isDestroyed()) win.destroy()
+    throw err
   } finally {
     dropPrintDocument(token)
   }
@@ -156,7 +166,7 @@ async function printPages(pages: readonly PrintPage[], title: string): Promise<P
       )
     })
     if (!result.success) {
-      if (result.failureReason === 'Print job canceled') return { ok: true, canceled: true }
+      if (isPrintCancel(result.failureReason)) return { ok: true, canceled: true }
       return { ok: false, error: result.failureReason || 'the print job failed' }
     }
     return { ok: true }
