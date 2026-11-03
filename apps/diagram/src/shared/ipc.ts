@@ -12,7 +12,7 @@
  */
 import type { Lang } from '@genoffice/i18n'
 import type { AiSettings, AiStreamChunk, AiStreamRequest } from '@genoffice/ai-provider'
-import type { DiagramFormat } from '@genoffice/drawio-model'
+import type { DiagramFormat, DiagramOpResult } from '@genoffice/drawio-model'
 import type { AiPanelPrefs } from '@genoffice/ui'
 import type { DiagramNotices } from './notices'
 import type { DiagramSubscriptionApi } from './subscription-api'
@@ -103,6 +103,12 @@ export const DIAGRAM_CHANNELS = {
   bytesRequest: 'diagram:bytes-request',
   /** renderer → main(`BytesReply`) */
   bytesResult: 'diagram:bytes-result',
+
+  // ---- a windowless job (`--headless-export`, `src/main/headless-main.ts`) ----
+  /** invoke → `DiagramHeadlessJob | null`: the job of this hidden window; null for every other view */
+  headlessJob: 'diagram:headless-job',
+  /** renderer → main(`DiagramHeadlessReport`): the job ended */
+  headlessDone: 'diagram:headless-done',
 } as const
 
 export type DiagramChannel = (typeof DIAGRAM_CHANNELS)[keyof typeof DIAGRAM_CHANNELS]
@@ -297,6 +303,46 @@ export interface PrintDiagramRequest {
 export type ExportResult =
   { ok: true; paths: string[] } | { ok: true; canceled: true } | { ok: false; error: string }
 
+// ---- a windowless job (the command line's convert, apply and create) ----
+
+/** How a windowless batch treats a rejected op (the planner's modes). */
+export type HeadlessBatchMode = 'all-or-nothing' | 'best-effort' | 'stop-on-error'
+
+/**
+ * What a hidden window does with the file it opened: `export` makes pictures
+ * or the PDF's pages (`page`: one 1-based page, else every page); `write`
+ * runs `ops` on the diagram (`page`: the 1-based page ops without `page` work
+ * on) and serializes it in `format`.
+ */
+export type DiagramHeadlessJob =
+  | { kind: 'export'; format: ExportFormat; page?: number }
+  | {
+      kind: 'write'
+      format: DiagramFormat
+      ops: unknown[]
+      page?: number
+      mode: HeadlessBatchMode
+    }
+
+/** A batch as a windowless job reports it: the planner's outcome without the diagram state. */
+export interface HeadlessBatchOutcome {
+  status: 'ok' | 'partial' | 'rejected'
+  changed: boolean
+  results: DiagramOpResult[]
+  created: string[]
+}
+
+/**
+ * The end of a windowless job. `bytes` of a `write` is null when nothing is
+ * to be written (a rejected batch, or one that changed nothing in a file of
+ * the same format).
+ */
+export type DiagramHeadlessReport =
+  | { ok: false; error: string }
+  | { ok: true; kind: 'images'; format: 'png' | 'svg'; pages: ExportPageImage[] }
+  | { ok: true; kind: 'pdf'; pages: PrintPage[] }
+  | { ok: true; kind: 'write'; bytes: Uint8Array | null; batch: HeadlessBatchOutcome | null }
+
 /** A cancelled job is the user closing the system dialog: an outcome, not a failure. */
 export type PrintResult = { ok: true } | { ok: true; canceled: true } | { ok: false; error: string }
 
@@ -467,6 +513,12 @@ export interface DiagramRecoveryApi {
   onRecoveryReset(handler: () => void): () => void
 }
 
+/** Only the hidden window of a windowless job calls these. */
+export interface DiagramHeadlessApi {
+  headlessJob(): Promise<DiagramHeadlessJob | null>
+  headlessDone(report: DiagramHeadlessReport): void
+}
+
 export interface DiagramQueryApi {
   onReadRequest(handler: (query: DiagramReadQuery) => void): () => void
   sendReadResult(reply: DiagramReadReply): void
@@ -510,6 +562,7 @@ export type DiagramApi = DiagramCoreApi &
   DiagramExportApi &
   DiagramRecoveryApi &
   DiagramQueryApi &
+  DiagramHeadlessApi &
   DiagramAiApi
 
 export type { DiagramNotices }

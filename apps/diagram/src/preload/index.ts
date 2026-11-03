@@ -31,6 +31,7 @@ import type {
   DiagramApplyQuery,
   DiagramCoreApi,
   DiagramExportApi,
+  DiagramHeadlessApi,
   DiagramMenuCommand,
   DiagramQueryApi,
   DiagramReadQuery,
@@ -106,6 +107,11 @@ const queries: DiagramQueryApi = {
   sendApplyResult: (reply) => ipcRenderer.send(DIAGRAM_CHANNELS.applyResult, reply),
   onBytesRequest: (handler) => listen<[]>(DIAGRAM_CHANNELS.bytesRequest, handler),
   sendBytesResult: (reply) => ipcRenderer.send(DIAGRAM_CHANNELS.bytesResult, reply),
+}
+
+const headless: DiagramHeadlessApi = {
+  headlessJob: () => ipcRenderer.invoke(DIAGRAM_CHANNELS.headlessJob),
+  headlessDone: (report) => ipcRenderer.send(DIAGRAM_CHANNELS.headlessDone, report),
 }
 
 // ---- the AI panel's bridge ----
@@ -185,7 +191,7 @@ const ai: DiagramAiApi = {
   readUrl: (url, offset) => ipcRenderer.invoke(AI_CHANNELS.readUrl, url, offset),
 }
 
-const api: DiagramApi = { ...core, ...exporting, ...recovery, ...queries, ...ai }
+const api: DiagramApi = { ...core, ...exporting, ...recovery, ...queries, ...headless, ...ai }
 
 /** Chat persistence: the shared project:* handlers are registered once by the shell */
 const projectApi: Pick<ProjectApi, 'resolveChat' | 'appendChat' | 'loadChat' | 'rebindChat'> = {

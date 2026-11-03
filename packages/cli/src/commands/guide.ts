@@ -14,7 +14,7 @@ import { branded } from '../names'
 import { CliError, EXIT, type CommandResult } from '../result'
 import { didYouMean } from '../suggest'
 
-const DOMAINS: readonly GuideDomain[] = ['slides', 'docs', 'sheets', 'hwp']
+const DOMAINS: readonly GuideDomain[] = ['slides', 'docs', 'sheets', 'hwp', 'diagram']
 
 /**
  * Every op reference is generated from the definition the executor validates against (the pptx-ops
@@ -26,7 +26,7 @@ export const guideCommand: CommandDef = {
   summary:
     'Print the op reference, design guides and deck templates an agent needs before writing ops or specs.',
   usage:
-    'guide <slides|docs|sheets|hwp> [group|op|design|spec] [--index] [--fingerprint] | guide slides templates [<id>]',
+    'guide <slides|docs|sheets|hwp|diagram> [group|op|design|spec] [--index] [--fingerprint] | guide slides templates [<id>]',
   options: [
     { name: 'index', description: 'one-line signature of every op instead of a group guide' },
     {
@@ -44,14 +44,14 @@ export const guideCommand: CommandDef = {
     if (!isDomain(domain)) {
       throw new CliError(
         EXIT.usage,
-        'guides available for: slides, docs, sheets, hwp',
+        'guides available for: slides, docs, sheets, hwp, diagram',
         {
           usage:
-            'ieumoffice guide slides | ieumoffice guide docs | ieumoffice guide sheets | ieumoffice guide hwp',
+            'ieumoffice guide slides | ieumoffice guide docs | ieumoffice guide sheets | ieumoffice guide hwp | ieumoffice guide diagram',
         },
         {
           reason: domain === undefined ? 'missing_argument' : 'invalid_argument',
-          suggestion: 'run `ieumoffice guide slides|docs|sheets|hwp`',
+          suggestion: 'run `ieumoffice guide slides|docs|sheets|hwp|diagram`',
         },
       )
     }
@@ -114,6 +114,11 @@ async function load(
   index: boolean,
 ): Promise<Loaded> {
   if (domain === 'sheets') return { catalog: sheetCatalog(), text: sheetGuideText }
+  if (domain === 'diagram') {
+    const { diagramCatalog } = await import('../formats/diagram')
+    const catalog = diagramCatalog()
+    return { catalog, text: (group) => diagramGuideText(catalog, group) }
+  }
   if (domain === 'hwp') {
     const { hwpCatalog } = await import('../formats/hwp-edit')
     const catalog = await hwpCatalog()
@@ -176,6 +181,17 @@ function hwpGuideText(catalog: OpCatalog, group?: string): string {
     'Hangul ops (ieumoffice hwp apply --ops, ieumoffice create --type hwp|hwpx --ops): a JSON array; every entry is { "op": "<name>", ...fields }. They are the tools the in-app AI uses on the same document, and answer with the same text.',
     'Places are found by their text: anchor / find is exact text inside one paragraph or one table cell. When it occurs more than once the op is refused with the places listed; pass occurrence (1-based, as find_text lists them). Read the document first: `ieumoffice hwp read`, or the read ops below.',
     'Nothing that would drop a table, picture, form field or memo is done: such an op is refused and the document stays as it was. The file is written in the format it was opened in (or the --out extension); an overwritten file is kept as <name>.bak.',
+    'Field notation: bare = string, n = number, bool = boolean, ? = optional, a|b = one of.',
+    '',
+    ...renderGroups(catalog, group),
+  ].join('\n')
+}
+
+function diagramGuideText(catalog: OpCatalog, group?: string): string {
+  return [
+    'Diagram ops (ieumoffice diagram apply --ops, ieumoffice create --type drawio --ops): a JSON array; every entry is { "op": "<name>", ...fields }. They are the tools the in-app AI uses on a diagram, checked by the same rules.',
+    'Shapes, edges and pages are named by the ids `ieumoffice diagram read` lists (a page also by its name). Ops without "page" work on --page, else the first page. Later ops see what earlier ones made; a new id comes back in detail.results[].created.',
+    'A batch is all or nothing by default: one rejected op leaves the file as it was. A batch of reads writes nothing. .drawio/.dio files are edited without the app and keep untouched pages byte for byte; insert_mermaid and .drawio.svg/.drawio.png need the app.',
     'Field notation: bare = string, n = number, bool = boolean, ? = optional, a|b = one of.',
     '',
     ...renderGroups(catalog, group),

@@ -33,13 +33,49 @@ On failure the JSON envelope is
 
 ## Supported inputs
 
-| extension                     | module   |
-| ----------------------------- | -------- |
-| `.docx`                       | docs     |
-| `.xlsx` `.xlsm` `.xls` `.csv` | sheets   |
-| `.pptx`                       | slides   |
-| `.md` `.markdown`             | markdown |
-| `.html` `.htm`                | html     |
+| extension                                    | module   |
+| -------------------------------------------- | -------- |
+| `.docx`                                      | docs     |
+| `.xlsx` `.xlsm` `.xls` `.csv`                | sheets   |
+| `.pptx`                                      | slides   |
+| `.md` `.markdown`                            | markdown |
+| `.html` `.htm`                               | html     |
+| `.drawio` `.dio` `.drawio.svg` `.drawio.png` | diagram  |
+
+## Diagrams
+
+Diagrams take more targets and three more switches:
+
+```
+<app binary> --headless-export <diagram> --to pdf|png|svg --out <path> [--page <n>] [--json]
+<app binary> --headless-export <diagram> --to drawio|dio|drawio.svg|drawio.png --out <path>
+             [--ops <ops.json>] [--batch all-or-nothing|best-effort|stop-on-error] [--page <n>] [--json]
+```
+
+- `pdf` is one file, one sheet per page at that page's own size, made the
+  way the export menu makes it. `png` and `svg` write one file per page,
+  `<out name>-p<n>.<ext>` beside `--out`, unless `--page` (1-based) picks one
+  page or the diagram has one page; then `--out` is the file.
+- A diagram file target runs the JSON ops of `--ops` on the diagram with the
+  AI panel's executor (Mermaid included, converted by draw.io) and writes the
+  result with draw.io's own serialization, as Save does; `--out` must end in
+  that format. `--page` is the page ops without `page` work on. A rejected
+  batch, or one that changed nothing in a file already of that format, writes
+  nothing.
+- The envelope names every file written in `output_paths` (none, one or one
+  per page), and a batch's per-op results in `detail.batch`
+  (`{ status, changed, results, created }`). A batch the planner rejected is
+  still exit 0: the job ran and wrote nothing; the caller reads the reasons.
+- The job runs in a hidden window of the diagram tab's own session, so the
+  tab's request refusal holds: nothing leaves the PC. The page opens the file
+  as saved (no recovery question) and never saves, autosaves or copies for
+  recovery; the app writes the files from the page's report and writes a
+  diagram file only when its bytes open as a diagram.
+- `--page`, `--ops` and `--batch` on any other input are bad arguments (exit 1).
+
+`ieumoffice convert <diagram> --to pdf|png|svg`, `ieumoffice diagram apply`
+(Mermaid, `.drawio.svg` / `.drawio.png`) and `ieumoffice create --type drawio`
+are the callers.
 
 ## How it works
 

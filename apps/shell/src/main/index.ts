@@ -371,6 +371,7 @@ import {
   diagramReadPage,
   diagramReadText,
 } from '../../../diagram/src/main/mcp-queries'
+import { exportDiagramHeadless } from '../../../diagram/src/main/headless-main'
 import type { DiagramMenuCommand } from '../../../diagram/src/shared/ipc'
 import type {
   AutoSaveDefault,
@@ -9359,11 +9360,13 @@ const devPidFile = () => join(app.getPath('userData'), 'dev-instance.pid')
 
 /** Hidden-window exporters, one per editor module (HEADLESS_TARGETS says which formats each takes). */
 const headlessExporters: HeadlessExporters = {
-  docs: exportDocsHeadless,
+  // the request stays with the diagram exporter: docs and html take a timeout fourth
+  docs: (input, outPath, format) => exportDocsHeadless(input, outPath, format),
   sheets: (input, outPath) => exportSheetsPdfHeadless(input, outPath),
   slides: (input, outPath) => exportSlidesPdfHeadless(input, outPath),
   markdown: (input, outPath) => exportMarkdownPdfHeadless(input, outPath),
-  html: exportHtmlHeadless,
+  html: (input, outPath, format) => exportHtmlHeadless(input, outPath, format),
+  diagram: exportDiagramHeadless,
 }
 
 /**
