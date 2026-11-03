@@ -52,7 +52,7 @@ test('says so when a document has nothing to fix', async () => {
   const launched = await launchShell({ onboardingSeen: true, videoDir: 'hwp-doc-check-clean' })
   const { page } = launched
   try {
-    await page.locator('.quick-card').nth(6).click()
+    await page.locator('.quick-card', { hasText: 'AI HWP' }).click()
     const hwp = await waitForPageWithUrl(launched.app, '://hwp/')
     await hwp.waitForSelector('.hwp-app[data-phase="ready"]', { timeout: 90_000 })
 

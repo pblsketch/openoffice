@@ -20,7 +20,7 @@ const APPS = [
   { name: 'markdown', card: 3, url: '://markdown/', host: '.editor-scroll' },
   { name: 'html', card: 4, url: '://html/', host: '.preview-stage' },
   { name: 'mindmap', card: 5, url: '://mindmap/', host: '.mm-card' },
-  { name: 'pdf', card: 7, url: '://pdf/', host: '.pdf-scroll' },
+  { name: 'pdf', card: 8, url: '://pdf/', host: '.pdf-scroll' },
 ] as const
 
 const directionOf = (page: Page, host: string) =>
