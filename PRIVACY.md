@@ -69,6 +69,20 @@ public IP address, as any website you visit does.
 Parts of a document that you marked as hidden from AI, in the editors that
 offer that marking, are withheld from the request whichever provider is used.
 
+The diagram editor (draw.io files: `.drawio`, `.dio`, `.drawio.svg`,
+`.drawio.png`, and Visio `.vsdx` files it imports) sends nothing off your PC
+by itself. The draw.io editor inside the tab runs from files shipped with the
+app, with its cloud storage, web fonts, export server, plugins and its own AI
+turned off, and the tab refuses every request that would leave the PC.
+Pictures or fonts that a diagram points to on the internet are not loaded,
+and importing a Visio file happens on your PC. When you use the diagram's AI
+panel, the provider you chose receives the diagram as a text table (the
+pages, and for each shape and connector its id, text, shape name, position
+and connections, plus the ids of the shapes you have selected), like the
+document content of any other editor. The diagram is not sent as a picture.
+The same text table is what other editors' AI panels receive when you attach
+a diagram or pick it with `@`.
+
 When a local AI server's address is not this PC or a private-network IP
 address, the Local AI card says where documents go: over `http://` it warns
 that they are sent without encryption, and for a public IP address over
@@ -446,10 +460,10 @@ Nothing in this list is uploaded by the app.
 - **Recovery copies of documents you have not saved**, so that unsaved work
   survives a crash, a power cut or the PC shutting down. While a document has
   unsaved changes, every editor (Word, Excel, PowerPoint, PDF, Markdown,
-  HTML, mind map and HWP) keeps one latest copy of it in a folder of the data
-  folder named after the editor (`docs-autosave`, `sheets-autosave`,
+  HTML, mind map, HWP and diagram) keeps one latest copy of it in a folder of
+  the data folder named after the editor (`docs-autosave`, `sheets-autosave`,
   `slides-autosave`, `pdf-autosave`, `markdown-autosave`, `html-autosave`,
-  `mindmap-autosave`, `hwp-autosave`). A copy holds what saving the document
+  `mindmap-autosave`, `hwp-autosave`, `diagram-autosave`). A copy holds what saving the document
   at that moment would have written, so it is your document content, kept as
   a plain file. Next to it is a small note with the document's file path, its
   tab title and when the copy was made. Documents you have never saved get
@@ -473,6 +487,11 @@ Nothing in this list is uploaded by the app.
   restarted to install an update, so that the tabs can come back after the app
   or the PC shuts off unexpectedly, and after an update.
   It holds no document content and is never sent anywhere.
+- **What the diagram editor's draw.io keeps for itself**: the scratchpad,
+  the shape libraries you add, recent colors and similar settings, in the
+  browser storage of the diagram tab's own profile (`Partitions/ieum-diagram`
+  in the data folder). Shapes you put in the scratchpad or a library are your
+  content, kept as plain data. They are never uploaded.
 - **The search index** of the folders you added to the home screen,
   recent-file lists and local diagnostic logs, also in the data folder.
 - **Records of which documents were made from which files**
