@@ -380,10 +380,16 @@ export type ReadUrlResult =
 
 // ---- questions from the in-app MCP server ----
 
+/**
+ * Which read table: `page` names one page (id or name); `current` asks for the
+ * page on screen with the ids selected there; neither asks for every page.
+ */
 export interface DiagramReadQuery {
   id: string
-  /** a page id or name; the page on screen when left out */
+  /** a page id or name */
   page?: string
+  /** the page on screen, when `page` is left out */
+  current?: boolean
 }
 
 export type DiagramReadReply = { id: string; text: string } | { id: string; error: string }

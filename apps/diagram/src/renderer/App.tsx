@@ -566,10 +566,11 @@ export default function App({ initialTheme }: { initialTheme: UiTheme }) {
         })
         return
       }
-      // one page when the asker names one, every page otherwise
+      // one page when the asker names one (or the page on screen), every page otherwise
+      const named = typeof query.page === 'string' && query.page !== ''
       const read =
-        typeof query.page === 'string' && query.page !== ''
-          ? liveDiagramRead(client, query.page).then((page) => {
+        named || query.current === true
+          ? liveDiagramRead(client, named ? query.page : undefined).then((page) => {
               if (!page.ok) throw new Error(page.error)
               return page.text
             })
