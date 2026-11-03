@@ -14,7 +14,7 @@ Edytor diagramów otwiera pliki draw.io na karcie. Rysujesz w nim schematy bloko
 
 - Ekran edycji to ekran draw.io w niezmienionej postaci: menu u góry, kształty po lewej, panel formatowania po prawej i karty stron na dole.
 - Zapisz (Ctrl+S), Zapisz jako (Ctrl+Shift+S) i Drukuj (Ctrl+P) obsługuje GenOffice. Przełączanie kart i pozostałe skróty całej aplikacji nadal działają. Wszystkie inne skróty należą do samego edytora, łącznie z cofaniem (Ctrl+Z).
-- Polecenie **Pomoc** w menu edytora otwiera tę stronę.
+- Polecenie **Pomoc** (F1) w menu edytora otwiera tę stronę.
 - Edytor używa języka interfejsu GenOffice. Po zmianie języka edytor uruchamia się ponownie: niezapisane zmiany zostają, ale historia cofania przepada.
 - Edytor stosuje motyw GenOffice. W ciemnym motywie rysunek też jest pokazywany w ciemnych kolorach, ale zapisany plik, PNG, PDF i wydruki są dokładnie takie same jak w jasnym motywie.
 

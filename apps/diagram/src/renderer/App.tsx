@@ -11,6 +11,7 @@ import { createDiagramFile, type DiagramFormat } from '@genoffice/drawio-model'
 import type { Lang } from '@genoffice/i18n'
 import type { BridgeEvent, DrawioMenuAction, EmbedEvent } from '../shared/bridge-protocol'
 import { drawioStartUrl } from '../shared/drawio-start'
+import { isHelpKey } from '../bridge/shortcuts'
 import { diagramBaseName, exportKindOf } from '../shared/formats'
 import type {
   DiagramImportKind,
@@ -634,10 +635,15 @@ export default function App({ initialTheme }: { initialTheme: UiTheme }) {
     }
   }, [askExport, doSave, markDirty, runPrint])
 
-  // Ctrl+S, Ctrl+Shift+S, Ctrl+P while the app's own parts have the keyboard
-  // (inside draw.io the bridge sends them)
+  // Ctrl+S, Ctrl+Shift+S, Ctrl+P and F1 (help) while the app's own parts have
+  // the keyboard (inside draw.io the bridge sends them)
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
+      if (isHelpKey(event)) {
+        event.preventDefault()
+        window.diagramApi.openHelp()
+        return
+      }
       if (!(event.ctrlKey || event.metaKey) || event.altKey) return
       const key = event.key.toLowerCase()
       if (key === 's') {

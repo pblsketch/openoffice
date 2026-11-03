@@ -14,7 +14,7 @@ De diagrameditor opent draw.io-bestanden in een tabblad. Je tekent er stroomdiag
 
 - Het bewerkingsscherm is het draw.io-scherm zoals het is: de menu's bovenaan, de vormen links, het opmaakpaneel rechts en de paginatabbladen onderaan.
 - Opslaan (Ctrl+S), Opslaan als (Ctrl+Shift+S) en Afdrukken (Ctrl+P) worden door GenOffice afgehandeld. Tussen tabbladen wisselen en de andere sneltoetsen van de hele app blijven werken. Alle andere sneltoetsen zijn die van de editor zelf, ook ongedaan maken (Ctrl+Z).
-- **Help** in de menu's van de editor opent deze pagina.
+- **Help** (F1) in de menu's van de editor opent deze pagina.
 - De editor gebruikt de taal van GenOffice. Wijzig je de taal, dan start de editor opnieuw: niet-opgeslagen wijzigingen blijven bewaard, maar de geschiedenis voor ongedaan maken gaat verloren.
 - De editor volgt het thema van GenOffice. In het donkere thema wordt de tekening ook in donkere kleuren getoond, maar het opgeslagen bestand, PNG, PDF en afdrukken zijn precies hetzelfde als in het lichte thema.
 

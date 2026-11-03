@@ -14,7 +14,7 @@ Editor diagramů otevírá soubory draw.io na kartě. Kreslíte v něm vývojov�
 
 - Obrazovka úprav je obrazovka draw.io beze změn: nabídky nahoře, tvary vlevo, panel formátu vpravo a karty stránek dole.
 - Uložit (Ctrl+S), Uložit jako (Ctrl+Shift+S) a Tisk (Ctrl+P) obstarává GenOffice. Přepínání karet a další zkratky celé aplikace dál fungují. Všechny ostatní zkratky patří samotnému editoru, včetně vrácení zpět (Ctrl+Z).
-- Položka **Nápověda** v nabídkách editoru otevře tuto stránku.
+- Položka **Nápověda** (F1) v nabídkách editoru otevře tuto stránku.
 - Editor používá jazyk GenOffice. Když jazyk změníte, editor se znovu spustí: neuložené změny zůstanou, ale historie vracení zpět se ztratí.
 - Editor se řídí motivem GenOffice. V tmavém motivu se kresba také zobrazuje v tmavých barvách, ale uložený soubor, PNG, PDF a výtisky jsou přesně stejné jako ve světlém motivu.
 

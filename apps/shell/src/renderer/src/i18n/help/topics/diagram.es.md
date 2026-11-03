@@ -14,7 +14,7 @@ El editor de diagramas abre archivos draw.io en una pestaña. En él dibuja diag
 
 - La pantalla de edición es la de draw.io tal cual: los menús arriba, las formas a la izquierda, el panel de formato a la derecha y las pestañas de página abajo.
 - Guardar (Ctrl+S), Guardar como (Ctrl+Shift+S) e Imprimir (Ctrl+P) los gestiona GenOffice. Cambiar de pestaña y los demás atajos de la aplicación siguen funcionando. Todos los demás atajos son del propio editor, incluido deshacer (Ctrl+Z).
-- **Ayuda**, en los menús del editor, abre esta página.
+- **Ayuda** (F1), en los menús del editor, abre esta página.
 - El editor usa el idioma de GenOffice. Al cambiar de idioma, el editor se reinicia: los cambios sin guardar se conservan, pero se pierde el historial de deshacer.
 - El editor sigue el tema de GenOffice. Con el tema oscuro, el dibujo también se muestra en colores oscuros, pero el archivo guardado, los PNG, los PDF y las impresiones son idénticos a los del tema claro.
 

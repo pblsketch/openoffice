@@ -14,7 +14,7 @@ O editor de diagramas abre arquivos draw.io em uma aba. Nele você desenha fluxo
 
 - A tela de edição é a tela do draw.io sem mudanças: os menus em cima, as formas à esquerda, o painel de formato à direita e as abas de página embaixo.
 - Salvar (Ctrl+S), Salvar como (Ctrl+Shift+S) e Imprimir (Ctrl+P) ficam a cargo do GenOffice. Trocar de aba e os outros atalhos do aplicativo continuam funcionando. Todos os demais atalhos são do próprio editor, inclusive desfazer (Ctrl+Z).
-- **Ajuda**, nos menus do editor, abre esta página.
+- **Ajuda** (F1), nos menus do editor, abre esta página.
 - O editor usa o idioma do GenOffice. Quando você troca o idioma, o editor reinicia: as alterações não salvas continuam, mas o histórico de desfazer se perde.
 - O editor acompanha o tema do GenOffice. No tema escuro, o desenho também aparece em cores escuras, mas o arquivo salvo, os PNG, os PDF e as impressões ficam exatamente iguais aos do tema claro.
 

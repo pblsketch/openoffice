@@ -14,7 +14,7 @@ Trình soạn thảo sơ đồ mở tệp draw.io trong một thẻ. Bạn có t
 
 - Màn hình chỉnh sửa chính là màn hình của draw.io: menu ở phía trên, các hình ở bên trái, bảng định dạng ở bên phải và các thẻ trang ở phía dưới.
 - Lưu (Ctrl+S), Lưu dưới dạng (Ctrl+Shift+S) và In (Ctrl+P) do GenOffice xử lý. Chuyển thẻ và các phím tắt khác dùng chung cho cả ứng dụng vẫn hoạt động. Mọi phím tắt còn lại là của riêng trình soạn thảo, kể cả hoàn tác (Ctrl+Z).
-- Mục **Trợ giúp** trong menu của trình soạn thảo sẽ mở trang này.
+- Mục **Trợ giúp** (F1) trong menu của trình soạn thảo sẽ mở trang này.
 - Trình soạn thảo dùng ngôn ngữ giao diện của GenOffice. Khi bạn đổi ngôn ngữ, trình soạn thảo khởi động lại: thay đổi chưa lưu vẫn còn, nhưng lịch sử hoàn tác bị mất.
 - Trình soạn thảo theo chủ đề của GenOffice. Ở chủ đề tối, hình vẽ cũng hiện bằng màu tối, nhưng tệp đã lưu, PNG, PDF và bản in vẫn giống hệt như ở chủ đề sáng.
 

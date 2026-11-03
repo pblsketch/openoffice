@@ -14,7 +14,7 @@ The diagram editor opens draw.io files in a tab. You draw flowcharts, architectu
 
 - The editing screen is the draw.io screen as it is: the menus at the top, the shapes on the left, the format panel on the right and the page tabs at the bottom.
 - Save (Ctrl+S), Save As (Ctrl+Shift+S) and Print (Ctrl+P) go to GenOffice. Switching tabs and the other app-wide shortcuts keep working. Every other shortcut is the editor's own, including undo (Ctrl+Z).
-- **Help** in the editor's menus opens this page.
+- **Help** (F1) in the editor's menus opens this page.
 - The editor uses GenOffice's language. When you change the language, the editor restarts: unsaved changes stay, but the undo history is lost.
 - The editor follows GenOffice's theme. In the dark theme the drawing is shown in dark colors too, but the saved file, PNG, PDF and printouts are exactly the same as in the light theme.
 

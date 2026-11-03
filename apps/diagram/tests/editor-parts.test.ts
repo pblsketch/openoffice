@@ -4,10 +4,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import { LANGS } from '@genoffice/i18n'
 import { hasNotices, scanDiagramNotices } from '../src/shared/notices'
-import { buildPrintHtml, inertSvg, isPrintPage } from '../src/main/print-document'
+import { buildPrintHtml, inertSvg, isPrintCancel, isPrintPage } from '../src/main/print-document'
 import {
   DRAWIO_CONFIG,
   HIDDEN_ACTIONS,
+  HIDDEN_EXPORTS,
   HIDDEN_SUBMENUS,
   REDIRECTED_ACTIONS,
   drawioLang,
@@ -74,6 +75,14 @@ describe('print sheets', () => {
     )
   })
 
+  it('treats a closed print dialog as a cancel, not a failure', () => {
+    expect(isPrintCancel('cancelled')).toBe(true)
+    expect(isPrintCancel('Print job canceled')).toBe(true)
+    expect(isPrintCancel('failed')).toBe(false)
+    expect(isPrintCancel('')).toBe(false)
+    expect(isPrintCancel(undefined)).toBe(false)
+  })
+
   it('accepts only SVG pages with sizes', () => {
     expect(isPrintPage({ svg, width: 1, height: 1, pageWidth: 1, pageHeight: 1 })).toBe(true)
     expect(isPrintPage({ svg: '<div/>', width: 1, height: 1, pageWidth: 1, pageHeight: 1 })).toBe(
@@ -98,6 +107,7 @@ describe('draw.io start', () => {
       lang: 'zh-tw',
       noExitBtn: '1',
       saveAndExit: '0',
+      browser: '0',
       spin: '1',
     })
     expect(new URL(drawioStartUrl({ lang: 'ko', dark: true })).searchParams.get('dark')).toBe('1')
@@ -134,6 +144,26 @@ describe('draw.io start', () => {
     expect(Object.keys(REDIRECTED_ACTIONS).sort()).toEqual(
       ['exportPdf', 'exportPng', 'exportSvg', 'help', 'print', 'save'].sort(),
     )
+  })
+
+  it('hides every export target the app does not carry out; keeps the keyboard shortcuts', () => {
+    for (const name of [
+      'exportJpg',
+      'exportWebp',
+      'exportAnimatedGif',
+      'exportXml',
+      'exportJson',
+      'exportHtml',
+      'exportUrl',
+      'exportVsdx',
+      'export',
+    ]) {
+      expect(HIDDEN_EXPORTS).toContain(name)
+      expect(HIDDEN_ACTIONS).toContain(name)
+      expect(DRAWIO_CONFIG.hideMenuItems).toContain(name)
+    }
+    for (const name of Object.keys(REDIRECTED_ACTIONS)) expect(HIDDEN_ACTIONS).not.toContain(name)
+    expect(HIDDEN_ACTIONS).not.toContain('keyboardShortcuts')
   })
 })
 

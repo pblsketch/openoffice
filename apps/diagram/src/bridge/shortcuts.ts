@@ -16,3 +16,8 @@ export function isAppShortcut(event: KeyLike): 'save' | 'saveAs' | 'print' | nul
   if (key === 'p' && !event.shiftKey) return 'print'
   return null
 }
+
+/** F1 with no modifier: the app's help, as draw.io's Help menu item. */
+export function isHelpKey(event: KeyLike): boolean {
+  return event.key === 'F1' && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey
+}

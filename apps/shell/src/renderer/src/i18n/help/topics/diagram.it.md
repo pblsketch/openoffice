@@ -14,7 +14,7 @@ L’editor di diagrammi apre i file draw.io in una scheda. Ci disegni diagrammi 
 
 - La schermata di modifica è quella di draw.io così com’è: i menu in alto, le forme a sinistra, il pannello del formato a destra e le schede delle pagine in basso.
 - Salva (Ctrl+S), Salva con nome (Ctrl+Shift+S) e Stampa (Ctrl+P) sono gestiti da GenOffice. Il cambio di scheda e le altre scorciatoie dell’app continuano a funzionare. Tutte le altre scorciatoie sono dell’editor, compreso l’annullamento (Ctrl+Z).
-- **Aiuto**, nei menu dell’editor, apre questa pagina.
+- **Aiuto** (F1), nei menu dell’editor, apre questa pagina.
 - L’editor usa la lingua di GenOffice. Quando cambi lingua, l’editor si riavvia: le modifiche non salvate restano, ma la cronologia degli annullamenti va persa.
 - L’editor segue il tema di GenOffice. Con il tema scuro anche il disegno appare in colori scuri, ma il file salvato, i PNG, i PDF e le stampe sono identici a quelli del tema chiaro.
 
