@@ -1,6 +1,6 @@
 {
   "name": "@rhwp/core",
-  "version": "0.9.0-devel.ieum.19",
+  "version": "0.9.0-devel.ieum.20",
   "description": "rhwp devel (7d06d5c70, ahead of the v0.9.0 release) HWP/HWPX engine (WebAssembly) rebuilt with the patches in ./patches",
   "private": true,
   "type": "module",
@@ -19,6 +19,10 @@
     "tag": "devel-7d06d5c70",
     "branch": "devel",
     "commit": "7d06d5c706f1d89f1662e739abf2b1b25d2a98e4",
+    "features": [
+      "console_error_panic_hook",
+      "wasm-api"
+    ],
     "patches": [
       "0001-host-inline-table-clears-paper-square-table.patch",
       "0003-footnote-area-below-body-flow.patch",
@@ -50,6 +54,6 @@
       "0038-tests-follow-memo-index.patch"
     ],
     "wasmPack": "0.15.0",
-    "wasmSha256": "198a79200691389554a90916a5e9157f09ef5adf9036aa01465a9ffef9216dc6"
+    "wasmSha256": "8734a36633562d7660d8309e50fe7a33ff67ab419fdef93eb9650639e8dc30d8"
   }
 }

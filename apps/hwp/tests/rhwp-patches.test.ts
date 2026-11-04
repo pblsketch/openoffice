@@ -499,6 +499,34 @@ describe('rhwp memo delete-undo patches', () => {
   })
 })
 
+describe('rhwp PDF import options patch', () => {
+  // the studio's text around the patch, as the pinned commit has it
+  const dialog = [
+    "import { userSettings } from '@/core/user-settings';",
+    '    panel.appendChild(this.createPdfImportSection());',
+    "    userSettings.setPdfImportLayout(this.pdfImportEditableRadio.checked ? 'editable' : 'fidelity');",
+    '',
+  ].join('\n')
+  const patched = applyPatch('studio-pdf-import-options', dialog)
+
+  it('shows the PDF import section only when the engine has PDF import', () => {
+    expect(patched).toContain(
+      "import { hasPdfImportCapability } from '@/core/pdf-import-capability';",
+    )
+    expect(patched).toContain(
+      'if (hasPdfImportCapability(HwpDocument)) panel.appendChild(this.createPdfImportSection());',
+    )
+  })
+
+  it('leaves the setting alone on OK when the section is not there', () => {
+    expect(patched).toContain('    if (this.pdfImportEditableRadio) {')
+  })
+
+  it('is in the studio build', () => {
+    expect(STUDIO_PATCHES).toContain('studio-pdf-import-options')
+  })
+})
+
 describe('rhwp PC fonts patch', () => {
   // the studio's text around the patch, as the pinned release has it
   const main = [
@@ -655,6 +683,7 @@ describe('the studio source the build fetched', () => {
     'src/command/commands/table.ts',
     'src/command/shortcut-map.ts',
     'src/ui/table-cell-props-dialog.ts',
+    'src/ui/options-dialog.ts',
     'src/command/registry.ts',
     'src/i18n/locales/ko.ts',
     'src/i18n/locales/en.ts',

@@ -29,7 +29,9 @@ const LICENSE_FILES = ['LICENSE', 'THIRD_PARTY_LICENSES.md']
 const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8'))
 // `branch` is set when the engine is pinned to a commit on an upstream branch
 // ahead of a release; `tag` then only names that pin (the cache folder).
-const { tag, branch, commit, patches } = manifest.rhwp
+// `features`, when set, replaces the crate's default features (decision 0107: the PDF
+// import upstream builds in by default stays out until upstream releases it).
+const { tag, branch, commit, patches, features } = manifest.rhwp
 const work = join(ROOT, 'node_modules', '.cache', 'rhwp-core', tag)
 
 function run(command, args, cwd, env = process.env) {
@@ -87,7 +89,10 @@ const env = {
     .join(' ')
     .trim(),
 }
-run('wasm-pack', ['build', '--target', 'web', '--release'], work, env)
+const cargoFeatures = features
+  ? ['--', '--no-default-features', '--features', features.join(',')]
+  : []
+run('wasm-pack', ['build', '--target', 'web', '--release', ...cargoFeatures], work, env)
 
 for (const file of PACKAGE_FILES) copyFileSync(join(work, 'pkg', file), join(VENDOR, file))
 for (const file of LICENSE_FILES) copyFileSync(join(work, file), join(VENDOR, file))

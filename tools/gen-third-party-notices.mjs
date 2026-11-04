@@ -501,17 +501,21 @@ function rhwpSourceTree() {
 
 /**
  * Rust crates compiled into rhwp_bg.wasm (resources/wasm and the HWP editor):
- * the normal dependencies of the rhwp library for the wasm32 target with its
- * default features, i.e. what `wasm-pack build` links. Proc macros run in the
+ * the normal dependencies of the rhwp library for the wasm32 target with the
+ * features it is built with (its defaults, or `rhwp.features`), i.e. what
+ * `wasm-pack build` links. Proc macros run in the
  * compiler and link nothing, so neither they nor their dependencies count.
  */
 function rhwpCrates() {
   const tree = rhwpSourceTree()
   if (tree === null) return null
+  // the features tools/build-rhwp-core.mjs builds with, when they replace the defaults
+  const features = RHWP.rhwp.features
   const meta = cargoMetadata(join(tree, 'Cargo.toml'), [
     '--locked',
     '--filter-platform',
     RHWP_TARGET,
+    ...(features ? ['--no-default-features', '--features', features.join(',')] : []),
   ])
   if (meta === null) return null
   const byId = new Map(meta.packages.map((p) => [p.id, p]))
@@ -530,7 +534,34 @@ function rhwpCrates() {
     }
   }
   seen.delete(root.id)
+  // cargo metadata resolves the whole workspace, whose other members ask for the rhwp
+  // defaults; the build links what the rhwp package alone pulls in with its features
+  let built = null
+  if (features) {
+    try {
+      const listed = execFileSync(
+        'cargo',
+        ['tree', '--locked', '-p', 'rhwp', '--target', RHWP_TARGET, '-e', 'normal']
+          .concat(['--no-default-features', '--features', features.join(',')])
+          .concat([
+            '--prefix',
+            'none',
+            '--format',
+            '{p}',
+            '--manifest-path',
+            join(tree, 'Cargo.toml'),
+          ]),
+        { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] },
+      )
+      built = new Set(
+        listed.split(/\r?\n/).map((line) => line.split(' (')[0].replace(' (*)', '').trim()),
+      )
+    } catch {
+      return null
+    }
+  }
   return [...seen]
+    .filter((id) => !built || built.has(`${byId.get(id).name} v${byId.get(id).version}`))
     .map((id) => crateRow(byId.get(id)))
     .sort((a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version))
 }

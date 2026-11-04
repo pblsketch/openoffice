@@ -3,6 +3,7 @@
 한글(HWP·HWPX) 편집기와 한글 파일 읽기(`packages/file-parse`)가 쓰는 rhwp 엔진(`@rhwp/core`)이다. npm에 배포된 판을 쓰지 않고, 상위 소스에 `patches/`의 수정을 얹어 이 저장소에서 빌드한 것을 둔다(결정 0050). 지금은 배포판이 아니라 상위 `devel`의 한 커밋에 고정했다(결정 0107).
 
 - 원본: https://github.com/edwardkim/rhwp `devel` 가지의 커밋 `7d06d5c706f1d89f1662e739abf2b1b25d2a98e4`(2026-11-03, 0.9.0 배포 전), MIT. `package.json`의 `rhwp.branch`·`rhwp.commit`이 이것이고, `rhwp.tag`(`devel-7d06d5c70`)는 태그가 아니라 이 고정점의 이름이다. 원본 라이선스는 `LICENSE`, WASM에 링크된 크레이트의 라이선스 목록은 `THIRD_PARTY_LICENSES.md`다.
+- 상위 `devel`은 PDF 가져오기(`pdf-import`, `pdf-jbig2`, `pdf-jpeg2000`, `pdf-icc`)를 기본 기능으로 켜지만, 상위가 배포할 때까지 내보내지 않는다. `package.json`의 `rhwp.features`(`console_error_panic_hook`, `wasm-api`)가 기본 기능을 대신하고, 빌드와 제3자 고지가 이 목록을 따른다. 이 엔진에서는 `supportsPdfImport()`가 `false`이고, 편집기는 그것을 보고 PDF를 받지 않는다(결정 0107).
 - 패키지 이름은 `@rhwp/core` 그대로다. `apps/hwp`와 `packages/file-parse`가 `file:../../vendor/rhwp-core`로 이 폴더를 가리킨다. 버전 `0.9.0-devel.ieum.N`의 `N`은 패치 묶음이 바뀔 때마다 올린다(0.8.7 때의 번호를 잇는다).
 - `rhwp.js`, `rhwp.d.ts`, `rhwp_bg.wasm.d.ts`는 고정한 커밋의 빌드에 패치가 더한 호출만 다르다. 0014가 둘(`setPageNumberPos`, `getPageNumberPos`), 0016이 하나(`resizeTableCell`), 0018이 다섯(`getMemoList`, `insertMemo`, `insertMemoByPath`, `setMemoText`, `removeMemo`), 0027이 하나(`setTableCellExtents`)를 더한다. 나머지 패치는 내보내는 함수를 바꾸지 않는다.
 - 0.8.7 때의 패치 가운데 0002, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0017, 0019는 상위에 이미 있거나 상위가 다르게 고쳐 지웠다(결정 0107). 번호는 0.8.7 때의 것을 그대로 쓴다.

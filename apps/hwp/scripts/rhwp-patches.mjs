@@ -124,6 +124,13 @@
  *   for the memo anchors, and a deletion that touches one captures its paragraph first,
  *   as the studio already does for a link, so undo restores the paragraph with the memo.
  *
+ * studio-pdf-import-options
+ *   The engine is built without upstream's PDF import until upstream releases it
+ *   (vendor/rhwp-core `rhwp.features`, decision 0107). The studio then keeps PDFs out of
+ *   its file picker, drops and file command by itself, but its options dialog still
+ *   showed the PDF import layout choice. The dialog shows that section only when the
+ *   engine has PDF import, and its OK leaves the setting alone when it does not.
+ *
  * studio-pc-fonts
  *   The studio lists the PC's fonts only after the 찾기 button of its options dialog,
  *   so its font lists held the base fonts and the document's own until then. At start-up
@@ -1086,6 +1093,32 @@ const PATCHES = {
       },
     ],
   },
+  'studio-pdf-import-options': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]ui[\\/]options-dialog\.ts$/,
+    edits: [
+      {
+        find: "import { userSettings } from '@/core/user-settings';",
+        replace: [
+          "import { userSettings } from '@/core/user-settings';",
+          "import { HwpDocument } from '@wasm/rhwp.js';",
+          "import { hasPdfImportCapability } from '@/core/pdf-import-capability';",
+        ].join('\n'),
+      },
+      {
+        find: '    panel.appendChild(this.createPdfImportSection());',
+        replace:
+          '    if (hasPdfImportCapability(HwpDocument)) panel.appendChild(this.createPdfImportSection());',
+      },
+      {
+        find: "    userSettings.setPdfImportLayout(this.pdfImportEditableRadio.checked ? 'editable' : 'fidelity');",
+        replace: [
+          '    if (this.pdfImportEditableRadio) {',
+          "      userSettings.setPdfImportLayout(this.pdfImportEditableRadio.checked ? 'editable' : 'fidelity');",
+          '    }',
+        ].join('\n'),
+      },
+    ],
+  },
   'studio-pc-fonts': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]main\.ts$/,
     edits: [
@@ -1178,6 +1211,7 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-memo-anchors',
   'studio-memo-delete-undo',
   'studio-cell-block-paste',
+  'studio-pdf-import-options',
   'studio-pc-fonts',
 ])
 
