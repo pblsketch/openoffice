@@ -9,6 +9,7 @@ import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, join, extname } from 'node:path'
 import { assertFileSaved, showOpenDialogWithMemory } from '@genoffice/electron-utils'
 import {
+  checkedHwpBytes,
   parseFileToText,
   ATTACHABLE_EXTS,
   ATTACHABLE_IMAGE_EXTS,
@@ -20,6 +21,7 @@ import {
 } from '@genoffice/file-parse'
 import type {
   AttachmentAddResult,
+  AttachmentDocumentResult,
   AttachmentImageResult,
   AttachmentMeta,
   AttachmentReadResult,
@@ -192,6 +194,32 @@ export function registerHwpAttachmentIpc(): void {
       return { ok: false, error: `${name}: ${tm('errUnreadable')}` }
     }
   })
+
+  // An attached HWP / HWPX whole, for the editor's engine to read its formatting (read_formatting):
+  // the same saved-file, size and content checks as reading its text
+  ipcMain.handle(
+    HWP_CHANNELS.filesReadDocument,
+    async (_e, filePath: string): Promise<AttachmentDocumentResult> => {
+      const name = basename(filePath)
+      const ext = name.split('.').pop()?.toLowerCase() ?? ''
+      if (ext !== 'hwp' && ext !== 'hwpx') {
+        // read back by the model, not shown: read_attachment reads the text of other files
+        return {
+          ok: false,
+          error: `${name} is not an .hwp or .hwpx file: only those can be read for their formatting (read_attachment reads its text)`,
+        }
+      }
+      try {
+        await assertFileSaved(filePath)
+        if (statSync(filePath).size > attachableMaxBytes(ext))
+          throw new Error(tm('errFileTooLarge'))
+        const bytes = await checkedHwpBytes(new Uint8Array(readFileSync(filePath)), ext)
+        return { ok: true, base64: Buffer.from(bytes).toString('base64') }
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : String(e) }
+      }
+    },
+  )
 
   // Clipboard-pasted images (screenshots and other bitmaps without a local path): saved to a temp file then take the regular attachment chain
   ipcMain.handle(

@@ -49,6 +49,8 @@ export const HWP_CHANNELS = {
   filesAddPastedImage: 'hwp:files-add-pasted-image',
   filesRead: 'hwp:files-read',
   filesReadImage: 'hwp:files-read-image',
+  /** invoke(path) → `AttachmentDocumentResult`: an attached .hwp / .hwpx, for read_formatting */
+  filesReadDocument: 'hwp:files-read-document',
   /** invoke({prompt, aspectRatio}) �� `{url?, error?, errorCode?}`: one AI picture */
   aiGenerateImage: 'hwp:ai-generate-image',
   /** invoke(url) �� `{base64, mime} | null`: a web image or a generated-store file */
@@ -268,6 +270,9 @@ export interface AttachmentImageResult {
   error?: string
 }
 
+/** An attached HWP / HWPX document's bytes, for the editor's engine to read its formatting. */
+export type AttachmentDocumentResult = { ok: true; base64: string } | { ok: false; error: string }
+
 /** What the configured picture reader says about one picture of the document. */
 export interface MediaAnalysisResult {
   text?: string
@@ -380,6 +385,8 @@ export interface HwpApi {
   readAttachment(path: string, offset: number, maxChars: number): Promise<AttachmentReadResult>
   /** read an image attachment as base64 for multimodal input */
   readAttachmentImage(path: string): Promise<AttachmentImageResult>
+  /** read an attached .hwp / .hwpx whole, as base64, to read its formatting */
+  readAttachmentDocument(path: string): Promise<AttachmentDocumentResult>
   /** let the model look at one picture of the document (a data URL) and answer about it */
   analyzeMedia(op: { mediaUrls: string[]; requirements: string }): Promise<MediaAnalysisResult>
   /** the local path of a dropped or pasted file; empty for one that has none (a screenshot) */

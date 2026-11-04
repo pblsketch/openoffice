@@ -1003,20 +1003,20 @@ describe('the engine writes Hancom memo identity', () => {
     expect(Buffer.compare(Buffer.from(doc.exportHwp()), Buffer.from(original))).toBe(0)
   })
 
-  // What the engine without memo support (vendor/rhwp-core patches 0001-0017) wrote
-  // for these documents, unedited and after typing, as HWP and HWPX. A later
-  // engine patch that changes how these documents save updates them on purpose.
+  // What the engine without memo support (rhwp devel 7d06d5c70 with the layout patches,
+  // no 0018) wrote for these documents, unedited and after typing, as HWP and HWPX. A
+  // later engine patch that changes how these documents save updates them on purpose.
   const before: Record<string, Record<string, string>> = {
     'format-copy-table.hwp': {
       hwp: 'd90a4045fa4a1cb72fdb287580721a681ad73753519ff4eaa6b0816485b7a6df',
-      hwpx: 'bb912ac89306d45318a655a4d0e34604f4e4941e3970cdbe17b046a6667569a2',
+      hwpx: '038866fa86876ac37435f1379d856a00f43ad59ce6826d35d7b0adb8422e1ea5',
       editedHwp: '78e031ac0f9c84936a696deb75b8dbf9e00d2e3c8b3052356d31a99b8ae666ab',
-      editedHwpx: 'b6bd4a8bd41dcc139e884214a5e592082cee339b19e9c5995825c2b62b275dda',
+      editedHwpx: '9f34367cebb52225bbfe41aac341b0c8cd496755f07e5412663dd432af466d20',
     },
     'hancom-page-number-no-dash.hwpx': {
-      hwp: '2280bfbcb5c6c9ef3c3db271fc91cd912fd097e4a260517aa7576fa2bb5d813c',
+      hwp: 'a691327165c231f63ea9e9f6a5bc2fcfcf231f46402cc530cfb8a22b3b5bf843',
       hwpx: '1ff93bc1fd76ef6f64f53a256ff3d7b22fed32da1697c6ed4412bfb1daea1ff1',
-      editedHwp: '9ba31666a1c8c46289b4a2f32ecfa369a7ea47174cee9ecfb6e4092eb72ef41c',
+      editedHwp: 'a4efa2b7b8e2f028d5530bd1deab6f9815702cf180762dc4421fc45ed14d0b20',
       editedHwpx: '32a2dc1bb703d11a6d5d8e16ddf4075e6ffb04d5b318b3dde52e96edc72d09d9',
     },
   }

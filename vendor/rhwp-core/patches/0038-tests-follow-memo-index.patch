@@ -1,0 +1,41 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pblsketch <239486537+pblsketch@users.noreply.github.com>
+Date: Wed, 4 Nov 2026 00:00:00 +0900
+Subject: [PATCH 28/30] test: 고아 fieldEnd 를 직접 만드는 upstream 시험이 0018 의 memo_index 를 채운다
+
+0018(memo-support)은 `OrphanFieldEnd` 에 `memo_index`(메모 필드 끝 표지의 메모 번호,
+0 = 메모 아님)를 더했다. 구조체 리터럴로 고아 fieldEnd 를 만드는 upstream 시험 두 곳이
+이 필드를 몰라 regression_suite_015·019 가 컴파일되지 않았다. 두 시험 모두 메모가 아닌
+필드 끝을 만들므로 0018 이 정한 "메모 아님" 값 0 을 넣는다. 시험의 기대값은 그대로다.
+
+- tests/cases/styled_text_clipboard_field_affinity.rs
+- tests/cases/issue_6868_nested_list_orphan_field_end.rs
+---
+ tests/cases/issue_6868_nested_list_orphan_field_end.rs | 1 +
+ tests/cases/styled_text_clipboard_field_affinity.rs    | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/tests/cases/issue_6868_nested_list_orphan_field_end.rs b/tests/cases/issue_6868_nested_list_orphan_field_end.rs
+index 061326e384d124ea28a82c1b7fbcf877ade02d5b..1cc4308057db1be15abbe748c85a65ce22b9aaa3 100644
+--- a/tests/cases/issue_6868_nested_list_orphan_field_end.rs
++++ b/tests/cases/issue_6868_nested_list_orphan_field_end.rs
+@@ -192,6 +192,7 @@ fn issue6868_hwp5_orphan_field_end_links_across_section_boundary() {
+             begin_id_ref: 0,
+             field_id: 0,
+             begin_ctrl_id: 0,
++            memo_index: 0,
+         });
+         para
+     }
+diff --git a/tests/cases/styled_text_clipboard_field_affinity.rs b/tests/cases/styled_text_clipboard_field_affinity.rs
+index 7593c258cd360833f8cde0742934cb92bbbc331f..208b400ecbc233726a28968e17b453393cba58e9 100644
+--- a/tests/cases/styled_text_clipboard_field_affinity.rs
++++ b/tests/cases/styled_text_clipboard_field_affinity.rs
+@@ -636,6 +636,7 @@ fn styled_text_query_rejects_annotations_and_real_tab_extensions() {
+                 begin_id_ref: 900,
+                 field_id: 901,
+                 begin_ctrl_id: 0,
++                memo_index: 0,
+             }),
+             4 => p.tab_extended = vec![[37, 0, 0, 0, 0, 0, 9]],
+             _ => unreachable!(),

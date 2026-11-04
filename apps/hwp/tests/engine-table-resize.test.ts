@@ -41,19 +41,20 @@ function firstRowWidths(doc: HwpDocument): number[] {
 describe('one cell resize (Shift+arrow)', () => {
   it('moves the same boundary again and keeps the grid after save', () => {
     const doc = table()
-    expect(firstRowWidths(doc)).toEqual([189, 189, 189])
+    // the pasted table leaves its outer margins inside the body width (rhwp devel)
+    expect(firstRowWidths(doc)).toEqual([186.5, 186.5, 186.5])
 
     expect(JSON.parse(doc.resizeTableCell(0, 1, 0, 0, 0, false, true))).toMatchObject({
       ok: true,
       moved: true,
     })
-    expect(firstRowWidths(doc)).toEqual([192.7, 185.2, 189])
+    expect(firstRowWidths(doc)).toEqual([190.2, 182.7, 186.5])
 
     expect(JSON.parse(doc.resizeTableCell(0, 1, 0, 0, 0, false, true))).toMatchObject({
       ok: true,
       moved: true,
     })
-    expect(firstRowWidths(doc)).toEqual([196.5, 181.4, 189])
+    expect(firstRowWidths(doc)).toEqual([194, 178.9, 186.5])
 
     const dims = JSON.parse(doc.getTableDimensions(0, 1, 0))
     expect(dims).toMatchObject({ rowCount: 3, colCount: 4, cellCount: 9 })
@@ -61,7 +62,7 @@ describe('one cell resize (Shift+arrow)', () => {
     expect(first).toMatchObject({ row: 0, col: 0, rowSpan: 1, colSpan: 2 })
 
     const saved = new HwpDocument(doc.exportHwp())
-    expect(firstRowWidths(saved)).toEqual([196.5, 181.4, 189])
+    expect(firstRowWidths(saved)).toEqual([194, 178.9, 186.5])
     expect(JSON.parse(saved.getCellInfo(0, 1, 0, 0))).toMatchObject({ colSpan: 2 })
     expect(JSON.parse(saved.resizeTableCell(0, 1, 0, 0, 0, false, true))).toMatchObject({
       ok: true,
@@ -69,7 +70,7 @@ describe('one cell resize (Shift+arrow)', () => {
     })
 
     const savedHwpx = new HwpDocument(doc.exportHwpx())
-    expect(firstRowWidths(savedHwpx)).toEqual([196.5, 181.4, 189])
+    expect(firstRowWidths(savedHwpx)).toEqual([194, 178.9, 186.5])
     expect(JSON.parse(savedHwpx.getCellInfo(0, 1, 0, 0))).toMatchObject({ colSpan: 2 })
   })
 
@@ -79,6 +80,6 @@ describe('one cell resize (Shift+arrow)', () => {
       ok: true,
       moved: false,
     })
-    expect(firstRowWidths(doc)).toEqual([189, 189, 189])
+    expect(firstRowWidths(doc)).toEqual([186.5, 186.5, 186.5])
   })
 })

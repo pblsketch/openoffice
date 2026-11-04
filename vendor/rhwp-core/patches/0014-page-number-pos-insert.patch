@@ -1,8 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pblsketch <239486537+pblsketch@users.noreply.github.com>
+Date: Wed, 4 Nov 2026 00:00:00 +0900
+Subject: [PATCH 6/30] Ported onto devel 7d06d5c70: dropped the src/parser/hwpx/section.rs and src/serializer/hwpx/section.rs hunks — devel #7633 already reads sideChar="" (and whitespace) as no dash and writes a no-dash page number as sideChar=""; kept set_page_number_pos_native/get_page_number_pos_native and the setPageNumberPos/getPageNumberPos wasm exports unchanged.
+
+
+---
+ src/document_core/commands/object_ops/common.rs | 112 ++++++++++++++++++++++++
+ src/wasm_api.rs                                 |  27 ++++++
+ 2 files changed, 139 insertions(+)
+
 diff --git a/src/document_core/commands/object_ops/common.rs b/src/document_core/commands/object_ops/common.rs
-index 9d15d48ca..5233bf8aa 100644
+index cf8d4c93288d38a4b63a39506db8e0c245935190..6f9a11b9f29df8b07cac2d35ba993f3836a20f2f 100644
 --- a/src/document_core/commands/object_ops/common.rs
 +++ b/src/document_core/commands/object_ops/common.rs
-@@ -465,3 +465,115 @@ impl crate::document_core::DocumentCore {
+@@ -616,3 +616,115 @@ impl crate::document_core::DocumentCore {
          )))
      }
  }
@@ -118,53 +129,11 @@ index 9d15d48ca..5233bf8aa 100644
 +        Ok(crate::document_core::helpers::json_ok_with(&body))
 +    }
 +}
-diff --git a/src/parser/hwpx/section.rs b/src/parser/hwpx/section.rs
-index 8b490f6b1..c5eca3cc4 100644
---- a/src/parser/hwpx/section.rs
-+++ b/src/parser/hwpx/section.rs
-@@ -5338,8 +5338,9 @@ fn parse_page_num_attrs(e: &quick_xml::events::BytesStart) -> PageNumberPos {
-                 };
-             }
-             b"sideChar" => {
-+                // 한글은 줄표 없는 쪽 번호를 `sideChar=""`로 쓴다(HWP5 대시 문자 0)
-                 let s = attr_str(&attr);
--                pn.dash_char = s.chars().next().unwrap_or('-');
-+                pn.dash_char = s.chars().next().unwrap_or('\0');
-             }
-             _ => {}
-         }
-diff --git a/src/serializer/hwpx/section.rs b/src/serializer/hwpx/section.rs
-index 8829aec04..c62fb5376 100644
---- a/src/serializer/hwpx/section.rs
-+++ b/src/serializer/hwpx/section.rs
-@@ -2963,17 +2963,18 @@ fn page_num_format_to_str(fmt: u8) -> &'static str {
- 
- /// `<hp:ctrl><hp:pageNum .../></hp:ctrl>` — 쪽 번호 위치(PageNumberPos) 컨트롤.
- fn render_page_num(pn: &PageNumberPos) -> String {
--    // dash_char 기본값은 '-' (모델: 항상 '-'); '\0'이면 '-'로 폴백.
-+    // 줄표 없는 쪽 번호(대시 문자 0)는 한글처럼 `sideChar=""`로 쓴다. 종전에는 '-'로
-+    // 바꿔 써서, 줄표 없이 매긴 쪽 번호가 저장 뒤 "- 1 -"이 됐다.
-     let side = if pn.dash_char == '\0' {
--        '-'
-+        String::new()
-     } else {
--        pn.dash_char
-+        pn.dash_char.to_string()
-     };
-     format!(
-         r#"<hp:ctrl><hp:pageNum pos="{}" formatType="{}" sideChar="{}"/></hp:ctrl>"#,
-         page_num_pos_to_str(pn.position),
-         page_num_format_to_str(pn.format),
--        xml_escape(&side.to_string()),
-+        xml_escape(&side),
-     )
- }
- 
 diff --git a/src/wasm_api.rs b/src/wasm_api.rs
-index 2031085e3..c372b7668 100644
+index ef08cafd7bf79674540625bfd8ec360c38bf97f0..1e31a22df2aa763570ef746cb5624363862d4be4 100644
 --- a/src/wasm_api.rs
 +++ b/src/wasm_api.rs
-@@ -2528,6 +2528,33 @@ impl HwpDocument {
+@@ -2890,6 +2890,33 @@ impl HwpDocument {
          .map_err(|e| e.into())
      }
  
