@@ -128,6 +128,7 @@ Premi **E** o **T**, oppure i chip di spiegazione e traduzione nella casella **C
 - **Traduci questa pagina** (o **Traduci il resto** se una parte è già fatta) invia la pagina con un solo clic quando usi un abbonamento; accanto al pulsante compare il nome dell’IA a cui va. Su una connessione a consumo, il primo clic in una scheda chiede prima «addebiterà questo servizio · Traduci / Annulla».
 - Fai doppio clic su un paragrafo tradotto per modificarlo. I paragrafi modificati sono conservati come testo semplice e usati così come sono nei file PDF, Markdown ed EPUB tradotti. **Traduci di nuovo** su un paragrafo invia solo quel paragrafo e chiede conferma se lo avevi modificato.
 - Passando il mouse su un paragrafo tradotto, il suo punto nella pagina originale viene contornato. Larghezza e dimensione del testo della colonna sono regolabili. **Traduci tutte le pagine…** apre la finestra **Traduci documento**, il cui formato **Solo conservare (nessun file)** tiene la traduzione senza scrivere file.
+- I paragrafi tradotti da ora in poi sono collegati frase per frase. Passando il mouse su una frase tradotta, quella frase viene evidenziata nella pagina originale; passandolo su una frase originale, si illumina la sua traduzione. Dove la frase non si trova nella pagina, e per i paragrafi tradotti in precedenza o modificati da te, il collegamento resta per paragrafo.
 
 ## Evidenziazione IA
 

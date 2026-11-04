@@ -20,7 +20,7 @@ EPUB 책 엔진이다(결정 0066). 원본 프로그램에서 온 것이 아니�
 - 책 번역(`translate/`):
   - `units.ts`: 고른 장의 블록, 책 제목, 목차 항목 글을 번역 단위로 만든다. 루비의 읽기는 빼고, 글자가 없는 단위는 빼고, 깨진 장·고정 배치 장은 통째로 빼서 알린다.
   - `keys.ts`: 보관 열쇠. 문서 열쇠는 파일 바이트의 SHA-256, "페이지 지문" 자리는 장 경로의 SHA-256, 제목·목차는 정해 둔 지문 하나. PDF 열쇠와 같은 모양이라 같은 보관소와 작업 엔진을 쓴다.
-  - `prompt.ts`: EPUB 지시문. 메시지 모양과 답 읽기는 PDF 번역의 것을 쓰고, 지시문만 블록 글 표기를 설명한다.
+  - `prompt.ts`: EPUB 지시문. 메시지 모양과 답 읽기는 PDF 번역의 것을 쓰고, 지시문만 블록 글 표기를 설명한다. 문체 규칙은 PDF와 같은 `translationStyleLines`(`pdf-structure`)를 구조 규칙 앞에 넣는다(결정 0104).
   - `call.ts`: 묶기(PDF의 `TRANSLATION_BATCH_TOKENS`)와 모델 호출. 자리 표시가 맞지 않거나 비어 돌아온 단위는 `EPUB_TRANSLATION_MAX_RESENDS`(2)번까지 다시 보내고, 그래도 안 되면 이유와 함께 실패로 남긴다.
   - `job.ts`: `pdf-structure`의 작업 엔진 위의 책 번역 작업(예상, 계획, 시작).
   - `language.ts`: 기본 목표 언어(화면 언어, 책이 그 언어면 영어). 책 언어는 첫 `dc:language`, 없으면 `pdf-structure`의 글자 추정.

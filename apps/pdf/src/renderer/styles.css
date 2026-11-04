@@ -5710,10 +5710,20 @@ button {
   white-space: pre-wrap;
 }
 
-.bl-item.bl-linked:hover,
+/* a sentence-linked paragraph reacts per sentence, so it does not light as a whole on hover */
+.bl-item.bl-linked:not(.bl-sentences):hover,
 .bl-item.bl-hover,
 .bl-continued.bl-hover {
   background: var(--accent-soft);
+}
+
+.bl-sent {
+  border-radius: 2px;
+}
+
+.bl-sent.bl-sent-hover {
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .bl-heading {
@@ -5812,6 +5822,14 @@ button {
   box-sizing: border-box;
   border: 2px solid var(--accent);
   border-radius: 2px;
+}
+
+/* the lines of the source sentence whose translation is hovered: same screen-only layer */
+.bl-overlay-sent {
+  position: absolute;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0.28;
 }
 
 @media print {

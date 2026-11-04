@@ -128,6 +128,7 @@ Stiskněte **E** nebo **T**, případně čipy pro vysvětlení a překlad v pol
 - **Přeložit tuto stránku** (nebo **Přeložit zbytek**, když je část hotová) odešle stránku jedním kliknutím, pokud používáte předplatné; vedle tlačítka je vidět název cílové AI. U připojení placeného podle využití se první kliknutí na kartě nejprve zeptá „si za to bude účtovat poplatek · Přeložit / Zrušit“.
 - Dvojklikem na přeložený odstavec ho upravíte. Upravené odstavce se uchovají jako prostý text a beze změny se použijí v přeložených souborech PDF, Markdown a EPUB. **Přeložit znovu** u odstavce odešle jen ten odstavec, a pokud jste ho upravili, napřed se zeptá.
 - Najetím myší na přeložený odstavec se jeho místo na původní stránce orámuje. Šířku sloupce a velikost písma lze měnit. **Přeložit všechny stránky…** otevře okno **Přeložit dokument**, jehož formát **Jen uložit (bez souboru)** ponechá překlad bez zápisu souboru.
+- Nově přeložené odstavce jsou propojené větu po větě. Najetí myší na přeloženou větu zvýrazní tuto větu na stránce originálu a najetí na větu originálu rozsvítí její překlad. Kde se věta na stránce nenajde, a u odstavců přeložených dříve nebo upravených vámi, zůstává propojení po odstavcích.
 
 ## Zvýraznění pomocí AI
 

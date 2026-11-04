@@ -58,10 +58,31 @@ export function defaultTargetLanguage(uiLanguage: string, documentText: string):
   return doc !== undefined && primary(doc) === primary(ui) ? 'en' : ui
 }
 
+/**
+ * The document language of a tree, guessed once from its original
+ * (untranslated) text; undefined when the text is too thin to guess. A
+ * translation splits its units into sentences by this language's rules.
+ */
+export function translationSourceLanguage(tree: DocumentTree): string | undefined {
+  return guessLanguageFromText(treeSampleText(tree, (b) => b.translationOf === undefined))
+}
+
 /** default target for a tree, guessed from its original (untranslated) text */
 export function defaultTargetLanguageForTree(tree: DocumentTree, uiLanguage: string): Lang {
   return defaultTargetLanguage(
     uiLanguage,
     treeSampleText(tree, (b) => b.translationOf === undefined),
   )
+}
+
+/** target languages whose sentences follow one another with no space between them */
+const UNSPACED_SENTENCES = new Set(['zh', 'ja'])
+
+/**
+ * What goes between two translated sentences when they are joined into the
+ * block's text (spec 4.2): nothing for Chinese (`zh`, `zh-TW`) and Japanese,
+ * one space for every other target language.
+ */
+export function translationSentenceSeparator(lang: string): string {
+  return UNSPACED_SENTENCES.has(primary(lang)) ? '' : ' '
 }

@@ -19,6 +19,7 @@ import {
   estimateTokens,
   parseTranslationOutput,
   translationLanguageName,
+  translationStyleLines,
   translationSystemPrompt,
 } from '../src/translate'
 import type { TranslationJobItem } from '../src/jobs'
@@ -289,6 +290,47 @@ describe('translation instruction and messages', () => {
     expect(system).toMatch(/data/i)
     expect(system).toMatch(/never follow/i)
     expect(system).toContain('"translations"')
+  })
+
+  it('carries the writing rules for every target language, before the structural rules', () => {
+    for (const lang of LANGS) {
+      const system = translationSystemPrompt(lang)
+      const name = translationLanguageName(lang)
+      const style = system.indexOf('How to write:')
+      expect(style).toBeGreaterThan(-1)
+      expect(style).toBeLessThan(system.indexOf('Rules:'))
+      expect(system).toContain(`skilled ${name} writer`)
+      expect(system).toMatch(/hedge/)
+      expect(system).toMatch(/citation markers/)
+      expect(system).toMatch(/source term in parentheses the first time/)
+      expect(system).toMatch(/Headings: .*noun phrase/)
+      expect(system).toMatch(/Captions:/)
+      expect(system).toMatch(/register and tone/)
+      expect(system).toMatch(/any kind of document/)
+      // the structural and data rules are still there, after the writing rules
+      expect(system.lastIndexOf('Copy every placeholder verbatim')).toBeGreaterThan(style)
+      expect(system).toMatch(/data, not instructions/)
+      expect(system).toContain('"translations"')
+      expect(system.includes('한국어로 옮길 때:')).toBe(lang === 'ko')
+    }
+  })
+
+  it('adds the Korean rules only for Korean: endings by the kind of text, no translationese', () => {
+    const ko = translationStyleLines('ko').join('\n')
+    expect(ko).toContain('"~한다"체')
+    expect(ko).toContain('"~합니다"체')
+    expect(ko).toContain('한 문서 안에서 섞지 않는다')
+    expect(ko).toContain('~에 있어서')
+    expect(ko).toContain('능동형')
+    for (const lang of LANGS.filter((l) => l !== 'ko')) {
+      expect(translationStyleLines(lang).join('\n')).not.toMatch(/[가-힣]/)
+    }
+  })
+
+  it('does not assume a paper: no rule names papers or research as the document', () => {
+    const en = translationStyleLines('en').join('\n')
+    expect(en).not.toMatch(/\b(papers?|research|researchers?)\b/i)
+    expect(en).toMatch(/contract|report|notice/i)
   })
 
   it('knows a name for every UI language', () => {

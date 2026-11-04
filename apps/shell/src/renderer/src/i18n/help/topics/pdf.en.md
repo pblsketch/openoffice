@@ -128,6 +128,7 @@ Press **E** or **T**, or the explain and translate chips in the **Ask AI** box, 
 - **Translate this page** (or **Translate the rest** when part of the page is done) sends that page with one press while you use a subscription; the name of the AI it goes to is shown beside the button. On a connection billed by usage, the first press in a tab asks "‹AI name› will charge for this · Translate / Cancel" first.
 - Double-click a translated paragraph to edit it. Edited paragraphs are stored as plain text and are used as they are in translated PDF, Markdown and EPUB files. **Translate again** on a paragraph sends only that paragraph, and asks first if you edited it.
 - Hovering a translated paragraph outlines its place in the source page. The column's width and text size can be changed. **Translate all pages…** opens the **Translate Document** window, whose **Store only (no file)** format keeps the translation without writing a file.
+- Newly translated paragraphs are linked sentence by sentence. Hovering a translated sentence highlights that sentence on the source page, and hovering a source sentence lights up its translation. Where the sentence cannot be found on the page, and for paragraphs translated earlier or edited by you, the link stays paragraph by paragraph.
 
 ## AI highlights
 
