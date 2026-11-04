@@ -6,6 +6,7 @@ import {
   JobUnitFailure,
   TRANSLATION_BATCH_TOKENS,
   estimateTokens,
+  translationStyleLines,
   translationSystemPrompt,
   type TranslationJobItem,
   type TranslationModelRequest,
@@ -48,6 +49,17 @@ describe('the EPUB translation request', () => {
     // the PDF placeholders are not part of it
     expect(system).not.toContain('<a1>')
     expect(system).not.toContain('<n1/>')
+  })
+
+  it('carries the same writing rules as the PDF translation, before its own rules', () => {
+    for (const lang of ['ko', 'en', 'ja'] as const) {
+      const system = epubTranslationSystemPrompt(lang)
+      const style = translationStyleLines(lang).join('\n')
+      expect(system).toContain(style)
+      expect(system.indexOf(style)).toBeLessThan(system.indexOf('Rules:'))
+      expect(system).not.toContain('<a1>')
+      expect(system).not.toContain('<n1/>')
+    }
   })
 
   it('sends the blocks as JSON data in the PDF block format', () => {

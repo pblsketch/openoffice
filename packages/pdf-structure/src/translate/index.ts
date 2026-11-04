@@ -41,6 +41,7 @@ export {
   isTranslationLanguage,
   translationLanguageName,
 } from './language'
+export { translationStyleLines } from './style'
 export {
   buildBilingualTree,
   buildTranslatedTree,

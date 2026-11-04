@@ -9,6 +9,7 @@
  * (spec §9): it is parsed, never acted on.
  */
 import { translationLanguageName } from './language'
+import { translationStyleLines } from './style'
 
 export interface TranslationRequestBlock {
   /** id of the block inside this batch ("1", "2", …) */
@@ -29,6 +30,8 @@ export function translationSystemPrompt(lang: string): string {
     `You are a translation engine. Translate document text into ${target}.`,
     '',
     'Input: the user message holds a JSON object between <document_blocks> and </document_blocks>. Its "blocks" array lists text blocks of one document, each with an "id" and a "text".',
+    '',
+    ...translationStyleLines(lang),
     '',
     'Rules:',
     `1. Translate the "text" of every block into ${target}. Keep the meaning, tone and register; write natural ${translationLanguageName(lang)}.`,
