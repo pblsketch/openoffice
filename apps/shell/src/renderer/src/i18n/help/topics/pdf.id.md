@@ -6,6 +6,7 @@ Editor PDF punya lima tab di pita: **Beranda / Anotasi / Edit / Halaman / Tampil
 
 - Bilah sisi kiri: **Gambar mini** (klik untuk melompat, rentang yang terlihat disorot) atau **Kerangka** (bookmark, jika ada).
 - Zoom: kendali rasio di kanan bawah; ctrl+roda mengubah tingkat zoom.
+- Menggeser tampilan: aktifkan **Alat Tangan** (tab Beranda dan Tampilan) lalu seret untuk menggeser halaman ke segala arah. Selama aktif, menyeret tidak memilih teks dan klik biasa tetap membuka tautan. Menyeret sambil menahan tombol tengah (roda) menggeser tampilan tanpa alat ini. Esc atau memilih alat lain mematikannya.
 - Rotasi: per halaman atau semua halaman dari menu Halaman; rotasi ditulis kembali saat menyimpan.
 - Cari: ctrl+F untuk mencari seluruh teks dengan semua hasil disorot.
 - PDF terenkripsi: akan muncul Kotak Dialog Kata Sandi (jendela kecil tersendiri) untuk membukanya; kata sandi hanya dipakai untuk sesi ini. Dokumen seperti ini dapat disunting dan disimpan; saat disimpan, kata sandinya tetap ada. **Anotasi → Lindungi** menetapkan, mengubah, atau menghapus kata sandi dan hal yang boleh dilakukan pembaca.

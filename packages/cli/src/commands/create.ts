@@ -42,20 +42,20 @@ import { txnFailure, txnDetail } from './txn'
 import { hwpOpsOf, hwpOutputFormat, runHwpBatch } from './hwp'
 
 /** Document types that can be built here. */
-const TYPES = ['pptx', 'xlsx', 'docx', 'pdf', 'hwp', 'hwpx'] as const
+const TYPES = ['pptx', 'xlsx', 'docx', 'pdf', 'hwp', 'hwpx', 'drawio'] as const
 
 export const createCommand: CommandDef = {
   name: 'create',
   summary: 'Create a new document from structured content.',
   usage:
-    'create --type <pptx|xlsx|docx|pdf|hwp|hwpx> (--ops <file|-> | --spec <file|dir|-> [--outline <file>] | --from <file>) --out <path> [--force]',
+    'create --type <pptx|xlsx|docx|pdf|hwp|hwpx|drawio> (--ops <file|-> | --spec <file|dir|-> [--outline <file>] | --from <file> | --mermaid <file|->) --out <path> [--force]',
   options: [
     { name: 'type', value: 'type', description: `document type: ${TYPES.join(', ')}` },
     {
       name: 'ops',
       value: 'file',
       description:
-        'pptx: JSON array of ops (or {"ops":[...]}) applied one by one to a blank one-slide deck (later ops can target slides added earlier); hwp / hwpx: the `hwp apply` ops run on a blank A4 document (see `ieumoffice guide hwp`); "-" reads stdin. See `ieumoffice guide slides`.',
+        'pptx: JSON array of ops (or {"ops":[...]}) applied one by one to a blank one-slide deck (later ops can target slides added earlier); hwp / hwpx: the `hwp apply` ops run on a blank A4 document (see `ieumoffice guide hwp`); drawio: the `diagram apply` ops run on a new one-page diagram, also inline JSON or @<file> (see `ieumoffice guide diagram`); "-" reads stdin. See `ieumoffice guide slides`.',
     },
     {
       name: 'spec',
@@ -85,6 +85,12 @@ export const createCommand: CommandDef = {
       value: ', or .',
       description:
         'xlsx --from .csv: the decimal separator the file uses (default "."); with "," a "." is read as a thousands separator',
+    },
+    {
+      name: 'mermaid',
+      value: 'file|-',
+      description:
+        'drawio: Mermaid source drawn by draw.io on the new diagram before any --ops (needs the app); "-" reads stdin',
     },
     { name: 'out', value: 'path', description: 'output file (required)' },
     { name: 'force', description: 'overwrite an existing output file' },
@@ -122,6 +128,11 @@ export const createCommand: CommandDef = {
         { reason: 'invalid_argument' },
       )
     }
+    if (type !== 'drawio' && args.flags['mermaid'] !== undefined) {
+      throw new CliError(EXIT.usage, '--mermaid goes with --type drawio', undefined, {
+        reason: 'invalid_argument',
+      })
+    }
     const output = resolveOutput(flagString(args, 'out'), ctx, {
       force: flagBool(args, 'force'),
       fresh: true,
@@ -141,6 +152,14 @@ export const createCommand: CommandDef = {
       }
     }
     if (type === 'hwp' || type === 'hwpx') return createHwp(type, args, ctx, output)
+    if (type === 'drawio') {
+      const diagram = await import('../formats/diagram')
+      // the name decides the format; check it before reading any input
+      diagram.diagramFormatOf(output)
+      const ops = args.flags['ops'] !== undefined ? diagram.diagramOpsOf(args, ctx) : undefined
+      const mermaid = diagram.mermaidTextOf(args, ctx)
+      return diagram.createDrawio(output, ops, mermaid, ctx, writeOutput)
+    }
     if (type === 'docx') {
       const r = await createDocx(args, ctx)
       writeOutput(output, r.bytes)

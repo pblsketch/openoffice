@@ -221,3 +221,22 @@ npm run test -w @genoffice/hwp                      # 엔진 시험(engine-layou
 - 패치는 `vendor/rhwp-core/patches/`에 번호 순으로 두고 `package.json`의 `rhwp.patches`에 적는다. 만드는 방법은 같은 태그를 받은 rhwp 사본에서 커밋한 뒤 `git format-patch`로 뽑는 것이다.
 - 패치 묶음이 바뀌면 `package.json`의 버전(`0.8.7-ieum.N`)을 올리고 `package-lock.json`의 같은 항목도 고친다.
 - 빌드에는 10분 남짓 걸린다. 빌드 뒤 `rhwp.js`·`rhwp.d.ts`가 npm의 같은 버전과 같은지, WASM에 이 PC의 사용자 폴더 경로가 없는지 본다(스크립트가 경로를 검사한다).
+
+## draw.io 판 올리기
+
+다이어그램 편집기가 싣는 draw.io는 저장소에 없다. 빌드(`npm run build -w @genoffice/diagram`, 개발 실행 포함)가 `vendor/drawio/drawio.json`에 적힌 판의 `draw.war`를 받아 해시를 확인하고, 뺄 목록을 적용하고, `js/extensions.min.js`에서 ELK·libavoid 구간을 잘라낸 뒤 `apps/diagram/out/drawio/`에 놓는다(결정 0103). 판은 v32.6.9로 시작했다. draw.io는 거의 매주 새 판을 내지만 따라 올리지 않는다. 올릴 까닭(고친 결함, 필요한 기능)이 있을 때 따로 일을 잡아 올린다. 자세한 절차와 목록은 `vendor/drawio/README.md`에 있다.
+
+```bash
+# 1. drawio.json의 version·url을 새 판으로 바꾸고, 새 draw.war의 sha256·size를 적는다
+node vendor/drawio/prepare.mjs        # 2. 받기 → 해시 확인 → 빼기 → 잘라내기. 잘라내기가 실패하거나 결과 해시가 다르면 멈춘다
+npm run licenses                      # 3. 싣는 파일이 inventory.json에 다 있고 모두 허용 목록 안인지
+npm run notices                       # 4. THIRD-PARTY-NOTICES.txt의 draw.io 절 확인
+npm run test -w @genoffice/diagram
+npm run build -w @genoffice/shell     # 5. 빌드한 앱에서 편집기 확인
+```
+
+- **잘라내기를 다시 본다.** 새 `js/extensions.min.js` 안에서 ELK(`js/elk/drawio-elk.min.js`)와 libavoid(`js/libavoid-js/libavoid.min.js`, `libavoid-routing.js`)가 각각 정확히 한 번, 독립 파일과 바이트로 같게 나와야 한다. 찾지 못하면 그 파일이 세 부품을 어떻게 담는지 보고 `drawio.json`의 `cut`을 고친다. 결과 해시가 다르다고 나오면, 잘린 것이 그 세 구간뿐인지 확인한 뒤 알려 준 값을 `cut[].sha256`에 적는다. 잘라내기는 저장소 주인이 승인한 예외 하나뿐이다. 다른 파일을 고치거나 자르는 길로 넓히지 않는다.
+- **라이선스 검사가 새 부품을 알리면** 라이선스를 직접 확인해 `vendor/drawio/inventory.json`에 적는다. 허용 목록 밖이면 `remove`로 뺀다. 빼서 열기·고치기·저장·내보내기·Mermaid 가운데 하나가 깨지면 멈추고 저장소 주인에게 묻는다. 판을 올린 뒤 아무 파일에도 걸리지 않는 항목이 남으면 검사가 실패하니 지운다.
+- `vendor/drawio/LICENSE`를 새 태그의 것으로 바꾼다.
+- **편집기를 손으로 확인한다.** 빌드한 앱에서 다이어그램을 열고 고치고 저장하고 다시 연다. PNG·SVG·PDF 내보내기, 인쇄, AI 창의 Mermaid 넣기, `.vsdx` 가져오기, 어두운 테마, 언어 바꾸기를 해 본다. 다이어그램 E2E(`e2e/diagram-*.spec.ts`)가 바깥 요청 0건을 본다. draw.io가 메뉴 동작 이름을 바꾸면 숨길 목록(`apps/diagram/src/shared/drawio-start.ts`)이 빠뜨릴 수 있으니, 메뉴에 바깥으로 가는 항목이 다시 보이지 않는지 본다.
+- 캐시는 `vendor/drawio/.cache/<판>/draw.war`다. 예전 판의 캐시는 지워도 된다.

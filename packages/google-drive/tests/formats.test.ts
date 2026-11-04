@@ -26,6 +26,14 @@ describe('openPlan', () => {
       kind: 'download',
       extension: '.epub',
     })
+    expect(openPlan({ name: 'flow.drawio', mimeType: 'application/vnd.jgraph.mxfile' })).toEqual({
+      kind: 'download',
+      extension: '.drawio',
+    })
+    expect(openPlan({ name: 'flow.DIO', mimeType: 'application/octet-stream' })).toEqual({
+      kind: 'download',
+      extension: '.dio',
+    })
   })
 
   it('opens nothing else', () => {

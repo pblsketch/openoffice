@@ -2342,6 +2342,25 @@ button {
   pointer-events: none;
 }
 
+/* Hand tool: dragging the pane moves the view instead of selecting text
+   (pan-drag.ts); links keep their pointer and still follow on a plain click */
+.pdf-scroll.pdf-hand,
+.pdf-scroll.pdf-hand .pdf-page,
+.pdf-scroll.pdf-hand .textLayer span {
+  cursor: grab;
+}
+
+.pdf-scroll.pdf-hand .textLayer {
+  user-select: none;
+}
+
+/* set by pan-drag.ts for the length of a drag, from either button */
+.pdf-scroll[data-panning],
+.pdf-scroll[data-panning] * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
 .pdf-draw-shape {
   cursor: move;
 }
@@ -3613,6 +3632,20 @@ button {
 .rb-menu button:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+.rb-menu-sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--border);
+}
+
+/* Section name inside a ribbon dropdown (the PNG / JPG exports of the converter menu) */
+.rb-menu-heading {
+  padding: 4px 10px 2px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 /* Dialog color well (stamp dialog): swatch trigger + the shared picker popover.

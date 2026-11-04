@@ -44,6 +44,8 @@ Các thẻ phía trên danh sách tạo tài liệu mới trong một bước. N
 
 Tập tin mới nằm trong thư mục đang được chọn ở thanh bên; nếu không chọn gì thì nó vào thư mục mặc định.
 
+Để ẩn thẻ hoặc đổi thứ tự, hãy chọn trong **Tài liệu mới trên Trang chủ** ở Cài đặt → Chung. Loại bạn tắt chỉ biến mất khỏi thẻ và menu Mới; tệp thuộc loại đó vẫn mở như trước. Ở Trang chủ, ⌘N/Ctrl+N tạo loại đầu tiên còn hiển thị.
+
 Từng thẻ dùng để làm gì:
 
 - **AI Docs** (.docx): tài liệu văn bản trống trong trình soạn thảo Docs. Tập tin chỉ thực sự được ghi xuống đĩa ở **lần lưu đầu tiên**; tài liệu mới mở với bảng AI đang mở rộng (tắt trong Cài đặt → "Mở bảng AI trong tài liệu mới").

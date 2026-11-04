@@ -1,0 +1,202 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pblsketch <239486537+pblsketch@users.noreply.github.com>
+Date: Wed, 4 Nov 2026 00:00:00 +0900
+Subject: [PATCH 16/30] fix(hwpx): 셀 영역 경계가 빠진 행에 걸려도 HWPX 저장을 거절하지 않는다
+
+devel 은 세로로 합친 칸 때문에 시작하는 칸이 없는 행을 HWPX 표에서 뺀다
+(src/model/table_row_grid.rs, #8120). 행 번호·rowSpan·셀 영역을 다시 매기고,
+rhwp 가 원래 격자를 되살리도록 META-INF/rhwp-table-row-grids.json 을 함께 쓴다.
+그런데 셀 영역(cellzone)의 시작이나 끝이 그 빠진 행에 걸리면 "HWPX 표의 빈 논리
+행을 내용·경계 손실 없이 표현할 수 없습니다"로 HWPX 저장 전체를 거절한다.
+
+0.8.7-ieum.17(패치 0026)은 같은 문서를 저장했다. 그 영역을 그 행을 덮는 위쪽 남은
+행으로 넓혔다. 저장이 거절되는 것이 영역이 빠진 행만큼 넓어지는 것보다 쓰는 사람에게
+나쁘므로 그 동작을 되살린다.
+
+- 셀 영역 경계는 시작하는 칸이 있는 행일 때만 투영 경계가 된다.
+- 영역의 시작·끝 행은 그 행을 덮는 투영 행(위쪽으로 가장 가까운 경계)으로 옮긴다.
+  경계 위에 있는 행이면 종전 devel 값과 같다. 0026 의 `HwpxRows::addr` 와 같은 대응이다.
+
+빠진 행은 제 높이가 없고(높이는 합친 칸 안에 들어 있다), 위쪽 남은 행에서 빠진
+행까지 이어지는 칸은 모두 원래 영역에도 걸쳐 있던 칸이다. 그래서 칸·글은 그대로이고
+영역의 테두리·배경만 그 칸들 전체로 넓어진다. rhwp 로 다시 열면 곁 파일로 원래 행
+격자를 되살리되 영역은 넓어진 채다.
+
+곁 파일, 행 번호·rowSpan 다시 매기기, 칸 겹침·빈 자리·잘못된 영역·ID 중복 거절 등
+devel 의 나머지 경로는 그대로다. 0026 의 `rows_below_dropped_rows_are_renumbered`
+시험을 그대로 되살렸고, devel 시험 `row_projection_rejects_ambiguous_ids_and_physical_holes`
+의 셀 영역 거절 사례는 저장이 되고 영역이 넓어지는지 보는
+`row_projection_widens_a_zone_on_a_dropped_row` 로 옮겼다.
+
+Ported onto devel 7d06d5c70: replaces 0026's serializer-side `HwpxRows` with a change to devel's row-grid projection; only the cell-zone-on-dropped-row case differs from devel.
+---
+ src/model/table_row_grid.rs                        | 19 ++++++--
+ src/serializer/hwpx/table.rs                       | 51 ++++++++++++++++++++++
+ .../issue_7998_pdf_retained_border_structure.rs    | 43 +++++++++++++++---
+ 3 files changed, 104 insertions(+), 9 deletions(-)
+
+diff --git a/src/model/table_row_grid.rs b/src/model/table_row_grid.rs
+index ac037c96275c0eb140614d84dbd21d0d84e7a146..0929f6d57abdb4e147fec6e1c23553276a730f55 100644
+--- a/src/model/table_row_grid.rs
++++ b/src/model/table_row_grid.rs
+@@ -133,14 +133,20 @@ where
+     if covered.iter().any(|v| !v) {
+         return Err(error());
+     }
+-    // Zone boundaries carry meaning even when no cell starts there.
++    // [ieum 0026] A zone boundary on a row without a cell origin cannot be kept in
++    // the projected grid. Upstream refuses the whole HWPX save here; 0.8.7-ieum
++    // saved it with the zone widened to the kept row that covers it (`project`
++    // maps zone rows to the covering band). A dropped row has no height of its
++    // own, so this only stretches the zone's border/fill over that band; no cell
++    // or text is lost. Only origin rows become zone boundaries.
+     for z in &t.zones {
+         let end = z.end_row.checked_add(1).ok_or_else(error)?;
+         if z.start_row >= end || end > t.row_count {
+             return Err(error());
+         }
+         for value in [z.start_row, end] {
+-            if !boundaries.contains(&value) {
++            let on_kept_row = value == t.row_count || origins[usize::from(value)];
++            if on_kept_row && !boundaries.contains(&value) {
+                 storage.tree_entry::<u16, ()>().map_err(budget_error)?;
+                 boundaries.insert(value);
+             }
+@@ -218,9 +224,14 @@ impl Writer {
+             c.row = index(c.row);
+             c.row_span = end - c.row;
+         }
++        // [ieum 0026] Zone rows map to the projected row that covers them: the
++        // last boundary at or above. For rows on a boundary this equals the exact
++        // index (`end_row` = `index(end_row + 1) - 1`); a zone edge on a dropped
++        // row widens to that row's band instead of failing the save.
++        let covering = |row: u16| (boundaries.partition_point(|&b| b <= row) - 1) as u16;
+         for z in &mut projected.zones {
+-            z.start_row = index(z.start_row);
+-            z.end_row = index(z.end_row + 1) - 1;
++            z.start_row = covering(z.start_row);
++            z.end_row = covering(z.end_row);
+         }
+         projected
+             .rebuild_row_sizes_with_storage(storage)
+diff --git a/src/serializer/hwpx/table.rs b/src/serializer/hwpx/table.rs
+index b95178a1f4f19046a8ceb600ff3c97bdae92c107..5108205e5e83c75205bf85bc1ea26a2323e6a33e 100644
+--- a/src/serializer/hwpx/table.rs
++++ b/src/serializer/hwpx/table.rs
+@@ -2053,4 +2053,55 @@ mod tests {
+             xml
+         );
+     }
++
++    /// [ieum 0026] 빠진 행 아래의 칸과 셀 영역은 번호를 당긴다. 다른 열이 여전히 그 행을
++    /// 쓰면 빼지 않는다. 셀 영역의 시작이 빠진 행(2행)에 걸리면 저장을 거절하지 않고 그
++    /// 행을 덮는 위쪽 남은 행(1행)으로 넓힌다 — 0.8.7-ieum 이 저장하던 그대로다.
++    ///
++    /// 0026 원본 시험을 그대로 옮겼다. `write_table` 만 부르므로 다시 읽기는 없다. 문서로
++    /// 저장해 다시 읽을 때(곁 파일 `META-INF/rhwp-table-row-grids.json` 로 rhwp 가 원래
++    /// 5행을 되살리는 것)는 `tests/cases/issue_7998_pdf_retained_border_structure.rs` 에서 본다.
++    #[test]
++    fn rows_below_dropped_rows_are_renumbered() {
++        use crate::model::table::TableZone;
++        // 2열 5행. 두 열 모두 1~2행을 합쳐 2행이 비고, 왼쪽 열만 3~4행을 합친다.
++        let mut t = empty_table(5, 2);
++        t.merge_cells(1, 0, 2, 1).expect("1~2행 병합");
++        t.merge_cells(3, 0, 4, 0).expect("왼쪽 3~4행 병합");
++        t.zones.push(TableZone {
++            start_row: 2,
++            start_col: 0,
++            end_row: 4,
++            end_col: 1,
++            border_fill_id: 5,
++        });
++        let xml = serialize(&t);
++        assert!(xml.contains(r#"rowCnt="4""#), "rowCnt: {xml}");
++        assert_eq!(xml.matches("<hp:tr>").count(), 4);
++        assert!(!xml.contains("<hp:tr></hp:tr>"), "빈 tr: {xml}");
++        assert!(
++            xml.contains(
++                r#"<hp:cellAddr colAddr="0" rowAddr="1"/><hp:cellSpan colSpan="2" rowSpan="1"/>"#
++            ),
++            "1~2행 병합 칸: {xml}"
++        );
++        assert!(
++            xml.contains(
++                r#"<hp:cellAddr colAddr="0" rowAddr="2"/><hp:cellSpan colSpan="1" rowSpan="2"/>"#
++            ),
++            "왼쪽 3~4행 병합 칸: {xml}"
++        );
++        assert!(
++            xml.contains(
++                r#"<hp:cellAddr colAddr="1" rowAddr="3"/><hp:cellSpan colSpan="1" rowSpan="1"/>"#
++            ),
++            "오른쪽 4행 칸: {xml}"
++        );
++        assert!(
++            xml.contains(r#"<hp:cellzone startRowAddr="1" startColAddr="0" endRowAddr="3" endColAddr="1" borderFillIDRef="5"/>"#),
++            "셀 영역: {xml}"
++        );
++        assert_eq!(t.row_count, 5, "모델의 표는 그대로");
++        assert_eq!((t.zones[0].start_row, t.zones[0].end_row), (2, 4));
++    }
+ }
+diff --git a/tests/cases/issue_7998_pdf_retained_border_structure.rs b/tests/cases/issue_7998_pdf_retained_border_structure.rs
+index 0c1ad5bc989a09e4c74a3f13e776c93497d65561..30b617005bfa07e70d144e24a245bdbe87bd700c 100644
+--- a/tests/cases/issue_7998_pdf_retained_border_structure.rs
++++ b/tests/cases/issue_7998_pdf_retained_border_structure.rs
+@@ -1794,6 +1794,12 @@ fn row_projection_rejects_ambiguous_ids_and_physical_holes() {
+         .unwrap_err()
+         .to_string()
+         .contains("빈 논리 행"));
++}
++/// [ieum 0026] 셀 영역의 경계가 시작하는 칸이 없는 행에 걸려도 HWPX 저장은 실패하지 않는다.
++/// 상위는 여기서 저장 전체를 거절했다. 0.8.7-ieum 처럼 그 영역을 그 행을 덮는 위쪽 남은
++/// 행으로 넓혀 저장한다. 빠진 행은 제 높이가 없으므로 칸·글은 그대로이고 영역만 넓어진다.
++#[test]
++fn row_projection_widens_a_zone_on_a_dropped_row() {
+     let mut c = merged_native();
+     let ci = root(&c).0;
+     let Control::Table(t) = &mut c.document_mut().sections[0].paragraphs[0].controls[ci] else {
+@@ -1806,11 +1812,38 @@ fn row_projection_rejects_ambiguous_ids_and_physical_holes() {
+         end_col: 1,
+         border_fill_id: t.border_fill_id,
+     });
+-    assert!(c
+-        .export_hwpx_native()
+-        .unwrap_err()
+-        .to_string()
+-        .contains("빈 논리 행"));
++    let before = table_topology(&c);
++    let text_before = text(&c.document().sections[0].paragraphs);
++    let bytes = c.export_hwpx_native().unwrap();
++    assert_xml_rows(&bytes, 1);
++    let part = zip_part(&bytes, "Contents/section0.xml");
++    assert!(
++        std::str::from_utf8(&part)
++            .unwrap()
++            .contains(r#"<hp:cellzone startRowAddr="0" startColAddr="0" endRowAddr="0" endColAddr="1""#),
++        "영역은 남은 0행으로 넓어진다"
++    );
++    let zones = |d: &DocumentCore| {
++        root(d)
++            .1
++            .zones
++            .iter()
++            .map(|z| (z.start_row, z.end_row, z.start_col, z.end_col))
++            .collect::<Vec<_>>()
++    };
++    // rhwp 는 곁 파일로 원래 2행 격자를 되살린다. 영역은 넓어진 채(0~1행)다.
++    let restored = DocumentCore::from_bytes(&bytes).unwrap();
++    assert_eq!(table_topology(&restored), before);
++    assert_eq!(zones(&restored), vec![(0, 1, 0, 1)]);
++    assert_eq!(
++        text(&restored.document().sections[0].paragraphs),
++        text_before
++    );
++    // 곁 파일이 없으면(한컴이 보는 표) 1행 표의 0행 영역이다.
++    let plain = DocumentCore::from_bytes(&change_part(&bytes, ROW_GRID, None)).unwrap();
++    assert_eq!(root(&plain).1.row_count, 1);
++    assert_eq!(zones(&plain), vec![(0, 0, 0, 1)]);
++    assert_eq!(text(&plain.document().sections[0].paragraphs), text_before);
+ }
+ 
+ fn topology_scope_load() -> (DocumentCore, usize) {

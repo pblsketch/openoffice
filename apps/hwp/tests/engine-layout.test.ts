@@ -22,7 +22,11 @@
  * lines on page 1; page 2 opens with a heading that has space before it, then
  * a filler line and a two-line paragraph whose text ends with a top-and-bottom
  * table placed 1100 HWPUNIT below the paragraph's last line) and saved by
- * Hangul 2024.
+ * Hangul 2024. The caption-footnote-flow case is not saved by Hangul: it is
+ * written by a script the way document generators write HWPX (no
+ * linesegarray), with the reported thesis's styles and page setup and only
+ * filler text and a blank picture. caption-footnote-flow-ieum17.hwp is that
+ * file saved as .hwp by engine 0.8.7-ieum.17.
  */
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
@@ -80,7 +84,12 @@ function boxes(doc: HwpDocument, page: number): Box[] {
 function footnoteAndBody(doc: HwpDocument, page: number) {
   const root = JSON.parse(doc.getPageRenderTree(page)) as Node
   const area = root.children?.find((child) => child.type === 'FootnoteArea')
-  const separator = area?.children?.find((child) => child.type === 'Line')?.bbox?.y
+  // the separator line, or the first note's line where the document's separator has no
+  // colour (`color="none"`, which rhwp devel leaves undrawn)
+  const separator = (
+    area?.children?.find((child) => child.type === 'Line') ??
+    area?.children?.find((child) => child.type === 'TextLine')
+  )?.bbox?.y
   const bottoms: number[] = []
   const walk = (node: Node) => {
     if (node.type === 'TextLine' && node.bbox) bottoms.push(node.bbox.y + node.bbox.h)
@@ -114,7 +123,8 @@ const px = (hwpunit: number) => (hwpunit * 96) / 7200
 describe('vendored rhwp engine', () => {
   it('is the build its manifest records', () => {
     const manifest = JSON.parse(readFileSync(join(CORE, 'package.json'), 'utf8'))
-    expect(manifest.version).toMatch(/^0\.8\.7-ieum\.\d+$/)
+    // a release tag, or a commit on an upstream branch ahead of one (decision 0107)
+    expect(manifest.version).toMatch(/^\d+\.\d+\.\d+-(devel\.)?ieum\.\d+$/)
     const wasm = readFileSync(join(CORE, 'rhwp_bg.wasm'))
     expect(createHash('sha256').update(wasm).digest('hex')).toBe(manifest.rhwp.wasmSha256)
   })
@@ -218,7 +228,8 @@ describe('vendored rhwp engine', () => {
     expect(table.top).toBeGreaterThanOrEqual(last.bottom - 0.5)
     expect(table.top).toBeCloseTo(last.top + px(1100), 0)
     // what follows starts below the table: Hangul puts the next line right at its
-    // bottom, with neither the host's space after nor the next space before
+    // bottom, with neither the host's space after nor the next space before (patches
+    // 0028 and 0035)
     const after = page.filter((b) => b.pi > 6).sort((a, b) => a.top - b.top)
     for (const box of after) expect(box.top).toBeGreaterThanOrEqual(table.bottom - 0.5)
     expect(after[0].top).toBeCloseTo(table.bottom, 0)
@@ -338,5 +349,86 @@ describe('vendored rhwp engine', () => {
       // the band's declared height is 1500, in HWPUNIT
       expect(band!.y).toBeCloseTo(root.bbox!.h - px(4000) - px(1500), 0)
     }
+  })
+
+  // Generated like the reported thesis: no paragraph, caption or footnote has
+  // a linesegarray, and each note types its number ("1) …") with no autoNum.
+  // A picture's bottom caption and a table's top caption take two lines,
+  // another picture's caption is a title plus a four-line note, two
+  // three-line notes sit near a page end, a paragraph that nearly fills a
+  // page has a ten-line note marked in its first line, and a table near a
+  // page end has a six-line note in a cell. The engine measured the captions
+  // as one line and each note as 400 HWPUNIT, so text ran under the captions
+  // and down into the notes, and it drew each number twice ("1) 1) …").
+  function checkCaptionFootnoteFlow(doc: HwpDocument) {
+    const text = (node: Node): string =>
+      (node.text ?? '') + (node.children ?? []).map(text).join('')
+    const pages = Array.from({ length: doc.pageCount() }, (_, page) => {
+      const root = JSON.parse(doc.getPageRenderTree(page)) as Node
+      const body = area(root, 'Body')!
+      const lines: { pi: number; text: string; box: NonNullable<Node['bbox']> }[] = []
+      const walk = (node: Node) => {
+        if (node.type === 'TextLine') {
+          if (text(node).trim()) lines.push({ pi: node.pi!, text: text(node), box: node.bbox! })
+        } else if (node.type !== 'Table') for (const child of node.children ?? []) walk(child)
+      }
+      walk(body)
+      const notes = area(root, 'FootnoteArea')
+      const separator = notes && first(notes, 'Line')?.bbox?.y
+      const noteText = (notes?.children ?? []).filter((c) => c.type === 'TextLine').map(text)
+      return { body: body.bbox!, lines, separator, noteText }
+    })
+
+    for (const { body, lines, separator, noteText } of pages) {
+      for (const [i, a] of lines.entries()) {
+        expect(a.box.y + a.box.h).toBeLessThanOrEqual(body.y + body.h + 0.5)
+        if (separator !== undefined) expect(a.box.y + a.box.h).toBeLessThanOrEqual(separator + 0.5)
+        for (const b of lines.slice(i + 1)) {
+          const across = Math.min(a.box.x + a.box.w, b.box.x + b.box.w) - Math.max(a.box.x, b.box.x)
+          const down = Math.min(a.box.y + a.box.h, b.box.y + b.box.h) - Math.max(a.box.y, b.box.y)
+          expect(across > 1 && down > 1, `"${a.text}" over "${b.text}"`).toBe(false)
+        }
+      }
+      for (const line of noteText) expect(line.trim()).not.toMatch(/^\d+\)\s*\d+\)/)
+    }
+    // the captions still wrap: two lines for the first picture's caption
+    const captionPage = pages.find((p) => p.lines.some((l) => l.text.startsWith('[그림 1]')))!
+    expect(captionPage.lines.filter((l) => l.pi === 0).length).toBeGreaterThanOrEqual(2)
+
+    // each note is drawn once, on the page that holds its marker; the ten-line
+    // note's marker is in the first line of paragraph 16, the cell note's
+    // table is paragraph 22
+    const notePage = (n: number) => {
+      const found = pages.flatMap((p, i) =>
+        p.noteText.some((l) => l.trim().startsWith(`${n})`)) ? [i] : [],
+      )
+      expect(found).toHaveLength(1)
+      return found[0]
+    }
+    const pageOf = (pi: number) => pages.findIndex((p) => p.lines.some((l) => l.pi === pi))
+    for (const n of [1, 2]) expect(pages[notePage(n)].lines.some((l) => l.pi === 12)).toBe(true)
+    expect(notePage(3)).toBe(pageOf(16))
+    expect(pages[notePage(3)].noteText.length).toBeGreaterThanOrEqual(10)
+    expect(notePage(4)).toBe(
+      pages.findIndex((_, page) => boxes(doc, page).some((b) => b.type === 'Table' && b.pi === 22)),
+    )
+  }
+
+  it('reserves what multi-line captions and footnotes draw in a file without stored lines', () => {
+    checkCaptionFootnoteFlow(open('caption-footnote-flow.hwpx'))
+  })
+
+  it('keeps the captions and footnotes after saving that file as .hwp and opening it again', () => {
+    // HWP does not lay out empty lines on open, so the saved file must carry
+    // the caption and note lines the engine made.
+    const saved = new HwpDocument(open('caption-footnote-flow.hwpx').exportHwp())
+    checkCaptionFootnoteFlow(saved)
+  })
+
+  it('lays out the caption and note lines of a .hwp the earlier engine saved without them', () => {
+    // caption-footnote-flow-ieum17.hwp is the fixture saved as .hwp by engine
+    // 0.8.7-ieum.17: no caption or note lines, and inline picture lines that
+    // leave out the caption.
+    checkCaptionFootnoteFlow(open('caption-footnote-flow-ieum17.hwp'))
   })
 })

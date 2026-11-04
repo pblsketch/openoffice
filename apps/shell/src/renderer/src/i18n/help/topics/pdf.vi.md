@@ -6,6 +6,7 @@ Trình soạn thảo PDF có năm thẻ ruy-bâng: **Trang chủ / Chú thích /
 
 - Thanh bên trái: **hình thu nhỏ** (nhấp để nhảy, vùng đang hiện được đánh dấu) hoặc **mục lục** (bookmark, nếu có).
 - Thu phóng: bộ điều khiển tỉ lệ ở góc dưới bên phải; ctrl+lăn chuột thay đổi từng bậc.
+- Di chuyển khung nhìn: bật **Công cụ bàn tay** (tab Trang chủ và Xem) rồi kéo để di chuyển trang theo mọi hướng. Khi bật, kéo sẽ không chọn chữ và nhấp thường vào liên kết vẫn mở liên kết. Kéo trong khi giữ nút giữa (con lăn) sẽ di chuyển khung nhìn mà không cần công cụ. Nhấn Esc hoặc chọn công cụ khác để tắt.
 - Xoay: theo từng trang hoặc tất cả các trang từ menu Trang; góc xoay được ghi lại khi lưu.
 - Tìm kiếm: ctrl+F tìm trong toàn văn, tô sáng mọi kết quả.
 - PDF có mã hóa: một lời nhắc mật khẩu (một cửa sổ nhỏ riêng) mở tệp; mật khẩu chỉ dùng cho phiên làm việc này. Bạn có thể sửa và lưu tài liệu như vậy; khi lưu, mật khẩu vẫn được giữ. **Chú thích → Bảo vệ** đặt, đổi hoặc gỡ mật khẩu và những việc người đọc được phép làm.

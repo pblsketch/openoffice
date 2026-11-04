@@ -3,6 +3,7 @@
  * docs-main accepted before this list moved here is the baseline: the AI panel
  * shows what may be attached, so every editor must accept the same files.
  */
+import { detectDiagramFormat } from '@genoffice/drawio-model'
 
 /** plain-text extensions read as UTF-8 */
 const TEXT_EXTS = [
@@ -44,6 +45,27 @@ export const ATTACHABLE_IMAGE_EXTS: ReadonlySet<string> = new Set([
   'webp',
 ])
 
+/**
+ * draw.io diagrams, read as the read table of their pages. The two picture
+ * forms are known by their double extension (`diagramPictureExtOf`), so a
+ * `.drawio.png` that holds its diagram is not taken for a picture; `.vsdx` is
+ * not read.
+ */
+const DIAGRAM_EXTS = ['drawio', 'dio', 'drawio.svg', 'drawio.png']
+
+/** the double extension of a draw.io diagram kept inside a picture */
+export type DiagramPictureExt = 'drawio.svg' | 'drawio.png'
+
+/**
+ * `drawio.svg`/`drawio.png` when the file name ends so (any case), else null.
+ * Only the name: whether the picture holds its diagram is for
+ * `diagramPictureExtOf`, which reads the file.
+ */
+export function diagramPictureExtOfName(fileName: string): DiagramPictureExt | null {
+  const format = detectDiagramFormat(fileName)
+  return format === 'drawio.svg' || format === 'drawio.png' ? format : null
+}
+
 /** office/pdf formats get text extracted via `parseFileToText`; images skip extraction and go multimodal */
 export const ATTACHABLE_EXTS: ReadonlySet<string> = new Set([
   ...TEXT_EXTS,
@@ -60,6 +82,7 @@ export const ATTACHABLE_EXTS: ReadonlySet<string> = new Set([
   'hwp',
   'hwpx',
   'epub',
+  ...DIAGRAM_EXTS,
   ...ATTACHABLE_IMAGE_EXTS,
 ])
 

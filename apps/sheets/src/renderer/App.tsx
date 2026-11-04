@@ -477,6 +477,7 @@ import { installRtlTextDirectionFix } from './rtl-text-fix'
 import { installRtlGridMirror } from './rtl-grid-mirror'
 import { installVertAlignRender } from './vert-align-render'
 import { installMultiRowAutofit } from './autofit-multi-row'
+import { installDisjointLineRemoval } from './remove-disjoint-lines'
 import { registerExcelJumpNav } from './excel-jump-nav'
 import { registerEditorWordJump } from './editor-word-jump'
 import { registerExcelShortcuts } from './excel-shortcuts'
@@ -2405,6 +2406,8 @@ export function App({
     installClipboardAnchorTile(runtime)
     // Row-header double-click autofits every selected row, like Excel.
     const multiRowAutofitDisposable = installMultiRowAutofit(runtime)
+    // Deleting Ctrl-selected rows/columns removes every area, like Excel.
+    const disjointLineRemovalDisposable = installDisjointLineRemoval(runtime)
     const formatPainterDisposable = installFormatPainter(runtime, (active, turnedOff) => {
       setFormatPainterActive(active)
       if (turnedOff) setMessage('')
@@ -3682,6 +3685,7 @@ export function App({
       ctrlDragFillDisposable.dispose()
       contextSubmenuReopenDisposable.dispose()
       multiRowAutofitDisposable.dispose()
+      disjointLineRemovalDisposable.dispose()
       cellContextMenuDisposable.dispose()
       formatPainterDisposable.dispose()
       cfFormulaFoldDisposable.dispose()

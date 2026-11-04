@@ -159,6 +159,20 @@ describe('partitionDropPayload', () => {
     expect(result.unsupportedExts).toEqual([])
   })
 
+  it('routes dropped diagrams, draw.io pictures and Visio drawings as openable', () => {
+    const paths = [
+      '/maps/flow.drawio',
+      '/maps/FLOW.DIO',
+      '/maps/flow.drawio.svg',
+      '/maps/flow.drawio.png',
+      '/maps/plan.vsdx',
+    ]
+    const result = partitionDropPayload([...paths, '/maps/photo.png', '/maps/logo.svg'])
+    // a plain picture is no document: it is neither opened nor reported
+    expect(result.supported).toEqual(paths)
+    expect(result.unsupportedExts).toEqual([])
+  })
+
   it('routes dropped .xmind files as openable', () => {
     const result = partitionDropPayload(['/maps/plan.xmind', '/maps/PLAN2.XMIND'])
     expect(result.supported).toEqual(['/maps/plan.xmind', '/maps/PLAN2.XMIND'])

@@ -44,6 +44,8 @@ Karty nad seznamy vytvoří nový dokument jediným krokem. Kliknutím na kartu 
 
 Nový soubor se uloží do složky právě vybrané v postranním panelu; pokud není vybrána žádná, dostane se do výchozí složky.
 
+Chcete-li karty skrýt nebo změnit jejich pořadí, použijte **Nové dokumenty na domovské stránce** v Nastavení → Obecné. Vypnutý typ zmizí jen z karet a z nabídek Nový; soubory toho typu se dál otevírají jako dřív. Na domovské stránce vytvoří ⌘N/Ctrl+N první typ, který je stále zobrazený.
+
 Co která karta dělá:
 
 - **AI Docs** (.docx): prázdný textový dokument v editoru Docs. Soubor se na disk zapíše až při **prvním uložení**; nové dokumenty se otevírají s rozbaleným panelem AI (vypnout to lze v Nastavení → „Otevírat panel AI v nových dokumentech“).

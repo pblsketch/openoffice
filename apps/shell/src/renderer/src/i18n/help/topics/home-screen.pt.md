@@ -44,6 +44,8 @@ Os cartões acima das listas criam um documento novo num só passo. Clicar num c
 
 O arquivo novo vai parar à pasta atualmente selecionada na barra lateral; se não houver nenhuma seleção, vai para a pasta predefinida.
 
+Para ocultar cartões ou mudar a ordem, use **Novos documentos no Início** em Configurações → Geral. Um tipo desativado só sai dos cartões e dos menus Novo; os arquivos desse tipo continuam abrindo normalmente. No Início, ⌘N/Ctrl+N cria o primeiro tipo ainda visível.
+
 O que faz cada cartão:
 
 - **AI Docs** (.docx): um documento de texto em branco no editor Docs. O arquivo só é gravado no disco no **primeiro salvamento**; e os documentos novos abrem com o painel de IA expandido (desligue em Configurações → "Abrir o painel de IA em novos documentos").

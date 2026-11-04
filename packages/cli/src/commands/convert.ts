@@ -1,6 +1,6 @@
 import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { basename, dirname, extname, join } from 'node:path'
+import { basename, dirname, extname, isAbsolute, join, resolve as resolvePath } from 'node:path'
 import { PdfLoadError } from '@genoffice/pdf2docx'
 import { flagBool, flagString, type ParsedArgs } from '../args'
 import { csvToXlsx, sheetNameFromStem } from '../formats/csv'
@@ -21,6 +21,13 @@ import {
   resultStore,
   withStoredReadings,
 } from '../formats/pdf-structure'
+import {
+  DIAGRAM_CONVERT_TARGETS,
+  convertDiagram,
+  isDiagramPath,
+  openDiagramInput,
+  planDiagramConvert,
+} from '../formats/diagram'
 import { extension, readInput, resolveInput, resolveOutput, writeOutput } from '../fs'
 import { assertNotEmptyPackage } from '../limits'
 import type { CommandContext, CommandDef } from '../registry'
@@ -98,7 +105,7 @@ export const convertCommand: CommandDef = {
   name: 'convert',
   summary: 'Convert a document to another format using the GenOffice engines.',
   usage:
-    'convert <file> --to <format> [--out <path>] [--force] [--password <pw>] [--sheet <name>] [--pages <list>] [--title <text>] [--author <text>] [--no-cover] [--page-breaks]',
+    'convert <file> --to <format> [--out <path>] [--force] [--password <pw>] [--sheet <name>] [--pages <list>] [--title <text>] [--author <text>] [--no-cover] [--page-breaks] [--page <id|name>]',
   options: [
     { name: 'to', value: 'format', description: 'target format: ' + describeRoutes() },
     { name: 'out', value: 'path', description: 'output file (default: same name, new extension)' },
@@ -129,9 +136,16 @@ export const convertCommand: CommandDef = {
       name: 'page-breaks',
       description: 'pdf→epub: start each original page on a new screen',
     },
+    {
+      name: 'page',
+      value: 'id|name',
+      description:
+        'diagram→png/svg/pdf: only this page (default: every page; png/svg then write <name>-p<n>.<ext> into the --out folder)',
+    },
   ],
   async run(args, ctx) {
     const input = resolveInput(args.positionals[0], ctx)
+    if (isDiagramPath(input)) return convertDiagramFile(input, args, ctx)
     const from = extension(input)
     assertNotEmptyPackage(input, from)
     const to = flagString(args, 'to')?.toLowerCase()
@@ -285,6 +299,7 @@ const ROUTE_OPTIONS: [string, (from: string, to: string) => boolean, string][] =
   ['author', (from, to) => from === 'pdf' && to === 'epub', 'pdf→epub'],
   ['no-cover', (from, to) => from === 'pdf' && to === 'epub', 'pdf→epub'],
   ['page-breaks', (from, to) => from === 'pdf' && to === 'epub', 'pdf→epub'],
+  ['page', () => false, 'diagrams (.drawio, .dio, .drawio.svg, .drawio.png)'],
 ]
 
 function assertRouteOptions(args: ParsedArgs, from: string, to: string): void {
@@ -425,9 +440,72 @@ async function pdfReflow(
 }
 
 function describeRoutes(): string {
-  return Object.entries(ROUTES)
-    .map(([from, tos]) => `${from}→${tos.join('/')}`)
-    .join(', ')
+  return [
+    ...Object.entries(ROUTES).map(([from, tos]) => `${from}→${tos.join('/')}`),
+    `drawio/dio/drawio.svg/drawio.png→${DIAGRAM_CONVERT_TARGETS.join('/')}`,
+  ].join(', ')
+}
+
+/** A diagram to PDF, PNG or SVG: draw.io makes them in the app (windowless). */
+async function convertDiagramFile(input: string, args: ParsedArgs, ctx: CommandContext) {
+  const opened = openDiagramInput(input, ctx)
+  const to = flagString(args, 'to')?.toLowerCase()
+  if (!to)
+    throw new CliError(EXIT.usage, 'missing --to <format>', undefined, {
+      reason: 'missing_argument',
+    })
+  const target = DIAGRAM_CONVERT_TARGETS.find((t) => t === to)
+  if (!target) {
+    throw new CliError(
+      EXIT.usage,
+      `cannot convert a diagram to .${to}`,
+      { supported: [...DIAGRAM_CONVERT_TARGETS] },
+      { reason: 'unsupported', suggestion: 'pick a target from detail.supported' },
+    )
+  }
+  for (const option of [
+    'sheet',
+    'pages',
+    'title',
+    'author',
+    'no-cover',
+    'page-breaks',
+    'password',
+  ]) {
+    if (args.flags[option] !== undefined) {
+      throw new CliError(EXIT.usage, `--${option} does not apply to diagrams`, undefined, {
+        reason: 'invalid_argument',
+      })
+    }
+  }
+  const force = flagBool(args, 'force')
+  const out = flagString(args, 'out')
+  if (out === '' || args.flags.out === true) {
+    throw new CliError(EXIT.usage, 'missing --out <path>', undefined, {
+      reason: 'missing_argument',
+    })
+  }
+  const plan = planDiagramConvert(
+    opened,
+    target,
+    args.flags.page,
+    out === undefined ? undefined : isAbsolute(out) ? out : resolvePath(ctx.cwd, out),
+    (spec, fallback) => resolveOutput(spec, ctx, { fallback, force, fresh: true }),
+  )
+  for (const output of plan.outputs) {
+    if (samePath(input, output)) {
+      throw new CliError(
+        EXIT.usage,
+        `output path must differ from the input: ${output}`,
+        undefined,
+        {
+          reason: 'invalid_argument',
+          suggestion: 'pass a different --out',
+        },
+      )
+    }
+  }
+  return convertDiagram(opened, plan, ctx)
 }
 
 /**

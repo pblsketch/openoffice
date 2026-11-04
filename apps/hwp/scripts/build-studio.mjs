@@ -53,9 +53,15 @@ const CORE_DIR = dirname(require.resolve('@rhwp/core'))
 const core = JSON.parse(readFileSync(join(CORE_DIR, 'package.json'), 'utf8'))
 const VERSION = core.version
 const TAG = core.rhwp.tag
+/**
+ * Set when the engine is pinned to a commit on an upstream branch ahead of a
+ * release; TAG is then only the name of that pin (the cache folder).
+ */
+const BRANCH = core.rhwp.branch
 /** Commit each supported tag must resolve to; a moved tag stops the build. */
 const PINNED_COMMITS = {
   'v0.8.7': '1a76570e833917d15817415a53c09ad61ab3203f',
+  'devel-7d06d5c70': '7d06d5c706f1d89f1662e739abf2b1b25d2a98e4',
 }
 /**
  * Only what the build reads. The repository also carries gigabytes of sample
@@ -71,6 +77,12 @@ const SPARSE_PATTERNS = [
   '!/rhwp-studio/public/fonts',
   '!/rhwp-studio/public/samples',
   '/npm/hwpctrl-ocx/src/',
+  // modules the studio shares with the other rhwp front ends (forms, PDF import)
+  '/rhwp-shared/',
+  // the advance widths of the enclosed-character glyphs; the fonts beside it stay out
+  '/assets/fonts/enclosed-pua-metrics.json',
+  // the CanvasKit renderer's shader, which the engine's Skia renderer shares
+  '/src/renderer/square_gradient.sksl',
 ]
 
 const CACHE = join(APP, 'node_modules', '.cache', 'rhwp-studio', TAG)
@@ -132,12 +144,32 @@ function fetchSource() {
   rmSync(CACHE, { recursive: true, force: true })
   mkdirSync(dirname(CACHE), { recursive: true })
   console.log(`rhwp-studio: fetching ${TAG} from ${REPO}`)
-  git(
-    ['clone', '--depth', '1', '--branch', TAG, '--filter=blob:none', '--no-checkout', REPO, CACHE],
-    dirname(CACHE),
-  )
-  git(['sparse-checkout', 'set', '--no-cone', ...SPARSE_PATTERNS], CACHE)
-  git(['checkout', '--quiet', TAG], CACHE)
+  if (BRANCH) {
+    // a branch moves on; fetch the pinned commit itself
+    mkdirSync(CACHE, { recursive: true })
+    git(['init', '--quiet'], CACHE)
+    git(['remote', 'add', 'origin', REPO], CACHE)
+    git(['fetch', '--quiet', '--depth', '1', '--filter=blob:none', 'origin', pinned], CACHE)
+    git(['sparse-checkout', 'set', '--no-cone', ...SPARSE_PATTERNS], CACHE)
+    git(['checkout', '--quiet', 'FETCH_HEAD'], CACHE)
+  } else {
+    git(
+      [
+        'clone',
+        '--depth',
+        '1',
+        '--branch',
+        TAG,
+        '--filter=blob:none',
+        '--no-checkout',
+        REPO,
+        CACHE,
+      ],
+      dirname(CACHE),
+    )
+    git(['sparse-checkout', 'set', '--no-cone', ...SPARSE_PATTERNS], CACHE)
+    git(['checkout', '--quiet', TAG], CACHE)
+  }
   const head = git(['rev-parse', 'HEAD'], CACHE)
   if (head !== pinned) {
     rmSync(CACHE, { recursive: true, force: true })
@@ -179,6 +211,16 @@ function checkPluginHooks() {
 async function buildStudio() {
   const studio = join(CACHE, 'rhwp-studio')
   const wasmPkg = dirname(require.resolve('@rhwp/core'))
+  // rhwp-shared reaches the engine by its place in the rhwp repository (`../../pkg/rhwp.js`,
+  // from the PDF import worker too); that is the patched engine here as well
+  const sharedEngine = {
+    name: 'rhwp-shared-engine',
+    resolveId(source, importer) {
+      if (!importer || !/[\\/]rhwp-shared[\\/]/.test(importer)) return null
+      const file = /^(?:\.\.\/)+pkg\/(.+)$/.exec(source)?.[1]
+      return file ? join(wasmPkg, file) : null
+    },
+  }
   await build({
     configFile: false,
     root: studio,
@@ -189,6 +231,9 @@ async function buildStudio() {
       // no CDN web fonts: the app makes no request the user did not ask for
       __RHWP_DISABLE_EXTERNAL_WEBFONTS__: 'true',
       __RHWP_HWPCTRL__: 'true',
+      // no studio AI assistant: it would call a paid API from the editor; the app's AI panel
+      // is the only way to the AI (security.md), and the branch drops the assistant's code
+      __RHWP_AI__: 'false',
     },
     resolve: {
       alias: {
@@ -210,7 +255,8 @@ async function buildStudio() {
     },
     // upstream registers a service worker for its website build; this build
     // leaves that plugin out, a custom scheme cannot register one
-    plugins: [rhwpPatches(...STUDIO_PATCHES)],
+    plugins: [rhwpPatches(...STUDIO_PATCHES), sharedEngine],
+    worker: { format: 'es', plugins: () => [sharedEngine] },
     build: { outDir: OUT, emptyOutDir: true, chunkSizeWarningLimit: 4096 },
   })
   // the licenses travel with the build: rhwp's own, and the list of what its WASM links in

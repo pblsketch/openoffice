@@ -81,6 +81,11 @@ ieumoffice hwp read notice.hwp [--offset 20000] [--full] --json           # text
 ieumoffice hwp apply form.hwp --ops ops.json [--out filled.hwpx] [--dry-run] [--force] --json   # the in-app AI's tools as ops (replace_text, insert_paragraphs, fill_cells, fill_field ...; `guide hwp`); written back in its own format, the replaced file kept as form.hwp.bak
 ieumoffice create --type hwp --ops ops.json --out minutes.hwp             # a new Hangul document: the same ops on a blank A4 page (--type hwpx for .hwpx)
 ieumoffice guide hwp                                                    # the hwp apply ops, built from the in-app AI's tool definitions
+ieumoffice diagram read flow.drawio [--page Two] --json               # shapes and edges of each page of a draw.io diagram (.drawio, .dio, .drawio.svg, .drawio.png); no app process
+ieumoffice diagram apply flow.drawio --ops '[{"op":"add_shape","label":"Check","x":40,"y":200}]' [--page Two] [--out flow.dio] [--force] --json   # the in-app AI's diagram ops (`guide diagram`); .drawio/.dio keep untouched pages byte for byte
+ieumoffice create --type drawio --mermaid flow.mmd [--ops @more.json] --out flow.drawio   # Mermaid drawn by draw.io (a hidden IeumOffice), then the ops; --out x.drawio.png writes that format
+ieumoffice convert flow.drawio --to png [--page Two] [--out pictures]  # one PNG per page (flow-p1.png ...) into the folder, or one file with --page; --to svg the same, --to pdf one file
+ieumoffice guide diagram                                                # the diagram ops, built from the same definitions as the in-app AI's tools
 ieumoffice guide docs                                                   # op signatures + restricted-HTML rules (`guide <domain> --json` = the catalog with each op's schema and a fingerprint)
 ieumoffice selection report.docx --json   # what the user has selected in the editor showing the file
 ieumoffice skill list   # coding agents found on this machine and the skill version each has

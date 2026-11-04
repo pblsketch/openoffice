@@ -22,7 +22,8 @@
 export type SessionFamily = 'docx' | 'pptx' | 'xlsx'
 
 /** every family the app can edit, including ones MCP does not drive yet */
-export type EditorFamily = SessionFamily | 'md' | 'html' | 'pdf' | 'xmind' | 'hwp' | 'epub'
+export type EditorFamily =
+  SessionFamily | 'md' | 'html' | 'pdf' | 'xmind' | 'hwp' | 'epub' | 'drawio'
 
 export interface McpFormats {
   /** format the headless `create_*` tool writes, when exposed */
@@ -141,6 +142,18 @@ export const FORMAT_FAMILIES: readonly FormatFamily[] = [
     editorExport: [],
     // no `mcp` block: an open book is listed, read, saved and closed through
     // open_documents only (epub_translate and epub_status are the command line's)
+  },
+  {
+    family: 'drawio',
+    label: 'diagram',
+    // a Visio drawing opens as a new, untitled diagram made from it: open-only
+    editorOpen: ['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx'],
+    // a diagram is saved back in the format it was opened in; a new one as .drawio
+    editorSave: ['drawio', 'dio', 'drawio.svg', 'drawio.png'],
+    editorExport: ['png', 'svg', 'pdf'],
+    // no `mcp` block: there is no session, generator or file reader for
+    // diagrams; an open diagram is listed, read, saved and closed through
+    // open_documents and read and edited through read_diagram / apply_diagram_ops
   },
 ]
 

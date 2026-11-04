@@ -82,6 +82,9 @@ export function entryType(file: { name: string; mimeType: string }): DriveEntryT
       return 'hwp'
     case '.epub':
       return 'epub'
+    case '.drawio':
+    case '.dio':
+      return 'diagram'
     default:
       return 'other'
   }

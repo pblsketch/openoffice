@@ -17,6 +17,7 @@
   "dependencies": {
     "@genoffice/agent-core": "*",
     "@genoffice/docx-engine": "*",
+    "@genoffice/drawio-model": "*",
     "@genoffice/epub-engine": "*",
     "@genoffice/odt-engine": "*",
     "@genoffice/xlsx-gateway": "*",

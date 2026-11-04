@@ -1,15 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
-Date: Thu, 29 Oct 2026 00:00:00 +0900
-Subject: [PATCH 24/25] =?UTF-8?q?fix(rendering):=20=EB=B0=9D=EA=B8=B0?=
- =?UTF-8?q?=C2=B7=EB=8C=80=EB=B9=84=EB=A5=BC=20=EC=A1=B0=EA=B8=88=20?=
- =?UTF-8?q?=EB=B0=94=EA=BE=BC=20=EA=B7=B8=EB=A6=BC=EC=9D=84=20=EC=9B=8C?=
- =?UTF-8?q?=ED=84=B0=EB=A7=88=ED=81=AC=20=EB=B0=98=ED=88=AC=EB=AA=85?=
- =?UTF-8?q?=EC=9C=BC=EB=A1=9C=20=EA=B7=B8=EB=A6=AC=EC=A7=80=20=EC=95=8A?=
- =?UTF-8?q?=EB=8A=94=EB=8B=A4?=
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Date: Wed, 4 Nov 2026 00:00:00 +0900
+Subject: [PATCH 14/30] fix(rendering): 밝기·대비를 조금 바꾼 그림을 워터마크 반투명으로 그리지 않는다
 
 회색조 + 밝기 −4 · 대비 −25 인 칸 배경 그림(교재 머리말 장식 막대)을 한컴
 한글 2024 는 불투명하게, 밝기·대비만 적용해 그린다(원본 255 → 213,
@@ -37,19 +29,21 @@ Content-Transfer-Encoding: 8bit
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 
 IeumOffice patch onto v0.8.7 (not proposed upstream yet).
+
+Ported onto devel 7d06d5c70: the code applied without conflicts. Devel now applies grayscale, brightness and contrast to the picture pixels (`image_resolver::adjusted_picture_bytes`) instead of an SVG filter wherever it can, so the two new tests no longer look for filter ids; they check that the picture is drawn and that only the watermark preset gets the 0.17 opacity group. The sRGB filter change only matters where devel still uses the filter.
 ---
- src/renderer/render_tree.rs   | 28 +++++++++++
+ src/renderer/render_tree.rs   | 28 +++++++++++++++
  src/renderer/skia/renderer.rs |  2 +-
- src/renderer/svg.rs           | 10 ++--
- src/renderer/svg/tests.rs     | 88 +++++++++++++++++++++++++++++++++++
- src/renderer/web_canvas.rs    |  5 +-
- 5 files changed, 127 insertions(+), 6 deletions(-)
+ src/renderer/svg.rs           | 10 ++++--
+ src/renderer/svg/tests.rs     | 82 +++++++++++++++++++++++++++++++++++++++++++
+ src/renderer/web_canvas.rs    |  5 +--
+ 5 files changed, 121 insertions(+), 6 deletions(-)
 
 diff --git a/src/renderer/render_tree.rs b/src/renderer/render_tree.rs
-index a2f5dcf2c..5cb8f0ce8 100644
+index 1e6da9bc069ef0839b69de3280d1603c5f742e2b..0d2fd4139c1ad36fdd1c51918ba1e839a6638e11 100644
 --- a/src/renderer/render_tree.rs
 +++ b/src/renderer/render_tree.rs
-@@ -83,6 +83,24 @@ pub const REAL_PICTURE_WATERMARK_FILL_CHROMA_GAIN: f64 = 0.42;
+@@ -118,6 +118,24 @@ pub const REAL_PICTURE_WATERMARK_FILL_CHROMA_GAIN: f64 = 0.42;
  pub const REAL_PICTURE_WATERMARK_FILL_WHITE_BLEND: f64 = 0.16;
  pub const LEGACY_IMAGE_WATERMARK_OPACITY: f64 = 0.17;
  
@@ -74,7 +68,7 @@ index a2f5dcf2c..5cb8f0ce8 100644
  /// 한컴 "워터마크 효과" 프리셋(밝기 70 · 대비 −50)인지.
  ///
  /// [#6895] 인자는 **화면 순서**다. 종전에는 이진 저장 순서(`-50, 70`)로 적혀 있었는데,
-@@ -807,6 +825,11 @@ impl PageBackgroundImage {
+@@ -921,6 +939,11 @@ impl PageBackgroundImage {
          self.brightness != 0 && self.contrast != 0
      }
  
@@ -86,7 +80,7 @@ index a2f5dcf2c..5cb8f0ce8 100644
      pub fn is_real_picture_watermark_tone_preset(&self) -> bool {
          // 이 구조체는 이진 저장 순서를 담으므로 화면 순서로 바꿔 넘긴다(#6895).
          let (bright, contrast) = self.display_brightness_contrast();
-@@ -1512,6 +1535,11 @@ impl ImageNode {
+@@ -1760,6 +1783,11 @@ impl ImageNode {
          self.brightness != 0 && self.contrast != 0
      }
  
@@ -99,10 +93,10 @@ index a2f5dcf2c..5cb8f0ce8 100644
          // `ImageNode` 의 두 필드는 이미 화면 순서다(#6895).
          is_real_picture_watermark_tone_preset(self.effect, self.brightness, self.contrast)
 diff --git a/src/renderer/skia/renderer.rs b/src/renderer/skia/renderer.rs
-index 8b66c148b..4b4f3a98a 100644
+index 595880978fad444e26fb1dd5045cd3a89dc80467..57cadac9b34287401b739b341ddccfdf24be7b78 100644
 --- a/src/renderer/skia/renderer.rs
 +++ b/src/renderer/skia/renderer.rs
-@@ -1019,7 +1019,7 @@ impl SkiaLayerRenderer {
+@@ -1684,7 +1684,7 @@ impl SkiaLayerRenderer {
                                  let legacy_non_realpic_watermark = !matches!(
                                      image.effect,
                                      crate::model::image::ImageEffect::RealPic
@@ -112,10 +106,10 @@ index 8b66c148b..4b4f3a98a 100644
                                      preserve_color_watermark || legacy_non_realpic_watermark;
                                  if needs_watermark_opacity {
 diff --git a/src/renderer/svg.rs b/src/renderer/svg.rs
-index a737a03f4..8fb30c143 100644
+index ef1b4971d5738f2c18268ed91cb63cb41f5dbfc1..2aef01c88a6e3dd0fb491591d0d7d425301f5af9 100644
 --- a/src/renderer/svg.rs
 +++ b/src/renderer/svg.rs
-@@ -1911,7 +1911,7 @@ impl SvgRenderer {
+@@ -1945,7 +1945,7 @@ impl SvgRenderer {
          // 워터마크(GrayScale/Pattern 등)는 legacy opacity 계약을 계속 따른다.
          let needs_watermark_opacity = preserve_color_watermark
              || (!matches!(img.effect, crate::model::image::ImageEffect::RealPic)
@@ -124,7 +118,7 @@ index a737a03f4..8fb30c143 100644
          if needs_watermark_opacity {
              let opacity = if preserve_color_watermark {
                  REAL_PICTURE_WATERMARK_PAGE_OPACITY
-@@ -2146,8 +2146,9 @@ impl SvgRenderer {
+@@ -2231,8 +2231,9 @@ impl SvgRenderer {
          }
          // 워터마크 반투명 영역. JPEG baked 워터마크는 이미 한컴 톤으로 픽셀화되어
          // 있으므로 추가 opacity를 적용하지 않는다.
@@ -135,7 +129,7 @@ index a737a03f4..8fb30c143 100644
          if needs_watermark_opacity {
              let opacity = if preserve_color_watermark {
                  REAL_PICTURE_WATERMARK_FILL_OPACITY
-@@ -2366,8 +2367,11 @@ impl SvgRenderer {
+@@ -2451,8 +2452,11 @@ impl SvgRenderer {
          let slope = (100.0 + contrast as f64) / 100.0;
          let intercept = (0.5 - 0.5 * slope) + b;
  
@@ -149,10 +143,10 @@ index a737a03f4..8fb30c143 100644
                      <feFuncR type=\"linear\" slope=\"{slope:.4}\" intercept=\"{intercept:.4}\"/>\
                      <feFuncG type=\"linear\" slope=\"{slope:.4}\" intercept=\"{intercept:.4}\"/>\
 diff --git a/src/renderer/svg/tests.rs b/src/renderer/svg/tests.rs
-index 49cc56b36..8d3e6132d 100644
+index 88d70ebabc8de9267d016ac378e2d98662e13553..615a9833200bf5b0aea9f569408790363043ed8e 100644
 --- a/src/renderer/svg/tests.rs
 +++ b/src/renderer/svg/tests.rs
-@@ -1148,6 +1148,89 @@ fn test_background_image_realpic_watermark_fill_preserves_color_with_opacity() {
+@@ -1201,6 +1201,83 @@ fn test_background_image_realpic_watermark_fill_preserves_color_with_opacity() {
      );
  }
  
@@ -173,14 +167,8 @@ index 49cc56b36..8d3e6132d 100644
 +    renderer.render_image_node(&image, &bbox);
 +
 +    let output = renderer.output();
-+    assert!(
-+        output.contains("rhwp-img-grayscale"),
-+        "회색조 효과는 그대로 적용한다: {output}"
-+    );
-+    assert!(
-+        output.contains("rhwp-img-bc-b-4c-25"),
-+        "밝기·대비 필터는 그대로 적용한다: {output}"
-+    );
++    // 회색조·밝기·대비는 픽셀에 적용된 그림으로 나온다(필터든 픽셀 적용이든 같은 값).
++    assert!(output.contains("<image"), "그림은 그린다: {output}");
 +    assert!(
 +        !output.contains("<g opacity="),
 +        "워터마크 값이 아닌 밝기·대비에 반투명 합성을 얹으면 안 된다: {output}"
@@ -232,7 +220,7 @@ index 49cc56b36..8d3e6132d 100644
 +    renderer.render_page_background_image(&image, &bbox);
 +
 +    let output = renderer.output();
-+    assert!(output.contains("rhwp-img-bc-b-4c-25"), "{output}");
++    assert!(output.contains("<image"), "{output}");
 +    assert!(
 +        !output.contains("<g opacity="),
 +        "워터마크 값이 아닌 쪽 배경에 반투명 합성을 얹으면 안 된다: {output}"
@@ -242,7 +230,7 @@ index 49cc56b36..8d3e6132d 100644
  #[test]
  fn test_brightness_contrast_filter_zero_returns_none() {
      let mut renderer = SvgRenderer::new();
-@@ -1167,6 +1250,11 @@ fn test_brightness_contrast_filter_nonzero_adds_defs() {
+@@ -1220,6 +1297,11 @@ fn test_brightness_contrast_filter_nonzero_adds_defs() {
      assert!(def.contains(&format!("id=\"{}\"", id)));
      assert!(def.contains("<feComponentTransfer>"));
      assert!(def.contains("feFuncR"));
@@ -255,10 +243,10 @@ index 49cc56b36..8d3e6132d 100644
  
  #[test]
 diff --git a/src/renderer/web_canvas.rs b/src/renderer/web_canvas.rs
-index 4b6fde7db..92238baa1 100644
+index a8356d760c0dc3d520bf1f4dc1ccb1518145a85c..b1282a23de0cedbbb0333a6b21ed2c3c0dc645d7 100644
 --- a/src/renderer/web_canvas.rs
 +++ b/src/renderer/web_canvas.rs
-@@ -847,7 +847,7 @@ impl WebCanvasRenderer {
+@@ -1012,7 +1012,7 @@ impl WebCanvasRenderer {
              // 아니다. 다만 기존 비-RealPic 워터마크는 legacy opacity 계약을 유지한다.
              let needs_watermark_opacity = preserve_color_watermark
                  || (!matches!(img.effect, crate::model::image::ImageEffect::RealPic)
@@ -267,7 +255,7 @@ index 4b6fde7db..92238baa1 100644
              if needs_watermark_opacity {
                  let opacity = if preserve_color_watermark {
                      REAL_PICTURE_WATERMARK_PAGE_OPACITY
-@@ -1109,8 +1109,9 @@ impl WebCanvasRenderer {
+@@ -1496,8 +1496,9 @@ impl WebCanvasRenderer {
              if let Some(ref f) = filter_str {
                  self.ctx.set_filter(f);
              }

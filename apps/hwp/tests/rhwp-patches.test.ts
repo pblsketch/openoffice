@@ -203,13 +203,16 @@ describe('rhwp nested-table patches', () => {
   })
 
   it('let Cut take a selected table in a cell, after copying it', () => {
+    // the studio's text around the patch, as the pinned commit has it: the copy already
+    // takes a table in a cell (tableObjectClipboardTarget), the guard and the delete did not
     const source = [
-      '      if (ref) {',
-      '        // 중첩 표 잘라내기는 지원하지 않는다. keydown 경로도 같은 선택 상태를 유지한다.',
-      '        if (ref.cellPath && ref.cellPath.length > 1) return;',
-      '        this.performCopy();',
+      '    if (!ref) return;',
+      '    // 중첩 표 잘라내기는 지원하지 않는다. keydown 경로도 같은 선택 상태를 유지한다.',
+      '    if (table?.cellPath && table.cellPath.length > 1) return;',
+      '    const handle = this.wasm.borrowDocumentHandle();',
+      '      if (!await this.copySelectedObject(isCurrent) || !isCurrent()) return;',
+      '      } else {',
       '        this.cursor.moveOutOfSelectedTable();',
-      "        this.eventBus.emit('table-object-selection-changed', false);",
       "        this.executeOperation({ kind: 'snapshot', operationType: 'cutTable', operation: (wasm: WasmBridge) => {",
       '          wasm.deleteTableControl(ref.sec, ref.ppi, ref.ci);',
       '          return this.cursor.getPosition();',
@@ -217,9 +220,10 @@ describe('rhwp nested-table patches', () => {
       '',
     ].join('\n')
     const patched = applyPatch('studio-nested-table-cut', source)
-    expect(patched).not.toContain('ref.cellPath.length > 1')
-    expect(patched.indexOf('this.performCopy();')).toBeLessThan(
-      patched.indexOf('wasm.deleteTableAt(ref);'),
+    expect(patched).not.toContain('cellPath.length > 1')
+    expect(patched).not.toContain('deleteTableControl')
+    expect(patched.indexOf('this.copySelectedObject(isCurrent)')).toBeLessThan(
+      patched.indexOf('wasm.deleteTableAt(table!);'),
     )
   })
 
@@ -495,61 +499,31 @@ describe('rhwp memo delete-undo patches', () => {
   })
 })
 
-describe('rhwp font memo patches', () => {
-  // the studio's text around the patches, as the pinned release has it
-  const bridge = [
-    'let canvasFontSubstitutionInstalled = false;',
-    '',
-    'function installCanvasFontSubstitution(): void {',
-    '  Object.defineProperty(proto, "font", {',
-    '    set(value: string) {',
-    '      descriptor.set!.call(this, scopedHostCanvasFont(String(value)) ?? substituteCssFontFamily(String(value)));',
-    '    },',
-    '  });',
-    '}',
+describe('rhwp PDF import options patch', () => {
+  // the studio's text around the patch, as the pinned commit has it
+  const dialog = [
+    "import { userSettings } from '@/core/user-settings';",
+    '    panel.appendChild(this.createPdfImportSection());',
+    "    userSettings.setPdfImportLayout(this.pdfImportEditableRadio.checked ? 'editable' : 'fidelity');",
     '',
   ].join('\n')
-  const patched = applyPatch('studio-font-memo-use', applyPatch('studio-font-memo-state', bridge))
+  const patched = applyPatch('studio-pdf-import-options', dialog)
 
-  /** The memo the patch adds, run against a substitution that counts its calls. */
-  function memoWith(substitute: (font: string) => string): (font: string) => string {
-    const start = patched.indexOf('let canvasFontMemo')
-    const block = patched.slice(start, patched.indexOf('\n}\n', start) + 2)
-    const js = ts.transpileModule(block, {
-      compilerOptions: { target: ts.ScriptTarget.ES2022 },
-    }).outputText
-    return new Function('substituteCssFontFamily', `${js}\nreturn memoSubstituteCssFontFamily`)(
-      substitute,
-    )
-  }
-
-  it('send the font setter through the memo, after the host fonts as before', () => {
+  it('shows the PDF import section only when the engine has PDF import', () => {
     expect(patched).toContain(
-      'scopedHostCanvasFont(String(value)) ?? memoSubstituteCssFontFamily(String(value))',
+      "import { hasPdfImportCapability } from '@/core/pdf-import-capability';",
     )
-    expect(patched).not.toContain('?? substituteCssFontFamily(String(value))')
-    expect(patched.startsWith('let canvasFontSubstitutionInstalled = false;\n')).toBe(true)
+    expect(patched).toContain(
+      'if (hasPdfImportCapability(HwpDocument)) panel.appendChild(this.createPdfImportSection());',
+    )
   })
 
-  it('substitute a font string once in a synchronous stretch, and again after it', async () => {
-    const calls: string[] = []
-    const memo = memoWith((font) => {
-      calls.push(font)
-      return `${font} chain`
-    })
-    expect(memo('10px "A"')).toBe('10px "A" chain')
-    expect(memo('10px "A"')).toBe('10px "A" chain')
-    expect(memo('bold 10px "B"')).toBe('bold 10px "B" chain')
-    expect(calls).toEqual(['10px "A"', 'bold 10px "B"'])
-    // a microtask checkpoint: fonts found or a document opened since then are seen
-    await Promise.resolve()
-    expect(memo('10px "A"')).toBe('10px "A" chain')
-    expect(calls).toEqual(['10px "A"', 'bold 10px "B"', '10px "A"'])
+  it('leaves the setting alone on OK when the section is not there', () => {
+    expect(patched).toContain('    if (this.pdfImportEditableRadio) {')
   })
 
-  it('are in the studio build', () => {
-    expect(STUDIO_PATCHES).toContain('studio-font-memo-state')
-    expect(STUDIO_PATCHES).toContain('studio-font-memo-use')
+  it('is in the studio build', () => {
+    expect(STUDIO_PATCHES).toContain('studio-pdf-import-options')
   })
 })
 
@@ -709,9 +683,11 @@ describe('the studio source the build fetched', () => {
     'src/command/commands/table.ts',
     'src/command/shortcut-map.ts',
     'src/ui/table-cell-props-dialog.ts',
+    'src/ui/options-dialog.ts',
     'src/command/registry.ts',
     'src/i18n/locales/ko.ts',
     'src/i18n/locales/en.ts',
+    'src/view/canvas-view.ts',
   ].map((file) => join(studio, file))
 
   // only where a build has fetched it; a fresh checkout has nothing to look at

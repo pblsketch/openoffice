@@ -62,6 +62,7 @@ export const he = {
   imgExportWholePages: 'עמודים שלמים',
   imgExportCurrentPage: 'רק העמוד הנוכחי',
   imgExportCurrentPageTip: 'ייצוא העמוד המוצג כקובץ PNG אחד',
+  imgExportCurrentPageJpgTip: 'ייצוא העמוד המוצג כקובץ JPG אחד',
   imgExportEmbedded: 'רק התמונות שבתוך העמודים',
   imgExportEmbeddedTip: 'שמירת התמונות שבתוך העמודים כקובצי PNG ברזולוציה המקורית',
   imgExportFolderTitle: 'תיקייה לייצוא התמונות',

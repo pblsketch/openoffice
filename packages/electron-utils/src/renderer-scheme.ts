@@ -44,7 +44,17 @@ export const SLIDE_MEDIA_SCHEME_PRIVILEGE: CustomScheme = {
 }
 
 export type RendererHost =
-  'docs' | 'sheets' | 'slides' | 'pdf' | 'markdown' | 'html' | 'mindmap' | 'hwp' | 'epub' | 'help'
+  | 'docs'
+  | 'sheets'
+  | 'slides'
+  | 'pdf'
+  | 'markdown'
+  | 'html'
+  | 'mindmap'
+  | 'hwp'
+  | 'epub'
+  | 'diagram'
+  | 'help'
 
 export const MAX_RENDERER_QUERY_ENTRIES = 20
 export const MAX_RENDERER_QUERY_CHARS = 4_000

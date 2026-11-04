@@ -29,6 +29,7 @@ const FAMILY_BY_KIND: Record<Exclude<TabKind, 'home' | 'help'>, EditorFamily> = 
   mindmap: 'xmind',
   hwp: 'hwp',
   epub: 'epub',
+  diagram: 'drawio',
 }
 
 /** families whose live content can be read back over MCP */
@@ -41,6 +42,7 @@ const READABLE_KINDS: ReadonlySet<TabKind> = new Set<TabKind>([
   'mindmap',
   'hwp',
   'epub',
+  'diagram',
 ])
 
 export interface OpenDocumentsControl {
@@ -154,8 +156,15 @@ function typeLabel(doc: OpenDocumentTab): string {
  * an agent needs to know which before it picks a save path or a conversion.
  */
 export function documentFormat(doc: OpenDocumentTab): string {
-  const ext = doc.filePath?.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1]
-  return ext ?? extensionFor(FAMILY_BY_KIND[doc.kind]).slice(1)
+  const family = FAMILY_BY_KIND[doc.kind]
+  const name = doc.filePath?.toLowerCase()
+  // a double extension the family opens (`.drawio.svg`) is the format, not its last part
+  const compound = name
+    ? formatFamily(family).editorOpen.find((ext) => ext.includes('.') && name.endsWith(`.${ext}`))
+    : undefined
+  if (compound) return compound
+  const ext = name?.match(/\.([a-z0-9]+)$/)?.[1]
+  return ext ?? extensionFor(family).slice(1)
 }
 
 /** one row of the `list` action */
@@ -209,7 +218,10 @@ export function createOpenDocumentTools(deps: OpenDocumentsDeps): McpToolDefinit
         '(paragraphs as lines, tables as " | " rows) but not edited or saved here: "close" on ' +
         'an HWP tab with unsaved changes fails unless unsaved:"discard" is passed. ' +
         'A book (kind "epub") reads as its text in reading order, headings as "#" lines; ' +
-        'there is no tool that edits one.',
+        'there is no tool that edits one. ' +
+        'A diagram (kind "diagram") reads as the shape and edge table of every page, unsaved ' +
+        'edits included; read_diagram and apply_diagram_ops, where offered, read one page and ' +
+        'change it.',
       inputSchema: {
         action: z.enum(['list', 'read', 'save', 'close']).describe('what to do'),
         target: z

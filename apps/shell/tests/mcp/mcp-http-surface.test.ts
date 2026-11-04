@@ -34,6 +34,7 @@ import { realCliRunner } from './real-cli'
  */
 
 const DEFAULT_NAMES = [
+  'apply_diagram_ops',
   'apply_ops',
   'apply_sheet_ops',
   'apply_slide_ops',
@@ -44,6 +45,7 @@ const DEFAULT_NAMES = [
   'open_documents',
   'open_in_genoffice',
   'read_deck',
+  'read_diagram',
   'read_document',
   'read_docx',
   'read_hwp',
@@ -273,7 +275,18 @@ describe('MCP surface over Streamable HTTP (/mcp)', () => {
         'xmind',
         'hwp',
         'epub',
+        'drawio',
       ])
+      // the diagram entry: editor formats only, no session, generator or file reader
+      expect(infoJson.families.find((f) => f.family === 'drawio')).toEqual({
+        family: 'drawio',
+        label: 'diagram',
+        editor: {
+          open: ['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx'],
+          save: ['drawio', 'dio', 'drawio.svg', 'drawio.png'],
+          export: ['png', 'svg', 'pdf'],
+        },
+      })
       // the book entry (spec: get_app_info lists it with its editor formats only)
       expect(infoJson.families.find((f) => f.family === 'epub')).toEqual({
         family: 'epub',
@@ -294,6 +307,17 @@ describe('MCP surface over Streamable HTTP (/mcp)', () => {
         'csv',
         'tsv',
       ])
+
+      // the diagram tools take their schema from DIAGRAM_OPS over the wire: an
+      // op the planner would judge passes the schema, an unknown op name does not
+      const noApp = await call(client, 'apply_diagram_ops', {
+        ops: [{ op: 'add_page', name: 'Two' }],
+      })
+      expect(noApp.isError).toBe(true)
+      expect(noApp.text).toMatch(/not running/)
+      const badOp = await call(client, 'apply_diagram_ops', { ops: [{ op: 'explode' }] })
+      expect(badOp.isError).toBe(true)
+      expect(badOp.text).not.toMatch(/not running/)
 
       // ── 3. read_docx error paths ──────────────────────────────────────────
       const relative = await call(client, 'read_docx', { path: 'relative.docx' })

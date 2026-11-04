@@ -6,6 +6,7 @@ L'editor PDF ha cinque schede nella barra multifunzione: **Home / Annota / Modif
 
 - Barra laterale sinistra: ** miniature** (fai clic per saltare, con l'intervallo visibile evidenziato) oppure **struttura** (segnalibri, quando presenti).
 - Zoom: il controllo del rapporto in basso a destra; ctrl+rotellina cambia lo zoom a scatti.
+- Spostare la vista: attiva lo **Strumento Mano** (schede Home e Visualizza) e trascina per spostare la pagina in ogni direzione. Finché è attivo, il trascinamento non seleziona testo e un semplice clic apre comunque i link. Trascinare tenendo premuto il tasto centrale (rotellina) sposta la vista anche senza lo strumento. Esc o un altro strumento lo disattiva.
 - Rotazione: per singola pagina o per tutte dal menu Pagine; le rotazioni vengono riscritte al salvataggio.
 - Ricerca: ctrl+F a testo completo con tutte le occorrenze evidenziate.
 - PDF cifrati: una richiesta della password (in una piccola finestra separata) li apre; la password viene usata solo per questa sessione. Puoi modificare e salvare un documento così; il salvataggio mantiene la password. **Annota → Proteggi** imposta, cambia o rimuove la password e ciò che i lettori possono fare.

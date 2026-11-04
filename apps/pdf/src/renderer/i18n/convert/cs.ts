@@ -66,6 +66,7 @@ export const cs = {
   imgExportWholePages: 'Celé stránky',
   imgExportCurrentPage: 'Jen aktuální stránka',
   imgExportCurrentPageTip: 'Exportovat zobrazenou stránku jako jeden soubor PNG',
+  imgExportCurrentPageJpgTip: 'Exportovat zobrazenou stránku jako jeden soubor JPG',
   imgExportEmbedded: 'Jen obrázky ve stránkách',
   imgExportEmbeddedTip: 'Uložit obrázky vložené do stránek jako soubory PNG v původním rozlišení',
   imgExportFolderTitle: 'Složka pro export obrázků',
