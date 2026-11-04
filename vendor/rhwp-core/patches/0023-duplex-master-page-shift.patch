@@ -1,14 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
-Date: Thu, 29 Oct 2026 00:00:00 +0900
-Subject: [PATCH 23/25] =?UTF-8?q?fix(rendering):=20=EB=A7=9E=EC=AA=BD=20?=
- =?UTF-8?q?=EC=A7=9D=EC=88=98=20=EC=AA=BD=EC=9D=98=20=EC=96=91=EC=AA=BD=20?=
- =?UTF-8?q?=EB=B0=94=ED=83=95=EC=AA=BD=EC=9D=84=20=EB=B3=B8=EB=AC=B8?=
- =?UTF-8?q?=EC=9D=B4=20=EC=98=AE=EA=B2=A8=20=EA=B0=84=20=EB=A7=8C=ED=81=BC?=
- =?UTF-8?q?=20=EC=98=AE=EA=B2=A8=20=EA=B7=B8=EB=A6=B0=EB=8B=A4?=
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Date: Wed, 4 Nov 2026 00:00:00 +0900
+Subject: [PATCH 13/18] fix(rendering): 맞쪽 짝수 쪽의 양쪽 바탕쪽을 본문이 옮겨 간 만큼 옮겨 그린다
 
 좌우 여백이 다른 맞쪽 제본(gutterType LEFT_RIGHT) 문서에서 본문은 짝수 쪽마다
 좌우 여백을 바꿔 그렸지만, 바탕쪽의 용지 기준 개체는 홀수 쪽 자리에 그대로
@@ -46,19 +39,21 @@ HWP→HWP, HWPX→HWPX 저장은 전부 같고, HWP→HWPX 변환은 짝수·홀
 41개에서 바탕쪽 53개의 type 이 BOTH→EVEN 으로만 바뀐다(한/글 저장과 같다).
 
 IeumOffice patch onto v0.8.7 (not proposed upstream yet).
+
+Ported onto devel 7d06d5c70: devel builds PageLayoutInfo inside `from_page_def_for_page_with_storage` and lists its fields in a `clone_fields!` macro, so the new `duplex_master_shift_hu` field is set there and added to that list. The rest applied as is.
 ---
- src/parser/body_text.rs       | 32 +++++++++------
- src/parser/body_text/tests.rs | 36 +++++++++++++++--
- src/renderer/layout.rs        | 74 +++++++++++++++++++++++++++++++++--
- src/renderer/page_layout.rs   | 30 +++++++++++++-
+ src/parser/body_text.rs       | 32 +++++++++++--------
+ src/parser/body_text/tests.rs | 36 +++++++++++++++++++--
+ src/renderer/layout.rs        | 74 +++++++++++++++++++++++++++++++++++++++++--
+ src/renderer/page_layout.rs   | 32 +++++++++++++++++--
  src/renderer/page_number.rs   |  1 +
- 5 files changed, 153 insertions(+), 20 deletions(-)
+ 5 files changed, 154 insertions(+), 21 deletions(-)
 
 diff --git a/src/parser/body_text.rs b/src/parser/body_text.rs
-index 973a0d80a..943224158 100644
+index 8903c898ff1c2c2fed2091f14cec144777950238..eb99df0494cbd7adffe80885f0a6cd882438f1d0 100644
 --- a/src/parser/body_text.rs
 +++ b/src/parser/body_text.rs
-@@ -1233,7 +1233,7 @@ fn parse_master_pages_from_raw(raw_records: &[RawRecord], section_flags: u32) ->
+@@ -1289,7 +1289,7 @@ fn parse_master_pages_from_raw(raw_records: &[RawRecord], section_flags: u32) ->
      ];
  
      for (mp_idx, &start) in list_header_positions.iter().enumerate() {
@@ -67,7 +62,7 @@ index 973a0d80a..943224158 100644
              .or_else(|| apply_order.get(mp_idx).copied())
              .unwrap_or(HeaderFooterApply::Both);
  
-@@ -1315,18 +1315,24 @@ fn parse_master_pages_from_raw(raw_records: &[RawRecord], section_flags: u32) ->
+@@ -1372,18 +1372,24 @@ fn parse_master_pages_from_raw(raw_records: &[RawRecord], section_flags: u32) ->
      master_pages
  }
  
@@ -105,7 +100,7 @@ index 973a0d80a..943224158 100644
  
  /// 단 정의 파싱 ('cold' 컨트롤)
 diff --git a/src/parser/body_text/tests.rs b/src/parser/body_text/tests.rs
-index 8a219b29d..f4aff878e 100644
+index f65dcc16f536356b6d65746ffe83952cc589aed2..eb7215ccbdfbca113501ec3761b560ad91ade4ae 100644
 --- a/src/parser/body_text/tests.rs
 +++ b/src/parser/body_text/tests.rs
 @@ -36,11 +36,41 @@ fn make_para_text_data(text: &str) -> Vec<u8> {
@@ -154,10 +149,10 @@ index 8a219b29d..f4aff878e 100644
  
  #[test]
 diff --git a/src/renderer/layout.rs b/src/renderer/layout.rs
-index 0549c2c9f..aedca78c8 100644
+index 67c25f6a744f85a190d83cc4c3fe70bcc1eddea4..0bd2a630226f2d44e7854d1abef16cb6f40346b6 100644
 --- a/src/renderer/layout.rs
 +++ b/src/renderer/layout.rs
-@@ -31,7 +31,7 @@ use super::{
+@@ -44,7 +44,7 @@ use super::{
  use crate::model::bin_data::BinDataContent;
  use crate::model::control::Control;
  use crate::model::footnote::{FootnoteShape, NumberFormat};
@@ -166,7 +161,7 @@ index 0549c2c9f..aedca78c8 100644
  use crate::model::page::{PageBorderBasis, PageBorderFill};
  use crate::model::paragraph::Paragraph;
  use crate::model::shape::{
-@@ -6031,10 +6031,27 @@ impl LayoutEngine {
+@@ -5722,10 +5722,27 @@ impl LayoutEngine {
                  // 바탕쪽 그룹에 provenance layer 부여 (#2318): layer 없는 자식(텍스트 라인 등)이
                  // 상속받아 replay plane 분류에서 BehindText 상한이 적용된다.
                  mp_node.layer = Some(RenderLayerInfo::new(None, 0, 0).for_master_page());
@@ -195,7 +190,7 @@ index 0549c2c9f..aedca78c8 100644
                      let has_controls = !para.controls.is_empty();
                      if has_controls {
                          for (ci, ctrl) in para.controls.iter().enumerate() {
-@@ -6075,7 +6092,7 @@ impl LayoutEngine {
+@@ -5766,7 +5783,7 @@ impl LayoutEngine {
                                      self.layout_shape(
                                          tree.frame_mut(),
                                          target_node,
@@ -204,7 +199,7 @@ index 0549c2c9f..aedca78c8 100644
                                          pi,
                                          ci,
                                          section_index,
-@@ -6239,6 +6256,56 @@ impl LayoutEngine {
+@@ -5946,6 +5963,56 @@ impl LayoutEngine {
          }
      }
  
@@ -261,16 +256,16 @@ index 0549c2c9f..aedca78c8 100644
      #[allow(clippy::too_many_arguments)]
      /// 머리말·꼬리말에 직접 놓인 부동 그림.
      ///
-@@ -7463,6 +7530,7 @@ impl LayoutEngine {
+@@ -7159,6 +7226,7 @@ impl LayoutEngine {
              separator_width: 0,
              separator_color: 0,
              pagination_tolerance_px: 0.0,
 +            duplex_master_shift_hu: 0,
          };
          let col_content = ColumnContent {
-             column_index: 0,
+             paragraph_origins: Default::default(),
 diff --git a/src/renderer/page_layout.rs b/src/renderer/page_layout.rs
-index baec98335..f3cf8b403 100644
+index ba69ec235c095f0b1d334a51ce5f90bd1e58cc1b..d57144caff50391b70aa42cfebbcc53125f5f4fb 100644
 --- a/src/renderer/page_layout.rs
 +++ b/src/renderer/page_layout.rs
 @@ -1,7 +1,7 @@
@@ -282,14 +277,15 @@ index baec98335..f3cf8b403 100644
  use crate::model::Rect;
  
  /// 페이지 레이아웃 정보 (픽셀 단위로 변환된 영역)
-@@ -32,6 +32,32 @@ pub struct PageLayoutInfo {
+@@ -32,8 +32,34 @@ pub struct PageLayoutInfo {
      pub separator_color: u32,
      /// 페이지네이션 하단 허용치 (px). body_area 를 변경하지 않고 paginator 에게만 추가 공간 제공.
      pub pagination_tolerance_px: f64,
 +    /// 맞쪽 제본 짝수 쪽에서 양쪽(`Both`) 바탕쪽을 옮길 가로 거리 (HWPUNIT).
 +    /// 홀수 쪽·한쪽 제본·위로 넘기기는 0이다. [`duplex_master_page_shift_hu`] 참고.
 +    pub duplex_master_shift_hu: i32,
-+}
+ }
+-crate::storage::clone_fields!(PageLayoutInfo, {page_width, page_height, header_area, body_area, column_areas, column_direction, footnote_area, footer_area, dpi, separator_type, separator_width, separator_color, pagination_tolerance_px});
 +
 +/// 맞쪽 제본(`BindingMethod::DuplexSided`) 짝수 쪽에서 양쪽(`Both`) 바탕쪽이 옮겨 가는
 +/// 가로 거리 (HWPUNIT) — 짝수 쪽 본문 왼끝에서 홀수 쪽 본문 왼끝을 뺀 값.
@@ -312,18 +308,20 @@ index baec98335..f3cf8b403 100644
 +    let even = PageAreas::from_page_def_for_page(page_def, page_number).body_area;
 +    let odd = PageAreas::from_page_def_for_page(page_def, 1).body_area;
 +    even.left - odd.left
- }
++}
++crate::storage::clone_fields!(PageLayoutInfo, {page_width, page_height, header_area, body_area, column_areas, column_direction, footnote_area, footer_area, dpi, separator_type, separator_width, separator_color, pagination_tolerance_px, duplex_master_shift_hu});
  
  /// 레이아웃 영역 (픽셀 단위)
-@@ -118,6 +144,7 @@ impl PageLayoutInfo {
+ #[derive(Debug, Clone, Copy, Default)]
+@@ -156,6 +182,7 @@ impl PageLayoutInfo {
              separator_width: column_def.separator_width,
              separator_color: column_def.separator_color,
              pagination_tolerance_px,
 +            duplex_master_shift_hu: duplex_master_page_shift_hu(page_def, page_number),
-         }
+         })
      }
  
-@@ -132,6 +159,7 @@ impl PageLayoutInfo {
+@@ -170,6 +197,7 @@ impl PageLayoutInfo {
      /// 기준 x 이동량만 각 영역에 적용한다.
      pub fn apply_page_number_margins(&mut self, page_def: &PageDef, page_number: u32) {
          self.apply_column_page_number(page_number);
@@ -332,10 +330,10 @@ index baec98335..f3cf8b403 100644
          let target_header = LayoutRect::from_hwpunit_rect(&target_areas.header_area, self.dpi);
          let target_body = LayoutRect::from_hwpunit_rect(&target_areas.body_area, self.dpi);
 diff --git a/src/renderer/page_number.rs b/src/renderer/page_number.rs
-index 5c0165ab4..fc1474aef 100644
+index 8b00e1e1066c4966ec6a3f93604b8b559a908ba3..e79d6505ec6e8e022ee57f2a4e44ed0fcc26e6e8 100644
 --- a/src/renderer/page_number.rs
 +++ b/src/renderer/page_number.rs
-@@ -284,6 +284,7 @@ mod tests {
+@@ -342,6 +342,7 @@ mod tests {
              separator_width: 0,
              separator_color: 0,
              pagination_tolerance_px: 0.0,

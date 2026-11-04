@@ -27,7 +27,9 @@ const PACKAGE_FILES = ['rhwp.js', 'rhwp.d.ts', 'rhwp_bg.wasm', 'rhwp_bg.wasm.d.t
 const LICENSE_FILES = ['LICENSE', 'THIRD_PARTY_LICENSES.md']
 
 const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8'))
-const { tag, commit, patches } = manifest.rhwp
+// `branch` is set when the engine is pinned to a commit on an upstream branch
+// ahead of a release; `tag` then only names that pin (the cache folder).
+const { tag, branch, commit, patches } = manifest.rhwp
 const work = join(ROOT, 'node_modules', '.cache', 'rhwp-core', tag)
 
 function run(command, args, cwd, env = process.env) {
@@ -54,15 +56,16 @@ run(
     '--filter=blob:none',
     '--no-checkout',
     '--branch',
-    tag,
+    branch ?? tag,
     REPO,
     work,
   ],
   dirname(work),
 )
 git(['config', 'core.autocrlf', 'false'], work)
-git(['sparse-checkout', 'set', '--no-cone', '/*', '!/samples/'], work)
-git(['checkout', '--quiet', tag], work)
+// mydocs holds upstream's review records, some with paths past the Windows limit
+git(['sparse-checkout', 'set', '--no-cone', '/*', '!/samples/', '!/mydocs/'], work)
+git(['checkout', '--quiet', branch ? commit : tag], work)
 const head = git(['rev-parse', 'HEAD'], work)
 if (head !== commit) {
   throw new Error(`rhwp ${tag} resolved to ${head}, expected ${commit}`)

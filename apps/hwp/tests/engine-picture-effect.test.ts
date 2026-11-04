@@ -4,7 +4,7 @@
  * with the same grayscale picture: brightness -4 and contrast -25 in the first
  * row (the bar under a textbook's header), 70 and -50 (Hangul's watermark
  * effect) in the second. Hangul 2024 draws the first opaque, the original 255
- * and 125 grays becoming 213 and 115.
+ * and 125 grays becoming 213 and 115, and the second translucent.
  */
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -26,27 +26,26 @@ function svg(): string {
   return new HwpDocument(new Uint8Array(bytes)).renderPageSvg(0)
 }
 
-/** From the `<g filter=…>` wrapping a picture up to the picture itself. */
-function wrapper(page: string, filter: string): string {
-  const start = page.indexOf(`<g filter="url(#${filter})">`)
-  expect(start, filter).toBeGreaterThanOrEqual(0)
-  const rest = page.slice(start)
-  return rest.slice(0, rest.indexOf('<image'))
+/** Each picture of the page, with whether a translucent group wraps it. */
+function pictures(page: string): { translucent: boolean }[] {
+  return [...page.matchAll(/(<g opacity="0\.17">\s*)?<image /g)].map((m) => ({
+    translucent: m[1] !== undefined,
+  }))
 }
 
 describe('picture brightness and contrast', () => {
-  it('draws a slightly adjusted picture opaque, the filter computed in sRGB', () => {
+  // rhwp devel bakes brightness and contrast into the picture's pixels (no SVG filter any
+  // more; the grays come out 214 and 116 against Hangul's 213 and 115). What patch 0024
+  // keeps is which pictures are drawn translucent: devel drew both.
+  it('draws a slightly adjusted picture opaque', () => {
     const page = svg()
-    // slope 0.75 and intercept 0.085 on sRGB values give Hangul's 213 and 115
-    expect(page).toContain(
-      '<filter id="rhwp-img-bc-b-4c-25" color-interpolation-filters="sRGB"><feComponentTransfer><feFuncR type="linear" slope="0.7500" intercept="0.0850"/>',
-    )
-    expect(wrapper(page, 'rhwp-img-bc-b-4c-25')).not.toContain('opacity')
+    expect(page).not.toContain('<filter')
+    expect(pictures(page)[0]).toEqual({ translucent: false })
   })
 
   it('keeps the watermark effect translucent', () => {
     const page = svg()
-    expect(wrapper(page, 'rhwp-img-bc-b70c-50')).toContain('<g opacity="0.17">')
+    expect(pictures(page)).toEqual([{ translucent: false }, { translucent: true }])
     expect(page.match(/<g opacity="0\.17">/g)).toHaveLength(1)
   })
 })

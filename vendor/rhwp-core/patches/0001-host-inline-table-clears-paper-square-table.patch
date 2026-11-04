@@ -1,14 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
-Date: Wed, 21 Oct 2026 00:00:00 +0900
-Subject: [PATCH 1/3] =?UTF-8?q?fix(typeset):=20=EA=B0=99=EC=9D=80=20host?=
- =?UTF-8?q?=20=EC=9D=98=20=EA=B8=80=EC=9E=90=EC=B2=98=EB=9F=BC=20=EC=B7=A8?=
- =?UTF-8?q?=EA=B8=89=20=ED=91=9C=EA=B0=80=20=EC=AA=BD=C2=B7=EC=A2=85?=
- =?UTF-8?q?=EC=9D=B4=20=EA=B8=B0=EC=A4=80=20=EC=96=B4=EC=9A=B8=EB=A6=BC=20?=
- =?UTF-8?q?=ED=91=9C=EB=A5=BC=20=ED=94=BC=ED=95=9C=EB=8B=A4?=
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Date: Wed, 4 Nov 2026 00:00:00 +0900
+Subject: [PATCH 1/18] fix(typeset): 같은 host 의 글자처럼 취급 표가 쪽·종이 기준 어울림 표를 피한다
 
 쪽·종이 기준 어울림(Square) 표와 같은 문단의 글자처럼 취급 표는 옆에 들어갈 폭이
 없으면 한글이 그 줄을 어울림 표의 바깥 아래 여백 아래에 둔다(한글 2024 저장 vpos 가
@@ -26,66 +19,18 @@ TAC 줄 배치(place_inline_box)에 같은 host 의 쪽·종이 기준 어울림
 IeumOffice backport onto v0.8.7 of the change proposed upstream against devel.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
----
- src/renderer/float_placement.rs | 38 +++++++++++++++++++++++
- src/renderer/typeset.rs         | 25 ++++++++++++++++
- src/renderer/typeset/state.rs   | 53 +++++++++++++++++++++++++++++++++
- 3 files changed, 116 insertions(+)
 
-diff --git a/src/renderer/float_placement.rs b/src/renderer/float_placement.rs
-index 700815a8d..71bfd19d5 100644
---- a/src/renderer/float_placement.rs
-+++ b/src/renderer/float_placement.rs
-@@ -2683,6 +2683,44 @@ impl ObjectPlacementFrame<'_> {
-             },
-         })
-     }
-+
-+    /// 쪽·종이 기준 어울림(Square) 표의 바깥 여백 포함 상자 (upstream #7548 의 계산).
-+    pub(crate) fn page_anchored_square_table_exclusion(
-+        &self,
-+        table: &Table,
-+    ) -> Option<FrameExclusion> {
-+        let common = &table.common;
-+        if common.treat_as_char
-+            || common.text_wrap != TextWrap::Square
-+            || !matches!(common.vert_rel_to, VertRelTo::Page | VertRelTo::Paper)
-+            || table.caption.is_some()
-+        {
-+            return None;
-+        }
-+        let margin = |a: i16, b: i16| hwpunit_to_px(i32::from(a) + i32::from(b), self.dpi);
-+        let width = hwpunit_to_px(common.width as i32, self.dpi)
-+            + margin(table.outer_margin_left, table.outer_margin_right);
-+        let height = hwpunit_to_px(common.height as i32, self.dpi)
-+            + margin(table.outer_margin_top, table.outer_margin_bottom);
-+        if width <= 0.0 || height <= 0.0 {
-+            return None;
-+        }
-+        let (x, y) = self.position(common, width, height);
-+        if ![x, y].iter().all(|value| value.is_finite()) {
-+            return None;
-+        }
-+        let hu = |px| super::px_to_hwpunit(px, self.dpi);
-+        Some(FrameExclusion {
-+            horizontal: hu(x)..hu(x + width),
-+            vertical: hu(y)..hu(y + height),
-+            policy: match common.text_flow {
-+                TextFlow::BothSides => FrameExclusionPolicy::BothSides,
-+                TextFlow::LargestOnly => FrameExclusionPolicy::LargestSide,
-+                TextFlow::LeftOnly => FrameExclusionPolicy::LeftSide,
-+                TextFlow::RightOnly => FrameExclusionPolicy::RightSide,
-+            },
-+        })
-+    }
- }
- 
- /// 분할기가 확정한 TAC 줄의 배치. x/y는 해당 단 원점 기준(px), 여백 포함 pen 좌표다.
+Ported onto devel 7d06d5c70: upstream merged #8121 reworked (#8388) only for hosts whose controls are all page-square/TAC tables (inline-flow rows, `supports_page_square_table_rows`); hosts that also carry a picture or other control still take the TAC table path and devel drew their TAC one row below the host line, over the following content. Kept only that missing part: `host_page_anchored_square_exclusions` moved to state/transition.rs and reuses devel's `page_anchored_square_table_exclusion` (the float_placement.rs helper is already in devel); the typeset.rs block is unchanged.
+---
+ src/renderer/typeset.rs                  | 25 +++++++++++++++++++++++
+ src/renderer/typeset/state/transition.rs | 35 ++++++++++++++++++++++++++++++++
+ 2 files changed, 60 insertions(+)
+
 diff --git a/src/renderer/typeset.rs b/src/renderer/typeset.rs
-index cd5686327..fb6c18af7 100755
+index dbfe577ab3a9b3c3e726de5f3a0af996004bac18..d41eb8ac7c765d2cf5508b9f09262bc0aa2988bb 100755
 --- a/src/renderer/typeset.rs
 +++ b/src/renderer/typeset.rs
-@@ -4387,6 +4387,31 @@ impl TypesetEngine {
+@@ -4637,6 +4637,31 @@ impl TypesetEngine {
              placement.clearance = (placement.y - column.y - natural_top).max(0.0);
              placement
          });
@@ -115,14 +60,14 @@ index cd5686327..fb6c18af7 100755
 +            }
 +        }
          let clearance = side_wrap_placement.map_or(0.0, |p| p.clearance);
-         // 그림 회피로 확정한 물리 줄은 저장 host 줄높이가 작아도 축소되지 않는다.
-         // 렌더만 아래로 옮기고 fit에는 짧은 host 높이를 쓰면 쪽 하단을 넘는다.
-diff --git a/src/renderer/typeset/state.rs b/src/renderer/typeset/state.rs
-index cc52c1978..589d67983 100644
---- a/src/renderer/typeset/state.rs
-+++ b/src/renderer/typeset/state.rs
-@@ -824,6 +824,59 @@ impl TypesetState {
-         column
+         // 회피 프레임에서 수용한 원본 개체 줄은 본체·바깥여백·뒤 간격을
+         // 하나의 끝점으로 발행한다. 저장 줄 상한이 이 공간을 회수하거나
+diff --git a/src/renderer/typeset/state/transition.rs b/src/renderer/typeset/state/transition.rs
+index 743496eeb74a3ad18ce2a28691d394046ca181f2..950b5c984fcedecd9c764a21a06e65d2ed671061 100644
+--- a/src/renderer/typeset/state/transition.rs
++++ b/src/renderer/typeset/state/transition.rs
+@@ -527,6 +527,41 @@ impl TypesetState {
+         frame.page_anchored_square_table_exclusion(table)
      }
  
 +    /// 같은 host 의 쪽·종이 기준 어울림 표 상자 중 아직 등록되지 않은 것.
@@ -133,28 +78,12 @@ index cc52c1978..589d67983 100644
 +    /// 바닥과 같다). 이 줄의 배치에만 쓰고 뒤 문단의 저장 경로는 바꾸지 않는다.
 +    /// 지금 단에 통째로 놓인 표만 본다. 여러 쪽에 걸친 표나 앞 쪽에 놓인 표의 상자는
 +    /// 쪽마다 같은 자리로 계산되지만 이 쪽을 차지하지 않는다.
-+    pub(super) fn host_page_anchored_square_exclusions(
++    pub(in crate::renderer::typeset) fn host_page_anchored_square_exclusions(
 +        &self,
 +        para_index: usize,
-+        para: &crate::model::paragraph::Paragraph,
++        para: &Paragraph,
 +        control_index: usize,
 +    ) -> Vec<crate::renderer::layout_frame::FrameExclusion> {
-+        let column = self.inline_flow_column();
-+        let paper = LayoutRect {
-+            x: 0.0,
-+            y: 0.0,
-+            width: self.data.layout.page_width,
-+            height: self.data.layout.page_height,
-+        };
-+        let frame = crate::renderer::float_placement::ObjectPlacementFrame {
-+            container: &column,
-+            column: &column,
-+            body: &self.data.layout.body_area,
-+            paper: &paper,
-+            paragraph_y: column.y,
-+            alignment: crate::model::style::Alignment::Left,
-+            dpi: self.data.layout.dpi,
-+        };
 +        para.controls
 +            .iter()
 +            .enumerate()
@@ -170,14 +99,12 @@ index cc52c1978..589d67983 100644
 +                    })
 +            })
 +            .filter_map(|(_, control)| match control {
-+                crate::model::control::Control::Table(table) => {
-+                    frame.page_anchored_square_table_exclusion(table)
-+                }
++                Control::Table(table) => self.page_anchored_square_table_exclusion(table),
 +                _ => None,
 +            })
 +            .collect()
 +    }
 +
-     pub(super) fn inline_flow_input(&self, start: f64, preceding: bool) -> InlineFlowInput<'_> {
-         InlineFlowInput {
-             column: self.inline_flow_column(),
+     /// 본문 항목 외에 이 쪽에서 실제 방출할 개체·어울림도 단의 내용이다.
+     /// 일반 전환과 문서 끝 확정이 같은 소유 판정을 사용한다.
+     pub(in crate::renderer::typeset) fn has_column_content(&self) -> bool {

@@ -124,16 +124,6 @@
  *   for the memo anchors, and a deletion that touches one captures its paragraph first,
  *   as the studio already does for a link, so undo restores the paragraph with the memo.
  *
- * studio-font-memo-state, studio-font-memo-use
- *   The studio replaces the Canvas2D `font` setter so that every font string
- *   the engine sets passes its font substitution, which builds the family
- *   chain anew each time. Drawing a page sets the same few strings thousands
- *   of times, and that rebuilding was most of the cost of a keystroke. The
- *   setter keeps each string's answer until the next microtask checkpoint:
- *   one synchronous draw reuses it, and what the answer depends on (the fonts
- *   found on the PC, the open document's substitutions) changes only when an
- *   asynchronous step ends, so every later draw asks again.
- *
  * studio-pc-fonts
  *   The studio lists the PC's fonts only after the 찾기 button of its options dialog,
  *   so its font lists held the base fonts and the document's own until then. At start-up
@@ -241,22 +231,27 @@ const PATCHES = {
   },
   'studio-nested-table-cut': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler\.ts$/,
-    find: [
-      '        // 중첩 표 잘라내기는 지원하지 않는다. keydown 경로도 같은 선택 상태를 유지한다.',
-      '        if (ref.cellPath && ref.cellPath.length > 1) return;',
-      '        this.performCopy();',
-      '        this.cursor.moveOutOfSelectedTable();',
-      "        this.eventBus.emit('table-object-selection-changed', false);",
-      "        this.executeOperation({ kind: 'snapshot', operationType: 'cutTable', operation: (wasm: WasmBridge) => {",
-      '          wasm.deleteTableControl(ref.sec, ref.ppi, ref.ci);',
-    ].join('\n'),
-    replace: [
-      '        this.performCopy();',
-      '        this.cursor.moveOutOfSelectedTable();',
-      "        this.eventBus.emit('table-object-selection-changed', false);",
-      "        this.executeOperation({ kind: 'snapshot', operationType: 'cutTable', operation: (wasm: WasmBridge) => {",
-      '          wasm.deleteTableAt(ref);',
-    ].join('\n'),
+    edits: [
+      // the copy already takes a table in a cell (tableObjectClipboardTarget); only the delete did not
+      {
+        find: [
+          '    // 중첩 표 잘라내기는 지원하지 않는다. keydown 경로도 같은 선택 상태를 유지한다.',
+          '    if (table?.cellPath && table.cellPath.length > 1) return;',
+          '',
+        ].join('\n'),
+        replace: '',
+      },
+      {
+        find: [
+          "        this.executeOperation({ kind: 'snapshot', operationType: 'cutTable', operation: (wasm: WasmBridge) => {",
+          '          wasm.deleteTableControl(ref.sec, ref.ppi, ref.ci);',
+        ].join('\n'),
+        replace: [
+          "        this.executeOperation({ kind: 'snapshot', operationType: 'cutTable', operation: (wasm: WasmBridge) => {",
+          '          wasm.deleteTableAt(table!);',
+        ].join('\n'),
+      },
+    ],
   },
   'studio-nested-table-command': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]command[\\/]commands[\\/]table\.ts$/,
@@ -392,8 +387,9 @@ const PATCHES = {
       },
       // the typed character, before the editor decides what to do with it
       {
-        find: '  const text = this.textarea.value;',
-        replace: '  const text = quickCorrectTyped(this, this.textarea.value, e?.inputType);',
+        find: '  const text = normalizeTextNewlines(this.textarea.value);',
+        replace:
+          '  const text = normalizeTextNewlines(quickCorrectTyped(this, this.textarea.value, e?.inputType));',
       },
     ],
   },
@@ -1090,35 +1086,6 @@ const PATCHES = {
       },
     ],
   },
-  'studio-font-memo-state': {
-    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
-    find: 'let canvasFontSubstitutionInstalled = false;',
-    replace: [
-      'let canvasFontSubstitutionInstalled = false;',
-      '',
-      '// one answer per font string until the next microtask checkpoint: a page draw sets the',
-      '// same strings thousands of times, and what the answer depends on changes between tasks',
-      'let canvasFontMemo: Map<string, string> | null = null;',
-      'function memoSubstituteCssFontFamily(cssFont: string): string {',
-      '  if (!canvasFontMemo) {',
-      '    canvasFontMemo = new Map();',
-      '    queueMicrotask(() => { canvasFontMemo = null; });',
-      '  }',
-      '  let out = canvasFontMemo.get(cssFont);',
-      '  if (out === undefined) {',
-      '    out = substituteCssFontFamily(cssFont);',
-      '    canvasFontMemo.set(cssFont, out);',
-      '  }',
-      '  return out;',
-      '}',
-    ].join('\n'),
-  },
-  'studio-font-memo-use': {
-    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
-    find: 'descriptor.set!.call(this, scopedHostCanvasFont(String(value)) ?? substituteCssFontFamily(String(value)));',
-    replace:
-      'descriptor.set!.call(this, scopedHostCanvasFont(String(value)) ?? memoSubstituteCssFontFamily(String(value)));',
-  },
   'studio-pc-fonts': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]main\.ts$/,
     edits: [
@@ -1210,8 +1177,6 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-memo-label-en',
   'studio-memo-anchors',
   'studio-memo-delete-undo',
-  'studio-font-memo-state',
-  'studio-font-memo-use',
   'studio-cell-block-paste',
   'studio-pc-fonts',
 ])

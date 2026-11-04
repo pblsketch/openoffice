@@ -65,7 +65,7 @@ describe('rows covered only by a merged cell, saved as .hwpx', () => {
     expect(table.rows[1]).toContain('<hp:cellSpan colSpan="1" rowSpan="1"/>')
   })
 
-  it('keep the merged height and reopen as the same two cells', async () => {
+  it('keep the merged height, and reopen in rhwp as the grid that was saved', async () => {
     const { doc, paraIdx, controlIdx } = answerBox()
     const saved = doc.exportHwpx()
     const xml = await sectionXml(saved)
@@ -75,13 +75,17 @@ describe('rows covered only by a merged cell, saved as .hwpx', () => {
     expect(heights).toHaveLength(2)
     expect(heights[1]).toBe(heights[0] * 3)
 
+    // rhwp devel writes the logical grid beside the section (#8120) and rebuilds it on open;
+    // Hangul reads the two rows above
+    const zip = await JSZip.loadAsync(saved)
+    expect(zip.file('META-INF/rhwp-table-row-grids.json')).not.toBeNull()
     const reopened = new HwpDocument(saved)
     const dims: Dimensions = JSON.parse(reopened.getTableDimensions(0, paraIdx, controlIdx))
-    expect(dims).toMatchObject({ rowCount: 2, colCount: 1, cellCount: 2 })
+    expect(dims).toMatchObject({ rowCount: 4, colCount: 1, cellCount: 2 })
     expect(JSON.parse(reopened.getCellInfo(0, paraIdx, controlIdx, 1))).toEqual({
       row: 1,
       col: 0,
-      rowSpan: 1,
+      rowSpan: 3,
       colSpan: 1,
     })
     expect(await sectionXml(reopened.exportHwpx())).toBe(xml)

@@ -452,7 +452,8 @@ const git = (args, cwd) =>
  * whole repository is several GB of sample documents).
  */
 function rhwpSourceTree() {
-  const { tag, commit } = RHWP.rhwp
+  // `branch` is set when the engine is pinned to a commit ahead of a release (decision 0107)
+  const { tag, branch, commit } = RHWP.rhwp
   const atCommit = (dir) => {
     try {
       return existsSync(join(dir, 'Cargo.toml')) && git(['rev-parse', 'HEAD'], dir) === commit
@@ -467,15 +468,23 @@ function rhwpSourceTree() {
   try {
     rmSync(sparse, { recursive: true, force: true })
     mkdirSync(dirname(sparse), { recursive: true })
-    git(
-      ['clone', '--quiet', '--filter=blob:none', '--no-checkout', '--depth', '1'].concat([
-        '--branch',
-        tag,
-        RHWP_REPO,
-        sparse,
-      ]),
-      dirname(sparse),
-    )
+    if (branch) {
+      // a branch moves on; fetch the pinned commit itself
+      mkdirSync(sparse, { recursive: true })
+      git(['init', '--quiet'], sparse)
+      git(['remote', 'add', 'origin', RHWP_REPO], sparse)
+      git(['fetch', '--quiet', '--depth', '1', '--filter=blob:none', 'origin', commit], sparse)
+    } else {
+      git(
+        ['clone', '--quiet', '--filter=blob:none', '--no-checkout', '--depth', '1'].concat([
+          '--branch',
+          tag,
+          RHWP_REPO,
+          sparse,
+        ]),
+        dirname(sparse),
+      )
+    }
     git(
       ['sparse-checkout', 'set', '--no-cone', '/Cargo.lock', '**/Cargo.toml'].concat([
         '**/src/lib.rs',
@@ -483,7 +492,7 @@ function rhwpSourceTree() {
       ]),
       sparse,
     )
-    git(['checkout', '--quiet', tag], sparse)
+    git(['checkout', '--quiet', branch ? 'FETCH_HEAD' : tag], sparse)
   } catch {
     return null
   }

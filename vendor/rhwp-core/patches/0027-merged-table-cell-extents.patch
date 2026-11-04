@@ -1,14 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
-Date: Sat, 31 Oct 2026 00:00:00 +0900
-Subject: [PATCH] =?UTF-8?q?fix(table):=20=ED=95=A9=EC=B9=9C=20=EC=B9=B8?=
- =?UTF-8?q?=EC=9D=B4=20=EC=9E=88=EB=8A=94=20=ED=91=9C=EC=9D=98=20=EC=B9=B8?=
- =?UTF-8?q?=20=ED=95=98=EB=82=98=20=ED=81=AC=EA=B8=B0=20=EB=B0=94=EA=BE=B8?=
- =?UTF-8?q?=EA=B8=B0=EC=99=80=20=EC=B9=B8=20=EC=9E=90=EB=A6=AC=20=EC=A0=95?=
- =?UTF-8?q?=ED=95=98=EA=B8=B0?=
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Date: Wed, 4 Nov 2026 00:00:00 +0900
+Subject: [PATCH 17/18] fix(table): 합친 칸이 있는 표의 칸 하나 크기 바꾸기와 칸 자리 정하기
 
 resizeTableCell(Shift+←/→)이 행마다 너비를 누적해 칸을 다시 놓던 것을
 칸마다의 시작·끝 좌표로 바꾼다. 위 행에서 세로로 합쳐 내려온 칸의 자리를
@@ -17,16 +10,18 @@ resizeTableCell(Shift+←/→)이 행마다 너비를 누적해 칸을 다시 �
 setTableCellExtents를 더한다. 한 축(가로/세로)을 따라 칸들의 시작·끝을
 받아 격자를 다시 매기고 표의 크기를 맞춘다. 셀 너비·높이를 같게(H/W)와
 세로 Shift+↑/↓를 앱이 한컴처럼 계산해 이 호출로 쓴다.
+
+Ported onto devel 7d06d5c70: applied without conflicts once 0016 was in place (the trial conflicts came from picking it without 0016); no code changes needed. setTableCellExtents is new — devel has no equivalent.
 ---
- src/document_core/commands/table_ops.rs | 356 +++++++++++++++++-------
+ src/document_core/commands/table_ops.rs | 356 ++++++++++++++++++++++----------
  src/wasm_api.rs                         |  21 ++
  2 files changed, 269 insertions(+), 108 deletions(-)
 
 diff --git a/src/document_core/commands/table_ops.rs b/src/document_core/commands/table_ops.rs
-index 40d756268..d2dd99759 100644
+index 5612f8f803eb46e1826a61ee987ffae04f5b2128..c30c076f6034eaa7a2e3b8b85117efe3f1b45839 100644
 --- a/src/document_core/commands/table_ops.rs
 +++ b/src/document_core/commands/table_ops.rs
-@@ -3792,8 +3792,11 @@ impl DocumentCore {
+@@ -3971,8 +3971,11 @@ impl DocumentCore {
      /// 갈라진다**: 147행 3열에서 (0,0) 폭을 늘리면 열이 넷이 되고 (0,0)은 `col_span` 2,
      /// 다른 행의 1열 칸들이 `col_span` 2 가 된다(전부 실측 그대로).
      ///
@@ -40,7 +35,7 @@ index 40d756268..d2dd99759 100644
      ///
      /// 앞선 호출이 만든 `col_span`/`row_span`은 그대로 두고 같은 줄의 다음 칸을 다시 찾아
      /// 옮긴다. 마지막 열·행(옮길 경계가 없다)과 이웃이 한 걸음(283)보다 얇은 자리는
-@@ -3816,136 +3819,273 @@ impl DocumentCore {
+@@ -3995,136 +3998,273 @@ impl DocumentCore {
  
          let table = self.get_table_mut(section_idx, parent_para_idx, control_idx)?;
          let delta = if forward { STEP } else { -STEP };
@@ -421,10 +416,10 @@ index 40d756268..d2dd99759 100644
  
  /// 셀 텍스트에서 숫자를 추출한다 (콤마 제거, 공백 무시).
 diff --git a/src/wasm_api.rs b/src/wasm_api.rs
-index ae794ace6..f806fa227 100644
+index ee08c0512b5c576f424ddd48ea4fe82d909410d1..5b439a84d1d1cc2708fbfe0bf7c1c3ab45746446 100644
 --- a/src/wasm_api.rs
 +++ b/src/wasm_api.rs
-@@ -3562,6 +3562,27 @@ impl HwpDocument {
+@@ -3930,6 +3930,27 @@ impl HwpDocument {
          .map_err(|e| e.into())
      }
  

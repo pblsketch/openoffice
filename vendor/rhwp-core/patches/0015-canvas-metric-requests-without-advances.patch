@@ -1,14 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
-Date: Thu, 22 Oct 2026 00:00:00 +0900
-Subject: [PATCH 12/12] =?UTF-8?q?perf(canvas-metrics):=20=EC=9A=94=EC=B2=AD=20?=
- =?UTF-8?q?=EC=88=98=EC=A7=91=EC=9D=80=20=EA=B8=80=EC=9E=90=20=EC=A7=84?=
- =?UTF-8?q?=ED=96=89=20=ED=8F=AD=EC=9D=84=20=EC=9E=AC=EC=A7=80=20=EC=95=8A?=
- =?UTF-8?q?=EA=B3=A0=20=ED=8F=AD=20=EC=B6=9C=EC=B2=98=EB=A7=8C=20=EB=B3=B8?=
- =?UTF-8?q?=EB=8B=A4?=
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Date: Wed, 4 Nov 2026 00:00:00 +0900
+Subject: [PATCH 7/18] perf(canvas-metrics): 요청 수집은 글자 진행 폭을 재지 않고 폭 출처만 본다
 
 편집할 때마다 studio 가 `collectCanvasMetricRequests` 를 부르고, 수집기는 문서의 모든 run 에
 `trace_char_width_decisions` 를 부른다. 그 함수는 탭의 진행 폭을 채우려고 run 전체의 글자
@@ -18,14 +11,16 @@ Content-Transfer-Encoding: 8bit
 글자의 판정은 `trace_char_width_decisions` 와 같다(단위 시험). 요청 묶음은 바뀌지 않는다.
 
 50쪽 문서(글자 8만 7천 개, 요청 0개)에서 WASM 수집 한 번이 중앙값 153ms 에서 89ms 로 줄었다.
+
+Ported onto devel 7d06d5c70: devel still calls trace_char_width_decisions from the collector (upstream issue #8162 is still open), so the patch is unchanged; only the conflict in the layout.rs re-export list had to be redone against devel's longer list.
 ---
- src/document_core/canvas_metric_requests.rs |  5 +-
- src/renderer/layout.rs                      |  8 +--
- src/renderer/layout/text_measurement.rs     | 61 +++++++++++++++++++++
- 3 files changed, 68 insertions(+), 6 deletions(-)
+ src/document_core/canvas_metric_requests.rs |  5 ++-
+ src/renderer/layout.rs                      | 12 +++---
+ src/renderer/layout/text_measurement.rs     | 61 +++++++++++++++++++++++++++++
+ 3 files changed, 70 insertions(+), 8 deletions(-)
 
 diff --git a/src/document_core/canvas_metric_requests.rs b/src/document_core/canvas_metric_requests.rs
-index c2b24f167..b927f272c 100644
+index 31124f94815829ebdc0dc646c33e4e6d09571c9b..69f216a054468b76a4820ca0fe863a851e8805ca 100644
 --- a/src/document_core/canvas_metric_requests.rs
 +++ b/src/document_core/canvas_metric_requests.rs
 @@ -4,7 +4,7 @@ use crate::model::{control::Control, paragraph::Paragraph, shape::ShapeObject};
@@ -35,8 +30,8 @@ index c2b24f167..b927f272c 100644
 -    layout::{resolved_to_text_style, trace_char_width_decisions},
 +    layout::{char_width_decisions_without_advances, resolved_to_text_style},
      supplemental_metrics::{
-         MetricContext, MetricError, SupplementalMetric, MAX_SUPPLEMENTAL_ENTRIES,
-         MAX_SUPPLEMENTAL_KEY_BYTES,
+         accepts_prepared_glyph_advance, MetricContext, MetricError, SupplementalMetric,
+         MAX_SUPPLEMENTAL_ENTRIES, MAX_SUPPLEMENTAL_KEY_BYTES,
 @@ -73,7 +73,8 @@ impl Collector<'_> {
                      }
                      let mut style = run.text_style(&self.core.styles);
@@ -48,29 +43,33 @@ index c2b24f167..b927f272c 100644
                      for cluster in run.text.graphemes(true) {
                          let count = cluster.chars().count();
 diff --git a/src/renderer/layout.rs b/src/renderer/layout.rs
-index 4eb94afc4..b4181716b 100644
+index f284a1fecf261884382ddf6b887f738389de2a81..89a2fbbc838c42c68ddc687ea47a1a1ad1d7cd05 100644
 --- a/src/renderer/layout.rs
 +++ b/src/renderer/layout.rs
-@@ -3787,10 +3787,10 @@ pub(crate) use table_layout::border_style_has_diagonal;
- // [#4149] 셀 커서 fast path 프로브 (document_core::queries::cursor_rect 전용)
+@@ -3760,12 +3760,12 @@ pub(crate) use utils::extract_picture_transform;
  pub(crate) use table_partial::{PartialTableCellProbe, ProbeCutPlan};
+ pub(crate) use terminal_tracking::glyph_letter_spacing_advance;
  pub(crate) use text_measurement::{
--    compute_char_positions, estimate_text_width, estimate_text_width_exact,
--    estimate_text_width_unrounded, extract_tab_leaders_with_extended, find_next_tab_stop,
--    hancom_regenerated_space_width, is_cjk_char, is_halfwidth_cjk_quote, kopub_space_advance_em,
+-    char_width_decision, compute_char_positions, compute_glyph_fit_positions, estimate_text_width,
+-    estimate_text_width_exact, estimate_text_width_unrounded,
+-    estimate_text_width_unrounded_with_storage, extract_tab_leaders_with_extended,
+-    find_next_tab_stop, hancom_regenerated_space_width, has_hft_bold_tracking, is_cjk_char,
+-    is_halfwidth_cjk_quote, kopub_declared_space_em, kopub_space_advance_em,
 -    resolved_letter_spacing, resolved_to_text_style, split_into_clusters,
-+    char_width_decisions_without_advances, compute_char_positions, estimate_text_width,
-+    estimate_text_width_exact, estimate_text_width_unrounded, extract_tab_leaders_with_extended,
-+    find_next_tab_stop, hancom_regenerated_space_width, is_cjk_char, is_halfwidth_cjk_quote,
++    char_width_decision, char_width_decisions_without_advances, compute_char_positions,
++    compute_glyph_fit_positions, estimate_text_width, estimate_text_width_exact,
++    estimate_text_width_unrounded, estimate_text_width_unrounded_with_storage,
++    extract_tab_leaders_with_extended, find_next_tab_stop, hancom_regenerated_space_width,
++    has_hft_bold_tracking, is_cjk_char, is_halfwidth_cjk_quote, kopub_declared_space_em,
 +    kopub_space_advance_em, resolved_letter_spacing, resolved_to_text_style, split_into_clusters,
-     trace_char_width_decisions, CharWidthDecision,
+     trace_char_width_decisions, try_resolved_to_text_style, verified_source_projection_face,
+     verified_source_projection_text, CharWidthDecision,
  };
- // [#6060] forces_halfwidth_cjk_quote 는 통합 테스트
 diff --git a/src/renderer/layout/text_measurement.rs b/src/renderer/layout/text_measurement.rs
-index 1a1c56b98..91a043f30 100644
+index 17efd2559b45d39d0193d6055c0e83976837ac4f..5c8849fc512eb1169fc6989ac501b5e87e106542 100644
 --- a/src/renderer/layout/text_measurement.rs
 +++ b/src/renderer/layout/text_measurement.rs
-@@ -1776,6 +1776,29 @@ pub(crate) fn trace_char_width_decisions<'a>(
+@@ -2888,6 +2888,29 @@ pub(crate) fn trace_char_width_decisions<'a>(
          .collect()
  }
  
@@ -100,7 +99,7 @@ index 1a1c56b98..91a043f30 100644
  // ── 문자 분류 함수 ──────────────────────────────────────────────────
  
  /// CJK 문자 여부 판별 (EmbeddedTextMeasurer의 히우리스틱 폭 계산에서 사용)
-@@ -2051,6 +2074,44 @@ pub(crate) fn vertical_substitute_char(c: char) -> Option<char> {
+@@ -3191,6 +3214,44 @@ pub(crate) fn estimate_text_width_with_storage<S: crate::storage::Storage>(
  mod tests {
      use super::*;
  
