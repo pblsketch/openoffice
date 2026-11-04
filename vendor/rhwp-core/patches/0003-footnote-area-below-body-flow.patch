@@ -1,15 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
-Date: Wed, 21 Oct 2026 00:00:00 +0900
-Subject: [PATCH 3/3] =?UTF-8?q?fix(layout):=20=EB=B3=B8=EB=AC=B8=20?=
- =?UTF-8?q?=ED=9D=90=EB=A6=84=EC=9D=B4=20=EA=B0=81=EC=A3=BC=20=EC=98=81?=
- =?UTF-8?q?=EC=97=AD=EC=9D=84=20=EB=84=98=EC=9D=80=20=EC=AA=BD=EC=97=90?=
- =?UTF-8?q?=EC=84=9C=20=EA=B0=81=EC=A3=BC=20=EC=98=81=EC=97=AD=EC=9D=84=20?=
- =?UTF-8?q?=EB=B3=B8=EB=AC=B8=20=EC=95=84=EB=9E=98=EB=A1=9C=20=EB=82=B4?=
- =?UTF-8?q?=EB=A6=B0=EB=8B=A4?=
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Date: Wed, 4 Nov 2026 00:00:00 +0900
+Subject: [PATCH 2/30] fix(layout): 본문 흐름이 각주 영역을 넘은 쪽에서 각주 영역을 본문 아래로 내린다
 
 각주 영역은 본문 아래끝에 맞춰 그리는데, 조판은 빈 꼬리말 띠 회수(#2559)나 저장 줄
 위치를 따라 본문을 그 위끝 아래까지 채울 수 있다. 그러면 마지막 본문 줄이 각주
@@ -22,15 +14,17 @@ Content-Transfer-Encoding: 8bit
 IeumOffice patch onto v0.8.7 (layout only; not proposed upstream yet).
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+Ported onto devel 7d06d5c70: applied without conflicts; no code changes needed.
 ---
- src/renderer/layout.rs | 113 +++++++++++++++++++++++++++++++++++++++++
+ src/renderer/layout.rs | 113 +++++++++++++++++++++++++++++++++++++++++++++++++
  1 file changed, 113 insertions(+)
 
 diff --git a/src/renderer/layout.rs b/src/renderer/layout.rs
-index 6ee65a450..2b7702563 100644
+index 885666ac74fe25f4b562b89c5bf68b42219cdc85..f284a1fecf261884382ddf6b887f738389de2a81 100644
 --- a/src/renderer/layout.rs
 +++ b/src/renderer/layout.rs
-@@ -4748,6 +4748,7 @@ impl LayoutEngine {
+@@ -4971,6 +4971,7 @@ impl LayoutEngine {
              page_border_fill,
          );
          tree.root.children.push(footer_node);
@@ -38,7 +32,7 @@ index 6ee65a450..2b7702563 100644
  
          // composer를 거치지 않고 직접 만들어진 표 셀/머리말 TextRun까지 같은
          // 한컴 PDF 표시 계약을 적용한다. 원문 IR과 char offset은 변경하지 않는다.
-@@ -6486,6 +6487,118 @@ impl LayoutEngine {
+@@ -6290,6 +6291,118 @@ impl LayoutEngine {
          footer_node
      }
  
@@ -155,5 +149,5 @@ index 6ee65a450..2b7702563 100644
 +    }
 +
      /// 각주 영역 노드를 생성하여 tree에 추가한다.
+     #[allow(clippy::too_many_arguments)]
      fn build_footnote_area(
-         &self,

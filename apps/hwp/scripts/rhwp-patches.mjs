@@ -124,15 +124,12 @@
  *   for the memo anchors, and a deletion that touches one captures its paragraph first,
  *   as the studio already does for a link, so undo restores the paragraph with the memo.
  *
- * studio-font-memo-state, studio-font-memo-use
- *   The studio replaces the Canvas2D `font` setter so that every font string
- *   the engine sets passes its font substitution, which builds the family
- *   chain anew each time. Drawing a page sets the same few strings thousands
- *   of times, and that rebuilding was most of the cost of a keystroke. The
- *   setter keeps each string's answer until the next microtask checkpoint:
- *   one synchronous draw reuses it, and what the answer depends on (the fonts
- *   found on the PC, the open document's substitutions) changes only when an
- *   asynchronous step ends, so every later draw asks again.
+ * studio-pdf-import-options
+ *   The engine is built without upstream's PDF import until upstream releases it
+ *   (vendor/rhwp-core `rhwp.features`, decision 0107). The studio then keeps PDFs out of
+ *   its file picker, drops and file command by itself, but its options dialog still
+ *   showed the PDF import layout choice. The dialog shows that section only when the
+ *   engine has PDF import, and its OK leaves the setting alone when it does not.
  *
  * studio-pc-fonts
  *   The studio lists the PC's fonts only after the 찾기 button of its options dialog,
@@ -241,22 +238,27 @@ const PATCHES = {
   },
   'studio-nested-table-cut': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler\.ts$/,
-    find: [
-      '        // 중첩 표 잘라내기는 지원하지 않는다. keydown 경로도 같은 선택 상태를 유지한다.',
-      '        if (ref.cellPath && ref.cellPath.length > 1) return;',
-      '        this.performCopy();',
-      '        this.cursor.moveOutOfSelectedTable();',
-      "        this.eventBus.emit('table-object-selection-changed', false);",
-      "        this.executeOperation({ kind: 'snapshot', operationType: 'cutTable', operation: (wasm: WasmBridge) => {",
-      '          wasm.deleteTableControl(ref.sec, ref.ppi, ref.ci);',
-    ].join('\n'),
-    replace: [
-      '        this.performCopy();',
-      '        this.cursor.moveOutOfSelectedTable();',
-      "        this.eventBus.emit('table-object-selection-changed', false);",
-      "        this.executeOperation({ kind: 'snapshot', operationType: 'cutTable', operation: (wasm: WasmBridge) => {",
-      '          wasm.deleteTableAt(ref);',
-    ].join('\n'),
+    edits: [
+      // the copy already takes a table in a cell (tableObjectClipboardTarget); only the delete did not
+      {
+        find: [
+          '    // 중첩 표 잘라내기는 지원하지 않는다. keydown 경로도 같은 선택 상태를 유지한다.',
+          '    if (table?.cellPath && table.cellPath.length > 1) return;',
+          '',
+        ].join('\n'),
+        replace: '',
+      },
+      {
+        find: [
+          "        this.executeOperation({ kind: 'snapshot', operationType: 'cutTable', operation: (wasm: WasmBridge) => {",
+          '          wasm.deleteTableControl(ref.sec, ref.ppi, ref.ci);',
+        ].join('\n'),
+        replace: [
+          "        this.executeOperation({ kind: 'snapshot', operationType: 'cutTable', operation: (wasm: WasmBridge) => {",
+          '          wasm.deleteTableAt(table!);',
+        ].join('\n'),
+      },
+    ],
   },
   'studio-nested-table-command': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]command[\\/]commands[\\/]table\.ts$/,
@@ -392,8 +394,9 @@ const PATCHES = {
       },
       // the typed character, before the editor decides what to do with it
       {
-        find: '  const text = this.textarea.value;',
-        replace: '  const text = quickCorrectTyped(this, this.textarea.value, e?.inputType);',
+        find: '  const text = normalizeTextNewlines(this.textarea.value);',
+        replace:
+          '  const text = normalizeTextNewlines(quickCorrectTyped(this, this.textarea.value, e?.inputType));',
       },
     ],
   },
@@ -1090,34 +1093,31 @@ const PATCHES = {
       },
     ],
   },
-  'studio-font-memo-state': {
-    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
-    find: 'let canvasFontSubstitutionInstalled = false;',
-    replace: [
-      'let canvasFontSubstitutionInstalled = false;',
-      '',
-      '// one answer per font string until the next microtask checkpoint: a page draw sets the',
-      '// same strings thousands of times, and what the answer depends on changes between tasks',
-      'let canvasFontMemo: Map<string, string> | null = null;',
-      'function memoSubstituteCssFontFamily(cssFont: string): string {',
-      '  if (!canvasFontMemo) {',
-      '    canvasFontMemo = new Map();',
-      '    queueMicrotask(() => { canvasFontMemo = null; });',
-      '  }',
-      '  let out = canvasFontMemo.get(cssFont);',
-      '  if (out === undefined) {',
-      '    out = substituteCssFontFamily(cssFont);',
-      '    canvasFontMemo.set(cssFont, out);',
-      '  }',
-      '  return out;',
-      '}',
-    ].join('\n'),
-  },
-  'studio-font-memo-use': {
-    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
-    find: 'descriptor.set!.call(this, scopedHostCanvasFont(String(value)) ?? substituteCssFontFamily(String(value)));',
-    replace:
-      'descriptor.set!.call(this, scopedHostCanvasFont(String(value)) ?? memoSubstituteCssFontFamily(String(value)));',
+  'studio-pdf-import-options': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]ui[\\/]options-dialog\.ts$/,
+    edits: [
+      {
+        find: "import { userSettings } from '@/core/user-settings';",
+        replace: [
+          "import { userSettings } from '@/core/user-settings';",
+          "import { HwpDocument } from '@wasm/rhwp.js';",
+          "import { hasPdfImportCapability } from '@/core/pdf-import-capability';",
+        ].join('\n'),
+      },
+      {
+        find: '    panel.appendChild(this.createPdfImportSection());',
+        replace:
+          '    if (hasPdfImportCapability(HwpDocument)) panel.appendChild(this.createPdfImportSection());',
+      },
+      {
+        find: "    userSettings.setPdfImportLayout(this.pdfImportEditableRadio.checked ? 'editable' : 'fidelity');",
+        replace: [
+          '    if (this.pdfImportEditableRadio) {',
+          "      userSettings.setPdfImportLayout(this.pdfImportEditableRadio.checked ? 'editable' : 'fidelity');",
+          '    }',
+        ].join('\n'),
+      },
+    ],
   },
   'studio-pc-fonts': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]main\.ts$/,
@@ -1175,91 +1175,6 @@ const PATCHES = {
       },
     ],
   },
-  // A page canvas is rasterized at the device resolution but shown in a box of the logical
-  // page size, at a position that falls between device pixels by a different fraction on
-  // each page; smoothing it again blurred the text, page by page differently. Show the
-  // samples as they are when the canvas holds one per device pixel (upstream #8191,
-  // 609725346, without its print-paper parts that 0.8.7 lacks). A canvas the surface budget
-  // drew smaller, a zoom preview and the print profile keep the default smoothing.
-  'studio-page-raster-filter': {
-    file: /[\\/]rhwp-studio[\\/]src[\\/]view[\\/]canvas-view\.ts$/,
-    edits: [
-      {
-        find: 'export class CanvasView {',
-        replace: [
-          '/** The image-rendering for a page canvas: its own samples when each axis holds one per device pixel. */',
-          'function pageRasterFilter(',
-          '  canvasWidth: number,',
-          '  canvasHeight: number,',
-          '  deviceWidth: number,',
-          '  deviceHeight: number,',
-          '  profile: string,',
-          "): 'crisp-edges' | 'auto' {",
-          '  const ownsDeviceAxis = (actual: number, logical: number): boolean => (',
-          '    Number.isFinite(logical) && logical > 0',
-          '    && (actual === Math.floor(logical) || actual === Math.ceil(logical))',
-          '  );',
-          "  return profile !== 'print'",
-          '    && ownsDeviceAxis(canvasWidth, deviceWidth)',
-          "    && ownsDeviceAxis(canvasHeight, deviceHeight) ? 'crisp-edges' : 'auto';",
-          '}',
-          '',
-          'export class CanvasView {',
-        ].join('\n'),
-      },
-      {
-        find: [
-          "      element.style.transform = 'translateX(-50%)';",
-          '    }',
-          "    element.style.transformOrigin = '';",
-          '  }',
-        ].join('\n'),
-        replace: [
-          "      element.style.transform = 'translateX(-50%)';",
-          '    }',
-          "    element.style.transformOrigin = '';",
-          '    this.applyCanvasRasterFilter(element, pageIdx, this.viewportManager.getZoom());',
-          '  }',
-        ].join('\n'),
-      },
-      {
-        find: [
-          '      element.style.width = cssWidth;',
-          '      element.style.height = cssHeight;',
-          '    }',
-          '  }',
-        ].join('\n'),
-        replace: [
-          '      element.style.width = cssWidth;',
-          '      element.style.height = cssHeight;',
-          '      this.applyCanvasRasterFilter(element, pageIdx, zoom);',
-          '    }',
-          '  }',
-          '',
-          '  private applyCanvasRasterFilter(element: HTMLElement, pageIdx: number, zoom: number): void {',
-          '    const page = this.pages[pageIdx];',
-          "    if (!page || element.tagName !== 'CANVAS') return;",
-          '    const canvas = element as HTMLCanvasElement;',
-          '    const dpr = globalThis.devicePixelRatio || 1;',
-          '    canvas.style.imageRendering = pageRasterFilter(',
-          '      canvas.width,',
-          '      canvas.height,',
-          '      page.width * zoom * dpr,',
-          '      page.height * zoom * dpr,',
-          '      this.pageRenderer.getRenderProfile(),',
-          '    );',
-          '  }',
-        ].join('\n'),
-      },
-      {
-        find: '  private applyZoomPreviewBox(element: HTMLElement, pageIdx: number, scale: number): void {',
-        replace: [
-          '  private applyZoomPreviewBox(element: HTMLElement, pageIdx: number, scale: number): void {',
-          "    if (element.tagName === 'CANVAS') element.style.imageRendering = 'auto';",
-        ].join('\n'),
-      },
-    ],
-  },
 }
 
 /** The patches the studio build applies, in order; the SDK's own is applied by the renderer builds. */
@@ -1295,11 +1210,9 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-memo-label-en',
   'studio-memo-anchors',
   'studio-memo-delete-undo',
-  'studio-font-memo-state',
-  'studio-font-memo-use',
   'studio-cell-block-paste',
+  'studio-pdf-import-options',
   'studio-pc-fonts',
-  'studio-page-raster-filter',
 ])
 
 /** Whether a patch is written against this file. */

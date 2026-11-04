@@ -1,7 +1,7 @@
 {
   "name": "@rhwp/core",
-  "version": "0.8.7-ieum.19",
-  "description": "rhwp v0.8.7 HWP/HWPX engine (WebAssembly) rebuilt with the patches in ./patches",
+  "version": "0.9.0-devel.ieum.21",
+  "description": "rhwp devel (7d06d5c70, ahead of the v0.9.0 release) HWP/HWPX engine (WebAssembly) rebuilt with the patches in ./patches",
   "private": true,
   "type": "module",
   "main": "rhwp.js",
@@ -16,41 +16,46 @@
     "./snippets/*"
   ],
   "rhwp": {
-    "tag": "v0.8.7",
-    "commit": "1a76570e833917d15817415a53c09ad61ab3203f",
+    "tag": "devel-7d06d5c70",
+    "branch": "devel",
+    "commit": "7d06d5c706f1d89f1662e739abf2b1b25d2a98e4",
+    "features": [
+      "console_error_panic_hook",
+      "wasm-api"
+    ],
     "patches": [
       "0001-host-inline-table-clears-paper-square-table.patch",
-      "0002-paragraph-picture-after-stored-page-reset.patch",
       "0003-footnote-area-below-body-flow.patch",
       "0004-page-start-below-title-table.patch",
       "0005-stored-restart-opens-next-page.patch",
-      "0006-footnote-height-for-unpaginated-ladder.patch",
-      "0007-merge-title-host-anchor-line.patch",
-      "0008-title-host-line-occupies-flow.patch",
-      "0009-cellzone-fill-spans-merged-end-cell.patch",
-      "0010-header-footer-frame-origin.patch",
-      "0011-inherit-master-page-from-previous-section.patch",
-      "0012-delete-style-remaps-all-paragraphs.patch",
       "0013-restyle-per-attribute-everywhere.patch",
       "0014-page-number-pos-insert.patch",
       "0015-canvas-metric-requests-without-advances.patch",
       "0016-single-cell-resize.patch",
-      "0017-header-footer-picture-keeps-text.patch",
       "0018-memo-support.patch",
-      "0019-textbox-storage-bit.patch",
       "0020-topbottom-float-anchor-flow.patch",
       "0021-table-look-and-cell-first-lead.patch",
       "0022-selection-follows-drawn-lines.patch",
       "0023-duplex-master-page-shift.patch",
       "0024-picture-effect-opacity.patch",
       "0025-page-number-pages.patch",
-      "0026-hwpx-drop-rows-covered-by-merged-cells.patch",
+      "0026-hwpx-cellzone-on-dropped-rows.patch",
       "0027-merged-table-cell-extents.patch",
       "0028-paragraph-float-follows-drawn-host.patch",
-      "0029-footnote-number-slot-height-and-shape.patch",
-      "0030-caption-footnote-flow-without-stored-lines.patch"
+      "0029-stored-frame-after-unhonored-reset.patch",
+      "0030-no-trim-across-inner-reset.patch",
+      "0031-empty-host-table-successor-line-max.patch",
+      "0032-tac-host-line-not-this-table.patch",
+      "0033-no-trailing-bridge-after-unmeasured-tac-line.patch",
+      "0034-anchor-line-box-fits-above-paper-band.patch",
+      "0035-tail-table-successor-at-table-bottom.patch",
+      "0036-continuation-terminal-host-advance.patch",
+      "0037-hwpx-raw-spans-canonical-prefix.patch",
+      "0038-tests-follow-memo-index.patch",
+      "0039-footnote-number-slot-height-and-shape.patch",
+      "0040-caption-footnote-flow-without-stored-lines.patch"
     ],
     "wasmPack": "0.15.0",
-    "wasmSha256": "70b5281628192e2df7a346530122a6074b209828b9d6056c5d6344530134a3d9"
+    "wasmSha256": "326d1fa7f7b2aac72c20830b6613f273f022c453f01c7db2f54f237afdd48a09"
   }
 }
