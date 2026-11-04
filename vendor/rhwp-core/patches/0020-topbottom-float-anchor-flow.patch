@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
 Date: Wed, 4 Nov 2026 00:00:00 +0900
-Subject: [PATCH 10/28] fix(typeset): 종이·쪽 기준 자리차지 개체를 계상하지 않은 저장 조판을 한글 2024처럼 다시 나눈다
+Subject: [PATCH 10/30] fix(typeset): 종이·쪽 기준 자리차지 개체를 계상하지 않은 저장 조판을 한글 2024처럼 다시 나눈다
 
 종이·쪽 기준 자리차지(TopAndBottom) 도형·그림을 앵커한 문단이 그 개체 밴드 안에서
 시작하면, 그리는 쪽(`calculate_shape_reserved_heights` + `shape_jumped`)은 앵커

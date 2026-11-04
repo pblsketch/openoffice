@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
 Date: Wed, 4 Nov 2026 00:00:00 +0900
-Subject: [PATCH 17/28] fix(table): 합친 칸이 있는 표의 칸 하나 크기 바꾸기와 칸 자리 정하기
+Subject: [PATCH 17/30] fix(table): 합친 칸이 있는 표의 칸 하나 크기 바꾸기와 칸 자리 정하기
 
 resizeTableCell(Shift+←/→)이 행마다 너비를 누적해 칸을 다시 놓던 것을
 칸마다의 시작·끝 좌표로 바꾼다. 위 행에서 세로로 합쳐 내려온 칸의 자리를

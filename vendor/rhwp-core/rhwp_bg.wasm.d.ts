@@ -19,6 +19,7 @@ export const hwpdocument_applyCharFormatInCellByPath: (a: number, b: number, c: 
 export const hwpdocument_applyCharFormatInCellEx: (a: number, b: number, c: number) => [number, number, number, number];
 export const hwpdocument_applyCharFormatInHeaderFooter: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number, number];
 export const hwpdocument_applyEndnoteShape: (a: number, b: number, c: number, d: number) => [number, number, number, number];
+export const hwpdocument_applyFootnoteShape: (a: number, b: number, c: number, d: number) => [number, number, number, number];
 export const hwpdocument_applyFormActionUpdates: (a: number, b: number, c: number) => [number, number];
 export const hwpdocument_applyHfTemplate: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
 export const hwpdocument_applyParaFormat: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
@@ -206,6 +207,7 @@ export const hwpdocument_getFontDecisionTrace: (a: number, b: number, c: number,
 export const hwpdocument_getFontSymbolUnicodeRange: (a: number, b: number, c: number, d: number) => [number, number];
 export const hwpdocument_getFootnoteAtCursor: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
 export const hwpdocument_getFootnoteInfo: (a: number, b: number, c: number, d: number) => [number, number, number, number];
+export const hwpdocument_getFootnoteShape: (a: number, b: number) => [number, number, number, number];
 export const hwpdocument_getFormActionContext: (a: number, b: number, c: number) => [number, number, number, number];
 export const hwpdocument_getFormObjectAt: (a: number, b: number, c: number, d: number) => [number, number, number, number];
 export const hwpdocument_getFormObjectInfo: (a: number, b: number, c: number, d: number) => [number, number, number, number];

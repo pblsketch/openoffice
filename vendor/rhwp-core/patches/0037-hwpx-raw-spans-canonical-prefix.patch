@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
 Date: Wed, 4 Nov 2026 00:00:00 +0900
-Subject: [PATCH 27/28] fix(hwpx): 원본에서 옮기는 XML 구간의 접두사를 이름공간의 표준 접두사로 쓴다
+Subject: [PATCH 27/30] fix(hwpx): 원본에서 옮기는 XML 구간의 접두사를 이름공간의 표준 접두사로 쓴다
 
 HWPX 헤더의 번호 매기기·글머리표 paraHead 구간과 본문 필드의 parameters 자식은 원본
 XML을 그대로 옮겨 다시 쓴다. 다른 도구가 OWPML 이름공간을 다른 접두사(ns0 등)로

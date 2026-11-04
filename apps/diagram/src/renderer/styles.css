@@ -1,0 +1,218 @@
+/*
+ * The editor's own chrome around draw.io: the progress screen, the notice
+ * bar, the status line and the export dialog. Every colour is a token from
+ * @genoffice/ui (tokens.css) and follows the app's light or dark setting.
+ * The drawing inside the frame is draw.io's; its colours are document content.
+ */
+
+:root {
+  --accent: #c2410c;
+  --accent-dark: #9a3412;
+  --accent-soft: rgba(194, 65, 12, 0.12);
+  --dg-on-accent: #ffffff;
+}
+
+[data-theme='dark'] {
+  --accent: #fb923c;
+  --accent-dark: #fdba74;
+  --accent-soft: rgba(251, 146, 60, 0.2);
+  --dg-on-accent: #1e1e1e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --accent: #fb923c;
+    --accent-dark: #fdba74;
+    --accent-soft: rgba(251, 146, 60, 0.2);
+    --dg-on-accent: #1e1e1e;
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+}
+
+.dg-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.dg-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 24px;
+  box-sizing: border-box;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+/* draw.io and, at its right end, the AI panel */
+.dg-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.dg-stage {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.dg-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.dg-progress {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.dg-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: dg-spin 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dg-spinner {
+    animation: none;
+  }
+}
+
+@keyframes dg-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dg-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-subtle);
+  font-size: 12px;
+}
+
+.dg-notice ul {
+  flex: 1;
+  margin: 0;
+  padding-inline-start: 18px;
+}
+
+.dg-notice-close,
+.dg-buttons button {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 12px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.dg-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 24px;
+  padding: 0 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.dg-status {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dg-autosave {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.dg-autosave input {
+  accent-color: var(--accent);
+}
+
+.dg-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-overlay);
+}
+
+.dg-dialog {
+  min-width: 300px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-modal-strong);
+}
+
+.dg-dialog h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.dg-choice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0;
+  cursor: pointer;
+}
+
+.dg-choice input {
+  accent-color: var(--accent);
+}
+
+.dg-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.dg-buttons .dg-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--dg-on-accent);
+}

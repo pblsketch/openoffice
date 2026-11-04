@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
 Date: Wed, 4 Nov 2026 00:00:00 +0900
-Subject: [PATCH 23/28] fix(layout): 한/글이 재지 않은 TAC host 줄 뒤 사다리로 앞 줄간격을 다시 잇지 않는다
+Subject: [PATCH 23/30] fix(layout): 한/글이 재지 않은 TAC host 줄 뒤 사다리로 앞 줄간격을 다시 잇지 않는다
 
 한/글이 하는 일
   문서 도구가 만든 HWPX 서식에서 글자처럼 취급 표(선언 200HU, 저장 host 줄 11064HU) 뒤

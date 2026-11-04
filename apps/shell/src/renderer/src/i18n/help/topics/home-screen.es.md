@@ -44,6 +44,8 @@ Las tarjetas que están encima de las listas crean un documento en un solo paso.
 
 El archivo nuevo va a la carpeta seleccionada en la barra lateral; si no hay ninguna, va a la carpeta predeterminada.
 
+Para ocultar tarjetas o cambiar su orden, usa **Documentos nuevos en Inicio** en Configuración → General. Un tipo desactivado solo desaparece de las tarjetas y de los menús Nuevo; sus archivos se siguen abriendo igual. En Inicio, ⌘N/Ctrl+N crea el primer tipo que sigue visible.
+
 Qué hace cada tarjeta:
 
 - **AI Docs** (.docx): un documento de texto en blanco en el editor Docs. El archivo se escribe en el disco solo al **guardar por primera vez**; los documentos nuevos se abren con el panel de IA desplegado (se desactiva en Configuración → «Abrir el panel de IA en documentos nuevos»).

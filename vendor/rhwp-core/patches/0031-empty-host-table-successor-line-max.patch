@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
 Date: Wed, 4 Nov 2026 00:00:00 +0900
-Subject: [PATCH 21/28] fix(layout): 통째로 놓인 빈 host 자리차지 표 뒤 첫 줄은 max(제자리 + 앞 간격, 띠 끝)에 선다
+Subject: [PATCH 21/30] fix(layout): 통째로 놓인 빈 host 자리차지 표 뒤 첫 줄은 max(제자리 + 앞 간격, 띠 끝)에 선다
 
 한/글이 하는 일
   글 없는 host 문단의 문단 기준 자리차지 표(세로 오프셋 0)가 한 쪽에 통째로 놓이면,

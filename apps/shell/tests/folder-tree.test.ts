@@ -144,6 +144,24 @@ describe('listFolder', () => {
     ).toEqual(['NOVEL2.EPUB', 'novel.epub'])
     expect(isSupportedTreeFile('novel.epub')).toBe(true)
   })
+
+  it('lists diagrams, draw.io pictures and Visio drawings, but not plain pictures', () => {
+    touch('flow.drawio')
+    touch('flow.dio')
+    touch('flow.drawio.svg')
+    touch('flow.drawio.png')
+    touch('plan.vsdx')
+    touch('photo.png')
+    touch('logo.svg')
+
+    expect(
+      listFolder(root, new Set())
+        .files.map((f) => f.name)
+        .sort(),
+    ).toEqual(['flow.dio', 'flow.drawio', 'flow.drawio.png', 'flow.drawio.svg', 'plan.vsdx'])
+    expect(isSupportedTreeFile('FLOW.DRAWIO.SVG')).toBe(true)
+    expect(isSupportedTreeFile('logo.svg')).toBe(false)
+  })
 })
 
 describe('isInsideRoot', () => {
@@ -357,6 +375,13 @@ describe('helpers', () => {
     // a file keeps the extension split
     touch('report.docx')
     expect(uniqueNameIn(root, 'report.docx')).toBe('report (2).docx')
+  })
+
+  it('uniqueNameIn keeps the double extension of a draw.io picture', () => {
+    touch('flow.drawio.svg')
+    expect(uniqueNameIn(root, 'flow.drawio.svg')).toBe('flow (2).drawio.svg')
+    touch('Map.DRAWIO.PNG')
+    expect(uniqueNameIn(root, 'Map.DRAWIO.PNG')).toBe('Map (2).DRAWIO.PNG')
   })
 
   it("'keepBoth' appends the counter to a dotted folder name whole", () => {

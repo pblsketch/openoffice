@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
 Date: Wed, 4 Nov 2026 00:00:00 +0900
-Subject: [PATCH 3/28] fix(typeset): 쪽 첫 줄이 제목 표 아래에서 시작한 쪽은 저장 위치를 그대로 쓴다
+Subject: [PATCH 3/30] fix(typeset): 쪽 첫 줄이 제목 표 아래에서 시작한 쪽은 저장 위치를 그대로 쓴다
 
 쪽·종이 기준 어울림(Square) 제목 표가 쪽 위를 차지하면 한글은 그 쪽의 첫 줄을 표 바깥
 상자 아래에서 시작하고, 저장 첫 줄 vpos 가 그 상자 바닥과 같다. 조판과 렌더는 쪽 첫

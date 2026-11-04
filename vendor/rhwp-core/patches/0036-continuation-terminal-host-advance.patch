@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
 Date: Wed, 4 Nov 2026 00:00:00 +0900
-Subject: [PATCH 26/28] fix(layout): 이어지는 쪽 끝 조각 뒤 흐름을 그 쪽의 저장 다음 줄로 확인하고 바깥 아래 여백을 한 번만 둔다
+Subject: [PATCH 26/30] fix(layout): 이어지는 쪽 끝 조각 뒤 흐름을 그 쪽의 저장 다음 줄로 확인하고 바깥 아래 여백을 한 번만 둔다
 
 What Hangul does: a native HWP5, non-TAC, paragraph-relative RowBreak
 table with a positive offset in an empty host splits across pages. On the

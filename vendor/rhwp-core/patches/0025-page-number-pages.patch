@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
 Date: Wed, 4 Nov 2026 00:00:00 +0900
-Subject: [PATCH 15/28] fix(renderer): 쪽 번호를 그릴 쪽을 쪽 번호 위치와 감추기로만 정한다
+Subject: [PATCH 15/30] fix(renderer): 쪽 번호를 그릴 쪽을 쪽 번호 위치와 감추기로만 정한다
 
 쪽 번호 새로 시작(NewNumber)이 있는 구역에서 첫 발화 앞 쪽의 쪽 번호를 모두
 감추던 규칙(#634)을 없앤다. 225쪽 보고서는 쪽 번호 위치가 1쪽 첫 문단, 새 번호가

@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
 Date: Wed, 4 Nov 2026 00:00:00 +0900
-Subject: [PATCH 24/28] fix(typeset): 0020 의 "앵커 글이 개체 위에 들어감" 판정을 줄 상자로 잰다
+Subject: [PATCH 24/30] fix(typeset): 0020 의 "앵커 글이 개체 위에 들어감" 판정을 줄 상자로 잰다
 
 0020(topbottom-float-anchor-flow)은 종이·쪽 기준 자리차지 개체를 앵커한 문단이 개체
 밴드에 걸리면 앵커 문단을 개체 아래끝에서 시작한다. 들어감 판정은 그리는 쪽의 옛 판정

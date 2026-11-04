@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
 Date: Wed, 4 Nov 2026 00:00:00 +0900
-Subject: [PATCH 25/28] fix(layout): 글 있는 문단을 끝내는 문단 기준 위아래 표 뒤 첫 줄을 표 아래끝에 둔다
+Subject: [PATCH 25/30] fix(layout): 글 있는 문단을 끝내는 문단 기준 위아래 표 뒤 첫 줄을 표 아래끝에 둔다
 
 What Hangul does: when a paragraph-relative topAndBottom table ends the flow
 of a paragraph that has text, Hangul 2024 starts the next paragraph's first

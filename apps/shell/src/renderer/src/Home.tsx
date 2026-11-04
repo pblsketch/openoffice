@@ -15,6 +15,7 @@ import iconHtml from './assets/file-html.svg'
 import iconMindmap from './assets/file-mindmap.svg'
 import iconHwp from './assets/file-hwp.svg'
 import iconEpub from './assets/file-epub.svg'
+import iconDiagram from './assets/file-diagram.svg'
 import { placeFolderMenu } from './folder-menu-position'
 import type {
   FolderEntry,
@@ -48,6 +49,8 @@ import {
   openGenerateWithPaths,
 } from './generate/home-entry'
 import { SettingsModal } from './SettingsModal'
+import { HOME_KIND_LABEL, useHomeKinds } from './SettingsHomeKinds'
+import { visibleHomeKinds, type HomeKind } from '../../shared/home-kinds'
 import type { SettingsTarget } from './SettingsModal'
 import { skillUpdateDue } from './IntegrationsPane'
 import { onFilesChanged } from './file-events'
@@ -105,13 +108,19 @@ const FILE_ICONS: Record<string, string> = {
   hwp: iconHwp,
   hwpx: iconHwp,
   epub: iconEpub,
+  // a draw.io picture and a Visio drawing open in the diagram tab, so they wear its tile
+  drawio: iconDiagram,
+  dio: iconDiagram,
+  'drawio.svg': iconDiagram,
+  'drawio.png': iconDiagram,
+  vsdx: iconDiagram,
 }
 
 /* Formats the open-local card advertises. Too long for the card at any window
    width, so it ellipsizes and a hover ScreenTip carries the full list. Keep in
    sync with the main-process open-dialog filter (OPEN_DIALOG_EXTENSIONS). */
 const OPEN_LOCAL_EXTENSIONS =
-  '.docx / .odt / .xlsx / .xlsm / .xls / .csv / .tsv / .pptx / .pdf / .md / .html / .xmind / .hwp / .hwpx / .epub'
+  '.docx / .odt / .xlsx / .xlsm / .xls / .csv / .tsv / .pptx / .pdf / .md / .html / .xmind / .hwp / .hwpx / .epub / .drawio / .dio / .drawio.svg / .drawio.png / .vsdx'
 
 /** drag payload of home file/folder rows (JSON array of absolute paths) */
 const DRAG_PATHS_MIME = 'application/x-genoffice-paths'
@@ -306,6 +315,7 @@ const FILTERS: { key: string; label: StringKey }[] = [
   { key: 'xmind', label: 'filterMindmap' },
   { key: 'hwp', label: 'filterHwp' },
   { key: 'epub', label: 'filterEpub' },
+  { key: 'drawio', label: 'filterDiagram' },
 ]
 
 /** sidebar filter keys that stand for a family of extensions (mirrors recent-files.ts) */
@@ -316,6 +326,7 @@ const FILTER_FAMILY: Record<string, readonly string[]> = {
   md: ['md', 'markdown', 'txt', 'json'],
   html: ['html', 'htm'],
   hwp: ['hwp', 'hwpx'],
+  drawio: ['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx'],
 }
 
 function matchesFilter(entry: RecentEntry, filter: string): boolean {
@@ -1071,6 +1082,8 @@ export function Home({
 }) {
   const i18n = useI18n()
   const { t, lang } = i18n
+  const [homeKinds] = useHomeKinds()
+  const shownKinds = visibleHomeKinds(homeKinds)
   // ── Paged list state (rows loaded for the current view + filter) ──
   const [entries, setEntries] = useState<RecentEntry[]>([])
   /** total count under the current view + filter (not just the loaded rows) */
@@ -1882,72 +1895,51 @@ export function Home({
       ? { dir: selectedFolder }
       : undefined
 
-  const NEW_ITEMS = [
-    {
-      ext: 'docx',
-      title: t('newDoc'),
-      sub: '.docx',
-      action: () => window.aiOffice.newDoc(newFileOpts),
-    },
-    {
-      ext: 'xlsx',
-      title: t('newSheet'),
-      sub: '.xlsx',
-      action: () => window.aiOffice.newSheet(newFileOpts),
-    },
-    {
-      ext: 'pptx',
-      title: t('newSlide'),
-      sub: '.pptx',
-      action: () => window.aiOffice.newSlide(newFileOpts),
-    },
-    {
-      ext: 'md',
-      title: t('newMarkdown'),
-      sub: '.md',
-      action: () => window.aiOffice.newMarkdown(newFileOpts),
-    },
-    {
-      ext: 'html',
-      title: t('newHtml'),
-      sub: '.html',
-      action: () => window.aiOffice.newHtml(newFileOpts),
-    },
-    {
-      ext: 'xmind',
-      title: t('newMindmap'),
-      sub: '.xmind',
-      action: () => window.aiOffice.newMindmap(newFileOpts),
-    },
-    {
-      ext: 'hwp',
-      title: t('newHwp'),
-      sub: '.hwp',
-      action: () => window.aiOffice.newHwp(newFileOpts),
-    },
-    {
-      ext: 'pdf',
-      title: t('newPdf'),
-      sub: '.pdf',
-      action: () => window.aiOffice.newPdf(newFileOpts),
-    },
-  ]
+  const NEW_ITEM_ACTION: Record<Exclude<HomeKind, 'pdfTools'>, () => Promise<void>> = {
+    docx: () => window.aiOffice.newDoc(newFileOpts),
+    xlsx: () => window.aiOffice.newSheet(newFileOpts),
+    pptx: () => window.aiOffice.newSlide(newFileOpts),
+    md: () => window.aiOffice.newMarkdown(newFileOpts),
+    html: () => window.aiOffice.newHtml(newFileOpts),
+    xmind: () => window.aiOffice.newMindmap(newFileOpts),
+    drawio: () => window.aiOffice.newDiagram(newFileOpts),
+    hwp: () => window.aiOffice.newHwp(newFileOpts),
+    pdf: () => window.aiOffice.newPdf(newFileOpts),
+  }
 
   function renderQuickCards() {
     return (
       <div className="quick-cards">
-        {NEW_ITEMS.map((item) => (
-          <button key={item.ext} className="quick-card" onClick={() => void item.action()}>
-            <FileBadge ext={item.ext} size={30} />
-            <span className="quick-text">
-              <span className="quick-title-row">
-                <span className="quick-title">{item.title}</span>
-                <span className="ai-chip">AI</span>
+        {/* Settings → General decides which kinds show and in what order */}
+        {shownKinds.map((kind) =>
+          kind === 'pdfTools' ? (
+            // decision 0030: PDF tasks without AI, in their own window
+            <button
+              key={kind}
+              className="quick-card"
+              onClick={() => void window.aiOfficePdfToolsHome.open()}
+            >
+              <FileBadge ext="pdf" size={30} />
+              <span className="quick-text">
+                <span className="quick-title-row">
+                  <span className="quick-title">{t('pdfToolsCard')}</span>
+                </span>
+                <span className="quick-sub">{t('pdfToolsCardSub')}</span>
               </span>
-              <span className="quick-sub">{item.sub}</span>
-            </span>
-          </button>
-        ))}
+            </button>
+          ) : (
+            <button key={kind} className="quick-card" onClick={() => void NEW_ITEM_ACTION[kind]()}>
+              <FileBadge ext={kind} size={30} />
+              <span className="quick-text">
+                <span className="quick-title-row">
+                  <span className="quick-title">{t(HOME_KIND_LABEL[kind].title)}</span>
+                  <span className="ai-chip">AI</span>
+                </span>
+                <span className="quick-sub">{HOME_KIND_LABEL[kind].sub}</span>
+              </span>
+            </button>
+          ),
+        )}
         <button
           className="quick-card"
           onClick={() => void window.aiOffice.browse()}
@@ -1961,16 +1953,6 @@ export function Home({
               <span className="quick-title">{t('openLocal')}</span>
             </span>
             <span className="quick-sub">{OPEN_LOCAL_EXTENSIONS}</span>
-          </span>
-        </button>
-        {/* decision 0030: PDF tasks without AI, in their own window */}
-        <button className="quick-card" onClick={() => void window.aiOfficePdfToolsHome.open()}>
-          <FileBadge ext="pdf" size={30} />
-          <span className="quick-text">
-            <span className="quick-title-row">
-              <span className="quick-title">{t('pdfToolsCard')}</span>
-            </span>
-            <span className="quick-sub">{t('pdfToolsCardSub')}</span>
           </span>
         </button>
       </div>

@@ -44,6 +44,8 @@ Le schede sopra gli elenchi creano un nuovo documento in un solo passaggio. Face
 
 Il nuovo file viene creato nella cartella attualmente selezionata nella barra laterale; se non è selezionata alcuna, va nella cartella predefinita.
 
+Per nascondere le schede o cambiarne l’ordine, usa **Nuovi documenti nella Home** in Impostazioni → Generale. Un tipo disattivato sparisce solo dalle schede e dai menu Nuovo; i suoi file si aprono come prima. Nella Home, ⌘N/Ctrl+N crea il primo tipo ancora visibile.
+
 Cosa fa ogni scheda:
 
 - **AI Docs** (.docx): un documento di testo vuoto nell'editor Docs. Il file viene scritto su disco solo al **primo salvataggio**; i nuovi documenti si aprono con il pannello IA espanso (puoi disattivarlo in Impostazioni → «Apri il pannello IA nei nuovi documenti»).

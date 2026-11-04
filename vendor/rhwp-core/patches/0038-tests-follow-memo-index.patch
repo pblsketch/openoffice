@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
 Date: Wed, 4 Nov 2026 00:00:00 +0900
-Subject: [PATCH 28/28] test: 고아 fieldEnd 를 직접 만드는 upstream 시험이 0018 의 memo_index 를 채운다
+Subject: [PATCH 28/30] test: 고아 fieldEnd 를 직접 만드는 upstream 시험이 0018 의 memo_index 를 채운다
 
 0018(memo-support)은 `OrphanFieldEnd` 에 `memo_index`(메모 필드 끝 표지의 메모 번호,
 0 = 메모 아님)를 더했다. 구조체 리터럴로 고아 fieldEnd 를 만드는 upstream 시험 두 곳이

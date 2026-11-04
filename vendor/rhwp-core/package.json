@@ -1,6 +1,6 @@
 {
   "name": "@rhwp/core",
-  "version": "0.9.0-devel.ieum.20",
+  "version": "0.9.0-devel.ieum.21",
   "description": "rhwp devel (7d06d5c70, ahead of the v0.9.0 release) HWP/HWPX engine (WebAssembly) rebuilt with the patches in ./patches",
   "private": true,
   "type": "module",
@@ -51,9 +51,11 @@
       "0035-tail-table-successor-at-table-bottom.patch",
       "0036-continuation-terminal-host-advance.patch",
       "0037-hwpx-raw-spans-canonical-prefix.patch",
-      "0038-tests-follow-memo-index.patch"
+      "0038-tests-follow-memo-index.patch",
+      "0039-footnote-number-slot-height-and-shape.patch",
+      "0040-caption-footnote-flow-without-stored-lines.patch"
     ],
     "wasmPack": "0.15.0",
-    "wasmSha256": "8734a36633562d7660d8309e50fe7a33ff67ab419fdef93eb9650639e8dc30d8"
+    "wasmSha256": "326d1fa7f7b2aac72c20830b6613f273f022c453f01c7db2f54f237afdd48a09"
   }
 }

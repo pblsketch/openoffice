@@ -40,6 +40,8 @@ export interface AttachableFormats {
   ATTACHABLE_IMAGE_MAX_BYTES: number
   /** the cap for one extension (no cap for formats read at any size); the two caps above when absent */
   attachableMaxBytes?: (ext: string) => number
+  /** `drawio.svg`/`drawio.png` for a draw.io picture's file name (read as diagram text), else null */
+  diagramPictureExtOfName?: (fileName: string) => string | null
 }
 
 export interface DocListDeps {
@@ -65,7 +67,9 @@ const pathKey = (path: string): string => resolve(path).toLowerCase()
 export function createDocList(
   deps: DocListDeps,
 ): (asker?: DocAsker, options?: DocListOptions) => Promise<DocListResult> {
-  const extOf = (path: string): string => extname(path).replace(/^\./, '').toLowerCase()
+  const extOf = (path: string): string =>
+    deps.attachable.diagramPictureExtOfName?.(basename(path)) ??
+    extname(path).replace(/^\./, '').toLowerCase()
 
   const capFor = (ext: string): number =>
     deps.attachable.ATTACHABLE_IMAGE_EXTS.has(ext)

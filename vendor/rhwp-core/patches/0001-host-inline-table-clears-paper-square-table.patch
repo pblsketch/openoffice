@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
 Date: Wed, 4 Nov 2026 00:00:00 +0900
-Subject: [PATCH 1/28] fix(typeset): 같은 host 의 글자처럼 취급 표가 쪽·종이 기준 어울림 표를 피한다
+Subject: [PATCH 1/30] fix(typeset): 같은 host 의 글자처럼 취급 표가 쪽·종이 기준 어울림 표를 피한다
 
 쪽·종이 기준 어울림(Square) 표와 같은 문단의 글자처럼 취급 표는 옆에 들어갈 폭이
 없으면 한글이 그 줄을 어울림 표의 바깥 아래 여백 아래에 둔다(한글 2024 저장 vpos 가

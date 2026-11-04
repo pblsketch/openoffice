@@ -9,15 +9,19 @@ import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, join, extname } from 'node:path'
 import { assertFileSaved, showOpenDialogWithMemory } from '@genoffice/electron-utils'
 import {
+  checkedHwpBytes,
   parseFileToText,
   ATTACHABLE_EXTS,
   ATTACHABLE_IMAGE_EXTS,
   ATTACHABLE_MAX_BYTES,
   attachableMaxBytes,
   ATTACHABLE_IMAGE_MAX_BYTES,
+  diagramPictureExtOf,
+  diagramPictureExtOfName,
 } from '@genoffice/file-parse'
 import type {
   AttachmentAddResult,
+  AttachmentDocumentResult,
   AttachmentImageResult,
   AttachmentMeta,
   AttachmentReadResult,
@@ -38,7 +42,8 @@ const attachmentTextCache = new Map<string, { stamp: string; text: string }>()
 
 function statAttachment(filePath: string): { meta?: AttachmentMeta; error?: string } {
   const name = basename(filePath)
-  const ext = name.split('.').pop()?.toLowerCase() ?? ''
+  // a draw.io picture that holds its diagram is read as diagram text
+  const ext = diagramPictureExtOf(filePath) ?? name.split('.').pop()?.toLowerCase() ?? ''
   if (!ATTACHABLE_EXTS.has(ext)) return { error: `${name}: ${tm('errUnsupportedExt', { ext })}` }
   try {
     const stat = statSync(filePath)
@@ -103,7 +108,8 @@ async function extractAttachmentText(filePath: string): Promise<string> {
   const stamp = `${stat.mtimeMs}:${stat.size}`
   const cached = attachmentTextCache.get(filePath)
   if (cached && cached.stamp === stamp) return cached.text
-  if (stat.size > attachableMaxBytes(extname(filePath))) throw new Error(tm('errFileTooLarge'))
+  const capExt = diagramPictureExtOfName(filePath) ?? extname(filePath)
+  if (stat.size > attachableMaxBytes(capExt)) throw new Error(tm('errFileTooLarge'))
   const parsed = await parseFileToText(filePath)
   if (!parsed.ok || parsed.kind !== 'text' || parsed.text == null) {
     throw new Error(parsed.error ?? tm('errParseFailed'))
@@ -150,7 +156,7 @@ export function registerHwpAttachmentIpc(): void {
       maxChars: number,
     ): Promise<AttachmentReadResult> => {
       const name = basename(filePath)
-      const ext = name.split('.').pop()?.toLowerCase() ?? ''
+      const ext = diagramPictureExtOf(filePath) ?? name.split('.').pop()?.toLowerCase() ?? ''
       if (!ATTACHABLE_EXTS.has(ext)) return { ok: false, error: tm('errUnsupportedExt', { ext }) }
       if (ATTACHABLE_IMAGE_EXTS.has(ext)) {
         return { ok: false, error: tm('errImageNoText') }
@@ -188,6 +194,32 @@ export function registerHwpAttachmentIpc(): void {
       return { ok: false, error: `${name}: ${tm('errUnreadable')}` }
     }
   })
+
+  // An attached HWP / HWPX whole, for the editor's engine to read its formatting (read_formatting):
+  // the same saved-file, size and content checks as reading its text
+  ipcMain.handle(
+    HWP_CHANNELS.filesReadDocument,
+    async (_e, filePath: string): Promise<AttachmentDocumentResult> => {
+      const name = basename(filePath)
+      const ext = name.split('.').pop()?.toLowerCase() ?? ''
+      if (ext !== 'hwp' && ext !== 'hwpx') {
+        // read back by the model, not shown: read_attachment reads the text of other files
+        return {
+          ok: false,
+          error: `${name} is not an .hwp or .hwpx file: only those can be read for their formatting (read_attachment reads its text)`,
+        }
+      }
+      try {
+        await assertFileSaved(filePath)
+        if (statSync(filePath).size > attachableMaxBytes(ext))
+          throw new Error(tm('errFileTooLarge'))
+        const bytes = await checkedHwpBytes(new Uint8Array(readFileSync(filePath)), ext)
+        return { ok: true, base64: Buffer.from(bytes).toString('base64') }
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : String(e) }
+      }
+    },
+  )
 
   // Clipboard-pasted images (screenshots and other bitmaps without a local path): saved to a temp file then take the regular attachment chain
   ipcMain.handle(

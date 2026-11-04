@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
 Date: Wed, 4 Nov 2026 00:00:00 +0900
-Subject: [PATCH 19/28] fix(typeset,layout): 흐름이 따르지 않은 저장 쪽 경계 뒤의 표는 저장 좌표에 두지 않는다
+Subject: [PATCH 19/30] fix(typeset,layout): 흐름이 따르지 않은 저장 쪽 경계 뒤의 표는 저장 좌표에 두지 않는다
 
 저장 줄의 vpos 는 한/글이 저장할 때의 쪽 원점에서 잰 값이다. 사다리가 되감기는
 자리(앞 줄 vpos > 5000, 뒤 줄이 그보다 작음)는 한/글이 거기서 쪽을 나눴다는

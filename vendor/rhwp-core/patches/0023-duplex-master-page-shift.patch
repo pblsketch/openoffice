@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
 Date: Wed, 4 Nov 2026 00:00:00 +0900
-Subject: [PATCH 13/28] fix(rendering): 맞쪽 짝수 쪽의 양쪽 바탕쪽을 본문이 옮겨 간 만큼 옮겨 그린다
+Subject: [PATCH 13/30] fix(rendering): 맞쪽 짝수 쪽의 양쪽 바탕쪽을 본문이 옮겨 간 만큼 옮겨 그린다
 
 좌우 여백이 다른 맞쪽 제본(gutterType LEFT_RIGHT) 문서에서 본문은 짝수 쪽마다
 좌우 여백을 바꿔 그렸지만, 바탕쪽의 용지 기준 개체는 홀수 쪽 자리에 그대로

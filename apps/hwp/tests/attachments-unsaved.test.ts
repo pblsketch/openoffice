@@ -32,6 +32,8 @@ vi.mock('@genoffice/file-parse', () => ({
   ATTACHABLE_MAX_BYTES: 50 * 1024 * 1024,
   attachableMaxBytes: () => 50 * 1024 * 1024,
   ATTACHABLE_IMAGE_MAX_BYTES: 5 * 1024 * 1024,
+  diagramPictureExtOf: () => null,
+  diagramPictureExtOfName: () => null,
 }))
 // the real unsaved-files helper, by path: the package root reaches Electron
 vi.mock('@genoffice/electron-utils', async () => ({

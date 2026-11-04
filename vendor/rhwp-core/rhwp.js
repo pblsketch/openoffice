@@ -387,6 +387,32 @@ export class HwpDocument {
         }
     }
     /**
+     * 각주 모양을 적용한다.
+     * @param {number} section_idx
+     * @param {string} props_json
+     * @returns {string}
+     */
+    applyFootnoteShape(section_idx, props_json) {
+        let deferred3_0;
+        let deferred3_1;
+        try {
+            const ptr0 = passStringToWasm0(props_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            const len0 = WASM_VECTOR_LEN;
+            const ret = wasm.hwpdocument_applyFootnoteShape(this.__wbg_ptr, section_idx, ptr0, len0);
+            var ptr2 = ret[0];
+            var len2 = ret[1];
+            if (ret[3]) {
+                ptr2 = 0; len2 = 0;
+                throw takeFromExternrefTable0(ret[2]);
+            }
+            deferred3_0 = ptr2;
+            deferred3_1 = len2;
+            return getStringFromWasm0(ptr2, len2);
+        } finally {
+            wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+        }
+    }
+    /**
      * @param {string} updates_json
      */
     applyFormActionUpdates(updates_json) {
@@ -4597,6 +4623,29 @@ export class HwpDocument {
         let deferred2_1;
         try {
             const ret = wasm.hwpdocument_getFootnoteInfo(this.__wbg_ptr, section_idx, para_idx, control_idx);
+            var ptr1 = ret[0];
+            var len1 = ret[1];
+            if (ret[3]) {
+                ptr1 = 0; len1 = 0;
+                throw takeFromExternrefTable0(ret[2]);
+            }
+            deferred2_0 = ptr1;
+            deferred2_1 = len1;
+            return getStringFromWasm0(ptr1, len1);
+        } finally {
+            wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+        }
+    }
+    /**
+     * 각주 모양을 조회한다.
+     * @param {number} section_idx
+     * @returns {string}
+     */
+    getFootnoteShape(section_idx) {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const ret = wasm.hwpdocument_getFootnoteShape(this.__wbg_ptr, section_idx);
             var ptr1 = ret[0];
             var len1 = ret[1];
             if (ret[3]) {

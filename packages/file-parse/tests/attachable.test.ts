@@ -9,7 +9,8 @@ import {
 
 // The attachable set exactly as docs-main held it before the list moved here:
 // plain-text extensions, the office/PDF formats, and the image set, plus the
-// formats added since by decision (`epub`, spec §10 of the EPUB editor plan).
+// formats added since by decision (`epub`, spec §10 of the EPUB editor plan;
+// the draw.io diagrams, spec §9.1 of the diagram editor plan).
 // Frozen on purpose — the list only widens, and every editor shares it.
 const DOCS_MAIN_EXTS = [
   'txt',
@@ -52,6 +53,10 @@ const DOCS_MAIN_EXTS = [
   'hwp',
   'hwpx',
   'epub',
+  'drawio',
+  'dio',
+  'drawio.svg',
+  'drawio.png',
   'png',
   'jpg',
   'jpeg',

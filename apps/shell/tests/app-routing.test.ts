@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { TEXT_RE, appForPath, renameStaysInApp } from '../src/main/app-routing'
+import { TEXT_RE, appForPath, documentExtension, renameStaysInApp } from '../src/main/app-routing'
 
 describe('appForPath', () => {
   it('routes the markdown app at every extension it opens', () => {
@@ -33,6 +33,40 @@ describe('appForPath', () => {
     expect(appForPath('C:/x/NOVEL.EPUB')).toBe('epub')
     expect(renameStaysInApp('/x/novel.epub', 'novel2.epub')).toBe(true)
     expect(renameStaysInApp('/x/novel.epub', 'novel.zip')).toBe(false)
+  })
+
+  it('routes draw.io diagrams, their pictures and a Visio drawing to the diagram app', () => {
+    for (const path of [
+      '/x/flow.drawio',
+      'C:/x/FLOW.DIO',
+      '/x/flow.drawio.svg',
+      '/x/flow.Drawio.PNG',
+      '/x/plan.vsdx',
+    ]) {
+      expect(appForPath(path), path).toBe('diagram')
+    }
+    // a plain picture is no document
+    expect(appForPath('/x/photo.svg')).toBeUndefined()
+    expect(appForPath('/x/photo.png')).toBeUndefined()
+    expect(appForPath('/x/flow.drawio.bak')).toBeUndefined()
+  })
+
+  it('names a draw.io picture by its double extension', () => {
+    expect(documentExtension('/x/flow.drawio.svg')).toBe('drawio.svg')
+    expect(documentExtension('C:\\x\\FLOW.DRAWIO.PNG')).toBe('drawio.png')
+    expect(documentExtension('/x/flow.drawio')).toBe('drawio')
+    expect(documentExtension('/x/photo.svg')).toBe('svg')
+    expect(documentExtension('/x/Report.DOCX')).toBe('docx')
+    expect(documentExtension('/x/noext')).toBe('')
+  })
+
+  it('keeps a diagram in its own form across a rename', () => {
+    expect(renameStaysInApp('/x/flow.drawio', 'flow2.drawio')).toBe(true)
+    expect(renameStaysInApp('/x/flow.drawio.svg', 'flow2.drawio.svg')).toBe(true)
+    // each form holds other bytes: XML, a picture, a Visio drawing
+    expect(renameStaysInApp('/x/flow.drawio', 'flow.drawio.svg')).toBe(false)
+    expect(renameStaysInApp('/x/flow.drawio.png', 'flow.png')).toBe(false)
+    expect(renameStaysInApp('/x/plan.vsdx', 'plan.drawio')).toBe(false)
   })
 
   it('opens OpenDocument text in the Word tab', () => {

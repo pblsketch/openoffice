@@ -1,5 +1,6 @@
 import { statSync } from 'node:fs'
-import { basename, extname } from 'node:path'
+import { basename } from 'node:path'
+import { documentExtension } from './app-routing'
 import type { RecentEntry, RecentPage, RecentQuery } from '../shared/home-api'
 
 const RECENT_PAGE_DEFAULT = 50
@@ -11,7 +12,7 @@ function toRecentEntry(path: string, starredPaths: ReadonlySet<string>): RecentE
     return {
       path,
       name: basename(path),
-      ext: extname(path).slice(1).toLowerCase(),
+      ext: documentExtension(path),
       mtimeMs: stat.mtimeMs,
       sizeBytes: stat.size,
       starred: starredPaths.has(path),
@@ -24,7 +25,7 @@ function toRecentEntry(path: string, starredPaths: ReadonlySet<string>): RecentE
     return {
       path,
       name: basename(path),
-      ext: extname(path).slice(1).toLowerCase(),
+      ext: documentExtension(path),
       mtimeMs: 0,
       sizeBytes: 0,
       starred: starredPaths.has(path),
@@ -83,6 +84,8 @@ export const EXT_FAMILY: Record<string, readonly string[]> = {
   md: ['md', 'markdown', 'txt', 'json'],
   html: ['html', 'htm'],
   hwp: ['hwp', 'hwpx'],
+  // the diagram editor's formats, a Visio drawing it imports included
+  drawio: ['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx'],
 }
 
 /** Family-aware extension match for sidebar filters (recents and starred share it). */
@@ -99,9 +102,7 @@ export function pageRecentPaths(
 ): RecentPage {
   const { offset, limit, ext } = normalizeRecentQuery(raw)
   // stat only the returned page: statting the whole list blocked main on long recents
-  const filtered = ext
-    ? paths.filter((p) => matchesExtFamily(extname(p).slice(1).toLowerCase(), ext))
-    : paths
+  const filtered = ext ? paths.filter((p) => matchesExtFamily(documentExtension(p), ext)) : paths
   const page = limit === 0 ? [] : filtered.slice(offset, offset + limit)
   return {
     entries: statPathEntries(page, starredPaths),

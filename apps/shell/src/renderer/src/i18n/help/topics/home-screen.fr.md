@@ -44,6 +44,8 @@ Les cartes au-dessus des listes créent un document en une étape. Cliquer sur u
 
 Le nouveau fichier atterrit dans le dossier actuellement sélectionné dans la barre latérale ; sans sélection, il va dans le dossier par défaut.
 
+Pour masquer des cartes ou changer leur ordre, utilisez **Nouveaux documents sur l’accueil** dans Paramètres → Général. Un type désactivé disparaît seulement des cartes et des menus Nouveau ; ses fichiers s’ouvrent toujours normalement. Sur l’accueil, ⌘N/Ctrl+N crée le premier type encore affiché.
+
 Ce que fait chaque carte :
 
 - **AI Docs** (.docx) : un document texte vierge dans l’éditeur Docs. Le fichier n’est écrit sur le disque qu’à la **première sauvegarde** ; les nouveaux documents s’ouvrent avec le panneau IA déplié (désactivez-le dans Paramètres → « Ouvrir le panneau IA dans les nouveaux documents »).
