@@ -143,13 +143,10 @@ describe('a page opened by a paragraph that holds only a table', () => {
     // text line; it is drawn 67.3px high, and the next line starts at its outer box end
     const [, black, box] = tables(open())
     expect(black.bbox!.y).toBeCloseTo(431.2, 0)
-    // Hangul: 530.7 to 602.1. On rhwp devel the flow after empty floats takes the next
-    // paragraph back to the box end, so 0.8.7's part (4) of patch 0021 had nothing to hold
-    // and the box sits 5.5px low (decision 0107, findings.md); the black table above it is
-    // where Hangul draws it
-    expect(box.bbox!.y).toBeCloseTo(536.2, 0)
-    expect(box.bbox!.y + box.bbox!.h).toBeCloseTo(607.6, 0)
-    expect(box.bbox!.y).toBeGreaterThanOrEqual(black.bbox!.y + black.bbox!.h)
+    // the line after the empty-host table starts at max(its place + space before, box end),
+    // as Hangul prints it (patch 0031)
+    expect(box.bbox!.y).toBeCloseTo(530.7, 0)
+    expect(box.bbox!.y + box.bbox!.h).toBeCloseTo(602.1, 0)
   })
 })
 

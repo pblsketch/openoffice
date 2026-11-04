@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
 Date: Wed, 4 Nov 2026 00:00:00 +0900
-Subject: [PATCH 18/18] fix(layout): 문단 기준 위아래 표를 그려진 글줄 원점에 두고 표 뒤 간격을 한글처럼 잰다
+Subject: [PATCH 18/28] fix(layout): 문단 기준 위아래 표를 그려진 글줄 원점에 두고 표 뒤 간격을 한글처럼 잰다
 
 조판이 저장 호스트 줄로 정한 문단 기준 위아래 표 자리를 그리기는 col_area.y만
 더해 썼다. 호스트 글줄은 그리기 흐름의 문단 원점에 그려지므로, 두 커서가 어긋나면

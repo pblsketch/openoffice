@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
 Date: Wed, 4 Nov 2026 00:00:00 +0900
-Subject: [PATCH 12/18] fix(cursor): 저장 줄보다 많이 그려진 문단은 그려진 줄로 선택 사각형을 나눈다
+Subject: [PATCH 12/28] fix(cursor): 저장 줄보다 많이 그려진 문단은 그려진 줄로 선택 사각형을 나눈다
 
 저장 줄(line_segs)이 하나뿐인 긴 문단을 조판이 여러 줄로 다시 나누면
 선택 사각형은 저장 줄 수만큼만 만들어져 첫 줄 하나만 칠해졌다. 렌더

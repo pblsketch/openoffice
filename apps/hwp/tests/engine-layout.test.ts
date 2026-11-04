@@ -224,12 +224,11 @@ describe('vendored rhwp engine', () => {
     expect(table.top).toBeGreaterThanOrEqual(last.bottom - 0.5)
     expect(table.top).toBeCloseTo(last.top + px(1100), 0)
     // what follows starts below the table: Hangul puts the next line right at its
-    // bottom, with neither the host's space after nor the next space before. On rhwp
-    // devel only the first half of that holds (patch 0028): the next paragraph's space
-    // before is still there, 4px (decision 0107, findings.md)
+    // bottom, with neither the host's space after nor the next space before (patches
+    // 0028 and 0035)
     const after = page.filter((b) => b.pi > 6).sort((a, b) => a.top - b.top)
     for (const box of after) expect(box.top).toBeGreaterThanOrEqual(table.bottom - 0.5)
-    expect(after[0].top - table.bottom).toBeCloseTo(4, 0)
+    expect(after[0].top).toBeCloseTo(table.bottom, 0)
   })
 
   it('fills a cell zone to the end of the merged cell it ends on', () => {

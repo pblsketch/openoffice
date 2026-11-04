@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
 Date: Wed, 4 Nov 2026 00:00:00 +0900
-Subject: [PATCH 14/18] fix(rendering): 밝기·대비를 조금 바꾼 그림을 워터마크 반투명으로 그리지 않는다
+Subject: [PATCH 14/28] fix(rendering): 밝기·대비를 조금 바꾼 그림을 워터마크 반투명으로 그리지 않는다
 
 회색조 + 밝기 −4 · 대비 −25 인 칸 배경 그림(교재 머리말 장식 막대)을 한컴
 한글 2024 는 불투명하게, 밝기·대비만 적용해 그린다(원본 255 → 213,

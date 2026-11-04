@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
 Date: Wed, 4 Nov 2026 00:00:00 +0900
-Subject: [PATCH 6/18] Ported onto devel 7d06d5c70: dropped the src/parser/hwpx/section.rs and src/serializer/hwpx/section.rs hunks — devel #7633 already reads sideChar="" (and whitespace) as no dash and writes a no-dash page number as sideChar=""; kept set_page_number_pos_native/get_page_number_pos_native and the setPageNumberPos/getPageNumberPos wasm exports unchanged.
+Subject: [PATCH 6/28] Ported onto devel 7d06d5c70: dropped the src/parser/hwpx/section.rs and src/serializer/hwpx/section.rs hunks — devel #7633 already reads sideChar="" (and whitespace) as no dash and writes a no-dash page number as sideChar=""; kept set_page_number_pos_native/get_page_number_pos_native and the setPageNumberPos/getPageNumberPos wasm exports unchanged.
 
 
 ---

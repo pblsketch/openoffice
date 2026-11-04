@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
 Date: Wed, 4 Nov 2026 00:00:00 +0900
-Subject: [PATCH 7/18] perf(canvas-metrics): 요청 수집은 글자 진행 폭을 재지 않고 폭 출처만 본다
+Subject: [PATCH 7/28] perf(canvas-metrics): 요청 수집은 글자 진행 폭을 재지 않고 폭 출처만 본다
 
 편집할 때마다 studio 가 `collectCanvasMetricRequests` 를 부르고, 수집기는 문서의 모든 run 에
 `trace_char_width_decisions` 를 부른다. 그 함수는 탭의 진행 폭을 채우려고 run 전체의 글자

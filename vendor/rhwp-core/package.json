@@ -1,6 +1,6 @@
 {
   "name": "@rhwp/core",
-  "version": "0.9.0-devel.ieum.18",
+  "version": "0.9.0-devel.ieum.19",
   "description": "rhwp devel (7d06d5c70, ahead of the v0.9.0 release) HWP/HWPX engine (WebAssembly) rebuilt with the patches in ./patches",
   "private": true,
   "type": "module",
@@ -37,9 +37,19 @@
       "0025-page-number-pages.patch",
       "0026-hwpx-cellzone-on-dropped-rows.patch",
       "0027-merged-table-cell-extents.patch",
-      "0028-paragraph-float-follows-drawn-host.patch"
+      "0028-paragraph-float-follows-drawn-host.patch",
+      "0029-stored-frame-after-unhonored-reset.patch",
+      "0030-no-trim-across-inner-reset.patch",
+      "0031-empty-host-table-successor-line-max.patch",
+      "0032-tac-host-line-not-this-table.patch",
+      "0033-no-trailing-bridge-after-unmeasured-tac-line.patch",
+      "0034-anchor-line-box-fits-above-paper-band.patch",
+      "0035-tail-table-successor-at-table-bottom.patch",
+      "0036-continuation-terminal-host-advance.patch",
+      "0037-hwpx-raw-spans-canonical-prefix.patch",
+      "0038-tests-follow-memo-index.patch"
     ],
     "wasmPack": "0.15.0",
-    "wasmSha256": "c12798bb233266cfec98ae4bec468415e75eafe0621076b4cfc5bbdacba502c7"
+    "wasmSha256": "198a79200691389554a90916a5e9157f09ef5adf9036aa01465a9ffef9216dc6"
   }
 }
