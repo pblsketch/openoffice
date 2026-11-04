@@ -95,6 +95,7 @@ import type {
   ExportOdtRequest,
   ExportPdfRequest,
   ImageExportPreparation,
+  ImageExportRequest,
   ExportResult,
   ImageData,
   MarkdownPrintDocumentRequest,
@@ -102,6 +103,7 @@ import type {
   MarkdownPrintPreviewRequest,
   MarkdownPrintPreviewResult,
   SaveMarkdownRequest,
+  SaveAsExportFormat,
   SaveMarkdownResult,
   SaveMode,
 } from '../shared/ipc'
@@ -111,6 +113,9 @@ const tDlg = createI18n({
   zh: {
     dlgSaveTitle: '保存 Markdown 文档',
     filterMarkdown: '文本文件 (Markdown, TXT, JSON)',
+    filterPdf: 'PDF 文档',
+    filterWord: 'Word 文档',
+    filterPageImages: '页面图片 (PNG)',
     dlgPickImage: '选择图片',
     dlgSaveImage: '保存图片',
     filterImages: '图片',
@@ -124,6 +129,9 @@ const tDlg = createI18n({
   en: {
     dlgSaveTitle: 'Save Markdown Document',
     filterMarkdown: 'Text Files (Markdown, TXT, JSON)',
+    filterPdf: 'PDF Document',
+    filterWord: 'Word Document',
+    filterPageImages: 'Page Images (PNG)',
     dlgPickImage: 'Choose an Image',
     dlgSaveImage: 'Save Image',
     filterImages: 'Images',
@@ -137,6 +145,9 @@ const tDlg = createI18n({
   vi: {
     dlgSaveTitle: 'Lưu tài liệu Markdown',
     filterMarkdown: 'Tệp văn bản (Markdown, TXT, JSON)',
+    filterPdf: 'Tài liệu PDF',
+    filterWord: 'Tài liệu Word',
+    filterPageImages: 'Hình ảnh trang (PNG)',
     dlgPickImage: 'Chọn một hình ảnh',
     dlgSaveImage: 'Lưu hình ảnh',
     filterImages: 'Hình ảnh',
@@ -150,6 +161,9 @@ const tDlg = createI18n({
   ja: {
     dlgSaveTitle: 'Markdown ドキュメントを保存',
     filterMarkdown: 'テキストファイル (Markdown, TXT, JSON)',
+    filterPdf: 'PDF 文書',
+    filterWord: 'Word 文書',
+    filterPageImages: 'ページ画像 (PNG)',
     dlgPickImage: '画像を選択',
     dlgSaveImage: '画像を保存',
     filterImages: '画像',
@@ -163,6 +177,9 @@ const tDlg = createI18n({
   ko: {
     dlgSaveTitle: 'Markdown 문서 저장',
     filterMarkdown: '텍스트 파일 (Markdown, TXT, JSON)',
+    filterPdf: 'PDF 문서',
+    filterWord: 'Word 문서',
+    filterPageImages: '쪽 이미지 (PNG)',
     dlgPickImage: '이미지 선택',
     dlgSaveImage: '이미지 저장',
     filterImages: '이미지',
@@ -176,6 +193,9 @@ const tDlg = createI18n({
   fr: {
     dlgSaveTitle: 'Enregistrer le document Markdown',
     filterMarkdown: 'Fichiers texte (Markdown, TXT, JSON)',
+    filterPdf: 'Document PDF',
+    filterWord: 'Document Word',
+    filterPageImages: 'Images des pages (PNG)',
     dlgPickImage: 'Choisir une image',
     dlgSaveImage: "Enregistrer l'image",
     filterImages: 'Images',
@@ -189,6 +209,9 @@ const tDlg = createI18n({
   de: {
     dlgSaveTitle: 'Markdown-Dokument speichern',
     filterMarkdown: 'Textdateien (Markdown, TXT, JSON)',
+    filterPdf: 'PDF-Dokument',
+    filterWord: 'Word-Dokument',
+    filterPageImages: 'Seitenbilder (PNG)',
     dlgPickImage: 'Bild auswählen',
     dlgSaveImage: 'Bild speichern',
     filterImages: 'Bilder',
@@ -202,6 +225,9 @@ const tDlg = createI18n({
   es: {
     dlgSaveTitle: 'Guardar documento Markdown',
     filterMarkdown: 'Archivos de texto (Markdown, TXT, JSON)',
+    filterPdf: 'Documento PDF',
+    filterWord: 'Documento de Word',
+    filterPageImages: 'Imágenes de página (PNG)',
     dlgPickImage: 'Elegir imagen',
     dlgSaveImage: 'Guardar imagen',
     filterImages: 'Imágenes',
@@ -215,6 +241,9 @@ const tDlg = createI18n({
   th: {
     dlgSaveTitle: 'บันทึกเอกสาร Markdown',
     filterMarkdown: 'ไฟล์ข้อความ (Markdown, TXT, JSON)',
+    filterPdf: 'เอกสาร PDF',
+    filterWord: 'เอกสาร Word',
+    filterPageImages: 'รูปภาพแต่ละหน้า (PNG)',
     dlgPickImage: 'เลือกรูปภาพ',
     dlgSaveImage: 'บันทึกรูปภาพ',
     filterImages: 'รูปภาพ',
@@ -228,6 +257,9 @@ const tDlg = createI18n({
   id: {
     dlgSaveTitle: 'Simpan dokumen Markdown',
     filterMarkdown: 'File teks (Markdown, TXT, JSON)',
+    filterPdf: 'Dokumen PDF',
+    filterWord: 'Dokumen Word',
+    filterPageImages: 'Gambar halaman (PNG)',
     dlgPickImage: 'Pilih gambar',
     dlgSaveImage: 'Simpan Gambar',
     filterImages: 'Gambar',
@@ -241,6 +273,9 @@ const tDlg = createI18n({
   ru: {
     dlgSaveTitle: 'Сохранить документ Markdown',
     filterMarkdown: 'Текстовые файлы (Markdown, TXT, JSON)',
+    filterPdf: 'Документ PDF',
+    filterWord: 'Документ Word',
+    filterPageImages: 'Изображения страниц (PNG)',
     dlgPickImage: 'Выберите изображение',
     dlgSaveImage: 'Сохранить изображение',
     filterImages: 'Изображения',
@@ -254,6 +289,9 @@ const tDlg = createI18n({
   ar: {
     dlgSaveTitle: 'حفظ مستند Markdown',
     filterMarkdown: 'ملفات نصية (Markdown, TXT, JSON)',
+    filterPdf: 'مستند PDF',
+    filterWord: 'مستند Word',
+    filterPageImages: 'صور الصفحات (PNG)',
     dlgPickImage: 'اختر صورة',
     dlgSaveImage: 'حفظ الصورة',
     filterImages: 'صور',
@@ -267,6 +305,9 @@ const tDlg = createI18n({
   pt: {
     dlgSaveTitle: 'Salvar documento Markdown',
     filterMarkdown: 'Arquivos de texto (Markdown, TXT, JSON)',
+    filterPdf: 'Documento PDF',
+    filterWord: 'Documento do Word',
+    filterPageImages: 'Imagens das páginas (PNG)',
     dlgPickImage: 'Escolher imagem',
     dlgSaveImage: 'Salvar imagem',
     filterImages: 'Imagens',
@@ -280,6 +321,9 @@ const tDlg = createI18n({
   it: {
     dlgSaveTitle: 'Salva documento Markdown',
     filterMarkdown: 'File di testo (Markdown, TXT, JSON)',
+    filterPdf: 'Documento PDF',
+    filterWord: 'Documento Word',
+    filterPageImages: 'Immagini delle pagine (PNG)',
     dlgPickImage: 'Scegli immagine',
     dlgSaveImage: 'Salva immagine',
     filterImages: 'Immagini',
@@ -293,6 +337,9 @@ const tDlg = createI18n({
   pl: {
     dlgSaveTitle: 'Zapisz dokument Markdown',
     filterMarkdown: 'Pliki tekstowe (Markdown, TXT, JSON)',
+    filterPdf: 'Dokument PDF',
+    filterWord: 'Dokument Word',
+    filterPageImages: 'Obrazy stron (PNG)',
     dlgPickImage: 'Wybierz obraz',
     dlgSaveImage: 'Zapisz obraz',
     filterImages: 'Obrazy',
@@ -306,6 +353,9 @@ const tDlg = createI18n({
   cs: {
     dlgSaveTitle: 'Uložit dokument Markdown',
     filterMarkdown: 'Textové soubory (Markdown, TXT, JSON)',
+    filterPdf: 'Dokument PDF',
+    filterWord: 'Dokument Word',
+    filterPageImages: 'Obrázky stránek (PNG)',
     dlgPickImage: 'Vyberte obrázek',
     dlgSaveImage: 'Uložit obrázek',
     filterImages: 'Obrázky',
@@ -319,6 +369,9 @@ const tDlg = createI18n({
   nl: {
     dlgSaveTitle: 'Markdown-document opslaan',
     filterMarkdown: 'Tekstbestanden (Markdown, TXT, JSON)',
+    filterPdf: 'PDF-document',
+    filterWord: 'Word-document',
+    filterPageImages: 'Paginaafbeeldingen (PNG)',
     dlgPickImage: 'Kies een afbeelding',
     dlgSaveImage: 'Afbeelding opslaan',
     filterImages: 'Afbeeldingen',
@@ -332,6 +385,9 @@ const tDlg = createI18n({
   ms: {
     dlgSaveTitle: 'Simpan dokumen Markdown',
     filterMarkdown: 'Fail teks (Markdown, TXT, JSON)',
+    filterPdf: 'Dokumen PDF',
+    filterWord: 'Dokumen Word',
+    filterPageImages: 'Imej halaman (PNG)',
     dlgPickImage: 'Pilih imej',
     dlgSaveImage: 'Simpan Imej',
     filterImages: 'Imej',
@@ -345,6 +401,9 @@ const tDlg = createI18n({
   he: {
     dlgSaveTitle: 'שמירת מסמך Markdown',
     filterMarkdown: 'קובצי טקסט (Markdown, TXT, JSON)',
+    filterPdf: 'מסמך PDF',
+    filterWord: 'מסמך Word',
+    filterPageImages: 'תמונות עמודים (PNG)',
     dlgPickImage: 'בחרו תמונה',
     dlgSaveImage: 'שמור תמונה',
     filterImages: 'תמונות',
@@ -358,6 +417,9 @@ const tDlg = createI18n({
   hi: {
     dlgSaveTitle: 'Markdown दस्तावेज़ सहेजें',
     filterMarkdown: 'पाठ फ़ाइलें (Markdown, TXT, JSON)',
+    filterPdf: 'PDF दस्तावेज़',
+    filterWord: 'Word दस्तावेज़',
+    filterPageImages: 'पृष्ठ छवियाँ (PNG)',
     dlgPickImage: 'छवि चुनें',
     dlgSaveImage: 'छवि सहेजें',
     filterImages: 'छवियाँ',
@@ -371,6 +433,9 @@ const tDlg = createI18n({
   'zh-TW': {
     dlgSaveTitle: '儲存 Markdown 文件',
     filterMarkdown: '文字檔 (Markdown, TXT, JSON)',
+    filterPdf: 'PDF 文件',
+    filterWord: 'Word 文件',
+    filterPageImages: '頁面圖片 (PNG)',
     dlgPickImage: '選擇圖片',
     dlgSaveImage: '儲存圖片',
     filterImages: '圖片',
@@ -385,6 +450,9 @@ const tDlg = createI18n({
 type DlgKey =
   | 'dlgSaveTitle'
   | 'filterMarkdown'
+  | 'filterPdf'
+  | 'filterWord'
+  | 'filterPageImages'
   | 'dlgPickImage'
   | 'dlgSaveImage'
   | 'filterImages'
@@ -824,11 +892,41 @@ async function saveIntoProject(
   return runtime.writeNewDocument(wcId, `${base}.md`, Buffer.from(text, 'utf8'))
 }
 
+/** Save As › the export a picked extension selects (rendered documents only) */
+const SAVE_AS_EXPORT_BY_EXT: Record<string, 'pdf' | SaveAsExportFormat> = {
+  '.pdf': 'pdf',
+  '.docx': 'docx',
+  '.odt': 'odt',
+  '.png': 'png',
+}
+
+/**
+ * Save As › Word, ODT or page images: the path the dialog approved for this
+ * view, waiting for the renderer to build the export (taken once).
+ */
+const saveAsExportTargets = new Map<number, { format: SaveAsExportFormat; path: string }>()
+
+/**
+ * The approved Save As path when `requested` names it for `format`; consumed.
+ * Undefined when the request is not a Save As export at all.
+ */
+function takeSaveAsExportTarget(
+  wcId: number,
+  format: SaveAsExportFormat,
+  requested: unknown,
+): string | null | undefined {
+  if (requested === undefined) return undefined
+  const approved = saveAsExportTargets.get(wcId)
+  if (!approved || approved.format !== format || approved.path !== requested) return null
+  saveAsExportTargets.delete(wcId)
+  return approved.path
+}
+
 async function resolveSaveTarget(
   e: Electron.IpcMainInvokeEvent,
   mode: SaveMode,
   suggestedName?: string,
-  allowPdf = false,
+  offerExports = false,
 ): Promise<string | null | 'canceled'> {
   const current = savePathByWc.get(e.sender.id)
   if (mode === 'save' && current) return current
@@ -852,13 +950,21 @@ async function resolveSaveTarget(
         (await runtime.newDocumentDir?.(e.sender.id)) ?? configuredDefaultSaveDir(app),
         `${tm('untitledFile')}.md`,
       ))
-  // With PDF offered, the suggestion carries no extension: the file type chosen
-  // in the dialog supplies .md or .pdf (a typed name keeps its own extension)
-  const suggestedPath = allowPdf ? defaultPath.replace(/\.(md|markdown)$/i, '') : defaultPath
+  // With the exports offered, the suggestion carries no extension: the file type
+  // chosen in the dialog supplies .md, .pdf, .docx, .odt or .png (a typed name
+  // keeps its own extension)
+  const suggestedPath = offerExports ? defaultPath.replace(/\.(md|markdown)$/i, '') : defaultPath
   const filters: Array<{ name: string; extensions: string[] }> = [
     { name: tm('filterMarkdown'), extensions: ['md', 'markdown', 'txt', 'json'] },
   ]
-  if (allowPdf) filters.push({ name: 'PDF', extensions: ['pdf'] })
+  if (offerExports) {
+    filters.push(
+      { name: tm('filterPdf'), extensions: ['pdf'] },
+      { name: tm('filterWord'), extensions: ['docx'] },
+      { name: odtFilterName(), extensions: ['odt'] },
+      { name: tm('filterPageImages'), extensions: ['png'] },
+    )
+  }
   const picked = await showSaveDialogWithMemory(dialog, win, {
     title: tm('dlgSaveTitle'),
     defaultPath: suggestedPath,
@@ -1124,6 +1230,15 @@ function registerMarkdownIpc(): void {
             return done({ ok: false, error: err instanceof Error ? err.message : String(err) })
           }
         }
+        const exportAs =
+          pdfHtml !== undefined ? SAVE_AS_EXPORT_BY_EXT[extname(target).toLowerCase()] : undefined
+        if (exportAs && exportAs !== 'pdf') {
+          // Save As › Word, ODT or page images: the renderer builds the copy with
+          // its export code and writes it to this approved path. Nothing here is
+          // a save; the document keeps its path, unsaved edits and assets.
+          saveAsExportTargets.set(e.sender.id, { format: exportAs, path: target })
+          return done({ ok: true, path: target, exportAs })
+        }
         const currentPath = pathAtRequest
         const isNewPath = currentPath !== target
         const imageSources = [...(request.imageSources ?? [])]
@@ -1383,15 +1498,20 @@ function registerMarkdownIpc(): void {
         }
         const win =
           BrowserWindow.fromWebContents(e.sender) ?? BrowserWindow.getFocusedWindow() ?? undefined
-        const picked = await showSaveDialogWithMemory(
-          dialog,
-          win,
-          {
-            defaultPath: `${safeName}.docx`,
-            filters: [{ name: 'Word', extensions: ['docx'] }],
-          },
-          configuredDefaultSaveDir(app),
-        )
+        // Save As › Word already chose (and approved) the path: no second dialog
+        const approved = takeSaveAsExportTarget(e.sender.id, 'docx', request.saveAsTarget)
+        if (approved === null) return { ok: false, error: 'markdown: save target not approved' }
+        const picked = approved
+          ? { canceled: false, filePath: approved }
+          : await showSaveDialogWithMemory(
+              dialog,
+              win,
+              {
+                defaultPath: `${safeName}.docx`,
+                filters: [{ name: 'Word', extensions: ['docx'] }],
+              },
+              configuredDefaultSaveDir(app),
+            )
         if (picked.canceled || !picked.filePath) return { ok: true, canceled: true }
         await writeFile(picked.filePath, bytes)
         return { ok: true, path: picked.filePath }
@@ -1416,8 +1536,12 @@ function registerMarkdownIpc(): void {
           .trim() || tm('untitledFile')
       const win =
         BrowserWindow.fromWebContents(e.sender) ?? BrowserWindow.getFocusedWindow() ?? undefined
+      // Save As › ODT already chose (and approved) the path: no second dialog
+      const approved = takeSaveAsExportTarget(e.sender.id, 'odt', request.saveAsTarget)
+      if (approved === null) return { ok: false, error: 'markdown: save target not approved' }
       return exportOdt({
         pickPath: async () => {
+          if (approved) return approved
           const picked = await showSaveDialogWithMemory(
             dialog,
             win,
@@ -1537,26 +1661,32 @@ function registerMarkdownIpc(): void {
 
   ipcMain.handle(
     MARKDOWN_CHANNELS.prepareImageExport,
-    async (e, request: ExportPdfRequest): Promise<ImageExportPreparation> => {
+    async (e, request: ImageExportRequest): Promise<ImageExportPreparation> => {
       if (typeof request?.html !== 'string' || !request.html)
         return { ok: false, error: 'Empty document' }
+      // Save As › page images: the typed name, numbered per page beside it
+      const approved = takeSaveAsExportTarget(e.sender.id, 'png', request.saveAsTarget)
+      if (approved === null) return { ok: false, error: 'markdown: save target not approved' }
       let id: string | undefined
       try {
-        const win = BrowserWindow.fromWebContents(e.sender) ?? undefined
-        const picked = await showOpenDialogWithMemory(
-          dialog,
-          win,
-          {
-            properties: ['openDirectory', 'createDirectory'],
-          },
-          configuredDefaultSaveDir(app),
-        )
-        if (picked.canceled || !picked.filePaths[0]) return { ok: true, canceled: true }
-        id = await imageExports.start(
-          e.sender.id,
-          picked.filePaths[0],
-          String(request.suggestedName || tm('untitledFile')),
-        )
+        if (approved) id = await imageExports.startFiles(e.sender.id, approved)
+        else {
+          const win = BrowserWindow.fromWebContents(e.sender) ?? undefined
+          const picked = await showOpenDialogWithMemory(
+            dialog,
+            win,
+            {
+              properties: ['openDirectory', 'createDirectory'],
+            },
+            configuredDefaultSaveDir(app),
+          )
+          if (picked.canceled || !picked.filePaths[0]) return { ok: true, canceled: true }
+          id = await imageExports.start(
+            e.sender.id,
+            picked.filePaths[0],
+            String(request.suggestedName || tm('untitledFile')),
+          )
+        }
         const pdf = await printMarkdownPdf(request.html)
         if (e.sender.isDestroyed()) throw new Error('Document closed during export')
         return { ok: true, id, pdfBase64: pdf.toString('base64') }
@@ -1581,10 +1711,10 @@ function registerMarkdownIpc(): void {
     MARKDOWN_CHANNELS.finishImageExport,
     async (e, id: string, success: boolean): Promise<ExportResult> => {
       try {
-        const dir = await imageExports.finish(e.sender.id, id, success === true)
-        if (!dir) return { ok: true, canceled: true }
-        shell.showItemInFolder(join(dir, 'page-01.png'))
-        return { ok: true, path: dir }
+        const finished = await imageExports.finishExport(e.sender.id, id, success === true)
+        if (!finished) return { ok: true, canceled: true }
+        shell.showItemInFolder(finished.first)
+        return { ok: true, path: finished.dir }
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) }
       }
@@ -1648,6 +1778,7 @@ function grantAndTrack(wc: WebContents, openPath?: string | null): void {
     openPathByWc.delete(wcId)
     allowedByWc.delete(wcId)
     savePathByWc.delete(wcId)
+    saveAsExportTargets.delete(wcId)
     dirtyByWc.delete(wcId)
     docDiskStates.delete(wcId)
     closeSaveWaiters.get(wcId)?.(false)

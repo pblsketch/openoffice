@@ -1188,6 +1188,12 @@ export interface ExportImagesOp {
   format?: 'png' | 'jpg'
   /** base64 per page image (without the data: prefix), in page order */
   pngsBase64: string[]
+  /**
+   * Save As › PNG: the name the Save As dialog returned (`deck.png`). The main
+   * process accepts it once for this tab and writes `deck.png` for one page or
+   * `deck-01.png`, `deck-02.png`, … beside it; `dir` and `baseName` are unused.
+   */
+  saveAsTarget?: string
 }
 
 export interface ExportImagesResult {
@@ -1742,9 +1748,18 @@ export interface SlidesApi {
     reason?: 'external-modified'
     slides?: RenderSlide[]
   }>
-  saveAs: (
-    defaultName: string,
-  ) => Promise<{ ok: boolean; path?: string; error?: string; slides?: RenderSlide[] }>
+  /**
+   * Save As. Picking a copy format (PDF, PNG per slide) writes nothing and
+   * returns `ok: false` with `exportAs` and the picked `path`: the renderer
+   * runs that export, and the deck keeps its path and unsaved state.
+   */
+  saveAs: (defaultName: string) => Promise<{
+    ok: boolean
+    path?: string
+    error?: string
+    slides?: RenderSlide[]
+    exportAs?: 'pdf' | 'png'
+  }>
   /**
    * Project folders (spec 6): an untitled deck whose handed-over run ended well
    * is saved into its panel's project. The main process picks the folder and a

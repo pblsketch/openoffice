@@ -44,6 +44,11 @@ export type SaveOutcome =
     }
   | { kind: 'canceled' }
   /**
+   * Save As picked PDF: nothing was saved. The caller writes the PDF copy to `path`
+   * through the PDF export; the document keeps its file and its unsaved state.
+   */
+  | { kind: 'export'; format: 'pdf'; path: string }
+  /**
    * Nothing was written.
    * `protected`: the document has a password this save path cannot keep.
    * `tracked`: the document has tracked changes this save path cannot keep.
@@ -145,6 +150,7 @@ export async function runSave(
       : { kind: 'failed', reason: 'write', detail: begin.error }
   }
   if ('canceled' in begin) return { kind: 'canceled' }
+  if ('export' in begin) return { kind: 'export', format: begin.export, path: begin.path }
 
   let bytes: Uint8Array
   let memos: MemoSnapshot[] | null | undefined

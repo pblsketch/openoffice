@@ -87,20 +87,26 @@ describe('pdf preload: structure jobs and result store', () => {
     expect(removed).toEqual([PDF_CHANNELS.structureProgress])
   })
 
-  it('accepts a conversion request and only a Markdown preset target', () => {
+  it('accepts a conversion request and a preset target of its own format', () => {
     const seen: unknown[] = []
     const off = api.onConvertDialogRequest((request) => seen.push(request))
     const listener = listeners.get(PDF_CHANNELS.convertDialogRequest)!
     listener({}, { format: 'md', outPath: 'C:\\docs\\a.md' })
     listener({}, { format: 'md' })
-    // dropped: an EPUB target, the old bare-format shape, an unknown format,
-    // an empty path and a non-string path
     listener({}, { format: 'epub', outPath: 'C:\\docs\\a.epub' })
+    // dropped: a target of the other format, the old bare-format shape, an
+    // unknown format, an empty path and a non-string path
+    listener({}, { format: 'epub', outPath: 'C:\\docs\\a.md' })
+    listener({}, { format: 'md', outPath: 'C:\\docs\\a.epub' })
     listener({}, 'md')
     listener({}, { format: 'pdf' })
     listener({}, { format: 'md', outPath: '' })
     listener({}, { format: 'md', outPath: 7 })
-    expect(seen).toEqual([{ format: 'md', outPath: 'C:\\docs\\a.md' }, { format: 'md' }])
+    expect(seen).toEqual([
+      { format: 'md', outPath: 'C:\\docs\\a.md' },
+      { format: 'md' },
+      { format: 'epub', outPath: 'C:\\docs\\a.epub' },
+    ])
     off()
     expect(removed).toEqual([PDF_CHANNELS.convertDialogRequest])
   })

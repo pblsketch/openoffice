@@ -38,6 +38,7 @@ export const ko = {
   zoomReset: '원래 크기',
   tbExport: '내보내기',
   exportPng: '이미지(PNG)로 내보내기…',
+  exportSvg: '이미지(SVG)로 내보내기…',
   exportPdf: 'PDF로 내보내기…',
   exportMarkdown: '마크다운 개요로 내보내기…',
   exportDone: '내보냈습니다',

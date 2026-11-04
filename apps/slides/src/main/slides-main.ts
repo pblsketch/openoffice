@@ -26,6 +26,12 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { cleanupExpiredGeneratedPages } from './generated-page-temp'
 import { buildExportImagePaths } from './export-images'
+import {
+  resolveSlidesSaveAsPick,
+  SaveAsImageTargets,
+  slidesSaveAsFilters,
+  slidesSaveAsSuggestion,
+} from './save-as-formats'
 import { exportSlidesPdf } from './pdf-export'
 import { printSlidesHtml } from './print-window'
 import { shutdownSubscriptionChildren } from '@genoffice/ai-provider/subscription'
@@ -451,9 +457,13 @@ function trackSlidesWebContents(wc: WebContents): void {
     closeSaveWaiters.get(wc.id)?.(false)
     closeSaveWaiters.delete(wc.id)
     autoSavePrefByWc.delete(wc.id)
+    saveAsImageTargets.forget(wc.id)
     if (windowRefs.activeWebContents === wc) windowRefs.activeWebContents = null
   })
 }
+
+/** Save As › PNG names the dialog returned, accepted once by the image export */
+const saveAsImageTargets = new SaveAsImageTargets()
 
 // ── In-app element clipboard (app-wide, so elements copied in one deck paste into any other open deck; the cascade decides the paste offset) ─
 let elementClipboard: {
@@ -4977,20 +4987,33 @@ export function registerSlidesIpc(): void {
     if (!session) return { ok: false, error: 'no file open' }
     const parent = dialogParent()
     const options = {
-      defaultPath: saveAsSuggestion(session.path, defaultName),
-      filters: [{ name: 'PowerPoint', extensions: ['pptx'] }],
+      // with copy formats on offer the suggestion carries no extension: the
+      // file type chosen in the dialog supplies it
+      defaultPath: slidesSaveAsSuggestion(saveAsSuggestion(session.path, defaultName)),
+      // the deck's own type first, then the copies (PDF, one PNG per slide)
+      filters: slidesSaveAsFilters((key) => tm(key)),
     }
     const r = await showSaveDialogWithMemory(dialog, parent, options, getDraftsDir())
     if (r.canceled || !r.filePath) return { ok: false }
+    const pick = resolveSlidesSaveAsPick(r.filePath)
+    // A copy format writes no deck: the renderer runs the existing export to
+    // the picked path, and the session keeps its path, dirty state and
+    // recovery copy. The PNG name is authorized for one image export.
+    if (pick.kind === 'pdf') return { ok: false, exportAs: 'pdf', path: pick.path }
+    if (pick.kind === 'png') {
+      saveAsImageTargets.authorize(e.sender.id, pick.path)
+      return { ok: false, exportAs: 'png', path: pick.path }
+    }
+    const target = pick.path
     try {
       const metaRevAtSave = session.metaRev ?? 0
       const previousPath = session.path
-      await writeDeckFile(session, r.filePath)
-      followTemplateSelection(session, session.path, r.filePath)
-      session.path = r.filePath
-      session.diskState = (await recordDiskState(r.filePath)) ?? undefined
-      await pushRecent(r.filePath)
-      syncAttachedPaths(session, r.filePath)
+      await writeDeckFile(session, target)
+      followTemplateSelection(session, session.path, target)
+      session.path = target
+      session.diskState = (await recordDiskState(target)) ?? undefined
+      await pushRecent(target)
+      syncAttachedPaths(session, target)
       commitSaved(session.opened)
       if ((session.metaRev ?? 0) === metaRevAtSave) session.metaDirty = false
       // after the deck reads as saved: a copy a pass wrote while the steps
@@ -4998,7 +5021,7 @@ export function registerSlidesIpc(): void {
       recoveryCopiesSaved(session, previousPath)
       return {
         ok: true,
-        path: r.filePath,
+        path: target,
         slides: buildAllRenderSlides(session.opened, session.fitWidthPx),
       }
     } catch (err) {
@@ -5021,10 +5044,19 @@ export function registerSlidesIpc(): void {
 
   ipcMain.handle(
     'slides:export-images',
-    async (_e, op: ExportImagesOp): Promise<ExportImagesResult> => {
+    async (e, op: ExportImagesOp): Promise<ExportImagesResult> => {
       try {
         const ext = op.format === 'jpg' ? 'jpg' : 'png'
-        const paths = buildExportImagePaths(op.dir, op.baseName, op.pngsBase64.length, ext)
+        if (op.saveAsTarget !== undefined && ext !== 'png') {
+          return { ok: false, error: 'Save As images are PNG' }
+        }
+        // Save As › PNG: the one name the person typed becomes one file per
+        // slide beside it, and only a name this tab's Save As dialog returned
+        const paths =
+          op.saveAsTarget !== undefined
+            ? saveAsImageTargets.take(e.sender.id, op.saveAsTarget, op.pngsBase64.length)
+            : buildExportImagePaths(op.dir, op.baseName, op.pngsBase64.length, ext)
+        if (!paths) return { ok: false, error: 'export target was not authorized' }
         for (let i = 0; i < paths.length; i++) {
           await writeFile(paths[i], Buffer.from(op.pngsBase64[i], 'base64'))
         }

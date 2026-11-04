@@ -38,6 +38,7 @@ export const he = {
   zoomReset: 'גודל ממשי',
   tbExport: 'ייצוא',
   exportPng: 'ייצוא כתמונה (PNG)…',
+  exportSvg: 'ייצוא כתמונה (SVG)…',
   exportPdf: 'ייצוא כ-PDF…',
   exportMarkdown: 'ייצוא כמתאר Markdown…',
   exportDone: 'הייצוא הושלם',

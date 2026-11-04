@@ -57,7 +57,8 @@ export interface ConvertDialogProps {
   lang: Lang
   t: TFunc
   api: ConvertDialogApi
-  /** a Markdown target the shell's Save As dialog already picked: convert to it right away */
+  /** a target the shell's Save As dialog already picked: Markdown converts to it
+      right away; EPUB keeps the form (book information) with the target chosen */
   initialTarget?: string
   /** save pending edits so the job reads what is on screen; false = not saved (the editor said why) */
   prepare: () => Promise<boolean>
@@ -247,16 +248,17 @@ export function ConvertDialog(props: ConvertDialogProps): ReactElement {
     await runOn(target)
   }
 
-  // Save As › Markdown carries its target: no page-range form, start at once
+  // Save As › Markdown carries its target: no page-range form, start at once.
+  // Save As › EPUB waits for the form (title, cover, pages) like the File menu.
   const autoStartedRef = useRef(false)
   const autoStartRef = useRef(startWith)
   autoStartRef.current = startWith
   useEffect(() => {
     const target = props.initialTarget
-    if (!target || autoStartedRef.current) return
+    if (!target || format !== 'md' || autoStartedRef.current) return
     autoStartedRef.current = true
     void autoStartRef.current(target)
-  }, [props.initialTarget])
+  }, [props.initialTarget, format])
 
   const cancelRun = (): void => {
     if (stage.kind === 'running') void api.cancel(stage.jobId)

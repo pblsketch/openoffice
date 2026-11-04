@@ -187,6 +187,10 @@ export default function App() {
   const [dirty, setDirty] = useState(false)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const exportingImagesRef = useRef(false)
+  /** Save As hands Word/ODT/page-image targets to the export code defined below it */
+  const runExportRef = useRef<
+    (format: ExportFormat, outPath?: string, saveAsTarget?: string) => Promise<boolean>
+  >(async () => false)
   const [imageExportStatus, setImageExportStatus] = useState<{
     key: StringKey
     params?: Record<string, string | number>
@@ -822,6 +826,14 @@ export default function App() {
             setSaveState('idle')
             return true
           }
+          // Word, ODT or page images: nothing was written yet. The export menu's
+          // code builds the copy and writes it to the approved path; the document
+          // keeps its path and unsaved edits like the PDF answer above
+          if (result.exportAs) {
+            setSaveState('idle')
+            void runExportRef.current(result.exportAs, undefined, result.path)
+            return true
+          }
           // what this note offers `[[...#` has just changed on disk
           invalidateWikiHeads()
           const unchanged =
@@ -894,9 +906,12 @@ export default function App() {
     [flushSource, sourceMode, doSaveSource],
   )
 
-  /** `outPath` (headless export only) skips the save dialog; resolves true when a file was written. */
+  /**
+   * `outPath` (headless export only) skips the save dialog; resolves true when a file was written.
+   * `saveAsTarget` is the path Save As approved for this format (no second dialog).
+   */
   const runExport = useCallback(
-    async (format: ExportFormat, outPath?: string) => {
+    async (format: ExportFormat, outPath?: string, saveAsTarget?: string) => {
       // a source file has no rendered document to export
       if (sourceMode) return false
       const current = editorRef.current
@@ -919,6 +934,7 @@ export default function App() {
             buildPrintHtml(current.view.dom, suggestedName),
             suggestedName,
             (count) => setImageExportStatus({ key: 'appExportImagesProgress', params: { count } }),
+            saveAsTarget,
           )
           if (!result.ok) throw new Error(result.error)
           if ('canceled' in result) {
@@ -965,6 +981,7 @@ export default function App() {
           const result = await window.markdownApi.exportOdt({
             base64: bytesToBase64(bytes),
             suggestedName,
+            ...(saveAsTarget ? { saveAsTarget } : {}),
           })
           if (!result.ok) console.error('[markdown] odt export failed:', result.error)
           return result.ok && !('canceled' in result)
@@ -973,6 +990,7 @@ export default function App() {
           base64: bytesToBase64(bytes),
           suggestedName,
           mode: format === 'docs' ? 'openInDocs' : 'dialog',
+          ...(saveAsTarget ? { saveAsTarget } : {}),
         })
         if (!result.ok) console.error('[markdown] docx export failed:', result.error)
         return result.ok && !('canceled' in result)
@@ -983,6 +1001,7 @@ export default function App() {
     },
     [sourceMode],
   )
+  runExportRef.current = runExport
 
   // Headless export mode (--headless-export): this renderer lives in a hidden
   // window whose only job is to run the File menu's PDF export against a path

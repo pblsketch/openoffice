@@ -287,6 +287,31 @@ describe('conversion dialog: Save As › Markdown', () => {
   })
 })
 
+describe('conversion dialog: Save As › EPUB', () => {
+  it('opens the book form with the picked target and converts there on Convert', async () => {
+    const fake = fakeApi(TARGET_EPUB)
+    fake.queue(okResult(TARGET_EPUB))
+    const { el, props } = await render({
+      api: fake.api,
+      format: 'epub',
+      docInfo: { title: 'T' },
+      initialTarget: TARGET_EPUB,
+    })
+    // no automatic start: the person fills the book information first
+    expect(props.prepare).not.toHaveBeenCalled()
+    expect(fake.api.convert).not.toHaveBeenCalled()
+    expect(q(el, '[data-field="title"]')).not.toBeNull()
+    expect(q(el, '.pdf-convert-path')?.textContent).toBe('report.epub')
+    await click(q(el, '[data-action="convert"]'))
+    expect(fake.api.pickTarget).not.toHaveBeenCalled()
+    expect(fake.api.convert.mock.calls[0]![0]).toMatchObject({
+      format: 'epub',
+      outPath: TARGET_EPUB,
+      epub: { title: 'T' },
+    })
+  })
+})
+
 describe('conversion dialog: EPUB book fields', () => {
   it('prefills title and author from the document information', async () => {
     const fake = fakeApi(TARGET_EPUB)

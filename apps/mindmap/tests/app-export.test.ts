@@ -89,6 +89,7 @@ function fakeApi(path: string | null, file: OpenFileResult): Fake {
       onExportRequest: on('export'),
       onPrintRequest: on('print'),
       exportPng: exported('png', 'C:/out/map.png'),
+      exportSvg: exported('svg', 'C:/out/map.svg'),
       exportPdf: exported('pdf', 'C:/out/map.pdf'),
       exportMarkdown: exported('markdown', 'C:/out/map.md'),
       print: exported('print', null),
@@ -174,13 +175,14 @@ async function typeTitle(id: string, title: string): Promise<void> {
 const status = (): string => container.querySelector('.mm-save-status')!.textContent ?? ''
 
 describe('the export button', () => {
-  it('offers the three exports, and no print; Escape closes it', async () => {
+  it('offers the four exports, and no print; Escape closes it', async () => {
     await mountWith(await (await documentOf(plainSheet())).save())
     await click('[data-action="export"]')
     const items = [...container.querySelectorAll<HTMLElement>('[data-export]')]
-    expect(items.map((item) => item.dataset.export)).toEqual(['png', 'pdf', 'markdown'])
+    expect(items.map((item) => item.dataset.export)).toEqual(['png', 'svg', 'pdf', 'markdown'])
     expect(items.map((item) => item.textContent)).toEqual([
       'Export as Image (PNG)…',
+      'Export as Image (SVG)…',
       'Export as PDF…',
       'Export as Markdown Outline…',
     ])
@@ -256,6 +258,48 @@ describe('a picture or a page that cannot be made', () => {
     await settle()
     expect(fake.exports).toEqual([])
     expect(status()).toBe('Could not print')
+  })
+})
+
+describe('Save As with an export type', () => {
+  it('writes that export to the picked path, and the map keeps its file and its unsaved edit', async () => {
+    const fake = await mountWith(await (await documentOf(plainSheet())).save())
+    await typeTitle(plainSheet().rootTopic.children!.attached![0]!.id, 'Changed')
+    // the main process answers Save As with the export type picked in its dialog
+    fake.api.save = async (request: SaveMindmapRequest) => {
+      fake.saves.push(request)
+      return { ok: true, export: { format: 'markdown', path: 'C:/out/copy.md' } }
+    }
+    await click('[data-action="save-as"]')
+    await until(() => fake.exports.length === 1, 'the export')
+    expect(fake.saves.map((save) => save.mode)).toEqual(['saveAs'])
+    expect(fake.exports[0]!.kind).toBe('markdown')
+    expect(fake.exports[0]!.request.path).toBe('C:/out/copy.md')
+    await until(() => status() === 'Exported', 'the export message')
+    // nothing was saved: the edit is still unsaved, and Save goes to the map's own file
+    expect(container.querySelector('.mm-save-status')!.getAttribute('data-dirty')).toBe('true')
+    fake.api.save = async (request: SaveMindmapRequest) => {
+      fake.saves.push(request)
+      return { ok: true, path: 'C:/maps/test.xmind' }
+    }
+    await click('[data-action="save"]')
+    await until(() => fake.saves.length === 2, 'the save')
+    expect(fake.saves[1]!.mode).toBe('save')
+    expect(fake.exports).toHaveLength(1)
+  })
+
+  it('a picture picked in Save As goes to the export of the sheet on screen with that path', async () => {
+    const fake = await mountWith(await (await documentOf(plainSheet())).save())
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    fake.api.save = async (request: SaveMindmapRequest) => {
+      fake.saves.push(request)
+      return { ok: true, export: { format: 'svg', path: 'C:/out/copy.svg' } }
+    }
+    await click('[data-action="save-as"]')
+    // jsdom draws no sheet, so the picture cannot be made here; it is the export that failed
+    await until(() => status() === 'Could not export', 'the export')
+    expect(fake.saves).toHaveLength(1)
+    expect(fake.exports).toEqual([])
   })
 })
 

@@ -38,6 +38,7 @@ export const th = {
   zoomReset: 'ขนาดจริง',
   tbExport: 'ส่งออก',
   exportPng: 'ส่งออกเป็นรูปภาพ (PNG)…',
+  exportSvg: 'ส่งออกเป็นรูปภาพ (SVG)…',
   exportPdf: 'ส่งออกเป็น PDF…',
   exportMarkdown: 'ส่งออกเป็นโครงร่าง Markdown…',
   exportDone: 'ส่งออกแล้ว',

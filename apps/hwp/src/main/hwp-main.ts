@@ -43,7 +43,8 @@ import {
 } from './recovery'
 import type { HwpRecoveryHost } from './recovery'
 import { applySaveFixes } from './save-fixes'
-import { backupPathFor, bytesMatchFormat, needsBackup, withFormatExtension } from './save-plan'
+import { backupPathFor, bytesMatchFormat, needsBackup } from './save-plan'
+import { saveAsDefaultPath, saveAsFilters, saveAsTarget } from './save-as-formats'
 import { sectionTailsOf } from './section-tails'
 import type { SectionTails } from './section-tails'
 import { newTabsOf } from './tab-widths'
@@ -119,6 +120,8 @@ const readBytesWaiters = new Map<number, (result: unknown) => void>()
 const readTextInFlight = new Map<number, Promise<string>>()
 /** Target a view resolved with beginSave and has not committed yet */
 const pendingSaveByWc = new Map<number, { path: string; format: HwpFormat }>()
+/** The PDF path a view's Save As picked; its next PDF may write exactly that path, once */
+const pdfSaveAsByWc = new Map<number, string>()
 /** Paths each view has already written this session; their first overwrite kept a backup */
 const writtenByWc = new Map<number, Set<string>>()
 /**
@@ -309,6 +312,23 @@ function pdfName(wcId: number): string {
   const current = savePathByWc.get(wcId)
   const base = current ? basename(current).replace(/.hwpx?$/i, '') : ''
   return `${base || tm('untitledFile')}.pdf`
+}
+
+/** The PDF export's own dialog: where the PDF goes, or null when it was cancelled. */
+async function pickPdfTarget(contents: WebContents): Promise<string | null> {
+  const win =
+    BrowserWindow.fromWebContents(contents) ?? BrowserWindow.getFocusedWindow() ?? undefined
+  const current = savePathByWc.get(contents.id)
+  const picked = await showSaveDialogWithMemory(dialog, win, {
+    title: tm('dlgExportPdfTitle'),
+    defaultPath: join(
+      current ? dirname(current) : configuredDefaultSaveDir(app),
+      pdfName(contents.id),
+    ),
+    filters: [{ name: 'PDF', extensions: ['pdf'] }],
+  })
+  if (picked.canceled || !picked.filePath) return null
+  return /.pdf$/i.test(picked.filePath) ? picked.filePath : `${picked.filePath}.pdf`
 }
 
 export function requestHwpSave(contents: WebContents, mode: SaveMode): Promise<boolean> {
@@ -539,49 +559,55 @@ function registerHwpIpc(): void {
 
   /** one print or PDF at a time per view */
   const printing = new Set<number>()
-  ipcMain.handle(HWP_CHANNELS.printPages, async (e, job: unknown): Promise<PrintResult> => {
-    const wcId = e.sender.id
-    const bad = badJob(job)
-    if (bad) return { ok: false, error: `hwp: ${bad}` }
-    if (printing.has(wcId)) return { ok: false, error: 'hwp: already printing' }
-    printing.add(wcId)
-    try {
-      const printJob = job as PrintJob
-      if (printJob.mode === 'print') {
-        await printJobToPrinter(printJob, printWindow)
-        return { ok: true }
+  ipcMain.handle(
+    HWP_CHANNELS.printPages,
+    async (e, job: unknown, options?: unknown): Promise<PrintResult> => {
+      const wcId = e.sender.id
+      const bad = badJob(job)
+      if (bad) return { ok: false, error: `hwp: ${bad}` }
+      // Save As > PDF: the path its dialog picked, taken once, and only for a PDF
+      const given =
+        options && typeof options === 'object' ? (options as { path?: unknown }).path : undefined
+      if (given !== undefined) {
+        if (
+          typeof given !== 'string' ||
+          given !== pdfSaveAsByWc.get(wcId) ||
+          (job as PrintJob).mode !== 'pdf'
+        ) {
+          return { ok: false, error: 'hwp: this PDF path was not picked in Save As' }
+        }
+        pdfSaveAsByWc.delete(wcId)
       }
-      const win =
-        BrowserWindow.fromWebContents(e.sender) ?? BrowserWindow.getFocusedWindow() ?? undefined
-      const current = savePathByWc.get(wcId)
-      const picked = await showSaveDialogWithMemory(dialog, win, {
-        title: tm('dlgExportPdfTitle'),
-        defaultPath: join(
-          current ? dirname(current) : configuredDefaultSaveDir(app),
-          pdfName(wcId),
-        ),
-        filters: [{ name: 'PDF', extensions: ['pdf'] }],
-      })
-      if (picked.canceled || !picked.filePath) return { ok: true, canceled: true }
-      const target = /.pdf$/i.test(picked.filePath) ? picked.filePath : `${picked.filePath}.pdf`
-      const pdf = await printJobToPdf(printJob, printWindow)
-      await atomicWriteFile(target, pdf)
+      if (printing.has(wcId)) return { ok: false, error: 'hwp: already printing' }
+      printing.add(wcId)
       try {
-        if (!runtime.openGeneratedPath?.(target)) shell.showItemInFolder(target)
+        const printJob = job as PrintJob
+        if (printJob.mode === 'print') {
+          await printJobToPrinter(printJob, printWindow)
+          return { ok: true }
+        }
+        const target = given ?? (await pickPdfTarget(e.sender))
+        if (!target) return { ok: true, canceled: true }
+        const pdf = await printJobToPdf(printJob, printWindow)
+        await atomicWriteFile(target, pdf)
+        try {
+          if (!runtime.openGeneratedPath?.(target)) shell.showItemInFolder(target)
+        } catch (err) {
+          console.warn('[hwp] could not open the exported PDF:', err)
+        }
+        return { ok: true, path: target }
       } catch (err) {
-        console.warn('[hwp] could not open the exported PDF:', err)
+        return { ok: false, error: err instanceof Error ? err.message : String(err) }
+      } finally {
+        printing.delete(wcId)
       }
-      return { ok: true, path: target }
-    } catch (err) {
-      return { ok: false, error: err instanceof Error ? err.message : String(err) }
-    } finally {
-      printing.delete(wcId)
-    }
-  })
+    },
+  )
 
   ipcMain.handle(HWP_CHANNELS.beginSave, async (e, mode: unknown): Promise<BeginSaveResult> => {
     const wcId = e.sender.id
     pendingSaveByWc.delete(wcId)
+    pdfSaveAsByWc.delete(wcId)
     // a memo editor's text is not in the document yet: no dialog, no save
     if (memoModalByWc.has(wcId)) {
       e.sender.send(HWP_CHANNELS.memoBlocked)
@@ -618,22 +644,30 @@ function registerHwpIpc(): void {
             ))
         const fallback: HwpFormat =
           currentFormat ?? copy?.format ?? hwpFormatOfPath(offered) ?? preferred
-        const hwp = { name: tm('filterHwp'), extensions: ['hwp'] }
-        const hwpx = { name: tm('filterHwpx'), extensions: ['hwpx'] }
+        // Save As also lists PDF, a copy written by the PDF export (save-as-formats.ts)
+        const offerExports = mode === 'saveAs'
         const picked = await showSaveDialogWithMemory(dialog, win, {
           title: tm('dlgSaveTitle'),
           // a new document has no file yet: it is offered under the untitled name in the
           // default save folder, where the shell moves it into the folder it was made from
-          defaultPath: offered,
+          defaultPath: saveAsDefaultPath(offered, offerExports),
           // one type per format, so the user can pick the other one; the document's
           // own format comes first, so it is the dialog's default type
-          filters: fallback === 'hwpx' ? [hwpx, hwp] : [hwp, hwpx],
+          filters: saveAsFilters(fallback, offerExports, tm),
         })
         if (picked.canceled || !picked.filePath) {
           settleSave(wcId, false)
           return { ok: true, canceled: true }
         }
-        target = withFormatExtension(picked.filePath, fallback)
+        const answer = saveAsTarget(picked.filePath, fallback, offerExports)
+        if (answer.kind === 'pdf') {
+          // no save: the renderer gathers the pages and the PDF export writes this path.
+          // The document keeps its file, unsaved state and recovery copy.
+          pdfSaveAsByWc.set(wcId, answer.path)
+          settleSave(wcId, false)
+          return { ok: true, path: answer.path, export: 'pdf' }
+        }
+        target = answer.path
       }
       const format = hwpFormatOfPath(target)
       if (!format) throw new Error('hwp: no save format for this file name')
@@ -977,6 +1011,7 @@ function grantAndTrack(
     memoModalByWc.delete(wcId)
     hwpViews.delete(wcId)
     pendingSaveByWc.delete(wcId)
+    pdfSaveAsByWc.delete(wcId)
     writtenByWc.delete(wcId)
     tailsByWc.delete(wcId)
     fieldKindsByWc.delete(wcId)

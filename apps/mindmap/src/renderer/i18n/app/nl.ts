@@ -38,6 +38,7 @@ export const nl = {
   zoomReset: 'Werkelijke grootte',
   tbExport: 'Exporteren',
   exportPng: 'Exporteren als afbeelding (PNG)…',
+  exportSvg: 'Exporteren als afbeelding (SVG)…',
   exportPdf: 'Exporteren als PDF…',
   exportMarkdown: 'Exporteren als Markdown-overzicht…',
   exportDone: 'Geëxporteerd',

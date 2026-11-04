@@ -370,6 +370,9 @@ export default function App() {
     setNotice({ tone: notice.tone ?? 'info', key: notice.key, params: notice.params })
   }, [])
 
+  // Save As > PDF: the PDF export, set once it exists below (it is made after the save)
+  const pdfCopyRef = useRef<(path: string) => Promise<void>>(async () => {})
+
   const save = useCallback(
     async (mode: SaveMode, automatic = false): Promise<boolean> => {
       const editor = editorRef.current
@@ -395,6 +398,11 @@ export default function App() {
       savingDoneRef.current = done
       try {
         const outcome = await runSave(savePortOf(editor), window.hwpApi, mode, automatic)
+        if (outcome.kind === 'export') {
+          // a copy, as File > Export as PDF writes it; nothing about the document changes
+          await pdfCopyRef.current(outcome.path)
+          return false
+        }
         if (outcome.kind === 'saved') {
           restoredRef.current = false
           copierRef.current?.saved()
@@ -623,13 +631,17 @@ export default function App() {
     async (
       mode: PrintMode,
       onProgress: (done: number, total: number) => void = () => {},
+      /** the PDF path Save As picked: no dialog then */
+      path?: string,
     ): Promise<PrintResult> => {
       if (phase !== 'ready') return { ok: false, error: 'the editor is not ready' }
       if (printingRef.current) return { ok: false, error: 'already printing' }
       printingRef.current = true
       try {
         const job = await gatherPrintJob(agentBridge, mode, onProgress)
-        return await window.hwpApi.printPages(job)
+        return await (path === undefined
+          ? window.hwpApi.printPages(job)
+          : window.hwpApi.printPages(job, { path }))
       } catch (error) {
         return { ok: false, error: detailOf(error) }
       } finally {
@@ -692,24 +704,37 @@ export default function App() {
     [phase, openPreview],
   )
 
+  /** File > Export as PDF, and Save As with PDF picked (`path`: no second dialog). */
+  const exportPdf = useCallback(
+    async (path?: string): Promise<void> => {
+      const result = await runPrint(
+        'pdf',
+        (done, total) =>
+          setNotice({
+            tone: 'info',
+            key: 'printPreparing',
+            params: { done, total },
+            sticky: true,
+          }),
+        path,
+      )
+      setNotice(result.ok ? null : { tone: 'error', key: 'pdfFailed', detail: result.error })
+    },
+    [runPrint],
+  )
+
+  useEffect(() => {
+    pdfCopyRef.current = exportPdf
+  }, [exportPdf])
+
   // PDF still exports without a preview; the preview's PDF button uses runPrint directly.
   useEffect(
     () =>
       window.hwpApi.onPrintRequest((mode) => {
         if (mode !== 'pdf' || printingRef.current) return
-        void (async () => {
-          const result = await runPrint('pdf', (done, total) =>
-            setNotice({
-              tone: 'info',
-              key: 'printPreparing',
-              params: { done, total },
-              sticky: true,
-            }),
-          )
-          setNotice(result.ok ? null : { tone: 'error', key: 'pdfFailed', detail: result.error })
-        })()
+        void exportPdf()
       }),
-    [runPrint],
+    [exportPdf],
   )
 
   // autosave to the document's own file: 30 s and window blur, after the user has

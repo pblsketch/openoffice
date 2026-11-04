@@ -45,7 +45,11 @@ import { generateImageTool, documentMediaRoots, withMediaCallSignal } from '@gen
 import { sharedSubscriptionStatuses } from '@genoffice/ai-provider/subscription'
 import { PDF_CHANNELS, PDF_TOOLS_HANDOFF, type PdfToolsHandoffTool } from '../shared/ipc'
 import { CertificateEncryptionError, WrongPasswordError, decryptDocument } from './pdf-crypt'
-import { buildExportImagePaths, hasValidExportPageNumbers } from './export-images'
+import {
+  buildExportImagePaths,
+  buildSaveAsImagePaths,
+  hasValidExportPageNumbers,
+} from './export-images'
 import type {
   ExportImagesRequest,
   ExportImagesResult,
@@ -756,6 +760,8 @@ const closeSaveWaiters = new Map<number, (ok: boolean) => void>()
 const saveAsWaiters = new Map<number, (outcome: PdfSaveAsOutcome) => void>()
 /** Save As destination granted per view (main-process dialog pick); the save handler refuses any other non-source target */
 const saveAsTargetByWc = new Map<number, string>()
+/** Save As › PNG page images: the name the shell's save dialog picked, used once by the next `saveAs` export */
+const imageTargetByWc = new Map<number, string>()
 /** Only a copy produced by this view may receive subsequent in-place redactions. */
 const redactionPathByWc = new Map<number, string>()
 const redactionFlows = new Set<number>()
@@ -1356,6 +1362,19 @@ export function requestPdfSaveAsOutcome(
     })
     contents.send(PDF_CHANNELS.saveAsRequest, targetPath)
   })
+}
+
+/**
+ * Save As › PNG page images: grant the picked name to the view, then ask the
+ * renderer to draw every page and export it (`saveAs: true`). The export
+ * writes one file per page beside that name (numbered when there are more
+ * pages); the path never comes from the renderer. False = not sent.
+ */
+export function requestPdfPageImages(contents: WebContents, targetPath: string): boolean {
+  if (contents.isDestroyed() || !/\.png$/i.test(targetPath)) return false
+  imageTargetByWc.set(contents.id, targetPath)
+  contents.send(PDF_CHANNELS.exportImagesRequest)
+  return true
 }
 
 /** Saved signatures live in userData, shared by all documents and windows */
@@ -2405,6 +2424,25 @@ function registerPdfIpc(): void {
         return { ok: false, error: 'pdf: no images' }
       if (!hasValidExportPageNumbers(pageNumbers, images.length))
         return { ok: false, error: 'pdf: invalid page numbers' }
+      if (request?.saveAs === true) {
+        // Save As › PNG page images: only the name the shell's dialog picked, once
+        const target = imageTargetByWc.get(e.sender.id)
+        imageTargetByWc.delete(e.sender.id)
+        const outputPaths = target ? buildSaveAsImagePaths(target, images.length) : null
+        // the picked name is a .png: the pages must be PNG too
+        if (!target || !outputPaths || request.format === 'jpg')
+          return { ok: false, error: 'pdf: target not picked for this view' }
+        try {
+          for (const [i, b64] of images.entries()) {
+            await writeFile(outputPaths[i]!, Buffer.from(b64, 'base64'))
+          }
+          // Reveal the exported images so success is never silent
+          shell.showItemInFolder(outputPaths[0]!)
+          return { ok: true, savedDir: dirname(target), count: images.length }
+        } catch (err) {
+          return { ok: false, error: err instanceof Error ? err.message : String(err) }
+        }
+      }
       const ext = request?.format === 'jpg' ? 'jpg' : 'png'
       const win =
         BrowserWindow.fromWebContents(e.sender) ?? BrowserWindow.getFocusedWindow() ?? undefined
@@ -2737,6 +2775,7 @@ function grantAndTrack(wc: WebContents, openPath?: string | null): void {
     docDiskStates.delete(wcId)
     certEntriesByWc.delete(wcId)
     saveAsTargetByWc.delete(wcId)
+    imageTargetByWc.delete(wcId)
     closeSaveWaiters.get(wcId)?.(false)
     closeSaveWaiters.delete(wcId)
     saveAsWaiters.get(wcId)?.('failed')

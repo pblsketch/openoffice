@@ -44,8 +44,9 @@ vi.mock('electron', () => ({
   },
 }))
 
-import { buildExportImagePaths } from '../src/main/export-images'
-import { createPdfView } from '../src/main/pdf-main'
+import type { WebContents } from 'electron'
+import { buildExportImagePaths, buildSaveAsImagePaths } from '../src/main/export-images'
+import { createPdfView, requestPdfPageImages } from '../src/main/pdf-main'
 import { PDF_CHANNELS } from '../src/shared/ipc'
 import type { ExportImagesResult } from '../src/shared/ipc'
 
@@ -158,5 +159,95 @@ describe('PDF image export paths', () => {
 
     expect(result).toEqual({ ok: false, error: 'pdf: invalid page numbers' })
     expect(state.showOpenDialog).not.toHaveBeenCalled()
+  })
+})
+
+describe('Save As › PNG page images', () => {
+  const send = vi.fn()
+  const view = (id = state.senderId) =>
+    ({ id, isDestroyed: () => false, send }) as unknown as WebContents
+
+  beforeEach(() => send.mockClear())
+
+  it('asks the view to draw its pages for a picked .png name only', () => {
+    expect(requestPdfPageImages(view(), join(dir, 'scan.png'))).toBe(true)
+    expect(send).toHaveBeenCalledWith(PDF_CHANNELS.exportImagesRequest)
+    send.mockClear()
+    expect(requestPdfPageImages(view(), join(dir, 'scan.pdf'))).toBe(false)
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  it('writes numbered pages beside the picked name without a folder dialog', async () => {
+    requestPdfPageImages(view(), join(dir, 'scan.png'))
+    const result = await invoke({
+      images: ['YQ==', 'Yg==', 'Yw=='],
+      pageNumbers: [1, 2, 3],
+      baseName: 'ignored',
+      format: 'png',
+      saveAs: true,
+    })
+
+    expect(result).toEqual({ ok: true, savedDir: dir, count: 3 })
+    expect(readdirSync(dir).sort()).toEqual(['scan-01.png', 'scan-02.png', 'scan-03.png'])
+    expect(readFileSync(join(dir, 'scan-03.png'), 'utf8')).toBe('c')
+    expect(state.showOpenDialog).not.toHaveBeenCalled()
+    expect(state.showItemInFolder).toHaveBeenCalledWith(join(dir, 'scan-01.png'))
+  })
+
+  it('keeps the typed name for a one-page document', async () => {
+    requestPdfPageImages(view(), join(dir, 'scan.png'))
+    const result = await invoke({
+      images: ['YQ=='],
+      pageNumbers: [1],
+      baseName: 'ignored',
+      format: 'png',
+      saveAs: true,
+    })
+
+    expect(result).toEqual({ ok: true, savedDir: dir, count: 1 })
+    expect(readdirSync(dir)).toEqual(['scan.png'])
+  })
+
+  it('uses a picked name once and refuses a Save As export nobody picked', async () => {
+    requestPdfPageImages(view(), join(dir, 'scan.png'))
+    const request = {
+      images: ['YQ=='],
+      pageNumbers: [1],
+      baseName: 'p',
+      format: 'png',
+      saveAs: true,
+    }
+    expect(await invoke(request)).toMatchObject({ ok: true })
+    expect(await invoke(request)).toEqual({
+      ok: false,
+      error: 'pdf: target not picked for this view',
+    })
+    // another view's pick is not this view's
+    requestPdfPageImages(view(state.senderId + 1), join(dir, 'other.png'))
+    expect(await invoke(request)).toMatchObject({ ok: false })
+    expect(readdirSync(dir)).toEqual(['scan.png'])
+    expect(state.showOpenDialog).not.toHaveBeenCalled()
+  })
+
+  it('refuses JPEG pages for a .png name', async () => {
+    requestPdfPageImages(view(), join(dir, 'scan.png'))
+    const result = await invoke({
+      images: ['YQ=='],
+      pageNumbers: [1],
+      baseName: 'p',
+      format: 'jpg',
+      saveAs: true,
+    })
+    expect(result).toMatchObject({ ok: false })
+    expect(readdirSync(dir)).toEqual([])
+  })
+
+  it('accepts only an absolute .png name in the path builder', () => {
+    expect(buildSaveAsImagePaths('scan.png', 2)).toBeNull()
+    expect(buildSaveAsImagePaths(join(dir, 'scan.jpg'), 2)).toBeNull()
+    expect(buildSaveAsImagePaths(join(dir, 'scan.png'), 2)).toEqual([
+      join(dir, 'scan-01.png'),
+      join(dir, 'scan-02.png'),
+    ])
   })
 })

@@ -213,6 +213,12 @@ import { atomicWriteFile } from './atomic-write'
 import { closeGuardDecision, ShutdownLatch } from './close-guard'
 import { SaveEditsTransferStore } from './save-edits-transfer'
 import { exportPdf, printWorkbook } from './pdf-export'
+import {
+  resolveSheetsSaveAsPick,
+  SaveAsExportTargets,
+  sheetsSaveAsFilters,
+  sheetsSaveAsSuggestion,
+} from './save-as-formats'
 import { installStandaloneTemplateFontProtocol } from './template-fonts'
 import {
   allowsAutomaticWorkbookRecovery,
@@ -299,6 +305,7 @@ const tMain = createI18n({
     csvSaveAsNotice: 'CSV 格式不保留样式等格式修改——另存为 .xlsx 可保留全部内容。',
     menuExportCsv: '导出 CSV…',
     filterCsv: 'CSV (逗号分隔)',
+    filterPdfActiveSheet: 'PDF (当前工作表)',
     csvFormulaLossMsg: '当前工作表包含公式,CSV 格式无法保留。',
     csvFormulaLossDetail: 'CSV 只保留纯文本值——公式会被替换为当前计算结果,格式也会丢失。',
     csvKeepXlsxBtn: '另存为 .xlsx',
@@ -356,6 +363,7 @@ const tMain = createI18n({
     csvSaveAsNotice: "CSV files can't keep formatting — saving as .xlsx keeps all your changes.",
     menuExportCsv: 'Export CSV…',
     filterCsv: 'CSV (Comma delimited)',
+    filterPdfActiveSheet: 'PDF (Current sheet)',
     csvFormulaLossMsg: 'This sheet contains formulas that CSV cannot keep.',
     csvFormulaLossDetail:
       'CSV keeps plain values only — formulas are flattened to their current results, and formatting is lost.',
@@ -417,6 +425,7 @@ const tMain = createI18n({
       'Tệp CSV không thể giữ lại định dạng — lưu dưới dạng .xlsx sẽ giữ lại tất cả các thay đổi của bạn.',
     menuExportCsv: 'Xuất CSV…',
     filterCsv: 'CSV (Phân tách bằng dấu phẩy)',
+    filterPdfActiveSheet: 'PDF (Trang tính hiện tại)',
     csvFormulaLossMsg: 'Trang tính này chứa các công thức mà định dạng CSV không thể lưu giữ.',
     csvFormulaLossDetail:
       'CSV chỉ giữ các giá trị thuần — các công thức được làm phẳng thành kết quả hiện tại của chúng và định dạng sẽ bị mất.',
@@ -480,6 +489,7 @@ const tMain = createI18n({
       'CSV 形式は書式を保持できません。.xlsx として保存すると変更をすべて保持できます。',
     menuExportCsv: 'CSV をエクスポート…',
     filterCsv: 'CSV (コンマ区切り)',
+    filterPdfActiveSheet: 'PDF (現在のシート)',
     csvFormulaLossMsg: 'このシートには CSV 形式では保持できない数式が含まれています。',
     csvFormulaLossDetail:
       'CSV は値のみを保持します。数式は現在の計算結果に置き換えられ、書式も失われます。',
@@ -542,6 +552,7 @@ const tMain = createI18n({
       'CSV 형식은 서식을 저장할 수 없습니다. .xlsx로 저장하면 모든 변경 내용이 유지됩니다.',
     menuExportCsv: 'CSV 내보내기…',
     filterCsv: 'CSV (쉼표로 분리)',
+    filterPdfActiveSheet: 'PDF (현재 시트)',
     csvFormulaLossMsg: '현재 시트에 CSV 형식이 유지할 수 없는 수식이 포함되어 있습니다.',
     csvFormulaLossDetail:
       'CSV는 값만 유지합니다 — 수식은 현재 계산 결과로 바뀌고 서식은 손실됩니다.',
@@ -605,6 +616,7 @@ const tMain = createI18n({
       'Le format CSV ne conserve pas la mise en forme — enregistrez en .xlsx pour conserver toutes vos modifications.',
     menuExportCsv: 'Exporter en CSV…',
     filterCsv: 'CSV (délimité par des virgules)',
+    filterPdfActiveSheet: 'PDF (feuille active)',
     csvFormulaLossMsg:
       'Cette feuille contient des formules que le format CSV ne peut pas conserver.',
     csvFormulaLossDetail:
@@ -669,6 +681,7 @@ const tMain = createI18n({
       'CSV-Dateien können keine Formatierung speichern – als .xlsx speichern, um alle Änderungen zu behalten.',
     menuExportCsv: 'CSV exportieren…',
     filterCsv: 'CSV (Trennzeichen-getrennt)',
+    filterPdfActiveSheet: 'PDF (aktuelles Tabellenblatt)',
     csvFormulaLossMsg: 'Dieses Blatt enthält Formeln, die das CSV-Format nicht speichern kann.',
     csvFormulaLossDetail:
       'CSV speichert nur reine Werte – Formeln werden durch ihre aktuellen Ergebnisse ersetzt, und die Formatierung geht verloren.',
@@ -732,6 +745,7 @@ const tMain = createI18n({
       'El formato CSV no conserva el formato: guarda como .xlsx para conservar todos tus cambios.',
     menuExportCsv: 'Exportar a CSV…',
     filterCsv: 'CSV (delimitado por comas)',
+    filterPdfActiveSheet: 'PDF (hoja actual)',
     csvFormulaLossMsg: 'Esta hoja contiene fórmulas que el formato CSV no puede conservar.',
     csvFormulaLossDetail:
       'El CSV solo conserva valores: las fórmulas se sustituyen por sus resultados actuales y el formato se pierde.',
@@ -793,6 +807,7 @@ const tMain = createI18n({
       'ไฟล์ CSV ไม่สามารถเก็บการจัดรูปแบบได้ — บันทึกเป็น .xlsx เพื่อเก็บการเปลี่ยนแปลงทั้งหมดของคุณ',
     menuExportCsv: 'ส่งออก CSV…',
     filterCsv: 'CSV (คั่นด้วยเครื่องหมายจุลภาค)',
+    filterPdfActiveSheet: 'PDF (เวิร์กชีตปัจจุบัน)',
     csvFormulaLossMsg: 'ชีตนี้มีสูตรที่รูปแบบ CSV เก็บไว้ไม่ได้',
     csvFormulaLossDetail:
       'CSV เก็บเฉพาะค่าเท่านั้น — สูตรจะถูกแทนที่ด้วยผลลัพธ์ปัจจุบัน และการจัดรูปแบบจะหายไป',
@@ -854,6 +869,7 @@ const tMain = createI18n({
       'File CSV tidak dapat menyimpan pemformatan — simpan sebagai .xlsx untuk mempertahankan semua perubahan Anda.',
     menuExportCsv: 'Ekspor CSV…',
     filterCsv: 'CSV (dipisahkan koma)',
+    filterPdfActiveSheet: 'PDF (lembar saat ini)',
     csvFormulaLossMsg: 'Lembar ini berisi rumus yang tidak dapat disimpan dalam format CSV.',
     csvFormulaLossDetail:
       'CSV hanya menyimpan nilai — rumus diganti dengan hasil saat ini, dan pemformatan akan hilang.',
@@ -916,6 +932,7 @@ const tMain = createI18n({
       'Формат CSV не сохраняет форматирование — сохраните в .xlsx, чтобы не потерять изменения.',
     menuExportCsv: 'Экспорт в CSV…',
     filterCsv: 'CSV (разделители — запятые)',
+    filterPdfActiveSheet: 'PDF (текущий лист)',
     csvFormulaLossMsg: 'Этот лист содержит формулы, которые формат CSV не сохраняет.',
     csvFormulaLossDetail:
       'CSV сохраняет только значения — формулы заменяются текущими результатами, а форматирование теряется.',
@@ -975,6 +992,7 @@ const tMain = createI18n({
     csvSaveAsNotice: 'ملفات CSV لا تحتفظ بالتنسيق — احفظ بصيغة ‎.xlsx للاحتفاظ بجميع تغييراتك.',
     menuExportCsv: 'تصدير CSV…',
     filterCsv: 'CSV (محدد بفواصل)',
+    filterPdfActiveSheet: 'PDF (الورقة الحالية)',
     csvFormulaLossMsg: 'تحتوي هذه الورقة على صيغ لا يمكن لتنسيق CSV الاحتفاظ بها.',
     csvFormulaLossDetail: 'يحتفظ CSV بالقيم فقط — تُستبدل الصيغ بنتائجها الحالية ويُفقد التنسيق.',
     csvKeepXlsxBtn: 'حفظ بصيغة .xlsx',
@@ -1036,6 +1054,7 @@ const tMain = createI18n({
       'Arquivos CSV não mantêm a formatação — salve como .xlsx para manter todas as suas alterações.',
     menuExportCsv: 'Exportar CSV…',
     filterCsv: 'CSV (separado por vírgulas)',
+    filterPdfActiveSheet: 'PDF (planilha atual)',
     csvFormulaLossMsg: 'Esta planilha contém fórmulas que o formato CSV não pode manter.',
     csvFormulaLossDetail:
       'O CSV mantém apenas valores — as fórmulas são substituídas pelos resultados atuais e a formatação é perdida.',
@@ -1099,6 +1118,7 @@ const tMain = createI18n({
       'I file CSV non conservano la formattazione: salva come .xlsx per mantenere tutte le modifiche.',
     menuExportCsv: 'Esporta CSV…',
     filterCsv: 'CSV (delimitato da virgole)',
+    filterPdfActiveSheet: 'PDF (foglio corrente)',
     csvFormulaLossMsg: 'Questo foglio contiene formule che il formato CSV non può conservare.',
     csvFormulaLossDetail:
       'Il CSV conserva solo i valori: le formule vengono sostituite dai risultati attuali e la formattazione viene persa.',
@@ -1161,6 +1181,7 @@ const tMain = createI18n({
       'Pliki CSV nie zachowują formatowania — zapisz jako .xlsx, aby zachować wszystkie zmiany.',
     menuExportCsv: 'Eksportuj CSV…',
     filterCsv: 'CSV (rozdzielany przecinkami)',
+    filterPdfActiveSheet: 'PDF (bieżący arkusz)',
     csvFormulaLossMsg: 'Ten arkusz zawiera formuły, których format CSV nie zachowuje.',
     csvFormulaLossDetail:
       'CSV zachowuje tylko wartości — formuły są zastępowane bieżącymi wynikami, a formatowanie jest tracone.',
@@ -1223,6 +1244,7 @@ const tMain = createI18n({
       'Soubory CSV nezachovávají formátování — uložením jako .xlsx zachováte všechny změny.',
     menuExportCsv: 'Exportovat CSV…',
     filterCsv: 'CSV (oddělený čárkami)',
+    filterPdfActiveSheet: 'PDF (aktuální list)',
     csvFormulaLossMsg: 'Tento list obsahuje vzorce, které formát CSV nezachová.',
     csvFormulaLossDetail:
       'CSV zachovává pouze hodnoty — vzorce se nahradí aktuálními výsledky a formátování se ztratí.',
@@ -1286,6 +1308,7 @@ const tMain = createI18n({
       'CSV-bestanden bewaren geen opmaak — sla op als .xlsx om al uw wijzigingen te behouden.',
     menuExportCsv: 'CSV exporteren…',
     filterCsv: 'CSV (kommagescheiden)',
+    filterPdfActiveSheet: 'PDF (huidig werkblad)',
     csvFormulaLossMsg: 'Dit blad bevat formules die het CSV-formaat niet kan bewaren.',
     csvFormulaLossDetail:
       'CSV bewaart alleen waarden — formules worden vervangen door hun huidige resultaten en opmaak gaat verloren.',
@@ -1346,6 +1369,7 @@ const tMain = createI18n({
       'Fail CSV tidak dapat menyimpan pemformatan — simpan sebagai .xlsx untuk mengekalkan semua perubahan anda.',
     menuExportCsv: 'Eksport CSV…',
     filterCsv: 'CSV (dipisahkan koma)',
+    filterPdfActiveSheet: 'PDF (helaian semasa)',
     csvFormulaLossMsg:
       'Helaian ini mengandungi formula yang tidak dapat disimpan dalam format CSV.',
     csvFormulaLossDetail:
@@ -1406,6 +1430,7 @@ const tMain = createI18n({
     csvSaveAsNotice: 'קובצי CSV אינם שומרים עיצוב — שמרו כ‑.xlsx כדי לשמור על כל השינויים.',
     menuExportCsv: 'ייצוא CSV…',
     filterCsv: 'CSV (מופרד באמצעות פסיקים)',
+    filterPdfActiveSheet: 'PDF (הגיליון הנוכחי)',
     csvFormulaLossMsg: 'גיליון זה מכיל נוסחאות שתבנית CSV אינה יכולה לשמור.',
     csvFormulaLossDetail:
       'CSV שומר ערכים בלבד — נוסחאות מוחלפות בתוצאות הנוכחיות שלהן, והעיצוב אובד.',
@@ -1467,6 +1492,7 @@ const tMain = createI18n({
       'CSV फ़ाइलें फ़ॉर्मेटिंग सहेज नहीं सकतीं — सभी बदलाव बनाए रखने के लिए .xlsx के रूप में सहेजें।',
     menuExportCsv: 'CSV निर्यात करें…',
     filterCsv: 'CSV (अल्पविराम द्वारा सीमांकित)',
+    filterPdfActiveSheet: 'PDF (वर्तमान शीट)',
     csvFormulaLossMsg: 'इस शीट में ऐसे सूत्र हैं जिन्हें CSV प्रारूप सहेज नहीं सकता।',
     csvFormulaLossDetail:
       'CSV केवल मान रखता है — सूत्र उनके वर्तमान परिणामों से बदल दिए जाते हैं और फ़ॉर्मेटिंग खो जाती है।',
@@ -1526,6 +1552,7 @@ const tMain = createI18n({
     csvSaveAsNotice: 'CSV 格式不保留樣式等格式修改——另存為 .xlsx 可保留全部內容。',
     menuExportCsv: '匯出 CSV…',
     filterCsv: 'CSV (逗號分隔)',
+    filterPdfActiveSheet: 'PDF (目前工作表)',
     csvFormulaLossMsg: '目前工作表包含公式,CSV 格式無法保留。',
     csvFormulaLossDetail: 'CSV 只保留純文字值——公式會被取代為目前計算結果,格式也會遺失。',
     csvKeepXlsxBtn: '另存為 .xlsx',
@@ -1920,6 +1947,7 @@ function registerSheetsSession(webContents: WebContents, client: XlsxSidecarClie
   webContents.once('destroyed', () => {
     const entry = sheetsTabs.get(webContents.id)
     sheetsTabs.delete(webContents.id)
+    saveAsExportTargets.forget(webContents.id)
     // before the sessions are cleared below: a clean close drops the copies it wrote
     if (entry) settleTabRecoveryOnClose(webContents.id, entry)
     else tabRecovery.delete(webContents.id)
@@ -2055,6 +2083,9 @@ export function unmarkSheetsUnsavedNew(openPath: string): void {
 }
 
 const mcpWritablePaths = new Map<number, Set<string>>()
+
+/** Save As › PDF targets the dialog returned, accepted once by the PDF export */
+const saveAsExportTargets = new SaveAsExportTargets()
 
 /** MCP save_session: the shell resolved this path for the tab, so a dialog-free save may write it */
 export function authorizeMcpSheetWrite(wcId: number, filePath: string): void {
@@ -3627,7 +3658,15 @@ export function registerSheetsIpc(): void {
   ipcMain.handle(IPC_CHANNELS.exportPdf, async (event, input: unknown) => {
     sessionFor(event)
     const request = workbookExportPdfRequestSchema.parse(input)
-    const result = await exportPdf(event, request)
+    // Save As › PDF: only the path this tab's Save As dialog just returned
+    // skips the export's own dialog
+    if (
+      request.saveAsPath !== undefined &&
+      !saveAsExportTargets.take(event.sender.id, request.saveAsPath)
+    ) {
+      throw new Error('export target was not authorized')
+    }
+    const result = await exportPdf(event, request, request.saveAsPath)
     if (!result.canceled && result.path) openGeneratedFile(result.path)
     return result
   })
@@ -3808,42 +3847,47 @@ export function registerSheetsIpc(): void {
       const macroEnabled = /\.xlsm$/i.test(
         session.suggestSaveAs ?? session.restoreTarget ?? session.path,
       )
-      const ext = macroEnabled ? 'xlsm' : 'xlsx'
       // a new workbook whose panel has a project is offered in that folder (spec 6);
       // a restored one keeps offering where its original was
       const projectDir =
         session.unsavedNew && session.suggestSaveAs !== undefined && !session.recoveryOriginalPath
           ? await runtime.newDocumentDir?.(event.sender.id)
           : null
+      // PDF (a copy) only on an explicit Save As: a first Save can be the
+      // save-before-close, which a copy must not answer
+      const offerPdf = request.mode === 'save-as'
+      const suggestion =
+        (projectDir && session.suggestSaveAs !== undefined
+          ? join(projectDir, basename(session.suggestSaveAs))
+          : undefined) ??
+        session.suggestSaveAs ??
+        session.csvSourcePath?.replace(/\.[^.]+$/, '.xlsx') ??
+        session.restoreTarget ??
+        session.path
       const selection = await saveFileDialog(event, {
-        defaultPath:
-          (projectDir && session.suggestSaveAs !== undefined
-            ? join(projectDir, basename(session.suggestSaveAs))
-            : undefined) ??
-          session.suggestSaveAs ??
-          session.csvSourcePath?.replace(/\.[^.]+$/, '.xlsx') ??
-          session.restoreTarget ??
-          session.path,
-        filters: macroEnabled
-          ? [{ name: tm('filterXlsm'), extensions: ['xlsm'] }]
-          : [
-              { name: tm('filterXlsx'), extensions: ['xlsx'] },
-              { name: tm('filterCsv'), extensions: ['csv'] },
-            ],
+        // with PDF on offer the suggestion carries no extension: the file
+        // type chosen in the dialog supplies it
+        defaultPath: offerPdf ? sheetsSaveAsSuggestion(suggestion) : suggestion,
+        // the workbook's own type first, then the copies (CSV, PDF of the active sheet)
+        filters: sheetsSaveAsFilters(macroEnabled, offerPdf, (key) => tm(key)),
         // CSV import: explain why the save goes through .xlsx (CSV keeps values only)
         ...(session.csvImport
           ? { title: tm('csvSaveAsNotice'), message: tm('csvSaveAsNotice') }
           : {}),
       })
       if (selection.canceled || !selection.filePath) return { canceled: true }
+      const pick = resolveSheetsSaveAsPick(selection.filePath, macroEnabled, offerPdf)
       // A CSV pick can't ride the xlsx pipeline: hand the path back so the
       // renderer serializes the active sheet through the CSV export channel.
-      if (!macroEnabled && selection.filePath.toLowerCase().endsWith('.csv')) {
-        return { canceled: true, csvSaveAsPath: selection.filePath }
+      if (pick.kind === 'csv') return { canceled: true, csvSaveAsPath: pick.path }
+      // A PDF pick is a copy too: the renderer lays out the active sheet and
+      // the PDF export writes it here without asking again. The session, its
+      // path and its pending edits stay as they are.
+      if (pick.kind === 'pdf') {
+        saveAsExportTargets.authorize(event.sender.id, pick.path)
+        return { canceled: true, pdfSaveAsPath: pick.path }
       }
-      targetPath = selection.filePath.toLowerCase().endsWith(`.${ext}`)
-        ? selection.filePath
-        : `${selection.filePath}.${ext}`
+      targetPath = pick.path
     } else if (session.restoreTarget !== undefined) {
       // Restored crash-recovery copy: the restore prompt was the confirmation,
       // so Save writes straight back to the original — unless someone else

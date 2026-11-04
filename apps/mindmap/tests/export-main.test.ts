@@ -26,6 +26,8 @@ import {
   EXPORT_KINDS,
   exportFileBase,
   exportRequestAllowed,
+  grantSaveAsExport,
+  isMapSvg,
   registerMindmapExportIpc,
   withExportExtension,
 } from '../src/main/export-main'
@@ -161,5 +163,61 @@ describe('the PDF and print', () => {
     const result = await call(MINDMAP_CHANNELS.exportPdf, { html: '<p>x</p>', suggestedName: 'x' })
     expect(result).toEqual({ ok: true, canceled: true })
     expect(existsSync(join(dir, 'x.pdf'))).toBe(false)
+  })
+})
+
+describe('the SVG picture', () => {
+  const SVG =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10">' +
+    '<foreignObject x="0" y="0" width="10" height="10">' +
+    '<div xmlns="http://www.w3.org/1999/xhtml">a &lt;script&gt; in text</div>' +
+    '</foreignObject></svg>'
+
+  it('is written as UTF-8 with an XML declaration, under the picked name with .svg', async () => {
+    pick(join(dir, 'sheet'))
+    const result = await call(MINDMAP_CHANNELS.exportSvg, { svg: SVG, suggestedName: 'Plan' })
+    expect(result).toEqual({ ok: true, path: join(dir, 'sheet.svg') })
+    expect(readFileSync(join(dir, 'sheet.svg'), 'utf8')).toBe(
+      `<?xml version="1.0" encoding="UTF-8"?>\n${SVG}`,
+    )
+    expect(dialogOptions().filters).toEqual([{ name: 'SVG', extensions: ['svg'] }])
+    expect(dialogOptions().defaultPath.endsWith('Plan.svg')).toBe(true)
+  })
+
+  it('anything but one SVG element without a script is refused before any dialog', async () => {
+    expect(isMapSvg(SVG)).toBe(true)
+    for (const svg of [
+      '',
+      'not svg',
+      '<html><svg xmlns="http://www.w3.org/2000/svg"></svg></html>',
+      `${SVG}<script>alert(1)</script>`,
+      SVG.replace('</foreignObject>', '<script>alert(1)</script></foreignObject>'),
+      SVG.replace('</foreignObject>', '<SCRIPT/></foreignObject>'),
+      null,
+      42,
+    ]) {
+      expect(isMapSvg(svg), String(svg)).toBe(false)
+      const result = await call(MINDMAP_CHANNELS.exportSvg, { svg, suggestedName: 'x' })
+      expect(result.ok).toBe(false)
+    }
+    expect(showSaveDialog).not.toHaveBeenCalled()
+    expect(readdirSync(dir)).toEqual([])
+  })
+
+  it('a Save As path is written without a dialog, once, and only for the kind it was picked for', async () => {
+    const target = join(dir, 'picked.svg')
+    grantSaveAsExport(7, { kind: 'png', path: target })
+    expect(
+      (await call(MINDMAP_CHANNELS.exportSvg, { svg: SVG, suggestedName: 'x', path: target })).ok,
+    ).toBe(false)
+    grantSaveAsExport(7, { kind: 'svg', path: target })
+    expect(
+      await call(MINDMAP_CHANNELS.exportSvg, { svg: SVG, suggestedName: 'x', path: target }),
+    ).toEqual({ ok: true, path: target })
+    expect(
+      (await call(MINDMAP_CHANNELS.exportSvg, { svg: SVG, suggestedName: 'x', path: target })).ok,
+    ).toBe(false)
+    expect(showSaveDialog).not.toHaveBeenCalled()
+    expect(readdirSync(dir)).toEqual(['picked.svg'])
   })
 })

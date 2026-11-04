@@ -130,6 +130,11 @@ export type SaveHtmlResult =
   | {
       ok: true
       path: string
+      /**
+       * Save As › an export format: `path` is a PDF, Word or ODT copy of the page,
+       * not its save. The page keeps its path, unsaved edits and assets.
+       */
+      exported?: 'pdf' | 'docx' | 'odt'
       /** Save As may relocate local images into the new document's assets directory. */
       imageRewrites?: Array<{ from: string; to: string }>
     }

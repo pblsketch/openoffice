@@ -1,12 +1,21 @@
 import type { ExportResult } from '../../shared/ipc'
 
-/** Same 192 DPI output as Docs; render and write one page at a time. */
+/**
+ * Same 192 DPI output as Docs; render and write one page at a time. With
+ * `saveAsTarget` (Save As › page images) the pages go beside that approved name
+ * instead of into a folder the person picks.
+ */
 export async function exportImages(
   html: string,
   suggestedName: string,
   onProgress: (count: number) => void,
+  saveAsTarget?: string,
 ): Promise<ExportResult & { count?: number }> {
-  const target = await window.markdownApi.prepareImageExport({ html, suggestedName })
+  const target = await window.markdownApi.prepareImageExport({
+    html,
+    suggestedName,
+    ...(saveAsTarget ? { saveAsTarget } : {}),
+  })
   if (!target.ok || 'canceled' in target) return target
   let task: import('pdfjs-dist').PDFDocumentLoadingTask | undefined
   let canvas: HTMLCanvasElement | undefined

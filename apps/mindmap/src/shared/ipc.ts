@@ -54,6 +54,8 @@ export const MINDMAP_CHANNELS = {
   exportRequest: 'mindmap:export-request',
   /** invoke(`ExportPngRequest`) → `ExportResult`. T10 */
   exportPng: 'mindmap:export-png',
+  /** invoke(`ExportSvgRequest`) → `ExportResult` */
+  exportSvg: 'mindmap:export-svg',
   /** invoke(`ExportPdfRequest`) → `ExportResult`. T10 */
   exportPdf: 'mindmap:export-pdf',
   /** invoke(`ExportMarkdownRequest`) → `ExportResult`. T10 */
@@ -193,8 +195,16 @@ export interface SaveMindmapRequest {
   auto?: boolean
 }
 
+/**
+ * `export`: Save As picked one of the export types. Nothing was written and the
+ * map keeps its file; the renderer writes that copy to `path` through the
+ * export channel, which takes exactly that path once without asking again.
+ */
 export type SaveMindmapResult =
-  { ok: true; path: string } | { ok: true; canceled: true } | { ok: false; error: string }
+  | { ok: true; path: string }
+  | { ok: true; canceled: true }
+  | { ok: true; export: { format: ExportFormat; path: string } }
+  | { ok: false; error: string }
 
 /**
  * Project folders (spec 6): the run a create flow handed to an untitled map
@@ -240,25 +250,36 @@ export type MindmapMenuCommand =
 
 // ---- export and print (T10) ----
 
-export type ExportFormat = 'png' | 'pdf' | 'markdown'
+export type ExportFormat = 'png' | 'svg' | 'pdf' | 'markdown'
 
 export interface ExportPngRequest {
   /** the picture of the current sheet */
   bytes: Uint8Array
   /** file name (no extension) suggested in the dialog */
   suggestedName: string
+  /** the path Save As picked for this export: written without a dialog (`SaveMindmapResult`) */
+  path?: string
+}
+
+export interface ExportSvgRequest {
+  /** the current sheet as one self-contained SVG document (pictures as `data:` addresses) */
+  svg: string
+  suggestedName: string
+  path?: string
 }
 
 export interface ExportPdfRequest {
   /** self-contained print HTML; the main process prints it in a hidden window */
   html: string
   suggestedName: string
+  path?: string
 }
 
 export interface ExportMarkdownRequest {
   /** the outline text */
   text: string
   suggestedName: string
+  path?: string
 }
 
 export type ExportResult =
@@ -431,6 +452,7 @@ export interface MindmapExportApi {
   onExportRequest(handler: (format: ExportFormat) => void): () => void
   onPrintRequest(handler: () => void): () => void
   exportPng(request: ExportPngRequest): Promise<ExportResult>
+  exportSvg(request: ExportSvgRequest): Promise<ExportResult>
   exportPdf(request: ExportPdfRequest): Promise<ExportResult>
   exportMarkdown(request: ExportMarkdownRequest): Promise<ExportResult>
   print(request: PrintMindmapRequest): Promise<PrintResult>

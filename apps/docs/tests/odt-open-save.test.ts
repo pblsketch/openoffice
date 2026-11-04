@@ -526,7 +526,7 @@ describe('Save As with a format change', () => {
     setFormatChangeHost(host)
     pickedPath = '/docs/copy.odt'
     expect(await save(ctx, true)).toBe(true)
-    expect(desktop.pickSaveAsPath).toHaveBeenCalledWith('form.odt', '/docs/form.odt', 'odt')
+    expect(desktop.pickSaveAsPath).toHaveBeenCalledWith('form.odt', '/docs/form.odt', 'odt', true)
     expect(host).not.toHaveBeenCalled()
     expect(written[0].path).toBe('/docs/copy.odt')
     expect(written[0].bytes).toEqual(odt)

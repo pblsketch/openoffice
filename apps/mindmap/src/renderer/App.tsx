@@ -399,6 +399,10 @@ export default function App() {
     [status, path, flushAll],
   )
 
+  // export, print and the preview picture a save writes (export/use-map-export.ts)
+  const exporter = useMapExport({ session, controllers, activeKey, path, flushAll, say })
+  const exportAs = exporter.exportAs
+
   // ---- saving ----
 
   const doSave = useCallback(
@@ -430,6 +434,13 @@ export default function App() {
           setProjectSaveProblem(null)
           return true
         }
+        if (result.ok && 'export' in result) {
+          // Save As picked an export type: that copy is written by the export,
+          // to the path picked. The map keeps its file and stays unsaved.
+          setSaveState('idle')
+          exportAs(result.export.format, result.export.path)
+          return false
+        }
         // a sibling copy holding the disk version is not a failure: an
         // automatic save is deferred silently and a declined overwrite keeps
         // the map dirty, exactly like the other editors' guard
@@ -445,7 +456,7 @@ export default function App() {
         savingRef.current = false
       }
     },
-    [flushAll, recovery],
+    [flushAll, recovery, exportAs],
   )
 
   /**
@@ -703,9 +714,6 @@ export default function App() {
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [doSave, runCommand])
-
-  // export, print and the preview picture a save writes (export/use-map-export.ts)
-  const exporter = useMapExport({ session, controllers, activeKey, path, flushAll, say })
 
   // ---- sheets ----
 

@@ -120,7 +120,10 @@ const api: HwpApi = {
     ipcRenderer.on(HWP_CHANNELS.previewRequest, listener)
     return () => ipcRenderer.removeListener(HWP_CHANNELS.previewRequest, listener)
   },
-  printPages: (job) => ipcRenderer.invoke(HWP_CHANNELS.printPages, job),
+  printPages: (job, options) =>
+    options
+      ? ipcRenderer.invoke(HWP_CHANNELS.printPages, job, options)
+      : ipcRenderer.invoke(HWP_CHANNELS.printPages, job),
   onCloseSaveRequest: (handler) => {
     const listener = () => handler()
     ipcRenderer.on(HWP_CHANNELS.closeSaveRequest, listener)

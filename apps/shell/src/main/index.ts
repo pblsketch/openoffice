@@ -258,6 +258,7 @@ import {
   flushPdfSave,
   markPdfUntitledPath,
   pdfFileRenamed,
+  requestPdfPageImages,
   requestPdfSaveAsOutcome,
   pdfCloseCancelled,
   sendPdfPrintRequest,
@@ -279,6 +280,12 @@ import {
   runWindowJob,
 } from './pdf-structure-ipc'
 import { registerPdfConvertUiIpc, requestPdfConvertDialog } from './pdf-convert-ui'
+import {
+  pdfSaveAsDefaultPath,
+  pdfSaveAsFilters,
+  pdfSaveAsFormatOf,
+  pdfSaveAsPickedPath,
+} from './pdf-save-as-formats'
 import {
   configureMarkdownRuntime,
   exportMarkdownPdfHeadless,
@@ -1109,6 +1116,7 @@ const tMain = createI18n({
     menuExportImages: '导出为图片…',
     menuExportHtml: '导出为单文件 HTML…',
     menuExportMapImage: '导出为图片 (PNG)…',
+    menuExportMapSvg: '导出为图片 (SVG)…',
     menuExportMapOutline: '导出为 Markdown 大纲…',
     menuMakeFromDocument: '用此文档新建其他文档',
     menuDocumentSources: '查看资料',
@@ -1143,6 +1151,7 @@ const tMain = createI18n({
     menuReplace: '替换…',
     menuTranslateBook: '翻译图书…',
     filterPdf: 'PDF 文档',
+    filterPdfPageImages: 'PNG 图片（每页一个文件）',
     errBadArgs: '参数无效',
     errBadName: '文件名不合法',
     errBadExtension: '这个扩展名不受支持，改了文件就打不开了',
@@ -1260,6 +1269,7 @@ const tMain = createI18n({
     menuExportImages: 'Export as Images…',
     menuExportHtml: 'Export as Single-File HTML…',
     menuExportMapImage: 'Export as Image (PNG)…',
+    menuExportMapSvg: 'Export as Image (SVG)…',
     menuExportMapOutline: 'Export as Markdown Outline…',
     menuMakeFromDocument: 'Make Another Document from This',
     menuDocumentSources: 'View Sources',
@@ -1290,6 +1300,7 @@ const tMain = createI18n({
     menuReplace: 'Replace…',
     menuTranslateBook: 'Translate Book…',
     filterPdf: 'PDF Documents',
+    filterPdfPageImages: 'PNG Images (one file per page)',
     errBadArgs: 'Invalid arguments',
     errBadName: 'Invalid file name',
     errBadExtension: 'That extension is not supported, and the file would no longer open',
@@ -1411,6 +1422,7 @@ const tMain = createI18n({
     menuExportImages: 'Xuất dưới dạng hình ảnh…',
     menuExportHtml: 'Xuất dưới dạng HTML một tệp…',
     menuExportMapImage: 'Xuất dưới dạng hình ảnh (PNG)…',
+    menuExportMapSvg: 'Xuất dưới dạng hình ảnh (SVG)…',
     menuExportMapOutline: 'Xuất dưới dạng dàn ý Markdown…',
     menuMakeFromDocument: 'Tạo tài liệu khác từ tài liệu này',
     menuDocumentSources: 'Xem tài liệu nguồn',
@@ -1445,6 +1457,7 @@ const tMain = createI18n({
     menuReplace: 'Thay thế…',
     menuTranslateBook: 'Dịch sách…',
     filterPdf: 'Tài liệu PDF',
+    filterPdfPageImages: 'Ảnh PNG (mỗi trang một tệp)',
     errBadArgs: 'Đối số không hợp lệ',
     errBadName: 'Tên tệp không hợp lệ',
     errBadExtension: 'Phần mở rộng đó không được hỗ trợ và tệp sẽ không còn mở được',
@@ -1567,6 +1580,7 @@ const tMain = createI18n({
     menuExportImages: '画像としてエクスポート…',
     menuExportHtml: '単一ファイル HTML として書き出す…',
     menuExportMapImage: '画像 (PNG) としてエクスポート…',
+    menuExportMapSvg: '画像 (SVG) としてエクスポート…',
     menuExportMapOutline: 'Markdown アウトラインとしてエクスポート…',
     menuMakeFromDocument: 'この文書から別の文書を作成',
     menuDocumentSources: '資料を表示',
@@ -1601,6 +1615,7 @@ const tMain = createI18n({
     menuReplace: '置換…',
     menuTranslateBook: '本を翻訳…',
     filterPdf: 'PDF ドキュメント',
+    filterPdfPageImages: 'PNG 画像 (1 ページにつき 1 ファイル)',
     errBadArgs: '引数が無効です',
     errBadName: 'ファイル名が無効です',
     errBadExtension: 'その拡張子はサポートされていないため、ファイルを開けなくなります',
@@ -1724,6 +1739,7 @@ const tMain = createI18n({
     menuExportImages: '이미지로 내보내기…',
     menuExportHtml: '단일 파일 HTML로 내보내기…',
     menuExportMapImage: '이미지(PNG)로 내보내기…',
+    menuExportMapSvg: '이미지(SVG)로 내보내기…',
     menuExportMapOutline: '마크다운 개요로 내보내기…',
     menuMakeFromDocument: '이 문서로 다른 문서 만들기',
     menuDocumentSources: '자료 보기',
@@ -1758,6 +1774,7 @@ const tMain = createI18n({
     menuReplace: '바꾸기…',
     menuTranslateBook: '책 번역…',
     filterPdf: 'PDF 문서',
+    filterPdfPageImages: 'PNG 이미지 (페이지마다 파일 하나)',
     errBadArgs: '잘못된 인수입니다',
     errBadName: '파일 이름이 잘못되었습니다',
     errBadExtension: '지원하지 않는 확장자이며 파일을 열 수 없게 됩니다',
@@ -1879,6 +1896,7 @@ const tMain = createI18n({
     menuExportImages: 'Exporter en images…',
     menuExportHtml: 'Exporter en HTML (fichier unique)…',
     menuExportMapImage: 'Exporter en image (PNG)…',
+    menuExportMapSvg: 'Exporter en image (SVG)…',
     menuExportMapOutline: 'Exporter en plan Markdown…',
     menuMakeFromDocument: 'Créer un autre document à partir de celui-ci',
     menuDocumentSources: 'Voir les sources',
@@ -1913,6 +1931,7 @@ const tMain = createI18n({
     menuReplace: 'Remplacer…',
     menuTranslateBook: 'Traduire le livre…',
     filterPdf: 'Documents PDF',
+    filterPdfPageImages: 'Images PNG (un fichier par page)',
     errBadArgs: 'Arguments non valides',
     errBadName: 'Nom de fichier non valide',
     errBadExtension: 'Cette extension n’est pas prise en charge et le fichier ne s’ouvrirait plus',
@@ -2037,6 +2056,7 @@ const tMain = createI18n({
     menuExportImages: 'Als Bilder exportieren…',
     menuExportHtml: 'Als Einzeldatei-HTML exportieren…',
     menuExportMapImage: 'Als Bild (PNG) exportieren…',
+    menuExportMapSvg: 'Als Bild (SVG) exportieren…',
     menuExportMapOutline: 'Als Markdown-Gliederung exportieren…',
     menuMakeFromDocument: 'Anderes Dokument aus diesem erstellen',
     menuDocumentSources: 'Quellen anzeigen',
@@ -2071,6 +2091,7 @@ const tMain = createI18n({
     menuReplace: 'Ersetzen…',
     menuTranslateBook: 'Buch übersetzen…',
     filterPdf: 'PDF-Dokumente',
+    filterPdfPageImages: 'PNG-Bilder (eine Datei pro Seite)',
     errBadArgs: 'Ungültige Argumente',
     errBadName: 'Ungültiger Dateiname',
     errBadExtension:
@@ -2195,6 +2216,7 @@ const tMain = createI18n({
     menuExportImages: 'Exportar como imágenes…',
     menuExportHtml: 'Exportar como HTML de archivo único…',
     menuExportMapImage: 'Exportar como imagen (PNG)…',
+    menuExportMapSvg: 'Exportar como imagen (SVG)…',
     menuExportMapOutline: 'Exportar como esquema Markdown…',
     menuMakeFromDocument: 'Crear otro documento a partir de este',
     menuDocumentSources: 'Ver fuentes',
@@ -2229,6 +2251,7 @@ const tMain = createI18n({
     menuReplace: 'Reemplazar…',
     menuTranslateBook: 'Traducir libro…',
     filterPdf: 'Documentos PDF',
+    filterPdfPageImages: 'Imágenes PNG (un archivo por página)',
     errBadArgs: 'Argumentos no válidos',
     errBadName: 'Nombre de archivo no válido',
     errBadExtension: 'Esa extensión no es compatible y el archivo dejaría de abrirse',
@@ -2352,6 +2375,7 @@ const tMain = createI18n({
     menuExportImages: 'ส่งออกเป็นรูปภาพ…',
     menuExportHtml: 'ส่งออกเป็น HTML ไฟล์เดียว…',
     menuExportMapImage: 'ส่งออกเป็นรูปภาพ (PNG)…',
+    menuExportMapSvg: 'ส่งออกเป็นรูปภาพ (SVG)…',
     menuExportMapOutline: 'ส่งออกเป็นโครงร่าง Markdown…',
     menuMakeFromDocument: 'สร้างเอกสารอื่นจากเอกสารนี้',
     menuDocumentSources: 'ดูแหล่งข้อมูล',
@@ -2386,6 +2410,7 @@ const tMain = createI18n({
     menuReplace: 'แทนที่…',
     menuTranslateBook: 'แปลหนังสือ…',
     filterPdf: 'เอกสาร PDF',
+    filterPdfPageImages: 'รูปภาพ PNG (หนึ่งไฟล์ต่อหน้า)',
     errBadArgs: 'อาร์กิวเมนต์ไม่ถูกต้อง',
     errBadName: 'ชื่อไฟล์ไม่ถูกต้อง',
     errBadExtension: 'ไม่รองรับส่วนขยายนี้ ไฟล์จะเปิดไม่ได้',
@@ -2505,6 +2530,7 @@ const tMain = createI18n({
     menuExportImages: 'Ekspor sebagai gambar…',
     menuExportHtml: 'Ekspor sebagai HTML satu file…',
     menuExportMapImage: 'Ekspor sebagai gambar (PNG)…',
+    menuExportMapSvg: 'Ekspor sebagai gambar (SVG)…',
     menuExportMapOutline: 'Ekspor sebagai kerangka Markdown…',
     menuMakeFromDocument: 'Buat dokumen lain dari dokumen ini',
     menuDocumentSources: 'Lihat sumber',
@@ -2539,6 +2565,7 @@ const tMain = createI18n({
     menuReplace: 'Ganti…',
     menuTranslateBook: 'Terjemahkan buku…',
     filterPdf: 'Dokumen PDF',
+    filterPdfPageImages: 'Gambar PNG (satu berkas per halaman)',
     errBadArgs: 'Argumen tidak valid',
     errBadName: 'Nama file tidak valid',
     errBadExtension: 'Ekstensi itu tidak didukung dan berkas tidak akan bisa dibuka',
@@ -2662,6 +2689,7 @@ const tMain = createI18n({
     menuExportImages: 'Экспорт в изображения…',
     menuExportHtml: 'Экспортировать в один файл HTML…',
     menuExportMapImage: 'Экспорт в изображение (PNG)…',
+    menuExportMapSvg: 'Экспорт в изображение (SVG)…',
     menuExportMapOutline: 'Экспорт в структуру Markdown…',
     menuMakeFromDocument: 'Создать другой документ из этого',
     menuDocumentSources: 'Показать источники',
@@ -2696,6 +2724,7 @@ const tMain = createI18n({
     menuReplace: 'Заменить…',
     menuTranslateBook: 'Перевести книгу…',
     filterPdf: 'Документы PDF',
+    filterPdfPageImages: 'Изображения PNG (по файлу на страницу)',
     errBadArgs: 'Недопустимые аргументы',
     errBadName: 'Недопустимое имя файла',
     errBadExtension: 'Это расширение не поддерживается, и файл больше не откроется',
@@ -2818,6 +2847,7 @@ const tMain = createI18n({
     menuExportImages: 'تصدير كصور…',
     menuExportHtml: 'تصدير كملف HTML واحد…',
     menuExportMapImage: 'تصدير كصورة (PNG)…',
+    menuExportMapSvg: 'تصدير كصورة (SVG)…',
     menuExportMapOutline: 'تصدير كمخطط Markdown…',
     menuMakeFromDocument: 'إنشاء مستند آخر من هذا المستند',
     menuDocumentSources: 'عرض المصادر',
@@ -2852,6 +2882,7 @@ const tMain = createI18n({
     menuReplace: 'استبدال…',
     menuTranslateBook: 'ترجمة الكتاب…',
     filterPdf: 'مستندات PDF',
+    filterPdfPageImages: 'صور PNG (ملف لكل صفحة)',
     errBadArgs: 'وسيطات غير صالحة',
     errBadName: 'اسم ملف غير صالح',
     errBadExtension: 'هذه الامتداد غير مدعوم وسيصبح الملف غير قابل للفتح',
@@ -2971,6 +3002,7 @@ const tMain = createI18n({
     menuExportImages: 'Exportar como imagens…',
     menuExportHtml: 'Exportar como HTML de arquivo único…',
     menuExportMapImage: 'Exportar como imagem (PNG)…',
+    menuExportMapSvg: 'Exportar como imagem (SVG)…',
     menuExportMapOutline: 'Exportar como estrutura de tópicos Markdown…',
     menuMakeFromDocument: 'Criar outro documento a partir deste',
     menuDocumentSources: 'Ver fontes',
@@ -3005,6 +3037,7 @@ const tMain = createI18n({
     menuReplace: 'Substituir…',
     menuTranslateBook: 'Traduzir livro…',
     filterPdf: 'Documentos PDF',
+    filterPdfPageImages: 'Imagens PNG (um arquivo por página)',
     errBadArgs: 'Argumentos inválidos',
     errBadName: 'Nome de arquivo inválido',
     errBadExtension: 'Essa extensão não é suportada e o arquivo deixaria de abrir',
@@ -3128,6 +3161,7 @@ const tMain = createI18n({
     menuExportImages: 'Esporta come immagini…',
     menuExportHtml: 'Esporta come HTML a file singolo…',
     menuExportMapImage: 'Esporta come immagine (PNG)…',
+    menuExportMapSvg: 'Esporta come immagine (SVG)…',
     menuExportMapOutline: 'Esporta come struttura Markdown…',
     menuMakeFromDocument: 'Crea un altro documento da questo',
     menuDocumentSources: 'Mostra le fonti',
@@ -3162,6 +3196,7 @@ const tMain = createI18n({
     menuReplace: 'Sostituisci…',
     menuTranslateBook: 'Traduci libro…',
     filterPdf: 'Documenti PDF',
+    filterPdfPageImages: 'Immagini PNG (un file per pagina)',
     errBadArgs: 'Argomenti non validi',
     errBadName: 'Nome file non valido',
     errBadExtension: 'Questa estensione non è supportata e il file non si aprirebbe più',
@@ -3285,6 +3320,7 @@ const tMain = createI18n({
     menuExportImages: 'Eksportuj jako obrazy…',
     menuExportHtml: 'Eksportuj jako pojedynczy plik HTML…',
     menuExportMapImage: 'Eksportuj jako obraz (PNG)…',
+    menuExportMapSvg: 'Eksportuj jako obraz (SVG)…',
     menuExportMapOutline: 'Eksportuj jako konspekt Markdown…',
     menuMakeFromDocument: 'Utwórz inny dokument z tego',
     menuDocumentSources: 'Pokaż źródła',
@@ -3319,6 +3355,7 @@ const tMain = createI18n({
     menuReplace: 'Zamień…',
     menuTranslateBook: 'Przetłumacz książkę…',
     filterPdf: 'Dokumenty PDF',
+    filterPdfPageImages: 'Obrazy PNG (jeden plik na stronę)',
     errBadArgs: 'Nieprawidłowe argumenty',
     errBadName: 'Nieprawidłowa nazwa pliku',
     errBadExtension: 'To rozszerzenie nie jest obsługiwane i plik przestałby się otwierać',
@@ -3441,6 +3478,7 @@ const tMain = createI18n({
     menuExportImages: 'Exportovat jako obrázky…',
     menuExportHtml: 'Exportovat jako samostatné HTML…',
     menuExportMapImage: 'Exportovat jako obrázek (PNG)…',
+    menuExportMapSvg: 'Exportovat jako obrázek (SVG)…',
     menuExportMapOutline: 'Exportovat jako osnovu Markdown…',
     menuMakeFromDocument: 'Vytvořit jiný dokument z tohoto',
     menuDocumentSources: 'Zobrazit zdroje',
@@ -3475,6 +3513,7 @@ const tMain = createI18n({
     menuReplace: 'Nahradit…',
     menuTranslateBook: 'Přeložit knihu…',
     filterPdf: 'Dokumenty PDF',
+    filterPdfPageImages: 'Obrázky PNG (jeden soubor na stránku)',
     errBadArgs: 'Neplatné argumenty',
     errBadName: 'Neplatný název souboru',
     errBadExtension: 'Toto rozšíření není podporováno a soubor by se neotevíral',
@@ -3596,6 +3635,7 @@ const tMain = createI18n({
     menuExportImages: 'Exporteren als afbeeldingen…',
     menuExportHtml: 'Exporteren als één HTML-bestand…',
     menuExportMapImage: 'Exporteren als afbeelding (PNG)…',
+    menuExportMapSvg: 'Exporteren als afbeelding (SVG)…',
     menuExportMapOutline: 'Exporteren als Markdown-overzicht…',
     menuMakeFromDocument: 'Ander document maken van dit document',
     menuDocumentSources: 'Bronnen weergeven',
@@ -3630,6 +3670,7 @@ const tMain = createI18n({
     menuReplace: 'Vervangen…',
     menuTranslateBook: 'Boek vertalen…',
     filterPdf: 'PDF-documenten',
+    filterPdfPageImages: 'PNG-afbeeldingen (één bestand per pagina)',
     errBadArgs: 'Ongeldige argumenten',
     errBadName: 'Ongeldige bestandsnaam',
     errBadExtension: 'Die extensie wordt niet ondersteund en het bestand zou niet meer openen',
@@ -3754,6 +3795,7 @@ const tMain = createI18n({
     menuExportImages: 'Eksport sebagai imej…',
     menuExportHtml: 'Eksport sebagai HTML fail tunggal…',
     menuExportMapImage: 'Eksport sebagai imej (PNG)…',
+    menuExportMapSvg: 'Eksport sebagai imej (SVG)…',
     menuExportMapOutline: 'Eksport sebagai rangka Markdown…',
     menuMakeFromDocument: 'Buat dokumen lain daripada dokumen ini',
     menuDocumentSources: 'Lihat sumber',
@@ -3788,6 +3830,7 @@ const tMain = createI18n({
     menuReplace: 'Ganti…',
     menuTranslateBook: 'Terjemah buku…',
     filterPdf: 'Dokumen PDF',
+    filterPdfPageImages: 'Imej PNG (satu fail bagi setiap halaman)',
     errBadArgs: 'Argumen tidak sah',
     errBadName: 'Nama fail tidak sah',
     errBadExtension: 'Sambungan itu tidak disokong dan fail tidak akan dibuka',
@@ -3909,6 +3952,7 @@ const tMain = createI18n({
     menuExportImages: 'ייצוא כתמונות…',
     menuExportHtml: 'ייצוא כ-HTML בקובץ יחיד…',
     menuExportMapImage: 'ייצוא כתמונה (PNG)…',
+    menuExportMapSvg: 'ייצוא כתמונה (SVG)…',
     menuExportMapOutline: 'ייצוא כמתאר Markdown…',
     menuMakeFromDocument: 'יצירת מסמך אחר מהמסמך הזה',
     menuDocumentSources: 'הצגת מקורות',
@@ -3943,6 +3987,7 @@ const tMain = createI18n({
     menuReplace: 'החלפה…',
     menuTranslateBook: 'תרגום הספר…',
     filterPdf: 'מסמכי PDF',
+    filterPdfPageImages: 'תמונות PNG (קובץ אחד לכל עמוד)',
     errBadArgs: 'ארגומנטים לא חוקיים',
     errBadName: 'שם קובץ לא חוקי',
     errBadExtension: 'הסיומת אינה נתמכת והקובץ לא ייפתח יותר',
@@ -4063,6 +4108,7 @@ const tMain = createI18n({
     menuExportImages: 'छवियों के रूप में निर्यात…',
     menuExportHtml: 'एकल-फ़ाइल HTML के रूप में निर्यात…',
     menuExportMapImage: 'छवि (PNG) के रूप में निर्यात…',
+    menuExportMapSvg: 'छवि (SVG) के रूप में निर्यात…',
     menuExportMapOutline: 'Markdown रूपरेखा के रूप में निर्यात…',
     menuMakeFromDocument: 'इस दस्तावेज़ से दूसरा दस्तावेज़ बनाएँ',
     menuDocumentSources: 'स्रोत देखें',
@@ -4097,6 +4143,7 @@ const tMain = createI18n({
     menuReplace: 'बदलें…',
     menuTranslateBook: 'पुस्तक का अनुवाद करें…',
     filterPdf: 'PDF दस्तावेज़',
+    filterPdfPageImages: 'PNG छवियाँ (हर पेज के लिए एक फ़ाइल)',
     errBadArgs: 'अमान्य आर्ग्युमेंट',
     errBadName: 'अमान्य फ़ाइल नाम',
     errBadExtension: 'वह एक्सटेंशन समर्थित नहीं है और फ़ाइल फिर नहीं खुलेगी',
@@ -4219,6 +4266,7 @@ const tMain = createI18n({
     menuExportImages: '匯出為圖片…',
     menuExportHtml: '匯出為單檔 HTML…',
     menuExportMapImage: '匯出為圖片 (PNG)…',
+    menuExportMapSvg: '匯出為圖片 (SVG)…',
     menuExportMapOutline: '匯出為 Markdown 大綱…',
     menuMakeFromDocument: '用此文件新增其他文件',
     menuDocumentSources: '檢視資料',
@@ -4253,6 +4301,7 @@ const tMain = createI18n({
     menuReplace: '取代…',
     menuTranslateBook: '翻譯書籍…',
     filterPdf: 'PDF 文件',
+    filterPdfPageImages: 'PNG 圖片（每頁一個檔案）',
     errBadArgs: '參數無效',
     errBadName: '檔案名稱不合法',
     errBadExtension: '這個副檔名不受支援，改了檔案就打不開了',
@@ -7334,6 +7383,15 @@ function tabMenuActions(): TabMenuActions {
           void requestHtmlSave(contents, mode)
         },
         printHtml: sendHtmlPrintRequest,
+        saveMindmap: (contents, mode) => {
+          void requestMindmapSave(contents, mode)
+        },
+        printMindmap: sendMindmapPrintRequest,
+        saveHwp: (contents, mode) => {
+          void requestHwpSave(contents, mode)
+        },
+        // the same as File > Print and Ctrl+P: the preview opens, and prints from there
+        printHwp: (contents) => requestHwpPreview(contents, 'print'),
       },
       id,
       action,
@@ -8195,6 +8253,13 @@ function buildMindmapMenu(): void {
           },
         },
         {
+          label: tm('menuExportMapSvg'),
+          click: () => {
+            const tab = activeMindmapTarget()
+            if (tab) sendMindmapExportRequest(tab.webContents, 'svg')
+          },
+        },
+        {
           label: tm('menuExportPdf'),
           click: () => {
             const tab = activeMindmapTarget()
@@ -8277,10 +8342,13 @@ function buildMindmapMenu(): void {
 /**
  * Save As for pdf tabs: write pending edits to the picked path only, then open the copy.
  * Non-destructive: the original file is never written with the copy, and a cancelled
- * dialog changes nothing on disk (dialog first, no flush into the source). A Markdown
- * target is a conversion, not a PDF copy: the path is granted to the view's conversion
- * dialog, which saves pending edits first and then writes the .md there (the File menu's
- * Markdown conversion does the same).
+ * dialog changes nothing on disk (dialog first, no flush into the source). The dialog
+ * also lists every conversion (pdf-save-as-formats.ts); a converted name never replaces
+ * the open PDF's path, title or unsaved state. Markdown and EPUB targets are granted to
+ * the view's conversion dialog, which saves pending edits first and then writes there
+ * (the File menu's conversions do the same); PNG page images are drawn by the view and
+ * written beside the picked name, one per page; Word / PowerPoint / Excel run the File
+ * menu's local conversion with the picked name once this flow has ended.
  */
 /** In-flight guard (same pattern as exportPdfAsDocxLocal): a re-trigger while the dialog
     or write is active must not start a second flow that overwrites the first one's
@@ -8288,6 +8356,13 @@ function buildMindmapMenu(): void {
 let savingPdfAs = false
 
 async function savePdfAs(tab = activePdfTarget()): Promise<void> {
+  const convert = await savePdfAsPick(tab)
+  // after the Save As flow: the conversion saves pending edits, prompts and
+  // shows progress on its own, like the File menu item
+  if (convert) await convert()
+}
+
+async function savePdfAsPick(tab = activePdfTarget()): Promise<(() => Promise<void>) | undefined> {
   const host = pdfHostWindow(tab)
   if (!tab?.filePath || !host || savingPdfAs) return
   savingPdfAs = true
@@ -8297,31 +8372,45 @@ async function savePdfAs(tab = activePdfTarget()): Promise<void> {
   try {
     const picked = await showSaveDialogWithMemory(dialog, host, {
       // No extension in the suggestion: the file type chosen in the dialog supplies
-      // .pdf or .md. A typed name keeps the extension it was given.
-      defaultPath: tab.filePath.replace(/\.pdf$/i, ''),
-      filters: [
-        { name: tm('filterPdf'), extensions: ['pdf'] },
-        // Save As › Markdown: the tab's conversion dialog converts to the picked
-        // name; a name with another extension stays a plain PDF copy
-        { name: 'Markdown', extensions: ['md'] },
-      ],
+      // it. A typed name keeps the extension it was given.
+      defaultPath: pdfSaveAsDefaultPath(tab.filePath),
+      // PDF first, then every conversion; a name with an unknown extension stays
+      // a plain PDF copy
+      filters: pdfSaveAsFilters(tm),
     })
     if (picked.canceled || !picked.filePath) return
     // A dialog that does not add the chosen type's extension (some Linux desktops)
     // leaves a bare name: the default type is PDF
-    const pickedPath = extname(picked.filePath) ? picked.filePath : `${picked.filePath}.pdf`
+    const pickedPath = pdfSaveAsPickedPath(picked.filePath)
     const target = pdfSaveAsTarget({ canceled: false, filePath: pickedPath }, tab.filePath)
     if (!target) return
-    if (/\.md$/i.test(target)) {
+    const format = pdfSaveAsFormatOf(target)
+    if (format === 'md' || format === 'epub') {
       // The path came from this dialog, never from the renderer: grant it to the
       // view's own conversion dialog, which then writes exactly there
-      if (!grantPdfStructureTarget(tab.webContents, tab.filePath, target, 'md')) {
-        console.error('[shell] pdf save as markdown: target was not granted')
+      if (!grantPdfStructureTarget(tab.webContents, tab.filePath, target, format)) {
+        console.error(`[shell] pdf save as ${format}: target was not granted`)
         await dialog.showMessageBox(host, { type: 'error', message: tm('errPdfSaveAsFailed') })
         return
       }
-      requestPdfConvertDialog(tab.webContents, 'md', target)
+      requestPdfConvertDialog(tab.webContents, format, target)
       return
+    }
+    if (format === 'png') {
+      // granted in the pdf main process; the view draws the pages and the
+      // export writes one file per page beside this name, then reveals them
+      if (!requestPdfPageImages(tab.webContents, target)) {
+        await dialog.showMessageBox(host, { type: 'error', message: tm('errPdfSaveAsFailed') })
+      }
+      return
+    }
+    if (format === 'docx' || format === 'pptx' || format === 'xlsx') {
+      const preset = { tab, target }
+      return format === 'docx'
+        ? () => exportPdfAsDocxLocal(preset)
+        : format === 'pptx'
+          ? () => exportPdfAsPptxLocal(preset)
+          : () => exportPdfAsXlsxLocal(preset)
     }
     // Always ask the renderer: it shows the annotation choices for the copy and,
     // with no pending edits and annotations kept, asks the pdf main process for a
@@ -8354,13 +8443,19 @@ async function savePdfAs(tab = activePdfTarget()): Promise<void> {
  */
 let exportingPdfDocx = false
 
+/** Save As › Word / PowerPoint / Excel: the tab and the name its dialog already picked */
+interface PdfExportPreset {
+  tab: { id: string; webContents: WebContents; filePath?: string }
+  target: string
+}
+
 /**
  * Export as Word for pdf tabs, fully local (pdf2docx P4): flush pending
  * edits, pick the destination, convert in-process via PDFium wasm, write the
  * file and open it in a Docs tab. No login, no credits.
  */
-async function exportPdfAsDocxLocal(): Promise<void> {
-  const tab = activePdfTarget()
+async function exportPdfAsDocxLocal(preset?: PdfExportPreset): Promise<void> {
+  const tab = preset?.tab ?? activePdfTarget()
   const host = pdfHostWindow(tab)
   if (!tab?.filePath || !host) return
   if (exportingPdfDocx) {
@@ -8373,10 +8468,13 @@ async function exportPdfAsDocxLocal(): Promise<void> {
   exportingPdfDocx = true
   try {
     if (!(await flushPdfSave(tab.webContents, true))) return
-    const picked = await showSaveDialogWithMemory(dialog, host, {
-      defaultPath: tab.filePath.replace(/\.pdf$/i, '.docx'),
-      filters: [{ name: tm('filterWord'), extensions: ['docx'] }],
-    })
+    // Save As already picked the name: no second dialog
+    const picked = preset
+      ? { canceled: false, filePath: preset.target }
+      : await showSaveDialogWithMemory(dialog, host, {
+          defaultPath: tab.filePath.replace(/\.pdf$/i, '.docx'),
+          filters: [{ name: tm('filterWord'), extensions: ['docx'] }],
+        })
     if (picked.canceled || !picked.filePath) return
     // If the destination is already open in a docs tab, close it first (its
     // normal unsaved-changes guard applies) so the converted file opens fresh
@@ -8499,8 +8597,8 @@ async function exportPdfAsDocxLocal(): Promise<void> {
  * the in-flight guard with the Word exports so pdfium never runs two
  * conversions at once.
  */
-async function exportPdfAsPptxLocal(): Promise<void> {
-  const tab = activePdfTarget()
+async function exportPdfAsPptxLocal(preset?: PdfExportPreset): Promise<void> {
+  const tab = preset?.tab ?? activePdfTarget()
   const host = pdfHostWindow(tab)
   if (!tab?.filePath || !host) return
   if (exportingPdfDocx) {
@@ -8513,10 +8611,13 @@ async function exportPdfAsPptxLocal(): Promise<void> {
   exportingPdfDocx = true
   try {
     if (!(await flushPdfSave(tab.webContents, true))) return
-    const picked = await showSaveDialogWithMemory(dialog, host, {
-      defaultPath: tab.filePath.replace(/\.pdf$/i, '.pptx'),
-      filters: [{ name: tm('filterPpt'), extensions: ['pptx'] }],
-    })
+    // Save As already picked the name: no second dialog
+    const picked = preset
+      ? { canceled: false, filePath: preset.target }
+      : await showSaveDialogWithMemory(dialog, host, {
+          defaultPath: tab.filePath.replace(/\.pdf$/i, '.pptx'),
+          filters: [{ name: tm('filterPpt'), extensions: ['pptx'] }],
+        })
     if (picked.canceled || !picked.filePath) return
     // same stale-tab handling as the Word export (see exportPdfAsDocxLocal),
     // against the slides tab that may already show the destination file
@@ -8610,8 +8711,8 @@ async function exportPdfAsPptxLocal(): Promise<void> {
  * in-flight guard with the Word/PowerPoint exports so pdfium never runs two
  * conversions at once.
  */
-async function exportPdfAsXlsxLocal(): Promise<void> {
-  const tab = activePdfTarget()
+async function exportPdfAsXlsxLocal(preset?: PdfExportPreset): Promise<void> {
+  const tab = preset?.tab ?? activePdfTarget()
   const host = pdfHostWindow(tab)
   if (!tab?.filePath || !host) return
   if (exportingPdfDocx) {
@@ -8624,10 +8725,13 @@ async function exportPdfAsXlsxLocal(): Promise<void> {
   exportingPdfDocx = true
   try {
     if (!(await flushPdfSave(tab.webContents, true))) return
-    const picked = await showSaveDialogWithMemory(dialog, host, {
-      defaultPath: tab.filePath.replace(/\.pdf$/i, '.xlsx'),
-      filters: [{ name: tm('filterExcel'), extensions: ['xlsx'] }],
-    })
+    // Save As already picked the name: no second dialog
+    const picked = preset
+      ? { canceled: false, filePath: preset.target }
+      : await showSaveDialogWithMemory(dialog, host, {
+          defaultPath: tab.filePath.replace(/\.pdf$/i, '.xlsx'),
+          filters: [{ name: tm('filterExcel'), extensions: ['xlsx'] }],
+        })
     if (picked.canceled || !picked.filePath) return
     // same stale-tab handling as the Word export (see exportPdfAsDocxLocal),
     // against the sheets tab that may already show the destination file

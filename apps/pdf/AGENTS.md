@@ -9,7 +9,7 @@ PDF 보기·주석·편집 에디터다. 화면은 PDF.js로 그리고, 저장�
 - IPC 계약 `src/shared/ipc.ts`(`PDF_CHANNELS`)와 편집 연산 설명(`src/shared/op-docs.ts`).
 - 페이지 탭의 "PDF 도구" 메뉴(결정 0030): 저장하지 않은 편집을 먼저 저장한 뒤 `pdf:open-in-pdf-tools`로 그 뷰의 파일과 도구 이름(`PDF_TOOLS_HANDOFF`)을 넘긴다. 메인은 그 뷰에 허가된 파일만 받아 셸이 주입한 `openPdfTools`를 부른다. 단독 실행에는 이 주입이 없어 메뉴가 아무것도 열지 못한다고 알린다.
 - PDF의 AI: 패널(`src/renderer/ai/AiPanel.tsx`), skill과 도구(`pdf-skill.ts`, `tools.ts`), 막힌 실행 판정(`ai-connection.ts`), 연결 상태 훅(`useSubscriptionConnection.ts`), preload가 내보내는 구독 API의 모양(`src/shared/subscription-api.ts`).
-- Markdown·EPUB 변환 화면(`src/renderer/convert/`): 변환 창(`ConvertDialog.tsx`, 페이지 범위·저장 위치·진행·취소, EPUB은 표지·책 정보·"원본 쪽마다 새 화면에서 시작". 셸의 "다른 이름으로 저장"에서 `.md`를 고르면 셸이 저장 창에서 고른 경로를 `initialTarget`으로 넘기고, 창은 폼 없이 그 경로로 바로 변환한다. 다른 변환과 같이 시작 전에 보류 중인 편집을 저장한다), 책 정보 "AI로 채우기"(`BookInfoAiFill.tsx`, `book-info-ai.ts`), "이미지를 폴더로 내보내기" 메뉴(`ExportImagesMenu.tsx`: "페이지 통째로", "지금 보는 쪽만", "페이지 안의 그림만". 앞의 둘은 `App.tsx`의 `exportImages`가 쪽을 150dpi로 그리고, 마지막은 `embedded-images.ts`가 구조 작업으로 뽑는다).
+- Markdown·EPUB 변환 화면(`src/renderer/convert/`): 변환 창(`ConvertDialog.tsx`, 페이지 범위·저장 위치·진행·취소, EPUB은 표지·책 정보·"원본 쪽마다 새 화면에서 시작". 셸의 "다른 이름으로 저장"에서 `.md`나 `.epub`을 고르면 셸이 저장 창에서 고른 경로를 `initialTarget`으로 넘긴다. `.md`는 폼 없이 그 경로로 바로 변환하고, `.epub`은 저장 위치만 채운 폼을 띄워 책 정보를 받은 뒤 변환한다. 다른 변환과 같이 시작 전에 보류 중인 편집을 저장한다), 책 정보 "AI로 채우기"(`BookInfoAiFill.tsx`, `book-info-ai.ts`), "이미지를 폴더로 내보내기" 메뉴(`ExportImagesMenu.tsx`: "페이지 통째로", "지금 보는 쪽만", "페이지 안의 그림만". 앞의 둘은 `App.tsx`의 `exportImages`가 쪽을 150dpi로 그리고, 마지막은 `embedded-images.ts`가 구조 작업으로 뽑는다).
 - AI 페이지 읽기 화면(`src/renderer/ai-read/`): 페이지 고르기와 시작 전 확인(`AiReadDialog.tsx`), 작업·진행·이어하기 제안·이 문서의 보관분 지우기(`AiPageReading.tsx`), 페이지 그림 그리기(`render-page.ts`, 170dpi), 뷰어 검색의 "AI로 읽은 글에서 찾음"(`search-texts.ts`).
 - 문서 번역 화면(`src/renderer/translate/`): 언어·범위·형식 고르기와 시작 전 확인(`TranslateDialog.tsx`), 작업·멈춘 뒤의 선택·결과 파일 쓰기(`DocumentTranslation.tsx`), 결과 보고(`TranslateReport.tsx`).
 - 문서 작업 공용 부품(`src/renderer/doc-jobs/`): 탭의 작업 세션(`job-session.ts`), 쓸 제공자 정하기와 고정(`route.ts`), `ai:stream`으로 가는 모델 호출 하나(`model-call.ts`), 셸의 보관소 채널을 엔진의 보관소로 감싼 것(`ipc-store.ts`), 진행 줄(`JobProgressStrip.tsx`), 이어하기 제안(`ResumeOffer.tsx`), 작업에 고른 페이지 기억(`job-pages.ts`, 페이지 번호만).
@@ -34,7 +34,8 @@ PDF 보기·주석·편집 에디터다. 화면은 PDF.js로 그리고, 저장�
 
 ## 항상 지켜야 하는 것
 
-- 파일 경로는 허가된 것만 다룬다. 뷰마다 읽기가 허용된 경로와 "다른 이름으로 저장" 대상이 따로 기록되고(메인 프로세스의 대화 상자가 고른 것만), 핸들러는 그 밖의 경로를 거절한다. 렌더러가 보낸 경로를 그대로 읽거나 쓰는 핸들러를 추가하지 않는다. "다른 이름으로 저장"에서 `.md`를 고른 경우의 변환 대상(`pdf:convert-dialog-request`의 `outPath`)도 셸의 저장 창이 고른 경로를 셸이 그 뷰에 허가한 것뿐이고, 구조 작업의 `claimTarget`이 그 허가를 확인한다.
+- **"다른 이름으로 저장"은 PDF 다음에 바꿀 수 있는 형식을 모두 보인다**(PDF, Markdown, Word, PowerPoint, Excel, EPUB, PNG). 목록과 확장자별 갈래는 셸의 `pdf-save-as-formats.ts`가 정한다. PDF가 아닌 형식은 파일 메뉴의 변환을 그대로 돌리고(Word·PowerPoint·Excel은 저장 창만 건너뛴다), 열린 PDF의 경로·제목·저장하지 않은 상태는 바뀌지 않는다. PNG는 셸이 고른 이름을 메인이 그 뷰에 한 번 허가하고(`requestPdfPageImages`), 화면이 쪽마다 그린 그림을 `saveAs: true`로 보내면 메인이 `numberedExportPaths`로 이름을 정해 쓴다(한 쪽이면 그 이름 그대로, 여러 쪽이면 `이름-01.png`부터).
+- 파일 경로는 허가된 것만 다룬다. 뷰마다 읽기가 허용된 경로와 "다른 이름으로 저장" 대상이 따로 기록되고(메인 프로세스의 대화 상자가 고른 것만), 핸들러는 그 밖의 경로를 거절한다. 렌더러가 보낸 경로를 그대로 읽거나 쓰는 핸들러를 추가하지 않는다. "다른 이름으로 저장"에서 `.md`·`.epub`을 고른 경우의 변환 대상(`pdf:convert-dialog-request`의 `outPath`)도 셸의 저장 창이 고른 경로를 셸이 그 뷰에 허가한 것뿐이고, 구조 작업의 `claimTarget`이 그 허가를 확인한다.
 - 쪽 비트맵은 문서 내용이다. 테마가 다시 칠하지 않는다. 야간 읽기는 쪽 비트맵에만 CSS 필터를 거는 화면 전용 표시이고(덧그림은 DOM에서 분리돼 있다) 저장·내보내기·인쇄 결과에는 영향이 없어야 한다. 리본 등 크롬 색은 토큰만 쓴다.
 - 영구 가림은 되돌릴 수 없는 내용 제거다. `redactPdf`는 영역과 겹치는 글자·그림을 PDFium으로 실제로 지운 사본을 만든다. 검은 사각형을 위에 그리는 것으로 대체하지 않는다. 입력 영역은 `validateRedactionRegions`를 거친다.
 - 문서 안에 쓰이는 값은 바꾸지 않는다. 주석 작성자(`/T`)의 기본값 `GenOffice`(`save-pdf.ts`)는 파일에 저장되는 데이터라 제품 이름으로 치환하지 않는다. 화면에 보이는 문구와 모델에게 주는 system prompt의 제품 이름만 `brandText`를 거친다(`ai/pdf-skill.ts`).

@@ -38,6 +38,7 @@ export const ru = {
   zoomReset: 'Реальный размер',
   tbExport: 'Экспорт',
   exportPng: 'Экспорт в изображение (PNG)…',
+  exportSvg: 'Экспорт в изображение (SVG)…',
   exportPdf: 'Экспортировать в PDF…',
   exportMarkdown: 'Экспорт в структуру Markdown…',
   exportDone: 'Экспортировано',

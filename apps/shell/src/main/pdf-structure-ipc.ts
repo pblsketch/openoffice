@@ -104,16 +104,16 @@ export function cancelWindowJob(owner: number, jobId: string): boolean {
 }
 
 /**
- * Grant a Markdown target the shell's own save dialog picked (PDF Save As ›
- * Markdown) to a pdf view, so its conversion dialog may write there. The path
- * never comes from the renderer. False = no structure handlers yet, or the
- * source/target failed the same checks a dialog-picked target passes.
+ * Grant a Markdown / EPUB target the shell's own save dialog picked (PDF Save
+ * As › Markdown / EPUB) to a pdf view, so its conversion dialog may write
+ * there. The path never comes from the renderer. False = no structure handlers
+ * yet, or the source/target failed the same checks a dialog-picked target passes.
  */
 export function grantPdfStructureTarget(
   contents: WebContents,
   sourcePath: string,
   outPath: string,
-  kind: 'md',
+  kind: 'md' | 'epub',
 ): boolean {
   if (!handlers || contents.isDestroyed()) return false
   return handlers.grantTarget(contents.id, sourcePath, outPath, kind)

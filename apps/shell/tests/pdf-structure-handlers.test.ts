@@ -104,7 +104,7 @@ beforeEach(() => {
 
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
-describe('Save As › Markdown target', () => {
+describe('Save As › Markdown / EPUB target', () => {
   const mdOut = () => join(dir, 'book.md')
 
   it('accepts a Markdown target the shell dialog picked for the view', async () => {
@@ -123,13 +123,32 @@ describe('Save As › Markdown target', () => {
     expect(jobs).toHaveLength(1)
   })
 
-  it('refuses a target that is not Markdown, not this view, or a source', () => {
+  it('accepts an EPUB target the shell dialog picked for the view', async () => {
+    const { handlers } = makeHandlers()
+    const out = join(dir, 'book.epub')
+    const value = { docHash: 'h', outPath: out, warnings: [], assetsWritten: 0, assetsReused: 0 }
+    answer = () => ({ ok: true, value })
+    expect(handlers.grantTarget(OWNER, pdfPath, out, 'epub')).toBe(true)
+    const r = await handlers.convert(ctx(), {
+      jobId: 'j',
+      path: pdfPath,
+      format: 'epub',
+      outPath: out,
+      epub: { title: 'Book' },
+    })
+    expect(r).toMatchObject({ ok: true, outPath: out })
+    expect(jobs).toHaveLength(1)
+  })
+
+  it('refuses a target of another kind, not this view, or a source', () => {
     const { handlers } = makeHandlers()
     const out = mdOut()
     expect(handlers.grantTarget(OTHER, pdfPath, out, 'md')).toBe(false)
     expect(handlers.grantTarget(OWNER, join(dir, 'other.pdf'), out, 'md')).toBe(false)
     expect(handlers.grantTarget(OWNER, pdfPath, join(dir, 'book.epub'), 'md')).toBe(false)
     expect(handlers.grantTarget(OWNER, pdfPath, out, 'epub')).toBe(false)
+    expect(handlers.grantTarget(OWNER, pdfPath, join(dir, 'book.pdf'), 'pdf')).toBe(false)
+    expect(handlers.grantTarget(OWNER, pdfPath, dir, 'folder')).toBe(false)
     // a file this view opened is read only, even when its name ends in .md
     granted.get(OWNER)!.add(out)
     expect(handlers.grantTarget(OWNER, pdfPath, out, 'md')).toBe(false)

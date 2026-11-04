@@ -38,6 +38,7 @@ export const zhTW = {
   zoomReset: '實際大小',
   tbExport: '匯出',
   exportPng: '匯出為圖片 (PNG)…',
+  exportSvg: '匯出為圖片 (SVG)…',
   exportPdf: '匯出為 PDF…',
   exportMarkdown: '匯出為 Markdown 大綱…',
   exportDone: '已匯出',
