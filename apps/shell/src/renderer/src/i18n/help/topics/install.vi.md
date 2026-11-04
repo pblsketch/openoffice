@@ -22,7 +22,7 @@ Vì trình cài đặt chưa được ký, bạn chỉ nên chạy tệp đã t�
 
 ## Cập nhật
 
-- GenOffice tìm phiên bản mới hơn trên chính trang phát hành đó của GitHub. Khi có bản mới được công bố, **Cài đặt ▸ Giới thiệu** sẽ đề nghị cập nhật: nhấn **Cập nhật lên …**, chờ tải xong, rồi nhấn **Khởi động lại và cài đặt**. Trên Windows, một cửa sổ hiển thị tiến trình cài đặt; khi xong, GenOffice mở lại cùng các tài liệu bạn đang mở. Bản cập nhật chỉ được cài khi bạn nhấn nút đó, không phải khi bạn chỉ đóng ứng dụng.
+- GenOffice tìm phiên bản mới hơn trên chính trang phát hành đó của GitHub. Khi có bản mới được công bố, **Cài đặt ▸ Giới thiệu** sẽ đề nghị cập nhật: nhấn **Cập nhật lên …**, chờ tải xong, rồi nhấn **Khởi động lại và cài đặt**. Trên Windows, một cửa sổ hiển thị tiến trình cài đặt; khi xong, GenOffice mở lại cùng các tài liệu bạn đang mở. Trên Mac, ứng dụng sẽ đóng, được thay bằng phiên bản mới rồi mở lại cùng các tài liệu bạn đang mở. Điều này áp dụng cho ứng dụng trong thư mục Ứng dụng; ứng dụng mở trực tiếp từ ảnh đĩa sẽ chỉ bạn tới trang tải xuống. Bản cập nhật chỉ được cài khi bạn nhấn nút đó, không phải khi bạn chỉ đóng ứng dụng.
 - **Menu (☰) ▸ Kiểm tra bản cập nhật** sẽ kiểm tra bất cứ khi nào bạn yêu cầu. Trên Mac là **Trợ giúp ▸ Kiểm tra bản cập nhật**.
 - Khi việc kiểm tra thất bại — không có mạng, hoặc chưa có bản nào được công bố — thì không có gì xảy ra, và ứng dụng vẫn hoạt động như trước.
 - **Kênh cập nhật**, cũng nằm trong Cài đặt ▸ Giới thiệu, là Ổn định hoặc Beta. Đổi kênh sẽ có hiệu lực ngay và kiểm tra bản cập nhật; nó sẽ không hạ bản cài đặt Beta về lại Ổn định.

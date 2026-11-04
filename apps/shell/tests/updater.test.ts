@@ -67,7 +67,11 @@ const updaterState = {
   channel: null as string | null,
   allowDowngrade: false,
   allowPrerelease: null as boolean | null,
+  // MacUpdater's hand-over of a downloaded zip to Squirrel.Mac, which the Mac
+  // install replaces (mac-update.ts installMacStaging)
+  updateDownloaded: undefined as unknown,
 }
+const squirrelServe = vi.fn(() => Promise.resolve([]))
 const checkForUpdates = vi.fn(() => Promise.resolve(null))
 const downloadUpdate = vi.fn<(token?: FakeCancellationToken) => Promise<unknown>>(() =>
   Promise.resolve([]),
@@ -91,6 +95,15 @@ vi.mock('electron-updater', () => ({
     downloadUpdate: (token?: FakeCancellationToken) => downloadUpdate(token),
     quitAndInstall: (...args: unknown[]) => quitAndInstall(...(args as [boolean, boolean])),
     install: (isSilent: boolean, isForceRunAfter: boolean) => install(isSilent, isForceRunAfter),
+    get updateDownloaded() {
+      return updaterState.updateDownloaded
+    },
+    set updateDownloaded(v: unknown) {
+      updaterState.updateDownloaded = v
+    },
+    dispatchUpdateDownloaded(event: unknown) {
+      updaterState.listeners.get('update-downloaded')?.(event)
+    },
     logger: null as unknown,
     set autoDownload(v: boolean) {
       updaterState.autoDownload = v
@@ -154,6 +167,25 @@ const closeUpdateWindow = vi.fn(() => {
 vi.mock('../src/main/update-attempt', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../src/main/update-attempt')>()),
   installDirWritable: () => installDir.writable,
+}))
+
+// the Mac install: where its bundle is, whether it may replace itself, and the
+// macOS programs behind staging and the swap
+const macInstall = vi.hoisted(() => ({
+  bundle: '/Applications/IeumOffice.app' as string | null,
+  block: null as string | null,
+  stage: vi.fn<(options: { zip: string; bundle: string; version: string }) => Promise<string>>(),
+  swap: vi.fn<(options: unknown) => boolean>(() => true),
+  leftovers: vi.fn<(bundle: string) => void>(),
+}))
+vi.mock('../src/main/mac-update', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/main/mac-update')>()),
+  macAppBundle: () => macInstall.bundle,
+  macSelfUpdateBlock: () => macInstall.block,
+  stageMacUpdate: (options: { zip: string; bundle: string; version: string }) =>
+    macInstall.stage(options),
+  startMacSwap: (options: unknown) => macInstall.swap(options),
+  removeMacLeftovers: (bundle: string) => macInstall.leftovers(bundle),
 }))
 
 vi.mock('../src/main/update-window', () => ({
@@ -357,6 +389,17 @@ beforeEach(() => {
   updaterState.channel = null
   updaterState.allowDowngrade = false
   updaterState.allowPrerelease = null
+  updaterState.updateDownloaded = squirrelServe
+  squirrelServe.mockClear()
+  macInstall.bundle = '/Applications/IeumOffice.app'
+  macInstall.block = null
+  macInstall.stage.mockReset()
+  macInstall.stage.mockImplementation((options) =>
+    Promise.resolve(`/Applications/.IeumOffice.app.update/IeumOffice-${options.version}.app`),
+  )
+  macInstall.swap.mockReset()
+  macInstall.swap.mockImplementation(() => true)
+  macInstall.leftovers.mockClear()
   checkForUpdates.mockReset()
   checkForUpdates.mockImplementation(() => Promise.resolve(null))
   downloadUpdate.mockReset()
@@ -1000,13 +1043,37 @@ describe('manual download fallback', () => {
   })
 })
 
-describe('macOS: no self-update for an ad hoc signed app', () => {
+describe('macOS: the app installs its own update (decision 0097)', () => {
+  const zip = '/Users/me/Library/Caches/ieumoffice-updater/pending/IeumOffice-0.2.0-arm64-mac.zip'
+
   beforeEach(() => {
     platformSpy?.restore()
     setPlatform('darwin')
+    // electron-updater downloads, checks the sha512, then hands the zip to its
+    // own updateDownloaded: which the Mac install has replaced
+    downloadUpdate.mockImplementation(() =>
+      (updaterState.updateDownloaded as (fileInfo: unknown, event: unknown) => Promise<unknown>)(
+        {},
+        { version: '0.2.0', downloadedFile: zip },
+      ),
+    )
   })
 
-  it('still checks the feed, but never installs on quit', async () => {
+  async function downloadedOnMac(): Promise<UpdateActions> {
+    const { initAutoUpdater } = await loadUpdater()
+    initAutoUpdater(() => null)
+    updaterState.listeners.get('update-available')!({ version: '0.2.0' })
+    const actions = lastShownActions()
+    actions.onDownload()
+    await flushAsync()
+    return actions
+  }
+
+  function attemptRecord(): unknown {
+    return JSON.parse(readFileSync(join(appState.dataDir, 'update-install-attempt.json'), 'utf8'))
+  }
+
+  it('still never lets electron-updater install on quit', async () => {
     const { initAutoUpdater } = await loadUpdater()
     initAutoUpdater(() => null)
     expect(updaterState.autoDownload).toBe(false)
@@ -1015,22 +1082,118 @@ describe('macOS: no self-update for an ad hoc signed app', () => {
     expect(checkForUpdates).toHaveBeenCalledTimes(1)
     quitCompletes()
     expect(install).not.toHaveBeenCalled()
+    expect(macInstall.swap).not.toHaveBeenCalled()
   })
 
-  it('opens a found update straight in the manual phase, with the Mac wording', async () => {
+  it('offers a found update like Windows does, with the Mac restart wording', async () => {
+    const { initAutoUpdater } = await loadUpdater()
+    initAutoUpdater(() => null)
+    updaterState.listeners.get('update-available')!({ version: '0.2.0' })
+    const state = lastShownState()
+    expect(state.phase).toBe('available')
+    // the UI language of these tests is zh: "replaced with the new version",
+    // not the Windows "an installer window shows the progress"
+    expect(state.strings.restartDesc).toContain('替换为新版本')
+    expect(state.strings.restartDesc).not.toContain('安装进度')
+  })
+
+  it('clears what an interrupted update left beside the app', async () => {
+    const { initAutoUpdater } = await loadUpdater()
+    initAutoUpdater(() => null)
+    expect(macInstall.leftovers).toHaveBeenCalledWith('/Applications/IeumOffice.app')
+  })
+
+  it('unpacks the download beside the app, never through Squirrel.Mac', async () => {
+    await downloadedOnMac()
+    expect(downloadUpdate).toHaveBeenCalledTimes(1)
+    expect(macInstall.stage).toHaveBeenCalledWith({
+      zip,
+      bundle: '/Applications/IeumOffice.app',
+      version: '0.2.0',
+    })
+    expect(squirrelServe).not.toHaveBeenCalled()
+    expect(pushUpdateState).toHaveBeenLastCalledWith({
+      phase: 'downloaded',
+      percent: 100,
+      visibleInstall: false,
+    })
+  })
+
+  it('swaps the new version in once the app has quit', async () => {
+    const actions = await downloadedOnMac()
+    actions.onInstall()
+    expect(macInstall.swap).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(0)
+    expect(appQuit).toHaveBeenCalledTimes(1)
+    quitCompletes()
+    expect(macInstall.swap).toHaveBeenCalledWith({
+      pid: process.pid,
+      bundle: '/Applications/IeumOffice.app',
+      staged: '/Applications/.IeumOffice.app.update/IeumOffice-0.2.0.app',
+      logFile: join(appState.dataDir, 'update-log.txt'),
+    })
+    expect(install).not.toHaveBeenCalled()
+    // the next launch checks the version against this record
+    expect(attemptRecord()).toEqual({
+      version: '0.2.0',
+      fromVersion: CURRENT_VERSION,
+      visible: false,
+      tries: 1,
+    })
+  })
+
+  it('does not swap on an ordinary quit', async () => {
+    const actions = await downloadedOnMac()
+    actions.onLater()
+    quitCompletes()
+    expect(macInstall.swap).not.toHaveBeenCalled()
+    expect(existsSync(join(appState.dataDir, 'update-install-attempt.json'))).toBe(false)
+  })
+
+  it('counts an update that does not check out as a failed download', async () => {
+    macInstall.stage.mockImplementation(() =>
+      Promise.reject(new Error('a sealed resource is missing')),
+    )
+    const actions = await downloadedOnMac()
+    expect(pushUpdateState).toHaveBeenLastCalledWith({ phase: 'error' })
+    actions.onDownload()
+    await flushAsync()
+    expect(pushUpdateState).toHaveBeenLastCalledWith({ phase: 'manual' })
+    actions.onInstall()
+    vi.advanceTimersByTime(0)
+    quitCompletes()
+    expect(macInstall.swap).not.toHaveBeenCalled()
+  })
+
+  it('sends a swap that did not take to the download page', async () => {
+    writeFileSync(
+      join(appState.dataDir, 'update-install-attempt.json'),
+      JSON.stringify({ version: '0.2.0', fromVersion: CURRENT_VERSION, visible: false, tries: 1 }),
+    )
     const { initAutoUpdater } = await loadUpdater()
     initAutoUpdater(() => null)
     updaterState.listeners.get('update-available')!({ version: '0.2.0' })
     const state = lastShownState()
     expect(state.phase).toBe('manual')
-    expect(state.version).toBe('0.2.0')
     expect(state.strings.manualDesc).toContain('Mac')
   })
 
-  it('sends the user to the release page instead of downloading', async () => {
+  const cannotReplaceItself: [string, () => void][] = [
+    ['from a folder it cannot write', () => (macInstall.block = 'read-only')],
+    ['from the disk image or a translocated copy', () => (macInstall.block = 'translocated')],
+    ['outside an app bundle', () => (macInstall.bundle = null)],
+    // electron-updater without the method the hook replaces
+    ['with an electron-updater it cannot hook', () => (updaterState.updateDownloaded = undefined)],
+  ]
+
+  it.each(cannotReplaceItself)('keeps the download page for an app run %s', async (_name, set) => {
+    set()
     const { initAutoUpdater } = await loadUpdater()
     initAutoUpdater(() => null)
     updaterState.listeners.get('update-available')!({ version: '0.3.0-beta.1' })
+    const state = lastShownState()
+    expect(state.phase).toBe('manual')
+    expect(state.strings.manualDesc).toContain('Mac')
     const actions = lastShownActions()
     actions.onOpenDownload()
     // Settings → About re-opens the window through onDownload
@@ -1040,9 +1203,12 @@ describe('macOS: no self-update for an ad hoc signed app', () => {
     expect(openExternal).toHaveBeenCalledTimes(2)
     expect(openExternal).toHaveBeenNthCalledWith(1, githubReleaseTagUrl('0.3.0-beta.1'))
     expect(openExternal).toHaveBeenNthCalledWith(2, githubReleaseTagUrl('0.3.0-beta.1'))
+    quitCompletes()
+    expect(macInstall.swap).not.toHaveBeenCalled()
   })
 
   it('keeps the manual phase when a periodic recheck finds the same version', async () => {
+    macInstall.block = 'read-only'
     const { initAutoUpdater } = await loadUpdater()
     initAutoUpdater(() => null)
     updaterState.listeners.get('update-available')!({ version: '0.2.0' })

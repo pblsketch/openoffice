@@ -97,3 +97,4 @@
 | [0094](0094-slides-engine-highlight-spacing-visibility.md)    | 슬라이드 엔진에 강조 색·문자 간격과 도형 숨기기·이름을 더하고, 도형 병합 라이브러리를 들인다    | 2026-10-31 |
 | [0095](0095-skills-shared-agents-folder.md)                   | 스킬은 공용 폴더 `~/.agents`에 설치하고, 도구 폴더에 남은 예전 사본은 지우지 않고 계속 맞춘다   | 2026-11-01 |
 | [0096](0096-subscription-effort.md)                           | 모델의 생각 깊이를 모델 선택기에서 고르고, 프로그램이나 회사가 그 모델에 알려 준 단계만 넘긴다  | 2026-11-01 |
+| [0097](0097-mac-self-update-without-squirrel.md)              | Mac판은 Apple 개발자 서명 없이, 받은 zip으로 스스로를 바꿔 끼워 업데이트한다                    | 2026-11-01 |

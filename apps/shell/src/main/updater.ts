@@ -14,6 +14,14 @@ import {
 } from './update-attempt'
 import type { InstallFailureLevel } from './update-attempt'
 import { createUpdateLog, UPDATE_LOG_FILE } from './update-log'
+import {
+  installMacStaging,
+  macAppBundle,
+  macSelfUpdateBlock,
+  removeMacLeftovers,
+  stageMacUpdate,
+  startMacSwap,
+} from './mac-update'
 import type { UpdateLogger } from './update-log'
 import { reopenedByInstaller, requestUpdateRestart, updateRestartRequested } from './update-restart'
 import type { UpdateInfo } from 'electron-updater'
@@ -51,8 +59,8 @@ import { normalizeReleaseNotes } from './update-notes'
  *
  * UX is the strong-guidance modal card (update-window.ts), not a native
  * dialog. Windows updates through the NSIS installer (latest.yml); macOS
- * reads the zip target's latest-mac.yml but is only pointed at the release
- * page (see SELF_UPDATES); Linux through the AppImage
+ * downloads the zip target named in latest-mac.yml and installs it itself
+ * (mac-update.ts); Linux through the AppImage
  * target (latest-linux.yml). On Linux only AppImage runs self-update
  * (electron-updater replaces the .AppImage file in place, no root needed);
  * deb installs have no updater — users upgrade via `apt install ./<new>.deb`.
@@ -79,11 +87,13 @@ const tUpd = createI18n({
     updNotesLabel: '更新内容',
     updNotesOnGitHub: '在 GitHub 查看完整说明',
     updNotesTruncated: '仅显示部分内容。',
-    updManualMac: 'Mac 版无法自动更新。请从下载页面获取新版本并安装。',
+    updManualMac:
+      '此 Mac 无法自动安装更新。请从下载页面获取新版本并放入“应用程序”文件夹。如果你是直接从磁盘映像打开的应用，请把它移到“应用程序”文件夹，之后的更新就会自动安装。',
     updInstallFailed: '上次更新未能安装。这次将以窗口方式打开安装程序，以便查看安装进度。',
     updVisibleInstall:
       '重启后将显示安装进度窗口。如果 Windows 请求管理员授权，请选择“是”。安装完成后，应用和之前打开的文档会重新打开。',
     updRestartNote: '重启后将显示安装进度窗口。安装完成后，应用和之前打开的文档会重新打开。',
+    updRestartNoteMac: '应用会关闭，替换为新版本后重新打开，之前打开的文档也会重新打开。',
   },
   en: {
     updTitle: 'Software Update',
@@ -105,13 +115,15 @@ const tUpd = createI18n({
     updNotesOnGitHub: 'View full notes on GitHub',
     updNotesTruncated: 'Only part of the notes is shown.',
     updManualMac:
-      "The Mac version can't update itself. Download the new version from the download page and install it.",
+      "This Mac can't install the update automatically. Download the new version from the download page and put it in the Applications folder. If you opened the app straight from the disk image, move it to Applications and later updates install by themselves.",
     updInstallFailed:
       'The last update did not install. This time the installer opens in its own window so you can see its progress.',
     updVisibleInstall:
       'After the restart an installer window shows the progress. If Windows asks for administrator approval, choose Yes. When it finishes, the app and the documents you had open come back.',
     updRestartNote:
       'After the restart an installer window shows the progress. When it finishes, the app and the documents you had open come back.',
+    updRestartNoteMac:
+      'The app closes, is replaced with the new version and opens again, along with the documents you had open.',
   },
   vi: {
     updTitle: 'Cập nhật phần mềm',
@@ -133,13 +145,15 @@ const tUpd = createI18n({
     updNotesOnGitHub: 'Xem toàn bộ trên GitHub',
     updNotesTruncated: 'Chỉ hiển thị một phần.',
     updManualMac:
-      'Phiên bản Mac không thể tự cập nhật. Hãy tải phiên bản mới từ trang tải xuống và cài đặt.',
+      'Máy Mac này không thể tự động cài đặt bản cập nhật. Hãy tải phiên bản mới từ trang tải xuống và đặt vào thư mục Ứng dụng. Nếu bạn mở ứng dụng trực tiếp từ ảnh đĩa, hãy chuyển nó vào thư mục Ứng dụng để các bản cập nhật sau tự cài đặt.',
     updInstallFailed:
       'Bản cập nhật lần trước chưa được cài đặt. Lần này trình cài đặt sẽ mở trong cửa sổ riêng để bạn theo dõi tiến trình.',
     updVisibleInstall:
       'Sau khi khởi động lại, một cửa sổ sẽ hiển thị tiến trình cài đặt. Nếu Windows yêu cầu quyền quản trị viên, hãy chọn Có. Khi hoàn tất, ứng dụng và các tài liệu bạn đang mở sẽ được mở lại.',
     updRestartNote:
       'Sau khi khởi động lại, một cửa sổ sẽ hiển thị tiến trình cài đặt. Khi hoàn tất, ứng dụng và các tài liệu bạn đang mở sẽ được mở lại.',
+    updRestartNoteMac:
+      'Ứng dụng sẽ đóng, được thay bằng phiên bản mới rồi mở lại cùng các tài liệu bạn đang mở.',
   },
   ja: {
     updTitle: 'ソフトウェアアップデート',
@@ -161,13 +175,15 @@ const tUpd = createI18n({
     updNotesOnGitHub: 'GitHub で全体を見る',
     updNotesTruncated: '一部のみ表示しています。',
     updManualMac:
-      'Mac 版は自動で更新できません。ダウンロードページから新しいバージョンを入手してインストールしてください。',
+      'このMacではアップデートを自動でインストールできません。ダウンロードページから新しいバージョンを入手し、「アプリケーション」フォルダに入れてください。ディスクイメージから直接アプリを開いた場合は、「アプリケーション」フォルダに移動すると、次回からアップデートが自動でインストールされます。',
     updInstallFailed:
       '前回のアップデートはインストールされませんでした。今回はインストーラーをウィンドウで開き、進行状況を表示します。',
     updVisibleInstall:
       '再起動するとインストールの進行状況を示すウィンドウが表示されます。Windows が管理者の承認を求めたら「はい」を選んでください。完了すると、アプリと開いていた文書が再び開きます。',
     updRestartNote:
       '再起動するとインストールの進行状況を示すウィンドウが表示されます。完了すると、アプリと開いていた文書が再び開きます。',
+    updRestartNoteMac:
+      'アプリが終了し、新しいバージョンに置き換えられてから再び開きます。開いていた書類も再び開きます。',
   },
   ko: {
     updTitle: '소프트웨어 업데이트',
@@ -189,13 +205,15 @@ const tUpd = createI18n({
     updNotesOnGitHub: 'GitHub에서 전체 보기',
     updNotesTruncated: '일부만 표시했습니다.',
     updManualMac:
-      'Mac용 설치본은 스스로 업데이트하지 못합니다. 다운로드 페이지에서 새 버전을 받아 설치해 주세요.',
+      '이 Mac에서는 업데이트를 자동으로 설치할 수 없습니다. 다운로드 페이지에서 새 버전을 받아 응용 프로그램 폴더에 넣어 주세요. 디스크 이미지에서 앱을 바로 열었다면 응용 프로그램 폴더로 옮겨 두세요. 다음 업데이트부터는 저절로 설치됩니다.',
     updInstallFailed:
       '지난번 업데이트가 설치되지 않았습니다. 이번에는 설치 프로그램을 창으로 띄워 진행 상황을 보여 드립니다.',
     updVisibleInstall:
       "다시 시작하면 설치 진행 창이 뜹니다. 관리자 승인을 묻는 창이 나오면 '예'를 눌러 주세요. 설치가 끝나면 앱과 열려 있던 문서가 다시 열립니다.",
     updRestartNote:
       '다시 시작하면 설치 진행 창이 뜹니다. 설치가 끝나면 앱과 열려 있던 문서가 다시 열립니다.',
+    updRestartNoteMac:
+      '앱이 닫히고 새 버전으로 바뀐 뒤 다시 열립니다. 열어 두었던 문서도 다시 열립니다.',
   },
   fr: {
     updTitle: 'Mise à jour logicielle',
@@ -218,13 +236,15 @@ const tUpd = createI18n({
     updNotesOnGitHub: 'Voir les notes complètes sur GitHub',
     updNotesTruncated: 'Seule une partie du contenu est affichée.',
     updManualMac:
-      "La version Mac ne peut pas se mettre à jour d'elle-même. Téléchargez la nouvelle version depuis la page de téléchargement et installez-la.",
+      "Ce Mac ne peut pas installer la mise à jour automatiquement. Téléchargez la nouvelle version depuis la page de téléchargement et placez-la dans le dossier Applications. Si vous avez ouvert l'app directement depuis l'image disque, déplacez-la dans Applications : les mises à jour suivantes s'installeront d'elles-mêmes.",
     updInstallFailed:
       "La dernière mise à jour ne s'est pas installée. Cette fois, le programme d'installation s'ouvre dans sa propre fenêtre pour que vous puissiez suivre sa progression.",
     updVisibleInstall:
       "Après le redémarrage, une fenêtre affiche la progression de l'installation. Si Windows demande l'autorisation d'un administrateur, choisissez Oui. Une fois l'installation terminée, l'application et les documents ouverts reviennent.",
     updRestartNote:
       "Après le redémarrage, une fenêtre affiche la progression de l'installation. Une fois l'installation terminée, l'application et les documents ouverts reviennent.",
+    updRestartNoteMac:
+      "L'app se ferme, est remplacée par la nouvelle version, puis se rouvre avec les documents que vous aviez ouverts.",
   },
   de: {
     updTitle: 'Softwareaktualisierung',
@@ -248,13 +268,15 @@ const tUpd = createI18n({
     updNotesOnGitHub: 'Vollständige Hinweise auf GitHub',
     updNotesTruncated: 'Es wird nur ein Teil angezeigt.',
     updManualMac:
-      'Die Mac-Version kann sich nicht selbst aktualisieren. Laden Sie die neue Version von der Download-Seite herunter und installieren Sie sie.',
+      'Dieser Mac kann das Update nicht automatisch installieren. Laden Sie die neue Version von der Download-Seite herunter und legen Sie sie in den Ordner „Programme“. Wenn Sie die App direkt aus dem Disk-Image geöffnet haben, verschieben Sie sie in „Programme“; spätere Updates installieren sich dann von selbst.',
     updInstallFailed:
       'Das letzte Update wurde nicht installiert. Diesmal öffnet sich das Installationsprogramm in einem eigenen Fenster, damit Sie den Fortschritt sehen.',
     updVisibleInstall:
       'Nach dem Neustart zeigt ein Fenster den Installationsfortschritt. Wenn Windows nach Administratorrechten fragt, wählen Sie „Ja“. Danach öffnen sich die App und Ihre geöffneten Dokumente wieder.',
     updRestartNote:
       'Nach dem Neustart zeigt ein Fenster den Installationsfortschritt. Danach öffnen sich die App und Ihre geöffneten Dokumente wieder.',
+    updRestartNoteMac:
+      'Die App wird geschlossen, durch die neue Version ersetzt und wieder geöffnet, zusammen mit den Dokumenten, die Sie geöffnet hatten.',
   },
   es: {
     updTitle: 'Actualización de software',
@@ -276,13 +298,15 @@ const tUpd = createI18n({
     updNotesOnGitHub: 'Ver notas completas en GitHub',
     updNotesTruncated: 'Solo se muestra una parte.',
     updManualMac:
-      'La versión para Mac no puede actualizarse sola. Descarga la nueva versión desde la página de descargas e instálala.',
+      'Este Mac no puede instalar la actualización automáticamente. Descarga la nueva versión desde la página de descargas y colócala en la carpeta Aplicaciones. Si abriste la app directamente desde la imagen de disco, muévela a Aplicaciones y las próximas actualizaciones se instalarán solas.',
     updInstallFailed:
       'La última actualización no se instaló. Esta vez el instalador se abre en su propia ventana para que pueda ver su progreso.',
     updVisibleInstall:
       'Tras el reinicio, una ventana muestra el progreso de la instalación. Si Windows pide la aprobación de un administrador, elija Sí. Al terminar, la aplicación y los documentos que tenía abiertos vuelven a abrirse.',
     updRestartNote:
       'Tras el reinicio, una ventana muestra el progreso de la instalación. Al terminar, la aplicación y los documentos que tenía abiertos vuelven a abrirse.',
+    updRestartNoteMac:
+      'La app se cierra, se reemplaza por la nueva versión y se vuelve a abrir con los documentos que tenías abiertos.',
   },
   th: {
     updTitle: 'อัปเดตซอฟต์แวร์',
@@ -303,13 +327,15 @@ const tUpd = createI18n({
     updNotesOnGitHub: 'ดูบันทึกฉบับเต็มบน GitHub',
     updNotesTruncated: 'แสดงเพียงบางส่วน',
     updManualMac:
-      'เวอร์ชัน Mac ไม่สามารถอัปเดตตัวเองได้ โปรดดาวน์โหลดเวอร์ชันใหม่จากหน้าดาวน์โหลดแล้วติดตั้ง',
+      'Mac เครื่องนี้ติดตั้งอัปเดตโดยอัตโนมัติไม่ได้ โปรดดาวน์โหลดเวอร์ชันใหม่จากหน้าดาวน์โหลดแล้ววางไว้ในโฟลเดอร์แอปพลิเคชัน หากคุณเปิดแอปจากดิสก์อิมเมจโดยตรง ให้ย้ายแอปไปไว้ในโฟลเดอร์แอปพลิเคชัน แล้วอัปเดตครั้งต่อไปจะติดตั้งเอง',
     updInstallFailed:
       'การอัปเดตครั้งก่อนไม่ได้ติดตั้ง ครั้งนี้ตัวติดตั้งจะเปิดในหน้าต่างของตัวเองเพื่อให้คุณเห็นความคืบหน้า',
     updVisibleInstall:
       'หลังรีสตาร์ท จะมีหน้าต่างแสดงความคืบหน้าการติดตั้ง หาก Windows ขอการอนุมัติจากผู้ดูแลระบบ ให้เลือก ใช่ เมื่อติดตั้งเสร็จ แอปและเอกสารที่เปิดไว้จะเปิดขึ้นอีกครั้ง',
     updRestartNote:
       'หลังรีสตาร์ท จะมีหน้าต่างแสดงความคืบหน้าการติดตั้ง เมื่อติดตั้งเสร็จ แอปและเอกสารที่เปิดไว้จะเปิดขึ้นอีกครั้ง',
+    updRestartNoteMac:
+      'แอปจะปิด เปลี่ยนเป็นเวอร์ชันใหม่ แล้วเปิดขึ้นอีกครั้งพร้อมเอกสารที่คุณเปิดไว้',
   },
   id: {
     updTitle: 'Pembaruan Perangkat Lunak',
@@ -331,13 +357,15 @@ const tUpd = createI18n({
     updNotesOnGitHub: 'Lihat catatan lengkap di GitHub',
     updNotesTruncated: 'Hanya sebagian yang ditampilkan.',
     updManualMac:
-      'Versi Mac tidak dapat memperbarui dirinya sendiri. Unduh versi baru dari halaman unduhan lalu instal.',
+      'Mac ini tidak dapat memasang pembaruan secara otomatis. Unduh versi baru dari halaman unduhan lalu letakkan di folder Aplikasi. Jika Anda membuka aplikasi langsung dari image disk, pindahkan ke folder Aplikasi agar pembaruan berikutnya terpasang sendiri.',
     updInstallFailed:
       'Pembaruan terakhir tidak terpasang. Kali ini penginstal dibuka di jendelanya sendiri agar Anda dapat melihat kemajuannya.',
     updVisibleInstall:
       'Setelah dimulai ulang, sebuah jendela menampilkan kemajuan pemasangan. Jika Windows meminta persetujuan administrator, pilih Ya. Setelah selesai, aplikasi dan dokumen yang tadi terbuka akan dibuka kembali.',
     updRestartNote:
       'Setelah dimulai ulang, sebuah jendela menampilkan kemajuan pemasangan. Setelah selesai, aplikasi dan dokumen yang tadi terbuka akan dibuka kembali.',
+    updRestartNoteMac:
+      'Aplikasi akan ditutup, diganti dengan versi baru, lalu dibuka kembali bersama dokumen yang tadi terbuka.',
   },
   ru: {
     updTitle: 'Обновление программы',
@@ -359,13 +387,15 @@ const tUpd = createI18n({
     updNotesOnGitHub: 'Полные примечания на GitHub',
     updNotesTruncated: 'Показана только часть.',
     updManualMac:
-      'Версия для Mac не обновляется автоматически. Скачайте новую версию со страницы загрузки и установите её.',
+      'Этот Mac не может установить обновление автоматически. Скачайте новую версию со страницы загрузки и поместите её в папку «Программы». Если вы открыли приложение прямо из образа диска, перенесите его в «Программы» — следующие обновления будут устанавливаться сами.',
     updInstallFailed:
       'Последнее обновление не установилось. На этот раз установщик откроется в отдельном окне, чтобы вы видели ход установки.',
     updVisibleInstall:
       'После перезапуска откроется окно с ходом установки. Если Windows запросит разрешение администратора, выберите «Да». По завершении приложение и открытые документы откроются снова.',
     updRestartNote:
       'После перезапуска откроется окно с ходом установки. По завершении приложение и открытые документы откроются снова.',
+    updRestartNoteMac:
+      'Приложение закроется, заменится новой версией и откроется снова вместе с документами, которые были открыты.',
   },
   ar: {
     updTitle: 'تحديث البرنامج',
@@ -384,13 +414,16 @@ const tUpd = createI18n({
     updNotesLabel: 'ما الجديد',
     updNotesOnGitHub: 'عرض الملاحظات الكاملة على GitHub',
     updNotesTruncated: 'يُعرض جزء فقط.',
-    updManualMac: 'لا يمكن لإصدار Mac تحديث نفسه. نزّل الإصدار الجديد من صفحة التنزيل وثبّته.',
+    updManualMac:
+      'لا يستطيع جهاز Mac هذا تثبيت التحديث تلقائيًا. نزّل الإصدار الجديد من صفحة التنزيل وضعه في مجلد التطبيقات. إذا فتحت التطبيق مباشرة من صورة القرص، فانقله إلى مجلد التطبيقات وستُثبَّت التحديثات التالية تلقائيًا.',
     updInstallFailed:
       'لم يتم تثبيت التحديث الأخير. هذه المرة سيفتح برنامج التثبيت في نافذته الخاصة لتتمكن من متابعة التقدم.',
     updVisibleInstall:
       'بعد إعادة التشغيل تظهر نافذة تعرض تقدم التثبيت. إذا طلب Windows موافقة المسؤول، فاختر نعم. عند الانتهاء يُعاد فتح التطبيق والمستندات التي كانت مفتوحة.',
     updRestartNote:
       'بعد إعادة التشغيل تظهر نافذة تعرض تقدم التثبيت. عند الانتهاء يُعاد فتح التطبيق والمستندات التي كانت مفتوحة.',
+    updRestartNoteMac:
+      'سيُغلق التطبيق ويُستبدل بالإصدار الجديد ثم يُفتح مجددًا مع المستندات التي كانت مفتوحة.',
   },
   pt: {
     updTitle: 'Atualização de Software',
@@ -412,13 +445,15 @@ const tUpd = createI18n({
     updNotesOnGitHub: 'Ver notas completas no GitHub',
     updNotesTruncated: 'Apenas parte do conteúdo é exibida.',
     updManualMac:
-      'A versão para Mac não consegue se atualizar sozinha. Baixe a nova versão na página de download e instale-a.',
+      'Este Mac não consegue instalar a atualização automaticamente. Baixe a nova versão na página de download e coloque-a na pasta Aplicativos. Se você abriu o app direto da imagem de disco, mova-o para Aplicativos e as próximas atualizações serão instaladas sozinhas.',
     updInstallFailed:
       'A última atualização não foi instalada. Desta vez o instalador abre em sua própria janela para você acompanhar o progresso.',
     updVisibleInstall:
       'Após reiniciar, uma janela mostra o progresso da instalação. Se o Windows pedir aprovação de administrador, escolha Sim. Ao terminar, o aplicativo e os documentos que estavam abertos são reabertos.',
     updRestartNote:
       'Após reiniciar, uma janela mostra o progresso da instalação. Ao terminar, o aplicativo e os documentos que estavam abertos são reabertos.',
+    updRestartNoteMac:
+      'O app fecha, é substituído pela nova versão e abre de novo, junto com os documentos que estavam abertos.',
   },
   it: {
     updTitle: 'Aggiornamento software',
@@ -440,13 +475,15 @@ const tUpd = createI18n({
     updNotesOnGitHub: 'Vedi le note complete su GitHub',
     updNotesTruncated: 'È mostrata solo una parte.',
     updManualMac:
-      'La versione per Mac non può aggiornarsi da sola. Scarica la nuova versione dalla pagina di download e installala.',
+      "Questo Mac non può installare l'aggiornamento automaticamente. Scarica la nuova versione dalla pagina di download e mettila nella cartella Applicazioni. Se hai aperto l'app direttamente dall'immagine disco, spostala in Applicazioni e i prossimi aggiornamenti si installeranno da soli.",
     updInstallFailed:
       "L'ultimo aggiornamento non è stato installato. Questa volta il programma di installazione si apre in una finestra propria, così puoi seguirne l'avanzamento.",
     updVisibleInstall:
       "Dopo il riavvio una finestra mostra l'avanzamento dell'installazione. Se Windows chiede l'approvazione di un amministratore, scegli Sì. Al termine l'app e i documenti aperti si riaprono.",
     updRestartNote:
       "Dopo il riavvio una finestra mostra l'avanzamento dell'installazione. Al termine l'app e i documenti aperti si riaprono.",
+    updRestartNoteMac:
+      "L'app si chiude, viene sostituita dalla nuova versione e si riapre insieme ai documenti che avevi aperto.",
   },
   pl: {
     updTitle: 'Aktualizacja oprogramowania',
@@ -468,13 +505,15 @@ const tUpd = createI18n({
     updNotesOnGitHub: 'Zobacz pełne informacje na GitHubie',
     updNotesTruncated: 'Wyświetlana jest tylko część.',
     updManualMac:
-      'Wersja na Maca nie może zaktualizować się sama. Pobierz nową wersję ze strony pobierania i zainstaluj ją.',
+      'Ten Mac nie może automatycznie zainstalować aktualizacji. Pobierz nową wersję ze strony pobierania i umieść ją w folderze Aplikacje. Jeśli aplikacja została otwarta bezpośrednio z obrazu dysku, przenieś ją do folderu Aplikacje, a kolejne aktualizacje zainstalują się same.',
     updInstallFailed:
       'Ostatnia aktualizacja nie została zainstalowana. Tym razem instalator otworzy się we własnym oknie, aby można było śledzić postęp.',
     updVisibleInstall:
       'Po ponownym uruchomieniu okno pokaże postęp instalacji. Jeśli system Windows poprosi o zgodę administratora, wybierz Tak. Po zakończeniu aplikacja i otwarte dokumenty otworzą się ponownie.',
     updRestartNote:
       'Po ponownym uruchomieniu okno pokaże postęp instalacji. Po zakończeniu aplikacja i otwarte dokumenty otworzą się ponownie.',
+    updRestartNoteMac:
+      'Aplikacja zamknie się, zostanie zastąpiona nową wersją i otworzy się ponownie razem z otwartymi wcześniej dokumentami.',
   },
   cs: {
     updTitle: 'Aktualizace softwaru',
@@ -496,13 +535,15 @@ const tUpd = createI18n({
     updNotesOnGitHub: 'Zobrazit úplné poznámky na GitHubu',
     updNotesTruncated: 'Zobrazuje se jen část.',
     updManualMac:
-      'Verze pro Mac se nedokáže aktualizovat sama. Stáhněte novou verzi ze stránky pro stažení a nainstalujte ji.',
+      'Tento Mac nemůže aktualizaci nainstalovat automaticky. Stáhněte novou verzi ze stránky pro stažení a vložte ji do složky Aplikace. Pokud jste aplikaci otevřeli přímo z obrazu disku, přesuňte ji do složky Aplikace a další aktualizace se nainstalují samy.',
     updInstallFailed:
       'Poslední aktualizace se nenainstalovala. Tentokrát se instalátor otevře ve vlastním okně, abyste viděli průběh.',
     updVisibleInstall:
       'Po restartu se zobrazí okno s průběhem instalace. Pokud Windows požádá o souhlas správce, zvolte Ano. Po dokončení se aplikace a otevřené dokumenty znovu otevřou.',
     updRestartNote:
       'Po restartu se zobrazí okno s průběhem instalace. Po dokončení se aplikace a otevřené dokumenty znovu otevřou.',
+    updRestartNoteMac:
+      'Aplikace se zavře, nahradí se novou verzí a znovu se otevře i s dokumenty, které jste měli otevřené.',
   },
   nl: {
     updTitle: 'Software-update',
@@ -525,13 +566,15 @@ const tUpd = createI18n({
     updNotesOnGitHub: 'Volledige notities op GitHub',
     updNotesTruncated: 'Er wordt slechts een deel weergegeven.',
     updManualMac:
-      'De Mac-versie kan zichzelf niet bijwerken. Download de nieuwe versie van de downloadpagina en installeer die.',
+      'Deze Mac kan de update niet automatisch installeren. Download de nieuwe versie van de downloadpagina en zet die in de map Apps. Hebt u de app rechtstreeks vanuit de schijfkopie geopend, verplaats hem dan naar Apps; volgende updates installeren zich dan vanzelf.',
     updInstallFailed:
       'De laatste update is niet geïnstalleerd. Deze keer opent het installatieprogramma in een eigen venster, zodat u de voortgang ziet.',
     updVisibleInstall:
       'Na het herstarten toont een venster de voortgang van de installatie. Als Windows om toestemming van een beheerder vraagt, kiest u Ja. Daarna worden de app en uw geopende documenten weer geopend.',
     updRestartNote:
       'Na het herstarten toont een venster de voortgang van de installatie. Daarna worden de app en uw geopende documenten weer geopend.',
+    updRestartNoteMac:
+      'De app sluit, wordt vervangen door de nieuwe versie en opent opnieuw, samen met de documenten die u open had.',
   },
   ms: {
     updTitle: 'Kemas Kini Perisian',
@@ -553,13 +596,15 @@ const tUpd = createI18n({
     updNotesOnGitHub: 'Lihat nota penuh di GitHub',
     updNotesTruncated: 'Hanya sebahagian dipaparkan.',
     updManualMac:
-      'Versi Mac tidak dapat mengemas kini dirinya sendiri. Muat turun versi baharu dari halaman muat turun dan pasangnya.',
+      'Mac ini tidak dapat memasang kemas kini secara automatik. Muat turun versi baharu dari halaman muat turun dan letakkannya dalam folder Aplikasi. Jika anda membuka aplikasi terus dari imej cakera, alihkannya ke folder Aplikasi supaya kemas kini seterusnya dipasang dengan sendirinya.',
     updInstallFailed:
       'Kemas kini terakhir tidak dipasang. Kali ini pemasang dibuka dalam tetingkapnya sendiri supaya anda dapat melihat kemajuannya.',
     updVisibleInstall:
       'Selepas dimulakan semula, satu tetingkap menunjukkan kemajuan pemasangan. Jika Windows meminta kelulusan pentadbir, pilih Ya. Apabila selesai, aplikasi dan dokumen yang dibuka tadi akan dibuka semula.',
     updRestartNote:
       'Selepas dimulakan semula, satu tetingkap menunjukkan kemajuan pemasangan. Apabila selesai, aplikasi dan dokumen yang dibuka tadi akan dibuka semula.',
+    updRestartNoteMac:
+      'Aplikasi akan ditutup, digantikan dengan versi baharu, lalu dibuka semula bersama dokumen yang dibuka tadi.',
   },
   he: {
     updTitle: 'עדכון תוכנה',
@@ -578,13 +623,15 @@ const tUpd = createI18n({
     updNotesLabel: 'מה חדש',
     updNotesOnGitHub: 'הצג הערות מלאות ב-GitHub',
     updNotesTruncated: 'מוצג רק חלק.',
-    updManualMac: 'גרסת ה-Mac לא יכולה להתעדכן בעצמה. הורד את הגרסה החדשה מדף ההורדות והתקן אותה.',
+    updManualMac:
+      'מחשב Mac זה לא יכול להתקין את העדכון באופן אוטומטי. הורידו את הגרסה החדשה מדף ההורדות והעבירו אותה לתיקייה "יישומים". אם פתחתם את האפליקציה ישירות מתמונת הדיסק, העבירו אותה ל"יישומים" והעדכונים הבאים יותקנו מעצמם.',
     updInstallFailed:
       'העדכון האחרון לא הותקן. הפעם תוכנית ההתקנה תיפתח בחלון משלה כדי שתוכלו לראות את ההתקדמות.',
     updVisibleInstall:
       'לאחר ההפעלה מחדש יופיע חלון שמציג את התקדמות ההתקנה. אם Windows מבקש אישור מנהל, בחרו "כן". בסיום, האפליקציה והמסמכים שהיו פתוחים ייפתחו שוב.',
     updRestartNote:
       'לאחר ההפעלה מחדש יופיע חלון שמציג את התקדמות ההתקנה. בסיום, האפליקציה והמסמכים שהיו פתוחים ייפתחו שוב.',
+    updRestartNoteMac: 'האפליקציה תיסגר, תוחלף בגרסה החדשה ותיפתח שוב יחד עם המסמכים שהיו פתוחים.',
   },
   hi: {
     updTitle: 'सॉफ़्टवेयर अपडेट',
@@ -606,13 +653,15 @@ const tUpd = createI18n({
     updNotesOnGitHub: 'GitHub पर पूरी जानकारी देखें',
     updNotesTruncated: 'केवल एक भाग दिखाया गया है।',
     updManualMac:
-      'Mac संस्करण अपने आप अपडेट नहीं हो सकता। डाउनलोड पृष्ठ से नया संस्करण लेकर इंस्टॉल करें।',
+      'यह Mac अपडेट अपने आप इंस्टॉल नहीं कर सकता। डाउनलोड पृष्ठ से नया संस्करण लेकर Applications फ़ोल्डर में रखें। अगर आपने ऐप सीधे डिस्क इमेज से खोला था, तो उसे Applications फ़ोल्डर में ले जाएँ; उसके बाद के अपडेट अपने आप इंस्टॉल होंगे।',
     updInstallFailed:
       'पिछला अपडेट इंस्टॉल नहीं हुआ। इस बार इंस्टॉलर अपनी अलग विंडो में खुलेगा, ताकि आप उसकी प्रगति देख सकें।',
     updVisibleInstall:
       'पुनरारंभ के बाद एक विंडो इंस्टॉलेशन की प्रगति दिखाएगी। अगर Windows व्यवस्थापक की अनुमति माँगे, तो हाँ चुनें। पूरा होने पर ऐप और खुले हुए दस्तावेज़ फिर से खुल जाएँगे।',
     updRestartNote:
       'पुनरारंभ के बाद एक विंडो इंस्टॉलेशन की प्रगति दिखाएगी। पूरा होने पर ऐप और खुले हुए दस्तावेज़ फिर से खुल जाएँगे।',
+    updRestartNoteMac:
+      'ऐप बंद होगा, नए संस्करण से बदला जाएगा और फिर से खुलेगा, साथ में आपके खुले दस्तावेज़ भी।',
   },
   'zh-TW': {
     updTitle: '軟體更新',
@@ -631,22 +680,16 @@ const tUpd = createI18n({
     updNotesLabel: '更新內容',
     updNotesOnGitHub: '在 GitHub 查看完整說明',
     updNotesTruncated: '僅顯示部分內容。',
-    updManualMac: 'Mac 版無法自動更新。請從下載頁面取得新版本並安裝。',
+    updManualMac:
+      '這台 Mac 無法自動安裝更新。請從下載頁面取得新版本並放入「應用程式」資料夾。如果你是直接從磁碟映像檔開啟 App，請將它移到「應用程式」資料夾，之後的更新就會自動安裝。',
     updInstallFailed: '上次更新未能安裝。這次將以視窗方式開啟安裝程式，方便查看安裝進度。',
     updVisibleInstall:
       '重新啟動後將顯示安裝進度視窗。如果 Windows 要求系統管理員授權，請選擇「是」。安裝完成後，應用程式和先前開啟的文件會重新開啟。',
     updRestartNote:
       '重新啟動後將顯示安裝進度視窗。安裝完成後，應用程式和先前開啟的文件會重新開啟。',
+    updRestartNoteMac: 'App 會關閉、換成新版本後重新開啟，先前開啟的文件也會重新開啟。',
   },
 })
-
-// This product's macOS builds are signed ad hoc only (electron-builder.cjs,
-// docs/tracking/decisions/0031-unsigned-mac-beta.md), and Squirrel.Mac only
-// installs an update into an app signed with a Developer ID. A Mac install
-// still checks the feed (latest-mac.yml), but an update it finds goes
-// straight to the window's manual phase: the release page, never a download
-// that is bound to fail.
-const SELF_UPDATES = process.platform !== 'darwin'
 
 const FIRST_CHECK_DELAY_MS = 15_000
 const RECHECK_INTERVAL_MS = 4 * 60 * 60 * 1000
@@ -727,11 +770,17 @@ function uiStrings(): UpdateUiStrings {
     downloading: tUpd(lang, 'updDownloading'),
     failed: tUpd(lang, 'updFailed'),
     retry: tUpd(lang, 'updRetry'),
-    manualDesc: tUpd(lang, SELF_UPDATES ? 'updManual' : 'updManualMac'),
+    manualDesc: tUpd(lang, process.platform === 'darwin' ? 'updManualMac' : 'updManual'),
     installFailedDesc: tUpd(lang, 'updInstallFailed'),
     visibleInstallDesc: tUpd(lang, 'updVisibleInstall'),
-    // only Windows hands over to an installer window that reopens the app
-    restartDesc: process.platform === 'win32' ? tUpd(lang, 'updRestartNote') : '',
+    // Windows hands over to an installer window, macOS to the swap
+    // (mac-update.ts); both reopen the app
+    restartDesc:
+      process.platform === 'win32'
+        ? tUpd(lang, 'updRestartNote')
+        : process.platform === 'darwin'
+          ? tUpd(lang, 'updRestartNoteMac')
+          : '',
     openDownload: tUpd(lang, 'updOpenDownload'),
     notesLabel: tUpd(lang, 'updNotesLabel'),
     notesOnGitHub: tUpd(lang, 'updNotesOnGitHub'),
@@ -858,8 +907,8 @@ export function initAutoUpdater(
   }
   // Unpacked runs have no app-update.yml and must not ask GitHub with a
   // dev version. Windows updates via NSIS (latest.yml), macOS via the zip
-  // target + latest-mac.yml (Squirrel.Mac requires a signed, notarized app
-  // — dmg is first-install only), Linux via the AppImage target +
+  // target + latest-mac.yml (installed by mac-update.ts, not Squirrel.Mac —
+  // dmg is first-install only), Linux via the AppImage target +
   // latest-linux.yml. On Linux the updater only works for AppImage runs
   // (electron-updater's AppImageUpdater needs the APPIMAGE env var the
   // AppImage runtime sets); deb installs update manually via apt.
@@ -892,6 +941,32 @@ export function initAutoUpdater(
   // (a release then needs only the installer and its latest.yml)
   autoUpdater.disableDifferentialDownload = true
   installResumeDownload(autoUpdater as unknown as Parameters<typeof installResumeDownload>[0])
+
+  // macOS: Squirrel.Mac only installs into an app signed with a Developer ID,
+  // which this product's Mac builds do not have (decision 0031). The app
+  // installs the downloaded zip itself (mac-update.ts, decision 0097); an
+  // install that cannot replace itself keeps the download page.
+  const isMac = process.platform === 'darwin'
+  const macBundle = isMac ? macAppBundle(process.execPath) : null
+  // the unpacked new version, once a download for it has been checked
+  let macStaged: { version: string; app: string } | null = null
+  let selfUpdates = true
+  if (isMac) {
+    const block = macSelfUpdateBlock(process.execPath)
+    if (macBundle !== null && block === null) removeMacLeftovers(macBundle)
+    const staging =
+      macBundle !== null &&
+      block === null &&
+      installMacStaging(autoUpdater, async (zip, version) => {
+        macStaged = null
+        log('unpacking', version, 'beside', macBundle)
+        const stagedApp = await stageMacUpdate({ zip, bundle: macBundle, version })
+        macStaged = { version, app: stagedApp }
+        log('unpacked and checked', version)
+      })
+    selfUpdates = staging
+    if (!staging) log('this Mac install cannot update itself:', block ?? 'no staging hook')
+  }
 
   let latestSeenVersion: string | null = null
   // release notes of latestSeenVersion, converted once when the version lands
@@ -945,6 +1020,26 @@ export function initAutoUpdater(
     return !installDirOk
   }
 
+  // macOS: the swap starts once the app's process is gone and reopens the
+  // app, the new version when it worked. The next launch reads the record
+  // like it does after the Windows installer.
+  const startMacSwapFor = (version: string): void => {
+    if (macBundle === null || macStaged === null || macStaged.version !== version) {
+      log('no unpacked update for', version, 'to install')
+      return
+    }
+    const tries = nextAttemptTries(failedInstall, version)
+    recordInstallAttempt(dataDir, { version, fromVersion: app.getVersion(), visible: false, tries })
+    log('replacing the app with', version, 'once it has quit, try', String(tries))
+    const started = startMacSwap({
+      pid: process.pid,
+      bundle: macBundle,
+      staged: macStaged.app,
+      logFile: join(dataDir, UPDATE_LOG_FILE),
+    })
+    if (!started) log('the swap did not start')
+  }
+
   const startInstaller = (version: string): void => {
     // Windows: the installer's own window, progress page only, which reopens
     // the app at the end (build/installer.nsh). A silent install left the user
@@ -975,9 +1070,10 @@ export function initAutoUpdater(
   // Install" installs. An ordinary quit never does: the user would not know an
   // install is running and could open the app into it (decision 0077).
   app.on('will-quit', () => {
-    if (!SELF_UPDATES || phase !== 'downloaded' || latestSeenVersion === null) return
+    if (!selfUpdates || phase !== 'downloaded' || latestSeenVersion === null) return
     if (!updateRestartRequested()) return
-    startInstaller(latestSeenVersion)
+    if (isMac) startMacSwapFor(latestSeenVersion)
+    else startInstaller(latestSeenVersion)
   })
 
   const setPhase = (patch: {
@@ -1016,6 +1112,7 @@ export function initAutoUpdater(
     downloadGen += 1
     latestSeenVersion = null
     latestSeenNotes = null
+    macStaged = null
     failedAttempts = 0
     downloadInFlight = false
     phase = 'available'
@@ -1026,7 +1123,7 @@ export function initAutoUpdater(
   const actions = {
     onDownload: () => {
       if (phase === 'downloading' || phase === 'downloaded') return
-      if (!SELF_UPDATES) {
+      if (!selfUpdates) {
         void shell.openExternal(manualDownloadUrlFor(latestSeenVersion))
         return
       }
@@ -1083,8 +1180,11 @@ export function initAutoUpdater(
     }
     if (!sameVersionRecheck) {
       failedAttempts = 0
+      // a Mac swap that did not take is not retried: nothing about it would
+      // change on a second try (the install-failed wording is the Windows
+      // installer's)
       phase =
-        !SELF_UPDATES || installFailures >= 2
+        !selfUpdates || installFailures >= 2 || (isMac && installFailures >= 1)
           ? 'manual'
           : installFailures === 1
             ? 'install-failed'

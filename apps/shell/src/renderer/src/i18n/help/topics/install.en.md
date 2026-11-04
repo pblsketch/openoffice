@@ -22,7 +22,7 @@ Because the installer is not signed, only run one you downloaded from the Releas
 
 ## Updates
 
-- GenOffice looks for a newer version on the same GitHub Releases page. When one is published, **Settings ▸ About** offers it: press **Update to …**, wait for the download, then press **Restart & install**. On Windows an installer window shows the progress; when it finishes, GenOffice opens again with the documents you had open. The update installs only when you press that button, never when you simply close the app.
+- GenOffice looks for a newer version on the same GitHub Releases page. When one is published, **Settings ▸ About** offers it: press **Update to …**, wait for the download, then press **Restart & install**. On Windows an installer window shows the progress; when it finishes, GenOffice opens again with the documents you had open. On a Mac the app closes, is swapped for the new version and opens again with the documents you had open. That works for an app in the Applications folder; one opened straight from the disk image points you to the download page instead. The update installs only when you press that button, never when you simply close the app.
 - **Menu (☰) ▸ Check for updates** checks whenever you ask. On a Mac it is **Help ▸ Check for updates**.
 - When the check fails — no network, or nothing published yet — nothing happens, and the app keeps working as before.
 - **Update Channel**, also under Settings ▸ About, is Stable or Beta. Changing it takes effect at once and checks for an update; it will not downgrade a Beta install back to Stable.
