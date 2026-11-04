@@ -462,6 +462,25 @@ describe('pasting copied cells at a caret in a cell (셀 붙이기)', () => {
     expect(hancomPasteCells(body, paste({ 'text/html': COPIED_2X2 }))).toBe(false)
     expect(layout(doc)[1]).toEqual(['', '', ''])
   })
+
+  it('takes a selection that covers nothing as none, as Hangul has none there', () => {
+    // rhwp devel can leave the drag anchor on the caret after a click in a cell
+    const doc = table(EMPTY_3X3)
+    const at = caretAt(4)
+    const collapsed = caretIn(doc, 4, {
+      hasSelection: () => true,
+      getSelectionOrdered: () => ({ start: { ...at }, end: { ...at } }),
+    })
+    expect(hancomPasteCells(collapsed, paste({ 'text/html': COPIED_2X2 }))).toBe(true)
+    expect(layout(doc)[1]).toEqual(['', 'a00', 'a01'])
+    // one that covers a character is a selection: the studio's paste replaces it
+    const doc2 = table(EMPTY_3X3)
+    const spanning = caretIn(doc2, 4, {
+      hasSelection: () => true,
+      getSelectionOrdered: () => ({ start: { ...at }, end: { ...at, charOffset: 1 } }),
+    })
+    expect(hancomPasteCells(spanning, paste({ 'text/html': COPIED_2X2 }))).toBe(false)
+  })
 })
 
 function cellOf(doc: HwpDocument, cellIndex: number) {

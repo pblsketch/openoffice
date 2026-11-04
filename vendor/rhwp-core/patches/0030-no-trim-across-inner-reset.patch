@@ -1,0 +1,68 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pblsketch <239486537+pblsketch@users.noreply.github.com>
+Date: Wed, 4 Nov 2026 00:00:00 +0900
+Subject: [PATCH 20/30] fix(typeset): 문단 안에서 저장 사다리가 되감기는 문단은 끝 줄간격을 깎지 않는다
+
+조판은 저장 줄이 있는 문단의 흐름 전진에서 끝 줄의 줄간격(과 앞 간격)을 깎고,
+다음 문단의 저장 vpos 스냅이 그 몫을 되돌린다는 전제를 둔다(#2279 ①). 문단 안의
+저장 줄이 쪽 원점으로 되감기면(한/글은 그 문단 가운데서 쪽을 나눴다) 다음 문단의
+vpos 는 그 새 원점 기준이다. 흐름이 그 문단을 통째로 한 단에 두면 조판의 원점
+(lazy base)은 다음 문단에서 풀리고 스냅이 일어나지 않아, 깎은 줄간격이 영영
+돌아오지 않는다. 그리기는 같은 문단의 줄간격을 그대로 소비하므로 두 커서가
+그만큼 갈라졌다.
+
+devel 은 이 문단에도 트림을 적용했다. 그래서 같은 쪽의 저장 TAC 표가 조판 커서
+(482.3px)에 고정돼, 그리기 흐름(492.98px)보다 10.67px(줄간격 800HU) 위에 그려져
+앞의 캡션 줄과 겹쳤다.
+
+바꾼 것: spacing_restoration_unavailable 에 "이 문단의 저장 줄이 안에서 쪽 원점으로
+되감긴다"를 더한다. 되감김 판정은 controls/order.rs 의 has_mid_para_vpos_reset 과
+같은 정의(합성 줄 제외, 앞 줄 > 5000, 뒤 줄 <= 0)다. 이런 문단은 total_height 로
+전진해 그리기와 같은 원점을 쓴다.
+
+증거(개인 문서, 로컬 렌더):
+- draft.hwpx 101쪽: pi876 (줄1 vpos 0 리셋) 뒤 캡션 "<표 5-8> …"(pi880,
+  596.3~609.6px)과 글자처럼 표(pi881)가 607.0px 에서 2.6px 겹쳤다. 한/글 2024 는
+  캡션 위끝에서 1600HU(21.3px) 아래에 표를 둔다(저장 사다리 31813 → 33413). 고친 뒤
+  표는 617.7px, 캡션 위끝 + 21.4px 로 한/글·앱 0.8.7-ieum.17 과 같다.
+- 개인 문서 41개에서 이 변경으로 바뀐 렌더 트리는 draft 101~102쪽뿐이다(0029 와 함께 잰
+  결과에서 0029 의 쪽을 뺀 것).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/renderer/typeset/paragraph.rs | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/src/renderer/typeset/paragraph.rs b/src/renderer/typeset/paragraph.rs
+index dc1960ebec9a1d93a2e7731bd690b0a495ee564b..a7faf4d24d76e51ba5c3da4b96a066e60ce329f2 100644
+--- a/src/renderer/typeset/paragraph.rs
++++ b/src/renderer/typeset/paragraph.rs
+@@ -61,6 +61,11 @@ fn spacing_restoration_unavailable(
+     st.vpos_ladder_dirty
+         || (st.col_count == 1 && st.vpos_page_base.or(st.vpos_lazy_base).is_none())
+         || !spacing_trim_restorable(paragraphs, para_idx)
++        // 문단 안에서 저장 사다리가 쪽 원점으로 되감기면(한/글은 거기서 쪽을 나눴다)
++        // 뒤 문단의 저장 vpos 는 그 새 원점 기준이다. 이 문단을 통째로 한 단에 둔
++        // 흐름에서는 그 스냅이 이 문단의 원점과 이어지지 않아 깎은 줄간격을 되돌리지
++        // 못한다. 그리기는 줄간격을 그대로 소비하므로 조판도 깎지 않는다.
++        || paragraphs.get(para_idx).is_some_and(stored_ladder_resets_inside)
+         || next_boundary_reverts_spacing_trim(
+             st.profile.hwpx_stored_layout() && !st.profile.hwp3_layout(),
+             paragraphs,
+@@ -70,6 +75,16 @@ fn spacing_restoration_unavailable(
+         )
+ }
+ 
++/// 문단 안의 저장 줄이 쪽 원점으로 되감기는가(앞 줄이 쪽 윗부분을 지났고 뒤 줄이
++/// 0 이하). 합성 줄은 저장 사다리가 아니므로 비교하지 않는다.
++fn stored_ladder_resets_inside(para: &Paragraph) -> bool {
++    para.line_segs.windows(2).any(|w| {
++        (w[0].tag | w[1].tag) & crate::model::paragraph::LineSeg::TAG_IMPLEMENTATION_PROPERTY == 0
++            && w[1].vertical_pos <= 0
++            && w[0].vertical_pos > 5000
++    })
++}
++
+ fn record_stored_column_top_spacing(
+     st: &mut TypesetState,
+     paragraphs: &[Paragraph],

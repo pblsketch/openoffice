@@ -1,0 +1,85 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pblsketch <239486537+pblsketch@users.noreply.github.com>
+Date: Wed, 4 Nov 2026 00:00:00 +0900
+Subject: [PATCH 22/30] fix(typeset): 선언한 표가 아닌 높이를 적은 TAC host 저장 줄은 그린 표로 센다
+
+한/글이 하는 일
+  글 없는 host 에 글자처럼 취급하는 표 하나만 든 줄은 그 표의 바깥 상자 높이다. 한/글이
+  저장한 줄은 `줄높이 = 선언 표 높이 + 바깥 위·아래 여백` 을 이룬다. 문서 도구가 만든
+  HWPX 서식은 선언 200HU(2.7px) 표의 host 줄을 11064HU(147.5px)로 적었다. 한/글 2024
+  Print 는 이 표를 71.4px(바깥 상자 79px)로 그리고 다음 문단을 표 바로 아래에 놓아 1쪽에
+  끝낸다.
+
+devel 이 하던 일
+  배치는 TAC 줄 끝을 그린 표 하단에서 멈추지만(layout 의 `line_end.min(table_y_end)`),
+  조판(`typeset_tac_table`)은 저장 줄(147.5px)을 표 높이로 세었다. 같은 쪽에서 66px 를 더
+  써서 마지막 문단이 2쪽으로 갔다(조판 사용 985.2px > 본문 982.7px). #2279 stale-lh 규칙은
+  선언 높이도 저장 줄만큼 클 때만 실측을 믿는데, 이 서식은 선언이 실측보다 작다.
+
+바꾼 것
+  tac_count 1, 캡션 없음, 글 없는 host, 컨트롤 하나인 줄에서, 실제 저장 줄이 선언 표
+  바깥 상자와 같지 않고(1HU 넘게 다름) 그린 표 바깥 상자보다도 크며, 그린 상자가 문단
+  글자 크기 이상(표가 줄을 정한다)이면 조판은 저장 줄 대신 측정 높이(`ft.total_height`)를
+  쓴다. 한/글이 저장한 줄(등식 성립)과 글자가 줄을 정하는 작은 표는 걸리지 않는다.
+
+증거
+  한/글 2024 쪽 수: 생성 서식 5종 모두 1쪽, 서식을 아래로 밀어 쪽을 넘긴 변형 s20~s47
+  모두 2쪽. 이 커밋 전 rhwp: 5종 2쪽, s45~s47 3쪽. 뒤: 5종 1쪽, s45~s47 2쪽.
+  samples/ 1,337건(3MB 미만)의 쪽 수·쪽마다 본문 위치 서명은 0030·0031 을 합친 전후가 같다.
+---
+ src/renderer/typeset.rs | 42 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 42 insertions(+)
+
+diff --git a/src/renderer/typeset.rs b/src/renderer/typeset.rs
+index 30b865682877e863e739d81f96e5dfec5768e7fd..3515b77f3d88948df05a36eb192a57fd38c16479 100644
+--- a/src/renderer/typeset.rs
++++ b/src/renderer/typeset.rs
+@@ -4546,6 +4546,48 @@ impl TypesetEngine {
+         } else {
+             table_height
+         };
++        // 글 없는 host 의 TAC 표 하나만 든 줄은 한/글에서 표 바깥 상자 높이다 — 한/글이 저장한
++        // 줄은 `줄높이 = 선언 표 높이 + 바깥 위·아래 여백` 이다. 저장 줄이 그 등식을 이루지
++        // 못하고(선언한 표가 아닌 다른 높이를 적었다) 그린 표 바깥 상자보다도 크면 그 줄은
++        // 이 표를 잰 값이 아니다. 배치(`layout` 의 TAC 줄 끝은 그린 표 하단에서 멈춘다)와
++        // 한/글처럼 그린 표로 센다. 도구가 만든 HWPX 서식: 선언 200HU 표에 줄 11064HU,
++        // 그린 표 바깥 상자 79px — 한/글 2024 Print 는 표 하단 602.1px 바로 뒤에 다음
++        // 문단을 놓아 1쪽에 끝나는데, 저장 줄로 세면 66px 를 더 써서 마지막 문단이 2쪽으로 갔다.
++        let table_height = if tac_count == 1
++            && table.caption.is_none()
++            && !para_has_visible_text(para)
++            && para.controls.len() == 1
++            && ft.total_height > 1.0
++            && para
++                .line_segs
++                .get(tac_seg_idx)
++                .filter(|seg| !is_synthetic_line_seg(seg))
++                .is_some_and(|seg| {
++                    let declared_box = i64::from(table.common.height)
++                        + i64::from(table.outer_margin_top)
++                        + i64::from(table.outer_margin_bottom);
++                    let drawn_box = ft.effective_height
++                        + hwpunit_to_px(
++                            i32::from(table.outer_margin_top)
++                                + i32::from(table.outer_margin_bottom),
++                            self.dpi,
++                        );
++                    let font_px = para
++                        .char_shapes
++                        .first()
++                        .and_then(|cs| styles.char_styles.get(cs.char_shape_id as usize))
++                        .map_or(0.0, |cs| cs.font_size);
++                    table.common.height < 0x8000_0000
++                        && (i64::from(seg.line_height) - declared_box).abs() > 1
++                        && drawn_box >= font_px
++                        && hwpunit_to_px(seg.line_height, self.dpi) > drawn_box + 0.5
++                })
++            && table_height > ft.total_height + 0.5
++        {
++            ft.total_height
++        } else {
++            table_height
++        };
+         // [#5699 H1] 위와 대칭인 과소 방향: 저장 lineseg 보유 문서인데 저장 th 관례
+         // 기반 계상이 선언·실측 표높이 둘 다의 1/4 미만이면, 생성기 사다리가 표
+         // 밴드를 계상하지 않은 자기모순이다(자치법규 서식류 균일 사다리). 실측

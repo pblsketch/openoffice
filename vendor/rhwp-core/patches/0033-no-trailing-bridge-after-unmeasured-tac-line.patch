@@ -1,0 +1,272 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pblsketch <239486537+pblsketch@users.noreply.github.com>
+Date: Wed, 4 Nov 2026 00:00:00 +0900
+Subject: [PATCH 23/30] fix(layout): 한/글이 재지 않은 TAC host 줄 뒤 사다리로 앞 줄간격을 다시 잇지 않는다
+
+한/글이 하는 일
+  문서 도구가 만든 HWPX 서식에서 글자처럼 취급 표(선언 200HU, 저장 host 줄 11064HU) 뒤
+  빈 문단(줄 1000HU, 줄간격 600HU = 160%) 다음 제목은, 한/글 2024 Print 에서 늘
+  `빈 줄 바닥 + 빈 줄 줄간격 + 제목 앞 간격` 에 있다. 빈 문단 줄간격과 제목 앞 간격을
+  바꾼 변형(쪽 위 96dpi px, PDF 글줄 위끝 + 3.2):
+    빈 문단 줄간격 100%·130%·160%·250%·400% → 제목 632.1·636.1·640.1·652.1·672.1
+    제목 앞 간격 0·400·1500·3000HU          → 제목 634.8·640.1·654.8·674.8
+  (400% 와 3000HU 는 한/글도 2쪽.)
+
+devel 이 하던 일
+  표 뒤 저장 사다리가 쪽 기준을 잃으면 다음 저장 문단에서 지연 기준을 역산한다
+  (`HeightCursor::vpos_adjust`). 그 역산은 "흐름이 앞 문단의 끝 줄간격을 아직 소비하지
+  않았다"고 보고 줄간격을 한 번 더 잇는다(#1022 v2, 앞 문단이 빈 문단이면 유지). 이 서식은
+  앞 TAC host 줄이 한/글이 잰 값이 아니라 그 뒤 사다리도 도구가 적은 좌표다. 그리기는 빈
+  문단(pi 13)에서 역산을 건너뛰고 제목(pi 14)에서 세우며 빈 줄 줄간격 8.0px 를 더해, 제목
+  이후 쪽 전체가 한/글보다 8.0px 아래였다(0.8.7 앱 엔진도 같다). 조판은 빈 문단에서 표 줄의
+  줄간격 2.0px 를 더했다.
+
+바꾼 것
+  `stored_tac_host_line_unmeasured`: 글 없는 host 에 캡션 없는 글자처럼 취급 표 하나만 든
+  저장 줄이 선언 표 바깥 상자와 다르고(1HU 넘게), 그린 표 바깥 상자에 글자 크기를 더한
+  것보다도 크면 한/글이 잰 줄이 아니다. 한/글은 그 줄을 표 바깥 상자로 적고, 선언이 낡은
+  표는 그린 표에 글자 한 줄 몫까지 더한 높이로 적는다(samples/issue1835_tac_stale_height:
+  그린 95.0px 표의 줄 102.6px, 한/글 Print 도 그 줄로 다음 문단을 놓는다). 그런 줄을 지난
+  뒤 지연 기준을 처음 세울 때는 앞 줄간격을 잇지 않는다. 그리기는 그린 표 높이로
+  (`HeightCursor::after_unmeasured_tac_line`, 기준을 세우면 끔), 조판은 측정 표 높이로
+  (0031 의 같은 줄 판정 안에서 `record_unmeasured_tac_line`) 같은 판정을 한다.
+
+검사
+  원본 포함 위 변형 8가지 모두 rhwp 제목 위치가 한/글과 0.1px 안에서 같다(이전: 8.0px 아래).
+  생성 서식 5종의 제목 이후 글줄이 한/글 PDF 와 같은 자리(648.1 → 640.1, 676.9 → 668.9 …).
+  처음 시도한 넓은 규칙(앞 빈 문단의 줄간격 소비가 흐름에 보이면 잇지 않음)은 samples/ 의
+  한/글 인쇄 PDF 가 있는 문서에서 어긋남을 키웠다(exam_eng 0.3 → 7.5px, 1341000 보고서
+  5.6 → 15.2px). 한/글 사다리에서는 그 잇기가 맞는 경우가 있어, 한/글이 재지 않은 줄이
+  있다는 증거가 있을 때로 좁혔다. "그린 상자보다 크면" 만으로는 issue1835 가 걸려(한/글
+  PDF 와 3.4 → 17.8px) 글자 한 줄 몫을 허용한다.
+---
+ src/renderer/height_cursor.rs            | 12 +++++++++
+ src/renderer/height_measurer.rs          | 43 ++++++++++++++++++++++++++++++++
+ src/renderer/layout.rs                   | 27 ++++++++++++++++++++
+ src/renderer/typeset.rs                  | 10 ++++++++
+ src/renderer/typeset/section/vpos.rs     |  2 ++
+ src/renderer/typeset/state/commands.rs   |  3 +++
+ src/renderer/typeset/state/data.rs       |  3 +++
+ src/renderer/typeset/state/transition.rs |  1 +
+ 8 files changed, 101 insertions(+)
+
+diff --git a/src/renderer/height_cursor.rs b/src/renderer/height_cursor.rs
+index a90e6ea9ba1e5f646a66651b8a63b9cd7eae5d7a..7cfd9d44cba342d08fd15a44827988a108bc119b 100644
+--- a/src/renderer/height_cursor.rs
++++ b/src/renderer/height_cursor.rs
+@@ -276,6 +276,10 @@ pub(crate) struct HeightCursor {
+     /// 이 문단이 저장 사다리가 종이·쪽 기준 자리차지 개체를 계상하지 않은 앵커 뒤에 있다
+     /// (`first_stale_topbottom_float_anchor`). 그 뒤의 저장 되감김은 다른 조판의 쪽 경계다.
+     pub stale_stored_page_boundaries: bool,
++    /// 지연 기준을 세우기 전, 한/글이 재지 않은 TAC host 저장 줄
++    /// (`stored_tac_host_line_unmeasured`)을 지났다. 그 뒤 사다리 간격은 흐름이 앞 줄의
++    /// 줄간격을 건너뛰었다는 증거가 아니다. 지연 기준을 세우면 끈다.
++    pub after_unmeasured_tac_line: bool,
+     /// [#7665] 미주 흐름에서 **미주의 첫 문단**(렌더가 번호 장식을 붙이는 문단, 조판 `ep_idx == 0`)
+     /// 인 전역 문단 번호. 새 문항 제목 판정은 이 소유 경계로 한다 — 첫 문단이 「문」 으로
+     /// 시작하는지(번호 장식 `문1)` 의 대리값)로 읽으면 같은 미주 안 `문서…` 본문도 제목이 된다.
+@@ -349,6 +353,7 @@ impl HeightCursor {
+             session_edited: false,
+             curr_item_is_table_fragment: false,
+             stale_stored_page_boundaries: false,
++            after_unmeasured_tac_line: false,
+             endnote_note_first_paras: Default::default(),
+             endnote_tail_leading_hu: Default::default(),
+             seed_lazy_base_from_next_stored: false,
+@@ -1324,9 +1329,15 @@ impl HeightCursor {
+                     let stored_gap = hwpunit_to_px(seg.line_spacing.max(0), self.dpi);
+                     stored_gap > 0.0 && (gap - stored_gap).abs() < 0.1
+                 });
++            // 한/글이 재지 않은 TAC host 줄 뒤의 저장 사다리(문서 도구가 적은 좌표)는 앞
++            // 줄간격을 잇는 근거가 아니다. 한/글 2024 Print(도구가 만든 서식): 그런 표 뒤 빈
++            // 문단의 줄간격을 0·300·600·1500·3000HU, 다음 제목의 앞 간격을 0·400·1500·3000HU
++            // 로 바꿔도 제목은 늘 빈 줄 바닥 + 줄간격 + 앞 간격에 있다. 이으면 빈 줄 줄간격
++            // 만큼(160% 에서 8.0px) 더 내려갔다.
+             let trailing_ls_hu = if (vpos_continuous && prev_has_text)
+                 || picture_spent_trailing
+                 || rendered_spent_trailing
++                || self.after_unmeasured_tac_line
+             {
+                 0
+             } else {
+@@ -1519,6 +1530,7 @@ impl HeightCursor {
+                 return y_offset;
+             } else {
+                 self.vpos_lazy_base = Some(lazy_base);
++                self.after_unmeasured_tac_line = false;
+                 (lazy_base, false)
+             }
+         };
+diff --git a/src/renderer/height_measurer.rs b/src/renderer/height_measurer.rs
+index 421ed8a1c09de46ea5de5b92bdd96ab68b6aa859..b196eeecdd78cf069ac00210b7857bf2fb0f6efb 100644
+--- a/src/renderer/height_measurer.rs
++++ b/src/renderer/height_measurer.rs
+@@ -750,6 +750,49 @@ pub(crate) fn stored_tac_table_host_line_outgrown(
+     line + 0.5 < occupied_px
+ }
+ 
++/// 글 없는 host 에 글자처럼 취급 표 하나만 든 저장 줄이 한/글이 잰 줄이 아닌가.
++///
++/// 한/글이 저장한 그런 줄은 표 바깥 상자(`선언 높이 + 바깥 위·아래 여백`)이거나, 선언이
++/// 낡았으면 그린 표에 글자 한 줄 몫까지 더한 높이다(#1835: 그린 95.0px 표의 줄 102.6px —
++/// 한/글 Print 도 그 줄로 다음 문단을 놓는다). 저장 줄이 선언 상자와 다르고 그린 상자보다
++/// 글자 크기 이상 크면 그 줄은 이 표를 잰 값이 아니다(도구가 만든 HWPX 서식: 선언 200HU
++/// 표의 줄 11064HU = 147.5px, 그린 상자 79px). 글자가 줄을 정하는 작은 표는 제외한다.
++/// 조판(`typeset_tac_table`)은 측정 높이로, 그리기는 그린 표 높이로 같은 판정을 한다.
++pub(crate) fn stored_tac_host_line_unmeasured(
++    p: &Paragraph,
++    drawn_height_px: f64,
++    styles: &ResolvedStyleSet,
++    dpi: f64,
++) -> bool {
++    let [Control::Table(table)] = p.controls.as_slice() else {
++        return false;
++    };
++    if !table.common.treat_as_char
++        || table.caption.is_some()
++        || table.common.height >= 0x8000_0000
++        || drawn_height_px <= 1.0
++        || p.text.chars().any(|ch| ch > '\u{001F}' && ch != '\u{FFFC}')
++    {
++        return false;
++    }
++    let Some(line) = p.line_segs.first().filter(|line| {
++        line.tag & crate::model::paragraph::LineSeg::TAG_IMPLEMENTATION_PROPERTY == 0
++    }) else {
++        return false;
++    };
++    let margins = i32::from(table.outer_margin_top) + i32::from(table.outer_margin_bottom);
++    let declared_box = i64::from(table.common.height) + i64::from(margins);
++    let drawn_box = drawn_height_px + hwpunit_to_px(margins, dpi);
++    let font_px = p
++        .char_shapes
++        .first()
++        .and_then(|cs| styles.char_styles.get(cs.char_shape_id as usize))
++        .map_or(0.0, |cs| cs.font_size);
++    (i64::from(line.line_height) - declared_box).abs() > 1
++        && drawn_box >= font_px
++        && hwpunit_to_px(line.line_height, dpi) > drawn_box + font_px + 0.5
++}
++
+ /// TAC 표만 품은 빈 host 줄 뒤의 줄간격(px) — 글자 크기로 잰 값. 저장 줄 유무를 따지지
+ /// 않는다. 저장 줄 없는 host 는 [`no_ls_tac_table_host_trailing_spacing_px`], 낡은 저장
+ /// 줄 host 는 [`stored_tac_table_host_line_outgrown`] 판정 뒤에 이 값을 쓴다.
+diff --git a/src/renderer/layout.rs b/src/renderer/layout.rs
+index 91cd8357c0a25c072dbdac9152cf096b101b735c..2ec8e684c01656bdc1f01dc6e1502a3ada6cc8ae 100644
+--- a/src/renderer/layout.rs
++++ b/src/renderer/layout.rs
+@@ -1696,6 +1696,19 @@ fn drawn_table_top(node: &RenderNode, para_index: usize, control_index: usize) -
+         .find_map(|child| drawn_table_top(child, para_index, control_index))
+ }
+ 
++/// 본문에 그린 표(셀 안 표가 아닌) 노드의 높이.
++fn drawn_table_height(node: &RenderNode, para_index: usize, control_index: usize) -> Option<f64> {
++    if let RenderNodeType::Table(table) = &node.node_type {
++        return (table.para_index == Some(para_index)
++            && table.control_index == Some(control_index)
++            && table.cell_context.is_none())
++        .then_some(node.bbox.height);
++    }
++    node.children
++        .iter()
++        .find_map(|child| drawn_table_height(child, para_index, control_index))
++}
++
+ fn painted_flow_text_bottom(node: &RenderNode) -> Option<f64> {
+     fn walk(node: &RenderNode, out: &mut f64) {
+         match &node.node_type {
+@@ -9000,6 +9013,20 @@ impl LayoutEngine {
+                 }
+             }
+             hcursor.stored_boundary_spacing_before = 0.0;
++            if hcursor
++                .prev_layout_para
++                .and_then(|previous| paragraphs.get(previous))
++                .zip(hcursor.prev_layout_para)
++                .is_some_and(|(previous, index)| {
++                    drawn_table_height(&col_node, index, 0).is_some_and(|height| {
++                        crate::renderer::height_measurer::stored_tac_host_line_unmeasured(
++                            previous, height, styles, self.dpi,
++                        )
++                    })
++                })
++            {
++                hcursor.after_unmeasured_tac_line = true;
++            }
+             if !shape_jumped
+                 && !session_fresh_partial_table
+                 && !self.hidden_empty_paras.borrow().contains(&item_para)
+diff --git a/src/renderer/typeset.rs b/src/renderer/typeset.rs
+index 3515b77f3d88948df05a36eb192a57fd38c16479..53f6724dd9bde80aeb5fac43caefba4cf7fd7e14 100644
+--- a/src/renderer/typeset.rs
++++ b/src/renderer/typeset.rs
+@@ -4584,6 +4584,16 @@ impl TypesetEngine {
+                 })
+             && table_height > ft.total_height + 0.5
+         {
++            // 줄이 그린 표보다 글자 한 줄 넘게 크면 뒤 문단의 지연 기준 역산도 이 줄을 한/글
++            // 사다리로 보지 않는다(height_cursor, 그리기와 같은 판정).
++            if crate::renderer::height_measurer::stored_tac_host_line_unmeasured(
++                para,
++                ft.effective_height,
++                styles,
++                self.dpi,
++            ) {
++                st.record_unmeasured_tac_line(para_idx);
++            }
+             ft.total_height
+         } else {
+             table_height
+diff --git a/src/renderer/typeset/section/vpos.rs b/src/renderer/typeset/section/vpos.rs
+index d614927c78d174100f5414e0ababbc7d39f4676a..23ac935be60873ece855f4b700a9ea52ffb57c76 100644
+--- a/src/renderer/typeset/section/vpos.rs
++++ b/src/renderer/typeset/section/vpos.rs
+@@ -58,6 +58,8 @@ impl TypesetEngine {
+             session_edited: self.profile.get().session_edited(),
+             curr_item_is_table_fragment: false,
+             stale_stored_page_boundaries: st.stale_stored_page_boundaries,
++            after_unmeasured_tac_line: st.vpos_prev_layout_para.is_some()
++                && st.vpos_prev_layout_para == st.last_unmeasured_tac_line,
+             // 본문 조판: 미주 제목 갈래는 `suppress_large_forward_jump` 아래에서만 발화한다.
+             endnote_note_first_paras: Default::default(),
+             endnote_tail_leading_hu: Default::default(),
+diff --git a/src/renderer/typeset/state/commands.rs b/src/renderer/typeset/state/commands.rs
+index ca7966b7002cdc3a2d2ba1c4a7128b3d83508d9d..caadb1a7e45eccbcfe81ce77433131fc07842575 100644
+--- a/src/renderer/typeset/state/commands.rs
++++ b/src/renderer/typeset/state/commands.rs
+@@ -372,6 +372,9 @@ impl TypesetState {
+     ) {
+         self.data.last_table_host_start = Some((para_index, control_index, host_start));
+     }
++    pub(in crate::renderer::typeset) fn record_unmeasured_tac_line(&mut self, para_index: usize) {
++        self.data.last_unmeasured_tac_line = Some(para_index);
++    }
+     pub(in crate::renderer::typeset) fn require_strict_following_text_fit(&mut self) {
+         self.data.strict_plain_text_fit_after_empty_host_float_once = true;
+     }
+diff --git a/src/renderer/typeset/state/data.rs b/src/renderer/typeset/state/data.rs
+index 7e1c3ca9ceef0cdc37c87eebd81fa68f4dea3e5b..66d2c9b99d9a8d186b1adb990ba80c174cf2ac37 100644
+--- a/src/renderer/typeset/state/data.rs
++++ b/src/renderer/typeset/state/data.rs
+@@ -261,6 +261,9 @@ pub(in crate::renderer::typeset) struct StateView {
+     /// 마지막으로 배치한 표의 (host 문단, 컨트롤, host 문단 시작 높이). 바로 뒤 문단이
+     /// 표가 없었을 때의 제자리를 재는 데 쓴다(`empty_host_float_natural_successor_top`).
+     pub(in crate::renderer::typeset) last_table_host_start: Option<(usize, usize, f64)>,
++    /// 마지막으로 그린 표로 센, 한/글이 재지 않은 TAC host 저장 줄의 문단
++    /// (`stored_tac_host_line_unmeasured`). 바로 뒤 지연 기준 역산이 앞 줄간격을 잇지 않는다.
++    pub(in crate::renderer::typeset) last_unmeasured_tac_line: Option<usize>,
+     /// [#2403] 소스분기 질의 표면 — 단일 소유, typeset 진입 시 set. 종전 4필드의
+     /// 시멘틱 승계: hwp3_layout()=HWP3→HWP5 변환본(widow 방지 등 variant 분기,
+     /// Task #1007) / hwp3_native_layout()=원본 HWP3 (저장 LINE_SEG 계약) /
+diff --git a/src/renderer/typeset/state/transition.rs b/src/renderer/typeset/state/transition.rs
+index 4c71e4dedcd29b136a05480d67a7e5426565092f..13d69489b0d21b994178ff30f2145596416c3c39 100644
+--- a/src/renderer/typeset/state/transition.rs
++++ b/src/renderer/typeset/state/transition.rs
+@@ -98,6 +98,7 @@ impl TypesetState {
+                 tail_saved_bounds_once: None,
+                 strict_plain_text_fit_after_empty_host_float_once: false,
+                 last_table_host_start: None,
++                last_unmeasured_tac_line: None,
+                 profile: Default::default(),
+                 has_stored_line_segs: false,
+                 hide_empty_line: false,
