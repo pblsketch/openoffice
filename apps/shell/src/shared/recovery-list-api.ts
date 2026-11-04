@@ -13,6 +13,7 @@ export const RECOVERY_LIST_EDITOR_KINDS = [
   'html',
   'mindmap',
   'hwp',
+  'diagram',
 ] as const
 
 export type RecoveryListEditorKind = (typeof RECOVERY_LIST_EDITOR_KINDS)[number]

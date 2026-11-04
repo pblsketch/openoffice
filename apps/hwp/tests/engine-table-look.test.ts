@@ -143,6 +143,8 @@ describe('a page opened by a paragraph that holds only a table', () => {
     // text line; it is drawn 67.3px high, and the next line starts at its outer box end
     const [, black, box] = tables(open())
     expect(black.bbox!.y).toBeCloseTo(431.2, 0)
+    // the line after the empty-host table starts at max(its place + space before, box end),
+    // as Hangul prints it (patch 0031)
     expect(box.bbox!.y).toBeCloseTo(530.7, 0)
     expect(box.bbox!.y + box.bbox!.h).toBeCloseTo(602.1, 0)
   })

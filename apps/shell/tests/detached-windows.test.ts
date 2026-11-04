@@ -132,6 +132,11 @@ vi.mock('../../epub/src/main/epub-main', () => ({
   requestEpubClose: vi.fn(() => Promise.resolve(true)),
 }))
 
+vi.mock('../../diagram/src/main/diagram-main', () => ({
+  diagramIsDirty: vi.fn(() => false),
+  requestDiagramClose: vi.fn(() => Promise.resolve(true)),
+}))
+
 vi.mock('../src/main/tab-manager', () => ({
   canonicalPath: (p: string) => p.toLowerCase(),
 }))
@@ -373,6 +378,51 @@ describe('a detached book', () => {
     await flush()
     expect(win.destroyed).toBe(true)
     vi.mocked(epubIsDirty).mockReturnValue(false)
+  })
+})
+
+describe('a detached diagram', () => {
+  it('is reported to MCP agents as kind diagram, with its own dirty state', async () => {
+    const { diagramIsDirty } = await import('../../diagram/src/main/diagram-main')
+    vi.mocked(diagramIsDirty).mockImplementation((id) => id === 61)
+    detached.createDetachedEditorWindow({
+      view: fakeView(61) as never,
+      kind: 'diagram',
+      title: 'flow.drawio',
+      filePath: 'C:/maps/flow.drawio',
+      applyMenuFor: () => {},
+    })
+    const docs = await detached.detachedOpenDocuments()
+    expect(docs.map((d) => [d.id, d.kind, d.filePath, d.dirty])).toEqual([
+      ['detached:61', 'diagram', 'C:/maps/flow.drawio', true],
+    ])
+    vi.mocked(diagramIsDirty).mockReturnValue(false)
+  })
+
+  it('asks before closing when dirty and keeps the window on cancel', async () => {
+    const { diagramIsDirty, requestDiagramClose } =
+      await import('../../diagram/src/main/diagram-main')
+    vi.mocked(diagramIsDirty).mockReturnValue(true)
+    vi.mocked(requestDiagramClose).mockResolvedValueOnce(false)
+    const view = fakeView(62)
+    detached.createDetachedEditorWindow({
+      view: view as never,
+      kind: 'diagram',
+      title: 'flow.drawio',
+      filePath: 'C:/maps/flow.drawio',
+      applyMenuFor: () => {},
+    })
+    const win = instances[0]!
+    win.emit('close', { preventDefault: vi.fn() })
+    await flush()
+    expect(requestDiagramClose).toHaveBeenCalledWith(view.webContents, win)
+    expect(win.destroyed).toBe(false)
+
+    vi.mocked(requestDiagramClose).mockResolvedValueOnce(true)
+    win.emit('close', { preventDefault: vi.fn() })
+    await flush()
+    expect(win.destroyed).toBe(true)
+    vi.mocked(diagramIsDirty).mockReturnValue(false)
   })
 })
 

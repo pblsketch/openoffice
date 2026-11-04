@@ -3,7 +3,7 @@
  * way a file can open, what it asks before deleting, and what it hands the
  * main process to save.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Lang } from '@genoffice/i18n'
@@ -11,6 +11,7 @@ import {
   DEFAULT_THEME_ID,
   openXmind,
   recogniseSheetTheme,
+  sheetLineSettings,
   type XmindSheet,
 } from '@genoffice/xmind-engine'
 import App from '../src/renderer/App'
@@ -781,7 +782,7 @@ describe('deleting a topic from the screen', () => {
     await pressOnMap('Delete')
     const dialog = document.querySelector('[data-dialog="delete-hidden"]')!
     expect(dialog.textContent).toContain(
-      '3 elements that are not shown here will be deleted with it.',
+      '2 elements that are not shown here will be deleted with it.',
     )
     await click('[data-action="confirm-cancel"]')
     expect(container.querySelector(`[data-nodeid="me${IDS.a}"]`)).not.toBeNull()
@@ -1001,5 +1002,225 @@ describe('"Insert picture" on the toolbar', () => {
     await settle()
     expect(fake.dirty.at(-1) ?? false).toBe(false)
     expect(container.querySelector('.mm-save-status')!.textContent).toBe('')
+  })
+})
+
+describe('the text format', () => {
+  const ONE = 'cccccccc-cccc-4ccc-8ccc-ccccccccccc1'
+  const pressed = (action: string): string | null =>
+    container.querySelector(`[data-action="${action}"]`)!.getAttribute('aria-pressed')
+
+  it('the toolbar toggles and the panel set the format of the selected topic, and the save carries it', async () => {
+    const { fake } = await openWith(plainSheet())
+    await selectOnMap(ONE)
+    await click('[data-action="italic"]')
+    expect(pressed('italic')).toBe('true')
+    expect(topicEl(ONE).style.fontStyle).toBe('italic')
+    expect(fake.dirty.at(-1)).toBe(true)
+
+    await click('[data-action="text-format"]')
+    expect(container.querySelector('.mm-format-panel')).not.toBeNull()
+    expect(pressed('text-format')).toBe('true')
+    expect(pressed('format-italic')).toBe('true')
+    await click('[data-action="format-align-left"]')
+    await click('[data-action="format-strike"]')
+    const size = container.querySelector<HTMLInputElement>('[data-action="format-size"]')!
+    await act(async () => {
+      const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+      setValue.call(size, '21')
+      size.dispatchEvent(new Event('input', { bubbles: true }))
+      size.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    })
+    await settle()
+    expect(topicEl(ONE).style.textDecoration).toContain('line-through')
+    expect(topicEl(ONE).style.textAlign).toBe('left')
+
+    await click('[data-action="save"]')
+    await savesReach(fake)
+    const saved = await openXmind(fake.saves[0]!.bytes)
+    if (saved.status !== 'ok') throw new Error('the saved map does not open')
+    const one = saved.document.sheets[0]!.rootTopic.children!.attached![0]!
+    expect((one.style as { properties: unknown }).properties).toEqual({
+      'fo:font-style': 'italic',
+      'fo:text-align': 'left',
+      'fo:text-decoration': 'line-through',
+      'fo:font-size': '21pt',
+    })
+
+    await click('[data-action="format-close"]')
+    expect(container.querySelector('.mm-format-panel')).toBeNull()
+  })
+
+  it('the panel says what to do without a selected topic, and opens one panel at a time', async () => {
+    await openWith(plainSheet())
+    await click('[data-action="theme"]')
+    await click('[data-action="text-format"]')
+    expect(container.querySelector('.mm-format-panel')).not.toBeNull()
+    expect(container.querySelector('[data-theme-id]')).toBeNull()
+    expect(container.querySelector('.mm-format-panel')!.textContent).toContain(
+      'Select a topic, relationship, summary or boundary to change its format.',
+    )
+    expect(
+      container.querySelector<HTMLButtonElement>('[data-action="format-bold"]')!.disabled,
+    ).toBe(true)
+    expect(container.querySelector<HTMLButtonElement>('[data-action="bold"]')!.disabled).toBe(true)
+  })
+})
+
+describe('the line format on the screen', () => {
+  const ONE = 'cccccccc-cccc-4ccc-8ccc-ccccccccccc1'
+  const TWO = 'cccccccc-cccc-4ccc-8ccc-ccccccccccc2'
+  const CENTER = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+  const status = (): string => container.querySelector('.mm-save-status')!.textContent ?? ''
+  const switchOn = (action: string): string | null =>
+    container.querySelector(`[data-action="${action}"]`)!.getAttribute('aria-checked')
+
+  async function shiftSelect(id: string): Promise<void> {
+    await act(async () => {
+      const event = new MouseEvent('pointerdown', {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        shiftKey: true,
+      })
+      Object.defineProperty(event, 'pointerId', { value: 1 })
+      Object.defineProperty(event, 'pointerType', { value: 'mouse' })
+      topicEl(id).dispatchEvent(event)
+    })
+    await settle()
+  }
+
+  it('the format panel follows the selection: the line of a topic appears, and goes with it', async () => {
+    await openWith(plainSheet())
+    await click('[data-action="text-format"]')
+    expect(container.querySelector('[data-format-section="line"]')).toBeNull()
+    await selectOnMap(ONE)
+    expect(container.querySelector('[data-format-kind="topics"]')).not.toBeNull()
+    // text first; the switch above shows the line instead
+    expect(container.querySelector('[data-format-section="text"]')).not.toBeNull()
+    expect(container.querySelector('[data-format-section="line"]')).toBeNull()
+    await click('[data-action="format-tab-line"]')
+    expect(container.querySelector('[data-format-section="text"]')).toBeNull()
+    expect(container.querySelector('[data-format-section="line"]')).not.toBeNull()
+    expect(localStorage.getItem('mindmapapp.formatTab')).toBe('line')
+    await click('[data-action="line-shape-straight"]')
+    expect(
+      container.querySelector('[data-action="line-shape-straight"]')!.getAttribute('aria-pressed'),
+    ).toBe('true')
+    // the toolbar names the panel "Format"
+    expect(container.querySelector('[data-action="text-format"]')!.getAttribute('aria-label')).toBe(
+      'Format',
+    )
+
+    // closed and opened again: the line is still the group shown
+    await click('[data-action="text-format"]')
+    expect(container.querySelector('.mm-format-panel')).toBeNull()
+    await click('[data-action="text-format"]')
+    expect(container.querySelector('[data-format-section="line"]')).not.toBeNull()
+    expect(
+      container.querySelector('[data-action="format-tab-line"]')!.getAttribute('aria-pressed'),
+    ).toBe('true')
+  })
+
+  it('the theme panel switches the tapered lines and the branch colours: written, not undone', async () => {
+    const { fake } = await openWith(plainSheet())
+    await click('[data-action="theme"]')
+    expect(switchOn('theme-tapered')).toBe('false')
+    expect(switchOn('theme-rainbow')).toBe('true')
+
+    await click('[data-action="theme-tapered"]')
+    await click('[data-action="theme-rainbow"]')
+    expect(switchOn('theme-tapered')).toBe('true')
+    expect(switchOn('theme-rainbow')).toBe('false')
+    expect(fake.dirty.at(-1)).toBe(true)
+    // like a theme, not a step of the history
+    expect(container.querySelector<HTMLButtonElement>('[data-action="undo"]')!.disabled).toBe(true)
+    await act(async () => fake.emit.menu('undo'))
+    await settle()
+    expect(switchOn('theme-tapered')).toBe('true')
+
+    await click('[data-action="save"]')
+    await savesReach(fake)
+    const saved = await openXmind(fake.saves[0]!.bytes)
+    if (saved.status !== 'ok') throw new Error('the saved map does not open')
+    expect(sheetLineSettings(saved.document.sheets[0]!)).toMatchObject({
+      tapered: true,
+      rainbow: false,
+    })
+  })
+
+  it('"Add boundary" waits for a topic, then puts a boundary around it, which a save keeps', async () => {
+    const { fake } = await openWith(plainSheet())
+    const add = (): HTMLButtonElement =>
+      container.querySelector<HTMLButtonElement>('[data-action="boundary"]')!
+    expect(add().disabled).toBe(true)
+    expect(add().getAttribute('aria-label')).toBe('Add boundary')
+    await selectOnMap(ONE)
+    expect(add().disabled).toBe(false)
+    await click('[data-action="boundary"]')
+    expect(fake.dirty.at(-1)).toBe(true)
+
+    await click('[data-action="save"]')
+    await savesReach(fake)
+    const saved = await openXmind(fake.saves[0]!.bytes)
+    if (saved.status !== 'ok') throw new Error('the saved map does not open')
+    const boundaries = saved.document.sheets[0]!.rootTopic.boundaries as { range: string }[]
+    expect(boundaries.map((boundary) => boundary.range)).toEqual(['(0,0)'])
+  })
+
+  it('a boundary that cannot be made is said on the status line, and nothing changes', async () => {
+    const { fake } = await openWith(plainSheet())
+    await selectOnMap(ONE)
+    await shiftSelect(CENTER)
+    await click('[data-action="boundary"]')
+    expect(status()).toBe('Only topics under the same parent can share a boundary')
+    expect(fake.dirty.at(-1) ?? false).toBe(false)
+  })
+
+  it('the menu on a boundary removes it', async () => {
+    // jsdom lays nothing out: every element gets a box of its own, so the outline is drawn
+    const boxes = new WeakMap<Element, DOMRect>()
+    let next = 0
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(100)
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(30)
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
+      let box = boxes.get(this)
+      if (!box) {
+        next++
+        box = new DOMRect(40 + next * 70, 20 + next * 45, 100, 30)
+        boxes.set(this, box)
+      }
+      return box
+    })
+    onTestFinished(() => vi.restoreAllMocks())
+    const { fake } = await openWith(plainSheet())
+    await selectOnMap(TWO)
+    await click('[data-action="boundary"]')
+    const shape = container.querySelector('[data-mm-boundary] .mm-boundary-shape')!
+    expect(shape).not.toBeNull()
+    await act(async () => {
+      shape.dispatchEvent(
+        new MouseEvent('contextmenu', {
+          bubbles: true,
+          cancelable: true,
+          clientX: 20,
+          clientY: 30,
+        }),
+      )
+    })
+    await settle()
+    const remove = container.ownerDocument.querySelector<HTMLElement>(
+      '.mm-boundary-menu [data-action="boundary-remove"]',
+    )!
+    expect(remove.textContent).toBe('Remove boundary')
+    await act(async () => remove.click())
+    await settle()
+    expect(container.ownerDocument.querySelector('.mm-boundary-menu')).toBeNull()
+    expect(container.querySelector('[data-mm-boundary]')).toBeNull()
+    await act(async () => fake.emit.menu('undo'))
+    await settle()
+    expect(container.querySelector('[data-mm-boundary]')).not.toBeNull()
   })
 })

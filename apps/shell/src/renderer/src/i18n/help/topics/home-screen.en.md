@@ -44,6 +44,8 @@ The cards above the lists create a new document in one step. Clicking a card cre
 
 The new file lands in the folder currently selected in the sidebar; with no selection it goes to the default folder.
 
+To hide cards or change their order, use **New documents on Home** under Settings → General. A type you turn off only leaves the cards and the New menus; files of that type still open as before. On Home, ⌘N/Ctrl+N creates the first type still shown.
+
 What each card does:
 
 - **AI Docs** (.docx): a blank text document in the Docs editor. The file is only written to disk on **first save**; new documents open with the AI panel expanded (choose Off or Collapsed under Settings → "AI panel" if you would rather not).

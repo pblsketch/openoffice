@@ -26,6 +26,7 @@
     "@genoffice/ai-provider": "*",
     "@genoffice/ai-search": "*",
     "@genoffice/docx-engine": "*",
+    "@genoffice/drawio-model": "*",
     "@genoffice/file-parse": "*",
     "@genoffice/odt-engine": "*",
     "@genoffice/pdf2docx": "*",

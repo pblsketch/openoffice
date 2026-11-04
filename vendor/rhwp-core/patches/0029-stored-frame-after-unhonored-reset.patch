@@ -1,0 +1,251 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pblsketch <239486537+pblsketch@users.noreply.github.com>
+Date: Wed, 4 Nov 2026 00:00:00 +0900
+Subject: [PATCH 19/30] fix(typeset,layout): 흐름이 따르지 않은 저장 쪽 경계 뒤의 표는 저장 좌표에 두지 않는다
+
+저장 줄의 vpos 는 한/글이 저장할 때의 쪽 원점에서 잰 값이다. 사다리가 되감기는
+자리(앞 줄 vpos > 5000, 뒤 줄이 그보다 작음)는 한/글이 거기서 쪽을 나눴다는
+표지다. 한/글은 그 자리에서 새 쪽을 열고, 뒤 문단의 표를 그 쪽 위에서부터 잰
+저장 좌표에 둔다.
+
+devel 은 이 경계를 쪽 나누기로 강제하지 않는다. 앞 내용의 높이가 한/글과 달라
+흐름이 경계를 지나 같은 단에 계속 쌓여도, 표의 저장 프레임 조회는 그 좌표를
+지금 단의 위쪽 끝 기준으로 읽었다.
+- 조판 query_original_control_table_frame 의 빈 호스트 닫힌 프레임
+  (stored_empty_control_table_frame, 물리 쪽 기준 frame_vpos 0)
+- 조판 첫 조각 저장 원점 first_fragment_saved_offset
+  (native_text_frame_first_fragment_saved_top 등, column.y + vpos)
+- 그리기 layout_partial_table_item 의 같은 첫 조각 저장 원점(pt_y_start)
+그래서 표가 이미 놓인 글줄 위로 올라가 겹쳤다.
+
+바꾼 것: 단을 연 항목(부분 문단은 시작 줄, 앞 쪽에서 이어받은 표 조각은 그
+다음 문단)부터 표 호스트의 첫 저장 줄까지 저장 사다리가 되감기면, 그 단에서는
+위 세 저장 좌표를 쓰지 않는다. 판정은 typeset::column_crossed_unhonored_stored_reset
+하나로 조판과 그리기가 함께 쓴다. 되감김의 정의는 기존 stored_vpos_rewinds 와
+같다. 표는 흐름이 정한 자리(캡션 아래)에 놓이고, 넘치면 기존 분할·이월을 탄다.
+흐름이 경계를 지켜 그 문단으로 단을 연 경우(경계가 단의 첫 줄)는 그대로다.
+
+증거(개인 문서, 로컬 렌더):
+- draft.hwpx 178쪽: 7x3 자리차지 표(pi1484, vpos 9360)가 pi1480 의 저장
+  리셋(vpos 0) 기준 124.8px 에 그려져 캡션·본문 5줄(433~581px)을 덮었다. 한/글
+  2024 는 pi1480 에서 새 쪽을 열고 표를 캡션 바로 아래에 둔다. 고친 뒤 표는 캡션
+  아래 589.4px 에서 시작하고 다음 쪽으로 이어진다(겹침 6 → 0).
+- wbk.hwp 173쪽: 1x1 쪽나눔 표(pi84, vpos 4600)가 pi81 리셋 기준 189.8px 에 그려져
+  "※ 다음 글을 읽고…" 줄(187.4~200.7px)을 덮었다. 한/글은 그 줄 아래에 표를
+  둔다. 고친 뒤 211.1px(겹침 1 → 0).
+- 개인 문서 41개 중 렌더 트리가 바뀐 쪽은 draft 10쪽, wbk 2쪽뿐이다.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/renderer/layout.rs                        | 52 ++++++++++++++++------
+ src/renderer/typeset.rs                       | 64 +++++++++++++++++++++++++++
+ src/renderer/typeset/state.rs                 | 15 +++++++
+ src/renderer/typeset/table/block/prepare.rs   |  5 +++
+ src/renderer/typeset/table/block/whole_fit.rs |  3 ++
+ 5 files changed, 126 insertions(+), 13 deletions(-)
+
+diff --git a/src/renderer/layout.rs b/src/renderer/layout.rs
+index 8904717404625a6e85cc7bc27b2381937943d131..94896363dc2195ebdb8864fdc45215a5701ec0fc 100644
+--- a/src/renderer/layout.rs
++++ b/src/renderer/layout.rs
+@@ -16486,26 +16486,52 @@ impl LayoutEngine {
+         // (예: -1796 HU = 4294965500u32) 도 통과시킴. signed 비교로 정정.
+         let pt_y_start = if let Some(para) = paragraphs.get(para_index) {
+             if let Some(Control::Table(t)) = para.controls.get(control_index) {
++                // 저장 원점은 한/글이 저장한 쪽의 좌표다. 이 단에서 흐름이 따르지
++                // 않은 저장 쪽 경계를 지났으면 조판과 같이 그 원점을 쓰지 않는다.
++                let stored_frame_is_current_column = ctx.zone_column_count != 1
++                    || !page_content
++                        .column_contents
++                        .iter()
++                        .find(|column| {
++                            column.items.iter().any(|item| {
++                                matches!(item, PageItem::PartialTable {
++                                    para_index: owner,
++                                    control_index: control,
++                                    is_continuation: false,
++                                    ..
++                                } if *owner == para_index && *control == control_index)
++                            })
++                        })
++                        .is_some_and(|column| {
++                            crate::renderer::typeset::column_crossed_unhonored_stored_reset(
++                                column.items.first(),
++                                paragraphs,
++                                para_index,
++                            )
++                        });
+                 if !is_continuation {
+-                    if let Some(stored_top) =
+-                        native_hwp5_internal_reset_rowbreak_first_fragment_saved_top(
+-                            self.profile.get().hwp5_stored_pagination_layout(),
+-                            para,
+-                            para_index.checked_sub(1).and_then(|i| paragraphs.get(i)),
+-                            paragraphs.get(para_index + 1),
+-                            t,
+-                            col_area,
+-                            self.dpi,
+-                        )
+-                        .or_else(|| {
+-                            self.native_text_frame_first_fragment_saved_top(
++                    if let Some(stored_top) = stored_frame_is_current_column
++                        .then(|| {
++                            native_hwp5_internal_reset_rowbreak_first_fragment_saved_top(
++                                self.profile.get().hwp5_stored_pagination_layout(),
+                                 para,
+                                 para_index.checked_sub(1).and_then(|i| paragraphs.get(i)),
++                                paragraphs.get(para_index + 1),
+                                 t,
+                                 col_area,
+-                                styles,
++                                self.dpi,
+                             )
++                            .or_else(|| {
++                                self.native_text_frame_first_fragment_saved_top(
++                                    para,
++                                    para_index.checked_sub(1).and_then(|i| paragraphs.get(i)),
++                                    t,
++                                    col_area,
++                                    styles,
++                                )
++                            })
+                         })
++                        .flatten()
+                     {
+                         stored_top
+                     } else if !t.common.treat_as_char
+diff --git a/src/renderer/typeset.rs b/src/renderer/typeset.rs
+index 6d049e1e3e638d0c840108696c4f17eeccc6a4b4..a9362fc75691f04cb82b643cd60e39dfa1d0e3da 100755
+--- a/src/renderer/typeset.rs
++++ b/src/renderer/typeset.rs
+@@ -2613,6 +2613,70 @@ pub(in crate::renderer::typeset) fn stored_vpos_overflow_defers_paragraph(
+     hosts_table && overflows_body_narrowly && next < own
+ }
+ 
++/// 단을 연 항목과 `host_idx` 의 저장 줄 사이에 **흐름이 따르지 않은 저장 쪽
++/// 경계**(사다리 되감김)가 있는가.
++///
++/// 저장 줄의 vpos 는 한/글이 저장할 때의 쪽 원점에서 잰 값이다. 사다리가 단 안에서
++/// 되감기면 그 뒤 문단의 좌표는 한/글의 **다음 쪽** 원점 기준이고, 지금 단의 위쪽
++/// 끝과는 무관하다. 그 좌표를 물리 쪽 위치로 읽으면 이미 놓인 줄 위에 개체가 겹친다.
++/// 단을 연 항목의 첫 줄(부분 문단은 시작 줄)이 비교 기준이다. 앞 단에서 이어받은
++/// 표 조각의 호스트 줄은 앞 쪽 좌표라 기준에서 뺀다. 되감김의 정의는
++/// [`stored_vpos_rewinds`] 와 같다. 호스트는 자기 첫 저장 줄(개체 앵커)까지만 본다.
++pub(crate) fn column_crossed_unhonored_stored_reset(
++    first: Option<&PageItem>,
++    paragraphs: &[Paragraph],
++    host_idx: usize,
++) -> bool {
++    let (start_para, start_line) = match first {
++        Some(PageItem::FullParagraph { para_index })
++        | Some(PageItem::Table { para_index, .. })
++        | Some(PageItem::Shape { para_index, .. })
++        | Some(PageItem::PartialTable {
++            para_index,
++            is_continuation: false,
++            ..
++        }) => (*para_index, 0),
++        Some(PageItem::PartialParagraph {
++            para_index,
++            start_line,
++            ..
++        }) => (*para_index, *start_line),
++        Some(PageItem::PartialTable {
++            para_index,
++            is_continuation: true,
++            ..
++        }) => (*para_index + 1, 0),
++        Some(PageItem::EndnoteSeparator { .. }) | None => return false,
++    };
++    if start_para > host_idx {
++        return false;
++    }
++    let mut previous: Option<i32> = None;
++    for (index, para) in paragraphs
++        .iter()
++        .enumerate()
++        .take(host_idx + 1)
++        .skip(start_para)
++    {
++        let first_line = if index == start_para { start_line } else { 0 };
++        for seg in para
++            .line_segs
++            .iter()
++            .skip(first_line)
++            .filter(|seg| !is_synthetic_line_seg(seg))
++        {
++            if previous.is_some_and(|prev| seg.vertical_pos < prev && prev > 5000) {
++                return true;
++            }
++            previous = Some(seg.vertical_pos);
++            if index == host_idx {
++                break;
++            }
++        }
++    }
++    false
++}
++
+ /// 저장 `vpos` 가 되돌아가는 자리 — 한글이 거기서 쪽을 끊었다는 신호다 [#3837].
+ ///
+ /// 기존 [`paragraph_saved_vpos_reset_starts_new_page_after`] 는 단일 단에서 `nv == 0`
+diff --git a/src/renderer/typeset/state.rs b/src/renderer/typeset/state.rs
+index 71790c3a94a1992e06c0b02e06638012cde47025..09ea61edac2e3f794d5d3488806d232be456822a 100644
+--- a/src/renderer/typeset/state.rs
++++ b/src/renderer/typeset/state.rs
+@@ -972,6 +972,21 @@ impl TypesetState {
+             })
+     }
+ 
++    /// 이 단을 연 흐름과 `host_idx` 의 저장 줄 사이에 흐름이 따르지 않은 저장 쪽
++    /// 경계가 있는가. 판정은 paint 와 같은 [`super::column_crossed_unhonored_stored_reset`].
++    pub(super) fn current_column_crossed_unhonored_stored_reset(
++        &self,
++        paragraphs: &[Paragraph],
++        host_idx: usize,
++    ) -> bool {
++        self.data.col_count == 1
++            && super::column_crossed_unhonored_stored_reset(
++                self.data.current_items.first(),
++                paragraphs,
++                host_idx,
++            )
++    }
++
+     /// atomic 항목을 먼저 넣고 조정자가 기존 flow 메트릭을 계산하게 한다.
+     pub(super) fn begin_atomic_overflow_paragraph(&mut self, para_idx: usize) {
+         match self
+diff --git a/src/renderer/typeset/table/block/prepare.rs b/src/renderer/typeset/table/block/prepare.rs
+index 0d43e94a2fc650ff9ee81537fdb4c77b1d30700f..aa5c2c8d1bcf63014c8469a1968270a9a9f21c53 100644
+--- a/src/renderer/typeset/table/block/prepare.rs
++++ b/src/renderer/typeset/table/block/prepare.rs
+@@ -1641,6 +1641,11 @@ impl TypesetEngine {
+                         (saved_top <= st.current_height && saved_top < table_available)
+                             .then_some(saved_top)
+                     })
++                    // 저장 원점은 한/글이 저장한 쪽의 좌표다. 이 단에서 흐름이 따르지
++                    // 않은 저장 쪽 경계를 지났으면 그 원점은 이 단의 위치가 아니다.
++                    .filter(|_| {
++                        !st.current_column_crossed_unhonored_stored_reset(paragraphs_all, para_idx)
++                    })
+             },
+             next_para_stored_top: paragraphs_all.get(para_idx + 1).and_then(|next| {
+                 let seg = next
+diff --git a/src/renderer/typeset/table/block/whole_fit.rs b/src/renderer/typeset/table/block/whole_fit.rs
+index 4b31a14a1aae0ed044cd23e8d8344561f7f46bb5..10c9058dd7203c1b760b3a15a9032d3c1f39d71a 100644
+--- a/src/renderer/typeset/table/block/whole_fit.rs
++++ b/src/renderer/typeset/table/block/whole_fit.rs
+@@ -264,10 +264,13 @@ impl TypesetEngine {
+         host_spacing_before: f64,
+         styles: &crate::renderer::style_resolver::ResolvedStyleSet,
+     ) -> Option<crate::renderer::float_placement::ParagraphFloatPlacement> {
++        // 저장 프레임은 한/글이 저장한 쪽 원점의 좌표다. 이 단 안에서 흐름이
++        // 따르지 않은 저장 쪽 경계를 지났으면 그 원점은 이 단의 위쪽 끝이 아니다.
+         if st.col_count != 1
+             || !(st.profile.hwpx_stored_layout() || st.profile.hwp5_stored_pagination_layout())
+             || st.profile.session_edited()
+             || self.render_normalization.table_text_reflowed(table)
++            || st.current_column_crossed_unhonored_stored_reset(paragraphs, para_idx)
+         {
+             return None;
+         }

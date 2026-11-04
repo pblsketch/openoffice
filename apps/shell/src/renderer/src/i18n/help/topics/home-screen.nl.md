@@ -44,6 +44,8 @@ De kaarten boven de lijsten maken met één stap een nieuw document. Klikken op 
 
 Het nieuwe bestand komt in de map die op dat moment in de zijbalk geselecteerd is; is er geen selectie, dan gaat het naar de standaardmap.
 
+Om kaarten te verbergen of de volgorde te wijzigen, gebruik je **Nieuwe documenten op Start** onder Instellingen → Algemeen. Een uitgeschakeld type verdwijnt alleen uit de kaarten en de menu’s Nieuw; bestanden van dat type openen nog zoals altijd. Op Start maakt ⌘N/Ctrl+N het eerste type dat nog zichtbaar is.
+
 Wat elke kaart doet:
 
 - **AI Docs** (.docx): een leeg tekstdocument in de Docs-editor. Het bestand wordt pas bij de **eerste keer opslaan** naar schijf geschreven; nieuwe documenten openen met het AI-paneel uitgeklapt (zet dat uit in Instellingen → "AI-paneel openen in nieuwe documenten").

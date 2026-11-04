@@ -1,0 +1,252 @@
+{
+  "drawio": "v32.6.9",
+  "components": [
+    {
+      "id": "drawio",
+      "name": "draw.io",
+      "version": "32.6.9",
+      "license": "Apache-2.0",
+      "copyright": "Copyright (c) 2006-2026, JGraph Holdings Ltd\nCopyright (c) 2006-2026, draw.io AG",
+      "url": "https://github.com/jgraph/drawio",
+      "note": "The editor itself (mxGraph core, the application scripts, its own converters for Gliffy, binary Visio, Mermaid and org charts, styles, resources, UI images and plugins). js/app.min.js and js/viewer-static.min.js contain a Base64 encoder/decoder adapted from http://www.webtoolkit.info/, which the file header credits.",
+      "files": [
+        "index.html",
+        "clear.html",
+        "export3.html",
+        "open.html",
+        "vsdxImporter.html",
+        "favicon.ico",
+        "export-fonts.css",
+        "shortcuts.svg",
+        "monday-app-association.json",
+        "images/**",
+        "mxgraph/**",
+        "resources/**",
+        "plugins/**",
+        "styles/*.xml",
+        "styles/*.css",
+        "styles/*.png",
+        "math4/es5/startup.js",
+        "math4/es5/drawio-mathjax.min.js",
+        "js/PostConfig.js",
+        "js/PreConfig.js",
+        "js/app.min.js",
+        "js/bootstrap.js",
+        "js/clear.js",
+        "js/embed.dev.js",
+        "js/export-init.js",
+        "js/export.js",
+        "js/extensions.min.js",
+        "js/main.js",
+        "js/math-print.js",
+        "js/open.js",
+        "js/shapes-14-6-5.min.js",
+        "js/stencils.min.js",
+        "js/viewer-static.min.js",
+        "js/vsdxImporter.js",
+        "js/gliffy/drawio-gliffy.min.js",
+        "js/vsd/drawio-vsd.min.js",
+        "js/mermaid/drawio-mermaid.min.js",
+        "js/orgchart.min.js",
+        "js/orgchart/mxOrgChartLayout.js",
+        "js/cryptojs/README.md",
+        "js/deflate/README.md",
+        "js/freehand/README.md",
+        "js/rough/README.md"
+      ]
+    },
+    {
+      "id": "drawio-shapes",
+      "name": "draw.io shape and icon libraries",
+      "version": "32.6.9",
+      "license": "Apache-2.0",
+      "copyright": "Copyright (c) 2006-2026, JGraph Holdings Ltd\nCopyright (c) 2006-2026, draw.io AG",
+      "url": "https://github.com/jgraph/drawio",
+      "note": "Distributed under draw.io's Apache-2.0 license with the field-of-use restriction below, which concerns Atlassian products and their marketplace; it does not apply to this application or to the diagrams users make with it.",
+      "restrictionFiles": ["img/LICENSE", "shapes/LICENSE", "stencils/LICENSE"],
+      "files": ["img/**", "shapes/**", "stencils/**"]
+    },
+    {
+      "id": "drawio-templates",
+      "name": "draw.io diagram templates",
+      "version": "32.6.9",
+      "license": "CC-BY-4.0",
+      "copyright": "Copyright (c) JGraph Holdings Ltd and draw.io AG",
+      "url": "https://github.com/jgraph/drawio/tree/v32.6.9/src/main/webapp/templates",
+      "note": "Shipped unmodified.",
+      "licenseFile": "templates/LICENSE",
+      "files": ["templates/**"]
+    },
+    {
+      "id": "spin",
+      "name": "spin.js",
+      "version": "2.0.0",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2011-2014 Felix Gnass [fgnass at gmail dot com]",
+      "url": "https://github.com/fgnass/spin.js",
+      "files": ["js/spin/spin.min.js", "js/app.min.js", "js/viewer-static.min.js"]
+    },
+    {
+      "id": "crypto-js",
+      "name": "CryptoJS",
+      "version": "4.2.0",
+      "license": "MIT",
+      "copyright": "(c) 2009-2013 by Jeff Mott. All rights reserved.\n(c) 2013-2016 by Evan Vosberg. All rights reserved.",
+      "url": "https://github.com/brix/crypto-js",
+      "files": ["js/cryptojs/aes.min.js", "js/app.min.js"]
+    },
+    {
+      "id": "pako",
+      "name": "pako",
+      "version": "2.2.0",
+      "license": "MIT AND Zlib",
+      "copyright": "Copyright (C) 2014-2017 by Vitaly Puzrin and Andrei Tuputcyn\nzlib: Copyright (C) 1995-2013 Jean-loup Gailly and Mark Adler",
+      "url": "https://github.com/nodeca/pako",
+      "files": ["js/deflate/pako.min.js", "js/app.min.js", "js/viewer-static.min.js"]
+    },
+    {
+      "id": "dompurify",
+      "name": "DOMPurify",
+      "version": "3.4.17",
+      "license": "Apache-2.0",
+      "offered": "MPL-2.0 OR Apache-2.0",
+      "copyright": "Copyright 2025 Dr.-Ing. Mario Heiderich, Cure53",
+      "url": "https://github.com/cure53/DOMPurify",
+      "files": ["js/sanitizer/purify.min.js", "js/app.min.js", "js/viewer-static.min.js"]
+    },
+    {
+      "id": "regenerator-runtime",
+      "name": "regenerator-runtime",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2014-present, Facebook, Inc.",
+      "url": "https://github.com/facebook/regenerator",
+      "files": ["js/app.min.js", "js/viewer-static.min.js"]
+    },
+    {
+      "id": "roughjs",
+      "name": "Rough.js",
+      "version": "4.6.6",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2019 Preet Shihn",
+      "url": "https://github.com/rough-stuff/rough",
+      "files": ["js/rough/rough.min.js", "js/app.min.js", "js/viewer-static.min.js"]
+    },
+    {
+      "id": "perfect-freehand",
+      "name": "perfect-freehand",
+      "version": "1.2.3",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2021 Stephen Ruiz Ltd",
+      "url": "https://github.com/steveruizok/perfect-freehand",
+      "files": ["js/freehand/perfect-freehand.js"]
+    },
+    {
+      "id": "jquery",
+      "name": "jQuery",
+      "version": "3.6.0",
+      "license": "MIT",
+      "copyright": "Copyright OpenJS Foundation and other contributors, https://openjsf.org/",
+      "url": "https://jquery.com/",
+      "files": ["js/jquery/jquery-3.6.0.min.js"]
+    },
+    {
+      "id": "jszip",
+      "name": "JSZip",
+      "version": "3.10.1",
+      "license": "MIT",
+      "offered": "MIT OR GPL-3.0-or-later",
+      "copyright": "Copyright (c) 2009-2016 Stuart Knightley, David Duponchel, Franz Buchinger, António Afonso",
+      "url": "https://github.com/Stuk/jszip",
+      "files": ["js/jszip/jszip.min.js", "js/extensions.min.js"]
+    },
+    {
+      "id": "simple-peer",
+      "name": "simple-peer (with the safe-buffer, queue-microtask and buffer modules bundled into it)",
+      "version": "9.10.0",
+      "license": "MIT",
+      "copyright": "Copyright (c) Feross Aboukhadijeh",
+      "url": "https://github.com/feross/simple-peer",
+      "files": ["js/simplepeer/simplepeer9.10.0.min.js"]
+    },
+    {
+      "id": "ieee754",
+      "name": "ieee754 (bundled into simple-peer)",
+      "license": "BSD-3-Clause",
+      "copyright": "Copyright 2008 Fair Oaks Labs, Inc.",
+      "url": "https://github.com/feross/ieee754",
+      "files": ["js/simplepeer/simplepeer9.10.0.min.js"]
+    },
+    {
+      "id": "bridge",
+      "name": "Bridge.NET runtime",
+      "version": "15.6.0",
+      "license": "Apache-2.0",
+      "copyright": "Copyright 2008-2016 Object.NET, Inc.",
+      "url": "https://www.npmjs.com/package/bridge.net",
+      "files": [
+        "js/orgchart/bridge.min.js",
+        "js/orgchart/bridge.collections.min.js",
+        "js/orgchart.min.js",
+        "js/extensions.min.js"
+      ]
+    },
+    {
+      "id": "orgchart-layout",
+      "name": "OrgChart.Layout",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2017 Roman Polunin",
+      "url": "https://github.com/romanpolunin/OrgChart",
+      "files": ["js/orgchart/OrgChart.Layout.min.js", "js/orgchart.min.js", "js/extensions.min.js"]
+    },
+    {
+      "id": "dagre",
+      "name": "dagre and graphlib (bundled into draw.io's Mermaid converter)",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2012-2014 Chris Pettitt",
+      "url": "https://github.com/dagrejs/dagre",
+      "files": ["js/mermaid/drawio-mermaid.min.js", "js/extensions.min.js"]
+    },
+    {
+      "id": "lodash",
+      "name": "lodash (parts bundled into draw.io's Mermaid converter)",
+      "license": "MIT",
+      "copyright": "Copyright OpenJS Foundation and other contributors <https://openjsf.org/>",
+      "url": "https://github.com/lodash/lodash",
+      "files": ["js/mermaid/drawio-mermaid.min.js", "js/extensions.min.js"]
+    },
+    {
+      "id": "cose-base",
+      "name": "cose-base and layout-base (bundled into draw.io's Mermaid converter)",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2019 - present, iVis@Bilkent",
+      "url": "https://github.com/iVis-at-Bilkent/cose-base",
+      "files": ["js/mermaid/drawio-mermaid.min.js", "js/extensions.min.js"]
+    },
+    {
+      "id": "mathjax",
+      "name": "MathJax with its TeX, AsciiMath and font components",
+      "version": "4.1.3",
+      "license": "Apache-2.0",
+      "copyright": "Copyright (c) 2009-2025 The MathJax Consortium",
+      "url": "https://github.com/mathjax/MathJax-src",
+      "files": ["math4/es5/drawio-mathjax.min.js"]
+    },
+    {
+      "id": "mhchem",
+      "name": "mhchemParser",
+      "version": "4.2.1",
+      "license": "Apache-2.0",
+      "copyright": "Copyright (c) 2015-2023 Martin Hensel",
+      "url": "https://github.com/mhchem/mhchemParser",
+      "files": ["math4/es5/drawio-mathjax.min.js"]
+    },
+    {
+      "id": "architects-daughter",
+      "name": "Architects Daughter font",
+      "license": "OFL-1.1",
+      "copyright": "Copyright (c) 2010, Kimberly Geswein (kimberlygeswein.com)",
+      "url": "https://fonts.google.com/specimen/Architects+Daughter",
+      "files": ["styles/fonts/ArchitectsDaughter-Regular.ttf"]
+    }
+  ]
+}

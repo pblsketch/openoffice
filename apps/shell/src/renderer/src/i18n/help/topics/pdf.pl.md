@@ -6,6 +6,7 @@ Edytor PDF ma pięć kart na wstążce: **Narzędzia główne / Adnotacje / Edyc
 
 - Lewy pasek boczny: **miniatury** (kliknij, aby przejść, widoczny zakres wyróżniony) albo **spis treści** (zakładki, jeśli są).
 - Powiększenie: regulator współczynnika w prawym dolnym rogu; ctrl+kółko zmienia powiększenie stopniowo.
+- Przesuwanie widoku: włącz **Narzędzie Rączka** (karty Narzędzia główne i Widok) i przeciągaj, aby przesuwać stronę w każdą stronę. Gdy jest włączone, przeciąganie nie zaznacza tekstu, a zwykłe kliknięcie nadal otwiera łącze. Przeciąganie z wciśniętym środkowym przyciskiem (kółkiem) przesuwa widok bez narzędzia. Esc lub wybór innego narzędzia je wyłącza.
 - Obracanie: dla jednej strony lub wszystkich z menu Strony; obroty są zapisywane w pliku przy zapisie.
 - Wyszukiwanie: ctrl+F na pełnym tekście z podświetleniem wszystkich trafień.
 - Zaszyfrowane pliki PDF: otwiera je monit o haśle (we własnym małym oknie); hasło jest używane tylko w tej sesji. Taki dokument można edytować i zapisywać; zapis zachowuje hasło. **Adnotacje → Chroń** ustawia, zmienia lub usuwa hasło oraz to, co wolno czytelnikom.

@@ -29,6 +29,12 @@ describe('matchesExtFamily', () => {
     expect(matchesExtFamily('md', 'xmind')).toBe(false)
     expect(matchesExtFamily('epub', 'epub')).toBe(true)
     expect(matchesExtFamily('pdf', 'epub')).toBe(false)
+    // the diagram filter takes every form the diagram tab opens
+    for (const ext of ['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx']) {
+      expect(matchesExtFamily(ext, 'drawio'), ext).toBe(true)
+    }
+    expect(matchesExtFamily('svg', 'drawio')).toBe(false)
+    expect(matchesExtFamily('png', 'drawio')).toBe(false)
     expect(matchesExtFamily('xlsx', 'docx')).toBe(false)
     expect(matchesExtFamily('png', 'xlsx')).toBe(false)
     expect(matchesExtFamily('png', 'md')).toBe(false)

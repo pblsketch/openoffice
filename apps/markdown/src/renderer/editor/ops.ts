@@ -411,10 +411,12 @@ function isEmptyParagraph(node: PmNode): boolean {
   return !hasLeaf && node.textContent.trim() === ''
 }
 
-/** [start, end) of the top-level blocks covered by the selection */
+/** [start, end) of the blocks covered by the selection */
 export function selectionBlockRange(editor: Editor): Range {
   const sel = editor.state.selection
-  if (sel instanceof NodeSelection && sel.$from.depth === 0) return { from: sel.from, to: sel.to }
+  // A NodeSelection addresses exactly one node — a top-level block, or a single
+  // list item when the block handle points at one (each bullet is a block).
+  if (sel instanceof NodeSelection) return { from: sel.from, to: sel.to }
   const { startIndex, endIndex } = blockIndexRange(editor.state.doc, sel.from, sel.to)
   return blockRange(editor.state.doc, startIndex, endIndex)
 }
@@ -541,7 +543,14 @@ function resolveAnchor(exec: Exec, after: InsertAnchor): { pos: number; replace?
   if (after === 'selection') {
     // a caret inside a list item inserts after that item, not after the whole list
     liftFromList(exec)
-    const range = selectionBlockRange(exec.editor)
+    let range = selectionBlockRange(exec.editor)
+    // ...unless the item could not be lifted (a block-handle node selection):
+    // inserting inside the list would give it invalid content
+    if (LIST_ITEM_NODES.has(exec.editor.state.doc.nodeAt(range.from)?.type.name ?? '')) {
+      const $at = exec.editor.state.doc.resolve(range.from)
+      const listStart = $at.before($at.depth)
+      range = { from: listStart, to: listStart + $at.parent.nodeSize }
+    }
     const block = exec.editor.state.doc.nodeAt(range.from)
     const lone = block && range.to === range.from + block.nodeSize
     return lone && isEmptyParagraph(block) ? { pos: range.from, replace: range } : { pos: range.to }
@@ -633,6 +642,24 @@ function liftFromList(exec: Exec): void {
 }
 
 const LIST_NODES = new Set(['bulletList', 'orderedList', 'taskList'])
+const LIST_ITEM_NODES = new Set(['listItem', 'taskItem'])
+/** wrappers that need at least one child block to stay valid */
+const WRAPPER_NODES = new Set([...LIST_NODES, 'blockquote'])
+
+/**
+ * A block-handle NodeSelection can point at a single list item. Deleting the
+ * only item would leave an empty list, which the schema forbids, so the wrapper
+ * goes with it.
+ */
+function dropEmptiedWrapper(doc: PmNode, range: Range): Range {
+  const node = doc.nodeAt(range.from)
+  const $from = doc.resolve(range.from)
+  if (!node || $from.depth === 0 || range.to !== range.from + node.nodeSize) return range
+  const parent = $from.parent
+  if (parent.childCount > 1 || !WRAPPER_NODES.has(parent.type.name)) return range
+  const start = $from.before($from.depth)
+  return { from: start, to: start + parent.nodeSize }
+}
 
 /**
  * Replace every top-level list (and blockquote) in the range with the blocks
@@ -754,7 +781,8 @@ function execOp(exec: Exec, op: MdOp): OpResult {
     case 'replaceBlocks':
     case 'deleteBlocks': {
       const nodes = op.op === 'replaceBlocks' ? parseMarkdownToNodes(editor, op.markdown) : []
-      const range = resolveTarget(exec, op.target)
+      const target = resolveTarget(exec, op.target)
+      const range = nodes.length === 0 ? dropEmptiedWrapper(editor.state.doc, target) : target
       const doc = editor.state.doc
       const label = describeBlocks(doc, range)
       let tr = editor.state.tr
@@ -1050,9 +1078,36 @@ export function uiOp(editor: Editor, op: MdOp): boolean {
   return runOps(editor, [op], { source: 'ui' }).applied === 1
 }
 
-/** swap the selection's top-level blocks with the previous/next sibling; false at the edges */
+/** swap the selection's block with the previous/next sibling; false at the edges */
 export function moveSelectedBlocks(editor: Editor, direction: -1 | 1): boolean {
   const { doc, selection } = editor.state
+  // a list item (block handle on a bullet) moves among its siblings inside the
+  // list — lifting it to a top-level anchor would be invalid content
+  const selected = doc.nodeAt(selection.from)
+  if (selection instanceof NodeSelection && selection.$from.depth > 0 && selected?.isBlock) {
+    const $from = selection.$from
+    const index = $from.index()
+    const siblingIndex = index + direction
+    if (siblingIndex < 0 || siblingIndex >= $from.parent.childCount) return false
+    const sibling = $from.parent.child(siblingIndex)
+    const range =
+      direction === -1
+        ? { from: selection.from - sibling.nodeSize, to: selection.to }
+        : { from: selection.from, to: selection.to + sibling.nodeSize }
+    const content = direction === -1 ? [selected, sibling] : [sibling, selected]
+    let tr = editor.state.tr.replaceWith(range.from, range.to, content)
+    const moved = direction === -1 ? range.from : range.from + sibling.nodeSize
+    tr = tr.setSelection(NodeSelection.create(tr.doc, moved))
+    const exec: Exec = {
+      editor,
+      ctx: { source: 'ui' },
+      origDoc: doc,
+      mappings: [],
+      meta: { op: 'moveBlocks', source: 'ui', batch: ++batchSeq },
+    }
+    dispatch(exec, tr)
+    return true
+  }
   const { startIndex, endIndex } = blockIndexRange(doc, selection.from, selection.to)
   const after = direction === -1 ? startIndex - 2 : endIndex + 1
   if (after < -1 || after >= doc.childCount) return false

@@ -88,7 +88,19 @@ describe('view data to library data', () => {
     expect(data.summaries).toEqual([
       { id: IDS.summaryTopic, label: 'Summary', parent: IDS.a, start: 0, end: 1 },
     ])
-    expect(data.arrows).toEqual([{ id: IDS.relShown, label: 'leads to', from: IDS.a1, to: IDS.c }])
+    // the curve the file gives is the library's control points too
+    const curve = { from: { x: 10, y: 20 }, to: { x: -10, y: -20 } }
+    expect(data.arrows).toEqual([
+      {
+        id: IDS.relShown,
+        label: 'leads to',
+        from: IDS.a1,
+        to: IDS.c,
+        metadata: { curve },
+        delta1: curve.from,
+        delta2: curve.to,
+      },
+    ])
   })
 
   it('maps the four layouts to the four directions', () => {
@@ -362,22 +374,180 @@ describe('nodes from the clipboard', () => {
       icons: ['<b>x</b>'],
       style: { background: 'url(https://example.com/x)' },
       tags: [{ text: 'forged', className: 'mm-chip mm-chip-link' }],
-      metadata: { labels: ['ok', 5], note: 7, link: 'xmind:#topic', image: { src: 'x' } },
-      children: [{ id: 'y', topic: 42, dangerouslySetInnerHTML: '<b>x</b>' }],
+      metadata: {
+        labels: ['ok', 5],
+        note: 7,
+        link: 'xmind:#topic',
+        image: { src: 'x' },
+        width: '9999px',
+      },
+      children: [
+        { id: 'y', topic: 42, dangerouslySetInnerHTML: '<b>x</b>', metadata: { width: 180 } },
+      ],
     }
     cleanPastedNode(pasted)
     expect(pasted).toEqual({
       id: 'x',
       topic: '<img src=x onerror=alert(1)>',
       tags: ['ok'],
-      metadata: { labels: ['ok'], note: null, link: null, image: null, markers: [], style: {} },
+      metadata: {
+        labels: ['ok'],
+        note: null,
+        link: null,
+        image: null,
+        width: null,
+        markers: [],
+        style: {},
+        titleRuns: null,
+      },
       children: [
         {
           id: 'y',
           topic: '42',
-          metadata: { labels: [], note: null, link: null, image: null, markers: [], style: {} },
+          // the width of a copied box comes along: it is a number the file can hold
+          metadata: {
+            labels: [],
+            note: null,
+            link: null,
+            image: null,
+            width: 180,
+            markers: [],
+            style: {},
+            titleRuns: null,
+          },
         },
       ],
     })
+  })
+
+  it('keeps a text format the engine would write, and nothing else of the style', () => {
+    const pasted = {
+      id: 'x',
+      topic: 'Bold part',
+      metadata: {
+        style: {
+          fontWeight: '700',
+          fontStyle: 'italic',
+          textDecoration: 'underline',
+          color: 'red; background: url(x)',
+          fontFamily: 'Font", serif',
+          fill: '#ff0000',
+          textAlign: 'center',
+        },
+        titleRuns: [
+          { text: 'Bold', style: { fontWeight: '700', color: 'url(x)' } },
+          { text: ' part', style: {} },
+        ],
+      },
+    }
+    cleanPastedNode(pasted)
+    expect((pasted.metadata as { style: unknown }).style).toEqual({
+      fontWeight: '700',
+      fontStyle: 'italic',
+      textDecoration: 'underline',
+      textAlign: 'center',
+    })
+    expect((pasted.metadata as { titleRuns: unknown }).titleRuns).toEqual([
+      { text: 'Bold', style: { fontWeight: '700' } },
+      { text: ' part', style: {} },
+    ])
+  })
+
+  it('drops parts that do not spell the pasted title', () => {
+    const pasted = {
+      id: 'x',
+      topic: 'Another title',
+      metadata: { titleRuns: [{ text: 'Old', style: { fontWeight: '700' } }] },
+    }
+    cleanPastedNode(pasted)
+    expect((pasted.metadata as { titleRuns: unknown }).titleRuns).toBeNull()
+  })
+})
+
+describe('the line values of a topic', () => {
+  const lined = () => {
+    const sheet = plainSheet()
+    const one = sheet.rootTopic.children!.attached![0]!
+    one.style = {
+      id: 'kept-style-id',
+      properties: {
+        'line-class': 'org.xmind.branchConnection.fold',
+        'line-width': 'thick',
+        'line-color': '#FF0000',
+        'line-pattern': 'dash',
+        'svg:fill': '#00ff00',
+      },
+    }
+    return { sheet, id: one.id }
+  }
+
+  it('are carried into the metadata as the file holds them, and back into the state', async () => {
+    const { sheet, id } = lined()
+    const document = await documentOf(sheet)
+    const view = sheetToView(document.sheets[0]!, 0)
+    const data = viewToMind(view)
+    const line = {
+      shape: 'org.xmind.branchConnection.fold',
+      width: 'thick',
+      color: '#FF0000',
+      pattern: 'dash',
+    }
+    expect(find(data.nodeData, id).metadata!.line).toEqual(line)
+    // a topic without line values carries none
+    expect(data.nodeData.metadata).not.toHaveProperty('line')
+    const state = mindToState(roundTrip(data), base(view))
+    expect(state.root.children[0]!.line).toEqual(line)
+    expect(state.root.line).toEqual({})
+  })
+
+  it('a map with line values that was only opened reconciles to "nothing changed"', async () => {
+    const { sheet } = lined()
+    const document = await documentOf(sheet)
+    const before = copyOf(document.sheets)
+    const view = sheetToView(document.sheets[0]!, 0)
+    const result = reconcileSheet(document, 0, mindToState(roundTrip(viewToMind(view)), base(view)))
+    expect(result).toMatchObject({ ok: true, changed: false, inSync: true })
+    expect(document.sheets).toEqual(before)
+  })
+
+  it("the line values the screen lost stay the file's: not written, and the screen drawn again", async () => {
+    const { sheet, id } = lined()
+    const document = await documentOf(sheet)
+    const before = copyOf(document.sheets)
+    const view = sheetToView(document.sheets[0]!, 0)
+    const data = roundTrip(viewToMind(view))
+    delete (find(data.nodeData, id).metadata as { line?: unknown }).line
+    const result = reconcileSheet(document, 0, mindToState(data, base(view)))
+    expect(result).toMatchObject({ ok: true, changed: false, inSync: false })
+    expect(document.sheets).toEqual(before)
+  })
+
+  it('a pasted node keeps the line values the engine would write, and nothing else of them', () => {
+    const pasted = {
+      id: 'x',
+      topic: 'Pasted',
+      metadata: {
+        line: {
+          shape: 'org.xmind.branchConnection.straight',
+          width: '3pt',
+          color: '#ff0000; background: url(x)',
+          pattern: 'wavy',
+          extra: 'dropped',
+        },
+      },
+      children: [
+        {
+          id: 'y',
+          topic: 'Below',
+          metadata: { line: { shape: 'org.xmind.branchConnection.fold' } },
+        },
+      ],
+    }
+    cleanPastedNode(pasted)
+    expect((pasted.metadata as { line?: unknown }).line).toEqual({
+      shape: 'org.xmind.branchConnection.straight',
+      width: '3pt',
+    })
+    expect(pasted.children[0]!.metadata).not.toHaveProperty('line')
   })
 })

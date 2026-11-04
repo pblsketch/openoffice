@@ -6,6 +6,7 @@ Editor PDF mempunyai lima tab pada reben: **Laman Utama / Anotasi / Edit / Halam
 
 - Bar sisi kiri: **lakaran kenit** untuk melompat ke slaid dengan julat yang kelihatan ditanda, atau **kerangka** untuk penanda halaman apabila ia wujud.
 - Zum: kawalan nisbah di penjuru kanan bawah. Gunakan ctrl dan roda tetikus untuk menukar zum secara berperingkat.
+- Mengalihkan paparan: hidupkan **Alat Tangan** (tab Laman Utama dan Pandangan) dan seret untuk mengalihkan halaman ke semua arah. Semasa ia hidup, menyeret tidak memilih teks dan klik biasa masih membuka pautan. Menyeret sambil menekan butang tengah (roda) mengalihkan paparan tanpa alat ini. Esc atau memilih alat lain mematikannya.
 - Putaran: setiap halaman atau kesemua halaman melalui menu Halaman, dan putaran itu ditulis semula semasa menyimpan.
 - Carian: ctrl+F untuk mencari teks penuh, dengan semua hasil ditanda.
 - PDF yang disulitkan: prompts pertanyaan kata laluan dalam tetingkap kecil tersendiri, dan kata laluan itu hanya digunakan untuk sesi ini. Dokumen seperti ini boleh disunting dan disimpan; apabila disimpan, kata laluannya kekal. **Anotasi → Lindung** menetapkan, menukar atau membuang kata laluan dan perkara yang dibenarkan kepada pembaca.

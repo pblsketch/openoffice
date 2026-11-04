@@ -63,6 +63,7 @@ export const th = {
   imgExportWholePages: 'ทั้งหน้า',
   imgExportCurrentPage: 'เฉพาะหน้าปัจจุบัน',
   imgExportCurrentPageTip: 'ส่งออกหน้าที่กำลังดูเป็นไฟล์ PNG หนึ่งไฟล์',
+  imgExportCurrentPageJpgTip: 'ส่งออกหน้าที่กำลังดูเป็นไฟล์ JPG หนึ่งไฟล์',
   imgExportEmbedded: 'เฉพาะรูปภาพในหน้า',
   imgExportEmbeddedTip: 'บันทึกรูปภาพที่อยู่ในหน้าเป็นไฟล์ PNG ที่ความละเอียดเดิม',
   imgExportFolderTitle: 'โฟลเดอร์สำหรับส่งออกรูปภาพ',

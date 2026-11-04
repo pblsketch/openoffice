@@ -69,6 +69,7 @@ export const nl = {
   imgExportWholePages: "Hele pagina's",
   imgExportCurrentPage: 'Alleen de huidige pagina',
   imgExportCurrentPageTip: 'De pagina die je bekijkt exporteren als één PNG-bestand',
+  imgExportCurrentPageJpgTip: 'De pagina die je bekijkt exporteren als één JPG-bestand',
   imgExportEmbedded: "Alleen de afbeeldingen in de pagina's",
   imgExportEmbeddedTip:
     "De afbeeldingen in de pagina's opslaan als PNG-bestanden in de oorspronkelijke resolutie",

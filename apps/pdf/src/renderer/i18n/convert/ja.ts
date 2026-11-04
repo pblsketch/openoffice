@@ -65,6 +65,7 @@ export const ja = {
   imgExportWholePages: 'ページ全体',
   imgExportCurrentPage: '表示中のページのみ',
   imgExportCurrentPageTip: '表示しているページを 1 つの PNG ファイルとして書き出します',
+  imgExportCurrentPageJpgTip: '表示しているページを 1 つの JPG ファイルとして書き出します',
   imgExportEmbedded: 'ページ内の画像のみ',
   imgExportEmbeddedTip: 'ページに埋め込まれた画像を元の解像度の PNG ファイルとして保存します',
   imgExportFolderTitle: '画像を書き出すフォルダー',

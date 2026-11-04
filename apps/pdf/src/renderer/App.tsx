@@ -168,7 +168,7 @@ import { mayChangeProtection } from './protection-gate'
 import { PasswordDialog } from './PasswordDialog'
 import { PropertiesDialog } from './PropertiesDialog'
 import { ConvertDialog } from './convert/ConvertDialog'
-import { ExportImagesMenu } from './convert/ExportImagesMenu'
+import { ConvertMenu } from './convert/ConvertMenu'
 import { exportEmbeddedImages } from './convert/embedded-images'
 import { AiPageReading, type AiPageReadingHandle } from './ai-read/AiPageReading'
 import {
@@ -350,6 +350,7 @@ import { useVisibleSet, PdfPage, MarkupOverlay } from './PdfPage'
 import { PdfThumb, ThumbPendingOverlay } from './PdfThumb'
 import type { ThumbMenu } from './PdfThumb'
 import { SignDropOverlay, signPlaceK, imagePlaceK, staticFormFillPlaceK } from './SignDropOverlay'
+import { SIGN_COLOR_KEY, parseSignColor } from './signature-colors'
 import {
   EDIT_FONT_BY_ID,
   measureTextWidth,
@@ -386,6 +387,7 @@ import { buildOcrBakeInserts } from './ocr-bake'
 import { planEditOps, reduceBucket } from './edit-ops'
 import type { Bucket, Op, OpContext, PlanResult } from './edit-ops'
 import { rectsNear } from './edit-state'
+import { usePanDrag } from './pan-drag'
 import type {
   StampConfig,
   SavedMarkupAnnot,
@@ -434,8 +436,6 @@ import {
   IconFieldPreview,
   IconFormCheck,
   IconFormCross,
-  IconExportImg,
-  IconConvertPdf,
   IconInsertImage,
   IconEditImage,
   IconLink,
@@ -462,6 +462,7 @@ import {
   IconPageSize,
   IconFitWidth,
   IconFitPage,
+  IconHand,
   IconOutline,
   IconDrawColor,
   RbCaret,
@@ -728,7 +729,6 @@ export default function App() {
     () => highlightPens[0] ?? MARKUP_COLORS.highlight,
   )
   const [highlightColorOpen, setHighlightColorOpen] = useState(false)
-  const [convertOpen, setConvertOpen] = useState(false)
   const [convertBusy, setConvertBusy] = useState(false)
   /** the Markdown / EPUB conversion dialog that is open; `outPath` = a Save As target */
   const [convertDialog, setConvertDialog] = useState<PdfConvertDialogRequest | null>(null)
@@ -1143,12 +1143,26 @@ export default function App() {
   const [signaturesDlg, setSignaturesDlg] = useState(false)
   /** Confirmed signature awaiting placement; when non-null the page enters click-to-place mode */
   const [pendingSign, setPendingSign] = useState<SignatureData | null>(null)
+  /** the visual signature's ink color: its own, remembered, black unless the user picks another */
+  const [signColor, setSignColorState] = useState<[number, number, number]>(() =>
+    parseSignColor(localStorage.getItem(SIGN_COLOR_KEY)),
+  )
+  const setSignColor = (color: [number, number, number]) => {
+    setSignColorState(color)
+    try {
+      localStorage.setItem(SIGN_COLOR_KEY, JSON.stringify(color))
+    } catch {
+      // storage full or unavailable: the color still holds for this session
+    }
+  }
   /** A /Sig widget selected from the form layer; confirmed signatures fit this rect directly. */
   const [signatureTarget, setSignatureTarget] = useState<FormWidget | null>(null)
   const [exporting, setExporting] = useState<'png' | 'jpg' | null>(null)
   const [formCatalog, setFormCatalog] = useState<FormCatalog | null>(null)
   const [formHasXfa, setFormHasXfa] = useState(false)
   const [documentEncrypted, setDocumentEncrypted] = useState(false)
+  /** Opened with blank stand-ins for lost page objects (page-tree-patch) */
+  const [documentDamaged, setDocumentDamaged] = useState(false)
   /** opened from a crash-recovery copy and not saved since: unsaved with no pending edit */
   const [restoredUnsaved, setRestoredUnsaved] = useState(false)
   /** false until a password-protected document has been opened for editing by the
@@ -1361,6 +1375,21 @@ export default function App() {
   /** Reading position saved when this file was last viewed; applied once after open */
   const pendingViewRestoreRef = useRef<PdfViewState | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  /** Hand tool: the left button drags the view (the middle button always does) */
+  const [handTool, setHandTool] = useState(false)
+  usePanDrag(scrollRef, handTool)
+  const otherToolArmed =
+    !!drawTool ||
+    editTextMode ||
+    editImageMode ||
+    !!pendingSign ||
+    !!imagePick ||
+    !!pendingTextInsert ||
+    !!pendingStaticFill ||
+    !!formDesignTool
+  useEffect(() => {
+    if (otherToolArmed) setHandTool(false)
+  }, [otherToolArmed])
   const thumbsRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   /** Local approximations of document fonts by pdf.js font id (see doc-font.ts);
@@ -1527,7 +1556,11 @@ export default function App() {
     ) => {
       const data = await window.pdfApi.readFile(path)
       const bytes = new Uint8Array(data)
-      setFormHasXfa(hasXfaMarker(bytes))
+      // getDocument transfers the buffer to its worker, leaving `data` and `bytes`
+      // empty here: take what is needed from them first
+      const byteLength = data.byteLength
+      const xfaMarker = hasXfaMarker(bytes)
+      setFormHasXfa(xfaMarker)
       if (!saved) {
         setFormCatalog(null)
         setSavedAttachments(null)
@@ -1579,13 +1612,16 @@ export default function App() {
           keywords: documentInfo.Keywords ?? '',
         })
         const formFeatures = documentFormFeatures(documentInfo, bytes)
-        setFormHasXfa(formFeatures.hasXfa)
+        setFormHasXfa(formFeatures.hasXfa || xfaMarker)
         setDocumentEncrypted(formFeatures.encrypted)
         if (formFeatures.encrypted) {
           // pdf.js already accepted this password for rendering; the session's own
           // handler must accept it too before the document counts as editable
           const password = passwordRef.current ?? ''
-          const outcome = await window.pdfApi.decryptPdf(bytes, password)
+          const outcome = await window.pdfApi.decryptPdf(
+            new Uint8Array(await window.pdfApi.readFile(path)),
+            password,
+          )
           if (outcome.ok) {
             setEncryption({
               userPassword: password,
@@ -1610,15 +1646,45 @@ export default function App() {
           diskPasswordRef.current = null
         }
         setProtectionDirty(false)
-        for (let i = 1; i <= loaded.numPages; i++) {
-          const page = await loaded.getPage(i)
-          // Unrotated size; display size is derived by geom from the total rotation
-          const vp = page.getViewport({ scale: 1, rotation: 0 })
-          all.push({ width: vp.width, height: vp.height })
-          rots.push(page.rotate ?? 0)
-          origins.push([page.view[0]!, page.view[1]!])
-          userUnits.push(page.userUnit ?? 1)
+        const probePages = async (d: PDFDocumentProxy) => {
+          all.length = rots.length = origins.length = userUnits.length = 0
+          for (let i = 1; i <= d.numPages; i++) {
+            const page = await d.getPage(i)
+            // Unrotated size; display size is derived by geom from the total rotation
+            const vp = page.getViewport({ scale: 1, rotation: 0 })
+            all.push({ width: vp.width, height: vp.height })
+            rots.push(page.rotate ?? 0)
+            origins.push([page.view[0]!, page.view[1]!])
+            userUnits.push(page.userUnit ?? 1)
+          }
         }
+        let damaged = false
+        try {
+          await probePages(loaded)
+        } catch (pageErr) {
+          // A page object lost to damaged bytes takes every page PDF.js walks past it
+          // down with it. Show the lost one blank, as Acrobat does, from patched bytes
+          // in memory; the view stays read-only since saving would see the damage.
+          const { patchMissingPageKids } = await import('./page-tree-patch')
+          const patched = await patchMissingPageKids(
+            new Uint8Array(await window.pdfApi.readFile(path)),
+          )
+          if (!patched) throw pageErr
+          const retry = getDocument({
+            data: patched.bytes,
+            password: passwordRef.current,
+            ...DOC_OPTS,
+          })
+          const reopened = await retry.promise.catch(() => {
+            void retry.destroy()
+            throw pageErr
+          })
+          void loaded.loadingTask.destroy()
+          loaded = reopened
+          await probePages(loaded)
+          damaged = true
+        }
+        setDocumentDamaged(damaged)
       } catch (err) {
         // getMetadata/page probing failed after the document resolved but before
         // setDoc adopted it: destroy the half-open document (pdfjs-dist 6.x
@@ -1893,7 +1959,7 @@ export default function App() {
           return mapped.every((n, i) => n === i) ? null : mapped
         })
       }
-      setFileSize(data.byteLength)
+      setFileSize(byteLength)
       setSelected(null)
       setMarkupMenu(null)
       setPageSel(EMPTY_PAGE_SELECTION)
@@ -2001,11 +2067,16 @@ export default function App() {
       files count after our own decryptor accepted them (the save pipeline re-reads the
       protected bytes from disk, which pdf-lib alone cannot). A session holding only
       the user password — or the empty one of an owner-only file — is additionally
-      bound by the /P the file carries: modifying denied means read-only. */
+      bound by the /P the file carries: modifying denied means read-only. A file shown
+      with blank stand-ins for lost pages is read-only too: the save pipeline reads the
+      damaged file, whose pages no longer line up with the view. */
   const readOnly =
     status === 'ready' &&
-    documentEncrypted &&
-    (!sessionUnlocked || (diskLock !== null && !diskLock.unlockedAsOwner && !diskLock.modifying))
+    (documentDamaged ||
+      (documentEncrypted &&
+        (!sessionUnlocked ||
+          (diskLock !== null && !diskLock.unlockedAsOwner && !diskLock.modifying))))
+  const readOnlyReason = documentDamaged ? t('roDamaged') : t('roEncrypted')
   /** Only the owner password may change or lift protection: a user-password
       session, even one allowed to modify the content, must not be able to strip
       the owner's password. A plain document has no protection to lose. */
@@ -3597,7 +3668,7 @@ export default function App() {
       e.preventDefault()
       if ('blocked' in verdict) {
         // the same reason the hidden markup buttons stand for
-        showNotice(t('roEncrypted'))
+        showNotice(readOnlyReason)
         return
       }
       runSelectionBarAction(verdict.action)
@@ -6221,7 +6292,7 @@ export default function App() {
         }
         return out
       })
-      drawing = { kind: 'ink', pageIndex: origIdx, color: drawColor, width: 1.6, paths }
+      drawing = { kind: 'ink', pageIndex: origIdx, color: signColor, width: 1.6, paths }
     }
     applyEditOps([{ op: 'addDrawing', drawing }])
     setPendingSign(null)
@@ -6232,7 +6303,7 @@ export default function App() {
     applyEditOps([
       {
         op: 'addDrawing',
-        drawing: signatureDrawingForField(sig, target, drawColor),
+        drawing: signatureDrawingForField(sig, target, signColor),
         formWidgetId: target.id,
       },
     ])
@@ -8436,7 +8507,6 @@ export default function App() {
   const opacityBtnRef = useRef<HTMLButtonElement | null>(null)
   const opacityMenuRef = useRef<HTMLDivElement | null>(null)
   const staticColorFieldRef = useRef<HTMLDivElement | null>(null)
-  const convertWrapRef = useRef<HTMLDivElement | null>(null)
   const aiReadWrapRef = useRef<HTMLDivElement | null>(null)
 
   // Thumbnail context menu
@@ -8510,10 +8580,6 @@ export default function App() {
     inside: () => [staticColorFieldRef.current],
   })
 
-  // Converter dropdown (Home tab)
-  useDismissablePopover(convertOpen, () => setConvertOpen(false), {
-    inside: () => [convertWrapRef.current],
-  })
   // AI page reading menu (Home tab)
   useDismissablePopover(aiReadMenuOpen, () => setAiReadMenuOpen(false), {
     inside: () => [aiReadWrapRef.current],
@@ -8659,6 +8725,7 @@ export default function App() {
         else if (noteDraft) setNoteDraft(null)
         else if (activeNote) setActiveNote(null)
         else if (drawTool) setDrawTool(null)
+        else if (handTool) setHandTool(false)
         else if (markupMenu) setMarkupMenu(null)
         else if (formMenu) setFormMenu(null)
         else if (formDesignTool) setFormDesignTool(null)
@@ -8887,7 +8954,6 @@ export default function App() {
 
   /** Converter dropdown → the shell's local conversion flows (save dialog, password prompt) */
   const convertTo = async (format: PdfConvertFormat): Promise<void> => {
-    setConvertOpen(false)
     if (convertBusy) return
     setConvertBusy(true)
     try {
@@ -8901,7 +8967,6 @@ export default function App() {
 
   /** Converter dropdown › Markdown / EPUB → the conversion dialog */
   const openConvertDialog = (format: PdfReflowFormat): void => {
-    setConvertOpen(false)
     setConvertDialog({ format })
   }
 
@@ -9087,6 +9152,30 @@ export default function App() {
             <IconFitPage />
           </span>
           <span>{t('fitPage')}</span>
+        </button>
+        <button
+          className={`rb-big${handTool ? ' active' : ''}`}
+          data-tip={t('handToolTip')}
+          aria-pressed={handTool}
+          onClick={() => {
+            if (!handTool) {
+              setDrawTool(null)
+              setEditTextMode(false)
+              setEditImageMode(false)
+              setPendingSign(null)
+              setImagePick(null)
+              setPendingTextInsert(null)
+              setTextDraft(null)
+              setPendingStaticFill(null)
+              setFormDesignTool(null)
+            }
+            setHandTool((v) => !v)
+          }}
+        >
+          <span className="rb-big-icon">
+            <IconHand />
+          </span>
+          <span>{t('handTool')}</span>
         </button>
         {showDefaultFit && (
           <div className="rb-col rb-open-view">
@@ -9498,7 +9587,7 @@ export default function App() {
             </button>
           )}
           <span className="ribbon-tabs-spacer" />
-          {readOnly && <span className="tb-readonly">{t('roEncrypted')}</span>}
+          {readOnly && <span className="tb-readonly">{readOnlyReason}</span>}
           {/* Pending edits wait for an explicit save or an enabled autosave. */}
           {saveState === 'saving' ? (
             <span className="tb-save-pending">{t('saving')}</span>
@@ -9658,31 +9747,21 @@ export default function App() {
               <div className="ribbon-sep" />
               <div className="ribbon-group">
                 <div className="ribbon-group-items">
-                  <div className="rb-drop-wrap" ref={convertWrapRef}>
-                    <button
-                      className={`rb-big${convertOpen ? ' active' : ''}`}
-                      data-tip={t('convertPdfTip')}
-                      disabled={convertBusy}
-                      onClick={() => setConvertOpen((v) => !v)}
-                    >
-                      <span className="rb-big-icon">
-                        <IconConvertPdf />
-                        <RbCaret />
-                      </span>
-                      <span>{t('convertPdf')}</span>
-                    </button>
-                    {convertOpen && (
-                      <div className="rb-drop rb-menu">
-                        <button onClick={() => void convertTo('docx')}>{t('convertToWord')}</button>
-                        <button onClick={() => void convertTo('xlsx')}>
-                          {t('convertToExcel')}
-                        </button>
-                        <button onClick={() => void convertTo('pptx')}>{t('convertToPpt')}</button>
-                        <button onClick={() => openConvertDialog('md')}>{t('cvToMarkdown')}</button>
-                        <button onClick={() => openConvertDialog('epub')}>{t('cvToEpub')}</button>
-                      </div>
-                    )}
-                  </div>
+                  <ConvertMenu
+                    t={t}
+                    busy={convertBusy || exporting !== null}
+                    label={
+                      exporting
+                        ? imagesProgress && imagesProgress.total > 0
+                          ? t('imgExportProgress', imagesProgress)
+                          : t('exporting')
+                        : t('convertPdf')
+                    }
+                    onConvert={(format) => void convertTo(format)}
+                    onReflow={openConvertDialog}
+                    onPageImages={(allPages, format) => void exportImages(allPages, format)}
+                    onEmbedded={exportPagePictures}
+                  />
                 </div>
               </div>
               <div className="ribbon-sep" />
@@ -9701,32 +9780,6 @@ export default function App() {
                       <IconPrint />
                     </span>
                     <span>{printing ? t('printPreparing') : t('print')}</span>
-                  </button>
-                  <ExportImagesMenu
-                    t={t}
-                    icon={<IconExportImg />}
-                    busy={exporting !== null}
-                    label={
-                      exporting === 'png'
-                        ? imagesProgress && imagesProgress.total > 0
-                          ? t('imgExportProgress', imagesProgress)
-                          : t('exporting')
-                        : t('exportImages')
-                    }
-                    onWholePages={() => void exportImages(true)}
-                    onCurrentPage={() => void exportImages(false)}
-                    onEmbedded={exportPagePictures}
-                  />
-                  <button
-                    className="rb-big"
-                    data-tip={t('exportImagesAllJpg')}
-                    disabled={exporting !== null}
-                    onClick={() => void exportImages(true, 'jpg')}
-                  >
-                    <span className="rb-big-icon">
-                      <IconExportImg />
-                    </span>
-                    <span>{exporting === 'jpg' ? t('exporting') : t('exportImagesJpg')}</span>
                   </button>
                   <button
                     className="rb-big"
@@ -10634,6 +10687,7 @@ export default function App() {
             lang={lang}
             t={t}
             readOnly={readOnly}
+            readOnlyReason={readOnlyReason}
             title={(metadata ?? docInfo).title?.trim() || ''}
             pageText={async (origIdx) => (doc ? readPageText(doc, origIdx) : '')}
             addNote={(note) => {
@@ -11065,7 +11119,7 @@ export default function App() {
             )}
             <div
               ref={scrollRef}
-              className={`pdf-scroll${drawTool ? ' pdf-drawing' : ''}${nightMode ? ' pdf-night' : ''}`}
+              className={`pdf-scroll${drawTool ? ' pdf-drawing' : ''}${handTool ? ' pdf-hand' : ''}${nightMode ? ' pdf-night' : ''}`}
               onScroll={() => {
                 handleScroll()
                 setSelPopup(null)
@@ -11235,7 +11289,7 @@ export default function App() {
                               dispW={geomDispSize(geom).width}
                               dispH={geomDispSize(geom).height}
                               scale={scale}
-                              color={drawColor}
+                              color={signColor}
                               title={t('signHint')}
                               onPlace={(vx, vy) => placeSignature(origIdx, vx, vy)}
                             />
@@ -13236,7 +13290,8 @@ export default function App() {
             )}
             {signDlg && (
               <SignatureDialog
-                color={drawColor}
+                color={signColor}
+                onColorChange={setSignColor}
                 t={t}
                 onCancel={() => {
                   setSignDlg(false)

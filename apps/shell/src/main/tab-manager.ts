@@ -43,6 +43,12 @@ import {
 } from '../../../mindmap/src/main/mindmap-main'
 import { createEpubView, epubIsDirty, requestEpubClose } from '../../../epub/src/main/epub-main'
 import {
+  createDiagramView,
+  diagramIsDirty,
+  diagramTabIdentity,
+  requestDiagramClose,
+} from '../../../diagram/src/main/diagram-main'
+import {
   createPdfView,
   clearPdfDirty,
   markPdfUntitledCopy,
@@ -516,6 +522,8 @@ export class TabManager {
         return mindmapIsDirty(wc.id)
       case 'epub':
         return epubIsDirty(wc.id)
+      case 'diagram':
+        return diagramIsDirty(wc.id)
       default:
         return false
     }
@@ -711,6 +719,37 @@ export class TabManager {
       view,
       title: basename(openPath),
       filePath: openPath,
+    })
+    this.activateTab(id)
+    return id
+  }
+
+  /**
+   * Opens a diagram, or with no path a new one-page diagram that has no file
+   * until it is saved (its first save proposes `.drawio`). A Visio drawing
+   * opens as a new, untitled diagram made from it: the tab keeps no file (the
+   * `.vsdx` is never written) and finds it again through the editor's
+   * `diagramTabIdentity` (findDiagramTabByPath).
+   */
+  openDiagramTab(openPath?: string): string {
+    const view = createDiagramView(openPath)
+    const id = `t${this.nextId++}`
+    this.shellWindow.contentView.addChildView(view)
+    view.setVisible(false)
+    this.trackHtmlFullScreen(view)
+    this.trackPaneFocus(view)
+    const identity = openPath ? diagramTabIdentity(view.webContents.id) : null
+    const imported = identity?.imported !== undefined
+    this.tabs.push({
+      id,
+      kind: 'diagram',
+      view,
+      title: imported
+        ? identity!.title
+        : openPath
+          ? basename(openPath)
+          : this.untitled('diagram', 'Diagram'),
+      filePath: imported ? undefined : openPath,
     })
     this.activateTab(id)
     return id
@@ -1392,6 +1431,8 @@ export class TabManager {
         return this.openHwpTab(path)
       case 'epub':
         return path ? this.openEpubTab(path) : null
+      case 'diagram':
+        return this.openDiagramTab(path)
       default:
         return null
     }
@@ -1571,6 +1612,13 @@ export class TabManager {
       .map((t) => ({ id: t.id, webContents: t.view!.webContents }))
   }
 
+  /** diagram tabs whose renderer reports unsaved edits (shell-close guard) */
+  dirtyDiagramTabs(): Array<{ id: string; webContents: WebContents }> {
+    return this.tabs
+      .filter((t) => t.kind === 'diagram' && t.view && diagramIsDirty(t.view.webContents.id))
+      .map((t) => ({ id: t.id, webContents: t.view!.webContents }))
+  }
+
   /** slides tabs whose main-process session has unsaved edits (shell-close guard) */
   dirtySlidesTabs(): Array<{ id: string; webContents: WebContents }> {
     return this.tabs
@@ -1629,6 +1677,9 @@ export class TabManager {
     }
     if (!closeGuard && tab.kind === 'epub' && tab.view) {
       if (epubIsDirty(tab.view.webContents.id)) closeGuard = requestEpubClose
+    }
+    if (!closeGuard && tab.kind === 'diagram' && tab.view) {
+      if (diagramIsDirty(tab.view.webContents.id)) closeGuard = requestDiagramClose
     }
     // docs dirty state lives in the renderer and needs an async query; skip the guard when clean (avoids a flash activation)
     if (!closeGuard && tab.kind === 'docs' && tab.view) {
@@ -1899,6 +1950,33 @@ export class TabManager {
       : undefined
   }
 
+  /**
+   * The diagram tab showing this file: its own file, or the Visio drawing an
+   * untitled tab was made from (the editor's tab identity), so opening the
+   * same `.vsdx` again comes back to that tab.
+   */
+  findDiagramTabByPath(path?: string): string | undefined {
+    const own = this.findTabOfKindByPath('diagram', path)
+    if (own) return own
+    const wanted = canonicalPath(path)
+    if (wanted === undefined) return undefined
+    return this.tabs.find((t) => {
+      if (t.kind !== 'diagram' || !t.view || t.present) return false
+      const contents = t.view.webContents
+      if (contents.isDestroyed()) return false
+      const source = diagramTabIdentity(contents.id)?.sourcePath
+      return !!source && canonicalPath(source) === wanted
+    })?.id
+  }
+
+  /** the active tab's diagram view, if the active tab is a diagram (diagram menu target) */
+  activeDiagramTab(): { id: string; webContents: WebContents; filePath?: string } | undefined {
+    const tab = this.tabs.find((t) => t.id === this.activeId)
+    return tab?.kind === 'diagram' && tab.view
+      ? { id: tab.id, webContents: tab.view.webContents, filePath: tab.filePath }
+      : undefined
+  }
+
   findHwpTabByPath(path?: string): string | undefined {
     return this.findTabOfKindByPath('hwp', path)
   }
@@ -1979,6 +2057,8 @@ export function createPlainEditorView(kind: DocumentTabKind, filePath?: string):
     case 'epub':
       if (!filePath) throw new Error('an EPUB tab needs its file')
       return createEpubView(filePath)
+    case 'diagram':
+      return createDiagramView(filePath)
   }
 }
 

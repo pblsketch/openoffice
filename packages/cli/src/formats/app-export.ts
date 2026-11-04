@@ -109,12 +109,12 @@ export async function exportViaApp(
   })
 }
 
-function describeExit(code: number | null, signal: NodeJS.Signals | null): string {
+export function describeExit(code: number | null, signal: NodeJS.Signals | null): string {
   return signal ? `crashed (${signal})` : `exited with code ${code}`
 }
 
 /** The app's HEADLESS_EXIT codes: 1 bad args, 2 input error, 3 conversion failure. */
-function exitCodeFor(
+export function exitCodeFor(
   code: number | null,
 ): typeof EXIT.file | typeof EXIT.conversion | typeof EXIT.app {
   if (code === 2) return EXIT.file
@@ -126,6 +126,10 @@ export interface HeadlessEnvelope {
   status: 'ok' | 'error'
   summary?: string
   output_path?: string
+  /** every file an export wrote, when it was not the one at output_path (diagram pages) */
+  output_paths?: string[]
+  /** facts an export reports beside the files (a diagram batch's per-op results) */
+  detail?: Record<string, unknown>
   error?: string
 }
 
@@ -146,7 +150,7 @@ export function parseEnvelope(stdout: string): HeadlessEnvelope | null {
   return null
 }
 
-function waitFor(
+export function waitFor(
   child: ChildProcess,
   timeoutMs: number,
   killGraceMs: number,

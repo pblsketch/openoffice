@@ -177,6 +177,7 @@ const api: HwpApi = {
   readAttachment: (path, offset, maxChars) =>
     ipcRenderer.invoke(HWP_CHANNELS.filesRead, path, offset, maxChars),
   readAttachmentImage: (path) => ipcRenderer.invoke(HWP_CHANNELS.filesReadImage, path),
+  readAttachmentDocument: (path) => ipcRenderer.invoke(HWP_CHANNELS.filesReadDocument, path),
   analyzeMedia: (op) => ipcRenderer.invoke(HWP_CHANNELS.analyzeMedia, op),
   getPathForFile: (file) => webUtils.getPathForFile(file),
   // the drop bridge's rules, for drops it cannot hear: paths come from the dropped files

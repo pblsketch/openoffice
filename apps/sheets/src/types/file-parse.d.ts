@@ -26,3 +26,7 @@ export const ATTACHABLE_MAX_BYTES: number
 export const ATTACHABLE_IMAGE_MAX_BYTES: number
 export function attachableMaxBytes(ext: string): number
 export function isAttachableExt(ext: string): boolean
+/** `drawio.svg`/`drawio.png` for a draw.io picture that holds its diagram (read as text), else null */
+export function diagramPictureExtOf(filePath: string): 'drawio.svg' | 'drawio.png' | null
+/** `drawio.svg`/`drawio.png` when the file name ends so, else null (name only) */
+export function diagramPictureExtOfName(fileName: string): 'drawio.svg' | 'drawio.png' | null

@@ -3,18 +3,28 @@
  * and one thin row of icon buttons for the map.
  *
  * Buttons are grouped as the editor's layout says, left to right:
- * topics | relationship, summary, note, label, link, picture | layout, theme, fold |
+ * topics | bold, italic, underline, strike, text format |
+ * relationship, summary, boundary, note, label, link, picture | layout, theme, fold |
  * zoom, export | "make another document from this one" | AI at the far end.
  * A group or button whose function is not built yet is not drawn; its place is
  * marked below so it lands where it belongs. The theme button opens and closes
- * the theme panel beside the map.
+ * the theme panel beside the map, the format button the format panel.
+ * The four format buttons show what the topic in hand shows; they keep the
+ * focus, so while a title is typed they format its selected characters.
  */
 import { AiMark, aiSubscriptionText, Dropdown, type DropdownOption } from '@genoffice/ui'
 import type { ViewLayout } from '@genoffice/xmind-engine'
 import { useI18n } from '../i18n/locale'
 import type { ExportFormat } from '../../shared/ipc'
+import type { FormatToggle, ShownFormat } from '../map/text-format'
 import { ExportMenu } from './ExportMenu'
 import {
+  IconBold,
+  IconBoundary,
+  IconItalic,
+  IconStrike,
+  IconTextFormat,
+  IconUnderline,
   IconChild,
   IconFit,
   IconFoldAll,
@@ -56,6 +66,10 @@ export interface ToolbarProps {
   noteOpen: boolean
   /** the AI panel is open */
   aiOpen: boolean
+  /** the format panel is open */
+  formatOpen: boolean
+  /** what the topic in hand shows; null without one */
+  textFormat: ShownFormat | null
   onSave(): void
   onSaveAs(): void
   onUndo(): void
@@ -65,6 +79,8 @@ export interface ToolbarProps {
   onAddSibling(): void
   onRelationship(): void
   onSummary(): void
+  /** a boundary around the selected topics */
+  onBoundary(): void
   onNote(): void
   onLabel(): void
   onLink(): void
@@ -72,6 +88,8 @@ export interface ToolbarProps {
   onPicture(): void
   onLayout(layout: ViewLayout): void
   onToggleTheme(): void
+  onToggleFormat(key: FormatToggle): void
+  onToggleFormatPanel(): void
   onFoldAll(): void
   onUnfoldAll(): void
   onZoomIn(): void
@@ -180,6 +198,60 @@ export function Toolbar(p: ToolbarProps) {
         <div className="ribbon-group">
           <div className="ribbon-group-items">
             <ToolButton
+              action="bold"
+              label={t('tbBold')}
+              kbd="Ctrl+B"
+              active={p.textFormat?.bold ?? false}
+              disabled={topicOff}
+              onClick={() => p.onToggleFormat('bold')}
+            >
+              <IconBold />
+            </ToolButton>
+            <ToolButton
+              action="italic"
+              label={t('tbItalic')}
+              kbd="Ctrl+I"
+              active={p.textFormat?.italic ?? false}
+              disabled={topicOff}
+              onClick={() => p.onToggleFormat('italic')}
+            >
+              <IconItalic />
+            </ToolButton>
+            <ToolButton
+              action="underline"
+              label={t('tbUnderline')}
+              kbd="Ctrl+U"
+              active={p.textFormat?.underline ?? false}
+              disabled={topicOff}
+              onClick={() => p.onToggleFormat('underline')}
+            >
+              <IconUnderline />
+            </ToolButton>
+            <ToolButton
+              action="strike"
+              label={t('tbStrike')}
+              kbd="Ctrl+Shift+X"
+              active={p.textFormat?.strike ?? false}
+              disabled={topicOff}
+              onClick={() => p.onToggleFormat('strike')}
+            >
+              <IconStrike />
+            </ToolButton>
+            <ToolButton
+              action="text-format"
+              label={t('tbTextFormat')}
+              active={p.formatOpen}
+              disabled={p.disabled}
+              onClick={p.onToggleFormatPanel}
+            >
+              <IconTextFormat />
+            </ToolButton>
+          </div>
+        </div>
+        <span className="rb-sep" />
+        <div className="ribbon-group">
+          <div className="ribbon-group-items">
+            <ToolButton
               action="relationship"
               label={t('tbRelationship')}
               active={p.pickingRelationship}
@@ -195,6 +267,14 @@ export function Toolbar(p: ToolbarProps) {
               onClick={p.onSummary}
             >
               <IconSummary />
+            </ToolButton>
+            <ToolButton
+              action="boundary"
+              label={t('tbBoundary')}
+              disabled={topicOff}
+              onClick={p.onBoundary}
+            >
+              <IconBoundary />
             </ToolButton>
             <ToolButton
               action="note"

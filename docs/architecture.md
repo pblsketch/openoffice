@@ -2,7 +2,7 @@
 
 ## 한 프로그램으로 배포되는 여러 조각
 
-설치되는 것은 Electron 프로그램 하나다. 그 안에 껍데기 앱 하나와 편집기들(워드, 엑셀, 파워포인트, PDF, 마크다운, HTML, 마인드맵, 한글, 전자책)이 들어 있고, 편집기들은 화면과 무관한 공용 패키지(문서 엔진, AI 연결부)를 가져다 쓴다.
+설치되는 것은 Electron 프로그램 하나다. 그 안에 껍데기 앱 하나와 편집기들(워드, 엑셀, 파워포인트, PDF, 마크다운, HTML, 마인드맵, 한글, 전자책, 다이어그램)이 들어 있고, 편집기들은 화면과 무관한 공용 패키지(문서 엔진, AI 연결부)를 가져다 쓴다.
 
 ```
 apps/shell      껍데기 앱. 창, 탭, 홈 화면, 설정, 첫 실행 안내, 자동 업데이트, 파일 색인과 지식 자료 검색,
@@ -23,6 +23,8 @@ apps/hwp        한글(.hwp·.hwpx) 편집기. 편집 화면은 오픈소스 rhw
                 명령줄의 hwp apply도 같은 도구와 플러그인을 편집기 없이 같은 엔진에서 돌린다(결정 0079)
 apps/epub       전자책(.epub) 편집기. 책은 뒷단에 보기마다 한 벌, 장은 스크립트 없는 틀에 그리고, 저장은
                 packages/epub-engine의 범위 바꾸기로 한다. 책 번역은 pdf-structure의 작업 엔진과 보관소를 쓴다
+apps/diagram    다이어그램(.drawio) 편집기. 빌드 때 받은 draw.io 본체를 탭 전용 세션의 틀에 띄우고 바깥 요청을 막는다.
+                파일 형식·읽기 표·연산은 packages/drawio-model이 맡는다(결정 0103)
 packages/ai-provider   제공자 목록, 제공자 선택 규칙, 구독 프로그램 실행부, 키 방식 제공자 연결
 packages/ai-search     검색·이미지 생성·미디어 분석 도구, 자동 호출 경로의 구독 요청 차례
 packages/agent-core    AI 실행 반복(모델 → 도구 → 모델), 화면↔뒷단 전송 통로, 가리기
@@ -38,14 +40,16 @@ packages/xmind-engine  마인드맵 파일 엔진(열기, 원본 보존, 맞추�
                        화면과 Node 양쪽에서 돈다
 packages/epub-engine   EPUB 엔진(열기와 거절, 블록 지도, 블록 글 표기, 범위 바꾸기 편집·저장, 글 뽑기, 책 번역의
                        단위·열쇠·지시문과 번역본·대역본). 이 프로젝트가 만든 것이고, 화면과 Node 양쪽에서 돈다
+packages/drawio-model  다이어그램 파일 모델(형식 판정·원본 꺼내기, 읽기 표, 연산 검사와 기본 변경, XML 쓰기). 이 프로젝트가
+                       만든 것이고, 편집기 화면·셸·터미널 명령어·file-parse가 같은 코드를 쓴다
 packages/docx-engine, pptx-engine, pptx-ops, pptx-render, xlsx-gateway,
          pdf2docx, html2docx, file-parse, zip-gate, font-metrics, pipelines, project-store
                        문서 엔진과 그 주변. 원본(GenOffice)에서 온 그대로 두는 영역. `file-parse`에는 이 프로젝트가
-                       `.xmind`·`.epub` 읽기, 다른 파일로 읽을 때의 가리기, 첨부할 수 있는 형식 목록(`attachable.ts`)을 새 파일로 더했다
+                       `.xmind`·`.epub`·다이어그램 읽기, 다른 파일로 읽을 때의 가리기, 첨부할 수 있는 형식 목록(`attachable.ts`)을 새 파일로 더했다
 apps/sheets/native/xlsx-engine   엑셀 계산·입출력을 맡는 별도 프로그램(Rust). 표준 입출력으로 대화한다
 ```
 
-- 의존 방향은 한쪽이다. `apps/*` → `packages/*`. 패키지끼리는 `ai-provider` → `agent-core`·`i18n`(그래서 `agent-core`는 `ai-provider`를 가져올 수 없다), `ai-search` → `ai-provider`·`electron-utils`, `ui` → `ai-provider`·`agent-core`·`i18n`·`pptx-render`, `odt-engine` → `docx-engine`·`zip-gate`, `cli` → 엔진 패키지·`pdf-structure`·`ai-search`·`ai-provider`·`i18n`, `electron-utils` → `i18n`, `file-parse` → `agent-core`(가리기 이름표)·`xmind-engine`·`epub-engine`·`docx-engine`, `xmind-engine` → `zip-gate`·`i18n`, `epub-engine` → `zip-gate`·`pdf-structure`(이름으로. 번역 작업 엔진, 보관소 열쇠의 형, 묶기·답 읽기 도우미). `pdf-structure`는 `pdf2docx`·`i18n`·`ai-provider`(그림 입력 판정)·`agent-core`(형)·`font-metrics`의 소스를 상대 경로로 가져오고, `apps/pdf`·`apps/shell`·`cli`도 `pdf-structure`를 상대 경로로 가져온다. `pdf-structure`는 다른 작업 공간 패키지를 이름으로 가져오지 않고 Electron에 기대지 않는다. `i18n`과 `agent-core`는 다른 작업 공간 패키지에 기대지 않는다.
+- 의존 방향은 한쪽이다. `apps/*` → `packages/*`. 패키지끼리는 `ai-provider` → `agent-core`·`i18n`(그래서 `agent-core`는 `ai-provider`를 가져올 수 없다), `ai-search` → `ai-provider`·`electron-utils`, `ui` → `ai-provider`·`agent-core`·`i18n`·`pptx-render`, `odt-engine` → `docx-engine`·`zip-gate`, `cli` → 엔진 패키지·`pdf-structure`·`ai-search`·`ai-provider`·`i18n`, `electron-utils` → `i18n`, `file-parse` → `agent-core`(가리기 이름표)·`xmind-engine`·`epub-engine`·`drawio-model`·`docx-engine`, `xmind-engine` → `zip-gate`·`i18n`, `epub-engine` → `zip-gate`·`pdf-structure`(이름으로. 번역 작업 엔진, 보관소 열쇠의 형, 묶기·답 읽기 도우미). `pdf-structure`는 `pdf2docx`·`i18n`·`ai-provider`(그림 입력 판정)·`agent-core`(형)·`font-metrics`의 소스를 상대 경로로 가져오고, `apps/pdf`·`apps/shell`·`cli`도 `pdf-structure`를 상대 경로로 가져온다. `pdf-structure`는 다른 작업 공간 패키지를 이름으로 가져오지 않고 Electron에 기대지 않는다. `i18n`과 `agent-core`는 다른 작업 공간 패키지에 기대지 않는다.
 - `ai-provider`는 진입점이 나뉘어 있다. 화면(renderer)과 preload가 **값**으로 가져오는 것은 `@genoffice/ai-provider/browser`뿐이다. 대표 진입점에서는 형(`import type`)만 가져온다. 프로그램을 실행하는 코드(`/subscription`, `/claude-code-cli`, `/codex-app-server`)는 뒷단에서만 가져온다.
 - 편집기들의 뒷단 코드는 따로 실행되지 않는다. 껍데기 앱을 빌드할 때 함께 묶여, 껍데기 앱의 한 프로세스 안에서 돈다. 그래서 창구 이름(IPC 채널)은 프로세스 전체에서 하나뿐이어야 한다.
 - 편집기 화면은 껍데기 창 위에 얹히는 별도 화면(WebContentsView)이다. 홈 탭만 껍데기 앱 자신의 화면이다.

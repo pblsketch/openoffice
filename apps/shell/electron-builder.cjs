@@ -205,6 +205,7 @@ function assertModuleTreesPresent() {
     '../mindmap/out',
     '../hwp/out',
     '../epub/out',
+    '../diagram/out/drawio/index.html',
     '../../packages/cli/dist/genoffice.cjs',
     '../../packages/cli/dist/node_modules/jsdom',
   ]) {
@@ -335,12 +336,14 @@ function ensureThirdPartyNotices() {
 // in Open With).
 // A mind map file and a book keep the program the user already opens them
 // with, and HWP and HWPX must not be taken from Hancom Office on a PC that has
-// it, so Windows takes none of the four as the extension's default. They are
-// still offered in Explorer's "Open with": build/installer.nsh writes a
-// product-own ProgId with the per-type document icon for each, so choosing
-// this app for them shows the Hangul, mind-map or book icon instead of the
-// bare app icon (the .ico files ship via win.extraResources below).
-const WIN_OPEN_WITH_ONLY_EXTS = new Set(['txt', 'json', 'xmind', 'hwp', 'hwpx', 'epub'])
+// it, so Windows takes none of the four as the extension's default. A Visio
+// drawing is only imported (as a new diagram), so it keeps its program too.
+// They are still offered in Explorer's "Open with": build/installer.nsh
+// writes a product-own ProgId with the per-type document icon for each, so
+// choosing this app for them shows the Hangul, mind-map, book or diagram icon
+// instead of the bare app icon (the .ico files ship via win.extraResources
+// below).
+const WIN_OPEN_WITH_ONLY_EXTS = new Set(['txt', 'json', 'xmind', 'hwp', 'hwpx', 'epub', 'vsdx'])
 // NSIS registers each association under a ProgId taken from its `name`
 // (HKCU\Software\Classes\<name>). The upstream app registers the bare names
 // below ("Word Document"), so sharing them would let either install overwrite
@@ -491,6 +494,38 @@ const FILE_ASSOCIATIONS = [
     icon: 'epub',
     mimeType: 'application/epub+zip',
   },
+  {
+    // draw.io diagrams open in the diagram tab and are saved back as they
+    // are: the app is their editor and takes the default like the office types
+    ext: 'drawio',
+    name: 'Diagram',
+    description: 'Diagram',
+    role: 'Editor',
+    icon: 'diagram',
+    mimeType: 'application/vnd.jgraph.mxfile',
+  },
+  {
+    ext: 'dio',
+    name: 'Diagram',
+    description: 'Diagram',
+    role: 'Editor',
+    icon: 'diagram',
+    mimeType: 'application/vnd.jgraph.mxfile',
+  },
+  {
+    // Open With only: a Visio drawing is read into a new diagram and never
+    // written, so the app only views it. Windows leaves it out
+    // (WIN_OPEN_WITH_ONLY_EXTS) and macOS ranks the app as an alternate.
+    // `.drawio.svg` / `.drawio.png` are not declared: their extension is a
+    // picture's, and the picture's program stays its opener.
+    ext: 'vsdx',
+    name: 'VSDX Drawing',
+    description: 'VSDX Drawing',
+    role: 'Viewer',
+    rank: 'Alternate',
+    icon: 'diagram',
+    mimeType: 'application/vnd.ms-visio.drawing.main+xml',
+  },
 ]
 
 const config = {
@@ -562,6 +597,14 @@ const config = {
     {
       from: '../epub/out',
       to: 'modules/epub',
+    },
+    // the diagram editor with the trimmed draw.io bundle in out/drawio
+    // (vendor/drawio/bundle.mjs), read as resources/modules/diagram/drawio;
+    // the stamp only tells the build step the bundle is current
+    {
+      from: '../diagram/out',
+      to: 'modules/diagram',
+      filter: ['**/*', '!drawio.stamp.json'],
     },
     // PDF text editing engines: the bundled main resolves these under
     // Resources/wasm when node_modules is absent (apps/pdf/src/main/wasm-path.ts)
@@ -676,6 +719,21 @@ const config = {
     ],
     category: 'public.app-category.productivity',
     fileAssociations: FILE_ASSOCIATIONS,
+    // .drawio / .dio resolve to the type identifier draw.io exports, also on a
+    // Mac without draw.io: "set as default" (src/main/default-app.ts) names it
+    extendInfo: {
+      UTImportedTypeDeclarations: [
+        {
+          UTTypeIdentifier: 'com.jgraph.drawio',
+          UTTypeDescription: 'Diagram',
+          UTTypeConformsTo: ['public.xml', 'public.data'],
+          UTTypeTagSpecification: {
+            'public.filename-extension': ['drawio', 'dio'],
+            'public.mime-type': ['application/vnd.jgraph.mxfile'],
+          },
+        },
+      ],
+    },
     hardenedRuntime: true,
     gatekeeperAssess: false,
     entitlements: 'build/entitlements.mac.plist',
@@ -709,9 +767,9 @@ const config = {
         filter: ['*.docx', '*.xlsx', '*.pptx'],
       },
       // The Open-With ProgIds build/installer.nsh writes for .hwp/.hwpx/.xmind/.epub
-      // point their DefaultIcon at these; without the explicit entries the
-      // icons are absent (electron-builder places an icon only for the types
-      // in win.fileAssociations, and these four stay off that list).
+      // and .vsdx point their DefaultIcon at these; without the explicit entries
+      // the icons are absent (electron-builder places an icon only for the types
+      // in win.fileAssociations, and these stay off that list).
       {
         from: 'build/hwp.ico',
         to: 'hwp.ico',
@@ -723,6 +781,10 @@ const config = {
       {
         from: 'build/epub.ico',
         to: 'epub.ico',
+      },
+      {
+        from: 'build/diagram.ico',
+        to: 'diagram.ico',
       },
     ],
   },
