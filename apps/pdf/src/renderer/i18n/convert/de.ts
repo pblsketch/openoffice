@@ -72,6 +72,7 @@ export const de = {
   imgExportWholePages: 'Ganze Seiten',
   imgExportCurrentPage: 'Nur die aktuelle Seite',
   imgExportCurrentPageTip: 'Die angezeigte Seite als eine PNG-Datei exportieren',
+  imgExportCurrentPageJpgTip: 'Die angezeigte Seite als eine JPG-Datei exportieren',
   imgExportEmbedded: 'Nur die Bilder in den Seiten',
   imgExportEmbeddedTip:
     'Die in den Seiten platzierten Bilder in Originalauflösung als PNG-Dateien speichern',

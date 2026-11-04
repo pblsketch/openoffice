@@ -48,6 +48,7 @@ export {
   type DocMentionStringKey,
 } from './strings-doc-mention'
 export { AiComposer } from './AiComposer'
+export { clipboardPictureIsRendering } from './clipboard-picture'
 export {
   SKILL_CHIPS_MAX,
   aiSkillsBridge,
@@ -80,6 +81,7 @@ export {
   skillForRequestOf,
   skillRequestText,
   type SkillForRequest,
+  type SkillRequestOptions,
   type SkillRequestBuild,
 } from './skill-send'
 export { SentSkillChips, SkillChip, SkillChipRow, SkillPicker } from './SkillPicker'
@@ -140,6 +142,24 @@ export {
   type SkillProposalsOptions,
 } from './use-skill-proposals'
 export { SKILL_CARD_STRINGS, skillCardText, type SkillCardStringKey } from './strings-skill-card'
+export { McpPermissionCard, McpPermissionPrompt } from './McpPermissionCard'
+export { McpServerButton } from './McpServerButton'
+export {
+  resolveMcpWindowState,
+  useMcpPermissionRequests,
+  useMcpWindow,
+  type McpWindowView,
+} from './use-mcp-window'
+export {
+  MCP_INPUT_PREVIEW_CHARS,
+  mcpInputPreview,
+  mcpInputText,
+  mcpServerAction,
+  mcpServerButtonVisible,
+  mcpServerStatusText,
+  type McpServerAction,
+} from './user-mcp-model'
+export { USER_MCP_STRINGS, userMcpText, type UserMcpStringKey } from './strings-user-mcp'
 export {
   TEMPLATE_EDITORS,
   chipRefForSkill,

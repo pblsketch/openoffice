@@ -169,6 +169,9 @@ import {
   type AgentImage,
   type IpcStreamError,
   composeWithDrive,
+  windowMcpState,
+  windowMcpUsableServers,
+  toolStepLabel,
 } from '@genoffice/agent-core'
 import type {
   AiSettings,
@@ -473,6 +476,7 @@ import { installRtlTextDirectionFix } from './rtl-text-fix'
 import { installRtlGridMirror } from './rtl-grid-mirror'
 import { installVertAlignRender } from './vert-align-render'
 import { installMultiRowAutofit } from './autofit-multi-row'
+import { installDisjointLineRemoval } from './remove-disjoint-lines'
 import { registerExcelJumpNav } from './excel-jump-nav'
 import { registerEditorWordJump } from './editor-word-jump'
 import { registerExcelShortcuts } from './excel-shortcuts'
@@ -481,6 +485,7 @@ import { runCellsChoice } from './insert-delete-cells'
 import type { CellsMode } from './insert-delete-cells'
 import { installFormatPainter } from './format-painter'
 import { installCopyMaterialize } from './copy-materialize'
+import { installCopyPicture } from './copy-picture'
 import {
   applyPasteSpecial,
   readPasteSpecialSource,
@@ -1557,6 +1562,8 @@ export function App({
     // skill cards come back closed; a saved card's record is not part of the conversation
     const msgs = skillCardsRef.current.restore(stored)
     setHistoricChat(msgs.map(storedChatMessageOf))
+    // a reopened conversation starts with no MCP choices of another chat (user MCP spec 7.6)
+    windowMcpState()?.newConversation()
     // Restore model context: follow-ups after reopening the file continue the
     // previous conversation (only when the loop is idle and has no history)
     agentLoopRef.current?.restore(msgs.map((m) => ({ role: m.role, text: m.text })))
@@ -1708,6 +1715,8 @@ export function App({
           messages: () => agentLoopRef.current?.messages ?? [],
           // a template skill the model used offers its new document (spec 5.7)
           onUsed: (skill) => skillTemplatesRef.current.onUsed(skill),
+          // use_skill names the MCP servers it expects that are not usable now (spec 8)
+          mcpServerUsable: (name) => windowMcpUsableServers().has(name),
           onProposal: (proposal) => {
             skillCardsRef.current.add(proposal)
             patchLastAssistant((entry) => ({
@@ -1737,7 +1746,7 @@ export function App({
             tools: [
               ...entry.tools,
               {
-                summary: call.name.replace(/[_-]+/g, ' '),
+                summary: toolStepLabel(call.name),
                 isError: false,
                 name: call.name,
                 running: true,
@@ -2009,6 +2018,8 @@ export function App({
   function resetConversation(): void {
     sendGate.reset()
     agentLoopRef.current?.reset()
+    // servers off in this chat and "always allow in this chat" go too (user MCP spec 7.6)
+    windowMcpState()?.newConversation()
     setAiRunScope(undefined)
     setAiBusy(false)
     setChat([])
@@ -2393,6 +2404,8 @@ export function App({
     installClipboardAnchorTile(runtime)
     // Row-header double-click autofits every selected row, like Excel.
     const multiRowAutofitDisposable = installMultiRowAutofit(runtime)
+    // Deleting Ctrl-selected rows/columns removes every area, like Excel.
+    const disjointLineRemovalDisposable = installDisjointLineRemoval(runtime)
     const formatPainterDisposable = installFormatPainter(runtime, (active, turnedOff) => {
       setFormatPainterActive(active)
       if (turnedOff) setMessage('')
@@ -2434,6 +2447,9 @@ export function App({
     // Copy/cut load their selection into the lazy window first so streamed
     // workbooks don't serialize blanks for never-viewed rows.
     const copyMaterializeDisposable = installCopyMaterialize(runtime, lazyWorkbookRef, setMessage)
+    // Range copies also carry a picture of the cells, as Excel's do, so chat
+    // apps that paste images (KakaoTalk) get the table as a photo.
+    const copyPictureDisposable = installCopyPicture(runtime)
     statusBarStatsFilterRef.current = installStatusBarStatsFilter(
       runtime,
       () => statusBarFuncsRef.current,
@@ -3666,12 +3682,14 @@ export function App({
       ctrlDragFillDisposable.dispose()
       contextSubmenuReopenDisposable.dispose()
       multiRowAutofitDisposable.dispose()
+      disjointLineRemovalDisposable.dispose()
       cellContextMenuDisposable.dispose()
       formatPainterDisposable.dispose()
       cfFormulaFoldDisposable.dispose()
       cfDisplayKeyDisposable.dispose()
       nullResultDisposable.dispose()
       copyMaterializeDisposable.dispose()
+      copyPictureDisposable.dispose()
       statusBarFileStatsDisposable.dispose()
       statusBarStatsFilterRef.current?.dispose()
       statusBarStatsFilterRef.current = null

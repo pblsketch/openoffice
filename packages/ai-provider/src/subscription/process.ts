@@ -137,8 +137,17 @@ export function leftoverRecordFile(dir: string, ownerPid: number = process.pid):
   return join(dir, `${SUBSCRIPTION_LEFTOVER_FILE_PREFIX}${ownerPid}.json`)
 }
 
+/**
+ * The kind of program a record line stands for, kept in the record's
+ * `provider` field: a subscription CLI, or a server the person registered and
+ * approved for the app to start (user MCP spec 5.3). Both are verified and
+ * ended the same way.
+ */
+export const USER_MCP_CHILD_KIND = 'user-mcp'
+export type TrackedChildKind = AiSubscriptionProviderId | typeof USER_MCP_CHILD_KIND
+
 export interface TrackedChildInfo {
-  provider: AiSubscriptionProviderId
+  provider: TrackedChildKind
   /** the file that was started, as passed to spawn */
   command: string
   /** when it was started (epoch ms); now when absent */
@@ -148,7 +157,7 @@ export interface TrackedChildInfo {
 /** One line of a leftover record. Nothing here identifies the user or the conversation. */
 export interface LeftoverChildRecord {
   pid: number
-  provider: AiSubscriptionProviderId
+  provider: TrackedChildKind
   command: string
   startedAt: number
 }

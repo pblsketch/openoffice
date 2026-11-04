@@ -41,6 +41,7 @@ export {
   windowOutboundBridge,
 } from './outbound-guard'
 export type { OutboundBridgeLike } from './outbound-guard'
+export * from './user-mcp'
 export type {
   DriveBridgeLike,
   DriveCallResult,
@@ -133,3 +134,32 @@ export type {
   IpcSubscriptionUsage,
   IpcTransportOptions,
 } from './electron-transport'
+export { composeWithGuards } from './drive-skill'
+export {
+  MCP_CALL_STOPPED,
+  MCP_PERMISSION_DENIED,
+  USER_MCP_SKILL_ID,
+  createMcpPermissionStore,
+  createMcpWindowState,
+  createUserMcpSkill,
+  hasMcpToolsBridge,
+  mcpServersOf,
+  windowMcpState,
+  windowMcpToolsBridge,
+  windowMcpUsableServers,
+} from './user-mcp-skill'
+export type {
+  McpFailReason,
+  McpPermissionAnswer,
+  McpPermissionRequest,
+  McpPermissionStore,
+  McpReviewSubject,
+  McpServerStatus,
+  McpServerView,
+  McpToolPermission,
+  McpToolView,
+  McpToolsBridgeLike,
+  McpWindowState,
+  UserMcpSkill,
+} from './user-mcp-skill'
+export * from './skill-mcp-refs'

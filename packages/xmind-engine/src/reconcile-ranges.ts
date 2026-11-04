@@ -170,6 +170,11 @@ export function removeSummary(owner: XmindTopic, record: JsonRecord): void {
   dropEmptyChildren(owner)
 }
 
+/** Takes a boundary off a topic. A list left empty goes too. */
+export function removeBoundary(owner: XmindTopic, record: JsonRecord): void {
+  removeRecord(owner, 'boundaries', record)
+}
+
 /** Removes one record from a list on a topic. A list left empty goes too: the format writes none. */
 function removeRecord(owner: XmindTopic, key: RangeKey, record: JsonRecord): void {
   const list = owner[key]

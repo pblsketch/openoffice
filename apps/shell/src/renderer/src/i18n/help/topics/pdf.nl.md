@@ -6,6 +6,7 @@ De pdf-editor heeft vijf linttabs: **Start / Annoteren / Bewerken / Pagina's / B
 
 - Linkerzijbalk: **miniaturen** (klik om te springen, het zichtbare bereik is gemarkeerd) of **overzicht** (bladwijzers, indien aanwezig).
 - Zoom: de verhoudingsknop rechtsonder; ctrl+scrollwiel verandert de zoom in stappen.
+- De weergave verplaatsen: zet het **Handje** aan (tabbladen Start en Beeld) en sleep om de pagina alle kanten op te verplaatsen. Zolang het aan staat, selecteert slepen geen tekst en opent een gewone klik nog steeds een koppeling. Slepen met de middelste knop (scrollwiel) ingedrukt verplaatst de weergave ook zonder het hulpmiddel. Esc of een ander hulpmiddel zet het uit.
 - Draaien: per pagina of voor alle pagina's via het menu Pagina's; draaiingen worden bij opslaan teruggeschreven.
 - Zoeken: ctrl+F op volledige tekst met alle treffers gemarkeerd.
 - Versleutelde pdf's: een wachtwoordvraag (in een eigen klein venster) opent ze; het wachtwoord wordt alleen voor deze sessie gebruikt. Zo'n document kunt u bewerken en opslaan; bij opslaan blijft het wachtwoord behouden. **Annoteren → Beveiligen** stelt het wachtwoord en wat lezers mogen in, wijzigt of verwijdert ze.

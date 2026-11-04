@@ -9,8 +9,8 @@ If IeumOffice helps you, please tap the **star** above. Every star makes it
 easier for the next person to find this program.
 
 IeumOffice (이음오피스) is a free, open-source desktop office suite. It opens
-and edits Word, Excel, PowerPoint, PDF, Markdown and HTML documents and mind
-maps in one window, and its AI works on the document itself instead of
+and edits Word, Excel, PowerPoint, PDF, Markdown and HTML documents, mind
+maps and diagrams in one window, and its AI works on the document itself instead of
 answering in a chat box beside it.
 
 The AI runs on **the Claude subscription or ChatGPT plan you already pay
@@ -65,8 +65,8 @@ The author's own account, in Korean, is at
 ## What works today
 
 - **Editors in one tabbed window**: Word (`.docx`), Excel (`.xlsx`),
-  PowerPoint (`.pptx`), PDF, Hangul (`.hwp`, `.hwpx`), Markdown, HTML and mind
-  maps. Files are opened and saved in their real formats on your own PC; edits are written back as narrow changes
+  PowerPoint (`.pptx`), PDF, Hangul (`.hwp`, `.hwpx`), Markdown, HTML, mind
+  maps and diagrams (draw.io files `.drawio`). Files are opened and saved in their real formats on your own PC; edits are written back as narrow changes
   to the original file, so the parts you did not touch are kept as they were.
 - **An AI panel in every editor.** You ask in plain words, and the AI changes
   the document through the app's own editing tools. You see what was changed
@@ -78,6 +78,11 @@ The author's own account, in Korean, is at
   editor does not show are kept when you save, and a map you did not change is
   saved byte for byte as it was. Several sheets, themes, export to a picture,
   PDF or Markdown outline, and printing.
+- **Diagrams**: opens draw.io files (`.drawio`, `.dio`, `.drawio.svg`,
+  `.drawio.png`) and saves them in the same format. The drawing screen runs
+  on this PC only and sends nothing to the internet.
+  Visio files (`.vsdx`) are imported as new diagrams. Export to PNG, SVG or
+  PDF, printing, and drawing from Mermaid in the AI panel.
 - **New documents from your documents**: start "Make a new document" from a
   starred group on the home screen, from files you picked, or from an
   editor's File menu, and the material is turned into a PowerPoint deck, an
@@ -506,6 +511,13 @@ software made with its published HWP format document, we state:
 >
 > (This product was developed with reference to Hancom's published document
 > on the Hangul document file format (.hwp).)
+
+The diagram editor is built on the web editor of
+[draw.io](https://github.com/jgraph/drawio) (Apache License 2.0). Parts under
+licenses outside the project's allowlist (the PlantUML converter, libavoid and
+ELK) are left out; what was left out and how is listed in the installed
+`THIRD-PARTY-NOTICES.txt`. IeumOffice is not affiliated with or endorsed by
+the company that makes draw.io.
 
 IeumOffice is an independent project. It is not affiliated with, sponsored by
 or endorsed by Genspark / Mainfunc, Inc., Anthropic, OpenAI, Microsoft, Hancom,

@@ -1,8 +1,9 @@
 /**
  * SKILL.md front matter, read and written without a YAML library. Only what
  * skills use is understood: top-level `key: value` lines, plain, quoted and
- * block (`|`, `>`) scalars, and one level of `key: value` under a map key such
- * as `metadata`. Anything else is kept as written when the app rewrites a file.
+ * block (`|`, `>`) scalars, one level of `key: value` under a map key such
+ * as `metadata`, and top-level lists of scalars (`- item` lines or `[a, b]`).
+ * Anything else is kept as written when the app rewrites a file.
  */
 import { IEUM_TEMPLATE_KEY, IEUM_TITLE_KEY } from './constants'
 
@@ -13,6 +14,8 @@ export interface ParsedSkillMd {
   metadata: Record<string, string>
   /** every top-level key with a scalar value */
   fields: Record<string, string>
+  /** every top-level key whose value is a list of scalars, such as `allowed-tools` */
+  lists: Record<string, string[]>
   /** everything after the closing `---` line, as written */
   body: string
 }
@@ -263,6 +266,90 @@ function readScalar(inline: string, children: Line[], parentIndent: number): str
   return foldFlow([head, ...rest]).trim()
 }
 
+/** One item of a list: a plain or quoted scalar; `undefined` for a map, a list or a block */
+function readListItem(raw: string): string | undefined {
+  const text = raw.trim()
+  if (text.startsWith('"')) return readDoubleQuoted(text)
+  if (text.startsWith("'")) return readSingleQuoted(text)
+  if (/^[[{|>]/.test(text) || text === '-' || text.startsWith('- ') || KEY_LINE.test(text)) {
+    return undefined
+  }
+  return stripComment(text).trim()
+}
+
+/** The items of a flow list such as `[a, "b, c", 'd']`; `undefined` when it is not one */
+function readFlowList(text: string): string[] | undefined {
+  const value = text.trim()
+  if (!value.startsWith('[') || !value.endsWith(']')) return undefined
+  const inner = value.slice(1, -1)
+  const parts: string[] = []
+  let current = ''
+  let quote: string | undefined
+  for (let i = 0; i < inner.length; i++) {
+    const ch = inner[i]!
+    if (quote) {
+      current += ch
+      if (ch === '\\' && quote === '"' && i + 1 < inner.length) current += inner[++i]!
+      else if (ch === quote) quote = undefined
+      continue
+    }
+    if (ch === '"' || ch === "'") quote = ch
+    if (ch === ',') {
+      parts.push(current)
+      current = ''
+      continue
+    }
+    current += ch
+  }
+  if (quote) return undefined
+  parts.push(current)
+  const items: string[] = []
+  for (const part of parts) {
+    if (part.trim() === '') continue
+    const item = readListItem(part)
+    if (item === undefined) return undefined
+    items.push(item)
+  }
+  return items
+}
+
+/**
+ * The items of a list value: `- item` lines (at the key's indent or deeper) or
+ * a flow list. `undefined` when the value is not a list of scalars.
+ */
+function readList(inline: string, children: Line[]): string[] | undefined {
+  const value = stripComment(inline.trim())
+  if (value.startsWith('[')) {
+    const rest = children.filter((line) => !line.blank).map((line) => line.text.trim())
+    return readFlowList([value, ...rest].join(' '))
+  }
+  if (value !== '') return undefined
+  const raws: string[] = []
+  let dashIndent = -1
+  for (const line of children) {
+    const text = line.text.trim()
+    if (line.blank || text.startsWith('#')) continue
+    if (text === '-' || text.startsWith('- ')) {
+      if (dashIndent === -1) dashIndent = line.indent
+      if (line.indent === dashIndent) {
+        raws.push(text.slice(1).trim())
+        continue
+      }
+    }
+    // a plain item going on over more lines
+    if (raws.length === 0 || line.indent <= dashIndent) return undefined
+    raws[raws.length - 1] += ` ${text}`
+  }
+  if (raws.length === 0) return undefined
+  const items: string[] = []
+  for (const raw of raws) {
+    const item = readListItem(raw)
+    if (item === undefined) return undefined
+    items.push(item)
+  }
+  return items
+}
+
 interface MapEntry {
   key: string
   inline: string
@@ -305,6 +392,7 @@ export function parseSkillMd(text: string): ParsedSkillMd | undefined {
   const split = splitFrontmatter(text)
   if (!split) return undefined
   const fields: Record<string, string> = {}
+  const lists: Record<string, string[]> = {}
   const metadata: Record<string, string> = {}
   for (const block of blocksOf(split.lines)) {
     if (block.key === undefined) continue
@@ -316,6 +404,12 @@ export function parseSkillMd(text: string): ParsedSkillMd | undefined {
       }
       continue
     }
+    // a list first: lines `- item` at the key's indent read as an empty scalar
+    const list = readList(block.inline, block.children)
+    if (list) {
+      lists[block.key] = list
+      continue
+    }
     const value = readScalar(block.inline, block.children, 0)
     if (value !== undefined) fields[block.key] = value
   }
@@ -324,6 +418,7 @@ export function parseSkillMd(text: string): ParsedSkillMd | undefined {
     description: fields.description,
     metadata,
     fields,
+    lists,
     body: split.body,
   }
 }

@@ -63,6 +63,8 @@ import menuHwpIcon1x from './assets/menu-hwp.png?asset'
 import menuHwpIcon2x from './assets/menu-hwp@2x.png?asset'
 import menuEpubIcon1x from './assets/menu-epub.png?asset'
 import menuEpubIcon2x from './assets/menu-epub@2x.png?asset'
+import menuDiagramIcon1x from './assets/menu-diagram.png?asset'
+import menuDiagramIcon2x from './assets/menu-diagram@2x.png?asset'
 import menuHomeIcon1x from './assets/menu-home.png?asset'
 import menuHomeIcon2x from './assets/menu-home@2x.png?asset'
 import { createI18n, isLang, normalizeLang, setUiLang, type Lang } from '@genoffice/i18n'
@@ -133,6 +135,8 @@ import { registerIntegrationsIpc } from './integrations-ipc'
 import { registerResultStoreIpc } from './result-store-ipc'
 import { FEEDBACK_SURVEY_URL, feedbackDetails, feedbackText, platformLabel } from './feedback'
 import { registerDriveIpc, type DriveService } from './drive/drive-ipc'
+import { startMcpHub } from './mcp-client/hub-app'
+import type { McpHub } from './mcp-client/hub'
 import { freeAiInUse } from './drive/drive-consent'
 import { registerOutboundIpc } from './outbound-confirm'
 import { projectSkillsAllowed, projectSkillsView, setProjectSkills } from './agent/project-skills'
@@ -142,6 +146,7 @@ import {
   ATTACHABLE_IMAGE_MAX_BYTES,
   ATTACHABLE_MAX_BYTES,
   attachableMaxBytes,
+  diagramPictureExtOfName,
   parseFileToText,
 } from '@genoffice/file-parse'
 import { createDocList } from './doc-picker/doc-list'
@@ -207,6 +212,7 @@ import { createDocsControl, installDocsBridge } from './mcp/docs-bridge'
 import { createSlidesControl } from './mcp/slides-bridge'
 import { createSheetsControl, installSheetsBridge } from './mcp/sheets-bridge'
 import { createOpenDocumentsControl, createOpenTargetResolver } from './mcp/open-documents-bridge'
+import { createDiagramControl } from './mcp/diagram-bridge'
 import { sanitizeFileBase } from './mcp/tools/document-tools'
 import { createFileViaCli } from './mcp/headless-cli'
 import {
@@ -347,6 +353,31 @@ import {
 import { epubReadText, epubSaveToPath } from '../../../epub/src/main/mcp-queries'
 import type { EpubMenuCommand } from '../../../epub/src/shared/ipc'
 import { migrateJobRecords } from './pdf-structure/job-migration'
+import {
+  DRAWIO_SCHEME_PRIVILEGE,
+  configureDiagramRuntime,
+  diagramFileRenamed,
+  diagramHasRecoveryCopy,
+  diagramOpenRefusal,
+  diagramSaveToPath,
+  requestDiagramSave,
+  sendDiagramExportRequest,
+  sendDiagramMenuCommand,
+  sendDiagramPrintRequest,
+  setDiagramFileSavedHook,
+  setDiagramHelpHook,
+  setDiagramOpenFailedHook,
+  setDiagramProvisionalTitleHook,
+  visioOpenRefusal,
+} from '../../../diagram/src/main/diagram-main'
+import { openDiagramChecked } from './diagram-open-gate'
+import {
+  diagramApplyOps,
+  diagramReadPage,
+  diagramReadText,
+} from '../../../diagram/src/main/mcp-queries'
+import { exportDiagramHeadless } from '../../../diagram/src/main/headless-main'
+import type { DiagramMenuCommand } from '../../../diagram/src/shared/ipc'
 import type {
   AutoSaveDefault,
   AuthorNameSetting,
@@ -409,6 +440,7 @@ import {
   MINDMAP_RE,
   HWP_RE,
   EPUB_RE,
+  DIAGRAM_RE,
   PDF_RE,
   PPTX_RE,
   TEXT_RE,
@@ -503,6 +535,15 @@ import {
   stopQuickLookRuntime,
 } from './quick-look/quick-look-window'
 import { normalizeQuickLookSettings } from '../shared/quick-look-home'
+import {
+  HOME_KINDS_CHANNELS,
+  HOME_KINDS_SETTING_KEY,
+  normalizeHomeKinds,
+  storedHomeKinds,
+  visibleHomeKinds,
+  type HomeKind,
+  type HomeKindsSettings,
+} from '../shared/home-kinds'
 import {
   configureAgentWindow,
   isAgentWindowContents,
@@ -685,6 +726,10 @@ const HWP_OUT = app.isPackaged
 const EPUB_OUT = app.isPackaged
   ? join(process.resourcesPath, 'modules', 'epub')
   : join(APPS_ROOT, 'epub', 'out')
+// the draw.io bundle sits beside the renderer (out/drawio; modules/diagram/drawio packaged)
+const DIAGRAM_OUT = app.isPackaged
+  ? join(process.resourcesPath, 'modules', 'diagram')
+  : join(APPS_ROOT, 'diagram', 'out')
 const SIDECAR_BIN = app.isPackaged
   ? join(process.resourcesPath, 'native', SIDECAR_EXE)
   : join(APPS_ROOT, 'sheets', 'native', 'xlsx-engine', 'target', 'release', SIDECAR_EXE)
@@ -820,9 +865,20 @@ configureEpubRuntime({
   // a result book is never written over a file open in any tab or window
   isPathOpenInTab: (path) => isPathOpenInAnyTab(path),
 })
+configureDiagramRuntime({
+  preloadPath: join(DIAGRAM_OUT, 'preload', 'index.js'),
+  rendererUrl: process.env.DIAGRAM_RENDERER_URL,
+  rendererFile: join(DIAGRAM_OUT, 'renderer', 'index.html'),
+  drawioDir: join(DIAGRAM_OUT, 'drawio'),
+  bridgeFile: join(DIAGRAM_OUT, 'bridge', 'bridge.js'),
+  packaged: app.isPackaged,
+  newDocumentDir: (id) => newDocumentFolderFor(id),
+  writeNewDocument: (id, fileName, bytes) => writeProjectNewDocument(id, fileName, bytes),
+})
 // privileged-scheme registration is only legal before app ready, and only once
-// per process: the html module's call carries the book's asset scheme along
-registerPrivilegedSchemes([EPUB_ASSET_SCHEME_PRIVILEGE])
+// per process: the html module's call carries the book's asset scheme and the
+// diagram editor's draw.io scheme along
+registerPrivilegedSchemes([EPUB_ASSET_SCHEME_PRIVILEGE, DRAWIO_SCHEME_PRIVILEGE])
 
 // ---- UI language ----
 // Persisted in userData/app-settings.json so the editor modules can read the
@@ -831,6 +887,8 @@ registerPrivilegedSchemes([EPUB_ASSET_SCHEME_PRIVILEGE])
 const APP_SETTINGS_PATH = () => join(app.getPath('userData'), 'app-settings.json')
 /** Google Drive (decision 0033); registered once this instance holds the single-instance lock */
 let driveService: DriveService | null = null
+/** the person's own MCP servers (user MCP spec 5.1); started once the app is ready */
+let mcpHub: McpHub | null = null
 const OPEN_DOCUMENTS_PATH = () => join(app.getPath('userData'), OPEN_DOCUMENTS_FILE)
 /** only the instance holding the single-instance lock may write or remove the registry */
 let ownsOpenDocumentsRegistry = false
@@ -1093,18 +1151,22 @@ const tMain = createI18n({
     untitledMarkdown: '未命名 Markdown',
     untitledHtml: '未命名 HTML',
     untitledMindmap: '未命名思维导图',
+    untitledDiagram: '未命名图表',
     untitledHwp: '未命名 HWP',
     untitledPdf: '未命名 PDF',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: '思维导图',
+    menuNewDiagram: '图表',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuExportPdf: '导出为 PDF…',
     menuExportImages: '导出为图片…',
     menuExportHtml: '导出为单文件 HTML…',
     menuExportMapImage: '导出为图片 (PNG)…',
+    menuExportSvg: '导出为 SVG…',
+    menuZoomFit: '适合窗口',
     menuExportMapOutline: '导出为 Markdown 大纲…',
     menuMakeFromDocument: '用此文档新建其他文档',
     menuDocumentSources: '查看资料',
@@ -1135,6 +1197,7 @@ const tMain = createI18n({
     filterMindmap: '思维导图 (XMind 文件)',
     filterHwp: 'HWP 文档 (HWP, HWPX)',
     filterEpub: '电子书 (EPUB)',
+    filterDiagram: '图表 (draw.io, VSDX)',
     menuFind: '查找…',
     menuReplace: '替换…',
     menuTranslateBook: '翻译图书…',
@@ -1244,18 +1307,22 @@ const tMain = createI18n({
     untitledMarkdown: 'Untitled Markdown',
     untitledHtml: 'Untitled HTML',
     untitledMindmap: 'Untitled Mind Map',
+    untitledDiagram: 'Untitled Diagram',
     untitledHwp: 'Untitled HWP',
     untitledPdf: 'Untitled PDF',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mind Map',
+    menuNewDiagram: 'Diagram',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Export as PDF…',
     menuExportImages: 'Export as Images…',
     menuExportHtml: 'Export as Single-File HTML…',
     menuExportMapImage: 'Export as Image (PNG)…',
+    menuExportSvg: 'Export as SVG…',
+    menuZoomFit: 'Fit to Window',
     menuExportMapOutline: 'Export as Markdown Outline…',
     menuMakeFromDocument: 'Make Another Document from This',
     menuDocumentSources: 'View Sources',
@@ -1282,6 +1349,7 @@ const tMain = createI18n({
     filterMindmap: 'Mind Maps (XMind files)',
     filterHwp: 'HWP Documents (HWP, HWPX)',
     filterEpub: 'E-books (EPUB)',
+    filterDiagram: 'Diagrams (draw.io, VSDX)',
     menuFind: 'Find…',
     menuReplace: 'Replace…',
     menuTranslateBook: 'Translate Book…',
@@ -1395,18 +1463,22 @@ const tMain = createI18n({
     untitledMarkdown: 'Markdown chưa có tiêu đề',
     untitledHtml: 'HTML chưa có tiêu đề',
     untitledMindmap: 'Sơ đồ tư duy chưa có tiêu đề',
+    untitledDiagram: 'Sơ đồ chưa có tiêu đề',
     untitledHwp: 'HWP chưa có tiêu đề',
     untitledPdf: 'PDF chưa có tiêu đề',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Sơ đồ tư duy',
+    menuNewDiagram: 'Sơ đồ',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Xuất dưới dạng PDF…',
     menuExportImages: 'Xuất dưới dạng hình ảnh…',
     menuExportHtml: 'Xuất dưới dạng HTML một tệp…',
     menuExportMapImage: 'Xuất dưới dạng hình ảnh (PNG)…',
+    menuExportSvg: 'Xuất dưới dạng SVG…',
+    menuZoomFit: 'Vừa cửa sổ',
     menuExportMapOutline: 'Xuất dưới dạng dàn ý Markdown…',
     menuMakeFromDocument: 'Tạo tài liệu khác từ tài liệu này',
     menuDocumentSources: 'Xem tài liệu nguồn',
@@ -1437,6 +1509,7 @@ const tMain = createI18n({
     filterMindmap: 'Sơ đồ tư duy (tệp XMind)',
     filterHwp: 'Tài liệu HWP (HWP, HWPX)',
     filterEpub: 'Sách điện tử (EPUB)',
+    filterDiagram: 'Sơ đồ (draw.io, VSDX)',
     menuFind: 'Tìm…',
     menuReplace: 'Thay thế…',
     menuTranslateBook: 'Dịch sách…',
@@ -1551,18 +1624,22 @@ const tMain = createI18n({
     untitledMarkdown: '無題の Markdown',
     untitledHtml: '無題の HTML',
     untitledMindmap: '無題のマインドマップ',
+    untitledDiagram: '無題のダイアグラム',
     untitledHwp: '無題の HWP',
     untitledPdf: '無題の PDF',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'マインドマップ',
+    menuNewDiagram: 'ダイアグラム',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'PDF として書き出す…',
     menuExportImages: '画像としてエクスポート…',
     menuExportHtml: '単一ファイル HTML として書き出す…',
     menuExportMapImage: '画像 (PNG) としてエクスポート…',
+    menuExportSvg: 'SVG として書き出す…',
+    menuZoomFit: 'ウィンドウに合わせる',
     menuExportMapOutline: 'Markdown アウトラインとしてエクスポート…',
     menuMakeFromDocument: 'この文書から別の文書を作成',
     menuDocumentSources: '資料を表示',
@@ -1593,6 +1670,7 @@ const tMain = createI18n({
     filterMindmap: 'マインドマップ (XMind ファイル)',
     filterHwp: 'HWP ドキュメント (HWP, HWPX)',
     filterEpub: '電子書籍 (EPUB)',
+    filterDiagram: 'ダイアグラム (draw.io, VSDX)',
     menuFind: '検索…',
     menuReplace: '置換…',
     menuTranslateBook: '本を翻訳…',
@@ -1708,18 +1786,22 @@ const tMain = createI18n({
     untitledMarkdown: '제목 없는 Markdown',
     untitledHtml: '제목 없는 HTML',
     untitledMindmap: '제목 없는 마인드맵',
+    untitledDiagram: '제목 없는 다이어그램',
     untitledHwp: '제목 없는 한글 문서',
     untitledPdf: '제목 없는 PDF',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: '마인드맵',
+    menuNewDiagram: '다이어그램',
     menuNewHwp: 'AI 한글',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'PDF로 내보내기…',
     menuExportImages: '이미지로 내보내기…',
     menuExportHtml: '단일 파일 HTML로 내보내기…',
     menuExportMapImage: '이미지(PNG)로 내보내기…',
+    menuExportSvg: 'SVG로 내보내기…',
+    menuZoomFit: '창에 맞추기',
     menuExportMapOutline: '마크다운 개요로 내보내기…',
     menuMakeFromDocument: '이 문서로 다른 문서 만들기',
     menuDocumentSources: '자료 보기',
@@ -1750,6 +1832,7 @@ const tMain = createI18n({
     filterMindmap: '마인드맵 (XMind 파일)',
     filterHwp: '한글 문서 (HWP, HWPX)',
     filterEpub: '전자책 (EPUB)',
+    filterDiagram: '다이어그램 (draw.io, VSDX)',
     menuFind: '찾기…',
     menuReplace: '바꾸기…',
     menuTranslateBook: '책 번역…',
@@ -1863,18 +1946,22 @@ const tMain = createI18n({
     untitledMarkdown: 'Markdown sans titre',
     untitledHtml: 'HTML sans titre',
     untitledMindmap: 'Carte mentale sans titre',
+    untitledDiagram: 'Diagramme sans titre',
     untitledHwp: 'HWP sans titre',
     untitledPdf: 'PDF sans titre',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Carte mentale',
+    menuNewDiagram: 'Diagramme',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Exporter en PDF…',
     menuExportImages: 'Exporter en images…',
     menuExportHtml: 'Exporter en HTML (fichier unique)…',
     menuExportMapImage: 'Exporter en image (PNG)…',
+    menuExportSvg: 'Exporter en SVG…',
+    menuZoomFit: 'Ajuster à la fenêtre',
     menuExportMapOutline: 'Exporter en plan Markdown…',
     menuMakeFromDocument: 'Créer un autre document à partir de celui-ci',
     menuDocumentSources: 'Voir les sources',
@@ -1905,6 +1992,7 @@ const tMain = createI18n({
     filterMindmap: 'Cartes mentales (fichiers XMind)',
     filterHwp: 'Documents HWP (HWP, HWPX)',
     filterEpub: 'Livres numériques (EPUB)',
+    filterDiagram: 'Diagrammes (draw.io, VSDX)',
     menuFind: 'Rechercher…',
     menuReplace: 'Remplacer…',
     menuTranslateBook: 'Traduire le livre…',
@@ -2021,18 +2109,22 @@ const tMain = createI18n({
     untitledMarkdown: 'Unbenanntes Markdown',
     untitledHtml: 'Unbenanntes HTML',
     untitledMindmap: 'Unbenannte Mindmap',
+    untitledDiagram: 'Unbenanntes Diagramm',
     untitledHwp: 'Unbenanntes HWP',
     untitledPdf: 'Unbenanntes PDF',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mindmap',
+    menuNewDiagram: 'Diagramm',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Als PDF exportieren…',
     menuExportImages: 'Als Bilder exportieren…',
     menuExportHtml: 'Als Einzeldatei-HTML exportieren…',
     menuExportMapImage: 'Als Bild (PNG) exportieren…',
+    menuExportSvg: 'Als SVG exportieren…',
+    menuZoomFit: 'An Fenster anpassen',
     menuExportMapOutline: 'Als Markdown-Gliederung exportieren…',
     menuMakeFromDocument: 'Anderes Dokument aus diesem erstellen',
     menuDocumentSources: 'Quellen anzeigen',
@@ -2063,6 +2155,7 @@ const tMain = createI18n({
     filterMindmap: 'Mindmaps (XMind-Dateien)',
     filterHwp: 'HWP-Dokumente (HWP, HWPX)',
     filterEpub: 'E-Books (EPUB)',
+    filterDiagram: 'Diagramme (draw.io, VSDX)',
     menuFind: 'Suchen…',
     menuReplace: 'Ersetzen…',
     menuTranslateBook: 'Buch übersetzen…',
@@ -2179,18 +2272,22 @@ const tMain = createI18n({
     untitledMarkdown: 'Markdown sin título',
     untitledHtml: 'HTML sin título',
     untitledMindmap: 'Mapa mental sin título',
+    untitledDiagram: 'Diagrama sin título',
     untitledHwp: 'HWP sin título',
     untitledPdf: 'PDF sin título',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mapa mental',
+    menuNewDiagram: 'Diagrama',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Exportar como PDF…',
     menuExportImages: 'Exportar como imágenes…',
     menuExportHtml: 'Exportar como HTML de archivo único…',
     menuExportMapImage: 'Exportar como imagen (PNG)…',
+    menuExportSvg: 'Exportar como SVG…',
+    menuZoomFit: 'Ajustar a la ventana',
     menuExportMapOutline: 'Exportar como esquema Markdown…',
     menuMakeFromDocument: 'Crear otro documento a partir de este',
     menuDocumentSources: 'Ver fuentes',
@@ -2221,6 +2318,7 @@ const tMain = createI18n({
     filterMindmap: 'Mapas mentales (archivos XMind)',
     filterHwp: 'Documentos HWP (HWP, HWPX)',
     filterEpub: 'Libros electrónicos (EPUB)',
+    filterDiagram: 'Diagramas (draw.io, VSDX)',
     menuFind: 'Buscar…',
     menuReplace: 'Reemplazar…',
     menuTranslateBook: 'Traducir libro…',
@@ -2336,18 +2434,22 @@ const tMain = createI18n({
     untitledMarkdown: 'Markdown ไม่มีชื่อ',
     untitledHtml: 'HTML ไม่มีชื่อ',
     untitledMindmap: 'แผนที่ความคิดไม่มีชื่อ',
+    untitledDiagram: 'ไดอะแกรมไม่มีชื่อ',
     untitledHwp: 'HWP ไม่มีชื่อ',
     untitledPdf: 'PDF ไม่มีชื่อ',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'แผนที่ความคิด',
+    menuNewDiagram: 'ไดอะแกรม',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'ส่งออกเป็น PDF…',
     menuExportImages: 'ส่งออกเป็นรูปภาพ…',
     menuExportHtml: 'ส่งออกเป็น HTML ไฟล์เดียว…',
     menuExportMapImage: 'ส่งออกเป็นรูปภาพ (PNG)…',
+    menuExportSvg: 'ส่งออกเป็น SVG…',
+    menuZoomFit: 'พอดีหน้าต่าง',
     menuExportMapOutline: 'ส่งออกเป็นโครงร่าง Markdown…',
     menuMakeFromDocument: 'สร้างเอกสารอื่นจากเอกสารนี้',
     menuDocumentSources: 'ดูแหล่งข้อมูล',
@@ -2378,6 +2480,7 @@ const tMain = createI18n({
     filterMindmap: 'แผนที่ความคิด (ไฟล์ XMind)',
     filterHwp: 'เอกสาร HWP (HWP, HWPX)',
     filterEpub: 'หนังสืออิเล็กทรอนิกส์ (EPUB)',
+    filterDiagram: 'ไดอะแกรม (draw.io, VSDX)',
     menuFind: 'ค้นหา…',
     menuReplace: 'แทนที่…',
     menuTranslateBook: 'แปลหนังสือ…',
@@ -2489,18 +2592,22 @@ const tMain = createI18n({
     untitledMarkdown: 'Markdown tanpa judul',
     untitledHtml: 'HTML tanpa judul',
     untitledMindmap: 'Peta pikiran tanpa judul',
+    untitledDiagram: 'Diagram tanpa judul',
     untitledHwp: 'HWP tanpa judul',
     untitledPdf: 'PDF tanpa judul',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Peta pikiran',
+    menuNewDiagram: 'Diagram',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Ekspor sebagai PDF…',
     menuExportImages: 'Ekspor sebagai gambar…',
     menuExportHtml: 'Ekspor sebagai HTML satu file…',
     menuExportMapImage: 'Ekspor sebagai gambar (PNG)…',
+    menuExportSvg: 'Ekspor sebagai SVG…',
+    menuZoomFit: 'Paskan ke jendela',
     menuExportMapOutline: 'Ekspor sebagai kerangka Markdown…',
     menuMakeFromDocument: 'Buat dokumen lain dari dokumen ini',
     menuDocumentSources: 'Lihat sumber',
@@ -2531,6 +2638,7 @@ const tMain = createI18n({
     filterMindmap: 'Peta pikiran (file XMind)',
     filterHwp: 'Dokumen HWP (HWP, HWPX)',
     filterEpub: 'Buku elektronik (EPUB)',
+    filterDiagram: 'Diagram (draw.io, VSDX)',
     menuFind: 'Cari…',
     menuReplace: 'Ganti…',
     menuTranslateBook: 'Terjemahkan buku…',
@@ -2646,18 +2754,22 @@ const tMain = createI18n({
     untitledMarkdown: 'Markdown без названия',
     untitledHtml: 'HTML без названия',
     untitledMindmap: 'Интеллект-карта без названия',
+    untitledDiagram: 'Диаграмма без названия',
     untitledHwp: 'HWP без названия',
     untitledPdf: 'PDF без названия',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Интеллект-карта',
+    menuNewDiagram: 'Диаграмма',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Экспортировать в PDF…',
     menuExportImages: 'Экспорт в изображения…',
     menuExportHtml: 'Экспортировать в один файл HTML…',
     menuExportMapImage: 'Экспорт в изображение (PNG)…',
+    menuExportSvg: 'Экспортировать в SVG…',
+    menuZoomFit: 'По размеру окна',
     menuExportMapOutline: 'Экспорт в структуру Markdown…',
     menuMakeFromDocument: 'Создать другой документ из этого',
     menuDocumentSources: 'Показать источники',
@@ -2688,6 +2800,7 @@ const tMain = createI18n({
     filterMindmap: 'Интеллект-карты (файлы XMind)',
     filterHwp: 'Документы HWP (HWP, HWPX)',
     filterEpub: 'Электронные книги (EPUB)',
+    filterDiagram: 'Диаграммы (draw.io, VSDX)',
     menuFind: 'Найти…',
     menuReplace: 'Заменить…',
     menuTranslateBook: 'Перевести книгу…',
@@ -2802,18 +2915,22 @@ const tMain = createI18n({
     untitledMarkdown: 'Markdown بدون عنوان',
     untitledHtml: 'HTML بدون عنوان',
     untitledMindmap: 'خريطة ذهنية بدون عنوان',
+    untitledDiagram: 'مخطط بدون عنوان',
     untitledHwp: 'HWP بدون عنوان',
     untitledPdf: 'PDF بدون عنوان',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'خريطة ذهنية',
+    menuNewDiagram: 'مخطط',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'تصدير بتنسيق PDF…',
     menuExportImages: 'تصدير كصور…',
     menuExportHtml: 'تصدير كملف HTML واحد…',
     menuExportMapImage: 'تصدير كصورة (PNG)…',
+    menuExportSvg: 'تصدير بتنسيق SVG…',
+    menuZoomFit: 'ملاءمة النافذة',
     menuExportMapOutline: 'تصدير كمخطط Markdown…',
     menuMakeFromDocument: 'إنشاء مستند آخر من هذا المستند',
     menuDocumentSources: 'عرض المصادر',
@@ -2844,6 +2961,7 @@ const tMain = createI18n({
     filterMindmap: 'خرائط ذهنية (ملفات XMind)',
     filterHwp: 'مستندات HWP (HWP, HWPX)',
     filterEpub: 'كتب إلكترونية (EPUB)',
+    filterDiagram: 'مخططات (draw.io, VSDX)',
     menuFind: 'بحث…',
     menuReplace: 'استبدال…',
     menuTranslateBook: 'ترجمة الكتاب…',
@@ -2955,18 +3073,22 @@ const tMain = createI18n({
     untitledMarkdown: 'Markdown sem título',
     untitledHtml: 'HTML sem título',
     untitledMindmap: 'Mapa mental sem título',
+    untitledDiagram: 'Diagrama sem título',
     untitledHwp: 'HWP sem título',
     untitledPdf: 'PDF sem título',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mapa mental',
+    menuNewDiagram: 'Diagrama',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Exportar como PDF…',
     menuExportImages: 'Exportar como imagens…',
     menuExportHtml: 'Exportar como HTML de arquivo único…',
     menuExportMapImage: 'Exportar como imagem (PNG)…',
+    menuExportSvg: 'Exportar como SVG…',
+    menuZoomFit: 'Ajustar à janela',
     menuExportMapOutline: 'Exportar como estrutura de tópicos Markdown…',
     menuMakeFromDocument: 'Criar outro documento a partir deste',
     menuDocumentSources: 'Ver fontes',
@@ -2997,6 +3119,7 @@ const tMain = createI18n({
     filterMindmap: 'Mapas mentais (arquivos XMind)',
     filterHwp: 'Documentos HWP (HWP, HWPX)',
     filterEpub: 'Livros digitais (EPUB)',
+    filterDiagram: 'Diagramas (draw.io, VSDX)',
     menuFind: 'Localizar…',
     menuReplace: 'Substituir…',
     menuTranslateBook: 'Traduzir livro…',
@@ -3112,18 +3235,22 @@ const tMain = createI18n({
     untitledMarkdown: 'Markdown senza titolo',
     untitledHtml: 'HTML senza titolo',
     untitledMindmap: 'Mappa mentale senza titolo',
+    untitledDiagram: 'Diagramma senza titolo',
     untitledHwp: 'HWP senza titolo',
     untitledPdf: 'PDF senza titolo',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mappa mentale',
+    menuNewDiagram: 'Diagramma',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Esporta come PDF…',
     menuExportImages: 'Esporta come immagini…',
     menuExportHtml: 'Esporta come HTML a file singolo…',
     menuExportMapImage: 'Esporta come immagine (PNG)…',
+    menuExportSvg: 'Esporta come SVG…',
+    menuZoomFit: 'Adatta alla finestra',
     menuExportMapOutline: 'Esporta come struttura Markdown…',
     menuMakeFromDocument: 'Crea un altro documento da questo',
     menuDocumentSources: 'Mostra le fonti',
@@ -3154,6 +3281,7 @@ const tMain = createI18n({
     filterMindmap: 'Mappe mentali (file XMind)',
     filterHwp: 'Documenti HWP (HWP, HWPX)',
     filterEpub: 'Libri digitali (EPUB)',
+    filterDiagram: 'Diagrammi (draw.io, VSDX)',
     menuFind: 'Trova…',
     menuReplace: 'Sostituisci…',
     menuTranslateBook: 'Traduci libro…',
@@ -3269,18 +3397,22 @@ const tMain = createI18n({
     untitledMarkdown: 'Markdown bez tytułu',
     untitledHtml: 'HTML bez tytułu',
     untitledMindmap: 'Mapa myśli bez tytułu',
+    untitledDiagram: 'Diagram bez tytułu',
     untitledHwp: 'HWP bez tytułu',
     untitledPdf: 'PDF bez tytułu',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mapa myśli',
+    menuNewDiagram: 'Diagram',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Eksportuj jako PDF…',
     menuExportImages: 'Eksportuj jako obrazy…',
     menuExportHtml: 'Eksportuj jako pojedynczy plik HTML…',
     menuExportMapImage: 'Eksportuj jako obraz (PNG)…',
+    menuExportSvg: 'Eksportuj jako SVG…',
+    menuZoomFit: 'Dopasuj do okna',
     menuExportMapOutline: 'Eksportuj jako konspekt Markdown…',
     menuMakeFromDocument: 'Utwórz inny dokument z tego',
     menuDocumentSources: 'Pokaż źródła',
@@ -3311,6 +3443,7 @@ const tMain = createI18n({
     filterMindmap: 'Mapy myśli (pliki XMind)',
     filterHwp: 'Dokumenty HWP (HWP, HWPX)',
     filterEpub: 'E-booki (EPUB)',
+    filterDiagram: 'Diagramy (draw.io, VSDX)',
     menuFind: 'Znajdź…',
     menuReplace: 'Zamień…',
     menuTranslateBook: 'Przetłumacz książkę…',
@@ -3425,18 +3558,22 @@ const tMain = createI18n({
     untitledMarkdown: 'Markdown bez názvu',
     untitledHtml: 'HTML bez názvu',
     untitledMindmap: 'Myšlenková mapa bez názvu',
+    untitledDiagram: 'Diagram bez názvu',
     untitledHwp: 'HWP bez názvu',
     untitledPdf: 'PDF bez názvu',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Myšlenková mapa',
+    menuNewDiagram: 'Diagram',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Exportovat jako PDF…',
     menuExportImages: 'Exportovat jako obrázky…',
     menuExportHtml: 'Exportovat jako samostatné HTML…',
     menuExportMapImage: 'Exportovat jako obrázek (PNG)…',
+    menuExportSvg: 'Exportovat jako SVG…',
+    menuZoomFit: 'Přizpůsobit oknu',
     menuExportMapOutline: 'Exportovat jako osnovu Markdown…',
     menuMakeFromDocument: 'Vytvořit jiný dokument z tohoto',
     menuDocumentSources: 'Zobrazit zdroje',
@@ -3467,6 +3604,7 @@ const tMain = createI18n({
     filterMindmap: 'Myšlenkové mapy (soubory XMind)',
     filterHwp: 'Dokumenty HWP (HWP, HWPX)',
     filterEpub: 'E-knihy (EPUB)',
+    filterDiagram: 'Diagramy (draw.io, VSDX)',
     menuFind: 'Najít…',
     menuReplace: 'Nahradit…',
     menuTranslateBook: 'Přeložit knihu…',
@@ -3580,18 +3718,22 @@ const tMain = createI18n({
     untitledMarkdown: 'Naamloos Markdown',
     untitledHtml: 'Naamloos HTML',
     untitledMindmap: 'Naamloze mindmap',
+    untitledDiagram: 'Naamloos diagram',
     untitledHwp: 'Naamloos HWP',
     untitledPdf: 'Naamloze PDF',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mindmap',
+    menuNewDiagram: 'Diagram',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Exporteren als PDF…',
     menuExportImages: 'Exporteren als afbeeldingen…',
     menuExportHtml: 'Exporteren als één HTML-bestand…',
     menuExportMapImage: 'Exporteren als afbeelding (PNG)…',
+    menuExportSvg: 'Exporteren als SVG…',
+    menuZoomFit: 'Aan venster aanpassen',
     menuExportMapOutline: 'Exporteren als Markdown-overzicht…',
     menuMakeFromDocument: 'Ander document maken van dit document',
     menuDocumentSources: 'Bronnen weergeven',
@@ -3622,6 +3764,7 @@ const tMain = createI18n({
     filterMindmap: 'Mindmaps (XMind-bestanden)',
     filterHwp: 'HWP-documenten (HWP, HWPX)',
     filterEpub: 'E-boeken (EPUB)',
+    filterDiagram: 'Diagrammen (draw.io, VSDX)',
     menuFind: 'Zoeken…',
     menuReplace: 'Vervangen…',
     menuTranslateBook: 'Boek vertalen…',
@@ -3738,18 +3881,22 @@ const tMain = createI18n({
     untitledMarkdown: 'Markdown tanpa tajuk',
     untitledHtml: 'HTML tanpa tajuk',
     untitledMindmap: 'Peta minda tanpa tajuk',
+    untitledDiagram: 'Rajah tanpa tajuk',
     untitledHwp: 'HWP tanpa tajuk',
     untitledPdf: 'PDF tanpa tajuk',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Peta minda',
+    menuNewDiagram: 'Rajah',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'Eksport sebagai PDF…',
     menuExportImages: 'Eksport sebagai imej…',
     menuExportHtml: 'Eksport sebagai HTML fail tunggal…',
     menuExportMapImage: 'Eksport sebagai imej (PNG)…',
+    menuExportSvg: 'Eksport sebagai SVG…',
+    menuZoomFit: 'Muat ke tetingkap',
     menuExportMapOutline: 'Eksport sebagai rangka Markdown…',
     menuMakeFromDocument: 'Buat dokumen lain daripada dokumen ini',
     menuDocumentSources: 'Lihat sumber',
@@ -3780,6 +3927,7 @@ const tMain = createI18n({
     filterMindmap: 'Peta minda (fail XMind)',
     filterHwp: 'Dokumen HWP (HWP, HWPX)',
     filterEpub: 'Buku elektronik (EPUB)',
+    filterDiagram: 'Rajah (draw.io, VSDX)',
     menuFind: 'Cari…',
     menuReplace: 'Ganti…',
     menuTranslateBook: 'Terjemah buku…',
@@ -3893,18 +4041,22 @@ const tMain = createI18n({
     untitledMarkdown: 'Markdown ללא שם',
     untitledHtml: 'HTML ללא שם',
     untitledMindmap: 'מפת חשיבה ללא שם',
+    untitledDiagram: 'תרשים ללא שם',
     untitledHwp: 'HWP ללא שם',
     untitledPdf: 'PDF ללא שם',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'מפת חשיבה',
+    menuNewDiagram: 'תרשים',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'ייצוא כ-PDF…',
     menuExportImages: 'ייצוא כתמונות…',
     menuExportHtml: 'ייצוא כ-HTML בקובץ יחיד…',
     menuExportMapImage: 'ייצוא כתמונה (PNG)…',
+    menuExportSvg: 'ייצוא כ-SVG…',
+    menuZoomFit: 'התאמה לחלון',
     menuExportMapOutline: 'ייצוא כמתאר Markdown…',
     menuMakeFromDocument: 'יצירת מסמך אחר מהמסמך הזה',
     menuDocumentSources: 'הצגת מקורות',
@@ -3935,6 +4087,7 @@ const tMain = createI18n({
     filterMindmap: 'מפות חשיבה (קובצי XMind)',
     filterHwp: 'מסמכי HWP (HWP, HWPX)',
     filterEpub: 'ספרים אלקטרוניים (EPUB)',
+    filterDiagram: 'תרשימים (draw.io, VSDX)',
     menuFind: 'חיפוש…',
     menuReplace: 'החלפה…',
     menuTranslateBook: 'תרגום הספר…',
@@ -4047,18 +4200,22 @@ const tMain = createI18n({
     untitledMarkdown: 'अनाम Markdown',
     untitledHtml: 'अनाम HTML',
     untitledMindmap: 'अनाम माइंड मैप',
+    untitledDiagram: 'अनाम आरेख',
     untitledHwp: 'अनाम HWP',
     untitledPdf: 'अनाम PDF',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'माइंड मैप',
+    menuNewDiagram: 'आरेख',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuExportPdf: 'PDF के रूप में निर्यात…',
     menuExportImages: 'छवियों के रूप में निर्यात…',
     menuExportHtml: 'एकल-फ़ाइल HTML के रूप में निर्यात…',
     menuExportMapImage: 'छवि (PNG) के रूप में निर्यात…',
+    menuExportSvg: 'SVG के रूप में निर्यात…',
+    menuZoomFit: 'विंडो में फ़िट करें',
     menuExportMapOutline: 'Markdown रूपरेखा के रूप में निर्यात…',
     menuMakeFromDocument: 'इस दस्तावेज़ से दूसरा दस्तावेज़ बनाएँ',
     menuDocumentSources: 'स्रोत देखें',
@@ -4089,6 +4246,7 @@ const tMain = createI18n({
     filterMindmap: 'माइंड मैप (XMind फ़ाइलें)',
     filterHwp: 'HWP दस्तावेज़ (HWP, HWPX)',
     filterEpub: 'ई-बुक (EPUB)',
+    filterDiagram: 'आरेख (draw.io, VSDX)',
     menuFind: 'खोजें…',
     menuReplace: 'बदलें…',
     menuTranslateBook: 'पुस्तक का अनुवाद करें…',
@@ -4203,18 +4361,22 @@ const tMain = createI18n({
     untitledMarkdown: '未命名 Markdown',
     untitledHtml: '未命名 HTML',
     untitledMindmap: '未命名心智圖',
+    untitledDiagram: '未命名圖表',
     untitledHwp: '未命名 HWP',
     untitledPdf: '未命名 PDF',
     menuNewSlide: 'AI Slides',
     menuNewMarkdown: 'AI Markdown',
     menuNewHtml: 'AI HTML',
     menuNewMindmap: '心智圖',
+    menuNewDiagram: '圖表',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuExportPdf: '匯出為 PDF…',
     menuExportImages: '匯出為圖片…',
     menuExportHtml: '匯出為單檔 HTML…',
     menuExportMapImage: '匯出為圖片 (PNG)…',
+    menuExportSvg: '匯出為 SVG…',
+    menuZoomFit: '符合視窗',
     menuExportMapOutline: '匯出為 Markdown 大綱…',
     menuMakeFromDocument: '用此文件新增其他文件',
     menuDocumentSources: '檢視資料',
@@ -4245,6 +4407,7 @@ const tMain = createI18n({
     filterMindmap: '心智圖 (XMind 檔案)',
     filterHwp: 'HWP 文件 (HWP, HWPX)',
     filterEpub: '電子書 (EPUB)',
+    filterDiagram: '圖表 (draw.io, VSDX)',
     menuFind: '尋找…',
     menuReplace: '取代…',
     menuTranslateBook: '翻譯書籍…',
@@ -4451,6 +4614,7 @@ function afterFileMoved(oldPath: string, newPath: string): void {
     else if (t.kind === 'mindmap') mindmapFileRenamed(t.webContents, oldPath, newPath)
     else if (t.kind === 'hwp') hwpFileRenamed(t.webContents, oldPath, newPath)
     else if (t.kind === 'epub') epubFileRenamed(t.webContents, oldPath, newPath)
+    else if (t.kind === 'diagram') diagramFileRenamed(t.webContents, oldPath, newPath)
     else if (t.kind === 'pdf') pdfFileRenamed(t.webContents, oldPath, newPath)
   }
 }
@@ -4538,6 +4702,7 @@ const SEARCH_EXT_FAMILY: Record<string, readonly string[]> = {
   md: ['md', 'markdown', 'txt', 'json'],
   html: ['html', 'htm'],
   hwp: ['hwp', 'hwpx'],
+  drawio: ['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx'],
 }
 
 /** one recursive watcher per tree root; follows the save-folder setting and the added folders */
@@ -4681,6 +4846,9 @@ function applyMenuFor(kind: TabKind): void {
       break
     case 'epub':
       buildEpubMenu()
+      break
+    case 'diagram':
+      buildDiagramMenu()
       break
     default:
       buildHomeMenu()
@@ -4919,7 +5087,9 @@ function createShellWindow(): void {
                   ? tm('untitledMindmap')
                   : kind === 'hwp'
                     ? tm('untitledHwp')
-                    : tm('untitledSheet'),
+                    : kind === 'diagram'
+                      ? tm('untitledDiagram')
+                      : tm('untitledSheet'),
     // the tab strip is interface chrome, so its height follows the scale
     () => currentUiScale,
     // every split change: remember it, re-role the pane views, tell the strip
@@ -5113,11 +5283,42 @@ function createShellWindow(): void {
     detachedSetFileFor(wc.id, path)
     recordRecentFile(path)
   })
+  // a diagram's first save / Save As lands on a new path (an imported Visio
+  // drawing's first save gives the untitled tab its file)
+  setDiagramFileSavedHook((wc, path) => {
+    manager.setTabFileFor(wc.id, path)
+    detachedSetFileFor(wc.id, path)
+    recordRecentFile(path)
+    applyPendingDir(wc.id, path)
+  })
+  // draw.io's Help opens the app's own manual at the diagram topic
+  setDiagramHelpHook(() => {
+    revealShellWindow()
+    tabManager?.openHelpTab('diagram')
+  })
+  // a tab whose file did not open after all (a Visio drawing draw.io could not
+  // import): the tab goes and the reason shows as an app warning (spec 3.5)
+  setDiagramOpenFailedHook((wc, message) => {
+    const tabId = manager.tabIdForWebContents(wc.id)
+    const detachedId = tabId === undefined ? detachedDocumentFor(wc.id)?.id : undefined
+    if (tabId === undefined && detachedId === undefined) return false
+    // after the answer reaches the editor: closing the tab ends its page
+    setImmediate(() => {
+      if (tabId !== undefined) manager.closeTabWithoutPrompt(tabId)
+      else if (detachedId !== undefined) closeDetachedWithoutPrompt(detachedId)
+      showAppWarning(message)
+    })
+    return true
+  })
   setHtmlProvisionalTitleHook((wc, title) => {
     manager.setTabTitleFor(wc.id, title)
     detachedSetTitleFor(wc.id, title)
   })
   setMindmapProvisionalTitleHook((wc, title) => {
+    manager.setTabTitleFor(wc.id, title)
+    detachedSetTitleFor(wc.id, title)
+  })
+  setDiagramProvisionalTitleHook((wc, title) => {
     manager.setTabTitleFor(wc.id, title)
     detachedSetTitleFor(wc.id, title)
   })
@@ -5235,6 +5436,12 @@ const OPEN_DIALOG_EXTENSIONS = [
   'hwp',
   'hwpx',
   'epub',
+  'drawio',
+  'dio',
+  // a draw.io picture by its double extension (a plain picture is no document)
+  'drawio.svg',
+  'drawio.png',
+  'vsdx',
 ]
 
 function notifyUnsupportedFile(filePath: string): void {
@@ -5243,8 +5450,8 @@ function notifyUnsupportedFile(filePath: string): void {
 }
 
 /** shell-hosted warning box; focused when a shell window exists, standalone otherwise */
-function showAppWarning(message: string): void {
-  const options = { type: 'warning' as const, message }
+function showAppWarning(message: string, detail?: string): void {
+  const options = { type: 'warning' as const, message, ...(detail ? { detail } : {}) }
   if (shellWindow) {
     shellWindow.show()
     shellWindow.focus()
@@ -5379,6 +5586,30 @@ function routeDocumentPath(filePath: string): boolean {
     if (existing) tabManager.activateTab(existing)
     else tabManager.openEpubTab(filePath)
     return true
+  }
+  // a Visio drawing opens as a new diagram made from it; opening it again
+  // comes back to that tab (findDiagramTabByPath asks the editor). A file that
+  // does not open gets no tab, only the reason (spec 3.1, 3.5).
+  if (DIAGRAM_RE.test(filePath)) {
+    const existing = tabManager.findDiagramTabByPath(filePath)
+    if (existing) {
+      recordRecentFile(filePath)
+      tabManager.activateTab(existing)
+      return true
+    }
+    return openDiagramChecked(filePath, {
+      refusal: (path) => diagramOpenRefusal(path, { hasRecoveryCopy: diagramHasRecoveryCopy }),
+      visioRefusal: (path) => visioOpenRefusal(path),
+      open: (path) => {
+        if (!tabManager) return
+        // the check of a .vsdx took a moment: the same file may have a tab by now
+        const opened = tabManager.findDiagramTabByPath(path)
+        recordRecentFile(path)
+        if (opened) tabManager.activateTab(opened)
+        else tabManager.openDiagramTab(path)
+      },
+      warn: (message, path) => showAppWarning(message, basename(path)),
+    })
   }
   notifyUnsupportedFile(filePath)
   return false
@@ -5579,6 +5810,14 @@ function newHtmlTab(): void {
 function newMindmapTab(): void {
   try {
     bindPendingDir('mindmap', tabManager?.openMindmapTab())
+  } catch (err) {
+    surfaceNewTabError(err)
+  }
+}
+
+function newDiagramTab(): void {
+  try {
+    bindPendingDir('diagram', tabManager?.openDiagramTab())
   } catch (err) {
     surfaceNewTabError(err)
   }
@@ -6150,6 +6389,10 @@ function registerHomeIpc(): void {
         { name: tm('filterMindmap'), extensions: ['xmind'] },
         { name: tm('filterHwp'), extensions: ['hwp', 'hwpx'] },
         { name: tm('filterEpub'), extensions: ['epub'] },
+        {
+          name: tm('filterDiagram'),
+          extensions: ['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx'],
+        },
       ],
       properties: ['openFile', 'multiSelections'],
     })
@@ -6184,6 +6427,11 @@ function registerHomeIpc(): void {
   ipcMain.handle(HOME_CHANNELS.newMindmap, (_event, opts?: NewFileOpts) => {
     rememberPendingDir('mindmap', opts)
     newMindmapTab()
+  })
+
+  ipcMain.handle(HOME_CHANNELS.newDiagram, (_event, opts?: NewFileOpts) => {
+    rememberPendingDir('diagram', opts)
+    newDiagramTab()
   })
 
   ipcMain.handle(HOME_CHANNELS.newHwp, (_event, opts?: NewFileOpts) => {
@@ -6674,6 +6922,22 @@ function registerHomeIpc(): void {
 
   ipcMain.handle(HOME_CHANNELS.getHwpDefaultFormat, () => readHwpDefaultFormat(app))
 
+  ipcMain.handle(HOME_KINDS_CHANNELS.get, () => readHomeKinds())
+
+  ipcMain.handle(HOME_KINDS_CHANNELS.set, (_event, raw: unknown) => {
+    writeAppSetting(
+      APP_SETTINGS_PATH(),
+      HOME_KINDS_SETTING_KEY,
+      storedHomeKinds(normalizeHomeKinds(raw)),
+    )
+    const next = readHomeKinds()
+    // the setting lives on the home page, so the home menu is the active one
+    applyMenuFor('home')
+    installDockMenu()
+    for (const wc of webContents.getAllWebContents()) wc.send(HOME_KINDS_CHANNELS.changed, next)
+    return next
+  })
+
   ipcMain.handle(HOME_CHANNELS.setHwpDefaultFormat, (_event, format: unknown) => {
     const next = normalizeHwpDefaultFormat(format)
     writeAppSetting(APP_SETTINGS_PATH(), HWP_DEFAULT_FORMAT_KEY, next)
@@ -6750,6 +7014,7 @@ interface MenuIconSet {
   mindmap: NativeImage
   hwp: NativeImage
   epub: NativeImage
+  diagram: NativeImage
   home: NativeImage
 }
 let menuIconCache: MenuIconSet | null = null
@@ -6764,6 +7029,7 @@ function menuIcons(): MenuIconSet {
     mindmap: loadMenuIcon(menuMindmapIcon1x, menuMindmapIcon2x),
     hwp: loadMenuIcon(menuHwpIcon1x, menuHwpIcon2x),
     epub: loadMenuIcon(menuEpubIcon1x, menuEpubIcon2x),
+    diagram: loadMenuIcon(menuDiagramIcon1x, menuDiagramIcon2x),
     home: loadMenuIcon(menuHomeIcon1x, menuHomeIcon2x),
   }
   return menuIconCache
@@ -6780,7 +7046,64 @@ const TAB_MENU_ICON: Record<TabKind, keyof MenuIconSet> = {
   mindmap: 'mindmap',
   hwp: 'hwp',
   epub: 'epub',
+  diagram: 'diagram',
   help: 'home',
+}
+
+function readHomeKinds(): HomeKindsSettings {
+  return normalizeHomeKinds(readAppSettings(APP_SETTINGS_PATH())[HOME_KINDS_SETTING_KEY])
+}
+
+/** what each new-document entry is called and opens in the shell's menus */
+const NEW_KIND_MENU: Record<
+  Exclude<HomeKind, 'pdfTools'>,
+  { label: Parameters<typeof tm>[0]; icon: keyof MenuIconSet; open: () => void }
+> = {
+  docx: { label: 'menuNewDoc', icon: 'docx', open: () => newDocTab() },
+  xlsx: { label: 'menuNewSheet', icon: 'xlsx', open: () => void newSheetTab() },
+  pptx: { label: 'menuNewSlide', icon: 'pptx', open: () => newSlideTab() },
+  md: { label: 'menuNewMarkdown', icon: 'md', open: () => newMarkdownTab() },
+  html: { label: 'menuNewHtml', icon: 'html', open: () => newHtmlTab() },
+  xmind: { label: 'menuNewMindmap', icon: 'mindmap', open: () => newMindmapTab() },
+  drawio: { label: 'menuNewDiagram', icon: 'diagram', open: () => newDiagramTab() },
+  hwp: { label: 'menuNewHwp', icon: 'hwp', open: () => newHwpTab() },
+  pdf: { label: 'menuNewPdf', icon: 'pdf', open: () => void newPdfTab() },
+}
+
+/**
+ * The new-document entries in home's order, without the kinds the person hid
+ * (Settings → General). `only` keeps a menu to its own shorter list; `section`
+ * puts the "New" header above and a separator below, both left out when every
+ * kind is hidden; `accelerator` goes on the first entry.
+ */
+function newDocumentMenuItems(opts: {
+  icons?: boolean
+  only?: readonly HomeKind[]
+  section?: boolean
+  accelerator?: string
+}): MenuItemConstructorOptions[] {
+  const items = visibleHomeKinds(readHomeKinds()).flatMap((kind): MenuItemConstructorOptions[] => {
+    if (kind === 'pdfTools' || (opts.only && !opts.only.includes(kind))) return []
+    const entry = NEW_KIND_MENU[kind]
+    return [
+      {
+        label: tm(entry.label),
+        ...(opts.icons ? { icon: menuIcons()[entry.icon] } : {}),
+        click: entry.open,
+      },
+    ]
+  })
+  if (items.length > 0 && opts.accelerator) {
+    items[0] = { ...items[0], accelerator: opts.accelerator }
+  }
+  if (!opts.section || items.length === 0) return items
+  return [
+    // enabled:false so pre-Sonoma macOS / Windows (no 'header' support) degrade
+    // to an inert label instead of a clickable no-op item
+    { label: tm('menuSectionNew'), type: 'header', enabled: false },
+    ...items,
+    { type: 'separator' },
+  ]
 }
 
 // tab views see neither DOM events nor a focus change when the user clicks the
@@ -7198,6 +7521,9 @@ function activeHtmlTarget() {
 function activeMindmapTarget() {
   return activeEditorTarget('mindmap', () => tabManager?.activeMindmapTab())
 }
+function activeDiagramTarget() {
+  return activeEditorTarget('diagram', () => tabManager?.activeDiagramTab())
+}
 
 /** the document a kind's File menu acts on, for the provenance entries (spec 8.2, 9) */
 function linkedDocumentFor(kind: TabKind): LinkedDocument | undefined {
@@ -7525,50 +7851,7 @@ function registerTabsIpc(): void {
   ipcMain.handle(TABS_CHANNELS.showNewMenu, (_event, x: unknown, y: unknown) => {
     if (!tabManager || !shellWindow) return
     const menu = Menu.buildFromTemplate([
-      // enabled:false so pre-Sonoma macOS / Windows (no 'header' support) degrade
-      // to an inert label instead of a clickable no-op item
-      { label: tm('menuSectionNew'), type: 'header', enabled: false },
-      {
-        label: tm('menuNewDoc'),
-        icon: menuIcons().docx,
-        click: () => newDocTab(),
-      },
-      {
-        label: tm('menuNewSheet'),
-        icon: menuIcons().xlsx,
-        click: () => void newSheetTab(),
-      },
-      {
-        label: tm('menuNewSlide'),
-        icon: menuIcons().pptx,
-        click: () => newSlideTab(),
-      },
-      {
-        label: tm('menuNewMarkdown'),
-        icon: menuIcons().md,
-        click: () => newMarkdownTab(),
-      },
-      {
-        label: tm('menuNewHtml'),
-        icon: menuIcons().html,
-        click: () => newHtmlTab(),
-      },
-      {
-        label: tm('menuNewMindmap'),
-        icon: menuIcons().mindmap,
-        click: () => newMindmapTab(),
-      },
-      {
-        label: tm('menuNewHwp'),
-        icon: menuIcons().hwp,
-        click: () => newHwpTab(),
-      },
-      {
-        label: tm('menuNewPdf'),
-        icon: menuIcons().pdf,
-        click: () => void newPdfTab(),
-      },
-      { type: 'separator' },
+      ...newDocumentMenuItems({ icons: true, section: true }),
       { label: tm('menuOpen'), click: () => void openFileViaDialog() },
     ])
     menu.popup({
@@ -7599,23 +7882,8 @@ function buildHomeMenu(): void {
     {
       label: tm('menuFile'),
       submenu: [
-        { label: tm('menuSectionNew'), type: 'header', enabled: false },
-        {
-          label: tm('menuNewDoc'),
-          accelerator: 'CmdOrCtrl+N',
-          click: () => newDocTab(),
-        },
-        {
-          label: tm('menuNewSheet'),
-          click: () => void newSheetTab(),
-        },
-        { label: tm('menuNewSlide'), click: () => newSlideTab() },
-        { label: tm('menuNewMarkdown'), click: () => newMarkdownTab() },
-        { label: tm('menuNewHtml'), click: () => newHtmlTab() },
-        { label: tm('menuNewMindmap'), click: () => newMindmapTab() },
-        { label: tm('menuNewHwp'), click: () => newHwpTab() },
-        { label: tm('menuNewPdf'), click: () => void newPdfTab() },
-        { type: 'separator' },
+        // Ctrl+N makes the first entry home lists
+        ...newDocumentMenuItems({ section: true, accelerator: 'CmdOrCtrl+N' }),
         {
           label: tm('menuOpen'),
           accelerator: 'CmdOrCtrl+O',
@@ -8123,6 +8391,142 @@ function buildHtmlMenu(): void {
       ],
     },
     editMenuTemplate(process.platform, appMenuLabels(currentLang())),
+    windowMenuTemplate(process.platform, appMenuLabels(currentLang())),
+    {
+      role: 'help',
+      label: tm('menuHelp'),
+      submenu: [
+        { label: tm('thirdPartyNotices'), click: () => void openThirdPartyNotices() },
+        { type: 'separator' },
+        ...helpCheckUpdatesItems(appMenuLabels(currentLang())),
+        aboutMenuItem(appMenuLabels(currentLang())),
+      ],
+    },
+  ]
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
+
+// ---- diagram menu (diagram-main has no menu of its own; the shell owns diagram tabs) ----
+
+function buildDiagramMenu(): void {
+  const isMac = process.platform === 'darwin'
+  const labels = appMenuLabels(currentLang())
+  /** a command for the diagram in the active tab or the focused detached window */
+  const toDiagram = (command: DiagramMenuCommand) => () => {
+    const tab = activeDiagramTarget()
+    if (tab) sendDiagramMenuCommand(tab.webContents, command)
+  }
+  // Undo, redo, find and zoom go to the diagram: its history and its view are
+  // draw.io's own, so the page roles would not reach them. draw.io takes these
+  // keys itself; the shortcut is shown but not registered, or one press would
+  // run twice.
+  const diagramKey = (
+    label: string,
+    accelerator: string,
+    command: DiagramMenuCommand,
+  ): MenuItemConstructorOptions => ({
+    label,
+    accelerator,
+    registerAccelerator: false,
+    click: toDiagram(command),
+  })
+  /** the editor asks which pages, then exports them */
+  const exportItem = (
+    label: string,
+    format: 'png' | 'svg' | 'pdf',
+  ): MenuItemConstructorOptions => ({
+    label,
+    click: () => {
+      const tab = activeDiagramTarget()
+      if (tab) sendDiagramExportRequest(tab.webContents, format)
+    },
+  })
+  const template: MenuItemConstructorOptions[] = [
+    ...(isMac ? [{ role: 'appMenu' as const }] : []),
+    {
+      label: tm('menuFile'),
+      submenu: [
+        {
+          label: tm('menuSectionNew'),
+          accelerator: 'CmdOrCtrl+N',
+          click: () => newDiagramTab(),
+        },
+        {
+          label: tm('menuOpen'),
+          accelerator: 'CmdOrCtrl+O',
+          click: () => void openFileViaDialog(),
+        },
+        { type: 'separator' },
+        {
+          label: tm('backToHome'),
+          accelerator: 'Shift+CmdOrCtrl+H',
+          click: () => tabManager?.openHomeTab(),
+        },
+        { type: 'separator' },
+        {
+          label: tm('menuSave'),
+          accelerator: 'CmdOrCtrl+S',
+          click: () => {
+            const tab = activeDiagramTarget()
+            if (tab) void requestDiagramSave(tab.webContents, 'save')
+          },
+        },
+        {
+          label: tm('menuSaveAs'),
+          accelerator: 'CmdOrCtrl+Shift+S',
+          click: () => {
+            const tab = activeDiagramTarget()
+            if (tab) void requestDiagramSave(tab.webContents, 'saveAs')
+          },
+        },
+        { type: 'separator' },
+        exportItem(tm('menuExportMapImage'), 'png'),
+        exportItem(tm('menuExportSvg'), 'svg'),
+        exportItem(tm('menuExportPdf'), 'pdf'),
+        { type: 'separator' },
+        {
+          label: tm('menuPrint'),
+          accelerator: 'CmdOrCtrl+P',
+          click: () => {
+            const tab = activeDiagramTarget()
+            if (tab) sendDiagramPrintRequest(tab.webContents)
+          },
+        },
+        { type: 'separator' },
+        {
+          label: tm('menuClose'),
+          accelerator: 'CmdOrCtrl+W',
+          click: () => closeFocusedEditor(),
+        },
+      ],
+    },
+    {
+      label: labels.edit,
+      submenu: [
+        diagramKey(labels.undo, 'CmdOrCtrl+Z', 'undo'),
+        diagramKey(labels.redo, isMac ? 'Shift+Cmd+Z' : 'Ctrl+Y', 'redo'),
+        { type: 'separator' },
+        { role: 'cut', label: labels.cut },
+        { role: 'copy', label: labels.copy },
+        { role: 'paste', label: labels.paste },
+        { role: 'delete', label: labels.delete },
+        { type: 'separator' },
+        { role: 'selectAll', label: labels.selectAll },
+        { type: 'separator' },
+        diagramKey(tm('menuFind'), 'CmdOrCtrl+F', 'find'),
+      ],
+    },
+    {
+      label: labels.view,
+      submenu: [
+        { label: labels.actualSize, click: toDiagram('zoom-reset') },
+        diagramKey(labels.zoomIn, 'CmdOrCtrl+=', 'zoom-in'),
+        diagramKey(labels.zoomOut, 'CmdOrCtrl+-', 'zoom-out'),
+        { label: tm('menuZoomFit'), click: toDiagram('zoom-fit') },
+        { type: 'separator' },
+        { role: 'togglefullscreen', label: labels.fullscreen },
+      ],
+    },
     windowMenuTemplate(process.platform, appMenuLabels(currentLang())),
     {
       role: 'help',
@@ -8751,17 +9155,7 @@ function installDockMenu(): void {
   app.dock?.setMenu(
     Menu.buildFromTemplate([
       { label: tm('menuHome'), click: () => tabManager?.openHomeTab() },
-      {
-        label: tm('menuNewDoc'),
-        click: () => newDocTab(),
-      },
-      {
-        label: tm('menuNewSheet'),
-        click: () => void newSheetTab(),
-      },
-      { label: tm('menuNewSlide'), click: () => newSlideTab() },
-      { label: tm('menuNewMarkdown'), click: () => newMarkdownTab() },
-      { label: tm('menuNewPdf'), click: () => void newPdfTab() },
+      ...newDocumentMenuItems({ only: ['docx', 'xlsx', 'pptx', 'md', 'pdf'] }),
     ]),
   )
 }
@@ -9007,11 +9401,13 @@ const devPidFile = () => join(app.getPath('userData'), 'dev-instance.pid')
 
 /** Hidden-window exporters, one per editor module (HEADLESS_TARGETS says which formats each takes). */
 const headlessExporters: HeadlessExporters = {
-  docs: exportDocsHeadless,
+  // the request stays with the diagram exporter: docs and html take a timeout fourth
+  docs: (input, outPath, format) => exportDocsHeadless(input, outPath, format),
   sheets: (input, outPath) => exportSheetsPdfHeadless(input, outPath),
   slides: (input, outPath) => exportSlidesPdfHeadless(input, outPath),
   markdown: (input, outPath) => exportMarkdownPdfHeadless(input, outPath),
-  html: exportHtmlHeadless,
+  html: (input, outPath, format) => exportHtmlHeadless(input, outPath, format),
+  diagram: exportDiagramHeadless,
 }
 
 /**
@@ -9066,6 +9462,8 @@ app.whenReady().then(async () => {
     mindmap: join(MINDMAP_OUT, 'renderer'),
     hwp: join(HWP_OUT, 'renderer'),
     epub: join(EPUB_OUT, 'renderer'),
+    // the diagram tab's own partition gets the same root from the editor (diagram-session.ts)
+    diagram: join(DIAGRAM_OUT, 'renderer'),
     // the manual shares the shell's own renderer bundle (help mode)
     help: join(__dirname, '../renderer'),
   })
@@ -9170,6 +9568,21 @@ app.whenReady().then(async () => {
     freeAi: () => freeAiInUse(readStoredAiSettings()),
     documentOf: (id) => tabManager?.describeWebContents(id)?.filePath ?? null,
   })
+  // The person's own MCP servers: one connection per server for every window;
+  // Settings changes them through a channel only the shell window may use.
+  mcpHub = startMcpHub({
+    lang: () => currentLang(),
+    shellWindow: () => shellWindow,
+    openIntegrations: () => {
+      const win = shellWindow
+      if (!win || win.isDestroyed()) return
+      if (win.isMinimized()) win.restore()
+      win.show()
+      win.focus()
+      tabManager?.openHomeTab()
+      win.webContents.send(HOME_CHANNELS.openSettings, { section: 'integrations' })
+    },
+  })
   // The "Attach documents" window: an editor's AI panel asks the shell for the
   // documents it already knows, and the shell hands back the paths it ticked.
   // One window at a time, over the window that asked. The same list, built for
@@ -9217,6 +9630,7 @@ app.whenReady().then(async () => {
         ATTACHABLE_MAX_BYTES,
         ATTACHABLE_IMAGE_MAX_BYTES,
         attachableMaxBytes,
+        diagramPictureExtOfName,
       },
     }),
     lang: () => currentLang(),
@@ -9419,6 +9833,7 @@ app.whenReady().then(async () => {
         read: epubReadText,
         save: epubSaveToPath,
       },
+      diagram: { read: diagramReadText, save: diagramSaveToPath },
     }),
     // the headless create_*/read_* tools delegate to the bundled genoffice CLI
     // (the same engines, no second implementation); it runs on the app's own
@@ -9440,6 +9855,23 @@ app.whenReady().then(async () => {
       revealWindow: (tabId) => {
         if (!isDetachedTabId(tabId)) revealShellWindow()
       },
+    }),
+    // read_diagram / apply_diagram_ops: the diagram editor's own read table and executor
+    diagramControl: createDiagramControl({
+      list: async () => {
+        const tabs = tabManager ? await tabManager.openDocuments() : []
+        return [...tabs, ...(await detachedOpenDocuments())]
+      },
+      webContentsFor: (tabId) => liveDocumentContents(tabId),
+      isDetached: (tabId) => isDetachedTabId(tabId),
+      activate: (tabId) => {
+        if (!activateDetached(tabId)) tabManager?.activateTab(tabId)
+      },
+      revealWindow: (tabId) => {
+        if (!isDetachedTabId(tabId)) revealShellWindow()
+      },
+      readPage: diagramReadPage,
+      applyOps: diagramApplyOps,
     }),
     logFilePath: join(app.getPath('userData'), 'mcp-log.txt'),
   })
@@ -9467,6 +9899,8 @@ app.whenReady().then(async () => {
       if (!mcp) throw new Error('the MCP runtime is not configured')
       return startAgentMcpServer({ ...mcp, skillTools }, projectRoot)
     },
+    // the person's MCP servers reach a session through relays the app opens (user MCP spec 9)
+    userMcp: () => mcpHub,
     listSkills: () => userSkills.list(),
     openTemplatePreview: (owner, input) => templateTabs.openPreview(owner, input),
     // the enabled skills (settings → skills), and the project's only while the person has
@@ -9644,6 +10078,8 @@ app.on('before-quit', () => {
   // release the MCP port synchronously (macOS keeps the process alive after
   // the last window closes, so window-all-closed is not enough)
   stopMcpSync()
+  // the person's MCP servers: calls end, servers stop, a runtime download stops
+  void mcpHub?.stopAll()
 })
 
 // after every window has closed, so the shell window's own 'closed' republish cannot revive the file
@@ -9674,6 +10110,7 @@ function releaseAppResources(): void {
   if (ownsOpenDocumentsRegistry) clearOpenDocuments(OPEN_DOCUMENTS_PATH())
   stopAgentSessions()
   driveService?.stop()
+  void mcpHub?.stopAll()
   stopQuickLookRuntime()
   shutdownSubscriptionChildren()
 }

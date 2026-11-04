@@ -14,6 +14,7 @@ import {
   type TargetResolver,
 } from './tools/session-tools'
 import { createOpenDocumentTools, type OpenDocumentsControl } from './tools/open-documents-tools'
+import { createDiagramTools, type DiagramControl } from './tools/diagram-tools'
 
 /**
  * Main-process wiring for the MCP server.
@@ -51,6 +52,11 @@ export interface McpRuntimeDeps {
    * the argument from the tool schemas
    */
   resolveTarget?: TargetResolver
+  /**
+   * open diagram tabs for read_diagram / apply_diagram_ops; absent in headless
+   * runs, where the two tools answer that the app is not running
+   */
+  diagramControl?: DiagramControl
   /** where the MCP log file lives (userData); logging is unavailable without it */
   logFilePath?: string
 }
@@ -190,6 +196,10 @@ function buildTools(): McpToolDefinition[] {
     ...createOpenDocumentTools({
       defaultSaveDir: deps.defaultSaveDir,
       ...(deps.openDocumentsControl ? { control: deps.openDocumentsControl } : {}),
+    }),
+    // open diagrams: read a page, apply ops as one undo step (no session family)
+    ...createDiagramTools({
+      ...(deps.diagramControl ? { control: deps.diagramControl } : {}),
     }),
   ]
 }

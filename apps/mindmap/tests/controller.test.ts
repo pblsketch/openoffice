@@ -38,6 +38,7 @@ const STRINGS: MapStrings = {
   menuLabel: '라벨',
   menuNote: '메모',
   menuLink: '링크',
+  menuInsertPicture: '그림 넣기',
   menuRemovePicture: '그림 지우기',
   decoration: {
     priority: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `우선순위 ${n}`),
@@ -98,6 +99,29 @@ function press(target: EventTarget, key: string, init: KeyboardEventInit = {}): 
   )
 }
 
+function release(target: EventTarget, key: string): void {
+  target.dispatchEvent(new KeyboardEvent('keyup', { key, bubbles: true, cancelable: true }))
+}
+
+/** A mouse pointer event; jsdom has no PointerEvent of its own. */
+function pointer(target: EventTarget, type: string, init: MouseEventInit = {}): MouseEvent {
+  const event = new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, ...init })
+  Object.defineProperty(event, 'pointerId', { value: 1 })
+  Object.defineProperty(event, 'pointerType', { value: 'mouse' })
+  target.dispatchEvent(event)
+  return event
+}
+
+function click(target: EventTarget, init: MouseEventInit = {}): void {
+  pointer(target, 'pointerdown', init)
+  pointer(target, 'pointerup', init)
+}
+
+/** Gives an element a box on screen; jsdom lays nothing out. */
+function placeAt(element: Element, left: number, width: number): void {
+  element.getBoundingClientRect = () => new DOMRect(left, 100, width, 30)
+}
+
 function topicEl(el: HTMLElement, id: string): HTMLElement {
   const found = el.querySelector<HTMLElement>(`[data-nodeid="me${id}"]`)
   if (!found) throw new Error(`topic ${id} is not drawn`)
@@ -133,11 +157,158 @@ describe('opening', () => {
   })
 })
 
+describe('picking several topics', () => {
+  const picked = (controller: MapController) => controller.selectedTopicIds().sort()
+
+  it('a click while Tab is held adds a topic to the selection, and adds no topic below', async () => {
+    const { controller, mind, el, attached, doc } = await mount()
+    mind.selectNode(mind.findEle(IDS.a))
+    const below = attached().map((topic) => topic.children?.attached?.length ?? 0)
+    press(mind.container, 'Tab')
+    press(mind.container, 'Tab', { repeat: true })
+    click(topicEl(el, IDS.b))
+    click(topicEl(el, IDS.c))
+    release(mind.container, 'Tab')
+    await settle()
+    expect(picked(controller)).toEqual([IDS.a, IDS.b, IDS.c].sort())
+    expect(attached().map((topic) => topic.children?.attached?.length ?? 0)).toEqual(below)
+    expect(doc.changed).toBe(false)
+  })
+
+  it('a second click while Tab is held takes the topic out again', async () => {
+    const { controller, mind, el } = await mount()
+    mind.selectNode(mind.findEle(IDS.a))
+    press(mind.container, 'Tab')
+    click(topicEl(el, IDS.b))
+    click(topicEl(el, IDS.a))
+    release(mind.container, 'Tab')
+    expect(picked(controller)).toEqual([IDS.b])
+  })
+
+  it('a click while Shift is held adds a topic to the selection too', async () => {
+    const { controller, mind, el } = await mount()
+    mind.selectNode(mind.findEle(IDS.a))
+    click(topicEl(el, IDS.b), { shiftKey: true })
+    expect(picked(controller)).toEqual([IDS.a, IDS.b].sort())
+  })
+
+  it('Tab while a title is typed is left to the edit box', async () => {
+    const { mind, el, attached } = await mount()
+    const gamma = mind.findEle(IDS.c)
+    mind.selectNode(gamma)
+    await mind.beginEdit(gamma)
+    const box = el.querySelector<HTMLElement>('#input-box')!
+    const down = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
+    box.dispatchEvent(down)
+    release(box, 'Tab')
+    await settle()
+    expect(attached(attached()[2]!)).toHaveLength(0)
+  })
+})
+
+describe('the width of a topic box', () => {
+  it('setWidth gives the box a width the file keeps, as one step', async () => {
+    const { controller, el, attached, doc } = await mount()
+    expect(controller.setWidth(IDS.b, 260)).toBe(true)
+    await settle()
+    expect(attached()[1]!.customWidth).toBe(260)
+    expect(controller.topic(IDS.b)!.width).toBe(260)
+    const box = topicEl(el, IDS.b)
+    expect(box.style.width).toBe('260px')
+    expect(box.style.maxWidth).toBe('none')
+    expect(doc.changed).toBe(true)
+    // the same width again is not a step, and a width no box can have is none
+    expect(controller.setWidth(IDS.b, 260)).toBe(false)
+    expect(controller.setWidth(IDS.b, -3)).toBe(false)
+    controller.undo()
+    expect('customWidth' in attached()[1]!).toBe(false)
+    expect(topicEl(el, IDS.b).style.width).toBe('')
+    expect(doc.changed).toBe(false)
+  })
+
+  it('dragging the grip of a selected topic widens it, and undo narrows it again', async () => {
+    const { controller, mind, el, attached } = await mount()
+    mind.selectNode(mind.findEle(IDS.b))
+    const box = topicEl(el, IDS.b)
+    placeAt(box, 200, 120)
+    // inside the box, a few pixels from its right edge
+    pointer(box, 'pointermove', { clientX: 316 })
+    expect(mind.container.dataset.mmResize).toBe('grip')
+    const down = pointer(box, 'pointerdown', { clientX: 316 })
+    expect(down.defaultPrevented).toBe(true)
+    pointer(mind.container, 'pointermove', { clientX: 380, buttons: 1 })
+    expect(box.style.width).toBe('184px')
+    // nothing is written while the mouse still moves
+    expect('customWidth' in attached()[1]!).toBe(false)
+    pointer(mind.container, 'pointerup', { clientX: 380 })
+    await settle()
+    expect(attached()[1]!.customWidth).toBe(184)
+    expect(controller.canUndo).toBe(true)
+    controller.undo()
+    expect('customWidth' in attached()[1]!).toBe(false)
+  })
+
+  it('a topic that is not selected has no grip, and the middle of a box is no grip', async () => {
+    const { mind, el, attached } = await mount()
+    const box = topicEl(el, IDS.b)
+    placeAt(box, 200, 120)
+    pointer(box, 'pointermove', { clientX: 316 })
+    expect(mind.container.dataset.mmResize).toBeUndefined()
+    mind.selectNode(mind.findEle(IDS.b))
+    placeAt(topicEl(el, IDS.b), 200, 120)
+    pointer(topicEl(el, IDS.b), 'pointermove', { clientX: 260 })
+    expect(mind.container.dataset.mmResize).toBeUndefined()
+    await settle()
+    expect('customWidth' in attached()[1]!).toBe(false)
+  })
+
+  it('Esc while dragging leaves the box as it was', async () => {
+    const { mind, el, attached } = await mount()
+    mind.selectNode(mind.findEle(IDS.b))
+    const box = topicEl(el, IDS.b)
+    placeAt(box, 200, 120)
+    pointer(box, 'pointerdown', { clientX: 318 })
+    pointer(mind.container, 'pointermove', { clientX: 400, buttons: 1 })
+    expect(box.style.width).not.toBe('')
+    press(mind.container, 'Escape')
+    pointer(mind.container, 'pointerup', { clientX: 400 })
+    await settle()
+    expect(box.style.width).toBe('')
+    expect('customWidth' in attached()[1]!).toBe(false)
+  })
+
+  it('a double click on the grip gives the box the width of its text again', async () => {
+    const { mind, el, attached, controller } = await mount()
+    controller.setWidth(IDS.b, 300)
+    await settle()
+    mind.selectNode(mind.findEle(IDS.b))
+    const box = topicEl(el, IDS.b)
+    placeAt(box, 200, 300)
+    box.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true, clientX: 497 }))
+    await settle()
+    expect('customWidth' in attached()[1]!).toBe(false)
+    expect(topicEl(el, IDS.b).style.width).toBe('')
+  })
+
+  it('a width the file holds is drawn when the map opens, and opening changes nothing', async () => {
+    const sheet = richSheet()
+    sheet.rootTopic.children!.attached![1]!.customWidth = 222
+    const { el, doc, controller } = await mount([sheet])
+    expect(topicEl(el, IDS.b).style.width).toBe('222px')
+    controller.flush()
+    expect(doc.changed).toBe(false)
+  })
+})
+
 describe('shortcuts', () => {
   it('Tab adds a child topic with an id the file can keep', async () => {
     const { controller, mind, root, attached } = await mount()
     mind.selectNode(mind.findEle(IDS.c))
     press(mind.container, 'Tab')
+    // the topic comes when the key does: a click while it is held picks topics instead
+    await settle()
+    expect(attached(attached()[2]!)).toHaveLength(0)
+    release(mind.container, 'Tab')
     await settle()
     const gamma = attached()[2]!
     expect(attached(gamma)).toHaveLength(1)
@@ -149,6 +320,37 @@ describe('shortcuts', () => {
     expect(root().structureClass).toBe(FISHBONE)
     expect(controller.canUndo).toBe(true)
   })
+
+  it.each([
+    ['left', { left: 'auto', right: '880px' }],
+    ['right', { left: '20px', right: '' }],
+  ] as const)(
+    'on the %s of the centre the box a new title is typed in grows away from the parent',
+    async (layout, pinned) => {
+      // jsdom lays nothing out: every topic is 100px wide at 20px, in a sheet 1000px wide
+      vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(100)
+      vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1000)
+      vi.spyOn(HTMLElement.prototype, 'offsetLeft', 'get').mockReturnValue(20)
+      vi.spyOn(HTMLElement.prototype, 'offsetParent', 'get').mockImplementation(function (
+        this: HTMLElement,
+      ) {
+        return this.parentElement?.closest('me-nodes') ?? null
+      })
+      try {
+        const { controller, mind, el } = await mount()
+        controller.setLayout(layout)
+        await settle()
+        mind.selectNode(mind.findEle(IDS.c))
+        press(mind.container, 'Tab')
+        release(mind.container, 'Tab')
+        await settle()
+        const box = el.querySelector<HTMLElement>('#input-box')!
+        expect({ left: box.style.left, right: box.style.right }).toEqual(pinned)
+      } finally {
+        vi.restoreAllMocks()
+      }
+    },
+  )
 
   it('Enter adds a sibling after the selected topic', async () => {
     const { mind, attached } = await mount()
@@ -270,7 +472,7 @@ describe('deleting', () => {
     mind.selectNode(mind.findEle(IDS.a))
     press(mind.container, 'Delete')
     await settle()
-    expect(host.confirmDelete).toHaveBeenCalledExactlyOnceWith(3)
+    expect(host.confirmDelete).toHaveBeenCalledExactlyOnceWith(2)
     expect(attached().map((child) => child.id)).toEqual([IDS.a, IDS.b, IDS.c])
     expect(doc.changed).toBe(false)
   })
@@ -280,7 +482,7 @@ describe('deleting', () => {
     mind.selectNode(mind.findEle(IDS.a))
     press(mind.container, 'Delete')
     await settle()
-    expect(host.confirmDelete).toHaveBeenCalledExactlyOnceWith(3)
+    expect(host.confirmDelete).toHaveBeenCalledExactlyOnceWith(2)
     expect(attached().map((child) => child.id)).toEqual([IDS.b, IDS.c])
     expect(JSON.stringify(doc.sheets[0])).not.toContain(IDS.callout)
   })
@@ -293,6 +495,29 @@ describe('deleting', () => {
     expect(attached()).toHaveLength(3)
     expect(await controller.removeTopics([IDS.b], 'refuse')).toEqual({ ok: true })
     expect(attached().map((child) => child.id)).toEqual([IDS.a, IDS.c])
+  })
+
+  it('the user is not asked about a boundary the map draws; a caller that may not ask still counts it', async () => {
+    const sheet = plainSheet()
+    const branches = [
+      'cccccccc-cccc-4ccc-8ccc-ccccccccccc1',
+      'cccccccc-cccc-4ccc-8ccc-ccccccccccc2',
+    ]
+    // a boundary on screen around both branches
+    Object.assign(sheet.rootTopic, { boundaries: [{ id: 'drawn', range: '(0,1)' }] })
+    const { controller, mind, host, doc, attached } = await mount([sheet])
+    expect(await controller.removeTopics(branches, 'refuse')).toEqual({
+      ok: false,
+      reason: 'preserved',
+      preserved: 1,
+    })
+    expect(attached()).toHaveLength(2)
+    mind.selectNodes(branches.map((id) => mind.findEle(id)))
+    press(mind.container, 'Delete')
+    await settle()
+    expect(host.confirmDelete).not.toHaveBeenCalled()
+    expect(attached()).toHaveLength(0)
+    expect(doc.sheets[0]!.rootTopic).not.toHaveProperty('boundaries')
   })
 
   it('the central topic is never deleted', async () => {
@@ -821,7 +1046,7 @@ describe('cut and paste', () => {
     })
 
     const clipboard = await cut(mind, IDS.a)
-    expect(host.confirmDelete).toHaveBeenCalledExactlyOnceWith(3)
+    expect(host.confirmDelete).toHaveBeenCalledExactlyOnceWith(2)
     expect(attached().map((source) => source.id)).toEqual([IDS.b, IDS.c])
     const afterCut = JSON.stringify(doc.sheets[0])
 
@@ -952,6 +1177,7 @@ describe("the map's own menu", () => {
       '라벨',
       '메모',
       '링크',
+      '그림 넣기',
       '그림 지우기',
     ])
     controller.setStrings({
@@ -959,25 +1185,29 @@ describe("the map's own menu", () => {
       newTopic: 'New topic',
       menu: { ...STRINGS.menu, addChild: 'Add subtopic', summary: 'Summary' },
       menuLink: 'Link',
+      menuInsertPicture: 'Insert picture',
       menuRemovePicture: 'Remove picture',
     })
     const texts = menuTexts(el)
     expect(texts[0]).toBe('Add subtopic')
     expect(texts[6]).toBe('Summary')
-    expect(texts.at(-2)).toBe('Link')
+    expect(texts.at(-3)).toBe('Link')
+    expect(texts.at(-2)).toBe('Insert picture')
     expect(texts.at(-1)).toBe('Remove picture')
     expect(controller.mind.newTopicName).toBe('New topic')
   })
 
-  it('asks the host for the label, note or link of the selected topic', async () => {
+  it('asks the host for the label, note, link or a new picture of the selected topic', async () => {
     const { mind, el, host } = await mount()
     mind.selectNode(mind.findEle(IDS.c))
     const items = [...el.querySelectorAll<HTMLElement>('.context-menu .menu-list > li')]
-    items.at(-4)!.click()
+    items.at(-5)!.click()
+    items.at(-3)!.click()
     items.at(-2)!.click()
     expect(host.onRequest.mock.calls).toEqual([
       ['label', IDS.c],
       ['link', IDS.c],
+      ['picture', IDS.c],
     ])
   })
 

@@ -124,15 +124,12 @@
  *   for the memo anchors, and a deletion that touches one captures its paragraph first,
  *   as the studio already does for a link, so undo restores the paragraph with the memo.
  *
- * studio-font-memo-state, studio-font-memo-use
- *   The studio replaces the Canvas2D `font` setter so that every font string
- *   the engine sets passes its font substitution, which builds the family
- *   chain anew each time. Drawing a page sets the same few strings thousands
- *   of times, and that rebuilding was most of the cost of a keystroke. The
- *   setter keeps each string's answer until the next microtask checkpoint:
- *   one synchronous draw reuses it, and what the answer depends on (the fonts
- *   found on the PC, the open document's substitutions) changes only when an
- *   asynchronous step ends, so every later draw asks again.
+ * studio-pdf-import-options
+ *   The engine is built without upstream's PDF import until upstream releases it
+ *   (vendor/rhwp-core `rhwp.features`, decision 0107). The studio then keeps PDFs out of
+ *   its file picker, drops and file command by itself, but its options dialog still
+ *   showed the PDF import layout choice. The dialog shows that section only when the
+ *   engine has PDF import, and its OK leaves the setting alone when it does not.
  *
  * studio-pc-fonts
  *   The studio lists the PC's fonts only after the 찾기 button of its options dialog,
@@ -241,22 +238,27 @@ const PATCHES = {
   },
   'studio-nested-table-cut': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler\.ts$/,
-    find: [
-      '        // 중첩 표 잘라내기는 지원하지 않는다. keydown 경로도 같은 선택 상태를 유지한다.',
-      '        if (ref.cellPath && ref.cellPath.length > 1) return;',
-      '        this.performCopy();',
-      '        this.cursor.moveOutOfSelectedTable();',
-      "        this.eventBus.emit('table-object-selection-changed', false);",
-      "        this.executeOperation({ kind: 'snapshot', operationType: 'cutTable', operation: (wasm: WasmBridge) => {",
-      '          wasm.deleteTableControl(ref.sec, ref.ppi, ref.ci);',
-    ].join('\n'),
-    replace: [
-      '        this.performCopy();',
-      '        this.cursor.moveOutOfSelectedTable();',
-      "        this.eventBus.emit('table-object-selection-changed', false);",
-      "        this.executeOperation({ kind: 'snapshot', operationType: 'cutTable', operation: (wasm: WasmBridge) => {",
-      '          wasm.deleteTableAt(ref);',
-    ].join('\n'),
+    edits: [
+      // the copy already takes a table in a cell (tableObjectClipboardTarget); only the delete did not
+      {
+        find: [
+          '    // 중첩 표 잘라내기는 지원하지 않는다. keydown 경로도 같은 선택 상태를 유지한다.',
+          '    if (table?.cellPath && table.cellPath.length > 1) return;',
+          '',
+        ].join('\n'),
+        replace: '',
+      },
+      {
+        find: [
+          "        this.executeOperation({ kind: 'snapshot', operationType: 'cutTable', operation: (wasm: WasmBridge) => {",
+          '          wasm.deleteTableControl(ref.sec, ref.ppi, ref.ci);',
+        ].join('\n'),
+        replace: [
+          "        this.executeOperation({ kind: 'snapshot', operationType: 'cutTable', operation: (wasm: WasmBridge) => {",
+          '          wasm.deleteTableAt(table!);',
+        ].join('\n'),
+      },
+    ],
   },
   'studio-nested-table-command': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]command[\\/]commands[\\/]table\.ts$/,
@@ -392,8 +394,9 @@ const PATCHES = {
       },
       // the typed character, before the editor decides what to do with it
       {
-        find: '  const text = this.textarea.value;',
-        replace: '  const text = quickCorrectTyped(this, this.textarea.value, e?.inputType);',
+        find: '  const text = normalizeTextNewlines(this.textarea.value);',
+        replace:
+          '  const text = normalizeTextNewlines(quickCorrectTyped(this, this.textarea.value, e?.inputType));',
       },
     ],
   },
@@ -721,7 +724,7 @@ const PATCHES = {
         find: "import { tableObjectClipboardTarget } from './table-object-clipboard-target';",
         replace: [
           "import { tableObjectClipboardTarget } from './table-object-clipboard-target';",
-          `import { ieumPasteHtmlInCell, ieumPictureHtml, ieumSelectionHtml } from '${CLIPBOARD_HTML_MODULE}';`,
+          `import { ieumPasteHtmlInCell, ieumPictureHtml, ieumPictureIsRendering, ieumSelectionHtml } from '${CLIPBOARD_HTML_MODULE}';`,
         ].join('\n'),
       },
       {
@@ -766,12 +769,13 @@ const PATCHES = {
         ].join('\n'),
       },
       // a picture copied in another editor also lies on the clipboard as a picture file, at its
-      // own pixel size; that editor's HTML has the size the picture had in its document
+      // own pixel size; that editor's HTML has the size the picture had in its document. A
+      // spreadsheet copy's picture is a rendering of its table, which pastes as a table
       {
         find: ['  const items = clipboardData?.items;', '  if (items) {'].join('\n'),
         replace: [
           '  const items = clipboardData?.items;',
-          '  if (items && readRhwpClipboardToken(html) === null) {',
+          '  if (items && readRhwpClipboardToken(html) === null && !ieumPictureIsRendering(html, text)) {',
         ].join('\n'),
       },
       // a picture file from the clipboard went in with insertPicture, floating at the paper's top
@@ -1089,34 +1093,31 @@ const PATCHES = {
       },
     ],
   },
-  'studio-font-memo-state': {
-    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
-    find: 'let canvasFontSubstitutionInstalled = false;',
-    replace: [
-      'let canvasFontSubstitutionInstalled = false;',
-      '',
-      '// one answer per font string until the next microtask checkpoint: a page draw sets the',
-      '// same strings thousands of times, and what the answer depends on changes between tasks',
-      'let canvasFontMemo: Map<string, string> | null = null;',
-      'function memoSubstituteCssFontFamily(cssFont: string): string {',
-      '  if (!canvasFontMemo) {',
-      '    canvasFontMemo = new Map();',
-      '    queueMicrotask(() => { canvasFontMemo = null; });',
-      '  }',
-      '  let out = canvasFontMemo.get(cssFont);',
-      '  if (out === undefined) {',
-      '    out = substituteCssFontFamily(cssFont);',
-      '    canvasFontMemo.set(cssFont, out);',
-      '  }',
-      '  return out;',
-      '}',
-    ].join('\n'),
-  },
-  'studio-font-memo-use': {
-    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
-    find: 'descriptor.set!.call(this, scopedHostCanvasFont(String(value)) ?? substituteCssFontFamily(String(value)));',
-    replace:
-      'descriptor.set!.call(this, scopedHostCanvasFont(String(value)) ?? memoSubstituteCssFontFamily(String(value)));',
+  'studio-pdf-import-options': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]ui[\\/]options-dialog\.ts$/,
+    edits: [
+      {
+        find: "import { userSettings } from '@/core/user-settings';",
+        replace: [
+          "import { userSettings } from '@/core/user-settings';",
+          "import { HwpDocument } from '@wasm/rhwp.js';",
+          "import { hasPdfImportCapability } from '@/core/pdf-import-capability';",
+        ].join('\n'),
+      },
+      {
+        find: '    panel.appendChild(this.createPdfImportSection());',
+        replace:
+          '    if (hasPdfImportCapability(HwpDocument)) panel.appendChild(this.createPdfImportSection());',
+      },
+      {
+        find: "    userSettings.setPdfImportLayout(this.pdfImportEditableRadio.checked ? 'editable' : 'fidelity');",
+        replace: [
+          '    if (this.pdfImportEditableRadio) {',
+          "      userSettings.setPdfImportLayout(this.pdfImportEditableRadio.checked ? 'editable' : 'fidelity');",
+          '    }',
+        ].join('\n'),
+      },
+    ],
   },
   'studio-pc-fonts': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]main\.ts$/,
@@ -1209,9 +1210,8 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-memo-label-en',
   'studio-memo-anchors',
   'studio-memo-delete-undo',
-  'studio-font-memo-state',
-  'studio-font-memo-use',
   'studio-cell-block-paste',
+  'studio-pdf-import-options',
   'studio-pc-fonts',
 ])
 

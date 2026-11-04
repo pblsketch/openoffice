@@ -6,7 +6,12 @@ import {
 } from '@genoffice/ui'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactElement, ReactNode } from 'react'
-import { AgentLoop, composeWithDrive } from '@genoffice/agent-core'
+import {
+  AgentLoop,
+  composeWithDrive,
+  windowMcpState,
+  windowMcpUsableServers,
+} from '@genoffice/agent-core'
 import {
   isSubscriptionProvider,
   localModelCapabilities,
@@ -34,6 +39,9 @@ import {
   changeStoredAiSettings,
   useAiSendGate,
   useChatRunQueue,
+  McpPermissionCard,
+  McpServerButton,
+  useMcpWindow,
   NO_SKILL_USE,
   SentSkillChips,
   skillChipRefsOf,
@@ -228,9 +236,12 @@ export function AiPanel({
     },
   })
   msgQueueRef.current = msgQueue
+  /** this window's MCP servers (user MCP spec 7.5); the chips name the ones not usable now */
+  const mcpWindow = useMcpWindow()
   /** the skills called with `/` or `$`: the list, the chips and the text a request gets */
   const skills = useComposerSkills({
     lang,
+    usableMcpServers: mcpWindow.state?.usableServers(),
     // a chip whose skill has a template runs in a new tab (spec 5.7)
     onTemplateSkill: (request) => skillTemplatesRef.current.onTemplateSkill(request),
   })
@@ -454,6 +465,8 @@ export function AiPanel({
         skillsRef.current.restoreHistory(
           msgs.map((m) => (m.role === 'user' ? skillChipRefsOf(m.skills) : undefined)),
         )
+        // a reopened conversation starts with no MCP choices of another chat (user MCP spec 7.6)
+        windowMcpState()?.newConversation()
         // follow-ups after reopening continue the previous conversation
         loopRef.current?.restore(msgs.map((m) => ({ role: m.role, text: m.text })))
       })
@@ -727,6 +740,8 @@ export function AiPanel({
           messages: () => loopRef.current?.messages ?? [],
           // a template skill the model used offers its new document (spec 5.7)
           onUsed: (skill) => skillTemplatesRef.current.onUsed(skill),
+          // use_skill names the MCP servers it expects that are not usable now (spec 8)
+          mcpServerUsable: (name) => windowMcpUsableServers().has(name),
           onProposal: (proposal) => {
             skillCardsRef.current.add(proposal)
             patchLast((last) => ({
@@ -930,6 +945,8 @@ export function AiPanel({
   const resetConversation = (): void => {
     stop()
     loopRef.current?.reset()
+    // servers off in this chat and "always allow in this chat" go too (user MCP spec 7.6)
+    windowMcpState()?.newConversation()
     msgQueue.clear()
     sendGate.reset()
     setBusy(false)
@@ -1249,6 +1266,8 @@ export function AiPanel({
           )
         })}
         {skillTemplates.notes}
+        {/* an MCP tool waiting for the person's yes (user MCP spec 7.4) */}
+        <McpPermissionCard lang={lang} />
         {fileOpConfirm && (
           <div className="ai-confirm-card" role="group" aria-label={t('aiFileOpConfirmTitle')}>
             <div className="ai-confirm-title">{t('aiFileOpConfirmTitle')}</div>
@@ -1413,6 +1432,7 @@ export function AiPanel({
                 onRefreshSubscriptions={connection.refresh}
               />
               {sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
+              <McpServerButton lang={lang} />
             </>
           }
           sendIconEnabled={<img src={sendEnterOn} alt="" aria-hidden />}

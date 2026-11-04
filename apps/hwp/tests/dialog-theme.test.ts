@@ -290,6 +290,10 @@ describe('HWP dialog design system', () => {
       '.dialog-wrap.recovery-dialog | display,flex-direction,max-height,overflow',
       '.recovery-dialog > .dialog-title | flex',
       '.recovery-dialog > .dialog-footer | flex',
+      // rhwp devel's PDF import dialog uses the same capped shell as its recovery dialog
+      '.dialog-wrap.dialog-pdf-import | display,flex-direction,max-height,overflow',
+      '.dialog-pdf-import > .dialog-title | flex',
+      '.dialog-pdf-import > .dialog-footer | flex',
       '.dialog-btn-primary.hml-save-format-primary | background,border-color',
       '.dialog-btn-primary.hml-save-format-primary:hover | background',
       '.dialog-wrap.tcp-dialog | display,flex-direction',

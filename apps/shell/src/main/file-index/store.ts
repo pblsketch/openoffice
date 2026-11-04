@@ -1,5 +1,6 @@
 import { DatabaseSync } from 'node:sqlite'
-import { basename, dirname, extname } from 'node:path'
+import { basename, dirname } from 'node:path'
+import { documentExtension } from '../app-routing'
 import { MAX_BODY_CHARS } from './extract'
 import { statOrNull } from './scan'
 import { buildSnippet, containsAny, excerpt, type SnippetPart } from './snippet'
@@ -180,7 +181,8 @@ export class FileIndexStore {
     status: IndexStatus,
   ): void {
     const name = basename(meta.path)
-    const ext = extname(meta.path).slice(1).toLowerCase()
+    // a draw.io picture is listed as `drawio.svg` / `drawio.png`, like the recents
+    const ext = documentExtension(meta.path)
     const body = text ? text.slice(0, MAX_BODY_CHARS) : null
     const nameTok = tokenize(name)
     const pathTok = tokenize(dirname(meta.path))

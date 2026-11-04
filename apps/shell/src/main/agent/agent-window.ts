@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { homedir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
-import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import type { IpcMainInvokeEvent, WebContents } from 'electron'
 import type { SkillProposal } from '@genoffice/agent-core'
 import type {
@@ -46,6 +46,7 @@ import {
   type AgentMcpSession,
 } from './agent-sessions'
 import type { AgentSkillToolHooks } from './agent-mcp'
+import { startAgentMcpRelays, type AgentRelayHub } from './agent-mcp-relay'
 import {
   agentSkillProposalOf,
   agentTemplateCandidates,
@@ -76,8 +77,13 @@ export type AgentTemplatePreviewOpener = (
 
 export interface AgentWindowDeps extends Omit<
   AgentManagerDeps,
-  'emit' | 'language' | 'statuses' | 'startAppMcp'
+  'emit' | 'language' | 'statuses' | 'startAppMcp' | 'startRelays'
 > {
+  /**
+   * the hub of the person's MCP servers; each session opens a relay per server that is on
+   * (user MCP spec 9). Absent or null: sessions get no relay
+   */
+  userMcp?: (() => AgentRelayHub | null) | undefined
   /**
    * start a session's own MCP server with the window's skill tools; absent when
    * the app has no editors to offer
@@ -467,7 +473,12 @@ function registerIpc(): void {
       const result = await manager.start(owner, { provider, mode, projectRoot: folder, codex })
       if (!result.ok) return { ok: false, reason: result.reason, kind: result.kind }
       deps.writePrefs(withRecentFolder({ ...prefs, provider, mode }, folder))
-      return { ok: true, sessionId: result.sessionId, skills: result.skills }
+      return {
+        ok: true,
+        sessionId: result.sessionId,
+        skills: result.skills,
+        ...(result.mcpKeepInside ? { mcpKeepInside: result.mcpKeepInside } : {}),
+      }
     },
   )
 
@@ -598,8 +609,21 @@ function registerIpc(): void {
 export function configureAgentWindow(next: AgentWindowDeps): void {
   deps = next
   const startAppMcp = next.startAppMcp
+  const userMcp = next.userMcp
   manager = createAgentManager({
     ...next,
+    startRelays: userMcp
+      ? async (session, ask) => {
+          const hub = userMcp()
+          if (!hub) return { relays: [], keepResultsInside: [], stop: async () => undefined }
+          return startAgentMcpRelays({
+            hub,
+            ask,
+            caller: `agent:${session.sessionId}`,
+            version: app.getVersion(),
+          })
+        }
+      : undefined,
     statuses: () => next.statuses(),
     language: () => next.lang(),
     startAppMcp: startAppMcp

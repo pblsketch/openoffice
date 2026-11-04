@@ -16,6 +16,7 @@ import { basename, dirname, isAbsolute, join, extname } from 'node:path'
 import {
   app,
   BrowserWindow,
+  clipboard,
   desktopCapturer,
   dialog,
   ipcMain,
@@ -148,6 +149,8 @@ import {
   ATTACHABLE_MAX_BYTES,
   attachableMaxBytes,
   ATTACHABLE_IMAGE_MAX_BYTES,
+  diagramPictureExtOf,
+  diagramPictureExtOfName,
 } from '@genoffice/file-parse'
 import { familyInfoFor } from '@genoffice/font-metrics'
 import type { CellEdit, SheetStructuralOps } from '@genoffice/xlsx-gateway/gateway/xlsx-gateway'
@@ -281,6 +284,10 @@ const tMain = createI18n({
     errDiskChanged: '工作簿在打开后被磁盘上的改动覆盖——请改用另存为。',
     errSaveUnreadable:
       '保存结果无法重新打开，因此没有覆盖原文件。原文件保持不变，编辑内容仍在屏幕上。',
+    errSaveUnreadableReason:
+      '原因：{reason}\n\n选择“复制原因”，再粘贴到“发送反馈”中，可以帮助我们查明原因。',
+    btnCopyReason: '复制原因',
+    btnCloseDialog: '关闭',
     menuFile: '文件',
     menuOpenWorkbook: '打开工作簿…',
     menuSave: '保存',
@@ -338,6 +345,10 @@ const tMain = createI18n({
     errDiskChanged: 'The workbook changed on disk after it was opened — use Save As instead.',
     errSaveUnreadable:
       'The saved result could not be opened again, so the original file was not overwritten. The original is unchanged and your edits are still on screen.',
+    errSaveUnreadableReason:
+      'Reason: {reason}\n\nChoose "Copy reason" and paste it into Send feedback to help us find the cause.',
+    btnCopyReason: 'Copy reason',
+    btnCloseDialog: 'Close',
     menuFile: 'File',
     menuOpenWorkbook: 'Open Workbook…',
     menuSave: 'Save',
@@ -398,6 +409,10 @@ const tMain = createI18n({
     errDiskChanged: 'Sổ làm việc đã thay đổi trên đĩa sau khi mở — hãy sử dụng Lưu dưới dạng.',
     errSaveUnreadable:
       'Không thể mở lại kết quả đã lưu nên tệp gốc không bị ghi đè. Tệp gốc vẫn nguyên vẹn và các chỉnh sửa vẫn còn trên màn hình.',
+    errSaveUnreadableReason:
+      'Lý do: {reason}\n\nChọn "Sao chép lý do" rồi dán vào Gửi phản hồi để giúp chúng tôi tìm ra nguyên nhân.',
+    btnCopyReason: 'Sao chép lý do',
+    btnCloseDialog: 'Đóng',
     menuFile: 'Tệp',
     menuOpenWorkbook: 'Mở sổ làm việc…',
     menuSave: 'Lưu',
@@ -461,6 +476,10 @@ const tMain = createI18n({
       'ブックを開いた後にディスク上で変更されています — 名前を付けて保存を使用してください。',
     errSaveUnreadable:
       '保存結果を開き直せなかったため、元のファイルは上書きしていません。元のファイルはそのままで、編集内容は画面に残っています。',
+    errSaveUnreadableReason:
+      '理由: {reason}\n\n「理由をコピー」を選んで「フィードバックを送る」に貼り付けていただくと、原因の調査に役立ちます。',
+    btnCopyReason: '理由をコピー',
+    btnCloseDialog: '閉じる',
     menuFile: 'ファイル',
     menuOpenWorkbook: 'ブックを開く…',
     menuSave: '保存',
@@ -523,6 +542,10 @@ const tMain = createI18n({
       '통합 문서가 열린 후 디스크에서 변경되었습니다. 다른 이름으로 저장을 사용하세요.',
     errSaveUnreadable:
       '저장한 결과를 다시 열 수 없어 원래 파일을 덮어쓰지 않았습니다. 원래 파일은 그대로이고, 편집한 내용은 화면에 남아 있습니다.',
+    errSaveUnreadableReason:
+      '까닭: {reason}\n\n"까닭 복사"를 누른 뒤 의견 보내기에 붙여 넣어 주시면 원인을 찾는 데 도움이 됩니다.',
+    btnCopyReason: '까닭 복사',
+    btnCloseDialog: '닫기',
     menuFile: '파일',
     menuOpenWorkbook: '통합 문서 열기…',
     menuSave: '저장',
@@ -586,6 +609,10 @@ const tMain = createI18n({
       'Le classeur a été modifié sur le disque après son ouverture — utilisez Enregistrer sous.',
     errSaveUnreadable:
       "Le résultat enregistré n'a pas pu être rouvert ; le fichier d'origine n'a donc pas été écrasé. Il est intact et vos modifications sont toujours à l'écran.",
+    errSaveUnreadableReason:
+      'Raison : {reason}\n\nChoisissez « Copier la raison » et collez-la dans Envoyer un commentaire pour nous aider à trouver la cause.',
+    btnCopyReason: 'Copier la raison',
+    btnCloseDialog: 'Fermer',
     menuFile: 'Fichier',
     menuOpenWorkbook: 'Ouvrir un classeur…',
     menuSave: 'Enregistrer',
@@ -650,6 +677,10 @@ const tMain = createI18n({
       'Die Arbeitsmappe wurde nach dem Öffnen auf dem Datenträger geändert — verwenden Sie stattdessen „Speichern unter“.',
     errSaveUnreadable:
       'Das gespeicherte Ergebnis ließ sich nicht wieder öffnen, daher wurde die Originaldatei nicht überschrieben. Sie ist unverändert, und Ihre Änderungen sind noch auf dem Bildschirm.',
+    errSaveUnreadableReason:
+      'Grund: {reason}\n\nWählen Sie „Grund kopieren“ und fügen Sie ihn unter „Feedback senden“ ein, damit wir die Ursache finden können.',
+    btnCopyReason: 'Grund kopieren',
+    btnCloseDialog: 'Schließen',
     menuFile: 'Datei',
     menuOpenWorkbook: 'Arbeitsmappe öffnen…',
     menuSave: 'Speichern',
@@ -713,6 +744,10 @@ const tMain = createI18n({
     errDiskChanged: 'El libro cambió en el disco después de abrirse; usa Guardar como en su lugar.',
     errSaveUnreadable:
       'No se pudo volver a abrir el resultado guardado, así que no se sobrescribió el archivo original. El original no cambió y tus ediciones siguen en pantalla.',
+    errSaveUnreadableReason:
+      'Motivo: {reason}\n\nElija «Copiar motivo» y péguelo en Enviar comentarios para ayudarnos a encontrar la causa.',
+    btnCopyReason: 'Copiar motivo',
+    btnCloseDialog: 'Cerrar',
     menuFile: 'Archivo',
     menuOpenWorkbook: 'Abrir libro…',
     menuSave: 'Guardar',
@@ -774,6 +809,10 @@ const tMain = createI18n({
     errDiskChanged: 'เวิร์กบุ๊กถูกเปลี่ยนแปลงบนดิสก์หลังจากเปิด — โปรดใช้บันทึกเป็นแทน',
     errSaveUnreadable:
       'ไม่สามารถเปิดผลที่บันทึกได้อีกครั้ง จึงไม่ได้เขียนทับไฟล์ต้นฉบับ ไฟล์ต้นฉบับยังคงเดิมและการแก้ไขของคุณยังอยู่บนหน้าจอ',
+    errSaveUnreadableReason:
+      'สาเหตุ: {reason}\n\nเลือก "คัดลอกสาเหตุ" แล้ววางใน ส่งข้อเสนอแนะ เพื่อช่วยให้เราหาต้นเหตุได้',
+    btnCopyReason: 'คัดลอกสาเหตุ',
+    btnCloseDialog: 'ปิด',
     menuFile: 'ไฟล์',
     menuOpenWorkbook: 'เปิดเวิร์กบุ๊ก…',
     menuSave: 'บันทึก',
@@ -835,6 +874,10 @@ const tMain = createI18n({
     errDiskChanged: 'Buku kerja berubah di disk setelah dibuka — gunakan Simpan Sebagai.',
     errSaveUnreadable:
       'Hasil simpanan tidak dapat dibuka kembali, jadi file asli tidak ditimpa. File asli tidak berubah dan suntingan Anda masih ada di layar.',
+    errSaveUnreadableReason:
+      'Alasan: {reason}\n\nPilih "Salin alasan" lalu tempelkan di Kirim masukan untuk membantu kami menemukan penyebabnya.',
+    btnCopyReason: 'Salin alasan',
+    btnCloseDialog: 'Tutup',
     menuFile: 'File',
     menuOpenWorkbook: 'Buka Buku Kerja…',
     menuSave: 'Simpan',
@@ -897,6 +940,10 @@ const tMain = createI18n({
     errDiskChanged: 'Книга была изменена на диске после открытия — используйте «Сохранить как».',
     errSaveUnreadable:
       'Сохранённый результат не удалось открыть снова, поэтому исходный файл не перезаписан. Он не изменился, а ваши правки остаются на экране.',
+    errSaveUnreadableReason:
+      'Причина: {reason}\n\nНажмите «Скопировать причину» и вставьте её в «Отправить отзыв» — это поможет нам найти неполадку.',
+    btnCopyReason: 'Скопировать причину',
+    btnCloseDialog: 'Закрыть',
     menuFile: 'Файл',
     menuOpenWorkbook: 'Открыть книгу…',
     menuSave: 'Сохранить',
@@ -957,6 +1004,10 @@ const tMain = createI18n({
     errDiskChanged: 'تم تغيير المصنف على القرص بعد فتحه — استخدم «حفظ باسم» بدلاً من ذلك.',
     errSaveUnreadable:
       'تعذّر فتح النتيجة المحفوظة مرة أخرى، لذا لم تتم الكتابة فوق الملف الأصلي. الملف الأصلي لم يتغير وتعديلاتك ما زالت على الشاشة.',
+    errSaveUnreadableReason:
+      'السبب: {reason}\n\nاختر "نسخ السبب" ثم الصقه في إرسال ملاحظات لمساعدتنا في معرفة أصل المشكلة.',
+    btnCopyReason: 'نسخ السبب',
+    btnCloseDialog: 'إغلاق',
     menuFile: 'ملف',
     menuOpenWorkbook: 'فتح مصنف…',
     menuSave: 'حفظ',
@@ -1017,6 +1068,10 @@ const tMain = createI18n({
     errDiskChanged: 'A pasta de trabalho foi alterada no disco após ser aberta — use Salvar Como.',
     errSaveUnreadable:
       'Não foi possível reabrir o resultado salvo, então o arquivo original não foi substituído. O original está intacto e suas edições continuam na tela.',
+    errSaveUnreadableReason:
+      'Motivo: {reason}\n\nEscolha "Copiar motivo" e cole em Enviar comentários para nos ajudar a encontrar a causa.',
+    btnCopyReason: 'Copiar motivo',
+    btnCloseDialog: 'Fechar',
     menuFile: 'Arquivo',
     menuOpenWorkbook: 'Abrir Pasta de Trabalho…',
     menuSave: 'Salvar',
@@ -1080,6 +1135,10 @@ const tMain = createI18n({
       "La cartella di lavoro è stata modificata sul disco dopo l'apertura — usa Salva con nome.",
     errSaveUnreadable:
       "Non è stato possibile riaprire il risultato salvato, quindi il file originale non è stato sovrascritto. L'originale è invariato e le modifiche sono ancora sullo schermo.",
+    errSaveUnreadableReason:
+      'Motivo: {reason}\n\nScegli "Copia motivo" e incollalo in Invia feedback per aiutarci a trovare la causa.',
+    btnCopyReason: 'Copia motivo',
+    btnCloseDialog: 'Chiudi',
     menuFile: 'File',
     menuOpenWorkbook: 'Apri cartella di lavoro…',
     menuSave: 'Salva',
@@ -1142,6 +1201,10 @@ const tMain = createI18n({
     errDiskChanged: 'Skoroszyt został zmieniony na dysku po otwarciu — użyj polecenia Zapisz jako.',
     errSaveUnreadable:
       'Nie udało się ponownie otworzyć zapisanego wyniku, więc oryginalny plik nie został nadpisany. Oryginał jest bez zmian, a Twoje edycje nadal są na ekranie.',
+    errSaveUnreadableReason:
+      'Przyczyna: {reason}\n\nWybierz „Kopiuj przyczynę” i wklej ją w Wyślij opinię, aby pomóc nam znaleźć źródło problemu.',
+    btnCopyReason: 'Kopiuj przyczynę',
+    btnCloseDialog: 'Zamknij',
     menuFile: 'Plik',
     menuOpenWorkbook: 'Otwórz skoroszyt…',
     menuSave: 'Zapisz',
@@ -1204,6 +1267,10 @@ const tMain = createI18n({
     errDiskChanged: 'Sešit byl po otevření změněn na disku — použijte místo toho Uložit jako.',
     errSaveUnreadable:
       'Uložený výsledek nešlo znovu otevřít, proto původní soubor nebyl přepsán. Původní soubor je beze změny a vaše úpravy jsou stále na obrazovce.',
+    errSaveUnreadableReason:
+      'Důvod: {reason}\n\nZvolte „Kopírovat důvod“ a vložte jej do Odeslat zpětnou vazbu, pomůžete nám tak najít příčinu.',
+    btnCopyReason: 'Kopírovat důvod',
+    btnCloseDialog: 'Zavřít',
     menuFile: 'Soubor',
     menuOpenWorkbook: 'Otevřít sešit…',
     menuSave: 'Uložit',
@@ -1267,6 +1334,10 @@ const tMain = createI18n({
       'De werkmap is op de schijf gewijzigd nadat deze was geopend — gebruik Opslaan als.',
     errSaveUnreadable:
       'Het opgeslagen resultaat kon niet opnieuw worden geopend, dus het oorspronkelijke bestand is niet overschreven. Het origineel is ongewijzigd en je bewerkingen staan nog op het scherm.',
+    errSaveUnreadableReason:
+      'Reden: {reason}\n\nKies "Reden kopiëren" en plak deze in Feedback sturen om ons te helpen de oorzaak te vinden.',
+    btnCopyReason: 'Reden kopiëren',
+    btnCloseDialog: 'Sluiten',
     menuFile: 'Bestand',
     menuOpenWorkbook: 'Werkmap openen…',
     menuSave: 'Opslaan',
@@ -1327,6 +1398,10 @@ const tMain = createI18n({
     errDiskChanged: 'Buku kerja telah diubah pada cakera selepas dibuka — gunakan Simpan Sebagai.',
     errSaveUnreadable:
       'Hasil yang disimpan tidak dapat dibuka semula, jadi fail asal tidak ditulis ganti. Fail asal tidak berubah dan suntingan anda masih pada skrin.',
+    errSaveUnreadableReason:
+      'Sebab: {reason}\n\nPilih "Salin sebab" dan tampalkan dalam Hantar maklum balas untuk membantu kami mencari puncanya.',
+    btnCopyReason: 'Salin sebab',
+    btnCloseDialog: 'Tutup',
     menuFile: 'Fail',
     menuOpenWorkbook: 'Buka Buku Kerja…',
     menuSave: 'Simpan',
@@ -1388,6 +1463,10 @@ const tMain = createI18n({
     errDiskChanged: 'חוברת העבודה השתנתה בדיסק לאחר פתיחתה — השתמש בשמירה בשם.',
     errSaveUnreadable:
       'לא ניתן היה לפתוח שוב את התוצאה שנשמרה, ולכן הקובץ המקורי לא נדרס. הקובץ המקורי לא השתנה והעריכות שלך עדיין על המסך.',
+    errSaveUnreadableReason:
+      'הסיבה: {reason}\n\nבחרו "העתקת הסיבה" והדביקו אותה בשליחת משוב כדי לעזור לנו למצוא את מקור הבעיה.',
+    btnCopyReason: 'העתקת הסיבה',
+    btnCloseDialog: 'סגירה',
     menuFile: 'קובץ',
     menuOpenWorkbook: 'פתיחת חוברת עבודה…',
     menuSave: 'שמירה',
@@ -1448,6 +1527,10 @@ const tMain = createI18n({
       'खोले जाने के बाद कार्यपुस्तिका डिस्क पर बदल गई — इसके बजाय इस रूप में सहेजें का उपयोग करें।',
     errSaveUnreadable:
       'सहेजा गया परिणाम फिर से नहीं खुल सका, इसलिए मूल फ़ाइल को अधिलेखित नहीं किया गया। मूल फ़ाइल अपरिवर्तित है और आपके संपादन अभी भी स्क्रीन पर हैं।',
+    errSaveUnreadableReason:
+      'कारण: {reason}\n\n"कारण कॉपी करें" चुनें और उसे फ़ीडबैक भेजें में चिपकाएँ, इससे हमें वजह ढूँढने में मदद मिलेगी।',
+    btnCopyReason: 'कारण कॉपी करें',
+    btnCloseDialog: 'बंद करें',
     menuFile: 'फ़ाइल',
     menuOpenWorkbook: 'कार्यपुस्तिका खोलें…',
     menuSave: 'सहेजें',
@@ -1508,6 +1591,10 @@ const tMain = createI18n({
     errDiskChanged: '活頁簿在開啟後被磁碟上的變更覆蓋——請改用另存新檔。',
     errSaveUnreadable:
       '無法重新開啟儲存結果，因此沒有覆寫原始檔案。原始檔案保持不變，編輯內容仍在畫面上。',
+    errSaveUnreadableReason:
+      '原因：{reason}\n\n選擇「複製原因」，再貼到「傳送意見回饋」中，可以協助我們找出原因。',
+    btnCopyReason: '複製原因',
+    btnCloseDialog: '關閉',
     menuFile: '檔案',
     menuOpenWorkbook: '開啟活頁簿…',
     menuSave: '儲存',
@@ -2901,7 +2988,8 @@ const attachmentTextCache = new Map<string, { stamp: string; text: string }>()
 
 function statAttachment(filePath: string): { meta?: AttachmentMeta; error?: string } {
   const name = basename(filePath)
-  const ext = name.split('.').pop()?.toLowerCase() ?? ''
+  // a draw.io picture that holds its diagram is read as diagram text
+  const ext = diagramPictureExtOf(filePath) ?? name.split('.').pop()?.toLowerCase() ?? ''
   if (!ATTACHABLE_EXTS.has(ext)) return { error: `${name}: ${tm('errUnsupportedExt', { ext })}` }
   try {
     const stat = statSync(filePath)
@@ -2961,7 +3049,8 @@ async function extractAttachmentText(filePath: string): Promise<string> {
   const stamp = `${stat.mtimeMs}:${stat.size}`
   const cached = attachmentTextCache.get(filePath)
   if (cached && cached.stamp === stamp) return cached.text
-  if (stat.size > attachableMaxBytes(extname(filePath))) throw new Error(tm('errFileTooLarge'))
+  const capExt = diagramPictureExtOfName(filePath) ?? extname(filePath)
+  if (stat.size > attachableMaxBytes(capExt)) throw new Error(tm('errFileTooLarge'))
   const parsed = await parseFileToText(filePath)
   if (!parsed.ok || parsed.kind !== 'text' || parsed.text == null) {
     throw new Error(parsed.error ?? tm('errParseFailed'))
@@ -3929,8 +4018,13 @@ export function registerSheetsIpc(): void {
     }
     let stagedOpen: SidecarOpenResult
     try {
+      // The previous session is still resident while its save reopens, so a
+      // large workbook opens slower here than it did the first time; give it
+      // the headroom the archive commands of the same save get.
       stagedOpen = sidecarOpenResultSchema.parse(
-        await client.open(stagedPath, getUiLang(), systemShortDate()),
+        await client.open(stagedPath, getUiLang(), systemShortDate(), {
+          timeoutMs: SAVE_REOPEN_TIMEOUT_MS,
+        }),
       )
     } catch (error) {
       const stagedBytes = await stat(stagedPath).then(
@@ -3940,12 +4034,20 @@ export function registerSheetsIpc(): void {
       await rm(stagedPath, { force: true }).catch(() => undefined)
       console.warn('[sheets] the saved workbook did not reopen; the target was left as is:', error)
       const failure = describeReopenFailure(error)
+      const sourceFormat = sessionSourceFormat(session)
       appendSaveFailure(join(app.getPath('userData'), SAVE_FAILURE_LOG_FILE), {
         failure,
-        sourceFormat: sessionSourceFormat(session),
+        sourceFormat,
         stagedBytes,
         appVersion: app.getVersion(),
       })
+      if (request.quiet !== true && !isHeadlessMode()) {
+        await showSaveUnreadableDialog(
+          dialogParent(event),
+          reopenFailureNote(failure),
+          sourceFormat,
+        )
+      }
       throw new Error(`${tm('errSaveUnreadable')} ${reopenFailureNote(failure)}`, {
         cause: error,
       })
@@ -4251,7 +4353,7 @@ export function registerSheetsIpc(): void {
       sessionFor(event)
       const validatedPath = z.string().min(1).max(1024).parse(filePath)
       const name = basename(validatedPath)
-      const ext = name.split('.').pop()?.toLowerCase() ?? ''
+      const ext = diagramPictureExtOf(validatedPath) ?? name.split('.').pop()?.toLowerCase() ?? ''
       if (!ATTACHABLE_EXTS.has(ext)) return { ok: false, error: tm('errUnsupportedExt', { ext }) }
       if (ATTACHABLE_IMAGE_EXTS.has(ext)) {
         return { ok: false, error: tm('errImageNoText') }
@@ -4980,6 +5082,11 @@ async function snapshotWorkbook(path: string): Promise<string> {
 }
 
 /** a fresh snapshot path in the session temp dir; nothing is written there yet */
+/** A save's output opens as part of that save, so it gets the limit the save's
+ *  archive commands get (xlsx-sidecar-client ARCHIVE_TIMEOUT_MS), not the 30s
+ *  of a plain open. */
+const SAVE_REOPEN_TIMEOUT_MS = 180_000
+
 async function reserveSnapshotPath(): Promise<string> {
   const dir = join(app.getPath('temp'), 'genoffice-sheets-sessions')
   await mkdir(dir, { recursive: true })
@@ -5191,6 +5298,31 @@ async function hasCfbHeader(path: string): Promise<boolean> {
   } finally {
     await handle.close()
   }
+}
+
+/// A save whose output did not reopen. The toast and the status bar cut a long
+/// line short, so the reason at the end of the message never reached a report;
+/// the dialog shows it in full and copies it for one.
+async function showSaveUnreadableDialog(
+  parent: BrowserWindow | undefined,
+  reason: string,
+  sourceFormat: string,
+): Promise<void> {
+  const options = {
+    type: 'warning' as const,
+    message: tm('errSaveUnreadable'),
+    detail: tm('errSaveUnreadableReason', { reason }),
+    buttons: [tm('btnCopyReason'), tm('btnCloseDialog')],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true,
+  }
+  const { response } =
+    parent && !parent.isDestroyed()
+      ? await dialog.showMessageBox(parent, options)
+      : await dialog.showMessageBox(options)
+  if (response !== 0) return
+  clipboard.writeText(`${tm('errSaveUnreadable')} ${reason} (${sourceFormat}, ${app.getVersion()})`)
 }
 
 async function showEncryptedOpenFailure(parent: BrowserWindow | undefined): Promise<void> {

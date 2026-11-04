@@ -64,13 +64,21 @@ export class XlsxSidecarClient {
     for (const listener of this.exitListeners) listener()
   }
 
-  async open(path: string, locale = 'zh', shortDateFormat?: string): Promise<unknown> {
-    return this.request({
-      command: 'open',
-      path,
-      locale,
-      ...(shortDateFormat === undefined ? {} : { shortDateFormat }),
-    })
+  async open(
+    path: string,
+    locale = 'zh',
+    shortDateFormat?: string,
+    options?: { readonly timeoutMs?: number },
+  ): Promise<unknown> {
+    return this.request(
+      {
+        command: 'open',
+        path,
+        locale,
+        ...(shortDateFormat === undefined ? {} : { shortDateFormat }),
+      },
+      options?.timeoutMs,
+    )
   }
 
   async readRange(input: {

@@ -6,6 +6,7 @@ Editor PDF má pět karet na pásku: **Domů / Anotace / Úpravy / Stránky / Zo
 
 - Levý postranní panel: **miniatury** (kliknutím přeskočíte, viditelný rozsah je zvýrazněn) nebo **osnova** (záložky, pokud jsou k dispozici).
 - Přiblížení: ovladač poměru vpravo dole; ctrl+kolečko mění přiblížení po stupních.
+- Posun zobrazení: zapněte **nástroj Ruka** (karty Domů a Zobrazení) a tažením posouvejte stránku všemi směry. Dokud je zapnutý, tažení nevybírá text a obyčejné kliknutí odkaz dál otevře. Tažení se stisknutým prostředním tlačítkem (kolečkem) posouvá zobrazení i bez nástroje. Vypne ho Esc nebo výběr jiného nástroje.
 - Otáčení: jednotlivé stránky nebo všechny z nabídky Stránky; otočení se při uložení zapíší zpět do souboru.
 - Vyhledávání: ctrl+F v celém textu se zvýrazněním všech nálezů.
 - Šifrované soubory PDF: otevře je výzva k zadání hesla (v samostatném malém okně); heslo se použije pouze pro tuto relaci. Takový dokument lze upravovat a ukládat; uložení heslo zachová. **Anotace → Chránit** nastaví, změní nebo odebere heslo a to, co smějí čtenáři.

@@ -1,4 +1,4 @@
-import { OUTBOUND_TOOLS, isOutboundCall } from './outbound'
+import { isOutboundCall, isOutboundToolName } from './outbound'
 import type { AgentSkill } from './skill'
 import type { AgentMessage, AgentToolCall, ToolExecution } from './types'
 
@@ -6,8 +6,9 @@ import type { AgentMessage, AgentToolCall, ToolExecution } from './types'
  * The person's say over what leaves the PC through the AI's tools (decision 0062).
  *
  * Two rules on top of every editor's composed skill:
- * - "Let AI use internet tools" off: the outbound tools leave the tool list
- *   and any call that would still reach off the PC is refused.
+ * - "Let AI use internet tools" off: the outbound tools and every user MCP
+ *   server's tool leave the tool list and any call that would still reach
+ *   off the PC is refused.
  * - An address the AI wants to fetch must already stand, character for
  *   character, in the conversation: in the person's messages or in a tool
  *   result (search results, a page or file it read). Anything else is put to
@@ -128,7 +129,7 @@ export function guardOutbound(
       return skill.systemPrompt
     },
     get tools() {
-      return on ? skill.tools : skill.tools.filter((t) => !OUTBOUND_TOOLS.has(t.name))
+      return on ? skill.tools : skill.tools.filter((t) => !isOutboundToolName(t.name))
     },
     buildContext: () => skill.buildContext?.() ?? '',
     executeTool: (call, signal) => {

@@ -19,6 +19,7 @@ const requestHtmlClose = vi.fn(() => Promise.resolve(true))
 const requestMindmapClose = vi.fn(() => Promise.resolve(true))
 const requestHwpClose = vi.fn(() => Promise.resolve(true))
 const requestEpubClose = vi.fn(() => Promise.resolve(true))
+const requestDiagramClose = vi.fn(() => Promise.resolve(true))
 
 vi.mock('../../docs/src/main/docs-main', () => ({
   docsQueryDirty: (...args: unknown[]) => docsQueryDirty(...(args as [])),
@@ -56,6 +57,10 @@ vi.mock('../../hwp/src/main/hwp-main', () => ({
 
 vi.mock('../../epub/src/main/epub-main', () => ({
   requestEpubClose: (...args: unknown[]) => requestEpubClose(...(args as [])),
+}))
+
+vi.mock('../../diagram/src/main/diagram-main', () => ({
+  requestDiagramClose: (...args: unknown[]) => requestDiagramClose(...(args as [])),
 }))
 
 interface TabStub {
@@ -103,7 +108,16 @@ class FakeWindow {
 }
 
 type DirtyKinds =
-  'sheets' | 'pdf' | 'markdown' | 'html' | 'mindmap' | 'hwp' | 'epub' | 'slides' | 'docs'
+  | 'sheets'
+  | 'pdf'
+  | 'markdown'
+  | 'html'
+  | 'mindmap'
+  | 'hwp'
+  | 'epub'
+  | 'diagram'
+  | 'slides'
+  | 'docs'
 
 function fakeManager(dirty: Partial<Record<DirtyKinds, TabStub[]>> = {}) {
   return {
@@ -118,6 +132,7 @@ function fakeManager(dirty: Partial<Record<DirtyKinds, TabStub[]>> = {}) {
     dirtyHwpTabs: () => dirty.hwp ?? [],
     dirtyOrMemoHwpTabs: () => dirty.hwp ?? [],
     dirtyEpubTabs: () => dirty.epub ?? [],
+    dirtyDiagramTabs: () => dirty.diagram ?? [],
     dirtySlidesTabs: () => dirty.slides ?? [],
     docsTabs: () => dirty.docs ?? [],
   }
@@ -143,6 +158,7 @@ beforeEach(async () => {
     requestMindmapClose,
     requestHwpClose,
     requestEpubClose,
+    requestDiagramClose,
   ]) {
     ask.mockImplementation(() => Promise.resolve(true))
   }
@@ -288,6 +304,26 @@ describe('a dirty book tab', () => {
     expect(win.requestClose()).toBe(true)
     await flush()
     expect(requestEpubClose).toHaveBeenCalledTimes(2)
+    expect(win.destroyed).toBe(true)
+  })
+})
+
+describe('a dirty diagram tab', () => {
+  it('is activated and asked, and a cancel keeps the window open', async () => {
+    requestDiagramClose.mockResolvedValueOnce(false)
+    const win = new FakeWindow()
+    const tab = { id: 'diagram-1', webContents: { id: 12 } }
+    const manager = fakeManager({ diagram: [tab] })
+    install(win as never, manager as never)
+    expect(win.requestClose()).toBe(true)
+    await flush()
+    expect(manager.activateTab).toHaveBeenCalledWith('diagram-1')
+    expect(requestDiagramClose).toHaveBeenCalledWith(tab.webContents, win)
+    expect(win.destroyed).toBe(false)
+
+    expect(win.requestClose()).toBe(true)
+    await flush()
+    expect(requestDiagramClose).toHaveBeenCalledTimes(2)
     expect(win.destroyed).toBe(true)
   })
 })

@@ -7,18 +7,41 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
+  decorationValue,
+  fontFamilyValue,
   FONT_SIZE_DRAWN,
   isPlainStyle,
-  LINE_WIDTH_DRAWN_MAX,
   NO_FILL,
+  type OwnTopicStyle,
   ownTopicStyle,
   safeColor,
+  safeDecoration,
   safeFill,
+  safeFontFamily,
   safeFontSize,
   safeFontWeight,
-  safeLineWidth,
+  safeItalic,
+  safeTextAlign,
+  safeTextTransform,
   splitAlpha,
+  BRANCH_LINE_WIDTH_DRAWN_MAX,
+  safeBranchLineWidth,
+  safeBranchShape,
+  safeLinePattern,
 } from '../src/renderer/map/style-values'
+
+/** A topic style that sets nothing. */
+const NOTHING: OwnTopicStyle = {
+  color: null,
+  fill: null,
+  fontWeight: null,
+  fontSize: null,
+  fontFamily: null,
+  italic: null,
+  decoration: null,
+  textAlign: null,
+  textTransform: null,
+}
 
 /** Values no style may ever receive, whatever property they were written under. */
 const HOSTILE: unknown[] = [
@@ -190,27 +213,62 @@ describe('a font weight', () => {
   })
 })
 
-describe('a line width', () => {
-  it('is a number of pixels, a bare number counting as points', () => {
-    expect(safeLineWidth('2')).toBe(2.67)
-    expect(safeLineWidth('3pt')).toBe(4)
-    expect(safeLineWidth('1.5px')).toBe(1.5)
-    expect(safeLineWidth('0')).toBe(0)
-  })
-
-  it('is never wider than the editor draws a line, and nothing when no file means it', () => {
-    expect(safeLineWidth('40pt')).toBe(LINE_WIDTH_DRAWN_MAX)
-    expect(safeLineWidth('65')).toBeNull()
-    expect(safeLineWidth('9999px')).toBeNull()
-    for (const value of HOSTILE) expect(safeLineWidth(value), String(value)).toBeNull()
-  })
-})
-
 describe("a topic's own style", () => {
   it('keeps what is colour-shaped or number-shaped and the known words', () => {
     expect(
       ownTopicStyle({ color: '#AA0000', fill: 'none', fontWeight: 'bold', fontSize: '14pt' }),
-    ).toEqual({ color: '#aa0000', fill: NO_FILL, fontWeight: 700, fontSize: 18.67 })
+    ).toEqual({ ...NOTHING, color: '#aa0000', fill: NO_FILL, fontWeight: 700, fontSize: 18.67 })
+    expect(
+      ownTopicStyle({
+        fontFamily: '맑은 고딕',
+        fontStyle: 'italic',
+        textDecoration: 'underline line-through',
+        textAlign: 'right',
+        textTransform: 'manual',
+      }),
+    ).toEqual({
+      ...NOTHING,
+      fontFamily: '맑은 고딕',
+      italic: true,
+      decoration: { underline: true, strike: true },
+      textAlign: 'right',
+      textTransform: 'none',
+    })
+  })
+
+  it('takes a font name only when it is one plain name, and draws it quoted', () => {
+    expect(safeFontFamily('Noto Sans KR')).toBe('Noto Sans KR')
+    expect(fontFamilyValue('Noto Sans KR')).toBe('"Noto Sans KR", sans-serif')
+    for (const value of [
+      'A", serif',
+      "A'",
+      'A, B',
+      'A; color: red',
+      'url(x)',
+      'A}',
+      ' A',
+      'A ',
+      'A\\',
+      '',
+      'x'.repeat(101),
+      5,
+    ]) {
+      expect(safeFontFamily(value), String(value)).toBeNull()
+    }
+  })
+
+  it('takes the words of the text format and nothing else', () => {
+    expect(safeItalic('italic')).toBe(true)
+    expect(safeItalic('normal')).toBe(false)
+    expect(safeItalic('oblique')).toBeNull()
+    expect(safeDecoration('line-through')).toEqual({ underline: false, strike: true })
+    expect(safeDecoration('none')).toEqual({ underline: false, strike: false })
+    expect(safeDecoration('blink')).toBeNull()
+    expect(decorationValue({ underline: true, strike: false })).toBe('underline')
+    expect(decorationValue({ underline: false, strike: false })).toBe('none')
+    expect(safeTextAlign('justify')).toBeNull()
+    expect(safeTextTransform('capitalize')).toBe('capitalize')
+    expect(safeTextTransform('full-width')).toBeNull()
   })
 
   it('drops each value that is anything else, on its own', () => {
@@ -220,7 +278,7 @@ describe("a topic's own style", () => {
       fontWeight: '600',
       fontSize: 'calc(100px)',
     })
-    expect(own).toEqual({ color: null, fill: null, fontWeight: 600, fontSize: null })
+    expect(own).toEqual({ ...NOTHING, fontWeight: 600 })
     expect(isPlainStyle(own)).toBe(false)
   })
 
@@ -252,8 +310,59 @@ describe("a topic's own style", () => {
         fill: value as string,
         fontWeight: value as string,
         fontSize: value as string,
+        fontStyle: value as string,
+        textDecoration: value as string,
+        textAlign: value as string,
+        textTransform: value as string,
       })
       expect(isPlainStyle(hostile), String(value)).toBe(true)
+      // a word may be a font's name; anything that could end the name is not
+      const family = safeFontFamily(value)
+      if (family !== null) {
+        expect(family, String(value)).not.toMatch(/["'`;:,(){}[\]<>\\=@/*!]/u)
+        expect([...family].every((character) => character >= ' ')).toBe(true)
+      }
+    }
+  })
+})
+
+describe('the values of a branch line', () => {
+  const shape = (word: string): string => `org.xmind.branchConnection.${word}`
+
+  it('a shape a user can pick is itself; a shape only read is the nearest one', () => {
+    for (const word of ['curve', 'straight', 'elbow', 'roundedElbow', 'arrowedCurve', 'none']) {
+      expect(safeBranchShape(shape(word)), word).toBe(word)
+    }
+    expect(safeBranchShape(shape('fold'))).toBe('elbow')
+    expect(safeBranchShape(shape('fold2'))).toBe('elbow')
+    expect(safeBranchShape(shape('roundedfold'))).toBe('roundedElbow')
+    expect(safeBranchShape(shape('bight'))).toBe('curve')
+    expect(safeBranchShape(shape('timeline.horizontal'))).toBe('straight')
+  })
+
+  it('any other shape is no value', () => {
+    for (const value of [shape('mystery'), shape(''), 'curve', shape('Curve'), shape('toString')]) {
+      expect(safeBranchShape(value), value).toBeNull()
+    }
+    for (const value of HOSTILE) expect(safeBranchShape(value), String(value)).toBeNull()
+  })
+
+  it('a pattern is one of the words of the format', () => {
+    for (const word of ['solid', 'dash', 'dot', 'dash-dot', 'dash-dot-dot', 'round-dot']) {
+      expect(safeLinePattern(word)).toBe(word)
+    }
+    for (const value of ['dashed', 'Dash', 'constructor', ...HOSTILE]) {
+      expect(safeLinePattern(value), String(value)).toBeNull()
+    }
+  })
+
+  it('a width is drawn one point to one pixel, as the theme tables are written', () => {
+    expect(safeBranchLineWidth('3pt')).toBe(3)
+    expect(safeBranchLineWidth('3')).toBe(3)
+    expect(safeBranchLineWidth('2.5px')).toBe(2.5)
+    expect(safeBranchLineWidth('40pt')).toBe(BRANCH_LINE_WIDTH_DRAWN_MAX)
+    for (const value of ['0', '0pt', '65', '9999px', '-2', '3em', ...HOSTILE]) {
+      expect(safeBranchLineWidth(value), String(value)).toBeNull()
     }
   })
 })

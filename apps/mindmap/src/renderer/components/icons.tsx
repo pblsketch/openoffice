@@ -118,6 +118,15 @@ export const IconLink = () => (
   </Icon>
 )
 
+/** a picture: a frame with a hill and the sun */
+export const IconPicture = () => (
+  <Icon>
+    <rect x="3.75" y="4.75" width="12.5" height="10.5" rx="1" />
+    <path d="m3.75 13.25 4-4 3.5 3.5 1.75-1.75 3.25 3.25" />
+    <Dot cx={12.75} cy={8.25} />
+  </Icon>
+)
+
 /** how the branches are laid out: one topic, and the two it forks into */
 export const IconLayout = () => (
   <Icon>
@@ -195,5 +204,214 @@ export const IconPlus = () => (
 export const IconClose = () => (
   <Icon size={12}>
     <path d="m3.25 3.25 5.5 5.5M8.75 3.25l-5.5 5.5" />
+  </Icon>
+)
+
+// ---- text format ----
+
+/** the letter B */
+export const IconBold = () => (
+  <Icon>
+    <path d="M6.75 4.75h4a2.5 2.5 0 0 1 0 5h-4zM6.75 9.75h4.75a2.75 2.75 0 0 1 0 5.5h-4.75z" />
+  </Icon>
+)
+
+/** a slanted stroke between two serifs */
+export const IconItalic = () => (
+  <Icon>
+    <path d="M9.25 4.75h5M5.75 15.25h5M11.75 4.75l-3.5 10.5" />
+  </Icon>
+)
+
+/** the letter U on a line */
+export const IconUnderline = () => (
+  <Icon>
+    <path d="M6.25 3.75v5a3.75 3.75 0 0 0 7.5 0v-5M5.25 16.25h9.5" />
+  </Icon>
+)
+
+/** the letter S, struck through */
+export const IconStrike = () => (
+  <Icon>
+    <path d="M13.25 6c-.5-.9-1.6-1.25-3.25-1.25-1.9 0-3.25.85-3.25 2.25 0 .8.4 1.35 1.15 1.75M4.75 10h10.5M7 13.25c.5 1.25 1.6 2 3.25 2 2 0 3.5-.9 3.5-2.4 0-.6-.2-1.05-.6-1.35" />
+  </Icon>
+)
+
+/** a large and a small A: the whole text format */
+export const IconTextFormat = () => (
+  <Icon>
+    <path d="M3.75 15.25l3.5-10.5 3.5 10.5M5 11.25h4.5" />
+    <path d="M12.25 15.25l2.25-6 2.25 6M12.9 13.25h3.2" />
+  </Icon>
+)
+
+export const IconAlignLeft = () => (
+  <Icon>
+    <path d="M3.75 5.25h12.5M3.75 8.5h8M3.75 11.75h12.5M3.75 15h8" />
+  </Icon>
+)
+
+export const IconAlignCenter = () => (
+  <Icon>
+    <path d="M3.75 5.25h12.5M6 8.5h8M3.75 11.75h12.5M6 15h8" />
+  </Icon>
+)
+
+export const IconAlignRight = () => (
+  <Icon>
+    <path d="M3.75 5.25h12.5M8.25 8.5h8M3.75 11.75h12.5M8.25 15h8" />
+  </Icon>
+)
+
+export const IconMinus = () => (
+  <Icon size={14}>
+    <path d="M2.75 7h8.5" />
+  </Icon>
+)
+
+// ---- line format: the shapes a user picks in the format panel ----
+//
+// Each shape is drawn the way the map draws it, small: a branch line leaves
+// a topic on the left and arrives on the right, a relationship's end points
+// right (the start end is the same drawing mirrored), a summary bracket
+// stands to the right of the branches it covers, a boundary goes round a box.
+
+/** Mirrors a drawing left to right: the start end of a relationship. */
+function Mirrored({ on, children }: { on: boolean; children: ReactNode }) {
+  return on ? <g transform="matrix(-1 0 0 1 20 0)">{children}</g> : <>{children}</>
+}
+
+export const IconLineCurve = () => (
+  <Icon>
+    <path d="M3.75 15.25c6.25 0 6.25-10.5 12.5-10.5" />
+  </Icon>
+)
+
+export const IconLineStraight = () => (
+  <Icon>
+    <path d="m3.75 15.25 12.5-10.5" />
+  </Icon>
+)
+
+export const IconLineElbow = () => (
+  <Icon>
+    <path d="M3.75 15.25H10V4.75h6.25" />
+  </Icon>
+)
+
+export const IconLineRoundedElbow = () => (
+  <Icon>
+    <path d="M3.75 15.25H7.5A2.5 2.5 0 0 0 10 12.75v-5.5a2.5 2.5 0 0 1 2.5-2.5h3.75" />
+  </Icon>
+)
+
+export const IconLineArrowedCurve = () => (
+  <Icon>
+    <path d="M3.75 15.25c6.25 0 6.25-10.5 12.5-10.5" />
+    <path d="m13.75 2.5 2.5 2.25-2.5 2.25" />
+  </Icon>
+)
+
+/** a branch without a line: the two topics, nothing between them */
+export const IconLineNone = () => (
+  <Icon>
+    <rect x="2.75" y="12.75" width="4.5" height="4.5" rx="2.25" />
+    <rect x="12.75" y="2.75" width="4.5" height="4.5" rx="2.25" />
+    <path d="m8.75 11.25 2.5-2.5" strokeDasharray="0.01 2.5" />
+  </Icon>
+)
+
+export const IconLineZigzag = () => (
+  <Icon>
+    <path d="M3.25 10h1.5l1.75-3.5 2.25 7 2.25-7 2.25 7 1.75-3.5h1.75" />
+  </Icon>
+)
+
+/** a relationship's end: none, an arrow, a filled shape or the strokes of a feather */
+export const IconArrowEnd = ({ kind, start = false }: { kind: string; start?: boolean }) => (
+  <Icon>
+    <Mirrored on={start}>
+      {kind === 'none' && <path d="M3.75 10h12.5" />}
+      {kind === 'normal' && <path d="M3.75 10h12.5M12.5 6.75l3.75 3.25-3.75 3.25" />}
+      {kind === 'spearhead' && <path d="M3.75 10h7.5M16.25 10l-5.5 3 1.5-3-1.5-3z" />}
+      {kind === 'triangle' && <path d="M3.75 10h7.5M16.25 10l-5 3V7z" />}
+      {kind === 'dot' && (
+        <>
+          <path d="M3.75 10h8" />
+          <circle cx="14" cy="10" r="2.25" />
+        </>
+      )}
+      {kind === 'square' && (
+        <>
+          <path d="M3.75 10h8" />
+          <rect x="11.75" y="7.75" width="4.5" height="4.5" rx=".5" />
+        </>
+      )}
+      {kind === 'diamond' && <path d="M3.75 10h6.5M16.25 10l-3 2.5-3-2.5 3-2.5z" />}
+      {kind === 'herringbone' && (
+        <path d="M3.75 10h12.5M8.5 7.25l2 2.75-2 2.75M12 7.25l2 2.75-2 2.75" />
+      )}
+    </Mirrored>
+  </Icon>
+)
+
+/** a summary bracket of each shape, standing right of the branches it covers */
+export const IconSummaryShape = ({ kind }: { kind: string }) => {
+  const paths: Record<string, string> = {
+    curly:
+      'M6.25 3.75c2.5 0 3.75.75 3.75 3v1c0 1.5 1.25 2.25 3.75 2.25-2.5 0-3.75.75-3.75 2.25v1c0 2.25-1.25 3-3.75 3',
+    angle: 'M6.25 3.75 13.75 10l-7.5 6.25',
+    square: 'M6.25 3.75H10v12.5H6.25M10 10h3.75',
+    round: 'M6.25 3.75c5 0 7.5 2.5 7.5 6.25s-2.5 6.25-7.5 6.25',
+    bracket: 'M6.25 3.75c2.5 0 3.75.75 3.75 2.5v7.5c0 1.75-1.25 2.5-3.75 2.5M10 10h3.75',
+    sharp: 'M6.25 3.75 10 6.5v1.5l3.75 2-3.75 2v1.5l-3.75 2.75',
+    fold: 'M6.25 3.75 10 10l-3.75 6.25M10 10h3.75',
+    straight: 'M10 3.75v12.5',
+  }
+  return (
+    <Icon>
+      <path d={paths[kind] ?? paths.bracket} />
+    </Icon>
+  )
+}
+
+/** a boundary of each shape, round a box */
+export const IconBoundaryShape = ({ kind }: { kind: string }) => {
+  const paths: Record<string, string> = {
+    rect: 'M3.75 5.75h12.5v8.5H3.75z',
+    roundedRect:
+      'M6.25 5.75h7.5a2.5 2.5 0 0 1 2.5 2.5v3.5a2.5 2.5 0 0 1-2.5 2.5h-7.5a2.5 2.5 0 0 1-2.5-2.5v-3.5a2.5 2.5 0 0 1 2.5-2.5z',
+    scallops:
+      'M5 7a1.25 1.25 0 0 1 2.5 0 1.25 1.25 0 0 1 2.5 0 1.25 1.25 0 0 1 2.5 0 1.25 1.25 0 0 1 2.5 0 1.5 1.5 0 0 1 0 3 1.5 1.5 0 0 1 0 3 1.25 1.25 0 0 1-2.5 0 1.25 1.25 0 0 1-2.5 0 1.25 1.25 0 0 1-2.5 0 1.25 1.25 0 0 1-2.5 0 1.5 1.5 0 0 1 0-3 1.5 1.5 0 0 1 0-3z',
+    waves:
+      'M3.75 6.25q1.5-1.25 3.125 0t3.125 0 3.125 0 3.125 0q-1.25 1.875 0 3.75t0 3.75q-1.5 1.25-3.125 0t-3.125 0-3.125 0-3.125 0q1.25-1.875 0-3.75t0-3.75z',
+    tension:
+      'M3.75 5.25Q10 7.5 16.25 5.25 14.5 10 16.25 14.75 10 12.5 3.75 14.75 5.5 10 3.75 5.25z',
+    polygon: 'M6.25 6.25h7.5l3 3.75-3 3.75h-7.5l-3-3.75z',
+    roundedPolygon:
+      'M7 6.25h6q.75 0 1.2.6l1.9 2.55q.45.6 0 1.2l-1.9 2.55q-.45.6-1.2.6H7q-.75 0-1.2-.6L3.9 10.6q-.45-.6 0-1.2l1.9-2.55q.45-.6 1.2-.6z',
+  }
+  return (
+    <Icon>
+      <path d={paths[kind] ?? paths.roundedRect} />
+    </Icon>
+  )
+}
+
+/** a boundary round two topics: "add a boundary" */
+export const IconBoundary = () => (
+  <Icon>
+    <rect x="2.75" y="3.25" width="14.5" height="13.5" rx="3" strokeDasharray="2.5 2" />
+    <rect x="5.75" y="6.25" width="8.5" height="3" rx="1.5" />
+    <rect x="5.75" y="10.75" width="8.5" height="3" rx="1.5" />
+  </Icon>
+)
+
+/** a paint roller: the format painter */
+export const IconFormatPainter = () => (
+  <Icon>
+    <rect x="3.75" y="3.25" width="9.5" height="4" rx="1" />
+    <path d="M13.25 5.25h2a1 1 0 0 1 1 1v2.5a1 1 0 0 1-1 1H10.5a1 1 0 0 0-1 1v1.5" />
+    <rect x="8.25" y="12.25" width="2.5" height="4.5" rx="1" />
   </Icon>
 )

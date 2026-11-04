@@ -58,6 +58,7 @@ import { getUiLang, normalizeLang, setUiLang } from '@genoffice/i18n'
 import { openXmind } from '@genoffice/xmind-engine'
 import { registerMindmapAiIpc } from './ai-attachments'
 import { registerMindmapImageIpc } from './ai-image'
+import { registerLinkPreviewIpc } from './link-preview'
 import { atomicWriteFile } from './atomic-write'
 import { registerMindmapExportIpc } from './export-main'
 import { registerMindmapHandoffIpc } from './handoff-main'
@@ -770,6 +771,8 @@ function registerMindmapIpc(): void {
     filePathOf: (wcId) => savePathByWc.get(wcId) ?? null,
     pastedImageDir: join(app.getPath('temp'), 'genoffice-pasted'),
   })
+  // a link's picture and title, read only when the person asks for them in the link dialog
+  registerLinkPreviewIpc()
   registerMindmapExportIpc({ filePathOf: (wcId) => savePathByWc.get(wcId) })
   registerMindmapHandoffIpc({ opensFile: (wcId) => openPathByWc.has(wcId) })
   registerMindmapSeedIpc({ opensFile: (wcId) => openPathByWc.has(wcId) })

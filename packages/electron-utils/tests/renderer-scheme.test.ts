@@ -10,6 +10,7 @@ describe('rendererUrl', () => {
     expect(rendererUrl(undefined, 'docs')).toBe('genoffice-app://docs/index.html')
     expect(rendererUrl(undefined, 'mindmap')).toBe('genoffice-app://mindmap/index.html')
     expect(rendererUrl(undefined, 'epub')).toBe('genoffice-app://epub/index.html')
+    expect(rendererUrl(undefined, 'diagram')).toBe('genoffice-app://diagram/index.html')
   })
 
   it('appends the query to a dev URL that already carries params', () => {

@@ -62,6 +62,7 @@ export function freshTopic(id: string, title: string, more: Partial<ViewTopic> =
     image: null,
     markers: [],
     style: {},
+    titleRuns: null,
     summaries: [],
     children: [],
     ...more,

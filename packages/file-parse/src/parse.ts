@@ -1,6 +1,7 @@
 import { open, readFile, stat } from 'node:fs/promises'
 import { extname } from 'node:path'
 import { OdtNotTextError, isOdtOpenError } from '@genoffice/odt-engine'
+import { diagramFormatOf, readDiagramText } from './diagram'
 import { docToText } from './doc'
 import { docxToText } from './docx'
 import { epubToText } from './epub'
@@ -209,6 +210,25 @@ export async function parseFileToText(
   opts: ParseFileOptions = {},
 ): Promise<ParsedFile> {
   const ext = extname(filePath).slice(1).toLowerCase()
+  // a draw.io diagram is named first: `.drawio.png` and `.drawio.svg` are read
+  // as diagram text, not by their last extension
+  if (diagramFormatOf(filePath)) {
+    try {
+      const read = readDiagramText(filePath, await readFile(filePath))
+      if (read.ok) return { ok: true, kind: 'text', text: read.text }
+      // a picture that only carries the name is the picture it is: read on by
+      // its last extension below
+      if (read.reason !== 'no_original') {
+        return {
+          ok: false,
+          kind: 'text',
+          error: `Cannot read diagram (${read.reason}): ${read.message}`,
+        }
+      }
+    } catch (e) {
+      return { ok: false, kind: 'text', error: e instanceof Error ? e.message : String(e) }
+    }
+  }
   const imageMime = IMAGE_MIMES[ext]
   if (imageMime) return { ok: true, kind: 'image', mime: imageMime }
   try {

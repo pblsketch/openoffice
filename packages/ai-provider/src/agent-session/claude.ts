@@ -35,6 +35,7 @@ import { agentPolicyVerdict, webHostOf } from './policy'
 import { DECLINED_BY_PERSON, denyMessage } from './messages'
 import type {
   AgentAction,
+  AgentMcpRelay,
   AgentPermissionAnswer,
   AgentPermissionMode,
   AgentSession,
@@ -91,6 +92,44 @@ const APP_MCP_TOOL_SET: ReadonlySet<string> = new Set(AGENT_APP_MCP_TOOLS)
 export function isAgentAppMcpTool(name: string): boolean {
   const prefix = `mcp__${APP_MCP_SERVER_NAME}__`
   return APP_MCP_TOOL_SET.has(name.startsWith(prefix) ? name.slice(prefix.length) : name)
+}
+
+/**
+ * A relay name both programs can carry in a tool name: the user MCP
+ * server-name shape (letters, digits, `-`, `_`; no `__`, no `_` at an edge)
+ */
+const RELAY_NAME = /^(?!_)(?!.*__)[A-Za-z0-9_-]+(?<!_)$/
+
+/**
+ * The relays a session can use (user MCP spec 9): each with a name of the
+ * server-name shape that is not the app's own server, once. The start checks,
+ * the MCP configuration and the permission rules all read this one list, so a
+ * relay the app did not open can never pass a check.
+ */
+export function agentUsableRelays(
+  relays: readonly AgentMcpRelay[] | undefined,
+): readonly AgentMcpRelay[] {
+  const seen = new Set<string>([APP_MCP_SERVER_NAME.toLowerCase()])
+  const out: AgentMcpRelay[] = []
+  for (const relay of relays ?? []) {
+    const key = relay.name.toLowerCase()
+    if (!RELAY_NAME.test(relay.name) || seen.has(key)) continue
+    seen.add(key)
+    out.push(relay)
+  }
+  return out
+}
+
+/** The relay a program-side tool name `mcp__<relay>__<tool>` belongs to, with the bare tool */
+export function agentRelayToolOf(
+  name: string,
+  relays: readonly AgentMcpRelay[] | undefined,
+): { relay: AgentMcpRelay; tool: string } | undefined {
+  for (const relay of agentUsableRelays(relays)) {
+    const prefix = `mcp__${relay.name}__`
+    if (name.startsWith(prefix)) return { relay, tool: name.slice(prefix.length) }
+  }
+  return undefined
 }
 
 const SETTINGS_FILE = 'claude-settings.json'
@@ -193,7 +232,8 @@ export function claudeRulePath(
  * are rebuilt from the open documents at the start.
  */
 export function claudeAgentSettings(
-  options: Pick<AgentSessionOptions, 'openDocuments' | 'protectedPaths'>,
+  options: Pick<AgentSessionOptions, 'openDocuments' | 'protectedPaths'> &
+    Partial<Pick<AgentSessionOptions, 'mode' | 'userMcpRelays'>>,
   platform: NodeJS.Platform = process.platform,
 ): Record<string, unknown> {
   const deny: string[] = []
@@ -208,22 +248,37 @@ export function claudeAgentSettings(
     if (!rule) continue
     deny.push(`Edit(${rule})`, `Write(${rule})`)
   }
-  return { permissions: { blockReadsOutsideWorkingDirectories: true, deny } }
-}
-
-export function claudeAgentMcpConfig(appMcp: {
-  url: string
-  token: string
-}): Record<string, unknown> {
+  // In `auto` mode the CLI's own reviewer judges a call before it reaches the app; a relay asks
+  // the person itself (user MCP spec 9), so its calls are let through to it rather than asked twice
+  const relays = options.mode === 'trust-project' ? agentUsableRelays(options.userMcpRelays) : []
+  const allow = relays.map((relay) => `mcp__${relay.name}`)
   return {
-    mcpServers: {
-      [APP_MCP_SERVER_NAME]: {
-        type: 'http',
-        url: appMcp.url,
-        headers: { Authorization: `Bearer ${appMcp.token}` },
-      },
+    permissions: {
+      blockReadsOutsideWorkingDirectories: true,
+      ...(allow.length > 0 ? { allow } : {}),
+      deny,
     },
   }
+}
+
+/**
+ * The session's MCP servers: the app's own, and a relay per person's server
+ * (user MCP spec 9). Each entry holds a loopback address and a token of this
+ * session only; the person's servers' own addresses and keys stay in the app.
+ */
+export function claudeAgentMcpConfig(
+  appMcp: { url: string; token: string } | undefined,
+  relays: readonly AgentMcpRelay[] = [],
+): Record<string, unknown> {
+  const entry = (server: { url: string; token: string }) => ({
+    type: 'http',
+    url: server.url,
+    headers: { Authorization: `Bearer ${server.token}` },
+  })
+  const mcpServers: Record<string, unknown> = {}
+  for (const relay of agentUsableRelays(relays)) mcpServers[relay.name] = entry(relay)
+  if (appMcp) mcpServers[APP_MCP_SERVER_NAME] = entry(appMcp)
+  return { mcpServers }
 }
 
 function stringField(input: unknown, ...names: string[]): string | undefined {
@@ -235,10 +290,18 @@ function stringField(input: unknown, ...names: string[]): string | undefined {
   return undefined
 }
 
-/** What a Claude Code tool call does, in the policy's terms */
-export function claudeAgentAction(tool: string, input: unknown): AgentAction {
+/**
+ * What a Claude Code tool call does, in the policy's terms. A tool of this
+ * session's relays is an app tool: the relay asks the person when its
+ * permission says so, and the program-level card would ask a second time.
+ */
+export function claudeAgentAction(
+  tool: string,
+  input: unknown,
+  relays: readonly AgentMcpRelay[] = [],
+): AgentAction {
   const reason = stringField(input, 'description')
-  if (tool.startsWith(`mcp__${APP_MCP_SERVER_NAME}__`)) {
+  if (tool.startsWith(`mcp__${APP_MCP_SERVER_NAME}__`) || agentRelayToolOf(tool, relays)) {
     return { kind: 'app-tool', tool, paths: [] }
   }
   switch (tool) {
@@ -277,23 +340,39 @@ export function claudeAgentAction(tool: string, input: unknown): AgentAction {
   }
 }
 
-/** The tool list and MCP servers the CLI reported are the ones the session asked for */
-export function claudeAgentInitProblem(init: Record<string, unknown>): string | undefined {
+/**
+ * The tool list and MCP servers the CLI reported are the ones the session
+ * asked for: its fixed tools, the app server's tools, and this session's
+ * relays (user MCP spec 9) with the tools each listed at the start. Anything
+ * else, a relay's tool it did not list included, is a problem.
+ */
+export function claudeAgentInitProblem(
+  init: Record<string, unknown>,
+  relays: readonly AgentMcpRelay[] = [],
+): string | undefined {
   const tools = init.tools
   if (!Array.isArray(tools)) return 'Claude Code did not report its tool list'
   const allowed = new Set<string>(CLAUDE_AGENT_TOOLS)
   const appPrefix = `mcp__${APP_MCP_SERVER_NAME}__`
+  const relayTool = (tool: string): boolean => {
+    const found = agentRelayToolOf(tool, relays)
+    return found !== undefined && found.relay.tools.includes(found.tool)
+  }
   // the app's own tools by name: a tool of its server the session was not meant to get is extra
   const extra = tools.filter(
     (tool) =>
       typeof tool !== 'string' ||
-      (!allowed.has(tool) && !(tool.startsWith(appPrefix) && isAgentAppMcpTool(tool))),
+      (!allowed.has(tool) &&
+        !(tool.startsWith(appPrefix) && isAgentAppMcpTool(tool)) &&
+        !relayTool(tool)),
   )
   if (extra.length > 0)
     return `Claude Code started with tools the app did not turn on: ${extra.length}`
+  const given = new Set([APP_MCP_SERVER_NAME, ...agentUsableRelays(relays).map((r) => r.name)])
   const servers = Array.isArray(init.mcp_servers) ? init.mcp_servers : []
   const foreign = servers.filter(
-    (server) => !isPlainObject(server) || server.name !== APP_MCP_SERVER_NAME,
+    (server) =>
+      !isPlainObject(server) || typeof server.name !== 'string' || !given.has(server.name),
   )
   if (foreign.length > 0) return 'Claude Code started with an MCP server the app did not give it'
   return undefined
@@ -319,11 +398,12 @@ export async function startClaudeAgentSession(
   const platform = deps.platform ?? process.platform
   const write = deps.writeFile ?? ((path: string, data: string) => writeFile(path, data, 'utf8'))
   const settingsFile = join(options.sessionDir, SETTINGS_FILE)
+  const relays = agentUsableRelays(options.userMcpRelays)
   await write(settingsFile, JSON.stringify(claudeAgentSettings(options, platform)))
   let mcpConfigFile: string | undefined
-  if (options.appMcp) {
+  if (options.appMcp || relays.length > 0) {
     mcpConfigFile = join(options.sessionDir, MCP_CONFIG_FILE)
-    await write(mcpConfigFile, JSON.stringify(claudeAgentMcpConfig(options.appMcp)))
+    await write(mcpConfigFile, JSON.stringify(claudeAgentMcpConfig(options.appMcp, relays)))
   }
   const args = claudeAgentLaunchArgs({
     model: options.model,
@@ -441,7 +521,7 @@ export async function startClaudeAgentSession(
       return
     }
     const tool = typeof request.tool_name === 'string' ? request.tool_name : ''
-    const action = claudeAgentAction(tool, request.input)
+    const action = claudeAgentAction(tool, request.input, relays)
     if (typeof request.decision_reason === 'string' && !action.reason) {
       action.reason = request.decision_reason
     }
@@ -494,7 +574,7 @@ export async function startClaudeAgentSession(
       if (block.type === 'text' && typeof block.text === 'string' && block.text.trim()) {
         emit({ type: 'text', text: block.text })
       } else if (block.type === 'tool_use' && typeof block.name === 'string') {
-        const action = claudeAgentAction(block.name, block.input)
+        const action = claudeAgentAction(block.name, block.input, relays)
         if (typeof block.id === 'string') toolUses.set(block.id, action)
         emit({ type: 'tool', action, status: 'running' })
       }
@@ -590,7 +670,7 @@ export async function startClaudeAgentSession(
       }
       case 'system':
         if (event.subtype === 'init') {
-          const problem = claudeAgentInitProblem(event)
+          const problem = claudeAgentInitProblem(event, relays)
           if (problem) {
             stopNow(new AiRunError('unsafe-tools', `${problem}; the session was stopped`))
             return

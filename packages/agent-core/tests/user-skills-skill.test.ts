@@ -69,6 +69,7 @@ function makeDeps(over: Partial<UserSkillsDeps> = {}) {
           files: ['reference/tone.md'],
           template: undefined,
           hasScripts: false,
+          mcpServers: [],
         },
       }
     },
@@ -214,6 +215,7 @@ describe('createUserSkillsSkill', () => {
           files: [],
           template: 'assets/form.hwpx',
           hasScripts: true,
+          mcpServers: [],
         },
       }),
     })
@@ -497,7 +499,15 @@ describe('createBridgedUserSkillsSkill', () => {
       list: vi.fn(async () => views),
       aiRead: vi.fn(async (id: string) => ({
         ok: true,
-        skill: { id, name: 'a', title: 'A', body: 'body', files: [], hasScripts: false },
+        skill: {
+          id,
+          name: 'a',
+          title: 'A',
+          body: 'body',
+          files: [],
+          hasScripts: false,
+          mcpServers: [],
+        },
       })),
       aiReadFile: vi.fn(async () => ({ ok: false, reason: 'too-large' })),
       onChanged: (listener: () => void) => {
@@ -530,7 +540,15 @@ describe('createBridgedUserSkillsSkill', () => {
       list: vi.fn(async () => views),
       aiRead: vi.fn(async (id: string) => ({
         ok: true,
-        skill: { id, name: 'new', title: 'New', body: 'fresh body', files: [], hasScripts: false },
+        skill: {
+          id,
+          name: 'new',
+          title: 'New',
+          body: 'fresh body',
+          files: [],
+          hasScripts: false,
+          mcpServers: [],
+        },
       })),
       aiReadFile: vi.fn(async () => ({ ok: true, text: 'file text' })),
       onChanged: () => () => {},

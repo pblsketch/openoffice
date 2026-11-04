@@ -6,6 +6,7 @@ L’éditeur PDF a cinq onglets de ruban : **Accueil / Annoter / Édition / Page
 
 - Barre latérale gauche : les **Vignettes** (cliquez pour sauter, la plage visible est mise en évidence) ou les **Signets** (le sommaire, lorsqu’il existe).
 - Zoom : le contrôle de ratio en bas à droite ; ctrl+molette règle le zoom par crans.
+- Déplacer l'affichage : activez l'**Outil Main** (onglets Accueil et Affichage) et faites glisser pour déplacer la page dans tous les sens. Tant qu'il est actif, le glissement ne sélectionne pas de texte et un simple clic suit toujours un lien. Glisser avec le bouton du milieu (molette) enfoncé déplace l'affichage sans l'outil. Échap ou un autre outil le désactive.
 - Rotation : page par page ou pour toutes les pages depuis le menu Pages ; les rotations sont réécrites à l’enregistrement.
 - Recherche : ctrl+F en texte intégral, toutes les occurrences sont mises en évidence.
 - PDF chiffrés : une demande de mot de passe (dans sa propre petite fenêtre) permet de les ouvrir ; le mot de passe ne sert que pour cette session. Vous pouvez modifier et enregistrer un tel document ; l’enregistrement conserve son mot de passe. **Annoter → Protéger** définit, change ou retire le mot de passe et ce que les lecteurs peuvent faire.

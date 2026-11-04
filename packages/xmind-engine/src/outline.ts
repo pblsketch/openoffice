@@ -46,12 +46,41 @@
  *   markdown must not let raw HTML through, as with any markdown file.
  * - Only a web link (`isWebLink`) is written. Blanks, `<` and `>` inside it are
  *   percent-encoded.
+ *
+ * With ids (`OUTLINE_READING_OPTIONS`, what an assistant reads) the lines that
+ * are not topics name what they are about, so a tool can change it. They are
+ * judged on the view (`sheetToView`): a relationship, summary or boundary the
+ * editor does not draw is not written at all, and every one it draws is, with
+ * or without a title:
+ *
+ *     - (relationship) {#r1} Start {#t1} -> End {#t2}: text [shape=curved, end=triangle]
+ *     - (summary) Title {#s1} [over {#t3}..{#t5}, shape=curly]
+ *     - (boundary) {#b1} Title [around {#t3}..{#t5}, fill=none]
+ *     - (boundary) {#b2} [around {#t6}]
+ *
+ * A relationship stands below the topic it starts at, a boundary below the
+ * topic that carries it (`around {#id}` alone: around that topic itself). The
+ * format set on it follows in square brackets, in the words of
+ * `outlineStyleWords`. Without ids none of this is written: the text is the
+ * one described above, byte for byte.
  */
 
+import {
+  ARROW_SHAPE_PREFIX,
+  BOUNDARY_SHAPE_PREFIX,
+  BOUNDARY_STYLE_PROPERTIES,
+  BRANCH_LINE_CLASS_PREFIX,
+  BRANCH_LINE_PROPERTIES,
+  classWord,
+  RELATIONSHIP_SHAPE_PREFIX,
+  RELATIONSHIP_STYLE_PROPERTIES,
+  SUMMARY_SHAPE_PREFIX,
+  SUMMARY_STYLE_PROPERTIES,
+} from './line-style'
 import { noteText } from './notes'
 import { kindMarkLength, LINE_BREAK, OUTLINE_KIND_MARKS, type OutlineKind } from './outline-marks'
 import { isRecord, type XmindSheet, type XmindTopic } from './types'
-import { isWebLink } from './view'
+import { isWebLink, sheetToView, type ViewTopic } from './view'
 
 export { OUTLINE_KIND_MARKS, type OutlineKind } from './outline-marks'
 
@@ -66,6 +95,13 @@ export interface OutlineOptions {
   foldBelowLevel?: number
   /** Fold only a sheet with more topics than this. Every sheet when left out. */
   foldAboveTopics?: number
+  /**
+   * Write only the branch below the topic with this id (of any kind), that
+   * topic first, as if it were the central topic. With ids, what is drawn is
+   * still judged on the whole sheet. Only the heading is written when the
+   * sheet has no such topic.
+   */
+  branch?: string
 }
 
 /** A sheet with more topics than this is folded when an assistant reads it. */
@@ -92,12 +128,16 @@ export function sheetsToOutline(
 export function sheetToOutline(sheet: XmindSheet, options: OutlineOptions = {}): string {
   const title = escapeHeading(oneLine(sheet.title))
   const lines = [title === '' ? '#' : `# ${title}`, '']
-  const root = sheet.rootTopic
+  const root =
+    options.branch === undefined ? sheet.rootTopic : findTopic(sheet.rootTopic, options.branch)
+  if (!root) return `${lines.join('\n')}\n`
+  const ids = options.ids === true
   const walk: Walk = {
     lines,
-    ids: options.ids === true,
+    ids,
     foldBelow: foldLevel(root, options),
-    relationships: relationshipTexts(sheet),
+    relationships: ids ? new Map() : relationshipTexts(sheet),
+    marks: ids ? readingMarks(sheet) : null,
   }
   writeTopic(root, 0, null, walk)
   return `${lines.join('\n')}\n`
@@ -115,6 +155,8 @@ interface Walk {
   foldBelow: number | null
   /** the `(relationship)` texts to write below a topic, by the topic's id */
   relationships: Map<string, string[]>
+  /** with ids: what is written of the relationships, summaries and boundaries the editor draws */
+  marks: ReadingMarks | null
 }
 
 /**
@@ -124,7 +166,8 @@ interface Walk {
 function writeTopic(topic: XmindTopic, level: number, kind: OutlineKind | null, walk: Walk): void {
   const indent = '  '.repeat(level)
   const below = `${indent}  `
-  walk.lines.push(`${indent}-${spaced(topicText(topic, kind, walk.ids))}`)
+  const summary = kind === 'summary' ? (walk.marks?.summaries.get(topic.id) ?? '') : ''
+  walk.lines.push(`${indent}-${spaced(topicText(topic, kind, walk.ids) + summary)}`)
   for (const line of noteLines(topic.notes)) walk.lines.push(`${below}>${spaced(line)}`)
 
   if (walk.foldBelow !== null && level >= walk.foldBelow) {
@@ -136,6 +179,14 @@ function writeTopic(topic: XmindTopic, level: number, kind: OutlineKind | null, 
 
   // What follows is about this topic, not a topic of its own, so folding the
   // levels below leaves it in.
+  if (walk.marks) {
+    const about = [
+      ...(walk.marks.boundaries.get(topic.id) ?? []),
+      ...(walk.marks.relationships.get(topic.id) ?? []),
+    ]
+    for (const line of about) walk.lines.push(`${below}- ${line}`)
+    return
+  }
   for (const boundary of records(topic.boundaries)) {
     const title = escapeTitle(oneLine(boundary.title))
     if (title !== '') walk.lines.push(`${below}- ${OUTLINE_KIND_MARKS.boundary} ${title}`)
@@ -259,6 +310,163 @@ function relationshipTexts(sheet: XmindSheet): Map<string, string[]> {
     out.set(from, list)
   }
   return out
+}
+
+/** What is written, with ids, of what the editor draws besides the topics. */
+interface ReadingMarks {
+  /** the `(boundary)` lines below the topic that carries them, by its id */
+  boundaries: Map<string, string[]>
+  /** the `(relationship)` lines below the topic they start at, by its id */
+  relationships: Map<string, string[]>
+  /** what follows the id of a summary topic: its range and its bracket */
+  summaries: Map<string, string>
+}
+
+/** The lines and marks of the relationships, summaries and boundaries of the sheet's view. */
+function readingMarks(sheet: XmindSheet): ReadingMarks {
+  const view = sheetToView(sheet, 0)
+  const out: ReadingMarks = {
+    boundaries: new Map(),
+    relationships: new Map(),
+    summaries: new Map(),
+  }
+  const titles = new Map<string, string>()
+  const topics = new Map<string, ViewTopic>()
+  const pending = [view.root]
+  for (let topic = pending.pop(); topic; topic = pending.pop()) {
+    titles.set(topic.id, oneLine(topic.title))
+    topics.set(topic.id, topic)
+    for (const summary of topic.summaries) {
+      titles.set(summary.topicId, oneLine(summary.title))
+      const range = `over ${branchRange(topic, summary.start, summary.end)}`
+      out.summaries.set(summary.topicId, styleMark(range, 'summary', summary.style))
+    }
+    pending.push(...topic.children)
+  }
+  for (const boundary of view.boundaries ?? []) {
+    const carrier = topics.get(boundary.topicId)
+    if (!carrier) continue
+    const range =
+      boundary.range === 'master'
+        ? idTag(carrier.id)
+        : branchRange(carrier, boundary.range.start, boundary.range.end)
+    const title = escapeInline(oneLine(boundary.title))
+    const text = [OUTLINE_KIND_MARKS.boundary, idTag(boundary.id), ...(title ? [title] : [])]
+    const mark = styleMark(`around ${range}`, 'boundary', boundary.style)
+    push(out.boundaries, carrier.id, `${text.join(' ')}${mark}`)
+  }
+  const named = (id: string): string => {
+    const title = escapeInline(titles.get(id) ?? '')
+    return title === '' ? idTag(id) : `${title} ${idTag(id)}`
+  }
+  for (const relationship of view.relationships) {
+    const ends = `${named(relationship.fromId)} -> ${named(relationship.toId)}`
+    const title = escapeInline(oneLine(relationship.title))
+    const text = `${OUTLINE_KIND_MARKS.relationship} ${idTag(relationship.id)} ${ends}`
+    const mark = styleMark(null, 'relationship', relationship.style)
+    push(out.relationships, relationship.fromId, `${text}${title ? `: ${title}` : ''}${mark}`)
+  }
+  return out
+}
+
+/** The first and last of the branches `start`..`end` of a topic, by their ids. */
+function branchRange(topic: ViewTopic, start: number, end: number): string {
+  const first = topic.children[start]
+  const last = topic.children[end]
+  return first && last ? `${idTag(first.id)}..${idTag(last.id)}` : ''
+}
+
+/** ` [lead, key=value, …]`; nothing when there is neither. */
+function styleMark(
+  lead: string | null,
+  kind: OutlineStyleKind,
+  values: Readonly<Record<string, string | undefined>> | undefined,
+): string {
+  const parts = outlineStyleWords(kind, values).map(([key, word]) => `${key}=${word}`)
+  if (lead !== null) parts.unshift(lead)
+  return parts.length === 0 ? '' : ` [${parts.join(', ')}]`
+}
+
+function push(map: Map<string, string[]>, key: string, line: string): void {
+  const list = map.get(key) ?? []
+  list.push(line)
+  map.set(key, list)
+}
+
+/** A topic of any kind with this id, found without recursion. */
+function findTopic(root: XmindTopic, id: string): XmindTopic | null {
+  const pending = [root]
+  for (let topic = pending.pop(); topic; topic = pending.pop()) {
+    if (topic.id === id) return topic
+    for (const child of topicsBelow(topic)) pending.push(child.topic)
+  }
+  return null
+}
+
+/** What a format belongs to: the line into a branch, a relationship, a summary bracket, a boundary. */
+export type OutlineStyleKind = 'branch' | 'relationship' | 'summary' | 'boundary'
+
+const STYLE_KEYS: Readonly<Record<OutlineStyleKind, readonly string[]>> = {
+  branch: Object.keys(BRANCH_LINE_PROPERTIES),
+  relationship: Object.keys(RELATIONSHIP_STYLE_PROPERTIES),
+  summary: Object.keys(SUMMARY_STYLE_PROPERTIES),
+  boundary: Object.keys(BOUNDARY_STYLE_PROPERTIES),
+}
+
+const SHAPE_PREFIXES: Readonly<Record<OutlineStyleKind, string>> = {
+  branch: BRANCH_LINE_CLASS_PREFIX,
+  relationship: RELATIONSHIP_SHAPE_PREFIX,
+  summary: SUMMARY_SHAPE_PREFIX,
+  boundary: BOUNDARY_SHAPE_PREFIX,
+}
+
+/** The word a value of another form stands as: the editor keeps it but cannot name it. */
+const OTHER_VALUE = 'other'
+const SHAPE_WORD = /^[A-Za-z0-9][\w.-]*$/
+const HEX_COLOR = /^#[0-9a-f]{6}$/i
+const POINTS = /^\s*(\d+(?:\.\d+)?)\s*pt\s*$/i
+const OTHER_WIDTH = /^\s*(\d+(?:\.\d+)?(?:px)?)\s*$/i
+const PATTERN_WORD = /^[a-z][a-z-]*$/i
+
+/**
+ * The values of a format (by the view's names, as the file holds them) in the
+ * words an assistant reads and writes, in the order of the format's keys: a
+ * shape without its `org.xmind.…` prefix, a width in points as a number, a
+ * colour as `#rrggbb`. A value of another form is `other`, so nothing of it
+ * can break the line it is written on.
+ */
+export function outlineStyleWords(
+  kind: OutlineStyleKind,
+  values: Readonly<Record<string, string | undefined>> | null | undefined,
+): Array<[string, string]> {
+  const out: Array<[string, string]> = []
+  if (!isRecord(values)) return out
+  for (const key of STYLE_KEYS[kind]) {
+    const value = values[key]
+    if (typeof value === 'string') out.push([key, styleWord(kind, key, value)])
+  }
+  return out
+}
+
+function styleWord(kind: OutlineStyleKind, key: string, value: string): string {
+  switch (key) {
+    case 'shape':
+    case 'begin':
+    case 'end': {
+      const prefix = key === 'shape' ? SHAPE_PREFIXES[kind] : ARROW_SHAPE_PREFIX
+      const word = classWord(value, prefix)
+      return word !== null && SHAPE_WORD.test(word) ? word : OTHER_VALUE
+    }
+    case 'color':
+      return HEX_COLOR.test(value) ? value.toLowerCase() : OTHER_VALUE
+    case 'fill':
+      if (value === 'none') return value
+      return HEX_COLOR.test(value) ? value.toLowerCase() : OTHER_VALUE
+    case 'width':
+      return POINTS.exec(value)?.[1] ?? OTHER_WIDTH.exec(value)?.[1] ?? OTHER_VALUE
+    default:
+      return PATTERN_WORD.test(value) ? value : OTHER_VALUE
+  }
 }
 
 /**

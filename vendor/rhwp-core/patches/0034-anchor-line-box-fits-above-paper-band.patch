@@ -1,0 +1,83 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pblsketch <239486537+pblsketch@users.noreply.github.com>
+Date: Wed, 4 Nov 2026 00:00:00 +0900
+Subject: [PATCH 24/30] fix(typeset): 0020 의 "앵커 글이 개체 위에 들어감" 판정을 줄 상자로 잰다
+
+0020(topbottom-float-anchor-flow)은 종이·쪽 기준 자리차지 개체를 앵커한 문단이 개체
+밴드에 걸리면 앵커 문단을 개체 아래끝에서 시작한다. 들어감 판정은 그리는 쪽의 옛 판정
+(Task #901)을 그대로 옮겨 `Σ(줄높이 + 줄간격) + 4px <= 개체 위끝 − 흐름` 이었다.
+devel 7d06d5c70 에서 통과하던 upstream 시험 셋이 이 판정 때문에 깨졌다:
+  issue_8168 paper_relative_topandbottom_float_keeps_tac_picture_in_its_line
+  issue_8271 topandbottom_float_keeps_tac_picture_line_after_hwpx_reopen
+  issue_8271 hwpx_and_hwp_reopen_agree_for_topandbottom_float_host
+(bare devel·0018 까지 통과, 0020 부터 실패 — 0021~0028 도 실패.) 편집 세션에서
+글자처럼 그림(59.4px) 줄의 줄높이 + 줄간격 + 4 = 71.3px 가 개체 위 틈 67.7px 보다
+커서, 한/글이 제자리에 두는 그림 줄을 글상자 아래(283.1px)로 내렸다.
+
+한/글이 하는 일(#8271 표본의 종이 기준 위아래 글상자 세로 오프셋만 바꾼 변형을
+한/글 2024 Print 로 출력, 그림 줄 위끝 132.3px):
+  오프셋 14197HU(틈 57.0px) → 그림 272.5px(글상자 아래)
+  14422·14572·14722·14872·15000·15322HU(틈 60.0~76.0px) → 그림 132.3~191.7px(제자리)
+그림 줄 상자(59.4px)가 개체 바깥 상자 위끝까지 들어가면 제자리다. 마지막 줄 뒤 줄간격과
+여유 4px 는 들어가지 않아도 된다.
+
+바꾼 것: 들어감 판정에 앵커 문단 줄 상자 높이(마지막 줄 뒤 줄간격을 뺀 합)를 쓰고
+`줄 상자 <= 틈 + 0.5` 로 잰다. 앵커를 쪽 끝에 남기는 계산(전체 높이)과 0020 의 나머지
+(개체 아래 정렬, 낡은 쪽 경계)는 그대로다.
+
+검사: 위 셋 포함 issue_8271 5건·issue_8168 2건 통과. 0020 의 앱 표본
+paper-topbottom-box-stale-ladder.hwpx 는 그대로 2쪽, 2쪽 글줄 18. 위 변형 rhwp:
+14197 → 그림 272.4, 나머지 132.3(한/글과 같다).
+---
+ src/renderer/typeset.rs              |  6 +++++-
+ src/renderer/typeset/section/flow.rs | 11 ++++++++++-
+ 2 files changed, 15 insertions(+), 2 deletions(-)
+
+diff --git a/src/renderer/typeset.rs b/src/renderer/typeset.rs
+index 53f6724dd9bde80aeb5fac43caefba4cf7fd7e14..3c9302ae643c050d5a6de08563882d2fbdf18b48 100644
+--- a/src/renderer/typeset.rs
++++ b/src/renderer/typeset.rs
+@@ -6718,6 +6718,7 @@ impl TypesetEngine {
+ /// `flow_y` 와 돌려주는 값은 단 상단 기준 px 이다. 이미 개체 아래면 `None`.
+ pub(crate) fn topbottom_float_anchor_flow_bottom(
+     para: &Paragraph,
++    // 앵커 문단 줄 상자 높이(마지막 줄 뒤 줄간격 제외).
+     anchor_text_height: f64,
+     flow_y: f64,
+     col: &crate::renderer::page_layout::LayoutRect,
+@@ -6789,7 +6790,10 @@ pub(crate) fn topbottom_float_anchor_flow_bottom(
+         .filter_map(float_common)
+         .find(|common| matches!(common.text_wrap, TextWrap::TopAndBottom))
+         .map(|common| geometry(common).1);
+-    if first_top.is_some_and(|top| anchor_text_height + 4.0 <= top - y) {
++    // 한/글 2024 Print(#8271 표본의 종이 기준 위아래 글상자 세로 위치만 바꾼 변형): 글자처럼
++    // 그림(59.4px) 줄은 개체 바깥 상자 위끝까지 60.0px 남으면 제자리, 57.0px 면 개체 아래로
++    // 간다. 줄간격 8px 이나 여유 4px 를 더해 재면 60.0px 에서도 내려 그림이 글상자 아래로 갔다.
++    if first_top.is_some_and(|top| anchor_text_height <= top - y + 0.5) {
+         return None;
+     }
+     Some(bottom - col.y)
+diff --git a/src/renderer/typeset/section/flow.rs b/src/renderer/typeset/section/flow.rs
+index 71ad6126cf9f6f4bbd88d66ccc4bbc67e5cde53e..76287996566f0c311f539e888101978cdb0cb0e2 100644
+--- a/src/renderer/typeset/section/flow.rs
++++ b/src/renderer/typeset/section/flow.rs
+@@ -268,9 +268,18 @@ impl TypesetEngine {
+                             .sum::<f64>()
+                     })
+                     .unwrap_or(f64::MAX);
++                // 개체 위에 들어가는지는 줄 상자로 잰다 — 마지막 줄 뒤 줄간격은 개체 위 틈에
++                // 들어가지 않아도 된다(아래 함수 주석의 한/글 측정).
++                let anchor_line_box_height = composed
++                    .get(para_idx)
++                    .and_then(|comp| comp.lines.last())
++                    .map_or(anchor_text_height, |last| {
++                        (anchor_text_height - hwpunit_to_px(last.line_spacing.max(0), self.dpi))
++                            .max(0.0)
++                    });
+                 if let Some(bottom) = crate::renderer::typeset::topbottom_float_anchor_flow_bottom(
+                     para,
+-                    anchor_text_height,
++                    anchor_line_box_height,
+                     st.current_height,
+                     &column,
+                     &st.layout.body_area,

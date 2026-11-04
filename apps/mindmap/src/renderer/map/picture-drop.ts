@@ -1,13 +1,14 @@
 /**
- * A picture file dragged from the desktop onto a topic of the map.
+ * A picture file put on a topic of the map: dragged from the desktop onto it,
+ * or chosen in the file window that "Insert picture" opens.
  *
  * The drop goes the way an AI picture does (`setTopicImage`): the bytes become
  * a new entry of the document, and the topic takes the reference through the
  * library tree, `MapController.edit` and reconciling, as one step of the undo
  * history. Nothing here writes to the source tree.
  *
- * The bytes are read from the dropped `File` in this window; no path crosses
- * to the main process. A drag that carries no picture is left alone, so a
+ * The bytes are read from the dropped or chosen `File` in this window; no
+ * path crosses to the main process. A drag that carries no picture is left alone, so a
  * document dropped on the map still opens through the shell's drop-open
  * bridge (`installDropOpenBridge`): this zone cancels only the drops it takes.
  */
@@ -33,6 +34,24 @@ export function dragCarriesPicture(transfer: DataTransfer | null): boolean {
   return Array.from(transfer.items ?? []).some(
     (item) => item.kind === 'file' && item.type.startsWith('image/'),
   )
+}
+
+/** What the file window offers: the kinds of picture a map keeps (`readDroppedPicture`). */
+export const PICTURE_ACCEPT = 'image/png,image/jpeg,image/gif,.png,.jpg,.jpeg,.gif'
+
+/**
+ * Opens the file window for one picture. Null when it is closed without one.
+ * The input is never put in the page: the window is all of it.
+ */
+export function choosePictureFile(doc: Document = document): Promise<File | null> {
+  return new Promise((resolve) => {
+    const input = doc.createElement('input')
+    input.type = 'file'
+    input.accept = PICTURE_ACCEPT
+    input.addEventListener('change', () => resolve(input.files?.[0] ?? null), { once: true })
+    input.addEventListener('cancel', () => resolve(null), { once: true })
+    input.click()
+  })
 }
 
 /** The topic element under a drag, or null over the empty map. */

@@ -9,12 +9,16 @@
  * branches are folded in it, because they are folded on screen.
  *
  * What is only there for editing is taken out: the selection, the fold
- * handles, the edit box, the handles of a relationship. Then the copy is
- * cleaned on a list of what may stay. Only the elements the map is drawn with
- * stay, no attribute that runs code or names an address does, a style that
- * names an address goes, and the only picture source is a `data:` address
- * this module makes from bytes read out of the file. The file's text was text
- * on screen and is still text here; it is never parsed.
+ * handles, the edit box, the handles of a relationship and the glow of a
+ * selected one. Then the copy is cleaned on a list of what may stay. Only the
+ * elements the map is drawn with stay, no attribute that runs code or names
+ * an address does, a style that names an address goes, and the only picture
+ * source is a `data:` address this module makes from bytes read out of the
+ * file. A drawn line (a branch line, a relationship and its ends, a summary
+ * bracket, a boundary) keeps of its inline style only the properties a line
+ * is drawn with, and only values of a known form: a colour of numbers, a map
+ * colour (`var(--mm-…)`), numbers, and the few words of a line's ends and joins. The
+ * file's text was text on screen and is still text here; it is never parsed.
  *
  * Pictures. A picture that lives in the file is read again from the archive
  * through the engine (`archivePictureEntry`, the same rule as on screen), its
@@ -78,6 +82,7 @@ const CHROME = [
   '.tips',
   '.selection-area',
   '.mind-elixir-ghost',
+  '.arrow-highlight',
 ].join(',')
 
 /** Every element a drawn map is made of. Anything else is dropped with what it holds. */
@@ -148,6 +153,43 @@ function cleanAttributes(element: Element): void {
     if (DROPPED_ATTRIBUTES.test(name) || UNSAFE_VALUE.test(value)) element.removeAttribute(name)
   }
   if (element.localName === 'me-tpc' && element instanceof HTMLElement) keepTopicStyle(element)
+  else if (element.namespaceURI === SVG_NS) keepDrawingStyle(element as SVGElement)
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg'
+
+/** The properties a drawn line may set inline: what `decorate.ts` and `relations.ts` set. */
+const DRAWING_STYLE = [
+  'stroke',
+  'stroke-width',
+  'stroke-dasharray',
+  'stroke-linecap',
+  'stroke-linejoin',
+  'fill',
+  'fill-opacity',
+  'opacity',
+] as const
+
+/**
+ * A value of a drawn line: a colour (hex, or the `rgb()` a browser writes a
+ * hex colour back as), a map colour, numbers (a width, dashes), or a word of
+ * a line's ends.
+ */
+const DRAWING_VALUE =
+  /^(?:#[0-9a-f]{3,8}|rgba?\(\d{1,3}(?:, \d{1,3}){2}(?:, (?:0|1|0?\.\d+))?\)|var\(--mm-[\w-]+\)|none|round|butt|square|miter|bevel|\d+(?:\.\d+)?(?:px)?(?:[\s,]+\d+(?:\.\d+)?(?:px)?)*)$/i
+
+function keepDrawingStyle(element: SVGElement): void {
+  if (!element.hasAttribute('style')) return
+  const kept = DRAWING_STYLE.map(
+    (name) => [name, element.style.getPropertyValue(name).trim()] as const,
+  )
+  element.removeAttribute('style')
+  for (const [name, value] of kept) {
+    if (value !== '' && DRAWING_VALUE.test(value) && !UNSAFE_VALUE.test(value)) {
+      element.style.setProperty(name, value)
+    }
+  }
+  if (element.style.length === 0) element.removeAttribute('style')
 }
 
 /** The properties `decorate.ts` sets on a topic: the only ones a copied topic keeps. */
@@ -158,6 +200,14 @@ const TOPIC_STYLE = [
   'font-weight',
   'font-size',
   'line-height',
+  'font-family',
+  'font-style',
+  'text-decoration',
+  'text-align',
+  'text-transform',
+  'width',
+  'max-width',
+  'overflow-wrap',
 ] as const
 
 function keepTopicStyle(topic: HTMLElement): void {
@@ -308,7 +358,7 @@ export function measureDrawing(mind: MindElixirInstance): DrawnBox | null {
   let right = nodes.offsetWidth
   let bottom = nodes.offsetHeight
   for (const part of nodes.querySelectorAll(
-    '.topiclinks path, .summary path, .label-container > *',
+    '.topiclinks path, .summary path, .label-container > *, .mm-boundaries path, .mm-boundaries text',
   )) {
     const rect = part.getBoundingClientRect()
     if (rect.width === 0 && rect.height === 0) continue

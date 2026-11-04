@@ -27,6 +27,7 @@ function fake(source: UserSkillSource, name: string, extra: Partial<UserSkill> =
     template: undefined,
     templateExists: false,
     hasScripts: false,
+    mcpServers: [],
     github: false,
     agentOnly: false,
     files: 1,

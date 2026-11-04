@@ -28,6 +28,7 @@ export const id = {
   invokeManual: 'Hanya saat dipanggil',
   badgeTemplate: 'Ada templat',
   badgeScripts: 'Ada skrip · berfungsi penuh di jendela agen',
+  badgeMcpServer: 'Memerlukan server MCP: {servers}',
   badgeAgentOnly: 'Hanya jendela agen',
   unreadableNoFrontmatter: 'tidak ada front matter',
   unreadableBadName: 'nama tidak sesuai aturan',

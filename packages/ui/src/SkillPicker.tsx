@@ -1,5 +1,6 @@
 import React from 'react'
 import type { Lang } from '@genoffice/i18n'
+import { unusableMcpServers } from '@genoffice/agent-core/skill-mcp-refs'
 import {
   chipTitleRepeats,
   type SkillChipRef,
@@ -159,24 +160,35 @@ export function SkillChip({
   )
 }
 
+const NO_MCP_SERVERS: ReadonlySet<string> = new Set()
+
 /**
  * The composer's chip row (where attachments sit): the chips, a line when a
- * chip's skill has scripts (they do not run here; sending is not blocked),
- * and the latest refusal (too large, skill gone).
+ * chip's skill has scripts (they do not run here; sending is not blocked), a
+ * line naming the MCP servers the chips' skills expect that are not
+ * registered and on (spec 8), and the latest refusal (too large, skill gone).
  */
 export function SkillChipRow({
   lang,
   chips,
   notice,
+  usableMcpServers = NO_MCP_SERVERS,
   onRemove,
 }: {
   lang: Lang
   chips: readonly SkillChipView[]
   notice?: string | null | undefined
+  /** MCP servers registered and on; none by default */
+  usableMcpServers?: ReadonlySet<string> | undefined
   onRemove: (id: string) => void
 }): React.JSX.Element | null {
   if (chips.length === 0 && !notice) return null
-  const scripts = chips.some((c) => c.hasScripts && !c.missing)
+  const live = chips.filter((c) => !c.missing)
+  const scripts = live.some((c) => c.hasScripts)
+  const servers = unusableMcpServers(
+    [...new Set(live.flatMap((c) => c.mcpServers ?? []))],
+    (name) => usableMcpServers.has(name),
+  )
   return (
     <div className="ai-skill-chips">
       {chips.length > 0 && (
@@ -194,6 +206,11 @@ export function SkillChipRow({
       )}
       {scripts && (
         <div className="ai-skill-chip-note">{skillPickerText(lang, 'scriptsNotice')}</div>
+      )}
+      {servers.length > 0 && (
+        <div className="ai-skill-chip-note" dir="auto">
+          {skillPickerText(lang, 'mcpServerNeeded', { servers: servers.join(', ') })}
+        </div>
       )}
       {notice && (
         <div className="ai-skill-chip-note is-error" role="alert">

@@ -111,6 +111,38 @@ describe('guardOutbound', () => {
     expect(skill.tools.map((t) => t.name)).toContain('web_search')
   })
 
+  it('drops user MCP tools and refuses their calls while the switch is off', async () => {
+    let on = false
+    const bridge: OutboundBridgeLike = {
+      internetToolsEnabled: vi.fn(async () => on),
+      confirmAddresses: vi.fn(async () => false),
+    }
+    const executed: string[] = []
+    const editor: AgentSkill = {
+      id: 'editor',
+      systemPrompt: '',
+      tools: ['mcp__law__search', 'mcp__notes__read', 'edit_text', 'mcp_lookalike'].map((name) => ({
+        name,
+        description: name,
+        inputSchema: { type: 'object' },
+      })),
+      executeTool: (c) => {
+        executed.push(c.name)
+        return { output: 'ok', summary: c.name }
+      },
+    }
+    const skill = guardOutbound(editor, bridge, () => [{ role: 'user', text: 'hi' }])
+    await flush()
+    expect(skill.tools.map((t) => t.name)).toEqual(['edit_text', 'mcp_lookalike'])
+    const res = await skill.executeTool(call('mcp__law__search', { query: 'q' }))
+    expect(res).toMatchObject({ isError: true, output: INTERNET_TOOLS_OFF })
+    expect(executed).toEqual([])
+    on = true
+    await skill.executeTool(call('mcp__law__search', { query: 'q' }))
+    expect(executed).toEqual(['mcp__law__search'])
+    expect(skill.tools.map((t) => t.name)).toContain('mcp__law__search')
+  })
+
   it('runs on-PC calls directly, as they were', () => {
     const { skill, executed } = setup()
     expect(skill.executeTool(call('edit_text', { text: 'see https://x.example' }))).toEqual({

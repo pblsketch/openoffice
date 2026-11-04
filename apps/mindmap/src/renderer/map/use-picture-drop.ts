@@ -1,6 +1,8 @@
 /**
- * The drop zone of the map card: a picture dragged from the desktop lands on
- * the topic under the pointer (`picture-drop.ts`). While the drag is over a
+ * The two ways a person puts a picture on a topic (`picture-drop.ts`). The
+ * drop zone of the map card: a picture dragged from the desktop lands on the
+ * topic under the pointer. "Insert picture" (toolbar and the topic's menu):
+ * the file window, for the topic it was asked for. While the drag is over a
  * topic that topic is marked; the mark is editing chrome, coloured in
  * `styles.css`, and is gone before the drop changes the map.
  */
@@ -9,6 +11,7 @@ import type { StringKey } from '../i18n/locale'
 import type { MapAiHost } from '../ai/map-tools'
 import type { MapController } from './controller'
 import {
+  choosePictureFile,
   dragCarriesPicture,
   dropPicture,
   isPictureFile,
@@ -33,6 +36,8 @@ export interface PictureDropZone {
   onDragOver(event: DragEvent<HTMLElement>): void
   onDragLeave(event: DragEvent<HTMLElement>): void
   onDrop(event: DragEvent<HTMLElement>): void
+  /** opens the file window and puts the chosen picture on the topic */
+  choose(topicId: string): void
 }
 
 export function usePictureDrop(options: {
@@ -51,6 +56,19 @@ export function usePictureDrop(options: {
     marked.current = topic
   }, [])
   useEffect(() => () => mark(null), [mark])
+
+  const put = useCallback(
+    (topicId: string | null, pictures: readonly File[]) => {
+      void dropPicture(host, topicId, pictures).then(
+        (outcome) => {
+          const text = OUTCOME_TEXT[outcome]
+          if (text) say(text)
+        },
+        () => say('pictureDropFailed'),
+      )
+    },
+    [host, say],
+  )
 
   const onDragOver = useCallback(
     (event: DragEvent<HTMLElement>) => {
@@ -82,16 +100,20 @@ export function usePictureDrop(options: {
       const under = topicAt(event.target)?.nodeObj.id ?? null
       const selected = controller()?.selectedTopicIds() ?? []
       const topicId = under ?? (selected.length === 1 ? selected[0]! : null)
-      void dropPicture(host, topicId, pictures).then(
-        (outcome) => {
-          const text = OUTCOME_TEXT[outcome]
-          if (text) say(text)
-        },
-        () => say('pictureDropFailed'),
-      )
+      put(topicId, pictures)
     },
-    [host, controller, say, mark],
+    [controller, put, mark],
   )
 
-  return { onDragOver, onDragLeave, onDrop }
+  const choose = useCallback(
+    (topicId: string) => {
+      void choosePictureFile().then((file) => {
+        // closing the window without a picture changes nothing and says nothing
+        if (file) put(topicId, [file])
+      })
+    },
+    [put],
+  )
+
+  return { onDragOver, onDragLeave, onDrop, choose }
 }

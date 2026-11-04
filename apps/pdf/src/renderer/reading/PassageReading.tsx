@@ -88,6 +88,8 @@ export interface PassageReadingProps {
   t: TFunc
   /** the document cannot be edited: "Keep as note" is refused */
   readOnly: boolean
+  /** why it is read-only (the encrypted-document wording when absent) */
+  readOnlyReason?: string
   /** the document title sent with a passage ('' when none) */
   title: string
   /** an original page's text as the PDF.js text layer reads it */
@@ -573,6 +575,7 @@ export const PassageReading = forwardRef<PassageReadingHandle, PassageReadingPro
           anchor={view.anchor}
           body={body}
           readOnly={readOnly}
+          readOnlyReason={props.readOnlyReason}
           extraActions={openCard && props.cardActions ? props.cardActions(openCard) : undefined}
           onCopy={() => openCard && copy(openCard)}
           onKeepAsNote={() => openCard && keepAsNote(openCard)}

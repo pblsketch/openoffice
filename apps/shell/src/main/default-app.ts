@@ -46,6 +46,21 @@ export const OFFICE_TYPES: readonly OfficeType[] = [
     mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     progId: 'IeumOffice.PowerPointPresentation',
   },
+  // draw.io diagrams. macOS knows the type by the identifier draw.io exports;
+  // electron-builder.cjs imports the same declaration (mac.extendInfo) so the
+  // type resolves where draw.io is not installed. Both extensions share it.
+  {
+    ext: 'drawio',
+    uti: 'com.jgraph.drawio',
+    mime: 'application/vnd.jgraph.mxfile',
+    progId: 'IeumOffice.Diagram',
+  },
+  {
+    ext: 'dio',
+    uti: 'com.jgraph.drawio',
+    mime: 'application/vnd.jgraph.mxfile',
+    progId: 'IeumOffice.Diagram',
+  },
 ]
 
 const LINUX_DESKTOP_ID = 'ieumoffice.desktop'

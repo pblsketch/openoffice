@@ -60,6 +60,7 @@ export const zh = {
   imgExportWholePages: '整页',
   imgExportCurrentPage: '仅当前页',
   imgExportCurrentPageTip: '将正在查看的页面导出为一个 PNG 文件',
+  imgExportCurrentPageJpgTip: '将正在查看的页面导出为一个 JPG 文件',
   imgExportEmbedded: '仅页面中的图片',
   imgExportEmbeddedTip: '将页面中嵌入的图片按原始分辨率保存为 PNG 文件',
   imgExportFolderTitle: '选择导出图片的文件夹',

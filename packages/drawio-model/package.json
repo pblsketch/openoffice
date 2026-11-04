@@ -1,0 +1,25 @@
+{
+  "name": "@genoffice/drawio-model",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "description": "diagram file model: read .drawio/.dio/.drawio.svg/.drawio.png sources, build the shape and edge table, validate diagram ops and turn them into primitive changes, and write those changes back into the XML without touching unchanged pages",
+  "exports": {
+    ".": "./src/index.ts",
+    "./node": "./src/node-codec.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "saxes": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
+  }
+}

@@ -28,6 +28,7 @@ export const zhTW = {
   invokeManual: '僅在呼叫時',
   badgeTemplate: '含範本',
   badgeScripts: '含指令碼 · 在代理程式視窗中完整運作',
+  badgeMcpServer: '需要 MCP 伺服器：{servers}',
   badgeAgentOnly: '僅限代理程式視窗',
   unreadableNoFrontmatter: '缺少前置資訊',
   unreadableBadName: '名稱不符合規則',

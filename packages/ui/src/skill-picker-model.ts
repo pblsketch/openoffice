@@ -1,5 +1,6 @@
 import type { Lang } from '@genoffice/i18n'
 import { RESERVED_USER_SKILL_NAMES } from '@genoffice/agent-core'
+import { mcpServerListOf } from '@genoffice/agent-core/skill-mcp-refs'
 import { builtinSkillDesc, isBuiltinSkillName } from './strings-builtin-skills'
 import { skillPickerText } from './strings-skill-picker'
 
@@ -130,6 +131,8 @@ export interface SkillPickerItem {
   /** plain-text source label; empty for project skills */
   sourceLabel: string
   hasScripts: boolean
+  /** MCP servers the skill refers to (spec 8) */
+  mcpServers: string[]
   /** names a template document that is there */
   template: boolean
   /** names a template document whose file is not there (spec 5.7: nothing is sent) */
@@ -213,6 +216,7 @@ export function pickerSkillsOf(
       description: builtin ? builtinSkillDesc(lang, name) : str(view.description),
       sourceLabel: skillSourceLabel(lang, { source, plugin, github: view.github }),
       hasScripts: view.hasScripts === true,
+      mcpServers: mcpServerListOf(view.mcpServers),
       template: !!view.template && view.templateExists === true,
       ...(view.template && view.templateExists !== true ? { templateMissing: true } : {}),
     })
@@ -262,6 +266,8 @@ export interface SkillChipRef {
 export interface SkillChipView extends SkillChipRef {
   sourceLabel?: string | undefined
   hasScripts?: boolean | undefined
+  /** MCP servers the skill refers to (spec 8) */
+  mcpServers?: readonly string[] | undefined
   template?: boolean | undefined
   /** names a template whose file is not there */
   templateMissing?: boolean | undefined
@@ -302,6 +308,7 @@ export function skillChipOf(item: SkillPickerItem): SkillChipView {
     title: item.title,
     sourceLabel: item.sourceLabel,
     hasScripts: item.hasScripts,
+    mcpServers: item.mcpServers,
     template: item.template,
     ...(item.templateMissing ? { templateMissing: true } : {}),
   }

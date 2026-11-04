@@ -87,4 +87,35 @@ describe('panelUserSkills', () => {
     })
     expect(used.summary).toBe('가정통신문 스킬을 썼습니다')
   })
+
+  it('hands the panel’s MCP check to use_skill (user MCP spec 8)', async () => {
+    const [skill] = panelUserSkills({
+      lang: () => 'en',
+      messages: () => [],
+      onProposal: () => {},
+      mcpServerUsable: (name) => name === 'notion',
+      bridge: {
+        ...bridge([VIEW]),
+        aiRead: vi.fn(async (id: string) => ({
+          ok: true,
+          skill: {
+            id,
+            name: 'meeting-minutes',
+            title: 'meeting-minutes',
+            body: 'b',
+            files: [],
+            mcpServers: ['notion', 'gone'],
+          },
+        })),
+      },
+    })
+    await vi.waitFor(() => expect(skill!.systemPrompt).toContain('builtin:meeting-minutes'))
+    const used = await skill!.executeTool({
+      id: 'c1',
+      name: 'use_skill',
+      input: { id: 'builtin:meeting-minutes' },
+    })
+    expect(used.output).not.toContain('MCP server notion')
+    expect(used.output).toContain('MCP server gone')
+  })
 })

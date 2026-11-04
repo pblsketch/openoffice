@@ -1,6 +1,6 @@
 # 바깥에 내놓는 약속
 
-이 프로그램을 밖에서 쓰는 쪽은 여섯이다. 터미널 명령어를 부르는 스크립트와 에이전트, 명령어 쪽 MCP 클라이언트, 앱 안 MCP 서버에 붙는 클라이언트, 사용자의 설정 파일, 원본 프로그램과 주고받는 문서, 그리고 프로젝트 폴더의 `.ieumoffice/`를 읽거나 고치는 사람과 다른 프로그램.
+이 프로그램을 밖에서 쓰는 쪽은 일곱이다. 터미널 명령어를 부르는 스크립트와 에이전트, 명령어 쪽 MCP 클라이언트, 앱 안 MCP 서버에 붙는 클라이언트, 사용자의 설정 파일, 원본 프로그램과 주고받는 문서, 프로젝트 폴더의 `.ieumoffice/`를 읽거나 고치는 사람과 다른 프로그램, 그리고 앱이 클라이언트로 붙는 사용자 MCP 서버(결정 0100).
 
 ## 공통
 
@@ -140,6 +140,25 @@
 - `--partial`로 멈춘 경우 `pdf translate`처럼 `status: "partial"`이고, `detail.stopped: { errorCode, resetsAt? }`와 `done_blocks`·`total_blocks`가 더해진다.
 - `epub status`의 `done_blocks`·`total_blocks`와 `job` 모양은 `pdf status`와 같다. 진행에는 책 제목과 목차 항목 단위도 든다.
 
+## 다이어그램 명령
+
+draw.io 다이어그램(`.drawio`, `.dio`, `.drawio.svg`, `.drawio.png`)을 읽고 고치고 만들고 그림으로 바꾼다. 연산은 앱의 AI 창과 같은 정의(`@genoffice/drawio-model`의 `DIAGRAM_OPS`)이고 같은 규칙으로 검사한다. `.vsdx`는 종료 코드 2, `unsupported`다. Visio 파일은 앱에서 열어 가져온다.
+
+| 명령                                                                                                                        | 동작                                                                                                                                                                                                                                                                                                       | 앱                                                                                                |
+| --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `diagram read <파일> [--page <id\|이름>]`                                                                                   | 쪽마다 도형·선 읽기 표. `--json`의 `detail`은 `{ pages: [{ id, name, shapes, edges }] }`이고, `--page`를 주면 그 쪽 하나다                                                                                                                                                                                 | 필요 없음                                                                                         |
+| `diagram apply <파일> --ops <JSON\|@파일\|-> [--page <id\|이름>] [--out <경로>] [--best-effort\|--stop-on-error] [--force]` | 연산 묶음을 적용해 쓴다. `page`가 없는 연산은 `--page`의 쪽, 없으면 첫 쪽에서 한다. 쓰는 형식은 `--out`(없으면 그 파일)의 이름이 정한다                                                                                                                                                                    | `.drawio`·`.dio`는 필요 없음. `.drawio.svg`·`.drawio.png`를 쓰거나 `insert_mermaid`가 있으면 필요 |
+| `create --type drawio --out <경로> [--ops <JSON\|@파일\|->] [--mermaid <파일\|->]`                                          | 빈 쪽 하나인 새 다이어그램. 둘 중 하나는 있어야 하고, 둘 다면 Mermaid를 먼저 그린 뒤 연산을 한다. 압축하지 않은 `.drawio`로 쓰고, `--out`이 `.drawio.svg`·`.drawio.png`면 그 형식으로 쓴다                                                                                                                 | `--mermaid`가 있거나 그림 형식이면 필요                                                           |
+| `convert <파일> --to pdf\|png\|svg [--page <id\|이름>] [--out <경로>]`                                                      | PDF는 파일 하나다(쪽마다 한 장, 그 쪽의 용지 크기). PNG·SVG·PDF는 늘 밝은 색이다(SVG에 어두운 뷰어에서 바뀌는 색을 넣지 않는다). PNG·SVG는 `--page`를 주면 파일 하나, 아니면 쪽이 하나여도 쪽마다 `<이름>-p<쪽 번호>.<확장자>`다. `--page`가 있으면 `--out`은 그 파일, 없으면 폴더다(기본은 다이어그램 옆) | 필요                                                                                              |
+| `guide diagram`                                                                                                             | 연산 목록. `DIAGRAM_OPS`에서 만든다                                                                                                                                                                                                                                                                        | 필요 없음                                                                                         |
+
+- 앱이 필요한데 찾지 못하면 종료 코드 4, `app_unavailable`이고 아무것도 쓰지 않는다. 앱은 창 없이 `--headless-export`(`docs/headless-pdf-export.md`)로 돌고 다이어그램 탭의 세션에서 일한다. 그래서 다이어그램 탭처럼 이 PC 밖으로 요청을 하나도 보내지 않는다.
+- `.drawio`·`.dio`를 앱 없이 쓸 때는 바뀌지 않은 `<diagram>` 요소를 바이트 그대로 두고, 바뀐 쪽만 원래 압축 형태로 다시 쓰며, `mxfile`의 다른 속성은 건드리지 않는다. 앱을 거쳐 쓰면 draw.io의 저장과 같은 직렬화이고, 쪽 압축은 연 파일을 따른다.
+- 묶음은 기본으로 모두 아니면 아무것도 아니다. 하나라도 거절되면 쓰지 않고 종료 코드 1이며, `error`는 첫 실패의 이유(`unknown_op`, `target_not_found`, `invalid_argument`)다. `detail.failures`·`detail.batch`·`detail.results`에 모든 연산의 결과가 있다. `--best-effort`·`--stop-on-error`는 남은 것을 쓰고 `status: "partial"`로 답한다. 읽기 연산만 든 묶음은 파일을 쓰지 않는다. 없는 `--page`는 종료 코드 1, `target_not_found`이고 `detail.pages`에 쪽 목록이 있다.
+- `--ops`는 JSON 글 그대로, `@<파일>`, 파일 경로, `-`(표준 입력)를 받는다. 배열이나 `{ "ops": [...] }`다.
+- 성공 `detail`: `diagram apply`는 `{ format, via?, results, created, batch, failures? }`다. `results[]`는 연산마다 `{ index, op, status, created?, error?, read? }`이고, `created`는 이 묶음이 만든 id 전부다. `create --type drawio`는 같은 모양에 `mermaid: { created }`가 더해지고, `results`의 `index`는 `--ops` 안의 차례다. `convert`는 `{ pages, output_paths? }`이고 `output_paths`는 파일이 여럿일 때만 있다.
+- 이미 있는 다른 파일 위에 쓰기와 앱이 탭으로 연 파일은 공통 규칙(`--force`)을 따른다. `convert`는 쓸 파일마다 검사하고, 하나라도 걸리면 앱을 띄우지 않는다.
+
 ## 웹 페이지 읽기 (`read-url`)
 
 `ieumoffice read-url <url> [--offset <n>]`은 http(s) 주소 하나를 그 사이트에서 받아 읽을 수 있는 글로 돌려준다. HTML은 글자로 바꾸고, GitHub `blob` 주소는 raw 주소로 바꿔 읽는다. 주소는 `fetchWithSsrfGuard`를 지나며 사설·루프백 주소와 그런 곳으로 가는 리다이렉트는 거절한다. 한 번에 50,000자를 주고, 이어 읽기는 `--offset`(기본 0)으로 한다. 제공자·구독·자동 호출 장부를 쓰지 않는다. 비공개 GitHub 파일은 설정의 읽기 토큰을 쓰며, 그 토큰은 `api.github.com` 요청에만 실린다.
@@ -214,13 +233,13 @@
 
 - 표준 입출력으로 같은 명령들을 도구로 내놓는다. `--http <포트>`를 주면 Streamable HTTP로 내놓는다(`--host`, `--token`).
 - 등록 예: `claude mcp add --transport stdio ieumoffice -- ieumoffice mcp`. `ieumoffice mcp install <에이전트|all>`이 각 에이전트의 설정 파일에 `ieumoffice` 항목만 쓴다. 같은 이름의 항목이 다른 프로그램을 가리키면 `occupied`로 알리고 `--force` 없이는 건드리지 않는다.
-- 도구는 명령 동사마다 하나다(`docs_read`, `docs_apply`, `hwp_read`, `hwp_apply`, `sheet_apply`, `slides_render`, `convert`, `read_url`, `pdf_read`, `pdf_images`, `pdf_ai_read`, `pdf_translate`, `pdf_status`, `epub_translate`, `epub_status` 등). 매개변수는 명령의 옵션 목록에서 그대로 나온다(`allow-paid`는 `allow_paid`, `no-cover`는 `no_cover`). 두 표면이 어긋나지 않는다.
+- 도구는 명령 동사마다 하나다(`docs_read`, `docs_apply`, `hwp_read`, `hwp_apply`, `diagram_read`, `diagram_apply`, `create_drawio`, `sheet_apply`, `slides_render`, `convert`, `read_url`, `pdf_read`, `pdf_images`, `pdf_ai_read`, `pdf_translate`, `pdf_status`, `epub_translate`, `epub_status` 등). 매개변수는 명령의 옵션 목록에서 그대로 나온다(`allow-paid`는 `allow_paid`, `no-cover`는 `no_cover`). 두 표면이 어긋나지 않는다. `diagram_read`·`diagram_apply`·`convert`의 `page`는 다이어그램 쪽의 id나 이름(글자)이고, `create_drawio`의 `mermaid`는 Mermaid 글 그대로다.
 - `pdf_ai_read`·`pdf_translate`·`epub_translate`는 `yes`가 없으면 명령처럼 예상만 답한다. `yes`가 있으면 작업을 MCP 서버 프로세스 안에서 띄우고 바로 답한다(`detail.started: true`, `detail.estimate`). 진행, 멈춘 이유, `resetsAt`, 결과 파일 경로는 `pdf_status`(EPUB은 `epub_status`)의 `job`으로 본다. 이어하기는 같은 도구를 다시 부르면 된다.
 - 그 결과 파일은 작업이 끝날 때 쓴다. `partial: true`로 부른 작업은 멈출 때 끝난 부분만 반영해 쓴다. 위치 규칙은 명령어와 같고, 경로는 `job.outputs`로 알려 준다.
 - 서버가 끝나면 그 작업도 멈춘다(`last_error: "interrupted"`). 보관된 결과는 남는다.
 - 결과는 `--json`이 내는 것과 같은 객체다. 실패는 `isError`와 같은 `error` 이유로 온다.
 - 환경변수 `GENOFFICE_MCP_COMPACT_SCHEMAS`는 예전 철자를 유지한다. `--http`의 토큰은 `--token`, 없으면 `GENOFFICE_MCP_TOKEN`에서 읽고, 둘 다 없으면 인증 없이 받는다. 인증 없이 받는 것은 이 PC 주소(`127.0.0.1`, `localhost`, `::1`)에서 열 때뿐이다. 그 밖의 `--host`에 토큰이 없으면 서버를 열지 않고 종료 코드 1, `error: "invalid_argument"`로 끝난다. 에이전트 설정 폴더를 찾을 때의 홈 폴더는 `GENOFFICE_HOME`으로 바꿀 수 있다.
-- 안내 자료는 리소스로도 내놓는다(`ieumoffice://guide/docs`, `…/sheets`, `…/slides`, `…/slides/design`, `…/slides/spec`, `…/slides/templates`, 내장 템플릿마다 `…/slides/templates/<id>`).
+- 안내 자료는 리소스로도 내놓는다(`ieumoffice://guide/docs`, `…/sheets`, `…/hwp`, `…/diagram`, `…/slides`, `…/slides/design`, `…/slides/spec`, `…/slides/templates`, 내장 템플릿마다 `…/slides/templates/<id>`).
 - 내장 디자인 템플릿은 `ieumoffice guide slides templates [<id>]`로 고른다. 목록의 `--json`은 `detail.templates`(`[{ id, name, scheme, description, fonts }]`, 정해진 순서), 템플릿 하나는 `detail`(`{ id, name, scheme, description, fonts, styleSheet }`)이다. 모르는 id는 종료 코드 1, `error: "invalid_argument"`, `detail.templates`에 쓸 수 있는 id 목록이다. MCP `guide` 도구는 세 번째 위치 인자 `name`으로 id를 받는다.
 - 앱의 설정 → 연동 화면이 지금 설치본에 맞는 등록 예시를 보여 준다.
 
@@ -229,7 +248,7 @@
 명령어 쪽 서버와 다른 것이다. 실행 중인 앱이 직접 여는 서버이고, 열려 있는 문서를 다룬다.
 
 - 설정 → 연동에서 켠다. 기본은 꺼짐이다. 기본 포트는 3093이고 이 PC(`127.0.0.1`)에서만 닿는다. 인증은 없고, 요청의 Host·Origin이 이 PC의 것이 아니면 거절한다.
-- 도구: `get_app_info`, `open_documents`, `open_in_genoffice`(이 이름은 예전 철자를 유지한다), `create_session`, `save_session`, `read_document`, `read_docx`, `read_sheet`, `read_deck`, `read_pdf`, `create_docx`, `create_xlsx`, `create_pptx`, `apply_ops`, `apply_sheet_ops`, `apply_slide_ops`, `insert_content`, `replace_blocks`, `insert_picture`.
+- 도구: `get_app_info`, `open_documents`, `open_in_genoffice`(이 이름은 예전 철자를 유지한다), `create_session`, `save_session`, `read_document`, `read_docx`, `read_sheet`, `read_deck`, `read_pdf`, `create_docx`, `create_xlsx`, `create_pptx`, `apply_ops`, `apply_sheet_ops`, `apply_slide_ops`, `insert_content`, `replace_blocks`, `insert_picture`, `read_diagram`, `apply_diagram_ops`.
 - `insert_picture`는 열린 워드 탭에 그림을 넣는다(원본 genoffice#2267). 앱 안 AI의 같은 이름 도구를 그대로 거치므로 그림 주소는 http(s)와 `data:image/`만 받고, http(s) 주소면 앱이 그 주소에서 그림을 받아 온다. 에이전트 모드의 세션 서버에는 없다.
 - 열린 ODT 탭은 워드 문서로 다룬다(`open_documents`의 `format`이 `odt`). `read_docx`는 `.odt` 파일도 읽는다. `save_session`은 탭의 형식으로만 저장한다. 다른 확장자의 경로를 주면 거절하고 `ieumoffice convert`를 쓰라고 안내한다. 대화 상자가 없는 경로에서 형식이 조용히 바뀌지 않게 하기 위해서다.
 - 에이전트 설정에 넣는 항목 이름은 `ieumoffice-editor`다. 명령어 쪽 서버의 `ieumoffice`와 겹치지 않는다.
@@ -239,6 +258,12 @@
 - `get_app_info`의 `families`에 `{ family: "xmind", label: "mind map", editor: { open: ["xmind"], save: ["xmind"], export: ["png", "pdf", "md"] } }`가 있다. `mcp` 항목은 없다.
 - `open_documents`의 목록에 EPUB 탭이 `kind: "epub"`, `type: "e-book"`으로 나온다(떼어 낸 창도 같다). `read`의 `content`는 spine 순서로 이은 책 글이고(제목은 `#`), 저장하지 않은 편집이 들어 있다. `close`의 저장은 편집기의 저장과 같은 규칙을 지나고, 바꾼 것이 없으면 파일을 쓰지 않는다. 책을 만들거나 고치는 도구는 없다.
 - `get_app_info`의 `families`에 `{ family: "epub", label: "e-book", editor: { open: ["epub"], save: ["epub"], export: [] } }`가 있다.
+- `open_documents`의 목록에 다이어그램 탭이 `kind: "diagram"`, `type: "diagram"`으로 나온다(떼어 낸 창도 같다). `format`은 파일의 형식(`drawio`, `dio`, `drawio.svg`, `drawio.png`)이고, 한 번도 저장하지 않은 다이어그램과 Visio 파일에서 만든 탭은 `drawio`다. `read`의 `content`는 모든 쪽의 읽기 표 글(쪽 목록, 쪽마다 도형과 선의 줄)이고 저장하지 않은 편집이 들어 있다. `save`와 `close`의 저장은 편집기의 저장과 같은 길을 지나고, 바꾼 것이 없으면 파일을 쓰지 않는다. 한 번도 저장하지 않은 다이어그램은 기본 저장 폴더에 겹치지 않는 이름의 `.drawio`로 저장된다. 열리지 않은 파일과 가져온 `.vsdx`에는 쓰지 않는다. 다이어그램은 `create_session`·`save_session`의 대상이 아니다.
+- `read_diagram`(입력 `document?`, `page?`)은 다이어그램 한 쪽의 읽기 표를 글과 값으로 함께 낸다. 출력은 `{ id, title, path, dirty, content, pages, page }`다. `content`는 표의 글(쪽 목록 포함)이고, `pages`는 `[{ id, name, current? }]`, `page`는 `{ id, name, shapes: [{ id, label, shape, x, y, width, height, parent?, fill?, stroke? }], edges: [{ id, label, source, target, parent? }], selected? }`로 같은 내용이다(명령줄 `diagram read --json`의 쪽과 같은 모양). 예전 판의 편집기가 값을 보내지 않으면 `pages`·`page`는 빠지고 `content`만 있다. `page`(쪽 id나 이름)가 없으면 화면에 보이는 쪽이고, 그 쪽에서 사람이 고른 id가 함께 나온다(`selected`). 저장하지 않은 편집이 들어 있다.
+- `apply_diagram_ops`(입력 `document?`, `ops`)는 연산 목록을 차례로 적용하고, 호출 하나가 편집기의 되돌리기 한 번이다. 출력은 `{ id, title, path, status: "ok", changed, created, results }`이고, `results`는 연산마다 `{ index, op, status, created?, error? }`, `created`는 만들어진 도형·선·쪽의 id다. 하나라도 거절되면 아무것도 바꾸지 않고 오류로 돌아오며, 오류 글에 연산마다 결과가 한 줄씩 있다(`<번호> <연산>: FAILED <code>: <까닭>` 또는 `ok (not applied)`). 저장은 하지 않는다(`open_documents`의 `save`). 두 도구의 입력 스키마는 `@genoffice/drawio-model`의 `DIAGRAM_OPS`에서 만든다(편집기 AI 창과 같은 정의). `ops`의 항목은 바꾸는 연산 전부의 키를 합친 것이고, 연산별 검사는 편집기의 계획이 한다.
+- 두 도구의 `document`는 `open_documents`가 준 id나 경로다. 없으면 앞에 있는 다이어그램이다(초점을 가진 떼어 낸 창의 다이어그램, 아니면 앱 창에서 활성인 다이어그램 탭). 앞에 다이어그램이 없으면 열린 다이어그램의 목록(한 줄에 하나씩 id, 경로, 제목)을 오류 글에 담아 거절한다. 앱 안 MCP 서버의 오류는 글 하나(`isError`)이고 따로 `detail` 칸이 없어서, 목록은 오류 글에 있다. 다른 종류의 문서를 주면 거절한다. 뒤에 있는 탭을 고치면 그 탭을 앞으로 낸다.
+- `get_app_info`의 `families`에 `{ family: "drawio", label: "diagram", editor: { open: ["drawio", "dio", "drawio.svg", "drawio.png", "vsdx"], save: ["drawio", "dio", "drawio.svg", "drawio.png"], export: ["png", "svg", "pdf"] } }`가 있다. `mcp` 항목은 없다.
+- 에이전트 모드의 세션 서버에는 두 다이어그램 도구가 없다(도구 목록은 그대로다). 그 서버의 `open_documents`는 다이어그램 탭도 목록에 내고 `read`로 같은 글을 읽는다.
 
 ## 에이전트 스킬
 
@@ -288,13 +313,14 @@ metadata:
 
 **앱 설정(`app-settings.json`)의 값.** 데이터 폴더에 있다.
 
-| 값                      | 종류                                                                                           | 기본                   |
-| ----------------------- | ---------------------------------------------------------------------------------------------- | ---------------------- |
-| `skills.states`         | 식별자 → `{ enabled?, invoke?: 'auto' \| 'manual' }`. 사람이 바꾼 것만 적는다                  | 없음(출처별 처음 상태) |
-| `skills.hiddenBuiltins` | 숨긴 기본 스킬 이름 목록                                                                       | 없음                   |
-| `agentSkillNoticeSeen`  | 참/거짓. 에이전트 창의 스킬 안내를 봤는지                                                      | 없음                   |
-| `agentProjectPrefs`     | 프로젝트 폴더 절대 경로 → `{ codexWebSearch: 'cached' \| 'live' \| 'disabled', codexNetwork }` | 없음(`cached`, 거짓)   |
-| `hwpDefaultFormat`      | `'hwp'` 또는 `'hwpx'`. 파일이 없는 새 한글 문서의 첫 저장에 먼저 제안할 형식                   | `hwp`                  |
+| 값                      | 종류                                                                                                                                                                      | 기본                   |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| `skills.states`         | 식별자 → `{ enabled?, invoke?: 'auto' \| 'manual' }`. 사람이 바꾼 것만 적는다                                                                                             | 없음(출처별 처음 상태) |
+| `skills.hiddenBuiltins` | 숨긴 기본 스킬 이름 목록                                                                                                                                                  | 없음                   |
+| `agentSkillNoticeSeen`  | 참/거짓. 에이전트 창의 스킬 안내를 봤는지                                                                                                                                 | 없음                   |
+| `agentProjectPrefs`     | 프로젝트 폴더 절대 경로 → `{ codexWebSearch: 'cached' \| 'live' \| 'disabled', codexNetwork }`                                                                            | 없음(`cached`, 거짓)   |
+| `hwpDefaultFormat`      | `'hwp'` 또는 `'hwpx'`. 파일이 없는 새 한글 문서의 첫 저장에 먼저 제안할 형식                                                                                              | `hwp`                  |
+| `homeKinds`             | `{ order?, hidden? }`. 홈의 새 문서 카드·새로 만들기 메뉴의 순서와 뺀 종류(`docx`·`xlsx`·`pptx`·`md`·`html`·`xmind`·`hwp`·`pdf`·`pdfTools`). 처음 상태와 다른 것만 적는다 | 없음(모두, 처음 순서)  |
 
 - 식별자는 `〈출처〉:〈이름〉`, 플러그인은 `plugin:〈플러그인〉:〈이름〉`이다. 출처 값은 `builtin`(기본), `app`(`~/.ieumoffice/skills`, 깃허브 포함), `user`(`~/.claude/skills`), `plugin`(설치된 Claude 플러그인), `codex`(`~/.agents/skills`)다. 저장되는 값이라 바꾸지 않는다. 프로젝트 스킬(`project`)은 저장하지 않는다.
 - 알 수 없는 값은 무시하고 처음 상태로 읽는다. 처음 상태는 `builtin`·`app`이 켜짐·스스로 쓰기, `user`·`plugin`·`codex`가 꺼짐이다.
@@ -472,6 +498,83 @@ metadata:
 창구 이름은 `drive:state`, `drive:connect`, `drive:cancel-connect`, `drive:disconnect`, `drive:set-ai-access`, `drive:set-training-ack`, `drive:list`(`recent`·`search`만), `drive:open`, `drive:pick-open`(Google 선택 창을 열고 고른 파일을 탭으로 연다)과 변경 알림 `drive:state-changed`, 편집기 AI용 `drive:ai-enabled`, `drive:ai-search`, `drive:ai-read`, 편집기 첨부용 `drive:connected`, `drive:pick-attachments`다. 앱이 그리던 고르기 창과 그 창구(`drive-picker:*`)는 없앴다(결정 0085). 토큰은 어느 창구로도 화면에 나가지 않는다.
 
 빌드: `GENOFFICE_GOOGLE_CLIENT_ID`(`….apps.googleusercontent.com`)와 `GENOFFICE_GOOGLE_CLIENT_SECRET`이 껍데기 앱을 빌드하는 환경에 있을 때만 드라이브가 들어간다. 없으면 상태는 `unavailable`이고 화면에 드라이브가 나오지 않는다.
+
+## 사용자 MCP 서버 (결정 0100)
+
+앱이 MCP 클라이언트로 붙는 바깥 서버다. 사람이 설정 → 연동의 "MCP 서버" 카드에 등록한다. 터미널 명령어와 그 MCP 서버, 앱 안 MCP 서버는 이것을 쓰지 않는다.
+
+**`mcp-servers.json`.** 데이터 폴더(`ai-settings.json`과 같은 곳)에 있다. 앱만 읽고 쓴다. 터미널 명령어는 읽지 않는다. 쓰기는 원자적 쓰기(`atomicWriteFile`)이고, JSON으로 읽을 수 없는 파일은 다음 저장 때 `mcp-servers.json.damaged`로 옮겨 둔다. 사람이 손으로 고치는 것을 약속하지 않는다(비밀값은 봉인돼 있다).
+
+```jsonc
+{
+  "version": 1,
+  // runtimes the person allowed the app to download; kept across app updates
+  "runtimes": {
+    "node": { "allowed": true },
+    "uv": { "allowed": true },
+    "python": { "allowed": true },
+  },
+  "servers": [
+    {
+      "id": "…", // made by the app; never shown as a name
+      "name": "korean-law",
+      "kind": "remote", // "remote" | "local"
+      "enabled": true,
+      "keepResultsInside": true,
+      // remote only
+      "url": "https://law.example.com/mcp",
+      "transport": "auto", // "auto" (Streamable HTTP, then SSE) | "sse"
+      "headers": { "Authorization": "sealed:v1:…" },
+      "oauth": { "clientId": "…", "clientSecret": "sealed:v1:…", "tokens": "sealed:v1:…" }, // or null
+      // local only
+      "command": "npx",
+      "args": ["-y", "some-mcp-server"],
+      "env": { "API_KEY": "sealed:v1:…" },
+      "approvedLaunch": "sha256:…", // or null until the person allows the command
+      "approvedPlan": "sha256:…", // the resolved plan the person was shown and allowed, or null
+      // both
+      "instructions": { "approved": "sha256:…", "text": "…" }, // or null
+      "pendingInstructions": null, // changed text awaiting approval
+      "tools": {
+        "search_law": {
+          "permission": "always", // "always" | "ask" | "off"
+          "approved": "sha256:…",
+          "definition": { "description": "…", "inputSchema": {}, "annotations": {} },
+          "pending": null, // a changed definition awaiting approval
+        },
+      },
+      "newTools": ["get_law_text"],
+    },
+  ],
+}
+```
+
+- 서버마다 자기 종류의 칸만 쓴다. `runtimes`는 처음에 `{}`이고, 사람이 받기를 허락한 것만 생긴다.
+- 봉인되는 칸은 헤더 값, `oauth.clientSecret`, `oauth.tokens`, `env` 값이다(`sealed:v1:<base64>`, 운영체제 암호화). `oauth.tokens`는 토큰과 인증 서버 정보(만료, 인증 서버 주소, 그 메타데이터, 등록한 클라이언트)를 담은 JSON을 통째로 봉인한 것이다. 암호화를 쓸 수 없는 PC에서는 그 칸을 비워 두고 값은 메모리에만 있다. 다른 계정이나 PC에서 봉인한 값은 빈 값으로 읽힌다.
+- 도구 정의와 안내 글은 비밀이 아니어서 봉인하지 않는다. `url`과 `command`·`args`도 평문이다. 주소의 질의 문자열에 넣은 열쇠는 평문으로 남는다.
+- 지문은 `sha256:`과 16진수다. 도구 지문은 `{ name, description, inputSchema }`(설명은 줄바꿈을 `\n`으로, 유니코드를 NFC로 맞춤)를 키 순서로 정렬한 JSON의 해시이고, 표시(`annotations`)는 넣지 않는다. 안내 지문은 같은 정규화를 거친 글의 해시다. `approvedLaunch`는 명령, 인자, 환경 변수 **이름**의 해시다. `approvedPlan`은 확인 화면이 보인 계획, 곧 `{ command, args, env }`(풀린 실행 파일 전체 경로, 앱이 덧붙인 것까지의 인자 전부, 환경 변수 `{ name, origin }`을 이름 순으로 정렬)를 키 순서로 정렬한 JSON의 해시다. 값은 들어가지 않는다.
+- 도구 하나의 "확인 필요"는 `pending`이 비어 있지 않은 것이다. 승인하면 `pending`이 `definition`이 되고 `approved`가 새 지문이 된다. 안내도 같다(`pendingInstructions`). 내 PC 서버의 "명령 확인 필요"는 지금 명령·인자·환경 변수 이름의 지문이 `approvedLaunch`와 다르거나, `approvedPlan`이 비었거나, 실행하려고 다시 계산한 계획의 지문이 `approvedPlan`과 다른 것이다. 마지막 것은 실행해 봐야 알므로 파일에 따로 적지 않는다. "실행 허락"(`mcp-servers:approve-launch`)은 서버 id와 확인 화면이 받은 계획 지문(`mcp-servers:planned-launch`의 답 `launch.fingerprint`)을 함께 보내고, 뒷단이 다시 계산한 계획과 다르면 `{ ok: false, problem: "launch-changed" }`로 답해 아무것도 바꾸지 않는다.
+- `permission`이 세 값 밖이면 `ask`로 읽는다. 처음 값은 `annotations.readOnlyHint`가 `true`인 도구만 `always`다.
+
+**값 집합(화면 표시).** 서버 상태는 `connected`, `ready`, `unchecked`, `connecting`, `failed`(까닭 하나: `unreachable`, `http-error`, `runtime-missing`, `start-failed`, `refused-redirect`, `insecure-address`), `login-required`, `review-required`(무엇이 바뀌었는지가 붙는다), `disabled`다. 여럿이면 `disabled` > `review-required`(명령) > `login-required` > `failed` > `connecting` > `unchecked` > `ready` > `connected`. `connected`는 이번 실행에서 그 서버의 도구 목록을 실제로 받았을 때(내 PC 서버는 떠 있을 때도)만이다. `unchecked`는 저장된 도구·안내가 하나도 없는 서버, `ready`는 저장된 승인 정의는 있지만 이번 실행에서 아직 붙지 않은 서버다. `http-error`는 서버가 MCP 대신 HTTP 오류 상태(401 밖의 4xx·5xx)로 답한 것이고, `unreachable`은 아예 닿지 못한 것이다. 도구 표시는 정상, 확인 필요, 켤 수 없음(이름) 셋이다.
+
+**도구 이름.** AI 창과 에이전트 창에서 도구 이름은 `mcp__〈서버 이름〉__〈도구 이름〉`이다. 코딩 에이전트용으로 쓴 스킬에 적힌 이름과 그대로 맞게 하기 위해서다.
+
+- 서버 이름: `^[A-Za-z0-9_-]+$`, 1~24자, `__` 없음, `_`로 시작하거나 끝나지 않음. 대소문자를 가리지 않고 서로 겹치지 않는다. `ieumoffice-editor`(앱 MCP 서버)는 쓸 수 없다.
+- 도구 이름은 `[A-Za-z0-9_-]` 밖의 글자를 `_`로 바꾼다. 전체 이름은 `^[A-Za-z0-9_-]{1,64}$`여야 한다. 바꾼 이름이 비었거나, 64자를 넘거나, 같은 서버의 다른 도구와 같아지면(둘 다) 켤 수 없다.
+- 앱 자체 도구는 `mcp__`로 시작하지 않는다. 이 앞붙이가 붙은 이름은 모두 바깥 도구로 친다.
+
+**붙여넣기 형식.** 사람이 붙여넣은 글만 읽는다. 다른 프로그램의 설정 파일은 열지 않는다. 글에 코드 울타리(```)가 있으면 첫 블록을 읽는다.
+
+- JSON `{"mcpServers": {"〈이름〉": 〈서버〉}}`
+- 감싼 꼴 없는 `{"〈이름〉": 〈서버〉}`
+- `{`로 시작하지 않으면 TOML로 읽고, `[mcp_servers.〈이름〉]` 표가 있어야 한다.
+
+〈서버〉에서 받는 항목은 `type`, `command`, `args`, `env`, `url`, `serverUrl`, `headers`, `http_headers`, `bearer_token_env_var`다. `command`가 있으면 내 PC 서버(`type`은 없거나 `stdio`), 아니면 주소 서버다. `type`의 `http`·`streamable-http`·`streamableHttp`·`streamable_http`는 `transport: "auto"`, `sse`는 `"sse"`다. 주소도 명령도 없으면 등록할 수 없다고 알린다. 모르는 `type`은 막지 않고 "무시한 항목"에 `type`으로 보이며, 그 값과 함께 "보통 방식으로 연결해 봅니다"를 알린다(`typeIgnored`). `bearer_token_env_var`는 PC의 변수를 읽지 않고, 열쇠 칸을 비운 채 그 변수 이름을 보이며 사람에게 넣게 한다. 헤더와 환경 변수의 값이 `${이름}`이나 `${env:이름}`을 담고 있으면 그 값도 PC에서 읽지 않는다. 값을 비우고 변수 이름을 알린다(`headerVars`, `envVars`). `Authorization` 헤더가 그렇다면 헤더를 빼고 `bearer_token_env_var`와 같이 열쇠 칸에서 묻는다. 읽지 못한 글은 `{ ok: false, error: "unreadable", line }`으로 답하고, `line`은 JSON·TOML 문법 실수가 있는 붙여넣은 글의 줄(1부터)이다. 알 수 없으면 빠진다. 그 밖의 항목은 서버마다 "무시한 항목"으로 보인다. 맞지 않거나 겹치는 이름은 고친 이름을 제안한다. 붙여넣은 글은 1시간, 8개까지만 기억한다.
+
+**클라이언트로서.** `initialize`의 `capabilities`는 `{}`, `clientInfo`는 제품 이름과 앱 판이다. 서버의 sampling, elicitation, roots 요청은 거절한다. 도구 목록과 호출(`tools/list`, `tools/call`), 목록 변경 알림(`notifications/tools/list_changed`)만 쓴다. 결과는 `content`의 글 블록과 `structuredContent`(JSON 글, 같은 JSON이 글 블록에 이미 있으면 뺌)만 AI에게 넘기고, 나머지 블록은 개수만 알린다. `isError`는 도구 오류다. 호출마다 60초, 결과는 200,000자에서 자른다. 주소 서버에는 설정한 헤더 가운데 프로토콜이 쓰는 이름(`content-type`, `accept`, `mcp-session-id`, `mcp-protocol-version`, `last-event-id`)은 보내지 않는다.
+
+**편집기 다리.** 편집기 9곳과 홈 창의 preload가 `window.aiOfficeMcpTools`(`@genoffice/electron-utils/mcp-tools-bridge`)로 내준다. `list()`, `call(server, tool, input, callId)`, `cancel(callId)`, `onChanged(listener)`, `retry(server)`, `openSettings(server)`가 있고, 목록의 도구에는 서버가 `destructiveHint: true`를 붙였을 때만 `destructive: true`가 붙는다(허락 카드의 "지우거나 바꿀 수 있음" 표시). `call`의 답은 두 종류의 서버 모두 뒷단에서 거르고 자른 글 `{ ok: true, output, isError }`이거나 거절 `{ ok: false, error }`다(`@genoffice/agent-core/user-mcp/result`의 `McpCallAnswer`). 서버가 돌려준 결과 그대로는 창으로 건너가지 않는다. 창이 닫히면 그 창의 호출은 끊긴다. 창구는 `mcp-tools:list`, `mcp-tools:call`, `mcp-tools:cancel`, `mcp-tools:retry`, `mcp-tools:open-settings`와 변경 알림 `mcp-tools:changed`다. 목록에는 승인된 도구 정의와 상태만 있고 비밀값은 없다. 껍데기 앱이 없는 창은 빈 목록과 거절을 받는다. 설정 화면의 창구(`mcp-servers:*`)는 껍데기 앱의 메인 창에만 답한다. 바깥 프로그램에 약속하는 것은 아니다.
 
 ## 구독 연결 상태 (앱 안의 창구)
 

@@ -6,6 +6,7 @@ O editor de PDF tem cinco separadores no friso: **Página Inicial / Anotar / Edi
 
 - Barra lateral esquerda: **Miniaturas** (clique para saltar, o intervalo visível fica destacado) ou **Estrutura** (os marcadores, quando existem).
 - Zoom: o controlo de proporção no canto inferior direito; ctrl+roda ajusta o zoom por degraus.
+- Mover a visualização: ative a **Ferramenta Mão** (guias Página Inicial e Exibir) e arraste para mover a página em qualquer direção. Enquanto está ativa, arrastar não seleciona texto e um clique simples continua abrindo links. Arrastar com o botão do meio (roda) pressionado move a visualização sem a ferramenta. Esc ou outra ferramenta a desativa.
 - Rotação: por página ou em todas as páginas a partir do menu Páginas; as rotações são gravadas ao salvar.
 - Pesquisar: ctrl+F para procurar em todo o texto com todas as ocorrências realçadas.
 - PDFs encriptados: aparece um pedido de palavra-passe (uma pequena janela própria) para os abrir; a palavra-passe só é usada nesta sessão. Pode editar e guardar um documento assim; ao guardar, a palavra-passe mantém-se. **Anotar → Proteger** define, altera ou remove a palavra-passe e o que os leitores podem fazer.

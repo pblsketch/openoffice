@@ -129,6 +129,17 @@ describe('guardDriveContent', () => {
     expect((await skill.executeTool(call('web_search'))).output).toBe('ran web_search')
   })
 
+  it('refuses user MCP tools after a Drive read', async () => {
+    const { skill } = setup()
+    expect((await skill.executeTool(call('mcp__law__search', { query: 'x' }))).output).not.toBe(
+      DRIVE_OUTBOUND_BLOCKED,
+    )
+    await skill.executeTool(call('drive_read', { file_id: 'f1' }))
+    expect((await skill.executeTool(call('mcp__law__search', { query: 'x' }))).output).toBe(
+      DRIVE_OUTBOUND_BLOCKED,
+    )
+  })
+
   it('refuses outbound tools in a restored transcript that holds a Drive read', async () => {
     const { skill, setHistory } = setup()
     setHistory([
@@ -153,6 +164,13 @@ describe('isOutboundCall', () => {
 
   it('treats read_url as outbound even without an address', () => {
     expect(isOutboundCall(call('read_url'))).toBe(true)
+  })
+
+  it('treats every user MCP tool as outbound, by its mcp__ prefix alone', () => {
+    expect(isOutboundCall(call('mcp__law__search'))).toBe(true)
+    expect(isOutboundCall(call('mcp__anything__at_all', { text: 'local' }))).toBe(true)
+    expect(isOutboundCall(call('mcp_law_search'))).toBe(false)
+    expect(isOutboundCall(call('edit_text'))).toBe(false)
   })
 })
 

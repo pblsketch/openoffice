@@ -44,6 +44,8 @@ export interface UserSkill {
   template: string | undefined
   templateExists: boolean
   hasScripts: boolean
+  /** MCP servers named in SKILL.md: front matter `allowed-tools` and the body (spec 8) */
+  mcpServers: string[]
   /** an app skill installed from GitHub (it has a source record) */
   github: boolean
   /** a builtin skill only the agent window uses */

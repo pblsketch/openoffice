@@ -28,6 +28,7 @@ export const nl = {
   invokeManual: 'Alleen bij aanroepen',
   badgeTemplate: 'Met sjabloon',
   badgeScripts: 'Met scripts · werkt volledig in het agentvenster',
+  badgeMcpServer: 'MCP-server nodig: {servers}',
   badgeAgentOnly: 'Alleen agentvenster',
   unreadableNoFrontmatter: 'geen kopgegevens',
   unreadableBadName: 'naam voldoet niet aan de regels',

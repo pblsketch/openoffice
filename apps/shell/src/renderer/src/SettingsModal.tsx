@@ -56,10 +56,12 @@ import type { AiCatalogEntry, DocTheme, UiTheme } from '../../shared/home-api'
 import { ProviderLogo } from './provider-logos'
 import { IntegrationsPane, skillUpdateDue } from './IntegrationsPane'
 import { AiSection, SubscriptionSummary } from './SettingsAiSection'
+import { HomeKindsField } from './SettingsHomeKinds'
 import { QuickLookField } from './SettingsQuickLook'
 import { ResultStoreField } from './SettingsResultStore'
 import { useSubscriptionConnection } from './subscription-client'
 import { SkillsPane } from './skills/SkillsPane'
+import { useUsableMcpServers } from './mcp/mcp-open-request'
 import { skillsText } from './i18n/strings-skills'
 import {
   advancedPaneUseChoice,
@@ -1674,6 +1676,8 @@ export function SettingsModal({
   const [updateState, setUpdateState] = useState<UpdateUiState | null>(null)
   // one live view of the two subscription connections for the whole dialog
   const connection = useSubscriptionConnection()
+  // a skill's "MCP server needed" mark leaves out the servers registered and on
+  const usableMcpServers = useUsableMcpServers()
 
   useEffect(() => {
     let alive = true
@@ -2092,11 +2096,12 @@ export function SettingsModal({
                     }}
                   />
                 </div>
+                <HomeKindsField />
                 <QuickLookField />
                 <ResultStoreField />
               </>
             )}
-            {section === 'skills' && <SkillsPane />}
+            {section === 'skills' && <SkillsPane usableMcpServers={usableMcpServers} />}
             {section === 'integrations' && (
               <IntegrationsPane t={t} onStatus={(st) => onSkillUpdateDue?.(skillUpdateDue(st))} />
             )}

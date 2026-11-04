@@ -27,6 +27,7 @@ const INSTALLER_OPEN_WITH_EXTS: ReadonlySet<string> = new Set([
   'hwpx',
   'xmind',
   'epub',
+  'vsdx',
 ])
 const installerScript = readFileSync(resolve(import.meta.dirname, '../build/installer.nsh'), 'utf8')
 
@@ -38,7 +39,7 @@ describe('packaged file associations', () => {
   // gap this closes.
   it('advertises every extension the app launches', () => {
     for (const ext of LAUNCHABLE_EXTS) {
-      // .odt/.hwp/.hwpx/.xmind/.epub are offered by the NSIS script alone
+      // .odt/.hwp/.hwpx/.xmind/.epub/.vsdx are offered by the NSIS script alone
       // (tests/odt-open-with.test.ts, tests/open-with-icons.test.ts): an
       // association would make the app their default opener on Windows
       if (INSTALLER_OPEN_WITH_EXTS.has(ext)) continue
@@ -106,6 +107,42 @@ describe('packaged file associations', () => {
     expect(offered!.rank).toBe('Alternate')
     expect(offered!.mimeType).toBe('application/epub+zip')
     expect(offered!.icon).toBe('epub')
+  })
+
+  // A draw.io diagram is the app's own to edit and save: like the office
+  // types the installer offers to take its default. A Visio drawing is only
+  // imported, so it stays Open With only. The draw.io pictures keep the
+  // picture's program (their extension is .svg / .png).
+  it('takes .drawio and .dio as an editor, and .vsdx for Open With only', () => {
+    const winExts = config.win.fileAssociations.map((entry: { ext: string }) => entry.ext)
+    expect(winExts).toContain('drawio')
+    expect(winExts).toContain('dio')
+    expect(winExts).not.toContain('vsdx')
+    expect(winExts).not.toContain('svg')
+    expect(winExts).not.toContain('png')
+    const byExt = (ext: string) =>
+      fileAssociations.find((entry) => entry.ext === ext) as
+        { name: string; role?: string; rank?: string; mimeType?: string; icon?: string } | undefined
+    for (const ext of ['drawio', 'dio']) {
+      expect(byExt(ext), ext).toMatchObject({
+        name: 'Diagram',
+        role: 'Editor',
+        icon: 'diagram',
+        mimeType: 'application/vnd.jgraph.mxfile',
+      })
+      expect(byExt(ext)!.rank, ext).toBeUndefined()
+    }
+    // the drawing is never written: a viewer, and never the default by being installed
+    expect(byExt('vsdx')).toMatchObject({ role: 'Viewer', rank: 'Alternate', icon: 'diagram' })
+    // the label names the format, not another product
+    expect(byExt('vsdx')!.name).not.toMatch(/visio/i)
+    // the type identifier "set as default" names on macOS resolves without draw.io
+    const imported = config.mac.extendInfo.UTImportedTypeDeclarations as Array<{
+      UTTypeIdentifier: string
+      UTTypeTagSpecification: Record<string, string[]>
+    }>
+    const drawio = imported.find((type) => type.UTTypeIdentifier === 'com.jgraph.drawio')
+    expect(drawio?.UTTypeTagSpecification['public.filename-extension']).toEqual(['drawio', 'dio'])
   })
 
   it('ships the module tree of every editor the bundle routes to', () => {

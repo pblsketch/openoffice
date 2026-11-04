@@ -101,9 +101,20 @@ export const TOOLS: ToolSpec[] = [
     name: 'convert',
     command: 'convert',
     description:
-      'Convert a document to another format with the GenOffice engines (pdf, docx, odt, xlsx, pptx, md, html, csv, epub; the `to` description lists the routes). Targets that need layout (to pdf, docx to html, html to docx) start a hidden GenOffice process for 1-6 s. pdf to md/epub reflows the text (pictures in assets/ beside the .md) and uses pages read by pdf_ai_read. Output defaults to the input name with the new extension.',
+      'Convert a document to another format with the GenOffice engines (pdf, docx, odt, xlsx, pptx, md, html, csv, epub; the `to` description lists the routes). Targets that need layout (to pdf, docx to html, html to docx, diagram to pdf/png/svg) start a hidden GenOffice process for 1-6 s. pdf to md/epub reflows the text (pictures in assets/ beside the .md) and uses pages read by pdf_ai_read. A diagram makes one PDF, or a PNG/SVG per page (<name>-p<n>, out is a folder) unless page picks one. Output defaults to the input name with the new extension.',
     positionals: [{ key: 'file', description: 'path of the source document' }],
-    options: ['to', 'out', 'force', 'password', 'sheet', 'pages', 'title', 'author', 'no-cover'],
+    options: [
+      'to',
+      'out',
+      'force',
+      'password',
+      'sheet',
+      'pages',
+      'title',
+      'author',
+      'no-cover',
+      { key: 'page', kind: 'string', description: 'diagram page id or name' },
+    ],
   },
   {
     name: 'create_docx',
@@ -433,6 +444,64 @@ export const TOOLS: ToolSpec[] = [
     ],
   },
   {
+    name: 'diagram_read',
+    command: 'diagram',
+    verb: 'read',
+    readOnly: true,
+    description:
+      'Shapes and edges of a draw.io diagram (.drawio, .dio, .drawio.svg, .drawio.png), read locally: detail.pages[] { id, name, shapes, edges }.',
+    positionals: [{ key: 'file', description: 'path of the diagram' }],
+    options: [{ key: 'page', kind: 'string', description: 'page id or name (default: all)' }],
+  },
+  {
+    name: 'diagram_apply',
+    command: 'diagram',
+    verb: 'apply',
+    description:
+      'Edit a draw.io diagram with the in-app AI ops (guide diagram). Ids come from diagram_read; new ids come back in detail.results[].created. .drawio/.dio run locally, untouched pages kept byte for byte; insert_mermaid and .drawio.svg/.png start a hidden GenOffice. Reads write nothing. Atomic by default. ' +
+      GUI_OPEN,
+    positionals: [{ key: 'file', description: 'path of the diagram' }],
+    options: [
+      {
+        key: 'ops',
+        kind: OPS_JSON,
+        typed: 'diagram-ops',
+        description: 'JSON array of ops, every entry with "op"',
+        required: true,
+      },
+      { key: 'page', kind: 'string', description: 'default page id or name (else the first)' },
+      'best-effort',
+      'stop-on-error',
+      'out',
+      'force',
+    ],
+  },
+  {
+    name: 'create_drawio',
+    command: 'create',
+    fixed: ['--type', 'drawio'],
+    description:
+      'Create a draw.io diagram: Mermaid drawn by draw.io (a hidden GenOffice process), then diagram_apply ops, on an empty page. The out name picks .drawio, .dio, .drawio.svg or .drawio.png.',
+    options: [
+      {
+        key: 'mermaid',
+        kind: 'inline-md',
+        description: 'Mermaid source',
+      },
+      {
+        key: 'ops',
+        kind: OPS_JSON,
+        description: 'diagram_apply ops',
+      },
+      {
+        key: 'out',
+        description: 'output path (required)',
+        required: true,
+      },
+      'force',
+    ],
+  },
+  {
     name: 'sheet_read',
     command: 'sheet',
     verb: 'read',
@@ -601,9 +670,9 @@ export const TOOLS: ToolSpec[] = [
     readOnly: true,
     plainText: true,
     description:
-      'The op reference an agent reads before writing ops: guide("docs"), guide("sheets") or guide("slides") list the groups; topic narrows to one group or one op. guide("slides", "design") is the staged deck workflow and guide("slides", "spec") the outline and page spec format (deck_start returns both). guide("slides", "templates") lists the built-in design templates; guide("slides", "templates", "<id>") prints one as a ready-made style sheet to save as style.md. Also available as ieumoffice://guide/* resources.',
+      'The op reference an agent reads before writing ops: guide("docs"), guide("sheets"), guide("slides"), guide("hwp") or guide("diagram") list the groups; topic narrows to one group or one op. guide("slides", "design") is the staged deck workflow and guide("slides", "spec") the outline and page spec format (deck_start returns both). guide("slides", "templates") lists the built-in design templates; guide("slides", "templates", "<id>") prints one as a ready-made style sheet to save as style.md. Also available as ieumoffice://guide/* resources.',
     positionals: [
-      { key: 'domain', description: 'slides | docs | sheets' },
+      { key: 'domain', description: 'slides | docs | sheets | hwp | diagram' },
       {
         key: 'topic',
         description: 'a group, an op name, or for slides: design | spec | templates',

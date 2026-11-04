@@ -1,4 +1,5 @@
 import type { AgentToolCall } from './types'
+import { isMcpToolName } from './user-mcp/names'
 
 /** Tools that send model-chosen text to, or fetch from, somewhere off the PC */
 export const OUTBOUND_TOOLS: ReadonlySet<string> = new Set([
@@ -26,7 +27,16 @@ function fetchesAddress(value: unknown, depth = 0): boolean {
   return false
 }
 
+/**
+ * Whether a tool reaches off the PC by its name alone: the outbound tools and
+ * every user MCP server's tool (`mcp__` prefix, user MCP spec 7.2), whatever
+ * the server is, so no list of registered servers is needed to tell.
+ */
+export function isOutboundToolName(name: string): boolean {
+  return OUTBOUND_TOOLS.has(name) || isMcpToolName(name)
+}
+
 /** Whether a call would carry text or an address off the PC */
 export function isOutboundCall(call: AgentToolCall): boolean {
-  return OUTBOUND_TOOLS.has(call.name) || fetchesAddress(call.input)
+  return isOutboundToolName(call.name) || fetchesAddress(call.input)
 }

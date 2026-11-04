@@ -9,6 +9,8 @@ import { setDefaultSheetTheme } from './create'
 import type { XmindDocument } from './document'
 import { newXmindId } from './ids'
 import { DEFAULT_THEME_ID, type ThemeId } from './theme-data'
+import { LINE_TAPERED, MAP_LEVEL, MULTI_LINE_COLORS, SETTING_OFF, TAPERED } from './theme-line-keys'
+import { sheetLineSettings } from './theme-lines'
 import { writtenThemeProperties } from './theme-table'
 import type { XmindSheet } from './types'
 
@@ -36,11 +38,21 @@ export function themeTable(id: ThemeId): XmindThemeTable {
 }
 
 /**
- * Sets a sheet's theme, replacing whatever theme it had. The caller marks the
+ * Sets a sheet's theme, replacing whatever theme it had. The two map-wide
+ * line settings are the user's, not the theme's, so they carry over: the new
+ * table differs from the one written for the theme only where the sheet's
+ * settings differ from it (see `theme-lines.ts`). The caller marks the
  * document changed; `applySheetTheme` does both.
  */
 export function writeSheetTheme(sheet: XmindSheet, id: ThemeId): void {
-  sheet.theme = themeTable(id)
+  const settings = sheetLineSettings(sheet)
+  const table = themeTable(id)
+  const map = table[MAP_LEVEL]?.properties
+  if (map) {
+    if (settings.tapered) map[LINE_TAPERED] = TAPERED
+    if (!settings.rainbow) map[MULTI_LINE_COLORS] = SETTING_OFF
+  }
+  sheet.theme = table
 }
 
 /** The user picked a theme for a sheet: writes it and marks the document changed. */

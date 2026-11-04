@@ -18,6 +18,8 @@ export interface XmindTopic {
   id: string
   children?: XmindTopicChildren
   title?: unknown
+  /** `[{ text, "fo:…": value }]`: the title in parts with a text format of their own (see `text-style.ts`) */
+  attributedTitle?: unknown
   /** `'folded'` when the branch is collapsed */
   branch?: unknown
   labels?: unknown
@@ -28,6 +30,8 @@ export interface XmindTopic {
   markers?: unknown
   /** `{ src, width, height }` */
   image?: unknown
+  /** the width the user gave the topic's box, in pixels */
+  customWidth?: unknown
   /** `{ id, properties }`: what was set on this topic directly */
   style?: unknown
   /** the arrangement of this topic's branches */

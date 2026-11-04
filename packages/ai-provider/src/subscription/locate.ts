@@ -166,11 +166,12 @@ function isInside(path: string, root: string, platform: NodeJS.Platform): boolea
  * started by opening a file. `\tools` is absolute to Node, yet Windows
  * completes it from the drive of the working directory.
  */
-function isFullDir(dir: string): boolean {
+export function isFullDir(dir: string): boolean {
   return isAbsolute(dir) && !(sep === '\\' && /^[\\/](?![\\/])/.test(dir))
 }
 
-function pathDirs(env: NodeJS.ProcessEnv, platform: NodeJS.Platform): string[] {
+/** The PATH directories a lookup may use: empty and relative entries are left out (see `isFullDir`) */
+export function pathDirs(env: NodeJS.ProcessEnv, platform: NodeJS.Platform): string[] {
   const value = env.PATH ?? env.Path ?? env.path ?? ''
   if (!value) return []
   return value
@@ -483,7 +484,7 @@ async function programInDir(
  * npm, Homebrew, version managers and the Claude installer (`~/.local/bin`)
  * install into are probed explicitly.
  */
-async function commonUnixBinDirs(home: string): Promise<string[]> {
+export async function commonUnixBinDirs(home: string): Promise<string[]> {
   const dirs = ['/opt/homebrew/bin', '/usr/local/bin']
   if (home) {
     dirs.push(

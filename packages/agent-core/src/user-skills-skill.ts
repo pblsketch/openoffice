@@ -1,5 +1,6 @@
 import type { AgentMessage, AgentToolCall, AgentToolDef, ToolExecution } from './types'
 import { RESERVED_USER_SKILL_NAMES } from './user-skill-names'
+import { mcpServerListOf, skillStepsNote } from './skill-mcp-refs'
 import type { AgentSkill } from './skill'
 
 /**
@@ -11,7 +12,8 @@ import type { AgentSkill } from './skill'
  * injected deps (the shell's main process checks every request again), and
  * `propose_skill` never writes: it hands the proposal to `onProposal`, which
  * shows a card, and the person's Save on that card is the only write. No
- * script of a skill ever runs.
+ * script of a skill ever runs; every skill's text ends with a note that tells
+ * the model to name the steps it could not do (spec 8).
  *
  * Like the knowledge base, the capability is storage-agnostic: deps inject a
  * synchronous list snapshot (the loop reads the prompt synchronously) and the
@@ -103,6 +105,8 @@ export interface UserSkillText {
   /** the template path when the skill names one that is there */
   template: string | undefined
   hasScripts: boolean
+  /** MCP servers the skill refers to (its body and front matter `allowed-tools`) */
+  mcpServers: string[]
 }
 
 export type UserSkillRead<T> = ({ ok: true } & T) | { ok: false; reason: string }
@@ -154,6 +158,11 @@ export interface UserSkillsDeps {
     ((skill: { id: string; source: string; name: string; title: string }) => string) | undefined
   /** limits of the instruction's list */
   limits?: Partial<AutoSkillsLimits> | undefined
+  /**
+   * whether an MCP server can be used now (registered and on); without it no
+   * referenced server counts as usable (spec 8)
+   */
+  mcpServerUsable?: ((name: string) => boolean) | undefined
 }
 
 export interface AutoSkillsLimits {
@@ -449,9 +458,8 @@ export function createUserSkillsSkill(deps: UserSkillsDeps): AgentSkill {
         ? `Template document: ${skill.template}. The app offers the person to open a copy of it as a new document; do not try to open it yourself.`
         : 'Template document: none',
     ]
-    if (skill.hasScripts) {
-      lines.push('This skill has scripts; scripts are not run here. Do the work without them.')
-    }
+    if (skill.hasScripts) lines.push('This skill has scripts; scripts are not run here.')
+    lines.push(skillStepsNote(skill.mcpServers, deps.mcpServerUsable))
     return { output: lines.join('\n'), summary: labels.used(title) }
   }
 
@@ -598,6 +606,7 @@ export function skillTextAnswerOf(raw: unknown): UserSkillRead<{ skill: UserSkil
         : [],
       template: typeof s.template === 'string' && s.template ? s.template : undefined,
       hasScripts: s.hasScripts === true,
+      mcpServers: mcpServerListOf(s.mcpServers),
     },
   }
 }

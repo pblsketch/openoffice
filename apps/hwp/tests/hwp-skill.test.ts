@@ -13,6 +13,56 @@ import {
 /** where a change is, as the editor hands it back */
 const PLACE = { sec: 0, para: 1, offset: 0, length: 3 }
 
+/** a document's footnote settings, as noteSettings reads them */
+const NOTE_SHAPE = {
+  numberFormat: 'digit',
+  prefix: '',
+  suffix: ')',
+  superscript: false,
+  startNumber: 1,
+  numbering: 'continue',
+  placement: 'eachColumn',
+  separator: true,
+}
+
+/** an A4 page, as pageSetup reads it */
+const PAGE_SETUP = {
+  paper: 'A4',
+  width: 210,
+  height: 297,
+  orientation: 'portrait' as const,
+  margins: { left: 30, right: 30, top: 20, bottom: 15, header: 15, footer: 15, gutter: 0 },
+}
+
+/** a document's formatting, as formatting reads it */
+const FORMATTING = {
+  pageSetup: PAGE_SETUP,
+  notes: { footnote: NOTE_SHAPE },
+  styles: [{ name: '바탕글', kind: 'paragraph' as const, paragraphs: 12, look: {} }],
+  paragraphs: 12,
+  looks: [
+    {
+      id: 'Labc123',
+      paragraphs: 12,
+      style: '바탕글',
+      font: '함초롬바탕',
+      size: 10,
+      bold: false,
+      italic: false,
+      underline: false,
+      color: '#000000',
+      align: 'justify',
+      lineSpacing: 160,
+      indent: 0,
+      marginLeft: 0,
+      marginRight: 0,
+      spacingBefore: 0,
+      spacingAfter: 0,
+      samples: ['본문입니다'],
+    },
+  ],
+}
+
 /** one memo, as listMemos answers, with only the fields the tool reads given */
 function memo(overrides: Partial<AgentMemo> = {}): AgentMemo {
   return {
@@ -236,6 +286,20 @@ function setup(
       text: '지운 각주',
       place: PLACE,
     })),
+    noteSettings: vi.fn(async () => ({
+      sections: 1,
+      footnote: NOTE_SHAPE,
+      endnote: { ...NOTE_SHAPE, placement: 'documentEnd' },
+    })),
+    setNoteSettings: vi.fn(async (kind: 'footnote' | 'endnote') => ({
+      ok: true as const,
+      kind,
+      settings: { ...NOTE_SHAPE, numberFormat: 'circledDigit', suffix: '' },
+    })),
+    pageSetup: vi.fn(async () => ({ sections: [PAGE_SETUP] })),
+    setPageSetup: vi.fn(async () => ({ ok: true as const, sections: 1, pageSetup: PAGE_SETUP })),
+    formatting: vi.fn(async () => ({ ok: true as const, ...FORMATTING })),
+    formatLook: vi.fn(async () => ({ ok: true as const, paragraphs: 12, place: PLACE })),
     undo: vi.fn(async () => ({ ok: true, undone: 1 })),
     ...overrides,
   }
@@ -2027,6 +2091,12 @@ describe('the skill as the model sees it', () => {
       'insert_note',
       'edit_note',
       'delete_note',
+      'read_note_settings',
+      'set_note_settings',
+      'read_page_setup',
+      'set_page_setup',
+      'read_formatting',
+      'format_look',
     ])
     expect((await call('delete_everything')).isError).toBe(true)
   })
@@ -2220,5 +2290,138 @@ describe('pictures', () => {
 
     const on = setup({}, undefined, undefined, undefined, undefined, () => true).skill
     expect(on.tools.map((tool) => tool.name)).toContain('analyze_picture')
+  })
+})
+
+describe('document-wide settings', () => {
+  it('reads and changes the footnote settings of the whole document', async () => {
+    const { bridge, call, changes } = setup()
+    expect((await call('read_note_settings')).output).toContain('"suffix":")"')
+    const result = await call('set_note_settings', {
+      kind: 'footnote',
+      number_format: 'circledDigit',
+      suffix: '',
+    })
+    expect(result.isError).toBeFalsy()
+    expect(bridge.setNoteSettings).toHaveBeenCalledWith('footnote', {
+      numberFormat: 'circledDigit',
+      suffix: '',
+    })
+    expect(changes[0]).toMatchObject({ kind: 'format', to: '①' })
+    expect((await call('set_note_settings', { kind: 'footnote' })).isError).toBe(true)
+  })
+
+  it('says when the editor cannot change the footnote settings', async () => {
+    const { call } = setup({
+      setNoteSettings: async () => ({ ok: false as const, reason: 'unsupported' as const }),
+    })
+    const result = await call('set_note_settings', { kind: 'footnote', suffix: '.' })
+    expect(result.isError).toBe(true)
+    expect(result.output).toContain('cannot change the footnote settings')
+  })
+
+  it('tells the model which notes have a typed number instead of an automatic one', async () => {
+    const { call } = setup({
+      listNotes: async () => ({
+        count: 1,
+        elsewhere: 0,
+        notes: [
+          {
+            note: 1,
+            kind: 'footnote' as const,
+            number: 1,
+            after: '본문',
+            text: '1) 설명',
+            noAutoNumber: true as const,
+          },
+        ],
+      }),
+    })
+    expect((await call('list_notes')).output).toContain('1 note(s) marked noAutoNumber')
+  })
+
+  it('changes the page setup in millimetres, for the whole document or one section', async () => {
+    const { bridge, call, changes } = setup()
+    expect((await call('read_page_setup')).output).toContain('"paper":"A4"')
+    await call('set_page_setup', { paper: 'B5', margin_left: 25, orientation: 'landscape' })
+    expect(bridge.setPageSetup).toHaveBeenCalledWith(
+      { paper: 'B5', orientation: 'landscape', margins: { left: 25 } },
+      null,
+    )
+    expect(changes[0]).toMatchObject({
+      kind: 'format',
+      to: 'B5 · aiPageLandscape · aiPageMarginsChanged',
+    })
+    expect((await call('set_page_setup', {})).isError).toBe(true)
+  })
+
+  it('passes a refusal of the page setup on as a reason', async () => {
+    const { call } = setup({
+      setPageSetup: async () => ({
+        ok: false as const,
+        reason: 'no_text_area' as const,
+        section: 1,
+      }),
+    })
+    const result = await call('set_page_setup', { margin_left: 150 })
+    expect(result.isError).toBe(true)
+    expect(result.output).toContain('less than 2 cm left for text')
+  })
+
+  it('numbers paragraphs through the format tools', async () => {
+    const { bridge, call } = setup()
+    await call('format_paragraph', { find: '본문', list: 'bullet', list_level: 2, bullet: '■' })
+    expect(bridge.formatParagraph).toHaveBeenCalledWith('본문', null, {
+      list: 'bullet',
+      bullet: '■',
+      listLevel: 2,
+    })
+  })
+
+  it('reads the formatting of this document and formats one look of it', async () => {
+    const { bridge, call, changes } = setup()
+    const read = await call('read_formatting')
+    expect(read.output).toContain('"id":"Labc123"')
+    expect(bridge.formatting).toHaveBeenCalledWith(null)
+    const result = await call('format_look', { look: 'Labc123', font: '바탕', size: 11 })
+    expect(result.isError).toBeFalsy()
+    expect(bridge.formatLook).toHaveBeenCalledWith('Labc123', { font: '바탕', size: 11 })
+    expect(changes[0]).toMatchObject({ kind: 'format', count: 12 })
+  })
+
+  it('answers a look that is gone with the looks there are now', async () => {
+    const { call } = setup({
+      formatLook: async () => ({
+        ok: false as const,
+        reason: 'no_such_look' as const,
+        looks: [{ id: 'Lnew000', paragraphs: 3, sample: '제목' }],
+      }),
+    })
+    const result = await call('format_look', { look: 'Lold000', bold: true })
+    expect(result.isError).toBe(true)
+    expect(result.output).toContain('Lnew000')
+  })
+
+  it('reads the formatting of an attached Hangul document by its name only', async () => {
+    const { bridge } = setup()
+    const readAttachmentDocument = vi.fn(async (name: string) =>
+      name === '양식.hwpx'
+        ? { ok: true as const, base64: 'AAAA' }
+        : { ok: false as const, error: `there is no file named "${name}"` },
+    )
+    const { skill } = createHwpSkill({
+      bridge,
+      label: (key) => key,
+      onChange: () => {},
+      confirmMemoRemoval: async () => false,
+      readAttachmentDocument,
+    })
+    const call = (input: Record<string, unknown>) =>
+      skill.executeTool({ id: '1', name: 'read_formatting', input } satisfies AgentToolCall)
+    const read = await call({ attachment: '양식.hwpx' })
+    expect(read.output).toContain('attached document "양식.hwpx"')
+    expect(bridge.formatting).toHaveBeenCalledWith('AAAA')
+    const missing = await call({ attachment: '없는.hwpx' })
+    expect(missing.isError).toBe(true)
   })
 })

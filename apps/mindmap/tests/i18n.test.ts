@@ -6,10 +6,28 @@
  */
 import { describe, expect, it } from 'vitest'
 import { LANGS } from '@genoffice/i18n'
-import { THEME_BAND_IDS, THEME_SKELETON_IDS, THEME_VARIANT_IDS } from '@genoffice/xmind-engine'
+import {
+  ARROW_SHAPES,
+  BOUNDARY_SHAPES,
+  BRANCH_LINE_SHAPES,
+  LINE_PATTERNS,
+  RELATIONSHIP_SHAPES,
+  SUMMARY_SHAPES,
+  THEME_BAND_IDS,
+  THEME_SKELETON_IDS,
+  THEME_VARIANT_IDS,
+} from '@genoffice/xmind-engine'
 import { strings } from '../src/renderer/i18n/strings'
 import { mapStrings } from '../src/renderer/i18n/map-strings'
 import { BAND_NAME, SKELETON_NAME, VARIANT_NAME } from '../src/renderer/components/ThemePanel'
+import {
+  ARROW_NAME,
+  BOUNDARY_SHAPE_NAME,
+  BRANCH_SHAPE_NAME,
+  PATTERN_NAME,
+  RELATIONSHIP_SHAPE_NAME,
+  SUMMARY_SHAPE_NAME,
+} from '../src/renderer/components/FormatPanel'
 
 const placeholders = (text: string): string[] => (text.match(/\{\w+\}/g) ?? []).sort()
 const keys = Object.keys(strings.zh) as (keyof typeof strings.zh)[]
@@ -99,6 +117,40 @@ describe('the editor dictionaries', () => {
         expect(text.trim(), lang).not.toBe('')
         expect(text, lang).not.toMatch(/\{\w+\}/)
       }
+    }
+  })
+
+  it('name every shape, end and line style of the format panel in every language, each differently', () => {
+    const groups = [
+      [BRANCH_SHAPE_NAME, BRANCH_LINE_SHAPES],
+      [RELATIONSHIP_SHAPE_NAME, RELATIONSHIP_SHAPES],
+      [ARROW_NAME, ARROW_SHAPES],
+      [SUMMARY_SHAPE_NAME, SUMMARY_SHAPES],
+      [BOUNDARY_SHAPE_NAME, BOUNDARY_SHAPES],
+      [PATTERN_NAME, LINE_PATTERNS],
+    ] as const
+    for (const [names, values] of groups) {
+      expect(Object.keys(names).sort()).toEqual([...values].sort())
+    }
+    for (const lang of LANGS) {
+      for (const [names] of groups) {
+        const shown = Object.values(names).map((key) => strings[lang][key])
+        expect(new Set(shown).size, `${lang}: ${shown.join(', ')}`).toBe(shown.length)
+        for (const name of shown) expect(name.length, `${lang}: ${name}`).toBeLessThanOrEqual(30)
+      }
+      // a thickness keeps its number
+      expect(strings[lang].lineWidthPoints, lang).toContain('{n}')
+      // "add boundary" is an entry of the map's own menu too
+      expect(mapStrings(lang).menuAddBoundary, lang).toBe(strings[lang].tbBoundary)
+    }
+  })
+
+  it('name the two sides of the text | line switch in every language, short and differently', () => {
+    for (const lang of LANGS) {
+      const sides = [strings[lang].formatTextSection, strings[lang].formatLineSection]
+      expect(sides[0], lang).not.toBe(sides[1])
+      // two buttons side by side in a narrow panel
+      for (const side of sides) expect(side.length, `${lang}: ${side}`).toBeLessThanOrEqual(12)
     }
   })
 
