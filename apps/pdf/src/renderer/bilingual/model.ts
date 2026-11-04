@@ -19,9 +19,14 @@ import {
   translationBlockKeys,
   type TranslationBlockKey,
 } from '../../../../../packages/pdf-structure/src/store/keys'
+import {
+  sentenceEndsPair,
+  validSentenceEnds,
+} from '../../../../../packages/pdf-structure/src/store/sentence-ends'
 import { isTranslationLanguage } from '../../../../../packages/pdf-structure/src/translate/language'
 import { translationUnits } from '../../../../../packages/pdf-structure/src/translate/result'
 import type { TextUnit } from '../../../../../packages/pdf-structure/src/tree/derive'
+import { runsText } from '../../../../../packages/pdf-structure/src/tree/inline'
 import type {
   BlockRegion,
   CaptionBlock,
@@ -71,6 +76,19 @@ export interface BilingualUnit {
   reason?: string
   /** the source has marks an edit would drop (bold, italic, links, footnote markers, formulas) */
   sourceHasMarks: boolean
+  /**
+   * where each sentence ends, source and translation side by side; present
+   * only on a translated, unedited unit whose stored pair is valid and whose
+   * source list ends at the current tree's text length (spec 6.1). Absent:
+   * the unit links as one paragraph.
+   */
+  sentenceEnds?: BilingualSentenceEnds
+}
+
+/** sentence boundaries of a unit: offsets into runsText of the source / shown runs (UTF-16) */
+export interface BilingualSentenceEnds {
+  source: number[]
+  translated: number[]
 }
 
 export type BilingualTextRole = 'heading' | 'paragraph' | 'listItem' | 'caption' | 'footnote'
@@ -96,8 +114,12 @@ export interface BilingualTableCell {
   rowSpan: number
   colSpan: number
   header: boolean
-  /** a unit per paragraph with letters; other paragraphs (numbers, empty) show as they are */
-  paragraphs: Array<{ unit: BilingualUnit | null; runs: InlineRun[] }>
+  /**
+   * a unit per paragraph with letters; other paragraphs (numbers, empty) show
+   * as they are. `region`: the paragraph's own box on the page, when the PDF
+   * analysis measured it (else the cell's box).
+   */
+  paragraphs: Array<{ unit: BilingualUnit | null; runs: InlineRun[]; region?: BlockRegion }>
 }
 
 export interface BilingualTableItem {
@@ -176,11 +198,14 @@ function unitOf(
   // same rule as the outputs (translate/result.ts): an edit is plain text and wins over marks
   if (entry.status === 'translated' && entry.text !== undefined) {
     const edited = entry.edited === true
+    const runs = edited ? plain(entry.text) : (entry.runs ?? plain(entry.text))
+    const sentenceEnds = edited ? null : sentenceEndsOf(entry, u.runs, runs)
     return {
       ...base,
       state: 'translated',
-      runs: edited ? plain(entry.text) : (entry.runs ?? plain(entry.text)),
+      runs,
       edited,
+      ...(sentenceEnds ? { sentenceEnds } : {}),
     }
   }
   return {
@@ -190,6 +215,67 @@ function unitOf(
     edited: false,
     reason: entry.reason ?? 'unknown',
   }
+}
+
+/**
+ * The stored sentence boundaries when they still fit: the pair is valid
+ * against the shown translation and the source list ends at the length of
+ * the source text the tree has now. Anything else: null (a paragraph link).
+ */
+function sentenceEndsOf(
+  entry: TranslationBlockEntry,
+  source: readonly InlineRun[],
+  shown: readonly InlineRun[],
+): BilingualSentenceEnds | null {
+  if (entry.sourceSentenceEnds === undefined && entry.sentenceEnds === undefined) return null
+  const pair = sentenceEndsPair(
+    entry.sourceSentenceEnds,
+    entry.sentenceEnds,
+    runsText(shown).length,
+  )
+  if (!pair || !validSentenceEnds(pair.sourceSentenceEnds, runsText(source).length)) return null
+  return { source: pair.sourceSentenceEnds, translated: pair.sentenceEnds }
+}
+
+/**
+ * Cut runs into one list per sentence at `ends` (offsets into
+ * `runsText(runs)`, the last one its length). A text run crossing a boundary
+ * is cut and keeps its marks on both halves; a formula or a line break goes
+ * whole with the sentence it starts in; a footnote marker (no text) stays
+ * with the sentence before a boundary it touches.
+ */
+export function splitRunsAtEnds(
+  runs: readonly InlineRun[],
+  ends: readonly number[],
+): InlineRun[][] {
+  const out: InlineRun[][] = ends.map(() => [])
+  if (out.length === 0) return out
+  const last = ends.length - 1
+  let s = 0
+  let pos = 0
+  const advance = () => {
+    while (s < last && pos >= ends[s]!) s++
+  }
+  for (const r of runs) {
+    if (r.kind === 'text') {
+      let rest = r.text
+      while (rest.length > 0) {
+        advance()
+        const room = s < last ? ends[s]! - pos : rest.length
+        const piece = rest.slice(0, room)
+        out[s]!.push({ ...r, text: piece })
+        pos += piece.length
+        rest = rest.slice(piece.length)
+      }
+    } else if (r.kind === 'lineBreak' || r.kind === 'math') {
+      advance()
+      out[s]!.push(r)
+      pos += r.kind === 'math' ? r.latex.length : 1
+    } else {
+      out[s]!.push(r)
+    }
+  }
+  return out
 }
 
 const emptyCounts = (): BilingualCounts => ({ units: 0, translated: 0, failed: 0, pending: 0 })
@@ -252,7 +338,9 @@ export function buildBilingualModel(
       paragraphs: c.paragraphs.map((runs, k) => {
         const unit = byKey.get(`${b.id}#${c.row}.${c.col}.${k}`) ?? null
         if (unit) any = true
-        return { unit, runs: unit ? unit.runs : runs }
+        const own = c.paragraphBoxes?.[k]
+        const region = c.region ? (own ? { page: c.region.page, box: own } : c.region) : undefined
+        return { unit, runs: unit ? unit.runs : runs, ...(region ? { region } : {}) }
       }),
     }))
     if (!any) return

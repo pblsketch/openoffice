@@ -128,6 +128,7 @@ Pressione **E** ou **T**, ou os chips de explicar e traduzir da caixa **Pergunta
 - **Traduzir esta página** (ou **Traduzir o restante** quando parte já está feita) envia a página com um clique enquanto você usa uma assinatura; o nome da IA de destino aparece ao lado do botão. Numa conexão cobrada pelo uso, o primeiro clique numa aba pergunta antes "cobrará por isto · Traduzir / Cancelar".
 - Clique duas vezes num parágrafo traduzido para editá-lo. Parágrafos editados ficam guardados como texto simples e são usados como estão nos arquivos PDF, Markdown e EPUB traduzidos. **Traduzir novamente** num parágrafo envia só esse parágrafo e pergunta antes se você o editou.
 - Passar o mouse sobre um parágrafo traduzido contorna o lugar dele na página original. A largura e o tamanho do texto da coluna podem ser ajustados. **Traduzir todas as páginas…** abre a janela **Traduzir documento**, cujo formato **Apenas guardar (sem arquivo)** mantém a tradução sem gravar arquivo.
+- Os parágrafos traduzidos de novo ficam ligados frase a frase. Passar o rato sobre uma frase traduzida destaca essa frase na página original, e passá-lo sobre uma frase original realça a sua tradução. Onde a frase não é encontrada na página, e nos parágrafos traduzidos antes ou editados por si, a ligação continua a ser por parágrafo.
 
 ## Destaques com IA
 

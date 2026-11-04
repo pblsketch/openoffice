@@ -37,7 +37,17 @@ export interface TranslationJobItem<B> {
 
 /** the result for one block of a batch, in the batch's order */
 export type TranslationBlockResult =
-  | { status: 'translated'; text: string; runs?: InlineRun[] }
+  | {
+      status: 'translated'
+      text: string
+      runs?: InlineRun[]
+      /**
+       * sentence ends, both or neither (spec 4.2, 6.1): offsets into the plain
+       * text of the source runs and into `text`; see store/sentence-ends.ts
+       */
+      sourceSentenceEnds?: number[]
+      sentenceEnds?: number[]
+    }
   /** the block stays in the source language (spec §8: placeholders kept failing) */
   | { status: 'failed'; reason: string }
 
@@ -175,6 +185,10 @@ function toInput(key: TranslationBlockKey, r: TranslationBlockResult): Translati
   if (r.status === 'failed') return { key, status: 'failed', reason: r.reason }
   const input: TranslationBlockInput = { key, status: 'translated', text: r.text }
   if (r.runs !== undefined) input.runs = r.runs
+  if (r.sourceSentenceEnds !== undefined && r.sentenceEnds !== undefined) {
+    input.sourceSentenceEnds = r.sourceSentenceEnds
+    input.sentenceEnds = r.sentenceEnds
+  }
   return input
 }
 

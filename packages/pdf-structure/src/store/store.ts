@@ -50,6 +50,7 @@ import {
   type PassageCard,
   type PassageCardInput,
 } from './reading'
+import { sentenceEndsPair, type SentenceEnds } from './sentence-ends'
 
 /** the store's folder inside the user-data folder */
 export const STORE_DIR_NAME = 'pdf-store'
@@ -100,6 +101,17 @@ export interface TranslationBlockInput {
    * absent and status is 'translated'. A job counts it as done.
    */
   edited?: true
+  /**
+   * where each source sentence ends: offsets into the plain text of the
+   * source runs (runsText), UTF-16 units. Comes with `sentenceEnds` or not at
+   * all; never on an edited or failed block (see sentence-ends.ts).
+   */
+  sourceSentenceEnds?: number[]
+  /**
+   * where each translated sentence ends: offsets into the plain text of the
+   * translated runs, which is `text`; the last value is its length.
+   */
+  sentenceEnds?: number[]
 }
 
 export interface TranslationBlockEntry extends TranslationBlockInput {
@@ -279,6 +291,9 @@ function asBlock(raw: unknown, expect: TranslationBlockKey): TranslationBlockEnt
   if (Array.isArray(raw.runs) && !edited) entry.runs = raw.runs as InlineRun[]
   if (isStr(raw.reason)) entry.reason = raw.reason
   if (edited) entry.edited = true
+  // invalid sentence ends are dropped; the entry itself stays
+  const sentences = blockSentenceEnds(raw)
+  if (sentences) Object.assign(entry, sentences)
   return entry
 }
 
@@ -303,6 +318,23 @@ function asJob(raw: unknown, kind: JobKind, key: string | undefined): StoredJob 
   if (isNum(raw.resetsAt)) job.resetsAt = raw.resetsAt
   if (isRecord(p)) job.progress = { done: p.done as number, total: p.total as number }
   return job
+}
+
+/**
+ * The sentence ends a block may keep: a translated, unedited block with its
+ * text, and a valid pair (sentence-ends.ts). Anything else keeps none, so the
+ * block reads as one paragraph pair.
+ */
+function blockSentenceEnds(b: {
+  status?: unknown
+  text?: unknown
+  edited?: unknown
+  sourceSentenceEnds?: unknown
+  sentenceEnds?: unknown
+}): SentenceEnds | null {
+  if (b.status !== 'translated' || b.edited === true || !isStr(b.text)) return null
+  if (b.sourceSentenceEnds === undefined && b.sentenceEnds === undefined) return null
+  return sentenceEndsPair(b.sourceSentenceEnds, b.sentenceEnds, b.text.length)
 }
 
 const BLOCK_FILE = /^([A-Za-z0-9_-]{1,128})\.(\d{1,9})\.json$/
@@ -617,6 +649,9 @@ export class ResultStore {
     if (b.runs !== undefined && b.edited !== true) entry.runs = b.runs
     if (b.reason !== undefined) entry.reason = b.reason
     if (b.edited === true) entry.edited = true
+    // written only as a valid pair on a translated, unedited block; else dropped
+    const sentences = blockSentenceEnds(b)
+    if (sentences) Object.assign(entry, sentences)
     await inTurn(path, () => writeJsonAtomic(path, entry))
   }
 

@@ -130,6 +130,7 @@ Tekan **E** atau **T**, atau cip terangkan dan terjemah dalam kotak **Tanya AI**
 - **Terjemah halaman ini** (atau **Terjemah bakinya** jika sebahagian sudah siap) menghantar halaman itu dengan sekali tekan semasa anda menggunakan langganan; nama AI penerima tertera di sebelah butang. Pada sambungan yang dicaj mengikut penggunaan, tekanan pertama dalam sesuatu tab bertanya dahulu "akan mengenakan caj untuk ini · Terjemah / Batal".
 - Klik dua kali pada perenggan terjemahan untuk menyuntingnya. Perenggan yang disunting disimpan sebagai teks biasa dan digunakan seadanya dalam fail PDF, Markdown dan EPUB terjemahan. **Terjemah semula** pada sesuatu perenggan hanya menghantar perenggan itu, dan bertanya dahulu jika anda telah menyuntingnya.
 - Apabila tetikus berada di atas perenggan terjemahan, tempatnya pada halaman asal diberi bingkai. Lebar dan saiz huruf lajur boleh diubah. **Terjemah semua halaman…** membuka tetingkap **Terjemah Dokumen**, dan format **Simpan sahaja (tiada fail)** di situ menyimpan terjemahan tanpa menulis fail.
+- Perenggan yang baru diterjemah dipautkan ayat demi ayat. Meletakkan penuding pada ayat terjemahan menyerlahkan ayat itu di halaman sumber, dan meletakkannya pada ayat sumber menerangkan terjemahannya. Di tempat ayat tidak ditemui pada halaman, serta bagi perenggan yang diterjemah sebelum ini atau yang anda sunting sendiri, pautan kekal mengikut perenggan.
 
 ## Serlahan AI
 

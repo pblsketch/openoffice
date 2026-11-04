@@ -128,6 +128,7 @@ Nhấn **E** hoặc **T**, hoặc các nút giải thích và dịch trong ô **
 - **Dịch trang này** (hoặc **Dịch phần còn lại** khi đã dịch một phần) gửi trang đó chỉ với một lần nhấn khi bạn dùng gói đăng ký; cạnh nút có ghi tên AI nhận. Với kết nối tính phí theo mức dùng, lần nhấn đầu tiên trong mỗi thẻ sẽ hỏi trước "sẽ tính phí cho việc này · Dịch / Hủy".
 - Bấm đúp vào một đoạn đã dịch để sửa. Đoạn đã sửa được lưu dưới dạng chữ không định dạng và được dùng nguyên như vậy trong các tệp PDF, Markdown và EPUB đã dịch. **Dịch lại** ở một đoạn chỉ gửi đoạn đó, và hỏi trước nếu bạn đã sửa nó.
 - Rê chuột lên một đoạn đã dịch, vị trí của nó trên trang gốc sẽ được viền khung. Có thể chỉnh độ rộng và cỡ chữ của cột. **Dịch tất cả các trang…** mở cửa sổ **Dịch tài liệu**; định dạng **Chỉ lưu trữ (không tạo tệp)** ở đó giữ bản dịch mà không ghi tệp.
+- Các đoạn mới dịch được nối theo từng câu. Di chuột lên một câu dịch sẽ tô câu đó trên trang gốc, và di lên một câu gốc sẽ làm sáng câu dịch tương ứng. Ở chỗ không tìm được vị trí câu trên trang, cũng như các đoạn đã dịch trước đây hoặc do bạn tự sửa, liên kết vẫn theo từng đoạn.
 
 ## Tô sáng bằng AI
 

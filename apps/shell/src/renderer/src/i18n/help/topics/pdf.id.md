@@ -128,6 +128,7 @@ Tekan **E** atau **T**, atau cip jelaskan dan terjemahkan di kotak **Tanya AI**,
 - **Terjemahkan halaman ini** (atau **Terjemahkan sisanya** bila sebagian sudah selesai) mengirim halaman itu dengan sekali tekan saat Anda memakai langganan; nama AI tujuannya tertera di samping tombol. Pada koneksi yang ditagih per pemakaian, tekanan pertama di sebuah tab lebih dulu bertanya "akan mengenakan biaya untuk ini · Terjemahkan / Batal".
 - Klik dua kali paragraf terjemahan untuk menyuntingnya. Paragraf yang disunting disimpan sebagai teks polos dan dipakai apa adanya di file PDF, Markdown, dan EPUB terjemahan. **Terjemahkan ulang** pada sebuah paragraf hanya mengirim paragraf itu, dan bertanya dulu bila Anda sudah menyuntingnya.
 - Saat tetikus berada di atas paragraf terjemahan, tempatnya di halaman asli diberi bingkai. Lebar dan ukuran huruf kolom bisa diubah. **Terjemahkan semua halaman…** membuka jendela **Terjemahkan Dokumen**, yang format **Simpan saja (tanpa file)**-nya menyimpan terjemahan tanpa menulis file.
+- Paragraf yang baru diterjemahkan ditautkan kalimat demi kalimat. Mengarahkan penunjuk ke kalimat terjemahan menyorot kalimat itu di halaman sumber, dan mengarahkannya ke kalimat sumber menerangkan terjemahannya. Jika letak kalimat tidak ditemukan di halaman, serta untuk paragraf yang diterjemahkan sebelumnya atau Anda ubah sendiri, tautannya tetap per paragraf.
 
 ## Sorotan AI
 
