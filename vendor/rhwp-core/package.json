@@ -1,6 +1,6 @@
 {
   "name": "@rhwp/core",
-  "version": "0.8.7-ieum.18",
+  "version": "0.8.7-ieum.19",
   "description": "rhwp v0.8.7 HWP/HWPX engine (WebAssembly) rebuilt with the patches in ./patches",
   "private": true,
   "type": "module",
@@ -47,9 +47,10 @@
       "0026-hwpx-drop-rows-covered-by-merged-cells.patch",
       "0027-merged-table-cell-extents.patch",
       "0028-paragraph-float-follows-drawn-host.patch",
-      "0029-footnote-number-slot-height-and-shape.patch"
+      "0029-footnote-number-slot-height-and-shape.patch",
+      "0030-caption-footnote-flow-without-stored-lines.patch"
     ],
     "wasmPack": "0.15.0",
-    "wasmSha256": "5990c4fb4968a6da69f31a021b8184fbe4a941a5ede0023c5b90b5792d57442c"
+    "wasmSha256": "70b5281628192e2df7a346530122a6074b209828b9d6056c5d6344530134a3d9"
   }
 }
