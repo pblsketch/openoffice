@@ -4,9 +4,11 @@
  * the document job engine (the engine skips blocks already stored).
  *
  * The request and its check are the translation module's own: the block is
- * encoded with placeholders, sent with the translation instruction, and the
- * answer is decoded with the same placeholder rule. With no resend allowed
- * the call is made once. The block is keyed by the whole-page key the view
+ * encoded with placeholders (sentence by sentence when it has two or more,
+ * split by the document language), sent with the translation instruction,
+ * and the answer is decoded with the same placeholder rule. With no resend
+ * allowed the call is made once. Sentence ends that come back with a good
+ * answer are stored with it. The block is keyed by the whole-page key the view
  * computed (same text on one page is told apart by its occurrence), so the
  * result overwrites the stored block in place.
  *
@@ -19,6 +21,7 @@
  *
  * The answer is document data: it is stored as text and nothing in it runs.
  */
+import { guessLanguageFromText } from '../../../../../packages/pdf-structure/src/epub/language'
 import { JobUnitFailure } from '../../../../../packages/pdf-structure/src/jobs/errors'
 import type { TranslationBlockKey } from '../../../../../packages/pdf-structure/src/store/keys'
 import type { TranslationBlockInput } from '../../../../../packages/pdf-structure/src/store/store'
@@ -26,6 +29,7 @@ import {
   createTranslationModelCall,
   type TranslationSend,
 } from '../../../../../packages/pdf-structure/src/translate/call'
+import { runsText } from '../../../../../packages/pdf-structure/src/tree/inline'
 import type { InlineRun } from '../../../../../packages/pdf-structure/src/tree/types'
 import type { PdfStoreApi } from '../../shared/ipc'
 
@@ -49,6 +53,11 @@ export interface RetranslateOptions {
   /** what the translation's provider record names, when there is none yet */
   model: { provider: string; model: string }
   signal: AbortSignal
+  /**
+   * the document language for the sentence split, guessed from the whole tree
+   * (translationSourceLanguage); without it, guessed from this block's text
+   */
+  sourceLang?: string
 }
 
 export type RetranslateOutcome =
@@ -74,7 +83,13 @@ async function write(
 
 /** translate one stored block again; run errors (rate limit, sign-out, …) are thrown as they come */
 export async function retranslateBlock(o: RetranslateOptions): Promise<RetranslateOutcome> {
-  const call = createTranslationModelCall({ lang: o.lang, send: o.send, maxResends: 0 })
+  const sourceLang = o.sourceLang ?? guessLanguageFromText(runsText(o.unit.source))
+  const call = createTranslationModelCall({
+    lang: o.lang,
+    send: o.send,
+    maxResends: 0,
+    ...(sourceLang !== undefined ? { sourceLang } : {}),
+  })
   const item = {
     block: { runs: o.unit.source, pageFingerprint: o.unit.key.pageFingerprint, page: o.unit.page },
     key: o.unit.key,
@@ -111,6 +126,10 @@ export async function retranslateBlock(o: RetranslateOptions): Promise<Retransla
   }
   const block: TranslationBlockInput = { key: o.unit.key, status: 'translated', text: result.text }
   if (result.runs !== undefined) block.runs = result.runs
+  if (result.sourceSentenceEnds !== undefined && result.sentenceEnds !== undefined) {
+    block.sourceSentenceEnds = result.sourceSentenceEnds
+    block.sentenceEnds = result.sentenceEnds
+  }
   await write(o.store, {
     kind: 'translationBlocks',
     docHash: o.docHash,

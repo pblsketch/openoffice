@@ -9,16 +9,19 @@
  *     token per two characters
  *   - ASCII: one token per four characters (the usual rate for English)
  * Blocks are measured as they are sent (placeholder text) plus a fixed
- * overhead for the JSON wrapping each block in the request.
+ * overhead for the JSON wrapping each block in the request, plus a small
+ * overhead per sentence for a block sent as a sentence list (spec 4.2).
  */
 import type { TranslationJobItem, TranslationSourceBlock } from '../jobs/translate'
 import type { InlineRun } from '../tree/types'
-import { encodeRuns } from './placeholders'
+import { splitSentences } from './sentences'
 
 /** source tokens per batch (spec §8: about 2,500, tunable) */
 export const TRANSLATION_BATCH_TOKENS = 2_500
 /** tokens of JSON around one block in the request (id, keys, quotes) */
 export const BLOCK_OVERHEAD_TOKENS = 8
+/** tokens of JSON around each sentence of a block sent as a sentence list (quotes, comma; tunable) */
+export const SENTENCE_OVERHEAD_TOKENS = 2
 
 const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u
 
@@ -35,14 +38,24 @@ export function estimateTokens(text: string): number {
   return Math.ceil(cjk + other / 2 + ascii / 4)
 }
 
-/** tokens one block adds to a batch */
-export function blockTokens(runs: readonly InlineRun[]): number {
-  return estimateTokens(encodeRuns(runs).text) + BLOCK_OVERHEAD_TOKENS
+/**
+ * Tokens one block adds to a batch. `sourceLang` is the document language
+ * the sentences are split by (as for the model call); a block of one
+ * sentence costs what it always did.
+ */
+export function blockTokens(runs: readonly InlineRun[], sourceLang?: string): number {
+  const split = splitSentences(runs, sourceLang)
+  const sentences = split.kind === 'sentences' ? split.sentences.length : 0
+  return (
+    estimateTokens(split.block.text) + BLOCK_OVERHEAD_TOKENS + sentences * SENTENCE_OVERHEAD_TOKENS
+  )
 }
 
 export interface BatchOptions {
   /** token budget of one batch; default TRANSLATION_BATCH_TOKENS */
   maxTokens?: number
+  /** document language for the sentence split (translationSourceLanguage) */
+  sourceLang?: string
 }
 
 /**
@@ -62,7 +75,7 @@ export function batchTranslationItems<B extends TranslationSourceBlock>(
   let current: TranslationJobItem<B>[] = []
   let used = 0
   for (const item of items) {
-    const tokens = blockTokens(item.block.runs)
+    const tokens = blockTokens(item.block.runs, options.sourceLang)
     if (current.length > 0 && used + tokens > max) {
       batches.push(current)
       current = []

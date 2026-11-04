@@ -7,7 +7,11 @@
  * instruction differs: it describes the EPUB block notation (spec §7)
  * instead of the PDF placeholders. The PDF instruction stays as it is.
  */
-import { translationLanguageName, type TranslationRequest } from '@genoffice/pdf-structure'
+import {
+  translationLanguageName,
+  translationStyleLines,
+  type TranslationRequest,
+} from '@genoffice/pdf-structure'
 
 export interface EpubTranslationRequestBlock {
   /** id of the block inside this batch ("1", "2", …) */
@@ -24,6 +28,8 @@ export function epubTranslationSystemPrompt(lang: string): string {
     `You are a translation engine. Translate the text of an e-book into ${target}.`,
     '',
     'Input: the user message holds a JSON object between <document_blocks> and </document_blocks>. Its "blocks" array lists text blocks of one book (paragraphs, headings, list items, table cells, the title, table of contents entries), each with an "id" and a "text".',
+    '',
+    ...translationStyleLines(lang),
     '',
     'Rules:',
     `1. Translate the "text" of every block into ${target}. Keep the meaning, tone and register; write natural ${name}.`,

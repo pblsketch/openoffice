@@ -128,6 +128,7 @@ Drücken Sie **E** oder **T** oder die Chips für Erklären und Übersetzen im F
 - **Diese Seite übersetzen** (oder **Rest übersetzen**, wenn ein Teil schon fertig ist) schickt die Seite bei einem Abonnement mit einem Klick ab; neben der Schaltfläche steht, an welche KI. Bei einer nutzungsabhängig abgerechneten Verbindung fragt der erste Klick in einem Tab zuerst „berechnet dafür Kosten · Übersetzen / Abbrechen“.
 - Mit einem Doppelklick auf einen übersetzten Absatz bearbeiten Sie ihn. Bearbeitete Absätze werden als reiner Text aufbewahrt und unverändert in übersetzte PDF-, Markdown- und EPUB-Dateien übernommen. **Neu übersetzen** an einem Absatz sendet nur diesen einen und fragt vorher nach, wenn Sie ihn bearbeitet haben.
 - Fährt die Maus über einen übersetzten Absatz, wird seine Stelle im Original umrandet. Breite und Schriftgröße der Spalte sind einstellbar. **Alle Seiten übersetzen…** öffnet das Fenster **Dokument übersetzen**; dessen Format **Nur aufbewahren (keine Datei)** behält die Übersetzung, ohne eine Datei zu schreiben.
+- Neu übersetzte Absätze sind Satz für Satz verknüpft. Fährt die Maus über einen übersetzten Satz, wird dieser Satz auf der Originalseite markiert; über einem Originalsatz leuchtet seine Übersetzung auf. Wo der Satz auf der Seite nicht zu finden ist, und bei früher übersetzten oder von Ihnen bearbeiteten Absätzen bleibt die Verknüpfung absatzweise.
 
 ## KI-Markierung
 

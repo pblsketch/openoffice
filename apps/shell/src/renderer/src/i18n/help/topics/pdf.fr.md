@@ -128,6 +128,7 @@ Appuyez sur **E** ou **T**, ou sur les puces d’explication et de traduction de
 - **Traduire cette page** (ou **Traduire le reste** si une partie est faite) envoie la page d’un seul clic quand vous utilisez un abonnement ; le nom de l’IA destinataire figure à côté du bouton. Sur une connexion facturée à l’usage, le premier clic dans un onglet demande d’abord « facturera ce service · Traduire / Annuler ».
 - Double-cliquez sur un paragraphe traduit pour le modifier. Les paragraphes modifiés sont conservés en texte brut et repris tels quels dans les fichiers PDF, Markdown et EPUB traduits. **Retraduire** sur un paragraphe n’envoie que celui-ci et demande confirmation si vous l’avez modifié.
 - Survoler un paragraphe traduit entoure son emplacement dans la page source. La largeur et la taille du texte de la colonne sont réglables. **Traduire toutes les pages…** ouvre la fenêtre **Traduire le document**, dont le format **Conserver seulement (aucun fichier)** garde la traduction sans écrire de fichier.
+- Les paragraphes nouvellement traduits sont reliés phrase par phrase. Survoler une phrase traduite surligne cette phrase sur la page source, et survoler une phrase source met en évidence sa traduction. Là où la phrase est introuvable sur la page, ainsi que pour les paragraphes traduits auparavant ou modifiés par vous, le lien reste par paragraphe.
 
 ## Surlignage IA
 

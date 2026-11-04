@@ -2251,6 +2251,8 @@ export default function App() {
             },
           }
         : null,
+    // the open document's text items locate source sentences (read only, once per drawn page)
+    textSource: doc,
     scrollRef,
     scale,
     pageGeom,

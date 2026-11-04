@@ -2,11 +2,19 @@
  * The model call of the translation job (spec §8): one batch in, one result
  * per block out, in order.
  *
- * Each block is sent with placeholders. A block that comes back with the
- * wrong placeholders, empty, or not at all is sent again, together with the
- * other such blocks of the batch, up to TRANSLATION_MAX_RESENDS times; after
- * that it keeps its source text and is recorded as failed with the reason.
- * Blocks that came back right are not sent again.
+ * Each block is sent with placeholders: a block of one sentence as its text,
+ * a block of two or more sentences as its sentence list (spec 4.2, split by
+ * the document language, `sourceLang`). A sentence answer is kept with its
+ * sentence ends only when it has as many sentences as the source, each with
+ * its own source sentence's placeholders, none empty. Any other answer for a
+ * sentence block is joined and checked like a paragraph: when the joined text
+ * passes it is kept without sentence ends, and it is not sent again for that.
+ *
+ * A block whose (joined) text comes back with the wrong placeholders, empty,
+ * or not at all is sent again, together with the other such blocks of the
+ * batch, up to TRANSLATION_MAX_RESENDS times; after that it keeps its source
+ * text and is recorded as failed with the reason. Blocks that came back right
+ * are not sent again.
  *
  * When no answer of the batch could be read at all, the call throws
  * JobUnitFailure: nothing is stored, the batch stays pending, and resuming
@@ -19,9 +27,17 @@ import type {
   TranslationJobItem,
   TranslationSourceBlock,
 } from '../jobs/translate'
+import { sentenceEndsPair } from '../store/sentence-ends'
 import { runsText } from '../tree/inline'
-import { decodeTranslation, encodeRuns, type PlaceholderFailure } from './placeholders'
-import { buildTranslationRequest, parseTranslationOutput, type TranslationRequest } from './prompt'
+import { translationSentenceSeparator } from './language'
+import { decodeTranslation, type EncodedBlock, type PlaceholderFailure } from './placeholders'
+import {
+  buildTranslationRequest,
+  parseSentenceTranslationOutput,
+  type TranslationRequest,
+  type TranslationRequestBlock,
+} from './prompt'
+import { splitSentences, type SentenceSplit } from './sentences'
 
 /** times a batch's wrong blocks are sent again (spec §8: up to two) */
 export const TRANSLATION_MAX_RESENDS = 2
@@ -32,6 +48,8 @@ export type TranslationFailureReason = PlaceholderFailure | 'missing-translation
 export interface TranslationModelRequest extends TranslationRequest {
   /** target language code */
   lang: string
+  /** the document language the blocks were split into sentences by, when known */
+  sourceLang?: string
   /** 0 for the first send, then 1, 2 for the resends */
   attempt: number
 }
@@ -48,7 +66,80 @@ export interface TranslationModelCallOptions {
   send: TranslationSend
   /** default TRANSLATION_MAX_RESENDS */
   maxResends?: number
+  /**
+   * the document language, guessed once per job (translationSourceLanguage);
+   * units are split into sentences by its rules. Missing or unknown: the
+   * default locale's rules.
+   */
+  sourceLang?: string
 }
+
+type Translated = Extract<TranslationBlockResult, { status: 'translated' }>
+type Checked = { ok: true; result: Translated } | { ok: false; reason: PlaceholderFailure }
+
+/** the paragraph check (placeholder kinds and counts) on a whole block */
+function checkParagraph(block: EncodedBlock, text: string): Checked {
+  const decoded = decodeTranslation(block, text)
+  if (!decoded.ok) return decoded
+  return {
+    ok: true,
+    result: { status: 'translated', text: runsText(decoded.runs), runs: decoded.runs },
+  }
+}
+
+/**
+ * The translated sentences kept with their sentence ends, or null when any
+ * rule fails: as many as the source's, each with its own source sentence's
+ * placeholders and not empty, and the joined text decoding to exactly the
+ * sentences' plain texts joined.
+ */
+function pairSentences(
+  split: Extract<SentenceSplit, { kind: 'sentences' }>,
+  parts: readonly string[],
+  separator: string,
+): Translated | null {
+  if (parts.length !== split.sentences.length) return null
+  const plains: string[] = []
+  for (let k = 0; k < parts.length; k++) {
+    const decoded = decodeTranslation(split.sentences[k]!, parts[k]!)
+    if (!decoded.ok) return null
+    plains.push(runsText(decoded.runs))
+  }
+  // the runs come from the joined text, decoded once with the whole block
+  const whole = decodeTranslation(split.block, parts.join(separator))
+  if (!whole.ok) return null
+  const text = runsText(whole.runs)
+  // an escape or a tag that the joining formed across a seam would change the text
+  if (plains.join(separator) !== text) return null
+  const ends: number[] = []
+  let start = 0
+  plains.forEach((plain, k) => {
+    const last = k === plains.length - 1
+    ends.push(last ? text.length : start + plain.trimEnd().length)
+    start += plain.length + separator.length
+  })
+  const pair = sentenceEndsPair(split.sourceSentenceEnds, ends, text.length)
+  if (!pair) return null
+  return { status: 'translated', text, runs: whole.runs, ...pair }
+}
+
+/** check one block's answer: a text or a sentence list, whatever shape it was sent in */
+function checkAnswer(split: SentenceSplit, value: string | string[], separator: string): Checked {
+  if (typeof value === 'string') return checkParagraph(split.block, value)
+  // each translated sentence loses its outer whitespace before joining
+  const parts = value.map((s) => s.trim())
+  if (split.kind === 'sentences') {
+    const paired = pairSentences(split, parts, separator)
+    if (paired) return { ok: true, result: paired }
+  }
+  return checkParagraph(split.block, parts.join(separator))
+}
+
+/** what a block is sent as */
+const requestBlock = (split: SentenceSplit, id: string): TranslationRequestBlock =>
+  split.kind === 'sentences'
+    ? { id, sentences: split.sentences.map((s) => s.text) }
+    : { id, text: split.block.text }
 
 /** the `callModel` of startTranslationJob */
 export function createTranslationModelCall<B extends TranslationSourceBlock>(
@@ -58,8 +149,9 @@ export function createTranslationModelCall<B extends TranslationSourceBlock>(
   if (!Number.isInteger(maxResends) || maxResends < 0) {
     throw new RangeError(`translation: invalid resend count ${maxResends}`)
   }
+  const separator = translationSentenceSeparator(o.lang)
   return async (batch, signal) => {
-    const encoded = batch.map((item) => encodeRuns(item.block.runs))
+    const splits = batch.map((item) => splitSentences(item.block.runs, o.sourceLang))
     const results: (TranslationBlockResult | undefined)[] = batch.map(() => undefined)
     const reasons: TranslationFailureReason[] = batch.map(() => 'missing-translation')
     let pending = batch.map((_, i) => i)
@@ -68,24 +160,32 @@ export function createTranslationModelCall<B extends TranslationSourceBlock>(
       if (signal.aborted) throw signal.reason
       const request = buildTranslationRequest(
         o.lang,
-        pending.map((i) => ({ id: String(i + 1), text: encoded[i]!.text })),
+        pending.map((i) => requestBlock(splits[i]!, String(i + 1))),
       )
-      const answer = await o.send({ ...request, lang: o.lang, attempt }, signal)
-      const parsed = parseTranslationOutput(answer)
+      const answer = await o.send(
+        {
+          ...request,
+          lang: o.lang,
+          ...(o.sourceLang !== undefined ? { sourceLang: o.sourceLang } : {}),
+          attempt,
+        },
+        signal,
+      )
+      const parsed = parseSentenceTranslationOutput(answer)
       if (!parsed) continue
       anyParsed = true
       pending = pending.filter((i) => {
-        const text = parsed.get(String(i + 1))
-        if (text === undefined) {
+        const value = parsed.get(String(i + 1))
+        if (value === undefined) {
           reasons[i] = 'missing-translation'
           return true
         }
-        const decoded = decodeTranslation(encoded[i]!, text)
-        if (!decoded.ok) {
-          reasons[i] = decoded.reason
+        const checked = checkAnswer(splits[i]!, value, separator)
+        if (!checked.ok) {
+          reasons[i] = checked.reason
           return true
         }
-        results[i] = { status: 'translated', text: runsText(decoded.runs), runs: decoded.runs }
+        results[i] = checked.result
         return false
       })
     }
