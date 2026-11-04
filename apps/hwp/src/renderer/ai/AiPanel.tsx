@@ -734,6 +734,18 @@ export function AiPanel({
           .current()
           .filter((attachment) => ATTACHMENT_IMAGE_EXTS.has(attachment.ext))
           .map((attachment) => attachment.name),
+      readAttachmentDocument: async (name) => {
+        const attachment = availableAttachmentsRef
+          .current()
+          .find((candidate) => candidate.name === name)
+        if (!attachment) {
+          return {
+            ok: false,
+            error: `there is no file named "${name}" attached to this chat (see the attachment list)`,
+          }
+        }
+        return window.hwpApi.readAttachmentDocument(attachment.path)
+      },
     })
 
   // The loop is built once; every mutable value goes through a ref getter

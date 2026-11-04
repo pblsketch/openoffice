@@ -1,0 +1,286 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pblsketch <239486537+pblsketch@users.noreply.github.com>
+Date: Wed, 4 Nov 2026 00:00:00 +0900
+Subject: [PATCH 26/30] fix(layout): 이어지는 쪽 끝 조각 뒤 흐름을 그 쪽의 저장 다음 줄로 확인하고 바깥 아래 여백을 한 번만 둔다
+
+What Hangul does: a native HWP5, non-TAC, paragraph-relative RowBreak
+table with a positive offset in an empty host splits across pages. On the
+page where its last fragment ends, Hangul 2024 starts the next paragraph
+right after the fragment and its outer bottom margin, once. It keeps one
+host line of space below the fragment only when the next paragraph's
+stored line says so on that page: KTX page 26, paragraph 407 vpos 37878 =
+fragment flow end + 2400 (host line 1500 + 900), the case #7642 stage 135
+was written for. In issue2439_repeat_table_overlap.hwp (a repeated form),
+the next paragraph's stored vpos (10560, 15840...) is not that page's
+coordinate, and Hangul prints the next line 3.8px under the fragment.
+
+What devel did:
+1. c9062d96a (#7642 stage 135) adds the stored host advance
+   (`stored_unconsumed_rowbreak_host_advance_hu`) after every final
+   continuation fragment. Its only evidence is
+   `next.vpos - host.vpos == advance`, which a folded ladder satisfies on
+   any page.
+2. The paint of a final continuation that has a recorded fragment
+   placement moves to the placement's `occupied_bottom`, which already
+   includes the outer bottom margin. It then adds the repeated fragment
+   margin again (`repeat_fragment_outer_margin`).
+On issue2439 page 3 these put paragraph 6 at 84.1 and paragraph 7's line
+at 105.4-124.1, over its own table at 113.0. Page 4 was 19.2px low.
+
+What changes:
+- table_host_flow.rs: `continuation_successor_confirms_host_advance` holds
+  when the next paragraph's first stored line equals
+  `flow end + next space before + advance` in that column (1px).
+- Paint (`layout_partial_table_item`) and typeset (fragment emit, through
+  a separate `terminal_stored_host_advance`) apply the host advance after a
+  continuation only when that check holds. Whole tables and opening
+  fragments are unchanged.
+- Paint marks the closing margin consumed when the placement's occupied
+  bottom already covers it, so the repeated margin is not added twice.
+
+Evidence (Hangul 2024 13.0.0.711 print through the official automation):
+- issue2439_repeat_table_overlap.hwp page 3: fragment bottom 57.6,
+  paragraph 6 Hangul ink 61.5 (top ~61.3); app17 61.1, devel 84.1, now
+  61.1. Paragraph 7 Hangul 82.5, app17 82.4, devel 105.4, now 82.4. Its
+  table stays at 113.0 (Hangul 112.5) and no longer sits under text.
+- Page 4: paragraphs 9/10 Hangul 85.5/106.5; app17 85.1/106.4, devel
+  104.3/125.6, now 85.1/106.4. Table 12 Hangul 193, app17 210.9, now 188.7.
+- KTX (mydocs/pr/assets/issue7445/ktx-toc27/KTX.hwp) page 26 keeps the
+  host line: paragraph 407 at 599.5 (Hangul about 1.5px below that ink).
+- Page counts: samples/ (1423 documents) identical to devel and to 0032.
+  The 50 private overlap documents render identically.
+---
+ src/renderer/layout.rs                             | 33 ++++++++++++++++--
+ src/renderer/layout/table_host_flow.rs             | 32 ++++++++++++++++++
+ src/renderer/typeset.rs                            |  1 +
+ src/renderer/typeset/table/block/prepare.rs        | 14 +++++---
+ src/renderer/typeset/table/continuation.rs         |  3 ++
+ .../typeset/table/continuation/fragment/emit.rs    | 39 +++++++++++++++++++---
+ 6 files changed, 109 insertions(+), 13 deletions(-)
+
+diff --git a/src/renderer/layout.rs b/src/renderer/layout.rs
+index 5eb5ecdce76333d98d6bf5a909a514d493f917a7..e5a09224198d441619aea8d6af705cd0f72ebb22 100644
+--- a/src/renderer/layout.rs
++++ b/src/renderer/layout.rs
+@@ -3759,7 +3759,9 @@ mod table_host_flow;
+ mod table_inline_picture_origin;
+ pub(crate) mod table_layout;
+ mod table_paragraph_cut;
+-pub(crate) use table_host_flow::stored_unconsumed_rowbreak_host_advance_hu;
++pub(crate) use table_host_flow::{
++    continuation_successor_confirms_host_advance, stored_unconsumed_rowbreak_host_advance_hu,
++};
+ mod kopub_symbol_metrics;
+ mod leader_tab;
+ mod paragraph_frame_widths;
+@@ -16775,8 +16777,17 @@ impl LayoutEngine {
+                     {
+                         // 결정된 캡션 프레임의 원점과 흐름 끝을 함께 사용한다.
+                         // 종료 여백은 표 내용이 아닌 뒤 흐름에 속한다.
++                        let content_bottom = y_offset;
+                         y_offset = col_area.y + placement.occupied_bottom;
+-                        computed_fragment_flow_end_consumed = computed_fragment_frame;
++                        // 확정 프레임의 흐름 끝이 이미 바깥 아래 여백을 덮으면 그 여백은 소비됐다.
++                        // 아래 조각 반복 여백에서 다시 더하면 다음 문단이 여백 하나만큼 내려간다
++                        // (한글 2024 인쇄, issue2439_repeat_table_overlap 3쪽: 조각 아래 + 여백 1회).
++                        let outer_bottom =
++                            hwpunit_to_px(table.outer_margin_bottom as i32, self.dpi);
++                        computed_fragment_flow_end_consumed = computed_fragment_frame
++                            || (outer_bottom > 0.0
++                                && y_offset + hwpunit_to_px(1, self.dpi)
++                                    >= content_bottom + outer_bottom);
+                     }
+                 }
+             }
+@@ -16884,7 +16895,23 @@ impl LayoutEngine {
+                             table,
+                             paragraphs.get(para_index + 1),
+                             host_pre_emitted,
+-                        ) {
++                        )
++                        .filter(|&advance| {
++                            // 이어지는 쪽의 끝 조각은 그 쪽의 저장 다음 줄이 전진을 증언해야 한다.
++                            !is_continuation
++                                || continuation_successor_confirms_host_advance(
++                                    paragraphs.get(para_index + 1),
++                                    y_offset - col_area.y,
++                                    paragraphs
++                                        .get(para_index + 1)
++                                        .and_then(|next| {
++                                            styles.para_styles.get(next.para_shape_id as usize)
++                                        })
++                                        .map_or(0.0, |style| style.spacing_before),
++                                    advance,
++                                    self.dpi,
++                                )
++                        }) {
+                             y_offset += hwpunit_to_px(advance, self.dpi);
+                         }
+                     }
+diff --git a/src/renderer/layout/table_host_flow.rs b/src/renderer/layout/table_host_flow.rs
+index 42aadd0021611e4e3edbb31d148d039e506c9f64..bdac42fc0ae7c191884af2f95b73b0e35a0b22b4 100644
+--- a/src/renderer/layout/table_host_flow.rs
++++ b/src/renderer/layout/table_host_flow.rs
+@@ -27,3 +27,35 @@ pub(crate) fn stored_unconsumed_rowbreak_host_advance_hu(
+         next_para,
+     )
+ }
++
++/// 이어지는 쪽에서 끝나는 분할 표 뒤의 저장 호스트 줄 전진은 그 쪽의 저장 다음 줄이
++/// 같은 자리를 증언할 때만 실제 흐름이다.
++///
++/// `stored_unconsumed_rowbreak_host_advance_hu` 의 증거(`next.vpos - host.vpos == 전진량`)는
++/// 표가 접힌 사다리일 뿐, 끝 조각이 놓인 쪽의 좌표를 말하지 않는다. 한글은 다음 줄의 저장
++/// 위치가 그 쪽에서 `조각 흐름 끝 + 전진량` 일 때만 줄 공간을 남긴다(KTX 26쪽: 문단 407
++/// vpos 37878 = 조각 끝 + 2400). 기계 반복 양식처럼 다음 줄이 다른 쪽 좌표를 담으면 한글은
++/// 다음 문단을 조각 흐름 끝(바깥 아래 여백 뒤)에서 바로 시작한다 — 한글 2024 인쇄,
++/// issue2439_repeat_table_overlap 3·4쪽.
++pub(crate) fn continuation_successor_confirms_host_advance(
++    next_para: Option<&Paragraph>,
++    flow_end_in_column_px: f64,
++    next_spacing_before_px: f64,
++    advance_hu: i32,
++    dpi: f64,
++) -> bool {
++    let Some(next_line) = next_para.and_then(|next| {
++        next.line_segs
++            .iter()
++            .find(|seg| seg.tag & 0x80000000 == 0 && seg.line_height > 0)
++    }) else {
++        return false;
++    };
++    if !flow_end_in_column_px.is_finite() || !next_spacing_before_px.is_finite() || dpi <= 0.0 {
++        return false;
++    }
++    let units_per_px = 7200.0 / dpi;
++    let expected = ((flow_end_in_column_px + next_spacing_before_px) * units_per_px).round() as i64
++        + i64::from(advance_hu);
++    (i64::from(next_line.vertical_pos) - expected).abs() as f64 <= units_per_px
++}
+diff --git a/src/renderer/typeset.rs b/src/renderer/typeset.rs
+index 3c9302ae643c050d5a6de08563882d2fbdf18b48..c1b78e3807c8b97fa4850840298d7d656286f412 100644
+--- a/src/renderer/typeset.rs
++++ b/src/renderer/typeset.rs
+@@ -8172,6 +8172,7 @@ mod tests {
+             host_spacing_after_only: 0.0,
+             terminal_outer_bottom_flow: 0.0,
+             terminal_host_spacing: 0.0,
++            terminal_stored_host_advance: None,
+             strict_following_plain_text_fit: false,
+             budget_para_start_height: 0.0,
+             first_fragment_actual_footnote_boundary: None,
+diff --git a/src/renderer/typeset/table/block/prepare.rs b/src/renderer/typeset/table/block/prepare.rs
+index aa5c2c8d1bcf63014c8469a1968270a9a9f21c53..623599fad7d93cacef7b90206b2909eec0719b6b 100644
+--- a/src/renderer/typeset/table/block/prepare.rs
++++ b/src/renderer/typeset/table/block/prepare.rs
+@@ -1328,16 +1328,19 @@ impl TypesetEngine {
+             table,
+             self.dpi,
+         ) + layout_engine
+-            .saved_single_cell_terminal_host_spacing_px(table, para, styles)
+-            + crate::renderer::layout::stored_unconsumed_rowbreak_host_advance_hu(
++            .saved_single_cell_terminal_host_spacing_px(table, para, styles);
++        let terminal_stored_host_advance =
++            crate::renderer::layout::stored_unconsumed_rowbreak_host_advance_hu(
+                 self.profile.get().hwp5_stored_pagination_layout(),
+                 para,
+                 table,
+                 paragraphs_all.get(para_idx + 1),
+                 st.pre_emitted_host_paras.contains(&para_idx),
+-            )
+-            .map(|advance| hwpunit_to_px(advance, self.dpi))
+-            .unwrap_or(0.0);
++            );
++        let terminal_host_spacing = terminal_host_spacing
++            + terminal_stored_host_advance
++                .map(|advance| hwpunit_to_px(advance, self.dpi))
++                .unwrap_or(0.0);
+         // 호스트 배치를 처음 조회한 뒤 내용 소비 없는 이월로 조각이 바뀔 수 있다.
+         // 실제 새 프레임에서 닫힌 원본 상자를 다시 결정하고,
+         // 스캐너 예산과 확정 단계가 그 원점·흐름 끝을 함께 사용하게 한다.
+@@ -1527,6 +1530,7 @@ impl TypesetEngine {
+             host_spacing_after_only: ft.host_spacing.spacing_after_only,
+             terminal_outer_bottom_flow: ft.host_spacing.terminal_outer_bottom_flow,
+             terminal_host_spacing,
++            terminal_stored_host_advance,
+             strict_following_plain_text_fit: ft.strict_following_plain_text_fit,
+             budget_para_start_height,
+             first_fragment_actual_footnote_boundary:
+diff --git a/src/renderer/typeset/table/continuation.rs b/src/renderer/typeset/table/continuation.rs
+index 4317d1419847d5e7502240ab8f84ceca4dd0de97..0ecdcbd81e2df47e40a4f35ead9cecb9c91adcfb 100644
+--- a/src/renderer/typeset/table/continuation.rs
++++ b/src/renderer/typeset/table/continuation.rs
+@@ -185,6 +185,9 @@ pub(in crate::renderer::typeset) struct BlockTableContinuationPreparedState {
+     /// 마지막 RowBreak child 뒤의 저장 empty-host line spacing. 첫 anchor
+     /// fragment가 아니라 terminal continuation 뒤에서 한 번만 소비한다.
+     pub(in crate::renderer::typeset) terminal_host_spacing: f64,
++    /// `terminal_host_spacing` 가운데 저장 호스트 줄 전진(HWPUNIT, #2439). 이어지는 쪽의 끝
++    /// 조각에서는 그 쪽의 저장 다음 줄이 증언할 때만 소비한다.
++    pub(in crate::renderer::typeset) terminal_stored_host_advance: Option<i32>,
+     pub(in crate::renderer::typeset) strict_following_plain_text_fit: bool,
+     pub(in crate::renderer::typeset) budget_para_start_height: f64,
+     /// 원본 RowBreak 표가 기존 FootnoteArea 직전까지의 물리 경계를
+diff --git a/src/renderer/typeset/table/continuation/fragment/emit.rs b/src/renderer/typeset/table/continuation/fragment/emit.rs
+index a18b4318d1457a33b7e79c44e7e44b7b06eda5f8..4804b8b03413fc11b158b787ccd31a61fb8a1efa 100644
+--- a/src/renderer/typeset/table/continuation/fragment/emit.rs
++++ b/src/renderer/typeset/table/continuation/fragment/emit.rs
+@@ -45,6 +45,30 @@ impl TypesetEngine {
+         let relax_terminal_table_footnote_fit = input.prepared.relax_terminal_table_footnote_fit;
+         let cursor_row = input.start.cursor_row;
+         let is_continuation = input.start.is_continuation;
++        // 이어지는 쪽의 끝 조각 뒤 저장 호스트 줄 전진은 그 쪽의 저장 다음 줄이 증언할 때만
++        // 흐름에 든다(paint `layout_partial_table_item` 과 같은 판정).
++        let continuation_terminal_host_spacing = |flow_end_in_column: f64| -> f64 {
++            let Some(advance) = input.prepared.terminal_stored_host_advance else {
++                return terminal_host_spacing;
++            };
++            let next = input.source.paragraphs_all.get(para_idx + 1);
++            let next_before = next
++                .and_then(|next| styles.para_styles.get(next.para_shape_id as usize))
++                .map_or(0.0, |style| style.spacing_before);
++            if !is_continuation
++                || crate::renderer::layout::continuation_successor_confirms_host_advance(
++                    next,
++                    flow_end_in_column,
++                    next_before,
++                    advance,
++                    self.dpi,
++                )
++            {
++                terminal_host_spacing
++            } else {
++                terminal_host_spacing - hwpunit_to_px(advance, self.dpi)
++            }
++        };
+         let start_cut_is_block = input.start.start_cut_is_block;
+         let start_row_height_override = input.start.start_row_height_override;
+         let start_cut = &input.start.start_cut;
+@@ -1235,8 +1259,12 @@ impl TypesetEngine {
+                             )
+                         })
+                 });
+-                let terminal_spacing = terminal_successor_gap
+-                    .unwrap_or(host_spacing_after_only + terminal_host_spacing);
++                let terminal_spacing = terminal_successor_gap.unwrap_or_else(|| {
++                    host_spacing_after_only
++                        + continuation_terminal_host_spacing(
++                            st.current_height + occupied + host_spacing_after_only,
++                        )
++                });
+                 st.advance_flow_by(occupied + terminal_spacing);
+                 terminal_host_push = terminal_spacing;
+                 flow_after_terminal_advance = st.current_height;
+@@ -1889,9 +1917,10 @@ impl TypesetEngine {
+                         styles,
+                     )
+                 });
+-            st.advance_flow_by(
+-                terminal_successor_gap.unwrap_or(host_spacing_after_only + terminal_host_spacing),
+-            );
++            let flow_end = st.current_height + host_spacing_after_only;
++            st.advance_flow_by(terminal_successor_gap.unwrap_or_else(|| {
++                host_spacing_after_only + continuation_terminal_host_spacing(flow_end)
++            }));
+             self.consume_stored_terminal_empty_line_gap(st, &input, is_continuation);
+             commit_fragment(
+                 st,

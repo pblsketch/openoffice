@@ -1,0 +1,544 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pblsketch <239486537+pblsketch@users.noreply.github.com>
+Date: Wed, 4 Nov 2026 00:00:00 +0900
+Subject: [PATCH 29/30] fix(footnote): 자동 번호 없는 각주와 저장 줄 없는 각주를 한글처럼 그리고 각주 모양 호출을 더한다
+
+생성기가 만든 HWPX(번호를 글로 적고 줄 배치를 저장하지 않은 문서)의 각주를 한컴
+한글 2024가 인쇄한 대로 다룬다.
+
+- 각주 문단에 각주·미주 autoNum 자리가 없으면 번호를 붙이지 않고 보통 문단으로
+  그린다. 한글은 번호를 이 자리에서만 그린다. 고치기 전에는 `1) 1) …`로 보였다.
+- 저장 줄 없이 글자만 가진 각주 문단은 쪽 나누기가 400HU로 세던 것을 그리기와 같은
+  계산(estimate_footnote_area_height_with_metrics)으로 잰다. 그런 각주가 이 쪽에 들어가지
+  않으면 표지는 이 쪽에 두고 각주를 다음 쪽에 둔다(나누지는 못한다).
+- 빈 꼬리말 띠 회수(#2559)를 저장 줄 없는 각주가 있는 구역에서는 하지 않는다. 한글은
+  그런 문서의 각주를 본문 아래끝 안에 둔다. 저장 줄 있는 문서는 그대로다(task1725).
+- getFootnoteShape·applyFootnoteShape를 미주 호출과 같은 꼴로 더하고, getFootnoteInfo에
+  autoNum 자리 위치 numberSlot(없으면 -1)을 더한다. 미주 모양 적용은 넘긴 장식 문자를
+  HWPX에 그대로 쓴다.
+
+IeumOffice patch onto v0.8.7 (decision 0106; not proposed upstream yet).
+
+Ported onto devel 7d06d5c70 + 0001–0038: getFootnoteInfo numberSlot, getFootnoteShape/applyFootnoteShape (same js names, arguments and JSON fields as the 0.8.7 patch) and the endnote-shape decoration flag apply unchanged. The number-slot rule changes: a note without an autoNum slot draws no number text in devel's paint loop (layout_footnote_area), but its first paragraph stays on devel's numbered route. Turning it into a plain paragraph as the 0.8.7 patch did picks up devel's plain-paragraph spacing and moved such a note 2.7px above Hangul 2024's print (doc2-hancom.hwpx p98, note 23 typed as "23) ": Hangul ink rows 800/816/831, numbered route 799.1/814.9/830.0, plain route 796.4/812.3). Dropped the 400HU-to-measured height change: devel already reserves every body footnote with the paint composition (BodyFootnoteMeasure::content_height -> footnote_paragraphs_content_height), so the unlaid note height needs no special case. Kept the next-page move for an unlaid note that does not fit and the band-reclaim exception for sections with unlaid notes. devel's register_body_footnote already takes styles, so section/controls.rs needs no change.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/document_core/commands/footnote_ops.rs     |  34 ++-
+ src/document_core/commands/object_ops/shape.rs | 277 +++++++++++++++++++++++++
+ src/renderer/layout/picture_footnote.rs        |  40 +++-
+ src/renderer/typeset/notes/footnotes/body.rs   |  20 +-
+ src/renderer/typeset/section.rs                |  15 +-
+ src/wasm_api.rs                                |  18 ++
+ 6 files changed, 394 insertions(+), 10 deletions(-)
+
+diff --git a/src/document_core/commands/footnote_ops.rs b/src/document_core/commands/footnote_ops.rs
+index 57337fb178ad261aa7563a2b8d62fb991baad7dc..879d8b458e29332fad3340638b06e28c8b3dc022 100644
+--- a/src/document_core/commands/footnote_ops.rs
++++ b/src/document_core/commands/footnote_ops.rs
+@@ -492,10 +492,11 @@ impl DocumentCore {
+                     .collect();
+                 let total_len: usize = f.paragraphs.iter().map(|p| p.text.chars().count()).sum();
+                 Ok(format!(
+-                    "{{\"ok\":true,\"paraCount\":{},\"totalTextLen\":{},\"number\":{},\"texts\":[{}]}}",
++                    "{{\"ok\":true,\"paraCount\":{},\"totalTextLen\":{},\"number\":{},\"numberSlot\":{},\"texts\":[{}]}}",
+                     para_count,
+                     total_len,
+                     f.number,
++                    note_number_slot(&f.paragraphs),
+                     texts.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(","),
+                 ))
+             }
+@@ -508,10 +509,11 @@ impl DocumentCore {
+                     .collect();
+                 let total_len: usize = e.paragraphs.iter().map(|p| p.text.chars().count()).sum();
+                 Ok(format!(
+-                    "{{\"ok\":true,\"paraCount\":{},\"totalTextLen\":{},\"number\":{},\"texts\":[{}]}}",
++                    "{{\"ok\":true,\"paraCount\":{},\"totalTextLen\":{},\"number\":{},\"numberSlot\":{},\"texts\":[{}]}}",
+                     para_count,
+                     total_len,
+                     e.number,
++                    note_number_slot(&e.paragraphs),
+                     texts.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(","),
+                 ))
+             }
+@@ -892,3 +894,31 @@ mod delete_footnote_char_shape_tests {
+         );
+     }
+ }
++
++/// 주석 첫 문단에서 각주·미주 autoNum 자리표시가 놓인 글자 위치, 없으면 -1.
++///
++/// 한/글은 주석 번호를 이 자리표시에서만 그린다. 번호를 글자로 적은 생성기 문서처럼
++/// 자리표시가 없는 주석은 번호가 없다.
++fn note_number_slot(paragraphs: &[crate::model::paragraph::Paragraph]) -> i64 {
++    use crate::model::control::{AutoNumberType, Control};
++    let Some(first) = paragraphs.first() else {
++        return -1;
++    };
++    let positions = first.control_text_positions();
++    first
++        .controls
++        .iter()
++        .enumerate()
++        .find_map(|(index, control)| match control {
++            Control::AutoNumber(auto)
++                if matches!(
++                    auto.number_type,
++                    AutoNumberType::Footnote | AutoNumberType::Endnote
++                ) =>
++            {
++                positions.get(index).map(|&position| position as i64)
++            }
++            _ => None,
++        })
++        .unwrap_or(-1)
++}
+diff --git a/src/document_core/commands/object_ops/shape.rs b/src/document_core/commands/object_ops/shape.rs
+index 3a299545d315d6b7327b367f39f46d68a53a5484..a66d77aa3e75ef1d9237596b6c4a8abd5ffc08ea 100644
+--- a/src/document_core/commands/object_ops/shape.rs
++++ b/src/document_core/commands/object_ops/shape.rs
+@@ -2631,12 +2631,15 @@ impl DocumentCore {
+             }
+             if let Some(v) = crate::document_core::helpers::json_str(props_json, "userChar") {
+                 shape.user_char = Self::first_char_or_nul(&v);
++                shape.deco_chars_from_source = true;
+             }
+             if let Some(v) = crate::document_core::helpers::json_str(props_json, "prefixChar") {
+                 shape.prefix_char = Self::first_char_or_nul(&v);
++                shape.deco_chars_from_source = true;
+             }
+             if let Some(v) = crate::document_core::helpers::json_str(props_json, "suffixChar") {
+                 shape.suffix_char = Self::first_char_or_nul(&v);
++                shape.deco_chars_from_source = true;
+             }
+             if let Some(v) = crate::document_core::helpers::json_u16(props_json, "startNumber") {
+                 shape.start_number = v.max(1);
+@@ -2713,6 +2716,280 @@ impl DocumentCore {
+         self.paginate_if_needed();
+         self.invalidate_page_tree_cache();
+ 
++        Ok(crate::document_core::helpers::json_ok())
++    }
++    /// 각주 모양의 배치 이름. 미주(`footnote_placement_name`)와 값의 뜻이 다르다.
++    fn footnote_shape_placement_name(
++        placement: crate::model::footnote::FootnotePlacement,
++    ) -> &'static str {
++        use crate::model::footnote::FootnotePlacement;
++        match placement {
++            FootnotePlacement::EachColumn => "eachColumn",
++            FootnotePlacement::BelowText => "belowText",
++            FootnotePlacement::RightColumn => "rightColumn",
++        }
++    }
++    fn footnote_shape_placement_from_str(
++        value: &str,
++        fallback: crate::model::footnote::FootnotePlacement,
++    ) -> crate::model::footnote::FootnotePlacement {
++        use crate::model::footnote::FootnotePlacement;
++        match value {
++            "eachColumn" | "EACH_COLUMN" => FootnotePlacement::EachColumn,
++            "belowText" | "MERGED_COLUMN" => FootnotePlacement::BelowText,
++            "rightColumn" | "RIGHT_MOST_COLUMN" => FootnotePlacement::RightColumn,
++            _ => fallback,
++        }
++    }
++    /// 각주 컨트롤과 그 안 autoNum 자리표시를 구역 각주 모양에 맞춘다.
++    fn sync_footnote_control_with_shape(
++        footnote: &mut crate::model::footnote::Footnote,
++        number_format_code: u8,
++        prefix_char: char,
++        suffix_char: char,
++    ) {
++        use crate::model::control::{AutoNumberType, Control};
++
++        footnote.before_decoration_letter = if prefix_char == '\0' {
++            0
++        } else {
++            prefix_char as u16
++        };
++        footnote.after_decoration_letter = if suffix_char == '\0' {
++            0
++        } else {
++            suffix_char as u16
++        };
++        footnote.decoration_is_user_char = false;
++        footnote.number_shape = number_format_code as u32;
++
++        for para in &mut footnote.paragraphs {
++            for ctrl in &mut para.controls {
++                if let Control::AutoNumber(auto_num) = ctrl {
++                    if auto_num.number_type == AutoNumberType::Footnote {
++                        auto_num.format = number_format_code;
++                        auto_num.prefix_char = prefix_char;
++                        auto_num.suffix_char = suffix_char;
++                        auto_num.number = footnote.number;
++                        auto_num.assigned_number = footnote.number;
++                    }
++                }
++            }
++        }
++    }
++    fn renumber_paragraph_footnotes_with_shape(
++        paragraphs: &mut [crate::model::paragraph::Paragraph],
++        next_number: &mut u16,
++        number_format_code: u8,
++        prefix_char: char,
++        suffix_char: char,
++    ) {
++        for para in paragraphs {
++            for ctrl in &mut para.controls {
++                match ctrl {
++                    Control::Footnote(footnote) => {
++                        footnote.number = *next_number;
++                        Self::sync_footnote_control_with_shape(
++                            footnote,
++                            number_format_code,
++                            prefix_char,
++                            suffix_char,
++                        );
++                        *next_number = next_number.saturating_add(1);
++                    }
++                    Control::Table(table) => {
++                        for cell in &mut table.cells {
++                            Self::renumber_paragraph_footnotes_with_shape(
++                                &mut cell.paragraphs,
++                                next_number,
++                                number_format_code,
++                                prefix_char,
++                                suffix_char,
++                            );
++                        }
++                    }
++                    Control::Shape(shape) => {
++                        if let Some(text_box) =
++                            shape.drawing_mut().and_then(|d| d.text_box.as_mut())
++                        {
++                            Self::renumber_paragraph_footnotes_with_shape(
++                                &mut text_box.paragraphs,
++                                next_number,
++                                number_format_code,
++                                prefix_char,
++                                suffix_char,
++                            );
++                        }
++                    }
++                    _ => {}
++                }
++            }
++        }
++    }
++    /// 현재 구역의 각주 모양을 조회한다(미주 모양 조회와 같은 꼴, 배치 이름만 각주의 것).
++    pub fn get_footnote_shape_native(&self, section_idx: usize) -> Result<String, HwpError> {
++        let section = self.document.sections.get(section_idx).ok_or_else(|| {
++            HwpError::RenderError(format!("구역 인덱스 {} 범위 초과", section_idx))
++        })?;
++        let shape = &section.section_def.footnote_shape;
++        let separator_enabled = shape.separator_length != 0
++            || shape.separator_line_type != 0
++            || shape.separator_line_width != 0;
++        let separator_color =
++            crate::document_core::helpers::clipboard_color_to_css(shape.separator_color);
++
++        Ok(format!(
++            concat!(
++                "{{\"ok\":true,",
++                "\"numberFormat\":\"{}\",",
++                "\"userChar\":\"{}\",",
++                "\"prefixChar\":\"{}\",",
++                "\"suffixChar\":\"{}\",",
++                "\"startNumber\":{},",
++                "\"separatorEnabled\":{},",
++                "\"separatorLength\":{},",
++                "\"separatorMarginTop\":{},",
++                "\"separatorMarginBottom\":{},",
++                "\"noteSpacing\":{},",
++                "\"separatorLineType\":{},",
++                "\"separatorLineWidth\":{},",
++                "\"separatorColor\":\"{}\",",
++                "\"numberCodeSuperscript\":{},",
++                "\"printInlineAfterText\":{},",
++                "\"numbering\":\"{}\",",
++                "\"placement\":\"{}\"",
++                "}}"
++            ),
++            Self::footnote_shape_number_format_name(shape.number_format),
++            Self::json_escape_note_char(shape.user_char),
++            Self::json_escape_note_char(shape.prefix_char),
++            Self::json_escape_note_char(shape.suffix_char),
++            shape.start_number,
++            if separator_enabled { "true" } else { "false" },
++            shape.separator_length,
++            shape.separator_above_margin_hu(),
++            shape.separator_below_margin_hu(),
++            shape.between_notes_margin_hu(),
++            shape.separator_line_type,
++            shape.separator_line_width,
++            separator_color,
++            if shape.number_code_superscript {
++                "true"
++            } else {
++                "false"
++            },
++            if shape.print_inline_after_text {
++                "true"
++            } else {
++                "false"
++            },
++            Self::footnote_numbering_name(shape.numbering),
++            Self::footnote_shape_placement_name(shape.placement),
++        ))
++    }
++    /// 현재 구역의 각주 모양을 적용한다. 넘긴 속성만 바꾸고, 구역의 각주와 그 안의
++    /// autoNum 자리표시를 새 번호 모양으로 다시 매긴다(미주 모양 적용과 같은 규칙).
++    pub fn apply_footnote_shape_native(
++        &mut self,
++        section_idx: usize,
++        props_json: &str,
++    ) -> Result<String, HwpError> {
++        {
++            let section = self.document.sections.get_mut(section_idx).ok_or_else(|| {
++                HwpError::RenderError(format!("구역 인덱스 {} 범위 초과", section_idx))
++            })?;
++            let shape = &mut section.section_def.footnote_shape;
++
++            if let Some(v) = crate::document_core::helpers::json_str(props_json, "numberFormat") {
++                shape.number_format =
++                    Self::footnote_shape_number_format_from_str(&v, shape.number_format);
++            }
++            if let Some(v) = crate::document_core::helpers::json_str(props_json, "userChar") {
++                shape.user_char = Self::first_char_or_nul(&v);
++                shape.deco_chars_from_source = true;
++            }
++            if let Some(v) = crate::document_core::helpers::json_str(props_json, "prefixChar") {
++                shape.prefix_char = Self::first_char_or_nul(&v);
++                shape.deco_chars_from_source = true;
++            }
++            if let Some(v) = crate::document_core::helpers::json_str(props_json, "suffixChar") {
++                shape.suffix_char = Self::first_char_or_nul(&v);
++                shape.deco_chars_from_source = true;
++            }
++            if let Some(v) = crate::document_core::helpers::json_u16(props_json, "startNumber") {
++                shape.start_number = v.max(1);
++            }
++            if let Some(v) = Self::hwpunit16_from_json(props_json, "separatorLength") {
++                shape.separator_length = i32::from(v.max(0));
++            }
++            if let Some(v) = Self::hwpunit16_from_json(props_json, "separatorMarginTop") {
++                let above = v.max(0);
++                shape.separator_margin_top = above;
++                shape.separator_margin_bottom = above;
++            }
++            if let Some(v) = Self::hwpunit16_from_json(props_json, "separatorMarginBottom") {
++                shape.note_spacing = v.max(0);
++            }
++            if let Some(v) = Self::hwpunit16_from_json(props_json, "noteSpacing") {
++                shape.raw_unknown = v.max(0) as u16;
++            }
++            if let Some(v) = crate::document_core::helpers::json_u8(props_json, "separatorLineType")
++            {
++                shape.separator_line_type = v;
++            }
++            if let Some(v) =
++                crate::document_core::helpers::json_u8(props_json, "separatorLineWidth")
++            {
++                shape.separator_line_width = v;
++            }
++            if let Some(v) = crate::document_core::helpers::json_color(props_json, "separatorColor")
++            {
++                shape.separator_color = v;
++            }
++            if let Some(v) = crate::document_core::helpers::json_str(props_json, "numbering") {
++                shape.numbering = Self::footnote_numbering_from_str(&v, shape.numbering);
++            }
++            if let Some(v) = crate::document_core::helpers::json_str(props_json, "placement") {
++                shape.placement = Self::footnote_shape_placement_from_str(&v, shape.placement);
++            }
++            if let Some(v) =
++                crate::document_core::helpers::json_bool(props_json, "numberCodeSuperscript")
++            {
++                shape.number_code_superscript = v;
++            }
++            if let Some(v) =
++                crate::document_core::helpers::json_bool(props_json, "printInlineAfterText")
++            {
++                shape.print_inline_after_text = v;
++            }
++            if let Some(false) =
++                crate::document_core::helpers::json_bool(props_json, "separatorEnabled")
++            {
++                shape.separator_length = 0;
++                shape.separator_line_type = 0;
++                shape.separator_line_width = 0;
++            }
++            shape.attr = Self::encode_footnote_shape_attr(shape);
++            let start_number = shape.start_number.max(1);
++            let number_format_code = Self::footnote_shape_number_format_code(shape.number_format);
++            let prefix_char = shape.prefix_char;
++            let suffix_char = shape.suffix_char;
++            let mut next_number = start_number;
++            Self::renumber_paragraph_footnotes_with_shape(
++                &mut section.paragraphs,
++                &mut next_number,
++                number_format_code,
++                prefix_char,
++                suffix_char,
++            );
++            section.raw_stream = None;
++        }
++        self.sync_section_def_controls_from_section(section_idx);
++
++        self.recompose_section(section_idx);
++        self.paginate_if_needed();
++        self.invalidate_page_tree_cache();
++
+         Ok(crate::document_core::helpers::json_ok())
+     }
+ }
+diff --git a/src/renderer/layout/picture_footnote.rs b/src/renderer/layout/picture_footnote.rs
+index 39b4af2a765fa9ae36f975b8cd86263fd9e0583d..6873616c4399b4f09a1117cea4940d1155e496e8 100644
+--- a/src/renderer/layout/picture_footnote.rs
++++ b/src/renderer/layout/picture_footnote.rs
+@@ -265,6 +265,26 @@ fn footnote_composed_with_number(
+     Some(numbered)
+ }
+ 
++/// 각주 문단에 각주·미주 autoNum 자리표시가 있는지.
++///
++/// 한/글은 각주 번호를 이 자리표시에서만 그린다. 편집기의 각주 넣기는 늘 자리표시를
++/// 만들고, 자리표시를 지운 각주나 번호를 글자로 적은 생성기 문서의 각주는 번호가 없다.
++fn footnote_has_number_slot(paragraphs: &[Paragraph]) -> bool {
++    paragraphs.iter().any(|para| {
++        para.controls.iter().any(|control| {
++            matches!(
++                control,
++                Control::AutoNumber(auto)
++                    if matches!(
++                        auto.number_type,
++                        crate::model::control::AutoNumberType::Footnote
++                            | crate::model::control::AutoNumberType::Endnote
++                    )
++            )
++        })
++    })
++}
++
+ fn footnote_composed_line_count(
+     paragraphs: &[Paragraph],
+     content_width_px: f64,
+@@ -1597,12 +1617,20 @@ impl LayoutEngine {
+         // para_index = usize::MAX - 2000 - fn_para_idx (각주 내 문단 인덱스)
+         for (i, fn_ref) in footnotes.iter().enumerate() {
+             let fn_paras = get_footnote_paragraphs(fn_ref, paragraphs);
+-            let number_text = format_footnote_number(
+-                fn_ref.number,
+-                &shape.number_format,
+-                shape.prefix_char,
+-                shape.suffix_char,
+-            );
++            // 한/글은 각주 번호를 autoNum 자리표시에만 그린다. 자리표시가 없는 각주(번호를
++            // 글자로 적은 생성기 문서 등)는 번호 글자를 그리지 않는다. 첫 문단은 번호 문단의
++            // 자리(앞·뒤 문단 간격 없이 영역 위끝에서 시작)를 그대로 쓴다. 한글 2024 인쇄의
++            // 각주 줄 위치가 그렇다.
++            let number_text = if footnote_has_number_slot(fn_paras) {
++                format_footnote_number(
++                    fn_ref.number,
++                    &shape.number_format,
++                    shape.prefix_char,
++                    shape.suffix_char,
++                )
++            } else {
++                String::new()
++            };
+             let (fragment_start, fragment_end) = fragment_line_bounds(
+                 fn_ref.fragment,
+                 footnote_composed_line_count(fn_paras, fn_area.width, styles, self.dpi),
+diff --git a/src/renderer/typeset/notes/footnotes/body.rs b/src/renderer/typeset/notes/footnotes/body.rs
+index fffa3d8246677db2f086c7a56e7085819b84b4c4..cda535145a7bc9654a105b3b6c7c9bb580b91e37 100644
+--- a/src/renderer/typeset/notes/footnotes/body.rs
++++ b/src/renderer/typeset/notes/footnotes/body.rs
+@@ -433,7 +433,17 @@ impl TypesetEngine {
+                     return;
+                 }
+             }
+-            if move_to_next_reset_page || hwpx_note_overflows_current_page {
++            // 줄을 저장하지 않은 각주가 이 쪽에 들어가지 않으면(긴 각주의 표지가 쪽 끝 줄에
++            // 놓인 경우) 표지는 이 쪽에 두고 각주를 다음 쪽에 둔다. 한글은 이런 각주를 두
++            // 쪽에 나눠 그리지만, 엔진은 저장 줄 없는 각주를 나누지 못한다. 이 쪽에 두면
++            // 본문과 겹치고 아래 여백으로 넘친다.
++            let unlaid_note_overflows_current_page = footnote_has_unlaid_paragraph(fn_ctrl)
++                && st.col_count == 1
++                && !st.footnote_fragment_fits_current_page(fn_height, true, false, 0.0);
++            if move_to_next_reset_page
++                || hwpx_note_overflows_current_page
++                || unlaid_note_overflows_current_page
++            {
+                 // marker/body는 방금 확정한 current page에 그대로 두고,
+                 // 다음 paragraph의 stored vpos reset이 시작하는 fresh page에
+                 // 이 단일 각주만 등록한다. p31 two-line fragment와 p43의
+@@ -452,3 +462,11 @@ impl TypesetEngine {
+         }
+     }
+ }
++
++/// 저장 줄 없이 글자만 가진 각주 문단이 있는지(그릴 때 영역 폭으로 다시 접는 문단).
++fn footnote_has_unlaid_paragraph(footnote: &Footnote) -> bool {
++    footnote
++        .paragraphs
++        .iter()
++        .any(|para| para.line_segs.is_empty() && !para.text.is_empty())
++}
+diff --git a/src/renderer/typeset/section.rs b/src/renderer/typeset/section.rs
+index 51a35fbe18b704638c498c2ee5af13635b6c299e..9cfc7f14cca97853c697b27e37371607da03c32d 100644
+--- a/src/renderer/typeset/section.rs
++++ b/src/renderer/typeset/section.rs
+@@ -146,7 +146,20 @@ impl TypesetEngine {
+             )?;
+         // [#2559] 조건부(Even/Odd)까지 포함해 어떤 꼬리말이라도 정의돼 있으면
+         // 밴드가 점유될 수 있다. 완전히 비어 있는 구역에서만 각주 회수를 허용한다.
+-        st.record_footer_presence(!hf_entries.iter().any(|(_, _, is_header, _)| !is_header));
++        // 줄을 저장하지 않은 각주(줄 정보 없이 만든 생성기 문서)가 있는 구역은 회수하지
++        // 않는다. 한컴 한글 2024는 꼬리말이 비어 있어도 그런 문서의 각주를 본문 아래끝
++        // 안에 두고 넘치는 각주를 다음 쪽으로 나눈다. 회수하면 각주가 아래쪽 여백으로
++        // 내려간다. 저장 줄이 있는 문서는 회수해야 저장 쪽 나눔과 맞는다(task1725).
++        let section_has_unlaid_footnote = paragraphs.iter().any(|para| {
++            para.controls.iter().any(|control| {
++                matches!(control, crate::model::control::Control::Footnote(note)
++                    if note.paragraphs.iter().any(|p| p.line_segs.is_empty() && !p.text.is_empty()))
++            })
++        });
++        st.record_footer_presence(
++            !hf_entries.iter().any(|(_, _, is_header, _)| !is_header)
++                && !section_has_unlaid_footnote,
++        );
+         // [#2668 진단] 밴드 회수 판정 관측 — 동작 불변.
+         // "꼬리말 위치 쪽 번호(PageNumberPos)가 밴드를 점유하므로 회수 대상에서 빼야 한다"는
+         // 판별자 가설을 이 출력으로 반증했다(회귀군·개선군 양쪽에 고루 존재).
+diff --git a/src/wasm_api.rs b/src/wasm_api.rs
+index 5b439a84d1d1cc2708fbfe0bf7c1c3ab45746446..0700c00f1dadcf98b29d6a6ec78d71c31f8e0681 100644
+--- a/src/wasm_api.rs
++++ b/src/wasm_api.rs
+@@ -5275,6 +5275,24 @@ impl HwpDocument {
+         .map_err(|e| e.into())
+     }
+ 
++    /// 각주 모양을 조회한다.
++    #[wasm_bindgen(js_name = getFootnoteShape)]
++    pub fn get_footnote_shape(&self, section_idx: u32) -> Result<String, JsValue> {
++        self.get_footnote_shape_native(section_idx as usize)
++            .map_err(|e| e.into())
++    }
++
++    /// 각주 모양을 적용한다.
++    #[wasm_bindgen(js_name = applyFootnoteShape)]
++    pub fn apply_footnote_shape(
++        &mut self,
++        section_idx: u32,
++        props_json: &str,
++    ) -> Result<String, JsValue> {
++        self.apply_footnote_shape_native(section_idx as usize, props_json)
++            .map_err(|e| e.into())
++    }
++
+     /// 미주 모양을 조회한다.
+     #[wasm_bindgen(js_name = getEndnoteShape)]
+     pub fn get_endnote_shape(&self, section_idx: u32) -> Result<String, JsValue> {

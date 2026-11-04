@@ -1364,6 +1364,12 @@ const PARA_LENGTHS = {
   spacingBefore: { min: 0, max: 200, key: 'spacingBefore' },
   spacingAfter: { min: 0, max: 200, key: 'spacingAfter' },
 }
+/** What a paragraph's list may be: numbered, bulleted, or none (the head type the editor sets). */
+const LIST_KINDS = ['number', 'bullet', 'none']
+/** Levels a list paragraph may take (Hangul numbers seven). */
+const MAX_LIST_LEVEL = 7
+/** The bullet the editor's bullet button puts. */
+const DEFAULT_BULLET = '●'
 /** Style kinds as the engine lists them: paragraph styles are 0, character styles 1. */
 const PARAGRAPH_STYLE = 0
 const CHARACTER_STYLE = 1
@@ -1482,6 +1488,37 @@ function formatOf(format, allowParagraph) {
     }
     paragraph[key] = Math.round(points * PARA_UNITS_PER_PT)
   }
+  if (given('list')) {
+    if (!LIST_KINDS.includes(format.list)) {
+      throw fail('BAD_ARGUMENT', `list must be one of ${LIST_KINDS.join(', ')}`)
+    }
+    // resolveFormat turns this into the engine's head type and numbering in the change
+    paragraph.list = { kind: format.list, level: 0, bullet: DEFAULT_BULLET }
+  }
+  if (given('listLevel')) {
+    if (!paragraph.list || paragraph.list.kind === 'none') {
+      throw fail('BAD_ARGUMENT', 'listLevel goes with list "number" or "bullet"')
+    }
+    const level = format.listLevel
+    if (!Number.isInteger(level) || level < 1 || level > MAX_LIST_LEVEL) {
+      throw fail('BAD_ARGUMENT', `listLevel must be a whole number from 1 to ${MAX_LIST_LEVEL}`)
+    }
+    paragraph.list.level = level - 1
+  }
+  if (given('bullet')) {
+    if (paragraph.list?.kind !== 'bullet') {
+      throw fail('BAD_ARGUMENT', 'bullet goes with list "bullet"')
+    }
+    if (
+      typeof format.bullet !== 'string' ||
+      [...format.bullet].length !== 1 ||
+      CONTROL_CHARS.test(format.bullet) ||
+      format.bullet.trim() === ''
+    ) {
+      throw fail('BAD_ARGUMENT', 'bullet must be one visible character')
+    }
+    paragraph.list.bullet = format.bullet
+  }
   let style = null
   if (given('style')) {
     const name = typeof format.style === 'string' ? format.style.trim() : ''
@@ -1501,7 +1538,7 @@ function formatOf(format, allowParagraph) {
   if (hasParagraph && !allowParagraph) {
     throw fail(
       'BAD_ARGUMENT',
-      'align, lineSpacing, indents, margins, spacing and style belong to a whole paragraph',
+      'align, lineSpacing, indents, margins, spacing, list and style belong to a whole paragraph',
     )
   }
   if (!hasChars && !hasParagraph) throw fail('BAD_ARGUMENT', 'format names nothing to change')
@@ -1769,9 +1806,30 @@ function resolveFormat(doc, spec) {
   }
   return {
     chars,
-    paragraph: spec.paragraph ? JSON.stringify(spec.paragraph) : null,
+    paragraph: spec.paragraph ? JSON.stringify(paragraphFormatOf(doc, spec.paragraph)) : null,
     style,
     charShape,
+  }
+}
+
+/**
+ * A checked paragraph format as the engine takes it, in a change: a list becomes the head
+ * type, numbering and level the editor's own number and bullet buttons give a paragraph.
+ * The numbering or bullet definition is found or added to the document (the editor's
+ * default numbering; a bullet by its character).
+ */
+function paragraphFormatOf(doc, paragraph) {
+  const { list, ...rest } = paragraph
+  if (!list) return rest
+  if (list.kind === 'none') return { ...rest, headType: 'None' }
+  const id =
+    list.kind === 'number' ? doc.ensureDefaultNumbering() : doc.ensureDefaultBullet(list.bullet)
+  if (!Number.isInteger(id) || id <= 0) throw fail('ENGINE', 'the list could not be set')
+  return {
+    ...rest,
+    headType: list.kind === 'number' ? 'Number' : 'Bullet',
+    numberingId: id,
+    paraLevel: list.level,
   }
 }
 
@@ -1861,6 +1919,422 @@ function styleLookOf(doc, style) {
 }
 
 const kindOf = (style) => (style.type === CHARACTER_STYLE ? 'character' : 'paragraph')
+
+/** HWPUNIT in a millimetre (7200 to the inch). */
+const HWPUNIT_PER_MM = 7200 / 25.4
+const mmOf = (hwpunit) => Math.round((hwpunit / HWPUNIT_PER_MM) * 10) / 10
+const hwpunitOf = (mm) => Math.round(mm * HWPUNIT_PER_MM)
+/** Paper sizes by name, portrait, in millimetres; B4 and B5 are Hangul's (JIS) ones. */
+const PAPER_SIZES = {
+  A3: [297, 420],
+  A4: [210, 297],
+  A5: [148, 210],
+  B4: [257, 364],
+  B5: [182, 257],
+  Letter: [215.9, 279.4],
+  Legal: [215.9, 355.6],
+}
+/** The page setup's margins as the format calls name them, and the engine's names. */
+const PAGE_MARGINS = {
+  left: 'marginLeft',
+  right: 'marginRight',
+  top: 'marginTop',
+  bottom: 'marginBottom',
+  header: 'marginHeader',
+  footer: 'marginFooter',
+  gutter: 'marginGutter',
+}
+const MIN_PAPER_MM = 50
+const MAX_PAPER_MM = 1000
+const MAX_MARGIN_MM = 200
+/** Least text area a page setup may leave, in millimetres each way. */
+const MIN_TEXT_AREA_MM = 20
+
+/** A section's page setup in millimetres: paper (by name when it is a known one), orientation, margins. */
+function pageSetupOf(doc, sec) {
+  const def = parse(doc.getPageDef(sec))
+  const width = mmOf(def.width)
+  const height = mmOf(def.height)
+  const paper =
+    Object.entries(PAPER_SIZES).find(
+      ([, [w, h]]) => Math.abs(w - width) < 1 && Math.abs(h - height) < 1,
+    )?.[0] ?? null
+  const margins = {}
+  for (const [name, key] of Object.entries(PAGE_MARGINS)) margins[name] = mmOf(def[key] ?? 0)
+  return {
+    ...(paper ? { paper } : {}),
+    width,
+    height,
+    orientation: def.landscape === true ? 'landscape' : 'portrait',
+    margins,
+  }
+}
+
+/**
+ * A page setup request, checked: what to give the engine's setPageDef (only what was asked
+ * for), or a failure. `paper` names a size, or `width` and `height` give one (millimetres,
+ * portrait); `orientation` turns it; `margins` sets the margins named.
+ */
+function pageSetupChangeOf(spec) {
+  if (!spec || typeof spec !== 'object' || Array.isArray(spec)) {
+    throw fail('BAD_ARGUMENT', 'the page setup must be an object')
+  }
+  const out = {}
+  const given = (key) => spec[key] !== undefined && spec[key] !== null
+  const millimetres = (value, min, max, what) => {
+    if (typeof value !== 'number' || !(value >= min && value <= max)) {
+      throw fail('BAD_ARGUMENT', `${what} must be ${min} to ${max} millimetres`)
+    }
+    return hwpunitOf(value)
+  }
+  if (given('paper')) {
+    const size = PAPER_SIZES[spec.paper]
+    if (!size) {
+      throw fail('BAD_ARGUMENT', `paper must be one of ${Object.keys(PAPER_SIZES).join(', ')}`)
+    }
+    if (given('width') || given('height')) {
+      throw fail('BAD_ARGUMENT', 'give paper or width and height, not both')
+    }
+    out.width = hwpunitOf(size[0])
+    out.height = hwpunitOf(size[1])
+  } else if (given('width') || given('height')) {
+    if (!given('width') || !given('height')) {
+      throw fail('BAD_ARGUMENT', 'width and height go together')
+    }
+    out.width = millimetres(spec.width, MIN_PAPER_MM, MAX_PAPER_MM, 'width')
+    out.height = millimetres(spec.height, MIN_PAPER_MM, MAX_PAPER_MM, 'height')
+  }
+  if (given('orientation')) {
+    if (spec.orientation !== 'portrait' && spec.orientation !== 'landscape') {
+      throw fail('BAD_ARGUMENT', 'orientation must be portrait or landscape')
+    }
+    out.landscape = spec.orientation === 'landscape'
+  }
+  if (given('margins')) {
+    if (typeof spec.margins !== 'object' || Array.isArray(spec.margins)) {
+      throw fail('BAD_ARGUMENT', 'margins must be an object')
+    }
+    for (const [name, value] of Object.entries(spec.margins)) {
+      if (value === undefined || value === null) continue
+      const key = PAGE_MARGINS[name]
+      if (!key) {
+        throw fail(
+          'BAD_ARGUMENT',
+          `margins take ${Object.keys(PAGE_MARGINS).join(', ')}, not ${String(name)}`,
+        )
+      }
+      out[key] = millimetres(value, 0, MAX_MARGIN_MM, `the ${name} margin`)
+    }
+  }
+  if (Object.keys(out).length === 0)
+    throw fail('BAD_ARGUMENT', 'the page setup names nothing to change')
+  return out
+}
+
+/**
+ * Whether a section would keep room for text after `change`: the paper less the margins,
+ * each way, as Hangul lays the body out (the header and footer margins inside the top and
+ * bottom ones, the gutter beside the left one).
+ */
+function leavesTextArea(def, change) {
+  const next = { ...def, ...change }
+  const turned = next.landscape === true
+  const width = mmOf(turned ? next.height : next.width)
+  const height = mmOf(turned ? next.width : next.height)
+  const across = width - mmOf(next.marginLeft + next.marginRight + (next.marginGutter ?? 0))
+  const down =
+    height -
+    mmOf(next.marginTop + next.marginBottom + (next.marginHeader ?? 0) + (next.marginFooter ?? 0))
+  return across >= MIN_TEXT_AREA_MM && down >= MIN_TEXT_AREA_MM
+}
+
+/** Number formats a note may take, as the engine names them. */
+const NOTE_NUMBER_FORMATS = [
+  'digit',
+  'circledDigit',
+  'upperRoman',
+  'lowerRoman',
+  'upperAlpha',
+  'lowerAlpha',
+  'circledUpperAlpha',
+  'circledLowerAlpha',
+  'hangulSyllable',
+  'circledHangulSyllable',
+  'hangulJamo',
+  'circledHangulJamo',
+  'hangulDigit',
+  'hanjaDigit',
+  'circledHanjaDigit',
+  'userChar',
+]
+const NOTE_NUMBERINGS = {
+  footnote: ['continue', 'restartSection', 'restartPage'],
+  endnote: ['continue', 'restartSection'],
+}
+const NOTE_PLACEMENTS = {
+  footnote: ['eachColumn', 'belowText', 'rightColumn'],
+  endnote: ['documentEnd', 'sectionEnd'],
+}
+const MAX_NOTE_START = 9999
+
+/** The note shape of one kind in a section, as the format calls name it; null when the engine cannot tell. */
+function noteShapeOf(doc, kind, sec) {
+  const read = kind === 'footnote' ? doc.getFootnoteShape : doc.getEndnoteShape
+  if (typeof read !== 'function') return null
+  const shape = parse(read.call(doc, sec))
+  if (!shape.ok) return null
+  return {
+    numberFormat: shape.numberFormat,
+    ...(shape.numberFormat === 'userChar' ? { symbol: shape.userChar } : {}),
+    prefix: shape.prefixChar,
+    suffix: shape.suffixChar,
+    superscript: shape.numberCodeSuperscript === true,
+    startNumber: shape.startNumber,
+    numbering: shape.numbering,
+    placement: shape.placement,
+    separator: shape.separatorEnabled === true,
+  }
+}
+
+/** A note settings request, checked: what to give the engine's apply call (only what was asked for). */
+function noteSettingsChangeOf(kind, spec) {
+  if (!NOTE_KINDS.includes(kind)) throw fail('BAD_ARGUMENT', 'kind must be footnote or endnote')
+  if (!spec || typeof spec !== 'object' || Array.isArray(spec)) {
+    throw fail('BAD_ARGUMENT', 'the settings must be an object')
+  }
+  const given = (key) => spec[key] !== undefined && spec[key] !== null
+  const oneOf = (key, values) => {
+    if (!values.includes(spec[key])) {
+      throw fail('BAD_ARGUMENT', `${key} must be one of ${values.join(', ')}`)
+    }
+    return spec[key]
+  }
+  const decoration = (key) => {
+    const value = spec[key]
+    if (typeof value !== 'string' || [...value].length > 1 || CONTROL_CHARS.test(value)) {
+      throw fail('BAD_ARGUMENT', `${key} must be one character, or "" for none`)
+    }
+    return value
+  }
+  const out = {}
+  if (given('numberFormat')) out.numberFormat = oneOf('numberFormat', NOTE_NUMBER_FORMATS)
+  if (given('symbol')) {
+    const symbol = decoration('symbol')
+    if (symbol === '') throw fail('BAD_ARGUMENT', 'symbol must be one character')
+    out.userChar = symbol
+  }
+  if (out.numberFormat === 'userChar' && out.userChar === undefined) {
+    throw fail('BAD_ARGUMENT', 'numberFormat userChar needs the symbol')
+  }
+  if (given('prefix')) out.prefixChar = decoration('prefix')
+  if (given('suffix')) out.suffixChar = decoration('suffix')
+  if (given('superscript')) {
+    if (typeof spec.superscript !== 'boolean')
+      throw fail('BAD_ARGUMENT', 'superscript must be true or false')
+    out.numberCodeSuperscript = spec.superscript
+  }
+  if (given('startNumber')) {
+    if (
+      !Number.isInteger(spec.startNumber) ||
+      spec.startNumber < 1 ||
+      spec.startNumber > MAX_NOTE_START
+    ) {
+      throw fail('BAD_ARGUMENT', `startNumber must be a whole number from 1 to ${MAX_NOTE_START}`)
+    }
+    out.startNumber = spec.startNumber
+  }
+  if (given('numbering')) out.numbering = oneOf('numbering', NOTE_NUMBERINGS[kind])
+  if (given('placement')) out.placement = oneOf('placement', NOTE_PLACEMENTS[kind])
+  if (given('separator')) {
+    if (typeof spec.separator !== 'boolean')
+      throw fail('BAD_ARGUMENT', 'separator must be true or false')
+    out.separatorEnabled = spec.separator
+  }
+  if (Object.keys(out).length === 0)
+    throw fail('BAD_ARGUMENT', 'the settings name nothing to change')
+  return out
+}
+/** Length of the separator line Hangul draws for a new document's notes (5 cm). */
+const NOTE_SEPARATOR_LENGTH = 14174
+
+/**
+ * The apply call's properties for one section: a separator asked for where the section has
+ * none gets a thin solid line of the usual length (the engine's "off" clears all three); one
+ * the section already draws is left as it is.
+ */
+function noteShapeChangeFor(doc, kind, sec, change) {
+  if (change.separatorEnabled !== true) return change
+  const { separatorEnabled: _on, ...rest } = change
+  const current = noteShapeOf(doc, kind, sec)
+  if (current?.separator) return rest
+  return {
+    ...rest,
+    separatorLineType: 1,
+    separatorLineWidth: 1,
+    separatorLength: NOTE_SEPARATOR_LENGTH,
+  }
+}
+
+/** Most body paragraphs the formatting profile looks at. */
+const MAX_LOOK_PARAGRAPHS = 6000
+/** Most looks the profile lists; the rest are counted. */
+const MAX_LISTED_LOOKS = 40
+const LOOK_SAMPLES = 2
+const LOOK_SAMPLE_CHARS = 60
+
+/** A short, stable name for a look: it stays the same while the paragraphs keep that look. */
+function lookIdOf(key) {
+  // FNV-1a, 32 bits: enough to tell a document's few dozen looks apart
+  let hash = 0x811c9dc5
+  for (let i = 0; i < key.length; i++) {
+    hash ^= key.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return `L${hash.toString(36).padStart(6, '0').slice(-6)}`
+}
+
+/**
+ * How one body paragraph looks, in the units the format calls take: its paragraph style, its
+ * paragraph formatting and list, and the character formatting at its start. Null for a
+ * paragraph the engine will not read.
+ */
+function paragraphLookOf(doc, sec, para, styles) {
+  try {
+    const p = parse(doc.getParaPropertiesAt(sec, para))
+    const c = parse(doc.getCharPropertiesAt(sec, para, 0))
+    const styleId = parse(doc.getStyleAt(sec, para)).id
+    const head = p.headType === 'Number' || p.headType === 'Bullet' || p.headType === 'Outline'
+    return {
+      style: styles.get(styleId) ?? '',
+      font: c.fontFamily,
+      size: c.fontSize / 100,
+      bold: c.bold === true,
+      italic: c.italic === true,
+      underline: c.underline === true,
+      color: c.textColor,
+      align: p.alignment,
+      ...(p.lineSpacingType === 'Percent'
+        ? { lineSpacing: p.lineSpacing }
+        : { lineSpacingKind: p.lineSpacingType }),
+      indent: ptOfPx(p.indent),
+      marginLeft: ptOfPx(p.marginLeft),
+      marginRight: ptOfPx(p.marginRight),
+      spacingBefore: ptOfSpacing(p.spacingBefore),
+      spacingAfter: ptOfSpacing(p.spacingAfter),
+      ...(head
+        ? {
+            list:
+              p.headType === 'Bullet' ? 'bullet' : p.headType === 'Outline' ? 'outline' : 'number',
+            listLevel: (p.paraLevel ?? 0) + 1,
+          }
+        : {}),
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The body paragraphs of a document grouped by how they look (paragraphLookOf), most used
+ * first. Empty paragraphs are left out. Each group has a stable id (lookIdOf) and the places
+ * of its paragraphs; `mixed` counts its paragraphs whose text changes character formatting
+ * somewhere (a bold word: only the start is in the look).
+ */
+function looksOf(doc) {
+  const styles = new Map(parse(doc.getStyleList()).map((style) => [style.id, style.name]))
+  const groups = new Map()
+  let counted = 0
+  let truncated = false
+  for (let sec = 0; sec < doc.getSectionCount() && !truncated; sec++) {
+    const count = doc.getParagraphCount(sec)
+    for (let para = 0; para < count; para++) {
+      if (counted >= MAX_LOOK_PARAGRAPHS) {
+        truncated = true
+        break
+      }
+      let length
+      try {
+        length = doc.getParagraphLength(sec, para)
+      } catch {
+        continue
+      }
+      const text = length > 0 ? squash(paragraphTextOf(doc, sec, para)) : ''
+      if (!text) continue
+      const look = paragraphLookOf(doc, sec, para, styles)
+      if (!look) continue
+      counted += 1
+      const key = JSON.stringify(look)
+      let group = groups.get(key)
+      if (!group) {
+        group = { id: lookIdOf(key), look, places: [], samples: [], mixed: 0 }
+        groups.set(key, group)
+      }
+      group.places.push({ sec, para, length })
+      if (group.samples.length < LOOK_SAMPLES) group.samples.push(clip(text, LOOK_SAMPLE_CHARS))
+      try {
+        if (parse(doc.getCharShapeRuns(sec, para, 0, length)).length > 1) group.mixed += 1
+      } catch {
+        // runs the engine will not read are not counted
+      }
+    }
+  }
+  const sorted = [...groups.values()].sort((a, b) => b.places.length - a.places.length)
+  return { looks: sorted, counted, truncated }
+}
+
+/**
+ * What a document's formatting is made of, for the model to follow or copy: the page setup,
+ * the note settings, the paragraph styles in use, and the looks of the body paragraphs.
+ * Reads only.
+ */
+function formattingOf(doc) {
+  const sections = doc.getSectionCount()
+  const pages = []
+  for (let sec = 0; sec < sections; sec++) pages.push(pageSetupOf(doc, sec))
+  const samePages = pages.every((page) => JSON.stringify(page) === JSON.stringify(pages[0]))
+  const { looks, counted, truncated } = looksOf(doc)
+  const used = new Map()
+  for (const group of looks) {
+    if (group.look.style)
+      used.set(group.look.style, (used.get(group.look.style) ?? 0) + group.places.length)
+  }
+  const styles = parse(doc.getStyleList())
+    .filter((style) => used.has(style.name) || style.type === CHARACTER_STYLE)
+    .map((style) => ({
+      name: style.name,
+      kind: kindOf(style),
+      paragraphs: used.get(style.name) ?? 0,
+      look: styleLookOf(doc, style),
+    }))
+  const notes = {}
+  for (const kind of NOTE_KINDS) {
+    const shape = noteShapeOf(doc, kind, 0)
+    if (shape) notes[kind] = shape
+  }
+  return {
+    pageSetup: samePages ? pages[0] : pages.map((page, index) => ({ section: index + 1, ...page })),
+    notes,
+    styles,
+    paragraphs: counted,
+    looks: looks.slice(0, MAX_LISTED_LOOKS).map((group) => ({
+      id: group.id,
+      paragraphs: group.places.length,
+      ...group.look,
+      ...(group.mixed > 0 ? { mixedFormatting: group.mixed } : {}),
+      samples: group.samples,
+    })),
+    ...(looks.length > MAX_LISTED_LOOKS ? { otherLooks: looks.length - MAX_LISTED_LOOKS } : {}),
+    ...(truncated ? { truncated: true } : {}),
+  }
+}
+
+/** Bytes from base64, for a document handed over as text. */
+function bytesOfBase64(base64) {
+  const binary = globalThis.atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return bytes
+}
 
 function checkWhere(where) {
   if (where !== 'after' && where !== 'before' && where !== 'end') {
@@ -3119,6 +3593,10 @@ function notesOf(doc) {
           }
         }
         const texts = Array.isArray(info.texts) ? info.texts : []
+        // a note without a number slot (its number typed as text by a document generator)
+        // shows no number: all of its text is text (engine patch 0029 reports the slot)
+        const numbered = info.numberSlot !== -1
+        if (!numbered) prefix = 0
         notes.push({
           sec,
           para,
@@ -3127,6 +3605,7 @@ function notesOf(doc) {
           kind: kind === 'endnote' ? 'endnote' : 'footnote',
           number: info.number,
           prefix,
+          numbered,
           lines: texts.map((line, index) => (index === 0 ? line.slice(prefix) : line)),
           plain: texts.reduce((sum, line) => sum + line.length, 0) === info.totalTextLen,
         })
@@ -6843,6 +7322,7 @@ export const agentPlugin = {
               after: noteContext(doc, note),
               text: clip(note.lines.join('\n'), MAX_LISTED_NOTE_CHARS),
               ...(note.plain ? {} : { objects: true }),
+              ...(note.numbered ? {} : { noAutoNumber: true }),
             })),
           }
         }),
@@ -6991,6 +7471,190 @@ export const agentPlugin = {
                 ...noteSummary(note),
                 text: clip(note.lines.join('\n'), MAX_REPORTED_CHARS),
                 place: { sec: note.sec, para: note.para, offset: note.offset, length: 0 },
+              }
+            },
+            options,
+          ),
+        )
+      }),
+
+      /**
+       * The footnote and endnote settings of the document (its first section's: a new
+       * section copies them), and whether this engine can change the footnote ones.
+       */
+      noteSettings: guarded(() =>
+        host.read((doc) => ({
+          sections: doc.getSectionCount(),
+          footnote: noteShapeOf(doc, 'footnote', 0),
+          endnote: noteShapeOf(doc, 'endnote', 0),
+        })),
+      ),
+
+      /**
+       * Change the footnote or endnote settings of every section: only what `spec` names
+       * (number format, decoration, superscript, start, numbering, placement, separator).
+       * The notes are numbered again with the new format. One undo step.
+       */
+      setNoteSettings: guarded((kind, spec, options) => {
+        const wanted = noteSettingsChangeOf(kind, spec)
+        const applyName = kind === 'footnote' ? 'applyFootnoteShape' : 'applyEndnoteShape'
+        const supported = host.read((doc) => typeof doc[applyName] === 'function')
+        if (!supported) return { ok: false, reason: 'unsupported' }
+        return change(
+          'note-settings',
+          (doc) => {
+            const sections = doc.getSectionCount()
+            for (let sec = 0; sec < sections; sec++) {
+              const json = JSON.stringify(noteShapeChangeFor(doc, kind, sec, wanted))
+              expectOk(doc[applyName](sec, json), `change the ${kind} settings`)
+            }
+            return { ok: true, kind, settings: noteShapeOf(doc, kind, 0) }
+          },
+          options,
+        )
+      }),
+
+      /** The page setup of each section: paper, orientation and margins, in millimetres. */
+      pageSetup: guarded(() =>
+        host.read((doc) => {
+          const sections = []
+          for (let sec = 0; sec < doc.getSectionCount(); sec++) sections.push(pageSetupOf(doc, sec))
+          return { sections }
+        }),
+      ),
+
+      /**
+       * Change the page setup of one section (`section`, from 1) or of all of them: only
+       * what `spec` names. Refused when the margins would leave no room for text. One undo
+       * step.
+       */
+      setPageSetup: guarded((spec, section, options) => {
+        const wanted = pageSetupChangeOf(spec)
+        const targets = (doc) => {
+          const count = doc.getSectionCount()
+          if (section === undefined || section === null) {
+            return Array.from({ length: count }, (_, index) => index)
+          }
+          return Number.isInteger(section) && section >= 1 && section <= count
+            ? [section - 1]
+            : null
+        }
+        const refusal = host.read((doc) => {
+          const secs = targets(doc)
+          if (!secs) return { ok: false, reason: 'no_such_section', count: doc.getSectionCount() }
+          for (const sec of secs) {
+            if (!leavesTextArea(parse(doc.getPageDef(sec)), wanted)) {
+              return { ok: false, reason: 'no_text_area', section: sec + 1 }
+            }
+          }
+          return null
+        })
+        if (refusal) return refusal
+        return change(
+          'page-setup',
+          (doc) => {
+            const secs = targets(doc)
+            if (!secs) throw fail('CHANGED', 'the document changed mid-call')
+            for (const sec of secs) {
+              expectOk(doc.setPageDef(sec, JSON.stringify(wanted)), 'change the page setup')
+            }
+            return {
+              ok: true,
+              sections: secs.length,
+              pageSetup: pageSetupOf(doc, secs[0]),
+            }
+          },
+          options,
+        )
+      }),
+
+      /**
+       * What a document's formatting is made of (formattingOf): this document's, or that of
+       * another HWP / HWPX document handed over as base64 (an attachment), opened with this
+       * editor's engine and freed again. The looks of another document have no id: only
+       * this document's looks can be changed (formatLook).
+       */
+      formatting: guarded((base64) =>
+        host.read((doc) => {
+          if (base64 === undefined || base64 === null) return { ok: true, ...formattingOf(doc) }
+          if (typeof base64 !== 'string' || base64 === '') {
+            throw fail('BAD_ARGUMENT', 'the document must come as base64')
+          }
+          // the class of the editor's own document: the same engine opens the other one
+          const Document = doc.constructor
+          let other
+          try {
+            other = new Document(bytesOfBase64(base64))
+          } catch (thrown) {
+            return { ok: false, reason: 'unreadable', message: clip(asError(thrown).message, 200) }
+          }
+          try {
+            const formatting = formattingOf(other)
+            return {
+              ok: true,
+              ...formatting,
+              looks: formatting.looks.map(({ id: _id, ...look }) => look),
+            }
+          } finally {
+            other.free?.()
+          }
+        }),
+      ),
+
+      /**
+       * Change every body paragraph of one look (an id from formatting) at once: the paragraph
+       * style, paragraph formatting and list, and the character formatting of all their text,
+       * as formatParagraph does for one. Refused with the current looks when the id is not one
+       * of them (the paragraphs changed look since). One undo step.
+       */
+      formatLook: guarded((id, format, options) => {
+        const spec = formatOf(format, true)
+        const find = (doc) => looksOf(doc).looks.find((group) => group.id === id) ?? null
+        const refusal = host.read((doc) => {
+          const group = find(doc)
+          if (!group) {
+            return {
+              ok: false,
+              reason: 'no_such_look',
+              looks: looksOf(doc)
+                .looks.slice(0, MAX_LISTED_LOOKS)
+                .map((other) => ({
+                  id: other.id,
+                  paragraphs: other.places.length,
+                  sample: other.samples[0],
+                })),
+            }
+          }
+          return missingStyle(doc, spec)
+        })
+        if (refusal) return refusal
+        return keepingObjects((mustKeep) =>
+          change(
+            'format-look',
+            (doc) => {
+              const group = find(doc)
+              if (!group) throw fail('CHANGED', 'the document changed mid-call')
+              const before = objectsOf(doc)
+              const { chars, paragraph, style, charShape } = resolveFormat(doc, spec)
+              let keptOwnLook = 0
+              const marks = []
+              for (const { sec, para } of group.places) {
+                const box = containerOf(doc, { sec, para, charOffset: 0 })
+                const length = box.length(para)
+                if (style !== null && keepsOwnLook(doc, box, para) === true) keptOwnLook += 1
+                if (style !== null) box.applyStyle(para, style)
+                if (charShape !== null && length > 0) box.setCharShape(para, 0, length, charShape)
+                if (paragraph) box.formatParagraph(para, paragraph)
+                if (chars && length > 0) box.formatChars(para, 0, length, chars)
+                marks.push(box.place(para, length))
+              }
+              mustKeep(before, objectsOf(doc))
+              return {
+                ok: true,
+                paragraphs: group.places.length,
+                place: marks[0],
+                marks,
+                ...(keptOwnLook > 0 ? { keptOwnLook } : {}),
               }
             },
             options,

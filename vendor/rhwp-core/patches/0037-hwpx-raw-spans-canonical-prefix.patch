@@ -1,0 +1,328 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pblsketch <239486537+pblsketch@users.noreply.github.com>
+Date: Wed, 4 Nov 2026 00:00:00 +0900
+Subject: [PATCH 27/30] fix(hwpx): 원본에서 옮기는 XML 구간의 접두사를 이름공간의 표준 접두사로 쓴다
+
+HWPX 헤더의 번호 매기기·글머리표 paraHead 구간과 본문 필드의 parameters 자식은 원본
+XML을 그대로 옮겨 다시 쓴다. 다른 도구가 OWPML 이름공간을 다른 접두사(ns0 등)로
+선언한 문서에서는 그 접두사가 그대로 남았는데, 저장하는 문서는 hh·hp 등만 선언하므로
+선언 없는 접두사가 생겨 XML이 깨졌고 한컴 한글 2024가 파일을 열지 못했다(외부 신고
+재현본 header-picture-and-text.hwpx: 원본은 열리고 저장본은 열리지 않음, 0.8.7도 같음).
+
+paraHead 구간은 원본 뿌리 요소의 선언으로 접두사를 풀어 표준 접두사로 바꾼다. 이미
+표준 접두사뿐이면(한컴이 쓴 문서) 구간을 바이트 그대로 둔다. 풀 수 없는 접두사, 구간
+안의 이름공간 선언, 접두사 붙은 속성이 있으면 구간을 버리고 모델로 다시 쓴다.
+parameters 자식은 모두 문단 이름공간이라 hp:로 쓴다.
+---
+ src/parser/hwpx/header.rs  |  36 +++++++++-
+ src/parser/hwpx/section.rs |  47 ++++++++++++--
+ src/parser/hwpx/utils.rs   | 159 +++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 235 insertions(+), 7 deletions(-)
+
+diff --git a/src/parser/hwpx/header.rs b/src/parser/hwpx/header.rs
+index 35f9e3007fc1f4b26656970dd89da7fcd1352ecc..e0f29087f64fdbba22ad696782c6cbde6d613e91 100644
+--- a/src/parser/hwpx/header.rs
++++ b/src/parser/hwpx/header.rs
+@@ -2203,7 +2203,8 @@ fn parse_bullet_hwpx(
+         }
+ 
+         if inner_end >= inner_start && inner_end <= xml.len() {
+-            bullet.raw_para_head = Some(xml[inner_start..inner_end].to_string());
++            bullet.raw_para_head =
++                super::utils::canonical_prefix_span(xml, &xml[inner_start..inner_end]);
+         }
+     }
+ 
+@@ -2315,7 +2316,8 @@ fn parse_numbering(
+         // 무손실 splice 용 원본 paraHead 구간 보존(7수준 모델로 표현 못하는
+         // 8~10수준/checkable/형식문자열 포함). 경계가 깨졌으면 보존하지 않는다.
+         if inner_end >= inner_start && inner_end <= xml.len() {
+-            num.raw_para_heads = Some(xml[inner_start..inner_end].to_string());
++            num.raw_para_heads =
++                super::utils::canonical_prefix_span(xml, &xml[inner_start..inner_end]);
+         }
+     }
+ 
+@@ -2782,6 +2784,36 @@ mod tests {
+         );
+     }
+ 
++    #[test]
++    fn raw_para_heads_take_the_canonical_prefix_of_their_namespace() {
++        // A header written by another tool binds the head namespace to `ns0`. The span is
++        // spliced into a header that declares `hh` only, so it must come out as `hh:`:
++        // an undeclared prefix makes Hancom Hangul refuse the saved file.
++        let xml = r##"<ns0:head xmlns:ns0="http://www.hancom.co.kr/hwpml/2011/head" xmlns:ns1="http://www.hancom.co.kr/hwpml/2011/core"><ns0:refList><ns0:numberings itemCnt="1"><ns0:numbering id="1" start="0"><ns0:paraHead start="1" level="1" numFormat="DIGIT" charPrIDRef="4294967295" checkable="0">^1.</ns0:paraHead><ns0:paraHead start="1" level="8" charPrIDRef="0" checkable="0" /></ns0:numbering></ns0:numberings><ns0:bullets itemCnt="1"><ns0:bullet id="1" char="-" useImage="0"><ns0:paraHead level="0" align="CENTER" charPrIDRef="9" checkable="0"/></ns0:bullet></ns0:bullets></ns0:refList></ns0:head>"##;
++
++        let (doc_info, _) = parse_hwpx_header(xml).unwrap();
++        assert_eq!(
++            doc_info.numberings[0].raw_para_heads.as_deref(),
++            Some(
++                r##"<hh:paraHead start="1" level="1" numFormat="DIGIT" charPrIDRef="4294967295" checkable="0">^1.</hh:paraHead><hh:paraHead start="1" level="8" charPrIDRef="0" checkable="0" />"##
++            )
++        );
++        assert_eq!(
++            doc_info.bullets[0].raw_para_head.as_deref(),
++            Some(r##"<hh:paraHead level="0" align="CENTER" charPrIDRef="9" checkable="0"/>"##)
++        );
++        assert_eq!(doc_info.bullets[0].char_shape_id, 9);
++    }
++
++    #[test]
++    fn raw_para_heads_with_an_unknown_prefix_are_dropped() {
++        // a prefix the root does not declare cannot be mapped: the model writes the levels
++        let xml = r##"<hh:head xmlns:hh="http://www.hancom.co.kr/hwpml/2011/head"><hh:refList><hh:numberings itemCnt="1"><hh:numbering id="1" start="0"><x:paraHead start="1" level="1" numFormat="DIGIT" charPrIDRef="0" checkable="0"/></hh:numbering></hh:numberings></hh:refList></hh:head>"##;
++
++        let (doc_info, _) = parse_hwpx_header(xml).unwrap();
++        assert_eq!(doc_info.numberings[0].raw_para_heads, None);
++    }
++
+     #[test]
+     fn bullet_para_head_align_useinstwidth_survive_roundtrip_via_raw_splice() {
+         // [#2790] 종전 parse_bullet_hwpx 는 char/useImage 만 읽고 <hh:paraHead> 를
+diff --git a/src/parser/hwpx/section.rs b/src/parser/hwpx/section.rs
+index 8ef6a228504383ac530d608ddad68308b3dfc18e..781e720c46bd799b90f724f70da3d9e8b022b8e5 100644
+--- a/src/parser/hwpx/section.rs
++++ b/src/parser/hwpx/section.rs
+@@ -6408,7 +6408,10 @@ fn parse_field_parameters(
+             Ok(Event::Start(ref ce)) => {
+                 let cname = ce.name();
+                 let local = local_name(cname.as_ref());
+-                let tag = cname.as_ref().to_string();
++                // 매개변수 요소는 모두 문단 이름공간이다. 원본의 접두사가 무엇이든(다른 도구가
++                // 쓴 문서) 저장할 문서가 선언하는 `hp:`로 쓴다 — 선언 없는 접두사가 남으면
++                // 한컴 한글이 파일을 열지 못한다.
++                let tag = format!("hp:{}", String::from_utf8_lossy(local));
+                 raw.push('<');
+                 raw.push_str(&tag);
+                 for attr in ce.attributes().flatten() {
+@@ -6444,7 +6447,8 @@ fn parse_field_parameters(
+                 let cname = ce.name();
+                 let local = local_name(cname.as_ref());
+                 raw.push('<');
+-                raw.push_str(cname.as_ref());
++                raw.push_str("hp:");
++                raw.push_str(&String::from_utf8_lossy(local));
+                 for attr in ce.attributes().flatten() {
+                     raw.push(' ');
+                     raw.push_str(&String::from_utf8_lossy(attr.key.as_ref().as_bytes()));
+@@ -6521,9 +6525,8 @@ fn parse_field_parameters(
+                 // 임의 깊이 중첩(listParam 안의 stringParam 등)에서도 균형 잡힌 XML 을
+                 // 재조립하도록, 단일 open_param 추적 대신 End 이벤트 자신의 정규화 이름으로 닫는다.
+                 // 종전엔 open_param 이 마지막 Start 로 덮여, 바깥 태그의 닫는 태그가 누락됐다.
+-                let qn = eename.as_ref();
+-                raw.push_str("</");
+-                raw.push_str(&qn);
++                raw.push_str("</hp:");
++                raw.push_str(&String::from_utf8_lossy(local));
+                 raw.push('>');
+                 if local == b"stringParam" {
+                     in_command = false;
+@@ -9501,6 +9504,40 @@ mod tests {
+         assert_eq!(field.memo_index, 2);
+     }
+ 
++    #[test]
++    fn parse_field_parameters_writes_the_paragraph_prefix_whatever_the_source_used() {
++        // A section written by another tool binds the paragraph namespace to `ns2`. The kept
++        // XML is written under `<hp:parameters>` in a section that declares `hp` only.
++        let xml = r#"<ns2:parameters xmlns:ns2="http://www.hancom.co.kr/hwpml/2011/paragraph" cnt="2" name=""><ns2:listParam cnt="1" name="L"><ns2:stringParam name="A">x</ns2:stringParam></ns2:listParam><ns2:integerParam name="Prop" /></ns2:parameters>"#;
++        let mut reader = Reader::from_str(xml);
++        let mut buf = Vec::new();
++        let mut field = Field::default();
++
++        loop {
++            match reader.read_event_into(&mut buf).unwrap() {
++                Event::Start(ref e) if local_name(e.name().as_ref()) == b"parameters" => {
++                    let start = e.to_owned();
++                    parse_field_parameters(&start, &mut reader, &mut field).unwrap();
++                    break;
++                }
++                Event::Eof => panic!("parameters not found"),
++                _ => {}
++            }
++            buf.clear();
++        }
++
++        let raw = field.raw_parameters_xml.expect("raw_parameters_xml");
++        assert!(!raw.contains("ns2:"), "source prefix left: {raw}");
++        assert!(raw.contains("<hp:listParam cnt=\"1\" name=\"L\">"), "{raw}");
++        assert!(
++            raw.contains("<hp:stringParam name=\"A\">x</hp:stringParam>"),
++            "{raw}"
++        );
++        assert!(raw.contains("</hp:listParam>"), "{raw}");
++        assert!(raw.contains("<hp:integerParam name=\"Prop\"/>"), "{raw}");
++        assert!(raw.ends_with("</hp:parameters>"), "{raw}");
++    }
++
+     #[test]
+     fn parse_field_parameters_reassembles_nested_params_balanced() {
+         // 중첩 파라미터(listParam 안의 stringParam). 종전엔 open_param 이 마지막 Start 로
+diff --git a/src/parser/hwpx/utils.rs b/src/parser/hwpx/utils.rs
+index b950cfc38fa6742e84e02e4b86dafba1a0ff7bc5..c23203ede505dbe69488660f04e28653f9b3817b 100644
+--- a/src/parser/hwpx/utils.rs
++++ b/src/parser/hwpx/utils.rs
+@@ -236,3 +236,162 @@ mod tests {
+         assert_eq!(parse_hatch_style(""), None);
+     }
+ }
++
++/// 원본 구간을 그대로 다시 쓸 때 쓰는 OWPML 이름공간별 표준 접두사.
++/// 직렬화기가 `hh:head`·`hs:sec` 등의 뿌리 요소에 선언하는 것과 같다.
++const CANONICAL_PREFIXES: &[(&str, &str)] = &[
++    ("http://www.hancom.co.kr/hwpml/2011/app", "ha"),
++    ("http://www.hancom.co.kr/hwpml/2011/paragraph", "hp"),
++    ("http://www.hancom.co.kr/hwpml/2016/paragraph", "hp10"),
++    ("http://www.hancom.co.kr/hwpml/2011/section", "hs"),
++    ("http://www.hancom.co.kr/hwpml/2011/core", "hc"),
++    ("http://www.hancom.co.kr/hwpml/2011/head", "hh"),
++    ("http://www.hancom.co.kr/hwpml/2011/history", "hhs"),
++    ("http://www.hancom.co.kr/hwpml/2011/master-page", "hm"),
++];
++
++/// 문서 뿌리 요소가 선언한 이름공간: (접두사, URI). 기본 이름공간은 접두사 "".
++fn root_namespaces(xml: &str) -> Vec<(String, String)> {
++    let mut rest = xml;
++    // XML 선언·주석·처리 지시를 건너 첫 요소의 여는 태그를 찾는다.
++    let tag = loop {
++        let Some(start) = rest.find('<') else {
++            return Vec::new();
++        };
++        rest = &rest[start..];
++        if rest.starts_with("<?") || rest.starts_with("<!") {
++            let Some(end) = rest.find('>') else {
++                return Vec::new();
++            };
++            rest = &rest[end + 1..];
++            continue;
++        }
++        let Some(end) = rest.find('>') else {
++            return Vec::new();
++        };
++        break &rest[..end];
++    };
++    let mut out = Vec::new();
++    let mut at = 0;
++    while let Some(found) = tag[at..].find("xmlns") {
++        let name_start = at + found + "xmlns".len();
++        let after = &tag[name_start..];
++        let (prefix, after) = match after.strip_prefix(':') {
++            Some(named) => {
++                let len = named
++                    .find(|c: char| c == '=' || c.is_whitespace())
++                    .unwrap_or(named.len());
++                (named[..len].to_string(), &named[len..])
++            }
++            None => (String::new(), after),
++        };
++        let after = after.trim_start().strip_prefix('=').map(str::trim_start);
++        let Some(value) = after else {
++            at = name_start;
++            continue;
++        };
++        let Some(quote) = value.chars().next().filter(|c| *c == '"' || *c == '\'') else {
++            at = name_start;
++            continue;
++        };
++        let Some(len) = value[1..].find(quote) else {
++            break;
++        };
++        out.push((prefix, value[1..1 + len].to_string()));
++        at = tag.len() - value.len() + 1 + len;
++    }
++    out
++}
++
++/// 원본 XML에서 잘라 둔 요소 구간을 다른 문서 안에 그대로 다시 쓸 수 있게, 요소 이름의
++/// 접두사를 이름공간별 표준 접두사로 바꾼다. 원본 뿌리 요소의 선언으로 접두사를 풀고, 이미
++/// 표준 접두사뿐이면 구간을 그대로 돌려준다(한컴이 쓴 문서). 다른 도구가 다른 접두사로 쓴
++/// 문서에서 그대로 옮기면, 저장한 XML에 선언 없는 접두사가 남아 한컴 한글이 파일을 열지
++/// 못한다. 풀 수 없는 접두사, 구간 안의 이름공간 선언, 접두사 붙은 속성이 있으면 `None`:
++/// 구간을 버리고 모델로 다시 쓰게 한다.
++pub fn canonical_prefix_span(xml: &str, span: &str) -> Option<String> {
++    let declared = root_namespaces(xml);
++    let canonical = |prefix: &str| -> Option<&'static str> {
++        let uri = declared
++            .iter()
++            .rev()
++            .find(|(p, _)| p == prefix)
++            .map(|(_, u)| u.as_str())?;
++        CANONICAL_PREFIXES
++            .iter()
++            .find(|(u, _)| *u == uri)
++            .map(|(_, p)| *p)
++    };
++    let mut out = String::with_capacity(span.len());
++    let mut rest = span;
++    let mut changed = false;
++    while let Some(open) = rest.find('<') {
++        out.push_str(&rest[..open]);
++        rest = &rest[open..];
++        if rest.starts_with("<!--") {
++            let end = rest.find("-->")? + 3;
++            out.push_str(&rest[..end]);
++            rest = &rest[end..];
++            continue;
++        }
++        if rest.starts_with("<![CDATA[") {
++            let end = rest.find("]]>")? + 3;
++            out.push_str(&rest[..end]);
++            rest = &rest[end..];
++            continue;
++        }
++        if rest.starts_with("<?") || rest.starts_with("<!") {
++            let end = rest.find('>')? + 1;
++            out.push_str(&rest[..end]);
++            rest = &rest[end..];
++            continue;
++        }
++        let closing = rest.starts_with("</");
++        let name_at = if closing { 2 } else { 1 };
++        let tag_end = rest.find('>')?;
++        let tag = &rest[..=tag_end];
++        let name_len = tag[name_at..]
++            .find(|c: char| c.is_whitespace() || c == '/' || c == '>')
++            .unwrap_or(tag.len() - name_at);
++        let name = &tag[name_at..name_at + name_len];
++        let attrs = &tag[name_at + name_len..];
++        if attrs.contains("xmlns") {
++            return None;
++        }
++        // 속성 이름의 접두사(xml: 말고)는 이 함수가 풀지 않는다
++        let mut in_value: Option<char> = None;
++        let mut token = String::new();
++        for c in attrs.chars() {
++            match in_value {
++                Some(q) if c == q => in_value = None,
++                Some(_) => {}
++                None if c == '"' || c == '\'' => in_value = Some(c),
++                None if c == '=' => {
++                    let attr = token.trim();
++                    if attr.contains(':') && !attr.starts_with("xml:") {
++                        return None;
++                    }
++                    token.clear();
++                }
++                None if c.is_whitespace() => token.clear(),
++                None => token.push(c),
++            }
++        }
++        let (prefix, local) = match name.split_once(':') {
++            Some((p, l)) => (p, l),
++            None => ("", name),
++        };
++        let wanted = canonical(prefix)?;
++        if wanted != prefix {
++            changed = true;
++        }
++        out.push_str(&rest[..name_at]);
++        out.push_str(wanted);
++        out.push(':');
++        out.push_str(local);
++        out.push_str(attrs);
++        rest = &rest[tag_end + 1..];
++    }
++    out.push_str(rest);
++    Some(if changed { out } else { span.to_string() })
++}

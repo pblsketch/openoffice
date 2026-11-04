@@ -1,0 +1,353 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pblsketch <239486537+pblsketch@users.noreply.github.com>
+Date: Wed, 4 Nov 2026 00:00:00 +0900
+Subject: [PATCH 21/30] fix(layout): 통째로 놓인 빈 host 자리차지 표 뒤 첫 줄은 max(제자리 + 앞 간격, 띠 끝)에 선다
+
+한/글이 하는 일
+  글 없는 host 문단의 문단 기준 자리차지 표(세로 오프셋 0)가 한 쪽에 통째로 놓이면,
+  한/글은 다음 문단을 먼저 제자리(host 위끝 + host 앞 간격 + host 줄 + 줄간격 + host
+  뒤 간격)에 앞 간격을 더해 놓아 보고, 그 줄이 표 바깥 상자 띠에 걸리면 띠 끝으로
+  내린다. 첫 줄 top = max(제자리 + 앞 간격, 띠 끝). 앞 간격이 표의 바깥 아래 여백보다
+  커도 같다.
+
+devel 이 하던 일
+  #8149 규칙(`empty_host_float_successor_absorbed_spacing_px`)은 앞 간격이 바깥 아래
+  여백 이하일 때만 띠 안에서 흡수하고, 그보다 크면 띠 끝 + 앞 간격 전부에 놓는다. 그
+  "크면 흡수 없음" 근거(split-rows-60, 1341000 연구보고서 55쪽 등)는 쪽을 넘어 이어진
+  표 조각 뒤 문단이다. 도구가 만든 HWPX 서식(표 바깥 여백 283HU = 3.8px, 다음 문단 앞
+  간격 400HU = 5.3px)에서 표 뒤 문단이 5.3px 내려가 셋째 표가 536.2px 에 그려졌다
+  (한/글 530.7, 0.8.7 앱 엔진은 0021 (4)로 530.9).
+
+바꾼 것
+  - 이전 항목이 통째로 놓인 표(`PageItem::Table`)이고 앞 간격이 바깥 아래 여백보다 크면,
+    흡수량 = clamp(띠 끝 − 제자리, 0, 앞 간격). 제자리는 host 의 첫 저장 줄과 문단
+    간격으로 잰다(`empty_host_float_natural_successor_top`). 저장 줄이 없으면 종전대로
+    흡수하지 않는다. 다음 문단의 저장 첫 줄이 소비량을 증언하면 그 값을 쓰는 기존 분기와,
+    앞 간격 ≤ 바깥 여백·조각(`PartialTable`) 뒤의 기존 규칙은 그대로다.
+  - 조판은 표를 놓을 때 host 시작 높이를 기록하고(`record_table_host_start`), 배치는
+    그린 표의 위끝 − 바깥 위 여백을 host 위끝으로 쓴다. 둘이 같은 함수로 같은 흡수량을 낸다.
+
+증거(한/글 2024 Print, Microsoft Print to PDF, 600dpi 래스터에서 셋째 표 위 테두리)
+  같은 서식에서 둘째 표 뒤 빈 문단의 앞 간격만 바꾼 변형:
+    0·200·283·400·800·1500·3000·4000HU  → 530.7 (모두 같다)
+    4500HU(60px) → 536.5,  6000HU(80px) → 556.5
+  제자리 448.0 + 앞 간격이 띠 끝 502.2 를 넘은 만큼(5.8·25.8px)만 내려간다.
+  첫째 표 뒤 문단 앞 간격을 3000HU 로 바꿔도 아무것도 움직이지 않는다.
+  이 커밋 뒤 rhwp: 530.9 / 536.8 / 556.8, 첫째 표 뒤 변형 530.9(devel 563.4).
+  생성 서식 5종(13, 13-cellsnofill, 13-valign, aligned, generated-form-tables)의 셋째 표
+  536.2 → 530.9(한/글 530.7), 쪽을 넘긴 변형 s20 944.8(한/글 944.5)·s40 388.0(387.8)·
+  s45 491.5(491.2).
+  samples/ 1,337건(3MB 미만)의 쪽마다 본문 위치 서명은 0030·0031 을 합친 전후가 같다.
+
+검사: float_placement 단위 시험 whole_empty_host_table_successor_line_is_max_of_natural_and_band_end
+(한/글 측정 관계를 수로 옮김).
+---
+ src/renderer/float_placement.rs          | 117 ++++++++++++++++++++++++++++++-
+ src/renderer/layout.rs                   |  40 +++++++++++
+ src/renderer/typeset.rs                  |   1 +
+ src/renderer/typeset/paragraph/flow.rs   |  16 +++++
+ src/renderer/typeset/state/commands.rs   |   8 +++
+ src/renderer/typeset/state/data.rs       |   3 +
+ src/renderer/typeset/state/transition.rs |   1 +
+ 7 files changed, 184 insertions(+), 2 deletions(-)
+ mode change 100755 => 100644 src/renderer/typeset.rs
+
+diff --git a/src/renderer/float_placement.rs b/src/renderer/float_placement.rs
+index c007b77359d56c6074c11557ca6e621cb3f453cd..05ce8f669f32aca07b3e8dda716cc5903acca79e 100644
+--- a/src/renderer/float_placement.rs
++++ b/src/renderer/float_placement.rs
+@@ -3912,6 +3912,31 @@ pub(crate) fn stored_frame_successor_shared_spacing_px(
+         .unwrap_or(0.0)
+ }
+ 
++/// 글 없는 host 의 문단 기준 자리차지 표(세로 오프셋 0)가 없다고 볼 때 다음 문단이 시작할
++/// 자리 — host 문단 위끝(표 바깥 상자 위끝) + host 앞 간격 + 첫 저장 줄(줄높이 + 줄간격) +
++/// host 뒤 간격. 저장 줄이 없으면 `None`.
++pub(crate) fn empty_host_float_natural_successor_top(
++    host_top: f64,
++    host: &Paragraph,
++    styles: &crate::renderer::style_resolver::ResolvedStyleSet,
++    dpi: f64,
++) -> Option<f64> {
++    let line = host.line_segs.first().filter(|line| {
++        line.tag & crate::model::paragraph::LineSeg::TAG_IMPLEMENTATION_PROPERTY == 0
++            && line.line_height > 0
++    })?;
++    let style = styles.para_styles.get(host.para_shape_id as usize);
++    let before = style.map_or(0.0, |style| style.spacing_before).max(0.0);
++    let after = style.map_or(0.0, |style| style.spacing_after).max(0.0);
++    Some(
++        host_top
++            + before
++            + hwpunit_to_px(line.line_height, dpi)
++            + hwpunit_to_px(line.line_spacing.max(0), dpi)
++            + after,
++    )
++}
++
+ /// [#8149] 글 없는 host 의 문단 기준 자리차지 표 상자 바로 뒤 문단은 한/글이 앞 간격을 그
+ /// 표의 바깥 아래 여백 안에서 소비한다 — 다음 글줄이 상자 바닥에 놓인다. 저장 사다리가 상자를
+ /// 인증하면 `stored_frame_successor_shared_spacing_px` 가 같은 일을 하므로, 이 함수는 인증
+@@ -3939,12 +3964,14 @@ pub(crate) fn empty_host_float_successor_absorbed_spacing_px(
+     hwpx_container: bool,
+     hwp5_origin_hwpx: bool,
+     flow_from_body_top: f64,
++    natural_successor_top: Option<f64>,
+     dpi: f64,
+ ) -> f64 {
+     use crate::renderer::pagination::PageItem;
+     if spacing_before <= 0.0 {
+         return 0.0;
+     }
++    let whole_table = matches!(previous_item, Some(PageItem::Table { .. }));
+     let (owner, control_index) = match previous_item {
+         Some(PageItem::Table {
+             para_index,
+@@ -4009,10 +4036,23 @@ pub(crate) fn empty_host_float_successor_absorbed_spacing_px(
+         return 0.0;
+     }
+     let outer_bottom = hwpunit_to_px(i32::from(table.outer_margin_bottom), dpi).max(0.0);
+-    if spacing_before > outer_bottom {
++    let absorbed = if spacing_before <= outer_bottom {
++        spacing_before
++    } else if let Some(natural_top) = natural_successor_top.filter(|_| whole_table) {
++        // 한 쪽에 통째로 놓인 표는 한/글이 다음 문단을 먼저 제자리(host 줄 뒤 + 앞 간격)에
++        // 놓아 보고, 그 줄이 표 띠에 걸리면 띠 끝으로 내린다 — 첫 줄 top 은
++        // `max(제자리 + 앞 간격, 띠 끝)` 이다. 앞 간격이 바깥 아래 여백보다 커도 같다.
++        // 한/글 2024 Print(도구가 만든 HWPX 서식, 다음 문단 앞 간격만 바꾼 변형):
++        // 앞 간격 0~53.3px 는 표 아래 글줄이 모두 같은 자리이고, 60px·80px 는 제자리
++        // + 앞 간격이 띠 끝을 넘은 만큼(5.8px·25.8px) 내려간다. 쪽을 넘어 이어진 조각
++        // 뒤(위 `PartialTable`)는 이 제자리가 없어 종전 규칙을 쓴다.
++        (flow_from_body_top - natural_top).clamp(0.0, spacing_before)
++    } else {
++        return 0.0;
++    };
++    if absorbed <= 0.0 {
+         return 0.0;
+     }
+-    let absorbed = spacing_before;
+     // 다음 문단의 저장 첫 줄이 이 쪽 커서 기준으로 앞 간격 소비량(0..=앞 간격)을 증언하면 그
+     // 값을 쓴다. 증언 범위 밖의 vpos(구역·쪽 경계 되감기 등)면 위 규칙을 그대로 쓴다.
+     let stored_consumption = stored_layout
+@@ -10141,4 +10181,77 @@ mod tests {
+             Some(&next),
+         ));
+     }
++
++    /// 한/글 2024 Print 측정(도구가 만든 서식의 빈 host 표 뒤 문단 앞 간격만 바꾼 변형)을 수로
++    /// 옮긴 관계: 제자리(host 줄 뒤)에서 앞 간격을 더한 줄이 띠 끝 위면 띠 끝에 서고, 넘으면
++    /// 넘은 만큼만 내려간다. 바깥 아래 여백 이하의 앞 간격은 종전 규칙이다.
++    #[test]
++    fn whole_empty_host_table_successor_line_is_max_of_natural_and_band_end() {
++        use crate::renderer::pagination::PageItem;
++        let table = Table {
++            common: CommonObjAttr {
++                height: 1_023,
++                ..base_common()
++            },
++            outer_margin_top: 283,
++            outer_margin_bottom: 283,
++            row_count: 3,
++            ..Default::default()
++        };
++        let host = Paragraph {
++            controls: vec![Control::Table(Box::new(table))],
++            line_segs: vec![LineSeg {
++                vertical_pos: 26_235,
++                line_height: 1_000,
++                text_height: 1_000,
++                line_spacing: 152,
++                ..Default::default()
++            }],
++            ..Default::default()
++        };
++        let next = Paragraph {
++            line_segs: vec![LineSeg {
++                vertical_pos: 27_787,
++                line_height: 1_000,
++                line_spacing: 152,
++                ..Default::default()
++            }],
++            ..Default::default()
++        };
++        let paragraphs = vec![host, next];
++        let whole = PageItem::Table {
++            para_index: 0,
++            control_index: 0,
++        };
++        let styles = crate::renderer::style_resolver::ResolvedStyleSet::default();
++        // 앞 간격 없는 host: 제자리 = 위끝 + 줄높이 + 줄간격.
++        let natural =
++            empty_host_float_natural_successor_top(344.5, &paragraphs[0], &styles, 96.0).unwrap();
++        assert!((natural - (344.5 + 1_000.0 / 75.0 + 152.0 / 75.0)).abs() < 1e-9);
++        let band_end = 419.3;
++        let absorbed = |item: &PageItem, before: f64, natural: Option<f64>| {
++            empty_host_float_successor_absorbed_spacing_px(
++                Some(item),
++                &paragraphs,
++                1,
++                before,
++                false,
++                true,
++                false,
++                band_end,
++                natural,
++                96.0,
++            )
++        };
++        // 앞 간격 5.3px(> 바깥 아래 여백 3.8px): 제자리 + 앞 간격이 띠 안이라 전부 흡수한다.
++        assert!((absorbed(&whole, 400.0 / 75.0, Some(natural)) - 400.0 / 75.0).abs() < 1e-9);
++        // 앞 간격 60px: 띠 끝을 넘은 만큼만 남는다(흡수 = 띠 끝 − 제자리).
++        assert!((absorbed(&whole, 60.0, Some(natural)) - (band_end - natural)).abs() < 1e-9);
++        // 제자리가 이미 띠 끝 아래면 흡수하지 않는다.
++        assert_eq!(absorbed(&whole, 60.0, Some(band_end + 1.0)), 0.0);
++        // 제자리를 모르면 종전대로 흡수하지 않는다.
++        assert_eq!(absorbed(&whole, 400.0 / 75.0, None), 0.0);
++        // 바깥 아래 여백 이하 앞 간격은 종전처럼 전부 흡수한다.
++        assert!((absorbed(&whole, 3.0, None) - 3.0).abs() < 1e-9);
++    }
+ }
+diff --git a/src/renderer/layout.rs b/src/renderer/layout.rs
+index 94896363dc2195ebdb8864fdc45215a5701ec0fc..91cd8357c0a25c072dbdac9152cf096b101b735c 100644
+--- a/src/renderer/layout.rs
++++ b/src/renderer/layout.rs
+@@ -1683,6 +1683,19 @@ fn para_is_empty_topbottom_table_anchor(para: &Paragraph) -> bool {
+ /// 흐름 커서는 그 좁은 상자만 전진하므로, 뒤따르는 표가 이미 그려진 글자를 물 수
+ /// 있다. 그때 하한으로 쓴다. 개체(그림·도형·글상자)는 절대 좌표라 흐름 하한이 될
+ /// 수 없어 하위 노드까지 건너뛴다.
++/// 본문에 그린 표(셀 안 표가 아닌) 노드의 위끝.
++fn drawn_table_top(node: &RenderNode, para_index: usize, control_index: usize) -> Option<f64> {
++    if let RenderNodeType::Table(table) = &node.node_type {
++        return (table.para_index == Some(para_index)
++            && table.control_index == Some(control_index)
++            && table.cell_context.is_none())
++        .then_some(node.bbox.y);
++    }
++    node.children
++        .iter()
++        .find_map(|child| drawn_table_top(child, para_index, control_index))
++}
++
+ fn painted_flow_text_bottom(node: &RenderNode) -> Option<f64> {
+     fn walk(node: &RenderNode, out: &mut f64) {
+         match &node.node_type {
+@@ -10221,6 +10234,33 @@ impl LayoutEngine {
+                             self.profile.get().hwpx_container(),
+                             self.profile.get().hwp5_origin_hwpx(),
+                             y_offset - col_area.y,
++                            item_ordinal
++                                .checked_sub(1)
++                                .and_then(|index| col_content.items.get(index))
++                                .and_then(|previous| match previous {
++                                    PageItem::Table {
++                                        para_index,
++                                        control_index,
++                                    } => Some((*para_index, *control_index)),
++                                    _ => None,
++                                })
++                                .and_then(|(owner, control)| {
++                                    let host = paragraphs.get(owner)?;
++                                    let Some(Control::Table(table)) = host.controls.get(control)
++                                    else {
++                                        return None;
++                                    };
++                                    // 그린 표 위끝 − 바깥 위 여백 = host 문단 위끝(오프셋 0 표).
++                                    let table_top = drawn_table_top(&col_node, owner, control)?;
++                                    crate::renderer::float_placement::empty_host_float_natural_successor_top(
++                                        table_top
++                                            - hwpunit_to_px(table.outer_margin_top as i32, self.dpi)
++                                            - col_area.y,
++                                        host,
++                                        styles,
++                                        self.dpi,
++                                    )
++                                }),
+                             self.dpi,
+                         );
+                     if absorbed > 0.0 {
+diff --git a/src/renderer/typeset.rs b/src/renderer/typeset.rs
+old mode 100755
+new mode 100644
+index a9362fc75691f04cb82b643cd60e39dfa1d0e3da..30b865682877e863e739d81f96e5dfec5768e7fd
+--- a/src/renderer/typeset.rs
++++ b/src/renderer/typeset.rs
+@@ -5136,6 +5136,7 @@ impl TypesetEngine {
+         strict_following_plain_text_fit: bool,
+         styles: &ResolvedStyleSet,
+     ) {
++        st.record_table_host_start(para_idx, ctrl_idx, para_start_height);
+         // [#2279 footer-오염] PAGE-앵커 Top 절대배치 표 기록 — 같은 쪽 후속
+         // footer 의 저장 vpos 동기화 차단용. 이 표들의 저장 누적은 절대 위치
+         // 산물이라 본문 흐름 좌표가 아니다(36496000 pi3 실측).
+diff --git a/src/renderer/typeset/paragraph/flow.rs b/src/renderer/typeset/paragraph/flow.rs
+index 13d939641156d9306ddddb7233c020ea5d2f0d07..f7d07ba08d7aa283250af2a036b6f496f4451e16 100644
+--- a/src/renderer/typeset/paragraph/flow.rs
++++ b/src/renderer/typeset/paragraph/flow.rs
+@@ -78,6 +78,22 @@ pub(in crate::renderer::typeset) fn place_with_storage<S: crate::storage::Storag
+             st.profile.hwpx_container(),
+             st.profile.hwp5_origin_hwpx(),
+             st.current_height,
++            match (st.current_items.last(), st.last_table_host_start) {
++                (
++                    Some(PageItem::Table {
++                        para_index,
++                        control_index,
++                    }),
++                    Some((host, control, host_start)),
++                ) if (*para_index, *control_index) == (host, control) => {
++                    paragraphs.get(host).and_then(|host| {
++                        crate::renderer::float_placement::empty_host_float_natural_successor_top(
++                            host_start, host, styles, dpi,
++                        )
++                    })
++                }
++                _ => None,
++            },
+             dpi,
+         )
+     };
+diff --git a/src/renderer/typeset/state/commands.rs b/src/renderer/typeset/state/commands.rs
+index 085bf58775cde6bd37daeb11920cccfee5130633..ca7966b7002cdc3a2d2ba1c4a7128b3d83508d9d 100644
+--- a/src/renderer/typeset/state/commands.rs
++++ b/src/renderer/typeset/state/commands.rs
+@@ -364,6 +364,14 @@ impl TypesetState {
+     ) {
+         self.data.visible_float_exclusions.push(exclusion);
+     }
++    pub(in crate::renderer::typeset) fn record_table_host_start(
++        &mut self,
++        para_index: usize,
++        control_index: usize,
++        host_start: f64,
++    ) {
++        self.data.last_table_host_start = Some((para_index, control_index, host_start));
++    }
+     pub(in crate::renderer::typeset) fn require_strict_following_text_fit(&mut self) {
+         self.data.strict_plain_text_fit_after_empty_host_float_once = true;
+     }
+diff --git a/src/renderer/typeset/state/data.rs b/src/renderer/typeset/state/data.rs
+index bfc208362ac63eed983cc78ad5cc3eb745885417..7e1c3ca9ceef0cdc37c87eebd81fa68f4dea3e5b 100644
+--- a/src/renderer/typeset/state/data.rs
++++ b/src/renderer/typeset/state/data.rs
+@@ -258,6 +258,9 @@ pub(in crate::renderer::typeset) struct StateView {
+     /// 이 문단은 표의 실제 painted bottom 뒤에서 시작하므로 저장 page-tail 예외와
+     /// trailing line-spacing 트림을 적용하지 않는다.
+     pub(in crate::renderer::typeset) strict_plain_text_fit_after_empty_host_float_once: bool,
++    /// 마지막으로 배치한 표의 (host 문단, 컨트롤, host 문단 시작 높이). 바로 뒤 문단이
++    /// 표가 없었을 때의 제자리를 재는 데 쓴다(`empty_host_float_natural_successor_top`).
++    pub(in crate::renderer::typeset) last_table_host_start: Option<(usize, usize, f64)>,
+     /// [#2403] 소스분기 질의 표면 — 단일 소유, typeset 진입 시 set. 종전 4필드의
+     /// 시멘틱 승계: hwp3_layout()=HWP3→HWP5 변환본(widow 방지 등 variant 분기,
+     /// Task #1007) / hwp3_native_layout()=원본 HWP3 (저장 LINE_SEG 계약) /
+diff --git a/src/renderer/typeset/state/transition.rs b/src/renderer/typeset/state/transition.rs
+index 452c26916d843f6cda1686153ac629cc005e9880..4c71e4dedcd29b136a05480d67a7e5426565092f 100644
+--- a/src/renderer/typeset/state/transition.rs
++++ b/src/renderer/typeset/state/transition.rs
+@@ -97,6 +97,7 @@ impl TypesetState {
+                 skip_footnote_margin_once: false,
+                 tail_saved_bounds_once: None,
+                 strict_plain_text_fit_after_empty_host_float_once: false,
++                last_table_host_start: None,
+                 profile: Default::default(),
+                 has_stored_line_segs: false,
+                 hide_empty_line: false,
