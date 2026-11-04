@@ -1429,6 +1429,29 @@ export const CELL_PASTE_MODES = ['overwrite', 'up', 'down', 'left', 'right']
  * one cell (cells copied here or in Hangul, a spreadsheet range) is taken; anything else, a
  * selection, and places other than a cell of a body table keep the studio's paste.
  */
+/**
+ * Whether the caret holds a selection that covers something. rhwp devel can leave the drag
+ * anchor on the caret after a click in a cell (a double click in an empty cell), which
+ * `hasSelection()` reports though nothing is selected; Hangul has no selection there.
+ */
+function selectsSomething(cursor) {
+  if (typeof cursor.hasSelection !== 'function' || !cursor.hasSelection()) return false
+  const range = cursor.getSelectionOrdered?.()
+  if (!range) return true
+  const { start, end } = range
+  const path = (pos) => JSON.stringify(pos.cellPath ?? [])
+  return !(
+    start.sectionIndex === end.sectionIndex &&
+    start.paragraphIndex === end.paragraphIndex &&
+    start.parentParaIndex === end.parentParaIndex &&
+    start.controlIndex === end.controlIndex &&
+    start.cellIndex === end.cellIndex &&
+    start.cellParaIndex === end.cellParaIndex &&
+    start.charOffset === end.charOffset &&
+    path(start) === path(end)
+  )
+}
+
 function cellPasteAtCaret(ih, e) {
   const cursor = ih?.cursor
   if (!cursor?.getPosition || !ih.wasm || !ih.executeOperation) return false
@@ -1438,9 +1461,8 @@ function cellPasteAtCaret(ih, e) {
     'isInTextBox',
     'isInPictureObjectSelection',
     'isInTableObjectSelection',
-    'hasSelection',
   ].some((mode) => typeof cursor[mode] === 'function' && cursor[mode]())
-  if (elsewhere) return false
+  if (elsewhere || selectsSomething(cursor)) return false
   const caret = cursor.getPosition()
   if (caret?.parentParaIndex === undefined || caret.cellIndex === undefined) return false
   if ((caret.cellPath?.length ?? 0) > 1) return false
