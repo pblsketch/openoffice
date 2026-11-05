@@ -9,6 +9,7 @@ import type {
 import {
   aiConnectHint,
   firstConnectionNoticeDue,
+  homeAiEntry,
   subscriptionSummary,
   usableSubscriptionProviders,
 } from '../src/renderer/src/subscription-status'
@@ -75,6 +76,97 @@ describe('subscriptionSummary', () => {
       connected: [],
     })
     expect(subscriptionSummary(statusMap('error', 'metered')).state).toBe('disconnected')
+  })
+})
+
+describe('homeAiEntry', () => {
+  const gemini = settings({
+    provider: 'gemini',
+    providers: { gemini: { apiKey: 'key', model: 'gemini-3.5-flash-lite' } },
+  })
+  const acceptedCodex = {
+    'claude-code': status('claude-code', 'signed-out'),
+    codex: status('codex', 'metered', { meteredAccepted: true }),
+  }
+
+  it('lists the subscriptions signed in on their plan under auto', () => {
+    expect(homeAiEntry(settings(), statusMap('ready', 'signed-out'))).toEqual({
+      state: 'connected',
+      providers: ['claude-code'],
+    })
+    expect(homeAiEntry(settings(), statusMap('ready', 'ready')).providers).toEqual([
+      'claude-code',
+      'codex',
+    ])
+  })
+
+  it('names the selected key provider alone, even with a subscription signed in', () => {
+    expect(homeAiEntry(gemini, statusMap('ready', 'ready'))).toEqual({
+      state: 'connected',
+      providers: ['gemini'],
+    })
+    expect(homeAiEntry(gemini, statusMap('not-installed', 'signed-out')).providers).toEqual([
+      'gemini',
+    ])
+  })
+
+  it('names a selected subscription alone', () => {
+    expect(homeAiEntry(settings({ provider: 'codex' }), statusMap('ready', 'ready'))).toEqual({
+      state: 'connected',
+      providers: ['codex'],
+    })
+  })
+
+  it('names an accepted metered login only once it is selected', () => {
+    expect(
+      homeAiEntry(settings({ provider: 'codex', meteredAccepted: { codex: true } }), acceptedCodex),
+    ).toEqual({ state: 'connected', providers: ['codex'] })
+    // under auto the metered login is not a candidate, so it is not shown as in use
+    expect(homeAiEntry(settings({ meteredAccepted: { codex: true } }), acceptedCodex)).toEqual({
+      state: 'disconnected',
+      providers: [],
+    })
+    // with a plan login beside it, the plan login is the one named
+    expect(
+      homeAiEntry(settings({ meteredAccepted: { codex: true } }), {
+        ...acceptedCodex,
+        'claude-code': status('claude-code', 'ready'),
+      }).providers,
+    ).toEqual(['claude-code'])
+  })
+
+  it('waits for the selected subscription instead of naming another one', () => {
+    const map = { codex: status('codex', 'ready') }
+    expect(homeAiEntry(settings({ provider: 'claude-code' }), map)).toEqual({
+      state: 'checking',
+      providers: [],
+    })
+  })
+
+  it('falls back to the signed-in subscriptions when the selected provider cannot run', () => {
+    expect(
+      homeAiEntry(settings({ provider: 'gemini' }), statusMap('ready', 'signed-out')).providers,
+    ).toEqual(['claude-code'])
+  })
+
+  it('is checking or disconnected when nothing can be named', () => {
+    expect(homeAiEntry(settings(), statusMap('not-installed', 'signed-out'))).toEqual({
+      state: 'disconnected',
+      providers: [],
+    })
+    expect(homeAiEntry(settings(), statusMap('checking', 'signed-out')).state).toBe('checking')
+    expect(homeAiEntry(settings({ provider: 'gemini' }), statusMap('error', 'signed-out'))).toEqual(
+      { state: 'disconnected', providers: [] },
+    )
+  })
+
+  it('reads the statuses alone while the settings are not read', () => {
+    expect(homeAiEntry(null, statusMap('ready', 'ready')).providers).toEqual([
+      'claude-code',
+      'codex',
+    ])
+    expect(homeAiEntry(null, acceptedCodex)).toEqual({ state: 'connected', providers: ['codex'] })
+    expect(homeAiEntry(null, statusMap('checking', 'checking')).state).toBe('checking')
   })
 })
 

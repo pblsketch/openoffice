@@ -161,6 +161,9 @@ export const id = {
     'Instruksi penulisan ulang secara default hanya berlaku pada teks terpilih; klik untuk pratinjau',
   aiScopeClearTitle: 'Hapus cakupan pilihan',
   aiToolNotDone: 'Tidak dilakukan · {what}',
+  aiUnfinishedSteps: 'Langkah yang belum selesai: {n}',
+  aiUnfinishedNote:
+    'Langkah-langkah ini tidak diterapkan ke dokumen. Periksa bagian ini meskipun balasan mengatakan sudah selesai.',
   aiChangesTitle: 'Perubahan pada dokumen: {count}',
   aiClearMarks: 'Sembunyikan tanda',
   aiRevert: 'Batalkan perubahan ini',

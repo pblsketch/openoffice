@@ -163,6 +163,9 @@ export const fr = {
     "Les instructions de réécriture s'appliquent par défaut à la sélection ; cliquez pour prévisualiser",
   aiScopeClearTitle: 'Effacer la portée de la sélection',
   aiToolNotDone: 'Non effectué · {what}',
+  aiUnfinishedSteps: 'Étapes non terminées : {n}',
+  aiUnfinishedNote:
+    "Ces étapes n'ont pas été appliquées au document. Vérifiez ces passages même si la réponse dit que c'est fait.",
   aiChangesTitle: 'Modifications apportées au document : {count}',
   aiClearMarks: 'Masquer les marques',
   aiRevert: 'Annuler ces modifications',

@@ -157,6 +157,9 @@ export const he = {
   aiScopeSelectionTip: 'הוראות שכתוב חלות כברירת מחדל על הבחירה בלבד; לחץ לתצוגה מקדימה',
   aiScopeClearTitle: 'ביטול טווח הבחירה',
   aiToolNotDone: 'לא בוצע · {what}',
+  aiUnfinishedSteps: 'שלבים שלא הושלמו: {n}',
+  aiUnfinishedNote:
+    'השלבים האלה לא הוחלו על המסמך. בדקו את החלקים האלה גם אם התשובה אומרת שהכול בוצע.',
   aiChangesTitle: 'שינויים במסמך: {count}',
   aiClearMarks: 'הסתר סימונים',
   aiRevert: 'ביטול השינויים האלה',

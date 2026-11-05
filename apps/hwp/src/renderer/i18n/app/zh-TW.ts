@@ -156,6 +156,8 @@ export const zhTW = {
   aiScopeSelectionTip: '改寫類指令預設只作用於選中內容;點擊預覽',
   aiScopeClearTitle: '取消選中範圍',
   aiToolNotDone: '未完成 · {what}',
+  aiUnfinishedSteps: '未完成的步驟：{n} 個',
+  aiUnfinishedNote: '以下步驟沒有套用到文件中。即使回覆說已完成，也請檢查這些部分。',
   aiChangesTitle: '已修改文件 {count} 處',
   aiClearMarks: '清除標記',
   aiRevert: '復原這些修改',

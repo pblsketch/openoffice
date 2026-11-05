@@ -35,6 +35,10 @@ const MAX_PROFILE_CELL_PARAGRAPHS = 4000
 const MAX_PROFILE_PICTURES = 100
 /** Characters of surrounding text shown with each listed match. */
 const CONTEXT_CHARS = 30
+/** Characters of the paragraph in front shown with each listed match (its heading, often). */
+const BEFORE_CHARS = 24
+/** Paragraphs looked back through for that one. */
+const BEFORE_LOOKBACK = 20
 /** Most history steps one undo call takes back. */
 const MAX_UNDO_STEPS = 200
 /** Most paragraphs one insert call adds. */
@@ -1069,15 +1073,34 @@ function contextOf(doc, hit) {
   return count > 0 ? doc.getTextRange(hit.sec, hit.para, start, count) : ''
 }
 
+/**
+ * The nearest paragraph in front of a match, in its cell or section, that is not blank and
+ * does not hold the matched text: under several "○ " lines that is their heading, which
+ * tells the matches apart where the text around them is the same.
+ */
+function beforeOf(doc, hit) {
+  const box = containerOf(doc, hit)
+  const own = box.text(box.index, box.length(box.index))
+  const found = own.slice(hit.charOffset, hit.charOffset + hit.length)
+  for (let k = box.index - 1; k >= 0 && k >= box.index - BEFORE_LOOKBACK; k--) {
+    const text = squash(box.text(k, box.length(k)))
+    if (text && !text.includes(squash(found))) return clip(text, BEFORE_CHARS)
+  }
+  return ''
+}
+
 function describe(doc, hit, index) {
   const row = { occurrence: index + 1, inTable: Boolean(hit.cellContext) }
   if (!isReplaceable(hit)) return { ...row, replaceable: false }
+  let described = row
   try {
-    return { ...row, context: contextOf(doc, hit) }
+    described = { ...row, context: contextOf(doc, hit) }
+    const before = beforeOf(doc, hit)
+    if (before) described.before = before
   } catch {
     // the surrounding text is a courtesy; the match itself is still valid
-    return row
   }
+  return described
 }
 
 function searchAll(doc, find) {
@@ -4946,6 +4969,36 @@ export const agentPlugin = {
     }
 
     /**
+     * Whether paragraphs added after paragraph `k` of the body should be made in front of
+     * the one that follows it instead, so that they take that one's formatting. Paragraphs
+     * the AI adds are body text, and after a heading Enter would give them the heading's
+     * look: so where `k` stands out from the next paragraph (larger text, bold over plain,
+     * or an outline level over none), the next one is taken to be the body. Anything else
+     * (the same look, a list item before its sub-item, a heading after body text) keeps
+     * Enter's way. Not in a cell, where a paragraph's objects cannot be asked for, and not
+     * next to an object, where a split may carry it along.
+     */
+    const opensBeforeBody = (doc, box, plain) => {
+      const k = box.index
+      if (box.inTable || plain || k + 1 >= box.count()) return false
+      if (box.objectPositions(k + 1).length > 0) return false
+      const { sec } = box.place(k, 0)
+      try {
+        // the text Enter carries over (the end of `k`) against the text the next one starts with
+        const own = parse(doc.getCharPropertiesAt(sec, k, box.length(k)))
+        const next = parse(doc.getCharPropertiesAt(sec, k + 1, 0))
+        const outline = (p) => parse(doc.getParaPropertiesAt(sec, p)).headType === 'Outline'
+        return (
+          own.fontSize > next.fontSize ||
+          (own.fontSize === next.fontSize && own.bold && !next.bold) ||
+          (outline(k) && !outline(k + 1))
+        )
+      } catch {
+        return false
+      }
+    }
+
+    /**
      * The paragraph a paragraph edit works on: the one `anchor` occurs in, or for "end" the
      * last paragraph of the document. `box` addresses it; without one, `refusal` says why.
      */
@@ -5147,7 +5200,10 @@ export const agentPlugin = {
       /**
        * Add new paragraphs next to the paragraph `anchor` occurs in (`where` "after" or
        * "before"), or after the last paragraph of the document ("end"). They are made the way
-       * Enter makes one, so they take the paragraph and character formatting of that paragraph.
+       * Enter makes one, so they take the paragraph and character formatting of that paragraph,
+       * except after a heading, where they take the body's (opensBeforeBody). "before" a
+       * heading is left as it is: what goes there may be the end of the part above it or a
+       * new heading, and neither can be told from the document.
        */
       insertParagraphs: guarded((anchor, occurrence, where, paragraphs, options) => {
         checkWhere(where)
@@ -5169,9 +5225,13 @@ export const agentPlugin = {
                 const first = texts.shift()
                 if (first) box.insert(at, first)
               }
+              // after a heading the first one is split off the front of the body paragraph
+              // that follows; the rest are made after it and so look like it too
+              const beforeBody = where === 'after' && opensBeforeBody(doc, box, plain)
               for (const text of texts) {
                 // only the anchor can hold an object; the paragraphs made here are plain text
-                openAfter(box, at, plain && at === box.index)
+                if (beforeBody && at === box.index) box.split(at + 1, 0)
+                else openAfter(box, at, plain && at === box.index)
                 at += 1
                 if (text) box.insert(at, text)
               }
@@ -5192,12 +5252,33 @@ export const agentPlugin = {
 
       /**
        * Remove the paragraph `find` occurs in. A paragraph that holds a table, a picture or
-       * a form field is left alone: removing it would take the object with it.
+       * a form field is left alone: removing it would take the object with it. One whose
+       * whole text is among `options.protectTexts` is left alone too (`protected`): the panel
+       * names the paragraphs its run added, which a stale occurrence number would hit.
        */
       deleteParagraph: guarded((find, occurrence, options) => {
+        const protectTexts = Array.isArray(options?.protectTexts)
+          ? new Set(
+              options.protectTexts
+                .filter((text) => typeof text === 'string')
+                .map(squash)
+                .filter(Boolean),
+            )
+          : null
         const refusal = host.read((doc) => {
           const { box, refusal: why } = locate(doc, find, occurrence, 'after')
           if (!box) return why
+          if (protectTexts) {
+            const whole = box.text(box.index, box.length(box.index))
+            if (protectTexts.has(squash(whole))) {
+              return {
+                ok: false,
+                reason: 'protected',
+                count: 1,
+                text: whole.slice(0, MAX_REPORTED_CHARS),
+              }
+            }
+          }
           // the first paragraph is only emptied, which the check after the change covers
           const removed = box.index > 0 && box.count() > 1
           return removed && box.objectPositions(box.index).length > 0

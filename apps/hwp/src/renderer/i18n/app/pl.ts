@@ -161,6 +161,9 @@ export const pl = {
     'Polecenia przepisania domyślnie dotyczą tylko zaznaczenia; kliknij, aby zobaczyć podgląd',
   aiScopeClearTitle: 'Usuń zakres zaznaczenia',
   aiToolNotDone: 'Nie wykonano · {what}',
+  aiUnfinishedSteps: 'Nieukończone kroki: {n}',
+  aiUnfinishedNote:
+    'Te kroki nie zostały zastosowane w dokumencie. Sprawdź te miejsca, nawet jeśli odpowiedź mówi, że wszystko gotowe.',
   aiChangesTitle: 'Zmiany w dokumencie: {count}',
   aiClearMarks: 'Ukryj oznaczenia',
   aiRevert: 'Cofnij te zmiany',

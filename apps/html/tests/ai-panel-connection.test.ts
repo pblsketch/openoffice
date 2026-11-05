@@ -13,6 +13,7 @@ import type { SubscriptionStatusMap } from '@genoffice/ai-provider/browser'
 import { aiRunErrorText, aiSubscriptionText } from '@genoffice/ui'
 import { AiPanel, type HtmlAiDeps } from '../src/renderer/ai/AiPanel'
 import { buildParseMap, type ParseMap } from '../src/renderer/document/parse-map'
+import { aiStrings } from '../src/renderer/i18n/strings-ai'
 
 /**
  * The panel end to end, against a scripted main process: what the user sees
@@ -597,5 +598,142 @@ describe('AI panel during a turn', () => {
     expect(host.querySelector('.ai-panel-title')!.textContent).toBe(label)
     expect(host.querySelector('.ai-panel-resizer')!.getAttribute('aria-label')).toBe(label)
     expect(label).not.toMatch(/Claude|Codex/)
+  })
+})
+
+describe('AI panel while a card waits on the person', () => {
+  const zh = aiStrings.zh
+  const BRIEF = {
+    core_hook: 'Q3 grew 40% while costs fell',
+    style: {
+      name: 'Boardroom navy',
+      tone: 'executive',
+      palette: {
+        primary: '#1e3a5f',
+        accent: '#c9a227',
+        bg: '#ffffff',
+        surface: '#f4f6fa',
+        text: '#1f2328',
+      },
+      typography: { heading: 'Inter', body: 'Inter', scale: 'regular' },
+      tokens: { radius: '6px', spacing: '8px', shadow: 'none' },
+      layout: 'single column 760px',
+      density: 'regular',
+      docx_friendly: true,
+    },
+    sections: [
+      { title: 'Highlights', type: 'summary', brief: 'three KPIs', layout: 'stats_row' },
+      { title: 'Revenue', type: 'data', brief: 'table by region' },
+    ],
+    meta: { title: 'Q3 Review', language: 'en', audience: 'board' },
+  }
+  const toolCall = (
+    name: string,
+    input: Record<string, unknown>,
+  ): Array<Partial<AiStreamChunk>> => [
+    { type: 'tool-call', toolCall: { id: `c-${name}`, name, input } },
+    { type: 'done' },
+  ]
+  const liveReply = () => [...host.querySelectorAll('.ai-msg-assistant')].at(-1)!
+  const groupLabels = () =>
+    [...host.querySelectorAll('.ai-work-group-label')].map((el) => el.textContent)
+
+  it('shows the brief as waiting for the person, with no clock, until they confirm', async () => {
+    const main = fakeMain({
+      settings: ready(),
+      statuses: statusMap('ready', 'ready'),
+      // the chat turn calls plan_page, the brief writer answers, the turn after the confirm stays open
+      reply: (_request, nth) =>
+        nth === 1
+          ? toolCall('plan_page', { mode: 'redesign' })
+          : nth === 2
+            ? [{ type: 'delta', text: JSON.stringify(BRIEF) }, { type: 'done' }]
+            : [],
+    })
+    await mountPanel(main)
+    await sendMessage('rebuild the whole page')
+
+    expect(host.querySelector('.brief-card')).not.toBeNull()
+    expect(liveReply().querySelector('.ai-clarify-chip')?.textContent).toContain(
+      zh.aiWaitingConfirm,
+    )
+    expect(liveReply().querySelector('.ai-typing')).toBeNull()
+    expect(host.querySelector('.ai-typing-elapsed')).toBeNull()
+    expect(groupLabels()).toEqual([zh.aiWaitingConfirm])
+    const step = host.querySelector('.ai-step-title')!.textContent!
+    expect(step).toContain(zh.aiWaitingConfirm)
+    expect(step).toContain(zh.briefGenerate)
+    expect(step).not.toContain(zh.aiDraftingBrief)
+
+    const generate = [...host.querySelectorAll<HTMLButtonElement>('.brief-btn.primary')].find(
+      (b) => b.textContent === zh.briefGenerate,
+    )!
+    act(() => generate.click())
+    await settle()
+
+    // the run goes on: the working indicator is back and nothing says it waits any more
+    expect(host.querySelector('.brief-card')).toBeNull()
+    expect(main.requests).toHaveLength(3)
+    expect(host.querySelector('.ai-clarify-chip')).toBeNull()
+    expect(liveReply().querySelector('.ai-typing')).not.toBeNull()
+    expect(groupLabels()).not.toContain(zh.aiWaitingConfirm)
+  })
+
+  it('shows the questionnaire as waiting for answers until it is skipped', async () => {
+    const main = fakeMain({
+      settings: ready(),
+      statuses: statusMap('ready', 'ready'),
+      reply: (_request, nth) =>
+        nth === 1
+          ? toolCall('ask_clarification', {
+              questions: [{ id: 'q1', label: 'Who is it for?', options: ['Kids', 'Adults'] }],
+            })
+          : [],
+    })
+    await mountPanel(main)
+    await sendMessage('a landing page')
+
+    expect(liveReply().querySelector('.ai-clarify-chip')?.textContent).toContain(zh.aiWaitingAnswer)
+    expect(liveReply().querySelector('.ai-typing')).toBeNull()
+    expect(groupLabels()).toEqual([zh.aiWaitingAnswer])
+    expect(host.querySelector('.ai-step-title')!.textContent).toBe(zh.aiWaitClarifyStep)
+
+    act(() => host.querySelector<HTMLButtonElement>('.ai-clarify-skip')!.click())
+    await settle()
+
+    expect(main.requests).toHaveLength(2)
+    expect(host.querySelector('.ai-clarify-chip')).toBeNull()
+    expect(liveReply().querySelector('.ai-typing')).not.toBeNull()
+  })
+
+  it('shows a page that stopped early as waiting for the keep-or-discard choice', async () => {
+    const main = fakeMain({
+      settings: ready(),
+      statuses: statusMap('ready', 'ready'),
+      reply: (_request, nth) =>
+        nth === 1
+          ? toolCall('write_document', { plan: 'one heading' })
+          : nth === 2
+            ? // the page ends before </html>: the keep-or-discard card
+              [{ type: 'delta', text: '<!doctype html><html><body><h1>Hi' }, { type: 'done' }]
+            : [],
+    })
+    await mountPanel(main)
+    await sendMessage('write the page')
+
+    expect(host.querySelector('.ai-partial-card')).not.toBeNull()
+    expect(liveReply().querySelector('.ai-clarify-chip')?.textContent).toContain(zh.aiWaitingChoice)
+    expect(liveReply().querySelector('.ai-typing')).toBeNull()
+    expect(groupLabels()).toEqual([zh.aiWaitingChoice])
+    const step = host.querySelector('.ai-step-title')!.textContent!
+    expect(step).toContain(zh.aiPartialAdopt)
+    expect(step).toContain(zh.aiPartialDiscard)
+
+    act(() => host.querySelector<HTMLButtonElement>('.ai-partial-card .brief-btn.primary')!.click())
+    await settle()
+
+    expect(host.querySelector('.ai-partial-card')).toBeNull()
+    expect(host.querySelector('.ai-clarify-chip')).toBeNull()
+    expect(liveReply().querySelector('.ai-typing')).not.toBeNull()
   })
 })

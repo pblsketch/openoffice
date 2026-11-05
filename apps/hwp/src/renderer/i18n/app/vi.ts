@@ -160,6 +160,9 @@ export const vi = {
     'Các yêu cầu viết lại mặc định sẽ áp dụng cho phần đã chọn; nhấp để xem trước',
   aiScopeClearTitle: 'Xóa phạm vi vùng chọn',
   aiToolNotDone: 'Chưa thực hiện · {what}',
+  aiUnfinishedSteps: 'Bước chưa hoàn thành: {n}',
+  aiUnfinishedNote:
+    'Các bước này chưa được áp dụng vào tài liệu. Hãy kiểm tra những phần này dù câu trả lời nói rằng đã xong.',
   aiChangesTitle: 'Thay đổi trong tài liệu: {count}',
   aiClearMarks: 'Ẩn đánh dấu',
   aiRevert: 'Hoàn tác các thay đổi này',

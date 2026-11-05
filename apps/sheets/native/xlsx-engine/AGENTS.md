@@ -20,7 +20,7 @@
 
 ## 항상 지켜야 하는 것
 
-- 이 프로젝트는 원본의 수정을 병합할 때만 이 크레이트의 동작을 바꾼다. 같은 파일에서 나오는 결과는 원본이 내는 것과 같아야 한다. 이름(`xlsx-sidecar`, 명령과 필드 이름, 기본 로캘 `"zh"`, 임시 폴더 접두사)을 고치지 않고, 파일을 옮기거나 다시 포맷하지 않는다. 그래야 원본의 수정이 충돌 없이 들어온다.
+- 이 프로젝트는 원본의 수정을 병합할 때만 이 크레이트의 동작을 바꾼다. 예외는 사람이 정해 아래 "원본과 다른 점"에 적은 수정뿐이다(결정 0111). 그 밖에는 같은 파일에서 나오는 결과가 원본이 내는 것과 같아야 한다. 이름(`xlsx-sidecar`, 명령과 필드 이름, 기본 로캘 `"zh"`, 임시 폴더 접두사)을 고치지 않고, 파일을 옮기거나 다시 포맷하지 않는다. 그래야 원본의 수정이 충돌 없이 들어온다.
 - 요청과 응답은 한 줄에 JSON 하나다. 요청은 `version`, `requestId`, `command`(snake_case 값)와 그 명령의 필드(camelCase)를 한 객체에 평평하게 담는다. 응답은 `version`, `requestId`, `ok`와 `result` 또는 `error: { code, message }` 중 하나다. 이 모양과 이름을 바꾸지 않는다.
 - `PROTOCOL_VERSION`(지금 1)은 `src/main.rs`와 `xlsx-sidecar-client.ts`에 따로 있다. 한쪽만 올리지 않는다. 클라이언트는 버전이 다른 줄을 잡음으로 버리므로, 어긋나면 오류가 아니라 모든 요청의 시간 초과로 나타난다. 깨진 JSON 요청도 같다. `invalid_json` 응답은 `requestId`가 비어 있어 짝이 맞지 않는다.
 - stdout에는 `write_response`로만 쓴다. `println!` 같은 출력을 넣지 않는다. 응답은 요청 루프, `xlsx-reader`, `xlsx-recalc` 세 스레드가 한 잠금 아래에서 쓰므로 요청 순서와 다르게 나올 수 있고, 짝은 `requestId`로만 맞춘다.
@@ -28,7 +28,7 @@
 - 원본의 수정이 응답에 필드를 더할 때는 zod 스키마도 함께 고치고 선택 필드로 받는다. `.strict()`로 선언된 객체에 모르는 필드가 생기면 응답 전체가 거절되고, 반대로 낡은 실행 파일이 붙으면 그 필드가 없다. 새 명령 variant에는 `#[serde(rename_all = "camelCase")]`를 붙인다. `Command`의 `rename_all`은 명령 이름에만 걸리므로 빼먹으면 필드를 snake_case로 기다린다.
 - `save_archive`는 손대지 않은 항목을 압축된 바이트 그대로 옮긴다(`raw_copy_file_rename`). 풀었다가 다시 압축하지 않는다. 바뀐 항목과 새 항목만 `contentPath` 파일을 읽어 Deflate로 쓴다. 항목은 원본 순서를 따르고 새 항목은 끝에 붙는다. 응답의 `beforeEntries`·`afterEntries`(이름, CRC, 압축 크기, 원래 크기)가 보존을 증명하는 자료이므로 그 뜻을 바꾸지 않는다.
 - `save_archive`는 `targetPath`를 바로 덮어쓴다. 원본과 같은 파일이면 `Save target must differ from the source archive.`로 거절한다. 원본을 읽으면서 쓰기 때문이다. 한 이름은 `replacements`·`removals`·`additions`·`streamPatches` 중 한 곳에만 올 수 있고, 없는 항목의 교체·삭제·`streamPatches`와 있는 항목의 추가는 거절한다. `streamPatches`(선택, 원본 36a509e8f)는 문자열로 고칠 수 없을 만큼 큰 시트 부품을 칸 단위 패치 프로그램(`patchPath`의 JSON)으로 받아 흘려 쓰며 고친다(`src/stream_patch.rs`). 지금 뒷단은 이 필드를 보내지 않는다. 디스크가 fsync를 거절해도(ENOTSUP 등) 저장은 실패로 치지 않는다(`sync_best_effort`).
-- 읽기 명령은 통합 문서 파일에 쓰지 않는다. 재계산도 값만 돌려주고 IronCalc 모델을 파일로 저장하지 않는다. 예외는 `convert_workbook` 하나다. 값·수식·날짜 서식만 담은 새 파일을 만드는 것이고 보존 저장이 아니다.
+- 읽기 명령은 통합 문서 파일에 쓰지 않는다. 재계산도 값만 돌려주고 IronCalc 모델을 파일로 저장하지 않는다. 예외는 `convert_workbook` 하나다. 값, 수식, 서식, 그림, 병합, 인쇄 설정을 담은 새 파일을 만드는 것이고 보존 저장이 아니다.
 - 크기 한도는 아래 상수가 정한다. 값을 바꾸지 않는다.
 
   | 상수                                        | 값                 | 걸리는 곳                                                       |
@@ -67,6 +67,14 @@
 - 산출물 위치가 둘이다. `native:build`와 `cargo build --release`는 `target/release/xlsx-sidecar.exe`를 만든다(개발 실행, 테스트, CLI가 찾는 곳). 설치 파일 빌더는 x64에서 `target/x86_64-pc-windows-gnu/release/xlsx-sidecar.exe`를 찾고, 없으면 `beforePack`에서 `win extraResources source missing`으로 멈춘다. MSVC 도구로 빌드하는 PC에서는 실행 파일을 그 폴더로 복사해 둔다. 이 복사를 해 주는 스크립트는 없으므로, 다시 빌드하고 복사를 빠뜨리면 예전 실행 파일이 설치 파일에 들어간다.
 - 의존성을 더하면 `Cargo.lock`도 함께 커밋하고, 라이선스가 `deny.toml`의 허용 목록에 있어야 한다(CI가 `cargo deny`로 확인한다).
 - 배포하고 검증하는 플랫폼은 Windows뿐이다. 빌더 설정의 macOS·Linux 경로는 원본의 것이 남아 있을 뿐 이 프로젝트에서 검증하지 않았다.
+
+## 원본과 다른 점 (결정 0111)
+
+원본의 개선을 받아온 뒤 아래 시험이 모두 통과해야 한다. 충돌을 풀 때 이 동작이 사라지지 않게 한다. 원본이 같은 일을 하게 되면 그 항목을 지우고 원본 코드로 돌아간다.
+
+- **`.xls`의 인쇄 설정.** `xls_print.rs`가 시트의 `WSBOOL`, `SETUP`, 여백, 가운데, 눈금선·머리글, `HEADER`·`FOOTER`, 쪽 나누기 기록과 전역의 Print_Area·Print_Titles `NAME` 기록을 읽는다. `convert.rs`가 그것을 `sheetPr/pageSetUpPr`, `printOptions`부터 `colBreaks`까지(`mergeCells` 뒤, `drawing` 앞), `definedNames`로 쓴다. `xls_biff.rs`에서는 전역의 `0x0018`과 시트 기록의 나머지 갈래(`print.take_record`)만 이 모듈로 넘긴다. 시험 `xls_print::tests` 전체, `convert::tests`의 `carries_print_settings_from_a_legacy_workbook`, `print_area_and_titles_become_defined_names`.
+- **`.xls`의 글꼴에 맞춘 줄 높이.** 원본은 손으로 정한 줄 높이(`ROW`의 0x40)만 쓴다. 여기서는 시트 기본 높이(`DEFAULTROWHEIGHT`, `default_row_twips`)와 다른 높이도 `customHeight` 없이 `ht`로 쓴다. 시험 `carries_print_settings_from_a_legacy_workbook`의 1행.
+- 원본 2026-11-04 묶음 커밋의 `.xls` 셀 서식(`xls_styles.rs` 등)은 원본 코드를 미리 받아온 것이다. 다음 원본 받아오기에서 같은 내용이 들어오면 충돌은 원본 쪽으로 푼다.
 
 ## 테스트
 

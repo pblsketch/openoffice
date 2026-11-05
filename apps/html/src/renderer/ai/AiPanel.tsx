@@ -101,6 +101,14 @@ import {
   type AiTokenUsageView,
 } from '@genoffice/ui'
 import { aiLangDirective, t as tGlobal, useI18n } from '../i18n/locale'
+import {
+  clearRunningWait,
+  markRunningWait,
+  panelWaitOf,
+  stepsWaitOf,
+  WAIT_LABEL,
+  type PanelWait,
+} from './waiting'
 import sendEnterOn from '../assets/send-enter-on.png'
 import sendEnterOff from '../assets/send-enter-off.png'
 import sendStop from '../assets/send-stop.png'
@@ -313,6 +321,8 @@ interface ToolActivity {
   summary: string
   /** still executing: rendered as a spinner chip, replaced in place when the tool finishes */
   running?: boolean
+  /** the running tool holds the run on a docked card: the row and the group title say whose turn it is */
+  waiting?: PanelWait
   isError?: boolean
   output?: string
 }
@@ -962,6 +972,14 @@ export function AiPanel({
     loopRef.current?.cancel()
   }
 
+  /** A docked card holds the running tool: its step row says what the person has to do until they do it */
+  const awaitPerson = <T,>(wait: PanelWait, summary: string, card: Promise<T>): Promise<T> => {
+    patchLast((last) => ({ tools: markRunningWait(last.tools, wait, summary) }))
+    return card.finally(() =>
+      patchLast((last) => ({ tools: clearRunningWait(last.tools, toolStepLabel) })),
+    )
+  }
+
   /**
    * Whole-page generation: one tool-less request whose reply is the HTML, streamed
    * into the preview mirror as it arrives. A stream that stops early leaves the user
@@ -1024,10 +1042,17 @@ export function AiPanel({
     }
     // the draft stays visible while the user decides what to do with it
     depsRef.current.previewDraft(outcome.html)
-    const keep = await new Promise<boolean>((resolve) => {
-      partialResolverRef.current = resolve
-      setActivePartial({ lines: outcome.html.split('\n').length })
-    })
+    const keep = await awaitPerson(
+      'choice',
+      tGlobal('aiWaitPartialStep', {
+        adopt: tGlobal('aiPartialAdopt'),
+        discard: tGlobal('aiPartialDiscard'),
+      }),
+      new Promise<boolean>((resolve) => {
+        partialResolverRef.current = resolve
+        setActivePartial({ lines: outcome.html.split('\n').length })
+      }),
+    )
     done()
     // a kept partial page still lands; the next turn reports the blocked connection itself
     if (!keep) stopRunIfBlocked()
@@ -1089,15 +1114,23 @@ export function AiPanel({
             applyOps: (ops, label) => depsRef.current.access.applyOps(ops, label),
             replaceAll: (html, label) => depsRef.current.access.replaceAll(html, label),
             askClarification: (questions) =>
-              new Promise((resolve) => {
-                clarifyResolverRef.current = resolve
-                setActiveClarify(questions)
-              }),
+              awaitPerson(
+                'answer',
+                tGlobal('aiWaitClarifyStep'),
+                new Promise((resolve) => {
+                  clarifyResolverRef.current = resolve
+                  setActiveClarify(questions)
+                }),
+              ),
             confirmBrief: (brief) =>
-              new Promise((resolve) => {
-                briefResolverRef.current = resolve
-                setActiveBrief(brief)
-              }),
+              awaitPerson(
+                'confirm',
+                tGlobal('aiWaitBriefStep', { action: tGlobal('briefGenerate') }),
+                new Promise((resolve) => {
+                  briefResolverRef.current = resolve
+                  setActiveBrief(brief)
+                }),
+              ),
             writePage: (spec, signal) => runPageWriterRef.current(spec, signal),
             planBrief: (spec, signal) => runBriefWriterRef.current(spec, signal),
             getInstruction: () => runInstructionRef.current,
@@ -2079,6 +2112,8 @@ export function AiPanel({
   }
 
   const docEmpty = chat.length === 0 && isDocEmpty(deps.access.getText())
+  /** a docked card the run is waiting on: the live reply shows it in place of the clock */
+  const panelWait = panelWaitOf(activeClarify, activeBrief, activePartial)
 
   return (
     <aside
@@ -2250,7 +2285,17 @@ export function AiPanel({
             >
               {!entry.text && entry.streaming ? (
                 <span className="ai-typing-row">
-                  <AiTypingIndicator label={hasTools ? t('aiWorking') : t('aiThinking')} />
+                  {/* no clock while a card waits on the person; the indicator counts from 0 again after */}
+                  {isLast && panelWait ? (
+                    <span className="ai-clarify-chip" role="status">
+                      <span className="ai-clarify-chip-eyebrow">{t(WAIT_LABEL[panelWait])}</span>
+                      <span className="ai-clarify-chip-arrow" aria-hidden>
+                        ↓
+                      </span>
+                    </span>
+                  ) : (
+                    <AiTypingIndicator label={hasTools ? t('aiWorking') : t('aiThinking')} />
+                  )}
                 </span>
               ) : entry.blocked ? (
                 <AiBlockedNotice
@@ -2671,8 +2716,13 @@ function ToolChipList({ tools }: { tools: ToolActivity[] }) {
   }
 
   const anyRunning = tools.some((tool) => tool.running)
+  const wait = stepsWaitOf(tools)
   const open = userOpen ?? anyRunning
-  const label = anyRunning ? tr('aiGroupWorking') : tr('aiWorkedSteps', { n: tools.length })
+  const label = wait
+    ? tr(WAIT_LABEL[wait])
+    : anyRunning
+      ? tr('aiGroupWorking')
+      : tr('aiWorkedSteps', { n: tools.length })
 
   return (
     <div className="ai-work-group">
