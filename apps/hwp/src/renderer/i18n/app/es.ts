@@ -28,6 +28,11 @@ export const es = {
     'No se guardó: este documento tiene control de cambios; guardarlo aquí los perdería y podría crear un archivo que Hancom Hangul no puede abrir.',
   savedTailsLost:
     'Guardado, pero no se pudieron conservar algunas páginas maestras o notas del archivo original; es posible que Hancom Hangul no abra el archivo guardado. Ábralo para comprobarlo.',
+  missingFonts:
+    'Algunas fuentes no están en este PC y se muestran en pantalla con otras fuentes: {fonts}. El archivo guardado conserva los nombres de fuente originales, y el texto se ve como debe en un PC que tenga esas fuentes.',
+  missingFontTag: 'No está en este PC',
+  missingFontHint:
+    'Esta fuente no está en este PC y se muestra en pantalla con otra. El archivo conserva el nombre de esta fuente.',
   dismiss: 'Cerrar',
   aiOpenAssistant: 'Abrir asistente de IA',
   aiNewChat: 'Nueva conversación',

@@ -40,6 +40,7 @@ const METHODS = [
   'deleteTable',
   'installFileMenu',
   'installEasyWords',
+  'watchMissingFonts',
   'reveal',
   'selection',
   'replaceSelection',

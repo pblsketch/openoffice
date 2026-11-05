@@ -143,6 +143,13 @@
  *   so its font lists held the base fonts and the document's own until then. At start-up
  *   it now asks the PC for its font list and detects anew when that differs from the
  *   kept one (studio-plugin/pc-fonts.mjs), then tells the font lists as the button does.
+ *   It also hands that module what the studio knows of the PC's fonts, for the marks below.
+ *
+ * studio-missing-font-marks
+ *   A font that is not on the PC is drawn with another one, while the font menu and the
+ *   font box showed its name as if it were there. The menu marks such an entry and the box
+ *   underlines such a name, with a tooltip saying the file keeps the font's name
+ *   (studio-plugin/pc-fonts.mjs, in the words the app gives).
  */
 
 import { CLIPBOARD_HTML_MODULE } from '../studio-plugin/clipboard-html.mjs'
@@ -1167,15 +1174,25 @@ const PATCHES = {
         find: ['  resolveLocalFont,', "} from '@/core/local-fonts';"].join('\n'),
         replace: [
           '  resolveLocalFont,',
-          '  getLocalFontRecords,',
           "} from '@/core/local-fonts';",
-          `import { refreshPcFonts } from '${PC_FONTS_MODULE}';`,
+          `import { installFontPresence, refreshPcFonts } from '${PC_FONTS_MODULE}';`,
         ].join('\n'),
+      },
+      {
+        find: "import { loadWebFonts, resolveCanvasKitFontPlan } from '@/core/font-loader';",
+        replace:
+          "import { getDetectedOSFonts, loadWebFonts, resolveCanvasKitFontPlan } from '@/core/font-loader';",
       },
       {
         find: ['    setupEventListeners();', '    setupModalFocusRestore();'].join('\n'),
         replace: [
           '    setupEventListeners();',
+          '    installFontPresence({',
+          '      resolveLocalFont,',
+          '      records: () => getLocalFontRecords({ includeRegistered: true }),',
+          '      detected: getDetectedOSFonts,',
+          '      state: getLocalFontState,',
+          '    });',
           '    void refreshPcFonts({',
           '      queryLocalFonts: (globalThis as { queryLocalFonts?: () => Promise<{ family: string; fullName: string; postscriptName: string }[]> }).queryLocalFonts?.bind(globalThis),',
           '      loadStored: loadStoredLocalFonts,',
@@ -1185,6 +1202,32 @@ const PATCHES = {
           '      document,',
           '    });',
           '    setupModalFocusRestore();',
+        ].join('\n'),
+      },
+    ],
+  },
+  'studio-missing-font-marks': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]ui[\\/]toolbar\.ts$/,
+    edits: [
+      {
+        find: "import { getLocalFonts } from '@/core/local-fonts';",
+        replace: [
+          "import { getLocalFonts } from '@/core/local-fonts';",
+          `import { markFontOption, watchFontBox } from '${PC_FONTS_MODULE}';`,
+        ].join('\n'),
+      },
+      {
+        find: "    this.fontName = container.querySelector('#font-name')!;",
+        replace: [
+          "    this.fontName = container.querySelector('#font-name')!;",
+          '    watchFontBox(this.fontName);',
+        ].join('\n'),
+      },
+      {
+        find: '        button.title = entry.label;',
+        replace: [
+          '        button.title = entry.label;',
+          '        markFontOption(button, entry.value);',
         ].join('\n'),
       },
     ],
@@ -1255,6 +1298,7 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-cell-block-paste',
   'studio-pdf-import-options',
   'studio-pc-fonts',
+  'studio-missing-font-marks',
 ])
 
 /** Whether a patch is written against this file. */

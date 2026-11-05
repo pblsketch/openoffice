@@ -600,9 +600,11 @@ describe('rhwp PDF import options patch', () => {
 describe('rhwp PC fonts patch', () => {
   // the studio's text around the patch, as the pinned release has it
   const main = [
+    "import { loadWebFonts, resolveCanvasKitFontPlan } from '@/core/font-loader';",
     'import {',
     '  clearStoredLocalFonts,',
     '  detectLocalFonts,',
+    '  getLocalFontRecords,',
     '  getLocalFontState,',
     '  loadStoredLocalFonts,',
     '  resolveLocalFont,',
@@ -616,13 +618,30 @@ describe('rhwp PC fonts patch', () => {
   const patched = applyPatch('studio-pc-fonts', main)
 
   it('looks at the PC once the studio listens for font changes, with its own detection', () => {
-    expect(patched).toContain(`import { refreshPcFonts } from '${PC_FONTS_MODULE}';`)
-    expect(patched).toContain('  getLocalFontRecords,\n')
+    expect(patched).toContain(
+      `import { installFontPresence, refreshPcFonts } from '${PC_FONTS_MODULE}';`,
+    )
+    // the studio imports the records itself; the patch does not import them a second time
+    expect(patched.match(/getLocalFontRecords,/g)).toHaveLength(1)
     const call = patched.indexOf('void refreshPcFonts({')
     expect(call).toBeGreaterThan(patched.indexOf('setupEventListeners();'))
     expect(call).toBeLessThan(patched.indexOf('setupModalFocusRestore();'))
     expect(patched).toContain('detect: () => detectLocalFonts({ force: true }),')
     expect(patched).toContain("eventBus.emit('local-fonts-changed'")
+  })
+
+  it('hands the font marks what the studio knows of the PC before it looks', () => {
+    expect(patched).toContain(
+      "import { getDetectedOSFonts, loadWebFonts, resolveCanvasKitFontPlan } from '@/core/font-loader';",
+    )
+    const hand = patched.indexOf('installFontPresence({')
+    expect(hand).toBeGreaterThan(patched.indexOf('setupEventListeners();'))
+    expect(hand).toBeLessThan(patched.indexOf('void refreshPcFonts({'))
+    expect(patched).toContain(
+      '      records: () => getLocalFontRecords({ includeRegistered: true }),\n',
+    )
+    expect(patched).toContain('      detected: getDetectedOSFonts,\n')
+    expect(patched).toContain('      state: getLocalFontState,\n')
   })
 
   it('keeps CRLF sources working, fails when the text is gone, and is in the studio build', () => {
@@ -633,6 +652,45 @@ describe('rhwp PC fonts patch', () => {
       /studio-pc-fonts/,
     )
     expect(STUDIO_PATCHES).toContain('studio-pc-fonts')
+  })
+})
+
+describe('rhwp missing font marks patch', () => {
+  // the studio's text around the patch, as the pinned release has it
+  const toolbar = [
+    "import { getLocalFonts } from '@/core/local-fonts';",
+    '  ) {',
+    "    this.styleName = container.querySelector('#style-name')!;",
+    "    this.fontName = container.querySelector('#font-name')!;",
+    "    this.fontSize = container.querySelector('#font-size')!;",
+    '        button.textContent = entry.label;',
+    '        button.title = entry.label;',
+    "        button.addEventListener('click', () => this.selectFontMenuEntry(entry.value));",
+    '',
+  ].join('\n')
+  const patched = applyPatch('studio-missing-font-marks', toolbar)
+
+  it('watches the font box as soon as the toolbar has it', () => {
+    expect(patched).toContain(`import { markFontOption, watchFontBox } from '${PC_FONTS_MODULE}';`)
+    expect(patched).toContain(
+      "    this.fontName = container.querySelector('#font-name')!;\n    watchFontBox(this.fontName);\n",
+    )
+  })
+
+  it('marks each font menu entry after the studio named it', () => {
+    expect(patched).toContain(
+      '        button.title = entry.label;\n        markFontOption(button, entry.value);\n',
+    )
+  })
+
+  it('keeps CRLF sources working, fails when the text is gone, and is in the studio build', () => {
+    expect(applyPatch('studio-missing-font-marks', toolbar.replaceAll('\n', '\r\n'))).toContain(
+      'markFontOption(button, entry.value);\r\n',
+    )
+    expect(() =>
+      applyPatch('studio-missing-font-marks', toolbar.replace('button.title', 'x')),
+    ).toThrow(/studio-missing-font-marks/)
+    expect(STUDIO_PATCHES).toContain('studio-missing-font-marks')
   })
 })
 
@@ -754,6 +812,7 @@ describe('the studio source the build fetched', () => {
     'src/command/shortcut-map.ts',
     'src/ui/table-cell-props-dialog.ts',
     'src/ui/options-dialog.ts',
+    'src/ui/toolbar.ts',
     'src/command/registry.ts',
     'src/i18n/locales/ko.ts',
     'src/i18n/locales/en.ts',

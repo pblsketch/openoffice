@@ -28,6 +28,11 @@ export const fr = {
     "Non enregistré : ce document contient des modifications suivies ; l'enregistrer ici les ferait perdre et pourrait produire un fichier que Hancom Hangul ne peut pas ouvrir.",
   savedTailsLost:
     "Enregistré, mais certaines pages maîtres ou certains mémos du fichier d'origine n'ont pas pu être conservés ; Hancom Hangul pourrait ne pas ouvrir le fichier enregistré. Ouvrez-le pour vérifier.",
+  missingFonts:
+    "Certaines polices ne sont pas sur ce PC et s'affichent à l'écran avec d'autres polices : {fonts}. Le fichier enregistré conserve les noms de police d'origine, et le texte s'affiche comme prévu sur un PC qui possède ces polices.",
+  missingFontTag: 'Absente de ce PC',
+  missingFontHint:
+    "Cette police n'est pas sur ce PC et s'affiche à l'écran avec une autre police. Le fichier conserve le nom de cette police.",
   dismiss: 'Fermer',
   aiOpenAssistant: "Ouvrir l'assistant IA",
   aiNewChat: 'Nouvelle conversation',

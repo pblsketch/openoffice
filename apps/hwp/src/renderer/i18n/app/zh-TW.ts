@@ -26,6 +26,10 @@ export const zhTW = {
     '未儲存：此文件包含追蹤修訂，在這裡儲存會遺失修訂記錄，而且儲存的檔案可能無法在 Hancom Hangul 中開啟。',
   savedTailsLost:
     '已儲存，但原檔案中的部分主版頁面或註解未能保留，儲存的檔案可能無法在 Hancom Hangul 中開啟。請開啟確認。',
+  missingFonts:
+    '這台電腦上沒有部分字型，畫面上以其他字型顯示：{fonts}。儲存的檔案仍保留原字型名稱，在裝有這些字型的電腦上會照原樣顯示。',
+  missingFontTag: '這台電腦上沒有',
+  missingFontHint: '這台電腦上沒有這個字型，畫面上以其他字型顯示。檔案中仍儲存這個字型名稱。',
   dismiss: '關閉',
   aiOpenAssistant: '開啟 AI 助手',
   aiNewChat: '新對話',
