@@ -4935,6 +4935,36 @@ export const agentPlugin = {
     }
 
     /**
+     * Whether paragraphs added after paragraph `k` of the body should be made in front of
+     * the one that follows it instead, so that they take that one's formatting. Paragraphs
+     * the AI adds are body text, and after a heading Enter would give them the heading's
+     * look: so where `k` stands out from the next paragraph (larger text, bold over plain,
+     * or an outline level over none), the next one is taken to be the body. Anything else
+     * (the same look, a list item before its sub-item, a heading after body text) keeps
+     * Enter's way. Not in a cell, where a paragraph's objects cannot be asked for, and not
+     * next to an object, where a split may carry it along.
+     */
+    const opensBeforeBody = (doc, box, plain) => {
+      const k = box.index
+      if (box.inTable || plain || k + 1 >= box.count()) return false
+      if (box.objectPositions(k + 1).length > 0) return false
+      const { sec } = box.place(k, 0)
+      try {
+        // the text Enter carries over (the end of `k`) against the text the next one starts with
+        const own = parse(doc.getCharPropertiesAt(sec, k, box.length(k)))
+        const next = parse(doc.getCharPropertiesAt(sec, k + 1, 0))
+        const outline = (p) => parse(doc.getParaPropertiesAt(sec, p)).headType === 'Outline'
+        return (
+          own.fontSize > next.fontSize ||
+          (own.fontSize === next.fontSize && own.bold && !next.bold) ||
+          (outline(k) && !outline(k + 1))
+        )
+      } catch {
+        return false
+      }
+    }
+
+    /**
      * The paragraph a paragraph edit works on: the one `anchor` occurs in, or for "end" the
      * last paragraph of the document. `box` addresses it; without one, `refusal` says why.
      */
@@ -5136,7 +5166,10 @@ export const agentPlugin = {
       /**
        * Add new paragraphs next to the paragraph `anchor` occurs in (`where` "after" or
        * "before"), or after the last paragraph of the document ("end"). They are made the way
-       * Enter makes one, so they take the paragraph and character formatting of that paragraph.
+       * Enter makes one, so they take the paragraph and character formatting of that paragraph,
+       * except after a heading, where they take the body's (opensBeforeBody). "before" a
+       * heading is left as it is: what goes there may be the end of the part above it or a
+       * new heading, and neither can be told from the document.
        */
       insertParagraphs: guarded((anchor, occurrence, where, paragraphs, options) => {
         checkWhere(where)
@@ -5158,9 +5191,13 @@ export const agentPlugin = {
                 const first = texts.shift()
                 if (first) box.insert(at, first)
               }
+              // after a heading the first one is split off the front of the body paragraph
+              // that follows; the rest are made after it and so look like it too
+              const beforeBody = where === 'after' && opensBeforeBody(doc, box, plain)
               for (const text of texts) {
                 // only the anchor can hold an object; the paragraphs made here are plain text
-                openAfter(box, at, plain && at === box.index)
+                if (beforeBody && at === box.index) box.split(at + 1, 0)
+                else openAfter(box, at, plain && at === box.index)
                 at += 1
                 if (text) box.insert(at, text)
               }
