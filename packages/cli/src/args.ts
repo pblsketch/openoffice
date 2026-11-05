@@ -66,3 +66,17 @@ export function flagString(args: ParsedArgs, name: string): string | undefined {
 export function flagBool(args: ParsedArgs, name: string): boolean {
   return args.flags[name] !== undefined
 }
+
+/** Flags listed with a `value` name must be given that value; `--out --json` is not an empty --out. */
+export function assertOptionValues(
+  args: ParsedArgs,
+  options: readonly { name: string; value?: string }[] | undefined,
+): void {
+  for (const option of options ?? []) {
+    if (option.value && args.flags[option.name] === true) {
+      throw new CliError(EXIT.usage, `missing --${option.name} <${option.value}>`, undefined, {
+        reason: 'missing_argument',
+      })
+    }
+  }
+}
