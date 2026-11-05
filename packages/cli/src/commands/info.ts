@@ -7,6 +7,7 @@ import { protectedCellsOf } from '@genoffice/odt-engine'
 import { openPptx } from '@genoffice/pptx-engine'
 import { flagString } from '../args'
 import { csvInfo } from '../formats/csv'
+import { decodeHtmlBytes } from '../formats/html-text'
 import { hwpInfo } from '../formats/hwp'
 import { openOdtBytes } from '../formats/odt'
 import { pdfInfo } from '../formats/pdf'
@@ -180,7 +181,11 @@ function describeCsv(path: string): Description {
 
 function describeText(path: string, ext: string): Description {
   // a UTF-8 BOM is a file marker, not text: it is not a character and does not hide a first heading
-  const text = stripBom(Buffer.from(readInput(path)).toString('utf-8'))
+  const bytes = readInput(path)
+  const text =
+    ext === 'html' || ext === 'htm'
+      ? decodeHtmlBytes(bytes)
+      : stripBom(Buffer.from(bytes).toString('utf-8'))
   const lines = text.split(/\r\n|\r|\n/)
   const fields: Record<string, unknown> = { lines: lines.length, characters: text.length }
   if (ext === 'md' || ext === 'markdown') fields.headings = countHeadings(lines)
