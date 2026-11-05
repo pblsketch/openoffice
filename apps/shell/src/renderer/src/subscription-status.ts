@@ -7,11 +7,13 @@
  */
 import {
   AI_SUBSCRIPTION_PROVIDERS,
+  providerSelectionOf,
   selectAiProvider,
   subscriptionConnection,
   subscriptionStateOf,
 } from '@genoffice/ai-provider/browser'
 import type {
+  AiProviderId,
   AiSettings,
   AiSubscriptionProviderId,
   AiSubscriptionStatus,
@@ -57,6 +59,44 @@ export function subscriptionSummary(statuses: AiSubscriptionStatuses): Subscript
     (provider) => subscriptionStateOf(statuses, provider) === 'checking',
   )
   return { state: checking ? 'checking' : 'disconnected', connected: [] }
+}
+
+export interface HomeAiEntry {
+  /** `checking` only while nothing is named and an answer is still out */
+  readonly state: 'connected' | 'checking' | 'disconnected'
+  /** the providers the entry names, in order; empty unless `connected` */
+  readonly providers: readonly AiProviderId[]
+}
+
+/**
+ * What the settings entry on the home screen names. A provider the user
+ * selected and that can run is the one AI runs on, so it is named alone: a
+ * key provider, or a subscription (an accepted metered login among them).
+ * Otherwise the entry lists the subscriptions signed in on their plan. A
+ * metered login runs only once it is selected, so under `auto` it is not
+ * named. Without the settings (not read yet) the entry reads the statuses
+ * alone, as `subscriptionSummary` does.
+ */
+export function homeAiEntry(
+  settings: AiSettings | null,
+  statuses: AiSubscriptionStatuses,
+): HomeAiEntry {
+  const summary = subscriptionSummary(statuses)
+  if (!settings) return { state: summary.state, providers: summary.connected }
+  if (providerSelectionOf(settings) !== 'auto') {
+    const choice = selectAiProvider(settings, statuses)
+    if (choice.connected) return { state: 'connected', providers: [choice.provider] }
+    // the selected subscription's check is still out: no other provider stands in meanwhile
+    if (choice.reason === 'checking') return { state: 'checking', providers: [] }
+  }
+  const ready = AI_SUBSCRIPTION_PROVIDERS.filter(
+    (provider) => statuses[provider]?.state === 'ready',
+  )
+  if (ready.length > 0) return { state: 'connected', providers: ready }
+  const checking = AI_SUBSCRIPTION_PROVIDERS.some(
+    (provider) => subscriptionStateOf(statuses, provider) === 'checking',
+  )
+  return { state: checking ? 'checking' : 'disconnected', providers: [] }
 }
 
 /**
