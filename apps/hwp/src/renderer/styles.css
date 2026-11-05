@@ -226,6 +226,13 @@ body {
 .hwp-notice-info {
   border-color: var(--success-border);
   background: var(--success-bg);
+  /* an information floats over the editor: a click on it reaches the editor below (a
+     dialog's buttons there), and only its close button takes one */
+  pointer-events: none;
+}
+
+.hwp-notice-info .hwp-notice-close {
+  pointer-events: auto;
 }
 
 .hwp-notice-error {

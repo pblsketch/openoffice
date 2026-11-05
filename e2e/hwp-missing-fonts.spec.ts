@@ -48,7 +48,7 @@ test('says which fonts of a document are not on this PC, and marks them in the f
     const hwp = await waitForPageWithUrl(launched.app, '://hwp/')
     await hwp.waitForSelector('.hwp-app[data-phase="ready"]', { timeout: 90_000 })
 
-    // the notice names the font once the editor has looked at the PC's fonts, and stays
+    // the notice names the font once the editor has looked at the PC's fonts
     const notice = hwp.locator('.hwp-notice')
     await expect(notice).toContainText('이 PC에 없는 글꼴이 있어', { timeout: 60_000 })
     await expect(notice).toContainText(ABSENT)

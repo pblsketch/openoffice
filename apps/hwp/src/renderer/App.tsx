@@ -552,7 +552,6 @@ export default function App() {
         tone: 'info',
         key: 'missingFonts',
         params: { fonts: fonts.join(', ') },
-        sticky: true,
       }
       setNotice((current) => current ?? missing)
     }
