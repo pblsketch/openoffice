@@ -237,6 +237,8 @@ describe('Hangul documents as material', () => {
 })
 
 describe('the material formats', () => {
+  const DIAGRAM_EXTS = ['drawio', 'dio']
+
   /**
    * Whether `parseFileToText` reads a file named by this extension: it reads
    * by the name before the content, so a one-byte file answers. A format it
@@ -252,17 +254,19 @@ describe('the material formats', () => {
     const expected: string[] = []
     // the two diagram pictures are named by two extensions; a material is named by one
     for (const ext of [...ATTACHABLE_EXTS].filter((e) => !e.includes('.'))) {
+      // draw.io diagrams are read, but left out of the material on purpose
+      if (DIAGRAM_EXTS.includes(ext)) continue
       if (await readerReads(ext)) expected.push(ext)
     }
     expect([...SUPPORTED_MATERIAL_EXTS].sort()).toEqual(expected.sort())
     for (const ext of SUPPORTED_MATERIAL_EXTS) expect(ATTACHABLE_EXTS.has(ext), ext).toBe(true)
   })
 
-  it('take Hangul, ODT and EPUB documents but not .xls or source code', () => {
+  it('take Hangul, ODT and EPUB documents but not .xls, source code or draw.io diagrams', () => {
     for (const ext of ['hwp', 'hwpx', 'odt', 'epub']) {
       expect(SUPPORTED_MATERIAL_EXTS.has(ext), ext).toBe(true)
     }
-    for (const ext of ['xls', 'js', 'yaml']) {
+    for (const ext of ['xls', 'js', 'yaml', ...DIAGRAM_EXTS]) {
       expect(SUPPORTED_MATERIAL_EXTS.has(ext), ext).toBe(false)
     }
   })
