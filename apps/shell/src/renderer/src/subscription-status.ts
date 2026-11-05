@@ -62,17 +62,22 @@ export function subscriptionSummary(statuses: AiSubscriptionStatuses): Subscript
 }
 
 export interface HomeAiEntry {
-  /** `checking` only while nothing is named and an answer is still out */
-  readonly state: 'connected' | 'checking' | 'disconnected'
-  /** the providers the entry names, in order; empty unless `connected` */
+  /**
+   * `checking` only while nothing is named and an answer is still out;
+   * `needs-connection` when the provider the user selected cannot run
+   */
+  readonly state: 'connected' | 'checking' | 'needs-connection' | 'disconnected'
+  /** the providers the entry names, in order; empty unless `connected` or `needs-connection` */
   readonly providers: readonly AiProviderId[]
 }
 
 /**
  * What the settings entry on the home screen names. A provider the user
- * selected and that can run is the one AI runs on, so it is named alone: a
- * key provider, or a subscription (an accepted metered login among them).
- * Otherwise the entry lists the subscriptions signed in on their plan. A
+ * selected is the one AI runs on, so it is named alone: when it can run (a
+ * key provider, or a subscription, an accepted metered login among them) as
+ * connected, and when it cannot as needing a connection, since an explicit
+ * selection has no fallback and a signed-in subscription would not stand in.
+ * Under `auto` the entry lists the subscriptions signed in on their plan. A
  * metered login runs only once it is selected, so under `auto` it is not
  * named. Without the settings (not read yet) the entry reads the statuses
  * alone, as `subscriptionSummary` does.
@@ -88,6 +93,7 @@ export function homeAiEntry(
     if (choice.connected) return { state: 'connected', providers: [choice.provider] }
     // the selected subscription's check is still out: no other provider stands in meanwhile
     if (choice.reason === 'checking') return { state: 'checking', providers: [] }
+    if (choice.provider) return { state: 'needs-connection', providers: [choice.provider] }
   }
   const ready = AI_SUBSCRIPTION_PROVIDERS.filter(
     (provider) => statuses[provider]?.state === 'ready',

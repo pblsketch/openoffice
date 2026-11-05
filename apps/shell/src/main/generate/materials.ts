@@ -51,11 +51,13 @@ export function materialMaxBytes(ext: string): number {
 }
 
 /**
- * The formats `parseFileToText` reads by a file's last extension: its text,
- * office, ODT, PDF, EPUB, mind map, Hangul (hwp, hwpx), draw.io and image
- * types. The attachable list holds more (source-code text types, `.xls`)
- * that it does not read. `tests/generate-materials.test.ts` checks this list
- * against the reader itself.
+ * The formats `parseFileToText` reads by a file's last extension that make
+ * material: its text, office, ODT, PDF, EPUB, mind map, Hangul (hwp, hwpx)
+ * and image types. The attachable list holds more (source-code text types,
+ * `.xls`) that it does not read. It also reads draw.io diagrams
+ * (`.drawio`, `.dio`); those are left out of the material on purpose.
+ * `tests/generate-materials.test.ts` checks this list against the reader
+ * itself.
  */
 const PARSED_MATERIAL_EXTS: ReadonlySet<string> = new Set([
   'txt',
@@ -81,8 +83,6 @@ const PARSED_MATERIAL_EXTS: ReadonlySet<string> = new Set([
   'epub',
   'hwp',
   'hwpx',
-  'drawio',
-  'dio',
   ...IMAGE_MATERIAL_EXTS,
 ])
 

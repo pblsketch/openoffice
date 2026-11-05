@@ -188,6 +188,16 @@ describe('home settings entry', () => {
     expect(entryText('.account-sub')).toBe('Connected · in use')
   })
 
+  it('shows the selected key provider as needing a connection when its key is missing', async () => {
+    await renderHome(statuses({ state: 'ready', planName: 'max' }, { state: 'ready' }), {
+      aiSettings: { ...defaultAiSettings(), provider: 'gemini' },
+    })
+    expect(entry().dataset.subscription).toBe('needs-connection')
+    expect(entryText('.account-name')).toBe('Gemini')
+    expect(entryText('.account-sub')).toBe('Needs connecting')
+    expect(entry().querySelector('.account-avatar')?.classList.contains('logged-in')).toBe(false)
+  })
+
   it('reads the statuses alone while the settings are not read', async () => {
     await renderHome(statuses({ state: 'ready' }, { state: 'ready' }), { aiSettings: null })
     expect(entryText('.account-name')).toBe('Claude · Codex')
