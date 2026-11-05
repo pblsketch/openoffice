@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { spawn, spawnSync } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import type { ChildProcess } from 'node:child_process'
-import { EventEmitter } from 'node:events'
+import { EventEmitter, once } from 'node:events'
 import {
   chmodSync,
   existsSync,
@@ -383,8 +383,11 @@ describe.skipIf(process.platform === 'win32')('the swap script', () => {
     chmodSync(opener, 0o755)
   })
 
-  function runSwap(pid: number): void {
-    const result = spawnSync(
+  // Run without blocking the event loop: a synchronous spawn would keep Node
+  // from reaping the "app" child, which then lingers as a zombie that
+  // `kill -0` still finds, so the script would wait out its full minute
+  async function runSwap(pid: number): Promise<void> {
+    const script = spawn(
       '/bin/sh',
       [
         '-c',
@@ -398,18 +401,20 @@ describe.skipIf(process.platform === 'win32')('the swap script', () => {
         log,
         opener,
       ],
-      { encoding: 'utf8', timeout: 20_000 },
+      { stdio: 'ignore', timeout: 15_000 },
     )
-    expect(result.error).toBeUndefined()
+    const [code, signal] = (await once(script, 'close')) as [number | null, NodeJS.Signals | null]
+    expect(signal).toBeNull()
+    expect(code).toBe(0)
   }
 
   const opened = (): string[] => readFileSync(join(root, 'opened'), 'utf8').trim().split('\n')
   const installedVersion = (): string => readFileSync(join(bundle, 'Contents', 'version'), 'utf8')
 
-  it('waits for the app to quit, swaps the new version in and opens it', () => {
+  it('waits for the app to quit, swaps the new version in and opens it', async () => {
     const app = spawn('/bin/sleep', ['0.5'])
     const started = Date.now()
-    runSwap(app.pid!)
+    await runSwap(app.pid!)
     expect(Date.now() - started).toBeGreaterThanOrEqual(300)
     expect(installedVersion()).toBe('new')
     expect(existsSync(macStagingDir(bundle))).toBe(false)
@@ -418,16 +423,16 @@ describe.skipIf(process.platform === 'win32')('the swap script', () => {
     expect(readFileSync(log, 'utf8')).toMatch(/^\S+Z info \[swap\] installed the new version\n$/)
   })
 
-  it('puts the old version back and opens it when the new one cannot move in', () => {
+  it('puts the old version back and opens it when the new one cannot move in', async () => {
     rmSync(macStagingDir(bundle), { recursive: true })
-    runSwap(999_999)
+    await runSwap(999_999)
     expect(installedVersion()).toBe('old')
     expect(existsSync(macPreviousDir(bundle))).toBe(false)
     expect(opened()).toEqual([bundle, '--args', '--updated'])
     expect(readFileSync(log, 'utf8')).toContain('putting the previous one back')
   })
 
-  it('handles paths with spaces and quotes as plain values', () => {
+  it('handles paths with spaces and quotes as plain values', async () => {
     const odd = join(root, "My Apps 'x'")
     mkdirSync(odd)
     const oddBundle = join(odd, 'IeumOffice.app')
@@ -438,7 +443,7 @@ describe.skipIf(process.platform === 'win32')('the swap script', () => {
     writeFileSync(join(oddStaged, 'Contents', 'version'), 'new')
     bundle = oddBundle
     staged = oddStaged
-    runSwap(999_999)
+    await runSwap(999_999)
     expect(installedVersion()).toBe('new')
     expect(opened()[0]).toBe(oddBundle)
   })
