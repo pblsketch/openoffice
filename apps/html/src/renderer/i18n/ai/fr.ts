@@ -92,6 +92,13 @@ export const fr = {
     "{lines} lignes sont arrivées avant l'interruption. Conserver cette partie ou l'abandonner ?",
   aiPartialAdopt: 'Conserver',
   aiPartialDiscard: 'Abandonner',
+  aiWaitingConfirm: 'En attente de votre confirmation',
+  aiWaitingAnswer: 'En attente de vos réponses',
+  aiWaitingChoice: 'En attente de votre choix',
+  aiWaitBriefStep: 'En attente de votre confirmation · cliquez sur « {action} » ci-dessous',
+  aiWaitClarifyStep: 'En attente de vos réponses · répondez aux questions ci-dessous',
+  aiWaitPartialStep:
+    'En attente de votre choix · cliquez sur « {adopt} » ou « {discard} » ci-dessous',
   briefTitle: 'Brief de la page',
   briefHint: 'Confirmez ou modifiez avant de générer ; la page le suivra',
   briefCoreHook: 'Accroche centrale',
