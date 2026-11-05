@@ -62,4 +62,20 @@ describe('create --type docx --from <html> decodes the file by its declared char
       '한글 본문',
     )
   })
+
+  it('does not take charset= from an unrelated meta description', async () => {
+    const head =
+      '<meta name="description" content="Set charset=iso-8859-1 on the server">' +
+      '<meta charset="euc-kr">'
+    expect(await bodyText(html(head, EUC_KR_HANGUL))).toBe('한글 본문')
+  })
+
+  it('reads an EUC-KR XHTML page from its XML encoding declaration', async () => {
+    const source = Buffer.concat([
+      Buffer.from('<?xml version="1.0" encoding="euc-kr"?><html><body><p>'),
+      EUC_KR_HANGUL,
+      Buffer.from('</p></body></html>'),
+    ])
+    expect(await bodyText(source)).toBe('한글 본문')
+  })
 })
