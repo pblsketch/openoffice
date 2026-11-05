@@ -22,5 +22,7 @@ function bomCharset(bytes: Uint8Array): string | undefined {
 function metaCharset(bytes: Uint8Array): string | undefined {
   // the declaration is ASCII; any single-byte reading finds it in the first kilobytes
   const head = new TextDecoder('latin1').decode(bytes.subarray(0, 4096))
-  return /<meta[^>]*charset\s*=\s*["']?\s*([a-z0-9_:.-]+)/i.exec(head)?.[1]
+  // Old declarations kept in comments are not active, even when the comment is cut by the scan limit.
+  const active = head.replace(/<!--[\s\S]*?(?:-->|$)/g, ' ')
+  return /<meta[^>]*charset\s*=\s*["']?\s*([a-z0-9_:.-]+)/i.exec(active)?.[1]
 }
