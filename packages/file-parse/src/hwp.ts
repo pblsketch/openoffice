@@ -313,6 +313,46 @@ export async function checkedHwpBytes(bytes: Uint8Array, ext: string): Promise<U
   return bytes
 }
 
+/** One page as the editor draws it for print: the SVG and its size in CSS pixels. */
+export interface HwpPrintPage {
+  svg: string
+  width: number
+  height: number
+}
+
+/**
+ * The pages of an HWP / HWPX document drawn for print, as the editor's File > Export as
+ * PDF draws them (`renderPageSvgWithProfile(page, 'print')`), for a caller with no editor
+ * window: the app's `--headless-export`. Pictures stay in the SVG as data URLs.
+ */
+export async function hwpPrintPages(bytes: Uint8Array): Promise<HwpPrintPage[]> {
+  if (bytes[0] === 0x50 && bytes[1] === 0x4b) await assertZipInflatesWithinLimits(bytes)
+  const { HwpDocument } = await loadEngine()
+  let doc: HwpDocument
+  try {
+    doc = new HwpDocument(new Uint8Array(bytes))
+  } catch (thrown) {
+    throw engineError(thrown)
+  }
+  try {
+    const pages: HwpPrintPage[] = []
+    const count = doc.pageCount()
+    for (let page = 0; page < count; page++) {
+      const info = JSON.parse(doc.getPageInfo(page)) as { width: number; height: number }
+      pages.push({
+        svg: doc.renderPageSvgWithProfile(page, 'print'),
+        width: info.width,
+        height: info.height,
+      })
+    }
+    return pages
+  } catch (thrown) {
+    throw engineError(thrown)
+  } finally {
+    doc.free()
+  }
+}
+
 /** The text of an HWP / HWPX document: paragraphs as lines, data tables as " | " rows. */
 export async function hwpToText(bytes: Uint8Array): Promise<string> {
   // HWPX is a zip, and the engine inflates it itself: the gate the other zip formats

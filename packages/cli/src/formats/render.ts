@@ -19,6 +19,8 @@ export const RENDERABLE = [
   'markdown',
   'html',
   'htm',
+  'hwp',
+  'hwpx',
 ]
 
 export interface RenderOptions {

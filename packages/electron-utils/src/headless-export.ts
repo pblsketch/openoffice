@@ -18,7 +18,14 @@
  */
 
 /** Editor module that owns a given input extension. */
-export type HeadlessExportModule = 'docs' | 'sheets' | 'slides' | 'markdown' | 'html' | 'diagram'
+export type HeadlessExportModule =
+  | 'docs'
+  | 'sheets'
+  | 'slides'
+  | 'markdown'
+  | 'html'
+  | 'diagram'
+  | 'hwp'
 
 /** Diagram file formats a diagram job can write (the input's ops applied first). */
 export const DIAGRAM_FILE_TARGETS = ['drawio', 'dio', 'drawio.svg', 'drawio.png'] as const
@@ -42,6 +49,7 @@ export const HEADLESS_TARGETS: Record<HeadlessExportModule, readonly HeadlessExp
   markdown: ['pdf'],
   html: ['pdf', 'docx'],
   diagram: ['pdf', 'png', 'svg', ...DIAGRAM_FILE_TARGETS],
+  hwp: ['pdf'],
 }
 
 const ALL_TARGETS: readonly HeadlessExportFormat[] = [
@@ -130,6 +138,7 @@ const MODULE_BY_EXTENSION: ReadonlyArray<readonly [RegExp, HeadlessExportModule]
   [/\.(md|markdown)$/i, 'markdown'],
   [/\.(html|htm)$/i, 'html'],
   [/\.(drawio|dio|drawio\.svg|drawio\.png)$/i, 'diagram'],
+  [/\.(hwp|hwpx)$/i, 'hwp'],
 ]
 
 /** Which editor module can render this input, or null when the extension is unsupported. */
@@ -140,7 +149,7 @@ export function headlessModuleFor(inputPath: string): HeadlessExportModule | nul
 
 /** Extensions the headless entry accepts, for error messages. */
 export const HEADLESS_SUPPORTED_EXTENSIONS =
-  '.docx, .xlsx, .xlsm, .xls, .csv, .pptx, .md, .markdown, .html, .htm, .drawio, .dio, .drawio.svg, .drawio.png'
+  '.docx, .xlsx, .xlsm, .xls, .csv, .pptx, .md, .markdown, .html, .htm, .drawio, .dio, .drawio.svg, .drawio.png, .hwp, .hwpx'
 
 /** `--flag value` and `--flag=value` both read the same. */
 function readOption(argv: readonly string[], index: number, flag: string): string | null {
