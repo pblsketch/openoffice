@@ -15,7 +15,12 @@
  */
 import { stat } from 'node:fs/promises'
 import { basename, extname, isAbsolute, resolve } from 'node:path'
-import { attachableMaxBytes, parseFileToText, type ParsedFile } from '@genoffice/file-parse'
+import {
+  ATTACHABLE_EXTS,
+  attachableMaxBytes,
+  parseFileToText,
+  type ParsedFile,
+} from '@genoffice/file-parse'
 import { fileHasUnsavedChanges } from '@genoffice/electron-utils/unsaved-files'
 import type { AiTargetKind, MaterialProblem } from '../../shared/generate-api'
 import {
@@ -46,11 +51,13 @@ export function materialMaxBytes(ext: string): number {
 }
 
 /**
- * What a material can be: exactly what `parseFileToText` reads (its text,
- * office, pdf, mind map and image types). Every receiving editor accepts all
- * of these as attachments; anything else would come back from it unread.
+ * The formats `parseFileToText` reads by a file's last extension: its text,
+ * office, ODT, PDF, EPUB, mind map, Hangul (hwp, hwpx), draw.io and image
+ * types. The attachable list holds more (source-code text types, `.xls`)
+ * that it does not read. `tests/generate-materials.test.ts` checks this list
+ * against the reader itself.
  */
-export const SUPPORTED_MATERIAL_EXTS: ReadonlySet<string> = new Set([
+const PARSED_MATERIAL_EXTS: ReadonlySet<string> = new Set([
   'txt',
   'md',
   'markdown',
@@ -64,14 +71,33 @@ export const SUPPORTED_MATERIAL_EXTS: ReadonlySet<string> = new Set([
   'py',
   'doc',
   'docx',
+  'odt',
   'ppt',
   'pptx',
   'xlsx',
   'xlsm',
   'pdf',
   'xmind',
+  'epub',
+  'hwp',
+  'hwpx',
+  'drawio',
+  'dio',
   ...IMAGE_MATERIAL_EXTS,
 ])
+
+/**
+ * What a material can be: the shared attachable formats (`ATTACHABLE_EXTS`,
+ * which every receiving editor checks its attachments against) that
+ * `parseFileToText` reads, the reader those editors extract the text with.
+ * Anything else would come back from the editor refused or unread. Named by
+ * the last extension, as `extOf` names a material: a `.drawio.png` is a `png`
+ * here, held to the picture cap (the reader still measures its diagram text),
+ * and a `.drawio.svg` is not a material.
+ */
+export const SUPPORTED_MATERIAL_EXTS: ReadonlySet<string> = new Set(
+  [...ATTACHABLE_EXTS].filter((ext) => PARSED_MATERIAL_EXTS.has(ext)),
+)
 
 export interface MaterialStatus {
   /** the path, or `untitled:<webContentsId>` for a document never saved */
