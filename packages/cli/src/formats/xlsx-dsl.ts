@@ -49,7 +49,7 @@ import { PRODUCT_NAME } from '@genoffice/i18n'
 import type { PathContext } from '../fs'
 import { classifyOpError } from '../op-errors'
 import { CliError, EXIT, type ErrorHints, type ErrorReason } from '../result'
-import { didYouMean, sheetNotFoundHints } from '../suggest'
+import { didYouMean, resolveSheetName, sheetNotFoundHints } from '../suggest'
 import { computedValues } from './xlsx'
 
 const OP_REJECTED: ErrorHints = {
@@ -203,7 +203,9 @@ export async function runWorkbookDsl(
   }
   const idByName = new Map(Object.entries(imported.sheetNamesById).map(([id, name]) => [name, id]))
   const names = [...idByName.keys()]
-  if (defaultSheet !== undefined && !idByName.has(defaultSheet)) {
+  const resolvedDefault =
+    defaultSheet === undefined ? undefined : resolveSheetName(defaultSheet, names)
+  if (defaultSheet !== undefined && resolvedDefault === undefined) {
     throw new CliError(
       EXIT.usage,
       `sheet not found: ${defaultSheet}`,
@@ -213,7 +215,7 @@ export async function runWorkbookDsl(
   }
   const active =
     meta.activeSheet !== null && idByName.has(meta.activeSheet) ? meta.activeSheet : null
-  const fallback = defaultSheet ?? active ?? snapshot.sheets[0]?.name
+  const fallback = resolvedDefault ?? active ?? snapshot.sheets[0]?.name
   const convertWarnings: string[] = []
   const frozen = new Map<string, unknown>()
   // A chart over formula results: the editable model keeps formulas valueless
@@ -235,7 +237,7 @@ export async function runWorkbookDsl(
             ? op.sheetId
             : fallback
       if (wanted === undefined) continue
-      const name = idByName.has(wanted) ? wanted : (imported.sheetNamesById[wanted] ?? undefined)
+      const name = resolveSheetName(wanted, names) ?? imported.sheetNamesById[wanted] ?? undefined
       const sheetState =
         name === undefined ? undefined : snapshot.sheets.find((s) => s.name === name)
       if (sheetState === undefined) continue
@@ -804,8 +806,10 @@ function normalizeOp(
     delete op.value
   }
   const resolve = (wanted: string): string => {
+    const named = resolveSheetName(wanted, [...idByName.keys()])
     const id =
-      idByName.get(wanted) ?? ([...idByName.values()].includes(wanted) ? wanted : undefined)
+      (named !== undefined ? idByName.get(named) : undefined) ??
+      ([...idByName.values()].includes(wanted) ? wanted : undefined)
     if (!id) {
       throw new CliError(
         EXIT.usage,

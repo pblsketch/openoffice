@@ -47,6 +47,13 @@ export function didYouMean(input: string, candidates: Iterable<string>): string 
   return best?.name
 }
 
+/** Excel worksheet names are unique case-insensitively; "Data" and "data" are the same sheet. */
+export function resolveSheetName(wanted: string, names: readonly string[]): string | undefined {
+  if (names.includes(wanted)) return wanted
+  const lower = wanted.toLowerCase()
+  return names.find((name) => name.toLowerCase() === lower)
+}
+
 export function sheetNotFoundHints(name: string, sheets: readonly string[]): ErrorHints {
   const guess = didYouMean(name, sheets)
   return {

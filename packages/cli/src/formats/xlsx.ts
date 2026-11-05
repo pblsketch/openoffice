@@ -47,7 +47,7 @@ import { atomicWriteFile } from '../../../../apps/sheets/src/main/atomic-write'
 import { XlsxSidecarClient } from '../../../../apps/sheets/src/main/xlsx-sidecar-client'
 import { planExternalLinkBreak } from '@genoffice/xlsx-gateway/gateway/xlsx-external-links'
 import { CliError, EXIT } from '../result'
-import { sheetNotFoundHints } from '../suggest'
+import { resolveSheetName, sheetNotFoundHints } from '../suggest'
 import { xlsxSidecarPath } from '../resources'
 
 export type Scalar = string | number | boolean | null
@@ -161,9 +161,18 @@ async function readRangeIndexed(
 type SheetMeta = OpenedWorkbook['sheets'][number]
 
 function pickSheet(wb: OpenedWorkbook, name: string | undefined): SheetMeta {
-  const meta = name
-    ? wb.sheets.find((s) => s.name === name)
-    : (wb.sheets[wb.activeTab] ?? wb.sheets[0])
+  const resolved =
+    name === undefined
+      ? undefined
+      : resolveSheetName(
+          name,
+          wb.sheets.map((s) => s.name),
+        )
+  const meta = resolved
+    ? wb.sheets.find((s) => s.name === resolved)
+    : name
+      ? undefined
+      : (wb.sheets[wb.activeTab] ?? wb.sheets[0])
   if (!meta) {
     throw new CliError(
       EXIT.usage,
