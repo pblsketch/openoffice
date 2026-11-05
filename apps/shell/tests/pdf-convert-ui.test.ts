@@ -113,15 +113,51 @@ describe('pdf conversion screen: wiring', () => {
     expect(wiring).toContain('pdfPathGranted(viewId, path)')
   })
 
-  it('offers Markdown in the pdf Save As dialog and hands the name to the conversion', () => {
+  it('offers every conversion in the pdf Save As dialog and hands the name to it', () => {
     const start = index.indexOf('async function savePdfAs(')
     const end = index.indexOf('let exportingPdfDocx', start)
     expect(start).toBeGreaterThan(0)
     expect(end).toBeGreaterThan(start)
     const flow = index.slice(start, end)
-    expect(flow).toContain("{ name: 'Markdown', extensions: ['md'] }")
-    expect(flow).toContain("grantPdfStructureTarget(tab.webContents, tab.filePath, target, 'md')")
-    expect(flow).toContain("requestPdfConvertDialog(tab.webContents, 'md', target)")
+    expect(flow).toContain('filters: pdfSaveAsFilters(tm)')
+    expect(flow).toContain('defaultPath: pdfSaveAsDefaultPath(tab.filePath)')
+    expect(flow).toContain("if (format === 'md' || format === 'epub')")
+    expect(flow).toContain('grantPdfStructureTarget(tab.webContents, tab.filePath, target, format)')
+    expect(flow).toContain('requestPdfConvertDialog(tab.webContents, format, target)')
+    expect(flow).toContain('requestPdfPageImages(tab.webContents, target)')
+    expect(flow).toContain('() => exportPdfAsDocxLocal(preset)')
+    expect(flow).toContain('() => exportPdfAsPptxLocal(preset)')
+    expect(flow).toContain('() => exportPdfAsXlsxLocal(preset)')
+    // the PDF copy path is unchanged
+    expect(flow).toContain('requestPdfSaveAsOutcome(tab.webContents, target)')
+    // the conversion runs once the Save As flow (autosave pause) has ended
+    expect(flow.indexOf('if (convert) await convert()')).toBeLessThan(
+      flow.indexOf('setPdfSaveAsInFlight(tab.webContents, true)'),
+    )
+  })
+
+  it('skips only the save dialog of a Word / PowerPoint / Excel conversion Save As picked', () => {
+    for (const kind of ['Docx', 'Pptx', 'Xlsx']) {
+      const start = index.indexOf(`async function exportPdfAs${kind}Local(`)
+      expect(start).toBeGreaterThan(0)
+      const flow = index.slice(start, index.indexOf('\n}\n', start))
+      expect(flow).toContain('const tab = preset?.tab ?? activePdfTarget()')
+      // pending edits are still saved first, then the picked name replaces the dialog
+      expect(flow.indexOf('flushPdfSave(tab.webContents, true)')).toBeLessThan(
+        flow.indexOf('const picked = preset'),
+      )
+      expect(flow).toContain('{ canceled: false, filePath: preset.target }')
+      expect(flow).toContain('await showSaveDialogWithMemory(dialog, host, {')
+      expect(flow).toContain('host.setProgressBar(2)')
+      expect(flow).toContain('promptPdfPassword(host, {')
+    }
+    // the File menu and the converter dropdown still open the dialog
+    expect(index).toContain('click: () => void exportPdfAsDocxLocal(),')
+    expect(index).toContain("if (format === 'docx') await exportPdfAsDocxLocal()")
+  })
+
+  it('labels the page-image file type in every language', () => {
+    expect(index.match(/^ {4}filterPdfPageImages: '.+',$/gm)).toHaveLength(21)
   })
 
   it('adds Markdown and EPUB to the pdf File menu next to the existing conversions', () => {

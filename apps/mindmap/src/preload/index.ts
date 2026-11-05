@@ -85,6 +85,7 @@ const exporting: MindmapExportApi = {
   onExportRequest: (handler) => listen<[ExportFormat]>(MINDMAP_CHANNELS.exportRequest, handler),
   onPrintRequest: (handler) => listen<[]>(MINDMAP_CHANNELS.printRequest, handler),
   exportPng: (request) => ipcRenderer.invoke(MINDMAP_CHANNELS.exportPng, request),
+  exportSvg: (request) => ipcRenderer.invoke(MINDMAP_CHANNELS.exportSvg, request),
   exportPdf: (request) => ipcRenderer.invoke(MINDMAP_CHANNELS.exportPdf, request),
   exportMarkdown: (request) => ipcRenderer.invoke(MINDMAP_CHANNELS.exportMarkdown, request),
   print: (request) => ipcRenderer.invoke(MINDMAP_CHANNELS.print, request),

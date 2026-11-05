@@ -69,6 +69,7 @@ export const fr = {
   zoomReset: 'Taille réelle',
   tbExport: 'Exporter',
   exportPng: 'Exporter en image (PNG)…',
+  exportSvg: 'Exporter en image (SVG)…',
   exportPdf: 'Exporter en PDF…',
   exportMarkdown: 'Exporter en plan Markdown…',
   exportDone: 'Exporté',

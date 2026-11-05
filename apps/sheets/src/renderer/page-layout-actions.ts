@@ -738,8 +738,13 @@ async function workbookPrintPayload(
 /// the main process to render the PDF (hidden window + save dialog).
 /// `outPath` (headless export only) skips the dialog and prints every visible
 /// sheet after the formula engine has settled; resolves true when a PDF was
-/// written.
-export async function handleExportPdf(ctx: PageLayoutContext, outPath?: string): Promise<boolean> {
+/// written. `saveAsPath` (Save As › PDF) is the path the Save As dialog just
+/// returned: the active sheet goes there without a second dialog.
+export async function handleExportPdf(
+  ctx: PageLayoutContext,
+  outPath?: string,
+  saveAsPath?: string,
+): Promise<boolean> {
   try {
     const messages = {
       notLoaded: t('appPdfNeedsFullLoad'),
@@ -753,6 +758,7 @@ export async function handleExportPdf(ctx: PageLayoutContext, outPath?: string):
     const result = await window.desktopApi.exportPdf({
       ...payload,
       ...(outPath ? { outPath } : {}),
+      ...(saveAsPath ? { saveAsPath } : {}),
     })
     ctx.setMessage(
       result.canceled ? t('appPdfCanceled') : t('appPdfExported', { path: result.path }),

@@ -68,6 +68,7 @@ export const ms = {
   zoomReset: 'Saiz sebenar',
   tbExport: 'Eksport',
   exportPng: 'Eksport sebagai imej (PNG)…',
+  exportSvg: 'Eksport sebagai imej (SVG)…',
   exportPdf: 'Eksport sebagai PDF…',
   exportMarkdown: 'Eksport sebagai rangka Markdown…',
   exportDone: 'Telah dieksport',

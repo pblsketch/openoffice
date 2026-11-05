@@ -7337,8 +7337,9 @@ export default function App() {
     }
   }, [livePreviewRects, scale, pageGeom, rotDelta, filePath])
 
-  /** Export PNG or JPG: current page or all visible pages, 150dpi equivalent */
-  const exportImages = (allPages: boolean, format: 'png' | 'jpg' = 'png') =>
+  /** Export PNG or JPG: current page or all visible pages, 150dpi equivalent.
+      `saveAs`: the shell's Save As › PNG already picked the name (no folder dialog) */
+  const exportImages = (allPages: boolean, format: 'png' | 'jpg' = 'png', saveAs = false) =>
     flushThen(async () => {
       if (!doc || exporting) return
       setExporting(format)
@@ -7383,6 +7384,7 @@ export default function App() {
           pageNumbers,
           baseName: fileName.replace(/\.pdf$/i, ''),
           format,
+          ...(saveAs ? { saveAs: true } : {}),
         })
         if (!result.ok) opFailed(result.error)
       } catch (err) {
@@ -8639,8 +8641,13 @@ export default function App() {
     return window.pdfApi.onPrintRequest(openPrintDlg)
   })
 
-  // Shell File menu › Markdown / EPUB or Save As › Markdown → the same dialog
-  // (Save As carries the target it already picked)
+  // Shell Save As › PNG page images → every page, written to the name the shell picked
+  useEffect(() => {
+    return window.pdfApi.onExportImagesRequest(() => void exportImages(true, 'png', true))
+  })
+
+  // Shell File menu › Markdown / EPUB or Save As › Markdown / EPUB → the same
+  // dialog (Save As carries the target it already picked)
   useEffect(() => window.pdfApi.onConvertDialogRequest((request) => setConvertDialog(request)), [])
 
   // Shortcuts: ⌘S/⌘F/⌘P/⌘±/⌘0 + page navigation (only ⌘ combos kept while an input control is focused)

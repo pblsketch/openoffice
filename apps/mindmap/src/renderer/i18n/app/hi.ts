@@ -68,6 +68,7 @@ export const hi = {
   zoomReset: 'वास्तविक आकार',
   tbExport: 'निर्यात',
   exportPng: 'छवि (PNG) के रूप में निर्यात…',
+  exportSvg: 'छवि (SVG) के रूप में निर्यात…',
   exportPdf: 'PDF के रूप में निर्यात…',
   exportMarkdown: 'Markdown रूपरेखा के रूप में निर्यात…',
   exportDone: 'निर्यात हो गया',

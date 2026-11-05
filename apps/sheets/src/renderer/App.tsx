@@ -1199,6 +1199,8 @@ export function App({
       stashViewRestore: (view) => {
         viewRestoreRef.current = view
       },
+      exportPdfCopy: (saveAsPath) =>
+        handleExportPdfImpl(pageLayoutContext(), undefined, saveAsPath),
     }
   }
 

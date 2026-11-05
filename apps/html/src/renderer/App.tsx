@@ -1484,6 +1484,12 @@ export default function App() {
           defaultName: provisionalNameRef.current ?? undefined,
           auto,
         })
+        if (result.ok && 'path' in result && result.exported) {
+          // Save As › PDF, Word or ODT wrote a copy: the page keeps its path,
+          // its unsaved edits and its assets (the main process opened the copy)
+          setSaveState('idle')
+          return true
+        }
         if (result.ok && 'path' in result) {
           const adopted = adoptImageRewrites(textAtSave, textRef.current, result.imageRewrites)
           if (adopted.liveText !== textRef.current) {

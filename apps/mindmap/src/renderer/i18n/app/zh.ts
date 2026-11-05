@@ -65,6 +65,7 @@ export const zh = {
   zoomReset: '实际大小',
   tbExport: '导出',
   exportPng: '导出为图片 (PNG)…',
+  exportSvg: '导出为图片 (SVG)…',
   exportPdf: '导出为 PDF…',
   exportMarkdown: '导出为 Markdown 大纲…',
   exportDone: '已导出',

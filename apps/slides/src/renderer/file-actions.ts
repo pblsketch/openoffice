@@ -151,12 +151,14 @@ export async function saveIntoProject(getCtx: () => ActionCtx): Promise<boolean>
 export async function saveAs(getCtx: () => ActionCtx): Promise<void> {
   // Same queue as save(): Save + Save As (or double Save As) write through
   // the same main-process pipe and would interleave without it.
-  await runSerialized(async () => {
+  const copy = await runSerialized(async () => {
     const ctx = getCtx()
     await flushActiveEdit(ctx)
     await ctx.flushNotes()
     const name = baseName(ctx.path ?? '') || 'presentation.pptx'
     const r = await window.slidesApi.saveAs(name)
+    // a copy format was picked: no deck was written, the export runs below
+    if (r.exportAs && r.path) return { kind: r.exportAs, path: r.path }
     if (r.ok) {
       if (r.slides) adoptSavedSlides(ctx, r.slides)
       ctx.setPath(r.path ?? ctx.path)
@@ -171,7 +173,13 @@ export async function saveAs(getCtx: () => ActionCtx): Promise<void> {
       ctx.setStatus(failed)
       showToast(failed, 'error')
     }
+    return null
   })
+  // Save As › PDF / PNG: the Export command's own rendering and writer, to the
+  // path picked in the Save As dialog. The deck keeps its path and dirty state.
+  // Outside the save queue: an export writes no deck file.
+  if (copy?.kind === 'pdf') await exportPdf(getCtx(), copy.path)
+  else if (copy?.kind === 'png') await exportImages(getCtx(), 'png', copy.path)
 }
 
 /** Export base name: file name without the .pptx extension */
@@ -179,15 +187,27 @@ export function exportBaseName(ctx: ActionCtx): string {
   return (baseName(ctx.path ?? '') || t('appUntitledPresentation')).replace(/\.pptx$/i, '')
 }
 
-/** Export as images: each page (skipping hidden ones) rendered offscreen to 2x PNG or JPG, written to disk by the main process */
-export async function exportImages(ctx: ActionCtx, format: 'png' | 'jpg' = 'png'): Promise<void> {
+/**
+ * Export as images: each page (skipping hidden ones) rendered offscreen to 2x
+ * PNG or JPG, written to disk by the main process. `saveAsTarget` (Save As ›
+ * PNG) is the name the Save As dialog returned: no folder picker, and the
+ * files are that name, numbered per page when there is more than one.
+ */
+export async function exportImages(
+  ctx: ActionCtx,
+  format: 'png' | 'jpg' = 'png',
+  saveAsTarget?: string,
+): Promise<void> {
   const visible = ctx.slides.filter((s) => !s.hidden)
   if (visible.length === 0) {
     ctx.setStatus(t('appExportNoSlides'))
     return
   }
-  const dir = await window.slidesApi.pickExportDir()
-  if (!dir) return
+  const dir =
+    saveAsTarget !== undefined
+      ? saveAsTarget.slice(0, saveAsTarget.length - baseName(saveAsTarget).length - 1)
+      : await window.slidesApi.pickExportDir()
+  if (dir === null) return
   ctx.setStatus(t('appExportImagesProgress', { count: visible.length }))
   try {
     const pages = await renderSlidesToImageBase64(visible, ctx.images, { format })
@@ -196,6 +216,7 @@ export async function exportImages(ctx: ActionCtx, format: 'png' | 'jpg' = 'png'
       baseName: exportBaseName(ctx),
       format,
       pngsBase64: pages,
+      ...(saveAsTarget !== undefined ? { saveAsTarget } : {}),
     })
     ctx.setStatus(
       r.ok
@@ -232,8 +253,9 @@ async function collectPdfLinks(ctx: ActionCtx): Promise<ExportPdfLink[][]> {
  * stays text; a page the SVG backend cannot build falls back to its 2x PNG);
  * main process printToPDF in a hidden window.
  *
- * `outPath` skips the save dialog — the headless CLI entry already knows where
- * the file goes. Resolves true only when a PDF was written.
+ * `outPath` skips the save dialog — the headless CLI entry or the Save As
+ * dialog (Save As › PDF) already chose where the file goes. Resolves true only
+ * when a PDF was written.
  */
 export async function exportPdf(ctx: ActionCtx, outPath?: string): Promise<boolean> {
   const visible = ctx.slides.filter((s) => !s.hidden)

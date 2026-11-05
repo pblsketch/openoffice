@@ -56,6 +56,7 @@ export {
   showOpenDialogWithMemory,
   showSaveDialogWithMemory,
 } from './dialog-memory'
+export { numberedExportPaths } from './numbered-export-paths'
 export {
   DEFAULT_SAVE_DIR_KEY,
   configuredDefaultSaveDir,

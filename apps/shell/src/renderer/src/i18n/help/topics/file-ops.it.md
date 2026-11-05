@@ -26,6 +26,7 @@ Regole: l'estensione viene conservata automaticamente; i caratteri non ammessi, 
 ## Salva e Salva con nome
 
 - **⌘S / ctrl+S** salva il file corrente; un file senza titolo chiede prima percorso e nome.
+- Nella maggior parte degli editor, l’elenco dei tipi di file della finestra Salva con nome offre anche i formati di esportazione (PDF, immagini, altri formati di documento). Sceglierne uno scrive solo una copia; il documento aperto e la sua scheda restano sul file originale. Le immagini di più pagine vengono divise in `nome-01.png`, `nome-02.png`, ….
 - **Salva con nome…** scrive un file nuovo e lascia intatto l'originale; le modifiche successive riguardano il file nuovo.
 - Ogni salvataggio è atomico (file temporaneo + rinomina); un'uscita a metà scrittura non può corrompere il file.
 - Il salvataggio automatico segue l’interruttore di ogni editor; un nuovo documento senza file proprio inizia dopo il primo salvataggio (vedi [Avvio rapido](help://getting-started)).

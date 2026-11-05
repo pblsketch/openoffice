@@ -145,6 +145,11 @@ export const MAX_HWP_SAVE_BYTES = 512 * 1024 * 1024
 
 export type BeginSaveResult =
   | { ok: true; path: string; format: HwpFormat }
+  /**
+   * Save As picked PDF: no save. The renderer gathers the pages and hands them to
+   * `printPages` with this path, which that call takes once without asking again.
+   */
+  | { ok: true; path: string; export: 'pdf' }
   | { ok: true; canceled: true }
   /**
    * `reason` 'tracked': the document has tracked changes, which a save here would lose.
@@ -343,8 +348,11 @@ export interface HwpApi {
   onPrintRequest(handler: (mode: PrintMode) => void): () => void
   /** the File menu or Ctrl+P asks for the print preview */
   onPreviewRequest(handler: (action: PreviewAction) => void): () => void
-  /** make the PDF (asking where) or open the print dialog for these pages */
-  printPages(job: PrintJob): Promise<PrintResult>
+  /**
+   * make the PDF (asking where, unless `path` is the PDF path Save As just picked) or open
+   * the print dialog for these pages
+   */
+  printPages(job: PrintJob, options?: { path: string }): Promise<PrintResult>
   onCloseSaveRequest(handler: () => void): () => void
   sendCloseSaveResult(ok: boolean): void
   /** the memo editor opened or closed in this tab: main holds back save, close and quit */

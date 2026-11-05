@@ -26,6 +26,7 @@ Reglas: la extensión se conserva automáticamente; los caracteres no permitidos
 ## Guardar y Guardar como
 
 - **⌘S / ctrl+S** guarda el archivo actual; si no tiene título, primero pregunta por la ubicación y el nombre.
+- En la mayoría de los editores, la lista de tipos de archivo del cuadro Guardar como también ofrece los formatos de exportación (PDF, imágenes, otros formatos de documento). Al elegir uno de ellos solo se escribe una copia; el documento abierto y su pestaña siguen con el archivo original. Las imágenes de varias páginas se reparten en `nombre-01.png`, `nombre-02.png`, ….
 - **Guardar como** escribe un archivo nuevo y deja el original intacto; las ediciones posteriores se dirigen al archivo nuevo.
 - Cada guardado es atómico (archivo temporal y renombrado): salir a mitad de la escritura no puede corromper el archivo.
 - El autoguardado sigue el interruptor de cada editor; un documento nuevo sin archivo propio empieza tras su primer guardado (véase [Inicio rápido](help://getting-started)).

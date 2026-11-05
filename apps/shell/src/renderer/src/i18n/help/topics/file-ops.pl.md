@@ -26,6 +26,7 @@ Zasady: rozszerzenie jest zachowywane automatycznie; niedozwolone znaki, kropki 
 ## Zapisz i Zapisz jako
 
 - **⌘S / ctrl+S** zapisuje bieżący plik; plik bez tytułu najpierw pyta o lokalizację i nazwę.
+- W większości edytorów lista typów plików w oknie Zapisz jako zawiera też formaty eksportu (PDF, obrazy, inne formaty dokumentów). Wybranie jednego z nich zapisuje tylko kopię; otwarty dokument i jego karta pozostają przy pliku oryginalnym. Obrazy wielu stron są dzielone na `nazwa-01.png`, `nazwa-02.png`, ….
 - **Zapisz jako…** zapisuje nowy plik i pozostawia oryginał nietknięty; późniejsze edycje dotyczą nowego pliku.
 - Każdy zapis jest atomowy (plik tymczasowy + zmiana nazwy); zamknięcie w trakcie zapisu nie może uszkodzić pliku.
 - Autozapis działa zgodnie z przełącznikiem w każdym edytorze; nowy dokument bez własnego pliku zaczyna działać po pierwszym zapisie (patrz [Szybki start](help://getting-started)).

@@ -276,9 +276,16 @@ export interface SaveMarkdownRequest {
    * Save As only, rendered documents only: the print HTML of what is on screen.
    * A picked target ending in .pdf writes this HTML as a PDF (and opens it)
    * instead of the Markdown text; the document keeps its path and unsaved edits.
+   * Its presence also offers Word, ODT and page images in the dialog (`exportAs`).
    */
   pdfHtml?: string
 }
+
+/**
+ * Save As › a format the renderer builds with its export code (Word, ODT, page
+ * images). The main process only approves the path; nothing is written yet.
+ */
+export type SaveAsExportFormat = 'docx' | 'odt' | 'png'
 
 export type SaveMarkdownResult =
   | {
@@ -286,6 +293,11 @@ export type SaveMarkdownResult =
       path: string
       /** the target was written as a PDF copy of the document, not as its save */
       exported?: 'pdf'
+      /**
+       * Nothing was written: the renderer runs this export to `path` (passed back
+       * as `saveAsTarget`). The document keeps its path, unsaved edits and assets.
+       */
+      exportAs?: SaveAsExportFormat
       /** Save As may relocate local images into the new document's assets directory. */
       imageRewrites?: Array<{ from: string; to: string }>
       /** Actual persisted source after Save As image rewrites. */
@@ -358,6 +370,8 @@ export interface ExportDocxRequest {
   suggestedName: string
   /** 'dialog' = save dialog; 'openInDocs' = app-managed temporary copy opened in AI Docs */
   mode: 'dialog' | 'openInDocs'
+  /** Save As › Word: the path the save dialog approved (`exportAs`); no second dialog */
+  saveAsTarget?: string
 }
 
 /** ODT export: the Word export's .docx bytes, converted to ODT in the main process */
@@ -366,6 +380,8 @@ export interface ExportOdtRequest {
   base64: string
   /** file name (no extension) suggested in the dialog */
   suggestedName: string
+  /** Save As › ODT: the path the save dialog approved (`exportAs`); no second dialog */
+  saveAsTarget?: string
 }
 
 export interface ExportPdfRequest {
@@ -395,6 +411,14 @@ export interface MarkdownPrintDocumentRequest {
 
 export type MarkdownPrintDocumentResult =
   { ok: true; canceled?: boolean } | { ok: false; error: string }
+
+export interface ImageExportRequest extends Omit<ExportPdfRequest, 'outPath'> {
+  /**
+   * Save As › page images: the one file name the save dialog approved
+   * (`exportAs`); pages are written beside it as numbered files, no folder dialog
+   */
+  saveAsTarget?: string
+}
 
 export type ImageExportPreparation =
   | { ok: true; id: string; pdfBase64: string }
@@ -564,7 +588,7 @@ export interface MarkdownApi {
   renderPrintPreview(request: MarkdownPrintPreviewRequest): Promise<MarkdownPrintPreviewResult>
   /** print through the system dialog, using the same HTML and options as the preview */
   printDocument(request: MarkdownPrintDocumentRequest): Promise<MarkdownPrintDocumentResult>
-  prepareImageExport(request: Omit<ExportPdfRequest, 'outPath'>): Promise<ImageExportPreparation>
+  prepareImageExport(request: ImageExportRequest): Promise<ImageExportPreparation>
   writeExportImage(
     id: string,
     page: number,

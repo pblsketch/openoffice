@@ -18,6 +18,10 @@ export interface TabDocumentActionDeps {
   printMarkdown(contents: WebContents): void
   saveHtml(contents: WebContents, mode: 'save' | 'saveAs'): void
   printHtml(contents: WebContents): void
+  saveMindmap(contents: WebContents, mode: 'save' | 'saveAs'): void
+  printMindmap(contents: WebContents): void
+  saveHwp(contents: WebContents, mode: 'save' | 'saveAs'): void
+  printHwp(contents: WebContents): void
 }
 
 /** Resolve the clicked tab, then use its editor's existing save and print workflows. */
@@ -62,6 +66,14 @@ export function runTabDocumentAction(
     case 'html':
       if (action === 'print') deps.printHtml(contents)
       else deps.saveHtml(contents, action)
+      break
+    case 'mindmap':
+      if (action === 'print') deps.printMindmap(contents)
+      else deps.saveMindmap(contents, action)
+      break
+    case 'hwp':
+      if (action === 'print') deps.printHwp(contents)
+      else deps.saveHwp(contents, action)
       break
   }
 }

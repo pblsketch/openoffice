@@ -394,10 +394,11 @@ export function createPdfStructureHandlers(deps: StructureHandlerDeps) {
     },
 
     /**
-     * Grant a target the shell's own save dialog picked (Save As › Markdown).
-     * The same rules as a picked target: the source belongs to this view, the
-     * target is not a granted source, and only Markdown is offered this way.
-     * The renderer's request then writes to exactly this path (claimTarget).
+     * Grant a target the shell's own save dialog picked (Save As › Markdown /
+     * EPUB). The same rules as a picked target: the source belongs to this
+     * view, the target is not a granted source, and only Markdown and EPUB are
+     * offered this way, each with its own extension. The renderer's request
+     * then writes to exactly this path (claimTarget).
      */
     grantTarget(
       owner: number,
@@ -405,7 +406,9 @@ export function createPdfStructureHandlers(deps: StructureHandlerDeps) {
       outPath: unknown,
       kind: PdfStructureTargetKind,
     ): boolean {
-      if (kind !== 'md' || typeof outPath !== 'string' || !/\.md$/i.test(outPath)) return false
+      if (kind !== 'md' && kind !== 'epub') return false
+      if (typeof outPath !== 'string' || !outPath.toLowerCase().endsWith(TARGET_EXT[kind]))
+        return false
       if (typeof sourcePath !== 'string' || !deps.isGranted(owner, sourcePath)) return false
       if (pathKey(outPath) === pathKey(sourcePath) || deps.isGranted(owner, outPath)) return false
       const map = targets.get(owner) ?? new Map<string, PdfStructureTargetKind>()

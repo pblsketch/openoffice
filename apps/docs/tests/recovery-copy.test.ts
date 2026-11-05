@@ -344,6 +344,7 @@ describe('a restored untitled copy', () => {
       'gone.docx',
       '/usb/reports/gone.docx',
       'docx',
+      false,
     )
     expect(desktop.saveDocxNew).not.toHaveBeenCalled()
     // the source of the Save As is still "no file": the main process drops the untitled copy
