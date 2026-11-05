@@ -22,7 +22,7 @@ Protože instalátor není podepsaný, spouštějte jen ten, který jste stáhli
 
 ## Aktualizace
 
-- GenOffice hledá novější verzi na stejné stránce Releases na GitHubu. Jakmile je nějaká zveřejněna, nabídne ji **Nastavení ▸ O aplikaci**: stiskněte **Aktualizovat na …**, počkejte na stažení a potom stiskněte **Restartovat a nainstalovat**. Ve Windows se zobrazí okno s průběhem instalace; po dokončení se GenOffice znovu otevře i s dokumenty, které jste měli otevřené. Aktualizace se nainstaluje jen po stisknutí tohoto tlačítka, nikdy při pouhém zavření aplikace.
+- GenOffice hledá novější verzi na stejné stránce Releases na GitHubu. Jakmile je nějaká zveřejněna, nabídne ji **Nastavení ▸ O aplikaci**: stiskněte **Aktualizovat na …**, počkejte na stažení a potom stiskněte **Restartovat a nainstalovat**. Ve Windows se zobrazí okno s průběhem instalace; po dokončení se GenOffice znovu otevře i s dokumenty, které jste měli otevřené. Na Macu se aplikace zavře, nahradí se novou verzí a znovu se otevře s dokumenty, které jste měli otevřené. Platí to pro aplikaci ve složce Aplikace; aplikace otevřená přímo z obrazu disku místo toho odkáže na stránku pro stažení. Aktualizace se nainstaluje jen po stisknutí tohoto tlačítka, nikdy při pouhém zavření aplikace.
 - **Nabídka (☰) ▸ Zkontrolovat aktualizace…** provede kontrolu, kdykoli o ni požádáte. Na počítači Mac je to **Nápověda ▸ Zkontrolovat aktualizace…**.
 - Když kontrola selže — chybí síť, nebo ještě nic nebylo zveřejněno — nic se nestane a aplikace funguje dál jako dosud.
 - **Kanál aktualizací**, rovněž v Nastavení ▸ O aplikaci, je Stabilní nebo Beta. Změna se projeví ihned a vyvolá kontrolu aktualizace; instalaci z kanálu Beta nevrátí zpět na Stabilní.

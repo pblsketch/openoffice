@@ -142,6 +142,61 @@ jobs:
           # each dmg names its CPU (config.dmg.artifactName)
           ls apps/shell/release/IeumOffice-*-arm64.dmg apps/shell/release/IeumOffice-*-x64.dmg
 
+      # The Mac app installs its updates from these zips itself (decision
+      # 0097, apps/shell/src/main/mac-update.ts). Each zip in the feed must
+      # unpack with ditto into one app of the feed's version, with the built
+      # app's bundle id and a signature that covers every file; then the real
+      # swap script replaces an "installed" copy with it
+      - name: Check the update zips and the swap
+        run: |
+          set -euo pipefail
+          release=apps/shell/release
+          feed=$(ls $release/*-mac.yml)
+          version=$(sed -n 's/^version: *//p' "$feed" | tr -d "'\"")
+          id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$release/mac-arm64/IeumOffice.app/Contents/Info.plist")
+          for name in "IeumOffice-$version-arm64-mac.zip" "IeumOffice-$version-mac.zip"; do
+            grep -qF "url: $name" "$feed" || { echo "not in $feed: $name"; exit 1; }
+            out="$RUNNER_TEMP/unzip-$name"
+            rm -rf "$out"
+            mkdir -p "$out"
+            ditto -x -k "$release/$name" "$out"
+            shopt -s nullglob
+            apps=("$out"/*.app)
+            shopt -u nullglob
+            [ "${#apps[@]}" -eq 1 ] || { echo "$name holds ${#apps[@]} apps"; exit 1; }
+            plist="${apps[0]}/Contents/Info.plist"
+            test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")" = "$version"
+            test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")" = "$id"
+            codesign --verify --deep --strict "${apps[0]}"
+          done
+          # the swap: an "installed" app in a folder, the arm64 update staged
+          # beside it as the app stages it, a process that has already ended,
+          # and a stand-in for "open"
+          node -e '
+            const fs = require("fs")
+            const src = fs.readFileSync("apps/shell/src/main/mac-update.ts", "utf8")
+            const m = /export const MAC_SWAP_SCRIPT = `([\s\S]*?)`\n/.exec(src)
+            fs.writeFileSync(process.argv[1], m[1].replace(/\\\\n/g, "\\n"))
+          ' "$RUNNER_TEMP/swap.sh"
+          apps_dir="$RUNNER_TEMP/Applications"
+          rm -rf "$apps_dir"
+          mkdir -p "$apps_dir/.IeumOffice.app.update"
+          ditto "$release/mac/IeumOffice.app" "$apps_dir/IeumOffice.app"
+          ditto -x -k "$release/IeumOffice-$version-arm64-mac.zip" "$apps_dir/.IeumOffice.app.update"
+          true & gone=$!
+          wait "$gone"
+          /bin/sh -c "$(cat "$RUNNER_TEMP/swap.sh")" ieumoffice-update "$gone" \
+            "$apps_dir/IeumOffice.app" "$apps_dir/.IeumOffice.app.update/IeumOffice.app" \
+            "$apps_dir/.IeumOffice.app.update" "$apps_dir/.IeumOffice.app.previous" \
+            "$RUNNER_TEMP/update-log.txt" /usr/bin/true
+          cat "$RUNNER_TEMP/update-log.txt"
+          grep -q 'installed the new version' "$RUNNER_TEMP/update-log.txt"
+          ls -A "$apps_dir"
+          test "$(ls -A "$apps_dir")" = "IeumOffice.app"
+          # the swapped-in app is the arm64 one, intact
+          lipo -archs "$apps_dir/IeumOffice.app/Contents/MacOS/IeumOffice" | grep -qw arm64
+          codesign --verify --deep --strict "$apps_dir/IeumOffice.app"
+
       # the Intel app runs on this runner only through Rosetta, which an image
       # may not carry yet
       - name: Install Rosetta
