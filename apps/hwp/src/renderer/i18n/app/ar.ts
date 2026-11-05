@@ -158,6 +158,9 @@ export const ar = {
   aiScopeSelectionTip: 'تعليمات إعادة الصياغة تُطبق افتراضيًا على التحديد فقط؛ انقر للمعاينة',
   aiScopeClearTitle: 'إلغاء نطاق التحديد',
   aiToolNotDone: 'لم يُنفَّذ · {what}',
+  aiUnfinishedSteps: 'خطوات لم تكتمل: {n}',
+  aiUnfinishedNote:
+    'لم تُطبَّق هذه الخطوات على المستند. تحقّق من هذه المواضع حتى لو قال الرد إن العمل اكتمل.',
   aiChangesTitle: 'عدد التغييرات في المستند: {count}',
   aiClearMarks: 'إخفاء العلامات',
   aiRevert: 'التراجع عن هذه التغييرات',

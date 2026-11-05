@@ -163,6 +163,9 @@ export const it = {
     "Le istruzioni di riscrittura si applicano per impostazione predefinita alla selezione; fai clic per l'anteprima",
   aiScopeClearTitle: "Rimuovi l'ambito della selezione",
   aiToolNotDone: 'Non eseguito · {what}',
+  aiUnfinishedSteps: 'Passaggi non completati: {n}',
+  aiUnfinishedNote:
+    'Questi passaggi non sono stati applicati al documento. Controlla queste parti anche se la risposta dice che è fatto.',
   aiChangesTitle: 'Modifiche apportate al documento: {count}',
   aiClearMarks: 'Nascondi segni',
   aiRevert: 'Annulla queste modifiche',

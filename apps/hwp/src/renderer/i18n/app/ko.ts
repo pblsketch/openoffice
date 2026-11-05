@@ -159,6 +159,9 @@ export const ko = {
   aiScopeSelectionTip: '다시 쓰기류 지시는 기본적으로 선택 영역에만 적용됩니다. 클릭하여 미리 보기',
   aiScopeClearTitle: '선택 범위 해제',
   aiToolNotDone: '하지 못함 · {what}',
+  aiUnfinishedSteps: '끝내지 못한 단계 {n}개',
+  aiUnfinishedNote:
+    '아래 단계는 문서에 반영되지 않았습니다. 답에 끝냈다고 적혀 있어도 이 부분은 확인하세요.',
   aiChangesTitle: '문서 {count}곳을 고쳤습니다',
   aiClearMarks: '표시 지우기',
   aiRevert: '되돌리기',

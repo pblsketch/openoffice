@@ -91,6 +91,7 @@ import {
 } from './selection-scope'
 import { createHwpSkill, type HwpChange } from './hwp-skill'
 import { MemoApprovalGate, memoApprovalPreview } from './memo-approval'
+import { unfinishedSteps, type RunStep } from './unfinished-steps'
 import { useSubscriptionConnection } from './subscription-client'
 import { createElectronTransport } from './transport'
 
@@ -150,6 +151,8 @@ interface ChatEntry {
   undelivered?: boolean
   tools?: ToolActivity[]
   changes?: RunChanges
+  /** labels of the edits this run left undone, shown under its last reply */
+  unfinished?: string[]
   /** attachments this message took from the composer (echoed read-only; a retry sends them again) */
   attachments?: AttachmentMeta[]
   /** the selection this message was about, frozen at send */
@@ -274,6 +277,8 @@ export function AiPanel({
   >([])
   /** what the tools of the run in flight did, kept with its reply */
   const runToolsRef = useRef<ToolActivity[]>([])
+  /** the tool calls of the run in flight with their arguments, for its unfinished edits */
+  const runStepsRef = useRef<RunStep[]>([])
   /** the project folder of this panel (set once its hook ran; read by callbacks) */
   const projectRef = useRef<ProjectPanel | null>(null)
 
@@ -797,6 +802,12 @@ export function AiPanel({
             output: execution.output?.slice(0, TOOL_OUTPUT_MAX_CHARS),
           }
           runToolsRef.current.push(activity)
+          runStepsRef.current.push({
+            name: call.name,
+            input: call.input,
+            isError: execution.isError,
+            summary: execution.summary,
+          })
           patchLast((last) => {
             // Swap out the running placeholder pushed by onToolStart (parse-fail calls have none)
             const tools = [...(last.tools ?? [])]
@@ -818,12 +829,16 @@ export function AiPanel({
           const changed = takeRunChanges()
           persistMessage('assistant', final, runToolsRef.current)
           runToolsRef.current = []
+          // decided from the tool results, not from what the reply says it did
+          const unfinished = unfinishedSteps(runStepsRef.current).map((step) => step.summary)
+          runStepsRef.current = []
           patchLast((last) => ({
             streaming: false,
             text: final || (last.tools?.length ? last.text : tGlobal('aiNoReply')),
             // A stop mid-tool can leave a running placeholder behind — drop it
             tools: last.tools?.filter((tl) => !tl.running),
             ...changed,
+            ...(unfinished.length > 0 ? { unfinished } : {}),
           }))
           setBusy(false)
           projectRef.current?.finishSend()
@@ -978,6 +993,8 @@ export function AiPanel({
     skillsRef.current.consume(skillUse)
     skillTemplatesRef.current.noteRequest(text)
     runSkillUseRef.current = skillUse
+    runStepsRef.current = []
+    skillRef.current!.beginRun()
     setBusy(true)
     void (async () => {
       try {
@@ -1429,6 +1446,7 @@ export function AiPanel({
                   </div>
                 )
               )}
+              {entry.unfinished && <UnfinishedSteps steps={entry.unfinished} />}
               {hasTools && <ToolChipList tools={entry.tools!} />}
               <SkillUsedNotes tools={entry.tools} />
               {project.messageParts(entry)}
@@ -1828,6 +1846,24 @@ function StepIcon({ status }: { status: 'running' | 'done' | 'error' }) {
       <circle cx="12" cy="12" r="9" />
       <path d="m8.5 12.4 2.4 2.4 4.6-5" />
     </svg>
+  )
+}
+
+/** The edits a run left undone, under its reply: the count, and their labels when opened. */
+function UnfinishedSteps({ steps }: { steps: string[] }): ReactElement {
+  const { t: tr } = useI18n()
+  return (
+    <details className="ai-unfinished">
+      <summary className="ai-unfinished-summary">
+        {tr('aiUnfinishedSteps', { n: steps.length })}
+      </summary>
+      <p className="ai-unfinished-note">{tr('aiUnfinishedNote')}</p>
+      <ul className="ai-unfinished-list">
+        {steps.map((step, j) => (
+          <li key={j}>{step}</li>
+        ))}
+      </ul>
+    </details>
   )
 }
 

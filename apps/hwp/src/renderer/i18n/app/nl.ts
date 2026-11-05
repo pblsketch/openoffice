@@ -161,6 +161,9 @@ export const nl = {
     'Herschrijfopdrachten gelden standaard alleen voor de selectie; klik voor een voorbeeld',
   aiScopeClearTitle: 'Selectiebereik wissen',
   aiToolNotDone: 'Niet uitgevoerd · {what}',
+  aiUnfinishedSteps: 'Niet afgeronde stappen: {n}',
+  aiUnfinishedNote:
+    'Deze stappen zijn niet op het document toegepast. Controleer deze delen, ook als het antwoord zegt dat het klaar is.',
   aiChangesTitle: 'Wijzigingen in het document: {count}',
   aiClearMarks: 'Markeringen verbergen',
   aiRevert: 'Deze wijzigingen ongedaan maken',

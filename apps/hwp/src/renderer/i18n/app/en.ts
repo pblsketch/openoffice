@@ -159,6 +159,9 @@ export const en = {
   aiScopeSelectionTip: 'Rewrite-style requests apply to the selection by default; click to preview',
   aiScopeClearTitle: 'Clear the selection scope',
   aiToolNotDone: 'Not done · {what}',
+  aiUnfinishedSteps: 'Unfinished steps: {n}',
+  aiUnfinishedNote:
+    'These steps were not applied to the document. Check these parts even if the reply says it is done.',
   aiChangesTitle: 'Changes made to the document: {count}',
   aiClearMarks: 'Hide marks',
   aiRevert: 'Undo these changes',
