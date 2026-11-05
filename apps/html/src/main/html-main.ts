@@ -124,6 +124,8 @@ const tDlg = createI18n({
   zh: {
     dlgSaveTitle: '保存 HTML 文档',
     filterHtml: 'HTML 文档',
+    filterPdf: 'PDF 文档',
+    filterWord: 'Word 文档',
     dlgPickImage: '选择图片',
     filterImages: '图片',
     untitledFile: '未命名文档',
@@ -148,6 +150,8 @@ const tDlg = createI18n({
   en: {
     dlgSaveTitle: 'Save HTML Document',
     filterHtml: 'HTML Documents',
+    filterPdf: 'PDF Document',
+    filterWord: 'Word Document',
     dlgPickImage: 'Choose an Image',
     filterImages: 'Images',
     untitledFile: 'Untitled',
@@ -172,6 +176,8 @@ const tDlg = createI18n({
   vi: {
     dlgSaveTitle: 'Lưu tài liệu HTML',
     filterHtml: 'Tài liệu HTML',
+    filterPdf: 'Tài liệu PDF',
+    filterWord: 'Tài liệu Word',
     dlgPickImage: 'Chọn một hình ảnh',
     filterImages: 'Hình ảnh',
     untitledFile: 'Không có tiêu đề',
@@ -197,6 +203,8 @@ const tDlg = createI18n({
   ja: {
     dlgSaveTitle: 'HTML ドキュメントを保存',
     filterHtml: 'HTML ドキュメント',
+    filterPdf: 'PDF 文書',
+    filterWord: 'Word 文書',
     dlgPickImage: '画像を選択',
     filterImages: '画像',
     untitledFile: '無題',
@@ -222,6 +230,8 @@ const tDlg = createI18n({
   ko: {
     dlgSaveTitle: 'HTML 문서 저장',
     filterHtml: 'HTML 문서',
+    filterPdf: 'PDF 문서',
+    filterWord: 'Word 문서',
     dlgPickImage: '이미지 선택',
     filterImages: '이미지',
     untitledFile: '제목 없음',
@@ -247,6 +257,8 @@ const tDlg = createI18n({
   fr: {
     dlgSaveTitle: 'Enregistrer le document HTML',
     filterHtml: 'Documents HTML',
+    filterPdf: 'Document PDF',
+    filterWord: 'Document Word',
     dlgPickImage: 'Choisir une image',
     filterImages: 'Images',
     untitledFile: 'Sans titre',
@@ -272,6 +284,8 @@ const tDlg = createI18n({
   de: {
     dlgSaveTitle: 'HTML-Dokument speichern',
     filterHtml: 'HTML-Dokumente',
+    filterPdf: 'PDF-Dokument',
+    filterWord: 'Word-Dokument',
     dlgPickImage: 'Bild auswählen',
     filterImages: 'Bilder',
     untitledFile: 'Unbenannt',
@@ -297,6 +311,8 @@ const tDlg = createI18n({
   es: {
     dlgSaveTitle: 'Guardar documento HTML',
     filterHtml: 'Documentos HTML',
+    filterPdf: 'Documento PDF',
+    filterWord: 'Documento de Word',
     dlgPickImage: 'Elegir imagen',
     filterImages: 'Imágenes',
     untitledFile: 'Sin título',
@@ -322,6 +338,8 @@ const tDlg = createI18n({
   th: {
     dlgSaveTitle: 'บันทึกเอกสาร HTML',
     filterHtml: 'เอกสาร HTML',
+    filterPdf: 'เอกสาร PDF',
+    filterWord: 'เอกสาร Word',
     dlgPickImage: 'เลือกรูปภาพ',
     filterImages: 'รูปภาพ',
     untitledFile: 'ไม่มีชื่อ',
@@ -347,6 +365,8 @@ const tDlg = createI18n({
   id: {
     dlgSaveTitle: 'Simpan dokumen HTML',
     filterHtml: 'Dokumen HTML',
+    filterPdf: 'Dokumen PDF',
+    filterWord: 'Dokumen Word',
     dlgPickImage: 'Pilih gambar',
     filterImages: 'Gambar',
     untitledFile: 'Tanpa judul',
@@ -372,6 +392,8 @@ const tDlg = createI18n({
   ru: {
     dlgSaveTitle: 'Сохранить документ HTML',
     filterHtml: 'Документы HTML',
+    filterPdf: 'Документ PDF',
+    filterWord: 'Документ Word',
     dlgPickImage: 'Выберите изображение',
     filterImages: 'Изображения',
     untitledFile: 'Без названия',
@@ -397,6 +419,8 @@ const tDlg = createI18n({
   ar: {
     dlgSaveTitle: 'حفظ مستند HTML',
     filterHtml: 'مستندات HTML',
+    filterPdf: 'مستند PDF',
+    filterWord: 'مستند Word',
     dlgPickImage: 'اختر صورة',
     filterImages: 'صور',
     untitledFile: 'بدون عنوان',
@@ -422,6 +446,8 @@ const tDlg = createI18n({
   pt: {
     dlgSaveTitle: 'Salvar documento HTML',
     filterHtml: 'Documentos HTML',
+    filterPdf: 'Documento PDF',
+    filterWord: 'Documento do Word',
     dlgPickImage: 'Escolher imagem',
     filterImages: 'Imagens',
     untitledFile: 'Sem título',
@@ -447,6 +473,8 @@ const tDlg = createI18n({
   it: {
     dlgSaveTitle: 'Salva documento HTML',
     filterHtml: 'Documenti HTML',
+    filterPdf: 'Documento PDF',
+    filterWord: 'Documento Word',
     dlgPickImage: 'Scegli immagine',
     filterImages: 'Immagini',
     untitledFile: 'Senza titolo',
@@ -472,6 +500,8 @@ const tDlg = createI18n({
   pl: {
     dlgSaveTitle: 'Zapisz dokument HTML',
     filterHtml: 'Dokumenty HTML',
+    filterPdf: 'Dokument PDF',
+    filterWord: 'Dokument Word',
     dlgPickImage: 'Wybierz obraz',
     filterImages: 'Obrazy',
     untitledFile: 'Bez tytułu',
@@ -497,6 +527,8 @@ const tDlg = createI18n({
   cs: {
     dlgSaveTitle: 'Uložit dokument HTML',
     filterHtml: 'Dokumenty HTML',
+    filterPdf: 'Dokument PDF',
+    filterWord: 'Dokument Word',
     dlgPickImage: 'Vyberte obrázek',
     filterImages: 'Obrázky',
     untitledFile: 'Bez názvu',
@@ -522,6 +554,8 @@ const tDlg = createI18n({
   nl: {
     dlgSaveTitle: 'HTML-document opslaan',
     filterHtml: 'HTML-documenten',
+    filterPdf: 'PDF-document',
+    filterWord: 'Word-document',
     dlgPickImage: 'Kies een afbeelding',
     filterImages: 'Afbeeldingen',
     untitledFile: 'Naamloos',
@@ -547,6 +581,8 @@ const tDlg = createI18n({
   ms: {
     dlgSaveTitle: 'Simpan dokumen HTML',
     filterHtml: 'Dokumen HTML',
+    filterPdf: 'Dokumen PDF',
+    filterWord: 'Dokumen Word',
     dlgPickImage: 'Pilih imej',
     filterImages: 'Imej',
     untitledFile: 'Tanpa tajuk',
@@ -572,6 +608,8 @@ const tDlg = createI18n({
   he: {
     dlgSaveTitle: 'שמירת מסמך HTML',
     filterHtml: 'מסמכי HTML',
+    filterPdf: 'מסמך PDF',
+    filterWord: 'מסמך Word',
     dlgPickImage: 'בחרו תמונה',
     filterImages: 'תמונות',
     untitledFile: 'ללא שם',
@@ -597,6 +635,8 @@ const tDlg = createI18n({
   hi: {
     dlgSaveTitle: 'HTML दस्तावेज़ सहेजें',
     filterHtml: 'HTML दस्तावेज़',
+    filterPdf: 'PDF दस्तावेज़',
+    filterWord: 'Word दस्तावेज़',
     dlgPickImage: 'छवि चुनें',
     filterImages: 'छवियाँ',
     untitledFile: 'शीर्षकहीन',
@@ -622,6 +662,8 @@ const tDlg = createI18n({
   'zh-TW': {
     dlgSaveTitle: '儲存 HTML 文件',
     filterHtml: 'HTML 文件',
+    filterPdf: 'PDF 文件',
+    filterWord: 'Word 文件',
     dlgPickImage: '選擇圖片',
     filterImages: '圖片',
     untitledFile: '未命名文件',
@@ -647,6 +689,8 @@ const tDlg = createI18n({
 type DlgKey =
   | 'dlgSaveTitle'
   | 'filterHtml'
+  | 'filterPdf'
+  | 'filterWord'
   | 'dlgPickImage'
   | 'filterImages'
   | 'untitledFile'
@@ -1091,6 +1135,93 @@ async function renderHtmlDocx(
   }
 }
 
+/** The Word export to a path already chosen (its dialog, Save As or the command line). */
+async function writeHtmlDocx(
+  html: string,
+  docPath: string | undefined,
+  target: string,
+): Promise<ExportResult> {
+  if (docxExportPrepareHook && !(await docxExportPrepareHook(target))) {
+    return { ok: true, canceled: true }
+  }
+  const workDir = await mkdtemp(join(tmpdir(), 'genoffice-html-docx-'))
+  try {
+    const docx = await renderHtmlDocx(html, docPath, workDir)
+    await writeFile(target, docx)
+    openExportedDocx(target)
+    return { ok: true, path: target }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  } finally {
+    await rm(workDir, { recursive: true, force: true }).catch(() => {})
+  }
+}
+
+/** The ODT export: the Word export's bytes converted by docxToOdt, a change report confirmed. */
+async function writeHtmlOdt(
+  html: string,
+  docPath: () => string | undefined,
+  win: BrowserWindow | undefined,
+  pickPath: () => Promise<string | null>,
+  skipConfirm: boolean,
+): Promise<ExportResult> {
+  const outcome = await exportOdt({
+    pickPath,
+    docx: async () => {
+      const workDir = await mkdtemp(join(tmpdir(), 'genoffice-html-docx-'))
+      try {
+        return await renderHtmlDocx(html, docPath(), workDir)
+      } finally {
+        await rm(workDir, { recursive: true, force: true }).catch(() => {})
+      }
+    },
+    confirm: async (report) =>
+      skipConfirm ||
+      confirmOdtReport(report, (options) =>
+        win ? dialog.showMessageBox(win, options) : dialog.showMessageBox(options),
+      ),
+    // a docs tab showing the target is closed first, as for the Word export
+    prepare: async (path) => !docxExportPrepareHook || docxExportPrepareHook(path),
+    write: (path, bytes) => writeFile(path, bytes),
+  })
+  if ('path' in outcome) openExportedDocx(outcome.path)
+  return outcome
+}
+
+/** The PDF export to a path already chosen (its dialog, Save As or the command line). */
+async function writeHtmlPdf(
+  html: string,
+  docPath: string | undefined,
+  target: string,
+): Promise<ExportResult> {
+  const workDir = await mkdtemp(join(tmpdir(), 'genoffice-html-pdf-'))
+  try {
+    await writeFile(target, await renderPrintPdf(html, docPath, workDir))
+    openExportedPdf(target)
+    return { ok: true, path: target }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  } finally {
+    await rm(workDir, { recursive: true, force: true }).catch(() => {})
+  }
+}
+
+/**
+ * The page markup the export menu sends, recovered from a save request's text:
+ * the renderer's `serializeDocText` undone (BOM, line endings, final newline).
+ */
+function exportHtmlOfSaveText(text: string): string {
+  const body = (text.charCodeAt(0) === 0xfeff ? text.slice(1) : text).replace(/\r\n/g, '\n')
+  return body.endsWith('\n') ? body.slice(0, -1) : body
+}
+
+/** Save As › the export a picked extension selects */
+const SAVE_AS_EXPORT_BY_EXT: Record<string, 'pdf' | 'docx' | 'odt'> = {
+  '.pdf': 'pdf',
+  '.docx': 'docx',
+  '.odt': 'odt',
+}
+
 /** Shell menu export entry: ask the renderer to serialize and run the export flow */
 export function sendHtmlExportRequest(contents: WebContents, format: ExportFormat): void {
   if (contents.isDestroyed() || presentOwnerByWc.has(contents.id)) return
@@ -1354,6 +1485,7 @@ async function resolveSaveTarget(
   mode: SaveMode,
   suggestedName?: string,
   defaultName?: string,
+  offerExports = false,
 ): Promise<string | null | 'canceled'> {
   const current = savePathByWc.get(e.sender.id)
   if (mode === 'save' && current) return current
@@ -1377,13 +1509,27 @@ async function resolveSaveTarget(
         (await runtime.newDocumentDir?.(e.sender.id)) ?? configuredDefaultSaveDir(app),
         `${fileNameBase(defaultName) || tm('untitledFile')}.html`,
       ))
+  const filters: Array<{ name: string; extensions: string[] }> = [
+    { name: tm('filterHtml'), extensions: ['html', 'htm'] },
+  ]
+  if (offerExports) {
+    filters.push(
+      { name: tm('filterPdf'), extensions: ['pdf'] },
+      { name: tm('filterWord'), extensions: ['docx'] },
+      { name: odtFilterName(), extensions: ['odt'] },
+    )
+  }
   const picked = await showSaveDialogWithMemory(dialog, win, {
     title: tm('dlgSaveTitle'),
-    defaultPath,
-    filters: [{ name: tm('filterHtml'), extensions: ['html', 'htm'] }],
+    // With the exports offered, the suggestion carries no extension: the file
+    // type chosen in the dialog supplies it (a typed name keeps its own)
+    defaultPath: offerExports ? defaultPath.replace(/\.html?$/i, '') : defaultPath,
+    filters,
   })
   if (picked.canceled || !picked.filePath) return 'canceled'
-  return picked.filePath
+  // A dialog that does not add the chosen type's extension (some Linux desktops)
+  // leaves a bare name: the default type is HTML
+  return offerExports && !extname(picked.filePath) ? `${picked.filePath}.html` : picked.filePath
 }
 
 /**
@@ -1601,9 +1747,36 @@ function registerHtmlIpc(): void {
           mode === 'save' && !pathAtRequest && suggestedName
             ? await saveIntoProject(e.sender.id, suggestedName, request.text)
             : null
-        const target = placed ?? (await resolveSaveTarget(e, mode, suggestedName, defaultName))
+        const offerExports = mode === 'saveAs'
+        const target =
+          placed ?? (await resolveSaveTarget(e, mode, suggestedName, defaultName, offerExports))
         if (target === 'canceled') return done({ ok: true, canceled: true })
         if (!target) return done({ ok: false, error: 'html: no save target' })
+        const exportAs = offerExports
+          ? SAVE_AS_EXPORT_BY_EXT[extname(target).toLowerCase()]
+          : undefined
+        if (exportAs) {
+          // Save As › PDF, Word or ODT: a copy written by the export menu's code
+          // (and opened as that export opens it). Nothing below is a save: the
+          // page keeps its path, unsaved edits, recovery copy and assets.
+          const html = exportHtmlOfSaveText(request.text)
+          const win =
+            BrowserWindow.fromWebContents(e.sender) ?? BrowserWindow.getFocusedWindow() ?? undefined
+          const exported =
+            exportAs === 'pdf'
+              ? await writeHtmlPdf(html, pathAtRequest, target)
+              : exportAs === 'docx'
+                ? await writeHtmlDocx(html, pathAtRequest, target)
+                : await writeHtmlOdt(
+                    html,
+                    () => pathAtRequest,
+                    win,
+                    async () => target,
+                    false,
+                  )
+          if (!exported.ok || 'canceled' in exported) return done(exported)
+          return done({ ok: true, path: exported.path, exported: exportAs })
+        }
         const currentPath = pathAtRequest
         const isNewPath = currentPath !== target
         const imageSources = [...(request.imageSources ?? [])]
@@ -1848,20 +2021,7 @@ function registerHtmlIpc(): void {
               configuredDefaultSaveDir(app),
             )
       if (picked.canceled || !picked.filePath) return { ok: true, canceled: true }
-      if (docxExportPrepareHook && !(await docxExportPrepareHook(picked.filePath))) {
-        return { ok: true, canceled: true }
-      }
-      const workDir = await mkdtemp(join(tmpdir(), 'genoffice-html-docx-'))
-      try {
-        const docx = await renderHtmlDocx(request.html, savePathByWc.get(e.sender.id), workDir)
-        await writeFile(picked.filePath, docx)
-        openExportedDocx(picked.filePath)
-        return { ok: true, path: picked.filePath }
-      } catch (err) {
-        return { ok: false, error: err instanceof Error ? err.message : String(err) }
-      } finally {
-        await rm(workDir, { recursive: true, force: true }).catch(() => {})
-      }
+      return writeHtmlDocx(request.html, savePathByWc.get(e.sender.id), picked.filePath)
     },
   )
 
@@ -1880,8 +2040,11 @@ function registerHtmlIpc(): void {
         isHeadlessMode() && typeof request.outPath === 'string' && request.outPath
           ? request.outPath
           : null
-      const outcome = await exportOdt({
-        pickPath: async () => {
+      return writeHtmlOdt(
+        request.html,
+        () => savePathByWc.get(e.sender.id),
+        win,
+        async () => {
           if (headlessPath) return headlessPath
           const picked = await showSaveDialogWithMemory(
             dialog,
@@ -1894,25 +2057,8 @@ function registerHtmlIpc(): void {
           )
           return picked.canceled || !picked.filePath ? null : picked.filePath
         },
-        docx: async () => {
-          const workDir = await mkdtemp(join(tmpdir(), 'genoffice-html-docx-'))
-          try {
-            return await renderHtmlDocx(request.html, savePathByWc.get(e.sender.id), workDir)
-          } finally {
-            await rm(workDir, { recursive: true, force: true }).catch(() => {})
-          }
-        },
-        confirm: async (report) =>
-          headlessPath !== null ||
-          confirmOdtReport(report, (options) =>
-            win ? dialog.showMessageBox(win, options) : dialog.showMessageBox(options),
-          ),
-        // a docs tab showing the target is closed first, as for the Word export
-        prepare: async (path) => !docxExportPrepareHook || docxExportPrepareHook(path),
-        write: (path, bytes) => writeFile(path, bytes),
-      })
-      if ('path' in outcome) openExportedDocx(outcome.path)
-      return outcome
+        headlessPath !== null,
+      )
     },
   )
 
@@ -1938,17 +2084,7 @@ function registerHtmlIpc(): void {
               configuredDefaultSaveDir(app),
             )
       if (picked.canceled || !picked.filePath) return { ok: true, canceled: true }
-      const workDir = await mkdtemp(join(tmpdir(), 'genoffice-html-pdf-'))
-      try {
-        const docPath = savePathByWc.get(e.sender.id)
-        await writeFile(picked.filePath, await renderPrintPdf(request.html, docPath, workDir))
-        openExportedPdf(picked.filePath)
-        return { ok: true, path: picked.filePath }
-      } catch (err) {
-        return { ok: false, error: err instanceof Error ? err.message : String(err) }
-      } finally {
-        await rm(workDir, { recursive: true, force: true }).catch(() => {})
-      }
+      return writeHtmlPdf(request.html, savePathByWc.get(e.sender.id), picked.filePath)
     },
   )
 

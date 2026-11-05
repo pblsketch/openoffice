@@ -68,6 +68,7 @@ export const ar = {
   zoomReset: 'الحجم الفعلي',
   tbExport: 'تصدير',
   exportPng: 'تصدير كصورة (PNG)…',
+  exportSvg: 'تصدير كصورة (SVG)…',
   exportPdf: 'تصدير بتنسيق PDF…',
   exportMarkdown: 'تصدير كمخطط Markdown…',
   exportDone: 'تم التصدير',

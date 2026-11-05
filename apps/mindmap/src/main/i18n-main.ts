@@ -1,7 +1,7 @@
 /**
- * Texts the main process shows itself: the save dialog and the question
- * before closing a map with unsaved changes. Everything else the user reads is
- * in the renderer's dictionaries.
+ * Texts the main process shows itself: the save dialog (with the Save As
+ * export types) and the question before closing a map with unsaved changes.
+ * Everything else the user reads is in the renderer's dictionaries.
  */
 import { createI18n, getUiLang } from '@genoffice/i18n'
 
@@ -9,6 +9,10 @@ const tDlg = createI18n({
   zh: {
     dlgSaveTitle: '保存思维导图',
     filterMindmap: '思维导图',
+    filterPng: 'PNG 图片',
+    filterSvg: 'SVG 图片',
+    filterPdf: 'PDF 文档',
+    filterOutline: 'Markdown 大纲',
     untitledFile: '未命名文档',
     closeUnsavedMsg: '此文档有未保存的更改。',
     closeUnsavedDetail: '关闭前是否保存？',
@@ -19,6 +23,10 @@ const tDlg = createI18n({
   en: {
     dlgSaveTitle: 'Save Mind Map',
     filterMindmap: 'Mind Maps',
+    filterPng: 'PNG Image',
+    filterSvg: 'SVG Image',
+    filterPdf: 'PDF Documents',
+    filterOutline: 'Markdown Outline',
     untitledFile: 'Untitled',
     closeUnsavedMsg: 'This document has unsaved changes.',
     closeUnsavedDetail: 'Do you want to save them before closing?',
@@ -29,6 +37,10 @@ const tDlg = createI18n({
   vi: {
     dlgSaveTitle: 'Lưu sơ đồ tư duy',
     filterMindmap: 'Sơ đồ tư duy',
+    filterPng: 'Hình ảnh PNG',
+    filterSvg: 'Hình ảnh SVG',
+    filterPdf: 'Tài liệu PDF',
+    filterOutline: 'Dàn ý Markdown',
     untitledFile: 'Không có tiêu đề',
     closeUnsavedMsg: 'Tài liệu này có những thay đổi chưa được lưu.',
     closeUnsavedDetail: 'Bạn có muốn lưu các thay đổi trước khi đóng không?',
@@ -39,6 +51,10 @@ const tDlg = createI18n({
   ja: {
     dlgSaveTitle: 'マインドマップを保存',
     filterMindmap: 'マインドマップ',
+    filterPng: 'PNG 画像',
+    filterSvg: 'SVG 画像',
+    filterPdf: 'PDF ドキュメント',
+    filterOutline: 'Markdown アウトライン',
     untitledFile: '無題',
     closeUnsavedMsg: 'このドキュメントに未保存の変更があります。',
     closeUnsavedDetail: '閉じる前に保存しますか？',
@@ -49,6 +65,10 @@ const tDlg = createI18n({
   ko: {
     dlgSaveTitle: '마인드맵 저장',
     filterMindmap: '마인드맵',
+    filterPng: 'PNG 이미지',
+    filterSvg: 'SVG 이미지',
+    filterPdf: 'PDF 문서',
+    filterOutline: '마크다운 개요',
     untitledFile: '제목 없음',
     closeUnsavedMsg: '이 문서에 저장하지 않은 변경 사항이 있습니다.',
     closeUnsavedDetail: '닫기 전에 저장하시겠습니까?',
@@ -59,6 +79,10 @@ const tDlg = createI18n({
   fr: {
     dlgSaveTitle: 'Enregistrer la carte mentale',
     filterMindmap: 'Cartes mentales',
+    filterPng: 'Image PNG',
+    filterSvg: 'Image SVG',
+    filterPdf: 'Documents PDF',
+    filterOutline: 'Plan Markdown',
     untitledFile: 'Sans titre',
     closeUnsavedMsg: 'Ce document contient des modifications non enregistrées.',
     closeUnsavedDetail: 'Voulez-vous les enregistrer avant de fermer ?',
@@ -69,6 +93,10 @@ const tDlg = createI18n({
   de: {
     dlgSaveTitle: 'Mindmap speichern',
     filterMindmap: 'Mindmaps',
+    filterPng: 'PNG-Bild',
+    filterSvg: 'SVG-Bild',
+    filterPdf: 'PDF-Dokumente',
+    filterOutline: 'Markdown-Gliederung',
     untitledFile: 'Unbenannt',
     closeUnsavedMsg: 'Dieses Dokument enthält ungespeicherte Änderungen.',
     closeUnsavedDetail: 'Vor dem Schließen speichern?',
@@ -79,6 +107,10 @@ const tDlg = createI18n({
   es: {
     dlgSaveTitle: 'Guardar mapa mental',
     filterMindmap: 'Mapas mentales',
+    filterPng: 'Imagen PNG',
+    filterSvg: 'Imagen SVG',
+    filterPdf: 'Documentos PDF',
+    filterOutline: 'Esquema Markdown',
     untitledFile: 'Sin título',
     closeUnsavedMsg: 'Este documento tiene cambios sin guardar.',
     closeUnsavedDetail: '¿Quieres guardarlos antes de cerrar?',
@@ -89,6 +121,10 @@ const tDlg = createI18n({
   th: {
     dlgSaveTitle: 'บันทึกแผนที่ความคิด',
     filterMindmap: 'แผนที่ความคิด',
+    filterPng: 'รูปภาพ PNG',
+    filterSvg: 'รูปภาพ SVG',
+    filterPdf: 'เอกสาร PDF',
+    filterOutline: 'โครงร่าง Markdown',
     untitledFile: 'ไม่มีชื่อ',
     closeUnsavedMsg: 'เอกสารนี้มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก',
     closeUnsavedDetail: 'ต้องการบันทึกก่อนปิดหรือไม่?',
@@ -99,6 +135,10 @@ const tDlg = createI18n({
   id: {
     dlgSaveTitle: 'Simpan peta pikiran',
     filterMindmap: 'Peta pikiran',
+    filterPng: 'Gambar PNG',
+    filterSvg: 'Gambar SVG',
+    filterPdf: 'Dokumen PDF',
+    filterOutline: 'Kerangka Markdown',
     untitledFile: 'Tanpa judul',
     closeUnsavedMsg: 'Dokumen ini memiliki perubahan yang belum disimpan.',
     closeUnsavedDetail: 'Simpan sebelum menutup?',
@@ -109,6 +149,10 @@ const tDlg = createI18n({
   ru: {
     dlgSaveTitle: 'Сохранить интеллект-карту',
     filterMindmap: 'Интеллект-карты',
+    filterPng: 'Изображение PNG',
+    filterSvg: 'Изображение SVG',
+    filterPdf: 'Документы PDF',
+    filterOutline: 'Структура Markdown',
     untitledFile: 'Без названия',
     closeUnsavedMsg: 'В этом документе есть несохранённые изменения.',
     closeUnsavedDetail: 'Сохранить их перед закрытием?',
@@ -119,6 +163,10 @@ const tDlg = createI18n({
   ar: {
     dlgSaveTitle: 'حفظ الخريطة الذهنية',
     filterMindmap: 'خرائط ذهنية',
+    filterPng: 'صورة PNG',
+    filterSvg: 'صورة SVG',
+    filterPdf: 'مستندات PDF',
+    filterOutline: 'مخطط Markdown',
     untitledFile: 'بدون عنوان',
     closeUnsavedMsg: 'يحتوي هذا المستند على تغييرات غير محفوظة.',
     closeUnsavedDetail: 'هل تريد حفظها قبل الإغلاق؟',
@@ -129,6 +177,10 @@ const tDlg = createI18n({
   pt: {
     dlgSaveTitle: 'Salvar mapa mental',
     filterMindmap: 'Mapas mentais',
+    filterPng: 'Imagem PNG',
+    filterSvg: 'Imagem SVG',
+    filterPdf: 'Documentos PDF',
+    filterOutline: 'Estrutura de tópicos Markdown',
     untitledFile: 'Sem título',
     closeUnsavedMsg: 'Este documento tem alterações não salvas.',
     closeUnsavedDetail: 'Deseja salvá-las antes de fechar?',
@@ -139,6 +191,10 @@ const tDlg = createI18n({
   it: {
     dlgSaveTitle: 'Salva mappa mentale',
     filterMindmap: 'Mappe mentali',
+    filterPng: 'Immagine PNG',
+    filterSvg: 'Immagine SVG',
+    filterPdf: 'Documenti PDF',
+    filterOutline: 'Struttura Markdown',
     untitledFile: 'Senza titolo',
     closeUnsavedMsg: 'Questo documento contiene modifiche non salvate.',
     closeUnsavedDetail: 'Vuoi salvarle prima di chiudere?',
@@ -149,6 +205,10 @@ const tDlg = createI18n({
   pl: {
     dlgSaveTitle: 'Zapisz mapę myśli',
     filterMindmap: 'Mapy myśli',
+    filterPng: 'Obraz PNG',
+    filterSvg: 'Obraz SVG',
+    filterPdf: 'Dokumenty PDF',
+    filterOutline: 'Konspekt Markdown',
     untitledFile: 'Bez tytułu',
     closeUnsavedMsg: 'Ten dokument ma niezapisane zmiany.',
     closeUnsavedDetail: 'Czy zapisać je przed zamknięciem?',
@@ -159,6 +219,10 @@ const tDlg = createI18n({
   cs: {
     dlgSaveTitle: 'Uložit myšlenkovou mapu',
     filterMindmap: 'Myšlenkové mapy',
+    filterPng: 'Obrázek PNG',
+    filterSvg: 'Obrázek SVG',
+    filterPdf: 'Dokumenty PDF',
+    filterOutline: 'Osnova Markdown',
     untitledFile: 'Bez názvu',
     closeUnsavedMsg: 'Tento dokument obsahuje neuložené změny.',
     closeUnsavedDetail: 'Chcete je před zavřením uložit?',
@@ -169,6 +233,10 @@ const tDlg = createI18n({
   nl: {
     dlgSaveTitle: 'Mindmap opslaan',
     filterMindmap: 'Mindmaps',
+    filterPng: 'PNG-afbeelding',
+    filterSvg: 'SVG-afbeelding',
+    filterPdf: 'PDF-documenten',
+    filterOutline: 'Markdown-overzicht',
     untitledFile: 'Naamloos',
     closeUnsavedMsg: 'Dit document bevat niet-opgeslagen wijzigingen.',
     closeUnsavedDetail: 'Wilt u ze opslaan voordat u sluit?',
@@ -179,6 +247,10 @@ const tDlg = createI18n({
   ms: {
     dlgSaveTitle: 'Simpan peta minda',
     filterMindmap: 'Peta minda',
+    filterPng: 'Imej PNG',
+    filterSvg: 'Imej SVG',
+    filterPdf: 'Dokumen PDF',
+    filterOutline: 'Rangka Markdown',
     untitledFile: 'Tanpa tajuk',
     closeUnsavedMsg: 'Dokumen ini mempunyai perubahan yang belum disimpan.',
     closeUnsavedDetail: 'Simpan sebelum menutup?',
@@ -189,6 +261,10 @@ const tDlg = createI18n({
   he: {
     dlgSaveTitle: 'שמירת מפת חשיבה',
     filterMindmap: 'מפות חשיבה',
+    filterPng: 'תמונת PNG',
+    filterSvg: 'תמונת SVG',
+    filterPdf: 'מסמכי PDF',
+    filterOutline: 'מתאר Markdown',
     untitledFile: 'ללא שם',
     closeUnsavedMsg: 'במסמך הזה יש שינויים שלא נשמרו.',
     closeUnsavedDetail: 'האם לשמור אותם לפני הסגירה?',
@@ -199,6 +275,10 @@ const tDlg = createI18n({
   hi: {
     dlgSaveTitle: 'माइंड मैप सहेजें',
     filterMindmap: 'माइंड मैप',
+    filterPng: 'PNG छवि',
+    filterSvg: 'SVG छवि',
+    filterPdf: 'PDF दस्तावेज़',
+    filterOutline: 'Markdown रूपरेखा',
     untitledFile: 'शीर्षकहीन',
     closeUnsavedMsg: 'इस दस्तावेज़ में सहेजे नहीं गए परिवर्तन हैं।',
     closeUnsavedDetail: 'क्या बंद करने से पहले उन्हें सहेजना चाहते हैं?',
@@ -209,6 +289,10 @@ const tDlg = createI18n({
   'zh-TW': {
     dlgSaveTitle: '儲存心智圖',
     filterMindmap: '心智圖',
+    filterPng: 'PNG 圖片',
+    filterSvg: 'SVG 圖片',
+    filterPdf: 'PDF 文件',
+    filterOutline: 'Markdown 大綱',
     untitledFile: '未命名文件',
     closeUnsavedMsg: '此文件有未儲存的變更。',
     closeUnsavedDetail: '關閉前是否儲存？',
@@ -221,6 +305,10 @@ const tDlg = createI18n({
 export type MainTextKey =
   | 'dlgSaveTitle'
   | 'filterMindmap'
+  | 'filterPng'
+  | 'filterSvg'
+  | 'filterPdf'
+  | 'filterOutline'
   | 'untitledFile'
   | 'closeUnsavedMsg'
   | 'closeUnsavedDetail'

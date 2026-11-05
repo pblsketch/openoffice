@@ -68,6 +68,7 @@ export const ja = {
   zoomReset: '実際のサイズ',
   tbExport: 'エクスポート',
   exportPng: '画像 (PNG) としてエクスポート…',
+  exportSvg: '画像 (SVG) としてエクスポート…',
   exportPdf: 'PDF として書き出す…',
   exportMarkdown: 'Markdown アウトラインとしてエクスポート…',
   exportDone: 'エクスポートしました',

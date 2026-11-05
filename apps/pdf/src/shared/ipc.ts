@@ -80,6 +80,8 @@ export const PDF_CHANNELS = {
   splitPages: 'pdf:split-pages',
   cropPages: 'pdf:crop-pages',
   exportImages: 'pdf:export-images',
+  // Save As › PNG page images: the shell picked the name; the renderer draws the pages
+  exportImagesRequest: 'pdf:export-images-request',
   convertOffice: 'pdf:convert-office',
   createDocument: 'pdf:create-document',
   openInPdfTools: 'pdf:open-in-pdf-tools',
@@ -326,9 +328,10 @@ export type PdfConvertFormat = 'docx' | 'xlsx' | 'pptx'
 /** the reflowable formats the conversion dialog writes (document-structure jobs) */
 export type PdfReflowFormat = 'md' | 'epub'
 
-/** Shell File menu / Save As → the conversion dialog. `outPath` is a Markdown
-    target the shell's own save dialog picked (Save As › Markdown): the dialog
-    converts to it right away instead of asking for a page range and a target. */
+/** Shell File menu / Save As → the conversion dialog. `outPath` is a target
+    the shell's own save dialog picked: Save As › Markdown converts to it right
+    away instead of asking for a page range; Save As › EPUB opens the form
+    (page range, book information) with that target already chosen. */
 export interface PdfConvertDialogRequest {
   format: PdfReflowFormat
   outPath?: string
@@ -1156,6 +1159,9 @@ export interface ExportImagesRequest {
   baseName: string
   /** Image encoding; anything other than 'jpg' falls back to png */
   format: 'png' | 'jpg'
+  /** Save As › PNG page images: write to the name the shell's save dialog picked
+      for this view (numbered per page) instead of asking for a folder */
+  saveAs?: boolean
 }
 
 export type ExportImagesResult =
@@ -1760,6 +1766,8 @@ export interface PdfApi {
   splitPages(request: SplitPagesRequest): Promise<SplitPagesResult>
   cropPages(request: CropPagesRequest): Promise<CropPagesResult>
   exportImages(request: ExportImagesRequest): Promise<ExportImagesResult>
+  /** Shell Save As › PNG page images → draw every page and export it with `saveAs: true` */
+  onExportImagesRequest(handler: () => void): () => void
   /** Convert the current PDF to Word / Excel / PowerPoint via the shell's local conversion flows */
   convertOffice(format: PdfConvertFormat): Promise<void>
   /** Shell File menu / Save As → open the Markdown / EPUB conversion dialog */

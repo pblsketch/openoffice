@@ -2756,6 +2756,7 @@ function isPdfExportRequest(request: unknown): boolean {
     (request.firstPage !== undefined && !isPdfPageVariant(request.firstPage)) ||
     (request.evenPages !== undefined && !isPdfPageVariant(request.evenPages)) ||
     (request.outPath !== undefined && !isBoundedString(request.outPath, 4096)) ||
+    (request.saveAsPath !== undefined && !isBoundedString(request.saveAsPath, 4096)) ||
     // '' = the system default printer
     (request.deviceName !== undefined &&
       (typeof request.deviceName !== 'string' || request.deviceName.length > 255)) ||
@@ -3048,6 +3049,12 @@ function parseSaveResult(input: unknown): WorkbookSaveResult {
         throw new Error('Invalid workbook save response.')
       }
       return { canceled: true, csvSaveAsPath: input.csvSaveAsPath }
+    }
+    if (input.pdfSaveAsPath !== undefined) {
+      if (typeof input.pdfSaveAsPath !== 'string' || input.pdfSaveAsPath.length === 0) {
+        throw new Error('Invalid workbook save response.')
+      }
+      return { canceled: true, pdfSaveAsPath: input.pdfSaveAsPath }
     }
     return { canceled: true }
   }

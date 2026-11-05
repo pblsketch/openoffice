@@ -177,8 +177,12 @@ const api: DesktopApi = {
   spellReplace: (word: string) => ipcRenderer.invoke('docs:spell-replace', word),
   spellLanguages: () => ipcRenderer.invoke('docs:spell-languages'),
   spellSetLanguages: (langs: string[]) => ipcRenderer.invoke('docs:spell-set-languages', langs),
-  pickSaveAsPath: (defaultName: string, sourcePath: string | null, format: DocFormat) =>
-    ipcRenderer.invoke('docs:save-as-pick', defaultName, sourcePath, format),
+  pickSaveAsPath: (
+    defaultName: string,
+    sourcePath: string | null,
+    format: DocFormat,
+    offerExports?: boolean,
+  ) => ipcRenderer.invoke('docs:save-as-pick', defaultName, sourcePath, format, offerExports),
   saveDocxAs: (path: string, data: ArrayBuffer, sourcePath?: string | null) =>
     ipcRenderer.invoke('docs:save-as', path, data, sourcePath ?? null),
   materializeDocx: (data: ArrayBuffer) => ipcRenderer.invoke('docs:materialize-docx', data),

@@ -55,6 +55,9 @@ export default defineConfig({
       '@genoffice/electron-utils/safe-remote-url': local(
         '../../packages/electron-utils/src/safe-remote-url.ts',
       ),
+      '@genoffice/electron-utils/numbered-export-paths': local(
+        '../../packages/electron-utils/src/numbered-export-paths.ts',
+      ),
       '@genoffice/electron-utils': local('../../packages/electron-utils/src/index.ts'),
       '@genoffice/ai-provider/trace': local('../../packages/ai-provider/src/trace.ts'),
       '@genoffice/ai-provider/browser': local('../../packages/ai-provider/src/browser.ts'),

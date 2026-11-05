@@ -68,6 +68,7 @@ export const vi = {
   zoomReset: 'Kích thước thực',
   tbExport: 'Xuất',
   exportPng: 'Xuất dưới dạng hình ảnh (PNG)…',
+  exportSvg: 'Xuất dưới dạng hình ảnh (SVG)…',
   exportPdf: 'Xuất dưới dạng PDF…',
   exportMarkdown: 'Xuất dưới dạng dàn ý Markdown…',
   exportDone: 'Đã xuất',

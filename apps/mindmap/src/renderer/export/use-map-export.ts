@@ -1,12 +1,15 @@
 /**
  * Export, print and the preview picture, as the editor runs them.
  *
- * - Picture (PNG) and PDF: the sheet on screen, as it is drawn (folded
+ * - Picture (PNG or SVG) and PDF: the sheet on screen, as it is drawn (folded
  *   branches folded), the whole sheet and not only the part in view.
  * - Markdown outline: every sheet of the file, from the map as it stands now
  *   (unsaved edits included, folding ignored): the engine's `sheetsToOutline`.
  * - Print: the sheet on screen on one landscape A4 page, through the system's
- *   print dialog. Print is in the File menu; the toolbar has the three exports.
+ *   print dialog. Print is in the File menu; the toolbar has the four exports.
+ * - Save As lists the same four types after .xmind. Picking one writes that
+ *   export, as here, to the path the Save As dialog returned (no second
+ *   dialog); the map keeps its file and its unsaved state.
  * - The preview picture a save writes into the file: the first sheet, made
  *   only for a save that changes the file. When it cannot be made, or takes
  *   too long, the save goes ahead without one and the file keeps its old one.
@@ -14,14 +17,14 @@
  * All of them come out in the map's own colours, the same whether the app is
  * light or dark (`render.ts`).
  */
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { t as translate, type StringKey } from '../i18n/locale'
 import type { DocumentSession } from '../document/session'
 import { setThumbnailProvider } from '../document/thumbnail'
 import type { MapController } from '../map/controller'
 import type { ExportFormat, ExportResult } from '../../shared/ipc'
 import { documentName, sheetExportName } from './names'
-import { pictureScale, snapshotPage, snapshotPng, thumbnailScale } from './render'
+import { pictureScale, snapshotPage, snapshotPng, snapshotSvg, thumbnailScale } from './render'
 import { type MapSnapshot, snapshotSheet, type SnapshotOptions } from './snapshot'
 
 export interface MapExportHost {
@@ -106,7 +109,8 @@ function report(say: (key: StringKey) => void, result: ExportResult): void {
 const nextTurn = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
 
 export interface MapExport {
-  exportAs(format: ExportFormat): void
+  /** `path`: the file Save As picked for this export; the export then asks nothing */
+  exportAs(format: ExportFormat, path?: string): void
   print(): void
 }
 
@@ -146,18 +150,23 @@ export function useMapExport(host: MapExportHost): MapExport {
   }, [])
 
   const exportAs = useCallback(
-    async (format: ExportFormat): Promise<void> => {
+    async (format: ExportFormat, path?: string): Promise<void> => {
       const current = hostRef.current
       const session = current.session
       if (!session) return
       const api = window.mindmapApi
+      const to = path === undefined ? {} : { path }
       try {
         if (format === 'markdown') {
           current.flushAll()
           const text = session.outline()
           report(
             current.say,
-            await api.exportMarkdown({ text, suggestedName: mapNameOf(session, current.path) }),
+            await api.exportMarkdown({
+              text,
+              suggestedName: mapNameOf(session, current.path),
+              ...to,
+            }),
           )
           return
         }
@@ -166,10 +175,14 @@ export function useMapExport(host: MapExportHost): MapExport {
         if (format === 'png') {
           const { snapshot } = taken
           const bytes = await snapshotPng(snapshot, pictureScale(snapshot.width, snapshot.height))
-          report(current.say, await api.exportPng({ bytes, suggestedName: taken.name }))
+          report(current.say, await api.exportPng({ bytes, suggestedName: taken.name, ...to }))
+        } else if (format === 'svg') {
+          // drawn at its own size: an SVG scales without loss
+          const svg = snapshotSvg(taken.snapshot, 1)
+          report(current.say, await api.exportSvg({ svg, suggestedName: taken.name, ...to }))
         } else {
           const html = snapshotPage(taken.snapshot)
-          report(current.say, await api.exportPdf({ html, suggestedName: taken.name }))
+          report(current.say, await api.exportPdf({ html, suggestedName: taken.name, ...to }))
         }
       } catch (error) {
         console.error('[mindmap] export failed:', error)
@@ -206,8 +219,12 @@ export function useMapExport(host: MapExportHost): MapExport {
     }
   }, [exportAs, print, inTurn])
 
-  return {
-    exportAs: (format) => inTurn(() => exportAs(format)),
-    print: () => inTurn(print),
-  }
+  // stable across renders: a save hands its Save As export pick to `exportAs`
+  return useMemo(
+    () => ({
+      exportAs: (format, path) => inTurn(() => exportAs(format, path)),
+      print: () => inTurn(print),
+    }),
+    [exportAs, print, inTurn],
+  )
 }

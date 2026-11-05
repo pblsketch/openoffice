@@ -69,6 +69,7 @@ export const de = {
   zoomReset: 'Originalgröße',
   tbExport: 'Exportieren',
   exportPng: 'Als Bild (PNG) exportieren…',
+  exportSvg: 'Als Bild (SVG) exportieren…',
   exportPdf: 'Als PDF exportieren…',
   exportMarkdown: 'Als Markdown-Gliederung exportieren…',
   exportDone: 'Exportiert',

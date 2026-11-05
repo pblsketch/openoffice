@@ -192,6 +192,11 @@ const api: PdfApi = {
   splitPages: (request) => ipcRenderer.invoke(PDF_CHANNELS.splitPages, request),
   cropPages: (request) => ipcRenderer.invoke(PDF_CHANNELS.cropPages, request),
   exportImages: (request) => ipcRenderer.invoke(PDF_CHANNELS.exportImages, request),
+  onExportImagesRequest: (handler) => {
+    const listener = () => handler()
+    ipcRenderer.on(PDF_CHANNELS.exportImagesRequest, listener)
+    return () => ipcRenderer.removeListener(PDF_CHANNELS.exportImagesRequest, listener)
+  },
   convertOffice: (format) => ipcRenderer.invoke(PDF_CHANNELS.convertOffice, format),
   onConvertDialogRequest: (handler) => {
     const listener = (_e: Electron.IpcRendererEvent, request: unknown) => {
@@ -199,8 +204,8 @@ const api: PdfApi = {
       const { format, outPath } = request as { format?: unknown; outPath?: unknown }
       if (format !== 'md' && format !== 'epub') return
       if (outPath !== undefined && (typeof outPath !== 'string' || !outPath)) return
-      // only a Markdown target may be preset (Save As › Markdown)
-      if (outPath !== undefined && format !== 'md') return
+      // a preset target (Save As › Markdown / EPUB) carries its format's extension
+      if (outPath !== undefined && !outPath.toLowerCase().endsWith(`.${format}`)) return
       handler(outPath === undefined ? { format } : { format, outPath })
     }
     ipcRenderer.on(PDF_CHANNELS.convertDialogRequest, listener)

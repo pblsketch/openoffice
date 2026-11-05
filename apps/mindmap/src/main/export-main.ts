@@ -1,11 +1,12 @@
 /**
  * Export and print, the main-process side.
  *
- * The renderer draws the map: the picture of the current sheet as PNG bytes,
- * the page for PDF and print as one self-contained HTML document, and the
- * outline as text. This side asks where to put the file, writes it with the
- * atomic writer, and turns the page into a PDF or hands it to the system's
- * print dialog in a hidden window of its own.
+ * The renderer draws the map: the picture of the current sheet as PNG bytes
+ * or as one self-contained SVG document, the page for PDF and print as one
+ * self-contained HTML document, and the outline as text. This side asks where
+ * to put the file (unless Save As already asked: `grantSaveAsExport`), writes
+ * it with the atomic writer, and turns the page into a PDF or hands it to the
+ * system's print dialog in a hidden window of its own.
  *
  * That window loads nothing from anywhere. The page carries its own content
  * policy (no scripts, pictures only from `data:`), the window runs in a session
@@ -39,6 +40,7 @@ import type { ExportResult, PrintResult } from '../shared/ipc'
 /** What each kind of export is saved as. The format names are the formats' own and are not translated. */
 export const EXPORT_KINDS = {
   png: { extension: '.png', filter: 'PNG' },
+  svg: { extension: '.svg', filter: 'SVG' },
   pdf: { extension: '.pdf', filter: 'PDF' },
   markdown: { extension: '.md', filter: 'Markdown' },
 } as const
@@ -56,6 +58,9 @@ const MAX_OUTLINE_CHARS = 64 * 1024 * 1024
 const MAX_PNG_BYTES = 512 * 1024 * 1024
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
+
+/** What an SVG file written here starts with. */
+const XML_DECLARATION = '<?xml version="1.0" encoding="UTF-8"?>\n'
 
 /** A suggested name as a file name: no path characters, not too long, never empty. */
 export function exportFileBase(name: unknown): string {
@@ -77,6 +82,22 @@ export function withExportExtension(path: string, kind: ExportKind): string {
 
 function isPng(bytes: Uint8Array): boolean {
   return bytes.byteLength > PNG_SIGNATURE.length && PNG_SIGNATURE.every((b, i) => bytes[i] === b)
+}
+
+/**
+ * The picture of a sheet as this editor's renderer writes it (`snapshotSvg`):
+ * one SVG element from start to end, and no script anywhere. A `<` in text or
+ * an attribute is escaped by the serializer, so `<script` can only be an
+ * element. Pictures in it are `data:` addresses already: the copy keeps no
+ * other source (`snapshot.ts`).
+ */
+export function isMapSvg(text: unknown): text is string {
+  if (typeof text !== 'string' || text.length > MAX_PAGE_CHARS) return false
+  return (
+    text.startsWith('<svg xmlns="http://www.w3.org/2000/svg"') &&
+    text.endsWith('</svg>') &&
+    !/<script\b/i.test(text)
+  )
 }
 
 /** Bytes as they arrive over IPC: a typed array, a buffer, or nothing usable. */
@@ -127,6 +148,41 @@ async function pickTarget(
   )
   if (picked.canceled || !picked.filePath) return null
   return withExportExtension(picked.filePath, kind)
+}
+
+/** Paths Save As picked for an export, per view: that one path, once, for that one kind. */
+const saveAsGrants = new Map<number, { kind: ExportKind; path: string }>()
+
+/**
+ * Save As › an export type: the dialog has run, so the export the renderer
+ * sends next for this view may write `path` without asking again. Null drops it.
+ */
+export function grantSaveAsExport(
+  webContentsId: number,
+  grant: { kind: ExportKind; path: string } | null,
+): void {
+  if (grant) saveAsGrants.set(webContentsId, grant)
+  else saveAsGrants.delete(webContentsId)
+}
+
+/**
+ * Where the export goes: the path Save As granted, taken once and only when it
+ * is exactly that path for this kind; without one, the export's own dialog.
+ */
+async function targetOf(
+  e: IpcMainInvokeEvent,
+  kind: ExportKind,
+  request: unknown,
+  options: ExportIpcOptions,
+): Promise<string | null> {
+  const given = fieldOf(request, 'path')
+  if (given === undefined) return pickTarget(e, kind, fieldOf(request, 'suggestedName'), options)
+  const grant = saveAsGrants.get(e.sender.id)
+  if (typeof given !== 'string' || !grant || grant.kind !== kind || grant.path !== given) {
+    throw new Error('mindmap: this export path was not picked in Save As')
+  }
+  saveAsGrants.delete(e.sender.id)
+  return given
 }
 
 let blockerInstalled = false
@@ -254,9 +310,22 @@ export function registerMindmapExportIpc(options: ExportIpcOptions): void {
       return { ok: false, error: 'mindmap: bad picture export request' }
     }
     try {
-      const target = await pickTarget(e, 'png', fieldOf(request, 'suggestedName'), options)
+      const target = await targetOf(e, 'png', request, options)
       if (!target) return { ok: true, canceled: true }
       await atomicWriteFile(target, Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength))
+      return { ok: true, path: target }
+    } catch (err) {
+      return { ok: false, error: messageOf(err) }
+    }
+  })
+
+  ipcMain.handle(MINDMAP_CHANNELS.exportSvg, async (e, request: unknown): Promise<ExportResult> => {
+    const svg = fieldOf(request, 'svg')
+    if (!isMapSvg(svg)) return { ok: false, error: 'mindmap: bad SVG export request' }
+    try {
+      const target = await targetOf(e, 'svg', request, options)
+      if (!target) return { ok: true, canceled: true }
+      await atomicWriteFile(target, Buffer.from(`${XML_DECLARATION}${svg}`, 'utf8'))
       return { ok: true, path: target }
     } catch (err) {
       return { ok: false, error: messageOf(err) }
@@ -269,7 +338,7 @@ export function registerMindmapExportIpc(options: ExportIpcOptions): void {
       return { ok: false, error: 'mindmap: bad PDF export request' }
     }
     try {
-      const target = await pickTarget(e, 'pdf', fieldOf(request, 'suggestedName'), options)
+      const target = await targetOf(e, 'pdf', request, options)
       if (!target) return { ok: true, canceled: true }
       await atomicWriteFile(target, await pageToPdf(html))
       return { ok: true, path: target }
@@ -286,7 +355,7 @@ export function registerMindmapExportIpc(options: ExportIpcOptions): void {
         return { ok: false, error: 'mindmap: bad outline export request' }
       }
       try {
-        const target = await pickTarget(e, 'markdown', fieldOf(request, 'suggestedName'), options)
+        const target = await targetOf(e, 'markdown', request, options)
         if (!target) return { ok: true, canceled: true }
         await atomicWriteFile(target, Buffer.from(text, 'utf8'))
         return { ok: true, path: target }

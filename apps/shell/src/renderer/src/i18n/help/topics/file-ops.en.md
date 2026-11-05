@@ -26,6 +26,7 @@ Rules: the extension is preserved automatically; illegal characters, trailing do
 ## Save and Save As
 
 - **⌘S / ctrl+S** saves the current file; an untitled file asks for location and name first.
+- In most editors the file type list in the Save As dialog also offers the export formats (PDF, images, other document formats). Picking one of those writes a copy only; the open document and its tab stay on the original file. Images of several pages are split into `name-01.png`, `name-02.png`, ….
 - **Save As** writes a new file and leaves the original untouched; subsequent edits target the new file.
 - Every save is atomic (temp file + rename); a mid-write quit cannot corrupt the file.
 - Autosave follows each editor's toggle; a new document with no file of its own starts after its first save (see [Quick start](help://getting-started)).

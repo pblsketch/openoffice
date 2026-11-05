@@ -58,6 +58,19 @@ const MEMOS: MemoSnapshot[] = [
 ]
 
 describe('runSave', () => {
+  it('Save As with PDF picked exports nothing and commits nothing: the caller writes the PDF', async () => {
+    const ed = editor()
+    const host = api({ ok: true, path: 'C:/d/copy.pdf', export: 'pdf' })
+    const outcome = await runSave(ed, host, 'saveAs')
+    expect(outcome).toEqual({ kind: 'export', format: 'pdf', path: 'C:/d/copy.pdf' })
+    expect(host.beginSave).toHaveBeenCalledWith('saveAs')
+    expect(ed.exportHwp).not.toHaveBeenCalled()
+    expect(ed.exportHwpx).not.toHaveBeenCalled()
+    expect(host.commitSave).not.toHaveBeenCalled()
+    expect(host.abortSave).not.toHaveBeenCalled()
+    expect(ed.notifySaved).not.toHaveBeenCalled()
+  })
+
   it('hands the main process the widths the editor measured for the tabs it found', async () => {
     const ed = editor()
     const host = api({ ok: true, path: 'C:/d/a.hwpx', format: 'hwpx' }, undefined, SPOTS)

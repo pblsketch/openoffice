@@ -47,7 +47,8 @@ import { docxToOdt, isOdtOpenError, saveOdt, type ConversionReport } from '@geno
 import type { Dispatch, SetStateAction } from 'react'
 import { projectPanelText } from '@genoffice/ui'
 import type { AiDocContent, OpenDocxResult } from '../shared/ipc'
-import { docFormatOfPath, type DocFormat } from '../shared/open-file'
+import { docFormatOfPath, type DocFormat, type SaveAsKind } from '../shared/open-file'
+import { numberedExportPaths } from '@genoffice/electron-utils/numbered-export-paths'
 import {
   hfVariantsFromParsed,
   isOdtDoc,
@@ -1361,12 +1362,19 @@ async function saveOnce(
       if (saveAs || askPath) {
         // the dialog offers both formats; the picked extension is the format written
         // a restored copy whose file went missing suggests that file's place
+        // Save As proper also lists the export formats; a first save does not
         const pick = await window.desktop.pickSaveAsPath(
           autoName ?? doc.fileName,
           doc.filePath ?? doc.saveAsDefaultPath ?? null,
           format,
+          saveAs,
         )
         if (!pick) return false
+        if (pick.kind && pick.kind !== 'docx' && pick.kind !== 'odt') {
+          // a copy in another format: nothing about this document was saved
+          await exportSaveAsCopy(ctx, pick)
+          return false
+        }
         const target = docFormatOfPath(pick.path) ?? format
         if (target !== format) {
           return await saveWithFormatChange(ctx, editor, doc, pick.path, docx, target, auto)
@@ -1555,6 +1563,32 @@ async function saveOnce(
     return false
   } finally {
     ctx.saveInFlightRef.current = false
+  }
+}
+
+/**
+ * Save As › PDF, HTML, Markdown or page images: the regular export writes a
+ * copy to the path the Save As dialog picked (the main process authorized it),
+ * with no dialog of its own. The document keeps its path, its unsaved state,
+ * its recovery copy and its tab title. Resolves true when the copy was written.
+ */
+export function exportSaveAsCopy(
+  ctx: FileActionContext,
+  pick: { path: string; kind?: SaveAsKind; dir?: string; pdfPath?: string },
+): Promise<boolean> {
+  switch (pick.kind) {
+    case 'pdf':
+      return exportPdf(ctx, pick.path)
+    case 'html':
+      return exportHtml(ctx, pick.path)
+    case 'md':
+      return exportMarkdown(ctx, pick.path)
+    case 'png':
+      return pick.dir && pick.pdfPath
+        ? exportImages(ctx, { path: pick.path, dir: pick.dir, pdfPath: pick.pdfPath })
+        : Promise.resolve(false)
+    default:
+      return Promise.resolve(false)
   }
 }
 
@@ -1804,11 +1838,16 @@ const IMAGE_EXPORT_DPI = 192
 
 /** Export as images: the PDF export (same pagination, mixed paper and chunking)
     runs against a temp file, which pdf.js then rasterizes one page per PNG into
-    the picked folder. Resolves true only when every page was written. */
-export async function exportImages(ctx: FileActionContext): Promise<boolean> {
+    the picked folder. Resolves true only when every page was written.
+    `saveAsTarget` (Save As › page images) replaces the folder picker: one
+    name, numbered per page beside it when there is more than one page. */
+export async function exportImages(
+  ctx: FileActionContext,
+  saveAsTarget?: { path: string; dir: string; pdfPath: string },
+): Promise<boolean> {
   const { doc } = ctx
   if (!doc) return false
-  const target = await window.desktop.pickExportImagesTarget()
+  const target = saveAsTarget ?? (await window.desktop.pickExportImagesTarget())
   if (!target) return false
   ctx.setStatus(t('appExportingImages'))
   const fail = (error: string) => {
@@ -1849,6 +1888,11 @@ export async function exportImages(ctx: FileActionContext): Promise<boolean> {
       const count = pdfDoc.numPages
       ctx.setStatus(t('appExportImagesProgress', { count }))
       const pad = count >= 100 ? 3 : 2
+      const saveAsNames = saveAsTarget
+        ? numberedExportPaths(saveAsTarget.path, count).map((p) =>
+            p.slice(Math.max(p.lastIndexOf('/'), p.lastIndexOf('\\')) + 1),
+          )
+        : null
       const canvas = document.createElement('canvas')
       for (let i = 1; i <= count; i++) {
         const page = await pdfDoc.getPage(i)
@@ -1867,7 +1911,7 @@ export async function exportImages(ctx: FileActionContext): Promise<boolean> {
         }
         const r = await window.desktop.writeExportImage(
           target.dir,
-          `${baseName}-${String(i).padStart(pad, '0')}.png`,
+          saveAsNames?.[i - 1] ?? `${baseName}-${String(i).padStart(pad, '0')}.png`,
           btoa(b64),
         )
         if (!r.ok) return fail(r.error ?? '')

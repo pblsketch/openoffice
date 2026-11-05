@@ -68,6 +68,7 @@ export const cs = {
   zoomReset: 'Skutečná velikost',
   tbExport: 'Exportovat',
   exportPng: 'Exportovat jako obrázek (PNG)…',
+  exportSvg: 'Exportovat jako obrázek (SVG)…',
   exportPdf: 'Exportovat jako PDF…',
   exportMarkdown: 'Exportovat jako osnovu Markdown…',
   exportDone: 'Exportováno',

@@ -34,6 +34,10 @@ function fixture(kind: TabKind) {
     printMarkdown: vi.fn(),
     saveHtml: vi.fn(),
     printHtml: vi.fn(),
+    saveMindmap: vi.fn(),
+    printMindmap: vi.fn(),
+    saveHwp: vi.fn(),
+    printHwp: vi.fn(),
   }
   return { deps, contents }
 }
@@ -82,6 +86,23 @@ describe('document actions from a background tab context menu', () => {
       expect(save).toHaveBeenNthCalledWith(1, contents, 'save')
       expect(save).toHaveBeenNthCalledWith(2, contents, 'saveAs')
       expect(print).toHaveBeenCalledWith(contents)
+    },
+  )
+
+  it.each(['mindmap', 'hwp'] as const)(
+    'uses the %s save and print workflow of the clicked tab',
+    (kind) => {
+      const { deps, contents } = fixture(kind)
+      for (const action of ['save', 'saveAs', 'print'] as const)
+        runTabDocumentAction(deps, 'clicked', action)
+      const save = kind === 'mindmap' ? deps.saveMindmap : deps.saveHwp
+      const print = kind === 'mindmap' ? deps.printMindmap : deps.printHwp
+      expect(deps.tabs.activateTab).toHaveBeenCalledWith('clicked')
+      expect(save).toHaveBeenNthCalledWith(1, contents, 'save')
+      expect(save).toHaveBeenNthCalledWith(2, contents, 'saveAs')
+      expect(save).toHaveBeenCalledTimes(2)
+      expect(print).toHaveBeenCalledWith(contents)
+      expect(contents.send).not.toHaveBeenCalled()
     },
   )
 

@@ -25,9 +25,12 @@ import type {
   WorkbookPrintResult,
 } from '../shared/desktop-api'
 
+/// `presetPath`: a target the caller already authorized (Save As › PDF picked
+/// it in the Save As dialog), so no second dialog opens.
 export async function exportPdf(
   event: IpcMainInvokeEvent,
   request: WorkbookExportPdfRequest,
+  presetPath?: string,
 ): Promise<WorkbookExportPdfResult> {
   const parent = BrowserWindow.fromWebContents(event.sender)
   const dialogOptions = {
@@ -36,9 +39,11 @@ export async function exportPdf(
   }
   // Headless export has no dialog to authorize a path; the CLI already chose one.
   const selection =
-    isHeadlessMode() && request.outPath
-      ? { canceled: false as const, filePath: request.outPath }
-      : await showSaveDialogWithMemory(dialog, parent, dialogOptions)
+    presetPath !== undefined
+      ? { canceled: false as const, filePath: presetPath }
+      : isHeadlessMode() && request.outPath
+        ? { canceled: false as const, filePath: request.outPath }
+        : await showSaveDialogWithMemory(dialog, parent, dialogOptions)
   if (selection.canceled || !selection.filePath) return { canceled: true }
 
   const workDir = await mkdtemp(join(tmpdir(), 'ai-excel-pdf-'))

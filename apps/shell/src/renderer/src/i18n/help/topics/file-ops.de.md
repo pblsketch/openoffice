@@ -26,6 +26,7 @@ Regeln: Die Dateiendung bleibt automatisch erhalten; unzulässige Zeichen, Punkt
 ## Speichern und Speichern unter
 
 - **⌘S / ctrl+S** speichert die aktuelle Datei; bei einer Datei ohne Namen werden zuerst Ort und Name abgefragt.
+- In den meisten Editoren bietet die Dateitypliste im Dialog „Speichern unter“ auch die Exportformate an (PDF, Bilder, andere Dokumentformate). Wählt man eines davon, wird nur eine Kopie geschrieben; das geöffnete Dokument und sein Tab bleiben bei der ursprünglichen Datei. Bilder mehrerer Seiten werden auf `Name-01.png`, `Name-02.png` … aufgeteilt.
 - **Speichern unter** schreibt eine neue Datei und lässt das Original unberührt; weitere Änderungen gelten dann der neuen Datei.
 - Jedes Speichern erfolgt atomar (temporäre Datei plus Umbenennung); ein Abbruch mitten im Schreiben kann die Datei nicht beschädigen.
 - AutoSpeichern folgt dem Schalter des jeweiligen Editors; ein neues Dokument ohne eigene Datei beginnt erst nach dem ersten Speichern (siehe [Schnellstart](help://getting-started)).

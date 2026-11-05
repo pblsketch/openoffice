@@ -161,6 +161,9 @@ describe('Save As › PDF', () => {
     expect(options.filters.map((filter) => filter.extensions)).toEqual([
       ['md', 'markdown', 'txt', 'json'],
       ['pdf'],
+      ['docx'],
+      ['odt'],
+      ['png'],
     ])
     expect(options.defaultPath).toBe(join(directory, 'note'))
 

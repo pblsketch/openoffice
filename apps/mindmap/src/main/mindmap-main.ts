@@ -30,7 +30,7 @@
  */
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { basename, dirname, extname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { BrowserWindow, WebContentsView, app, dialog, ipcMain, shell } from 'electron'
 import type { WebContents } from 'electron'
 import {
@@ -60,10 +60,16 @@ import { registerMindmapAiIpc } from './ai-attachments'
 import { registerMindmapImageIpc } from './ai-image'
 import { registerLinkPreviewIpc } from './link-preview'
 import { atomicWriteFile } from './atomic-write'
-import { registerMindmapExportIpc } from './export-main'
+import { grantSaveAsExport, registerMindmapExportIpc } from './export-main'
 import { registerMindmapHandoffIpc } from './handoff-main'
 import { queueMindmapSeedFor, registerMindmapSeedIpc } from './seed-main'
 import { tm } from './i18n-main'
+import {
+  saveAsDefaultPath,
+  saveAsFilters,
+  saveAsTarget,
+  type MapSaveAsKind,
+} from './save-as-formats'
 import {
   resolveViewOpen,
   setViewOpenDecision,
@@ -476,17 +482,18 @@ function fileNameBase(name: string | undefined): string {
     .trim()
 }
 
-function withMapExtension(path: string): string {
-  return extname(path).toLowerCase() === MAP_EXTENSION ? path : `${path}${MAP_EXTENSION}`
-}
-
+/**
+ * Where a save goes, and as what. Save As lists the export types after .xmind
+ * (`save-as-formats.ts`); picking one of them is no save of the map.
+ */
 async function resolveSaveTarget(
   e: Electron.IpcMainInvokeEvent,
   mode: SaveMode,
   defaultName?: string,
-): Promise<string | 'canceled'> {
+): Promise<{ path: string; kind: MapSaveAsKind } | 'canceled'> {
   const current = savePathByWc.get(e.sender.id)
-  if (mode === 'save' && current) return current
+  if (mode === 'save' && current) return { path: current, kind: 'xmind' }
+  const offerExports = mode === 'saveAs'
   const win =
     BrowserWindow.fromWebContents(e.sender) ?? BrowserWindow.getFocusedWindow() ?? undefined
   // a restored map whose file is gone is offered that file's old place
@@ -501,11 +508,11 @@ async function resolveSaveTarget(
       ))
   const picked = await showSaveDialogWithMemory(dialog, win, {
     title: tm('dlgSaveTitle'),
-    defaultPath,
-    filters: [{ name: tm('filterMindmap'), extensions: [MAP_EXTENSION.slice(1)] }],
+    defaultPath: saveAsDefaultPath(defaultPath, offerExports),
+    filters: saveAsFilters(offerExports, tm),
   })
   if (picked.canceled || !picked.filePath) return 'canceled'
-  return withMapExtension(picked.filePath)
+  return saveAsTarget(picked.filePath, offerExports)
 }
 
 /** The window a question about this view sits over. */
@@ -621,8 +628,9 @@ function registerMindmapIpc(): void {
     const wcId = e.sender.id
     const waiter = saveWaiters.get(wcId)
     saveWaiters.delete(wcId)
+    // only a written map is a save: a cancel or a Save As copy is not
     const done = (result: SaveMindmapResult): SaveMindmapResult => {
-      waiter?.(result.ok && !('canceled' in result))
+      waiter?.(result.ok && 'path' in result)
       return result
     }
     if (!mayWrite(wcId)) {
@@ -664,10 +672,19 @@ function registerMindmapIpc(): void {
         typeof defaultName === 'string' ? defaultName : undefined,
       )
       if (target === 'canceled') return done({ ok: true, canceled: true })
+      if (target.kind !== 'xmind') {
+        // Save As › an export type: a copy, written by the export channel to
+        // exactly this path. The map keeps its file, state and recovery copy.
+        grantSaveAsExport(wcId, { kind: target.kind, path: target.path })
+        return done({ ok: true, export: { format: target.kind, path: target.path } })
+      }
       const previousPath = savePathByWc.get(wcId)
-      await atomicWriteFile(target, Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength))
-      await adoptWrittenPath(e.sender, target, previousPath)
-      return done({ ok: true, path: target })
+      await atomicWriteFile(
+        target.path,
+        Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength),
+      )
+      await adoptWrittenPath(e.sender, target.path, previousPath)
+      return done({ ok: true, path: target.path })
     } catch (err) {
       return done({ ok: false, error: err instanceof Error ? err.message : String(err) })
     }
@@ -816,6 +833,7 @@ function grantAndTrack(wc: WebContents, openPath?: string | null): void {
     unopenedByWc.delete(wcId)
     dirtyByWc.delete(wcId)
     docDiskStates.delete(wcId)
+    grantSaveAsExport(wcId, null)
     closeSaveWaiters.get(wcId)?.(false)
     closeSaveWaiters.delete(wcId)
     saveWaiters.get(wcId)?.(false)

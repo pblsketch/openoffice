@@ -26,6 +26,7 @@ Pravidla: přípona se zachovává automaticky; nepovolené znaky, tečky na kon
 ## Uložit a Uložit jako
 
 - **⌘S / ctrl+S** uloží aktuální soubor; soubor bez názvu se nejdřív zeptá na umístění a název.
+- Ve většině editorů nabízí seznam typů souborů v okně Uložit jako také exportní formáty (PDF, obrázky, jiné formáty dokumentů). Volba jednoho z nich zapíše jen kopii; otevřený dokument a jeho karta zůstávají u původního souboru. Obrázky více stránek se rozdělí na `název-01.png`, `název-02.png`, ….
 - **Uložit jako…** zapíše nový soubor a originál ponechá nedotčený; další úpravy se týkají nového souboru.
 - Každé uložení je atomické (dočasný soubor + přejmenování); ukončení uprostřed zápisu soubor nepoškodí.
 - Automatické ukládání se řídí přepínačem v každém editoru; nový dokument bez vlastního souboru začne až po prvním uložení (viz [Rychlý start](help://getting-started)).

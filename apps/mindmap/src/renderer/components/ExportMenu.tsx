@@ -1,6 +1,6 @@
 /**
- * The export button of the toolbar: a menu of the three exports (picture,
- * PDF, Markdown outline). Print is not here; it is in the File menu.
+ * The export button of the toolbar: a menu of the four exports (PNG and SVG
+ * picture, PDF, Markdown outline). Print is not here; it is in the File menu.
  *
  * The menu is the app's shared popover (`gs-dd-pop`), anchored to the button.
  * Like the other tool buttons, pressing it does not take the keyboard from
@@ -36,6 +36,7 @@ export const IconExport = () => (
 
 const ITEMS = [
   { format: 'png', label: 'exportPng' },
+  { format: 'svg', label: 'exportSvg' },
   { format: 'pdf', label: 'exportPdf' },
   { format: 'markdown', label: 'exportMarkdown' },
 ] as const

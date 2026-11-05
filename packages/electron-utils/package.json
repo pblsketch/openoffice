@@ -20,6 +20,7 @@
     "./generated-images": "./src/generated-images.ts",
     "./mcp-tools-bridge": "./src/mcp-tools-bridge.ts",
     "./mcp-tools-channels": "./src/mcp-tools-channels.ts",
+    "./numbered-export-paths": "./src/numbered-export-paths.ts",
     "./font-store": "./src/font-store.ts",
     "./office-encryption": "./src/office-encryption.ts",
     "./headless-export": "./src/headless-export.ts",

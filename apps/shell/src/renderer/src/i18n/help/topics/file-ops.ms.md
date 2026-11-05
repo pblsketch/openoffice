@@ -26,6 +26,7 @@ Peraturannya ialah seperti berikut. Sambungan dikekalkan secara automatik. Aksar
 ## Simpan dan Simpan Sebagai
 
 - **⌘S atau ctrl+S** menyimpan fail semasa. Fail tanpa tajuk akan meminta lokasi dan nama terlebih dahulu.
+- Dalam kebanyakan editor, senarai jenis fail dalam dialog Simpan Sebagai juga menawarkan format eksport (PDF, imej, format dokumen lain). Memilih salah satunya hanya menulis salinan; dokumen yang terbuka dan tabnya kekal pada fail asal. Imej beberapa halaman dipecahkan kepada `nama-01.png`, `nama-02.png`, ….
 - **Simpan Sebagai** menulis fail baharu dan membiarkan fail asal tidak berubah. Suntingan selepas itu akan disimpan ke fail baharu itu.
 - Setiap simpanan bersifat atomik, iaitu melalui fail sementara dan penamaan semula. Menutup aplikasi di tengah-tengah penulisan tidak akan merosakkan fail.
 - Simpan automatik mengikut suis setiap editor; dokumen baharu tanpa fail sendiri bermula selepas simpanan pertamanya (lihat [Mula pantas](help://getting-started)).

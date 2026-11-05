@@ -2275,6 +2275,10 @@ export const workbookSaveResultSchema = z.union([
       /// written; the renderer serializes the active sheet to this path via
       /// the CSV export channel instead.
       csvSaveAsPath: z.string().min(1).optional(),
+      /// The user picked PDF in the Save As dialog: no xlsx was written; the
+      /// renderer lays out the active sheet and exports it to this path (the
+      /// main process authorized it for one PDF export).
+      pdfSaveAsPath: z.string().min(1).optional(),
     })
     .strict(),
   z
@@ -2833,6 +2837,9 @@ export const workbookExportPdfRequestSchema = z
     /// Headless export mode only (--headless-export): write here instead of
     /// opening the save dialog. Ignored by a normal GUI session.
     outPath: z.string().min(1).max(4096).optional(),
+    /// Save As › PDF: the path the Save As dialog returned for this tab. The
+    /// main process accepts it once, only if that dialog produced it.
+    saveAsPath: z.string().min(1).max(4096).optional(),
     /// Print only: silent print on this printer ('' = the system default);
     /// absent opens the system print dialog.
     deviceName: z.string().max(255).optional(),

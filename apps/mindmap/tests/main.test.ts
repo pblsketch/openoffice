@@ -86,6 +86,7 @@ vi.mock('electron', () => ({
 }))
 
 import { createXmindDocument, openXmind } from '@genoffice/xmind-engine'
+import { getUiLang, setUiLang } from '@genoffice/i18n'
 import {
   configureMindmapRuntime,
   createMindmapView,
@@ -160,6 +161,7 @@ describe('channel names', () => {
       'saveIntoProject',
       'openLink',
       'exportPng',
+      'exportSvg',
       'exportPdf',
       'exportMarkdown',
       'print',
@@ -397,6 +399,113 @@ describe('saving', () => {
     await save(contents, { bytes: await mapBytes('Round trip'), mode: 'saveAs' })
     const reopened = await openXmind(readFileSync(target))
     expect(reopened.status).toBe('ok')
+  })
+})
+
+describe('Save As lists the export types after .xmind', () => {
+  type DialogOptions = { defaultPath: string; filters: { name: string; extensions: string[] }[] }
+  const dialogOptions = (): DialogOptions => showSaveDialog.mock.calls[0]!.at(-1) as DialogOptions
+
+  async function openMap(): Promise<{ contents: FakeContents; path: string; bytes: Uint8Array }> {
+    const path = join(dir, 'map.xmind')
+    const bytes = await mapBytes()
+    writeFileSync(path, bytes)
+    const contents = view(path)
+    await open(contents, path)
+    return { contents, path, bytes }
+  }
+
+  it('offers .xmind first, then PNG, SVG, PDF and the outline, with no extension in the suggestion', async () => {
+    const { contents } = await openMap()
+    showSaveDialog.mockResolvedValue({ canceled: true })
+    const lang = getUiLang()
+    setUiLang('en')
+    try {
+      await save(contents, { bytes: await mapBytes(), mode: 'saveAs' })
+    } finally {
+      setUiLang(lang)
+    }
+    const options = dialogOptions()
+    expect(options.filters.map((filter) => filter.extensions)).toEqual([
+      ['xmind'],
+      ['png'],
+      ['svg'],
+      ['pdf'],
+      ['md'],
+    ])
+    expect(options.filters.map((filter) => filter.name)).toEqual([
+      'Mind Maps',
+      'PNG Image',
+      'SVG Image',
+      'PDF Documents',
+      'Markdown Outline',
+    ])
+    expect(options.defaultPath).toBe(join(dir, 'map'))
+  })
+
+  it('the first save of a new map still offers only .xmind', async () => {
+    const contents = view(null)
+    showSaveDialog.mockResolvedValue({ canceled: true })
+    await save(contents, { bytes: await mapBytes(), mode: 'save', defaultName: 'Plan' })
+    const options = dialogOptions()
+    expect(options.filters.map((filter) => filter.extensions)).toEqual([['xmind']])
+    expect(options.defaultPath.endsWith('Plan.xmind')).toBe(true)
+  })
+
+  it('an export type writes nothing here: the map keeps its file, and that path is granted once to that export', async () => {
+    const { contents, path, bytes } = await openMap()
+    call(MINDMAP_CHANNELS.dirtyChanged, contents, true)
+    const target = join(dir, 'copy.md')
+    showSaveDialog.mockResolvedValue({ canceled: false, filePath: target })
+    const pending = requestMindmapSave(contents as never, 'saveAs')
+    const result = await save(contents, { bytes: await mapBytes('Edited'), mode: 'saveAs' })
+    expect(result).toEqual({ ok: true, export: { format: 'markdown', path: target } })
+    // no save happened: the menu hears false, the file and its state stay as they were
+    expect(await pending).toBe(false)
+    expect(readFileSync(path).equals(Buffer.from(bytes))).toBe(true)
+    expect(readdirSync(dir)).toEqual(['map.xmind'])
+    expect(mindmapFilePath(contents.id)).toBe(path)
+    expect(mindmapIsDirty(contents.id)).toBe(true)
+
+    // the export writes the picked path without asking again, once
+    const exportOutline = (request: unknown) =>
+      call<Promise<unknown>>(MINDMAP_CHANNELS.exportMarkdown, contents, request)
+    expect(await exportOutline({ text: '# x', suggestedName: 'x', path: target })).toEqual({
+      ok: true,
+      path: target,
+    })
+    expect(readFileSync(target, 'utf8')).toBe('# x')
+    expect(showSaveDialog).toHaveBeenCalledTimes(1)
+    expect(await exportOutline({ text: 'again', suggestedName: 'x', path: target })).toMatchObject({
+      ok: false,
+    })
+    expect(readFileSync(target, 'utf8')).toBe('# x')
+    expect(mindmapFilePath(contents.id)).toBe(path)
+  })
+
+  it('a path Save As did not pick, or picked for another type, is refused', async () => {
+    const { contents } = await openMap()
+    const target = join(dir, 'copy.pdf')
+    showSaveDialog.mockResolvedValue({ canceled: false, filePath: target })
+    await save(contents, { bytes: await mapBytes(), mode: 'saveAs' })
+    const outline = (path: string) =>
+      call<Promise<unknown>>(MINDMAP_CHANNELS.exportMarkdown, contents, {
+        text: 'x',
+        suggestedName: 'x',
+        path,
+      })
+    expect(await outline(join(dir, 'elsewhere.md'))).toMatchObject({ ok: false })
+    // the PDF grant is no outline grant
+    expect(await outline(target)).toMatchObject({ ok: false })
+    expect(readdirSync(dir)).toEqual(['map.xmind'])
+  })
+
+  it('a bare name or .xmind saves the map as before', async () => {
+    const { contents } = await openMap()
+    showSaveDialog.mockResolvedValue({ canceled: false, filePath: join(dir, 'bare') })
+    const result = await save(contents, { bytes: await mapBytes('Copy'), mode: 'saveAs' })
+    expect(result).toEqual({ ok: true, path: join(dir, 'bare.xmind') })
+    expect(mindmapFilePath(contents.id)).toBe(join(dir, 'bare.xmind'))
   })
 })
 

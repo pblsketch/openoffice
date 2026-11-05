@@ -232,9 +232,9 @@ import {
   prepareRecoveryBytes,
   prepareSaveBytes,
   recoveryExtFor,
-  withDocExtension,
   type DocFormat,
 } from './doc-format'
+import { saveAsDefaultPath, saveAsFilters, saveAsTarget } from './save-as-formats'
 import { copyImageDisplaySize, validCopyImageDataUrl } from './copy-image-guard'
 import {
   printJobOptions,
@@ -296,6 +296,10 @@ const tMain = createI18n({
     dlgExportHtml: '导出为 HTML',
     dlgExportMarkdown: '导出为 Markdown',
     dlgPickExportDir: '选择导出目录',
+    filterPdf: 'PDF 文档',
+    filterHtml: '网页 (HTML)',
+    filterMarkdown: 'Markdown 文档',
+    filterPageImages: '页面图片 (PNG)',
     errUnsupportedExt: '暂不支持 .{ext} 类型',
     errNotFile: '不是文件',
     errTooLarge: '超过 {mb}MB 上限',
@@ -426,6 +430,10 @@ const tMain = createI18n({
     dlgExportHtml: 'Export as HTML',
     dlgExportMarkdown: 'Export as Markdown',
     dlgPickExportDir: 'Choose Export Folder',
+    filterPdf: 'PDF Document',
+    filterHtml: 'Web Page (HTML)',
+    filterMarkdown: 'Markdown Document',
+    filterPageImages: 'Page Images (PNG)',
     errUnsupportedExt: '.{ext} files are not supported',
     errNotFile: 'not a file',
     errTooLarge: 'exceeds the {mb}MB limit',
@@ -556,6 +564,10 @@ const tMain = createI18n({
     dlgExportHtml: 'Xuất dưới dạng HTML',
     dlgExportMarkdown: 'Xuất dưới dạng Markdown',
     dlgPickExportDir: 'Chọn thư mục xuất',
+    filterPdf: 'Tài liệu PDF',
+    filterHtml: 'Trang web (HTML)',
+    filterMarkdown: 'Tài liệu Markdown',
+    filterPageImages: 'Ảnh từng trang (PNG)',
     errUnsupportedExt: 'Tệp .{ext} không được hỗ trợ',
     errNotFile: 'không phải là tệp',
     errTooLarge: 'vượt quá giới hạn {mb}MB',
@@ -687,6 +699,10 @@ const tMain = createI18n({
     dlgExportHtml: 'HTML としてエクスポート',
     dlgExportMarkdown: 'Markdown としてエクスポート',
     dlgPickExportDir: 'エクスポート先フォルダーの選択',
+    filterPdf: 'PDF ドキュメント',
+    filterHtml: 'Web ページ (HTML)',
+    filterMarkdown: 'Markdown ドキュメント',
+    filterPageImages: 'ページ画像 (PNG)',
     errUnsupportedExt: '.{ext} 形式には対応していません',
     errNotFile: 'ファイルではありません',
     errTooLarge: '{mb}MB の上限を超えています',
@@ -818,6 +834,10 @@ const tMain = createI18n({
     dlgExportHtml: 'HTML로 내보내기',
     dlgExportMarkdown: 'Markdown로 내보내기',
     dlgPickExportDir: '내보낼 폴더 선택',
+    filterPdf: 'PDF 문서',
+    filterHtml: '웹 페이지(HTML)',
+    filterMarkdown: 'Markdown 문서',
+    filterPageImages: '쪽 이미지(PNG)',
     errUnsupportedExt: '.{ext} 형식은 지원되지 않습니다',
     errNotFile: '파일이 아닙니다',
     errTooLarge: '{mb}MB 제한을 초과했습니다',
@@ -950,6 +970,10 @@ const tMain = createI18n({
     dlgExportHtml: 'Exporter au format HTML',
     dlgExportMarkdown: 'Exporter au format Markdown',
     dlgPickExportDir: "Choisir le dossier d'exportation",
+    filterPdf: 'Document PDF',
+    filterHtml: 'Page web (HTML)',
+    filterMarkdown: 'Document Markdown',
+    filterPageImages: 'Images des pages (PNG)',
     errUnsupportedExt: 'les fichiers .{ext} ne sont pas pris en charge',
     errNotFile: "n'est pas un fichier",
     errTooLarge: 'dépasse la limite de {mb} Mo',
@@ -1082,6 +1106,10 @@ const tMain = createI18n({
     dlgExportHtml: 'Als HTML exportieren',
     dlgExportMarkdown: 'Als Markdown exportieren',
     dlgPickExportDir: 'Exportordner auswählen',
+    filterPdf: 'PDF-Dokument',
+    filterHtml: 'Webseite (HTML)',
+    filterMarkdown: 'Markdown-Dokument',
+    filterPageImages: 'Seitenbilder (PNG)',
     errUnsupportedExt: '.{ext}-Dateien werden nicht unterstützt',
     errNotFile: 'keine Datei',
     errTooLarge: 'überschreitet das Limit von {mb} MB',
@@ -1213,6 +1241,10 @@ const tMain = createI18n({
     dlgExportHtml: 'Exportar como HTML',
     dlgExportMarkdown: 'Exportar como Markdown',
     dlgPickExportDir: 'Elegir carpeta de exportación',
+    filterPdf: 'Documento PDF',
+    filterHtml: 'Página web (HTML)',
+    filterMarkdown: 'Documento Markdown',
+    filterPageImages: 'Imágenes de páginas (PNG)',
     errUnsupportedExt: 'los archivos .{ext} no son compatibles',
     errNotFile: 'no es un archivo',
     errTooLarge: 'supera el límite de {mb} MB',
@@ -1345,6 +1377,10 @@ const tMain = createI18n({
     dlgExportHtml: 'ส่งออกเป็น HTML',
     dlgExportMarkdown: 'ส่งออกเป็น Markdown',
     dlgPickExportDir: 'เลือกโฟลเดอร์ส่งออก',
+    filterPdf: 'เอกสาร PDF',
+    filterHtml: 'หน้าเว็บ (HTML)',
+    filterMarkdown: 'เอกสาร Markdown',
+    filterPageImages: 'รูปภาพแต่ละหน้า (PNG)',
     errUnsupportedExt: 'ไม่รองรับไฟล์ .{ext}',
     errNotFile: 'ไม่ใช่ไฟล์',
     errTooLarge: 'เกินขีดจำกัด {mb}MB',
@@ -1476,6 +1512,10 @@ const tMain = createI18n({
     dlgExportHtml: 'Ekspor sebagai HTML',
     dlgExportMarkdown: 'Ekspor sebagai Markdown',
     dlgPickExportDir: 'Pilih Folder Ekspor',
+    filterPdf: 'Dokumen PDF',
+    filterHtml: 'Halaman Web (HTML)',
+    filterMarkdown: 'Dokumen Markdown',
+    filterPageImages: 'Gambar Halaman (PNG)',
     errUnsupportedExt: 'file .{ext} tidak didukung',
     errNotFile: 'bukan file',
     errTooLarge: 'melebihi batas {mb}MB',
@@ -1607,6 +1647,10 @@ const tMain = createI18n({
     dlgExportHtml: 'Экспорт в HTML',
     dlgExportMarkdown: 'Экспорт в Markdown',
     dlgPickExportDir: 'Выбор папки для экспорта',
+    filterPdf: 'Документ PDF',
+    filterHtml: 'Веб-страница (HTML)',
+    filterMarkdown: 'Документ Markdown',
+    filterPageImages: 'Изображения страниц (PNG)',
     errUnsupportedExt: 'файлы .{ext} не поддерживаются',
     errNotFile: 'не является файлом',
     errTooLarge: 'превышает лимит {mb} МБ',
@@ -1738,6 +1782,10 @@ const tMain = createI18n({
     dlgExportHtml: 'تصدير بتنسيق HTML',
     dlgExportMarkdown: 'تصدير بتنسيق Markdown',
     dlgPickExportDir: 'اختيار مجلد التصدير',
+    filterPdf: 'مستند PDF',
+    filterHtml: 'صفحة ويب (HTML)',
+    filterMarkdown: 'مستند Markdown',
+    filterPageImages: 'صور الصفحات (PNG)',
     errUnsupportedExt: 'ملفات .{ext} غير مدعومة',
     errNotFile: 'ليس ملفًا',
     errTooLarge: 'يتجاوز الحد {mb}MB',
@@ -1869,6 +1917,10 @@ const tMain = createI18n({
     dlgExportHtml: 'Exportar como HTML',
     dlgExportMarkdown: 'Exportar como Markdown',
     dlgPickExportDir: 'Escolher Pasta de Exportação',
+    filterPdf: 'Documento PDF',
+    filterHtml: 'Página da Web (HTML)',
+    filterMarkdown: 'Documento Markdown',
+    filterPageImages: 'Imagens das páginas (PNG)',
     errUnsupportedExt: 'arquivos .{ext} não são suportados',
     errNotFile: 'não é um arquivo',
     errTooLarge: 'excede o limite de {mb}MB',
@@ -2000,6 +2052,10 @@ const tMain = createI18n({
     dlgExportHtml: 'Esporta come HTML',
     dlgExportMarkdown: 'Esporta come Markdown',
     dlgPickExportDir: 'Scegli la cartella di esportazione',
+    filterPdf: 'Documento PDF',
+    filterHtml: 'Pagina web (HTML)',
+    filterMarkdown: 'Documento Markdown',
+    filterPageImages: 'Immagini delle pagine (PNG)',
     errUnsupportedExt: 'i file .{ext} non sono supportati',
     errNotFile: 'non è un file',
     errTooLarge: 'supera il limite di {mb} MB',
@@ -2131,6 +2187,10 @@ const tMain = createI18n({
     dlgExportHtml: 'Eksportuj jako HTML',
     dlgExportMarkdown: 'Eksportuj jako Markdown',
     dlgPickExportDir: 'Wybierz folder eksportu',
+    filterPdf: 'Dokument PDF',
+    filterHtml: 'Strona internetowa (HTML)',
+    filterMarkdown: 'Dokument Markdown',
+    filterPageImages: 'Obrazy stron (PNG)',
     errUnsupportedExt: 'pliki .{ext} nie są obsługiwane',
     errNotFile: 'to nie jest plik',
     errTooLarge: 'przekracza limit {mb} MB',
@@ -2262,6 +2322,10 @@ const tMain = createI18n({
     dlgExportHtml: 'Exportovat jako HTML',
     dlgExportMarkdown: 'Exportovat jako Markdown',
     dlgPickExportDir: 'Zvolte složku pro export',
+    filterPdf: 'Dokument PDF',
+    filterHtml: 'Webová stránka (HTML)',
+    filterMarkdown: 'Dokument Markdown',
+    filterPageImages: 'Obrázky stránek (PNG)',
     errUnsupportedExt: 'soubory .{ext} nejsou podporovány',
     errNotFile: 'není soubor',
     errTooLarge: 'překračuje limit {mb} MB',
@@ -2393,6 +2457,10 @@ const tMain = createI18n({
     dlgExportHtml: 'Exporteren als HTML',
     dlgExportMarkdown: 'Exporteren als Markdown',
     dlgPickExportDir: 'Exportmap kiezen',
+    filterPdf: 'PDF-document',
+    filterHtml: 'Webpagina (HTML)',
+    filterMarkdown: 'Markdown-document',
+    filterPageImages: 'Pagina-afbeeldingen (PNG)',
     errUnsupportedExt: '.{ext}-bestanden worden niet ondersteund',
     errNotFile: 'geen bestand',
     errTooLarge: 'overschrijdt de limiet van {mb} MB',
@@ -2524,6 +2592,10 @@ const tMain = createI18n({
     dlgExportHtml: 'Eksport sebagai HTML',
     dlgExportMarkdown: 'Eksport sebagai Markdown',
     dlgPickExportDir: 'Pilih Folder Eksport',
+    filterPdf: 'Dokumen PDF',
+    filterHtml: 'Halaman Web (HTML)',
+    filterMarkdown: 'Dokumen Markdown',
+    filterPageImages: 'Imej Halaman (PNG)',
     errUnsupportedExt: 'fail .{ext} tidak disokong',
     errNotFile: 'bukan fail',
     errTooLarge: 'melebihi had {mb}MB',
@@ -2655,6 +2727,10 @@ const tMain = createI18n({
     dlgExportHtml: 'ייצוא כ-HTML',
     dlgExportMarkdown: 'ייצוא כ-Markdown',
     dlgPickExportDir: 'בחירת תיקיית ייצוא',
+    filterPdf: 'מסמך PDF',
+    filterHtml: 'דף אינטרנט (HTML)',
+    filterMarkdown: 'מסמך Markdown',
+    filterPageImages: 'תמונות עמודים (PNG)',
     errUnsupportedExt: 'קובצי .{ext} אינם נתמכים',
     errNotFile: 'אינו קובץ',
     errTooLarge: 'חורג מהמגבלה של {mb}MB',
@@ -2786,6 +2862,10 @@ const tMain = createI18n({
     dlgExportHtml: 'HTML के रूप में निर्यात करें',
     dlgExportMarkdown: 'Markdown के रूप में निर्यात करें',
     dlgPickExportDir: 'निर्यात फ़ोल्डर चुनें',
+    filterPdf: 'PDF दस्तावेज़',
+    filterHtml: 'वेब पेज (HTML)',
+    filterMarkdown: 'Markdown दस्तावेज़',
+    filterPageImages: 'पेज छवियाँ (PNG)',
     errUnsupportedExt: '.{ext} फ़ाइलें समर्थित नहीं हैं',
     errNotFile: 'फ़ाइल नहीं है',
     errTooLarge: '{mb}MB की सीमा से अधिक है',
@@ -2917,6 +2997,10 @@ const tMain = createI18n({
     dlgExportHtml: '匯出為 HTML',
     dlgExportMarkdown: '匯出為 Markdown',
     dlgPickExportDir: '選擇匯出目錄',
+    filterPdf: 'PDF 文件',
+    filterHtml: '網頁 (HTML)',
+    filterMarkdown: 'Markdown 文件',
+    filterPageImages: '頁面圖片 (PNG)',
     errUnsupportedExt: '暫不支援 .{ext} 類型',
     errNotFile: '不是檔案',
     errTooLarge: '超過 {mb}MB 上限',
@@ -5164,16 +5248,24 @@ export function registerDocsIpc(): void {
   // Save As runs in two steps: the dialog picks the path (its extension picks
   // the format: Word or ODT, whatever the document is now), then the renderer
   // builds that format — converting and confirming a format change — and
-  // writes to exactly the picked path.
+  // writes to exactly the picked path. With `offerExports` (Save As proper)
+  // the dialog also lists PDF, HTML, Markdown and page images: those picks are
+  // copies the renderer's export code writes to the authorized path, and the
+  // document keeps its path and unsaved state.
   ipcMain.handle(
     'docs:save-as-pick',
-    async (event, defaultName: string, sourcePath?: string | null, format?: unknown) => {
+    async (
+      event,
+      defaultName: string,
+      sourcePath?: string | null,
+      format?: unknown,
+      offerExports?: unknown,
+    ) => {
       // an orphaned (closed-tab) renderer must not open dialogs or land new files
       if (tornDownWcIds.has(event.sender.id)) return null
       if (typeof defaultName !== 'string') return null
       const current: DocFormat = format === 'odt' ? 'odt' : 'docx'
-      const word = { name: tm('filterWord'), extensions: ['docx'] }
-      const odt = { name: tm('filterOdt'), extensions: ['odt'] }
+      const exportsOffered = offerExports === true
       const source = typeof sourcePath === 'string' ? sourcePath : null
       // a never-saved document whose panel has a project is offered in that folder (spec 6)
       const projectDir =
@@ -5182,18 +5274,36 @@ export function registerDocsIpc(): void {
           : await shellHooks?.newDocumentDir?.(event.sender.id)
       const result = await saveDialog(event, {
         title: tm('dlgSaveAs'),
-        defaultPath:
+        defaultPath: saveAsDefaultPath(
           projectDir && basename(defaultName) === defaultName
             ? join(projectDir, defaultName)
             : saveAsSuggestion(source, defaultName),
+          exportsOffered,
+        ),
         // the document's own format comes first: it is the dialog's default
-        filters: current === 'odt' ? [odt, word] : [word, odt],
+        filters: saveAsFilters(current, exportsOffered, (key) => tm(key)),
       })
       if (result.canceled || !result.filePath) return null
-      if (tornDownWcIds.has(event.sender.id)) return null
-      const filePath = withDocExtension(result.filePath, current)
-      saveAsPicks.set(event.sender.id, filePath)
-      return { path: filePath }
+      const wcId = event.sender.id
+      if (tornDownWcIds.has(wcId)) return null
+      const picked = saveAsTarget(result.filePath, current, exportsOffered)
+      if (picked.kind === 'docx' || picked.kind === 'odt') {
+        saveAsPicks.set(wcId, picked.path)
+        return picked
+      }
+      if (picked.kind === 'png') {
+        // page images: the PDF export writes a temp file that is rasterized
+        // into the picked name, numbered per page beside it
+        const dir = dirname(picked.path)
+        const pdfPath = join(tmpdir(), `genoffice-docs-images-${randomUUID()}.pdf`)
+        allowPdfWrite(wcId, pdfPath)
+        imageExportTemps.set(wcId, (imageExportTemps.get(wcId) ?? new Set()).add(pdfPath))
+        imageExportDirs.set(wcId, (imageExportDirs.get(wcId) ?? new Set()).add(dir))
+        return { ...picked, dir, pdfPath }
+      }
+      // PDF, HTML, Markdown: the export handlers accept exactly this path
+      allowPdfWrite(wcId, picked.path)
+      return picked
     },
   )
 
@@ -5826,7 +5936,7 @@ export function registerDocsIpc(): void {
       if (
         typeof fileName !== 'string' ||
         fileName !== basename(fileName) ||
-        !/^[^/\\]+\.png$/.test(fileName)
+        !/^[^/\\]+\.png$/i.test(fileName)
       ) {
         return { ok: false, error: 'invalid image file name' }
       }

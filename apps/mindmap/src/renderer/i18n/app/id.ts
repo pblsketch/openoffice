@@ -68,6 +68,7 @@ export const id = {
   zoomReset: 'Ukuran sebenarnya',
   tbExport: 'Ekspor',
   exportPng: 'Ekspor sebagai gambar (PNG)…',
+  exportSvg: 'Ekspor sebagai gambar (SVG)…',
   exportPdf: 'Ekspor sebagai PDF…',
   exportMarkdown: 'Ekspor sebagai kerangka Markdown…',
   exportDone: 'Telah diekspor',
