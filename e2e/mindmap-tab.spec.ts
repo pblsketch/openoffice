@@ -162,7 +162,7 @@ test.describe('mind map editor in the shell', () => {
       await page.screenshot({ path: screenshotPath('mindmap-tab-strip') })
       await map.screenshot({ path: screenshotPath('mindmap-new-editor') })
 
-      // ── its own menu: File with the three exports and Print, Edit with undo / redo
+      // ── its own menu: File with the four exports and Print, Edit with undo / redo
       const file = await menuLabels(app, 'File')
       expect(file).toEqual([
         'New',
@@ -177,6 +177,7 @@ test.describe('mind map editor in the shell', () => {
         'Make Another Document from This',
         '-',
         'Export as Image (PNG)…',
+        'Export as Image (SVG)…',
         'Export as PDF…',
         'Export as Markdown Outline…',
         '-',
@@ -227,6 +228,7 @@ test.describe('mind map editor in the shell', () => {
       })
       for (const label of [
         'Export as Image (PNG)…',
+        'Export as Image (SVG)…',
         'Export as PDF…',
         'Export as Markdown Outline…',
         'Print…',
@@ -237,6 +239,7 @@ test.describe('mind map editor in the shell', () => {
         await app.evaluate(() => (globalThis as unknown as { __sent: unknown[][] }).__sent),
       ).toEqual([
         ['mindmap:export-request', 'png'],
+        ['mindmap:export-request', 'svg'],
         ['mindmap:export-request', 'pdf'],
         ['mindmap:export-request', 'markdown'],
         ['mindmap:print-request'],
