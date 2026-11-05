@@ -45,6 +45,16 @@ const MAX_TABLE_CELLS = 400
 const MAX_REPORTED_CHARS = 200
 /** Tables one listTables call lists. */
 const MAX_LISTED_TABLES = 200
+/** Cells one checkLayout call measures; beyond this the answer says it saw part. */
+const MAX_LAYOUT_CELLS = 4000
+/** Cells that do not fit one checkLayout call lists. */
+const MAX_LISTED_OVERFLOWS = 100
+/**
+ * How much of its height a line may pass the cell's bottom edge and still read whole: the
+ * line box is the font's em box, and the glyphs stop short of its bottom, so text that only
+ * touches the border (a tight row) is not reported.
+ */
+const LAYOUT_SLACK_LINE = 0.2
 /** Cells one readTable call returns; a longer table is read on from the row it names. */
 const MAX_READ_CELLS = 600
 /** Characters of one cell handed back by readTable. */
@@ -2858,6 +2868,83 @@ function tablesOf(doc) {
 }
 
 /**
+ * The table cells whose text does not fit, as the pages are laid out: a row keeps the height
+ * the file gives it, so a line drawn past the cell's bottom edge is cut off on the page and
+ * in print. Each cell's lines (getSelectionRectsInCellByPath, as the change marks use) are
+ * held against the cell's box on the same page (getTableCellBboxesByPath); a cell that runs
+ * on to the next page is measured page by page. `over` is how far the text goes past the
+ * edge, in mm. Reads only.
+ */
+function overflowsOf(doc) {
+  const { tables, partial } = tablesOf(doc)
+  const found = new Map()
+  let measured = 0
+  let truncated = partial
+  const toMm = (px) => Math.round(((px * 25.4) / 96) * 10) / 10
+  tables.forEach((table, index) => {
+    let boxes
+    try {
+      boxes = parse(doc.getTableCellBboxesByPath(table.sec, table.para, JSON.stringify(table.path)))
+    } catch {
+      return
+    }
+    for (const box of Array.isArray(boxes) ? boxes : []) {
+      if (measured >= MAX_LAYOUT_CELLS) {
+        truncated = true
+        return
+      }
+      measured += 1
+      let rects
+      try {
+        const first = JSON.stringify(cellAt(table.path, box.cellIdx, 0))
+        const last = doc.getCellParagraphCountByPath(table.sec, table.para, first) - 1
+        if (last < 0) continue
+        const end = doc.getCellParagraphLengthByPath(
+          table.sec,
+          table.para,
+          JSON.stringify(cellAt(table.path, box.cellIdx, last)),
+        )
+        if (last === 0 && end === 0) continue
+        rects = parse(
+          doc.getSelectionRectsInCellByPath(table.sec, table.para, first, 0, 0, last, end),
+        )
+      } catch {
+        continue
+      }
+      const lines = (Array.isArray(rects) ? rects : []).filter(
+        (r) => r.pageIndex === box.pageIndex && r.width > 0,
+      )
+      if (lines.length === 0) continue
+      const lowest = lines.reduce((a, b) => (b.y + b.height > a.y + a.height ? b : a))
+      const below = lowest.y + lowest.height - (box.y + box.h)
+      if (below <= lowest.height * LAYOUT_SLACK_LINE) continue
+      const key = `${index}:${box.cellIdx}`
+      if (found.has(key)) continue
+      found.set(key, {
+        table: index + 1,
+        row: box.row + 1,
+        col: box.col + 1,
+        page: box.pageIndex + 1,
+        over: toMm(below),
+        text: clip(
+          paragraphsOf(cellBox(doc, table, box.cellIdx))
+            .join(' ')
+            .trim(),
+          PREVIEW_CHARS,
+        ),
+      })
+    }
+  })
+  const cells = [...found.values()]
+  return {
+    count: cells.length,
+    cells: cells.slice(0, MAX_LISTED_OVERFLOWS),
+    measured,
+    ...(truncated ? { partial: true } : {}),
+  }
+}
+
+/**
  * Table `number` (as listTables numbers them) when it sits in a body paragraph, with its
  * cells; otherwise a refusal. The engine merges and splits cells by table and cell number,
  * which cannot name a table inside another table's cell.
@@ -5599,6 +5686,13 @@ export const agentPlugin = {
           ),
         )
       }),
+
+      /**
+       * The table cells whose text does not fit where it is drawn (cut off on the page and
+       * in print), with the table number listTables gives, the 1-based row and column, the
+       * page, the edge and how far past it in mm. Reads only.
+       */
+      checkLayout: guarded(() => host.read(overflowsOf)),
 
       /**
        * The tables of the document in reading order, numbered from 1; a table inside a cell

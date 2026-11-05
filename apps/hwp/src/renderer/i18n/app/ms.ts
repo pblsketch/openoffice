@@ -139,6 +139,7 @@ export const ms = {
   aiToolMergeCells: 'Jadual {table} · sel digabungkan',
   aiToolSplitCell: 'Jadual {table} · sel dipecah',
   aiToolTables: 'Jadual disemak · {count}',
+  aiToolLayout: 'Susun atur disemak · {count} sel tidak muat',
   aiToolReadTable: 'Jadual {table} dibaca',
   aiToolFillCells: 'Jadual {table} · {count} sel diisi',
   aiToolCheckBoxes: 'Jadual {table} · {count} kotak ditanda',

@@ -140,6 +140,7 @@ export const cs = {
   aiToolMergeCells: 'Tabulka {table} · sloučení buněk',
   aiToolSplitCell: 'Tabulka {table} · rozdělení buňky',
   aiToolTables: 'Tabulky zkontrolovány · {count}',
+  aiToolLayout: 'Rozvržení zkontrolováno · nevejde se buněk: {count}',
   aiToolReadTable: 'Tabulka {table} přečtena',
   aiToolFillCells: 'Tabulka {table} · vyplněno buněk: {count}',
   aiToolCheckBoxes: 'Tabulka {table} · zaškrtnuto polí: {count}',

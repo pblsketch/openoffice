@@ -134,6 +134,7 @@ export const zh = {
   aiToolMergeCells: '表 {table} · 合并单元格',
   aiToolSplitCell: '表 {table} · 拆分单元格',
   aiToolTables: '已查看表格 · {count} 个',
+  aiToolLayout: '已检查版面 · {count} 个单元格放不下',
   aiToolReadTable: '已读取表格 {table}',
   aiToolFillCells: '表格 {table} · 已填写 {count} 个单元格',
   aiToolCheckBoxes: '表格 {table} · 已勾选 {count} 个选框',

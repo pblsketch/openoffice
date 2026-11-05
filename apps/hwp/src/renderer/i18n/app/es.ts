@@ -142,6 +142,7 @@ export const es = {
   aiToolMergeCells: 'Tabla {table} · celdas combinadas',
   aiToolSplitCell: 'Tabla {table} · celda dividida',
   aiToolTables: 'Tablas revisadas · {count}',
+  aiToolLayout: 'Diseño revisado · {count} celdas no caben',
   aiToolReadTable: 'Tabla {table} leída',
   aiToolFillCells: 'Tabla {table} · {count} celda(s) rellenada(s)',
   aiToolCheckBoxes: 'Tabla {table} · {count} casilla(s) marcada(s)',

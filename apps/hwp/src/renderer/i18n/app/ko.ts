@@ -138,6 +138,7 @@ export const ko = {
   aiToolMergeCells: '표 {table} · 칸 합치기',
   aiToolSplitCell: '표 {table} · 칸 나누기',
   aiToolTables: '표 {count}개 확인',
+  aiToolLayout: '배치 확인 · 넘치는 칸 {count}개',
   aiToolReadTable: '표 {table} 읽음',
   aiToolFillCells: '표 {table} · 칸 {count}개 채움',
   aiToolCheckBoxes: '표 {table} · 선택 상자 {count}개 체크',

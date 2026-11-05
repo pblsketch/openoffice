@@ -139,6 +139,7 @@ export const ja = {
   aiToolMergeCells: '表 {table} · セル結合',
   aiToolSplitCell: '表 {table} · セル分割',
   aiToolTables: '表を確認 · {count} 個',
+  aiToolLayout: 'レイアウトを確認 · はみ出すセル {count} 個',
   aiToolReadTable: '表 {table} を読み取り',
   aiToolFillCells: '表 {table} · セル {count} 個に入力',
   aiToolCheckBoxes: '表 {table} · チェックボックス {count} 個を選択',

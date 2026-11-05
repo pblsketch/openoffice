@@ -139,6 +139,7 @@ export const nl = {
   aiToolMergeCells: 'Tabel {table} · cellen samengevoegd',
   aiToolSplitCell: 'Tabel {table} · cel gesplitst',
   aiToolTables: 'Tabellen bekeken · {count}',
+  aiToolLayout: 'Opmaak bekeken · {count} cellen passen niet',
   aiToolReadTable: 'Tabel {table} gelezen',
   aiToolFillCells: 'Tabel {table} · {count} cel(len) ingevuld',
   aiToolCheckBoxes: 'Tabel {table} · {count} vakje(s) aangevinkt',

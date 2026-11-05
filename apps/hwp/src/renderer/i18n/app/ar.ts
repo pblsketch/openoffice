@@ -137,6 +137,7 @@ export const ar = {
   aiToolMergeCells: 'الجدول {table} · دمج الخلايا',
   aiToolSplitCell: 'الجدول {table} · تقسيم خلية',
   aiToolTables: 'تم فحص الجداول · {count}',
+  aiToolLayout: 'تم فحص التخطيط · {count} خلايا لا يتسع نصها',
   aiToolReadTable: 'تمت قراءة الجدول {table}',
   aiToolFillCells: 'الجدول {table} · تم ملء {count} خلية',
   aiToolCheckBoxes: 'الجدول {table} · تم تحديد {count} مربع اختيار',
