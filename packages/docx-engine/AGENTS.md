@@ -37,7 +37,7 @@ docx 한 파일의 읽기와 쓰기 전부를 맡는다.
 - 깨진 XML이 문서 전체를 실패시키면 안 된다. 파싱하지 못한 문단은 원본 바이트를 지닌 `passthrough` 블록이 되고, 읽히지 않는 `styles.xml`은 빈 스타일 표로 내려간다.
 - Electron과 UI에 의존하지 않는다. 기본 진입점은 Docs 렌더러 번들에 들어가므로 `node:*`를 import하지 않는다. Node 전용 코드는 `./zip-splice` 하위 경로에만 두고, `zip-load.ts`가 `zip-splice`를 import하게 만들지 않는다(테스트가 막고 있다).
 - `src/vendor/`는 가져온 원본과 바이트가 같아야 한다. 포매터 대상에서도 빠져 있다.
-- 엔진 동작은 원본(GenOffice)의 수정을 받아올 때 바뀐다. 예외는 사람이 정해 아래 "원본과 다른 점"에 적은 수정뿐이다(결정 0092). 파일 이동, 재포맷, 이름 변경을 하지 않고 `@genoffice/*` 이름을 그대로 둔다.
+- 엔진 동작은 원본(GenOffice)의 수정을 받아올 때 바뀐다. 이 저장소에서 고칠 때는 사람이 정하고, 고친 것과 그것을 지키는 시험을 "원본과 다른 점" 절에 적는다(결정 0092). 지금은 그런 수정이 없다. 파일 이동, 재포맷, 이름 변경을 하지 않고 `@genoffice/*` 이름을 그대로 둔다.
 
 ## 이 모듈의 방식
 
@@ -53,11 +53,7 @@ docx 한 파일의 읽기와 쓰기 전부를 맡는다.
 
 ## 원본과 다른 점 (결정 0092)
 
-원본의 개선을 받아온 뒤 아래 시험이 모두 통과해야 한다. 충돌을 풀 때 이 동작이 사라지지 않게 한다. 같은 수정을 원본 #2331에 PR(원본 #2364)로 보냈다. 원본이 받아들이면 그 항목을 지운다.
-
-- **머리글·꼬리말의 `SECTIONPAGES`.** 필드는 `SECTION_PAGES_MARK`(U+E002)가 되고, 고친 머리글·꼬리말을 저장하면 `SECTIONPAGES` 필드로 돌아간다. `PAGE`·`NUMPAGES`보다 먼저 판정한다. 단어 경계 검사로는 `SECTIONPAGES` 안의 `PAGES`를 알아보지 못한다. `types.ts`, `parse.ts`의 `hfContentFromXml`, `patch.ts`의 `headerFooterPartXml`. 시험 `tests/hf-section-pages.test.ts`.
-- **직접 만든 스타일의 목차 줄.** `PAGEREF`가 있는 문단은 스타일 이름이 `toc N`이 아니어도 목차 줄로 읽는다. 조건은 스타일 사슬을 거친 탭 정의에 오른쪽 탭이 있고, 문단 안에 런 단위 탭이 있는 것이다. 채움 문자도 그 탭에서 읽는다. `parse-fields.ts`의 `unstyledTocEntry`, `tocLeaderOf`. 시험 `tests/field-display.test.ts`의 "an entry whose right tab stop comes only from a custom style is still a toc line (#2331)", "a PAGEREF cross-reference without a run tab stays plain text under a right-tab style".
-- **쪽 기준 도형의 감싸기.** 쪽·여백 기준이면서 감싸기(wrapNone 아님)가 있는 도형 가운데 본문 맨 위를 덮는 wrapTopAndBottom 띠, 칸 폭을 거의 다 덮는 도형, 본문 영역 밖에 통째로 있는 도형은 흐름에서 빼서 쪽 위치에 그린다. 칸 안의 좁은 상자는 예전처럼 흐름에 둔다. 쪽 기준 세로 정렬(`wp:align`, 백분율 위치)은 흐름 밖에 그려지는 상자에 적용한다. `parse.ts`의 `applyAnchor`와 첫 쪽 고정 경로, `parse-drawing-geometry.ts`의 `resolveAnchorPageYEmu`. 시험 `tests/page-anchored-wrap.test.ts` 전체, `tests/wrap-topbottom-band.test.ts`의 "floats a page-relative topAndBottom box and bands it from the body top", "keeps a narrow page-relative topAndBottom box low on the page in the flow".
+지금은 없다. 결정 0092의 네 수정(머리글·꼬리말의 `SECTIONPAGES`, 직접 만든 스타일의 목차 줄, 쪽 기준 도형의 감싸기, 대체 글꼴)은 원본 #2364로 원본에 들어갔고, 2026-11-03 받아오기 뒤 엔진 파일이 원본과 같다. 그 시험(`tests/hf-section-pages.test.ts`, `tests/field-display.test.ts`, `tests/page-anchored-wrap.test.ts`, `tests/wrap-topbottom-band.test.ts`)은 원본의 것으로 남는다.
 
 ## 테스트
 

@@ -12,7 +12,8 @@
     "./user-skill-names": "./src/user-skill-names.ts",
     "./user-mcp/names": "./src/user-mcp/names.ts",
     "./user-mcp/result": "./src/user-mcp/result.ts",
-    "./skill-mcp-refs": "./src/skill-mcp-refs.ts"
+    "./skill-mcp-refs": "./src/skill-mcp-refs.ts",
+    "./mind-map": "./src/mind-map.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

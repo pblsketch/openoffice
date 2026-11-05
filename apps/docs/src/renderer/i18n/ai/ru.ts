@@ -199,4 +199,7 @@ export const ru = {
   aiMindMapReset: 'Сбросить вид',
   aiMindMapExpand: 'Развернуть ветку',
   aiMindMapCollapse: 'Свернуть ветку',
+  aiMindMapToggleLayout: 'Сменить макет',
+  aiMindMapLayoutTopDown: 'Переключиться на макет сверху вниз',
+  aiMindMapLayoutLeftRight: 'Переключиться на макет слева направо',
 } satisfies Record<keyof typeof zh, string>

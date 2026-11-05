@@ -12,7 +12,7 @@ use xlsx_sidecar::archive::{
     scan_entries_for_text,
 };
 use xlsx_sidecar::find::FindCellsRequest;
-use xlsx_sidecar::recalc::{RecalcCache, RecalcEdit, RecalcRead, recalc_cells};
+use xlsx_sidecar::recalc::{RecalcCache, RecalcEdit, RecalcRead, recalc_cells_reporting};
 use xlsx_sidecar::{CellRange, SidecarError, WorkbookSessions};
 
 const PROTOCOL_VERSION: u8 = 1;
@@ -100,8 +100,25 @@ enum Command {
     #[serde(rename_all = "camelCase")]
     RecalcCells {
         path: PathBuf,
+        #[serde(default)]
         edits: Vec<RecalcEdit>,
+        #[serde(default)]
         reads: Vec<RecalcRead>,
+        /// Also report formula cells whose cached `<v>` disagrees with the
+        /// engine's computed value (the host refreshes them on save), plus
+        /// array spill cells it cannot refresh. Omitted from the answer when
+        /// the engine skips the audit (a `date1904` workbook): the result then
+        /// carries `auditSkipped` with the reason instead.
+        #[serde(default)]
+        report_stale: bool,
+    },
+    #[serde(rename_all = "camelCase")]
+    UpdateExternalLinks {
+        path: PathBuf,
+    },
+    #[serde(rename_all = "camelCase")]
+    ReadExternalLinks {
+        path: PathBuf,
     },
 }
 
@@ -216,13 +233,16 @@ impl RecalcWorker {
         path: &PathBuf,
         edits: &[RecalcEdit],
         reads: &[RecalcRead],
+        report_stale: bool,
     ) -> Response {
         let mut cache = self
             .cache
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         self.drain_purges(&mut cache);
-        let response = match recalc_cells(&mut cache, path, edits, reads).and_then(to_json_value) {
+        let response = match recalc_cells_reporting(&mut cache, path, edits, reads, report_stale)
+            .and_then(to_json_value)
+        {
             Ok(value) => Response::success(request_id, value),
             Err(error) => Response::from_error(request_id, error),
         };
@@ -242,6 +262,7 @@ impl RecalcWorker {
         path: PathBuf,
         edits: Vec<RecalcEdit>,
         reads: Vec<RecalcRead>,
+        report_stale: bool,
         output: &SharedOutput,
     ) -> Option<Response> {
         if self
@@ -266,7 +287,7 @@ impl RecalcWorker {
             .name("xlsx-recalc".into())
             .spawn(move || {
                 let reset = BusyReset(Arc::clone(&worker.busy));
-                let response = worker.run(request_id, &path, &edits, &reads);
+                let response = worker.run(request_id, &path, &edits, &reads, report_stale);
                 // Clear busy before replying: a sequential caller issues its
                 // next recalc the moment the response lands, and hitting the
                 // still-set flag bounced it with recalc_busy.
@@ -642,8 +663,19 @@ fn handle_request(
             )
             .and_then(to_json_value)
         }
-        Command::RecalcCells { path, edits, reads } => {
-            return recalc.dispatch(request_id, path, edits, reads, output);
+        Command::RecalcCells {
+            path,
+            edits,
+            reads,
+            report_stale,
+        } => {
+            return recalc.dispatch(request_id, path, edits, reads, report_stale, output);
+        }
+        Command::UpdateExternalLinks { path } => {
+            xlsx_sidecar::external_links::update_external_link_values(&path).and_then(to_json_value)
+        }
+        Command::ReadExternalLinks { path } => {
+            xlsx_sidecar::external_links::read_external_link_statuses(&path).and_then(to_json_value)
         }
     };
     Some(match result {
@@ -734,7 +766,7 @@ mod tests {
         let in_flight = InFlightRequest::new();
         let output: SharedOutput = Arc::new(Mutex::new(BufWriter::new(io::stdout())));
 
-        let first = expect_ok(recalc.run("r".into(), &source, &[], &recalc_reads()));
+        let first = expect_ok(recalc.run("r".into(), &source, &[], &recalc_reads(), false));
         assert_eq!(first["cached"], serde_json::json!(false));
 
         let save = serde_json::json!({
@@ -759,7 +791,7 @@ mod tests {
             .unwrap(),
         );
 
-        let second = expect_ok(recalc.run("r2".into(), &source, &[], &recalc_reads()));
+        let second = expect_ok(recalc.run("r2".into(), &source, &[], &recalc_reads(), false));
         assert_eq!(second["cached"], serde_json::json!(true));
     }
 
@@ -907,9 +939,9 @@ mod tests {
         write_workbook(&source);
         let recalc = RecalcWorker::new();
 
-        expect_ok(recalc.run("r".into(), &source, &[], &recalc_reads()));
+        expect_ok(recalc.run("r".into(), &source, &[], &recalc_reads(), false));
         recalc.queue_purge(&source);
-        let second = expect_ok(recalc.run("r2".into(), &source, &[], &recalc_reads()));
+        let second = expect_ok(recalc.run("r2".into(), &source, &[], &recalc_reads(), false));
         assert_eq!(second["cached"], serde_json::json!(false));
     }
 
@@ -922,10 +954,10 @@ mod tests {
         write_workbook(&source);
         let recalc = RecalcWorker::new();
 
-        expect_ok(recalc.run("r".into(), &source, &[], &recalc_reads()));
+        expect_ok(recalc.run("r".into(), &source, &[], &recalc_reads(), false));
         recalc.purge_now_or_queue(&source);
         assert!(recalc.pending_purges.lock().unwrap().is_empty());
-        let second = expect_ok(recalc.run("r2".into(), &source, &[], &recalc_reads()));
+        let second = expect_ok(recalc.run("r2".into(), &source, &[], &recalc_reads(), false));
         assert_eq!(second["cached"], serde_json::json!(false));
     }
 
@@ -956,7 +988,14 @@ mod tests {
 
         recalc.busy.store(true, Ordering::Release);
         let response = recalc
-            .dispatch("r".into(), source, Vec::new(), recalc_reads(), &output)
+            .dispatch(
+                "r".into(),
+                source,
+                Vec::new(),
+                recalc_reads(),
+                false,
+                &output,
+            )
             .unwrap();
         assert!(!response.ok);
         assert_eq!(response.error.unwrap().code, "recalc_busy");

@@ -24,4 +24,10 @@ if [ -L "$link" ]; then
     /opt/IeumOffice/*) rm -f "$link" ;;
   esac
 fi
+# Drop the KDE "Create New" templates the post-install step installed. Only
+# our exact file names are removed, so the directory and every other app's
+# templates stay (genoffice#2384).
+for name in "IeumOffice Document.docx" "IeumOffice Spreadsheet.xlsx" "IeumOffice Presentation.pptx"; do
+  rm -f "/usr/share/templates/$name"
+done
 exit 0

@@ -236,7 +236,14 @@ import {
 } from './doc-format'
 import { saveAsDefaultPath, saveAsFilters, saveAsTarget } from './save-as-formats'
 import { copyImageDisplaySize, validCopyImageDataUrl } from './copy-image-guard'
-import { printJobOptions, printScaleOption, validPrintGeometry } from './print-args'
+import {
+  printJobOptions,
+  printScaleOption,
+  validPrintGeometry,
+  validPrintPaper,
+} from './print-args'
+import { printPdfViaCups } from '@genoffice/electron-utils/print-cups'
+import { printOutcome } from '@genoffice/electron-utils/print-job'
 import { addPdfInternalLinks } from './pdf-links'
 import {
   assignStarredGroup,
@@ -3206,7 +3213,7 @@ async function openDialog(event: IpcMainInvokeEvent, options: OpenDialogOptions)
 async function saveDialog(event: IpcMainInvokeEvent, options: SaveDialogOptions) {
   // before any pick is remembered, bare-name suggestions anchor in the
   // configurable default save folder instead of Electron's Downloads pin
-  return showSaveDialogWithMemory(dialog, dialogParent(event), options, defaultSaveDir())
+  return showSaveDialogWithMemory(dialog, dialogParent(event), options, defaultSaveDir)
 }
 
 /** default folder where new files land on their first (silent) save; shared with the other editors via shell. User-configurable (app-settings.json), falls back to <Documents>/GenOffice. */
@@ -5785,20 +5792,41 @@ export function registerDocsIpc(): void {
     return printers.map((p) => ({ name: p.name, displayName: p.displayName || p.name }))
   })
 
-  ipcMain.handle('docs:print', async (event, scale?: number, job?: unknown) => {
+  ipcMain.handle('docs:print', async (event, scale?: number, job?: unknown, paper?: unknown) => {
     // print the calling tab's own content; zero margins — the docx page padding provides them.
     // Resolves when the system dialog is dismissed (or the silent job is queued); the print
     // dialog stays open on cancel (ok=false without error) and surfaces real failures.
+    const printOpts = {
+      margins: { marginType: 'none' as const },
+      ...printScale(scale),
+      ...printJobOptions(job),
+    }
+    // A named printer prints silently, and Chromium's silent print on macOS
+    // can drop the job outright — no queue entry, no callback error
+    // (genoffice#2347). Route those jobs through CUPS instead: printToPDF
+    // bakes the pages at the document's own paper size, and lp spools a
+    // real job whose queue state and failures are diagnosable.
+    if (process.platform === 'darwin' && printOpts.silent) {
+      const geometry = validPrintPaper(paper)
+      const printed = await event.sender.printToPDF({
+        printBackground: true,
+        margins: { top: 0, bottom: 0, left: 0, right: 0 },
+        ...(geometry
+          ? {
+              pageSize: {
+                width: geometry.widthTwips / TWIPS_PER_INCH,
+                height: geometry.heightTwips / TWIPS_PER_INCH,
+              },
+            }
+          : {}),
+        ...printScaleOption(scale),
+      })
+      return printPdfViaCups(printed, printOpts)
+    }
     return new Promise<{ ok: boolean; error?: string }>((resolve) => {
-      event.sender.print(
-        { margins: { marginType: 'none' }, ...printScale(scale), ...printJobOptions(job) },
-        (success, failureReason) => {
-          resolve({
-            ok: success,
-            ...(failureReason && !/cancel/i.test(failureReason) ? { error: failureReason } : {}),
-          })
-        },
-      )
+      event.sender.print(printOpts, (success, failureReason) => {
+        resolve(printOutcome(success, failureReason, printOpts.silent))
+      })
     })
   })
 

@@ -69,6 +69,14 @@ describe('additional document integrity audit', () => {
       expect(Object.keys(saved.files).sort()).toEqual(Object.keys(baseline.files).sort())
       for (const [name, entry] of Object.entries(baseline.files)) {
         if (entry.dir || name === 'word/document.xml') continue
+        // a real save stamps dcterms:modified and bumps cp:revision, as Word does
+        if (name === 'docProps/core.xml') {
+          const revisionOf = (xml: string) => Number(/<cp:revision>(\d+)</.exec(xml)?.[1])
+          const before = revisionOf(await entry.async('string'))
+          const after = revisionOf(await saved.file(name)!.async('string'))
+          expect(after, `${round}: ${name}`).toBe(before + round)
+          continue
+        }
         expect(await saved.file(name)!.async('nodebuffer'), `${round}: ${name}`).toEqual(
           await entry.async('nodebuffer'),
         )
