@@ -36,6 +36,8 @@ mod types;
 mod workbook;
 mod worksheet;
 mod xls_biff;
+mod xls_print;
+mod xls_styles;
 mod xlsx_package;
 mod xml_util;
 
