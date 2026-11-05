@@ -239,4 +239,7 @@ export const zhTW = {
   checkAskAi: '交給 AI 修改',
   checkHandedOff: '請求已放入 AI 輸入框，請確認後送出。',
   checkFixFailed: '未能修改。',
+  easyWordsLabel: '用簡單的話解釋',
+  easyWordsPrompt:
+    '請用中文解釋下面選取的文字，讓需要淺顯文字的人也能看懂。用日常詞語和短句，不要漏掉任何事實、數字或條件。不要修改文件。\n\n選取的文字：\n{text}',
 } satisfies Record<keyof typeof zh, string>

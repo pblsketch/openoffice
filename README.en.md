@@ -295,8 +295,12 @@ xattr -dr com.apple.quarantine /Applications/IeumOffice.app
 
 What differs on a Mac:
 
-- **It does not update itself.** When a new version is out it tells you and
-  opens the download page; install the new dmg over the old app.
+- **The app installs updates itself.** In the update window, **Update Now**
+  then **Restart & Install** closes the app, swaps in the new version and opens
+  it again; there is no second "Open Anyway". This works for an app moved into
+  Applications. One opened straight from the disk image, or kept in a folder
+  you cannot write to, opens the download page instead. Coming from an older
+  version without this, install the new dmg over the old app once.
 - The AI connection card has **no install button**. Follow its "official
   install instructions" link to install Claude Code or Codex.
 - Signing in finishes in the browser. If the browser asks you to paste a code,
@@ -348,7 +352,8 @@ check fails, nothing happens and the app keeps working. To check yourself, use
 **Menu (☰) → Check for Updates…** at the left of the tab bar
 (**Help → Check for Updates…** on a Mac). Pre-release versions are offered
 only when you choose the beta channel under **Settings → About**. The Mac build
-and the Linux `deb` and `rpm` installs only tell you about a new version.
+installs updates itself when it sits in Applications; the Linux `deb` and `rpm`
+installs only tell you about a new version.
 
 ## Building from source
 
@@ -391,7 +396,7 @@ project easy to take.
   only.** The developer cannot check the Mac or Linux builds directly; they are
   checked through user reports.
 - **Unsigned installers**, as described above. That is also why the Mac build
-  cannot update itself.
+  swaps in its updates itself instead of using Apple's update mechanism.
 - **Claude Code and Codex answer a little later than an API key.** Each
   request starts the program first, so the first words take a few seconds to
   appear (about four seconds with Claude on the development PC).

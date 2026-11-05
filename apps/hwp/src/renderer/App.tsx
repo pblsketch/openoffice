@@ -14,8 +14,10 @@ import {
 import { HwpAiDock } from './ai/AiDock'
 import { DocCheckPanel } from './check/DocCheckPanel'
 import { createAgentBridge } from './ai/agent-bridge'
+import { afterPrefillTaken, easyWordsRequest, type AiPrefill } from './ai/easy-words'
 import {
   DIRTY_EVENT,
+  EASY_WORDS_EVENT,
   FILE_COMMAND_EVENT,
   MEMO_NOT_COPIED_EVENT,
   MEMO_REMOVED_EVENT,
@@ -155,8 +157,17 @@ export default function App() {
   const [notice, setNotice] = useState<Notice | null>(null)
   const [aiOpen, setAiOpen] = useState(() => aiPanelInitiallyOpen(AI_OPEN_KEY))
   const [checkOpen, setCheckOpen] = useState(false)
-  /** a request the check panel hands to the AI input box; `nonce` says it is a new one */
-  const [aiPrefill, setAiPrefill] = useState<{ text: string; nonce: number } | null>(null)
+  /**
+   * a request for the AI panel; `nonce` says it is a new one. The check panel's waits in the
+   * input box, the editor's 쉬운 말로 풀기 runs at once (`autoRun`)
+   */
+  const [aiPrefill, setAiPrefill] = useState<AiPrefill | null>(null)
+  // a request sent at once runs once: the dock unmounts under the print preview and mounts
+  // again after it, and must not find the same request waiting there
+  const takeAiPrefill = useCallback(
+    (taken: AiPrefill) => setAiPrefill((current) => afterPrefillTaken(current, taken)),
+    [],
+  )
   /** counts changes made through the bridge, so the check panel can read the document again */
   const [docRevision, setDocRevision] = useState(0)
   /** the memo column beside the document: out or not, independent of the AI dock */
@@ -178,17 +189,16 @@ export default function App() {
   const copierRef = useRef<RecoveryCopier | null>(null)
   /** the editor holds a restored recovery copy that has not been saved since */
   const restoredRef = useRef(false)
-  /** the AI panel's way into the document: the app's plugin inside the editor */
+  /** the app's plugin inside the editor, for the calls that change no document */
+  const pluginBridge = useMemo(() => createAgentBridge(() => editorRef.current), [])
+  /** the AI panel's way into the document: the same plugin, telling of each possible change */
   const agentBridge = useMemo(
     () =>
-      withChangeNotes(
-        createAgentBridge(() => editorRef.current),
-        () => {
-          copierRef.current?.noteChange()
-          setDocRevision((revision) => revision + 1)
-        },
-      ),
-    [],
+      withChangeNotes(pluginBridge, () => {
+        copierRef.current?.noteChange()
+        setDocRevision((revision) => revision + 1)
+      }),
+    [pluginBridge],
   )
 
   // the shell's split panes: tell it whenever this pane gains focus
@@ -500,6 +510,24 @@ export default function App() {
       frame.removeEventListener(MEMO_INSERT_EVENT, onMemoInsert)
     }
   }, [phase, agentBridge, t])
+
+  // the editor's right-click 쉬운 말로 풀기 (studio-easy-words-context-menu): named in the app's
+  // language, it hands the selected text over, and the AI panel explains it in plain words at
+  // once, through its usual gate. Naming it changes no document, so it skips the change notes
+  useEffect(() => {
+    if (phase !== 'ready') return
+    const frame = editorRef.current?.element.contentWindow
+    if (!frame) return
+    void pluginBridge.installEasyWords(t('easyWordsLabel')).catch(() => {})
+    const onEasyWords = (event: Event) => {
+      const request = easyWordsRequest((event as CustomEvent<unknown>).detail, t, Date.now())
+      if (!request) return
+      setAiPrefill(request)
+      setAiOpen(true)
+    }
+    frame.addEventListener(EASY_WORDS_EVENT, onEasyWords)
+    return () => frame.removeEventListener(EASY_WORDS_EVENT, onEasyWords)
+  }, [phase, pluginBridge, t])
 
   // crash-recovery copies while the document has unsaved changes; typing never waits on one
   useEffect(() => {
@@ -936,6 +964,7 @@ export default function App() {
             filePath={filePath}
             templateDocument={templateDocument}
             prefill={aiPrefill}
+            onPrefillTaken={takeAiPrefill}
           />
         )}
         {phase === 'ready' && (

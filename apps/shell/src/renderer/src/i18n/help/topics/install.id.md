@@ -22,7 +22,7 @@ Karena installer tidak ditandatangani, jalankan hanya installer yang Anda unduh 
 
 ## Pembaruan
 
-- GenOffice mencari versi yang lebih baru di halaman Rilis GitHub yang sama. Ketika ada yang diterbitkan, **Pengaturan ▸ Tentang** menawarkannya: tekan **Perbarui ke …**, tunggu unduhannya, lalu tekan **Mulai ulang & instal**. Di Windows, sebuah jendela menampilkan kemajuan pemasangan; setelah selesai, GenOffice terbuka lagi bersama dokumen yang tadi terbuka. Pembaruan hanya dipasang saat Anda menekan tombol itu, tidak saat Anda sekadar menutup aplikasi.
+- GenOffice mencari versi yang lebih baru di halaman Rilis GitHub yang sama. Ketika ada yang diterbitkan, **Pengaturan ▸ Tentang** menawarkannya: tekan **Perbarui ke …**, tunggu unduhannya, lalu tekan **Mulai ulang & instal**. Di Windows, sebuah jendela menampilkan kemajuan pemasangan; setelah selesai, GenOffice terbuka lagi bersama dokumen yang tadi terbuka. Di Mac, aplikasi ditutup, diganti dengan versi baru, lalu dibuka kembali bersama dokumen yang tadi terbuka. Ini berlaku untuk aplikasi di folder Aplikasi; aplikasi yang dibuka langsung dari image disk akan menunjukkan halaman unduhan. Pembaruan hanya dipasang saat Anda menekan tombol itu, tidak saat Anda sekadar menutup aplikasi.
 - **Menu (☰) ▸ Periksa Pembaruan…** memeriksa kapan pun Anda minta. Di Mac, letaknya di **Bantuan ▸ Periksa Pembaruan…**.
 - Ketika pemeriksaan gagal — tidak ada jaringan, atau belum ada yang diterbitkan — tidak terjadi apa-apa, dan aplikasi tetap berjalan seperti sebelumnya.
 - **Saluran Pembaruan**, juga di Pengaturan ▸ Tentang, berisi Stabil atau Beta. Mengubahnya langsung berlaku dan memeriksa pembaruan; ini tidak akan menurunkan instalasi Beta kembali ke Stabil.

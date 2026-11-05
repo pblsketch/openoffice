@@ -22,7 +22,7 @@ Como o instalador não está assinado, execute apenas um que tenha transferido d
 
 ## Atualizações
 
-- O GenOffice procura uma versão mais recente na mesma página de lançamentos do GitHub. Quando é publicada uma, **Configurações ▸ Sobre** propõe-na: clique em **Atualizar para …**, aguarde a transferência e depois clique em **Reiniciar e instalar**. No Windows, uma janela mostra o progresso da instalação; ao terminar, o GenOffice abre de novo com os documentos que estavam abertos. A atualização só é instalada quando você pressiona esse botão, nunca ao simplesmente fechar o aplicativo.
+- O GenOffice procura uma versão mais recente na mesma página de lançamentos do GitHub. Quando é publicada uma, **Configurações ▸ Sobre** propõe-na: clique em **Atualizar para …**, aguarde a transferência e depois clique em **Reiniciar e instalar**. No Windows, uma janela mostra o progresso da instalação; ao terminar, o GenOffice abre de novo com os documentos que estavam abertos. No Mac, o aplicativo fecha, é substituído pela nova versão e abre de novo com os documentos que estavam abertos. Isso vale para um aplicativo na pasta Aplicativos; um aplicativo aberto direto da imagem de disco indica a página de download. A atualização só é instalada quando você pressiona esse botão, nunca ao simplesmente fechar o aplicativo.
 - **Menu (☰) ▸ Procurar atualizações…** verifica sempre que o pedir. Num Mac, é **Ajuda ▸ Procurar atualizações…**.
 - Quando a verificação falha — sem rede, ou ainda nada publicado —, não acontece nada e a aplicação continua a funcionar como antes.
 - **Canal de atualização**, também em Configurações ▸ Sobre, é Estável ou Beta. Alterá-lo tem efeito imediato e verifica se existe uma atualização; não reverte uma instalação Beta para Estável.

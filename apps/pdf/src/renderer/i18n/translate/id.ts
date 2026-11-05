@@ -88,4 +88,29 @@ export const id = {
   trRestartEditedCount: '{count} paragraf disunting oleh seseorang.',
   trRestartDiscardEdited: 'Hapus juga {count} paragraf yang disunting seseorang',
   trRestartKeepEdited: 'Pertahankan paragraf yang disunting',
+  trMode: 'Jenis',
+  trModeTranslate: 'Terjemahan',
+  trModeEasy: 'Penjelasan sederhana',
+  trPdfEasy:
+    'Penjelasan sederhana lebih panjang daripada aslinya sehingga tidak muat di tempatnya. Markdown dan EPUB bisa.',
+  trEasyFormatMd: 'Markdown penjelasan sederhana',
+  trEasyFormatEpub: 'EPUB penjelasan sederhana',
+  trEasyBilingual:
+    'Asli lalu penjelasan: setiap paragraf asli diikuti penjelasan sederhananya (mati: hanya penjelasan)',
+  trEasyFileWord: 'penjelasan sederhana',
+  trEasyPickTitle: 'Simpan {format} penjelasan sederhana',
+  trConfirmEasyLanguage: 'Bahasa penjelasan: {language}',
+  trEasyConfirmDone: '{done} dari {total} blok sudah dijelaskan dan tidak akan dikirim lagi',
+  trEasyConfirmNothing:
+    'Semua blok di halaman yang dipilih sudah dijelaskan. Tidak ada yang dikirim; file ditulis dari penjelasan yang tersimpan.',
+  trEasyProviderChange:
+    'Penjelasan yang tersimpan dibuat dengan {stored}. Melanjutkan dengan {next} akan mencampur dua AI dalam satu penjelasan.',
+  trEasyStart: 'Mulai menjelaskan',
+  trEasyRestart: 'Jelaskan ulang dari awal…',
+  trEasyRestartConfirm:
+    'Hapus penjelasan sederhana dalam bahasa {language} yang tersimpan ({count} blok) dan jelaskan ulang semua blok? Penjelasan yang dihapus tidak dapat dipulihkan.',
+  trEasyRestartYes: 'Jelaskan ulang',
+  trEasyRunning: 'Menulis penjelasan sederhana dalam bahasa {language}… {done}/{total} blok',
+  trEasyDone: 'Penjelasan sederhana dalam bahasa {language} selesai ({count} blok).',
+  trResumeEasy: 'Penjelasan sederhana yang belum selesai ({language}) {percent}% — lanjutkan?',
 } satisfies Record<keyof typeof zh, string>

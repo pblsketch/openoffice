@@ -12,6 +12,10 @@
  * 'running' record in the store (`runningElsewhere`). The tab's own records
  * are never 'running' when no job of the tab runs: the engine writes the
  * final state when its job ends.
+ *
+ * The lock does not look at the way a book is translated: a translation and
+ * an easy explanation of the same book never run at the same time. The view
+ * names the way (`mode`) so the strip can say which one runs.
  */
 import type {
   DocumentJobHandle,
@@ -19,6 +23,7 @@ import type {
   JobProgressEvent,
   JobSummary,
   RunningDocumentJob,
+  TranslationMode,
 } from '@genoffice/pdf-structure'
 import type { JobStatus } from '@genoffice/pdf-structure/store'
 import { DocumentJobBusyError, documentJobs } from './engine'
@@ -30,6 +35,8 @@ export interface BookJobView {
   lang: string
   /** the provider id the job sends to */
   provider: string
+  /** 'easy': the job is an easy explanation; absent for a translation */
+  mode?: 'easy'
   state: 'running' | 'complete' | 'stopped' | 'failed'
   /** blocks done, including those done before this run */
   done: number
@@ -48,6 +55,8 @@ export interface StartBookJob<U> {
   docHash: string
   lang: string
   provider: string
+  /** 'easy' for an easy explanation */
+  mode?: TranslationMode
   /** start the engine job with this signal, registry and progress sink */
   launch(options: {
     signal: AbortSignal
@@ -87,6 +96,7 @@ export class BookJobSession {
       docHash: spec.docHash,
       lang: spec.lang,
       provider: spec.provider,
+      ...(spec.mode === 'easy' ? { mode: 'easy' as const } : {}),
       state: 'running',
       done: 0,
       total: 0,

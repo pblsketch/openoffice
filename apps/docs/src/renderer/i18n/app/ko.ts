@@ -370,6 +370,9 @@ export const ko = {
   appAiBadgeTip: 'AI를 사용합니다',
   appTranslate: '번역',
   appTranslateTo: '{lang}(으)로 번역',
+  appEasyWords: '쉬운 말로 풀기',
+  appEasyWordsPrompt:
+    '고른 글을 쉬운 글이 필요한 사람(어린이, 어르신, 한국어를 배우는 사람)도 알 수 있게 한국어로 풀어 설명해 주세요. 날마다 쓰는 쉬운 낱말과 짧은 문장으로 쓰고, 사실·숫자·조건은 하나도 빼지 마세요. 문서는 고치지 마세요: "{text}"',
   redactMenuLabel: '선택한 부분을 AI에서 숨기기',
   redactDialogDesc:
     '문서는 그대로 두고 AI에게는 아래 자리표시자만 보냅니다. 이름을 붙이면 AI가 무엇을 뜻하는지 알 수 있습니다.',

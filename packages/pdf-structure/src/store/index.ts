@@ -13,8 +13,12 @@ export {
   JOB_FILE,
   JOB_KINDS,
   JOB_RUNNING_WINDOW_MS,
+  MODE_JOB_KINDS,
+  TRANSLATION_MODES,
+  isTranslationMode,
   jobKeyField,
   jobKeyOf,
+  jobModeAllowed,
   type AiReadPayload,
   type AiReadPageEntry,
   type JobKind,
@@ -31,6 +35,7 @@ export {
   type TranslationBlockInput,
   type TranslationBlockStatus,
   type TranslationMetaInput,
+  type TranslationMode,
 } from './store'
 export { StoreWriteError } from './files'
 export { sentenceEndsPair, validSentenceEnds, type SentenceEnds } from './sentence-ends'

@@ -129,6 +129,8 @@ Nhấn **E** hoặc **T**, hoặc các nút giải thích và dịch trong ô **
 - Bấm đúp vào một đoạn đã dịch để sửa. Đoạn đã sửa được lưu dưới dạng chữ không định dạng và được dùng nguyên như vậy trong các tệp PDF, Markdown và EPUB đã dịch. **Dịch lại** ở một đoạn chỉ gửi đoạn đó, và hỏi trước nếu bạn đã sửa nó.
 - Rê chuột lên một đoạn đã dịch, vị trí của nó trên trang gốc sẽ được viền khung. Có thể chỉnh độ rộng và cỡ chữ của cột. **Dịch tất cả các trang…** mở cửa sổ **Dịch tài liệu**; định dạng **Chỉ lưu trữ (không tạo tệp)** ở đó giữ bản dịch mà không ghi tệp.
 - Các đoạn mới dịch được nối theo từng câu. Di chuột lên một câu dịch sẽ tô câu đó trên trang gốc, và di lên một câu gốc sẽ làm sáng câu dịch tương ứng. Ở chỗ không tìm được vị trí câu trên trang, cũng như các đoạn đã dịch trước đây hoặc do bạn tự sửa, liên kết vẫn theo từng đoạn.
+- Thanh phía trên cột chuyển giữa **Bản dịch** và **Giải thích dễ hiểu**. Phần giải thích dễ hiểu viết lại văn bản bằng từ ngữ thường ngày và câu ngắn, cho trẻ em, người lớn tuổi hoặc người đang học ngôn ngữ đó; dữ kiện, con số và tên riêng được giữ nguyên. Lựa chọn được ghi nhớ, và việc chuyển đổi không gửi gì cả. Khi đang hiện phần giải thích, các nút trang, nút đoạn và việc chỉnh sửa áp dụng cho phần giải thích.
+- Ở chế độ giải thích dễ hiểu, **Giải thích mọi trang cho dễ hiểu…** mở cửa sổ **Dịch tài liệu** với kiểu **Giải thích dễ hiểu**. Phần giải thích dài hơn bản gốc nên không thể thành PDF bản dịch; nó được ghi thành Markdown hoặc EPUB. Khi bật **Bản gốc rồi đến giải thích**, sau mỗi đoạn gốc là phần giải thích của đoạn đó; khi tắt, tệp chỉ có phần giải thích. Ngôn ngữ ban đầu là ngôn ngữ giao diện và có thể trùng với ngôn ngữ của tài liệu.
 
 ## Tô sáng bằng AI
 

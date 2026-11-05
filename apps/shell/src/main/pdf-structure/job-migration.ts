@@ -16,7 +16,9 @@
  * running window passes.
  *
  * Every job kind moves by this rule (reading-assist spec 5.5); a record is
- * found by its kind and second key (jobKeyOf: language or run id).
+ * found by its kind and second key (jobKeyOf: language or run id) and, for an
+ * easy explanation's job, its mode: that record moves to the easy record of
+ * the new hash, never onto the plain one.
  */
 import {
   jobKeyOf,
@@ -36,6 +38,7 @@ function recordOf(job: JobStatus): JobRecordInput {
   }
   if (job.lang !== undefined) record.lang = job.lang
   if (job.runId !== undefined) record.runId = job.runId
+  if (job.mode === 'easy') record.mode = 'easy'
   if (job.last_error !== undefined) record.last_error = job.last_error
   if (job.resetsAt !== undefined) record.resetsAt = job.resetsAt
   if (job.progress !== undefined) record.progress = job.progress
@@ -52,14 +55,15 @@ export async function migrateJobRecords(
   for (const job of await store.listJobs(oldDocHash)) {
     // found by (kind, key): the language, or the run id of a highlight job
     const key = jobKeyOf(job)
-    const current = await store.readJob(newDocHash, job.kind, key)
+    const mode = job.mode === 'easy' ? 'easy' : 'translate'
+    const current = await store.readJob(newDocHash, job.kind, key, mode)
     if (current.state !== 'idle' && (current.updatedAt ?? 0) >= (job.updatedAt ?? 0)) continue
     // the copy is stamped with the time of the copy, so a write the job made
     // while it was being copied would lose to it later: copy that write too
     let source = job
     for (let attempt = 0; attempt < COPY_ATTEMPTS; attempt++) {
       await store.writeJob(newDocHash, recordOf(source))
-      const again = await store.readJob(oldDocHash, job.kind, key)
+      const again = await store.readJob(oldDocHash, job.kind, key, mode)
       if (again.state === 'idle' || again.updatedAt === source.updatedAt) break
       source = again
     }

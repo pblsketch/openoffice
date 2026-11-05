@@ -22,6 +22,7 @@ import {
 import type { TemplateDocument } from '@genoffice/ui'
 import { useI18n } from '../i18n/locale'
 import type { AgentBridge } from './agent-bridge'
+import type { AiPrefill } from './easy-words'
 import { AiPanel } from './AiPanel'
 
 export interface HwpAiDockProps {
@@ -34,8 +35,13 @@ export interface HwpAiDockProps {
   filePath: string | null
   /** the document while it can go along as a skill's template (spec 5.7) */
   templateDocument?: TemplateDocument | null
-  /** a request handed over by the check panel: fills the input box, not sent */
-  prefill?: { text: string; nonce: number } | null
+  /**
+   * a request handed to the panel: the check panel's fills the input box and is not sent;
+   * one with `autoRun` (the editor's 쉬운 말로 풀기) is sent at once
+   */
+  prefill?: AiPrefill | null
+  /** the panel took an `autoRun` request: clear it so it is not sent again */
+  onPrefillTaken?: (taken: AiPrefill) => void
 }
 
 /** The panel at the right end, or its rail while collapsed; the panel stays mounted either way. */
@@ -46,6 +52,7 @@ export function HwpAiDock({
   filePath,
   templateDocument,
   prefill,
+  onPrefillTaken,
 }: HwpAiDockProps): ReactElement {
   const { lang, t } = useI18n()
   const { role, requestFocus } = useSplitPaneRole()
@@ -69,6 +76,7 @@ export function HwpAiDock({
         onCollapse={() => setOpen(false)}
         templateDocument={templateDocument}
         prefill={prefill ?? null}
+        onPrefillTaken={onPrefillTaken}
         onSkillHandoff={() => setOpen(true)}
       />
     </div>

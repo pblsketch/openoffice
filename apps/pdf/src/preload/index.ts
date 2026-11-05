@@ -132,8 +132,11 @@ const structure: PdfStructureApi = {
 const store: PdfStoreApi = {
   docHash: (path) => outcome(PDF_CHANNELS.storeDocHash, path),
   aiReadPages: (docHash) => outcome(PDF_CHANNELS.storeAiReadPages, docHash),
-  translations: (docHash) => outcome(PDF_CHANNELS.storeTranslations, docHash),
-  translation: (docHash, lang) => outcome(PDF_CHANNELS.storeTranslation, docHash, lang),
+  // a plain translation call sends no mode, as before
+  translations: (docHash, mode) =>
+    outcome(PDF_CHANNELS.storeTranslations, docHash, ...(mode === undefined ? [] : [mode])),
+  translation: (docHash, lang, mode) =>
+    outcome(PDF_CHANNELS.storeTranslation, docHash, lang, ...(mode === undefined ? [] : [mode])),
   unfinishedJobs: (docHash) => outcome(PDF_CHANNELS.storeUnfinishedJobs, docHash),
   write: (request) => outcome(PDF_CHANNELS.storeWrite, request),
   migrate: (request) => outcome(PDF_CHANNELS.storeMigrate, request),
@@ -145,7 +148,8 @@ const store: PdfStoreApi = {
   insights: (docHash, lang) => outcome(PDF_CHANNELS.storeInsights, docHash, lang),
   deleteCounts: (docHash) => outcome(PDF_CHANNELS.storeDeleteCounts, docHash),
   pageFingerprints: (request) => outcome(PDF_CHANNELS.storePageFingerprints, request),
-  translationRecency: (docHash) => outcome(PDF_CHANNELS.storeTranslationRecency, docHash),
+  translationRecency: (docHash, mode) =>
+    outcome(PDF_CHANNELS.storeTranslationRecency, docHash, ...(mode === undefined ? [] : [mode])),
 }
 
 const api: PdfApi = {

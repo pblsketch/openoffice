@@ -106,4 +106,40 @@ export const en = {
   btReasonNotChosen: 'not chosen',
   btReasonBroken: 'damaged chapter',
   btReasonFixed: 'fixed-layout chapter',
+  btMode: 'Mode',
+  btModeTranslate: 'Translate',
+  btModeEasy: 'Plain language',
+  btEasyIntro:
+    "Plain language rewrites the book's text in easy words of the chosen language, as new EPUB files. This book does not change.",
+  btEasyLanguage: 'Rewrite in',
+  btKindEasy: 'Plain-language book',
+  btKindEasyBilingual: 'Original followed by plain language',
+  btEasyConfirmTitle: 'Before rewriting in plain language',
+  btEasyConfirmLanguage: 'In plain language: {language}',
+  btEasyConfirmDone:
+    '{done} of {total} blocks are already rewritten in plain language and will not be sent',
+  btEasyProviderChange:
+    'The stored plain-language version was made with a different AI ({stored}). The rest will be rewritten with {next}.',
+  btEasyNothing: 'Everything chosen is already rewritten in plain language. Nothing is sent.',
+  btEasyNoticeSends:
+    'A plain-language version sends the AI the text of the chosen chapters (paragraphs with placeholders for their formatting), the book title and the table of contents entries.',
+  btEasyRestart: 'Rewrite again from the start',
+  btEasyRestartConfirm:
+    'Delete the stored plain-language version ({language}, {count} blocks) and rewrite everything again?',
+  btEasyRestartYes: 'Delete and rewrite again',
+  btEasyRestartSaveYes: 'Save, delete and rewrite again',
+  btEasySaveAndStart: 'Save and rewrite',
+  btEasyRunning: 'Rewriting in plain language ({language}): {done}/{total} blocks',
+  btEasyDone: 'Plain-language version ({language}) finished ({count} blocks)',
+  btEasyStoppedCancelled: 'The plain-language version was stopped.',
+  btEasyStoppedFailures:
+    'The plain-language version stopped because several requests failed in a row.',
+  btEasyStoppedStore: 'The plain-language version stopped because its results could not be stored.',
+  btEasyStoppedError: 'The plain-language version stopped: {reason}',
+  btEasyStoppedProgress: '{done} of {total} blocks are rewritten and kept.',
+  btEasyExportPartial: 'Export what is rewritten so far',
+  btEasyResume: 'Unfinished plain-language version ({language}) {percent}% — continue?',
+  btEasyReportTitle: 'Plain-language version finished',
+  btEasyReportPartialTitle: 'Exported what was rewritten so far',
+  btEasyReportTranslated: 'Blocks rewritten in plain language ({language}): {count}',
 } satisfies Record<keyof typeof zh, string>

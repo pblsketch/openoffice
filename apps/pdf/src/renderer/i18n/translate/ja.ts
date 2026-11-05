@@ -86,4 +86,28 @@ export const ja = {
   trRestartEditedCount: '人が修正した段落が {count} 個あります。',
   trRestartDiscardEdited: '人が修正した段落 {count} 個も削除する',
   trRestartKeepEdited: '修正した段落は残す',
+  trMode: '方式',
+  trModeTranslate: '翻訳',
+  trModeEasy: 'やさしい解説',
+  trPdfEasy: 'やさしい解説は文章が長くなり、元の位置に収まりません。Markdown・EPUB は使えます。',
+  trEasyFormatMd: 'やさしい解説 Markdown',
+  trEasyFormatEpub: 'やさしい解説 EPUB',
+  trEasyBilingual:
+    '原文のあとに解説：原文の段落のあとにやさしい解説の段落を置きます（オフのときは解説だけ）',
+  trEasyFileWord: 'やさしい解説',
+  trEasyPickTitle: 'やさしい解説 {format} を保存',
+  trConfirmEasyLanguage: '解説の言語：{language}',
+  trEasyConfirmDone: '全 {total} ブロックのうち {done} 個は解説済みのため、再送しません',
+  trEasyConfirmNothing:
+    '選んだページのブロックはすべて解説済みです。何も送らず、保存されているやさしい解説でファイルを書き出します。',
+  trEasyProviderChange:
+    '保存されているやさしい解説は {stored} で作成しました。{next} で続けると、ひとつの解説に 2 つの AI の文章が混ざります。',
+  trEasyStart: '解説を開始',
+  trEasyRestart: '最初から解説し直す…',
+  trEasyRestartConfirm:
+    '保存されている{language}のやさしい解説（{count} ブロック）を削除し、すべてのブロックを解説し直しますか？削除した解説は元に戻せません。',
+  trEasyRestartYes: '解説し直す',
+  trEasyRunning: '{language}のやさしい解説を作成中… {done}/{total} ブロック',
+  trEasyDone: '{language}のやさしい解説が終わりました（{count} ブロック）。',
+  trResumeEasy: '終わっていないやさしい解説（{language}）{percent}% — 続けますか？',
 } satisfies Record<keyof typeof zh, string>

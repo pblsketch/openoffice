@@ -47,6 +47,7 @@ import {
   writableFormats,
 } from '../src/renderer/translate/translate-model'
 import { DocumentJobSession } from '../src/renderer/doc-jobs/job-session'
+import { rememberJobPages } from '../src/renderer/doc-jobs/job-pages'
 import { AGENT_TOOLS, executePdfTool, type PdfAiDeps } from '../src/renderer/ai/tools'
 import { createPdfSkill } from '../src/renderer/ai/pdf-skill'
 import type {
@@ -210,6 +211,9 @@ interface StoredTr {
   blocks: Map<string, TranslationBlockEntry>
 }
 
+/** the fake store's key: the language, with `#easy` for an easy explanation */
+const storeKey = (lang: string, mode?: string): string => (mode === 'easy' ? `${lang}#easy` : lang)
+
 const EMPTY_REPORT = (lang: string, total: number, translated: number): TranslationReport => ({
   lang,
   total,
@@ -234,29 +238,39 @@ function fakeChannels(
       /** how many of those blocks a person edited (the first ones) */
       edited?: number
     }
+    /** a stored easy explanation, the same shape (kept under `<lang>#easy`) */
+    easy?: {
+      lang: string
+      provider: string
+      model: string
+      blocks: number
+      edited?: number
+    }
   } = {},
 ) {
   const tree = options.tree ?? fakeTree()
   const translations = new Map<string, StoredTr>()
-  if (options.stored) {
+  const seed = (
+    key: string,
+    s: { provider: string; model: string; blocks: number; edited?: number },
+    word: string,
+  ) => {
     const units = translationUnits(tree)
     const keys = translationBlockKeys(units)
     const blocks = new Map<string, TranslationBlockEntry>()
-    for (let i = 0; i < options.stored.blocks; i++) {
+    for (let i = 0; i < s.blocks; i++) {
       blocks.set(blockKeyString(keys[i]!), {
         key: keys[i]!,
         status: 'translated',
-        text: `[old] ${i}`,
+        text: `[${word}] ${i}`,
         savedAt: 1,
-        ...(i < (options.stored.edited ?? 0) ? { edited: true as const } : {}),
+        ...(i < (s.edited ?? 0) ? { edited: true as const } : {}),
       })
     }
-    translations.set(options.stored.lang, {
-      provider: options.stored.provider,
-      model: options.stored.model,
-      blocks,
-    })
+    translations.set(key, { provider: s.provider, model: s.model, blocks })
   }
+  if (options.stored) seed(options.stored.lang, options.stored, 'old')
+  if (options.easy) seed(storeKey(options.easy.lang, 'easy'), options.easy, 'easy')
   const writes: PdfStoreWriteRequest[] = []
   const jobs: JobRecordInput[] = []
   const picks: string[] = []
@@ -267,8 +281,8 @@ function fakeChannels(
     docHash: vi.fn(async () => ({ ok: true as const, docHash: DOC })),
     aiReadPages: vi.fn(async () => ({ ok: true as const, pages: [] })),
     translations: vi.fn(async () => ({ ok: true as const, langs: [...translations.keys()] })),
-    translation: vi.fn(async (_doc: string, lang: string) => {
-      const tr = translations.get(lang)
+    translation: vi.fn(async (_doc: string, lang: string, mode?: string) => {
+      const tr = translations.get(storeKey(lang, mode))
       return {
         ok: true as const,
         translation: tr
@@ -280,20 +294,23 @@ function fakeChannels(
     write: vi.fn(async (request: PdfStoreWriteRequest) => {
       writes.push(request)
       if (request.kind === 'translationMeta') {
-        const tr = translations.get(request.lang) ?? {
+        const key = storeKey(request.lang, request.mode)
+        const tr = translations.get(key) ?? {
           provider: '',
           model: '',
           blocks: new Map<string, TranslationBlockEntry>(),
         }
-        translations.set(request.lang, { ...tr, provider: request.provider, model: request.model })
+        translations.set(key, { ...tr, provider: request.provider, model: request.model })
       }
       if (request.kind === 'translationBlocks') {
-        const tr = translations.get(request.lang)!
+        const tr = translations.get(storeKey(request.lang, request.mode))!
         for (const b of request.blocks) tr.blocks.set(blockKeyString(b.key), { ...b, savedAt: 2 })
       }
-      if (request.kind === 'deleteTranslation') translations.delete(request.lang)
+      if (request.kind === 'deleteTranslation') {
+        translations.delete(storeKey(request.lang, request.mode))
+      }
       if (request.kind === 'deleteTranslationExceptEdited') {
-        const tr = translations.get(request.lang)
+        const tr = translations.get(storeKey(request.lang, request.mode))
         let removed = 0
         for (const [k, b] of [...(tr?.blocks ?? [])]) {
           if (b.edited) continue
@@ -490,7 +507,10 @@ const disabled = (el: Element, selector: string) =>
 
 async function openWindow(
   m: Awaited<ReturnType<typeof mount>>,
-  request: { lang: string | null; pages: number[] | null } = { lang: null, pages: null },
+  request: { lang: string | null; pages: number[] | null; mode?: 'translate' | 'easy' } = {
+    lang: null,
+    pages: null,
+  },
 ) {
   let answer: ReturnType<DocumentTranslationHandle['requestOpen']> | undefined
   await act(async () => {
@@ -502,7 +522,7 @@ async function openWindow(
 
 async function openToConfirm(
   m: Awaited<ReturnType<typeof mount>>,
-  request?: { lang: string | null; pages: number[] | null },
+  request?: { lang: string | null; pages: number[] | null; mode?: 'translate' | 'easy' },
 ) {
   await openWindow(m, request)
   await click(m.el, '[data-action="next"]')
@@ -1123,5 +1143,255 @@ describe('translation window: store only, and edited blocks on a restart', () =>
     expect(channels.writes.some((w) => w.kind === 'deleteTranslation')).toBe(true)
     expect(channels.writes.some((w) => w.kind === 'deleteTranslationExceptEdited')).toBe(false)
     expect(bridge.starts[0]!.messages[0]!.text).toContain('Annual report')
+  })
+})
+
+// ── the easy explanation (translation-reading spec 5.4, 6.3) ──
+
+describe('easy explanation: the document window', () => {
+  /** the fake tree with Korean text: a document in a Korean UI's own language */
+  const koreanTree = (): DocumentTree => {
+    const tree = fakeTree()
+    const texts = [
+      '강가 농장의 한 해 보고서',
+      '올해는 비가 알맞게 내려서 논과 밭의 곡식이 모두 잘 자랐습니다. 마을 사람들이 함께 일했습니다.',
+      '수확은 작년보다 삼분의 일만큼 늘었고, 남은 곡식은 겨울을 위해 창고에 넣어 두었습니다.',
+    ]
+    return {
+      ...tree,
+      blocks: tree.blocks.map((b, i) => ({ ...b, runs: runs(texts[i]!) })),
+    } as DocumentTree
+  }
+  const modeEasy = (el: Element) => q(el, '[data-field="mode-easy"]') as HTMLInputElement | null
+
+  it('offers the mode; the easy explanation defaults to the UI language, the translation does not', async () => {
+    const m = await mount({ lang: 'ko', channels: fakeChannels({ tree: koreanTree() }) })
+    await openWindow(m)
+    expect(checked(m.el, 'mode-translate')).toBe(true)
+    expect((q(m.el, '[data-field="language"]') as HTMLSelectElement).value).toBe('en')
+    await click(m.el, '[data-field="mode-easy"]')
+    expect(modeEasy(m.el)?.checked).toBe(true)
+    expect((q(m.el, '[data-field="language"]') as HTMLSelectElement).value).toBe('ko')
+    await click(m.el, '[data-field="mode-translate"]')
+    expect((q(m.el, '[data-field="language"]') as HTMLSelectElement).value).toBe('en')
+    await settle()
+    expect(bridge.api.aiStream).not.toHaveBeenCalled()
+  })
+
+  it('cannot have the translated PDF, says why where the ar/he/hi reason goes, and offers Markdown / EPUB with the source', async () => {
+    const m = await mount({ lang: 'ko' })
+    await openWindow(m, { lang: null, pages: null, mode: 'easy' })
+    expect(modeEasy(m.el)?.checked).toBe(true)
+    expect(disabled(m.el, '[data-field="format-pdf"]')).toBe(true)
+    expect(checked(m.el, 'format-pdf')).toBe(false)
+    expect(checked(m.el, 'format-md')).toBe(true)
+    expect(q(m.el, '[data-pdf-blocked]')?.dataset.pdfBlocked).toBe('easy')
+    expect(q(m.el, '[data-pdf-blocked]')?.textContent).toBe(strings.en.trPdfEasy)
+    expect(q(m.el, '[data-format="md"]')?.textContent).toBe(t('trEasyFormatMd'))
+    expect(q(m.el, '[data-format="epub"]')?.textContent).toBe(t('trEasyFormatEpub'))
+    // "only the explanation" or "the source, then the explanation"
+    expect(disabled(m.el, '[data-field="bilingual"]')).toBe(false)
+    expect(q(m.el, '.pdf-translate-bilingual')?.textContent).toBe(t('trEasyBilingual'))
+    // "store only" is there too
+    expect(q(m.el, '[data-field="format-store"]')).not.toBeNull()
+    // back to the translation: the PDF can be chosen again
+    await click(m.el, '[data-field="mode-translate"]')
+    expect(disabled(m.el, '[data-field="format-pdf"]')).toBe(false)
+    expect(q(m.el, '[data-pdf-blocked]')).toBeNull()
+  })
+
+  it('runs as an easy explanation: own file names, every write and record in the easy mode, the marker on the results', async () => {
+    const m = await mount({ lang: 'en' })
+    await openWindow(m, { lang: 'de', pages: null, mode: 'easy' })
+    await click(m.el, '[data-field="format-epub"]')
+    await click(m.el, '[data-field="bilingual"]')
+    await click(m.el, '[data-action="next"]')
+    await until(() => (q(m.el, '[data-calls]')?.dataset.calls ?? '') !== '', 'the estimate')
+    expect(q(m.el, '[data-language]')?.dataset.mode).toBe('easy')
+    expect(q(m.el, '[data-language]')?.textContent).toBe(
+      t('trConfirmEasyLanguage', { language: languageName('de', 'en') }),
+    )
+    expect(q(m.el, '[data-action="start"]')?.textContent).toBe(t('trEasyStart'))
+    await click(m.el, '[data-action="start"]')
+    await until(() => bridge.starts.length === 1, 'the call')
+    // the default names carry the UI word and never the translation's names
+    expect(m.channels.picks).toEqual([
+      'C:\\out\\report (plain language).de.md',
+      'C:\\out\\report (plain language).de.epub',
+    ])
+    expect(m.channels.picks).not.toContain('C:\\out\\report.de.md')
+    expect(bridge.starts[0]!.tools ?? []).toEqual([])
+    expect(q(m.el, '[data-job-kind="translate"][data-job-state="running"]')).not.toBeNull()
+    expect(q(m.el, '.pdf-job-strip-title')?.textContent).toBe(
+      t('trEasyRunning', { language: languageName('de', 'en'), done: 0, total: 3 }),
+    )
+
+    await act(async () => bridge.answerAll())
+    await until(() => q(m.el, '.pdf-translate-report') !== null, 'the report')
+    const stored = m.channels.writes.filter(
+      (w) => w.kind === 'translationBlocks' || w.kind === 'translationMeta',
+    )
+    expect(stored.length).toBeGreaterThan(0)
+    expect(stored.every((w) => 'mode' in w && w.mode === 'easy')).toBe(true)
+    expect(m.channels.jobs.length).toBeGreaterThan(0)
+    expect(m.channels.jobs.every((j) => j.kind === 'translate' && j.mode === 'easy')).toBe(true)
+    expect(m.channels.translations.has('de')).toBe(false)
+    expect(m.channels.translations.get('de#easy')!.blocks.size).toBe(3)
+
+    // the writer is handed the easy results; no translated PDF
+    expect(m.channels.writeBacks).toHaveLength(0)
+    const md = m.channels.converts.find((c) => c.format === 'md')!
+    const epub = m.channels.converts.find((c) => c.format === 'epub')!
+    const textOf = (c: typeof md, key: string) =>
+      (c.translation!.units!.find((u) => u.key === key)?.runs ?? [])
+        .map((r) => (r.kind === 'text' ? r.text : ''))
+        .join('')
+    expect(md.translation).toMatchObject({ lang: 'de', bilingual: true })
+    expect(textOf(md, 'p1.1')).toBe(
+      '[de] Annual report of the river farm (Fassung in einfacher Sprache)',
+    )
+    expect(textOf(md, 'p1.2')).toBe('[de] The quick brown fox jumps over the lazy dog.')
+    expect(textOf(epub, 'p1.1')).toBe('[de] Annual report of the river farm')
+    expect(epub.epub).toMatchObject({
+      title: 'Report (Fassung in einfacher Sprache)',
+      language: 'de',
+    })
+    expect(q(m.el, '[data-translated]')?.textContent).toBe(
+      t('trReportTranslated', { language: languageName('de', 'en'), translated: 3, total: 3 }),
+    )
+  })
+
+  it('a page range: the units are keyed to the blocks the convert job extracts for those pages', async () => {
+    const channels = fakeChannels({
+      easy: { lang: 'de', provider: 'claude-code', model: '', blocks: 3 },
+    })
+    // page 2 alone keeps a running header the whole file drops as repeated, so
+    // the harvest paragraph is p2.1 in the whole file and p2.2 in the range
+    const full = fakeTree()
+    const ranged = {
+      ...full,
+      blocks: [
+        { ...at(2), id: 'p2.1', kind: 'paragraph', runs: runs('River farm, annual report') },
+        { ...full.blocks[2]!, id: 'p2.2' },
+      ],
+    } as unknown as DocumentTree
+    const treeRequests: Array<{ pages?: number[] }> = []
+    ;(channels.api.tree as ReturnType<typeof vi.fn>).mockImplementation(
+      async (request: { pages?: number[] }) => {
+        treeRequests.push(request)
+        return {
+          ok: true as const,
+          docHash: DOC,
+          tree: request.pages ? ranged : full,
+          fingerprints: [1, 2].map((page) => ({ page, fingerprint: `fp${page}` })),
+          cached: false,
+        }
+      },
+    )
+    const m = await mount({ channels })
+    await openToConfirm(m, { lang: 'de', pages: [2], mode: 'easy' })
+    expect(q(m.el, '[data-nothing]')).not.toBeNull()
+    await click(m.el, '[data-action="export"]')
+    await until(() => q(m.el, '.pdf-translate-report') !== null, 'the report')
+
+    const md = channels.converts.find((c) => c.format === 'md')!
+    expect(md.pages).toEqual([2])
+    // the easy units' tree is read with the convert job's own source
+    const forUnits = treeRequests.at(-1)!
+    expect(forUnits).toMatchObject({ path: md.path, pages: md.pages })
+    const textOf = (key: string) =>
+      (md.translation!.units!.find((u) => u.key === key)?.runs ?? [])
+        .map((r) => (r.kind === 'text' ? r.text : ''))
+        .join('')
+    // the stored explanation of the harvest paragraph lands on it, not on the header
+    expect(textOf('p2.2')).toBe('[easy] 2')
+    expect(md.translation!.units!.some((u) => u.key === 'p2.1')).toBe(false)
+    expect(bridge.api.aiStream).not.toHaveBeenCalled()
+  })
+
+  it('the confirmation counts the easy records only: done blocks, calls and the provider', async () => {
+    const channels = fakeChannels({
+      stored: { lang: 'de', provider: 'claude-code', model: '', blocks: 3 },
+      easy: { lang: 'de', provider: 'codex', model: 'm', blocks: 1 },
+    })
+    const m = await mount({ channels })
+    await openToConfirm(m, { lang: 'de', pages: null, mode: 'easy' })
+    expect(q(m.el, '[data-done]')?.dataset.done).toBe('1')
+    expect(q(m.el, '[data-done]')?.textContent).toBe(t('trEasyConfirmDone', { done: 1, total: 3 }))
+    expect(q(m.el, '[data-calls]')?.dataset.calls).toBe('1')
+    expect(q(m.el, '[data-nothing]')).toBeNull()
+    await until(() => q(m.el, '[data-provider-change]') !== null, 'the provider warning')
+    expect(q(m.el, '[data-provider-change]')?.textContent).toContain('Codex')
+    expect(channels.store.translation).toHaveBeenCalledWith(DOC, 'de', 'easy')
+    // the translation of the same language is complete: nothing to send there
+    await click(m.el, '[data-action="back"]')
+    await click(m.el, '[data-field="mode-translate"]')
+    await click(m.el, '[data-action="next"]')
+    await until(() => q(m.el, '[data-nothing]') !== null, 'the plain estimate')
+    await settle()
+    expect(bridge.api.aiStream).not.toHaveBeenCalled()
+  })
+
+  it('a restart keeps the edited easy blocks the same way and leaves the translation alone', async () => {
+    const channels = fakeChannels({
+      stored: { lang: 'de', provider: 'claude-code', model: '', blocks: 3 },
+      easy: { lang: 'de', provider: 'claude-code', model: '', blocks: 2, edited: 1 },
+    })
+    const m = await mount({ channels })
+    await openToConfirm(m, { lang: 'de', pages: null, mode: 'easy' })
+    expect(q(m.el, '[data-action="restart"]')?.textContent).toBe(t('trEasyRestart'))
+    await click(m.el, '[data-action="restart"]')
+    await until(() => q(m.el, '[data-edited-count]') !== null, 'the edited count')
+    await click(m.el, '[data-action="restart-keep-edited"]')
+    await until(() => bridge.starts.length === 1, 'the job to send')
+    expect(channels.writes.find((w) => w.kind === 'deleteTranslationExceptEdited')).toMatchObject({
+      lang: 'de',
+      mode: 'easy',
+    })
+    expect(channels.translations.get('de#easy')!.blocks.size).toBe(1)
+    expect(channels.translations.get('de')!.blocks.size).toBe(3)
+  })
+
+  it('names and blocks: the easy names differ, the PDF is blocked in the easy mode', () => {
+    expect(translationOutputName('Report.PDF', 'de', 'plain language')).toBe(
+      'Report (plain language).de',
+    )
+    expect(translationOutputName('Report.PDF', 'de', 'plain language')).not.toBe(
+      translationOutputName('Report.PDF', 'de'),
+    )
+    expect(pdfFormatBlock(false, 'ko', 'easy')).toBe('easy')
+    expect(pdfFormatBlock(false, 'ko', 'translate')).toBeNull()
+  })
+})
+
+describe('easy explanation: resume offer', () => {
+  const stopped: JobStatus = {
+    kind: 'translate',
+    lang: 'de',
+    mode: 'easy',
+    state: 'stopped',
+    last_error: 'interrupted',
+    outputs: [],
+    progress: { done: 1, total: 4 },
+  }
+
+  it('says it is an easy explanation and Continue opens the window in that mode, with its pages', async () => {
+    rememberJobPages(DOC, 'translate', 'de', [2], 'easy')
+    rememberJobPages(DOC, 'translate', 'de', [1, 2])
+    const channels = fakeChannels({ unfinished: [stopped] })
+    const m = await mount({ channels, withAiRead: true })
+    const offer = q(m.el, '[data-resume-kind="translate"]')
+    expect(offer?.dataset.resumeMode).toBe('easy')
+    expect(offer?.textContent).toContain(
+      t('trResumeEasy', { language: languageName('de', 'en'), percent: 25 }),
+    )
+    await click(m.el, '[data-action="resume-job"]')
+    await until(() => q(m.el, '[data-field="language"]') !== null, 'the window')
+    expect(checked(m.el, 'mode-easy')).toBe(true)
+    expect((q(m.el, '[data-field="language"]') as HTMLSelectElement).value).toBe('de')
+    expect((q(m.el, '[data-field="range"]') as HTMLInputElement).value).toBe('2')
+    await settle()
+    expect(bridge.api.aiStream).not.toHaveBeenCalled()
+    expect(channels.api.pickTarget).not.toHaveBeenCalled()
   })
 })

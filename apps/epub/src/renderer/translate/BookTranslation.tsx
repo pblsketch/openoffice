@@ -18,7 +18,12 @@
  *   starts and the confirmation is shown again. Automatic saves wait while
  *   the window is open (`onWindowOpen`);
  * - one job per book: in this tab, in this page (the job engine's lock) and
- *   against a job another process runs (a 'running' record in the store);
+ *   against a job another process runs (a 'running' record in the store),
+ *   whichever way (a translation or an easy explanation) either one is;
+ * - an easy explanation (spec §5.5) runs the same way with `mode` 'easy':
+ *   the estimate, the job, its store reads and writes, its job record, the
+ *   remembered chapters and the result books are the easy explanation's, and
+ *   the resume offer is made for each way on its own and says which it is;
  * - the job sends to the provider the user confirmed and never switches; the
  *   engine sends two requests at a time, resends once, stops after three
  *   failures in a row and at once on a used-up limit or an ended sign-in;
@@ -47,7 +52,7 @@ import type {
   EpubTranslationUnit,
 } from '@genoffice/epub-engine'
 import type { Lang } from '@genoffice/i18n'
-import type { TranslationJobItem, TranslationSend } from '@genoffice/pdf-structure'
+import type { TranslationJobItem, TranslationMode, TranslationSend } from '@genoffice/pdf-structure'
 import type { JobStatus } from '@genoffice/pdf-structure/store'
 import { aiRunErrorText } from '@genoffice/ui'
 import type {
@@ -59,7 +64,7 @@ import type {
 } from '../../shared/ipc'
 import type { BookTranslationAnswer } from '../ai/book-tools'
 import { attemptSubscription } from '../ai/subscription-client'
-import type { TFunc } from '../i18n/locale'
+import type { StringKey, TFunc } from '../i18n/locale'
 import {
   BookTranslateDialog,
   type BookResultTarget,
@@ -77,11 +82,12 @@ import {
   baseName,
   chapterTitles,
   combineReports,
+  jobMode,
   jobPercent,
   languageName,
   recallChapters,
   rememberChapters,
-  resumableTranslation,
+  resumableTranslations,
 } from './translate-model'
 import './translate.css'
 
@@ -113,18 +119,25 @@ export interface BookTranslationProps {
 
 export interface BookTranslationHandle {
   /** open the window (ribbon, menu, AI panel); never sends anything */
-  requestOpen(request: { lang: string | null; chapters: number[] | null }): BookTranslationAnswer
+  requestOpen(request: {
+    lang: string | null
+    chapters: number[] | null
+    /** the way to choose first; default 'translate' */
+    mode?: TranslationMode
+  }): BookTranslationAnswer
 }
 
 interface DialogState {
   key: number
   lang: string | null
   chapters: number[] | null
+  mode: TranslationMode
 }
 
 /** one translation the user started: what to write and where */
 interface TranslationRun {
   lang: string
+  mode: TranslationMode
   chapters: number[] | undefined
   targets: BookResultTarget[]
 }
@@ -136,6 +149,7 @@ interface Writing {
 
 interface ReportState {
   lang: string
+  mode: TranslationMode
   report: EpubTranslationReport | null
   outputs: BookResultTarget[]
   failures: string[]
@@ -157,7 +171,8 @@ export const BookTranslation = forwardRef<BookTranslationHandle, BookTranslation
     const [dialog, setDialog] = useState<DialogState | null>(null)
     const [writing, setWriting] = useState<Writing | null>(null)
     const [report, setReport] = useState<ReportState | null>(null)
-    const [offer, setOffer] = useState<{ docHash: string; job: JobStatus } | null>(null)
+    // at most one per way, the translation first
+    const [offers, setOffers] = useState<{ docHash: string; jobs: JobStatus[] } | null>(null)
     const view = useSyncExternalStore(
       useCallback((listener: () => void) => session.subscribe(listener), [session]),
       () => session.view(),
@@ -200,8 +215,10 @@ export const BookTranslation = forwardRef<BookTranslationHandle, BookTranslation
         if (!alive || !hash?.ok) return
         const jobs = await attempt(() => api.store.unfinishedJobs(hash.docHash))
         if (!alive || !jobs?.ok) return
-        const job = resumableTranslation(jobs.jobs)
-        if (job && !session.isRunning()) setOffer({ docHash: hash.docHash, job })
+        const found = resumableTranslations(jobs.jobs)
+        if (found.length > 0 && !session.isRunning()) {
+          setOffers({ docHash: hash.docHash, jobs: found })
+        }
       })()
       return () => {
         alive = false
@@ -224,9 +241,13 @@ export const BookTranslation = forwardRef<BookTranslationHandle, BookTranslation
       return null
     }
 
-    const open = (lang0: string | null, chapters: number[] | null) => {
-      setOffer(null)
-      setDialog({ key: ++dialogSeq.current, lang: lang0, chapters })
+    const open = (
+      lang0: string | null,
+      chapters: number[] | null,
+      mode: TranslationMode = 'translate',
+    ) => {
+      setOffers(null)
+      setDialog({ key: ++dialogSeq.current, lang: lang0, chapters, mode })
     }
 
     const unlock = async (): Promise<void> => {
@@ -256,6 +277,7 @@ export const BookTranslation = forwardRef<BookTranslationHandle, BookTranslation
           const out = await p.api.writeTranslated({
             kind: target.kind,
             lang: run.lang,
+            ...(run.mode === 'easy' ? { mode: 'easy' as const } : {}),
             ...(run.chapters ? { chapters: run.chapters } : {}),
             path: target.path,
             docHash: hash.docHash,
@@ -273,7 +295,14 @@ export const BookTranslation = forwardRef<BookTranslationHandle, BookTranslation
       writingRef.current = null
       if (!aliveRef.current) return
       setWriting(null)
-      setReport({ lang: run.lang, report: combineReports(reports), outputs, failures, partial })
+      setReport({
+        lang: run.lang,
+        mode: run.mode,
+        report: combineReports(reports),
+        outputs,
+        failures,
+        partial,
+      })
     }
 
     const ended = async (last: BookJobView, run: TranslationRun): Promise<void> => {
@@ -334,6 +363,8 @@ export const BookTranslation = forwardRef<BookTranslationHandle, BookTranslation
       if (refused) return refused
 
       let { docHash, units } = request
+      const mode: TranslationMode = request.translationMode === 'easy' ? 'easy' : 'translate'
+      const modeOption = mode === 'easy' ? { mode: 'easy' as const } : {}
       // "Save and translate": the book is saved first; a failed save starts nothing
       const saving = p.isDirty()
       if (saving && !(await p.save())) return { ok: false, error: p.t('btSaveFailed') }
@@ -359,6 +390,7 @@ export const BookTranslation = forwardRef<BookTranslationHandle, BookTranslation
             units,
             model: { provider: request.route?.provider ?? '', model: request.route?.model ?? '' },
             store: createBookJobStore(p.api.store),
+            ...modeOption,
           }).catch(() => null)
           if (!estimate) return { ok: false, error: p.t('btLoadFailed') }
           if (estimate.calls !== request.calls) return { ok: false, changed: true }
@@ -367,12 +399,13 @@ export const BookTranslation = forwardRef<BookTranslationHandle, BookTranslation
 
       const run: TranslationRun = {
         lang: request.lang,
+        mode,
         chapters: request.chapters,
         targets: request.targets,
       }
       runRef.current = run
       setReport(null)
-      setOffer(null)
+      setOffers(null)
 
       const route = request.route
       if (request.mode === 'export' || !route) {
@@ -392,7 +425,7 @@ export const BookTranslation = forwardRef<BookTranslationHandle, BookTranslation
         if (!(await p.lock(true).catch(() => false))) {
           return { ok: false, error: p.t('btUnavailable') }
         }
-        rememberChapters(docHash, request.lang, request.chapters)
+        rememberChapters(docHash, request.lang, request.chapters, mode)
         const api = p.api
         const ask = createModelCall({
           api,
@@ -417,6 +450,7 @@ export const BookTranslation = forwardRef<BookTranslationHandle, BookTranslation
           docHash,
           lang: request.lang,
           provider: route.provider,
+          ...modeOption,
           launch: ({ signal, registry, onProgress }) =>
             startEpubTranslationJob({
               docHash,
@@ -425,6 +459,7 @@ export const BookTranslation = forwardRef<BookTranslationHandle, BookTranslation
               model: { provider: route.provider, model: route.model },
               store,
               send,
+              ...modeOption,
               ...(request.mode === 'restart' ? { restart: true } : {}),
               signal,
               registry,
@@ -446,12 +481,12 @@ export const BookTranslation = forwardRef<BookTranslationHandle, BookTranslation
     }
 
     useImperativeHandle(ref, () => ({
-      requestOpen({ lang: target, chapters }) {
+      requestOpen({ lang: target, chapters, mode }) {
         const p = propsRef.current
         if (!p.api || !p.book || !p.filePath || p.book.fixedLayout) return { unavailable: true }
         const running = tabJob()
         if (running) return { running }
-        open(target, chapters)
+        open(target, chapters, mode ?? 'translate')
         return { opened: true }
       },
     }))
@@ -461,42 +496,54 @@ export const BookTranslation = forwardRef<BookTranslationHandle, BookTranslation
 
     return (
       <>
-        {offer && !view && (
-          <div
-            className="bt-strip"
-            role="status"
-            data-resume-lang={offer.job.lang}
-            data-strip="resume"
-          >
-            <div className="bt-strip-text">
-              <span className="bt-strip-title">
-                {t('btResume', {
-                  language: nameOf(offer.job.lang ?? ''),
-                  percent: jobPercent(offer.job.progress),
-                })}
-              </span>
-            </div>
-            <button
-              type="button"
-              className="bt-btn primary"
-              data-action="resume-job"
-              onClick={() => {
-                const target = offer.job.lang ?? null
-                open(target, target ? recallChapters(offer.docHash, target) : null)
-              }}
-            >
-              {t('btResumeContinue')}
-            </button>
-            <button
-              type="button"
-              className="bt-btn"
-              data-action="dismiss-resume"
-              onClick={() => setOffer(null)}
-            >
-              {t('btResumeLater')}
-            </button>
-          </div>
-        )}
+        {offers &&
+          !view &&
+          offers.jobs.map((job) => {
+            const mode = jobMode(job)
+            return (
+              <div
+                key={mode}
+                className="bt-strip"
+                role="status"
+                data-resume-lang={job.lang}
+                data-resume-mode={mode}
+                data-strip="resume"
+              >
+                <div className="bt-strip-text">
+                  <span className="bt-strip-title">
+                    {t(mode === 'easy' ? 'btEasyResume' : 'btResume', {
+                      language: nameOf(job.lang ?? ''),
+                      percent: jobPercent(job.progress),
+                    })}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="bt-btn primary"
+                  data-action="resume-job"
+                  onClick={() => {
+                    const target = job.lang ?? null
+                    open(target, target ? recallChapters(offers.docHash, target, mode) : null, mode)
+                  }}
+                >
+                  {t('btResumeContinue')}
+                </button>
+                <button
+                  type="button"
+                  className="bt-btn"
+                  data-action="dismiss-resume"
+                  onClick={() =>
+                    setOffers((prev) => {
+                      const left = prev ? prev.jobs.filter((j) => jobMode(j) !== mode) : []
+                      return prev && left.length > 0 ? { ...prev, jobs: left } : null
+                    })
+                  }
+                >
+                  {t('btResumeLater')}
+                </button>
+              </div>
+            )
+          })}
         {view && (
           <JobStrip
             view={view}
@@ -536,6 +583,7 @@ export const BookTranslation = forwardRef<BookTranslationHandle, BookTranslation
             api={api}
             initialLang={dialog.lang}
             initialChapters={dialog.chapters}
+            initialMode={dialog.mode}
             dirty={props.isDirty()}
             onStart={start}
             onClose={() => setDialog(null)}
@@ -549,6 +597,7 @@ export const BookTranslation = forwardRef<BookTranslationHandle, BookTranslation
             outputs={report.outputs}
             failures={report.failures}
             partial={report.partial}
+            mode={report.mode}
             chapterName={chapterName}
             onOpen={(path) => void propsRef.current.api?.openSourcePath?.(path).catch(() => {})}
             onClose={() => setReport(null)}
@@ -643,7 +692,7 @@ function JobStrip({
             data-action="export-partial"
             onClick={onExport}
           >
-            {t('btExportPartial')}
+            {t(view.mode === 'easy' ? 'btEasyExportPartial' : 'btExportPartial')}
           </button>
           <button type="button" className="bt-btn" data-action="continue-later" onClick={onLater}>
             {t('btLater')}
@@ -666,10 +715,13 @@ function stripText(
   language: string,
   chapterName: (index: number) => string,
 ): { title: string; details: string[] } {
+  const easy = view.mode === 'easy'
+  /** the words of the way: an easy explanation's own, or the translation's */
+  const say = (plain: StringKey, easyKey: StringKey): StringKey => (easy ? easyKey : plain)
   if (view.state === 'running') {
     const page = view.currentPage
     return {
-      title: t('btRunning', { language, done: view.done, total: view.total }),
+      title: t(say('btRunning', 'btEasyRunning'), { language, done: view.done, total: view.total }),
       details:
         page === null
           ? []
@@ -685,21 +737,23 @@ function stripText(
   }
   const summary = view.summary
   if (view.state === 'complete' || !summary) {
-    return { title: t('btDone', { language, count: view.done }), details: [] }
+    return { title: t(say('btDone', 'btEasyDone'), { language, count: view.done }), details: [] }
   }
-  const details = [t('btStoppedProgress', { done: view.done, total: view.total })]
+  const details = [
+    t(say('btStoppedProgress', 'btEasyStoppedProgress'), { done: view.done, total: view.total }),
+  ]
   const lost = summary.lostUnits.reduce<number>((n, u) => n + (u as unknown[]).length, 0)
   if (lost > 0) details.push(t('btLostBlocks', { count: lost }))
   const reason = summary.stopReason
   const title =
     reason === 'cancelled' || reason === 'interrupted'
-      ? t('btStoppedCancelled')
+      ? t(say('btStoppedCancelled', 'btEasyStoppedCancelled'))
       : reason === 'failures'
-        ? t('btStoppedFailures')
+        ? t(say('btStoppedFailures', 'btEasyStoppedFailures'))
         : reason === 'store-write-failed'
-          ? t('btStoppedStore')
+          ? t(say('btStoppedStore', 'btEasyStoppedStore'))
           : (connectionStopText(lang, t, summary, view.provider) ??
-            t('btStoppedError', { reason: reason ?? '' }))
+            t(say('btStoppedError', 'btEasyStoppedError'), { reason: reason ?? '' }))
   return { title, details }
 }
 

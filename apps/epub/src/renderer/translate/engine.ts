@@ -1,7 +1,8 @@
 /**
  * The parts of the book translation core the page runs (spec §8): the job on
  * pdf-structure's job engine with the EPUB batching and model call, the
- * pre-start estimate, and the default target language.
+ * pre-start estimate, the default target language, and the words that mark
+ * an easy explanation (for its result names).
  *
  * They come from the engine's own modules, not from the package entry (the
  * entry also carries the result-book builder, which only the main process
@@ -23,5 +24,6 @@ export {
   DocumentJobBusyError,
   TRANSLATION_LANGUAGES,
   documentJobs,
+  easyExplanationLabel,
   isTranslationLanguage,
 } from './pdf-structure-browser'

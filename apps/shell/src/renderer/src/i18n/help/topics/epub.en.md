@@ -67,6 +67,7 @@ The e-book editor opens EPUB books (`.epub`) in a tab. You read the book, correc
 - What has been translated is kept. If you stop, choose **Export what is translated so far** (the rest stays in the original language) or **Continue later**. When you open a book with an unfinished translation, GenOffice offers to continue it. **Translate again from the start** first deletes the kept translation for that language.
 - Kept translations count under Settings ▸ General ▸ **Saved AI results**, together with those of PDF documents, and **Delete all** removes them too.
 - The same translation can also run from the [terminal commands](help://cli) as `ieumoffice epub translate`.
+- Choose **Plain language** under **Mode** to rewrite the book in easy words in the chosen language. The results are a **Plain-language book** and **Original followed by plain language**; their titles are marked as a plain-language version in that language, and their file names carry the mark in the screen language so they differ from a translation’s. The language starts as the screen language and may be the book’s own. The plain-language version is kept apart from translations, continuing it is offered on its own, and the terminal commands do not make it.
 
 ## Not supported yet
 

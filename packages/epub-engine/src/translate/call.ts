@@ -13,6 +13,10 @@
  * call throws JobUnitFailure (nothing is stored, resuming sends the batch
  * again), and run errors from `send` (rate limit, signed out, …) go to the
  * job engine untouched; it retries or stops.
+ *
+ * `mode` 'easy' sends the easy instruction (with `mode: 'easy'` on each
+ * request) and checks the answers the same way. Every unit is sent, also one
+ * already in the target language.
  */
 import {
   BLOCK_OVERHEAD_TOKENS,
@@ -88,7 +92,8 @@ function checkTranslation(unit: EpubTranslationCallUnit, answer: string): Checke
 
 /**
  * The `callModel` of the book translation job. `send` gets the PDF request
- * shape (system, prompt, lang, attempt) with the EPUB instruction.
+ * shape (system, prompt, lang, attempt, and `mode` for an easy explanation)
+ * with the EPUB instruction.
  */
 export function createEpubTranslationModelCall<B extends EpubTranslationCallUnit>(
   o: TranslationModelCallOptions,
@@ -96,6 +101,10 @@ export function createEpubTranslationModelCall<B extends EpubTranslationCallUnit
   const maxResends = o.maxResends ?? EPUB_TRANSLATION_MAX_RESENDS
   if (!Number.isInteger(maxResends) || maxResends < 0) {
     throw new RangeError(`epub translation: invalid resend count ${maxResends}`)
+  }
+  const easy = o.mode === 'easy'
+  if (o.mode !== undefined && o.mode !== 'translate' && !easy) {
+    throw new TypeError(`epub translation: invalid mode ${JSON.stringify(o.mode)}`)
   }
   return async (batch, signal) => {
     const results: (TranslationBlockResult | undefined)[] = batch.map(() => undefined)
@@ -107,8 +116,12 @@ export function createEpubTranslationModelCall<B extends EpubTranslationCallUnit
       const request = buildEpubTranslationRequest(
         o.lang,
         pending.map((i) => ({ id: String(i + 1), text: batch[i]!.block.text })),
+        easy ? 'easy' : 'translate',
       )
-      const answer = await o.send({ ...request, lang: o.lang, attempt }, signal)
+      const answer = await o.send(
+        { ...request, lang: o.lang, attempt, ...(easy ? { mode: 'easy' as const } : {}) },
+        signal,
+      )
       const parsed = parseTranslationOutput(answer)
       if (!parsed) continue
       anyParsed = true

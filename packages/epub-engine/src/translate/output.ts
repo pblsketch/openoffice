@@ -27,11 +27,19 @@
  * - the contents labels of the nav and the NCX: the translation only;
  * - obfuscated fonts: revealed with the old key, hidden with the new one.
  *
+ * An easy explanation (`mode` 'easy') is built the same way from the easy
+ * results. Its titles also carry pdf-structure's `easyExplanationLabel` in
+ * the target language, also a title that has no result, so the book does
+ * not pass for a plain translation, and its `dc:language` is the target
+ * language only, also when the original comes first. A plain build is
+ * unchanged.
+ *
  * Chapters not chosen, broken or fixed-layout ones, and chapters where no
  * block was translated are copied unchanged. Results may be partial (a
  * stopped job): a block without a result stays as it was and is reported.
  */
 import JSZip from 'jszip'
+import { easyExplanationLabel, type TranslationMode } from '@genoffice/pdf-structure'
 import { openChapter, type ChapterBlock, type OpenChapter } from '../blocks'
 import { encodeEntryText, type EpubTextEncoding } from '../encoding'
 import { ADOBE_FONT_OBFUSCATION, fontObfuscationKey, obfuscateFont } from '../fonts'
@@ -112,6 +120,11 @@ export interface BuildTranslatedEpubOptions extends EpubOpenOptions {
   now?: () => Date
   /** the new identifier's UUID (`xxxxxxxx-xxxx-…`); a random v4 UUID when left out */
   uuid?: () => string
+  /**
+   * 'easy': the results are an easy explanation's, and the titles carry the
+   * easy-explanation marker in `lang`. Default 'translate'.
+   */
+  mode?: TranslationMode
 }
 
 /**
@@ -445,6 +458,8 @@ interface PackageEditInput {
   titles: ReadonlyMap<number, string>
   horizontal: boolean
   now: Date
+  /** the easy-explanation marker the titles carry; absent for a plain translation */
+  easyLabel?: string
 }
 
 function isDc(el: XmlElement, local: string): boolean {
@@ -488,19 +503,34 @@ function packageEdits(entry: TextEntry, o: PackageEditInput): void {
   // Titles
   const titles = dc('title')
   if (titles.length === book.metadata.titles.length) {
-    for (const [index, translation] of o.titles) {
-      const el = titles[index]
-      if (!el) continue
-      const text =
-        o.kind === 'translated' ? translation : `${book.metadata.titles[index]!} (${translation})`
-      out.push(elementTextReplacement(source, el, escapeText(text)))
+    if (o.easyLabel === undefined) {
+      for (const [index, translation] of o.titles) {
+        const el = titles[index]
+        if (!el) continue
+        const text =
+          o.kind === 'translated' ? translation : `${book.metadata.titles[index]!} (${translation})`
+        out.push(elementTextReplacement(source, el, escapeText(text)))
+      }
+    } else {
+      // every title says it is an easy explanation, also one left in the source language
+      titles.forEach((el, index) => {
+        const original = book.metadata.titles[index]!
+        const translation = o.titles.get(index)
+        const text =
+          translation === undefined
+            ? `${original} (${o.easyLabel})`
+            : o.kind === 'translated'
+              ? `${translation} (${o.easyLabel})`
+              : `${original} (${translation} · ${o.easyLabel})`
+        out.push(elementTextReplacement(source, el, escapeText(text)))
+      })
     }
   }
 
-  // Languages
+  // Languages: an easy explanation is in the target language only, also with the original
   const languages = dc('language')
   const lang = escapeText(o.lang)
-  if (o.kind === 'translated') {
+  if (o.kind === 'translated' || o.easyLabel !== undefined) {
     if (languages.length === 0)
       out.push(metadataLineInsertion(source, metadata, dcLine('language', lang)))
     languages.forEach((el, i) => {
@@ -781,6 +811,10 @@ async function build(
 ): Promise<BuildTranslatedEpubResult> {
   const { kind, lang, results } = options
   if (!LANGUAGE_TAG.test(lang)) throw new Refusal('invalid-language', `not a language tag: ${lang}`)
+  if (options.mode !== undefined && options.mode !== 'translate' && options.mode !== 'easy') {
+    throw new TypeError(`epub translation: invalid mode ${JSON.stringify(options.mode)}`)
+  }
+  const easyLabel = options.mode === 'easy' ? easyExplanationLabel(lang) : undefined
   const opened = await openEpub(original, options)
   if (!opened.ok) throw new Refusal('not-opened', `${opened.reason}: ${opened.detail}`)
   const book = opened.book
@@ -870,7 +904,16 @@ async function build(
   // The package document.
   const opf = await edits.open(book.opfPath)
   if (!opf) throw new Refusal('broken-package', `${book.opfPath} is not valid text`)
-  packageEdits(opf, { book, kind, lang, identifier, titles: labels.titles, horizontal, now })
+  packageEdits(opf, {
+    book,
+    kind,
+    lang,
+    identifier,
+    titles: labels.titles,
+    horizontal,
+    now,
+    ...(easyLabel !== undefined ? { easyLabel } : {}),
+  })
 
   // Write.
   const replaced = edits.encoded()

@@ -3,7 +3,9 @@
  * translation instruction, the model call with its resends, the default
  * target language, and the translated / bilingual / partial builds. The job
  * itself (resume, restart, stops) runs on the job engine (../jobs/translate).
+ * The easy explanation is the second mode of all of it (`TranslationMode`).
  */
+export { TRANSLATION_MODES, isTranslationMode, type TranslationMode } from '../store/job-keys'
 export {
   BLOCK_OVERHEAD_TOKENS,
   SENTENCE_OVERHEAD_TOKENS,
@@ -52,7 +54,8 @@ export {
   translationSentenceSeparator,
   translationSourceLanguage,
 } from './language'
-export { translationStyleLines } from './style'
+export { EASY_LENGTH_FACTOR, easyStyleLines, translationStyleLines } from './style'
+export { easyExplanationLabel } from './easy-label'
 export {
   buildBilingualTree,
   buildTranslatedTree,

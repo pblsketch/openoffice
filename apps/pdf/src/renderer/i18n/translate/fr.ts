@@ -88,4 +88,29 @@ export const fr = {
   trRestartEditedCount: '{count} paragraphes ont été modifiés par une personne.',
   trRestartDiscardEdited: 'Supprimer aussi les {count} paragraphes modifiés par une personne',
   trRestartKeepEdited: 'Garder les paragraphes modifiés',
+  trMode: 'Mode',
+  trModeTranslate: 'Traduction',
+  trModeEasy: 'Explication simple',
+  trPdfEasy:
+    'Une explication simple est plus longue que l’original et ne tient pas à sa place. Markdown et EPUB fonctionnent.',
+  trEasyFormatMd: 'Markdown en explication simple',
+  trEasyFormatEpub: 'EPUB en explication simple',
+  trEasyBilingual:
+    'Original puis explication : chaque paragraphe d’origine est suivi de son explication simple (désactivé : l’explication seule)',
+  trEasyFileWord: 'explication simple',
+  trEasyPickTitle: 'Enregistrer le {format} en explication simple',
+  trConfirmEasyLanguage: 'Langue de l’explication : {language}',
+  trEasyConfirmDone: '{done} blocs sur {total} sont déjà expliqués et ne seront pas renvoyés',
+  trEasyConfirmNothing:
+    'Tous les blocs des pages choisies sont déjà expliqués. Rien n’est envoyé ; les fichiers sont écrits à partir de l’explication conservée.',
+  trEasyProviderChange:
+    'L’explication conservée a été faite avec {stored}. Continuer avec {next} mêlera deux IA dans une même explication.',
+  trEasyStart: 'Lancer l’explication',
+  trEasyRestart: 'Tout réexpliquer depuis le début…',
+  trEasyRestartConfirm:
+    'Supprimer l’explication simple conservée en {language} ({count} blocs) et réexpliquer tous les blocs ? Les explications supprimées ne peuvent pas être restaurées.',
+  trEasyRestartYes: 'Réexpliquer',
+  trEasyRunning: 'Rédaction de l’explication simple en {language}… {done}/{total} blocs',
+  trEasyDone: 'L’explication simple en {language} est terminée ({count} blocs).',
+  trResumeEasy: 'Explication simple inachevée ({language}) {percent} % — continuer ?',
 } satisfies Record<keyof typeof zh, string>

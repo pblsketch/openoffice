@@ -129,6 +129,8 @@ Stiskněte **E** nebo **T**, případně čipy pro vysvětlení a překlad v pol
 - Dvojklikem na přeložený odstavec ho upravíte. Upravené odstavce se uchovají jako prostý text a beze změny se použijí v přeložených souborech PDF, Markdown a EPUB. **Přeložit znovu** u odstavce odešle jen ten odstavec, a pokud jste ho upravili, napřed se zeptá.
 - Najetím myší na přeložený odstavec se jeho místo na původní stránce orámuje. Šířku sloupce a velikost písma lze měnit. **Přeložit všechny stránky…** otevře okno **Přeložit dokument**, jehož formát **Jen uložit (bez souboru)** ponechá překlad bez zápisu souboru.
 - Nově přeložené odstavce jsou propojené větu po větě. Najetí myší na přeloženou větu zvýrazní tuto větu na stránce originálu a najetí na větu originálu rozsvítí její překlad. Kde se věta na stránce nenajde, a u odstavců přeložených dříve nebo upravených vámi, zůstává propojení po odstavcích.
+- Lišta nad sloupcem přepíná mezi **Překlad** a **Jednoduché vysvětlení**. Jednoduché vysvětlení přepíše text běžnými slovy a krátkými větami pro děti, starší lidi nebo ty, kdo se jazyk učí; fakta, čísla a jména zůstanou beze změny. Volba se pamatuje a přepnutí nic neodešle. Dokud je vidět vysvětlení, tlačítka stránky a odstavce i úpravy platí pro ně.
+- U jednoduchého vysvětlení otevře **Vysvětlit jednoduše všechny stránky…** okno **Přeložit dokument** s druhem **Jednoduché vysvětlení**. Vysvětlení je delší než originál, a proto z něj nemůže být přeložené PDF; zapisuje se jako Markdown nebo EPUB. Se zapnutou volbou **Originál a pak vysvětlení** následuje za každým odstavcem originálu jeho vysvětlení; když je vypnutá, soubor obsahuje jen vysvětlení. Jazyk je nejprve jazykem rozhraní a může to být i jazyk dokumentu.
 
 ## Zvýraznění pomocí AI
 

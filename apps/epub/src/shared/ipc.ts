@@ -37,6 +37,7 @@ import type {
   JobStatus,
   TranslationBlockEntry,
   TranslationBlockInput,
+  TranslationMode,
 } from '@genoffice/pdf-structure/store'
 import type { EpubSubscriptionApi } from './subscription-api'
 
@@ -460,6 +461,11 @@ export type EpubPickResultTarget =
 export interface EpubWriteTranslatedRequest {
   kind: EpubTranslationOutputKind
   lang: string
+  /**
+   * 'easy': built from the book's easy explanation, its titles marked as one;
+   * left out (or 'translate'): from the translation, as before
+   */
+  mode?: TranslationMode
   /** spine indices chosen for translation; every chapter when left out */
   chapters?: number[]
   /** a path `pickResultPath` gave this view */
@@ -484,16 +490,39 @@ export interface EpubStoredTranslation {
   blocks: TranslationBlockEntry[]
 }
 
-/** The store writes a book translation job makes. Every one names a document hash of this view's book. */
+/**
+ * The store writes a book translation job makes. Every one names a document
+ * hash of this view's book, and may name a `mode`: left out it is
+ * 'translate' (the plain translation, as before); 'easy' writes the book's
+ * easy explanation, kept apart in the same store.
+ */
 export type EpubStoreWriteRequest =
-  | { kind: 'translationMeta'; docHash: string; lang: string; provider: string; model: string }
-  | { kind: 'translationBlocks'; docHash: string; lang: string; blocks: TranslationBlockInput[] }
-  | { kind: 'deleteTranslation'; docHash: string; lang: string }
+  | {
+      kind: 'translationMeta'
+      docHash: string
+      lang: string
+      provider: string
+      model: string
+      mode?: TranslationMode
+    }
+  | {
+      kind: 'translationBlocks'
+      docHash: string
+      lang: string
+      blocks: TranslationBlockInput[]
+      mode?: TranslationMode
+    }
+  | { kind: 'deleteTranslation'; docHash: string; lang: string; mode?: TranslationMode }
   /** "translate again from the start" keeping a person's edits; answers `removed` */
-  | { kind: 'deleteTranslationExceptEdited'; docHash: string; lang: string }
-  /** a `translate` job record (found by its language) */
-  | { kind: 'job'; docHash: string; lang: string; job: JobRecordInput }
-  | { kind: 'heartbeat'; docHash: string; job: JobKind; lang: string }
+  | {
+      kind: 'deleteTranslationExceptEdited'
+      docHash: string
+      lang: string
+      mode?: TranslationMode
+    }
+  /** a `translate` job record (found by its language; `job.mode` must match `mode`) */
+  | { kind: 'job'; docHash: string; lang: string; job: JobRecordInput; mode?: TranslationMode }
+  | { kind: 'heartbeat'; docHash: string; job: JobKind; lang: string; mode?: TranslationMode }
 
 export interface EpubStoreWriteResult {
   /** deleteTranslationExceptEdited: the block entries removed */
@@ -625,11 +654,14 @@ export interface EpubTranslateApi {
 }
 
 export interface EpubStoreApi {
-  translations(docHash: string): Promise<EpubOutcome<{ langs: string[] }>>
+  /** languages of the stored translations, or of the easy explanations with `mode` 'easy' */
+  translations(docHash: string, mode?: TranslationMode): Promise<EpubOutcome<{ langs: string[] }>>
   translation(
     docHash: string,
     lang: string,
+    mode?: TranslationMode,
   ): Promise<EpubOutcome<{ translation: EpubStoredTranslation | null }>>
+  /** easy explanations' records come too, each with `mode: 'easy'` */
   unfinishedJobs(docHash: string): Promise<EpubOutcome<{ jobs: JobStatus[] }>>
   write(request: EpubStoreWriteRequest): Promise<EpubOutcome<EpubStoreWriteResult>>
 }

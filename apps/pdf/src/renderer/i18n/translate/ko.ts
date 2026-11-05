@@ -83,4 +83,28 @@ export const ko = {
   trRestartEditedCount: '사람이 고친 문단이 {count}개 있습니다.',
   trRestartDiscardEdited: '사람이 고친 문단 {count}개도 지웁니다',
   trRestartKeepEdited: '고친 문단은 남기기',
+  trMode: '방식',
+  trModeTranslate: '번역',
+  trModeEasy: '쉬운 풀이',
+  trPdfEasy: '쉬운 풀이는 글이 길어져 원래 자리에 들어가지 않습니다. Markdown·EPUB은 됩니다.',
+  trEasyFormatMd: '쉬운 풀이 Markdown',
+  trEasyFormatEpub: '쉬운 풀이 EPUB',
+  trEasyBilingual:
+    '원문 다음에 풀이: 원문 문단 다음에 쉬운 풀이 문단을 둡니다(끄면 풀이만 담습니다)',
+  trEasyFileWord: '쉬운 풀이',
+  trEasyPickTitle: '쉬운 풀이 {format} 저장',
+  trConfirmEasyLanguage: '쉬운 풀이 언어: {language}',
+  trEasyConfirmDone: '전체 {total}개 블록 중 {done}개는 이미 풀이되어 다시 보내지 않습니다',
+  trEasyConfirmNothing:
+    '고른 페이지의 블록이 모두 풀이되어 있습니다. 아무것도 보내지 않고 보관된 쉬운 풀이로 파일을 씁니다.',
+  trEasyProviderChange:
+    '보관된 쉬운 풀이는 {stored}(으)로 만들었습니다. {next}(으)로 이어 가면 한 풀이에 두 AI의 글이 섞입니다.',
+  trEasyStart: '쉬운 풀이 시작',
+  trEasyRestart: '처음부터 다시 풀이…',
+  trEasyRestartConfirm:
+    '보관된 {language} 쉬운 풀이({count}개 블록)를 지우고 모든 블록을 다시 풀이할까요? 지운 풀이는 되돌릴 수 없습니다.',
+  trEasyRestartYes: '다시 풀이',
+  trEasyRunning: '{language} 쉬운 풀이를 만드는 중… {done}/{total}개 블록',
+  trEasyDone: '{language} 쉬운 풀이를 마쳤습니다({count}개 블록).',
+  trResumeEasy: '끝나지 않은 쉬운 풀이({language}) {percent}% — 이어서 할까요?',
 } satisfies Record<keyof typeof zh, string>

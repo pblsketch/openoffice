@@ -88,8 +88,20 @@ const core: EpubCoreApi = {
 // ---- book translation: units, result books, and the result store of this view's book ----
 
 const store: EpubStoreApi = {
-  translations: (docHash) => ipcRenderer.invoke(EPUB_CHANNELS.storeTranslations, docHash),
-  translation: (docHash, lang) => ipcRenderer.invoke(EPUB_CHANNELS.storeTranslation, docHash, lang),
+  // a plain translation call sends no mode, as before
+  translations: (docHash, mode) =>
+    ipcRenderer.invoke(
+      EPUB_CHANNELS.storeTranslations,
+      docHash,
+      ...(mode === undefined ? [] : [mode]),
+    ),
+  translation: (docHash, lang, mode) =>
+    ipcRenderer.invoke(
+      EPUB_CHANNELS.storeTranslation,
+      docHash,
+      lang,
+      ...(mode === undefined ? [] : [mode]),
+    ),
   unfinishedJobs: (docHash) => ipcRenderer.invoke(EPUB_CHANNELS.storeUnfinishedJobs, docHash),
   write: (request) => ipcRenderer.invoke(EPUB_CHANNELS.storeWrite, request),
 }

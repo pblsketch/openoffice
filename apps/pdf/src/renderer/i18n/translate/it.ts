@@ -86,4 +86,29 @@ export const it = {
   trRestartEditedCount: '{count} paragrafi sono stati modificati da una persona.',
   trRestartDiscardEdited: 'Elimina anche i {count} paragrafi modificati da una persona',
   trRestartKeepEdited: 'Mantieni i paragrafi modificati',
+  trMode: 'Modalità',
+  trModeTranslate: 'Traduzione',
+  trModeEasy: 'Spiegazione semplice',
+  trPdfEasy:
+    'Una spiegazione semplice è più lunga dell’originale e non entra al suo posto. Markdown ed EPUB funzionano.',
+  trEasyFormatMd: 'Markdown con spiegazione semplice',
+  trEasyFormatEpub: 'EPUB con spiegazione semplice',
+  trEasyBilingual:
+    'Originale e poi spiegazione: dopo ogni paragrafo originale c’è la sua spiegazione semplice (disattivato: solo la spiegazione)',
+  trEasyFileWord: 'spiegazione semplice',
+  trEasyPickTitle: 'Salva {format} con spiegazione semplice',
+  trConfirmEasyLanguage: 'Lingua della spiegazione: {language}',
+  trEasyConfirmDone: '{done} blocchi su {total} sono già spiegati e non verranno inviati di nuovo',
+  trEasyConfirmNothing:
+    'Tutti i blocchi delle pagine scelte sono già spiegati. Non viene inviato nulla; i file vengono scritti dalla spiegazione salvata.',
+  trEasyProviderChange:
+    'La spiegazione salvata è stata fatta con {stored}. Continuando con {next} una stessa spiegazione mescolerà due IA.',
+  trEasyStart: 'Avvia la spiegazione',
+  trEasyRestart: 'Spiega di nuovo dall’inizio…',
+  trEasyRestartConfirm:
+    'Eliminare la spiegazione semplice salvata in {language} ({count} blocchi) e spiegare di nuovo tutti i blocchi? Le spiegazioni eliminate non si possono recuperare.',
+  trEasyRestartYes: 'Spiega di nuovo',
+  trEasyRunning: 'Scrittura della spiegazione semplice in {language}… {done}/{total} blocchi',
+  trEasyDone: 'La spiegazione semplice in {language} è terminata ({count} blocchi).',
+  trResumeEasy: 'Spiegazione semplice non finita ({language}) {percent}% — continuare?',
 } satisfies Record<keyof typeof zh, string>

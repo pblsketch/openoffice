@@ -67,6 +67,7 @@ De e-boekeditor opent EPUB-boeken (`.epub`) in een tabblad. Je leest het boek, v
 - Wat al vertaald is, wordt bewaard. Als je stopt, kies je **Exporteren wat tot nu toe vertaald is** (de rest blijft in de oorspronkelijke taal) of **Later verdergaan**. Open je een boek met een onafgemaakte vertaling, dan biedt GenOffice aan om ermee verder te gaan. **Opnieuw vertalen vanaf het begin** verwijdert eerst de bewaarde vertaling voor die taal.
 - Bewaarde vertalingen tellen mee onder Instellingen ▸ Algemeen ▸ **Opgeslagen AI-resultaten**, samen met die van pdf-documenten, en **Alles verwijderen** wist ook deze.
 - Dezelfde vertaling kun je ook starten met de [terminalopdrachten](help://cli) als `ieumoffice epub translate`.
+- Kies bij **Soort** voor **Eenvoudige taal** om het boek in eenvoudige woorden in de gekozen taal te herschrijven. De resultaten zijn een **Boek in eenvoudige taal** en **Origineel, gevolgd door eenvoudige taal**; hun titel vermeldt in die taal dat het een versie in eenvoudige taal is, en hun bestandsnaam vermeldt dat in de taal van de interface, zodat die verschilt van die van een vertaling. De taal is eerst die van de interface en mag ook die van het boek zijn. De eenvoudige versie wordt los van vertalingen bewaard, verdergaan wordt er apart voor aangeboden, en de terminalopdrachten maken haar niet.
 
 ## Nog niet ondersteund
 

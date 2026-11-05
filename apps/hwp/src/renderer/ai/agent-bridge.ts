@@ -39,6 +39,7 @@ const METHODS = [
   'removeTableLines',
   'deleteTable',
   'installFileMenu',
+  'installEasyWords',
   'reveal',
   'selection',
   'replaceSelection',

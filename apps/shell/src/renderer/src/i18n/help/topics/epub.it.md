@@ -67,6 +67,7 @@ L’editor di e-book apre i libri EPUB (`.epub`) in una scheda. Puoi leggere il 
 - Quanto è già stato tradotto viene conservato. Se ti fermi, scegli **Esporta quanto tradotto finora** (il resto rimane nella lingua originale) oppure **Continua più tardi**. Quando apri un libro con una traduzione non finita, GenOffice propone di proseguirla. **Traduci di nuovo dall’inizio** elimina prima la traduzione conservata per quella lingua.
 - Le traduzioni conservate rientrano in Impostazioni ▸ Generale ▸ **Risultati IA salvati**, insieme a quelle dei documenti PDF, e **Elimina tutto** cancella anche queste.
 - La stessa traduzione si può avviare anche dalla [riga di comando](help://cli) con `ieumoffice epub translate`.
+- Scegli **Linguaggio semplice** in **Modalità** per riscrivere il libro con parole semplici nella lingua scelta. I risultati sono un **Libro in linguaggio semplice** e **Originale seguito dal linguaggio semplice**; il titolo riporta in quella lingua l’indicazione della versione semplice, il nome del file la riporta nella lingua dell’interfaccia, così da distinguersi da quello di una traduzione. La lingua all’inizio è quella dell’interfaccia e può essere anche quella del libro. La versione semplice è conservata a parte rispetto alle traduzioni, la ripresa viene proposta separatamente e i comandi da terminale non la creano.
 
 ## Non ancora supportato
 

@@ -87,4 +87,29 @@ export const cs = {
   trRestartEditedCount: 'Počet odstavců upravených člověkem: {count}.',
   trRestartDiscardEdited: 'Smazat i odstavce upravené člověkem ({count})',
   trRestartKeepEdited: 'Ponechat upravené odstavce',
+  trMode: 'Druh',
+  trModeTranslate: 'Překlad',
+  trModeEasy: 'Jednoduché vysvětlení',
+  trPdfEasy:
+    'Jednoduché vysvětlení je delší než originál a nevejde se na jeho místo. Markdown a EPUB fungují.',
+  trEasyFormatMd: 'Markdown s jednoduchým vysvětlením',
+  trEasyFormatEpub: 'EPUB s jednoduchým vysvětlením',
+  trEasyBilingual:
+    'Originál a pak vysvětlení: za každým odstavcem originálu je jeho jednoduché vysvětlení (vypnuto: jen vysvětlení)',
+  trEasyFileWord: 'jednoduché vysvětlení',
+  trEasyPickTitle: 'Uložit {format} s jednoduchým vysvětlením',
+  trConfirmEasyLanguage: 'Jazyk vysvětlení: {language}',
+  trEasyConfirmDone: '{done} z {total} bloků je už vysvětleno a znovu se neodešle',
+  trEasyConfirmNothing:
+    'Všechny bloky na vybraných stránkách jsou už vysvětlené. Nic se neodešle; soubory se zapíší z uloženého vysvětlení.',
+  trEasyProviderChange:
+    'Uložené vysvětlení vzniklo s {stored}. Pokračování s {next} smíchá v jednom vysvětlení texty dvou AI.',
+  trEasyStart: 'Spustit vysvětlení',
+  trEasyRestart: 'Vysvětlit znovu od začátku…',
+  trEasyRestartConfirm:
+    'Smazat uložené jednoduché vysvětlení ({language}, {count} bloků) a vysvětlit všechny bloky znovu? Smazaná vysvětlení nelze obnovit.',
+  trEasyRestartYes: 'Vysvětlit znovu',
+  trEasyRunning: 'Vytváří se jednoduché vysvětlení ({language})… {done}/{total} bloků',
+  trEasyDone: 'Jednoduché vysvětlení ({language}) je hotové ({count} bloků).',
+  trResumeEasy: 'Nedokončené jednoduché vysvětlení ({language}) {percent} % — pokračovat?',
 } satisfies Record<keyof typeof zh, string>

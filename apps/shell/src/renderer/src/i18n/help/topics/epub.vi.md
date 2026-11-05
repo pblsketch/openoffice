@@ -67,6 +67,7 @@ Trình soạn thảo sách điện tử mở sách EPUB (`.epub`) trong một th
 - Phần đã dịch được giữ lại. Nếu bạn dừng, hãy chọn **Xuất phần đã dịch đến giờ** (phần còn lại giữ ngôn ngữ gốc) hoặc **Tiếp tục sau**. Khi bạn mở một cuốn sách có bản dịch chưa xong, GenOffice sẽ đề nghị dịch tiếp. **Dịch lại từ đầu** sẽ xóa bản dịch đã giữ của ngôn ngữ đó trước.
 - Bản dịch đã giữ được tính trong Cài đặt ▸ Chung ▸ **Kết quả AI đã lưu**, cùng với kết quả của tài liệu PDF, và **Xóa tất cả** cũng xóa luôn chúng.
 - Cũng có thể chạy cùng phép dịch này từ [lệnh trên terminal](help://cli) bằng `ieumoffice epub translate`.
+- Chọn **Bản dễ hiểu** ở mục **Cách làm** để viết lại cuốn sách bằng lời dễ hiểu trong ngôn ngữ đã chọn. Kết quả là **Sách bản dễ hiểu** và **Bản gốc, tiếp theo là bản dễ hiểu**; tên sách được ghi chú là bản dễ hiểu bằng ngôn ngữ đó, còn tên tệp mang ghi chú này bằng ngôn ngữ giao diện để khác với tên tệp của bản dịch. Ngôn ngữ ban đầu là ngôn ngữ giao diện và có thể trùng với ngôn ngữ của sách. Bản dễ hiểu được lưu riêng với bản dịch, lời mời làm tiếp cũng hiện riêng, và lệnh terminal không tạo ra nó.
 
 ## Chưa hỗ trợ
 

@@ -362,6 +362,9 @@ export const de = {
   appAiBadgeTip: 'Verwendet KI',
   appTranslate: 'Übersetzen',
   appTranslateTo: 'In {lang} übersetzen',
+  appEasyWords: 'In einfachen Worten erklären',
+  appEasyWordsPrompt:
+    'Erkläre den markierten Text auf Deutsch so, dass ihn auch Menschen verstehen, die einfache Sprache brauchen (Kinder, ältere Menschen, Menschen, die Deutsch lernen). Verwende Alltagswörter und kurze Sätze und behalte alle Fakten, Zahlen und Bedingungen bei. Das Dokument nicht ändern: „{text}“',
   redactMenuLabel: 'Auswahl vor der KI verbergen',
   redactDialogDesc:
     'Die Wörter bleiben im Dokument und in der Datei; das Modell sieht nur den Platzhalter. Geben Sie ihm einen Namen.',

@@ -112,4 +112,42 @@ export const de = {
   btReasonNotChosen: 'nicht gewählt',
   btReasonBroken: 'beschädigtes Kapitel',
   btReasonFixed: 'Kapitel mit festem Layout',
+  btMode: 'Art',
+  btModeTranslate: 'Übersetzen',
+  btModeEasy: 'Einfache Sprache',
+  btEasyIntro:
+    'Einfache Sprache schreibt den Text des Buchs mit leichten Wörtern in der gewählten Sprache um und legt ihn in neuen EPUB-Dateien ab. Dieses Buch ändert sich nicht.',
+  btEasyLanguage: 'Umschreiben in',
+  btKindEasy: 'Buch in einfacher Sprache',
+  btKindEasyBilingual: 'Original, danach in einfacher Sprache',
+  btEasyConfirmTitle: 'Vor dem Umschreiben in einfache Sprache',
+  btEasyConfirmLanguage: 'Einfache Sprache: {language}',
+  btEasyConfirmDone:
+    '{done} von {total} Blöcken sind schon umgeschrieben und werden nicht gesendet',
+  btEasyProviderChange:
+    'Die gespeicherte Fassung in einfacher Sprache wurde mit einer anderen KI ({stored}) erstellt. Der Rest wird mit {next} umgeschrieben.',
+  btEasyNothing: 'Alles Gewählte ist schon umgeschrieben. Es wird nichts gesendet.',
+  btEasyNoticeSends:
+    'Das Umschreiben in einfache Sprache sendet der KI den Text der gewählten Kapitel (Absätze mit Platzhaltern für die Formatierung), den Buchtitel und die Einträge des Inhaltsverzeichnisses.',
+  btEasyRestart: 'Von vorn neu umschreiben',
+  btEasyRestartConfirm:
+    'Die gespeicherte Fassung in einfacher Sprache ({language}, {count} Blöcke) löschen und alles neu umschreiben?',
+  btEasyRestartYes: 'Löschen und neu umschreiben',
+  btEasyRestartSaveYes: 'Speichern, löschen und neu umschreiben',
+  btEasySaveAndStart: 'Speichern und umschreiben',
+  btEasyRunning: 'Einfache Sprache ({language}): {done}/{total} Blöcke',
+  btEasyDone: 'Einfache Sprache ({language}) abgeschlossen: {count} Blöcke',
+  btEasyStoppedCancelled: 'Das Umschreiben in einfache Sprache wurde gestoppt.',
+  btEasyStoppedFailures:
+    'Das Umschreiben in einfache Sprache wurde gestoppt, weil mehrere Anfragen nacheinander fehlschlugen.',
+  btEasyStoppedStore:
+    'Das Umschreiben in einfache Sprache wurde gestoppt, weil die Ergebnisse nicht gespeichert werden konnten.',
+  btEasyStoppedError: 'Das Umschreiben in einfache Sprache wurde gestoppt: {reason}',
+  btEasyStoppedProgress: '{done} von {total} Blöcken sind umgeschrieben und gespeichert.',
+  btEasyExportPartial: 'Bisher Umgeschriebenes exportieren',
+  btEasyResume:
+    'Unvollständige Fassung in einfacher Sprache ({language}) {percent} % – fortsetzen?',
+  btEasyReportTitle: 'Einfache Sprache abgeschlossen',
+  btEasyReportPartialTitle: 'Bisher Umgeschriebenes exportiert',
+  btEasyReportTranslated: 'In einfache Sprache umgeschriebene Blöcke ({language}): {count}',
 } satisfies Record<keyof typeof zh, string>

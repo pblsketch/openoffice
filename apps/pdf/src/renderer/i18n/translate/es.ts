@@ -87,4 +87,29 @@ export const es = {
   trRestartEditedCount: '{count} párrafos fueron editados por una persona.',
   trRestartDiscardEdited: 'Eliminar también los {count} párrafos editados por una persona',
   trRestartKeepEdited: 'Conservar los párrafos editados',
+  trMode: 'Modo',
+  trModeTranslate: 'Traducción',
+  trModeEasy: 'Explicación sencilla',
+  trPdfEasy:
+    'Una explicación sencilla es más larga que el original y no cabe en su sitio. Markdown y EPUB sí funcionan.',
+  trEasyFormatMd: 'Markdown con explicación sencilla',
+  trEasyFormatEpub: 'EPUB con explicación sencilla',
+  trEasyBilingual:
+    'Original y luego explicación: tras cada párrafo original va su explicación sencilla (desactivado: solo la explicación)',
+  trEasyFileWord: 'explicación sencilla',
+  trEasyPickTitle: 'Guardar {format} con explicación sencilla',
+  trConfirmEasyLanguage: 'Idioma de la explicación: {language}',
+  trEasyConfirmDone: '{done} de {total} bloques ya están explicados y no se volverán a enviar',
+  trEasyConfirmNothing:
+    'Todos los bloques de las páginas elegidas ya están explicados. No se envía nada; los archivos se escriben con la explicación guardada.',
+  trEasyProviderChange:
+    'La explicación guardada se hizo con {stored}. Si sigues con {next}, una misma explicación mezclará dos IA.',
+  trEasyStart: 'Empezar la explicación',
+  trEasyRestart: 'Volver a explicar desde el principio…',
+  trEasyRestartConfirm:
+    '¿Borrar la explicación sencilla guardada en {language} ({count} bloques) y volver a explicar todos los bloques? Las explicaciones borradas no se pueden recuperar.',
+  trEasyRestartYes: 'Volver a explicar',
+  trEasyRunning: 'Escribiendo la explicación sencilla en {language}… {done}/{total} bloques',
+  trEasyDone: 'La explicación sencilla en {language} ha terminado ({count} bloques).',
+  trResumeEasy: 'Explicación sencilla sin terminar ({language}) {percent} % — ¿continuar?',
 } satisfies Record<keyof typeof zh, string>

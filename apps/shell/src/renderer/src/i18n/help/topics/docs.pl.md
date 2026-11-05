@@ -53,6 +53,7 @@ Kliknij prawym przyciskiem w dowolnym miejscu tekstu — menu dostosowuje się d
 - **Schowek**: wytnij / kopiuj / wklej / **wklej jako czysty tekst**.
 - **Czcionka, akapit**: zmiana kroju i rozmiaru, pogrubienie/pochylenie/podkreślenie, wyrównanie/wcięcie/odstępy bez przechodzenia na wstążkę.
 - **Synonimy**: wymienia synonimy zaznaczonego słowa; kliknij jeden, aby je zastąpić.
+- **Wyjaśnij prostymi słowami** (AI): wysyła zaznaczenie do panelu AI, aby wyjaśnił je prostymi słowami w języku interfejsu, i od razu to uruchamia. Bez zaznaczenia jest wyłączone, a tekst ukryty przed AI nie jest wysyłany.
 - **Tłumacz** (AI): tłumaczy zaznaczenie na język docelowy (angielski, uproszczony chiński, japoński, koreański, francuski, niemiecki, hiszpański, ...) za pośrednictwem panelu AI.
 - **Nowy komentarz**: dodaje komentarz do zaznaczenia.
 - **Pisownia** (przy błędnie napisanym słowie): proponowane zamiany, zignoruj wszystko, dodaj do słownika, ustaw język sprawdzania.

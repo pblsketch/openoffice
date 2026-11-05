@@ -67,6 +67,7 @@ L’éditeur de livres numériques ouvre les livres EPUB (`.epub`) dans un ongle
 - Ce qui a déjà été traduit est conservé. Si vous arrêtez, choisissez **Exporter ce qui est traduit jusqu’ici** (le reste demeure dans la langue d’origine) ou **Continuer plus tard**. Quand vous ouvrez un livre dont la traduction est inachevée, GenOffice propose de la poursuivre. **Retraduire depuis le début** supprime d’abord la traduction conservée pour cette langue.
 - Les traductions conservées sont comptées dans Paramètres ▸ Général ▸ **Résultats IA enregistrés**, avec celles des documents PDF, et **Tout supprimer** les efface aussi.
 - La même traduction peut aussi se lancer depuis la [ligne de commande](help://cli) avec `ieumoffice epub translate`.
+- Choisissez **Facile à lire** sous **Mode** pour réécrire le livre en mots simples dans la langue choisie. Les résultats sont un **Livre facile à lire** et **Original suivi de la version facile à lire** ; leur titre porte la mention de la version facile à lire dans cette langue, et leur nom de fichier la porte dans la langue de l’interface, pour se distinguer de celui d’une traduction. La langue est d’abord celle de l’interface et peut être celle du livre. La version facile est conservée à part des traductions, sa reprise est proposée séparément, et les commandes du terminal ne la produisent pas.
 
 ## Pas encore pris en charge
 
