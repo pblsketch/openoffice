@@ -95,6 +95,7 @@ export const fr = {
   aiToolPageSetup: 'Mise en page vérifiée',
   aiToolPageSetupSet: 'Mise en page modifiée',
   aiToolFormatting: 'Mise en forme vérifiée',
+  aiToolParagraphLooks: 'Mise en forme des paragraphes vérifiée · {count}',
   aiToolFormattingOf: 'Mise en forme de {name} vérifiée',
   aiToolFormatLook: '{count} paragraphes d’un même aspect mis en forme',
   aiLookParagraphs: '{count} paragraphes d’un même aspect',

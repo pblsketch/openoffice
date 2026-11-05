@@ -96,6 +96,7 @@ export const de = {
   aiToolPageSetup: 'Seiteneinrichtung geprüft',
   aiToolPageSetupSet: 'Seiteneinrichtung geändert',
   aiToolFormatting: 'Formatierung geprüft',
+  aiToolParagraphLooks: 'Aussehen der Absätze geprüft · {count}',
   aiToolFormattingOf: 'Formatierung von {name} geprüft',
   aiToolFormatLook: '{count} Absätze eines Aussehens formatiert',
   aiLookParagraphs: '{count} Absätze eines Aussehens',

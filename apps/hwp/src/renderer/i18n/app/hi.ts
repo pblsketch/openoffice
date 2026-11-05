@@ -93,6 +93,7 @@ export const hi = {
   aiToolPageSetup: 'पृष्ठ सेटअप देखा',
   aiToolPageSetupSet: 'पृष्ठ सेटअप बदला',
   aiToolFormatting: 'फ़ॉर्मैटिंग देखी',
+  aiToolParagraphLooks: 'हर अनुच्छेद का स्वरूप जाँचा गया · {count}',
   aiToolFormattingOf: '{name} की फ़ॉर्मैटिंग देखी',
   aiToolFormatLook: 'एक जैसे दिखने वाले {count} अनुच्छेद फ़ॉर्मैट किए',
   aiLookParagraphs: 'एक जैसे दिखने वाले {count} अनुच्छेद',

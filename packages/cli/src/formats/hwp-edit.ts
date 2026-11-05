@@ -265,6 +265,7 @@ const HWP_GROUPS: { name: string; summary: string; ops: string[] }[] = [
       'read_note_settings',
       'read_page_setup',
       'read_formatting',
+      'list_paragraph_looks',
     ],
   },
   {

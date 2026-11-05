@@ -92,6 +92,7 @@ export const vi = {
   aiToolPageSetup: 'Đã xem thiết lập trang',
   aiToolPageSetupSet: 'Đã đổi thiết lập trang',
   aiToolFormatting: 'Đã xem định dạng',
+  aiToolParagraphLooks: 'Đã kiểm tra định dạng từng đoạn · {count}',
   aiToolFormattingOf: 'Đã xem định dạng của {name}',
   aiToolFormatLook: 'Đã định dạng {count} đoạn cùng kiểu',
   aiLookParagraphs: '{count} đoạn cùng kiểu',

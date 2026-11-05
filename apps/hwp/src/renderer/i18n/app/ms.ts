@@ -93,6 +93,7 @@ export const ms = {
   aiToolPageSetup: 'Menyemak persediaan halaman',
   aiToolPageSetupSet: 'Menukar persediaan halaman',
   aiToolFormatting: 'Menyemak format',
+  aiToolParagraphLooks: 'Format setiap perenggan disemak · {count}',
   aiToolFormattingOf: 'Menyemak format {name}',
   aiToolFormatLook: 'Memformat {count} perenggan yang serupa rupanya',
   aiLookParagraphs: '{count} perenggan yang serupa rupanya',

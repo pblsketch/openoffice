@@ -94,6 +94,7 @@ export const ru = {
   aiToolPageSetup: 'Проверены параметры страницы',
   aiToolPageSetupSet: 'Изменены параметры страницы',
   aiToolFormatting: 'Проверено оформление',
+  aiToolParagraphLooks: 'Оформление абзацев проверено · {count}',
   aiToolFormattingOf: 'Проверено оформление: {name}',
   aiToolFormatLook: 'Оформлено абзацев одного вида: {count}',
   aiLookParagraphs: 'Абзацев одного вида: {count}',

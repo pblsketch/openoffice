@@ -93,6 +93,7 @@ export const id = {
   aiToolPageSetup: 'Memeriksa pengaturan halaman',
   aiToolPageSetupSet: 'Mengubah pengaturan halaman',
   aiToolFormatting: 'Memeriksa format',
+  aiToolParagraphLooks: 'Format tiap paragraf diperiksa · {count}',
   aiToolFormattingOf: 'Memeriksa format {name}',
   aiToolFormatLook: 'Memformat {count} paragraf dengan tampilan yang sama',
   aiLookParagraphs: '{count} paragraf dengan tampilan yang sama',

@@ -88,6 +88,7 @@ export const zh = {
   aiToolPageSetup: '查看了页面设置',
   aiToolPageSetupSet: '更改了页面设置',
   aiToolFormatting: '查看了文档格式',
+  aiToolParagraphLooks: '已查看各段落格式 · {count} 段',
   aiToolFormattingOf: '查看了 {name} 的格式',
   aiToolFormatLook: '更改了 {count} 个同样式段落的格式',
   aiLookParagraphs: '{count} 个同样式段落',

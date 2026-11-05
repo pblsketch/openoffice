@@ -93,6 +93,7 @@ export const pl = {
   aiToolPageSetup: 'Sprawdzono ustawienia strony',
   aiToolPageSetupSet: 'Zmieniono ustawienia strony',
   aiToolFormatting: 'Sprawdzono formatowanie',
+  aiToolParagraphLooks: 'Sprawdzono wygląd akapitów · {count}',
   aiToolFormattingOf: 'Sprawdzono formatowanie: {name}',
   aiToolFormatLook: 'Sformatowano {count} akapitów o jednym wyglądzie',
   aiLookParagraphs: '{count} akapitów o jednym wyglądzie',

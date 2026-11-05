@@ -92,6 +92,7 @@ export const th = {
   aiToolPageSetup: 'ตรวจการตั้งค่าหน้ากระดาษ',
   aiToolPageSetupSet: 'เปลี่ยนการตั้งค่าหน้ากระดาษ',
   aiToolFormatting: 'ตรวจรูปแบบเอกสาร',
+  aiToolParagraphLooks: 'ตรวจสอบรูปแบบของแต่ละย่อหน้าแล้ว · {count}',
   aiToolFormattingOf: 'ตรวจรูปแบบของ {name}',
   aiToolFormatLook: 'จัดรูปแบบย่อหน้าที่หน้าตาเหมือนกัน {count} ย่อหน้า',
   aiLookParagraphs: 'ย่อหน้าที่หน้าตาเหมือนกัน {count} ย่อหน้า',

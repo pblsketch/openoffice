@@ -95,6 +95,7 @@ export const pt = {
   aiToolPageSetup: 'Verificada a configuração da página',
   aiToolPageSetupSet: 'Alterada a configuração da página',
   aiToolFormatting: 'Verificada a formatação',
+  aiToolParagraphLooks: 'Formatação de cada parágrafo verificada · {count}',
   aiToolFormattingOf: 'Verificada a formatação de {name}',
   aiToolFormatLook: 'Formatados {count} parágrafos de uma mesma aparência',
   aiLookParagraphs: '{count} parágrafos de uma mesma aparência',
