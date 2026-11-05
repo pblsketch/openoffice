@@ -17,6 +17,8 @@ export interface AgentMatch {
   context?: string
   /** false for text inside an equation, which has no replace path */
   replaceable?: false
+  /** the nearest paragraph in front that does not hold the match (its heading, often), cut short */
+  before?: string
 }
 
 export interface AgentFindResult {
@@ -74,6 +76,8 @@ export type AgentDeleteResult =
       place: AgentPlace
     }
   | AgentPlaceRefusal
+  /** the paragraph's whole text is one of `protectTexts`: nothing was removed */
+  | { ok: false; reason: 'protected'; count: number; text: string }
 
 export type AgentTableResult =
   | { ok: true; rows: number; cols: number; inTable: boolean; place: AgentPlace }
@@ -808,6 +812,11 @@ export interface AgentChangeOptions {
   memoPolicy?: 'ask' | 'allow'
   /** the memos the user approved taking (ids of the refusal): any other one is refused again */
   approvedMemoIds?: number[]
+  /**
+   * deleteParagraph only: a paragraph whose whole text (spaces squashed) is one of these is
+   * not removed, and the call answers `protected`
+   */
+  protectTexts?: string[]
 }
 
 /**

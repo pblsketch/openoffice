@@ -159,6 +159,9 @@ export const th = {
   aiScopeSelectionTip: 'คำสั่งเขียนใหม่จะมีผลกับส่วนที่เลือกโดยค่าเริ่มต้น คลิกเพื่อดูตัวอย่าง',
   aiScopeClearTitle: 'ยกเลิกขอบเขตที่เลือก',
   aiToolNotDone: 'ทำไม่สำเร็จ · {what}',
+  aiUnfinishedSteps: 'ขั้นตอนที่ยังไม่เสร็จ: {n}',
+  aiUnfinishedNote:
+    'ขั้นตอนเหล่านี้ไม่ได้ถูกนำไปใช้กับเอกสาร โปรดตรวจสอบส่วนเหล่านี้ แม้คำตอบจะบอกว่าเสร็จแล้ว',
   aiChangesTitle: 'แก้ไขเอกสาร {count} แห่ง',
   aiClearMarks: 'ซ่อนเครื่องหมาย',
   aiRevert: 'ยกเลิกการแก้ไขเหล่านี้',

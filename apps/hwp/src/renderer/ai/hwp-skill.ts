@@ -44,6 +44,8 @@ export const SELECTION_CONTEXT_CHARS = 6000
 const LABEL_QUOTE_CHARS = 24
 /** Longest text of an added or removed paragraph kept for the panel's list of changes. */
 const CHANGE_TEXT_CHARS = 200
+/** Longest quote of a removed paragraph in the answer to the model. */
+const REMOVED_QUOTE_CHARS = 40
 
 /** One change a run made to the document, as the panel lists it. */
 export interface HwpChange {
@@ -126,6 +128,11 @@ export interface HwpSkill {
    * selection tools act on. Null when nothing is selected.
    */
   setSelection(scope: HwpSelection | null): void
+  /**
+   * A new run (one request of the user) starts: what the skill remembers about the run
+   * before, the paragraphs it added, is forgotten.
+   */
+  beginRun(): void
 }
 
 /** Hidden from the tool list while no image provider is reachable (see `createHwpSkill`). */
@@ -256,6 +263,9 @@ const SYSTEM_PROMPT = [
   '## Editing rules',
   '- Text you pass to find or anchor must match the document exactly: letters, spaces and punctuation. Copy it from what you read; never retype it from memory.',
   '- Change as little as possible: find the shortest piece that says what must change and is still unambiguous. When it occurs more than once, call find_text and pass the occurrence you mean, or use replace_all when every occurrence should change.',
+  '- Occurrence numbers count the document as it is now: after an edit that adds or removes paragraphs, call find_text again before passing occurrence.',
+  '- A blank line of a form (a mark such as "○ " with nothing after it) is filled with replace_text; insert only the further lines after it.',
+  '- Do not remove paragraphs you added in this request.',
   '- To reword part of a paragraph use replace_text. Do not delete a paragraph and insert a new one for that: the paragraph would lose formatting that differs inside it.',
   '- Leave numbers, dates, names, amounts and legal references as they are unless the user asks to change them.',
   '- Never invent a fact to fill a field or a blank. Fill what the user gave you and ask for the rest in one question.',
@@ -1133,13 +1143,28 @@ const NO_NOTE_HELP = (count: number) =>
     : `There is no such note: the body has ${count}. Call list_notes for the numbers.`
 
 const NOT_FOUND_HELP =
-  'Not found; nothing was changed. The text must match exactly (letters, spaces, punctuation) and lie inside one paragraph or one table cell. Read that part of the document again. The guide text of an empty form field is not document text: use fill_field for it.'
+  'Not found; nothing was changed. The text must match exactly (letters, spaces, punctuation) and lie inside one paragraph or one table cell. Read that part of the document again. Call find_text with a shorter piece (spaces count) to see how the document writes it. The guide text of an empty form field is not document text: use fill_field for it.'
 const IN_TABLE_HELP =
   'Nothing was changed: that paragraph is inside a table cell, and a table cannot be put inside another table here. Anchor the new table to a paragraph of the body text, or add the content to the cell as paragraphs.'
 const HAS_OBJECTS_HELP =
   'Nothing was changed: a table, a picture or a form field sits in that paragraph, and the change would have moved or removed it. Use the paragraph before or after it as the anchor, or tell the user.'
 const ONE_LINE_HELP =
   'Text with a line break cannot be searched or inserted: a replacement stays inside one paragraph or table cell. Split the change into one call per paragraph.'
+/** A line break in the new text of replace_text or replace_all. */
+const ONE_LINE_REPLACE_HELP =
+  'Nothing was changed: a replacement stays inside one paragraph. To turn this text into several paragraphs: call replace_text with only the first paragraph as replace, then insert_paragraphs with where "after", anchor set to a short piece of that first paragraph, and the other paragraphs as separate strings in paragraphs.'
+/** A line break in the text a call looks for (find, anchor). */
+const ONE_LINE_FIND_HELP = (arg: string) =>
+  `Nothing was changed: ${arg} has a line break, and the text it names must lie inside one paragraph. Pass a piece of one paragraph; to change several paragraphs, make one call for each, with a piece of that paragraph.`
+/** A line break inside one of the strings of paragraphs. */
+const ONE_LINE_ITEM_HELP =
+  'Nothing was changed: each string of paragraphs is one paragraph, so it cannot hold a line break. Pass every line as its own string in paragraphs.'
+/** A replacement that is the text itself: nothing would change, so it does not count as done. */
+const SAME_TEXT_HELP =
+  'Nothing to change: replace is the same as find, so the document was left as it is. Pass the new text as replace; to add paragraphs after this text, use insert_paragraphs.'
+/** Told after a change that adds or removes paragraphs: an occurrence counted before it is stale. */
+const OCCURRENCE_SHIFT_NOTE =
+  ' Occurrence numbers shift after this change; call find_text again before passing occurrence.'
 
 const hasLineBreak = (text: string) => /[\r\n]/.test(text)
 
@@ -1366,7 +1391,7 @@ function placeRefusal(result: AgentPlaceRefusal): string {
   switch (result.reason) {
     case 'ambiguous':
       return (
-        `The text occurs ${result.count} times; nothing was changed. Pass occurrence to say which paragraph you mean.\n` +
+        `The text occurs ${result.count} times; nothing was changed. Pass occurrence to say which paragraph you mean, or use a longer piece that occurs once.\n` +
         matchLines(result.matches ?? [], result.count)
       )
     case 'no_such_occurrence':
@@ -1385,10 +1410,20 @@ function quote(text: string): string {
   return flat.length > LABEL_QUOTE_CHARS ? `${flat.slice(0, LABEL_QUOTE_CHARS)}…` : flat
 }
 
+/** Text with its runs of spaces made one, as the plugin compares paragraphs. */
+const squashed = (text: string): string => text.replace(/\s+/g, ' ').trim()
+
+/** The start of a removed paragraph, as the model is told what went. */
+function removedQuote(text: string): string {
+  const flat = squashed(text)
+  return flat.length > REMOVED_QUOTE_CHARS ? `${flat.slice(0, REMOVED_QUOTE_CHARS)}…` : flat
+}
+
 function matchLine(match: AgentMatch): string {
   const place = match.inTable ? ' (in a table)' : ''
   if (match.replaceable === false) return `#${match.occurrence}${place}: inside an equation`
-  return `#${match.occurrence}${place}: …${match.context ?? ''}…`
+  const before = match.before ? ` (after "${match.before}")` : ''
+  return `#${match.occurrence}${place}: …${match.context ?? ''}…${before}`
 }
 
 function matchLines(matches: AgentMatch[], count: number): string {
@@ -1571,6 +1606,10 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
   let selection: AgentSegment[] | null = null
   let selectionInTable = false
   let selectionContiguous = false
+  /** the paragraphs insert_paragraphs added in the run in progress, by their text */
+  let addedThisRun: string[] = []
+  /** delete_paragraph calls (find, occurrence) refused for hitting one of those, this run */
+  let refusedDeletes = new Set<string>()
 
   type ChangeOutcome<T> =
     { kind: 'done'; result: T } | { kind: 'declined' | 'changed'; refusal: AgentMemoRemovalRefusal }
@@ -1908,7 +1947,9 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
         const find = textArg(call, 'find')
         const replace = textArg(call, 'replace')
         if (!find || replace === null) return bad(call, 'find and replace must be strings')
-        if (hasLineBreak(find) || hasLineBreak(replace)) return bad(call, ONE_LINE_HELP)
+        if (hasLineBreak(find)) return bad(call, ONE_LINE_FIND_HELP('find'))
+        if (hasLineBreak(replace)) return bad(call, ONE_LINE_REPLACE_HELP)
+        if (find === replace) return bad(call, SAME_TEXT_HELP)
         const occurrence = call.input.occurrence
         const target = typeof occurrence === 'number' ? occurrence : null
         const outcome = await changeWithMemoApproval(
@@ -1935,7 +1976,7 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
         if (result.reason === 'ambiguous') {
           return bad(
             call,
-            `The text occurs ${result.count} times; nothing was changed. Pass occurrence to pick one, or use replace_all.\n` +
+            `The text occurs ${result.count} times; nothing was changed. Pass occurrence to pick one, use replace_all, or use a longer piece that occurs once.\n` +
               matchLines(result.matches ?? [], result.count),
           )
         }
@@ -1951,7 +1992,9 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
         const find = textArg(call, 'find')
         const replace = textArg(call, 'replace')
         if (!find || replace === null) return bad(call, 'find and replace must be strings')
-        if (hasLineBreak(find) || hasLineBreak(replace)) return bad(call, ONE_LINE_HELP)
+        if (hasLineBreak(find)) return bad(call, ONE_LINE_FIND_HELP('find'))
+        if (hasLineBreak(replace)) return bad(call, ONE_LINE_REPLACE_HELP)
+        if (find === replace) return bad(call, SAME_TEXT_HELP)
         const outcome = await changeWithMemoApproval(
           () => bridge.replaceAllText(find, replace),
           (options) => bridge.replaceAllText(find, replace, options),
@@ -1976,10 +2019,13 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
       case 'insert_paragraphs': {
         const place = placeArgs(call)
         const paragraphs = call.input.paragraphs
+        if (hasLineBreak(textArg(call, 'anchor') ?? '')) {
+          return bad(call, ONE_LINE_FIND_HELP('anchor'))
+        }
         if (!place) return bad(call, WHERE_HELP)
         if (!isTextList(paragraphs))
           return bad(call, 'paragraphs must be a non-empty list of strings')
-        if (paragraphs.some(hasLineBreak)) return bad(call, ONE_LINE_HELP)
+        if (paragraphs.some(hasLineBreak)) return bad(call, ONE_LINE_ITEM_HELP)
         const outcome = await changeWithMemoApproval(
           () => bridge.insertParagraphs(place.anchor, place.occurrence, place.where, paragraphs),
           (options) =>
@@ -1995,6 +2041,7 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
           return bad(call, memoRemovalDeclined(outcome.refusal, outcome.kind))
         const result = outcome.result
         if (!result.ok) return bad(call, placeRefusal(result))
+        addedThisRun.push(...paragraphs.filter((text) => text.trim() !== ''))
         deps.onChange({
           kind: 'insert',
           from: '',
@@ -2003,7 +2050,7 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
           place: result.place,
         })
         return {
-          output: `Added ${result.count} paragraph(s)${result.inTable ? ' in the table cell' : ''}.`,
+          output: `Added ${result.count} paragraph(s)${result.inTable ? ' in the table cell' : ''}.${OCCURRENCE_SHIFT_NOTE}`,
           mutated: true,
           summary: label('aiToolInsert', { count: result.count }),
         }
@@ -2011,17 +2058,35 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
       case 'delete_paragraph': {
         const find = textArg(call, 'find')
         if (!find) return bad(call, 'find must be a non-empty string')
-        if (hasLineBreak(find)) return bad(call, ONE_LINE_HELP)
+        if (hasLineBreak(find)) return bad(call, ONE_LINE_FIND_HELP('find'))
         const occurrence = call.input.occurrence
         const target = typeof occurrence === 'number' ? occurrence : null
+        // a paragraph this run added is removed only when the model asks again with the same
+        // arguments: the first ask is most often an occurrence counted before the insert
+        const key = JSON.stringify([find, target])
+        const insisted = refusedDeletes.delete(key)
+        const guard: AgentChangeOptions | undefined =
+          !insisted && addedThisRun.length > 0 ? { protectTexts: [...addedThisRun] } : undefined
         const outcome = await changeWithMemoApproval(
-          () => bridge.deleteParagraph(find, target),
-          (options) => bridge.deleteParagraph(find, target, options),
+          () =>
+            guard
+              ? bridge.deleteParagraph(find, target, guard)
+              : bridge.deleteParagraph(find, target),
+          (options) => bridge.deleteParagraph(find, target, { ...guard, ...options }),
         )
         if (outcome.kind !== 'done')
           return bad(call, memoRemovalDeclined(outcome.refusal, outcome.kind))
         const result = outcome.result
+        if (!result.ok && result.reason === 'protected') {
+          refusedDeletes.add(key)
+          return bad(
+            call,
+            `Nothing was removed: that paragraph is one you added in this request: "${removedQuote(result.text)}". Occurrence numbers shift after edits; call find_text again. To remove it anyway, call delete_paragraph again with the same arguments.`,
+          )
+        }
         if (!result.ok) return bad(call, placeRefusal(result))
+        const added = addedThisRun.findIndex((text) => squashed(text) === squashed(result.text))
+        if (added >= 0) addedThisRun.splice(added, 1)
         deps.onChange({
           kind: 'delete',
           from: changeText(result.text),
@@ -2029,10 +2094,12 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
           count: 1,
           place: result.place,
         })
+        const removed = `"${removedQuote(result.text)}"`
         return {
-          output: result.emptied
-            ? 'The paragraph was emptied. It is the first paragraph of its cell or section, so its empty line stays.'
-            : 'Removed the paragraph.',
+          output:
+            (result.emptied
+              ? `The paragraph ${removed} was emptied. It is the first paragraph of its cell or section, so its empty line stays.`
+              : `Removed the paragraph ${removed}.`) + OCCURRENCE_SHIFT_NOTE,
           mutated: true,
           summary: label('aiToolDelete', { text: quote(result.text) }),
         }
@@ -2081,7 +2148,7 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
           place: result.place,
         })
         return {
-          output: `Added a table of ${result.rows} row(s) and ${result.cols} column(s).`,
+          output: `Added a table of ${result.rows} row(s) and ${result.cols} column(s).${OCCURRENCE_SHIFT_NOTE}`,
           mutated: true,
           summary: label('aiToolTable', { rows: result.rows, cols: result.cols }),
         }
@@ -2325,7 +2392,7 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
           output:
             target.length === paragraphs.length
               ? `Replaced the selected text (${paragraphs.length} paragraph(s)).`
-              : `Replaced the selected text: its ${target.length} paragraph(s) are now ${paragraphs.length}.`,
+              : `Replaced the selected text: its ${target.length} paragraph(s) are now ${paragraphs.length}.${OCCURRENCE_SHIFT_NOTE}`,
           mutated: true,
           summary: arrow(before, after),
         }
@@ -3044,7 +3111,7 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
           place: result.place,
         })
         return {
-          output: `Added a table of contents of ${result.count} heading(s), on pages ${result.pages.join(', ')}.`,
+          output: `Added a table of contents of ${result.count} heading(s), on pages ${result.pages.join(', ')}.${OCCURRENCE_SHIFT_NOTE}`,
           mutated: true,
           summary: label('aiToolToc', { count: result.count }),
         }
@@ -3438,6 +3505,10 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
       selection = scope && scope.segments.length > 0 ? scope.segments : null
       selectionInTable = scope?.inTable === true
       selectionContiguous = scope?.contiguous === true
+    },
+    beginRun: () => {
+      addedThisRun = []
+      refusedDeletes = new Set()
     },
     refreshContext: async () => {
       try {

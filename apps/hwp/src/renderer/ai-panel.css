@@ -242,6 +242,41 @@
   color: var(--hwp-error);
 }
 
+/* Edits a run left undone, under its reply */
+.ai-unfinished {
+  align-self: stretch;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--hwp-error-border);
+  border-radius: 8px;
+  background: var(--danger-bg);
+  color: var(--hwp-error);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ai-unfinished-summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.ai-unfinished-summary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--hwp-focus-ring);
+  border-radius: 4px;
+}
+
+.ai-unfinished-note {
+  margin: 6px 0 4px;
+  color: var(--color-text-secondary);
+}
+
+.ai-unfinished-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--color-text-secondary);
+}
+
 .ai-md p,
 .ai-md ul,
 .ai-md ol {

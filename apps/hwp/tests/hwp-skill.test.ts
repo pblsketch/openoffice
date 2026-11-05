@@ -304,7 +304,7 @@ function setup(
     ...overrides,
   }
   const changes: HwpChange[] = []
-  const { skill, refreshContext, setSelection } = createHwpSkill({
+  const { skill, refreshContext, setSelection, beginRun } = createHwpSkill({
     bridge,
     // the key and its parameters, so a test can tell which label was asked for
     label: (key, params) => (params ? `${key}:${JSON.stringify(params)}` : key),
@@ -317,7 +317,16 @@ function setup(
   })
   const call = (name: string, input: Record<string, unknown> = {}) =>
     skill.executeTool({ id: '1', name, input } satisfies AgentToolCall)
-  return { bridge, skill, refreshContext, setSelection, changes, call, confirmMemoRemoval }
+  return {
+    bridge,
+    skill,
+    refreshContext,
+    setSelection,
+    beginRun,
+    changes,
+    call,
+    confirmMemoRemoval,
+  }
 }
 
 describe('the document context sent with a message', () => {
@@ -597,8 +606,33 @@ describe('replace_text', () => {
     const { call, bridge } = setup()
     const result = await call('replace_text', { find: '본문', replace: '첫 줄\n둘째 줄' })
     expect(result.isError).toBe(true)
-    expect(result.output).toContain('line break')
+    // a break in the new text: the way to several paragraphs is replace, then insert after it
+    expect(result.output).toContain('a replacement stays inside one paragraph')
+    expect(result.output).toContain('insert_paragraphs with where "after"')
+    const found = await call('replace_text', { find: '첫 줄\n둘째 줄', replace: '본문' })
+    expect(found.output).toContain('find has a line break')
     expect(bridge.replaceText).not.toHaveBeenCalled()
+  })
+
+  it('changes nothing, and does not report it done, when the replacement is the text itself', async () => {
+    const { call, bridge, changes } = setup()
+    for (const name of ['replace_text', 'replace_all']) {
+      const result = await call(name, { find: '2. 목적', replace: '2. 목적' })
+      expect(result.isError).toBe(true)
+      expect(result.mutated).toBeUndefined()
+      expect(result.output).toContain('Nothing to change')
+    }
+    expect(bridge.replaceText).not.toHaveBeenCalled()
+    expect(bridge.replaceAllText).not.toHaveBeenCalled()
+    expect(changes).toEqual([])
+  })
+
+  it('suggests a longer piece and a shorter search when the text is ambiguous or missing', async () => {
+    const { call } = setup({
+      replaceText: async () => ({ ok: false, reason: 'not_found', count: 0 }),
+    })
+    const result = await call('replace_text', { find: '없는 글', replace: 'x' })
+    expect(result.output).toContain('Call find_text with a shorter piece (spaces count)')
   })
 
   it('accepts an empty replacement as a deletion', async () => {
@@ -716,6 +750,53 @@ describe('insert_paragraphs', () => {
     })
     expect(result.output).toContain('occurs 2 times')
     expect(result.output).toContain('#2 (in a table): …표 안 문단…')
+    expect(result.output).toContain('or use a longer piece that occurs once')
+  })
+
+  it('tells same-looking places apart by the paragraph in front of them', async () => {
+    const { call } = setup({
+      insertParagraphs: async () => ({
+        ok: false,
+        reason: 'ambiguous',
+        count: 2,
+        matches: [
+          { occurrence: 1, inTable: false, context: '○ ', before: '2. 목적' },
+          { occurrence: 2, inTable: false, context: '○ ', before: '6. 안전 관리 계획' },
+        ],
+      }),
+    })
+    const result = await call('insert_paragraphs', {
+      where: 'after',
+      anchor: '○',
+      paragraphs: ['x'],
+    })
+    expect(result.output).toContain('#1: …○ … (after "2. 목적")')
+    expect(result.output).toContain('#2: …○ … (after "6. 안전 관리 계획")')
+  })
+
+  it('says that the occurrence numbers have moved', async () => {
+    const { call } = setup()
+    const result = await call('insert_paragraphs', { where: 'end', paragraphs: ['끝.'] })
+    expect(result.output).toBe(
+      'Added 2 paragraph(s). Occurrence numbers shift after this change; call find_text again before passing occurrence.',
+    )
+  })
+
+  it('says which argument holds a line break, and what to do instead', async () => {
+    const { call, bridge } = setup()
+    const anchor = await call('insert_paragraphs', {
+      where: 'after',
+      anchor: '본문\n입니다',
+      paragraphs: ['x'],
+    })
+    expect(anchor.output).toContain('anchor has a line break')
+    const item = await call('insert_paragraphs', {
+      where: 'after',
+      anchor: '본문',
+      paragraphs: ['한 줄\n두 줄'],
+    })
+    expect(item.output).toContain('Pass every line as its own string in paragraphs')
+    expect(bridge.insertParagraphs).not.toHaveBeenCalled()
   })
 })
 
@@ -724,8 +805,93 @@ describe('delete_paragraph', () => {
     const { call, changes, bridge } = setup()
     const result = await call('delete_paragraph', { find: '지울 문단', occurrence: 2 })
     expect(bridge.deleteParagraph).toHaveBeenCalledWith('지울 문단', 2)
-    expect(result).toMatchObject({ mutated: true, output: 'Removed the paragraph.' })
+    expect(result.mutated).toBe(true)
+    // the model is told what went, and that the numbers it counted before are stale now
+    expect(result.output).toBe(
+      'Removed the paragraph "지울 문단입니다.". Occurrence numbers shift after this change; call find_text again before passing occurrence.',
+    )
     expect(changes).toEqual([{ kind: 'delete', from: '지울 문단입니다.', to: '', count: 1 }])
+  })
+
+  it('quotes only the start of a long removed paragraph', async () => {
+    const long = '가'.repeat(60)
+    const { call } = setup({
+      deleteParagraph: async () => ({ ok: true, text: long, emptied: false, inTable: false }),
+    })
+    const result = await call('delete_paragraph', { find: '가가' })
+    expect(result.output).toContain(`"${'가'.repeat(40)}…"`)
+  })
+
+  it('refuses once to remove a paragraph this run added, and removes it when asked again', async () => {
+    const deleteParagraph = vi.fn(
+      async (_find: string, _occurrence: number | null, options?: { protectTexts?: string[] }) =>
+        options?.protectTexts?.includes('○ 안전 교육 실시함.')
+          ? {
+              ok: false as const,
+              reason: 'protected' as const,
+              count: 1,
+              text: '○ 안전 교육 실시함.',
+            }
+          : { ok: true as const, text: '○ 안전 교육 실시함.', emptied: false, inTable: false },
+    )
+    const { call, changes, beginRun } = setup({ deleteParagraph })
+    beginRun()
+    await call('insert_paragraphs', {
+      where: 'after',
+      anchor: '6. 안전 관리 계획',
+      paragraphs: ['○ 안전 교육 실시함.', '', '○ 인솔 교사 배치함.'],
+    })
+    const first = await call('delete_paragraph', { find: '○', occurrence: 3 })
+    expect(deleteParagraph).toHaveBeenLastCalledWith('○', 3, {
+      protectTexts: ['○ 안전 교육 실시함.', '○ 인솔 교사 배치함.'],
+    })
+    expect(first.isError).toBe(true)
+    expect(first.output).toContain(
+      'that paragraph is one you added in this request: "○ 안전 교육 실시함."',
+    )
+    expect(first.output).toContain('call delete_paragraph again with the same arguments')
+    expect(changes.filter((change) => change.kind === 'delete')).toEqual([])
+
+    // other arguments are guarded as well; the same ones again are the model insisting
+    expect((await call('delete_paragraph', { find: '○', occurrence: 2 })).isError).toBe(true)
+    const again = await call('delete_paragraph', { find: '○', occurrence: 3 })
+    expect(deleteParagraph).toHaveBeenLastCalledWith('○', 3)
+    expect(again.mutated).toBe(true)
+    expect(changes.filter((change) => change.kind === 'delete')).toHaveLength(1)
+  })
+
+  it('forgets what the run before added', async () => {
+    const { call, bridge, beginRun } = setup()
+    beginRun()
+    await call('insert_paragraphs', { where: 'end', paragraphs: ['○ 넣은 문단'] })
+    beginRun()
+    await call('delete_paragraph', { find: '○ 넣은 문단' })
+    expect(bridge.deleteParagraph).toHaveBeenLastCalledWith('○ 넣은 문단', null)
+  })
+
+  it('keeps the guard on the retry a memo approval makes', async () => {
+    const deleteParagraph = vi
+      .fn()
+      .mockResolvedValueOnce(memoRefusal())
+      .mockResolvedValueOnce({ ok: true, text: '메모 문단', emptied: false, inTable: false })
+    const { call, beginRun } = setup(
+      { deleteParagraph },
+      vi.fn(async () => true),
+    )
+    beginRun()
+    await call('insert_paragraphs', { where: 'end', paragraphs: ['○ 넣은 문단'] })
+    await call('delete_paragraph', { find: '메모 문단' })
+    expect(deleteParagraph).toHaveBeenLastCalledWith('메모 문단', null, {
+      protectTexts: ['○ 넣은 문단'],
+      approvedMemoIds: [1],
+    })
+  })
+
+  it('names the line break of find instead of asking for one call per paragraph', async () => {
+    const { call, bridge } = setup()
+    const result = await call('delete_paragraph', { find: '한 줄\n두 줄' })
+    expect(result.output).toContain('find has a line break')
+    expect(bridge.deleteParagraph).not.toHaveBeenCalled()
   })
 
   it('says so when the paragraph could only be emptied', async () => {
@@ -1538,7 +1704,10 @@ describe('the part the user selected', () => {
     setSelection(STRETCH)
     const result = await call('replace_selection', { paragraphs: ['가', '나', '다'] })
     expect(bridge.replaceSelection).toHaveBeenCalledWith(SELECTED, ['가', '나', '다'])
-    expect(result.output).toBe('Replaced the selected text: its 2 paragraph(s) are now 3.')
+    expect(result.output).toMatch(
+      /^Replaced the selected text: its 2 paragraph[(]s[)] are now 3[.] /,
+    )
+    expect(result.output).toContain('call find_text again before passing occurrence')
     expect(skill.buildContext!()).toContain('The user selected 3 paragraph(s)')
   })
 

@@ -155,6 +155,8 @@ export const zh = {
   aiScopeSelectionTip: '改写类指令默认只作用于选中内容;点击预览',
   aiScopeClearTitle: '取消选中范围',
   aiToolNotDone: '未完成 · {what}',
+  aiUnfinishedSteps: '未完成的步骤：{n} 个',
+  aiUnfinishedNote: '以下步骤没有应用到文档中。即使回复说已完成，也请检查这些部分。',
   aiChangesTitle: '已修改文档 {count} 处',
   aiClearMarks: '清除标记',
   aiRevert: '撤销这些修改',

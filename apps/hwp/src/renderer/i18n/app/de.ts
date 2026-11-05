@@ -164,6 +164,9 @@ export const de = {
     'Umschreib-Anweisungen wirken standardmäßig nur auf die Auswahl; zum Vorschauen klicken',
   aiScopeClearTitle: 'Auswahlbereich aufheben',
   aiToolNotDone: 'Nicht ausgeführt · {what}',
+  aiUnfinishedSteps: 'Nicht abgeschlossene Schritte: {n}',
+  aiUnfinishedNote:
+    'Diese Schritte wurden nicht auf das Dokument angewendet. Prüfen Sie diese Stellen, auch wenn die Antwort sagt, dass alles erledigt ist.',
   aiChangesTitle: 'Änderungen am Dokument: {count}',
   aiClearMarks: 'Markierungen ausblenden',
   aiRevert: 'Diese Änderungen zurücknehmen',

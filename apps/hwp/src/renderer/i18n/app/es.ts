@@ -164,6 +164,9 @@ export const es = {
     'Las instrucciones de reescritura se aplican por defecto a la selección; haz clic para previsualizar',
   aiScopeClearTitle: 'Quitar el ámbito de selección',
   aiToolNotDone: 'No realizado · {what}',
+  aiUnfinishedSteps: 'Pasos sin terminar: {n}',
+  aiUnfinishedNote:
+    'Estos pasos no se aplicaron al documento. Revise estas partes aunque la respuesta diga que está hecho.',
   aiChangesTitle: 'Cambios hechos en el documento: {count}',
   aiClearMarks: 'Ocultar marcas',
   aiRevert: 'Deshacer estos cambios',

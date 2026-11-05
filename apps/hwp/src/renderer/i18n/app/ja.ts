@@ -160,6 +160,9 @@ export const ja = {
   aiScopeSelectionTip: '書き換え系の指示は既定で選択範囲にのみ適用されます。クリックでプレビュー',
   aiScopeClearTitle: '選択範囲を解除',
   aiToolNotDone: '実行できませんでした · {what}',
+  aiUnfinishedSteps: '完了しなかった手順：{n} 件',
+  aiUnfinishedNote:
+    '次の手順は文書に反映されていません。返答に完了と書かれていても、この部分を確認してください。',
   aiChangesTitle: '文書を {count} か所変更しました',
   aiClearMarks: '表示を消す',
   aiRevert: '変更を元に戻す',

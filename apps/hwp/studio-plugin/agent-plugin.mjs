@@ -35,6 +35,10 @@ const MAX_PROFILE_CELL_PARAGRAPHS = 4000
 const MAX_PROFILE_PICTURES = 100
 /** Characters of surrounding text shown with each listed match. */
 const CONTEXT_CHARS = 30
+/** Characters of the paragraph in front shown with each listed match (its heading, often). */
+const BEFORE_CHARS = 24
+/** Paragraphs looked back through for that one. */
+const BEFORE_LOOKBACK = 20
 /** Most history steps one undo call takes back. */
 const MAX_UNDO_STEPS = 200
 /** Most paragraphs one insert call adds. */
@@ -1058,15 +1062,34 @@ function contextOf(doc, hit) {
   return count > 0 ? doc.getTextRange(hit.sec, hit.para, start, count) : ''
 }
 
+/**
+ * The nearest paragraph in front of a match, in its cell or section, that is not blank and
+ * does not hold the matched text: under several "○ " lines that is their heading, which
+ * tells the matches apart where the text around them is the same.
+ */
+function beforeOf(doc, hit) {
+  const box = containerOf(doc, hit)
+  const own = box.text(box.index, box.length(box.index))
+  const found = own.slice(hit.charOffset, hit.charOffset + hit.length)
+  for (let k = box.index - 1; k >= 0 && k >= box.index - BEFORE_LOOKBACK; k--) {
+    const text = squash(box.text(k, box.length(k)))
+    if (text && !text.includes(squash(found))) return clip(text, BEFORE_CHARS)
+  }
+  return ''
+}
+
 function describe(doc, hit, index) {
   const row = { occurrence: index + 1, inTable: Boolean(hit.cellContext) }
   if (!isReplaceable(hit)) return { ...row, replaceable: false }
+  let described = row
   try {
-    return { ...row, context: contextOf(doc, hit) }
+    described = { ...row, context: contextOf(doc, hit) }
+    const before = beforeOf(doc, hit)
+    if (before) described.before = before
   } catch {
     // the surrounding text is a courtesy; the match itself is still valid
-    return row
   }
+  return described
 }
 
 function searchAll(doc, find) {
@@ -5181,12 +5204,33 @@ export const agentPlugin = {
 
       /**
        * Remove the paragraph `find` occurs in. A paragraph that holds a table, a picture or
-       * a form field is left alone: removing it would take the object with it.
+       * a form field is left alone: removing it would take the object with it. One whose
+       * whole text is among `options.protectTexts` is left alone too (`protected`): the panel
+       * names the paragraphs its run added, which a stale occurrence number would hit.
        */
       deleteParagraph: guarded((find, occurrence, options) => {
+        const protectTexts = Array.isArray(options?.protectTexts)
+          ? new Set(
+              options.protectTexts
+                .filter((text) => typeof text === 'string')
+                .map(squash)
+                .filter(Boolean),
+            )
+          : null
         const refusal = host.read((doc) => {
           const { box, refusal: why } = locate(doc, find, occurrence, 'after')
           if (!box) return why
+          if (protectTexts) {
+            const whole = box.text(box.index, box.length(box.index))
+            if (protectTexts.has(squash(whole))) {
+              return {
+                ok: false,
+                reason: 'protected',
+                count: 1,
+                text: whole.slice(0, MAX_REPORTED_CHARS),
+              }
+            }
+          }
           // the first paragraph is only emptied, which the check after the change covers
           const removed = box.index > 0 && box.count() > 1
           return removed && box.objectPositions(box.index).length > 0

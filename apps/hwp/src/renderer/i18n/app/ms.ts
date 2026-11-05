@@ -161,6 +161,9 @@ export const ms = {
     'Arahan tulis semula secara lalai hanya terpakai pada pilihan; klik untuk pratonton',
   aiScopeClearTitle: 'Buang skop pilihan',
   aiToolNotDone: 'Tidak dilakukan · {what}',
+  aiUnfinishedSteps: 'Langkah yang belum selesai: {n}',
+  aiUnfinishedNote:
+    'Langkah-langkah ini tidak dikenakan pada dokumen. Semak bahagian ini walaupun balasan mengatakan ia sudah selesai.',
   aiChangesTitle: 'Perubahan pada dokumen: {count}',
   aiClearMarks: 'Sembunyikan tanda',
   aiRevert: 'Buat asal perubahan ini',

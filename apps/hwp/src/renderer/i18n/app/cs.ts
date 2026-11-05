@@ -162,6 +162,9 @@ export const cs = {
     'Požadavky na přepsání se ve výchozím nastavení vztahují na výběr; kliknutím zobrazíte náhled',
   aiScopeClearTitle: 'Zrušit rozsah výběru',
   aiToolNotDone: 'Neprovedeno · {what}',
+  aiUnfinishedSteps: 'Nedokončené kroky: {n}',
+  aiUnfinishedNote:
+    'Tyto kroky nebyly v dokumentu provedeny. Zkontrolujte tato místa, i když odpověď říká, že je hotovo.',
   aiChangesTitle: 'Změny v dokumentu: {count}',
   aiClearMarks: 'Skrýt označení',
   aiRevert: 'Vrátit tyto změny',

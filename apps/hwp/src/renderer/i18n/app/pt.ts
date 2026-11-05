@@ -163,6 +163,9 @@ export const pt = {
     'Instruções de reescrita aplicam-se por padrão à seleção; clique para pré-visualizar',
   aiScopeClearTitle: 'Remover o escopo da seleção',
   aiToolNotDone: 'Não realizado · {what}',
+  aiUnfinishedSteps: 'Etapas não concluídas: {n}',
+  aiUnfinishedNote:
+    'Estas etapas não foram aplicadas ao documento. Verifique estas partes mesmo que a resposta diga que está feito.',
   aiChangesTitle: 'Alterações feitas no documento: {count}',
   aiClearMarks: 'Ocultar marcas',
   aiRevert: 'Desfazer estas alterações',
