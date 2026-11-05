@@ -25,6 +25,10 @@ export const zh = {
     '未保存：此文档包含修订记录，在这里保存会丢失修订记录，并且保存的文件可能无法在 Hancom Hangul 中打开。',
   savedTailsLost:
     '已保存，但原文件中的部分母版页或批注未能保留，保存的文件可能无法在 Hancom Hangul 中打开。请打开确认。',
+  missingFonts:
+    '此电脑上没有部分字体，屏幕上以其他字体显示：{fonts}。保存的文件仍保留原字体名称，在装有这些字体的电脑上会按原样显示。',
+  missingFontTag: '此电脑上没有',
+  missingFontHint: '此电脑上没有这个字体，屏幕上以其他字体显示。文件中仍保存这个字体名称。',
   dismiss: '关闭',
   aiOpenAssistant: '打开 AI 助手',
   aiNewChat: '新对话',

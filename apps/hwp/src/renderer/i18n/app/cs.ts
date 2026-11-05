@@ -28,6 +28,11 @@ export const cs = {
     'Neuloženo: tento dokument obsahuje sledované změny; uložením zde by se ztratily a soubor by Hancom Hangul nemusel otevřít.',
   savedTailsLost:
     'Uloženo, ale některé předlohy stránek nebo poznámky z původního souboru se nepodařilo zachovat; Hancom Hangul nemusí uložený soubor otevřít. Otevřete jej pro kontrolu.',
+  missingFonts:
+    'Některá písma na tomto počítači nejsou, a proto se na obrazovce zobrazují jinými písmy: {fonts}. Uložený soubor si ponechá původní názvy písem a na počítači, který tato písma má, vypadá text tak, jak má.',
+  missingFontTag: 'Na tomto počítači není',
+  missingFontHint:
+    'Toto písmo na tomto počítači není, a proto se na obrazovce zobrazuje jiným. Soubor si ponechá název tohoto písma.',
   dismiss: 'Zavřít',
   aiOpenAssistant: 'Otevřít asistenta AI',
   aiNewChat: 'Nový chat',

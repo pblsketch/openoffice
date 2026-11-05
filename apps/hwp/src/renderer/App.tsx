@@ -21,9 +21,10 @@ import {
   FILE_COMMAND_EVENT,
   MEMO_NOT_COPIED_EVENT,
   MEMO_REMOVED_EVENT,
+  MISSING_FONTS_EVENT,
 } from '../../studio-plugin/agent-plugin.mjs'
 import blankHwpUrl from './assets/blank.hwp?url'
-import { useI18n, type StringKey } from './i18n/locale'
+import { t as translateNow, useI18n, type StringKey } from './i18n/locale'
 import { MEMO_INSERT_EVENT, memoNoticeOf, type MemoNotice } from './MemoPanel'
 import { MemoSide, MemoToggle, memoPanelInitiallyOpen, rememberMemoPanelOpen } from './MemoSide'
 import { openDocumentsDroppedOn } from './editor-drop'
@@ -185,6 +186,10 @@ export default function App() {
   const [filePath, setFilePath] = useState<string | null>(null)
   /** an untitled copy's name (a skill template's): the title it has until its first save */
   const copyNameRef = useRef<string | null>(null)
+  /** the editor holds a document read from a file, not the blank one a new document starts as */
+  const openedFileRef = useRef(false)
+  /** the notice of the fonts not on this PC was given; a new language marks them again only */
+  const missingToldRef = useRef(false)
   /** crash-recovery copies of the document (recovery-flow.ts), once it is in the editor */
   const copierRef = useRef<RecoveryCopier | null>(null)
   /** the editor holds a restored recovery copy that has not been saved since */
@@ -247,6 +252,7 @@ export default function App() {
           if (!disposed) setPhase('ready')
           return
         }
+        openedFileRef.current = true
         formatRef.current = hwpFormatOfPath(path) ?? 'hwp'
         setDocFormat(formatRef.current)
         // an untitled copy (a skill template's, spec 5.7) is read from its temp file but
@@ -528,6 +534,36 @@ export default function App() {
     frame.addEventListener(EASY_WORDS_EVENT, onEasyWords)
     return () => frame.removeEventListener(EASY_WORDS_EVENT, onEasyWords)
   }, [phase, pluginBridge, t])
+
+  // fonts that are not on this PC are drawn with others while the file keeps their names
+  // (a document from Hancom Office on a PC without it): the editor's font menu and font box
+  // mark them, and a document read from a file says which of its fonts are drawn that way.
+  // The blank new document is left alone: its fonts are marked in the font box
+  useEffect(() => {
+    if (phase !== 'ready') return
+    const frame = editorRef.current?.element.contentWindow
+    if (!frame) return
+    const onMissing = (event: Event) => {
+      const fonts = (event as CustomEvent<{ fonts?: unknown }>).detail?.fonts
+      if (missingToldRef.current || !openedFileRef.current) return
+      if (!Array.isArray(fonts) || fonts.length === 0) return
+      missingToldRef.current = true
+      const missing: Notice = {
+        tone: 'info',
+        key: 'missingFonts',
+        params: { fonts: fonts.join(', ') },
+      }
+      setNotice((current) => current ?? missing)
+    }
+    frame.addEventListener(MISSING_FONTS_EVENT, onMissing)
+    void pluginBridge
+      .watchMissingFonts({
+        tag: translateNow('missingFontTag'),
+        hint: translateNow('missingFontHint'),
+      })
+      .catch(() => {})
+    return () => frame.removeEventListener(MISSING_FONTS_EVENT, onMissing)
+  }, [phase, pluginBridge, lang])
 
   // crash-recovery copies while the document has unsaved changes; typing never waits on one
   useEffect(() => {

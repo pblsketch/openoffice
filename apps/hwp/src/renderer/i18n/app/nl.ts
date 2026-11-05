@@ -28,6 +28,11 @@ export const nl = {
     'Niet opgeslagen: dit document bevat bijgehouden wijzigingen; door het hier op te slaan gaan ze verloren en kan Hancom Hangul het bestand mogelijk niet openen.',
   savedTailsLost:
     "Opgeslagen, maar sommige basispagina's of memo's van het oorspronkelijke bestand konden niet worden behouden; Hancom Hangul kan het opgeslagen bestand mogelijk niet openen. Open het ter controle.",
+  missingFonts:
+    'Sommige lettertypen staan niet op deze pc en worden op het scherm in andere lettertypen getoond: {fonts}. Het opgeslagen bestand houdt de oorspronkelijke namen van de lettertypen, en op een pc met die lettertypen ziet de tekst er uit zoals bedoeld.',
+  missingFontTag: 'Niet op deze pc',
+  missingFontHint:
+    'Dit lettertype staat niet op deze pc en wordt op het scherm in een ander lettertype getoond. Het bestand houdt de naam van dit lettertype.',
   dismiss: 'Sluiten',
   aiOpenAssistant: 'AI-assistent openen',
   aiNewChat: 'Nieuwe chat',

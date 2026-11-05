@@ -522,6 +522,22 @@ export interface AgentEasyWordsDetail {
   text: string
 }
 
+/** The event watchMissingFonts fires on the editor's window; `detail` is an AgentMissingFontsDetail. */
+export declare const MISSING_FONTS_EVENT: 'ieum:missing-fonts'
+
+/** The fonts the document's text uses that are not on this PC, each once. */
+export interface AgentMissingFontsDetail {
+  fonts: string[]
+}
+
+/** The words the editor marks a font that is not on this PC with. */
+export interface AgentMissingFontLabels {
+  /** shown beside the font's entry in the font menu */
+  tag: string
+  /** the tooltip of that entry and of the font box */
+  hint: string
+}
+
 /** The parts of the editor toolbar's style list (a select element) syncStyleList uses. */
 export interface StyleListElement {
   readonly options: ArrayLike<{ value: string; textContent: string | null }>
@@ -1047,6 +1063,7 @@ export interface AgentPluginSurface {
   deleteTable(table: number, options?: AgentChangeOptions): AgentDeleteTableResult
   installFileMenu(labels: Record<AgentFileCommand, string>): { ok: boolean }
   installEasyWords(label: string): { ok: boolean }
+  watchMissingFonts(labels: AgentMissingFontLabels): { ok: boolean }
   reveal(place: AgentPlace): { ok: boolean }
   selection(): AgentSelectionResult
   replaceSelection(

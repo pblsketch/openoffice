@@ -28,6 +28,11 @@ export const it = {
     'Non salvato: questo documento contiene revisioni; salvandolo qui andrebbero perse e il file potrebbe non aprirsi in Hancom Hangul.',
   savedTailsLost:
     'Salvato, ma non è stato possibile conservare alcune pagine master o note del file originale; Hancom Hangul potrebbe non aprire il file salvato. Aprilo per verificare.',
+  missingFonts:
+    'Alcuni caratteri non sono presenti su questo PC e sullo schermo appaiono con altri caratteri: {fonts}. Il file salvato mantiene i nomi dei caratteri originali e il testo appare come previsto su un PC che ha quei caratteri.',
+  missingFontTag: 'Non su questo PC',
+  missingFontHint:
+    'Questo carattere non è presente su questo PC e sullo schermo appare con un altro. Il file mantiene il nome di questo carattere.',
   dismiss: 'Chiudi',
   aiOpenAssistant: 'Apri assistente IA',
   aiNewChat: 'Nuova chat',

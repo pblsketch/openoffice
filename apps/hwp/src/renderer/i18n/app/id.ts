@@ -28,6 +28,11 @@ export const id = {
     'Tidak disimpan: dokumen ini memiliki pelacakan perubahan; menyimpannya di sini akan menghilangkannya dan dapat menghasilkan file yang tidak bisa dibuka Hancom Hangul.',
   savedTailsLost:
     'Tersimpan, tetapi sebagian halaman master atau memo dari file asli tidak dapat dipertahankan, dan Hancom Hangul mungkin tidak dapat membuka file yang disimpan. Buka untuk memeriksanya.',
+  missingFonts:
+    'Beberapa font tidak ada di PC ini, jadi tampil dengan font lain di layar: {fonts}. File yang disimpan tetap memakai nama font aslinya, dan teks tampil sebagaimana mestinya di PC yang memiliki font tersebut.',
+  missingFontTag: 'Tidak ada di PC ini',
+  missingFontHint:
+    'Font ini tidak ada di PC ini, jadi tampil dengan font lain di layar. File tetap menyimpan nama font ini.',
   dismiss: 'Tutup',
   aiOpenAssistant: 'Buka asisten AI',
   aiNewChat: 'Obrolan baru',

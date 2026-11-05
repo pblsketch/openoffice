@@ -14,6 +14,7 @@
  */
 
 import { installDialogTheme } from './dialog-theme.mjs'
+import { missingFonts, setMissingFontLabels, whenPcFontsSettled } from './pc-fonts.mjs'
 
 export const AGENT_PLUGIN_ID = 'ieum-agent'
 
@@ -118,6 +119,11 @@ export const EASY_WORDS_COMMAND = 'ext:ieum-easy-words'
  * (`{ text }`): the app asks its AI panel to explain that text in plain words.
  */
 export const EASY_WORDS_EVENT = 'ieum:easy-words'
+/**
+ * The event watchMissingFonts fires on the editor's window once the PC's fonts are known,
+ * with the fonts of the document that are not on this PC as its detail (`{ fonts }`).
+ */
+export const MISSING_FONTS_EVENT = 'ieum:missing-fonts'
 /** The command that selects the word under the caret (a double click in the page). */
 const WORD_COMMAND = 'ext:ieum-select-word'
 /** The command that selects the paragraph under the caret (a triple click in the page). */
@@ -6891,6 +6897,35 @@ export const agentPlugin = {
         } catch {
           return { ok: false }
         }
+        return { ok: true }
+      }),
+
+      /**
+       * Mark the fonts that are not on this PC in the editor's font menu and font box, with
+       * the app's words (`tag` beside a menu entry, `hint` as the tooltip), and tell which of
+       * the document's fonts are not on this PC: once the editor's start-up look at the PC's
+       * fonts is over, MISSING_FONTS_EVENT fires with the names the text uses. Reads only.
+       */
+      watchMissingFonts: guarded((given) => {
+        if (
+          typeof given?.tag !== 'string' ||
+          !given.tag.trim() ||
+          typeof given.hint !== 'string' ||
+          !given.hint.trim()
+        ) {
+          throw fail('BAD_ARGUMENT', 'tag and hint must be non-empty strings')
+        }
+        setMissingFontLabels({ tag: given.tag, hint: given.hint })
+        void whenPcFontsSettled().then(() => {
+          let used
+          try {
+            used = host.read((doc) => parse(doc.getDocumentInfo()).fontsUsed)
+          } catch {
+            return
+          }
+          const fonts = missingFonts(Array.isArray(used) ? used : [])
+          globalThis.dispatchEvent?.(new CustomEvent(MISSING_FONTS_EVENT, { detail: { fonts } }))
+        })
         return { ok: true }
       }),
 

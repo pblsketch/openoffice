@@ -27,6 +27,11 @@ export const vi = {
     'Chưa lưu: tài liệu này có theo dõi thay đổi; lưu ở đây sẽ làm mất chúng và có thể tạo ra tệp mà Hancom Hangul không mở được.',
   savedTailsLost:
     'Đã lưu, nhưng không giữ được một số trang chủ hoặc ghi chú của tệp gốc, và Hancom Hangul có thể không mở được tệp đã lưu. Hãy mở để kiểm tra.',
+  missingFonts:
+    'Một số phông chữ không có trên máy này nên hiển thị trên màn hình bằng phông khác: {fonts}. Tệp đã lưu vẫn giữ tên phông chữ gốc, và văn bản sẽ hiển thị đúng trên máy có các phông chữ đó.',
+  missingFontTag: 'Không có trên máy này',
+  missingFontHint:
+    'Phông chữ này không có trên máy này nên hiển thị trên màn hình bằng phông khác. Tệp vẫn giữ tên phông chữ này.',
   dismiss: 'Đóng',
   aiOpenAssistant: 'Mở trợ lý AI',
   aiNewChat: 'Cuộc trò chuyện mới',

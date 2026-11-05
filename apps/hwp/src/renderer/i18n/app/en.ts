@@ -27,6 +27,11 @@ export const en = {
     'Not saved: this document has tracked changes, and saving it here would lose them and may write a file Hancom Hangul cannot open.',
   savedTailsLost:
     'Saved, but some master pages or memos of the original file could not be carried over, and Hancom Hangul may not open the saved file. Please open it there to check.',
+  missingFonts:
+    'Some fonts are not on this PC, so they appear in other fonts on screen: {fonts}. The saved file keeps the original font names, and the text looks as intended on a PC that has those fonts.',
+  missingFontTag: 'Not on this PC',
+  missingFontHint:
+    "This font is not on this PC, so it appears in another font on screen. The file keeps this font's name.",
   dismiss: 'Dismiss',
   aiOpenAssistant: 'Open AI assistant',
   aiNewChat: 'New chat',
