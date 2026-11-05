@@ -143,10 +143,24 @@ describe('homeAiEntry', () => {
     })
   })
 
-  it('falls back to the signed-in subscriptions when the selected provider cannot run', () => {
+  it('names the selected provider as needing a connection when it cannot run', () => {
+    // a key provider without its key: the signed-in subscription does not stand in
+    expect(homeAiEntry(settings({ provider: 'gemini' }), statusMap('ready', 'ready'))).toEqual({
+      state: 'needs-connection',
+      providers: ['gemini'],
+    })
+    // a selected subscription that is signed out, beside another that is ready
+    expect(homeAiEntry(settings({ provider: 'codex' }), statusMap('ready', 'signed-out'))).toEqual({
+      state: 'needs-connection',
+      providers: ['codex'],
+    })
+    // a selected metered login that is not accepted
     expect(
-      homeAiEntry(settings({ provider: 'gemini' }), statusMap('ready', 'signed-out')).providers,
-    ).toEqual(['claude-code'])
+      homeAiEntry(settings({ provider: 'codex' }), {
+        'claude-code': status('claude-code', 'ready'),
+        codex: status('codex', 'metered'),
+      }),
+    ).toEqual({ state: 'needs-connection', providers: ['codex'] })
   })
 
   it('is checking or disconnected when nothing can be named', () => {
@@ -155,9 +169,6 @@ describe('homeAiEntry', () => {
       providers: [],
     })
     expect(homeAiEntry(settings(), statusMap('checking', 'signed-out')).state).toBe('checking')
-    expect(homeAiEntry(settings({ provider: 'gemini' }), statusMap('error', 'signed-out'))).toEqual(
-      { state: 'disconnected', providers: [] },
-    )
   })
 
   it('reads the statuses alone while the settings are not read', () => {
