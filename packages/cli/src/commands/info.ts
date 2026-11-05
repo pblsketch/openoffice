@@ -11,7 +11,7 @@ import { hwpInfo } from '../formats/hwp'
 import { openOdtBytes } from '../formats/odt'
 import { pdfInfo } from '../formats/pdf'
 import { convertLegacyWorkbook, workbookSummary } from '../formats/xlsx'
-import { extension, readInput, resolveInput, stripBom } from '../fs'
+import { decodeText, extension, readInput, resolveInput, stripBom } from '../fs'
 import type { CommandDef } from '../registry'
 import { CliError, EXIT } from '../result'
 
@@ -180,7 +180,7 @@ function describeCsv(path: string): Description {
 
 function describeText(path: string, ext: string): Description {
   // a UTF-8 BOM is a file marker, not text: it is not a character and does not hide a first heading
-  const text = stripBom(Buffer.from(readInput(path)).toString('utf-8'))
+  const text = stripBom(decodeText(readInput(path)))
   const lines = text.split(/\r\n|\r|\n/)
   const fields: Record<string, unknown> = { lines: lines.length, characters: text.length }
   if (ext === 'md' || ext === 'markdown') fields.headings = countHeadings(lines)
