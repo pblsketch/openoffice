@@ -3155,6 +3155,9 @@ function Ribbon({
               <ToolSymbol symbol="⟳" />
               {t('appRefreshAll')}
             </button>
+          </div>
+          {/* four rows overflow the band; the fourth starts a second column */}
+          <div className="row-stack">
             <button
               className="styles-row as-button"
               data-tip={t('appQueriesConnectionsTitle')}
