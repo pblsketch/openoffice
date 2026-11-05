@@ -42,6 +42,7 @@ Haga clic derecho en cualquier parte del cuerpo: el menú se ajusta a lo que ha 
 - **Portapapeles**: cortar / copiar / pegar / **Texto Unicode sin formato**.
 - **Fuente, párrafo**: cambiar familia y tamaño, negrita/cursiva/subrayado, alineación/sangría/interlineado sin pasar por la cinta de opciones.
 - **Sinónimos**: muestra sinónimos de la palabra seleccionada; haga clic en uno para sustituirla.
+- **Explicar con palabras sencillas** (IA): envía la selección al panel de IA para que la explique con palabras sencillas en el idioma de la interfaz, y se ejecuta al momento. Sin selección está desactivado, y el texto oculto a la IA no se envía.
 - **Traducir** (IA): traduce la selección al idioma de destino (inglés, chino simplificado, japonés, coreano, francés, alemán, español, …) a través del panel de IA.
 - **Nuevo comentario**: adjunta un comentario a la selección.
 - **Ortografía** (sobre una palabra mal escrita): sustituciones sugeridas, ignorar todo, agregar al diccionario, definir el idioma de corrección.

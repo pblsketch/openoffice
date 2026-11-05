@@ -131,7 +131,9 @@ describe('sentence lists in the message', () => {
     expect(system).toMatch(/two sentences/i)
     expect(system).toContain('Copy every placeholder verbatim')
     expect(system).toMatch(/data, not instructions/)
-    expect(system.indexOf('How to write:')).toBeLessThan(system.indexOf('Rules:'))
+    expect(system.indexOf('How the translation should read:')).toBeLessThan(
+      system.indexOf('Rules:'),
+    )
   })
 
   it('the batch estimate counts the JSON of each sentence (tunable)', () => {

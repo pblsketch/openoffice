@@ -338,6 +338,9 @@ export const zhTW = {
   appAiBadgeTip: '將呼叫 AI',
   appTranslate: '翻譯',
   appTranslateTo: '翻譯成{lang}',
+  appEasyWords: '用淺白的話解釋',
+  appEasyWordsPrompt:
+    '請用中文把選取的文字解釋得淺白易懂,讓需要簡單文字的人(兒童、長者、正在學中文的人)也看得懂。用日常用語和短句,所有事實、數字和條件都要保留。不要修改文件:「{text}」',
   redactMenuLabel: '把選中的內容對 AI 隱藏',
   redactDialogDesc:
     '這段文字會留在文件裡，AI 讀到的卻是下面的標記。給它起個名字，AI 才知道它是什麼。',

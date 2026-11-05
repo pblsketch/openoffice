@@ -107,4 +107,40 @@ export const id = {
   btReasonNotChosen: 'tidak dipilih',
   btReasonBroken: 'bab rusak',
   btReasonFixed: 'bab dengan tata letak tetap',
+  btMode: 'Mode',
+  btModeTranslate: 'Terjemahkan',
+  btModeEasy: 'Bahasa sederhana',
+  btEasyIntro:
+    'Bahasa sederhana menulis ulang teks buku dengan kata-kata mudah dalam bahasa yang dipilih, ke file EPUB baru. Buku ini tidak berubah.',
+  btEasyLanguage: 'Tulis ulang dalam',
+  btKindEasy: 'Buku bahasa sederhana',
+  btKindEasyBilingual: 'Teks asli diikuti bahasa sederhana',
+  btEasyConfirmTitle: 'Sebelum menulis ulang dalam bahasa sederhana',
+  btEasyConfirmLanguage: 'Bahasa sederhana: {language}',
+  btEasyConfirmDone: '{done} dari {total} blok sudah ditulis ulang dan tidak akan dikirim',
+  btEasyProviderChange:
+    'Versi bahasa sederhana yang tersimpan dibuat dengan AI lain ({stored}). Sisanya akan ditulis ulang dengan {next}.',
+  btEasyNothing: 'Semua yang dipilih sudah ditulis ulang. Tidak ada yang dikirim.',
+  btEasyNoticeSends:
+    'Bahasa sederhana mengirim teks bab yang dipilih (paragraf dengan penanda formatnya), judul buku, dan entri daftar isi ke AI.',
+  btEasyRestart: 'Tulis ulang dari awal',
+  btEasyRestartConfirm:
+    'Hapus versi bahasa sederhana yang tersimpan ({language}, {count} blok) dan tulis ulang semuanya?',
+  btEasyRestartYes: 'Hapus dan tulis ulang',
+  btEasyRestartSaveYes: 'Simpan, hapus, lalu tulis ulang',
+  btEasySaveAndStart: 'Simpan dan tulis ulang',
+  btEasyRunning: 'Menulis ulang dalam bahasa sederhana ({language}): {done}/{total} blok',
+  btEasyDone: 'Bahasa sederhana ({language}) selesai ({count} blok)',
+  btEasyStoppedCancelled: 'Penulisan ulang ke bahasa sederhana dihentikan.',
+  btEasyStoppedFailures:
+    'Penulisan ulang ke bahasa sederhana berhenti karena beberapa permintaan gagal berturut-turut.',
+  btEasyStoppedStore:
+    'Penulisan ulang ke bahasa sederhana berhenti karena hasilnya tidak dapat disimpan.',
+  btEasyStoppedError: 'Penulisan ulang ke bahasa sederhana berhenti: {reason}',
+  btEasyStoppedProgress: '{done} dari {total} blok sudah ditulis ulang dan disimpan.',
+  btEasyExportPartial: 'Ekspor yang sudah ditulis ulang',
+  btEasyResume: 'Bahasa sederhana belum selesai ({language}) {percent}% — lanjutkan?',
+  btEasyReportTitle: 'Bahasa sederhana selesai',
+  btEasyReportPartialTitle: 'Yang sudah ditulis ulang telah diekspor',
+  btEasyReportTranslated: 'Blok yang ditulis ulang dalam bahasa sederhana ({language}): {count}',
 } satisfies Record<keyof typeof zh, string>

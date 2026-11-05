@@ -106,4 +106,40 @@ export const nl = {
   btReasonNotChosen: 'niet gekozen',
   btReasonBroken: 'beschadigd hoofdstuk',
   btReasonFixed: 'hoofdstuk met vaste opmaak',
+  btMode: 'Soort',
+  btModeTranslate: 'Vertalen',
+  btModeEasy: 'Eenvoudige taal',
+  btEasyIntro:
+    'Eenvoudige taal herschrijft de tekst van het boek met makkelijke woorden in de gekozen taal, in nieuwe EPUB-bestanden. Dit boek verandert niet.',
+  btEasyLanguage: 'Herschrijven in',
+  btKindEasy: 'Boek in eenvoudige taal',
+  btKindEasyBilingual: 'Origineel, gevolgd door eenvoudige taal',
+  btEasyConfirmTitle: 'Voor het herschrijven in eenvoudige taal',
+  btEasyConfirmLanguage: 'Eenvoudige taal: {language}',
+  btEasyConfirmDone: '{done} van {total} blokken zijn al herschreven en worden niet verzonden',
+  btEasyProviderChange:
+    'De opgeslagen versie in eenvoudige taal is gemaakt met een andere AI ({stored}). De rest wordt herschreven met {next}.',
+  btEasyNothing: 'Alles wat gekozen is, is al herschreven. Er wordt niets verzonden.',
+  btEasyNoticeSends:
+    'Eenvoudige taal stuurt de AI de tekst van de gekozen hoofdstukken (alinea’s met plaatsaanduidingen voor de opmaak), de boektitel en de items van de inhoudsopgave.',
+  btEasyRestart: 'Opnieuw herschrijven vanaf het begin',
+  btEasyRestartConfirm:
+    'De opgeslagen versie in eenvoudige taal ({language}, {count} blokken) verwijderen en alles opnieuw herschrijven?',
+  btEasyRestartYes: 'Verwijderen en opnieuw herschrijven',
+  btEasyRestartSaveYes: 'Opslaan, verwijderen en opnieuw herschrijven',
+  btEasySaveAndStart: 'Opslaan en herschrijven',
+  btEasyRunning: 'Herschrijven in eenvoudige taal ({language}): {done}/{total} blokken',
+  btEasyDone: 'Eenvoudige taal ({language}) klaar ({count} blokken)',
+  btEasyStoppedCancelled: 'Het herschrijven in eenvoudige taal is gestopt.',
+  btEasyStoppedFailures:
+    'Het herschrijven in eenvoudige taal is gestopt omdat meerdere verzoeken na elkaar mislukten.',
+  btEasyStoppedStore:
+    'Het herschrijven in eenvoudige taal is gestopt omdat de resultaten niet konden worden opgeslagen.',
+  btEasyStoppedError: 'Het herschrijven in eenvoudige taal is gestopt: {reason}',
+  btEasyStoppedProgress: '{done} van {total} blokken zijn herschreven en bewaard.',
+  btEasyExportPartial: 'Exporteren wat tot nu toe is herschreven',
+  btEasyResume: 'Onvoltooide eenvoudige taal ({language}) {percent}% — doorgaan?',
+  btEasyReportTitle: 'Eenvoudige taal klaar',
+  btEasyReportPartialTitle: 'Geëxporteerd wat tot nu toe was herschreven',
+  btEasyReportTranslated: 'Blokken herschreven in eenvoudige taal ({language}): {count}',
 } satisfies Record<keyof typeof zh, string>

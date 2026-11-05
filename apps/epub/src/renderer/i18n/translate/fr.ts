@@ -108,4 +108,40 @@ export const fr = {
   btReasonNotChosen: 'non choisi',
   btReasonBroken: 'chapitre endommagé',
   btReasonFixed: 'chapitre à mise en page fixe',
+  btMode: 'Mode',
+  btModeTranslate: 'Traduire',
+  btModeEasy: 'Facile à lire',
+  btEasyIntro:
+    'La version facile à lire réécrit le texte du livre avec des mots simples dans la langue choisie, dans de nouveaux fichiers EPUB. Ce livre ne change pas.',
+  btEasyLanguage: 'Réécrire en',
+  btKindEasy: 'Livre facile à lire',
+  btKindEasyBilingual: 'Original suivi de la version facile à lire',
+  btEasyConfirmTitle: 'Avant la version facile à lire',
+  btEasyConfirmLanguage: 'Version facile à lire : {language}',
+  btEasyConfirmDone: '{done} blocs sur {total} sont déjà réécrits et ne seront pas envoyés',
+  btEasyProviderChange:
+    'La version facile à lire enregistrée a été faite avec une autre IA ({stored}). Le reste sera réécrit avec {next}.',
+  btEasyNothing: 'Tout ce qui est choisi est déjà réécrit. Rien n’est envoyé.',
+  btEasyNoticeSends:
+    'La version facile à lire envoie à l’IA le texte des chapitres choisis (paragraphes avec des repères pour leur mise en forme), le titre du livre et les entrées de la table des matières.',
+  btEasyRestart: 'Tout réécrire depuis le début',
+  btEasyRestartConfirm:
+    'Supprimer la version facile à lire enregistrée ({language}, {count} blocs) et tout réécrire ?',
+  btEasyRestartYes: 'Supprimer et réécrire',
+  btEasyRestartSaveYes: 'Enregistrer, supprimer et réécrire',
+  btEasySaveAndStart: 'Enregistrer et réécrire',
+  btEasyRunning: 'Version facile à lire ({language}) en cours : {done}/{total} blocs',
+  btEasyDone: 'Version facile à lire ({language}) terminée ({count} blocs)',
+  btEasyStoppedCancelled: 'La version facile à lire a été arrêtée.',
+  btEasyStoppedFailures:
+    'La version facile à lire s’est arrêtée car plusieurs requêtes ont échoué de suite.',
+  btEasyStoppedStore:
+    'La version facile à lire s’est arrêtée car ses résultats n’ont pas pu être enregistrés.',
+  btEasyStoppedError: 'La version facile à lire s’est arrêtée : {reason}',
+  btEasyStoppedProgress: '{done} blocs sur {total} sont réécrits et conservés.',
+  btEasyExportPartial: 'Exporter ce qui est réécrit jusqu’ici',
+  btEasyResume: 'Version facile à lire inachevée ({language}) {percent} % — continuer ?',
+  btEasyReportTitle: 'Version facile à lire terminée',
+  btEasyReportPartialTitle: 'Ce qui était réécrit a été exporté',
+  btEasyReportTranslated: 'Blocs réécrits en version facile à lire ({language}) : {count}',
 } satisfies Record<keyof typeof zh, string>

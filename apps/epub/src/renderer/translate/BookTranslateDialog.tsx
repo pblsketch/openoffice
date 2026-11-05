@@ -23,6 +23,17 @@
  *   make, the confirmation is shown again with the new numbers instead of
  *   starting.
  *
+ * The way (spec §5.5): "Translate" (the default) or "Easy explanation". The
+ * easy way rewrites the book in plain words of the target language, whose
+ * default is always the UI language; its results are the easy book and the
+ * book with the explanation after the original, suggested as
+ * `<name>.<lang>.<word>.epub` and `<name>.<lang>.<word>.bilingual.epub` with
+ * the UI language's word for it, so a translated book is never the default.
+ * The confirmation counts, names the AI and the charge from the easy
+ * explanation's own stored results, and "again from the start" deletes only
+ * those. Switching the way sends nothing; it picks that way's default
+ * language and asks for the places again.
+ *
  * The units are read here from the saved book (the main process; no AI), so
  * the estimate counts what the job would send. Nothing is sent from here:
  * Start hands the confirmed choice and route to the caller, after the shared
@@ -31,7 +42,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactElement } from 'react'
 import type { AiProviderId, AiSettings } from '@genoffice/ai-provider/browser'
-import type { DocumentJobEstimate } from '@genoffice/pdf-structure'
+import type { DocumentJobEstimate, TranslationMode } from '@genoffice/pdf-structure'
 import type {
   EpubSkippedChapter,
   EpubTranslationOutputKind,
@@ -58,6 +69,7 @@ import { useSubscriptionConnection } from '../ai/subscription-client'
 import {
   TRANSLATION_LANGUAGES,
   defaultEpubTargetLanguage,
+  easyExplanationLabel,
   epubBookLanguage,
   epubSampleText,
   estimateEpubTranslationJob,
@@ -66,6 +78,7 @@ import {
 import { createBookJobStore } from './ipc-store'
 import { documentJobRoute, routeLabel, sameRoute, type DocumentJobRoute } from './route'
 import {
+  KIND_KEYS,
   RESULT_KINDS,
   baseName,
   chapterRows,
@@ -112,6 +125,8 @@ export interface BookTranslateStartRequest {
   /** the calls the confirmation showed; a different count on the saved book asks again */
   calls?: number
   mode: BookTranslateMode
+  /** 'easy': an easy explanation; absent (or 'translate') for a translation */
+  translationMode?: TranslationMode
   /** the confirmed AI (absent for 'export') */
   route?: ReadyRoute
 }
@@ -136,15 +151,19 @@ export interface BookTranslateDialogProps {
   initialLang: string | null
   /** spine indices asked for; null = every chapter */
   initialChapters: number[] | null
+  /** the way chosen when the window opens (a resumed job's); default 'translate' */
+  initialMode?: TranslationMode
   /** the book has changes that are not saved: the start saves first */
   dirty: boolean
   onStart: (request: BookTranslateStartRequest) => Promise<BookTranslateStartAnswer>
   onClose: () => void
 }
 
-const KIND_KEY: Record<EpubTranslationOutputKind, StringKey> = {
-  translated: 'btKindTranslated',
-  bilingual: 'btKindBilingual',
+const MODES: readonly TranslationMode[] = ['translate', 'easy']
+
+const MODE_KEY: Record<TranslationMode, StringKey> = {
+  translate: 'btModeTranslate',
+  easy: 'btModeEasy',
 }
 
 const REFUSAL_KEY: Record<EpubResultPathRefusal, StringKey> = {
@@ -161,6 +180,8 @@ interface Analysis {
   rows: ChapterRow[]
   /** the book's language: `dc:language`, else the guess from its text */
   bookLanguage: string | undefined
+  /** the default target language of each way */
+  defaults: Record<TranslationMode, string>
 }
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'ready'; analysis: Analysis }
@@ -172,6 +193,9 @@ export function BookTranslateDialog(props: BookTranslateDialogProps): ReactEleme
   const { filePath, lang, t, api } = props
   const [load, setLoad] = useState<Load>({ kind: 'loading' })
   const [step, setStep] = useState<'choose' | 'confirm'>('choose')
+  const [mode, setMode] = useState<TranslationMode>(props.initialMode ?? 'translate')
+  const modeRef = useRef(mode)
+  modeRef.current = mode
   const [target, setTarget] = useState<string | null>(
     props.initialLang && isTranslationLanguage(props.initialLang) ? props.initialLang : null,
   )
@@ -207,8 +231,11 @@ export function BookTranslateDialog(props: BookTranslateDialogProps): ReactEleme
       const p = propsRef.current
       const rows = chapterRows(p.book, out.units, out.skipped, p.t)
       const sample = epubSampleText(out.units)
-      const fallback = defaultEpubTargetLanguage(p.lang, p.book.metadata.languages, sample)
-      setTarget((asked) => asked ?? fallback)
+      const defaults: Record<TranslationMode, string> = {
+        translate: defaultEpubTargetLanguage(p.lang, p.book.metadata.languages, sample),
+        easy: defaultEpubTargetLanguage(p.lang, p.book.metadata.languages, sample, 'easy'),
+      }
+      setTarget((asked) => asked ?? defaults[modeRef.current])
       setChosen(initialChapters(rows, again ? [...chosenRef.current] : p.initialChapters))
       setLoad({
         kind: 'ready',
@@ -218,6 +245,7 @@ export function BookTranslateDialog(props: BookTranslateDialogProps): ReactEleme
           skipped: out.skipped,
           rows,
           bookLanguage: epubBookLanguage(p.book.metadata.languages, sample),
+          defaults,
         },
       })
     } catch {
@@ -236,6 +264,10 @@ export function BookTranslateDialog(props: BookTranslateDialogProps): ReactEleme
 
   const analysis = load.kind === 'ready' ? load.analysis : null
   const lang0 = target ?? 'en'
+  const easy = mode === 'easy'
+  /** the UI language's word for an easy explanation, in its result names */
+  const easyWord = easy ? easyExplanationLabel(lang) : undefined
+  const kindKey = KIND_KEYS[mode]
   const units = useMemo(
     () => (analysis ? unitsForChapters(analysis.units, chosen) : []),
     [analysis, chosen],
@@ -264,6 +296,14 @@ export function BookTranslateDialog(props: BookTranslateDialogProps): ReactEleme
   /** a save changed the book since the window read it: read it again, keep the step */
   const bookChanged = () => void readUnits(true)
 
+  /** another way: its default language, and the places chosen again (the names carry the way) */
+  const changeMode = (next: TranslationMode) => {
+    if (next === mode) return
+    setMode(next)
+    if (analysis) setTarget(analysis.defaults[next])
+    setLocations({})
+  }
+
   const changeLanguage = (next: string) => {
     setTarget(next)
     // the suggested names carry the language: the places are chosen again
@@ -290,7 +330,13 @@ export function BookTranslateDialog(props: BookTranslateDialogProps): ReactEleme
     if (picking || !api.pickResultTarget) return
     setPicking(true)
     try {
-      const out = await api.pickResultTarget({ kind, lang: lang0 })
+      const out = await api.pickResultTarget({
+        kind,
+        lang: lang0,
+        ...(easyWord !== undefined
+          ? { defaultName: resultName(filePath, lang0, kind, easyWord) }
+          : {}),
+      })
       if (!out) return
       setLocations((prev) => ({
         ...prev,
@@ -319,10 +365,12 @@ export function BookTranslateDialog(props: BookTranslateDialogProps): ReactEleme
         aria-label={t('btTitle')}
         data-step={step}
       >
-        <div className="bt-title">{step === 'choose' ? t('btTitle') : t('btConfirmTitle')}</div>
+        <div className="bt-title">
+          {step === 'choose' ? t('btTitle') : t(easy ? 'btEasyConfirmTitle' : 'btConfirmTitle')}
+        </div>
         {step === 'choose' ? (
           <>
-            <p className="bt-hint">{t('btIntro')}</p>
+            <p className="bt-hint">{t(easy ? 'btEasyIntro' : 'btIntro')}</p>
             {load.kind === 'loading' && (
               <p className="bt-status" role="status" data-loading>
                 {t('btLoading')}
@@ -335,8 +383,24 @@ export function BookTranslateDialog(props: BookTranslateDialogProps): ReactEleme
             )}
             {analysis && (
               <>
+                <fieldset className="bt-group bt-modes" data-mode={mode}>
+                  <legend>{t('btMode')}</legend>
+                  {MODES.map((m) => (
+                    <label key={m} className="bt-check">
+                      <input
+                        type="radio"
+                        name="bt-mode"
+                        data-field={`mode-${m}`}
+                        checked={mode === m}
+                        onChange={() => changeMode(m)}
+                      />
+                      {t(MODE_KEY[m])}
+                    </label>
+                  ))}
+                </fieldset>
+
                 <label className="bt-field">
-                  <span>{t('btLanguage')}</span>
+                  <span>{t(easy ? 'btEasyLanguage' : 'btLanguage')}</span>
                   <select
                     className="bt-input"
                     data-field="language"
@@ -417,7 +481,7 @@ export function BookTranslateDialog(props: BookTranslateDialogProps): ReactEleme
                             checked={on}
                             onChange={() => toggleKind(kind)}
                           />
-                          {t(KIND_KEY[kind])}
+                          {t(kindKey[kind])}
                         </label>
                         {on && (
                           <div className="bt-location">
@@ -428,7 +492,9 @@ export function BookTranslateDialog(props: BookTranslateDialogProps): ReactEleme
                             >
                               {at?.state === 'picked'
                                 ? t('btLocation', { name: baseName(at.path) })
-                                : t('btLocationNone', { name: resultName(filePath, lang0, kind) })}
+                                : t('btLocationNone', {
+                                    name: resultName(filePath, lang0, kind, easyWord),
+                                  })}
                             </span>
                             <button
                               type="button"
@@ -492,10 +558,11 @@ export function BookTranslateDialog(props: BookTranslateDialogProps): ReactEleme
               api={api}
               docHash={analysis.docHash}
               target={lang0}
+              mode={mode}
               units={units}
               chapters={chosenChapters(analysis.rows, chosen)}
               targets={targets}
-              sameAsBook={sameLanguage(analysis.bookLanguage, lang0)}
+              sameAsBook={!easy && sameLanguage(analysis.bookLanguage, lang0)}
               dirty={props.dirty}
               onBack={() => setStep('choose')}
               onCancel={props.onClose}
@@ -516,6 +583,7 @@ function BookTranslateConfirm({
   api,
   docHash,
   target,
+  mode,
   units,
   chapters,
   targets,
@@ -531,6 +599,8 @@ function BookTranslateConfirm({
   api: BookTranslateDialogApi
   docHash: string
   target: string
+  /** the way: its stored results are counted, and its words are used */
+  mode: TranslationMode
   units: EpubTranslationUnit[]
   chapters: number[] | undefined
   targets: BookResultTarget[]
@@ -556,6 +626,9 @@ function BookTranslateConfirm({
   const routeKey = route.state === 'ready' ? `${route.provider}\n${route.model}` : ''
   const apiRef = useRef(api)
   apiRef.current = api
+  const easy = mode === 'easy'
+  /** the words of the way: an easy explanation's own, or the translation's */
+  const say = (plain: StringKey, easyKey: StringKey): StringKey => (easy ? easyKey : plain)
 
   const bridge = useMemo<AiModelPickerBridge>(
     () => ({
@@ -599,6 +672,7 @@ function BookTranslateConfirm({
       units,
       model: { provider, model },
       store: createBookJobStore(api.store),
+      ...(easy ? { mode: 'easy' as const } : {}),
     }).then(
       (e) => {
         if (alive) setEstimate(e)
@@ -611,7 +685,7 @@ function BookTranslateConfirm({
       alive = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- per confirmation, route and read of the book
-  }, [routeKey, docHash, units])
+  }, [routeKey, docHash, units, mode])
 
   const send = async (o: { mode: BookTranslateMode; route?: ReadyRoute }): Promise<void> => {
     setStarting(true)
@@ -624,6 +698,7 @@ function BookTranslateConfirm({
         targets,
         ...(estimate ? { calls: estimate.calls } : {}),
         mode: o.mode,
+        ...(easy ? { translationMode: 'easy' as const } : {}),
         ...(o.route ? { route: o.route } : {}),
       })
       if (answer.ok) return
@@ -698,7 +773,9 @@ function BookTranslateConfirm({
   return (
     <>
       <ul className="bt-summary" data-confirm>
-        <li data-language={target}>{t('btConfirmLanguage', { language })}</li>
+        <li data-language={target} data-mode={mode}>
+          {t(say('btConfirmLanguage', 'btEasyConfirmLanguage'), { language })}
+        </li>
         <li data-calls={estimate?.calls ?? ''}>
           {estimate
             ? t('btConfirmCalls', { calls: estimate.calls, blocks: estimate.pending })
@@ -706,7 +783,10 @@ function BookTranslateConfirm({
         </li>
         {estimate && estimate.done > 0 && (
           <li data-done={estimate.done}>
-            {t('btConfirmDone', { done: estimate.done, total: estimate.total })}
+            {t(say('btConfirmDone', 'btEasyConfirmDone'), {
+              done: estimate.done,
+              total: estimate.total,
+            })}
           </li>
         )}
         {sending && route.state === 'checking' && (
@@ -736,7 +816,7 @@ function BookTranslateConfirm({
       )}
       {!nothingToSend && change && (
         <p className="bt-warning" role="alert" data-provider-change>
-          {t('btProviderChange', {
+          {t(say('btProviderChange', 'btEasyProviderChange'), {
             stored: storedName(change.stored),
             next: routeLabel(route as ReadyRoute),
           })}
@@ -749,7 +829,7 @@ function BookTranslateConfirm({
       )}
       {nothingToSend && (
         <p className="bt-status" data-nothing>
-          {t('btNothing')}
+          {t(say('btNothing', 'btEasyNothing'))}
         </p>
       )}
       {sending && connectChoice && (
@@ -772,7 +852,7 @@ function BookTranslateConfirm({
       {sending && sendGate.noticeDue && (
         <>
           <p className="bt-hint" role="note" data-notice="book">
-            {t('btNoticeSends')}
+            {t(say('btNoticeSends', 'btEasyNoticeSends'))}
           </p>
           <AiFirstConnectionNotice
             lang={lang}
@@ -783,7 +863,12 @@ function BookTranslateConfirm({
       )}
       {askRestart && estimate && (
         <div className="bt-restart" role="alertdialog" data-restart-confirm>
-          <p>{t('btRestartConfirm', { language, count: estimate.done })}</p>
+          <p>
+            {t(say('btRestartConfirm', 'btEasyRestartConfirm'), {
+              language,
+              count: estimate.done,
+            })}
+          </p>
           <div className="bt-actions">
             <button
               type="button"
@@ -800,7 +885,9 @@ function BookTranslateConfirm({
               disabled={!canSend}
               onClick={() => startJob('restart')}
             >
-              {dirty ? t('btRestartSaveYes') : t('btRestartYes')}
+              {dirty
+                ? t(say('btRestartSaveYes', 'btEasyRestartSaveYes'))
+                : t(say('btRestartYes', 'btEasyRestartYes'))}
             </button>
           </div>
         </div>
@@ -819,7 +906,7 @@ function BookTranslateConfirm({
             disabled={starting}
             onClick={() => setAskRestart(true)}
           >
-            {t('btRestart')}
+            {t(say('btRestart', 'btEasyRestart'))}
           </button>
         )}
         <button type="button" className="bt-btn" data-action="back" onClick={onBack}>
@@ -846,7 +933,7 @@ function BookTranslateConfirm({
             disabled={!canStart}
             onClick={() => startJob('translate')}
           >
-            {dirty ? t('btSaveAndStart') : t('btStart')}
+            {dirty ? t(say('btSaveAndStart', 'btEasySaveAndStart')) : t('btStart')}
           </button>
         )}
       </div>

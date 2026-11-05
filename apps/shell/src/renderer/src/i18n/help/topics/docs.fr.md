@@ -42,6 +42,7 @@ Clic droit n’importe où dans le corps — le menu correspond à ce que vous a
 - **Presse-papiers** : couper / copier / coller / **collier en texte brut**.
 - **Police, paragraphe** : changer la police et la taille, gras/italique/souligné, alignement/retrait/interligne sans passer par le ruban.
 - **Synonymes** : liste des synonymes du mot sélectionné ; cliquez sur l’un pour remplacer.
+- **Expliquer en mots simples** (IA) : envoie la sélection au panneau IA pour qu’elle soit expliquée en mots simples, dans la langue de l’interface, et l’exécute aussitôt. Sans sélection, l’élément est désactivé, et le texte masqué à l’IA n’est pas envoyé.
 - **Traduire** (IA) : traduit la sélection vers la langue cible (anglais, chinois simplifié, japonais, coréen, français, allemand, espagnol, …) via le panneau IA.
 - **Nouveau commentaire** : attache un commentaire à la sélection.
 - **Orthographe** (sur un mot mal orthographié) : remplacements suggérés, tout ignorer, ajouter au dictionnaire, définir la langue de correction.

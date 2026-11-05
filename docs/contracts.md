@@ -101,14 +101,15 @@
 - **한 문서에 작업 하나**: 같은 문서에 작업이 돌고 있으면(같은 프로세스든 다른 프로세스든) 종료 코드 4, `app_unavailable`, `detail.errorCode: "document-job-running"`, `detail.job: { kind, lang?, runId?, progress? }`.
   - `kind`는 `ai-read | translate | translate-page | highlight | summary` 다섯 중 하나다. 뒤의 셋은 앱의 PDF 읽기 도우미(결정 0043)가 도는 중인 작업이다(대역 보기의 페이지 번역, AI 핵심 표시, 긴 문서의 개요). 명령어로 시작할 수는 없지만 "작업 중" 판정에는 모두 든다.
   - `lang`은 `translate`·`translate-page`·`summary`에만, `runId`(AI 핵심 표시의 분류 묶음 열쇠)는 `highlight`에만 있다. `ai-read`에는 둘 다 없다.
-  - 사람이 읽는 `message`는 종류마다 다르다(예: `a page translation (de)`, `an AI highlighting`).
+  - 앱의 쉬운 풀이(번역의 두 번째 방식)가 도는 중이면 `detail.job`에 선택 필드 `mode: "easy"`가 더해진다. `kind`는 그대로 `translate`나 `translate-page`이고, 다섯 종류의 값 집합도 그대로다. 일반 번역과 다른 작업에는 `mode`가 없다.
+  - 사람이 읽는 `message`는 종류마다 다르다(예: `a page translation (de)`, `an AI highlighting`). 쉬운 풀이는 그렇다고 밝힌다(예: `an easy explanation (ko)`, `an easy explanation of a page (en)`).
 - **`pdf translate`는 끝날 때까지 앞에서 돈다.** 진행은 오류 출력(stderr)에 쓴다. `pdf ai-read`도 같다. Ctrl+C는 작업을 `interrupted`로 멈추고 답하게 한다.
 - **한도 소진·연속 실패로 멈췄을 때**
   - `--partial`이 없으면 파일을 쓰지 않고 기존 약속대로 실패로 답한다: 종료 코드 4, `error: "app_unavailable"`, `detail.errorCode`(`rate-limit`, `failures` 등), `detail.resetsAt`. 끝난 분량은 `detail.done_blocks`·`detail.total_blocks`로 함께 준다. `ai-read`는 `detail.done_pages`·`detail.total_pages`와 `pages_read`, `pages_failed`를 준다.
   - `--partial`이 있으면(`translate`만) 끝난 부분만 반영하고 나머지는 원문으로 둔 파일을 쓰고 `status: "partial"`로 답한다. 성공 `detail`에 `detail.stopped: { errorCode, resetsAt? }`와 `done_blocks`·`total_blocks`가 더해진다.
   - 다시 실행하면 보관소에서 이어 간다. 끝난 블록과 페이지는 다시 보내지 않는다. `--restart`면 그 언어의 보관된 번역 가운데 사람이 앱에서 고친 블록(`edited`)은 남기고 나머지를 지운 뒤 처음부터 한다. 고친 블록은 끝난 것으로 쳐서 다시 보내지 않는다. 고친 블록까지 지우는 옵션은 없다(앱의 "처음부터 다시 번역"에서 고를 수 있다).
 - **사람이 고친 번역**: 앱의 대역 보기에서 고친 블록은 서식 없는 글로 보관되고, `pdf translate`의 결과 파일(PDF·Markdown·EPUB)에 그 글 그대로 쓰인다. 출력 구조와 성공 `detail`의 모양은 바뀌지 않는다. 고친 블록은 `translated_blocks`에 든다.
-- **`pdf status`**: 출력 모양은 그대로다. `ai_read`와 `translations`만 보이고, 앱의 페이지 번역·AI 핵심 표시·개요의 작업 기록은 나오지 않는다. 페이지 번역은 번역 작업 기록(`job`)과 진행(`done_blocks`·`total_blocks`)을 바꾸지 않는다.
+- **`pdf status`**: 출력 모양은 그대로다. `ai_read`와 `translations`만 보이고, 앱의 페이지 번역·AI 핵심 표시·개요의 작업 기록은 나오지 않는다. 쉬운 풀이도 보이지 않는다. 쉬운 풀이의 결과와 작업 기록은 `translations` 항목을 만들지 않고 어떤 수도 바꾸지 않는다(`epub status`도 같다). 페이지 번역은 번역 작업 기록(`job`)과 진행(`done_blocks`·`total_blocks`)을 바꾸지 않는다.
 - **결과 파일 위치**: `--out`이 없으면 원본 옆에 `〈원본 이름〉.〈언어 코드〉.〈확장자〉`로 쓴다. 형식이 하나면 `--out`이 그 파일이고, 여럿이면 `--out`은 형식마다 확장자를 붙일 기준 경로다. 이미 있으면 `--force`가 필요하다(기존 파일 규칙). 실행할 때는 보내기 전에 확인하고, 예상만 답할 때는 경고(`output_exists`)로만 알린다.
 - **PDF로 쓸 수 없는 경우**: 목표 언어가 `ar`, `he`, `hi`이거나 PDF가 암호화돼 있으면 `--format pdf`를 보내기 전에 거절한다. 종료 코드 1, `unsupported`, `detail.supported_formats: ["md", "epub"]`.
 - 번역할 글이 없는 범위(스캔 문서 등)는 종료 코드 1, `unsupported`이고 `pdf ai-read`를 먼저 권한다.

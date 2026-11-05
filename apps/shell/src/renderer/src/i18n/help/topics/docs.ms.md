@@ -53,6 +53,7 @@ Klik kanan di mana-mana bahagian teks, dan menu akan mengikut apa yang anda klik
 - **Papan keratan**: potong / salin / tampal / **tampal sebagai teks biasa**.
 - **Fon, perenggan**: tukar keluarga dan saiz fon, tebal / condong / garis bawah, penjajaran / indentasi / jarak tanpa perlu ke reben.
 - **Sinonim**: menyenaraikan sinonim bagi perkataan yang dipilih. Klik satu untuk menggantikan.
+- **Terangkan dengan kata mudah** (AI): menghantar pilihan ke panel AI supaya diterangkan dengan perkataan mudah dalam bahasa antara muka, dan terus menjalankannya. Tanpa pilihan, item ini dimatikan, dan teks yang disembunyikan daripada AI tidak dihantar.
 - **Terjemah** (AI): terjemahan pilihan ke dalam bahasa sasaran (bahasa Inggeris, Cina ringkas, Jepun, Korea, Perancis, Jerman, Sepanyol, ...) melalui panel AI.
 - **Komen baharu**: melampirkan komen pada pilihan.
 - **Ejaan** (pada perkataan yang salah ejaan): cadangan ganti, abaikan semua, tambah ke kamus, tetapkan bahasa semakan.

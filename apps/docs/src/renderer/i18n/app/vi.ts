@@ -348,6 +348,9 @@ export const vi = {
   appAiBadgeTip: 'Sử dụng AI',
   appTranslate: 'Dịch',
   appTranslateTo: 'Dịch sang {lang}',
+  appEasyWords: 'Giải thích bằng lời dễ hiểu',
+  appEasyWordsPrompt:
+    'Hãy giải thích đoạn văn bản đang chọn bằng tiếng Việt để cả những người cần văn bản dễ đọc (trẻ em, người cao tuổi, người đang học tiếng Việt) cũng hiểu được. Dùng từ ngữ hằng ngày và câu ngắn, giữ nguyên mọi sự kiện, con số và điều kiện. Không sửa đổi tài liệu: "{text}"',
   redactMenuLabel: 'Ẩn phần đã chọn khỏi AI',
   redactDialogDesc:
     'Văn bản vẫn còn trong tài liệu và tệp; mô hình chỉ thấy placeholder bên dưới. Đặt tên để mô hình biết nó đại diện cho điều gì.',

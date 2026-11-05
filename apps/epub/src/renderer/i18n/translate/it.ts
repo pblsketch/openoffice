@@ -109,4 +109,40 @@ export const it = {
   btReasonNotChosen: 'non scelto',
   btReasonBroken: 'capitolo danneggiato',
   btReasonFixed: 'capitolo a layout fisso',
+  btMode: 'Modalità',
+  btModeTranslate: 'Traduci',
+  btModeEasy: 'Linguaggio semplice',
+  btEasyIntro:
+    'Il linguaggio semplice riscrive il testo del libro con parole facili nella lingua scelta, in nuovi file EPUB. Questo libro non cambia.',
+  btEasyLanguage: 'Riscrivi in',
+  btKindEasy: 'Libro in linguaggio semplice',
+  btKindEasyBilingual: 'Originale seguito dal linguaggio semplice',
+  btEasyConfirmTitle: 'Prima di riscrivere in linguaggio semplice',
+  btEasyConfirmLanguage: 'Linguaggio semplice: {language}',
+  btEasyConfirmDone: '{done} blocchi su {total} sono già riscritti e non verranno inviati',
+  btEasyProviderChange:
+    'La versione in linguaggio semplice salvata è stata fatta con un’altra IA ({stored}). Il resto verrà riscritto con {next}.',
+  btEasyNothing: 'Tutto ciò che hai scelto è già riscritto. Non viene inviato nulla.',
+  btEasyNoticeSends:
+    'Il linguaggio semplice invia all’IA il testo dei capitoli scelti (paragrafi con segnaposto per la formattazione), il titolo del libro e le voci dell’indice.',
+  btEasyRestart: 'Riscrivi da capo',
+  btEasyRestartConfirm:
+    'Eliminare la versione in linguaggio semplice salvata ({language}, {count} blocchi) e riscrivere tutto?',
+  btEasyRestartYes: 'Elimina e riscrivi',
+  btEasyRestartSaveYes: 'Salva, elimina e riscrivi',
+  btEasySaveAndStart: 'Salva e riscrivi',
+  btEasyRunning: 'Riscrittura in linguaggio semplice ({language}): {done}/{total} blocchi',
+  btEasyDone: 'Linguaggio semplice ({language}) completato ({count} blocchi)',
+  btEasyStoppedCancelled: 'La riscrittura in linguaggio semplice è stata interrotta.',
+  btEasyStoppedFailures:
+    'La riscrittura in linguaggio semplice si è fermata perché diverse richieste sono fallite di seguito.',
+  btEasyStoppedStore:
+    'La riscrittura in linguaggio semplice si è fermata perché i risultati non sono stati salvati.',
+  btEasyStoppedError: 'La riscrittura in linguaggio semplice si è fermata: {reason}',
+  btEasyStoppedProgress: '{done} blocchi su {total} sono riscritti e salvati.',
+  btEasyExportPartial: 'Esporta ciò che è stato riscritto finora',
+  btEasyResume: 'Linguaggio semplice non finito ({language}) {percent}% — continuare?',
+  btEasyReportTitle: 'Linguaggio semplice completato',
+  btEasyReportPartialTitle: 'Esportato ciò che era stato riscritto',
+  btEasyReportTranslated: 'Blocchi riscritti in linguaggio semplice ({language}): {count}',
 } satisfies Record<keyof typeof zh, string>

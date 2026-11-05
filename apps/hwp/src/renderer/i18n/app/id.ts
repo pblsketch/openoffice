@@ -250,4 +250,7 @@ export const id = {
   checkAskAi: 'Serahkan perbaikan ke AI',
   checkHandedOff: 'Permintaan ada di kotak AI. Periksa lalu kirim.',
   checkFixFailed: 'Tidak dapat mengubah.',
+  easyWordsLabel: 'Jelaskan dengan kata sederhana',
+  easyWordsPrompt:
+    'Jelaskan teks yang dipilih di bawah ini dalam bahasa Indonesia agar orang yang membutuhkan teks mudah dibaca juga bisa memahaminya. Gunakan kata sehari-hari dan kalimat pendek, dan jangan lewatkan satu pun fakta, angka, atau syarat. Jangan ubah dokumen.\n\nTeks yang dipilih:\n{text}',
 } satisfies Record<keyof typeof zh, string>

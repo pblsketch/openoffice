@@ -85,4 +85,29 @@ export const vi = {
   trRestartEditedCount: 'Có {count} đoạn do người sửa.',
   trRestartDiscardEdited: 'Xóa cả {count} đoạn do người sửa',
   trRestartKeepEdited: 'Giữ các đoạn đã sửa',
+  trMode: 'Kiểu',
+  trModeTranslate: 'Bản dịch',
+  trModeEasy: 'Giải thích dễ hiểu',
+  trPdfEasy:
+    'Phần giải thích dễ hiểu dài hơn bản gốc nên không vừa chỗ cũ. Markdown và EPUB thì được.',
+  trEasyFormatMd: 'Markdown giải thích dễ hiểu',
+  trEasyFormatEpub: 'EPUB giải thích dễ hiểu',
+  trEasyBilingual:
+    'Bản gốc rồi đến giải thích: sau mỗi đoạn gốc là phần giải thích dễ hiểu của đoạn đó (tắt: chỉ có phần giải thích)',
+  trEasyFileWord: 'giải thích dễ hiểu',
+  trEasyPickTitle: 'Lưu {format} giải thích dễ hiểu',
+  trConfirmEasyLanguage: 'Ngôn ngữ giải thích: {language}',
+  trEasyConfirmDone: '{done} trên {total} khối đã được giải thích và sẽ không gửi lại',
+  trEasyConfirmNothing:
+    'Mọi khối trên các trang đã chọn đều đã được giải thích. Không gửi gì cả; tệp được ghi từ phần giải thích đã lưu.',
+  trEasyProviderChange:
+    'Phần giải thích đã lưu được tạo bằng {stored}. Nếu tiếp tục bằng {next}, một phần giải thích sẽ lẫn kết quả của hai AI.',
+  trEasyStart: 'Bắt đầu giải thích',
+  trEasyRestart: 'Giải thích lại từ đầu…',
+  trEasyRestartConfirm:
+    'Xóa phần giải thích dễ hiểu bằng {language} đã lưu ({count} khối) và giải thích lại mọi khối? Không thể khôi phục phần đã xóa.',
+  trEasyRestartYes: 'Giải thích lại',
+  trEasyRunning: 'Đang viết phần giải thích dễ hiểu bằng {language}… {done}/{total} khối',
+  trEasyDone: 'Đã xong phần giải thích dễ hiểu bằng {language} ({count} khối).',
+  trResumeEasy: 'Phần giải thích dễ hiểu chưa xong ({language}) {percent}% — tiếp tục?',
 } satisfies Record<keyof typeof zh, string>

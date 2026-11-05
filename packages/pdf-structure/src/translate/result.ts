@@ -10,6 +10,7 @@
  * (store/keys.ts). Both go through `translationUnits`; a page range keeps or
  * drops whole pages, so it does not change the keys.
  */
+import type { TranslationMode } from '../store/job-keys'
 import type { StoredTranslation } from '../store/store'
 import { blockKeyString, translationBlockKeys, type TranslationBlockKey } from '../store/keys'
 import { deriveBilingualTree, deriveTranslatedTree, textUnits, type TextUnit } from '../tree/derive'
@@ -52,17 +53,22 @@ export interface TranslationJobPartsOptions extends TranslationUnitOptions {
   maxResends?: number
   /** the document language for the sentence split; default guessed from the tree */
   sourceLang?: string
+  /** 'easy': an easy explanation (the easy instruction, the easy results); default 'translate' */
+  mode?: TranslationMode
 }
 
 /**
  * The tree-specific options of startTranslationJob / estimateTranslationJob.
  * The document language is guessed once here, from the whole tree, and the
- * batching and every call of the job split sentences by it.
+ * batching and every call of the job split sentences by it. With `mode`
+ * 'easy' the parts carry `mode: 'easy'` too, so spreading them into the job's
+ * options makes the whole job an easy explanation's.
  */
 export function translationJobParts(
   tree: DocumentTree,
   o: TranslationJobPartsOptions,
-): Pick<StartTranslationJobOptions<TextUnit>, 'blocks' | 'batch' | 'callModel'> {
+): Pick<StartTranslationJobOptions<TextUnit>, 'blocks' | 'batch' | 'callModel' | 'mode'> {
+  const easy = o.mode === 'easy'
   const unitOptions: TranslationUnitOptions = o.pages ? { pages: o.pages } : {}
   const sourceLang = o.sourceLang ?? translationSourceLanguage(tree)
   const langOption = sourceLang !== undefined ? { sourceLang } : {}
@@ -78,7 +84,9 @@ export function translationJobParts(
       send: o.send,
       ...(o.maxResends !== undefined ? { maxResends: o.maxResends } : {}),
       ...langOption,
+      ...(o.mode !== undefined ? { mode: o.mode } : {}),
     }),
+    ...(easy ? { mode: 'easy' as const } : {}),
   }
 }
 

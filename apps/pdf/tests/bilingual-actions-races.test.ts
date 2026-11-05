@@ -102,6 +102,7 @@ function setup() {
       docHash,
       tree: null,
       lang: docHash ? 'ko' : null,
+      mode: 'translate',
       storedLangs: [],
       setLang: () => {},
       model: null,

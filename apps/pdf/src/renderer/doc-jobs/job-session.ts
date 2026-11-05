@@ -7,7 +7,9 @@
  * the subscription programs they started). Nothing here ever starts or
  * resumes a job by itself.
  *
- * Generic over the job kind: AI page reading and translation share it.
+ * Generic over the job kind: AI page reading and translation share it. An
+ * easy explanation is a translate or translate-page job with `mode` 'easy';
+ * its record is told apart from the plain one of the same language.
  */
 import {
   DocumentJobBusyError,
@@ -30,6 +32,8 @@ export interface DocumentJobView {
   lang?: string
   /** the AI highlight run of a 'highlight' job */
   runId?: string
+  /** 'easy': an easy explanation (a translate or translate-page job); absent: a plain one */
+  mode?: 'easy'
   /** the provider id the job sends to */
   provider: string
   /** the provider and model as the confirmation showed them (for the progress strip) */
@@ -55,6 +59,8 @@ export interface StartDocumentJob<U> {
   lang?: string
   /** the AI highlight run of a 'highlight' job */
   runId?: string
+  /** 'easy': the job makes an easy explanation; its record is kept apart from the plain one */
+  mode?: 'easy'
   provider: string
   /** the provider and model as the confirmation showed them (for the progress strip) */
   aiLabel?: string
@@ -70,8 +76,8 @@ export interface StartDocumentJob<U> {
   onEnd?(view: DocumentJobView): void
 }
 
-const recordKey = (docHash: string, kind: JobKind, key?: string): string =>
-  JSON.stringify([docHash, kind, key ?? null])
+const recordKey = (docHash: string, kind: JobKind, key?: string, mode?: 'easy'): string =>
+  JSON.stringify([docHash, kind, key ?? null, mode ?? null])
 
 export type StartJobOutcome =
   { ok: true; view: DocumentJobView } | { ok: false; running: RunningDocumentJob }
@@ -105,6 +111,7 @@ export class DocumentJobSession {
       kind: spec.kind,
       ...(spec.lang !== undefined ? { lang: spec.lang } : {}),
       ...(spec.runId !== undefined ? { runId: spec.runId } : {}),
+      ...(spec.mode === 'easy' ? { mode: 'easy' as const } : {}),
       provider: spec.provider,
       ...(spec.aiLabel !== undefined ? { aiLabel: spec.aiLabel } : {}),
       state: 'running',
@@ -133,7 +140,7 @@ export class DocumentJobSession {
     }
     this.views.set(spec.docHash, view)
     this.controllers.set(spec.docHash, controller)
-    this.ran.add(recordKey(spec.docHash, spec.kind, jobKeyOf(spec)))
+    this.ran.add(recordKey(spec.docHash, spec.kind, jobKeyOf(spec), spec.mode))
     this.emit()
     const end = (patch: Partial<DocumentJobView>) => {
       if (this.controllers.get(spec.docHash) === controller) this.controllers.delete(spec.docHash)
@@ -165,8 +172,15 @@ export class DocumentJobSession {
     const at = Date.now()
     const own = [...this.ran, ...this.carried.keys()]
     for (const key of own) {
-      const [docHash, kind, second] = JSON.parse(key) as [string, JobKind, string | null]
-      if (docHash === from) this.carried.set(recordKey(to, kind, second ?? undefined), at)
+      const [docHash, kind, second, mode] = JSON.parse(key) as [
+        string,
+        JobKind,
+        string | null,
+        'easy' | null,
+      ]
+      if (docHash === from) {
+        this.carried.set(recordKey(to, kind, second ?? undefined, mode ?? undefined), at)
+      }
     }
   }
 
@@ -179,7 +193,8 @@ export class DocumentJobSession {
   runningElsewhere(docHash: string, records: readonly JobStatus[]): JobStatus | undefined {
     return records.find((job) => {
       if (job.state !== 'running') return false
-      const carriedAt = this.carried.get(recordKey(docHash, job.kind, jobKeyOf(job)))
+      const mode = job.mode === 'easy' ? job.mode : undefined
+      const carriedAt = this.carried.get(recordKey(docHash, job.kind, jobKeyOf(job), mode))
       return carriedAt === undefined || job.updatedAt === undefined || job.updatedAt > carriedAt
     })
   }

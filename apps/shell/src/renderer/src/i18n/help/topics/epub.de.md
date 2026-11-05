@@ -67,6 +67,7 @@ Der E-Book-Editor öffnet EPUB-Bücher (`.epub`) in einem Tab. Sie lesen das Buc
 - Bereits Übersetztes bleibt erhalten. Wenn Sie anhalten, wählen Sie **Bisher Übersetztes exportieren** (der Rest bleibt in der Originalsprache) oder **Später fortsetzen**. Öffnen Sie ein Buch mit einer unfertigen Übersetzung, bietet GenOffice an, sie fortzusetzen. **Von vorn neu übersetzen** löscht zuerst die aufbewahrte Übersetzung für diese Sprache.
 - Aufbewahrte Übersetzungen werden unter Einstellungen ▸ Allgemein ▸ **Gespeicherte KI-Ergebnisse** zusammen mit denen von PDF-Dokumenten gezählt, und **Alle löschen** entfernt auch sie.
 - Dieselbe Übersetzung lässt sich auch über die [Kommandozeile](help://cli) mit `ieumoffice epub translate` ausführen.
+- Wählen Sie unter **Art** die **Einfache Sprache**, um das Buch in der gewählten Sprache mit einfachen Worten neu zu schreiben. Die Ergebnisse sind ein **Buch in einfacher Sprache** und **Original, danach in einfacher Sprache**; der Titel trägt in dieser Sprache den Hinweis auf die einfache Fassung, der Dateiname trägt ihn in der Sprache der Oberfläche, damit er sich von dem einer Übersetzung unterscheidet. Die Sprache ist zuerst die der Oberfläche und darf auch die des Buchs sein. Die einfache Fassung wird getrennt von Übersetzungen aufbewahrt, das Fortsetzen wird für sie eigens angeboten, und die Terminalbefehle erstellen sie nicht.
 
 ## Noch nicht unterstützt
 

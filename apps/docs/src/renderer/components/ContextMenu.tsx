@@ -57,7 +57,7 @@ export { FontDialog } from './FontDialog'
 
 /**
  * Editor context menu (right click in the document body):
- * Cut/Copy/Paste · Font… · Paragraph… · Synonyms · Translate · Hyperlink (insert or Edit/Open/Copy/Remove) · New Comment.
+ * Cut/Copy/Paste · Font… · Paragraph… · Synonyms · Explain in plain words · Translate · Hyperlink (insert or Edit/Open/Copy/Remove) · New Comment.
  */
 
 export interface ContextMenuState {
@@ -671,6 +671,16 @@ export function EditorContextMenu({
         disabled: !synonymText,
         ai: true,
         onClick: run(() => onAiPreset(t('appSynonymsPrompt', { text: synonymText }))),
+      })}
+      {/* Explain the selection in easy words, always in the UI language (no
+          submenu). Same road as Synonyms: the prompt goes to the AI panel and
+          runs through its usual gate. It quotes selectedText, the redacted
+          projection, so withheld words never leave. Placed just before
+          Translate because the withholding item is pinned right after it. */}
+      {item(t('appEasyWords'), {
+        disabled: !selectedText,
+        ai: true,
+        onClick: run(() => onAiPreset(t('appEasyWordsPrompt', { text: selectedText }))),
       })}
       <div className="ctx-item-wrap" onMouseLeave={() => setSubmenu(null)}>
         {item(t('appTranslate'), { disabled: !hasSelection, submenuKey: 'translate', ai: true })}

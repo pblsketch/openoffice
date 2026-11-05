@@ -245,4 +245,7 @@ export const ko = {
   checkAskAi: 'AI에게 고치기 맡기기',
   checkHandedOff: 'AI 입력 칸에 요청을 넣었습니다. 확인하고 보내세요.',
   checkFixFailed: '고치지 못했습니다.',
+  easyWordsLabel: '쉬운 말로 풀기',
+  easyWordsPrompt:
+    '아래 고른 글을 쉬운 글이 필요한 사람도 알 수 있게 한국어로 풀어 설명해 주세요. 날마다 쓰는 쉬운 낱말과 짧은 문장으로 쓰고, 사실·숫자·조건은 하나도 빠뜨리지 마세요. 문서는 고치지 마세요.\n\n고른 글:\n{text}',
 } satisfies Record<keyof typeof zh, string>

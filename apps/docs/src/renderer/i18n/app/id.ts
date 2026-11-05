@@ -352,6 +352,9 @@ export const id = {
   appAiBadgeTip: 'Menggunakan AI',
   appTranslate: 'Terjemahkan',
   appTranslateTo: 'Terjemahkan ke {lang}',
+  appEasyWords: 'Jelaskan dengan kata sederhana',
+  appEasyWordsPrompt:
+    'Jelaskan teks yang dipilih dalam bahasa Indonesia agar mudah dipahami juga oleh orang yang membutuhkan bacaan mudah (anak-anak, lansia, orang yang sedang belajar bahasa Indonesia). Gunakan kata sehari-hari dan kalimat pendek, serta pertahankan semua fakta, angka, dan syarat. Jangan ubah dokumen: "{text}"',
   redactMenuLabel: 'Sembunyikan pilihan dari AI',
   redactDialogDesc:
     'Kata-kata tetap ada di dokumen dan berkas; model hanya melihat placeholder di bawah. Beri nama agar model tahu apa yang diwakili.',

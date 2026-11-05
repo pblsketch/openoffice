@@ -350,6 +350,9 @@ export const cs = {
   appAiBadgeTip: 'Používá AI',
   appTranslate: 'Přeložit',
   appTranslateTo: 'Přeložit do jazyka {lang}',
+  appEasyWords: 'Vysvětlit jednoduše',
+  appEasyWordsPrompt:
+    'Vysvětlete vybraný text česky tak, aby mu porozuměli i lidé, kteří potřebují snadno srozumitelný text (děti, starší lidé, lidé, kteří se učí česky). Používejte běžná slova a krátké věty a zachovejte všechna fakta, čísla a podmínky. Dokument neupravujte: „{text}“',
   redactMenuLabel: 'Skrýt výběr před AI',
   redactDialogDesc:
     'Slova zůstanou v dokumentu i v souboru; model uvidí jen zástupný symbol. Pojmenujte ho, aby věděl, co zastupuje.',

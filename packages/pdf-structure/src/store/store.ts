@@ -8,8 +8,10 @@
  *   docs/<docHash>/ai-read/<pageFp>.json
  *   docs/<docHash>/translations/<lang>/translation.json          provider, model
  *   docs/<docHash>/translations/<lang>/blocks/<pageFp>/<textHash>.<occurrence>.json
+ *   docs/<docHash>/easy/<lang>/...                 easy explanations, laid out as translations/
  *   docs/<docHash>/jobs/ai-read.json | translate.<lang>.json | translate-page.<lang>.json
  *                       | highlight.<runId>.json | summary.<lang>.json
+ *                       | translate.<lang>.easy.json | translate-page.<lang>.easy.json
  *   docs/<docHash>/passages/, highlights/, insights/        see reading.ts
  *   note-links.json                                          see note-links.ts
  *
@@ -127,9 +129,26 @@ export interface StoredTranslation {
   blocks: Map<string, TranslationBlockEntry>
 }
 
-import { JOB_KINDS, jobKeyField, type JobKind } from './job-keys'
+import {
+  JOB_KINDS,
+  isTranslationMode,
+  jobKeyField,
+  jobModeAllowed,
+  type JobKind,
+  type TranslationMode,
+} from './job-keys'
 
-export { JOB_KINDS, jobKeyField, jobKeyOf, type JobKind } from './job-keys'
+export {
+  JOB_KINDS,
+  MODE_JOB_KINDS,
+  TRANSLATION_MODES,
+  isTranslationMode,
+  jobKeyField,
+  jobKeyOf,
+  jobModeAllowed,
+  type JobKind,
+  type TranslationMode,
+} from './job-keys'
 
 const isJobKind = (v: unknown): v is JobKind => (JOB_KINDS as readonly unknown[]).includes(v)
 
@@ -148,6 +167,12 @@ export interface JobRecordInput {
   lang?: string
   /** the highlight run; required for 'highlight' */
   runId?: string
+  /**
+   * 'easy': an easy explanation ('translate' and 'translate-page' only), kept
+   * in its own record file. Left out or 'translate': a plain record, written
+   * without the field.
+   */
+  mode?: TranslationMode
   /** what the job says about itself; 'idle' is only ever derived */
   state: Exclude<JobState, 'idle'>
   last_error?: JobLastError
@@ -162,6 +187,8 @@ export interface JobStatus {
   kind: JobKind
   lang?: string
   runId?: string
+  /** 'easy' on an easy explanation's record; absent on every plain one */
+  mode?: 'easy'
   /**
    * idle: no record. running: recorded as running and refreshed within the
    * running window. A running record gone stale is a job whose process ended
@@ -193,9 +220,14 @@ export interface MigrateInput {
 
 export interface MigrateResult {
   aiReadPages: number
+  /** plain translation blocks moved (easy explanations are counted apart) */
   translationBlocks: number
-  /** languages that received anything */
+  /** plain translation languages that received anything */
   languages: string[]
+  /** easy explanation blocks moved; present only when some were */
+  easyBlocks?: number
+  /** easy explanation languages that received anything; present only when some did */
+  easyLanguages?: string[]
   /** passage cards moved; present only when some were */
   passages?: number
   /** highlight blocks moved; present only when some were */
@@ -225,6 +257,14 @@ function seg(value: string, what: string): string {
 
 const isValidSeg = (value: unknown): value is string =>
   typeof value === 'string' && SEGMENT.test(value)
+
+/** the folder of a mode's results inside the document folder */
+function modeFolder(mode: TranslationMode): string {
+  if (!isTranslationMode(mode)) {
+    throw new TypeError(`result store: invalid translation mode ${JSON.stringify(mode)}`)
+  }
+  return mode === 'easy' ? 'easy' : 'translations'
+}
 
 /** `<pageFp>`, `<textHash>.<occurrence>.json`: where a keyed block lives below its folder */
 function keyedFile(key: TranslationBlockKey): [string, string] {
@@ -302,11 +342,18 @@ interface StoredJob extends JobRecordInput {
   updatedAt: number
 }
 
-function asJob(raw: unknown, kind: JobKind, key: string | undefined): StoredJob | null {
+function asJob(
+  raw: unknown,
+  kind: JobKind,
+  key: string | undefined,
+  mode: TranslationMode,
+): StoredJob | null {
   if (!isRecord(raw) || raw.format !== FORMAT || raw.kind !== kind) return null
   const field = jobKeyField(kind)
   if (field === 'lang' ? raw.lang !== key : raw.lang !== undefined) return null
   if (field === 'runId' ? raw.runId !== key : raw.runId !== undefined) return null
+  // a plain record has no mode field; an easy one says so
+  if (mode === 'easy' ? raw.mode !== 'easy' : raw.mode !== undefined) return null
   if (raw.state !== 'running' && raw.state !== 'stopped' && raw.state !== 'complete') return null
   if (!isNum(raw.updatedAt) || !isStringArray(raw.outputs) || !optStr(raw.last_error)) return null
   if (raw.resetsAt !== undefined && !isNum(raw.resetsAt)) return null
@@ -314,6 +361,7 @@ function asJob(raw: unknown, kind: JobKind, key: string | undefined): StoredJob 
   if (p !== undefined && !(isRecord(p) && isNum(p.done) && isNum(p.total))) return null
   const job: StoredJob = { kind, state: raw.state, outputs: raw.outputs, updatedAt: raw.updatedAt }
   if (field !== null && key !== undefined) job[field] = key
+  if (mode === 'easy') job.mode = 'easy'
   if (isStr(raw.last_error)) job.last_error = raw.last_error
   if (isNum(raw.resetsAt)) job.resetsAt = raw.resetsAt
   if (isRecord(p)) job.progress = { done: p.done as number, total: p.total as number }
@@ -338,9 +386,14 @@ function blockSentenceEnds(b: {
 }
 
 const BLOCK_FILE = /^([A-Za-z0-9_-]{1,128})\.(\d{1,9})\.json$/
-/** names of job record files: `ai-read.json`, `<kind>.<key>.json` for the other kinds */
+/**
+ * Names of job record files: `ai-read.json`, `<kind>.<key>.json` for the other
+ * kinds, and `<kind>.<lang>.easy.json` for an easy explanation's record
+ * (groups 3 and 4). The pattern of earlier versions has no third part, so they
+ * never read an easy record as a plain one.
+ */
 export const JOB_FILE =
-  /^(?:ai-read|(translate|translate-page|highlight|summary)\.([A-Za-z0-9_-]{1,128}))\.json$/
+  /^(?:ai-read|(translate|translate-page|highlight|summary)\.([A-Za-z0-9_-]{1,128})|(translate|translate-page)\.([A-Za-z0-9_-]{1,128})\.easy)\.json$/
 const PASSAGE_FILE = /^([A-Za-z0-9_-]{1,128})\.json$/
 const RUN_FILE = 'run.json'
 
@@ -405,33 +458,52 @@ export class ResultStore {
     return join(this.documentDir(docHash), 'ai-read', `${seg(pageFp, 'page fingerprint')}.json`)
   }
 
-  translationDir(docHash: string, lang: string): string {
-    return join(this.documentDir(docHash), 'translations', seg(lang, 'language'))
+  /** `mode` 'easy': the easy explanation's folder `easy/<lang>`, laid out the same way */
+  translationDir(docHash: string, lang: string, mode: TranslationMode = 'translate'): string {
+    return join(this.documentDir(docHash), modeFolder(mode), seg(lang, 'language'))
   }
 
-  translationMetaPath(docHash: string, lang: string): string {
-    return join(this.translationDir(docHash, lang), 'translation.json')
+  translationMetaPath(docHash: string, lang: string, mode: TranslationMode = 'translate'): string {
+    return join(this.translationDir(docHash, lang, mode), 'translation.json')
   }
 
-  translationBlockPath(docHash: string, lang: string, key: TranslationBlockKey): string {
+  translationBlockPath(
+    docHash: string,
+    lang: string,
+    key: TranslationBlockKey,
+    mode: TranslationMode = 'translate',
+  ): string {
     if (!Number.isInteger(key.occurrence) || key.occurrence < 0) {
       throw new TypeError(`result store: invalid block occurrence ${key.occurrence}`)
     }
     return join(
-      this.translationDir(docHash, lang),
+      this.translationDir(docHash, lang, mode),
       'blocks',
       seg(key.pageFingerprint, 'page fingerprint'),
       `${seg(key.textHash, 'text hash')}.${key.occurrence}.json`,
     )
   }
 
-  /** `key`: the language, or the run id of a 'highlight' job; none for 'ai-read' */
-  jobPath(docHash: string, kind: JobKind, key?: string): string {
+  /**
+   * `key`: the language, or the run id of a 'highlight' job; none for
+   * 'ai-read'. `mode` 'easy' (translate and translate-page only) names the
+   * easy explanation's record `<kind>.<lang>.easy.json`.
+   */
+  jobPath(
+    docHash: string,
+    kind: JobKind,
+    key?: string,
+    mode: TranslationMode = 'translate',
+  ): string {
     if (!isJobKind(kind)) throw new TypeError(`result store: invalid job kind ${String(kind)}`)
+    if (!isTranslationMode(mode) || !jobModeAllowed(kind, mode)) {
+      throw new TypeError(`result store: a ${kind} job has no mode ${JSON.stringify(mode)}`)
+    }
     const field = jobKeyField(kind)
     const name =
       field === null ? kind : `${kind}.${seg(key ?? '', field === 'lang' ? 'language' : 'run id')}`
-    return join(this.documentDir(docHash), 'jobs', `${name}.json`)
+    const suffix = mode === 'easy' ? '.easy' : ''
+    return join(this.documentDir(docHash), 'jobs', `${name}${suffix}.json`)
   }
 
   passagePath(docHash: string, id: string): string {
@@ -498,22 +570,28 @@ export class ResultStore {
 
   // ── translations ──
 
+  // Every translation method takes an optional last `mode`: left out it is
+  // 'translate' and works on `translations/` exactly as before; 'easy' works
+  // on the easy explanation in `easy/` with the same entries.
+
   /** record (or replace) who translates this document into `lang` */
   async writeTranslationMeta(
     docHash: string,
     lang: string,
     meta: TranslationMetaInput,
+    mode: TranslationMode = 'translate',
   ): Promise<void> {
     if (!isStr(meta.provider) || !isStr(meta.model)) {
       throw new TypeError('result store: a translation needs provider and model')
     }
-    await this.putMeta(docHash, lang, { ...meta, savedAt: this.now() })
+    await this.putMeta(docHash, lang, { ...meta, savedAt: this.now() }, mode)
   }
 
   async writeTranslationBlock(
     docHash: string,
     lang: string,
     block: TranslationBlockInput,
+    mode: TranslationMode = 'translate',
   ): Promise<void> {
     if (block.status !== 'translated' && block.status !== 'failed') {
       throw new TypeError(`result store: invalid block status ${String(block.status)}`)
@@ -529,7 +607,7 @@ export class ResultStore {
         throw new TypeError('result store: an edited block needs its text')
       }
     }
-    await this.putBlock(docHash, lang, { ...block, savedAt: this.now() })
+    await this.putBlock(docHash, lang, { ...block, savedAt: this.now() }, mode)
   }
 
   /** store a person's edit of a block: plain text that replaces the translation */
@@ -538,13 +616,14 @@ export class ResultStore {
     lang: string,
     key: TranslationBlockKey,
     text: string,
+    mode: TranslationMode = 'translate',
   ): Promise<void> {
-    await this.writeTranslationBlock(docHash, lang, {
-      key,
-      status: 'translated',
-      text,
-      edited: true,
-    })
+    await this.writeTranslationBlock(
+      docHash,
+      lang,
+      { key, status: 'translated', text, edited: true },
+      mode,
+    )
   }
 
   /** each block is its own entry; on failure the earlier ones stay written */
@@ -552,32 +631,44 @@ export class ResultStore {
     docHash: string,
     lang: string,
     blocks: readonly TranslationBlockInput[],
+    mode: TranslationMode = 'translate',
   ): Promise<void> {
-    for (const b of blocks) await this.writeTranslationBlock(docHash, lang, b)
+    for (const b of blocks) await this.writeTranslationBlock(docHash, lang, b, mode)
   }
 
   /** the stored translation into `lang`, or null when there is none */
-  async readTranslation(docHash: string, lang: string): Promise<StoredTranslation | null> {
-    if (!isValidSeg(docHash) || !isValidSeg(lang)) return null
-    if (!(await this.listTranslations(docHash)).includes(lang)) return null
-    const meta = asMeta(await readJson(this.translationMetaPath(docHash, lang)), lang)
+  async readTranslation(
+    docHash: string,
+    lang: string,
+    mode: TranslationMode = 'translate',
+  ): Promise<StoredTranslation | null> {
+    if (!isValidSeg(docHash) || !isValidSeg(lang) || !isTranslationMode(mode)) return null
+    if (!(await this.listTranslations(docHash, mode)).includes(lang)) return null
+    const meta = asMeta(await readJson(this.translationMetaPath(docHash, lang, mode)), lang)
     const blocks = new Map<string, TranslationBlockEntry>()
-    for (const b of await this.readBlocks(docHash, lang)) {
+    for (const b of await this.readBlocks(docHash, lang, undefined, mode)) {
       blocks.set(blockKeyString(b.key), b)
     }
     return { lang, provider: meta?.provider ?? null, model: meta?.model ?? null, blocks }
   }
 
-  /** languages this document has a stored translation for */
-  async listTranslations(docHash: string): Promise<string[]> {
-    if (!isValidSeg(docHash)) return []
-    const names = await listNames(join(this.documentDir(docHash), 'translations'), 'dir')
+  /**
+   * languages this document has a stored translation for; with `mode` 'easy',
+   * the languages of its easy explanations (never part of the plain list)
+   */
+  async listTranslations(docHash: string, mode: TranslationMode = 'translate'): Promise<string[]> {
+    if (!isValidSeg(docHash) || !isTranslationMode(mode)) return []
+    const names = await listNames(join(this.documentDir(docHash), modeFolder(mode)), 'dir')
     return names.filter(isValidSeg)
   }
 
   /** drop the translation into `lang` ("처음부터 다시 번역" replaces it) */
-  async deleteTranslation(docHash: string, lang: string): Promise<void> {
-    await removeFolder(this.translationDir(docHash, lang))
+  async deleteTranslation(
+    docHash: string,
+    lang: string,
+    mode: TranslationMode = 'translate',
+  ): Promise<void> {
+    await removeFolder(this.translationDir(docHash, lang, mode))
   }
 
   /**
@@ -585,8 +676,12 @@ export class ResultStore {
    * translation into `lang` except the edited ones is removed (unreadable
    * entries too); the provider record stays. Returns the entries removed.
    */
-  async deleteTranslationExceptEdited(docHash: string, lang: string): Promise<number> {
-    const root = join(this.translationDir(docHash, lang), 'blocks')
+  async deleteTranslationExceptEdited(
+    docHash: string,
+    lang: string,
+    mode: TranslationMode = 'translate',
+  ): Promise<number> {
+    const root = join(this.translationDir(docHash, lang, mode), 'blocks')
     let removed = 0
     for (const fp of await listNames(root, 'dir')) {
       if (!isValidSeg(fp)) continue
@@ -607,14 +702,22 @@ export class ResultStore {
     return removed
   }
 
-  /** blocks a person edited, in one language or in all of them (the delete confirmation) */
-  async countEditedTranslationBlocks(docHash: string, lang?: string): Promise<number> {
-    if (!isValidSeg(docHash)) return 0
-    const langs = lang === undefined ? await this.listTranslations(docHash) : [lang]
+  /**
+   * blocks a person edited, in one language or in all of them, of the plain
+   * translations or (`mode` 'easy') of the easy explanations. The delete
+   * confirmation adds the two.
+   */
+  async countEditedTranslationBlocks(
+    docHash: string,
+    lang?: string,
+    mode: TranslationMode = 'translate',
+  ): Promise<number> {
+    if (!isValidSeg(docHash) || !isTranslationMode(mode)) return 0
+    const langs = lang === undefined ? await this.listTranslations(docHash, mode) : [lang]
     let count = 0
     for (const l of langs) {
       if (!isValidSeg(l)) continue
-      count += (await this.readBlocks(docHash, l)).filter((b) => b.edited).length
+      count += (await this.readBlocks(docHash, l, undefined, mode)).filter((b) => b.edited).length
     }
     return count
   }
@@ -623,8 +726,9 @@ export class ResultStore {
     docHash: string,
     lang: string,
     meta: TranslationMetaInput & { savedAt: number },
+    mode: TranslationMode,
   ): Promise<void> {
-    await writeJsonAtomic(this.translationMetaPath(docHash, lang), {
+    await writeJsonAtomic(this.translationMetaPath(docHash, lang, mode), {
       format: FORMAT,
       lang,
       provider: meta.provider,
@@ -633,8 +737,13 @@ export class ResultStore {
     })
   }
 
-  private async putBlock(docHash: string, lang: string, b: TranslationBlockEntry): Promise<void> {
-    const path = this.translationBlockPath(docHash, lang, b.key)
+  private async putBlock(
+    docHash: string,
+    lang: string,
+    b: TranslationBlockEntry,
+    mode: TranslationMode,
+  ): Promise<void> {
+    const path = this.translationBlockPath(docHash, lang, b.key, mode)
     const entry: Record<string, unknown> = {
       format: FORMAT,
       key: {
@@ -658,10 +767,11 @@ export class ResultStore {
   private async readBlocks(
     docHash: string,
     lang: string,
-    onlyPages?: ReadonlySet<string>,
+    onlyPages: ReadonlySet<string> | undefined,
+    mode: TranslationMode,
   ): Promise<TranslationBlockEntry[]> {
     const out: TranslationBlockEntry[] = []
-    const root = join(this.translationDir(docHash, lang), 'blocks')
+    const root = join(this.translationDir(docHash, lang, mode), 'blocks')
     for (const fp of await listNames(root, 'dir')) {
       if (!isValidSeg(fp) || (onlyPages && !onlyPages.has(fp))) continue
       for (const name of await listNames(join(root, fp), 'file')) {
@@ -689,6 +799,10 @@ export class ResultStore {
     if (field === 'runId' && !isValidSeg(job.runId)) {
       throw new TypeError(`result store: a ${job.kind} job needs a valid run id`)
     }
+    const mode = job.mode ?? 'translate'
+    if (!isTranslationMode(mode) || !jobModeAllowed(job.kind, mode)) {
+      throw new TypeError(`result store: a ${job.kind} job has no mode ${JSON.stringify(job.mode)}`)
+    }
     if (job.state !== 'running' && job.state !== 'stopped' && job.state !== 'complete') {
       throw new TypeError(`result store: invalid job state ${String(job.state)}`)
     }
@@ -701,45 +815,63 @@ export class ResultStore {
       updatedAt: this.now(),
     }
     if (field !== null) record[field] = key
+    // a plain record keeps its earlier shape: no mode field
+    if (mode === 'easy') record.mode = 'easy'
     if (job.last_error !== undefined) record.last_error = job.last_error
     if (job.resetsAt !== undefined) record.resetsAt = job.resetsAt
     if (job.progress !== undefined) {
       record.progress = { done: job.progress.done, total: job.progress.total }
     }
-    await writeJsonAtomic(this.jobPath(docHash, job.kind, key), record)
+    await writeJsonAtomic(this.jobPath(docHash, job.kind, key, mode), record)
   }
 
   /**
    * refresh a running job's heartbeat. False (and nothing written) when the
-   * record is missing, unreadable or not running. `key` as in jobPath.
+   * record is missing, unreadable or not running. `key` and `mode` as in jobPath.
    */
-  async heartbeatJob(docHash: string, kind: JobKind, key?: string): Promise<boolean> {
-    const stored = await this.readStoredJob(docHash, kind, key)
+  async heartbeatJob(
+    docHash: string,
+    kind: JobKind,
+    key?: string,
+    mode: TranslationMode = 'translate',
+  ): Promise<boolean> {
+    const stored = await this.readStoredJob(docHash, kind, key, mode)
     if (!stored || stored.state !== 'running') return false
     const { updatedAt: _ignored, ...rest } = stored
     await this.writeJob(docHash, rest)
     return true
   }
 
-  /** `key`: the language, or the run id of a 'highlight' job; none for 'ai-read' */
-  async readJob(docHash: string, kind: JobKind, key?: string): Promise<JobStatus> {
-    const stored = await this.readStoredJob(docHash, kind, key)
+  /**
+   * `key`: the language, or the run id of a 'highlight' job; none for
+   * 'ai-read'. `mode` 'easy': the easy explanation's record, never the plain one.
+   */
+  async readJob(
+    docHash: string,
+    kind: JobKind,
+    key?: string,
+    mode: TranslationMode = 'translate',
+  ): Promise<JobStatus> {
+    const stored = await this.readStoredJob(docHash, kind, key, mode)
     if (stored) return this.resolveJob(stored)
     const idle: JobStatus = { kind, state: 'idle', outputs: [] }
     const field = isJobKind(kind) ? jobKeyField(kind) : null
     if (field !== null && key !== undefined) idle[field] = key
+    if (mode === 'easy' && isJobKind(kind) && jobModeAllowed(kind, mode)) idle.mode = 'easy'
     return idle
   }
 
-  /** every readable job record of the document */
+  /** every readable job record of the document, easy explanations' included (with `mode`) */
   async listJobs(docHash: string): Promise<JobStatus[]> {
     if (!isValidSeg(docHash)) return []
     const out: JobStatus[] = []
     for (const name of await listNames(join(this.documentDir(docHash), 'jobs'), 'file')) {
       const m = JOB_FILE.exec(name)
       if (!m) continue
-      const kind = (m[1] as JobKind | undefined) ?? 'ai-read'
-      const stored = await this.readStoredJob(docHash, kind, m[2])
+      const easy = m[3] !== undefined
+      const kind = ((easy ? m[3] : m[1]) as JobKind | undefined) ?? 'ai-read'
+      const key = easy ? m[4] : m[2]
+      const stored = await this.readStoredJob(docHash, kind, key, easy ? 'easy' : 'translate')
       if (stored) out.push(this.resolveJob(stored))
     }
     return out
@@ -754,12 +886,15 @@ export class ResultStore {
     docHash: string,
     kind: JobKind,
     key: string | undefined,
+    mode: TranslationMode,
   ): Promise<StoredJob | null> {
     if (!isValidSeg(docHash) || !isJobKind(kind)) return null
+    if (!isTranslationMode(mode) || !jobModeAllowed(kind, mode)) return null
     const field = jobKeyField(kind)
     if (field !== null && !isValidSeg(key)) return null
     const effectiveKey = field === null ? undefined : key
-    return asJob(await readJson(this.jobPath(docHash, kind, effectiveKey)), kind, effectiveKey)
+    const raw = await readJson(this.jobPath(docHash, kind, effectiveKey, mode))
+    return asJob(raw, kind, effectiveKey, mode)
   }
 
   private resolveJob(stored: StoredJob): JobStatus {
@@ -771,6 +906,7 @@ export class ResultStore {
     }
     if (stored.lang !== undefined) status.lang = stored.lang
     if (stored.runId !== undefined) status.runId = stored.runId
+    if (stored.mode === 'easy') status.mode = 'easy'
     if (stored.last_error !== undefined) status.last_error = stored.last_error
     if (stored.resetsAt !== undefined) status.resetsAt = stored.resetsAt
     if (stored.progress !== undefined) status.progress = stored.progress
@@ -1108,10 +1244,11 @@ export class ResultStore {
    * After an in-app save changed the file hash, copy the AI-read pages and
    * translation blocks whose page fingerprint the saved document still has.
    * Matching is by fingerprint, so reordered pages carry over too; with
-   * `keepBlockKeys`, a translation block must also be listed there. An entry
-   * already in the new document is replaced only by a newer one, so this can
-   * run again when a job that started before the save finishes. Old entries
-   * stay; job records are not copied.
+   * `keepBlockKeys`, a translation block must also be listed there. Easy
+   * explanations move by the same rules into `easy/` (counted in `easyBlocks`
+   * and `easyLanguages`). An entry already in the new document is replaced
+   * only by a newer one, so this can run again when a job that started before
+   * the save finishes. Old entries stay; job records are not copied.
    */
   async migrateDocument(input: MigrateInput): Promise<MigrateResult> {
     const result: MigrateResult = { aiReadPages: 0, translationBlocks: 0, languages: [] }
@@ -1129,35 +1266,58 @@ export class ResultStore {
       result.aiReadPages++
     }
 
-    for (const lang of await this.listTranslations(oldDocHash)) {
-      let touched = false
-      const meta = asMeta(await readJson(this.translationMetaPath(oldDocHash, lang)), lang)
-      if (meta) {
-        const current = asMeta(await readJson(this.translationMetaPath(newDocHash, lang)), lang)
-        if (!current || current.savedAt < meta.savedAt) {
-          await this.putMeta(newDocHash, lang, meta)
-          touched = true
-        }
-      }
-      for (const block of await this.readBlocks(oldDocHash, lang, pages)) {
-        if (keep && !keep.has(blockKeyString(block.key))) continue
-        const current = asBlock(
-          await readJson(this.translationBlockPath(newDocHash, lang, block.key)),
-          block.key,
-        )
-        if (current && current.savedAt >= block.savedAt) continue
-        await this.putBlock(newDocHash, lang, block)
-        result.translationBlocks++
-        touched = true
-      }
-      if (touched) result.languages.push(lang)
-    }
+    const plain = await this.migrateTranslations(oldDocHash, newDocHash, pages, keep, 'translate')
+    result.translationBlocks = plain.blocks
+    result.languages = plain.languages
+    const easy = await this.migrateTranslations(oldDocHash, newDocHash, pages, keep, 'easy')
+    if (easy.blocks > 0) result.easyBlocks = easy.blocks
+    if (easy.languages.length > 0) result.easyLanguages = easy.languages
 
     const reading = await this.migrateReading(oldDocHash, newDocHash, pages)
     if (reading.passages > 0) result.passages = reading.passages
     if (reading.highlightBlocks > 0) result.highlightBlocks = reading.highlightBlocks
     if (reading.insights > 0) result.insights = reading.insights
     return result
+  }
+
+  /**
+   * The translations of one mode in migrateDocument: the provider record and
+   * the blocks of surviving pages (and, with `keep`, of kept keys).
+   */
+  private async migrateTranslations(
+    oldDocHash: string,
+    newDocHash: string,
+    pages: ReadonlySet<string>,
+    keep: ReadonlySet<string> | null,
+    mode: TranslationMode,
+  ): Promise<{ blocks: number; languages: string[] }> {
+    const moved = { blocks: 0, languages: [] as string[] }
+    for (const lang of await this.listTranslations(oldDocHash, mode)) {
+      let touched = false
+      const oldMeta = await readJson(this.translationMetaPath(oldDocHash, lang, mode))
+      const meta = asMeta(oldMeta, lang)
+      if (meta) {
+        const newMeta = await readJson(this.translationMetaPath(newDocHash, lang, mode))
+        const current = asMeta(newMeta, lang)
+        if (!current || current.savedAt < meta.savedAt) {
+          await this.putMeta(newDocHash, lang, meta, mode)
+          touched = true
+        }
+      }
+      for (const block of await this.readBlocks(oldDocHash, lang, pages, mode)) {
+        if (keep && !keep.has(blockKeyString(block.key))) continue
+        const current = asBlock(
+          await readJson(this.translationBlockPath(newDocHash, lang, block.key, mode)),
+          block.key,
+        )
+        if (current && current.savedAt >= block.savedAt) continue
+        await this.putBlock(newDocHash, lang, block, mode)
+        moved.blocks++
+        touched = true
+      }
+      if (touched) moved.languages.push(lang)
+    }
+    return moved
   }
 
   /**

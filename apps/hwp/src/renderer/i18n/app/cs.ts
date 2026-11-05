@@ -249,4 +249,7 @@ export const cs = {
   checkAskAi: 'Předat opravy AI',
   checkHandedOff: 'Požadavek je v poli AI. Zkontrolujte ho a odešlete.',
   checkFixFailed: 'Změnu se nepodařilo provést.',
+  easyWordsLabel: 'Vysvětlit jednoduše',
+  easyWordsPrompt:
+    'Vysvětli česky níže vybraný text tak, aby mu porozuměl i člověk, který potřebuje snadno čitelný text. Používej běžná slova a krátké věty a nevynechej žádný fakt, číslo ani podmínku. Dokument neměň.\n\nVybraný text:\n{text}',
 } satisfies Record<keyof typeof zh, string>

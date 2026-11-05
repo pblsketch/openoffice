@@ -2244,8 +2244,8 @@ export default function App() {
     t,
     filePath,
     password: passwordRef.current,
-    onTranslateAll: (target) => {
-      const answer = translateRef.current?.requestOpen({ lang: target, pages: null })
+    onTranslateAll: (target, mode) => {
+      const answer = translateRef.current?.requestOpen({ lang: target, pages: null, mode })
       if (answer && 'running' in answer) showNotice(t('arBusy', answer.running))
       else if (!answer || 'unavailable' in answer) showNotice(t('trUnavailable'))
     },
@@ -2267,8 +2267,14 @@ export default function App() {
             // reads only: the actions write through their own store channel
             store: {
               aiReadPages: (docHash) => window.pdfApi.store.aiReadPages(docHash),
-              translationRecency: (docHash) => window.pdfApi.store.translationRecency(docHash),
-              translation: (docHash, l) => window.pdfApi.store.translation(docHash, l),
+              translationRecency: (docHash, mode) =>
+                mode === 'easy'
+                  ? window.pdfApi.store.translationRecency(docHash, mode)
+                  : window.pdfApi.store.translationRecency(docHash),
+              translation: (docHash, l, mode) =>
+                mode === 'easy'
+                  ? window.pdfApi.store.translation(docHash, l, mode)
+                  : window.pdfApi.store.translation(docHash, l),
             },
           }
         : null,

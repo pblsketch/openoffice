@@ -42,6 +42,7 @@ Clique com o botão direito em qualquer ponto do texto — o menu acompanha aqui
 - **Área de transferência**: recortar / copiar / colar / **colar como texto simples**.
 - **Fonte, parágrafo**: mudar a família e o tamanho, negrito/itálico/sublinhado, alinhamento/recuo/espaçamento sem passar pelo friso.
 - **Sinônimos**: lista sinônimos da palavra selecionada; clique num deles para substituir.
+- **Explicar em palavras simples** (IA): envia a seleção ao painel de IA para ser explicada em palavras simples, no idioma da interface, e executa na hora. Sem seleção fica desativado, e o texto oculto da IA não é enviado.
 - **Traduzir** (IA): traduz a seleção para o idioma de destino (inglês, chinês simplificado, japonês, coreano, francês, alemão, espanhol, ...) pelo painel de IA.
 - **Novo Comentário**: anexa um comentário à seleção.
 - **Ortografia** (numa palavra escrita errado): substituições sugeridas, ignorar tudo, adicionar ao dicionário, definir o idioma de verificação.

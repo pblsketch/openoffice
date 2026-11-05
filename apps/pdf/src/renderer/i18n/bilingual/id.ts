@@ -57,4 +57,18 @@ export const id = {
   blTranslateAll: 'Terjemahkan semua halaman…',
   blTranslateAllTip:
     'Membuka jendela terjemahan dokumen. Meminta konfirmasi sebelum mengirim apa pun.',
+  blMode: 'Tampilan',
+  blModeTranslate: 'Terjemahan',
+  blModeEasy: 'Penjelasan sederhana',
+  blEasyLanguage: 'Bahasa penjelasan',
+  blEasyStoredLangs: 'Penjelasan tersimpan',
+  blEasyPage: 'Jelaskan halaman ini dengan sederhana',
+  blEasyRest: 'Jelaskan sisanya dengan sederhana ({count})',
+  blEasyPaidYes: 'Jelaskan',
+  blEasyPageRunning: 'Menjelaskan… {done}/{total}',
+  blEasyRetranslate: 'Jelaskan ulang',
+  blEasyRetranslating: 'Menjelaskan ulang…',
+  blEasyDiscardEditAsk: 'Buang suntingan Anda dan jelaskan ulang?',
+  blEasyEditLabel: 'Sunting penjelasan',
+  blEasyTranslateAll: 'Jelaskan semua halaman dengan sederhana…',
 } satisfies Record<keyof typeof zh, string>

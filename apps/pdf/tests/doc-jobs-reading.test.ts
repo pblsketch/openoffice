@@ -122,6 +122,43 @@ describe('resume offer', () => {
     expect(highlight).not.toContain('AI 읽기')
     expect(resumeOfferText(job({ kind: 'translate-page', lang: 'fr' }), t, name)).toBeNull()
     expect(resumeOfferText(job({ kind: 'summary', lang: 'fr' }), t, name)).toBeNull()
+    // an easy explanation is offered as one, apart from the translation of its language
+    const easy = resumeOfferText(job({ kind: 'translate', lang: 'fr', mode: 'easy' }), tKo, name)
+    expect(easy).toBe(tKo('trResumeEasy', { language: '<fr>', percent: 25 }))
+    expect(easy).toContain('쉬운 풀이')
+    expect(easy).not.toBe(resumeOfferText(job({ kind: 'translate', lang: 'fr' }), tKo, name))
+    expect(
+      resumeOfferText(job({ kind: 'translate-page', lang: 'fr', mode: 'easy' }), t, name),
+    ).toBeNull()
+  })
+
+  it('a session tells its own easy job record from the plain one of the same language', () => {
+    const session = new jobSessionModule.DocumentJobSession(new DocumentJobRegistry())
+    const outcome = session.start({
+      docHash: 'old',
+      kind: 'translate',
+      lang: 'fr',
+      mode: 'easy',
+      provider: 'claude-code',
+      launch: () =>
+        ({ result: new Promise(() => {}) }) as unknown as ReturnType<
+          Parameters<typeof session.start>[0]['launch']
+        >,
+    })
+    expect(outcome.ok && outcome.view.mode).toBe('easy')
+    session.adopt('old', 'new')
+    const running = (mode?: 'easy'): JobStatus =>
+      ({
+        kind: 'translate',
+        lang: 'fr',
+        state: 'running',
+        outputs: [],
+        updatedAt: Date.now() - 60_000,
+        ...(mode ? { mode } : {}),
+      }) as JobStatus
+    // the carried easy record is this session's own; the plain one is someone else's
+    expect(session.runningElsewhere('new', [running('easy')])).toBeUndefined()
+    expect(session.runningElsewhere('new', [running()])?.kind).toBe('translate')
   })
 
   describe('the strip', () => {

@@ -87,4 +87,29 @@ export const pt = {
   trRestartEditedCount: '{count} parágrafos foram editados por uma pessoa.',
   trRestartDiscardEdited: 'Excluir também os {count} parágrafos editados por uma pessoa',
   trRestartKeepEdited: 'Manter os parágrafos editados',
+  trMode: 'Modo',
+  trModeTranslate: 'Tradução',
+  trModeEasy: 'Explicação simples',
+  trPdfEasy:
+    'Uma explicação simples fica mais longa que o original e não cabe no lugar dele. Markdown e EPUB funcionam.',
+  trEasyFormatMd: 'Markdown com explicação simples',
+  trEasyFormatEpub: 'EPUB com explicação simples',
+  trEasyBilingual:
+    'Original e depois explicação: cada parágrafo original é seguido da sua explicação simples (desligado: só a explicação)',
+  trEasyFileWord: 'explicação simples',
+  trEasyPickTitle: 'Salvar {format} com explicação simples',
+  trConfirmEasyLanguage: 'Idioma da explicação: {language}',
+  trEasyConfirmDone: '{done} de {total} blocos já estão explicados e não serão enviados de novo',
+  trEasyConfirmNothing:
+    'Todos os blocos das páginas escolhidas já estão explicados. Nada é enviado; os arquivos são gravados a partir da explicação guardada.',
+  trEasyProviderChange:
+    'A explicação guardada foi feita com {stored}. Continuar com {next} mistura duas IAs em uma mesma explicação.',
+  trEasyStart: 'Iniciar explicação',
+  trEasyRestart: 'Explicar de novo desde o início…',
+  trEasyRestartConfirm:
+    'Apagar a explicação simples guardada em {language} ({count} blocos) e explicar todos os blocos de novo? Explicações apagadas não podem ser recuperadas.',
+  trEasyRestartYes: 'Explicar de novo',
+  trEasyRunning: 'Escrevendo a explicação simples em {language}… {done}/{total} blocos',
+  trEasyDone: 'A explicação simples em {language} terminou ({count} blocos).',
+  trResumeEasy: 'Explicação simples não terminada ({language}) {percent}% — continuar?',
 } satisfies Record<keyof typeof zh, string>

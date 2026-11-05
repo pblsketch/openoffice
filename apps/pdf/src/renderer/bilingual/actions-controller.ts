@@ -29,7 +29,11 @@
  * - a write lands on the hash its press started on; when a save changed the
  *   file meanwhile, the results are carried to the new hash afterwards, like
  *   the page job's;
- * - model answers are document data and are only stored as text.
+ * - model answers are document data and are only stored as text;
+ * - every press works in the mode the view shows (translation-reading spec
+ *   5.3): the plain translation, or the easy explanation, whose page job,
+ *   one-paragraph call and edits read and write the easy results only. The
+ *   paid-route answer is the tab's, whatever the mode.
  */
 import type { AiProviderId, AiRunErrorKind } from '@genoffice/ai-provider/browser'
 import type { Lang } from '@genoffice/i18n'
@@ -38,6 +42,7 @@ import {
   startTranslationJob,
   type TranslationJobItem,
 } from '../../../../../packages/pdf-structure/src/jobs'
+import type { TranslationMode } from '../../../../../packages/pdf-structure/src/store/job-keys'
 import type { TranslationBlockKey } from '../../../../../packages/pdf-structure/src/store/keys'
 import {
   translationJobParts,
@@ -63,8 +68,14 @@ type ReadyRoute = Extract<DocumentJobRoute, { state: 'ready' }>
 
 /** a press that sends, as the send gate holds it */
 export type BilingualActionRequest =
-  | { kind: 'page'; docHash: string; lang: string; page: number }
-  | { kind: 'retranslate'; docHash: string; lang: string; unit: BilingualUnit }
+  | { kind: 'page'; docHash: string; lang: string; mode: TranslationMode; page: number }
+  | {
+      kind: 'retranslate'
+      docHash: string
+      lang: string
+      mode: TranslationMode
+      unit: BilingualUnit
+    }
 
 /** the send gate and the route, as the mounted view wires them */
 export interface BilingualActionsHost {
@@ -95,6 +106,8 @@ export interface BilingualActionsDeps {
 export interface BilingualEditing {
   docHash: string
   lang: string
+  /** the results the edit is stored in */
+  mode: TranslationMode
   key: TranslationBlockKey
   keyString: string
   /** the text the editor opens with */
@@ -110,11 +123,19 @@ export interface BilingualActionsSnapshot {
   /** a document job runs in this tab (or this process) or a page job is being started */
   busy: boolean
   /** the page job this controller runs, with its progress */
-  pageJob: { docHash: string; lang: string; page: number; done: number; total: number } | null
+  pageJob: {
+    docHash: string
+    lang: string
+    mode: TranslationMode
+    page: number
+    done: number
+    total: number
+  } | null
   /** the paid-route question shown on a page, and the route (`paidRouteKey`) it names */
   paidAsk: {
     docHash: string
     lang: string
+    mode: TranslationMode
     page: number
     provider: string
     routeKey: string
@@ -130,24 +151,38 @@ export interface BilingualActionsSnapshot {
   editing: BilingualEditing | null
 }
 
-export const pageKey = (docHash: string, lang: string, page: number): string =>
-  `${docHash}\u0000${lang}\u0000${page}`
+export const pageKey = (
+  docHash: string,
+  lang: string,
+  page: number,
+  mode: TranslationMode = 'translate',
+): string => `${docHash}\u0000${lang}\u0000${page}${mode === 'easy' ? '\u0000easy' : ''}`
 
 /** the tab's paid-route answer holds for one provider on one kind of route */
 export function paidRouteKey(route: ReadyRoute): string {
   return `${route.provider}\u0000${route.metered ? 'metered' : 'key'}`
 }
 
-/** "translate this page" when nothing on it is stored yet, else "translate the rest (N)" */
+/**
+ * "translate this page" when nothing on it is stored yet, else "translate the
+ * rest (N)"; the easy explanation's words in that mode
+ */
 export function pageActionLabel(
   counts: { units: number; pending: number },
   t: TFunc,
+  mode: TranslationMode = 'translate',
 ): string | null {
   if (counts.pending <= 0) return null
-  return counts.pending >= counts.units
-    ? t('blTranslatePage')
+  const easy = mode === 'easy'
+  if (counts.pending >= counts.units) return easy ? t('blEasyPage') : t('blTranslatePage')
+  return easy
+    ? t('blEasyRest', { count: counts.pending })
     : t('blTranslateRest', { count: counts.pending })
 }
+
+/** a store write's `mode`: none for the plain translation, so its request stays as it was */
+const modeField = (mode: TranslationMode): { mode?: 'easy' } =>
+  mode === 'easy' ? { mode: 'easy' } : {}
 
 const CHECKING: DocumentJobRoute = { state: 'checking' }
 
@@ -160,7 +195,13 @@ export class BilingualActionsController {
   private route: DocumentJobRoute = CHECKING
   private paidAck: string | null = null
   private paidAsk: BilingualActionsSnapshot['paidAsk'] = null
-  private pageJob: { docHash: string; lang: string; page: number; viewId: number } | null = null
+  private pageJob: {
+    docHash: string
+    lang: string
+    mode: TranslationMode
+    page: number
+    viewId: number
+  } | null = null
   private starting = false
   private readonly pageNotes = new Map<string, string>()
   private retranslating: string | null = null
@@ -208,7 +249,13 @@ export class BilingualActionsController {
   setData(data: BilingualData | null): void {
     this.data = data
     const e = this.editing
-    if (e && data?.docHash && data.docHash !== e.docHash && data.lang === e.lang) {
+    if (
+      e &&
+      data?.docHash &&
+      data.docHash !== e.docHash &&
+      data.lang === e.lang &&
+      (data.mode ?? 'translate') === e.mode
+    ) {
       this.editing = { ...e, docHash: data.docHash, initial: this.draft ?? e.initial }
       this.emit()
     }
@@ -241,11 +288,16 @@ export class BilingualActionsController {
 
   // ── page translation ──
 
-  /** "translate this page" / "translate the rest (N)" */
-  pressPage = (docHash: string, lang: string, page: number): void => {
+  /** "translate this page" / "translate the rest (N)", in the mode the view shows */
+  pressPage = (
+    docHash: string,
+    lang: string,
+    page: number,
+    mode: TranslationMode = 'translate',
+  ): void => {
     if (this.isBusy(docHash)) return
-    const request: BilingualActionRequest = { kind: 'page', docHash, lang, page }
-    this.pageNotes.delete(pageKey(docHash, lang, page))
+    const request: BilingualActionRequest = { kind: 'page', docHash, lang, mode, page }
+    this.pageNotes.delete(pageKey(docHash, lang, page, mode))
     if (this.askPaid(request)) return
     this.paidAsk = null
     this.emit()
@@ -264,6 +316,7 @@ export class BilingualActionsController {
       kind: 'page',
       docHash: ask.docHash,
       lang: ask.lang,
+      mode: ask.mode,
       page: ask.page,
     }
     const route = this.host?.route() ?? CHECKING
@@ -293,7 +346,12 @@ export class BilingualActionsController {
 
   // ── translate again ──
 
-  pressRetranslate = (docHash: string, lang: string, unit: BilingualUnit): void => {
+  pressRetranslate = (
+    docHash: string,
+    lang: string,
+    unit: BilingualUnit,
+    mode: TranslationMode = 'translate',
+  ): void => {
     if (unit.state === 'pending' || this.isBusy(docHash) || this.retranslating) return
     this.paraNotes.delete(unit.keyString)
     if (unit.edited) {
@@ -301,14 +359,19 @@ export class BilingualActionsController {
       this.emit()
       return
     }
-    this.submitRetranslate({ kind: 'retranslate', docHash, lang, unit })
+    this.submitRetranslate({ kind: 'retranslate', docHash, lang, mode, unit })
   }
 
   /** "Discard and translate again" on an edited paragraph */
-  confirmRetranslate = (docHash: string, lang: string, unit: BilingualUnit): void => {
+  confirmRetranslate = (
+    docHash: string,
+    lang: string,
+    unit: BilingualUnit,
+    mode: TranslationMode = 'translate',
+  ): void => {
     if (this.confirmDiscard !== unit.keyString) return
     this.confirmDiscard = null
-    this.submitRetranslate({ kind: 'retranslate', docHash, lang, unit })
+    this.submitRetranslate({ kind: 'retranslate', docHash, lang, mode, unit })
   }
 
   cancelRetranslate = (): void => {
@@ -318,15 +381,22 @@ export class BilingualActionsController {
 
   // ── editing ──
 
-  /** double-click on a translated paragraph */
-  openEditor = (docHash: string, lang: string, unit: BilingualUnit): void => {
+  /** double-click on a translated paragraph (an easy explanation's, in that mode) */
+  openEditor = (
+    docHash: string,
+    lang: string,
+    unit: BilingualUnit,
+    mode: TranslationMode = 'translate',
+  ): void => {
     if (unit.state !== 'translated' || !this.deps.store) return
-    if (this.editing?.keyString === unit.keyString && this.editing.docHash === docHash) return
+    const open = this.editing
+    if (open?.keyString === unit.keyString && open.docHash === docHash && open.mode === mode) return
     if (this.retranslating === unit.keyString) return
     this.draft = null
     this.editing = {
       docHash,
       lang,
+      mode,
       key: unit.key,
       keyString: unit.keyString,
       initial: runsText(unit.runs),
@@ -363,6 +433,7 @@ export class BilingualActionsController {
         lang: e.lang,
         key: e.key,
         text,
+        ...modeField(e.mode),
       })
       .catch(() => null)
     const current = this.editing
@@ -406,6 +477,7 @@ export class BilingualActionsController {
     this.paidAsk = {
       docHash: request.docHash,
       lang: request.lang,
+      mode: request.mode,
       page: request.page,
       provider: aiProviderDisplayName(route.provider),
       routeKey: paidRouteKey(route),
@@ -414,8 +486,11 @@ export class BilingualActionsController {
     return true
   }
 
-  private note(request: { docHash: string; lang: string; page: number }, text: string): void {
-    this.pageNotes.set(pageKey(request.docHash, request.lang, request.page), text)
+  private note(
+    request: { docHash: string; lang: string; page: number; mode: TranslationMode },
+    text: string,
+  ): void {
+    this.pageNotes.set(pageKey(request.docHash, request.lang, request.page, request.mode), text)
     this.emit()
   }
 
@@ -429,8 +504,14 @@ export class BilingualActionsController {
     const data = this.data
     const host = this.host
     if (!store || !host || !data?.tree) return
-    // the view moved on (another language, a rebuilt tree after a save)
-    if (data.docHash !== request.docHash || data.lang !== request.lang) return
+    // the view moved on (another language or mode, a rebuilt tree after a save)
+    if (
+      data.docHash !== request.docHash ||
+      data.lang !== request.lang ||
+      (data.mode ?? 'translate') !== request.mode
+    ) {
+      return
+    }
     const route = host.route()
     if (route.state !== 'ready') {
       this.note(request, t('blNeedsConnection'))
@@ -472,16 +553,20 @@ export class BilingualActionsController {
           { system: req.system, messages: [{ role: 'user', text: req.prompt }], tools: [] },
           signal,
         )
+      const easy = request.mode === 'easy'
+      // with the easy mode the parts carry it: the job reads and writes the easy results
       const parts = translationJobParts(tree, {
         lang: request.lang,
         send,
         pages: [request.page],
+        ...(easy ? { mode: 'easy' as const } : {}),
       })
       const jobStore = createIpcJobStore(store)
       const outcome = session.start<TranslationJobItem<TextUnit>[]>({
         docHash: request.docHash,
         kind: 'translate-page',
         lang: request.lang,
+        ...(easy ? { mode: 'easy' as const } : {}),
         provider: route.provider,
         launch: ({ signal, registry, onProgress }) =>
           startTranslationJob({
@@ -604,6 +689,7 @@ export class BilingualActionsController {
       const out = await retranslateBlock({
         docHash: request.docHash,
         lang: request.lang,
+        mode: request.mode,
         unit,
         send,
         store,
@@ -659,6 +745,7 @@ export class BilingualActionsController {
         ? {
             docHash: job.docHash,
             lang: job.lang,
+            mode: job.mode,
             page: job.page,
             done: view?.id === job.viewId ? view.done : 0,
             total: view?.id === job.viewId ? view.total : 0,

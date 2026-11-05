@@ -8,8 +8,9 @@ import type { JobKind } from '../../../../../packages/pdf-structure/src/store/st
 
 const PREFIX = 'genoffice-pdf-job-pages'
 
-const keyOf = (docHash: string, kind: JobKind, lang?: string): string =>
-  `${PREFIX}:${docHash}:${kind}${lang ? `:${lang}` : ''}`
+/** an easy explanation's list is kept apart from the plain translation's of the same language */
+const keyOf = (docHash: string, kind: JobKind, lang?: string, mode?: 'easy'): string =>
+  `${PREFIX}:${docHash}:${kind}${lang ? `:${lang}` : ''}${mode === 'easy' ? ':easy' : ''}`
 
 function storage(): Storage | null {
   try {
@@ -24,18 +25,24 @@ export function rememberJobPages(
   kind: JobKind,
   lang: string | undefined,
   pages: readonly number[],
+  mode?: 'easy',
 ): void {
   try {
-    storage()?.setItem(keyOf(docHash, kind, lang), JSON.stringify([...pages]))
+    storage()?.setItem(keyOf(docHash, kind, lang, mode), JSON.stringify([...pages]))
   } catch {
     // a full or missing storage only costs the resume offer its page list
   }
 }
 
 /** the remembered pages, or null when there are none or they are unreadable */
-export function recallJobPages(docHash: string, kind: JobKind, lang?: string): number[] | null {
+export function recallJobPages(
+  docHash: string,
+  kind: JobKind,
+  lang?: string,
+  mode?: 'easy',
+): number[] | null {
   try {
-    const raw = storage()?.getItem(keyOf(docHash, kind, lang))
+    const raw = storage()?.getItem(keyOf(docHash, kind, lang, mode))
     if (!raw) return null
     const parsed: unknown = JSON.parse(raw)
     if (!Array.isArray(parsed)) return null

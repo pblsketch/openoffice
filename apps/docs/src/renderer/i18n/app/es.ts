@@ -356,6 +356,9 @@ export const es = {
   appAiBadgeTip: 'Usa IA',
   appTranslate: 'Traducir',
   appTranslateTo: 'Traducir al {lang}',
+  appEasyWords: 'Explicar con palabras sencillas',
+  appEasyWordsPrompt:
+    'Explica el texto seleccionado en español para que lo entienda también quien necesita un texto fácil (niños, personas mayores o quienes están aprendiendo español). Usa palabras cotidianas y frases cortas, y conserva todos los datos, cifras y condiciones. No modifiques el documento: «{text}»',
   redactMenuLabel: 'Ocultar la selección a la IA',
   redactDialogDesc:
     'Las palabras siguen en el documento y en el archivo; el modelo solo ve el marcador. Ponle un nombre para que sepa qué representa.',

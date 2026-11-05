@@ -1,7 +1,8 @@
 /**
  * The plain parts of the book translation screen: the chapter list and the
  * units a choice sends, the chapters named in a request, the remembered
- * choice of a job, the resume offer's pick, and the report lines.
+ * choice of a job, the resume offer's pick, and the report lines, each also
+ * for an easy explanation (its own names, remembered choice and offer).
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import { epubTranslationUnits, openEpub, type EpubTranslationReport } from '@genoffice/epub-engine'
@@ -14,7 +15,9 @@ import {
   originalChapterLines,
   recallChapters,
   rememberChapters,
+  resultName,
   resumableTranslation,
+  resumableTranslations,
   sameLanguage,
   unitsForChapters,
   untranslatedLines,
@@ -90,6 +93,40 @@ describe('the resume offer', () => {
     expect(recallChapters('h', 'ko')).toEqual([2, 4])
     rememberChapters('h', 'ko', undefined)
     expect(recallChapters('h', 'ko')).toBeNull()
+  })
+})
+
+describe('an easy explanation', () => {
+  it('suggests its own result names, never the translation names', () => {
+    expect(resultName('C:/books/test.epub', 'ko', 'translated')).toBe('test.ko.epub')
+    expect(resultName('C:/books/test.epub', 'ko', 'translated', '쉬운 풀이')).toBe(
+      'test.ko.쉬운 풀이.epub',
+    )
+    expect(resultName('C:\\books\\test.epub', 'en', 'bilingual', 'Plain-language version')).toBe(
+      'test.en.Plain-language version.bilingual.epub',
+    )
+    // a word that would read as a path or another suffix is made safe
+    expect(resultName('test.epub', 'de', 'translated', 'a/b: c.d')).toBe('test.de.a b c d.epub')
+  })
+
+  it('offers each way on its own, the translation first', () => {
+    const plain = { kind: 'translate' as const, lang: 'ko', state: 'stopped' as const, outputs: [] }
+    const easy = { ...plain, lang: 'de', mode: 'easy' as const }
+    expect(resumableTranslation([easy])).toBeNull()
+    expect(resumableTranslation([easy], 'easy')).toMatchObject({ lang: 'de' })
+    expect(resumableTranslation([easy, plain])).toMatchObject({ lang: 'ko' })
+    expect(resumableTranslations([easy, plain]).map((j) => j.lang)).toEqual(['ko', 'de'])
+    expect(resumableTranslations([])).toEqual([])
+  })
+
+  it('remembers its chapters apart from those of the translation', () => {
+    rememberChapters('h', 'ko', [1], 'easy')
+    rememberChapters('h', 'ko', [3])
+    expect(recallChapters('h', 'ko', 'easy')).toEqual([1])
+    expect(recallChapters('h', 'ko')).toEqual([3])
+    rememberChapters('h', 'ko', undefined, 'easy')
+    expect(recallChapters('h', 'ko', 'easy')).toBeNull()
+    expect(recallChapters('h', 'ko')).toEqual([3])
   })
 })
 

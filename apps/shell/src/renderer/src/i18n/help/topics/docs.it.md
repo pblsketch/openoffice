@@ -55,6 +55,7 @@ Fai clic destro ovunque nel corpo del testo — il menu si adatta all'elemento s
 - **Appunti**: taglia / copia / incolla / **incolla come testo semplice**.
 - **Carattere, paragrafo**: cambia famiglia e dimensione, grassetto/corsivo/sottolineato, allineamento/rientro/interlinea senza passare dalla barra multifunzione.
 - **Sinonimi**: elenca i sinonimi della parola selezionata; fai clic su uno per sostituirla.
+- **Spiega con parole semplici** (IA): invia la selezione al pannello IA perché la spieghi con parole semplici nella lingua dell’interfaccia, e la esegue subito. Senza selezione è disattivato, e il testo nascosto all’IA non viene inviato.
 - **Traduci** (IA): traduce la selezione nella lingua di destinazione (inglese, cinese semplificato, giapponese, coreano, francese, tedesco, spagnolo, ...) tramite il pannello IA.
 - **Nuovo commento**: allega un commento alla selezione.
 - **Ortografia** (su una parola scritta male): sostituzioni suggerite, ignora tutto, aggiungi al dizionario, imposta la lingua di correzione.

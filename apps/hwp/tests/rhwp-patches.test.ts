@@ -18,7 +18,7 @@ import {
   patchTargets,
   pluginHooks,
 } from '../scripts/rhwp-patches.mjs'
-import { AGENT_PLUGIN_ID } from '../studio-plugin/agent-plugin.mjs'
+import { AGENT_PLUGIN_ID, EASY_WORDS_COMMAND } from '../studio-plugin/agent-plugin.mjs'
 
 const require = createRequire(import.meta.url)
 
@@ -378,6 +378,76 @@ describe('rhwp memo menu patches', () => {
   })
 })
 
+describe('rhwp easy-words menu patch', () => {
+  // the ends of the two right-click lists and what follows them, as the pinned release has them
+  const menus = [
+    '  private getTableContextMenuItems(): ContextMenuItem[] {',
+    '    return [',
+    "      { type: 'command', commandId: 'table:formula', label: '계산식(F)...' },",
+    "      { type: 'separator' },",
+    "      { type: 'command', commandId: 'table:split', label: '표 나누기' },",
+    "      { type: 'command', commandId: 'table:delete' },",
+    '    ];',
+    '  }',
+    '',
+    '  /** 일반 컨텍스트 메뉴 항목 */',
+    '  private getDefaultContextMenuItems(): ContextMenuItem[] {',
+    '    return [',
+    "      { type: 'command', commandId: 'format:para-num-shape', label: '문단 번호 모양(N)...' },",
+    '    ];',
+    '  }',
+    '',
+    '  /** 특수 키 처리 (Backspace, Enter, 화살표, Ctrl+Z/Y) */',
+    '  private onKeyDown(e: KeyboardEvent): void {',
+  ].join('\n')
+  const item = `      { type: 'command', commandId: '${EASY_WORDS_COMMAND}' },`
+  const split = (patched: string) => {
+    const at = patched.indexOf('getDefaultContextMenuItems')
+    return { table: patched.slice(0, at), body: patched.slice(at) }
+  }
+
+  it("put the plugin's command in the body and table cell menus, once each, by its own name", () => {
+    const patched = applyPatch('studio-easy-words-context-menu', menus)
+    const { table, body } = split(patched)
+    for (const menu of [table, body]) expect(menu.split(item)).toHaveLength(2)
+    // no label of its own: the menu shows the label the app gives the command
+    expect(patched).not.toMatch(/ieum-easy-words', label/)
+    expect(body).toContain(`${item}\n    ];`)
+    expect(table).toContain(
+      `${item}\n      { type: 'separator' },\n      { type: 'command', commandId: 'table:split'`,
+    )
+  })
+
+  it('stand right after 메모 once the memo patch is in, as the build applies them', () => {
+    expect(STUDIO_PATCHES.indexOf('studio-easy-words-context-menu')).toBe(
+      STUDIO_PATCHES.indexOf('studio-memo-context-menu') + 1,
+    )
+    const patched = applyPatch(
+      'studio-easy-words-context-menu',
+      applyPatch('studio-memo-context-menu', menus),
+    )
+    const memo = "      { type: 'command', commandId: 'insert:comment' },"
+    const { table, body } = split(patched)
+    expect(body).toContain(`${memo}\n${item}\n    ];`)
+    expect(table).toContain(`${memo}\n${item}\n      { type: 'separator' },`)
+  })
+
+  it('keep CRLF sources working and fail when a list changed', () => {
+    const crlf = applyPatch('studio-easy-words-context-menu', menus.replaceAll('\n', '\r\n'))
+    expect(crlf.split(EASY_WORDS_COMMAND)).toHaveLength(3)
+    expect(crlf).not.toMatch(/[^\r]\n/)
+    expect(() =>
+      applyPatch('studio-easy-words-context-menu', menus.replace('표 나누기', '표 쪼개기')),
+    ).toThrow(/rhwp patch/)
+    expect(() =>
+      applyPatch(
+        'studio-easy-words-context-menu',
+        menus.replace('/** 특수 키 처리', '/** 키 처리'),
+      ),
+    ).toThrow(/rhwp patch/)
+  })
+})
+
 describe('rhwp memo delete-undo patches', () => {
   // the studio's text around the patches, as the pinned release has it
   const bridge = [
@@ -698,6 +768,28 @@ describe('the studio source the build fetched', () => {
       expect(() => applyPatch(name, readFileSync(targets[0], 'utf8')), name).not.toThrow()
     }
   })
+
+  it.skipIf(!existsSync(studio))(
+    'puts 쉬운 말로 풀기 after 메모 in both menus, in build order',
+    () => {
+      const file = join(studio, 'src/engine/input-handler.ts')
+      let code = readFileSync(file, 'utf8')
+      for (const name of STUDIO_PATCHES) {
+        if (patchTargets(name, file)) code = applyPatch(name, code)
+      }
+      const lines = code.split(/\r?\n/)
+      const after = (method: string) => {
+        const from = lines.findIndex((line) =>
+          line.includes(`private ${method}(): ContextMenuItem[]`),
+        )
+        const memo = lines.indexOf("      { type: 'command', commandId: 'insert:comment' },", from)
+        return lines[memo + 1]
+      }
+      const item = `      { type: 'command', commandId: '${EASY_WORDS_COMMAND}' },`
+      expect(after('getTableContextMenuItems')).toBe(item)
+      expect(after('getDefaultContextMenuItems')).toBe(item)
+    },
+  )
 
   it.skipIf(!existsSync(studio))('has what the plugin and the Hangul keys reach into', () => {
     const read = (file: string) => {

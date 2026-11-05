@@ -8,14 +8,19 @@
  * for that view: the bytes of the book it opened, and those it saved since
  * (the PDF editor's `know(owner, docHash)` rule). Only what a book translation
  * job reads and writes is offered: translations and `translate` job records.
+ * Every call may name a mode: left out it is 'translate' and reaches the plain
+ * translation as before; 'easy' reaches the book's easy explanation (its own
+ * folder and job record in the same store, EPUB keys unchanged).
  *
  * Every handler answers an outcome and never throws.
  */
 import {
   StoreWriteError,
+  isTranslationMode,
   jobKeyOf,
   type ResultStore,
   type TranslationBlockInput,
+  type TranslationMode,
 } from '@genoffice/pdf-structure/store'
 import type {
   EpubFailure,
@@ -64,6 +69,13 @@ const isKey = (v: unknown): v is string => typeof v === 'string' && KEY.test(v)
 
 const isMeta = (v: unknown): v is string => typeof v === 'string' && v.length <= MAX_META
 
+/** a translation mode as sent: left out is 'translate'; null when it is not one */
+const modeOf = (v: unknown): TranslationMode | null =>
+  v === undefined ? 'translate' : isTranslationMode(v) ? v : null
+
+/** the trailing mode argument of a store call: none for a plain translation, as before */
+const modeArgs = (mode: TranslationMode): [] | [TranslationMode] => (mode === 'easy' ? [mode] : [])
+
 function storeFailure(err: unknown): EpubFailure {
   if (err instanceof StoreWriteError) return fail('store-write-failed', err.message)
   if (err instanceof TypeError) return fail('invalid-request', err.message)
@@ -75,10 +87,16 @@ export function createEpubStoreHandlers(deps: EpubStoreHandlerDeps) {
     isKey(docHash) && deps.knows(owner, docHash)
 
   return {
-    async translations(owner: number, docHash: unknown): Promise<EpubOutcome<{ langs: string[] }>> {
+    async translations(
+      owner: number,
+      docHash: unknown,
+      modeArg?: unknown,
+    ): Promise<EpubOutcome<{ langs: string[] }>> {
       if (!granted(owner, docHash)) return fail('not-granted', 'unknown document hash')
+      const mode = modeOf(modeArg)
+      if (!mode) return fail('invalid-request', 'bad mode')
       try {
-        return { ok: true, langs: await deps.store().listTranslations(docHash) }
+        return { ok: true, langs: await deps.store().listTranslations(docHash, ...modeArgs(mode)) }
       } catch (err) {
         return storeFailure(err)
       }
@@ -88,11 +106,14 @@ export function createEpubStoreHandlers(deps: EpubStoreHandlerDeps) {
       owner: number,
       docHash: unknown,
       lang: unknown,
+      modeArg?: unknown,
     ): Promise<EpubOutcome<{ translation: EpubStoredTranslation | null }>> {
       if (!granted(owner, docHash)) return fail('not-granted', 'unknown document hash')
       if (!isKey(lang)) return fail('invalid-request', 'bad language')
+      const mode = modeOf(modeArg)
+      if (!mode) return fail('invalid-request', 'bad mode')
       try {
-        const stored = await deps.store().readTranslation(docHash, lang)
+        const stored = await deps.store().readTranslation(docHash, lang, ...modeArgs(mode))
         return {
           ok: true,
           translation: stored && {
@@ -125,15 +146,19 @@ export function createEpubStoreHandlers(deps: EpubStoreHandlerDeps) {
       const docHash = req.docHash
       if (!isKey(req.lang)) return fail('invalid-request', 'bad language')
       const lang = req.lang
+      const mode = modeOf(req.mode)
+      if (!mode) return fail('invalid-request', 'bad mode')
       const store = deps.store()
       try {
         switch (req.kind) {
           case 'translationMeta':
             if (!isMeta(req.provider) || !isMeta(req.model)) break
-            await store.writeTranslationMeta(docHash, lang, {
-              provider: req.provider,
-              model: req.model,
-            })
+            await store.writeTranslationMeta(
+              docHash,
+              lang,
+              { provider: req.provider, model: req.model },
+              ...modeArgs(mode),
+            )
             return { ok: true }
           case 'translationBlocks':
             if (!Array.isArray(req.blocks) || req.blocks.length > MAX_BLOCKS) break
@@ -142,24 +167,30 @@ export function createEpubStoreHandlers(deps: EpubStoreHandlerDeps) {
               docHash,
               lang,
               req.blocks as unknown as TranslationBlockInput[],
+              ...modeArgs(mode),
             )
             return { ok: true }
           case 'deleteTranslation':
-            await store.deleteTranslation(docHash, lang)
+            await store.deleteTranslation(docHash, lang, ...modeArgs(mode))
             return { ok: true }
           case 'deleteTranslationExceptEdited':
-            return { ok: true, removed: await store.deleteTranslationExceptEdited(docHash, lang) }
+            return {
+              ok: true,
+              removed: await store.deleteTranslationExceptEdited(docHash, lang, ...modeArgs(mode)),
+            }
           case 'job': {
-            // a book translation writes `translate` records only, under its own language
+            // a book translation writes `translate` records only, under its own
+            // language and the request's mode
             const job = req.job
             if (!isRecord(job) || job.kind !== 'translate' || job.lang !== lang) break
+            if ((modeOf(job.mode) ?? 'invalid') !== mode) break
             await store.writeJob(docHash, job as unknown as Parameters<EpubStore['writeJob']>[1])
             return { ok: true }
           }
           case 'heartbeat': {
             if (req.job !== 'translate') break
             const key = jobKeyOf({ kind: 'translate', lang })
-            return (await store.heartbeatJob(docHash, 'translate', key))
+            return (await store.heartbeatJob(docHash, 'translate', key, ...modeArgs(mode)))
               ? { ok: true }
               : fail('failed', 'no running job record')
           }

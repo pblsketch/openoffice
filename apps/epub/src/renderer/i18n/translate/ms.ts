@@ -107,4 +107,40 @@ export const ms = {
   btReasonNotChosen: 'tidak dipilih',
   btReasonBroken: 'bab rosak',
   btReasonFixed: 'bab susun atur tetap',
+  btMode: 'Mod',
+  btModeTranslate: 'Terjemah',
+  btModeEasy: 'Bahasa mudah',
+  btEasyIntro:
+    'Bahasa mudah menulis semula teks buku dengan perkataan mudah dalam bahasa yang dipilih, ke fail EPUB baharu. Buku ini tidak berubah.',
+  btEasyLanguage: 'Tulis semula dalam',
+  btKindEasy: 'Buku bahasa mudah',
+  btKindEasyBilingual: 'Teks asal diikuti bahasa mudah',
+  btEasyConfirmTitle: 'Sebelum menulis semula dalam bahasa mudah',
+  btEasyConfirmLanguage: 'Bahasa mudah: {language}',
+  btEasyConfirmDone: '{done} daripada {total} blok sudah ditulis semula dan tidak akan dihantar',
+  btEasyProviderChange:
+    'Versi bahasa mudah yang disimpan dibuat dengan AI lain ({stored}). Selebihnya akan ditulis semula dengan {next}.',
+  btEasyNothing: 'Semua yang dipilih sudah ditulis semula. Tiada apa yang dihantar.',
+  btEasyNoticeSends:
+    'Bahasa mudah menghantar teks bab yang dipilih (perenggan dengan penanda format), tajuk buku dan entri jadual kandungan kepada AI.',
+  btEasyRestart: 'Tulis semula dari awal',
+  btEasyRestartConfirm:
+    'Padam versi bahasa mudah yang disimpan ({language}, {count} blok) dan tulis semula semuanya?',
+  btEasyRestartYes: 'Padam dan tulis semula',
+  btEasyRestartSaveYes: 'Simpan, padam dan tulis semula',
+  btEasySaveAndStart: 'Simpan dan tulis semula',
+  btEasyRunning: 'Menulis semula dalam bahasa mudah ({language}): {done}/{total} blok',
+  btEasyDone: 'Bahasa mudah ({language}) selesai ({count} blok)',
+  btEasyStoppedCancelled: 'Penulisan semula ke bahasa mudah dihentikan.',
+  btEasyStoppedFailures:
+    'Penulisan semula ke bahasa mudah berhenti kerana beberapa permintaan gagal berturut-turut.',
+  btEasyStoppedStore:
+    'Penulisan semula ke bahasa mudah berhenti kerana hasilnya tidak dapat disimpan.',
+  btEasyStoppedError: 'Penulisan semula ke bahasa mudah berhenti: {reason}',
+  btEasyStoppedProgress: '{done} daripada {total} blok sudah ditulis semula dan disimpan.',
+  btEasyExportPartial: 'Eksport yang sudah ditulis semula',
+  btEasyResume: 'Bahasa mudah belum selesai ({language}) {percent}% — teruskan?',
+  btEasyReportTitle: 'Bahasa mudah selesai',
+  btEasyReportPartialTitle: 'Yang sudah ditulis semula telah dieksport',
+  btEasyReportTranslated: 'Blok yang ditulis semula dalam bahasa mudah ({language}): {count}',
 } satisfies Record<keyof typeof zh, string>

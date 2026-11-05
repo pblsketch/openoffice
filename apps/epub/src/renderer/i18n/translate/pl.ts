@@ -106,4 +106,40 @@ export const pl = {
   btReasonNotChosen: 'niewybrany',
   btReasonBroken: 'uszkodzony rozdział',
   btReasonFixed: 'rozdział o stałym układzie',
+  btMode: 'Tryb',
+  btModeTranslate: 'Tłumaczenie',
+  btModeEasy: 'Prosty język',
+  btEasyIntro:
+    'Prosty język przepisuje tekst książki łatwymi słowami w wybranym języku do nowych plików EPUB. Ta książka się nie zmienia.',
+  btEasyLanguage: 'Przepisz na',
+  btKindEasy: 'Książka w prostym języku',
+  btKindEasyBilingual: 'Oryginał, a po nim prosty język',
+  btEasyConfirmTitle: 'Przed przepisaniem na prosty język',
+  btEasyConfirmLanguage: 'Prosty język: {language}',
+  btEasyConfirmDone: '{done} z {total} bloków jest już przepisanych i nie zostanie wysłanych',
+  btEasyProviderChange:
+    'Zapisana wersja w prostym języku powstała z innym AI ({stored}). Resztę przepisze {next}.',
+  btEasyNothing: 'Wszystko, co wybrano, jest już przepisane. Nic nie zostanie wysłane.',
+  btEasyNoticeSends:
+    'Przepisywanie na prosty język wysyła do AI tekst wybranych rozdziałów (akapity ze znacznikami formatowania), tytuł książki i pozycje spisu treści.',
+  btEasyRestart: 'Przepisz od nowa',
+  btEasyRestartConfirm:
+    'Usunąć zapisaną wersję w prostym języku ({language}, bloków: {count}) i przepisać wszystko od nowa?',
+  btEasyRestartYes: 'Usuń i przepisz od nowa',
+  btEasyRestartSaveYes: 'Zapisz, usuń i przepisz od nowa',
+  btEasySaveAndStart: 'Zapisz i przepisz',
+  btEasyRunning: 'Przepisywanie na prosty język ({language}): {done}/{total} bloków',
+  btEasyDone: 'Prosty język ({language}) gotowy (bloków: {count})',
+  btEasyStoppedCancelled: 'Przepisywanie na prosty język zostało zatrzymane.',
+  btEasyStoppedFailures:
+    'Przepisywanie na prosty język zatrzymało się, bo kilka żądań z rzędu się nie powiodło.',
+  btEasyStoppedStore:
+    'Przepisywanie na prosty język zatrzymało się, bo nie udało się zapisać wyników.',
+  btEasyStoppedError: 'Przepisywanie na prosty język zatrzymało się: {reason}',
+  btEasyStoppedProgress: 'Przepisano i zapisano {done} z {total} bloków.',
+  btEasyExportPartial: 'Eksportuj to, co już przepisano',
+  btEasyResume: 'Niedokończony prosty język ({language}) {percent}% — kontynuować?',
+  btEasyReportTitle: 'Prosty język gotowy',
+  btEasyReportPartialTitle: 'Wyeksportowano to, co już przepisano',
+  btEasyReportTranslated: 'Bloki przepisane na prosty język ({language}): {count}',
 } satisfies Record<keyof typeof zh, string>

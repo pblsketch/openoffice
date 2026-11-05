@@ -82,4 +82,27 @@ export const he = {
   trRestartEditedCount: 'מספר הפסקאות שנערכו בידי אדם: {count}.',
   trRestartDiscardEdited: 'למחוק גם את הפסקאות שנערכו בידי אדם ({count})',
   trRestartKeepEdited: 'להשאיר את הפסקאות הערוכות',
+  trMode: 'סוג',
+  trModeTranslate: 'תרגום',
+  trModeEasy: 'הסבר פשוט',
+  trPdfEasy: 'הסבר פשוט ארוך מהמקור ולכן אינו נכנס במקומו. אפשר Markdown ו-EPUB.',
+  trEasyFormatMd: 'Markdown עם הסבר פשוט',
+  trEasyFormatEpub: 'EPUB עם הסבר פשוט',
+  trEasyBilingual: 'מקור ואחריו הסבר: אחרי כל פסקה של המקור בא ההסבר הפשוט שלה (כבוי: ההסבר בלבד)',
+  trEasyFileWord: 'הסבר פשוט',
+  trEasyPickTitle: 'שמירת {format} עם הסבר פשוט',
+  trConfirmEasyLanguage: 'שפת ההסבר: {language}',
+  trEasyConfirmDone: '{done} מתוך {total} בלוקים כבר הוסברו ולא יישלחו שוב',
+  trEasyConfirmNothing:
+    'כל הבלוקים בדפים שנבחרו כבר הוסברו. שום דבר לא נשלח; הקבצים נכתבים מההסבר השמור.',
+  trEasyProviderChange:
+    'ההסבר השמור נוצר בעזרת {stored}. המשך בעזרת {next} יערבב שני AI בהסבר אחד.',
+  trEasyStart: 'התחלת ההסבר',
+  trEasyRestart: 'הסבר מחדש מההתחלה…',
+  trEasyRestartConfirm:
+    'למחוק את ההסבר הפשוט השמור ב{language} ({count} בלוקים) ולהסביר מחדש את כל הבלוקים? אי אפשר לשחזר הסברים שנמחקו.',
+  trEasyRestartYes: 'הסבר מחדש',
+  trEasyRunning: 'כותב הסבר פשוט ב{language}… {done}/{total} בלוקים',
+  trEasyDone: 'ההסבר הפשוט ב{language} הושלם ({count} בלוקים).',
+  trResumeEasy: 'הסבר פשוט שלא הושלם ({language}) {percent}% — להמשיך?',
 } satisfies Record<keyof typeof zh, string>

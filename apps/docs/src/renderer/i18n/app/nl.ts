@@ -360,6 +360,9 @@ export const nl = {
   appAiBadgeTip: 'Gebruikt AI',
   appTranslate: 'Vertalen',
   appTranslateTo: 'Vertalen naar {lang}',
+  appEasyWords: 'Uitleggen in eenvoudige woorden',
+  appEasyWordsPrompt:
+    'Leg de geselecteerde tekst in het Nederlands uit, zodat ook mensen die eenvoudige taal nodig hebben hem begrijpen (kinderen, ouderen, mensen die Nederlands leren). Gebruik alledaagse woorden en korte zinnen, en laat alle feiten, getallen en voorwaarden staan. Wijzig het document niet: "{text}"',
   redactMenuLabel: 'Selectie verbergen voor de AI',
   redactDialogDesc:
     'De woorden blijven in het document en het bestand; het model ziet alleen de placeholder. Geef hem een naam.',
