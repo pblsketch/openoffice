@@ -1,7 +1,8 @@
 import type { AgentSkill, AgentToolCall, AgentToolDef, ToolExecution } from '@genoffice/agent-core'
 import { t } from '../i18n/locale'
 import type { ElementEntry, ParseMap } from '../document/parse-map'
-import type { HtmlOp, OpError } from '../document/ops'
+import { compileOps, type HtmlOp, type OpError } from '../document/ops'
+import { applyPatches } from '../document/patch'
 import { lineOf } from '../document/match'
 import { insertOp } from '../document/insert-presets'
 import type { ImageSearchResult } from '../../shared/ipc'
@@ -542,6 +543,74 @@ export function findTruncatedDataUrl(ops: HtmlOp[]): number {
   })
 }
 
+/** `<!doctype` and the start tags that exist once per document */
+const DOCUMENT_MARKERS: ReadonlyArray<readonly [string, RegExp]> = [
+  ['<!doctype>', /<!doctype/gi],
+  ['<html>', /<html(?=[\s/>])/gi],
+  ['<head>', /<head(?=[\s/>])/gi],
+  ['<body>', /<body(?=[\s/>])/gi],
+]
+
+function countMatches(text: string, re: RegExp): number {
+  return text.match(re)?.length ?? 0
+}
+
+function lineCount(text: string): number {
+  return countMatches(text, /\n/g) + 1
+}
+
+/**
+ * A partial edit that carries a whole document (`<!doctype html>…</html>` as
+ * the new content of a <style> or <title>) does not replace the page: the
+ * parser drops the second skeleton and the reader gets the page twice. The
+ * payload of an op may hold a doctype or an html/head/body start tag only as
+ * often as the text it replaces already did — `<body>` → `<body class>` in a
+ * str_replace, a replace_element of the body itself, a cleanup that removes a
+ * duplicate copy. Returns the first offending op and marker, or null.
+ */
+export function findWholeDocumentOp(
+  ops: HtmlOp[],
+  text: string,
+  map: ParseMap,
+): { index: number; marker: string } | null {
+  for (let index = 0; index < ops.length; index++) {
+    const op = ops[index]!
+    let payload: unknown
+    let replaced = ''
+    if (op.op === 'str_replace') {
+      payload = op.new
+      replaced = typeof op.old === 'string' ? op.old : ''
+    } else if (op.op === 'replace_element' || op.op === 'set_inner_html') {
+      payload = op.html
+      const e = typeof op.sid === 'number' ? map.bySid.get(op.sid) : undefined
+      if (e) {
+        const [from, to] = op.op === 'replace_element' ? e.range : e.inner
+        replaced = text.slice(from, to)
+      }
+    } else if (op.op === 'insert_html') {
+      payload = op.html
+    } else continue
+    if (typeof payload !== 'string') continue
+    for (const [marker, re] of DOCUMENT_MARKERS) {
+      if (countMatches(payload, re) > countMatches(replaced, re)) return { index, marker }
+    }
+  }
+  return null
+}
+
+/** the markers a batch result may not hold more of than the text before it */
+function addedDocumentMarkers(before: string, after: string): string | null {
+  for (const [marker, re] of DOCUMENT_MARKERS.slice(0, 2)) {
+    const was = countMatches(before, re)
+    const now = countMatches(after, re)
+    if (now > was) return `${marker} (${was} → ${now})`
+  }
+  return null
+}
+
+const WHOLE_DOCUMENT_ADVICE =
+  'apply_ops edits part of the page and must not carry a whole document. To rewrite the whole page, call plan_page with mode "redesign". To rewrite one section, use replace_element on that section\'s sid with only that section\'s HTML (get_outline lists the sids).'
+
 /**
  * Replace `attachment://` references in op payload strings with real srcs so
  * the model never streams file bytes through tool arguments (a gateway drops
@@ -965,11 +1034,33 @@ export function createHtmlSkillCore(access: HtmlDocAccess): {
               summary: t('aiToolApplyOpsFailed'),
             }
           }
+          const wholeDocument = findWholeDocumentOp(ops as HtmlOp[], text, map)
+          if (wholeDocument) {
+            return {
+              output: `0 of ${ops.length} ops applied — op ${wholeDocument.index + 1} puts a whole document into a partial edit (its new HTML holds more ${wholeDocument.marker} than the text it replaces), which would append a second copy of the page. ${WHOLE_DOCUMENT_ADVICE}`,
+              isError: true,
+              summary: t('aiToolApplyOpsFailed'),
+            }
+          }
           const label =
             typeof call.input.summary === 'string' && call.input.summary
               ? call.input.summary
               : `apply_ops (${ops.length})`
           const finish = (finalOps: HtmlOp[]): ToolExecution => {
+            const before = access.getText()
+            // compileOps and applyPatches only read their inputs, so the batch can be
+            // tried on a copy first; a result with a second doctype or <html> is a
+            // duplicated page no matter which op put it there
+            const trial = compileOps(before, access.getMap(), finalOps)
+            if (trial.errors.length === 0) {
+              const added = addedDocumentMarkers(before, applyPatches(before, trial.patches))
+              if (added)
+                return {
+                  output: `0 of ${ops.length} ops applied — the batch would raise the number of ${added} in the document, a copy of the page. ${WHOLE_DOCUMENT_ADVICE}`,
+                  isError: true,
+                  summary: t('aiToolApplyOpsFailed'),
+                }
+            }
             const result = access.applyOps(finalOps, label)
             if (!result.ok) {
               const lines = result.errors.map(
@@ -995,7 +1086,7 @@ export function createHtmlSkillCore(access: HtmlDocAccess): {
                 ? `\nWARNING: the edit introduced ${health} new HTML parse recoveries (unbalanced tags?). Check the preview.`
                 : ''
             return {
-              output: `Applied ${ops.length} op(s) at ${where.join(', ')}. Document is now version ${access.getVersion()}.${warn}`,
+              output: `Applied ${ops.length} op(s) at ${where.join(', ')}. Document is now version ${access.getVersion()}; it went from ${lineCount(before)} to ${lineCount(after)} lines.${warn}`,
               mutated: true,
               summary: t('aiToolApplyOps', { n: ops.length }),
             }
