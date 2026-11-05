@@ -26,6 +26,7 @@ As regras: a extensão é preservada automaticamente; caracteres proibidos, pont
 ## Salvar e Salvar Como
 
 - **⌘S / ctrl+S** salva o ficheiro atual; um ficheiro sem título pergunta primeiro pela localização e pelo nome.
+- Na maioria dos editores, a lista de tipos de ficheiro da caixa Salvar Como também oferece os formatos de exportação (PDF, imagens, outros formatos de documento). Escolher um deles grava apenas uma cópia; o documento aberto e o seu separador continuam no ficheiro original. Imagens de várias páginas são divididas em `nome-01.png`, `nome-02.png`, ….
 - **Salvar Como…** grava um ficheiro novo e deixa o original intacto; as edições seguintes passam a incidir sobre o ficheiro novo.
 - Cada gravação é atómica (ficheiro temporário + mudança de nome), pelo que sair a meio da escrita não corrompe o ficheiro.
 - O salvamento automático segue o interruptor de cada editor; um documento novo sem ficheiro próprio só começa após o primeiro salvamento (consulte [Início rápido](help://getting-started)).
