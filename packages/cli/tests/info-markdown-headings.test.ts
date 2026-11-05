@@ -32,6 +32,7 @@ describe('info on a Markdown file counts real headings', () => {
   it('still counts headings that only look like a fence or sit outside one', async () => {
     expect((await info('# A\n```\ncode\n```\n# B\n``` not closed by this ```\n')).headings).toBe(2)
     expect((await info('# A\n## B\n### C\n####### seven\n#nospace\n')).headings).toBe(3)
+    expect((await info('  # Indented\n   ## Also\n    # four spaces\n')).headings).toBe(2)
   })
 
   it('leaves a non-Markdown text file without a heading count', async () => {
