@@ -3,6 +3,10 @@
  * functions: language names, the chapter list of the window, which units a
  * choice of chapters sends, the default result names, the remembered chapter
  * choice of a job, the resume offer and the lines of the result report.
+ *
+ * Each of them knows the two ways a book is translated (`TranslationMode`):
+ * a translation, and an easy explanation ('easy'), whose results, names,
+ * remembered choices and resume offers are kept apart from the translation's.
  */
 import type { Lang } from '@genoffice/i18n'
 import type {
@@ -11,6 +15,7 @@ import type {
   EpubTranslationReport,
   EpubTranslationUnit,
 } from '@genoffice/epub-engine'
+import type { TranslationMode } from '@genoffice/pdf-structure'
 import type { JobProgress, JobStatus } from '@genoffice/pdf-structure/store'
 import { defaultResultName } from '../../shared/asset-url'
 import type { EpubBookSummary } from '../../shared/ipc'
@@ -19,6 +24,12 @@ import { EPUB_METADATA_PAGE } from './engine'
 
 /** the result kinds in the order they are offered and written */
 export const RESULT_KINDS: readonly EpubTranslationOutputKind[] = ['translated', 'bilingual']
+
+/** the name of each result, for each way */
+export const KIND_KEYS: Record<TranslationMode, Record<EpubTranslationOutputKind, StringKey>> = {
+  translate: { translated: 'btKindTranslated', bilingual: 'btKindBilingual' },
+  easy: { translated: 'btKindEasy', bilingual: 'btKindEasyBilingual' },
+}
 
 /** each language's name in itself, when the platform cannot name it */
 const AUTONYMS: Record<Lang, string> = {
@@ -147,13 +158,29 @@ export function chosenChapters(
   return open.filter((r) => chosen.has(r.index)).map((r) => r.index)
 }
 
-/** the suggested file name of a result next to the book */
+/** characters a file name cannot hold on Windows, and dots (they would read as more suffixes) */
+// eslint-disable-next-line no-control-regex -- stripping control chars is the point here
+const NAME_UNSAFE = /[\\/:*?"<>|.\u0000-\u001f]+/g
+
+/**
+ * The suggested file name of a result next to the book. With `easyWord` (the
+ * UI language's word for an easy explanation) the name carries it after the
+ * language: `<name>.<lang>.<word>.epub`, `<name>.<lang>.<word>.bilingual.epub`.
+ * It never equals the translation's name, so the default never overwrites a
+ * translated book.
+ */
 export function resultName(
   sourcePath: string,
   lang: string,
   kind: EpubTranslationOutputKind,
+  easyWord?: string,
 ): string {
-  return defaultResultName(sourcePath, lang, kind)
+  const plain = defaultResultName(sourcePath, lang, kind)
+  if (easyWord === undefined) return plain
+  const word = easyWord.replace(NAME_UNSAFE, ' ').replace(/\s+/g, ' ').trim() || 'easy'
+  const suffix = kind === 'bilingual' ? '.bilingual' : ''
+  const stem = plain.slice(0, -`.${lang}${suffix}.epub`.length)
+  return `${stem}.${lang}.${word}${suffix}.epub`
 }
 
 export const baseName = (path: string): string => path.split(/[\\/]/).pop() ?? path
@@ -170,6 +197,10 @@ function storage(): Storage | null {
   }
 }
 
+/** the storage key of a job's chapter choice; an easy explanation's is its own */
+const choiceKey = (docHash: string, lang: string, mode: TranslationMode): string =>
+  `${CHOICE_PREFIX}:${docHash}:${lang}${mode === 'easy' ? ':easy' : ''}`
+
 /**
  * Remember the chapters a translation was started with (spine indices only, no
  * book text), so "Continue" brings them back; null forgets (every chapter).
@@ -178,9 +209,10 @@ export function rememberChapters(
   docHash: string,
   lang: string,
   chapters: readonly number[] | undefined,
+  mode: TranslationMode = 'translate',
 ): void {
   try {
-    const key = `${CHOICE_PREFIX}:${docHash}:${lang}`
+    const key = choiceKey(docHash, lang, mode)
     if (chapters) storage()?.setItem(key, JSON.stringify([...chapters]))
     else storage()?.removeItem(key)
   } catch {
@@ -189,9 +221,13 @@ export function rememberChapters(
 }
 
 /** the remembered chapters, or null when there are none or they are unreadable */
-export function recallChapters(docHash: string, lang: string): number[] | null {
+export function recallChapters(
+  docHash: string,
+  lang: string,
+  mode: TranslationMode = 'translate',
+): number[] | null {
   try {
-    const raw = storage()?.getItem(`${CHOICE_PREFIX}:${docHash}:${lang}`)
+    const raw = storage()?.getItem(choiceKey(docHash, lang, mode))
     if (!raw) return null
     const parsed: unknown = JSON.parse(raw)
     if (!Array.isArray(parsed)) return null
@@ -210,9 +246,31 @@ export function jobPercent(progress: JobProgress | undefined): number {
   return Math.max(0, Math.min(100, Math.floor((progress.done / progress.total) * 100)))
 }
 
-/** the unfinished translation to offer when the book opens: a stopped one with its language */
-export function resumableTranslation(jobs: readonly JobStatus[]): JobStatus | null {
-  return jobs.find((j) => j.kind === 'translate' && j.state === 'stopped' && !!j.lang) ?? null
+/** the way a job record was translated: its `mode`, or a plain translation */
+export const jobMode = (job: Pick<JobStatus, 'mode'>): TranslationMode =>
+  job.mode === 'easy' ? 'easy' : 'translate'
+
+/**
+ * The unfinished job of one way to offer when the book opens: a stopped one
+ * with its language. Each way is offered on its own: an easy explanation's
+ * record never stands for the translation's, nor the other way round.
+ */
+export function resumableTranslation(
+  jobs: readonly JobStatus[],
+  mode: TranslationMode = 'translate',
+): JobStatus | null {
+  return (
+    jobs.find(
+      (j) => j.kind === 'translate' && j.state === 'stopped' && !!j.lang && jobMode(j) === mode,
+    ) ?? null
+  )
+}
+
+/** the unfinished jobs to offer when the book opens: at most one per way, the translation first */
+export function resumableTranslations(jobs: readonly JobStatus[]): JobStatus[] {
+  return (['translate', 'easy'] as const)
+    .map((mode) => resumableTranslation(jobs, mode))
+    .filter((job): job is JobStatus => job !== null)
 }
 
 // ── the result report ──

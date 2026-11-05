@@ -19,10 +19,14 @@
  * - The translation's provider record is written only when there is none,
  *   like a page translation: translations from different AIs may mix.
  *
+ * With `mode` 'easy' the call asks for an easy explanation and every read
+ * and write goes to the easy results; a plain call passes no mode, as before.
+ *
  * The answer is document data: it is stored as text and nothing in it runs.
  */
 import { guessLanguageFromText } from '../../../../../packages/pdf-structure/src/epub/language'
 import { JobUnitFailure } from '../../../../../packages/pdf-structure/src/jobs/errors'
+import type { TranslationMode } from '../../../../../packages/pdf-structure/src/store/job-keys'
 import type { TranslationBlockKey } from '../../../../../packages/pdf-structure/src/store/keys'
 import type { TranslationBlockInput } from '../../../../../packages/pdf-structure/src/store/store'
 import {
@@ -46,6 +50,8 @@ export interface RetranslateUnit {
 export interface RetranslateOptions {
   docHash: string
   lang: string
+  /** 'easy': the easy explanation's block; default the plain translation */
+  mode?: TranslationMode
   unit: RetranslateUnit
   /** the one model call (no tools) */
   send: TranslationSend
@@ -84,11 +90,15 @@ async function write(
 /** translate one stored block again; run errors (rate limit, sign-out, …) are thrown as they come */
 export async function retranslateBlock(o: RetranslateOptions): Promise<RetranslateOutcome> {
   const sourceLang = o.sourceLang ?? guessLanguageFromText(runsText(o.unit.source))
+  const easy = o.mode === 'easy'
+  // a plain request stays exactly as it was: no mode field
+  const mode = easy ? { mode: 'easy' as const } : {}
   const call = createTranslationModelCall({
     lang: o.lang,
     send: o.send,
     maxResends: 0,
     ...(sourceLang !== undefined ? { sourceLang } : {}),
+    ...mode,
   })
   const item = {
     block: { runs: o.unit.source, pageFingerprint: o.unit.key.pageFingerprint, page: o.unit.page },
@@ -110,10 +120,13 @@ export async function retranslateBlock(o: RetranslateOptions): Promise<Retransla
       docHash: o.docHash,
       lang: o.lang,
       blocks: [{ key: o.unit.key, status: 'failed', reason: result.reason }],
+      ...mode,
     })
     return { ok: false, reason: result.reason, stored: true }
   }
-  const stored = await o.store.translation(o.docHash, o.lang).catch(() => null)
+  const stored = await (
+    easy ? o.store.translation(o.docHash, o.lang, 'easy') : o.store.translation(o.docHash, o.lang)
+  ).catch(() => null)
   const hasMeta = !!(stored?.ok && stored.translation && stored.translation.provider !== null)
   if (!hasMeta) {
     await write(o.store, {
@@ -122,6 +135,7 @@ export async function retranslateBlock(o: RetranslateOptions): Promise<Retransla
       lang: o.lang,
       provider: o.model.provider,
       model: o.model.model,
+      ...mode,
     })
   }
   const block: TranslationBlockInput = { key: o.unit.key, status: 'translated', text: result.text }
@@ -135,6 +149,7 @@ export async function retranslateBlock(o: RetranslateOptions): Promise<Retransla
     docHash: o.docHash,
     lang: o.lang,
     blocks: [block],
+    ...mode,
   })
   return { ok: true, text: result.text }
 }

@@ -7,6 +7,7 @@
  */
 import { Fragment, memo } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactElement, ReactNode } from 'react'
+import type { TranslationMode } from '../../../../../packages/pdf-structure/src/store/job-keys'
 import type { InlineRun } from '../../../../../packages/pdf-structure/src/tree/types'
 import type { TFunc } from '../i18n/locale'
 import type {
@@ -26,6 +27,8 @@ import type { BilingualData } from './useBilingualData'
 export interface BilingualPageContext {
   docHash: string
   lang: string
+  /** the results the column shows: the plain translation or the easy explanation */
+  mode: TranslationMode
   /** original page (1-based) in the saved file */
   page: number
   counts: BilingualCounts
@@ -37,6 +40,8 @@ export interface BilingualPageContext {
 export interface BilingualParagraphContext {
   docHash: string
   lang: string
+  /** the results the column shows: the plain translation or the easy explanation */
+  mode: TranslationMode
   /** page the paragraph starts on */
   page: number
   /** the tree block (the table, for a cell paragraph) */
@@ -99,6 +104,8 @@ export interface BilingualColumnProps {
   page: BilingualPage | null
   docHash: string | null
   lang: string | null
+  /** the results shown (default: the plain translation) */
+  mode?: TranslationMode
   width: number
   height: number
   fontSize: number
@@ -389,18 +396,22 @@ export const BilingualColumn = memo(function BilingualColumn(
   if (!page) {
     return <div className="bl-col bl-col-blank" style={style} aria-hidden="true" />
   }
+  const mode: TranslationMode = props.mode === 'easy' ? 'easy' : 'translate'
   const ready = drawn && docHash !== null && lang !== null
   const lit: LitSentence | null =
     props.hoverUnitKey != null && props.hoverSentence != null
       ? { unitKey: props.hoverUnitKey, index: props.hoverSentence }
       : null
   const ctxOf = (itemId: string, unit: BilingualUnit): BilingualParagraphContext | null =>
-    docHash !== null && lang !== null ? { docHash, lang, page: page.page, itemId, unit } : null
+    docHash !== null && lang !== null
+      ? { docHash, lang, mode, page: page.page, itemId, unit }
+      : null
   const pageActions =
     ready && slots?.pageActions
       ? slots.pageActions({
           docHash: docHash!,
           lang: lang!,
+          mode,
           page: page.page,
           counts: page.counts,
           pending: pendingUnits(page),

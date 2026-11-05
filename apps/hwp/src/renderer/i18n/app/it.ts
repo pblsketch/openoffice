@@ -255,4 +255,7 @@ export const it = {
   checkAskAi: "Affida la correzione all'IA",
   checkHandedOff: "La richiesta è nel campo dell'IA. Controllala e inviala.",
   checkFixFailed: 'Non è stato possibile modificare.',
+  easyWordsLabel: 'Spiega con parole semplici',
+  easyWordsPrompt:
+    'Spiega in italiano il testo selezionato qui sotto in modo che lo capisca anche chi ha bisogno di testi facili da leggere. Usa parole di tutti i giorni e frasi brevi, e non tralasciare nessun fatto, numero o condizione. Non modificare il documento.\n\nTesto selezionato:\n{text}',
 } satisfies Record<keyof typeof zh, string>

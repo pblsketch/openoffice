@@ -51,6 +51,7 @@ Klikněte pravým tlačítkem kamkoli do textu — nabídka se přizpůsobí tom
 - **Schránka**: vystřihnout / kopírovat / vložit / **vložit jako čistý text**.
 - **Písmo, odstavec**: změna řady a velikosti, tučné/kurzíva/podtržené, zarovnání/odsazení/řádkování bez cestování na pásek.
 - **Synonyma**: vypíše synonyma vybraného slova; kliknutím na jedno ho nahradíte.
+- **Vysvětlit jednoduše** (AI): pošle výběr do panelu AI, aby ho vysvětlil jednoduchými slovy v jazyce rozhraní, a hned to spustí. Bez výběru je vypnuté a text skrytý před AI se neposílá.
 - **Přeložit** (AI): přeloží výběr do cílového jazyka (angličtina, zjednodušená čínština, japonština, korejština, francouzština, němčina, španělština, ...) přes panel AI.
 - **Nový komentář**: připojí komentář k výběru.
 - **Pravopis** (u chybně napsaného slova): navržené náhrady, ignorovat vše, přidat do slovníku, nastavit jazyk kontroly.

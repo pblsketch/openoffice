@@ -20,6 +20,12 @@
  *   exported as it is (no call).
  *   It refuses to start, saying why, when the AI is not connected.
  *
+ * - Mode (translation-reading spec 5.4): the plain translation or the easy
+ *   explanation. The easy explanation defaults to the UI language, cannot
+ *   have the translated PDF (the reason is shown where the ar/he/hi reason
+ *   is), and offers Markdown / EPUB alone or after each source paragraph.
+ *   Its confirmation counts its own stored results and edits.
+ *
  * The document is analyzed here (a structure job, no AI) with the stored AI
  * readings merged, so the job translates what the outputs will contain.
  * Nothing is sent from here: Start hands the confirmed choice and route to
@@ -49,6 +55,7 @@ import {
   translationJobParts,
   translationUnits,
 } from '../../../../../packages/pdf-structure/src/translate'
+import type { TranslationMode } from '../../../../../packages/pdf-structure/src/store/job-keys'
 import type { DocumentTree } from '../../../../../packages/pdf-structure/src/tree/types'
 import type { PdfStoreApi, PdfStructureApi, PdfStructureProgress } from '../../shared/ipc'
 import type { TFunc } from '../i18n/locale'
@@ -83,6 +90,8 @@ export interface TranslateStartRequest {
   /** the document tree with the stored AI readings merged (every page) */
   tree: DocumentTree
   lang: string
+  /** the plain translation or the easy explanation */
+  translationMode: TranslationMode
   /** 1-based pages; null = every page */
   pages: number[] | null
   /** the files to write; empty = store only */
@@ -119,6 +128,8 @@ export interface TranslateDialogProps {
   initialLang: string | null
   /** pages asked for; null = every page */
   initialPages: number[] | null
+  /** the mode asked for (the side-by-side view, a resumed job); default the plain translation */
+  initialMode?: TranslationMode
   onStart: (request: TranslateStartRequest) => Promise<TranslateStartAnswer>
   /** open the AI page-reading window (scanned documents) */
   onOpenAiRead?: () => void
@@ -137,6 +148,11 @@ const newJobId = (): string =>
   `translate-tree-${Date.now().toString(36)}-${(++jobSeq).toString(36)}`
 
 const FORMAT_KEY = { pdf: 'trFormatPdf', md: 'trFormatMd', epub: 'trFormatEpub' } as const
+const EASY_FORMAT_KEY = {
+  pdf: 'trFormatPdf',
+  md: 'trEasyFormatMd',
+  epub: 'trEasyFormatEpub',
+} as const
 
 /** "1-3, 5" from page numbers */
 export function pagesText(pages: readonly number[]): string {
@@ -168,6 +184,11 @@ export function TranslateDialog(props: TranslateDialogProps): ReactElement {
   const [target, setTarget] = useState<string | null>(
     props.initialLang && isTranslationLanguage(props.initialLang) ? props.initialLang : null,
   )
+  const [translationMode, setTranslationMode] = useState<TranslationMode>(
+    props.initialMode === 'easy' ? 'easy' : 'translate',
+  )
+  /** a language asked for or picked stays when the mode switches; else each mode's default */
+  const langChosenRef = useRef(target !== null)
   const allPages =
     !props.initialPages ||
     props.initialPages.length === 0 ||
@@ -213,10 +234,12 @@ export function TranslateDialog(props: TranslateDialogProps): ReactElement {
           stored.ok ? stored.pages.map((p) => [p.pageFingerprint, { payload: p.payload }]) : [],
         )
         const tree = readings.size > 0 ? applyStoredAiReadings(out.tree, readings) : out.tree
-        const fallback = defaultTargetLanguageForTree(tree, propsRef.current.lang)
+        const fallback = defaultTargetLanguageForTree(tree, propsRef.current.lang, translationMode)
         const lang0 = target ?? fallback
         setTarget(lang0)
-        setChosen(new Set([pdfFormatBlock(encrypted, lang0) === null ? 'pdf' : 'md']))
+        setChosen(
+          new Set([pdfFormatBlock(encrypted, lang0, translationMode) === null ? 'pdf' : 'md']),
+        )
         setLoad({ kind: 'ready', analysis: { docHash: out.docHash, tree } })
       } catch {
         if (alive) setLoad({ kind: 'failed' })
@@ -232,7 +255,8 @@ export function TranslateDialog(props: TranslateDialogProps): ReactElement {
 
   const analysis = load.kind === 'ready' ? load.analysis : null
   const lang0 = target ?? 'en'
-  const block = pdfFormatBlock(encrypted, lang0)
+  const easy = translationMode === 'easy'
+  const block = pdfFormatBlock(encrypted, lang0, translationMode)
   const formats = writableFormats(chosen, block)
   const bilingualAllowed = formats.length > 0
 
@@ -257,12 +281,27 @@ export function TranslateDialog(props: TranslateDialogProps): ReactElement {
   const formatError = formats.length === 0 && !storeOnly ? t('trFormatRequired') : null
   const canNext = !!analysis && !rangeError && !formatError && unitCount !== null && unitCount > 0
 
+  /** the PDF alone was chosen and the new choice cannot have it: offer Markdown instead */
+  const dropBlockedPdf = (blocked: boolean) => {
+    if (blocked) setChosen((prev) => (prev.size === 1 && prev.has('pdf') ? new Set(['md']) : prev))
+  }
+
   const changeLanguage = (next: string) => {
+    langChosenRef.current = true
     setTarget(next)
-    // the PDF alone was chosen and the new language cannot have it: offer Markdown instead
-    if (pdfFormatBlock(encrypted, next) !== null) {
-      setChosen((prev) => (prev.size === 1 && prev.has('pdf') ? new Set(['md']) : prev))
+    dropBlockedPdf(pdfFormatBlock(encrypted, next, translationMode) !== null)
+  }
+
+  /** switching sends nothing: it changes the choices and what the confirmation counts */
+  const changeMode = (next: TranslationMode) => {
+    if (next === translationMode) return
+    setTranslationMode(next)
+    let nextLang = lang0
+    if (!langChosenRef.current && analysis) {
+      nextLang = defaultTargetLanguageForTree(analysis.tree, propsRef.current.lang, next)
+      setTarget(nextLang)
     }
+    dropBlockedPdf(pdfFormatBlock(encrypted, nextLang, next) !== null)
   }
 
   const toggleFormat = (format: TranslationFormat) =>
@@ -279,11 +318,14 @@ export function TranslateDialog(props: TranslateDialogProps): ReactElement {
   }
 
   const pdfBlockText =
-    block === 'encrypted'
-      ? t('trPdfEncrypted')
-      : block === 'script'
-        ? t('trPdfScript', { language: languageName(lang0, lang) })
-        : null
+    block === 'easy'
+      ? t('trPdfEasy')
+      : block === 'encrypted'
+        ? t('trPdfEncrypted')
+        : block === 'script'
+          ? t('trPdfScript', { language: languageName(lang0, lang) })
+          : null
+  const formatKey = easy ? EASY_FORMAT_KEY : FORMAT_KEY
 
   return (
     <div className="pdf-modal-mask">
@@ -313,6 +355,30 @@ export function TranslateDialog(props: TranslateDialogProps): ReactElement {
             )}
             {analysis && (
               <>
+                <fieldset className="pdf-convert-pages" data-field="mode">
+                  <legend>{t('trMode')}</legend>
+                  <label className="pdf-modal-check">
+                    <input
+                      type="radio"
+                      name="pdf-translate-mode"
+                      data-field="mode-translate"
+                      checked={!easy}
+                      onChange={() => changeMode('translate')}
+                    />
+                    {t('trModeTranslate')}
+                  </label>
+                  <label className="pdf-modal-check">
+                    <input
+                      type="radio"
+                      name="pdf-translate-mode"
+                      data-field="mode-easy"
+                      checked={easy}
+                      onChange={() => changeMode('easy')}
+                    />
+                    {t('trModeEasy')}
+                  </label>
+                </fieldset>
+
                 <label className="pdf-field">
                   <span>{t('trLanguage')}</span>
                   <select
@@ -383,7 +449,7 @@ export function TranslateDialog(props: TranslateDialogProps): ReactElement {
                           disabled={disabled}
                           onChange={() => toggleFormat(format)}
                         />
-                        {t(FORMAT_KEY[format])}
+                        {t(formatKey[format])}
                       </label>
                     )
                   })}
@@ -409,7 +475,7 @@ export function TranslateDialog(props: TranslateDialogProps): ReactElement {
                       disabled={!bilingualAllowed}
                       onChange={(e) => setBilingual(e.target.checked)}
                     />
-                    {t('trBilingual')}
+                    {easy ? t('trEasyBilingual') : t('trBilingual')}
                   </label>
                   {showErrors && formatError && (
                     <span className="pdf-convert-error" role="alert" data-error="format">
@@ -470,6 +536,7 @@ export function TranslateDialog(props: TranslateDialogProps): ReactElement {
               docHash={analysis.docHash}
               tree={analysis.tree}
               target={lang0}
+              translationMode={translationMode}
               pages={pages}
               formats={formats}
               bilingual={bilingualAllowed && bilingual}
@@ -492,6 +559,7 @@ function TranslateConfirm({
   docHash,
   tree,
   target,
+  translationMode,
   pages,
   formats,
   bilingual,
@@ -505,6 +573,7 @@ function TranslateConfirm({
   docHash: string
   tree: DocumentTree
   target: string
+  translationMode: TranslationMode
   pages: number[] | null
   formats: TranslationFormat[]
   bilingual: boolean
@@ -532,6 +601,7 @@ function TranslateConfirm({
   const latest = useRef({ settings, statuses: connection.statuses })
   latest.current = { settings, statuses: connection.statuses }
   const routeKey = route.state === 'ready' ? `${route.provider}\n${route.model}` : ''
+  const easy = translationMode === 'easy'
 
   useEffect(() => {
     let alive = true
@@ -554,8 +624,9 @@ function TranslateConfirm({
   // edited blocks of the language: "translate again from the start" asks whether to keep them
   useEffect(() => {
     let alive = true
-    void api.store
-      .translation(docHash, target)
+    void (
+      easy ? api.store.translation(docHash, target, 'easy') : api.store.translation(docHash, target)
+    )
       .then((out) => {
         if (!alive || !out.ok || !out.translation) return
         setEditedCount(out.translation.blocks.filter((b) => b.edited === true).length)
@@ -564,7 +635,7 @@ function TranslateConfirm({
     return () => {
       alive = false
     }
-  }, [api, docHash, target])
+  }, [api, docHash, target, easy])
 
   // the store tells what is already translated; the route's model tells a provider change
   useEffect(() => {
@@ -574,7 +645,9 @@ function TranslateConfirm({
       lang: target,
       send: () => Promise.reject(new Error('the estimate sends nothing')),
       ...(pages ? { pages } : {}),
+      ...(easy ? { mode: 'easy' as const } : {}),
     })
+    // the easy explanation counts its own stored results
     estimateTranslationJob({
       docHash,
       lang: target,
@@ -582,6 +655,7 @@ function TranslateConfirm({
       batch: parts.batch,
       model: { provider, model },
       store: createIpcJobStore(api.store),
+      ...(easy ? { mode: 'easy' as const } : {}),
     }).then(
       (e) => {
         if (alive) setEstimate(e)
@@ -629,6 +703,7 @@ function TranslateConfirm({
         docHash,
         tree,
         lang: target,
+        translationMode,
         pages,
         formats,
         bilingual,
@@ -693,8 +768,10 @@ function TranslateConfirm({
   return (
     <>
       <ul className="pdf-ai-read-summary" data-confirm>
-        <li data-language={target}>
-          {t('trConfirmLanguage', { language: languageName(target, lang) })}
+        <li data-language={target} {...(easy ? { 'data-mode': 'easy' } : {})}>
+          {t(easy ? 'trConfirmEasyLanguage' : 'trConfirmLanguage', {
+            language: languageName(target, lang),
+          })}
         </li>
         <li data-calls={estimate?.calls ?? ''}>
           {estimate
@@ -703,7 +780,10 @@ function TranslateConfirm({
         </li>
         {estimate && estimate.done > 0 && (
           <li data-done={estimate.done}>
-            {t('trConfirmDone', { done: estimate.done, total: estimate.total })}
+            {t(easy ? 'trEasyConfirmDone' : 'trConfirmDone', {
+              done: estimate.done,
+              total: estimate.total,
+            })}
           </li>
         )}
         {!nothingToSend && route.state === 'checking' && (
@@ -737,7 +817,7 @@ function TranslateConfirm({
       </p>
       {!nothingToSend && change && (
         <p className="pdf-translate-warning" role="alert" data-provider-change>
-          {t('trProviderChange', {
+          {t(easy ? 'trEasyProviderChange' : 'trProviderChange', {
             stored: storedName(change.stored),
             next: routeLabel(route as ReadyRoute, connection.statuses),
           })}
@@ -745,7 +825,7 @@ function TranslateConfirm({
       )}
       {nothingToSend && (
         <p className="pdf-ai-read-status" data-nothing>
-          {t('trConfirmNothing')}
+          {easy ? t('trEasyConfirmNothing') : t('trConfirmNothing')}
         </p>
       )}
       {!nothingToSend && connectChoice && (
@@ -777,7 +857,7 @@ function TranslateConfirm({
       {askRestart && estimate && (
         <div className="pdf-translate-restart" role="alertdialog" data-restart-confirm>
           <p>
-            {t('trRestartConfirm', {
+            {t(easy ? 'trEasyRestartConfirm' : 'trRestartConfirm', {
               language: languageName(target, lang),
               count: estimate.done,
             })}
@@ -825,7 +905,7 @@ function TranslateConfirm({
                 disabled={route.state !== 'ready' || starting || sendGate.noticeDue}
                 onClick={() => startJob('restart')}
               >
-                {t('trRestartYes')}
+                {easy ? t('trEasyRestartYes') : t('trRestartYes')}
               </button>
             )}
           </div>
@@ -845,7 +925,7 @@ function TranslateConfirm({
             disabled={starting}
             onClick={() => setAskRestart(true)}
           >
-            {t('trRestart')}
+            {easy ? t('trEasyRestart') : t('trRestart')}
           </button>
         )}
         <button type="button" className="pdf-modal-btn" data-action="back" onClick={onBack}>
@@ -883,7 +963,7 @@ function TranslateConfirm({
             disabled={!canStart}
             onClick={() => startJob('translate')}
           >
-            {t('trStart')}
+            {easy ? t('trEasyStart') : t('trStart')}
           </button>
         )}
       </div>

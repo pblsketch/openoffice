@@ -42,6 +42,7 @@ Rechtsklicken Sie irgendwo im Text — das Menü richtet sich nach dem, was Sie 
 - **Zwischenablage**: Ausschneiden / Kopieren / Einfügen / **Unformatierter Unicode-Text einfügen**.
 - **Schriftart, Absatz**: Schriftart und -größe, Fett/Kursiv/Unterstrichen, Ausrichtung/Einzug/Abstand ändern, ohne zum Menüband zu gehen.
 - **Synonyme**: listet Synonyme zum ausgewählten Wort auf; ein Klick ersetzt es.
+- **In einfachen Worten erklären** (KI): schickt die Auswahl an den KI-Bereich, um sie in einfachen Worten in der Sprache der Oberfläche zu erklären, und führt das sofort aus. Ohne Auswahl ist der Eintrag aus, und vor der KI verborgener Text wird nicht gesendet.
 - **Übersetzen** (KI): übersetzt die Auswahl über den KI-Bereich in die Zielsprache (Englisch, vereinfachtes Chinesisch, Japanisch, Koreanisch, Französisch, Deutsch, Spanisch, …).
 - **Neuer Kommentar**: hängt einen Kommentar an die Auswahl an.
 - **Rechtschreibung** (auf einem falsch geschriebenen Wort): Ersetzungsvorschläge, alle ignorieren, zum Wörterbuch hinzufügen, Rechtschreibsprache festlegen.

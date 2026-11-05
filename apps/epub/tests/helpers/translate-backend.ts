@@ -4,6 +4,9 @@
  * real result store keeps the translations in a temporary folder (through the
  * editor's own store handlers), and a fake model answers on the AI stream.
  * No real `claude` or `codex` is ever reached: `aiStream` is this file's.
+ * Like the main process, the store calls and the result books take the
+ * request's mode: an easy explanation reads its own results and is built as
+ * one.
  */
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -141,6 +144,10 @@ export interface FakeBackend {
   store: ResultStore
   /** every model call's blocks, in order */
   calls: Array<Array<{ id: string; text: string }>>
+  /** every model call's system prompt, in order */
+  systems: string[]
+  /** the bytes of every result book written, by path */
+  written: Map<string, Uint8Array>
   /** 'ai' per model call and 'write' per result book, in order (tests add their own) */
   events: string[]
   aiStream: ReturnType<typeof vi.fn>
@@ -176,6 +183,8 @@ export async function createFakeBackend(
   const listeners = new Set<(chunk: IpcStreamChunk) => void>()
   const pending = new Map<string, () => void>()
   const calls: FakeBackend['calls'] = []
+  const systems: string[] = []
+  const written = new Map<string, Uint8Array>()
   const events: string[] = []
   const settings = { current: o.settings ?? SUBSCRIPTION_SETTINGS }
   const answer = { current: o.answer ?? prefixAnswer() }
@@ -189,6 +198,7 @@ export async function createFakeBackend(
     const blocks = requestBlocks(request.messages)
     const call = calls.length
     calls.push(blocks)
+    systems.push(request.system ?? '')
     const text = answer.current(blocks, call)
     if (text === null) {
       pending.set(request.requestId, () => emit({ requestId: request.requestId, type: 'done' }))
@@ -208,14 +218,19 @@ export async function createFakeBackend(
   const writeTranslated = vi.fn(async (request: EpubWriteTranslatedRequest) => {
     events.push('write')
     if (request.docHash !== saved.docHash) return { ok: false as const, error: 'stale' as const }
-    const stored = await store.readTranslation(request.docHash, request.lang)
+    const easy = request.mode === 'easy'
+    const stored = easy
+      ? await store.readTranslation(request.docHash, request.lang, 'easy')
+      : await store.readTranslation(request.docHash, request.lang)
     const built = await buildTranslatedEpub(saved.bytes, {
       kind: request.kind,
       lang: request.lang,
       ...(request.chapters ? { chapters: request.chapters } : {}),
       results: stored?.blocks ?? new Map(),
+      ...(easy ? { mode: 'easy' as const } : {}),
     })
     if (!built.ok) return { ok: false as const, error: 'refused' as const }
+    written.set(request.path, built.bytes)
     return {
       ok: true as const,
       path: request.path,
@@ -244,7 +259,8 @@ export async function createFakeBackend(
     pickResultTarget,
     writeTranslated,
     store: {
-      translation: (hash: string, lang: string) => handlers.translation(1, hash, lang),
+      translation: (hash: string, lang: string, ...mode: unknown[]) =>
+        handlers.translation(1, hash, lang, ...mode),
       unfinishedJobs: (hash: string) => handlers.unfinishedJobs(1, hash),
       write: (request: unknown) => handlers.write(1, request),
     },
@@ -276,6 +292,8 @@ export async function createFakeBackend(
     },
     store,
     calls,
+    systems,
+    written,
     events,
     aiStream,
     aiStreamCancel,

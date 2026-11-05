@@ -106,4 +106,40 @@ export const pt = {
   btReasonNotChosen: 'não escolhido',
   btReasonBroken: 'capítulo danificado',
   btReasonFixed: 'capítulo de layout fixo',
+  btMode: 'Modo',
+  btModeTranslate: 'Traduzir',
+  btModeEasy: 'Linguagem simples',
+  btEasyIntro:
+    'A linguagem simples reescreve o texto do livro com palavras fáceis no idioma escolhido, em novos arquivos EPUB. Este livro não muda.',
+  btEasyLanguage: 'Reescrever em',
+  btKindEasy: 'Livro em linguagem simples',
+  btKindEasyBilingual: 'Original seguido da linguagem simples',
+  btEasyConfirmTitle: 'Antes de reescrever em linguagem simples',
+  btEasyConfirmLanguage: 'Linguagem simples: {language}',
+  btEasyConfirmDone: '{done} de {total} blocos já estão reescritos e não serão enviados',
+  btEasyProviderChange:
+    'A versão em linguagem simples guardada foi feita com outra IA ({stored}). O restante será reescrito com {next}.',
+  btEasyNothing: 'Tudo o que foi escolhido já está reescrito. Nada é enviado.',
+  btEasyNoticeSends:
+    'A linguagem simples envia à IA o texto dos capítulos escolhidos (parágrafos com marcadores para a formatação), o título do livro e as entradas do sumário.',
+  btEasyRestart: 'Reescrever de novo desde o início',
+  btEasyRestartConfirm:
+    'Apagar a versão em linguagem simples guardada ({language}, {count} blocos) e reescrever tudo de novo?',
+  btEasyRestartYes: 'Apagar e reescrever',
+  btEasyRestartSaveYes: 'Salvar, apagar e reescrever',
+  btEasySaveAndStart: 'Salvar e reescrever',
+  btEasyRunning: 'Reescrevendo em linguagem simples ({language}): {done}/{total} blocos',
+  btEasyDone: 'Linguagem simples ({language}) concluída ({count} blocos)',
+  btEasyStoppedCancelled: 'A reescrita em linguagem simples foi interrompida.',
+  btEasyStoppedFailures:
+    'A reescrita em linguagem simples parou porque várias solicitações falharam seguidas.',
+  btEasyStoppedStore:
+    'A reescrita em linguagem simples parou porque os resultados não puderam ser guardados.',
+  btEasyStoppedError: 'A reescrita em linguagem simples parou: {reason}',
+  btEasyStoppedProgress: '{done} de {total} blocos estão reescritos e guardados.',
+  btEasyExportPartial: 'Exportar o que foi reescrito até agora',
+  btEasyResume: 'Linguagem simples não concluída ({language}) {percent}% — continuar?',
+  btEasyReportTitle: 'Linguagem simples concluída',
+  btEasyReportPartialTitle: 'O que foi reescrito até agora foi exportado',
+  btEasyReportTranslated: 'Blocos reescritos em linguagem simples ({language}): {count}',
 } satisfies Record<keyof typeof zh, string>

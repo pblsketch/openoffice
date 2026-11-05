@@ -251,4 +251,7 @@ export const pl = {
   checkAskAi: 'Zleć poprawki AI',
   checkHandedOff: 'Prośba jest w polu AI. Sprawdź ją i wyślij.',
   checkFixFailed: 'Nie udało się zmienić.',
+  easyWordsLabel: 'Wyjaśnij prostymi słowami',
+  easyWordsPrompt:
+    'Wyjaśnij po polsku zaznaczony poniżej tekst tak, aby zrozumiała go także osoba, która potrzebuje tekstu łatwego do czytania. Używaj codziennych słów i krótkich zdań i nie pomijaj żadnego faktu, liczby ani warunku. Nie zmieniaj dokumentu.\n\nZaznaczony tekst:\n{text}',
 } satisfies Record<keyof typeof zh, string>

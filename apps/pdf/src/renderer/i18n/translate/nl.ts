@@ -87,4 +87,30 @@ export const nl = {
   trRestartEditedCount: '{count} alinea’s zijn door iemand bewerkt.',
   trRestartDiscardEdited: 'Ook de {count} door iemand bewerkte alinea’s verwijderen',
   trRestartKeepEdited: 'Bewerkte alinea’s behouden',
+  trMode: 'Soort',
+  trModeTranslate: 'Vertaling',
+  trModeEasy: 'Eenvoudige uitleg',
+  trPdfEasy:
+    'Een eenvoudige uitleg is langer dan het origineel en past niet op de plek ervan. Markdown en EPUB werken wel.',
+  trEasyFormatMd: 'Markdown met eenvoudige uitleg',
+  trEasyFormatEpub: 'EPUB met eenvoudige uitleg',
+  trEasyBilingual:
+    'Origineel en dan uitleg: na elke oorspronkelijke alinea volgt de eenvoudige uitleg ervan (uit: alleen de uitleg)',
+  trEasyFileWord: 'eenvoudige uitleg',
+  trEasyPickTitle: '{format} met eenvoudige uitleg opslaan',
+  trConfirmEasyLanguage: 'Taal van de uitleg: {language}',
+  trEasyConfirmDone:
+    '{done} van de {total} blokken zijn al uitgelegd en worden niet opnieuw verstuurd',
+  trEasyConfirmNothing:
+    'Alle blokken op de gekozen pagina’s zijn al uitgelegd. Er wordt niets verstuurd; de bestanden worden geschreven uit de bewaarde uitleg.',
+  trEasyProviderChange:
+    'De bewaarde uitleg is gemaakt met {stored}. Doorgaan met {next} mengt twee AI’s in één uitleg.',
+  trEasyStart: 'Uitleg starten',
+  trEasyRestart: 'Opnieuw uitleggen vanaf het begin…',
+  trEasyRestartConfirm:
+    'De bewaarde eenvoudige uitleg in het {language} ({count} blokken) verwijderen en alle blokken opnieuw uitleggen? Verwijderde uitleg kan niet worden teruggezet.',
+  trEasyRestartYes: 'Opnieuw uitleggen',
+  trEasyRunning: 'Eenvoudige uitleg in het {language} maken… {done}/{total} blokken',
+  trEasyDone: 'De eenvoudige uitleg in het {language} is klaar ({count} blokken).',
+  trResumeEasy: 'Onvoltooide eenvoudige uitleg ({language}) {percent}% — doorgaan?',
 } satisfies Record<keyof typeof zh, string>

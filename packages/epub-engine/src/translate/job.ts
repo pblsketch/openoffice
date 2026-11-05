@@ -4,6 +4,10 @@
  * translation, with the EPUB units, batching and model call. The app (in the
  * editor screen) and the terminal command both start it after the user
  * confirmed; nothing here starts on its own.
+ *
+ * `mode` 'easy' makes every step an easy explanation's: the easy instruction,
+ * the easy results in the store and the easy job record
+ * (`translate.<lang>.easy`). Left out, everything is the plain translation's.
  */
 import {
   estimateTranslationJob,
@@ -17,6 +21,7 @@ import {
   type StartTranslationJobOptions,
   type TranslationJobItem,
   type TranslationJobPlan,
+  type TranslationMode,
   type TranslationSend,
 } from '@genoffice/pdf-structure'
 import { batchEpubTranslationItems, createEpubTranslationModelCall } from './call'
@@ -30,13 +35,18 @@ export interface EpubTranslationJobPartsOptions {
   maxTokens?: number
   /** resends of mismatched units; default EPUB_TRANSLATION_MAX_RESENDS */
   maxResends?: number
+  /** 'easy': an easy explanation; default 'translate' */
+  mode?: TranslationMode
 }
 
 /** the book-specific options of pdf-structure's startTranslationJob / estimateTranslationJob */
 export function epubTranslationJobParts(
   units: readonly EpubTranslationUnit[],
   o: EpubTranslationJobPartsOptions,
-): Pick<StartTranslationJobOptions<EpubTranslationUnit>, 'blocks' | 'batch' | 'callModel'> {
+): Pick<
+  StartTranslationJobOptions<EpubTranslationUnit>,
+  'blocks' | 'batch' | 'callModel' | 'mode'
+> {
   return {
     blocks: units,
     batch: epubBatcher(o.maxTokens),
@@ -44,7 +54,9 @@ export function epubTranslationJobParts(
       lang: o.lang,
       send: o.send,
       ...(o.maxResends !== undefined ? { maxResends: o.maxResends } : {}),
+      ...(o.mode !== undefined ? { mode: o.mode } : {}),
     }),
+    ...(o.mode === 'easy' ? { mode: 'easy' as const } : {}),
   }
 }
 
@@ -68,6 +80,8 @@ export interface EpubTranslationPlanInput {
   keepEdited?: boolean
   /** token budget per batch; default TRANSLATION_BATCH_TOKENS */
   maxTokens?: number
+  /** 'easy': plan the easy explanation (its stored results); default 'translate' */
+  mode?: TranslationMode
 }
 
 function planInput(o: EpubTranslationPlanInput) {
@@ -80,6 +94,7 @@ function planInput(o: EpubTranslationPlanInput) {
     store: o.store,
     ...(o.restart !== undefined ? { restart: o.restart } : {}),
     ...(o.keepEdited !== undefined ? { keepEdited: o.keepEdited } : {}),
+    ...(o.mode !== undefined ? { mode: o.mode } : {}),
   }
 }
 
@@ -109,7 +124,8 @@ export interface StartEpubTranslationJobOptions
 }
 
 /**
- * Start translating the book (job record `translate.<lang>`); throws
+ * Start translating the book (job record `translate.<lang>`, or
+ * `translate.<lang>.easy` with `mode` 'easy'); throws
  * DocumentJobBusyError when the book already has a job here (the lock
  * registry); jobs of other programs are the caller's to check.
  */
@@ -125,6 +141,7 @@ export function startEpubTranslationJob(
       send,
       ...(maxTokens !== undefined ? { maxTokens } : {}),
       ...(maxResends !== undefined ? { maxResends } : {}),
+      ...(o.mode !== undefined ? { mode: o.mode } : {}),
     }),
   })
 }

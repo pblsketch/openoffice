@@ -44,6 +44,7 @@ import type {
 } from '../../../packages/pdf-structure/src/tree/types'
 import { strings } from '../src/renderer/i18n/strings'
 import type { TFunc } from '../src/renderer/i18n/locale'
+import type { TranslationMode } from '../../../packages/pdf-structure/src/store/job-keys'
 import type { PdfStoreWriteRequest, PdfStoredTranslation } from '../src/shared/ipc'
 import { DocumentJobSession } from '../src/renderer/doc-jobs/job-session'
 import { useBilingual } from '../src/renderer/bilingual/useBilingual'
@@ -215,11 +216,15 @@ function fakeBridge(initial: { settings: AiSettings; statuses: SubscriptionStatu
 
 // ── the store ──
 
+/** the fake store's key: the language, with `#easy` for an easy explanation */
+const storeKey = (lang: string, mode?: string): string => (mode === 'easy' ? `${lang}#easy` : lang)
+
 function fakeStore(tree: DocumentTree, stored: Record<string, PdfStoredTranslation> = {}) {
   const translations = new Map<
     string,
     { provider: string | null; model: string | null; blocks: Map<string, TranslationBlockEntry> }
   >()
+  // a key `ko#easy` stores an easy explanation in Korean
   for (const [lang, tr] of Object.entries(stored)) {
     translations.set(lang, {
       provider: tr.provider,
@@ -229,23 +234,25 @@ function fakeStore(tree: DocumentTree, stored: Record<string, PdfStoredTranslati
   }
   const writes: PdfStoreWriteRequest[] = []
   const jobs: JobRecordInput[] = []
-  const ensure = (lang: string) => {
-    let tr = translations.get(lang)
+  const ensure = (lang: string, mode?: string) => {
+    let tr = translations.get(storeKey(lang, mode))
     if (!tr) {
       tr = { provider: null, model: null, blocks: new Map() }
-      translations.set(lang, tr)
+      translations.set(storeKey(lang, mode), tr)
     }
     return tr
   }
   const store = {
     docHash: vi.fn(async () => ({ ok: true as const, docHash: DOC })),
     aiReadPages: vi.fn(async () => ({ ok: true as const, pages: [] })),
-    translationRecency: vi.fn(async () => ({
+    translationRecency: vi.fn(async (_doc: string, mode?: string) => ({
       ok: true as const,
-      langs: [...translations.keys()].map((lang) => ({ lang, savedAt: 5 })),
+      langs: [...translations.keys()]
+        .filter((key) => key.endsWith('#easy') === (mode === 'easy'))
+        .map((key) => ({ lang: key.replace(/#easy$/, ''), savedAt: 5 })),
     })),
-    translation: vi.fn(async (_doc: string, lang: string) => {
-      const tr = translations.get(lang)
+    translation: vi.fn(async (_doc: string, lang: string, mode?: string) => {
+      const tr = translations.get(storeKey(lang, mode))
       return {
         ok: true as const,
         translation: tr
@@ -258,16 +265,16 @@ function fakeStore(tree: DocumentTree, stored: Record<string, PdfStoredTranslati
     write: vi.fn(async (request: PdfStoreWriteRequest) => {
       writes.push(request)
       if (request.kind === 'translationMeta') {
-        const tr = ensure(request.lang)
+        const tr = ensure(request.lang, request.mode)
         tr.provider = request.provider
         tr.model = request.model
       }
       if (request.kind === 'translationBlocks') {
-        const tr = ensure(request.lang)
+        const tr = ensure(request.lang, request.mode)
         for (const b of request.blocks) tr.blocks.set(blockKeyString(b.key), { ...b, savedAt: 9 })
       }
       if (request.kind === 'editedTranslationBlock') {
-        const tr = ensure(request.lang)
+        const tr = ensure(request.lang, request.mode)
         tr.blocks.set(blockKeyString(request.key), {
           key: request.key,
           status: 'translated',
@@ -340,7 +347,7 @@ interface HarnessProps {
   api: BilingualDataApi
   store: BilingualStoreApi
   session: DocumentJobSession
-  onTranslateAll: (lang: string | null) => void
+  onTranslateAll: (lang: string | null, mode: TranslationMode) => void
 }
 
 function Harness(p: HarnessProps): ReactElement {
@@ -842,7 +849,209 @@ describe('translate all pages', () => {
     const tree = fakeTree()
     const m = await mount({ stored: { ko: storedOf(tree, 'ko', { 'p1.0': { text: '서론' } }) } })
     await click(q(m.el, '[data-action="bl-translate-all"]'))
-    expect(m.onTranslateAll).toHaveBeenCalledWith('ko')
+    expect(m.onTranslateAll).toHaveBeenCalledWith('ko', 'translate')
+    expect(bridge.api.aiStream).not.toHaveBeenCalled()
+  })
+})
+
+// ── the easy explanation (translation-reading spec 5.3) ──
+
+describe('easy explanation in the side-by-side view', () => {
+  const modeButton = (el: Element, mode: TranslationMode) =>
+    q(el, `[data-bl-mode="${mode}"]`) as HTMLButtonElement | null
+  const easyStored = (tree: DocumentTree) => ({
+    ko: storedOf(tree, 'ko', { 'p2.0': { text: '둘째 쪽 번역' } }),
+    'ko#easy': storedOf(tree, 'ko', { 'p2.0': { text: '둘째 쪽 쉬운 풀이' } }),
+  })
+
+  it('defaults to the translation; the switch shows the easy results and is remembered; nothing is sent', async () => {
+    const tree = fakeTree()
+    const m = await mount({ stored: easyStored(tree) })
+    expect(modeButton(m.el, 'translate')?.getAttribute('aria-pressed')).toBe('true')
+    expect(modeButton(m.el, 'easy')?.getAttribute('aria-pressed')).toBe('false')
+    expect(item(m.el, 'p2.0').textContent).toContain('둘째 쪽 번역')
+
+    await click(modeButton(m.el, 'easy'))
+    await until(
+      () => item(m.el, 'p2.0').textContent?.includes('쉬운 풀이') === true,
+      'the easy text',
+    )
+    expect(item(m.el, 'p2.0').textContent).not.toContain('둘째 쪽 번역')
+    // a paragraph with no easy result stays the faint source text
+    expect(item(m.el, 'p1.3').className).toContain('bl-source')
+    expect(m.store.translation).toHaveBeenCalledWith(DOC, 'ko', 'easy')
+    expect(m.store.translationRecency).toHaveBeenCalledWith(DOC, 'easy')
+    expect(window.localStorage.getItem('genoffice-pdf-bilingual-mode')).toBe('easy')
+    // the labels follow the mode
+    expect(pageButton(m.el, 2)).toBeNull()
+    expect(pageButton(m.el, 1)?.textContent).toBe(t('blEasyPage'))
+    expect(q(m.el, '[data-action="bl-translate-all"]')?.textContent).toBe(t('blEasyTranslateAll'))
+
+    // hovering a paragraph and switching back send nothing and write nothing
+    await act(async () => {
+      item(m.el, 'p2.0').dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+    })
+    await click(modeButton(m.el, 'translate'))
+    await until(() => item(m.el, 'p2.0').textContent?.includes('번역') === true, 'the translation')
+    await click(modeButton(m.el, 'easy'))
+    await settle()
+    expect(bridge.api.aiStream).not.toHaveBeenCalled()
+    expect(m.writes).toEqual([])
+  })
+
+  it('a new view opens in the mode chosen last', async () => {
+    window.localStorage.setItem('genoffice-pdf-bilingual-mode', 'easy')
+    const tree = fakeTree()
+    const m = await mount({ stored: easyStored(tree) })
+    expect(modeButton(m.el, 'easy')?.getAttribute('aria-pressed')).toBe('true')
+    await until(
+      () => item(m.el, 'p2.0').textContent?.includes('쉬운 풀이') === true,
+      'the easy text',
+    )
+    expect(q(m.el, '.bl-bar-lang span')?.textContent).toBe(t('blEasyLanguage'))
+  })
+
+  it('an easy view with nothing stored defaults to the UI language', async () => {
+    window.localStorage.setItem('genoffice-pdf-bilingual-mode', 'easy')
+    const m = await mount({
+      stored: { ko: storedOf(fakeTree(), 'ko', { 'p2.0': { text: '둘' } }) },
+    })
+    expect((q(m.el, '.bl-bar-lang select') as HTMLSelectElement).value).toBe('en')
+  })
+
+  it('"explain this page" runs an easy page job: every write and job record carries the mode', async () => {
+    window.localStorage.setItem('genoffice-pdf-bilingual-mode', 'easy')
+    const tree = fakeTree()
+    const m = await mount({ stored: easyStored(tree) })
+    await until(() => pageButton(m.el, 1) !== null, 'the page button')
+    expect(pageButton(m.el, 3)?.textContent).toBe(t('blEasyPage'))
+    await click(pageButton(m.el, 1))
+    await until(() => bridge.starts.length === 1, 'the call')
+    expect(bridge.starts[0]!.tools ?? []).toEqual([])
+    await act(async () => bridge.answerAll())
+    await until(() => item(m.el, 'p1.3').textContent?.includes('[ko] One more') === true, 'refresh')
+    const stored = m.writes.filter(
+      (w) => w.kind === 'translationBlocks' || w.kind === 'translationMeta',
+    )
+    expect(stored.length).toBeGreaterThan(0)
+    expect(stored.every((w) => 'mode' in w && w.mode === 'easy')).toBe(true)
+    expect(m.jobs.length).toBeGreaterThan(0)
+    expect(m.jobs.every((j) => j.kind === 'translate-page' && j.mode === 'easy')).toBe(true)
+    // the plain translation is left alone
+    expect(m.translations.get('ko')!.blocks.size).toBe(1)
+    expect(m.translations.get('ko#easy')!.blocks.size).toBe(5)
+  })
+
+  it('"explain the rest (N)" names the easy explanation', () => {
+    expect(pageActionLabel({ units: 4, pending: 3 }, t, 'easy')).toBe(t('blEasyRest', { count: 3 }))
+    expect(pageActionLabel({ units: 4, pending: 4 }, t, 'easy')).toBe(t('blEasyPage'))
+  })
+
+  it('"explain again" on one paragraph writes the easy result only', async () => {
+    window.localStorage.setItem('genoffice-pdf-bilingual-mode', 'easy')
+    const tree = fakeTree()
+    const m = await mount({ stored: easyStored(tree) })
+    await until(
+      () => item(m.el, 'p2.0').textContent?.includes('쉬운 풀이') === true,
+      'the easy text',
+    )
+    const again = q(item(m.el, 'p2.0'), '[data-action="bl-retranslate"]')!
+    expect(again.textContent).toBe(t('blEasyRetranslate'))
+    await click(again)
+    await until(() => bridge.starts.length === 1, 'the call')
+    expect(promptBlocks(bridge.starts[0]!).map((b) => b.text)).toEqual(['Second page text.'])
+    await act(async () => bridge.answerAll())
+    await until(() => m.writes.some((w) => w.kind === 'translationBlocks'), 'the write')
+    expect(m.writes.find((w) => w.kind === 'translationBlocks')).toMatchObject({
+      lang: 'ko',
+      mode: 'easy',
+      blocks: [{ key: keysOf(tree).get('p2.0'), status: 'translated' }],
+    })
+    const plain = m.translations.get('ko')!.blocks.get(blockKeyString(keysOf(tree).get('p2.0')!))
+    expect(plain).toMatchObject({ text: '둘째 쪽 번역' })
+    expect(m.jobs).toEqual([])
+  })
+
+  it('an edit of an easy paragraph is stored as an edited easy block', async () => {
+    window.localStorage.setItem('genoffice-pdf-bilingual-mode', 'easy')
+    const tree = fakeTree()
+    const m = await mount({ stored: easyStored(tree) })
+    await until(
+      () => item(m.el, 'p2.0').textContent?.includes('쉬운 풀이') === true,
+      'the easy text',
+    )
+    await dblclick(item(m.el, 'p2.0'))
+    const area = q(item(m.el, 'p2.0'), 'textarea') as HTMLTextAreaElement
+    expect(area.getAttribute('aria-label')).toBe(t('blEasyEditLabel'))
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(
+        area,
+        '사람이 고친 쉬운 풀이',
+      )
+      area.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await click(q(item(m.el, 'p2.0'), '[data-action="bl-edit-save"]'))
+    await until(() => item(m.el, 'p2.0').classList.contains('bl-edited'), 'the edit to show')
+    expect(m.writes).toEqual([
+      {
+        kind: 'editedTranslationBlock',
+        docHash: DOC,
+        lang: 'ko',
+        key: keysOf(tree).get('p2.0'),
+        text: '사람이 고친 쉬운 풀이',
+        mode: 'easy',
+      },
+    ])
+    expect(bridge.api.aiStream).not.toHaveBeenCalled()
+  })
+
+  it('the paid-route question is asked once per tab, whatever the mode', async () => {
+    const base = normalizeAiSettings({})
+    const m = await mount({
+      settings: {
+        provider: 'anthropic',
+        providers: { ...base.providers, anthropic: { apiKey: 'k', model: 'claude-sonnet-x' } },
+      },
+    })
+    await until(() => q(col(m.el, 1), '.bl-provider') !== null, 'the route')
+    await click(pageButton(m.el, 1))
+    expect(q(col(m.el, 1), '[data-bl-paid-ask="1"]')).not.toBeNull()
+    await click(q(col(m.el, 1), '[data-action="bl-paid-yes"]'))
+    await until(() => bridge.starts.length === 1, 'the call')
+    await act(async () => bridge.answerAll())
+    await until(() => pageButton(m.el, 2)?.disabled === false, 'the job to end')
+
+    await click(modeButton(m.el, 'easy'))
+    await until(() => pageButton(m.el, 2)?.textContent === t('blEasyPage'), 'the easy labels')
+    await click(pageButton(m.el, 2))
+    expect(q(col(m.el, 2), '[data-bl-paid-ask]')).toBeNull()
+    await until(() => bridge.starts.length === 2, 'the easy call')
+    expect(bridge.starts[1]!.settings.provider).toBe('anthropic')
+  })
+
+  it('the first paid press in the easy mode asks with the easy words; nothing is sent', async () => {
+    window.localStorage.setItem('genoffice-pdf-bilingual-mode', 'easy')
+    const base = normalizeAiSettings({})
+    const m = await mount({
+      settings: {
+        provider: 'anthropic',
+        providers: { ...base.providers, anthropic: { apiKey: 'k', model: 'claude-sonnet-x' } },
+      },
+    })
+    await until(() => q(col(m.el, 1), '.bl-provider') !== null, 'the route')
+    await click(pageButton(m.el, 1))
+    expect(q(col(m.el, 1), '[data-action="bl-paid-yes"]')?.textContent).toBe(t('blEasyPaidYes'))
+    await settle()
+    expect(bridge.api.aiStream).not.toHaveBeenCalled()
+  })
+
+  it('"explain all pages" opens the document window in the easy mode; nothing is sent', async () => {
+    window.localStorage.setItem('genoffice-pdf-bilingual-mode', 'easy')
+    const tree = fakeTree()
+    const m = await mount({ stored: easyStored(tree) })
+    await until(() => q(m.el, '[data-action="bl-translate-all"]') !== null, 'the bar')
+    await click(q(m.el, '[data-action="bl-translate-all"]'))
+    expect(m.onTranslateAll).toHaveBeenCalledWith('ko', 'easy')
     expect(bridge.api.aiStream).not.toHaveBeenCalled()
   })
 })

@@ -22,7 +22,10 @@ export async function pdfStatus(
   const bytes = readInput(path)
   const docHash = documentHash(bytes)
   const store = resultStore(ctx.env)
-  const here = documentJobs.running(docHash)
+  // an easy explanation is not shown (spec 6.3): its job never stands in for
+  // a translation's, and its records and results make no translation entry
+  const inProcess = documentJobs.running(docHash)
+  const here = inProcess?.mode === 'easy' ? null : inProcess
   // a job of this process knows its progress better than its last heartbeat
   const live = (status: JobStatus): JobStatus =>
     here && here.kind === status.kind && here.lang === status.lang && status.state === 'running'
@@ -52,7 +55,9 @@ export async function pdfStatus(
   const langs = [
     ...new Set([
       ...(await store.listTranslations(docHash)),
-      ...jobs.filter((j) => j.kind === 'translate' && j.lang).map((j) => j.lang!),
+      ...jobs
+        .filter((j) => j.kind === 'translate' && j.lang && j.mode !== 'easy')
+        .map((j) => j.lang!),
     ]),
   ].sort()
   const translations = []

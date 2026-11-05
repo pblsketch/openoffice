@@ -14,6 +14,7 @@ import { dirname, extname, basename, join, resolve } from 'node:path'
 import {
   JOB_KINDS,
   StoreWriteError,
+  isTranslationMode,
   jobKeyOf,
   type HighlightBlockEntry,
   type HighlightRun,
@@ -22,6 +23,7 @@ import {
   type PassageCard,
   type ResultStore,
   type TranslationBlockKey,
+  type TranslationMode,
 } from '../../../../../packages/pdf-structure/src/store'
 import type { DocumentTree } from '../../../../../packages/pdf-structure/src/tree/types'
 import type { PageFingerprint } from '../../../../../packages/pdf-structure/src/tree/extract'
@@ -151,6 +153,16 @@ function suggestionStatesOf(v: unknown): Record<string, SuggestionState> | null 
 }
 
 const isJobKind = (v: unknown): v is JobKind => (JOB_KINDS as readonly unknown[]).includes(v)
+
+/** a translation mode as sent: left out is 'translate'; null when it is not one */
+const modeOf = (v: unknown): TranslationMode | null =>
+  v === undefined ? 'translate' : isTranslationMode(v) ? v : null
+
+/**
+ * The trailing mode argument of a store call: none for a plain translation,
+ * so those calls stay exactly as they were.
+ */
+const modeArgs = (mode: TranslationMode): [] | [TranslationMode] => (mode === 'easy' ? [mode] : [])
 
 const TARGET_EXT: Record<Exclude<PdfStructureTargetKind, 'folder'>, string> = {
   md: '.md',
@@ -606,10 +618,13 @@ export function createPdfStructureHandlers(deps: StructureHandlerDeps) {
       }
     },
 
-    async storeTranslations(owner: number, docHash: unknown) {
+    async storeTranslations(owner: number, docHash: unknown, modeArg?: unknown) {
       if (!knows(owner, docHash)) return fail('not-granted', 'unknown document hash')
+      const mode = modeOf(modeArg)
+      if (!mode) return fail('invalid-request', 'bad mode')
       try {
-        return { ok: true as const, langs: await deps.store().listTranslations(docHash) }
+        const langs = await deps.store().listTranslations(docHash, ...modeArgs(mode))
+        return { ok: true as const, langs }
       } catch (err) {
         return storeFailure(err)
       }
@@ -619,12 +634,15 @@ export function createPdfStructureHandlers(deps: StructureHandlerDeps) {
       owner: number,
       docHash: unknown,
       lang: unknown,
+      modeArg?: unknown,
     ): Promise<PdfStructureOutcome<{ translation: PdfStoredTranslation | null }>> {
       if (!knows(owner, docHash)) return fail('not-granted', 'unknown document hash')
       if (typeof lang !== 'string' || !KEY.test(lang))
         return fail('invalid-request', 'bad language')
+      const mode = modeOf(modeArg)
+      if (!mode) return fail('invalid-request', 'bad mode')
       try {
-        const stored = await deps.store().readTranslation(docHash, lang)
+        const stored = await deps.store().readTranslation(docHash, lang, ...modeArgs(mode))
         return {
           ok: true,
           translation: stored && { ...stored, blocks: [...stored.blocks.values()] },
@@ -649,6 +667,9 @@ export function createPdfStructureHandlers(deps: StructureHandlerDeps) {
     ): Promise<PdfStructureOutcome<PdfStoreWriteResult>> {
       if (!isRecord(req)) return fail('invalid-request', 'request must be an object')
       if (!knows(owner, req.docHash)) return fail('not-granted', 'unknown document hash')
+      // only the translation writes and the heartbeat name a mode
+      const mode = modeOf((req as { mode?: unknown }).mode)
+      if (!mode) return fail('invalid-request', 'bad mode')
       const store = deps.store()
       try {
         switch (req.kind) {
@@ -660,17 +681,19 @@ export function createPdfStructureHandlers(deps: StructureHandlerDeps) {
             })
             return { ok: true }
           case 'translationMeta':
-            await store.writeTranslationMeta(req.docHash, req.lang, {
-              provider: req.provider,
-              model: req.model,
-            })
+            await store.writeTranslationMeta(
+              req.docHash,
+              req.lang,
+              { provider: req.provider, model: req.model },
+              ...modeArgs(mode),
+            )
             return { ok: true }
           case 'translationBlocks':
             if (!Array.isArray(req.blocks) || !req.blocks.every(isRecord)) break
-            await store.writeTranslationBlocks(req.docHash, req.lang, req.blocks)
+            await store.writeTranslationBlocks(req.docHash, req.lang, req.blocks, ...modeArgs(mode))
             return { ok: true }
           case 'deleteTranslation':
-            await store.deleteTranslation(req.docHash, req.lang)
+            await store.deleteTranslation(req.docHash, req.lang, ...modeArgs(mode))
             return { ok: true }
           case 'job':
             if (!isRecord(req.job)) break
@@ -683,7 +706,7 @@ export function createPdfStructureHandlers(deps: StructureHandlerDeps) {
               ...(req.lang !== undefined ? { lang: req.lang } : {}),
               ...(req.runId !== undefined ? { runId: req.runId } : {}),
             })
-            return (await store.heartbeatJob(req.docHash, req.job, key))
+            return (await store.heartbeatJob(req.docHash, req.job, key, ...modeArgs(mode)))
               ? { ok: true }
               : fail('failed', 'no running job record')
           }
@@ -724,14 +747,24 @@ export function createPdfStructureHandlers(deps: StructureHandlerDeps) {
             const key = blockKeyOf(req.key)
             if (!isKey(req.lang) || !key) break
             if (typeof req.text !== 'string' || req.text.length > MAX_EDITED_TEXT) break
-            await store.writeEditedTranslationBlock(req.docHash, req.lang, key, req.text)
+            await store.writeEditedTranslationBlock(
+              req.docHash,
+              req.lang,
+              key,
+              req.text,
+              ...modeArgs(mode),
+            )
             return { ok: true }
           }
           case 'deleteTranslationExceptEdited':
             if (!isKey(req.lang)) break
             return {
               ok: true,
-              removed: await store.deleteTranslationExceptEdited(req.docHash, req.lang),
+              removed: await store.deleteTranslationExceptEdited(
+                req.docHash,
+                req.lang,
+                ...modeArgs(mode),
+              ),
             }
         }
         return fail('invalid-request', 'bad store write')
@@ -819,9 +852,13 @@ export function createPdfStructureHandlers(deps: StructureHandlerDeps) {
       if (!knows(owner, docHash)) return fail('not-granted', 'unknown document hash')
       try {
         const store = deps.store()
+        // the easy explanations' edits are lost with the document too
+        const edited =
+          (await store.countEditedTranslationBlocks(docHash)) +
+          (await store.countEditedTranslationBlocks(docHash, undefined, 'easy'))
         return {
           ok: true,
-          editedTranslationBlocks: await store.countEditedTranslationBlocks(docHash),
+          editedTranslationBlocks: edited,
           passages: await store.countPassages(docHash),
         }
       } catch (err) {
@@ -832,13 +869,16 @@ export function createPdfStructureHandlers(deps: StructureHandlerDeps) {
     async storeTranslationRecency(
       owner: number,
       docHash: unknown,
+      modeArg?: unknown,
     ): Promise<PdfStructureOutcome<{ langs: PdfTranslationRecency[] }>> {
       if (!knows(owner, docHash)) return fail('not-granted', 'unknown document hash')
+      const mode = modeOf(modeArg)
+      if (!mode) return fail('invalid-request', 'bad mode')
       try {
         const store = deps.store()
         const langs: PdfTranslationRecency[] = []
-        for (const lang of await store.listTranslations(docHash)) {
-          const stored = await store.readTranslation(docHash, lang)
+        for (const lang of await store.listTranslations(docHash, ...modeArgs(mode))) {
+          const stored = await store.readTranslation(docHash, lang, ...modeArgs(mode))
           let savedAt: number | null = null
           for (const b of stored?.blocks.values() ?? []) {
             if (savedAt === null || b.savedAt > savedAt) savedAt = b.savedAt

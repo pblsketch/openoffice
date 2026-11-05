@@ -13,6 +13,7 @@ import type {
   AiReadPageEntry,
   StoredTranslation,
   TranslationBlockEntry,
+  TranslationMode,
 } from '../../../../../packages/pdf-structure/src/store/store'
 import type {
   PdfStoreApi,
@@ -34,6 +35,10 @@ export class JobStoreCallError extends Error {
 
 export type JobStoreApi = Pick<PdfStoreApi, 'aiReadPages' | 'translation' | 'write'>
 
+/** the `mode` of a request: none for a plain translation, so its request stays as it was */
+const modeField = (mode: TranslationMode | undefined): { mode?: 'easy' } =>
+  mode === 'easy' ? { mode } : {}
+
 async function write(api: JobStoreApi, request: PdfStoreWriteRequest): Promise<void> {
   const out = await api.write(request)
   if (!out.ok) throw new JobStoreCallError(out)
@@ -42,7 +47,9 @@ async function write(api: JobStoreApi, request: PdfStoreWriteRequest): Promise<v
 /**
  * `DocumentJobStore` over IPC: AI-read pages, translations and job records.
  * A job record carries its own second key (`lang`, or `runId` for a
- * highlight job); the shell stores it under that key.
+ * highlight job) and its mode; the shell stores it under those. The
+ * translation calls pass their optional `mode` on ('easy' reaches the easy
+ * explanation; left out, the plain translation).
  */
 export function createIpcJobStore(api: JobStoreApi): DocumentJobStore {
   return {
@@ -60,8 +67,11 @@ export function createIpcJobStore(api: JobStoreApi): DocumentJobStore {
         ...(meta.provider !== undefined ? { provider: meta.provider } : {}),
         ...(meta.model !== undefined ? { model: meta.model } : {}),
       }),
-    async readTranslation(docHash, lang): Promise<StoredTranslation | null> {
-      const out = await api.translation(docHash, lang)
+    async readTranslation(docHash, lang, mode): Promise<StoredTranslation | null> {
+      const out =
+        mode === 'easy'
+          ? await api.translation(docHash, lang, mode)
+          : await api.translation(docHash, lang)
       if (!out.ok) throw new JobStoreCallError(out)
       const t = out.translation
       if (!t) return null
@@ -74,20 +84,33 @@ export function createIpcJobStore(api: JobStoreApi): DocumentJobStore {
         ),
       }
     },
-    writeTranslationMeta: (docHash, lang, meta) =>
+    writeTranslationMeta: (docHash, lang, meta, mode) =>
       write(api, {
         kind: 'translationMeta',
         docHash,
         lang,
         provider: meta.provider,
         model: meta.model,
+        ...modeField(mode),
       }),
-    writeTranslationBlocks: (docHash, lang, blocks) =>
-      write(api, { kind: 'translationBlocks', docHash, lang, blocks: [...blocks] }),
-    deleteTranslation: (docHash, lang) => write(api, { kind: 'deleteTranslation', docHash, lang }),
+    writeTranslationBlocks: (docHash, lang, blocks, mode) =>
+      write(api, {
+        kind: 'translationBlocks',
+        docHash,
+        lang,
+        blocks: [...blocks],
+        ...modeField(mode),
+      }),
+    deleteTranslation: (docHash, lang, mode) =>
+      write(api, { kind: 'deleteTranslation', docHash, lang, ...modeField(mode) }),
     /** "translate again from the start" keeping the person's edits; the entries removed */
-    async deleteTranslationExceptEdited(docHash, lang) {
-      const out = await api.write({ kind: 'deleteTranslationExceptEdited', docHash, lang })
+    async deleteTranslationExceptEdited(docHash, lang, mode) {
+      const out = await api.write({
+        kind: 'deleteTranslationExceptEdited',
+        docHash,
+        lang,
+        ...modeField(mode),
+      })
       if (!out.ok) throw new JobStoreCallError(out)
       return out.removed ?? 0
     },

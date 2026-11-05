@@ -4,7 +4,8 @@
  * opens with unfinished job records. It only offers: nothing starts unless
  * the user presses Continue, and Continue leads to the job's own pre-start
  * window. Only AI reading, translation and AI highlights are ever offered; a
- * page translation and a summary are not jobs to continue.
+ * page translation and a summary are not jobs to continue. An easy
+ * explanation's record is offered on its own and its line says so.
  */
 import type { ReactElement } from 'react'
 import type { JobKind, JobStatus } from '../../../../../packages/pdf-structure/src/store/store'
@@ -56,7 +57,9 @@ export function resumeOfferText(
     case 'ai-read':
       return t('jobResumeAiRead', { percent })
     case 'translate':
-      return t('jobResumeTranslate', { language: languageName(job.lang ?? ''), percent })
+      return job.mode === 'easy'
+        ? t('trResumeEasy', { language: languageName(job.lang ?? ''), percent })
+        : t('jobResumeTranslate', { language: languageName(job.lang ?? ''), percent })
     case 'highlight':
       return t('jobResumeHighlight', { percent })
     default:
@@ -81,6 +84,7 @@ export function ResumeOffer({
       role="status"
       data-resume-kind={job.kind}
       {...(job.lang ? { 'data-resume-lang': job.lang } : {})}
+      {...(job.mode === 'easy' ? { 'data-resume-mode': 'easy' } : {})}
       {...(job.runId ? { 'data-resume-run': job.runId } : {})}
     >
       <div className="pdf-job-strip-text">

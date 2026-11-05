@@ -89,4 +89,30 @@ export const de = {
   trRestartEditedCount: '{count} Absätze wurden von einer Person bearbeitet.',
   trRestartDiscardEdited: 'Auch die {count} von einer Person bearbeiteten Absätze löschen',
   trRestartKeepEdited: 'Bearbeitete Absätze behalten',
+  trMode: 'Art',
+  trModeTranslate: 'Übersetzung',
+  trModeEasy: 'Einfache Sprache',
+  trPdfEasy:
+    'Eine Erklärung in einfacher Sprache ist länger als das Original und passt nicht an seinen Platz. Markdown und EPUB gehen.',
+  trEasyFormatMd: 'Markdown in einfacher Sprache',
+  trEasyFormatEpub: 'EPUB in einfacher Sprache',
+  trEasyBilingual:
+    'Original, dann Erklärung: Nach jedem Absatz des Originals folgt seine Erklärung in einfacher Sprache (aus: nur die Erklärung)',
+  trEasyFileWord: 'einfache Sprache',
+  trEasyPickTitle: '{format} in einfacher Sprache speichern',
+  trConfirmEasyLanguage: 'Sprache der Erklärung: {language}',
+  trEasyConfirmDone:
+    '{done} von {total} Blöcken sind schon erklärt und werden nicht erneut gesendet',
+  trEasyConfirmNothing:
+    'Alle Blöcke der gewählten Seiten sind schon erklärt. Es wird nichts gesendet; die Dateien werden aus der gespeicherten Erklärung geschrieben.',
+  trEasyProviderChange:
+    'Die gespeicherte Erklärung wurde mit {stored} erstellt. Wenn Sie mit {next} fortfahren, mischen sich zwei KIs in einer Erklärung.',
+  trEasyStart: 'Erklärung starten',
+  trEasyRestart: 'Von vorn neu erklären…',
+  trEasyRestartConfirm:
+    'Die gespeicherte Erklärung auf {language} ({count} Blöcke) löschen und alle Blöcke neu erklären? Gelöschte Erklärungen lassen sich nicht wiederherstellen.',
+  trEasyRestartYes: 'Neu erklären',
+  trEasyRunning: 'Erklärung in einfacher Sprache auf {language}… {done}/{total} Blöcke',
+  trEasyDone: 'Die Erklärung in einfacher Sprache auf {language} ist fertig ({count} Blöcke).',
+  trResumeEasy: 'Unfertige Erklärung in einfacher Sprache ({language}) {percent} % — fortsetzen?',
 } satisfies Record<keyof typeof zh, string>

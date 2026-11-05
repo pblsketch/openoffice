@@ -1,6 +1,8 @@
 /**
  * Target languages (spec §8): the 21 UI languages. The default is the UI
- * language, or English when the document is already in the UI language.
+ * language, or English when the document is already in the UI language. An
+ * easy explanation (`mode` 'easy') defaults to the UI language always, also
+ * for a document written in it: it is rewritten in plainer words.
  *
  * The document language comes from the EPUB writer's script-based guess
  * (guessLanguageFromText), so it inherits that guess's limits: every
@@ -10,6 +12,7 @@
  */
 import { LANGS, isLang, normalizeLang, type Lang } from '../../../i18n/src/index'
 import { guessLanguageFromText, treeSampleText } from '../epub/language'
+import type { TranslationMode } from '../store/job-keys'
 import type { DocumentTree } from '../tree/types'
 
 /** the languages a document can be translated into: the UI languages */
@@ -51,9 +54,17 @@ export function translationLanguageName(code: string): string {
 
 const primary = (tag: string): string => tag.toLowerCase().split(/[-_]/)[0]!
 
-/** default target for a document whose text is `documentText` */
-export function defaultTargetLanguage(uiLanguage: string, documentText: string): Lang {
+/**
+ * default target for a document whose text is `documentText`; `mode` 'easy':
+ * the UI language, whatever the document's language
+ */
+export function defaultTargetLanguage(
+  uiLanguage: string,
+  documentText: string,
+  mode: TranslationMode = 'translate',
+): Lang {
   const ui = isLang(uiLanguage) ? uiLanguage : normalizeLang(uiLanguage)
+  if (mode === 'easy') return ui
   const doc = guessLanguageFromText(documentText)
   return doc !== undefined && primary(doc) === primary(ui) ? 'en' : ui
 }
@@ -67,8 +78,16 @@ export function translationSourceLanguage(tree: DocumentTree): string | undefine
   return guessLanguageFromText(treeSampleText(tree, (b) => b.translationOf === undefined))
 }
 
-/** default target for a tree, guessed from its original (untranslated) text */
-export function defaultTargetLanguageForTree(tree: DocumentTree, uiLanguage: string): Lang {
+/**
+ * default target for a tree, guessed from its original (untranslated) text;
+ * `mode` 'easy': the UI language
+ */
+export function defaultTargetLanguageForTree(
+  tree: DocumentTree,
+  uiLanguage: string,
+  mode: TranslationMode = 'translate',
+): Lang {
+  if (mode === 'easy') return defaultTargetLanguage(uiLanguage, '', 'easy')
   return defaultTargetLanguage(
     uiLanguage,
     treeSampleText(tree, (b) => b.translationOf === undefined),

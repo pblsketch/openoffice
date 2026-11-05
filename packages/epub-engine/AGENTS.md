@@ -26,6 +26,7 @@ EPUB 책 엔진이다(결정 0066). 원본 프로그램에서 온 것이 아니�
   - `language.ts`: 기본 목표 언어(화면 언어, 책이 그 언어면 영어). 책 언어는 첫 `dc:language`, 없으면 `pdf-structure`의 글자 추정.
   - `migrate.ts`: 앱 안 저장 뒤 보관된 번역을 새 해시로 옮길 입력(`epubMigrationInfo`).
   - `output.ts`, `output-markup.ts`: `buildTranslatedEpub`. 저장된 책 바이트와 보관된 결과로 번역본·대역본을 만든다.
+  - 쉬운 풀이(`mode` `'easy'`, 결정 0108): `prompt.ts`에 쉬운 풀이 지시문이 따로 있다. 표기·블록·데이터 규칙은 같고, 문체 규칙은 `pdf-structure`의 `easyStyleLines`이며, "이미 목표 언어면 그대로" 규칙이 없다. 문장 짝 없이 블록 단위다. `createEpubTranslationModelCall`, `epubTranslationJobParts`, `planEpubTranslationJob`, `estimateEpubTranslationJob`, `startEpubTranslationJob`이 `mode`를 받아 쉬운 풀이의 결과와 기록(`translate.<언어>.easy`)을 쓴다. 기본 목표 언어는 늘 화면 언어다(`defaultEpubTargetLanguage`의 `mode`). `buildTranslatedEpub`의 `mode: 'easy'`는 결과가 없는 것까지 모든 책 제목에 `easyExplanationLabel`의 목표 언어 낱말을 붙인다(번역본 `제목 (표시)`, 대역본 `원제 (번역 · 표시)`). 새 `urn:uuid`는 번역본과 같고, `dc:language`는 대역본(원문 다음에 풀이)에서도 목표 언어 하나다. 일반 번역의 결과 바이트는 그대로다.
 
 ## 맡지 않는 것 (경계)
 
@@ -59,5 +60,5 @@ EPUB 책 엔진이다(결정 0066). 원본 프로그램에서 온 것이 아니�
 ## 테스트
 
 - 실행: `npm run test -w @genoffice/epub-engine`, `npm run typecheck -w @genoffice/epub-engine`. 시험 책은 `tests/helpers.ts`, `chapter-helpers.ts`, `save-helpers.ts`, `translate-helpers.ts`가 그때그때 만든다. 다른 프로그램이 만든 책은 저장소에 없다. 이 앱의 PDF → EPUB 결과는 `tests/pdf-structure-book.test.ts`가 `pdf-structure`로 만들어 쓴다.
-- 바꾸면 반드시 테스트하는 것: 열기의 거절 네 가지와 고정 배치·깨진 장(`open.test.ts`), zip 밖 경로(`paths.test.ts`), 글꼴 감추기(`fonts.test.ts`), 인코딩(`encoding.test.ts`), 위치(`xml-positions.test.ts`), 블록 지도(`blocks.test.ts`), 표기 왕복과 자리 표시 거절·루비 빼기(`notation.test.ts`), 편집과 `id` 남기기·인라인 요소 보존·엔티티·CDATA(`edits.test.ts`, `ranges.test.ts`), 저장하지 않음·범위만 다름·`mimetype`·`dcterms:modified`·거절(`save.test.ts`), 글 뽑기(`text.test.ts`), 세로쓰기(`writing-mode.test.ts`), 번역 단위·호출·작업(`translate-units.test.ts`, `translate-call.test.ts`, `translate-job.test.ts`), 번역본·대역본(`translate-output*.test.ts`), 화면과 Node 양쪽에서 도는지(`browser-safety.test.ts`), 공개 진입점(`index.test.ts`).
+- 바꾸면 반드시 테스트하는 것: 열기의 거절 네 가지와 고정 배치·깨진 장(`open.test.ts`), zip 밖 경로(`paths.test.ts`), 글꼴 감추기(`fonts.test.ts`), 인코딩(`encoding.test.ts`), 위치(`xml-positions.test.ts`), 블록 지도(`blocks.test.ts`), 표기 왕복과 자리 표시 거절·루비 빼기(`notation.test.ts`), 편집과 `id` 남기기·인라인 요소 보존·엔티티·CDATA(`edits.test.ts`, `ranges.test.ts`), 저장하지 않음·범위만 다름·`mimetype`·`dcterms:modified`·거절(`save.test.ts`), 글 뽑기(`text.test.ts`), 세로쓰기(`writing-mode.test.ts`), 번역 단위·호출·작업(`translate-units.test.ts`, `translate-call.test.ts`, `translate-job.test.ts`), 번역본·대역본(`translate-output*.test.ts`), 쉬운 풀이의 지시문·기록·결과 책 제목(`translate-easy.test.ts`), 화면과 Node 양쪽에서 도는지(`browser-safety.test.ts`), 공개 진입점(`index.test.ts`).
 - 모델 호출은 모두 가짜다. 만든 책이 `epubcheck`를 통과하는지와 다른 뷰어에서 열리는지는 자동 테스트로 확인하지 못한다. 사람이 확인한다(`docs/tracking/status.md`).

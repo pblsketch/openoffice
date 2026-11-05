@@ -11,9 +11,13 @@
  *   person's edit) and why it failed;
  * - a translated paragraph's editor (double-click), with the hint that the
  *   marks go;
- * - the bar: "translate all pages" (the document translation window, with
- *   its usual confirmation), and under it the connect prompt or the
- *   first-connection notice when a press met them.
+ * - the bar: "translate all pages" (the document translation window in the
+ *   mode the view shows, with its usual confirmation), and under it the
+ *   connect prompt or the first-connection notice when a press met them.
+ *
+ * Every label follows the mode the view shows (translation-reading spec
+ * 5.3): "explain this page in easy words" and so on for the easy
+ * explanation.
  *
  * The host below the bar is mounted only while the view is on: it reads the
  * settings and connection statuses and wires the shared send gate. Showing
@@ -30,6 +34,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { AiSettings } from '@genoffice/ai-provider/browser'
+import type { TranslationMode } from '../../../../../packages/pdf-structure/src/store/job-keys'
 import type { Lang } from '@genoffice/i18n'
 import {
   AiConnectPrompt,
@@ -75,8 +80,8 @@ export interface UseBilingualActionsOptions {
   /** the open file as saved */
   filePath: string
   password: string | undefined
-  /** "translate all pages": open the document translation window for the shown language */
-  onTranslateAll: (lang: string | null) => void
+  /** "translate all pages": open the document translation window for the shown language and mode */
+  onTranslateAll: (lang: string | null, mode: TranslationMode) => void
 }
 
 export interface BilingualActions {
@@ -110,7 +115,8 @@ export function useBilingualActions(o: UseBilingualActionsOptions): BilingualAct
         ctx.unit.state === 'pending' ? null : (
           <ParagraphActions ctl={controller} ctx={ctx} t={latest.current.t} />
         ),
-      onParagraphDoubleClick: (ctx) => controller.openEditor(ctx.docHash, ctx.lang, ctx.unit),
+      onParagraphDoubleClick: (ctx) =>
+        controller.openEditor(ctx.docHash, ctx.lang, ctx.unit, ctx.mode),
       renderParagraphBody: (ctx) => (
         <ParagraphBody ctl={controller} ctx={ctx} t={latest.current.t} />
       ),
@@ -121,9 +127,9 @@ export function useBilingualActions(o: UseBilingualActionsOptions): BilingualAct
             className="bl-bar-btn"
             data-action="bl-translate-all"
             data-tip={latest.current.t('blTranslateAllTip')}
-            onClick={() => latest.current.onTranslateAll(data.lang)}
+            onClick={() => latest.current.onTranslateAll(data.lang, data.mode)}
           >
-            {latest.current.t('blTranslateAll')}
+            {latest.current.t(data.mode === 'easy' ? 'blEasyTranslateAll' : 'blTranslateAll')}
           </button>
         ) : null,
       barPanel: (data) => (
@@ -263,17 +269,14 @@ function PageAction(props: {
 }): ReactElement | null {
   const { ctl, ctx, t } = props
   const s = useSnapshot(ctl)
-  const { docHash, lang, page } = ctx
-  const note = s.pageNotes.get(pageKey(docHash, lang, page))
-  const job =
-    s.pageJob && s.pageJob.docHash === docHash && s.pageJob.lang === lang && s.pageJob.page === page
-      ? s.pageJob
-      : null
-  const ask =
-    s.paidAsk && s.paidAsk.docHash === docHash && s.paidAsk.lang === lang && s.paidAsk.page === page
-      ? s.paidAsk
-      : null
-  const label = pageActionLabel({ units: ctx.counts.units, pending: ctx.pending.length }, t)
+  const { docHash, lang, page, mode } = ctx
+  const easy = mode === 'easy'
+  const note = s.pageNotes.get(pageKey(docHash, lang, page, mode))
+  const here = (x: { docHash: string; lang: string; page: number; mode: TranslationMode }) =>
+    x.docHash === docHash && x.lang === lang && x.page === page && x.mode === mode
+  const job = s.pageJob && here(s.pageJob) ? s.pageJob : null
+  const ask = s.paidAsk && here(s.paidAsk) ? s.paidAsk : null
+  const label = pageActionLabel({ units: ctx.counts.units, pending: ctx.pending.length }, t, mode)
   const provider = s.route.state === 'ready' ? aiProviderDisplayName(s.route.provider) : null
 
   let main: ReactNode = null
@@ -282,7 +285,7 @@ function PageAction(props: {
       <>
         <span className="bl-page-running" role="status" data-bl-page-job={page}>
           {job.total > 0
-            ? t('blPageRunning', { done: job.done, total: job.total })
+            ? t(easy ? 'blEasyPageRunning' : 'blPageRunning', { done: job.done, total: job.total })
             : t('blPageStarting')}
         </span>
         <button
@@ -305,7 +308,7 @@ function PageAction(props: {
           data-action="bl-paid-yes"
           onClick={ctl.confirmPaid}
         >
-          {t('blPaidYes')}
+          {easy ? t('blEasyPaidYes') : t('blPaidYes')}
         </button>
         <button
           type="button"
@@ -329,7 +332,7 @@ function PageAction(props: {
           data-tip={
             s.busy ? t('blWaitingTip') : provider ? t('blSendsTo', { provider }) : undefined
           }
-          onClick={() => ctl.pressPage(docHash, lang, page)}
+          onClick={() => ctl.pressPage(docHash, lang, page, mode)}
         >
           {s.busy ? t('blWaiting') : label}
         </button>
@@ -366,23 +369,30 @@ function ParagraphActions(props: {
 }): ReactElement | null {
   const { ctl, ctx, t } = props
   const s = useSnapshot(ctl)
-  const { unit } = ctx
-  if (s.editing?.keyString === unit.keyString && s.editing.docHash === ctx.docHash) return null
+  const { unit, mode } = ctx
+  const easy = mode === 'easy'
+  if (
+    s.editing?.keyString === unit.keyString &&
+    s.editing.docHash === ctx.docHash &&
+    s.editing.mode === mode
+  ) {
+    return null
+  }
   const note = s.paraNotes.get(unit.keyString)
   const stop = (e: { stopPropagation: () => void }) => e.stopPropagation()
   let main: ReactNode
   if (s.confirmDiscard === unit.keyString) {
     main = (
       <span className="bl-discard-ask" role="alert" data-bl-discard-ask>
-        <span>{t('blDiscardEditAsk')}</span>
+        <span>{easy ? t('blEasyDiscardEditAsk') : t('blDiscardEditAsk')}</span>
         <button
           type="button"
           className="bl-mini-btn bl-primary"
           data-action="bl-discard-yes"
           onDoubleClick={stop}
-          onClick={() => ctl.confirmRetranslate(ctx.docHash, ctx.lang, unit)}
+          onClick={() => ctl.confirmRetranslate(ctx.docHash, ctx.lang, unit, mode)}
         >
-          {t('blRetranslate')}
+          {easy ? t('blEasyRetranslate') : t('blRetranslate')}
         </button>
         <button
           type="button"
@@ -398,7 +408,7 @@ function ParagraphActions(props: {
   } else if (s.retranslating === unit.keyString) {
     main = (
       <span className="bl-para-running" role="status" data-bl-retranslating>
-        {t('blRetranslating')}
+        {easy ? t('blEasyRetranslating') : t('blRetranslating')}
       </span>
     )
   } else {
@@ -410,9 +420,9 @@ function ParagraphActions(props: {
         disabled={s.busy || s.retranslating !== null}
         data-tip={s.busy ? t('blWaitingTip') : t('blRetranslateTip')}
         onDoubleClick={stop}
-        onClick={() => ctl.pressRetranslate(ctx.docHash, ctx.lang, unit)}
+        onClick={() => ctl.pressRetranslate(ctx.docHash, ctx.lang, unit, mode)}
       >
-        {t('blRetranslate')}
+        {easy ? t('blEasyRetranslate') : t('blRetranslate')}
       </button>
     )
   }
@@ -441,13 +451,15 @@ function ParagraphBody(props: {
     !e ||
     e.keyString !== ctx.unit.keyString ||
     e.docHash !== ctx.docHash ||
-    e.lang !== ctx.lang
+    e.lang !== ctx.lang ||
+    e.mode !== ctx.mode
   ) {
     return <BilingualRuns runs={ctx.unit.runs} />
   }
   return (
     <ParagraphEditor
       key={e.keyString}
+      label={e.mode === 'easy' ? t('blEasyEditLabel') : t('blEditLabel')}
       initial={e.initial}
       dropsFormat={e.dropsFormat}
       saving={e.saving}
@@ -461,6 +473,8 @@ function ParagraphBody(props: {
 }
 
 function ParagraphEditor(props: {
+  /** the text box's name */
+  label: string
   initial: string
   dropsFormat: boolean
   saving: boolean
@@ -490,7 +504,7 @@ function ParagraphEditor(props: {
       <textarea
         ref={ref}
         className="bl-editor-text"
-        aria-label={t('blEditLabel')}
+        aria-label={props.label}
         value={text}
         disabled={props.saving}
         rows={Math.min(12, Math.max(3, text.split('\n').length + 1))}

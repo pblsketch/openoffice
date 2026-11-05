@@ -360,6 +360,9 @@ export const fr = {
   appAiBadgeTip: "Utilise l'IA",
   appTranslate: 'Traduire',
   appTranslateTo: 'Traduire en {lang}',
+  appEasyWords: 'Expliquer en mots simples',
+  appEasyWordsPrompt:
+    "Expliquez le passage sélectionné en français pour que le comprennent aussi les personnes qui ont besoin d'un texte facile (enfants, personnes âgées, personnes qui apprennent le français). Utilisez des mots courants et des phrases courtes, et conservez tous les faits, chiffres et conditions. Ne modifiez pas le document : « {text} »",
   redactMenuLabel: 'Masquer la sélection à l’IA',
   redactDialogDesc:
     'Les mots restent dans le document et dans le fichier ; le modèle ne voit que le marqueur ci-dessous. Donnez-lui un nom pour qu’il sache ce qu’il désigne.',

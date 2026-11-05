@@ -13,6 +13,11 @@
  *   before).
  * - The language is the stored translation written most recently, else the
  *   default target language; the reader can switch it.
+ * - `mode` picks the results shown: the plain translation or the easy
+ *   explanation (translation-reading spec 5.3). Each has its own stored
+ *   languages; switching reads that mode's results for the shown language
+ *   and, while the reader has not picked a language, moves to that mode's
+ *   most recent one (an easy explanation defaults to the UI language).
  *
  * Only reads: structure.tree, store.aiReadPages, store.translationRecency,
  * store.translation. Nothing is sent to an AI and nothing is written.
@@ -21,6 +26,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Lang } from '@genoffice/i18n'
 import { applyStoredAiReadings } from '../../../../../packages/pdf-structure/src/ai-read'
 import { defaultTargetLanguageForTree } from '../../../../../packages/pdf-structure/src/translate/language'
+import type { TranslationMode } from '../../../../../packages/pdf-structure/src/store/job-keys'
 import type { DocumentTree } from '../../../../../packages/pdf-structure/src/tree/types'
 import type {
   PdfStoreApi,
@@ -56,6 +62,8 @@ export interface BilingualDataOptions {
   revision: number
   /** null when the structure / store channels are missing */
   api: BilingualDataApi | null
+  /** the results shown: the plain translation (default) or the easy explanation */
+  mode?: TranslationMode
 }
 
 export interface BilingualData {
@@ -66,7 +74,9 @@ export interface BilingualData {
   tree: DocumentTree | null
   /** the language shown (null until the tree is in) */
   lang: string | null
-  /** languages with a stored translation, most recently written first */
+  /** the results shown: the plain translation or the easy explanation */
+  mode: TranslationMode
+  /** languages with stored results of `mode`, most recently written first */
   storedLangs: string[]
   setLang: (lang: string) => void
   /** the columns of every page (null until the tree is in) */
@@ -84,13 +94,40 @@ interface Analysis {
   tree: DocumentTree
 }
 
+/** a stored translation as read, with the mode it was read for */
+interface Stored {
+  mode: TranslationMode
+  translation: PdfStoredTranslation | null
+}
+
+/** a store read in a mode: a plain read passes no mode, exactly as before */
+const recencyOf = (api: BilingualDataApi, docHash: string, mode: TranslationMode) =>
+  mode === 'easy'
+    ? api.store.translationRecency(docHash, 'easy')
+    : api.store.translationRecency(docHash)
+
+const translationOf = (
+  api: BilingualDataApi,
+  docHash: string,
+  lang: string,
+  mode: TranslationMode,
+) =>
+  mode === 'easy'
+    ? api.store.translation(docHash, lang, 'easy')
+    : api.store.translation(docHash, lang)
+
 export function useBilingualData(o: BilingualDataOptions): BilingualData {
   const { enabled, filePath, password, revision, api } = o
+  const mode: TranslationMode = o.mode === 'easy' ? 'easy' : 'translate'
   const [load, setLoad] = useState<BilingualLoad>({ kind: 'off' })
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
   const [lang, setLangState] = useState<string | null>(null)
   const [storedLangs, setStoredLangs] = useState<string[]>([])
-  const [stored, setStored] = useState<PdfStoredTranslation | null>(null)
+  /** the mode `storedLangs` were read for (null: none read yet) */
+  const langsModeRef = useRef<TranslationMode | null>(null)
+  const modeRef = useRef(mode)
+  modeRef.current = mode
+  const [stored, setStored] = useState<Stored | null>(null)
   const [storeRev, setStoreRev] = useState(0)
   const uiLangRef = useRef(o.uiLang)
   uiLangRef.current = o.uiLang
@@ -103,6 +140,7 @@ export function useBilingualData(o: BilingualDataOptions): BilingualData {
   useEffect(() => {
     if (!enabled) {
       pickedRef.current = null
+      langsModeRef.current = null
       setAnalysis(null)
       setStored(null)
       setLangState(null)
@@ -145,13 +183,18 @@ export function useBilingualData(o: BilingualDataOptions): BilingualData {
             : [],
         )
         const tree = readings.size > 0 ? applyStoredAiReadings(out.tree, readings) : out.tree
-        const recency = await a.store.translationRecency(out.docHash).catch(() => null)
+        const shownMode = modeRef.current
+        const recency = await recencyOf(a, out.docHash, shownMode).catch(() => null)
         if (!alive) return
         const langs = recency?.ok ? recency.langs : []
+        langsModeRef.current = shownMode
         setStoredLangs(langs.filter((l) => l.savedAt !== null).map((l) => l.lang))
         const next =
           pickedRef.current ??
-          chooseBilingualLanguage(langs, defaultTargetLanguageForTree(tree, uiLangRef.current))
+          chooseBilingualLanguage(
+            langs,
+            defaultTargetLanguageForTree(tree, uiLangRef.current, shownMode),
+          )
         setLangState(next)
         setAnalysis({ docHash: out.docHash, tree })
         setLoad({ kind: 'ready' })
@@ -172,7 +215,34 @@ export function useBilingualData(o: BilingualDataOptions): BilingualData {
 
   const docHash = analysis?.docHash ?? null
 
-  // the stored translation in the shown language
+  // the mode switched: that mode's stored languages, and its default while none was picked
+  useEffect(() => {
+    const a = apiRef.current
+    const tree0 = analysis?.tree
+    if (!docHash || !a || !tree0 || langsModeRef.current === null) return
+    if (langsModeRef.current === mode) return
+    let alive = true
+    void (async () => {
+      const recency = await recencyOf(a, docHash, mode).catch(() => null)
+      if (!alive) return
+      const langs = recency?.ok ? recency.langs : []
+      langsModeRef.current = mode
+      setStoredLangs(langs.filter((l) => l.savedAt !== null).map((l) => l.lang))
+      if (pickedRef.current === null) {
+        setLangState(
+          chooseBilingualLanguage(
+            langs,
+            defaultTargetLanguageForTree(tree0, uiLangRef.current, mode),
+          ),
+        )
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [docHash, analysis, mode])
+
+  // the stored results of the shown mode in the shown language
   useEffect(() => {
     const a = apiRef.current
     if (!docHash || !lang || !a) {
@@ -180,14 +250,13 @@ export function useBilingualData(o: BilingualDataOptions): BilingualData {
       return
     }
     let alive = true
-    void a.store
-      .translation(docHash, lang)
+    void translationOf(a, docHash, lang, mode)
       .then((out) => {
         if (!alive) return
         const translation = out.ok ? out.translation : null
-        setStored(translation)
+        setStored({ mode, translation })
         // a language first written here (after a refresh) joins the stored ones
-        if (translation && translation.blocks.length > 0) {
+        if (translation && translation.blocks.length > 0 && langsModeRef.current === mode) {
           setStoredLangs((prev) => (prev.includes(lang) ? prev : [lang, ...prev]))
         }
       })
@@ -197,11 +266,12 @@ export function useBilingualData(o: BilingualDataOptions): BilingualData {
     return () => {
       alive = false
     }
-  }, [docHash, lang, storeRev])
+  }, [docHash, lang, mode, storeRev])
 
   const tree = analysis?.tree ?? null
-  // a translation read for another language (a switch in flight) shows as nothing stored
-  const shown = stored && stored.lang === lang ? stored : null
+  // results read for another language or mode (a switch in flight) show as nothing stored
+  const shown =
+    stored && stored.mode === mode && stored.translation?.lang === lang ? stored.translation : null
   const model = useMemo(() => (tree ? buildBilingualModel(tree, shown) : null), [tree, shown])
 
   const setLang = useCallback((next: string) => {
@@ -215,6 +285,7 @@ export function useBilingualData(o: BilingualDataOptions): BilingualData {
     docHash: load.kind === 'ready' ? docHash : null,
     tree: load.kind === 'ready' ? tree : null,
     lang: load.kind === 'ready' ? lang : null,
+    mode,
     storedLangs,
     setLang,
     model: load.kind === 'ready' ? model : null,

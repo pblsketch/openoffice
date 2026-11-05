@@ -2,7 +2,7 @@
  * Starting a document job: the per-document lock, the handle the caller keeps
  * (result, cancel, progress), and the estimate shown before the user confirms.
  */
-import type { JobKind, JobProgress } from '../store/store'
+import type { JobKind, JobProgress, TranslationMode } from '../store/store'
 import {
   runJobUnits,
   type JobProgressEvent,
@@ -31,6 +31,8 @@ export interface DocumentJobEstimate {
   kind: JobKind
   lang?: string
   runId?: string
+  /** 'easy' for an easy explanation's job; absent for every plain one */
+  mode?: Extract<TranslationMode, 'easy'>
   /** model calls the job will make */
   calls: number
   /** items (pages or blocks) still to do */
@@ -48,6 +50,8 @@ export interface DocumentJobHandle<U> {
   readonly kind: JobKind
   readonly lang?: string
   readonly runId?: string
+  /** 'easy' for an easy explanation's job; absent for every plain one */
+  readonly mode?: Extract<TranslationMode, 'easy'>
   /** resolves when the job completes or stops; rejects only if it could not be planned */
   readonly result: Promise<JobSummary<U>>
   /** stop the job ('interrupted' when the tab, app or server ends) */
@@ -81,10 +85,13 @@ export function startDocumentJob<U, R>(
     kind: JobKind
     lang?: string
     runId?: string
+    /** 'easy': an easy explanation's job (its record and lock entry say so) */
+    mode?: TranslationMode
   } & StartDocumentJobOptions<U>,
   plan: (signal: AbortSignal) => Promise<PlannedJob<U, R>>,
 ): DocumentJobHandle<U> {
   const { docHash, kind, lang, runId } = head
+  const easy = head.mode === 'easy'
   const controller = new AbortController()
   let current: JobProgress = { done: 0, total: 0 }
   const lease = (head.registry ?? documentJobs).acquire(
@@ -93,6 +100,7 @@ export function startDocumentJob<U, R>(
       kind,
       ...(lang !== undefined ? { lang } : {}),
       ...(runId !== undefined ? { runId } : {}),
+      ...(easy ? { mode: 'easy' as const } : {}),
       progress: current,
     },
     (reason) => controller.abort(reason),
@@ -117,6 +125,7 @@ export function startDocumentJob<U, R>(
         kind,
         ...(lang !== undefined ? { lang } : {}),
         ...(runId !== undefined ? { runId } : {}),
+        ...(easy ? { mode: 'easy' as const } : {}),
         concurrency: head.concurrency,
         maxConsecutiveFailures: head.maxConsecutiveFailures,
         heartbeatMs: head.heartbeatMs,
@@ -142,5 +151,6 @@ export function startDocumentJob<U, R>(
   }
   if (lang !== undefined) (handle as { lang?: string }).lang = lang
   if (runId !== undefined) (handle as { runId?: string }).runId = runId
+  if (easy) (handle as { mode?: 'easy' }).mode = 'easy'
   return handle
 }

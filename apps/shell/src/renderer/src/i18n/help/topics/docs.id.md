@@ -42,6 +42,7 @@ Klik kanan di mana saja pada isi dokumen — menu menyesuaikan dengan yang Anda 
 - **Papan klip**: potong / salin / tempel / **tempel sebagai teks biasa**.
 - **Font, paragraf**: ubah keluarga dan ukuran font, tebal/miring/garis bawah, perataan/indentasi/spasi tanpa harus membuka pita.
 - **Sinonim**: menampilkan sinonim untuk kata yang dipilih; klik salah satu untuk mengganti.
+- **Jelaskan dengan kata sederhana** (AI): mengirim bagian yang dipilih ke panel AI agar dijelaskan dengan kata sederhana dalam bahasa antarmuka, lalu langsung menjalankannya. Tanpa pilihan, item ini mati, dan teks yang disembunyikan dari AI tidak dikirim.
 - **Terjemahkan** (AI): terjemahkan bagian yang dipilih ke bahasa target (Inggris, Tionghoa Sederhana, Jepang, Korea, Prancis, Jerman, Spanyol, ...) lewat panel AI.
 - **Komentar Baru**: lampirkan komentar pada bagian yang dipilih.
 - **Ejaan** (pada kata yang salah eja): pengganti yang disarankan, abaikan semua, tambahkan ke kamus, atur bahasa pemeriksaan.

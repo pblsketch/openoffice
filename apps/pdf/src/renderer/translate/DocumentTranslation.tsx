@@ -21,11 +21,19 @@
  * offers to write what is done so far, or to continue later. "Store only"
  * picks no target: the translation stays in the result store and no file
  * is written.
+ *
+ * An easy explanation (translation-reading spec 5.4) runs on the same engine
+ * and rules with `mode` 'easy': its own results, job record and resume
+ * offer. Its files are Markdown / EPUB only; the writer is handed the easy
+ * results (it reads only the plain translation from the store by itself),
+ * the EPUB title and the first Markdown heading carry the marker in the
+ * target language, and the default file names differ from a translation's.
  */
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import type { ReactElement } from 'react'
 import { useSyncExternalStore } from 'react'
 import type { Lang } from '@genoffice/i18n'
+import { applyStoredAiReadings } from '../../../../../packages/pdf-structure/src/ai-read'
 import {
   startTranslationJob,
   type TranslationJobItem,
@@ -36,10 +44,12 @@ import {
 } from '../../../../../packages/pdf-structure/src/translate'
 import type { TextUnit } from '../../../../../packages/pdf-structure/src/tree/derive'
 import type { JobStatus } from '../../../../../packages/pdf-structure/src/store/store'
+import type { TranslationMode } from '../../../../../packages/pdf-structure/src/store/job-keys'
 import type {
   PdfConvertOutputRequest,
   PdfStoreApi,
   PdfStructureApi,
+  PdfStructureSource,
   PdfTranslatedPdfReport,
 } from '../../shared/ipc'
 import type { TFunc } from '../i18n/locale'
@@ -60,9 +70,12 @@ import {
 import { TranslateReport } from './TranslateReport'
 import {
   combineReports,
+  easyResultOf,
+  easyResultTitle,
   languageName,
   mergeTranslationReport,
   translationOutputName,
+  type EasyResult,
   type TranslationFormat,
   type TranslationResultReport,
 } from './translate-model'
@@ -111,9 +124,17 @@ export type TranslateOpenAnswer =
   { opened: true } | { running: { done: number; total: number } } | { unavailable: true }
 
 export interface DocumentTranslationHandle {
-  /** open the window (ribbon, AI tool); never sends anything */
-  requestOpen(request: { lang: string | null; pages: number[] | null }): TranslateOpenAnswer
-  /** the resume offer's Continue for a translation: the window for its language */
+  /**
+   * open the window (ribbon, AI tool, the side-by-side view); never sends
+   * anything. `mode` preselects the plain translation (default) or the easy
+   * explanation
+   */
+  requestOpen(request: {
+    lang: string | null
+    pages: number[] | null
+    mode?: TranslationMode
+  }): TranslateOpenAnswer
+  /** the resume offer's Continue for a translation: the window for its language and mode */
   resume(job: JobStatus): void
 }
 
@@ -121,16 +142,23 @@ interface DialogState {
   key: number
   lang: string | null
   pages: number[] | null
+  translationMode: TranslationMode
 }
 
 /** one translation the user started: what to write and where */
 interface TranslationRun {
   docHash: string
   lang: string
+  translationMode: TranslationMode
   pages: number[] | null
   bilingual: boolean
   /** empty: store only, no file is written */
   targets: Array<{ format: TranslationFormat; path: string }>
+}
+
+/** the easy explanation read for the writer; `result(true)` marks the first heading */
+interface EasyReading {
+  result: (markHeading: boolean) => EasyResult
 }
 
 interface Writing {
@@ -214,8 +242,8 @@ export const DocumentTranslation = forwardRef<DocumentTranslationHandle, Documen
       return w ? { progress: { done: w.done, total: w.total } } : null
     }
 
-    const open = (lang0: string | null, pages: number[] | null) =>
-      setDialog({ key: ++dialogSeq.current, lang: lang0, pages })
+    const open = (lang0: string | null, pages: number[] | null, translationMode: TranslationMode) =>
+      setDialog({ key: ++dialogSeq.current, lang: lang0, pages, translationMode })
 
     /** the file was saved while the job ran: its results follow the saved file (spec §6) */
     const carry = async (from: string): Promise<void> => {
@@ -243,17 +271,57 @@ export const DocumentTranslation = forwardRef<DocumentTranslationHandle, Documen
       const p = propsRef.current
       if (!p.api || !p.filePath) return null
       const targets: TranslationRun['targets'] = []
+      const easy = request.translationMode === 'easy'
       for (const format of request.formats) {
         const path = await p.api.pickTarget({
           kind: format,
           path: p.filePath,
-          defaultName: translationOutputName(p.fileName, request.lang),
-          title: p.t('trPickTitle', { format: FORMAT_NAME[format] }),
+          defaultName: translationOutputName(
+            p.fileName,
+            request.lang,
+            easy ? p.t('trEasyFileWord') : undefined,
+          ),
+          title: p.t(easy ? 'trEasyPickTitle' : 'trPickTitle', { format: FORMAT_NAME[format] }),
         })
         if (!path) return null
         targets.push({ format, path })
       }
       return targets
+    }
+
+    /**
+     * The easy explanation as the writer is handed it: the saved file's tree
+     * (a structure job, no AI) with the stored AI readings merged, and the
+     * easy results stored for it. Null when it cannot be read.
+     *
+     * `source` is the convert job's own source (file, password, pages): the
+     * units are keyed by block id, and a page range changes the block ids
+     * (repeated headers, page seams, contents pages), so this tree must be
+     * the one the convert job extracts.
+     */
+    const readEasy = async (
+      run: TranslationRun,
+      source: PdfStructureSource,
+    ): Promise<EasyReading | null> => {
+      const p = propsRef.current
+      if (!p.api) return null
+      const jobId = newJobId()
+      const out = await p.api.tree({ jobId, ...source }).catch(() => null)
+      if (!out?.ok) return null
+      const readings = await p.api.store.aiReadPages(out.docHash).catch(() => null)
+      const merged = new Map(
+        readings?.ok
+          ? readings.pages.map((page) => [page.pageFingerprint, { payload: page.payload }])
+          : [],
+      )
+      const tree = merged.size > 0 ? applyStoredAiReadings(out.tree, merged) : out.tree
+      const stored = await createIpcJobStore(p.api.store)
+        .readTranslation(out.docHash, run.lang, 'easy')
+        .catch(() => undefined)
+      if (stored === undefined) return null
+      return {
+        result: (markHeading) => easyResultOf(tree, run.lang, stored, run.pages, markHeading),
+      }
     }
 
     /** write the chosen files from the stored translation (finished blocks; the rest in the source) */
@@ -265,11 +333,14 @@ export const DocumentTranslation = forwardRef<DocumentTranslationHandle, Documen
       const failures: string[] = []
       const reports: Array<TranslationResultReport | null> = []
       const source = p.filePath
-      const common = {
+      const common: PdfStructureSource = {
         path: source,
         ...(p.password !== undefined ? { password: p.password } : {}),
         ...(run.pages ? { pages: run.pages } : {}),
       }
+      const easy = run.translationMode === 'easy'
+      const easyReading = easy ? await readEasy(run, common) : null
+      if (!aliveRef.current) return
       for (const { format, path } of run.targets) {
         if (!aliveRef.current) return
         const jobId = newJobId()
@@ -285,10 +356,16 @@ export const DocumentTranslation = forwardRef<DocumentTranslationHandle, Documen
         const failed = (reason: string) =>
           failures.push(p.t('trWriteFailed', { format: FORMAT_NAME[format], reason }))
         try {
+          if (easy && !easyReading) {
+            failed(p.t('arAnalyzeFailed'))
+            continue
+          }
           if (format === 'md' && !(await p.api.releaseTarget({ source, path }))) {
             failed(p.t('cvErrTargetOpen'))
             continue
           }
+          // the translated PDF is never offered for an easy explanation
+          if (format === 'pdf' && easy) continue
           if (format === 'pdf') {
             const out = await p.api.writeBack({
               jobId,
@@ -304,20 +381,30 @@ export const DocumentTranslation = forwardRef<DocumentTranslationHandle, Documen
             reports.push(mergeTranslationReport(r?.translation ?? null, r?.writer ?? null))
           } else {
             const stem = p.fileName.replace(/\.pdf$/i, '') || 'document'
+            const title = p.docInfo.title?.trim() || stem
+            // the easy results are handed over; the Markdown's first heading carries the marker
+            const explained: EasyResult | null = easyReading
+              ? easyReading.result(format === 'md')
+              : null
             const out = await p.api.convert({
               jobId,
               ...common,
               format,
               outPath: path,
-              translation: { lang: run.lang, bilingual: run.bilingual },
+              translation: {
+                lang: run.lang,
+                bilingual: run.bilingual,
+                ...(explained ? { units: explained.units } : {}),
+              },
               ...(format === 'epub'
                 ? {
                     epub: {
-                      title: p.docInfo.title?.trim() || stem,
+                      title: easy ? easyResultTitle(title, run.lang) : title,
                       ...(p.docInfo.author?.trim() ? { author: p.docInfo.author.trim() } : {}),
                       cover: true,
-                      // a bilingual book carries both languages; the writer guesses the source
-                      ...(run.bilingual ? {} : { language: run.lang }),
+                      // a bilingual book carries both languages; the writer guesses the source.
+                      // An easy explanation's book is in the target language either way
+                      ...(run.bilingual && !easy ? {} : { language: run.lang }),
                       uiLanguage: p.lang,
                       pageImageAlt: p.t('cvPageImageAlt'),
                     },
@@ -328,7 +415,12 @@ export const DocumentTranslation = forwardRef<DocumentTranslationHandle, Documen
               failed(structureFailureText(out, p.t))
               continue
             }
-            reports.push(mergeTranslationReport(out.translation ?? null, null))
+            reports.push(
+              mergeTranslationReport(
+                explained ? explained.report : (out.translation ?? null),
+                null,
+              ),
+            )
           }
           outputs.push({ format, path })
         } catch (err) {
@@ -362,9 +454,11 @@ export const DocumentTranslation = forwardRef<DocumentTranslationHandle, Documen
 
       const targets = await pickTargets(request)
       if (!targets) return { ok: false, cancelled: true }
+      const easy = request.translationMode === 'easy'
       const run: TranslationRun = {
         docHash: hash,
         lang: target,
+        translationMode: easy ? 'easy' : 'translate',
         pages: request.pages,
         bilingual: request.bilingual,
         targets,
@@ -380,6 +474,7 @@ export const DocumentTranslation = forwardRef<DocumentTranslationHandle, Documen
         'translate',
         target,
         request.pages ?? Array.from({ length: p.pageCount }, (_, i) => i + 1),
+        easy ? 'easy' : undefined,
       )
       const ask = createModelCall({
         settings: () => route.settings,
@@ -398,16 +493,19 @@ export const DocumentTranslation = forwardRef<DocumentTranslationHandle, Documen
           { system: req.system, messages: [{ role: 'user', text: req.prompt }], tools: [] },
           signal,
         )
+      // with the easy mode the parts carry it: the job reads and writes the easy results
       const parts = translationJobParts(request.tree, {
         lang: target,
         send,
         ...(request.pages ? { pages: request.pages } : {}),
+        ...(easy ? { mode: 'easy' as const } : {}),
       })
       const store = createIpcJobStore(p.api.store)
       const outcome = session.start<TranslationJobItem<TextUnit>[]>({
         docHash: hash,
         kind: 'translate',
         lang: target,
+        ...(easy ? { mode: 'easy' as const } : {}),
         provider: route.provider,
         ...(request.aiLabel ? { aiLabel: request.aiLabel } : {}),
         launch: ({ signal, registry, onProgress }) =>
@@ -434,19 +532,26 @@ export const DocumentTranslation = forwardRef<DocumentTranslationHandle, Documen
     }
 
     useImperativeHandle(ref, () => ({
-      requestOpen({ lang: target, pages }) {
+      requestOpen({ lang: target, pages, mode }) {
         const p = propsRef.current
         if (!p.api || !p.filePath) return { unavailable: true }
         const hash = docHashRef.current
         const running = (hash ? session.running(hash) : null) ?? tabJob()
         if (running) return { running: running.progress }
-        open(target, pages)
+        open(target, pages, mode === 'easy' ? 'easy' : 'translate')
         return { opened: true }
       },
       resume(job) {
         const target = job.lang ?? null
         const hash = docHashRef.current
-        open(target, hash && target ? recallJobPages(hash, 'translate', target) : null)
+        const easy = job.mode === 'easy'
+        open(
+          target,
+          hash && target
+            ? recallJobPages(hash, 'translate', target, easy ? 'easy' : undefined)
+            : null,
+          easy ? 'easy' : 'translate',
+        )
       },
     }))
 
@@ -530,6 +635,7 @@ export const DocumentTranslation = forwardRef<DocumentTranslationHandle, Documen
             api={api}
             initialLang={dialog.lang}
             initialPages={dialog.pages}
+            initialMode={dialog.translationMode}
             onStart={start}
             {...(props.onOpenAiRead
               ? {
@@ -573,10 +679,15 @@ function stripText(
   nameOf: (code: string) => string,
 ): { title: string; details: string[] } {
   const language = nameOf(view.lang ?? '')
+  const easy = view.mode === 'easy'
   const ai = view.aiLabel ? [t('arConfirmProvider', { provider: view.aiLabel })] : []
   if (view.state === 'running') {
     return {
-      title: t('trRunning', { language, done: view.done, total: view.total }),
+      title: t(easy ? 'trEasyRunning' : 'trRunning', {
+        language,
+        done: view.done,
+        total: view.total,
+      }),
       details: [
         ...ai,
         ...(view.currentPage !== null ? [t('trRunningPage', { page: view.currentPage })] : []),
@@ -588,7 +699,10 @@ function stripText(
   }
   const summary = view.summary
   if (view.state === 'complete' || !summary) {
-    return { title: t('trDone', { language, count: view.done }), details: ai }
+    return {
+      title: t(easy ? 'trEasyDone' : 'trDone', { language, count: view.done }),
+      details: ai,
+    }
   }
   const details = [...ai, t('trStoppedProgress', { done: view.done, total: view.total })]
   const lost = summary.lostUnits.reduce<number>((n, u) => n + (u as unknown[]).length, 0)

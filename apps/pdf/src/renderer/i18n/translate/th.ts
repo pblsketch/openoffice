@@ -83,4 +83,28 @@ export const th = {
   trRestartEditedCount: 'มี {count} ย่อหน้าที่คนแก้ไข',
   trRestartDiscardEdited: 'ลบ {count} ย่อหน้าที่คนแก้ไขด้วย',
   trRestartKeepEdited: 'เก็บย่อหน้าที่แก้ไขไว้',
+  trMode: 'ประเภท',
+  trModeTranslate: 'คำแปล',
+  trModeEasy: 'คำอธิบายแบบง่าย',
+  trPdfEasy: 'คำอธิบายแบบง่ายยาวกว่าต้นฉบับ จึงใส่ลงในที่เดิมไม่ได้ ใช้ Markdown และ EPUB ได้',
+  trEasyFormatMd: 'Markdown คำอธิบายแบบง่าย',
+  trEasyFormatEpub: 'EPUB คำอธิบายแบบง่าย',
+  trEasyBilingual:
+    'ต้นฉบับแล้วตามด้วยคำอธิบาย: หลังแต่ละย่อหน้าต้นฉบับจะมีคำอธิบายแบบง่ายของย่อหน้านั้น (ปิด: มีแต่คำอธิบาย)',
+  trEasyFileWord: 'คำอธิบายแบบง่าย',
+  trEasyPickTitle: 'บันทึก {format} คำอธิบายแบบง่าย',
+  trConfirmEasyLanguage: 'ภาษาของคำอธิบาย: {language}',
+  trEasyConfirmDone: 'อธิบายแล้ว {done} จาก {total} บล็อก จะไม่ส่งซ้ำ',
+  trEasyConfirmNothing:
+    'บล็อกทั้งหมดในหน้าที่เลือกอธิบายแล้ว จะไม่ส่งอะไรเลย และเขียนไฟล์จากคำอธิบายที่เก็บไว้',
+  trEasyProviderChange:
+    'คำอธิบายที่เก็บไว้ทำด้วย {stored} หากทำต่อด้วย {next} คำอธิบายเดียวกันจะมีงานของ AI สองตัวปนกัน',
+  trEasyStart: 'เริ่มอธิบาย',
+  trEasyRestart: 'อธิบายใหม่ตั้งแต่ต้น…',
+  trEasyRestartConfirm:
+    'ลบคำอธิบายแบบง่ายภาษา{language}ที่เก็บไว้ ({count} บล็อก) แล้วอธิบายทุกบล็อกใหม่หรือไม่ คำอธิบายที่ลบแล้วกู้คืนไม่ได้',
+  trEasyRestartYes: 'อธิบายใหม่',
+  trEasyRunning: 'กำลังเขียนคำอธิบายแบบง่ายภาษา{language}… {done}/{total} บล็อก',
+  trEasyDone: 'คำอธิบายแบบง่ายภาษา{language}เสร็จแล้ว ({count} บล็อก)',
+  trResumeEasy: 'คำอธิบายแบบง่ายที่ยังไม่เสร็จ ({language}) {percent}% — ทำต่อหรือไม่',
 } satisfies Record<keyof typeof zh, string>

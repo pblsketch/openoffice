@@ -58,4 +58,18 @@ export const fr = {
   blTranslateAll: 'Traduire toutes les pages…',
   blTranslateAllTip:
     'Ouvre la fenêtre de traduction du document. Une confirmation est demandée avant tout envoi.',
+  blMode: 'Afficher',
+  blModeTranslate: 'Traduction',
+  blModeEasy: 'Explication simple',
+  blEasyLanguage: 'Langue de l’explication',
+  blEasyStoredLangs: 'Explications conservées',
+  blEasyPage: 'Expliquer cette page simplement',
+  blEasyRest: 'Expliquer le reste simplement ({count})',
+  blEasyPaidYes: 'Expliquer',
+  blEasyPageRunning: 'Explication… {done}/{total}',
+  blEasyRetranslate: 'Réexpliquer',
+  blEasyRetranslating: 'Nouvelle explication…',
+  blEasyDiscardEditAsk: 'Abandonner votre modification et réexpliquer ?',
+  blEasyEditLabel: 'Modifier l’explication',
+  blEasyTranslateAll: 'Expliquer toutes les pages simplement…',
 } satisfies Record<keyof typeof zh, string>

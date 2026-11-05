@@ -82,4 +82,27 @@ export const zhTW = {
   trRestartEditedCount: '有 {count} 個段落經人工修改。',
   trRestartDiscardEdited: '連同人工修改的 {count} 個段落一起刪除',
   trRestartKeepEdited: '保留修改過的段落',
+  trMode: '方式',
+  trModeTranslate: '翻譯',
+  trModeEasy: '淺顯解釋',
+  trPdfEasy: '淺顯解釋的文字會變長，放不進原來的位置。Markdown 和 EPUB 仍可使用。',
+  trEasyFormatMd: '淺顯解釋 Markdown',
+  trEasyFormatEpub: '淺顯解釋 EPUB',
+  trEasyBilingual: '原文後附解釋：在每段原文之後放上它的淺顯解釋（不勾選則只含解釋）',
+  trEasyFileWord: '淺顯解釋',
+  trEasyPickTitle: '儲存淺顯解釋 {format}',
+  trConfirmEasyLanguage: '解釋語言：{language}',
+  trEasyConfirmDone: '共 {total} 個文字區塊，其中 {done} 個已解釋，不會再次傳送',
+  trEasyConfirmNothing:
+    '所選頁面的文字區塊都已解釋。不傳送任何內容，直接用已保存的淺顯解釋寫入檔案。',
+  trEasyProviderChange:
+    '已保存的淺顯解釋是用 {stored} 產生的。改用 {next} 繼續，同一份解釋裡會混有兩個 AI 的文字。',
+  trEasyStart: '開始解釋',
+  trEasyRestart: '從頭重新解釋…',
+  trEasyRestartConfirm:
+    '要刪除已保存的{language}淺顯解釋（{count} 個文字區塊）並重新解釋所有文字區塊嗎？刪除的解釋無法復原。',
+  trEasyRestartYes: '重新解釋',
+  trEasyRunning: '正在產生{language}淺顯解釋… {done}/{total} 個文字區塊',
+  trEasyDone: '{language}淺顯解釋已完成（{count} 個文字區塊）。',
+  trResumeEasy: '未完成的淺顯解釋（{language}）{percent}% — 要繼續嗎？',
 } satisfies Record<keyof typeof zh, string>

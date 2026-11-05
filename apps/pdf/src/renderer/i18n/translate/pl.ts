@@ -88,4 +88,30 @@ export const pl = {
   trRestartEditedCount: 'Liczba akapitów zmienionych przez osobę: {count}.',
   trRestartDiscardEdited: 'Usuń też akapity zmienione przez osobę ({count})',
   trRestartKeepEdited: 'Zachowaj zmienione akapity',
+  trMode: 'Rodzaj',
+  trModeTranslate: 'Tłumaczenie',
+  trModeEasy: 'Proste wyjaśnienie',
+  trPdfEasy:
+    'Proste wyjaśnienie jest dłuższe niż oryginał i nie mieści się na jego miejscu. Markdown i EPUB działają.',
+  trEasyFormatMd: 'Markdown z prostym wyjaśnieniem',
+  trEasyFormatEpub: 'EPUB z prostym wyjaśnieniem',
+  trEasyBilingual:
+    'Oryginał, potem wyjaśnienie: po każdym akapicie oryginału jest jego proste wyjaśnienie (wyłączone: tylko wyjaśnienie)',
+  trEasyFileWord: 'proste wyjaśnienie',
+  trEasyPickTitle: 'Zapisz {format} z prostym wyjaśnieniem',
+  trConfirmEasyLanguage: 'Język wyjaśnienia: {language}',
+  trEasyConfirmDone:
+    '{done} z {total} bloków jest już wyjaśnionych i nie zostanie wysłanych ponownie',
+  trEasyConfirmNothing:
+    'Wszystkie bloki na wybranych stronach są już wyjaśnione. Nic nie jest wysyłane; pliki powstają z zapisanego wyjaśnienia.',
+  trEasyProviderChange:
+    'Zapisane wyjaśnienie powstało z użyciem {stored}. Kontynuowanie z {next} wymiesza w jednym wyjaśnieniu dwie AI.',
+  trEasyStart: 'Rozpocznij wyjaśnianie',
+  trEasyRestart: 'Wyjaśnij od nowa…',
+  trEasyRestartConfirm:
+    'Usunąć zapisane proste wyjaśnienie ({language}, {count} bloków) i wyjaśnić wszystkie bloki od nowa? Usuniętych wyjaśnień nie da się przywrócić.',
+  trEasyRestartYes: 'Wyjaśnij ponownie',
+  trEasyRunning: 'Tworzenie prostego wyjaśnienia ({language})… {done}/{total} bloków',
+  trEasyDone: 'Proste wyjaśnienie ({language}) jest gotowe ({count} bloków).',
+  trResumeEasy: 'Niedokończone proste wyjaśnienie ({language}) {percent}% — kontynuować?',
 } satisfies Record<keyof typeof zh, string>
