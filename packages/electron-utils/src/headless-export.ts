@@ -19,13 +19,7 @@
 
 /** Editor module that owns a given input extension. */
 export type HeadlessExportModule =
-  | 'docs'
-  | 'sheets'
-  | 'slides'
-  | 'markdown'
-  | 'html'
-  | 'diagram'
-  | 'hwp'
+  'docs' | 'sheets' | 'slides' | 'markdown' | 'html' | 'diagram' | 'hwp'
 
 /** Diagram file formats a diagram job can write (the input's ops applied first). */
 export const DIAGRAM_FILE_TARGETS = ['drawio', 'dio', 'drawio.svg', 'drawio.png'] as const
