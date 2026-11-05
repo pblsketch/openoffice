@@ -934,13 +934,15 @@ function AccountEntry({
         : only
           ? t('freeStatusInUse')
           : aiSubscriptionText(lang, 'cardReady')
-      : null
-  const label =
-    summary.state === 'connected'
-      ? names
-      : summary.state === 'checking'
-        ? aiSubscriptionText(lang, 'cardChecking')
-        : aiSubscriptionText(lang, 'pickerNotConnected')
+      : summary.state === 'needs-connection'
+        ? t('homeAiNeedsConnection')
+        : null
+  const named = summary.state === 'connected' || summary.state === 'needs-connection'
+  const label = named
+    ? names
+    : summary.state === 'checking'
+      ? aiSubscriptionText(lang, 'cardChecking')
+      : aiSubscriptionText(lang, 'pickerNotConnected')
 
   return (
     <div className="account-entry">
@@ -960,7 +962,7 @@ function AccountEntry({
         aria-expanded={settingsOpen}
         data-subscription={summary.state}
         data-tip={
-          summary.state === 'connected'
+          named
             ? `${names} · ${stateText}`
             : summary.state === 'checking'
               ? t('settings')
