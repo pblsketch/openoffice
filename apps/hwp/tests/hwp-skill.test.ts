@@ -2096,6 +2096,7 @@ describe('the skill as the model sees it', () => {
       'read_page_setup',
       'set_page_setup',
       'read_formatting',
+      'list_paragraph_looks',
       'format_look',
     ])
     expect((await call('delete_everything')).isError).toBe(true)
