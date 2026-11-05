@@ -1,8 +1,11 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import init, { HwpDocument } from '@rhwp/core'
 import { setOpenFilesSource } from '@genoffice/electron-utils/unsaved-files'
+import { ATTACHABLE_EXTS, attachableMaxBytes, parseFileToText } from '@genoffice/file-parse'
 import {
   LONG_MATERIAL_NOTICE_CHARS,
   MAX_IMAGE_MATERIAL_BYTES,
@@ -12,7 +15,10 @@ import {
 } from '../src/main/generate/limits'
 import {
   generateNotices,
+  IMAGE_MATERIAL_EXTS,
   inspectMaterial,
+  materialMaxBytes,
+  SUPPORTED_MATERIAL_EXTS,
   summarizeMaterials,
   untitledMaterial,
   type MaterialStatus,
@@ -28,7 +34,14 @@ const LABEL = 'client phone'
 const MD = `call <span class="redact-span" data-redaction="" data-label="${LABEL}">${SECRET}</span> today`
 const MD_BROKEN = `call <span class="redact-span" data-redaction="" data-label="${LABEL}">${SECRET} today`
 
+const DIAGRAM_FIXTURES = join(__dirname, '../../../packages/drawio-model/tests/fixtures')
+
 let dir: string
+
+beforeAll(async () => {
+  const wasm = createRequire(import.meta.url).resolve('@rhwp/core/rhwp_bg.wasm')
+  await init({ module_or_path: readFileSync(wasm) })
+})
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'genoffice-generate-'))
@@ -180,6 +193,91 @@ describe('inspectMaterial', () => {
       name: 'Untitled',
       problem: 'untitled',
     })
+  })
+})
+
+/** a one-line Hangul document, built with the engine the reader uses */
+function hangulDocument(): HwpDocument {
+  const doc = HwpDocument.createEmpty()
+  doc.createBlankDocument()
+  doc.insertText(0, 0, 0, '공문 참고 자료')
+  return doc
+}
+
+describe('Hangul documents as material', () => {
+  it('reads a .hwp and a .hwpx file for its text length', async () => {
+    for (const [name, bytes] of [
+      ['notice.hwp', hangulDocument().exportHwp()],
+      ['notice.hwpx', hangulDocument().exportHwpx()],
+    ] as const) {
+      const path = write(name, bytes)
+      const status = await inspectMaterial(path)
+      expect(status.problem, name).toBeUndefined()
+      expect(status.textLength, name).toBe('공문 참고 자료'.length)
+    }
+  })
+
+  it('holds a .hwp to the attachment cap and reads a .hwpx at any size, as the editors do', async () => {
+    const parse = async () => ({ ok: true, kind: 'text' as const, text: 'words' })
+    const sized = (size: number) => async () => ({ isFile: () => true, size })
+    const hwp = write('old.hwp', 'x')
+    expect(materialMaxBytes('hwp')).toBe(attachableMaxBytes('hwp'))
+    expect(
+      (await inspectMaterial(hwp, { stat: sized(MAX_MATERIAL_BYTES + 1), parse })).problem,
+    ).toBe('too-large')
+    expect(
+      (await inspectMaterial(hwp, { stat: sized(MAX_MATERIAL_BYTES), parse })).problem,
+    ).toBeUndefined()
+    const hwpx = write('form.hwpx', 'x')
+    expect(materialMaxBytes('hwpx')).toBe(Number.POSITIVE_INFINITY)
+    expect(
+      (await inspectMaterial(hwpx, { stat: sized(10 * MAX_MATERIAL_BYTES), parse })).problem,
+    ).toBeUndefined()
+  })
+})
+
+describe('the material formats', () => {
+  /**
+   * Whether `parseFileToText` reads a file named by this extension: it reads
+   * by the name before the content, so a one-byte file answers. A format it
+   * does not read comes back `unsupported`; one it reads comes back as text
+   * (or a failed read of that format) or as a picture.
+   */
+  async function readerReads(ext: string): Promise<boolean> {
+    const path = write(`probe.${ext}`, 'x')
+    return (await parseFileToText(path)).kind !== 'unsupported'
+  }
+
+  it('are the attachable formats the reader reads, named by their last extension', async () => {
+    const expected: string[] = []
+    // the two diagram pictures are named by two extensions; a material is named by one
+    for (const ext of [...ATTACHABLE_EXTS].filter((e) => !e.includes('.'))) {
+      if (await readerReads(ext)) expected.push(ext)
+    }
+    expect([...SUPPORTED_MATERIAL_EXTS].sort()).toEqual(expected.sort())
+    for (const ext of SUPPORTED_MATERIAL_EXTS) expect(ATTACHABLE_EXTS.has(ext), ext).toBe(true)
+  })
+
+  it('take Hangul, ODT and EPUB documents but not .xls or source code', () => {
+    for (const ext of ['hwp', 'hwpx', 'odt', 'epub']) {
+      expect(SUPPORTED_MATERIAL_EXTS.has(ext), ext).toBe(true)
+    }
+    for (const ext of ['xls', 'js', 'yaml']) {
+      expect(SUPPORTED_MATERIAL_EXTS.has(ext), ext).toBe(false)
+    }
+  })
+
+  it('keep every picture type a material is handed over as', () => {
+    for (const ext of IMAGE_MATERIAL_EXTS) expect(SUPPORTED_MATERIAL_EXTS.has(ext), ext).toBe(true)
+  })
+
+  it('name a .drawio.png a picture, held to the picture cap', async () => {
+    const path = join(dir, 'flow.drawio.png')
+    copyFileSync(join(DIAGRAM_FIXTURES, 'out.drawio.png'), path)
+    const status = await inspectMaterial(path)
+    expect(status).toMatchObject({ ext: 'png' })
+    expect(status.problem).toBeUndefined()
+    expect(materialMaxBytes(status.ext)).toBe(MAX_IMAGE_MATERIAL_BYTES)
   })
 })
 
