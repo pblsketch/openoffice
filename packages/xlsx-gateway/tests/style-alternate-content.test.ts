@@ -216,3 +216,32 @@ describe('read-only stylesheet views on wrapped entries', () => {
     expect([...dateStyleIndexes(source)]).toEqual([2])
   })
 })
+
+describe('date cell formats behind a wrapped numFmt', () => {
+  // One numFmtId, two codes: the sidecar shows the Fallback's, so the text
+  // read must not call the cell a date because the Choice branch is one.
+  const withNumFmt = (choiceCode: string, fallbackCode: string): string =>
+    HANCOM_FONTS_XFS.replace(
+      '<fonts count="3">',
+      `<numFmts count="1">${wrap(
+        `<numFmt numFmtId="164" formatCode="${choiceCode}" hs:x="1"/>`,
+        `<numFmt numFmtId="164" formatCode="${fallbackCode}"/>`,
+      )}</numFmts><fonts count="3">`,
+    ).replace(
+      '<xf numFmtId="0" fontId="2" fillId="0" borderId="0" applyFont="1"/></cellXfs>',
+      '<xf numFmtId="164" fontId="2" fillId="0" borderId="0" applyNumberFormat="1"/></cellXfs>',
+    )
+
+  it('reads the Fallback code, not the Choice one', () => {
+    expect([...dateStyleIndexes(withNumFmt('yyyy-mm-dd', '0.00'))]).toEqual([])
+    expect([...dateStyleIndexes(withNumFmt('0.00', 'yyyy-mm-dd'))]).toEqual([2])
+  })
+
+  it('ignores numFmt elements outside the numFmts section', () => {
+    const source = HANCOM_FONTS_XFS.replace(
+      '</cellXfs>',
+      '</cellXfs><dxfs count="1"><dxf><numFmt numFmtId="0" formatCode="yyyy-mm-dd"/></dxf></dxfs>',
+    )
+    expect([...dateStyleIndexes(source)]).toEqual([])
+  })
+})
