@@ -283,6 +283,7 @@ export const nl = {
   panePresenterNoNotes: '(Geen notities)',
   panePresenterNotesBigger: 'Notitietekst vergroten',
   panePresenterNotesSmaller: 'Notitietekst verkleinen',
+  panePresenterResizeNotes: 'Sleep om de breedte van de notitiekolom te wijzigen',
   panePresenterFilmSlideN: 'Dia {n}',
 
   paneShowEndedClick: 'Einde van de diavoorstelling. Klik om af te sluiten.',

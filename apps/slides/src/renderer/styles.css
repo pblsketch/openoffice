@@ -7632,12 +7632,35 @@ body.show-curtain::after {
   border-radius: 2px;
 }
 
+/* drag handle between the frame and the side column (PresenterView's splitter):
+ * overlaps the column's border and takes no width of its own; cursor-only
+ * affordance, with a ring while it has keyboard focus */
+.presenter .pv-splitter {
+  flex: none;
+  width: 8px;
+  margin: 0 -4px;
+  position: relative;
+  z-index: 1;
+  cursor: col-resize;
+  background: transparent;
+}
+
+.presenter .pv-splitter:focus {
+  outline: none;
+}
+
+.presenter .pv-splitter:focus-visible {
+  outline: 2px solid var(--slides-pv-accent);
+  outline-offset: -2px;
+}
+
+/* width comes from PresenterView (presenter-layout.ts); 340px is the default */
 .presenter .pv-side {
   width: 340px;
   flex: none;
   box-sizing: border-box;
   padding: 12px 14px;
-  border-left: 1px solid var(--slides-show-line-10);
+  border-inline-start: 1px solid var(--slides-show-line-10);
   display: flex;
   flex-direction: column;
   min-height: 0;

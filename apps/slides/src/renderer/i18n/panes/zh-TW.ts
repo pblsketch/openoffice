@@ -277,6 +277,7 @@ export const zhTW = {
   panePresenterNoNotes: '（無備忘稿）',
   panePresenterNotesBigger: '放大備忘稿字級',
   panePresenterNotesSmaller: '縮小備忘稿字級',
+  panePresenterResizeNotes: '拖曳以調整備忘稿欄寬度',
   panePresenterFilmSlideN: '第 {n} 張',
 
   paneShowEndedClick: '放映結束，按一下離開。',

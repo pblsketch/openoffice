@@ -276,6 +276,7 @@ export const zh = {
   panePresenterNoNotes: '（无备注）',
   panePresenterNotesBigger: '放大备注字号',
   panePresenterNotesSmaller: '缩小备注字号',
+  panePresenterResizeNotes: '拖动以调整备注栏宽度',
   panePresenterFilmSlideN: '第 {n} 张',
 
   paneShowEndedClick: '放映结束，单击退出。',
