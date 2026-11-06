@@ -4,6 +4,11 @@
  * An unknown charset name reads as UTF-8; broken bytes become replacement characters.
  */
 export function decodeHtmlBytes(bytes: Uint8Array): string {
+  if (isUtf32Bom(bytes)) {
+    throw new Error(
+      'Unsupported text encoding: BOM-declared UTF-32 cannot be decoded (UTF-8 and UTF-16 are supported)',
+    )
+  }
   const label = bomCharset(bytes) ?? metaCharset(bytes) ?? 'utf-8'
   try {
     return new TextDecoder(label.toLowerCase()).decode(bytes)
@@ -12,7 +17,16 @@ export function decodeHtmlBytes(bytes: Uint8Array): string {
   }
 }
 
+function isUtf32Bom(bytes: Uint8Array): boolean {
+  return (
+    bytes.length >= 4 &&
+    ((bytes[0] === 0 && bytes[1] === 0 && bytes[2] === 0xfe && bytes[3] === 0xff) ||
+      (bytes[0] === 0xff && bytes[1] === 0xfe && bytes[2] === 0 && bytes[3] === 0))
+  )
+}
+
 function bomCharset(bytes: Uint8Array): string | undefined {
+  if (isUtf32Bom(bytes)) return undefined
   if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) return 'utf-8'
   if (bytes[0] === 0xff && bytes[1] === 0xfe) return 'utf-16le'
   if (bytes[0] === 0xfe && bytes[1] === 0xff) return 'utf-16be'
