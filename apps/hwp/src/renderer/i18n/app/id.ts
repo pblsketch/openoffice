@@ -264,5 +264,7 @@ export const id = {
   charCountTotal: 'Karakter {total}',
   charCountSelected: 'Karakter {selected} / {total}',
   charCountHint:
-    'Jumlah karakter termasuk spasi; saat blok dipilih: blok / seluruh dokumen. Tanpa spasi: {noSpace}. Seperti di Informasi Dokumen, header, footer, catatan kaki, dan catatan akhir tidak dihitung.',
+    'Karakter dihitung termasuk spasi. Tanpa spasi: seluruh dokumen {totalNoSpace}. Seperti di Informasi Dokumen, header, footer, catatan kaki, dan catatan akhir tidak dihitung.',
+  charCountHintSelected:
+    'Dengan spasi: dipilih {selected} / seluruh dokumen {total}. Tanpa spasi: dipilih {selectedNoSpace} / seluruh dokumen {totalNoSpace}. Seperti di Informasi Dokumen, header, footer, catatan kaki, dan catatan akhir tidak dihitung.',
 } satisfies Record<keyof typeof zh, string>

@@ -269,5 +269,7 @@ export const es = {
   charCountTotal: 'Caracteres {total}',
   charCountSelected: 'Caracteres {selected} / {total}',
   charCountHint:
-    'Caracteres con espacios; con un bloque seleccionado, bloque / documento completo. Sin espacios: {noSpace}. Como en la información del documento, no se cuentan encabezados, pies de página, notas al pie ni notas finales.',
+    'Se cuentan los caracteres con espacios. Sin espacios: documento completo {totalNoSpace}. Como en la información del documento, no se cuentan encabezados, pies de página, notas al pie ni notas finales.',
+  charCountHintSelected:
+    'Con espacios: selección {selected} / documento completo {total}. Sin espacios: selección {selectedNoSpace} / documento completo {totalNoSpace}. Como en la información del documento, no se cuentan encabezados, pies de página, notas al pie ni notas finales.',
 } satisfies Record<keyof typeof zh, string>

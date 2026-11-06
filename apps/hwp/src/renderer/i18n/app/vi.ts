@@ -261,5 +261,7 @@ export const vi = {
   charCountTotal: 'Ký tự {total}',
   charCountSelected: 'Ký tự {selected} / {total}',
   charCountHint:
-    'Số ký tự kể cả khoảng trắng; khi chọn một khối: khối / toàn bộ tài liệu. Không tính khoảng trắng: {noSpace}. Giống như Thông tin tài liệu, đầu trang, chân trang, chú thích cuối trang và chú thích cuối tài liệu không được tính.',
+    'Ký tự được đếm kể cả khoảng trắng. Không tính khoảng trắng: toàn bộ tài liệu {totalNoSpace}. Giống như Thông tin tài liệu, đầu trang, chân trang, chú thích cuối trang và chú thích cuối tài liệu không được tính.',
+  charCountHintSelected:
+    'Kể cả khoảng trắng: đã chọn {selected} / toàn bộ tài liệu {total}. Không tính khoảng trắng: đã chọn {selectedNoSpace} / toàn bộ tài liệu {totalNoSpace}. Giống như Thông tin tài liệu, đầu trang, chân trang, chú thích cuối trang và chú thích cuối tài liệu không được tính.',
 } satisfies Record<keyof typeof zh, string>

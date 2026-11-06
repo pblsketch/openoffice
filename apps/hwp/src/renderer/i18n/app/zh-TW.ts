@@ -251,5 +251,7 @@ export const zhTW = {
   charCountTotal: '字數 {total}',
   charCountSelected: '字數 {selected} / {total}',
   charCountHint:
-    '含空格的字數；選取區塊時顯示為「區塊 / 全文」。不含空格：{noSpace}。與文件資訊相同，不計頁首、頁尾、註腳和章節附註。',
+    '字數含空格。不含空格：全文 {totalNoSpace}。 與文件資訊相同，不計頁首、頁尾、註腳和章節附註。',
+  charCountHintSelected:
+    '含空格：選取 {selected} / 全文 {total}。不含空格：選取 {selectedNoSpace} / 全文 {totalNoSpace}。 與文件資訊相同，不計頁首、頁尾、註腳和章節附註。',
 } satisfies Record<keyof typeof zh, string>

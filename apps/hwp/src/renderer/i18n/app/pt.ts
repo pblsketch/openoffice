@@ -267,5 +267,7 @@ export const pt = {
   charCountTotal: 'Caracteres {total}',
   charCountSelected: 'Caracteres {selected} / {total}',
   charCountHint:
-    'Caracteres com espaços; com um bloco selecionado, bloco / documento inteiro. Sem espaços: {noSpace}. Como nas informações do documento, cabeçalhos, rodapés, notas de rodapé e notas de fim não são contados.',
+    'Os caracteres são contados com espaços. Sem espaços: documento inteiro {totalNoSpace}. Como nas informações do documento, cabeçalhos, rodapés, notas de rodapé e notas de fim não são contados.',
+  charCountHintSelected:
+    'Com espaços: seleção {selected} / documento inteiro {total}. Sem espaços: seleção {selectedNoSpace} / documento inteiro {totalNoSpace}. Como nas informações do documento, cabeçalhos, rodapés, notas de rodapé e notas de fim não são contados.',
 } satisfies Record<keyof typeof zh, string>

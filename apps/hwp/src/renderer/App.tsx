@@ -574,6 +574,7 @@ export default function App() {
         total: translateNow('charCountTotal'),
         selected: translateNow('charCountSelected'),
         hint: translateNow('charCountHint'),
+        hintSelected: translateNow('charCountHintSelected'),
         locale: lang,
       })
       .catch(() => {})

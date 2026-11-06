@@ -21,7 +21,9 @@ import {
 const KO = {
   total: '글자 {total}',
   selected: '글자 {selected} / {total}',
-  hint: '공백을 빼면 {noSpace}자입니다.',
+  hint: '공백 제외: 전체 {totalNoSpace}',
+  hintSelected:
+    '공백 포함: 고른 글자 {selected} / 전체 {total}. 공백 제외: 고른 글자 {selectedNoSpace} / 전체 {totalNoSpace}',
   locale: 'ko',
 }
 
@@ -30,11 +32,14 @@ describe('the words of the count', () => {
     const labels = checkCharCountLabels(KO)!
     expect(charCountText(labels, { chars: 12345, charsNoSpace: 10000 }, null)).toEqual({
       text: '글자 12,345',
-      title: '공백을 빼면 10,000자입니다.',
+      title: '공백 제외: 전체 10,000',
     })
     expect(
       charCountText(labels, { chars: 12345, charsNoSpace: 10000 }, { chars: 12, charsNoSpace: 9 }),
-    ).toEqual({ text: '글자 12 / 12,345', title: '공백을 빼면 9 / 10,000자입니다.' })
+    ).toEqual({
+      text: '글자 12 / 12,345',
+      title: '공백 포함: 고른 글자 12 / 전체 12,345. 공백 제외: 고른 글자 9 / 전체 10,000',
+    })
   })
 
   it('writes the numbers in the app language', () => {
@@ -45,6 +50,7 @@ describe('the words of the count', () => {
   it('refuses labels it cannot show', () => {
     expect(checkCharCountLabels(null)).toBeNull()
     expect(checkCharCountLabels({ ...KO, hint: ' ' })).toBeNull()
+    expect(checkCharCountLabels({ ...KO, hintSelected: undefined })).toBeNull()
     expect(checkCharCountLabels({ total: 'a', selected: 'b' })).toBeNull()
   })
 })
@@ -107,7 +113,7 @@ describe('when it counts', () => {
       return selection
     })
     const render = vi.fn()
-    const count = charCounter({ readTotal, readSelection, render, now: () => clock })
+    const count = charCounter({ readTotal, readSelection, render, now: () => clock, idle: null })
     return {
       count,
       readTotal,
@@ -173,6 +179,70 @@ describe('when it counts', () => {
     expect(readTotal).not.toHaveBeenCalled()
     vi.advanceTimersByTime(1)
     expect(readTotal).toHaveBeenCalledTimes(1)
+  })
+
+  it('waits for an idle moment once the pause is over, and counts whole then', () => {
+    const readTotal = vi.fn(() => ({ chars: 10, charsNoSpace: 8 }))
+    const readSelection = vi.fn(() => null)
+    const idled: (() => void)[] = []
+    const cancelled: number[] = []
+    const count = charCounter({
+      readTotal,
+      readSelection,
+      render: vi.fn(),
+      idle: {
+        request: (fn: () => void) => idled.push(fn),
+        cancel: (id: number) => cancelled.push(id),
+      },
+    })
+    count.start()
+    vi.advanceTimersByTime(0)
+    expect(readTotal).not.toHaveBeenCalled()
+    expect(idled).toHaveLength(2)
+    idled[0]()
+    expect(readTotal).toHaveBeenCalledTimes(1)
+    // an edit while a count waits for idle time puts it off again
+    count.documentChanged()
+    vi.advanceTimersByTime(TOTAL_PAUSE_MS)
+    expect(idled).toHaveLength(4)
+    count.documentChanged()
+    expect(cancelled.length).toBeGreaterThan(0)
+  })
+
+  it('takes no event its own count raises for an edit', () => {
+    const events = { raise: () => {} }
+    // the count runs a command of the editor, which may tell of a change itself
+    const readTotal = vi.fn(() => {
+      events.raise()
+      return { chars: 10, charsNoSpace: 8 }
+    })
+    const count = charCounter({
+      readTotal,
+      readSelection: () => null,
+      render: vi.fn(),
+      idle: null,
+    })
+    events.raise = () => {
+      count.documentChanged()
+      count.selectionChanged()
+    }
+    count.start()
+    vi.advanceTimersByTime(0)
+    expect(readTotal).toHaveBeenCalledTimes(1)
+    vi.advanceTimersByTime(TOTAL_PAUSE_MS * 20)
+    expect(readTotal).toHaveBeenCalledTimes(1)
+  })
+
+  it('counts both again when another document is opened in the editor', () => {
+    const { count, readTotal, readSelection } = counter()
+    count.start()
+    vi.advanceTimersByTime(0)
+    readTotal.mockClear()
+    readSelection.mockClear()
+    count.documentSwapped()
+    vi.advanceTimersByTime(0)
+    expect(readTotal).toHaveBeenCalledTimes(1)
+    expect(readSelection).toHaveBeenCalledTimes(1)
   })
 
   it('keeps the last numbers when a count fails, and stops for good', () => {

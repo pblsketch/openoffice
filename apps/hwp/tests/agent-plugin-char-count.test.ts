@@ -68,12 +68,13 @@ const inBody = (para: number, offset: number): Position => ({
 const LABELS = {
   total: '글자 {total}',
   selected: '글자 {selected} / {total}',
-  hint: '공백 제외 {noSpace}',
+  hint: '공백 제외 {totalNoSpace}',
+  hintSelected: '공백 제외 {selectedNoSpace} / {totalNoSpace}',
   locale: 'ko',
 }
 
 /** 첫째 문단 글. / [2×2 table] / 셋째 문단 글., as the engine builds it. */
-function openDocument() {
+function openDocument({ changesOnCommand = false } = {}) {
   const doc = HwpDocument.createEmpty()
   doc.createBlankDocument()
   const lines = ['첫째 문단 글.', '', '셋째 문단 글.']
@@ -85,6 +86,8 @@ function openDocument() {
 
   const commands = new Map<string, Command>()
   const listeners = new Map<string, (() => void)[]>()
+  const executed: string[] = []
+  const emit = (name: string) => (listeners.get(name) ?? []).forEach((fn) => fn())
   const cursor = {
     anchor: null as Position | null,
     position: inBody(0, 0),
@@ -119,6 +122,9 @@ function openDocument() {
       registerCommand: (command: Command) => commands.set(command.id, command),
       execute: (id: string, params?: unknown) => {
         commands.get(id)?.execute(services, params)
+        executed.push(id)
+        // the worst a studio could do: tell of a change for a command that changed nothing
+        if (changesOnCommand) emit('document-changed')
         return { ok: true }
       },
     },
@@ -127,7 +133,8 @@ function openDocument() {
   return {
     doc,
     plugin,
-    emit: (name: string) => (listeners.get(name) ?? []).forEach((fn) => fn()),
+    executed,
+    emit,
     listening: (name: string) => (listeners.get(name) ?? []).length,
     select: (start: Position, end: Position) => {
       cursor.anchor = start
@@ -197,6 +204,32 @@ describe('the status bar character count', () => {
     expect(item()?.textContent).toBe('글자 27')
   })
 
+  it('does not count on and on when counting itself tells of a change', () => {
+    vi.useFakeTimers()
+    withStatusBar()
+    const open = openDocument({ changesOnCommand: true })
+    open.plugin.showCharCount(LABELS)
+    vi.advanceTimersByTime(0)
+    const counts = () => open.executed.filter((id) => id === 'ext:ieum-count-characters').length
+    expect(counts()).toBe(1)
+    vi.advanceTimersByTime(TOTAL_PAUSE_MS * 20)
+    expect(counts()).toBe(1)
+  })
+
+  it('counts the whole document again when another one is opened in the same tab', () => {
+    vi.useFakeTimers()
+    const item = withStatusBar()
+    const open = openDocument()
+    open.plugin.showCharCount(LABELS)
+    vi.advanceTimersByTime(0)
+    expect(item()?.textContent).toBe('글자 24')
+    // the studio loads the new bytes into the same document and says it swapped
+    open.doc.insertText(0, 0, 0, '다시 연 문서 ')
+    open.emit('document-swapped')
+    vi.advanceTimersByTime(0)
+    expect(item()?.textContent).toBe('글자 32')
+  })
+
   it('changes its words when the app gives others, without a second item', () => {
     vi.useFakeTimers()
     const item = withStatusBar()
@@ -206,7 +239,8 @@ describe('the status bar character count', () => {
     open.plugin.showCharCount({
       total: 'Characters {total}',
       selected: '{selected} / {total}',
-      hint: '{noSpace}',
+      hint: '{totalNoSpace}',
+      hintSelected: '{selectedNoSpace} / {totalNoSpace}',
       locale: 'en',
     })
     expect(item()?.textContent).toBe('Characters 24')

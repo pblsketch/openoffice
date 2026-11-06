@@ -270,5 +270,7 @@ export const fr = {
   charCountTotal: 'Caractères {total}',
   charCountSelected: 'Caractères {selected} / {total}',
   charCountHint:
-    'Caractères espaces compris ; avec un bloc sélectionné : bloc / document entier. Sans les espaces : {noSpace}. Comme dans les informations du document, les en-têtes, pieds de page, notes de bas de page et notes de fin ne sont pas comptés.',
+    'Les caractères sont comptés espaces compris. Sans les espaces : document entier {totalNoSpace}. Comme dans les informations du document, les en-têtes, pieds de page, notes de bas de page et notes de fin ne sont pas comptés.',
+  charCountHintSelected:
+    'Espaces compris : sélection {selected} / document entier {total}. Sans les espaces : sélection {selectedNoSpace} / document entier {totalNoSpace}. Comme dans les informations du document, les en-têtes, pieds de page, notes de bas de page et notes de fin ne sont pas comptés.',
 } satisfies Record<keyof typeof zh, string>

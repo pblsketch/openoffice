@@ -4825,6 +4825,8 @@ export const agentPlugin = {
       charCount = counter
       const offChanged = host.events.on('document-changed', () => counter.documentChanged())
       const offCaret = host.events.on('cursor-rect-updated', () => counter.selectionChanged())
+      // another document opened in the same editor (a restored copy, a file dropped in)
+      const offSwapped = host.events.on('document-swapped', () => counter.documentSwapped())
       // a cell block grows with the keys or the mouse without the caret moving: a key or a
       // button let go is when to look again
       const onRest = () => counter.selectionChanged()
@@ -4834,7 +4836,7 @@ export const agentPlugin = {
         counter.stop()
         page.removeEventListener('keyup', onRest, true)
         page.removeEventListener('mouseup', onRest, true)
-        for (const off of [offChanged, offCaret]) {
+        for (const off of [offChanged, offCaret, offSwapped]) {
           try {
             off?.()
           } catch {
@@ -7036,13 +7038,17 @@ export const agentPlugin = {
        * Show the characters of the block and of the document in the editor's status bar,
        * beside the insert/overwrite mode (issue #295), counted as the 문서 정보 dialog counts
        * them. `labels` are the app's words: `total` ("{total}"), `selected` ("{selected}" and
-       * "{total}") and the tooltip `hint` ("{noSpace}", the count without blanks), with the
-       * `locale` the numbers are written in. A later call changes the words.
+       * "{total}"), and the tooltips `hint` and `hintSelected` (those and "{totalNoSpace}",
+       * "{selectedNoSpace}", the counts without blanks), with the `locale` the numbers are
+       * written in. A later call changes the words.
        */
       showCharCount: guarded((labels) => {
         const checked = checkCharCountLabels(labels)
         if (!checked)
-          throw fail('BAD_ARGUMENT', 'total, selected and hint must be non-empty strings')
+          throw fail(
+            'BAD_ARGUMENT',
+            'total, selected, hint and hintSelected must be non-empty strings',
+          )
         charCountLabels = checked
         return { ok: startCharCount() }
       }),

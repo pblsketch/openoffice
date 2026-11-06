@@ -262,5 +262,7 @@ export const ja = {
   charCountTotal: '文字数 {total}',
   charCountSelected: '文字数 {selected} / {total}',
   charCountHint:
-    'スペースを含む文字数です。ブロックを選択すると「ブロック / 全体」で表示します。スペースを除くと {noSpace} です。文書情報と同じく、ヘッダー・フッター・脚注・文末脚注は数えません。',
+    'スペースを含めて数えます。スペース除く：全体 {totalNoSpace}。 文書情報と同じく、ヘッダー・フッター・脚注・文末脚注は数えません。',
+  charCountHintSelected:
+    'スペース含む：選択 {selected} / 全体 {total}。スペース除く：選択 {selectedNoSpace} / 全体 {totalNoSpace}。 文書情報と同じく、ヘッダー・フッター・脚注・文末脚注は数えません。',
 } satisfies Record<keyof typeof zh, string>

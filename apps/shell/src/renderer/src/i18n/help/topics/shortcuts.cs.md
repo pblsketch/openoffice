@@ -631,6 +631,8 @@ Tyto klávesy fungují, když je karta HWP/HWPX vpředu a dokument má fokus. Dv
 | Najít další           | ⌃L          | Ctrl+L                       |
 | Hledat zpět           | ⌃Q, L       | Ctrl+Q, L                    |
 | Přejít na             | ⌥G          | Alt+G                        |
+| Na začátek dokumentu  | ⌃⇞          | Ctrl+PageUp                  |
+| Na konec dokumentu    | ⌃⇟          | Ctrl+PageDown                |
 | Porovnat dokumenty    | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Znak

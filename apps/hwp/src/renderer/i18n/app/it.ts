@@ -269,5 +269,7 @@ export const it = {
   charCountTotal: 'Caratteri {total}',
   charCountSelected: 'Caratteri {selected} / {total}',
   charCountHint:
-    'Caratteri spazi inclusi; con un blocco selezionato, blocco / intero documento. Senza spazi: {noSpace}. Come nelle informazioni sul documento, intestazioni, piè di pagina, note a piè di pagina e note di chiusura non vengono contati.',
+    'I caratteri sono contati spazi inclusi. Senza spazi: intero documento {totalNoSpace}. Come nelle informazioni sul documento, intestazioni, piè di pagina, note a piè di pagina e note di chiusura non vengono contati.',
+  charCountHintSelected:
+    'Spazi inclusi: selezione {selected} / intero documento {total}. Senza spazi: selezione {selectedNoSpace} / intero documento {totalNoSpace}. Come nelle informazioni sul documento, intestazioni, piè di pagina, note a piè di pagina e note di chiusura non vengono contati.',
 } satisfies Record<keyof typeof zh, string>

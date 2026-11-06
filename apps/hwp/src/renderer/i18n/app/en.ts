@@ -261,5 +261,7 @@ export const en = {
   charCountTotal: 'Characters {total}',
   charCountSelected: 'Characters {selected} / {total}',
   charCountHint:
-    'Characters including spaces; with a block selected, block / whole document. Without spaces: {noSpace}. As in Document Information, headers, footers, footnotes and endnotes are not counted.',
+    'Characters are counted with spaces. Without spaces: whole document {totalNoSpace}. As in Document Information, headers, footers, footnotes and endnotes are not counted.',
+  charCountHintSelected:
+    'With spaces: selected {selected} / whole document {total}. Without spaces: selected {selectedNoSpace} / whole document {totalNoSpace}. As in Document Information, headers, footers, footnotes and endnotes are not counted.',
 } satisfies Record<keyof typeof zh, string>

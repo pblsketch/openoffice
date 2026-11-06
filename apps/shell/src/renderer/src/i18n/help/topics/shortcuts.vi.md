@@ -631,6 +631,8 @@ Các phím này hoạt động khi thẻ HWP/HWPX ở phía trước và tài li
 | Tìm tiếp           | ⌃L          | Ctrl+L                       |
 | Tìm ngược          | ⌃Q, L       | Ctrl+Q, L                    |
 | Đi tới             | ⌥G          | Alt+G                        |
+| Về đầu tài liệu    | ⌃⇞          | Ctrl+PageUp                  |
+| Về cuối tài liệu   | ⌃⇟          | Ctrl+PageDown                |
 | So sánh tài liệu   | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Ký tự

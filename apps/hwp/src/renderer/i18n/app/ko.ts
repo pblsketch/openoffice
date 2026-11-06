@@ -259,5 +259,7 @@ export const ko = {
   charCountTotal: '글자 {total}',
   charCountSelected: '글자 {selected} / {total}',
   charCountHint:
-    '공백을 포함한 글자 수입니다. 블록을 고르면 고른 글자 / 전체 글자로 보입니다. 공백을 빼면 {noSpace}자입니다. 문서 정보처럼 머리말·꼬리말·각주·미주는 세지 않습니다.',
+    '글자 수는 공백을 포함해 셉니다. 공백 제외: 전체 {totalNoSpace}. 문서 정보처럼 머리말·꼬리말·각주·미주는 세지 않습니다.',
+  charCountHintSelected:
+    '공백 포함: 고른 글자 {selected} / 전체 {total}. 공백 제외: 고른 글자 {selectedNoSpace} / 전체 {totalNoSpace}. 문서 정보처럼 머리말·꼬리말·각주·미주는 세지 않습니다.',
 } satisfies Record<keyof typeof zh, string>

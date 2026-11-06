@@ -615,23 +615,25 @@ GenOffice HTML 在实时预览旁边显示代码编辑器。作用于页面元�
 
 ### 编辑
 
-| 操作       | macOS       | Windows / Linux              |
-| ---------- | ----------- | ---------------------------- |
-| 撤销       | ⌃Z          | Ctrl+Z                       |
-| 重做       | ⌃⇧Z         | Ctrl+Shift+Z                 |
-| 删除当前行 | ⌃Y          | Ctrl+Y                       |
-| 剪切       | ⌃X          | Ctrl+X                       |
-| 复制       | ⌃C          | Ctrl+C                       |
-| 粘贴       | ⌃V          | Ctrl+V                       |
-| 删除       | ⌃E          | Ctrl+E                       |
-| 全选       | ⌃A          | Ctrl+A                       |
-| 复制格式   | ⌥C          | Alt+C                        |
-| 查找       | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
-| 查找和替换 | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
-| 查找下一个 | ⌃L          | Ctrl+L                       |
-| 向上查找   | ⌃Q, L       | Ctrl+Q, L                    |
-| 定位       | ⌥G          | Alt+G                        |
-| 比较文档   | ⌥⇧V         | Alt+Shift+V                  |
+| 操作         | macOS       | Windows / Linux              |
+| ------------ | ----------- | ---------------------------- |
+| 撤销         | ⌃Z          | Ctrl+Z                       |
+| 重做         | ⌃⇧Z         | Ctrl+Shift+Z                 |
+| 删除当前行   | ⌃Y          | Ctrl+Y                       |
+| 剪切         | ⌃X          | Ctrl+X                       |
+| 复制         | ⌃C          | Ctrl+C                       |
+| 粘贴         | ⌃V          | Ctrl+V                       |
+| 删除         | ⌃E          | Ctrl+E                       |
+| 全选         | ⌃A          | Ctrl+A                       |
+| 复制格式     | ⌥C          | Alt+C                        |
+| 查找         | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
+| 查找和替换   | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
+| 查找下一个   | ⌃L          | Ctrl+L                       |
+| 向上查找     | ⌃Q, L       | Ctrl+Q, L                    |
+| 定位         | ⌥G          | Alt+G                        |
+| 移到文档开头 | ⌃⇞          | Ctrl+PageUp                  |
+| 移到文档末尾 | ⌃⇟          | Ctrl+PageDown                |
+| 比较文档     | ⌥⇧V         | Alt+Shift+V                  |
 
 ### 字符格式
 

@@ -615,23 +615,25 @@ Questi tasti funzionano quando la scheda HWP/HWPX è in primo piano e il documen
 
 ### Modifica
 
-| Azione              | macOS       | Windows / Linux              |
-| ------------------- | ----------- | ---------------------------- |
-| Annulla             | ⌃Z          | Ctrl+Z                       |
-| Ripeti              | ⌃⇧Z         | Ctrl+Shift+Z                 |
-| Elimina la riga     | ⌃Y          | Ctrl+Y                       |
-| Taglia              | ⌃X          | Ctrl+X                       |
-| Copia               | ⌃C          | Ctrl+C                       |
-| Incolla             | ⌃V          | Ctrl+V                       |
-| Elimina             | ⌃E          | Ctrl+E                       |
-| Seleziona tutto     | ⌃A          | Ctrl+A                       |
-| Copia formattazione | ⌥C          | Alt+C                        |
-| Trova               | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
-| Trova e sostituisci | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
-| Trova successivo    | ⌃L          | Ctrl+L                       |
-| Trova all’indietro  | ⌃Q, L       | Ctrl+Q, L                    |
-| Vai a               | ⌥G          | Alt+G                        |
-| Confronta documenti | ⌥⇧V         | Alt+Shift+V                  |
+| Azione               | macOS       | Windows / Linux              |
+| -------------------- | ----------- | ---------------------------- |
+| Annulla              | ⌃Z          | Ctrl+Z                       |
+| Ripeti               | ⌃⇧Z         | Ctrl+Shift+Z                 |
+| Elimina la riga      | ⌃Y          | Ctrl+Y                       |
+| Taglia               | ⌃X          | Ctrl+X                       |
+| Copia                | ⌃C          | Ctrl+C                       |
+| Incolla              | ⌃V          | Ctrl+V                       |
+| Elimina              | ⌃E          | Ctrl+E                       |
+| Seleziona tutto      | ⌃A          | Ctrl+A                       |
+| Copia formattazione  | ⌥C          | Alt+C                        |
+| Trova                | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
+| Trova e sostituisci  | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
+| Trova successivo     | ⌃L          | Ctrl+L                       |
+| Trova all’indietro   | ⌃Q, L       | Ctrl+Q, L                    |
+| Vai a                | ⌥G          | Alt+G                        |
+| Inizio del documento | ⌃⇞          | Ctrl+PageUp                  |
+| Fine del documento   | ⌃⇟          | Ctrl+PageDown                |
+| Confronta documenti  | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Carattere
 

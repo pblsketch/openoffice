@@ -631,6 +631,8 @@ Te klawisze działają, gdy karta HWP/HWPX jest na wierzchu, a dokument ma fokus
 | Znajdź następny     | ⌃L          | Ctrl+L                       |
 | Znajdź wstecz       | ⌃Q, L       | Ctrl+Q, L                    |
 | Przejdź do          | ⌥G          | Alt+G                        |
+| Początek dokumentu  | ⌃⇞          | Ctrl+PageUp                  |
+| Koniec dokumentu    | ⌃⇟          | Ctrl+PageDown                |
 | Porównaj dokumenty  | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Znak

@@ -9,9 +9,9 @@
  *
  * Counting reads every paragraph of the document, which takes a while on a long one (a
  * 480,000-character document about 0.1 s), so it is never done for a key press: the document is
- * counted again once typing pauses, and the block once the selection rests. How long the pause
- * is follows how long the last count took, so a long document is counted less often but still
- * whole, and nothing is cut short.
+ * counted again once typing pauses, and the block once the selection rests, and then only when
+ * the page is idle. How long the pause is follows how long the last count took, so a long
+ * document is counted less often but still whole, and nothing is cut short.
  */
 import { textCounts } from './document-info.mjs'
 
@@ -51,14 +51,21 @@ export function countCollector() {
   }
 }
 
-/** The labels the app hands over, checked: templates with {total}, {selected} and {noSpace}. */
+/**
+ * The labels the app hands over, checked: templates with {total} and {selected} (with spaces)
+ * and {totalNoSpace} and {selectedNoSpace}; `hint` is the tooltip without a block,
+ * `hintSelected` with one.
+ */
 export function checkCharCountLabels(given) {
   const ok = (value) => typeof value === 'string' && value.trim().length > 0
-  if (!given || !ok(given.total) || !ok(given.selected) || !ok(given.hint)) return null
+  if (!given || !['total', 'selected', 'hint', 'hintSelected'].every((key) => ok(given[key]))) {
+    return null
+  }
   return {
     total: given.total,
     selected: given.selected,
     hint: given.hint,
+    hintSelected: given.hintSelected,
     locale: typeof given.locale === 'string' && given.locale ? given.locale : undefined,
   }
 }
@@ -80,14 +87,13 @@ export function charCountText(labels, total, selected) {
   const number = (n) => format(Math.max(0, Math.round(Number(n) || 0)))
   const values = {
     total: number(total.chars),
+    totalNoSpace: number(total.charsNoSpace),
     selected: selected ? number(selected.chars) : '',
-    noSpace: selected
-      ? `${number(selected.charsNoSpace)} / ${number(total.charsNoSpace)}`
-      : number(total.charsNoSpace),
+    selectedNoSpace: selected ? number(selected.charsNoSpace) : '',
   }
   return {
     text: fill(selected ? labels.selected : labels.total, values),
-    title: fill(labels.hint, values),
+    title: fill(selected ? labels.hintSelected : labels.hint, values),
   }
 }
 
@@ -116,11 +122,30 @@ export function charCountItem(page) {
   return item
 }
 
+/** How long a count waits for an idle moment before it runs anyway (a page never idle). */
+export const IDLE_DEADLINE_MS = 2000
+
+const idleOf = () => {
+  const request = globalThis.requestIdleCallback
+  const cancel = globalThis.cancelIdleCallback
+  if (typeof request !== 'function' || typeof cancel !== 'function') return null
+  return {
+    request: (fn) => request.call(globalThis, fn, { timeout: IDLE_DEADLINE_MS }),
+    cancel: (id) => cancel.call(globalThis, id),
+  }
+}
+
 /**
  * The counting schedule. `readTotal()` and `readSelection()` count (the second answers null
  * when nothing is selected), `render(total, selected)` shows them. `documentChanged` and
  * `selectionChanged` are cheap, so they can be called for every edit and every caret move:
- * each only puts its count off until things rest.
+ * each only puts its count off until things rest. Once the pause is over the count waits for
+ * the page to be idle (requestIdleCallback, where the page has it), so it does not hold up a
+ * key pressed just then; it is the same whole count, only run when nothing else is.
+ *
+ * A count that itself raises the events (the command it runs) does not start another: events
+ * that come while a count runs are not taken for an edit. `documentSwapped` (another document
+ * opened in the same editor) counts both again.
  */
 export function charCounter({
   readTotal,
@@ -129,72 +154,91 @@ export function charCounter({
   now = () => globalThis.performance?.now?.() ?? Date.now(),
   setTimer = (fn, ms) => setTimeout(fn, ms),
   clearTimer = (id) => clearTimeout(id),
+  idle = idleOf(),
 }) {
   let total = null
   let selected = null
-  let totalTimer = null
-  let selectionTimer = null
-  let totalCost = 0
-  let selectionCost = 0
   let stopped = false
+  let counting = false
 
-  const timed = (read) => {
-    const started = now()
-    let value
-    try {
-      value = read()
-    } catch {
-      value = null
-    }
-    return { value, cost: Math.max(0, now() - started) }
-  }
   const show = () => {
     if (!stopped && total) render(total, selected)
   }
-  const countTotal = () => {
-    totalTimer = null
-    const { value, cost } = timed(readTotal)
-    totalCost = cost
+  /** One count: its pause timer, its idle request, and what the last run cost. */
+  const job = (read, take) => {
+    const state = { timer: null, idle: null, cost: 0 }
+    const run = () => {
+      state.idle = null
+      if (stopped) return
+      const started = now()
+      let value
+      counting = true
+      try {
+        value = read()
+      } catch {
+        value = undefined
+      } finally {
+        counting = false
+      }
+      state.cost = Math.max(0, now() - started)
+      take(value)
+      show()
+    }
+    const cancel = () => {
+      if (state.timer !== null) clearTimer(state.timer)
+      if (state.idle !== null) idle?.cancel(state.idle)
+      state.timer = null
+      state.idle = null
+    }
+    const schedule = (pause) => {
+      cancel()
+      state.timer = setTimer(
+        () => {
+          state.timer = null
+          if (idle) state.idle = idle.request(run)
+          else run()
+        },
+        Math.max(pause, state.cost * PAUSE_PER_COUNT),
+      )
+    }
+    return { schedule, cancel }
+  }
+  // a failed count of the document keeps the numbers it had
+  const totalJob = job(readTotal, (value) => {
     if (value) total = value
-    show()
-  }
-  const countSelection = () => {
-    selectionTimer = null
-    const { value, cost } = timed(readSelection)
-    selectionCost = cost
+  })
+  const selectionJob = job(readSelection, (value) => {
     selected = value ?? null
-    show()
-  }
-  const later = (timer, run, pause, cost) => {
-    if (timer !== null) clearTimer(timer)
-    return setTimer(run, Math.max(pause, cost * PAUSE_PER_COUNT))
-  }
+  })
 
   return {
     /** Count both as soon as the page is free (the item was just put up). */
     start() {
       stopped = false
-      totalTimer = later(totalTimer, countTotal, 0, 0)
-      selectionTimer = later(selectionTimer, countSelection, 0, 0)
+      totalJob.schedule(0)
+      selectionJob.schedule(0)
     },
     documentChanged() {
-      if (stopped) return
-      totalTimer = later(totalTimer, countTotal, TOTAL_PAUSE_MS, totalCost)
+      if (stopped || counting) return
+      totalJob.schedule(TOTAL_PAUSE_MS)
       // an edit moves or empties the block too
-      selectionTimer = later(selectionTimer, countSelection, SELECTION_PAUSE_MS, selectionCost)
+      selectionJob.schedule(SELECTION_PAUSE_MS)
     },
     selectionChanged() {
+      if (stopped || counting) return
+      selectionJob.schedule(SELECTION_PAUSE_MS)
+    },
+    documentSwapped() {
       if (stopped) return
-      selectionTimer = later(selectionTimer, countSelection, SELECTION_PAUSE_MS, selectionCost)
+      totalJob.schedule(0)
+      selectionJob.schedule(0)
     },
     /** Shows the last counts again (the labels changed). */
     refresh: show,
     stop() {
       stopped = true
-      if (totalTimer !== null) clearTimer(totalTimer)
-      if (selectionTimer !== null) clearTimer(selectionTimer)
-      totalTimer = null
-      selectionTimer = null
+      totalJob.cancel()
+      selectionJob.cancel()
     },
   }
 }

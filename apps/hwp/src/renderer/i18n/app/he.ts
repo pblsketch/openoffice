@@ -257,5 +257,7 @@ export const he = {
   charCountTotal: 'תווים {total}',
   charCountSelected: 'תווים {selected} / {total}',
   charCountHint:
-    'מספר התווים כולל רווחים; כשנבחר בלוק: בלוק / כל המסמך. ללא רווחים: {noSpace}. כמו במידע על המסמך, כותרות עליונות ותחתונות, הערות שוליים והערות סיום אינן נספרות.',
+    'התווים נספרים כולל רווחים. ללא רווחים: כל המסמך {totalNoSpace}. כמו במידע על המסמך, כותרות עליונות ותחתונות, הערות שוליים והערות סיום אינן נספרות.',
+  charCountHintSelected:
+    'כולל רווחים: נבחר {selected} / כל המסמך {total}. ללא רווחים: נבחר {selectedNoSpace} / כל המסמך {totalNoSpace}. כמו במידע על המסמך, כותרות עליונות ותחתונות, הערות שוליים והערות סיום אינן נספרות.',
 } satisfies Record<keyof typeof zh, string>

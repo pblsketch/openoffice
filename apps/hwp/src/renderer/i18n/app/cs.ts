@@ -263,5 +263,7 @@ export const cs = {
   charCountTotal: 'Znaky {total}',
   charCountSelected: 'Znaky {selected} / {total}',
   charCountHint:
-    'Znaky včetně mezer; při vybraném bloku: blok / celý dokument. Bez mezer: {noSpace}. Stejně jako v informacích o dokumentu se nepočítají záhlaví, zápatí, poznámky pod čarou ani vysvětlivky.',
+    'Znaky se počítají včetně mezer. Bez mezer: celý dokument {totalNoSpace}. Stejně jako v informacích o dokumentu se nepočítají záhlaví, zápatí, poznámky pod čarou ani vysvětlivky.',
+  charCountHintSelected:
+    'Včetně mezer: výběr {selected} / celý dokument {total}. Bez mezer: výběr {selectedNoSpace} / celý dokument {totalNoSpace}. Stejně jako v informacích o dokumentu se nepočítají záhlaví, zápatí, poznámky pod čarou ani vysvětlivky.',
 } satisfies Record<keyof typeof zh, string>

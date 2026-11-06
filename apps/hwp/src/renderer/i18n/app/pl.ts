@@ -265,5 +265,7 @@ export const pl = {
   charCountTotal: 'Znaki {total}',
   charCountSelected: 'Znaki {selected} / {total}',
   charCountHint:
-    'Znaki ze spacjami; przy zaznaczonym bloku: blok / cały dokument. Bez spacji: {noSpace}. Tak jak w informacjach o dokumencie, nagłówki, stopki, przypisy dolne i końcowe nie są liczone.',
+    'Znaki są liczone ze spacjami. Bez spacji: cały dokument {totalNoSpace}. Tak jak w informacjach o dokumencie, nagłówki, stopki, przypisy dolne i końcowe nie są liczone.',
+  charCountHintSelected:
+    'Ze spacjami: zaznaczenie {selected} / cały dokument {total}. Bez spacji: zaznaczenie {selectedNoSpace} / cały dokument {totalNoSpace}. Tak jak w informacjach o dokumencie, nagłówki, stopki, przypisy dolne i końcowe nie są liczone.',
 } satisfies Record<keyof typeof zh, string>

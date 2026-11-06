@@ -631,6 +631,8 @@ Deze toetsen werken zolang het tabblad HWP/HWPX vooraan staat en het document fo
 | Volgende zoeken        | ⌃L          | Ctrl+L                       |
 | Achterwaarts zoeken    | ⌃Q, L       | Ctrl+Q, L                    |
 | Ga naar                | ⌥G          | Alt+G                        |
+| Begin van document     | ⌃⇞          | Ctrl+PageUp                  |
+| Einde van document     | ⌃⇟          | Ctrl+PageDown                |
 | Documenten vergelijken | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Teken

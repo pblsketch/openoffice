@@ -250,5 +250,7 @@ export const zh = {
   charCountTotal: '字数 {total}',
   charCountSelected: '字数 {selected} / {total}',
   charCountHint:
-    '含空格的字数；选中块时显示为“块 / 全文”。不含空格：{noSpace}。与文档信息相同，不计页眉、页脚、脚注和尾注。',
+    '字数含空格。不含空格：全文 {totalNoSpace}。 与文档信息相同，不计页眉、页脚、脚注和尾注。',
+  charCountHintSelected:
+    '含空格：所选 {selected} / 全文 {total}。不含空格：所选 {selectedNoSpace} / 全文 {totalNoSpace}。 与文档信息相同，不计页眉、页脚、脚注和尾注。',
 }

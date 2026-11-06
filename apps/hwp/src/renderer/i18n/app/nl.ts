@@ -270,5 +270,7 @@ export const nl = {
   charCountTotal: 'Tekens {total}',
   charCountSelected: 'Tekens {selected} / {total}',
   charCountHint:
-    'Tekens inclusief spaties; met een geselecteerd blok: blok / heel document. Zonder spaties: {noSpace}. Net als bij Documentinformatie worden kop- en voetteksten, voetnoten en eindnoten niet geteld.',
+    'Tekens worden met spaties geteld. Zonder spaties: heel document {totalNoSpace}. Net als bij Documentinformatie worden kop- en voetteksten, voetnoten en eindnoten niet geteld.',
+  charCountHintSelected:
+    'Met spaties: selectie {selected} / heel document {total}. Zonder spaties: selectie {selectedNoSpace} / heel document {totalNoSpace}. Net als bij Documentinformatie worden kop- en voetteksten, voetnoten en eindnoten niet geteld.',
 } satisfies Record<keyof typeof zh, string>

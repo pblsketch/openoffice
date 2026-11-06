@@ -264,5 +264,7 @@ export const ms = {
   charCountTotal: 'Aksara {total}',
   charCountSelected: 'Aksara {selected} / {total}',
   charCountHint:
-    'Bilangan aksara termasuk ruang; apabila blok dipilih: blok / seluruh dokumen. Tanpa ruang: {noSpace}. Seperti dalam Maklumat Dokumen, pengepala, pengaki, nota kaki dan nota akhir tidak dikira.',
+    'Aksara dikira termasuk ruang. Tanpa ruang: seluruh dokumen {totalNoSpace}. Seperti dalam Maklumat Dokumen, pengepala, pengaki, nota kaki dan nota akhir tidak dikira.',
+  charCountHintSelected:
+    'Dengan ruang: dipilih {selected} / seluruh dokumen {total}. Tanpa ruang: dipilih {selectedNoSpace} / seluruh dokumen {totalNoSpace}. Seperti dalam Maklumat Dokumen, pengepala, pengaki, nota kaki dan nota akhir tidak dikira.',
 } satisfies Record<keyof typeof zh, string>

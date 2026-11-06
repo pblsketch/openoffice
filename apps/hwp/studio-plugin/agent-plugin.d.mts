@@ -536,8 +536,10 @@ export interface AgentCharCountLabels {
   total: string
   /** shown while a block is selected; {selected} and {total} */
   selected: string
-  /** the tooltip; {noSpace} is the count without blanks (block / document, or the document's) */
+  /** the tooltip without a block; {total} and {totalNoSpace} (without blanks) */
   hint: string
+  /** the tooltip with a block; {selected}, {total}, {selectedNoSpace} and {totalNoSpace} */
+  hintSelected: string
   /** the language the numbers are written in (BCP 47) */
   locale?: string
 }

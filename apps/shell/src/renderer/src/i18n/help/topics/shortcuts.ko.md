@@ -615,23 +615,25 @@ GenOffice HTML은 실시간 미리보기 옆에 코드 편집기를 보여 줍�
 
 ### 편집
 
-| 동작         | macOS       | Windows / Linux              |
-| ------------ | ----------- | ---------------------------- |
-| 실행 취소    | ⌃Z          | Ctrl+Z                       |
-| 다시 실행    | ⌃⇧Z         | Ctrl+Shift+Z                 |
-| 한 줄 지우기 | ⌃Y          | Ctrl+Y                       |
-| 잘라내기     | ⌃X          | Ctrl+X                       |
-| 복사         | ⌃C          | Ctrl+C                       |
-| 붙여넣기     | ⌃V          | Ctrl+V                       |
-| 지우기       | ⌃E          | Ctrl+E                       |
-| 모두 선택    | ⌃A          | Ctrl+A                       |
-| 모양 복사    | ⌥C          | Alt+C                        |
-| 찾기         | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
-| 찾아 바꾸기  | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
-| 다시 찾기    | ⌃L          | Ctrl+L                       |
-| 거꾸로 찾기  | ⌃Q, L       | Ctrl+Q, L                    |
-| 찾아가기     | ⌥G          | Alt+G                        |
-| 문서 비교    | ⌥⇧V         | Alt+Shift+V                  |
+| 동작            | macOS       | Windows / Linux              |
+| --------------- | ----------- | ---------------------------- |
+| 실행 취소       | ⌃Z          | Ctrl+Z                       |
+| 다시 실행       | ⌃⇧Z         | Ctrl+Shift+Z                 |
+| 한 줄 지우기    | ⌃Y          | Ctrl+Y                       |
+| 잘라내기        | ⌃X          | Ctrl+X                       |
+| 복사            | ⌃C          | Ctrl+C                       |
+| 붙여넣기        | ⌃V          | Ctrl+V                       |
+| 지우기          | ⌃E          | Ctrl+E                       |
+| 모두 선택       | ⌃A          | Ctrl+A                       |
+| 모양 복사       | ⌥C          | Alt+C                        |
+| 찾기            | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
+| 찾아 바꾸기     | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
+| 다시 찾기       | ⌃L          | Ctrl+L                       |
+| 거꾸로 찾기     | ⌃Q, L       | Ctrl+Q, L                    |
+| 찾아가기        | ⌥G          | Alt+G                        |
+| 문서의 처음으로 | ⌃⇞          | Ctrl+PageUp                  |
+| 문서의 끝으로   | ⌃⇟          | Ctrl+PageDown                |
+| 문서 비교       | ⌥⇧V         | Alt+Shift+V                  |
 
 ### 문자 서식
 
