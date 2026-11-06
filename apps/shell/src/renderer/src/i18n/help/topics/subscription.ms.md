@@ -41,6 +41,8 @@ Sambungan disemak apabila aplikasi dimulakan, apabila anda membuka Tetapan, dan 
 
 Jika kad Claude atau Codex menyatakan log masuk tidak selesai, pilih **Buka tetingkap log masuk**. Kod yang dipaparkan pelayar perlu ditampal di tetingkap itu; kod yang dipaparkan sebelum ini tidak lagi berfungsi.
 
+Jika halaman pelayar atau tetingkap log masuk menunjukkan `3p_delegated_access_policy_denied`, dasar organisasi yang memiliki akaun Claude itu (pelan Team atau Enterprise) telah menolak log masuk ini. Hanya pentadbir organisasi boleh mengubah dasar itu, jadi log masuk semula tidak membantu. Tanya pentadbir, atau log masuk dengan akaun Claude peribadi (Pro atau Max).
+
 ## Tanpa langganan: AI percuma
 
 Tiada langganan Claude atau ChatGPT? Di bawah Tetapan ▸ AI, **Guna secara percuma** menyambungkan AI percuma sebagai gantinya. Memilih **Belum ada kedua-duanya** pada langkah kedua skrin alu-aluan memaparkan kad yang sama, dan memilihnya dalam panel AI apabila tiada apa-apa yang disambungkan menawarkan **Sambungkan AI percuma**.

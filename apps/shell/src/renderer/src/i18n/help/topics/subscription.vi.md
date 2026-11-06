@@ -41,6 +41,8 @@ Kết nối được kiểm tra khi ứng dụng khởi động, khi bạn mở 
 
 Nếu thẻ Claude hoặc Codex cho biết quá trình đăng nhập chưa hoàn tất, hãy chọn **Mở cửa sổ đăng nhập**. Mã do trình duyệt hiện phải được dán vào cửa sổ đó; mã hiện trước đó không còn dùng được.
 
+Nếu trang trình duyệt hoặc cửa sổ đăng nhập hiện `3p_delegated_access_policy_denied`, chính sách của tổ chức mà tài khoản Claude thuộc về (gói Team hoặc Enterprise) đã từ chối lần đăng nhập này. Chỉ quản trị viên của tổ chức mới đổi được chính sách đó, nên đăng nhập lại cũng không thay đổi gì. Hãy hỏi quản trị viên, hoặc đăng nhập bằng tài khoản Claude cá nhân (Pro hoặc Max).
+
 ## Không có gói đăng ký: AI miễn phí
 
 Không có gói đăng ký Claude hay ChatGPT? Trong Cài đặt ▸ AI, mục **Dùng miễn phí** cho phép kết nối một AI miễn phí để thay thế. Chọn **Tôi chưa có cái nào** ở bước thứ hai của màn hình chào mừng sẽ hiện những thẻ này, và chọn nó trong bảng AI khi chưa có gì được kết nối sẽ đưa ra **Kết nối AI miễn phí**.

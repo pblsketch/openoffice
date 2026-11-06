@@ -41,6 +41,8 @@ Połączenie jest sprawdzane przy uruchomieniu aplikacji, po otwarciu Ustawień 
 
 Jeśli karta Claude lub Codex informuje, że logowanie nie zostało ukończone, wybierz **Otwórz okno logowania**. Kod pokazany w przeglądarce trzeba wkleić w tym oknie; wcześniej pokazany kod nie jest już ważny.
 
+Jeśli strona w przeglądarce lub okno logowania pokazuje `3p_delegated_access_policy_denied`, zasady organizacji, do której należy konto Claude (plan Team lub Enterprise), odrzuciły to logowanie. Te zasady może zmienić tylko administrator organizacji, więc ponowne logowanie nic nie da. Zapytaj administratora albo zaloguj się na osobiste konto Claude (Pro lub Max).
+
 ## Bez subskrypcji: darmowe AI
 
 Nie masz subskrypcji Claude ani ChatGPT? W Ustawienia ▸ AI opcja **Korzystaj za darmo** pozwala zamiast tego połączyć darmowe AI. Wybranie **Jeszcze z żadnego** w drugim kroku ekranów powitalnych pokazuje te same karty, a wybranie tej odpowiedzi w panelu AI, gdy nic nie jest połączone, daje opcję **Połącz darmowe AI**.

@@ -41,6 +41,8 @@ La conexión se comprueba al arrancar la aplicación, al abrir Configuración y 
 
 Si la tarjeta de Claude o de Codex indica que un inicio de sesión no terminó, elige **Abrir la ventana de inicio de sesión**. Si el navegador muestra un código, hay que pegarlo en esa ventana; un código mostrado antes ya no sirve.
 
+Si la página del navegador o la ventana de inicio de sesión muestra `3p_delegated_access_policy_denied`, la política de la organización a la que pertenece la cuenta de Claude (un plan Team o Enterprise) rechazó este inicio de sesión. Solo el administrador de la organización puede cambiar esa política, así que volver a iniciar sesión no sirve. Consulta al administrador o inicia sesión con una cuenta personal de Claude (Pro o Max).
+
 ## Sin suscripción: IA gratuita
 
 ¿No tiene suscripción a Claude ni a ChatGPT? En Configuración ▸ IA, **Usar gratis** conecta en su lugar una IA gratuita. Si elige **Ninguna todavía** en el segundo paso de las pantallas de bienvenida, aparecen las mismas tarjetas, y si la elige en el panel de IA cuando no hay nada conectado, se ofrece **Conectar una IA gratuita**.

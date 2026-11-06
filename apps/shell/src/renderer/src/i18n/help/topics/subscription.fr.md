@@ -41,6 +41,8 @@ La connexion est vérifiée au démarrage de l’application, à l’ouverture d
 
 Si la carte Claude ou Codex indique qu'une connexion n'a pas abouti, choisissez **Ouvrir la fenêtre de connexion**. Un code affiché par le navigateur doit être collé dans cette fenêtre ; un code affiché auparavant ne fonctionne plus.
 
+Si la page du navigateur ou la fenêtre de connexion affiche `3p_delegated_access_policy_denied`, la règle de l'organisation à laquelle appartient le compte Claude (une offre Team ou Enterprise) a refusé cette connexion. Seul l'administrateur de l'organisation peut modifier cette règle : se reconnecter n'y change rien. Adressez-vous à l'administrateur, ou connectez-vous avec un compte Claude personnel (Pro ou Max).
+
 ## Sans abonnement : une IA gratuite
 
 Pas d’abonnement Claude ni ChatGPT ? Sous Paramètres ▸ IA, **Utiliser gratuitement** permet de connecter une IA gratuite à la place. Choisir **Ni l’un ni l’autre pour l’instant** à la deuxième étape des écrans de bienvenue affiche les mêmes cartes, et le choisir dans le panneau IA lorsque rien n’est connecté propose **Connecter une IA gratuite**.

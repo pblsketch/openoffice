@@ -41,6 +41,8 @@ Die Verbindung wird geprüft, wenn die App startet, wenn Sie die Einstellungen �
 
 Meldet die Claude- oder Codex-Karte, dass eine Anmeldung nicht abgeschlossen wurde, wählen Sie **Anmeldefenster öffnen**. Einen Code, den der Browser zeigt, müssen Sie in dieses Fenster einfügen; ein zuvor angezeigter Code gilt nicht mehr.
 
+Zeigt die Browserseite oder das Anmeldefenster `3p_delegated_access_policy_denied`, hat die Richtlinie der Organisation, zu der das Claude-Konto gehört (ein Team- oder Enterprise-Tarif), diese Anmeldung abgelehnt. Nur die Administration der Organisation kann diese Richtlinie ändern, eine erneute Anmeldung hilft also nicht. Fragen Sie die Administration oder melden Sie sich mit einem persönlichen Claude-Konto (Pro oder Max) an.
+
 ## Ohne Abonnement: kostenlose KI
 
 Kein Claude- oder ChatGPT-Abonnement? Unter Einstellungen ▸ KI verbindet **Kostenlos nutzen** stattdessen eine kostenlose KI. Wählen Sie im zweiten Schritt der Willkommensbildschirme **Noch keins von beiden**, erscheinen dieselben Karten; wählen Sie es im KI-Bereich, solange nichts verbunden ist, bietet er **Kostenlose KI verbinden** an.

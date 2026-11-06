@@ -41,6 +41,8 @@ Koneksi diperiksa saat aplikasi dimulai, saat Anda membuka Pengaturan, dan saat 
 
 Jika kartu Claude atau Codex menyatakan proses masuk belum selesai, pilih **Buka jendela masuk**. Kode yang ditampilkan browser harus ditempel di jendela itu; kode yang muncul sebelumnya sudah tidak berlaku.
 
+Jika halaman browser atau jendela masuk menampilkan `3p_delegated_access_policy_denied`, kebijakan organisasi tempat akun Claude itu berada (paket Team atau Enterprise) menolak proses masuk ini. Hanya administrator organisasi yang dapat mengubah kebijakan itu, jadi masuk ulang tidak membantu. Tanyakan kepada administrator, atau masuk dengan akun Claude pribadi (Pro atau Max).
+
 ## Tanpa langganan: AI gratis
 
 Tidak punya langganan Claude atau ChatGPT? Di Pengaturan ▸ AI, **Pakai gratis** menghubungkan AI gratis sebagai gantinya. Memilih **Belum punya keduanya** di langkah kedua layar selamat datang menampilkan kartu yang sama, dan memilihnya di panel AI ketika belum ada yang terhubung menawarkan **Hubungkan AI gratis**.
