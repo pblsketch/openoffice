@@ -90,6 +90,12 @@ const OVERLAPPING: RawLink[] = [
   { subtype: 'Link', rect: [40, 70, 90, 90], url: 'https://b.example/' },
 ]
 
+/** A primary press on `target` at client (x, y); the press watcher sees it on the window */
+const press = (target: EventTarget, x: number, y: number) =>
+  target.dispatchEvent(
+    new PointerEvent('pointerdown', { bubbles: true, clientX: x, clientY: y, button: 0 }),
+  )
+
 const click = (target: EventTarget, x: number, y: number, over: Partial<MouseEvent> = {}) => ({
   button: 0,
   detail: 1,
@@ -157,20 +163,20 @@ describe('followsLinkClick', () => {
   const span = () => makePage().span
   const collapsed = { isCollapsed: true }
   const selected = { isCollapsed: false }
-  const pressAt = { x: 20, y: 20 }
+  const still = { x: 0, y: 0 }
 
-  it('follows a primary click whose press did not travel', () => {
-    expect(followsLinkClick(click(span(), 20, 20), pressAt, collapsed)).toBe(true)
-    expect(followsLinkClick(click(span(), 20 + LINK_CLICK_SLOP, 20), pressAt, null)).toBe(true)
+  it('follows a primary click whose press did not travel over the page', () => {
+    expect(followsLinkClick(click(span(), 20, 20), still, collapsed)).toBe(true)
+    expect(followsLinkClick(click(span(), 20, 20), { x: LINK_CLICK_SLOP, y: 0 }, null)).toBe(true)
     // inside text already selected: the selection only goes after the click
-    expect(followsLinkClick(click(span(), 20, 20), pressAt, selected)).toBe(true)
+    expect(followsLinkClick(click(span(), 20, 20), still, selected)).toBe(true)
   })
 
-  it('leaves a press that travelled (a drag selecting the text) to the text', () => {
-    expect(followsLinkClick(click(span(), 60, 20), pressAt, selected)).toBe(false)
-    expect(followsLinkClick(click(span(), 20, 20 + LINK_CLICK_SLOP + 1), pressAt, collapsed)).toBe(
-      false,
-    )
+  it('leaves a press that travelled (a drag, or a scroll with the button held) to the text', () => {
+    expect(followsLinkClick(click(span(), 20, 20), { x: 40, y: 0 }, selected)).toBe(false)
+    expect(
+      followsLinkClick(click(span(), 20, 20), { x: 0, y: -(LINK_CLICK_SLOP + 1) }, collapsed),
+    ).toBe(false)
   })
 
   it('without a known press, a selection left standing counts as a drag', () => {
@@ -180,23 +186,23 @@ describe('followsLinkClick', () => {
   })
 
   it('leaves Shift+click, other buttons and overlays alone', () => {
-    expect(followsLinkClick(click(span(), 20, 20, { shiftKey: true }), pressAt, collapsed)).toBe(
+    expect(followsLinkClick(click(span(), 20, 20, { shiftKey: true }), still, collapsed)).toBe(
       false,
     )
-    expect(followsLinkClick(click(span(), 20, 20, { button: 1 }), pressAt, collapsed)).toBe(false)
+    expect(followsLinkClick(click(span(), 20, 20, { button: 1 }), still, collapsed)).toBe(false)
     const pin = makePage().page.querySelector('.pdf-note-pin')
-    expect(followsLinkClick(click(pin!, 20, 20), pressAt, collapsed)).toBe(false)
+    expect(followsLinkClick(click(pin!, 20, 20), still, collapsed)).toBe(false)
   })
 
   it('leaves the second click of a double-click (picking a word) alone', () => {
-    expect(followsLinkClick(click(span(), 20, 20, { detail: 2 }), pressAt, collapsed)).toBe(false)
-    expect(followsLinkClick(click(span(), 20, 20, { detail: 3 }), pressAt, collapsed)).toBe(false)
+    expect(followsLinkClick(click(span(), 20, 20, { detail: 2 }), still, collapsed)).toBe(false)
+    expect(followsLinkClick(click(span(), 20, 20, { detail: 3 }), still, collapsed)).toBe(false)
   })
 
   it('ignores the synthetic click it sends to the anchor itself', () => {
-    expect(
-      followsLinkClick({ ...click(span(), 20, 20), isTrusted: false }, pressAt, collapsed),
-    ).toBe(false)
+    expect(followsLinkClick({ ...click(span(), 20, 20), isTrusted: false }, still, collapsed)).toBe(
+      false,
+    )
   })
 })
 
@@ -262,15 +268,74 @@ describe('LinkLayer', () => {
     const range = document.createRange()
     range.selectNodeContents(span)
     window.getSelection()!.addRange(range)
-    const press = (x: number, y: number) =>
-      window.dispatchEvent(new PointerEvent('pointerdown', { clientX: x, clientY: y, button: 0 }))
     // pressed and released in place on the selected text: follows
-    press(10, 90)
+    press(span, 10, 90)
     expect(followLinkAt(page, click(span, 11, 90))).toBe(true)
     // pressed elsewhere and dragged onto the link: the drag selected text
-    press(10, 50)
+    press(span, 10, 50)
     expect(followLinkAt(page, click(span, 10, 90))).toBe(false)
     expect(onClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('opens nothing when the page scrolled under a held button', async () => {
+    const { links, page, span } = await mount()
+    const clicked: string[] = []
+    for (const link of links)
+      link.addEventListener('click', (e) => {
+        e.preventDefault()
+        clicked.push(link.getAttribute('href')!)
+      })
+    // the page's top on screen; scrolling moves it while the pointer stays put
+    let top = 0
+    page.getBoundingClientRect = () => ({ left: 0, top, right: 100, bottom: top + 100 }) as DOMRect
+    // pressed on the web link (page y 80..100), wheel-scrolled 40px: released over the internal one
+    press(span, 10, 90)
+    top = 40
+    expect(followLinkAt(page, click(span, 10, 90))).toBe(false)
+    // pressed on plain text (page y 30), scrolled until the internal link (40..60) is there
+    top = 0
+    press(span, 10, 30)
+    top = -20
+    expect(followLinkAt(page, click(span, 10, 30))).toBe(false)
+    // still the same link, but the page moved past the slop
+    top = 0
+    press(span, 10, 90)
+    top = -(LINK_CLICK_SLOP + 2)
+    expect(followLinkAt(page, click(span, 10, 90))).toBe(false)
+    expect(clicked).toEqual([])
+    // no scroll: the same press and release still opens it
+    top = 0
+    press(span, 10, 90)
+    expect(followLinkAt(page, click(span, 10, 90))).toBe(true)
+    expect(clicked).toEqual(['https://a.example/'])
+  })
+
+  it('judges the hover again when a scroll moves the page under a resting pointer', async () => {
+    const { page, span, links } = await mount()
+    let top = 0
+    page.getBoundingClientRect = () => ({ left: 0, top, right: 100, bottom: top + 100 }) as DOMRect
+    let under: Element | null = span
+    // jsdom has no hit testing
+    document.elementFromPoint = () => under
+    const scroll = () => document.dispatchEvent(new Event('scroll'))
+    span.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: 10, clientY: 90 }))
+    expect(links[0]!.classList.contains('is-hover')).toBe(true)
+    // scrolled 40px up: the web link (page y 80..100) left the pointer, nothing is under it now
+    top = -40
+    scroll()
+    expect(links[0]!.classList.contains('is-hover')).toBe(false)
+    expect(page.hasAttribute('data-link-hover')).toBe(false)
+    // scrolled back: the link comes under the resting pointer again
+    top = 0
+    scroll()
+    expect(links[0]!.classList.contains('is-hover')).toBe(true)
+    expect(page.hasAttribute('data-link-hover')).toBe(true)
+    // scrolled until another page is under the pointer: no mark left here
+    under = document.body
+    scroll()
+    expect(links[0]!.classList.contains('is-hover')).toBe(false)
+    expect(page.hasAttribute('data-link-hover')).toBe(false)
+    delete (document as { elementFromPoint?: unknown }).elementFromPoint
   })
 
   it('marks the hovered link and hands it to the screen tip, but not mid-drag', async () => {

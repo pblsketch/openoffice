@@ -142,3 +142,145 @@ test('text under a link selects by drag and the link still opens on a click (she
     await closeAndSaveVideo(launched, 'pdf-link-text-select')
   }
 })
+
+const LINK_A = 'https://example.com/A'
+const LINK_B = 'https://example.com/B'
+
+/** Two Letter pages of text lines; the first carries link A on its top line and B four lines down */
+function scrollingPdf(): Buffer {
+  const lines = [700, 600, 500, 400, 300, 200, 100]
+    .map((y) => `BT /F1 28 Tf 72 ${y} Td (Line at ${y} words words words) Tj ET`)
+    .join(' ')
+  const link = (y1: number, uri: string) =>
+    `<</Type/Annot/Subtype/Link/Rect[72 ${y1} 300 ${y1 + 40}]/Border[0 0 0]/A<</S/URI/URI(${uri})>>>>`
+  const objects = [
+    '<</Type/Catalog/Pages 2 0 R>>',
+    '<</Type/Pages/Kids[3 0 R 5 0 R]/Count 2>>',
+    '<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Resources<</Font<</F1 7 0 R>>>>/Contents 4 0 R/Annots[8 0 R 9 0 R]>>',
+    `<</Length ${lines.length}>>\nstream\n${lines}\nendstream`,
+    '<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Resources<</Font<</F1 7 0 R>>>>/Contents 6 0 R>>',
+    `<</Length ${lines.length}>>\nstream\n${lines}\nendstream`,
+    '<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>',
+    link(690, LINK_A),
+    link(290, LINK_B),
+  ]
+  let body = '%PDF-1.4\n'
+  const offsets: number[] = []
+  objects.forEach((obj, i) => {
+    offsets.push(body.length)
+    body += `${i + 1} 0 obj\n${obj}\nendobj\n`
+  })
+  const xrefStart = body.length
+  body += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`
+  for (const off of offsets) body += `${String(off).padStart(10, '0')} 00000 n \n`
+  body += `trailer\n<</Size ${objects.length + 1}/Root 1 0 R>>\nstartxref\n${xrefStart}\n%%EOF\n`
+  return Buffer.from(body, 'latin1')
+}
+
+/** Open the two-page PDF with the system browser replaced by a recorder */
+async function openScrolling(video: string) {
+  const dir = await mkdtemp(join(tmpdir(), 'genoffice-pdf-link-scroll-'))
+  const pdfPath = join(dir, 'scroll.pdf')
+  await writeFile(pdfPath, scrollingPdf())
+  const launched = await launchShell({ onboardingSeen: true, videoDir: video, openFile: pdfPath })
+  const { app } = launched
+  await app.evaluate(({ shell: system }) => {
+    const state = globalThis as unknown as { __opened: string[] }
+    state.__opened = []
+    system.openExternal = (async (url: string) => {
+      state.__opened.push(url)
+    }) as typeof system.openExternal
+  })
+  const opened = () =>
+    app.evaluate(() => [...(globalThis as unknown as { __opened: string[] }).__opened])
+  const pdf = await waitForPageWithUrl(app, '://pdf/')
+  await expect(pdf.locator('.textLayer span').first()).toBeAttached()
+  await expect(pdf.locator('.pdf-link')).toHaveCount(2)
+  const toTop = () =>
+    pdf.locator('.pdf-scroll').evaluate((el) => {
+      el.scrollTop = 0
+    })
+  return { launched, pdf, opened, toTop }
+}
+
+test('a wheel scroll with the button held opens no link on release', async () => {
+  const { launched, pdf, opened, toTop } = await openScrolling('pdf-link-held-scroll')
+  try {
+    await test.step('pressed on link A, scrolled until B is under the pointer', async () => {
+      const a = (await pdf.locator('.pdf-link').nth(0).boundingBox())!
+      const b = (await pdf.locator('.pdf-link').nth(1).boundingBox())!
+      const x = a.x + 40
+      const y = a.y + a.height / 2
+      await pdf.mouse.move(x, y)
+      await pdf.mouse.down()
+      await pdf.mouse.wheel(0, b.y - a.y)
+      await pdf.waitForTimeout(300)
+      await pdf.mouse.move(x + 1, y)
+      await pdf.mouse.move(x, y)
+      await pdf.mouse.up()
+      await pdf.waitForTimeout(400)
+      expect(await opened()).toEqual([])
+    })
+
+    await test.step('pressed on plain text, scrolled until B is under the pointer', async () => {
+      await toTop()
+      await pdf.evaluate(() => window.getSelection()?.removeAllRanges())
+      const plain = await onPage(pdf, 110, 610)
+      const k = (await pdf.locator('.pdf-page').first().boundingBox())!.width / 612
+      await pdf.mouse.move(plain.x, plain.y)
+      await pdf.mouse.down()
+      await pdf.mouse.wheel(0, 300 * k)
+      await pdf.waitForTimeout(300)
+      await pdf.mouse.up()
+      await pdf.waitForTimeout(400)
+      expect(await opened()).toEqual([])
+    })
+
+    await test.step('without a scroll the same press and release opens the link', async () => {
+      await toTop()
+      await pdf.evaluate(() => window.getSelection()?.removeAllRanges())
+      const a = (await pdf.locator('.pdf-link').nth(0).boundingBox())!
+      await pdf.mouse.click(a.x + 40, a.y + a.height / 2)
+      await expect.poll(opened).toEqual([LINK_A])
+    })
+  } finally {
+    await closeAndSaveVideo(launched, 'pdf-link-held-scroll')
+  }
+})
+
+test('the link mark follows a wheel scroll under a resting pointer', async () => {
+  const { launched, pdf } = await openScrolling('pdf-link-hover-scroll')
+  try {
+    const a = (await pdf.locator('.pdf-link').nth(0).boundingBox())!
+    const x = a.x + 40
+    const y = a.y + a.height / 2
+    const cursor = () =>
+      pdf.evaluate(({ x, y }) => getComputedStyle(document.elementFromPoint(x, y)!).cursor, {
+        x,
+        y,
+      })
+    await pdf.mouse.move(x, y - 3)
+    await pdf.mouse.move(x, y)
+    await expect(pdf.locator('.pdf-link.is-hover')).toHaveCount(1)
+
+    // scrolled away: the link left the pointer, so its mark and the hand cursor go
+    await pdf.mouse.wheel(0, 400)
+    await expect
+      .poll(async () => (await pdf.locator('.pdf-link').nth(0).boundingBox())!.y)
+      .toBeLessThan(y - 100)
+    await expect(pdf.locator('.pdf-link.is-hover')).toHaveCount(0)
+    await expect(pdf.locator('.pdf-page[data-link-hover]')).toHaveCount(0)
+    expect(await cursor()).not.toBe('pointer')
+
+    // scrolled back: the link comes under the resting pointer and is marked again
+    await pdf.mouse.wheel(0, -400)
+    await expect
+      .poll(async () => (await pdf.locator('.pdf-link').nth(0).boundingBox())!.y)
+      .toBe(a.y)
+    await expect(pdf.locator('.pdf-link.is-hover')).toHaveCount(1)
+    await expect(pdf.locator('.pdf-page[data-link-hover]')).toHaveCount(1)
+    expect(await cursor()).toBe('pointer')
+  } finally {
+    await closeAndSaveVideo(launched, 'pdf-link-hover-scroll')
+  }
+})
