@@ -8,7 +8,12 @@ import { tmpdir } from 'node:os'
 import { delimiter, join, sep } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { AiRunError } from '../src/run-error'
-import { locateSubscriptionProgram, resolveSubscriptionProgram } from '../src/subscription'
+import {
+  locateSubscriptionProgram,
+  resolveSubscriptionProgram,
+  SUBSCRIPTION_CODEX_UPDATE_COMMANDS,
+  subscriptionUpdatePlan,
+} from '../src/subscription'
 
 let root: string
 
@@ -146,6 +151,11 @@ describe('locateSubscriptionProgram on Windows', () => {
     expect(program!.env.ELECTRON_RUN_AS_NODE).toBeUndefined()
     expect(program!.env.CODEX_MANAGED_PACKAGE_ROOT).toBe(packageRoot)
     expect(program!.env.CODEX_MANAGED_BY_NPM).toBe('1')
+    // started directly, it is still updated by npm
+    expect(subscriptionUpdatePlan(program!)).toEqual({
+      kind: 'command',
+      command: SUBSCRIPTION_CODEX_UPDATE_COMMANDS.npm,
+    })
   })
 
   it('runs the native Codex binary of the older vendor layout in the platform package', async () => {
