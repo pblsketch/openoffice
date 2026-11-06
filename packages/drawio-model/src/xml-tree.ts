@@ -193,8 +193,14 @@ export function newElement(name: string, attrs: XmlAttr[], children: XmlNode[] =
   return element
 }
 
+// Control characters outside \t \n \r are illegal in XML 1.0 even when escaped
+// (same class as packages/docx-engine and odt-engine escape helpers).
+// eslint-disable-next-line no-control-regex
+const ILLEGAL_XML_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g
+
 export function escapeXmlAttr(value: string): string {
   return value
+    .replace(ILLEGAL_XML_CHARS, '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -205,7 +211,11 @@ export function escapeXmlAttr(value: string): string {
 }
 
 export function escapeXmlText(value: string): string {
-  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return value
+    .replace(ILLEGAL_XML_CHARS, '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
 }
 
 /** Decodes the five XML entities and character references in raw character data. */
