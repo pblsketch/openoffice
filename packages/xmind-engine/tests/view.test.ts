@@ -417,6 +417,10 @@ describe('notes', () => {
     expect(noteText({ realHTML: { content: '<div>rich <strong>text</strong></div>' } })).toBe(
       'rich text\n',
     )
+    // XMind 8 / some exports store the rich form as `html`, not `realHTML`
+    expect(noteText({ html: { content: '<div>rich <strong>text</strong></div>' } })).toBe(
+      'rich text\n',
+    )
     expect(noteText({ plain: { content: '' } })).toBe('')
     for (const none of [undefined, null, 'x', {}, { plain: 'x' }, { plain: { content: 3 } }]) {
       expect(noteText(none), JSON.stringify(none)).toBeNull()
