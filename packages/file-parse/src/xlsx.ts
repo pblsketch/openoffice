@@ -191,7 +191,11 @@ function cellText(
     if (!Number.isInteger(index) || index < 0 || index >= shared.length) return ''
     return shared[index] ?? ''
   }
-  if (type === 'b') return value.trim() === '1' ? 'TRUE' : 'FALSE'
+  if (type === 'b') {
+    // ECMA-376 ST_OnOff / boolean cell values: 1/0 or true/false (any case)
+    const token = value.trim().toLowerCase()
+    return token === '1' || token === 'true' ? 'TRUE' : 'FALSE'
+  }
   if (type === 'str') return decodeXlsxEscapes(value)
   return value
 }
