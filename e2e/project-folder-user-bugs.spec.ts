@@ -174,10 +174,19 @@ test.describe('project folder problems a first-time user hit', () => {
       await expect(chip).toBeEnabled()
       const chatButton = html.locator('.ai-project-chat-menu .ai-project-chat-button')
       await chatButton.click()
-      await html
-        .locator('.ai-project-chat-menu .ai-project-list > *', { hasText: '첫 질문' })
-        .first()
-        .click()
+      // Pick with the menu's keyboard path (search, Down, Enter), not a mouse click on
+      // the row: the menu overlaps the cross-origin preview frame, and a click landing
+      // a frame or two after the menu opened can be routed into that frame (Chromium
+      // hit-tests out-of-process frames on the browser side). The frame takes the
+      // focus, the window blur closes the menu, and the pick never happens.
+      const search = html.locator('.ai-project-chat-menu .ai-project-search')
+      await expect(search).toBeFocused()
+      await search.fill('첫 질문')
+      const row = html.locator('.ai-project-chat-menu .ai-project-chat-row', { hasText: '첫 질문' })
+      await expect(row).toHaveCount(1)
+      await search.press('ArrowDown')
+      await expect(row).toHaveAttribute('aria-selected', 'true')
+      await search.press('Enter')
       // the pick took: the header names the chat (a failure here is the pick, not the messages)
       await expect(chatButton).toContainText('첫 질문')
       await expect(html.getByText('첫 답')).toBeVisible()
