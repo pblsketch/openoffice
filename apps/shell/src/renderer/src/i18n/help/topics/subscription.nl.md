@@ -41,6 +41,8 @@ De verbinding wordt gecontroleerd wanneer de app start, wanneer je Instellingen 
 
 Meldt de Claude- of Codex-kaart dat een aanmelding niet is afgerond, kies dan **Aanmeldvenster openen**. Een code die de browser toont, moet in dat venster worden geplakt; een eerder getoonde code werkt niet meer.
 
+Toont de browserpagina of het aanmeldvenster `3p_delegated_access_policy_denied`, dan heeft een beleid op het Claude-account deze aanmelding mogelijk tegengehouden. Gebeurt bij een nieuwe poging hetzelfde, vraag het dan aan wie het account beheert, of kijk of het met een ander account wel lukt.
+
 ## Zonder abonnement: gratis AI
 
 Geen abonnement op Claude of ChatGPT? Onder Instellingen ▸ AI verbind je met **Gratis gebruiken** in plaats daarvan een gratis AI. Kies je **Nog geen van beide** in de tweede stap van de welkomstschermen, dan zie je dezelfde kaarten, en kies je het in het AI-paneel wanneer er niets is verbonden, dan biedt het **Gratis AI koppelen** aan.

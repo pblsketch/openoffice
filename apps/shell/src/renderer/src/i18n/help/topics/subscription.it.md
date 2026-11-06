@@ -41,6 +41,8 @@ La connessione viene verificata all'avvio dell'app, quando apri Impostazioni e q
 
 Se la scheda Claude o Codex indica che un accesso non è terminato, scegli **Apri la finestra di accesso**. Un codice mostrato dal browser va incollato in quella finestra; un codice mostrato prima non è più valido.
 
+Se la pagina del browser o la finestra di accesso mostra `3p_delegated_access_policy_denied`, è possibile che un criterio dell'account Claude abbia bloccato questo accesso. Se riprovando succede lo stesso, chiedi a chi gestisce l'account oppure verifica se funziona con un altro account.
+
 ## Senza abbonamento: un'IA gratuita
 
 Non hai un abbonamento a Claude o a ChatGPT? In Impostazioni ▸ IA, **Usa gratis** collega invece un'IA gratuita. Scegliendo **Nessuno dei due, per ora** nel secondo passaggio delle schermate di benvenuto compaiono le stesse schede, e scegliendolo nel pannello IA quando non c'è niente di collegato viene proposto **Collega un’IA gratuita**.
