@@ -63,6 +63,27 @@ describe('looksLikeHtmlWorkbook', () => {
   it('reads a UTF-16 web page too', () => {
     const utf16 = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from('<html><body>', 'utf16le')])
     expect(looksLikeHtmlWorkbook(utf16)).toBe(true)
+    const utf16be = Buffer.concat([
+      Buffer.from([0xfe, 0xff]),
+      Buffer.from(Buffer.from('<html><body>', 'utf16le')).swap16(),
+    ])
+    expect(looksLikeHtmlWorkbook(utf16be)).toBe(true)
+  })
+
+  it('does not treat a UTF-32 BOM as HTML it can decode', () => {
+    const page = '<html><body><table><tr><td>1</td></tr></table></body></html>'
+    const le = Buffer.alloc(4 + page.length * 4)
+    le[0] = 0xff
+    le[1] = 0xfe
+    for (let i = 0; i < page.length; i++) le.writeUInt32LE(page.charCodeAt(i), 4 + i * 4)
+    const be = Buffer.alloc(4 + page.length * 4)
+    be[0] = 0x00
+    be[1] = 0x00
+    be[2] = 0xfe
+    be[3] = 0xff
+    for (let i = 0; i < page.length; i++) be.writeUInt32BE(page.charCodeAt(i), 4 + i * 4)
+    expect(looksLikeHtmlWorkbook(le)).toBe(false)
+    expect(looksLikeHtmlWorkbook(be)).toBe(false)
   })
 })
 
@@ -90,6 +111,24 @@ describe('decodeHtmlBuffer', () => {
   it('falls back to the CSV charset sniffing without a declaration', () => {
     const bytes = Buffer.from('<html><body>caf\u00e9</body></html>', 'latin1')
     expect(decodeHtmlBuffer(bytes)).toContain('café')
+  })
+
+  it('decodes UTF-16 HTML by its byte order mark', () => {
+    const page = '<html><body><table><tr><td>한글</td></tr></table></body></html>'
+    const le = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(page, 'utf16le')])
+    const be = Buffer.concat([
+      Buffer.from([0xfe, 0xff]),
+      Buffer.from(Buffer.from(page, 'utf16le')).swap16(),
+    ])
+    expect(decodeHtmlBuffer(le)).toContain('한글')
+    expect(decodeHtmlBuffer(be)).toContain('한글')
+  })
+
+  it('rejects a UTF-32 BOM instead of decoding it as UTF-16 or a legacy charset', () => {
+    const le = Buffer.from([0xff, 0xfe, 0x00, 0x00, 0x3c, 0x00, 0x00, 0x00])
+    const be = Buffer.from([0x00, 0x00, 0xfe, 0xff, 0x00, 0x00, 0x00, 0x3c])
+    expect(() => decodeHtmlBuffer(le)).toThrow(/UTF-32/)
+    expect(() => decodeHtmlBuffer(be)).toThrow(/UTF-32/)
   })
 
   it('decodes named and numeric references', () => {

@@ -104,12 +104,23 @@ export function decodeHtmlEntities(text: string): string {
 /// True when these bytes are a web page rather than an Excel/ODF container.
 /// SpreadsheetML 2003 carries a `<Table>` element too, so it is excluded
 /// explicitly and left to the workbook converter.
+function isUtf32Bom(bytes: Uint8Array): boolean {
+  return (
+    bytes.length >= 4 &&
+    ((bytes[0] === 0 && bytes[1] === 0 && bytes[2] === 0xfe && bytes[3] === 0xff) ||
+      (bytes[0] === 0xff && bytes[1] === 0xfe && bytes[2] === 0 && bytes[3] === 0))
+  )
+}
+
 export function looksLikeHtmlWorkbook(head: Uint8Array): boolean {
   if (head.length === 0) return false
   // Real containers are never HTML, even if compressed bytes happen to spell
   // a tag in the first block.
   if (head[0] === 0x50 && head[1] === 0x4b) return false
   if (head[0] === 0xd0 && head[1] === 0xcf && head[2] === 0x11 && head[3] === 0xe0) return false
+  // UTF-32 BOMs are not a charset this importer reads; do not treat the UTF-16
+  // prefix of UTF-32LE (or the 00 00 of UTF-32BE) as a page we can decode.
+  if (isUtf32Bom(head)) return false
   let text: string
   if (head[0] === 0xff && head[1] === 0xfe) {
     text = new TextDecoder('utf-16le').decode(head.subarray(2))
@@ -131,6 +142,11 @@ export function looksLikeHtmlWorkbook(head: Uint8Array): boolean {
 /// Reads the charset the page declares, then falls back to the CSV sniffing
 /// (BOM, strict UTF-8, then the legacy charsets Excel writes).
 export function decodeHtmlBuffer(bytes: Uint8Array, preferred?: string): string {
+  if (isUtf32Bom(bytes)) {
+    throw new Error(
+      'Unsupported text encoding: BOM-declared UTF-32 cannot be decoded (UTF-8 and UTF-16 are supported)',
+    )
+  }
   const bom =
     (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) ||
     (bytes[0] === 0xff && bytes[1] === 0xfe) ||
