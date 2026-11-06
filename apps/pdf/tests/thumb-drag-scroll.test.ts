@@ -11,6 +11,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import {
   DRAG_SCROLL_BAND,
   DRAG_SCROLL_MAX_SPEED,
+  atScrollEnd,
   dragEdgeScrollSpeed,
   listRowsBand,
   useDragEdgeScroll,
@@ -58,6 +59,19 @@ describe('dragEdgeScrollSpeed', () => {
   })
 })
 
+describe('atScrollEnd', () => {
+  const list = (scrollTop: number) => ({ scrollTop, scrollHeight: 2000, clientHeight: 600 })
+
+  it('tells the end the list would scroll toward', () => {
+    expect(atScrollEnd(list(0), -1)).toBe(true)
+    expect(atScrollEnd(list(0), 1)).toBe(false)
+    expect(atScrollEnd(list(1400), 1)).toBe(true)
+    expect(atScrollEnd(list(1399.5), 1)).toBe(true)
+    expect(atScrollEnd(list(1400), -1)).toBe(false)
+    expect(atScrollEnd(list(700), 1)).toBe(false)
+  })
+})
+
 const rect = (top: number, bottom: number, left = 0, right = 150): DOMRect =>
   ({
     top,
@@ -70,12 +84,13 @@ const rect = (top: number, bottom: number, left = 0, right = 150): DOMRect =>
     height: bottom - top,
   }) as DOMRect
 
-/** a 600px list at y 100..700 whose sticky header ends at y 140 */
+/** a 600px list (5000px of rows) at y 100..700 whose sticky header ends at y 140 */
 function makeList(): HTMLDivElement {
   const list = document.createElement('div')
   list.innerHTML = '<div class="hdr"></div><div class="row"></div>'
   list.getBoundingClientRect = () => rect(100, 700)
   Object.defineProperty(list, 'clientHeight', { value: 600 })
+  Object.defineProperty(list, 'scrollHeight', { value: 5000, configurable: true })
   ;(list.firstElementChild as HTMLElement).getBoundingClientRect = () => rect(100, 140)
   document.body.appendChild(list)
   return list
@@ -189,6 +204,32 @@ describe('useDragEdgeScroll', () => {
     // leaving the window reports (0, 0)
     api.leave(0, 0)
     expect(frames.size).toBe(0)
+  })
+
+  it('stops writing once the list reaches the end it scrolls toward', () => {
+    Object.defineProperty(list, 'scrollHeight', { value: 1000, configurable: true })
+    const writes: number[] = []
+    let pos = 380
+    Object.defineProperty(list, 'scrollTop', {
+      configurable: true,
+      get: () => pos,
+      set: (v: number) => {
+        // the browser clamps to the end
+        pos = Math.min(Math.max(v, 0), 400)
+        writes.push(v)
+      },
+    })
+    api.track(695)
+    runFrames(10)
+    expect(pos).toBe(400)
+    const atEnd = writes.length
+    runFrames(10)
+    expect(writes).toHaveLength(atEnd)
+    expect(frames.size).toBe(0)
+    // the next dragover over the other band scrolls back
+    api.track(120)
+    runFrames(2)
+    expect(pos).toBeLessThan(400)
   })
 
   it('cancels the loop when the list unmounts', () => {

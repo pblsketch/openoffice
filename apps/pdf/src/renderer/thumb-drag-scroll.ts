@@ -39,6 +39,18 @@ export function dragEdgeScrollSpeed(
   return 0
 }
 
+/**
+ * Whether the list is already as far as it goes in the direction of `speed`
+ * (1px slack: scroll positions can be fractional at some zoom levels).
+ */
+export function atScrollEnd(
+  list: { scrollTop: number; scrollHeight: number; clientHeight: number },
+  speed: number,
+): boolean {
+  if (speed < 0) return list.scrollTop <= 0
+  return list.scrollTop >= list.scrollHeight - list.clientHeight - 1
+}
+
 /** Visible rows of the list: below a sticky header child, if it has one */
 export function listRowsBand(
   list: HTMLElement,
@@ -63,7 +75,7 @@ export type DragEdgeScroll = {
  * Scrolls `listRef`'s element while a drag hovers near its top or bottom edge.
  * dragover keeps arriving while the pointer rests, so the loop reads the last
  * pointer position each frame and runs until the pointer leaves the bands, the
- * list, or the drag ends.
+ * list reaches that end, the pointer leaves the list, or the drag ends.
  */
 export function useDragEdgeScroll(
   listRef: RefObject<HTMLElement | null>,
@@ -87,7 +99,8 @@ export function useDragEdgeScroll(
       if (!list || y === null) return
       const { top, bottom } = listRowsBand(list, headerSelector)
       const speed = dragEdgeScrollSpeed(y, top, bottom)
-      if (speed === 0) return
+      // nothing to move (or already at that end): the next dragenter/dragover starts it again
+      if (speed === 0 || atScrollEnd(list, speed)) return
       // first frame of a run has no elapsed time; assume one 60 Hz frame
       const dt = last.current ? Math.min(now - last.current, 50) : 16
       last.current = now
