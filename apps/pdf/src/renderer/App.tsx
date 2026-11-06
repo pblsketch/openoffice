@@ -151,7 +151,7 @@ import {
   zoomAnchorY,
 } from './view-state'
 import type { PdfViewState, ZoomAnchor } from './view-state'
-import { LinkLayer } from './LinkLayer'
+import { LinkLayer, followLinkAt } from './LinkLayer'
 import { OutlinePanel } from './OutlinePanel'
 import { ComparePanel } from './ComparePanel'
 import { compareDocuments, type CompareResult, type PageText } from './compare-text'
@@ -11263,7 +11263,10 @@ export default function App() {
                                 (e.clientY - pageBox.top) / scale,
                               )
                             } else if (editTextMode && !readOnly) startTextEdit(origIdx, e)
-                            else handlePageClick(origIdx, e)
+                            // a plain click on link text follows the link; a drag over it
+                            // selects the text (sheet row 247)
+                            else if (!followLinkAt(e.currentTarget, e.nativeEvent))
+                              handlePageClick(origIdx, e)
                           }}
                           onContextMenu={(e) => handlePageContextMenu(origIdx, e)}
                           onMouseMove={(e) => {
