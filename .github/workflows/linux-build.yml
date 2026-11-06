@@ -41,6 +41,11 @@ jobs:
       # Oldest glibc the packages must start on: Debian 10 / RHEL 8 (2.28),
       # which also covers Ubuntu 20.04 (2.31). Electron itself needs 2.25.
       LINUX_GLIBC_FLOOR: '2.28'
+      # The libstdc++ of those same systems (GCC 8). Nothing packaged links
+      # libstdc++ today (Electron bundles libc++, the sidecar is Rust); these
+      # bound any native program that adds it.
+      LINUX_GLIBCXX_FLOOR: '3.4.25'
+      LINUX_CXXABI_FLOOR: '1.3.11'
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -112,7 +117,9 @@ jobs:
           set -euo pipefail
           cargo zigbuild --release --target "x86_64-unknown-linux-gnu.$LINUX_GLIBC_FLOOR" \
             --manifest-path native/xlsx-engine/Cargo.toml --config native/xlsx-engine/.cargo/config.toml
-          cp native/xlsx-engine/target/x86_64-unknown-linux-gnu/release/xlsx-sidecar \
+          # install replaces the file instead of writing through it: cargo's
+          # target/release/xlsx-sidecar is a hard link to its deps/ copy
+          install -m 755 native/xlsx-engine/target/x86_64-unknown-linux-gnu/release/xlsx-sidecar \
             native/xlsx-engine/target/release/xlsx-sidecar
 
       - name: Package
@@ -197,28 +204,35 @@ jobs:
           done
 
       # Every ELF file the packages carry (Electron, its libraries, the xlsx
-      # sidecar, and any native program added later) must load on the glibc
-      # floor. Reads the highest GLIBC_x.y symbol version each one asks for.
+      # sidecar, and any native program added later) must load on the floor
+      # systems. Reads the highest GLIBC_, GLIBCXX_ and CXXABI_ symbol version
+      # each one asks for ("-" when it asks for none).
       - name: No bundled program needs a glibc above the floor
         run: |
           set -euo pipefail
           dir="apps/shell/release/linux-unpacked"
-          glibc_need() {
-            objdump -T "$1" 2>/dev/null | grep -o 'GLIBC_[0-9][0-9.]*' | sed 's/^GLIBC_//' | sort -uV | tail -n 1 || true
+          highest() {
+            objdump -T "$2" 2>/dev/null | grep -o "$1_[0-9][0-9.]*" | sed "s/^$1_//" | sort -uV | tail -n 1 || true
           }
+          above() { [ -n "$2" ] && [ "$(printf '%s\n' "$1" "$2" | sort -V | tail -n 1)" != "$1" ]; }
           failed=0
           sidecar_seen=0
           while IFS= read -r -d '' file; do
             [ "$(head -c 4 "$file" | od -An -tx1 | tr -d ' \n')" = "7f454c46" ] || continue
-            need="$(glibc_need "$file")"
-            [ -n "$need" ] || continue
+            glibc="$(highest GLIBC "$file")"
+            glibcxx="$(highest GLIBCXX "$file")"
+            cxxabi="$(highest CXXABI "$file")"
+            [ -n "$glibc$glibcxx$cxxabi" ] || continue
             name="${file#"$dir"/}"
-            echo "$name: GLIBC_$need"
+            echo "$name: GLIBC_${glibc:--} GLIBCXX_${glibcxx:--} CXXABI_${cxxabi:--}"
             [ "$name" != "resources/native/xlsx-sidecar" ] || sidecar_seen=1
-            if [ "$(printf '%s\n' "$LINUX_GLIBC_FLOOR" "$need" | sort -V | tail -n 1)" != "$LINUX_GLIBC_FLOOR" ]; then
-              echo "::error::$name needs GLIBC_$need, above the $LINUX_GLIBC_FLOOR floor"
-              failed=1
-            fi
+            for check in "GLIBC $LINUX_GLIBC_FLOOR $glibc" "GLIBCXX $LINUX_GLIBCXX_FLOOR $glibcxx" "CXXABI $LINUX_CXXABI_FLOOR $cxxabi"; do
+              read -r kind floor need <<<"$check"
+              if above "$floor" "${need:-}"; then
+                echo "::error::$name needs ${kind}_$need, above the $floor floor"
+                failed=1
+              fi
+            done
           done < <(find "$dir" -type f -print0)
           [ "$sidecar_seen" -eq 1 ] || { echo "::error::the xlsx sidecar was not among the checked programs"; exit 1; }
           [ "$failed" -eq 0 ]
