@@ -268,4 +268,8 @@ export const de = {
   easyWordsLabel: 'In einfachen Worten erklären',
   easyWordsPrompt:
     'Erkläre den unten ausgewählten Text auf Deutsch so, dass ihn auch jemand versteht, der leicht verständliche Texte braucht. Verwende Alltagswörter und kurze Sätze und lass keine Tatsache, Zahl oder Bedingung weg. Ändere das Dokument nicht.\n\nAusgewählter Text:\n{text}',
+  charCountTotal: 'Zeichen {total}',
+  charCountSelected: 'Zeichen {selected} / {total}',
+  charCountHint:
+    'Zeichen mit Leerzeichen; bei markiertem Block: Block / gesamtes Dokument. Ohne Leerzeichen: {noSpace}. Wie in den Dokumentinformationen werden Kopf- und Fußzeilen, Fuß- und Endnoten nicht gezählt.',
 } satisfies Record<keyof typeof zh, string>

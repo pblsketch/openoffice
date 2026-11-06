@@ -12,7 +12,12 @@ import { dirname, join } from 'node:path'
 import { JSDOM } from 'jsdom'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import init, { HwpDocument } from '@rhwp/core'
-import { documentStats, formatCount, openDocumentInfo } from '../studio-plugin/document-info.mjs'
+import {
+  documentStats,
+  formatCount,
+  openDocumentInfo,
+  textCounts,
+} from '../studio-plugin/document-info.mjs'
 
 const require = createRequire(import.meta.url)
 
@@ -160,6 +165,27 @@ describe('문서 통계의 수', () => {
     const stats = documentStats(bridgeOf(doc) as never)
     expect(stats.chars).toBe(HAIRLINE_CHARS)
     expect(stats.sheets).toBe(2)
+  })
+
+  it('counts the same characters without layout when only the text is wanted (the status bar)', () => {
+    const doc = documentWithTable()
+    const full = documentStats(bridgeOf(doc) as never)
+    const reads: string[] = []
+    const watched = new Proxy(bridgeOf(doc), {
+      get(target, name: string) {
+        reads.push(name)
+        return target[name as keyof typeof target]
+      },
+    })
+    const text = documentStats(watched as never, { textOnly: true })
+    expect(text.chars).toBe(full.chars)
+    expect(text.charsNoSpace).toBe(full.charsNoSpace)
+    // no layout is asked for: lines and pages are the dialog's, and so are the pictures
+    expect(reads).not.toContain('getLineInfo')
+    expect(reads).not.toContain('getLineInfoInCell')
+    expect(reads).not.toContain('getDocumentInfo')
+    expect(reads).not.toContain('getControlImageMime')
+    expect(textCounts('가 나\t다\n')).toEqual({ chars: 5, charsNoSpace: 3 })
   })
 
   it('shows the numbers the way the dialog does', () => {

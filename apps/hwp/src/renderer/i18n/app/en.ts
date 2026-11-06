@@ -258,4 +258,8 @@ export const en = {
   easyWordsLabel: 'Explain in plain words',
   easyWordsPrompt:
     'Explain the selected text below in English so that someone who needs easy-to-read text can understand it. Use everyday words and short sentences, and leave out no fact, number or condition. Do not change the document.\n\nSelected text:\n{text}',
+  charCountTotal: 'Characters {total}',
+  charCountSelected: 'Characters {selected} / {total}',
+  charCountHint:
+    'Characters including spaces; with a block selected, block / whole document. Without spaces: {noSpace}. As in Document Information, headers, footers, footnotes and endnotes are not counted.',
 } satisfies Record<keyof typeof zh, string>

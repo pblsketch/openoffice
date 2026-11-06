@@ -264,4 +264,8 @@ export const pt = {
   easyWordsLabel: 'Explicar com palavras simples',
   easyWordsPrompt:
     'Explique em português o texto selecionado abaixo para que alguém que precisa de textos fáceis de ler também entenda. Use palavras do dia a dia e frases curtas, e não deixe de fora nenhum fato, número ou condição. Não altere o documento.\n\nTexto selecionado:\n{text}',
+  charCountTotal: 'Caracteres {total}',
+  charCountSelected: 'Caracteres {selected} / {total}',
+  charCountHint:
+    'Caracteres com espaços; com um bloco selecionado, bloco / documento inteiro. Sem espaços: {noSpace}. Como nas informações do documento, cabeçalhos, rodapés, notas de rodapé e notas de fim não são contados.',
 } satisfies Record<keyof typeof zh, string>

@@ -259,4 +259,8 @@ export const ja = {
   easyWordsLabel: 'やさしい言葉で説明',
   easyWordsPrompt:
     '下の選んだ文章を、やさしい文章が必要な人にもわかるように日本語で説明してください。ふだん使う言葉と短い文で書き、事実・数字・条件はひとつも落とさないでください。文書は変更しないでください。\n\n選んだ文章:\n{text}',
+  charCountTotal: '文字数 {total}',
+  charCountSelected: '文字数 {selected} / {total}',
+  charCountHint:
+    'スペースを含む文字数です。ブロックを選択すると「ブロック / 全体」で表示します。スペースを除くと {noSpace} です。文書情報と同じく、ヘッダー・フッター・脚注・文末脚注は数えません。',
 } satisfies Record<keyof typeof zh, string>

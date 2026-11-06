@@ -260,4 +260,8 @@ export const cs = {
   easyWordsLabel: 'Vysvětlit jednoduše',
   easyWordsPrompt:
     'Vysvětli česky níže vybraný text tak, aby mu porozuměl i člověk, který potřebuje snadno čitelný text. Používej běžná slova a krátké věty a nevynechej žádný fakt, číslo ani podmínku. Dokument neměň.\n\nVybraný text:\n{text}',
+  charCountTotal: 'Znaky {total}',
+  charCountSelected: 'Znaky {selected} / {total}',
+  charCountHint:
+    'Znaky včetně mezer; při vybraném bloku: blok / celý dokument. Bez mezer: {noSpace}. Stejně jako v informacích o dokumentu se nepočítají záhlaví, zápatí, poznámky pod čarou ani vysvětlivky.',
 } satisfies Record<keyof typeof zh, string>

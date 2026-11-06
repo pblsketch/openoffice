@@ -261,4 +261,8 @@ export const id = {
   easyWordsLabel: 'Jelaskan dengan kata sederhana',
   easyWordsPrompt:
     'Jelaskan teks yang dipilih di bawah ini dalam bahasa Indonesia agar orang yang membutuhkan teks mudah dibaca juga bisa memahaminya. Gunakan kata sehari-hari dan kalimat pendek, dan jangan lewatkan satu pun fakta, angka, atau syarat. Jangan ubah dokumen.\n\nTeks yang dipilih:\n{text}',
+  charCountTotal: 'Karakter {total}',
+  charCountSelected: 'Karakter {selected} / {total}',
+  charCountHint:
+    'Jumlah karakter termasuk spasi; saat blok dipilih: blok / seluruh dokumen. Tanpa spasi: {noSpace}. Seperti di Informasi Dokumen, header, footer, catatan kaki, dan catatan akhir tidak dihitung.',
 } satisfies Record<keyof typeof zh, string>

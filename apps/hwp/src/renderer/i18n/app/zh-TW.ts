@@ -248,4 +248,8 @@ export const zhTW = {
   easyWordsLabel: '用簡單的話解釋',
   easyWordsPrompt:
     '請用中文解釋下面選取的文字，讓需要淺顯文字的人也能看懂。用日常詞語和短句，不要漏掉任何事實、數字或條件。不要修改文件。\n\n選取的文字：\n{text}',
+  charCountTotal: '字數 {total}',
+  charCountSelected: '字數 {selected} / {total}',
+  charCountHint:
+    '含空格的字數；選取區塊時顯示為「區塊 / 全文」。不含空格：{noSpace}。與文件資訊相同，不計頁首、頁尾、註腳和章節附註。',
 } satisfies Record<keyof typeof zh, string>

@@ -267,4 +267,8 @@ export const nl = {
   easyWordsLabel: 'Uitleggen in eenvoudige woorden',
   easyWordsPrompt:
     'Leg de hieronder geselecteerde tekst in het Nederlands uit, zodat ook iemand die makkelijk leesbare tekst nodig heeft hem begrijpt. Gebruik gewone woorden en korte zinnen en laat geen feit, getal of voorwaarde weg. Wijzig het document niet.\n\nGeselecteerde tekst:\n{text}',
+  charCountTotal: 'Tekens {total}',
+  charCountSelected: 'Tekens {selected} / {total}',
+  charCountHint:
+    'Tekens inclusief spaties; met een geselecteerd blok: blok / heel document. Zonder spaties: {noSpace}. Net als bij Documentinformatie worden kop- en voetteksten, voetnoten en eindnoten niet geteld.',
 } satisfies Record<keyof typeof zh, string>

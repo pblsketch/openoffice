@@ -258,4 +258,8 @@ export const vi = {
   easyWordsLabel: 'Giải thích bằng lời dễ hiểu',
   easyWordsPrompt:
     'Hãy giải thích đoạn văn được chọn dưới đây bằng tiếng Việt để cả người cần văn bản dễ đọc cũng hiểu được. Dùng từ ngữ hằng ngày và câu ngắn, không bỏ sót bất kỳ sự kiện, con số hay điều kiện nào. Không sửa tài liệu.\n\nĐoạn văn được chọn:\n{text}',
+  charCountTotal: 'Ký tự {total}',
+  charCountSelected: 'Ký tự {selected} / {total}',
+  charCountHint:
+    'Số ký tự kể cả khoảng trắng; khi chọn một khối: khối / toàn bộ tài liệu. Không tính khoảng trắng: {noSpace}. Giống như Thông tin tài liệu, đầu trang, chân trang, chú thích cuối trang và chú thích cuối tài liệu không được tính.',
 } satisfies Record<keyof typeof zh, string>
