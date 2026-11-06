@@ -316,6 +316,27 @@ describe('H/W on part of the table, through the engine (issue #299)', () => {
     }
   })
 
+  it('W on two merged cells chosen whole shares their width (B1:B2 and C1:C2)', () => {
+    const doc = table([
+      [0, 1, 1, 1],
+      [0, 2, 1, 2],
+    ])
+    apply(doc, resizeLines(cellsOf(doc), 'col', 1, 1, 1500))
+    const merged = () =>
+      boxesOf(doc)
+        .filter((box) => box.h > boxesOf(doc)[0].h * 1.5)
+        .sort((a, b) => a.x - b.x)
+    const before = merged()
+    expect(before).toHaveLength(2)
+    // the block the studio reads from B1 to C1 grown over the merged cells (coveringRange)
+    const range = { startRow: 0, startCol: 1, endRow: 1, endCol: 2 }
+    place(doc, 'col', equalExtents(cellsOf(doc), 'col', 0, range)!)
+    const after = merged()
+    expect(after[0].w).toBeCloseTo(after[1].w, 0)
+    expect(after[0].w + after[1].w).toBeCloseTo(before[0].w + before[1].w, 0)
+    expect(after[0].x).toBeCloseTo(before[0].x, 0)
+  })
+
   it('H on two cells of the first column shares their height and keeps the rest', () => {
     const doc = table([])
     apply(doc, resizeLines(cellsOf(doc), 'row', 0, 0, 1500))

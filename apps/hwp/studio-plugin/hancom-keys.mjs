@@ -2172,15 +2172,17 @@ export function equalizeTableCells(services, axis, ko) {
       range.startCol === 0 &&
       range.endRow === dims.rowCount - 1 &&
       range.endCol === dims.colCount - 1)
-  // a part of the table: only the block's cells, as Hangul does. A merged cell that the block
-  // cuts through makes it no rectangle of cells, and what Hangul would size then is not known
-  if (
-    !whole &&
-    (range.startRow !== selected.startRow ||
-      range.startCol !== selected.startCol ||
-      range.endRow !== selected.endRow ||
-      range.endCol !== selected.endCol)
-  ) {
+  // a part of the table: only the block's cells, as Hangul does. The studio names the block by
+  // the rows and columns of its first and last cells, so a block of merged cells chosen whole
+  // reads narrower than the cells it holds; it is sized over the range grown to them. Where the
+  // grown range takes in a cell the block did not touch, a merged cell cuts through the block:
+  // that is no rectangle of cells, and what Hangul would size then is not known
+  const touches = (cell, area) =>
+    cell.row <= area.endRow &&
+    cell.row + cell.rowSpan - 1 >= area.startRow &&
+    cell.col <= area.endCol &&
+    cell.col + cell.colSpan - 1 >= area.startCol
+  if (!whole && cells.some((cell) => touches(cell, range) && !touches(cell, selected))) {
     tellUser(
       ko
         ? '합친 칸이 블록 경계에 걸쳐 있어 크기를 같게 하지 않았습니다. 합친 칸을 모두 넣어 골라 주세요.'

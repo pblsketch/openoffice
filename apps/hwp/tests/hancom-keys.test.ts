@@ -935,21 +935,37 @@ describe('equal cell sizes (H/W)', () => {
       excluded?: string[]
       // the least height each cell's text draws at (as a row with text draws taller than it stores)
       text?: number[][]
+      // real merges ([row, col, rowSpan, colSpan]): the places they cover hold no cell
+      merges?: [number, number, number, number][]
     } = {},
   ) {
     const rows = widths.length
     const cols = widths[0].length
     const cells = []
+    const covered = new Set<string>()
+    for (const [r, c, rs, cs] of options.merges ?? []) {
+      for (let dr = 0; dr < rs; dr += 1) {
+        for (let dc = 0; dc < cs; dc += 1) if (dr || dc) covered.add(`${r + dr},${c + dc}`)
+      }
+    }
     for (let row = 0; row < rows; row += 1) {
       for (let col = 0; col < cols; col += 1) {
+        if (covered.has(`${row},${col}`)) continue
+        const merge = options.merges?.find(([r, c]) => r === row && c === col)
+        const rowSpan = merge?.[2] ?? (options.spans && row === 0 && col === 1 ? 2 : 1)
+        const colSpan = merge?.[3] ?? 1
+        let width = 0
+        for (let c = col; c < col + colSpan; c += 1) width += widths[row][c]
+        let height = 0
+        for (let r = row; r < row + rowSpan; r += 1) height += heights[r][col]
         cells.push({
-          cellIdx: row * cols + col,
+          cellIdx: options.merges ? cells.length : row * cols + col,
           row,
           col,
-          rowSpan: options.spans && row === 0 && col === 1 ? 2 : 1,
-          colSpan: 1,
-          width: widths[row][col],
-          height: heights[row][col],
+          rowSpan,
+          colSpan,
+          width: options.merges ? width : widths[row][col],
+          height: options.merges ? height : heights[row][col],
         })
       }
     }
@@ -1219,6 +1235,68 @@ describe('equal cell sizes (H/W)', () => {
       message:
         '합친 칸이 블록 경계에 걸쳐 있어 크기를 같게 하지 않았습니다. 합친 칸을 모두 넣어 골라 주세요.',
     })
+  })
+
+  it('sizes merged cells chosen whole, though the studio names the block by its first row', () => {
+    // B1:B2 and C1:C2 merged; the block runs from B1 to C1, which the studio reads as row 0 only
+    const { services, wasm } = table(
+      [
+        [1000, 2000, 3000],
+        [1000, 2000, 3000],
+        [1000, 2000, 3000],
+      ],
+      [
+        [1000, 1000, 1000],
+        [1000, 1000, 1000],
+        [1000, 1000, 1000],
+      ],
+      {
+        merges: [
+          [0, 1, 2, 1],
+          [0, 2, 2, 1],
+        ],
+        range: { startRow: 0, startCol: 1, endRow: 0, endCol: 2 },
+      },
+    )
+    const showToast = vi.fn()
+    hancomCommands('ko', { showToast })
+    expect(equalizeTableCells(services, 'width', true)).toBe(true)
+    expect(showToast).not.toHaveBeenCalled()
+    // the two merged cells share their 5000; A1, A2 and the last row stay
+    expect(wasm.setTableCellExtents.mock.calls[0].slice(3)).toEqual([
+      false,
+      [
+        { cellIdx: 0, start: 0, end: 1000 },
+        { cellIdx: 1, start: 1000, end: 3500 },
+        { cellIdx: 2, start: 3500, end: 6000 },
+        { cellIdx: 3, start: 0, end: 1000 },
+        { cellIdx: 4, start: 0, end: 1000 },
+        { cellIdx: 5, start: 1000, end: 3000 },
+        { cellIdx: 6, start: 3000, end: 6000 },
+      ],
+    ])
+  })
+
+  it('still refuses a block whose merged cell would pull in a cell it did not touch', () => {
+    // A1:A2 merged; A1 to B1 grows over row 1, where B2 was never chosen
+    const { services, wasm } = table(
+      [
+        [1000, 2000, 3000],
+        [1000, 2000, 3000],
+        [1000, 2000, 3000],
+      ],
+      [
+        [1000, 1000, 1000],
+        [1000, 1000, 1000],
+        [1000, 1000, 1000],
+      ],
+      { merges: [[0, 0, 2, 1]], range: { startRow: 0, startCol: 0, endRow: 0, endCol: 1 } },
+    )
+    const showToast = vi.fn()
+    hancomCommands('ko', { showToast })
+    expect(equalizeTableCells(services, 'width', true)).toBe(false)
+    expect(wasm.setTableCellExtents).not.toHaveBeenCalled()
+    expect(showToast).toHaveBeenCalled()
   })
 
   it('leaves a block with cells left out alone, as Hangul wants a rectangle', () => {
