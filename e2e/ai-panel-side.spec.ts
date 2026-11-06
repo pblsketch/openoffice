@@ -66,3 +66,63 @@ for (const app of ['docs', 'sheets', 'slides', 'pdf', 'markdown', 'html']) {
     }
   })
 }
+
+// The mind map docks its panels inside a padded stage: the map card, then the
+// theme/format/note panel, then the AI dock (last in the DOM). Only the AI dock
+// follows the setting; with no setting yet it stands on the left like the others.
+test('mindmap: the AI dock follows the side setting and the side panels stay at the end', async () => {
+  const browser = await chromium.launch()
+  try {
+    const page = await browser.newPage({ viewport: { width: 1200, height: 800 } })
+    await page.setContent(
+      '<div class="app" style="width:1100px;height:600px;display:flex;flex-direction:column">' +
+        '<main class="mm-stage"><div class="mm-card">Map</div>' +
+        '<aside class="mm-theme-panel" style="width:220px">Theme</aside>' +
+        '<div class="ai-dock"><aside class="copilot" style="width:100%"><div class="ai-panel-resizer"></div>' +
+        '<button class="ai-panel-collapse"><svg width="16" height="16"></svg></button>AI chat</aside></div>' +
+        '</main></div>',
+    )
+    for (const path of [
+      'packages/ui/src/tokens.css',
+      'packages/ui/src/ai-panel-prefs.css',
+      'apps/mindmap/src/renderer/styles.css',
+      'apps/mindmap/src/renderer/ai/ai-panel.css',
+    ]) {
+      await page.addStyleTag({ content: await readFile(join(__dirname, '..', path), 'utf8') })
+    }
+    const dock = page.locator('.ai-dock')
+    const card = page.locator('.mm-card')
+    const theme = page.locator('.mm-theme-panel')
+    for (const side of [null, 'right', 'left']) {
+      await page.evaluate((side) => {
+        if (side) document.documentElement.dataset.aiPanelSide = side
+        else delete document.documentElement.dataset.aiPanelSide
+      }, side)
+      const right = side === 'right'
+      const iconTransform = await page
+        .locator('.ai-panel-collapse svg')
+        .evaluate((icon) => getComputedStyle(icon).transform)
+      expect(iconTransform).toBe(right ? 'matrix(-1, 0, 0, 1, 0, 0)' : 'none')
+      await expect.poll(async () => Math.round((await dock.boundingBox())!.width)).toBe(360)
+      const box = (await dock.boundingBox())!
+      const cardBox = (await card.boundingBox())!
+      const themeBox = (await theme.boundingBox())!
+      // the theme panel stays between the map and the window's right edge
+      expect(themeBox.x).toBeGreaterThan(cardBox.x)
+      if (right) expect(box.x).toBeGreaterThan(themeBox.x)
+      else expect(box.x + box.width).toBeLessThanOrEqual(cardBox.x)
+      // the resizer sits on the edge that faces the map
+      const handle = (await page.locator('.ai-panel-resizer').boundingBox())!
+      expect(
+        Math.abs(right ? handle.x - box.x : handle.x + handle.width - box.x - box.width),
+      ).toBeLessThanOrEqual(4)
+    }
+    await page.evaluate(() => {
+      document.querySelector('.ai-dock')!.classList.add('collapsed')
+    })
+    await expect.poll(async () => Math.round((await dock.boundingBox())!.width)).toBe(34)
+    expect((await dock.boundingBox())!.x).toBeLessThan((await card.boundingBox())!.x)
+  } finally {
+    await browser.close()
+  }
+})

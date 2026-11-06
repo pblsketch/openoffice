@@ -1,7 +1,7 @@
 /**
- * Where the AI panel meets the editor: the dock at the right end of the map
- * (the rail while it is collapsed), its open state, and the `MapAiHost` the
- * panel's tools work through.
+ * Where the AI panel meets the editor: the dock beside the map, on the side
+ * chosen in Settings (the rail while it is collapsed), its open state, and the
+ * `MapAiHost` the panel's tools work through.
  *
  * The host reads and changes the map only through what the app already has:
  * its session, the controllers of the sheets on screen, and its way of showing
@@ -60,7 +60,7 @@ export function useMindmapAi(wiring: MindmapAiWiring): MindmapAi {
   const [open, setOpen] = useState(() => aiPanelInitiallyOpen(OPEN_KEY))
   useEffect(() => rememberAiPanelOpen(OPEN_KEY, open), [open])
 
-  // the shell's AI panel preferences (text size): read once, then followed
+  // the shell's AI panel preferences (side, text size): read once, then followed
   useEffect(() => {
     const api = window.mindmapApi as Partial<MindmapAiApi> | undefined
     void api
@@ -109,7 +109,7 @@ export interface MindmapAiDockProps {
 }
 
 /**
- * The panel at the right end of the map, or its rail while collapsed; the
+ * The panel beside the map, or its rail while collapsed; the
  * panel stays mounted either way, so a run and its chat survive. In a split
  * (decision 0036) a secondary pane keeps its panel at the rail, and a click
  * on the rail asks the shell to focus this pane first.

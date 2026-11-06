@@ -17,6 +17,7 @@ import {
 } from '@genoffice/ai-provider'
 import type { SubscriptionStatusMap } from '@genoffice/ai-provider/browser'
 import { PRODUCT_NAME, UPSTREAM_PRODUCT_NAME, type Lang } from '@genoffice/i18n'
+import { DEFAULT_AI_PANEL_PREFS, applyAiPanelPrefs, type AiPanelPrefs } from '@genoffice/ui'
 import App from '../src/renderer/App'
 import { LocaleProvider } from '../src/renderer/i18n/locale'
 import { AiPanel, type MindmapAiRequest, type MindmapAiRunStart } from '../src/renderer/ai/AiPanel'
@@ -200,7 +201,7 @@ const drawnTitles = (): string[] =>
   )
 
 describe('the AI button and panel', () => {
-  it('sits at the far end of the toolbar and opens the panel at the right of the map', async () => {
+  it('sits at the far end of the toolbar and opens the panel beside the map', async () => {
     const bytes = await (await documentOf(plainSheet())).save()
     await mountApp(
       fakeApi({ pending: 'C:/maps/a.xmind', bytes, statuses: statusMap('ready', 'ready') }),
@@ -209,14 +210,69 @@ describe('the AI button and panel', () => {
     expect(button).not.toBeNull()
     expect(button!.textContent).toContain('AI')
     const stage = container.querySelector('.mm-stage')!
-    // the dock is the last thing in the stage: the right end
+    // the dock is the last thing in the stage; ai-panel.css puts it on the chosen side
     expect(stage.lastElementChild?.classList.contains('ai-dock')).toBe(true)
-    // the theme panel and the AI panel take turns on that side
+    // the theme panel and the AI panel take turns
     act(() => container.querySelector<HTMLButtonElement>('[data-action="theme"]')!.click())
     expect(container.querySelector('.ai-dock')!.classList.contains('collapsed')).toBe(true)
     act(() => button!.click())
     expect(container.querySelector('.ai-dock')!.classList.contains('collapsed')).toBe(false)
     expect(container.querySelector('.mm-theme-panel')).toBeNull()
+  })
+})
+
+describe('the panel side (Settings → General → AI sidebar position)', () => {
+  afterEach(() => applyAiPanelPrefs({}))
+
+  /** drags the resizer to `clientX` and lets go; the panel stores the width it ends at */
+  function dragResizerTo(clientX: number): void {
+    const resizer = container.querySelector<HTMLElement>('.copilot .ai-panel-resizer')!
+    resizer.setPointerCapture = () => {}
+    act(() => {
+      resizer.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 0 }))
+    })
+    act(() => {
+      window.dispatchEvent(new MouseEvent('pointermove', { clientX }))
+      window.dispatchEvent(new MouseEvent('pointerup', { clientX }))
+    })
+  }
+
+  it('moves from the panel header and measures a drag from the chosen edge', async () => {
+    vi.stubGlobal('innerWidth', 1200)
+    const bytes = await (await documentOf(plainSheet())).save()
+    const fake = fakeApi({
+      pending: 'C:/maps/a.xmind',
+      bytes,
+      statuses: statusMap('ready', 'ready'),
+    })
+    const setAiPanelPrefs = vi.fn(async (patch: Partial<AiPanelPrefs>): Promise<AiPanelPrefs> => ({
+      ...DEFAULT_AI_PANEL_PREFS,
+      ...patch,
+    }))
+    Object.assign(fake.api, { setAiPanelPrefs })
+    await mountApp(fake)
+    expect(container.querySelector('.ai-dock')!.classList.contains('collapsed')).toBe(false)
+
+    // the default side is the left: the header offers the right, and a drag measures from the left edge
+    const move = container.querySelector<HTMLButtonElement>('.ai-panel-side-button')!
+    expect(move.getAttribute('aria-label')).toBe('Move AI panel to the right')
+    dragResizerTo(400)
+    expect(localStorage.getItem('mindmap-ai-panel-width')).toBe('400')
+
+    await act(async () => move.click())
+    await settle()
+    expect(setAiPanelPrefs).toHaveBeenCalledWith({ side: 'right' })
+    expect(document.documentElement.dataset.aiPanelSide).toBe('right')
+    expect(move.getAttribute('aria-label')).toBe('Move AI panel to the left')
+    // on the right the panel grows leftwards: 1200 - 750
+    dragResizerTo(750)
+    expect(localStorage.getItem('mindmap-ai-panel-width')).toBe('450')
+
+    // a change made in Settings reaches an open map the same way
+    act(() => applyAiPanelPrefs({ side: 'left' }))
+    expect(move.getAttribute('aria-label')).toBe('Move AI panel to the right')
+    dragResizerTo(300)
+    expect(localStorage.getItem('mindmap-ai-panel-width')).toBe('300')
   })
 })
 
