@@ -54,8 +54,20 @@ export function coreXmlFor(doc: OdtDocument, people: BridgeCoreProps): string | 
   const title = metaField(meta, 'dc:title')
   const created = metaField(meta, 'meta:creation-date')
   const modified = metaField(meta, 'dc:date')
-  const iso = (v: string | null) =>
-    v && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(v) ? `${v.slice(0, 19)}Z` : null
+  // ODF timestamps may carry Z, an offset (+09:00), or neither. core.xml wants
+  // true UTC (…Z). Do not slap Z onto the wall-clock digits — that turns
+  // 10:00+09:00 into 10:00Z. Offset-less values keep their digits as UTC so the
+  // host timezone cannot shift them.
+  const iso = (v: string | null): string | null => {
+    if (!v || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(v)) return null
+    const trimmed = v.trim()
+    const parseable = /(?:[zZ]|[+-]\d{2}:?\d{2})$/.test(trimmed)
+      ? trimmed
+      : `${trimmed.slice(0, 19)}Z`
+    const ms = Date.parse(parseable)
+    if (Number.isNaN(ms)) return null
+    return new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z')
+  }
   const c = iso(created)
   const m = iso(modified)
   return (
