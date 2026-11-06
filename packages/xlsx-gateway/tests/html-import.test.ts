@@ -268,6 +268,37 @@ describe('htmlTablesToXlsxBuffer', () => {
     expect(await sheetXml(buffer, 1)).toContain('<t xml:space="preserve">one</t>')
     expect(await sheetXml(buffer, 1)).toContain('<t xml:space="preserve">two</t>')
   })
+
+  it('truncates a 31-unit sheet name without splitting a trailing emoji', async () => {
+    // 30 ASCII + one emoji (2 UTF-16 units) would land a .slice(0, 31) on the
+    // high surrogate; the cut backs off so the name stays well-formed UTF-16.
+    const longName = `${'A'.repeat(30)}\u{1F600}`
+    const tables = parseHtmlTables(`<html><head><!--[if gte mso 9]><xml>
+<x:ExcelWorkbook><x:ExcelWorksheets>
+<x:ExcelWorksheet><x:Name>${longName}</x:Name></x:ExcelWorksheet>
+</x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body>
+<table><tr><td>1</td></tr></table>
+</body></html>`)
+    expect(tables[0]?.name).toBe('A'.repeat(30))
+    const buffer = await htmlTablesToXlsxBuffer(tables)
+    const workbook = await (await openWorkbook(buffer)).file('xl/workbook.xml')?.async('text')
+    expect(workbook).toContain(`<sheet name="${'A'.repeat(30)}" sheetId="1" r:id="rId1"/>`)
+    expect(workbook).not.toContain('\uFFFD')
+    expect(workbook).not.toMatch(/name="[^"]*[\uD800-\uDBFF](?![\uDC00-\uDFFF])/)
+  })
+
+  it('keeps surrogate pairs intact when suffixing a colliding long name', async () => {
+    const base = `${'B'.repeat(28)}\u{1F389}`
+    const buffer = await htmlTablesToXlsxBuffer([
+      { name: base, rows: [['a']], merges: [] },
+      { name: base, rows: [['b']], merges: [] },
+    ])
+    const workbook = await (await openWorkbook(buffer)).file('xl/workbook.xml')?.async('text')
+    expect(workbook).toContain(`name="${base}"`)
+    expect(workbook).toContain('name="BBBBBBBBBBBBBBBBBBBBBBBBBBB (2)"')
+    expect(workbook).not.toContain('\uFFFD')
+    expect(workbook).not.toMatch(/name="[^"]*[\uD800-\uDBFF](?![\uDC00-\uDFFF])/)
+  })
 })
 
 describe('buildWorksheetXml merge dimension', () => {
