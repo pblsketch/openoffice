@@ -2,7 +2,7 @@
  * Agent sessions in the shell (decision 0032): which folders may be a project,
  * what a session starts with, who may drive it, and what the window is shown.
  */
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -139,6 +139,25 @@ describe('instructions', () => {
     )
     expect(codex.text).not.toContain('Read tool')
     expect(await agentInstructions('codex', project, 'ko', false)).toBe(codex.text)
+  })
+
+  it('adds no "read the rest" line for a note that links to a file outside the project', async (ctx) => {
+    const project = temp()
+    const outside = join(temp(), 'CLAUDE.md')
+    writeFileSync(outside, `${'a'.repeat(32_000)}TAIL-PAST-THE-LIMIT`)
+    try {
+      symlinkSync(outside, join(project, 'CLAUDE.md'), 'file')
+    } catch {
+      // creating a file link needs a permission some Windows accounts lack
+      ctx.skip()
+    }
+    const result = await agentInstructionsAndCuts('claude-code', project, 'ko', true)
+    // the window still says the instructions were cut
+    expect(result.truncated).toEqual(['CLAUDE.md'])
+    expect(result.text).toContain('a'.repeat(32_000))
+    expect(result.text).not.toContain('TAIL-PAST-THE-LIMIT')
+    expect(result.text).not.toContain('Only the first')
+    expect(result.text).not.toContain(outside)
   })
 
   it('reports no cut and adds no line for notes within the limit', async () => {

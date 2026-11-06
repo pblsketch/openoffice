@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { existsSync, rmSync, statSync } from 'node:fs'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { dirname, isAbsolute, join, parse, resolve } from 'node:path'
 import type {
@@ -233,6 +233,23 @@ function truncatedNoteLine(provider: AiSubscriptionProviderId, path: string): st
   return `(Only the first ${MAX_PROJECT_NOTES_CHARS} characters of ${path} are given above. When the task needs the rest, read the file${how}.)`
 }
 
+/**
+ * Whether a project note really lies in the project folder: a CLAUDE.md or
+ * AGENTS.md that is a link to a file elsewhere gets no "read the rest" line,
+ * so the instructions never point the program outside the folder.
+ */
+async function noteInsideProject(path: string, projectRoot: string): Promise<boolean> {
+  const [real, realRoot] = await Promise.all([
+    realpath(path).catch(() => undefined),
+    realpath(projectRoot).catch(() => undefined),
+  ])
+  return (
+    real !== undefined &&
+    realRoot !== undefined &&
+    isInsidePath(comparablePath(real, real), comparablePath(realRoot, realRoot))
+  )
+}
+
 /** The instructions, and the project notes they carry only the start of */
 export interface AgentInstructions {
   text: string
@@ -309,7 +326,9 @@ export async function agentInstructionsAndCuts(
       if (!text.trim()) continue
       let note = `## ${name}\n${text.slice(0, MAX_PROJECT_NOTES_CHARS)}`
       if (text.length > MAX_PROJECT_NOTES_CHARS) {
-        note += `\n\n${truncatedNoteLine(provider, path)}`
+        if (await noteInsideProject(path, projectRoot)) {
+          note += `\n\n${truncatedNoteLine(provider, path)}`
+        }
         truncated.push(name)
       }
       notes.push(note)
