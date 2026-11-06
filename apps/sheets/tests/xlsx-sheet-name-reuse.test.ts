@@ -8,7 +8,8 @@ import { buildSheetsFixture } from './fixture-builder'
 // Per-sheet states name an existing sheet by its original file name and an
 // added sheet by its final name. Renaming "Data" and adding a new "Data" in one
 // save made both read as one sheet: a value typed on the renamed sheet landed
-// on the new one. Such a save is refused before any state is applied.
+// on the new one. Such a save is refused before any state is applied when a
+// state names that sheet.
 const RENAME_AND_REUSE = {
   renames: [{ sheetName: 'Data', newName: 'Numbers' }],
   additions: [{ name: 'Data' }],
@@ -107,8 +108,12 @@ describe('a new sheet that takes the old name of a sheet renamed in the same sav
         ),
     ],
     [
-      'only the sheet plan',
-      async () => applyCellEditsToXlsx(await buildSheetsFixture(), [], [], [], RENAME_AND_REUSE),
+      'a visibility change in the plan',
+      async () =>
+        applyCellEditsToXlsx(await buildSheetsFixture(), [], [], [], {
+          ...RENAME_AND_REUSE,
+          hiddenChanges: [{ sheetName: 'Data', hidden: true }],
+        }),
     ],
   ]
   for (const [label, save] of cases) {
@@ -121,7 +126,7 @@ describe('a new sheet that takes the old name of a sheet renamed in the same sav
 
   it('also refuses when the old name was freed by a chained rename', async () => {
     await expect(
-      applyCellEditsToXlsx(await buildSheetsFixture(), [VALUE], [], [], {
+      applyCellEditsToXlsx(await buildSheetsFixture(), [{ ...VALUE, sheetName: 'Other' }], [], [], {
         renames: [
           { sheetName: 'Data', newName: 'X' },
           { sheetName: 'Other', newName: 'Data' },
@@ -135,6 +140,19 @@ describe('a new sheet that takes the old name of a sheet renamed in the same sav
 })
 
 describe('sheet plans that stay unambiguous', () => {
+  // Nothing names either sheet, so nothing can land on the wrong one; the
+  // CLI's `sheet apply` saves this batch as well (packages/cli xlsx-mixed-batch).
+  it('saves the rename and the new sheet when no state names them', async () => {
+    const mutation = await applyCellEditsToXlsx(
+      await buildSheetsFixture(),
+      [],
+      [],
+      [],
+      RENAME_AND_REUSE,
+    )
+    expect(await sheetNames(mutation.buffer)).toEqual(['Numbers', 'Other', 'My Sheet', 'Data'])
+  })
+
   it('saves a value on a renamed sheet next to a new sheet with another name', async () => {
     const mutation = await applyCellEditsToXlsx(await buildSheetsFixture(), [VALUE], [], [], {
       renames: [{ sheetName: 'Data', newName: 'Numbers' }],

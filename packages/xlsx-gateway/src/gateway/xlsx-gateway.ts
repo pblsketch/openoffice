@@ -994,7 +994,33 @@ export async function planCellEditsToXlsx(
         'changes — save one of them first.',
     )
   }
-  if (sheetPlan !== undefined) assertAddedSheetsKeepRenamedNames(sheetPlan)
+  if (sheetPlan !== undefined) {
+    const sheetStates: readonly (readonly { readonly sheetName: string }[])[] = [
+      edits,
+      structuralOps,
+      filterStates,
+      hyperlinkEdits,
+      cfStates,
+      dvStates,
+      sheetProtections,
+      visualAdditions,
+      pageSetupStates,
+      noteStates,
+      tableAdditions,
+      pivotAdditions,
+      sparklineAdditions,
+      formulaValues,
+      protectedRangeStates,
+      bulkConstantFills,
+      tabColorStates,
+      tableEdits,
+      cellImageAdditions,
+    ]
+    assertAddedSheetsKeepRenamedNames(
+      sheetPlan,
+      new Set(sheetStates.flatMap((states) => states.map((state) => state.sheetName))),
+    )
+  }
   const pkg = new PackageEditor(source)
   const touchedEntries = new Set<string>()
 

@@ -60,15 +60,27 @@ export function validateSheetName(name: string): void {
 /// an added sheet by its final name, so a new sheet that takes the old name of
 /// a sheet renamed in the same save makes both read as one: cell values, row
 /// and column operations, formats and page setup meant for the renamed sheet
-/// would land on the new one. Refuse instead of guessing. A new sheet that
-/// takes a removed sheet's name is fine — a removed sheet carries no states.
-export function assertAddedSheetsKeepRenamedNames(plan: SheetEditPlan): void {
+/// would land on the new one. Refuse instead of guessing — but only when some
+/// state in the save names that sheet; the rename and the addition alone are
+/// unambiguous (the CLI's `sheet apply` draws the same line). A new sheet
+/// that takes a removed sheet's name is fine: a removed sheet carries no
+/// states.
+export function assertAddedSheetsKeepRenamedNames(
+  plan: SheetEditPlan,
+  addressedSheets: ReadonlySet<string>,
+): void {
   const renamedAway = new Set(
     plan.renames
       .filter((rename) => rename.newName !== rename.sheetName)
       .map((rename) => rename.sheetName),
   )
-  const taken = plan.additions.find((addition) => renamedAway.has(addition.name))
+  const addressed = (name: string): boolean =>
+    addressedSheets.has(name) ||
+    (plan.hiddenChanges ?? []).some((change) => change.sheetName === name) ||
+    plan.additions.some((addition) => addition.sourceSheetName === name)
+  const taken = plan.additions.find(
+    (addition) => renamedAway.has(addition.name) && addressed(addition.name),
+  )
   if (taken !== undefined) {
     throw new SheetEditError(
       `Sheet "${taken.name}" is renamed while a new sheet takes its old name in the same save — ` +
