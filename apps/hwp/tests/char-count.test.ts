@@ -67,6 +67,18 @@ describe('the count of a selection', () => {
     // a whole novel selected is counted whole
     expect(out.tooLong()).toBe(false)
   })
+
+  it("cuts a run by the engine's characters, an emoji or 𠀀 being one", () => {
+    // 웃음😀😀😀 끝𠀀말: nine characters to the engine, thirteen units in a JavaScript string
+    const text = '웃음😀😀😀 끝𠀀말'
+    const box = { length: () => [...text].length, text: () => text }
+    const whole = countCollector()
+    whole.add(box, 0, 0, Infinity)
+    expect(whole.counts()).toEqual({ chars: 9, charsNoSpace: 8, runs: 1 })
+    const tail = countCollector()
+    tail.add(box, 0, 6, 9) // 끝𠀀말
+    expect(tail.counts()).toEqual({ chars: 3, charsNoSpace: 3, runs: 1 })
+  })
 })
 
 describe('the status bar item', () => {

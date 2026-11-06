@@ -29,7 +29,9 @@ const DIVIDER_ID = 'ieum-sb-char-count-divider'
 /**
  * A collector for agent-plugin.mjs's selection walk (gatherSelection) that adds up the
  * characters of the runs instead of keeping them. It has no limit: a whole novel selected is
- * counted whole.
+ * counted whole. The engine's offsets count characters (code points), so an emoji or a Han
+ * character outside the basic plane is one there and two in a JavaScript string; the run is cut
+ * by characters.
  */
 export function countCollector() {
   let chars = 0
@@ -41,7 +43,7 @@ export function countCollector() {
       const start = Math.min(Math.max(from, 0), length)
       const end = Math.min(to, length)
       if (end <= start) return
-      const counts = textCounts(box.text(k, length).slice(start, end))
+      const counts = textCounts([...box.text(k, length)].slice(start, end).join(''))
       chars += counts.chars
       charsNoSpace += counts.charsNoSpace
       runs += 1

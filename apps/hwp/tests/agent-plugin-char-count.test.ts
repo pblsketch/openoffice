@@ -83,7 +83,11 @@ function openDocument({ changesOnCommand = false } = {}) {
     if (line) doc.insertText(0, index, 0, line)
   })
   doc.pasteHtml(0, 1, 0, '<table><tr><td>대상</td><td>65세 이상</td></tr></table>')
+  return openOn(doc, { changesOnCommand })
+}
 
+/** The plugin up on a document, with a host and a caret as the studio gives them. */
+function openOn(doc: HwpDocument, { changesOnCommand = false } = {}) {
   const commands = new Map<string, Command>()
   const listeners = new Map<string, (() => void)[]>()
   const executed: string[] = []
@@ -228,6 +232,50 @@ describe('the status bar character count', () => {
     open.emit('document-swapped')
     vi.advanceTimersByTime(0)
     expect(item()?.textContent).toBe('글자 32')
+  })
+
+  it('counts a block with emoji and Han characters outside the basic plane as 문서 정보 does', () => {
+    vi.useFakeTimers()
+    const item = withStatusBar()
+    const doc = HwpDocument.createEmpty()
+    doc.createBlankDocument()
+    doc.insertText(0, 0, 0, '웃음😀😀😀 끝𠀀말')
+    const one = openOn(doc)
+    one.plugin.showCharCount(LABELS)
+    vi.advanceTimersByTime(0)
+    expect(doc.getParagraphLength(0, 0)).toBe(9)
+    expect(item()?.textContent).toBe('글자 9')
+    one.select(inBody(0, 0), inBody(0, 9))
+    one.emit('cursor-rect-updated')
+    vi.advanceTimersByTime(1000)
+    expect(item()?.textContent).toBe('글자 9 / 9')
+    one.select(inBody(0, 6), inBody(0, 9))
+    one.emit('cursor-rect-updated')
+    vi.advanceTimersByTime(1000)
+    expect(item()?.textContent).toBe('글자 3 / 9')
+  })
+
+  it('counts a whole form with an emoji in a cell as the dialog does (cell-line-break-form)', () => {
+    vi.useFakeTimers()
+    const item = withStatusBar()
+    const doc = new HwpDocument(
+      readFileSync(join(__dirname, 'fixtures', 'cell-line-break-form.hwpx')),
+    )
+    const total = documentStats(bridgeOf(doc) as never, { textOnly: true }).chars
+    expect(total).toBe(59)
+    const form = openOn(doc)
+    form.plugin.showCharCount(LABELS)
+    vi.advanceTimersByTime(0)
+    const last = doc.getSectionCount() - 1
+    const para = doc.getParagraphCount(last) - 1
+    form.select(inBody(0, 0), {
+      sectionIndex: last,
+      paragraphIndex: para,
+      charOffset: doc.getParagraphLength(last, para),
+    })
+    form.emit('cursor-rect-updated')
+    vi.advanceTimersByTime(1000)
+    expect(item()?.textContent).toBe('글자 59 / 59')
   })
 
   it('changes its words when the app gives others, without a second item', () => {
