@@ -160,6 +160,33 @@ describe('instructions', () => {
     expect(result.text).not.toContain(outside)
   })
 
+  it('keeps the "read the rest" line for a note linking to a folder named "..x" inside the project', async (ctx) => {
+    const project = temp()
+    mkdirSync(join(project, '..x'))
+    writeFileSync(join(project, '..x', 'CLAUDE.md'), `${'a'.repeat(32_000)}TAIL-PAST-THE-LIMIT`)
+    try {
+      symlinkSync(join(project, '..x', 'CLAUDE.md'), join(project, 'CLAUDE.md'), 'file')
+    } catch {
+      // creating a file link needs a permission some Windows accounts lack
+      ctx.skip()
+    }
+    const result = await agentInstructionsAndCuts('claude-code', project, 'ko', true)
+    expect(result.truncated).toEqual(['CLAUDE.md'])
+    expect(result.text).toContain(`characters of ${join(project, 'CLAUDE.md')} are given above`)
+  })
+
+  it('never cuts a note between the two halves of a character', async () => {
+    const project = temp()
+    // the emoji's first half is character 32,000: the cut keeps neither half
+    writeFileSync(join(project, 'CLAUDE.md'), `${'a'.repeat(31_999)}\u{1F600}b`)
+    const result = await agentInstructionsAndCuts('claude-code', project, 'ko', true)
+    expect(result.truncated).toEqual(['CLAUDE.md'])
+    expect(result.text).toContain(`${'a'.repeat(31_999)}\n\n(Only the first`)
+    expect(result.text).not.toMatch(
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/,
+    )
+  })
+
   it('reports no cut and adds no line for notes within the limit', async () => {
     const project = temp()
     writeFileSync(join(project, 'CLAUDE.md'), 'a'.repeat(32_000))

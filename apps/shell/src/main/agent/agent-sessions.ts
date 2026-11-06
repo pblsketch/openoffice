@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, rmSync, statSync } from 'node:fs'
 import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
-import { dirname, isAbsolute, join, parse, resolve } from 'node:path'
+import { dirname, isAbsolute, join, parse, relative, resolve, sep } from 'node:path'
 import type {
   AgentCodexWebSearch,
   AgentPermissionAnswer,
@@ -22,6 +22,7 @@ import type {
 } from '@genoffice/ai-provider'
 import { subscriptionConnection } from '@genoffice/ai-provider'
 import type { AgentSessionSkill } from '../../shared/agent-api'
+import { cutAt } from '../projects/context'
 import { agentSessionSkillsOf } from './agent-skills'
 import type { AgentMcpRelays, AgentRelayAnswer, AgentRelayAsk } from './agent-mcp-relay'
 
@@ -243,11 +244,10 @@ async function noteInsideProject(path: string, projectRoot: string): Promise<boo
     realpath(path).catch(() => undefined),
     realpath(projectRoot).catch(() => undefined),
   ])
-  return (
-    real !== undefined &&
-    realRoot !== undefined &&
-    isInsidePath(comparablePath(real, real), comparablePath(realRoot, realRoot))
-  )
+  if (real === undefined || realRoot === undefined) return false
+  const rel = relative(comparablePath(realRoot, realRoot), comparablePath(real, real))
+  // a folder named "..x" inside the project is inside: only ".." itself leads out
+  return !(rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel))
 }
 
 /** The instructions, and the project notes they carry only the start of */
@@ -324,7 +324,7 @@ export async function agentInstructionsAndCuts(
       const path = join(projectRoot, name)
       const text = await readFile(path, 'utf8')
       if (!text.trim()) continue
-      let note = `## ${name}\n${text.slice(0, MAX_PROJECT_NOTES_CHARS)}`
+      let note = `## ${name}\n${cutAt(text, MAX_PROJECT_NOTES_CHARS)}`
       if (text.length > MAX_PROJECT_NOTES_CHARS) {
         if (await noteInsideProject(path, projectRoot)) {
           note += `\n\n${truncatedNoteLine(provider, path)}`
