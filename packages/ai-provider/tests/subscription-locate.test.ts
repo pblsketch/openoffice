@@ -126,6 +126,71 @@ describe('locateSubscriptionProgram on Windows', () => {
     expect(program!.env.CODEX_MANAGED_BY_NPM).toBe('1')
   })
 
+  it('runs the native Codex binary of the older vendor layout (vendor/<triple>/codex) in the package itself', async () => {
+    const env = windowsEnv()
+    const npm = join(env.APPDATA!, 'npm')
+    await touch(join(npm, 'codex.cmd'), CODEX_SHIM)
+    const packageRoot = join(npm, 'node_modules', '@openai', 'codex')
+    await touch(join(packageRoot, 'bin', 'codex.js'))
+    const native = await touch(
+      join(packageRoot, 'vendor', 'x86_64-pc-windows-msvc', 'codex', 'codex.exe'),
+    )
+    const program = await locateSubscriptionProgram('codex', {
+      env,
+      platform: 'win32',
+      arch: 'x64',
+      nodeRuntime: { command: 'C:\\Program Files\\IeumOffice\\IeumOffice.exe', electron: true },
+    })
+    // not the Electron runtime with the JS launcher, which would open a console window
+    expect(program).toMatchObject({ provider: 'codex', command: native, prefixArgs: [] })
+    expect(program!.env.ELECTRON_RUN_AS_NODE).toBeUndefined()
+    expect(program!.env.CODEX_MANAGED_PACKAGE_ROOT).toBe(packageRoot)
+    expect(program!.env.CODEX_MANAGED_BY_NPM).toBe('1')
+  })
+
+  it('runs the native Codex binary of the older vendor layout in the platform package', async () => {
+    const env = windowsEnv()
+    const npm = join(env.APPDATA!, 'npm')
+    await touch(join(npm, 'codex.cmd'), CODEX_SHIM)
+    const packageRoot = join(npm, 'node_modules', '@openai', 'codex')
+    await touch(join(packageRoot, 'bin', 'codex.js'))
+    const native = await touch(
+      join(
+        packageRoot,
+        'node_modules',
+        '@openai',
+        'codex-win32-arm64',
+        'vendor',
+        'aarch64-pc-windows-msvc',
+        'codex',
+        'codex.exe',
+      ),
+    )
+    const program = await locateSubscriptionProgram('codex', {
+      env,
+      platform: 'win32',
+      arch: 'arm64',
+    })
+    expect(program).toMatchObject({ command: native, prefixArgs: [] })
+  })
+
+  it('takes vendor/<triple>/bin over vendor/<triple>/codex when both are there, as the launcher does', async () => {
+    const env = windowsEnv()
+    const npm = join(env.APPDATA!, 'npm')
+    await touch(join(npm, 'codex.cmd'), CODEX_SHIM)
+    const packageRoot = join(npm, 'node_modules', '@openai', 'codex')
+    await touch(join(packageRoot, 'bin', 'codex.js'))
+    const vendor = join(packageRoot, 'vendor', 'x86_64-pc-windows-msvc')
+    await touch(join(vendor, 'codex', 'codex.exe'))
+    const current = await touch(join(vendor, 'bin', 'codex.exe'))
+    const program = await locateSubscriptionProgram('codex', {
+      env,
+      platform: 'win32',
+      arch: 'x64',
+    })
+    expect(program?.command).toBe(current)
+  })
+
   it('falls back to the JS entry on a Node runtime when the native binary is not where expected', async () => {
     const env = windowsEnv()
     const npm = join(env.APPDATA!, 'npm')
