@@ -595,6 +595,8 @@ export const cs = {
     'Uložení by změnilo strukturu balíčku sešitu — přerušeno kvůli ochraně souboru.',
   appSaveErrSheetNotFound:
     'List, na který tento zápis odkazuje, nebyl v sešitu nalezen — ukládání bylo zastaveno a soubor zůstal beze změny.',
+  appSaveErrSheetNameReused:
+    'Nový list používá původní název přejmenovaného listu, proto nelze uložit. Dejte novému listu zatím jiný název, uložte a potom ho přejmenujte. Soubor zůstal beze změny.',
   appSaveErrChartUnsupported:
     'Tento typ grafu danou úpravu nepodporuje; ukládání přerušeno — vraťte změnu grafu zpět.',
   appSaveErrMoveOverlap:

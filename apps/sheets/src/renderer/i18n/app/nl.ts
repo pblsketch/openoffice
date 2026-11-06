@@ -628,6 +628,8 @@ export const nl = {
     'Opslaan zou de pakketstructuur van de werkmap veranderen — afgebroken om het bestand te beschermen.',
   appSaveErrSheetNotFound:
     'Een blad waarnaar deze opslag verwijst, is niet gevonden in de werkmap — het opslaan is gestopt en het bestand is ongewijzigd gebleven.',
+  appSaveErrSheetNameReused:
+    'Een nieuw blad gebruikt de oude naam van een hernoemd blad, daarom kan niet worden opgeslagen. Geef het nieuwe blad voorlopig een andere naam, sla op en hernoem het daarna. Het bestand is ongewijzigd gebleven.',
   appSaveErrChartUnsupported:
     'Dit grafiektype ondersteunt die bewerking niet; opslaan afgebroken — maak de grafiekwijziging ongedaan.',
   appSaveErrMoveOverlap:

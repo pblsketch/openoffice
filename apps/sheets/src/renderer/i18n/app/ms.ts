@@ -594,6 +594,8 @@ export const ms = {
     'Menyimpan akan mengubah struktur pakej buku kerja — dihentikan untuk melindungi fail.',
   appSaveErrSheetNotFound:
     'Helaian yang dirujuk oleh simpanan ini tidak ditemui dalam buku kerja — simpanan dihentikan dan fail kekal seperti asal.',
+  appSaveErrSheetNameReused:
+    'Helaian baharu menggunakan nama lama helaian yang telah dinamakan semula, jadi ia tidak boleh disimpan. Beri helaian baharu nama lain buat sementara, simpan, kemudian namakan semula. Fail kekal seperti asal.',
   appSaveErrChartUnsupported:
     'Jenis carta ini tidak menyokong suntingan itu; penyimpanan dihentikan — buat asal perubahan carta tersebut.',
   appSaveErrMoveOverlap:

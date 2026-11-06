@@ -663,6 +663,7 @@ const SAVE_ERROR_PATTERNS = [
   ['style edits cannot be saved', 'appSaveErrStylesheetLimited'],
   ['Saving would change the workbook package structure', 'appSaveErrPackageGuard'],
   ['was not found in the workbook', 'appSaveErrSheetNotFound'],
+  ['a new sheet takes its old name', 'appSaveErrSheetNameReused'],
   ['charts support', 'appSaveErrChartUnsupported'],
   ['Converting a', 'appSaveErrChartUnsupported'],
   ['Replacing series on a', 'appSaveErrChartUnsupported'],

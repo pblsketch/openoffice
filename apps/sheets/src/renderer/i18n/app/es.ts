@@ -634,6 +634,8 @@ export const es = {
     'Guardar cambiaría la estructura del paquete del libro — se canceló para proteger el archivo.',
   appSaveErrSheetNotFound:
     'No se encontró en el libro una hoja a la que hace referencia este guardado: se detuvo el guardado y el archivo quedó como estaba.',
+  appSaveErrSheetNameReused:
+    'Una hoja nueva usa el nombre anterior de una hoja que cambió de nombre, así que no se puede guardar. Dé por ahora otro nombre a la hoja nueva, guarde y luego cámbiele el nombre. El archivo quedó como estaba.',
   appSaveErrChartUnsupported:
     'Este tipo de gráfico no admite esa edición; guardado cancelado — deshaga el cambio del gráfico.',
   appSaveErrMoveOverlap:

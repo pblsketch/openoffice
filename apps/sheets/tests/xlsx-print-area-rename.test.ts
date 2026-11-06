@@ -46,17 +46,20 @@ describe('print area on a sheet renamed in the same save', () => {
     expect(workbook).not.toMatch(/'?Data'?!/)
   })
 
-  it('keeps an added sheet that takes the renamed sheet name as its target', async () => {
-    const mutation = await applyCellEditsToXlsx(
+  it('follows swapped and chained renames', async () => {
+    const swap = await applyCellEditsToXlsx(
       await buildSheetsFixture(),
       [],
       [],
       [],
       {
-        renames: [{ sheetName: 'Data', newName: 'Numbers' }],
-        additions: [{ name: 'Data' }],
+        renames: [
+          { sheetName: 'Data', newName: 'Other' },
+          { sheetName: 'Other', newName: 'Data' },
+        ],
+        additions: [],
         removals: [],
-        order: ['Numbers', 'Other', 'My Sheet', 'Data'],
+        order: ['Other', 'Data', 'My Sheet'],
       },
       [],
       [],
@@ -64,11 +67,42 @@ describe('print area on a sheet renamed in the same save', () => {
       [],
       [],
       null,
-      [{ sheetName: 'Data', printArea: 'A1:B2' }],
+      [
+        { sheetName: 'Data', printArea: 'A1:C10' },
+        { sheetName: 'Other', printArea: 'B2:D4' },
+      ],
     )
-    const workbook = await entryText(mutation.buffer, 'xl/workbook.xml')
-    expect(workbook).toMatch(
-      /<definedName name="_xlnm\.Print_Area" localSheetId="3">'?Data'?!\$A\$1:\$B\$2<\/definedName>/,
+    const swapped = await entryText(swap.buffer, 'xl/workbook.xml')
+    expect(swapped).toMatch(/localSheetId="0">'?Other'?!\$A\$1:\$C\$10</)
+    expect(swapped).toMatch(/localSheetId="1">'?Data'?!\$B\$2:\$D\$4</)
+
+    const chain = await applyCellEditsToXlsx(
+      await buildSheetsFixture(),
+      [],
+      [],
+      [],
+      {
+        renames: [
+          { sheetName: 'Data', newName: 'X' },
+          { sheetName: 'Other', newName: 'Data' },
+        ],
+        additions: [],
+        removals: [],
+        order: ['X', 'Data', 'My Sheet'],
+      },
+      [],
+      [],
+      [],
+      [],
+      [],
+      null,
+      [
+        { sheetName: 'Data', printArea: 'A1:A2' },
+        { sheetName: 'Other', printTitles: '$1:$1' },
+      ],
     )
+    const chained = await entryText(chain.buffer, 'xl/workbook.xml')
+    expect(chained).toMatch(/Print_Area" localSheetId="0">'?X'?!\$A\$1:\$A\$2</)
+    expect(chained).toMatch(/Print_Titles" localSheetId="1">'?Data'?!\$1:\$1</)
   })
 })

@@ -585,6 +585,8 @@ export const vi = {
     'Việc lưu sẽ làm thay đổi cấu trúc gói của sổ làm việc — đã hủy để bảo vệ tệp.',
   appSaveErrSheetNotFound:
     'Không tìm thấy trang tính mà lần lưu này tham chiếu trong sổ làm việc — đã dừng lưu và tệp vẫn giữ nguyên.',
+  appSaveErrSheetNameReused:
+    'Một trang tính mới đang dùng tên cũ của trang tính đã đổi tên, nên không thể lưu. Hãy tạm đặt tên khác cho trang tính mới, lưu, rồi đổi tên lại. Tệp vẫn giữ nguyên.',
   appSaveErrChartUnsupported:
     'Loại biểu đồ này không hỗ trợ chỉnh sửa đó; đã hủy lưu — hãy hoàn tác thay đổi biểu đồ.',
   appSaveErrMoveOverlap:

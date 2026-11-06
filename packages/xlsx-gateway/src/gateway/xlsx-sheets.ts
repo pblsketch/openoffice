@@ -56,6 +56,27 @@ export function validateSheetName(name: string): void {
   }
 }
 
+/// Every per-sheet state names an existing sheet by its original file name and
+/// an added sheet by its final name, so a new sheet that takes the old name of
+/// a sheet renamed in the same save makes both read as one: cell values, row
+/// and column operations, formats and page setup meant for the renamed sheet
+/// would land on the new one. Refuse instead of guessing. A new sheet that
+/// takes a removed sheet's name is fine — a removed sheet carries no states.
+export function assertAddedSheetsKeepRenamedNames(plan: SheetEditPlan): void {
+  const renamedAway = new Set(
+    plan.renames
+      .filter((rename) => rename.newName !== rename.sheetName)
+      .map((rename) => rename.sheetName),
+  )
+  const taken = plan.additions.find((addition) => renamedAway.has(addition.name))
+  if (taken !== undefined) {
+    throw new SheetEditError(
+      `Sheet "${taken.name}" is renamed while a new sheet takes its old name in the same save — ` +
+        'save with the new sheet under another name first, then rename it.',
+    )
+  }
+}
+
 /// Quotes a sheet name for use as a formula qualifier when Excel requires it
 /// (non-identifier characters, or a name that parses as a cell reference).
 export function formatSheetQualifier(name: string): string {

@@ -69,6 +69,7 @@ import {
   addWorksheetOverride,
   addWorksheetRelationship,
   applySheetPlanToWorkbookXml,
+  assertAddedSheetsKeepRenamedNames,
   assertNoSheetScopedDefinedNames,
   buildWorksheetPartXml,
   chartReferencesSheet,
@@ -993,6 +994,7 @@ export async function planCellEditsToXlsx(
         'changes — save one of them first.',
     )
   }
+  if (sheetPlan !== undefined) assertAddedSheetsKeepRenamedNames(sheetPlan)
   const pkg = new PackageEditor(source)
   const touchedEntries = new Set<string>()
 
@@ -1635,14 +1637,13 @@ export async function planCellEditsToXlsx(
   // final workbook.xml (post sheet-plan, post defined-names rewrite — which
   // keeps _xlnm entries verbatim). States name an existing sheet by its
   // original file name, so one renamed in this save is looked up by its new
-  // name; an added sheet's name wins, as it does for the worksheet lookup.
+  // name (an added sheet never takes a renamed sheet's old name — see
+  // assertAddedSheetsKeepRenamedNames).
   const renamedTo = new Map(sheetPlan?.renames.map((rename) => [rename.sheetName, rename.newName]))
-  const finalSheetName = (sheetName: string): string =>
-    additionPaths.has(sheetName) ? sheetName : (renamedTo.get(sheetName) ?? sheetName)
   const printAreas = pageSetupStates
     .filter((state) => state.printArea !== undefined || state.printTitles !== undefined)
     .map((state) => ({
-      sheetName: finalSheetName(state.sheetName),
+      sheetName: renamedTo.get(state.sheetName) ?? state.sheetName,
       printArea: state.printArea,
       printTitles: state.printTitles,
     }))
