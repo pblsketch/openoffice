@@ -80,6 +80,7 @@ export {
   subscriptionMeteredResultOf,
   subscriptionNeedsUpdate,
   subscriptionStatusErrorKind,
+  subscriptionLoginFailureOf,
   subscriptionStatusMapOf,
 } from './subscription/contract'
 export type {

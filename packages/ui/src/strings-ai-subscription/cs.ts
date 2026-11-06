@@ -158,6 +158,8 @@ export const cs = {
     'V prohlížeči jste se přihlásili, ale OpenAI toto připojení nepřijalo, nebo se jeho odpověď nepodařilo ověřit. Zkontrolujte, že datum a čas na tomto počítači jsou správně, a stiskněte tlačítko znovu, abyste začali od začátku.',
   chatgptLoginNetworkNote:
     'Přihlášení se nepodařilo dokončit: OpenAI nebylo dostupné, nebo se neotevřel prohlížeč. Zkontrolujte připojení k internetu (včetně firemní sítě, VPN nebo proxy) a stiskněte tlačítko znovu.',
+  chatgptLoginNotAllowedNote:
+    'Této aplikaci jste nepovolili používat váš tarif ChatGPT, nebo se prohlížeč vrátil z přihlášení s chybou. Stiskněte tlačítko znovu, přihlaste se a na stránce souhlasu to povolte.',
   chatgptSigningInNote:
     'V otevřeném prohlížeči se přihlaste účtem ChatGPT a povolte této aplikaci používat váš tarif. Připojení se dokončí samo.',
   chatgptPlanNote:

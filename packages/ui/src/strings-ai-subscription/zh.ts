@@ -138,6 +138,8 @@ export const zh = {
     '已在浏览器中登录，但 OpenAI 没有接受此连接，或返回的应答未通过检查。请确认这台电脑的日期和时间正确，然后再按一次重新开始。',
   chatgptLoginNetworkNote:
     '无法连接 OpenAI 或未能打开浏览器，登录没有完成。请检查网络连接（包括公司网络、VPN 或代理），然后再按一次。',
+  chatgptLoginNotAllowedNote:
+    '你没有允许本应用使用 ChatGPT 套餐，或者浏览器带着登录失败返回了。请再按一次，登录后在授权页面允许。',
   chatgptSigningInNote:
     '请在打开的浏览器中用 ChatGPT 账号登录，并允许本应用使用你的套餐。完成后会自动连接。',
   chatgptPlanNote:

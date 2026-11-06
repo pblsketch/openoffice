@@ -15,6 +15,7 @@ import { createHash, createPublicKey, randomBytes, verify, type JsonWebKey } fro
 import type { IncomingMessage, Server, ServerResponse } from 'node:http'
 import { aiFetch } from '../fetch'
 import { freeConnectPageHtml, type FreeConnectPage } from '../free-connect'
+import { SUBSCRIPTION_LOGIN_ERROR_CODE } from '../subscription/contract'
 import type { AiSubscriptionLoginFailureStep } from '../types'
 
 export type FetchLike = (url: string, init: RequestInit) => Promise<Response>
@@ -65,7 +66,7 @@ export interface ChatGptSignInFailed {
   step?: ChatGptSignInStep | undefined
   /** the token endpoint's HTTP status, on `token-refused` and `token-http` */
   httpStatus?: number | undefined
-  /** the token endpoint's OAuth `error` code, when it has an identifier's shape */
+  /** the OAuth `error` code of the token endpoint or the callback, when it has an identifier's shape */
   oauthError?: string | undefined
 }
 
@@ -195,7 +196,8 @@ export async function waitForChatGptCallback(
     answered = true
     const code = url.searchParams.get('code')
     const clientId = url.searchParams.get('client_id')
-    const failedStep: ChatGptSignInStep | undefined = url.searchParams.get('error')
+    const callbackError = url.searchParams.get('error')
+    const failedStep: ChatGptSignInStep | undefined = callbackError
       ? 'callback-error'
       : !code || !clientId
         ? 'callback-incomplete'
@@ -210,7 +212,14 @@ export async function waitForChatGptCallback(
     settle(
       ok
         ? { ok: true, code: code!, clientId: clientId!, port }
-        : { ok: false, reason: 'denied', step: failedStep },
+        : {
+            ok: false,
+            reason: 'denied',
+            step: failedStep,
+            ...(callbackError && SUBSCRIPTION_LOGIN_ERROR_CODE.test(callbackError)
+              ? { oauthError: callbackError }
+              : {}),
+          },
     )
   }
 
@@ -251,12 +260,10 @@ interface TokenResponse {
   error?: unknown
 }
 
-/** An OAuth error code is passed on only with an identifier's shape: never free text */
-const OAUTH_ERROR_CODE = /^[a-z0-9_.-]{1,64}$/
-
+/** The token endpoint's OAuth error code, passed on only with an identifier's shape: never free text */
 function oauthErrorOf(body: unknown): string | undefined {
   const code = isRecord(body) ? body.error : undefined
-  return typeof code === 'string' && OAUTH_ERROR_CODE.test(code) ? code : undefined
+  return typeof code === 'string' && SUBSCRIPTION_LOGIN_ERROR_CODE.test(code) ? code : undefined
 }
 
 function tokenSetOf(body: TokenResponse, now: number): ChatGptTokenSet | null {

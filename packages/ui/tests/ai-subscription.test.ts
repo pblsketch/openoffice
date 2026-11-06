@@ -98,6 +98,10 @@ describe('the ChatGPT card (decision 0081)', () => {
       'chatgptLoginNetworkNote',
       'loginNote',
     ])
+    // the browser came back with an error: most often the user did not allow the app
+    expect(
+      after({ reason: 'denied', step: 'callback-error', oauthError: 'access_denied' }),
+    ).toEqual(['chatgptLoginNotAllowedNote', 'loginNote'])
     expect(after({ reason: 'timeout' })).toEqual(['chatgptLoginUnfinishedNote', 'loginNote'])
     expect(after()).toEqual(['chatgptLoginUnfinishedNote', 'loginNote'])
     // the button is the same: one more sign-in, from the start

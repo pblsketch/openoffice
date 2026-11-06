@@ -164,6 +164,8 @@ export const nl = {
     'Je bent in de browser aangemeld, maar OpenAI heeft deze verbinding niet geaccepteerd, of het antwoord kon niet worden gecontroleerd. Controleer of de datum en tijd van deze pc kloppen en druk dan nogmaals om opnieuw te beginnen.',
   chatgptLoginNetworkNote:
     'Het aanmelden kon niet worden afgerond: OpenAI was niet bereikbaar of er ging geen browser open. Controleer de internetverbinding (ook een bedrijfsnetwerk, VPN of proxy) en druk dan nogmaals.',
+  chatgptLoginNotAllowedNote:
+    'Je hebt deze app niet toegestaan je ChatGPT-abonnement te gebruiken, of de browser kwam met een fout terug van het aanmelden. Druk nogmaals, meld je aan en geef toestemming op de toestemmingspagina.',
   chatgptSigningInNote:
     'Meld je in de geopende browser aan met je ChatGPT-account en sta deze app toe je abonnement te gebruiken. De verbinding komt vanzelf tot stand.',
   chatgptPlanNote:

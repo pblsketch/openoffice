@@ -166,6 +166,8 @@ export const fr = {
     'Vous vous êtes connecté dans le navigateur, mais OpenAI n’a pas accepté cette connexion, ou sa réponse n’a pas pu être vérifiée. Vérifiez que la date et l’heure de ce PC sont justes, puis appuyez de nouveau pour recommencer.',
   chatgptLoginNetworkNote:
     'La connexion n’a pas pu aboutir : OpenAI était injoignable ou aucun navigateur ne s’est ouvert. Vérifiez la connexion Internet (y compris réseau d’entreprise, VPN ou proxy), puis appuyez de nouveau.',
+  chatgptLoginNotAllowedNote:
+    'Vous n’avez pas autorisé cette application à utiliser votre forfait ChatGPT, ou le navigateur est revenu de la connexion avec un échec. Appuyez de nouveau, connectez-vous et autorisez-la sur la page d’autorisation.',
   chatgptSigningInNote:
     'Connectez-vous avec votre compte ChatGPT dans le navigateur qui s’est ouvert, puis autorisez cette application à utiliser votre forfait. La connexion se fait d’elle-même.',
   chatgptPlanNote:

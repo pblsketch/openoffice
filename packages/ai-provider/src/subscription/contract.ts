@@ -401,8 +401,11 @@ export function subscriptionModelsOf(value: unknown): AiSubscriptionModel[] | un
   return models.length > 0 ? models : undefined
 }
 
-/** A token endpoint's OAuth error code, as the main side passes it: an identifier, never text */
-const LOGIN_FAILURE_CODE = /^[a-z0-9_.-]{1,64}$/
+/**
+ * An OAuth error code (the token endpoint's `error`, or the one the browser
+ * came back with) is kept only with this shape: an identifier, never text.
+ */
+export const SUBSCRIPTION_LOGIN_ERROR_CODE = /^[a-z0-9_.-]{1,64}$/
 
 /** Why a sign-in failed, read back from an IPC answer: fixed names and a status number only */
 export function subscriptionLoginFailureOf(value: unknown): AiSubscriptionLoginFailure | undefined {
@@ -417,7 +420,9 @@ export function subscriptionLoginFailureOf(value: unknown): AiSubscriptionLoginF
     failure.httpStatus = status
   }
   const code = value.oauthError
-  if (typeof code === 'string' && LOGIN_FAILURE_CODE.test(code)) failure.oauthError = code
+  if (typeof code === 'string' && SUBSCRIPTION_LOGIN_ERROR_CODE.test(code)) {
+    failure.oauthError = code
+  }
   return failure
 }
 

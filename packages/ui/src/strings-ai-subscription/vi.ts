@@ -160,6 +160,8 @@ export const vi = {
     'Bạn đã đăng nhập trong trình duyệt, nhưng OpenAI không chấp nhận kết nối này, hoặc không kiểm tra được phản hồi trả về. Hãy kiểm tra ngày giờ của máy tính này cho đúng, rồi nhấn lại để bắt đầu lại từ đầu.',
   chatgptLoginNetworkNote:
     'Không thể hoàn tất đăng nhập: không kết nối được tới OpenAI hoặc không mở được trình duyệt. Hãy kiểm tra kết nối internet (kể cả mạng công ty, VPN hoặc proxy), rồi nhấn lại.',
+  chatgptLoginNotAllowedNote:
+    'Bạn chưa cho phép ứng dụng này dùng gói ChatGPT của bạn, hoặc trình duyệt quay lại từ bước đăng nhập với lỗi. Nhấn lại, đăng nhập rồi cho phép ở trang cấp quyền.',
   chatgptSigningInNote:
     'Đăng nhập bằng tài khoản ChatGPT trong trình duyệt vừa mở và cho phép ứng dụng này dùng gói của bạn. Kết nối sẽ tự hoàn tất.',
   chatgptPlanNote:

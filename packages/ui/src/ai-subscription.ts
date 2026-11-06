@@ -257,6 +257,8 @@ export function aiSubscriptionCardView(
  * out of time, or an older main side gave no reason).
  */
 function chatGptLoginFailedNoteKey(status: AiSubscriptionStatus): AiSubscriptionStringKey {
+  // the browser came back with an error: most often the user did not allow the app
+  if (status.loginFailure?.step === 'callback-error') return 'chatgptLoginNotAllowedNote'
   switch (status.loginFailure?.reason) {
     case 'no-plan':
       return 'chatgptLoginNoPlanNote'

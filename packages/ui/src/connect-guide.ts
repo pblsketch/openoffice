@@ -6,6 +6,7 @@
  */
 import {
   AI_SUBSCRIPTION_PROVIDERS,
+  subscriptionLoginFailureOf,
   subscriptionStatusErrorKind,
   type AiSubscriptionProviderId,
   type AiSubscriptionStatus,
@@ -218,8 +219,10 @@ export function aiConnectInfoText(
       parts.push(`version=${status.version}`)
     if (status.signingIn) parts.push(`signing-in=${status.signingIn}`)
     if (status.state === 'metered') parts.push(`accepted=${status.meteredAccepted}`)
-    // why the app's own sign-in ended without a connection: fixed names and a status number
-    const failure = status.loginUnfinished === true ? status.loginFailure : undefined
+    // why the app's own sign-in ended without a connection, read again like the version:
+    // fixed names, a status number and an identifier-shaped code only
+    const failure =
+      status.loginUnfinished === true ? subscriptionLoginFailureOf(status.loginFailure) : undefined
     if (failure) {
       parts.push(`login-failed=${failure.reason}`)
       if (failure.step) parts.push(`step=${failure.step}`)

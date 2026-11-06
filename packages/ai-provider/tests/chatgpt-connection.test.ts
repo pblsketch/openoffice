@@ -355,6 +355,7 @@ describe('the connection', { timeout: 20_000 }, () => {
       ok: false,
       reason: 'denied',
       step: 'callback-error',
+      oauthError: 'access_denied',
     })
     expect(store.current().session).toBeUndefined()
     expect(openai.calls.filter((call) => call.url === CHATGPT_TOKEN_URL)).toHaveLength(0)
@@ -382,19 +383,31 @@ describe('the connection', { timeout: 20_000 }, () => {
     expect(store.current().session).toBeUndefined()
   })
 
-  /** a sign-in that comes back from the browser, then meets this token answer */
-  async function signInMeeting(token: (nonce: string) => Response) {
+  /**
+   * A sign-in that comes back from the browser with these parameters (by
+   * default a code for `oaiapp_1`), then meets this token answer; `fetch`
+   * can stand in for OpenAI's answers on the way.
+   */
+  async function signInMeeting(
+    token: (nonce: string) => Response,
+    options: {
+      back?: (state: string) => Record<string, string>
+      fetch?: (url: string, init: RequestInit, openai: FakeOpenAi) => Promise<Response>
+    } = {},
+  ) {
     const store = createChatGptConnectionMemoryStore()
     let nonce = ''
     const openai = fakeOpenAi(() => token(nonce))
     const browser = browserReturning((authorize) => {
       nonce = authorize.searchParams.get('nonce')!
-      return { code: 'c', state: authorize.searchParams.get('state')!, client_id: 'oaiapp_1' }
+      const state = authorize.searchParams.get('state')!
+      return options.back ? options.back(state) : { code: 'c', state, client_id: 'oaiapp_1' }
     })
+    const fetchVia = options.fetch
     const connection = createChatGptConnection({
       store,
       agentName: 'x',
-      fetch: openai.fetch,
+      fetch: fetchVia ? (url, init) => fetchVia(url, init, openai) : openai.fetch,
       now: () => NOW,
     })
     const result = await connection.signIn({ openBrowser: browser.open, pages: PAGES })
@@ -455,6 +468,68 @@ describe('the connection', { timeout: 20_000 }, () => {
       json({ error: 'Something went wrong <b>here</b>' }, 502),
     )
     expect(result).toEqual({ ok: false, reason: 'network', step: 'token-http', httpStatus: 502 })
+  })
+
+  it('keeps the error the browser came back with only when it is an identifier', async () => {
+    const refused = await signInMeeting(() => json({}, 500), {
+      back: (state) => ({ state, error: 'access_denied', error_description: 'User said no' }),
+    })
+    expect(refused.result).toEqual({
+      ok: false,
+      reason: 'denied',
+      step: 'callback-error',
+      oauthError: 'access_denied',
+    })
+    expect(JSON.stringify(refused.result)).not.toContain('User said no')
+    const odd = await signInMeeting(() => json({}, 500), {
+      back: (state) => ({ state, error: 'Something <went> wrong' }),
+    })
+    expect(odd.result).toEqual({ ok: false, reason: 'denied', step: 'callback-error' })
+  })
+
+  it('names a browser that came back without a client id', async () => {
+    const { result } = await signInMeeting(() => json({}, 500), {
+      back: (state) => ({ state, code: 'c' }),
+    })
+    expect(result).toEqual({ ok: false, reason: 'denied', step: 'callback-incomplete' })
+  })
+
+  it('names a token endpoint that cannot be reached, and an answer it cannot use', async () => {
+    const unreachable = await signInMeeting(() => json({}), {
+      fetch: async (url, init, openai) => {
+        if (url === CHATGPT_TOKEN_URL) throw new TypeError('fetch failed')
+        return openai.fetch(url, init)
+      },
+    })
+    expect(unreachable.result).toEqual({
+      ok: false,
+      reason: 'network',
+      step: 'token-unreachable',
+    })
+    const noRefresh = await signInMeeting(() =>
+      json({ access_token: 'access-1', expires_in: 3600, scope: CHATGPT_SCOPES.join(' ') }),
+    )
+    expect(noRefresh.result).toEqual({ ok: false, reason: 'network', step: 'token-unreadable' })
+    const notJson = await signInMeeting(() => new Response('<html>oops</html>', { status: 200 }))
+    expect(notJson.result).toEqual({ ok: false, reason: 'network', step: 'token-unreadable' })
+  })
+
+  it('names a token answer without an ID token, and signing keys it cannot read', async () => {
+    const noIdToken = await signInMeeting(() =>
+      json({
+        access_token: 'access-1',
+        refresh_token: 'refresh-1',
+        expires_in: 3600,
+        scope: CHATGPT_SCOPES.join(' '),
+      }),
+    )
+    expect(noIdToken.result).toEqual({ ok: false, reason: 'denied', step: 'id-token-missing' })
+    const noKeys = await signInMeeting((nonce) => signedInTokens(nonce), {
+      fetch: async (url, init, openai) =>
+        url === CHATGPT_JWKS_URL ? new Response('', { status: 503 }) : openai.fetch(url, init),
+    })
+    expect(noKeys.result).toEqual({ ok: false, reason: 'network', step: 'signing-keys' })
+    expect(noKeys.store.current().session).toBeUndefined()
   })
 
   it('names an ID token that does not check out', async () => {
