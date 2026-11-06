@@ -13,8 +13,9 @@ export function decodeXlsxEscapes(text: string): string {
 
 export function encodeXlsxEscapes(text: string): string {
   return text.replace(/_(?=x[0-9A-Fa-f]{4}_)/g, '_x005F_').replace(
-    // eslint-disable-next-line no-control-regex -- the control range is the thing being escaped
-    /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF\r]/g,
+    // eslint-disable-next-line no-control-regex -- illegal XML chars (and CR) are the subject
+    // Lone surrogates matched with lookaround — a raw D800–DFFF class would split valid emoji.
+    /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF\r]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g,
     (character) => `_x${character.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}_`,
   )
 }
