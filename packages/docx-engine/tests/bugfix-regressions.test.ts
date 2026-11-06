@@ -88,6 +88,13 @@ describe('escapeXmlText', () => {
     expect(escapeXmlText('a\u0000b\u000Bc\td\ne')).toBe('abc\td\ne')
     expect(escapeXmlText('<a & b>')).toBe('&lt;a &amp; b&gt;')
   })
+
+  it('strips noncharacters and lone surrogates that XML 1.0 also forbids', () => {
+    expect(escapeXmlText('a\uFFFEb\uFFFFc')).toBe('abc')
+    expect(escapeXmlText('x\uD800y')).toBe('xy')
+    expect(escapeXmlText('p\uDFFFq')).toBe('pq')
+    expect(escapeXmlText('ok 😀 end')).toBe('ok 😀 end')
+  })
 })
 
 describe('textHasComplexScript', () => {
