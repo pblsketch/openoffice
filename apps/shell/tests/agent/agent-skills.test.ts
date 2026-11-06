@@ -444,6 +444,20 @@ describe('template candidates', () => {
     expect(selected).toBeUndefined()
   })
 
+  it('take a suggestion in a project folder whose name starts with ".."', async () => {
+    const project = temp()
+    mkdirSync(join(project, '..x'))
+    writeFileSync(join(project, '..x', 'form.docx'), 'x')
+    const { candidates, selected } = await agentTemplateCandidates({
+      projectRoot: project,
+      tabs: [],
+      suggested: join('..x', 'form.docx'),
+      projectFiles: [],
+    })
+    expect(candidates.map((c) => c.path)).toEqual([join(project, '..x', 'form.docx')])
+    expect(selected).toBe(candidates[0]?.id)
+  })
+
   it('take a suggestion through a link leading out of the project folder as no choice', async () => {
     const project = temp()
     const outside = temp()
@@ -550,6 +564,13 @@ describe('reading a candidate in main', () => {
       mkdirSync(dir, { recursive: true })
       writeFileSync(join(dir, 'form.docx'), 'secret')
       expect(await readTemplateCandidate(join(dir, 'form.docx'), guard), dir).toEqual({
+        ok: false,
+        reason: 'unreadable',
+      })
+      // a folder in it whose name only starts with ".." is in it too
+      mkdirSync(join(dir, '..x'))
+      writeFileSync(join(dir, '..x', 'form.docx'), 'secret')
+      expect(await readTemplateCandidate(join(dir, '..x', 'form.docx'), guard), dir).toEqual({
         ok: false,
         reason: 'unreadable',
       })

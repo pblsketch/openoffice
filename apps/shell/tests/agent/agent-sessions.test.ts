@@ -84,6 +84,16 @@ describe('project folders', () => {
     expect(projectFolderProblem(join(home, '.codex'), home, guards)).toBe('protected')
   })
 
+  it('refuses a folder in a protected folder whose name starts with ".."', () => {
+    const home = temp()
+    const userData = join(home, 'AppData', 'IeumOffice')
+    const guards = agentProtectedPaths(home, userData)
+    for (const inside of [join(home, '.claude', '..x'), join(userData, '..config')]) {
+      mkdirSync(inside, { recursive: true })
+      expect(projectFolderProblem(inside, home, guards), inside).toBe('protected')
+    }
+  })
+
   it('refuses a relative path, a missing folder and a file', () => {
     const home = temp()
     writeFileSync(join(home, 'a.txt'), 'x')
@@ -98,6 +108,15 @@ describe('project folders', () => {
     expect(openableProjectFile(project, 'out.pptx')).toBe(join(project, 'out.pptx'))
     expect(openableProjectFile(project, join(project, '..', 'elsewhere.pptx'))).toBeUndefined()
     expect(openableProjectFile(project, 'missing.pptx')).toBeUndefined()
+  })
+
+  it('opens a file in a project folder whose name starts with ".."', () => {
+    const project = temp()
+    mkdirSync(join(project, '..x'))
+    writeFileSync(join(project, '..x', 'out.pptx'), 'x')
+    expect(openableProjectFile(project, join('..x', 'out.pptx'))).toBe(
+      join(project, '..x', 'out.pptx'),
+    )
   })
 })
 

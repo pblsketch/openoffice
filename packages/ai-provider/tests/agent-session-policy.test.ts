@@ -42,6 +42,29 @@ describe('paths', () => {
     expect(isInsidePath('C:\\a\\project', 'C:\\a\\project', 'win32')).toBe(true)
   })
 
+  it('takes a name that only starts with ".." as inside, on both systems', () => {
+    for (const name of ['..x', '...', '..config']) {
+      expect(isInsidePath(`C:\\a\\project\\${name}\\f.md`, 'C:\\a\\project', 'win32'), name).toBe(
+        true,
+      )
+      expect(isInsidePath(`C:\\a\\project\\${name}`, 'C:\\a\\project', 'win32'), name).toBe(true)
+      expect(isInsidePath(`/a/project/${name}/f.md`, '/a/project', 'linux'), name).toBe(true)
+      expect(isInsidePath(`/a/project/${name}`, '/a/project', 'linux'), name).toBe(true)
+    }
+  })
+
+  it('still takes the parent, a way up, another drive and a share as outside', () => {
+    expect(isInsidePath('C:\\a', 'C:\\a\\project', 'win32')).toBe(false)
+    expect(isInsidePath('C:\\a\\other\\f.md', 'C:\\a\\project', 'win32')).toBe(false)
+    expect(isInsidePath('C:\\a\\..x', 'C:\\a\\project', 'win32')).toBe(false)
+    expect(isInsidePath('D:\\a\\project\\f.md', 'C:\\a\\project', 'win32')).toBe(false)
+    expect(isInsidePath('\\\\server\\share\\f.md', 'C:\\a\\project', 'win32')).toBe(false)
+    expect(isInsidePath('/a', '/a/project', 'linux')).toBe(false)
+    expect(isInsidePath('/a/other/f.md', '/a/project', 'linux')).toBe(false)
+    expect(isInsidePath('/a/..x', '/a/project', 'linux')).toBe(false)
+    expect(isInsidePath('/a/project', '/a/project', 'linux')).toBe(true)
+  })
+
   it('resolves a relative path against the command folder, then the project', () => {
     const verdict = agentPolicyVerdict(
       action({ kind: 'write', tool: 'Write', paths: ['..\\outside.txt'] }),
@@ -138,6 +161,50 @@ describe('protected paths', () => {
         reason: 'protected-path',
       })
     }
+  })
+})
+
+describe('names that only start with ".."', () => {
+  it('are inside the project: reads and writes go ahead', () => {
+    for (const path of ['..x\\a.md', 'C:\\Users\\me\\Project\\...\\a.md']) {
+      expect(
+        agentPolicyVerdict(action({ kind: 'read', tool: 'Read', paths: [path] }), ctx()),
+        path,
+      ).toEqual({ decision: 'allow' })
+      expect(
+        agentPolicyVerdict(action({ kind: 'write', tool: 'Write', paths: [path] }), ctx()),
+        path,
+      ).toEqual({ decision: 'allow' })
+    }
+  })
+
+  it('are inside a protected folder: refused, in any mode', () => {
+    for (const mode of ['ask-commands', 'ask-writes', 'trust-project'] as const) {
+      for (const path of [
+        'C:\\Users\\me\\.codex\\..x\\config.toml',
+        'C:\\Users\\me\\AppData\\Roaming\\IeumOffice\\..config\\ai-settings.json',
+      ]) {
+        expect(
+          agentPolicyVerdict(action({ kind: 'read', tool: 'Read', paths: [path] }), ctx({ mode })),
+          `${mode} ${path}`,
+        ).toEqual({ decision: 'deny', reason: 'protected-path' })
+      }
+    }
+  })
+
+  it('are inside a protected folder on macOS and Linux too', () => {
+    expect(
+      agentPolicyVerdict(
+        action({ kind: 'read', tool: 'Read', paths: ['/home/me/.claude/..x/notes.json'] }),
+        ctx({
+          projectRoot: '/home/me/Project',
+          openDocuments: [],
+          protectedPaths: ['/home/me/.claude'],
+          skillBundleDir: undefined,
+          platform: 'linux',
+        }),
+      ),
+    ).toEqual({ decision: 'deny', reason: 'protected-path' })
   })
 })
 
