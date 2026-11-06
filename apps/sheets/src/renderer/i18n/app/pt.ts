@@ -630,6 +630,8 @@ export const pt = {
     'A folha de estilos desta pasta de trabalho não tem a estrutura básica; as alterações de estilo não podem ser salvas.',
   appSaveErrPackageGuard:
     'Salvar mudaria a estrutura do pacote da pasta de trabalho — cancelado para proteger o arquivo.',
+  appSaveErrSheetNotFound:
+    'Uma planilha referida por este salvamento não foi encontrada na pasta de trabalho — o salvamento foi interrompido e o arquivo ficou como estava.',
   appSaveErrChartUnsupported:
     'Este tipo de gráfico não suporta essa edição; salvamento cancelado — desfaça a alteração do gráfico.',
   appSaveErrMoveOverlap:

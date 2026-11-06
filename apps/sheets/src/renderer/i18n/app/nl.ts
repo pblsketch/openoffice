@@ -626,6 +626,8 @@ export const nl = {
     'Het stylesheet van deze werkmap mist de basisstructuur; stijlwijzigingen kunnen niet worden opgeslagen.',
   appSaveErrPackageGuard:
     'Opslaan zou de pakketstructuur van de werkmap veranderen — afgebroken om het bestand te beschermen.',
+  appSaveErrSheetNotFound:
+    'Een blad waarnaar deze opslag verwijst, is niet gevonden in de werkmap — het opslaan is gestopt en het bestand is ongewijzigd gebleven.',
   appSaveErrChartUnsupported:
     'Dit grafiektype ondersteunt die bewerking niet; opslaan afgebroken — maak de grafiekwijziging ongedaan.',
   appSaveErrMoveOverlap:

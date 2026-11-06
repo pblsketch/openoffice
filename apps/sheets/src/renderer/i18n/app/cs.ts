@@ -593,6 +593,8 @@ export const cs = {
     'Stylopisu tohoto sešitu chybí základní struktura, proto změny stylů nelze uložit.',
   appSaveErrPackageGuard:
     'Uložení by změnilo strukturu balíčku sešitu — přerušeno kvůli ochraně souboru.',
+  appSaveErrSheetNotFound:
+    'List, na který tento zápis odkazuje, nebyl v sešitu nalezen — ukládání bylo zastaveno a soubor zůstal beze změny.',
   appSaveErrChartUnsupported:
     'Tento typ grafu danou úpravu nepodporuje; ukládání přerušeno — vraťte změnu grafu zpět.',
   appSaveErrMoveOverlap:

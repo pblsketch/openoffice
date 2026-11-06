@@ -583,6 +583,8 @@ export const vi = {
     'Bảng kiểu (stylesheet) của sổ làm việc này thiếu cấu trúc cơ bản, nên các thay đổi kiểu dáng không thể lưu được.',
   appSaveErrPackageGuard:
     'Việc lưu sẽ làm thay đổi cấu trúc gói của sổ làm việc — đã hủy để bảo vệ tệp.',
+  appSaveErrSheetNotFound:
+    'Không tìm thấy trang tính mà lần lưu này tham chiếu trong sổ làm việc — đã dừng lưu và tệp vẫn giữ nguyên.',
   appSaveErrChartUnsupported:
     'Loại biểu đồ này không hỗ trợ chỉnh sửa đó; đã hủy lưu — hãy hoàn tác thay đổi biểu đồ.',
   appSaveErrMoveOverlap:

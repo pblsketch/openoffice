@@ -640,6 +640,8 @@ export const de = {
     'Dem Stylesheet dieser Arbeitsmappe fehlt die Grundstruktur; Stiländerungen können nicht gespeichert werden.',
   appSaveErrPackageGuard:
     'Das Speichern würde die Paketstruktur der Arbeitsmappe verändern — zum Schutz der Datei abgebrochen.',
+  appSaveErrSheetNotFound:
+    'Ein Blatt, auf das sich diese Speicherung bezieht, wurde in der Arbeitsmappe nicht gefunden — das Speichern wurde abgebrochen, die Datei blieb unverändert.',
   appSaveErrChartUnsupported:
     'Dieser Diagrammtyp unterstützt diese Bearbeitung nicht; Speichern abgebrochen — machen Sie die Diagrammänderung rückgängig.',
   appSaveErrMoveOverlap:

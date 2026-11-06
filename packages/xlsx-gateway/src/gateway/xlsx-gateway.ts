@@ -1633,11 +1633,16 @@ export async function planCellEditsToXlsx(
 
   // Print areas / title rows are sheet-scoped _xlnm names; they apply to the
   // final workbook.xml (post sheet-plan, post defined-names rewrite — which
-  // keeps _xlnm entries verbatim).
+  // keeps _xlnm entries verbatim). States name an existing sheet by its
+  // original file name, so one renamed in this save is looked up by its new
+  // name; an added sheet's name wins, as it does for the worksheet lookup.
+  const renamedTo = new Map(sheetPlan?.renames.map((rename) => [rename.sheetName, rename.newName]))
+  const finalSheetName = (sheetName: string): string =>
+    additionPaths.has(sheetName) ? sheetName : (renamedTo.get(sheetName) ?? sheetName)
   const printAreas = pageSetupStates
     .filter((state) => state.printArea !== undefined || state.printTitles !== undefined)
     .map((state) => ({
-      sheetName: state.sheetName,
+      sheetName: finalSheetName(state.sheetName),
       printArea: state.printArea,
       printTitles: state.printTitles,
     }))

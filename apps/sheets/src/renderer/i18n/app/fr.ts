@@ -651,6 +651,8 @@ export const fr = {
     'La feuille de styles de ce classeur manque de structure de base ; les modifications de style ne peuvent pas être enregistrées.',
   appSaveErrPackageGuard:
     "L'enregistrement modifierait la structure du package du classeur — interrompu pour protéger le fichier.",
+  appSaveErrSheetNotFound:
+    'Une feuille visée par cet enregistrement est introuvable dans le classeur — l’enregistrement a été interrompu et le fichier est resté inchangé.',
   appSaveErrChartUnsupported:
     'Ce type de graphique ne prend pas en charge cette modification ; enregistrement interrompu — annulez la modification du graphique.',
   appSaveErrMoveOverlap:

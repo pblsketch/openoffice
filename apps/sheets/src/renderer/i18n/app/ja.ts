@@ -625,6 +625,8 @@ export const ja = {
     'このブックのスタイルシートには基本構造が欠けているため、スタイルの変更を保存できません。',
   appSaveErrPackageGuard:
     '保存するとブックのパッケージ構造が変わってしまいます — ファイル保護のため中止しました。',
+  appSaveErrSheetNotFound:
+    '保存内容が参照するシートがブックに見つからないため、保存を中止しました。元のファイルはそのままです。',
   appSaveErrChartUnsupported:
     'このグラフの種類はこの編集をサポートしていないため保存を中止しました — グラフの変更を元に戻してください。',
   appSaveErrMoveOverlap:

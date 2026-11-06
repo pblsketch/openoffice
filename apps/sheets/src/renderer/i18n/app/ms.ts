@@ -592,6 +592,8 @@ export const ms = {
     'Helaian gaya buku kerja ini kekurangan struktur asas; perubahan gaya tidak boleh disimpan.',
   appSaveErrPackageGuard:
     'Menyimpan akan mengubah struktur pakej buku kerja — dihentikan untuk melindungi fail.',
+  appSaveErrSheetNotFound:
+    'Helaian yang dirujuk oleh simpanan ini tidak ditemui dalam buku kerja — simpanan dihentikan dan fail kekal seperti asal.',
   appSaveErrChartUnsupported:
     'Jenis carta ini tidak menyokong suntingan itu; penyimpanan dihentikan — buat asal perubahan carta tersebut.',
   appSaveErrMoveOverlap:

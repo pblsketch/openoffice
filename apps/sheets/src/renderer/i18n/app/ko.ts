@@ -598,6 +598,8 @@ export const ko = {
     '이 통합 문서의 스타일시트에 기본 구조가 없어 스타일 변경을 저장할 수 없습니다.',
   appSaveErrPackageGuard:
     '저장하면 통합 문서의 패키지 구조가 바뀝니다 — 파일 보호를 위해 중단했습니다.',
+  appSaveErrSheetNotFound:
+    '저장할 내용이 가리키는 시트를 통합 문서에서 찾지 못해 저장을 중단했습니다. 원래 파일은 그대로입니다.',
   appSaveErrChartUnsupported:
     '이 차트 종류는 해당 편집을 지원하지 않아 저장을 중단했습니다 — 차트 변경을 실행 취소하십시오.',
   appSaveErrMoveOverlap:

@@ -542,6 +542,8 @@ export const he = {
   appSaveErrStylesheetLimited:
     'לגיליון הסגנונות של חוברת עבודה זו חסר מבנה בסיסי, ולכן לא ניתן לשמור שינויי סגנון.',
   appSaveErrPackageGuard: 'השמירה תשנה את מבנה החבילה של חוברת העבודה — הופסקה כדי להגן על הקובץ.',
+  appSaveErrSheetNotFound:
+    'גיליון שהשמירה הזו מתייחסת אליו לא נמצא בחוברת העבודה — השמירה נעצרה והקובץ נשאר כפי שהיה.',
   appSaveErrChartUnsupported:
     'סוג תרשים זה אינו תומך בעריכה זו; השמירה הופסקה — בטלו את שינוי התרשים.',
   appSaveErrMoveOverlap:

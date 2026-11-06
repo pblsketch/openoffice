@@ -592,6 +592,8 @@ export const id = {
     'Stylesheet buku kerja ini tidak memiliki struktur dasar, jadi perubahan gaya tidak dapat disimpan.',
   appSaveErrPackageGuard:
     'Menyimpan akan mengubah struktur paket buku kerja — dibatalkan untuk melindungi file.',
+  appSaveErrSheetNotFound:
+    'Lembar yang dirujuk penyimpanan ini tidak ditemukan di buku kerja — penyimpanan dihentikan dan file tetap seperti semula.',
   appSaveErrChartUnsupported:
     'Jenis bagan ini tidak mendukung pengeditan tersebut; penyimpanan dibatalkan — urungkan perubahan bagan itu.',
   appSaveErrMoveOverlap:

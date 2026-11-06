@@ -16,6 +16,7 @@ describe('localizeSaveError', () => {
       'The workbook changed on disk while saving — aborted.',
       'The workbook stylesheet is missing fonts, fills, or cellXfs — style edits cannot be saved.',
       'Saving would change the workbook package structure — aborted.',
+      'Sheet "Sheet1" was not found in the workbook.',
       'Only pie and doughnut charts support explosion.',
       'Converting a scatter is not supported.',
       'Replacing series on a pie is not supported.',

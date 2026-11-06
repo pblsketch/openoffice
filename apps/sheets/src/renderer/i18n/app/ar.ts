@@ -563,6 +563,8 @@ export const ar = {
   appSaveErrStylesheetLimited:
     'تفتقر ورقة أنماط هذا المصنف إلى البنية الأساسية، فلا يمكن حفظ تغييرات الأنماط.',
   appSaveErrPackageGuard: 'سيغيّر الحفظ بنية حزمة المصنف — أُوقف لحماية الملف.',
+  appSaveErrSheetNotFound:
+    'لم يُعثر في المصنف على ورقة يشير إليها هذا الحفظ — أُوقف الحفظ وبقي الملف كما كان.',
   appSaveErrChartUnsupported:
     'نوع المخطط هذا لا يدعم هذا التحرير، وأُوقف الحفظ — تراجع عن تغيير المخطط.',
   appSaveErrMoveOverlap:

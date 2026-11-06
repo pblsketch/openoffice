@@ -632,6 +632,8 @@ export const es = {
     'La hoja de estilos de este libro carece de estructura básica; los cambios de estilo no se pueden guardar.',
   appSaveErrPackageGuard:
     'Guardar cambiaría la estructura del paquete del libro — se canceló para proteger el archivo.',
+  appSaveErrSheetNotFound:
+    'No se encontró en el libro una hoja a la que hace referencia este guardado: se detuvo el guardado y el archivo quedó como estaba.',
   appSaveErrChartUnsupported:
     'Este tipo de gráfico no admite esa edición; guardado cancelado — deshaga el cambio del gráfico.',
   appSaveErrMoveOverlap:

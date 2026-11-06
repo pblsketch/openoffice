@@ -627,6 +627,8 @@ export const it = {
     'Il foglio di stile di questa cartella di lavoro manca della struttura di base; le modifiche di stile non possono essere salvate.',
   appSaveErrPackageGuard:
     'Il salvataggio cambierebbe la struttura del pacchetto della cartella di lavoro — interrotto per proteggere il file.',
+  appSaveErrSheetNotFound:
+    'Un foglio a cui fa riferimento questo salvataggio non è stato trovato nella cartella di lavoro: il salvataggio è stato interrotto e il file è rimasto invariato.',
   appSaveErrChartUnsupported:
     'Questo tipo di grafico non supporta tale modifica; salvataggio interrotto — annulla la modifica del grafico.',
   appSaveErrMoveOverlap:
