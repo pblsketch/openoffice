@@ -1,6 +1,7 @@
 import { open, readFile, stat } from 'node:fs/promises'
 import { extname } from 'node:path'
 import { OdtNotTextError, isOdtOpenError } from '@genoffice/odt-engine'
+import { PLAIN_TEXT_EXTS } from './attachable'
 import { diagramFormatOf, readDiagramText } from './diagram'
 import { docToText } from './doc'
 import { docxToText } from './docx'
@@ -34,20 +35,6 @@ const IMAGE_MIMES: Record<string, string> = {
   gif: 'image/gif',
   webp: 'image/webp',
 }
-
-const TEXT_EXTS = new Set([
-  'txt',
-  'md',
-  'markdown',
-  'csv',
-  'tsv',
-  'json',
-  'xml',
-  'html',
-  'htm',
-  'log',
-  'py',
-])
 
 /**
  * Formats whose own editor can withhold a span from a model: the text is handed
@@ -233,7 +220,7 @@ export async function parseFileToText(
   const imageMime = IMAGE_MIMES[ext]
   if (imageMime) return { ok: true, kind: 'image', mime: imageMime }
   try {
-    if (TEXT_EXTS.has(ext)) {
+    if (PLAIN_TEXT_EXTS.has(ext)) {
       const text = decodeTextBytes(await readFile(filePath))
       if (text === null) {
         return {
