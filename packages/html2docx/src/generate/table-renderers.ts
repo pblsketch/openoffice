@@ -944,7 +944,7 @@ function renderKpiRow(generator, node, depth) {
     }
   } else {
     node.cells.forEach((cell, index) => {
-      tracks.push({ cell, widthPx: node.colWidths?.[index] || 1 })
+      tracks.push({ cell, widthPx: node.colWidths?.[index] ?? 1 })
     })
   }
   let colDxa

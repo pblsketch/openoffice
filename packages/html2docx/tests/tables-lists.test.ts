@@ -39,6 +39,27 @@ function numFmtOf(documentXml: string, numberingXml: string, index: number): str
   return abstract.match(/<w:numFmt w:val="([^"]+)"/)![1]
 }
 
+test('kpirow preserves an intentional zero colWidth', async () => {
+  // Sibling table renderers keep authored 0 widths; kpirow used `|| 1`, which
+  // turned a zero into ~avail/totalPx twips and skewed the remaining columns.
+  const { documentXml } = await documentParts([
+    {
+      type: 'kpirow',
+      colWidths: [0, 200, 200],
+      cells: [
+        { children: [{ type: 'para', runs: [{ text: '' }], style: {} }] },
+        { children: [{ type: 'para', runs: [{ text: 'A' }], style: {} }] },
+        { children: [{ type: 'para', runs: [{ text: 'B' }], style: {} }] },
+      ],
+    },
+  ])
+  const widths = [...documentXml.matchAll(/<w:tcW[^>]*\bw:w="(\d+)"/g)].map((m) => Number(m[1]))
+  assert.equal(widths.length, 3, `expected 3 kpirow cells, got ${widths.join(',')}`)
+  assert.equal(widths[0], 0)
+  assert.equal(widths[1], widths[2])
+  assert.ok(widths[1] > 1000, `expected remaining width on content cols, got ${widths.join(',')}`)
+})
+
 test('converts a table with a header row', async () => {
   const { documentXml } = await documentParts([
     {
