@@ -1124,16 +1124,13 @@ describe('equal cell sizes (H/W)', () => {
     hancomCommands('ko', { showToast })
     expect(equalizeTableCells(services, 'width', true)).toBe(true)
     expect(ih.executeOperation).toHaveBeenCalledTimes(1)
-    // the first two cells of the top row share their 3000; the third cell and the row below stay
+    // the first two cells of the top row share their 3000; the third cell and the row below
+    // are not handed over, so the engine keeps what they store
     expect(wasm.setTableCellExtents.mock.calls[0].slice(3)).toEqual([
       false,
       [
         { cellIdx: 0, start: 0, end: 1500 },
         { cellIdx: 1, start: 1500, end: 3000 },
-        { cellIdx: 2, start: 3000, end: 6000 },
-        { cellIdx: 3, start: 0, end: 1000 },
-        { cellIdx: 4, start: 1000, end: 3000 },
-        { cellIdx: 5, start: 3000, end: 6000 },
       ],
     ])
     expect(showToast).not.toHaveBeenCalled()
@@ -1158,11 +1155,7 @@ describe('equal cell sizes (H/W)', () => {
       true,
       [
         { cellIdx: 0, start: 0, end: 1500 },
-        { cellIdx: 1, start: 0, end: 1000 },
         { cellIdx: 2, start: 1500, end: 3000 },
-        { cellIdx: 3, start: 1000, end: 3000 },
-        { cellIdx: 4, start: 3000, end: 4000 },
-        { cellIdx: 5, start: 3000, end: 4000 },
       ],
     ])
   })
@@ -1262,17 +1255,12 @@ describe('equal cell sizes (H/W)', () => {
     hancomCommands('ko', { showToast })
     expect(equalizeTableCells(services, 'width', true)).toBe(true)
     expect(showToast).not.toHaveBeenCalled()
-    // the two merged cells share their 5000; A1, A2 and the last row stay
+    // the two merged cells share their 5000; A1, A2 and the last row are not handed over
     expect(wasm.setTableCellExtents.mock.calls[0].slice(3)).toEqual([
       false,
       [
-        { cellIdx: 0, start: 0, end: 1000 },
         { cellIdx: 1, start: 1000, end: 3500 },
         { cellIdx: 2, start: 3500, end: 6000 },
-        { cellIdx: 3, start: 0, end: 1000 },
-        { cellIdx: 4, start: 0, end: 1000 },
-        { cellIdx: 5, start: 1000, end: 3000 },
-        { cellIdx: 6, start: 3000, end: 6000 },
       ],
     ])
   })

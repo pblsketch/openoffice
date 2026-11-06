@@ -373,20 +373,26 @@ describe('H/W on part of the table: only the cells of the block', () => {
     return cells
   }
 
-  it('shares the width of a block among its cells in each row, the rest unchanged', () => {
+  it('shares the width of a block among its cells in each row, and hands back only them', () => {
     const cells = widened()
     const range = { startRow: 0, startCol: 0, endRow: 0, endCol: 1 }
+    // the cells outside the block are not in the plan: the engine keeps what they store
     expect(places(cells, equalExtents(cells, 'col', 0, range)!)).toEqual([
       '00:0-1500',
       '01:1500-3000',
-      '02:3000-6000',
-      '10:0-1000',
-      '11:1000-3000',
-      '12:3000-6000',
-      '20:0-1000',
-      '21:1000-3000',
-      '22:3000-6000',
     ])
+  })
+
+  it('does not pull a line outside the block onto one of its own (half-pixel snapping)', () => {
+    // row 2 lies 20 HU off row 1, both outside the block: the block's own lines are snapped,
+    // the others are left out of the plan
+    const cells = widened()
+    for (const cell of cells) {
+      if (cell.row === 0) cell.width = [800, 2200, 3000][cell.col]
+      if (cell.row === 2) cell.width = [1020, 1980, 3000][cell.col]
+    }
+    const plan = equalExtents(cells, 'col', 0, { startRow: 0, startCol: 0, endRow: 0, endCol: 1 })!
+    expect(places(cells, plan)).toEqual(['00:0-1500', '01:1500-3000'])
   })
 
   it('keeps the left edge of a block that does not start at the edge of the table', () => {
@@ -394,10 +400,11 @@ describe('H/W on part of the table: only the cells of the block', () => {
     const range = { startRow: 0, startCol: 1, endRow: 2, endCol: 2 }
     const after = places(cells, equalExtents(cells, 'col', 0, range)!)
     for (const row of [0, 1, 2]) {
-      expect(after).toContain(`${row}0:0-1000`)
+      expect(after).not.toContain(`${row}0:0-1000`)
       expect(after).toContain(`${row}1:1000-3500`)
       expect(after).toContain(`${row}2:3500-6000`)
     }
+    expect(after).toHaveLength(6)
   })
 
   it('runs the merged-cell rule inside the block (a merge across its top row)', () => {
@@ -413,9 +420,8 @@ describe('H/W on part of the table: only the cells of the block', () => {
     expect(after).toContain('00:0-2000')
     expect(after).toContain('10:0-1000')
     expect(after).toContain('11:1000-2000')
-    // the row outside the block keeps its 600 and 1400
-    expect(after).toContain('20:0-600')
-    expect(after).toContain('21:600-2000')
+    // the row outside the block is not in the plan: it keeps its 600 and 1400
+    expect(after).toHaveLength(3)
   })
 
   it('shares the height of a block down each of its columns from the drawn heights', () => {
@@ -423,9 +429,7 @@ describe('H/W on part of the table: only the cells of the block', () => {
     for (const cell of cells) cell.drawnHeight = [1000, 2000, 1000][cell.row]
     const range = { startRow: 0, startCol: 0, endRow: 1, endCol: 0 }
     const after = places(cells, equalExtents(cells, 'row', 0, range)!)
-    expect(after.slice(0, 3)).toEqual(['00:0-1500', '01:0-1000', '02:0-1000'])
-    expect(after.slice(3, 6)).toEqual(['10:1500-3000', '11:1000-3000', '12:1000-3000'])
-    expect(after.slice(6)).toEqual(['20:3000-4000', '21:3000-4000', '22:3000-4000'])
+    expect(after).toEqual(['00:0-1500', '10:1500-3000'])
   })
 
   it('writes nothing where the cells of the block are already equal', () => {

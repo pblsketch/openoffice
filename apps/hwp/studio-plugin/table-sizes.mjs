@@ -230,7 +230,8 @@ export function cellExtents(cells, axis) {
  * and every other cell stays where it is, so the grid splits where the block's lines move.
  *
  * The cells' new starts and ends ([{ cellIdx, start, end }]) for the engine's setTableCellExtents,
- * [] when nothing changes, null when the cells cannot be placed.
+ * [] when nothing changes, null when the cells cannot be placed. With `range` only the block's
+ * cells are in it: the engine keeps the others at the sizes they store.
  */
 export function equalExtents(cells, axis, least = 0, range = null) {
   const extents = cellExtents(cells, axis)
@@ -285,8 +286,10 @@ export function equalExtents(cells, axis, least = 0, range = null) {
     share(total)
   }
   // sharing rounds each run on its own, so one boundary can come out a unit apart in two lines;
-  // boundaries closer than half a pixel are the same line
-  const raw = cells.map((cell, i) => placed.get(i) ?? extents[i])
+  // boundaries closer than half a pixel are the same line. Only the sized cells are looked at
+  // and handed back: a cell outside a block keeps what it stores, even where its edge lies a
+  // little off the block's lines
+  const raw = sized.map((i) => placed.get(i) ?? extents[i])
   const snapped = new Map()
   let line
   for (const value of [...new Set(raw.flat())].sort((a, b) => a - b)) {
@@ -295,12 +298,12 @@ export function equalExtents(cells, axis, least = 0, range = null) {
   }
   const next = raw.map(([start, end]) => [snapped.get(start), snapped.get(end)])
   const moved = next.some(
-    ([start, end], i) =>
-      Math.abs(start - extents[i][0]) >= HWPUNIT_PER_PX / 2 ||
-      Math.abs(end - extents[i][1]) >= HWPUNIT_PER_PX / 2,
+    ([start, end], k) =>
+      Math.abs(start - extents[sized[k]][0]) >= HWPUNIT_PER_PX / 2 ||
+      Math.abs(end - extents[sized[k]][1]) >= HWPUNIT_PER_PX / 2,
   )
   if (!moved) return []
-  return cells.map((cell, i) => ({ cellIdx: cell.cellIdx, start: next[i][0], end: next[i][1] }))
+  return sized.map((i, k) => ({ cellIdx: cells[i].cellIdx, start: next[k][0], end: next[k][1] }))
 }
 
 /**

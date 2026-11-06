@@ -10,7 +10,7 @@ import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { beforeAll, describe, expect, it } from 'vitest'
 import init, { HwpDocument } from '@rhwp/core'
-import { settleRows } from '../studio-plugin/hancom-keys.mjs'
+import { equalizeTableCells, hancomCommands, settleRows } from '../studio-plugin/hancom-keys.mjs'
 import {
   HWPUNIT_PER_PX,
   equalExtents,
@@ -279,77 +279,254 @@ describe('table size keys on merged tables, through the engine', () => {
   }
 })
 
-describe('H/W on part of the table, through the engine (issue #299)', () => {
-  const rowBoxes = (doc: HwpDocument, y: number) =>
-    boxesOf(doc)
-      .filter((box) => Math.abs(box.y - y) < 0.6)
-      .sort((a, b) => a.x - b.x)
+/**
+ * H/W on a block through the key's own path (equalizeTableCells), in a snapshot the engine runs:
+ * what the editor's cell block hands the module, with the excluded cells it keeps.
+ */
+function keyOn(holder: { doc: HwpDocument }, range: Range, excluded: string[] = []) {
+  const bridge = {
+    ...bridgeOf(holder.doc),
+    getTableDimensions: (s: number, p: number, c: number) =>
+      JSON.parse(holder.doc.getTableDimensions(s, p, c)),
+    getCellInfo: (s: number, p: number, c: number, i: number) =>
+      JSON.parse(holder.doc.getCellInfo(s, p, c, i)),
+    getCellProperties: (s: number, p: number, c: number, i: number) =>
+      JSON.parse(holder.doc.getCellProperties(s, p, c, i)),
+    getTableCellBboxes: (s: number, p: number, c: number) =>
+      JSON.parse(holder.doc.getTableCellBboxes(s, p, c)),
+    setTableCellExtents: (s: number, p: number, c: number, v: boolean, e: unknown[]) =>
+      JSON.parse(holder.doc.setTableCellExtents(s, p, c, v, JSON.stringify(e))),
+  }
+  const ih = {
+    cursor: {
+      isInCellSelectionMode: () => true,
+      getCellTableContext: () => ({ sec: 0, ppi: 1, ci: 0 }),
+      getSelectedCellRange: () => range,
+      getExcludedCells: () => new Set(excluded),
+    },
+    getCursorPosition: () => ({
+      sectionIndex: 0,
+      paragraphIndex: 0,
+      charOffset: 0,
+      parentParaIndex: 1,
+      controlIndex: 0,
+      cellIndex: 0,
+      cellParaIndex: 0,
+    }),
+    // the editor's snapshot: an operation that throws puts the document back
+    executeOperation: ({ operation }: { operation: (b: typeof bridge) => unknown }) => {
+      const saved = holder.doc.exportHwp()
+      try {
+        operation(bridge)
+      } catch (e) {
+        holder.doc = new HwpDocument(saved)
+        throw e
+      }
+    },
+    updateCellSelection: () => {},
+  }
+  return { getInputHandler: () => ih, wasm: bridge }
+}
+
+type Range = { startRow: number; startCol: number; endRow: number; endCol: number }
+
+/** Every cell as it stores itself: place, span and size. */
+const stored = (doc: HwpDocument) =>
+  cellsOf(doc).map((c) => `${c.row},${c.col}/${c.rowSpan}x${c.colSpan}:w${c.width},h${c.height}`)
+
+/** The widths each row's cells store, left to right. */
+const widthsByRow = (doc: HwpDocument) => {
+  const rows: Record<number, number[]> = {}
+  for (const cell of [...cellsOf(doc)].sort((a, b) => a.row - b.row || a.col - b.col)) {
+    ;(rows[cell.row] ??= []).push(cell.width)
+  }
+  return rows
+}
+
+/**
+ * A 3×3 table whose rows are split as the given column boundaries say (each row its own, so
+ * the grid splits), saved as HWP and read again so it is what a file holds.
+ */
+function splitRows(bounds: number[][]): HwpDocument {
+  const doc = table([])
+  const cells = cellsOf(doc)
+  const plan = cells.map((c) => ({
+    cellIdx: c.cellIdx,
+    start: bounds[c.row][c.col],
+    end: bounds[c.row][c.col + 1],
+  }))
+  expect(JSON.parse(doc.setTableCellExtents(0, 1, 0, false, JSON.stringify(plan))).ok).toBe(true)
+  return new HwpDocument(doc.exportHwp())
+}
+
+/** The block from the first to the second cell of row 0, as the studio names it. */
+function firstTwoOfTopRow(doc: HwpDocument): Range {
+  const top = cellsOf(doc)
+    .filter((c) => c.row === 0)
+    .sort((a, b) => a.col - b.col)
+  return { startRow: 0, startCol: top[0].col, endRow: 0, endCol: top[1].col }
+}
+
+describe('H/W on part of the table, through the key (issue #299)', () => {
+  beforeAll(() => {
+    hancomCommands('ko', { showToast: ({ message }: { message: string }) => toasts.push(message) })
+  })
+  const toasts: string[] = []
 
   it('W on two cells of the top row makes them equal and leaves the rest', () => {
-    const doc = table([])
-    apply(doc, resizeLines(cellsOf(doc), 'col', 0, 0, 1500))
-    const top = rowBoxes(doc, boxesOf(doc)[0].y)
-    const rest = boxesOf(doc).filter((box) => box.row > 0)
-    const range = { startRow: 0, startCol: 0, endRow: 0, endCol: 1 }
-    place(doc, 'col', equalExtents(cellsOf(doc), 'col', 0, range)!)
-    const after = rowBoxes(doc, top[0].y)
-    expect(after[0].w).toBeCloseTo(after[1].w, 0)
-    expect(after[0].w + after[1].w).toBeCloseTo(top[0].w + top[1].w, 0)
-    expect(after[2].x).toBeCloseTo(top[2].x, 0)
-    // the rows below keep their cells where they were
-    const below = boxesOf(doc).filter((box) => box.y > top[0].y + 0.6)
-    expect(below.map((box) => [box.x, box.w].map(Math.round))).toEqual(
-      rest.map((box) => [box.x, box.w].map(Math.round)),
+    const W = cellsOf(table([]))[0].width
+    const holder = { doc: splitRows([0, 1, 2].map(() => [0, W - 1500, 2 * W, 3 * W])) }
+    const top = cellsOf(holder.doc).filter((c) => c.row === 0)
+    expect(top.map((c) => c.width)).toEqual([W - 1500, W + 1500, W])
+    const before = widthsByRow(holder.doc)
+    expect(equalizeTableCells(keyOn(holder, firstTwoOfTopRow(holder.doc)), 'width', true)).toBe(
+      true,
     )
+    const after = widthsByRow(holder.doc)
+    expect(after[0]).toEqual([W, W, W])
+    expect(after[1]).toEqual(before[1])
+    expect(after[2]).toEqual(before[2])
+    savedAlike(holder.doc)
   })
 
-  it('W on a block beside a merged cell keeps that cell (merged down the right)', () => {
-    const doc = table([[1, 2, 2, 2]])
-    apply(doc, resizeLines(cellsOf(doc), 'col', 0, 0, 1500))
-    const merged = boxesOf(doc).find((box) => box.row === 1 && box.col === 2)!
-    const range = { startRow: 0, startCol: 0, endRow: 2, endCol: 1 }
-    place(doc, 'col', equalExtents(cellsOf(doc), 'col', 0, range)!)
-    const now = boxesOf(doc).find((box) => box.y === merged.y && box.h === merged.h)!
-    expect([now.x, now.w].map(Math.round)).toEqual([merged.x, merged.w].map(Math.round))
-    for (const box of boxesOf(doc).filter((b) => b.x < merged.x - 0.6)) {
-      expect(box.w).toBeCloseTo(merged.x - boxesOf(doc)[0].x - box.w, 0)
-    }
-  })
+  for (const off of [1, 20, 37]) {
+    it(`W keeps a row outside the block that lies ${off} HU off the block's lines, saved too`, () => {
+      // row 0 unequal (the block), row 1 on the grid, row 2 a little off it: the half-pixel
+      // snapping of the block's lines once pulled row 2 onto row 1 (F1 of the review)
+      const W = cellsOf(table([]))[0].width
+      const holder = {
+        doc: splitRows([
+          [0, W - 1500, 2 * W, 3 * W],
+          [0, W, 2 * W, 3 * W],
+          [0, W + off, 2 * W, 3 * W],
+        ]),
+      }
+      const before = widthsByRow(holder.doc)
+      expect(equalizeTableCells(keyOn(holder, firstTwoOfTopRow(holder.doc)), 'width', true)).toBe(
+        true,
+      )
+      for (const saved of [
+        holder.doc,
+        new HwpDocument(holder.doc.exportHwp()),
+        new HwpDocument(holder.doc.exportHwpx()),
+      ]) {
+        const rows = widthsByRow(saved)
+        expect(rows[0]).toEqual([W, W, W])
+        expect(rows[1]).toEqual(before[1])
+        expect(rows[2]).toEqual(before[2])
+      }
+    })
+  }
 
   it('W on two merged cells chosen whole shares their width (B1:B2 and C1:C2)', () => {
-    const doc = table([
-      [0, 1, 1, 1],
-      [0, 2, 1, 2],
-    ])
-    apply(doc, resizeLines(cellsOf(doc), 'col', 1, 1, 1500))
-    const merged = () =>
-      boxesOf(doc)
-        .filter((box) => box.h > boxesOf(doc)[0].h * 1.5)
-        .sort((a, b) => a.x - b.x)
+    const holder = {
+      doc: table([
+        [0, 1, 1, 1],
+        [0, 2, 1, 2],
+      ]),
+    }
+    apply(holder.doc, resizeLines(cellsOf(holder.doc), 'col', 1, 1, 1500))
+    const merged = () => cellsOf(holder.doc).filter((c) => c.rowSpan === 2)
     const before = merged()
-    expect(before).toHaveLength(2)
-    // the block the studio reads from B1 to C1 grown over the merged cells (coveringRange)
-    const range = { startRow: 0, startCol: 1, endRow: 1, endCol: 2 }
-    place(doc, 'col', equalExtents(cellsOf(doc), 'col', 0, range)!)
+    expect(before.map((c) => c.width)).not.toEqual([before[0].width, before[0].width])
+    // the others keep what they store; where the merged cells' line moves the grid splits, so
+    // their columns are numbered again
+    const sizes = () =>
+      stored(holder.doc)
+        .filter((s) => !s.includes('/2x'))
+        .map((s) => `${s.split(',')[0]}:${s.split(':')[1]}`)
+    const outside = sizes()
+    // the studio reads B1 to C1 as row 0 only
+    expect(
+      equalizeTableCells(
+        keyOn(holder, { startRow: 0, startCol: 1, endRow: 0, endCol: 2 }),
+        'width',
+        true,
+      ),
+    ).toBe(true)
     const after = merged()
-    expect(after[0].w).toBeCloseTo(after[1].w, 0)
-    expect(after[0].w + after[1].w).toBeCloseTo(before[0].w + before[1].w, 0)
-    expect(after[0].x).toBeCloseTo(before[0].x, 0)
+    expect(after[0].width).toBe(after[1].width)
+    expect(after[0].width + after[1].width).toBe(before[0].width + before[1].width)
+    expect(sizes()).toEqual(outside)
+    savedAlike(holder.doc)
   })
 
-  it('H on two cells of the first column shares their height and keeps the rest', () => {
-    const doc = table([])
-    apply(doc, resizeLines(cellsOf(doc), 'row', 0, 0, 1500))
-    const before = gridLines(doc).rows
-    const range = { startRow: 0, startCol: 0, endRow: 1, endCol: 0 }
-    place(doc, 'row', equalExtents(cellsOf(doc), 'row', 0, range)!)
-    const left = boxesOf(doc)
-      .filter((box) => Math.abs(box.x - boxesOf(doc)[0].x) < 0.6)
-      .sort((a, b) => a.y - b.y)
-    expect(left[0].h).toBeCloseTo(left[1].h, 0)
-    expect(left[0].h + left[1].h).toBeCloseTo(before[2] - before[0], 0)
-    // the table keeps its height
-    const rows = gridLines(doc).rows
-    expect(rows[rows.length - 1] - rows[0]).toBeCloseTo(before[3] - before[0], 0)
+  it('H on A1:A2 shares their height and leaves every other cell as it stores (F2)', () => {
+    // A1 two thousand taller: B1 and C1 draw at its height but store their own
+    const holder = { doc: table([]) }
+    expect(
+      JSON.parse(
+        holder.doc.resizeTableCells(0, 1, 0, JSON.stringify([{ cellIdx: 0, heightDelta: 2000 }])),
+      ).ok,
+    ).toBe(true)
+    const before = cellsOf(holder.doc)
+    const a1 = before[0]
+    const a2 = before.find((c) => c.row === 1 && c.col === 0)!
+    expect(a1.height).toBeGreaterThan(a2.height)
+    const others = stored(holder.doc).filter((s) => !s.startsWith('0,0/') && !s.startsWith('1,0/'))
+    expect(
+      equalizeTableCells(
+        keyOn(holder, { startRow: 0, startCol: 0, endRow: 1, endCol: 0 }),
+        'height',
+        true,
+      ),
+    ).toBe(true)
+    const after = cellsOf(holder.doc)
+    const column = after.filter((c) => c.col === 0).sort((a, b) => a.row - b.row)
+    // A1 and A2 store the same share of what they stored together; A3 is not in the block
+    expect(column[0].height).toBe(column[1].height)
+    expect(column[0].height + column[1].height).toBe(a1.height + a2.height)
+    // B1, C1 (held up by A1) and the rest keep what they store, in the file too
+    const keep = (doc: HwpDocument) =>
+      cellsOf(doc)
+        .filter((c) => c.col > 0 || c.row > 1)
+        .map((c) => `w${c.width},h${c.height}`)
+        .sort()
+    const kept = others.map((s) => s.split(':')[1]).sort()
+    expect(keep(holder.doc)).toEqual(kept)
+    expect(keep(new HwpDocument(holder.doc.exportHwp()))).toEqual(kept)
+    expect(keep(new HwpDocument(holder.doc.exportHwpx()))).toEqual(kept)
+  })
+
+  it('H leaves a block alone, saying why, where its rows draw taller than they store', () => {
+    // the rows below A1 grow with their text past what they store (as the editor's own tables
+    // store 282): placing A2:A3 would mean storing new heights for B2, C2 and the rest
+    const holder = { doc: table([]) }
+    for (let k = 0; k < 3; k += 1) holder.doc.splitParagraphInCell(0, 1, 0, 4, k, 2)
+    const before = stored(holder.doc)
+    expect(cellsOf(holder.doc)[4].drawnHeight - cellsOf(holder.doc)[4].height).toBeGreaterThan(
+      HWPUNIT_PER_PX,
+    )
+    toasts.length = 0
+    expect(
+      equalizeTableCells(
+        keyOn(holder, { startRow: 1, startCol: 0, endRow: 2, endCol: 0 }),
+        'height',
+        true,
+      ),
+    ).toBe(false)
+    expect(toasts.join()).toContain('표 전체를 골라 주세요')
+    expect(stored(holder.doc)).toEqual(before)
+  })
+
+  it('a Ctrl+click outside the block does not stop it; one inside does (F3)', () => {
+    const W = cellsOf(table([]))[0].width
+    const make = () => ({ doc: splitRows([0, 1, 2].map(() => [0, W - 1500, 2 * W, 3 * W])) })
+    const outside = make()
+    const range = firstTwoOfTopRow(outside.doc)
+    // the studio keeps a Ctrl+clicked key wherever it was (cursor.ts ctrlToggleCell)
+    expect(equalizeTableCells(keyOn(outside, range, ['2,2']), 'width', true)).toBe(true)
+    const inside = make()
+    toasts.length = 0
+    const before = stored(inside.doc)
+    expect(
+      equalizeTableCells(
+        keyOn(inside, range, [`${range.startRow},${range.endCol}`]),
+        'width',
+        true,
+      ),
+    ).toBe(false)
+    expect(toasts.join()).toContain('빼낸 칸')
+    expect(stored(inside.doc)).toEqual(before)
   })
 })
