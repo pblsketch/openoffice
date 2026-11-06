@@ -155,6 +155,40 @@ describe('the ChatGPT provider on the subscription channels', { timeout: 20_000 
     })
   })
 
+  // a cancelled sign-in leaves no mark of its own, so only the new login can clear the last one
+  it('drops the last failure when a new sign-in is cancelled', async () => {
+    const { deps, fake } = setup()
+    await deps.launchLogin('chatgpt')
+    fake.finish(false, { ok: false, reason: 'no-plan', step: 'scope-missing' })
+    await until(() => deps.service.getStatuses().chatgpt.loginUnfinished === true)
+    await deps.launchLogin('chatgpt')
+    expect(await deps.cancelLogin('chatgpt')).toEqual({ ok: true })
+    await until(() => deps.service.getStatuses().chatgpt.signingIn === undefined)
+    await deps.service.check(['chatgpt'], { fresh: true })
+    const status = subscriptionStatusMapOf(deps.service.getStatuses()).chatgpt
+    expect(status.state).toBe('signed-out')
+    expect(status.loginUnfinished).toBeUndefined()
+    expect(status.loginFailure).toBeUndefined()
+  })
+
+  it('drops the last failure when a new sign-in connects', async () => {
+    const { deps, fake } = setup()
+    await deps.launchLogin('chatgpt')
+    fake.finish(false, {
+      ok: false,
+      reason: 'denied',
+      step: 'callback-error',
+      oauthError: 'access_denied',
+    })
+    await until(() => deps.service.getStatuses().chatgpt.loginUnfinished === true)
+    await deps.launchLogin('chatgpt')
+    fake.finish(true)
+    await until(() => deps.service.getStatuses().chatgpt.state === 'ready')
+    const status = deps.service.getStatuses().chatgpt
+    expect(status.loginUnfinished).toBeUndefined()
+    expect(status.loginFailure).toBeUndefined()
+  })
+
   it('cancels a sign-in under way', async () => {
     const { deps, fake } = setup()
     await deps.launchLogin('chatgpt')
