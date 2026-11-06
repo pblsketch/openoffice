@@ -484,6 +484,21 @@ async function programInDir(
  * npm, Homebrew, version managers and the Claude installer (`~/.local/bin`)
  * install into are probed explicitly.
  */
+/** nvm installs under `~/.nvm/versions/node/vX.Y.Z`. Prefer higher X.Y.Z first. */
+function compareNvmVersionDirsNewestFirst(a: string, b: string): number {
+  const parts = (name: string): number[] => {
+    const match = /^v?(\d+)\.(\d+)\.(\d+)/i.exec(name.trim())
+    return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : [-1, -1, -1]
+  }
+  const pa = parts(a)
+  const pb = parts(b)
+  for (let i = 0; i < 3; i++) {
+    if (pa[i]! !== pb[i]!) return pb[i]! - pa[i]!
+  }
+  // Equal numeric triples (or both unparsable): keep a stable string order.
+  return a < b ? -1 : a > b ? 1 : 0
+}
+
 export async function commonUnixBinDirs(home: string): Promise<string[]> {
   const dirs = ['/opt/homebrew/bin', '/usr/local/bin']
   if (home) {
@@ -496,7 +511,10 @@ export async function commonUnixBinDirs(home: string): Promise<string[]> {
     )
     const nvmRoot = join(home, '.nvm', 'versions', 'node')
     const versions = await readdir(nvmRoot).catch(() => [] as string[])
-    for (const version of versions.sort().reverse()) dirs.push(join(nvmRoot, version, 'bin'))
+    // Newest first: String.sort is lexicographic, so "v8.x" sorts ahead of "v20.x".
+    for (const version of versions.sort(compareNvmVersionDirsNewestFirst)) {
+      dirs.push(join(nvmRoot, version, 'bin'))
+    }
   }
   return dirs
 }
