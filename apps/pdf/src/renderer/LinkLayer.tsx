@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactElement } from 'react'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { pdfRectToCss } from './annotations'
@@ -51,18 +51,34 @@ const LINK_SURFACE = '.pdf-page-content, .pdf-ocr-layer'
 /** Page modes in which a click on the page means something else (edit or insert text) */
 const LINK_IDLE_PAGE = '.pdf-editing-text, .pdf-inserting-text'
 
+export type LinkBox = { left: number; top: number; width: number; height: number }
+
+/** Index of the topmost box holding page point (x, y) (CSS px from the page's top left), or -1 */
+export function linkBoxAt(boxes: readonly LinkBox[], x: number, y: number): number {
+  for (let i = boxes.length - 1; i >= 0; i--) {
+    const b = boxes[i]!
+    if (x >= b.left && x <= b.left + b.width && y >= b.top && y <= b.top + b.height) return i
+  }
+  return -1
+}
+
+/** Each page's link boxes (the same CSS boxes its anchors are drawn with) and layer */
+const pageLinks = new WeakMap<Element, { boxes: readonly LinkBox[]; layer: HTMLElement }>()
+
 /**
  * The link whose box holds client point (x, y) on `page`, the topmost first.
  * Links take no pointer input themselves (sheet row 247): the text under them
- * keeps its drag selection and right-click menu, so the page asks here.
+ * keeps its drag selection and right-click menu, so the page asks here. The
+ * boxes come from the page geometry, so a lookup measures only the page.
  */
 export function linkAt(page: Element, x: number, y: number): HTMLAnchorElement | null {
-  const links = page.querySelectorAll<HTMLAnchorElement>('.pdf-link-layer > .pdf-link')
-  for (let i = links.length - 1; i >= 0; i--) {
-    const r = links[i]!.getBoundingClientRect()
-    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return links[i]!
-  }
-  return null
+  const entry = pageLinks.get(page)
+  if (!entry) return null
+  const r = page.getBoundingClientRect()
+  const i = linkBoxAt(entry.boxes, x - r.left - page.clientLeft, y - r.top - page.clientTop)
+  if (i < 0) return null
+  const link = entry.layer.children[i]
+  return link instanceof HTMLAnchorElement ? link : null
 }
 
 /** Whether a pointer over `target` may hover or follow a link (text or picture of a page in no editing mode) */
@@ -77,8 +93,8 @@ export const LINK_CLICK_SLOP = PAN_CLICK_SLOP
 export type PressPoint = { x: number; y: number }
 
 /**
- * Whether a click follows the link under it: a real primary click on the
- * page's text or picture whose press did not travel. A press that travelled
+ * Whether a click follows the link under it: a real single primary click on
+ * the page's text or picture whose press did not travel. A press that travelled
  * is a drag selecting the text, and Shift+click extends the selection. A click
  * inside text that is already selected still follows (its selection only goes
  * after the click), so the press, not the selection, decides; without a known
@@ -87,6 +103,7 @@ export type PressPoint = { x: number; y: number }
 export function followsLinkClick(
   e: {
     button: number
+    detail: number
     shiftKey: boolean
     isTrusted: boolean
     target: EventTarget | null
@@ -96,7 +113,8 @@ export function followsLinkClick(
   press: PressPoint | null,
   selection: Pick<Selection, 'isCollapsed'> | null,
 ): boolean {
-  if (!e.isTrusted || e.button !== 0 || e.shiftKey) return false
+  // the second click of a double-click picks a word; the first one already followed
+  if (!e.isTrusted || e.button !== 0 || e.detail !== 1 || e.shiftKey) return false
   if (!onLinkSurface(e.target)) return false
   if (press)
     return (
@@ -133,6 +151,7 @@ export function followLinkAt(
   page: Element,
   e: {
     button: number
+    detail: number
     shiftKey: boolean
     isTrusted: boolean
     target: EventTarget | null
@@ -224,6 +243,21 @@ export function LinkLayer({
     }
   }, [doc, pageNo])
 
+  const boxes = useMemo(
+    () => (links ?? []).map((l) => pdfRectToCss(geom, l.rect, scale)),
+    [links, geom, scale],
+  )
+
+  useLayoutEffect(() => {
+    const layer = layerRef.current
+    const page = layer?.parentElement
+    if (!layer || !page || boxes.length === 0) return
+    pageLinks.set(page, { boxes, layer })
+    return () => {
+      if (pageLinks.get(page)?.layer === layer) pageLinks.delete(page)
+    }
+  }, [boxes])
+
   useEffect(() => {
     const page = layerRef.current?.parentElement
     if (!hasLinks || !page) return
@@ -238,7 +272,7 @@ export function LinkLayer({
         <a
           key={i}
           className="pdf-link"
-          style={pdfRectToCss(geom, l.rect, scale)}
+          style={boxes[i]}
           href={l.url ?? '#'}
           data-tip={l.url}
           target={l.url ? '_blank' : undefined}

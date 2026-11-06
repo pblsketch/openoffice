@@ -16,6 +16,7 @@ import {
   followLinkAt,
   followsLinkClick,
   linkAt,
+  linkBoxAt,
   onLinkSurface,
 } from '../src/renderer/LinkLayer'
 
@@ -34,41 +35,64 @@ beforeAll(() => {
   }
 })
 
-const box = (left: number, top: number, right: number, bottom: number): DOMRect =>
-  ({
-    left,
-    top,
-    right,
-    bottom,
-    x: left,
-    y: top,
-    width: right - left,
-    height: bottom - top,
-  }) as DOMRect
-
-/** A page with a text span and two links: one over x 10..60, one over x 40..90 (later = on top) */
-function makePage(className = 'pdf-page'): {
-  page: HTMLDivElement
-  span: HTMLElement
-  a: HTMLAnchorElement
-  b: HTMLAnchorElement
-} {
+/** A page with a text span, a link layer and a note pin (for the surface and click rules) */
+function makePage(className = 'pdf-page'): { page: HTMLDivElement; span: HTMLElement } {
   const page = document.createElement('div')
   page.className = className
   page.innerHTML =
     '<div class="pdf-page-content"><div class="textLayer"><span>link text</span></div></div>' +
-    '<div class="pdf-link-layer"><a class="pdf-link" href="https://a.example/"></a>' +
-    '<a class="pdf-link" href="https://b.example/"></a></div>' +
+    '<div class="pdf-link-layer"><a class="pdf-link" href="https://a.example/"></a></div>' +
     '<div class="pdf-note-pin"></div>'
-  const [a, b] = page.querySelectorAll<HTMLAnchorElement>('.pdf-link')
-  a!.getBoundingClientRect = () => box(10, 10, 60, 30)
-  b!.getBoundingClientRect = () => box(40, 10, 90, 30)
   document.body.appendChild(page)
-  return { page, span: page.querySelector('span')!, a: a!, b: b! }
+  return { page, span: page.querySelector('span')! }
 }
+
+type RawLink = { subtype: string; rect: number[]; url?: string; dest?: unknown }
+
+let roots: Root[] = []
+
+/**
+ * A 100x100pt page at scale 1 with a real LinkLayer rendered straight into it,
+ * as in App, and its text layer in front. jsdom puts the page at (0, 0), so
+ * client and page coordinates are the same; PDF y runs up, CSS y down.
+ */
+async function mountLinks(annots: RawLink[], onGoToDest = vi.fn()) {
+  const doc = {
+    getPage: async () => ({ getAnnotations: async () => annots }),
+  } as unknown as PDFDocumentProxy
+  const page = document.createElement('div')
+  page.className = 'pdf-page'
+  document.body.appendChild(page)
+  const root = createRoot(page)
+  roots.push(root)
+  await act(async () => {
+    root.render(
+      createElement(LinkLayer, {
+        doc,
+        pageNo: 1,
+        geom: { pw: 100, ph: 100, rot: 0 },
+        scale: 1,
+        onGoToDest,
+      }),
+    )
+  })
+  const content = document.createElement('div')
+  content.className = 'pdf-page-content'
+  content.innerHTML = '<div class="textLayer"><span>link text</span></div>'
+  page.insertBefore(content, page.firstChild)
+  const links = [...page.querySelectorAll<HTMLAnchorElement>('.pdf-link')]
+  return { page, span: page.querySelector('span')!, links }
+}
+
+/** two overlapping links on CSS y 10..30: a over x 10..60, b over x 40..90 (later = on top) */
+const OVERLAPPING: RawLink[] = [
+  { subtype: 'Link', rect: [10, 70, 60, 90], url: 'https://a.example/' },
+  { subtype: 'Link', rect: [40, 70, 90, 90], url: 'https://b.example/' },
+]
 
 const click = (target: EventTarget, x: number, y: number, over: Partial<MouseEvent> = {}) => ({
   button: 0,
+  detail: 1,
   shiftKey: false,
   isTrusted: true,
   target,
@@ -78,17 +102,41 @@ const click = (target: EventTarget, x: number, y: number, over: Partial<MouseEve
 })
 
 afterEach(() => {
+  act(() => roots.forEach((r) => r.unmount()))
+  roots = []
   document.body.innerHTML = ''
   window.getSelection()?.removeAllRanges()
 })
 
+describe('linkBoxAt', () => {
+  it('finds the topmost box holding the point', () => {
+    const boxes = [
+      { left: 10, top: 10, width: 50, height: 20 },
+      { left: 40, top: 10, width: 50, height: 20 },
+    ]
+    expect(linkBoxAt(boxes, 20, 20)).toBe(0)
+    expect(linkBoxAt(boxes, 50, 20)).toBe(1)
+    expect(linkBoxAt(boxes, 100, 20)).toBe(-1)
+    expect(linkBoxAt(boxes, 20, 40)).toBe(-1)
+    expect(linkBoxAt([], 20, 20)).toBe(-1)
+  })
+})
+
 describe('linkAt', () => {
-  it('finds the topmost link holding the point', () => {
-    const { page, a, b } = makePage()
-    expect(linkAt(page, 20, 20)).toBe(a)
-    expect(linkAt(page, 50, 20)).toBe(b)
+  it('finds the topmost link from the page geometry, measuring only the page', async () => {
+    const { page, links } = await mountLinks(OVERLAPPING)
+    const measured = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+    expect(linkAt(page, 20, 20)).toBe(links[0])
+    expect(linkAt(page, 50, 20)).toBe(links[1])
     expect(linkAt(page, 100, 20)).toBeNull()
     expect(linkAt(page, 20, 40)).toBeNull()
+    expect(measured).toHaveBeenCalledTimes(4)
+    expect(measured.mock.contexts.every((el) => el === page)).toBe(true)
+    measured.mockRestore()
+  })
+
+  it('knows no links on a page without a link layer', () => {
+    expect(linkAt(makePage().page, 20, 20)).toBeNull()
   })
 })
 
@@ -140,6 +188,11 @@ describe('followsLinkClick', () => {
     expect(followsLinkClick(click(pin!, 20, 20), pressAt, collapsed)).toBe(false)
   })
 
+  it('leaves the second click of a double-click (picking a word) alone', () => {
+    expect(followsLinkClick(click(span(), 20, 20, { detail: 2 }), pressAt, collapsed)).toBe(false)
+    expect(followsLinkClick(click(span(), 20, 20, { detail: 3 }), pressAt, collapsed)).toBe(false)
+  })
+
   it('ignores the synthetic click it sends to the anchor itself', () => {
     expect(
       followsLinkClick({ ...click(span(), 20, 20), isTrusted: false }, pressAt, collapsed),
@@ -148,10 +201,10 @@ describe('followsLinkClick', () => {
 })
 
 describe('followLinkAt', () => {
-  it('clicks the anchor under a plain click on link text', () => {
-    const { page, span, a, b } = makePage()
+  it('clicks the anchor under a plain click on link text', async () => {
+    const { page, span, links } = await mountLinks(OVERLAPPING)
     const clicked: string[] = []
-    for (const link of [a, b])
+    for (const link of links)
       link.addEventListener('click', (e) => {
         e.preventDefault()
         clicked.push(link.href)
@@ -161,13 +214,15 @@ describe('followLinkAt', () => {
     expect(clicked).toEqual(['https://a.example/', 'https://b.example/'])
     // off every link: the page's own click handling goes on
     expect(followLinkAt(page, click(span, 100, 20))).toBe(false)
+    // a double-click picking a word on the link opens it once, not twice
+    expect(followLinkAt(page, click(span, 20, 20, { detail: 2 }))).toBe(false)
     expect(clicked).toHaveLength(2)
   })
 
-  it('does not follow once the drag selected the link text', () => {
-    const { page, span, a } = makePage()
+  it('does not follow once the drag selected the link text', async () => {
+    const { page, span, links } = await mountLinks(OVERLAPPING)
     const onClick = vi.fn((e: Event) => e.preventDefault())
-    a.addEventListener('click', onClick)
+    links[0]!.addEventListener('click', onClick)
     const range = document.createRange()
     range.selectNodeContents(span)
     window.getSelection()!.addRange(range)
@@ -178,48 +233,15 @@ describe('followLinkAt', () => {
 })
 
 describe('LinkLayer', () => {
-  let root: Root | null = null
-
-  afterEach(() => {
-    act(() => root?.unmount())
-    root = null
-  })
-
-  const doc = {
-    getPage: async () => ({
-      getAnnotations: async () => [
+  /** a web link on CSS y 80..100 and an internal one on y 40..60, both x 0..50 */
+  const mount = (onGoToDest = vi.fn()) =>
+    mountLinks(
+      [
         { subtype: 'Link', rect: [0, 0, 50, 20], url: 'https://a.example/' },
         { subtype: 'Link', rect: [0, 40, 50, 60], dest: ['p2'] },
       ],
-    }),
-  } as unknown as PDFDocumentProxy
-
-  async function mount(onGoToDest = vi.fn()) {
-    // the layer renders straight into the page, as in App
-    const page = document.createElement('div')
-    page.className = 'pdf-page'
-    document.body.appendChild(page)
-    root = createRoot(page)
-    await act(async () => {
-      root!.render(
-        createElement(LinkLayer, {
-          doc,
-          pageNo: 1,
-          geom: { pw: 100, ph: 100, rot: 0 },
-          scale: 1,
-          onGoToDest,
-        }),
-      )
-    })
-    const content = document.createElement('div')
-    content.className = 'pdf-page-content'
-    content.innerHTML = '<div class="textLayer"><span>link text</span></div>'
-    page.insertBefore(content, page.firstChild)
-    const links = [...page.querySelectorAll<HTMLAnchorElement>('.pdf-link')]
-    links[0]!.getBoundingClientRect = () => box(0, 80, 50, 100)
-    links[1]!.getBoundingClientRect = () => box(0, 40, 50, 60)
-    return { page, span: page.querySelector('span')!, links }
-  }
+      onGoToDest,
+    )
 
   it('keeps the anchors (address tip, keyboard focus) and their click handling', async () => {
     const onGoToDest = vi.fn()

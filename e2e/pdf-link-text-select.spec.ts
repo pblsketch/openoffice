@@ -124,11 +124,19 @@ test('text under a link selects by drag and the link still opens on a click (she
       await expect.poll(opened).toEqual([URL])
     })
 
+    await test.step('a double-click on the link picks a word and opens it once', async () => {
+      await pdf.mouse.dblclick(inLink.x, inLink.y)
+      await expect.poll(opened).toEqual([URL, URL])
+      expect((await selectedText(pdf)).trim()).toBe('Linked')
+      await pdf.waitForTimeout(300)
+      expect(await opened()).toEqual([URL, URL])
+    })
+
     await test.step('a plain click off the link opens nothing more', async () => {
       const off = await onPage(pdf, 450, 710)
       await pdf.mouse.click(off.x, off.y)
       await pdf.waitForTimeout(300)
-      expect(await opened()).toEqual([URL])
+      expect(await opened()).toEqual([URL, URL])
     })
   } finally {
     await closeAndSaveVideo(launched, 'pdf-link-text-select')
