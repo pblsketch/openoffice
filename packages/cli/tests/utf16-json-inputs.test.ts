@@ -97,4 +97,11 @@ describe('decodeText', () => {
     expect(decodeText(Buffer.from('\ufeff{"a":1}'))).toBe('\ufeff{"a":1}')
     expect(decodeText(new Uint8Array())).toBe('')
   })
+
+  it('rejects a UTF-32 BOM instead of decoding it as UTF-16 or UTF-8', () => {
+    const le = Buffer.from([0xff, 0xfe, 0x00, 0x00, 0x48, 0x00, 0x00, 0x00])
+    const be = Buffer.from([0x00, 0x00, 0xfe, 0xff, 0x00, 0x00, 0x00, 0x48])
+    expect(() => decodeText(le)).toThrow(/UTF-32/)
+    expect(() => decodeText(be)).toThrow(/UTF-32/)
+  })
 })

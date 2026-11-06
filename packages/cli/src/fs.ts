@@ -194,6 +194,16 @@ export function readInput(abs: string): Uint8Array {
  * decoded as UTF-16, anything else as UTF-8. A UTF-8 BOM stays for `stripBom`, as before.
  */
 export function decodeText(bytes: Uint8Array): string {
+  // UTF-32LE shares the UTF-16LE BOM prefix (FF FE 00 00); UTF-32BE is 00 00 FE FF.
+  if (
+    bytes.length >= 4 &&
+    ((bytes[0] === 0 && bytes[1] === 0 && bytes[2] === 0xfe && bytes[3] === 0xff) ||
+      (bytes[0] === 0xff && bytes[1] === 0xfe && bytes[2] === 0 && bytes[3] === 0))
+  ) {
+    throw new Error(
+      'Unsupported text encoding: BOM-declared UTF-32 cannot be decoded (UTF-8 and UTF-16 are supported)',
+    )
+  }
   if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder('utf-16le').decode(bytes)
   if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder('utf-16be').decode(bytes)
   return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('utf-8')
