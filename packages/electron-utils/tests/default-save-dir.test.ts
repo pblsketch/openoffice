@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   configuredDefaultSaveDir,
   defaultSaveDirFallback,
+  documentsDirOrFallback,
   isUsableSaveDir,
   readDefaultSaveDirSetting,
   resolveDefaultSaveDir,
@@ -156,5 +157,56 @@ describe('a blocked Documents folder', () => {
     expect(isUsableSaveDir(existing)).toBe(true)
     expect(isUsableSaveDir(join(root, 'created', 'nested'))).toBe(true)
     expect(existsSync(join(root, 'created', 'nested'))).toBe(true)
+  })
+})
+
+describe('a Documents folder the OS cannot report', () => {
+  // what Electron does on Windows when the Documents known folder is broken
+  const failing = (name: string): never => {
+    throw new Error(`Failed to get '${name}' path`)
+  }
+  const appWithout = (userData: string, home: string, missing: readonly string[]) => ({
+    getPath: (name: 'userData' | 'documents' | 'home') =>
+      missing.includes(name) ? failing(name) : name === 'userData' ? userData : home,
+  })
+
+  it('falls back to <home>/<product name> without reporting a blocked folder', () => {
+    const userData = join(root, 'userData')
+    const home = join(root, 'home')
+    mkdirSync(userData, { recursive: true })
+    expect(configuredDefaultSaveDir(appWithout(userData, home, ['documents']))).toBe(
+      join(home, 'IeumOffice'),
+    )
+    expect(existsSync(join(home, 'IeumOffice'))).toBe(true)
+    expect(defaultSaveDirFallback()).toBeNull()
+  })
+
+  it('still honors a configured folder', () => {
+    const userData = join(root, 'userData')
+    mkdirSync(userData, { recursive: true })
+    const custom = join(root, 'my-files')
+    writeFileSync(join(userData, 'app-settings.json'), JSON.stringify({ defaultSaveDir: custom }))
+    expect(configuredDefaultSaveDir(appWithout(userData, root, ['documents']))).toBe(custom)
+  })
+
+  it('goes on to <userData>/<product name> when home is not reported either', () => {
+    const userData = join(root, 'userData')
+    mkdirSync(userData, { recursive: true })
+    expect(configuredDefaultSaveDir(appWithout(userData, root, ['documents', 'home']))).toBe(
+      join(userData, 'IeumOffice'),
+    )
+  })
+
+  it('dialogs open in home, then userData, instead of failing', () => {
+    const userData = join(root, 'userData')
+    const home = join(root, 'home')
+    const documents = join(root, 'Documents')
+    expect(
+      documentsDirOrFallback({
+        getPath: (name) => (name === 'documents' ? documents : name === 'home' ? home : userData),
+      }),
+    ).toBe(documents)
+    expect(documentsDirOrFallback(appWithout(userData, home, ['documents']))).toBe(home)
+    expect(documentsDirOrFallback(appWithout(userData, home, ['documents', 'home']))).toBe(userData)
   })
 })
