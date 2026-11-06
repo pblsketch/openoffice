@@ -105,6 +105,34 @@ const PDF_HEADER_WINDOW = 1024
 /** The stream an encrypted OOXML package lives in (OLE2 directory names are UTF-16LE). */
 const ENCRYPTED_PACKAGE_STREAM = Buffer.from('EncryptedPackage', 'utf16le')
 
+function markupCharset(bytes: Buffer): string | undefined {
+  // declarations are ASCII; any single-byte reading finds them in the first kilobytes
+  const head = bytes.subarray(0, 4096).toString('latin1')
+  return (
+    /<meta\b[^>]*\bcharset\s*=\s*["']?\s*([a-z0-9_:.+-]+)/i.exec(head)?.[1] ??
+    /<meta\b[^>]*http-equiv\s*=\s*["']?content-type["']?[^>]*\bcontent\s*=\s*["'][^"']*charset\s*=\s*([a-z0-9_:.+-]+)/i.exec(
+      head,
+    )?.[1]
+  )
+}
+
+/** HTML bytes as text: BOM first (same as other text files), then the page's charset declaration. */
+function decodeHtmlBytes(bytes: Buffer): string | null {
+  const bom = decodeTextBytes(bytes)
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) return bom
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) return bom
+  if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) return bom
+  const label = markupCharset(bytes)
+  if (label) {
+    try {
+      return new TextDecoder(label).decode(bytes)
+    } catch {
+      // unknown label: fall through to the ordinary text decoder
+    }
+  }
+  return decodeTextBytes(bytes)
+}
+
 function sniffBinary(bytes: Buffer): BinaryKind {
   if (bytes.length >= 2 && bytes[0] === 0x50 && bytes[1] === 0x4b) return 'zip'
   if (bytes.subarray(0, PDF_HEADER_WINDOW).includes(Buffer.from('%PDF-'))) return 'pdf'
@@ -234,7 +262,8 @@ export async function parseFileToText(
   if (imageMime) return { ok: true, kind: 'image', mime: imageMime }
   try {
     if (TEXT_EXTS.has(ext)) {
-      const text = decodeTextBytes(await readFile(filePath))
+      const bytes = await readFile(filePath)
+      const text = ext === 'html' || ext === 'htm' ? decodeHtmlBytes(bytes) : decodeTextBytes(bytes)
       if (text === null) {
         return {
           ok: false,
