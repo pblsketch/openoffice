@@ -224,25 +224,45 @@ export function cellExtents(cells, axis) {
  * the height of those four lines. `least` is that: the table's size at the least, for a caller
  * that has seen a cell draw taller than its share.
  *
+ * With `range` (a block's { startRow, startCol, endRow, endCol }, grown over the merged cells it
+ * cuts, coveringRange) only the cells inside it are sized, as Hangul's help has it ("셀 블록으로
+ * 설정한 셀들의 너비가 같아집니다"): the same rule within the block, which keeps its outer edges,
+ * and every other cell stays where it is, so the grid splits where the block's lines move.
+ *
  * The cells' new starts and ends ([{ cellIdx, start, end }]) for the engine's setTableCellExtents,
  * [] when nothing changes, null when the cells cannot be placed.
  */
-export function equalExtents(cells, axis, least = 0) {
+export function equalExtents(cells, axis, least = 0, range = null) {
   const extents = cellExtents(cells, axis)
   if (!extents) return null
   const cross = axis === 'col' ? 'row' : 'col'
   const crossStart = (c) => c[cross]
   const crossSpan = (c) => (cross === 'row' ? c.rowSpan : c.colSpan)
-  const lineCount = Math.max(0, ...cells.map((c) => crossStart(c) + crossSpan(c)))
-  const total = Math.max(least, ...extents.map(([, e]) => e))
+  const inside = (c) =>
+    !range ||
+    (c.row >= range.startRow &&
+      c.row + c.rowSpan - 1 <= range.endRow &&
+      c.col >= range.startCol &&
+      c.col + c.colSpan - 1 <= range.endCol)
+  const sized = cells.map((cell, i) => i).filter((i) => inside(cells[i]))
+  if (sized.length === 0) return []
+  const firstLine = range ? (cross === 'row' ? range.startRow : range.startCol) : 0
+  const lineEnd = range
+    ? (cross === 'row' ? range.endRow : range.endCol) + 1
+    : Math.max(0, ...cells.map((c) => crossStart(c) + crossSpan(c)))
+  const origin = Math.min(...sized.map((i) => extents[i][0]))
+  const total = Math.max(origin + least, ...sized.map((i) => extents[i][1]))
   const placed = new Map()
-  for (let line = 0; line < lineCount; line += 1) {
+  for (let line = firstLine; line < lineEnd; line += 1) {
     const members = cells
       .map((cell, i) => ({ cell, i, start: extents[i][0] }))
-      .filter(({ cell }) => line >= crossStart(cell) && line < crossStart(cell) + crossSpan(cell))
+      .filter(
+        ({ cell }) =>
+          inside(cell) && line >= crossStart(cell) && line < crossStart(cell) + crossSpan(cell),
+      )
       .sort((a, b) => a.start - b.start)
     // runs of cells not yet placed, each sharing the room between the placed cells around it
-    let from = 0
+    let from = origin
     let run = []
     const share = (to) => {
       const room = to - from

@@ -278,3 +278,57 @@ describe('table size keys on merged tables, through the engine', () => {
     })
   }
 })
+
+describe('H/W on part of the table, through the engine (issue #299)', () => {
+  const rowBoxes = (doc: HwpDocument, y: number) =>
+    boxesOf(doc)
+      .filter((box) => Math.abs(box.y - y) < 0.6)
+      .sort((a, b) => a.x - b.x)
+
+  it('W on two cells of the top row makes them equal and leaves the rest', () => {
+    const doc = table([])
+    apply(doc, resizeLines(cellsOf(doc), 'col', 0, 0, 1500))
+    const top = rowBoxes(doc, boxesOf(doc)[0].y)
+    const rest = boxesOf(doc).filter((box) => box.row > 0)
+    const range = { startRow: 0, startCol: 0, endRow: 0, endCol: 1 }
+    place(doc, 'col', equalExtents(cellsOf(doc), 'col', 0, range)!)
+    const after = rowBoxes(doc, top[0].y)
+    expect(after[0].w).toBeCloseTo(after[1].w, 0)
+    expect(after[0].w + after[1].w).toBeCloseTo(top[0].w + top[1].w, 0)
+    expect(after[2].x).toBeCloseTo(top[2].x, 0)
+    // the rows below keep their cells where they were
+    const below = boxesOf(doc).filter((box) => box.y > top[0].y + 0.6)
+    expect(below.map((box) => [box.x, box.w].map(Math.round))).toEqual(
+      rest.map((box) => [box.x, box.w].map(Math.round)),
+    )
+  })
+
+  it('W on a block beside a merged cell keeps that cell (merged down the right)', () => {
+    const doc = table([[1, 2, 2, 2]])
+    apply(doc, resizeLines(cellsOf(doc), 'col', 0, 0, 1500))
+    const merged = boxesOf(doc).find((box) => box.row === 1 && box.col === 2)!
+    const range = { startRow: 0, startCol: 0, endRow: 2, endCol: 1 }
+    place(doc, 'col', equalExtents(cellsOf(doc), 'col', 0, range)!)
+    const now = boxesOf(doc).find((box) => box.y === merged.y && box.h === merged.h)!
+    expect([now.x, now.w].map(Math.round)).toEqual([merged.x, merged.w].map(Math.round))
+    for (const box of boxesOf(doc).filter((b) => b.x < merged.x - 0.6)) {
+      expect(box.w).toBeCloseTo(merged.x - boxesOf(doc)[0].x - box.w, 0)
+    }
+  })
+
+  it('H on two cells of the first column shares their height and keeps the rest', () => {
+    const doc = table([])
+    apply(doc, resizeLines(cellsOf(doc), 'row', 0, 0, 1500))
+    const before = gridLines(doc).rows
+    const range = { startRow: 0, startCol: 0, endRow: 1, endCol: 0 }
+    place(doc, 'row', equalExtents(cellsOf(doc), 'row', 0, range)!)
+    const left = boxesOf(doc)
+      .filter((box) => Math.abs(box.x - boxesOf(doc)[0].x) < 0.6)
+      .sort((a, b) => a.y - b.y)
+    expect(left[0].h).toBeCloseTo(left[1].h, 0)
+    expect(left[0].h + left[1].h).toBeCloseTo(before[2] - before[0], 0)
+    // the table keeps its height
+    const rows = gridLines(doc).rows
+    expect(rows[rows.length - 1] - rows[0]).toBeCloseTo(before[3] - before[0], 0)
+  })
+})

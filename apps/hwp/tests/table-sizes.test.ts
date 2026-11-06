@@ -361,6 +361,82 @@ describe('H/W: equal cells in each row (W) or column (H)', () => {
   })
 })
 
+/**
+ * H/W on a block that is part of the table (issue #299): Hangul's help sizes the block's cells
+ * ("셀 블록으로 설정한 셀들의 너비가 같아집니다"), so the same rule runs inside the block, which
+ * keeps its outer edges, and every cell outside it stays.
+ */
+describe('H/W on part of the table: only the cells of the block', () => {
+  const widened = () => {
+    const cells = grid()
+    for (const cell of cells) cell.width = [1000, 2000, 3000][cell.col]
+    return cells
+  }
+
+  it('shares the width of a block among its cells in each row, the rest unchanged', () => {
+    const cells = widened()
+    const range = { startRow: 0, startCol: 0, endRow: 0, endCol: 1 }
+    expect(places(cells, equalExtents(cells, 'col', 0, range)!)).toEqual([
+      '00:0-1500',
+      '01:1500-3000',
+      '02:3000-6000',
+      '10:0-1000',
+      '11:1000-3000',
+      '12:3000-6000',
+      '20:0-1000',
+      '21:1000-3000',
+      '22:3000-6000',
+    ])
+  })
+
+  it('keeps the left edge of a block that does not start at the edge of the table', () => {
+    const cells = widened()
+    const range = { startRow: 0, startCol: 1, endRow: 2, endCol: 2 }
+    const after = places(cells, equalExtents(cells, 'col', 0, range)!)
+    for (const row of [0, 1, 2]) {
+      expect(after).toContain(`${row}0:0-1000`)
+      expect(after).toContain(`${row}1:1000-3500`)
+      expect(after).toContain(`${row}2:3500-6000`)
+    }
+  })
+
+  it('runs the merged-cell rule inside the block (a merge across its top row)', () => {
+    const cells = grid([[0, 0, 1, 2]])
+    for (const cell of cells) {
+      if (cell.colSpan === 2) cell.width = 2000
+      else if (cell.col === 0) cell.width = 600
+      else if (cell.col === 1) cell.width = 1400
+    }
+    const range = { startRow: 0, startCol: 0, endRow: 1, endCol: 1 }
+    const after = places(cells, equalExtents(cells, 'col', 0, range)!)
+    // the merged cell fills its row of the block already; the row under it shares the 2000
+    expect(after).toContain('00:0-2000')
+    expect(after).toContain('10:0-1000')
+    expect(after).toContain('11:1000-2000')
+    // the row outside the block keeps its 600 and 1400
+    expect(after).toContain('20:0-600')
+    expect(after).toContain('21:600-2000')
+  })
+
+  it('shares the height of a block down each of its columns from the drawn heights', () => {
+    const cells = grid([], 282)
+    for (const cell of cells) cell.drawnHeight = [1000, 2000, 1000][cell.row]
+    const range = { startRow: 0, startCol: 0, endRow: 1, endCol: 0 }
+    const after = places(cells, equalExtents(cells, 'row', 0, range)!)
+    expect(after.slice(0, 3)).toEqual(['00:0-1500', '01:0-1000', '02:0-1000'])
+    expect(after.slice(3, 6)).toEqual(['10:1500-3000', '11:1000-3000', '12:1000-3000'])
+    expect(after.slice(6)).toEqual(['20:3000-4000', '21:3000-4000', '22:3000-4000'])
+  })
+
+  it('writes nothing where the cells of the block are already equal', () => {
+    const cells = widened()
+    // one cell in each row: nothing to share
+    expect(
+      equalExtents(cells, 'col', 0, { startRow: 0, startCol: 1, endRow: 2, endCol: 1 }),
+    ).toEqual([])
+  })
+})
+
 /** Shift+Up/Down on one cell, as Hancom Hangul 2024 writes it (2026-10-31). */
 describe('Shift+Up/Down: one cell from the heights the cells draw at', () => {
   const tall = () => {

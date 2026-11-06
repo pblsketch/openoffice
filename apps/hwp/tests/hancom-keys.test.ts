@@ -928,7 +928,14 @@ describe('equal cell sizes (H/W)', () => {
   function table(
     widths: number[][],
     heights: number[][],
-    options: { spans?: boolean; nested?: boolean; range?: Record<string, number> } = {},
+    options: {
+      spans?: boolean
+      nested?: boolean
+      range?: Record<string, number>
+      excluded?: string[]
+      // the least height each cell's text draws at (as a row with text draws taller than it stores)
+      text?: number[][]
+    } = {},
   ) {
     const rows = widths.length
     const cols = widths[0].length
@@ -956,7 +963,7 @@ describe('equal cell sizes (H/W)', () => {
           row: cell.row,
           col: cell.col,
           w: cell.width / 75,
-          h: cell.height / 75,
+          h: Math.max(cell.height, options.text?.[cell.row][cell.col] ?? 0) / 75,
         })),
       resizeTableCells: vi.fn(() => ({ ok: true })),
       resizeTableCell: vi.fn(() => ({ ok: true, moved: true })),
@@ -994,6 +1001,7 @@ describe('equal cell sizes (H/W)', () => {
         }),
         getSelectedCellRange: () =>
           options.range ?? { startRow: 0, startCol: 0, endRow: rows - 1, endCol: cols - 1 },
+        getExcludedCells: () => new Set(options.excluded ?? []),
       },
       getCursorPosition: () => ({
         sectionIndex: 0,
@@ -1084,8 +1092,96 @@ describe('equal cell sizes (H/W)', () => {
     expect(wasm.setTableCellExtents).toHaveBeenCalledTimes(1)
   })
 
-  it('leaves a partial row block alone and says why', () => {
+  it('sizes only the cells of a block on part of the table, as Hangul does (issue #299)', () => {
+    const { services, wasm, ih } = table(
+      [
+        [1000, 2000, 3000],
+        [1000, 2000, 3000],
+      ],
+      [
+        [1500, 1500, 1500],
+        [1500, 1500, 1500],
+      ],
+      { range: { startRow: 0, startCol: 0, endRow: 0, endCol: 1 } },
+    )
+    const showToast = vi.fn()
+    hancomCommands('ko', { showToast })
+    expect(equalizeTableCells(services, 'width', true)).toBe(true)
+    expect(ih.executeOperation).toHaveBeenCalledTimes(1)
+    // the first two cells of the top row share their 3000; the third cell and the row below stay
+    expect(wasm.setTableCellExtents.mock.calls[0].slice(3)).toEqual([
+      false,
+      [
+        { cellIdx: 0, start: 0, end: 1500 },
+        { cellIdx: 1, start: 1500, end: 3000 },
+        { cellIdx: 2, start: 3000, end: 6000 },
+        { cellIdx: 3, start: 0, end: 1000 },
+        { cellIdx: 4, start: 1000, end: 3000 },
+        { cellIdx: 5, start: 3000, end: 6000 },
+      ],
+    ])
+    expect(showToast).not.toHaveBeenCalled()
+  })
+
+  it('sizes the heights of a block on part of the table within its edges', () => {
     const { services, wasm } = table(
+      [
+        [1500, 1500],
+        [1500, 1500],
+        [1500, 1500],
+      ],
+      [
+        [1000, 1000],
+        [2000, 2000],
+        [1000, 1000],
+      ],
+      { range: { startRow: 0, startCol: 0, endRow: 1, endCol: 0 } },
+    )
+    expect(equalizeTableCells(services, 'height', true)).toBe(true)
+    expect(wasm.setTableCellExtents.mock.calls[0].slice(3)).toEqual([
+      true,
+      [
+        { cellIdx: 0, start: 0, end: 1500 },
+        { cellIdx: 1, start: 0, end: 1000 },
+        { cellIdx: 2, start: 1500, end: 3000 },
+        { cellIdx: 3, start: 1000, end: 3000 },
+        { cellIdx: 4, start: 3000, end: 4000 },
+        { cellIdx: 5, start: 3000, end: 4000 },
+      ],
+    ])
+  })
+
+  it('puts a block back whose text does not fit an equal share, and says why', () => {
+    const { services, wasm, ih } = table(
+      [
+        [1500, 1500],
+        [1500, 1500],
+      ],
+      [
+        [3000, 1000],
+        [1000, 1000],
+      ],
+      // A1's text needs its 3000, more than half of the block's 4000
+      {
+        range: { startRow: 0, startCol: 0, endRow: 1, endCol: 0 },
+        text: [
+          [3000, 0],
+          [0, 0],
+        ],
+      },
+    )
+    const showToast = vi.fn()
+    hancomCommands('ko', { showToast })
+    expect(equalizeTableCells(services, 'height', true)).toBe(false)
+    expect(wasm.setTableCellExtents).toHaveBeenCalledTimes(1)
+    expect(ih.executeOperation).toHaveBeenCalledTimes(1)
+    expect(showToast).toHaveBeenCalledWith({
+      message: '칸의 글이 같은 높이에 들어가지 않아 높이를 같게 하지 않았습니다.',
+    })
+  })
+
+  it('writes nothing for a block in one row asked for equal heights', () => {
+    const { services, ih } = table(
       [
         [1500, 1500],
         [1500, 1500],
@@ -1096,9 +1192,50 @@ describe('equal cell sizes (H/W)', () => {
       ],
       { range: { startRow: 1, startCol: 0, endRow: 1, endCol: 1 } },
     )
+    expect(equalizeTableCells(services, 'height', true)).toBe(false)
+    expect(ih.executeOperation).not.toHaveBeenCalled()
+  })
+
+  it('leaves a block that cuts through a merged cell alone and says why', () => {
+    const { services, wasm } = table(
+      [
+        [1000, 3000],
+        [1000, 3000],
+        [1000, 3000],
+      ],
+      [
+        [1000, 1000],
+        [1000, 1000],
+        [1000, 1000],
+      ],
+      // the cell at row 0, column 1 is merged down over row 1
+      { spans: true, range: { startRow: 0, startCol: 0, endRow: 0, endCol: 1 } },
+    )
     const showToast = vi.fn()
     hancomCommands('ko', { showToast })
-    expect(equalizeTableCells(services, 'height')).toBe(false)
+    expect(equalizeTableCells(services, 'width', true)).toBe(false)
+    expect(wasm.setTableCellExtents).not.toHaveBeenCalled()
+    expect(showToast).toHaveBeenCalledWith({
+      message:
+        '합친 칸이 블록 경계에 걸쳐 있어 크기를 같게 하지 않았습니다. 합친 칸을 모두 넣어 골라 주세요.',
+    })
+  })
+
+  it('leaves a block with cells left out alone, as Hangul wants a rectangle', () => {
+    const { services, wasm } = table(
+      [
+        [1000, 3000],
+        [1000, 3000],
+      ],
+      [
+        [1000, 1000],
+        [1000, 1000],
+      ],
+      { excluded: ['1,1'] },
+    )
+    const showToast = vi.fn()
+    hancomCommands('ko', { showToast })
+    expect(equalizeTableCells(services, 'width', true)).toBe(false)
     expect(wasm.setTableCellExtents).not.toHaveBeenCalled()
     expect(showToast).toHaveBeenCalled()
   })
