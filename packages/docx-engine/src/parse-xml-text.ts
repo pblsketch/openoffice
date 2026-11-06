@@ -77,19 +77,44 @@ export function onOffTagIn(xml: string, name: string): boolean | undefined {
 
 export function plainText(xml: string): string {
   const texts: string[] = []
-  // a space at cell boundaries keeps table text from gluing together
-  const re = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<\/w:tc>/g
+  // tab-stop *definitions* live in w:tabs and must not become characters
+  const source = xml.replace(/<w:tabs\b[^>]*>[\s\S]*?<\/w:tabs>/gi, '')
+  // a space at cell boundaries keeps table text from gluing together;
+  // w:tab / w:br / w:cr / w:noBreakHyphen are real characters Word shows
+  const re =
+    /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<\/w:tc>|<w:ptab\b[^>]*\/?>|<w:tab\b[^>]*\/?>|<w:br\b[^>]*\/?>|<w:cr\b[^>]*\/?>|<w:noBreakHyphen\b[^>]*\/?>/g
   let m: RegExpExecArray | null
   let pendingGap = false
-  while ((m = re.exec(xml)) !== null) {
-    if (m[0] === '</w:tc>') {
-      pendingGap = texts.length > 0
-      continue
-    }
+  const flushGap = () => {
     if (pendingGap) {
       texts.push(' ')
       pendingGap = false
     }
+  }
+  while ((m = re.exec(source)) !== null) {
+    if (m[0] === '</w:tc>') {
+      pendingGap = texts.length > 0
+      continue
+    }
+    if (/^<w:br\b/i.test(m[0]) && /w:type="(?:page|column)"/i.test(m[0])) {
+      continue
+    }
+    if (/^<w:(?:tab|ptab)\b/i.test(m[0])) {
+      flushGap()
+      texts.push('\t')
+      continue
+    }
+    if (/^<w:(?:br|cr)\b/i.test(m[0])) {
+      flushGap()
+      texts.push('\n')
+      continue
+    }
+    if (/^<w:noBreakHyphen\b/i.test(m[0])) {
+      flushGap()
+      texts.push('-')
+      continue
+    }
+    flushGap()
     texts.push(m[1])
   }
   return decodeEntities(texts.join(''))
