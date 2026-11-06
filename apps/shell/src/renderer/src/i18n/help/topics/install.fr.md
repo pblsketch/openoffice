@@ -39,8 +39,8 @@ Cette fenêtre comporte aussi un bouton qui signale le fichier comme sûr. Il ou
 Si la fenêtre n’a pas de bouton **Afficher plus** ou **Conserver quand même** :
 
 - Sur un PC géré par un établissement scolaire ou une entreprise, l’administrateur peut interdire d’ignorer ces avertissements (une stratégie Edge). Personne ne peut alors conserver le fichier sur ce PC ; demandez à l’administrateur de l’installer ou de l’autoriser.
-- Sur votre propre PC, le guide de dépannage des téléchargements de Microsoft permet de désactiver un instant Microsoft Defender SmartScreen : tapez `edge://settings/privacy` dans la barre d’adresse, désactivez **Microsoft Defender SmartScreen**, téléchargez de nouveau le fichier, puis réactivez-le aussitôt. Tant qu’il est désactivé, Edge n’avertit pour aucun téléchargement.
 - Télécharger depuis la page Releases dans un autre navigateur vous donne le même fichier.
+- Si aucune des deux solutions ne fonctionne et qu’il s’agit de votre propre PC, le guide de dépannage des téléchargements de Microsoft permet, en dernier recours, de désactiver un instant Microsoft Defender SmartScreen : dans Edge, ouvrez **Paramètres et plus (…) ▸ Paramètres ▸ Confidentialité, recherche et services ▸ Sécurité**, désactivez **Microsoft Defender SmartScreen**, téléchargez de nouveau le fichier, puis réactivez-le aussitôt. Tant qu’il est désactivé, Edge ne vous avertit ni pour les téléchargements ni pour les sites dangereux comme les pages d’hameçonnage.
 
 ### Une fenêtre « Windows a protégé votre ordinateur » apparaît
 
@@ -81,7 +81,7 @@ Si macOS indique que l’application n’est pas prise en charge sur ce Mac, vé
 
 - **AppImage** : rendez-le exécutable (`chmod +x GenOffice-<version>.AppImage`) et lancez le fichier. Il n’y a pas d’étape d’installation.
 - **deb** : installez avec `sudo apt install ./ieumoffice_<version>_amd64.deb`.
-- **rpm** : installez avec `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`.
+- **rpm** : installez avec `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`. Sous openSUSE, utilisez `sudo zypper install ./ieumoffice-<version>.x86_64.rpm`.
 
 Les paquets deb et rpm s’installent dans `/opt/GenOffice` et lient la commande de terminal `/usr/bin/ieumoffice`. Comme sur un Mac, les cartes de connexion IA n’ont pas de bouton d’installation, et lorsqu’une connexion demande un code, vous exécutez vous-même `claude auth login` ou `codex login` dans un terminal.
 

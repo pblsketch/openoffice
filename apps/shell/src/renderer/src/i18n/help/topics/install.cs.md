@@ -39,8 +39,8 @@ V tomto okně je také tlačítko, které soubor nahlásí jako bezpečný. Jen 
 Pokud v okně chybí **Zobrazit více** nebo **Přesto zachovat**:
 
 - Na počítači, který spravuje škola nebo firma, může správce přeskakování těchto varování vypnout (zásada Edge). Pak soubor na tomto počítači nezachová nikdo; požádejte správce, aby aplikaci nainstaloval nebo ji povolil.
-- Na vlastním počítači návod Microsoftu k řešení potíží se stahováním dovoluje Microsoft Defender SmartScreen na chvíli vypnout: zadejte do adresního řádku `edge://settings/privacy`, vypněte **Microsoft Defender SmartScreen**, stáhněte soubor znovu a hned ochranu zase zapněte. Dokud je vypnutá, Edge nevaruje před žádným stahováním.
 - Když soubor stáhnete ze stránky Releases v jiném prohlížeči, získáte stejný soubor.
+- Pokud nepomůže ani jedno a jde o váš vlastní počítač, návod Microsoftu k řešení potíží se stahováním dovoluje jako poslední možnost Microsoft Defender SmartScreen na chvíli vypnout. V Edge otevřete **Nastavení a další (…) ▸ Nastavení ▸ Ochrana osobních údajů, vyhledávání a služby ▸ Zabezpečení**, vypněte **Microsoft Defender SmartScreen**, stáhněte soubor znovu a hned ochranu zase zapněte. Dokud je vypnutá, Edge vás nevaruje ani před stahováním, ani před nebezpečnými weby, jako jsou phishingové stránky.
 
 ### Zobrazí se okno „Systém Windows ochránil váš počítač“
 
@@ -81,7 +81,7 @@ Dále na Macu:
 
 - **AppImage**: nastavte mu právo ke spuštění (`chmod +x GenOffice-<version>.AppImage`) a soubor spusťte. Žádný krok instalace není.
 - **deb**: nainstalujte příkazem `sudo apt install ./ieumoffice_<version>_amd64.deb`.
-- **rpm**: nainstalujte příkazem `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`.
+- **rpm**: nainstalujte příkazem `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`. V openSUSE použijte `sudo zypper install ./ieumoffice-<version>.x86_64.rpm`.
 
 Balíčky deb a rpm se instalují do `/opt/GenOffice` a propojují příkaz terminálu `/usr/bin/ieumoffice`. Stejně jako na Macu nemají karty připojení AI tlačítko instalace, a když přihlášení požádá o kód, spustíte sami v terminálu `claude auth login` nebo `codex login`.
 

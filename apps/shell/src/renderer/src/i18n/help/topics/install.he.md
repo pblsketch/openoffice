@@ -39,8 +39,8 @@
 אם בחלון אין **הצג עוד** או אין **שמור בכל זאת**:
 
 - במחשב שמנוהל בידי בית ספר או חברה, מנהל המערכת יכול לבטל את האפשרות לדלג על האזהרות האלה (מדיניות של Edge). אז אף אחד במחשב הזה לא יכול לשמור את הקובץ; בקשו ממנהל המערכת להתקין את האפליקציה או לאשר אותה.
-- במחשב שלכם, מדריך פתרון הבעיות של Microsoft בהורדות מתיר לכבות את Microsoft Defender SmartScreen לרגע: הקלידו `edge://settings/privacy` בשורת הכתובת, כבו את **Microsoft Defender SmartScreen**, הורידו את הקובץ שוב, ומיד אחר כך הפעילו אותו מחדש. כל עוד הוא כבוי, Edge אינו מזהיר על אף הורדה.
 - הורדה מעמוד ההפצות בדפדפן אחר נותנת לכם את אותו קובץ.
+- אם אף אחת מהדרכים לא עוזרת וזה המחשב שלכם, מדריך פתרון הבעיות של Microsoft בהורדות מתיר, כמוצא אחרון, לכבות את Microsoft Defender SmartScreen לרגע. ב-Edge פתחו את **הגדרות ועוד (…) ▸ הגדרות ▸ פרטיות, חיפוש ושירותים ▸ אבטחה**, כבו את **Microsoft Defender SmartScreen**, הורידו את הקובץ שוב, ומיד אחר כך הפעילו אותו מחדש. כל עוד הוא כבוי, Edge אינו מזהיר אתכם לא על הורדות ולא על אתרים מסוכנים כמו דפי דיוג.
 
 ### מופיע חלון "Windows הגן על המחשב שלך"
 
@@ -81,7 +81,7 @@ xattr -dr com.apple.quarantine /Applications/GenOffice.app
 
 - **AppImage**: הפכו אותו להרצה (`chmod +x GenOffice-<version>.AppImage`) והריצו את הקובץ. אין שלב התקנה.
 - **deb**: התקינו בעזרת `sudo apt install ./ieumoffice_<version>_amd64.deb`.
-- **rpm**: התקינו בעזרת `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`.
+- **rpm**: התקינו בעזרת `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`. ב-openSUSE השתמשו בפקודה `sudo zypper install ./ieumoffice-<version>.x86_64.rpm`.
 
 חבילות deb ו-rpm מותקנות ב-`/opt/GenOffice` ומקשרות את פקודת הטרמינל `/usr/bin/ieumoffice`. כמו ב-Mac, בכרטיסי החיבור ל-AI אין כפתור התקנה, וכשההתחברות מבקשת קוד מריצים בעצמכם `claude auth login` או `codex login` בטרמינל.
 

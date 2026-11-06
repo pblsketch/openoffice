@@ -39,8 +39,8 @@ That window also has a button that reports the file as safe. It only opens Micro
 If the window has no **Show more** or no **Keep anyway**:
 
 - On a PC that a school or company manages, the administrator can switch off skipping these warnings (an Edge policy). Then nobody on that PC can keep the file; ask the administrator to install it or to allow it.
-- On your own PC, Microsoft's download troubleshooting guide allows turning Microsoft Defender SmartScreen off for a moment: type `edge://settings/privacy` into the address bar, turn **Microsoft Defender SmartScreen** off, download the file again, then turn it back on straight away. While it is off, Edge does not warn about any download.
 - Downloading from the Releases page in a different browser gives you the same file.
+- If neither helps and it is your own PC, Microsoft's download troubleshooting guide allows turning Microsoft Defender SmartScreen off for a moment, as a last resort. In Edge open **Settings and more (…) ▸ Settings ▸ Privacy, search, and services ▸ Security**, turn **Microsoft Defender SmartScreen** off, download the file again, then turn it back on straight away. While it is off, Edge warns you neither about downloads nor about dangerous sites such as phishing pages.
 
 ### A "Windows protected your PC" window appears
 
@@ -81,7 +81,7 @@ Also on a Mac:
 
 - **AppImage**: make it executable (`chmod +x GenOffice-<version>.AppImage`) and run the file. There is no install step.
 - **deb**: install with `sudo apt install ./ieumoffice_<version>_amd64.deb`.
-- **rpm**: install with `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`.
+- **rpm**: install with `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`. On openSUSE, use `sudo zypper install ./ieumoffice-<version>.x86_64.rpm`.
 
 The deb and rpm packages install to `/opt/GenOffice` and link the terminal command `/usr/bin/ieumoffice`. As on a Mac, the AI connection cards have no install button, and when a sign-in asks for a code you run `claude auth login` or `codex login` in a terminal yourself.
 

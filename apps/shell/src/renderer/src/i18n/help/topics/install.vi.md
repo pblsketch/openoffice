@@ -39,8 +39,8 @@ Cửa sổ đó còn có một nút để báo cáo tệp là an toàn. Nút nà
 Nếu cửa sổ không có **Show more** hoặc không có **Keep anyway**:
 
 - Trên PC do trường học hoặc công ty quản lý, quản trị viên có thể tắt khả năng bỏ qua các cảnh báo này (một chính sách của Edge). Khi đó không ai trên PC đó giữ được tệp; hãy nhờ quản trị viên cài đặt hoặc cho phép tệp.
-- Trên PC của riêng bạn, hướng dẫn khắc phục sự cố tải xuống của Microsoft cho phép tạm tắt Microsoft Defender SmartScreen: gõ `edge://settings/privacy` vào thanh địa chỉ, tắt **Microsoft Defender SmartScreen**, tải lại tệp, rồi bật lại ngay. Trong lúc nó tắt, Edge không cảnh báo về bất kỳ lượt tải xuống nào.
 - Tải từ trang phát hành bằng một trình duyệt khác cũng cho bạn đúng tệp đó.
+- Nếu cả hai cách đều không được và đây là PC của riêng bạn, hướng dẫn khắc phục sự cố tải xuống của Microsoft cho phép tạm tắt Microsoft Defender SmartScreen như biện pháp cuối cùng. Trong Edge, mở **Cài đặt và hơn thế nữa (…) ▸ Cài đặt ▸ Quyền riêng tư, tìm kiếm và dịch vụ ▸ Bảo mật**, tắt **Microsoft Defender SmartScreen**, tải lại tệp, rồi bật lại ngay. Trong lúc nó tắt, Edge không cảnh báo bạn về lượt tải xuống nào, cũng không cảnh báo về các trang web nguy hiểm như trang lừa đảo.
 
 ### Cửa sổ "Windows đã bảo vệ PC của bạn" xuất hiện
 
@@ -81,7 +81,7 @@ Ngoài ra trên Mac:
 
 - **AppImage**: cho tệp quyền thực thi (`chmod +x GenOffice-<version>.AppImage`) rồi chạy tệp đó. Không có bước cài đặt.
 - **deb**: cài bằng `sudo apt install ./ieumoffice_<version>_amd64.deb`.
-- **rpm**: cài bằng `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`.
+- **rpm**: cài bằng `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`. Trên openSUSE, dùng `sudo zypper install ./ieumoffice-<version>.x86_64.rpm`.
 
 Gói deb và rpm cài vào `/opt/GenOffice` và liên kết lệnh terminal `/usr/bin/ieumoffice`. Giống như trên Mac, các thẻ kết nối AI không có nút cài đặt, và khi việc đăng nhập yêu cầu một mã, bạn tự chạy `claude auth login` hoặc `codex login` trong terminal.
 

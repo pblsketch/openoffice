@@ -39,8 +39,8 @@ GenOffice를 시작 메뉴에 넣고 `.docx`, `.xlsx`, `.pptx`, `.pdf` 등을 �
 창에 **자세히 표시**나 **그래도 계속**이 없으면:
 
 - 학교나 회사가 관리하는 PC에서는 관리자가 이 경고를 건너뛰지 못하게 막아 둘 수 있습니다(Edge 정책). 그러면 그 PC에서는 누구도 파일을 남길 수 없으니, 관리자에게 설치나 허용을 부탁하세요.
-- 내 PC라면, Microsoft의 다운로드 문제 해결 안내대로 Microsoft Defender SmartScreen을 잠깐 끌 수 있습니다. 주소 창에 `edge://settings/privacy`를 입력해 **Microsoft Defender SmartScreen**을 끄고, 파일을 다시 받은 뒤 바로 다시 켭니다. 꺼 둔 동안에는 Edge가 어떤 다운로드에도 경고하지 않습니다.
 - 다른 브라우저로 Releases 페이지에 들어가 받아도 같은 파일입니다.
+- 그래도 안 되고 내 PC라면, 마지막 방법으로 Microsoft의 다운로드 문제 해결 안내대로 Microsoft Defender SmartScreen을 잠깐 끌 수 있습니다. Edge에서 **설정 및 기타(…) ▸ 설정 ▸ 개인 정보, 검색 및 서비스 ▸ 보안**을 열어 **Microsoft Defender SmartScreen**을 끄고, 파일을 다시 받은 뒤 바로 다시 켭니다. 꺼 둔 동안에는 Edge가 다운로드에도, 피싱 같은 위험한 사이트에도 경고하지 않습니다.
 
 ### "Windows의 PC 보호" 창이 뜰 때
 
@@ -55,8 +55,8 @@ Windows 11의 스마트 앱 컨트롤이 켜져 있으면 서명 없는 설치 �
 macOS 12(Monterey) 이상이 필요합니다. Mac판에는 Apple 개발자 서명이 없어서, 처음 열 때 macOS가 "Apple은 악성 코드가 없음을 확인할 수 없습니다"라는 뜻의 경고를 띄우고 열지 않습니다. 처음 한 번만 아래처럼 허용하면 됩니다.
 
 1. dmg를 열고 `GenOffice.app`을 **응용 프로그램** 폴더로 끌어다 놓습니다.
-2. 응용 프로그램 폴더에서 GenOffice를 엽니다. 경고 창이 뜨면 **완료**를 누릅니다.
-3. **시스템 설정 ▸ 개인정보 보호 및 보안**을 열고, 아래쪽에 GenOffice가 차단되었다는 줄 옆의 **그래도 열기**를 누른 뒤 Mac 암호를 넣습니다. 이 단추는 앱을 열려고 한 뒤 1시간쯤 동안 보입니다.
+2. 응용 프로그램 폴더에서 `GenOffice.app`을 엽니다. 경고 창이 뜨면 **완료**를 누릅니다.
+3. **시스템 설정 ▸ 개인정보 보호 및 보안**을 열고, 아래쪽에 앱이 차단되었다는 줄(앱 이름은 영문으로 나옵니다) 옆의 **그래도 열기**를 누른 뒤 Mac 암호를 넣습니다. 이 단추는 앱을 열려고 한 뒤 1시간쯤 동안 보입니다.
 4. 다시 뜨는 창에서 **열기**를 누릅니다. 이후로는 경고 없이 열립니다.
 
 macOS 12에서는 **시스템 환경설정 ▸ 보안 및 개인 정보 보호 ▸ 일반**에 있고, 단추 이름은 **확인 없이 열기**입니다.
@@ -81,7 +81,7 @@ Mac에서 그 밖에 다른 점:
 
 - **AppImage**: 실행 권한을 준 뒤(`chmod +x GenOffice-<version>.AppImage`) 그 파일을 실행합니다. 설치 과정이 없습니다.
 - **deb**: `sudo apt install ./ieumoffice_<version>_amd64.deb`로 설치합니다.
-- **rpm**: `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`로 설치합니다.
+- **rpm**: `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`로 설치합니다. openSUSE에서는 `sudo zypper install ./ieumoffice-<version>.x86_64.rpm`을 씁니다.
 
 deb와 rpm은 `/opt/GenOffice`에 설치되고, 터미널 명령 `/usr/bin/ieumoffice`를 연결합니다. Mac처럼 AI 연결 카드에 설치 단추가 없고, 로그인 중에 코드를 붙여 넣으라고 하면 터미널에서 `claude auth login` 또는 `codex login`을 직접 실행합니다.
 

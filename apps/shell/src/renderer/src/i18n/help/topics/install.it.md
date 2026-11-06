@@ -39,8 +39,8 @@ Quella finestra ha anche un pulsante che segnala il file come sicuro. Apre solta
 Se la finestra non ha **Mostra altro** o non ha **Mantieni comunque**:
 
 - Su un PC gestito da una scuola o da un'azienda, l'amministratore può impedire di ignorare questi avvisi (un criterio di Edge). In quel caso nessuno su quel PC può mantenere il file; chiedi all'amministratore di installarlo o di consentirlo.
-- Sul tuo PC, la guida di Microsoft alla risoluzione dei problemi di download consente di disattivare per un momento Microsoft Defender SmartScreen: digita `edge://settings/privacy` nella barra degli indirizzi, disattiva **Microsoft Defender SmartScreen**, scarica di nuovo il file, poi riattivalo subito. Finché è disattivato, Edge non avvisa per nessun download.
 - Scaricando dalla pagina Releases con un altro browser ottieni lo stesso file.
+- Se nessuna delle due soluzioni funziona e il PC è tuo, la guida di Microsoft alla risoluzione dei problemi di download consente, come ultima risorsa, di disattivare per un momento Microsoft Defender SmartScreen: in Edge apri **Impostazioni e altro (…) ▸ Impostazioni ▸ Privacy, ricerca e servizi ▸ Sicurezza**, disattiva **Microsoft Defender SmartScreen**, scarica di nuovo il file, poi riattivalo subito. Finché è disattivato, Edge non ti avvisa né sui download né sui siti pericolosi come le pagine di phishing.
 
 ### Compare una finestra «PC protetto da Windows»
 
@@ -81,7 +81,7 @@ Sempre su un Mac:
 
 - **AppImage**: rendilo eseguibile (`chmod +x GenOffice-<version>.AppImage`) e avvia il file. Non ci sono passaggi di installazione.
 - **deb**: installa con `sudo apt install ./ieumoffice_<version>_amd64.deb`.
-- **rpm**: installa con `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`.
+- **rpm**: installa con `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`. Su openSUSE usa `sudo zypper install ./ieumoffice-<version>.x86_64.rpm`.
 
 I pacchetti deb e rpm si installano in `/opt/GenOffice` e collegano il comando da terminale `/usr/bin/ieumoffice`. Come su un Mac, le schede di connessione IA non hanno un pulsante di installazione e, quando un accesso chiede un codice, esegui tu stesso `claude auth login` o `codex login` in un terminale.
 

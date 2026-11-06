@@ -39,8 +39,8 @@ Jendela itu juga punya tombol untuk melaporkan berkas sebagai aman. Tombol itu h
 Jika jendela tidak punya **Show more** atau tidak punya **Keep anyway**:
 
 - Di PC yang dikelola sekolah atau perusahaan, administrator dapat mematikan kemampuan melewati peringatan ini (sebuah kebijakan Edge). Maka tidak ada seorang pun di PC itu yang dapat menyimpan berkas; minta administrator untuk memasangnya atau mengizinkannya.
-- Di PC milik Anda sendiri, panduan pemecahan masalah unduhan dari Microsoft memperbolehkan mematikan Microsoft Defender SmartScreen sebentar: ketik `edge://settings/privacy` di bilah alamat, matikan **Microsoft Defender SmartScreen**, unduh berkas lagi, lalu segera nyalakan kembali. Selama dimatikan, Edge tidak memperingatkan unduhan apa pun.
 - Mengunduh dari halaman Rilis dengan peramban lain memberi Anda berkas yang sama.
+- Jika keduanya tidak membantu dan ini PC milik Anda sendiri, panduan pemecahan masalah unduhan dari Microsoft memperbolehkan mematikan Microsoft Defender SmartScreen sebentar sebagai upaya terakhir. Di Edge, buka **Pengaturan dan lainnya (…) ▸ Pengaturan ▸ Privasi, pencarian, dan layanan ▸ Keamanan**, matikan **Microsoft Defender SmartScreen**, unduh berkas lagi, lalu segera nyalakan kembali. Selama dimatikan, Edge tidak memperingatkan Anda tentang unduhan maupun situs berbahaya seperti halaman phishing.
 
 ### Muncul jendela "Windows melindungi PC Anda"
 
@@ -81,7 +81,7 @@ Juga di Mac:
 
 - **AppImage**: jadikan dapat dieksekusi (`chmod +x GenOffice-<version>.AppImage`) lalu jalankan berkasnya. Tidak ada langkah pemasangan.
 - **deb**: pasang dengan `sudo apt install ./ieumoffice_<version>_amd64.deb`.
-- **rpm**: pasang dengan `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`.
+- **rpm**: pasang dengan `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`. Di openSUSE, gunakan `sudo zypper install ./ieumoffice-<version>.x86_64.rpm`.
 
 Paket deb dan rpm dipasang di `/opt/GenOffice` dan menautkan perintah terminal `/usr/bin/ieumoffice`. Seperti di Mac, kartu koneksi AI tidak punya tombol instal, dan saat proses masuk meminta kode, Anda menjalankan sendiri `claude auth login` atau `codex login` di terminal.
 

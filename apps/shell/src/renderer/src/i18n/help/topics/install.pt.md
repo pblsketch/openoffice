@@ -39,8 +39,8 @@ Essa janela também tem um botão que comunica que o ficheiro é seguro. Esse bo
 Se a janela não tiver **Mostrar mais** ou não tiver **Manter mesmo assim**:
 
 - Num PC gerido por uma escola ou empresa, o administrador pode desativar a possibilidade de ignorar estes avisos (uma política do Edge). Nesse caso ninguém nesse PC consegue manter o ficheiro; peça ao administrador que o instale ou que o permita.
-- No seu próprio PC, o guia da Microsoft para resolver problemas de transferências permite desativar o Microsoft Defender SmartScreen por um momento: escreva `edge://settings/privacy` na barra de endereço, desative o **Microsoft Defender SmartScreen**, transfira o ficheiro novamente e volte a ativá-lo de imediato. Enquanto está desativado, o Edge não avisa sobre nenhuma transferência.
 - Transferir a partir da página de lançamentos noutro navegador dá-lhe o mesmo ficheiro.
+- Se nenhuma das opções resultar e o PC for seu, o guia da Microsoft para resolver problemas de transferências permite, como último recurso, desativar o Microsoft Defender SmartScreen por um momento: no Edge, abra **Definições e mais (…) ▸ Definições ▸ Privacidade, pesquisa e serviços ▸ Segurança**, desative o **Microsoft Defender SmartScreen**, transfira o ficheiro novamente e volte a ativá-lo de imediato. Enquanto está desativado, o Edge não o avisa nem sobre transferências nem sobre sites perigosos, como páginas de phishing.
 
 ### Aparece a janela «O Windows protegeu o seu PC»
 
@@ -81,7 +81,7 @@ Ainda num Mac:
 
 - **AppImage**: torne-o executável (`chmod +x GenOffice-<version>.AppImage`) e execute o ficheiro. Não há passo de instalação.
 - **deb**: instale com `sudo apt install ./ieumoffice_<version>_amd64.deb`.
-- **rpm**: instale com `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`.
+- **rpm**: instale com `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`. No openSUSE, use `sudo zypper install ./ieumoffice-<version>.x86_64.rpm`.
 
 Os pacotes deb e rpm instalam-se em `/opt/GenOffice` e ligam o comando de terminal `/usr/bin/ieumoffice`. Tal como num Mac, os cartões de ligação da IA não têm botão de instalação e, quando um início de sessão pede um código, é você que executa `claude auth login` ou `codex login` num terminal.
 

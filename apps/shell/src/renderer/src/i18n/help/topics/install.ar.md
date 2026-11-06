@@ -39,8 +39,8 @@
 إذا لم يكن في النافذة **إظهار المزيد** أو **إبقاء على أي حال**:
 
 - على جهاز تديره مدرسة أو شركة، يستطيع المسؤول تعطيل تخطّي هذه التحذيرات (سياسة في Edge). وعندها لا يستطيع أحد على ذلك الجهاز الإبقاء على الملف؛ فاطلب من المسؤول أن يثبّته أو أن يسمح به.
-- على جهازك الخاص، يسمح دليل Microsoft لاستكشاف مشكلات التنزيل وإصلاحها بإيقاف Microsoft Defender SmartScreen لوقت قصير: اكتب `edge://settings/privacy` في شريط العنوان، وأوقف **Microsoft Defender SmartScreen**، ونزّل الملف مرة أخرى، ثم أعد تشغيله فورًا. وما دام متوقفًا، لا يحذّر Edge من أي تنزيل.
 - تنزيل الملف من صفحة الإصدارات في متصفح آخر يعطيك الملف نفسه.
+- إذا لم ينفع أيّ من ذلك وكان الجهاز جهازك الخاص، يسمح دليل Microsoft لاستكشاف مشكلات التنزيل وإصلاحها، كحلّ أخير، بإيقاف Microsoft Defender SmartScreen لوقت قصير. في Edge افتح **الإعدادات والمزيد (…) ▸ الإعدادات ▸ الخصوصية والبحث والخدمات ▸ الأمان**، وأوقف **Microsoft Defender SmartScreen**، ونزّل الملف مرة أخرى، ثم أعد تشغيله فورًا. وما دام متوقفًا، لا يحذّرك Edge من التنزيلات ولا من المواقع الخطرة مثل صفحات التصيّد الاحتيالي.
 
 ### تظهر نافذة «قام Windows بحماية الكمبيوتر»
 
@@ -81,7 +81,7 @@ xattr -dr com.apple.quarantine /Applications/GenOffice.app
 
 - **AppImage**: اجعله قابلًا للتنفيذ (`chmod +x GenOffice-<version>.AppImage`) وشغّل الملف. لا توجد خطوة تثبيت.
 - **deb**: ثبّته بالأمر `sudo apt install ./ieumoffice_<version>_amd64.deb`.
-- **rpm**: ثبّته بالأمر `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`.
+- **rpm**: ثبّته بالأمر `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`. وعلى openSUSE استخدم `sudo zypper install ./ieumoffice-<version>.x86_64.rpm`.
 
 تُثبَّت حزمتا deb وrpm في `/opt/GenOffice` وتربطان أمر الطرفية `/usr/bin/ieumoffice`. وكما على Mac، ليس في بطاقات اتصال الذكاء الاصطناعي زر تثبيت، وعندما يطلب تسجيل الدخول رمزًا تنفّذ `claude auth login` أو `codex login` في الطرفية بنفسك.
 

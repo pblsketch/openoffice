@@ -39,8 +39,8 @@ Microsoft Defender SmartScreen は、ダウンロードした人がまだ少な�
 ウィンドウに **詳細表示** や **保持する** がないとき:
 
 - 学校や会社が管理している PC では、管理者がこの警告を無視できないように設定できます（Edge のポリシー）。その場合、その PC ではだれもファイルを残せません。管理者にインストールか許可を頼んでください。
-- 自分の PC なら、Microsoft のダウンロードのトラブルシューティングの案内で、Microsoft Defender SmartScreen を一時的にオフにする方法が示されています。アドレス バーに `edge://settings/privacy` と入力して **Microsoft Defender SmartScreen** をオフにし、ファイルをもう一度ダウンロードしたら、すぐにオンに戻します。オフの間は、Edge はどのダウンロードについても警告しません。
 - 別のブラウザーで Releases ページからダウンロードしても、同じファイルが手に入ります。
+- どちらでも解決せず、自分の PC である場合は、最後の手段として、Microsoft のダウンロードのトラブルシューティングの案内に示されているとおり、Microsoft Defender SmartScreen を一時的にオフにできます。Edge で **設定など (…) ▸ 設定 ▸ プライバシー、検索、サービス ▸ セキュリティ** を開いて **Microsoft Defender SmartScreen** をオフにし、ファイルをもう一度ダウンロードしたら、すぐにオンに戻します。オフの間は、Edge はダウンロードについても、フィッシング ページなどの危険なサイトについても警告しません。
 
 ### 「Windows によって PC が保護されました」というウィンドウが表示される
 
@@ -81,7 +81,7 @@ Mac ではほかにも次の点に注意してください。
 
 - **AppImage**：実行権限を付け（`chmod +x GenOffice-<version>.AppImage`）、そのファイルを実行します。インストールの手順はありません。
 - **deb**：`sudo apt install ./ieumoffice_<version>_amd64.deb` でインストールします。
-- **rpm**：`sudo dnf install ./ieumoffice-<version>.x86_64.rpm` でインストールします。
+- **rpm**：`sudo dnf install ./ieumoffice-<version>.x86_64.rpm` でインストールします。openSUSE では `sudo zypper install ./ieumoffice-<version>.x86_64.rpm` を使います。
 
 deb と rpm は `/opt/GenOffice` にインストールされ、ターミナル用のコマンド `/usr/bin/ieumoffice` がリンクされます。Mac と同じく、AI 接続のカードにはインストールボタンがありません。サインインでコードを求められたら、ターミナルで `claude auth login` または `codex login` をご自身で実行します。
 

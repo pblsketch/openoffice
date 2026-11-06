@@ -39,8 +39,8 @@ Tetingkap itu juga mempunyai butang yang melaporkan fail itu sebagai selamat. Bu
 Jika tetingkap itu tiada **Show more** atau tiada **Keep anyway**:
 
 - Pada PC yang diurus oleh sekolah atau syarikat, pentadbir boleh mematikan pilihan untuk melangkau amaran ini (dasar Edge). Jika begitu, tiada sesiapa pada PC itu boleh mengekalkan fail; minta pentadbir memasangnya atau membenarkannya.
-- Pada PC anda sendiri, panduan penyelesaian masalah muat turun Microsoft membenarkan Microsoft Defender SmartScreen dimatikan seketika: taip `edge://settings/privacy` dalam bar alamat, matikan **Microsoft Defender SmartScreen**, muat turun fail itu semula, kemudian hidupkannya semula dengan segera. Semasa ia dimatikan, Edge tidak memberi amaran tentang sebarang muat turun.
 - Memuat turun dari halaman Keluaran dalam pelayar lain memberi anda fail yang sama.
+- Jika kedua-duanya tidak membantu dan ini PC anda sendiri, panduan penyelesaian masalah muat turun Microsoft membenarkan Microsoft Defender SmartScreen dimatikan seketika sebagai jalan terakhir. Dalam Edge, buka **Seting dan banyak lagi (…) ▸ Seting ▸ Privasi, carian dan perkhidmatan ▸ Keselamatan**, matikan **Microsoft Defender SmartScreen**, muat turun fail itu semula, kemudian hidupkannya semula dengan segera. Semasa ia dimatikan, Edge tidak memberi amaran kepada anda tentang muat turun mahupun tapak berbahaya seperti halaman pancingan data.
 
 ### Tetingkap "Windows protected your PC" muncul
 
@@ -81,7 +81,7 @@ Juga pada Mac:
 
 - **AppImage**: jadikan ia boleh laku (`chmod +x GenOffice-<version>.AppImage`) dan jalankan failnya. Tiada langkah pemasangan.
 - **deb**: pasang dengan `sudo apt install ./ieumoffice_<version>_amd64.deb`.
-- **rpm**: pasang dengan `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`.
+- **rpm**: pasang dengan `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`. Pada openSUSE, gunakan `sudo zypper install ./ieumoffice-<version>.x86_64.rpm`.
 
 Pakej deb dan rpm dipasang ke `/opt/GenOffice` dan memaut perintah terminal `/usr/bin/ieumoffice`. Seperti pada Mac, kad sambungan AI tiada butang pasang, dan apabila log masuk meminta kod, anda menjalankan sendiri `claude auth login` atau `codex login` dalam terminal.
 

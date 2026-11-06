@@ -39,8 +39,8 @@ Microsoft Defender SmartScreen จะเตือนแบบนี้กับ�
 หากหน้าต่างไม่มี **Show more** หรือไม่มี **Keep anyway**:
 
 - บนพีซีที่โรงเรียนหรือบริษัทดูแล ผู้ดูแลระบบสามารถปิดไม่ให้ข้ามคำเตือนเหล่านี้ได้ (นโยบายของ Edge) เมื่อเป็นเช่นนั้น จะไม่มีใครบนพีซีเครื่องนั้นเก็บไฟล์ไว้ได้ ให้ขอผู้ดูแลระบบติดตั้งให้หรืออนุญาตไฟล์นั้น
-- บนพีซีของคุณเอง คู่มือแก้ปัญหาการดาวน์โหลดของ Microsoft อนุญาตให้ปิด Microsoft Defender SmartScreen ชั่วคราว: พิมพ์ `edge://settings/privacy` ในแถบที่อยู่ ปิด **Microsoft Defender SmartScreen** ดาวน์โหลดไฟล์อีกครั้ง แล้วเปิดกลับทันที ระหว่างที่ปิดอยู่ Edge จะไม่เตือนการดาวน์โหลดใด ๆ เลย
 - การดาวน์โหลดจากหน้าเผยแพร่ด้วยเบราว์เซอร์อื่นจะได้ไฟล์เดียวกัน
+- ถ้าทั้งสองวิธีไม่ได้ผลและเป็นพีซีของคุณเอง คู่มือแก้ปัญหาการดาวน์โหลดของ Microsoft อนุญาตให้ปิด Microsoft Defender SmartScreen ชั่วคราวเป็นทางเลือกสุดท้าย ใน Edge ให้เปิด **การตั้งค่าและอื่นๆ (…) ▸ การตั้งค่า ▸ ความเป็นส่วนตัว การค้นหา และบริการ ▸ ความปลอดภัย** ปิด **Microsoft Defender SmartScreen** ดาวน์โหลดไฟล์อีกครั้ง แล้วเปิดกลับทันที ระหว่างที่ปิดอยู่ Edge จะไม่เตือนทั้งเรื่องการดาวน์โหลดและเว็บไซต์อันตราย เช่น หน้าฟิชชิง
 
 ### หน้าต่าง "Windows ปกป้องพีซีของคุณ" ปรากฏขึ้น
 
@@ -81,7 +81,7 @@ xattr -dr com.apple.quarantine /Applications/GenOffice.app
 
 - **AppImage**: ทำให้ไฟล์รันได้ (`chmod +x GenOffice-<version>.AppImage`) แล้วรันไฟล์นั้น ไม่มีขั้นตอนติดตั้ง
 - **deb**: ติดตั้งด้วย `sudo apt install ./ieumoffice_<version>_amd64.deb`
-- **rpm**: ติดตั้งด้วย `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`
+- **rpm**: ติดตั้งด้วย `sudo dnf install ./ieumoffice-<version>.x86_64.rpm` บน openSUSE ให้ใช้ `sudo zypper install ./ieumoffice-<version>.x86_64.rpm`
 
 แพ็กเกจ deb และ rpm ติดตั้งไว้ที่ `/opt/GenOffice` และลิงก์คำสั่งเทอร์มินัล `/usr/bin/ieumoffice` เช่นเดียวกับบน Mac การ์ดการเชื่อมต่อ AI ไม่มีปุ่มติดตั้ง และเมื่อการลงชื่อเข้าใช้ขอรหัส ให้รัน `claude auth login` หรือ `codex login` ในเทอร์มินัลด้วยตัวเอง
 

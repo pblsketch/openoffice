@@ -39,8 +39,8 @@ Dieses Fenster hat außerdem eine Schaltfläche, mit der Sie die Datei als siche
 Fehlt im Fenster **Mehr anzeigen** oder **Trotzdem beibehalten**:
 
 - Auf einem PC, den eine Schule oder Firma verwaltet, kann der Administrator das Übergehen dieser Warnungen abschalten (eine Edge-Richtlinie). Dann kann niemand auf diesem PC die Datei behalten; bitten Sie den Administrator, sie zu installieren oder freizugeben.
-- Auf Ihrem eigenen PC erlaubt die Microsoft-Anleitung zur Behebung von Downloadproblemen, Microsoft Defender SmartScreen kurz auszuschalten: Geben Sie `edge://settings/privacy` in die Adressleiste ein, schalten Sie **Microsoft Defender SmartScreen** aus, laden Sie die Datei erneut herunter und schalten Sie es sofort wieder ein. Solange es aus ist, warnt Edge bei keinem Download.
 - Wenn Sie die Datei in einem anderen Browser von der Releases-Seite herunterladen, erhalten Sie dieselbe Datei.
+- Hilft beides nicht und ist es Ihr eigener PC, erlaubt die Microsoft-Anleitung zur Behebung von Downloadproblemen als letzten Ausweg, Microsoft Defender SmartScreen kurz auszuschalten: Öffnen Sie in Edge **Einstellungen und mehr (…) ▸ Einstellungen ▸ Datenschutz, Suche und Dienste ▸ Sicherheit**, schalten Sie **Microsoft Defender SmartScreen** aus, laden Sie die Datei erneut herunter und schalten Sie es sofort wieder ein. Solange es aus ist, warnt Edge weder bei Downloads noch vor gefährlichen Websites wie Phishing-Seiten.
 
 ### Ein Fenster „Der Computer wurde durch Windows geschützt“ erscheint
 
@@ -81,7 +81,7 @@ Außerdem auf dem Mac:
 
 - **AppImage**: Machen Sie die Datei ausführbar (`chmod +x GenOffice-<version>.AppImage`) und starten Sie sie. Es gibt keinen Installationsschritt.
 - **deb**: Installieren Sie mit `sudo apt install ./ieumoffice_<version>_amd64.deb`.
-- **rpm**: Installieren Sie mit `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`.
+- **rpm**: Installieren Sie mit `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`. Unter openSUSE verwenden Sie `sudo zypper install ./ieumoffice-<version>.x86_64.rpm`.
 
 Die Pakete deb und rpm werden nach `/opt/GenOffice` installiert und verknüpfen den Terminal-Befehl `/usr/bin/ieumoffice`. Wie auf dem Mac haben die KI-Verbindungskarten keine Installationsschaltfläche, und wenn eine Anmeldung nach einem Code fragt, führen Sie `claude auth login` oder `codex login` selbst in einem Terminal aus.
 

@@ -39,8 +39,8 @@ Microsoft Defender SmartScreen 遇到很少有人下载过的文件时，会这�
 如果窗口中没有**显示更多**或**仍然保留**：
 
 - 在学校或公司管理的电脑上，管理员可以禁止跳过这些警告（一项 Edge 策略）。这时这台电脑上谁都无法保留该文件；请让管理员替你安装或放行。
-- 在你自己的电脑上，Microsoft 的下载疑难解答指南允许暂时关闭 Microsoft Defender SmartScreen：在地址栏输入 `edge://settings/privacy`，关闭 **Microsoft Defender SmartScreen**，重新下载文件，然后立即重新打开它。关闭期间，Edge 对任何下载都不会发出警告。
 - 用另一个浏览器从 Releases 页面下载，得到的也是同一个文件。
+- 如果这两种办法都不行，而且这是你自己的电脑，作为最后的办法，Microsoft 的下载疑难解答指南允许暂时关闭 Microsoft Defender SmartScreen：在 Edge 中打开 **设置及其他 (…) ▸ 设置 ▸ 隐私、搜索和服务 ▸ 安全性**，关闭 **Microsoft Defender SmartScreen**，重新下载文件，然后立即重新打开它。关闭期间，Edge 既不会对下载发出警告，也不会对钓鱼网页等危险网站发出警告。
 
 ### 出现“Windows 已保护你的电脑”窗口
 
@@ -81,7 +81,7 @@ xattr -dr com.apple.quarantine /Applications/GenOffice.app
 
 - **AppImage**：给它加上可执行权限（`chmod +x GenOffice-<version>.AppImage`），然后运行该文件。没有安装步骤。
 - **deb**：用 `sudo apt install ./ieumoffice_<version>_amd64.deb` 安装。
-- **rpm**：用 `sudo dnf install ./ieumoffice-<version>.x86_64.rpm` 安装。
+- **rpm**：用 `sudo dnf install ./ieumoffice-<version>.x86_64.rpm` 安装。在 openSUSE 上，用 `sudo zypper install ./ieumoffice-<version>.x86_64.rpm` 安装。
 
 deb 和 rpm 会安装到 `/opt/GenOffice`，并链接终端命令 `/usr/bin/ieumoffice`。与 Mac 一样，AI 连接卡片上没有安装按钮；登录要求输入代码时，请自己在终端中运行 `claude auth login` 或 `codex login`。
 

@@ -39,8 +39,8 @@ Dat venster heeft ook een knop die het bestand als veilig meldt. Die opent allee
 Heeft het venster geen **Meer weergeven** of geen **Toch behouden**:
 
 - Op een pc die door een school of bedrijf wordt beheerd, kan de beheerder het overslaan van deze waarschuwingen uitschakelen (een Edge-beleid). Dan kan niemand op die pc het bestand behouden; vraag de beheerder het te installeren of toe te staan.
-- Op je eigen pc staat de handleiding van Microsoft voor downloadproblemen toe Microsoft Defender SmartScreen even uit te zetten: typ `edge://settings/privacy` in de adresbalk, zet **Microsoft Defender SmartScreen** uit, download het bestand opnieuw en zet het meteen weer aan. Zolang het uit staat, waarschuwt Edge bij geen enkele download.
 - Download je van de Releases-pagina in een andere browser, dan krijg je hetzelfde bestand.
+- Helpt geen van beide en is het je eigen pc, dan staat de handleiding van Microsoft voor downloadproblemen als laatste redmiddel toe Microsoft Defender SmartScreen even uit te zetten: open in Edge **Instellingen en meer (…) ▸ Instellingen ▸ Privacy, zoeken en services ▸ Beveiliging**, zet **Microsoft Defender SmartScreen** uit, download het bestand opnieuw en zet het meteen weer aan. Zolang het uit staat, waarschuwt Edge je niet bij downloads en ook niet voor gevaarlijke sites zoals phishingpagina's.
 
 ### Er verschijnt een venster "Uw pc wordt beschermd"
 
@@ -81,7 +81,7 @@ Verder op een Mac:
 
 - **AppImage**: maak het uitvoerbaar (`chmod +x GenOffice-<version>.AppImage`) en voer het bestand uit. Er is geen installatiestap.
 - **deb**: installeer met `sudo apt install ./ieumoffice_<version>_amd64.deb`.
-- **rpm**: installeer met `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`.
+- **rpm**: installeer met `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`. Gebruik op openSUSE `sudo zypper install ./ieumoffice-<version>.x86_64.rpm`.
 
 De deb- en rpm-pakketten installeren naar `/opt/GenOffice` en koppelen het terminalcommando `/usr/bin/ieumoffice`. Net als op een Mac hebben de AI-verbindingskaarten geen installatieknop, en als inloggen om een code vraagt, voer je zelf `claude auth login` of `codex login` uit in een terminal.
 

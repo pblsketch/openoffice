@@ -39,8 +39,8 @@ To okno ma też przycisk zgłaszający plik jako bezpieczny. Otwiera on tylko st
 Jeśli w oknie nie ma przycisku **Pokaż więcej** albo **Zachowaj mimo to**:
 
 - Na komputerze zarządzanym przez szkołę lub firmę administrator może wyłączyć pomijanie tych ostrzeżeń (zasada Edge). Wtedy nikt na tym komputerze nie może zachować pliku; poproś administratora, aby go zainstalował lub na niego zezwolił.
-- Na własnym komputerze przewodnik Microsoftu dotyczący rozwiązywania problemów z pobieraniem pozwala na chwilę wyłączyć Microsoft Defender SmartScreen: wpisz `edge://settings/privacy` w pasku adresu, wyłącz **Microsoft Defender SmartScreen**, pobierz plik ponownie, a potem od razu włącz tę funkcję z powrotem. Gdy jest wyłączona, Edge nie ostrzega przed żadnym pobieraniem.
 - Pobranie ze strony Releases w innej przeglądarce daje ten sam plik.
+- Jeśli żadna z tych metod nie pomoże, a to Twój własny komputer, przewodnik Microsoftu dotyczący rozwiązywania problemów z pobieraniem pozwala w ostateczności na chwilę wyłączyć Microsoft Defender SmartScreen: w Edge otwórz **Ustawienia i nie tylko (…) ▸ Ustawienia ▸ Prywatność, wyszukiwanie i usługi ▸ Zabezpieczenia**, wyłącz **Microsoft Defender SmartScreen**, pobierz plik ponownie, a potem od razu włącz tę funkcję z powrotem. Gdy jest wyłączona, Edge nie ostrzega ani przed pobieranymi plikami, ani przed niebezpiecznymi witrynami, takimi jak strony phishingowe.
 
 ### Pojawia się okno „System Windows ochronił ten komputer”
 
@@ -81,7 +81,7 @@ Ponadto na Macu:
 
 - **AppImage**: nadaj mu uprawnienia do uruchamiania (`chmod +x GenOffice-<version>.AppImage`) i uruchom plik. Nie ma kroku instalacji.
 - **deb**: zainstaluj poleceniem `sudo apt install ./ieumoffice_<version>_amd64.deb`.
-- **rpm**: zainstaluj poleceniem `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`.
+- **rpm**: zainstaluj poleceniem `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`. W systemie openSUSE użyj polecenia `sudo zypper install ./ieumoffice-<version>.x86_64.rpm`.
 
 Pakiety deb i rpm instalują się w `/opt/GenOffice` i dołączają polecenie terminala `/usr/bin/ieumoffice`. Podobnie jak na Macu, karty połączenia z AI nie mają przycisku instalacji, a gdy logowanie prosi o kod, samodzielnie uruchamiasz w terminalu `claude auth login` lub `codex login`.
 
