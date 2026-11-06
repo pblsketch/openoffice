@@ -520,6 +520,33 @@ describe('locateSubscriptionProgram elsewhere', () => {
     },
   )
 
+  it('keeps the npm launcher for the older vendor layout, which also puts its rg on PATH', async () => {
+    for (const [platform, triple] of [
+      ['linux', 'x86_64-unknown-linux-musl'],
+      ['darwin', 'x86_64-apple-darwin'],
+    ] as const) {
+      const packageRoot = join(root, platform, 'lib', 'node_modules', '@openai', 'codex')
+      const entry = await touch(join(packageRoot, 'bin', 'codex.js'), '#!/usr/bin/env node\n')
+      const vendor = join(packageRoot, 'vendor', triple)
+      await touch(join(vendor, 'codex', 'codex'))
+      const options = {
+        env: { HOME: root, PATH: '' },
+        platform,
+        arch: 'x64',
+        commonDirs: [],
+        applicationDirs: [],
+        configuredPath: entry,
+      }
+      const older = await locateSubscriptionProgram('codex', options)
+      expect(older).toMatchObject({ command: entry, prefixArgs: [], env: {} })
+      // the current layout is still started directly
+      const current = await touch(join(vendor, 'bin', 'codex'))
+      const newer = await locateSubscriptionProgram('codex', options)
+      expect(newer).toMatchObject({ command: current, prefixArgs: [] })
+      expect(newer!.env.CODEX_MANAGED_BY_NPM).toBe('1')
+    }
+  })
+
   it('finds nothing when the home directory has no install', async () => {
     const program = await locateSubscriptionProgram('claude-code', {
       env: { HOME: root, PATH: join(root, 'empty') },

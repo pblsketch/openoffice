@@ -300,10 +300,14 @@ function codexTargetTriple(platform: NodeJS.Platform, arch: string): string | nu
 /**
  * Where a vendor tree keeps the binary, under `vendor/<triple>/`: `bin/` from
  * 0.133, `codex/` up to 0.137 (the launchers of 0.133 to 0.137 try both, in this
- * order). Missing the older one sent the lookup to the JS launcher, which starts
- * the binary without hiding its console, so every status check opened a window.
+ * order). On Windows the older one is started directly too: through the JS
+ * launcher, which starts the binary without hiding its console, every status
+ * check opened a window. Elsewhere the launcher stays in between for that
+ * layout, since it also puts the bundled `vendor/<triple>/path` (rg) on PATH.
  */
-const CODEX_VENDOR_BIN_DIRS = ['bin', 'codex'] as const
+function codexVendorBinDirs(platform: NodeJS.Platform): readonly string[] {
+  return platform === 'win32' ? ['bin', 'codex'] : ['bin']
+}
 
 /**
  * `@openai/codex/bin/codex.js` only picks the platform package's native binary
@@ -335,7 +339,7 @@ async function codexNativeBehindEntry(
     join(packageRoot, 'vendor'),
   ]
   for (const vendorRoot of vendorRoots) {
-    for (const binDir of CODEX_VENDOR_BIN_DIRS) {
+    for (const binDir of codexVendorBinDirs(context.platform)) {
       const candidate = join(vendorRoot, triple, binDir, executable)
       if (await fileExists(candidate)) {
         return native(context, candidate, source, {
