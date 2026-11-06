@@ -106,8 +106,12 @@ async function zipText(zip: JSZip, path: string): Promise<string | undefined> {
 
 const NOTES_SLIDE_REL =
   'http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide'
-const COMMENTS_REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments'
-const COMMENT_AUTHORS_PATH = 'ppt/commentAuthors.xml'
+const COMMENT_AUTHOR_PATHS = ['ppt/commentAuthors.xml', 'ppt/authors.xml']
+
+/** 2006 (`.../relationships/comments`) and Office 365 (`.../2018/10/relationships/comments`). */
+function isCommentsRelationship(type: string): boolean {
+  return /\/comments$/i.test(type)
+}
 
 /** the .rels part that belongs to a package part */
 function relsPathFor(partPath: string): string {
@@ -162,7 +166,11 @@ const commentParser = new XMLParser({
   trimValues: false,
   parseTagValue: false,
   removeNSPrefix: true,
-  isArray: (_name, jPath) => jPath === 'cmLst.cm' || jPath === 'cmAuthorLst.cmAuthor',
+  isArray: (_name, jPath) =>
+    jPath === 'cmLst.cm' ||
+    jPath === 'cmLst.cm.replyLst.reply' ||
+    jPath === 'cmAuthorLst.cmAuthor' ||
+    jPath === 'authorLst.author',
 })
 
 /**
@@ -185,23 +193,122 @@ interface SlideCommentLine {
   text: string
 }
 
-/** author table shared by every comments part; a missing table leaves ids unresolved */
-async function commentAuthors(zip: JSZip): Promise<Map<number, string>> {
-  const authors = new Map<number, string>()
-  let xml: string | undefined
-  try {
-    xml = await zipText(zip, COMMENT_AUTHORS_PATH)
-  } catch {
-    return authors
+function commentRunText(node: unknown): string {
+  if (node == null) return ''
+  if (typeof node === 'string' || typeof node === 'number') return String(node)
+  if (typeof node === 'object' && typeof (node as { '#text'?: unknown })['#text'] === 'string') {
+    return (node as { '#text': string })['#text']
   }
-  const doc = parseCommentPart(xml) as { cmAuthorLst?: { cmAuthor?: unknown } } | undefined
-  for (const entry of asArray(doc?.cmAuthorLst?.cmAuthor)) {
-    if (entry === null || typeof entry !== 'object') continue
-    const node = entry as Record<string, unknown>
-    const id = Number(node['@_id'])
-    if (!Number.isFinite(id)) continue
-    const name = node['@_name']
-    if (typeof name === 'string') authors.set(id, name)
+  return ''
+}
+
+function collectGroupedRuns(node: unknown, texts: string[]): void {
+  if (node == null) return
+  if (Array.isArray(node)) {
+    for (const item of node) collectGroupedRuns(item, texts)
+    return
+  }
+  if (typeof node !== 'object') return
+  const rec = node as Record<string, unknown>
+  if ('t' in rec) {
+    for (const item of asArray(rec.t)) texts.push(commentRunText(item))
+  }
+  if ('br' in rec) texts.push('\n')
+  if ('tab' in rec) texts.push('\t')
+  for (const [key, value] of Object.entries(rec)) {
+    if (key === 't' || key === 'br' || key === 'tab' || key.startsWith('@_') || key === '#text')
+      continue
+    collectGroupedRuns(value, texts)
+  }
+}
+
+function collectGroupedParagraphs(node: unknown, paras: string[]): void {
+  if (node == null || typeof node !== 'object') return
+  if (Array.isArray(node)) {
+    for (const item of node) collectGroupedParagraphs(item, paras)
+    return
+  }
+  const rec = node as Record<string, unknown>
+  if ('p' in rec) {
+    for (const paragraph of asArray(rec.p)) {
+      const texts: string[] = []
+      collectGroupedRuns(paragraph, texts)
+      const line = texts.join('')
+      if (line.trim()) paras.push(line)
+    }
+  }
+  for (const [key, value] of Object.entries(rec)) {
+    if (key === 'p' || key.startsWith('@_')) continue
+    collectGroupedParagraphs(value, paras)
+  }
+}
+
+function commentBodyText(node: Record<string, unknown>): string {
+  const rawText = node['text']
+  if (typeof rawText === 'string') return rawText
+  if (
+    rawText &&
+    typeof rawText === 'object' &&
+    typeof (rawText as { '#text'?: unknown })['#text'] === 'string'
+  ) {
+    return (rawText as { '#text': string })['#text']
+  }
+  if (node.txBody !== undefined) {
+    const paras: string[] = []
+    collectGroupedParagraphs(node.txBody, paras)
+    return paras.join('\n')
+  }
+  return ''
+}
+
+function commentTimestamp(node: Record<string, unknown>): string {
+  if (typeof node['@_dt'] === 'string' && node['@_dt']) return node['@_dt']
+  if (typeof node['@_created'] === 'string') return node['@_created']
+  return ''
+}
+
+function pushComment(out: SlideCommentLine[], entry: unknown, authors: Map<string, string>): void {
+  if (entry === null || typeof entry !== 'object') return
+  const node = entry as Record<string, unknown>
+  const authorId = node['@_authorId'] === undefined ? '' : String(node['@_authorId'])
+  const known = authorId ? authors.get(authorId) : undefined
+  out.push({
+    author: known && known.trim() ? known : 'Unknown author',
+    dt: commentTimestamp(node),
+    text: commentBodyText(node),
+  })
+}
+
+function addAuthors(authors: Map<string, string>, doc: unknown): void {
+  if (doc === null || typeof doc !== 'object') return
+  const rec = doc as Record<string, unknown>
+  for (const list of [rec.cmAuthorLst, rec.authorLst]) {
+    if (list === null || typeof list !== 'object') continue
+    const entries =
+      (list as Record<string, unknown>).cmAuthor ?? (list as Record<string, unknown>).author
+    for (const entry of asArray(entries)) {
+      if (entry === null || typeof entry !== 'object') continue
+      const node = entry as Record<string, unknown>
+      const id = node['@_id']
+      const name = node['@_name']
+      if (id === undefined || id === null || typeof name !== 'string') continue
+      const key = String(id)
+      if (key && name.trim()) authors.set(key, name)
+    }
+  }
+}
+
+/** author table shared by every comments part; a missing table leaves ids unresolved */
+async function commentAuthors(zip: JSZip): Promise<Map<string, string>> {
+  const authors = new Map<string, string>()
+  for (const path of COMMENT_AUTHOR_PATHS) {
+    let xml: string | undefined
+    try {
+      xml = await zipText(zip, path)
+    } catch {
+      continue
+    }
+    addAuthors(authors, parseCommentPart(xml))
   }
   return authors
 }
@@ -214,7 +321,7 @@ async function commentsXmlForSlide(zip: JSZip, slidePath: string): Promise<strin
       Relationships?: { Relationship?: Record<string, string> | Record<string, string>[] }
     }
     for (const rel of asArray(doc.Relationships?.Relationship)) {
-      if (String(rel['@_Type'] ?? '') !== COMMENTS_REL) continue
+      if (!isCommentsRelationship(String(rel['@_Type'] ?? ''))) continue
       if (String(rel['@_TargetMode'] ?? '').toLowerCase() === 'external') continue
       const target = String(rel['@_Target'] ?? '')
       return target ? await zipText(zip, resolveTarget(slidePath, target)) : undefined
@@ -228,31 +335,19 @@ async function commentsXmlForSlide(zip: JSZip, slidePath: string): Promise<strin
 async function slideCommentsForSlide(
   zip: JSZip,
   slidePath: string,
-  authors: Map<number, string>,
+  authors: Map<string, string>,
 ): Promise<SlideCommentLine[]> {
   const doc = parseCommentPart(await commentsXmlForSlide(zip, slidePath)) as
     { cmLst?: { cm?: unknown } } | undefined
   const out: SlideCommentLine[] = []
   for (const entry of asArray(doc?.cmLst?.cm)) {
+    pushComment(out, entry, authors)
     if (entry === null || typeof entry !== 'object') continue
-    const node = entry as Record<string, unknown>
-    const authorId = Number(node['@_authorId'])
-    const known = Number.isFinite(authorId) ? authors.get(authorId) : undefined
-    const rawText = node['text']
-    // fast-xml-parser returns { '#text': … } when the element carries attributes (e.g. xml:space)
-    const text =
-      typeof rawText === 'string'
-        ? rawText
-        : rawText &&
-            typeof rawText === 'object' &&
-            typeof (rawText as { '#text'?: unknown })['#text'] === 'string'
-          ? (rawText as { '#text': string })['#text']
-          : ''
-    out.push({
-      author: known && known.trim() ? known : 'Unknown author',
-      dt: typeof node['@_dt'] === 'string' ? node['@_dt'] : '',
-      text,
-    })
+    const replyLst = (entry as Record<string, unknown>).replyLst
+    if (replyLst === null || typeof replyLst !== 'object') continue
+    for (const reply of asArray((replyLst as Record<string, unknown>).reply)) {
+      pushComment(out, reply, authors)
+    }
   }
   return out
 }
