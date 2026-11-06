@@ -41,7 +41,7 @@ Připojení se kontroluje při spuštění aplikace, při otevření Nastavení 
 
 Pokud karta Claude nebo Codex hlásí, že přihlášení nebylo dokončeno, zvolte **Otevřít přihlašovací okno**. Kód zobrazený prohlížečem je nutné vložit do tohoto okna; dříve zobrazený kód už neplatí.
 
-Pokud stránka v prohlížeči nebo okno přihlášení ukazuje `3p_delegated_access_policy_denied`, zásady organizace, do které účet Claude patří (tarif Team nebo Enterprise), toto přihlášení odmítly. Tyto zásady může změnit jen správce organizace, takže opakované přihlášení nepomůže. Obraťte se na správce, nebo se přihlaste osobním účtem Claude (Pro nebo Max).
+Pokud stránka v prohlížeči nebo okno přihlášení ukazuje `3p_delegated_access_policy_denied`, mohly toto přihlášení zablokovat zásady nastavené pro účet Claude. Pokud se při dalším pokusu stane totéž, obraťte se na toho, kdo účet spravuje, nebo zkuste, zda funguje jiný účet.
 
 ## Bez předplatného: AI zdarma
 

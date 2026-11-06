@@ -41,7 +41,7 @@ Połączenie jest sprawdzane przy uruchomieniu aplikacji, po otwarciu Ustawień 
 
 Jeśli karta Claude lub Codex informuje, że logowanie nie zostało ukończone, wybierz **Otwórz okno logowania**. Kod pokazany w przeglądarce trzeba wkleić w tym oknie; wcześniej pokazany kod nie jest już ważny.
 
-Jeśli strona w przeglądarce lub okno logowania pokazuje `3p_delegated_access_policy_denied`, zasady organizacji, do której należy konto Claude (plan Team lub Enterprise), odrzuciły to logowanie. Te zasady może zmienić tylko administrator organizacji, więc ponowne logowanie nic nie da. Zapytaj administratora albo zaloguj się na osobiste konto Claude (Pro lub Max).
+Jeśli strona w przeglądarce lub okno logowania pokazuje `3p_delegated_access_policy_denied`, możliwe, że zasady nałożone na konto Claude zablokowały to logowanie. Jeśli kolejna próba kończy się tak samo, zapytaj osobę, która zarządza kontem, albo sprawdź, czy działa inne konto.
 
 ## Bez subskrypcji: darmowe AI
 

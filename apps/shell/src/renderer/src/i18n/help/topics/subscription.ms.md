@@ -41,7 +41,7 @@ Sambungan disemak apabila aplikasi dimulakan, apabila anda membuka Tetapan, dan 
 
 Jika kad Claude atau Codex menyatakan log masuk tidak selesai, pilih **Buka tetingkap log masuk**. Kod yang dipaparkan pelayar perlu ditampal di tetingkap itu; kod yang dipaparkan sebelum ini tidak lagi berfungsi.
 
-Jika halaman pelayar atau tetingkap log masuk menunjukkan `3p_delegated_access_policy_denied`, dasar organisasi yang memiliki akaun Claude itu (pelan Team atau Enterprise) telah menolak log masuk ini. Hanya pentadbir organisasi boleh mengubah dasar itu, jadi log masuk semula tidak membantu. Tanya pentadbir, atau log masuk dengan akaun Claude peribadi (Pro atau Max).
+Jika halaman pelayar atau tetingkap log masuk menunjukkan `3p_delegated_access_policy_denied`, mungkin ada dasar pada akaun Claude yang menyekat log masuk ini. Jika cubaan semula memberikan hasil yang sama, tanya orang yang mengurus akaun itu, atau semak sama ada akaun lain boleh digunakan.
 
 ## Tanpa langganan: AI percuma
 

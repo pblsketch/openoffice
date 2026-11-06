@@ -41,7 +41,7 @@ De verbinding wordt gecontroleerd wanneer de app start, wanneer je Instellingen 
 
 Meldt de Claude- of Codex-kaart dat een aanmelding niet is afgerond, kies dan **Aanmeldvenster openen**. Een code die de browser toont, moet in dat venster worden geplakt; een eerder getoonde code werkt niet meer.
 
-Toont de browserpagina of het aanmeldvenster `3p_delegated_access_policy_denied`, dan heeft het beleid van de organisatie waar het Claude-account bij hoort (een Team- of Enterprise-abonnement) deze aanmelding geweigerd. Alleen de beheerder van de organisatie kan dat beleid wijzigen, dus opnieuw aanmelden helpt niet. Vraag het de beheerder, of meld je aan met een persoonlijk Claude-account (Pro of Max).
+Toont de browserpagina of het aanmeldvenster `3p_delegated_access_policy_denied`, dan heeft een beleid op het Claude-account deze aanmelding mogelijk tegengehouden. Gebeurt bij een nieuwe poging hetzelfde, vraag het dan aan wie het account beheert, of kijk of het met een ander account wel lukt.
 
 ## Zonder abonnement: gratis AI
 

@@ -41,7 +41,7 @@ A conexão é verificada quando a aplicação arranca, quando abre as Configura�
 
 Se o cartão do Claude ou do Codex indicar que um início de sessão não terminou, escolha **Abrir a janela de login**. Um código mostrado pelo navegador tem de ser colado nessa janela; um código mostrado antes já não funciona.
 
-Se a página do navegador ou a janela de início de sessão mostrar `3p_delegated_access_policy_denied`, a política da organização a que a conta do Claude pertence (um plano Team ou Enterprise) recusou este início de sessão. Só o administrador da organização pode alterar essa política, por isso iniciar sessão de novo não resolve. Fale com o administrador ou inicie sessão com uma conta pessoal do Claude (Pro ou Max).
+Se a página do navegador ou a janela de início de sessão mostrar `3p_delegated_access_policy_denied`, é possível que uma política da conta do Claude tenha bloqueado este início de sessão. Se ao tentar de novo acontecer o mesmo, fale com quem gere a conta ou verifique se funciona com outra conta.
 
 ## Sem assinatura: IA gratuita
 

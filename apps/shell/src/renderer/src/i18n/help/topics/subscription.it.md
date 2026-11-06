@@ -41,7 +41,7 @@ La connessione viene verificata all'avvio dell'app, quando apri Impostazioni e q
 
 Se la scheda Claude o Codex indica che un accesso non è terminato, scegli **Apri la finestra di accesso**. Un codice mostrato dal browser va incollato in quella finestra; un codice mostrato prima non è più valido.
 
-Se la pagina del browser o la finestra di accesso mostra `3p_delegated_access_policy_denied`, il criterio dell'organizzazione a cui appartiene l'account Claude (un piano Team o Enterprise) ha rifiutato questo accesso. Solo l'amministratore dell'organizzazione può cambiare quel criterio, quindi accedere di nuovo non serve. Chiedi all'amministratore oppure accedi con un account Claude personale (Pro o Max).
+Se la pagina del browser o la finestra di accesso mostra `3p_delegated_access_policy_denied`, è possibile che un criterio dell'account Claude abbia bloccato questo accesso. Se riprovando succede lo stesso, chiedi a chi gestisce l'account oppure verifica se funziona con un altro account.
 
 ## Senza abbonamento: un'IA gratuita
 

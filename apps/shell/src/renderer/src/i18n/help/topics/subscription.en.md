@@ -41,7 +41,7 @@ The connection is checked when the app starts, when you open Settings, and when 
 
 If the Claude or Codex card says a sign-in did not finish, choose **Open the sign-in window**. A code the browser shows has to be pasted into that window; a code shown earlier no longer works.
 
-If the browser page or the sign-in window shows `3p_delegated_access_policy_denied`, the policy of the organization that the Claude account belongs to (a Team or Enterprise plan) refused this sign-in. Only the organization's administrator can change that policy, so signing in again does not help. Ask the administrator, or sign in with a personal Claude account (Pro or Max).
+If the browser page or the sign-in window shows `3p_delegated_access_policy_denied`, a policy on the Claude account may have blocked this sign-in. If trying again gives the same result, ask whoever manages the account, or check whether another account works.
 
 ## Without a subscription: free AI
 
