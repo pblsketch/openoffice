@@ -211,6 +211,18 @@ describe('markdown → map (4.9)', () => {
     expect(await markdownRedactionNotice(path)).toBe(false)
   })
 
+  it('does not treat BOM-declared UTF-32 as the file own text for the notice', async () => {
+    const parsed = async () => ({ ok: true as const, kind: 'text' as const, text: 'A' })
+    const le = new Uint8Array([0xff, 0xfe, 0x00, 0x00, 0x41, 0x00, 0x00, 0x00])
+    const be = new Uint8Array([0x00, 0x00, 0xfe, 0xff, 0x00, 0x00, 0x00, 0x41])
+    expect(
+      await markdownRedactionNotice('le.md', { parse: parsed, readBytes: async () => le }),
+    ).toBe(false)
+    expect(
+      await markdownRedactionNotice('be.md', { parse: parsed, readBytes: async () => be }),
+    ).toBe(false)
+  })
+
   it('converts nothing when the withheld spans cannot be processed, and says why', async () => {
     const path = join(dir, 'broken.md')
     await writeFile(path, `# Broken\n\n<span data-redaction="" data-label="x">never closed\n`)
