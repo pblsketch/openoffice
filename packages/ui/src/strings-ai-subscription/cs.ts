@@ -152,6 +152,12 @@ export const cs = {
     'V prohlížeči se otevře přihlašovací stránka ChatGPT. Přihlaste se a povolte této aplikaci používat váš tarif ChatGPT; připojení se pak dokončí samo.',
   chatgptLoginUnfinishedNote:
     'Přihlášení se nedokončilo. Stiskněte tlačítko znovu a začněte od začátku. K připojení je nutné povolit používání vašeho tarifu ChatGPT.',
+  chatgptLoginNoPlanNote:
+    'Přihlášení do ChatGPT proběhlo, ale tato aplikace nedostala povolení používat váš tarif. Stiskněte tlačítko znovu a na stránce souhlasu povolte používání tarifu. Pokud jste ho už povolili, OpenAI možná toto používání pro váš účet (například spravovaný firmou nebo školou) nebo tarif nenabízí. Pak se můžete připojit přes program Codex.',
+  chatgptLoginDeniedNote:
+    'V prohlížeči jste se přihlásili, ale OpenAI toto připojení nepřijalo, nebo se jeho odpověď nepodařilo ověřit. Zkontrolujte, že datum a čas na tomto počítači jsou správně, a stiskněte tlačítko znovu, abyste začali od začátku.',
+  chatgptLoginNetworkNote:
+    'Přihlášení se nepodařilo dokončit: OpenAI nebylo dostupné, nebo se neotevřel prohlížeč. Zkontrolujte připojení k internetu (včetně firemní sítě, VPN nebo proxy) a stiskněte tlačítko znovu.',
   chatgptSigningInNote:
     'V otevřeném prohlížeči se přihlaste účtem ChatGPT a povolte této aplikaci používat váš tarif. Připojení se dokončí samo.',
   chatgptPlanNote:

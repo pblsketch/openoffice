@@ -146,6 +146,12 @@ export const ko = {
     '누르면 브라우저에 ChatGPT 로그인 화면이 열립니다. 로그인한 뒤 이 앱이 ChatGPT 요금제를 쓰도록 허용하면 저절로 연결됩니다.',
   chatgptLoginUnfinishedNote:
     '로그인이 끝나지 않았습니다. 다시 누르면 처음부터 시작합니다. ChatGPT 요금제 사용을 허용해야 연결됩니다.',
+  chatgptLoginNoPlanNote:
+    'ChatGPT 로그인은 됐지만 이 앱이 요금제를 쓰는 허용을 받지 못했습니다. 다시 누르고 허용 화면에서 요금제 사용을 허용하세요. 허용했는데도 이렇다면, 이 계정(회사·학교에서 관리하는 계정 등)이나 요금제에는 OpenAI가 이 사용을 열지 않았을 수 있습니다. 그럴 때는 Codex 프로그램으로 연결할 수 있습니다.',
+  chatgptLoginDeniedNote:
+    '브라우저에서는 로그인했지만 OpenAI가 이 연결을 받아 주지 않았거나, 돌아온 답이 확인되지 않았습니다. 이 PC의 날짜와 시각이 맞는지 확인한 뒤 다시 누르면 처음부터 시작합니다.',
+  chatgptLoginNetworkNote:
+    'OpenAI에 연결하지 못했거나 브라우저를 열지 못해 로그인을 마치지 못했습니다. 인터넷 연결(회사망, VPN, 프록시 포함)을 확인하고 다시 누르세요.',
   chatgptSigningInNote:
     '열린 브라우저에서 ChatGPT 계정으로 로그인하고, 이 앱이 요금제를 쓰도록 허용하세요. 끝나면 저절로 연결됩니다.',
   chatgptPlanNote:

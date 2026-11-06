@@ -142,6 +142,31 @@ describe('aiConnectInfoText', () => {
     )
   })
 
+  it('says at which step the ChatGPT sign-in failed, in fixed names', () => {
+    const text = aiConnectInfoText({
+      chatgpt: status('chatgpt', 'signed-out', {
+        loginUnfinished: true,
+        loginFailure: {
+          reason: 'denied',
+          step: 'token-refused',
+          httpStatus: 400,
+          oauthError: 'invalid_grant',
+        },
+      }),
+    })
+    expect(text.split('\n')[1]).toBe(
+      'chatgpt: state=signed-out login-failed=denied step=token-refused http=400 oauth-error=invalid_grant',
+    )
+    expect(
+      aiConnectInfoText({
+        chatgpt: status('chatgpt', 'signed-out', {
+          loginUnfinished: true,
+          loginFailure: { reason: 'no-plan', step: 'scope-missing' },
+        }),
+      }).split('\n')[1],
+    ).toBe('chatgpt: state=signed-out login-failed=no-plan step=scope-missing')
+  })
+
   it('leaves out the account, the error text and a version that is not one', () => {
     const text = aiConnectInfoText({
       'claude-code': status('claude-code', 'ready', {

@@ -115,6 +115,50 @@ describe('subscriptionStatusMapOf', () => {
     expect(subscriptionStatusMapOf({ chatgpt: 'ready' }).chatgpt.state).toBe('checking')
   })
 
+  it('keeps why a sign-in failed only as fixed names on an unfinished sign-out', () => {
+    const read = (fields: Record<string, unknown>) =>
+      subscriptionStatusMapOf({
+        chatgpt: { provider: 'chatgpt', meteredAccepted: false, ...fields },
+      }).chatgpt.loginFailure
+    const unfinished = { state: 'signed-out', loginUnfinished: true }
+    expect(
+      read({
+        ...unfinished,
+        loginFailure: {
+          reason: 'denied',
+          step: 'token-refused',
+          httpStatus: 400,
+          oauthError: 'invalid_grant',
+          token: 'secret',
+        },
+      }),
+    ).toEqual({
+      reason: 'denied',
+      step: 'token-refused',
+      httpStatus: 400,
+      oauthError: 'invalid_grant',
+    })
+    // a step, a status or a code of another shape is left behind; an unknown reason drops it all
+    expect(
+      read({
+        ...unfinished,
+        loginFailure: {
+          reason: 'no-plan',
+          step: 'something else',
+          httpStatus: 4000,
+          oauthError: 'The code was used: abc',
+        },
+      }),
+    ).toEqual({ reason: 'no-plan' })
+    expect(read({ ...unfinished, loginFailure: { reason: 'cancelled' } })).toBeUndefined()
+    expect(read({ ...unfinished, loginFailure: 'no-plan' })).toBeUndefined()
+    // it belongs to a sign-in that ended without one, and nowhere else
+    expect(read({ state: 'signed-out', loginFailure: { reason: 'no-plan' } })).toBeUndefined()
+    expect(
+      read({ state: 'ready', loginUnfinished: true, loginFailure: { reason: 'no-plan' } }),
+    ).toBeUndefined()
+  })
+
   it('reads an answer without a ChatGPT status as one from an app without that connection', () => {
     expect(subscriptionStatusMapOf({}).chatgpt.state).toBe('signed-out')
     // no answer at all is still "checking", for every provider

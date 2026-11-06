@@ -152,6 +152,12 @@ export const id = {
     'Halaman masuk ChatGPT akan terbuka di browser Anda. Masuk lalu izinkan aplikasi ini memakai paket ChatGPT Anda; koneksi akan tersambung sendiri.',
   chatgptLoginUnfinishedNote:
     'Proses masuk belum selesai. Tekan lagi untuk memulai dari awal. Koneksi memerlukan izin Anda untuk memakai paket ChatGPT.',
+  chatgptLoginNoPlanNote:
+    'Anda sudah masuk ke ChatGPT, tetapi aplikasi ini tidak mendapat izin memakai paket Anda. Tekan lagi dan izinkan pemakaian paket di halaman persetujuan. Jika sudah Anda izinkan, mungkin OpenAI tidak menyediakan pemakaian ini untuk akun Anda (misalnya akun yang dikelola perusahaan atau sekolah) atau paket Anda. Dalam hal itu, Anda bisa terhubung dengan program Codex.',
+  chatgptLoginDeniedNote:
+    'Anda sudah masuk di browser, tetapi OpenAI tidak menerima koneksi ini, atau jawabannya tidak dapat diperiksa. Pastikan tanggal dan jam PC ini benar, lalu tekan lagi untuk memulai dari awal.',
+  chatgptLoginNetworkNote:
+    'Proses masuk tidak dapat diselesaikan: OpenAI tidak dapat dihubungi, atau browser tidak terbuka. Periksa koneksi internet (termasuk jaringan kantor, VPN, atau proxy), lalu tekan lagi.',
   chatgptSigningInNote:
     'Masuk dengan akun ChatGPT Anda di browser yang terbuka, lalu izinkan aplikasi ini memakai paket Anda. Koneksi akan tersambung sendiri.',
   chatgptPlanNote:

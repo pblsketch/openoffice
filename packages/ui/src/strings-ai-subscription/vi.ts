@@ -154,6 +154,12 @@ export const vi = {
     'Trang đăng nhập ChatGPT sẽ mở trong trình duyệt. Hãy đăng nhập và cho phép ứng dụng này dùng gói ChatGPT của bạn; kết nối sẽ tự hoàn tất.',
   chatgptLoginUnfinishedNote:
     'Quá trình đăng nhập chưa hoàn tất. Nhấn lại để bắt đầu lại từ đầu. Bạn cần cho phép dùng gói ChatGPT của mình thì mới kết nối được.',
+  chatgptLoginNoPlanNote:
+    'Bạn đã đăng nhập ChatGPT, nhưng ứng dụng này chưa được phép dùng gói của bạn. Nhấn lại và cho phép dùng gói ở trang cấp quyền. Nếu bạn đã cho phép, có thể OpenAI không mở cách dùng này cho tài khoản của bạn (ví dụ tài khoản do công ty hoặc trường học quản lý) hoặc cho gói của bạn. Khi đó bạn có thể kết nối bằng chương trình Codex.',
+  chatgptLoginDeniedNote:
+    'Bạn đã đăng nhập trong trình duyệt, nhưng OpenAI không chấp nhận kết nối này, hoặc không kiểm tra được phản hồi trả về. Hãy kiểm tra ngày giờ của máy tính này cho đúng, rồi nhấn lại để bắt đầu lại từ đầu.',
+  chatgptLoginNetworkNote:
+    'Không thể hoàn tất đăng nhập: không kết nối được tới OpenAI hoặc không mở được trình duyệt. Hãy kiểm tra kết nối internet (kể cả mạng công ty, VPN hoặc proxy), rồi nhấn lại.',
   chatgptSigningInNote:
     'Đăng nhập bằng tài khoản ChatGPT trong trình duyệt vừa mở và cho phép ứng dụng này dùng gói của bạn. Kết nối sẽ tự hoàn tất.',
   chatgptPlanNote:

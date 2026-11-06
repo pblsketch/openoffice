@@ -157,6 +157,12 @@ export const pl = {
     'W przeglądarce otworzy się strona logowania ChatGPT. Zaloguj się i zezwól tej aplikacji na korzystanie z Twojego planu ChatGPT; połączenie nastąpi samo.',
   chatgptLoginUnfinishedNote:
     'Logowanie nie zostało ukończone. Naciśnij ponownie, aby zacząć od nowa. Do połączenia potrzebna jest Twoja zgoda na korzystanie z planu ChatGPT.',
+  chatgptLoginNoPlanNote:
+    'Logowanie do ChatGPT się udało, ale ta aplikacja nie dostała zgody na korzystanie z Twojego planu. Naciśnij ponownie i na stronie zgody zezwól na korzystanie z planu. Jeśli już to zrobiłeś, OpenAI może nie udostępniać tego dla Twojego konta (np. zarządzanego przez firmę lub szkołę) albo planu. Wtedy możesz połączyć się przez program Codex.',
+  chatgptLoginDeniedNote:
+    'Zalogowano się w przeglądarce, ale OpenAI nie przyjęło tego połączenia albo nie udało się sprawdzić jego odpowiedzi. Sprawdź, czy data i godzina na tym komputerze są prawidłowe, a potem naciśnij ponownie, aby zacząć od nowa.',
+  chatgptLoginNetworkNote:
+    'Nie udało się dokończyć logowania: nie można połączyć się z OpenAI albo nie otworzyła się przeglądarka. Sprawdź połączenie z internetem (także sieć firmową, VPN lub proxy), a potem naciśnij ponownie.',
   chatgptSigningInNote:
     'Zaloguj się kontem ChatGPT w otwartej przeglądarce i zezwól tej aplikacji na korzystanie z Twojego planu. Połączenie nastąpi samo.',
   chatgptPlanNote:

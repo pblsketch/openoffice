@@ -160,6 +160,12 @@ export const fr = {
     'Une page de connexion ChatGPT s’ouvre dans votre navigateur. Connectez-vous et autorisez cette application à utiliser votre forfait ChatGPT ; la connexion se fait ensuite d’elle-même.',
   chatgptLoginUnfinishedNote:
     'La connexion n’a pas abouti. Appuyez de nouveau pour recommencer. Pour vous connecter, vous devez autoriser l’utilisation de votre forfait ChatGPT.',
+  chatgptLoginNoPlanNote:
+    'Vous êtes connecté à ChatGPT, mais cette application n’a pas reçu l’autorisation d’utiliser votre forfait. Appuyez de nouveau et autorisez l’utilisation du forfait sur la page d’autorisation. Si vous l’avez déjà autorisée, OpenAI ne propose peut-être pas cet usage pour votre compte (par exemple un compte géré par une entreprise ou une école) ou pour votre forfait. Vous pouvez alors vous connecter avec le programme Codex.',
+  chatgptLoginDeniedNote:
+    'Vous vous êtes connecté dans le navigateur, mais OpenAI n’a pas accepté cette connexion, ou sa réponse n’a pas pu être vérifiée. Vérifiez que la date et l’heure de ce PC sont justes, puis appuyez de nouveau pour recommencer.',
+  chatgptLoginNetworkNote:
+    'La connexion n’a pas pu aboutir : OpenAI était injoignable ou aucun navigateur ne s’est ouvert. Vérifiez la connexion Internet (y compris réseau d’entreprise, VPN ou proxy), puis appuyez de nouveau.',
   chatgptSigningInNote:
     'Connectez-vous avec votre compte ChatGPT dans le navigateur qui s’est ouvert, puis autorisez cette application à utiliser votre forfait. La connexion se fait d’elle-même.',
   chatgptPlanNote:

@@ -354,6 +354,7 @@ describe('the connection', { timeout: 20_000 }, () => {
     expect(await connection.signIn({ openBrowser: browser.open, pages: PAGES })).toEqual({
       ok: false,
       reason: 'denied',
+      step: 'callback-error',
     })
     expect(store.current().session).toBeUndefined()
     expect(openai.calls.filter((call) => call.url === CHATGPT_TOKEN_URL)).toHaveLength(0)
@@ -376,8 +377,103 @@ describe('the connection', { timeout: 20_000 }, () => {
     expect(await connection.signIn({ openBrowser: browser.open, pages: PAGES })).toEqual({
       ok: false,
       reason: 'no-plan',
+      step: 'plan-scope-missing',
     })
     expect(store.current().session).toBeUndefined()
+  })
+
+  /** a sign-in that comes back from the browser, then meets this token answer */
+  async function signInMeeting(token: (nonce: string) => Response) {
+    const store = createChatGptConnectionMemoryStore()
+    let nonce = ''
+    const openai = fakeOpenAi(() => token(nonce))
+    const browser = browserReturning((authorize) => {
+      nonce = authorize.searchParams.get('nonce')!
+      return { code: 'c', state: authorize.searchParams.get('state')!, client_id: 'oaiapp_1' }
+    })
+    const connection = createChatGptConnection({
+      store,
+      agentName: 'x',
+      fetch: openai.fetch,
+      now: () => NOW,
+    })
+    const result = await connection.signIn({ openBrowser: browser.open, pages: PAGES })
+    return { result, store }
+  }
+
+  // OpenAI documents `scope` as always in the token answer; one without it is no grant
+  it('says the scope was missing, apart from a plan not granted, and stores nothing', async () => {
+    const { result, store } = await signInMeeting((nonce) =>
+      json({
+        access_token: 'access-1',
+        refresh_token: 'refresh-1',
+        id_token: idToken(claims({ nonce })),
+        token_type: 'Bearer',
+        expires_in: 3600,
+      }),
+    )
+    expect(result).toEqual({ ok: false, reason: 'no-plan', step: 'scope-missing' })
+    expect(store.current().session).toBeUndefined()
+  })
+
+  it('does not take a workspace plan in the ID token for the plan scope', async () => {
+    const { result, store } = await signInMeeting((nonce) =>
+      json({
+        access_token: 'access-1',
+        refresh_token: 'refresh-1',
+        id_token: idToken(
+          claims({
+            nonce,
+            'https://api.openai.com/auth': { chatgpt_plan_type: 'team' },
+          }),
+        ),
+        token_type: 'Bearer',
+        expires_in: 3600,
+        scope: 'openid profile email offline_access resource.invoke',
+      }),
+    )
+    expect(result).toEqual({ ok: false, reason: 'no-plan', step: 'plan-scope-missing' })
+    expect(store.current().session).toBeUndefined()
+  })
+
+  it('names a refused code with its status and OAuth error code, and nothing OpenAI wrote', async () => {
+    const { result } = await signInMeeting(() =>
+      json({ error: 'invalid_grant', error_description: 'code abc-123 was already used' }, 400),
+    )
+    expect(result).toEqual({
+      ok: false,
+      reason: 'denied',
+      step: 'token-refused',
+      httpStatus: 400,
+      oauthError: 'invalid_grant',
+    })
+    expect(JSON.stringify(result)).not.toContain('abc-123')
+  })
+
+  it('drops an OAuth error that is not an identifier, and reads a 5xx as unreachable', async () => {
+    const { result } = await signInMeeting(() =>
+      json({ error: 'Something went wrong <b>here</b>' }, 502),
+    )
+    expect(result).toEqual({ ok: false, reason: 'network', step: 'token-http', httpStatus: 502 })
+  })
+
+  it('names an ID token that does not check out', async () => {
+    const { result, store } = await signInMeeting(() => signedInTokens('another-nonce'))
+    expect(result).toEqual({ ok: false, reason: 'denied', step: 'id-token-invalid' })
+    expect(store.current().session).toBeUndefined()
+  })
+
+  it('names a browser that never opened', async () => {
+    const connection = createChatGptConnection({
+      store: createChatGptConnectionMemoryStore(),
+      agentName: 'x',
+      fetch: fakeOpenAi(() => json({}, 500)).fetch,
+    })
+    expect(await connection.signIn({ openBrowser: async () => false, pages: PAGES })).toEqual({
+      ok: false,
+      reason: 'network',
+      step: 'browser',
+    })
   })
 
   it('ends a sign-in that is cancelled', async () => {

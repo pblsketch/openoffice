@@ -13,6 +13,7 @@ import type {
 import { chatGptConnection, setChatGptConnection } from '../src/chatgpt/connection'
 import { detectChatGptConnection } from '../src/chatgpt/status'
 import { defaultAiSettings } from '../src/providers'
+import { subscriptionStatusMapOf } from '../src/subscription/contract'
 import { createSubscriptionIpcDeps } from '../src/subscription/ipc'
 import type { SubscriptionDetector } from '../src/subscription/status'
 
@@ -44,9 +45,9 @@ function fakeConnection() {
   return {
     connection,
     seen,
-    finish(ok: boolean) {
+    finish(ok: boolean, failure: ChatGptSignInResult = { ok: false, reason: 'denied' }) {
       signedIn = ok
-      pending?.(ok ? { ok: true } : { ok: false, reason: 'denied' })
+      pending?.(ok ? { ok: true } : failure)
       if (ok) for (const listener of listeners) listener()
     },
   }
@@ -125,6 +126,33 @@ describe('the ChatGPT provider on the subscription channels', { timeout: 20_000 
     const status = deps.service.getStatuses().chatgpt
     expect(status.state).toBe('signed-out')
     expect(status.loginUnfinished).toBe(true)
+  })
+
+  it('keeps why the sign-in failed on the status, through the channel, until a new one starts', async () => {
+    const { deps, fake } = setup()
+    await deps.launchLogin('chatgpt')
+    fake.finish(false, { ok: false, reason: 'no-plan', step: 'scope-missing' })
+    await until(() => deps.service.getStatuses().chatgpt.loginUnfinished === true)
+    const status = subscriptionStatusMapOf(deps.service.getStatuses()).chatgpt
+    expect(status.state).toBe('signed-out')
+    expect(status.loginFailure).toEqual({ reason: 'no-plan', step: 'scope-missing' })
+
+    await deps.launchLogin('chatgpt')
+    expect(deps.service.getStatuses().chatgpt.loginFailure).toBeUndefined()
+    fake.finish(false, {
+      ok: false,
+      reason: 'denied',
+      step: 'token-refused',
+      httpStatus: 400,
+      oauthError: 'invalid_request',
+    })
+    await until(() => deps.service.getStatuses().chatgpt.loginFailure?.reason === 'denied')
+    expect(subscriptionStatusMapOf(deps.service.getStatuses()).chatgpt.loginFailure).toEqual({
+      reason: 'denied',
+      step: 'token-refused',
+      httpStatus: 400,
+      oauthError: 'invalid_request',
+    })
   })
 
   it('cancels a sign-in under way', async () => {

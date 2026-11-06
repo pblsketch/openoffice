@@ -250,6 +250,35 @@ describe('a ChatGPT turn', () => {
     })
   })
 
+  // the API reference puts the error on the event; Codex reads it as `error: { code, message }`
+  it('reads an error event with its error nested, as well as one with it on the event', async () => {
+    const nested = fakeApi(() =>
+      sse([
+        {
+          type: 'error',
+          error: { code: 'subscription_sharing_usage_limit_exceeded', message: 'limit' },
+        },
+      ]),
+    )
+    expect(aiStreamErrorFields(await run(nested).promise.catch((e: unknown) => e))).toEqual({
+      errorCode: 'rate-limit',
+      errorProvider: 'chatgpt',
+    })
+
+    const named = fakeApi(() =>
+      sse([{ type: 'error', error: { code: 'model_not_found', message: 'No such model' } }]),
+    )
+    const namedError = (await run(named).promise.catch((e: unknown) => e)) as Error
+    expect(namedError.message).toContain('No such model')
+    expect(namedError.message).not.toContain('request failed')
+
+    const flat = fakeApi(() =>
+      sse([{ type: 'error', code: 'server_error', message: 'Something broke', param: null }]),
+    )
+    const flatError = (await run(flat).promise.catch((e: unknown) => e)) as Error
+    expect(flatError.message).toContain('Something broke')
+  })
+
   it('refuses a model name that is not a model slug', async () => {
     const api = fakeApi(() => sse([]))
     const error = (await run(api, { model: '--flag x' }).promise.catch((e: unknown) => e)) as Error

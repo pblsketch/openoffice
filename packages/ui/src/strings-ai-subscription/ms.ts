@@ -157,6 +157,12 @@ export const ms = {
     'Halaman log masuk ChatGPT akan dibuka dalam pelayar anda. Log masuk dan benarkan aplikasi ini menggunakan pelan ChatGPT anda; sambungan akan dibuat sendiri.',
   chatgptLoginUnfinishedNote:
     'Log masuk tidak selesai. Tekan sekali lagi untuk bermula semula. Untuk menyambung, anda perlu membenarkan penggunaan pelan ChatGPT anda.',
+  chatgptLoginNoPlanNote:
+    'Anda sudah log masuk ke ChatGPT, tetapi aplikasi ini tidak mendapat kebenaran untuk menggunakan pelan anda. Tekan sekali lagi dan benarkan penggunaan pelan di halaman kebenaran. Jika anda sudah membenarkannya, mungkin OpenAI tidak menawarkan penggunaan ini untuk akaun anda (contohnya akaun yang diurus oleh syarikat atau sekolah) atau pelan anda. Dalam hal itu, anda boleh menyambung dengan program Codex.',
+  chatgptLoginDeniedNote:
+    'Anda sudah log masuk dalam pelayar, tetapi OpenAI tidak menerima sambungan ini, atau jawapannya tidak dapat disemak. Pastikan tarikh dan masa PC ini betul, kemudian tekan sekali lagi untuk bermula semula.',
+  chatgptLoginNetworkNote:
+    'Log masuk tidak dapat diselesaikan: OpenAI tidak dapat dihubungi atau tiada pelayar dibuka. Semak sambungan internet (termasuk rangkaian syarikat, VPN atau proksi), kemudian tekan sekali lagi.',
   chatgptSigningInNote:
     'Log masuk dengan akaun ChatGPT anda dalam pelayar yang dibuka, kemudian benarkan aplikasi ini menggunakan pelan anda. Sambungan akan dibuat sendiri.',
   chatgptPlanNote:
