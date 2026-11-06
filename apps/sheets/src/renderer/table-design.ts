@@ -160,15 +160,29 @@ export function resolveCreateTableRange(
   )
 }
 
+/// Cap at Excel's 255 UTF-16 units without splitting a trailing surrogate pair
+/// (emoji / astral letters would otherwise leave a lone high surrogate).
+function cutUtf16Units(text: string, end: number): number {
+  if (end <= 0 || end >= text.length) return end
+  const high = text.charCodeAt(end - 1)
+  const low = text.charCodeAt(end)
+  if (high < 0xd800 || high > 0xdbff || low < 0xdc00 || low > 0xdfff) return end
+  return end - 1
+}
+
+/// Trim and truncate a table header / column label for Excel's 255-unit limit.
+export function truncateTableHeader(raw: string, maxUnits = 255): string {
+  const text = raw.trim()
+  return text.slice(0, cutUtf16Units(text, maxUnits))
+}
+
 /// Header texts → unique column names: blanks become ColumnN, repeats take a
 /// numeric suffix (case-insensitive, like Excel).
 export function uniqueColumnNames(headers: readonly unknown[]): string[] {
   const names: string[] = []
   const used = new Set<string>()
   headers.forEach((raw, index) => {
-    const text = String(raw ?? '')
-      .trim()
-      .slice(0, 255)
+    const text = truncateTableHeader(String(raw ?? ''))
     const base = text.length === 0 ? `Column${index + 1}` : text
     let candidate = base
     for (let suffix = 2; used.has(candidate.toLowerCase()); suffix += 1) {

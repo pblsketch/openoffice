@@ -41,7 +41,7 @@ import {
   updateTableAdd,
 } from './edit-journal'
 import { planFileTableRegistrations } from './file-tables'
-import { areasIntersect, fileTableArea, liveFileTables, optionsOfTableAdd } from './table-design'
+import { areasIntersect, fileTableArea, liveFileTables, optionsOfTableAdd, truncateTableHeader } from './table-design'
 import { DEFAULT_TABLE_STYLE, builtinTablePalette, tableThemeJson } from './table-styles'
 import { getLang, t } from './i18n/locale'
 import { numfmtLocaleFor } from './i18n/numfmt-locale'
@@ -90,9 +90,7 @@ export function applyAiTableAdd(
   const columnNames: string[] = []
   const used = new Set<string>()
   for (let index = 0; index < width; index += 1) {
-    const raw = String(headerValues[index] ?? '')
-      .trim()
-      .slice(0, 255)
+    const raw = truncateTableHeader(String(headerValues[index] ?? ''))
     const base = raw.length === 0 ? `Column${index + 1}` : raw
     let candidate = base
     for (let suffix = 2; used.has(candidate.toLowerCase()); suffix += 1) {

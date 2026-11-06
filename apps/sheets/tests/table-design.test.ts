@@ -17,6 +17,7 @@ import {
   resizeProblem,
   resolveCreateTableRange,
   totalsFunctionFor,
+  truncateTableHeader,
   uniqueColumnNames,
 } from '../src/renderer/table-design'
 import { t } from '../src/renderer/i18n/locale'
@@ -99,6 +100,15 @@ describe('table names and columns', () => {
       'Qty',
       'Qty2',
     ])
+  })
+
+  it('does not split an emoji on the 255-unit header boundary', () => {
+    // U+1F4CA (📊) is a common header glyph and a UTF-16 surrogate pair.
+    const raw = `${'A'.repeat(254)}\u{1F4CA}Revenue`
+    expect(truncateTableHeader(raw)).toBe('A'.repeat(254))
+    expect(truncateTableHeader(raw).length).toBe(254)
+    expect(/[\uD800-\uDBFF]$/.test(truncateTableHeader(raw))).toBe(false)
+    expect(uniqueColumnNames([raw])).toEqual(['A'.repeat(254)])
   })
 
   it('picks SUM for numeric columns and COUNTA otherwise', () => {
