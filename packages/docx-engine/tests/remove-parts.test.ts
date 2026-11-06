@@ -214,6 +214,22 @@ describe('remove_parts package scrub', () => {
     expect(contentTypes).toContain('PartName="/word/document.xml"')
   })
 
+  it('scrubs dangling targets from an uppercase .RELS relationships part', async () => {
+    const bytes = await fixtureDocx()
+    const zip = await JSZip.loadAsync(bytes)
+    const relsXml = await zip.file('word/_rels/document.xml.rels')!.async('string')
+    zip.remove('word/_rels/document.xml.rels')
+    zip.file('word/_rels/document.xml.RELS', relsXml)
+    const odd = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' })
+    const saved = await saveFixture(odd, { kinds: ['customXml'], dataBinding: 'strip' })
+    const names = [...(await bytesOf(saved)).keys()]
+    const relsName = names.find((name) => /document\.xml\.rels$/i.test(name))
+    expect(relsName).toBe('word/_rels/document.xml.RELS')
+    const rels = await textOf(saved, relsName!)
+    expect(rels).not.toContain('customXml')
+    expect(rels).toContain('styles.xml')
+  })
+
   it('removes customXml and web-extension families plus explicit paths, leaving every other part byte-identical', async () => {
     const bytes = await fixtureDocx()
     const before = await bytesOf(bytes)
