@@ -17,6 +17,15 @@ export interface DecodedText {
   valid: boolean
 }
 
+/** UTF-32 BOMs: UTF-32LE is FF FE 00 00, which UTF-16LE would otherwise claim. */
+function isUtf32Bom(bytes: Uint8Array): boolean {
+  return (
+    bytes.length >= 4 &&
+    ((bytes[0] === 0 && bytes[1] === 0 && bytes[2] === 0xfe && bytes[3] === 0xff) ||
+      (bytes[0] === 0xff && bytes[1] === 0xfe && bytes[2] === 0 && bytes[3] === 0))
+  )
+}
+
 function sniffEncoding(bytes: Uint8Array): EpubTextEncoding {
   if (bytes[0] === 0xff && bytes[1] === 0xfe) return 'utf-16le'
   if (bytes[0] === 0xfe && bytes[1] === 0xff) return 'utf-16be'
@@ -25,6 +34,11 @@ function sniffEncoding(bytes: Uint8Array): EpubTextEncoding {
 
 /** Decodes a text entry, keeping a BOM, and says whether the bytes were valid. */
 export function decodeEntryText(bytes: Uint8Array): DecodedText {
+  // OCF text is UTF-8 or UTF-16. A UTF-32 BOM is not a valid entry: UTF-32LE
+  // would otherwise be sniffed as UTF-16LE (valid: true, NULs in the text).
+  if (isUtf32Bom(bytes)) {
+    return { text: '', encoding: 'utf-8', valid: false }
+  }
   const encoding = sniffEncoding(bytes)
   try {
     const text = new TextDecoder(encoding, { fatal: true, ignoreBOM: true }).decode(bytes)
