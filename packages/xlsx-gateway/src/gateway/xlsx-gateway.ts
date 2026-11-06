@@ -63,6 +63,7 @@ import {
   FilterEditError,
 } from './xlsx-filter'
 import { normalizeOoxmlPartPrefix } from './xlsx-namespace'
+import { resolvedStyleEntries } from './xlsx-style-entries'
 import { escapeRegExp } from './xlsx-sheets'
 import type { SheetAllocation, SheetEditPlan, SheetElement } from './xlsx-sheets'
 import {
@@ -615,11 +616,11 @@ export function dateStyleIndexes(stylesXml: string): Set<number> {
   }
   const out = new Set<number>()
   const cellXfs = /<cellXfs\b[^>]*>([\s\S]*?)<\/cellXfs>/.exec(stylesXml)?.[1] ?? ''
-  let index = 0
-  for (const m of cellXfs.matchAll(/<xf\b([^>]*)\/?>/g)) {
-    const id = Number(readXmlAttribute(m[1] ?? '', 'numFmtId'))
+  // Indexes as the sidecar counts them: a wrapped (mc:AlternateContent) xf is
+  // one entry, read through its Fallback.
+  for (const [index, xf] of resolvedStyleEntries(cellXfs, 'xf').entries()) {
+    const id = Number(readXmlAttribute(/^<xf\b([^>]*?)\/?>/.exec(xf)?.[1] ?? '', 'numFmtId'))
     if (BUILTIN_DATE_FORMATS.has(id) || custom.has(id)) out.add(index)
-    index += 1
   }
   return out
 }
