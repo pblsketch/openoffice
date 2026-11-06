@@ -8,7 +8,7 @@ import type { WikiHeadEntry } from '../shared/ipc'
  * writes an id into another file.
  */
 
-const HEADING_RE = /^(#{1,6})\s+(.+?)\s*#*\s*$/
+const HEADING_RE = /^ {0,3}(#{1,6})\s+(.+?)\s*#*\s*$/
 const FENCE_RE = /^ {0,3}(`{3,}|~{3,})/
 const TRAILING_ID_RE = /(?:^|\s)\^([A-Za-z0-9-]+)\s*$/
 const LONE_ID_RE = /^\^([A-Za-z0-9-]+)\s*$/
