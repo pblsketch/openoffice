@@ -6,7 +6,9 @@
  */
 import { describe, expect, it } from 'vitest'
 import JSZip from 'jszip'
+import { crc32 } from 'node:zlib'
 import { sameRecoveryCopy } from '../src/renderer/recovery-copy-compare'
+import { crcTwins } from './helpers/crc-collision'
 
 function coreXml(modified: string, title = 'Plan'): string {
   return (
@@ -62,6 +64,21 @@ describe('sameRecoveryCopy', () => {
     const a = await docx({ at: '2026-11-06T10:00:01.000Z' })
     const b = await docx({ at: '2026-11-06T10:00:31.000Z', body: 'edited' })
     expect(await sameRecoveryCopy(a, b)).toBe(false)
+  })
+
+  it('a changed part is a change even when its CRC-32 and size stay the same', async () => {
+    const prefix = '<w:document>'
+    const [x, y] = crcTwins(prefix, 10)
+    expect(crc32(Buffer.from(prefix + x))).toBe(crc32(Buffer.from(prefix + y)))
+    const a = await docx({ at: '2026-11-06T10:00:01.000Z', body: x })
+    const b = await docx({ at: '2026-11-06T10:00:31.000Z', body: y })
+    expect(await sameRecoveryCopy(a, b)).toBe(false)
+    // stored (not deflated) parts are compared as they are, too
+    const stored = (body: string) =>
+      new JSZip()
+        .file('word/document.xml', `${prefix}${body}`)
+        .generateAsync({ type: 'uint8array' })
+    expect(await sameRecoveryCopy(await stored(x), await stored(y))).toBe(false)
   })
 
   it('a changed property other than the stamp is a change', async () => {

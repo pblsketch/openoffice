@@ -13,6 +13,7 @@ import { buildBlankDocx, readDocxPartBase64 } from '@genoffice/docx-engine'
 import { editorExtensions } from '../src/renderer/editor/extensions'
 import type { DocState } from '../src/renderer/doc-state'
 import type { OpenDocxResult } from '../src/shared/ipc'
+import { crcTwins } from './helpers/crc-collision'
 
 const handoff = new Map<string, Uint8Array>()
 vi.mock('../src/renderer/doc-bytes', () => ({
@@ -305,6 +306,36 @@ describe('copy ticks', () => {
     setClock('2026-11-06T10:01:01.000Z')
     expect(await writeRecoveryCopy(ctx)).toBe('written')
     expect(calls.filter((c) => c.channel === 'recovery')).toHaveLength(2)
+  })
+
+  it('copy an edit whose body part keeps the CRC-32 and size of the last copy', async () => {
+    const PLACE = 'qqqqqqqqqq'
+    const bodyOf = async (bytes: Uint8Array) =>
+      atob((await readDocxPartBase64(bytes, 'word/document.xml')) ?? '')
+    // the body part the engine writes around one paragraph of PLACE
+    const probe = makeCtx()
+    await loadFile(probe, openResult('/docs/probe.docx', await buildBlankDocx({})))
+    typeParagraph(probe.editor as Editor, PLACE)
+    probe.dirtyRef.current = true
+    setClock('2026-11-06T10:00:01.000Z')
+    expect(await writeRecoveryCopy(probe)).toBe('written')
+    const xml = await bodyOf(calls.at(-1)!.bytes!)
+    const [x, y] = crcTwins(xml.slice(0, xml.indexOf(PLACE)), PLACE.length)
+
+    calls = []
+    const ctx = makeCtx()
+    await loadFile(ctx, openResult('/docs/twins.docx', await buildBlankDocx({})))
+    typeParagraph(ctx.editor as Editor, x)
+    ctx.dirtyRef.current = true
+    setClock('2026-11-06T10:00:01.000Z')
+    expect(await writeRecoveryCopy(ctx)).toBe('written')
+    // the person types the other text: same length, same CRC-32 of the body part
+    typeParagraph(ctx.editor as Editor, y)
+    setClock('2026-11-06T10:00:31.000Z')
+    expect(await writeRecoveryCopy(ctx)).toBe('written')
+    const copies = calls.filter((c) => c.channel === 'recovery')
+    expect(copies).toHaveLength(2)
+    expect(await bodyOf(copies[1]!.bytes!)).toContain(y)
   })
 
   it('copy an unchanged document again once the main process dropped its copy', async () => {
