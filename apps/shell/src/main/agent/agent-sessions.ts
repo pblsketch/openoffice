@@ -64,6 +64,11 @@ export type AgentStartResult =
        * Absent when there are none
        */
       mcpKeepInside?: string[] | undefined
+      /**
+       * the project notes (CLAUDE.md, AGENTS.md) the instructions carry only the start of, by
+       * file name; the window says so as the AI window does. Absent when none was cut
+       */
+      instructionsTruncated?: string[] | undefined
     }
   | {
       ok: false
@@ -222,6 +227,19 @@ export function codexSkillInstructions(skills: readonly AgentSkillEntry[]): stri
   return lines
 }
 
+/** The line after a project note cut at the limit: where the rest is, and how to read it */
+function truncatedNoteLine(provider: AiSubscriptionProviderId, path: string): string {
+  const how = provider === 'claude-code' ? ' with the Read tool' : ''
+  return `(Only the first ${MAX_PROJECT_NOTES_CHARS} characters of ${path} are given above. When the task needs the rest, read the file${how}.)`
+}
+
+/** The instructions, and the project notes they carry only the start of */
+export interface AgentInstructions {
+  text: string
+  /** file names of the project notes cut at the limit, in the order they appear */
+  truncated: string[]
+}
+
 /**
  * What the app adds to the program's own instructions. English, as all model
  * prompts in this app; the reply language follows the screen. `relayServers`
@@ -235,6 +253,27 @@ export async function agentInstructions(
   skills: readonly AgentSkillEntry[] = [],
   relayServers: readonly string[] = [],
 ): Promise<string> {
+  return (
+    await agentInstructionsAndCuts(
+      provider,
+      projectRoot,
+      language,
+      withAppTools,
+      skills,
+      relayServers,
+    )
+  ).text
+}
+
+/** `agentInstructions`, with which project notes were cut at the limit */
+export async function agentInstructionsAndCuts(
+  provider: AiSubscriptionProviderId,
+  projectRoot: string,
+  language: string,
+  withAppTools: boolean,
+  skills: readonly AgentSkillEntry[] = [],
+  relayServers: readonly string[] = [],
+): Promise<AgentInstructions> {
   const lines = [
     'You are working for the person inside an office app, in the project folder they chose.',
     `Reply in the language with code "${language}" unless the person writes in another language.`,
@@ -262,10 +301,18 @@ export async function agentInstructions(
   // reads AGENTS.md on its own, so only CLAUDE.md is added for it
   const files = provider === 'claude-code' ? PROJECT_NOTE_FILES : ['CLAUDE.md']
   const notes: string[] = []
+  const truncated: string[] = []
   for (const name of files) {
     try {
-      const text = await readFile(join(projectRoot, name), 'utf8')
-      if (text.trim()) notes.push(`## ${name}\n${text.slice(0, MAX_PROJECT_NOTES_CHARS)}`)
+      const path = join(projectRoot, name)
+      const text = await readFile(path, 'utf8')
+      if (!text.trim()) continue
+      let note = `## ${name}\n${text.slice(0, MAX_PROJECT_NOTES_CHARS)}`
+      if (text.length > MAX_PROJECT_NOTES_CHARS) {
+        note += `\n\n${truncatedNoteLine(provider, path)}`
+        truncated.push(name)
+      }
+      notes.push(note)
     } catch {
       // no such file
     }
@@ -273,7 +320,7 @@ export async function agentInstructions(
   if (notes.length > 0) {
     lines.push('', 'The project folder has its own notes for you:', '', ...notes)
   }
-  return lines.join('\n')
+  return { text: lines.join('\n'), truncated }
 }
 
 interface LiveSession {
@@ -419,20 +466,21 @@ export function createAgentManager(deps: AgentManagerDeps): AgentManager {
         const skills = deps.buildSkills ? await deps.buildSkills(projectRoot) : undefined
         entry.skills = skills?.skills
         const config = settings.providers[request.provider]
+        const instructions = await agentInstructionsAndCuts(
+          request.provider,
+          projectRoot,
+          deps.language(),
+          appMcp !== undefined,
+          skills?.skills,
+          relayList.map((relay) => relay.name),
+        )
         const options: AgentSessionOptions = {
           projectRoot,
           mode: request.mode,
           model: config?.model ?? '',
           effort: config?.effort,
           cliPath: config?.cliPath,
-          instructions: await agentInstructions(
-            request.provider,
-            projectRoot,
-            deps.language(),
-            appMcp !== undefined,
-            skills?.skills,
-            relayList.map((relay) => relay.name),
-          ),
+          instructions: instructions.text,
           openDocuments: openAtStart,
           protectedPaths,
           skillBundleDir: skills?.dir,
@@ -463,6 +511,9 @@ export function createAgentManager(deps: AgentManagerDeps): AgentManager {
           skills: skills ? await agentSessionSkillsOf(skills.skills) : [],
           ...(relays && relays.keepResultsInside.length > 0
             ? { mcpKeepInside: [...relays.keepResultsInside] }
+            : {}),
+          ...(instructions.truncated.length > 0
+            ? { instructionsTruncated: instructions.truncated }
             : {}),
         }
       } catch (error) {

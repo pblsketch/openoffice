@@ -206,6 +206,8 @@ export type AgentStartResponse =
        * cannot keep it, and the start warning names them (user MCP spec 9)
        */
       mcpKeepInside?: string[] | undefined
+      /** project notes the instructions carry only the start of, by file name; absent when none */
+      instructionsTruncated?: string[] | undefined
     }
   | {
       ok: false

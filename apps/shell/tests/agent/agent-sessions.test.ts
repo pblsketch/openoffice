@@ -16,6 +16,7 @@ import type { AiSettings, AiSubscriptionStatus } from '@genoffice/ai-provider'
 import { normalizeAiSettings } from '@genoffice/ai-provider'
 import {
   agentInstructions,
+  agentInstructionsAndCuts,
   agentProtectedPaths,
   createAgentManager,
   openableProjectFile,
@@ -115,6 +116,37 @@ describe('instructions', () => {
     expect(codex).toContain('Use formal Korean.')
     expect(codex).not.toContain('Agents file.')
     expect(codex).not.toContain('ieumoffice-editor')
+  })
+
+  it('keeps the limit on a long project note, says where the rest is, and reports the cut', async () => {
+    const project = temp()
+    const long = `${'a'.repeat(32_000)}TAIL-PAST-THE-LIMIT`
+    writeFileSync(join(project, 'CLAUDE.md'), long)
+    writeFileSync(join(project, 'AGENTS.md'), 'Agents file.')
+    const claude = await agentInstructionsAndCuts('claude-code', project, 'ko', true)
+    expect(claude.truncated).toEqual(['CLAUDE.md'])
+    expect(claude.text).toContain('a'.repeat(32_000))
+    expect(claude.text).not.toContain('TAIL-PAST-THE-LIMIT')
+    expect(claude.text).toContain(
+      `(Only the first 32000 characters of ${join(project, 'CLAUDE.md')} are given above. When the task needs the rest, read the file with the Read tool.)`,
+    )
+    expect(claude.text).toContain('Agents file.')
+    // Codex has no Read tool: it reads the file with its own tools
+    const codex = await agentInstructionsAndCuts('codex', project, 'ko', false)
+    expect(codex.truncated).toEqual(['CLAUDE.md'])
+    expect(codex.text).toContain(
+      `of ${join(project, 'CLAUDE.md')} are given above. When the task needs the rest, read the file.)`,
+    )
+    expect(codex.text).not.toContain('Read tool')
+    expect(await agentInstructions('codex', project, 'ko', false)).toBe(codex.text)
+  })
+
+  it('reports no cut and adds no line for notes within the limit', async () => {
+    const project = temp()
+    writeFileSync(join(project, 'CLAUDE.md'), 'a'.repeat(32_000))
+    const result = await agentInstructionsAndCuts('claude-code', project, 'ko', true)
+    expect(result.truncated).toEqual([])
+    expect(result.text).not.toContain('Only the first')
   })
 
   it('points to the two skill tools only when the app tools are there', async () => {
@@ -264,6 +296,26 @@ describe('starting a session', () => {
     })
     expect(options.protectedPaths).toContain(join(home, '.codex'))
     expect(options.protectedPaths).toContain(join(home, 'AppData', 'IeumOffice'))
+  })
+
+  it('tells the window which project notes the instructions carry only the start of', async () => {
+    const { m, project, claude } = manager()
+    const plain = await m.start(1, {
+      provider: 'claude-code',
+      projectRoot: project,
+      mode: 'ask-commands',
+    })
+    expect(plain.ok && plain.instructionsTruncated).toBeUndefined()
+    writeFileSync(join(project, 'AGENTS.md'), 'x'.repeat(40_000))
+    const cut = await m.start(2, {
+      provider: 'claude-code',
+      projectRoot: project,
+      mode: 'ask-commands',
+    })
+    expect(cut.ok && cut.instructionsTruncated).toEqual(['AGENTS.md'])
+    expect(claude.mock.calls[1]![0].instructions).toContain(
+      `characters of ${join(project, 'AGENTS.md')} are given above`,
+    )
   })
 
   it('passes on the model and the effort chosen for that program', async () => {
