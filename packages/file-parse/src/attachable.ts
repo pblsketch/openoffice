@@ -5,8 +5,8 @@
  */
 import { detectDiagramFormat } from '@genoffice/drawio-model'
 
-/** plain-text extensions read as UTF-8 */
-const TEXT_EXTS = [
+/** plain-text extensions read as UTF-8; parseFileToText uses the same set. */
+export const PLAIN_TEXT_EXTS: ReadonlySet<string> = new Set([
   'txt',
   'md',
   'markdown',
@@ -34,7 +34,7 @@ const TEXT_EXTS = [
   'sh',
   'sql',
   'css',
-]
+])
 
 /** image extensions sent to the model as pictures, not extracted as text */
 export const ATTACHABLE_IMAGE_EXTS: ReadonlySet<string> = new Set([
@@ -68,7 +68,7 @@ export function diagramPictureExtOfName(fileName: string): DiagramPictureExt | n
 
 /** office/pdf formats get text extracted via `parseFileToText`; images skip extraction and go multimodal */
 export const ATTACHABLE_EXTS: ReadonlySet<string> = new Set([
-  ...TEXT_EXTS,
+  ...PLAIN_TEXT_EXTS,
   'doc',
   'docx',
   'odt',
