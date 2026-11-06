@@ -13,6 +13,7 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { isPlainSegment } from '../src/main/projects/paths'
 import { ProjectWriteGuard, ProjectWriteRefused } from '../src/main/projects/write-guard'
 
 /** The single write guard for project folders (spec 3, invariants 3 and 9) */
@@ -234,5 +235,24 @@ describe('project folder creation', () => {
     await expect(guard.createProjectFolder(base, '../escape')).rejects.toBeInstanceOf(
       ProjectWriteRefused,
     )
+  })
+})
+
+describe('Windows reserved device names', () => {
+  it('isPlainSegment rejects CON/PRN/… including CON.docx stems', () => {
+    for (const name of ['CON', 'PRN', 'AUX', 'NUL', 'COM1', 'LPT9', 'CON.docx', 'prn.txt']) {
+      expect(isPlainSegment(name)).toBe(false)
+    }
+    expect(isPlainSegment('report.docx')).toBe(true)
+    expect(isPlainSegment('my CON file.docx')).toBe(true)
+  })
+
+  it('writeNewDocument refuses a reserved final segment on win32', async () => {
+    const winGuard = new ProjectWriteGuard('win32')
+    const target = join(root, 'CON.docx')
+    await expect(winGuard.writeNewDocument(root, target, Buffer.from('x'))).rejects.toMatchObject({
+      reason: 'bad-path',
+    })
+    expect(existsSync(target)).toBe(false)
   })
 })
