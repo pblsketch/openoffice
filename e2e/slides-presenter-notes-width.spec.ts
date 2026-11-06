@@ -9,6 +9,7 @@ import { launchShell, closeAndSaveVideo, waitForPageWithUrl } from './helpers'
  * Presenter view: the splitter between the current slide and the notes column
  * widens the column by mouse and by keyboard, the slide frame gives up that
  * room, and the width is still there the next time the presenter view opens.
+ * A plain press saves nothing, and Esc in the middle of a drag leaves no drag behind.
  */
 async function deckWithNotes(): Promise<string> {
   const opened = await openPptx(await createBlankPptx())
@@ -94,6 +95,30 @@ test('the presenter view notes column is resized from its splitter and remembere
     await expect.poll(() => widthOf(page.locator('.presenter .pv-side'))).toBe(340)
     await page.keyboard.press('Escape')
     await expect(page.locator('.presenter')).toHaveCount(0)
+
+    // a width wider than this window is drawn narrower; a plain press on the splitter keeps it
+    const stored = () => page.evaluate(() => localStorage.getItem('ai-slides-presenter-side-width'))
+    await page.evaluate(() => localStorage.setItem('ai-slides-presenter-side-width', '5000'))
+    await openPresenter()
+    const innerWidth = await page.evaluate(() => window.innerWidth)
+    await expect.poll(() => widthOf(page.locator('.presenter .pv-side'))).toBe(innerWidth - 600)
+    const again = page.getByRole('separator', {
+      name: 'Drag to change the width of the notes column',
+    })
+    await again.click()
+    expect(await stored()).toBe('5000')
+
+    // Esc in the middle of a drag closes the view and leaves no drag behind
+    const grip = (await again.boundingBox())!
+    await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(grip.x + grip.width / 2 + 60, grip.y + grip.height / 2, { steps: 3 })
+    await page.keyboard.press('Escape')
+    await expect(page.locator('.presenter')).toHaveCount(0)
+    expect(await page.evaluate(() => document.body.style.cursor)).toBe('')
+    await page.mouse.move(grip.x - 100, grip.y + grip.height / 2, { steps: 3 })
+    await page.mouse.up()
+    expect(await stored()).toBe('5000')
   } finally {
     await closeAndSaveVideo(launched, 'slides-presenter-notes-width')
   }

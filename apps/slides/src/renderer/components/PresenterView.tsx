@@ -44,6 +44,7 @@ import {
   PRESENTER_SIDE_W_KEY,
   PRESENTER_SIDE_W_MIN,
 } from '../presenter-layout'
+import { startSideDrag } from '../presenter-side-drag'
 
 /** Layout constants (aligned with styles.css); the side column's width lives in presenter-layout.ts */
 const IS_MAC = navigator.platform.toLowerCase().includes('mac')
@@ -136,6 +137,9 @@ export function PresenterView({
     setPreferredSideW(w)
     localStorage.setItem(PRESENTER_SIDE_W_KEY, String(Math.round(w)))
   }, [])
+  /** Ends a splitter drag still running when the view goes away (Esc mid-drag) */
+  const endSideDragRef = useRef<(() => void) | null>(null)
+  useEffect(() => () => endSideDragRef.current?.(), [])
 
   // ── Ink/laser pointer ───────────────────────────────────────────────
   const [tool, setTool] = useState<'none' | 'pen' | 'laser'>('none')
@@ -449,30 +453,19 @@ export function PresenterView({
     e.preventDefault()
     const rect = body.getBoundingClientRect()
     const rtl = bodyIsRtl()
-    const splitter = e.currentTarget
-    splitter.setPointerCapture?.(e.pointerId)
-    document.body.style.cursor = 'col-resize'
-    let w = sideW
-    let raf = 0
-    const onMove = (ev: PointerEvent) => {
-      w = clampPresenterSideW(presenterSideWAtPointer(ev.clientX, rect, rtl), window.innerWidth)
-      if (!raf)
-        raf = requestAnimationFrame(() => {
-          raf = 0
-          setPreferredSideW(w)
-        })
-    }
-    const onUp = () => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      window.removeEventListener('pointercancel', onUp)
-      if (raf) cancelAnimationFrame(raf)
-      document.body.style.cursor = ''
-      rememberSideW(w)
-    }
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
-    window.addEventListener('pointercancel', onUp)
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+    endSideDragRef.current?.()
+    // a press without a move saves nothing, so a width this window clamps stays remembered
+    const end = startSideDrag({
+      widthAt: (clientX) =>
+        clampPresenterSideW(presenterSideWAtPointer(clientX, rect, rtl), window.innerWidth),
+      preview: setPreferredSideW,
+      commit: (w) => {
+        endSideDragRef.current = null
+        rememberSideW(w)
+      },
+    })
+    endSideDragRef.current = end
   }
 
   const onSplitterKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
