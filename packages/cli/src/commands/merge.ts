@@ -39,6 +39,8 @@ import { CliError, EXIT, type CommandResult } from '../result'
 
 // keys may be in any script (Korean, Japanese, ...); ASCII-only \w left them unfilled and unreported
 const PLACEHOLDER = /\{\{\s*([\p{L}\p{M}\p{N}_.-]+)\s*\}\}/gu
+/** One Unicode form for Map keys so NFD template placeholders match NFC --data keys. */
+const formKey = (key: string): string => key.normalize('NFC')
 const FORMATS = ['docx', 'pptx', 'xlsx'] as const
 type Format = (typeof FORMATS)[number]
 
@@ -207,7 +209,7 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 
 function flatten(obj: Record<string, unknown>, prefix: string, out: Values, ignored: string[]) {
   for (const [k, v] of Object.entries(obj)) {
-    const key = prefix ? `${prefix}.${k}` : k
+    const key = formKey(prefix ? `${prefix}.${k}` : k)
     if (isRecord(v)) flatten(v, key, out, ignored)
     else if (v === null || ['string', 'number', 'boolean'].includes(typeof v)) {
       if (out.has(key)) {
@@ -245,14 +247,18 @@ function textOf(v: Scalar): string {
 }
 
 function hits(text: string): Array<Pick<Hit, 'placeholder' | 'key'>> {
-  return [...text.matchAll(PLACEHOLDER)].map((m) => ({ placeholder: m[0], key: m[1]! }))
+  return [...text.matchAll(PLACEHOLDER)].map((m) => ({
+    placeholder: m[0],
+    key: formKey(m[1]!),
+  }))
 }
 
 /** every placeholder with a value swapped for it in one pass, the rest left as written */
 function substitute(text: string, values: Values): string {
-  return text.replace(PLACEHOLDER, (m, key: string) =>
-    values.has(key) ? textOf(values.get(key)!) : m,
-  )
+  return text.replace(PLACEHOLDER, (m, key: string) => {
+    const k = formKey(key)
+    return values.has(k) ? textOf(values.get(k)!) : m
+  })
 }
 
 const locKey = (location: Hit['location']): string => JSON.stringify(location)
