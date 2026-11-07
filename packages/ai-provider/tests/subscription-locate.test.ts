@@ -712,7 +712,8 @@ describe('several Claude Code copies', () => {
 
   it('leaves Codex to the first copy found', async () => {
     const first = await touch(join(homebrew(), 'codex'), '#!/bin/sh\n')
-    await touch(join(native(), 'codex'), '#!/bin/sh\n')
+    await chmod(first, 0o755)
+    await chmod(await touch(join(native(), 'codex'), '#!/bin/sh\n'), 0o755)
     const { asked, readVersion } = versionsOf({})
     const program = await locateSubscriptionProgram('codex', onMac(readVersion))
     expect(program?.command).toBe(first)
