@@ -2747,6 +2747,11 @@ function readJson<T>(path: string, fallback: T): T {
 
 const SETTINGS_PATH = () => userDataPath('ai-settings.json')
 
+/** the only write of the settings file: keys and tokens go to disk sealed (decision 0063) */
+function writeAiSettingsFile(settings: unknown): void {
+  writeJsonAtomic(SETTINGS_PATH(), sealAiSecrets(settings))
+}
+
 // Dev-only automation hooks: a fixed CDP port for driving the app from test
 // scripts, and a workbook path that bypasses the native file dialog.
 const debugPort = app.isPackaged ? undefined : process.env.XLSX_DEBUG_PORT
@@ -4496,8 +4501,7 @@ export function registerSheetsAiIpc(): void {
   ensureSubscriptionIpc(ipcMain, {
     getSettings: () => aiSettingsFromStored(readJson<unknown>(SETTINGS_PATH(), {})),
     setMeteredAccepted: (provider, accepted) => {
-      writeJsonAtomic(
-        SETTINGS_PATH(),
+      writeAiSettingsFile(
         withMeteredAccepted(readJson<unknown>(SETTINGS_PATH(), {}), provider, accepted),
       )
       broadcastAiSettingsChanged()
@@ -4532,10 +4536,7 @@ export function registerSheetsAiIpc(): void {
     const settings = aiSettingsInputSchema.parse(input)
     // the live model lists are the main process's (decision 0087): the file's copy is kept
     const stored = aiSettingsFromStored(readJson<unknown>(SETTINGS_PATH(), {}))
-    writeJsonAtomic(
-      SETTINGS_PATH(),
-      sealAiSecrets(withStoredKeyModels(settings as AiSettings, stored)),
-    )
+    writeAiSettingsFile(withStoredKeyModels(settings as AiSettings, stored))
     broadcastAiSettingsChanged()
   })
 

@@ -28,7 +28,7 @@
 
 ## 항상 지켜야 하는 것
 
-- 설정 파일을 디스크에 쓰는 곳은 쓰기 직전에 `sealAiSecrets`를 거친다. 읽기는 `resolveAiSettings`가 맨 앞에서 `openAiSecrets`로 푼다. 풀지 못한 봉인 값은 빈 키가 되고, `sealed:v1:` 글자가 키로 나가는 일은 없어야 한다(결정 0063).
+- 설정 파일은 봉인해서 쓴다. 문서·엑셀·슬라이드 뒷단은 이 파일을 각자의 `writeAiSettingsFile` 하나로만 쓰고, 그 함수가 쓰기 직전에 `sealAiSecrets`를 거친다. `writeJsonAtomic`으로 바로 쓰지 않는다. 읽기는 `resolveAiSettings`가 맨 앞에서 `openAiSecrets`로 푼다. 풀지 못한 봉인 값은 빈 키가 되고, `sealed:v1:` 글자가 키로 나가는 일은 없어야 한다(결정 0063).
 - 로그인 정보(`~/.codex/auth.json`, Claude 자격 증명 저장소, 세션 토큰)를 읽거나 복사하거나 저장하지 않는다. 테스트와 디버깅에서도 같다. 연결 상태는 프로그램 자신의 답(`claude auth status --json`, `codex login status`, app-server의 `account/read`)으로만 판단한다.
 - 프로그램이 출력한 글자는 상태·파일·로그 어디에도 복사하지 않는다. 출력은 `status.ts`가 나열한 값(`SUBSCRIPTION_LOGIN_KINDS`)과 대조만 하고, 모르는 값은 고정 토큰 `unknown`이 된다. 통과시키는 값은 셋뿐이고 각각 좁은 모양일 때만이다. 요금제 이름은 식별자 모양(`planLabel`), 계정은 이메일 주소 모양(`subscriptionAccountOf`), 모델 목록은 프로그램이 받는 식별자 모양과 길이를 자른 이름(`subscriptionModelsOf`). 조직 이름은 읽지 않는다. "알려진 패턴을 지우는" 방식으로 바꾸지 않는다(예상 밖 형식의 출력에서 조직 이름이 새어 나간다).
 - 계정(`AiSubscriptionStatus.account`)은 설정 화면의 카드에 보여 주는 값이고 그 밖의 용도가 없다. 메모리의 상태에만 있고 어디에도 쓰지 않는다. 설정 파일(`setMeteredAccepted`가 받는 것은 제공자와 불리언뿐이다), 동의 파일(로그인 종류만 남는다), 자식 프로세스 기록, 오류 문장에 들어가지 않는다. 메인이 판단에 쓰는 사본(`sharedSubscriptionStatuses`)과 자동 호출 경로의 상태(`packages/cli`의 `withoutAccount`)에서는 뺀다. 계정을 싣는 길은 IPC 응답과 `changed` 방송뿐이다. 로그인이 없는 상태(`signed-out`, `not-installed`, `error`, `checking`)에는 계정도 모델 목록도 붙지 않는다.
