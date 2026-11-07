@@ -11,7 +11,8 @@ export function noteText(notes: unknown): string | null {
   if (!isRecord(notes)) return null
   const plain = contentOf(notes.plain)
   if (plain !== null) return plain
-  const rich = contentOf(notes.realHTML)
+  // The engine writes `realHTML`; XMind 8 and some exported maps store `html`.
+  const rich = contentOf(notes.realHTML) ?? contentOf(notes.html)
   return rich === null ? null : htmlToPlainText(rich)
 }
 
