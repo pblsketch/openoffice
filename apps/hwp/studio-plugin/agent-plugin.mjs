@@ -4078,6 +4078,48 @@ function shiftMarks(marks, before, after, at) {
   })
 }
 
+/** What the studio tells a 'document-mutated' for that is no edit: a deferred layout finished. */
+const LAYOUT_ONLY_MUTATIONS = new Set(['input-handler-resumable-pagination'])
+
+/**
+ * Calls `fn` once for every edit of the document, whoever made it; answers the function that
+ * stops it. Everything in this plugin that follows the document listens here, not to one event:
+ * the studio tells of an edit as 'document-changed', but typing that redraws only its page
+ * (input-handler.ts afterPageLocalEdit) fires 'document-mutated' and 'document-page-invalidated'
+ * alone, and in a document of more than 30 pages no layout follows that would say it changed.
+ * Most edits fire both, the mutation first, in the same task: the 'document-changed' right after
+ * a mutation that was told is that same edit. The mutation a finished deferred layout fires is
+ * no edit (its 'document-changed' is told as before). `fn` runs while the event is told, so what
+ * it reads of the plugin's state (its own change running) is as it was then.
+ */
+function onDocumentEdit(host, fn) {
+  let told = false
+  const offMutated = host.events.on('document-mutated', (reason) => {
+    if (LAYOUT_ONLY_MUTATIONS.has(reason)) return
+    told = true
+    queueMicrotask(() => {
+      told = false
+    })
+    fn()
+  })
+  const offChanged = host.events.on('document-changed', () => {
+    if (told) {
+      told = false
+      return
+    }
+    fn()
+  })
+  return () => {
+    for (const off of [offMutated, offChanged]) {
+      try {
+        if (typeof off === 'function') off()
+      } catch {
+        // the host already took it off
+      }
+    }
+  }
+}
+
 /** Takes the plugin's double-click listener off the page again. */
 let stopListening = null
 /** A drag begun with a double click, kept on whole words (wordDrag); null when there is none. */
@@ -4560,7 +4602,7 @@ export const agentPlugin = {
       }
     }
 
-    host.events.on('document-changed', () => {
+    onDocumentEdit(host, () => {
       text = null
       pictures = null
       if (!own) {
@@ -4602,7 +4644,7 @@ export const agentPlugin = {
         }
       }, STYLE_LIST_PAUSE_MS)
     }
-    host.events.on('document-changed', scheduleStyleList)
+    onDocumentEdit(host, scheduleStyleList)
 
     let layer = null
     let settle = null
@@ -4824,11 +4866,7 @@ export const agentPlugin = {
         },
       })
       charCount = counter
-      const offChanged = host.events.on('document-changed', () => counter.documentChanged())
-      // typing redraws only its page: the studio tells of it as a mutation and a page to draw
-      // again, and says nothing of a changed document (over 30 pages it does not lay the pages
-      // out again later either). An edit that tells both only puts the same count off once more
-      const offMutated = host.events.on('document-mutated', () => counter.documentChanged())
+      const offEdit = onDocumentEdit(host, () => counter.documentChanged())
       const offCaret = host.events.on('cursor-rect-updated', () => counter.selectionChanged())
       // another document opened in the same editor (a restored copy, a file dropped in)
       const offSwapped = host.events.on('document-swapped', () => counter.documentSwapped())
@@ -4841,7 +4879,8 @@ export const agentPlugin = {
         counter.stop()
         page.removeEventListener('keyup', onRest, true)
         page.removeEventListener('mouseup', onRest, true)
-        for (const off of [offChanged, offMutated, offCaret, offSwapped]) {
+        offEdit()
+        for (const off of [offCaret, offSwapped]) {
           try {
             off?.()
           } catch {
