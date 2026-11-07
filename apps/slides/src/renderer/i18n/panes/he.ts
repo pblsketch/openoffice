@@ -277,6 +277,7 @@ export const he = {
   panePresenterNoNotes: '(אין הערות)',
   panePresenterNotesBigger: 'הגדל את טקסט ההערות',
   panePresenterNotesSmaller: 'הקטן את טקסט ההערות',
+  panePresenterResizeNotes: 'גרור כדי לשנות את רוחב עמודת ההערות',
   panePresenterFilmSlideN: 'שקופית {n}',
 
   paneShowEndedClick: 'סוף הצגת השקופיות. לחץ כדי לצאת.',

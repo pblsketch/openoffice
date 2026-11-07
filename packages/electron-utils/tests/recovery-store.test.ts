@@ -556,6 +556,23 @@ describe('adopting an old untitled copy', () => {
     expect(readFileSync(outside, 'utf8')).toBe('user file')
   })
 
+  it('adopts a copy whose name only starts with dots', () => {
+    mkdirSync(join(root, 'sheets-autosave'), { recursive: true })
+    const legacy = join(root, 'sheets-autosave', '..Book4.xlsx')
+    writeFileSync(legacy, 'workbook')
+    const identity = store.adoptUntitledCopy('sheets', legacy, { title: 'Book4', ext: '.xlsx' })
+    expect(identity).not.toBeNull()
+    expect(existsSync(legacy)).toBe(false)
+    expect(readFileSync(store.copyInfo(identity!)!.copyPath, 'utf8')).toBe('workbook')
+  })
+
+  it('refuses a dotted name beside the editor folder', () => {
+    const outside = join(root, '..sheets-autosave')
+    writeFileSync(outside, 'not a copy')
+    expect(store.adoptUntitledCopy('sheets', outside, { title: 'x', ext: '.xlsx' })).toBeNull()
+    expect(readFileSync(outside, 'utf8')).toBe('not a copy')
+  })
+
   it('keeps the original path it is given', () => {
     mkdirSync(join(root, 'sheets-autosave'), { recursive: true })
     const legacy = join(root, 'sheets-autosave', `${sha16('C:\\tmp\\Book3.xlsx')}.xlsx`)

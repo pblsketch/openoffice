@@ -279,6 +279,7 @@ export const ja = {
   panePresenterNoNotes: '（ノートなし）',
   panePresenterNotesBigger: 'ノートの文字を大きく',
   panePresenterNotesSmaller: 'ノートの文字を小さく',
+  panePresenterResizeNotes: 'ドラッグしてノート欄の幅を変更',
   panePresenterFilmSlideN: 'スライド {n}',
 
   paneShowEndedClick: 'スライドショーの最後です。クリックで終了。',

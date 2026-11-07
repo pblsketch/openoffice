@@ -72,6 +72,7 @@
 - **Codex 프로세스는 요청이 없어도 잠깐 떠 있다.** 상태 확인이 계정 종류를 읽으려고 `app-server`를 띄운다. Claude만 쓰는 사람의 PC에서도 Codex 프로세스가 보일 수 있다. 2분 동안 쓰지 않으면 끝나고, 앱을 끄면 함께 끝난다.
 - **사용자가 업데이트했다는데 카드는 계속 버전이 낮다고 한다.** 앱이 찾는 것은 Windows 쪽 사본뿐이다(PATH, `~\.local\bin`, `%APPDATA%\npm`, WinGet). WSL(Ubuntu) 터미널에서 `claude update`를 하면 리눅스 안의 사본만 바뀌고, 예전에 Windows에 깔아 둔 사본은 그대로다. 실제로 이런 신고가 있었다(WSL 2.1.305, Windows 2.1.114). → 카드에 보이는 경로의 사본을 Windows PowerShell에서 업데이트하게 안내한다. npm으로 깐 사본이면 `npm install -g @anthropic-ai/claude-code@latest`도 된다.
 - **껍데기 파일(`.cmd`)은 셸 없이 실행되지 않는다.** npm으로 설치한 프로그램은 `%APPDATA%\npm`의 `.cmd`다. 셸을 켜면 사용자 글이 명령으로 해석될 수 있다. → 껍데기 뒤의 실제 파일을 찾아 직접 실행한다. `%APPDATA%\npm`은 앱이 물려받은 PATH에 없을 수 있으므로 따로 찾아본다.
+- **npm으로 깐 Codex를 쓰면 PDF를 열 때마다 콘솔 창이 여러 개 열렸다 닫혔다(0.12.10, 의견 시트 250행).** npm 패키지가 실제 프로그램을 두는 곳은 판마다 다르다. 0.132까지는 `vendor/<triple>/codex/codex.exe`, 0.138부터는 `vendor/<triple>/bin/codex.exe`이고 그 사이 판의 실행기(`bin/codex.js`)는 둘 다 찾는다. 앱이 `bin/`만 보았기 때문에 예전 배치에서는 `codex.js`를 Electron(Node로)으로 띄웠고, `codex.js`가 창을 숨기지 않고 `codex.exe`를 띄워 상태 확인 한 번(`--version`, `login status`, `app-server` 둘)마다 콘솔 창이 떴다. → Windows에서는 `locate.ts`가 두 배치를 모두 찾아 실제 프로그램을 직접 띄운다. Mac·Linux에서는 예전 배치를 지금처럼 `codex.js`로 띄운다. 그 판의 실행기는 함께 든 `vendor/<triple>/path`(rg)를 PATH에 붙이는데 직접 띄우면 빠지고, 콘솔 창 문제는 Windows에만 있다(`docs/tracking/findings.md`). 새 배치가 생기면 공개된 `codex.js`의 찾는 경로와 맞춘다.
 - **표준 입력을 열어 둔 채 기다리게 하면 안 된다.** Claude는 3초를 버리고 Codex는 끝없이 기다린다.
 - **구독으로 받는 답은 몇 초 늦게 시작한다.** 프로그램이 먼저 켜져야 한다. 이 PC에서 Claude(가장 작은 모델)의 첫 글자까지 3.5초에서 4.5초 사이였다.
 - **앱의 프록시 설정은 구독 프로그램에 전달되지 않는다.** 프로그램은 물려받은 환경의 프록시 변수만 본다. Windows 설정에만 둔 프록시는 닿지 않는다.
@@ -172,10 +173,12 @@
 
 - **Windows에서 처음 켜면 응답없음이 되거나 회색 화면만 나온다(0.12.6까지).** Windows 보안의 '제어된 폴더 액세스'가 켜져 있으면 `문서\IeumOffice` 폴더 만들기가 막힌다. 기본 저장 폴더를 정하는 함수가 부를 때마다 폴더를 만들고 실패하면 예외를 던졌고, 홈 화면·검색 색인·첫 저장이 그 함수를 쉬지 않고 불렀다. → 있는 폴더는 만들지 않고, 실패한 폴더는 30초 동안 건너뛰고, 홈 폴더 아래로 내려간 뒤 한 번 알린다(결정 0078). 폴더가 이미 있고 쓰기만 막힌 경우는 쓰기 권한 검사로 알 수 없다.
 - **0.12.8에서도 '제어된 폴더 액세스'가 켜진 PC에서 처음 켜면 응답없음이 된다.** 막힌 폴더 만들기를 Windows가 `ENOENT`로 돌려주고, `mkdirSync(dir, { recursive: true })`가 그 오류에 끝없이 다시 시도한다. 인스펙터도 끼어들지 못한다. → 막힐 수 있는 폴더는 `recursive` 없이 한 단계씩 만든다(`default-save-dir.ts`의 `createDirLevels`, 결정 0078).
+- **저장하려니 "Failed to get 'documents' path"가 나고 저장 대화 상자가 뜨지 않는다(0.12.11까지).** Windows가 문서 폴더 위치를 알려 주지 못하면(레지스트리의 문서 폴더 항목이 깨졌거나, OneDrive로 옮겼다 되돌렸거나, 빠진 드라이브로 옮겨 둔 경우) Electron의 `app.getPath('documents')`가 예외를 던진다. 대체 폴더 목록을 만드는 순간 그 호출이 먼저 돌아, 저장 위치를 정해 둔 사용자도 막혔다. → `app.getPath('documents')`를 바로 부르지 않는다. 기본 저장 폴더는 `configuredDefaultSaveDir`, 대화 상자를 문서 폴더에서 열 때는 `documentsDirOrFallback`(홈 → userData)을 쓴다.
 
 ## Linux 패키지
 
 - **Ubuntu 24.04에서 deb 설치가 의존성 오류로 멈춘다.** 24.04와 Debian 13은 64비트 time_t 전환으로 여러 라이브러리를 `*t64` 이름으로 다시 지었다(24.04만 봐도 `libgtk-3-0`·`libatspi2.0-0`의 옛 이름은 없다). electron-builder의 기본 `depends`는 옛 이름만 적고, `deb.depends`를 설정하면 기본 목록이 통째로 바뀐다. → `electron-builder.cjs`의 `depends`가 기본 목록을 그대로 적고, 이름이 바뀐 것에는 `libgtk-3-0 | libgtk-3-0t64`처럼 대안을 붙인다. `tests/linux-deb-dependencies.test.ts`와 `linux-build.yml`의 검사가 지킨다.
+- **Ubuntu 20.04에서 앱은 뜨는데 엑셀·CSV 파일이 열리지 않는다(0.12.11까지).** 빌드 기계(Ubuntu 22.04, glibc 2.35)에서 그냥 `cargo build`한 엑셀 처리 프로그램이 그 기계의 glibc에 맞춰 `GLIBC_2.34`를 요구했다. 20.04의 glibc는 2.31이라 프로그램이 뜨지 못하고 모든 열기가 실패한다. Electron 본체는 2.25만 요구해 앱 창은 뜬다. → `linux-build.yml`이 `cargo zigbuild`로 프로그램을 glibc 2.28(`LINUX_GLIBC_FLOOR`) 기준으로 다시 링크해 `target/release`에 덮는다. 같은 워크플로가 묶음 안의 모든 ELF 파일이 기준을 넘지 않는지 보고, Ubuntu 20.04 컨테이너에 deb를 깔아 CSV를 내보내 본다. Linux에서 직접 `npm run build:all`로 만든 프로그램은 그 PC의 glibc를 따른다.
 - **"apt가 libnotify4를 못 찾는다"는 보고는 빈 24.04에서 재현되지 않는다.** 24.04의 t64 패키지가 옛 이름을 `Provides:`로 제공하고 `libnotify4`·`libxtst6`·`libsecret-1-0`은 24.04에 옛 이름 그대로 남아 있어, 지난 배포본도 `sudo apt install ./ieumoffice_버전_amd64.deb`로는 풀린다(`dpkg -i`는 의존성을 스스로 풀지 않으니 실패한다). → 그래도 대안 표기를 유지한다. 24.10 이후 배포판과 32비트 아키텍처에서는 옛 이름이 아예 없을 수 있다.
 
 ## 작업 사본을 여럿 둘 때

@@ -29,7 +29,7 @@ Sheets 앱(메인과 렌더러)과 명령줄 도구(`packages/cli`)가 쓴다.
 - 셀 주소는 격자 범위(1,048,576행 × 16,384열) 안이어야 한다. 범위를 넘는 주소는 쓰기에 성공한 것처럼 보이고 다시 열면 값이 없다. 주소 문자열로 정규식을 만들기 전에 `isGridCellAddress`로 거른다.
 - 사용자 파일을 제자리에서 고치지 않는다. 같은 폴더의 임시 파일에 쓰고 바꿔치기한다. Windows에서는 백신·색인·동기화 프로그램이 잠깐 잡고 있으면 rename이 EPERM/EACCES/EBUSY로 실패하므로 재시도하고, 그래도 안 되면 대상을 백업한 뒤 덮어쓰고 도중에 실패하면 복원한다. fsync가 거부되는 것은 저장 실패로 치지 않는다.
 - 저장 전에 원본이 그사이 바뀌지 않았는지 확인한다. `mutateXlsxFile`은 파일 전체의 SHA-256, `applyPlanToXlsx`는 셀마다의 이전 값, 사이드카 경로는 계획 전후의 매니페스트를 본다.
-- 엔진 동작은 원본(GenOffice)의 수정이 병합될 때만 바뀐다. 파일 이동, 재포맷, 이름 변경을 하지 않는다.
+- 엔진 동작은 원본(GenOffice)의 수정이 병합될 때만 바뀐다. 예외는 사람이 정해 아래 "원본과 다른 점"에 적은 수정뿐이다. 파일 이동, 재포맷, 이름 변경을 하지 않는다.
 
 ## 이 모듈의 방식
 
@@ -44,6 +44,12 @@ Sheets 앱(메인과 렌더러)과 명령줄 도구(`packages/cli`)가 쓴다.
 - 진입점 묶음 파일이 없다. `exports`가 `./*`를 `./src/*.ts`로 풀어서 `@genoffice/xlsx-gateway/gateway/xlsx-gateway`처럼 파일 경로로 import한다. 렌더러가 `domain/`·`shared/`와 `gateway/`의 일부 파일을 골라 가져가므로, `node:*` import는 지금처럼 `gateway/xlsx-gateway.ts`와 `gateway/xlsx-package-io.ts`에만 둔다.
 - 이 패키지만 문서 주석을 `///`로 쓰고, 저장소 공통 설정을 상속하지 않는 자체 `tsconfig.json`(`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`)을 쓴다. 주변 방식을 따른다.
 - 명령 언어의 범위 연산은 2,000칸(`MAX_EXPANDED_CELL_OPS`)까지만 셀 단위로 펼치고, 그보다 크면 범위 연산 그대로 넘긴다. 범위 연산의 상한은 200,000칸이다.
+
+## 원본과 다른 점
+
+원본의 개선을 받아온 뒤 아래 시험이 모두 통과해야 한다. 충돌을 풀 때 이 동작이 사라지지 않게 한다. 원본이 같은 수정을 받아들였으면 그 항목을 지운다.
+
+- **`styles.xml`의 호환 블록(결정 0112).** 한셀은 서식 항목을 `mc:AlternateContent`로 감싸고 `xmlns:hs`를 `mc:Choice`에만 둔다. 구역의 직계 자식(일반 항목이나 블록 하나)을 한 칸으로 세고, 블록은 바이트 그대로 다시 쓴다. 번호를 읽을 때와 새 서식의 바탕을 찾을 때만 Fallback(없으면 첫 Choice)으로 푼다. 엔진의 `mc_children`과 같은 규칙이다. 구역 시작 태그는 `count`만 고친다. 읽기 전용 `xlsx-style-read.ts`와 `dateStyleIndexes`도 같은 칸 규칙을 쓴다. `gateway/xlsx-style-entries.ts`, `gateway/xlsx-styles.ts`. 시험 `tests/style-alternate-content.test.ts`, `apps/sheets/tests/xlsx-hancom-styles-reopen.test.ts`.
 
 ## 테스트
 

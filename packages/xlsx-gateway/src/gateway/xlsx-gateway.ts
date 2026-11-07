@@ -63,12 +63,14 @@ import {
   FilterEditError,
 } from './xlsx-filter'
 import { normalizeOoxmlPartPrefix } from './xlsx-namespace'
+import { resolvedStyleEntries } from './xlsx-style-entries'
 import { escapeRegExp } from './xlsx-sheets'
 import type { SheetAllocation, SheetEditPlan, SheetElement } from './xlsx-sheets'
 import {
   addWorksheetOverride,
   addWorksheetRelationship,
   applySheetPlanToWorkbookXml,
+  assertAddedSheetsKeepRenamedNames,
   assertNoSheetScopedDefinedNames,
   buildWorksheetPartXml,
   chartReferencesSheet,
@@ -607,19 +609,22 @@ export function isDateFormatCode(code: string): boolean {
 
 /** the cellXfs indexes whose number format is a date or a time */
 export function dateStyleIndexes(stylesXml: string): Set<number> {
+  // Entries as the sidecar reads them: a wrapped (mc:AlternateContent) numFmt
+  // or xf is one entry, read through its Fallback — a Choice branch may give
+  // the same numFmtId another format code.
   const custom = new Set<number>()
-  for (const m of stylesXml.matchAll(/<numFmt\b([^>]*)\/?>/g)) {
-    const id = Number(readXmlAttribute(m[1] ?? '', 'numFmtId'))
-    const code = decodeXmlText(readXmlAttribute(m[1] ?? '', 'formatCode') ?? '')
+  const numFmts = /<numFmts\b[^>]*>([\s\S]*?)<\/numFmts>/.exec(stylesXml)?.[1] ?? ''
+  for (const numFmt of resolvedStyleEntries(numFmts, 'numFmt')) {
+    const attributes = /^<numFmt\b([^>]*?)\/?>/.exec(numFmt)?.[1] ?? ''
+    const id = Number(readXmlAttribute(attributes, 'numFmtId'))
+    const code = decodeXmlText(readXmlAttribute(attributes, 'formatCode') ?? '')
     if (Number.isFinite(id) && isDateFormatCode(code)) custom.add(id)
   }
   const out = new Set<number>()
   const cellXfs = /<cellXfs\b[^>]*>([\s\S]*?)<\/cellXfs>/.exec(stylesXml)?.[1] ?? ''
-  let index = 0
-  for (const m of cellXfs.matchAll(/<xf\b([^>]*)\/?>/g)) {
-    const id = Number(readXmlAttribute(m[1] ?? '', 'numFmtId'))
+  for (const [index, xf] of resolvedStyleEntries(cellXfs, 'xf').entries()) {
+    const id = Number(readXmlAttribute(/^<xf\b([^>]*?)\/?>/.exec(xf)?.[1] ?? '', 'numFmtId'))
     if (BUILTIN_DATE_FORMATS.has(id) || custom.has(id)) out.add(index)
-    index += 1
   }
   return out
 }
@@ -991,6 +996,33 @@ export async function planCellEditsToXlsx(
     throw new DefinedNameError(
       'Defined-name edits cannot be saved together with row/column or sheet ' +
         'changes — save one of them first.',
+    )
+  }
+  if (sheetPlan !== undefined) {
+    const sheetStates: readonly (readonly { readonly sheetName: string }[])[] = [
+      edits,
+      structuralOps,
+      filterStates,
+      hyperlinkEdits,
+      cfStates,
+      dvStates,
+      sheetProtections,
+      visualAdditions,
+      pageSetupStates,
+      noteStates,
+      tableAdditions,
+      pivotAdditions,
+      sparklineAdditions,
+      formulaValues,
+      protectedRangeStates,
+      bulkConstantFills,
+      tabColorStates,
+      tableEdits,
+      cellImageAdditions,
+    ]
+    assertAddedSheetsKeepRenamedNames(
+      sheetPlan,
+      new Set(sheetStates.flatMap((states) => states.map((state) => state.sheetName))),
     )
   }
   const pkg = new PackageEditor(source)
@@ -1633,11 +1665,15 @@ export async function planCellEditsToXlsx(
 
   // Print areas / title rows are sheet-scoped _xlnm names; they apply to the
   // final workbook.xml (post sheet-plan, post defined-names rewrite — which
-  // keeps _xlnm entries verbatim).
+  // keeps _xlnm entries verbatim). States name an existing sheet by its
+  // original file name, so one renamed in this save is looked up by its new
+  // name (an added sheet never takes a renamed sheet's old name — see
+  // assertAddedSheetsKeepRenamedNames).
+  const renamedTo = new Map(sheetPlan?.renames.map((rename) => [rename.sheetName, rename.newName]))
   const printAreas = pageSetupStates
     .filter((state) => state.printArea !== undefined || state.printTitles !== undefined)
     .map((state) => ({
-      sheetName: state.sheetName,
+      sheetName: renamedTo.get(state.sheetName) ?? state.sheetName,
       printArea: state.printArea,
       printTitles: state.printTitles,
     }))

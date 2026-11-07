@@ -61,6 +61,7 @@ export {
   DEFAULT_SAVE_DIR_KEY,
   configuredDefaultSaveDir,
   defaultSaveDirFallback,
+  documentsDirOrFallback,
   isUsableSaveDir,
   readDefaultSaveDirSetting,
   resolveDefaultSaveDir,

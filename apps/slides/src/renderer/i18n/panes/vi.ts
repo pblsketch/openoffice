@@ -279,6 +279,7 @@ export const vi = {
   panePresenterNoNotes: '(Không có ghi chú)',
   panePresenterNotesBigger: 'Tăng cỡ chữ ghi chú',
   panePresenterNotesSmaller: 'Giảm cỡ chữ ghi chú',
+  panePresenterResizeNotes: 'Kéo để thay đổi độ rộng cột ghi chú',
   panePresenterFilmSlideN: 'Trang chiếu {n}',
 
   paneShowEndedClick: 'Kết thúc trình chiếu. Nhấp để thoát.',

@@ -278,6 +278,7 @@ export const th = {
   panePresenterNoNotes: '(ไม่มีบันทึกย่อ)',
   panePresenterNotesBigger: 'ขยายขนาดตัวอักษรของบันทึกย่อ',
   panePresenterNotesSmaller: 'ลดขนาดตัวอักษรของบันทึกย่อ',
+  panePresenterResizeNotes: 'ลากเพื่อเปลี่ยนความกว้างของคอลัมน์บันทึกย่อ',
   panePresenterFilmSlideN: 'สไลด์ {n}',
 
   paneShowEndedClick: 'จบการนำเสนอแล้ว คลิกเพื่อออก',

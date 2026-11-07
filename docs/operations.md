@@ -172,6 +172,7 @@ GitHub Actions에서 만든다.
 2. 끝나면 실행 결과의 Artifacts에서 `ieumoffice-linux-x64`를 내려받는다. 안에 `IeumOffice-<버전>.AppImage`, `ieumoffice_<버전>_amd64.deb`, `ieumoffice-<버전>.x86_64.rpm`, `latest-linux.yml`(베타 버전 번호면 `beta-linux.yml`)이 있다.
 
 - 빌드는 앱 실행 파일, 엑셀 처리 프로그램, 터미널 명령어가 실행 가능하게 들어갔는지 검사하고, deb의 의존성이 Ubuntu 24.04(64비트 time_t 전환으로 `t64` 이름이 쓰이는 곳)에서도 풀리는지 확인한 뒤, 만든 앱을 Xvfb 아래에서 창 없이 띄워 Markdown·CSV 파일을 PDF로 내보내 본다. 하나라도 실패하면 결과를 올리지 않는다.
+- 엑셀 처리 프로그램은 빌드 기계의 glibc가 아니라 glibc 2.28 기준으로 링크한다(`cargo zigbuild`, 기준 값은 워크플로의 `LINUX_GLIBC_FLOOR`). 빌드는 묶음 안의 실행 파일과 라이브러리가 모두 이 기준 안의 glibc만 요구하는지 보고, Ubuntu 20.04 컨테이너에 deb를 깔아 CSV를 내보내 본다.
 - 비밀 값을 쓰지 않는다. **release_tag**를 적고 `main`에서 실행하면, 빌드가 통과한 뒤 그 태그의 이미 공개된 릴리스에 AppImage, deb, rpm, `latest-linux.yml`을 붙인다(빌드한 버전과 태그가 같을 때만). 비워 두면 결과물만 남는다. 순서는 `docs/releasing.ko.md`의 "Linux 설치 파일"이다.
 - Linux(x64)에서 직접 만들 때(`rpm` 패키지가 설치되어 있어야 한다): `npm ci`, `npm run build:all`, `npm run dist:linux -w @genoffice/shell -- --publish never`.
 
@@ -206,6 +207,7 @@ npm run typecheck
 - 옮긴 뒤 위의 검사 전체와, 건드린 엔진 패키지의 테스트를 돌린다.
 - `packages/pdf2docx`(결정 0058)에는 원본과 다른 동작이 있다. `packages/docx-engine`(결정 0092)은 지금 원본과 같지만, 다시 고치게 되면 같은 절에 적는다. 그 패키지의 `AGENTS.md` "원본과 다른 점"에 적힌 시험이 옮긴 뒤에도 통과하는지 본다. 충돌이 나면 그 목록의 동작을 남긴다. 원본이 같은 수정을 받아들였으면 그 항목을 지운다.
 - `packages/pptx-engine`·`packages/pptx-ops`에도 원본과 다른 동작이 있다(결정 0094: 강조 색·문자 간격 쓰기, 도형 숨기기·이름). 두 패키지의 `AGENTS.md` "원본과 다른 점"의 시험으로 같은 확인을 한다.
+- `packages/xlsx-gateway`에도 원본과 다른 동작이 있다(결정 0112: 한셀 `styles.xml`의 호환 블록 보존). 같은 방식으로 그 패키지 `AGENTS.md` "원본과 다른 점"의 시험을 돌린다.
 
 ## 한글 엔진(rhwp) 다시 빌드하기
 

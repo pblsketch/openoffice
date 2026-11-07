@@ -158,6 +158,14 @@ export const nl = {
     'Er opent een aanmeldpagina van ChatGPT in je browser. Meld je aan en sta deze app toe je ChatGPT-abonnement te gebruiken; de verbinding komt dan vanzelf tot stand.',
   chatgptLoginUnfinishedNote:
     'Het aanmelden is niet afgerond. Druk nogmaals om opnieuw te beginnen. Voor de verbinding moet je toestaan dat je ChatGPT-abonnement wordt gebruikt.',
+  chatgptLoginNoPlanNote:
+    'Je bent aangemeld bij ChatGPT, maar deze app heeft geen toestemming gekregen om je abonnement te gebruiken. Druk nogmaals en sta het gebruik van je abonnement toe op de toestemmingspagina. Heb je dat al gedaan, dan biedt OpenAI dit gebruik misschien niet aan voor je account (bijvoorbeeld een account dat een bedrijf of school beheert) of je abonnement. Je kunt dan verbinden met het programma Codex.',
+  chatgptLoginDeniedNote:
+    'Je bent in de browser aangemeld, maar OpenAI heeft deze verbinding niet geaccepteerd, of het antwoord kon niet worden gecontroleerd. Controleer of de datum en tijd van deze pc kloppen en druk dan nogmaals om opnieuw te beginnen.',
+  chatgptLoginNetworkNote:
+    'Het aanmelden kon niet worden afgerond: OpenAI was niet bereikbaar of er ging geen browser open. Controleer de internetverbinding (ook een bedrijfsnetwerk, VPN of proxy) en druk dan nogmaals.',
+  chatgptLoginNotAllowedNote:
+    'Je hebt deze app niet toegestaan je ChatGPT-abonnement te gebruiken, of de browser kwam met een fout terug van het aanmelden. Druk nogmaals, meld je aan en geef toestemming op de toestemmingspagina.',
   chatgptSigningInNote:
     'Meld je in de geopende browser aan met je ChatGPT-account en sta deze app toe je abonnement te gebruiken. De verbinding komt vanzelf tot stand.',
   chatgptPlanNote:

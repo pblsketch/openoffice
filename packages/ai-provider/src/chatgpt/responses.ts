@@ -193,8 +193,11 @@ async function readTurn(
       }
       completed = true
     } else if (type === 'response.failed' || type === 'error') {
-      // `response.failed` carries the response with its error; an `error` event is the error itself
-      const result = type === 'error' ? { error: data } : data.response
+      // `response.failed` carries the response with its error. An `error` event is the
+      // error itself in the API reference (`code`, `message`, `param` on the event),
+      // and wraps it as `error: { code, message }` in what Codex reads off this stream.
+      const result =
+        type === 'error' ? { error: isPlainObject(data.error) ? data.error : data } : data.response
       const failure = await chatGptFailure(200, result, null)
       // a cause the run tells the user about (a used-up plan) stays as it is
       if (raw || failure instanceof AiRunError) throw failure

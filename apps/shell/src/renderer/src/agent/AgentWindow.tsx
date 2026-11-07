@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { htmlDir, htmlLang, type Lang, type Params } from '@genoffice/i18n'
 import {
   pickerSkillsOf,
+  projectPanelText,
   skillChipOf,
   skillPickerText,
   useSkillPickerInput,
@@ -179,6 +180,8 @@ export function AgentWindow() {
   const [projectSkills, setProjectSkills] = useState<AgentProjectSkillsView | null>(null)
   /** the session's MCP servers that keep received content inside, which this window cannot keep */
   const [mcpKeepInside, setMcpKeepInside] = useState<string[]>([])
+  /** the session's instructions carry only the start of a long CLAUDE.md / AGENTS.md */
+  const [instructionsTruncated, setInstructionsTruncated] = useState(false)
   const folderRef = useRef('')
   const sessionRef = useRef<string | null>(null)
   const logEnd = useRef<HTMLDivElement | null>(null)
@@ -350,6 +353,7 @@ export function AgentWindow() {
     setSessionId(result.sessionId)
     setSessionSkills(result.skills ?? [])
     setMcpKeepInside(result.mcpKeepInside ?? [])
+    setInstructionsTruncated((result.instructionsTruncated ?? []).length > 0)
     setChips([])
     setChipNotice(null)
     setCards({})
@@ -417,6 +421,7 @@ export function AgentWindow() {
     setSessionId(null)
     setSessionSkills([])
     setMcpKeepInside([])
+    setInstructionsTruncated(false)
     setChips([])
     setChipNotice(null)
     setLog(EMPTY_AGENT_LOG)
@@ -546,6 +551,9 @@ export function AgentWindow() {
           <div className="agent-system">
             {t('startedLine', { program: t(PROVIDER_LABEL[prefs.provider]), folder })}
           </div>
+          {instructionsTruncated ? (
+            <div className="agent-system">{projectPanelText(lang, 'instructionsTruncated')}</div>
+          ) : null}
           {mcpKeepInside.map((server) => (
             <div key={`keep-${server}`} className="agent-notice" role="alert">
               {agentMcpText(lang, 'mcpKeepInsideWarning', { server })}

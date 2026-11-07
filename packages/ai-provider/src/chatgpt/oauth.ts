@@ -15,6 +15,8 @@ import { createHash, createPublicKey, randomBytes, verify, type JsonWebKey } fro
 import type { IncomingMessage, Server, ServerResponse } from 'node:http'
 import { aiFetch } from '../fetch'
 import { freeConnectPageHtml, type FreeConnectPage } from '../free-connect'
+import { SUBSCRIPTION_LOGIN_ERROR_CODE } from '../subscription/contract'
+import type { AiSubscriptionLoginFailureStep } from '../types'
 
 export type FetchLike = (url: string, init: RequestInit) => Promise<Response>
 
@@ -54,6 +56,20 @@ const CLOCK_SKEW_SECONDS = 300
  */
 export type ChatGptSignInFailure = 'cancelled' | 'timeout' | 'denied' | 'no-plan' | 'network'
 
+/** Which step of a sign-in failed (`AI_SUBSCRIPTION_LOGIN_FAILURE_STEPS`) */
+export type ChatGptSignInStep = AiSubscriptionLoginFailureStep
+
+/** A failed sign-in: why, the step it failed at, and the token endpoint's answer when that was it */
+export interface ChatGptSignInFailed {
+  ok: false
+  reason: ChatGptSignInFailure
+  step?: ChatGptSignInStep | undefined
+  /** the token endpoint's HTTP status, on `token-refused` and `token-http` */
+  httpStatus?: number | undefined
+  /** the OAuth `error` code of the token endpoint or the callback, when it has an identifier's shape */
+  oauthError?: string | undefined
+}
+
 export interface ChatGptTokenSet {
   accessToken: string
   refreshToken: string
@@ -62,6 +78,11 @@ export interface ChatGptTokenSet {
   scopes: string[]
   /** present on a sign-in, and on a refresh when OpenAI sends a new one */
   idToken?: string | undefined
+  /**
+   * The answer had no `scope` field (OpenAI documents it as always there).
+   * The scopes are then empty; this tells that apart from a plan not granted.
+   */
+  scopeMissing?: true | undefined
 }
 
 function base64url(bytes: Buffer): string {
@@ -132,8 +153,7 @@ async function listen(server: Server, host: string): Promise<number> {
 }
 
 export type ChatGptCallback =
-  | { ok: true; code: string; clientId: string; port: number }
-  | { ok: false; reason: ChatGptSignInFailure }
+  { ok: true; code: string; clientId: string; port: number } | ChatGptSignInFailed
 
 export interface ChatGptCallbackOptions {
   /** the address to open, once the waiting server knows its port */
@@ -176,7 +196,13 @@ export async function waitForChatGptCallback(
     answered = true
     const code = url.searchParams.get('code')
     const clientId = url.searchParams.get('client_id')
-    const ok = !url.searchParams.get('error') && !!code && !!clientId
+    const callbackError = url.searchParams.get('error')
+    const failedStep: ChatGptSignInStep | undefined = callbackError
+      ? 'callback-error'
+      : !code || !clientId
+        ? 'callback-incomplete'
+        : undefined
+    const ok = failedStep === undefined
     res.writeHead(200, {
       'Content-Type': 'text/html; charset=utf-8',
       'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'",
@@ -184,14 +210,25 @@ export async function waitForChatGptCallback(
     })
     res.end(freeConnectPageHtml(ok ? options.pages.done : options.pages.failed))
     settle(
-      ok ? { ok: true, code: code!, clientId: clientId!, port } : { ok: false, reason: 'denied' },
+      ok
+        ? { ok: true, code: code!, clientId: clientId!, port }
+        : {
+            ok: false,
+            reason: 'denied',
+            step: failedStep,
+            ...(callbackError && SUBSCRIPTION_LOGIN_ERROR_CODE.test(callbackError)
+              ? { oauthError: callbackError }
+              : {}),
+          },
     )
   }
 
   const { createServer } = await import('node:http')
   const server = createServer(handle)
+  let listening = false
   try {
     port = await listen(server, '127.0.0.1')
+    listening = true
     const timer = setTimeout(
       () => settle({ ok: false, reason: 'timeout' }),
       options.timeoutMs ?? CHATGPT_SIGN_IN_TIMEOUT_MS,
@@ -200,14 +237,14 @@ export async function waitForChatGptCallback(
     options.signal?.addEventListener('abort', onAbort, { once: true })
     if (options.signal?.aborted) onAbort()
     else if (!(await options.openBrowser(options.authorizeUrl(port)))) {
-      settle({ ok: false, reason: 'network' })
+      settle({ ok: false, reason: 'network', step: 'browser' })
     }
     const result = await outcome
     clearTimeout(timer)
     options.signal?.removeEventListener('abort', onAbort)
     return result
   } catch {
-    return { ok: false, reason: 'network' }
+    return { ok: false, reason: 'network', step: listening ? 'browser' : 'loopback' }
   } finally {
     server.close()
     server.closeAllConnections?.()
@@ -221,6 +258,12 @@ interface TokenResponse {
   expires_in?: unknown
   scope?: unknown
   error?: unknown
+}
+
+/** The token endpoint's OAuth error code, passed on only with an identifier's shape: never free text */
+function oauthErrorOf(body: unknown): string | undefined {
+  const code = isRecord(body) ? body.error : undefined
+  return typeof code === 'string' && SUBSCRIPTION_LOGIN_ERROR_CODE.test(code) ? code : undefined
 }
 
 function tokenSetOf(body: TokenResponse, now: number): ChatGptTokenSet | null {
@@ -237,6 +280,7 @@ function tokenSetOf(body: TokenResponse, now: number): ChatGptTokenSet | null {
     refreshToken: body.refresh_token,
     expiresAt: now + seconds * 1000,
     scopes,
+    ...(typeof body.scope === 'string' ? {} : { scopeMissing: true }),
     ...(typeof body.id_token === 'string' && body.id_token ? { idToken: body.id_token } : {}),
   }
 }
@@ -247,7 +291,8 @@ export async function exchangeChatGptCode(
   fetchImpl: FetchLike = aiFetch,
   signal?: AbortSignal,
   now: () => number = Date.now,
-): Promise<{ ok: true; tokens: ChatGptTokenSet } | { ok: false; reason: ChatGptSignInFailure }> {
+): Promise<{ ok: true; tokens: ChatGptTokenSet } | ChatGptSignInFailed> {
+  let reached = false
   try {
     const response = await fetchImpl(CHATGPT_TOKEN_URL, {
       method: 'POST',
@@ -262,14 +307,29 @@ export async function exchangeChatGptCode(
       }).toString(),
       signal: withTimeout(signal),
     })
-    if (response.status === 400 || response.status === 401 || response.status === 403) {
-      return { ok: false, reason: 'denied' }
+    reached = true
+    if (!response.ok) {
+      const oauthError = oauthErrorOf(await response.json().catch(() => undefined))
+      const refused = response.status === 400 || response.status === 401 || response.status === 403
+      return {
+        ok: false,
+        reason: refused ? 'denied' : 'network',
+        step: refused ? 'token-refused' : 'token-http',
+        httpStatus: response.status,
+        ...(oauthError ? { oauthError } : {}),
+      }
     }
-    if (!response.ok) return { ok: false, reason: 'network' }
     const tokens = tokenSetOf((await response.json()) as TokenResponse, now())
-    return tokens ? { ok: true, tokens } : { ok: false, reason: 'network' }
+    return tokens
+      ? { ok: true, tokens }
+      : { ok: false, reason: 'network', step: 'token-unreadable' }
   } catch {
-    return { ok: false, reason: signal?.aborted ? 'cancelled' : 'network' }
+    if (signal?.aborted) return { ok: false, reason: 'cancelled' }
+    return {
+      ok: false,
+      reason: 'network',
+      step: reached ? 'token-unreadable' : 'token-unreachable',
+    }
   }
 }
 

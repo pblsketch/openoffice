@@ -281,6 +281,7 @@ export const id = {
   panePresenterNoNotes: '(Tidak ada catatan)',
   panePresenterNotesBigger: 'Perbesar teks catatan',
   panePresenterNotesSmaller: 'Perkecil teks catatan',
+  panePresenterResizeNotes: 'Seret untuk mengubah lebar kolom catatan',
   panePresenterFilmSlideN: 'Slide {n}',
 
   paneShowEndedClick: 'Peragaan slide berakhir. Klik untuk keluar.',

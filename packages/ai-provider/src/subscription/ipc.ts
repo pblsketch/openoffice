@@ -8,6 +8,7 @@ import {
   createChatGptConnection,
   setChatGptConnection,
   type ChatGptConnection,
+  type ChatGptSignInResult,
 } from '../chatgpt/connection'
 import { createChatGptConnectionFileStore } from '../chatgpt/credentials'
 import type { FreeConnectPage } from '../free-connect'
@@ -292,13 +293,20 @@ export function createSubscriptionIpcDeps(setup: SubscriptionIpcSetup): Subscrip
     service.setSigningIn('chatgpt', 'browser')
     void chatGpt
       .signIn({ openBrowser: signIn.openBrowser, pages: signIn.pages(), signal: attempt.signal })
-      .catch(() => ({ ok: false as const, reason: 'network' as const }))
+      .catch((): ChatGptSignInResult => ({ ok: false, reason: 'network' }))
       .then((result) => {
         if (logins.get('chatgpt') !== login) return
         logins.delete('chatgpt')
         service.setSigningIn('chatgpt', undefined)
-        // a sign-in nobody finished, or one that failed: the card says so and offers it again
-        if (!result.ok && result.reason !== 'cancelled') service.setLoginUnfinished('chatgpt', true)
+        // a sign-in nobody finished, or one that failed: the card says why and offers it again
+        if (!result.ok && result.reason !== 'cancelled') {
+          service.setLoginUnfinished('chatgpt', true, {
+            reason: result.reason,
+            ...(result.step ? { step: result.step } : {}),
+            ...(result.httpStatus !== undefined ? { httpStatus: result.httpStatus } : {}),
+            ...(result.oauthError ? { oauthError: result.oauthError } : {}),
+          })
+        }
         void service.check(['chatgpt'], { fresh: true }).catch(() => undefined)
       })
     return { ok: true }

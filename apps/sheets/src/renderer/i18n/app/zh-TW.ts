@@ -516,6 +516,9 @@ export const zhTW = {
     '檔案無法取代——看起來被其他程式佔用（如在 Excel 中開啟，或正被同步/防毒掃描）。請關閉佔用後重新儲存。',
   appSaveErrStylesheetLimited: '這個活頁簿的樣式表缺少基礎結構，樣式變更無法儲存。',
   appSaveErrPackageGuard: '儲存會改變活頁簿的封裝結構——已中止以保護檔案。',
+  appSaveErrSheetNotFound: '儲存內容所指的工作表在活頁簿中找不到，已中止儲存，原檔案維持不變。',
+  appSaveErrSheetNameReused:
+    '新工作表使用了已重新命名工作表的原名稱，因此無法儲存。請先將新工作表暫時改名並儲存，再改回想要的名稱。原檔案維持不變。',
   appSaveErrChartUnsupported: '這個圖表類型不支援該編輯，儲存已中止——請復原該圖表變更。',
   appSaveErrMoveOverlap:
     '有公式、格式範圍、圖形或表格橫跨被移動的列——這次儲存已中止，請復原該移動。',

@@ -1,14 +1,19 @@
 # GenOffice 설치
 
-모든 버전은 GitHub에 있는 프로젝트의 [Releases 페이지](https://github.com/pblsketch/openoffice/releases/latest)에 올라옵니다. 이 버전은 Windows용으로 배포됩니다.
+모든 버전은 GitHub에 있는 프로젝트의 [Releases 페이지](https://github.com/pblsketch/openoffice/releases/latest)에 올라옵니다. Windows판과 함께 Mac판과 Linux판이 베타로 올라옵니다. Mac판과 Linux판은 개발자가 직접 확인하지 못하고 사용자들의 보고로 확인합니다.
 
 ## 내 컴퓨터에 맞는 파일 고르기
 
-| 플랫폼      | 필요한 것                         | 파일                            |
-| ----------- | --------------------------------- | ------------------------------- |
-| **Windows** | Windows 10 이상, 64비트 Intel/AMD | `GenOffice-Setup-<version>.exe` |
+| 플랫폼                                 | 필요한 것                         | 파일                              |
+| -------------------------------------- | --------------------------------- | --------------------------------- |
+| **Windows**                            | Windows 10 이상, 64비트 Intel/AMD | `GenOffice-Setup-<version>.exe`   |
+| **Mac (베타)**, Apple Silicon          | macOS 12 이상, M1 이후 칩         | `GenOffice-<version>-arm64.dmg`   |
+| **Mac (베타)**, Intel                  | macOS 12 이상, Intel 프로세서     | `GenOffice-<version>-x64.dmg`     |
+| **Linux (베타)**, 모든 배포판          | 64비트(x86_64)                    | `GenOffice-<version>.AppImage`    |
+| **Linux (베타)**, Ubuntu·Debian 계열   | 64비트(x86_64)                    | `ieumoffice_<version>_amd64.deb`  |
+| **Linux (베타)**, Fedora·RHEL·openSUSE | 64비트(x86_64)                    | `ieumoffice-<version>.x86_64.rpm` |
 
-이전 버전은 Releases 페이지에 그대로 남아 있습니다.
+내 Mac이 어느 쪽인지는 Apple 메뉴 ▸ **이 Mac에 관하여**에서 봅니다. "칩"에 Apple M…이 적혀 있으면 이름이 `-arm64.dmg`로 끝나는 파일을, "프로세서"에 Intel …이 적혀 있으면 `-x64.dmg`로 끝나는 파일을 받습니다. Releases 페이지의 다른 파일(`.zip`, `.yml`, `.blockmap`)은 앱이 업데이트할 때 쓰는 것이라 따로 받지 않아도 됩니다. 이전 버전은 Releases 페이지에 그대로 남아 있습니다.
 
 ## Windows에서
 
@@ -20,9 +25,70 @@ GenOffice를 시작 메뉴에 넣고 `.docx`, `.xlsx`, `.pptx`, `.pdf` 등을 �
 
 서명이 없는 설치 파일이므로, 위 Releases 페이지에서 내려받은 것만 실행하세요.
 
+## Windows에서 내려받기나 설치가 막힐 때
+
+### Edge가 "일반적으로 다운로드되지 않습니다"라고 할 때
+
+내려받는 사람이 아직 많지 않은 파일에 Microsoft Defender SmartScreen이 붙이는 경고입니다. Microsoft가 안내하는 파일 남기는 방법은 이렇습니다.
+
+1. Edge의 다운로드 목록(**Ctrl+J**)을 열고 그 파일 옆의 **…**을 눌러 **유지**를 고릅니다.
+2. 새로 뜨는 창에서 **자세히 표시**를 누르고 **그래도 계속**을 고릅니다. 파일이 '다운로드' 폴더에 남습니다.
+
+그 창에는 파일이 안전하다고 신고하는 단추도 있습니다. 이 단추는 Microsoft의 신고 페이지(`feedback.smartscreen.microsoft.com`)를 열 뿐이고 파일을 남기지 않습니다. 그 페이지는 닫고, 창에서 **자세히 표시**를 누르세요.
+
+창에 **자세히 표시**나 **그래도 계속**이 없으면:
+
+- 학교나 회사가 관리하는 PC에서는 관리자가 이 경고를 건너뛰지 못하게 막아 둘 수 있습니다(Edge 정책). 그러면 그 PC에서는 누구도 파일을 남길 수 없으니, 관리자에게 설치나 허용을 부탁하세요.
+- 다른 브라우저로 Releases 페이지에 들어가 받아도 같은 파일입니다.
+- 그래도 안 되고 내 PC라면, 마지막 방법으로 Microsoft의 다운로드 문제 해결 안내대로 Microsoft Defender SmartScreen을 잠깐 끌 수 있습니다. Edge에서 **설정 및 기타(…) ▸ 설정 ▸ 개인 정보, 검색 및 서비스 ▸ 보안**을 열어 **Microsoft Defender SmartScreen**을 끄고, 파일을 다시 받은 뒤 바로 다시 켭니다. 꺼 둔 동안에는 Edge가 다운로드에도, 피싱 같은 위험한 사이트에도 경고하지 않습니다.
+
+### "Windows의 PC 보호" 창이 뜰 때
+
+Microsoft Defender SmartScreen이 서명 없는 설치 파일을 처음 보면 띄우는 창입니다. **추가 정보**를 누르면 **실행** 단추가 나옵니다. 학교나 회사가 관리하는 PC에서는 관리자 설정 때문에 이 단추가 나오지 않을 수 있으니 관리자에게 물어보세요.
+
+### 스마트 앱 컨트롤이 막을 때
+
+Windows 11의 스마트 앱 컨트롤이 켜져 있으면 서명 없는 설치 파일을 막고, **추가 정보** 같은 길을 주지 않습니다. Microsoft의 안내로는 앱 하나만 골라 허용하는 방법이 없고, **Windows 보안 ▸ 앱 및 브라우저 컨트롤 ▸ 스마트 앱 컨트롤 설정**에서 스마트 앱 컨트롤을 끄는 것만 됩니다. 끄면 다른 앱에 대한 이 보호도 함께 꺼집니다. 최근 업데이트를 받은 Windows에서는 Windows를 다시 설치하지 않고도 다시 켤 수 있습니다.
+
+## Mac에서 (베타)
+
+macOS 12(Monterey) 이상이 필요합니다. Mac판에는 Apple 개발자 서명이 없어서, 처음 열 때 macOS가 "Apple은 악성 코드가 없음을 확인할 수 없습니다"라는 뜻의 경고를 띄우고 열지 않습니다. 처음 한 번만 아래처럼 허용하면 됩니다.
+
+1. dmg를 열고 `GenOffice.app`을 **응용 프로그램** 폴더로 끌어다 놓습니다.
+2. 응용 프로그램 폴더에서 `GenOffice.app`을 엽니다. 경고 창이 뜨면 **완료**를 누릅니다.
+3. **시스템 설정 ▸ 개인정보 보호 및 보안**을 열고, 아래쪽에 앱이 차단되었다는 줄(앱 이름은 영문으로 나옵니다) 옆의 **그래도 열기**를 누른 뒤 Mac 암호를 넣습니다. 이 단추는 앱을 열려고 한 뒤 1시간쯤 동안 보입니다.
+4. 다시 뜨는 창에서 **열기**를 누릅니다. 이후로는 경고 없이 열립니다.
+
+macOS 12에서는 **시스템 환경설정 ▸ 보안 및 개인 정보 보호 ▸ 일반**에 있고, 단추 이름은 **확인 없이 열기**입니다.
+
+"손상되었기 때문에 열 수 없습니다"라고 나오면 휴지통으로 옮기지 말고, 터미널에서 아래 한 줄을 실행한 뒤 앱을 다시 열어 위처럼 허용합니다. 인터넷에서 받은 파일에 macOS가 붙이는 표시를 지우는 명령입니다.
+
+```sh
+xattr -dr com.apple.quarantine /Applications/GenOffice.app
+```
+
+"이 Mac에서 지원되지 않는다"는 말이 나오면 두 가지를 확인합니다.
+
+- Intel Mac에서는 Apple Silicon용 파일(`-arm64.dmg`)이 열리지 않습니다. **이 Mac에 관하여**의 "프로세서"를 확인하고, 설치한 앱을 지운 뒤 `-x64.dmg` 파일로 다시 설치합니다.
+- macOS 11 이하에서는 GenOffice를 쓸 수 없습니다. macOS 버전도 **이 Mac에 관하여**에 나옵니다.
+
+Mac에서 그 밖에 다른 점:
+
+- AI 연결 카드에 설치 단추가 없습니다. 카드의 공식 설치 안내 링크를 따라 Claude Code나 Codex를 설치합니다.
+- 로그인은 브라우저에서 끝납니다. 브라우저가 코드를 붙여 넣으라고 하면 터미널에서 `claude auth login` 또는 `codex login`을 직접 실행합니다. [구독 연결](help://subscription)을 보세요.
+
+## Linux에서 (베타)
+
+- **AppImage**: 실행 권한을 준 뒤(`chmod +x GenOffice-<version>.AppImage`) 그 파일을 실행합니다. 설치 과정이 없습니다.
+- **deb**: `sudo apt install ./ieumoffice_<version>_amd64.deb`로 설치합니다.
+- **rpm**: `sudo dnf install ./ieumoffice-<version>.x86_64.rpm`로 설치합니다. openSUSE에서는 `sudo zypper install ./ieumoffice-<version>.x86_64.rpm`을 씁니다.
+
+deb와 rpm은 `/opt/GenOffice`에 설치되고, 터미널 명령 `/usr/bin/ieumoffice`를 연결합니다. Mac처럼 AI 연결 카드에 설치 단추가 없고, 로그인 중에 코드를 붙여 넣으라고 하면 터미널에서 `claude auth login` 또는 `codex login`을 직접 실행합니다.
+
 ## 업데이트
 
 - GenOffice는 같은 GitHub Releases 페이지에서 새 버전을 찾습니다. 새 버전이 올라오면 **설정 ▸ 정보**에 업데이트가 나타납니다. **…(으)로 업데이트**를 누르고 다운로드가 끝나기를 기다린 뒤 **재시작 후 설치**를 누릅니다. Windows에서는 설치 진행 창이 뜨고, 설치가 끝나면 GenOffice가 열려 있던 문서와 함께 다시 열립니다. Mac에서는 앱이 닫히고 새 버전으로 바뀐 뒤 열려 있던 문서와 함께 다시 열립니다. 응용 프로그램 폴더에 둔 앱만 이렇게 되고, 디스크 이미지에서 바로 연 앱은 다운로드 페이지를 알려 줍니다. 업데이트는 이 단추를 눌렀을 때만 설치되고, 앱을 그냥 닫을 때는 설치되지 않습니다.
+- Linux에서는 AppImage만 스스로 업데이트합니다. deb·rpm으로 설치했으면 새 버전을 알려 주고 다운로드 페이지를 엽니다. 새 파일을 받아 같은 방법으로 설치합니다.
 - **메뉴(☰) ▸ 업데이트 확인**을 누르면 그때 바로 확인합니다. Mac에서는 **도움말 ▸ 업데이트 확인**입니다.
 - 확인에 실패해도(네트워크가 없거나 아직 올라온 버전이 없는 경우) 아무 일도 일어나지 않고, 앱은 그대로 쓸 수 있습니다.
 - **업데이트 채널**도 설정 ▸ 정보에 있으며, 안정 버전과 베타 버전 중에서 고릅니다. 바꾸면 즉시 반영되어 업데이트를 확인하며, 베타 설치를 안정 버전으로 되돌리지는 않습니다.

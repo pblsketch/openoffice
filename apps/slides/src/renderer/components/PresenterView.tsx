@@ -9,8 +9,9 @@
  *
  * Layout: top bar (end show/swap displays/switch to normal show),
  * left column timer (pause/reset) + clock → big frame → toolbar (pen/laser/clear ink/blackout)
- * + page progress navigation, right column next-slide preview + notes (adjustable font size),
- * bottom full-width thumbnail strip with click-to-jump.
+ * + page progress navigation, right column next-slide preview + notes (adjustable font size;
+ * the splitter between the frame and the column drags or arrow-keys its width, remembered per
+ * install), bottom full-width thumbnail strip with click-to-jump.
  * Keyboard: →/space/enter/PgDn next step; ←/PgUp previous page; Home/End first/last; B/. black
  * screen, W/, white screen; digits + Enter go to that slide number; Esc exit.
  */
@@ -32,10 +33,21 @@ import {
   type ShowScreen,
 } from '../show-keys'
 import { liftShowCurtain } from '../show-actions'
+import {
+  clampPresenterSideW,
+  parsePresenterSideW,
+  presenterNextThumbW,
+  presenterSideMaxW,
+  presenterSideWAtPointer,
+  presenterSideWForKey,
+  PRESENTER_SIDE_W_DEFAULT,
+  PRESENTER_SIDE_W_KEY,
+  PRESENTER_SIDE_W_MIN,
+} from '../presenter-layout'
+import { startSideDrag } from '../presenter-side-drag'
 
-/** Layout constants (aligned with styles.css) */
+/** Layout constants (aligned with styles.css); the side column's width lives in presenter-layout.ts */
 const IS_MAC = navigator.platform.toLowerCase().includes('mac')
-const SIDE_W = 340
 const TOP_H = 44
 const TIMER_H = 40
 const BOTTOM_H = 56
@@ -49,6 +61,9 @@ function fmtElapsed(sec: number): string {
   const s = sec % 60
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
+
+/** Keys the focused splitter keeps for itself (presenterSideWForKey) */
+const SPLITTER_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'Home', 'End'])
 
 function fmtWallClock(): string {
   const d = new Date()
@@ -111,6 +126,20 @@ export function PresenterView({
 
   // ── Notes font size ──────────────────────────────────────────────────
   const [noteSize, setNoteSize] = useState(15)
+
+  // ── Side column width (splitter between the frame and the notes) ─────────────
+  /** The width the presenter chose; drawn clamped to the window, so a small screen keeps the choice */
+  const [preferredSideW, setPreferredSideW] = useState(() =>
+    parsePresenterSideW(localStorage.getItem(PRESENTER_SIDE_W_KEY)),
+  )
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const rememberSideW = useCallback((w: number) => {
+    setPreferredSideW(w)
+    localStorage.setItem(PRESENTER_SIDE_W_KEY, String(Math.round(w)))
+  }, [])
+  /** Ends a splitter drag still running when the view goes away (Esc mid-drag) */
+  const endSideDragRef = useRef<(() => void) | null>(null)
+  useEffect(() => () => endSideDragRef.current?.(), [])
 
   // ── Ink/laser pointer ───────────────────────────────────────────────
   const [tool, setTool] = useState<'none' | 'pen' | 'laser'>('none')
@@ -278,6 +307,13 @@ export function PresenterView({
   // Keyboard navigation (capture beats the editor's generic shortcuts; keys match SlideShowView)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // the focused splitter resizes the notes column with these keys instead of turning pages
+      if (
+        SPLITTER_KEYS.has(e.key) &&
+        e.target instanceof Element &&
+        e.target.closest('.pv-splitter')
+      )
+        return
       const r = reduceShowKey(showKeysRef.current, e.key)
       if (!r) return
       e.preventDefault()
@@ -390,7 +426,9 @@ export function PresenterView({
 
   // Left main area auto-fit: subtract the right column/top bar/timer row/toolbar/thumbnail strip, then take the max fit by aspect ratio
   const ar = slide.widthPx / slide.heightPx
-  const mainW = size.w - SIDE_W
+  const sideW = clampPresenterSideW(preferredSideW, size.w)
+  const nextW = presenterNextThumbW(sideW, size.h - TOP_H - FILM_H, ar)
+  const mainW = size.w - sideW
   const mainH = size.h - TOP_H - TIMER_H - BOTTOM_H - FILM_H
   const fitW = Math.max(80, Math.round(Math.min(mainW - 48, (mainH - 16) * ar)))
   const fitH = Math.round(fitW / ar)
@@ -401,6 +439,44 @@ export function PresenterView({
   const useShow = () => {
     keepFsRef.current = true
     onUseSlideShow?.(order[Math.min(pos, order.length - 1)] ?? startAt)
+  }
+
+  const bodyIsRtl = () => {
+    const body = bodyRef.current
+    return body ? getComputedStyle(body).direction === 'rtl' : false
+  }
+
+  /** Dragging the splitter: the column follows the pointer, the width is remembered on release */
+  const onSplitterPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const body = bodyRef.current
+    if (!body || e.button !== 0) return
+    e.preventDefault()
+    const rect = body.getBoundingClientRect()
+    const rtl = bodyIsRtl()
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+    endSideDragRef.current?.()
+    // a press without a move saves nothing, so a width this window clamps stays remembered
+    const end = startSideDrag({
+      widthAt: (clientX) =>
+        clampPresenterSideW(presenterSideWAtPointer(clientX, rect, rtl), window.innerWidth),
+      preview: setPreferredSideW,
+      commit: (w) => {
+        endSideDragRef.current = null
+        rememberSideW(w)
+      },
+    })
+    endSideDragRef.current = end
+  }
+
+  const onSplitterKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const w = presenterSideWForKey(sideW, e.key, {
+      shift: e.shiftKey,
+      rtl: bodyIsRtl(),
+      windowW: size.w,
+    })
+    if (w === null) return
+    e.preventDefault()
+    rememberSideW(w)
   }
 
   return (
@@ -429,7 +505,7 @@ export function PresenterView({
         <div className="pv-top-spacer" />
         {!hasAudience && <span className="pv-top-hint">{t('panePresenterSingleHint')}</span>}
       </div>
-      <div className="pv-body">
+      <div className="pv-body" ref={bodyRef}>
         <div className="pv-left">
           <div className="pv-timer-row">
             <span className="pv-timer" data-tip={t('panePresenterElapsed')}>
@@ -574,11 +650,27 @@ export function PresenterView({
             <div className="pv-tools" style={{ visibility: 'hidden' }} aria-hidden />
           </div>
         </div>
-        <div className="pv-side">
+        <div
+          className="pv-splitter"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={t('panePresenterResizeNotes')}
+          aria-valuenow={sideW}
+          aria-valuemin={PRESENTER_SIDE_W_MIN}
+          aria-valuemax={presenterSideMaxW(size.w)}
+          tabIndex={0}
+          data-tip={t('panePresenterResizeNotes')}
+          onPointerDown={onSplitterPointerDown}
+          // a mouse drag must not leave the focus here, or the arrow keys would resize instead of turning pages
+          onMouseDown={(e) => e.preventDefault()}
+          onKeyDown={onSplitterKeyDown}
+          onDoubleClick={() => rememberSideW(PRESENTER_SIDE_W_DEFAULT)}
+        />
+        <div className="pv-side" style={{ width: sideW }}>
           <div className="pv-section-label">{t('panePresenterNextSlide')}</div>
           <div className="pv-next">
             {nextSlide ? (
-              <SlideThumb slide={nextSlide} images={images} width={SIDE_W - 28} />
+              <SlideThumb slide={nextSlide} images={images} width={nextW} />
             ) : (
               <div className="pv-next-none">{ended ? '—' : t('panePresenterLastSlide')}</div>
             )}

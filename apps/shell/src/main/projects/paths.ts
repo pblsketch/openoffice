@@ -60,6 +60,21 @@ export function isInsideFolder(child: string, root: string, platform: NodeJS.Pla
 }
 
 /**
+ * `rel` (from `relative`) leads out of its root: a whole `..` step, or on
+ * Windows another drive or share. A name that merely starts with dots (`..x`,
+ * `...`) is below the root.
+ */
+function leavesRoot(rel: string, platform: NodeJS.Platform): boolean {
+  const api = pathApi(platform)
+  return (
+    rel === '..' ||
+    rel.startsWith(`..${api.sep}`) ||
+    (platform === 'win32' && rel.startsWith('../')) ||
+    api.isAbsolute(rel)
+  )
+}
+
+/**
  * `child` relative to `root`, `/`-separated, or null when it is not strictly
  * inside. The spelling of `child` is kept (only the root prefix is dropped).
  */
@@ -71,7 +86,7 @@ export function relativeInside(
   if (!isInsideFolder(child, root, platform) || samePath(child, root, platform)) return null
   const api = pathApi(platform)
   const rel = api.relative(api.normalize(root), api.normalize(child))
-  if (!rel || rel.startsWith('..') || api.isAbsolute(rel)) return null
+  if (!rel || leavesRoot(rel, platform)) return null
   return rel.split(api.sep).join('/').normalize('NFC')
 }
 

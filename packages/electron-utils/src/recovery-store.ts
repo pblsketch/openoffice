@@ -55,7 +55,7 @@ import {
   unlinkSync,
 } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { basename, dirname, extname, join, relative, resolve, isAbsolute } from 'node:path'
+import { basename, dirname, extname, join, relative, resolve, isAbsolute, sep } from 'node:path'
 import { atomicMoveFile, atomicWriteFile, tempPathBeside, writeJsonAtomic } from './atomic-write'
 
 /** the editors that keep recovery copies, in folder order */
@@ -808,7 +808,10 @@ export function createRecoveryStore(options: RecoveryStoreOptions): RecoveryStor
     const folder = resolve(kindDir(kind))
     const source = resolve(sourcePath)
     const inside = relative(folder, source)
-    if (!inside || inside.startsWith('..') || isAbsolute(inside)) return null
+    // only a whole `..` step leads out: a copy named `..x` is inside
+    const up =
+      inside === '..' || inside.startsWith(`..${sep}`) || (sep === '\\' && inside.startsWith('../'))
+    if (!inside || up || isAbsolute(inside)) return null
     if (!existsSync(source)) return null
     const identity: RecoveryUntitledIdentity = {
       kind,

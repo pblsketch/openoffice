@@ -2056,9 +2056,11 @@ const REFIT_PASSES = 8
 /**
  * Place cells at new starts and ends along one axis (table-sizes.mjs) in one snapshot, the caret
  * staying in its cell. `refit`, given the cells as drawn, may place them again until it has
- * nothing more to do (H growing the table where a cell's text needs more than its share). With `mustFit` every cell has to draw at
- * the size it now stores, or the document is put back: its text did not fit, which Hangul also
- * refuses. 'done', 'no room' or 'failed'.
+ * nothing more to do (H growing the table where a cell's text needs more than its share). With
+ * `mustFit` every cell has to draw at the size it now stores, or the document is put back: its
+ * text did not fit, which Hangul also refuses. `mustFit` may be a test of the placed cells that
+ * names the ones that have to (a block's cells; the cells beside it may draw taller than they
+ * store, held up by a row they share). 'done', 'no room' or 'failed'.
  */
 function applyCellExtents(
   ih,
@@ -2101,7 +2103,8 @@ function applyCellExtents(
         }
         const overflows = (cell) =>
           cell.drawnHeight !== undefined && cell.drawnHeight - cell.height >= HWPUNIT_PER_PX / 2
-        if (mustFit && after.some(overflows)) {
+        const checked = typeof mustFit === 'function' ? after.filter(mustFit(after)) : after
+        if (mustFit && checked.some(overflows)) {
           status = 'no room'
           throw new Undone()
         }
@@ -2121,7 +2124,9 @@ function applyCellExtents(
  * them: the cells in each column (H, from the heights they draw at, so every row takes the
  * average) or each row (W) come out equally sized, and where rows hold different numbers of cells
  * the grid splits (table-sizes.mjs equalExtents). One snapshot, one undo step. A block on part of
- * the table is told to take the whole table; a table inside a cell is left alone with the reason.
+ * the table sizes only its own cells within its edges, as Hangul's help has it (issue #299); a
+ * block that leaves cells out or cuts through a merged cell, and a table inside a cell, are left
+ * alone with the reason.
  */
 export function equalizeTableCells(services, axis, ko) {
   const ih = services?.getInputHandler?.()
@@ -2155,27 +2160,104 @@ export function equalizeTableCells(services, axis, ko) {
   const { dims, cells } = table
   const selected = inBlock ? cursor.getSelectedCellRange?.() : null
   const range = selected ? coveringRange(cells, selected) : null
-  const firstRow = range?.startRow ?? 0
-  const lastRow = range?.endRow ?? dims.rowCount - 1
-  const firstCol = range?.startCol ?? 0
-  const lastCol = range?.endCol ?? dims.colCount - 1
-  if (axis === 'height' && (firstRow !== 0 || lastRow !== dims.rowCount - 1)) {
+  // Hangul's help: the block must be a rectangle; one with cells left out (Ctrl+click) is not.
+  // The studio keeps a Ctrl+clicked cell's key even where the block does not reach it (its
+  // ctrlToggleCell takes any cell), so only the keys of cells inside the block count
+  const leftOut = [...(selected ? (cursor.getExcludedCells?.() ?? []) : [])].some((key) => {
+    const [row, col] = String(key).split(',').map(Number)
+    return (
+      row >= range.startRow && row <= range.endRow && col >= range.startCol && col <= range.endCol
+    )
+  })
+  if (leftOut) {
     tellUser(
       ko
-        ? '표 전체를 골라야 줄 높이를 같게 할 수 있습니다.'
-        : 'Select the whole table to equalize row heights.',
+        ? '빼낸 칸이 있는 블록은 크기를 같게 할 수 없습니다. 직사각형으로 골라 주세요.'
+        : 'Not changed: the block leaves cells out. Select a rectangle of cells.',
     )
     return false
   }
-  if (axis === 'width' && (firstCol !== 0 || lastCol !== dims.colCount - 1)) {
+  const whole =
+    !range ||
+    (range.startRow === 0 &&
+      range.startCol === 0 &&
+      range.endRow === dims.rowCount - 1 &&
+      range.endCol === dims.colCount - 1)
+  // a part of the table: only the block's cells, as Hangul does. The studio names the block by
+  // the rows and columns of its first and last cells, so a block of merged cells chosen whole
+  // reads narrower than the cells it holds; it is sized over the range grown to them. Where the
+  // grown range takes in a cell the block did not touch, a merged cell cuts through the block:
+  // that is no rectangle of cells, and what Hangul would size then is not known
+  const touches = (cell, area) =>
+    cell.row <= area.endRow &&
+    cell.row + cell.rowSpan - 1 >= area.startRow &&
+    cell.col <= area.endCol &&
+    cell.col + cell.colSpan - 1 >= area.startCol
+  if (!whole && cells.some((cell) => touches(cell, range) && !touches(cell, selected))) {
     tellUser(
       ko
-        ? '표 전체를 골라야 칸 너비를 같게 할 수 있습니다.'
-        : 'Select the whole table to equalize column widths.',
+        ? '합친 칸이 블록 경계에 걸쳐 있어 크기를 같게 하지 않았습니다. 합친 칸을 모두 넣어 골라 주세요.'
+        : 'Not changed: a merged cell crosses the block’s edge. Select it whole.',
     )
     return false
   }
-  const extents = equalExtents(cells, axis === 'height' ? 'row' : 'col')
+  // A block on part of the table hands the engine its own cells only, so the others keep the
+  // sizes they store; the engine places those from their stored sizes. Widths draw as stored, but
+  // heights are planned from what the rows draw at, and a row held up by its text (or by a taller
+  // cell beside it) draws taller than its cells store. A block can be placed among cells the
+  // engine places by their stored heights only where its own top and bottom lie where they draw;
+  // elsewhere every cell around it would have to store a new height, which Hangul's help does
+  // not ask for, so that is told and left alone
+  let extents
+  let blockFits
+  if (axis === 'height' && !whole) {
+    const stored = cells.map((cell) => ({ ...cell, drawnHeight: undefined }))
+    const drawnAt = cellExtents(cells, 'row')
+    const storedAt = cellExtents(stored, 'row')
+    const edge = (at, i, end) => at?.[i]?.[end ? 1 : 0]
+    const blockCells = cells
+      .map((cell, i) => i)
+      .filter(
+        (i) =>
+          cells[i].row >= range.startRow &&
+          cells[i].row + cells[i].rowSpan - 1 <= range.endRow &&
+          cells[i].col >= range.startCol &&
+          cells[i].col + cells[i].colSpan - 1 <= range.endCol,
+      )
+    const top = Math.min(...blockCells.map((i) => edge(storedAt, i, false)))
+    const bottom = Math.max(...blockCells.map((i) => edge(storedAt, i, true)))
+    const topDrawn = Math.min(...blockCells.map((i) => edge(drawnAt, i, false)))
+    const bottomDrawn = Math.max(...blockCells.map((i) => edge(drawnAt, i, true)))
+    if (
+      !drawnAt ||
+      !storedAt ||
+      Math.abs(top - topDrawn) >= HWPUNIT_PER_PX / 2 ||
+      Math.abs(bottom - bottomDrawn) >= HWPUNIT_PER_PX / 2
+    ) {
+      tellUser(
+        ko
+          ? '블록 위나 블록 안의 줄이 저장된 높이보다 크게 그려져 있어 블록만 높이를 같게 할 수 없습니다. 표 전체를 골라 주세요.'
+          : 'Not changed: rows at or above the block draw taller than they store. Select the whole table.',
+      )
+      return false
+    }
+    extents = equalExtents(stored, 'row', 0, range)
+    // the block's cells as placed: within its columns and between its top and bottom
+    blockFits = (after) => {
+      const placed = cellExtents(
+        after.map((cell) => ({ ...cell, drawnHeight: undefined })),
+        'row',
+      )
+      return (cell, i) =>
+        cell.col >= range.startCol &&
+        cell.col + cell.colSpan - 1 <= range.endCol &&
+        placed !== null &&
+        placed[i][0] > top - HWPUNIT_PER_PX / 2 &&
+        placed[i][1] < bottom + HWPUNIT_PER_PX / 2
+    }
+  } else {
+    extents = equalExtents(cells, axis === 'height' ? 'row' : 'col', 0, whole ? null : range)
+  }
   if (extents === null) {
     tellUser(
       ko
@@ -2186,17 +2268,26 @@ export function equalizeTableCells(services, axis, ko) {
   }
   if (extents.length === 0) return false
   const operationType = axis === 'height' ? 'equalizeRowHeights' : 'equalizeColumnWidths'
-  if (
-    applyCellExtents(ih, at, cells, extents, axis === 'height', operationType, {
-      // Hangul never leaves a cell shorter than its text: where one draws taller than its share,
-      // the table grows until every share holds it (2026-10-31, four lines in A1: every row
-      // takes their height)
-      refit:
-        axis === 'height' ? (after) => equalExtents(after, 'row', textLeast(after)) : undefined,
-    }) !== 'done'
-  ) {
-    return false
+  const status = applyCellExtents(ih, at, cells, extents, axis === 'height', operationType, {
+    // Hangul never leaves a cell shorter than its text: where one draws taller than its share,
+    // the table grows until every share holds it (2026-10-31, four lines in A1: every row
+    // takes their height)
+    refit:
+      axis === 'height' && whole
+        ? (after) => equalExtents(after, 'row', textLeast(after))
+        : undefined,
+    // a block keeps its edges, so a share too low for its text is put back rather than grown
+    // into the rows below it
+    mustFit: blockFits,
+  })
+  if (status === 'no room') {
+    tellUser(
+      ko
+        ? '칸의 글이 같은 높이에 들어가지 않아 높이를 같게 하지 않았습니다.'
+        : 'Not changed: a cell’s text does not fit in an equal share of the block.',
+    )
   }
+  if (status !== 'done') return false
   ih.updateCellSelection?.()
   return true
 }

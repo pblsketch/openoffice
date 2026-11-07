@@ -14,6 +14,9 @@ export type {
   AiProviderSelection,
   AiReadUrlSettings,
   AiRunErrorKind,
+  AiSubscriptionLoginFailure,
+  AiSubscriptionLoginFailureReason,
+  AiSubscriptionLoginFailureStep,
   AiSubscriptionLoginMethod,
   AiSubscriptionSigningIn,
   AiSubscriptionModel,
@@ -77,6 +80,7 @@ export {
   subscriptionMeteredResultOf,
   subscriptionNeedsUpdate,
   subscriptionStatusErrorKind,
+  subscriptionLoginFailureOf,
   subscriptionStatusMapOf,
 } from './subscription/contract'
 export type {

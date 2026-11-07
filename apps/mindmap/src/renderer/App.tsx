@@ -968,7 +968,8 @@ export default function App() {
       )}
 
       <main className="mm-stage">
-        {/* the theme panel and the AI panel dock at this element's end side, one open at a time */}
+        {/* the side panels dock at this element's end side and the AI panel on the side
+            chosen in Settings (ai/ai-panel.css); one of them open at a time */}
         <div
           className="mm-card"
           aria-label={t('appName')}
