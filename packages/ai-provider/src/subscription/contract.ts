@@ -173,6 +173,11 @@ export const SUBSCRIPTION_UPDATE_COMMANDS: Record<AiSubscriptionProviderId, stri
   chatgpt: null,
 }
 
+/** The dotted version number in what a CLI printed for `--version` */
+export function subscriptionVersionOf(output: string): string | undefined {
+  return /\d+\.\d+\.\d+/.exec(output)?.[0]
+}
+
 /** Whether a dotted version number is at least `minimum` */
 export function subscriptionVersionAtLeast(version: string, minimum: string): boolean {
   const have = version.split('.').map(Number)
@@ -229,21 +234,30 @@ export function subscriptionStatusErrorKind(status: {
   return 'failed'
 }
 
+/** Homebrew's Claude Code casks; `claude update` leaves a copy they installed as it is */
+const CLAUDE_HOMEBREW_CASK = /[\\/]Caskroom[\\/](claude-code(?:@latest)?)[\\/]/
+
 /**
  * What a "needs update" card can tell the user: the version found, the oldest
- * one the app works with, and the command that updates it. Null unless the
- * status is that error and the CLI reported a version below the floor (an old
- * Codex has no floor; it is caught by an unknown subcommand instead).
+ * one the app works with, and the command that updates it (Homebrew's, for the
+ * copy a Homebrew cask installed). Null unless the status is that error and the
+ * CLI reported a version below the floor (an old Codex has no floor; it is
+ * caught by an unknown subcommand instead).
  */
 export function subscriptionNeedsUpdate(status: {
   provider: AiSubscriptionProviderId
   state: AiSubscriptionState
   error?: string | undefined
   version?: string | undefined
+  programPath?: string | undefined
 }): { version: string; minimum: string; command: string } | null {
   if (subscriptionStatusErrorKind(status) !== 'needs-update') return null
   const minimum = SUBSCRIPTION_MIN_VERSIONS[status.provider]
-  const command = SUBSCRIPTION_UPDATE_COMMANDS[status.provider]
+  const cask =
+    status.provider === 'claude-code'
+      ? CLAUDE_HOMEBREW_CASK.exec(status.programPath ?? '')?.[1]
+      : undefined
+  const command = cask ? `brew upgrade ${cask}` : SUBSCRIPTION_UPDATE_COMMANDS[status.provider]
   const version = status.version
   if (!minimum || !command || !version) return null
   if (subscriptionVersionAtLeast(version, minimum)) return null

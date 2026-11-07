@@ -14,6 +14,7 @@
  * account is for the Settings card alone: it stays in the status in memory and
  * is never written anywhere. The organisation is dropped as before.
  */
+import { realpath } from 'node:fs/promises'
 import { detectChatGptConnection } from '../chatgpt/status'
 import { AI_SUBSCRIPTION_PROVIDERS } from '../providers'
 import type {
@@ -27,6 +28,7 @@ import {
   subscriptionAccountOf,
   subscriptionStatusErrorText,
   subscriptionVersionAtLeast,
+  subscriptionVersionOf,
   type SubscriptionStatusErrorKind,
 } from './contract'
 import {
@@ -365,10 +367,6 @@ function loginDetection(
   }
 }
 
-function parseVersion(output: string): string | undefined {
-  return /\d+\.\d+\.\d+/.exec(output)?.[0]
-}
-
 const UNKNOWN_COMMAND =
   /unknown (command|option)|unrecognized (subcommand|option)|unexpected argument/i
 
@@ -394,6 +392,14 @@ function parseStatus(
   return provider === 'claude-code'
     ? parseClaudeAuthStatus(result.stdout)
     : parseCodexLoginStatus(`${result.stderr}\n${result.stdout}`)
+}
+
+/**
+ * The command is often a link (`/opt/homebrew/bin/claude`); the file behind it
+ * tells a Homebrew copy, which only Homebrew updates, from the others.
+ */
+async function programFileOf(program: SubscriptionProgram): Promise<string> {
+  return realpath(program.entry).catch(() => program.entry)
 }
 
 async function inspect(
@@ -424,7 +430,7 @@ async function inspect(
   try {
     if (minimum) {
       // version first: nothing else is asked of a CLI that may not know the question
-      version = parseVersion((await ask(['--version'])).stdout)
+      version = subscriptionVersionOf((await ask(['--version'])).stdout)
       if (!version) {
         return errorDetection(provider, 'failed', `${name} did not report its version`)
       }
@@ -434,7 +440,7 @@ async function inspect(
           'needs-update',
           `${name} ${version} is too old; version ${minimum} or newer is required`,
           version,
-          program.entry,
+          await programFileOf(program),
         )
       }
       status = await ask(STATUS_ARGS[provider])
@@ -447,7 +453,7 @@ async function inspect(
           ? source({ configuredPath: options.configuredPath, signal }).catch(() => null)
           : null,
       ])
-      version = versionResult ? parseVersion(versionResult.stdout) : undefined
+      version = versionResult ? subscriptionVersionOf(versionResult.stdout) : undefined
       status = statusResult
       account = codexAccountInfo(accountResult)
     }
@@ -474,7 +480,7 @@ async function inspect(
         'needs-update',
         `${name}${version ? ` ${version}` : ''} is too old to report its login status`,
         version,
-        program.entry,
+        await programFileOf(program),
       )
     }
     // what the CLI printed instead stays here: it may name the account
