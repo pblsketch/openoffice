@@ -377,6 +377,19 @@ describe('the selection a memo may be put on', () => {
     })
   })
 
+  it('shows the selected words where emoji and 𠀀 come before them', () => {
+    // the engine counts 😀 and 𠀀 as one character each: 끝𠀀말 is characters 6 to 9
+    const doc = blank(['웃음😀😀😀 끝𠀀말'])
+    const { plugin, cursor } = openEditor(doc)
+    cursor.selection = { start: bodyPlace(0, 6), end: bodyPlace(0, 9) }
+    expect(plugin.memoSelection()).toMatchObject({
+      ok: true,
+      startCharIdx: 6,
+      endCharIdx: 9,
+      preview: '끝𠀀말',
+    })
+  })
+
   it('accepts a caret with no text and shows the words around it', () => {
     const doc = blank(['제출 기한은 3월 2일입니다'])
     const { plugin, cursor } = openEditor(doc)

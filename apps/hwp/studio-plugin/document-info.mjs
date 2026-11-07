@@ -109,6 +109,18 @@ export function engineSlice(text, start, end) {
   return [...whole].slice(start, end).join('')
 }
 
+/** A paragraph's text as the engine's characters, so that an index is an engine offset. */
+export function engineChars(text) {
+  const whole = String(text ?? '')
+  return SURROGATE.test(whole) ? [...whole] : whole.split('')
+}
+
+/** How many characters the engine counts in a text (its offsets run up to this). */
+export function engineLength(text) {
+  const whole = String(text ?? '')
+  return SURROGATE.test(whole) ? [...whole].length : whole.length
+}
+
 /**
  * Hangul's 글자(공백 포함) and 글자(공백 제외) of one piece of document text: every character
  * but the line breaks, and the same without blanks and tabs. The status bar's count
