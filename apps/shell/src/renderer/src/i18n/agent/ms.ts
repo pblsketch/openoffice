@@ -87,4 +87,7 @@ export const ms = {
   errGeneric: 'Berlaku masalah. Cuba lagi.',
   documentsUnprotected:
     'Dokumen yang dibuka selepas sesi dimulakan ({n}) tidak dilindungi oleh perlindungan tulis program itu sendiri. Hentikan dan mulakan semula sesi untuk melindunginya.',
+  connOff: 'Dimatikan dalam aplikasi ini. Anda boleh menggunakannya semula di Tetapan → AI.',
+  errOffInApp:
+    'Program ini dimatikan dalam aplikasi ini, jadi tiada lagi yang dihantar. Anda boleh menggunakannya semula di Tetapan → AI.',
 } satisfies Record<keyof typeof zh, string>

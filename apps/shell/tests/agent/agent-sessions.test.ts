@@ -489,6 +489,43 @@ describe('starting a session', () => {
   })
 })
 
+describe('a program turned off in this app (decision 0114)', () => {
+  it('starts no session on it, whatever its status says', async () => {
+    const { m, project, claude } = manager({
+      settings: { subscriptionOff: { 'claude-code': true } },
+    })
+    expect(
+      await m.start(1, { provider: 'claude-code', projectRoot: project, mode: 'ask-commands' }),
+    ).toEqual({ ok: false, reason: 'not-connected' })
+    expect(claude).not.toHaveBeenCalled()
+  })
+
+  it('sends nothing more once it is turned off, and ends the session', async () => {
+    const settings: Partial<AiSettings> = {}
+    const { m, project, session, emitted } = manager({ settings })
+    const result = await m.start(1, {
+      provider: 'claude-code',
+      projectRoot: project,
+      mode: 'ask-commands',
+    })
+    if (!result.ok) throw new Error('did not start')
+    await m.send(1, result.sessionId, 'one')
+    settings.subscriptionOff = { 'claude-code': true }
+    await m.send(1, result.sessionId, 'two')
+    expect(session.sent).toEqual(['one'])
+    expect(session.stopped).toBe(1)
+    expect(emitted.map(([, , event]) => event)).toContainEqual(
+      expect.objectContaining({ type: 'error', kind: 'off-in-app' }),
+    )
+    await expect(m.send(1, result.sessionId, 'three')).rejects.toThrow()
+  })
+
+  it('shows it as off in the window, apart from a program that is not connected', () => {
+    const off = { provider: 'codex', state: 'off', meteredAccepted: false } as AiSubscriptionStatus
+    expect(agentConnections({ codex: off }, {}).codex).toBe('off')
+  })
+})
+
 describe('driving a session', () => {
   it('lets only its window send, answer and stop', async () => {
     const { m, project, session } = manager()

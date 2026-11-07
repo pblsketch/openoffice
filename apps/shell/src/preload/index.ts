@@ -89,6 +89,7 @@ import type { SubscriptionApi } from '../shared/subscription-api'
 import {
   SHELL_SUBSCRIPTION_CHANNELS,
   subscriptionLaunchResultOf,
+  subscriptionOffResultOf,
   subscriptionStatusMapOf,
 } from '../shared/subscription-api'
 
@@ -841,6 +842,11 @@ const subscriptionApi: SubscriptionApi = {
     })
     const raw = (result ?? {}) as { ok?: unknown; statuses?: unknown }
     return { ok: raw.ok === true, statuses: subscriptionStatusMapOf(raw.statuses) }
+  },
+  async setSubscriptionOff(provider, off) {
+    return subscriptionOffResultOf(
+      await ipcRenderer.invoke(SUBSCRIPTION_IPC_CHANNELS.off, { provider, off }),
+    )
   },
   async codexImageAvailable() {
     return (await ipcRenderer.invoke(SUBSCRIPTION_IPC_CHANNELS.codexImage)) === true

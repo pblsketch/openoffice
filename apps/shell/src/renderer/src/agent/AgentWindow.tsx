@@ -84,6 +84,7 @@ const CONNECTION_NOTE: Partial<Record<AgentConnection, AgentStringKey>> = {
   unavailable: 'connUnavailable',
   'metered-accepted': 'connMetered',
   blocked: 'providerBlocked',
+  off: 'connOff',
 }
 const ACTION_LABEL: Record<
   Exclude<AgentActionView['kind'], 'web-search' | 'web-fetch' | 'mcp-tool'>,
@@ -125,6 +126,7 @@ const RUN_ERROR: Record<string, AgentStringKey> = {
   'metered-not-accepted': 'errMetered',
   'needs-update': 'errNeedsUpdate',
   'not-installed': 'errNotInstalled',
+  'off-in-app': 'errOffInApp',
 }
 
 function runErrorKey(kind: string | undefined): AgentStringKey {

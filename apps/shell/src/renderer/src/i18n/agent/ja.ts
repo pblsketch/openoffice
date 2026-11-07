@@ -89,4 +89,7 @@ export const ja = {
   errGeneric: '問題が発生しました。もう一度お試しください。',
   documentsUnprotected:
     'セッション開始後に開いた {n} 件の文書は、プログラム自身の書き込み保護の対象外です。保護するにはセッションを停止して開始し直してください。',
+  connOff: 'このアプリではオフになっています。設定 → AI で再び使えるようにできます。',
+  errOffInApp:
+    'このプログラムはこのアプリでオフになっているため、これ以上送信しませんでした。設定 → AI で再び使えるようにできます。',
 } satisfies Record<keyof typeof zh, string>

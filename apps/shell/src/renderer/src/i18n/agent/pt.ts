@@ -88,4 +88,7 @@ export const pt = {
   errGeneric: 'Algo deu errado. Tente novamente.',
   documentsUnprotected:
     'Os documentos abertos depois do início da sessão ({n}) ficam fora da proteção de escrita do programa. Pare e inicie a sessão novamente para protegê-los.',
+  connOff: 'Desativado neste aplicativo. Você pode voltar a usá-lo em Configurações → IA.',
+  errOffInApp:
+    'Este programa está desativado neste aplicativo, então nada mais foi enviado. Você pode voltar a usá-lo em Configurações → IA.',
 } satisfies Record<keyof typeof zh, string>

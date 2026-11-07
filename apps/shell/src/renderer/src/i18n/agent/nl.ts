@@ -90,4 +90,7 @@ export const nl = {
   errGeneric: 'Er ging iets mis. Probeer het opnieuw.',
   documentsUnprotected:
     'Documenten die na de start van de sessie zijn geopend ({n}) vallen buiten de schrijfbeveiliging van het programma. Stop en start de sessie opnieuw om ze te beschermen.',
+  connOff: 'Uit in deze app. Je kunt het weer gebruiken via Instellingen → AI.',
+  errOffInApp:
+    'Dit programma staat uit in deze app, dus er is niets meer verstuurd. Je kunt het weer gebruiken via Instellingen → AI.',
 } satisfies Record<keyof typeof zh, string>

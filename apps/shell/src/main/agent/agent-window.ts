@@ -341,6 +341,7 @@ export function agentConnections(
     const status = statuses[provider]
     if (blocked.includes(provider)) out[provider] = 'blocked'
     else if (!status || status.state === 'checking') out[provider] = 'checking'
+    else if (status.state === 'off') out[provider] = 'off'
     else if (status.state === 'ready') out[provider] = 'ready'
     else if (
       status.state === 'metered' &&
