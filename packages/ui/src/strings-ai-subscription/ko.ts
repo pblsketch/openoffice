@@ -17,6 +17,8 @@ export const ko = {
   cardErrNeedsUpdatePath: '이 앱이 실행하는 파일:',
   cardErrNeedsUpdateWindows:
     'WSL(Ubuntu)이나 다른 폴더에 설치된 {provider}를 업데이트해도 이 파일은 바뀌지 않습니다. Windows PowerShell에서 {command}를 실행하세요.',
+  claudeDesktopNote:
+    'Claude 데스크톱 앱은 이 앱이 실행하는 Claude Code가 아닙니다. Claude Code는 터미널에서 쓰는 별도 프로그램이라, 데스크톱 앱을 설치하거나 업데이트해도 바뀌지 않습니다.',
   cardErrTimeout: '{provider} 프로그램이 제때 응답하지 않았습니다. 잠시 뒤 다시 확인하세요.',
   cardErrFailed: '{provider} 연결을 확인하는 중에 문제가 생겼습니다. 다시 확인해 보세요.',
   actionInstall: '설치',

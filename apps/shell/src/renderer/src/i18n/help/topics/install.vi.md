@@ -74,7 +74,7 @@ Nếu macOS báo ứng dụng không được hỗ trợ trên máy Mac này, h�
 
 Ngoài ra trên Mac:
 
-- Các thẻ kết nối AI không có nút cài đặt. Hãy theo liên kết hướng dẫn cài đặt chính thức trên thẻ để cài Claude Code hoặc Codex.
+- Các thẻ kết nối AI không có nút cài đặt. Hãy theo liên kết hướng dẫn cài đặt chính thức trên thẻ để cài Claude Code hoặc Codex. Ứng dụng Claude cho máy tính không phải là Claude Code, nên vẫn phải cài Claude Code riêng dù đã có ứng dụng máy tính.
 - Việc đăng nhập hoàn tất trong trình duyệt. Nếu trình duyệt yêu cầu bạn dán một mã, hãy tự chạy `claude auth login` hoặc `codex login` trong Terminal. Xem [Kết nối gói đăng ký](help://subscription).
 
 ## Trên Linux (beta)

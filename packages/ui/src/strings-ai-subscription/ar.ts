@@ -17,6 +17,8 @@ export const ar = {
   cardErrNeedsUpdatePath: 'الملف الذي يشغّله هذا التطبيق:',
   cardErrNeedsUpdateWindows:
     'تحديث {provider} داخل WSL (Ubuntu) أو في مجلد آخر لا يغيّر هذا الملف. شغّل {command} في Windows PowerShell.',
+  claudeDesktopNote:
+    'تطبيق Claude لسطح المكتب ليس Claude Code الذي يشغّله هذا التطبيق. Claude Code برنامج منفصل يُستخدم في الطرفية، لذلك لا يغيّره تثبيت تطبيق سطح المكتب أو تحديثه.',
   cardErrTimeout: 'لم يستجب برنامج {provider} في الوقت المحدد. تحقق مرة أخرى بعد قليل.',
   cardErrFailed: 'حدث خطأ أثناء التحقق من {provider}. تحقق مرة أخرى.',
   actionInstall: 'تثبيت',

@@ -17,6 +17,8 @@ export const id = {
   cardErrNeedsUpdatePath: 'File yang dijalankan aplikasi ini:',
   cardErrNeedsUpdateWindows:
     'Memperbarui {provider} di dalam WSL (Ubuntu) atau di folder lain tidak mengubah file ini. Jalankan {command} di Windows PowerShell.',
+  claudeDesktopNote:
+    'Aplikasi desktop Claude bukan Claude Code yang dijalankan aplikasi ini. Claude Code adalah program terpisah yang dipakai di terminal, jadi memasang atau memperbarui aplikasi desktop tidak mengubahnya.',
   cardErrTimeout: 'Program {provider} tidak menjawab tepat waktu. Periksa lagi sebentar lagi.',
   cardErrFailed: 'Terjadi masalah saat memeriksa {provider}. Periksa lagi.',
   actionInstall: 'Pasang',

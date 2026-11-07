@@ -18,6 +18,8 @@ export const ja = {
   cardErrNeedsUpdatePath: 'このアプリが実行するファイル:',
   cardErrNeedsUpdateWindows:
     'WSL（Ubuntu）や別のフォルダーにある {provider} を更新しても、このファイルは変わりません。Windows PowerShell で {command} を実行してください。',
+  claudeDesktopNote:
+    'Claude デスクトップアプリは、このアプリが実行する Claude Code ではありません。Claude Code はターミナルで使う別のプログラムなので、デスクトップアプリをインストールまたは更新しても変わりません。',
   cardErrTimeout:
     '{provider} のプログラムから時間内に応答がありませんでした。しばらくしてから、もう一度確認してください。',
   cardErrFailed: '{provider} の確認中に問題が発生しました。もう一度確認してください。',

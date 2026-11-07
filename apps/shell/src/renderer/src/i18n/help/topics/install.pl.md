@@ -74,7 +74,7 @@ Jeśli macOS informuje, że aplikacja nie jest obsługiwana na tym Macu, sprawd�
 
 Ponadto na Macu:
 
-- Karty połączenia z AI nie mają przycisku instalacji. Aby zainstalować Claude Code lub Codex, skorzystaj z odnośnika do oficjalnego przewodnika instalacji na karcie.
+- Karty połączenia z AI nie mają przycisku instalacji. Aby zainstalować Claude Code lub Codex, skorzystaj z odnośnika do oficjalnego przewodnika instalacji na karcie. Aplikacja desktopowa Claude to nie Claude Code, więc Claude Code trzeba zainstalować osobno, nawet jeśli aplikacja desktopowa już jest.
 - Logowanie kończy się w przeglądarce. Jeśli przeglądarka poprosi o wklejenie kodu, samodzielnie uruchom w Terminalu `claude auth login` lub `codex login`. Zobacz [Połączenie z subskrypcją](help://subscription).
 
 ## W systemie Linux (beta)

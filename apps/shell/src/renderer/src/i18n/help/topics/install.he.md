@@ -74,7 +74,7 @@ xattr -dr com.apple.quarantine /Applications/GenOffice.app
 
 עוד ב-Mac:
 
-- בכרטיסי החיבור ל-AI אין כפתור התקנה. עקבו אחרי הקישור למדריך ההתקנה הרשמי בכרטיס כדי להתקין את Claude Code או את Codex.
+- בכרטיסי החיבור ל-AI אין כפתור התקנה. עקבו אחרי הקישור למדריך ההתקנה הרשמי בכרטיס כדי להתקין את Claude Code או את Codex. אפליקציית Claude לשולחן העבודה אינה Claude Code, ולכן צריך להתקין את Claude Code בנפרד גם אם אפליקציית שולחן העבודה כבר מותקנת.
 - ההתחברות מסתיימת בדפדפן. אם הדפדפן מבקש להדביק קוד, הריצו בעצמכם `claude auth login` או `codex login` ב-Terminal. ראו [חיבור מינוי](help://subscription).
 
 ## ב-Linux (בטא)

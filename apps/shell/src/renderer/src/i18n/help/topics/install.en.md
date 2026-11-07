@@ -74,7 +74,7 @@ If macOS says the app is not supported on this Mac, check two things:
 
 Also on a Mac:
 
-- The AI connection cards have no install button. Follow the card's official install guide link to install Claude Code or Codex.
+- The AI connection cards have no install button. Follow the card's official install guide link to install Claude Code or Codex. The Claude desktop app is not Claude Code, so Claude Code has to be installed even when the desktop app is.
 - Signing in finishes in the browser. If the browser asks you to paste a code, run `claude auth login` or `codex login` in Terminal yourself. See [Subscription connection](help://subscription).
 
 ## On Linux (beta)

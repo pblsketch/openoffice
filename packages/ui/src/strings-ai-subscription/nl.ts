@@ -18,6 +18,8 @@ export const nl = {
   cardErrNeedsUpdatePath: 'Bestand dat deze app uitvoert:',
   cardErrNeedsUpdateWindows:
     'Als je {provider} in WSL (Ubuntu) of in een andere map bijwerkt, verandert dit bestand niet. Voer {command} uit in Windows PowerShell.',
+  claudeDesktopNote:
+    'De Claude-desktopapp is niet Claude Code, dat deze app uitvoert. Claude Code is een apart programma voor de terminal, dus de desktopapp installeren of bijwerken verandert het niet.',
   cardErrTimeout:
     'Het programma {provider} heeft niet op tijd gereageerd. Controleer het zo dadelijk opnieuw.',
   cardErrFailed: 'Er ging iets mis bij het controleren van {provider}. Controleer het opnieuw.',

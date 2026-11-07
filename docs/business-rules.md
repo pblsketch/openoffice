@@ -29,8 +29,10 @@
 | `metered`       | 종량 로그인이거나 로그인 방식을 알 수 없음 | 요금 경고를 읽고 "그래도 사용"을 고르거나, 구독 계정으로 다시 로그인한다 |
 | `error`         | 확인 자체가 실패                           | 다시 확인. 프로그램 버전이 낮으면 업데이트 후 다시 확인                  |
 
-- 프로그램 버전이 낮은 `error`에서 Claude는 찾은 버전, 앱이 요구하는 최소 버전(`SUBSCRIPTION_MIN_VERSIONS`), 업데이트 명령 `claude update`를 함께 보여 준다. 최소 버전이 없는 Codex는 "업데이트한 뒤 다시 확인"만 보인다.
-- Claude의 버전이 낮은 `error` 카드에는 앱이 실행한 프로그램 파일의 경로가 한 줄 더 보인다. 한 PC에 사본이 여럿일 수 있어서다(WSL 안의 사본, 예전 npm 설치). Windows에서는 "WSL(Ubuntu)이나 다른 폴더의 사본을 업데이트해도 이 파일은 바뀌지 않으니 Windows PowerShell에서 업데이트 명령을 실행하라"는 줄이 이어진다.
+- 프로그램 버전이 낮은 `error`에서 Claude는 찾은 버전, 앱이 요구하는 최소 버전(`SUBSCRIPTION_MIN_VERSIONS`), 업데이트 명령 `claude update`를 함께 보여 준다. Homebrew cask가 설치한 사본(경로에 `Caskroom/claude-code`)이면 명령은 `brew upgrade claude-code`다. `claude update`가 그 사본을 바꾸지 않기 때문이다. 최소 버전이 없는 Codex는 "업데이트한 뒤 다시 확인"만 보인다.
+- Claude의 버전이 낮은 `error` 카드에는 앱이 실행한 프로그램 파일의 경로가 한 줄 더 보인다. 한 PC에 사본이 여럿일 수 있어서다(WSL 안의 사본, 예전 npm 설치). Windows에서는 "WSL(Ubuntu)이나 다른 폴더의 사본을 업데이트해도 이 파일은 바뀌지 않으니 Windows PowerShell에서 업데이트 명령을 실행하라"는 줄이 이어진다. Mac과 Linux에서는 링크 뒤의 실제 파일이 보인다(`/opt/homebrew/bin/claude`가 아니라 그것이 가리키는 파일).
+- Claude 카드가 `not-installed`이거나 버전이 낮은 `error`이면 "Claude 데스크톱 앱은 이 앱이 실행하는 Claude Code가 아니며, 데스크톱 앱을 설치하거나 업데이트해도 Claude Code는 바뀌지 않는다"는 줄이 함께 나온다. 두 프로그램을 헷갈린 신고가 이어졌다.
+- 자동으로 찾은 Claude Code가 여럿이면 앱의 최소 버전을 넘는 첫 사본을 쓴다(`locate.ts`). 버전이 낮다는 카드는 넘는 사본이 하나도 없을 때만 나온다.
 - `ready`는 로그인 방식이 구독일 때만이다. 방식을 알 수 없으면 `ready`가 아니라 `metered`다. 모르는 것을 구독으로 치지 않는다.
 - 확인하는 때: 앱 시작 후 첫 조회, 설정 화면을 열 때, 설치나 로그인을 띄운 뒤 앱 창으로 돌아왔을 때. 두 제공자를 동시에 확인하고, 20초 안에 답이 없으면 `error`다.
 - 설치 버튼은 그 회사의 공식 설치 명령을 눈에 보이는 새 터미널 창에서 실행한다. 앱이 설치 파일을 내려받지 않는다. 설치가 실패하면 상태는 `not-installed`로 남는다.

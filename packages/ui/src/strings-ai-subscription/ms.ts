@@ -18,6 +18,8 @@ export const ms = {
   cardErrNeedsUpdatePath: 'Fail yang dijalankan oleh aplikasi ini:',
   cardErrNeedsUpdateWindows:
     'Mengemas kini {provider} di dalam WSL (Ubuntu) atau dalam folder lain tidak mengubah fail ini. Jalankan {command} dalam Windows PowerShell.',
+  claudeDesktopNote:
+    'Aplikasi desktop Claude bukan Claude Code yang dijalankan oleh aplikasi ini. Claude Code ialah program berasingan yang digunakan dalam terminal, jadi memasang atau mengemas kini aplikasi desktop tidak mengubahnya.',
   cardErrTimeout:
     'Program {provider} tidak menjawab dalam masa yang ditetapkan. Semak semula sebentar lagi.',
   cardErrFailed: 'Masalah berlaku semasa menyemak {provider}. Semak semula.',

@@ -17,6 +17,8 @@ export const zhTW = {
   cardErrNeedsUpdatePath: '此應用程式執行的檔案：',
   cardErrNeedsUpdateWindows:
     '在 WSL（Ubuntu）或其他資料夾中更新 {provider} 不會變更此檔案。請在 Windows PowerShell 中執行 {command}。',
+  claudeDesktopNote:
+    'Claude 桌面應用程式不是本應用程式執行的 Claude Code。Claude Code 是在終端機中使用的獨立程式，安裝或更新桌面應用程式不會改變它。',
   cardErrTimeout: '{provider} 程式未及時回應。請稍後重新檢查。',
   cardErrFailed: '檢查 {provider} 時發生問題。請重新檢查。',
   actionInstall: '安裝',

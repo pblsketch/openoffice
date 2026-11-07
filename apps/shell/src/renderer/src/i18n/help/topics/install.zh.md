@@ -74,7 +74,7 @@ xattr -dr com.apple.quarantine /Applications/GenOffice.app
 
 在 Mac 上还要注意：
 
-- AI 连接卡片上没有安装按钮。请按卡片上的官方安装指南链接来安装 Claude Code 或 Codex。
+- AI 连接卡片上没有安装按钮。请按卡片上的官方安装指南链接来安装 Claude Code 或 Codex。Claude 桌面应用不是 Claude Code，所以即使装了桌面应用，也需要另外安装 Claude Code。
 - 登录会在浏览器中完成。如果浏览器要求你粘贴代码，请自己在“终端”中运行 `claude auth login` 或 `codex login`。见[订阅连接](help://subscription)。
 
 ## 在 Linux 上（Beta）

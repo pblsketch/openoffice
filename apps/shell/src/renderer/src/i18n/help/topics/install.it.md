@@ -74,7 +74,7 @@ Se macOS dice che l'app non è supportata su questo Mac, controlla due cose:
 
 Sempre su un Mac:
 
-- Le schede di connessione IA non hanno un pulsante di installazione. Segui il link alla guida ufficiale di installazione sulla scheda per installare Claude Code o Codex.
+- Le schede di connessione IA non hanno un pulsante di installazione. Segui il link alla guida ufficiale di installazione sulla scheda per installare Claude Code o Codex. L'app desktop di Claude non è Claude Code, quindi Claude Code va installato anche se l'app desktop è già presente.
 - L'accesso si completa nel browser. Se il browser ti chiede di incollare un codice, esegui tu stesso `claude auth login` o `codex login` nel Terminale. Vedi [Connessione con abbonamento](help://subscription).
 
 ## Su Linux (beta)

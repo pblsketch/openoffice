@@ -18,6 +18,8 @@ export const ru = {
   cardErrNeedsUpdatePath: 'Файл, который запускает это приложение:',
   cardErrNeedsUpdateWindows:
     'Обновление {provider} внутри WSL (Ubuntu) или в другой папке не меняет этот файл. Выполните {command} в Windows PowerShell.',
+  claudeDesktopNote:
+    'Настольное приложение Claude не является Claude Code, который запускает это приложение. Claude Code является отдельной программой для терминала, поэтому установка или обновление настольного приложения его не меняет.',
   cardErrTimeout: 'Программа {provider} не ответила вовремя. Проверьте снова чуть позже.',
   cardErrFailed: 'При проверке {provider} что-то пошло не так. Проверьте снова.',
   actionInstall: 'Установить',

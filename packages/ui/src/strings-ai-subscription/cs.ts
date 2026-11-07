@@ -18,6 +18,8 @@ export const cs = {
   cardErrNeedsUpdatePath: 'Soubor, který tato aplikace spouští:',
   cardErrNeedsUpdateWindows:
     'Aktualizace programu {provider} ve WSL (Ubuntu) nebo v jiné složce tento soubor nezmění. Spusťte {command} ve Windows PowerShellu.',
+  claudeDesktopNote:
+    'Desktopová aplikace Claude není Claude Code, který tato aplikace spouští. Claude Code je samostatný program pro terminál, takže instalace ani aktualizace desktopové aplikace ho nezmění.',
   cardErrTimeout: 'Program {provider} neodpověděl včas. Zkontrolujte to za chvíli znovu.',
   cardErrFailed: 'Při kontrole {provider} došlo k potížím. Zkontrolujte to znovu.',
   actionInstall: 'Nainstalovat',

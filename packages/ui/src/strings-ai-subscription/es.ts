@@ -18,6 +18,8 @@ export const es = {
   cardErrNeedsUpdatePath: 'Archivo que ejecuta esta aplicación:',
   cardErrNeedsUpdateWindows:
     'Actualizar {provider} dentro de WSL (Ubuntu) o en otra carpeta no cambia este archivo. Ejecuta {command} en Windows PowerShell.',
+  claudeDesktopNote:
+    'La aplicación de escritorio de Claude no es Claude Code, que es lo que ejecuta esta aplicación. Claude Code es un programa aparte que se usa en una terminal, así que instalar o actualizar la aplicación de escritorio no lo cambia.',
   cardErrTimeout: 'El programa {provider} no respondió a tiempo. Comprueba de nuevo en un momento.',
   cardErrFailed: 'Algo salió mal al comprobar {provider}. Comprueba de nuevo.',
   actionInstall: 'Instalar',
