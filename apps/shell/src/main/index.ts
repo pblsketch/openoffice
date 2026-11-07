@@ -4751,6 +4751,7 @@ const SEARCH_EXT_FAMILY: Record<string, readonly string[]> = {
   md: ['md', 'markdown', 'txt', 'json'],
   html: ['html', 'htm'],
   hwp: ['hwp', 'hwpx'],
+  xmind: ['xmind', 'mm'],
   drawio: ['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx'],
 }
 
@@ -5482,6 +5483,7 @@ const OPEN_DIALOG_EXTENSIONS = [
   'html',
   'htm',
   'xmind',
+  'mm',
   'hwp',
   'hwpx',
   'epub',
@@ -6435,7 +6437,7 @@ function registerHomeIpc(): void {
         { name: tm('filterPdf'), extensions: ['pdf'] },
         { name: tm('filterMarkdown'), extensions: ['md', 'markdown', 'txt', 'json'] },
         { name: tm('filterHtml'), extensions: ['html', 'htm'] },
-        { name: tm('filterMindmap'), extensions: ['xmind'] },
+        { name: tm('filterMindmap'), extensions: ['xmind', 'mm'] },
         { name: tm('filterHwp'), extensions: ['hwp', 'hwpx'] },
         { name: tm('filterEpub'), extensions: ['epub'] },
         {

@@ -84,6 +84,8 @@ export const EXT_FAMILY: Record<string, readonly string[]> = {
   md: ['md', 'markdown', 'txt', 'json'],
   html: ['html', 'htm'],
   hwp: ['hwp', 'hwpx'],
+  // the mind map editor's own maps and the FreeMind / Freeplane maps it imports
+  xmind: ['xmind', 'mm'],
   // the diagram editor's formats, a Visio drawing it imports included
   drawio: ['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx'],
 }

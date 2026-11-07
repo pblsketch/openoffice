@@ -46,6 +46,7 @@ export const TREE_FILE_EXTENSIONS: ReadonlySet<string> = new Set([
   'html',
   'htm',
   'xmind',
+  'mm',
   'hwp',
   'hwpx',
   'epub',

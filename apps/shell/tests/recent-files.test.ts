@@ -24,8 +24,9 @@ describe('matchesExtFamily', () => {
 
   it('still matches exact extensions and rejects outsiders', () => {
     expect(matchesExtFamily('pdf', 'pdf')).toBe(true)
-    // a mind map has one extension, so its filter key is the extension itself
+    // the mind map filter takes its own maps and the FreeMind / Freeplane maps it imports
     expect(matchesExtFamily('xmind', 'xmind')).toBe(true)
+    expect(matchesExtFamily('mm', 'xmind')).toBe(true)
     expect(matchesExtFamily('md', 'xmind')).toBe(false)
     expect(matchesExtFamily('epub', 'epub')).toBe(true)
     expect(matchesExtFamily('pdf', 'epub')).toBe(false)
