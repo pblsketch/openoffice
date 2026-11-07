@@ -631,6 +631,8 @@ Ces touches s’appliquent lorsque l’onglet HWP/HWPX est au premier plan et qu
 | Rechercher suivant      | ⌃L          | Ctrl+L                       |
 | Rechercher en arrière   | ⌃Q, L       | Ctrl+Q, L                    |
 | Aller à                 | ⌥G          | Alt+G                        |
+| Début du document       | ⌃⇞          | Ctrl+PageUp                  |
+| Fin du document         | ⌃⇟          | Ctrl+PageDown                |
 | Comparer les documents  | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Caractère

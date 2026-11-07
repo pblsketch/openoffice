@@ -266,4 +266,10 @@ export const es = {
   easyWordsLabel: 'Explicar con palabras sencillas',
   easyWordsPrompt:
     'Explica en español el texto seleccionado abajo para que lo entienda también alguien que necesita textos fáciles de leer. Usa palabras de todos los días y frases cortas, y no dejes fuera ningún hecho, número ni condición. No modifiques el documento.\n\nTexto seleccionado:\n{text}',
+  charCountTotal: 'Caracteres {total}',
+  charCountSelected: 'Caracteres {selected} / {total}',
+  charCountHint:
+    'Se cuentan los caracteres con espacios. Sin espacios: documento completo {totalNoSpace}. Como en la información del documento, no se cuentan encabezados, pies de página, notas al pie ni notas finales.',
+  charCountHintSelected:
+    'Con espacios: selección {selected} / documento completo {total}. Sin espacios: selección {selectedNoSpace} / documento completo {totalNoSpace}. Como en la información del documento, no se cuentan encabezados, pies de página, notas al pie ni notas finales.',
 } satisfies Record<keyof typeof zh, string>

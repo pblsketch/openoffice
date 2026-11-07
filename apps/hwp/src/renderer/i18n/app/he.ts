@@ -254,4 +254,10 @@ export const he = {
   easyWordsLabel: 'הסבר במילים פשוטות',
   easyWordsPrompt:
     'הסבר בעברית את הטקסט שנבחר למטה כך שגם מי שזקוק לטקסט קל לקריאה יבין אותו. השתמש במילים יומיומיות ובמשפטים קצרים, ואל תשמיט אף עובדה, מספר או תנאי. אל תשנה את המסמך.\n\nהטקסט שנבחר:\n{text}',
+  charCountTotal: 'תווים {total}',
+  charCountSelected: 'תווים {selected} / {total}',
+  charCountHint:
+    'התווים נספרים כולל רווחים. ללא רווחים: כל המסמך {totalNoSpace}. כמו במידע על המסמך, כותרות עליונות ותחתונות, הערות שוליים והערות סיום אינן נספרות.',
+  charCountHintSelected:
+    'כולל רווחים: נבחר {selected} / כל המסמך {total}. ללא רווחים: נבחר {selectedNoSpace} / כל המסמך {totalNoSpace}. כמו במידע על המסמך, כותרות עליונות ותחתונות, הערות שוליים והערות סיום אינן נספרות.',
 } satisfies Record<keyof typeof zh, string>

@@ -87,16 +87,12 @@ const SPARSE_PATTERNS = [
 
 const CACHE = join(APP, 'node_modules', '.cache', 'rhwp-studio', TAG)
 const OUT = join(APP, 'public', 'studio')
-const AGENT_PLUGIN = join(APP, 'studio-plugin', 'agent-plugin.mjs')
-const DIALOG_THEME = join(APP, 'studio-plugin', 'dialog-theme.mjs')
-const HANCOM_KEYS = join(APP, 'studio-plugin', 'hancom-keys.mjs')
-const DOCUMENT_INFO = join(APP, 'studio-plugin', 'document-info.mjs')
-const FORMAT_COPY = join(APP, 'studio-plugin', 'format-copy.mjs')
-const CLIPBOARD_HTML = join(APP, 'studio-plugin', 'clipboard-html.mjs')
-const PC_FONTS = join(APP, 'studio-plugin', 'pc-fonts.mjs')
-const HANJA = join(APP, 'studio-plugin', 'hanja.mjs')
-const TABLE_AUTO_FILL = join(APP, 'studio-plugin', 'table-auto-fill.mjs')
-const TABLE_SIZES = join(APP, 'studio-plugin', 'table-sizes.mjs')
+const PLUGIN_DIR = join(APP, 'studio-plugin')
+const AGENT_PLUGIN = join(PLUGIN_DIR, 'agent-plugin.mjs')
+const HANCOM_KEYS = join(PLUGIN_DIR, 'hancom-keys.mjs')
+const FORMAT_COPY = join(PLUGIN_DIR, 'format-copy.mjs')
+const CLIPBOARD_HTML = join(PLUGIN_DIR, 'clipboard-html.mjs')
+const PC_FONTS = join(PLUGIN_DIR, 'pc-fonts.mjs')
 const HANJA_CACHE = join(APP, 'node_modules', '.cache', 'libhangul-hanja')
 const STAMP = join(OUT, '.stamp')
 
@@ -106,23 +102,25 @@ function git(args, cwd) {
     .trim()
 }
 
+/** The plugin's modules, in a fixed order. */
+function pluginModules() {
+  return readdirSync(PLUGIN_DIR)
+    .filter((name) => name.endsWith('.mjs'))
+    .sort()
+}
+
 function stampValue() {
   const hash = createHash('sha256')
   hash.update(TAG)
   for (const file of ['build-studio.mjs', 'rhwp-patches.mjs', 'hanja-dict.mjs']) {
     hash.update(readFileSync(join(SCRIPTS, file)))
   }
-  // the app's own plugin and the Hangul keys are compiled into the studio
-  hash.update(readFileSync(AGENT_PLUGIN))
-  hash.update(readFileSync(DIALOG_THEME))
-  hash.update(readFileSync(HANCOM_KEYS))
-  hash.update(readFileSync(DOCUMENT_INFO))
-  hash.update(readFileSync(FORMAT_COPY))
-  hash.update(readFileSync(CLIPBOARD_HTML))
-  hash.update(readFileSync(PC_FONTS))
-  hash.update(readFileSync(HANJA))
-  hash.update(readFileSync(TABLE_AUTO_FILL))
-  hash.update(readFileSync(TABLE_SIZES))
+  // the app's own plugin and the Hangul keys are compiled into the studio: every module of
+  // studio-plugin/, so a new one cannot be left out of the stamp
+  for (const file of pluginModules()) {
+    hash.update(file)
+    hash.update(readFileSync(join(PLUGIN_DIR, file)))
+  }
   hash.update(HANJA_COMMIT)
   // and so is the engine: a rebuilt WASM must reach the studio
   hash.update(readFileSync(join(CORE_DIR, 'rhwp_bg.wasm')))

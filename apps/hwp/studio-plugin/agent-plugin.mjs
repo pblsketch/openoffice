@@ -13,6 +13,14 @@
  * Everything returned crosses to the app renderer by structured clone.
  */
 
+import {
+  charCountItem,
+  charCountText,
+  charCounter,
+  checkCharCountLabels,
+  countCollector,
+} from './char-count.mjs'
+import { documentStats, engineSlice } from './document-info.mjs'
 import { installDialogTheme } from './dialog-theme.mjs'
 import { missingFonts, setMissingFontLabels, whenPcFontsSettled } from './pc-fonts.mjs'
 
@@ -108,6 +116,8 @@ const FILE_MENU = [
 ]
 /** The command that reads what the user has selected in the editor. */
 const SELECTION_COMMAND = 'ext:ieum-selection'
+/** The command that counts the document's characters for the status bar (char-count.mjs). */
+const COUNT_COMMAND = 'ext:ieum-count-characters'
 /**
  * The command behind the editor's right-click item 쉬운 말로 풀기, which the
  * studio-easy-words-context-menu patch puts into the body and table cell menus. The menu
@@ -745,7 +755,8 @@ function runCollector() {
       segments.push({
         ...box.place(k, end - start),
         offset: start,
-        text: box.text(k, length).slice(start, end),
+        // the engine's offsets count characters, not a JavaScript string's units
+        text: engineSlice(box.text(k, length), start, end),
       })
     },
     tooLong: () => segments.length > MAX_SELECTED_RUNS || chars > MAX_SELECTED_CHARS,
@@ -805,6 +816,82 @@ function collectBody(doc, tablesNow, start, end, out) {
       if (out.tooLong()) return
     }
   }
+}
+
+/**
+ * The runs of what the selection command saw (`seen`) put into `out` (runCollector, or the
+ * status bar's count): a block of cells, a stretch inside one cell, from cell to cell of one
+ * table, or across the body, where an end inside a table takes that table whole.
+ * { ok: true, inTable }, or { ok: false, reason: 'unsupported' } for a place without an address.
+ */
+function gatherSelection(doc, seen, out) {
+  let known = null
+  const tablesNow = () => (known ??= tablesOf(doc).tables)
+  const tableAt = (sec, para, path) => {
+    const key = tableKey(sec, para, path)
+    return tablesNow().findIndex((table) => tableKey(table.sec, table.para, table.path) === key)
+  }
+  /** the cells a block between two corners covers, a merged cell by any of its places */
+  const within = (range, skip) => (cell) =>
+    cell.row <= range.endRow &&
+    cell.row + cell.rowSpan - 1 >= range.startRow &&
+    cell.col <= range.endCol &&
+    cell.col + cell.colSpan - 1 >= range.startCol &&
+    !skip.has(`${cell.row},${cell.col}`)
+  let inTable = false
+  if (seen.block) {
+    const { table, range, excluded } = seen.block
+    const path =
+      Array.isArray(table.cellPath) && table.cellPath.length > 0
+        ? asCellPath(table.cellPath)
+        : [{ controlIndex: table.ci, cellIndex: 0, cellParaIndex: 0 }]
+    const index = tableAt(table.sec, table.ppi, path)
+    if (index < 0) return { ok: false, reason: 'unsupported' }
+    collectTable(doc, tablesNow(), index, out, within(range, new Set(excluded)))
+    inTable = true
+  } else {
+    const start = endOf(seen.start)
+    const end = endOf(seen.end)
+    if (!start || !end) return { ok: false, reason: 'unsupported' }
+    if (start.path && end.path && sameTable(start, end, true)) {
+      // inside one cell or text box: its paragraphs
+      const box = containerOf(doc, {
+        sec: start.sec,
+        para: start.para,
+        cellPath: start.path,
+      })
+      for (let k = start.k; k <= end.k; k++) {
+        out.add(box, k, k === start.k ? start.offset : 0, k === end.k ? end.offset : Infinity)
+      }
+      inTable = true
+    } else if (start.path && end.path && sameTable(start, end, false)) {
+      // from one cell to another of the same table: the block of cells between them
+      const index = tableAt(start.sec, start.para, start.path)
+      if (index < 0) return { ok: false, reason: 'unsupported' }
+      const grid = gridOf(doc, tablesNow()[index])
+      const a = grid[start.path[start.path.length - 1].cellIndex]
+      const b = grid[end.path[end.path.length - 1].cellIndex]
+      if (!a || !b) return { ok: false, reason: 'unsupported' }
+      const range = {
+        startRow: Math.min(a.row, b.row),
+        endRow: Math.max(a.row + a.rowSpan - 1, b.row + b.rowSpan - 1),
+        startCol: Math.min(a.col, b.col),
+        endCol: Math.max(a.col + a.colSpan - 1, b.col + b.colSpan - 1),
+      }
+      collectTable(doc, tablesNow(), index, out, within(range, new Set()))
+      inTable = true
+    } else {
+      // across the body: an end inside a table takes that table whole
+      collectBody(
+        doc,
+        tablesNow,
+        start.path ? { sec: start.sec, k: start.para, offset: 0 } : start,
+        end.path ? { sec: end.sec, k: end.para, offset: Infinity } : end,
+        out,
+      )
+    }
+  }
+  return { ok: true, inTable }
 }
 
 /**
@@ -1055,7 +1142,7 @@ function segmentsStand(doc, segments) {
     try {
       const { box, k } = segmentBox(doc, segment)
       const whole = box.text(k, box.length(k))
-      return whole.slice(segment.offset, segment.offset + segment.length) === segment.text
+      return engineSlice(whole, segment.offset, segment.offset + segment.length) === segment.text
     } catch {
       return false
     }
@@ -4005,6 +4092,8 @@ let stopMemoLock = null
 let stopMemoClipboard = null
 /** Closes the channel a copy of memo-bearing text is told on. */
 let stopMemoChannel = null
+/** Stops the status bar's character count (showCharCount). */
+let stopCharCount = null
 /** A redraw of the memo anchors after a change settles, and the probe for pasted memos. */
 let memoSettleTimer = null
 let memoProbeTimer = null
@@ -4041,6 +4130,8 @@ export const agentPlugin = {
     stopMemoClipboard = null
     if (stopMemoChannel) stopMemoChannel()
     stopMemoChannel = null
+    if (stopCharCount) stopCharCount()
+    stopCharCount = null
     if (memoSettleTimer) clearTimeout(memoSettleTimer)
     memoSettleTimer = null
     if (memoProbeTimer) clearTimeout(memoProbeTimer)
@@ -4673,6 +4764,94 @@ export const agentPlugin = {
       })
     } catch {
       // as above
+    }
+
+    // the document's characters as the status bar counts them, read through the editor's own
+    // bridge as the 문서 정보 dialog reads them
+    let counted = null
+    try {
+      host.automation.registerCommand({
+        id: COUNT_COMMAND,
+        label: 'Count the characters',
+        execute: (services) => {
+          try {
+            const stats = documentStats(services.wasm, { textOnly: true })
+            counted = { chars: stats.chars, charsNoSpace: stats.charsNoSpace }
+          } catch {
+            counted = null
+          }
+        },
+      })
+    } catch {
+      // as above
+    }
+
+    /** The characters of what is selected now, or null when nothing (or no place) is. */
+    const selectedCharacters = () => {
+      picked = null
+      host.automation.execute(SELECTION_COMMAND)
+      const seen = picked
+      if (!seen) return null
+      return host.read((doc) => {
+        const out = countCollector()
+        return gatherSelection(doc, seen, out).ok ? out.counts() : null
+      })
+    }
+
+    // the status bar's count: put off until typing or the selection rests (char-count.mjs)
+    let charCountLabels = null
+    let charCount = null
+    const startCharCount = () => {
+      const page = globalThis.document
+      if (!charCountItem(page)) return false
+      if (charCount) {
+        charCount.refresh()
+        return true
+      }
+      const counter = charCounter({
+        readTotal: () => {
+          counted = null
+          host.automation.execute(COUNT_COMMAND)
+          return counted
+        },
+        readSelection: selectedCharacters,
+        render: (total, selected) => {
+          const item = charCountItem(page)
+          if (!item || !charCountLabels) return
+          const { text, title } = charCountText(charCountLabels, total, selected)
+          if (item.textContent !== text) item.textContent = text
+          if (item.title !== title) item.title = title
+        },
+      })
+      charCount = counter
+      const offChanged = host.events.on('document-changed', () => counter.documentChanged())
+      // typing redraws only its page: the studio tells of it as a mutation and a page to draw
+      // again, and says nothing of a changed document (over 30 pages it does not lay the pages
+      // out again later either). An edit that tells both only puts the same count off once more
+      const offMutated = host.events.on('document-mutated', () => counter.documentChanged())
+      const offCaret = host.events.on('cursor-rect-updated', () => counter.selectionChanged())
+      // another document opened in the same editor (a restored copy, a file dropped in)
+      const offSwapped = host.events.on('document-swapped', () => counter.documentSwapped())
+      // a cell block grows with the keys or the mouse without the caret moving: a key or a
+      // button let go is when to look again
+      const onRest = () => counter.selectionChanged()
+      page.addEventListener('keyup', onRest, true)
+      page.addEventListener('mouseup', onRest, true)
+      stopCharCount = () => {
+        counter.stop()
+        page.removeEventListener('keyup', onRest, true)
+        page.removeEventListener('mouseup', onRest, true)
+        for (const off of [offChanged, offMutated, offCaret, offSwapped]) {
+          try {
+            off?.()
+          } catch {
+            // the host already took it off
+          }
+        }
+        charCount = null
+      }
+      counter.start()
+      return true
     }
 
     /** The text of a body or cell paragraph the caret is in, as the word commands read it. */
@@ -6860,6 +7039,25 @@ export const agentPlugin = {
        * selection() does and fires EASY_WORDS_EVENT with its text, a line per paragraph; it
        * changes nothing in the document. A later call gives the item its new name.
        */
+      /**
+       * Show the characters of the block and of the document in the editor's status bar,
+       * beside the insert/overwrite mode (issue #295), counted as the 문서 정보 dialog counts
+       * them. `labels` are the app's words: `total` ("{total}"), `selected` ("{selected}" and
+       * "{total}"), and the tooltips `hint` and `hintSelected` (those and "{totalNoSpace}",
+       * "{selectedNoSpace}", the counts without blanks), with the `locale` the numbers are
+       * written in. A later call changes the words.
+       */
+      showCharCount: guarded((labels) => {
+        const checked = checkCharCountLabels(labels)
+        if (!checked)
+          throw fail(
+            'BAD_ARGUMENT',
+            'total, selected, hint and hintSelected must be non-empty strings',
+          )
+        charCountLabels = checked
+        return { ok: startCharCount() }
+      }),
+
       installEasyWords: guarded((label) => {
         if (typeof label !== 'string' || !label.trim()) {
           throw fail('BAD_ARGUMENT', 'label must be a non-empty string')
@@ -6965,79 +7163,9 @@ export const agentPlugin = {
         if (!seen) return { ok: false, reason: 'none' }
         return host.read((doc) => {
           const out = runCollector()
-          let known = null
-          const tablesNow = () => (known ??= tablesOf(doc).tables)
-          const tableAt = (sec, para, path) => {
-            const key = tableKey(sec, para, path)
-            return tablesNow().findIndex(
-              (table) => tableKey(table.sec, table.para, table.path) === key,
-            )
-          }
-          /** the cells a block between two corners covers, a merged cell by any of its places */
-          const within = (range, skip) => (cell) =>
-            cell.row <= range.endRow &&
-            cell.row + cell.rowSpan - 1 >= range.startRow &&
-            cell.col <= range.endCol &&
-            cell.col + cell.colSpan - 1 >= range.startCol &&
-            !skip.has(`${cell.row},${cell.col}`)
-          let inTable = false
-          if (seen.block) {
-            const { table, range, excluded } = seen.block
-            const path =
-              Array.isArray(table.cellPath) && table.cellPath.length > 0
-                ? asCellPath(table.cellPath)
-                : [{ controlIndex: table.ci, cellIndex: 0, cellParaIndex: 0 }]
-            const index = tableAt(table.sec, table.ppi, path)
-            if (index < 0) return { ok: false, reason: 'unsupported' }
-            collectTable(doc, tablesNow(), index, out, within(range, new Set(excluded)))
-            inTable = true
-          } else {
-            const start = endOf(seen.start)
-            const end = endOf(seen.end)
-            if (!start || !end) return { ok: false, reason: 'unsupported' }
-            if (start.path && end.path && sameTable(start, end, true)) {
-              // inside one cell or text box: its paragraphs
-              const box = containerOf(doc, {
-                sec: start.sec,
-                para: start.para,
-                cellPath: start.path,
-              })
-              for (let k = start.k; k <= end.k; k++) {
-                out.add(
-                  box,
-                  k,
-                  k === start.k ? start.offset : 0,
-                  k === end.k ? end.offset : Infinity,
-                )
-              }
-              inTable = true
-            } else if (start.path && end.path && sameTable(start, end, false)) {
-              // from one cell to another of the same table: the block of cells between them
-              const index = tableAt(start.sec, start.para, start.path)
-              if (index < 0) return { ok: false, reason: 'unsupported' }
-              const grid = gridOf(doc, tablesNow()[index])
-              const a = grid[start.path[start.path.length - 1].cellIndex]
-              const b = grid[end.path[end.path.length - 1].cellIndex]
-              if (!a || !b) return { ok: false, reason: 'unsupported' }
-              const range = {
-                startRow: Math.min(a.row, b.row),
-                endRow: Math.max(a.row + a.rowSpan - 1, b.row + b.rowSpan - 1),
-                startCol: Math.min(a.col, b.col),
-                endCol: Math.max(a.col + a.colSpan - 1, b.col + b.colSpan - 1),
-              }
-              collectTable(doc, tablesNow(), index, out, within(range, new Set()))
-              inTable = true
-            } else {
-              // across the body: an end inside a table takes that table whole
-              collectBody(
-                doc,
-                tablesNow,
-                start.path ? { sec: start.sec, k: start.para, offset: 0 } : start,
-                end.path ? { sec: end.sec, k: end.para, offset: Infinity } : end,
-                out,
-              )
-            }
-          }
+          const gathered = gatherSelection(doc, seen, out)
+          if (!gathered.ok) return gathered
+          const { inTable } = gathered
           if (out.tooLong()) return { ok: false, reason: 'too_long' }
           if (out.segments.length === 0) return { ok: false, reason: 'none' }
           return {

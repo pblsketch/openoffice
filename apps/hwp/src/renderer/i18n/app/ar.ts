@@ -254,4 +254,10 @@ export const ar = {
   easyWordsLabel: 'اشرح بكلمات بسيطة',
   easyWordsPrompt:
     'اشرح النص المحدد أدناه باللغة العربية بحيث يفهمه أيضًا من يحتاج إلى نص سهل القراءة. استخدم كلمات يومية وجملًا قصيرة، ولا تُسقط أي حقيقة أو رقم أو شرط. لا تعدّل المستند.\n\nالنص المحدد:\n{text}',
+  charCountTotal: 'الأحرف {total}',
+  charCountSelected: 'الأحرف {selected} / {total}',
+  charCountHint:
+    'تُعدّ الأحرف مع المسافات. بدون مسافات: المستند كله {totalNoSpace}. كما في معلومات المستند، لا تُحسب الرؤوس والتذييلات والحواشي السفلية والختامية.',
+  charCountHintSelected:
+    'مع المسافات: المحدد {selected} / المستند كله {total}. بدون مسافات: المحدد {selectedNoSpace} / المستند كله {totalNoSpace}. كما في معلومات المستند، لا تُحسب الرؤوس والتذييلات والحواشي السفلية والختامية.',
 } satisfies Record<keyof typeof zh, string>

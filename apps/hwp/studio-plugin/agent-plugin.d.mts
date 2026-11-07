@@ -530,6 +530,20 @@ export interface AgentMissingFontsDetail {
   fonts: string[]
 }
 
+/** The words of the status bar's character count (showCharCount), in the app's language. */
+export interface AgentCharCountLabels {
+  /** shown while nothing is selected; {total} is the document's characters */
+  total: string
+  /** shown while a block is selected; {selected} and {total} */
+  selected: string
+  /** the tooltip without a block; {total} and {totalNoSpace} (without blanks) */
+  hint: string
+  /** the tooltip with a block; {selected}, {total}, {selectedNoSpace} and {totalNoSpace} */
+  hintSelected: string
+  /** the language the numbers are written in (BCP 47) */
+  locale?: string
+}
+
 /** The words the editor marks a font that is not on this PC with. */
 export interface AgentMissingFontLabels {
   /** shown beside the font's entry in the font menu */
@@ -1063,6 +1077,7 @@ export interface AgentPluginSurface {
   deleteTable(table: number, options?: AgentChangeOptions): AgentDeleteTableResult
   installFileMenu(labels: Record<AgentFileCommand, string>): { ok: boolean }
   installEasyWords(label: string): { ok: boolean }
+  showCharCount(labels: AgentCharCountLabels): { ok: boolean }
   watchMissingFonts(labels: AgentMissingFontLabels): { ok: boolean }
   reveal(place: AgentPlace): { ok: boolean }
   selection(): AgentSelectionResult

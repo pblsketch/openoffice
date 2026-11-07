@@ -2501,6 +2501,7 @@ export function resizeSelectedCell(services, direction) {
  */
 export function hancomContextKey(ih, e) {
   if (!(e.ctrlKey || e.metaKey) || e.altKey) return false
+  if (e.key === 'PageUp' || e.key === 'PageDown') return documentEdgeKey(ih, e)
   // where no tab strip takes Ctrl+(Shift+)Tab first (a window of its own), the page does
   if (e.key === 'Tab' && e.ctrlKey) {
     const take = MAIN_PROCESS_KEYS[e.shiftKey ? 'ctrl-shift-tab' : 'ctrl-tab']
@@ -2516,6 +2517,31 @@ export function hancomContextKey(ih, e) {
   if (!formula || !dispatcher || !dispatcher.isEnabled(formula.id)) return false
   e.preventDefault()
   dispatcher.dispatch(formula.id)
+  return true
+}
+
+/**
+ * Hangul's Ctrl+PageUp/PageDown (문서의 처음으로, 문서의 끝으로; with Shift the block grows
+ * there): the studio's own Ctrl+Home/End do exactly that, the view snapping to the document's
+ * edge, so the key is handed to them. The studio's PageUp/PageDown take the key only without
+ * Ctrl, and nothing else had it.
+ */
+function documentEdgeKey(ih, e) {
+  if (typeof ih?.handleCtrlKey !== 'function') return false
+  const key = e.key === 'PageUp' ? 'Home' : 'End'
+  e.preventDefault()
+  ih.handleCtrlKey({
+    key,
+    code: key,
+    ctrlKey: e.ctrlKey,
+    metaKey: e.metaKey,
+    shiftKey: e.shiftKey,
+    altKey: false,
+    repeat: e.repeat === true,
+    isComposing: false,
+    preventDefault: () => e.preventDefault(),
+    stopPropagation: () => e.stopPropagation?.(),
+  })
   return true
 }
 

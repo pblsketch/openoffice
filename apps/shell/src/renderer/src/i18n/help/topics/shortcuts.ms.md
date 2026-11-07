@@ -631,6 +631,8 @@ Kekunci ini berfungsi apabila tab HWP/HWPX berada di hadapan dan dokumen mempuny
 | Cari seterusnya    | ⌃L          | Ctrl+L                       |
 | Cari ke belakang   | ⌃Q, L       | Ctrl+Q, L                    |
 | Pergi ke           | ⌥G          | Alt+G                        |
+| Ke awal dokumen    | ⌃⇞          | Ctrl+PageUp                  |
+| Ke akhir dokumen   | ⌃⇟          | Ctrl+PageDown                |
 | Bandingkan dokumen | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Aksara

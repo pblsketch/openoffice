@@ -631,6 +631,8 @@ Estas teclas funcionam quando o separador HWP/HWPX está à frente e o documento
 | Localizar seguinte     | ⌃L          | Ctrl+L                       |
 | Localizar para trás    | ⌃Q, L       | Ctrl+Q, L                    |
 | Ir para                | ⌥G          | Alt+G                        |
+| Início do documento    | ⌃⇞          | Ctrl+PageUp                  |
+| Fim do documento       | ⌃⇟          | Ctrl+PageDown                |
 | Comparar documentos    | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Caráter

@@ -631,6 +631,8 @@ These keys work while the HWP/HWPX tab is in front and the document has focus. T
 | Find again        | ⌃L          | Ctrl+L                       |
 | Find backward     | ⌃Q, L       | Ctrl+Q, L                    |
 | Go to             | ⌥G          | Alt+G                        |
+| Start of document | ⌃⇞          | Ctrl+PageUp                  |
+| End of document   | ⌃⇟          | Ctrl+PageDown                |
 | Compare documents | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Character

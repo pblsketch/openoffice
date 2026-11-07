@@ -631,6 +631,8 @@ GenOffice HTML はライブプレビューの横にコードエディターを�
 | 次を検索     | ⌃L          | Ctrl+L                       |
 | 逆方向に検索 | ⌃Q, L       | Ctrl+Q, L                    |
 | 移動         | ⌥G          | Alt+G                        |
+| 文書の先頭へ | ⌃⇞          | Ctrl+PageUp                  |
+| 文書の末尾へ | ⌃⇟          | Ctrl+PageDown                |
 | 文書の比較   | ⌥⇧V         | Alt+Shift+V                  |
 
 ### 文字書式

@@ -266,4 +266,10 @@ export const it = {
   easyWordsLabel: 'Spiega con parole semplici',
   easyWordsPrompt:
     'Spiega in italiano il testo selezionato qui sotto in modo che lo capisca anche chi ha bisogno di testi facili da leggere. Usa parole di tutti i giorni e frasi brevi, e non tralasciare nessun fatto, numero o condizione. Non modificare il documento.\n\nTesto selezionato:\n{text}',
+  charCountTotal: 'Caratteri {total}',
+  charCountSelected: 'Caratteri {selected} / {total}',
+  charCountHint:
+    'I caratteri sono contati spazi inclusi. Senza spazi: intero documento {totalNoSpace}. Come nelle informazioni sul documento, intestazioni, piè di pagina, note a piè di pagina e note di chiusura non vengono contati.',
+  charCountHintSelected:
+    'Spazi inclusi: selezione {selected} / intero documento {total}. Senza spazi: selezione {selectedNoSpace} / intero documento {totalNoSpace}. Come nelle informazioni sul documento, intestazioni, piè di pagina, note a piè di pagina e note di chiusura non vengono contati.',
 } satisfies Record<keyof typeof zh, string>

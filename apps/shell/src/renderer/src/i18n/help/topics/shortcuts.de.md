@@ -631,6 +631,8 @@ Diese Tasten gelten, solange der Tab HWP/HWPX im Vordergrund ist und das Dokumen
 | Weitersuchen          | ⌃L          | Ctrl+L                       |
 | Rückwärts suchen      | ⌃Q, L       | Ctrl+Q, L                    |
 | Gehe zu               | ⌥G          | Alt+G                        |
+| Zum Dokumentanfang    | ⌃⇞          | Ctrl+PageUp                  |
+| Zum Dokumentende      | ⌃⇟          | Ctrl+PageDown                |
 | Dokumente vergleichen | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Zeichen

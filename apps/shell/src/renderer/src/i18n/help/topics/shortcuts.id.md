@@ -631,6 +631,8 @@ Tombol ini berlaku saat tab HWP/HWPX berada di depan dan dokumen memiliki fokus.
 | Temukan berikutnya | ⌃L          | Ctrl+L                       |
 | Temukan mundur     | ⌃Q, L       | Ctrl+Q, L                    |
 | Ke                 | ⌥G          | Alt+G                        |
+| Ke awal dokumen    | ⌃⇞          | Ctrl+PageUp                  |
+| Ke akhir dokumen   | ⌃⇟          | Ctrl+PageDown                |
 | Bandingkan dokumen | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Karakter

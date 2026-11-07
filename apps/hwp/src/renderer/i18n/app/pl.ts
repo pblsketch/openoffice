@@ -262,4 +262,10 @@ export const pl = {
   easyWordsLabel: 'Wyjaśnij prostymi słowami',
   easyWordsPrompt:
     'Wyjaśnij po polsku zaznaczony poniżej tekst tak, aby zrozumiała go także osoba, która potrzebuje tekstu łatwego do czytania. Używaj codziennych słów i krótkich zdań i nie pomijaj żadnego faktu, liczby ani warunku. Nie zmieniaj dokumentu.\n\nZaznaczony tekst:\n{text}',
+  charCountTotal: 'Znaki {total}',
+  charCountSelected: 'Znaki {selected} / {total}',
+  charCountHint:
+    'Znaki są liczone ze spacjami. Bez spacji: cały dokument {totalNoSpace}. Tak jak w informacjach o dokumencie, nagłówki, stopki, przypisy dolne i końcowe nie są liczone.',
+  charCountHintSelected:
+    'Ze spacjami: zaznaczenie {selected} / cały dokument {total}. Bez spacji: zaznaczenie {selectedNoSpace} / cały dokument {totalNoSpace}. Tak jak w informacjach o dokumencie, nagłówki, stopki, przypisy dolne i końcowe nie są liczone.',
 } satisfies Record<keyof typeof zh, string>

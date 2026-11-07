@@ -1051,6 +1051,48 @@ describe('what the user selected', () => {
     })
   })
 
+  // the engine's offsets count characters: 😀 and 𠀀 are one each there, two units in a string
+  const ASTRAL = '웃음😀😀😀 끝𠀀말'
+  const withAstral = () =>
+    openForm((doc) => {
+      doc.insertText(0, 2, 0, ASTRAL)
+      doc.insertTextInCell(0, 1, 0, 7, 0, 0, '𠀀😀')
+    })
+
+  it('hands out the text of a run with emoji and astral Han characters as it is', () => {
+    const { plugin, select, doc } = withAstral()
+    expect(doc().getParagraphLength(0, 2)).toBe([...ASTRAL].length + 2)
+    // 😀😀😀 끝 in the body: characters 2 to 7
+    select(inBody(2, 2), inBody(2, 7))
+    expect(plugin.selection()).toMatchObject({
+      ok: true,
+      segments: [{ sec: 0, para: 2, offset: 2, length: 5, text: '😀😀😀 끝' }],
+    })
+    // the whole paragraph, and 𠀀😀기존 in the cell
+    select(inBody(2, 0), inBody(2, doc().getParagraphLength(0, 2)))
+    expect(texts(plugin.selection())).toEqual([`${ASTRAL}끝.`])
+    select(inCell(7, 0), inCell(7, 4))
+    expect(texts(plugin.selection())).toEqual(['𠀀😀기존'])
+  })
+
+  it('replaces a run with emoji and astral Han characters where it was read', () => {
+    const { plugin, select, doc, cells } = withAstral()
+    select(inBody(2, 2), inBody(2, 6))
+    const body = plugin.selection()
+    if (!body.ok) throw new Error('expected a selection')
+    expect(body.segments[0].text).toBe('😀😀😀 ')
+    // it stands as read, so it is replaced, and only those characters go
+    expect(plugin.replaceSelection(body.segments, ['X'])).toMatchObject({ ok: true })
+    const length = doc().getParagraphLength(0, 2)
+    expect(doc().getTextRange(0, 2, 0, length)).toBe('웃음X끝𠀀말끝.')
+    select(inCell(7, 1), inCell(7, 2))
+    const cell = plugin.selection()
+    if (!cell.ok) throw new Error('expected a selection')
+    expect(cell.segments[0].text).toBe('😀')
+    expect(plugin.replaceSelection(cell.segments, ['웃음'])).toMatchObject({ ok: true })
+    expect(cells()['2.4']).toBe('𠀀웃음기존 내용')
+  })
+
   it('takes a table whole when the selection runs over the paragraph it sits in', () => {
     const { plugin, select } = openForm()
     // from inside the title, over the table, into the last line

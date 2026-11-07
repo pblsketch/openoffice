@@ -513,6 +513,63 @@ describe("Ctrl+Y, Hangul's line deletion (as Hancom Hangul 2024 does it)", () =>
   })
 })
 
+describe("Hangul's Ctrl+PageUp/PageDown: the start and the end of the document", () => {
+  const withCtrlKeys = () => {
+    const ih = handler() as ReturnType<typeof handler> & { handleCtrlKey: ReturnType<typeof vi.fn> }
+    ih.handleCtrlKey = vi.fn()
+    return ih
+  }
+
+  it("hands Ctrl+PageDown to the studio's Ctrl+End and Ctrl+PageUp to its Ctrl+Home", () => {
+    for (const [pressed, studio] of [
+      ['PageDown', 'End'],
+      ['PageUp', 'Home'],
+    ]) {
+      const ih = withCtrlKeys()
+      const e = key({ key: pressed, code: pressed, ctrlKey: true })
+      expect(hancomContextKey(ih, e)).toBe(true)
+      expect(e.preventDefault).toHaveBeenCalled()
+      expect(ih.handleCtrlKey).toHaveBeenCalledTimes(1)
+      expect(ih.handleCtrlKey.mock.calls[0][0]).toMatchObject({
+        key: studio,
+        code: studio,
+        ctrlKey: true,
+        shiftKey: false,
+        altKey: false,
+      })
+    }
+  })
+
+  it('keeps Shift, so the block grows to the edge, and takes Cmd on a Mac as the other keys do', () => {
+    const ih = withCtrlKeys()
+    expect(hancomContextKey(ih, key({ key: 'PageDown', shiftKey: true, ctrlKey: true }))).toBe(true)
+    expect(ih.handleCtrlKey.mock.calls[0][0]).toMatchObject({ key: 'End', shiftKey: true })
+    expect(hancomContextKey(ih, key({ key: 'PageUp', metaKey: true }))).toBe(true)
+    expect(ih.handleCtrlKey.mock.calls[1][0]).toMatchObject({ key: 'Home', metaKey: true })
+  })
+
+  it('leaves PageUp/PageDown without Ctrl, and with Alt, to the studio', () => {
+    const ih = withCtrlKeys()
+    for (const e of [
+      key({ key: 'PageDown' }),
+      key({ key: 'PageDown', ctrlKey: true, altKey: true }),
+      key({ key: 'PageUp', shiftKey: true }),
+    ]) {
+      expect(hancomContextKey(ih, e)).toBe(false)
+      expect(e.preventDefault).not.toHaveBeenCalled()
+    }
+    expect(ih.handleCtrlKey).not.toHaveBeenCalled()
+  })
+
+  it("the studio's Ctrl+End does not come back here", () => {
+    const ih = withCtrlKeys()
+    // the studio calls this module again from its handleCtrlKey, now with End
+    ih.handleCtrlKey.mockImplementation((e: Key) => hancomContextKey(ih, e))
+    expect(hancomContextKey(ih, key({ key: 'PageDown', ctrlKey: true }))).toBe(true)
+    expect(ih.handleCtrlKey).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe("Hangul's table row keys inside a cell", () => {
   const inCell = (enabled = ['ieum:table-insert-row-below', 'table:delete-row']) => {
     const ih = handler(enabled)

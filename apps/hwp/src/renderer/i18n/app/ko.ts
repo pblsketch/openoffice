@@ -256,4 +256,10 @@ export const ko = {
   easyWordsLabel: '쉬운 말로 풀기',
   easyWordsPrompt:
     '아래 고른 글을 쉬운 글이 필요한 사람도 알 수 있게 한국어로 풀어 설명해 주세요. 날마다 쓰는 쉬운 낱말과 짧은 문장으로 쓰고, 사실·숫자·조건은 하나도 빠뜨리지 마세요. 문서는 고치지 마세요.\n\n고른 글:\n{text}',
+  charCountTotal: '글자 {total}',
+  charCountSelected: '글자 {selected} / {total}',
+  charCountHint:
+    '글자 수는 공백을 포함해 셉니다. 공백 제외: 전체 {totalNoSpace}. 문서 정보처럼 머리말·꼬리말·각주·미주는 세지 않습니다.',
+  charCountHintSelected:
+    '공백 포함: 고른 글자 {selected} / 전체 {total}. 공백 제외: 고른 글자 {selectedNoSpace} / 전체 {totalNoSpace}. 문서 정보처럼 머리말·꼬리말·각주·미주는 세지 않습니다.',
 } satisfies Record<keyof typeof zh, string>

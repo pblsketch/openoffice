@@ -1472,6 +1472,16 @@ export const hancomHooks = [
       'hasMultiCellSelection(): boolean',
       // Ctrl+Shift+Tab in a cell: the studio's Shift+Tab hanging indent
       'applyHangingIndentAtCursor(): boolean',
+      // Hangul's Ctrl+PageUp/PageDown: the studio's Ctrl+Home/End (documentEdgeKey)
+      'private handleCtrlKey(e: KeyboardEvent): void',
+    ],
+  },
+  {
+    file: 'src/engine/input-handler-keyboard.ts',
+    needles: [
+      'export function handleCtrlKey(this: any, e: KeyboardEvent): void',
+      'this.cursor.moveToDocumentStart();',
+      'this.cursor.moveToDocumentEnd();',
     ],
   },
   {

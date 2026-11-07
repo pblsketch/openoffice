@@ -565,6 +565,21 @@ export default function App() {
     return () => frame.removeEventListener(MISSING_FONTS_EVENT, onMissing)
   }, [phase, pluginBridge, lang])
 
+  // the characters of the block and of the document in the editor's status bar (issue #295),
+  // counted as 문서 정보 counts them once typing or the selection rests
+  useEffect(() => {
+    if (phase !== 'ready') return
+    void pluginBridge
+      .showCharCount({
+        total: translateNow('charCountTotal'),
+        selected: translateNow('charCountSelected'),
+        hint: translateNow('charCountHint'),
+        hintSelected: translateNow('charCountHintSelected'),
+        locale: lang,
+      })
+      .catch(() => {})
+  }, [phase, pluginBridge, lang])
+
   // crash-recovery copies while the document has unsaved changes; typing never waits on one
   useEffect(() => {
     if (phase !== 'ready') return

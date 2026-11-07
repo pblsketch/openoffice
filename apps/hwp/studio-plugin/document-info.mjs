@@ -94,6 +94,32 @@ const emptyStats = () => ({
   sheets: 0,
 })
 
+/** A character outside the basic plane, which a JavaScript string holds as two units. */
+const SURROGATE = /[\uD800-\uDFFF]/
+
+/**
+ * The characters `start` to `end` of a paragraph's text, in the engine's offsets. The engine
+ * counts characters (code points), so an emoji or a Han character outside the basic plane (𠀀)
+ * is one there and two units in a JavaScript string; a text without such characters is cut as
+ * it is. The status bar's count and the AI panel's selection both cut their runs with this.
+ */
+export function engineSlice(text, start, end) {
+  const whole = String(text ?? '')
+  if (!SURROGATE.test(whole)) return whole.slice(start, end)
+  return [...whole].slice(start, end).join('')
+}
+
+/**
+ * Hangul's 글자(공백 포함) and 글자(공백 제외) of one piece of document text: every character
+ * but the line breaks, and the same without blanks and tabs. The status bar's count
+ * (char-count.mjs) uses this too, so the two never disagree.
+ */
+export function textCounts(text) {
+  const flat = String(text ?? '').replace(LINE_BREAK, '')
+  if (!flat) return { chars: 0, charsNoSpace: 0 }
+  return { chars: [...flat].length, charsNoSpace: [...flat.replace(BLANK, '')].length }
+}
+
 /**
  * Counts one piece of document text. `body` collects what the manuscript sheets are counted
  * from: the text outside tables, pictures and text boxes, which a sheet cannot hold.
@@ -101,8 +127,7 @@ const emptyStats = () => ({
 function addText(stats, text, body) {
   const flat = String(text ?? '').replace(LINE_BREAK, '')
   if (!flat) return
-  const count = [...flat].length
-  const noSpace = [...flat.replace(BLANK, '')].length
+  const { chars: count, charsNoSpace: noSpace } = textCounts(flat)
   const hanja = flat.match(HANJA)?.length ?? 0
   let words = 0
   for (const word of flat.split(WORD_GAP)) if (word) words += 1
@@ -125,14 +150,17 @@ function linesOf(read) {
 
 /**
  * Every number the [문서 통계] panel shows, from the engine's document (`wasm` is the editor's
- * WasmBridge).
+ * WasmBridge). With `textOnly` the walk reads the text alone, as the status bar's count needs:
+ * no layout is asked for lines or pages, and controls are not looked at for pictures, so those
+ * numbers stay 0 while the characters are the same as the dialog's.
  */
-export function documentStats(wasm) {
+export function documentStats(wasm, { textOnly = false } = {}) {
   const stats = emptyStats()
   const body = { chars: 0, charsNoSpace: 0, hanja: 0, words: 0 }
   let lookups = MAX_NESTED_LOOKUPS
 
-  stats.pages = Number(reading(() => wasm.getDocumentInfo()?.pageCount, 0)) || 0
+  if (!textOnly) stats.pages = Number(reading(() => wasm.getDocumentInfo()?.pageCount, 0)) || 0
+  const linesOfPart = (read) => (textOnly ? 0 : linesOf(read))
 
   /** A table's size at `path`, or null when the control there is not a table. */
   const dimensionsAt = (sec, para, path) =>
@@ -153,8 +181,12 @@ export function documentStats(wasm) {
       }
       // the engine reads a line count for the cells of a body table only
       stats.lines += readLines
-        ? linesOf(() => wasm.getLineInfoInCell(sec, para, tablePath[0].controlIndex, cell, k, 0))
-        : 1
+        ? linesOfPart(() =>
+            wasm.getLineInfoInCell(sec, para, tablePath[0].controlIndex, cell, k, 0),
+          )
+        : textOnly
+          ? 0
+          : 1
     }
   }
 
@@ -202,7 +234,7 @@ export function documentStats(wasm) {
           null,
         )
       }
-      stats.lines += linesOf(() => wasm.getLineInfoInCell(sec, para, ctrl, 0, k, 0))
+      stats.lines += linesOfPart(() => wasm.getLineInfoInCell(sec, para, ctrl, 0, k, 0))
     }
   }
 
@@ -222,7 +254,7 @@ export function documentStats(wasm) {
           body,
         )
       }
-      stats.lines += linesOf(() => wasm.getLineInfo(sec, para, 0))
+      stats.lines += linesOfPart(() => wasm.getLineInfo(sec, para, 0))
 
       const controls = asArray(reading(() => wasm.getControlTextPositions(sec, para), []))
       // a text box is a control too: a paragraph without one has nothing to look for
@@ -238,7 +270,7 @@ export function documentStats(wasm) {
           walkTable(sec, para, path, 1)
           continue
         }
-        if (isPicture(sec, para, ctrl)) stats.pictures += 1
+        if (!textOnly && isPicture(sec, para, ctrl)) stats.pictures += 1
       }
     }
   }
