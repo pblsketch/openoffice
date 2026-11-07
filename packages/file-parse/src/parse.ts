@@ -13,6 +13,7 @@ import { pptxToText } from './pptx'
 import { xlsxToText } from './xlsx'
 import { xmindToText } from './xmind'
 import { readZipTextParts } from './zip-text-parts'
+import { decodeCsvBuffer } from '@genoffice/xlsx-gateway/gateway/csv-import'
 import { redactHtmlSource } from './html-redaction'
 import { redactMarkdownSource } from './markdown-redaction'
 
@@ -70,13 +71,24 @@ const FATAL_UTF8_DECODER = new TextDecoder('utf-8', { fatal: true })
 const WINDOWS_1252_DECODER = new TextDecoder('windows-1252')
 
 /**
+ * Whether the bytes open with a UTF-32LE or UTF-32BE BOM. Neither
+ * `decodeTextBytes` nor `decodeCsvBuffer` can decode UTF-32, and a
+ * UTF-32LE BOM (`FF FE 00 00`) is also a valid UTF-16LE BOM followed by two
+ * NUL bytes, so this must be checked before any UTF-16 handling runs.
+ */
+function isUtf32BomDeclared(bytes: Buffer | Uint8Array): boolean {
+  if (bytes[0] === 0 && bytes[1] === 0 && bytes[2] === 0xfe && bytes[3] === 0xff) return true // UTF-32BE
+  if (bytes[0] === 0xff && bytes[1] === 0xfe && bytes[2] === 0 && bytes[3] === 0) return true // UTF-32LE
+  return false
+}
+
+/**
  * BOM-aware text decode; invalid UTF-8 falls back to windows-1252 so callers
  * index what survives. null only for a BOM-declared UTF-32 file.
  */
 function decodeTextBytes(bytes: Buffer): string | null {
-  if (bytes[0] === 0 && bytes[1] === 0 && bytes[2] === 0xfe && bytes[3] === 0xff) return null
+  if (isUtf32BomDeclared(bytes)) return null
   if (bytes[0] === 0xff && bytes[1] === 0xfe) {
-    if (bytes[2] === 0 && bytes[3] === 0) return null // UTF-32LE BOM
     return bytes.toString('utf16le', 2)
   }
   if (bytes[0] === 0xfe && bytes[1] === 0xff) {
@@ -234,7 +246,13 @@ export async function parseFileToText(
   if (imageMime) return { ok: true, kind: 'image', mime: imageMime }
   try {
     if (TEXT_EXTS.has(ext)) {
-      const text = decodeTextBytes(await readFile(filePath))
+      const bytes = await readFile(filePath)
+      const text =
+        ext === 'csv' || ext === 'tsv'
+          ? isUtf32BomDeclared(bytes)
+            ? null
+            : decodeCsvBuffer(bytes)
+          : decodeTextBytes(bytes)
       if (text === null) {
         return {
           ok: false,
