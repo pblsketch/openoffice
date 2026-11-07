@@ -37,11 +37,11 @@ No segundo passo dos ecrãs de boas-vindas no primeiro arranque, e no painel de 
 
 O cartão do ChatGPT não passa por nenhum programa, por isso nunca diz **Não instalado** nem **Login feito, mas não com uma assinatura**. Quando diz **Sem login**, clique em **Continuar com o ChatGPT**: a página de início de sessão do ChatGPT da OpenAI abre no navegador. Inicie sessão e permita que este aplicativo use o seu plano do ChatGPT, e o cartão passa sozinho a **Conectado**. Se não o permitiu, ou se não terminou em 10 minutos, o cartão indica que o início de sessão não terminou; clicar de novo no botão recomeça do início. Não há janela de login nem código para colar. Enquanto inicia sessão, **Cancelar login** interrompe-o.
 
+Se, depois de iniciar sessão, a página da OpenAI no navegador disser que a sua organização não ativou o acesso para esta aplicação e mostrar `3p_delegated_access_policy_denied`, o espaço de trabalho a que pertence a sua conta do ChatGPT (por exemplo, um gerido por uma empresa ou escola) não permite esta aplicação. Premir o botão de novo dá o mesmo resultado. Pergunte a quem gere esse espaço de trabalho ou inicie sessão com outra conta do ChatGPT. Se já usa o programa Codex neste PC, ligar pelo cartão do Codex pode funcionar.
+
 A conexão é verificada quando a aplicação arranca, quando abre as Configurações e quando regressa à janela depois de iniciar uma instalação ou um início de sessão.
 
 Se o cartão do Claude ou do Codex indicar que um início de sessão não terminou, escolha **Abrir a janela de login**. Um código mostrado pelo navegador tem de ser colado nessa janela; um código mostrado antes já não funciona.
-
-Se a página do navegador ou a janela de início de sessão mostrar `3p_delegated_access_policy_denied`, é possível que uma política da conta do Claude tenha bloqueado este início de sessão. Se ao tentar de novo acontecer o mesmo, fale com quem gere a conta ou verifique se funciona com outra conta.
 
 ## Sem assinatura: IA gratuita
 

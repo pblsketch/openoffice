@@ -37,11 +37,11 @@ In de tweede stap van de welkomstschermen bij de eerste start, en in het AI-pane
 
 De ChatGPT-kaart loopt niet via een programma, dus daarop staat nooit **Niet geïnstalleerd** of **Aangemeld, maar niet met een abonnement**. Staat er **Niet aangemeld**, druk dan op **Doorgaan met ChatGPT**: de ChatGPT-aanmeldpagina van OpenAI opent in je browser. Meld je aan en geef deze app toestemming om je ChatGPT-abonnement te gebruiken, dan springt de kaart vanzelf op **Verbonden**. Heb je geen toestemming gegeven, of was het niet binnen 10 minuten klaar, dan meldt de kaart dat de aanmelding niet is afgerond; druk je opnieuw op de knop, dan begint alles opnieuw. Er is geen aanmeldvenster en geen code om te plakken. Tijdens het aanmelden stop je het met **Aanmelden annuleren**.
 
+Meldt de OpenAI-pagina in de browser na het aanmelden dat je organisatie de toegang voor deze app niet heeft ingeschakeld, en staat er `3p_delegated_access_policy_denied`, dan staat de werkruimte waartoe je ChatGPT-account behoort (bijvoorbeeld een die een bedrijf of school beheert) deze app niet toe. Opnieuw op de knop drukken geeft hetzelfde resultaat. Vraag het aan wie die werkruimte beheert, of meld je aan met een ander ChatGPT-account. Gebruik je het programma Codex al op deze pc, dan kan verbinden via de Codex-kaart werken.
+
 De verbinding wordt gecontroleerd wanneer de app start, wanneer je Instellingen opent en wanneer je naar het venster terugkeert nadat je een installatie of een aanmelding hebt gestart.
 
 Meldt de Claude- of Codex-kaart dat een aanmelding niet is afgerond, kies dan **Aanmeldvenster openen**. Een code die de browser toont, moet in dat venster worden geplakt; een eerder getoonde code werkt niet meer.
-
-Toont de browserpagina of het aanmeldvenster `3p_delegated_access_policy_denied`, dan heeft een beleid op het Claude-account deze aanmelding mogelijk tegengehouden. Gebeurt bij een nieuwe poging hetzelfde, vraag het dan aan wie het account beheert, of kijk of het met een ander account wel lukt.
 
 ## Zonder abonnement: gratis AI
 

@@ -37,11 +37,11 @@ The second step of the welcome screens on first launch, and the AI panel when no
 
 The ChatGPT card goes through no program, so it never says **Not installed** or **Signed in, but not with a subscription**. When it says **Not signed in**, press **Continue with ChatGPT**: OpenAI's ChatGPT sign-in page opens in your browser. Sign in and allow this app to use your ChatGPT plan, and the card turns to **Connected** by itself. If you did not allow it, or it did not finish within 10 minutes, the card says the sign-in did not finish; pressing the button again starts over. There is no sign-in window and no code to paste. While you are signing in, **Cancel sign-in** stops it.
 
+If, after you sign in, OpenAI's page in the browser says your organization has not enabled access for this app and shows `3p_delegated_access_policy_denied`, the workspace your ChatGPT account belongs to (one run by a company or school, for example) does not allow this app. Pressing the button again gives the same result. Ask whoever manages that workspace, or sign in with another ChatGPT account. If you already use the Codex program on this PC, connecting through the Codex card may work.
+
 The connection is checked when the app starts, when you open Settings, and when you return to the window after starting an install or a sign-in.
 
 If the Claude or Codex card says a sign-in did not finish, choose **Open the sign-in window**. A code the browser shows has to be pasted into that window; a code shown earlier no longer works.
-
-If the browser page or the sign-in window shows `3p_delegated_access_policy_denied`, a policy on the Claude account may have blocked this sign-in. If trying again gives the same result, ask whoever manages the account, or check whether another account works.
 
 ## Without a subscription: free AI
 

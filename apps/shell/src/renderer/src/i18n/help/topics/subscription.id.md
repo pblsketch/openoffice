@@ -37,11 +37,11 @@ Di langkah kedua layar selamat datang saat aplikasi pertama kali dijalankan, dan
 
 Kartu ChatGPT tidak melewati program apa pun, sehingga tidak pernah bertuliskan **Belum terpasang** atau **Sudah masuk, tetapi bukan dengan langganan**. Bila bertuliskan **Belum masuk**, tekan **Lanjutkan dengan ChatGPT**: halaman masuk ChatGPT milik OpenAI terbuka di browser Anda. Masuklah dan izinkan aplikasi ini memakai paket ChatGPT Anda, maka kartu berubah menjadi **Terhubung** dengan sendirinya. Jika Anda tidak mengizinkannya, atau prosesnya tidak selesai dalam 10 menit, kartu menyatakan proses masuk belum selesai; menekan tombolnya lagi akan memulai dari awal. Tidak ada jendela masuk dan tidak ada kode yang perlu ditempel. Selama proses masuk berlangsung, **Batalkan masuk** menghentikannya.
 
+Jika setelah masuk halaman OpenAI di browser menyatakan bahwa organisasi Anda belum mengaktifkan akses untuk aplikasi ini dan menampilkan `3p_delegated_access_policy_denied`, ruang kerja tempat akun ChatGPT Anda berada (misalnya yang dikelola perusahaan atau sekolah) tidak mengizinkan aplikasi ini. Menekan tombol lagi memberi hasil yang sama. Tanyakan kepada orang yang mengelola ruang kerja itu, atau masuk dengan akun ChatGPT lain. Jika Anda sudah memakai program Codex di PC ini, menyambung lewat kartu Codex mungkin berhasil.
+
 Koneksi diperiksa saat aplikasi dimulai, saat Anda membuka Pengaturan, dan saat Anda kembali ke jendela setelah memulai pemasangan atau proses masuk.
 
 Jika kartu Claude atau Codex menyatakan proses masuk belum selesai, pilih **Buka jendela masuk**. Kode yang ditampilkan browser harus ditempel di jendela itu; kode yang muncul sebelumnya sudah tidak berlaku.
-
-Jika halaman browser atau jendela masuk menampilkan `3p_delegated_access_policy_denied`, mungkin ada kebijakan pada akun Claude yang memblokir proses masuk ini. Jika dicoba lagi hasilnya tetap sama, tanyakan kepada orang yang mengelola akun itu, atau periksa apakah akun lain bisa dipakai.
 
 ## Tanpa langganan: AI gratis
 

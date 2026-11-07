@@ -37,11 +37,11 @@ W drugim kroku ekranów powitalnych przy pierwszym uruchomieniu oraz w panelu AI
 
 Karta ChatGPT nie korzysta z żadnego programu, więc nigdy nie pokazuje **Nie zainstalowano** ani **Zalogowano, ale nie w ramach subskrypcji**. Gdy pokazuje **Nie zalogowano**, naciśnij **Kontynuuj z ChatGPT**: w przeglądarce otworzy się strona logowania ChatGPT firmy OpenAI. Zaloguj się i zezwól tej aplikacji na korzystanie z twojego planu ChatGPT, a karta sama zmieni się na **Połączono**. Jeśli nie udzielisz zgody albo logowanie nie zakończy się w ciągu 10 minut, karta poinformuje, że logowanie nie zostało ukończone; ponowne naciśnięcie przycisku zaczyna wszystko od nowa. Nie ma okna logowania ani kodu do wklejenia. W trakcie logowania przycisk **Anuluj logowanie** je przerywa.
 
+Jeśli po zalogowaniu strona OpenAI w przeglądarce informuje, że Twoja organizacja nie włączyła dostępu dla tej aplikacji, i pokazuje `3p_delegated_access_policy_denied`, obszar roboczy, do którego należy Twoje konto ChatGPT (na przykład zarządzany przez firmę lub szkołę), nie zezwala na tę aplikację. Ponowne naciśnięcie przycisku da ten sam wynik. Zapytaj osobę, która zarządza tym obszarem roboczym, albo zaloguj się innym kontem ChatGPT. Jeśli używasz już programu Codex na tym komputerze, połączenie przez kartę Codex może zadziałać.
+
 Połączenie jest sprawdzane przy uruchomieniu aplikacji, po otwarciu Ustawień oraz po powrocie do okna, gdy wcześniej rozpoczęto instalację lub logowanie.
 
 Jeśli karta Claude lub Codex informuje, że logowanie nie zostało ukończone, wybierz **Otwórz okno logowania**. Kod pokazany w przeglądarce trzeba wkleić w tym oknie; wcześniej pokazany kod nie jest już ważny.
-
-Jeśli strona w przeglądarce lub okno logowania pokazuje `3p_delegated_access_policy_denied`, możliwe, że zasady nałożone na konto Claude zablokowały to logowanie. Jeśli kolejna próba kończy się tak samo, zapytaj osobę, która zarządza kontem, albo sprawdź, czy działa inne konto.
 
 ## Bez subskrypcji: darmowe AI
 

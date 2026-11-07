@@ -37,11 +37,11 @@ En el segundo paso de las pantallas de bienvenida del primer arranque, y en el p
 
 La tarjeta de ChatGPT no pasa por ningún programa, así que nunca dice **No instalado** ni **Sesión iniciada, pero no con una suscripción**. Cuando dice **Sesión no iniciada**, pulse **Continuar con ChatGPT**: la página de inicio de sesión de ChatGPT de OpenAI se abre en su navegador. Inicie sesión y permita que esta aplicación use su plan de ChatGPT, y la tarjeta pasa sola a **Conectado**. Si no lo permitió, o no terminó en 10 minutos, la tarjeta indica que el inicio de sesión no terminó; al pulsar de nuevo el botón se empieza otra vez desde el principio. No hay ventana de inicio de sesión ni código que pegar. Mientras inicia sesión, **Cancelar inicio de sesión** lo detiene.
 
+Si, después de iniciar sesión, la página de OpenAI en el navegador indica que tu organización no ha habilitado el acceso para esta aplicación y muestra `3p_delegated_access_policy_denied`, el espacio de trabajo al que pertenece tu cuenta de ChatGPT (por ejemplo, uno que gestiona una empresa o un centro educativo) no permite esta aplicación. Volver a pulsar el botón da el mismo resultado. Consulta a quien administra ese espacio de trabajo o inicia sesión con otra cuenta de ChatGPT. Si ya usas el programa Codex en este PC, conectarte con la tarjeta de Codex puede funcionar.
+
 La conexión se comprueba al arrancar la aplicación, al abrir Configuración y al volver a la ventana después de iniciar una instalación o un inicio de sesión.
 
 Si la tarjeta de Claude o de Codex indica que un inicio de sesión no terminó, elige **Abrir la ventana de inicio de sesión**. Si el navegador muestra un código, hay que pegarlo en esa ventana; un código mostrado antes ya no sirve.
-
-Si la página del navegador o la ventana de inicio de sesión muestra `3p_delegated_access_policy_denied`, es posible que una política de la cuenta de Claude haya bloqueado este inicio de sesión. Si al intentarlo de nuevo pasa lo mismo, consulta a quien administra la cuenta o comprueba si funciona con otra cuenta.
 
 ## Sin suscripción: IA gratuita
 

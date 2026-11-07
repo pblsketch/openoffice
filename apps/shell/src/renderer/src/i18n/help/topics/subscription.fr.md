@@ -37,11 +37,11 @@ Si Claude Code ou Codex n’est pas encore installé, ou pas encore connecté, l
 
 La carte ChatGPT ne passe par aucun programme : elle n’indique donc jamais **Non installé** ni **Connecté, mais pas avec un abonnement**. Lorsqu’elle indique **Non connecté**, appuyez sur **Continuer avec ChatGPT** : la page de connexion ChatGPT d’OpenAI s’ouvre dans votre navigateur. Connectez-vous et autorisez cette application à utiliser votre forfait ChatGPT : la carte passe d’elle-même à **Connecté**. Si vous ne l’avez pas autorisée, ou si cela ne s’est pas terminé en 10 minutes, la carte indique que la connexion n’a pas abouti ; appuyer de nouveau sur le bouton recommence depuis le début. Il n’y a ni fenêtre de connexion ni code à coller. Pendant la connexion, **Annuler la connexion** l’interrompt.
 
+Si, après la connexion, la page d'OpenAI dans le navigateur indique que votre organisation n'a pas activé l'accès pour cette application et affiche `3p_delegated_access_policy_denied`, l'espace de travail auquel appartient votre compte ChatGPT (par exemple géré par une entreprise ou une école) n'autorise pas cette application. Appuyer de nouveau sur le bouton donne le même résultat. Adressez-vous à la personne qui gère cet espace de travail, ou connectez-vous avec un autre compte ChatGPT. Si vous utilisez déjà le programme Codex sur ce PC, la connexion par la carte Codex peut fonctionner.
+
 La connexion est vérifiée au démarrage de l’application, à l’ouverture des Paramètres et lorsque vous revenez à la fenêtre après avoir lancé une installation ou une connexion.
 
 Si la carte Claude ou Codex indique qu'une connexion n'a pas abouti, choisissez **Ouvrir la fenêtre de connexion**. Un code affiché par le navigateur doit être collé dans cette fenêtre ; un code affiché auparavant ne fonctionne plus.
-
-Si la page du navigateur ou la fenêtre de connexion affiche `3p_delegated_access_policy_denied`, une règle appliquée au compte Claude a peut-être bloqué cette connexion. Si un nouvel essai donne le même résultat, adressez-vous à la personne qui gère le compte, ou vérifiez si un autre compte fonctionne.
 
 ## Sans abonnement : une IA gratuite
 
