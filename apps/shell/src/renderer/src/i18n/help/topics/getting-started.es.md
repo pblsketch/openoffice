@@ -1,6 +1,6 @@
 # Inicio rápido: la interfaz y lo esencial
 
-GenOffice es una suite ofimática que funciona en su equipo: una ventana, una fila de pestañas, con ocho editores: Docs (procesamiento de texto), Sheets (hojas de cálculo), Slides (presentaciones), PDF, Markdown y texto plano, HTML, HWP/HWPX (documentos de Hangul) y mapas mentales (.xmind). Cada editor abre y guarda archivos en su propio formato: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx y .xmind. Editar no requiere red; las funciones de IA sí.
+GenOffice es una suite ofimática que funciona en su equipo: una ventana, una fila de pestañas, con ocho editores: Docs (procesamiento de texto), Sheets (hojas de cálculo), Slides (presentaciones), PDF, Markdown y texto plano, HTML, HWP/HWPX (documentos de Hangul) y mapas mentales (.xmind). Cada editor abre y guarda archivos en su propio formato: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx y .xmind. Editar no requiere red; las funciones de IA sí. El editor de mapas mentales también importa archivos de FreeMind y Freeplane (.mm) como mapas nuevos, que se guardan como .xmind.
 
 ## Descripción de la interfaz
 

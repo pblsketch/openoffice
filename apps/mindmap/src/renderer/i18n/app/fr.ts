@@ -104,6 +104,8 @@ export const fr = {
     "Ce fichier contient {count} éléments qui ne sont pas affichés ici. L'enregistrement ne les supprime pas. Seuls ceux rattachés à un sujet que vous supprimez vous-même sont supprimés avec lui.",
   noticeTheme:
     "Cette carte est affichée ici avec l'apparence par défaut. Le thème du fichier n'est pas modifié.",
+  noticeImported:
+    "Ceci est une nouvelle carte importée d'un fichier FreeMind ou Freeplane (.mm). L'enregistrement crée un nouveau fichier ; le fichier .mm reste inchangé. Les icônes, couleurs et polices ne sont pas importées.",
   openLegacy: 'Ce fichier est dans un ancien format et ne peut pas être ouvert',
   openEncrypted: 'Ce fichier est protégé par mot de passe et ne peut pas être ouvert',
   openUnreadable: 'Ce fichier est illisible',

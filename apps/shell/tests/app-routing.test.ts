@@ -69,6 +69,16 @@ describe('appForPath', () => {
     expect(renameStaysInApp('/x/plan.vsdx', 'plan.drawio')).toBe(false)
   })
 
+  it('routes an XMind map and a FreeMind / Freeplane map to the mind map app, each in its own form', () => {
+    expect(appForPath('/x/plan.xmind')).toBe('mindmap')
+    expect(appForPath('C:/x/PLAN.MM')).toBe('mindmap')
+    expect(appForPath('/x/plan.mmap')).toBeUndefined()
+    expect(renameStaysInApp('/x/plan.mm', 'plan2.mm')).toBe(true)
+    // a .mm is XML and an .xmind a zip: a rename between them leaves a file that does not open
+    expect(renameStaysInApp('/x/plan.mm', 'plan.xmind')).toBe(false)
+    expect(renameStaysInApp('/x/plan.xmind', 'plan.mm')).toBe(false)
+  })
+
   it('opens OpenDocument text in the Word tab', () => {
     expect(appForPath('/x/a.odt')).toBe('docs')
     expect(appForPath('C:/x/REPORT.ODT')).toBe('docs')

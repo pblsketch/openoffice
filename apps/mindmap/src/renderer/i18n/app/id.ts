@@ -102,6 +102,8 @@ export const id = {
   noticePreserved:
     'File ini berisi {count} elemen yang tidak ditampilkan di sini. Menyimpan tidak menghapusnya. Hanya yang melekat pada topik yang Anda hapus sendiri yang ikut dihapus.',
   noticeTheme: 'Peta ini ditampilkan di sini dengan tampilan bawaan. Tema file tidak diubah.',
+  noticeImported:
+    'Ini peta baru yang diimpor dari file FreeMind atau Freeplane (.mm). Menyimpan akan membuat file baru, dan file .mm tetap seperti semula. Ikon, warna, dan font tidak diimpor.',
   openLegacy: 'File ini berformat lama dan tidak dapat dibuka',
   openEncrypted: 'File ini dilindungi kata sandi dan tidak dapat dibuka',
   openUnreadable: 'File ini tidak dapat dibaca',

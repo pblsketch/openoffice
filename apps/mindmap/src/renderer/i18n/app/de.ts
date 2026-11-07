@@ -104,6 +104,8 @@ export const de = {
     'Diese Datei enthält {count} Elemente, die hier nicht angezeigt werden. Beim Speichern werden sie nicht gelöscht. Nur was an einem Thema hängt, das Sie selbst löschen, wird mitgelöscht.',
   noticeTheme:
     'Diese Mindmap wird hier im Standardaussehen angezeigt. Das Design der Datei wird nicht geändert.',
+  noticeImported:
+    'Dies ist eine neue Map, importiert aus einer FreeMind- oder Freeplane-Datei (.mm). Beim Speichern entsteht eine neue Datei; die .mm-Datei bleibt unverändert. Symbole, Farben und Schriften werden nicht übernommen.',
   openLegacy: 'Diese Datei hat ein älteres Format und kann nicht geöffnet werden',
   openEncrypted: 'Diese Datei ist kennwortgeschützt und kann nicht geöffnet werden',
   openUnreadable: 'Diese Datei kann nicht gelesen werden',

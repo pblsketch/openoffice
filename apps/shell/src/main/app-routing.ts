@@ -9,7 +9,8 @@ const XLSX_RE = /\.(xlsx|xlsm|xls|csv|tsv)$/i
 const PPTX_RE = /\.pptx$/i
 const PDF_RE = /\.pdf$/i
 const HTML_RE = /\.html?$/i
-const MINDMAP_RE = /\.xmind$/i
+// XMind maps, and a FreeMind / Freeplane map imported as a new map
+const MINDMAP_RE = /\.(xmind|mm)$/i
 const HWP_RE = /\.hwpx?$/i
 const EPUB_RE = /\.epub$/i
 // draw.io diagrams, and a Visio drawing imported as a new diagram. A draw.io
@@ -66,8 +67,12 @@ export function renameStaysInApp(from: string, newName: string): boolean {
   // other leaves a file the Word editor reads as corrupt
   if (current === 'docs' && ODT_RE.test(from) !== ODT_RE.test(newName)) return false
   // each diagram form keeps its own bytes (XML, a picture holding it, a Visio
-  // drawing): renaming one into another leaves a file that no longer opens
-  if (current === 'diagram' && documentExtension(from) !== documentExtension(newName)) {
+  // drawing), and so does each map form (.xmind, an imported .mm): renaming one
+  // into another leaves a file that no longer opens
+  if (
+    (current === 'diagram' || current === 'mindmap') &&
+    documentExtension(from) !== documentExtension(newName)
+  ) {
     return false
   }
   return appForPath(newName) === current

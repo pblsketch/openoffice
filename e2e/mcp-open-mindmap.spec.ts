@@ -209,14 +209,15 @@ test.describe('MCP open documents: mind maps', () => {
       const call = await connect(port)
       const editorTabs = page.locator('.tab-bar .tab-item:not(.tab-home)')
 
-      // ── app info: the format table lists the mind map family
+      // ── app info: the format table lists the mind map family, which opens a
+      // FreeMind / Freeplane map too but saves only .xmind
       const info = JSON.parse((await call('get_app_info', {})).text) as {
         families: Array<{ family: string }>
       }
       expect(info.families.find((f) => f.family === 'xmind')).toEqual({
         family: 'xmind',
         label: 'mind map',
-        editor: { open: ['xmind'], save: ['xmind'], export: ['png', 'pdf', 'md'] },
+        editor: { open: ['xmind', 'mm'], save: ['xmind'], export: ['png', 'pdf', 'md'] },
       })
 
       // ── 1. a titled map: open, edit, list, read, close with save

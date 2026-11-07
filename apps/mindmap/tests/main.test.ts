@@ -220,6 +220,52 @@ describe('opening', () => {
   })
 })
 
+describe('a FreeMind / Freeplane map (.mm) is imported, never written', () => {
+  const MM = '<map version="1.0.1"><node TEXT="Root"/></map>'
+
+  it('hands over its bytes as an import named after the file; the map is untitled', async () => {
+    const path = join(dir, 'Team plan.mm')
+    writeFileSync(path, MM)
+    const contents = view(path)
+    expect(call(MINDMAP_CHANNELS.consumePending, contents)).toBe(path)
+    const result = await open(contents, path)
+    expect(result).toMatchObject({ status: 'import', importer: 'freemind', title: 'Team plan' })
+    expect(result.status === 'import' && Buffer.from(result.bytes).toString()).toBe(MM)
+    expect(mindmapFilePath(contents.id)).toBeUndefined()
+  })
+
+  it('the first save asks where, offering an .xmind beside the .mm, and leaves the .mm as it was', async () => {
+    const path = join(dir, 'Team plan.mm')
+    writeFileSync(path, MM)
+    const contents = view(path)
+    await open(contents, path)
+    const target = join(dir, 'Team plan.xmind')
+    showSaveDialog.mockResolvedValue({ canceled: false, filePath: target })
+    const result = await save(contents, {
+      bytes: await mapBytes(),
+      mode: 'save',
+      defaultName: 'Root',
+    })
+    expect(result).toEqual({ ok: true, path: target })
+    const options = showSaveDialog.mock.calls[0]!.at(-1) as { defaultPath: string }
+    expect(options.defaultPath).toBe(target)
+    expect(readFileSync(path, 'utf8')).toBe(MM)
+    expect((await openXmind(new Uint8Array(readFileSync(target)))).status).toBe('ok')
+    expect(mindmapFilePath(contents.id)).toBe(target)
+  })
+
+  it('a .mm larger than an import reads opens nothing and nothing is written for it', async () => {
+    const path = join(dir, 'huge.mm')
+    writeFileSync(path, Buffer.alloc(32 * 1024 * 1024 + 1, 0x20))
+    const contents = view(path)
+    expect(await open(contents, path)).toEqual({ status: 'unreadable' })
+    expect(await save(contents, { bytes: await mapBytes(), mode: 'saveAs' })).toMatchObject({
+      ok: false,
+    })
+    expect(showSaveDialog).not.toHaveBeenCalled()
+  })
+})
+
 describe('a file that did not open is never written', () => {
   it('refuses every save of that view and leaves the file as it was', async () => {
     const path = join(dir, 'broken.xmind')

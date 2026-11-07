@@ -1,6 +1,6 @@
 # Início rápido: a interface e o básico
 
-O GenOffice é um pacote de escritório que funciona na sua máquina: uma janela, uma faixa de guias, com oito editores — Docs (processamento de texto), Sheets (folhas de cálculo), Slides (apresentações), PDF, Markdown e texto simples, HTML, HWP/HWPX (documentos Hangul) e mapas mentais (.xmind). Cada editor abre e guarda ficheiros no seu próprio formato: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx e .xmind. A edição não precisa de rede; as funções de IA precisam.
+O GenOffice é um pacote de escritório que funciona na sua máquina: uma janela, uma faixa de guias, com oito editores — Docs (processamento de texto), Sheets (folhas de cálculo), Slides (apresentações), PDF, Markdown e texto simples, HTML, HWP/HWPX (documentos Hangul) e mapas mentais (.xmind). Cada editor abre e guarda ficheiros no seu próprio formato: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx e .xmind. A edição não precisa de rede; as funções de IA precisam. O editor de mapas mentais também importa ficheiros do FreeMind e do Freeplane (.mm) como novos mapas, guardados como .xmind.
 
 ## A interface em resumo
 

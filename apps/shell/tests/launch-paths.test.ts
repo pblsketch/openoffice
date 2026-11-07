@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { collectLaunchPaths } from '../src/main/launch-paths'
+import { LAUNCHABLE_EXTS, collectLaunchPaths } from '../src/main/launch-paths'
 
 describe('collectLaunchPaths', () => {
   it('collects supported argv files in order and removes duplicates', () => {
@@ -97,6 +97,12 @@ describe('collectLaunchPaths', () => {
     expect(
       collectLaunchPaths(['GenOffice.exe'], { launchPaths: ['/maps/flow.drawio'] }, () => true),
     ).toEqual(['/maps/flow.drawio'])
+  })
+
+  it('accepts a FreeMind / Freeplane map, which no file association claims', () => {
+    const argv = ['GenOffice.exe', 'C:\\maps\\plan.mm', '/maps/PLAN.MM', '/maps/plan.mmap']
+    expect(collectLaunchPaths(argv, undefined, () => true)).toEqual(argv.slice(1, 3))
+    expect(LAUNCHABLE_EXTS).not.toContain('mm')
   })
 
   it('still drops a path nothing opens', () => {

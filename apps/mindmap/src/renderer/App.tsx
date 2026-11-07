@@ -23,7 +23,7 @@ import { mapStrings } from './i18n/map-strings'
 import type { StringKey } from './i18n/locale'
 import { linkFromInput, linkInputKind } from './document/link-input'
 import { newMap, type OpenFailure, type OpenNotices, openMapBytes } from './document/open'
-import { openCopiedMap, seededMap } from './document/open'
+import { importedMap, openCopiedMap, seededMap } from './document/open'
 import { useRecoveryCopies } from './document/recovery-copies'
 import type { DocumentSession, SheetTab } from './document/session'
 import { deleteSheetAfterConfirm } from './document/sheet-actions'
@@ -216,14 +216,19 @@ export default function App() {
         if (pending) {
           const file = await window.mindmapApi.openFile(pending)
           const started = performance.now()
-          // a restored recovery copy opens with unsaved changes; without its file it is untitled
+          // a restored recovery copy opens with unsaved changes; without its file it is
+          // untitled, and so is a map imported from a .mm, which is never written
           const result =
-            file.status !== 'ok'
-              ? file
-              : file.restored
-                ? await openCopiedMap({ bytes: file.bytes })
-                : await openMapBytes(file.bytes)
-          if (file.status === 'ok' && file.restored === 'untitled') openedPath = null
+            file.status === 'import'
+              ? await importedMap(file.bytes, file.title)
+              : file.status !== 'ok'
+                ? file
+                : file.restored
+                  ? await openCopiedMap({ bytes: file.bytes })
+                  : await openMapBytes(file.bytes)
+          if (file.status === 'import' || (file.status === 'ok' && file.restored === 'untitled')) {
+            openedPath = null
+          }
           // how long the engine took over the file, for measuring large maps
           performance.measure('mindmap:open', { start: started, end: performance.now() })
           if (cancelled) return
@@ -941,8 +946,15 @@ export default function App() {
         onMakeFromDocument={() => window.mindmapApi.makeFromDocument?.()}
       />
 
-      {(notices.preserved > 0 || notices.unknownTheme || picking) && (
+      {(notices.preserved > 0 || notices.unknownTheme || notices.imported || picking) && (
         <div className="mm-notices">
+          {notices.imported && (
+            <Notice
+              kind="imported"
+              text={t('noticeImported')}
+              onClose={() => setNotices((current) => ({ ...current, imported: false }))}
+            />
+          )}
           {notices.preserved > 0 && (
             <Notice
               kind="preserved"

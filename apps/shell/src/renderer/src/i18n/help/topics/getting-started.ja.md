@@ -1,6 +1,6 @@
 # クイックスタート：画面と基本操作
 
-GenOffice は自分のマシン上で動くオフィススイートです。ウィンドウ 1 つ、タブの列 1 行に 8 種類のエディター — Docs（文書処理）、Sheets（表計算）、Slides（プレゼンテーション）、PDF、Markdown とテキスト、HTML、HWP/HWPX（ハングル文書）、マインドマップ（.xmind）— が入っています。各エディターはそれぞれの形式のファイルを開いて保存します（.docx、.xlsx、.pptx、.pdf、.md、.html、.hwp/.hwpx、.xmind）。編集にネットワークは不要ですが、AI 機能には必要です。
+GenOffice は自分のマシン上で動くオフィススイートです。ウィンドウ 1 つ、タブの列 1 行に 8 種類のエディター — Docs（文書処理）、Sheets（表計算）、Slides（プレゼンテーション）、PDF、Markdown とテキスト、HTML、HWP/HWPX（ハングル文書）、マインドマップ（.xmind）— が入っています。各エディターはそれぞれの形式のファイルを開いて保存します（.docx、.xlsx、.pptx、.pdf、.md、.html、.hwp/.hwpx、.xmind）。編集にネットワークは不要ですが、AI 機能には必要です。マインドマップエディターは FreeMind・Freeplane のファイル（.mm）も新しいマップとして読み込み、.xmind で保存します。
 
 ## 画面の全体像
 

@@ -102,6 +102,8 @@ export const en = {
   noticePreserved:
     'This file has {count} elements that are not shown here. Saving does not delete them. Only those attached to a topic you delete yourself are deleted with it.',
   noticeTheme: "This map is shown here with the default look. The file's theme is not changed.",
+  noticeImported:
+    'This is a new map imported from a FreeMind or Freeplane file (.mm). Saving writes a new file, and the .mm file stays as it is. Icons, colors and fonts are not imported.',
   openLegacy: 'This file is in an older format and cannot be opened',
   openEncrypted: 'This file is password-protected and cannot be opened',
   openUnreadable: 'This file cannot be read',

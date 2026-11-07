@@ -1,6 +1,6 @@
 # Avvio rapido: l'interfaccia e le basi
 
-GenOffice è una suite per ufficio che funziona sulla tua macchina: una sola finestra, una fila di schede, con otto editor — Docs (elaborazione testi), Sheets (fogli di calcolo), Slides (presentazioni), PDF, Markdown e testo semplice, HTML, HWP/HWPX (documenti Hangul) e mappe mentali (.xmind). Ogni editor apre e salva i file nel proprio formato: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx e .xmind. Per modificare non serve la rete; per le funzioni di IA sì.
+GenOffice è una suite per ufficio che funziona sulla tua macchina: una sola finestra, una fila di schede, con otto editor — Docs (elaborazione testi), Sheets (fogli di calcolo), Slides (presentazioni), PDF, Markdown e testo semplice, HTML, HWP/HWPX (documenti Hangul) e mappe mentali (.xmind). Ogni editor apre e salva i file nel proprio formato: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx e .xmind. Per modificare non serve la rete; per le funzioni di IA sì. L’editor di mappe mentali importa anche i file FreeMind e Freeplane (.mm) come nuove mappe, salvate come .xmind.
 
 ## Panoramica dell'interfaccia
 

@@ -101,6 +101,8 @@ export const ko = {
   noticePreserved:
     '이 파일에는 여기서 보이지 않는 요소가 {count}개 있습니다. 저장해도 지워지지 않습니다. 다만 직접 지운 토픽에 딸린 것은 함께 지워집니다.',
   noticeTheme: '이 지도는 여기서 기본 모양으로 보입니다. 파일의 테마는 바뀌지 않습니다.',
+  noticeImported:
+    'FreeMind·Freeplane 파일(.mm)에서 가져온 새 지도입니다. 저장하면 새 파일로 저장되고, 원래 .mm 파일은 그대로입니다. 아이콘·색·글꼴은 가져오지 않습니다.',
   openLegacy: '예전 형식의 파일이라 열 수 없습니다',
   openEncrypted: '암호가 걸린 파일이라 열 수 없습니다',
   openUnreadable: '읽을 수 없는 파일입니다',

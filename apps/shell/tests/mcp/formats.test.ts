@@ -78,10 +78,10 @@ describe('format registry', () => {
     }
   })
 
-  it('registers the mind map family: xmind opens and saves as xmind', () => {
+  it('registers the mind map family: xmind and an imported .mm open, xmind saves', () => {
     const map = formatFamily('xmind')
     expect(map.label).toBe('mind map')
-    expect(map.editorOpen).toEqual(['xmind'])
+    expect(map.editorOpen).toEqual(['xmind', 'mm'])
     expect(map.editorSave).toEqual(['xmind'])
     expect(map.editorExport).toEqual(['png', 'pdf', 'md'])
     // no session, generator or file reader: maps are reached through open_documents
@@ -171,7 +171,7 @@ describe('capabilityReport', () => {
     expect(report.find((r) => r.family === 'xmind')).toEqual({
       family: 'xmind',
       label: 'mind map',
-      editor: { open: ['xmind'], save: ['xmind'], export: ['png', 'pdf', 'md'] },
+      editor: { open: ['xmind', 'mm'], save: ['xmind'], export: ['png', 'pdf', 'md'] },
     })
     expect(report.find((r) => r.family === 'epub')).toEqual({
       family: 'epub',

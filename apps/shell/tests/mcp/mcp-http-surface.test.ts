@@ -297,7 +297,7 @@ describe('MCP surface over Streamable HTTP (/mcp)', () => {
       expect(infoJson.families.find((f) => f.family === 'xmind')).toEqual({
         family: 'xmind',
         label: 'mind map',
-        editor: { open: ['xmind'], save: ['xmind'], export: ['png', 'pdf', 'md'] },
+        editor: { open: ['xmind', 'mm'], save: ['xmind'], export: ['png', 'pdf', 'md'] },
       })
       // the format registry's editor truth survives the wire
       expect(infoJson.families.find((f) => f.family === 'xlsx')!.editor.open).toEqual([

@@ -1,6 +1,6 @@
 # Rychlý start: rozhraní a základy
 
-GenOffice je kancelářský balík, který běží na vašem počítači: jedno okno, jeden řádek karet a v něm osm editorů — Docs (textový editor), Sheets (tabulky), Slides (prezentace), PDF, Markdown a prostý text, HTML, HWP/HWPX (dokumenty Hangul) a myšlenkové mapy (.xmind). Každý editor otevírá a ukládá soubory ve svém formátu: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx a .xmind. Úpravy síť nepotřebují, funkce AI ano.
+GenOffice je kancelářský balík, který běží na vašem počítači: jedno okno, jeden řádek karet a v něm osm editorů — Docs (textový editor), Sheets (tabulky), Slides (prezentace), PDF, Markdown a prostý text, HTML, HWP/HWPX (dokumenty Hangul) a myšlenkové mapy (.xmind). Každý editor otevírá a ukládá soubory ve svém formátu: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx a .xmind. Úpravy síť nepotřebují, funkce AI ano. Editor myšlenkových map také importuje soubory FreeMind a Freeplane (.mm) jako nové mapy, které se ukládají jako .xmind.
 
 ## Přehled rozhraní
 

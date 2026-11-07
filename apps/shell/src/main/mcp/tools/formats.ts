@@ -115,7 +115,8 @@ export const FORMAT_FAMILIES: readonly FormatFamily[] = [
   {
     family: 'xmind',
     label: 'mind map',
-    editorOpen: ['xmind'],
+    // a FreeMind / Freeplane map opens as a new map, saved as .xmind
+    editorOpen: ['xmind', 'mm'],
     editorSave: ['xmind'],
     // the map menu's three exports: picture of a sheet, PDF, Markdown outline
     editorExport: ['png', 'pdf', 'md'],

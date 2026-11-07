@@ -1,6 +1,6 @@
 # Démarrage rapide : l’interface et les bases
 
-GenOffice est une suite bureautique qui fonctionne sur votre machine : une fenêtre, une rangée d’onglets, huit éditeurs — Docs (traitement de texte), Sheets (tableurs), Slides (présentations), PDF, Markdown et texte brut, HTML, HWP/HWPX (documents Hangul) et cartes mentales (.xmind). Chaque éditeur ouvre et enregistre les fichiers dans son propre format : .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx et .xmind. La modification ne nécessite aucun réseau ; les fonctions d’IA, si.
+GenOffice est une suite bureautique qui fonctionne sur votre machine : une fenêtre, une rangée d’onglets, huit éditeurs — Docs (traitement de texte), Sheets (tableurs), Slides (présentations), PDF, Markdown et texte brut, HTML, HWP/HWPX (documents Hangul) et cartes mentales (.xmind). Chaque éditeur ouvre et enregistre les fichiers dans son propre format : .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx et .xmind. La modification ne nécessite aucun réseau ; les fonctions d’IA, si. L’éditeur de cartes mentales importe aussi les fichiers FreeMind et Freeplane (.mm) comme nouvelles cartes, enregistrées en .xmind.
 
 ## Aperçu de l’interface
 

@@ -36,8 +36,19 @@ export const LAUNCHABLE_EXTS = [
  */
 export const LAUNCHABLE_DOUBLE_EXTS = ['drawio.svg', 'drawio.png'] as const
 
+/**
+ * Files the suite imports but never claims: a `.mm` mind map belongs to the
+ * programs that made it (FreeMind, Freeplane), so no file association names
+ * it. It reaches the app the same ways as a draw.io picture.
+ */
+export const LAUNCHABLE_UNCLAIMED_EXTS = ['mm'] as const
+
 const SUPPORTED_LAUNCH_RE = new RegExp(
-  `\\.(${[...LAUNCHABLE_EXTS, ...LAUNCHABLE_DOUBLE_EXTS.map((ext) => ext.replace('.', '\\.'))].join('|')})$`,
+  `\\.(${[
+    ...LAUNCHABLE_EXTS,
+    ...LAUNCHABLE_UNCLAIMED_EXTS,
+    ...LAUNCHABLE_DOUBLE_EXTS.map((ext) => ext.replace('.', '\\.')),
+  ].join('|')})$`,
   'i',
 )
 const UNSUPPORTED_LAUNCH_RE = /\.(doc|rtf|ppt|pps|odp|ods|xlsb|pages|key|numbers)$/i

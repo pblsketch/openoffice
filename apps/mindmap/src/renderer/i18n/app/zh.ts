@@ -97,6 +97,8 @@ export const zh = {
   noticePreserved:
     '此文件包含 {count} 个此处未显示的元素。保存不会删除它们，但您亲自删除的主题所附带的元素会一并删除。',
   noticeTheme: '此导图在这里以默认外观显示。文件中的主题风格不会被更改。',
+  noticeImported:
+    '这是从 FreeMind 或 Freeplane 文件（.mm）导入的新导图。保存时会写入新文件，原来的 .mm 文件保持不变。图标、颜色和字体不会导入。',
   openLegacy: '此文件为旧版格式，无法打开',
   openEncrypted: '此文件已加密，无法打开',
   openUnreadable: '无法读取此文件',

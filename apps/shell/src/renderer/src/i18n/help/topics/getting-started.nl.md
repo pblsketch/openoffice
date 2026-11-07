@@ -1,6 +1,6 @@
 # Snel starten: de interface en de basis
 
-GenOffice is een kantoorsuite die op je eigen computer draait: één venster, één rij tabbladen, met acht editors — Docs (tekstverwerking), Sheets (spreadsheets), Slides (presentaties), PDF, Markdown en platte tekst, HTML, HWP/HWPX (Hangul-documenten) en mindmaps (.xmind). Elke editor opent en bewaart bestanden in zijn eigen formaat: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx en .xmind. Voor bewerken is geen netwerk nodig; voor de AI-functies wel.
+GenOffice is een kantoorsuite die op je eigen computer draait: één venster, één rij tabbladen, met acht editors — Docs (tekstverwerking), Sheets (spreadsheets), Slides (presentaties), PDF, Markdown en platte tekst, HTML, HWP/HWPX (Hangul-documenten) en mindmaps (.xmind). Elke editor opent en bewaart bestanden in zijn eigen formaat: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx en .xmind. Voor bewerken is geen netwerk nodig; voor de AI-functies wel. De mindmap-editor importeert ook FreeMind- en Freeplane-bestanden (.mm) als nieuwe maps, die als .xmind worden opgeslagen.
 
 ## Overzicht van de interface
 

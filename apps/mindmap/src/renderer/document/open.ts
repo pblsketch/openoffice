@@ -12,6 +12,7 @@ import {
   type XmindOpenStatus,
 } from '@genoffice/xmind-engine'
 import type { MindmapCopySeed, MindmapOutlineSeed } from '../../shared/ipc'
+import { freeMindToXmind, parseFreeMind } from './freemind'
 import { DocumentSession } from './session'
 
 export type OpenFailure = Exclude<XmindOpenStatus, 'ok'>
@@ -22,6 +23,8 @@ export interface OpenNotices {
   preserved: number
   /** a sheet carries a theme this app did not write and is drawn with the default look */
   unknownTheme: boolean
+  /** the map was made from another program's file (a `.mm`), which stays as it was */
+  imported?: boolean
 }
 
 export type OpenedMap =
@@ -81,5 +84,26 @@ export async function openCopiedMap(seed: MindmapCopySeed): Promise<OpenedMap> {
     status: 'ok',
     session,
     notices: { preserved: session.preservedTotal(), unknownTheme: session.hasUnknownTheme() },
+  }
+}
+
+/**
+ * A FreeMind or Freeplane file (`.mm`) read into a NEW, UNSAVED map named
+ * `title`, like a seeded map: the `.mm` is never its path, and the first save
+ * asks where to put the `.xmind`. A file that cannot be read is `unreadable`.
+ */
+export async function importedMap(bytes: Uint8Array, title: string): Promise<OpenedMap> {
+  const read = parseFreeMind(bytes)
+  if (!read.ok) {
+    console.warn(`[mindmap] the .mm file cannot be read (${read.problem})`)
+    return { status: 'unreadable' }
+  }
+  const document = await freeMindToXmind(read.root, title)
+  const baseline = await document.save()
+  document.markChanged()
+  return {
+    status: 'ok',
+    session: new DocumentSession(document, baseline),
+    notices: { preserved: 0, unknownTheme: false, imported: true },
   }
 }

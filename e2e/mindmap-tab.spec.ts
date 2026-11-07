@@ -519,10 +519,15 @@ test.describe('mind map editor in the shell', () => {
           () => (globalThis as unknown as { __openDialogs: unknown[] }).__openDialogs,
         )
       )[0] as { filters: Array<{ name: string; extensions: string[] }> }
-      expect(asked.filters[0]!.extensions).toContain('xmind')
-      const own = asked.filters.find((filter) => filter.extensions.join() === 'xmind')
-      // the file format is named only here, as the kind of file that is opened
-      expect(own?.name).toBe('Mind Maps (XMind files)')
+      expect(asked.filters[0]!.extensions).toEqual(expect.arrayContaining(['xmind', 'mm']))
+      const own = asked.filters.filter((filter) => filter.extensions.includes('xmind'))
+      // one filter for the editor besides "supported files", naming the
+      // programs whose maps it takes: XMind's own, FreeMind's and Freeplane's
+      expect(own).toHaveLength(2)
+      expect(own[1]).toEqual({
+        name: 'Mind Maps (XMind, FreeMind, Freeplane)',
+        extensions: ['xmind', 'mm'],
+      })
       // File > Open asks the same way
       expect(await clickMenuItem(app, 'File', 'Open…')).toBe(true)
       await expect

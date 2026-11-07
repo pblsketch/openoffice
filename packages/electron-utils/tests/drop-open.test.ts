@@ -159,6 +159,12 @@ describe('partitionDropPayload', () => {
     expect(result.unsupportedExts).toEqual([])
   })
 
+  it('routes dropped mind maps, a FreeMind / Freeplane map included, as openable', () => {
+    const result = partitionDropPayload(['/maps/plan.xmind', '/maps/PLAN.MM', '/maps/plan.mmap'])
+    expect(result.supported).toEqual(['/maps/plan.xmind', '/maps/PLAN.MM'])
+    expect(result.unsupportedExts).toEqual([])
+  })
+
   it('routes dropped diagrams, draw.io pictures and Visio drawings as openable', () => {
     const paths = [
       '/maps/flow.drawio',

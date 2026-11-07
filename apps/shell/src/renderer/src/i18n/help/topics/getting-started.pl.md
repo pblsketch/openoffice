@@ -1,6 +1,6 @@
 # Szybki start: interfejs i podstawy
 
-GenOffice to pakiet biurowy działający na Twoim komputerze: jedno okno, jeden rząd kart, w którym mieści się osiem edytorów — Docs (edytor tekstu), Sheets (arkusze), Slides (prezentacje), PDF, Markdown i zwykły tekst, HTML, HWP/HWPX (dokumenty Hangul) oraz mapy myśli (.xmind). Każdy edytor otwiera i zapisuje pliki w swoim formacie: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx i .xmind. Edycja nie wymaga sieci; funkcje AI jej potrzebują.
+GenOffice to pakiet biurowy działający na Twoim komputerze: jedno okno, jeden rząd kart, w którym mieści się osiem edytorów — Docs (edytor tekstu), Sheets (arkusze), Slides (prezentacje), PDF, Markdown i zwykły tekst, HTML, HWP/HWPX (dokumenty Hangul) oraz mapy myśli (.xmind). Każdy edytor otwiera i zapisuje pliki w swoim formacie: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx i .xmind. Edycja nie wymaga sieci; funkcje AI jej potrzebują. Edytor map myśli importuje też pliki FreeMind i Freeplane (.mm) jako nowe mapy, zapisywane jako .xmind.
 
 ## Przegląd interfejsu
 
