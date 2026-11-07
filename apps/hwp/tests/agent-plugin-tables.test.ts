@@ -1190,6 +1190,44 @@ describe('a double click on a word', () => {
     expect(plugin.selection()).toEqual({ ok: false, reason: 'none' })
   })
 
+  // the engine's offsets count characters: 😀 and 𠀀 are one each there, two units in a string
+  const withAstral = () =>
+    openForm((doc) => {
+      doc.insertText(0, 2, 0, '웃음😀😀😀 끝𠀀말')
+      doc.insertTextInCell(0, 1, 0, 7, 0, 0, '😀가나')
+    })
+
+  it('selects the word under the click where emoji and 𠀀 come before it or in it', () => {
+    const { plugin, doubleClick, selected } = withAstral()
+    // 말 in 웃음😀😀😀 끝𠀀말끝.: the word 끝𠀀말끝 is characters 6 to 10
+    doubleClick(inBody(2, 8))
+    expect(selected()).toMatchObject({ start: { charOffset: 6 }, end: { charOffset: 10 } })
+    expect(plugin.selection()).toMatchObject({
+      ok: true,
+      segments: [{ para: 2, offset: 6, length: 4, text: '끝𠀀말끝' }],
+    })
+    // 나 in the cell's 😀가나기존 내용: 가나기존 is characters 1 to 5
+    doubleClick(inCell(7, 2))
+    expect(selected()).toMatchObject({ start: { charOffset: 1 }, end: { charOffset: 5 } })
+    expect(plugin.selection()).toMatchObject({ ok: true, segments: [{ text: '가나기존' }] })
+    // an emoji is no letter: a click on it selects nothing
+    doubleClick(inBody(2, 3))
+    expect(plugin.selection()).toEqual({ ok: false, reason: 'none' })
+  })
+
+  it('selects a paragraph with emoji and 𠀀 to its end on a triple click', () => {
+    const { plugin, tripleClick, selected, doc } = withAstral()
+    tripleClick(inBody(2, 1))
+    expect(selected()).toMatchObject({
+      start: { charOffset: 0 },
+      end: { charOffset: doc().getParagraphLength(0, 2) },
+    })
+    expect(plugin.selection()).toMatchObject({
+      ok: true,
+      segments: [{ para: 2, text: '웃음😀😀😀 끝𠀀말끝.' }],
+    })
+  })
+
   it('selects the paragraph on a triple click, in the body and in a cell', () => {
     const { plugin, tripleClick } = openForm()
     tripleClick(inCell(7, 1))

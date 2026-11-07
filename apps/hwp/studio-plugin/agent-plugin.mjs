@@ -20,7 +20,7 @@ import {
   checkCharCountLabels,
   countCollector,
 } from './char-count.mjs'
-import { documentStats, engineSlice } from './document-info.mjs'
+import { documentStats, engineChars, engineLength, engineSlice } from './document-info.mjs'
 import { installDialogTheme } from './dialog-theme.mjs'
 import { missingFonts, setMissingFontLabels, whenPcFontsSettled } from './pc-fonts.mjs'
 
@@ -919,17 +919,22 @@ function isContiguous(segments) {
 
 const WORD_CHARACTER = /[\p{L}\p{N}]/u
 
-/** The word around an offset of a text: a run of letters and digits. Null on a blank or a mark. */
+/**
+ * The word around an offset of a text: a run of letters and digits. Null on a blank or a mark.
+ * The offset and the word's ends are the engine's, which count characters: an emoji or a Han
+ * character outside the basic plane (𠀀) is one there and two units in a JavaScript string.
+ */
 function wordAt(text, offset) {
-  let at = Math.min(offset, text.length - 1)
+  const chars = engineChars(text)
+  let at = Math.min(offset, chars.length - 1)
   if (at < 0) return null
   // a click behind the last letter of a word still means that word
-  if (!WORD_CHARACTER.test(text[at]) && at > 0 && WORD_CHARACTER.test(text[at - 1])) at -= 1
-  if (!WORD_CHARACTER.test(text[at])) return null
+  if (!WORD_CHARACTER.test(chars[at]) && at > 0 && WORD_CHARACTER.test(chars[at - 1])) at -= 1
+  if (!WORD_CHARACTER.test(chars[at])) return null
   let start = at
   let end = at + 1
-  while (start > 0 && WORD_CHARACTER.test(text[start - 1])) start -= 1
-  while (end < text.length && WORD_CHARACTER.test(text[end])) end += 1
+  while (start > 0 && WORD_CHARACTER.test(chars[start - 1])) start -= 1
+  while (end < chars.length && WORD_CHARACTER.test(chars[end])) end += 1
   return { start, end }
 }
 
@@ -1069,7 +1074,8 @@ function selectWord(services, readText) {
 function selectParagraph(services, readText) {
   const place = caretParagraph(services, readText)
   if (!place || place.text.length === 0) return false
-  return selectIn(place, 0, place.text.length)
+  // to the paragraph's end in the engine's characters
+  return selectIn(place, 0, engineLength(place.text))
 }
 
 /**
@@ -3526,7 +3532,11 @@ function coveredCells(doc, table) {
   return covered
 }
 
-const clip = (text, max) => (text.length > max ? `${text.slice(0, max)}…` : text)
+/**
+ * A text cut to `max` characters with an ellipsis. Characters are the engine's (code points), so
+ * an emoji or a Han character outside the basic plane is never cut in half.
+ */
+const clip = (text, max) => (engineLength(text) > max ? `${engineSlice(text, 0, max)}…` : text)
 
 /**
  * The fields a form asks to be filled in: click-here fields and named table cells, in
@@ -4410,10 +4420,12 @@ export const agentPlugin = {
             return { ok: false, reason: 'overlap' }
           }
           const text = box.text(start.k, length)
+          // the offsets are the engine's characters, not a JavaScript string's units
           const shown =
             from < to
-              ? text.slice(from, to)
-              : text.slice(
+              ? engineSlice(text, from, to)
+              : engineSlice(
+                  text,
                   Math.max(0, from - MEMO_CARET_CHARS),
                   Math.min(length, from + MEMO_CARET_CHARS),
                 )
