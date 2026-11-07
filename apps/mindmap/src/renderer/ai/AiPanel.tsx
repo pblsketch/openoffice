@@ -13,6 +13,8 @@
  * holds or refuses the request, both stay in the composer.
  */
 import {
+  aiPanelWidthAtPointer,
+  AiPanelSideButton,
   AiBlockedNotice,
   AiComposer,
   AiConnectPrompt,
@@ -1689,7 +1691,7 @@ export function AiPanel({
   const resizeCleanupRef = useRef<(() => void) | null>(null)
   useEffect(() => () => resizeCleanupRef.current?.(), [])
 
-  /** Dragging the panel's inner edge (its left one: the panel sits at the right of the window). */
+  /** Dragging the panel's inner edge: the one facing the map, on whichever side the panel sits. */
   const startResize = (e: ReactPointerEvent<HTMLDivElement>): void => {
     e.preventDefault()
     const resizer = e.currentTarget
@@ -1697,7 +1699,7 @@ export function AiPanel({
     document.body.style.cursor = 'col-resize'
     document.body.style.userSelect = 'none'
     const onMove = (ev: PointerEvent): void => {
-      const w = clampPanelWidth(window.innerWidth - ev.clientX)
+      const w = clampPanelWidth(aiPanelWidthAtPointer(ev.clientX))
       preferredWidthRef.current = w
       setPanelWidth(w)
     }
@@ -1757,6 +1759,10 @@ export function AiPanel({
         </span>
         <div className="ai-panel-header-actions">
           {projectChatMenu}
+          <AiPanelSideButton
+            lang={lang}
+            onMove={(side) => window.mindmapApi.setAiPanelPrefs({ side })}
+          />
           {chat.length > 0 && (
             <button
               type="button"

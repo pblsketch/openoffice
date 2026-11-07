@@ -1,7 +1,7 @@
 /**
- * Where the AI panel meets the editor: the dock at the right end of the map
- * (the rail while it is collapsed), its open state, and the `MapAiHost` the
- * panel's tools work through.
+ * Where the AI panel meets the editor: the dock beside the map, on the side
+ * chosen in Settings (the rail while it is collapsed), its open state, and the
+ * `MapAiHost` the panel's tools work through.
  *
  * The host reads and changes the map only through what the app already has:
  * its session, the controllers of the sheets on screen, and its way of showing
@@ -12,7 +12,6 @@ import type { MutableRefObject, ReactElement } from 'react'
 import {
   AiMark,
   aiPanelInitiallyOpen,
-  applyAiPanelPrefs,
   effectiveAiPanelOpen,
   onAiRailClick,
   rememberAiPanelOpen,
@@ -23,7 +22,6 @@ import '@genoffice/ui/ai-queue-strip.css'
 import '@genoffice/ui/ai-usage.css'
 import '@genoffice/ui/ai-panel-prefs.css'
 import './ai-panel.css'
-import type { MindmapAiApi } from '../../shared/ipc'
 import type { DocumentSession } from '../document/session'
 import type { MapController } from '../map/controller'
 import { t as translate, useI18n } from '../i18n/locale'
@@ -58,17 +56,8 @@ export interface MindmapAi {
 export function useMindmapAi(wiring: MindmapAiWiring): MindmapAi {
   const { session, controllers, activeKey, setActiveKey, path, flush } = wiring
   const [open, setOpen] = useState(() => aiPanelInitiallyOpen(OPEN_KEY))
+  // the shell's AI panel preferences are applied in main.tsx before the first render
   useEffect(() => rememberAiPanelOpen(OPEN_KEY, open), [open])
-
-  // the shell's AI panel preferences (text size): read once, then followed
-  useEffect(() => {
-    const api = window.mindmapApi as Partial<MindmapAiApi> | undefined
-    void api
-      ?.getAiPanelPrefs?.()
-      .then(applyAiPanelPrefs)
-      .catch(() => {})
-    return api?.onAiPanelPrefsChanged?.(applyAiPanelPrefs)
-  }, [])
 
   const host = useMemo<MapAiHost>(
     () => ({
@@ -109,7 +98,7 @@ export interface MindmapAiDockProps {
 }
 
 /**
- * The panel at the right end of the map, or its rail while collapsed; the
+ * The panel beside the map, or its rail while collapsed; the
  * panel stays mounted either way, so a run and its chat survive. In a split
  * (decision 0036) a secondary pane keeps its panel at the rail, and a click
  * on the rail asks the shell to focus this pane first.
