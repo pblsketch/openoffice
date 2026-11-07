@@ -35,6 +35,7 @@ import {
 import type { StructuralOp } from '@genoffice/xlsx-gateway/gateway/xlsx-structure'
 import type { DefinedNameEntry } from '@genoffice/xlsx-gateway/gateway/xlsx-defined-names'
 import type { SheetNote } from '@genoffice/xlsx-gateway/gateway/xlsx-notes'
+import { parseLegacyComments } from '@genoffice/xlsx-gateway/gateway/xlsx-threaded-comments'
 import type { WorkbookStyleEdit } from '@genoffice/xlsx-gateway/shared/edit-schemas'
 import {
   expandToPrimitiveOps,
@@ -928,19 +929,10 @@ async function readNotes(zip: JSZip, sheetPath: string): Promise<SheetNote[]> {
     : normalizePath(`${dir}${rel.target}`)
   const xml = await zip.file(target)?.async('string')
   if (!xml) return []
-  const authors = [...xml.matchAll(/<author>([\s\S]*?)<\/author>/g)].map((m) => unescapeXml(m[1]!))
-  const notes: SheetNote[] = []
-  for (const m of xml.matchAll(/<comment\b([^>]*)>([\s\S]*?)<\/comment>/g)) {
-    const ref = /\bref="([^"]+)"/.exec(m[1]!)?.[1]
-    if (!ref) continue
-    const authorId = /\bauthorId="(\d+)"/.exec(m[1]!)?.[1]
+  return [...parseLegacyComments(xml)].map(([ref, note]) => {
     const { row, column } = parseAddress(ref)
-    const text = [...m[2]!.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)]
-      .map((t) => unescapeXml(t[1]!))
-      .join('')
-    notes.push({ row, column, author: authors[Number(authorId ?? 0)] ?? '', text })
-  }
-  return notes
+    return { row, column, author: note.author, text: note.text }
+  })
 }
 
 /** Modeled names only: Excel's `_xlnm.*` built-ins and hidden names stay in the file untouched. */
