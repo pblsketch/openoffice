@@ -1,16 +1,8 @@
 import { basename } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-/**
- * Fork additions to the renderer watchdog (src/main/renderer-watchdog.ts):
- * the memory that triggers the question follows the PC's total memory, a
- * silenced document does not silence another one, and the diagnostics a
- * report writes under userData do not pile up. userData is an in-memory
- * folder so that a report finishes within the fake-timer advance.
- */
-
 const GB = 1024 ** 3
-const userData = new Set<string>()
+const inMemoryUserData = new Set<string>()
 const showMessageBox = vi.fn<(...args: unknown[]) => Promise<{ response: number }>>()
 let totalMemoryBytes = 8 * GB
 let metrics: unknown[] = []
@@ -29,9 +21,9 @@ vi.mock('node:os', async (importOriginal) => ({
   totalmem: () => totalMemoryBytes,
 }))
 vi.mock('node:fs/promises', () => ({
-  writeFile: async (path: string) => void userData.add(basename(path)),
-  readdir: async () => [...userData],
-  rm: async (path: string) => void userData.delete(basename(path)),
+  writeFile: async (path: string) => void inMemoryUserData.add(basename(path)),
+  readdir: async () => [...inMemoryUserData],
+  rm: async (path: string) => void inMemoryUserData.delete(basename(path)),
 }))
 
 const { startRendererWatchdog } = await import('../src/main/renderer-watchdog')
@@ -73,7 +65,7 @@ beforeEach(() => {
   showMessageBox.mockReset()
   showMessageBox.mockResolvedValue({ response: 0 })
   allWebContents = [fakeWc(1, 10)]
-  userData.clear()
+  inMemoryUserData.clear()
 })
 
 describe('memory question follows the PC', () => {
@@ -118,23 +110,23 @@ describe('diagnostics under userData', () => {
   it('keeps the five newest reports and leaves other files alone', async () => {
     totalMemoryBytes = 8 * GB
     for (let stamp = 1_000; stamp < 1_007; stamp += 1) {
-      userData.add(`renderer-watchdog-${stamp}.json`)
-      userData.add(`renderer-watchdog-${stamp}.cpuprofile`)
+      inMemoryUserData.add(`renderer-watchdog-${stamp}.json`)
+      inMemoryUserData.add(`renderer-watchdog-${stamp}.cpuprofile`)
     }
-    userData.add('crash-log.jsonl')
+    inMemoryUserData.add('crash-log.jsonl')
     metrics = [tabMetric(10, 2_000)]
     const stop = startWatchdog()
     await vi.advanceTimersByTimeAsync(2_100)
     stop()
 
     expect(showMessageBox).toHaveBeenCalledTimes(1)
-    const stamps = [...userData]
+    const stamps = [...inMemoryUserData]
       .filter((name) => name.startsWith('renderer-watchdog-'))
       .map((name) => Number(name.split(/[-.]/)[2]))
     expect([...new Set(stamps)].sort((a, b) => a - b).slice(0, 4)).toEqual([
       1_003, 1_004, 1_005, 1_006,
     ])
     expect(new Set(stamps).size).toBe(5)
-    expect(userData).toContain('crash-log.jsonl')
+    expect(inMemoryUserData).toContain('crash-log.jsonl')
   })
 })

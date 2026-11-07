@@ -1,6 +1,7 @@
 import { app, dialog, webContents } from 'electron'
 import type { BrowserWindow, ProcessMetric, WebContents } from 'electron'
-import { writeFile } from 'node:fs/promises'
+import { readdir, rm, writeFile } from 'node:fs/promises'
+import { totalmem } from 'node:os'
 import { join } from 'node:path'
 
 /**
@@ -42,7 +43,6 @@ export interface RendererWatchdogOptions {
 
 const DEFAULTS = {
   sampleMs: 30_000,
-  memoryLimitMB: 1536,
   cpuLimitPercent: 90,
   hotSamplesBeforeReport: 10,
   reportCooldownMs: 15 * 60_000,
@@ -72,6 +72,26 @@ interface RendererState {
   sampledAt?: number
 }
 
+const MEMORY_LIMIT_FLOOR_MB = 1536
+const MEMORY_LIMIT_SHARE_OF_PC = 1 / 8
+const memoryLimitFor = (totalBytes: number): number =>
+  Math.max(MEMORY_LIMIT_FLOOR_MB, (totalBytes / 1024 ** 2) * MEMORY_LIMIT_SHARE_OF_PC)
+
+const KEPT_REPORTS = 5
+const REPORT_FILE = /^renderer-watchdog-(\d+)\.(?:json|cpuprofile)$/
+
+async function pruneOldReports(dir: string): Promise<void> {
+  const byStamp = new Map<number, string[]>()
+  for (const name of await readdir(dir)) {
+    const stamp = REPORT_FILE.exec(name)?.[1]
+    if (stamp) byStamp.set(Number(stamp), [...(byStamp.get(Number(stamp)) ?? []), name])
+  }
+  const old = [...byStamp.keys()].sort((a, b) => b - a).slice(KEPT_REPORTS)
+  await Promise.all(
+    old.flatMap((stamp) => byStamp.get(stamp)!.map((name) => rm(join(dir, name), { force: true }))),
+  )
+}
+
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
 /** short CDP CPU profile of a live renderer; false when another debugger holds it */
@@ -96,7 +116,7 @@ async function captureCpuProfile(wc: WebContents, outPath: string, ms: number): 
 }
 
 export function startRendererWatchdog(options: RendererWatchdogOptions): () => void {
-  const opts = { ...DEFAULTS, ...options }
+  const opts = { ...DEFAULTS, memoryLimitMB: memoryLimitFor(totalmem()), ...options }
   const states = new Map<number, RendererState>()
 
   const rendererFor = (pid: number): WebContents | undefined =>
@@ -111,7 +131,8 @@ export function startRendererWatchdog(options: RendererWatchdogOptions): () => v
   ): Promise<void> => {
     const info = opts.describe(wc)
     const stamp = Date.now()
-    const base = join(app.getPath('userData'), `renderer-watchdog-${stamp}`)
+    const dir = app.getPath('userData')
+    const base = join(dir, `renderer-watchdog-${stamp}`)
     try {
       await writeFile(
         `${base}.json`,
@@ -132,6 +153,7 @@ export function startRendererWatchdog(options: RendererWatchdogOptions): () => v
         ),
       )
       if (opts.profileMs > 0) await captureCpuProfile(wc, `${base}.cpuprofile`, opts.profileMs)
+      await pruneOldReports(dir)
     } catch {
       /* diagnostics are best effort and must never make the situation worse */
     }
