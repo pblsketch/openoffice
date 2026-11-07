@@ -54,7 +54,8 @@ export async function readImageSource(
     return withType(bytes, declared)
   }
   let local = url
-  if (/^file:/i.test(url)) {
+  const isFileUrl = /^file:/i.test(url)
+  if (isFileUrl) {
     // a file URL names an absolute path (already percent-decoded); one that cannot is not found
     try {
       local = fileURLToPath(url)
@@ -62,9 +63,18 @@ export async function readImageSource(
       return null
     }
   }
-  const candidates = isAbsolute(local)
-    ? [local]
-    : [resolve(ctx.cwd, local), ...(baseDir ? [resolve(baseDir, local)] : [])]
+  const locals = [local]
+  if (!isFileUrl) {
+    // a ?query or #fragment is not part of the file name (markdown already strips these);
+    // tried last, so a file whose literal name holds one of them still wins
+    const bare = local.replace(/[?#].*$/s, '')
+    if (bare && bare !== local) locals.push(bare)
+  }
+  const candidates = locals.flatMap((item) =>
+    isAbsolute(item)
+      ? [item]
+      : [resolve(ctx.cwd, item), ...(baseDir ? [resolve(baseDir, item)] : [])],
+  )
   const path = candidates.find((p) => existsSync(p))
   if (!path) return null
   assertAllowed(path, ctx.env, 'read')

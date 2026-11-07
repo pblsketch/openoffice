@@ -108,8 +108,13 @@ export function inlineLocalFiles(ops: Op[], ctx: PathContext): Op[] {
     for (const field of fields) {
       const value = getPath(next, field)
       if (typeof value !== 'string' || value.startsWith('data:')) continue
-      const path = isAbsolute(value) ? value : resolve(ctx.cwd, value)
-      if (!existsSync(path)) continue
+      const locals = [value]
+      const bare = value.replace(/[?#].*$/s, '')
+      if (bare && bare !== value) locals.push(bare)
+      const path = locals
+        .map((item) => (isAbsolute(item) ? item : resolve(ctx.cwd, item)))
+        .find((p) => existsSync(p))
+      if (!path) continue
       assertAllowed(path, ctx.env, 'read')
       setPath(next, field, new Uint8Array(readFileSync(path)))
       // the op's sibling "ext" is implied by the file name
