@@ -177,6 +177,7 @@
 ## Linux 패키지
 
 - **Ubuntu 24.04에서 deb 설치가 의존성 오류로 멈춘다.** 24.04와 Debian 13은 64비트 time_t 전환으로 여러 라이브러리를 `*t64` 이름으로 다시 지었다(24.04만 봐도 `libgtk-3-0`·`libatspi2.0-0`의 옛 이름은 없다). electron-builder의 기본 `depends`는 옛 이름만 적고, `deb.depends`를 설정하면 기본 목록이 통째로 바뀐다. → `electron-builder.cjs`의 `depends`가 기본 목록을 그대로 적고, 이름이 바뀐 것에는 `libgtk-3-0 | libgtk-3-0t64`처럼 대안을 붙인다. `tests/linux-deb-dependencies.test.ts`와 `linux-build.yml`의 검사가 지킨다.
+- **Ubuntu 20.04에서 앱은 뜨는데 엑셀·CSV 파일이 열리지 않는다(0.12.11까지).** 빌드 기계(Ubuntu 22.04, glibc 2.35)에서 그냥 `cargo build`한 엑셀 처리 프로그램이 그 기계의 glibc에 맞춰 `GLIBC_2.34`를 요구했다. 20.04의 glibc는 2.31이라 프로그램이 뜨지 못하고 모든 열기가 실패한다. Electron 본체는 2.25만 요구해 앱 창은 뜬다. → `linux-build.yml`이 `cargo zigbuild`로 프로그램을 glibc 2.28(`LINUX_GLIBC_FLOOR`) 기준으로 다시 링크해 `target/release`에 덮는다. 같은 워크플로가 묶음 안의 모든 ELF 파일이 기준을 넘지 않는지 보고, Ubuntu 20.04 컨테이너에 deb를 깔아 CSV를 내보내 본다. Linux에서 직접 `npm run build:all`로 만든 프로그램은 그 PC의 glibc를 따른다.
 - **"apt가 libnotify4를 못 찾는다"는 보고는 빈 24.04에서 재현되지 않는다.** 24.04의 t64 패키지가 옛 이름을 `Provides:`로 제공하고 `libnotify4`·`libxtst6`·`libsecret-1-0`은 24.04에 옛 이름 그대로 남아 있어, 지난 배포본도 `sudo apt install ./ieumoffice_버전_amd64.deb`로는 풀린다(`dpkg -i`는 의존성을 스스로 풀지 않으니 실패한다). → 그래도 대안 표기를 유지한다. 24.10 이후 배포판과 32비트 아키텍처에서는 옛 이름이 아예 없을 수 있다.
 
 ## 작업 사본을 여럿 둘 때
