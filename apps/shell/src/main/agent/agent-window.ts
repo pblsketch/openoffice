@@ -478,6 +478,9 @@ function registerIpc(): void {
         sessionId: result.sessionId,
         skills: result.skills,
         ...(result.mcpKeepInside ? { mcpKeepInside: result.mcpKeepInside } : {}),
+        ...(result.instructionsTruncated
+          ? { instructionsTruncated: result.instructionsTruncated }
+          : {}),
       }
     },
   )

@@ -2,7 +2,7 @@
  * Agent sessions in the shell (decision 0032): which folders may be a project,
  * what a session starts with, who may drive it, and what the window is shown.
  */
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -16,6 +16,7 @@ import type { AiSettings, AiSubscriptionStatus } from '@genoffice/ai-provider'
 import { normalizeAiSettings } from '@genoffice/ai-provider'
 import {
   agentInstructions,
+  agentInstructionsAndCuts,
   agentProtectedPaths,
   createAgentManager,
   openableProjectFile,
@@ -134,6 +135,83 @@ describe('instructions', () => {
     expect(codex).toContain('Use formal Korean.')
     expect(codex).not.toContain('Agents file.')
     expect(codex).not.toContain('ieumoffice-editor')
+  })
+
+  it('keeps the limit on a long project note, says where the rest is, and reports the cut', async () => {
+    const project = temp()
+    const long = `${'a'.repeat(32_000)}TAIL-PAST-THE-LIMIT`
+    writeFileSync(join(project, 'CLAUDE.md'), long)
+    writeFileSync(join(project, 'AGENTS.md'), 'Agents file.')
+    const claude = await agentInstructionsAndCuts('claude-code', project, 'ko', true)
+    expect(claude.truncated).toEqual(['CLAUDE.md'])
+    expect(claude.text).toContain('a'.repeat(32_000))
+    expect(claude.text).not.toContain('TAIL-PAST-THE-LIMIT')
+    expect(claude.text).toContain(
+      `(Only the first 32000 characters of ${join(project, 'CLAUDE.md')} are given above. When the task needs the rest, read the file with the Read tool.)`,
+    )
+    expect(claude.text).toContain('Agents file.')
+    // Codex has no Read tool: it reads the file with its own tools
+    const codex = await agentInstructionsAndCuts('codex', project, 'ko', false)
+    expect(codex.truncated).toEqual(['CLAUDE.md'])
+    expect(codex.text).toContain(
+      `of ${join(project, 'CLAUDE.md')} are given above. When the task needs the rest, read the file.)`,
+    )
+    expect(codex.text).not.toContain('Read tool')
+    expect(await agentInstructions('codex', project, 'ko', false)).toBe(codex.text)
+  })
+
+  it('adds no "read the rest" line for a note that links to a file outside the project', async (ctx) => {
+    const project = temp()
+    const outside = join(temp(), 'CLAUDE.md')
+    writeFileSync(outside, `${'a'.repeat(32_000)}TAIL-PAST-THE-LIMIT`)
+    try {
+      symlinkSync(outside, join(project, 'CLAUDE.md'), 'file')
+    } catch {
+      // creating a file link needs a permission some Windows accounts lack
+      ctx.skip()
+    }
+    const result = await agentInstructionsAndCuts('claude-code', project, 'ko', true)
+    // the window still says the instructions were cut
+    expect(result.truncated).toEqual(['CLAUDE.md'])
+    expect(result.text).toContain('a'.repeat(32_000))
+    expect(result.text).not.toContain('TAIL-PAST-THE-LIMIT')
+    expect(result.text).not.toContain('Only the first')
+    expect(result.text).not.toContain(outside)
+  })
+
+  it('keeps the "read the rest" line for a note linking to a folder named "..x" inside the project', async (ctx) => {
+    const project = temp()
+    mkdirSync(join(project, '..x'))
+    writeFileSync(join(project, '..x', 'CLAUDE.md'), `${'a'.repeat(32_000)}TAIL-PAST-THE-LIMIT`)
+    try {
+      symlinkSync(join(project, '..x', 'CLAUDE.md'), join(project, 'CLAUDE.md'), 'file')
+    } catch {
+      // creating a file link needs a permission some Windows accounts lack
+      ctx.skip()
+    }
+    const result = await agentInstructionsAndCuts('claude-code', project, 'ko', true)
+    expect(result.truncated).toEqual(['CLAUDE.md'])
+    expect(result.text).toContain(`characters of ${join(project, 'CLAUDE.md')} are given above`)
+  })
+
+  it('never cuts a note between the two halves of a character', async () => {
+    const project = temp()
+    // the emoji's first half is character 32,000: the cut keeps neither half
+    writeFileSync(join(project, 'CLAUDE.md'), `${'a'.repeat(31_999)}\u{1F600}b`)
+    const result = await agentInstructionsAndCuts('claude-code', project, 'ko', true)
+    expect(result.truncated).toEqual(['CLAUDE.md'])
+    expect(result.text).toContain(`${'a'.repeat(31_999)}\n\n(Only the first`)
+    expect(result.text).not.toMatch(
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/,
+    )
+  })
+
+  it('reports no cut and adds no line for notes within the limit', async () => {
+    const project = temp()
+    writeFileSync(join(project, 'CLAUDE.md'), 'a'.repeat(32_000))
+    const result = await agentInstructionsAndCuts('claude-code', project, 'ko', true)
+    expect(result.truncated).toEqual([])
+    expect(result.text).not.toContain('Only the first')
   })
 
   it('points to the two skill tools only when the app tools are there', async () => {
@@ -283,6 +361,26 @@ describe('starting a session', () => {
     })
     expect(options.protectedPaths).toContain(join(home, '.codex'))
     expect(options.protectedPaths).toContain(join(home, 'AppData', 'IeumOffice'))
+  })
+
+  it('tells the window which project notes the instructions carry only the start of', async () => {
+    const { m, project, claude } = manager()
+    const plain = await m.start(1, {
+      provider: 'claude-code',
+      projectRoot: project,
+      mode: 'ask-commands',
+    })
+    expect(plain.ok && plain.instructionsTruncated).toBeUndefined()
+    writeFileSync(join(project, 'AGENTS.md'), 'x'.repeat(40_000))
+    const cut = await m.start(2, {
+      provider: 'claude-code',
+      projectRoot: project,
+      mode: 'ask-commands',
+    })
+    expect(cut.ok && cut.instructionsTruncated).toEqual(['AGENTS.md'])
+    expect(claude.mock.calls[1]![0].instructions).toContain(
+      `characters of ${join(project, 'AGENTS.md')} are given above`,
+    )
   })
 
   it('passes on the model and the effort chosen for that program', async () => {
