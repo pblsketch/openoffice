@@ -2618,6 +2618,10 @@ html.markdown-graph-open .ribbon-tabs {
   background: var(--md-diagram-bg);
   text-align: center;
   cursor: text;
+  /* a diagram wider than the column keeps its natural size and scrolls; the
+     scrollbar follows the paper, which stays white under the dark UI */
+  overflow-x: auto;
+  color-scheme: light;
 }
 
 .md-diagram:not(.md-diagram-collapsed) .md-diagram-preview {
@@ -2630,7 +2634,6 @@ html.markdown-graph-open .ribbon-tabs {
 }
 
 .md-diagram-preview svg {
-  max-width: 100%;
   height: auto;
 }
 
