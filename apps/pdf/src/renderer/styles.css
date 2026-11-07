@@ -3718,18 +3718,21 @@ button {
   pointer-events: none;
 }
 
+/* Links take no pointer input either: the text under them stays selectable by
+   drag and keeps its right-click menu. LinkLayer.tsx follows a plain click on a
+   link and marks the hovered one (is-hover, data-link-hover on the page). */
 .pdf-link {
   position: absolute;
   border-radius: 2px;
-  pointer-events: auto;
 }
 
-/* Text editing owns page clicks, including text covered by link annotations. */
-.pdf-editing-text .pdf-link {
-  pointer-events: none;
+.pdf-scroll .pdf-page[data-link-hover] .pdf-page-content,
+.pdf-scroll .pdf-page[data-link-hover] .textLayer span,
+.pdf-scroll .pdf-page[data-link-hover] .pdf-ocr-layer span {
+  cursor: pointer;
 }
 
-.pdf-link:hover {
+.pdf-link.is-hover {
   background: var(--pdf-link-hover-bg);
   box-shadow: 0 0 0 1px var(--pdf-link-hover-ring);
 }
