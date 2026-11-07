@@ -1,6 +1,6 @@
 # Quick start: the interface and the basics
 
-GenOffice is an office suite that runs on your own computer: one window, one row of tabs, holding eight editors — Docs (word processing), Sheets (spreadsheets), Slides (presentations), PDF, Markdown and plain text, HTML, HWP/HWPX (Hangul documents) and Mind Map (.xmind). Each editor opens and saves files in its own format: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx and .xmind. Editing needs no network; the AI features do.
+GenOffice is an office suite that runs on your own computer: one window, one row of tabs, holding eight editors — Docs (word processing), Sheets (spreadsheets), Slides (presentations), PDF, Markdown and plain text, HTML, HWP/HWPX (Hangul documents) and Mind Map (.xmind). Each editor opens and saves files in its own format: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx and .xmind. Editing needs no network; the AI features do. The mind map editor also imports FreeMind and Freeplane files (.mm) as new maps, which save as .xmind.
 
 ## Interface overview
 

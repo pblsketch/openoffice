@@ -77,7 +77,8 @@ The author's own account, in Korean, is at
 - **Mind maps**: opens and saves XMind files (`.xmind`) in place. Elements the
   editor does not show are kept when you save, and a map you did not change is
   saved byte for byte as it was. Several sheets, themes, export to a picture,
-  PDF or Markdown outline, and printing.
+  PDF or Markdown outline, and printing. FreeMind and Freeplane files (`.mm`)
+  are imported as new maps and saved as `.xmind`.
 - **Diagrams**: opens draw.io files (`.drawio`, `.dio`, `.drawio.svg`,
   `.drawio.png`) and saves them in the same format. The drawing screen runs
   on this PC only and sends nothing to the internet.

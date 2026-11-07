@@ -1,6 +1,6 @@
 # 快速入门：界面与基本操作
 
-GenOffice 是一个运行在本机的办公套件：一个窗口、一排标签页，装着文档（Docs）、表格（Sheets）、幻灯片（Slides）、PDF、Markdown 与纯文本、网页（HTML）、韩文文档（HWP/HWPX）和思维导图（.xmind）八个编辑器。每个编辑器打开并保存各自格式的文件：.docx、.xlsx、.pptx、.pdf、.md、.html、.hwp/.hwpx 和 .xmind。编辑文档不需要联网，AI 功能需要。
+GenOffice 是一个运行在本机的办公套件：一个窗口、一排标签页，装着文档（Docs）、表格（Sheets）、幻灯片（Slides）、PDF、Markdown 与纯文本、网页（HTML）、韩文文档（HWP/HWPX）和思维导图（.xmind）八个编辑器。每个编辑器打开并保存各自格式的文件：.docx、.xlsx、.pptx、.pdf、.md、.html、.hwp/.hwpx 和 .xmind。编辑文档不需要联网，AI 功能需要。思维导图编辑器还能把 FreeMind 和 Freeplane 文件（.mm）导入为新导图，保存为 .xmind。
 
 ## 界面总览
 
