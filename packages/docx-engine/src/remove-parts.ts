@@ -139,8 +139,8 @@ function extensionOf(path: string): string | null {
 
 /** The source part a relationships part belongs to ("_rels/.rels" is the package root). */
 function relationshipSourcePath(relsPath: string): string | null {
-  if (relsPath === '_rels/.rels') return ''
-  const match = /^(.*\/)?_rels\/([^/]+)\.rels$/.exec(relsPath)
+  if (/^_rels\/\.rels$/i.test(relsPath)) return ''
+  const match = /^(.*\/)?_rels\/([^/]+)\.rels$/i.exec(relsPath)
   return match ? `${match[1] ?? ''}${match[2]}` : null
 }
 
@@ -307,7 +307,7 @@ async function planInZip(zip: JSZip, options: RemovePartsOptions): Promise<ZipPl
 /** Rewrite every remaining relationships part so relations to removed parts are gone. */
 async function dropDanglingRelationships(zip: JSZip, removed: Set<string>): Promise<void> {
   for (const path of Object.keys(zip.files)) {
-    if (zip.files[path]!.dir || !path.endsWith('.rels')) continue
+    if (zip.files[path]!.dir || !/\.rels$/i.test(path)) continue
     const source = relationshipSourcePath(path)
     if (source === null) continue
     const file = zip.file(path)
