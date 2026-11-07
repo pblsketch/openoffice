@@ -157,7 +157,7 @@ const SYSTEM_PROMPT = [
   '- Add new paragraphs next to an existing one, in the body or inside a table cell, or at the end of the document (insert_paragraphs). Remove a paragraph (delete_paragraph).',
   '- Add a table of plain-text cells, with a header row when the first row names the columns (insert_table).',
   '- Add a picture in a new paragraph after or before an anchor paragraph, or at the end: a real picture found on the web (image_search, then insert_image with its address) or an illustration the app draws (generate_image). A picture is saved inside the document, so it travels with the file. Only insert pictures the user asked for.',
-  '- Work on the tables that are already there: list them (list_tables), read one cell by cell (read_table), write text into its cells, many at once (fill_cells), tick the choice boxes of a form (check_boxes), add or remove rows and columns (add_to_table, remove_from_table), and remove a whole table (delete_table).',
+  '- Work on the tables that are already there: list them (list_tables), read one cell by cell (read_table), write text into its cells, many at once (fill_cells), tick the choice boxes of a form (check_boxes), add or remove rows and columns (add_to_table, remove_from_table), and remove a whole table (delete_table). After writing into cells, check that their text fits (check_layout): text that runs past the bottom of a cell is cut off in print.',
   '- Change formatting: bold, italic, underline, strikethrough, font, font size, text colour, highlight and the character style of a piece of text (format_text); alignment, line spacing, first-line indent, margins, space above and below and the paragraph style of a paragraph, and the character formatting of a whole paragraph (format_paragraph); the background colour of table cells (format_cells).',
   '- Use one font instead of another everywhere in the document, body and table cells (replace_font). The format check hands the font names over; without it, ask which font the user means.',
   '- Work with the styles of the document: see what one looks like (read_style), add a paragraph or character style (create_style), and change a style: its name, the style that follows it and its look (edit_style).',
@@ -796,6 +796,12 @@ const TOOLS: AgentToolDef[] = [
     name: 'list_tables',
     description:
       'List the tables of the document in reading order: number, rows and columns, the line of text above it, and its first cells. A table inside a cell of another table is listed too, with the number of that table.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'check_layout',
+    description:
+      'List the table cells whose text does not fit where it is drawn: a row keeps the height the file gives it, so a line that runs past the bottom of its cell is cut off on the page and in print. Each with the table number, row and column, page, and how far past the edge in mm. Call it after writing into table cells; shorten the text or change the table when a cell is listed.',
     inputSchema: { type: 'object', properties: {} },
   },
   {
@@ -2446,6 +2452,26 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
         return {
           output: listed.count === 0 ? 'This document has no tables.' : lines.join('\n'),
           summary: label('aiToolTables', { count: listed.count }),
+        }
+      }
+      case 'check_layout': {
+        const checked = await bridge.checkLayout()
+        const lines = checked.cells.map(
+          (cell) =>
+            `table ${cell.table}, row ${cell.row}, col ${cell.col} (page ${cell.page}): the text runs ${cell.over} mm past the bottom of the cell and is cut off: ${quote(cell.text)}`,
+        )
+        if (checked.count > checked.cells.length) {
+          lines.push(`(only the first ${checked.cells.length} of ${checked.count} are listed)`)
+        }
+        if (checked.partial) {
+          lines.push('(the document is large: some cells were not measured)')
+        }
+        return {
+          output:
+            checked.count === 0
+              ? `Every table cell's text fits (${checked.measured} cell(s) measured).${checked.partial ? ' The document is large: some cells were not measured.' : ''}`
+              : lines.join('\n'),
+          summary: label('aiToolLayout', { count: checked.count }),
         }
       }
       case 'read_table': {

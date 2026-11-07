@@ -2246,6 +2246,7 @@ describe('the skill as the model sees it', () => {
       'split_cell',
       'format_cells',
       'list_tables',
+      'check_layout',
       'read_table',
       'fill_cells',
       'check_boxes',

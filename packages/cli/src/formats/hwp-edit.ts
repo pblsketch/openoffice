@@ -259,6 +259,7 @@ const HWP_GROUPS: { name: string; summary: string; ops: string[] }[] = [
       'find_text',
       'list_tables',
       'read_table',
+      'check_layout',
       'list_fields',
       'list_notes',
       'read_style',

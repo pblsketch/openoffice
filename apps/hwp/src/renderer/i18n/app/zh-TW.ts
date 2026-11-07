@@ -139,6 +139,7 @@ export const zhTW = {
   aiToolMergeCells: '表 {table} · 合併儲存格',
   aiToolSplitCell: '表 {table} · 分割儲存格',
   aiToolTables: '已檢視表格 · {count} 個',
+  aiToolLayout: '已檢查版面 · {count} 個儲存格放不下',
   aiToolReadTable: '已讀取表格 {table}',
   aiToolFillCells: '表格 {table} · 已填寫 {count} 個儲存格',
   aiToolCheckBoxes: '表格 {table} · 已勾選 {count} 個選框',

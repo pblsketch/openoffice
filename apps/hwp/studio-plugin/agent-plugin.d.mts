@@ -267,6 +267,31 @@ export type AgentFormatParagraphResult =
   | AgentPlaceRefusal
   | AgentNoSuchStyle
 
+/** A table cell whose text does not fit where it is drawn, as checkLayout lists it. */
+export interface AgentLayoutOverflow {
+  /** the table, as listTables numbers tables */
+  table: number
+  /** 1-based row and column of the cell */
+  row: number
+  col: number
+  /** 1-based page the cut-off text is on */
+  page: number
+  /** how far the text runs past the cell's bottom edge, in mm */
+  over: number
+  /** the cell's text, cut short */
+  text: string
+}
+
+export interface AgentLayoutCheck {
+  /** all cells that do not fit; `cells` holds the first ones only */
+  count: number
+  cells: AgentLayoutOverflow[]
+  /** cells measured */
+  measured: number
+  /** the document is large: some cells were not measured */
+  partial?: boolean
+}
+
 /** One table of the document, as listTables lists it. */
 export interface AgentTableSummary {
   /** 1-based position among all tables in reading order; what readTable and fillCells take */
@@ -1047,6 +1072,8 @@ export interface AgentPluginSurface {
     options?: AgentChangeOptions,
   ): AgentFormatParagraphResult
   listTables(): AgentTableList
+  /** the table cells whose text is cut off on the page; reads only */
+  checkLayout(): AgentLayoutCheck
   readTable(table: number, fromRow?: number | null): AgentReadTableResult
   fillCells(
     table: number,

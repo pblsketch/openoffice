@@ -144,6 +144,7 @@ export const hi = {
   aiToolMergeCells: 'तालिका {table} · सेल मिलाए',
   aiToolSplitCell: 'तालिका {table} · सेल बाँटा',
   aiToolTables: 'तालिकाएँ देखी गईं · {count}',
+  aiToolLayout: 'लेआउट जाँचा गया · {count} सेल में पाठ नहीं समाता',
   aiToolReadTable: 'तालिका {table} पढ़ी गई',
   aiToolFillCells: 'तालिका {table} · {count} सेल भरे गए',
   aiToolCheckBoxes: 'तालिका {table} · {count} बॉक्स चुने गए',

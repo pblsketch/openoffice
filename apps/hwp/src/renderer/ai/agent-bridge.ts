@@ -32,6 +32,7 @@ const METHODS = [
   'replaceFont',
   'formatParagraph',
   'listTables',
+  'checkLayout',
   'readTable',
   'fillCells',
   'checkBoxes',

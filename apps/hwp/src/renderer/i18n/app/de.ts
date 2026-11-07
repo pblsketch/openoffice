@@ -147,6 +147,7 @@ export const de = {
   aiToolMergeCells: 'Tabelle {table} · Zellen verbunden',
   aiToolSplitCell: 'Tabelle {table} · Zelle geteilt',
   aiToolTables: 'Tabellen geprüft · {count}',
+  aiToolLayout: 'Layout geprüft · {count} Zellen passen nicht',
   aiToolReadTable: 'Tabelle {table} gelesen',
   aiToolFillCells: 'Tabelle {table} · {count} Zelle(n) ausgefüllt',
   aiToolCheckBoxes: 'Tabelle {table} · {count} Kästchen angekreuzt',
