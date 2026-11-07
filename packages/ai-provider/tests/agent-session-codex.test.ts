@@ -560,6 +560,62 @@ describe('paths Codex reads as patterns', () => {
   })
 })
 
+describe('why a session did not start', () => {
+  it('names the step Codex refused, with its error code, and ends the process', async () => {
+    const { run, killTree } = await start(
+      baseHandlers({
+        'thread/start': (fake, _params, id) => {
+          fake.send({ id, error: { code: -32600, message: 'invalid profile at /Users/me' } })
+          return undefined
+        },
+      }),
+    )
+    await expect(run).rejects.toMatchObject({
+      problem: { type: 'refused', step: 'thread/start', code: -32600 },
+    })
+    expect(killTree).toHaveBeenCalled()
+  })
+
+  it('names Codex ending before the session was set up, with its exit code', async () => {
+    const { run } = await start(
+      baseHandlers({
+        initialize: (fake) => {
+          fake.stderr.write('error: unknown configuration key\n')
+          fake.exit(2)
+          return undefined
+        },
+      }),
+    )
+    await expect(run).rejects.toMatchObject({ problem: { type: 'exited', exitCode: 2 } })
+  })
+
+  it('names the step Codex did not answer in time', async () => {
+    const { run } = await start(
+      baseHandlers({ 'thread/start': () => undefined }),
+      {},
+      'contained',
+      { threadStartTimeoutMs: 5 },
+    )
+    await expect(run).rejects.toMatchObject({
+      problem: { type: 'no-answer', step: 'thread/start' },
+    })
+  })
+
+  it('says when no model is set and Codex lists none', async () => {
+    const { run } = await start(baseHandlers({ 'model/list': () => ({ data: [] }) }))
+    await expect(run).rejects.toMatchObject({ problem: { type: 'no-model' } })
+  })
+
+  it('keeps the run errors Codex itself reports', async () => {
+    const { run } = await start(
+      baseHandlers({ 'account/read': () => ({ requiresOpenaiAuth: true }) }),
+    )
+    const error = await run.catch((failure: unknown) => failure)
+    expect(error).toMatchObject({ kind: 'signed-out' })
+    expect(error).not.toHaveProperty('problem')
+  })
+})
+
 describe('the tools of the app server at the start', () => {
   it('starts when the app server lists only the session tools', async () => {
     const { run } = await start(
