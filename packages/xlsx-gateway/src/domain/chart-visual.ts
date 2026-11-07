@@ -376,6 +376,16 @@ export type ComboPlotFamily = 'barChart' | 'lineChart'
 /// Document order the save pipeline writes combo plot groups in.
 const COMBO_PLOT_ORDER: readonly ComboPlotFamily[] = ['barChart', 'lineChart']
 
+/// Cap a chart series/category label at Excel's 255 UTF-16 units without
+/// splitting a trailing surrogate pair (an emoji would otherwise become U+FFFD).
+function cutLabelUnits(text: string, end: number): number {
+  if (end <= 0 || end >= text.length) return end
+  const high = text.charCodeAt(end - 1)
+  const low = text.charCodeAt(end)
+  if (high < 0xd800 || high > 0xdbff || low < 0xdc00 || low > 0xdfff) return end
+  return end - 1
+}
+
 /// Switch Row/Column: cache-based transpose — old series names become the
 /// categories, each old category becomes a series (cell references cannot
 /// survive a transpose). Null when there are no categories to pivot on.
@@ -386,11 +396,14 @@ export function transposeChartSeries(
   const seriesNames = series.map((entry, index) => entry.name || seriesLabel(index + 1))
   const categories = series[0]?.categories ?? []
   if (categories.length === 0) return null
-  return categories.slice(0, 24).map((category, index) => ({
-    name: (category || seriesLabel(index + 1)).slice(0, 255),
-    values: series.map((entry) => entry.values[index] ?? 0),
-    categories: seriesNames,
-  }))
+  return categories.slice(0, 24).map((category, index) => {
+    const label = category || seriesLabel(index + 1)
+    return {
+      name: label.slice(0, cutLabelUnits(label, 255)),
+      values: series.map((entry) => entry.values[index] ?? 0),
+      categories: seriesNames,
+    }
+  })
 }
 
 /// Combo tagging for a full series replacement that carries no plot tags
