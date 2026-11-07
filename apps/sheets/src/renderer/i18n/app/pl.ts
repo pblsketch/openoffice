@@ -615,6 +615,10 @@ export const pl = {
     'Arkuszowi stylów tego skoroszytu brakuje podstawowej struktury; zmian stylów nie można zapisać.',
   appSaveErrPackageGuard:
     'Zapisanie zmieniłoby strukturę pakietu skoroszytu — przerwano, aby chronić plik.',
+  appSaveErrSheetNotFound:
+    'Nie znaleziono w skoroszycie arkusza, do którego odnosi się ten zapis — zapisywanie przerwano, a plik pozostał bez zmian.',
+  appSaveErrSheetNameReused:
+    'Nowy arkusz używa dawnej nazwy arkusza, którego nazwę zmieniono, więc nie można zapisać. Nadaj na razie nowemu arkuszowi inną nazwę, zapisz, a potem zmień ją. Plik pozostał bez zmian.',
   appSaveErrChartUnsupported:
     'Ten typ wykresu nie obsługuje tej edycji; zapisywanie przerwano — cofnij zmianę wykresu.',
   appSaveErrMoveOverlap:

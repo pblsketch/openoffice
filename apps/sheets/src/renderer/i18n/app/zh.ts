@@ -524,6 +524,9 @@ export const zh = {
     '文件无法替换——看起来被其他程序占用（如在 Excel 中打开，或正被同步/杀毒扫描）。请关闭占用后重新保存。',
   appSaveErrStylesheetLimited: '这个工作簿的样式表缺少基础结构，样式改动无法保存。',
   appSaveErrPackageGuard: '保存会改变工作簿的包结构——已中止以保护文件。',
+  appSaveErrSheetNotFound: '保存内容所指的工作表在工作簿中找不到，已中止保存，原文件保持不变。',
+  appSaveErrSheetNameReused:
+    '新工作表使用了被重命名工作表的原名称，因此无法保存。请先给新工作表换个名称并保存，再改回想要的名称。原文件保持不变。',
   appSaveErrChartUnsupported: '这个图表类型不支持该编辑，保存已中止——请撤销该图表改动。',
   appSaveErrMoveOverlap:
     '有公式、格式范围、图形或表格横跨被移动的行——这次保存已中止，请撤销该移动。',
