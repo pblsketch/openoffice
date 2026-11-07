@@ -3532,7 +3532,11 @@ function coveredCells(doc, table) {
   return covered
 }
 
-const clip = (text, max) => (text.length > max ? `${text.slice(0, max)}…` : text)
+/**
+ * A text cut to `max` characters with an ellipsis. Characters are the engine's (code points), so
+ * an emoji or a Han character outside the basic plane is never cut in half.
+ */
+const clip = (text, max) => (engineLength(text) > max ? `${engineSlice(text, 0, max)}…` : text)
 
 /**
  * The fields a form asks to be filled in: click-here fields and named table cells, in

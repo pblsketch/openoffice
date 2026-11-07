@@ -390,6 +390,19 @@ describe('the selection a memo may be put on', () => {
     })
   })
 
+  it('cuts a long preview at 80 characters without splitting an emoji', () => {
+    // the 80th character is 😀: a cut by string units would keep only its first half
+    const text = '가'.repeat(79) + '😀' + '나'.repeat(10)
+    const doc = blank([text])
+    const { plugin, cursor } = openEditor(doc)
+    cursor.selection = { start: bodyPlace(0, 0), end: bodyPlace(0, 90) }
+    const result = plugin.memoSelection()
+    if (!result.ok) throw new Error('expected a selection')
+    expect(result.preview).toBe(`${'가'.repeat(79)}😀…`)
+    // no half of a pair is left: encodeURIComponent throws on one
+    expect(() => encodeURIComponent(result.preview)).not.toThrow()
+  })
+
   it('accepts a caret with no text and shows the words around it', () => {
     const doc = blank(['제출 기한은 3월 2일입니다'])
     const { plugin, cursor } = openEditor(doc)
