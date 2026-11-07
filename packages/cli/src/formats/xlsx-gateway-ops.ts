@@ -464,7 +464,9 @@ export async function buildGatewayPayloads(input: GatewayBuildInput): Promise<Ga
       }
       case 'add_defined_name': {
         names ??= [...file.definedNames]
-        const existing = names.findIndex((n) => n.name === op.name && n.sheetIndex === undefined)
+        const existing = names.findIndex(
+          (n) => n.name.toLowerCase() === op.name.toLowerCase() && n.sheetIndex === undefined,
+        )
         const entry = { name: op.name, formula: op.ref.replace(/^=/, '') }
         if (existing >= 0) names[existing] = entry
         else names.push(entry)
@@ -473,7 +475,7 @@ export async function buildGatewayPayloads(input: GatewayBuildInput): Promise<Ga
       case 'delete_defined_name': {
         names ??= [...file.definedNames]
         const before = names.length
-        names = names.filter((n) => n.name !== op.name)
+        names = names.filter((n) => n.name.toLowerCase() !== op.name.toLowerCase())
         if (names.length === before) reject(i, op.op, `no defined name "${op.name}"`)
         break
       }
