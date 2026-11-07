@@ -1,5 +1,6 @@
 import JSZip from 'jszip'
 import { assertZipInflatesWithinLimits, assertZipWithinLimits } from '@genoffice/docx-engine'
+import { resolveTarget } from './opc'
 
 export interface DocxTextOptions {
   /** stop once this many characters have been collected (the caller slices anyway) */
@@ -8,8 +9,8 @@ export interface DocxTextOptions {
 
 /**
  * Flatten a docx into readable text (structure markers preserved): headings as
- * `# `, list items as `- `, table rows as `a | b`, footnotes and endnotes under
- * their own headers.
+ * `# `, list items as `- `, table rows as `a | b`, footnotes, endnotes, headers,
+ * footers and comments under their own headings.
  *
  * Reads only the XML parts it needs. The full document model (parseDocx) used
  * to stand here, and it inflates every picture and builds the layout tree: a
@@ -33,14 +34,61 @@ export async function docxToText(bytes: Uint8Array, opts: DocxTextOptions = {}):
     if (out.full) break
     const xml = await zip.file(`${dir}${part}`)?.async('string')
     if (!xml) continue
-    const notes = new TextSink(Infinity)
-    scanBody(xml, styleFacts, notes, { notes: true })
-    if (notes.lines.length > 0) {
-      out.push(`## ${title}`)
-      for (const line of notes.lines) out.push(line)
-    }
+    appendStory(out, title, xml, styleFacts, true)
+  }
+  for (const extra of await relatedStories(zip, docPath!)) {
+    if (out.full) break
+    appendStory(out, extra.title, extra.xml, styleFacts)
   }
   return out.lines.join('\n')
+}
+
+function appendStory(
+  out: TextSink,
+  title: string,
+  xml: string,
+  styleFacts: Map<string, StyleFacts>,
+  notes = false,
+): void {
+  const sink = new TextSink(Infinity)
+  scanBody(xml, styleFacts, sink, { notes })
+  if (sink.lines.length === 0) return
+  out.push(`## ${title}`)
+  for (const line of sink.lines) out.push(line)
+}
+
+/** Headers, footers and comments named by the main document's relationships. */
+async function relatedStories(
+  zip: JSZip,
+  docPath: string,
+): Promise<Array<{ title: string; xml: string }>> {
+  const slash = docPath.lastIndexOf('/')
+  const relsPath = `${docPath.slice(0, slash + 1)}_rels/${docPath.slice(slash + 1)}.rels`
+  const rels = await zip.file(relsPath)?.async('string')
+  if (!rels) return []
+  const out: Array<{ title: string; xml: string }> = []
+  const seen = new Set<string>()
+  for (const m of rels.matchAll(/<Relationship\b[^>]*>/g)) {
+    const tag = m[0]
+    if (/TargetMode="External"/.test(tag)) continue
+    const type = /Type="([^"]+)"/.exec(tag)?.[1] ?? ''
+    const target = /Target="([^"]+)"/.exec(tag)?.[1]
+    if (!target) continue
+    const title = type.endsWith('/header')
+      ? 'Header'
+      : type.endsWith('/footer')
+        ? 'Footer'
+        : type.endsWith('/comments')
+          ? 'Comments'
+          : undefined
+    if (!title) continue
+    const path = resolveTarget(docPath, target)
+    if (!path || seen.has(path)) continue
+    seen.add(path)
+    const xml = await zip.file(path)?.async('string')
+    if (xml) out.push({ title, xml })
+  }
+  return out
 }
 
 async function mainDocumentPath(zip: JSZip): Promise<string | null> {
