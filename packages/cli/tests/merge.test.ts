@@ -76,6 +76,41 @@ describe('genoffice merge', () => {
     expect(xml).not.toContain('{{고객명')
   })
 
+  it('fills a Hangul placeholder when the template is NFD and --data is NFC', async () => {
+    const dir = tempDir()
+    const nfd = '이름'.normalize('NFD')
+    const nfc = '이름'.normalize('NFC')
+    expect(nfd).not.toBe(nfc)
+    const md = join(dir, 'form.md')
+    writeFileSync(md, `# Hi\n\n{{${nfd}}}\n`)
+    const template = join(dir, 'form.docx')
+    expect((await run(['create', '--type', 'docx', '--from', md, '--out', template])).code).toBe(0)
+    const out = join(dir, 'filled.docx')
+    const data = dataFile(dir, { [nfc]: 'Ada' })
+    const r = await run(['merge', template, '--data', data, '--out', out, '--json'])
+    expect(r.code).toBe(0)
+    expect(r.json().detail).toMatchObject({ filled: 1, used_keys: [nfc], unused_keys: [] })
+    expect(await documentXml(out)).toContain('Ada')
+    expect(await documentXml(out)).not.toContain('{{')
+  })
+
+  it('fills a Hangul placeholder when the template is NFC and --data is NFD', async () => {
+    const dir = tempDir()
+    const nfd = '이름'.normalize('NFD')
+    const nfc = '이름'.normalize('NFC')
+    const md = join(dir, 'form.md')
+    writeFileSync(md, `# Hi\n\n{{${nfc}}}\n`)
+    const template = join(dir, 'form.docx')
+    expect((await run(['create', '--type', 'docx', '--from', md, '--out', template])).code).toBe(0)
+    const out = join(dir, 'filled.docx')
+    // JSON.stringify preserves the NFD key spelling in the file
+    const data = dataFile(dir, { [nfd]: 'Ada' })
+    const r = await run(['merge', template, '--data', data, '--out', out, '--json'])
+    expect(r.code).toBe(0)
+    expect(r.json().detail).toMatchObject({ filled: 1, used_keys: [nfc], unused_keys: [] })
+    expect(await documentXml(out)).toContain('Ada')
+  })
+
   it('fills a docx template, keeps table cells and reports split and unknown placeholders', async () => {
     const dir = tempDir()
     const template = await templateDocx(dir)
