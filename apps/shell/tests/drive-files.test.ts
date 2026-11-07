@@ -310,4 +310,19 @@ describe('DriveFiles.inCache', () => {
     expect(files.inCache(join(dir, 'drive-cache', '..', 'other.md'))).toBe(false)
     expect(files.inCache(join(dir, 'drive-cache'))).toBe(false)
   })
+
+  it('counts names that only start or end with dots as inside', () => {
+    const files = service()
+    expect(files.inCache(join(dir, 'drive-cache', '..x', 'a.md'))).toBe(true)
+    expect(files.inCache(join(dir, 'drive-cache', '...'))).toBe(true)
+    expect(files.inCache(join(dir, 'drive-cache', 'f1..', 'a.md'))).toBe(true)
+    expect(files.inCache(join(dir, '..x', 'a.md'))).toBe(false)
+  })
+
+  it.runIf(process.platform === 'win32')('refuses a path on another drive or share', () => {
+    const files = service()
+    const other = dir.toUpperCase().startsWith('Z:') ? 'Y:' : 'Z:'
+    expect(files.inCache(`${other}\\drive-cache\\f1\\a.md`)).toBe(false)
+    expect(files.inCache('\\\\server\\share\\f1\\a.md')).toBe(false)
+  })
 })
