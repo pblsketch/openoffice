@@ -34,6 +34,7 @@ import {
   RENDERER_SCHEME_PRIVILEGE,
   confirmOverwriteIfConflicted,
   contextMenuLabels,
+  documentsDirOrFallback,
   installContextMenu,
   installNavigationGuard,
   installRendererProtocol,
@@ -440,7 +441,7 @@ async function resolveSaveTarget(
   if (mode === 'save' && current) return current
   const defaultPath = current
     ? join(dirname(current), basename(current))
-    : join(app.getPath('documents'), `book${BOOK_EXTENSION}`)
+    : join(documentsDirOrFallback(app), `book${BOOK_EXTENSION}`)
   const picked = await showSaveDialogWithMemory(dialog, parentOf(contents), {
     title: tm('dlgSaveTitle'),
     defaultPath,

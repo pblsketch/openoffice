@@ -172,6 +172,7 @@
 
 - **Windows에서 처음 켜면 응답없음이 되거나 회색 화면만 나온다(0.12.6까지).** Windows 보안의 '제어된 폴더 액세스'가 켜져 있으면 `문서\IeumOffice` 폴더 만들기가 막힌다. 기본 저장 폴더를 정하는 함수가 부를 때마다 폴더를 만들고 실패하면 예외를 던졌고, 홈 화면·검색 색인·첫 저장이 그 함수를 쉬지 않고 불렀다. → 있는 폴더는 만들지 않고, 실패한 폴더는 30초 동안 건너뛰고, 홈 폴더 아래로 내려간 뒤 한 번 알린다(결정 0078). 폴더가 이미 있고 쓰기만 막힌 경우는 쓰기 권한 검사로 알 수 없다.
 - **0.12.8에서도 '제어된 폴더 액세스'가 켜진 PC에서 처음 켜면 응답없음이 된다.** 막힌 폴더 만들기를 Windows가 `ENOENT`로 돌려주고, `mkdirSync(dir, { recursive: true })`가 그 오류에 끝없이 다시 시도한다. 인스펙터도 끼어들지 못한다. → 막힐 수 있는 폴더는 `recursive` 없이 한 단계씩 만든다(`default-save-dir.ts`의 `createDirLevels`, 결정 0078).
+- **저장하려니 "Failed to get 'documents' path"가 나고 저장 대화 상자가 뜨지 않는다(0.12.11까지).** Windows가 문서 폴더 위치를 알려 주지 못하면(레지스트리의 문서 폴더 항목이 깨졌거나, OneDrive로 옮겼다 되돌렸거나, 빠진 드라이브로 옮겨 둔 경우) Electron의 `app.getPath('documents')`가 예외를 던진다. 대체 폴더 목록을 만드는 순간 그 호출이 먼저 돌아, 저장 위치를 정해 둔 사용자도 막혔다. → `app.getPath('documents')`를 바로 부르지 않는다. 기본 저장 폴더는 `configuredDefaultSaveDir`, 대화 상자를 문서 폴더에서 열 때는 `documentsDirOrFallback`(홈 → userData)을 쓴다.
 
 ## Linux 패키지
 
