@@ -3,7 +3,11 @@
  * stream's own charcodes), but the PostScript name survives — map it to a local
  * stack that reads like the document: the real family first, then a
  * same-classification CJK/Latin face. Display-only; the save-side engine
- * matches fonts by itself. */
+ * matches fonts by itself; Korean and Japanese names take the save side's
+ * look-alike table (shared/font-classes) so the preview shows the face the
+ * save embeds when the document face is missing. */
+
+import { classifyFontName, LOOKALIKE_FAMILIES, redecodeByteString } from '../shared/font-classes'
 
 export interface DocFontStyle {
   /** CSS font-family stack */
@@ -28,8 +32,9 @@ const WEIGHTS: [RegExp, number][] = [
 ]
 
 export function mapDocFont(psName: string): DocFontStyle {
-  // Subset tag ('ABCDEF+') carries no meaning
-  const name = psName.replace(/^[A-Z]{6}\+/, '')
+  // Subset tag ('ABCDEF+') carries no meaning; pdf.js keeps a CP949 name as one
+  // char per byte
+  const name = redecodeByteString(psName).replace(/^[A-Z]{6}\+/, '')
   const spaced = deCamel(name.replace(/[-_,]/g, ' ')).replace(/\s+/g, ' ').trim()
 
   let weight: number | undefined
@@ -60,8 +65,15 @@ export function mapDocFont(psName: string): DocFontStyle {
     /cjk|han(s|t)?(?![a-z])|(?:^|[^a-z])(?:sc|tc|gb)(?![a-z])|song|sung|ming|hei(?![a-z])|kai|fang ?song|yahei|pingfang|deng ?xian|source ?han|noto (serif|sans) cjk|sim ?sun|sim ?hei|st ?(song|hei|kai|fangsong)/i.test(
       spaced,
     )
+  const named = classifyFontName(name)
   let tail: string
-  if (cjk) {
+  if (named.script === 'ko' || named.script === 'ja') {
+    const style = named.style ?? 'sans'
+    tail = [
+      ...LOOKALIKE_FAMILIES[named.script][style].map((f) => `"${f}"`),
+      style === 'serif' || style === 'brush' ? 'serif' : 'sans-serif',
+    ].join(', ')
+  } else if (cjk) {
     if (/kai/i.test(spaced)) tail = '"Kaiti SC", "STKaiti", "KaiTi", serif'
     else if (/fang ?song/i.test(spaced)) tail = '"STFangsong", "FangSong", serif'
     else if (/song|sung|ming|serif|sim ?sun/i.test(spaced))

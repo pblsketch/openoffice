@@ -85,6 +85,8 @@
 - **"받아들이고 저장"이 방금 받아들인 형광펜을 빠뜨린다.** 받아들이기는 markups를 state에 넣지만, 같은 클릭에서 `save()`를 부르면 그 `save`는 이전 렌더의 markups를 들고 있다. → 받아들이기 뒤 `acceptSaveRequest`를 올리고, 새 렌더가 끝난 뒤의 effect에서 `saveRef.current`로 저장한다. `accepted`는 그 저장이 성공한 뒤에만 쓴다.
 - **암호가 걸린 PDF가 "파일을 열지 못했습니다"로 끝난다(0.12.10).** `getDocument({ data })`는 그 버퍼를 PDF.js 워커로 **옮긴다**(transfer). 넘긴 뒤 같은 `Uint8Array`와 그 `ArrayBuffer`는 길이 0이 되고, 이것을 IPC로 보내면 `An object could not be cloned`가 난다. 0.12.10은 넘긴 바이트로 `decryptPdf`를 불러, 열기 암호가 없는 문서까지 모든 암호화 PDF가 열리지 않았다. → 넘기기 전에 필요한 값(크기, XFA 표식)을 먼저 꺼내 두고, 바이트가 다시 필요하면 파일을 한 번 더 읽는다. 단위 시험의 PDF.js는 가짜 워커라 옮기지 않으므로 이 결함은 e2e(`pdf-open-protected-damaged.spec.ts`)에서만 보인다.
 - **한 쪽이 망가진 PDF에서 그 뒤의 여러 쪽까지 열리지 않는다.** 디스크에서 쪽 객체 하나가 지워지면(0으로 덮인 구역 등) PDF.js는 쪽 나무를 따라가다 그 자식에서 예외를 내, 같은 가지의 뒤쪽 쪽들까지 잃는다. Acrobat·MuPDF는 그 쪽만 비운다. → 쪽을 읽다 실패하면 `page-tree-patch.ts`가 메모리의 사본 뒤에 빈 쪽을 정의하는 증분 갱신을 붙여 다시 연다. 디스크 파일은 그대로이고, 저장 쪽이 보는 쪽 번호가 화면과 어긋나므로 그 문서는 읽기 전용이다. 인쇄·AI 읽기처럼 파일을 다시 읽는 기능은 여전히 그 쪽들에서 실패한다.
+- **한국 프로그램이 만든 PDF에서 글꼴 이름이 깨진다.** PDFium의 `FPDFFont_GetBaseFontName`은 PDF 이름의 바이트를 그대로 돌려주고, 한국 프로그램은 이름을 CP949로 적는다(`/#B9#D9#C5#C1`). UTF-8로 읽으면 `�`만 남아 이름이 같은 글꼴도, 비슷한 글꼴도 찾지 못한다. → `src/shared/font-classes.ts`의 `decodeFontName`으로 UTF-8 → CP949 → Latin-1 순으로 푼다. PDF.js는 같은 이름을 바이트당 한 글자로 주므로 화면 쪽은 `redecodeByteString`을 거친다.
+- **글꼴이 들어 있지 않은 PDF에서 PDFium의 글꼴 정보 일부는 문서의 것이 아니다.** `FPDFFont_GetFamilyName`은 PDFium이 대신 그린 글꼴 이름(`Chrome Serif MM`, `Chrome Sans MM`)을 주고, `FPDFFont_GetWeight`는 글꼴 설명의 `FontWeight`를 반영하지 않는다(시험 2026-11-07, 700을 적어도 400). 글자 폭이 모두 같으면 Flags에 고정폭 비트가 더해진다. → 비슷한 글꼴은 이름, 넣어 둔 글꼴의 OS/2, Flags의 바탕·붓글씨 비트로 고르고, 고정폭 비트는 라틴 글자에만 믿는다.
 
 ## 마크다운 인쇄
 

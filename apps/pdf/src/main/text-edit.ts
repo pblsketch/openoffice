@@ -2,8 +2,10 @@ import { readFileSync } from 'node:fs'
 import { PDFDict, PDFDocument, PDFName, PDFRawStream, decodePDFRawStream } from 'pdf-lib'
 import { fontCoversText } from './font-cmap'
 import { findFontCovering, findSystemFont, isTruetype } from './font-locate'
+import { similarFontFor } from './font-similar'
 import { identityCffCharset, subsetTtf } from './font-subset'
 import { pdfiumWasmPath } from './wasm-path'
+import { decodeFontName } from '../shared/font-classes'
 import type {
   TextEditFailure,
   TextEditInput,
@@ -98,6 +100,7 @@ export interface Pdfium {
   _FPDFFont_GetGlyphWidth(font: number, glyph: number, fontSize: number, width: number): number
   _FPDFFont_GetBaseFontName(font: number, buffer: number, buflen: number): number
   _FPDFFont_GetFamilyName(font: number, buffer: number, buflen: number): number
+  _FPDFFont_GetFlags(font: number): number
   _FPDFPageObj_Transform(
     obj: number,
     a: number,
@@ -1022,14 +1025,15 @@ function embeddedFontData(m: Pdfium, font: number): Buffer | null {
   }
 }
 
-/** UTF-8 string via a two-pass FPDFFont_Get*Name call (returned length includes the NUL) */
+/** Name string via a two-pass FPDFFont_Get*Name call (returned length includes the NUL).
+    PDFium hands back the PDF name's raw bytes, which Korean producers write in CP949. */
 function fontString(m: Pdfium, read: (buf: number, len: number) => number): string {
   const len = read(0, 0)
   if (len <= 1) return ''
   const buf = m._malloc(len)
   try {
     read(buf, len)
-    return Buffer.from(m.HEAPU8.subarray(buf, buf + len - 1)).toString()
+    return decodeFontName(m.HEAPU8.slice(buf, buf + len - 1))
   } finally {
     m._free(buf)
   }
@@ -1131,6 +1135,27 @@ async function resolveRebuildFont(
         }
       }
     }
+    // The document face is neither embedded with these glyphs nor installed: an
+    // installed look-alike of the same script and style (a Korean serif run stays
+    // serif) before the generic fallback, which only looks at coverage. The family
+    // name is not evidence here — for a non-embedded face PDFium reports its own
+    // substitute ("Chrome Serif MM").
+    const similar = similarFontFor(
+      { psName: ps, flags: m._FPDFFont_GetFlags(font), embedded },
+      drawn,
+      { italic: !!edit.newItalic },
+    )
+    if (similar) {
+      try {
+        return {
+          bytes: identityCffCharset(await subsetTtf(similar.bytes, drawn)),
+          // Stroke when bold is wanted (toggle, or a bold source) but the pick is not
+          syntheticBold: (wantBold || similar.sourceBold) && !similar.bold,
+        }
+      } catch {
+        /* charset not rewritable: fall back */
+      }
+    }
   }
   const fallback = fallbackFontFor(drawn)
   // No face covers the text (emoji, rare CJK extensions — or a machine with none of
@@ -1152,6 +1177,37 @@ async function resolveRebuildFont(
     // this reason) instead of embedding bytes that look saved but display nothing.
     if (isTruetype(sub)) return done(sub)
     throw new Error('the fallback font for this text could not be embedded')
+  }
+}
+
+/**
+ * The run's embedded subset (charset made identity) and the codepoints of `text`
+ * it draws — only when it draws some of the visible chars but not all: then those
+ * keep the document's own glyphs and only the rest take the rebuild font, so one
+ * new word does not restyle every untouched char redrawn with it. Null when the
+ * subset draws everything (the rebuild font IS the subset) or nothing visible.
+ */
+function partialEmbeddedCover(
+  m: Pdfium,
+  font: number,
+  text: string,
+): { bytes: Buffer; covered: Set<number> } | null {
+  const embedded = font ? embeddedFontData(m, font) : null
+  if (!embedded) return null
+  const covered = new Set<number>()
+  let missing = false
+  let visible = false
+  for (const ch of new Set(text.replace(/[\r\n]/g, ''))) {
+    if (fontCoversText(embedded, ch)) {
+      covered.add(ch.codePointAt(0)!)
+      visible ||= ch.trim() !== ''
+    } else missing = true
+  }
+  if (!missing || !visible) return null
+  try {
+    return { bytes: identityCffCharset(embedded), covered }
+  } catch {
+    return null
   }
 }
 
@@ -1732,16 +1788,7 @@ async function rebuildRun(
     let font = 0
     let fontSynth = false
     let anyCff = false
-    const loadFont = async (
-      styleEdit: TextEditInput,
-      text: string,
-    ): Promise<{ font: number; synth: boolean }> => {
-      const { bytes: fontBytes, syntheticBold } = await resolveRebuildFont(
-        m,
-        anchor.font,
-        styleEdit,
-        text.trim() ? text : 'x',
-      )
+    const loadBytes = (fontBytes: Buffer): number => {
       const fontPtr = m._malloc(fontBytes.length)
       m.HEAPU8.set(fontBytes, fontPtr)
       const f = m._FPDFText_LoadFont(
@@ -1754,10 +1801,28 @@ async function rebuildRun(
       m._free(fontPtr)
       if (!f) throw new Error('FPDFText_LoadFont failed')
       anyCff = anyCff || !isTruetype(fontBytes)
-      return { font: f, synth: syntheticBold }
+      return f
     }
+    const loadFont = async (
+      styleEdit: TextEditInput,
+      text: string,
+    ): Promise<{ font: number; synth: boolean }> => {
+      const { bytes: fontBytes, syntheticBold } = await resolveRebuildFont(
+        m,
+        anchor.font,
+        styleEdit,
+        text.trim() ? text : 'x',
+      )
+      return { font: loadBytes(fontBytes), synth: syntheticBold }
+    }
+    // Keep-original edits whose subset draws only part of the redrawn text: the
+    // subset's own glyphs for what it covers, the rebuild font for the rest. Whole-
+    // edit restyles redraw everything in the requested face instead.
+    let own: { font: number; covered: Set<number> } | null = null
     const loadRebuild = async (text: string) => {
       ;({ font, synth: fontSynth } = await loadFont(edit, text))
+      const partial = styleOverride ? null : partialEmbeddedCover(m, anchor.font, text)
+      own = partial ? { font: loadBytes(partial.bytes), covered: partial.covered } : null
     }
     const inherited = readStroke(m, anchor.obj)
     await loadRebuild(keeps ? redrawOnly() : newText)
@@ -1806,10 +1871,14 @@ async function rebuildRun(
     const synthFor = (s: RunStyle | null): boolean =>
       styleFonts.get(faceKeyOf(s))?.synth ?? fontSynth
 
+    /** A base-face char the document's subset draws: it keeps the subset's glyph */
+    const ownGlyph = (cp: number, s: RunStyle | null): boolean =>
+      own !== null && own.covered.has(cp) && faceKeyOf(s) === baseFaceKey
+
     // Advance of one codepoint in text-space pt, measured with the face and size that
     // will draw it (same unicode→charcode mapping FPDFText_SetText uses)
     const advancePt = (cp: number, s: RunStyle | null): number | null =>
-      m._FPDFFont_GetGlyphWidth(fontFor(s), cp, 1, widthPtr)
+      m._FPDFFont_GetGlyphWidth(ownGlyph(cp, s) ? own!.font : fontFor(s), cp, 1, widthPtr)
         ? m.HEAPF32[widthPtr >> 2]! * sizeOf(s)
         : null
 
@@ -1823,8 +1892,18 @@ async function rebuildRun(
     const segAnchors: number[] = []
     let lastKeptObj = 0
 
-    const makeSeg = (text: string, x: number, y: number, style: RunStyle | null) => {
-      const newObj = m._FPDFPageObj_CreateTextObj(doc, fontFor(style), sizeOf(style))
+    const makeObj = (
+      text: string,
+      x: number,
+      y: number,
+      style: RunStyle | null,
+      ownFace: boolean,
+    ) => {
+      const newObj = m._FPDFPageObj_CreateTextObj(
+        doc,
+        ownFace ? own!.font : fontFor(style),
+        sizeOf(style),
+      )
       const textPtr = utf16Ptr(m, text)
       const ok = m._FPDFText_SetText(newObj, textPtr)
       m._free(textPtr)
@@ -1842,12 +1921,40 @@ async function rebuildRun(
         : color
       m._FPDFPageObj_SetFillColor(newObj, c[0], c[1], c[2], c[3])
       const emPt = sizeOf(style) * Math.hypot(matrix[0]!, matrix[1]!)
-      if (synthFor(style)) strokeObject(m, newObj, c, syntheticBoldWidth(emPt))
+      // the subset is the run's own face: never stroked for a substitute's weight
+      if (!ownFace && synthFor(style)) strokeObject(m, newObj, c, syntheticBoldWidth(emPt))
       else if (inherited?.sameAsFill)
         strokeObject(m, newObj, c, syntheticBoldWidth(emPt), inherited.mode)
       else if (inherited) strokeObject(m, newObj, inherited.color, inherited.width, inherited.mode)
       newObjs.push(newObj)
       segAnchors.push(lastKeptObj)
+    }
+
+    /** One drawn segment; split into own-glyph and rebuild-font pieces when mixing.
+        Offsets are text-space advances, mapped through the matrix's x axis. When a
+        piece cannot be measured the whole segment takes the rebuild font, which
+        covers all of it. */
+    const makeSeg = (text: string, x: number, y: number, style: RunStyle | null) => {
+      const pieces: { text: string; ownFace: boolean; offPt: number }[] = []
+      let off = 0
+      for (const ch of own ? text : '') {
+        const cp = ch.codePointAt(0)!
+        const ownFace = ownGlyph(cp, style)
+        const last = pieces[pieces.length - 1]
+        if (last && last.ownFace === ownFace) last.text += ch
+        else pieces.push({ text: ch, ownFace, offPt: off })
+        const a = advancePt(cp, style)
+        if (a === null) {
+          pieces.length = 0
+          break
+        }
+        off += a
+      }
+      if (pieces.length === 0) return makeObj(text, x, y, style, false)
+      for (const p of pieces) {
+        if (!p.text.trim()) continue
+        makeObj(p.text, x + matrix[0]! * p.offPt, y + matrix[1]! * p.offPt, style, p.ownFace)
+      }
     }
 
     // Full redraw: one text object per line (several when selection styles split
