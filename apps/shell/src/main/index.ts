@@ -384,6 +384,7 @@ import {
   diagramReadText,
 } from '../../../diagram/src/main/mcp-queries'
 import { exportDiagramHeadless } from '../../../diagram/src/main/headless-main'
+import { exportHwpPdfHeadless } from '../../../hwp/src/main/headless-export'
 import type { DiagramMenuCommand } from '../../../diagram/src/shared/ipc'
 import type {
   AutoSaveDefault,
@@ -9512,6 +9513,7 @@ const headlessExporters: HeadlessExporters = {
   markdown: (input, outPath) => exportMarkdownPdfHeadless(input, outPath),
   html: (input, outPath, format) => exportHtmlHeadless(input, outPath, format),
   diagram: exportDiagramHeadless,
+  hwp: (input, outPath) => exportHwpPdfHeadless(input, outPath),
 }
 
 /**

@@ -2,7 +2,7 @@
 name: ieumoffice
 description: Create, convert, read and edit Office documents locally with IeumOffice's command line. Build a new presentation (pptx) from a brief through a checked outline, per-page spec and render pipeline, a new spreadsheet (xlsx) from CSV or JSON data with formulas, a new Word document (docx) from Markdown or HTML, a Hangul document (hwp / hwpx), a draw.io diagram (drawio) from Mermaid or ops, or a PDF; convert between pdf, docx, odt, xlsx, pptx, md, html and csv, a PDF to Markdown or EPUB, and a diagram to PDF, PNG or SVG; read the structure and text of an existing file (including the user's own docx / odt / xlsx / pptx / pdf / hwp as source material) and apply structured edits to it, Hangul documents and draw.io diagrams included; read scanned PDF pages with AI and translate a whole PDF into a translated PDF, Markdown or EPUB, or an EPUB book into a translated or bilingual EPUB. Use whenever the user asks for a slide deck, presentation, spreadsheet, workbook, report, Word document or any real Office file, a format conversion, a rewrite of part of an existing document, or wants the result opened in the IeumOffice editor. Documents are processed locally; only search, image, media, read-url, pdf ai-read, pdf translate and epub translate send data off the machine (read-url sends the address it is given to that site; the rest send to the provider configured in IeumOffice).
 metadata:
-  version: 2.74.1
+  version: 2.74.2
   cli: '>=0.9.0'
 ---
 
@@ -183,7 +183,7 @@ Source material the user hands you (a report to turn into slides, a workbook to 
 - pptx: `ieumoffice slides read file.pptx --full --json` for every slide's text, tables and speaker notes; add `--comments` for each page's stored review comments (`{authorId, idx, author, dt, text}`) and `hidden: true`; `ieumoffice slides render file.pptx --out shots` when you need to see the pages.
 - pdf: `ieumoffice pdf read file.pdf --range 1-20 --json` when you cannot open the PDF yourself (a password-protected file, or page sizes and metadata are needed).
 - drawio, dio, drawio.svg, drawio.png: `ieumoffice diagram read file.drawio --json` for every page's shapes and edges. To change one, `ieumoffice diagram apply` with the ops in `ieumoffice guide diagram`; a new one is `ieumoffice create --type drawio --mermaid flow.mmd --out x.drawio`.
-- hwp, hwpx: `ieumoffice hwp read file.hwp --full --json` for the whole text, tables as `a | b` rows. To change one, `ieumoffice hwp apply` with the ops in `ieumoffice guide hwp`; a new one is `ieumoffice create --type hwp --ops ops.json --out x.hwp`.
+- hwp, hwpx: `ieumoffice hwp read file.hwp --full --json` for the whole text, tables as `a | b` rows. To change one, `ieumoffice hwp apply` with the ops in `ieumoffice guide hwp`; a new one is `ieumoffice create --type hwp --ops ops.json --out x.hwp`. A PDF of it, as the editor exports it: `ieumoffice convert file.hwp --to pdf`; `ieumoffice render file.hwp --out shots` when you need to see the pages, such as text spilling out of a table row (both need the app, like the other `→pdf` routes).
 
 Take figures and wording from that material; never `cat` or `unzip` the Office file itself.
 

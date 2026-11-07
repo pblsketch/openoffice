@@ -18,7 +18,14 @@ export {
 export { diagramPictureExtOf, diagramToText } from './diagram'
 export { docToText } from './doc'
 export { docxToText } from './docx'
-export { checkedHwpBytes, hwpMemosOf, hwpToText, type HwpMemo } from './hwp'
+export {
+  checkedHwpBytes,
+  hwpMemosOf,
+  hwpPrintPages,
+  hwpToText,
+  type HwpMemo,
+  type HwpPrintPage,
+} from './hwp'
 export { odtToText } from './odt'
 export { pptToText } from './ppt'
 export { pptxToText } from './pptx'

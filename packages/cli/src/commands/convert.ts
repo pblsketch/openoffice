@@ -66,6 +66,8 @@ const APP_ROUTES: Record<string, readonly AppExportTarget[]> = {
   pptx: ['pdf'],
   html: ['pdf', 'docx'],
   htm: ['pdf', 'docx'],
+  hwp: ['pdf'],
+  hwpx: ['pdf'],
 }
 
 /**

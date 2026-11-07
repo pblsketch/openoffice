@@ -68,6 +68,37 @@ describe('genoffice render', () => {
     expect(existsSync(files[0]!.path)).toBe(true)
   })
 
+  it('prints a Hangul document through the app export before rasterizing', async () => {
+    if (process.platform === 'win32') return
+    const dir = tempDir()
+    const ops = join(dir, 'ops.json')
+    writeFileSync(
+      ops,
+      JSON.stringify([{ op: 'insert_paragraphs', where: 'end', paragraphs: ['견적서'] }]),
+    )
+    const hwp = join(dir, 'quote.hwp')
+    expect((await run(['create', '--type', 'hwp', '--ops', ops, '--out', hwp])).code).toBe(0)
+    const app = fakeApp(dir, writeMinimalPdf(join(dir, 'export.pdf')))
+    const env = { ...process.env, GENOFFICE_APP_BIN: app }
+
+    const shots = join(dir, 'shots')
+    const r = await run(['render', hwp, '--out', shots, '--json'], { env })
+    expect(r.code).toBe(0)
+    expect(r.json().detail.via).toContain('headless-export')
+    expect(r.json().detail.files).toHaveLength(1)
+    expect(existsSync(join(shots, 'quote-01.png'))).toBe(true)
+
+    const pdf = join(dir, 'quote.pdf')
+    const c = await run(['convert', hwp, '--to', 'pdf', '--out', pdf, '--json'], { env })
+    expect(c.code).toBe(0)
+    expect(c.json().detail.via).toContain('headless-export')
+    expect(existsSync(pdf)).toBe(true)
+
+    const docx = await run(['convert', hwp, '--to', 'docx', '--json'], { env })
+    expect(docx.code).toBe(1)
+    expect(docx.json().error).toBe('unsupported')
+  })
+
   it('crops a slide to an element and builds a contact sheet', async () => {
     if (process.platform === 'win32') return
     const dir = tempDir()
