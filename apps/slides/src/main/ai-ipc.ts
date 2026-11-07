@@ -71,6 +71,11 @@ import { registerTemplateSelectionIpc } from './template-selection-ipc'
 
 const AI_SETTINGS_PATH = () => join(app.getPath('userData'), 'ai-settings.json')
 
+/** the only write of the settings file: keys and tokens go to disk sealed (decision 0063) */
+function writeAiSettingsFile(settings: unknown): void {
+  writeJsonAtomic(AI_SETTINGS_PATH(), sealAiSecrets(settings))
+}
+
 /**
  * Local media roots for a slides renderer: the open deck's directory plus the
  * directory slides stages pasted images in. generate_image (referenceImageUrls)
@@ -151,10 +156,7 @@ export function registerAiIpc(): void {
   ensureSubscriptionIpc(ipcMain, {
     getSettings: readAiSettings,
     setMeteredAccepted: (provider, accepted) => {
-      writeJsonAtomic(
-        AI_SETTINGS_PATH(),
-        sealAiSecrets(withMeteredAccepted(readAiSettings(), provider, accepted)),
-      )
+      writeAiSettingsFile(withMeteredAccepted(readAiSettings(), provider, accepted))
       broadcastToWindows('ai:settings-changed')
     },
     dataDir: app.getPath('userData'),
@@ -183,7 +185,7 @@ export function registerAiIpc(): void {
       console.warn('[ai] rejected invalid ai:set-settings payload')
       return
     }
-    writeJsonAtomic(AI_SETTINGS_PATH(), sealAiSecrets(sanitized))
+    writeAiSettingsFile(sanitized)
     broadcastToWindows('ai:settings-changed')
   })
 

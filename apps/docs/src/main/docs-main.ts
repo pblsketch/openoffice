@@ -4031,6 +4031,11 @@ const TWIPS_PER_INCH = 1440
 
 const SETTINGS_PATH = () => userDataPath('ai-settings.json')
 
+/** the only write of the settings file: keys and tokens go to disk sealed (decision 0063) */
+function writeAiSettingsFile(settings: unknown): void {
+  writeJsonAtomic(SETTINGS_PATH(), sealAiSecrets(settings))
+}
+
 /** how long after start the key providers are first asked for their models */
 const KEY_MODEL_FIRST_LIST_DELAY_MS = 5000
 
@@ -4067,7 +4072,7 @@ function storedAiSettings(): AiSettings {
 function migratedNoticeVersion(raw: unknown): unknown {
   const next = withMigratedSubscriptionNoticeVersion(raw)
   if (!next) return raw
-  writeJsonAtomic(SETTINGS_PATH(), next)
+  writeAiSettingsFile(next)
   return next
 }
 
@@ -4092,7 +4097,7 @@ const keyModelRefresher = createKeyModelRefresher({
     const latest = storedAiSettings()
     const next = update(latest)
     if (next === latest) return
-    writeJsonAtomic(SETTINGS_PATH(), sealAiSecrets(next))
+    writeAiSettingsFile(next)
     broadcastAiSettingsChanged()
   },
 })
@@ -4108,10 +4113,7 @@ function writeRendererAiSettings(settings: unknown): boolean {
   // so the renderer's copy is sanitized before it touches disk.
   const sanitized = sanitizeAiSettings(settings)
   if (!sanitized) return false
-  writeJsonAtomic(
-    SETTINGS_PATH(),
-    sealAiSecrets(withStoredKeyModels(sanitized, storedAiSettings())),
-  )
+  writeAiSettingsFile(withStoredKeyModels(sanitized, storedAiSettings()))
   broadcastAiSettingsChanged()
   keyModelRefresher.refreshChanged()
   return true
@@ -4146,8 +4148,7 @@ export function registerAiIpc(): void {
   ensureSubscriptionIpc(ipcMain, {
     getSettings: storedAiSettings,
     setMeteredAccepted: (provider: AiSubscriptionProviderId, accepted: boolean) => {
-      writeJsonAtomic(
-        SETTINGS_PATH(),
+      writeAiSettingsFile(
         withMeteredAccepted(readJson<unknown>(SETTINGS_PATH(), {}), provider, accepted),
       )
       broadcastAiSettingsChanged()
