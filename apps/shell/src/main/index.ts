@@ -1137,6 +1137,7 @@ const tMain = createI18n({
       '“{title}” 已持续数分钟占用大量内存或 CPU（内存 {memory} MB，CPU {cpu}%）。可以继续等待，或关闭这个文档（有未保存的改动会先询问是否保存）。诊断信息已记录。', // public-hygiene: allow
     watchdogWait: '继续等待',
     watchdogClose: '关闭文档',
+    watchdogIgnore: '本次不再提醒',
     crashTitle: '文档意外停止',
     crashBody: '“{title}” 意外停止。上次保存后的改动可能已丢失。',
     crashReopen: '重新打开',
@@ -1291,6 +1292,7 @@ const tMain = createI18n({
       '"{title}" has been using a lot of memory or CPU for several minutes ({memory} MB, {cpu}% CPU). You can keep waiting, or close the document (you will be asked to save unsaved changes first). Diagnostics have been recorded.',
     watchdogWait: 'Keep Waiting',
     watchdogClose: 'Close Document',
+    watchdogIgnore: "Don't Remind Again",
     crashTitle: 'A document stopped unexpectedly',
     crashBody: '"{title}" stopped unexpectedly. Changes made since it was last saved may be lost.',
     crashReopen: 'Reopen',
@@ -1453,6 +1455,7 @@ const tMain = createI18n({
       '"{title}" đã dùng nhiều bộ nhớ hoặc CPU trong vài phút ({memory} MB, {cpu}% CPU). Bạn có thể tiếp tục chờ hoặc đóng tài liệu này (sẽ hỏi lưu các thay đổi chưa lưu trước). Thông tin chẩn đoán đã được ghi lại.',
     watchdogWait: 'Tiếp tục chờ',
     watchdogClose: 'Đóng tài liệu',
+    watchdogIgnore: 'Không nhắc lại nữa',
     crashTitle: 'Tài liệu dừng đột ngột',
     crashBody: '"{title}" đã dừng đột ngột. Những thay đổi sau lần lưu gần nhất có thể đã bị mất.',
     crashReopen: 'Mở lại',
@@ -1615,6 +1618,7 @@ const tMain = createI18n({
       '「{title}」が数分間にわたり大量のメモリまたは CPU を使用しています（メモリ {memory} MB、CPU {cpu}%）。そのまま待つか、このドキュメントを閉じることができます（未保存の変更がある場合は保存を確認します）。診断情報を記録しました。',
     watchdogWait: '待つ',
     watchdogClose: 'ドキュメントを閉じる',
+    watchdogIgnore: '今回は再通知しない',
     crashTitle: 'ドキュメントが予期せず停止しました',
     crashBody:
       '「{title}」が予期せず停止しました。最後に保存した後の変更は失われた可能性があります。',
@@ -1779,6 +1783,7 @@ const tMain = createI18n({
       '"{title}"이(가) 몇 분 동안 많은 메모리 또는 CPU를 사용하고 있습니다(메모리 {memory} MB, CPU {cpu}%). 계속 기다리거나 이 문서를 닫을 수 있습니다(저장되지 않은 변경 사항이 있으면 먼저 저장 여부를 묻습니다). 진단 정보가 기록되었습니다.',
     watchdogWait: '계속 기다리기',
     watchdogClose: '문서 닫기',
+    watchdogIgnore: '다시 알리지 않기',
     crashTitle: '문서가 예기치 않게 멈췄습니다',
     crashBody:
       '"{title}" 화면이 예기치 않게 꺼졌습니다. 마지막으로 저장한 뒤의 변경은 사라졌을 수 있습니다.',
@@ -1941,6 +1946,7 @@ const tMain = createI18n({
       '« {title} » utilise beaucoup de mémoire ou de processeur depuis plusieurs minutes ({memory} Mo, {cpu} % CPU). Vous pouvez continuer à attendre ou fermer ce document (il vous sera d’abord demandé d’enregistrer les modifications non sauvegardées). Les diagnostics ont été enregistrés.',
     watchdogWait: 'Continuer d’attendre',
     watchdogClose: 'Fermer le document',
+    watchdogIgnore: 'Ne plus rappeler',
     crashTitle: 'Un document s’est arrêté de façon inattendue',
     crashBody:
       '« {title} » s’est arrêté de façon inattendue. Les modifications faites depuis le dernier enregistrement ont peut-être été perdues.',
@@ -2106,6 +2112,7 @@ const tMain = createI18n({
       '„{title}“ belegt seit mehreren Minuten viel Arbeitsspeicher oder CPU ({memory} MB, {cpu} % CPU). Sie können weiter warten oder das Dokument schließen (bei ungespeicherten Änderungen werden Sie zuerst zum Speichern gefragt). Diagnosedaten wurden aufgezeichnet.',
     watchdogWait: 'Weiter warten',
     watchdogClose: 'Dokument schließen',
+    watchdogIgnore: 'Nicht mehr erinnern',
     crashTitle: 'Ein Dokument wurde unerwartet beendet',
     crashBody:
       '„{title}“ wurde unerwartet beendet. Änderungen seit dem letzten Speichern sind möglicherweise verloren.',
@@ -2271,6 +2278,7 @@ const tMain = createI18n({
       '«{title}» lleva varios minutos usando mucha memoria o CPU ({memory} MB, {cpu} % de CPU). Puedes seguir esperando o cerrar el documento (antes se te pedirá guardar los cambios sin guardar). Se ha registrado el diagnóstico.',
     watchdogWait: 'Seguir esperando',
     watchdogClose: 'Cerrar documento',
+    watchdogIgnore: 'No recordar de nuevo',
     crashTitle: 'Un documento se detuvo inesperadamente',
     crashBody:
       '«{title}» se detuvo inesperadamente. Es posible que se hayan perdido los cambios hechos desde la última vez que se guardó.',
@@ -2436,6 +2444,7 @@ const tMain = createI18n({
       '"{title}" ใช้หน่วยความจำหรือ CPU จำนวนมากติดต่อกันหลายนาที (หน่วยความจำ {memory} MB, CPU {cpu}%) คุณสามารถรอต่อไปหรือปิดเอกสารนี้ได้ (หากมีการเปลี่ยนแปลงที่ยังไม่บันทึกจะถามให้บันทึกก่อน) บันทึกข้อมูลวินิจฉัยแล้ว',
     watchdogWait: 'รอต่อไป',
     watchdogClose: 'ปิดเอกสาร',
+    watchdogIgnore: 'ไม่ต้องเตือนอีก',
     crashTitle: 'เอกสารหยุดทำงานโดยไม่คาดคิด',
     crashBody: '"{title}" หยุดทำงานโดยไม่คาดคิด การเปลี่ยนแปลงหลังการบันทึกครั้งล่าสุดอาจสูญหาย',
     crashReopen: 'เปิดอีกครั้ง',
@@ -2595,6 +2604,7 @@ const tMain = createI18n({
       '"{title}" telah menggunakan banyak memori atau CPU selama beberapa menit ({memory} MB, CPU {cpu}%). Anda dapat terus menunggu atau menutup dokumen ini (perubahan yang belum disimpan akan ditanyakan lebih dulu). Diagnostik telah dicatat.',
     watchdogWait: 'Terus Menunggu',
     watchdogClose: 'Tutup Dokumen',
+    watchdogIgnore: 'Jangan ingatkan lagi',
     crashTitle: 'Dokumen berhenti secara tak terduga',
     crashBody:
       '"{title}" berhenti secara tak terduga. Perubahan sejak terakhir disimpan mungkin hilang.',
@@ -2759,6 +2769,7 @@ const tMain = createI18n({
       '«{title}» уже несколько минут использует много памяти или процессора ({memory} МБ, {cpu}% CPU). Можно подождать ещё или закрыть документ (при несохранённых изменениях сначала будет предложено сохранить). Диагностика записана.',
     watchdogWait: 'Подождать',
     watchdogClose: 'Закрыть документ',
+    watchdogIgnore: 'Больше не напоминать',
     crashTitle: 'Документ неожиданно остановился',
     crashBody:
       '«{title}» неожиданно остановился. Изменения после последнего сохранения могли быть потеряны.',
@@ -2923,6 +2934,7 @@ const tMain = createI18n({
       'يستهلك "{title}" قدرًا كبيرًا من الذاكرة أو المعالج منذ عدة دقائق (الذاكرة {memory} م.ب، المعالج {cpu}%). يمكنك مواصلة الانتظار أو إغلاق هذا المستند (سيُطلب حفظ التغييرات غير المحفوظة أولًا). تم تسجيل بيانات التشخيص.',
     watchdogWait: 'مواصلة الانتظار',
     watchdogClose: 'إغلاق المستند',
+    watchdogIgnore: 'عدم التذكير مجددًا',
     crashTitle: 'توقف مستند بشكل غير متوقع',
     crashBody: 'توقف "{title}" بشكل غير متوقع. ربما فُقدت التغييرات التي أُجريت منذ آخر حفظ.',
     crashReopen: 'إعادة الفتح',
@@ -3082,6 +3094,7 @@ const tMain = createI18n({
       '"{title}" está a usar muita memória ou CPU há vários minutos ({memory} MB, {cpu}% de CPU). Pode continuar a aguardar ou fechar o documento (será pedido para guardar alterações não guardadas primeiro). O diagnóstico foi registado.',
     watchdogWait: 'Continuar a aguardar',
     watchdogClose: 'Fechar documento',
+    watchdogIgnore: 'Não voltar a lembrar',
     crashTitle: 'Um documento parou inesperadamente',
     crashBody:
       '"{title}" parou inesperadamente. As alterações feitas desde a última gravação podem ter-se perdido.',
@@ -3246,6 +3259,7 @@ const tMain = createI18n({
       '"{title}" sta usando molta memoria o CPU da diversi minuti ({memory} MB, {cpu}% CPU). Puoi continuare ad attendere o chiudere il documento (ti verrà chiesto prima di salvare le modifiche non salvate). La diagnostica è stata registrata.',
     watchdogWait: 'Continua ad attendere',
     watchdogClose: 'Chiudi documento',
+    watchdogIgnore: 'Non ricordare più',
     crashTitle: 'Un documento si è interrotto inaspettatamente',
     crashBody:
       '"{title}" si è interrotto inaspettatamente. Le modifiche successive all’ultimo salvataggio potrebbero essere andate perse.',
@@ -3410,6 +3424,7 @@ const tMain = createI18n({
       '„{title}” od kilku minut zużywa dużo pamięci lub procesora ({memory} MB, {cpu}% CPU). Możesz dalej czekać albo zamknąć dokument (najpierw pojawi się pytanie o zapisanie niezapisanych zmian). Dane diagnostyczne zostały zapisane.',
     watchdogWait: 'Czekaj dalej',
     watchdogClose: 'Zamknij dokument',
+    watchdogIgnore: 'Nie przypominaj ponownie',
     crashTitle: 'Dokument nieoczekiwanie przestał działać',
     crashBody:
       '„{title}” nieoczekiwanie przestał działać. Zmiany wprowadzone od ostatniego zapisu mogły zostać utracone.',
@@ -3574,6 +3589,7 @@ const tMain = createI18n({
       '„{title}“ už několik minut využívá hodně paměti nebo procesoru ({memory} MB, {cpu} % CPU). Můžete dál čekat, nebo dokument zavřít (u neuložených změn se nejdřív zeptáme na uložení). Diagnostika byla zaznamenána.',
     watchdogWait: 'Dál čekat',
     watchdogClose: 'Zavřít dokument',
+    watchdogIgnore: 'Znovu nepřipomínat',
     crashTitle: 'Dokument se neočekávaně zastavil',
     crashBody: '„{title}“ se neočekávaně zastavil. Změny od posledního uložení mohly být ztraceny.',
     crashReopen: 'Znovu otevřít',
@@ -3735,6 +3751,7 @@ const tMain = createI18n({
       '"{title}" gebruikt al enkele minuten veel geheugen of CPU ({memory} MB, {cpu}% CPU). U kunt blijven wachten of het document sluiten (bij niet-opgeslagen wijzigingen wordt eerst gevraagd of u wilt opslaan). Diagnostische gegevens zijn vastgelegd.',
     watchdogWait: 'Blijven wachten',
     watchdogClose: 'Document sluiten',
+    watchdogIgnore: 'Niet opnieuw herinneren',
     crashTitle: 'Een document is onverwacht gestopt',
     crashBody:
       '"{title}" is onverwacht gestopt. Wijzigingen sinds de laatste keer opslaan zijn mogelijk verloren gegaan.',
@@ -3900,6 +3917,7 @@ const tMain = createI18n({
       '"{title}" telah menggunakan banyak memori atau CPU selama beberapa minit ({memory} MB, CPU {cpu}%). Anda boleh terus menunggu atau menutup dokumen ini (perubahan yang belum disimpan akan ditanya dahulu). Diagnostik telah direkodkan.',
     watchdogWait: 'Terus Menunggu',
     watchdogClose: 'Tutup Dokumen',
+    watchdogIgnore: 'Jangan ingatkan lagi',
     crashTitle: 'Dokumen berhenti secara tidak dijangka',
     crashBody:
       '"{title}" berhenti secara tidak dijangka. Perubahan sejak simpanan terakhir mungkin telah hilang.',
@@ -4063,6 +4081,7 @@ const tMain = createI18n({
       '"{title}" משתמש בהרבה זיכרון או מעבד כבר כמה דקות (זיכרון {memory} MB, מעבד {cpu}%). אפשר להמשיך לחכות או לסגור את המסמך (אם יש שינויים שלא נשמרו, תתבקשו לשמור קודם). נתוני האבחון נרשמו.',
     watchdogWait: 'להמשיך לחכות',
     watchdogClose: 'סגירת המסמך',
+    watchdogIgnore: 'לא להזכיר שוב',
     crashTitle: 'מסמך נעצר באופן בלתי צפוי',
     crashBody: '"{title}" נעצר באופן בלתי צפוי. ייתכן ששינויים שנעשו מאז השמירה האחרונה אבדו.',
     crashReopen: 'פתיחה מחדש',
@@ -4223,6 +4242,7 @@ const tMain = createI18n({
       '"{title}" कई मिनटों से बहुत अधिक मेमोरी या CPU इस्तेमाल कर रहा है (मेमोरी {memory} MB, CPU {cpu}%)। आप इंतज़ार जारी रख सकते हैं या यह दस्तावेज़ बंद कर सकते हैं (बिना सहेजे बदलाव होने पर पहले सहेजने के लिए पूछा जाएगा)। निदान जानकारी दर्ज कर ली गई है।',
     watchdogWait: 'इंतज़ार जारी रखें',
     watchdogClose: 'दस्तावेज़ बंद करें',
+    watchdogIgnore: 'दोबारा याद न दिलाएँ',
     crashTitle: 'दस्तावेज़ अचानक बंद हो गया',
     crashBody:
       '"{title}" अचानक बंद हो गया। पिछली बार सहेजने के बाद किए गए बदलाव खो गए हो सकते हैं।',
@@ -4387,6 +4407,7 @@ const tMain = createI18n({
       '「{title}」已持續數分鐘佔用大量記憶體或 CPU（記憶體 {memory} MB，CPU {cpu}%）。可以繼續等待，或關閉這個文件（有未儲存的變更會先詢問是否儲存）。診斷資訊已記錄。', // public-hygiene: allow
     watchdogWait: '繼續等待',
     watchdogClose: '關閉文件',
+    watchdogIgnore: '本次不再提醒',
     crashTitle: '文件意外停止',
     crashBody: '「{title}」意外停止。上次儲存後的變更可能已遺失。',
     crashReopen: '重新開啟',

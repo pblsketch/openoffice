@@ -1,6 +1,7 @@
 import { app, dialog, webContents } from 'electron'
 import type { BrowserWindow, ProcessMetric, WebContents } from 'electron'
-import { writeFile } from 'node:fs/promises'
+import { readdir, rm, writeFile } from 'node:fs/promises'
+import { totalmem } from 'node:os'
 import { join } from 'node:path'
 
 /**
@@ -19,7 +20,8 @@ export interface WatchdogDocumentInfo {
   filePath?: string
 }
 
-export type WatchdogStringKey = 'watchdogTitle' | 'watchdogBody' | 'watchdogWait' | 'watchdogClose'
+export type WatchdogStringKey =
+  'watchdogTitle' | 'watchdogBody' | 'watchdogWait' | 'watchdogClose' | 'watchdogIgnore'
 
 export interface RendererWatchdogOptions {
   /** the document a renderer shows; null for chrome (Home) renderers, which are logged but never prompted */
@@ -41,20 +43,53 @@ export interface RendererWatchdogOptions {
 
 const DEFAULTS = {
   sampleMs: 30_000,
-  memoryLimitMB: 1536,
   cpuLimitPercent: 90,
   hotSamplesBeforeReport: 10,
   reportCooldownMs: 15 * 60_000,
   profileMs: 5_000,
 }
 
+/**
+ * A big-but-stable document re-prompted on every cooldown forever (field
+ * report: a large CSV sitting at ~1.9 GB redrew the dialog every quarter
+ * hour). After the first prompt, a memory-triggered report repeats only when
+ * the renderer has grown this much past the memory at the previous prompt;
+ * a CPU-triggered report (an actively burning core) still repeats on every
+ * cooldown.
+ */
+const MEMORY_REPROMPT_GROWTH = 1.25
+
 interface RendererState {
   hot: number
   reportedAt: number
   prompting: boolean
+  /** user chose "don't remind again" for this renderer */
+  ignored: boolean
+  /** memory at the previous prompt; gates memory-only re-prompts */
+  promptedMemoryMB?: number
   /** cumulative CPU seconds at the previous sample (absent on the first) */
   cpuSeconds?: number
   sampledAt?: number
+}
+
+const MEMORY_LIMIT_FLOOR_MB = 1536
+const MEMORY_LIMIT_SHARE_OF_PC = 1 / 8
+const memoryLimitFor = (totalBytes: number): number =>
+  Math.max(MEMORY_LIMIT_FLOOR_MB, (totalBytes / 1024 ** 2) * MEMORY_LIMIT_SHARE_OF_PC)
+
+const KEPT_REPORTS = 5
+const REPORT_FILE = /^renderer-watchdog-(\d+)\.(?:json|cpuprofile)$/
+
+async function pruneOldReports(dir: string): Promise<void> {
+  const byStamp = new Map<number, string[]>()
+  for (const name of await readdir(dir)) {
+    const stamp = REPORT_FILE.exec(name)?.[1]
+    if (stamp) byStamp.set(Number(stamp), [...(byStamp.get(Number(stamp)) ?? []), name])
+  }
+  const old = [...byStamp.keys()].sort((a, b) => b - a).slice(KEPT_REPORTS)
+  await Promise.all(
+    old.flatMap((stamp) => byStamp.get(stamp)!.map((name) => rm(join(dir, name), { force: true }))),
+  )
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
@@ -81,7 +116,7 @@ async function captureCpuProfile(wc: WebContents, outPath: string, ms: number): 
 }
 
 export function startRendererWatchdog(options: RendererWatchdogOptions): () => void {
-  const opts = { ...DEFAULTS, ...options }
+  const opts = { ...DEFAULTS, memoryLimitMB: memoryLimitFor(totalmem()), ...options }
   const states = new Map<number, RendererState>()
 
   const rendererFor = (pid: number): WebContents | undefined =>
@@ -96,7 +131,8 @@ export function startRendererWatchdog(options: RendererWatchdogOptions): () => v
   ): Promise<void> => {
     const info = opts.describe(wc)
     const stamp = Date.now()
-    const base = join(app.getPath('userData'), `renderer-watchdog-${stamp}`)
+    const dir = app.getPath('userData')
+    const base = join(dir, `renderer-watchdog-${stamp}`)
     try {
       await writeFile(
         `${base}.json`,
@@ -117,6 +153,7 @@ export function startRendererWatchdog(options: RendererWatchdogOptions): () => v
         ),
       )
       if (opts.profileMs > 0) await captureCpuProfile(wc, `${base}.cpuprofile`, opts.profileMs)
+      await pruneOldReports(dir)
     } catch {
       /* diagnostics are best effort and must never make the situation worse */
     }
@@ -135,7 +172,7 @@ export function startRendererWatchdog(options: RendererWatchdogOptions): () => v
           memory: Math.round(memoryMB),
           cpu: Math.round(cpu),
         }),
-        buttons: [opts.t('watchdogWait'), opts.t('watchdogClose')],
+        buttons: [opts.t('watchdogWait'), opts.t('watchdogClose'), opts.t('watchdogIgnore')],
         defaultId: 0,
         cancelId: 0,
       }
@@ -144,6 +181,7 @@ export function startRendererWatchdog(options: RendererWatchdogOptions): () => v
           ? await dialog.showMessageBox(parent, dialogOptions)
           : await dialog.showMessageBox(dialogOptions)
       if (response === 1 && !wc.isDestroyed()) await opts.closeDocument(wc)
+      if (response === 2) state.ignored = true
     } catch {
       /* a failed prompt only means the renderer keeps running */
     } finally {
@@ -166,7 +204,7 @@ export function startRendererWatchdog(options: RendererWatchdogOptions): () => v
       seen.add(wc.id)
       // workingSetSize is reported in kilobytes
       const memoryMB = metric.memory.workingSetSize / 1024
-      const state = states.get(wc.id) ?? { hot: 0, reportedAt: 0, prompting: false }
+      const state = states.get(wc.id) ?? { hot: 0, reportedAt: 0, prompting: false, ignored: false }
       states.set(wc.id, state)
       // percentCPUUsage is normalized differently per platform (a full core
       // read 10% on a 10-core Mac): derive one-core percent from the
@@ -184,14 +222,21 @@ export function startRendererWatchdog(options: RendererWatchdogOptions): () => v
         state.cpuSeconds = cpuSeconds
         state.sampledAt = now
       }
+      if (state.ignored) continue
       const hot = memoryMB > opts.memoryLimitMB || cpu > opts.cpuLimitPercent
       state.hot = hot ? state.hot + 1 : 0
+      const escalated =
+        state.promptedMemoryMB === undefined ||
+        cpu > opts.cpuLimitPercent ||
+        memoryMB >= state.promptedMemoryMB * MEMORY_REPROMPT_GROWTH
       if (
         state.hot >= opts.hotSamplesBeforeReport &&
         !state.prompting &&
+        escalated &&
         Date.now() - state.reportedAt >= opts.reportCooldownMs
       ) {
         state.reportedAt = Date.now()
+        state.promptedMemoryMB = memoryMB
         state.hot = 0
         void report(wc, metric, metrics, memoryMB, cpu)
       }
