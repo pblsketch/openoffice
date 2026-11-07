@@ -43,6 +43,7 @@ function stubExporters(): { exporters: HeadlessExporters; calls: string[] } {
       slides: make('slides'),
       markdown: make('markdown'),
       html: make('html'),
+      hwp: make('hwp'),
       diagram: make('diagram'),
     },
   }
@@ -67,6 +68,23 @@ describe('validateHeadlessPaths', () => {
     expect(validateHeadlessPaths(request('/docs/a.docx', '/out/a.html', 'html'), fs)).toMatchObject(
       { ok: true, module: 'docs' },
     )
+  })
+
+  it('routes a Hangul document to the hwp module, for PDF only', () => {
+    const fs = fsWith(['/docs/a.hwp', '/docs/b.HWPX', '/out'])
+    expect(validateHeadlessPaths(request('/docs/a.hwp'), fs)).toMatchObject({
+      ok: true,
+      module: 'hwp',
+    })
+    expect(validateHeadlessPaths(request('/docs/b.HWPX'), fs)).toMatchObject({
+      ok: true,
+      module: 'hwp',
+    })
+    expect(validateHeadlessPaths(request('/docs/a.hwp', '/out/a.docx', 'docx'), fs)).toMatchObject({
+      ok: false,
+      code: 1,
+      message: expect.stringContaining('pdf'),
+    })
   })
 
   it('reports a missing input as an input-file error (exit 2)', () => {

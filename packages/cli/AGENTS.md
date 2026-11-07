@@ -18,7 +18,7 @@
 
 ## 맡지 않는 것 (경계)
 
-- 문서 형식의 해석과 저장은 이 모듈의 범위가 아니다. `packages/docx-engine`, `packages/pptx-engine`·`pptx-ops`·`pptx-render`, `packages/xlsx-gateway`와 xlsx 사이드카, `packages/pdf2docx`, `packages/pdf-structure`가 한다. 여기 `src/formats/`는 얇은 어댑터다. 한글 문서는 `packages/file-parse`의 `hwpToText`로 읽고(`hwp read`, `info`), 만들고 고치는 일(`hwp apply`, `create --type hwp|hwpx`)은 `apps/hwp`의 AI 도구·편집기 플러그인·저장 바로잡기를 그대로 부른다(`src/formats/hwp-edit.ts`, 결정 0079). 한글 문서의 해석과 편집 동작은 여기서 만들지 않는다. PDF 문서 작업의 호출 순서·멈춤·이어하기·보관소도 `pdf-structure`의 작업 엔진과 보관소가 맡는다. EPUB 책의 열기·번역 단위·결과 책은 `packages/epub-engine`이 맡는다. 명령어는 EPUB을 고치지 않고 번역 결과를 새 파일로 쓸 뿐이다.
+- 문서 형식의 해석과 저장은 이 모듈의 범위가 아니다. `packages/docx-engine`, `packages/pptx-engine`·`pptx-ops`·`pptx-render`, `packages/xlsx-gateway`와 xlsx 사이드카, `packages/pdf2docx`, `packages/pdf-structure`가 한다. 여기 `src/formats/`는 얇은 어댑터다. 한글 문서는 `packages/file-parse`의 `hwpToText`로 읽고(`hwp read`, `info`), 만들고 고치는 일(`hwp apply`, `create --type hwp|hwpx`)은 `apps/hwp`의 AI 도구·편집기 플러그인·저장 바로잡기를 그대로 부른다(`src/formats/hwp-edit.ts`, 결정 0079). PDF로 바꾸기(`convert --to pdf`)는 다른 쪽 모양 변환처럼 앱의 `--headless-export`가 한글 편집기의 PDF 내보내기로 한다(`APP_ROUTES`). 한글 문서의 해석과 편집 동작은 여기서 만들지 않는다. PDF 문서 작업의 호출 순서·멈춤·이어하기·보관소도 `pdf-structure`의 작업 엔진과 보관소가 맡는다. EPUB 책의 열기·번역 단위·결과 책은 `packages/epub-engine`이 맡는다. 명령어는 EPUB을 고치지 않고 번역 결과를 새 파일로 쓸 뿐이다.
 - 어느 경로(무료·키·구독)로 갈지, 구독 요청의 차례를 어떻게 지키는지는 `packages/ai-search`의 범위다. 이 모듈은 "자동 호출 경로다"라는 사실과 `dataDir`, 연결 상태를 넘길 뿐이다. 구독 프로그램의 시작·종료는 `packages/ai-provider`의 범위다.
 - 앱 안의 MCP 서버(`apps/shell/src/main/mcp`)와 설정 화면의 통합 탭은 shell의 범위다. shell은 이 패키지를 프로세스로 실행하거나 하위 진입점(`/install`, `/agent-skills`, `/mcp-launch`, `/control-protocol`)을 import한다.
 - 렌더러가 필요한 변환(PDF 내보내기 등)은 앱 실행 파일의 `--headless-export`가 한다. 이 모듈은 그것을 찾아 실행하고 결과 봉투를 읽는다.

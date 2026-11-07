@@ -124,6 +124,8 @@ const api: HwpApi = {
     options
       ? ipcRenderer.invoke(HWP_CHANNELS.printPages, job, options)
       : ipcRenderer.invoke(HWP_CHANNELS.printPages, job),
+  consumeHeadlessExport: () => ipcRenderer.invoke(HWP_CHANNELS.consumeHeadlessExport),
+  headlessExportDone: (result) => ipcRenderer.send(HWP_CHANNELS.headlessExportDone, result),
   onCloseSaveRequest: (handler) => {
     const listener = () => handler()
     ipcRenderer.on(HWP_CHANNELS.closeSaveRequest, listener)

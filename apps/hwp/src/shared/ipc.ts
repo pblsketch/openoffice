@@ -19,6 +19,10 @@ export const HWP_CHANNELS = {
   previewRequest: 'hwp:preview-request',
   fileCommand: 'hwp:file-command',
   printPages: 'hwp:print-pages',
+  /** invoke → string | null: the PDF path a hidden window of `--headless-export` writes */
+  consumeHeadlessExport: 'hwp:consume-headless-export',
+  /** renderer → main ({ ok, error? }): the headless export is done */
+  headlessExportDone: 'hwp:headless-export-done',
   dirtyChanged: 'hwp:dirty-changed',
   closeSaveRequest: 'hwp:close-save-request',
   closeSaveResult: 'hwp:close-save-result',
@@ -353,6 +357,10 @@ export interface HwpApi {
    * the print dialog for these pages
    */
   printPages(job: PrintJob, options?: { path: string }): Promise<PrintResult>
+  /** Headless export mode: the PDF path this hidden window must write, null in normal use */
+  consumeHeadlessExport(): Promise<string | null>
+  /** Headless export mode: report the outcome so the main process can exit */
+  headlessExportDone(result: { ok: boolean; error?: string }): void
   onCloseSaveRequest(handler: () => void): () => void
   sendCloseSaveResult(ok: boolean): void
   /** the memo editor opened or closed in this tab: main holds back save, close and quit */

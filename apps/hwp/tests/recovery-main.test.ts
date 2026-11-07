@@ -118,6 +118,7 @@ import {
   recoveryEditor,
   resetAppShuttingDown,
   resumeDiscardedCopies,
+  setHeadlessMode,
 } from '@genoffice/electron-utils'
 import type { RecoveryIdentity } from '@genoffice/electron-utils'
 import {
@@ -900,5 +901,28 @@ describe('an open memo editor at close', () => {
     expect(hwpMemoModalOpen(contents.id)).toBe(true)
     contents.emit('did-start-navigation', { isMainFrame: true, isSameDocument: false })
     expect(hwpMemoModalOpen(contents.id)).toBe(false)
+  })
+})
+
+describe('a headless export (--headless-export)', () => {
+  afterEach(() => setHeadlessMode(false))
+
+  it('reads the file on disk: a copy left for it is not asked about, used or settled', async () => {
+    const path = join(dir, 'report.hwp')
+    const original = fileWithTails('본문')
+    writeFileSync(path, original)
+    // a copy left by the GUI app, which would otherwise be offered when the file opens
+    await store().writeCopy(fileIdentity(path), Buffer.from(fileWithTails('남은')), {
+      title: 'report.hwp',
+    })
+    setHeadlessMode(true)
+    const contents = view(path)
+    const bytes = await call<Promise<Uint8Array>>(HWP_CHANNELS.readFile, contents, path)
+    expect(textOf(bytes)).toBe(textOf(original))
+    expect(showMessageBox).not.toHaveBeenCalled()
+    // nor does the hidden view write a copy of its own
+    expect(await writeCopy(contents, edited(original, '고친 '))).toBe('refused')
+    contents.emit('destroyed')
+    expect(store().copyInfo(fileIdentity(path))).not.toBeNull()
   })
 })

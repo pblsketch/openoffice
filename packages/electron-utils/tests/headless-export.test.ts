@@ -92,6 +92,8 @@ describe('headlessModuleFor', () => {
     ['/x/a.markdown', 'markdown'],
     ['/x/a.html', 'html'],
     ['/x/a.htm', 'html'],
+    ['/x/a.hwp', 'hwp'],
+    ['/x/a.HWPX', 'hwp'],
   ])('routes %s to %s', (path, module) => {
     expect(headlessModuleFor(path)).toBe(module)
   })

@@ -101,7 +101,7 @@ export const TOOLS: ToolSpec[] = [
     name: 'convert',
     command: 'convert',
     description:
-      'Convert a document to another format with the GenOffice engines (pdf, docx, odt, xlsx, pptx, md, html, csv, epub; the `to` description lists the routes). Targets that need layout (to pdf, docx to html, html to docx, diagram to pdf/png/svg) start a hidden GenOffice process for 1-6 s. pdf to md/epub reflows the text (pictures in assets/ beside the .md) and uses pages read by pdf_ai_read. A diagram makes one PDF, or a PNG/SVG per page (<name>-p<n>, out is a folder) unless page picks one. Output defaults to the input name with the new extension.',
+      'Convert a document to another format with the GenOffice engines (pdf, docx, odt, xlsx, pptx, md, html, csv, epub, hwp/hwpx to pdf; the `to` description lists the routes). Targets that need layout (to pdf, docx to html, html to docx, diagram to pdf/png/svg) start a hidden GenOffice process for 1-6 s. pdf to md/epub reflows the text (pictures in assets/ beside the .md) and uses pages read by pdf_ai_read. A diagram makes one PDF, or a PNG/SVG per page (<name>-p<n>, out is a folder) unless page picks one. Output defaults to the input name with the new extension.',
     positionals: [{ key: 'file', description: 'path of the source document' }],
     options: [
       'to',
