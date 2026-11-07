@@ -5,6 +5,7 @@ import {
   type AiModelPickerBridge,
   AiBlockedNotice,
   AiConnectPrompt,
+  AiReplyProgress,
   AiFirstConnectionNotice,
   AiInputTruncatedNotice,
   AiMark,
@@ -426,49 +427,6 @@ interface AiPanelProps {
   onQueueFocus?: (key: string) => void
   /** Drop the items a submission finished with (successful and unrunnable alike) */
   onQueueConsume?: (keys: string[]) => void
-}
-
-/** Some locales already end the label with an ellipsis — normalize to exactly one. */
-function withEllipsis(label: string): string {
-  return `${label.replace(/(?:…|\.{3})+$/u, '')}…`
-}
-
-/** Two-phase waiting→thinking indicator (mirrors AiTypingIndicator in packages/ui):
- *  grow/shrink blue dots first, then after ~1.2s only the shimmering "Thinking…" text — never both at once. */
-function AiTypingIndicator({ label }: { readonly label: string }) {
-  const [elapsed, setElapsed] = useState(0)
-  const [showLabel, setShowLabel] = useState(false)
-
-  useEffect(() => {
-    const phase = setTimeout(() => setShowLabel(true), 1200)
-    const timer = setInterval(() => setElapsed((s) => s + 1), 1000)
-    return () => {
-      clearTimeout(phase)
-      clearInterval(timer)
-    }
-  }, [])
-
-  return (
-    <span className="ai-typing" role="status" aria-label={label}>
-      {showLabel ? (
-        <span className="ai-typing-label">
-          {withEllipsis(label)}
-          {elapsed >= 3 && (
-            <span className="ai-typing-elapsed" aria-hidden>{` · ${elapsed}s`}</span>
-          )}
-        </span>
-      ) : (
-        <span className="ai-typing-dots" aria-hidden>
-          <span className="ai-typing-dot-slot">
-            <span className="ai-typing-dot-grow" />
-          </span>
-          <span className="ai-typing-dot-slot">
-            <span className="ai-typing-dot-shrink" />
-          </span>
-        </span>
-      )}
-    </span>
-  )
 }
 
 /** Resizable panel width: always opens at the default (drag-resize lasts for
@@ -2724,16 +2682,12 @@ export function AiPanel({
               {entry.role === 'user' && entry.attachments && entry.attachments.length > 0 && (
                 <SentAttachments atts={entry.attachments} previews={attachmentPreviews} />
               )}
-              {entry.role === 'assistant' && !entry.text && entry.streaming ? (
-                <span className="ai-typing-row">
-                  <AiTypingIndicator
-                    label={entry.tools?.length ? t('aiContinuing') : t('aiThinking')}
-                  />
-                </span>
-              ) : entry.role === 'assistant' ? (
-                <div dir="auto">
-                  <Markdown text={entry.text} />
-                </div>
+              {entry.role === 'assistant' ? (
+                entry.text && (
+                  <div dir="auto">
+                    <Markdown text={entry.text} />
+                  </div>
+                )
               ) : (
                 <span dir="auto">{entry.text}</span>
               )}
@@ -2763,6 +2717,11 @@ export function AiPanel({
                   <div className="ai-msg-error">{t('aiMsgError', { error: entry.error })}</div>
                 ))}
               {entry.deckProgress && <DeckProgressCard progress={entry.deckProgress} />}
+              <AiReplyProgress
+                reply={entry}
+                thinking={t('aiThinking')}
+                working={t('aiContinuing')}
+              />
               {showToolbar && (
                 <div className="ai-msg-toolbar">
                   {entry.text && (

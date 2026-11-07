@@ -274,7 +274,7 @@ export {
   type RibbonCollapseLabels,
   type RibbonDensity,
 } from './ribbon-collapse'
-export { AiTypingIndicator } from './AiTypingIndicator'
+export { AiReplyProgress, AiTypingIndicator } from './AiTypingIndicator'
 export { IconSend, IconStop, type IconProps } from './icons'
 export { AiMark, type AiMarkProps } from './AiMark'
 export { Markdown, type MarkdownNav } from './Markdown'

@@ -102,6 +102,10 @@ function fakeMain(opts: { settings: AiSettings; statuses: SubscriptionStatusMap;
     storeSilently: (next: AiSettings) => {
       settings = next
     },
+    emit: async (chunk: Partial<AiStreamChunk>) => {
+      streamListener?.({ requestId: requests.at(-1)!.requestId, ...chunk } as AiStreamChunk)
+      await settle()
+    },
   }
 }
 
@@ -588,6 +592,49 @@ describe('AI panel during a turn', () => {
     expect(usage[0]!.getAttribute('data-window')).toBe('five_hour')
     expect(usage[0]!.textContent).toContain('83')
     expect(host.querySelector('.ai-sub-truncated')).not.toBeNull()
+  })
+
+  it('keeps the progress line under the reply until the run ends', async () => {
+    const zh = aiStrings.zh
+    let finishSearch: (result: { method: string; images: never[] }) => void = () => undefined
+    const main = fakeMain({
+      settings: ready(),
+      statuses: statusMap('ready', 'ready'),
+      reply: () => [],
+    })
+    Object.assign(main.htmlApi, {
+      imageSearch: () => new Promise((resolve) => (finishSearch = resolve)),
+    })
+    await mountPanel(main)
+    await sendMessage('add a photo of the sea')
+    const replies = () => [...host.querySelectorAll('.ai-msg-assistant')]
+    const progressOf = (reply: Element | undefined) =>
+      reply?.querySelector('.ai-typing[role="status"]')?.getAttribute('aria-label') ?? null
+
+    expect(progressOf(replies().at(-1))).toBe(zh.aiThinking)
+
+    await main.emit({ type: 'delta', text: 'Looking for a sea photo.' })
+    expect(replies().at(-1)!.textContent).toContain('Looking for a sea photo.')
+    expect(progressOf(replies().at(-1))).toBe(zh.aiThinking)
+
+    await main.emit({
+      type: 'tool-call',
+      toolCall: { id: 'c-search', name: 'image_search', input: { query: 'sea' } },
+    })
+    await main.emit({ type: 'done' })
+    expect(replies()).toHaveLength(1)
+    expect(replies()[0]!.textContent).toContain('Looking for a sea photo.')
+    expect(progressOf(replies()[0])).toBe(zh.aiWorking)
+
+    finishSearch({ method: 'serper', images: [] })
+    await settle()
+    expect(main.requests).toHaveLength(2)
+    expect(progressOf(replies()[0])).toBeNull()
+    expect(progressOf(replies().at(-1))).toBe(zh.aiThinking)
+
+    await main.emit({ type: 'delta', text: 'No photo found.' })
+    await main.emit({ type: 'done' })
+    expect(host.querySelector('.ai-typing')).toBeNull()
   })
 
   it('names no vendor in the panel header', async () => {

@@ -122,7 +122,7 @@ import { createFileNav, Markdown } from '@genoffice/ui'
 import {
   AiComposer,
   AiScopeQuote,
-  AiTypingIndicator,
+  AiReplyProgress,
   docMentionActions,
   type AiComposerDocs,
   type AiScopeQuoteData,
@@ -1984,16 +1984,12 @@ export function AiPanel({
               {entry.role === 'user' && entry.attachments && entry.attachments.length > 0 && (
                 <SentAttachments atts={entry.attachments} previews={attachmentPreviews} />
               )}
-              {entry.role === 'assistant' && !entry.text && entry.streaming ? (
-                <span className="ai-typing-row">
-                  <AiTypingIndicator
-                    label={entry.tools?.length ? t('aiWorking') : t('aiThinking')}
-                  />
-                </span>
-              ) : entry.role === 'assistant' ? (
-                <div dir="auto">
-                  <Markdown text={entry.text} navs={chatNavs} />
-                </div>
+              {entry.role === 'assistant' ? (
+                entry.text && (
+                  <div dir="auto">
+                    <Markdown text={entry.text} navs={chatNavs} />
+                  </div>
+                )
               ) : (
                 <span dir="auto">{entry.text}</span>
               )}
@@ -2037,6 +2033,7 @@ export function AiPanel({
                   onContinueWith={continueWith}
                 />
               )}
+              <AiReplyProgress reply={entry} thinking={t('aiThinking')} working={t('aiWorking')} />
               {showToolbar && (
                 <div className="ai-msg-toolbar">
                   {entry.text && (
