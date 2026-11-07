@@ -59,6 +59,7 @@ import { invalidateWikiHeads } from './editor/wikiSuggest'
 import { dirOf, setImageBaseDir, VIEW_IMAGE_EVENT } from './editor/localImage'
 import { Ribbon } from './components/Ribbon'
 import type { MarkdownTheme } from '../shared/markdown-theme'
+import { applyEditorFont, rememberEditorFont, storedEditorFont } from './editor-font'
 import { ImageHostDialog } from './components/ImageHostDialog'
 import { RedactMenu } from './components/RedactMenu'
 import { OutlinePane } from './components/OutlinePane'
@@ -246,6 +247,13 @@ export default function App() {
     if (theme === 'default') document.documentElement.removeAttribute('data-markdown-theme')
     else document.documentElement.setAttribute('data-markdown-theme', theme)
     window.markdownApi.setMarkdownTheme(theme).catch(() => {})
+  }
+  // main.tsx applies the stored font before the first paint; live picks apply it here
+  const [editorFont, setEditorFont] = useState(storedEditorFont)
+  const pickEditorFont = (font: string | null): void => {
+    setEditorFont(font)
+    applyEditorFont(font)
+    rememberEditorFont(font)
   }
   // off by default: it takes over the editor's right-click menu, and a reader
   // should opt into that rather than discover it
@@ -1434,6 +1442,8 @@ export default function App() {
         imageEnabled={Boolean(filePath)}
         mdTheme={mdTheme}
         onMarkdownTheme={pickMarkdownTheme}
+        editorFont={editorFont}
+        onEditorFont={pickEditorFont}
         onInsertImage={insertImage}
         onImageHost={() => setImageHostOpen(true)}
         frontmatterOpen={fmOpen}

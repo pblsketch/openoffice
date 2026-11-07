@@ -5,6 +5,8 @@ import { useEditorState } from '@tiptap/react'
 import {
   AiMark,
   Dropdown,
+  type DropdownOption,
+  isSymbolFontFamily,
   RibbonCollapseButton,
   RibbonExpandButton,
   aiSubscriptionText,
@@ -13,6 +15,7 @@ import {
 } from '@genoffice/ui'
 import { useI18n } from '../i18n/locale'
 import { SOURCE_VIEW_SHORTCUT } from '../source-view-key'
+import { editorFontChoices, useSystemFonts } from '../editor-font'
 import { MARKDOWN_THEME_IDS, type MarkdownTheme } from '../../shared/markdown-theme'
 import type { StringKey } from '../i18n/locale'
 import { uiOp, type BlockType, type ListKind, type StylableMark } from '../editor/ops'
@@ -73,6 +76,9 @@ interface Props {
   onToggleSpellcheck: () => void
   mdTheme: MarkdownTheme
   onMarkdownTheme: (theme: MarkdownTheme) => void
+  /** the block editor's view font; null is the default face */
+  editorFont: string | null
+  onEditorFont: (font: string | null) => void
   aiOpen: boolean
   onToggleAi: () => void
   onAiPreset: (instruction: string) => void
@@ -233,6 +239,52 @@ function ThemePicker({
   )
 }
 
+const DEFAULT_FONT = ''
+
+/** Each family is listed in its own face, except symbol fonts, whose names would read as pictographs. */
+function fontOption(family: string): DropdownOption {
+  return {
+    value: family,
+    label: family,
+    render: (
+      <span style={isSymbolFontFamily(family) ? undefined : { fontFamily: `"${family}"` }}>
+        {family}
+      </span>
+    ),
+  }
+}
+
+function EditorFontPicker({
+  font,
+  disabled,
+  onPick,
+}: {
+  font: string | null
+  disabled?: boolean
+  onPick: (font: string | null) => void
+}) {
+  const { t, lang } = useI18n()
+  const { families } = useSystemFonts()
+  const choices = editorFontChoices(lang, families)
+  // a remembered font this PC no longer lists still reads as itself
+  if (font && !choices.includes(font)) choices.unshift(font)
+  const options = [
+    { value: DEFAULT_FONT, label: t('editorFontDefault') },
+    ...choices.map(fontOption),
+  ]
+  return (
+    <Dropdown
+      className="rb-font"
+      value={font ?? DEFAULT_FONT}
+      options={options}
+      ariaLabel={t('editorFontTitle')}
+      tip={t('editorFontTitle')}
+      disabled={disabled}
+      onPick={(value) => onPick(value === DEFAULT_FONT ? null : value)}
+    />
+  )
+}
+
 function IconBtn({
   title,
   active,
@@ -292,6 +344,8 @@ export function Ribbon({
   onToggleSpellcheck,
   mdTheme,
   onMarkdownTheme,
+  editorFont,
+  onEditorFont,
   aiOpen,
   onToggleAi,
   onAiPreset,
@@ -699,6 +753,13 @@ export function Ribbon({
               disabled={disabled || sourceMode || sourceViewOpen}
               onPick={onMarkdownTheme}
             />
+            {!sourceMode && (
+              <EditorFontPicker
+                font={editorFont}
+                disabled={disabled || sourceViewOpen}
+                onPick={onEditorFont}
+              />
+            )}
             {!sourceMode && (
               <IconBtn
                 title={t('backlinks')}
