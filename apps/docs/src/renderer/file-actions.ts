@@ -100,6 +100,7 @@ import { isBlankDocument, parseHtmlFragment, replaceBlockRange } from './ai/prot
 import { carryDocSeen } from './ai/tools'
 import { isDocDirty, resetCrossDocEditState } from './doc-dirty'
 import { pruneUnreferencedNumbering } from './numbering-actions'
+import { sameRecoveryCopy } from './recovery-copy-compare'
 import { applySectPrRewrites, type SectPrRewrite } from './sectpr-rewrite'
 import { createSaveSerializer } from './save-until-persisted'
 import { checkMissingFonts, collectDocFonts } from './font-check'
@@ -955,12 +956,6 @@ export function forgetRecoveryCopy(): void {
   lastRecoveryCopy = null
 }
 
-function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.byteLength !== b.byteLength) return false
-  for (let i = 0; i < a.byteLength; i++) if (a[i] !== b[i]) return false
-  return true
-}
-
 /** 'failed': the copy could not be written (the caller backs off for a while) */
 export type RecoveryCopyOutcome = 'written' | 'skipped' | 'failed'
 
@@ -996,20 +991,19 @@ export async function writeRecoveryCopy(
     // an ODT tab's copy is the ODT a save would write now: restoring it opens
     // an ODT document again, and its save writes ODT
     const bytes = isOdtDoc(doc) ? await odtBytesFor(doc.odt, docx) : docx
-    if (generation !== docGeneration || saves !== savesLanded || ctx.saveInFlightRef.current) {
-      return 'skipped'
-    }
     const last = lastRecoveryCopy
-    if (
+    // not the bytes: two serializations a tick apart differ in their time stamps
+    const unchanged =
       !options.force &&
-      last &&
+      last !== null &&
       last.generation === generation &&
       last.saves === saves &&
       last.path === doc.filePath &&
-      sameBytes(last.bytes, bytes)
-    ) {
+      (await sameRecoveryCopy(last.bytes, bytes))
+    if (generation !== docGeneration || saves !== savesLanded || ctx.saveInFlightRef.current) {
       return 'skipped'
     }
+    if (unchanged) return 'skipped'
     const result = await window.desktop.writeRecoveryCopy(
       doc.filePath,
       toArrayBuffer(bytes),
