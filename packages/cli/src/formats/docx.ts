@@ -1110,12 +1110,22 @@ const keywordOf = (instr: string) => /^\s*([A-Za-z]+)/.exec(instr)?.[1]?.toUpper
 function xmlFields(xml: string): Array<Pick<FieldSummary, 'instr' | 'result' | 'dirty'>> {
   const out: Array<Pick<FieldSummary, 'instr' | 'result' | 'dirty'>> = []
   const decode = (t: string) =>
-    t
-      .replace(/&quot;/g, '"')
-      .replace(/&apos;/g, "'")
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&amp;/g, '&')
+    t.replace(/&(?:quot|apos|lt|gt|amp|#\d+|#x[0-9a-fA-F]+);/g, (entity) => {
+      const named: Record<string, string> = {
+        '&quot;': '"',
+        '&apos;': "'",
+        '&lt;': '<',
+        '&gt;': '>',
+        '&amp;': '&',
+      }
+      if (named[entity] !== undefined) return named[entity]!
+      const code = entity.startsWith('&#x')
+        ? parseInt(entity.slice(3, -1), 16)
+        : Number(entity.slice(2, -1))
+      return code > 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff)
+        ? String.fromCodePoint(code)
+        : entity
+    })
   let depth = 0
   let instr = ''
   let result: string | null = null
