@@ -1,12 +1,18 @@
 import katexCss from 'katex/dist/katex.min.css?inline'
+import { MARKDOWN_PRINT_OPTIONS } from '../../shared/print-options'
 
 /** `[[target|alias]]` as one whole literal; mirrors the editor's link regex */
 const WIKI_ALIAS_RE = /^\[\[[^[\]|\n]+\|([^[\]\n]+)\]\]$/
 
-/** Print-theme CSS: mirrors the editor typography so the PDF matches the canvas */
+/**
+ * Print-theme CSS: mirrors the editor typography so the PDF matches the canvas.
+ * The `@page` margin is the print options' margin. Chromium lets a CSS page
+ * margin win over the `margins` that printToPDF and print() are given, so a
+ * margin of 0 here put the text on the paper's edge, where printers clip it.
+ */
 const PRINT_CSS = `
 @page {
-  margin: 0;
+  margin: ${MARKDOWN_PRINT_OPTIONS.marginIn}in;
   size: auto;
 }
 * { box-sizing: border-box; }
