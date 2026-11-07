@@ -20,8 +20,9 @@ function decodeHtmlEntities(text: string): string {
 }
 
 /**
- * The text of an HTML label: `<br>` and block ends become line breaks, other
- * tags go, entities are decoded, and leading or trailing line breaks are trimmed.
+ * The text of an HTML label: `<br>` and block ends become line breaks, table
+ * cells are tab-separated, other tags go, entities are decoded, and leading
+ * or trailing line breaks are trimmed.
  */
 export function htmlLabelToText(html: string): string {
   const text = html
@@ -30,11 +31,15 @@ export function htmlLabelToText(html: string): string {
     .replace(/<br\s*\/?>(?=<\/(?:div|p|li)\s*>)/gi, '')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/(?:div|p|li|h[1-6]|tr)\s*>/gi, '\n')
+    .replace(/<\/(?:td|th)\s*>/gi, '\t')
     .replace(/<(?:div|p|li|h[1-6]|tr)(?:\s[^>]*)?>/gi, (_match, offset: number, whole: string) =>
       offset > 0 && whole[offset - 1] !== '\n' ? '\n' : '',
     )
     .replace(/<[^>]*>/g, '')
-  return decodeHtmlEntities(text).replace(/^\n+|\n+$/g, '')
+  return decodeHtmlEntities(text)
+    .replace(/\t+\n/g, '\n')
+    .replace(/\t+$/g, '')
+    .replace(/^\n+|\n+$/g, '')
 }
 
 /** The text of a cell label, whatever its kind. */

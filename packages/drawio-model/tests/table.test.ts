@@ -41,6 +41,11 @@ describe('htmlLabelToText', () => {
     ['<div>x</div><div><br></div><div>y</div>', 'x\n\ny'],
     ['<span style="color:red">r&amp;d &lt;3&nbsp;&#65;&#x42;</span>', 'r&d <3 AB'],
     ['<p>one</p><p>two</p>', 'one\ntwo'],
+    [
+      '<table><tr><td>Q1</td><td>100</td></tr><tr><td>Q2</td><td>200</td></tr></table>',
+      'Q1\t100\nQ2\t200',
+    ],
+    ['<table><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></table>', 'A\tB\n1\t2'],
   ])('%s', (html, text) => {
     expect(htmlLabelToText(html)).toBe(text)
   })
