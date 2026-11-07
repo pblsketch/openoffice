@@ -1319,8 +1319,18 @@ function patchPointFill(dPtXml: string, fill: string): string {
   return dPtXml.replace(spPrMatch[0], () => `<c:spPr>${nextHead}${tail}</c:spPr>`)
 }
 
+// Control characters outside \t \n \r are illegal in XML 1.0 even when escaped
+// (same class as odt/drawio/docx C0 strip). Chart titles and series names skip
+// encodeXlsxEscapes, so this local helper must strip them itself.
+// eslint-disable-next-line no-control-regex
+const ILLEGAL_XML_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g
+
 function escapeXmlText(input: string): string {
-  return input.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+  return input
+    .replace(ILLEGAL_XML_CHARS, '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
 }
 
 function escapeXmlAttribute(input: string): string {
