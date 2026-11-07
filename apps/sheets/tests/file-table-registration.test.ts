@@ -87,4 +87,13 @@ describe('sanitizeTableName', () => {
   it('returns an empty string for blank input', () => {
     expect(sanitizeTableName('   ')).toBe('')
   })
+  it('does not split an astral letter on the 255-unit boundary', () => {
+    // U+20000 is \p{L} (CJK Ext-B) and a UTF-16 surrogate pair.
+    const raw = `${'a'.repeat(254)}\u{20000}bbbb`
+    expect(/\p{L}/u.test('\u{20000}')).toBe(true)
+    const name = sanitizeTableName(raw)
+    expect(name).toBe('a'.repeat(254))
+    expect(name.length).toBe(254)
+    expect(/[\uD800-\uDBFF]$/.test(name)).toBe(false)
+  })
 })
