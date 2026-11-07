@@ -102,6 +102,8 @@ export const pl = {
   noticePreserved:
     'Ten plik zawiera elementy, które nie są tu wyświetlane: {count}. Zapisanie ich nie usuwa. Usuwane są tylko te, które należą do tematu usuwanego przez Ciebie.',
   noticeTheme: 'Ta mapa jest tu wyświetlana w domyślnym wyglądzie. Motyw pliku nie jest zmieniany.',
+  noticeImported:
+    'To nowa mapa zaimportowana z pliku FreeMind lub Freeplane (.mm). Zapisanie tworzy nowy plik, a plik .mm pozostaje bez zmian. Ikony, kolory i czcionki nie są importowane.',
   openLegacy: 'Ten plik ma starszy format i nie można go otworzyć',
   openEncrypted: 'Ten plik jest chroniony hasłem i nie można go otworzyć',
   openUnreadable: 'Nie można odczytać tego pliku',

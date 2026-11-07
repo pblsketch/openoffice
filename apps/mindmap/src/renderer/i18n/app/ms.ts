@@ -102,6 +102,8 @@ export const ms = {
   noticePreserved:
     'Fail ini mengandungi {count} elemen yang tidak dipaparkan di sini. Menyimpan tidak memadamnya. Hanya yang terlekat pada topik yang anda padam sendiri akan turut dipadam.',
   noticeTheme: 'Peta ini dipaparkan di sini dengan rupa lalai. Tema fail tidak diubah.',
+  noticeImported:
+    'Ini peta baharu yang diimport daripada fail FreeMind atau Freeplane (.mm). Menyimpan akan membuat fail baharu, dan fail .mm kekal seperti sedia ada. Ikon, warna dan fon tidak diimport.',
   openLegacy: 'Fail ini dalam format lama dan tidak dapat dibuka',
   openEncrypted: 'Fail ini dilindungi kata laluan dan tidak dapat dibuka',
   openUnreadable: 'Fail ini tidak dapat dibaca',

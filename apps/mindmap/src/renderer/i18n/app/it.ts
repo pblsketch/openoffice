@@ -104,6 +104,8 @@ export const it = {
     'Questo file contiene {count} elementi che non vengono mostrati qui. Il salvataggio non li elimina. Vengono eliminati solo quelli collegati a un argomento che elimini tu stesso.',
   noticeTheme:
     "Questa mappa viene mostrata qui con l'aspetto predefinito. Il tema del file non viene modificato.",
+  noticeImported:
+    'Questa è una nuova mappa importata da un file FreeMind o Freeplane (.mm). Il salvataggio crea un nuovo file e il file .mm resta invariato. Icone, colori e caratteri non vengono importati.',
   openLegacy: 'Questo file è in un formato precedente e non può essere aperto',
   openEncrypted: 'Questo file è protetto da password e non può essere aperto',
   openUnreadable: 'Impossibile leggere questo file',

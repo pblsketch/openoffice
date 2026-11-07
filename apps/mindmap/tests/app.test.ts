@@ -226,6 +226,40 @@ describe('a file that does not open', () => {
   })
 })
 
+describe('a FreeMind / Freeplane map (.mm)', () => {
+  const MM =
+    '<map version="1.0.1"><node TEXT="Plan"><node TEXT="Goals" POSITION="right"/>' +
+    '<node TEXT="Risks" POSITION="left"/></node></map>'
+  const imported = (text: string): OpenFileResult => ({
+    status: 'import',
+    importer: 'freemind',
+    bytes: new TextEncoder().encode(text),
+    title: 'Team plan',
+  })
+
+  it('opens as a new, unsaved map with one notice; a save hands over an .xmind with no path', async () => {
+    const fake = fakeApi('C:/maps/Team plan.mm', imported(MM))
+    await mountApp(fake)
+    expect(container.querySelector('.map-container')?.textContent).toContain('Goals')
+    expect(container.querySelector('.map-container')?.textContent).toContain('Risks')
+    expect(container.querySelector('[data-notice="imported"]')?.textContent).toContain('.mm')
+    expect(fake.dirty.at(-1)).toBe(true)
+
+    await click('[data-action="save"]')
+    await savesReach(fake)
+    expect(fake.saves[0]!.mode).toBe('save')
+    const saved = await openXmind(fake.saves[0]!.bytes)
+    expect(saved.status === 'ok' && saved.document.sheets[0]!.title).toBe('Team plan')
+  })
+
+  it('a .mm that is not a map shows that the file cannot be read', async () => {
+    const fake = fakeApi('C:/maps/x.mm', imported('<map><node TEXT="Plan">'))
+    await mountApp(fake)
+    expect(container.textContent).toBe('This file cannot be read')
+    expect(fake.saves).toEqual([])
+  })
+})
+
 describe('a file that opens', () => {
   it('tells once what the editor does not show, and that the map has the default look', async () => {
     await openWith(richSheet())

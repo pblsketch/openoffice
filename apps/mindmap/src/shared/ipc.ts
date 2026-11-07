@@ -172,9 +172,14 @@ export type MindmapOpenStatus = 'ok' | 'legacy-format' | 'encrypted' | 'unreadab
  * map opens with unsaved changes. `file`: the file's path stays the save
  * target. `untitled`: the file is gone or no longer opens, so the map has no
  * path and its first save asks where (offering the file's old path).
+ *
+ * `import`: the path is a FreeMind or Freeplane map (`.mm`). The renderer
+ * reads its bytes into a new map named `title`; the `.mm` is never written,
+ * and the first save asks where to put the `.xmind` (offering its folder).
  */
 export type OpenFileResult =
   | { status: 'ok'; bytes: Uint8Array; restored?: 'file' | 'untitled' }
+  | { status: 'import'; importer: 'freemind'; bytes: Uint8Array; title: string }
   | { status: Exclude<MindmapOpenStatus, 'ok'> }
 
 // ---- save ----

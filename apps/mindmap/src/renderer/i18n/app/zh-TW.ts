@@ -100,6 +100,8 @@ export const zhTW = {
   noticePreserved:
     '此檔案包含 {count} 個此處未顯示的元素。儲存不會刪除它們，但您親自刪除的主題所附帶的元素會一併刪除。',
   noticeTheme: '此心智圖在這裡以預設外觀顯示。檔案中的佈景主題不會變更。',
+  noticeImported:
+    '這是從 FreeMind 或 Freeplane 檔案（.mm）匯入的新心智圖。儲存時會寫入新檔案，原本的 .mm 檔案維持不變。圖示、色彩與字型不會匯入。',
   openLegacy: '此檔案為舊版格式，無法開啟',
   openEncrypted: '此檔案已加密，無法開啟',
   openUnreadable: '無法讀取此檔案',
