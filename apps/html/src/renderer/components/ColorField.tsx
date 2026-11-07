@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode, Ref } from 'react'
 import { createPortal } from 'react-dom'
-import { ColorPicker, useDismissablePopover } from '@genoffice/ui'
+import { ColorPicker, colorSwatchName, useDismissablePopover } from '@genoffice/ui'
 import { useI18n } from '../i18n/locale'
 
 const POP_WIDTH = 260
@@ -24,7 +24,7 @@ interface PopProps {
 /** the shared Word-style palette, portaled to <body> and fixed under `anchor`: it escapes the toolbar's
     and panel's stacking contexts and clipping, and follows the anchor on scroll / resize / `track` */
 export function ColorPop(p: PopProps) {
-  const { t } = useI18n()
+  const { lang, t } = useI18n()
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState({ left: 0, top: 0 })
   useLayoutEffect(() => {
@@ -68,6 +68,7 @@ export function ColorPop(p: PopProps) {
           themeColors: t('themeColors'),
           standardColors: t('standardColors'),
           moreColors: t('moreColors'),
+          colorName: (swatch) => colorSwatchName(lang, swatch),
         }}
         onPick={(hex) => {
           p.onPick(hex ? hex.toLowerCase() : null)

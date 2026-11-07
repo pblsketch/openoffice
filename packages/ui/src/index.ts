@@ -246,6 +246,7 @@ export {
   canPickScreenColor,
   pickScreenColor,
 } from './color-picker'
+export { COLOR_SWATCH_NAMES, colorSwatchName } from './strings-color-names'
 export { installScreenTips } from './screentip'
 export {
   installPopoverDismiss,
