@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from '
 import { tmpdir } from 'node:os'
 import { basename, dirname, extname, isAbsolute, join, resolve as resolvePath } from 'node:path'
 import { PdfLoadError } from '@genoffice/pdf2docx'
-import { flagBool, flagString, type ParsedArgs } from '../args'
+import { assertOptionValues, flagBool, flagString, type ParsedArgs } from '../args'
 import { csvToXlsx, sheetNameFromStem } from '../formats/csv'
 import { convertLegacyDoc } from '../formats/legacy-doc'
 import { convertPdf, type PdfTarget } from '../formats/pdf'
@@ -152,6 +152,7 @@ export const convertCommand: CommandDef = {
     },
   ],
   async run(args, ctx) {
+    assertOptionValues(args, convertCommand.options)
     const input = resolveInput(args.positionals[0], ctx)
     if (isDiagramPath(input)) return convertDiagramFile(input, args, ctx)
     const from = extension(input)

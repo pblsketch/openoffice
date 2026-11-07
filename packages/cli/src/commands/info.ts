@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { parseDocx } from '@genoffice/docx-engine'
 import { protectedCellsOf } from '@genoffice/odt-engine'
 import { openPptx } from '@genoffice/pptx-engine'
-import { flagString } from '../args'
+import { assertOptionValues, flagString } from '../args'
 import { csvInfo } from '../formats/csv'
 import { hwpInfo } from '../formats/hwp'
 import { openOdtBytes } from '../formats/odt'
@@ -24,6 +24,7 @@ export const infoCommand: CommandDef = {
   usage: 'info <file> [--password <pw>]',
   options: [{ name: 'password', value: 'pw', description: 'password for an encrypted PDF' }],
   async run(args, ctx) {
+    assertOptionValues(args, infoCommand.options)
     const path = resolveInput(args.positionals[0], ctx)
     const ext = extension(path)
     const stat = statSync(path)
