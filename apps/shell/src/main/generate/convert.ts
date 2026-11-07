@@ -207,6 +207,9 @@ const WINDOWS_1252 = new TextDecoder('windows-1252')
 
 /** The file's own text, decoded the way the reader decodes a text file. */
 function decodeText(bytes: Uint8Array): string | null {
+  // UTF-32BE (00 00 FE FF) is not UTF-16BE (FE FF) and must not fall through
+  // to UTF-8 / windows-1252. UTF-32LE is the UTF-16LE BOM plus two NULs.
+  if (bytes[0] === 0 && bytes[1] === 0 && bytes[2] === 0xfe && bytes[3] === 0xff) return null
   if (bytes[0] === 0xff && bytes[1] === 0xfe) {
     if (bytes[2] === 0 && bytes[3] === 0) return null
     return new TextDecoder('utf-16le').decode(bytes.subarray(2))
