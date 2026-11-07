@@ -1381,6 +1381,7 @@ export default function App() {
   /** cancels a pending page-fit when the show ends before its timer runs */
   const presentSeqRef = useRef(0)
   const fitModeRef = useRef<FitMode>(openingView(null, defaultView).fitMode)
+  const [zoomChosen, setZoomChosen] = useState(false)
   /** Reading position saved when this file was last viewed; applied once after open */
   const pendingViewRestoreRef = useRef<PdfViewState | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -2038,9 +2039,10 @@ export default function App() {
         // zoom (fitMode null) must be applied before 'ready', or the initial
         // fit recompute would take over; fit modes are recomputed anyway.
         const savedView = loadViewState(path)
-        const opening = openingView(savedView, defaultViewRef.current)
+        const opening = openingView(savedView?.chosenZoom ?? null, defaultViewRef.current)
         fitModeRef.current = opening.fitMode
         if (opening.fitMode === null) setScale(opening.scale)
+        setZoomChosen(savedView?.chosenZoom != null)
         pendingViewRestoreRef.current = savedView
         setStatus('ready')
       } catch (err) {
@@ -2380,6 +2382,7 @@ export default function App() {
           gap: PAGE_GAP,
           scale,
           fitMode: fitModeRef.current,
+          zoomChosen,
         }),
       )
     }
@@ -2396,7 +2399,7 @@ export default function App() {
       window.removeEventListener('pagehide', saveNow)
       window.clearTimeout(timer)
     }
-  }, [status, filePath, rows, rowSize, visList, scale])
+  }, [status, filePath, rows, rowSize, visList, scale, zoomChosen])
 
   /** Page-top offset of a visible position (used for search positioning) */
   const pageTop = useCallback((visIdx: number) => rowTop(rowOfVis(visIdx)), [rowTop, rowOfVis])
@@ -2647,16 +2650,23 @@ export default function App() {
   )
 
   /** Zoom keeping the content at the viewport top anchored (row-exact, see anchorZoomScroll) */
-  const applyScale = (next: number, mode: FitMode) => {
-    fitModeRef.current = mode
+  const applyScale = (next: number) => {
+    fitModeRef.current = null
+    setZoomChosen(true)
     const clamped = clampScale(next)
     anchorZoomScroll(clamped)
     setScale(clamped)
   }
 
-  const zoomIn = () => applyScale(ZOOM_STEPS.find((s) => s > scale + 0.001) ?? MAX_SCALE, null)
+  const chooseFit = (mode: 'width' | 'page') => {
+    fitModeRef.current = mode
+    setZoomChosen(true)
+    recomputeFit()
+  }
+
+  const zoomIn = () => applyScale(ZOOM_STEPS.find((s) => s > scale + 0.001) ?? MAX_SCALE)
   const zoomOut = () =>
-    applyScale([...ZOOM_STEPS].reverse().find((s) => s < scale - 0.001) ?? MIN_SCALE, null)
+    applyScale([...ZOOM_STEPS].reverse().find((s) => s < scale - 0.001) ?? MIN_SCALE)
 
   const commitPageInput = () => {
     const n = Number.parseInt(pageInput, 10)
@@ -8734,8 +8744,7 @@ export default function App() {
           zoomOut()
         } else if (e.key === '0') {
           e.preventDefault()
-          fitModeRef.current = 'width'
-          recomputeFit()
+          chooseFit('width')
         }
         return
       }
@@ -8889,6 +8898,7 @@ export default function App() {
         return
       }
       fitModeRef.current = null
+      setZoomChosen(true)
       queuedScaleRef.current = next
       const box = el.getBoundingClientRect()
       anchorZoomScroll(next, e.clientX - box.left, e.clientY - box.top)
@@ -9168,25 +9178,13 @@ export default function App() {
             </button>
           </div>
         </div>
-        <button
-          className="rb-big"
-          onClick={() => {
-            fitModeRef.current = 'width'
-            recomputeFit()
-          }}
-        >
+        <button className="rb-big" onClick={() => chooseFit('width')}>
           <span className="rb-big-icon">
             <IconFitWidth />
           </span>
           <span>{t('fitWidth')}</span>
         </button>
-        <button
-          className="rb-big"
-          onClick={() => {
-            fitModeRef.current = 'page'
-            recomputeFit()
-          }}
-        >
+        <button className="rb-big" onClick={() => chooseFit('page')}>
           <span className="rb-big-icon">
             <IconFitPage />
           </span>
@@ -13824,7 +13822,7 @@ export default function App() {
                 max={MAX_SCALE * 100}
                 step={5}
                 value={Math.round(scale * 100)}
-                onChange={(e) => applyScale(Number(e.target.value) / 100, null)}
+                onChange={(e) => applyScale(Number(e.target.value) / 100)}
               />
               <button
                 className="zoom-btn"

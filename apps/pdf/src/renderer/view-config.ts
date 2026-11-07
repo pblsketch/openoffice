@@ -1,3 +1,5 @@
+import type { PdfZoom } from './view-state'
+
 // cmaps/standard fonts/wasm are statically copied by the build into pdfjs/ of the renderer output (same path on the dev server)
 export const ASSET_BASE = new URL('pdfjs/', document.baseURI).href
 
@@ -168,18 +170,9 @@ export const saveDefaultView = (view: DefaultView, storage: FlagStorage = localS
   }
 }
 
-export type OpeningView = { fitMode: 'width' | 'page' } | { fitMode: null; scale: number }
-
-/** A file's own saved view wins; a file with no saved position uses the default. */
-export const openingView = (
-  saved: { fitMode: FitMode; scale: number } | null,
-  fallback: DefaultView,
-): OpeningView => {
-  if (saved) {
-    return saved.fitMode === null
-      ? { fitMode: null, scale: clampScale(saved.scale) }
-      : { fitMode: saved.fitMode }
-  }
+export const openingView = (chosen: PdfZoom | null, fallback: DefaultView): PdfZoom => {
+  if (chosen)
+    return chosen.fitMode === null ? { fitMode: null, scale: clampScale(chosen.scale) } : chosen
   return fallback === 'actual' ? { fitMode: null, scale: 1 } : { fitMode: fallback }
 }
 

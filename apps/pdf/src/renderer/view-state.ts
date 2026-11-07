@@ -7,6 +7,8 @@
 
 export type PdfFitMode = 'width' | 'page' | null
 
+export type PdfZoom = { fitMode: 'width' | 'page' } | { fitMode: null; scale: number }
+
 export type PdfViewState = {
   /** 1-based page number of the row at the viewport top */
   page: number
@@ -14,8 +16,7 @@ export type PdfViewState = {
       Fraction (not pixels) so the position survives a different window size
       or fit-computed scale on the next open. */
   frac: number
-  scale: number
-  fitMode: PdfFitMode
+  chosenZoom: PdfZoom | null
 }
 
 type StoredEntry = PdfViewState & { at: number }
@@ -36,19 +37,36 @@ function readAll(storage: StorageLike): Record<string, unknown> {
   }
 }
 
+const isScale = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0
+
+function parseZoom(raw: unknown): PdfZoom | null | undefined {
+  if (raw === null) return null
+  if (!raw || typeof raw !== 'object') return undefined
+  const z = raw as Record<string, unknown>
+  if (z.fitMode === 'width' || z.fitMode === 'page') return { fitMode: z.fitMode }
+  if (z.fitMode === null && isScale(z.scale)) return { fitMode: null, scale: z.scale }
+  return undefined
+}
+
+function chosenZoomOfLegacyRecord(e: Record<string, unknown>): PdfZoom | null | undefined {
+  if (!isScale(e.scale)) return undefined
+  if (e.fitMode === null) return { fitMode: null, scale: e.scale }
+  if (e.fitMode === 'width' || e.fitMode === 'page') return null
+  return undefined
+}
+
 /** Entries come from disk and may be from an older build or corrupted — never trust them. */
 function sanitize(entry: unknown): StoredEntry | null {
   if (!entry || typeof entry !== 'object') return null
   const e = entry as Record<string, unknown>
   if (typeof e.page !== 'number' || !Number.isFinite(e.page) || e.page < 1) return null
-  if (typeof e.scale !== 'number' || !Number.isFinite(e.scale) || e.scale <= 0) return null
-  if (e.fitMode !== 'width' && e.fitMode !== 'page' && e.fitMode !== null) return null
+  const chosenZoom = 'chosenZoom' in e ? parseZoom(e.chosenZoom) : chosenZoomOfLegacyRecord(e)
+  if (chosenZoom === undefined) return null
   return {
     page: Math.floor(e.page),
     frac:
       typeof e.frac === 'number' && Number.isFinite(e.frac) ? Math.min(Math.max(e.frac, 0), 1) : 0,
-    scale: e.scale,
-    fitMode: e.fitMode,
+    chosenZoom,
     at: typeof e.at === 'number' && Number.isFinite(e.at) ? e.at : 0,
   }
 }
@@ -97,8 +115,9 @@ export function captureViewState(args: {
   gap: number
   scale: number
   fitMode: PdfFitMode
+  zoomChosen: boolean
 }): PdfViewState {
-  const { scrollTop, rowHeights, rowPages, gap, scale, fitMode } = args
+  const { scrollTop, rowHeights, rowPages, gap, scale, fitMode, zoomChosen } = args
   let top = gap
   let rowIdx = 0
   let rowTop = top
@@ -113,8 +132,7 @@ export function captureViewState(args: {
   return {
     page: rowPages[rowIdx] ?? 1,
     frac: height > 0 ? Math.min(Math.max((scrollTop - rowTop) / height, 0), 1) : 0,
-    scale,
-    fitMode,
+    chosenZoom: !zoomChosen ? null : fitMode === null ? { fitMode: null, scale } : { fitMode },
   }
 }
 

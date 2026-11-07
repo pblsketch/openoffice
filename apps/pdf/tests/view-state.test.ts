@@ -22,8 +22,7 @@ function memStorage(initial?: Record<string, string>) {
 const state = (over: Partial<PdfViewState> = {}): PdfViewState => ({
   page: 5,
   frac: 0.4,
-  scale: 1.25,
-  fitMode: null,
+  chosenZoom: { fitMode: null, scale: 1.25 },
   ...over,
 })
 
@@ -63,6 +62,9 @@ describe('saveViewState / loadViewState', () => {
       '/nan-scale.pdf': { page: 1, frac: 0, scale: 'x', fitMode: null, at: 1 },
       '/neg-scale.pdf': { page: 1, frac: 0, scale: -1, fitMode: null, at: 1 },
       '/bad-fit.pdf': { page: 1, frac: 0, scale: 1, fitMode: 'zoom', at: 1 },
+      '/bad-zoom.pdf': { page: 1, frac: 0, chosenZoom: { fitMode: 'zoom' }, at: 1 },
+      '/zero-zoom.pdf': { page: 1, frac: 0, chosenZoom: { fitMode: null, scale: 0 }, at: 1 },
+      '/zoom-not-object.pdf': { page: 1, frac: 0, chosenZoom: 'width', at: 1 },
       '/not-object.pdf': 42,
     }
     const storage = memStorage({ [VIEW_STATE_KEY]: JSON.stringify(bad) })
@@ -78,6 +80,31 @@ describe('saveViewState / loadViewState', () => {
     })
     expect(loadViewState('/over.pdf', storage)?.frac).toBe(1)
     expect(loadViewState('/missing.pdf', storage)?.frac).toBe(0)
+  })
+
+  it('round-trips a file whose zoom was never chosen and one fit by hand', () => {
+    const storage = memStorage()
+    saveViewState('/plain.pdf', state({ chosenZoom: null }), storage)
+    saveViewState('/fit.pdf', state({ chosenZoom: { fitMode: 'page' } }), storage)
+    expect(loadViewState('/plain.pdf', storage)).toEqual(state({ chosenZoom: null }))
+    expect(loadViewState('/fit.pdf', storage)).toEqual(state({ chosenZoom: { fitMode: 'page' } }))
+  })
+
+  it('reads a record from an older build: a custom scale stays, a fit mode does not', () => {
+    const storage = memStorage({
+      [VIEW_STATE_KEY]: JSON.stringify({
+        '/custom.pdf': { page: 3, frac: 0.2, scale: 1.5, fitMode: null, at: 1 },
+        '/width.pdf': { page: 7, frac: 0.6, scale: 1.03, fitMode: 'width', at: 1 },
+        '/page.pdf': { page: 2, frac: 0, scale: 0.8, fitMode: 'page', at: 1 },
+      }),
+    })
+    expect(loadViewState('/custom.pdf', storage)).toEqual({
+      page: 3,
+      frac: 0.2,
+      chosenZoom: { fitMode: null, scale: 1.5 },
+    })
+    expect(loadViewState('/width.pdf', storage)).toEqual({ page: 7, frac: 0.6, chosenZoom: null })
+    expect(loadViewState('/page.pdf', storage)).toEqual({ page: 2, frac: 0, chosenZoom: null })
   })
 
   it('prunes the least recently saved entries beyond the cap', () => {
@@ -113,11 +140,20 @@ describe('captureViewState', () => {
     gap: 10,
     scale: 1.5,
     fitMode: 'width' as const,
+    zoomChosen: true,
   }
 
   it('captures the row at the viewport top with its within-row fraction', () => {
     const view = captureViewState({ ...geometry, scrollTop: 170 })
-    expect(view).toEqual({ page: 2, frac: 0.5, scale: 1.5, fitMode: 'width' })
+    expect(view).toEqual({ page: 2, frac: 0.5, chosenZoom: { fitMode: 'width' } })
+  })
+
+  it('keeps the zoom only when the person chose it for this file', () => {
+    expect(captureViewState({ ...geometry, scrollTop: 0, zoomChosen: false }).chosenZoom).toBeNull()
+    expect(captureViewState({ ...geometry, scrollTop: 0, fitMode: null }).chosenZoom).toEqual({
+      fitMode: null,
+      scale: 1.5,
+    })
   })
 
   it('captures the document top as page 1 frac 0', () => {
@@ -140,6 +176,7 @@ describe('captureViewState', () => {
       gap: 10,
       scale: 1,
       fitMode: null,
+      zoomChosen: false,
       scrollTop: 50,
     })
     expect(view).toMatchObject({ page: 1, frac: 0 })
@@ -152,6 +189,7 @@ describe('captureViewState', () => {
       gap: 10,
       scale: 1,
       fitMode: null,
+      zoomChosen: false,
       scrollTop: 120,
     })
     expect(view.page).toBe(3)
