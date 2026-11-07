@@ -15,6 +15,7 @@ import type { DiagramCell, DiagramPrimitive } from './types'
 import {
   appendElement,
   childElements,
+  escapeXmlAttr,
   getAttr,
   leadingWhitespace,
   markContentDirty,
@@ -112,9 +113,7 @@ class FileWriter {
       // A bare model becomes the first page of an mxfile once pages change.
       const bare = parseXmlTree(xml).root
       const first = file.pages[0]!
-      const escape = (value: string): string =>
-        value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')
-      xml = `<mxfile>\n  <diagram id="${escape(first.id)}" name="${escape(first.name)}">${xml.slice(bare.start, bare.end)}</diagram>\n</mxfile>\n`
+      xml = `<mxfile>\n  <diagram id="${escapeXmlAttr(first.id)}" name="${escapeXmlAttr(first.name)}">${xml.slice(bare.start, bare.end)}</diagram>\n</mxfile>\n`
     }
     this.tree = parseXmlTree(xml)
     const root = this.tree.root
