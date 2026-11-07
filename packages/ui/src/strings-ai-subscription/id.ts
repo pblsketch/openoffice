@@ -169,4 +169,18 @@ export const id = {
   browserPageDoneBody: 'Anda dapat menutup tab ini dan kembali ke aplikasi.',
   browserPageFailedTitle: 'Koneksi tidak berhasil',
   browserPageFailedBody: 'Kembali ke aplikasi dan coba lagi.',
+  cardOff: 'Dimatikan di aplikasi ini',
+  offNote:
+    'Aplikasi ini tidak menjalankan program {provider} dan tidak memeriksa statusnya. Login {provider} di PC ini dan pemakaiannya di terminal tetap seperti semula.',
+  offElsewhereNote: 'Anda bisa memakainya lagi di Pengaturan → AI.',
+  offSwitchNote:
+    '"Jangan pakai di aplikasi ini" membiarkan login {provider} di PC ini dan hanya menghentikan aplikasi ini. Keluar berlaku untuk seluruh PC.',
+  actionTurnOff: 'Jangan pakai di aplikasi ini',
+  actionTurnOn: 'Pakai lagi',
+  connectOffTitle: '{provider} dimatikan di aplikasi ini',
+  connectOffBody:
+    'Tekan "Pakai lagi" pada kartu {provider} di Pengaturan → AI, atau pilih AI lain.',
+  errOffInApp:
+    '{provider} dimatikan di aplikasi ini, jadi tidak ada yang dijalankan. Anda bisa memakainya lagi di Pengaturan → AI.',
+  guideBadgeOff: 'Dimatikan',
 } satisfies Record<keyof typeof zh, string>

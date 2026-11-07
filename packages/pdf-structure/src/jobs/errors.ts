@@ -27,6 +27,7 @@ export const JOB_STOP_KINDS: readonly string[] = [
   'credits',
   'headless-limit',
   'context-limit',
+  'off-in-app',
 ]
 
 export function isJobStopKind(kind: string | undefined): boolean {

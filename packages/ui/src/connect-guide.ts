@@ -77,6 +77,8 @@ function badgeOf(status: AiSubscriptionStatus): AiSubscriptionStringKey | undefi
       return 'guideBadgeInstalled'
     case 'error':
       return 'guideBadgeCheck'
+    case 'off':
+      return 'guideBadgeOff'
     default:
       return undefined
   }
@@ -176,7 +178,9 @@ export function aiConnectStepsView(status: AiSubscriptionStatus): AiConnectSteps
 function currentStep(status: AiSubscriptionStatus): AiConnectStepId | null {
   if (status.signingIn) return 'login'
   switch (status.state) {
+    // a program turned off in this app is on no step until it is turned back on
     case 'checking':
+    case 'off':
       return null
     case 'not-installed':
       return 'install'

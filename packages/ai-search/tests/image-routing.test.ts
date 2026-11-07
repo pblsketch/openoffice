@@ -40,6 +40,21 @@ afterEach(() => {
 })
 
 describe('generate_image backend at request start', () => {
+  it('never starts Codex turned off in this app, even on a status that still says ready', async () => {
+    const settings = writeSettings({
+      media: keyMedia({ imageProvider: 'codex' }, 'openai'),
+      subscriptionOff: { codex: true },
+    })
+    const r = await generateImageTool(
+      settings,
+      { prompt: 'poster', aspectRatio: '16:9', imageSize: '2k' },
+      { context: screen(status('codex', 'ready')) },
+    )
+    expect(r.error).toBeUndefined()
+    expect(codexGen).not.toHaveBeenCalled()
+    expect(keyGen).toHaveBeenCalledTimes(1)
+  })
+
   it('uses the selected Codex subscription when it is ready, even with a key provider filled in', async () => {
     const settings = writeSettings({ media: keyMedia({ imageProvider: 'codex' }, 'openai') })
     const r = await generateImageTool(

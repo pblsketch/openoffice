@@ -162,4 +162,17 @@ export const he = {
   browserPageDoneBody: 'אפשר לסגור את הכרטיסייה הזו ולחזור לאפליקציה.',
   browserPageFailedTitle: 'החיבור לא הושלם',
   browserPageFailedBody: 'חזרו לאפליקציה ונסו שוב.',
+  cardOff: 'כבוי באפליקציה הזו',
+  offNote:
+    'האפליקציה לא מפעילה את התוכנה {provider} ולא בודקת את מצבה. ההתחברות ל-{provider} במחשב הזה והשימוש בה בטרמינל נשארים כפי שהם.',
+  offElsewhereNote: 'אפשר להשתמש בו שוב בהגדרות → AI.',
+  offSwitchNote:
+    '"לא להשתמש באפליקציה הזו" משאיר את ההתחברות ל-{provider} במחשב הזה ועוצר רק את האפליקציה. יציאה מהחשבון חלה על המחשב כולו.',
+  actionTurnOff: 'לא להשתמש באפליקציה הזו',
+  actionTurnOn: 'להשתמש שוב',
+  connectOffTitle: '{provider} כבוי באפליקציה הזו',
+  connectOffBody: 'יש ללחוץ על "להשתמש שוב" בכרטיס {provider} בהגדרות → AI, או לבחור AI אחר.',
+  errOffInApp:
+    '{provider} כבוי באפליקציה הזו, ולכן שום דבר לא הופעל. אפשר להשתמש בו שוב בהגדרות → AI.',
+  guideBadgeOff: 'כבוי',
 } satisfies Record<keyof typeof zh, string>

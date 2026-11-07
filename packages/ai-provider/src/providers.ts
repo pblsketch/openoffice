@@ -594,6 +594,21 @@ export function sanitizeMeteredAccepted(stored: unknown): Record<AiSubscriptionC
 }
 
 /**
+ * The vendor CLIs turned off in this app (decision 0114), or undefined when
+ * none is. Only a literal `true` under a CLI id turns one off: anything else
+ * (absent, `false`, a ChatGPT entry, a string) leaves it on, so a damaged
+ * value never stops a provider the person did not turn off.
+ */
+export function sanitizeSubscriptionOff(
+  stored: unknown,
+): Partial<Record<AiSubscriptionCliId, true>> | undefined {
+  if (!isRecord(stored)) return undefined
+  const off: Partial<Record<AiSubscriptionCliId, true>> = {}
+  for (const id of AI_SUBSCRIPTION_CLIS) if (stored[id] === true) off[id] = true
+  return Object.keys(off).length > 0 ? off : undefined
+}
+
+/**
  * The read_url slot when it carries a usable token; anything else (absent,
  * not an object, a non-string or blank token) means public pages only.
  */
@@ -742,6 +757,9 @@ export function resolveAiSettings(stored: unknown, defaults: AiSettings): AiSett
   const settings = (isRecord(stored) ? openAiSecrets(stored) : {}) as Partial<AiSettings> &
     LegacyAiSettings
   const readUrl = readUrlSettingsOf(settings.readUrl ?? defaults.readUrl)
+  const subscriptionOff = sanitizeSubscriptionOff(
+    settings.subscriptionOff ?? defaults.subscriptionOff,
+  )
   const storedProviders = isRecord(settings.providers) ? settings.providers : undefined
   if (!storedProviders) {
     if (settings.apiKey) {
@@ -751,7 +769,12 @@ export function resolveAiSettings(stored: unknown, defaults: AiSettings): AiSett
         baseUrl: str(settings.baseUrl) || 'https://api.openai.com/v1',
       }
     }
-    return resolveCustomEndpoints(readUrl ? { ...defaults, readUrl } : defaults)
+    // a CLI turned off stays off even here: losing it would start a program the person stopped
+    return resolveCustomEndpoints({
+      ...defaults,
+      ...(readUrl ? { readUrl } : {}),
+      ...(subscriptionOff ? { subscriptionOff } : {}),
+    })
   }
   return resolveCustomEndpoints({
     provider: settings.provider ?? defaults.provider,
@@ -766,6 +789,7 @@ export function resolveAiSettings(stored: unknown, defaults: AiSettings): AiSett
     media: resolveAiMediaSettings(settings.media ?? defaults.media),
     search: resolveAiSearchSettings(settings.search ?? defaults.search),
     meteredAccepted: sanitizeMeteredAccepted(settings.meteredAccepted ?? defaults.meteredAccepted),
+    ...(subscriptionOff ? { subscriptionOff } : {}),
     headlessSubscriptionEnabled: headlessSubscriptionOn({
       headlessSubscriptionEnabled:
         settings.headlessSubscriptionEnabled ?? defaults.headlessSubscriptionEnabled,

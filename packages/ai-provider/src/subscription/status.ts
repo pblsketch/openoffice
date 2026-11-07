@@ -65,10 +65,11 @@ export type SubscriptionLogin =
 /**
  * Outcome of one status check, before the stored metered acceptance is applied.
  * `state` is never `checking`: that is the status of a provider not checked yet.
+ * Nor `off`: a CLI turned off in this app is not checked at all.
  */
 export interface SubscriptionDetection {
   provider: AiSubscriptionProviderId
-  state: Exclude<AiSubscriptionState, 'checking'>
+  state: Exclude<AiSubscriptionState, 'checking' | 'off'>
   version?: string
   loginMethod?: AiSubscriptionLoginMethod
   planName?: string

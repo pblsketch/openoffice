@@ -178,4 +178,18 @@ export const de = {
   browserPageDoneBody: 'Sie können diesen Tab schließen und zur App zurückkehren.',
   browserPageFailedTitle: 'Die Verbindung wurde nicht hergestellt',
   browserPageFailedBody: 'Kehren Sie zur App zurück und versuchen Sie es erneut.',
+  cardOff: 'In dieser App aus',
+  offNote:
+    'Diese App startet das Programm {provider} nicht und fragt auch seinen Status nicht ab. Die Anmeldung von {provider} auf diesem PC und die Nutzung im Terminal bleiben unverändert.',
+  offElsewhereNote: 'Unter Einstellungen → KI können Sie es wieder verwenden.',
+  offSwitchNote:
+    '„In dieser App nicht verwenden“ lässt die Anmeldung von {provider} auf diesem PC bestehen und stoppt nur diese App. Abmelden gilt für den ganzen PC.',
+  actionTurnOff: 'In dieser App nicht verwenden',
+  actionTurnOn: 'Wieder verwenden',
+  connectOffTitle: '{provider} ist in dieser App ausgeschaltet',
+  connectOffBody:
+    'Wählen Sie auf der Karte {provider} unter Einstellungen → KI „Wieder verwenden“ oder eine andere KI.',
+  errOffInApp:
+    '{provider} ist in dieser App ausgeschaltet, daher wurde nichts ausgeführt. Unter Einstellungen → KI können Sie es wieder verwenden.',
+  guideBadgeOff: 'Aus',
 } satisfies Record<keyof typeof zh, string>

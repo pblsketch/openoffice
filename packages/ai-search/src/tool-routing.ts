@@ -20,8 +20,10 @@ import {
   headlessSubscriptionOn,
   isSubscriptionProvider,
   modelLacksVision,
+  offSubscriptionStatus,
   resolveImageBackend,
   selectAiProvider,
+  subscriptionOffIn,
   type AiImageBackend,
   type AiMediaKeyProviderId,
   type AiMediaProviderConfig,
@@ -61,10 +63,14 @@ export function headlessSubscriptionBlocked(
  * The statuses routing may look at. A blocked headless request behaves as if
  * no subscription existed, so `ready` logins are left out; a metered login
  * stays, because whether it runs is the user's explicit selection, not the
- * headless setting.
+ * headless setting. A CLI turned off in this app reads as off whatever its
+ * status says, so no tool (Codex image generation among them) starts it.
  */
 function routingStatuses(settings: AiSettings, context: AiToolCallContext): AiSubscriptionStatuses {
-  const statuses = context.statuses ?? {}
+  const statuses: AiSubscriptionStatuses = { ...context.statuses }
+  for (const id of ['claude-code', 'codex'] as const) {
+    if (subscriptionOffIn(settings, id)) statuses[id] = offSubscriptionStatus(id)
+  }
   if (!headlessSubscriptionBlocked(settings, context)) return statuses
   const visible: AiSubscriptionStatuses = {}
   for (const id of ['claude-code', 'chatgpt', 'codex'] as const) {

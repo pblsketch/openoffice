@@ -163,4 +163,17 @@ export const ko = {
   browserPageDoneBody: '이 탭을 닫고 앱으로 돌아가세요.',
   browserPageFailedTitle: '연결하지 못했습니다',
   browserPageFailedBody: '앱으로 돌아가 다시 시도하세요.',
+  cardOff: '이 앱에서 꺼 둠',
+  offNote:
+    '이 앱은 {provider} 프로그램을 실행하지도, 상태를 묻지도 않습니다. 이 PC의 {provider} 로그인과 터미널에서 쓰는 것은 그대로입니다.',
+  offElsewhereNote: '설정 → AI에서 다시 쓸 수 있습니다.',
+  offSwitchNote:
+    '"이 앱에서 쓰지 않기"는 이 PC의 {provider} 로그인을 그대로 두고 이 앱에서만 멈춥니다. 로그아웃은 PC 전체에 적용됩니다.',
+  actionTurnOff: '이 앱에서 쓰지 않기',
+  actionTurnOn: '다시 쓰기',
+  connectOffTitle: '{provider}를 이 앱에서 꺼 두었습니다',
+  connectOffBody: '설정 → AI의 {provider} 카드에서 "다시 쓰기"를 누르거나 다른 AI를 고르세요.',
+  errOffInApp:
+    '{provider}를 이 앱에서 꺼 두어 실행하지 않았습니다. 설정 → AI에서 다시 쓸 수 있습니다.',
+  guideBadgeOff: '꺼 둠',
 } satisfies Record<keyof typeof zh, string>

@@ -51,8 +51,12 @@ export type AiSubscriptionCliId = 'claude-code' | 'codex'
 /** What the provider setting holds: `auto` (first ready subscription) or one provider id */
 export type AiProviderSelection = 'auto' | AiProviderId
 
+/**
+ * `off`: the person turned the program off in this app (decision 0114). The
+ * app then asks the program nothing, so there is nothing detected to report.
+ */
 export type AiSubscriptionState =
-  'checking' | 'not-installed' | 'signed-out' | 'ready' | 'metered' | 'error'
+  'checking' | 'not-installed' | 'signed-out' | 'ready' | 'metered' | 'error' | 'off'
 
 /** how the CLI is signed in; `unknown` is handled as `metered` */
 export type AiSubscriptionLoginMethod = 'subscription' | 'metered' | 'unknown'
@@ -414,6 +418,12 @@ export interface AiSettings {
   maxOutputTokens?: number | undefined
   /** per subscription provider: the user accepted a metered (pay-as-you-go) CLI login; absent = false */
   meteredAccepted?: Partial<Record<AiSubscriptionProviderId, boolean>> | undefined
+  /**
+   * The vendor CLIs the person turned off in this app (decision 0114): the app
+   * neither checks nor runs them, and the program stays signed in for the rest
+   * of the PC. Absent or no entry = on. Only the main process writes it.
+   */
+  subscriptionOff?: Partial<Record<AiSubscriptionCliId, true>> | undefined
   /**
    * headless callers (terminal commands, MCP) may use subscription providers; absent = false.
    * Reads as false unless `headlessSubscriptionConsentVersion` is the current consent version.

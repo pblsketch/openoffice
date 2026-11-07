@@ -170,4 +170,18 @@ export const hi = {
   browserPageDoneBody: 'आप यह टैब बंद करके ऐप पर लौट सकते हैं।',
   browserPageFailedTitle: 'कनेक्शन नहीं हो सका',
   browserPageFailedBody: 'ऐप पर लौटें और फिर से कोशिश करें।',
+  cardOff: 'इस ऐप में बंद',
+  offNote:
+    'यह ऐप {provider} प्रोग्राम को न चलाता है, न उसकी स्थिति जाँचता है। इस PC पर {provider} का साइन-इन और टर्मिनल में उसका उपयोग जैसा है वैसा ही रहता है।',
+  offElsewhereNote: 'सेटिंग्स → AI में इसे फिर से उपयोग के लिए चालू कर सकते हैं।',
+  offSwitchNote:
+    '"इस ऐप में उपयोग न करें" इस PC पर {provider} का साइन-इन बना रहने देता है और सिर्फ़ इस ऐप में रोकता है। साइन आउट पूरे PC पर लागू होता है।',
+  actionTurnOff: 'इस ऐप में उपयोग न करें',
+  actionTurnOn: 'फिर से उपयोग करें',
+  connectOffTitle: '{provider} इस ऐप में बंद है',
+  connectOffBody:
+    'सेटिंग्स → AI में {provider} कार्ड पर "फिर से उपयोग करें" दबाएँ, या कोई दूसरा AI चुनें।',
+  errOffInApp:
+    '{provider} इस ऐप में बंद है, इसलिए कुछ नहीं चलाया गया। सेटिंग्स → AI में इसे फिर से उपयोग के लिए चालू कर सकते हैं।',
+  guideBadgeOff: 'बंद',
 } satisfies Record<keyof typeof zh, string>

@@ -149,4 +149,16 @@ export const zh = {
   browserPageDoneBody: '可以关闭此标签页并返回应用。',
   browserPageFailedTitle: '未能完成连接',
   browserPageFailedBody: '请返回应用后重试。',
+  cardOff: '已在本应用中关闭',
+  offNote:
+    '本应用不会运行 {provider} 程序，也不会检查它的状态。这台电脑上 {provider} 的登录以及在终端中的使用都保持不变。',
+  offElsewhereNote: '可以在“设置 → AI”中重新使用。',
+  offSwitchNote:
+    '“不在本应用中使用”会保留这台电脑上 {provider} 的登录，只在本应用中停用。退出登录则对整台电脑生效。',
+  actionTurnOff: '不在本应用中使用',
+  actionTurnOn: '重新使用',
+  connectOffTitle: '{provider} 已在本应用中关闭',
+  connectOffBody: '在“设置 → AI”的 {provider} 卡片上点击“重新使用”，或选择其他 AI。',
+  errOffInApp: '{provider} 已在本应用中关闭，因此没有运行。可以在“设置 → AI”中重新使用。',
+  guideBadgeOff: '已关闭',
 }
