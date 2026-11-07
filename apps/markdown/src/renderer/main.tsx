@@ -20,8 +20,10 @@ import './styles.css'
 import './markdown-themes.css'
 import { applyAiPanelPrefs, installScreenTips } from '@genoffice/ui'
 import type { MarkdownTheme } from '../shared/markdown-theme'
+import { applyEditorFont, storedEditorFont } from './editor-font'
 
 installScreenTips()
+applyEditorFont(storedEditorFont())
 
 function applyTheme(theme: UiTheme): void {
   if (theme === 'system') document.documentElement.removeAttribute('data-theme')

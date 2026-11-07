@@ -295,6 +295,19 @@ html[data-doc-theme='light'] .doc-page {
   word-wrap: break-word;
 }
 
+/* the reader's view font (editor-font.ts) beats a paper theme's face; code,
+   math and diagrams set their own and keep them */
+html[data-md-font] .doc-page .doc-editor,
+html[data-md-font] .doc-page .doc-editor :is(h1, h2, h3, h4, h5, h6) {
+  font-family:
+    var(--md-editor-font),
+    'Segoe UI',
+    -apple-system,
+    BlinkMacSystemFont,
+    var(--ui-cjk),
+    sans-serif;
+}
+
 .doc-editor > *:first-child {
   margin-top: 0;
 }
@@ -864,6 +877,19 @@ html.markdown-graph-open .ribbon-tabs {
 }
 
 .rb-style .gs-dd-btn {
+  height: 28px;
+  padding: 0 7px;
+  border-color: var(--color-border-strong);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+/* view font picker: the block-style picker's box */
+.rb-font.gs-dd {
+  width: 112px;
+}
+
+.rb-font .gs-dd-btn {
   height: 28px;
   padding: 0 7px;
   border-color: var(--color-border-strong);

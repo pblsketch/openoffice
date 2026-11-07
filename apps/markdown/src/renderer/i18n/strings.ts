@@ -18,6 +18,8 @@ export const strings = {
     appPrintPreviewPrint: '打印',
     mdThemeTitle: '文档主题',
     mdThemeDefault: '默认（跟随文档主题）',
+    editorFontTitle: '编辑器字体',
+    editorFontDefault: '默认字体',
     renameNeedsSave: '先保存或放弃改动，再改文件后缀',
     redactMenuLabel: '把选中的内容对 AI 隐藏',
     redactDialogDesc:
@@ -310,6 +312,8 @@ export const strings = {
     appPrintPreviewPrint: 'Print',
     mdThemeTitle: 'Document theme',
     mdThemeDefault: 'Default (follow the document theme)',
+    editorFontTitle: 'Editor font',
+    editorFontDefault: 'Default font',
     renameNeedsSave: 'Save or discard your changes before changing the extension',
     redactMenuLabel: 'Hide the selection from AI',
     redactDialogDesc:
@@ -612,6 +616,8 @@ export const strings = {
     appPrintPreviewPrint: 'In',
     mdThemeTitle: 'Chủ đề tài liệu',
     mdThemeDefault: 'Mặc định (theo chủ đề tài liệu)',
+    editorFontTitle: 'Phông chữ trình soạn thảo',
+    editorFontDefault: 'Phông chữ mặc định',
     renameNeedsSave: 'Hãy lưu hoặc hủy thay đổi trước khi đổi phần mở rộng',
     redactMenuLabel: 'Ẩn phần đã chọn khỏi AI',
     redactDialogDesc:
@@ -913,6 +919,8 @@ export const strings = {
     appPrintPreviewPrint: '印刷',
     mdThemeTitle: 'ドキュメントテーマ',
     mdThemeDefault: 'デフォルト（ドキュメントテーマに従う）',
+    editorFontTitle: 'エディターのフォント',
+    editorFontDefault: '既定のフォント',
     renameNeedsSave: '拡張子を変更する前に変更を保存または破棄してください',
     redactMenuLabel: '選択範囲をAIから隠す',
     redactDialogDesc:
@@ -1213,6 +1221,8 @@ export const strings = {
     appPrintPreviewPrint: '인쇄',
     mdThemeTitle: '문서 테마',
     mdThemeDefault: '기본값(문서 테마 따르기)',
+    editorFontTitle: '편집 화면 글꼴',
+    editorFontDefault: '기본 글꼴',
     renameNeedsSave: '확장자를 바꾸기 전에 변경 사항을 저장하거나 버리세요',
     redactMenuLabel: '선택한 부분을 AI에서 숨기기',
     redactDialogDesc:
@@ -1514,6 +1524,8 @@ export const strings = {
     appPrintPreviewPrint: 'Imprimer',
     mdThemeTitle: 'Thème du document',
     mdThemeDefault: 'Par défaut (suivre le thème du document)',
+    editorFontTitle: "Police de l'éditeur",
+    editorFontDefault: 'Police par défaut',
     renameNeedsSave: "Enregistrez ou annulez vos modifications avant de changer l'extension",
     redactMenuLabel: 'Masquer la sélection à l’IA',
     redactDialogDesc:
@@ -1820,6 +1832,8 @@ export const strings = {
     appPrintPreviewPrint: 'Drucken',
     mdThemeTitle: 'Dokumentthema',
     mdThemeDefault: 'Standard (dem Dokumentthema folgen)',
+    editorFontTitle: 'Editor-Schriftart',
+    editorFontDefault: 'Standardschriftart',
     renameNeedsSave:
       'Speichern oder verwerfen Sie Ihre Änderungen, bevor Sie die Erweiterung ändern',
     redactMenuLabel: 'Auswahl vor der KI verbergen',
@@ -2126,6 +2140,8 @@ export const strings = {
     appPrintPreviewPrint: 'Imprimir',
     mdThemeTitle: 'Tema del documento',
     mdThemeDefault: 'Predeterminado (seguir el tema del documento)',
+    editorFontTitle: 'Fuente del editor',
+    editorFontDefault: 'Fuente predeterminada',
     renameNeedsSave: 'Guarda o descarta los cambios antes de cambiar la extensión',
     redactMenuLabel: 'Ocultar la selección a la IA',
     redactDialogDesc:
@@ -2432,6 +2448,8 @@ export const strings = {
     appPrintPreviewPrint: 'พิมพ์',
     mdThemeTitle: 'ธีมเอกสาร',
     mdThemeDefault: 'ค่าเริ่มต้น (ตามธีมเอกสาร)',
+    editorFontTitle: 'แบบอักษรของตัวแก้ไข',
+    editorFontDefault: 'แบบอักษรเริ่มต้น',
     renameNeedsSave: 'บันทึกหรือยกเลิกการเปลี่ยนแปลงก่อนเปลี่ยนนามสกุลไฟล์',
     redactMenuLabel: 'ซ่อนส่วนที่เลือกจาก AI',
     redactDialogDesc:
@@ -2730,6 +2748,8 @@ export const strings = {
     appPrintPreviewPrint: 'Cetak',
     mdThemeTitle: 'Tema dokumen',
     mdThemeDefault: 'Bawaan (ikuti tema dokumen)',
+    editorFontTitle: 'Font editor',
+    editorFontDefault: 'Font bawaan',
     renameNeedsSave: 'Simpan atau batalkan perubahan Anda sebelum mengubah ekstensi',
     redactMenuLabel: 'Sembunyikan pilihan dari AI',
     redactDialogDesc:
@@ -3031,6 +3051,8 @@ export const strings = {
     appPrintPreviewPrint: 'Печать',
     mdThemeTitle: 'Тема документа',
     mdThemeDefault: 'По умолчанию (как тема документа)',
+    editorFontTitle: 'Шрифт редактора',
+    editorFontDefault: 'Шрифт по умолчанию',
     renameNeedsSave: 'Сохраните или отмените изменения перед сменой расширения',
     redactMenuLabel: 'Скрыть выделение от ИИ',
     redactDialogDesc:
@@ -3333,6 +3355,8 @@ export const strings = {
     appPrintPreviewPrint: 'طباعة',
     mdThemeTitle: 'سمة المستند',
     mdThemeDefault: 'الافتراضي (اتباع سمة المستند)',
+    editorFontTitle: 'خط المحرر',
+    editorFontDefault: 'الخط الافتراضي',
     renameNeedsSave: 'احفظ تغييراتك أو تجاهلها قبل تغيير الامتداد',
     redactMenuLabel: 'إخفاء التحديد عن الذكاء الاصطناعي',
     redactDialogDesc:
@@ -3630,6 +3654,8 @@ export const strings = {
     appPrintPreviewPrint: 'Imprimir',
     mdThemeTitle: 'Tema do documento',
     mdThemeDefault: 'Padrão (seguir o tema do documento)',
+    editorFontTitle: 'Fonte do editor',
+    editorFontDefault: 'Fonte padrão',
     renameNeedsSave: 'Salve ou descarte as alterações antes de mudar a extensão',
     redactMenuLabel: 'Ocultar a seleção da IA',
     redactDialogDesc:
@@ -3934,6 +3960,8 @@ export const strings = {
     appPrintPreviewPrint: 'Stampa',
     mdThemeTitle: 'Tema del documento',
     mdThemeDefault: 'Predefinito (segui il tema del documento)',
+    editorFontTitle: "Carattere dell'editor",
+    editorFontDefault: 'Carattere predefinito',
     renameNeedsSave: "Salva o annulla le modifiche prima di cambiare l'estensione",
     redactMenuLabel: 'Nascondi la selezione all’IA',
     redactDialogDesc:
@@ -4238,6 +4266,8 @@ export const strings = {
     appPrintPreviewPrint: 'Drukuj',
     mdThemeTitle: 'Motyw dokumentu',
     mdThemeDefault: 'Domyślnie (zgodnie z motywem dokumentu)',
+    editorFontTitle: 'Czcionka edytora',
+    editorFontDefault: 'Czcionka domyślna',
     renameNeedsSave: 'Zapisz lub odrzuć zmiany przed zmianą rozszerzenia',
     redactMenuLabel: 'Ukryj zaznaczenie przed AI',
     redactDialogDesc:
@@ -4540,6 +4570,8 @@ export const strings = {
     appPrintPreviewPrint: 'Tisk',
     mdThemeTitle: 'Motiv dokumentu',
     mdThemeDefault: 'Výchozí (podle motivu dokumentu)',
+    editorFontTitle: 'Písmo editoru',
+    editorFontDefault: 'Výchozí písmo',
     renameNeedsSave: 'Před změnou přípony uložte nebo zrušte změny',
     redactMenuLabel: 'Skrýt výběr před AI',
     redactDialogDesc:
@@ -4841,6 +4873,8 @@ export const strings = {
     appPrintPreviewPrint: 'Afdrukken',
     mdThemeTitle: 'Documentthema',
     mdThemeDefault: 'Standaard (documentthema volgen)',
+    editorFontTitle: 'Lettertype van de editor',
+    editorFontDefault: 'Standaardlettertype',
     renameNeedsSave: 'Sla uw wijzigingen op of verwerp ze voordat u de extensie wijzigt',
     redactMenuLabel: 'Selectie verbergen voor de AI',
     redactDialogDesc:
@@ -5144,6 +5178,8 @@ export const strings = {
     appPrintPreviewPrint: 'Cetak',
     mdThemeTitle: 'Tema dokumen',
     mdThemeDefault: 'Lalai (ikut tema dokumen)',
+    editorFontTitle: 'Fon editor',
+    editorFontDefault: 'Fon lalai',
     renameNeedsSave: 'Simpan atau buang perubahan anda sebelum menukar sambungan',
     redactMenuLabel: 'Sembunyikan pilihan daripada AI',
     redactDialogDesc:
@@ -5445,6 +5481,8 @@ export const strings = {
     appPrintPreviewPrint: 'הדפסה',
     mdThemeTitle: 'ערכת נושא של המסמך',
     mdThemeDefault: 'ברירת מחדל (בהתאם לערכת המסמך)',
+    editorFontTitle: 'גופן העורך',
+    editorFontDefault: 'גופן ברירת מחדל',
     renameNeedsSave: 'שמור או בטל את השינויים לפני שינוי הסיומת',
     redactMenuLabel: 'הסתרת הבחירה מהמודל',
     redactDialogDesc:
@@ -5741,6 +5779,8 @@ export const strings = {
     appPrintPreviewPrint: 'प्रिंट',
     mdThemeTitle: 'दस्तावेज़ थीम',
     mdThemeDefault: 'डिफ़ॉल्ट (दस्तावेज़ थीम का पालन करें)',
+    editorFontTitle: 'संपादक का फ़ॉन्ट',
+    editorFontDefault: 'डिफ़ॉल्ट फ़ॉन्ट',
     renameNeedsSave: 'एक्सटेंशन बदलने से पहले अपने बदलाव सहेजें या छोड़ें',
     redactMenuLabel: 'चयन को AI से छिपाएँ',
     redactDialogDesc:
@@ -6042,6 +6082,8 @@ export const strings = {
     appPrintPreviewPrint: '列印',
     mdThemeTitle: '文件主題',
     mdThemeDefault: '預設（跟隨文件主題）',
+    editorFontTitle: '編輯器字型',
+    editorFontDefault: '預設字型',
     renameNeedsSave: '先儲存或捨棄變更，再更改副檔名',
     redactMenuLabel: '把選中的內容對 AI 隱藏',
     redactDialogDesc:
