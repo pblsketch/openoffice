@@ -156,13 +156,21 @@ export function reviewCount(server: McpServerSettingsView): number {
   return tools + (server.pendingInstructions !== null ? 1 : 0)
 }
 
-/** Bytes as megabytes in the person's locale, one decimal at most */
+/** A package size in the person's locale: KB under 1 MB, MB above (same rule as generate/format). */
 export function formatBytes(bytes: number, locale: string): string {
+  const mb = bytes / (1024 * 1024)
+  if (mb >= 1) {
+    return new Intl.NumberFormat(locale, {
+      style: 'unit',
+      unit: 'megabyte',
+      maximumFractionDigits: 1,
+    }).format(mb)
+  }
   return new Intl.NumberFormat(locale, {
     style: 'unit',
-    unit: 'megabyte',
-    maximumFractionDigits: 1,
-  }).format(bytes / (1024 * 1024))
+    unit: 'kilobyte',
+    maximumFractionDigits: bytes < 10 * 1024 ? 1 : 0,
+  }).format(Math.max(bytes / 1024, bytes > 0 ? 0.1 : 0))
 }
 
 /**

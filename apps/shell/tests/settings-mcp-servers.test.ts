@@ -508,6 +508,9 @@ describe('Settings → Integrations → MCP servers: a server', () => {
       en('runtimeAsk', { runtime: 'Node.js', size: formatBytes(29_884_416, 'en-US') }),
     )
     expect(formatBytes(29_884_416, 'en-US')).toBe('28.5 MB')
+    expect(formatBytes(50 * 1024, 'en-US')).toBe('50 kB')
+    expect(formatBytes(10 * 1024, 'en-US')).toBe('10 kB')
+    expect(formatBytes(512, 'en-US')).toBe('0.5 kB')
     expect(question.textContent).toContain('22.11.0')
     await click(button(en('runtimeDownload'), question))
     expect(h.api.answerRuntimeDownload).toHaveBeenCalledWith('s1', true)
