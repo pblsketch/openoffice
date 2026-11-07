@@ -2405,6 +2405,8 @@ async function writeSessionCopy(
   produce: (target: string) => Promise<unknown>,
   options: { ignoreSizeLimit?: boolean } = {},
 ): Promise<boolean> {
+  // a headless export's hidden view converts the file and goes; it keeps no copy
+  if (isHeadlessMode()) return false
   const identity = sessionRecoveryIdentity(session)
   if (identity === null) return false
   if (session.automaticRecoveryDisabled && !options.ignoreSizeLimit) return false
@@ -2559,6 +2561,9 @@ async function recoveredOpenFor(
   contents: WebContents | undefined,
   parent: BrowserWindow | undefined,
 ): Promise<PreparedWorkbookOpen | null> {
+  // a headless export converts the file on disk: no one is there to answer the
+  // prompt (whose Esc restores), and a copy it neither uses nor settles stays as it was
+  if (isHeadlessMode()) return null
   const identity = fileRecoveryIdentity(path)
   const key = recoveryStore.copyPath(identity)
   const decided = contents ? decidedOpens.get(contents.id) : undefined

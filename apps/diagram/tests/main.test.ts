@@ -115,6 +115,8 @@ import {
   requestDiagramSave,
   setDiagramProvisionalTitleHook,
 } from '../src/main/diagram-main'
+import { createRecoveryStore, setHeadlessMode } from '@genoffice/electron-utils'
+import { writeViewCopy } from '../src/main/recovery-main'
 import { DIAGRAM_CHANNELS } from '../src/shared/ipc'
 import type { OpenFileResult, SaveDiagramResult, SaveTargetResult } from '../src/shared/ipc'
 
@@ -402,5 +404,38 @@ describe('the AI panel’s channels', () => {
     send(DIAGRAM_CHANNELS.provisionalTitle, opened, 'something else')
     expect(named).toEqual(['A release flow'])
     setDiagramProvisionalTitleHook(null)
+  })
+})
+
+describe('a headless export (--headless-export)', () => {
+  const store = createRecoveryStore({ userDataDir: join(tmpdir(), 'diagram-test-userData') })
+
+  afterEach(() => setHeadlessMode(false))
+
+  it('opens the file as saved: a copy left for it is not asked about, used or settled', async () => {
+    const path = copyFixture('out.drawio')
+    const identity = { kind: 'diagram', filePath: path } as const
+    const left = '<mxfile><diagram id="left" name="Left"><mxGraphModel/></diagram></mxfile>'
+    await store.writeCopy(identity, Buffer.from(left))
+    try {
+      const before = store.copyInfo(identity)
+      expect(before).not.toBeNull()
+      showMessageBox.mockReset()
+      // the prompt's Esc / close restores; no one is there to give another answer
+      showMessageBox.mockResolvedValue({ response: 0 })
+      setHeadlessMode(true)
+      const contents = view(path)
+      const result = await call<OpenFileResult>(DIAGRAM_CHANNELS.openFile, contents, path)
+      expect(showMessageBox).not.toHaveBeenCalled()
+      expect((result as { xml: string }).xml).toBe(readFileSync(path, 'utf8'))
+      expect(store.copyInfo(identity)).toEqual(before)
+      // nor does the hidden view write a copy of its own over it
+      expect(await writeViewCopy(contents.id, path, Buffer.from('<mxfile/>'), () => 'x')).toBe(
+        'superseded',
+      )
+      expect(readFileSync(store.copyPath(identity), 'utf8')).toBe(left)
+    } finally {
+      store.deleteCopy(identity, 'discarded')
+    }
   })
 })

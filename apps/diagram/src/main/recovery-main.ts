@@ -26,6 +26,7 @@ import { app, dialog } from 'electron'
 import type { BrowserWindow } from 'electron'
 import {
   createRecoveryStore,
+  isHeadlessMode,
   isRecoveryEditorKind,
   isUntitledIdentity,
   newUntitledRecoveryId,
@@ -148,7 +149,8 @@ export function writeViewCopy(
   untitledTitle: () => string,
 ): Promise<RecoveryWriteResult> {
   const barred = views.get(wcId)
-  if (!recoveryAvailable()) return Promise.resolve('superseded')
+  // a headless export's hidden view converts the file and goes; it keeps no copy
+  if (isHeadlessMode() || !recoveryAvailable()) return Promise.resolve('superseded')
   if (barred?.dropped !== undefined || barred?.blocked) return Promise.resolve('superseded')
   const identity = viewRecoveryIdentity(wcId, savePath)
   own(wcId, identity)
@@ -257,6 +259,9 @@ export async function resolveViewOpen(
   const decision = state.decision
   state.decision = undefined
   state.blocked = false
+  // a headless export converts the file on disk: no one is there to answer the
+  // prompt (whose Esc restores), and a copy it neither uses nor settles stays as it was
+  if (isHeadlessMode()) return null
   if (decision === 'original' || !recoveryAvailable()) return null
   const identity = fileRecoveryIdentity(filePath)
   if (ownedElsewhere(wcId, identity)) return null
