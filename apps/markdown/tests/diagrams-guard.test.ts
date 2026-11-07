@@ -6,6 +6,7 @@ import {
   parseSvgViewBox,
   pinSvgIntrinsicSize,
 } from '../src/renderer/editor/diagrams'
+import { pinMermaidNaturalSize } from '../src/renderer/editor/mermaid'
 import {
   isWaveJson,
   prevalidateWaveSource,
@@ -112,5 +113,43 @@ describe('wavedrom guards', () => {
     expect(out).toContain('class="wd-s2"')
     // both style blocks were rewritten (global flag, not first-only)
     expect(out.match(/\.wd-s2\{/g)?.length).toBe(1)
+  })
+})
+
+describe('mermaid natural size', () => {
+  const wide =
+    '<svg id="m1" width="100%" xmlns="http://www.w3.org/2000/svg" class="flowchart" ' +
+    'style="max-width: 2397.6px;" viewBox="0.0000076 0 2397.6 264.4" role="graphics-document">' +
+    '<g><rect width="100%" height="10"/></g></svg>'
+
+  it('draws a wide diagram at its own width instead of the column width', () => {
+    const out = pinMermaidNaturalSize(wide)
+    const root = /<svg\b[^>]*>/.exec(out)![0]
+    expect(root).toContain('width="2397.6"')
+    expect(root).toContain('height="264.4"')
+    expect(root).not.toContain('100%')
+    expect(root).not.toContain('max-width')
+    expect(root).not.toContain('style=')
+    expect(out).toContain('<rect width="100%" height="10"/>')
+  })
+
+  it('keeps the viewBox so the print CSS can still scale the diagram down', () => {
+    expect(pinMermaidNaturalSize(wide)).toContain('viewBox="0.0000076 0 2397.6 264.4"')
+  })
+
+  it('keeps other inline styles and reads exponent viewBox origins', () => {
+    const out = pinMermaidNaturalSize(
+      '<svg width="100%" style="max-width: 200px; background-color: white;" viewBox="3.8e-7 0 200 50"></svg>',
+    )
+    expect(out).toBe(
+      '<svg width="200" height="50" style="background-color: white;" viewBox="3.8e-7 0 200 50"></svg>',
+    )
+  })
+
+  it('leaves an SVG that already has a fixed size untouched', () => {
+    const fixed = '<svg width="320" height="90" viewBox="0 0 320 90"></svg>'
+    expect(pinMermaidNaturalSize(fixed)).toBe(fixed)
+    const noBox = '<svg width="100%" style="max-width: 200px;"></svg>'
+    expect(pinMermaidNaturalSize(noBox)).toBe(noBox)
   })
 })
