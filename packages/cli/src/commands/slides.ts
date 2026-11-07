@@ -193,7 +193,8 @@ async function read(
 function unitsFlag(args: Parameters<CommandDef['run']>[0]): ReadUnit {
   const value = flagString(args, 'units')
   if (value === undefined) return 'emu'
-  if (!isReadUnit(value)) {
+  const unit = value.toLowerCase()
+  if (!isReadUnit(unit)) {
     throw new CliError(
       EXIT.usage,
       `--units must be one of ${READ_UNITS.join(', ')}, got "${value}"`,
@@ -201,7 +202,7 @@ function unitsFlag(args: Parameters<CommandDef['run']>[0]): ReadUnit {
       { reason: 'invalid_argument' },
     )
   }
-  return value
+  return unit
 }
 
 function unitsNote(unit: ReadUnit): string {

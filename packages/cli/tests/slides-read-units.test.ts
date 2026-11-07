@@ -71,6 +71,16 @@ describe('slides read --units', () => {
     expect(deck.units).toContain(`"1.5${unit}"`)
   })
 
+  it.each(['PX', 'In', 'CM', 'Pt', 'EMU'])(
+    'treats %s the same as the matching lowercase unit',
+    async (unit) => {
+      const out = await smallDeck()
+      const folded = await read(out, '--units', unit)
+      const canonical = await read(out, '--units', unit.toLowerCase())
+      expect(folded).toEqual(canonical)
+    },
+  )
+
   it('rejects an unknown unit before opening the file', async () => {
     const r = await run(['slides', 'read', '/nonexistent.pptx', '--units', 'mm', '--json'])
     expect(r.json()).toMatchObject({ code: 1, error: 'invalid_argument' })
