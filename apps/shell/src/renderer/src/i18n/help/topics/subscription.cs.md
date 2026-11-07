@@ -37,11 +37,11 @@ Ve druhém kroku uvítacích obrazovek při prvním spuštění a v panelu AI, k
 
 Karta ChatGPT nepracuje přes žádný program, takže nikdy nehlásí **Není nainstalováno** ani **Přihlášeno, ale ne přes předplatné**. Když hlásí **Nepřihlášeno**, stiskněte **Pokračovat s ChatGPT**: v prohlížeči se otevře přihlašovací stránka ChatGPT od OpenAI. Přihlaste se a povolte této aplikaci používat váš tarif ChatGPT a karta se sama přepne na **Připojeno**. Pokud jste přístup nepovolili nebo se přihlášení nedokončilo do 10 minut, karta hlásí, že přihlášení nebylo dokončeno; dalším stisknutím tlačítka začnete znovu. Neotevírá se žádné přihlašovací okno a nevkládá se žádný kód. Během přihlašování ho tlačítko **Zrušit přihlášení** zastaví.
 
+Pokud po přihlášení stránka OpenAI v prohlížeči hlásí, že vaše organizace nepovolila přístup pro tuto aplikaci, a ukazuje `3p_delegated_access_policy_denied`, pracovní prostor, do kterého váš účet ChatGPT patří (například spravovaný firmou nebo školou), tuto aplikaci nepovoluje. Opětovné stisknutí tlačítka dá stejný výsledek. Obraťte se na toho, kdo pracovní prostor spravuje, nebo se přihlaste jiným účtem ChatGPT. Pokud na tomto počítači už používáte program Codex, může fungovat připojení přes kartu Codex.
+
 Připojení se kontroluje při spuštění aplikace, při otevření Nastavení a při návratu do okna poté, co jste spustili instalaci nebo přihlášení.
 
 Pokud karta Claude nebo Codex hlásí, že přihlášení nebylo dokončeno, zvolte **Otevřít přihlašovací okno**. Kód zobrazený prohlížečem je nutné vložit do tohoto okna; dříve zobrazený kód už neplatí.
-
-Pokud stránka v prohlížeči nebo okno přihlášení ukazuje `3p_delegated_access_policy_denied`, mohly toto přihlášení zablokovat zásady nastavené pro účet Claude. Pokud se při dalším pokusu stane totéž, obraťte se na toho, kdo účet spravuje, nebo zkuste, zda funguje jiný účet.
 
 ## Bez předplatného: AI zdarma
 

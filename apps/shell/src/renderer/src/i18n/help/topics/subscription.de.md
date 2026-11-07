@@ -37,11 +37,11 @@ Im zweiten Schritt der Willkommensbildschirme beim ersten Start und im KI-Bereic
 
 Die ChatGPT-Karte läuft über kein Programm; deshalb steht auf ihr nie **Nicht installiert** oder **Angemeldet, aber nicht mit einem Abonnement**. Steht dort **Nicht angemeldet**, klicken Sie auf **Mit ChatGPT fortfahren**: Die ChatGPT-Anmeldeseite von OpenAI öffnet sich in Ihrem Browser. Melden Sie sich an und erlauben Sie dieser App, Ihren ChatGPT-Tarif zu nutzen; die Karte wechselt dann von selbst zu **Verbunden**. Haben Sie es nicht erlaubt oder wurde der Vorgang nicht innerhalb von 10 Minuten abgeschlossen, meldet die Karte, dass die Anmeldung nicht abgeschlossen wurde; ein erneuter Klick auf die Schaltfläche beginnt von vorn. Es gibt kein Anmeldefenster und keinen Code zum Einfügen. Während der Anmeldung bricht **Anmeldung abbrechen** sie ab.
 
+Zeigt die OpenAI-Seite im Browser nach der Anmeldung, dass Ihre Organisation den Zugriff für diese App nicht aktiviert hat, und erscheint `3p_delegated_access_policy_denied`, dann lässt der Arbeitsbereich, zu dem Ihr ChatGPT-Konto gehört (etwa einer, den ein Unternehmen oder eine Schule verwaltet), diese App nicht zu. Ein erneuter Klick auf die Schaltfläche ändert daran nichts. Fragen Sie die Person, die den Arbeitsbereich verwaltet, oder melden Sie sich mit einem anderen ChatGPT-Konto an. Nutzen Sie auf diesem PC bereits das Programm Codex, kann die Verbindung über die Codex-Karte funktionieren.
+
 Die Verbindung wird geprüft, wenn die App startet, wenn Sie die Einstellungen öffnen und wenn Sie nach dem Start einer Installation oder Anmeldung zum Fenster zurückkehren.
 
 Meldet die Claude- oder Codex-Karte, dass eine Anmeldung nicht abgeschlossen wurde, wählen Sie **Anmeldefenster öffnen**. Einen Code, den der Browser zeigt, müssen Sie in dieses Fenster einfügen; ein zuvor angezeigter Code gilt nicht mehr.
-
-Zeigt die Browserseite oder das Anmeldefenster `3p_delegated_access_policy_denied`, hat möglicherweise eine Richtlinie des Claude-Kontos diese Anmeldung verhindert. Bleibt es bei einem neuen Versuch gleich, fragen Sie die Person, die das Konto verwaltet, oder prüfen Sie, ob es mit einem anderen Konto klappt.
 
 ## Ohne Abonnement: kostenlose KI
 

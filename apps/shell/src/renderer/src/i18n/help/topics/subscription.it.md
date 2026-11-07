@@ -37,11 +37,11 @@ Nel secondo passaggio delle schermate di benvenuto al primo avvio, e nel pannell
 
 La scheda ChatGPT non passa da alcun programma, quindi non dice mai **Non installato** né **Accesso effettuato, ma non con un abbonamento**. Quando dice **Accesso non effettuato**, premi **Continua con ChatGPT**: la pagina di accesso a ChatGPT di OpenAI si apre nel browser. Accedi e consenti a questa app di usare il tuo piano ChatGPT, e la scheda passa da sola a **Connesso**. Se non l'hai consentito, o se non è terminato entro 10 minuti, la scheda indica che l'accesso non è terminato; premendo di nuovo il pulsante si ricomincia da capo. Non c'è nessuna finestra di accesso né alcun codice da incollare. Mentre accedi, **Annulla l’accesso** lo interrompe.
 
+Se, dopo l'accesso, la pagina di OpenAI nel browser indica che la tua organizzazione non ha abilitato l'accesso per questa app e mostra `3p_delegated_access_policy_denied`, l'area di lavoro a cui appartiene il tuo account ChatGPT (ad esempio una gestita da un'azienda o da una scuola) non consente questa app. Premere di nuovo il pulsante dà lo stesso risultato. Chiedi a chi gestisce l'area di lavoro oppure accedi con un altro account ChatGPT. Se usi già il programma Codex su questo PC, collegarti dalla scheda Codex potrebbe funzionare.
+
 La connessione viene verificata all'avvio dell'app, quando apri Impostazioni e quando torni alla finestra dopo aver avviato un'installazione o un accesso.
 
 Se la scheda Claude o Codex indica che un accesso non è terminato, scegli **Apri la finestra di accesso**. Un codice mostrato dal browser va incollato in quella finestra; un codice mostrato prima non è più valido.
-
-Se la pagina del browser o la finestra di accesso mostra `3p_delegated_access_policy_denied`, è possibile che un criterio dell'account Claude abbia bloccato questo accesso. Se riprovando succede lo stesso, chiedi a chi gestisce l'account oppure verifica se funziona con un altro account.
 
 ## Senza abbonamento: un'IA gratuita
 

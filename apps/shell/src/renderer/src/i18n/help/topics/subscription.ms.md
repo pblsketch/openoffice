@@ -37,11 +37,11 @@ Pada langkah kedua skrin alu-aluan semasa pelancaran pertama, dan dalam panel AI
 
 Kad ChatGPT tidak melalui sebarang program, jadi ia tidak pernah menyatakan **Belum dipasang** atau **Sudah log masuk, tetapi bukan dengan langganan**. Apabila ia menyatakan **Belum log masuk**, tekan **Teruskan dengan ChatGPT**: halaman log masuk ChatGPT OpenAI terbuka dalam pelayar anda. Log masuk dan benarkan aplikasi ini menggunakan pelan ChatGPT anda, dan kad itu bertukar kepada **Disambungkan** dengan sendirinya. Jika anda tidak membenarkannya, atau ia tidak selesai dalam masa 10 minit, kad menyatakan log masuk tidak selesai; menekan butang itu semula akan bermula dari awal. Tiada tetingkap log masuk dan tiada kod untuk ditampal. Semasa anda sedang log masuk, **Batalkan log masuk** menghentikannya.
 
+Jika selepas log masuk halaman OpenAI dalam pelayar menyatakan organisasi anda belum mendayakan akses untuk aplikasi ini dan menunjukkan `3p_delegated_access_policy_denied`, ruang kerja tempat akaun ChatGPT anda berada (contohnya yang diurus oleh syarikat atau sekolah) tidak membenarkan aplikasi ini. Menekan butang sekali lagi memberi hasil yang sama. Tanya orang yang mengurus ruang kerja itu, atau log masuk dengan akaun ChatGPT lain. Jika anda sudah menggunakan program Codex pada PC ini, menyambung melalui kad Codex mungkin berjaya.
+
 Sambungan disemak apabila aplikasi dimulakan, apabila anda membuka Tetapan, dan apabila anda kembali ke tetingkap selepas memulakan pemasangan atau log masuk.
 
 Jika kad Claude atau Codex menyatakan log masuk tidak selesai, pilih **Buka tetingkap log masuk**. Kod yang dipaparkan pelayar perlu ditampal di tetingkap itu; kod yang dipaparkan sebelum ini tidak lagi berfungsi.
-
-Jika halaman pelayar atau tetingkap log masuk menunjukkan `3p_delegated_access_policy_denied`, mungkin ada dasar pada akaun Claude yang menyekat log masuk ini. Jika cubaan semula memberikan hasil yang sama, tanya orang yang mengurus akaun itu, atau semak sama ada akaun lain boleh digunakan.
 
 ## Tanpa langganan: AI percuma
 

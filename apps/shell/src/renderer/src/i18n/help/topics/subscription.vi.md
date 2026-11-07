@@ -37,11 +37,11 @@ Nếu Claude Code hoặc Codex chưa được cài đặt hoặc chưa đăng nh
 
 Thẻ ChatGPT không đi qua chương trình nào, nên nó không bao giờ ghi **Chưa cài đặt** hay **Đã đăng nhập nhưng không phải bằng gói đăng ký**. Khi thẻ ghi **Chưa đăng nhập**, hãy nhấn **Tiếp tục với ChatGPT**: trang đăng nhập ChatGPT của OpenAI sẽ mở ra trong trình duyệt. Hãy đăng nhập và cho phép ứng dụng này dùng gói ChatGPT của bạn, thẻ sẽ tự chuyển sang **Đã kết nối**. Nếu bạn không cho phép, hoặc việc này không xong trong vòng 10 phút, thẻ sẽ báo quá trình đăng nhập chưa hoàn tất; nhấn lại nút để bắt đầu lại từ đầu. Không có cửa sổ đăng nhập và không có mã nào cần dán. Trong lúc đang đăng nhập, **Hủy đăng nhập** sẽ dừng quá trình đó.
 
+Nếu sau khi đăng nhập, trang OpenAI trong trình duyệt báo rằng tổ chức của bạn chưa bật quyền truy cập cho ứng dụng này và hiện `3p_delegated_access_policy_denied`, thì không gian làm việc chứa tài khoản ChatGPT của bạn (ví dụ do công ty hoặc trường học quản lý) không cho phép ứng dụng này. Nhấn lại nút cũng cho kết quả như vậy. Hãy hỏi người quản lý không gian làm việc đó, hoặc đăng nhập bằng một tài khoản ChatGPT khác. Nếu bạn đã dùng chương trình Codex trên máy này, kết nối qua thẻ Codex có thể được.
+
 Kết nối được kiểm tra khi ứng dụng khởi động, khi bạn mở Cài đặt, và khi bạn quay lại cửa sổ sau khi bắt đầu cài đặt hoặc đăng nhập.
 
 Nếu thẻ Claude hoặc Codex cho biết quá trình đăng nhập chưa hoàn tất, hãy chọn **Mở cửa sổ đăng nhập**. Mã do trình duyệt hiện phải được dán vào cửa sổ đó; mã hiện trước đó không còn dùng được.
-
-Nếu trang trình duyệt hoặc cửa sổ đăng nhập hiện `3p_delegated_access_policy_denied`, có thể một chính sách áp dụng cho tài khoản Claude đã chặn lần đăng nhập này. Nếu thử lại vẫn như vậy, hãy hỏi người quản lý tài khoản, hoặc thử xem tài khoản khác có đăng nhập được không.
 
 ## Không có gói đăng ký: AI miễn phí
 
