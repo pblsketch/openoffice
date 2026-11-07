@@ -208,6 +208,33 @@ describe('the status bar character count', () => {
     expect(item()?.textContent).toBe('글자 27')
   })
 
+  it('follows typing the studio tells only as a mutation of its page (over 30 pages)', () => {
+    vi.useFakeTimers()
+    const item = withStatusBar()
+    const open = openDocument()
+    open.plugin.showCharCount(LABELS)
+    vi.advanceTimersByTime(0)
+    const counts = () => open.executed.filter((id) => id === 'ext:ieum-count-characters').length
+    const before = counts()
+    // afterPageLocalEdit: document-mutated and document-page-invalidated, no document-changed
+    for (const text of ['가', '나']) {
+      open.doc.insertText(0, 0, 0, text)
+      open.emit('document-mutated')
+      open.emit('document-page-invalidated')
+      vi.advanceTimersByTime(100)
+    }
+    vi.advanceTimersByTime(TOTAL_PAUSE_MS)
+    expect(item()?.textContent).toBe('글자 26')
+    expect(counts()).toBe(before + 1)
+    // an edit that tells of both is counted once
+    open.doc.insertText(0, 0, 0, '다')
+    open.emit('document-mutated')
+    open.emit('document-changed')
+    vi.advanceTimersByTime(TOTAL_PAUSE_MS)
+    expect(item()?.textContent).toBe('글자 27')
+    expect(counts()).toBe(before + 2)
+  })
+
   it('does not count on and on when counting itself tells of a change', () => {
     vi.useFakeTimers()
     withStatusBar()

@@ -4825,6 +4825,10 @@ export const agentPlugin = {
       })
       charCount = counter
       const offChanged = host.events.on('document-changed', () => counter.documentChanged())
+      // typing redraws only its page: the studio tells of it as a mutation and a page to draw
+      // again, and says nothing of a changed document (over 30 pages it does not lay the pages
+      // out again later either). An edit that tells both only puts the same count off once more
+      const offMutated = host.events.on('document-mutated', () => counter.documentChanged())
       const offCaret = host.events.on('cursor-rect-updated', () => counter.selectionChanged())
       // another document opened in the same editor (a restored copy, a file dropped in)
       const offSwapped = host.events.on('document-swapped', () => counter.documentSwapped())
@@ -4837,7 +4841,7 @@ export const agentPlugin = {
         counter.stop()
         page.removeEventListener('keyup', onRest, true)
         page.removeEventListener('mouseup', onRest, true)
-        for (const off of [offChanged, offCaret, offSwapped]) {
+        for (const off of [offChanged, offMutated, offCaret, offSwapped]) {
           try {
             off?.()
           } catch {

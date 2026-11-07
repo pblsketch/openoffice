@@ -476,12 +476,10 @@ test.describe('HWP Ctrl+PageUp/PageDown and the status bar character count', () 
   })
 
   test('typing in a document over 30 pages: the count follows once typing rests', async () => {
-    // KNOWN FAILURE (verification of PR #364, 2026-11-07): over 30 pages the studio repaints a
-    // typed character page by page and fires no 'document-changed' (input-handler.ts
-    // afterPageLocalEdit; the idle pagination flush is off above
-    // DOCUMENT_PAGINATION_IDLE_FLUSH_PAGE_LIMIT), and the count waits for that event only, so the
-    // document's number stays where it was. Remove test.fail once the count follows.
-    test.fail()
+    // over 30 pages the studio repaints a typed character page by page and fires no
+    // 'document-changed' (input-handler.ts afterPageLocalEdit; the idle pagination flush is off
+    // above DOCUMENT_PAGINATION_IDLE_FLUSH_PAGE_LIMIT), only 'document-mutated', which the count
+    // also takes
     // about 400,000 characters over some 150 pages, the last paragraph short so typing there
     // never wraps a line
     const line = 'The quick brown fox jumps over the lazy dog 한글 문장입니다. '
