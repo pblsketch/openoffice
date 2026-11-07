@@ -30,6 +30,10 @@ const html = (head: string, body: Buffer) =>
   ])
 
 describe('create --type docx --from <html> decodes the file by its declared charset', () => {
+  it('does not corrupt UTF-8 text after a commented-out legacy declaration', async () => {
+    const head = '<!-- <meta charset="euc-kr"> --><meta charset="utf-8">'
+    expect(await bodyText(html(head, Buffer.from('한글 본문')))).toBe('한글 본문')
+  })
   it.each([
     ['meta charset', '<meta charset="euc-kr">'],
     ['uppercase and unquoted', '<META CHARSET=EUC-KR>'],
