@@ -161,6 +161,14 @@ export const de = {
     'Im Browser öffnet sich eine ChatGPT-Anmeldeseite. Melden Sie sich an und erlauben Sie dieser App, Ihren ChatGPT-Tarif zu nutzen; die Verbindung wird dann von selbst hergestellt.',
   chatgptLoginUnfinishedNote:
     'Die Anmeldung wurde nicht abgeschlossen. Drücken Sie erneut, um von vorn zu beginnen. Für die Verbindung müssen Sie die Nutzung Ihres ChatGPT-Tarifs erlauben.',
+  chatgptLoginNoPlanNote:
+    'Sie sind bei ChatGPT angemeldet, aber diese App hat keine Erlaubnis erhalten, Ihren Tarif zu nutzen. Drücken Sie erneut und erlauben Sie auf der Freigabeseite die Nutzung des Tarifs. Wenn Sie das bereits getan haben, bietet OpenAI diese Nutzung für Ihr Konto (zum Beispiel eines, das ein Unternehmen oder eine Schule verwaltet) oder Ihren Tarif möglicherweise nicht an. Sie können sich dann mit dem Programm Codex verbinden.',
+  chatgptLoginDeniedNote:
+    'Sie haben sich im Browser angemeldet, aber OpenAI hat diese Verbindung nicht angenommen, oder seine Antwort ließ sich nicht prüfen. Prüfen Sie, ob Datum und Uhrzeit dieses PCs stimmen, und drücken Sie dann erneut, um von vorn zu beginnen.',
+  chatgptLoginNetworkNote:
+    'Die Anmeldung konnte nicht abgeschlossen werden: OpenAI war nicht erreichbar, oder es hat sich kein Browser geöffnet. Prüfen Sie die Internetverbindung (auch Firmennetz, VPN oder Proxy) und drücken Sie dann erneut.',
+  chatgptLoginNotAllowedNote:
+    'Sie haben dieser App die Nutzung Ihres ChatGPT-Tarifs nicht erlaubt, oder der Browser kam mit einem Fehler von der Anmeldung zurück. Drücken Sie erneut, melden Sie sich an und erlauben Sie es auf der Freigabeseite.',
   chatgptSigningInNote:
     'Melden Sie sich im geöffneten Browser mit Ihrem ChatGPT-Konto an und erlauben Sie dieser App, Ihren Tarif zu nutzen. Die Verbindung wird von selbst hergestellt.',
   chatgptPlanNote:

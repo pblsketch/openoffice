@@ -151,6 +151,14 @@ export const en = {
     'A ChatGPT sign-in page opens in your browser. Sign in and allow this app to use your ChatGPT plan; the connection finishes by itself.',
   chatgptLoginUnfinishedNote:
     'The sign-in did not finish. Press it again to start over. The connection needs you to allow use of your ChatGPT plan.',
+  chatgptLoginNoPlanNote:
+    'You signed in to ChatGPT, but this app was not allowed to use your plan. Press it again and allow plan use on the consent page. If you did allow it, OpenAI may not offer this for your account (for example one managed by a company or school) or your plan. You can connect with the Codex program instead.',
+  chatgptLoginDeniedNote:
+    'You signed in in the browser, but OpenAI did not accept this connection, or its answer could not be checked. Make sure the date and time on this PC are right, then press it again to start over.',
+  chatgptLoginNetworkNote:
+    'The sign-in could not finish: OpenAI could not be reached, or no browser opened. Check the internet connection (including a company network, VPN or proxy), then press it again.',
+  chatgptLoginNotAllowedNote:
+    'This app was not allowed to use your ChatGPT plan, or the browser came back from the sign-in with a failure. Press it again, sign in, and allow it on the consent page.',
   chatgptSigningInNote:
     'Sign in with your ChatGPT account in the browser that opened, and allow this app to use your plan. The connection finishes by itself.',
   chatgptPlanNote:

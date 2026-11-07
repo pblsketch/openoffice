@@ -2,10 +2,15 @@
  * What the renderers and the main side agree on for the subscription providers:
  * IPC channel names, the payloads that travel on them, and the few fixed values
  * the UI shows (install command, install page). Browser-safe: this file imports
- * types and the plain effort list only, so preload and renderer bundles can use
- * it as is.
+ * types and plain value lists only, so preload and renderer bundles can use it
+ * as is.
  */
 import { aiEffortOf, aiEffortsOf } from '../effort'
+import {
+  AI_SUBSCRIPTION_LOGIN_FAILURE_REASONS,
+  AI_SUBSCRIPTION_LOGIN_FAILURE_STEPS,
+  type AiSubscriptionLoginFailure,
+} from '../types'
 import type {
   AiSubscriptionCliId,
   AiSubscriptionModel,
@@ -397,6 +402,31 @@ export function subscriptionModelsOf(value: unknown): AiSubscriptionModel[] | un
 }
 
 /**
+ * An OAuth error code (the token endpoint's `error`, or the one the browser
+ * came back with) is kept only with this shape: an identifier, never text.
+ */
+export const SUBSCRIPTION_LOGIN_ERROR_CODE = /^[a-z0-9_.-]{1,64}$/
+
+/** Why a sign-in failed, read back from an IPC answer: fixed names and a status number only */
+export function subscriptionLoginFailureOf(value: unknown): AiSubscriptionLoginFailure | undefined {
+  if (!isRecord(value)) return undefined
+  const reason = AI_SUBSCRIPTION_LOGIN_FAILURE_REASONS.find((known) => known === value.reason)
+  if (!reason) return undefined
+  const failure: AiSubscriptionLoginFailure = { reason }
+  const step = AI_SUBSCRIPTION_LOGIN_FAILURE_STEPS.find((known) => known === value.step)
+  if (step) failure.step = step
+  const status = value.httpStatus
+  if (typeof status === 'number' && Number.isInteger(status) && status >= 100 && status <= 599) {
+    failure.httpStatus = status
+  }
+  const code = value.oauthError
+  if (typeof code === 'string' && SUBSCRIPTION_LOGIN_ERROR_CODE.test(code)) {
+    failure.oauthError = code
+  }
+  return failure
+}
+
+/**
  * An IPC answer as a status map with every provider present. A provider whose
  * entry is missing or malformed reads as `checking`, so a renderer never has
  * to guard against a half-filled answer. The account and the model list pass
@@ -429,6 +459,7 @@ export function subscriptionStatusMapOf(result: unknown): SubscriptionStatusMap 
     delete read.models
     delete read.signingIn
     delete read.loginUnfinished
+    delete read.loginFailure
     delete read.programPath
     if (account) read.account = account
     if (models) read.models = models
@@ -439,6 +470,8 @@ export function subscriptionStatusMapOf(result: unknown): SubscriptionStatusMap 
     // a login that ended without one belongs to signed-out and nowhere else
     if (read.state === 'signed-out' && status.loginUnfinished === true) {
       read.loginUnfinished = true
+      const failure = subscriptionLoginFailureOf(status.loginFailure)
+      if (failure) read.loginFailure = failure
     }
     return read
   }

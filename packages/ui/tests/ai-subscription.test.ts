@@ -81,6 +81,37 @@ describe('the ChatGPT card (decision 0081)', () => {
     ).toEqual(['chatgptLoginUnfinishedNote', 'loginNote'])
   })
 
+  it('says why a sign-in ended without a connection, when the app knows', () => {
+    const after = (loginFailure?: AiSubscriptionStatus['loginFailure']) =>
+      aiSubscriptionCardView(
+        chatgpt('signed-out', { loginUnfinished: true, ...(loginFailure ? { loginFailure } : {}) }),
+      ).noteKeys
+    expect(after({ reason: 'no-plan', step: 'scope-missing' })).toEqual([
+      'chatgptLoginNoPlanNote',
+      'loginNote',
+    ])
+    expect(after({ reason: 'denied', step: 'id-token-invalid' })).toEqual([
+      'chatgptLoginDeniedNote',
+      'loginNote',
+    ])
+    expect(after({ reason: 'network', step: 'token-unreachable' })).toEqual([
+      'chatgptLoginNetworkNote',
+      'loginNote',
+    ])
+    // the browser came back with an error: most often the user did not allow the app
+    expect(
+      after({ reason: 'denied', step: 'callback-error', oauthError: 'access_denied' }),
+    ).toEqual(['chatgptLoginNotAllowedNote', 'loginNote'])
+    expect(after({ reason: 'timeout' })).toEqual(['chatgptLoginUnfinishedNote', 'loginNote'])
+    expect(after()).toEqual(['chatgptLoginUnfinishedNote', 'loginNote'])
+    // the button is the same: one more sign-in, from the start
+    expect(
+      aiSubscriptionCardView(
+        chatgpt('signed-out', { loginUnfinished: true, loginFailure: { reason: 'no-plan' } }),
+      ).actions,
+    ).toEqual(['login'])
+  })
+
   it('while signing in, offers only to call it off', () => {
     const view = aiSubscriptionCardView(chatgpt('signed-out', { signingIn: 'browser' }), {
       terminalWindows: true,

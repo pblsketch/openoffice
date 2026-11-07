@@ -135,6 +135,14 @@ export const zhTW = {
     '瀏覽器中會開啟 ChatGPT 登入頁面。登入後允許此應用程式使用你的 ChatGPT 方案，就會自動完成連線。',
   chatgptLoginUnfinishedNote:
     '登入沒有完成。再按一次會重新開始。必須允許使用你的 ChatGPT 方案才能連線。',
+  chatgptLoginNoPlanNote:
+    '已登入 ChatGPT，但這個應用程式沒有取得使用方案的許可。請再按一次，並在授權頁面允許使用方案。如果已經允許，可能是 OpenAI 沒有對這個帳號（例如公司或學校管理的帳號）或這個方案開放這項使用。這時可以改用 Codex 程式連線。',
+  chatgptLoginDeniedNote:
+    '已在瀏覽器中登入，但 OpenAI 沒有接受這個連線，或傳回的回應沒有通過檢查。請確認這台電腦的日期和時間正確，再按一次重新開始。',
+  chatgptLoginNetworkNote:
+    '無法連上 OpenAI 或沒能開啟瀏覽器，登入沒有完成。請檢查網路連線（包括公司網路、VPN 或 Proxy），再按一次。',
+  chatgptLoginNotAllowedNote:
+    '你沒有允許這個應用程式使用 ChatGPT 方案，或瀏覽器帶著登入失敗回來了。請再按一次，登入後在授權頁面允許。',
   chatgptSigningInNote:
     '請在開啟的瀏覽器中用 ChatGPT 帳戶登入，並允許此應用程式使用你的方案。完成後會自動連線。',
   chatgptPlanNote:

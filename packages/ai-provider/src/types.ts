@@ -126,6 +126,67 @@ export interface AiSubscriptionStatus {
    * a sign-in.
    */
   loginUnfinished?: boolean | undefined
+  /**
+   * Why the app's own ChatGPT sign-in ended without a connection (decision
+   * 0081), beside `loginUnfinished`. Fixed names only: no token, code or text
+   * OpenAI sent. In memory only, like `loginUnfinished`.
+   */
+  loginFailure?: AiSubscriptionLoginFailure | undefined
+}
+
+/** timeout: nobody finished in time; denied: OpenAI refused or its answer did not check out; no-plan: signed in without allowing the plan; network: OpenAI could not be reached */
+export const AI_SUBSCRIPTION_LOGIN_FAILURE_REASONS = [
+  'timeout',
+  'denied',
+  'no-plan',
+  'network',
+] as const
+
+export type AiSubscriptionLoginFailureReason =
+  (typeof AI_SUBSCRIPTION_LOGIN_FAILURE_REASONS)[number]
+
+/**
+ * Which step of the app's ChatGPT sign-in failed, for the help text a user
+ * copies: fixed names, never anything OpenAI or the browser sent.
+ */
+export const AI_SUBSCRIPTION_LOGIN_FAILURE_STEPS = [
+  /** no browser took the sign-in page */
+  'browser',
+  /** the waiting server could not start */
+  'loopback',
+  /** the browser came back with an `error` */
+  'callback-error',
+  /** the browser came back without a code or a client id */
+  'callback-incomplete',
+  /** the token endpoint refused the code (400, 401, 403) */
+  'token-refused',
+  /** the token endpoint answered another failing status */
+  'token-http',
+  /** the token endpoint could not be reached */
+  'token-unreachable',
+  /** the token answer lacked the access or refresh token, or was no JSON */
+  'token-unreadable',
+  /** the token answer had no ID token */
+  'id-token-missing',
+  /** OpenAI's signing keys could not be read */
+  'signing-keys',
+  /** the ID token failed a check: signature, issuer, audience, expiry or nonce */
+  'id-token-invalid',
+  /** the token answer named no scope at all */
+  'scope-missing',
+  /** the token answer named scopes, without the plan's */
+  'plan-scope-missing',
+] as const
+
+export type AiSubscriptionLoginFailureStep = (typeof AI_SUBSCRIPTION_LOGIN_FAILURE_STEPS)[number]
+
+export interface AiSubscriptionLoginFailure {
+  reason: AiSubscriptionLoginFailureReason
+  step?: AiSubscriptionLoginFailureStep | undefined
+  /** the token endpoint's HTTP status, when it answered with a failure */
+  httpStatus?: number | undefined
+  /** the token endpoint's OAuth error code, identifier-shaped */
+  oauthError?: string | undefined
 }
 
 export type AiSubscriptionStatuses = Partial<Record<AiSubscriptionProviderId, AiSubscriptionStatus>>

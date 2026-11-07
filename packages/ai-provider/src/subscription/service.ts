@@ -12,6 +12,7 @@
  */
 import { AI_SUBSCRIPTION_PROVIDERS } from '../providers'
 import type {
+  AiSubscriptionLoginFailure,
   AiSettings,
   AiSubscriptionModel,
   AiSubscriptionProviderId,
@@ -113,9 +114,14 @@ export interface SubscriptionStatusService {
    * CLI in (it exited, or ran past the limit for a browser sign-in nobody
    * finished), or take the mark back. Like `signingIn` it rides on the statuses
    * and changes nothing that was detected; a check that finds a sign-in clears
-   * it, and so does a new login.
+   * it, and so does a new login. `failure` says why, when the app knows
+   * (its own ChatGPT sign-in); it rides along with the mark and goes with it.
    */
-  setLoginUnfinished(provider: AiSubscriptionProviderId, unfinished: boolean): void
+  setLoginUnfinished(
+    provider: AiSubscriptionProviderId,
+    unfinished: boolean,
+    failure?: AiSubscriptionLoginFailure,
+  ): void
 }
 
 /** A login is known for these states: the account belongs to them alone */
@@ -188,6 +194,8 @@ export function createSubscriptionStatusService(
   const signingIn = new Map<AiSubscriptionProviderId, AiSubscriptionSigningIn>()
   /** logins the app started that ended without one, laid over the detected statuses */
   const loginUnfinished = new Set<AiSubscriptionProviderId>()
+  /** why those logins ended, where the app knows */
+  const loginFailures = new Map<AiSubscriptionProviderId, AiSubscriptionLoginFailure>()
   const snapshot = (): SubscriptionStatusMap => {
     const current = { ...statuses }
     for (const [provider, mode] of signingIn) {
@@ -196,7 +204,12 @@ export function createSubscriptionStatusService(
     for (const provider of loginUnfinished) {
       // a login that is under way is not an unfinished one
       if (signingIn.has(provider)) continue
-      current[provider] = { ...current[provider], loginUnfinished: true }
+      const failure = loginFailures.get(provider)
+      current[provider] = {
+        ...current[provider],
+        loginUnfinished: true,
+        ...(failure ? { loginFailure: { ...failure } } : {}),
+      }
     }
     return current
   }
@@ -242,7 +255,10 @@ export function createSubscriptionStatusService(
       }
       detections.set(provider, detection)
       // a login was found: whatever the last one the app started did, it is over
-      if (signedIn(detection)) loginUnfinished.delete(provider)
+      if (signedIn(detection)) {
+        loginUnfinished.delete(provider)
+        loginFailures.delete(provider)
+      }
       if (detection.state === 'signed-out' || detection.state === 'not-installed') {
         // whoever signs in next gets a list of their own
         models.delete(provider)
@@ -379,10 +395,19 @@ export function createSubscriptionStatusService(
       else signingIn.delete(provider)
       announce()
     },
-    setLoginUnfinished(provider, unfinished) {
-      if (loginUnfinished.has(provider) === unfinished) return
+    setLoginUnfinished(provider, unfinished, failure) {
+      const known = loginFailures.get(provider)
+      const next = unfinished ? failure : undefined
+      if (
+        loginUnfinished.has(provider) === unfinished &&
+        JSON.stringify(known) === JSON.stringify(next)
+      ) {
+        return
+      }
       if (unfinished) loginUnfinished.add(provider)
       else loginUnfinished.delete(provider)
+      if (next) loginFailures.set(provider, { ...next })
+      else loginFailures.delete(provider)
       announce()
     },
   }
