@@ -74,4 +74,14 @@ describe('parseWikiHeads', () => {
       { kind: 'heading', text: 'Title', level: 3 },
     ])
   })
+
+  it('counts CommonMark ATX headings indented by up to three spaces', () => {
+    const raw = [' # One', '  ## Two', '   ### Three', '    # four spaces', '# Zero'].join('\n')
+    expect(parseWikiHeads(raw)).toEqual([
+      { kind: 'heading', text: 'One', level: 1 },
+      { kind: 'heading', text: 'Two', level: 2 },
+      { kind: 'heading', text: 'Three', level: 3 },
+      { kind: 'heading', text: 'Zero', level: 1 },
+    ])
+  })
 })
