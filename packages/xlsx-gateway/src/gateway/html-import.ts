@@ -531,13 +531,24 @@ function declaredSheetNames(html: string): string[] {
   return names
 }
 
+/// Excel sheet names are capped at 31 UTF-16 units. Never cut inside a
+/// surrogate pair (an emoji), or the truncated name leaves a lone surrogate
+/// that becomes U+FFFD when written as UTF-8 into workbook.xml.
+function cutSheetNameUnits(text: string, end: number): number {
+  if (end <= 0 || end >= text.length) return end
+  const high = text.charCodeAt(end - 1)
+  const low = text.charCodeAt(end)
+  if (high < 0xd800 || high > 0xdbff || low < 0xdc00 || low > 0xdfff) return end
+  return end - 1
+}
+
 function uniqueSheetName(name: string): string | undefined {
   const cleaned = name
     .replace(/[\\/?*[\]:]/g, '')
     .replace(/^'+|'+$/g, '')
     .trim()
-    .slice(0, 31)
-  return cleaned === '' ? undefined : cleaned
+  const truncated = cleaned.slice(0, cutSheetNameUnits(cleaned, 31))
+  return truncated === '' ? undefined : truncated
 }
 
 function mergeReference(range: readonly [number, number, number, number]): string {
@@ -571,7 +582,7 @@ export async function htmlTablesToXlsxBuffer(
     let suffix = 2
     while (used.has(name)) {
       const tail = ` (${suffix})`
-      name = `${base.slice(0, 31 - tail.length)}${tail}`
+      name = `${base.slice(0, cutSheetNameUnits(base, 31 - tail.length))}${tail}`
       suffix += 1
     }
     used.add(name)
