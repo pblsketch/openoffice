@@ -11,6 +11,12 @@ import { homedir } from 'node:os'
 import { basename, delimiter, dirname, extname, isAbsolute, join, resolve, sep } from 'node:path'
 import { AiRunError } from '../run-error'
 import type { AiSubscriptionCliId, AiSubscriptionProviderId } from '../types'
+import {
+  SUBSCRIPTION_MIN_VERSIONS,
+  subscriptionVersionAtLeast,
+  subscriptionVersionOf,
+} from './contract'
+import { runSubscriptionProgram } from './process'
 
 export type SubscriptionProgramSource =
   /** the path the user set */
@@ -60,7 +66,13 @@ export interface SubscriptionLocateOptions {
   applicationDirs?: string[] | undefined
   /** extra POSIX bin directories searched after PATH; the usual ones when absent */
   commonDirs?: string[] | undefined
+  /** the version a found Claude Code reports; its own `--version` when absent */
+  readVersion?: SubscriptionVersionReader | undefined
 }
+
+export type SubscriptionVersionReader = (
+  program: SubscriptionProgram,
+) => Promise<string | undefined>
 
 export type SubscriptionLocator = (
   provider: AiSubscriptionCliId,
@@ -111,6 +123,7 @@ interface Context {
   nodeRuntime: SubscriptionNodeRuntime | undefined
   applicationDirs: string[] | undefined
   commonDirs: string[] | undefined
+  readVersion: SubscriptionVersionReader
 }
 
 function cleanCliPath(value: string | undefined): string {
@@ -557,30 +570,101 @@ function windowsFallbackDirs(
   return dirs
 }
 
+async function* programsByName(
+  context: Context,
+  name: string,
+  pathSource: SubscriptionProgramSource,
+  fallbackSource?: SubscriptionProgramSource,
+): AsyncGenerator<SubscriptionProgram> {
+  const { env, platform } = context
+  for (const dir of pathDirs(env, platform)) {
+    const program = await programInDir(context, dir, name, pathSource)
+    if (program) yield program
+  }
+  if (platform === 'win32') {
+    for (const { dir, source } of windowsFallbackDirs(context)) {
+      const program = await programInDir(context, dir, name, fallbackSource ?? source)
+      if (program) yield program
+    }
+    return
+  }
+  const dirs = context.commonDirs ?? (await commonUnixBinDirs(homeOf(env, platform)))
+  for (const dir of dirs) {
+    const program = await programInDir(context, dir, name, fallbackSource ?? 'path')
+    if (program) yield program
+  }
+}
+
 async function searchByName(
   context: Context,
   name: string,
   pathSource: SubscriptionProgramSource,
   fallbackSource?: SubscriptionProgramSource,
 ): Promise<SubscriptionProgram | null> {
-  const { env, platform } = context
-  for (const dir of pathDirs(env, platform)) {
-    const program = await programInDir(context, dir, name, pathSource)
-    if (program) return program
-  }
-  if (platform === 'win32') {
-    for (const { dir, source } of windowsFallbackDirs(context)) {
-      const program = await programInDir(context, dir, name, fallbackSource ?? source)
-      if (program) return program
-    }
-    return null
-  }
-  const dirs = context.commonDirs ?? (await commonUnixBinDirs(homeOf(env, platform)))
-  for (const dir of dirs) {
-    const program = await programInDir(context, dir, name, fallbackSource ?? 'path')
-    if (program) return program
+  for await (const program of programsByName(context, name, pathSource, fallbackSource)) {
+    return program
   }
   return null
+}
+
+const VERSION_TIMEOUT_MS = 5_000
+
+const reportedVersions = new Map<string, Promise<string | undefined>>()
+
+const reportedVersion: SubscriptionVersionReader = async (program) => {
+  const info = await stat(program.entry).catch(() => null)
+  if (!info) return undefined
+  const key = JSON.stringify([program.command, program.entry, info.size, info.mtimeMs])
+  const known = reportedVersions.get(key)
+  if (known) return known
+  const answer = runSubscriptionProgram(program, ['--version'], {
+    signal: new AbortController().signal,
+    timeoutMs: VERSION_TIMEOUT_MS,
+  }).then(
+    (result) => subscriptionVersionOf(result.stdout),
+    () => undefined,
+  )
+  reportedVersions.set(key, answer)
+  const version = await answer
+  if (!version) reportedVersions.delete(key)
+  return version
+}
+
+/** One program per file: PATH and the common directories can lead to the same one */
+async function* distinctFiles(
+  programs: AsyncIterable<SubscriptionProgram>,
+): AsyncGenerator<SubscriptionProgram> {
+  const files = new Set<string>()
+  for await (const program of programs) {
+    const file = await realpath(program.entry).catch(() => program.entry)
+    if (files.has(file)) continue
+    files.add(file)
+    yield program
+  }
+}
+
+/**
+ * A PC can hold several copies (Homebrew, npm, the vendor installer's
+ * `~/.local/bin`), and the one `claude update` refreshes is often not the first
+ * in the search order.
+ */
+async function firstUsableClaude(
+  context: Context,
+  programs: AsyncIterable<SubscriptionProgram>,
+): Promise<SubscriptionProgram | null> {
+  const minimum = SUBSCRIPTION_MIN_VERSIONS['claude-code']
+  const copies = distinctFiles(programs)
+  const { value: first } = await copies.next()
+  if (!first) return null
+  const { value: second } = await copies.next()
+  if (!second || !minimum) return first
+  const newEnough = async (program: SubscriptionProgram) => {
+    const version = await context.readVersion(program)
+    return !!version && subscriptionVersionAtLeast(version, minimum)
+  }
+  for (const program of [first, second]) if (await newEnough(program)) return program
+  for await (const program of copies) if (await newEnough(program)) return program
+  return first
 }
 
 /**
@@ -588,7 +672,8 @@ async function searchByName(
  * installed. Order: the configured path, the Codex desktop app's copy (its bin
  * tree on Windows; on macOS the newer of its bundle and the PATH copy), PATH,
  * then the install locations PATH may not list yet (`%APPDATA%\npm`, the
- * vendor installers' own directories).
+ * vendor installers' own directories). Of several Claude Code copies, the
+ * first one new enough for the app wins.
  *
  * A configured path may name the executable, its directory, an npm shim or a
  * bare command. One that points into the Codex desktop tree (its directories
@@ -609,6 +694,7 @@ export async function locateSubscriptionProgram(
     nodeRuntime: options.nodeRuntime,
     applicationDirs: options.applicationDirs,
     commonDirs: options.commonDirs,
+    readVersion: options.readVersion ?? reportedVersion,
   }
   const { name } = context.layout
   const managedRoot =
@@ -642,7 +728,10 @@ export async function locateSubscriptionProgram(
     const managed = await newestManagedCodex(managedRoot, platform)
     if (managed) return native(context, managed, 'managed')
   }
-  const found = await searchByName(context, name, 'path')
+  const found =
+    provider === 'claude-code'
+      ? await firstUsableClaude(context, programsByName(context, name, 'path'))
+      : await searchByName(context, name, 'path')
   if (provider === 'codex' && platform === 'darwin') {
     const bundled = await newestMacBundledCodex(context)
     if (bundled && (await isNewerFile(bundled, found?.entry))) {

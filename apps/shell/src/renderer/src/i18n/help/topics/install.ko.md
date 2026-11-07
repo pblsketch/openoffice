@@ -74,7 +74,7 @@ xattr -dr com.apple.quarantine /Applications/GenOffice.app
 
 Mac에서 그 밖에 다른 점:
 
-- AI 연결 카드에 설치 단추가 없습니다. 카드의 공식 설치 안내 링크를 따라 Claude Code나 Codex를 설치합니다.
+- AI 연결 카드에 설치 단추가 없습니다. 카드의 공식 설치 안내 링크를 따라 Claude Code나 Codex를 설치합니다. Claude 데스크톱 앱은 Claude Code가 아니므로, 데스크톱 앱이 있어도 Claude Code는 따로 설치해야 합니다.
 - 로그인은 브라우저에서 끝납니다. 브라우저가 코드를 붙여 넣으라고 하면 터미널에서 `claude auth login` 또는 `codex login`을 직접 실행합니다. [구독 연결](help://subscription)을 보세요.
 
 ## Linux에서 (베타)

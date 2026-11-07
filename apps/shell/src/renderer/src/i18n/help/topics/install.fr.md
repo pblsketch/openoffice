@@ -74,7 +74,7 @@ Si macOS indique que l’application n’est pas prise en charge sur ce Mac, vé
 
 Également sur un Mac :
 
-- Les cartes de connexion IA n’ont pas de bouton d’installation. Suivez le lien du guide d’installation officiel sur la carte pour installer Claude Code ou Codex.
+- Les cartes de connexion IA n’ont pas de bouton d’installation. Suivez le lien du guide d’installation officiel sur la carte pour installer Claude Code ou Codex. L’application de bureau Claude n’est pas Claude Code, il faut donc installer Claude Code même si l’application de bureau est déjà là.
 - La connexion se termine dans le navigateur. Si le navigateur vous demande de coller un code, exécutez vous-même `claude auth login` ou `codex login` dans le Terminal. Voir [Connexion par abonnement](help://subscription).
 
 ## Sous Linux (bêta)

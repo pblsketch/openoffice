@@ -15,6 +15,8 @@ export const zh = {
   cardErrNeedsUpdatePath: '此应用运行的文件：',
   cardErrNeedsUpdateWindows:
     '在 WSL（Ubuntu）或其他文件夹中更新 {provider} 不会更改此文件。请在 Windows PowerShell 中运行 {command}。',
+  claudeDesktopNote:
+    'Claude 桌面应用不是本应用运行的 Claude Code。Claude Code 是在终端中使用的独立程序，安装或更新桌面应用不会改变它。',
   cardErrTimeout: '{provider} 程序未及时响应。请稍后重新检查。',
   cardErrFailed: '检查 {provider} 时出现问题。请重新检查。',
   actionInstall: '安装',

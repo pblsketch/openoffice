@@ -74,7 +74,7 @@ Meldet macOS, die App werde auf diesem Mac nicht unterstützt, prüfen Sie zwei 
 
 Außerdem auf dem Mac:
 
-- Die KI-Verbindungskarten haben keine Installationsschaltfläche. Folgen Sie dem Link zur offiziellen Installationsanleitung auf der Karte, um Claude Code oder Codex zu installieren.
+- Die KI-Verbindungskarten haben keine Installationsschaltfläche. Folgen Sie dem Link zur offiziellen Installationsanleitung auf der Karte, um Claude Code oder Codex zu installieren. Die Claude-Desktop-App ist nicht Claude Code, daher muss Claude Code auch dann eigens installiert werden, wenn die Desktop-App vorhanden ist.
 - Die Anmeldung wird im Browser abgeschlossen. Fordert der Browser Sie auf, einen Code einzufügen, führen Sie `claude auth login` oder `codex login` selbst im Terminal aus. Siehe [Abonnement-Verbindung](help://subscription).
 
 ## Unter Linux (Beta)

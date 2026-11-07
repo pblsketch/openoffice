@@ -17,6 +17,8 @@ export const en = {
   cardErrNeedsUpdatePath: 'The file this app runs:',
   cardErrNeedsUpdateWindows:
     'Updating {provider} inside WSL (Ubuntu) or in another folder does not change this file. Run {command} in Windows PowerShell.',
+  claudeDesktopNote:
+    'The Claude desktop app is not Claude Code, which this app runs. Claude Code is a separate program used in a terminal, so installing or updating the desktop app does not change it.',
   cardErrTimeout: 'The {provider} program did not answer in time. Check again in a moment.',
   cardErrFailed: 'Something went wrong while checking {provider}. Check again.',
   actionInstall: 'Install',

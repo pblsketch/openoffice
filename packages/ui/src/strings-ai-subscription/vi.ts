@@ -18,6 +18,8 @@ export const vi = {
   cardErrNeedsUpdatePath: 'Tệp mà ứng dụng này chạy:',
   cardErrNeedsUpdateWindows:
     'Cập nhật {provider} trong WSL (Ubuntu) hoặc ở thư mục khác không làm thay đổi tệp này. Hãy chạy {command} trong Windows PowerShell.',
+  claudeDesktopNote:
+    'Ứng dụng Claude cho máy tính không phải là Claude Code mà ứng dụng này chạy. Claude Code là một chương trình riêng dùng trong terminal, nên cài đặt hay cập nhật ứng dụng máy tính không làm thay đổi nó.',
   cardErrTimeout: 'Chương trình {provider} không trả lời kịp thời. Hãy kiểm tra lại sau giây lát.',
   cardErrFailed: 'Đã xảy ra sự cố khi kiểm tra {provider}. Hãy kiểm tra lại.',
   actionInstall: 'Cài đặt',

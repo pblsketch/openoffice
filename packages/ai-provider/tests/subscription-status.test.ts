@@ -2,6 +2,9 @@
  * Connection status of the two subscription CLIs, judged from fake program
  * output. No test here starts a real CLI.
  */
+import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   SUBSCRIPTION_MIN_VERSIONS,
@@ -332,6 +335,35 @@ describe('a CLI too old to answer (spec 7)', () => {
     const ready = await detectSubscriptionLogin('claude-code', { locate: found, run: current.run })
     expect(ready.programPath).toBeUndefined()
   })
+
+  // Windows lets only administrators and Developer Mode create a symbolic link
+  it.skipIf(process.platform === 'win32')(
+    'names the file behind a link, which tells a Homebrew copy from an npm one',
+    async () => {
+      const root = await mkdtemp(join(tmpdir(), 'subscription-status-'))
+      try {
+        const cask = join(root, 'Caskroom', 'claude-code', '2.1.97', 'claude')
+        await mkdir(dirname(cask), { recursive: true })
+        await writeFile(cask, '')
+        const link = join(root, 'bin', 'claude')
+        await mkdir(dirname(link), { recursive: true })
+        await symlink(cask, link)
+        const linked = async (): Promise<SubscriptionProgram> => ({
+          ...program('claude-code'),
+          command: link,
+          entry: link,
+        })
+        const old = fakeCli({ version: ok('2.1.97 (Claude Code)\n'), status: ok(claudeStatus({})) })
+        const detection = await detectSubscriptionLogin('claude-code', {
+          locate: linked,
+          run: old.run,
+        })
+        expect(detection.programPath).toBe(await realpath(cask))
+      } finally {
+        await rm(root, { recursive: true, force: true })
+      }
+    },
+  )
 
   it('Claude whose version cannot be read is not asked for its status either', async () => {
     const cli = fakeCli({

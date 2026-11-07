@@ -74,7 +74,7 @@ xattr -dr com.apple.quarantine /Applications/GenOffice.app
 
 وعلى Mac أيضًا:
 
-- ليس في بطاقات اتصال الذكاء الاصطناعي زر تثبيت. اتبع رابط دليل التثبيت الرسمي في البطاقة لتثبيت Claude Code أو Codex.
+- ليس في بطاقات اتصال الذكاء الاصطناعي زر تثبيت. اتبع رابط دليل التثبيت الرسمي في البطاقة لتثبيت Claude Code أو Codex. تطبيق Claude لسطح المكتب ليس Claude Code، لذلك يجب تثبيت Claude Code على حدة حتى لو كان تطبيق سطح المكتب مثبتًا.
 - يكتمل تسجيل الدخول في المتصفح. إذا طلب منك المتصفح لصق رمز، فنفّذ `claude auth login` أو `codex login` في Terminal بنفسك. انظر [الاتصال بالاشتراك](help://subscription).
 
 ## على Linux (تجريبي)

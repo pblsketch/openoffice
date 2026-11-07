@@ -18,6 +18,8 @@ export const pl = {
   cardErrNeedsUpdatePath: 'Plik uruchamiany przez tę aplikację:',
   cardErrNeedsUpdateWindows:
     'Aktualizacja {provider} w WSL (Ubuntu) lub w innym folderze nie zmienia tego pliku. Uruchom {command} w Windows PowerShell.',
+  claudeDesktopNote:
+    'Aplikacja desktopowa Claude to nie Claude Code, który uruchamia ta aplikacja. Claude Code to osobny program używany w terminalu, więc instalacja lub aktualizacja aplikacji desktopowej go nie zmienia.',
   cardErrTimeout: 'Program {provider} nie odpowiedział na czas. Sprawdź ponownie za chwilę.',
   cardErrFailed: 'Podczas sprawdzania {provider} wystąpił problem. Sprawdź ponownie.',
   actionInstall: 'Zainstaluj',

@@ -17,6 +17,8 @@ export const th = {
   cardErrNeedsUpdatePath: 'ไฟล์ที่แอปนี้เรียกใช้:',
   cardErrNeedsUpdateWindows:
     'การอัปเดต {provider} ใน WSL (Ubuntu) หรือในโฟลเดอร์อื่นจะไม่เปลี่ยนไฟล์นี้ โปรดเรียกใช้ {command} ใน Windows PowerShell',
+  claudeDesktopNote:
+    'แอป Claude บนเดสก์ท็อปไม่ใช่ Claude Code ที่แอปนี้เรียกใช้ Claude Code เป็นโปรแกรมแยกต่างหากที่ใช้ในเทอร์มินัล การติดตั้งหรืออัปเดตแอปบนเดสก์ท็อปจึงไม่เปลี่ยน Claude Code',
   cardErrTimeout: 'โปรแกรม {provider} ไม่ตอบกลับภายในเวลาที่กำหนด โปรดตรวจสอบอีกครั้งในอีกสักครู่',
   cardErrFailed: 'เกิดปัญหาขณะตรวจสอบ {provider} โปรดตรวจสอบอีกครั้ง',
   actionInstall: 'ติดตั้ง',

@@ -73,9 +73,12 @@ describe('AI_SUBSCRIPTION_STRINGS', () => {
   it('names the vendors in text and never as a feature of this product', () => {
     for (const lang of LANGS) {
       for (const key of KEYS) {
+        if (key === 'claudeDesktopNote') continue
         const text = AI_SUBSCRIPTION_STRINGS[lang][key]
         expect(text, `${lang}.${key}`).not.toMatch(/Claude Code|GenOffice/)
       }
+      expect(AI_SUBSCRIPTION_STRINGS[lang].claudeDesktopNote, lang).toMatch(/Claude Code/)
+      expect(AI_SUBSCRIPTION_STRINGS[lang].claudeDesktopNote, lang).not.toMatch(/GenOffice/)
       // the two notices keep the company names as they are written
       expect(AI_SUBSCRIPTION_STRINGS[lang].noticeSend, lang).toMatch(/Anthropic/)
       expect(AI_SUBSCRIPTION_STRINGS[lang].noticeSend, lang).toMatch(/OpenAI/)

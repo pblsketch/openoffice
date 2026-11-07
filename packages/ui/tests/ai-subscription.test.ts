@@ -310,7 +310,7 @@ describe('aiSubscriptionCardView', () => {
       state: 'error',
       tone: 'error',
       statusKey: 'cardError',
-      noteKeys: [],
+      noteKeys: ['claudeDesktopNote'],
       detailKey: 'cardErrNeedsUpdate',
       actions: ['recheck'],
       links: [],
@@ -382,7 +382,50 @@ describe('aiSubscriptionCardView', () => {
     expect(updatable.programPath).toBe(windows.programPath)
     expect(updatable.pathNoteKeys).toEqual(['cardErrNeedsUpdateWindows'])
     expect(updatable.actions).toEqual(['update', 'recheck'])
-    expect(updatable.noteKeys).toEqual(['updateNote'])
+    expect(updatable.noteKeys).toEqual(['claudeDesktopNote', 'updateNote'])
+  })
+
+  it('error: a Claude below the floor that Homebrew installed is updated with Homebrew', () => {
+    const outdated = (programPath: string) =>
+      aiSubscriptionCardView(
+        status('claude-code', 'error', {
+          version: '2.1.97',
+          error:
+            'needs-update: Claude Code 2.1.97 is too old; version 2.1.248 or newer is required',
+          programPath,
+        }),
+        { terminalWindows: false },
+      ).detailParams?.command
+    expect(outdated('/opt/homebrew/Caskroom/claude-code/2.1.97/claude')).toBe(
+      'brew upgrade claude-code',
+    )
+    expect(outdated('/usr/local/Caskroom/claude-code@latest/2.1.220/claude')).toBe(
+      'brew upgrade claude-code@latest',
+    )
+    expect(
+      outdated('/opt/homebrew/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe'),
+    ).toBe('claude update')
+    expect(outdated('/Users/me/.local/share/claude/versions/2.1.97')).toBe('claude update')
+  })
+
+  it('Claude not installed or too old: says the Claude desktop app is not Claude Code', () => {
+    expect(aiSubscriptionCardView(status('claude-code', 'not-installed')).noteKeys).toEqual([
+      'claudeDesktopNote',
+      'installNote',
+      'installReturnNote',
+    ])
+    const outdated = status('claude-code', 'error', {
+      version: '2.1.97',
+      error: 'needs-update: Claude Code 2.1.97 is too old; version 2.1.248 or newer is required',
+    })
+    expect(aiSubscriptionCardView(outdated).noteKeys).toEqual(['claudeDesktopNote'])
+    expect(
+      aiSubscriptionCardView({ ...outdated, error: 'failed: Claude Code could not be run' })
+        .noteKeys,
+    ).toEqual([])
+    expect(
+      aiSubscriptionCardView(status('codex', 'error', { error: 'needs-update: old' })).noteKeys,
+    ).toEqual([])
   })
 
   it('error: the status text itself is never part of the view', () => {
@@ -498,6 +541,12 @@ describe('aiSubscriptionCardView', () => {
         actions: ['install-help'],
         links: ['install-help'],
       })
+    })
+
+    it('not-installed Claude: the official instructions, and that the desktop app is not Claude Code', () => {
+      const view = aiSubscriptionCardView(status('claude-code', 'not-installed'), noWindows)
+      expect(view.noteKeys).toEqual(['claudeDesktopNote'])
+      expect(view.actions).toEqual(['install-help'])
     })
 
     it('a browser sign-in under way: where to sign in, with no window to open', () => {

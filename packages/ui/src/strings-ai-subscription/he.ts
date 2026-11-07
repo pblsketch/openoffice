@@ -17,6 +17,8 @@ export const he = {
   cardErrNeedsUpdatePath: 'הקובץ שהאפליקציה הזו מריצה:',
   cardErrNeedsUpdateWindows:
     'עדכון {provider} בתוך WSL (Ubuntu) או בתיקייה אחרת לא משנה את הקובץ הזה. הריצו {command} ב-Windows PowerShell.',
+  claudeDesktopNote:
+    'אפליקציית Claude לשולחן העבודה אינה Claude Code, שהאפליקציה הזו מפעילה. Claude Code היא תוכנה נפרדת שמשתמשים בה בטרמינל, ולכן התקנה או עדכון של אפליקציית שולחן העבודה לא משנים אותה.',
   cardErrTimeout: 'התוכנה {provider} לא ענתה בזמן. בדקו שוב בעוד רגע.',
   cardErrFailed: 'משהו השתבש במהלך הבדיקה של {provider}. בדקו שוב.',
   actionInstall: 'התקנה',

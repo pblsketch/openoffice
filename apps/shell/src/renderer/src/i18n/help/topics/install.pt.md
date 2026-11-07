@@ -74,7 +74,7 @@ Se o macOS disser que a aplicação não é suportada neste Mac, verifique duas 
 
 Ainda num Mac:
 
-- Os cartões de ligação da IA não têm botão de instalação. Siga a ligação para o guia oficial de instalação no cartão para instalar o Claude Code ou o Codex.
+- Os cartões de ligação da IA não têm botão de instalação. Siga a ligação para o guia oficial de instalação no cartão para instalar o Claude Code ou o Codex. O aplicativo de desktop do Claude não é o Claude Code, então é preciso instalar o Claude Code mesmo que o aplicativo de desktop já esteja instalado.
 - O início de sessão termina no navegador. Se o navegador pedir para colar um código, execute você mesmo `claude auth login` ou `codex login` no Terminal. Consulte [Conexão por assinatura](help://subscription).
 
 ## No Linux (beta)

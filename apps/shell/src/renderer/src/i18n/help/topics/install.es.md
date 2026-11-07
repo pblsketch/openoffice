@@ -74,7 +74,7 @@ Si macOS dice que la aplicación no es compatible con este Mac, compruebe dos co
 
 También en un Mac:
 
-- Las tarjetas de conexión de IA no tienen botón de instalación. Siga el enlace a la guía oficial de instalación que aparece en la tarjeta para instalar Claude Code o Codex.
+- Las tarjetas de conexión de IA no tienen botón de instalación. Siga el enlace a la guía oficial de instalación que aparece en la tarjeta para instalar Claude Code o Codex. La aplicación de escritorio de Claude no es Claude Code, así que hay que instalar Claude Code aunque ya tenga la aplicación de escritorio.
 - El inicio de sesión termina en el navegador. Si el navegador le pide pegar un código, ejecute usted mismo `claude auth login` o `codex login` en Terminal. Vea [Conexión por suscripción](help://subscription).
 
 ## En Linux (beta)
