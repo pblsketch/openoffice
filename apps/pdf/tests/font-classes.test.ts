@@ -44,6 +44,8 @@ describe('classifyFontName', () => {
     ['HYHeadLine-Medium', 'sans'],
     ['MalgunGothicBold', 'sans'],
     ['돋움', 'sans'],
+    ['GowunDodum-Regular', 'sans'],
+    ['GowunBatang-Regular', 'serif'],
     ['NotoSansCJKkr-Regular', 'sans'],
     ['Gungsuh', 'brush'],
     ['HYGungSo-Bold', 'brush'],

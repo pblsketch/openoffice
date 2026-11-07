@@ -47,10 +47,10 @@ const KO_BRUSH = /궁서|궁체|gungsuh|gungseo|gungso|gungche/
 const KO_SERIF =
   /명조|바탕|myeongjo|myungjo|batang|serif(cjk)?kr|sourcehanserifk|unbatang|applemyungjo/
 const KO_SANS =
-  /고딕|돋움|굴림|헤드라인|dotum|gulim|malgun|gothic|headline|sans(cjk)?kr|sourcehansansk|pretendard|spoqa|undotum|nanumsquare|nanumbarun/
+  /고딕|돋움|굴림|헤드라인|dotum|dodum|gulim|malgun|gothic|headline|sans(cjk)?kr|sourcehansansk|pretendard|spoqa|undotum|nanumsquare|nanumbarun/
 /** Korean by name alone even without a style word (HY/HCR/KoPub/Nanum families) */
 const KO_NAME =
-  /^hy[a-z]|^hcr|^han(batang|dotum)|kopub|nanum|malgun|batang|dotum|gulim|gungsuh|myeongjo|myungjo|applesdgothic|applemyungjo|(serif|sans)(cjk)?kr|sourcehan(sans|serif)k/
+  /^hy[a-z]|^hcr|^han(batang|dotum)|kopub|nanum|gowun|malgun|batang|dotum|dodum|gulim|gungsuh|myeongjo|myungjo|applesdgothic|applemyungjo|(serif|sans)(cjk)?kr|sourcehan(sans|serif)k/
 
 const JA_SERIF = /明朝|mincho|ryumin|kozmin/
 const JA_NAME =
