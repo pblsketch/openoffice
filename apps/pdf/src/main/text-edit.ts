@@ -2,8 +2,10 @@ import { readFileSync } from 'node:fs'
 import { PDFDict, PDFDocument, PDFName, PDFRawStream, decodePDFRawStream } from 'pdf-lib'
 import { fontCoversText } from './font-cmap'
 import { findFontCovering, findSystemFont, isTruetype } from './font-locate'
+import { similarFontFor } from './font-similar'
 import { identityCffCharset, subsetTtf } from './font-subset'
 import { pdfiumWasmPath } from './wasm-path'
+import { decodeFontName } from '../shared/font-classes'
 import type {
   TextEditFailure,
   TextEditInput,
@@ -98,6 +100,7 @@ export interface Pdfium {
   _FPDFFont_GetGlyphWidth(font: number, glyph: number, fontSize: number, width: number): number
   _FPDFFont_GetBaseFontName(font: number, buffer: number, buflen: number): number
   _FPDFFont_GetFamilyName(font: number, buffer: number, buflen: number): number
+  _FPDFFont_GetFlags(font: number): number
   _FPDFPageObj_Transform(
     obj: number,
     a: number,
@@ -1022,14 +1025,15 @@ function embeddedFontData(m: Pdfium, font: number): Buffer | null {
   }
 }
 
-/** UTF-8 string via a two-pass FPDFFont_Get*Name call (returned length includes the NUL) */
+/** Name string via a two-pass FPDFFont_Get*Name call (returned length includes the NUL).
+    PDFium hands back the PDF name's raw bytes, which Korean producers write in CP949. */
 function fontString(m: Pdfium, read: (buf: number, len: number) => number): string {
   const len = read(0, 0)
   if (len <= 1) return ''
   const buf = m._malloc(len)
   try {
     read(buf, len)
-    return Buffer.from(m.HEAPU8.subarray(buf, buf + len - 1)).toString()
+    return decodeFontName(m.HEAPU8.slice(buf, buf + len - 1))
   } finally {
     m._free(buf)
   }
@@ -1129,6 +1133,27 @@ async function resolveRebuildFont(
         } catch {
           /* charset not rewritable: fall back */
         }
+      }
+    }
+    // The document face is neither embedded with these glyphs nor installed: an
+    // installed look-alike of the same script and style (a Korean serif run stays
+    // serif) before the generic fallback, which only looks at coverage. The family
+    // name is not evidence here — for a non-embedded face PDFium reports its own
+    // substitute ("Chrome Serif MM").
+    const similar = similarFontFor(
+      { psName: ps, flags: m._FPDFFont_GetFlags(font), embedded },
+      drawn,
+      { italic: !!edit.newItalic },
+    )
+    if (similar) {
+      try {
+        return {
+          bytes: identityCffCharset(await subsetTtf(similar.bytes, drawn)),
+          // Stroke when bold is wanted (toggle, or a bold source) but the pick is not
+          syntheticBold: (wantBold || similar.sourceBold) && !similar.bold,
+        }
+      } catch {
+        /* charset not rewritable: fall back */
       }
     }
   }
