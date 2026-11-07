@@ -7,10 +7,12 @@
  * expand. Topics deeper than the engine accepts make the file unreadable.
  *
  * What comes over: each node's text, its children in order, its note, its web
- * link, whether it is folded, and on which side of the central topic a main
- * branch stands. Rich text and notes become plain text. Icons, fonts, colours,
- * edges, clouds, arrow links, attributes, details and links to other nodes are
- * left behind.
+ * link, whether it is folded, and which side of the central topic its main
+ * branches stand on. Rich text and notes become plain text, wherever the two
+ * programs keep them: a `richcontent` element, HTML inside the `TEXT`
+ * attribute (FreeMind 0.8), and the note hook of FreeMind 0.7 and 0.8. Icons,
+ * fonts, colours, edges, clouds, arrow links, attributes, details and links to
+ * other nodes are left behind.
  */
 import {
   MAX_TOPIC_DEPTH,
@@ -56,19 +58,8 @@ function decode(bytes: Uint8Array): string | null {
 const BLOCKS = new Set(['p', 'div', 'li', 'tr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'br'])
 const SKIPPED = new Set(['head', 'style', 'script'])
 
-/**
- * The text of a `richcontent` element: one line per block, white space
- * collapsed as a browser shows HTML. Content without HTML (Freeplane's plain
- * forms) is taken line by line as it stands.
- */
-function richText(content: Element): string {
-  if (content.getElementsByTagName('html').length === 0) {
-    return (content.textContent ?? '')
-      .split(/\r\n?|\n/)
-      .map((text) => text.trim())
-      .filter(Boolean)
-      .join('\n')
-  }
+/** HTML as a browser shows it: one line per block, white space collapsed. */
+function htmlText(content: Node): string {
   const lines: string[] = []
   let line = ''
   const breakLine = (): void => {
@@ -101,8 +92,42 @@ function richText(content: Element): string {
     .trim()
 }
 
+/**
+ * The text of a `richcontent` element. Content without HTML (Freeplane's plain
+ * forms) is taken line by line as it stands.
+ */
+function richText(content: Element): string {
+  if (content.getElementsByTagName('html').length > 0) return htmlText(content)
+  return (content.textContent ?? '')
+    .split(/\r\n?|\n/)
+    .map((text) => text.trim())
+    .filter(Boolean)
+    .join('\n')
+}
+
+/**
+ * Text kept in an attribute or a plain element. Both programs show it as HTML
+ * when it starts with `<html`. A document from `DOMParser` is inert: nothing in
+ * it runs or loads.
+ */
+function markupText(text: string): string {
+  if (!/^\s*<html/i.test(text)) return text.replace(/\r\n?/g, '\n').trim()
+  return htmlText(new DOMParser().parseFromString(text, 'text/html').documentElement)
+}
+
 function elementChildren(parent: Element, name: string): Element[] {
   return Array.from(parent.children).filter((child) => child.localName === name)
+}
+
+/** FreeMind 0.7 and 0.8 keep a note in a plugin hook rather than in `richcontent`. */
+const NOTE_HOOK = 'accessories/plugins/NodeNote.properties'
+
+function hookNote(node: Element): string | undefined {
+  const hook = elementChildren(node, 'hook').find(
+    (child) => child.getAttribute('NAME') === NOTE_HOOK,
+  )
+  const text = hook ? elementChildren(hook, 'text')[0]?.textContent : undefined
+  return text ? markupText(text) || undefined : undefined
 }
 
 function richContent(node: Element, type: 'NODE' | 'NOTE'): string | undefined {
@@ -113,9 +138,10 @@ function richContent(node: Element, type: 'NODE' | 'NOTE'): string | undefined {
 }
 
 function nodeOf(element: Element, depth: number): FreeMindNode {
-  const text = element.getAttribute('TEXT') ?? richContent(element, 'NODE') ?? ''
-  const node: FreeMindNode = { text: text.replace(/\r\n?/g, '\n').trim(), children: [] }
-  const note = richContent(element, 'NOTE')
+  const attribute = element.getAttribute('TEXT')
+  const text = attribute !== null ? markupText(attribute) : (richContent(element, 'NODE') ?? '')
+  const node: FreeMindNode = { text, children: [] }
+  const note = richContent(element, 'NOTE') || hookNote(element)
   if (note) node.note = note
   const link = element.getAttribute('LINK')?.trim()
   // a link to another node of the same map has no counterpart in a web link
@@ -173,8 +199,10 @@ function dress(topic: XmindTopic, node: FreeMindNode): void {
  * topic named after the map's root (or `title` when the root has no text).
  *
  * Sides: main branches all on one side give that one-sided layout. With both
- * sides, the right-hand branches come first, each side in its own order,
- * since the editor draws the first half of the branches on the right.
+ * sides, the right-hand branches come first, each side in its own order. The
+ * map keeps no side per branch and the editor draws the first half of the
+ * branches on the right, so a side with more than half of them gives the rest
+ * to the other side.
  */
 export function freeMindToXmind(root: FreeMindNode, title: string): Promise<XmindDocument> {
   const sheet = newSheet({ title, rootTitle: root.text || title })

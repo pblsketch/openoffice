@@ -186,3 +186,23 @@ describe('the encoding', () => {
     expect(read.ok && read.root.text).toBe('Café')
   })
 })
+
+describe('a FreeMind 0.8 map', () => {
+  it('shows HTML kept in a node text as that text, and brings notes kept in the old note hook', async () => {
+    const [sheet] = await importAndReopen(fixture('freemind-0.8.mm'), 'Field notes')
+    expect(shown(sheet!.root)).toEqual({
+      title: 'Field notes\n- a FreeMind 0.8 map -',
+      children: [
+        {
+          title: 'To write, use mailto:someone@example.org.',
+          note: 'A note kept the old way\non two lines',
+        },
+        {
+          // only text that starts with <html is HTML, as both programs read it
+          title: 'Plain text that mentions <html> in passing',
+          note: 'An HTML note\nin two paragraphs',
+        },
+      ],
+    })
+  })
+})
