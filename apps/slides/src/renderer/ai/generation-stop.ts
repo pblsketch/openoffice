@@ -23,6 +23,7 @@ export const GENERATION_STOP_KINDS: readonly string[] = [
   'credits',
   'headless-limit',
   'free-limit',
+  'off-in-app',
 ]
 
 export function isGenerationStopKind(kind: unknown): kind is string {

@@ -83,4 +83,6 @@ export const zh = {
   errGeneric: '出现问题。请重试。',
   documentsUnprotected:
     '会话开始后打开的 {n} 个文档不受该程序自身写入保护的限制。若要保护它们，请停止会话并重新开始。',
+  connOff: '已在本应用中关闭。可以在“设置 → AI”中重新使用。',
+  errOffInApp: '此程序已在本应用中关闭，因此不再发送。可以在“设置 → AI”中重新使用。',
 }

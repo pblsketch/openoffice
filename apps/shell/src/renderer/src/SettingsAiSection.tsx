@@ -284,6 +284,9 @@ export function AiSection({
               onManageUsage={
                 provider === 'chatgpt' ? () => connection.openInstallHelp('chatgpt') : undefined
               }
+              // this app alone, and undone with one press: nothing to confirm (decision 0114)
+              onTurnOff={(id) => connection.setOff(id, true)}
+              onTurnOn={(id) => connection.setOff(id, false)}
             />
             {accountAsked?.provider === provider && (
               <div

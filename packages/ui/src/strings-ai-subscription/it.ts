@@ -176,4 +176,18 @@ export const it = {
   browserPageDoneBody: "Puoi chiudere questa scheda e tornare all'app.",
   browserPageFailedTitle: 'Connessione non riuscita',
   browserPageFailedBody: "Torna all'app e riprova.",
+  cardOff: 'Disattivato in questa app',
+  offNote:
+    'Questa app non avvia il programma {provider} e non ne controlla lo stato. L’accesso di {provider} su questo PC e il suo uso nel terminale restano invariati.',
+  offElsewhereNote: 'Puoi riattivarlo da Impostazioni → IA.',
+  offSwitchNote:
+    '“Non usare in questa app” mantiene l’accesso di {provider} su questo PC e ferma solo questa app. Esci vale per tutto il PC.',
+  actionTurnOff: 'Non usare in questa app',
+  actionTurnOn: 'Usa di nuovo',
+  connectOffTitle: '{provider} è disattivato in questa app',
+  connectOffBody:
+    'Premi “Usa di nuovo” sulla scheda {provider} in Impostazioni → IA, oppure scegli un’altra IA.',
+  errOffInApp:
+    '{provider} è disattivato in questa app, quindi non è stato eseguito nulla. Puoi riattivarlo da Impostazioni → IA.',
+  guideBadgeOff: 'Disattivato',
 } satisfies Record<keyof typeof zh, string>

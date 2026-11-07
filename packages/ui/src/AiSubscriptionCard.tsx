@@ -68,6 +68,8 @@ const ACTION_LABELS: Record<AiSubscriptionCardAction, AiSubscriptionStringKey> =
   'switch-account': 'actionSwitchAccount',
   logout: 'actionLogout',
   'manage-usage': 'actionManageUsage',
+  'turn-off': 'actionTurnOff',
+  'turn-on': 'actionTurnOn',
 }
 
 /**
@@ -80,6 +82,8 @@ const ACTION_LABELS: Record<AiSubscriptionCardAction, AiSubscriptionStringKey> =
  * when asked for, by `showAccount` and by the two handlers, and never on a
  * compact card: an AI panel does not name the account. Both actions change the
  * vendor program for the whole PC, so the caller confirms before it runs one.
+ * The switch that stops using a CLI in this app (and turns it back on) is
+ * Settings-only too, and needs no confirmation: it reaches this app alone.
  */
 export function AiSubscriptionCard({
   status,
@@ -97,6 +101,8 @@ export function AiSubscriptionCard({
   onSwitchAccount,
   onLogout,
   onManageUsage,
+  onTurnOff,
+  onTurnOn,
 }: AiSubscriptionCardActions & {
   readonly status: AiSubscriptionStatus
   readonly lang: Lang
@@ -112,6 +118,10 @@ export function AiSubscriptionCard({
   readonly onLogout?: ((provider: AiSubscriptionProviderId) => void) | undefined
   /** Settings only: open where ChatGPT shows and limits this app's use of the plan */
   readonly onManageUsage?: (() => void) | undefined
+  /** Settings only: stop using the CLI in this app; it stays signed in for the rest of the PC */
+  readonly onTurnOff?: ((provider: AiSubscriptionProviderId) => void) | undefined
+  /** Settings only: use a CLI turned off in this app again */
+  readonly onTurnOn?: ((provider: AiSubscriptionProviderId) => void) | undefined
 }): React.JSX.Element {
   const stalled = useSigningInStalled(status.signingIn === 'browser')
   const view = aiSubscriptionCardView(status, {
@@ -121,6 +131,7 @@ export function AiSubscriptionCard({
     update: onUpdate !== undefined,
     cancelLogin: onCancelLogin !== undefined,
     manageUsage: onManageUsage !== undefined,
+    offSwitch: !compact && onTurnOff !== undefined && onTurnOn !== undefined,
     signingInStalled: stalled,
   })
   const provider = view.provider
@@ -145,6 +156,8 @@ export function AiSubscriptionCard({
     'switch-account': (id) => onSwitchAccount?.(id),
     logout: (id) => onLogout?.(id),
     'manage-usage': () => onManageUsage?.(),
+    'turn-off': (id) => onTurnOff?.(id),
+    'turn-on': (id) => onTurnOn?.(id),
   }
   return (
     <div
@@ -212,7 +225,10 @@ export function AiSubscriptionCard({
                 key={action}
                 type="button"
                 className={`ai-sub-btn${
-                  index === 0 && view.tone !== 'warning' && !isAiSubscriptionAccountAction(action)
+                  index === 0 &&
+                  view.tone !== 'warning' &&
+                  !isAiSubscriptionAccountAction(action) &&
+                  action !== 'turn-off'
                     ? ' primary'
                     : ''
                 }`}

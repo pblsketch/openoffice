@@ -39,6 +39,8 @@ export type IpcStreamErrorKind =
   | 'free-tier-model'
   /** the user declined to send a request larger than the context budget */
   | 'context-limit'
+  /** the person turned the subscription CLI off in this app (decision 0114) */
+  | 'off-in-app'
 
 /** Subscription providers (ai-provider's AiSubscriptionProviderId): the two vendor CLIs, and ChatGPT reached directly */
 export type IpcSubscriptionProviderId = 'claude-code' | 'codex' | 'chatgpt'

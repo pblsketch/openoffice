@@ -90,4 +90,7 @@ export const fr = {
   errGeneric: 'Un problème est survenu. Réessayez.',
   documentsUnprotected:
     'Les documents ouverts après le début de la session ({n}) ne bénéficient pas de la protection en écriture du programme. Arrêtez puis relancez la session pour les protéger.',
+  connOff: 'Désactivé dans cette application. Vous pouvez le réactiver dans Paramètres → IA.',
+  errOffInApp:
+    'Ce programme est désactivé dans cette application : rien de plus n’a été envoyé. Vous pouvez le réactiver dans Paramètres → IA.',
 } satisfies Record<keyof typeof zh, string>

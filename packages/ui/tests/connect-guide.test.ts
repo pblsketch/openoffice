@@ -107,6 +107,12 @@ describe('aiConnectStepsView', () => {
     expect(at(status('codex', 'ready'))).toEqual(['ready', ['install', 'login', 'ready']])
   })
 
+  it('a program turned off in this app is on no step, and its answer says so', () => {
+    expect(at(status('claude-code', 'off'))).toEqual([null, []])
+    const view = aiConnectGuideView({ 'claude-code': status('claude-code', 'off') }, null)
+    expect(view.options[0]!.badgeKey).toBe('guideBadgeOff')
+  })
+
   it('a program to update is back on the install step; another failure found the program', () => {
     expect(at(status('codex', 'error', { error: 'needs-update: too old' }))).toEqual([
       'install',

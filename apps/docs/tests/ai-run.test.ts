@@ -21,6 +21,8 @@ import {
   resolveAiRun,
   subscriptionStreamCallbacks,
   withMeteredAccepted,
+  withStoredSubscriptionOff,
+  withSubscriptionOff,
   type AiRunTexts,
 } from '../src/main/ai-run'
 
@@ -337,5 +339,50 @@ describe('stored settings', () => {
     expect(normalizeAiSettings(JSON.parse(JSON.stringify(next))).meteredAccepted).toEqual(
       next.meteredAccepted,
     )
+  })
+})
+
+describe('a CLI turned off in this app (decision 0114)', () => {
+  it('a request on it is refused with its own cause, and auto runs on the other one', () => {
+    const off = settings({ provider: 'claude-code', subscriptionOff: { 'claude-code': true } })
+    const target = resolveAiRun(off, BOTH_READY, TEXTS)
+    expect(target).toMatchObject({
+      ok: false,
+      refusal: { errorCode: 'off-in-app', errorProvider: 'claude-code' },
+    })
+    const auto = resolveAiRun({ ...off, provider: 'auto' }, BOTH_READY, TEXTS)
+    expect(auto.ok && auto.provider).toBe('codex')
+  })
+
+  it('a status the main process reports as off refuses it even when the window did not know', () => {
+    const target = resolveAiRun(
+      settings({ provider: 'codex' }),
+      { 'claude-code': status('claude-code', 'ready'), codex: status('codex', 'off') },
+      TEXTS,
+    )
+    expect(target).toMatchObject({ ok: false, refusal: { errorCode: 'off-in-app' } })
+  })
+
+  it('turns one off and back on in the stored file, leaving the rest as it was', () => {
+    const stored = withMeteredAccepted(settings({ provider: 'codex' }), 'codex', true)
+    const off = withSubscriptionOff(stored, 'claude-code', true)
+    expect(off.subscriptionOff).toEqual({ 'claude-code': true })
+    expect(off.provider).toBe('codex')
+    expect(off.meteredAccepted?.codex).toBe(true)
+    const both = withSubscriptionOff(off, 'codex', true)
+    expect(both.subscriptionOff).toEqual({ 'claude-code': true, codex: true })
+    const on = withSubscriptionOff(withSubscriptionOff(both, 'codex', false), 'claude-code', false)
+    expect('subscriptionOff' in on).toBe(false)
+    expect(normalizeAiSettings(JSON.parse(JSON.stringify(off))).subscriptionOff).toEqual({
+      'claude-code': true,
+    })
+  })
+
+  it('a window saving an older copy neither turns a CLI on nor off', () => {
+    const stored = settings({ subscriptionOff: { codex: true } })
+    const stale = sanitizeAiSettings(settings({ provider: 'openai' }))!
+    expect(withStoredSubscriptionOff(stale, stored).subscriptionOff).toEqual({ codex: true })
+    const planted = sanitizeAiSettings(settings({ subscriptionOff: { 'claude-code': true } }))!
+    expect('subscriptionOff' in withStoredSubscriptionOff(planted, settings())).toBe(false)
   })
 })

@@ -174,4 +174,17 @@ export const ms = {
   browserPageDoneBody: 'Anda boleh menutup tab ini dan kembali ke aplikasi.',
   browserPageFailedTitle: 'Sambungan tidak berjaya',
   browserPageFailedBody: 'Kembali ke aplikasi dan cuba lagi.',
+  cardOff: 'Dimatikan dalam aplikasi ini',
+  offNote:
+    'Aplikasi ini tidak menjalankan program {provider} dan tidak menyemak statusnya. Log masuk {provider} pada PC ini dan penggunaannya dalam terminal kekal seperti biasa.',
+  offElsewhereNote: 'Anda boleh menggunakannya semula di Tetapan → AI.',
+  offSwitchNote:
+    '"Jangan guna dalam aplikasi ini" mengekalkan log masuk {provider} pada PC ini dan hanya menghentikan aplikasi ini. Log keluar terpakai pada seluruh PC.',
+  actionTurnOff: 'Jangan guna dalam aplikasi ini',
+  actionTurnOn: 'Guna semula',
+  connectOffTitle: '{provider} dimatikan dalam aplikasi ini',
+  connectOffBody: 'Tekan "Guna semula" pada kad {provider} di Tetapan → AI, atau pilih AI lain.',
+  errOffInApp:
+    '{provider} dimatikan dalam aplikasi ini, jadi tiada apa yang dijalankan. Anda boleh menggunakannya semula di Tetapan → AI.',
+  guideBadgeOff: 'Dimatikan',
 } satisfies Record<keyof typeof zh, string>

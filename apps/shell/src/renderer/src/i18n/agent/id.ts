@@ -86,4 +86,7 @@ export const id = {
   errGeneric: 'Terjadi masalah. Coba lagi.',
   documentsUnprotected:
     'Dokumen yang dibuka setelah sesi dimulai ({n}) tidak tercakup perlindungan tulis program itu sendiri. Hentikan dan mulai ulang sesi untuk melindunginya.',
+  connOff: 'Dimatikan di aplikasi ini. Anda bisa memakainya lagi di Pengaturan → AI.',
+  errOffInApp:
+    'Program ini dimatikan di aplikasi ini, jadi tidak ada lagi yang dikirim. Anda bisa memakainya lagi di Pengaturan → AI.',
 } satisfies Record<keyof typeof zh, string>

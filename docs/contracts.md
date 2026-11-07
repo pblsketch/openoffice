@@ -346,6 +346,7 @@ metadata:
 | `provider`                           | `auto` 또는 제공자 식별자                                                         | `auto`                                                     |
 | `providers`                          | 제공자별 `{ apiKey, model, baseUrl?, cliPath?, models?, effort?, modelEfforts? }` | 빈 표                                                      |
 | `meteredAccepted`                    | 구독 제공자별 참/거짓                                                             | 거짓                                                       |
+| `subscriptionOff`                    | 이 앱에서 끈 구독 프로그램. `claude-code`·`codex`별 `true`                        | 없음(모두 켬)                                              |
 | `headlessSubscriptionEnabled`        | 참/거짓. 자동 호출 경로의 구독 사용                                               | 거짓                                                       |
 | `headlessSubscriptionConsentVersion` | 자동 호출 스위치를 켤 때 동의한 경고의 판(정수)                                   | 없음                                                       |
 | `subscriptionNoticeSeen`             | 참/거짓. 첫 연결 안내를 봤는지                                                    | 거짓                                                       |
@@ -365,6 +366,7 @@ metadata:
 - ChatGPT 직접 연결(결정 0081)의 토큰은 이 파일이 아니라 같은 폴더의 `chatgpt-connection.json`에 있다. 앱만 읽고 쓴다. 손으로 고치거나 옮기지 않는다(다른 PC·계정에서는 봉인이 풀리지 않아 연결이 없는 것으로 읽힌다). 터미널 명령어와 MCP는 이 파일을 읽지 않는다. 명령어에서 `chatgpt`는 늘 로그인되지 않은 상태이고, `auto`는 Claude, Codex 순으로 고른다.
 - 모르는 제공자 식별자나 없어진 값이 있어도 오류 없이 읽는다. 그 자리는 기본값이 되고, 다음에 앱이 저장할 때 지워진다.
 - `providers` 표가 아예 없는 파일은 제공자 설정 이전의 파일로 읽혀, 다른 값까지 기본값이 된다.
+- `subscriptionOff`(결정 0114)는 앱이 설정 → AI의 "이 앱에서 쓰지 않기"·"다시 쓰기"로만 쓴다. 글자 그대로의 `true`만 끈 것이고, 그 밖의 값과 `chatgpt` 항목은 켠 것으로 읽어 다음 저장 때 지운다. 꺼진 프로그램은 앱도 명령어도 MCP도 상태를 묻거나 실행하지 않는다. 사람이 손으로 적어도 같고, 앱이 켜져 있는 동안 손으로 바꾼 값은 다음 상태 확인 때 반영된다. 화면이 `ai:set-settings`로 보낸 값은 저장하지 않는다.
 - 종량 허용은 이 파일의 값만으로는 유효하지 않다. 같은 폴더의 기록(`subscription-metered.json`)에 적힌 로그인 종류가 지금 감지된 것과 같아야 한다.
 - 구독 제공자의 `model`에는 프로그램이 받는 값이 그대로 들어간다(Claude의 `opus`·`claude-opus-5-5` 같은 별칭이나 식별자, Codex의 모델 식별자). 빈 값은 프로그램의 기본 모델이다. 화면에 보이는 표시 이름은 저장하지 않는다.
 - `effort`는 생각 깊이다(결정 0096). `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max` 가운데 하나이고, 없으면 프로그램이나 회사의 기본이다. 다른 값은 앱이 저장할 때 지우고, 손으로 적어도 실행에 넘기지 않는다. Claude에는 `low`~`max`만, Codex에는 그 모델이 받는 값만, 키 제공자에는 `modelEfforts`가 그 모델에 적은 값만 넘긴다. 로컬 서버는 `customEndpoints[].effort`에 두고, 쓰는 서버의 값이 `providers.custom`에 옮겨진다. 명령어와 MCP의 실행도 이 값을 쓴다.
@@ -592,23 +594,24 @@ metadata:
 
 앱 안에서 뒷단이 화면에 주는 값이다. 바깥 프로그램에는 나가지 않는다.
 
-| 항목              | 값                                                                                   |
-| ----------------- | ------------------------------------------------------------------------------------ |
-| `provider`        | `claude-code` \| `chatgpt` \| `codex`                                                |
-| `state`           | `checking` \| `not-installed` \| `signed-out` \| `ready` \| `metered` \| `error`     |
-| `version`         | 프로그램 버전(있을 때)                                                               |
-| `loginMethod`     | `subscription` \| `metered` \| `unknown`                                             |
-| `planName`        | 요금제 이름(프로그램이 알려 줄 때, 표시용)                                           |
-| `account`         | 로그인된 계정의 이메일(프로그램이 알려 줄 때, 표시용, 저장 금지)                     |
-| `models`          | 프로그램이 알려 준 모델 목록(있을 때). 항목은 `{ id, label, resolved?, isDefault? }` |
-| `meteredAccepted` | 참/거짓                                                                              |
-| `error`           | 오류 내용(`error`일 때)                                                              |
-| `programPath`     | 확인에 쓴 프로그램 파일의 절대 경로(버전이 낮은 `error`일 때만, 표시용)              |
+| 항목              | 값                                                                                        |
+| ----------------- | ----------------------------------------------------------------------------------------- |
+| `provider`        | `claude-code` \| `chatgpt` \| `codex`                                                     |
+| `state`           | `checking` \| `not-installed` \| `signed-out` \| `ready` \| `metered` \| `error` \| `off` |
+| `version`         | 프로그램 버전(있을 때)                                                                    |
+| `loginMethod`     | `subscription` \| `metered` \| `unknown`                                                  |
+| `planName`        | 요금제 이름(프로그램이 알려 줄 때, 표시용)                                                |
+| `account`         | 로그인된 계정의 이메일(프로그램이 알려 줄 때, 표시용, 저장 금지)                          |
+| `models`          | 프로그램이 알려 준 모델 목록(있을 때). 항목은 `{ id, label, resolved?, isDefault? }`      |
+| `meteredAccepted` | 참/거짓                                                                                   |
+| `error`           | 오류 내용(`error`일 때)                                                                   |
+| `programPath`     | 확인에 쓴 프로그램 파일의 절대 경로(버전이 낮은 `error`일 때만, 표시용)                   |
 
 - `account`와 `models`는 `ready`·`metered`일 때만 있다. `account`는 이메일 주소 모양이 아니면 빠진다.
 - `programPath`는 버전이 낮은 `error`(`needs-update`)일 때만 있다. 한 줄짜리 절대 경로(드라이브, `\\` 공유, `/`로 시작)가 아니면 빠진다.
 - `models`의 `id`는 프로그램이 받는 값이자 저장되는 선택값이다. 빈 `id`는 프로그램의 기본 모델을 뜻하고, 그것이 가리키는 모델이 `resolved`에 온다. 목록은 50개까지다.
-- 창구 이름은 `ai:subscription-statuses`, `-recheck`, `-login`, `-logout`, `-install`, `-metered`, `-codex-image`와 변경 알림 `ai:subscription-changed`다. `-logout`은 껍데기 앱의 화면에서만 부른다.
+- 창구 이름은 `ai:subscription-statuses`, `-recheck`, `-login`, `-logout`, `-install`, `-metered`, `-off`, `-codex-image`와 변경 알림 `ai:subscription-changed`다. `-logout`과 `-off`는 껍데기 앱의 화면에서만 부른다.
+- `off`(결정 0114)는 이 앱에서 끈 `claude-code`·`codex`에만 온다. 다른 항목은 없다(`meteredAccepted`는 거짓). `-off`는 `{ provider, off }`(CLI 식별자와 참/거짓)를 받아 `{ ok, statuses }`로 답한다. 끈 프로그램에 대한 `-login`·`-logout`·`-install`·`-update`는 `invalid`, `-metered`는 `ok: false`다.
 - `chatgpt`의 `state`는 `checking`, `signed-out`, `ready`, `error`뿐이다. `-login`은 앱 자신의 브라우저 로그인을 시작하고, `-logout`은 이 앱의 연결만 끊는다. `-install`·`-update`는 `invalid`로 답한다. 답에 `chatgpt` 항목이 없으면(예전 앱) `signed-out`으로 읽는다.
 
 ## 문서 호환

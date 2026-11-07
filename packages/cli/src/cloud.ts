@@ -239,6 +239,7 @@ const NEXT_STEP: Record<NonNullable<MediaToolFailure['errorCode']>, string> = {
   'signed-out': `do not retry: ask the user to sign in again under Settings > AI in ${PRODUCT_NAME}`,
   'metered-not-accepted': `do not retry: this login is billed by usage and the user has not accepted that under Settings > AI in ${PRODUCT_NAME}`,
   'needs-update': 'do not retry: ask the user to update the CLI named in the message',
+  'off-in-app': `do not retry: the user turned this subscription CLI off in ${PRODUCT_NAME}; it comes back on only from Settings > AI there`,
   'unsafe-tools':
     'do not retry: the subscription CLI came up with tools it must not have, so nothing was run; tell the user',
   credits: 'do not retry: the provider account is out of credit, tell the user',

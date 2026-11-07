@@ -55,6 +55,8 @@ export interface SubscriptionConnection {
   readonly refresh: () => void
   /** "use anyway" on a metered login; resolves once the answer is in */
   readonly acceptMetered: (provider: AiSubscriptionProviderId) => Promise<void>
+  /** stop using a vendor CLI in this app (`true`), or use it again; the program keeps its login */
+  readonly setOff: (provider: AiSubscriptionProviderId, off: boolean) => void
   readonly openInstallHelp: (provider: AiSubscriptionProviderId) => void
   /** open the website's step-by-step connect help at the guide's path */
   readonly openConnectHelp: (path: SubscriptionConnectHelpPath | null) => void
@@ -82,6 +84,7 @@ export function useSubscriptionConnection(): SubscriptionConnection {
     recheck: shared.recheck,
     refresh: () => shared.refresh(),
     acceptMetered: shared.acceptMetered,
+    setOff: shared.setOff,
     openInstallHelp: shared.openInstallHelp,
     openConnectHelp: shared.openConnectHelp,
   }

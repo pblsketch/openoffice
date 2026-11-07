@@ -85,4 +85,7 @@ export const en = {
   errGeneric: 'Something went wrong. Try again.',
   documentsUnprotected:
     'Documents opened after the session started ({n}) are outside the program’s own write protection. Stop and start the session again to protect them.',
+  connOff: 'Turned off in this app. Turn it back on under Settings → AI.',
+  errOffInApp:
+    'This program is turned off in this app, so nothing more was sent. Turn it back on under Settings → AI.',
 } satisfies Record<keyof typeof zh, string>

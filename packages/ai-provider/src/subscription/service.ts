@@ -10,8 +10,10 @@
  * a check. It is read only for a login the app may use: a metered login gets
  * its list when the user accepts it, not before.
  */
+import { subscriptionOffIn } from '../provider-selection'
 import { AI_SUBSCRIPTION_PROVIDERS } from '../providers'
 import type {
+  AiSubscriptionCliId,
   AiSubscriptionLoginFailure,
   AiSettings,
   AiSubscriptionModel,
@@ -21,12 +23,14 @@ import type {
 } from '../types'
 import {
   checkingSubscriptionStatus,
+  offSubscriptionStatus,
   subscriptionAccountOf,
   subscriptionModelsOf,
   subscriptionProgramPathOf,
   subscriptionStatusErrorKind,
   subscriptionStatusErrorText,
   type SubscriptionMeteredResult,
+  type SubscriptionOffResult,
   type SubscriptionStatusMap,
 } from './contract'
 import {
@@ -44,10 +48,16 @@ import {
 type MaybePromise<T> = T | Promise<T>
 
 export interface SubscriptionStatusServiceDeps {
-  /** the AI settings as stored right now (Codex `cliPath`, `meteredAccepted`) */
-  getSettings(): MaybePromise<Pick<AiSettings, 'providers' | 'meteredAccepted'>>
+  /** the AI settings as stored right now (Codex `cliPath`, `meteredAccepted`, `subscriptionOff`) */
+  getSettings(): MaybePromise<Pick<AiSettings, 'providers' | 'meteredAccepted' | 'subscriptionOff'>>
   /** persist `AiSettings.meteredAccepted[provider]` */
   setMeteredAccepted(provider: AiSubscriptionProviderId, accepted: boolean): MaybePromise<void>
+  /**
+   * persist `AiSettings.subscriptionOff[provider]`; absent where nothing may
+   * change it (the headless callers read the settings only)
+   */
+  setSubscriptionOff?:
+    ((provider: AiSubscriptionCliId, off: boolean) => MaybePromise<void>) | undefined
   /** where the kind of login an acceptance was given for is remembered */
   acceptanceStore: MeteredAcceptanceStore
   /** `detectSubscriptionLogin` when absent */
@@ -99,6 +109,13 @@ export interface SubscriptionStatusService {
    * Nothing is written, and nothing announced, when nothing was accepted.
    */
   clearMeteredAcceptance(provider: AiSubscriptionProviderId): Promise<void>
+  /**
+   * Turn a CLI off in this app, or back on (decision 0114). Off is stored,
+   * then shown at once as `off`; the program is not asked anything. Back on,
+   * the provider reads `checking` and the program is asked again. `ok: false`
+   * when the setting could not be written (or no writer was given).
+   */
+  setOff(provider: AiSubscriptionCliId, off: boolean): Promise<SubscriptionOffResult>
   onChange(listener: (statuses: SubscriptionStatusMap) => void): () => void
   /**
    * Mark a login the app started as under way (`browser`, `window`), or as over
@@ -199,6 +216,8 @@ export function createSubscriptionStatusService(
   const snapshot = (): SubscriptionStatusMap => {
     const current = { ...statuses }
     for (const [provider, mode] of signingIn) {
+      // a program turned off has no login to show, even one still being ended
+      if (current[provider].state === 'off') continue
       current[provider] = { ...current[provider], signingIn: mode }
     }
     for (const provider of loginUnfinished) {
@@ -229,12 +248,33 @@ export function createSubscriptionStatusService(
     return run
   }
 
+  /** In the queue: the CLI is off in this app, and what was known of its login is let go */
+  const markOff = (provider: AiSubscriptionProviderId): void => {
+    if (statuses[provider].state === 'off') return
+    statuses[provider] = offSubscriptionStatus(provider)
+    detections.delete(provider)
+    loginUnfinished.delete(provider)
+    loginFailures.delete(provider)
+    // a list read under way, or kept, belongs to a login this app no longer looks at
+    models.delete(provider)
+    loginEpoch.set(provider, (loginEpoch.get(provider) ?? 0) + 1)
+    announce()
+  }
+
   const applyDetection = (detection: SubscriptionDetection): Promise<void> =>
     queued(async () => {
       const provider = detection.provider
+      const settings = await Promise.resolve()
+        .then(() => deps.getSettings())
+        .catch(() => null)
+      // turned off while the program was being asked: its answer is not used
+      if (settings ? subscriptionOffIn(settings, provider) : statuses[provider].state === 'off') {
+        markOff(provider)
+        return
+      }
       let accepted: boolean
       try {
-        const settings = await deps.getSettings()
+        if (!settings) throw new Error('The settings could not be read')
         const record = await deps.acceptanceStore.read()
         const stored = settings.meteredAccepted?.[provider] === true
         const outcome = reconcileMeteredAcceptance(detection, {
@@ -306,6 +346,10 @@ export function createSubscriptionStatusService(
       let configuredPath: string | undefined
       try {
         const settings = await deps.getSettings()
+        if (subscriptionOffIn(settings, provider)) {
+          await queued(async () => markOff(provider))
+          return
+        }
         configuredPath = settings.providers?.[provider]?.cliPath
         detection = await detect(provider, {
           configuredPath,
@@ -384,6 +428,26 @@ export function createSubscriptionStatusService(
         statuses[provider] = toStatus(detection, false, models.get(provider))
         announce()
       })
+    },
+    async setOff(provider, off) {
+      const save = deps.setSubscriptionOff
+      if (!save) return { ok: false, statuses: snapshot() }
+      const result = await queued(async (): Promise<SubscriptionOffResult> => {
+        try {
+          await save(provider, off)
+        } catch {
+          return { ok: false, statuses: snapshot() }
+        }
+        if (off) markOff(provider)
+        else if (statuses[provider].state === 'off') {
+          statuses[provider] = checkingSubscriptionStatus(provider)
+          announce()
+        }
+        return { ok: true, statuses: snapshot() }
+      })
+      // back on: the program is asked again, and its answer arrives as a change
+      if (result.ok && !off) void checkOne(provider)
+      return result
     },
     onChange(listener) {
       listeners.add(listener)

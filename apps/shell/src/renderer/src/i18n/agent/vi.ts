@@ -87,4 +87,7 @@ export const vi = {
   errGeneric: 'Đã xảy ra lỗi. Hãy thử lại.',
   documentsUnprotected:
     'Tài liệu mở sau khi phiên bắt đầu ({n}) không được bảo vệ bởi cơ chế chống ghi của chương trình. Dừng và bắt đầu lại phiên để bảo vệ chúng.',
+  connOff: 'Đã tắt trong ứng dụng này. Bạn có thể dùng lại trong Cài đặt → AI.',
+  errOffInApp:
+    'Chương trình này đang tắt trong ứng dụng này nên không gửi thêm gì nữa. Bạn có thể dùng lại trong Cài đặt → AI.',
 } satisfies Record<keyof typeof zh, string>

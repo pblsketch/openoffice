@@ -152,6 +152,45 @@ describe('subscription preload API', () => {
     }
   })
 
+  it('turns a CLI off or back on, and reads the answer as done only on a literal true', async () => {
+    electronMocks.invoke.mockResolvedValue({ ok: true, statuses: READY })
+    await expect(api.setSubscriptionOff('claude-code', true)).resolves.toEqual({
+      ok: true,
+      statuses: READY,
+    })
+    expect(electronMocks.invoke).toHaveBeenLastCalledWith(SUBSCRIPTION_IPC_CHANNELS.off, {
+      provider: 'claude-code',
+      off: true,
+    })
+    expect(SUBSCRIPTION_IPC_CHANNELS.off).toBe('ai:subscription-off')
+    electronMocks.invoke.mockResolvedValue({ ok: 'yes' })
+    await expect(api.setSubscriptionOff('codex', false)).resolves.toMatchObject({ ok: false })
+  })
+
+  it('is the only preload that can turn a CLI off in this app (decision 0114)', () => {
+    const preloadOf = (app: string): string =>
+      readFileSync(
+        fileURLToPath(new URL(`../../${app}/src/preload/index.ts`, import.meta.url)),
+        'utf8',
+      )
+    const turnsOff = /SUBSCRIPTION_IPC_CHANNELS\.off\b|subscription-off/
+    expect(preloadOf('shell')).toMatch(turnsOff)
+    for (const app of [
+      'docs',
+      'sheets',
+      'slides',
+      'pdf',
+      'markdown',
+      'html',
+      'hwp',
+      'epub',
+      'mindmap',
+      'diagram',
+    ]) {
+      expect(preloadOf(app), app).not.toMatch(turnsOff)
+    }
+  })
+
   it('sends the metered choice and returns the statuses that come back', async () => {
     electronMocks.invoke.mockResolvedValue({ ok: true, statuses: READY })
     await expect(api.setMeteredAccepted('codex', true)).resolves.toEqual({

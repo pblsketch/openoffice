@@ -74,7 +74,9 @@ export const DEFAULT_AGENT_PREFS: AgentPrefs = {
 }
 
 /** The connection of each program as the window needs it to offer a start */
-export type AgentConnection = 'ready' | 'metered-accepted' | 'unavailable' | 'checking' | 'blocked'
+/** `off`: the person turned the program off in this app (decision 0114) */
+export type AgentConnection =
+  'ready' | 'metered-accepted' | 'unavailable' | 'checking' | 'blocked' | 'off'
 
 /** Codex's own web search in an agent session: cached results, live, or off (one type, the session's) */
 export type { AgentCodexWebSearch }

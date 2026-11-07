@@ -864,3 +864,95 @@ describe('subscription usage', () => {
     )
   })
 })
+
+describe('a CLI turned off in this app (decision 0114)', () => {
+  const settingsCard = { account: true, accountActions: true, offSwitch: true }
+
+  it('offers the switch on the Settings card beside sign-out, with the line that tells them apart', () => {
+    const view = aiSubscriptionCardView(status('claude-code', 'ready'), settingsCard)
+    expect(view.actions).toEqual(['switch-account', 'logout', 'turn-off'])
+    expect(view.noteKeys).toContain('offSwitchNote')
+    expect(view.links).not.toContain('turn-off')
+  })
+
+  it('offers it wherever the app would still ask the program, and nowhere a step is under way', () => {
+    for (const state of ['signed-out', 'metered', 'error'] as const) {
+      expect(aiSubscriptionCardView(status('codex', state), settingsCard).actions, state).toContain(
+        'turn-off',
+      )
+    }
+    for (const shown of [
+      status('codex', 'not-installed'),
+      status('codex', 'checking'),
+      status('codex', 'signed-out', { signingIn: 'browser' }),
+    ]) {
+      expect(aiSubscriptionCardView(shown, settingsCard).actions, shown.state).not.toContain(
+        'turn-off',
+      )
+    }
+  })
+
+  it('is no part of an AI window card, nor of the ChatGPT card', () => {
+    expect(aiSubscriptionCardView(status('claude-code', 'ready')).actions).not.toContain('turn-off')
+    expect(
+      aiSubscriptionCardView(status('chatgpt', 'ready'), { ...settingsCard, manageUsage: true })
+        .actions,
+    ).not.toContain('turn-off')
+  })
+
+  it('an off card turns it back on in Settings, and says where that is anywhere else', () => {
+    const off = status('claude-code', 'off')
+    expect(aiSubscriptionCardView(off, settingsCard)).toMatchObject({
+      state: 'off',
+      tone: 'neutral',
+      statusKey: 'cardOff',
+      noteKeys: ['offNote'],
+      actions: ['turn-on'],
+    })
+    expect(aiSubscriptionCardView(off)).toMatchObject({
+      statusKey: 'cardOff',
+      noteKeys: ['offElsewhereNote'],
+      actions: [],
+    })
+  })
+
+  it('a selection turned off points to Settings, not to a sign-in', () => {
+    const settings = {
+      ...defaultAiSettings(),
+      provider: 'claude-code' as const,
+      subscriptionOff: { 'claude-code': true as const },
+    }
+    expect(
+      aiConnectPromptView(
+        selectAiProvider(settings, { 'claude-code': status('claude-code', 'ready') }),
+      ),
+    ).toEqual({
+      titleKey: 'connectOffTitle',
+      bodyKey: 'connectOffBody',
+      providerName: 'Claude',
+      providers: [],
+      settings: true,
+      free: false,
+    })
+  })
+
+  it('a run stopped by it is a blocked run with its own words in every language', () => {
+    expect(isAiBlockedRunKind('off-in-app')).toBe(true)
+    for (const lang of LANGS) {
+      const text = aiRunErrorText(lang, { kind: 'off-in-app', provider: 'codex' })
+      expect(text, lang).toContain('Codex')
+      expect(text, lang).not.toBe(aiRunErrorText(lang, { kind: 'not-connected' }))
+    }
+  })
+
+  it('a blocked run is never offered to continue on a CLI turned off', () => {
+    const settings = { ...defaultAiSettings(), subscriptionOff: { codex: true as const } }
+    expect(
+      aiContinueOption(
+        settings,
+        { 'claude-code': status('claude-code', 'ready'), codex: status('codex', 'ready') },
+        'claude-code',
+      ),
+    ).toBeNull()
+  })
+})

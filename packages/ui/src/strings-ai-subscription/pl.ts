@@ -174,4 +174,18 @@ export const pl = {
   browserPageDoneBody: 'Możesz zamknąć tę kartę i wrócić do aplikacji.',
   browserPageFailedTitle: 'Nie udało się połączyć',
   browserPageFailedBody: 'Wróć do aplikacji i spróbuj ponownie.',
+  cardOff: 'Wyłączone w tej aplikacji',
+  offNote:
+    'Ta aplikacja nie uruchamia programu {provider} ani nie sprawdza jego stanu. Logowanie {provider} na tym komputerze i korzystanie z niego w terminalu pozostają bez zmian.',
+  offElsewhereNote: 'Możesz ponownie z niego korzystać w Ustawienia → AI.',
+  offSwitchNote:
+    '„Nie używaj w tej aplikacji” zostawia logowanie {provider} na tym komputerze i zatrzymuje tylko tę aplikację. Wylogowanie dotyczy całego komputera.',
+  actionTurnOff: 'Nie używaj w tej aplikacji',
+  actionTurnOn: 'Używaj ponownie',
+  connectOffTitle: '{provider} jest wyłączony w tej aplikacji',
+  connectOffBody:
+    'Kliknij „Używaj ponownie” na karcie {provider} w Ustawienia → AI albo wybierz inną AI.',
+  errOffInApp:
+    '{provider} jest wyłączony w tej aplikacji, więc nic nie zostało uruchomione. Możesz ponownie z niego korzystać w Ustawienia → AI.',
+  guideBadgeOff: 'Wyłączone',
 } satisfies Record<keyof typeof zh, string>

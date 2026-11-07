@@ -15,13 +15,19 @@ import type { FreeConnectPage } from '../free-connect'
 import { codexImageGenerationAvailable } from '../image-backend'
 import { isSubscriptionProvider } from '../provider-selection'
 import { isSubscriptionCli } from '../providers'
-import type { AiSettings, AiSubscriptionProviderId, AiSubscriptionSigningIn } from '../types'
+import type {
+  AiSettings,
+  AiSubscriptionCliId,
+  AiSubscriptionProviderId,
+  AiSubscriptionSigningIn,
+} from '../types'
 import {
   SUBSCRIPTION_INSTALL_URLS,
   SUBSCRIPTION_IPC_CHANNELS,
   type SubscriptionLaunchResult,
   type SubscriptionLoginMode,
   type SubscriptionMeteredResult,
+  type SubscriptionOffResult,
   type SubscriptionStatusMap,
 } from './contract'
 import {
@@ -95,8 +101,10 @@ function failure(error: unknown, provider: AiSubscriptionProviderId): Subscripti
  * Register the request channels of `SUBSCRIPTION_IPC_CHANNELS` on `ipcMain`
  * and forward status changes to the `changed` channel. Payloads come from a
  * renderer and are checked here: an unknown provider is answered with
- * `invalid`, never passed on. A login or logout the app ran withdraws that
- * provider's metered acceptance. Returns a function that undoes the registration.
+ * `invalid`, never passed on, and so is a login, logout, install, update or
+ * "use anyway" for a CLI turned off in this app (none of them starts it). A
+ * login or logout the app ran withdraws that provider's metered acceptance.
+ * Returns a function that undoes the registration.
  */
 export function registerSubscriptionIpc(
   ipcMain: SubscriptionIpcMain,
@@ -114,6 +122,15 @@ export function registerSubscriptionIpc(
         return failure(error, provider)
       }
     }
+  /** a launch that starts the program: none for a CLI turned off in this app */
+  const launchOn =
+    (start: (provider: AiSubscriptionProviderId) => Promise<SubscriptionLaunchResult>) =>
+    (event: unknown, payload: unknown): Promise<SubscriptionLaunchResult> =>
+      launch(async (provider) =>
+        service.getStatuses()[provider].state === 'off'
+          ? { ok: false, reason: 'invalid' }
+          : start(provider),
+      )(event, payload)
 
   const handlers: Record<string, (event: unknown, payload?: unknown) => unknown> = {
     [SUBSCRIPTION_IPC_CHANNELS.statuses]: () => {
@@ -136,13 +153,13 @@ export function registerSubscriptionIpc(
     // a function per call, so a launcher replaced on `deps` later is the one that runs
     [SUBSCRIPTION_IPC_CHANNELS.login]: (event, payload) => {
       const mode = loginModeOf(payload)
-      return launch((provider) => deps.launchLogin(provider, mode))(event, payload)
+      return launchOn((provider) => deps.launchLogin(provider, mode))(event, payload)
     },
     // the provider is looked at again before the answer goes back, so the window that asked
     // already shows the outcome; a logout that failed may have signed the CLI out all the same.
     // A check of its own time: one already under way may have asked before the logout ended.
     [SUBSCRIPTION_IPC_CHANNELS.logout]: (event, payload) =>
-      launch(async (provider) => {
+      launchOn(async (provider) => {
         try {
           return await deps.launchLogout(provider)
         } finally {
@@ -150,9 +167,9 @@ export function registerSubscriptionIpc(
         }
       })(event, payload),
     [SUBSCRIPTION_IPC_CHANNELS.install]: (event, payload) =>
-      launch((provider) => deps.launchInstall(provider))(event, payload),
+      launchOn((provider) => deps.launchInstall(provider))(event, payload),
     [SUBSCRIPTION_IPC_CHANNELS.update]: (event, payload) =>
-      launch((provider) => deps.launchUpdate(provider))(event, payload),
+      launchOn((provider) => deps.launchUpdate(provider))(event, payload),
     [SUBSCRIPTION_IPC_CHANNELS.cancelLogin]: (event, payload) =>
       launch((provider) => deps.cancelLogin(provider))(event, payload),
     [SUBSCRIPTION_IPC_CHANNELS.metered]: async (
@@ -165,7 +182,23 @@ export function registerSubscriptionIpc(
       if (!provider || typeof accepted !== 'boolean') {
         return { ok: false, statuses: service.getStatuses() }
       }
+      if (service.getStatuses()[provider].state === 'off') {
+        return { ok: false, statuses: service.getStatuses() }
+      }
       return service.setMeteredAccepted(provider, accepted)
+    },
+    // decision 0114: the screen offers it on the Settings cards alone (the shell preload)
+    [SUBSCRIPTION_IPC_CHANNELS.off]: async (_event, payload): Promise<SubscriptionOffResult> => {
+      const provider = providerOf(payload)
+      const off = (payload as { off?: unknown } | null | undefined)?.off
+      if (!isSubscriptionCli(provider) || typeof off !== 'boolean') {
+        return { ok: false, statuses: service.getStatuses() }
+      }
+      const result = await service.setOff(provider, off)
+      if (!result.ok || !off) return result
+      // a sign-in the app started for it ends with it: nothing is left running for a program off
+      await deps.cancelLogin(provider).catch(() => undefined)
+      return { ok: true, statuses: service.getStatuses() }
     },
     // true only in a process that loaded the Codex image backend (it registers itself on import)
     [SUBSCRIPTION_IPC_CHANNELS.codexImage]: () => codexImageGenerationAvailable(),
@@ -189,9 +222,15 @@ export function registerSubscriptionIpc(
 
 export interface SubscriptionIpcSetup {
   /** the AI settings as stored right now */
-  getSettings(): Pick<AiSettings, 'providers' | 'meteredAccepted'>
+  getSettings(): Pick<AiSettings, 'providers' | 'meteredAccepted' | 'subscriptionOff'>
   /** persist `AiSettings.meteredAccepted[provider]` */
   setMeteredAccepted(provider: AiSubscriptionProviderId, accepted: boolean): void | Promise<void>
+  /**
+   * persist `AiSettings.subscriptionOff[provider]` (decision 0114); without it
+   * a CLI cannot be turned off or on from this process
+   */
+  setSubscriptionOff?:
+    ((provider: AiSubscriptionCliId, off: boolean) => void | Promise<void>) | undefined
   /** the app's userData directory: the metered acceptance record is kept here */
   dataDir: string
   broadcast?: ((channel: string, payload: SubscriptionStatusMap) => void) | undefined
@@ -270,6 +309,7 @@ export function createSubscriptionIpcDeps(setup: SubscriptionIpcSetup): Subscrip
   const service = createSubscriptionStatusService({
     getSettings: setup.getSettings,
     setMeteredAccepted: setup.setMeteredAccepted,
+    setSubscriptionOff: setup.setSubscriptionOff,
     acceptanceStore: createMeteredAcceptanceFileStore(setup.dataDir),
     detect: setup.detect,
     listModels: setup.listModels ?? listSubscriptionModels,

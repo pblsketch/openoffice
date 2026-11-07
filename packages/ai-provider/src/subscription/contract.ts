@@ -37,6 +37,8 @@ export const SUBSCRIPTION_IPC_CHANNELS = {
   cancelLogin: 'ai:subscription-cancel-login',
   /** (SubscriptionMeteredRequest) → SubscriptionMeteredResult: "use anyway" for a metered login */
   metered: 'ai:subscription-metered',
+  /** (SubscriptionOffRequest) → SubscriptionOffResult: stop or resume using a CLI in this app */
+  off: 'ai:subscription-off',
   /** () → boolean: whether this build can generate images through the Codex subscription */
   codexImage: 'ai:subscription-codex-image',
   /** event, payload SubscriptionStatusMap: the statuses changed */
@@ -78,10 +80,27 @@ export interface SubscriptionMeteredRequest {
 }
 
 /**
+ * Turn a vendor CLI off in this app, or back on (decision 0114). Off: the app
+ * neither checks nor runs the program; it stays signed in for the rest of the
+ * PC. ChatGPT reached directly has no entry: its own sign-out is this app's alone.
+ */
+export interface SubscriptionOffRequest {
+  provider: AiSubscriptionCliId
+  off: boolean
+}
+
+export interface SubscriptionOffResult {
+  /** false when the request was not a CLI and a boolean, or the setting could not be written */
+  ok: boolean
+  statuses: SubscriptionStatusMap
+}
+
+/**
  * Why a login, logout, install or update could not be started (a logout: or
  * did not succeed). `not-installed`: no program to sign in to. `unsupported`:
  * no vendor command for this system, or no way the app knows to update the copy
- * it found. `invalid`: the request did not name a subscription provider.
+ * it found. `invalid`: the request did not name a subscription provider, or
+ * named one turned off in this app.
  */
 export type SubscriptionLaunchFailure = 'not-installed' | 'unsupported' | 'failed' | 'invalid'
 
@@ -133,6 +152,10 @@ export interface SubscriptionIpcContract {
   [SUBSCRIPTION_IPC_CHANNELS.metered]: {
     request: SubscriptionMeteredRequest
     response: SubscriptionMeteredResult
+  }
+  [SUBSCRIPTION_IPC_CHANNELS.off]: {
+    request: SubscriptionOffRequest
+    response: SubscriptionOffResult
   }
   [SUBSCRIPTION_IPC_CHANNELS.codexImage]: { request: void; response: boolean }
   [SUBSCRIPTION_IPC_CHANNELS.changed]: { request: never; response: SubscriptionStatusMap }
@@ -201,6 +224,11 @@ export function checkingSubscriptionStatus(
   provider: AiSubscriptionProviderId,
 ): AiSubscriptionStatus {
   return { provider, state: 'checking', meteredAccepted: false }
+}
+
+/** The status of a CLI turned off in this app: nothing was asked, so nothing else is known */
+export function offSubscriptionStatus(provider: AiSubscriptionProviderId): AiSubscriptionStatus {
+  return { provider, state: 'off', meteredAccepted: false }
 }
 
 /**
@@ -286,6 +314,7 @@ const SUBSCRIPTION_STATES: readonly AiSubscriptionState[] = [
   'ready',
   'metered',
   'error',
+  'off',
 ]
 
 const SUBSCRIPTION_LAUNCH_FAILURES: readonly SubscriptionLaunchFailure[] = [
@@ -464,7 +493,8 @@ export function subscriptionStatusMapOf(result: unknown): SubscriptionStatusMap 
     if (account) read.account = account
     if (models) read.models = models
     if (programPath) read.programPath = programPath
-    if (status.signingIn === 'browser' || status.signingIn === 'window') {
+    // a program turned off in this app has no sign-in to show
+    if ((status.signingIn === 'browser' || status.signingIn === 'window') && read.state !== 'off') {
       read.signingIn = status.signingIn
     }
     // a login that ended without one belongs to signed-out and nowhere else
@@ -504,4 +534,9 @@ export function subscriptionLaunchResultOf(result: unknown): SubscriptionLaunchR
 export function subscriptionMeteredResultOf(result: unknown): SubscriptionMeteredResult {
   const raw = isRecord(result) ? result : {}
   return { ok: raw.ok === true, statuses: subscriptionStatusMapOf(raw.statuses) }
+}
+
+/** An IPC answer to turning a CLI off or on: done only on a literal `true`, the statuses always a full map */
+export function subscriptionOffResultOf(result: unknown): SubscriptionOffResult {
+  return subscriptionMeteredResultOf(result)
 }

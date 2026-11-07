@@ -129,10 +129,12 @@ import {
   setCodexImageGenerationAvailable,
   setRescueFetch,
   streamForProvider,
+  subscriptionOffIn,
   type AiChatRequest,
   type AiSettings,
   type AiStreamChunk,
   type AiStreamRequest,
+  type AiSubscriptionCliId,
   type AiSubscriptionProviderId,
   sealAiSecrets,
   withMigratedSubscriptionNoticeVersion,
@@ -191,6 +193,8 @@ import {
   resolveAiRun,
   subscriptionStreamCallbacks,
   withMeteredAccepted,
+  withStoredSubscriptionOff,
+  withSubscriptionOff,
   type AiRunTexts,
 } from './ai-run'
 import { createChunkCoalescer } from './stream-coalesce'
@@ -4108,9 +4112,10 @@ function writeRendererAiSettings(settings: unknown): boolean {
   // so the renderer's copy is sanitized before it touches disk.
   const sanitized = sanitizeAiSettings(settings)
   if (!sanitized) return false
+  const stored = storedAiSettings()
   writeJsonAtomic(
     SETTINGS_PATH(),
-    sealAiSecrets(withStoredKeyModels(sanitized, storedAiSettings())),
+    sealAiSecrets(withStoredSubscriptionOff(withStoredKeyModels(sanitized, stored), stored)),
   )
   broadcastAiSettingsChanged()
   keyModelRefresher.refreshChanged()
@@ -4149,6 +4154,13 @@ export function registerAiIpc(): void {
       writeJsonAtomic(
         SETTINGS_PATH(),
         withMeteredAccepted(readJson<unknown>(SETTINGS_PATH(), {}), provider, accepted),
+      )
+      broadcastAiSettingsChanged()
+    },
+    setSubscriptionOff: (provider: AiSubscriptionCliId, off: boolean) => {
+      writeJsonAtomic(
+        SETTINGS_PATH(),
+        sealAiSecrets(withSubscriptionOff(readJson<unknown>(SETTINGS_PATH(), {}), provider, off)),
       )
       broadcastAiSettingsChanged()
     },
@@ -4198,6 +4210,10 @@ export function registerAiIpc(): void {
   })
 
   ipcMain.handle('ai:codex-models', async (_event, cliPath: unknown) => {
+    // turned off in this app (decision 0114): Codex is not started for its list either
+    if (subscriptionOffIn(storedAiSettings(), 'codex')) {
+      throw new Error('Codex is turned off in this app')
+    }
     // the probe spawns the path directly, so it gets the same metacharacter and
     // existence check as the stored setting (anything else: auto-detect)
     return listCodexModels(sanitizeCliPath(cliPath))

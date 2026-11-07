@@ -152,4 +152,16 @@ export const zhTW = {
   browserPageDoneBody: '可以關閉此分頁並返回應用程式。',
   browserPageFailedTitle: '未能完成連線',
   browserPageFailedBody: '請返回應用程式後再試一次。',
+  cardOff: '已在本應用程式中關閉',
+  offNote:
+    '本應用程式不會執行 {provider} 程式，也不會檢查它的狀態。這台電腦上 {provider} 的登入以及在終端機中的使用都維持不變。',
+  offElsewhereNote: '可以在「設定 → AI」中重新使用。',
+  offSwitchNote:
+    '「不在本應用程式中使用」會保留這台電腦上 {provider} 的登入，只在本應用程式中停用。登出則對整台電腦生效。',
+  actionTurnOff: '不在本應用程式中使用',
+  actionTurnOn: '重新使用',
+  connectOffTitle: '{provider} 已在本應用程式中關閉',
+  connectOffBody: '在「設定 → AI」的 {provider} 卡片上按「重新使用」，或選擇其他 AI。',
+  errOffInApp: '{provider} 已在本應用程式中關閉，因此沒有執行。可以在「設定 → AI」中重新使用。',
+  guideBadgeOff: '已關閉',
 } satisfies Record<keyof typeof zh, string>

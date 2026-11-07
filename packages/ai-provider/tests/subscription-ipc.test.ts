@@ -25,6 +25,7 @@ import {
   type SubscriptionIpcSetup,
   type SubscriptionLaunchResult,
   type SubscriptionMeteredResult,
+  type SubscriptionOffResult,
   type SubscriptionStatusMap,
 } from '../src/subscription'
 import { setCodexImageGenerationAvailable } from '../src/image-backend'
@@ -62,6 +63,11 @@ const READY: SubscriptionStatusMap = {
   chatgpt: { provider: 'chatgpt', state: 'signed-out', meteredAccepted: false },
 }
 
+/** what reached the launchers and the service, without the reads of the last known statuses */
+function actions(log: string[]): string[] {
+  return log.filter((entry) => entry !== 'getStatuses')
+}
+
 function setup(): {
   ipc: FakeIpcMain
   log: string[]
@@ -90,6 +96,10 @@ function setup(): {
       },
       clearMeteredAcceptance: async (provider) => {
         log.push(`clear:${provider}`)
+      },
+      setOff: async (provider, off): Promise<SubscriptionOffResult> => {
+        log.push(`off:${provider}:${off}`)
+        return { ok: true, statuses: READY }
       },
       onChange: (listener) => {
         listeners.add(listener)
@@ -143,6 +153,7 @@ describe('the channel names', () => {
       update: 'ai:subscription-update',
       cancelLogin: 'ai:subscription-cancel-login',
       metered: 'ai:subscription-metered',
+      off: 'ai:subscription-off',
       codexImage: 'ai:subscription-codex-image',
       changed: 'ai:subscription-changed',
     })
@@ -254,6 +265,7 @@ describe('registerSubscriptionIpc', () => {
         SUBSCRIPTION_IPC_CHANNELS.update,
         SUBSCRIPTION_IPC_CHANNELS.cancelLogin,
         SUBSCRIPTION_IPC_CHANNELS.metered,
+        SUBSCRIPTION_IPC_CHANNELS.off,
         SUBSCRIPTION_IPC_CHANNELS.codexImage,
       ].sort(),
     )
@@ -312,7 +324,7 @@ describe('registerSubscriptionIpc', () => {
     await ipc.invoke(SUBSCRIPTION_IPC_CHANNELS.login, { provider: 'claude-code', mode: 'window' })
     await ipc.invoke(SUBSCRIPTION_IPC_CHANNELS.login, { provider: 'codex', mode: 'browser' })
     await ipc.invoke(SUBSCRIPTION_IPC_CHANNELS.login, { provider: 'codex', mode: 'terminal' })
-    expect(log).toEqual([
+    expect(actions(log)).toEqual([
       'login:claude-code',
       'install:codex',
       'login:claude-code:window',
@@ -334,7 +346,7 @@ describe('registerSubscriptionIpc', () => {
       ok: false,
       reason: 'invalid',
     })
-    expect(log).toEqual(['update:codex', 'cancel:claude-code'])
+    expect(actions(log)).toEqual(['update:codex', 'cancel:claude-code'])
   })
 
   it('routes logout to its launcher, then checks that provider again before it answers', async () => {
@@ -344,7 +356,7 @@ describe('registerSubscriptionIpc', () => {
       ok: true,
     })
     // a check that started after the logout: one already under way may hold the old login
-    expect(log).toEqual(['logout:codex', 'check:codex:fresh'])
+    expect(actions(log)).toEqual(['logout:codex', 'check:codex:fresh'])
   })
 
   it('checks again after a logout that failed too: the CLI may be signed out all the same', async () => {
@@ -361,7 +373,7 @@ describe('registerSubscriptionIpc', () => {
     expect(await ipc.invoke(SUBSCRIPTION_IPC_CHANNELS.logout, { provider: 'claude-code' })).toEqual(
       { ok: false, reason: 'failed' },
     )
-    expect(log).toEqual(['logout:claude-code', 'check:claude-code:fresh'])
+    expect(actions(log)).toEqual(['logout:claude-code', 'check:claude-code:fresh'])
   })
 
   it('routes set-metered-acceptance to the service', async () => {
@@ -372,7 +384,7 @@ describe('registerSubscriptionIpc', () => {
       accepted: true,
     })
     expect(result).toEqual({ ok: true, statuses: READY })
-    expect(log).toEqual(['metered:codex:true'])
+    expect(actions(log)).toEqual(['metered:codex:true'])
   })
 
   it('rejects payloads a renderer should not be able to send', async () => {

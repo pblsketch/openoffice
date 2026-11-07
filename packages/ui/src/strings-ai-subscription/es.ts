@@ -175,4 +175,18 @@ export const es = {
   browserPageDoneBody: 'Puedes cerrar esta pestaña y volver a la aplicación.',
   browserPageFailedTitle: 'No se pudo completar la conexión',
   browserPageFailedBody: 'Vuelve a la aplicación e inténtalo de nuevo.',
+  cardOff: 'Desactivado en esta aplicación',
+  offNote:
+    'Esta aplicación no ejecuta el programa {provider} ni comprueba su estado. La sesión de {provider} en este PC y su uso en una terminal siguen igual.',
+  offElsewhereNote: 'Puedes volver a usarlo en Configuración → IA.',
+  offSwitchNote:
+    '«No usar en esta aplicación» mantiene la sesión de {provider} en este PC y solo detiene esta aplicación. Cerrar sesión afecta a todo el PC.',
+  actionTurnOff: 'No usar en esta aplicación',
+  actionTurnOn: 'Volver a usar',
+  connectOffTitle: '{provider} está desactivado en esta aplicación',
+  connectOffBody:
+    'Pulsa «Volver a usar» en la tarjeta de {provider} en Configuración → IA, o elige otra IA.',
+  errOffInApp:
+    '{provider} está desactivado en esta aplicación, así que no se ejecutó nada. Puedes volver a usarlo en Configuración → IA.',
+  guideBadgeOff: 'Desactivado',
 } satisfies Record<keyof typeof zh, string>

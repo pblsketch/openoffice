@@ -86,4 +86,7 @@ export const ko = {
   errGeneric: '문제가 생겼습니다. 다시 시도하세요.',
   documentsUnprotected:
     '세션을 시작한 뒤 연 문서 {n}개는 프로그램의 직접 쓰기 보호를 받지 않습니다. 보호하려면 세션을 멈추고 다시 시작하세요.',
+  connOff: '이 앱에서 꺼 두었습니다. 설정 → AI에서 다시 쓸 수 있습니다.',
+  errOffInApp:
+    '이 프로그램을 이 앱에서 꺼 두어 더 보내지 않았습니다. 설정 → AI에서 다시 쓸 수 있습니다.',
 } satisfies Record<keyof typeof zh, string>

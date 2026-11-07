@@ -290,3 +290,37 @@ describe('normalizeAiSettings', () => {
     expect(settings.provider).toBe('auto')
   })
 })
+
+describe('the CLIs turned off in this app (decision 0114)', () => {
+  it('reads only a literal true under a CLI id as off', () => {
+    const settings = normalizeAiSettings({
+      providers: {},
+      subscriptionOff: { 'claude-code': true, codex: 'true', chatgpt: true, openai: true },
+    })
+    expect(settings.subscriptionOff).toEqual({ 'claude-code': true })
+    expect(selectAiProvider(settings, {})).toMatchObject({ connected: false })
+  })
+
+  it('leaves the field out when nothing is off, so the file keeps its shape', () => {
+    expect('subscriptionOff' in normalizeAiSettings({ providers: {} })).toBe(false)
+    expect(
+      'subscriptionOff' in
+        normalizeAiSettings({ providers: {}, subscriptionOff: { codex: false } }),
+    ).toBe(false)
+  })
+
+  it('keeps a CLI off even in a file from before the provider table', () => {
+    expect(normalizeAiSettings({ subscriptionOff: { codex: true } }).subscriptionOff).toEqual({
+      codex: true,
+    })
+  })
+
+  it('carries what a renderer read on its requests, checked the same way', () => {
+    const sent = sanitizeAiSettings({
+      provider: 'auto',
+      providers: {},
+      subscriptionOff: { codex: true, 'claude-code': 1, chatgpt: true },
+    })
+    expect(sent?.subscriptionOff).toEqual({ codex: true })
+  })
+})

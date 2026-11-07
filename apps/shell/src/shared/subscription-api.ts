@@ -8,6 +8,7 @@ import type {
   SubscriptionLaunchResult,
   SubscriptionLoginMode,
   SubscriptionMeteredResult,
+  SubscriptionOffResult,
   SubscriptionConnectHelpPath,
   SubscriptionStatusMap,
 } from '@genoffice/ai-provider/browser'
@@ -17,6 +18,7 @@ export {
   checkingSubscriptionStatuses,
   isSubscriptionProviderId,
   subscriptionLaunchResultOf,
+  subscriptionOffResultOf,
   subscriptionStatusMapOf,
 } from '@genoffice/ai-provider/browser'
 
@@ -48,6 +50,14 @@ export interface SubscriptionApi {
     provider: AiSubscriptionProviderId,
     accepted: boolean,
   ): Promise<SubscriptionMeteredResult>
+  /**
+   * stop using a vendor CLI in this app, or use it again (decision 0114); it
+   * stays signed in for the rest of the PC. Only the shell preload exposes it.
+   */
+  setSubscriptionOff(
+    provider: AiSubscriptionProviderId,
+    off: boolean,
+  ): Promise<SubscriptionOffResult>
   /** whether this build can generate images through the Codex subscription */
   codexImageAvailable(): Promise<boolean>
   /** the statuses changed (any window, any cause); returns an unsubscribe */

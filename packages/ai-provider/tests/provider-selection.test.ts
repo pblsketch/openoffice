@@ -375,3 +375,99 @@ describe('subscription helpers', () => {
     expect(isKeyProviderConfigured(settings, 'no-such-provider' as never)).toBe(false)
   })
 })
+
+describe('a CLI turned off in this app (decision 0114)', () => {
+  const claudeOff = { subscriptionOff: { 'claude-code': true as const } }
+  const claude = { connected: true, provider: 'claude-code', metered: false }
+  const codex = { connected: true, provider: 'codex', metered: false }
+
+  it('auto passes over it at once, without waiting for its check', () => {
+    expect(selectAiProvider(settingsWith('auto'), statuses('checking', 'ready'))).toMatchObject({
+      connected: false,
+      reason: 'no-subscription',
+    })
+    expect(
+      selectAiProvider(settingsWith('auto', claudeOff), statuses('checking', 'ready')),
+    ).toEqual(codex)
+    expect(
+      selectAiProvider(settingsWith('auto', claudeOff), { codex: status('codex', 'ready') }),
+    ).toEqual(codex)
+  })
+
+  it('auto does not run it on a status read before it was turned off', () => {
+    expect(selectAiProvider(settingsWith('auto'), statuses('ready', 'ready'))).toEqual(claude)
+    expect(selectAiProvider(settingsWith('auto', claudeOff), statuses('ready', 'ready'))).toEqual(
+      codex,
+    )
+  })
+
+  it('reads as off from the status alone, as the main process reports it', () => {
+    expect(selectAiProvider(settingsWith('auto'), statuses('off', 'ready'))).toEqual(codex)
+    expect(selectAiProvider(settingsWith('claude-code'), statuses('off', 'ready'))).toMatchObject({
+      connected: false,
+      provider: 'claude-code',
+      reason: 'off-in-app',
+      errorKind: 'off-in-app',
+    })
+  })
+
+  it('an explicit selection of it reports off-in-app and does not move to another provider', () => {
+    for (const claudeState of ['ready', 'checking', 'metered', 'signed-out'] as const) {
+      expect(
+        selectAiProvider(
+          settingsWith('claude-code', { ...claudeOff, meteredAccepted: { 'claude-code': true } }),
+          statuses(claudeState, 'ready', { claude: accepted }),
+        ),
+      ).toEqual({
+        connected: false,
+        selection: 'claude-code',
+        provider: 'claude-code',
+        reason: 'off-in-app',
+        errorKind: 'off-in-app',
+      })
+    }
+  })
+
+  it('with every subscription off or out, auto lands on nothing that costs money', () => {
+    const settings = settingsWith('auto', {
+      subscriptionOff: { 'claude-code': true, codex: true },
+      meteredAccepted: { codex: true },
+    })
+    settings.providers.openai = { apiKey: 'sk-test', model: 'gpt-4.1' }
+    const choice = selectAiProvider(
+      settings,
+      statuses('ready', 'metered', { codex: accepted, chatgpt: 'signed-out' }),
+    )
+    expect(choice).toMatchObject({ connected: false, reason: 'no-subscription' })
+  })
+
+  it('leaves the other subscriptions and a selected key provider as they were', () => {
+    const settings = settingsWith('openai', claudeOff)
+    settings.providers.openai = { apiKey: 'sk-test', model: 'gpt-4.1' }
+    expect(selectAiProvider(settings, statuses('ready', 'ready'))).toEqual({
+      connected: true,
+      provider: 'openai',
+      metered: false,
+    })
+    expect(selectAiProvider(settingsWith('codex', claudeOff), statuses('ready', 'ready'))).toEqual(
+      codex,
+    )
+  })
+
+  it('has no switch for ChatGPT reached directly: its own sign-out is this app alone', () => {
+    const settings = settingsWith('auto', {
+      subscriptionOff: { chatgpt: true } as unknown as AiSettings['subscriptionOff'],
+    })
+    expect(
+      selectAiProvider(settings, statuses('signed-out', 'ready', { chatgpt: 'ready' })),
+    ).toEqual({ connected: true, provider: 'chatgpt', metered: false })
+  })
+
+  it('is no connection of any kind, whatever its status says', () => {
+    const paid = settingsWith('auto', { ...claudeOff, meteredAccepted: { 'claude-code': true } })
+    expect(subscriptionConnection(paid, status('claude-code', 'ready'))).toBeNull()
+    expect(subscriptionConnection(paid, status('claude-code', 'metered', accepted))).toBeNull()
+    expect(subscriptionConnection(settingsWith('auto'), status('claude-code', 'off'))).toBeNull()
+    expect(subscriptionConnection(paid, status('codex', 'ready'))).toBe('subscription')
+  })
+})

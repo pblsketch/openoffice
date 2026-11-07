@@ -167,4 +167,17 @@ export const th = {
   browserPageDoneBody: 'ปิดแท็บนี้แล้วกลับไปที่แอปได้เลย',
   browserPageFailedTitle: 'เชื่อมต่อไม่สำเร็จ',
   browserPageFailedBody: 'กลับไปที่แอปแล้วลองอีกครั้ง',
+  cardOff: 'ปิดไว้ในแอปนี้',
+  offNote:
+    'แอปนี้จะไม่เรียกใช้โปรแกรม {provider} และไม่ตรวจสอบสถานะของโปรแกรม การลงชื่อเข้าใช้ {provider} ในพีซีเครื่องนี้และการใช้งานในเทอร์มินัลยังคงเหมือนเดิม',
+  offElsewhereNote: 'เปิดใช้อีกครั้งได้ที่ การตั้งค่า → AI',
+  offSwitchNote:
+    '"ไม่ใช้ในแอปนี้" จะคงการลงชื่อเข้าใช้ {provider} ในพีซีเครื่องนี้ไว้ และหยุดใช้เฉพาะในแอปนี้ ส่วนการออกจากระบบจะมีผลกับทั้งพีซี',
+  actionTurnOff: 'ไม่ใช้ในแอปนี้',
+  actionTurnOn: 'ใช้อีกครั้ง',
+  connectOffTitle: 'ปิด {provider} ไว้ในแอปนี้',
+  connectOffBody: 'กด "ใช้อีกครั้ง" ที่การ์ด {provider} ใน การตั้งค่า → AI หรือเลือก AI อื่น',
+  errOffInApp:
+    'ปิด {provider} ไว้ในแอปนี้ จึงไม่ได้เรียกใช้อะไร เปิดใช้อีกครั้งได้ที่ การตั้งค่า → AI',
+  guideBadgeOff: 'ปิดไว้',
 } satisfies Record<keyof typeof zh, string>

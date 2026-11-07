@@ -20,7 +20,7 @@ import type {
   AiSubscriptionProviderId,
   AiSubscriptionStatus,
 } from '@genoffice/ai-provider'
-import { subscriptionConnection } from '@genoffice/ai-provider'
+import { subscriptionConnection, subscriptionOffIn } from '@genoffice/ai-provider'
 import type { AgentSessionSkill } from '../../shared/agent-api'
 import { cutAt } from '../projects/context'
 import { agentSessionSkillsOf } from './agent-skills'
@@ -345,6 +345,7 @@ export async function agentInstructionsAndCuts(
 interface LiveSession {
   id: string
   ownerId: number
+  provider: AgentStartRequest['provider']
   session: AgentSession | undefined
   sessionDir: string
   appMcp?: { stop(): Promise<void> } | undefined
@@ -457,6 +458,7 @@ export function createAgentManager(deps: AgentManagerDeps): AgentManager {
       const entry: LiveSession = {
         id,
         ownerId,
+        provider: request.provider,
         session: undefined,
         sessionDir,
         projectRoot,
@@ -549,6 +551,20 @@ export function createAgentManager(deps: AgentManagerDeps): AgentManager {
     async send(ownerId, sessionId, text) {
       const entry = own(ownerId, sessionId)
       if (!entry?.session) throw new Error('No such agent session')
+      // turned off in this app since the session started: the program is sent nothing more
+      if (
+        subscriptionOffIn(deps.aiSettings(), entry.provider) ||
+        deps.statuses()[entry.provider]?.state === 'off'
+      ) {
+        deps.emit(ownerId, sessionId, {
+          type: 'error',
+          kind: 'off-in-app',
+          message: 'The program is turned off in this app',
+        })
+        entry.session.stop()
+        cleanup(entry)
+        return
+      }
       // documents opened since the session started were not in its program-level rules
       const current = deps.openDocuments()
       const added: string[] = []
