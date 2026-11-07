@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
 import type { ReactElement } from 'react'
-import { ColorPicker } from '@genoffice/ui'
+import { ColorPicker, colorSwatchName } from '@genoffice/ui'
 import { useI18n } from './i18n/locale'
 import { isHexColor } from './color-presets'
 
@@ -23,7 +23,7 @@ export function ColorPickerPopover({
   onPick,
   onClose,
 }: ColorPickerPopoverProps): ReactElement {
-  const { t } = useI18n()
+  const { lang, t } = useI18n()
   const rootRef = useRef<HTMLDivElement>(null)
 
   // Anchored/floating parents (ribbon anchor positioning, the text-edit
@@ -48,6 +48,7 @@ export function ColorPickerPopover({
           themeColors: t('themeColors'),
           standardColors: t('standardColors'),
           moreColors: t('moreColors'),
+          colorName: (swatch) => colorSwatchName(lang, swatch),
         }}
         onPick={(hex) => {
           if (!hex) return

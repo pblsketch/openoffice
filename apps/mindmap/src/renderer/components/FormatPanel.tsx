@@ -29,7 +29,14 @@
  * swatches show map colours, which are document content.
  */
 import { useEffect, useState, type ReactNode } from 'react'
-import { ColorPicker, Dropdown, type DropdownOption } from '@genoffice/ui'
+import type { Lang } from '@genoffice/i18n'
+import {
+  ColorPicker,
+  colorSwatchName,
+  Dropdown,
+  type ColorPickerStrings,
+  type DropdownOption,
+} from '@genoffice/ui'
 import {
   ARROW_SHAPES,
   BOUNDARY_SHAPES,
@@ -593,7 +600,7 @@ function TextSection(p: {
         <div className="mm-format-colors" onMouseDown={(event) => event.preventDefault()}>
           <ColorPicker
             value={format?.color ?? null}
-            strings={pickerStrings(t, t('formatColorAuto'))}
+            strings={pickerStrings(lang, t, t('formatColorAuto'))}
             onPick={(hex) => {
               if (!off) p.onFormat({ color: hex ? (hex.toLowerCase() as `#${string}`) : null })
             }}
@@ -632,12 +639,13 @@ function TextSection(p: {
   )
 }
 
-function pickerStrings(t: TFunc, auto: string) {
+function pickerStrings(lang: Lang, t: TFunc, auto: string): ColorPickerStrings {
   return {
     auto,
     themeColors: t('formatThemeColors'),
     standardColors: t('formatStandardColors'),
     moreColors: t('formatMoreColors'),
+    colorName: (swatch) => colorSwatchName(lang, swatch),
   }
 }
 
@@ -779,7 +787,7 @@ function PatternSample({ pattern, name }: { pattern: LinePattern; name: string }
  * nothing, not even "automatic", looks chosen.
  */
 function ColorPick(p: { current: ShownColor; onPick(color: string | null): void }) {
-  const { t } = useI18n()
+  const { lang, t } = useI18n()
   const value = p.current.state === 'value' ? p.current.value : MIXED
   return (
     <>
@@ -787,7 +795,7 @@ function ColorPick(p: { current: ShownColor; onPick(color: string | null): void 
       <div className="mm-format-colors" onMouseDown={(event) => event.preventDefault()}>
         <ColorPicker
           value={value}
-          strings={pickerStrings(t, t('colorAuto'))}
+          strings={pickerStrings(lang, t, t('colorAuto'))}
           onPick={(hex) => p.onPick(hex ? hex.toLowerCase() : null)}
         />
       </div>
