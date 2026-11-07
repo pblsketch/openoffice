@@ -341,11 +341,14 @@ import {
   savePassageMarks,
   loadSidebarOpen,
   saveSidebarOpen,
-  loadDefaultFit,
-  saveDefaultFit,
-  openingFitMode,
+  DEFAULT_VIEWS,
+  parseDefaultView,
+  loadDefaultView,
+  saveDefaultView,
+  openingView,
+  clampScale,
 } from './view-config'
-import type { PageSize, FitMode, DefaultFitMode } from './view-config'
+import type { PageSize, FitMode, DefaultView } from './view-config'
 import { useVisibleSet, PdfPage, MarkupOverlay } from './PdfPage'
 import { probePageGeometry } from './page-probe'
 import { loadPdfForView } from './open-document'
@@ -605,11 +608,10 @@ export default function App() {
   const [scale, setScale] = useState(1)
   /** F5: the viewer alone in fullscreen (presentation) */
   const [presenting, setPresenting] = useState(false)
-  /** Fit mode for a PDF with no saved reading position (View tab); fit width keeps the old behaviour */
-  const [defaultFit, setDefaultFit] = useState<DefaultFitMode>(loadDefaultFit)
-  const defaultFitRef = useRef(defaultFit)
-  defaultFitRef.current = defaultFit
-  useEffect(() => saveDefaultFit(defaultFit), [defaultFit])
+  const [defaultView, setDefaultView] = useState<DefaultView>(loadDefaultView)
+  const defaultViewRef = useRef(defaultView)
+  defaultViewRef.current = defaultView
+  useEffect(() => saveDefaultView(defaultView), [defaultView])
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState('1')
   const [sidebar, setSidebar] = useState<
@@ -1378,7 +1380,7 @@ export default function App() {
   const prePresentScaleRef = useRef(1)
   /** cancels a pending page-fit when the show ends before its timer runs */
   const presentSeqRef = useRef(0)
-  const fitModeRef = useRef<FitMode>(defaultFit)
+  const fitModeRef = useRef<FitMode>(openingView(null, defaultView).fitMode)
   /** Reading position saved when this file was last viewed; applied once after open */
   const pendingViewRestoreRef = useRef<PdfViewState | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -2036,14 +2038,10 @@ export default function App() {
         // zoom (fitMode null) must be applied before 'ready', or the initial
         // fit recompute would take over; fit modes are recomputed anyway.
         const savedView = loadViewState(path)
-        fitModeRef.current = openingFitMode(savedView, defaultFitRef.current)
-        if (savedView) {
-          pendingViewRestoreRef.current = savedView
-          if (savedView.fitMode === null)
-            setScale(Math.min(MAX_SCALE, Math.max(MIN_SCALE, savedView.scale)))
-        } else {
-          pendingViewRestoreRef.current = null
-        }
+        const opening = openingView(savedView, defaultViewRef.current)
+        fitModeRef.current = opening.fitMode
+        if (opening.fitMode === null) setScale(opening.scale)
+        pendingViewRestoreRef.current = savedView
         setStatus('ready')
       } catch (err) {
         if ((err as Error | null)?.name === 'PasswordException') {
@@ -2148,8 +2146,6 @@ export default function App() {
       setActiveFormWidgetId(null)
     }
   }, [activeFormWidgetId, formCatalog, formWidgetEdits])
-
-  const clampScale = (s: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s))
 
   /** Overall size of a row (in spread mode widths add up, including the page gap) */
   const rowSize = useCallback(
@@ -9132,7 +9128,13 @@ export default function App() {
     </div>
   )
 
-  const pageZoomGroup = (showDefaultFit = false) => (
+  const defaultViewLabels: Record<DefaultView, string> = {
+    width: t('fitWidth'),
+    page: t('fitPage'),
+    actual: '100%',
+  }
+
+  const pageZoomGroup = (showDefaultView = false) => (
     <div className="ribbon-group">
       <div className="ribbon-group-items">
         <div className="rb-col">
@@ -9214,7 +9216,7 @@ export default function App() {
           </span>
           <span>{t('handTool')}</span>
         </button>
-        {showDefaultFit && (
+        {showDefaultView && (
           <div className="rb-col rb-open-view">
             <span className="rb-open-view-label">{t('defaultFit')}</span>
             <select
@@ -9222,11 +9224,14 @@ export default function App() {
               aria-label={t('defaultFit')}
               data-tip={t('defaultFit')}
               data-tip-detail={t('defaultFitTip')}
-              value={defaultFit}
-              onChange={(e) => setDefaultFit(e.target.value === 'page' ? 'page' : 'width')}
+              value={defaultView}
+              onChange={(e) => setDefaultView(parseDefaultView(e.target.value))}
             >
-              <option value="width">{t('fitWidth')}</option>
-              <option value="page">{t('fitPage')}</option>
+              {DEFAULT_VIEWS.map((view) => (
+                <option key={view} value={view}>
+                  {defaultViewLabels[view]}
+                </option>
+              ))}
             </select>
           </div>
         )}
