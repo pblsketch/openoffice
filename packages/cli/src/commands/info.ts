@@ -204,7 +204,7 @@ function countHeadings(lines: readonly string[]): number {
       fence = { char: mark[1]![0]!, length: mark[1]!.length }
       continue
     }
-    if (/^#{1,6}\s/.test(line)) count++
+    if (/^ {0,3}#{1,6}\s/.test(line)) count++
   }
   return count
 }
