@@ -45,6 +45,8 @@ function createHelperOcrEngine(helperPath: string, languages?: string[]): OcrEng
       input: png,
       maxBuffer: HELPER_MAX_BUFFER,
       timeout: HELPER_TIMEOUT_MS,
+      // win-ocr.exe is a console program; started from the GUI app it would open a window
+      windowsHide: true,
     })
     if (res.status !== 0 || res.stdout == null) return null
     let parsed: { lines?: HelperLine[]; paper?: number }
