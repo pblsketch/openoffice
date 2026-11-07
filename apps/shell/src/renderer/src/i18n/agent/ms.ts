@@ -85,6 +85,16 @@ export const ms = {
   errNeedsUpdate: 'Program terlalu lama untuk mod ejen. Kemas kini dan cuba lagi.',
   errNotInstalled: 'Program tidak dipasang.',
   errGeneric: 'Berlaku masalah. Cuba lagi.',
+  errUnsupportedPath:
+    'Codex tidak dapat menggunakan folder atau fail yang namanya mengandungi [ ] * atau ?. Namakan semula folder projek, atau tutup dokumen dengan nama sebegitu, kemudian mulakan semula.',
+  errProgramExited:
+    'Program tertutup semasa sesi dimulakan. Kemas kini program, pastikan ia dibuka dalam terminal, kemudian cuba lagi.',
+  errProgramNoAnswer: 'Program tidak menjawab tepat pada masanya semasa sesi dimulakan. Cuba lagi.',
+  errProgramRefused: 'Program tidak menerima tetapan sesi. Kemas kini program, kemudian cuba lagi.',
+  errNoModel:
+    'Program tidak menawarkan model untuk digunakan. Pilih model di Tetapan → AI, kemudian cuba lagi.',
+  errPrepareFailed: 'Aplikasi tidak dapat menyediakan sesi. Cuba lagi.',
+  errCode: 'Jika ini berterusan, sertakan kod ini semasa menghantar maklum balas: {code}',
   documentsUnprotected:
     'Dokumen yang dibuka selepas sesi dimulakan ({n}) tidak dilindungi oleh perlindungan tulis program itu sendiri. Hentikan dan mulakan semula sesi untuk melindunginya.',
 } satisfies Record<keyof typeof zh, string>

@@ -88,6 +88,18 @@ export const nl = {
     'Het programma is te oud voor de agentmodus. Werk het bij en probeer het opnieuw.',
   errNotInstalled: 'Het programma is niet geïnstalleerd.',
   errGeneric: 'Er ging iets mis. Probeer het opnieuw.',
+  errUnsupportedPath:
+    'Codex kan geen map of bestand gebruiken waarvan de naam [ ] * of ? bevat. Geef de projectmap een andere naam of sluit documenten met zo’n naam en begin opnieuw.',
+  errProgramExited:
+    'Het programma sloot tijdens het starten van de sessie. Werk het bij, controleer of het in een terminal opent en probeer het opnieuw.',
+  errProgramNoAnswer:
+    'Het programma antwoordde niet op tijd tijdens het starten van de sessie. Probeer het opnieuw.',
+  errProgramRefused:
+    'Het programma accepteerde de sessie-instellingen niet. Werk het bij en probeer het opnieuw.',
+  errNoModel:
+    'Het programma bood geen model aan. Kies een model via Instellingen → AI en probeer het opnieuw.',
+  errPrepareFailed: 'De app kon de sessie niet voorbereiden. Probeer het opnieuw.',
+  errCode: 'Blijft dit gebeuren, vermeld dan deze code als je feedback stuurt: {code}',
   documentsUnprotected:
     'Documenten die na de start van de sessie zijn geopend ({n}) vallen buiten de schrijfbeveiliging van het programma. Stop en start de sessie opnieuw om ze te beschermen.',
 } satisfies Record<keyof typeof zh, string>

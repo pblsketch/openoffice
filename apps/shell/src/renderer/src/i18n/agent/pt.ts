@@ -86,6 +86,18 @@ export const pt = {
   errNeedsUpdate: 'O programa é antigo demais para o modo agente. Atualize-o e tente novamente.',
   errNotInstalled: 'O programa não está instalado.',
   errGeneric: 'Algo deu errado. Tente novamente.',
+  errUnsupportedPath:
+    'O Codex não consegue usar uma pasta ou um arquivo cujo nome tenha [ ] * ou ?. Renomeie a pasta do projeto ou feche os documentos com esse tipo de nome e comece de novo.',
+  errProgramExited:
+    'O programa fechou enquanto a sessão era iniciada. Atualize-o, verifique se ele abre em um terminal e tente novamente.',
+  errProgramNoAnswer:
+    'O programa não respondeu a tempo enquanto a sessão era iniciada. Tente novamente.',
+  errProgramRefused:
+    'O programa não aceitou as configurações da sessão. Atualize-o e tente novamente.',
+  errNoModel:
+    'O programa não ofereceu nenhum modelo. Escolha um modelo em Configurações → IA e tente novamente.',
+  errPrepareFailed: 'O aplicativo não conseguiu preparar a sessão. Tente novamente.',
+  errCode: 'Se isso continuar, inclua este código ao enviar seu feedback: {code}',
   documentsUnprotected:
     'Os documentos abertos depois do início da sessão ({n}) ficam fora da proteção de escrita do programa. Pare e inicie a sessão novamente para protegê-los.',
 } satisfies Record<keyof typeof zh, string>

@@ -84,6 +84,16 @@ export const id = {
   errNeedsUpdate: 'Versi program terlalu lama untuk mode agen. Perbarui program, lalu coba lagi.',
   errNotInstalled: 'Program belum terpasang.',
   errGeneric: 'Terjadi masalah. Coba lagi.',
+  errUnsupportedPath:
+    'Codex tidak dapat memakai folder atau file yang namanya berisi [ ] * atau ?. Ganti nama folder proyek, atau tutup dokumen dengan nama seperti itu, lalu mulai lagi.',
+  errProgramExited:
+    'Program tertutup saat sesi dimulai. Perbarui program, pastikan program terbuka di terminal, lalu coba lagi.',
+  errProgramNoAnswer: 'Program tidak menjawab tepat waktu saat sesi dimulai. Coba lagi.',
+  errProgramRefused: 'Program tidak menerima pengaturan sesi. Perbarui program, lalu coba lagi.',
+  errNoModel:
+    'Program tidak menawarkan model yang dapat dipakai. Pilih model di Pengaturan → AI, lalu coba lagi.',
+  errPrepareFailed: 'Aplikasi tidak dapat menyiapkan sesi. Coba lagi.',
+  errCode: 'Jika terus terjadi, sertakan kode ini saat mengirim masukan: {code}',
   documentsUnprotected:
     'Dokumen yang dibuka setelah sesi dimulai ({n}) tidak tercakup perlindungan tulis program itu sendiri. Hentikan dan mulai ulang sesi untuk melindunginya.',
 } satisfies Record<keyof typeof zh, string>

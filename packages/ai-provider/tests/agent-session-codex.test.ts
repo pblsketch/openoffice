@@ -23,6 +23,7 @@ import {
   startCodexAgentSession,
   type AgentSessionEvent,
   type CodexSandboxProbeResult,
+  type CodexAgentDeps,
   type CodexAgentSessionOptions,
 } from '../src/agent-session'
 import type { SubscriptionProgram } from '../src/subscription'
@@ -124,6 +125,7 @@ async function start(
   handlers: Record<string, Handler>,
   overrides: Partial<CodexAgentSessionOptions> = {},
   probe: CodexSandboxProbeResult = 'contained',
+  deps: Partial<CodexAgentDeps> = {},
 ) {
   const events: AgentSessionEvent[] = []
   const spawnCalls: Array<{ command: string; args: string[]; options: SpawnOptions }> = []
@@ -144,6 +146,7 @@ async function start(
       server = new FakeCodex(handlers)
       return server
     },
+    ...deps,
   })
   return { run, events, spawnCalls, killTree, probeSandbox, server: () => server }
 }
@@ -512,6 +515,104 @@ describe('starting a session', () => {
       }),
     )
     await expect(run).rejects.toMatchObject({ kind: 'unsafe-tools' })
+  })
+})
+
+describe('paths Codex reads as patterns', () => {
+  it('does not start, before the sandbox check or Codex, when a path of the profile has [ ] * or ?', async () => {
+    for (const overrides of [
+      { projectRoot: 'C:\\Users\\me\\Project [draft]', openDocuments: [] },
+      { openDocuments: ['C:\\Users\\me\\Desktop\\[final] report.hwp'] },
+      { protectedPaths: ['C:\\Users\\me [x]\\.codex'] },
+      { skillBundleDir: 'C:\\Temp\\skills?' },
+    ] satisfies Array<Partial<CodexAgentSessionOptions>>) {
+      const { run, spawnCalls, probeSandbox } = await start(baseHandlers(), overrides)
+      await expect(run).rejects.toMatchObject({ problem: { type: 'unsupported-path' } })
+      expect(probeSandbox).not.toHaveBeenCalled()
+      expect(spawnCalls).toHaveLength(0)
+    }
+  })
+
+  it('does not start on macOS either, where no sandbox check comes first', async () => {
+    const { run, spawnCalls } = await start(
+      baseHandlers(),
+      {
+        projectRoot: '/Users/me/Project',
+        openDocuments: ['/Users/me/Desktop/[final] report.hwp'],
+        protectedPaths: ['/Users/me/.codex'],
+        sessionDir: '/tmp/session-2',
+      },
+      'contained',
+      { platform: 'darwin', baseEnv: { PATH: '/usr/bin:/bin' } },
+    )
+    await expect(run).rejects.toMatchObject({ problem: { type: 'unsupported-path' } })
+    expect(spawnCalls).toHaveLength(0)
+  })
+
+  it('leaves a PATH folder with such a name out of the folders commands may read', () => {
+    const dirs = codexAgentReadableDirs(
+      ['C:\\Tools[1]', 'C:\\Python314', 'C:\\What?'].join(';'),
+      options(),
+      'win32',
+      () => true,
+    )
+    expect(dirs).toEqual(['C:\\Python314'])
+  })
+})
+
+describe('why a session did not start', () => {
+  it('names the step Codex refused, with its error code, and ends the process', async () => {
+    const { run, killTree } = await start(
+      baseHandlers({
+        'thread/start': (fake, _params, id) => {
+          fake.send({ id, error: { code: -32600, message: 'invalid profile at /Users/me' } })
+          return undefined
+        },
+      }),
+    )
+    await expect(run).rejects.toMatchObject({
+      problem: { type: 'refused', step: 'thread/start', code: -32600 },
+    })
+    expect(killTree).toHaveBeenCalled()
+  })
+
+  it('names Codex ending before the session was set up, with its exit code', async () => {
+    const { run } = await start(
+      baseHandlers({
+        initialize: (fake) => {
+          fake.stderr.write('error: unknown configuration key\n')
+          fake.exit(2)
+          return undefined
+        },
+      }),
+    )
+    await expect(run).rejects.toMatchObject({ problem: { type: 'exited', exitCode: 2 } })
+  })
+
+  it('names the step Codex did not answer in time', async () => {
+    const { run } = await start(
+      baseHandlers({ 'thread/start': () => undefined }),
+      {},
+      'contained',
+      { threadStartTimeoutMs: 5 },
+    )
+    await expect(run).rejects.toMatchObject({
+      problem: { type: 'no-answer', step: 'thread/start' },
+    })
+  })
+
+  it('says when no model is set and Codex lists none', async () => {
+    const { run } = await start(baseHandlers({ 'model/list': () => ({ data: [] }) }))
+    await expect(run).rejects.toMatchObject({ problem: { type: 'no-model' } })
+  })
+
+  it('keeps the run errors Codex itself reports', async () => {
+    const { run } = await start(
+      baseHandlers({ 'account/read': () => ({ requiresOpenaiAuth: true }) }),
+    )
+    const error = await run.catch((failure: unknown) => failure)
+    expect(error).toMatchObject({ kind: 'signed-out' })
+    expect(error).not.toHaveProperty('problem')
   })
 })
 

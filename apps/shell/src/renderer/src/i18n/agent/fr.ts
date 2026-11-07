@@ -88,6 +88,18 @@ export const fr = {
     'Le programme est trop ancien pour le mode agent. Mettez-le à jour, puis réessayez.',
   errNotInstalled: 'Le programme n’est pas installé.',
   errGeneric: 'Un problème est survenu. Réessayez.',
+  errUnsupportedPath:
+    'Codex ne peut pas utiliser un dossier ou un fichier dont le nom contient [ ] * ou ?. Renommez le dossier du projet ou fermez les documents portant un tel nom, puis recommencez.',
+  errProgramExited:
+    'Le programme s’est fermé pendant le démarrage de la session. Mettez-le à jour, vérifiez qu’il s’ouvre dans un terminal, puis réessayez.',
+  errProgramNoAnswer:
+    'Le programme n’a pas répondu à temps pendant le démarrage de la session. Réessayez.',
+  errProgramRefused:
+    'Le programme n’a pas accepté les réglages de la session. Mettez-le à jour, puis réessayez.',
+  errNoModel:
+    'Le programme n’a proposé aucun modèle. Choisissez un modèle dans Paramètres → IA, puis réessayez.',
+  errPrepareFailed: 'L’application n’a pas pu préparer la session. Réessayez.',
+  errCode: 'Si le problème se répète, indiquez ce code en envoyant vos commentaires : {code}',
   documentsUnprotected:
     'Les documents ouverts après le début de la session ({n}) ne bénéficient pas de la protection en écriture du programme. Arrêtez puis relancez la session pour les protéger.',
 } satisfies Record<keyof typeof zh, string>

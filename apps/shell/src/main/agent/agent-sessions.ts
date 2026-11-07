@@ -13,7 +13,11 @@ import type {
   AgentSkillBundle,
   AgentSkillEntry,
 } from '@genoffice/ai-provider/agent-session'
-import { comparablePath, isInsidePath } from '@genoffice/ai-provider/agent-session'
+import {
+  AgentProgramError,
+  comparablePath,
+  isInsidePath,
+} from '@genoffice/ai-provider/agent-session'
 import { SKILL_SKIPPED_STEPS_SENTENCE } from '@genoffice/agent-core/skill-mcp-refs'
 import type {
   AiSettings,
@@ -21,7 +25,14 @@ import type {
   AiSubscriptionStatus,
 } from '@genoffice/ai-provider'
 import { subscriptionConnection } from '@genoffice/ai-provider'
-import type { AgentSessionSkill } from '../../shared/agent-api'
+import {
+  AGENT_RUN_ERROR_KINDS,
+  type AgentPrepareStep,
+  type AgentRunErrorKind,
+  type AgentSessionSkill,
+  type AgentStartFailure,
+} from '../../shared/agent-api'
+import { errorReason } from '../crash-log'
 import { cutAt } from '../projects/context'
 import { agentSessionSkillsOf } from './agent-skills'
 import type { AgentMcpRelays, AgentRelayAnswer, AgentRelayAsk } from './agent-mcp-relay'
@@ -34,14 +45,6 @@ import type { AgentMcpRelays, AgentRelayAnswer, AgentRelayAsk } from './agent-mc
  * runners, the app's MCP server, the subscription statuses and settings, the
  * open tabs, and the event sink.
  */
-
-export type AgentStartFailure =
-  /** the folder is missing, not a folder, a drive root, the home folder, or a protected place */
-  | 'bad-folder'
-  /** the program is not signed in on a subscription, and no metered login was accepted */
-  | 'not-connected'
-  /** the program could not be started or refused the session (see `message`) */
-  | 'start-failed'
 
 export interface AgentStartRequest {
   provider: AiSubscriptionProviderId
@@ -73,10 +76,51 @@ export type AgentStartResult =
     }
   | {
       ok: false
-      reason: AgentStartFailure
-      kind?: string | undefined
-      message?: string | undefined
+      failure: AgentStartFailure
+      cause?: string | undefined
     }
+
+class AgentPrepareError extends Error {
+  readonly step: AgentPrepareStep
+  readonly thrown: unknown
+
+  constructor(step: AgentPrepareStep, thrown: unknown) {
+    super(`The agent session could not be prepared: ${step}`)
+    this.name = 'AgentPrepareError'
+    this.step = step
+    this.thrown = thrown
+  }
+}
+
+async function prepared<T>(step: AgentPrepareStep, run: () => Promise<T>): Promise<T> {
+  try {
+    return await run()
+  } catch (error) {
+    throw new AgentPrepareError(step, error)
+  }
+}
+
+function isAgentRunErrorKind(value: unknown): value is AgentRunErrorKind {
+  return (AGENT_RUN_ERROR_KINDS as readonly unknown[]).includes(value)
+}
+
+export function agentStartFailed(error: unknown): Extract<AgentStartResult, { ok: false }> {
+  if (error instanceof AgentPrepareError) {
+    return {
+      ok: false,
+      failure: { reason: 'prepare-failed', step: error.step },
+      cause: errorReason(error.thrown),
+    }
+  }
+  const kind = (error as { kind?: unknown } | null)?.kind
+  const failure: AgentStartFailure =
+    error instanceof AgentProgramError
+      ? { reason: 'program-problem', problem: error.problem }
+      : isAgentRunErrorKind(kind)
+        ? { reason: 'run-error', kind }
+        : { reason: 'unknown' }
+  return { ok: false, failure, cause: errorReason(error) }
+}
 
 export interface AgentRunners {
   claude: (
@@ -445,14 +489,19 @@ export function createAgentManager(deps: AgentManagerDeps): AgentManager {
     async start(ownerId, request) {
       const projectRoot = resolve(request.projectRoot)
       if (projectFolderProblem(projectRoot, homeDir, protectedPaths, platform)) {
-        return { ok: false, reason: 'bad-folder' }
+        return { ok: false, failure: { reason: 'bad-folder' } }
       }
       const settings = deps.aiSettings()
       const connection = subscriptionConnection(settings, deps.statuses()[request.provider])
-      if (!connection) return { ok: false, reason: 'not-connected' }
+      if (!connection) return { ok: false, failure: { reason: 'not-connected' } }
 
       const id = randomUUID()
-      const sessionDir = await mkdtemp(join(tmpdir(), 'ieum-agent-'))
+      let sessionDir: string
+      try {
+        sessionDir = await prepared('session-folder', () => mkdtemp(join(tmpdir(), 'ieum-agent-')))
+      } catch (error) {
+        return agentStartFailed(error)
+      }
       const openAtStart = deps.openDocuments()
       const entry: LiveSession = {
         id,
@@ -468,30 +517,39 @@ export function createAgentManager(deps: AgentManagerDeps): AgentManager {
       }
       live.set(id, entry)
       try {
-        const appMcp = deps.startAppMcp
-          ? await deps.startAppMcp(projectRoot, { ownerId, sessionId: id })
+        const startAppMcp = deps.startAppMcp
+        const appMcp = startAppMcp
+          ? await prepared('app-tools', () => startAppMcp(projectRoot, { ownerId, sessionId: id }))
           : undefined
         entry.appMcp = appMcp
         // the person's MCP servers as they are set now: a change applies to the next session
-        const relays = deps.startRelays
-          ? await deps.startRelays(
-              { ownerId, sessionId: id },
-              relayAskOf(entry, request.provider === 'claude-code' ? 'claude-code' : 'codex'),
+        const startRelays = deps.startRelays
+        const relays = startRelays
+          ? await prepared('user-mcp', () =>
+              startRelays(
+                { ownerId, sessionId: id },
+                relayAskOf(entry, request.provider === 'claude-code' ? 'claude-code' : 'codex'),
+              ),
             )
           : undefined
         entry.relays = relays
         const relayList = relays?.relays ?? []
         // the skills as they are now: a change made during the session applies to the next one
-        const skills = deps.buildSkills ? await deps.buildSkills(projectRoot) : undefined
+        const buildSkills = deps.buildSkills
+        const skills = buildSkills
+          ? await prepared('skills', () => buildSkills(projectRoot))
+          : undefined
         entry.skills = skills?.skills
         const config = settings.providers[request.provider]
-        const instructions = await agentInstructionsAndCuts(
-          request.provider,
-          projectRoot,
-          deps.language(),
-          appMcp !== undefined,
-          skills?.skills,
-          relayList.map((relay) => relay.name),
+        const instructions = await prepared('instructions', () =>
+          agentInstructionsAndCuts(
+            request.provider,
+            projectRoot,
+            deps.language(),
+            appMcp !== undefined,
+            skills?.skills,
+            relayList.map((relay) => relay.name),
+          ),
         )
         const options: AgentSessionOptions = {
           projectRoot,
@@ -537,12 +595,7 @@ export function createAgentManager(deps: AgentManagerDeps): AgentManager {
         }
       } catch (error) {
         cleanup(entry)
-        return {
-          ok: false,
-          reason: 'start-failed',
-          kind: (error as { kind?: unknown } | null)?.kind as string | undefined,
-          message: error instanceof Error ? error.message : String(error),
-        }
+        return agentStartFailed(error)
       }
     },
 

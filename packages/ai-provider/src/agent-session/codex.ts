@@ -51,6 +51,7 @@ import { codexAccountInfo } from '../subscription/status'
 import { APP_MCP_SERVER_NAME, agentUsableRelays, isAgentAppMcpTool } from './claude'
 import { probeCodexSandbox, type CodexSandboxProbeResult } from './codex-sandbox-probe'
 import { agentPolicyVerdict, comparablePath, isInsidePath } from './policy'
+import { AgentProgramError } from './program-problem'
 import type {
   AgentAction,
   AgentCodexWebSearch,
@@ -160,6 +161,22 @@ export function codexAgentFilesystem(
 }
 
 /**
+ * Characters Codex reads as a glob in a permission profile path. A read or
+ * write entry with one is refused, and a deny entry with one does not keep the
+ * named folder out (checked 2026-11-07, codex-cli 0.166.0 under `codex
+ * sandbox`; the 0.163.0 source reads them the same way).
+ */
+const CODEX_PROFILE_GLOB = /[*?[\]]/
+
+export function codexProfilePathsLiteral(
+  filesystem: Record<string, 'read' | 'write' | 'deny'>,
+): boolean {
+  return Object.keys(filesystem).every(
+    (path) => path === ':minimal' || !CODEX_PROFILE_GLOB.test(path),
+  )
+}
+
+/**
  * The folders on PATH a command may read, so scripts can find their runtime
  * (python, node, …): absolute, existing folders that are not a drive root and
  * not inside a protected folder or the project.
@@ -181,7 +198,7 @@ export function codexAgentReadableDirs(
   const seen = new Set<string>()
   for (const raw of (pathValue ?? '').split(platform === 'win32' ? ';' : ':')) {
     const dir = raw.trim().replace(/^"|"$/g, '')
-    if (!dir || !api.isAbsolute(dir)) continue
+    if (!dir || !api.isAbsolute(dir) || CODEX_PROFILE_GLOB.test(dir)) continue
     const key = comparablePath(dir, dir, platform)
     if (seen.has(key) || api.parse(key).root === key) continue
     if (
@@ -461,6 +478,12 @@ export async function startCodexAgentSession(
     options,
     platform,
   )
+  if (!codexProfilePathsLiteral(codexAgentFilesystem(options, readableDirs))) {
+    throw new AgentProgramError(
+      { type: 'unsupported-path' },
+      'A path of the session has a character Codex reads as a pattern; nothing was run',
+    )
+  }
   if (platform === 'win32') {
     const probe =
       deps.probeSandbox ??
@@ -522,6 +545,7 @@ export async function startCodexAgentSession(
   const rpcPending = new Map<
     number,
     {
+      method: string
       resolve: (value: unknown) => void
       reject: (error: Error) => void
       timer: ReturnType<typeof setTimeout>
@@ -579,10 +603,15 @@ export async function startCodexAgentSession(
       const id = nextId++
       const timer = setTimeout(() => {
         rpcPending.delete(id)
-        reject(new Error(`Codex app-server request timed out: ${method}`))
+        reject(
+          new AgentProgramError(
+            { type: 'no-answer', step: method },
+            `Codex app-server request timed out: ${method}`,
+          ),
+        )
       }, timeoutMs)
       timer.unref?.()
-      rpcPending.set(id, { resolve, reject, timer })
+      rpcPending.set(id, { method, resolve, reject, timer })
       writeLine({ method, id, params })
     })
 
@@ -721,11 +750,18 @@ export async function startCodexAgentSession(
       clearTimeout(waiting.timer)
       rpcPending.delete(message.id)
       if (message.error !== undefined) {
-        const detail =
-          isPlainObject(message.error) && typeof message.error.message === 'string'
-            ? message.error.message
-            : 'error'
-        waiting.reject(new Error(`Codex app-server: ${detail}`))
+        const error = isPlainObject(message.error) ? message.error : {}
+        const detail = typeof error.message === 'string' ? error.message : 'error'
+        waiting.reject(
+          new AgentProgramError(
+            {
+              type: 'refused',
+              step: waiting.method,
+              code: Number.isInteger(error.code) ? (error.code as number) : undefined,
+            },
+            `Codex app-server: ${detail}`,
+          ),
+        )
       } else waiting.resolve(message.result)
       return
     }
@@ -754,7 +790,10 @@ export async function startCodexAgentSession(
     end(
       stopping
         ? undefined
-        : new Error(`Codex app-server exited (${code ?? 'unknown'})${detail ? `: ${detail}` : ''}`),
+        : new AgentProgramError(
+            { type: 'exited', exitCode: code ?? undefined },
+            `Codex app-server exited (${code ?? 'unknown'})${detail ? `: ${detail}` : ''}`,
+          ),
     )
   })
 
@@ -818,7 +857,12 @@ export async function startCodexAgentSession(
     const thread =
       isPlainObject(started) && isPlainObject(started.thread) ? started.thread : undefined
     threadId = typeof thread?.id === 'string' ? thread.id : ''
-    if (!threadId) throw new Error('Codex app-server did not return a thread id')
+    if (!threadId) {
+      throw new AgentProgramError(
+        { type: 'refused', step: 'thread/start' },
+        'Codex app-server did not return a thread id',
+      )
+    }
 
     let cursor: string | null = null
     const attached: string[] = []
@@ -927,6 +971,11 @@ function defaultModelOf(result: unknown): string {
     if (value.isDefault === true) return id
     first ||= id
   }
-  if (!first) throw new Error('Codex listed no model, so there is no default model to run with')
+  if (!first) {
+    throw new AgentProgramError(
+      { type: 'no-model' },
+      'Codex listed no model, so there is no default model to run with',
+    )
+  }
   return first
 }

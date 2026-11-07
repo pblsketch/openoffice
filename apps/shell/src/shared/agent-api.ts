@@ -1,6 +1,7 @@
 import type { Lang } from '@genoffice/i18n'
 import type { SkillProposal } from '@genoffice/agent-core'
-import type { AgentCodexWebSearch } from '@genoffice/ai-provider/agent-session'
+import type { AiRunErrorKind } from '@genoffice/ai-provider'
+import type { AgentCodexWebSearch, AgentProgramProblem } from '@genoffice/ai-provider/agent-session'
 
 /**
  * The agent window (decision 0032): channels and the shapes the window and the
@@ -209,11 +210,58 @@ export type AgentStartResponse =
       /** project notes the instructions carry only the start of, by file name; absent when none */
       instructionsTruncated?: string[] | undefined
     }
-  | {
-      ok: false
-      reason: 'bad-folder' | 'not-connected' | 'start-failed' | 'not-accepted' | 'provider-blocked'
-      kind?: string | undefined
+  | { ok: false; failure: AgentStartFailure }
+
+/** The run errors of a start that the window has a message for */
+export const AGENT_RUN_ERROR_KINDS = [
+  'unsafe-tools',
+  'sandbox-unavailable',
+  'rate-limit',
+  'signed-out',
+  'metered-not-accepted',
+  'needs-update',
+  'not-installed',
+] as const satisfies ReadonlyArray<AiRunErrorKind | 'sandbox-unavailable'>
+export type AgentRunErrorKind = (typeof AGENT_RUN_ERROR_KINDS)[number]
+
+export type AgentPrepareStep =
+  'session-folder' | 'app-tools' | 'user-mcp' | 'skills' | 'instructions'
+
+export type AgentStartFailure =
+  | { reason: 'bad-folder' | 'not-connected' | 'not-accepted' | 'provider-blocked' }
+  | { reason: 'invalid-request' }
+  | { reason: 'run-error'; kind: AgentRunErrorKind }
+  | { reason: 'program-problem'; problem: AgentProgramProblem }
+  | { reason: 'prepare-failed'; step: AgentPrepareStep }
+  | { reason: 'unknown' }
+
+/**
+ * A short code for a failure the person may report: identifier-like words
+ * only, so the diagnostic record can keep it as it is.
+ */
+export function agentStartFailureCode(failure: AgentStartFailure): string {
+  switch (failure.reason) {
+    case 'run-error':
+      return failure.kind
+    case 'prepare-failed':
+      return `prepare ${failure.step}`
+    case 'program-problem': {
+      const { problem } = failure
+      switch (problem.type) {
+        case 'exited':
+          return problem.exitCode === undefined ? 'exited' : `exited ${problem.exitCode}`
+        case 'no-answer':
+          return `no-answer ${problem.step.replace(/\//g, '.')}`
+        case 'refused':
+          return `refused ${problem.step.replace(/\//g, '.')}${problem.code === undefined ? '' : ` ${problem.code}`}`
+        default:
+          return problem.type
+      }
     }
+    default:
+      return failure.reason
+  }
+}
 
 /** What a tool line or a permission request shows; paths and commands are shown as they are */
 export interface AgentActionView {

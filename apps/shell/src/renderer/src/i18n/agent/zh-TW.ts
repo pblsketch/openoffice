@@ -79,6 +79,14 @@ export const zhTW = {
   errNeedsUpdate: '程式版本過舊，無法使用代理程式模式。請更新後再試一次。',
   errNotInstalled: '未安裝此程式。',
   errGeneric: '發生問題。請再試一次。',
+  errUnsupportedPath:
+    'Codex 無法處理名稱中含有 [ ] * 或 ? 的資料夾或檔案。請重新命名專案資料夾，或關閉名稱含有這些字元的文件，然後重新開始。',
+  errProgramExited: '工作階段啟動時程式關閉了。請更新程式，確認它能在終端機中開啟，然後再試一次。',
+  errProgramNoAnswer: '工作階段啟動時程式沒有及時回應。請再試一次。',
+  errProgramRefused: '程式沒有接受工作階段設定。請更新程式後再試一次。',
+  errNoModel: '程式沒有提供可用的模型。請在「設定 → AI」中選擇模型後再試一次。',
+  errPrepareFailed: '應用程式無法準備工作階段。請再試一次。',
+  errCode: '如果問題持續發生，請在傳送意見時附上此代碼：{code}',
   documentsUnprotected:
     '工作階段開始後開啟的 {n} 個文件不受該程式自身寫入保護的限制。若要保護它們，請停止工作階段並重新開始。',
 } satisfies Record<keyof typeof zh, string>

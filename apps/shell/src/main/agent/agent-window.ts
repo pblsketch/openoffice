@@ -19,6 +19,7 @@ import {
   AGENT_PROVIDERS,
   AGENT_WARNING_VERSION,
   agentProjectPrefsPatch,
+  agentStartFailureCode,
   normalizeAgentPrefs,
   withRecentFolder,
   type AgentAllowScope,
@@ -30,6 +31,7 @@ import {
   type AgentProjectPrefs,
   type AgentProjectSkillsView,
   type AgentProvider,
+  type AgentStartFailure,
   type AgentStartResponse,
   type AgentTemplateAsIs,
   type AgentTemplateBlank,
@@ -38,10 +40,12 @@ import {
 import { readAgentProjectPref, writeAgentProjectPref } from '../app-settings'
 import { AGENT_HOME_OPEN_CHANNEL } from '../../shared/agent-home-channel'
 import { agentText } from '../../renderer/src/i18n/strings-agent'
+import { appendCrashLog, CRASH_LOG_FILE } from '../crash-log'
 import {
   agentProtectedPaths,
   createAgentManager,
   openableProjectFile,
+  type AgentManager,
   type AgentManagerDeps,
   type AgentMcpSession,
 } from './agent-sessions'
@@ -127,7 +131,10 @@ function appSettingsPath(userData: string): string {
   return join(userData, 'app-settings.json')
 }
 
-function readProjectPrefsOf(d: AgentWindowDeps, folder: string): AgentProjectPrefs {
+function readProjectPrefsOf(
+  d: Pick<AgentWindowDeps, 'readProjectPrefs' | 'userData'>,
+  folder: string,
+): AgentProjectPrefs {
   return d.readProjectPrefs
     ? d.readProjectPrefs(folder)
     : readAgentProjectPref(appSettingsPath(d.userData), folder)
@@ -353,6 +360,59 @@ export function agentConnections(
   return out
 }
 
+export async function startAgentForWindow(
+  d: Pick<AgentWindowDeps, 'readPrefs' | 'writePrefs' | 'readProjectPrefs' | 'userData'>,
+  m: Pick<AgentManager, 'start'>,
+  owner: number,
+  request: unknown,
+): Promise<AgentStartResponse> {
+  const value = (request && typeof request === 'object' ? request : {}) as Record<string, unknown>
+  const provider = value.provider as AgentProvider
+  const mode = value.mode as AgentMode
+  const folder = typeof value.folder === 'string' ? value.folder : ''
+  const failed = (failure: AgentStartFailure): AgentStartResponse => ({ ok: false, failure })
+  if (!AGENT_PROVIDERS.includes(provider) || !AGENT_MODES.includes(mode)) {
+    return failed({ reason: 'invalid-request' })
+  }
+  if (AGENT_BLOCKED_PROVIDERS.includes(provider)) return failed({ reason: 'provider-blocked' })
+  const prefs = d.readPrefs()
+  // the warning is a precondition the main process checks, not only the window
+  if (prefs.warningAccepted < AGENT_WARNING_VERSION) return failed({ reason: 'not-accepted' })
+  // the folder's remembered Codex choices, read here rather than taken from the window
+  let codex: ReturnType<typeof agentCodexStartChoices>
+  try {
+    codex = agentCodexStartChoices(provider, readProjectPrefsOf(d, folder))
+  } catch {
+    return failed({ reason: 'bad-folder' })
+  }
+  const result = await m.start(owner, { provider, mode, projectRoot: folder, codex })
+  if (!result.ok) {
+    if (result.cause !== undefined) {
+      const { failure } = result
+      appendCrashLog(join(d.userData, CRASH_LOG_FILE), {
+        kind: 'agent-start',
+        program: provider,
+        reason: agentStartFailureCode(failure),
+        cause: result.cause,
+        ...(failure.reason === 'program-problem' && failure.problem.type === 'exited'
+          ? { exitCode: failure.problem.exitCode }
+          : {}),
+      })
+    }
+    return failed(result.failure)
+  }
+  d.writePrefs(withRecentFolder({ ...prefs, provider, mode }, folder))
+  return {
+    ok: true,
+    sessionId: result.sessionId,
+    skills: result.skills,
+    ...(result.mcpKeepInside ? { mcpKeepInside: result.mcpKeepInside } : {}),
+    ...(result.instructionsTruncated
+      ? { instructionsTruncated: result.instructionsTruncated }
+      : {}),
+  }
+}
+
 function ownerOf(event: IpcMainInvokeEvent): number | null {
   return win && !win.isDestroyed() && event.sender === win.webContents ? event.sender.id : null
 }
@@ -446,42 +506,10 @@ function registerIpc(): void {
     AGENT_CHANNELS.start,
     async (event, request: unknown): Promise<AgentStartResponse> => {
       const owner = ownerOf(event)
-      if (owner === null || !deps || !manager) return { ok: false, reason: 'start-failed' }
-      const value = (request && typeof request === 'object' ? request : {}) as Record<
-        string,
-        unknown
-      >
-      const provider = value.provider as AgentProvider
-      const mode = value.mode as AgentMode
-      const folder = typeof value.folder === 'string' ? value.folder : ''
-      if (!AGENT_PROVIDERS.includes(provider) || !AGENT_MODES.includes(mode)) {
-        return { ok: false, reason: 'start-failed' }
+      if (owner === null || !deps || !manager) {
+        return { ok: false, failure: { reason: 'invalid-request' } }
       }
-      if (AGENT_BLOCKED_PROVIDERS.includes(provider))
-        return { ok: false, reason: 'provider-blocked' }
-      const prefs = deps.readPrefs()
-      // the warning is a precondition the main process checks, not only the window
-      if (prefs.warningAccepted < AGENT_WARNING_VERSION)
-        return { ok: false, reason: 'not-accepted' }
-      // the folder's remembered Codex choices, read here rather than taken from the window
-      let codex: ReturnType<typeof agentCodexStartChoices>
-      try {
-        codex = agentCodexStartChoices(provider, readProjectPrefsOf(deps, folder))
-      } catch {
-        return { ok: false, reason: 'bad-folder' }
-      }
-      const result = await manager.start(owner, { provider, mode, projectRoot: folder, codex })
-      if (!result.ok) return { ok: false, reason: result.reason, kind: result.kind }
-      deps.writePrefs(withRecentFolder({ ...prefs, provider, mode }, folder))
-      return {
-        ok: true,
-        sessionId: result.sessionId,
-        skills: result.skills,
-        ...(result.mcpKeepInside ? { mcpKeepInside: result.mcpKeepInside } : {}),
-        ...(result.instructionsTruncated
-          ? { instructionsTruncated: result.instructionsTruncated }
-          : {}),
-      }
+      return startAgentForWindow(deps, manager, owner, request)
     },
   )
 

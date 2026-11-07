@@ -84,6 +84,17 @@ export const ko = {
     '프로그램이 에이전트 모드를 쓰기에는 오래되었습니다. 업데이트한 뒤 다시 시도하세요.',
   errNotInstalled: '프로그램이 설치되어 있지 않습니다.',
   errGeneric: '문제가 생겼습니다. 다시 시도하세요.',
+  errUnsupportedPath:
+    'Codex는 이름에 [ ] * ? 가 든 폴더나 파일을 다룰 수 없습니다. 프로젝트 폴더 이름을 바꾸거나 그런 이름의 문서를 닫은 뒤 다시 시작하세요.',
+  errProgramExited:
+    '세션을 여는 중에 프로그램이 꺼졌습니다. 프로그램을 업데이트하고 터미널에서 열리는지 확인한 뒤 다시 시도하세요.',
+  errProgramNoAnswer: '세션을 여는 중에 프로그램이 제때 답하지 않았습니다. 다시 시도하세요.',
+  errProgramRefused:
+    '프로그램이 세션 설정을 받아들이지 않았습니다. 프로그램을 업데이트한 뒤 다시 시도하세요.',
+  errNoModel:
+    '프로그램이 쓸 수 있는 모델을 알려 주지 않았습니다. 설정 → AI에서 모델을 고른 뒤 다시 시도하세요.',
+  errPrepareFailed: '앱이 세션을 준비하지 못했습니다. 다시 시도하세요.',
+  errCode: '계속되면 의견을 보낼 때 이 코드를 함께 적어 주세요: {code}',
   documentsUnprotected:
     '세션을 시작한 뒤 연 문서 {n}개는 프로그램의 직접 쓰기 보호를 받지 않습니다. 보호하려면 세션을 멈추고 다시 시작하세요.',
 } satisfies Record<keyof typeof zh, string>

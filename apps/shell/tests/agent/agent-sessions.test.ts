@@ -445,7 +445,7 @@ describe('starting a session', () => {
         projectRoot: signedOut.project,
         mode: 'ask-commands',
       }),
-    ).toEqual({ ok: false, reason: 'not-connected' })
+    ).toEqual({ ok: false, failure: { reason: 'not-connected' } })
     const half = manager({
       statuses: {
         codex: {
@@ -458,10 +458,7 @@ describe('starting a session', () => {
     })
     expect(
       await half.m.start(1, { provider: 'codex', projectRoot: half.project, mode: 'ask-commands' }),
-    ).toEqual({
-      ok: false,
-      reason: 'not-connected',
-    })
+    ).toEqual({ ok: false, failure: { reason: 'not-connected' } })
     expect(half.codex).not.toHaveBeenCalled()
   })
 
@@ -469,10 +466,7 @@ describe('starting a session', () => {
     const { m, home, claude } = manager()
     expect(
       await m.start(1, { provider: 'claude-code', projectRoot: home, mode: 'ask-commands' }),
-    ).toEqual({
-      ok: false,
-      reason: 'bad-folder',
-    })
+    ).toEqual({ ok: false, failure: { reason: 'bad-folder' } })
     expect(claude).not.toHaveBeenCalled()
   })
 
@@ -484,7 +478,10 @@ describe('starting a session', () => {
       projectRoot: project,
       mode: 'ask-commands',
     })
-    expect(result).toMatchObject({ ok: false, reason: 'start-failed', kind: 'unsafe-tools' })
+    expect(result).toMatchObject({
+      ok: false,
+      failure: { reason: 'run-error', kind: 'unsafe-tools' },
+    })
     expect(mcpStop).toHaveBeenCalled()
   })
 })

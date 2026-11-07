@@ -89,6 +89,19 @@ export const de = {
     'Das Programm ist zu alt für den Agentenmodus. Aktualisieren Sie es und versuchen Sie es erneut.',
   errNotInstalled: 'Das Programm ist nicht installiert.',
   errGeneric: 'Etwas ist schiefgelaufen. Versuchen Sie es erneut.',
+  errUnsupportedPath:
+    'Codex kann keinen Ordner und keine Datei verwenden, deren Name [ ] * oder ? enthält. Benennen Sie den Projektordner um oder schließen Sie Dokumente mit einem solchen Namen und starten Sie dann erneut.',
+  errProgramExited:
+    'Das Programm wurde beim Starten der Sitzung beendet. Aktualisieren Sie es, prüfen Sie, ob es sich in einem Terminal öffnen lässt, und versuchen Sie es erneut.',
+  errProgramNoAnswer:
+    'Das Programm hat beim Starten der Sitzung nicht rechtzeitig geantwortet. Versuchen Sie es erneut.',
+  errProgramRefused:
+    'Das Programm hat die Sitzungseinstellungen nicht angenommen. Aktualisieren Sie es und versuchen Sie es erneut.',
+  errNoModel:
+    'Das Programm hat kein Modell angeboten. Wählen Sie unter Einstellungen → KI ein Modell und versuchen Sie es erneut.',
+  errPrepareFailed: 'Die App konnte die Sitzung nicht vorbereiten. Versuchen Sie es erneut.',
+  errCode:
+    'Wenn das wiederholt passiert, geben Sie diesen Code an, wenn Sie Feedback senden: {code}',
   documentsUnprotected:
     'Nach dem Sitzungsstart geöffnete Dokumente ({n}) stehen nicht unter dem Schreibschutz des Programms. Beenden und starten Sie die Sitzung erneut, um sie zu schützen.',
 } satisfies Record<keyof typeof zh, string>

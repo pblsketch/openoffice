@@ -1,4 +1,5 @@
 import { appendFileSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import type { AgentProvider } from '../shared/agent-api'
 
 /**
  * A small crash record kept on this PC only. When a renderer, the GPU process
@@ -7,6 +8,8 @@ import { appendFileSync, readFileSync, statSync, writeFileSync } from 'node:fs'
  * what ended, Chromium's reason word, the exit code, and which editor it was,
  * plus a few memory figures in whole megabytes. A `low-memory` line records the
  * same figures when the PC runs short of memory while an AI request is running.
+ * An `agent-start` line records an agent session that did not start: the
+ * program, the failure's code, and the thrown error's class and code.
  * Nothing else is accepted — no document text, path, file name, URL or error
  * message (those can carry a path) — and nothing is ever sent anywhere.
  */
@@ -16,7 +19,7 @@ export const CRASH_LOG_FILE = 'crash-log.jsonl'
 export const CRASH_LOG_MAX_BYTES = 64 * 1024
 
 export type CrashKind =
-  'renderer' | 'child-process' | 'main-exception' | 'main-rejection' | 'low-memory'
+  'renderer' | 'child-process' | 'main-exception' | 'main-rejection' | 'low-memory' | 'agent-start'
 
 /** memory at the time of the entry; whole numbers only */
 export interface CrashMemory {
@@ -41,6 +44,9 @@ export interface CrashEntry extends CrashMemory {
   editor?: string
   /** child-process type ('GPU', 'Utility', …) */
   process?: string
+  program?: AgentProvider
+  /** `errorReason` of what was thrown */
+  cause?: string
 }
 
 // short identifier-like words only: anything else (a message, a path) is dropped
@@ -64,6 +70,10 @@ export function crashLine(entry: CrashEntry, now: Date = new Date()): string {
   if (editor) line.editor = editor
   const proc = safeWord(entry.process)
   if (proc) line.process = proc
+  const program = safeWord(entry.program)
+  if (program) line.program = program
+  const cause = safeWord(entry.cause)
+  if (cause) line.cause = cause
   for (const key of MEMORY_FIELDS) {
     const value = entry[key]
     if (typeof value === 'number' && Number.isInteger(value) && value >= 0) line[key] = value

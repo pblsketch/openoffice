@@ -37,6 +37,37 @@ describe('crashLine', () => {
     ).toMatchObject({ kind: 'child-process', process: 'GPU' })
   })
 
+  it('records an agent start with its program and the error type, never a message', () => {
+    expect(
+      JSON.parse(
+        crashLine(
+          {
+            kind: 'agent-start',
+            program: 'codex',
+            reason: 'refused thread.start -32600',
+            cause: 'AgentProgramError',
+          },
+          AT,
+        ),
+      ),
+    ).toEqual({
+      at: '2026-10-15T01:02:03.000Z',
+      kind: 'agent-start',
+      program: 'codex',
+      reason: 'refused thread.start -32600',
+      cause: 'AgentProgramError',
+    })
+    const line = crashLine(
+      {
+        kind: 'agent-start',
+        program: '/Users/someone/.local/bin/codex',
+        cause: 'Codex app-server: filesystem glob path `/Users/someone/[final]` only supports deny',
+      },
+      AT,
+    )
+    expect(JSON.parse(line)).toEqual({ at: '2026-10-15T01:02:03.000Z', kind: 'agent-start' })
+  })
+
   it('drops any value that could carry a path, a file name or a message', () => {
     const line = crashLine(
       {
