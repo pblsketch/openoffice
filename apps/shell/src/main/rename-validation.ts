@@ -10,6 +10,11 @@ export const RENAME_ILLEGAL_NAME_CHARS = /[\\/:*?"<>|\u0000-\u001f]/
 /** Windows device names reserved with or without an extension (CON.pdf is still CON). */
 const RENAME_RESERVED_BASE = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i
 
+/** True when Windows would treat this file name as a reserved device (CON.docx → CON). */
+export function isWindowsReservedDeviceName(name: string): boolean {
+  return RENAME_RESERVED_BASE.test(name)
+}
+
 /** True when the raw requested name is usable: surrounding whitespace is
     rejected instead of silently trimmed (the Home rename gate must reject
     "report " with a localized error rather than renaming to "report"). */
@@ -25,7 +30,7 @@ export function isValidRenameName(name: string): boolean {
   // Windows strips trailing dots/spaces: renaming to "file." lands elsewhere,
   // so reject with the localized gate instead of a surprising rename.
   if (name.endsWith('.') || name.endsWith(' ')) return false
-  if (RENAME_RESERVED_BASE.test(name)) return false
+  if (isWindowsReservedDeviceName(name)) return false
   return true
 }
 
