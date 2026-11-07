@@ -523,4 +523,64 @@ test.describe('HWP Ctrl+PageUp/PageDown and the status bar character count', () 
       await closeAndSaveVideo(launched, 'hwp-char-count-long')
     }
   })
+
+  test('over 30 pages, the AI does not take back typing that came after its change', async () => {
+    // the same page-local typing (no 'document-changed'): the AI's undo must see it as the
+    // user's edit and leave the run alone, or it would undo the user's typing with it. The AI's
+    // change and its undo are the plugin calls the AI panel makes; no AI request is sent
+    const line = 'The quick brown fox jumps over the lazy dog 한글 문장입니다. '
+    const text = line.repeat(Math.ceil(200 / line.length)).slice(0, 200)
+    const paragraphs = [...Array.from({ length: 1999 }, () => text), 'last line']
+    const file = await documentFile('long-undo.hwp', paragraphs)
+    const launched = await launchShell({
+      onboardingSeen: true,
+      openFile: file,
+      videoDir: 'hwp-ai-undo-long',
+      recordVideo: false,
+    })
+    const call = (frame: Frame, method: string, args: unknown[]) =>
+      frame.evaluate(
+        async ([name, given]) => {
+          const studio = (window as unknown as { rhwpStudio: StudioLike }).rhwpStudio
+          await studio.plugins.load('ieum-agent')
+          return studio.plugins.invoke('ieum-agent', name as string, given as unknown[])
+        },
+        [method, args] as const,
+      )
+    try {
+      const hwp = await hwpPage(launched.app)
+      const frame = await studioFrame(hwp)
+      await installCaretProbe(frame)
+      expect(
+        Number(
+          (await frame.evaluate(() => document.getElementById('sb-page')?.textContent ?? '')).match(
+            /\/\s*(\d+)/,
+          )?.[1],
+        ),
+      ).toBeGreaterThan(30)
+      const before = await edits(frame)
+      // the AI's change: one undo step of its own
+      expect(await call(frame, 'replaceText', ['last line', 'LAST LINE'])).toMatchObject({
+        ok: true,
+      })
+      expect(await edits(frame)).toBe(before)
+      // then the user types at the end of that paragraph
+      const last = paragraphs.length - 1
+      await caretTo(frame, last, 'LAST LINE'.length)
+      await focusInput(frame)
+      await hwp.keyboard.type('xyz', { delay: 50 })
+      await expect.poll(async () => (await caret(frame)).position.charOffset).toBe(12)
+      await expect.poll(() => edits(frame)).not.toBe(before)
+      // the AI's undo is refused and the user's typing stays
+      expect(await call(frame, 'undo', [1, before])).toEqual({
+        ok: false,
+        reason: 'changed',
+        undone: 0,
+      })
+      const read = String(await call(frame, 'readText', []))
+      expect(read).toContain('LAST LINExyz')
+    } finally {
+      await closeAndSaveVideo(launched, 'hwp-ai-undo-long')
+    }
+  })
 })
