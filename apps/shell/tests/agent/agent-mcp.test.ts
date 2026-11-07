@@ -118,6 +118,20 @@ describe('the tool set', () => {
       )
     }
   })
+
+  it('reads in a project folder whose name starts with ".."', async () => {
+    for (const name of ['read_hwp', 'read_pdf']) {
+      const tool = tools.find((t) => t.name === name)!
+      // the file is missing, so the reader fails; the project folder check must not be why
+      const failure = await Promise.resolve()
+        .then(() => tool.handler({ path: 'C:\\Users\\me\\Project\\..x\\a.hwp' }))
+        .then(
+          () => '',
+          (error: unknown) => String(error),
+        )
+      expect(failure, name).not.toMatch(/project folder/)
+    }
+  })
 })
 
 describe('diagrams in an agent session', () => {

@@ -43,7 +43,11 @@ export function comparablePath(
   return platform === 'win32' ? resolved.toLowerCase() : resolved
 }
 
-/** `child` is `root` itself or somewhere below it */
+/**
+ * `child` is `root` itself or somewhere below it. Only a whole `..` step leads
+ * out: a name that merely starts with dots (`..x`, `...`) is below. On Windows
+ * another drive or share comes back from `relative` as an absolute path.
+ */
 export function isInsidePath(
   child: string,
   root: string,
@@ -51,7 +55,12 @@ export function isInsidePath(
 ): boolean {
   const api = pathApi(platform)
   const rel = api.relative(root, child)
-  return rel === '' || (!rel.startsWith('..') && !api.isAbsolute(rel))
+  if (rel === '') return true
+  const up =
+    rel === '..' ||
+    rel.startsWith(`..${api.sep}`) ||
+    (platform === 'win32' && rel.startsWith('../'))
+  return !up && !api.isAbsolute(rel)
 }
 
 /**
