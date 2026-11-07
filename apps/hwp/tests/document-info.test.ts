@@ -15,6 +15,7 @@ import init, { HwpDocument } from '@rhwp/core'
 import {
   documentStats,
   formatCount,
+  engineSlice,
   openDocumentInfo,
   textCounts,
 } from '../studio-plugin/document-info.mjs'
@@ -186,6 +187,14 @@ describe('문서 통계의 수', () => {
     expect(reads).not.toContain('getDocumentInfo')
     expect(reads).not.toContain('getControlImageMime')
     expect(textCounts('가 나\t다\n')).toEqual({ chars: 5, charsNoSpace: 3 })
+  })
+
+  it("cuts a paragraph by the engine's characters, an emoji or 𠀀 being one", () => {
+    expect(engineSlice('웃음😀😀😀 끝𠀀말', 2, 6)).toBe('😀😀😀 ')
+    expect(engineSlice('웃음😀😀😀 끝𠀀말', 6, 9)).toBe('끝𠀀말')
+    // a text without such characters is cut as a string is
+    expect(engineSlice('신청서 끝.', 1, 3)).toBe('청서')
+    expect(engineSlice('신청서', 1, Infinity)).toBe('청서')
   })
 
   it('shows the numbers the way the dialog does', () => {

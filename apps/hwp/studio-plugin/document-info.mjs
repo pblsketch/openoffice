@@ -94,6 +94,21 @@ const emptyStats = () => ({
   sheets: 0,
 })
 
+/** A character outside the basic plane, which a JavaScript string holds as two units. */
+const SURROGATE = /[\uD800-\uDFFF]/
+
+/**
+ * The characters `start` to `end` of a paragraph's text, in the engine's offsets. The engine
+ * counts characters (code points), so an emoji or a Han character outside the basic plane (𠀀)
+ * is one there and two units in a JavaScript string; a text without such characters is cut as
+ * it is. The status bar's count and the AI panel's selection both cut their runs with this.
+ */
+export function engineSlice(text, start, end) {
+  const whole = String(text ?? '')
+  if (!SURROGATE.test(whole)) return whole.slice(start, end)
+  return [...whole].slice(start, end).join('')
+}
+
 /**
  * Hangul's 글자(공백 포함) and 글자(공백 제외) of one piece of document text: every character
  * but the line breaks, and the same without blanks and tabs. The status bar's count

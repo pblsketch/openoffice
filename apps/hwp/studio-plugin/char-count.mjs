@@ -13,7 +13,7 @@
  * the page is idle. How long the pause is follows how long the last count took, so a long
  * document is counted less often but still whole, and nothing is cut short.
  */
-import { textCounts } from './document-info.mjs'
+import { engineSlice, textCounts } from './document-info.mjs'
 
 /** The pause after the last edit before the document is counted again. */
 export const TOTAL_PAUSE_MS = 700
@@ -43,7 +43,7 @@ export function countCollector() {
       const start = Math.min(Math.max(from, 0), length)
       const end = Math.min(to, length)
       if (end <= start) return
-      const counts = textCounts([...box.text(k, length)].slice(start, end).join(''))
+      const counts = textCounts(engineSlice(box.text(k, length), start, end))
       chars += counts.chars
       charsNoSpace += counts.charsNoSpace
       runs += 1

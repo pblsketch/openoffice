@@ -20,7 +20,7 @@ import {
   checkCharCountLabels,
   countCollector,
 } from './char-count.mjs'
-import { documentStats } from './document-info.mjs'
+import { documentStats, engineSlice } from './document-info.mjs'
 import { installDialogTheme } from './dialog-theme.mjs'
 import { missingFonts, setMissingFontLabels, whenPcFontsSettled } from './pc-fonts.mjs'
 
@@ -755,7 +755,8 @@ function runCollector() {
       segments.push({
         ...box.place(k, end - start),
         offset: start,
-        text: box.text(k, length).slice(start, end),
+        // the engine's offsets count characters, not a JavaScript string's units
+        text: engineSlice(box.text(k, length), start, end),
       })
     },
     tooLong: () => segments.length > MAX_SELECTED_RUNS || chars > MAX_SELECTED_CHARS,
@@ -1141,7 +1142,7 @@ function segmentsStand(doc, segments) {
     try {
       const { box, k } = segmentBox(doc, segment)
       const whole = box.text(k, box.length(k))
-      return whole.slice(segment.offset, segment.offset + segment.length) === segment.text
+      return engineSlice(whole, segment.offset, segment.offset + segment.length) === segment.text
     } catch {
       return false
     }
