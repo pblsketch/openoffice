@@ -280,6 +280,7 @@ export const pl = {
   panePresenterNoNotes: '(Brak notatek)',
   panePresenterNotesBigger: 'Powiększ tekst notatek',
   panePresenterNotesSmaller: 'Pomniejsz tekst notatek',
+  panePresenterResizeNotes: 'Przeciągnij, aby zmienić szerokość kolumny notatek',
   panePresenterFilmSlideN: 'Slajd {n}',
 
   paneShowEndedClick: 'Koniec pokazu slajdów. Kliknij, aby wyjść.',

@@ -278,6 +278,7 @@ export const ar = {
   panePresenterNoNotes: '(بلا ملاحظات)',
   panePresenterNotesBigger: 'تكبير نص الملاحظات',
   panePresenterNotesSmaller: 'تصغير نص الملاحظات',
+  panePresenterResizeNotes: 'اسحب لتغيير عرض عمود الملاحظات',
   panePresenterFilmSlideN: 'الشريحة {n}',
 
   paneShowEndedClick: 'انتهى عرض الشرائح. انقر للخروج.',

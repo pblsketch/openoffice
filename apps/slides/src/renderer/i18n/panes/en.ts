@@ -280,6 +280,7 @@ export const en = {
   panePresenterNoNotes: '(No notes)',
   panePresenterNotesBigger: 'Make notes text larger',
   panePresenterNotesSmaller: 'Make notes text smaller',
+  panePresenterResizeNotes: 'Drag to change the width of the notes column',
   panePresenterFilmSlideN: 'Slide {n}',
 
   paneShowEndedClick: 'End of slide show. Click to exit.',

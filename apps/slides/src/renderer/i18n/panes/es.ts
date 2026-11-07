@@ -281,6 +281,7 @@ export const es = {
   panePresenterNoNotes: '(Sin notas)',
   panePresenterNotesBigger: 'Aumentar el texto de las notas',
   panePresenterNotesSmaller: 'Reducir el texto de las notas',
+  panePresenterResizeNotes: 'Arrastra para cambiar el ancho de la columna de notas',
   panePresenterFilmSlideN: 'Diapositiva {n}',
 
   paneShowEndedClick: 'Fin de la presentación. Haga clic para salir.',

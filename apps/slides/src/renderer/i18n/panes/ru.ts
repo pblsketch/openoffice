@@ -279,6 +279,7 @@ export const ru = {
   panePresenterNoNotes: '(Нет заметок)',
   panePresenterNotesBigger: 'Увеличить текст заметок',
   panePresenterNotesSmaller: 'Уменьшить текст заметок',
+  panePresenterResizeNotes: 'Перетащите, чтобы изменить ширину столбца заметок',
   panePresenterFilmSlideN: 'Слайд {n}',
 
   paneShowEndedClick: 'Показ завершен. Щелкните, чтобы выйти.',

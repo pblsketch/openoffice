@@ -279,6 +279,7 @@ export const ko = {
   panePresenterNoNotes: '(노트 없음)',
   panePresenterNotesBigger: '노트 텍스트 크게',
   panePresenterNotesSmaller: '노트 텍스트 작게',
+  panePresenterResizeNotes: '끌어서 노트 칸 너비 바꾸기',
   panePresenterFilmSlideN: '슬라이드 {n}',
 
   paneShowEndedClick: '슬라이드 쇼가 끝났습니다. 클릭하면 종료됩니다.',

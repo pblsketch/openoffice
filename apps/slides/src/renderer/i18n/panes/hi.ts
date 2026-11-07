@@ -280,6 +280,7 @@ export const hi = {
   panePresenterNoNotes: '(कोई नोट्स नहीं)',
   panePresenterNotesBigger: 'नोट्स का टेक्स्ट बड़ा करें',
   panePresenterNotesSmaller: 'नोट्स का टेक्स्ट छोटा करें',
+  panePresenterResizeNotes: 'नोट्स कॉलम की चौड़ाई बदलने के लिए खींचें',
   panePresenterFilmSlideN: 'स्लाइड {n}',
 
   paneShowEndedClick: 'स्लाइड शो समाप्त। बाहर निकलने के लिए क्लिक करें।',

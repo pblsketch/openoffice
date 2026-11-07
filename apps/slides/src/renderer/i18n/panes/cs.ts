@@ -279,6 +279,7 @@ export const cs = {
   panePresenterNoNotes: '(Bez poznámek)',
   panePresenterNotesBigger: 'Zvětšit text poznámek',
   panePresenterNotesSmaller: 'Zmenšit text poznámek',
+  panePresenterResizeNotes: 'Přetažením změníte šířku sloupce poznámek',
   panePresenterFilmSlideN: 'Snímek {n}',
 
   paneShowEndedClick: 'Konec prezentace. Kliknutím ukončíte.',
