@@ -1,3 +1,5 @@
+import type { PdfZoom } from './view-state'
+
 // cmaps/standard fonts/wasm are statically copied by the build into pdfjs/ of the renderer output (same path on the dev server)
 export const ASSET_BASE = new URL('pdfjs/', document.baseURI).href
 
@@ -6,6 +8,7 @@ export const ZOOM_STEPS = [
 ]
 export const MIN_SCALE = ZOOM_STEPS[0]
 export const MAX_SCALE = ZOOM_STEPS[ZOOM_STEPS.length - 1]
+export const clampScale = (scale: number): number => Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale))
 export const PAGE_GAP = 16
 export const SCROLL_PAD = 24
 // ── Sidebar (thumbnails / outline) width: drag the divider to resize; persisted ──
@@ -142,32 +145,36 @@ export const savePassageMarks = (on: boolean, storage: FlagStorage = localStorag
   }
 }
 
-// ── View for a PDF that has no saved reading position: fit width (the old behaviour) or fit page ──
 export const DEFAULT_FIT_KEY = 'genoffice-pdf-default-fit'
 
-export type DefaultFitMode = Exclude<FitMode, null>
+export const DEFAULT_VIEWS = ['width', 'page', 'actual'] as const
 
-export const loadDefaultFit = (storage: FlagStorage = localStorage): DefaultFitMode => {
+export type DefaultView = (typeof DEFAULT_VIEWS)[number]
+
+export const parseDefaultView = (raw: string | null): DefaultView =>
+  DEFAULT_VIEWS.find((view) => view === raw) ?? 'width'
+
+export const loadDefaultView = (storage: FlagStorage = localStorage): DefaultView => {
   try {
-    return storage.getItem(DEFAULT_FIT_KEY) === 'page' ? 'page' : 'width'
+    return parseDefaultView(storage.getItem(DEFAULT_FIT_KEY))
   } catch {
     return 'width'
   }
 }
 
-export const saveDefaultFit = (mode: DefaultFitMode, storage: FlagStorage = localStorage): void => {
+export const saveDefaultView = (view: DefaultView, storage: FlagStorage = localStorage): void => {
   try {
-    storage.setItem(DEFAULT_FIT_KEY, mode)
+    storage.setItem(DEFAULT_FIT_KEY, view)
   } catch {
     // storage unavailable: the choice still holds for this session
   }
 }
 
-/** A file's own saved view wins; a file with no saved position uses the default. */
-export const openingFitMode = (
-  saved: { fitMode: FitMode } | null,
-  fallback: DefaultFitMode,
-): FitMode => (saved ? saved.fitMode : fallback)
+export const openingView = (chosen: PdfZoom | null, fallback: DefaultView): PdfZoom => {
+  if (chosen)
+    return chosen.fitMode === null ? { fitMode: null, scale: clampScale(chosen.scale) } : chosen
+  return fallback === 'actual' ? { fitMode: null, scale: 1 } : { fitMode: fallback }
+}
 
 // ── Sidebar open or closed: a closed sidebar stays closed in the next PDF; open starts on the thumbnails ──
 export const SIDEBAR_OPEN_KEY = 'genoffice-pdf-sidebar-open'
