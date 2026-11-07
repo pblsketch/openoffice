@@ -573,6 +573,10 @@ export const en = {
     "This workbook's stylesheet is missing basic structure, so style changes cannot be saved.",
   appSaveErrPackageGuard:
     "Saving would change the workbook's package structure — aborted to protect the file.",
+  appSaveErrSheetNotFound:
+    'A sheet this save refers to was not found in the workbook — the save was stopped and the file was left as it was.',
+  appSaveErrSheetNameReused:
+    'A new sheet uses the old name of a sheet you renamed, so this cannot be saved. Give the new sheet another name for now, save, then rename it. The file was left as it was.',
   appSaveErrChartUnsupported:
     'This chart type does not support that edit; save aborted — undo the chart change.',
   appSaveErrMoveOverlap:

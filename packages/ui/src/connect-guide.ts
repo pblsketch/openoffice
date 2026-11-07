@@ -6,6 +6,7 @@
  */
 import {
   AI_SUBSCRIPTION_PROVIDERS,
+  subscriptionLoginFailureOf,
   subscriptionStatusErrorKind,
   type AiSubscriptionProviderId,
   type AiSubscriptionStatus,
@@ -200,7 +201,8 @@ const VERSION_SHAPE = /^[\w.+-]{1,40}$/
 
 /**
  * Text a user can paste to whoever helps them: per provider its state, the
- * kind of error and the program version, then the app and the system. Nothing
+ * kind of error, the program version and why the app's own ChatGPT sign-in
+ * failed (fixed names), then the app and the system. Nothing
  * else of a status goes in: not the account, not a path, not anything the
  * program printed (an error's own text can name both).
  */
@@ -217,6 +219,16 @@ export function aiConnectInfoText(
       parts.push(`version=${status.version}`)
     if (status.signingIn) parts.push(`signing-in=${status.signingIn}`)
     if (status.state === 'metered') parts.push(`accepted=${status.meteredAccepted}`)
+    // why the app's own sign-in ended without a connection, read again like the version:
+    // fixed names, a status number and an identifier-shaped code only
+    const failure =
+      status.loginUnfinished === true ? subscriptionLoginFailureOf(status.loginFailure) : undefined
+    if (failure) {
+      parts.push(`login-failed=${failure.reason}`)
+      if (failure.step) parts.push(`step=${failure.step}`)
+      if (failure.httpStatus !== undefined) parts.push(`http=${failure.httpStatus}`)
+      if (failure.oauthError) parts.push(`oauth-error=${failure.oauthError}`)
+    }
     return `${provider}: ${parts.join(' ')}`
   })
   if (context.platform) lines.push(`platform: ${oneLine(context.platform)}`)

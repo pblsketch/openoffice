@@ -252,6 +252,26 @@ export function aiSubscriptionCardView(
 }
 
 /**
+ * What the ChatGPT card says after a sign-in that ended without a connection:
+ * why, when the main side knows; the plain "did not finish" otherwise (it ran
+ * out of time, or an older main side gave no reason).
+ */
+function chatGptLoginFailedNoteKey(status: AiSubscriptionStatus): AiSubscriptionStringKey {
+  // the browser came back with an error: most often the user did not allow the app
+  if (status.loginFailure?.step === 'callback-error') return 'chatgptLoginNotAllowedNote'
+  switch (status.loginFailure?.reason) {
+    case 'no-plan':
+      return 'chatgptLoginNoPlanNote'
+    case 'denied':
+      return 'chatgptLoginDeniedNote'
+    case 'network':
+      return 'chatgptLoginNetworkNote'
+    default:
+      return 'chatgptLoginUnfinishedNote'
+  }
+}
+
+/**
  * The ChatGPT card (decision 0081): the app signs in itself, in the browser,
  * so the card has one way in ("continue with ChatGPT") and nothing about a
  * program. Connected, the Settings card says the use comes out of the ChatGPT
@@ -317,7 +337,7 @@ function chatGptCardView(
         statusKey: 'cardSignedOut',
         noteKeys:
           status.loginUnfinished === true
-            ? ['chatgptLoginUnfinishedNote', 'loginNote']
+            ? [chatGptLoginFailedNoteKey(status), 'loginNote']
             : ['chatgptLoginNote', 'loginNote'],
         actions: ['login'],
         links: [],

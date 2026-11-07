@@ -1,8 +1,9 @@
 /*
  * The AI panel of the mind map: the same panel language as the other editors
- * (the rules below are theirs, from the HTML editor), docked at the right of
- * the map. Chrome only: every colour is a token or one of the --mmai-
- * variables defined right here for the light, dark and system-dark themes.
+ * (the rules below are theirs, from the HTML editor), docked beside the map
+ * on the side the user chose. Chrome only: every colour is a token or one of
+ * the --mmai- variables defined right here for the light, dark and system-dark
+ * themes.
  * The map's own colours (--mm-) are document content and are not used here.
  */
 
@@ -1191,27 +1192,28 @@
   background: var(--mmai-error-bg);
 }
 
-/* ---- the mind map's own placement: the panel sits at the right end, beside the map ---- */
+/*
+ * ---- the mind map's own placement: a card beside the map, on the side chosen in
+ * Settings → General → "AI sidebar position" (@genoffice/ui/ai-panel-prefs.css) ----
+ *
+ * The dock is the stage's last child so the theme, format and note panels keep
+ * their place at the end side. On the left (the default, and before the shell's
+ * preferences arrive) it goes before the map; on the right the shared rules put
+ * it last and move the resizer and the collapse arrow to match.
+ */
 
 .mm-stage > .ai-dock {
-  --ai-panel-border-left: 1px;
-  --ai-panel-border-right: 0px;
   border-radius: 10px;
+}
+
+html:not([data-ai-panel-side='right']) .mm-stage > .ai-dock {
+  order: -1;
 }
 
 .mm-stage > .ai-dock .copilot,
 .mm-stage > .ai-dock .ai-rail {
   border: 1px solid var(--border);
   border-radius: 10px;
-}
-
-.mm-stage .ai-panel-resizer {
-  left: 0;
-  right: auto;
-}
-
-.mm-stage .ai-panel-collapse svg {
-  transform: scaleX(-1);
 }
 
 .ai-versions-note {

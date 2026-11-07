@@ -256,6 +256,18 @@ describe('the launch and the thread', () => {
     expect(dirs).toEqual(['C:\\Python314', 'C:\\Program Files\\nodejs'])
   })
 
+  it('keeps a PATH folder whose name starts with ".." out when it is in a protected folder or the project', () => {
+    const dirs = codexAgentReadableDirs(
+      ['C:\\Users\\me\\.codex\\..bin', 'C:\\Users\\me\\Project\\..tools', 'C:\\Python314'].join(
+        ';',
+      ),
+      options(),
+      'win32',
+      () => true,
+    )
+    expect(dirs).toEqual(['C:\\Python314'])
+  })
+
   it('switches user MCP servers off and adds the app one with its token', () => {
     const params = codexAgentThreadParams(
       options({ appMcp: { url: 'http://127.0.0.1:3093/mcp', token: 'tok' } }),

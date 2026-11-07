@@ -158,6 +158,14 @@ export const es = {
     'Se abre una página de inicio de sesión de ChatGPT en el navegador. Inicia sesión y permite que esta aplicación use tu plan de ChatGPT; la conexión se completa sola.',
   chatgptLoginUnfinishedNote:
     'El inicio de sesión no terminó. Vuelve a pulsar para empezar de nuevo. Para conectar, tienes que permitir el uso de tu plan de ChatGPT.',
+  chatgptLoginNoPlanNote:
+    'Iniciaste sesión en ChatGPT, pero esta aplicación no recibió permiso para usar tu plan. Vuelve a pulsar y permite el uso del plan en la página de autorización. Si ya lo permitiste, puede que OpenAI no ofrezca este uso para tu cuenta (por ejemplo, una gestionada por una empresa o un centro educativo) o para tu plan. En ese caso puedes conectarte con el programa Codex.',
+  chatgptLoginDeniedNote:
+    'Iniciaste sesión en el navegador, pero OpenAI no aceptó esta conexión o no se pudo comprobar su respuesta. Comprueba que la fecha y la hora de este PC sean correctas y vuelve a pulsar para empezar de nuevo.',
+  chatgptLoginNetworkNote:
+    'No se pudo terminar el inicio de sesión: no se pudo contactar con OpenAI o no se abrió ningún navegador. Revisa la conexión a internet (incluida la red de la empresa, una VPN o un proxy) y vuelve a pulsar.',
+  chatgptLoginNotAllowedNote:
+    'No permitiste que esta aplicación use tu plan de ChatGPT, o el navegador volvió del inicio de sesión con un error. Vuelve a pulsar, inicia sesión y permítelo en la página de autorización.',
   chatgptSigningInNote:
     'Inicia sesión con tu cuenta de ChatGPT en el navegador que se abrió y permite que esta aplicación use tu plan. La conexión se completa sola.',
   chatgptPlanNote:

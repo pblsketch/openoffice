@@ -390,6 +390,7 @@ import { planEditOps, reduceBucket } from './edit-ops'
 import type { Bucket, Op, OpContext, PlanResult } from './edit-ops'
 import { rectsNear } from './edit-state'
 import { usePanDrag } from './pan-drag'
+import { useDragEdgeScroll } from './thumb-drag-scroll'
 import type {
   StampConfig,
   SavedMarkupAnnot,
@@ -1397,6 +1398,7 @@ export default function App() {
     if (otherToolArmed) setHandTool(false)
   }, [otherToolArmed])
   const thumbsRef = useRef<HTMLDivElement>(null)
+  const thumbDragScroll = useDragEdgeScroll(thumbsRef, '.pdf-thumbs-header')
   const searchInputRef = useRef<HTMLInputElement>(null)
   /** Local approximations of document fonts by pdf.js font id (see doc-font.ts);
       grows as edits/blocks touch pages, reset with the doc */
@@ -10965,6 +10967,17 @@ export default function App() {
                 ref={thumbsRef}
                 className="pdf-thumbs"
                 style={{ width: sidebarW }}
+                // a page drag near the top or bottom edge scrolls the list (issue #312);
+                // entering a new element reports the pointer by dragenter alone
+                onDragEnter={(e) => {
+                  if (dragFrom !== null) thumbDragScroll.track(e.clientY)
+                }}
+                onDragOver={(e) => {
+                  if (dragFrom !== null) thumbDragScroll.track(e.clientY)
+                }}
+                onDragLeave={(e) => thumbDragScroll.leave(e.clientX, e.clientY)}
+                onDrop={thumbDragScroll.stop}
+                onDragEnd={thumbDragScroll.stop}
                 onContextMenu={(e) => {
                   // .pdf-thumb's own padding-bottom is the inter-page gap; its handler lets that bubble up
                   const target = e.target as HTMLElement

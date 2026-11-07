@@ -282,6 +282,7 @@ export const ms = {
   panePresenterNoNotes: '(Tiada nota)',
   panePresenterNotesBigger: 'Besarkan teks nota',
   panePresenterNotesSmaller: 'Kecilkan teks nota',
+  panePresenterResizeNotes: 'Seret untuk menukar lebar lajur nota',
   panePresenterFilmSlideN: 'Slaid {n}',
 
   paneShowEndedClick: 'Persembahan slaid tamat. Klik untuk keluar.',

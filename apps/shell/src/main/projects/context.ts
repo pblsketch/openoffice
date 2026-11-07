@@ -37,7 +37,7 @@ export interface TrustedContext {
 }
 
 /** `text` cut to `limit` characters without splitting a surrogate pair */
-function cutAt(text: string, limit: number): string {
+export function cutAt(text: string, limit: number): string {
   if (text.length <= limit) return text
   let end = limit
   const code = text.charCodeAt(end - 1)

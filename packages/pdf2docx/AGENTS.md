@@ -18,6 +18,7 @@ PDF를 편집 가능한 문서로 되살린다. PDFium으로 글자·이미지·
 - OCR은 덧붙이는 경로다. 쓸 만한 텍스트 레이어가 있는 페이지는 들어가지 않는다. 엔진 실패, 글자 8자 미만, 평균 신뢰도 0.55 미만, 종이 색 비율 0.45 미만 등 어느 관문에서든 걸리면 전체 페이지 이미지로 돌아간다.
 - `OcrEngine`은 동기 함수여야 한다. 파이프라인이 동기 PDFium 문서 범위 안에서 돈다. 보조 프로그램은 `spawnSync`로 부르고 제한은 30초, 출력 64 MiB다.
 - `src/index.ts`에서 `ocr-vision.ts`를 내보내지 않는다. `node:child_process`를 끌어오기 때문이고, Node에서 도는 호출자가 직접 import해 `ConvertOptions.ocr`로 넘긴다.
+- OCR 보조 프로그램은 `windowsHide: true`로 띄운다. `win-ocr.exe`는 콘솔 프로그램이라, 콘솔이 없는 앱에서 숨기지 않고 띄우면 쪽마다 콘솔 창이 열렸다 닫힌다(의견 시트 250행). 원본에는 없는 옵션이므로 원본을 받아올 때 지키고, 시험 `tests/ocr-vision-spawn.test.ts`가 본다. 변환 결과에는 닿지 않는다.
 - 형제 패키지는 패키지 이름이 아니라 상대 경로(`../../../docx-engine/src/index` 등)로 import한다. `node_modules`가 다른 체크아웃으로 이어진 작업 트리에서는 패키지 이름이 엉뚱한 사본을 실행한다. 이 import를 패키지 이름으로 "정리"하지 않는다.
 - Electron을 import하지 않는다.
 - PDF를 열지 못하면(암호 등) `PdfLoadError`를 코드와 함께 던진다. 조용히 빈 결과를 돌려주지 않는다.

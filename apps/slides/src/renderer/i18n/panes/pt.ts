@@ -283,6 +283,7 @@ export const pt = {
   panePresenterNoNotes: '(Sem anotações)',
   panePresenterNotesBigger: 'Aumentar o texto das anotações',
   panePresenterNotesSmaller: 'Diminuir o texto das anotações',
+  panePresenterResizeNotes: 'Arraste para alterar a largura da coluna de anotações',
   panePresenterFilmSlideN: 'Slide {n}',
 
   paneShowEndedClick: 'Fim da apresentação de slides. Clique para sair.',

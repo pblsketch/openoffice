@@ -284,6 +284,7 @@ export const de = {
   panePresenterNoNotes: '(Keine Notizen)',
   panePresenterNotesBigger: 'Notizentext vergrößern',
   panePresenterNotesSmaller: 'Notizentext verkleinern',
+  panePresenterResizeNotes: 'Ziehen, um die Breite der Notizenspalte zu ändern',
   panePresenterFilmSlideN: 'Folie {n}',
 
   paneShowEndedClick: 'Ende der Bildschirmpräsentation. Klicken Sie zum Beenden.',
