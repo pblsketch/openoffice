@@ -5,7 +5,7 @@ function withEllipsis(label: string): string {
   return `${label.replace(/(?:…|\.{3})+$/u, '')}…`
 }
 
-/** Pre-stream thinking indicator , two mutually exclusive phases:
+/** Thinking indicator, two mutually exclusive phases:
  *  grow/shrink blue dots first, then after ~1.2s only the shimmer label with a " · Ns" elapsed hint after 3s.
  *  The .ai-typing-* style classes are provided by each app's styles.css. */
 export function AiTypingIndicator({ label }: { readonly label: string }): React.JSX.Element {
@@ -40,6 +40,26 @@ export function AiTypingIndicator({ label }: { readonly label: string }): React.
           </span>
         </span>
       )}
+    </span>
+  )
+}
+
+export function AiReplyProgress({
+  reply,
+  thinking,
+  working,
+}: {
+  readonly reply: {
+    readonly streaming?: boolean | undefined
+    readonly tools?: readonly unknown[] | undefined
+  }
+  readonly thinking: string
+  readonly working: string
+}): React.JSX.Element | null {
+  if (!reply.streaming) return null
+  return (
+    <span className="ai-typing-row">
+      <AiTypingIndicator label={reply.tools?.length ? working : thinking} />
     </span>
   )
 }
