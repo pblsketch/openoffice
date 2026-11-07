@@ -1,8 +1,12 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { inflateSync } from 'node:zlib'
 import { PDFDocument, PDFName } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
 import { fontCoversText } from '../src/main/font-cmap'
 import { findSystemFont } from '../src/main/font-locate'
-import { applyTextEdits } from '../src/main/text-edit'
+import { subsetTtf } from '../src/main/font-subset'
+import { applyTextEdits, loadPdfium, saveDoc } from '../src/main/text-edit'
 import { LOOKALIKE_FAMILIES, type FontStyleClass } from '../src/shared/font-classes'
 
 /**
@@ -117,5 +121,123 @@ describe('text edit on a missing document face', () => {
     const result = await applyTextEdits(fixture, [edit(text)])
     expect(result.skipped).toEqual([])
     expect(Buffer.from(result.bytes).toString('latin1')).toMatch(baseFont(want))
+  })
+})
+
+/** Gowun Batang ships with the repo (design templates) and is not a system face */
+const GOWUN = readFileSync(
+  join(__dirname, '..', '..', '..', 'packages', 'ui', 'template-fonts', 'GowunBatang-Regular.ttf'),
+)
+
+/** One run set in a Gowun Batang subset holding only the run's own chars, the way
+    an exporter embeds it; authored with PDFium (pdf-lib cannot embed without fontkit) */
+async function subsetFixture(text: string): Promise<Uint8Array> {
+  const sub = await subsetTtf(GOWUN, text)
+  const m = (await loadPdfium()) as Awaited<ReturnType<typeof loadPdfium>> & {
+    _FPDF_CreateNewDocument(): number
+    _FPDFPage_New(doc: number, index: number, w: number, h: number): number
+  }
+  const doc = m._FPDF_CreateNewDocument()
+  const page = m._FPDFPage_New(doc, 0, 595, 842)
+  const fp = m._malloc(sub.length)
+  m.HEAPU8.set(sub, fp)
+  const font = m._FPDFText_LoadFont(doc, fp, sub.length, 2, 1)
+  m._free(fp)
+  const obj = m._FPDFPageObj_CreateTextObj(doc, font, 20)
+  const t16 = Buffer.from(`${text}\0`, 'utf16le')
+  const tp = m._malloc(t16.length)
+  m.HEAPU8.set(t16, tp)
+  expect(m._FPDFText_SetText(obj, tp)).toBeTruthy()
+  m._free(tp)
+  m._FPDFPageObj_Transform(obj, 1, 0, 0, 1, 60, 700)
+  m._FPDFPage_InsertObject(page, obj)
+  expect(m._FPDFPage_GenerateContent(page)).toBeTruthy()
+  const bytes = saveDoc(m, doc)
+  m._FPDF_ClosePage(page)
+  m._FPDF_CloseDocument(doc)
+  return bytes
+}
+
+/** Page text via pdf.js (a second engine reads what PDFium wrote) */
+async function extractText(bytes: Uint8Array): Promise<string> {
+  const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs')
+  const doc = await getDocument({ data: bytes.slice(), useSystemFonts: true }).promise
+  try {
+    const content = await (await doc.getPage(1)).getTextContent()
+    return content.items.map((i) => ('str' in i ? i.str : '')).join('')
+  } finally {
+    await doc.loadingTask.destroy()
+  }
+}
+
+/** Decoded content streams that draw text */
+function textStreams(bytes: Uint8Array): string {
+  const raw = Buffer.from(bytes)
+  const latin = raw.toString('latin1')
+  let out = ''
+  for (const m of latin.matchAll(/(?<!end)stream\r?\n/g)) {
+    const start = m.index! + m[0].length
+    const chunk = raw.subarray(start, latin.indexOf('endstream', start))
+    try {
+      const body = inflateSync(chunk).toString('latin1')
+      if (/T[jJ]/.test(body)) out += body
+    } catch {
+      /* not deflated: no text here */
+    }
+  }
+  return out
+}
+
+/** BaseFont names in the file */
+const baseFonts = (bytes: Uint8Array): string[] => [
+  ...new Set(
+    [
+      ...Buffer.from(bytes)
+        .toString('latin1')
+        .matchAll(/\/BaseFont\/([^\s/<>[\]]+)/g),
+    ].map((m) => m[1]!),
+  ),
+]
+
+const ORIGINAL = '가을 하늘은 맑고 높다'
+const subsetEdit = (newText: string) => ({
+  pageIndex: 0,
+  rect: [55, 692, 290, 724] as [number, number, number, number],
+  oldText: ORIGINAL,
+  newText,
+  fontSize: 20,
+})
+
+describe('keep-original edit on a partial subset', () => {
+  it('keeps the subset glyphs for covered chars and substitutes only the new ones', async () => {
+    const text = '가을 하늘은 맑고 푸르다'
+    // 푸 and 르 are not in the subset; with no Korean look-alike installed the
+    // fallback takes them, which still mixes — only the second face's name varies
+    const result = await applyTextEdits(await subsetFixture(ORIGINAL), [subsetEdit(text)])
+    expect(result.skipped).toEqual([])
+    expect((await extractText(result.bytes)).replace(/\s/g, '')).toBe(text.replace(/\s/g, ''))
+    const faces = baseFonts(result.bytes)
+    expect(faces.some((f) => f.includes('GowunBatang'))).toBe(true)
+    expect(faces.some((f) => !f.includes('GowunBatang'))).toBe(true)
+    // the subset's pieces and the substitute's piece are separate text objects
+    expect((textStreams(result.bytes).match(/Tj/g) ?? []).length).toBeGreaterThan(1)
+  })
+
+  it('stays in the subset alone when it covers every redrawn char', async () => {
+    const result = await applyTextEdits(await subsetFixture(ORIGINAL), [
+      subsetEdit('높다 가을 하늘은 맑고'),
+    ])
+    expect(result.skipped).toEqual([])
+    expect(baseFonts(result.bytes).every((f) => f.includes('GowunBatang'))).toBe(true)
+  })
+
+  it('never mixes the subset into a whole-edit face choice', async () => {
+    const result = await applyTextEdits(await subsetFixture(ORIGINAL), [
+      { ...subsetEdit('가을 하늘은 맑고 푸르다'), newFont: 'times' },
+    ])
+    // Times has no Hangul, so the edit degrades to the fallback — but the user
+    // picked a face for the whole run, so none of it stays in the subset
+    expect(result.skipped).toEqual([])
+    expect(baseFonts(result.bytes).some((f) => f.includes('GowunBatang'))).toBe(false)
   })
 })
