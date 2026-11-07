@@ -85,6 +85,17 @@ export const vi = {
   errNeedsUpdate: 'Chương trình quá cũ để dùng chế độ tác tử. Hãy cập nhật rồi thử lại.',
   errNotInstalled: 'Chương trình chưa được cài đặt.',
   errGeneric: 'Đã xảy ra lỗi. Hãy thử lại.',
+  errUnsupportedPath:
+    'Codex không thể làm việc với thư mục hoặc tệp có [ ] * hoặc ? trong tên. Hãy đổi tên thư mục dự án, hoặc đóng các tài liệu có tên như vậy, rồi bắt đầu lại.',
+  errProgramExited:
+    'Chương trình đã đóng trong lúc phiên đang khởi động. Hãy cập nhật chương trình, kiểm tra rằng nó mở được trong terminal, rồi thử lại.',
+  errProgramNoAnswer: 'Chương trình không trả lời kịp trong lúc phiên đang khởi động. Hãy thử lại.',
+  errProgramRefused:
+    'Chương trình không chấp nhận cài đặt của phiên. Hãy cập nhật chương trình rồi thử lại.',
+  errNoModel:
+    'Chương trình không đưa ra mô hình nào để dùng. Hãy chọn mô hình trong Cài đặt → AI rồi thử lại.',
+  errPrepareFailed: 'Ứng dụng không thể chuẩn bị phiên. Hãy thử lại.',
+  errCode: 'Nếu vẫn tiếp tục xảy ra, hãy ghi kèm mã này khi gửi ý kiến: {code}',
   documentsUnprotected:
     'Tài liệu mở sau khi phiên bắt đầu ({n}) không được bảo vệ bởi cơ chế chống ghi của chương trình. Dừng và bắt đầu lại phiên để bảo vệ chúng.',
 } satisfies Record<keyof typeof zh, string>

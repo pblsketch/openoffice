@@ -511,8 +511,11 @@ Nothing in this list is uploaded by the app.
   Chromium reports (such as `crashed` or `oom`), the exit code, which editor it
   was (such as `docs`), and memory figures in whole megabytes: the app's own
   memory use, the PC's free and total memory, and how many AI requests and AI
-  programs were running. It holds no document text, file names, paths or
-  error messages, and it is kept under
+  programs were running. When an agent session cannot start, one line holds
+  the time, the program (`codex` or `claude-code`), a short code for the
+  failure (such as `refused thread.start -32600`) and the error's type (such
+  as `Error:EACCES`); the agent window shows the same code. It holds no
+  document text, file names, paths or error messages, and it is kept under
   64 KB by dropping the oldest lines. The app never sends it anywhere; if you
   report a problem, you can attach it yourself. No crash dumps are written.
 - **The spreadsheet save-failure record** (`sheets-save-failures.jsonl` in

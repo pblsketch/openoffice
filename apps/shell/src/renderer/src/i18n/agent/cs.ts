@@ -84,6 +84,15 @@ export const cs = {
   errNeedsUpdate: 'Program je pro režim agenta příliš starý. Aktualizujte ho a zkuste to znovu.',
   errNotInstalled: 'Program není nainstalován.',
   errGeneric: 'Něco se pokazilo. Zkuste to znovu.',
+  errUnsupportedPath:
+    'Codex nemůže pracovat se složkou nebo souborem, jejichž název obsahuje [ ] * nebo ?. Přejmenujte složku projektu nebo zavřete dokumenty s takovým názvem a začněte znovu.',
+  errProgramExited:
+    'Program se při spouštění relace zavřel. Aktualizujte ho, ověřte, že se otevře v terminálu, a zkuste to znovu.',
+  errProgramNoAnswer: 'Program při spouštění relace neodpověděl včas. Zkuste to znovu.',
+  errProgramRefused: 'Program nepřijal nastavení relace. Aktualizujte ho a zkuste to znovu.',
+  errNoModel: 'Program nenabídl žádný model. Vyberte model v Nastavení → AI a zkuste to znovu.',
+  errPrepareFailed: 'Aplikace nedokázala relaci připravit. Zkuste to znovu.',
+  errCode: 'Pokud se to opakuje, uveďte při odeslání zpětné vazby tento kód: {code}',
   documentsUnprotected:
     'Dokumenty otevřené po spuštění relace ({n}) nejsou chráněny vlastní ochranou programu proti zápisu. Zastavte a znovu spusťte relaci, abyste je ochránili.',
 } satisfies Record<keyof typeof zh, string>

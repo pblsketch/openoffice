@@ -81,6 +81,14 @@ export const zh = {
   errNeedsUpdate: '程序版本过旧，无法使用智能体模式。请更新后重试。',
   errNotInstalled: '未安装此程序。',
   errGeneric: '出现问题。请重试。',
+  errUnsupportedPath:
+    'Codex 无法处理名称中含有 [ ] * 或 ? 的文件夹或文件。请重命名项目文件夹，或关闭名称中含有这些字符的文档，然后重新开始。',
+  errProgramExited: '会话启动时程序关闭了。请更新程序，确认它能在终端中打开，然后重试。',
+  errProgramNoAnswer: '会话启动时程序没有及时响应。请重试。',
+  errProgramRefused: '程序没有接受会话设置。请更新程序后重试。',
+  errNoModel: '程序没有提供可用的模型。请在“设置 → AI”中选择模型后重试。',
+  errPrepareFailed: '应用未能准备好会话。请重试。',
+  errCode: '如果问题持续出现，请在发送反馈时附上此代码：{code}',
   documentsUnprotected:
     '会话开始后打开的 {n} 个文档不受该程序自身写入保护的限制。若要保护它们，请停止会话并重新开始。',
 }

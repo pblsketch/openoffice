@@ -254,7 +254,7 @@ describe('a session with relays', () => {
       projectRoot: s.project,
       mode: 'ask-commands',
     })
-    expect(result).toMatchObject({ ok: false, reason: 'start-failed' })
+    expect(result).toMatchObject({ ok: false, failure: { reason: 'unknown' } })
     expect(s.relayStop).toHaveBeenCalledTimes(1)
   })
 })

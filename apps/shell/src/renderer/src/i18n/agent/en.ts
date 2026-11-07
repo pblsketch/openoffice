@@ -83,6 +83,17 @@ export const en = {
   errNeedsUpdate: 'The program is too old for agent mode. Update it and try again.',
   errNotInstalled: 'The program is not installed.',
   errGeneric: 'Something went wrong. Try again.',
+  errUnsupportedPath:
+    'Codex cannot work with a folder or file whose name has [ ] * or ?. Rename the project folder, or close the documents with such a name, then start again.',
+  errProgramExited:
+    'The program closed while the session was starting. Update it, check that it opens in a terminal, then try again.',
+  errProgramNoAnswer:
+    'The program did not answer in time while the session was starting. Try again.',
+  errProgramRefused: 'The program did not accept the session settings. Update it, then try again.',
+  errNoModel:
+    'The program offered no model to use. Choose a model under Settings → AI, then try again.',
+  errPrepareFailed: 'The app could not prepare the session. Try again.',
+  errCode: 'If this keeps happening, include this code when you send feedback: {code}',
   documentsUnprotected:
     'Documents opened after the session started ({n}) are outside the program’s own write protection. Stop and start the session again to protect them.',
 } satisfies Record<keyof typeof zh, string>
