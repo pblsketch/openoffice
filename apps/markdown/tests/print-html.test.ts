@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { buildPrintHtml } from '../src/renderer/export/printHtml'
+import { MARKDOWN_PRINT_OPTIONS } from '../src/shared/print-options'
 
 // The KaTeX stylesheet is inlined with Vite's `?inline` query; stub it so the
 // test asserts the builder's own behavior rather than the bundler's.
@@ -42,6 +43,15 @@ describe('buildPrintHtml', () => {
     expect(html).toContain('<a class="wiki-link">[[Plain]]</a>')
     expect(html).toContain('<a class="wiki-link">[[Note|bo<strong>ld</strong>]]</a>')
     expect(html).not.toContain('[[Note|</span>')
+  })
+
+  it('keeps the print margin on the page, not the paper edge', () => {
+    // Chromium takes a CSS page margin over the margins printToPDF and print()
+    // are given, so this rule decides where the text sits on paper.
+    const html = buildPrintHtml(editorRoot('<p>x</p>'), 'Notes')
+    const margins = [...html.matchAll(/@page\s*\{[^}]*?margin:\s*([^;]+);/g)].map((m) => m[1])
+    expect(margins).toEqual([`${MARKDOWN_PRINT_OPTIONS.marginIn}in`])
+    expect(MARKDOWN_PRINT_OPTIONS.marginIn).toBeGreaterThan(0)
   })
 
   it('escapes the document title', () => {
