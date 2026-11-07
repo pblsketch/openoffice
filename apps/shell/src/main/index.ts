@@ -306,6 +306,7 @@ import {
 import {
   configureHwpRuntime,
   editorTakes,
+  exportHwpPdfHeadless,
   hwpFileRenamed,
   hwpReadText,
   requestHwpPreview,
@@ -9511,6 +9512,7 @@ const headlessExporters: HeadlessExporters = {
   slides: (input, outPath) => exportSlidesPdfHeadless(input, outPath),
   markdown: (input, outPath) => exportMarkdownPdfHeadless(input, outPath),
   html: (input, outPath, format) => exportHtmlHeadless(input, outPath, format),
+  hwp: (input, outPath) => exportHwpPdfHeadless(input, outPath),
   diagram: exportDiagramHeadless,
 }
 

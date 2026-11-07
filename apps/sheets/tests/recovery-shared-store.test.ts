@@ -25,6 +25,7 @@ import {
   isAppShuttingDown,
   recoveryEditor,
   resetAppShuttingDown,
+  setHeadlessMode,
   type RecoveryCopyInfo,
   type RecoveryStore,
 } from '@genoffice/electron-utils'
@@ -901,5 +902,28 @@ describe('deleting copies outside shutdown', () => {
     destroy(tab)
 
     expect(store.copyInfo({ kind: 'sheets', filePath: path })).toBeNull()
+  })
+})
+
+describe('a headless export (--headless-export)', () => {
+  afterEach(() => setHeadlessMode(false))
+
+  it('opens the file as saved: a copy left for it is not asked about, used or settled', async () => {
+    const path = writeWorkbook()
+    await store.writeCopy({ kind: 'sheets', filePath: path }, Buffer.from('unsaved-work'))
+    const before = store.copyInfo({ kind: 'sheets', filePath: path })
+    setHeadlessMode(true)
+    const tab = newTab()
+
+    const opened = await openWorkbook(tab, path)
+
+    // no one is there to answer the prompt (Esc / close would restore the copy)
+    expect(messageBoxes).toHaveLength(0)
+    expect(openedBytes.at(-1)).toBe('original-bytes')
+    expect(opened.restoredFromRecovery).toBeFalsy()
+    expect(store.copyInfo({ kind: 'sheets', filePath: path })).toEqual(before)
+    // nor does the hidden view write a copy of its own over it
+    expect(await writeRecovery(tab, opened.sessionId)).toBe(false)
+    expect(readFileSync(fileCopyPath(path)).toString()).toBe('unsaved-work')
   })
 })

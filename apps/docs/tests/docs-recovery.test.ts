@@ -28,6 +28,7 @@ import {
   markAppShuttingDown,
   resetAppShuttingDown,
   resumeDiscardedCopies,
+  setHeadlessMode,
   type RecoveryMessageBox,
 } from '@genoffice/electron-utils'
 import { createDocsRecovery, type DocsRecovery } from '../src/main/docs-recovery'
@@ -469,5 +470,32 @@ describe('deleting copies', () => {
     recovery.noteStillOpen(TAB)
     recovery.settleClosedDocument(TAB, false)
     expect(recovery.store.copyInfo(recovery.fileIdentity(doc))).not.toBeNull()
+  })
+})
+
+describe('a headless export (--headless-export)', () => {
+  afterEach(() => setHeadlessMode(false))
+
+  it('opens the file as saved: a copy left for it is not asked about, used or settled', async () => {
+    const doc = userDoc('notes.docx')
+    setMtime(doc, Date.now() - 60_000)
+    await write(TAB, doc, 'unsaved work')
+    const store = createRecoveryStore({ userDataDir: root })
+    const before = store.copyInfo({ kind: 'docs', filePath: doc })
+    expect(before).not.toBeNull()
+    setHeadlessMode(true)
+    // no one is there to answer the prompt (Esc / close would restore the copy)
+    expect(await open(doc)).toEqual({ action: 'original' })
+    expect(dialog.showMessageBox).not.toHaveBeenCalled()
+    // a restore chosen earlier is not taken up either
+    expect(await open(doc, 'restore')).toEqual({ action: 'original' })
+    expect(store.copyInfo({ kind: 'docs', filePath: doc })).toEqual(before)
+  })
+
+  it('writes no copy of its own', async () => {
+    const doc = userDoc('notes.docx')
+    setHeadlessMode(true)
+    expect(await write(TAB, doc, 'layout noise')).toBe('skipped')
+    expect(filesUnder(autosaveDir())).toEqual([])
   })
 })

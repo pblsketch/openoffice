@@ -18,6 +18,7 @@
  */
 import { basename } from 'node:path'
 import {
+  isHeadlessMode,
   resolveRecoveryOnOpen,
   type RecoveryCopyInfo,
   type RecoveryDeleteReason,
@@ -178,6 +179,8 @@ export function createDocsRecovery(store: RecoveryStore): DocsRecovery {
     fileIdentity,
 
     async writeCopy(tabId, target, prepare, title) {
+      // a headless export's hidden window converts the file and goes; it keeps no copy
+      if (isHeadlessMode()) return 'skipped'
       const identity: RecoveryIdentity =
         'filePath' in target
           ? fileIdentity(target.filePath)
@@ -248,6 +251,9 @@ export function createDocsRecovery(store: RecoveryStore): DocsRecovery {
     },
 
     async resolveOpen({ filePath, decision, dialog, parent, lang }) {
+      // a headless export converts the file on disk: no one is there to answer the
+      // prompt (whose Esc restores), and a copy it neither uses nor settles stays as it was
+      if (isHeadlessMode()) return { action: 'original' }
       const identity = fileIdentity(filePath)
       // the file is being opened: what it shows from now on was not thrown
       // away by an earlier "Don't Save", so its copies are written again

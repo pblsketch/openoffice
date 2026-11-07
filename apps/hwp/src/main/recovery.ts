@@ -22,6 +22,7 @@ import { BrowserWindow, app, dialog, ipcMain } from 'electron'
 import type { WebContents } from 'electron'
 import {
   createRecoveryStore,
+  isHeadlessMode,
   isUntitledIdentity,
   newUntitledRecoveryId,
   registerRecoveryEditor,
@@ -195,6 +196,9 @@ export async function hwpRecoveryOnRead(
   const wcId = sender.id
   const current = host
   if (!current) return null
+  // a headless export converts the file on disk; it neither asks about a copy left for
+  // that file (there is no one to answer) nor uses or settles it
+  if (isHeadlessMode()) return null
   // an untitled copy (a template's, or a recovery copy opened as a new document)
   if (!current.savePathOf(wcId)) {
     if (untitledRestoreByWc.has(wcId)) {
@@ -434,6 +438,8 @@ function validBytes(data: unknown, format: unknown): data is Uint8Array {
 
 /** why this view may not take a copy now, or null */
 function copyBarred(wcId: number): boolean {
+  // a headless export's hidden view converts the file and goes; it keeps no copy
+  if (isHeadlessMode()) return true
   return unprotectableByWc.has(wcId) || dontSaveByWc.has(wcId) || blockedByWc.has(wcId)
 }
 

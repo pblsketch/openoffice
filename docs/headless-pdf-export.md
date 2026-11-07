@@ -40,6 +40,7 @@ On failure the JSON envelope is
 | `.pptx`                                      | slides   |
 | `.md` `.markdown`                            | markdown |
 | `.html` `.htm`                               | html     |
+| `.hwp` `.hwpx`                               | hwp      |
 | `.drawio` `.dio` `.drawio.svg` `.drawio.png` | diagram  |
 
 ## Diagrams
@@ -116,7 +117,20 @@ file manager) and the slides recent-files entry.
   document is mounted but it never came from disk" as exit 3.
 - **Password-protected documents** cannot be answered without a user. Workbooks
   and decks are not opened at all (no prompt), so they fail as an unreadable
-  input; Word documents fail on the readiness timeout rather than immediately.
+  input; Word and Hangul documents fail on the readiness timeout rather than
+  immediately.
+- **Hangul documents** (`.hwp`, `.hwpx`) export to PDF only: the pages the
+  editor draws for print, with their text, through the same print job as File
+  › Export as PDF and Save As › PDF. A file that does not open is exit 3
+  (`the input document did not open`).
+- **A recovery copy is not used.** Every hidden view reads the file as it is
+  on disk. A copy the app kept of that file's unsaved changes is neither
+  offered (there is no one to answer, and the prompt's Esc means restore) nor
+  read, kept or removed, and the hidden view writes none of its own. Each
+  editor checks `isHeadlessMode()` where it settles a copy on open and where it
+  writes one (docs `docs-recovery.ts`, sheets `recoveredOpenFor` /
+  `writeSessionCopy`, slides, markdown, html, hwp, diagram `recovery-main.ts`);
+  a new exporter that opens through the editor's normal open path keeps both.
 - **Large workbooks** normally wait for the user's "Full Load" click before
   PDF export is allowed. Headless makes that call itself.
 - **Only the active sheet** is exported for spreadsheets, exactly as in the

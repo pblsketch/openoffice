@@ -81,6 +81,7 @@ ieumoffice hwp read notice.hwp [--offset 20000] [--full] --json           # text
 ieumoffice hwp apply form.hwp --ops ops.json [--out filled.hwpx] [--dry-run] [--force] --json   # the in-app AI's tools as ops (replace_text, insert_paragraphs, fill_cells, fill_field ...; `guide hwp`); written back in its own format, the replaced file kept as form.hwp.bak
 ieumoffice create --type hwp --ops ops.json --out minutes.hwp             # a new Hangul document: the same ops on a blank A4 page (--type hwpx for .hwpx)
 ieumoffice guide hwp                                                    # the hwp apply ops, built from the in-app AI's tool definitions
+ieumoffice convert notice.hwp --to pdf                                  # .hwp/.hwpx → PDF: the Hangul editor's own PDF export in a hidden app, pages as the editor draws them, with a text layer
 ieumoffice diagram read flow.drawio [--page Two] --json               # shapes and edges of each page of a draw.io diagram (.drawio, .dio, .drawio.svg, .drawio.png); no app process
 ieumoffice diagram apply flow.drawio --ops '[{"op":"add_shape","label":"Check","x":40,"y":200}]' [--page Two] [--out flow.dio] [--force] --json   # the in-app AI's diagram ops (`guide diagram`); .drawio/.dio keep untouched pages byte for byte
 ieumoffice create --type drawio --mermaid flow.mmd [--ops @more.json] --out flow.drawio   # Mermaid drawn by draw.io (a hidden IeumOffice), then the ops; --out x.drawio.png writes that format

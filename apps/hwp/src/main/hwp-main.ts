@@ -10,6 +10,7 @@ import {
   installContextMenu,
   installNavigationGuard,
   installRendererProtocol,
+  isHeadlessMode,
   recordDiskState,
   registerRendererScheme,
   rendererUrl,
@@ -122,6 +123,14 @@ const readTextInFlight = new Map<number, Promise<string>>()
 const pendingSaveByWc = new Map<number, { path: string; format: HwpFormat }>()
 /** The PDF path a view's Save As picked; its next PDF may write exactly that path, once */
 const pdfSaveAsByWc = new Map<number, string>()
+/**
+ * Hidden `--headless-export` windows: the PDF path the command line gave. The renderer
+ * takes it once (consumeHeadlessExport) and its PDF may write exactly that path, once.
+ */
+const headlessTargetByWc = new Map<number, string>()
+const headlessPdfByWc = new Map<number, string>()
+/** settled by the renderer's headless-export-done message, its death or the timeout */
+const headlessWaiters = new Map<number, (report: { ok: boolean; error?: string }) => void>()
 /** Paths each view has already written this session; their first overwrite kept a backup */
 const writtenByWc = new Map<number, Set<string>>()
 /**
@@ -505,6 +514,23 @@ function registerHwpIpc(): void {
   installHwpRecovery(recoveryHost)
   registerHwpRecoveryIpc()
 
+  // ---- headless export mode (--headless-export) ----
+  ipcMain.handle(HWP_CHANNELS.consumeHeadlessExport, (e): string | null => {
+    const target = headlessTargetByWc.get(e.sender.id) ?? null
+    headlessTargetByWc.delete(e.sender.id)
+    return target
+  })
+  ipcMain.on(HWP_CHANNELS.headlessExportDone, (e, result: unknown) => {
+    const settle = headlessWaiters.get(e.sender.id)
+    if (!settle) return
+    headlessWaiters.delete(e.sender.id)
+    const state = result as { ok?: unknown; error?: unknown } | null
+    settle({
+      ok: state?.ok === true,
+      ...(typeof state?.error === 'string' ? { error: state.error } : {}),
+    })
+  })
+
   // the memo editor is renderer state; main keeps only whether this view has one open, so
   // save, close and quit can wait for it even when the document itself is clean
   ipcMain.on(HWP_CHANNELS.memoModalOpen, (e, open: unknown) => {
@@ -565,18 +591,17 @@ function registerHwpIpc(): void {
       const wcId = e.sender.id
       const bad = badJob(job)
       if (bad) return { ok: false, error: `hwp: ${bad}` }
-      // Save As > PDF: the path its dialog picked, taken once, and only for a PDF
+      // Save As > PDF: the path its dialog picked, taken once, and only for a PDF; a
+      // headless export's path is the one the command line gave (exportHwpPdfHeadless)
       const given =
         options && typeof options === 'object' ? (options as { path?: unknown }).path : undefined
       if (given !== undefined) {
-        if (
-          typeof given !== 'string' ||
-          given !== pdfSaveAsByWc.get(wcId) ||
-          (job as PrintJob).mode !== 'pdf'
-        ) {
+        const granted = pdfSaveAsByWc.get(wcId) ?? headlessPdfByWc.get(wcId)
+        if (typeof given !== 'string' || given !== granted || (job as PrintJob).mode !== 'pdf') {
           return { ok: false, error: 'hwp: this PDF path was not picked in Save As' }
         }
         pdfSaveAsByWc.delete(wcId)
+        headlessPdfByWc.delete(wcId)
       }
       if (printing.has(wcId)) return { ok: false, error: 'hwp: already printing' }
       printing.add(wcId)
@@ -590,6 +615,8 @@ function registerHwpIpc(): void {
         if (!target) return { ok: true, canceled: true }
         const pdf = await printJobToPdf(printJob, printWindow)
         await atomicWriteFile(target, pdf)
+        // a headless export stays silent: no tab, no file manager window
+        if (isHeadlessMode()) return { ok: true, path: target }
         try {
           if (!runtime.openGeneratedPath?.(target)) shell.showItemInFolder(target)
         } catch (err) {
@@ -1019,6 +1046,8 @@ function grantAndTrack(
     hwpViews.delete(wcId)
     pendingSaveByWc.delete(wcId)
     pdfSaveAsByWc.delete(wcId)
+    headlessTargetByWc.delete(wcId)
+    headlessPdfByWc.delete(wcId)
     writtenByWc.delete(wcId)
     tailsByWc.delete(wcId)
     fieldKindsByWc.delete(wcId)
@@ -1061,6 +1090,60 @@ export function createHwpView(
   grantAndTrack(view.webContents, openPath, options)
   void view.webContents.loadURL(rendererUrl(runtime.rendererUrl, 'hwp'))
   return view
+}
+
+/**
+ * `--headless-export <file.hwp|.hwpx> --to pdf`: a hidden HWP view opens the file the way
+ * a tab does and runs the File menu's own PDF export, with the command line's path in
+ * place of the save dialog. The file is read as it is on disk: a recovery copy left for
+ * it is neither offered nor used (hwpRecoveryOnRead).
+ */
+export async function exportHwpPdfHeadless(
+  input: string,
+  outPath: string,
+  timeoutMs = 180_000,
+): Promise<void> {
+  registerHwpIpc()
+  const win = new BrowserWindow({
+    show: false,
+    width: 1280,
+    height: 900,
+    webPreferences: {
+      preload: runtime.preloadPath,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      backgroundThrottling: false,
+    },
+  })
+  const wcId = win.webContents.id
+  grantAndTrack(win.webContents, input)
+  headlessTargetByWc.set(wcId, outPath)
+  headlessPdfByWc.set(wcId, outPath)
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    const report = await new Promise<{ ok: boolean; error?: string }>((resolve) => {
+      headlessWaiters.set(wcId, resolve)
+      win.webContents.on('render-process-gone', (_event, details) =>
+        resolve({ ok: false, error: `hwp renderer stopped (${details.reason})` }),
+      )
+      timer = setTimeout(
+        () =>
+          resolve({
+            ok: false,
+            // a document with an open password waits for one, and no one is there to give it
+            error: `hwp export timed out after ${timeoutMs}ms (a password-protected document cannot be exported this way)`,
+          }),
+        timeoutMs,
+      )
+      void win.webContents.loadURL(rendererUrl(runtime.rendererUrl, 'hwp'))
+    })
+    if (!report.ok) throw new Error(report.error ?? 'hwp export failed')
+  } finally {
+    if (timer) clearTimeout(timer)
+    headlessWaiters.delete(wcId)
+    if (!win.isDestroyed()) win.destroy()
+  }
 }
 
 /** Standalone window mode: `npm run dev -w @genoffice/hwp`, document path passed via argv */
