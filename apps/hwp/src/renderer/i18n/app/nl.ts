@@ -98,6 +98,7 @@ export const nl = {
   aiToolPageSetup: 'Pagina-instelling gecontroleerd',
   aiToolPageSetupSet: 'Pagina-instelling gewijzigd',
   aiToolFormatting: 'Opmaak gecontroleerd',
+  aiToolParagraphLooks: 'Opmaak per alinea bekeken · {count}',
   aiToolFormattingOf: 'Opmaak van {name} gecontroleerd',
   aiToolFormatLook: '{count} alinea’s met één uiterlijk opgemaakt',
   aiLookParagraphs: '{count} alinea’s met één uiterlijk',

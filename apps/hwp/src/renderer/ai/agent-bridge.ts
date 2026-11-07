@@ -59,6 +59,7 @@ const METHODS = [
   'pageSetup',
   'setPageSetup',
   'formatting',
+  'paragraphLooks',
   'formatLook',
   'measureTabs',
   'clearMarks',

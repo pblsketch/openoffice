@@ -717,6 +717,26 @@ export interface AgentFormatting {
   truncated?: true
 }
 
+/** One body paragraph and its look, as paragraphLooks lists them. */
+export interface AgentParagraphLook {
+  /** 1-based position among the body paragraphs that hold text */
+  paragraph: number
+  /** the look id, as formatting lists looks */
+  look: string
+  /** the start of its text */
+  text: string
+}
+
+export interface AgentParagraphLooks {
+  /** body paragraphs that hold text; `paragraphs` holds one part of them */
+  count: number
+  paragraphs: AgentParagraphLook[]
+  /** where the next call goes on, when more paragraphs follow */
+  next?: number
+  /** the document is very long: the last paragraphs were not looked at */
+  truncated?: boolean
+}
+
 export type AgentFormattingResult =
   ({ ok: true } & AgentFormatting) | { ok: false; reason: 'unreadable'; message: string }
 
@@ -1130,6 +1150,8 @@ export interface AgentPluginSurface {
   ): AgentPageSetupResult
   /** this document's formatting, or that of another HWP / HWPX document given as base64 */
   formatting(base64?: string | null): AgentFormattingResult
+  /** the body paragraphs in reading order with their look ids, from the `from`-th (1-based) */
+  paragraphLooks(from?: number | null): AgentParagraphLooks
   formatLook(
     look: string,
     format: AgentParagraphFormat,

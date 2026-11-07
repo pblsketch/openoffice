@@ -93,6 +93,7 @@ export const zhTW = {
   aiToolPageSetup: '檢視了版面設定',
   aiToolPageSetupSet: '變更了版面設定',
   aiToolFormatting: '檢視了文件格式',
+  aiToolParagraphLooks: '已檢視各段落格式 · {count} 段',
   aiToolFormattingOf: '檢視了 {name} 的格式',
   aiToolFormatLook: '變更了 {count} 個相同外觀段落的格式',
   aiLookParagraphs: '{count} 個相同外觀段落',

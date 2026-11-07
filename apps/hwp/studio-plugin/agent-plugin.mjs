@@ -2303,6 +2303,8 @@ const MAX_LOOK_PARAGRAPHS = 6000
 const MAX_LISTED_LOOKS = 40
 const LOOK_SAMPLES = 2
 const LOOK_SAMPLE_CHARS = 60
+/** Body paragraphs one paragraphLooks call lists; the next call goes on from where it stopped. */
+const MAX_LISTED_PARAGRAPH_LOOKS = 200
 
 /** A short, stable name for a look: it stays the same while the paragraphs keep that look. */
 function lookIdOf(key) {
@@ -2446,6 +2448,35 @@ function formattingOf(doc) {
       samples: group.samples,
     })),
     ...(looks.length > MAX_LISTED_LOOKS ? { otherLooks: looks.length - MAX_LISTED_LOOKS } : {}),
+    ...(truncated ? { truncated: true } : {}),
+  }
+}
+
+/**
+ * The body paragraphs in reading order with the look each has (looksOf: the ids
+ * formattingOf lists), from the `from`-th (1-based) on: which paragraphs are formatted
+ * alike and which one stands apart, such as a heading indented unlike the others. The look
+ * itself (indents, alignment, spacing, font) is in formattingOf. Empty paragraphs are left
+ * out, as there. Reads only.
+ */
+function paragraphLooksOf(doc, from) {
+  const { looks, truncated } = looksOf(doc)
+  const rows = []
+  for (const group of looks) {
+    for (const place of group.places) rows.push({ ...place, look: group.id })
+  }
+  rows.sort((a, b) => a.sec - b.sec || a.para - b.para)
+  const start = Number.isInteger(from) && from > 1 ? Math.min(from - 1, rows.length) : 0
+  const listed = rows.slice(start, start + MAX_LISTED_PARAGRAPH_LOOKS).map((row, index) => ({
+    paragraph: start + index + 1,
+    look: row.look,
+    text: clip(squash(paragraphTextOf(doc, row.sec, row.para)), LOOK_SAMPLE_CHARS),
+  }))
+  const next = start + listed.length
+  return {
+    count: rows.length,
+    paragraphs: listed,
+    ...(next < rows.length ? { next: next + 1 } : {}),
     ...(truncated ? { truncated: true } : {}),
   }
 }
@@ -7862,6 +7893,12 @@ export const agentPlugin = {
           options,
         )
       }),
+
+      /**
+       * The body paragraphs in reading order with their look ids (paragraphLooksOf), from
+       * the `from`-th on. Reads only.
+       */
+      paragraphLooks: guarded((from) => host.read((doc) => paragraphLooksOf(doc, from))),
 
       /**
        * What a document's formatting is made of (formattingOf): this document's, or that of

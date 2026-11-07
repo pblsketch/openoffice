@@ -95,6 +95,7 @@ export const he = {
   aiToolPageSetup: 'נבדקה הגדרת העמוד',
   aiToolPageSetupSet: 'שונתה הגדרת העמוד',
   aiToolFormatting: 'העיצוב נבדק',
+  aiToolParagraphLooks: 'עיצוב כל פסקה נבדק · {count}',
   aiToolFormattingOf: 'נבדק העיצוב של {name}',
   aiToolFormatLook: 'עוצבו {count} פסקאות במראה אחד',
   aiLookParagraphs: '{count} פסקאות במראה אחד',

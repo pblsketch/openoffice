@@ -99,6 +99,7 @@ export const cs = {
   aiToolPageSetup: 'Zkontrolován vzhled stránky',
   aiToolPageSetupSet: 'Změněn vzhled stránky',
   aiToolFormatting: 'Zkontrolováno formátování',
+  aiToolParagraphLooks: 'Vzhled odstavců zkontrolován · {count}',
   aiToolFormattingOf: 'Zkontrolováno formátování: {name}',
   aiToolFormatLook: 'Formátováno {count} odstavců stejného vzhledu',
   aiLookParagraphs: '{count} odstavců stejného vzhledu',

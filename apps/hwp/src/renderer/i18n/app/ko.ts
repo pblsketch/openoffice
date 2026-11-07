@@ -97,6 +97,7 @@ export const ko = {
   aiToolPageSetup: '쪽 설정 확인',
   aiToolPageSetupSet: '쪽 설정 바꿈',
   aiToolFormatting: '문서 서식 확인',
+  aiToolParagraphLooks: '문단별 서식 확인 · {count}개',
   aiToolFormattingOf: '{name} 서식 확인',
   aiToolFormatLook: '같은 모양 문단 {count}개 서식 바꿈',
   aiLookParagraphs: '같은 모양 문단 {count}개',

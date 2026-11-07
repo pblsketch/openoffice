@@ -98,6 +98,7 @@ export const ja = {
   aiToolPageSetup: 'ページ設定を確認',
   aiToolPageSetupSet: 'ページ設定を変更',
   aiToolFormatting: '文書の書式を確認',
+  aiToolParagraphLooks: '段落ごとの書式を確認 · {count} 個',
   aiToolFormattingOf: '{name} の書式を確認',
   aiToolFormatLook: '同じ見た目の段落 {count} 個の書式を変更',
   aiLookParagraphs: '同じ見た目の段落 {count} 個',

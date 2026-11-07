@@ -97,6 +97,7 @@ export const en = {
   aiToolPageSetup: 'Checked the page setup',
   aiToolPageSetupSet: 'Changed the page setup',
   aiToolFormatting: 'Checked the formatting',
+  aiToolParagraphLooks: 'Checked the look of each paragraph · {count}',
   aiToolFormattingOf: 'Checked the formatting of {name}',
   aiToolFormatLook: 'Formatted {count} paragraphs of one look',
   aiLookParagraphs: '{count} paragraphs of one look',

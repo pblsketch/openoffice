@@ -101,6 +101,7 @@ export const es = {
   aiToolPageSetup: 'Se revisó la configuración de página',
   aiToolPageSetupSet: 'Se cambió la configuración de página',
   aiToolFormatting: 'Se revisó el formato',
+  aiToolParagraphLooks: 'Formato de cada párrafo revisado · {count}',
   aiToolFormattingOf: 'Se revisó el formato de {name}',
   aiToolFormatLook: 'Se formatearon {count} párrafos de un mismo aspecto',
   aiLookParagraphs: '{count} párrafos de un mismo aspecto',

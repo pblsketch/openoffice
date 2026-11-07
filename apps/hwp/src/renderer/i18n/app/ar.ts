@@ -96,6 +96,7 @@ export const ar = {
   aiToolPageSetup: 'تم التحقق من إعداد الصفحة',
   aiToolPageSetupSet: 'تم تغيير إعداد الصفحة',
   aiToolFormatting: 'تم التحقق من التنسيق',
+  aiToolParagraphLooks: 'تم فحص تنسيق كل فقرة · {count}',
   aiToolFormattingOf: 'تم التحقق من تنسيق {name}',
   aiToolFormatLook: 'تم تنسيق {count} فقرة بمظهر واحد',
   aiLookParagraphs: '{count} فقرة بمظهر واحد',

@@ -100,6 +100,7 @@ export const it = {
   aiToolPageSetup: 'Controllata l’impostazione della pagina',
   aiToolPageSetupSet: 'Cambiata l’impostazione della pagina',
   aiToolFormatting: 'Controllata la formattazione',
+  aiToolParagraphLooks: 'Aspetto dei paragrafi controllato · {count}',
   aiToolFormattingOf: 'Controllata la formattazione di {name}',
   aiToolFormatLook: 'Formattati {count} paragrafi con lo stesso aspetto',
   aiLookParagraphs: '{count} paragrafi con lo stesso aspetto',
