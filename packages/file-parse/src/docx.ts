@@ -27,6 +27,11 @@ export async function docxToText(bytes: Uint8Array, opts: DocxTextOptions = {}):
   const styleFacts = paragraphStyleFacts(await zip.file(`${dir}styles.xml`)?.async('string'))
   const out = new TextSink(opts.maxChars ?? Infinity)
   scanBody(documentXml, styleFacts, out)
+  if (!out.lines.some((line) => line.trim()) && out.pictures > 0) {
+    const n = out.pictures
+    out.lines.length = 0
+    out.push(`[image-only document: ${n} image${n === 1 ? '' : 's'}, no extractable text]`)
+  }
   for (const [part, title] of [
     ['footnotes.xml', 'Footnotes'],
     ['endnotes.xml', 'Endnotes'],
@@ -166,6 +171,7 @@ class TextSink {
   readonly lines: string[] = []
   private chars = 0
   full = false
+  pictures = 0
   constructor(private readonly maxChars: number) {}
   push(line: string): void {
     if (this.full) return
@@ -353,6 +359,18 @@ function scanBody(
           const code = /w:char="([0-9A-Fa-f]{4})"/.exec(attrs!)?.[1]
           if (code) appendText(String.fromCharCode(parseInt(code, 16)))
         }
+        break
+      case 'wp:docPr':
+        if (opening && !runHidden) {
+          const descr = /(?:^|\s)descr="([^"]*)"/.exec(attrs!)?.[1]
+          const title = /(?:^|\s)title="([^"]*)"/.exec(attrs!)?.[1]
+          const alt = decodeEntities(descr || title || '')
+          if (alt) appendText(alt)
+        }
+        break
+      case 'w:drawing':
+      case 'w:pict':
+        if (opening) out.pictures += 1
         break
       case 'w:tbl':
         if (opening) tables.push({ rows: [], cell: null, row: null })
